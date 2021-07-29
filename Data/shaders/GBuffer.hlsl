@@ -77,70 +77,69 @@ PixelOutputType mainPS(PixelInputType input)
     float2 velocity             = (position_delta - g_taa_jitter_offset) * float2(0.5f, -0.5f);
 
     // Make TBN
-    #if HEIGHT_MAP || NORMAL_MAP
+#if HEIGHT_MAP || NORMAL_MAP
     float3x3 TBN = makeTBN(input.normal, input.tangent);
-    #endif
+#endif
 
-    #if HEIGHT_MAP
-        // Parallax Mapping
-        float height_scale      = g_mat_height * 0.04f;
-        float3 camera_to_pixel  = normalize(g_camera_position - input.position.xyz);
-        uv                      = ParallaxMapping(tex_material_height, sampler_anisotropic_wrap, uv, camera_to_pixel, TBN, height_scale);
-    #endif
+#if HEIGHT_MAP
+    // Parallax Mapping
+    float height_scale      = g_mat_height * 0.04f;
+    float3 camera_to_pixel  = normalize(g_camera_position - input.position.xyz);
+    uv                      = ParallaxMapping(tex_material_height, sampler_anisotropic_wrap, uv, camera_to_pixel, TBN, height_scale);
+#endif
     
-    #if ALPHA_MASK_MAP
-        float alpha_mask = tex_material_mask.Sample(sampler_anisotropic_wrap, uv).r;
-        if (alpha_mask <= alpha_mask_threshold)
-            discard;
-    #endif
+#if ALPHA_MASK_MAP
+    float alpha_mask = tex_material_mask.Sample(sampler_anisotropic_wrap, uv).r;
+    if (alpha_mask <= alpha_mask_threshold)
+        discard;
+#endif
 
-    #if ALBEDO_MAP
-        float4 albedo_sample = tex_material_albedo.Sample(sampler_anisotropic_wrap, uv);
-        if (albedo_sample.a <= alpha_mask_threshold)
-            discard;
+#if ALBEDO_MAP
+    float4 albedo_sample = tex_material_albedo.Sample(sampler_anisotropic_wrap, uv);
+    if (albedo_sample.a <= alpha_mask_threshold)
+        discard;
+    
+    albedo_sample.a     = 1.0f;
+    albedo_sample.rgb   = degamma(albedo_sample.rgb);
+    albedo              *= albedo_sample;
+#endif
+    
+#if ROUGHNESS_MAP
+    roughness *= tex_material_roughness.Sample(sampler_anisotropic_wrap, uv).r;
+#endif
+    
+#if METALLIC_MAP
+    metallic *= tex_material_metallic.Sample(sampler_anisotropic_wrap, uv).r;
+#endif
+    
+#if NORMAL_MAP
+    // Get tangent space normal and apply intensity
+    float3 tangent_normal   = normalize(unpack(tex_material_normal.Sample(sampler_anisotropic_wrap, uv).rgb));
+    float normal_intensity  = clamp(g_mat_normal, 0.012f, g_mat_normal);
+    tangent_normal.xy       *= saturate(normal_intensity);
+    normal                  = normalize(mul(tangent_normal, TBN).xyz); // Transform to world space
+#endif
 
-        albedo_sample.a     = 1.0f;
-        albedo_sample.rgb   = degamma(albedo_sample.rgb);
-        albedo              *= albedo_sample;
-    #endif
+#if OCCLUSION_MAP
+    occlusion = tex_material_occlusion.Sample(sampler_anisotropic_wrap, uv).r;
+#endif
     
-    #if ROUGHNESS_MAP
-        roughness *= tex_material_roughness.Sample(sampler_anisotropic_wrap, uv).r;
-    #endif
-    
-    #if METALLIC_MAP
-        metallic *= tex_material_metallic.Sample(sampler_anisotropic_wrap, uv).r;
-    #endif
-    
-    #if NORMAL_MAP
-        // Get tangent space normal and apply intensity
-        float3 tangent_normal   = normalize(unpack(tex_material_normal.Sample(sampler_anisotropic_wrap, uv).rgb));
-        float normal_intensity  = clamp(g_mat_normal, 0.012f, g_mat_normal);
-        tangent_normal.xy       *= saturate(normal_intensity);
-        normal                  = normalize(mul(tangent_normal, TBN).xyz); // Transform to world space
-    #endif
-
-    #if OCCLUSION_MAP
-        occlusion = tex_material_occlusion.Sample(sampler_anisotropic_wrap, uv).r;
-    #endif
-    
-    #if EMISSION_MAP
-        emission = luminance(tex_material_emission.Sample(sampler_anisotropic_wrap, uv).rgb);
-    #endif
+#if EMISSION_MAP
+    emission = luminance(tex_material_emission.Sample(sampler_anisotropic_wrap, uv).rgb);
+#endif
 
     // Specular anti-aliasing
-    #if ROUGHNESS_MAP
-        #if NORMAL_MAP
-            static const float strength = 2.0f;
-            float roughness2            = roughness * roughness;
-            float3 dndu                 = ddx(normal) , dndv = ddy(normal);
-            float variance              = (dot(dndu , dndu) + dot(dndv , dndv)) * strength;
-            float kernelRoughness2      = min(2.0 * variance , 0.18);
-            float filteredRoughness2    = saturate (roughness2 + kernelRoughness2);
-            roughness                   = fast_sqrt(filteredRoughness2);
-        #endif
-    #endif
-    
+#if NORMAL_MAP
+    static const float strength         = 4.0f;
+    static const float max_roughness2   = 0.18;
+    float roughness2                    = roughness * roughness;
+    float3 dndu                         = ddx(normal), dndv = ddy(normal);
+    float variance                      = (dot(dndu, dndu) + dot(dndv, dndv));
+    float kernelRoughness2              = min(variance * strength, max_roughness2);
+    float filteredRoughness2            = saturate(roughness2 + kernelRoughness2);
+    roughness                           = fast_sqrt(filteredRoughness2);
+#endif
+
     // Write to G-Buffer
     g_buffer.albedo     = albedo;
     g_buffer.normal     = float4(normal, pack_uint32_to_float16(g_mat_id));

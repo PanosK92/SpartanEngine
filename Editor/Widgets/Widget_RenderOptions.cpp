@@ -274,8 +274,12 @@ void Widget_RenderOptions::TickVisible()
 
                 // Upsampling
                 {
-                    static vector<string> upsampling_modes = { "Disabled", "TAA upsampling - WIP", "AMD FidelityFX Super Resolution" };
+                    bool upsampling_allowed = resolution_render.x < resolution_output.x || resolution_render.y < resolution_output.y;
+
+                    static vector<string> upsampling_modes = { "Linear", "TAA upsampling - WIP", "AMD FidelityFX Super Resolution" };
                     uint32_t upsampling_mode_index = do_upsample_taa ? 1 : (do_upsample_amd ? 2 : 0);
+
+                    ImGuiEx::PushDisabled(!upsampling_allowed);
 
                     if (WidgetHelper::ComboBox("Upsampling", upsampling_modes, upsampling_mode_index))
                     {
@@ -295,6 +299,8 @@ void Widget_RenderOptions::TickVisible()
                             do_upsample_amd = true;
                         }
                     }
+
+                    ImGuiEx::PopDisabled(!upsampling_allowed);
                 }
             }
 
@@ -307,10 +313,9 @@ void Widget_RenderOptions::TickVisible()
                 WidgetHelper::CheckBox("SSAO - Screen space ambient occlusion", do_ssao);
 
                 // SSAO + GI
-                if (do_ssao)
-                {
-                    WidgetHelper::CheckBox("SSAO GI - Screen space global illumination", ssao_gi, "Use SSAO to compute diffuse global illumination");
-                }
+                ImGuiEx::PushDisabled(!do_ssao);
+                WidgetHelper::CheckBox("SSAO GI - Screen space global illumination", ssao_gi, "Use SSAO to compute diffuse global illumination");
+                ImGuiEx::PopDisabled(!do_ssao);
             }
 
             if (WidgetHelper::Option("Anti-Aliasing"))
@@ -336,10 +341,11 @@ void Widget_RenderOptions::TickVisible()
                 WidgetHelper::RenderOptionValue("Gamma", Renderer_Option_Value::Gamma);
 
                 // Bloom
-                if (WidgetHelper::CheckBox("Bloom", do_bloom))
-                {
-                    WidgetHelper::RenderOptionValue("Bloom intensity", Renderer_Option_Value::Bloom_Intensity, "", 0.001f);
-                }
+                WidgetHelper::CheckBox("Bloom", do_bloom);
+
+                ImGuiEx::PushDisabled(!do_bloom);
+                WidgetHelper::RenderOptionValue("Bloom intensity", Renderer_Option_Value::Bloom_Intensity, "", 0.001f);
+                ImGuiEx::PopDisabled(!do_bloom);
 
                 // Motion blur
                 WidgetHelper::CheckBox("Motion blur (controlled by the camera's shutter speed)", do_motion_blur);
@@ -357,11 +363,12 @@ void Widget_RenderOptions::TickVisible()
             if (WidgetHelper::Option("Lights"))
             {
                 // Volumetric fog
-                if (WidgetHelper::CheckBox("Volumetric fog", do_volumetric_fog, "Requires a light with shadows enabled."))
-                {
-                    // Density
-                    WidgetHelper::RenderOptionValue("Volumetric fog density", Renderer_Option_Value::Fog, "", 0.01f, 0.0f, 16.0f, "%.2f");
-                }
+                WidgetHelper::CheckBox("Volumetric fog", do_volumetric_fog, "Requires a light with shadows enabled.");
+
+                // Density
+                ImGuiEx::PushDisabled(!do_volumetric_fog);
+                WidgetHelper::RenderOptionValue("Volumetric fog density", Renderer_Option_Value::Fog, "", 0.01f, 0.0f, 16.0f, "%.2f");
+                ImGuiEx::PopDisabled(!do_volumetric_fog);
 
                 // Screen space shadows
                 WidgetHelper::CheckBox("Screen space shadows", do_sss);
@@ -377,8 +384,11 @@ void Widget_RenderOptions::TickVisible()
 
                 // Sharpen
                 WidgetHelper::CheckBox("Sharpening (AMD FidelityFX CAS)", do_sharperning, "Contrast adaptive sharpening. Areas of the image that are already sharp are sharpened less, while areas that lack detail are sharpened more.");
+
                 // Sharpen strength
+                ImGuiEx::PushDisabled(!do_sharperning);
                 WidgetHelper::RenderOptionValue("Sharpening strength", Renderer_Option_Value::Sharpen_Strength, "", 0.1f, 0.0f, 1.0f);
+                ImGuiEx::PopDisabled(!do_sharperning);
 
                 // FPS Limit
                 {
