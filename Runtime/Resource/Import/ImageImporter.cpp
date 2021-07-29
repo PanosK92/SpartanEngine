@@ -33,10 +33,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace std;
 //==================
 
-namespace Spartan::freeimage_helper
+namespace Spartan
 {
-    static FREE_IMAGE_FILTER rescale_filter = FILTER_BOX;
-
+    static FREE_IMAGE_FILTER filter_downsample = FREE_IMAGE_FILTER::FILTER_BOX;
+    
     // A struct that rescaling threads will work with
     struct RescaleJob
     {
@@ -45,7 +45,7 @@ namespace Spartan::freeimage_helper
         uint32_t channel_count  = 0;
         RHI_Texture_Mip* mip    = nullptr;
         bool done               = false;
-
+        
         RescaleJob(const uint32_t width, const uint32_t height, const uint32_t channel_count)
         {
             this->width         = width;
@@ -53,18 +53,18 @@ namespace Spartan::freeimage_helper
             this->channel_count = channel_count;
         }
     };
-
-    inline uint32_t get_bytes_per_channel(FIBITMAP* bitmap)
+    
+    static uint32_t get_bytes_per_channel(FIBITMAP* bitmap)
     {
         if (!bitmap)
         {
             LOG_ERROR_INVALID_PARAMETER();
             return 0;
         }
-
+    
         const auto type = FreeImage_GetImageType(bitmap);
         uint32_t size = 0;
-
+    
         if (type == FIT_BITMAP)
         {
             size = sizeof(BYTE);
@@ -77,35 +77,35 @@ namespace Spartan::freeimage_helper
         {
             size = sizeof(float);
         }
-
+    
         return size;
     }
-
-    inline uint32_t get_channel_count(FIBITMAP* bitmap)
+    
+    static uint32_t get_channel_count(FIBITMAP* bitmap)
     {
         if (!bitmap)
         {
             LOG_ERROR_INVALID_PARAMETER();
             return 0;
         }
-
+    
         const uint32_t bytes_per_pixel  = FreeImage_GetLine(bitmap) / FreeImage_GetWidth(bitmap);
         const uint32_t channel_count    = bytes_per_pixel / get_bytes_per_channel(bitmap);
-
+    
         return channel_count;
     }
-
-    inline RHI_Format get_rhi_format(const uint32_t bytes_per_channel, const uint32_t channel_count)
+    
+    static RHI_Format get_rhi_format(const uint32_t bytes_per_channel, const uint32_t channel_count)
     {
         const uint32_t bits_per_channel = bytes_per_channel * 8;
-
+    
         if (channel_count == 1)
         {
-            if (bits_per_channel == 8)    return RHI_Format_R8_Unorm;
+            if (bits_per_channel == 8)  return RHI_Format_R8_Unorm;
         }
         else if (channel_count == 2)
         {
-            if (bits_per_channel == 8)    return RHI_Format_R8G8_Unorm;
+            if (bits_per_channel == 8)  return RHI_Format_R8G8_Unorm;
         }
         else if (channel_count == 3)
         {
@@ -117,14 +117,107 @@ namespace Spartan::freeimage_helper
             if (bits_per_channel == 16) return RHI_Format_R16G16B16A16_Float;
             if (bits_per_channel == 32) return RHI_Format_R32G32B32A32_Float;
         }
-
+    
         LOG_ERROR("Could not deduce format");
         return RHI_Format_Undefined;
     }
-}
 
-namespace Spartan
-{
+    static FIBITMAP* convert_to_32bits(FIBITMAP* bitmap)
+    {
+        if (!bitmap)
+        {
+            LOG_ERROR_INVALID_PARAMETER();
+            return nullptr;
+        }
+
+        const auto previous_bitmap = bitmap;
+        bitmap = FreeImage_ConvertTo32Bits(previous_bitmap);
+        if (!bitmap)
+        {
+            LOG_ERROR("Failed (%d bpp, %d channels).", FreeImage_GetBPP(previous_bitmap), get_channel_count(previous_bitmap));
+            return nullptr;
+        }
+
+        FreeImage_Unload(previous_bitmap);
+        return bitmap;
+    }
+
+    static FIBITMAP* apply_bitmap_corrections(FIBITMAP* bitmap)
+    {
+        SP_ASSERT(bitmap != nullptr);
+    
+        // Convert to a standard bitmap. FIT_UINT16 and FIT_RGBA16 are processed without errors
+        // but show up empty in the editor. For now, we convert everything to a standard bitmap.
+        const FREE_IMAGE_TYPE type = FreeImage_GetImageType(bitmap);
+        if (type != FIT_BITMAP)
+        {
+            // FreeImage can't convert FIT_RGBF
+            if (type != FIT_RGBF)
+            {
+                const auto previous_bitmap = bitmap;
+                bitmap = FreeImage_ConvertToType(bitmap, FIT_BITMAP);
+                FreeImage_Unload(previous_bitmap);
+            }
+        }
+    
+        // Convert it to 32 bits (if lower)
+        if (FreeImage_GetBPP(bitmap) < 32)
+        {
+            bitmap = convert_to_32bits(bitmap);
+        }
+    
+        // Most GPUs can't use a 32 bit RGB texture as a color attachment.
+        // Vulkan tells you, your GPU doesn't support it.
+        // D3D11 seems to be doing some sort of emulation under the hood while throwing some warnings regarding sampling it.
+        // So to prevent that, we maintain the 32 bits and convert to an RGBA format.
+        const uint32_t image_bits_per_channel   = get_bytes_per_channel(bitmap) * 8;
+        const uint32_t image_channels           = get_channel_count(bitmap);
+        const bool is_r32g32b32_float           = image_channels == 3 && image_bits_per_channel == 32;
+        if (is_r32g32b32_float)
+        {
+            const auto previous_bitmap = bitmap;
+            bitmap = FreeImage_ConvertToRGBAF(bitmap);
+            FreeImage_Unload(previous_bitmap);
+        }
+    
+        // Convert BGR to RGB (if needed)
+        if (FreeImage_GetBPP(bitmap) == 32)
+        {
+            if (FreeImage_GetRedMask(bitmap) == 0xff0000 && get_channel_count(bitmap) >= 2)
+            {
+                if (!SwapRedBlue32(bitmap))
+                {
+                    LOG_ERROR("Failed to swap red with blue channel");
+                }
+            }
+        }
+    
+        // Flip it vertically
+        FreeImage_FlipVertical(bitmap);
+    
+        return bitmap;
+    }
+ 
+    static FIBITMAP* rescale(FIBITMAP* bitmap, const uint32_t width, const uint32_t height)
+    {
+        if (!bitmap || width == 0 || height == 0)
+        {
+            LOG_ERROR_INVALID_PARAMETER();
+            return nullptr;
+        }
+    
+        const auto previous_bitmap    = bitmap;
+        bitmap                        = FreeImage_Rescale(previous_bitmap, width, height, filter_downsample);
+        if (!bitmap)
+        {
+            LOG_ERROR("Failed");
+            return previous_bitmap;
+        }
+    
+        FreeImage_Unload(previous_bitmap);
+        return bitmap;
+    }
+
     ImageImporter::ImageImporter(Context* context)
     {
         // Initialize
@@ -179,10 +272,10 @@ namespace Spartan
 
         // Deduce image properties. Important that this is done here, before ApplyBitmapCorrections(), as after that, results for grayscale seem to be always false
         const bool image_is_transparent = FreeImage_IsTransparent(bitmap);
-        const bool image_is_grayscale   = FreeImage_GetColorType(bitmap) == FIC_MINISBLACK;
+        const bool image_is_grayscale   = FreeImage_GetColorType(bitmap) == FREE_IMAGE_COLOR_TYPE::FIC_MINISBLACK;
 
         // Perform some fix ups
-        bitmap = ApplyBitmapCorrections(bitmap);
+        bitmap = apply_bitmap_corrections(bitmap);
         if (!bitmap)
         {
             LOG_ERROR("Failed to apply bitmap corrections");
@@ -190,15 +283,15 @@ namespace Spartan
         }
 
         // Deduce image properties
-        const uint32_t image_bytes_per_channel  = freeimage_helper::get_bytes_per_channel(bitmap);
-        const uint32_t image_channel_count      = freeimage_helper::get_channel_count(bitmap);
-        const RHI_Format image_format           = freeimage_helper::get_rhi_format(image_bytes_per_channel, image_channel_count);
+        const uint32_t image_bytes_per_channel  = get_bytes_per_channel(bitmap);
+        const uint32_t image_channel_count      = get_channel_count(bitmap);
+        const RHI_Format image_format           = get_rhi_format(image_bytes_per_channel, image_channel_count);
 
         // Perform any scaling (if necessary)
         const auto user_define_dimensions   = (texture->GetWidth() != 0 && texture->GetHeight() != 0);
         const auto dimension_mismatch       = (FreeImage_GetWidth(bitmap) != texture->GetWidth() && FreeImage_GetHeight(bitmap) != texture->GetHeight());
         const auto scale                    = user_define_dimensions && dimension_mismatch;
-        bitmap                              = scale ? _FreeImage_Rescale(bitmap, texture->GetWidth(), texture->GetHeight()) : bitmap;
+        bitmap                              = scale ? rescale(bitmap, texture->GetWidth(), texture->GetHeight()) : bitmap;
 
         // Deduce image properties
         const unsigned int image_width  = FreeImage_GetWidth(bitmap);
@@ -238,7 +331,7 @@ namespace Spartan
         SP_ASSERT(channels != 0);
 
         // Compute expected data size and reserve enough memory
-        const size_t size_bytes = width * height * channels * freeimage_helper::get_bytes_per_channel(bitmap);
+        const size_t size_bytes = width * height * channels * get_bytes_per_channel(bitmap);
         if (size_bytes != mip->bytes.size())
         {
             mip->bytes.clear();
@@ -259,7 +352,7 @@ namespace Spartan
         SP_ASSERT(texture != nullptr);
     
         // Create a RescaleJob for every mip that we need
-        vector<freeimage_helper::RescaleJob> jobs;
+        vector<RescaleJob> jobs;
         while (width > 1 && height > 1)
         {
             width   = Math::Helper::Max(width / 2, static_cast<uint32_t>(1));
@@ -286,7 +379,7 @@ namespace Spartan
         {
             threading->AddTask([this, &job, &bitmap]()
             {
-                FIBITMAP* bitmap_scaled = FreeImage_Rescale(bitmap, job.width, job.height, freeimage_helper::rescale_filter);
+                FIBITMAP* bitmap_scaled = FreeImage_Rescale(bitmap, job.width, job.height, filter_downsample);
                 if (!GetBitsFromFibitmap(job.mip, bitmap_scaled, job.width, job.height, job.channel_count))
                 {
                     LOG_ERROR("Failed to create mip level %dx%d", job.width, job.height);
@@ -309,107 +402,7 @@ namespace Spartan
                 }
             }
 
-            std::this_thread::sleep_for(std::chrono::milliseconds(16));
+            this_thread::sleep_for(chrono::milliseconds(16));
         }
-    }
-
-    FIBITMAP* ImageImporter::ApplyBitmapCorrections(FIBITMAP* bitmap) const
-    {
-        if (!bitmap)
-        {
-            LOG_ERROR_INVALID_PARAMETER();
-            return nullptr;
-        }
-
-        // Convert to a standard bitmap. FIT_UINT16 and FIT_RGBA16 are processed without errors
-        // but show up empty in the editor. For now, we convert everything to a standard bitmap.
-        const FREE_IMAGE_TYPE type = FreeImage_GetImageType(bitmap);
-        if (type != FIT_BITMAP)
-        {
-            // FreeImage can't convert FIT_RGBF
-            if (type != FIT_RGBF)
-            {
-                const auto previous_bitmap = bitmap;
-                bitmap = FreeImage_ConvertToType(bitmap, FIT_BITMAP);
-                FreeImage_Unload(previous_bitmap);
-            }
-        }
-
-        // Convert it to 32 bits (if lower)
-        if (FreeImage_GetBPP(bitmap) < 32)
-        {
-            bitmap = _FreeImage_ConvertTo32Bits(bitmap);
-        }
-
-        // Most GPUs can't use a 32 bit RGB texture as a color attachment.
-        // Vulkan tells you, your GPU doesn't support it.
-        // D3D11 seems to be doing some sort of emulation under the hood while throwing some warnings regarding sampling it.
-        // So to prevent that, we maintain the 32 bits and convert to an RGBA format.
-        const uint32_t image_bits_per_channel   = freeimage_helper::get_bytes_per_channel(bitmap) * 8;
-        const uint32_t image_channels           = freeimage_helper::get_channel_count(bitmap);
-        const bool is_r32g32b32_float           = image_channels == 3 && image_bits_per_channel == 32;
-        if (is_r32g32b32_float)
-        {
-            const auto previous_bitmap = bitmap;
-            bitmap = FreeImage_ConvertToRGBAF(bitmap);
-            FreeImage_Unload(previous_bitmap);
-        }
-
-        // Convert BGR to RGB (if needed)
-        if (FreeImage_GetBPP(bitmap) == 32)
-        {
-            if (FreeImage_GetRedMask(bitmap) == 0xff0000 && freeimage_helper::get_channel_count(bitmap) >= 2)
-            {
-                if (!SwapRedBlue32(bitmap))
-                {
-                    LOG_ERROR("Failed to swap red with blue channel");
-                }
-            }
-        }
-   
-        // Flip it vertically
-        FreeImage_FlipVertical(bitmap);
-
-        return bitmap;
-    }
-
-    FIBITMAP* ImageImporter::_FreeImage_ConvertTo32Bits(FIBITMAP* bitmap) const
-    {
-        if (!bitmap)
-        {
-            LOG_ERROR_INVALID_PARAMETER();
-            return nullptr;
-        }
-
-        const auto previous_bitmap    = bitmap;
-        bitmap                        = FreeImage_ConvertTo32Bits(previous_bitmap);
-        if (!bitmap)
-        {
-            LOG_ERROR("Failed (%d bpp, %d channels).", FreeImage_GetBPP(previous_bitmap), freeimage_helper::get_channel_count(previous_bitmap));
-            return nullptr;
-        }
-
-        FreeImage_Unload(previous_bitmap);
-        return bitmap;
-    }
-
-    FIBITMAP* ImageImporter::_FreeImage_Rescale(FIBITMAP* bitmap, const uint32_t width, const uint32_t height) const
-    {
-        if (!bitmap || width == 0 || height == 0)
-        {
-            LOG_ERROR_INVALID_PARAMETER();
-            return nullptr;
-        }
-
-        const auto previous_bitmap    = bitmap;
-        bitmap                        = FreeImage_Rescale(previous_bitmap, width, height, freeimage_helper::rescale_filter);
-        if (!bitmap)
-        {
-            LOG_ERROR("Failed");
-            return previous_bitmap;
-        }
-
-        FreeImage_Unload(previous_bitmap);
-        return bitmap;
     }
 }
