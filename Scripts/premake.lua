@@ -50,7 +50,7 @@ elseif API_GRAPHICS == "vulkan" then
 	IGNORE_FILES[0]				= RUNTIME_DIR .. "/RHI/D3D11/**"
 	IGNORE_FILES[1]				= RUNTIME_DIR .. "/RHI/D3D12/**"
 	ADDITIONAL_INCLUDES[0] 		= "../ThirdParty/DirectXShaderCompiler_1.6.2106";
-	ADDITIONAL_INCLUDES[1] 		= "../ThirdParty/SPIRV-Cross-2020-09-17";
+	ADDITIONAL_INCLUDES[1] 		= "../ThirdParty/SPIRV-Cross-2021-01-15";
 	ADDITIONAL_INCLUDES[2] 		= "../ThirdParty/Vulkan_1.2.182.0";
 	ADDITIONAL_LIBRARIES[0] 	= "dxcompiler";
 	ADDITIONAL_LIBRARIES[1] 	= "spirv-cross-core";
@@ -133,7 +133,7 @@ project (RUNTIME_NAME)
 	includedirs { "../ThirdParty/Bullet_3.17" }
 	includedirs { "../ThirdParty/FMOD_1.10.10" }
 	includedirs { "../ThirdParty/FreeImage_3.18.0" }
-	includedirs { "../ThirdParty/FreeType_2.10.4" }
+	includedirs { "../ThirdParty/FreeType_2.11.0" }
 	includedirs { "../ThirdParty/pugixml_1.11.4" }
 	includedirs { "../ThirdParty/Mono_6.12.0.86" }
 	includedirs { "../ThirdParty/SDL2_2.0.14" }
@@ -201,7 +201,7 @@ project (EDITOR_NAME)
 
 	-- Includes
 	includedirs { "../" .. RUNTIME_NAME }
-	includedirs { "../ThirdParty/FreeType_2.10.4" } -- ImGui font atlas
+	includedirs { "../ThirdParty/FreeType_2.11.0" } -- ImGui font atlas
 	includedirs { "../ThirdParty/SDL2_2.0.14" } -- ImGui window
 
 	-- Libraries
