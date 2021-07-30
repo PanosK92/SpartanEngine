@@ -331,7 +331,7 @@ namespace Spartan
         {
             // TAA
             m_shaders[RendererShader::Taa_C] = make_shared<RHI_Shader>(m_context);
-            m_shaders[RendererShader::Taa_C]->Compile(RHI_Shader_Compute, dir_shaders + "TemporalAntialiasing.hlsl", async);
+            m_shaders[RendererShader::Taa_C]->Compile(RHI_Shader_Compute, dir_shaders + "temporal_antialiasing.hlsl", async);
 
             // FXAA
             m_shaders[RendererShader::Fxaa_C] = make_shared<RHI_Shader>(m_context);
