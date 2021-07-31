@@ -254,3 +254,4 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID, uint group_index : SV_GroupIn
 
     tex_out_rgb[thread_id.xy] = temporal_antialiasing(thread_id.xy, group_index, group_id, tex, tex2);
 }
+

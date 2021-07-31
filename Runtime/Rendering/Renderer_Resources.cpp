@@ -378,10 +378,10 @@ namespace Spartan
         // Light
         {
             m_shaders[RendererShader::Light_Composition_C] = make_shared<RHI_Shader>(m_context);
-            m_shaders[RendererShader::Light_Composition_C]->Compile(RHI_Shader_Compute, dir_shaders + "Light_Composition.hlsl", async);
+            m_shaders[RendererShader::Light_Composition_C]->Compile(RHI_Shader_Compute, dir_shaders + "light_composition.hlsl", async);
 
             m_shaders[RendererShader::Light_ImageBased_P] = make_shared<RHI_Shader>(m_context);
-            m_shaders[RendererShader::Light_ImageBased_P]->Compile(RHI_Shader_Pixel, dir_shaders + "Light_ImageBased.hlsl", async);
+            m_shaders[RendererShader::Light_ImageBased_P]->Compile(RHI_Shader_Pixel, dir_shaders + "light_image_based.hlsl", async);
         }
 
         // Reflections

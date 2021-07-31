@@ -117,7 +117,7 @@ namespace Spartan
             // Lighting
             Pass_Light(cmd_list);
 
-            // Composition of the light buffers + ssao and volumetric fog
+            // Composition of the light buffers and various effects (ssao, volumetric lighting, etc.)
             Pass_Light_Composition(cmd_list, rt1);
 
             // Image based lighting
