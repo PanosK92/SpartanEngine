@@ -951,11 +951,12 @@ namespace Spartan::vulkan_utility
         inline void detect_display_modes()
         {
             // VK_KHR_Display not supported and I don't want to use anything OS specific, must think of something.
-            Display::RegisterDisplayMode(DisplayMode(640, 480, 165, 1), globals::rhi_device->GetContext());
-            Display::RegisterDisplayMode(DisplayMode(720, 576, 165, 1), globals::rhi_device->GetContext());
-            Display::RegisterDisplayMode(DisplayMode(1280, 720, 165, 1), globals::rhi_device->GetContext());
-            Display::RegisterDisplayMode(DisplayMode(1920, 1080, 165, 1), globals::rhi_device->GetContext());
-            Display::RegisterDisplayMode(DisplayMode(2560, 1440, 165, 1), globals::rhi_device->GetContext());
+            const bool update_fps_limit_to_highest_hz = true;
+            Display::RegisterDisplayMode(DisplayMode(640, 480, 165, 1),   update_fps_limit_to_highest_hz, globals::rhi_device->GetContext());
+            Display::RegisterDisplayMode(DisplayMode(720, 576, 165, 1),   update_fps_limit_to_highest_hz, globals::rhi_device->GetContext());
+            Display::RegisterDisplayMode(DisplayMode(1280, 720, 165, 1),  update_fps_limit_to_highest_hz, globals::rhi_device->GetContext());
+            Display::RegisterDisplayMode(DisplayMode(1920, 1080, 165, 1), update_fps_limit_to_highest_hz, globals::rhi_device->GetContext());
+            Display::RegisterDisplayMode(DisplayMode(2560, 1440, 165, 1), update_fps_limit_to_highest_hz, globals::rhi_device->GetContext());
         }
     }
 
