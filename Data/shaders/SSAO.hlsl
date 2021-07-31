@@ -112,3 +112,4 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     tex_out_r[thread_id.xy] = ground_truth_ambient_occlusion(thread_id.xy).a;
 #endif
 }
+

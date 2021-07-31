@@ -63,7 +63,7 @@ namespace Spartan
     ShaderLight* ShaderLight::CompileVariation(Context* context, const uint16_t flags)
     {
         // Shader source file path
-        const string file_path = context->GetSubsystem<ResourceCache>()->GetResourceDirectory(ResourceDirectory::Shaders) + "\\Light.hlsl";
+        const string file_path = context->GetSubsystem<ResourceCache>()->GetResourceDirectory(ResourceDirectory::Shaders) + "\\light.hlsl";
 
         // Make new
         shared_ptr<ShaderLight> shader = make_shared<ShaderLight>(context, flags);

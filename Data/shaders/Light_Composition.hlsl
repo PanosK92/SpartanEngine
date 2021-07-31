@@ -55,7 +55,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     }
     else // Everything else
     {
-        // Light - Diffuse n Specular
+        // Light - Diffuse and Specular
         float3 light_diffuse    = tex_light_diffuse[thread_id.xy].rgb;
         float3 light_specular   = tex_light_specular[thread_id.xy].rgb;
 
@@ -75,12 +75,12 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
             float depth_surface_refracted   = get_linear_depth(surface.uv + refraction_uv_offset);
             float is_behind                 = step(depth_surface - 0.02f, depth_surface_refracted); // step does a >=, but when the depth is equal, we still want refract, so we use a bias of 0.02
 
-            // Refraction of the poor
+            // Refraction from ALDI
             light_refraction = tex_frame.SampleLevel(sampler_bilinear_clamp, surface.uv + refraction_uv_offset * is_behind, 0).rgb;
         }
         
         // Compose everything
-        float3 light_ds = light_diffuse * surface.albedo + light_specular;
+        float3 light_ds = light_diffuse * surface.albedo + light_specular + + surface.emissive;
         color.rgb += lerp(light_ds, light_refraction, 1.0f - surface.alpha);
     }
 
