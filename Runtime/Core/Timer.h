@@ -48,9 +48,8 @@ namespace Spartan
         //===================================
 
         //= FPS ==============================================
-        void SetTargetFps(double fps);
-        double GetTargetFps()   const { return m_fps_target; }
-        double GetMinFps()      const { return m_fps_min; }
+        void SetFpsLimit(double fps);
+        double GetFpsLimit()   const { return m_fps_limit; }
         FpsLimitType GetFpsLimitType();
         //====================================================
 
@@ -72,9 +71,9 @@ namespace Spartan
         double m_sleep_overhead         = 0.0f;
 
         // FPS
-        double m_fps_min                = 30.0;
+        double m_fps_min                = 10.0;
         double m_fps_max                = 1000.0;
-        double m_fps_target             = m_fps_max;
+        double m_fps_limit              = m_fps_min; // if it's lower than the monitor's hz, it will be updated to match it, so start with something low.
         bool m_user_selected_fps_target = false;
     };
 }

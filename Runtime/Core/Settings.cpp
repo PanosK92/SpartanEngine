@@ -171,7 +171,7 @@ namespace Spartan
     {
         if (Timer* timer = m_context->GetSubsystem<Timer>())
         {
-            timer->SetTargetFps(m_fps_limit);
+            timer->SetFpsLimit(m_fps_limit);
         }
 
         if (Window* window = m_context->GetSubsystem<Window>())
@@ -209,7 +209,7 @@ namespace Spartan
     {
         Renderer* renderer = m_context->GetSubsystem<Renderer>();
 
-        m_fps_limit             = m_context->GetSubsystem<Timer>()->GetTargetFps();
+        m_fps_limit             = m_context->GetSubsystem<Timer>()->GetFpsLimit();
         m_max_thread_count      = m_context->GetSubsystem<Threading>()->GetThreadCountSupport();
         m_is_fullscreen         = m_context->GetSubsystem<Window>()->IsFullScreen();
         m_is_mouse_visible      = m_context->GetSubsystem<Input>()->GetMouseCursorVisible();

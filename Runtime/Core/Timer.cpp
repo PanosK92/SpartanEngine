@@ -46,7 +46,7 @@ namespace Spartan
         {
             // The kernel takes time to wake up the thread after the thread has finished sleeping.
             // It can't be trusted for accurate frame limiting, hence we do it simple stupid.
-            double target_ms = 1000.0 / m_fps_target;
+            double target_ms = 1000.0 / m_fps_limit;
             while (delta_time.count() < target_ms)
             {
                 delta_time = chrono::high_resolution_clock::now() - m_time_sleep_start;
@@ -67,7 +67,7 @@ namespace Spartan
         m_delta_time_smoothed_ms            = m_delta_time_smoothed_ms * (1.0 - delta_feedback) + delta_clamped * delta_feedback;
     }
 
-    void Timer::SetTargetFps(double fps_in)
+    void Timer::SetFpsLimit(double fps_in)
     {
         if (fps_in < 0.0f) // negative -> match monitor's refresh rate
         {
@@ -76,21 +76,22 @@ namespace Spartan
         }
 
         // Clamp to a minimum of 10 FPS to avoid unresponsiveness
-        fps_in = Math::Helper::Clamp(fps_in, 10.0, m_fps_max);
+        fps_in = Math::Helper::Clamp(fps_in, m_fps_min, m_fps_max);
 
-        if (m_fps_target == fps_in)
+        if (m_fps_limit == fps_in)
             return;
 
         m_user_selected_fps_target = true;
-        LOG_INFO("Set to %.2f FPS", m_fps_target);
+        m_fps_limit = fps_in;
+        LOG_INFO("Set to %.2f FPS", m_fps_limit);
     }
 
     FpsLimitType Timer::GetFpsLimitType()
     {
-        if (m_fps_target == Display::GetActiveDisplayMode().hz)
+        if (m_fps_limit == Display::GetActiveDisplayMode().hz)
             return FpsLimitType::FixedToMonitor;
 
-        if (m_fps_target == m_fps_max)
+        if (m_fps_limit == m_fps_max)
             return FpsLimitType::Unlocked;
 
         return FpsLimitType::Fixed;
