@@ -385,8 +385,9 @@ namespace Spartan
         display_mode.height         = height;
         Display::SetActiveDisplayMode(display_mode);
 
-        // Register display mode (in case it doesn't exist)
-        Display::RegisterDisplayMode(display_mode, m_context);
+        // Register display mode (in case it doesn't exist) but maintain the fps limit
+        bool update_fps_limit_to_highest_hz = false;
+        Display::RegisterDisplayMode(display_mode, update_fps_limit_to_highest_hz, m_context);
 
         if (recreate_resources)
         {

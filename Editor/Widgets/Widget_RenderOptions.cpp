@@ -401,11 +401,11 @@ void Widget_RenderOptions::TickVisible()
 
                     WidgetHelper::SecondColumn();
                     {
-                        double fps_target = timer->GetTargetFps();
+                        double fps_target = timer->GetFpsLimit();
                         ImGui::PushItemWidth(WidgetHelper::k_width_input_numeric);
-                        ImGui::InputDouble("##fps_target", &fps_target, 0.0, 0.0f, "%.1f");
+                        ImGui::InputDouble("##fps_limit", &fps_target, 0.0, 0.0f, "%.1f");
                         ImGui::PopItemWidth();
-                        timer->SetTargetFps(fps_target);
+                        timer->SetFpsLimit(fps_target);
                     }
                 }
 

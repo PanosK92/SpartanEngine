@@ -30,7 +30,7 @@ namespace Spartan
     std::vector<DisplayMode> Display::m_display_modes;
     DisplayMode Display::m_display_mode_active;
 
-    void Display::RegisterDisplayMode(const DisplayMode& display_mode, Context* context)
+    void Display::RegisterDisplayMode(const DisplayMode& display_mode, const bool update_fps_limit_to_highest_hz, Context* context)
     {
         // Early exit if display is already registered
         for (const DisplayMode& display_mode_existing : m_display_modes)
@@ -42,13 +42,13 @@ namespace Spartan
         DisplayMode& mode = m_display_modes.emplace_back(display_mode);
 
         // Keep display modes sorted, based on refresh rate (from highest to lowest)
-        std::sort(m_display_modes.begin(), m_display_modes.end(), [](const DisplayMode& display_mode_a, const DisplayMode& display_mode_b)
+        sort(m_display_modes.begin(), m_display_modes.end(), [](const DisplayMode& display_mode_a, const DisplayMode& display_mode_b)
         {
             return display_mode_a.hz > display_mode_b.hz;
         });
 
         // Find preferred display mode
-        for (const DisplayMode & display_mode : m_display_modes)
+        for (const DisplayMode& display_mode : m_display_modes)
         {
             // Try to use higher resolution
             if (display_mode.width > m_display_mode_active.width || display_mode.height > m_display_mode_active.height)
@@ -65,8 +65,16 @@ namespace Spartan
             }
         }
 
-        // Let the timer know about the refresh rates this monitor is capable of (will result in low latency/smooth ticking)
-        context->GetSubsystem<Timer>()->SetTargetFps(m_display_modes.front().hz);
+        // Update FPS limit
+        if (update_fps_limit_to_highest_hz)
+        {
+            double hz       = m_display_modes.front().hz;
+            Timer* timer    = context->GetSubsystem<Timer>();
+            if (hz > timer->GetFpsLimit())
+            {
+                timer->SetFpsLimit(hz);
+            }
+        }
     }
 
     uint32_t Display::GetWidth()

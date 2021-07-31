@@ -177,7 +177,8 @@ namespace Spartan::d3d11_utility
                         // Save all the display modes
                         for (const DXGI_MODE_DESC& mode : display_modes)
                         {
-                            Display::RegisterDisplayMode(DisplayMode(mode.Width, mode.Height, mode.RefreshRate.Numerator, mode.RefreshRate.Denominator), globals::rhi_device->GetContext());
+                            bool update_fps_limit_to_highest_hz = true;
+                            Display::RegisterDisplayMode(DisplayMode(mode.Width, mode.Height, mode.RefreshRate.Numerator, mode.RefreshRate.Denominator), update_fps_limit_to_highest_hz, globals::rhi_device->GetContext());
                         }
                     }
                 }
