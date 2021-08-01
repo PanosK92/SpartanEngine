@@ -100,8 +100,8 @@ uint unpack_float16_to_uint32(float f)  { return round(f * 65535); }
 float pack_float_int(float f, uint i, uint numBitI, uint numBitTarget)
 {
     // Constant optimize by compiler
-    float precision         = float(1 << numBitTarget);
-    float maxi              = float(1 << numBitI);
+    float precision         = float(1U << numBitTarget);
+    float maxi              = float(1U << numBitI);
     float precisionMinusOne = precision - 1.0;
     float t1                = ((precision / maxi) - 1.0) / precisionMinusOne;
     float t2                = (precision / maxi) / precisionMinusOne;
@@ -113,8 +113,8 @@ float pack_float_int(float f, uint i, uint numBitI, uint numBitTarget)
 void unpack_float_int(float val, uint numBitI, uint numBitTarget, out float f, out uint i)
 {
     // Constant optimize by compiler
-    float precision         = float(1 << numBitTarget);
-    float maxi              = float(1 << numBitI);
+    float precision         = float(1U << numBitTarget);
+    float maxi              = float(1U << numBitI);
     float precisionMinusOne = precision - 1.0;
     float t1                = ((precision / maxi) - 1.0) / precisionMinusOne;
     float t2                = (precision / maxi) / precisionMinusOne;

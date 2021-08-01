@@ -110,7 +110,7 @@ cbuffer BufferMaterial : register(b3)
 }
 
 bool is_taa_enabled()            { return any(g_taa_jitter_offset); }
-bool is_ssr_enabled()            { return g_options & (1 << 0);}
-bool is_taa_upsampling_enabled() { return g_options & (1 << 1);}
-bool is_ssao_enabled()           { return g_options & (1 << 2);}
-bool is_ssao_gi_enabled()        { return g_options & (1 << 3);}
+bool is_ssr_enabled()            { return g_options & uint(1 << 0);}
+bool is_taa_upsampling_enabled() { return g_options & uint(1 << 1);}
+bool is_ssao_enabled()           { return g_options & uint(1 << 2);}
+bool is_ssao_gi_enabled()        { return g_options & uint(1 << 3);}
