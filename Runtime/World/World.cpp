@@ -68,7 +68,7 @@ namespace Spartan
         return true;
     }
 
-    void World::OnTick(float delta_time)
+    void World::OnTick(double delta_time)
     {
         // If something is being loaded, don't tick as entities are probably being added
         if (IsLoading())

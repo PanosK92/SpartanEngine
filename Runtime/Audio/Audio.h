@@ -45,7 +45,7 @@ namespace Spartan
 
         //= ISubsystem ======================
         bool OnInitialise() override;
-        void OnTick(float delta_time) override;
+        void OnTick(double delta_time) override;
         //===================================
 
         auto GetSystemFMOD() const { return m_system_fmod; }

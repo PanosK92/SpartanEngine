@@ -42,7 +42,7 @@ namespace Spartan
         void Clone();
         void Start();
         void Stop();
-        void Tick(float delta_time);
+        void Tick(double delta_time);
         void Serialize(FileStream* stream);
         void Deserialize(FileStream* stream, Transform* parent);
 

@@ -76,7 +76,7 @@ namespace Spartan
         m_audio_clip->Stop();
     }
     
-    void AudioSource::OnTick(float delta_time)
+    void AudioSource::OnTick(double delta_time)
     {
         if (!m_audio_clip)
             return;

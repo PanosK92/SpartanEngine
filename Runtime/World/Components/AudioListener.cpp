@@ -37,7 +37,7 @@ namespace Spartan
         m_audio = GetContext()->GetSubsystem<Audio>();
     }
 
-    void AudioListener::OnTick(float delta_time)
+    void AudioListener::OnTick(double delta_time)
     {
         if (!m_audio)
             return;

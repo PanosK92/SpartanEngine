@@ -112,7 +112,7 @@ namespace Spartan
         return true;
     }
 
-    void Physics::OnTick(float delta_time_sec)
+    void Physics::OnTick(double delta_time_sec)
     {
         if (!m_world)
             return;
@@ -130,11 +130,11 @@ namespace Spartan
         SCOPED_TIME_BLOCK(m_profiler);
 
         // This equation must be met: timeStep < maxSubSteps * fixedTimeStep
-        auto internal_time_step    = 1.0f / m_internal_fps;
-        auto max_substeps        = static_cast<int>(delta_time_sec * m_internal_fps) + 1;
+        auto internal_time_step = 1.0f / m_internal_fps;
+        auto max_substeps       = static_cast<int>(delta_time_sec * m_internal_fps) + 1;
         if (m_max_sub_steps < 0)
         {
-            internal_time_step    = delta_time_sec;
+            internal_time_step    = static_cast<float>(delta_time_sec);
             max_substeps        = 1;
         }
         else if (m_max_sub_steps > 0)
@@ -144,7 +144,7 @@ namespace Spartan
 
         // Step the physics world. 
         m_simulating = true;
-        m_world->stepSimulation(delta_time_sec, max_substeps, internal_time_step);
+        m_world->stepSimulation(static_cast<float>(delta_time_sec), max_substeps, internal_time_step);
         m_simulating = false;
     }
 

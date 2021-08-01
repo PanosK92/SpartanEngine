@@ -335,44 +335,44 @@ namespace Spartan
 
             // FXAA
             m_shaders[RendererShader::Fxaa_C] = make_shared<RHI_Shader>(m_context);
-            m_shaders[RendererShader::Fxaa_C]->Compile(RHI_Shader_Compute, dir_shaders + "FXAA.hlsl", async);
+            m_shaders[RendererShader::Fxaa_C]->Compile(RHI_Shader_Compute, dir_shaders + "fxaa.hlsl", async);
         }
 
         // Depth of Field
         {
             m_shaders[RendererShader::Dof_DownsampleCoc_C] = make_shared<RHI_Shader>(m_context);
             m_shaders[RendererShader::Dof_DownsampleCoc_C]->AddDefine("DOWNSAMPLE_CIRCLE_OF_CONFUSION");
-            m_shaders[RendererShader::Dof_DownsampleCoc_C]->Compile(RHI_Shader_Compute, dir_shaders + "DepthOfField.hlsl", async);
+            m_shaders[RendererShader::Dof_DownsampleCoc_C]->Compile(RHI_Shader_Compute, dir_shaders + "depth_of_field.hlsl", async);
 
             m_shaders[RendererShader::Dof_Bokeh_C] = make_shared<RHI_Shader>(m_context);
             m_shaders[RendererShader::Dof_Bokeh_C]->AddDefine("BOKEH");
-            m_shaders[RendererShader::Dof_Bokeh_C]->Compile(RHI_Shader_Compute, dir_shaders + "DepthOfField.hlsl", async);
+            m_shaders[RendererShader::Dof_Bokeh_C]->Compile(RHI_Shader_Compute, dir_shaders + "depth_of_field.hlsl", async);
 
             m_shaders[RendererShader::Dof_Tent_C] = make_shared<RHI_Shader>(m_context);
             m_shaders[RendererShader::Dof_Tent_C]->AddDefine("TENT");
-            m_shaders[RendererShader::Dof_Tent_C]->Compile(RHI_Shader_Compute, dir_shaders + "DepthOfField.hlsl", async);
+            m_shaders[RendererShader::Dof_Tent_C]->Compile(RHI_Shader_Compute, dir_shaders + "depth_of_field.hlsl", async);
 
             m_shaders[RendererShader::Dof_UpscaleBlend_C] = make_shared<RHI_Shader>(m_context);
             m_shaders[RendererShader::Dof_UpscaleBlend_C]->AddDefine("UPSCALE_BLEND");
-            m_shaders[RendererShader::Dof_UpscaleBlend_C]->Compile(RHI_Shader_Compute, dir_shaders + "DepthOfField.hlsl", async);
+            m_shaders[RendererShader::Dof_UpscaleBlend_C]->Compile(RHI_Shader_Compute, dir_shaders + "depth_of_field.hlsl", async);
         }
 
         // Motion Blur
         m_shaders[RendererShader::MotionBlur_C] = make_shared<RHI_Shader>(m_context);
-        m_shaders[RendererShader::MotionBlur_C]->Compile(RHI_Shader_Compute, dir_shaders + "MotionBlur.hlsl", async);
+        m_shaders[RendererShader::MotionBlur_C]->Compile(RHI_Shader_Compute, dir_shaders + "motion_blur.hlsl", async);
 
         // Dithering
         m_shaders[RendererShader::Dithering_C] = make_shared<RHI_Shader>(m_context);
-        m_shaders[RendererShader::Dithering_C]->Compile(RHI_Shader_Compute, dir_shaders + "Dithering.hlsl", async);
+        m_shaders[RendererShader::Dithering_C]->Compile(RHI_Shader_Compute, dir_shaders + "dithering.hlsl", async);
 
         // SSAO
         {
             m_shaders[RendererShader::Ssao_C] = make_shared<RHI_Shader>(m_context);
-            m_shaders[RendererShader::Ssao_C]->Compile(RHI_Shader_Compute, dir_shaders + "SSAO.hlsl", async);
+            m_shaders[RendererShader::Ssao_C]->Compile(RHI_Shader_Compute, dir_shaders + "ssao.hlsl", async);
 
             m_shaders[RendererShader::Ssao_Gi_C] = make_shared<RHI_Shader>(m_context);
             m_shaders[RendererShader::Ssao_Gi_C]->AddDefine("GI");
-            m_shaders[RendererShader::Ssao_Gi_C]->Compile(RHI_Shader_Compute, dir_shaders + "SSAO.hlsl", async);
+            m_shaders[RendererShader::Ssao_Gi_C]->Compile(RHI_Shader_Compute, dir_shaders + "ssao.hlsl", async);
         }
 
         // Light
@@ -387,37 +387,37 @@ namespace Spartan
         // Reflections
         {
             m_shaders[RendererShader::Ssr_C] = make_shared<RHI_Shader>(m_context);
-            m_shaders[RendererShader::Ssr_C]->Compile(RHI_Shader_Compute, dir_shaders + "SSR.hlsl", async);
+            m_shaders[RendererShader::Ssr_C]->Compile(RHI_Shader_Compute, dir_shaders + "ssr.hlsl", async);
 
             m_shaders[RendererShader::Reflections_P] = make_shared<RHI_Shader>(m_context);
-            m_shaders[RendererShader::Reflections_P]->Compile(RHI_Shader_Pixel, dir_shaders + "Reflections.hlsl", async);
+            m_shaders[RendererShader::Reflections_P]->Compile(RHI_Shader_Pixel, dir_shaders + "reflections.hlsl", async);
         }
 
         // Entity
         m_shaders[RendererShader::Entity_V] = make_shared<RHI_Shader>(m_context, RHI_Vertex_Type::PosTexNorTan);
-        m_shaders[RendererShader::Entity_V]->Compile(RHI_Shader_Vertex, dir_shaders + "Entity.hlsl", async);
+        m_shaders[RendererShader::Entity_V]->Compile(RHI_Shader_Vertex, dir_shaders + "entity.hlsl", async);
 
         // Entity - Transform
         m_shaders[RendererShader::Entity_Transform_P] = make_shared<RHI_Shader>(m_context);
         m_shaders[RendererShader::Entity_Transform_P]->AddDefine("TRANSFORM");
-        m_shaders[RendererShader::Entity_Transform_P]->Compile(RHI_Shader_Pixel, dir_shaders + "Entity.hlsl", async);
+        m_shaders[RendererShader::Entity_Transform_P]->Compile(RHI_Shader_Pixel, dir_shaders + "entity.hlsl", async);
 
         // Entity - Outline
         m_shaders[RendererShader::Entity_Outline_P] = make_shared<RHI_Shader>(m_context);
         m_shaders[RendererShader::Entity_Outline_P]->AddDefine("OUTLINE");
-        m_shaders[RendererShader::Entity_Outline_P]->Compile(RHI_Shader_Pixel, dir_shaders + "Entity.hlsl", async);
+        m_shaders[RendererShader::Entity_Outline_P]->Compile(RHI_Shader_Pixel, dir_shaders + "entity.hlsl", async);
 
         // Font
         m_shaders[RendererShader::Font_V] = make_shared<RHI_Shader>(m_context, RHI_Vertex_Type::PosTex);
-        m_shaders[RendererShader::Font_V]->Compile(RHI_Shader_Vertex, dir_shaders + "Font.hlsl", async);
+        m_shaders[RendererShader::Font_V]->Compile(RHI_Shader_Vertex, dir_shaders + "font.hlsl", async);
         m_shaders[RendererShader::Font_P] = make_shared<RHI_Shader>(m_context);
-        m_shaders[RendererShader::Font_P]->Compile(RHI_Shader_Pixel, dir_shaders + "Font.hlsl", async);
+        m_shaders[RendererShader::Font_P]->Compile(RHI_Shader_Pixel, dir_shaders + "font.hlsl", async);
 
         // Color
         m_shaders[RendererShader::Color_V] = make_shared<RHI_Shader>(m_context, RHI_Vertex_Type::PosCol);
-        m_shaders[RendererShader::Color_V]->Compile(RHI_Shader_Vertex, dir_shaders + "Color.hlsl", async);
+        m_shaders[RendererShader::Color_V]->Compile(RHI_Shader_Vertex, dir_shaders + "color.hlsl", async);
         m_shaders[RendererShader::Color_P] = make_shared<RHI_Shader>(m_context);
-        m_shaders[RendererShader::Color_P]->Compile(RHI_Shader_Pixel, dir_shaders + "Color.hlsl", async);
+        m_shaders[RendererShader::Color_P]->Compile(RHI_Shader_Pixel, dir_shaders + "color.hlsl", async);
 
         // AMD FidelityFX
         {

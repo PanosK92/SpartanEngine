@@ -75,11 +75,11 @@ namespace Spartan
 
         //= ISubsystem ======================
         bool OnInitialise() override;
-        void OnTick(float delta_time) override;
+        void OnTick(double delta_time) override;
         //===================================
 
         // Primitive rendering
-        void TickPrimitives(const float delta_time);
+        void TickPrimitives(const double delta_time);
         void DrawLine(const Math::Vector3& from, const Math::Vector3& to, const Math::Vector4& color_from = DEBUG_COLOR, const Math::Vector4& color_to = DEBUG_COLOR, const float duration = 0.0f, const bool depth = true);
         void DrawTriangle(const Math::Vector3& v0, const Math::Vector3& v1, const Math::Vector3& v2, const Math::Vector4& color = DEBUG_COLOR, const float duration = 0.0f, const bool depth = true);
         void DrawRectangle(const Math::Rectangle& rectangle, const Math::Vector4& color = DEBUG_COLOR, const float duration = 0.0f, const bool depth = true);
@@ -175,15 +175,15 @@ namespace Spartan
         // Passes
         void Pass_Main(RHI_CommandList* cmd_list);
         void Pass_UpdateFrameBuffer(RHI_CommandList* cmd_list);
-        void Pass_Depth_Light(RHI_CommandList* cmd_list, const Renderer_ObjectType object_type);
+        void Pass_ShadowMaps(RHI_CommandList* cmd_list, const bool is_transparent_pass);
         void Pass_Depth_Prepass(RHI_CommandList* cmd_list);
-        void Pass_GBuffer(RHI_CommandList* cmd_list, const bool is_transparent_pass = false);
+        void Pass_GBuffer(RHI_CommandList* cmd_list, const bool is_transparent_pass);
         void Pass_Ssao(RHI_CommandList* cmd_list);
         void Pass_Reflections_Ssr(RHI_CommandList* cmd_list);
         void Pass_Reflections(RHI_CommandList* cmd_list, RHI_Texture* tex_out, RHI_Texture* tex_reflections);
-        void Pass_Light(RHI_CommandList* cmd_list, const bool is_transparent_pass = false);
-        void Pass_Light_Composition(RHI_CommandList* cmd_list, RHI_Texture* tex_out, const bool is_transparent_pass = false);
-        void Pass_Light_ImageBased(RHI_CommandList* cmd_list, RHI_Texture* tex_out, const bool is_transparent_pass = false);
+        void Pass_Light(RHI_CommandList* cmd_list, const bool is_transparent_pass);
+        void Pass_Light_Composition(RHI_CommandList* cmd_list, RHI_Texture* tex_out, const bool is_transparent_pass);
+        void Pass_Light_ImageBased(RHI_CommandList* cmd_list, RHI_Texture* tex_out, const bool is_transparent_pass);
         void Pass_PostProcess(RHI_CommandList* cmd_list);
         void Pass_PostProcess_TAA(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
         void Pass_PostProcess_ToneMapping(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);

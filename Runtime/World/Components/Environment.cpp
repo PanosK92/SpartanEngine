@@ -62,7 +62,7 @@ namespace Spartan
         }
     }
 
-    void Environment::OnTick(float delta_time)
+    void Environment::OnTick(double delta_time)
     {
         if (!m_is_dirty)
             return;

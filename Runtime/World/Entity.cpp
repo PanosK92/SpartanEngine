@@ -139,7 +139,7 @@ namespace Spartan
         }
     }
 
-    void Entity::Tick(float delta_time)
+    void Entity::Tick(double delta_time)
     {
         if (!m_is_active)
             return;

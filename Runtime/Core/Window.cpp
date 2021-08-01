@@ -92,7 +92,7 @@ namespace Spartan
         SDL_Quit();
     }
 
-    void Window::OnTick(float delta_time)
+    void Window::OnTick(double delta_time)
     {
         // Process events
         SDL_Event sdl_event;

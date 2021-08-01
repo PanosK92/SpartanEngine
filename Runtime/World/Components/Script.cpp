@@ -46,7 +46,7 @@ namespace Spartan
         }
     }
 
-    void Script::OnTick(float delta_time)
+    void Script::OnTick(double delta_time)
     {
         // Don't run any scripts if we are not in game mode
         if (!m_context->m_engine->EngineMode_IsSet(Engine_Game))
@@ -54,7 +54,7 @@ namespace Spartan
 
         if (m_script_instance)
         {
-            m_scripting->CallScriptFunction_Update(m_script_instance, delta_time);
+            m_scripting->CallScriptFunction_Update(m_script_instance, static_cast<float>(delta_time));
         }
     }
 

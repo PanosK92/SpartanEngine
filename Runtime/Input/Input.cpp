@@ -61,7 +61,7 @@ namespace Spartan
         SP_SUBSCRIBE_TO_EVENT(EventType::EventSDL, SP_EVENT_HANDLER_VARIANT(OnEvent));
     }
 
-    void Input::OnTick(float delta_time)
+    void Input::OnTick(double delta_time)
     {
         m_keys_previous_frame = m_keys;
 

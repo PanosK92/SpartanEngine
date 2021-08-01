@@ -54,7 +54,7 @@ namespace Spartan
 
         //= Subsystem =======================
         bool OnInitialise() override;
-        void OnTick(float delta_time) override;
+        void OnTick(double delta_time) override;
         //===================================
 
         // Rigid body
