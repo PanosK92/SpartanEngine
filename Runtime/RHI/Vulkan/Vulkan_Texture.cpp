@@ -237,12 +237,9 @@ namespace Spartan
 
     bool RHI_Texture::CreateResourceGpu()
     {
-        if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device)
-        {
-            LOG_ERROR_INVALID_PARAMETER();
-            return false;
+        SP_ASSERT(m_rhi_device != nullptr);
+        SP_ASSERT(m_rhi_device->GetContextRhi()->device != nullptr);
 
-        }
         // Create image
         if (!vulkan_utility::image::create(this))
         {

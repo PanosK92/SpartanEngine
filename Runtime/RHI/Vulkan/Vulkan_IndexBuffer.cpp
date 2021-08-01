@@ -51,11 +51,8 @@ namespace Spartan
 
     bool RHI_IndexBuffer::_create(const void* indices)
     {
-        if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device)
-        {
-            LOG_ERROR_INVALID_INTERNALS();
-            return false;
-        }
+        SP_ASSERT(m_rhi_device != nullptr);
+        SP_ASSERT(m_rhi_device->GetContextRhi()->device != nullptr);
 
         RHI_Context* rhi_context = m_rhi_device->GetContextRhi();
 
@@ -133,17 +130,9 @@ namespace Spartan
             return nullptr;
         }
 
-        if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device)
-        {
-            LOG_ERROR_INVALID_INTERNALS();
-            return nullptr;
-        }
-
-        if (!m_allocation)
-        {
-            LOG_ERROR("Invalid allocation");
-            return nullptr;
-        }
+        SP_ASSERT(m_rhi_device != nullptr);
+        SP_ASSERT(m_rhi_device->GetContextRhi()->device != nullptr);
+        SP_ASSERT(m_allocation != nullptr);
 
         if (!m_mapped)
         {
