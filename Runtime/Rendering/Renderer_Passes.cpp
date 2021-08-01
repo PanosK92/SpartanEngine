@@ -89,6 +89,7 @@ namespace Spartan
         RHI_Texture* rt1 = RENDER_TARGET(RendererRt::Frame_Render).get();
         RHI_Texture* rt2 = RENDER_TARGET(RendererRt::Frame_Render_2).get();
 
+        // Determine if a transparent pass is required
         const bool do_transparent_pass = !m_entities[Renderer_ObjectType::GeometryTransparent].empty();
 
         // Shadow maps
@@ -107,34 +108,38 @@ namespace Spartan
             Pass_Depth_Prepass(cmd_list);
             Pass_GBuffer(cmd_list, is_transparent_pass);
             Pass_Ssao(cmd_list);
-            Pass_Ssr(cmd_list);
             Pass_Light(cmd_list, is_transparent_pass); // compute diffuse and specular buffers
             Pass_Light_Composition(cmd_list, rt1, is_transparent_pass); // compose diffuse, specular, ssao, volumetric etc.
             Pass_Light_ImageBased(cmd_list, rt1, is_transparent_pass);
 
             // Reflections
             {
-                // If SSR is enabled, copy the frame so that SSR can use it to reflect from
-                if ((m_options & Render_ScreenSpaceReflections) != 0)
-                {
-                    cmd_list->Blit(rt1, rt2);
-                }
+                // Trace
+                Pass_Ssr(cmd_list);
 
-                Pass_Reflections(cmd_list, rt1, rt2); // SSR & Environment
+                // Blit the frame so that the reflections pass can sample from it
+                cmd_list->Blit(rt1, rt2);
+
+                // Generate frame mips so that the reflections can simulate roughness
+                Pass_AMD_FidelityFX_SinglePassDowsnampler(cmd_list, rt2); 
+
+                // Apply ssr and fall back to environment reflections
+                Pass_Reflections(cmd_list, rt1, rt2);
             }
         }
 
-        // Transparents
-        
+        // Transparent
         if (do_transparent_pass)
         {
             // Blit the frame so that refraction can sample from it
             cmd_list->Blit(rt1, rt2);
 
-            Pass_GBuffer(cmd_list, do_transparent_pass);
-            Pass_Light(cmd_list, do_transparent_pass);
-            Pass_Light_Composition(cmd_list, rt1, do_transparent_pass);
-            Pass_Light_ImageBased(cmd_list, rt1, do_transparent_pass);
+            bool is_transparent_pass = true;
+
+            Pass_GBuffer(cmd_list, is_transparent_pass);
+            Pass_Light(cmd_list, is_transparent_pass);
+            Pass_Light_Composition(cmd_list, rt1, is_transparent_pass);
+            Pass_Light_ImageBased(cmd_list, rt1, is_transparent_pass);
         }
 
         Pass_PostProcess(cmd_list);
@@ -627,7 +632,7 @@ namespace Spartan
         if (!shader_c->IsCompiled())
             return;
 
-        // Acquire render targets
+        // Acquire render target
         RHI_Texture* tex_out = RENDER_TARGET(RendererRt::Ssr).get();
 
         // Set render state
@@ -656,7 +661,7 @@ namespace Spartan
         }
     }
 
-    void Renderer::Pass_Reflections(RHI_CommandList* cmd_list, RHI_Texture* tex_out, RHI_Texture* tex_reflections)
+    void Renderer::Pass_Reflections(RHI_CommandList* cmd_list, RHI_Texture* tex_out, RHI_Texture* tex_frame)
     {
         // Acquire shaders
         RHI_Shader* shader_v = m_shaders[RendererShader::Quad_V].get();
@@ -693,7 +698,7 @@ namespace Spartan
             cmd_list->SetTexture(RendererBindings_Srv::gbuffer_material, RENDER_TARGET(RendererRt::Gbuffer_Material));
             cmd_list->SetTexture(RendererBindings_Srv::gbuffer_depth,    RENDER_TARGET(RendererRt::Gbuffer_Depth));
             cmd_list->SetTexture(RendererBindings_Srv::ssr,              RENDER_TARGET(RendererRt::Ssr));
-            cmd_list->SetTexture(RendererBindings_Srv::frame,            tex_reflections);
+            cmd_list->SetTexture(RendererBindings_Srv::frame,            tex_frame);
             cmd_list->SetTexture(RendererBindings_Srv::environment,      GetEnvironmentTexture());
 
             cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
@@ -1139,16 +1144,9 @@ namespace Spartan
         // If we haven't upsampled, do a bilinear upscale (different output resolution) or a blit (same output resolution)
         if (!upsampled)
         {
-            if (resolution_output_different)
-            {
-                // D3D11 baggage, can't blit to different resolution
-                bool bilinear = true;
-                Pass_Copy(cmd_list, rt_frame_render_in.get(), rt_frame_render_output_in.get(), bilinear);
-            }
-            else
-            {
-                cmd_list->Blit(rt_frame_render_in, rt_frame_render_output_in);
-            }
+            // D3D11 baggage, can't blit to a texture with different resolution or mip count
+            bool bilinear = resolution_output_different;
+            Pass_Copy(cmd_list, rt_frame_render_in.get(), rt_frame_render_output_in.get(), bilinear);
         }
 
         // Motion Blur
@@ -1249,7 +1247,7 @@ namespace Spartan
             const uint32_t thread_group_count_z = 1;
             const bool async = false;
 
-            cmd_list->SetTexture(RendererBindings_Uav::rgb,             tex_out);
+            cmd_list->SetTexture(RendererBindings_Uav::rgb,              tex_out);
             cmd_list->SetTexture(RendererBindings_Srv::tex,              tex_history);
             cmd_list->SetTexture(RendererBindings_Srv::tex2,             tex_in);
             cmd_list->SetTexture(RendererBindings_Srv::gbuffer_velocity, RENDER_TARGET(RendererRt::Gbuffer_Velocity));
@@ -1258,7 +1256,9 @@ namespace Spartan
             cmd_list->EndRenderPass();
         }
 
-        cmd_list->Blit(tex_out.get(), tex_history);
+        // D3D11 baggage, can't blit to a texture with a different mip count
+        bool bilinear = false;
+        Pass_Copy(cmd_list, tex_out.get(), tex_history, bilinear);
     }
 
     void Renderer::Pass_PostProcess_Bloom(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)

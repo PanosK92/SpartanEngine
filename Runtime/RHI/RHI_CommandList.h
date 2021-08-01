@@ -136,6 +136,7 @@ namespace Spartan
         bool Deferred_BindPipeline();
         bool Deferred_BindDescriptorSet();
         bool OnDraw();
+        void UnbindOutputTextures();
 
         RHI_Pipeline* m_pipeline                                    = nullptr; 
         Renderer* m_renderer                                        = nullptr;
@@ -152,8 +153,21 @@ namespace Spartan
         std::atomic<bool> m_pipeline_active                         = false;
         std::atomic<bool> m_flushed                                 = false;
         std::atomic<RHI_CommandListState> m_state                   = RHI_CommandListState::Idle;
+        static const uint8_t m_resource_array_length_max            = 16;
         static bool m_memory_query_support;
         std::mutex m_mutex_reset;
+
+        // Keep track of output textures so that we can unbind them and prevent
+        // D3D11 warnings when trying to bind them as SRVs in following passes
+        struct OutputTexture
+        {
+            RHI_Texture* texture = nullptr;
+            uint32_t slot;
+            int mip;
+            bool ranged;
+        };
+        std::array<OutputTexture, m_resource_array_length_max> m_output_textures;
+        uint32_t m_output_textures_index = 0;
 
         // Profiling
         uint32_t m_timestamp_index = 0;

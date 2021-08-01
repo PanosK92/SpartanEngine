@@ -299,35 +299,36 @@ namespace Spartan
             }
             
             // Update the remaining of the frame buffer
-            m_cb_frame_cpu.view_projection_previous     = m_cb_frame_cpu.view_projection;
-            m_cb_frame_cpu.view_projection              = m_cb_frame_cpu.view * m_cb_frame_cpu.projection;
-            m_cb_frame_cpu.view_projection_inv          = Matrix::Invert(m_cb_frame_cpu.view_projection);
-            m_cb_frame_cpu.view_projection_unjittered   = m_cb_frame_cpu.view * m_camera->GetProjectionMatrix();
-            m_cb_frame_cpu.camera_aperture              = m_camera->GetAperture();
-            m_cb_frame_cpu.camera_shutter_speed         = m_camera->GetShutterSpeed();
-            m_cb_frame_cpu.camera_iso                   = m_camera->GetIso();
-            m_cb_frame_cpu.camera_near                  = m_camera->GetNearPlane();
-            m_cb_frame_cpu.camera_far                   = m_camera->GetFarPlane();
-            m_cb_frame_cpu.camera_position              = m_camera->GetTransform()->GetPosition();
-            m_cb_frame_cpu.camera_direction             = m_camera->GetTransform()->GetForward();
-            m_cb_frame_cpu.resolution_output            = m_resolution_output;
-            m_cb_frame_cpu.resolution_render            = m_resolution_render;
-            m_cb_frame_cpu.taa_jitter_offset            = m_taa_jitter - m_taa_jitter_previous;
-            m_cb_frame_cpu.delta_time                   = static_cast<float>(m_context->GetSubsystem<Timer>()->GetDeltaTimeSmoothedSec());
-            m_cb_frame_cpu.time                         = static_cast<float>(m_context->GetSubsystem<Timer>()->GetTimeSec());
-            m_cb_frame_cpu.bloom_intensity              = GetOptionValue<float>(Renderer_Option_Value::Bloom_Intensity);
-            m_cb_frame_cpu.sharpen_strength             = GetOptionValue<float>(Renderer_Option_Value::Sharpen_Strength);
-            m_cb_frame_cpu.fog                          = GetOptionValue<float>(Renderer_Option_Value::Fog);
-            m_cb_frame_cpu.tonemapping                  = GetOptionValue<float>(Renderer_Option_Value::Tonemapping);
-            m_cb_frame_cpu.gamma                        = GetOptionValue<float>(Renderer_Option_Value::Gamma);
-            m_cb_frame_cpu.shadow_resolution            = GetOptionValue<float>(Renderer_Option_Value::ShadowResolution);
-            m_cb_frame_cpu.frame                        = static_cast<uint32_t>(m_frame_num);
-
+            m_cb_frame_cpu.view_projection_previous   = m_cb_frame_cpu.view_projection;
+            m_cb_frame_cpu.view_projection            = m_cb_frame_cpu.view * m_cb_frame_cpu.projection;
+            m_cb_frame_cpu.view_projection_inv        = Matrix::Invert(m_cb_frame_cpu.view_projection);
+            m_cb_frame_cpu.view_projection_unjittered = m_cb_frame_cpu.view * m_camera->GetProjectionMatrix();
+            m_cb_frame_cpu.camera_aperture            = m_camera->GetAperture();
+            m_cb_frame_cpu.camera_shutter_speed       = m_camera->GetShutterSpeed();
+            m_cb_frame_cpu.camera_iso                 = m_camera->GetIso();
+            m_cb_frame_cpu.camera_near                = m_camera->GetNearPlane();
+            m_cb_frame_cpu.camera_far                 = m_camera->GetFarPlane();
+            m_cb_frame_cpu.camera_position            = m_camera->GetTransform()->GetPosition();
+            m_cb_frame_cpu.camera_direction           = m_camera->GetTransform()->GetForward();
+            m_cb_frame_cpu.resolution_output          = m_resolution_output;
+            m_cb_frame_cpu.resolution_render          = m_resolution_render;
+            m_cb_frame_cpu.taa_jitter_offset          = m_taa_jitter - m_taa_jitter_previous;
+            m_cb_frame_cpu.delta_time                 = static_cast<float>(m_context->GetSubsystem<Timer>()->GetDeltaTimeSmoothedSec());
+            m_cb_frame_cpu.time                       = static_cast<float>(m_context->GetSubsystem<Timer>()->GetTimeSec());
+            m_cb_frame_cpu.bloom_intensity            = GetOptionValue<float>(Renderer_Option_Value::Bloom_Intensity);
+            m_cb_frame_cpu.sharpen_strength           = GetOptionValue<float>(Renderer_Option_Value::Sharpen_Strength);
+            m_cb_frame_cpu.fog                        = GetOptionValue<float>(Renderer_Option_Value::Fog);
+            m_cb_frame_cpu.tonemapping                = GetOptionValue<float>(Renderer_Option_Value::Tonemapping);
+            m_cb_frame_cpu.gamma                      = GetOptionValue<float>(Renderer_Option_Value::Gamma);
+            m_cb_frame_cpu.shadow_resolution          = GetOptionValue<float>(Renderer_Option_Value::ShadowResolution);
+            m_cb_frame_cpu.frame                      = static_cast<uint32_t>(m_frame_num);
+            m_cb_frame_cpu.frame_mip_count            = RENDER_TARGET(RendererRt::Frame_Render)->GetMipCount();
+                                                      
             // These must match what Common_Buffer.hlsl is reading
-            m_cb_frame_cpu.set_bit(GetOption(Render_ScreenSpaceReflections),                1 << 0);
-            m_cb_frame_cpu.set_bit(GetOption(Render_Upsample_TAA),                          1 << 1);
-            m_cb_frame_cpu.set_bit(GetOption(Render_Ssao),                                  1 << 2);
-            m_cb_frame_cpu.set_bit(GetOptionValue<bool>(Renderer_Option_Value::Ssao_Gi),    1 << 3);
+            m_cb_frame_cpu.set_bit(GetOption(Render_ScreenSpaceReflections),             1 << 0);
+            m_cb_frame_cpu.set_bit(GetOption(Render_Upsample_TAA),                       1 << 1);
+            m_cb_frame_cpu.set_bit(GetOption(Render_Ssao),                               1 << 2);
+            m_cb_frame_cpu.set_bit(GetOptionValue<bool>(Renderer_Option_Value::Ssao_Gi), 1 << 3);
         }
 
         Pass_Main(m_cmd_current);
