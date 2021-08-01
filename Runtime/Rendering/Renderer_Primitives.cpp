@@ -33,7 +33,7 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    void Renderer::TickPrimitives(const float delta_time)
+    void Renderer::TickPrimitives(const double delta_time)
     {
         // Remove lines which have expired
 

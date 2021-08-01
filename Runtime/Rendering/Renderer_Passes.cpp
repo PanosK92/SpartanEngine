@@ -85,43 +85,32 @@ namespace Spartan
         // Generate brdf specular lut (only runs once)
         Pass_BrdfSpecularLut(cmd_list);
 
-        const bool draw_transparent_objects = !m_entities[Renderer_ObjectType::GeometryTransparent].empty();
-
-        // Depth
-        {
-            Pass_Depth_Light(cmd_list, Renderer_ObjectType::GeometryOpaque);
-            if (draw_transparent_objects)
-            {
-                Pass_Depth_Light(cmd_list, Renderer_ObjectType::GeometryTransparent);
-            }
-        
-            if (GetOption(Render_DepthPrepass))
-            {
-                Pass_Depth_Prepass(cmd_list);
-            }
-        }
-
         // Acquire render targets
         RHI_Texture* rt1 = RENDER_TARGET(RendererRt::Frame_Render).get();
         RHI_Texture* rt2 = RENDER_TARGET(RendererRt::Frame_Render_2).get();
 
-        // G-Buffer and lighting
-        {
-            // G-buffer
-            Pass_GBuffer(cmd_list);
+        const bool do_transparent_pass = !m_entities[Renderer_ObjectType::GeometryTransparent].empty();
 
-            // Passes which rely on the G-buffer
+        // Shadow maps
+        {
+            Pass_ShadowMaps(cmd_list, false);
+            if (do_transparent_pass)
+            {
+                Pass_ShadowMaps(cmd_list, true);
+            }
+        }
+
+        // Opaque
+        {
+            bool is_transparent_pass = false;
+
+            Pass_Depth_Prepass(cmd_list);
+            Pass_GBuffer(cmd_list, is_transparent_pass);
             Pass_Ssao(cmd_list);
             Pass_Reflections_Ssr(cmd_list);
-
-            // Lighting
-            Pass_Light(cmd_list);
-
-            // Composition of the light buffers and various effects (ssao, volumetric lighting, etc.)
-            Pass_Light_Composition(cmd_list, rt1);
-
-            // Image based lighting
-            Pass_Light_ImageBased(cmd_list, rt1);
+            Pass_Light(cmd_list, is_transparent_pass); // compute diffuse and specular buffers
+            Pass_Light_Composition(cmd_list, rt1, is_transparent_pass); // compose diffuse, specular, ssao, volumetric etc.
+            Pass_Light_ImageBased(cmd_list, rt1, is_transparent_pass);
 
             // If SSR is enabled, copy the frame so that SSR can use it to reflect from
             if ((m_options & Render_ScreenSpaceReflections) != 0)
@@ -129,21 +118,20 @@ namespace Spartan
                 cmd_list->Blit(rt1, rt2);
             }
 
-            // Reflections - SSR & Environment
-            Pass_Reflections(cmd_list, rt1, rt2);
+            Pass_Reflections(cmd_list, rt1, rt2); // SSR & Environment
+        }
 
-            // Lighting for transparent objects (a simpler version of the above)
-            if (draw_transparent_objects)
-            {
-                // Blit the frame so that refraction can sample from it
-                cmd_list->Blit(rt1, rt2);
+        // Transparents
+        
+        if (do_transparent_pass)
+        {
+            // Blit the frame so that refraction can sample from it
+            cmd_list->Blit(rt1, rt2);
 
-                const bool is_trasparent_pass = true;
-                Pass_GBuffer(cmd_list, is_trasparent_pass);
-                Pass_Light(cmd_list, is_trasparent_pass);
-                Pass_Light_Composition(cmd_list, rt1, is_trasparent_pass);
-                Pass_Light_ImageBased(cmd_list, rt1, is_trasparent_pass);
-            }
+            Pass_GBuffer(cmd_list, do_transparent_pass);
+            Pass_Light(cmd_list, do_transparent_pass);
+            Pass_Light_Composition(cmd_list, rt1, do_transparent_pass);
+            Pass_Light_ImageBased(cmd_list, rt1, do_transparent_pass);
         }
 
         Pass_PostProcess(cmd_list);
@@ -164,11 +152,11 @@ namespace Spartan
 
     }
 
-    void Renderer::Pass_Depth_Light(RHI_CommandList* cmd_list, const Renderer_ObjectType object_type)
+    void Renderer::Pass_ShadowMaps(RHI_CommandList* cmd_list, const bool is_transparent_pass)
     {
-        // All opaque objects are rendered from the lights point of view.
+        // All objects are rendered from the lights point of view.
         // Opaque objects write their depth information to a depth buffer, using just a vertex shader.
-        // Transparent objects, read the opaque depth but don't write their own, instead, they write their color information using a pixel shader.
+        // Transparent objects read the opaque depth but don't write their own, instead, they write their color information using a pixel shader.
 
         // Acquire shader
         RHI_Shader* shader_v = m_shaders[RendererShader::Depth_Light_V].get();
@@ -177,11 +165,9 @@ namespace Spartan
             return;
 
         // Get entities
-        const auto& entities = m_entities[object_type];
+        const vector<Entity*>& entities = m_entities[is_transparent_pass ? Renderer_ObjectType::GeometryTransparent : Renderer_ObjectType::GeometryOpaque];
         if (entities.empty())
             return;
-
-        const bool transparent_pass = object_type == Renderer_ObjectType::GeometryTransparent;
 
         // Go through all of the lights
         const auto& entities_light = m_entities[Renderer_ObjectType::Light];
@@ -198,7 +184,7 @@ namespace Spartan
                 continue;
 
             // Skip lights that don't cast transparent shadows (if this is a transparent pass)
-            if (transparent_pass && !light->GetShadowsTransparentEnabled())
+            if (is_transparent_pass && !light->GetShadowsTransparentEnabled())
                 continue;
 
             // Acquire light's shadow maps
@@ -210,16 +196,16 @@ namespace Spartan
             // Set render state
             static RHI_PipelineState pso;
             pso.shader_vertex                    = shader_v;
-            pso.vertex_buffer_stride             = static_cast<uint32_t>(sizeof(RHI_Vertex_PosTexNorTan)); // assume all vertex buffers have the same stride (which they do)
-            pso.shader_pixel                     = transparent_pass ? shader_p : nullptr;
-            pso.blend_state                      = transparent_pass ? m_blend_alpha.get() : m_blend_disabled.get();
-            pso.depth_stencil_state              = transparent_pass ? m_depth_stencil_r_off.get() : m_depth_stencil_rw_off.get();
-            pso.render_target_color_textures[0]  = tex_color; // always bind so we can clear to white (in case there are now transparent objects)
+            pso.shader_pixel                     = is_transparent_pass ? shader_p : nullptr;
+            pso.vertex_buffer_stride             = static_cast<uint32_t>(sizeof(RHI_Vertex_PosTex));
+            pso.blend_state                      = is_transparent_pass ? m_blend_alpha.get() : m_blend_disabled.get();
+            pso.depth_stencil_state              = is_transparent_pass ? m_depth_stencil_r_off.get() : m_depth_stencil_rw_off.get();
+            pso.render_target_color_textures[0]  = tex_color; // always bind so we can clear to white (in case there are no transparent objects)
             pso.render_target_depth_texture      = tex_depth;
             pso.clear_stencil                    = rhi_stencil_dont_care;
             pso.viewport                         = tex_depth->GetViewport();
             pso.primitive_topology               = RHI_PrimitiveTopology_Mode::TriangleList;
-            pso.pass_name                        = transparent_pass ? "Pass_Depth_Light_Transparent" : "Pass_Depth_Light";
+            pso.pass_name                        = is_transparent_pass ? "Pass_ShadowMaps_Color" : "Pass_ShadowMaps_Depth";
 
             for (uint32_t array_index = 0; array_index < tex_depth->GetArrayLength(); array_index++)
             {
@@ -229,7 +215,7 @@ namespace Spartan
 
                 // Set clear values
                 pso.clear_color[0] = Vector4::One;
-                pso.clear_depth    = transparent_pass ? rhi_depth_load : GetClearDepth();
+                pso.clear_depth    = is_transparent_pass ? rhi_depth_load : GetClearDepth();
 
                 const Matrix& view_projection = light->GetViewMatrix(array_index) * light->GetProjectionMatrix(array_index);
 
@@ -282,8 +268,8 @@ namespace Spartan
                         render_pass_active = cmd_list->BeginRenderPass(pso);
                     }
 
-                    // Bind material
-                    if (transparent_pass && m_set_material_id != material->GetObjectId())
+                    // Bind material (only for transparents)
+                    if (is_transparent_pass && m_set_material_id != material->GetObjectId())
                     {
                         // Bind material textures
                         RHI_Texture* tex_albedo = material->GetTexture_Ptr(Material_Color);
@@ -319,6 +305,9 @@ namespace Spartan
 
     void Renderer::Pass_Depth_Prepass(RHI_CommandList* cmd_list)
     {
+        if ((m_options & Render_DepthPrepass) == 0)
+            return;
+
         // Acquire shaders
         RHI_Shader* shader_v = m_shaders[RendererShader::Depth_Prepass_V].get();
         RHI_Shader* shader_p = m_shaders[RendererShader::Depth_Prepass_P].get();
@@ -401,7 +390,7 @@ namespace Spartan
         }
     }
 
-    void Renderer::Pass_GBuffer(RHI_CommandList* cmd_list, const bool is_transparent_pass /*= false*/)
+    void Renderer::Pass_GBuffer(RHI_CommandList* cmd_list, const bool is_transparent_pass)
     {
         // Acquire required resources/shaders
         RHI_Texture* tex_albedo     = RENDER_TARGET(RendererRt::Gbuffer_Albedo).get();
@@ -711,7 +700,7 @@ namespace Spartan
         }
     }
 
-    void Renderer::Pass_Light(RHI_CommandList* cmd_list, const bool is_transparent_pass /*= false*/)
+    void Renderer::Pass_Light(RHI_CommandList* cmd_list, const bool is_transparent_pass)
     {
         // Acquire lights
         const vector<Entity*>& entities = m_entities[Renderer_ObjectType::Light];
@@ -805,7 +794,7 @@ namespace Spartan
         }
     }
 
-    void Renderer::Pass_Light_Composition(RHI_CommandList* cmd_list, RHI_Texture* tex_out, const bool is_transparent_pass /*= false*/)
+    void Renderer::Pass_Light_Composition(RHI_CommandList* cmd_list, RHI_Texture* tex_out, const bool is_transparent_pass)
     {
         // Acquire shaders
         RHI_Shader* shader_c = m_shaders[RendererShader::Light_Composition_C].get();
@@ -848,7 +837,7 @@ namespace Spartan
         }
     }
 
-    void Renderer::Pass_Light_ImageBased(RHI_CommandList* cmd_list, RHI_Texture* tex_out, const bool is_transparent_pass /*= false*/)
+    void Renderer::Pass_Light_ImageBased(RHI_CommandList* cmd_list, RHI_Texture* tex_out, const bool is_transparent_pass)
     {
         // The directional light's intensity is used to modulate the environment texture.
         // So, if the intensity is zero, then there is no need to do image based lighting.

@@ -66,14 +66,9 @@ namespace Spartan
         
     }
 
-    void Light::OnTick(float delta_time)
+    void Light::OnTick(double delta_time)
     {
-        // Used in many places, no point in continuing without it
-        if (!m_renderer)
-        {
-            LOG_ERROR_INVALID_INTERNALS();
-            return;
-        }
+        SP_ASSERT(m_renderer != nullptr);
 
         // During engine startup, keep checking until the rhi device gets
         // created so we can create potentially required shadow maps
@@ -197,10 +192,7 @@ namespace Spartan
         m_shadows_enabled   = cast_shadows;
         m_is_dirty          = true;
 
-        if (m_shadows_enabled)
-        {
-            CreateShadowMap();
-        }
+        CreateShadowMap();
     }
 
     void Light::SetShadowsTransparentEnabled(bool cast_transparent_shadows)
@@ -208,12 +200,10 @@ namespace Spartan
         if (m_shadows_transparent_enabled == cast_transparent_shadows)
             return;
 
-        m_shadows_transparent_enabled = cast_transparent_shadows;
+        m_shadows_transparent_enabled   = cast_transparent_shadows;
+        m_is_dirty                      = true;
 
-        if (m_shadows_transparent_enabled)
-        {
-            CreateShadowMap();
-        }
+        CreateShadowMap();
     }
 
     void Light::SetRange(float range)
@@ -449,7 +439,7 @@ namespace Spartan
         // Early exit if this light casts no shadows
         if (!m_shadows_enabled)
         {
-            m_shadow_map.texture_depth = nullptr;
+            m_shadow_map.texture_depth.reset();
             return;
         }
 

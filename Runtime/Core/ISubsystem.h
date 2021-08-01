@@ -39,7 +39,7 @@ namespace Spartan
 
         virtual bool OnInitialise() { return true; }
         virtual void OnPreTick() {}
-        virtual void OnTick(float delta_time) {}
+        virtual void OnTick(double delta_time) {}
         virtual void OnPostTick() {}
         virtual void OnShutdown() {}
 

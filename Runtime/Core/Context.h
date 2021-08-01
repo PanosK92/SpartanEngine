@@ -120,7 +120,7 @@ namespace Spartan
             }
         }
 
-        void OnTick(TickType tick_group, float delta_time = 0.0f)
+        void OnTick(TickType tick_group, double delta_time)
         {
             for (const _subystem& subsystem : m_subsystems)
             {

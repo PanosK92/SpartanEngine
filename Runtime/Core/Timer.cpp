@@ -36,7 +36,7 @@ namespace Spartan
         m_time_sleep_end    = chrono::high_resolution_clock::now();
     }
 
-    void Timer::OnTick(float _delta_time)
+    void Timer::OnTick(double _delta_time)
     {
         // Compute delta time
         m_time_sleep_start = chrono::high_resolution_clock::now();
@@ -60,11 +60,9 @@ namespace Spartan
         m_time_ms       = static_cast<double>(chrono::duration<double, milli>(m_time_start - m_time_sleep_start).count());
 
         // Compute smoothed delta time
-        const double frames_to_accumulate   = 5;
+        const double frames_to_accumulate   = 10;
         const double delta_feedback         = 1.0 / frames_to_accumulate;
-        double delta_max                    = 1000.0 / m_fps_min;
-        const double delta_clamped          = m_delta_time_ms > delta_max ? delta_max : m_delta_time_ms; // If frame time is too high/slow, clamp it
-        m_delta_time_smoothed_ms            = m_delta_time_smoothed_ms * (1.0 - delta_feedback) + delta_clamped * delta_feedback;
+        m_delta_time_smoothed_ms            = m_delta_time_smoothed_ms * (1.0 - delta_feedback) + m_delta_time_ms * delta_feedback;
     }
 
     void Timer::SetFpsLimit(double fps_in)

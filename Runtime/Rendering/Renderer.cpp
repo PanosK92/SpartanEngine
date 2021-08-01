@@ -205,7 +205,7 @@ namespace Spartan
         return m_transform_handle->IsEditing();
     }
 
-    void Renderer::OnTick(float delta_time)
+    void Renderer::OnTick(double delta_time)
     {
         SP_ASSERT(m_rhi_device != nullptr);
         SP_ASSERT(m_rhi_device->IsInitialised());

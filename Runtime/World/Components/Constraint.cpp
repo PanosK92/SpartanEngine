@@ -84,7 +84,7 @@ namespace Spartan
         ReleaseConstraint();
     }
 
-    void Constraint::OnTick(float delta_time)
+    void Constraint::OnTick(double delta_time)
     {
         if (m_deferredConstruction)
         {

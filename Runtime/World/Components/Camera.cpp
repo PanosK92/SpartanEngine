@@ -52,7 +52,7 @@ namespace Spartan
         m_view_projection   = m_view * m_projection;
     }
 
-    void Camera::OnTick(float delta_time)
+    void Camera::OnTick(double delta_time)
     {
         const auto& current_viewport = m_renderer->GetViewport();
         if (m_last_known_viewport != current_viewport)
@@ -322,7 +322,7 @@ namespace Spartan
         return position_world;
     }
 
-    void Camera::FpsControl(float delta_time)
+    void Camera::FpsControl(double delta_time)
     {
         // Detect if fps control should be activated
         {

@@ -20,7 +20,7 @@ namespace Spartan
         ~Window();
 
         //= ISubsystem ======================
-        void OnTick(float delta_time) override;
+        void OnTick(double delta_time) override;
         //===================================
 
         void Show();

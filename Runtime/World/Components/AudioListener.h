@@ -37,7 +37,7 @@ namespace Spartan
 
         //= COMPONENT =========================
         void OnInitialize() override;
-        void OnTick(float delta_time) override;
+        void OnTick(double delta_time) override;
         //=====================================
 
     private:

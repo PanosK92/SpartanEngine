@@ -49,10 +49,10 @@ namespace Spartan
         Profiler(Context* context);
         ~Profiler();
 
-        //= Subsystem =======================
+        //= Subsystem ==========================
         bool OnInitialise() override;
-        void OnTick(float delta_time) override;
-        //===================================
+        void OnTick(double delta_time) override;
+        //======================================
 
         void OnFrameEnd();
         void TimeBlockStart(const char* func_name, TimeBlockType type, RHI_CommandList* cmd_list = nullptr);
@@ -151,10 +151,7 @@ namespace Spartan
         std::vector<TimeBlock> m_time_blocks_read;
 
         // FPS
-        float m_delta_time          = 0.0f;
-        float m_fps                 = 0.0f;
-        float m_time_passed         = 0.0f;
-        uint32_t m_frames_since_last_fps_computation = 0;
+        float m_fps = 0.0f;
 
         // Hardware - GPU
         std::string m_gpu_name          = "N/A";

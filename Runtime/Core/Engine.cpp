@@ -81,8 +81,8 @@ namespace Spartan
     {
         Timer* timer = m_context->GetSubsystem<Timer>();
 
-        m_context->OnTick(TickType::Variable, static_cast<float>(timer->GetDeltaTimeSec()));
-        m_context->OnTick(TickType::Smoothed, static_cast<float>(timer->GetDeltaTimeSmoothedSec()));
+        m_context->OnTick(TickType::Variable, timer->GetDeltaTimeSec());
+        m_context->OnTick(TickType::Smoothed, timer->GetDeltaTimeSmoothedSec());
         m_context->OnPostTick();
     }
 }

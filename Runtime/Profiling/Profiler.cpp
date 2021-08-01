@@ -60,7 +60,7 @@ namespace Spartan
         return true;
     }
 
-    void Profiler::OnTick(float delta_time)
+    void Profiler::OnTick(double delta_time)
     {
         if (!m_renderer)
             return;
@@ -136,21 +136,11 @@ namespace Spartan
             m_time_frame_max = Math::Helper::Max(m_time_frame_max, m_time_frame_last);
 
             // FPS
-            {
-                m_frames_since_last_fps_computation++;
-                m_time_passed += delta_time;
-                m_fps = static_cast<float>(m_frames_since_last_fps_computation) / (m_time_passed / 1.0f);
-
-                if (m_time_passed >= 1.0f)
-                {
-                    m_frames_since_last_fps_computation = 0;
-                    m_time_passed = 0;
-                }
-            }
+            m_fps = static_cast<float>(1.0 / delta_time);
         }
 
         // Check whether we should profile or not
-        m_time_since_profiling_sec += delta_time;
+        m_time_since_profiling_sec += static_cast<float>(delta_time);
         if (m_time_since_profiling_sec >= m_profiling_interval_sec)
         {
             m_time_since_profiling_sec  = 0.0f;

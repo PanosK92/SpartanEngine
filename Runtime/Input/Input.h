@@ -91,7 +91,7 @@ namespace Spartan
         ~Input() = default;
 
         //= ISubsystem ========================
-        void OnTick(float delta_time) override;
+        void OnTick(double delta_time) override;
         void OnPostTick() override;
         //=====================================
 
