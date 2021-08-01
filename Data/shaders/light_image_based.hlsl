@@ -20,7 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 // = INCLUDES ======
-#include "BRDF.hlsl"
+#include "brdf.hlsl"
 //==================
 
 float4 mainPS(Pixel_PosUv input) : SV_TARGET

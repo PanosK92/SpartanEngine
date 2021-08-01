@@ -619,10 +619,11 @@ namespace Spartan
             cmd_list->EndRenderPass();
         }
 
-        // Bilateral blur
-        const auto sigma = 2.0f;
-        const auto pixel_stride = 2.0f;
-        Pass_Blur_GaussianBilateral(cmd_list, tex_ssao_noisy, tex_ssao_blurred, sigma, pixel_stride, false);
+        // Blur
+        const bool depth_aware   = true;
+        const float sigma        = 2.0f;
+        const float pixel_stride = 2.0f;
+        Pass_Blur_Gaussian(cmd_list, tex_ssao_noisy, tex_ssao_blurred, depth_aware, sigma, pixel_stride);
     }
 
     void Renderer::Pass_Ssr(RHI_CommandList* cmd_list)
@@ -905,194 +906,77 @@ namespace Spartan
         }
     }
 
-    void Renderer::Pass_Blur_Box(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out, const float sigma, const float pixel_stride, const bool use_stencil)
+    void Renderer::Pass_Blur_Gaussian(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out, const bool depth_aware, const float sigma, const float pixel_stride)
     {
-        // Acquire shaders
-        const auto& shader_v = m_shaders[RendererShader::Quad_V];
-        const auto& shader_p = m_shaders[RendererShader::BlurBox_P];
-        if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
-            return;
-
-        // Set render state
-        static RHI_PipelineState pso         = {};
-        pso.shader_vertex                    = shader_v.get();
-        pso.shader_pixel                     = shader_p.get();
-        pso.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
-        pso.blend_state                      = m_blend_disabled.get();
-        pso.depth_stencil_state              = use_stencil ? m_depth_stencil_off_r.get() : m_depth_stencil_off_off.get();
-        pso.vertex_buffer_stride             = m_viewport_quad.GetVertexBuffer()->GetStride();
-        pso.render_target_color_textures[0]  = tex_out.get();
-        pso.clear_color[0]                   = rhi_color_dont_care;
-        pso.render_target_depth_texture      = use_stencil ? RENDER_TARGET(RendererRt::Gbuffer_Depth).get() : nullptr;
-        pso.viewport                         = tex_out->GetViewport();
-        pso.primitive_topology               = RHI_PrimitiveTopology_Mode::TriangleList;
-        pso.pass_name                        = "Pass_Blur_Box";
-
-        // Record commands
-        if (cmd_list->BeginRenderPass(pso))
-        {
-            // Update uber buffer
-            m_cb_uber_cpu.resolution        = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
-            m_cb_uber_cpu.blur_direction    = Vector2(pixel_stride, 0.0f);
-            m_cb_uber_cpu.blur_sigma        = sigma;
-            Update_Cb_Uber(cmd_list);
-
-            cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
-            cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
-            cmd_list->SetTexture(RendererBindings_Srv::tex, tex_in);
-            cmd_list->DrawIndexed(m_viewport_quad.GetIndexCount());
-            cmd_list->EndRenderPass();
-        }
-    }
-
-    void Renderer::Pass_Blur_Gaussian(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out, const float sigma, const float pixel_stride)
-    {
-        if (tex_in->GetWidth() != tex_out->GetWidth() || tex_in->GetHeight() != tex_out->GetHeight() || tex_in->GetFormat() != tex_out->GetFormat())
-        {
-            LOG_ERROR("Invalid parameters, textures must match because they will get swapped");
-            return;
-        }
+        // Textures must match because they will get swapped in the end
+        SP_ASSERT((tex_in->GetWidth() == tex_out->GetWidth()) && (tex_in->GetHeight() == tex_out->GetHeight()) && (tex_in->GetFormat() == tex_out->GetFormat()));
 
         // Acquire shaders
-        const auto& shader_v = m_shaders[RendererShader::Quad_V];
-        const auto& shader_p = m_shaders[RendererShader::BlurGaussian_P];
-        if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
-            return;
-
-        // Set render state for horizontal pass
-        static RHI_PipelineState pso_horizontal;
-        pso_horizontal.shader_vertex                     = shader_v.get();
-        pso_horizontal.shader_pixel                      = shader_p.get();
-        pso_horizontal.rasterizer_state                  = m_rasterizer_cull_back_solid.get();
-        pso_horizontal.blend_state                       = m_blend_disabled.get();
-        pso_horizontal.depth_stencil_state               = m_depth_stencil_off_off.get();
-        pso_horizontal.vertex_buffer_stride              = m_viewport_quad.GetVertexBuffer()->GetStride();
-        pso_horizontal.render_target_color_textures[0]   = tex_out.get();
-        pso_horizontal.clear_color[0]                    = rhi_color_dont_care;
-        pso_horizontal.viewport                          = tex_out->GetViewport();
-        pso_horizontal.primitive_topology                = RHI_PrimitiveTopology_Mode::TriangleList;
-        pso_horizontal.pass_name                         = "Pass_Blur_Gaussian_Horizontal";
-
-        // Record commands for horizontal pass
-        if (cmd_list->BeginRenderPass(pso_horizontal))
-        {
-            // Update uber buffer
-            m_cb_uber_cpu.resolution        = Vector2(static_cast<float>(tex_in->GetWidth()), static_cast<float>(tex_in->GetHeight()));
-            m_cb_uber_cpu.blur_direction    = Vector2(pixel_stride, 0.0f);
-            m_cb_uber_cpu.blur_sigma        = sigma;
-            Update_Cb_Uber(cmd_list);
-        
-            cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
-            cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
-            cmd_list->SetTexture(RendererBindings_Srv::tex, tex_in);
-            cmd_list->DrawIndexed(Rectangle::GetIndexCount());
-            cmd_list->EndRenderPass();
-        }
-        
-        // Set render state for vertical pass
-        static RHI_PipelineState pso_vertical;
-        pso_vertical.shader_vertex                   = shader_v.get();
-        pso_vertical.shader_pixel                    = shader_p.get();
-        pso_vertical.rasterizer_state                = m_rasterizer_cull_back_solid.get();
-        pso_vertical.blend_state                     = m_blend_disabled.get();
-        pso_vertical.depth_stencil_state             = m_depth_stencil_off_off.get();
-        pso_vertical.vertex_buffer_stride            = m_viewport_quad.GetVertexBuffer()->GetStride();
-        pso_vertical.render_target_color_textures[0] = tex_in.get();
-        pso_vertical.clear_color[0]                  = rhi_color_dont_care;
-        pso_vertical.viewport                        = tex_in->GetViewport();
-        pso_vertical.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
-        pso_vertical.pass_name                       = "Pass_Blur_Gaussian_Vertical";
-
-        // Record commands for vertical pass
-        if (cmd_list->BeginRenderPass(pso_vertical))
-        {
-            m_cb_uber_cpu.blur_direction    = Vector2(0.0f, pixel_stride);
-            m_cb_uber_cpu.blur_sigma        = sigma;
-            Update_Cb_Uber(cmd_list);
-        
-            cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
-            cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
-            cmd_list->SetTexture(RendererBindings_Srv::tex, tex_out);
-            cmd_list->DrawIndexed(Rectangle::GetIndexCount());
-            cmd_list->EndRenderPass();
-        }
-
-        // Swap textures
-        tex_in.swap(tex_out);
-    }
-
-    void Renderer::Pass_Blur_GaussianBilateral(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out, const float sigma, const float pixel_stride, const bool use_stencil)
-    {
-        if (tex_in->GetWidth() != tex_out->GetWidth() || tex_in->GetHeight() != tex_out->GetHeight() || tex_in->GetFormat() != tex_out->GetFormat())
-        {
-            LOG_ERROR("Invalid parameters, textures must match because they will get swapped.");
-            return;
-        }
-
-        // Acquire shaders
-        const auto& shader_v = m_shaders[RendererShader::Quad_V];
-        const auto& shader_p = m_shaders[RendererShader::BlurGaussianBilateral_P];
-        if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
+        RHI_Shader* shader_c = m_shaders[depth_aware ? RendererShader::BlurGaussianBilateral_C : RendererShader::BlurGaussian_C].get();
+        if (!shader_c->IsCompiled())
             return;
 
         // Acquire render targets
-        RHI_Texture* tex_depth     = RENDER_TARGET(RendererRt::Gbuffer_Depth).get();
-        RHI_Texture* tex_normal    = RENDER_TARGET(RendererRt::Gbuffer_Normal).get();
+        RHI_Texture* tex_depth  = RENDER_TARGET(RendererRt::Gbuffer_Depth).get();
+        RHI_Texture* tex_normal = RENDER_TARGET(RendererRt::Gbuffer_Normal).get();
 
-        // Set render state for horizontal pass
-        static RHI_PipelineState pso;
-        pso.shader_vertex                     = shader_v.get();
-        pso.shader_pixel                      = shader_p.get();
-        pso.rasterizer_state                  = m_rasterizer_cull_back_solid.get();
-        pso.blend_state                       = m_blend_disabled.get();
-        pso.depth_stencil_state               = use_stencil ? m_depth_stencil_off_r.get() : m_depth_stencil_off_off.get();
-        pso.vertex_buffer_stride              = m_viewport_quad.GetVertexBuffer()->GetStride();
-        pso.render_target_color_textures[0]   = tex_out.get();
-        pso.clear_color[0]                    = rhi_color_dont_care;
-        pso.render_target_depth_texture       = use_stencil ? tex_depth : nullptr;
-        pso.clear_stencil                     = use_stencil ? rhi_stencil_load : rhi_stencil_dont_care;
-        pso.viewport                          = tex_out->GetViewport();
-        pso.primitive_topology                = RHI_PrimitiveTopology_Mode::TriangleList;
-        pso.pass_name                         = "Pass_Blur_GaussianBilateral_Horizontal";
+        const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / m_thread_group_count));
+        const uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetHeight()) / m_thread_group_count));
+        const uint32_t thread_group_count_z = 1;
+        const bool async                    = false;
 
-        // Record commands for horizontal pass
-        if (cmd_list->BeginRenderPass(pso))
+        // Horizontal pass
         {
-            // Update uber buffer
-            m_cb_uber_cpu.resolution        = Vector2(static_cast<float>(tex_in->GetWidth()), static_cast<float>(tex_in->GetHeight()));
-            m_cb_uber_cpu.blur_direction    = Vector2(pixel_stride, 0.0f);
-            m_cb_uber_cpu.blur_sigma        = sigma;
-            Update_Cb_Uber(cmd_list);
+            // Set render state
+            static RHI_PipelineState pso;
+            pso.shader_compute  = shader_c;
+            pso.pass_name       = "Pass_Blur_Gaussian_Horizontal";
 
-            cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
-            cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
-            cmd_list->SetTexture(RendererBindings_Srv::tex, tex_in);
-            cmd_list->SetTexture(RendererBindings_Srv::gbuffer_depth, tex_depth);
-            cmd_list->SetTexture(RendererBindings_Srv::gbuffer_normal, tex_normal);
-            cmd_list->DrawIndexed(m_viewport_quad.GetIndexCount());
-            cmd_list->EndRenderPass();
+            if (cmd_list->BeginRenderPass(pso))
+            {
+                // Update uber buffer
+                m_cb_uber_cpu.resolution     = Vector2(static_cast<float>(tex_in->GetWidth()), static_cast<float>(tex_in->GetHeight()));
+                m_cb_uber_cpu.blur_direction = Vector2(pixel_stride, 0.0f);
+                m_cb_uber_cpu.blur_sigma     = sigma;
+                Update_Cb_Uber(cmd_list);
+            
+                cmd_list->SetTexture(RendererBindings_Uav::rgba, tex_out);
+                cmd_list->SetTexture(RendererBindings_Srv::tex, tex_in);
+                if (depth_aware)
+                {
+                    cmd_list->SetTexture(RendererBindings_Srv::gbuffer_depth, tex_depth);
+                    cmd_list->SetTexture(RendererBindings_Srv::gbuffer_normal, tex_normal);
+                }
+
+                cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
+                cmd_list->EndRenderPass();
+            }
         }
 
-        // Set render state for vertical pass
-        pso.render_target_color_textures[0] = tex_in.get();
-        pso.viewport                        = tex_in->GetViewport();
-        pso.pass_name                       = "Pass_Blur_GaussianBilateral_Vertical";
-
-        // Record commands for vertical pass
-        if (cmd_list->BeginRenderPass(pso))
+        // Vertical pass
         {
-            // Update uber buffer
-            m_cb_uber_cpu.blur_direction    = Vector2(0.0f, pixel_stride);
-            m_cb_uber_cpu.blur_sigma        = sigma;
-            Update_Cb_Uber(cmd_list);
+            // Set render state
+            static RHI_PipelineState pso;
+            pso.shader_compute = shader_c;
+            pso.pass_name      = "Pass_Blur_Gaussian_Vertical";
 
-            cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
-            cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
-            cmd_list->SetTexture(RendererBindings_Srv::tex, tex_out);
-            cmd_list->SetTexture(RendererBindings_Srv::gbuffer_depth, tex_depth);
-            cmd_list->SetTexture(RendererBindings_Srv::gbuffer_normal, tex_normal);
-            cmd_list->DrawIndexed(m_viewport_quad.GetIndexCount());
-            cmd_list->EndRenderPass();
+            if (cmd_list->BeginRenderPass(pso))
+            {
+                m_cb_uber_cpu.blur_direction = Vector2(0.0f, pixel_stride);
+                m_cb_uber_cpu.blur_sigma     = sigma;
+                Update_Cb_Uber(cmd_list);
+
+                cmd_list->SetTexture(RendererBindings_Uav::rgba, tex_in);
+                cmd_list->SetTexture(RendererBindings_Srv::tex, tex_out);
+                if (depth_aware)
+                {
+                    cmd_list->SetTexture(RendererBindings_Srv::gbuffer_depth, tex_depth);
+                    cmd_list->SetTexture(RendererBindings_Srv::gbuffer_normal, tex_normal);
+                }
+
+                cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
+                cmd_list->EndRenderPass();
+            }
         }
 
         // Swap textures

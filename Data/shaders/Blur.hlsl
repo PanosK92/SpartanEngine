@@ -20,28 +20,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES =========
-#include "Common.hlsl"
+#include "common.hlsl"
 //====================
-
-#if PASS_BLUR_BOX
-float4 mainPS(Pixel_PosUv input) : SV_TARGET
-{
-    float4 result   = float4(0.0f, 0.0f, 0.0f, 0.0f);
-    float temp      = float(-int(g_blur_sigma)) * 0.5f + 0.5f;
-    float2 hlim     = float2(temp, temp);
-    
-    for (float i = 0; i < g_blur_sigma; i += g_blur_direction.x)
-    {
-        for (float j = 0; j < g_blur_sigma; j += g_blur_direction.y) 
-        {
-            float2 offset = (hlim + float2(float(i), float(j))) * g_texel_size;
-            result += tex.SampleLevel(sampler_bilinear_clamp, input.uv + offset, 0);
-        }
-    }
-
-    return result / float(g_blur_sigma * g_blur_sigma);
-}
-#endif
 
 float4 Blur_Gaussian_Fast(float2 uv, Texture2D tex)
 {
@@ -66,53 +46,64 @@ float CalcGaussianWeight(int sampleDist)
 
 // Gaussian blur in one direction
 #if PASS_BLUR_GAUSSIAN
-float4 mainPS(Pixel_PosUv input) : SV_TARGET
+[numthreads(thread_group_count_x, thread_group_count_y, 1)]
+void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
+    if (thread_id.x >= uint(g_resolution_rt.x) || thread_id.y >= uint(g_resolution_rt.y))
+        return;
+
+    const float2 uv = (thread_id.xy + 0.5f) / g_resolution_rt;
+
     // https://github.com/TheRealMJP/MSAAFilter/blob/master/MSAAFilter/PostProcessing.hlsl#L50
-    float weightSum = 0.0f;
-    float4 color    = 0;
+    float weight_sum = 0.0f;
+    float4 color     = 0;
     for (int i = -5; i < 5; i++)
     {
-        float2 sample_uv    = input.uv + (i * g_texel_size * g_blur_direction);    
+        float2 sample_uv    = uv + (i * g_texel_size * g_blur_direction);
         float weight        = CalcGaussianWeight(i);
         color               += tex.SampleLevel(sampler_bilinear_clamp, sample_uv, 0) * weight;
-        weightSum           += weight;
+        weight_sum          += weight;
     }
 
-    color /= weightSum;
+    color /= weight_sum;
 
-    return color;
+    tex_out_rgba[thread_id.xy] = color;
 }
 #endif
 
 // Bilateral gaussian blur in one direction
 #if PASS_BLUR_BILATERAL_GAUSSIAN
-float4 mainPS(Pixel_PosUv input) : SV_TARGET
+[numthreads(thread_group_count_x, thread_group_count_y, 1)]
+void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
-    float weightSum         = 0.0f;
+    if (thread_id.x >= uint(g_resolution_rt.x) || thread_id.y >= uint(g_resolution_rt.y))
+        return;
+
+    const float2 uv = (thread_id.xy + 0.5f) / g_resolution_rt;
+
+    float weight_sum        = 0.0f;
     float4 color            = 0.0f;
-    float center_depth      = get_linear_depth(tex_depth.SampleLevel(sampler_point_clamp, input.uv, 0).r);
-    float3 center_normal    = get_normal(input.uv);
+    float center_depth      = get_linear_depth(tex_depth.SampleLevel(sampler_point_clamp, uv, 0).r);
+    float3 center_normal    = get_normal(uv);
     float threshold         = 0.1f;
-    
 
     for (int i = -5; i < 5; i++)
     {
-        float2 sample_uv        = input.uv + (i * g_texel_size * g_blur_direction);
-        float sample_depth      = get_linear_depth(tex_depth.SampleLevel(sampler_bilinear_clamp, sample_uv, 0).r);
-        float3 sample_normal    = get_normal(sample_uv);
+        float2 sample_uv     = uv + (i * g_texel_size * g_blur_direction);
+        float sample_depth   = get_linear_depth(tex_depth.SampleLevel(sampler_bilinear_clamp, sample_uv, 0).r);
+        float3 sample_normal = get_normal(sample_uv);
         
         // Depth-awareness
-        float awareness_depth   = saturate(threshold - abs(center_depth - sample_depth));
-        float awareness_normal  = saturate(dot(center_normal, sample_normal)) + FLT_MIN; // FLT_MIN prevents NaN
-        float awareness         = awareness_normal * awareness_depth;
+        float awareness_depth  = saturate(threshold - abs(center_depth - sample_depth));
+        float awareness_normal = saturate(dot(center_normal, sample_normal)) + FLT_MIN; // FLT_MIN prevents NaN
+        float awareness        = awareness_normal * awareness_depth;
 
-        float weight        = CalcGaussianWeight(i) * awareness;
-        color               += tex.SampleLevel(sampler_bilinear_clamp, sample_uv, 0) * weight;
-        weightSum           += weight; 
+        float weight = CalcGaussianWeight(i) * awareness;
+        color        += tex.SampleLevel(sampler_bilinear_clamp, sample_uv, 0) * weight;
+        weight_sum   += weight; 
     }
-    color /= weightSum;
+    color /= weight_sum;
 
-    return color;
+    tex_out_rgba[thread_id.xy] = color;
 }
 #endif
