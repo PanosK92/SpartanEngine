@@ -134,6 +134,9 @@ namespace Spartan
             // Blit the frame so that refraction can sample from it
             cmd_list->Blit(rt1, rt2);
 
+            // Generate frame mips so that the reflections can simulate roughness
+            Pass_AMD_FidelityFX_SinglePassDowsnampler(cmd_list, rt2);
+
             bool is_transparent_pass = true;
 
             Pass_GBuffer(cmd_list, is_transparent_pass);
