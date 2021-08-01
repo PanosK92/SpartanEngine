@@ -101,7 +101,7 @@ struct Surface
             if (do_ssao_gi)
             {
                 occlusion   = visibility;
-                emissive    += ssao.rgb * sample_albedo;
+                emissive    += ssao.rgb * sample_albedo.rgb;
             }
             else
             {

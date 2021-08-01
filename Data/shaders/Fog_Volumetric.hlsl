@@ -34,14 +34,14 @@ float compute_mie_scattering(float v_dot_l)
     return g_vl_x / pow(e, g_vl_pow);
 }
 
-float vl_raymarch(Light light, float3 ray_pos, float3 ray_step, float3 ray_dir, int cascade_index)
+float3 vl_raymarch(Light light, float3 ray_pos, float3 ray_step, float3 ray_dir, int cascade_index)
 {
-    float fog = 1.0f;
+    float3 fog = 1.0f;
 
     [unroll]
     for (uint i = 0; i < g_vl_steps; i++)
     {
-        float attenuation = 1.0f;
+        float3 attenuation = 1.0f;
 
         // Attenuate
         #if DIRECTIONAL
@@ -89,7 +89,7 @@ float vl_raymarch(Light light, float3 ray_pos, float3 ray_step, float3 ray_dir, 
 
 float3 VolumetricLighting(Surface surface, Light light)
 {
-    float fog = 0.0f;
+    float3 fog = 0.0f;
 
     // Only ray march if this pixel is within the light's radius
     float3 ray_pos      = surface.position;
@@ -123,8 +123,8 @@ float3 VolumetricLighting(Surface surface, Light light)
                 if (cascade_fade > 0.0f && cascade_index < light.array_size - 1)
                 {
                     // Ray-march using the next cascade
-                    float fog_secondary = vl_raymarch(light, ray_pos, ray_step, ray_dir, cascade_index);
-    
+                    float3 fog_secondary = vl_raymarch(light, ray_pos, ray_step, ray_dir, cascade_index);
+
                     // Blend cascades
                     fog = lerp(fog, fog_secondary, cascade_fade);
                     break;
