@@ -313,9 +313,11 @@ void Widget_RenderOptions::TickVisible()
                 WidgetHelper::CheckBox("SSAO - Screen space ambient occlusion", do_ssao);
 
                 // SSAO + GI
-                ImGuiEx::PushDisabled(!do_ssao);
-                WidgetHelper::CheckBox("SSAO GI - Screen space global illumination", ssao_gi, "Use SSAO to compute diffuse global illumination");
-                ImGuiEx::PopDisabled(!do_ssao);
+                {
+                    ImGuiEx::PushDisabled(!do_ssao);
+                    WidgetHelper::CheckBox("SSAO GI - Screen space global illumination", ssao_gi, "Use SSAO to compute diffuse global illumination");
+                    ImGuiEx::PopDisabled(!do_ssao);
+                }
             }
 
             if (WidgetHelper::Option("Anti-Aliasing"))
@@ -342,10 +344,11 @@ void Widget_RenderOptions::TickVisible()
 
                 // Bloom
                 WidgetHelper::CheckBox("Bloom", do_bloom);
-
-                ImGuiEx::PushDisabled(!do_bloom);
-                WidgetHelper::RenderOptionValue("Bloom intensity", Renderer_Option_Value::Bloom_Intensity, "", 0.001f);
-                ImGuiEx::PopDisabled(!do_bloom);
+                {
+                    ImGuiEx::PushDisabled(!do_bloom);
+                    WidgetHelper::RenderOptionValue("Bloom intensity", Renderer_Option_Value::Bloom_Intensity, "", 0.001f);
+                    ImGuiEx::PopDisabled(!do_bloom);
+                }
 
                 // Motion blur
                 WidgetHelper::CheckBox("Motion blur (controlled by the camera's shutter speed)", do_motion_blur);
@@ -364,11 +367,12 @@ void Widget_RenderOptions::TickVisible()
             {
                 // Volumetric fog
                 WidgetHelper::CheckBox("Volumetric fog", do_volumetric_fog, "Requires a light with shadows enabled.");
-
-                // Density
-                ImGuiEx::PushDisabled(!do_volumetric_fog);
-                WidgetHelper::RenderOptionValue("Volumetric fog density", Renderer_Option_Value::Fog, "", 0.01f, 0.0f, 16.0f, "%.2f");
-                ImGuiEx::PopDisabled(!do_volumetric_fog);
+                {
+                    // Density
+                    ImGuiEx::PushDisabled(!do_volumetric_fog);
+                    WidgetHelper::RenderOptionValue("Volumetric fog density", Renderer_Option_Value::Fog, "", 0.01f, 0.0f, 16.0f, "%.2f");
+                    ImGuiEx::PopDisabled(!do_volumetric_fog);
+                }
 
                 // Screen space shadows
                 WidgetHelper::CheckBox("Screen space shadows", do_sss);
@@ -418,10 +422,12 @@ void Widget_RenderOptions::TickVisible()
 
             if (WidgetHelper::Option("Editor", false))
             {
-                if (WidgetHelper::CheckBox("Transform", debug_transform))
+                WidgetHelper::CheckBox("Transform", debug_transform);
                 {
+                    ImGuiEx::PushDisabled(!debug_transform);
                     WidgetHelper::Float("Transform size", m_renderer->m_gizmo_transform_size, 0.0025f);
                     WidgetHelper::Float("Transform speed", m_renderer->m_gizmo_transform_speed, 1.0f);
+                    ImGuiEx::PopDisabled(!debug_transform);
                 }
 
                 WidgetHelper::CheckBox("Selection outline", debug_selection_outline);
