@@ -20,11 +20,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES =================
-#include "Common.hlsl"
-#include "BRDF.hlsl"
-#include "ShadowMapping.hlsl"
-#include "Fog_Volumetric.hlsl"
-#include "Fog.hlsl"
+#include "common.hlsl"
+#include "brdf.hlsl"
+#include "shadow_mapping.hlsl"
+#include "fog_volumetric.hlsl"
+#include "fog.hlsl"
 //============================
 
 [numthreads(thread_group_count_x, thread_group_count_y, 1)]

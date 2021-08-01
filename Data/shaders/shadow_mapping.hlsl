@@ -81,17 +81,17 @@ float shadow_sample_depth(float3 uv)
     return 0.0f;
 }
 
-float4 shadow_sample_color(float3 uv)
+float3 shadow_sample_color(float3 uv)
 {
     #if DIRECTIONAL
     // float3 -> uv, slice
-    return tex_light_directional_color.SampleLevel(sampler_point_clamp, uv, 0);
+    return tex_light_directional_color.SampleLevel(sampler_point_clamp, uv, 0).rgb;
     #elif POINT
     // float3 -> direction
-    return tex_light_point_color.SampleLevel(sampler_point_clamp, uv, 0);
+    return tex_light_point_color.SampleLevel(sampler_point_clamp, uv, 0).rgb;
     #elif SPOT
     // float3 -> uv, 0
-    return tex_light_spot_color.SampleLevel(sampler_point_clamp, uv.xy, 0);
+    return tex_light_spot_color.SampleLevel(sampler_point_clamp, uv.xy, 0).rgb;
     #endif
 
     return 0.0f;
@@ -156,6 +156,8 @@ float Technique_Vogel(Surface surface, float3 uv, float compare)
     float temporal_offset   = get_noise_interleaved_gradient(surface.uv * g_resolution_rt);
     float temporal_angle    = temporal_offset * PI2;
     float penumbra          = compute_penumbra(temporal_angle, uv, compare);
+
+    // todo: in the case of the point light, the uv is the direction, filterting works ok but I could improved it.
     
     [unroll]
     for (uint i = 0; i < g_shadow_samples; i++)
@@ -167,11 +169,13 @@ float Technique_Vogel(Surface surface, float3 uv, float compare)
     return shadow / (float)g_shadow_samples;
 }
 
-float4 Technique_Vogel_Color(Surface surface, float3 uv)
+float3 Technique_Vogel_Color(Surface surface, float3 uv)
 {
-    float4 shadow       = 0.0f;
+    float3 shadow       = 0.0f;
     float vogel_angle   = get_noise_interleaved_gradient(surface.uv * g_resolution_rt) * PI2;
 
+    // todo: in the case of the point light, the uv is the direction, filterting works ok but I could improved it.
+    
     [unroll]
     for (uint i = 0; i < g_shadow_samples; i++)
     {
@@ -347,7 +351,7 @@ float4 Shadow_Map(Surface surface, Light light)
                 [branch]
                 if (shadow.a > 0.0f && surface.is_opaque())
                 {
-                    shadow *= Technique_Vogel_Color(surface, float3(pos_uv, cascade));
+                    shadow.rgb *= Technique_Vogel_Color(surface, float3(pos_uv, cascade));
                 }
                 #endif
 
@@ -372,7 +376,7 @@ float4 Shadow_Map(Surface surface, Light light)
                     [branch]
                     if (shadow.a > 0.0f && surface.is_opaque())
                     {
-                        shadow = min(shadow, Technique_Vogel_Color(surface, float3(pos_uv, cascade)));
+                        shadow.rgb = min(shadow.rgb, Technique_Vogel_Color(surface, float3(pos_uv, cascade)));
                     }
                     #endif
                 }
@@ -386,8 +390,10 @@ float4 Shadow_Map(Surface surface, Light light)
         [branch]
         if (light.distance_to_pixel < light.far)
         {
-            uint projection_index = direction_to_cube_face_index(light.to_pixel);
-            float3 pos_ndc = world_to_ndc(position_world, cb_light_view_projection[projection_index]);
+            // Project into light space
+            uint slice_index  = direction_to_cube_face_index(light.to_pixel);
+            float3 pos_ndc    = world_to_ndc(position_world, cb_light_view_projection[slice_index]);
+
             auto_bias(surface, pos_ndc, light);
             shadow.a = SampleShadowMap(surface, light.to_pixel, pos_ndc.z);
             
@@ -395,7 +401,7 @@ float4 Shadow_Map(Surface surface, Light light)
             [branch]
             if (shadow.a > 0.0f && surface.is_opaque())
             {
-                shadow *= Technique_Vogel_Color(surface, light.to_pixel);
+                shadow.rgb *= Technique_Vogel_Color(surface, light.to_pixel);
             }
             #endif
         }
@@ -407,19 +413,20 @@ float4 Shadow_Map(Surface surface, Light light)
         {
             // Project into light space
             float3 pos_ndc  = world_to_ndc(position_world, cb_light_view_projection[0]);
-            float2 pos_uv   = ndc_to_uv(pos_ndc);
+            float3 pos_uv   = float3(ndc_to_uv(pos_ndc), 0);
 
+            // Ensure not out of bound
             [branch]
-            if (is_saturated(pos_uv))
+            if (is_saturated(pos_uv.xy))
             {
                 auto_bias(surface, pos_ndc, light);
-                shadow.a = SampleShadowMap(surface, float3(ndc_to_uv(pos_ndc), 0.0f), pos_ndc.z);
+                shadow.a = SampleShadowMap(surface, pos_uv, pos_ndc.z);
 
                 #if (SHADOWS_TRANSPARENT == 1)
                 [branch]
                 if (shadow.a > 0.0f && surface.is_opaque())
                 {
-                    shadow *= Technique_Vogel_Color(surface, light.to_pixel);
+                    shadow.rgb *= Technique_Vogel_Color(surface, pos_uv);
                 }
                 #endif
             }

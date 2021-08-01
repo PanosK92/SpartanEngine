@@ -70,9 +70,9 @@ float3 vl_raymarch(Light light, float3 ray_pos, float3 ray_step, float3 ray_dir,
         #if SHADOWS_TRANSPARENT
         {
             #if POINT
-            attenuation *= shadow_sample_color(normalize(ray_pos - light.position)).rgb;
+            attenuation *= shadow_sample_color(normalize(ray_pos - light.position));
             #else // directional & spot
-            attenuation *= shadow_sample_color(float3(ndc_to_uv(pos_ndc), cascade_index)).rgb;
+            attenuation *= shadow_sample_color(float3(ndc_to_uv(pos_ndc), cascade_index));
             #endif
         }
         #endif
