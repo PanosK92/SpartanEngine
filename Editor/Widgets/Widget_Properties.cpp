@@ -139,8 +139,8 @@ namespace WidgetHelper
 
 Widget_Properties::Widget_Properties(Editor* editor) : Widget(editor)
 {
-    m_title        = "Properties";
-    m_size.x    = 500; // min width
+    m_title  = "Properties";
+    m_size.x = 500; // min width
 
     m_colorPicker_light     = make_unique<ButtonColorPicker>("Light Color Picker");
     m_colorPicker_material  = make_unique<ButtonColorPicker>("Material Color Picker");
@@ -152,14 +152,18 @@ Widget_Properties::Widget_Properties(Editor* editor) : Widget(editor)
 
 void Widget_Properties::TickVisible()
 {
+    // If the world is loading new entities, don't parse their materials
+    if (m_context->GetSubsystem<World>()->IsLoading())
+        return;
+
     ImGui::PushItemWidth(WidgetHelper::g_max_width);
 
     if (!m_inspected_entity.expired())
     {
-        auto entity_ptr         = m_inspected_entity.lock().get();
-        Renderable* renderable  = entity_ptr->GetComponent<Renderable>();
-        Material* material      = renderable ? renderable->GetMaterial() : nullptr;
-
+        shared_ptr<Entity> entity_ptr = m_inspected_entity.lock();
+        Renderable* renderable        = entity_ptr->GetComponent<Renderable>();
+        Material* material            = renderable ? renderable->GetMaterial() : nullptr;
+        
         ShowTransform(entity_ptr->GetComponent<Transform>());
         ShowLight(entity_ptr->GetComponent<Light>());
         ShowCamera(entity_ptr->GetComponent<Camera>());
@@ -177,7 +181,7 @@ void Widget_Properties::TickVisible()
         {
             ShowScript(script);
         }
-
+        
         ShowAddComponentButton();
         Drop_AutoAddComponents();
     }

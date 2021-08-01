@@ -94,11 +94,11 @@ namespace Spartan
         //==================================================================================================
 
     private:
-        Math::Vector4 m_color_albedo    = Math::Vector4(1.0f, 1.0f, 1.0f, 1.0f);
-        Math::Vector2 m_uv_tiling       = Math::Vector2(1.0f, 1.0f);
-        Math::Vector2 m_uv_offset       = Math::Vector2(0.0f, 0.0f);
-        bool m_is_editable              = true;
-        uint32_t m_flags                = 0;
+        Math::Vector4 m_color_albedo = Math::Vector4(1.0f, 1.0f, 1.0f, 1.0f);
+        Math::Vector2 m_uv_tiling    = Math::Vector2(1.0f, 1.0f);
+        Math::Vector2 m_uv_offset    = Math::Vector2(0.0f, 0.0f);
+        bool m_is_editable           = true;
+        uint32_t m_flags             = 0;
         std::unordered_map<Material_Property, std::shared_ptr<RHI_Texture>> m_textures;
         std::unordered_map<Material_Property, float> m_properties;
         std::shared_ptr<RHI_Device> m_rhi_device;

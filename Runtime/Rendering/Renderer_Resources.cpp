@@ -438,6 +438,9 @@ namespace Spartan
             // Mip generation
             m_shaders[RendererShader::AMD_FidelityFX_SPD_C] = make_shared<RHI_Shader>(m_context);
             m_shaders[RendererShader::AMD_FidelityFX_SPD_C]->Compile(RHI_Shader_Compute, dir_shaders + "AMD_FidelityFX_SPD.hlsl", async);
+            m_shaders[RendererShader::AMD_FidelityFX_SPD_BloomAntiflicker_C] = make_shared<RHI_Shader>(m_context);
+            m_shaders[RendererShader::AMD_FidelityFX_SPD_BloomAntiflicker_C]->AddDefine("BLOOM_ANTIFLICKER");
+            m_shaders[RendererShader::AMD_FidelityFX_SPD_BloomAntiflicker_C]->Compile(RHI_Shader_Compute, dir_shaders + "AMD_FidelityFX_SPD.hlsl", async);
 
             // Upsampling
             m_shaders[RendererShader::AMD_FidelityFX_FSR_Upsample_C] = make_shared<RHI_Shader>(m_context);
