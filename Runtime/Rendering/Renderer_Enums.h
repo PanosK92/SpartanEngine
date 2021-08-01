@@ -156,6 +156,7 @@ namespace Spartan
         Entity_Outline_P,
         AMD_FidelityFX_CAS_C,
         AMD_FidelityFX_SPD_C,
+        AMD_FidelityFX_SPD_BloomAntiflicker_C,
         AMD_FidelityFX_FSR_Upsample_C,
         AMD_FidelityFX_FSR_Sharpen_C
     };

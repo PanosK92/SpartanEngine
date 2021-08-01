@@ -28,8 +28,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define SPD_NO_WAVE_OPERATIONS
 #define SPD_LINEAR_SAMPLER
 
-#define ANTIFLICKER 1
-
 #include "ffx_a.h"
 
 groupshared AF4 spd_intermediate[16][16];
@@ -37,8 +35,7 @@ groupshared AU1 spd_counter;
 
 AF4 SpdLoadSourceImage(ASU2 p, AU1 slice)
 {
-    float2 inv_input_size = 1.0f / g_resolution_rt;
-    float2 uv = p * inv_input_size + inv_input_size;
+    float2 uv = (p + 0.5f) / g_resolution_rt;
     return tex.SampleLevel(sampler_bilinear_clamp, uv, 0);
 }
 
@@ -65,7 +62,7 @@ void SpdStoreIntermediate(AU1 x, AU1 y, AF4 value)
 
 AF4 SpdReduce4(AF4 s1, AF4 s2, AF4 s3, AF4 s4)
 {
-#if ANTIFLICKER
+#if BLOOM_ANTIFLICKER
     // Karis's luma weighted average
     float s1w = 1 / (luminance(s1) + 1);
     float s2w = 1 / (luminance(s2) + 1);

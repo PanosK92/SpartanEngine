@@ -121,7 +121,7 @@ namespace Spartan
                 cmd_list->Blit(rt1, rt2);
 
                 // Generate frame mips so that the reflections can simulate roughness
-                Pass_AMD_FidelityFX_SinglePassDowsnampler(cmd_list, rt2); 
+                Pass_AMD_FidelityFX_SinglePassDowsnampler(cmd_list, rt2, false); 
 
                 // Apply ssr and fall back to environment reflections
                 Pass_Reflections(cmd_list, rt1, rt2);
@@ -135,7 +135,7 @@ namespace Spartan
             cmd_list->Blit(rt1, rt2);
 
             // Generate frame mips so that the reflections can simulate roughness
-            Pass_AMD_FidelityFX_SinglePassDowsnampler(cmd_list, rt2);
+            Pass_AMD_FidelityFX_SinglePassDowsnampler(cmd_list, rt2, false);
 
             bool is_transparent_pass = true;
 
@@ -622,7 +622,7 @@ namespace Spartan
         // Bilateral blur
         const auto sigma = 2.0f;
         const auto pixel_stride = 2.0f;
-        Pass_Blur_BilateralGaussian(cmd_list, tex_ssao_noisy, tex_ssao_blurred, sigma, pixel_stride, false);
+        Pass_Blur_GaussianBilateral(cmd_list, tex_ssao_noisy, tex_ssao_blurred, sigma, pixel_stride, false);
     }
 
     void Renderer::Pass_Ssr(RHI_CommandList* cmd_list)
@@ -1021,7 +1021,7 @@ namespace Spartan
         tex_in.swap(tex_out);
     }
 
-    void Renderer::Pass_Blur_BilateralGaussian(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out, const float sigma, const float pixel_stride, const bool use_stencil)
+    void Renderer::Pass_Blur_GaussianBilateral(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out, const float sigma, const float pixel_stride, const bool use_stencil)
     {
         if (tex_in->GetWidth() != tex_out->GetWidth() || tex_in->GetHeight() != tex_out->GetHeight() || tex_in->GetFormat() != tex_out->GetFormat())
         {
@@ -1053,7 +1053,7 @@ namespace Spartan
         pso.clear_stencil                     = use_stencil ? rhi_stencil_load : rhi_stencil_dont_care;
         pso.viewport                          = tex_out->GetViewport();
         pso.primitive_topology                = RHI_PrimitiveTopology_Mode::TriangleList;
-        pso.pass_name                         = "Pass_Blur_BilateralGaussian_Horizontal";
+        pso.pass_name                         = "Pass_Blur_GaussianBilateral_Horizontal";
 
         // Record commands for horizontal pass
         if (cmd_list->BeginRenderPass(pso))
@@ -1076,7 +1076,7 @@ namespace Spartan
         // Set render state for vertical pass
         pso.render_target_color_textures[0] = tex_in.get();
         pso.viewport                        = tex_in->GetViewport();
-        pso.pass_name                       = "Pass_Blur_BilateralGaussian_Vertical";
+        pso.pass_name                       = "Pass_Blur_GaussianBilateral_Vertical";
 
         // Record commands for vertical pass
         if (cmd_list->BeginRenderPass(pso))
@@ -1304,7 +1304,8 @@ namespace Spartan
         }
 
         // Generate mips
-        Pass_AMD_FidelityFX_SinglePassDowsnampler(cmd_list, tex_bloom);
+        const bool bloom_antiflicker = true;
+        Pass_AMD_FidelityFX_SinglePassDowsnampler(cmd_list, tex_bloom, bloom_antiflicker);
 
         // Starting from the lowest mip, upsample and blend with the higher one
         {
@@ -1743,7 +1744,7 @@ namespace Spartan
         }
     }
 
-    void Renderer::Pass_AMD_FidelityFX_SinglePassDowsnampler(RHI_CommandList* cmd_list, RHI_Texture* tex)
+    void Renderer::Pass_AMD_FidelityFX_SinglePassDowsnampler(RHI_CommandList* cmd_list, RHI_Texture* tex, const bool bloom_antiflicker)
     {
         // AMD FidelityFX Single Pass Downsampler.
         // Provides an RDNA™-optimized solution for generating up to 12 MIP levels of a texture.
@@ -1753,7 +1754,7 @@ namespace Spartan
         SP_ASSERT(tex->HasPerMipView());
 
         // Acquire shader
-        RHI_Shader* shader = m_shaders[RendererShader::AMD_FidelityFX_SPD_C].get();
+        RHI_Shader* shader = m_shaders[bloom_antiflicker ? RendererShader::AMD_FidelityFX_SPD_BloomAntiflicker_C : RendererShader::AMD_FidelityFX_SPD_C].get();
 
         if (!shader->IsCompiled())
             return;
