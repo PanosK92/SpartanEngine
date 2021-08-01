@@ -56,11 +56,7 @@ namespace Spartan
     
     static uint32_t get_bytes_per_channel(FIBITMAP* bitmap)
     {
-        if (!bitmap)
-        {
-            LOG_ERROR_INVALID_PARAMETER();
-            return 0;
-        }
+        SP_ASSERT(bitmap != nullptr);
     
         const auto type = FreeImage_GetImageType(bitmap);
         uint32_t size = 0;
@@ -83,11 +79,7 @@ namespace Spartan
     
     static uint32_t get_channel_count(FIBITMAP* bitmap)
     {
-        if (!bitmap)
-        {
-            LOG_ERROR_INVALID_PARAMETER();
-            return 0;
-        }
+        SP_ASSERT(bitmap != nullptr);
     
         const uint32_t bytes_per_pixel  = FreeImage_GetLine(bitmap) / FreeImage_GetWidth(bitmap);
         const uint32_t channel_count    = bytes_per_pixel / get_bytes_per_channel(bitmap);
@@ -124,11 +116,7 @@ namespace Spartan
 
     static FIBITMAP* convert_to_32bits(FIBITMAP* bitmap)
     {
-        if (!bitmap)
-        {
-            LOG_ERROR_INVALID_PARAMETER();
-            return nullptr;
-        }
+        SP_ASSERT(bitmap != nullptr);
 
         const auto previous_bitmap = bitmap;
         bitmap = FreeImage_ConvertTo32Bits(previous_bitmap);
@@ -200,11 +188,9 @@ namespace Spartan
  
     static FIBITMAP* rescale(FIBITMAP* bitmap, const uint32_t width, const uint32_t height)
     {
-        if (!bitmap || width == 0 || height == 0)
-        {
-            LOG_ERROR_INVALID_PARAMETER();
-            return nullptr;
-        }
+        SP_ASSERT(bitmap != nullptr);
+        SP_ASSERT(width != 0);
+        SP_ASSERT(height != 0);
     
         const auto previous_bitmap    = bitmap;
         bitmap                        = FreeImage_Rescale(previous_bitmap, width, height, filter_downsample);

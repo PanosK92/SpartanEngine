@@ -45,17 +45,8 @@ namespace Spartan
         const float blend_factor                    /*= 0.0f*/
     )
     {
-        if (!rhi_device)
-        {
-            LOG_ERROR_INVALID_INTERNALS();
-            return;
-        }
-
-        if (!rhi_device->GetContextRhi()->device)
-        {
-            LOG_ERROR_INVALID_INTERNALS();
-            return;
-        }
+        SP_ASSERT(rhi_device != nullptr);
+        SP_ASSERT(rhi_device->GetContextRhi()->device != nullptr);
 
         // Save parameters
         m_blend_enabled         = blend_enabled;

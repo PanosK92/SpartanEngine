@@ -55,9 +55,11 @@ namespace Spartan
 
     bool ModelImporter::Load(Model* model, const string& file_path)
     {
-        if (!model || !m_context || !FileSystem::IsFile(file_path))
+        SP_ASSERT(model != nullptr);
+
+        if (!FileSystem::IsFile(file_path))
         {
-            LOG_ERROR_INVALID_INTERNALS();
+            LOG_ERROR("Provided file path doesn't point to an existing file");
             return false;
         }
 
@@ -260,11 +262,8 @@ namespace Spartan
 
     void ModelImporter::LoadMesh(aiMesh* assimp_mesh, Entity* entity_parent, const ModelParams& params)
     {
-        if (!assimp_mesh || !entity_parent)
-        {
-            LOG_ERROR_INVALID_PARAMETER();
-            return;
-        }
+        SP_ASSERT(assimp_mesh != nullptr);
+        SP_ASSERT(entity_parent != nullptr);
 
         const uint32_t vertex_count = assimp_mesh->mNumVertices;
         const uint32_t index_count  = assimp_mesh->mNumFaces * 3;

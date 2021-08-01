@@ -31,14 +31,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-    #define LOG_INFO(text, ...)        { Spartan::Log::WriteFInfo(std::string(__FUNCTION__)    + ": " + std::string(text), __VA_ARGS__); }
-    #define LOG_WARNING(text, ...)    { Spartan::Log::WriteFWarning(std::string(__FUNCTION__) + ": " + std::string(text), __VA_ARGS__); }
+    #define LOG_INFO(text, ...)     { Spartan::Log::WriteFInfo(std::string(__FUNCTION__)    + ": " + std::string(text), __VA_ARGS__); }
+    #define LOG_WARNING(text, ...)  { Spartan::Log::WriteFWarning(std::string(__FUNCTION__) + ": " + std::string(text), __VA_ARGS__); }
     #define LOG_ERROR(text, ...)    { Spartan::Log::WriteFError(std::string(__FUNCTION__)   + ": " + std::string(text), __VA_ARGS__); }
-
-    // Standard errors
-    #define LOG_ERROR_GENERIC_FAILURE()        LOG_ERROR("Failed.")
-    #define LOG_ERROR_INVALID_PARAMETER()    LOG_ERROR("Invalid parameter.")
-    #define LOG_ERROR_INVALID_INTERNALS()    LOG_ERROR("Invalid internals.")
 
     // Misc
     #define LOG_TO_FILE(value) { Spartan::Log::m_log_to_file = value; }

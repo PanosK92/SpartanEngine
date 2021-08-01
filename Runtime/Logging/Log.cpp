@@ -44,11 +44,7 @@ namespace Spartan
     // Everything resolves to this
     void Log::Write(const char* text, const LogType type)
     {
-        if (!text)
-        {
-            LOG_ERROR_INVALID_PARAMETER();
-            return;
-        }
+        SP_ASSERT(text != nullptr);
 
         lock_guard<mutex> guard(m_mutex_log);
 
@@ -187,22 +183,14 @@ namespace Spartan
 
     void Log::LogString(const char* text, const LogType type)
     {
-        if (!text)
-        {
-            LOG_ERROR_INVALID_PARAMETER();
-            return;
-        }
+        SP_ASSERT(text != nullptr);
 
         m_logger.lock()->Log(string(text), static_cast<uint32_t>(type));
     }
 
     void Log::LogToFile(const char* text, const LogType type)
     {
-        if (!text)
-        {
-            LOG_ERROR_INVALID_PARAMETER();
-            return;
-        }
+        SP_ASSERT(text != nullptr);
 
         const string prefix        = (type == LogType::Info) ? "Info:" : (type == LogType::Warning) ? "Warning:" : "Error:";
         const auto final_text    = prefix + " " + text;

@@ -46,11 +46,9 @@ namespace Spartan
 
     void* RHI_ConstantBuffer::Map()
     {
-        if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device_context || !m_buffer)
-        {
-            LOG_ERROR_INVALID_INTERNALS();
-            return nullptr;
-        }
+        SP_ASSERT(m_rhi_device != nullptr);
+        SP_ASSERT(m_rhi_device->GetContextRhi()->device_context != nullptr);
+        SP_ASSERT(m_buffer != nullptr);
 
         D3D11_MAPPED_SUBRESOURCE mapped_resource;
         const auto result = m_rhi_device->GetContextRhi()->device_context->Map(static_cast<ID3D11Buffer*>(m_buffer), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped_resource);
@@ -65,11 +63,9 @@ namespace Spartan
 
     bool RHI_ConstantBuffer::Unmap(const uint64_t offset /*= 0*/, const uint64_t size /*= 0*/)
     {
-        if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device_context || !m_buffer)
-        {
-            LOG_ERROR_INVALID_INTERNALS();
-            return false;
-        }
+        SP_ASSERT(m_rhi_device != nullptr);
+        SP_ASSERT(m_rhi_device->GetContextRhi()->device_context != nullptr);
+        SP_ASSERT(m_buffer != nullptr);
 
         m_rhi_device->GetContextRhi()->device_context->Unmap(static_cast<ID3D11Buffer*>(m_buffer), 0);
         return true;
@@ -77,11 +73,8 @@ namespace Spartan
 
     bool RHI_ConstantBuffer::_create()
     {
-        if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device)
-        {
-            LOG_ERROR_INVALID_PARAMETER();
-            return false;
-        }
+        SP_ASSERT(m_rhi_device != nullptr);
+        SP_ASSERT(m_rhi_device->GetContextRhi()->device != nullptr);
 
         // Destroy previous buffer
         _destroy();

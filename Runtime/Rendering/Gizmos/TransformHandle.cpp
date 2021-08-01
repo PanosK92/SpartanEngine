@@ -47,11 +47,8 @@ namespace Spartan
 
     bool TransformHandle::Tick(const TransformHandleSpace space, Entity* entity, Camera* camera, const float handle_size, const float handle_speed)
     {
-        if (!entity || !camera)
-        {
-            LOG_ERROR_INVALID_PARAMETER();
-            return false;
-        }
+        SP_ASSERT(entity != nullptr);
+        SP_ASSERT(camera != nullptr);
 
         ReflectEntityTransform(space, entity, camera, handle_size);
 

@@ -511,7 +511,7 @@ bool FileDialog::DialogUpdateFromDirectory(const std::string& path)
 {
     if (!FileSystem::IsDirectory(path))
     {
-        LOG_ERROR_INVALID_PARAMETER();
+        LOG_ERROR("Provided path doesn't point to a directory.");
         return false;
     }
 

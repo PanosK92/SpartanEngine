@@ -45,17 +45,8 @@ namespace Spartan
         const float depth_bias_slope_scaled /*= 0.0f */,
         const float line_width              /*= 1.0f */)
     {
-        if (!rhi_device)
-        {
-            LOG_ERROR_INVALID_INTERNALS();
-            return;
-        }
-    
-        if (!rhi_device->GetContextRhi()->device)
-        {
-            LOG_ERROR_INVALID_INTERNALS();
-            return;
-        }
+        SP_ASSERT(rhi_device != nullptr);
+        SP_ASSERT(rhi_device->GetContextRhi()->device != nullptr);
 
         // Save properties
         m_cull_mode                 = cull_mode;
