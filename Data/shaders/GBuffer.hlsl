@@ -16,10 +16,10 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==================
-#include "Common.hlsl"
-#include "ParallaxMapping.hlsl"
-//=============================
+//= INCLUDES ===================
+#include "common.hlsl"
+#include "parallax_mapping.hlsl"
+//==============================
 
 struct PixelInputType
 {

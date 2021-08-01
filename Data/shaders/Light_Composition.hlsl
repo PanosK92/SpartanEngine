@@ -20,8 +20,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 // = INCLUDES ========
-#include "Common.hlsl"
-#include "Fog.hlsl"
+#include "common.hlsl"
+#include "fog.hlsl"
 //====================
 
 [numthreads(thread_group_count_x, thread_group_count_y, 1)]
@@ -80,7 +80,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
             float roughness  = material.r;
             float roughness2 = roughness * roughness;
             float mip_level  = lerp(0, g_frame_mip_count, roughness2);
-            light_refraction = tex_frame.SampleLevel(sampler_bilinear_clamp, surface.uv + refraction_uv_offset * is_behind, mip_level).rgb;
+            light_refraction = tex_frame.SampleLevel(sampler_trilinear_clamp, surface.uv + refraction_uv_offset * is_behind, mip_level).rgb;
         }
         
         // Compose everything

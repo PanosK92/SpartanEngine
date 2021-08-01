@@ -71,7 +71,8 @@ RWTexture2D<float3> tex_out_rgb                             : register(u2);
 RWTexture2D<float3> tex_out_rgb2                            : register(u3);
 RWTexture2D<float3> tex_out_rgb3                            : register(u4);
 RWTexture2D<float4> tex_out_rgba                            : register(u5);
-globallycoherent RWTexture2D<float4> tex_out_rgba_mips[12]  : register(u6);
+RWTexture2D<float4> tex_out_rgba2                           : register(u6);
+globallycoherent RWTexture2D<float4> tex_out_rgba_mips[12]  : register(u7);
 
 // Atomic counter
-globallycoherent RWStructuredBuffer<uint> g_atomic_counter : register(u18); // u6 + 12 mips = u18
+globallycoherent RWStructuredBuffer<uint> g_atomic_counter : register(u19); // u7 + 12 mips = u19

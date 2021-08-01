@@ -146,7 +146,7 @@ namespace Spartan
             uint32_t mip_count  = 1;
             uint32_t width      = width_render;
             uint32_t height     = height_render;
-            while (width > 2 && height > 2)
+            while (width > 4 && height > 4)
             {
                 width /= 2;
                 height /= 2;
@@ -260,7 +260,7 @@ namespace Spartan
 
         // BRDF - Specular Lut
         m_shaders[RendererShader::BrdfSpecularLut_C] = make_shared<RHI_Shader>(m_context);
-        m_shaders[RendererShader::BrdfSpecularLut_C]->Compile(RHI_Shader_Compute, dir_shaders + "BRDF_SpecularLut.hlsl", async);
+        m_shaders[RendererShader::BrdfSpecularLut_C]->Compile(RHI_Shader_Compute, dir_shaders + "brdf_specular_lut.hlsl", async);
 
         // Copy
         {
@@ -286,20 +286,15 @@ namespace Spartan
 
         // Blur
         {
-            // Box
-            m_shaders[RendererShader::BlurBox_P] = make_shared<RHI_Shader>(m_context);
-            m_shaders[RendererShader::BlurBox_P]->AddDefine("PASS_BLUR_BOX");
-            m_shaders[RendererShader::BlurBox_P]->Compile(RHI_Shader_Pixel, dir_shaders + "Blur.hlsl", async);
-
             // Gaussian
-            m_shaders[RendererShader::BlurGaussian_P] = make_shared<RHI_Shader>(m_context);
-            m_shaders[RendererShader::BlurGaussian_P]->AddDefine("PASS_BLUR_GAUSSIAN");
-            m_shaders[RendererShader::BlurGaussian_P]->Compile(RHI_Shader_Pixel, dir_shaders + "Blur.hlsl", async);
+            m_shaders[RendererShader::BlurGaussian_C] = make_shared<RHI_Shader>(m_context);
+            m_shaders[RendererShader::BlurGaussian_C]->AddDefine("PASS_BLUR_GAUSSIAN");
+            m_shaders[RendererShader::BlurGaussian_C]->Compile(RHI_Shader_Compute, dir_shaders + "blur.hlsl", async);
 
-            // Bilateral Gaussian
-            m_shaders[RendererShader::BlurGaussianBilateral_P] = make_shared<RHI_Shader>(m_context);
-            m_shaders[RendererShader::BlurGaussianBilateral_P]->AddDefine("PASS_BLUR_BILATERAL_GAUSSIAN");
-            m_shaders[RendererShader::BlurGaussianBilateral_P]->Compile(RHI_Shader_Pixel, dir_shaders + "Blur.hlsl", async);
+            // Gaussian bilateral 
+            m_shaders[RendererShader::BlurGaussianBilateral_C] = make_shared<RHI_Shader>(m_context);
+            m_shaders[RendererShader::BlurGaussianBilateral_C]->AddDefine("PASS_BLUR_BILATERAL_GAUSSIAN");
+            m_shaders[RendererShader::BlurGaussianBilateral_C]->Compile(RHI_Shader_Compute, dir_shaders + "blur.hlsl", async);
         }
 
         // Bloom
@@ -331,11 +326,11 @@ namespace Spartan
 
         // Tone-mapping
         m_shaders[RendererShader::ToneMapping_C] = make_shared<RHI_Shader>(m_context);
-        m_shaders[RendererShader::ToneMapping_C]->Compile(RHI_Shader_Compute, dir_shaders + "ToneMapping.hlsl", async);
+        m_shaders[RendererShader::ToneMapping_C]->Compile(RHI_Shader_Compute, dir_shaders + "tone_mapping.hlsl", async);
 
         // Gamma correction
         m_shaders[RendererShader::GammaCorrection_C] = make_shared<RHI_Shader>(m_context);
-        m_shaders[RendererShader::GammaCorrection_C]->Compile(RHI_Shader_Compute, dir_shaders + "GammaCorrection.hlsl", async);
+        m_shaders[RendererShader::GammaCorrection_C]->Compile(RHI_Shader_Compute, dir_shaders + "gamma_correction.hlsl", async);
 
         // Anti-aliasing
         {

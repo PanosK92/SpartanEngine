@@ -20,8 +20,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES ===========
-#include "Common.hlsl"
-#include "Velocity.hlsl"
+#include "common.hlsl"
+#include "velocity.hlsl"
 //======================
 
 float3 reinhard(float3 hdr, float k = 1.0f)
@@ -199,12 +199,12 @@ float3 get_input_sample(Texture2D tex_input, const uint2 pos_out)
 
 float3 temporal_antialiasing(uint2 pos_out, uint group_index, uint3 group_id, Texture2D tex_history, Texture2D tex_input)
 {
-    const float2 uv         = (pos_out + 0.5f) / g_resolution_rt;
-    const uint2 pos_input   = is_taa_upsampling_enabled() ? (uv * g_resolution_render) : pos_out;
+    const float2 uv       = (pos_out + 0.5f) / g_resolution_rt;
+    const uint2 pos_input = is_taa_upsampling_enabled() ? (uv * g_resolution_render) : pos_out;
 
     // Get reprojected uv
-    float2 velocity         = get_velocity_closest_3x3(uv);
-    float2 uv_reprojected   = uv - velocity;
+    float2 velocity       = get_velocity_closest_3x3(uv);
+    float2 uv_reprojected = uv - velocity;
 
     // If re-projected UV is out of screen, converge to current color immediately
     if (!is_saturated(uv_reprojected))

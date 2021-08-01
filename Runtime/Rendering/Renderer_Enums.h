@@ -23,6 +23,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
+    // Constant buffer bindings
+    enum class RendererBindings_Cb
+    {
+        frame       = 0,
+        uber        = 1,
+        light       = 2,
+        material    = 3
+    };
+
     // SRV bindings
     enum class RendererBindings_Srv
     {
@@ -82,23 +91,14 @@ namespace Spartan
         rgb2        = 3,
         rgb3        = 4,
         rgba        = 5,
-        rgba_mips   = 6
-    };
-
-    // Constant buffer bindings
-    enum class RendererBindings_Cb
-    {
-        frame       = 0,
-        uber        = 1,
-        light       = 2,
-        material    = 3
+        rgba2       = 6,
+        rgba_mips   = 7
     };
 
     // Structured buffer bindings
     enum class RendererBindings_Sb
     {
-        counter     = 18,
-        material    = 19
+        counter = 19
     };
 
     // Shaders
@@ -150,9 +150,8 @@ namespace Spartan
         Reflections_P,
         Entity_V,
         Entity_Transform_P,
-        BlurBox_P,
-        BlurGaussian_P,
-        BlurGaussianBilateral_P,
+        BlurGaussian_C,
+        BlurGaussianBilateral_C,
         Entity_Outline_P,
         AMD_FidelityFX_CAS_C,
         AMD_FidelityFX_SPD_C,
