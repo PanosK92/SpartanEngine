@@ -223,4 +223,9 @@ namespace Spartan
     {
         return true;
     }
+
+    void RHI_CommandList::UnbindOutputTextures()
+    {
+
+    }
 }

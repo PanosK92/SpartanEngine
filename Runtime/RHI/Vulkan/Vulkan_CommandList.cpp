@@ -477,7 +477,7 @@ namespace Spartan
 
     void RHI_CommandList::Blit(RHI_Texture* source, RHI_Texture* destination)
     {
-        // D3D11 luggage: https://docs.microsoft.com/en-us/windows/win32/api/d3d11/nf-d3d11-id3d11devicecontext-copyresource
+        // D3D11 baggage: https://docs.microsoft.com/en-us/windows/win32/api/d3d11/nf-d3d11-id3d11devicecontext-copyresource
         SP_ASSERT(source != nullptr);
         SP_ASSERT(destination != nullptr);
         SP_ASSERT(source->Get_Resource() != nullptr);
@@ -489,17 +489,17 @@ namespace Spartan
         SP_ASSERT(source->GetArrayLength() == destination->GetArrayLength());
         SP_ASSERT(source->GetMipCount() == destination->GetMipCount());
 
-        VkOffset3D blit_size    = {};
-        blit_size.x             = source->GetWidth();
-        blit_size.y             = source->GetHeight();
-        blit_size.z             = 1;
+        VkOffset3D blit_size = {};
+        blit_size.x          = source->GetWidth();
+        blit_size.y          = source->GetHeight();
+        blit_size.z          = 1;
 
         VkImageBlit blit_region                 = {};
         blit_region.srcSubresource.aspectMask   = VK_IMAGE_ASPECT_COLOR_BIT;
-        blit_region.srcSubresource.layerCount   = 1;
+        blit_region.srcSubresource.layerCount   = source->GetMipCount();
         blit_region.srcOffsets[1]               = blit_size;
         blit_region.dstSubresource.aspectMask   = VK_IMAGE_ASPECT_COLOR_BIT;
-        blit_region.dstSubresource.layerCount   = 1;
+        blit_region.dstSubresource.layerCount   = destination->GetMipCount();
         blit_region.dstOffsets[1]               = blit_size;
 
         RHI_Image_Layout layout_initial_source      = source->GetLayout(0);
@@ -1021,5 +1021,10 @@ namespace Spartan
 
         // Bind descriptor set
         return Deferred_BindDescriptorSet();
+    }
+
+    void RHI_CommandList::UnbindOutputTextures()
+    {
+
     }
 }

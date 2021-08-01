@@ -37,35 +37,36 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     const float2 ssr_uv     = ssr_sample.rg;
     const float ssr_alpha   = ssr_sample.b;
 
-    float3 color_ssr            = 0.0f;
-    float3 color_environment    = 0.0f;
+    // Material
+    const float3 material  = tex_material.SampleLevel(sampler_point_clamp, uv, 0).rgb;
+    const float roughness  = material.r;
+    const float roughness2 = roughness * roughness;
+    const float metallic   = material.g;
+    const float3 F0        = lerp(0.04f, sample_albedo.rgb, metallic);
+
+    // Fresnel
+    const float3 normal          = get_normal(uv);
+    const float3 camera_to_pixel = get_view_direction(uv);
+    const float3 reflection      = reflect(camera_to_pixel, normal);
+    const float n_dot_v          = saturate(dot(-camera_to_pixel, normal));
+    const float3 F               = F_Schlick_Roughness(F0, n_dot_v, roughness);
+
+    float3 color_ssr         = 0.0f;
+    float3 color_environment = 0.0f;
 
     // Get ssr color
     if (ssr_alpha != 0.0f)
     {
-        color_ssr = tex_frame.SampleLevel(sampler_bilinear_clamp, ssr_uv, 0).rgb;
+        float mip_level = lerp(0, g_frame_mip_count, roughness2);
+        color_ssr       = tex_frame.SampleLevel(sampler_trilinear_clamp, ssr_uv, mip_level).rgb * F;
     }
-
+    
     // Get environment color
     if (ssr_alpha != 1.0f)
     {
-        const float4 material_sample    = tex_material.SampleLevel(sampler_point_clamp, uv, 0);
-        const float3 normal             = get_normal(uv);
-
-        Surface surface;
-        surface.roughness  = material_sample.r;
-        surface.metallic   = material_sample.g;
-        surface.emissive   = material_sample.b;
-        surface.F0         = lerp(0.04f, sample_albedo.rgb, surface.metallic);
-
-        const float3 camera_to_pixel    = get_view_direction(uv);
-        float3 reflection               = reflect(camera_to_pixel, normal);
-        float mip_level                 = lerp(0, g_envrionement_max_mip, surface.roughness * surface.roughness);
-        float n_dot_v                   = saturate(dot(-camera_to_pixel, normal));
-        float3 F                        = F_Schlick_Roughness(surface.F0, n_dot_v, surface.roughness);
-        float ambient_light             = saturate(g_directional_light_intensity / 128000.0f); // this is is wrong, SSR needs to sample an already darkened sky
-
-        color_environment = tex_environment.SampleLevel(sampler_trilinear_clamp, direction_sphere_uv(reflection), mip_level).rgb * F * ambient_light;
+        float mip_level     = lerp(0, g_envrionement_max_mip, roughness2);
+        float ambient_light = saturate(g_directional_light_intensity / 128000.0f); // this is obviously and approximation since we have a static environment texture
+        color_environment   = tex_environment.SampleLevel(sampler_trilinear_clamp, direction_sphere_uv(reflection), mip_level).rgb * F * ambient_light;
     }
 
     return float4(lerp(color_environment, color_ssr, ssr_alpha), 0.0f);

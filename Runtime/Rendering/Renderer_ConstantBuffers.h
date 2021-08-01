@@ -69,6 +69,9 @@ namespace Spartan
         float fog;
         uint32_t options;
 
+        uint32_t frame_mip_count;
+        Math::Vector3 padding;
+
         void set_bit(const bool set, const uint32_t bit)
         {
             options = set ? (options |= bit) : (options & ~bit);
@@ -104,7 +107,8 @@ namespace Spartan
                 resolution_output == rhs.resolution_output &&
                 resolution_render == rhs.resolution_render &&
                 taa_jitter_offset == rhs.taa_jitter_offset &&
-                options == rhs.options;
+                options == rhs.options &&
+                frame_mip_count == rhs.frame_mip_count;
         }
         bool operator!=(const Cb_Frame& rhs) const { return !(*this == rhs); }
     };

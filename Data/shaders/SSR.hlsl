@@ -105,11 +105,6 @@ inline float compute_alpha(uint2 screen_pos, float2 hit_uv, float v_dot_r)
     // Reject if the reflection vector is pointing back at the viewer.
     alpha *= saturate(g_ssr_camera_facing_threshold - v_dot_r);
 
-    // Fade out as the material roughness increases.
-    // This is because reflections do get rougher by getting jittered but there is a threshold before they start to look too noisy.
-    float roughness = tex_material[screen_pos].r;
-    alpha *= 1.0f - roughness;
-
     // If the UV is invalid fade completely
     alpha *= all(hit_uv);
 
@@ -122,40 +117,27 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     if (thread_id.x >= uint(g_resolution_rt.x) || thread_id.y >= uint(g_resolution_rt.y))
         return;
 
-    float2 hit_uv   = 0.0f;
-    float alpha     = 0.0f;
+    float2 hit_uv = 0.0f;
+    float alpha   = 0.0f;
 
-    // Skip pixels which are beyond the roughness threshold we handle (and not noticable anyway)
+    // Skip pixels which are fully rough
     float roughness = tex_material.Load(int3(thread_id.xy, 0)).r;
     if (roughness < 1.0f)
     {
         // Compute reflection direction in view space
-        float3 normal           = get_normal_view_space(thread_id.xy);
-        float3 position         = get_position_view_space(thread_id.xy);
-        float3 camera_to_pixel  = normalize(position);
-        float3 reflection       = normalize(reflect(camera_to_pixel, normal));
-
-        // Compute this dot product now as it's used in two places
-        float v_dot_r = dot(-camera_to_pixel, reflection);
+        float3 normal          = get_normal_view_space(thread_id.xy);
+        float3 position        = get_position_view_space(thread_id.xy);
+        float3 camera_to_pixel = normalize(position);
+        float3 reflection      = normalize(reflect(camera_to_pixel, normal));
+        float v_dot_r          = dot(-camera_to_pixel, reflection);
 
         // Don't trace rays which are almost facing the camera
         if (v_dot_r < g_ssr_camera_facing_threshold)
         { 
-            // Jitter reflection vector based on the surface normal
-            {
-                // Compute jitter
-                float random    = get_noise_interleaved_gradient(thread_id.xy);
-                float3 jitter   = hemisphere_samples[random * 63];
-                jitter          *= roughness * roughness; // Adjust with roughness
-
-                // Apply jitter to reflection
-                reflection += jitter;
-            }
-
-            hit_uv  = trace_ray(thread_id.xy, position, reflection);
-            alpha   = compute_alpha(thread_id.xy, hit_uv, v_dot_r);
+            hit_uv = trace_ray(thread_id.xy, position, reflection);
+            alpha  = compute_alpha(thread_id.xy, hit_uv, v_dot_r);
         }
     }
 
-    tex_out_rgba[thread_id.xy]  = float4(hit_uv, alpha, 0.0f);
+    tex_out_rgba[thread_id.xy] = float4(hit_uv.x, hit_uv.y, alpha, 0.0f);
 }
