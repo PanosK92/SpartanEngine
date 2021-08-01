@@ -218,14 +218,13 @@ namespace Spartan
         const char* name            /*= nullptr */
     )
     {
-        m_object_name = name;
+        SP_ASSERT(rhi_device != nullptr);
+        SP_ASSERT(rhi_device->GetContextRhi()->device != nullptr);
 
-        // Validate device
-        if (!rhi_device || !rhi_device->GetContextRhi()->device)
-        {
-            LOG_ERROR("Invalid device.");
-            return;
-        }
+        // Validate window handle
+        const auto hwnd = static_cast<HWND>(window_handle);
+        SP_ASSERT(hwnd != nullptr);
+        SP_ASSERT(IsWindow(hwnd));
 
         // Validate resolution
         if (!RHI_Device::IsValidResolution(width, height))
@@ -234,13 +233,7 @@ namespace Spartan
             return;
         }
 
-        // Validate window handle
-        const auto hwnd = static_cast<HWND>(window_handle);
-        if (!hwnd || !IsWindow(hwnd))
-        {
-            LOG_ERROR_INVALID_PARAMETER();
-            return;
-        }
+        m_object_name = name;
 
         // Copy parameters
         m_format        = format;

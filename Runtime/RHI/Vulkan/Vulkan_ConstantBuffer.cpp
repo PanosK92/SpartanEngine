@@ -72,11 +72,8 @@ namespace Spartan
 
     bool RHI_ConstantBuffer::_create()
     {
-        if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device)
-        {
-            LOG_ERROR_INVALID_PARAMETER();
-            return false;
-        }
+        SP_ASSERT(m_rhi_device != nullptr);
+        SP_ASSERT(m_rhi_device->GetContextRhi()->device != nullptr);
 
         // Destroy previous buffer
         _destroy();
@@ -110,17 +107,9 @@ namespace Spartan
 
     void* RHI_ConstantBuffer::Map()
     {
-        if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device)
-        {
-            LOG_ERROR_INVALID_INTERNALS();
-            return nullptr;
-        }
-
-        if (!m_allocation)
-        {
-            LOG_ERROR("Invalid allocation");
-            return nullptr;
-        }
+        SP_ASSERT(m_rhi_device != nullptr);
+        SP_ASSERT(m_rhi_device->GetContextRhi()->device != nullptr);
+        SP_ASSERT(m_allocation != nullptr);
 
         if (!m_mapped)
         {
@@ -136,17 +125,9 @@ namespace Spartan
 
     bool RHI_ConstantBuffer::Unmap(const uint64_t offset /*= 0*/, const uint64_t size /*= 0*/)
     {
-        if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device)
-        {
-            LOG_ERROR_INVALID_INTERNALS();
-            return false;
-        }
-
-        if (!m_allocation)
-        {
-            LOG_ERROR("Invalid allocation");
-            return false;
-        }
+        SP_ASSERT(m_rhi_device != nullptr);
+        SP_ASSERT(m_rhi_device->GetContextRhi()->device != nullptr);
+        SP_ASSERT(m_allocation != nullptr);
 
         if (m_persistent_mapping)
         {

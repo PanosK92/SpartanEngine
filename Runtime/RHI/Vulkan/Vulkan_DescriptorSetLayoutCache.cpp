@@ -88,12 +88,6 @@ namespace Spartan
 
     void RHI_DescriptorSetLayoutCache::SetDescriptorSetCapacity(uint32_t descriptor_set_capacity)
     {
-        if (!m_rhi_device || !m_rhi_device->GetContextRhi())
-        {
-            LOG_ERROR_INVALID_INTERNALS();
-            return;
-        }
-
         if (m_descriptor_set_capacity == descriptor_set_capacity)
         {
             LOG_INFO("Capacity is already %d elements", m_descriptor_set_capacity);

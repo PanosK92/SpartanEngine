@@ -52,11 +52,8 @@ namespace Spartan
 
     bool RHI_VertexBuffer::_create(const void* vertices)
     {
-        if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device)
-        {
-            LOG_ERROR_INVALID_INTERNALS();
-            return false;
-        }
+        SP_ASSERT(m_rhi_device != nullptr);
+        SP_ASSERT(m_rhi_device->GetContextRhi()->device != nullptr);
 
         // Destroy previous buffer
         _destroy();
@@ -133,11 +130,8 @@ namespace Spartan
             return nullptr;
         }
 
-        if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device)
-        {
-            LOG_ERROR_INVALID_INTERNALS();
-            return nullptr;
-        }
+        SP_ASSERT(m_rhi_device != nullptr);
+        SP_ASSERT(m_rhi_device->GetContextRhi()->device != nullptr);
 
         if (!m_allocation)
         {
