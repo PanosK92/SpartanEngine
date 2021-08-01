@@ -85,11 +85,7 @@ namespace Spartan
 
     bool ResourceCache::IsCached(const string& resource_name, const ResourceType resource_type /*= Resource_Unknown*/)
     {
-        if (resource_name.empty())
-        {
-            LOG_ERROR_INVALID_PARAMETER();
-            return false;
-        }
+        SP_ASSERT(!resource_name.empty());
 
         for (shared_ptr<IResource>& resource : m_resources)
         {
@@ -175,7 +171,7 @@ namespace Spartan
         auto file = make_unique<FileStream>(file_path, FileStream_Write);
         if (!file->IsOpen())
         {
-            LOG_ERROR_GENERIC_FAILURE();
+            LOG_ERROR("Failed to open file.");
             return;
         }
 

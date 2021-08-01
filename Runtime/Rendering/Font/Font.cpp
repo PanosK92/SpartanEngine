@@ -155,11 +155,9 @@ namespace Spartan
 
     bool Font::UpdateBuffers(vector<RHI_Vertex_PosTex>& vertices, vector<uint32_t>& indices) const
     {
-        if (!m_context || !m_vertex_buffer || !m_index_buffer)
-        {
-            LOG_ERROR_INVALID_INTERNALS();
-            return false;
-        }
+        SP_ASSERT(m_context != nullptr);
+        SP_ASSERT(m_vertex_buffer != nullptr);
+        SP_ASSERT(m_index_buffer != nullptr);
 
         // Grow buffers (if needed)
         if (vertices.size() > m_vertex_buffer->GetVertexCount())

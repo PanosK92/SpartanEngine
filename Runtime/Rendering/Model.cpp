@@ -146,11 +146,8 @@ namespace Spartan
 
     void Model::AppendGeometry(const vector<uint32_t>& indices, const vector<RHI_Vertex_PosTexNorTan>& vertices, uint32_t* index_offset, uint32_t* vertex_offset) const
     {
-        if (indices.empty() || vertices.empty())
-        {
-            LOG_ERROR_INVALID_PARAMETER();
-            return;
-        }
+        SP_ASSERT(!indices.empty());
+        SP_ASSERT(!vertices.empty());
 
         // Append indices and vertices to the main mesh
         m_mesh->Indices_Append(indices, index_offset);
@@ -164,11 +161,8 @@ namespace Spartan
 
     void Model::UpdateGeometry()
     {
-        if (m_mesh->Indices_Count() == 0 || m_mesh->Vertices_Count() == 0)
-        {
-            LOG_ERROR_INVALID_PARAMETER();
-            return;
-        }
+        SP_ASSERT(m_mesh->Indices_Count() != 0);
+        SP_ASSERT(m_mesh->Vertices_Count() != 0);
 
         GeometryCreateBuffers();
         m_normalized_scale    = GeometryComputeNormalizedScale();
@@ -177,11 +171,8 @@ namespace Spartan
 
     void Model::AddMaterial(shared_ptr<Material>& material, const shared_ptr<Entity>& entity) const
     {
-        if (!material || !entity)
-        {
-            LOG_ERROR_INVALID_PARAMETER();
-            return;
-        }
+        SP_ASSERT(material != nullptr);
+        SP_ASSERT(entity != nullptr);
 
         // Create a file path for this material
         const string spartan_asset_path = FileSystem::GetDirectoryFromFilePath(GetResourceFilePathNative()) + material->GetResourceName() + EXTENSION_MATERIAL;
@@ -193,11 +184,8 @@ namespace Spartan
 
     void Model::AddTexture(shared_ptr<Material>& material, const Material_Property texture_type, const string& file_path)
     {
-        if (!material || file_path.empty())
-        {
-            LOG_ERROR_INVALID_PARAMETER();
-            return;
-        }
+        SP_ASSERT(material != nullptr);
+        SP_ASSERT(!file_path.empty());
 
         // Try to get the texture
         const auto tex_name = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path);

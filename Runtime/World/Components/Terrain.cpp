@@ -396,11 +396,7 @@ namespace Spartan
 
     void Terrain::UpdateFromModel(const shared_ptr<Model>& model) const
     {
-        if (!model)
-        {
-            LOG_ERROR_INVALID_PARAMETER();
-            return;
-        }
+        SP_ASSERT(model != nullptr);
 
         if (Renderable* renderable = m_entity->AddComponent<Renderable>())
         {

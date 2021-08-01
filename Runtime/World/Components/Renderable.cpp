@@ -225,11 +225,7 @@ namespace Spartan
     // All functions (set/load) resolve to this
     shared_ptr<Material> Renderable::SetMaterial(const shared_ptr<Material>& material)
     {
-        if (!material)
-        {
-            LOG_ERROR_INVALID_PARAMETER();
-            return nullptr;
-        }
+        SP_ASSERT(material != nullptr);
 
         // In order for the component to guarantee serialization/deserialization, we cache the material
         shared_ptr<Material> _material = m_context->GetSubsystem<ResourceCache>()->Cache(material);

@@ -264,11 +264,7 @@ namespace Spartan
 
     bool Light::ComputeProjectionMatrix(uint32_t index /*= 0*/)
     {
-        if (index >= m_shadow_map.texture_depth->GetArrayLength())
-        {
-            LOG_ERROR_INVALID_PARAMETER();
-            return false;
-        }
+        SP_ASSERT(index < m_shadow_map.texture_depth->GetArrayLength());
 
         ShadowSlice& shadow_slice   = m_shadow_map.slices[index];
         const bool reverse_z        = m_renderer ? m_renderer->GetOption(Render_ReverseZ) : false;
@@ -298,22 +294,14 @@ namespace Spartan
 
     const Matrix& Light::GetViewMatrix(uint32_t index /*= 0*/) const
     {
-        if (index >= static_cast<uint32_t>(m_matrix_view.size()))
-        {
-            LOG_ERROR_INVALID_PARAMETER();
-            return Matrix::Identity;
-        }
+        SP_ASSERT(index < static_cast<uint32_t>(m_matrix_view.size()));
 
         return m_matrix_view[index];
     }
 
     const Matrix& Light::GetProjectionMatrix(uint32_t index /*= 0*/) const
     {
-        if (index >= static_cast<uint32_t>(m_matrix_projection.size()))
-        {
-            LOG_ERROR_INVALID_PARAMETER();
-            return Matrix::Identity;
-        }
+        SP_ASSERT(index < static_cast<uint32_t>(m_matrix_projection.size()));
 
         return m_matrix_projection[index];
     }

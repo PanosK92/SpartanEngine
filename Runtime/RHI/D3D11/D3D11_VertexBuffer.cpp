@@ -39,11 +39,8 @@ namespace Spartan
 
     bool RHI_VertexBuffer::_create(const void* vertices)
     {
-        if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device_context)
-        {
-            LOG_ERROR_INVALID_INTERNALS();
-            return false;
-        }
+        SP_ASSERT(m_rhi_device != nullptr);
+        SP_ASSERT(m_rhi_device->GetContextRhi()->device_context != nullptr);
 
         const bool is_dynamic = vertices == nullptr;
 
@@ -78,11 +75,9 @@ namespace Spartan
 
     void* RHI_VertexBuffer::Map()
     {
-        if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device_context || !m_buffer)
-        {
-            LOG_ERROR_INVALID_INTERNALS();
-            return nullptr;
-        }
+        SP_ASSERT(m_rhi_device != nullptr);
+        SP_ASSERT(m_rhi_device->GetContextRhi()->device_context != nullptr);
+        SP_ASSERT(m_buffer != nullptr);
 
         // Disable GPU access to the vertex buffer data.
         D3D11_MAPPED_SUBRESOURCE mapped_resource;
@@ -98,11 +93,9 @@ namespace Spartan
 
     bool RHI_VertexBuffer::Unmap()
     {
-        if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device_context || !m_buffer)
-        {
-            LOG_ERROR_INVALID_INTERNALS();
-            return false;
-        }
+        SP_ASSERT(m_rhi_device != nullptr);
+        SP_ASSERT(m_rhi_device->GetContextRhi()->device_context != nullptr);
+        SP_ASSERT(m_buffer != nullptr);
 
         // Re-enable GPU access to the vertex buffer data.
         m_rhi_device->GetContextRhi()->device_context->Unmap(static_cast<ID3D11Resource*>(m_buffer), 0);

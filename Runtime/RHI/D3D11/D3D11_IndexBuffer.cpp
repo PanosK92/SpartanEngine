@@ -39,11 +39,8 @@ namespace Spartan
 
     bool RHI_IndexBuffer::_create(const void* indices)
     {
-        if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device)
-        {
-            LOG_ERROR_INVALID_INTERNALS();
-            return false;
-        }
+        SP_ASSERT(m_rhi_device != nullptr);
+        SP_ASSERT(m_rhi_device->GetContextRhi()->device != nullptr);
 
         const bool is_dynamic = indices == nullptr;
 
@@ -75,11 +72,9 @@ namespace Spartan
 
     void* RHI_IndexBuffer::Map()
     {
-        if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device_context || !m_resource)
-        {
-            LOG_ERROR_INVALID_INTERNALS();
-            return nullptr;
-        }
+        SP_ASSERT(m_rhi_device != nullptr);
+        SP_ASSERT(m_rhi_device->GetContextRhi()->device_context != nullptr);
+        SP_ASSERT(m_resource != nullptr);
 
         D3D11_MAPPED_SUBRESOURCE mapped_resource;
         if (!d3d11_utility::error_check(m_rhi_device->GetContextRhi()->device_context->Map(static_cast<ID3D11Resource*>(m_resource), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped_resource)))
@@ -93,11 +88,9 @@ namespace Spartan
 
     bool RHI_IndexBuffer::Unmap()
     {
-        if (!m_rhi_device || !m_rhi_device->GetContextRhi()->device_context || !m_resource)
-        {
-            LOG_ERROR_INVALID_INTERNALS();
-            return false;
-        }
+        SP_ASSERT(m_rhi_device != nullptr);
+        SP_ASSERT(m_rhi_device->GetContextRhi()->device_context != nullptr);
+        SP_ASSERT(m_resource != nullptr);
 
         m_rhi_device->GetContextRhi()->device_context->Unmap(static_cast<ID3D11Resource*>(m_resource), 0);
         return true;

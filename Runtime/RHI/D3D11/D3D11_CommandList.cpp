@@ -518,11 +518,8 @@ namespace Spartan
 
     void RHI_CommandList::SetBufferVertex(const RHI_VertexBuffer* buffer, const uint64_t offset /*= 0*/)
     {
-        if (!buffer || !buffer->GetResource())
-        {
-            LOG_ERROR_INVALID_PARAMETER();
-            return;
-        }
+        SP_ASSERT(buffer != nullptr);
+        SP_ASSERT(buffer->GetResource() != nullptr);
 
         ID3D11Buffer* vertex_buffer         = static_cast<ID3D11Buffer*>(buffer->GetResource());
         UINT stride                         = buffer->GetStride();
@@ -546,11 +543,8 @@ namespace Spartan
 
     void RHI_CommandList::SetBufferIndex(const RHI_IndexBuffer* buffer, const uint64_t offset /*= 0*/)
     {
-        if (!buffer || !buffer->GetResource())
-        {
-            LOG_ERROR_INVALID_PARAMETER();
-            return;
-        }
+        SP_ASSERT(buffer != nullptr);
+        SP_ASSERT(buffer->GetResource() != nullptr);
 
         ID3D11Buffer* index_buffer          = static_cast<ID3D11Buffer*>(buffer->GetResource());
         const DXGI_FORMAT format            = buffer->Is16Bit() ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT;
@@ -741,18 +735,11 @@ namespace Spartan
 
     bool RHI_CommandList::Timestamp_Start(void* query_disjoint /*= nullptr*/, void* query_start /*= nullptr*/)
     {
-        if (!query_disjoint || !query_start)
-        {
-            LOG_ERROR_INVALID_PARAMETER();
-            return false;
-        }
+        SP_ASSERT(query_disjoint != nullptr);
+        SP_ASSERT(query_start != nullptr);
+        SP_ASSERT(m_rhi_device != nullptr);
 
         RHI_Context* rhi_context = m_rhi_device->GetContextRhi();
-        if (!rhi_context->device_context)
-        {
-            LOG_ERROR_INVALID_INTERNALS();
-            return false;
-        }
 
         rhi_context->device_context->Begin(static_cast<ID3D11Query*>(query_disjoint));
         rhi_context->device_context->End(static_cast<ID3D11Query*>(query_start));
@@ -762,19 +749,11 @@ namespace Spartan
 
     bool RHI_CommandList::Timestamp_End(void* query_disjoint /*= nullptr*/, void* query_end /*= nullptr*/)
     {
-        if (!query_disjoint || !query_end)
-        {
-            LOG_ERROR_INVALID_PARAMETER();
-            return false;
-        }
+        SP_ASSERT(query_disjoint != nullptr);
+        SP_ASSERT(query_end != nullptr);
+        SP_ASSERT(m_rhi_device != nullptr);
 
         RHI_Context* rhi_context = m_rhi_device->GetContextRhi();
-
-        if (!rhi_context->device_context)
-        {
-            LOG_ERROR_INVALID_INTERNALS();
-            return false;
-        }
 
         rhi_context->device_context->End(static_cast<ID3D11Query*>(query_end));
         rhi_context->device_context->End(static_cast<ID3D11Query*>(query_disjoint));
@@ -784,19 +763,12 @@ namespace Spartan
 
     float RHI_CommandList::Timestamp_GetDuration(void* query_disjoint, void* query_start, void* query_end, const uint32_t pass_index)
     {
-        if (!query_disjoint || !query_start || !query_end)
-        {
-            LOG_ERROR_INVALID_PARAMETER();
-            return 0.0f;
-        }
+        SP_ASSERT(query_disjoint != nullptr);
+        SP_ASSERT(query_start != nullptr);
+        SP_ASSERT(query_end != nullptr);
+        SP_ASSERT(m_rhi_device != nullptr);
 
         RHI_Context* rhi_context = m_rhi_device->GetContextRhi();
-
-        if (!rhi_context->device_context)
-        {
-            LOG_ERROR_INVALID_INTERNALS();
-            return 0.0f;
-        }
 
         // Check whether timestamps were disjoint during the last frame
         D3D10_QUERY_DATA_TIMESTAMP_DISJOINT disjoint_data = {};
@@ -850,18 +822,13 @@ namespace Spartan
 
     bool RHI_CommandList::Gpu_QueryCreate(RHI_Device* rhi_device, void** query, const RHI_Query_Type type)
     {
-        RHI_Context* rhi_context = rhi_device->GetContextRhi();
-
-        if (!rhi_context->device)
-        {
-            LOG_ERROR_INVALID_INTERNALS();
-            return false;
-        }
+        SP_ASSERT(rhi_device != nullptr);
+        SP_ASSERT(rhi_device->GetContextRhi()->device != nullptr);
 
         D3D11_QUERY_DESC desc   = {};
         desc.Query              = (type == RHI_Query_Type::Timestamp_Disjoint) ? D3D11_QUERY_TIMESTAMP_DISJOINT : D3D11_QUERY_TIMESTAMP;
         desc.MiscFlags          = 0;
-        const auto result = rhi_context->device->CreateQuery(&desc, reinterpret_cast<ID3D11Query**>(query));
+        const auto result = rhi_device->GetContextRhi()->device->CreateQuery(&desc, reinterpret_cast<ID3D11Query**>(query));
         if (FAILED(result))
         {
             LOG_ERROR("Failed to create ID3D11Query");

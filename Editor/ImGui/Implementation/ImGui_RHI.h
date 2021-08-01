@@ -82,11 +82,9 @@ namespace ImGui::RHI
         g_rhi_device    = g_renderer->GetRhiDevice();
         g_cmd_list      = g_renderer->GetSwapChain()->CreateCmdList();
 
-        if (!g_context || !g_rhi_device || !g_rhi_device->IsInitialised())
-        {
-            LOG_ERROR_INVALID_PARAMETER();
-            return false;
-        }
+        SP_ASSERT(g_context != nullptr);
+        SP_ASSERT(g_rhi_device != nullptr);
+        SP_ASSERT(g_rhi_device->IsInitialised());
 
         // Create required RHI objects
         {

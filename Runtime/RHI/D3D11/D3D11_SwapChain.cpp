@@ -47,20 +47,13 @@ namespace Spartan
         const char* name            /*= nullptr */
     )
     {
-        // Validate device
-        if (!rhi_device || !rhi_device->GetContextRhi()->device)
-        {
-            LOG_ERROR("Invalid device.");
-            return;
-        }
+        SP_ASSERT(rhi_device != nullptr);
+        SP_ASSERT(rhi_device->GetContextRhi()->device != nullptr);
 
-        // Validate window handle
+        // Get window handle
         const auto hwnd = static_cast<HWND>(window_handle);
-        if (!hwnd || !IsWindow(hwnd))
-        {
-            LOG_ERROR_INVALID_PARAMETER();
-            return;
-        }
+        SP_ASSERT(hwnd != nullptr);
+        SP_ASSERT(IsWindow(hwnd));
 
         // Validate resolution
         if (!rhi_device->IsValidResolution(width, height))
@@ -158,12 +151,8 @@ namespace Spartan
     }
 
     bool RHI_SwapChain::Resize(const uint32_t width, const uint32_t height, const bool force /*= false*/)
-    {    
-        if (!m_swap_chain_view)
-        {
-            LOG_ERROR_INVALID_INTERNALS();
-            return false;
-        }
+    {
+        SP_ASSERT(m_swap_chain_view != nullptr);
 
         // Validate resolution
         m_present_enabled = m_rhi_device->IsValidResolution(width, height);

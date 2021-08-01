@@ -40,11 +40,8 @@ namespace Spartan
         const float mip_lod_bias                            /* = 0.0f */
     )
     {
-        if (!rhi_device || !rhi_device->GetContextRhi()->device)
-        {
-            LOG_ERROR_INVALID_PARAMETER();
-            return;
-        }
+        SP_ASSERT(rhi_device != nullptr);
+        SP_ASSERT(rhi_device->GetContextRhi()->device != nullptr);
 
         m_resource              = nullptr;
         m_rhi_device            = rhi_device;
