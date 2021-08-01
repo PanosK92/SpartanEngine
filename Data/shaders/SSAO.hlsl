@@ -63,11 +63,11 @@ float4 ground_truth_ambient_occlusion(int2 pos)
     const float step_direction = PI2 / (float)g_ao_directions;
 
     // Offsets (noise over space and time)
-    const float noise_gradient_temporal     = get_noise_interleaved_gradient(pos);
-    const float offset_spatial              = get_offset_non_temporal(pos);
-    const float offset_temporal             = get_offset();
-    const float offset_rotation_temporal    = get_direction();
-    const float ray_offset                  = frac(offset_spatial + offset_temporal) + (get_random(origin_uv) * 2.0 - 1.0) * 0.25;
+    const float noise_gradient_temporal  = get_noise_interleaved_gradient(pos);
+    const float offset_spatial           = get_offset_non_temporal(pos);
+    const float offset_temporal          = get_offset();
+    const float offset_rotation_temporal = get_direction();
+    const float ray_offset               = frac(offset_spatial + offset_temporal) + (get_random(origin_uv) * 2.0 - 1.0) * 0.25;
 
     // Compute occlusion
     float4 light = 0;

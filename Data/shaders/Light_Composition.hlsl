@@ -32,7 +32,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 
     Surface surface;
     surface.Build(thread_id.xy);
-    
+
     // If this is a transparent pass, ignore all opaque pixels, and vice versa.
     if ((g_is_transparent_pass && surface.is_opaque()) || (!g_is_transparent_pass && surface.is_transparent() && !surface.is_sky()))
         return;
@@ -76,7 +76,11 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
             float is_behind                 = step(depth_surface - 0.02f, depth_surface_refracted); // step does a >=, but when the depth is equal, we still want refract, so we use a bias of 0.02
 
             // Refraction from ALDI
-            light_refraction = tex_frame.SampleLevel(sampler_bilinear_clamp, surface.uv + refraction_uv_offset * is_behind, 0).rgb;
+            float3 material  = tex_material.SampleLevel(sampler_point_clamp, surface.uv, 0).rgb;
+            float roughness  = material.r;
+            float roughness2 = roughness * roughness;
+            float mip_level  = lerp(0, g_frame_mip_count, roughness2);
+            light_refraction = tex_frame.SampleLevel(sampler_bilinear_clamp, surface.uv + refraction_uv_offset * is_behind, mip_level).rgb;
         }
         
         // Compose everything
