@@ -179,7 +179,7 @@ namespace Spartan
         void Pass_Depth_Prepass(RHI_CommandList* cmd_list);
         void Pass_GBuffer(RHI_CommandList* cmd_list, const bool is_transparent_pass);
         void Pass_Ssao(RHI_CommandList* cmd_list);
-        void Pass_Reflections_Ssr(RHI_CommandList* cmd_list);
+        void Pass_Ssr(RHI_CommandList* cmd_list);
         void Pass_Reflections(RHI_CommandList* cmd_list, RHI_Texture* tex_out, RHI_Texture* tex_reflections);
         void Pass_Light(RHI_CommandList* cmd_list, const bool is_transparent_pass);
         void Pass_Light_Composition(RHI_CommandList* cmd_list, RHI_Texture* tex_out, const bool is_transparent_pass);
@@ -208,7 +208,7 @@ namespace Spartan
         void Pass_TransformHandle(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
         void Pass_Text(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
         void Pass_BrdfSpecularLut(RHI_CommandList* cmd_list);
-        void Pass_CopyBilinear(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
+        void Pass_Copy(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out, const bool bilinear);
 
         // Constant buffers
         bool Update_Cb_Frame(RHI_CommandList* cmd_list);

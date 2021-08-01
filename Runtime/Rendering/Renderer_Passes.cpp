@@ -107,18 +107,21 @@ namespace Spartan
             Pass_Depth_Prepass(cmd_list);
             Pass_GBuffer(cmd_list, is_transparent_pass);
             Pass_Ssao(cmd_list);
-            Pass_Reflections_Ssr(cmd_list);
+            Pass_Ssr(cmd_list);
             Pass_Light(cmd_list, is_transparent_pass); // compute diffuse and specular buffers
             Pass_Light_Composition(cmd_list, rt1, is_transparent_pass); // compose diffuse, specular, ssao, volumetric etc.
             Pass_Light_ImageBased(cmd_list, rt1, is_transparent_pass);
 
-            // If SSR is enabled, copy the frame so that SSR can use it to reflect from
-            if ((m_options & Render_ScreenSpaceReflections) != 0)
+            // Reflections
             {
-                cmd_list->Blit(rt1, rt2);
-            }
+                // If SSR is enabled, copy the frame so that SSR can use it to reflect from
+                if ((m_options & Render_ScreenSpaceReflections) != 0)
+                {
+                    cmd_list->Blit(rt1, rt2);
+                }
 
-            Pass_Reflections(cmd_list, rt1, rt2); // SSR & Environment
+                Pass_Reflections(cmd_list, rt1, rt2); // SSR & Environment
+            }
         }
 
         // Transparents
@@ -614,7 +617,7 @@ namespace Spartan
         Pass_Blur_BilateralGaussian(cmd_list, tex_ssao_noisy, tex_ssao_blurred, sigma, pixel_stride, false);
     }
 
-    void Renderer::Pass_Reflections_Ssr(RHI_CommandList* cmd_list)
+    void Renderer::Pass_Ssr(RHI_CommandList* cmd_list)
     {
         if ((m_options & Render_ScreenSpaceReflections) == 0)
             return;
@@ -630,7 +633,7 @@ namespace Spartan
         // Set render state
         static RHI_PipelineState pso;
         pso.shader_compute   = shader_c;
-        pso.pass_name        = "Pass_Reflections_Ssr";
+        pso.pass_name        = "Pass_Ssr";
 
         // Draw
         if (cmd_list->BeginRenderPass(pso))
@@ -1138,8 +1141,9 @@ namespace Spartan
         {
             if (resolution_output_different)
             {
-                // D3D11 luggage, can't blit to different resolution
-                Pass_CopyBilinear(cmd_list, rt_frame_render_in.get(), rt_frame_render_output_in.get());
+                // D3D11 baggage, can't blit to different resolution
+                bool bilinear = true;
+                Pass_Copy(cmd_list, rt_frame_render_in.get(), rt_frame_render_output_in.get(), bilinear);
             }
             else
             {
@@ -1245,24 +1249,16 @@ namespace Spartan
             const uint32_t thread_group_count_z = 1;
             const bool async = false;
 
+            cmd_list->SetTexture(RendererBindings_Uav::rgb,             tex_out);
             cmd_list->SetTexture(RendererBindings_Srv::tex,              tex_history);
             cmd_list->SetTexture(RendererBindings_Srv::tex2,             tex_in);
             cmd_list->SetTexture(RendererBindings_Srv::gbuffer_velocity, RENDER_TARGET(RendererRt::Gbuffer_Velocity));
             cmd_list->SetTexture(RendererBindings_Srv::gbuffer_depth,    RENDER_TARGET(RendererRt::Gbuffer_Depth));
-            cmd_list->SetTexture(RendererBindings_Uav::rgb,              tex_out);
             cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
             cmd_list->EndRenderPass();
         }
 
-        // Update history buffer
-        if (tex_out->GetViewport() == tex_history->GetViewport())
-        {
-            cmd_list->Blit(tex_out.get(), tex_history);
-        }
-        else
-        {
-            Pass_CopyBilinear(cmd_list, tex_in.get(), tex_out.get());
-        }
+        cmd_list->Blit(tex_out.get(), tex_history);
     }
 
     void Renderer::Pass_PostProcess_Bloom(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
@@ -2506,10 +2502,10 @@ namespace Spartan
         }
     }
 
-    void Renderer::Pass_CopyBilinear(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
+    void Renderer::Pass_Copy(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out, const bool bilinear)
     {
         // Acquire shaders
-        RHI_Shader* shader_c = m_shaders[RendererShader::Copy_Bilinear_C].get();
+        RHI_Shader* shader_c = m_shaders[bilinear ? RendererShader::Copy_Bilinear_C : RendererShader::Copy_Point_C].get();
         if (!shader_c->IsCompiled())
             return;
 
