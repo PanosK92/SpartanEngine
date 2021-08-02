@@ -142,11 +142,11 @@ namespace Spartan
         // Render resolution
         if (create_render)
         {
-            // Deduce how many mips are required to scale down to or below 2px (in any dimension)
+            // Deduce how many mips are required to scale down to or below 16px (in any dimension)
             uint32_t mip_count  = 1;
             uint32_t width      = width_render;
             uint32_t height     = height_render;
-            while (width > 4 && height > 4)
+            while (width > 16 && height > 16)
             {
                 width /= 2;
                 height /= 2;
@@ -166,7 +166,6 @@ namespace Spartan
             RENDER_TARGET(RendererRt::Light_Specular_Transparent) = make_unique<RHI_Texture2D>(m_context, width_render, height_render, 1,         RHI_Format_R11G11B10_Float,      0,                                            "rt_light_specular_transparent");
             RENDER_TARGET(RendererRt::Light_Volumetric)           = make_unique<RHI_Texture2D>(m_context, width_render, height_render, 1,         RHI_Format_R11G11B10_Float,      0,                                            "rt_light_volumetric");
             RENDER_TARGET(RendererRt::Ssao)                       = make_unique<RHI_Texture2D>(m_context, width_render, height_render, 1,         RHI_Format_R16G16B16A16_Snorm,   0,                                            "rt_ssao");
-            RENDER_TARGET(RendererRt::Ssao_Blurred)               = make_unique<RHI_Texture2D>(m_context, width_render, height_render, 1,         RHI_Format_R16G16B16A16_Snorm,   0,                                            "rt_ssao_blurred");
             RENDER_TARGET(RendererRt::Ssr)                        = make_shared<RHI_Texture2D>(m_context, width_render, height_render, 1,         RHI_Format_R16G16B16A16_Snorm,   RHI_Texture_Storage,                          "rt_ssr");
 
             // Half resolution
@@ -195,6 +194,8 @@ namespace Spartan
 
                 RENDER_TARGET(RendererRt::Bloom) = make_shared<RHI_Texture2D>(m_context, width_output, height_output, mip_count, RHI_Format_R11G11B10_Float, RHI_Texture_Storage | RHI_Texture_PerMipView, "rt_bloom");
             }
+
+            RENDER_TARGET(RendererRt::Blur) = make_unique<RHI_Texture2D>(m_context, width_output, height_output, 1, RHI_Format_R16G16B16A16_Float, 0, "rt_blur");
         }
 
         // Fixed resolution
@@ -433,9 +434,9 @@ namespace Spartan
             // Mip generation
             m_shaders[RendererShader::AMD_FidelityFX_SPD_C] = make_shared<RHI_Shader>(m_context);
             m_shaders[RendererShader::AMD_FidelityFX_SPD_C]->Compile(RHI_Shader_Compute, dir_shaders + "AMD_FidelityFX_SPD.hlsl", async);
-            m_shaders[RendererShader::AMD_FidelityFX_SPD_BloomAntiflicker_C] = make_shared<RHI_Shader>(m_context);
-            m_shaders[RendererShader::AMD_FidelityFX_SPD_BloomAntiflicker_C]->AddDefine("BLOOM_ANTIFLICKER");
-            m_shaders[RendererShader::AMD_FidelityFX_SPD_BloomAntiflicker_C]->Compile(RHI_Shader_Compute, dir_shaders + "AMD_FidelityFX_SPD.hlsl", async);
+            m_shaders[RendererShader::AMD_FidelityFX_SPD_LuminanceAntiflicker_C] = make_shared<RHI_Shader>(m_context);
+            m_shaders[RendererShader::AMD_FidelityFX_SPD_LuminanceAntiflicker_C]->AddDefine("LUMINANCE_ANTIFLICKER");
+            m_shaders[RendererShader::AMD_FidelityFX_SPD_LuminanceAntiflicker_C]->Compile(RHI_Shader_Compute, dir_shaders + "AMD_FidelityFX_SPD.hlsl", async);
 
             // Upsampling
             m_shaders[RendererShader::AMD_FidelityFX_FSR_Upsample_C] = make_shared<RHI_Shader>(m_context);
