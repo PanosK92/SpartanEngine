@@ -474,7 +474,7 @@ namespace Spartan
         m_profiler->m_rhi_dispatch++;
 
         // Make sure to clean the compute shader UAV slots after dispatching.
-        // If we try to bind the resource but it's still bound as a computer shader output the runtime will automatically set the ID3D11ShaderResourceView to null.
+        // If we try to bind the resource but it's still bound as a computer shader output the runtime will automatically set the it to null.
         const void* resource_array[8] = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
         device_context->CSSetUnorderedAccessViews(0, 8, reinterpret_cast<ID3D11UnorderedAccessView* const*>(&resource_array), nullptr);
 

@@ -357,7 +357,7 @@ void Widget_RenderOptions::TickVisible()
                 WidgetHelper::CheckBox("Depth of field (controlled by the camera's aperture) - WIP", do_dof);
 
                 // Chromatic aberration
-                WidgetHelper::CheckBox("Chromatic aberration", do_chromatic_aberration, "Emulates the inability of old cameras to focus all colors in the same focal point.");
+                WidgetHelper::CheckBox("Chromatic aberration (controlled by the camera's aperture)", do_chromatic_aberration, "Emulates the inability of old cameras to focus all colors in the same focal point.");
 
                 // Film grain
                 WidgetHelper::CheckBox("Film grain", do_film_grain);

@@ -105,11 +105,12 @@ namespace Spartan
         RHI_Texture_Mip& GetMip(const uint32_t array_index, const uint32_t mip_index);
         RHI_Texture_Slice& GetSlice(const uint32_t array_index);
 
-        // Binding type
+        // Flag queries
         bool IsSampled()        const { return m_flags & RHI_Texture_Sampled; }
         bool IsStorage()        const { return m_flags & RHI_Texture_Storage; }
         bool IsDepthStencil()   const { return m_flags & RHI_Texture_DepthStencil; }
         bool IsRenderTarget()   const { return m_flags & RHI_Texture_RenderTarget; }
+        bool HasPerMipView()    const { return m_flags & RHI_Texture_PerMipView; }
 
         // Format type
         bool IsDepthFormat()            const { return m_format == RHI_Format_D32_Float || m_format == RHI_Format_D32_Float_S8X24_Uint; }
@@ -124,7 +125,6 @@ namespace Spartan
         // Misc
         const auto& GetViewport()   const { return m_viewport; }
         uint16_t GetFlags()         const { return m_flags; }
-        bool HasPerMipView()        const { return m_flags & RHI_Texture_PerMipView; }
 
         // GPU resources
         void*& Get_Resource()                                                     { return m_resource; }

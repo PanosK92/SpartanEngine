@@ -80,7 +80,7 @@ float4 ground_truth_ambient_occlusion(int2 pos)
         [unroll]
         for (uint step_index = 0; step_index < g_ao_steps; ++step_index)
         {
-            float2 uv_offset        = max(step_offset * (step_index + ray_offset), 1 + step_index) * rotation_direction;
+            float2 uv_offset        = round(max(step_offset * (step_index + ray_offset), 1 + step_index)) * rotation_direction;
             float2 sample_uv        = origin_uv + uv_offset;
             float3 sample_position  = get_position_view_space(sample_uv);
             float transport         = compute_occlusion(origin_position, origin_normal, sample_position);
@@ -112,4 +112,3 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     tex_out_r[thread_id.xy] = ground_truth_ambient_occlusion(thread_id.xy).a;
 #endif
 }
-

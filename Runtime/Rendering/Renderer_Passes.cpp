@@ -121,7 +121,8 @@ namespace Spartan
                 cmd_list->Blit(rt1, rt2);
 
                 // Generate frame mips so that the reflections can simulate roughness
-                Pass_AMD_FidelityFX_SinglePassDowsnampler(cmd_list, rt2, false); 
+                const bool luminance_antiflicker = false;
+                Pass_AMD_FidelityFX_SinglePassDowsnampler(cmd_list, rt2, luminance_antiflicker);
 
                 // Apply ssr and fall back to environment reflections
                 Pass_Reflections(cmd_list, rt1, rt2);
@@ -135,7 +136,17 @@ namespace Spartan
             cmd_list->Blit(rt1, rt2);
 
             // Generate frame mips so that the reflections can simulate roughness
-            Pass_AMD_FidelityFX_SinglePassDowsnampler(cmd_list, rt2, false);
+            const bool luminance_antiflicker = true;
+            Pass_AMD_FidelityFX_SinglePassDowsnampler(cmd_list, rt2, luminance_antiflicker);
+
+            // Blur the smaller mips to reduce blockiness/flickering
+            for (uint32_t i = 1; i < rt2->GetMipCount(); i++)
+            {
+                const bool depth_aware      = false;
+                const float sigma           = 2.0f;
+                const float pixel_stride    = 1.0;
+                Pass_Blur_Gaussian(cmd_list, rt2, depth_aware, sigma, pixel_stride, i);
+            }
 
             bool is_transparent_pass = true;
 
@@ -580,13 +591,12 @@ namespace Spartan
             return;
 
         // Acquire textures
-        shared_ptr<RHI_Texture>& tex_ssao_noisy     = RENDER_TARGET(RendererRt::Ssao);
-        shared_ptr<RHI_Texture>& tex_ssao_blurred   = RENDER_TARGET(RendererRt::Ssao_Blurred);
-        RHI_Texture* tex_depth                      = RENDER_TARGET(RendererRt::Gbuffer_Depth).get();
-        RHI_Texture* tex_normal                     = RENDER_TARGET(RendererRt::Gbuffer_Normal).get();
-        RHI_Texture* tex_albedo                     = RENDER_TARGET(RendererRt::Gbuffer_Albedo).get();
-        RHI_Texture* tex_velocity                   = RENDER_TARGET(RendererRt::Gbuffer_Velocity).get();
-        RHI_Texture* tex_diffuse                    = RENDER_TARGET(RendererRt::Light_Diffuse).get();
+        RHI_Texture* tex_ssao     = RENDER_TARGET(RendererRt::Ssao).get();
+        RHI_Texture* tex_depth    = RENDER_TARGET(RendererRt::Gbuffer_Depth).get();
+        RHI_Texture* tex_normal   = RENDER_TARGET(RendererRt::Gbuffer_Normal).get();
+        RHI_Texture* tex_albedo   = RENDER_TARGET(RendererRt::Gbuffer_Albedo).get();
+        RHI_Texture* tex_velocity = RENDER_TARGET(RendererRt::Gbuffer_Velocity).get();
+        RHI_Texture* tex_diffuse  = RENDER_TARGET(RendererRt::Light_Diffuse).get();
 
         // Set render state
         static RHI_PipelineState pso;
@@ -597,15 +607,15 @@ namespace Spartan
         if (cmd_list->BeginRenderPass(pso))
         {
             // Update uber buffer
-            m_cb_uber_cpu.resolution = Vector2(static_cast<float>(tex_ssao_noisy->GetWidth()), static_cast<float>(tex_ssao_noisy->GetHeight()));
+            m_cb_uber_cpu.resolution = Vector2(static_cast<float>(tex_ssao->GetWidth()), static_cast<float>(tex_ssao->GetHeight()));
             Update_Cb_Uber(cmd_list);
 
-            const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_ssao_noisy->GetWidth()) / m_thread_group_count));
-            const uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_ssao_noisy->GetHeight()) / m_thread_group_count));
+            const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_ssao->GetWidth()) / m_thread_group_count));
+            const uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_ssao->GetHeight()) / m_thread_group_count));
             const uint32_t thread_group_count_z = 1;
             const bool async = false;
 
-            cmd_list->SetTexture(do_gi ? RendererBindings_Uav::rgba : RendererBindings_Uav::r, tex_ssao_noisy);
+            cmd_list->SetTexture(do_gi ? RendererBindings_Uav::rgba : RendererBindings_Uav::r, tex_ssao);
             cmd_list->SetTexture(RendererBindings_Srv::gbuffer_normal, tex_normal);
             cmd_list->SetTexture(RendererBindings_Srv::gbuffer_depth, tex_depth);
             if (do_gi)
@@ -623,7 +633,7 @@ namespace Spartan
         const bool depth_aware   = true;
         const float sigma        = 2.0f;
         const float pixel_stride = 2.0f;
-        Pass_Blur_Gaussian(cmd_list, tex_ssao_noisy, tex_ssao_blurred, depth_aware, sigma, pixel_stride);
+        Pass_Blur_Gaussian(cmd_list, tex_ssao, depth_aware, sigma, pixel_stride);
     }
 
     void Renderer::Pass_Ssr(RHI_CommandList* cmd_list)
@@ -760,7 +770,7 @@ namespace Spartan
                         cmd_list->SetTexture(RendererBindings_Srv::gbuffer_normal,   RENDER_TARGET(RendererRt::Gbuffer_Normal));
                         cmd_list->SetTexture(RendererBindings_Srv::gbuffer_material, RENDER_TARGET(RendererRt::Gbuffer_Material));
                         cmd_list->SetTexture(RendererBindings_Srv::gbuffer_depth,    RENDER_TARGET(RendererRt::Gbuffer_Depth));
-                        cmd_list->SetTexture(RendererBindings_Srv::ssao,             RENDER_TARGET(RendererRt::Ssao_Blurred));
+                        cmd_list->SetTexture(RendererBindings_Srv::ssao,             RENDER_TARGET(RendererRt::Ssao));
 
                         // Set shadow map
                         if (light->GetShadowsEnabled())
@@ -841,7 +851,7 @@ namespace Spartan
             cmd_list->SetTexture(RendererBindings_Srv::light_specular,   is_transparent_pass ? RENDER_TARGET(RendererRt::Light_Specular_Transparent).get() : RENDER_TARGET(RendererRt::Light_Specular).get());
             cmd_list->SetTexture(RendererBindings_Srv::light_volumetric, RENDER_TARGET(RendererRt::Light_Volumetric));
             cmd_list->SetTexture(RendererBindings_Srv::frame,            RENDER_TARGET(RendererRt::Frame_Render_2)); // refraction
-            cmd_list->SetTexture(RendererBindings_Srv::ssao,             RENDER_TARGET(RendererRt::Ssao_Blurred));
+            cmd_list->SetTexture(RendererBindings_Srv::ssao,             RENDER_TARGET(RendererRt::Ssao));
             cmd_list->SetTexture(RendererBindings_Srv::environment,      GetEnvironmentTexture());
 
             cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
@@ -895,7 +905,7 @@ namespace Spartan
             cmd_list->SetTexture(RendererBindings_Srv::gbuffer_normal,   RENDER_TARGET(RendererRt::Gbuffer_Normal));
             cmd_list->SetTexture(RendererBindings_Srv::gbuffer_material, RENDER_TARGET(RendererRt::Gbuffer_Material));
             cmd_list->SetTexture(RendererBindings_Srv::gbuffer_depth,    tex_depth);
-            cmd_list->SetTexture(RendererBindings_Srv::ssao,             (m_options & Render_Ssao) ? RENDER_TARGET(RendererRt::Ssao_Blurred) : m_tex_default_white);
+            cmd_list->SetTexture(RendererBindings_Srv::ssao,             (m_options & Render_Ssao) ? RENDER_TARGET(RendererRt::Ssao) : m_tex_default_white);
             cmd_list->SetTexture(RendererBindings_Srv::lutIbl,           RENDER_TARGET(RendererRt::Brdf_Specular_Lut));
             cmd_list->SetTexture(RendererBindings_Srv::environment,      GetEnvironmentTexture());
 
@@ -906,22 +916,36 @@ namespace Spartan
         }
     }
 
-    void Renderer::Pass_Blur_Gaussian(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out, const bool depth_aware, const float sigma, const float pixel_stride)
+    void Renderer::Pass_Blur_Gaussian(RHI_CommandList* cmd_list, RHI_Texture* tex_in, const bool depth_aware, const float sigma, const float pixel_stride, const int mip /*= -1*/)
     {
-        // Textures must match because they will get swapped in the end
-        SP_ASSERT((tex_in->GetWidth() == tex_out->GetWidth()) && (tex_in->GetHeight() == tex_out->GetHeight()) && (tex_in->GetFormat() == tex_out->GetFormat()));
-
         // Acquire shaders
         RHI_Shader* shader_c = m_shaders[depth_aware ? RendererShader::BlurGaussianBilateral_C : RendererShader::BlurGaussian_C].get();
         if (!shader_c->IsCompiled())
             return;
 
+        const bool mip_requested = mip != -1;
+
+        // If we need to blur a specific mip, ensure that the texture has per mip views
+        if (mip_requested)
+        {
+            SP_ASSERT(tex_in->HasPerMipView());
+        }
+
+        // Compute width and height
+        const uint32_t width  = mip_requested ? (tex_in->GetWidth()  >> mip) : tex_in->GetWidth();
+        const uint32_t height = mip_requested ? (tex_in->GetHeight() >> mip) : tex_in->GetHeight();
+
         // Acquire render targets
         RHI_Texture* tex_depth  = RENDER_TARGET(RendererRt::Gbuffer_Depth).get();
         RHI_Texture* tex_normal = RENDER_TARGET(RendererRt::Gbuffer_Normal).get();
+        RHI_Texture* tex_blur   = RENDER_TARGET(RendererRt::Blur).get();
 
-        const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / m_thread_group_count));
-        const uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetHeight()) / m_thread_group_count));
+        // Ensure that the blur scratch texture is big enough
+        SP_ASSERT(tex_blur->GetWidth() >= width && tex_blur->GetHeight() >= height);
+
+        // Compute thread group count
+        const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(width) / m_thread_group_count));
+        const uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(height) / m_thread_group_count));
         const uint32_t thread_group_count_z = 1;
         const bool async                    = false;
 
@@ -935,13 +959,13 @@ namespace Spartan
             if (cmd_list->BeginRenderPass(pso))
             {
                 // Update uber buffer
-                m_cb_uber_cpu.resolution     = Vector2(static_cast<float>(tex_in->GetWidth()), static_cast<float>(tex_in->GetHeight()));
+                m_cb_uber_cpu.resolution     = Vector2(static_cast<float>(width), static_cast<float>(height));
                 m_cb_uber_cpu.blur_direction = Vector2(pixel_stride, 0.0f);
                 m_cb_uber_cpu.blur_sigma     = sigma;
                 Update_Cb_Uber(cmd_list);
             
-                cmd_list->SetTexture(RendererBindings_Uav::rgba, tex_out);
-                cmd_list->SetTexture(RendererBindings_Srv::tex, tex_in);
+                cmd_list->SetTexture(RendererBindings_Uav::rgba, tex_blur);
+                cmd_list->SetTexture(RendererBindings_Srv::tex, tex_in, mip);
                 if (depth_aware)
                 {
                     cmd_list->SetTexture(RendererBindings_Srv::gbuffer_depth, tex_depth);
@@ -962,12 +986,13 @@ namespace Spartan
 
             if (cmd_list->BeginRenderPass(pso))
             {
+
+                m_cb_uber_cpu.resolution     = Vector2(static_cast<float>(tex_blur->GetWidth()), static_cast<float>(tex_blur->GetHeight()));
                 m_cb_uber_cpu.blur_direction = Vector2(0.0f, pixel_stride);
-                m_cb_uber_cpu.blur_sigma     = sigma;
                 Update_Cb_Uber(cmd_list);
 
-                cmd_list->SetTexture(RendererBindings_Uav::rgba, tex_in);
-                cmd_list->SetTexture(RendererBindings_Srv::tex, tex_out);
+                cmd_list->SetTexture(RendererBindings_Uav::rgba, tex_in, mip);
+                cmd_list->SetTexture(RendererBindings_Srv::tex, tex_blur);
                 if (depth_aware)
                 {
                     cmd_list->SetTexture(RendererBindings_Srv::gbuffer_depth, tex_depth);
@@ -978,9 +1003,6 @@ namespace Spartan
                 cmd_list->EndRenderPass();
             }
         }
-
-        // Swap textures
-        tex_in.swap(tex_out);
     }
 
     void Renderer::Pass_PostProcess(RHI_CommandList* cmd_list)
@@ -1188,8 +1210,8 @@ namespace Spartan
         }
 
         // Generate mips
-        const bool bloom_antiflicker = true;
-        Pass_AMD_FidelityFX_SinglePassDowsnampler(cmd_list, tex_bloom, bloom_antiflicker);
+        const bool luminance_antiflicker = true;
+        Pass_AMD_FidelityFX_SinglePassDowsnampler(cmd_list, tex_bloom, luminance_antiflicker);
 
         // Starting from the lowest mip, upsample and blend with the higher one
         {
@@ -1628,7 +1650,7 @@ namespace Spartan
         }
     }
 
-    void Renderer::Pass_AMD_FidelityFX_SinglePassDowsnampler(RHI_CommandList* cmd_list, RHI_Texture* tex, const bool bloom_antiflicker)
+    void Renderer::Pass_AMD_FidelityFX_SinglePassDowsnampler(RHI_CommandList* cmd_list, RHI_Texture* tex, const bool luminance_antiflicker)
     {
         // AMD FidelityFX Single Pass Downsampler.
         // Provides an RDNA™-optimized solution for generating up to 12 MIP levels of a texture.
@@ -1638,7 +1660,7 @@ namespace Spartan
         SP_ASSERT(tex->HasPerMipView());
 
         // Acquire shader
-        RHI_Shader* shader = m_shaders[bloom_antiflicker ? RendererShader::AMD_FidelityFX_SPD_BloomAntiflicker_C : RendererShader::AMD_FidelityFX_SPD_C].get();
+        RHI_Shader* shader = m_shaders[luminance_antiflicker ? RendererShader::AMD_FidelityFX_SPD_LuminanceAntiflicker_C : RendererShader::AMD_FidelityFX_SPD_C].get();
 
         if (!shader->IsCompiled())
             return;
@@ -2282,13 +2304,6 @@ namespace Spartan
         if (m_render_target_debug == RendererRt::Ssao)
         {
             texture = m_options & Render_Ssao ? RENDER_TARGET(RendererRt::Ssao).get() : m_tex_default_white.get();
-            bool do_gi = GetOptionValue<bool>(Renderer_Option_Value::Ssao_Gi);
-            shader_type = do_gi ? RendererShader::DebugChannelRgbGammaCorrect_C : RendererShader::DebugChannelR_C;
-        }
-
-        if (m_render_target_debug == RendererRt::Ssao_Blurred)
-        {
-            texture = m_options & Render_Ssao ? RENDER_TARGET(RendererRt::Ssao_Blurred).get() : m_tex_default_white.get();
             bool do_gi = GetOptionValue<bool>(Renderer_Option_Value::Ssao_Gi);
             shader_type = do_gi ? RendererShader::DebugChannelRgbGammaCorrect_C : RendererShader::DebugChannelR_C;
         }

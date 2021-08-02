@@ -63,7 +63,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 
     const float2 uv            = (thread_id.xy + 0.5f) / g_resolution_rt;
     float3 upsampled_color     = tent_antiflicker_filter(uv, tex, g_texel_size * 0.5f);
-    tex_out_rgb[thread_id.xy]  = saturate_16(tex_out_rgb[thread_id.xy] + upsampled_color);
+    tex_out_rgb[thread_id.xy]  = saturate_16(tex_out_rgb[thread_id.xy] + upsampled_color * 0.5f);
 }
 #endif
 

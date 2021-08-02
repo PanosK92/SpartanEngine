@@ -80,7 +80,7 @@ namespace Spartan
         m_option_values[Renderer_Option_Value::Tonemapping]         = static_cast<float>(Renderer_ToneMapping_Off);
         m_option_values[Renderer_Option_Value::Gamma]               = 2.2f;
         m_option_values[Renderer_Option_Value::Sharpen_Strength]    = 1.0f;
-        m_option_values[Renderer_Option_Value::Bloom_Intensity]     = 0.1f;
+        m_option_values[Renderer_Option_Value::Bloom_Intensity]     = 0.2f;
         m_option_values[Renderer_Option_Value::Fog]                 = 0.03f;
         m_option_values[Renderer_Option_Value::Ssao_Gi]             = 1.0f;
 
@@ -496,7 +496,7 @@ namespace Spartan
         return buffer_gpu->Unmap(offset, size);
     }
 
-	bool Renderer::Update_Cb_Frame(RHI_CommandList* cmd_list)
+    bool Renderer::Update_Cb_Frame(RHI_CommandList* cmd_list)
     {
         SP_ASSERT(cmd_list != nullptr);
 

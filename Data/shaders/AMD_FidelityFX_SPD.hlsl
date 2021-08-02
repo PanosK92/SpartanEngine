@@ -62,7 +62,7 @@ void SpdStoreIntermediate(AU1 x, AU1 y, AF4 value)
 
 AF4 SpdReduce4(AF4 s1, AF4 s2, AF4 s3, AF4 s4)
 {
-#if BLOOM_ANTIFLICKER
+#if LUMINANCE_ANTIFLICKER
     // Karis's luma weighted average
     float s1w = 1 / (luminance(s1) + 1);
     float s2w = 1 / (luminance(s2) + 1);
