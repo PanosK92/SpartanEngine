@@ -135,39 +135,39 @@ const Thumbnail& IconProvider::Thumbnail_Load(const string& file_path, Icon_Type
     // Deduce file path type
 
     // Directory
-    if (FileSystem::IsDirectory(file_path))                            return GetThumbnailByType(Thumbnail_Folder);
-    // Model
-    if (FileSystem::IsSupportedModelFile(file_path))                return GetThumbnailByType(Thumbnail_File_Model);
-    // Audio
-    if (FileSystem::IsSupportedAudioFile(file_path))                return GetThumbnailByType(Thumbnail_File_Audio);
-    // Material
-    if (FileSystem::IsEngineMaterialFile(file_path))                return GetThumbnailByType(Thumbnail_File_Material);
-    // Shader
-    if (FileSystem::IsSupportedShaderFile(file_path))                return GetThumbnailByType(Thumbnail_File_Shader);
-    // Scene
-    if (FileSystem::IsEngineSceneFile(file_path))                    return GetThumbnailByType(Thumbnail_File_World);
-    // Script
-    if (FileSystem::IsEngineScriptFile(file_path))                    return GetThumbnailByType(Thumbnail_File_Script);
-    // Font
-    if (FileSystem::IsSupportedFontFile(file_path))                    return GetThumbnailByType(Thumbnail_File_Font);
-
-    // Xml
-    if (FileSystem::GetExtensionFromFilePath(file_path) == ".xml")    return GetThumbnailByType(Thumbnail_File_Xml);
-    // Dll
-    if (FileSystem::GetExtensionFromFilePath(file_path) == ".dll")    return GetThumbnailByType(Thumbnail_File_Dll);
-    // Txt
-    if (FileSystem::GetExtensionFromFilePath(file_path) == ".txt")    return GetThumbnailByType(Thumbnail_File_Txt);
-    // Ini
-    if (FileSystem::GetExtensionFromFilePath(file_path) == ".ini")    return GetThumbnailByType(Thumbnail_File_Ini);
-    // Exe
-    if (FileSystem::GetExtensionFromFilePath(file_path) == ".exe")    return GetThumbnailByType(Thumbnail_File_Exe);
+    if (FileSystem::IsDirectory(file_path))                        return GetThumbnailByType(Thumbnail_Folder);
+    // Model                                                       
+    if (FileSystem::IsSupportedModelFile(file_path))               return GetThumbnailByType(Thumbnail_File_Model);
+    // Audio                                                       
+    if (FileSystem::IsSupportedAudioFile(file_path))               return GetThumbnailByType(Thumbnail_File_Audio);
+    // Material                                                    
+    if (FileSystem::IsEngineMaterialFile(file_path))               return GetThumbnailByType(Thumbnail_File_Material);
+    // Shader                                                      
+    if (FileSystem::IsSupportedShaderFile(file_path))              return GetThumbnailByType(Thumbnail_File_Shader);
+    // Scene                                                       
+    if (FileSystem::IsEngineSceneFile(file_path))                  return GetThumbnailByType(Thumbnail_File_World);
+    // Script                                                      
+    if (FileSystem::IsEngineScriptFile(file_path))                 return GetThumbnailByType(Thumbnail_File_Script);
+    // Font                                                        
+    if (FileSystem::IsSupportedFontFile(file_path))                return GetThumbnailByType(Thumbnail_File_Font);
+                                                                   
+    // Xml                                                         
+    if (FileSystem::GetExtensionFromFilePath(file_path) == ".xml") return GetThumbnailByType(Thumbnail_File_Xml);
+    // Dll                                                         
+    if (FileSystem::GetExtensionFromFilePath(file_path) == ".dll") return GetThumbnailByType(Thumbnail_File_Dll);
+    // Txt                                                         
+    if (FileSystem::GetExtensionFromFilePath(file_path) == ".txt") return GetThumbnailByType(Thumbnail_File_Txt);
+    // Ini                                                         
+    if (FileSystem::GetExtensionFromFilePath(file_path) == ".ini") return GetThumbnailByType(Thumbnail_File_Ini);
+    // Exe                                                         
+    if (FileSystem::GetExtensionFromFilePath(file_path) == ".exe") return GetThumbnailByType(Thumbnail_File_Exe);
 
     // Texture
     if (FileSystem::IsSupportedImageFile(file_path) || FileSystem::IsEngineTextureFile(file_path))
     {
         // Make a cheap texture
         bool m_generate_mipmaps = false;
-        auto texture = std::make_shared<RHI_Texture2D>(m_context, m_generate_mipmaps);
+        auto texture = make_shared<RHI_Texture2D>(m_context, RHI_Texture_Srv, m_generate_mipmaps);
         texture->SetWidth(size);
         texture->SetHeight(size);
 

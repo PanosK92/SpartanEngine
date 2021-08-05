@@ -110,7 +110,7 @@ namespace Spartan
         SP_ASSERT(layout == RHI_Image_Layout::General || layout == RHI_Image_Layout::Shader_Read_Only_Optimal || layout == RHI_Image_Layout::Depth_Stencil_Read_Only_Optimal);
 
         // Validate type
-        SP_ASSERT(texture->IsSampled());
+        SP_ASSERT(texture->IsSrv());
 
         for (RHI_Descriptor& descriptor : m_descriptors)
         {

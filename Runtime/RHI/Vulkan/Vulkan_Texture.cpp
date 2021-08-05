@@ -45,24 +45,28 @@ namespace Spartan
         // If a name hasn't been defined, try to make a reasonable one
         if (name.empty())
         {
-            if (texture->IsSampled())
+            if (texture->IsSrv())
             {
                 name += name.empty() ? "sampled" : "-sampled";
             }
 
-            if (texture->IsDepthStencil())
+            if (texture->IsRenderTargetDepthStencil())
             {
-                name += name.empty() ? "depth_stencil" : "-depth_stencil";
+                name += name.empty() ? "render_target_depth_stencil" : "-render_target_depth_stencil";
             }
 
-            if (texture->IsRenderTarget())
+            if (texture->IsRenderTargetColor())
             {
-                name += name.empty() ? "render_target" : "-render_target";
+                name += name.empty() ? "render_target_color" : "-render_target_color";
             }
         }
 
         vulkan_utility::debug::set_name(static_cast<VkImage>(texture->Get_Resource()), name.c_str());
-        vulkan_utility::debug::set_name(static_cast<VkImageView>(texture->Get_Resource_View_Srv()), name.c_str());
+
+        if (texture->IsSrv())
+        {
+            vulkan_utility::debug::set_name(static_cast<VkImageView>(texture->Get_Resource_View_Srv()), name.c_str());
+        }
 
         if (texture->HasPerMipView())
         {
@@ -185,17 +189,20 @@ namespace Spartan
     {
         RHI_Image_Layout target_layout = RHI_Image_Layout::Preinitialized;
 
-        if (texture->IsSampled() && texture->IsColorFormat())
-            target_layout = RHI_Image_Layout::Shader_Read_Only_Optimal;
-
-        if (texture->IsRenderTarget())
+        if (texture->IsRenderTargetColor())
+        {
             target_layout = RHI_Image_Layout::Color_Attachment_Optimal;
-
-        if (texture->IsDepthStencil())
+        }
+        else if (texture->IsRenderTargetDepthStencil())
+        {
             target_layout = RHI_Image_Layout::Depth_Stencil_Attachment_Optimal;
+        }
 
-        if (texture->IsStorage())
+        if (texture->IsUav())
             target_layout = RHI_Image_Layout::General;
+
+        if (texture->IsSrv())
+            target_layout = RHI_Image_Layout::Shader_Read_Only_Optimal;
 
         return target_layout;
     }
@@ -279,7 +286,7 @@ namespace Spartan
         // Create image views
         {
             // Shader resource views
-            if (IsSampled())
+            if (IsSrv())
             {
                 if (!vulkan_utility::image::view::create(m_resource, m_resource_view_srv, this, 0, m_array_length, 0, m_mip_count, IsDepthFormat(), false))
                     return false;
@@ -299,13 +306,13 @@ namespace Spartan
             // Render target views
             for (uint32_t i = 0; i < m_array_length; i++)
             {
-                if (IsRenderTarget())
+                if (IsRenderTargetColor())
                 {
                     if (!vulkan_utility::image::view::create(m_resource, m_resource_view_renderTarget[i], this, i, 1, 0, m_mip_count, false, false))
                         return false;
                 }
 
-                if (IsDepthStencil())
+                if (IsRenderTargetDepthStencil())
                 {
                     if (!vulkan_utility::image::view::create(m_resource, m_resource_view_depthStencil[i], this, i, 1, 0, m_mip_count, true, false))
                         return false;
@@ -327,7 +334,7 @@ namespace Spartan
         }
 
         // Make sure that no descriptor sets refers to this texture
-        if (IsSampled())
+        if (IsSrv())
         {
             if (Renderer* renderer = m_rhi_device->GetContext()->GetSubsystem<Renderer>())
             {

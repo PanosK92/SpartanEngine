@@ -33,7 +33,7 @@ namespace Spartan
         RHI_TextureCube(Context* context) : RHI_Texture(context) { m_resource_type = ResourceType::TextureCube; }
 
         // Creates a texture from data (intended for sampling)
-        RHI_TextureCube(Context* context, const uint32_t width, const uint32_t height, const RHI_Format format, const std::vector<RHI_Texture_Slice>& data) : RHI_Texture(context)
+        RHI_TextureCube(Context* context, const uint32_t width, const uint32_t height, const RHI_Format format, const uint16_t flags, const std::vector<RHI_Texture_Slice>& data) : RHI_Texture(context)
         {
             m_resource_type = ResourceType::TextureCube;
             m_width         = width;
@@ -44,13 +44,13 @@ namespace Spartan
             m_data          = data;
             m_array_length  = 6;
             m_mip_count     = GetSlice(0).GetMipCount();
-            m_flags         = RHI_Texture_Sampled;
+            m_flags         = flags;
 
             RHI_TextureCube::CreateResourceGpu();
         }
 
         // Creates a texture without data (intended for use as a render target)
-        RHI_TextureCube(Context* context, const uint32_t width, const uint32_t height, const RHI_Format format, const uint16_t flags = 0, std::string name = "") : RHI_Texture(context)
+        RHI_TextureCube(Context* context, const uint32_t width, const uint32_t height, const RHI_Format format, const uint16_t flags, std::string name = "") : RHI_Texture(context)
         {
             m_object_name   = name;
             m_resource_type = ResourceType::TextureCube;
@@ -62,8 +62,6 @@ namespace Spartan
             m_array_length  = 6;
             m_mip_count     = 1;
             m_flags         = flags;
-            m_flags         |= RHI_Texture_Sampled;
-            m_flags         |= IsDepthFormat() ? RHI_Texture_DepthStencil : RHI_Texture_RenderTarget;
 
             CreateResourceGpu();
         }

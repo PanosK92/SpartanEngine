@@ -32,12 +32,12 @@ namespace Spartan
     {
     public:
         // Creates a texture without data (intended for manual loading)
-        RHI_Texture2D(Context* context, const bool generate_mipmaps = false, const char* name = nullptr) : RHI_Texture(context)
+        RHI_Texture2D(Context* context, const uint16_t flags = RHI_Texture_Srv, const bool generate_mipmaps = false, const char* name = nullptr) : RHI_Texture(context)
         {
             m_resource_type = ResourceType::Texture2d;
             m_array_length  = 0;
             m_mip_count     = 0;
-            m_flags         = RHI_Texture_Sampled;
+            m_flags         = flags;
             m_flags         |= generate_mipmaps ? RHI_Texture_GenerateMipsWhenLoading : 0;
 
             if (name != nullptr)
@@ -47,7 +47,7 @@ namespace Spartan
         }
 
         // Creates a texture from data (intended for sampling)
-        RHI_Texture2D(Context* context, const uint32_t width, const uint32_t height, const RHI_Format format, const std::vector<RHI_Texture_Slice>& data) : RHI_Texture(context)
+        RHI_Texture2D(Context* context, const uint32_t width, const uint32_t height, const RHI_Format format, const uint16_t flags, const std::vector<RHI_Texture_Slice>& data) : RHI_Texture(context)
         {
             m_resource_type = ResourceType::Texture2d;
             m_width         = width;
@@ -58,13 +58,13 @@ namespace Spartan
             m_data          = data;
             m_array_length  = 1;
             m_mip_count     = GetSlice(0).GetMipCount();
-            m_flags         = RHI_Texture_Sampled;
+            m_flags         = flags;
 
             RHI_Texture2D::CreateResourceGpu();
         }
 
         // Creates a texture without any data (intended for usage as a render target)
-        RHI_Texture2D(Context* context, const uint32_t width, const uint32_t height, const uint32_t mip_count, const RHI_Format format, const uint16_t flags = 0, const char* name = nullptr) : RHI_Texture(context)
+        RHI_Texture2D(Context* context, const uint32_t width, const uint32_t height, const uint32_t mip_count, const RHI_Format format, const uint16_t flags, const char* name = nullptr) : RHI_Texture(context)
         {
             m_resource_type = ResourceType::Texture2d;
             m_width         = width;
@@ -75,8 +75,6 @@ namespace Spartan
             m_array_length  = 1;
             m_mip_count     = mip_count;
             m_flags         = flags;
-            m_flags         |= RHI_Texture_Sampled;
-            m_flags         |= IsDepthFormat() ? RHI_Texture_DepthStencil : (RHI_Texture_RenderTarget | RHI_Texture_Storage); // Need to optimize that, not every rt is used in a compute shader
 
             if (name != nullptr)
             {

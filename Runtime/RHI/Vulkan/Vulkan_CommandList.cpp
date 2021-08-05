@@ -635,10 +635,23 @@ namespace Spartan
         m_descriptor_set_layout_cache->SetSampler(slot, sampler);
     }
 
-    void RHI_CommandList::SetTexture(const uint32_t slot, RHI_Texture* texture, const int mip /*= -1*/, const bool ranged /*= false*/, const bool storage /*= false*/)
+    void RHI_CommandList::SetTexture(const uint32_t slot, RHI_Texture* texture, const int mip /*= -1*/, const bool ranged /*= false*/, const bool uav /*= false*/)
     {
         // Validate command list state
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
+
+        // Validate texture
+        if (texture)
+        {
+            if (uav)
+            {
+                SP_ASSERT(texture->IsUav());
+            }
+            else
+            {
+                SP_ASSERT(texture->IsSrv());
+            }
+        }
 
         if (!m_descriptor_set_layout_cache->GetCurrentDescriptorSetLayout())
         {
@@ -663,19 +676,11 @@ namespace Spartan
             current_layout = texture->GetLayout(0);
         }
 
-        // If the image is not storage and a binding to a storage slot has been requested, replace with a default texture
-        if (storage && !texture->IsStorage())
-        {
-            LOG_ERROR("Texture %s doesn't support storage, replacing with a default texture", texture->GetObjectName().c_str());
-            texture = m_renderer->GetDefaultTextureTransparent();
-            current_layout = texture->GetLayout(0);
-        }
-
         // Transition to appropriate layout (if needed)
         {
             RHI_Image_Layout target_layout = RHI_Image_Layout::Undefined;
 
-            if (storage)
+            if (uav)
             {
                 // According to section 13.1 of the Vulkan spec, storage textures have to be in a general layout.
                 // https://www.khronos.org/registry/vulkan/specs/1.1-extensions/html/vkspec.html#descriptorsets-storageimage
@@ -907,15 +912,15 @@ namespace Spartan
         }
 
         // Begin render pass
-        VkRenderPassBeginInfo render_pass_info      = {};
-        render_pass_info.sType                      = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-        render_pass_info.renderPass                 = static_cast<VkRenderPass>(pipeline_state->GetRenderPass());
-        render_pass_info.framebuffer                = static_cast<VkFramebuffer>(pipeline_state->GetFrameBuffer());
-        render_pass_info.renderArea.offset          = { 0, 0 };
-        render_pass_info.renderArea.extent.width    = pipeline_state->GetWidth();
-        render_pass_info.renderArea.extent.height   = pipeline_state->GetHeight();
-        render_pass_info.clearValueCount            = clear_value_count;
-        render_pass_info.pClearValues               = clear_values.data();
+        VkRenderPassBeginInfo render_pass_info    = {};
+        render_pass_info.sType                    = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+        render_pass_info.renderPass               = static_cast<VkRenderPass>(pipeline_state->GetRenderPass());
+        render_pass_info.framebuffer              = static_cast<VkFramebuffer>(pipeline_state->GetFrameBuffer());
+        render_pass_info.renderArea.offset        = { 0, 0 };
+        render_pass_info.renderArea.extent.width  = pipeline_state->GetWidth();
+        render_pass_info.renderArea.extent.height = pipeline_state->GetHeight();
+        render_pass_info.clearValueCount          = clear_value_count;
+        render_pass_info.pClearValues             = clear_values.data();
         vkCmdBeginRenderPass(static_cast<VkCommandBuffer>(m_cmd_buffer), &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
 
         m_render_pass_active = true;

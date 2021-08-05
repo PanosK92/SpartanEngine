@@ -37,10 +37,11 @@ static const float PI2                  = PI * 2;
 static const float PI4                  = PI * 4;
 static const float INV_PI               = 0.31830988f;
 static const float FLT_MIN              = 0.00000001f;
-static const float FLT_MAX_10           = 65000.0f;
-static const float FLT_MAX_11           = 65000.0f;
-static const float FLT_MAX_14           = 65500.0f;
-static const float FLT_MAX_16           = 65500.0f;
+static const float FLT_MAX_10           = 511.0f;
+static const float FLT_MAX_11           = 1023.0f;
+static const float FLT_MAX_14           = 8191.0f;
+static const float FLT_MAX_16           = 32767.0f;
+static const float FLT_MAX_16U          = 65535.0f;
 static const float alpha_mask_threshold = 0.6f;
 
 /*------------------------------------------------------------------------------
@@ -100,8 +101,8 @@ float2 pack(float2 value)    { return value * 0.5f + 0.5f; }
 float unpack(float value)    { return value * 2.0f - 1.0f; }
 float pack(float value)      { return value * 0.5f + 0.5f; }
 
-float pack_uint32_to_float16(uint i)    { return (float)i / float(FLT_MAX_16); }
-uint unpack_float16_to_uint32(float f)  { return round(f * 65535); }
+float pack_uint32_to_float16(uint i)   { return (float)i / FLT_MAX_16; }
+uint unpack_float16_to_uint32(float f) { return round(f * FLT_MAX_16); }
 
 float pack_float_int(float f, uint i, uint numBitI, uint numBitTarget)
 {
@@ -222,6 +223,13 @@ float2 ndc_to_uv(float3 x)
 /*------------------------------------------------------------------------------
     NORMAL
 ------------------------------------------------------------------------------*/
+// Reconsutrct normal Z, X and Y components have to be in a -1 to 1 range.
+float3 reconstruct_normal_z(float2 normal)
+{
+    float z = sqrt(saturate(1.0f - dot(normal, normal)));
+    return float3(normal, z);
+}
+
 float3 get_normal(uint2 pos)
 {
     // Load returns 0 for any value accessed out of bounds, so clamp.
@@ -254,14 +262,6 @@ float3x3 makeTBN(float3 n, float3 t)
     float3 b = cross(n, t);
     // create matrix
     return float3x3(t, b, n); 
-}
-
-// Unpack a normal stored in a normal map. The X and Y components are rescaled from [0,1] to [-1,1] and Z is reconstructed.
-float3 unpack_normal(float2 normal)
-{
-    normal = normal * 2.0f - 1.0f;
-    float z = sqrt(saturate(1.0f - dot(normal, normal)));
-    return float3(normal, z);
 }
 
 /*------------------------------------------------------------------------------
