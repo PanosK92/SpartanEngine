@@ -253,23 +253,6 @@ inline float3 EnvBRDFApprox(float3 specColor, float roughness, float NdV)
     return specColor * AB.x + AB.y;
 }
 
-inline float3 sample_environment(float2 uv, float mip_level)
-{
-    // We are currently using a spherical environment map which has a 2:1 ratio, so at the smallest 
-    // mipmap we have to do a bit of blending otherwise we'll get a visible seem in the middle.
-    if (mip_level == g_envrionement_max_mip)
-    {
-        float2 mip_size = float2(2, 1);
-        float dx = mip_size.x;
-
-        float3 tl = (tex_environment.SampleLevel(sampler_bilinear_clamp, uv + float2(-dx, 0.0f), mip_level).rgb);
-        float3 tr = (tex_environment.SampleLevel(sampler_bilinear_clamp, uv + float2(dx, 0.0f), mip_level).rgb);
-        return (tl + tr) / 2.0f;
-    }
-
-    return tex_environment.SampleLevel(sampler_trilinear_clamp, uv, mip_level).rgb;
-}
-
 inline float3 Brdf_Diffuse_Ibl(Surface surface, float3 normal)
 {
     return sample_environment(direction_sphere_uv(normal), g_envrionement_max_mip) * surface.albedo.rgb;
@@ -280,7 +263,7 @@ inline float3 Brdf_Specular_Ibl(Surface surface, float3 normal, float3 camera_to
     // Compute specular energy
     float n_dot_v           = saturate(dot(-camera_to_pixel, normal));
     float3 F                = F_Schlick_Roughness(surface.F0, n_dot_v, surface.roughness);
-    float2 envBRDF          = tex_lutIbl.Sample(sampler_bilinear_clamp, float2(n_dot_v, surface.roughness)).xy;
+    float2 envBRDF          = tex_lutIbl.SampleLevel(sampler_bilinear_clamp, float2(n_dot_v, surface.roughness), 0.0f).xy;
     float3 specular_energy  = F * envBRDF.x + envBRDF.y;
 
     // Compute prefiltered color

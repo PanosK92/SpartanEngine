@@ -164,7 +164,7 @@ namespace Spartan
         return true;
     }
 
-    static bool CreateDepthStencilView(void* texture, array<void*, rhi_max_render_target_count>& views, const ResourceType resource_type, const DXGI_FORMAT format, const uint32_t array_size, const bool read_only, const shared_ptr<RHI_Device>& rhi_device)
+    static bool CreateDepthStencilView(void* texture, array<void*, rhi_max_render_target_count>& views, const ResourceType resource_type, const DXGI_FORMAT format, const uint32_t array_size, const bool has_stencil, const bool read_only, const shared_ptr<RHI_Device>& rhi_device)
     {
         // Describe
         D3D11_DEPTH_STENCIL_VIEW_DESC desc  = {};
@@ -172,7 +172,17 @@ namespace Spartan
         desc.ViewDimension                  = resource_type == ResourceType::Texture2d ? D3D11_DSV_DIMENSION_TEXTURE2D : D3D11_DSV_DIMENSION_TEXTURE2DARRAY;
         desc.Texture2DArray.MipSlice        = 0;
         desc.Texture2DArray.ArraySize       = 1;
-        desc.Flags                          = read_only ? D3D11_DSV_READ_ONLY_DEPTH | D3D11_DSV_READ_ONLY_STENCIL : 0;
+        desc.Flags                          = 0;
+
+        if (read_only)
+        {
+            desc.Flags |= D3D11_DSV_READ_ONLY_DEPTH;
+
+            if (has_stencil)
+            {
+                desc.Flags |= D3D11_DSV_READ_ONLY_STENCIL;
+            }
+        }
 
         // Create
         for (uint32_t i = 0; i < array_size; i++)
@@ -362,6 +372,7 @@ namespace Spartan
                 m_resource_type,
                 format_dsv,
                 m_array_length,
+                IsStencilFormat(),
                 false,
                 m_rhi_device
             );
@@ -375,6 +386,7 @@ namespace Spartan
                     m_resource_type,
                     format_dsv,
                     m_array_length,
+                    IsStencilFormat(),
                     true,
                     m_rhi_device
                 );

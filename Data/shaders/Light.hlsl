@@ -39,8 +39,8 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     surface.Build(thread_id.xy, use_albedo);
 
     // If this is a transparent pass, ignore all opaque pixels, and vice versa.
-    bool early_exit_1 = g_is_transparent_pass && surface.is_opaque();
-    bool early_exit_2 = !g_is_transparent_pass && surface.is_transparent() && !surface.is_sky(); // do shade sky pixels (volumetric lighting)
+    bool early_exit_1 = !g_is_transparent_pass && surface.is_transparent() && !surface.is_sky(); // do shade sky pixels during the opaque pass (volumetric lighting)
+    bool early_exit_2 = g_is_transparent_pass && surface.is_opaque();
     if (early_exit_1 || early_exit_2)
         return;
 
@@ -144,7 +144,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     // Diffuse and specular
     tex_out_rgb[thread_id.xy]   += saturate_16(light_diffuse * light.radiance);
     tex_out_rgb2[thread_id.xy]  += saturate_16(light_specular * light.radiance);
-    
+
     // Volumetric
 #if VOLUMETRIC
     light_volumetric += VolumetricLighting(surface, light) * get_fog_factor(surface);
