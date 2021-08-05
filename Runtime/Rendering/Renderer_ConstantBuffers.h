@@ -80,35 +80,35 @@ namespace Spartan
         bool operator==(const Cb_Frame& rhs) const
         {
             return
-                view == rhs.view &&
-                projection == rhs.projection &&
-                projection_ortho == rhs.projection_ortho &&
-                view_projection == rhs.view_projection &&
-                view_projection_inv == rhs.view_projection_inv &&
-                view_projection_ortho == rhs.view_projection_ortho &&
-                view_projection_unjittered == rhs.view_projection_unjittered &&
-                view_projection_previous == rhs.view_projection_previous &&
-                delta_time == rhs.delta_time &&
-                time == rhs.time &&
-                frame == rhs.frame &&
-                camera_aperture == rhs.camera_aperture &&
-                camera_shutter_speed == rhs.camera_shutter_speed &&
-                camera_iso == rhs.camera_iso &&
-                camera_near == rhs.camera_near &&
-                camera_far == rhs.camera_far &&
-                camera_position == rhs.camera_position &&
-                sharpen_strength == rhs.sharpen_strength &&
-                camera_direction == rhs.camera_direction &&
-                gamma == rhs.gamma &&
-                tonemapping == rhs.tonemapping &&
+                view                        == rhs.view                        &&
+                projection                  == rhs.projection                  &&
+                projection_ortho            == rhs.projection_ortho            &&
+                view_projection             == rhs.view_projection             &&
+                view_projection_inv         == rhs.view_projection_inv         &&
+                view_projection_ortho       == rhs.view_projection_ortho       &&
+                view_projection_unjittered  == rhs.view_projection_unjittered  &&
+                view_projection_previous    == rhs.view_projection_previous    &&
+                delta_time                  == rhs.delta_time                  &&
+                time                        == rhs.time                        &&
+                frame                       == rhs.frame                       &&
+                camera_aperture             == rhs.camera_aperture             &&
+                camera_shutter_speed         == rhs.camera_shutter_speed       &&
+                camera_iso                  == rhs.camera_iso                  &&
+                camera_near                 == rhs.camera_near                 &&
+                camera_far                  == rhs.camera_far                  &&
+                camera_position             == rhs.camera_position             &&
+                sharpen_strength            == rhs.sharpen_strength            &&
+                camera_direction            == rhs.camera_direction            &&
+                gamma                       == rhs.gamma                       &&
+                tonemapping                 == rhs.tonemapping                 &&
                 directional_light_intensity == rhs.directional_light_intensity &&
-                shadow_resolution == rhs.shadow_resolution &&
-                fog == rhs.fog &&
-                resolution_output == rhs.resolution_output &&
-                resolution_render == rhs.resolution_render &&
-                taa_jitter_offset == rhs.taa_jitter_offset &&
-                options == rhs.options &&
-                frame_mip_count == rhs.frame_mip_count;
+                shadow_resolution           == rhs.shadow_resolution           &&
+                fog                         == rhs.fog                         &&
+                resolution_output           == rhs.resolution_output           &&
+                resolution_render           == rhs.resolution_render           &&
+                taa_jitter_offset           == rhs.taa_jitter_offset           &&
+                options                     == rhs.options                     &&
+                frame_mip_count             == rhs.frame_mip_count;
         }
         bool operator!=(const Cb_Frame& rhs) const { return !(*this == rhs); }
     };
@@ -125,7 +125,10 @@ namespace Spartan
         float blur_sigma;
 
         Math::Vector2 blur_direction;
-        Math::Vector2 resolution;
+        Math::Vector2 resolution_rt;
+
+        Math::Vector2 resolution_in;
+        Math::Vector2 padding;
 
         Math::Vector4 mat_albedo;
 
@@ -160,7 +163,8 @@ namespace Spartan
                 blur_sigma          == rhs.blur_sigma           &&
                 blur_direction      == rhs.blur_direction       &&
                 is_transparent_pass == rhs.is_transparent_pass  &&
-                resolution          == rhs.resolution           &&
+                resolution_rt       == rhs.resolution_rt        &&
+                resolution_in       == rhs.resolution_in        &&
                 mip_count           == rhs.mip_count            &&
                 work_group_count    == rhs.work_group_count;
         }

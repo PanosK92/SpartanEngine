@@ -44,9 +44,9 @@ PixelInputType mainVS(Vertex_PosUvNorTan input)
     PixelInputType output;
 
     // position computation has to be an exact match to depth_prepass.hlsl
-    input.position.w            = 1.0f;
-    output.position             = mul(input.position, g_transform);
-    output.position             = mul(output.position, g_view_projection);
+    input.position.w = 1.0f;
+    output.position  = mul(input.position, g_transform);
+    output.position  = mul(output.position, g_view_projection);
     
     output.position_ss_current  = output.position;
     output.position_ss_previous = mul(input.position, g_transform_previous);
@@ -62,19 +62,19 @@ PixelOutputType mainPS(PixelInputType input)
 {
     PixelOutputType g_buffer;
 
-    float2 uv           = float2(input.uv.x * g_mat_tiling.x + g_mat_offset.x, input.uv.y * g_mat_tiling.y + g_mat_offset.y);
-    float4 albedo       = g_mat_color;
-    float roughness     = g_mat_roughness;
-    float metallic      = g_mat_metallic;
-    float3 normal       = input.normal.xyz;
-    float emission      = 0.0f;
-    float occlusion     = 1.0f;
+    float2 uv       = float2(input.uv.x * g_mat_tiling.x + g_mat_offset.x, input.uv.y * g_mat_tiling.y + g_mat_offset.y);
+    float4 albedo   = g_mat_color;
+    float roughness = g_mat_roughness;
+    float metallic  = g_mat_metallic;
+    float3 normal   = input.normal.xyz;
+    float emission  = 0.0f;
+    float occlusion = 1.0f;
 
     // Velocity
-    float2 position_current     = (input.position_ss_current.xy / input.position_ss_current.w);
-    float2 position_previous    = (input.position_ss_previous.xy / input.position_ss_previous.w);
-    float2 position_delta       = position_current - position_previous;
-    float2 velocity             = (position_delta - g_taa_jitter_offset) * float2(0.5f, -0.5f);
+    float2 position_current  = (input.position_ss_current.xy / input.position_ss_current.w);
+    float2 position_previous = (input.position_ss_previous.xy / input.position_ss_previous.w);
+    float2 position_delta    = position_current - position_previous;
+    float2 velocity          = (position_delta - g_taa_jitter_offset) * float2(0.5f, -0.5f);
 
     // Make TBN
 #if HEIGHT_MAP || NORMAL_MAP
@@ -83,9 +83,9 @@ PixelOutputType mainPS(PixelInputType input)
 
 #if HEIGHT_MAP
     // Parallax Mapping
-    float height_scale      = g_mat_height * 0.04f;
-    float3 camera_to_pixel  = normalize(g_camera_position - input.position.xyz);
-    uv                      = ParallaxMapping(tex_material_height, sampler_anisotropic_wrap, uv, camera_to_pixel, TBN, height_scale);
+    float height_scale     = g_mat_height * 0.04f;
+    float3 camera_to_pixel = normalize(g_camera_position - input.position.xyz);
+    uv                     = ParallaxMapping(tex_material_height, sampler_anisotropic_wrap, uv, camera_to_pixel, TBN, height_scale);
 #endif
     
 #if ALPHA_MASK_MAP
@@ -99,9 +99,9 @@ PixelOutputType mainPS(PixelInputType input)
     if (albedo_sample.a <= alpha_mask_threshold)
         discard;
     
-    albedo_sample.a     = 1.0f;
-    albedo_sample.rgb   = degamma(albedo_sample.rgb);
-    albedo              *= albedo_sample;
+    albedo_sample.a   = 1.0f;
+    albedo_sample.rgb = degamma(albedo_sample.rgb);
+    albedo            *= albedo_sample;
 #endif
     
 #if ROUGHNESS_MAP
@@ -114,10 +114,10 @@ PixelOutputType mainPS(PixelInputType input)
     
 #if NORMAL_MAP
     // Get tangent space normal and apply intensity
-    float3 tangent_normal   = normalize(unpack(tex_material_normal.Sample(sampler_anisotropic_wrap, uv).rgb));
-    float normal_intensity  = clamp(g_mat_normal, 0.012f, g_mat_normal);
-    tangent_normal.xy       *= saturate(normal_intensity);
-    normal                  = normalize(mul(tangent_normal, TBN).xyz); // Transform to world space
+    float3 tangent_normal  = normalize(unpack(tex_material_normal.Sample(sampler_anisotropic_wrap, uv).rgb));
+    float normal_intensity = clamp(g_mat_normal, 0.012f, g_mat_normal);
+    tangent_normal.xy      *= saturate(normal_intensity);
+    normal                 = normalize(mul(tangent_normal, TBN).xyz); // Transform to world space
 #endif
 
 #if OCCLUSION_MAP
@@ -130,21 +130,21 @@ PixelOutputType mainPS(PixelInputType input)
 
     // Specular anti-aliasing
 #if NORMAL_MAP
-    static const float strength         = 4.0f;
-    static const float max_roughness2   = 0.18;
-    float roughness2                    = roughness * roughness;
-    float3 dndu                         = ddx(normal), dndv = ddy(normal);
-    float variance                      = (dot(dndu, dndu) + dot(dndv, dndv));
-    float kernelRoughness2              = min(variance * strength, max_roughness2);
-    float filteredRoughness2            = saturate(roughness2 + kernelRoughness2);
-    roughness                           = fast_sqrt(filteredRoughness2);
+    static const float strength       = 4.0f;
+    static const float max_roughness2 = 0.18;
+    float roughness2                  = roughness * roughness;
+    float3 dndu                       = ddx(normal), dndv = ddy(normal);
+    float variance                    = (dot(dndu, dndu) + dot(dndv, dndv));
+    float kernelRoughness2            = min(variance * strength, max_roughness2);
+    float filteredRoughness2          = saturate(roughness2 + kernelRoughness2);
+    roughness                         = fast_sqrt(filteredRoughness2);
 #endif
 
     // Write to G-Buffer
-    g_buffer.albedo     = albedo;
-    g_buffer.normal     = float4(normal, pack_uint32_to_float16(g_mat_id));
-    g_buffer.material   = float4(roughness, metallic, emission, occlusion);
-    g_buffer.velocity   = velocity;
+    g_buffer.albedo   = albedo;
+    g_buffer.normal   = float4(normal, pack_uint32_to_float16(g_mat_id));
+    g_buffer.material = float4(roughness, metallic, emission, occlusion);
+    g_buffer.velocity = velocity;
 
     return g_buffer;
 }
