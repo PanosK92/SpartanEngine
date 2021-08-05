@@ -74,18 +74,18 @@ struct Surface
         normal = sample_normal.xyz;
         id     = unpack_float16_to_uint32(sample_normal.a);
 
-        albedo                  = use_albedo ? sample_albedo.rgb : 1.0f;
-        alpha                   = sample_albedo.a;
-        roughness               = sample_material.r;
-        metallic                = sample_material.g;
-        emissive                = sample_material.b * sample_albedo.rgb * 10.0f;
-        F0                      = lerp(0.04f, albedo, metallic);
-        clearcoat               = mat_clearcoat_clearcoatRough_aniso_anisoRot[id].x;
-        clearcoat_roughness     = mat_clearcoat_clearcoatRough_aniso_anisoRot[id].y;
-        anisotropic             = mat_clearcoat_clearcoatRough_aniso_anisoRot[id].z;
-        anisotropic_rotation    = mat_clearcoat_clearcoatRough_aniso_anisoRot[id].w;
-        sheen                   = mat_sheen_sheenTint_pad[id].x;
-        sheen_tint              = mat_sheen_sheenTint_pad[id].y;
+        albedo               = use_albedo ? sample_albedo.rgb : 1.0f;
+        alpha                = sample_albedo.a;
+        roughness            = sample_material.r;
+        metallic             = sample_material.g;
+        emissive             = sample_material.b * sample_albedo.rgb * 10.0f;
+        F0                   = lerp(0.04f, albedo, metallic);
+        clearcoat            = mat_clearcoat_clearcoatRough_aniso_anisoRot[id].x;
+        clearcoat_roughness  = mat_clearcoat_clearcoatRough_aniso_anisoRot[id].y;
+        anisotropic          = mat_clearcoat_clearcoatRough_aniso_anisoRot[id].z;
+        anisotropic_rotation = mat_clearcoat_clearcoatRough_aniso_anisoRot[id].w;
+        sheen                = mat_sheen_sheenTint_pad[id].x;
+        sheen_tint           = mat_sheen_sheenTint_pad[id].y;
 
         // Occlusion + GI
         {
@@ -123,9 +123,9 @@ struct Surface
         camera_to_pixel        = normalize(camera_to_pixel);
     }
 
-    bool is_sky()           { return id == 0; }
-    bool is_transparent()   { return alpha != 1.0f; }
-    bool is_opaque()        { return alpha == 1.0f; }
+    bool is_sky()         { return id == 0; }
+    bool is_transparent() { return alpha != 1.0f; }
+    bool is_opaque()      { return !is_transparent(); }
 };
 
 struct Light

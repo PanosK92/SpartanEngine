@@ -66,8 +66,11 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     {
         float mip_level     = lerp(0, g_envrionement_max_mip, roughness2);
         float ambient_light = saturate(g_directional_light_intensity / 128000.0f); // this is obviously and approximation since we have a static environment texture
-        color_environment   = tex_environment.SampleLevel(sampler_trilinear_clamp, direction_sphere_uv(reflection), mip_level).rgb * F * ambient_light;
+        color_environment   = sample_environment(direction_sphere_uv(reflection), mip_level) * F * ambient_light;
     }
 
-    return float4(lerp(color_environment, color_ssr, ssr_alpha), 0.0f);
+    // reflections blur based on roughness but they don't spread, we fake this with a fade so that
+    // reflections don't look like they suddenly dissapear when the roughness approaches 1.0f
+    float fade = (1.0f - roughness2 * roughness2 * roughness2); 
+    return float4(lerp(color_environment, color_ssr, ssr_alpha) * fade, 0.0f);
 }

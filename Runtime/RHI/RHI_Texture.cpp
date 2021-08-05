@@ -285,7 +285,7 @@ namespace Spartan
 
         // Read data
         uint32_t byte_count = file->ReadAs<uint32_t>();
-        m_array_length        = file->ReadAs<uint32_t>();
+        m_array_length      = file->ReadAs<uint32_t>();
         m_mip_count         = file->ReadAs<uint32_t>();
         m_data.resize(m_array_length);
         for (RHI_Texture_Slice& slice : m_data)

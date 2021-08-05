@@ -113,10 +113,10 @@ namespace Spartan
         bool HasPerMipView()              const { return m_flags & RHI_Texture_PerMipView; }
 
         // Format type
-        bool IsDepthFormat()            const { return m_format == RHI_Format_D32_Float || m_format == RHI_Format_D32_Float_S8X24_Uint; }
-        bool IsStencilFormat()          const { return m_format == RHI_Format_D32_Float_S8X24_Uint; }
-        bool IsDepthStencilFormat()     const { return IsDepthFormat() || IsStencilFormat(); }
-        bool IsColorFormat()            const { return !IsDepthStencilFormat(); }
+        bool IsDepthFormat()        const { return m_format == RHI_Format_D32_Float || m_format == RHI_Format_D32_Float_S8X24_Uint; }
+        bool IsStencilFormat()      const { return m_format == RHI_Format_D32_Float_S8X24_Uint; }
+        bool IsDepthStencilFormat() const { return IsDepthFormat() || IsStencilFormat(); }
+        bool IsColorFormat()        const { return !IsDepthStencilFormat(); }
 
         // Layout
         void SetLayout(const RHI_Image_Layout layout, RHI_CommandList* cmd_list, const int mip = -1, const bool ranged = true);

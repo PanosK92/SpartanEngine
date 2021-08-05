@@ -134,8 +134,7 @@ namespace Spartan
         // Ensure none of the textures is being used by the GPU
         Flush();
 
-        // rt_gbuffer_depth:    Stencil is used to mask transparent objects and also has a read only version
-        // rt_gbuffer_normal:   From and below Texture_Format_R8G8B8A8_UNORM, normals have noticeable banding.
+        // rt_gbuffer_normal: From and below Texture_Format_R8G8B8A8_UNORM, normals have noticeable banding.
         // rt_hdr/rt_hdr_2/rt_dof_half/rt_dof_half_2/rt_post_process_hdr/rt_post_process_hdr_2/rt_post_process_ldr/rt_post_process_ldr_2: Investigate using less bits but have an alpha channel
         // rt_ssao/rt_ssao_blurred: If gi is disabled, the texture format could just be RHI_Format_R8_Unorm, but calling CreateRenderTextures() dynamically will re-create a lot of textures. Find an elegant solution to improve CreateRenderTextures().
 
@@ -158,11 +157,11 @@ namespace Spartan
             RENDER_TARGET(RendererRt::Frame_Render_2) = make_unique<RHI_Texture2D>(m_context, width_render, height_render, mip_count, RHI_Format_R11G11B10_Float, RHI_Texture_Rt_Color | RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipView, "rt_frame_render_2");
 
             // G-Buffer
-            RENDER_TARGET(RendererRt::Gbuffer_Albedo)   = make_shared<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R8G8B8A8_Unorm,       RHI_Texture_Rt_Color | RHI_Texture_Srv,                                              "rt_gbuffer_albedo");
-            RENDER_TARGET(RendererRt::Gbuffer_Normal)   = make_shared<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R16G16B16A16_Float,   RHI_Texture_Rt_Color | RHI_Texture_Srv,                                              "rt_gbuffer_normal");
-            RENDER_TARGET(RendererRt::Gbuffer_Material) = make_shared<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R8G8B8A8_Unorm,       RHI_Texture_Rt_Color | RHI_Texture_Srv,                                              "rt_gbuffer_material");
-            RENDER_TARGET(RendererRt::Gbuffer_Velocity) = make_shared<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R16G16_Float,         RHI_Texture_Rt_Color | RHI_Texture_Srv,                                              "rt_gbuffer_velocity");
-            RENDER_TARGET(RendererRt::Gbuffer_Depth)    = make_shared<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_D32_Float_S8X24_Uint, RHI_Texture_Rt_DepthStencil | RHI_Texture_Rt_DepthStencilReadOnly | RHI_Texture_Srv, "rt_gbuffer_depth");
+            RENDER_TARGET(RendererRt::Gbuffer_Albedo)   = make_shared<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R8G8B8A8_Unorm,     RHI_Texture_Rt_Color        | RHI_Texture_Srv,                                       "rt_gbuffer_albedo");
+            RENDER_TARGET(RendererRt::Gbuffer_Normal)   = make_shared<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R16G16B16A16_Float, RHI_Texture_Rt_Color        | RHI_Texture_Srv,                                       "rt_gbuffer_normal");
+            RENDER_TARGET(RendererRt::Gbuffer_Material) = make_shared<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R8G8B8A8_Unorm,     RHI_Texture_Rt_Color        | RHI_Texture_Srv,                                       "rt_gbuffer_material");
+            RENDER_TARGET(RendererRt::Gbuffer_Velocity) = make_shared<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R16G16_Float,       RHI_Texture_Rt_Color        | RHI_Texture_Srv,                                       "rt_gbuffer_velocity");
+            RENDER_TARGET(RendererRt::Gbuffer_Depth)    = make_shared<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_D32_Float,          RHI_Texture_Rt_DepthStencil | RHI_Texture_Rt_DepthStencilReadOnly | RHI_Texture_Srv, "rt_gbuffer_depth");
 
             // Light
             RENDER_TARGET(RendererRt::Light_Diffuse)              = make_unique<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R11G11B10_Float, RHI_Texture_Uav | RHI_Texture_Srv, "rt_light_diffuse");
@@ -378,8 +377,8 @@ namespace Spartan
             m_shaders[RendererShader::Light_Composition_C] = make_shared<RHI_Shader>(m_context);
             m_shaders[RendererShader::Light_Composition_C]->Compile(RHI_Shader_Compute, dir_shaders + "light_composition.hlsl", async);
 
-            m_shaders[RendererShader::Light_ImageBased_P] = make_shared<RHI_Shader>(m_context);
-            m_shaders[RendererShader::Light_ImageBased_P]->Compile(RHI_Shader_Pixel, dir_shaders + "light_image_based.hlsl", async);
+            m_shaders[RendererShader::Light_ImageBased_C] = make_shared<RHI_Shader>(m_context);
+            m_shaders[RendererShader::Light_ImageBased_C]->Compile(RHI_Shader_Compute, dir_shaders + "light_image_based.hlsl", async);
         }
 
         // Reflections

@@ -139,7 +139,7 @@ namespace Spartan
         BrdfSpecularLut_C,
         Light_C,
         Light_Composition_C,
-        Light_ImageBased_P,
+        Light_ImageBased_C,
         Color_V,
         Color_P,
         Font_V,
