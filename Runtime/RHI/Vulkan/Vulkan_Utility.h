@@ -504,21 +504,21 @@ namespace Spartan::vulkan_utility
         {
             VkImageUsageFlags flags = 0;
 
-            flags |= (texture->GetFlags() & RHI_Texture_Sampled)        ? VK_IMAGE_USAGE_SAMPLED_BIT                    : 0;
-            flags |= (texture->GetFlags() & RHI_Texture_Storage)        ? VK_IMAGE_USAGE_STORAGE_BIT                    : 0;
-            flags |= (texture->GetFlags() & RHI_Texture_DepthStencil)   ? VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT   : 0;
-            flags |= (texture->GetFlags() & RHI_Texture_RenderTarget)   ? VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT           : 0;
+            flags |= (texture->GetFlags() & RHI_Texture_Srv)             ? VK_IMAGE_USAGE_SAMPLED_BIT                  : 0;
+            flags |= (texture->GetFlags() & RHI_Texture_Uav)             ? VK_IMAGE_USAGE_STORAGE_BIT                  : 0;
+            flags |= (texture->GetFlags() & RHI_Texture_Rt_DepthStencil) ? VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT : 0;
+            flags |= (texture->GetFlags() & RHI_Texture_Rt_Color)        ? VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT         : 0;
 
             // If the texture has data, it will be staged.
             // If the texture is a render target, it can be blitted.
-            if (texture->HasData() || texture->IsRenderTarget())
+            if (texture->HasData() || texture->IsRenderTargetColor() || texture->IsRenderTargetDepthStencil())
             {
                 flags |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT; // source of a transfer command.
-                flags |= VK_IMAGE_USAGE_TRANSFER_DST_BIT; // destination of a transfer command.
+                flags |= VK_IMAGE_USAGE_TRANSFER_DST_BIT; // destination of a transfer command (and also if it's a render target, it can be cleared)
             }
 
-            // If the texture is a render target, it's possible that it can be cleared
-            if (texture->IsRenderTarget())
+            // If it's a render target, it can be cleared, so it needs a destination bit
+            if (texture->IsRenderTargetColor() || texture->IsRenderTargetDepthStencil())
             {
                 flags |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
             }

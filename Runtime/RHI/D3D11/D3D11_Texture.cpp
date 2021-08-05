@@ -39,10 +39,10 @@ namespace Spartan
     {
         UINT flags_d3d11 = 0;
 
-        flags_d3d11 |= (flags & RHI_Texture_Sampled)        ? D3D11_BIND_SHADER_RESOURCE    : 0;
-        flags_d3d11 |= (flags & RHI_Texture_Storage)        ? D3D11_BIND_UNORDERED_ACCESS   : 0;
-        flags_d3d11 |= (flags & RHI_Texture_DepthStencil)   ? D3D11_BIND_DEPTH_STENCIL      : 0;
-        flags_d3d11 |= (flags & RHI_Texture_RenderTarget)   ? D3D11_BIND_RENDER_TARGET      : 0;
+        flags_d3d11 |= (flags & RHI_Texture_Srv)                       ? D3D11_BIND_SHADER_RESOURCE  : 0;
+        flags_d3d11 |= (flags & RHI_Texture_Uav)                       ? D3D11_BIND_UNORDERED_ACCESS : 0;
+        flags_d3d11 |= (flags & RHI_Texture_Rt_DepthStencil) ? D3D11_BIND_DEPTH_STENCIL    : 0;
+        flags_d3d11 |= (flags & RHI_Texture_Rt_Color)        ? D3D11_BIND_RENDER_TARGET    : 0;
 
         return flags_d3d11;
     }
@@ -287,7 +287,7 @@ namespace Spartan
         );
 
         // RESOURCE VIEW
-        if (IsSampled())
+        if (IsSrv())
         {
             result_srv = CreateShaderResourceView(
                 resource,
@@ -321,7 +321,7 @@ namespace Spartan
         }
 
         // UNORDERED ACCESS VIEW
-        if (IsStorage())
+        if (IsUav())
         {
             result_uav = CreateUnorderedAccessView(
                 resource,
@@ -353,7 +353,7 @@ namespace Spartan
         }
 
         // DEPTH-STENCIL VIEW
-        if (IsDepthStencil())
+        if (IsRenderTargetDepthStencil())
         {
             result_ds = CreateDepthStencilView
             (
@@ -366,7 +366,7 @@ namespace Spartan
                 m_rhi_device
             );
 
-            if (m_flags & RHI_Texture_DepthStencilReadOnly)
+            if (m_flags & RHI_Texture_Rt_DepthStencilReadOnly)
             {
                 result_ds = CreateDepthStencilView
                 (
@@ -382,7 +382,7 @@ namespace Spartan
         }
 
         // RENDER TARGET VIEW
-        if (IsRenderTarget())
+        if (IsRenderTargetColor())
         {
             result_rt = CreateRenderTargetView
             (

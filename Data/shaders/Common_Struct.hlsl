@@ -63,16 +63,17 @@ struct Surface
     void Build(uint2 position_screen, bool use_albedo = true)
     {
         // Sample render targets
-        float4 sample_albedo    = tex_albedo[position_screen];
-        float4 sample_normal    = tex_normal[position_screen];
-        float4 sample_material  = tex_material[position_screen];
-        float sample_depth      = get_depth(position_screen);
+        float4 sample_albedo   = tex_albedo[position_screen];
+        float4 sample_normal   = tex_normal[position_screen];
+        float4 sample_material = tex_material[position_screen];
+        float sample_depth     = get_depth(position_screen);
 
         // Misc
-        uv      = (position_screen + 0.5f) / g_resolution_rt;
-        depth   = sample_depth;
-        id      = unpack_float16_to_uint32(sample_normal.a);
-        
+        uv     = (position_screen + 0.5f) / g_resolution_rt;
+        depth  = sample_depth;
+        normal = sample_normal.xyz;
+        id     = unpack_float16_to_uint32(sample_normal.a);
+
         albedo                  = use_albedo ? sample_albedo.rgb : 1.0f;
         alpha                   = sample_albedo.a;
         roughness               = sample_material.r;
@@ -117,10 +118,9 @@ struct Surface
         float4 pos_world    = mul(pos_clip, g_view_projection_inverted);
         position            = pos_world.xyz / pos_world.w;
 
-        normal                  = sample_normal.xyz;
-        camera_to_pixel         = position - g_camera_position.xyz;
-        camera_to_pixel_length  = length(camera_to_pixel);
-        camera_to_pixel         = normalize(camera_to_pixel);
+        camera_to_pixel        = position - g_camera_position.xyz;
+        camera_to_pixel_length = length(camera_to_pixel);
+        camera_to_pixel        = normalize(camera_to_pixel);
     }
 
     bool is_sky()           { return id == 0; }

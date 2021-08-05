@@ -253,6 +253,8 @@ namespace Spartan
             ID3D11DepthStencilView* depth_stencil = nullptr;
             if (pipeline_state.render_target_depth_texture)
             {
+                SP_ASSERT(pipeline_state.render_target_depth_texture->IsRenderTargetDepthStencil());
+
                 if (pipeline_state.render_target_depth_texture_read_only)
                 {
                     depth_stencil = static_cast<ID3D11DepthStencilView*>(pipeline_state.render_target_depth_texture->Get_Resource_View_DepthStencilReadOnly(pipeline_state.render_target_depth_stencil_texture_array_index));
@@ -278,6 +280,8 @@ namespace Spartan
                     {
                         if (pipeline_state.render_target_color_textures[i])
                         {
+                            SP_ASSERT(pipeline_state.render_target_color_textures[i]->IsRenderTargetColor());
+
                             ID3D11RenderTargetView* rt = static_cast<ID3D11RenderTargetView*>(pipeline_state.render_target_color_textures[i]->Get_Resource_View_RenderTarget(pipeline_state.render_target_color_texture_array_index));
                             render_targets[i] = rt;
                         }
@@ -394,6 +398,8 @@ namespace Spartan
     {
         if (storage)
         {
+            SP_ASSERT(texture->IsUav());
+
             if (clear_color == rhi_color_load || clear_color == rhi_color_dont_care)
                 return;
 
@@ -408,9 +414,9 @@ namespace Spartan
                 }
             }
         }
-        else if (texture->IsRenderTarget())
+        else if (texture->IsRenderTargetColor() || texture->IsRenderTargetDepthStencil())
         {
-            if (texture->IsColorFormat())
+            if (texture->IsRenderTargetColor())
             {
                 if (clear_color == rhi_color_load || clear_color == rhi_color_dont_care)
                     return;
@@ -421,7 +427,7 @@ namespace Spartan
                     clear_color.Data()
                 );
             }
-            else if (texture->IsDepthStencilFormat())
+            else if (texture->IsRenderTargetDepthStencil())
             {
                 if ((clear_depth == rhi_depth_load || clear_depth == rhi_depth_dont_care) && (clear_stencil == rhi_stencil_load || clear_stencil == rhi_stencil_dont_care))
                     return;
@@ -644,6 +650,19 @@ namespace Spartan
 
     void RHI_CommandList::SetTexture(const uint32_t slot, RHI_Texture* texture, const int mip /*= -1*/, const bool ranged /*= false*/, const bool uav /*= false*/)
     {
+        // Validate texture
+        if (texture)
+        {
+            if (uav)
+            {
+                SP_ASSERT(texture->IsUav());
+            }
+            else
+            {
+                SP_ASSERT(texture->IsSrv());
+            }
+        }
+
         bool mip_requested                  = mip != -1;
         const UINT range                    = ranged ? (texture->GetMipCount() - (mip_requested ? mip : 0)): 1;
         ID3D11DeviceContext* device_context = m_rhi_device->GetContextRhi()->device_context;
@@ -688,10 +707,10 @@ namespace Spartan
                 m_profiler->m_rhi_bindings_texture_storage++;
 
                 // Keep track of output textures
-                m_output_textures[m_output_textures_index].texture  = texture;
-                m_output_textures[m_output_textures_index].slot     = slot;
-                m_output_textures[m_output_textures_index].mip      = mip;
-                m_output_textures[m_output_textures_index].ranged   = ranged;
+                m_output_textures[m_output_textures_index].texture = texture;
+                m_output_textures[m_output_textures_index].slot    = slot;
+                m_output_textures[m_output_textures_index].mip     = mip;
+                m_output_textures[m_output_textures_index].ranged  = ranged;
                 m_output_textures_index++;
             }
         }

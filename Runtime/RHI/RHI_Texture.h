@@ -33,11 +33,11 @@ namespace Spartan
 {
     enum RHI_Texture_Flags : uint16_t
     {
-        RHI_Texture_Sampled                 = 1 << 0,
-        RHI_Texture_Storage                 = 1 << 1,
-        RHI_Texture_RenderTarget            = 1 << 2,
-        RHI_Texture_DepthStencil            = 1 << 3,
-        RHI_Texture_DepthStencilReadOnly    = 1 << 4,
+        RHI_Texture_Srv                     = 1 << 0,
+        RHI_Texture_Uav                     = 1 << 1,
+        RHI_Texture_Rt_Color                = 1 << 2,
+        RHI_Texture_Rt_DepthStencil         = 1 << 3,
+        RHI_Texture_Rt_DepthStencilReadOnly = 1 << 4,
         RHI_Texture_PerMipView              = 1 << 5,
         RHI_Texture_Grayscale               = 1 << 6,
         RHI_Texture_Transparent             = 1 << 7,
@@ -106,11 +106,11 @@ namespace Spartan
         RHI_Texture_Slice& GetSlice(const uint32_t array_index);
 
         // Flag queries
-        bool IsSampled()        const { return m_flags & RHI_Texture_Sampled; }
-        bool IsStorage()        const { return m_flags & RHI_Texture_Storage; }
-        bool IsDepthStencil()   const { return m_flags & RHI_Texture_DepthStencil; }
-        bool IsRenderTarget()   const { return m_flags & RHI_Texture_RenderTarget; }
-        bool HasPerMipView()    const { return m_flags & RHI_Texture_PerMipView; }
+        bool IsSrv()                      const { return m_flags & RHI_Texture_Srv; }
+        bool IsUav()                      const { return m_flags & RHI_Texture_Uav; }
+        bool IsRenderTargetDepthStencil() const { return m_flags & RHI_Texture_Rt_DepthStencil; }
+        bool IsRenderTargetColor()        const { return m_flags & RHI_Texture_Rt_Color; }
+        bool HasPerMipView()              const { return m_flags & RHI_Texture_PerMipView; }
 
         // Format type
         bool IsDepthFormat()            const { return m_format == RHI_Format_D32_Float || m_format == RHI_Format_D32_Float_S8X24_Uint; }

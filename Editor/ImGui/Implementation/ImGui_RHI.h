@@ -138,7 +138,7 @@ namespace ImGui::RHI
             memcpy(&mip[0], reinterpret_cast<std::byte*>(pixels), size);
 
             // Upload texture to graphics system
-            g_texture = make_unique<RHI_Texture2D>(g_context, atlas_width, atlas_height, RHI_Format_R8G8B8A8_Unorm, texture_data);
+            g_texture = make_unique<RHI_Texture2D>(g_context, atlas_width, atlas_height, RHI_Format_R8G8B8A8_Unorm, RHI_Texture_Srv, texture_data);
             io.Fonts->TexID = static_cast<ImTextureID>(g_texture.get());
         }
 
