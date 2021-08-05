@@ -554,8 +554,8 @@ namespace Spartan
                     // Update uber buffer with entity transform
                     if (Transform* transform = entity->GetTransform())
                     {
-                        m_cb_uber_cpu.transform             = transform->GetMatrix();
-                        m_cb_uber_cpu.transform_previous    = transform->GetMatrixPrevious();
+                        m_cb_uber_cpu.transform          = transform->GetMatrix();
+                        m_cb_uber_cpu.transform_previous = transform->GetMatrixPrevious();
 
                         // Save matrix for velocity computation
                         transform->SetWvpLastFrame(m_cb_uber_cpu.transform);
@@ -607,7 +607,7 @@ namespace Spartan
         if (cmd_list->BeginRenderPass(pso))
         {
             // Update uber buffer
-            m_cb_uber_cpu.resolution = Vector2(static_cast<float>(tex_ssao->GetWidth()), static_cast<float>(tex_ssao->GetHeight()));
+            m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(tex_ssao->GetWidth()), static_cast<float>(tex_ssao->GetHeight()));
             Update_Cb_Uber(cmd_list);
 
             const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_ssao->GetWidth()) / m_thread_group_count));
@@ -658,7 +658,7 @@ namespace Spartan
         if (cmd_list->BeginRenderPass(pso))
         {
             // Update uber buffer
-            m_cb_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
+            m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
             Update_Cb_Uber(cmd_list);
 
             const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / m_thread_group_count));
@@ -704,7 +704,7 @@ namespace Spartan
         if (cmd_list->BeginRenderPass(pso))
         {
             // Update uber buffer
-            m_cb_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
+            m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
             Update_Cb_Uber(cmd_list);
 
             cmd_list->SetTexture(RendererBindings_Srv::gbuffer_albedo,   RENDER_TARGET(RendererRt::Gbuffer_Albedo));
@@ -799,8 +799,8 @@ namespace Spartan
                         Update_Cb_Light(cmd_list, light);
 
                         // Update uber buffer
-                        m_cb_uber_cpu.resolution            = Vector2(static_cast<float>(tex_diffuse->GetWidth()), static_cast<float>(tex_diffuse->GetHeight()));
-                        m_cb_uber_cpu.is_transparent_pass   = is_transparent_pass;
+                        m_cb_uber_cpu.resolution_rt       = Vector2(static_cast<float>(tex_diffuse->GetWidth()), static_cast<float>(tex_diffuse->GetHeight()));
+                        m_cb_uber_cpu.is_transparent_pass = is_transparent_pass;
                         Update_Cb_Uber(cmd_list);
 
                         const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_diffuse->GetWidth()) / m_thread_group_count));
@@ -832,8 +832,8 @@ namespace Spartan
         if (cmd_list->BeginRenderPass(pso))
         {
             // Update uber buffer
-            m_cb_uber_cpu.resolution            = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
-            m_cb_uber_cpu.is_transparent_pass   = is_transparent_pass;
+            m_cb_uber_cpu.resolution_rt       = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
+            m_cb_uber_cpu.is_transparent_pass = is_transparent_pass;
             Update_Cb_Uber(cmd_list);
 
             const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / m_thread_group_count));
@@ -876,28 +876,28 @@ namespace Spartan
 
         // Set render state
         static RHI_PipelineState pso;
-        pso.shader_vertex                           = shader_v;
-        pso.shader_pixel                            = shader_p;
-        pso.rasterizer_state                        = m_rasterizer_cull_back_solid.get();
-        pso.depth_stencil_state                     = is_transparent_pass ? m_depth_stencil_off_r.get() : m_depth_stencil_off_off.get();
-        pso.blend_state                             = m_blend_additive.get();
-        pso.render_target_color_textures[0]         = tex_out;
-        pso.clear_color[0]                          = rhi_color_load;
-        pso.render_target_depth_texture             = is_transparent_pass ? tex_depth : nullptr;
-        pso.render_target_depth_texture_read_only   = is_transparent_pass;
-        pso.clear_depth                             = rhi_depth_load;
-        pso.clear_stencil                           = rhi_stencil_load;
-        pso.viewport                                = tex_out->GetViewport();
-        pso.vertex_buffer_stride                    = m_viewport_quad.GetVertexBuffer()->GetStride();
-        pso.primitive_topology                      = RHI_PrimitiveTopology_Mode::TriangleList;
-        pso.pass_name                               = is_transparent_pass ? "Pass_Light_ImageBased_Transparent" : "Pass_Light_ImageBased_Opaque";
+        pso.shader_vertex                         = shader_v;
+        pso.shader_pixel                          = shader_p;
+        pso.rasterizer_state                      = m_rasterizer_cull_back_solid.get();
+        pso.depth_stencil_state                   = is_transparent_pass ? m_depth_stencil_off_r.get() : m_depth_stencil_off_off.get();
+        pso.blend_state                           = m_blend_additive.get();
+        pso.render_target_color_textures[0]       = tex_out;
+        pso.clear_color[0]                        = rhi_color_load;
+        pso.render_target_depth_texture           = is_transparent_pass ? tex_depth : nullptr;
+        pso.render_target_depth_texture_read_only = is_transparent_pass;
+        pso.clear_depth                           = rhi_depth_load;
+        pso.clear_stencil                         = rhi_stencil_load;
+        pso.viewport                              = tex_out->GetViewport();
+        pso.vertex_buffer_stride                  = m_viewport_quad.GetVertexBuffer()->GetStride();
+        pso.primitive_topology                    = RHI_PrimitiveTopology_Mode::TriangleList;
+        pso.pass_name                             = is_transparent_pass ? "Pass_Light_ImageBased_Transparent" : "Pass_Light_ImageBased_Opaque";
 
         // Begin commands
         if (cmd_list->BeginRenderPass(pso))
         {
             // Update uber buffer
-            m_cb_uber_cpu.resolution            = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
-            m_cb_uber_cpu.is_transparent_pass   = is_transparent_pass;
+            m_cb_uber_cpu.resolution_rt       = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
+            m_cb_uber_cpu.is_transparent_pass = is_transparent_pass;
             Update_Cb_Uber(cmd_list);
 
             // Setup command list
@@ -953,13 +953,14 @@ namespace Spartan
         {
             // Set render state
             static RHI_PipelineState pso;
-            pso.shader_compute  = shader_c;
-            pso.pass_name       = "Pass_Blur_Gaussian_Horizontal";
+            pso.shader_compute = shader_c;
+            pso.pass_name      = "Pass_Blur_Gaussian_Horizontal";
 
             if (cmd_list->BeginRenderPass(pso))
             {
                 // Update uber buffer
-                m_cb_uber_cpu.resolution     = Vector2(static_cast<float>(width), static_cast<float>(height));
+                m_cb_uber_cpu.resolution_rt  = Vector2(static_cast<float>(width), static_cast<float>(height));
+                m_cb_uber_cpu.resolution_in  = Vector2(static_cast<float>(width), static_cast<float>(height));
                 m_cb_uber_cpu.blur_direction = Vector2(pixel_stride, 0.0f);
                 m_cb_uber_cpu.blur_sigma     = sigma;
                 Update_Cb_Uber(cmd_list);
@@ -986,8 +987,7 @@ namespace Spartan
 
             if (cmd_list->BeginRenderPass(pso))
             {
-
-                m_cb_uber_cpu.resolution     = Vector2(static_cast<float>(tex_blur->GetWidth()), static_cast<float>(tex_blur->GetHeight()));
+                m_cb_uber_cpu.resolution_rt  = Vector2(static_cast<float>(tex_blur->GetWidth()), static_cast<float>(tex_blur->GetHeight()));
                 m_cb_uber_cpu.blur_direction = Vector2(0.0f, pixel_stride);
                 Update_Cb_Uber(cmd_list);
 
@@ -1148,7 +1148,7 @@ namespace Spartan
         if (cmd_list->BeginRenderPass(pso))
         {
             // Update uber buffer
-            m_cb_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
+            m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
             Update_Cb_Uber(cmd_list);
 
             const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / m_thread_group_count));
@@ -1194,13 +1194,13 @@ namespace Spartan
             if (cmd_list->BeginRenderPass(pso))
             {
                 // Update uber buffer
-                m_cb_uber_cpu.resolution = Vector2(static_cast<float>(tex_bloom->GetWidth()), static_cast<float>(tex_bloom->GetHeight()));
+                m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(tex_bloom->GetWidth()), static_cast<float>(tex_bloom->GetHeight()));
                 Update_Cb_Uber(cmd_list);
 
-                const uint32_t thread_group_count_x   = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_bloom->GetWidth()) / m_thread_group_count));
-                const uint32_t thread_group_count_y   = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_bloom->GetHeight()) / m_thread_group_count));
-                const uint32_t thread_group_count_z   = 1;
-                const bool async                      = false;
+                const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_bloom->GetWidth()) / m_thread_group_count));
+                const uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_bloom->GetHeight()) / m_thread_group_count));
+                const uint32_t thread_group_count_z = 1;
+                const bool async                    = false;
 
                 cmd_list->SetTexture(RendererBindings_Uav::rgb, tex_bloom);
                 cmd_list->SetTexture(RendererBindings_Srv::tex, tex_in);
@@ -1225,13 +1225,13 @@ namespace Spartan
             {
                 for (int i = static_cast<int>(tex_bloom->GetMipCount() - 1); i > 0; i--)
                 {
-                    int mip_index_small     = i;
-                    int mip_index_big       = i - 1;
-                    int mip_width_large     = tex_bloom->GetWidth() >> mip_index_big;
-                    int mip_height_height   = tex_bloom->GetHeight() >> mip_index_big;
+                    int mip_index_small   = i;
+                    int mip_index_big     = i - 1;
+                    int mip_width_large   = tex_bloom->GetWidth() >> mip_index_big;
+                    int mip_height_height = tex_bloom->GetHeight() >> mip_index_big;
 
                     // Update uber buffer
-                    m_cb_uber_cpu.resolution = Vector2(static_cast<float>(mip_width_large), static_cast<float>(mip_height_height));
+                    m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(mip_width_large), static_cast<float>(mip_height_height));
                     Update_Cb_Uber(cmd_list);
 
                     const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(mip_width_large) / m_thread_group_count));
@@ -1259,7 +1259,7 @@ namespace Spartan
             if (cmd_list->BeginRenderPass(pso))
             {
                 // Update uber buffer
-                m_cb_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
+                m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
                 Update_Cb_Uber(cmd_list);
 
                 const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / m_thread_group_count));
@@ -1292,7 +1292,7 @@ namespace Spartan
         if (cmd_list->BeginRenderPass(pso))
         {
             // Update uber buffer
-            m_cb_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
+            m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
             Update_Cb_Uber(cmd_list);
 
             const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / m_thread_group_count));
@@ -1323,13 +1323,13 @@ namespace Spartan
         if (cmd_list->BeginRenderPass(pso))
         {
             // Update uber buffer
-            m_cb_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
+            m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
             Update_Cb_Uber(cmd_list);
 
-            const uint32_t thread_group_count_x   = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / m_thread_group_count));
-            const uint32_t thread_group_count_y   = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetHeight()) / m_thread_group_count));
-            const uint32_t thread_group_count_z   = 1;
-            const bool async                      = false;
+            const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / m_thread_group_count));
+            const uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetHeight()) / m_thread_group_count));
+            const uint32_t thread_group_count_z = 1;
+            const bool async                    = false;
 
             cmd_list->SetTexture(RendererBindings_Uav::rgb, tex_out);
             cmd_list->SetTexture(RendererBindings_Srv::tex, tex_in);
@@ -1347,8 +1347,8 @@ namespace Spartan
 
         // Set render state
         static RHI_PipelineState pso;
-        pso.shader_compute   = shader_c;
-        pso.pass_name        = "Pass_PostProcess_FXAA";
+        pso.shader_compute = shader_c;
+        pso.pass_name      = "Pass_PostProcess_FXAA";
 
         // Draw
         if (cmd_list->BeginRenderPass(pso))
@@ -1360,7 +1360,7 @@ namespace Spartan
             const bool async = false;
 
             // Update uber buffer
-            m_cb_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
+            m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
             Update_Cb_Uber(cmd_list);
 
             cmd_list->SetTexture(RendererBindings_Srv::tex, tex_in);
@@ -1386,13 +1386,13 @@ namespace Spartan
         if (cmd_list->BeginRenderPass(pso))
         {
             // Update uber buffer
-            m_cb_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
+            m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
             Update_Cb_Uber(cmd_list);
 
-            const uint32_t thread_group_count_x   = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / m_thread_group_count));
-            const uint32_t thread_group_count_y   = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetHeight()) / m_thread_group_count));
-            const uint32_t thread_group_count_z   = 1;
-            const bool async                      = false;
+            const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / m_thread_group_count));
+            const uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetHeight()) / m_thread_group_count));
+            const uint32_t thread_group_count_z = 1;
+            const bool async                    = false;
 
             cmd_list->SetTexture(RendererBindings_Uav::rgb, tex_out);
             cmd_list->SetTexture(RendererBindings_Srv::tex, tex_in);
@@ -1417,13 +1417,13 @@ namespace Spartan
         if (cmd_list->BeginRenderPass(pso))
         {
             // Update uber buffer
-            m_cb_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
+            m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
             Update_Cb_Uber(cmd_list);
 
-            const uint32_t thread_group_count_x   = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / m_thread_group_count));
-            const uint32_t thread_group_count_y   = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetHeight()) / m_thread_group_count));
-            const uint32_t thread_group_count_z   = 1;
-            const bool async                      = false;
+            const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / m_thread_group_count));
+            const uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetHeight()) / m_thread_group_count));
+            const uint32_t thread_group_count_z = 1;
+            const bool async                    = false;
 
             cmd_list->SetTexture(RendererBindings_Uav::rgb, tex_out);
             cmd_list->SetTexture(RendererBindings_Srv::tex, tex_in);
@@ -1460,13 +1460,13 @@ namespace Spartan
             if (cmd_list->BeginRenderPass(pso))
             {
                 // Update uber buffer
-                m_cb_uber_cpu.resolution = Vector2(static_cast<float>(tex_bokeh_half->GetWidth()), static_cast<float>(tex_bokeh_half->GetHeight()));
+                m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(tex_bokeh_half->GetWidth()), static_cast<float>(tex_bokeh_half->GetHeight()));
                 Update_Cb_Uber(cmd_list);
 
-                const uint32_t thread_group_count_x   = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_bokeh_half->GetWidth()) / m_thread_group_count));
-                const uint32_t thread_group_count_y   = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_bokeh_half->GetHeight()) / m_thread_group_count));
-                const uint32_t thread_group_count_z   = 1;
-                const bool async                      = false;
+                const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_bokeh_half->GetWidth()) / m_thread_group_count));
+                const uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_bokeh_half->GetHeight()) / m_thread_group_count));
+                const uint32_t thread_group_count_z = 1;
+                const bool async                    = false;
 
                 cmd_list->SetTexture(RendererBindings_Uav::rgba, tex_bokeh_half);
                 cmd_list->SetTexture(RendererBindings_Srv::gbuffer_depth, tex_depth);
@@ -1487,7 +1487,7 @@ namespace Spartan
             if (cmd_list->BeginRenderPass(pso))
             {
                 // Update uber buffer
-                m_cb_uber_cpu.resolution = Vector2(static_cast<float>(tex_bokeh_half_2->GetWidth()), static_cast<float>(tex_bokeh_half_2->GetHeight()));
+                m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(tex_bokeh_half_2->GetWidth()), static_cast<float>(tex_bokeh_half_2->GetHeight()));
                 Update_Cb_Uber(cmd_list);
 
                 const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_bokeh_half_2->GetWidth()) / m_thread_group_count));
@@ -1513,7 +1513,7 @@ namespace Spartan
             if (cmd_list->BeginRenderPass(pso))
             {
                 // Update uber buffer
-                m_cb_uber_cpu.resolution = Vector2(static_cast<float>(tex_bokeh_half->GetWidth()), static_cast<float>(tex_bokeh_half->GetHeight()));
+                m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(tex_bokeh_half->GetWidth()), static_cast<float>(tex_bokeh_half->GetHeight()));
                 Update_Cb_Uber(cmd_list);
 
                 const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_bokeh_half->GetWidth()) / m_thread_group_count));
@@ -1539,7 +1539,7 @@ namespace Spartan
             if (cmd_list->BeginRenderPass(pso))
             {
                 // Update uber buffer
-                m_cb_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
+                m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
                 Update_Cb_Uber(cmd_list);
 
                 const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / m_thread_group_count));
@@ -1573,7 +1573,7 @@ namespace Spartan
         if (cmd_list->BeginRenderPass(pso))
         {
             // Update uber buffer
-            m_cb_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
+            m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
             Update_Cb_Uber(cmd_list);
 
             const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / m_thread_group_count));
@@ -1604,13 +1604,13 @@ namespace Spartan
         if (cmd_list->BeginRenderPass(pso))
         {
             // Update uber buffer
-            m_cb_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
+            m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
             Update_Cb_Uber(cmd_list);
 
-            const uint32_t thread_group_count_x   = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / m_thread_group_count));
-            const uint32_t thread_group_count_y   = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetHeight()) / m_thread_group_count));
-            const uint32_t thread_group_count_z   = 1;
-            const bool async                      = false;
+            const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / m_thread_group_count));
+            const uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetHeight()) / m_thread_group_count));
+            const uint32_t thread_group_count_z = 1;
+            const bool async                    = false;
 
             cmd_list->SetTexture(RendererBindings_Uav::rgb, tex_out);
             cmd_list->SetTexture(RendererBindings_Srv::tex, tex_in);
@@ -1635,13 +1635,13 @@ namespace Spartan
         if (cmd_list->BeginRenderPass(pso))
         {
             // Update uber buffer
-            m_cb_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
+            m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
             Update_Cb_Uber(cmd_list);
 
-            const uint32_t thread_group_count_x   = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / m_thread_group_count));
-            const uint32_t thread_group_count_y   = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetHeight()) / m_thread_group_count));
-            const uint32_t thread_group_count_z   = 1;
-            const bool async                      = false;
+            const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / m_thread_group_count));
+            const uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetHeight()) / m_thread_group_count));
+            const uint32_t thread_group_count_z = 1;
+            const bool async                    = false;
 
             cmd_list->SetTexture(RendererBindings_Uav::rgb, tex_out);
             cmd_list->SetTexture(RendererBindings_Srv::tex, tex_in);
@@ -1685,9 +1685,9 @@ namespace Spartan
             const bool async                    = false;
         
             // Update uber buffer
-            m_cb_uber_cpu.resolution        = Vector2(static_cast<float>(tex->GetWidth()), static_cast<float>(tex->GetHeight()));
-            m_cb_uber_cpu.mip_count         = generated_mips_count;
-            m_cb_uber_cpu.work_group_count  = thread_group_count_x * thread_group_count_y * thread_group_count_z;
+            m_cb_uber_cpu.resolution_rt    = Vector2(static_cast<float>(tex->GetWidth()), static_cast<float>(tex->GetHeight()));
+            m_cb_uber_cpu.mip_count        = generated_mips_count;
+            m_cb_uber_cpu.work_group_count = thread_group_count_x * thread_group_count_y * thread_group_count_z;
             Update_Cb_Uber(cmd_list);
         
             cmd_list->SetTexture(RendererBindings_Srv::tex, tex, 0); // top mip
@@ -1773,23 +1773,23 @@ namespace Spartan
         {
             // Set render state
             static RHI_PipelineState pso;
-            pso.shader_vertex                    = shader_color_v;
-            pso.shader_pixel                     = shader_color_p;
-            pso.rasterizer_state                 = m_rasterizer_cull_back_wireframe.get();
-            pso.blend_state                      = m_blend_alpha.get();
-            pso.depth_stencil_state              = m_depth_stencil_r_off.get();
-            pso.vertex_buffer_stride             = m_gizmo_grid->GetVertexBuffer()->GetStride();
-            pso.render_target_color_textures[0]  = tex_out;
-            pso.render_target_depth_texture      = RENDER_TARGET(RendererRt::Gbuffer_Depth).get();
-            pso.viewport                         = tex_out->GetViewport();
-            pso.primitive_topology               = RHI_PrimitiveTopology_Mode::LineList;
-            pso.pass_name                        = "Pass_Lines_Grid";
+            pso.shader_vertex                   = shader_color_v;
+            pso.shader_pixel                    = shader_color_p;
+            pso.rasterizer_state                = m_rasterizer_cull_back_wireframe.get();
+            pso.blend_state                     = m_blend_alpha.get();
+            pso.depth_stencil_state             = m_depth_stencil_r_off.get();
+            pso.vertex_buffer_stride            = m_gizmo_grid->GetVertexBuffer()->GetStride();
+            pso.render_target_color_textures[0] = tex_out;
+            pso.render_target_depth_texture     = RENDER_TARGET(RendererRt::Gbuffer_Depth).get();
+            pso.viewport                        = tex_out->GetViewport();
+            pso.primitive_topology              = RHI_PrimitiveTopology_Mode::LineList;
+            pso.pass_name                       = "Pass_Lines_Grid";
         
             // Create and submit command list
             if (cmd_list->BeginRenderPass(pso))
             {
                 // Update uber buffer
-                m_cb_uber_cpu.resolution    = m_resolution_render;
+                m_cb_uber_cpu.resolution_rt = m_resolution_render;
                 m_cb_uber_cpu.transform     = m_gizmo_grid->ComputeWorldMatrix(m_camera->GetTransform()) * m_cb_frame_cpu.view_projection_unjittered;
                 Update_Cb_Uber(cmd_list);
         
@@ -1822,8 +1822,8 @@ namespace Spartan
 
                         if (light->GetLightType() == LightType::Directional)
                         {
-                            Vector3 pos_start   = light->GetTransform()->GetPosition();
-                            Vector3 pos_end     = -pos_start;
+                            Vector3 pos_start = light->GetTransform()->GetPosition();
+                            Vector3 pos_end   = -pos_start;
                             DrawLine(pos_start, pos_end);
 
                         }
@@ -1900,17 +1900,17 @@ namespace Spartan
 
                 // Set render state
                 static RHI_PipelineState pso;
-                pso.shader_vertex                    = shader_color_v;
-                pso.shader_pixel                     = shader_color_p;
-                pso.rasterizer_state                 = m_rasterizer_cull_back_wireframe.get();
-                pso.blend_state                      = m_blend_alpha.get();
-                pso.depth_stencil_state              = m_depth_stencil_r_off.get();
-                pso.vertex_buffer_stride             = m_vertex_buffer_lines->GetStride();
-                pso.render_target_color_textures[0]  = tex_out;
-                pso.render_target_depth_texture      = RENDER_TARGET(RendererRt::Gbuffer_Depth).get();
-                pso.viewport                         = tex_out->GetViewport();
-                pso.primitive_topology               = RHI_PrimitiveTopology_Mode::LineList;
-                pso.pass_name                        = "Pass_Lines";
+                pso.shader_vertex                   = shader_color_v;
+                pso.shader_pixel                    = shader_color_p;
+                pso.rasterizer_state                = m_rasterizer_cull_back_wireframe.get();
+                pso.blend_state                     = m_blend_alpha.get();
+                pso.depth_stencil_state             = m_depth_stencil_r_off.get();
+                pso.vertex_buffer_stride            = m_vertex_buffer_lines->GetStride();
+                pso.render_target_color_textures[0] = tex_out;
+                pso.render_target_depth_texture     = RENDER_TARGET(RendererRt::Gbuffer_Depth).get();
+                pso.viewport                        = tex_out->GetViewport();
+                pso.primitive_topology              = RHI_PrimitiveTopology_Mode::LineList;
+                pso.pass_name                       = "Pass_Lines";
 
                 // Create and submit command list
                 if (cmd_list->BeginRenderPass(pso))
@@ -1938,16 +1938,16 @@ namespace Spartan
 
                 // Set render state
                 static RHI_PipelineState pso;
-                pso.shader_vertex                    = shader_color_v;
-                pso.shader_pixel                     = shader_color_p;
-                pso.rasterizer_state                 = m_rasterizer_cull_back_wireframe.get();
-                pso.blend_state                      = m_blend_disabled.get();
-                pso.depth_stencil_state              = m_depth_stencil_off_off.get();
-                pso.vertex_buffer_stride             = m_vertex_buffer_lines->GetStride();
-                pso.render_target_color_textures[0]  = tex_out;
-                pso.viewport                         = tex_out->GetViewport();
-                pso.primitive_topology               = RHI_PrimitiveTopology_Mode::LineList;
-                pso.pass_name                        = "Pass_Lines_No_Depth";
+                pso.shader_vertex                   = shader_color_v;
+                pso.shader_pixel                    = shader_color_p;
+                pso.rasterizer_state                = m_rasterizer_cull_back_wireframe.get();
+                pso.blend_state                     = m_blend_disabled.get();
+                pso.depth_stencil_state             = m_depth_stencil_off_off.get();
+                pso.vertex_buffer_stride            = m_vertex_buffer_lines->GetStride();
+                pso.render_target_color_textures[0] = tex_out;
+                pso.viewport                        = tex_out->GetViewport();
+                pso.primitive_topology              = RHI_PrimitiveTopology_Mode::LineList;
+                pso.pass_name                       = "Pass_Lines_No_Depth";
 
                 // Create and submit command list
                 if (cmd_list->BeginRenderPass(pso))
@@ -2032,8 +2032,8 @@ namespace Spartan
                         }
 
                         // Update uber buffer
-                        m_cb_uber_cpu.resolution = Vector2(static_cast<float>(tex_width), static_cast<float>(tex_width));
-                        m_cb_uber_cpu.transform = m_cb_frame_cpu.view_projection_ortho;
+                        m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(tex_width), static_cast<float>(tex_width));
+                        m_cb_uber_cpu.transform     = m_cb_frame_cpu.view_projection_ortho;
                         Update_Cb_Uber(cmd_list);
 
                         cmd_list->SetTexture(RendererBindings_Srv::tex, light_tex);
@@ -2187,7 +2187,7 @@ namespace Spartan
                 if (Transform* transform = entity->GetTransform())
                 {
                     m_cb_uber_cpu.transform     = transform->GetMatrix();
-                    m_cb_uber_cpu.resolution    = Vector2(tex_out->GetWidth(), tex_out->GetHeight());
+                    m_cb_uber_cpu.resolution_rt = Vector2(tex_out->GetWidth(), tex_out->GetHeight());
                     Update_Cb_Uber(cmd_list);
                 }
 
@@ -2234,7 +2234,7 @@ namespace Spartan
             if (cmd_list->BeginRenderPass(pso))
             {
                 // Update uber buffer
-                m_cb_uber_cpu.resolution    = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
+                m_cb_uber_cpu.resolution_rt    = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
                 m_cb_uber_cpu.color         = m_font->GetColorOutline();
                 Update_Cb_Uber(cmd_list);
 
@@ -2250,7 +2250,7 @@ namespace Spartan
         if (cmd_list->BeginRenderPass(pso))
         {
             // Update uber buffer
-            m_cb_uber_cpu.resolution    = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
+            m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
             m_cb_uber_cpu.color         = m_font->GetColor();
             Update_Cb_Uber(cmd_list);
 
@@ -2349,7 +2349,7 @@ namespace Spartan
         if (cmd_list->BeginRenderPass(pso))
         {
             // Update uber buffer
-            m_cb_uber_cpu.resolution    = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
+            m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
             m_cb_uber_cpu.transform     = m_cb_frame_cpu.view_projection_ortho;
             Update_Cb_Uber(cmd_list);
 
@@ -2389,7 +2389,7 @@ namespace Spartan
         if (cmd_list->BeginRenderPass(pso))
         {
             // Update uber buffer
-            m_cb_uber_cpu.resolution = Vector2(static_cast<float>(render_target->GetWidth()), static_cast<float>(render_target->GetHeight()));
+            m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(render_target->GetWidth()), static_cast<float>(render_target->GetHeight()));
             Update_Cb_Uber(cmd_list);
 
             const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(render_target->GetWidth()) / m_thread_group_count));
@@ -2421,7 +2421,7 @@ namespace Spartan
         if (cmd_list->BeginRenderPass(pso))
         {
             // Update uber buffer
-            m_cb_uber_cpu.resolution = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
+            m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
             Update_Cb_Uber(cmd_list);
 
             const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / m_thread_group_count));
@@ -2462,7 +2462,7 @@ namespace Spartan
         if (cmd_list->BeginRenderPass(pso))
         {
             // Update uber buffer
-            m_cb_uber_cpu.resolution = Vector2(static_cast<float>(m_swap_chain->GetWidth()), static_cast<float>(m_swap_chain->GetHeight()));
+            m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(m_swap_chain->GetWidth()), static_cast<float>(m_swap_chain->GetHeight()));
             Update_Cb_Uber(cmd_list);
 
             cmd_list->SetTexture(RendererBindings_Srv::tex, RENDER_TARGET(RendererRt::Frame_Output).get());

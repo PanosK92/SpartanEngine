@@ -60,7 +60,7 @@ cbuffer BufferFrame : register(b0)
     uint g_options;
 
     uint g_frame_mip_count;
-    float3 padding;
+    float3 g_padding;
 };
 
 // Medium frequency - Updates per render pass
@@ -76,6 +76,9 @@ cbuffer BufferUber : register(b1)
     
     float2 g_blur_direction;
     float2 g_resolution_rt;
+
+    float2 g_resolution_in;
+    float2 g_padding2;
 
     float4 g_mat_color;
 

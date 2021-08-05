@@ -49,8 +49,8 @@ float3 F_Schlick_Roughness(float3 f0, float cosTheta, float roughness)
 // [Smith 1967, "Geometrical shadowing of a random rough surface"]
 inline float V_Smith(float a2, float n_dot_v, float n_dot_l)
 {
-    float Vis_SmithV = n_dot_v + fast_sqrt(n_dot_v * (n_dot_v - n_dot_v * a2) + a2);
-    float Vis_SmithL = n_dot_l + fast_sqrt(n_dot_l * (n_dot_l - n_dot_l * a2) + a2);
+    float Vis_SmithV = n_dot_v + sqrt(n_dot_v * (n_dot_v - n_dot_v * a2) + a2);
+    float Vis_SmithL = n_dot_l + sqrt(n_dot_l * (n_dot_l - n_dot_l * a2) + a2);
     return rcp(Vis_SmithV * Vis_SmithL);
 }
 
@@ -58,9 +58,9 @@ inline float V_Smith(float a2, float n_dot_v, float n_dot_l)
 // [Heitz 2014, "Understanding the Masking-Shadowing Function in Microfacet-Based BRDFs"]
 inline float V_SmithJointApprox(float a2, float n_dot_v, float n_dot_l)
 {
-    float a             = fast_sqrt(a2);
-    float Vis_SmithV    = n_dot_l * (n_dot_v * (1 - a) + a);
-    float Vis_SmithL    = n_dot_v * (n_dot_l * (1 - a) + a);
+    float a          = sqrt(a2);
+    float Vis_SmithV = n_dot_l * (n_dot_v * (1 - a) + a);
+    float Vis_SmithL = n_dot_v * (n_dot_l * (1 - a) + a);
     return saturate_16(0.5 * rcp(Vis_SmithV + Vis_SmithL));
 }
 
@@ -70,7 +70,7 @@ float V_GGX_anisotropic_2cos(float cos_theta_m, float alpha_x, float alpha_y, fl
     float sin2  = (1.0 - cos2);
     float s_x   = alpha_x * cos_phi;
     float s_y   = alpha_y * sin_phi;
-    return 1.0 / max(cos_theta_m + fast_sqrt(cos2 + (s_x * s_x + s_y * s_y) * sin2), 0.001);
+    return 1.0 / max(cos_theta_m + sqrt(cos2 + (s_x * s_x + s_y * s_y) * sin2), 0.001);
 }
 
 // [Kelemen 2001, "A microfacet based coupled specular-matte brdf model with importance sampling"]
@@ -155,19 +155,16 @@ inline float3 BRDF_Diffuse(Surface surface, float n_dot_v, float n_dot_l, float 
 
 inline float3 BRDF_Specular_Isotropic(Surface surface, float n_dot_v, float n_dot_l, float n_dot_h, float v_dot_h, inout float3 diffuse_energy, inout float3 specular_energy)
 {
-    // remapping and linearization
-    float roughness = clamp(surface.roughness, 0.089f, 1.0f);
-    float a         = roughness * roughness;
-    float a2        = pow(roughness, 4.0f);
+    float a2 = pow4(surface.roughness);
 
-    float V     = V_SmithJointApprox(a2, n_dot_v, n_dot_l);
-    float D     = D_GGX(a2, n_dot_h);
-    float3 F    = F_Schlick(surface.F0, v_dot_h);
+    float V  = V_SmithJointApprox(a2, n_dot_v, n_dot_l);
+    float D  = D_GGX(a2, n_dot_h);
+    float3 F = F_Schlick(surface.F0, v_dot_h);
 
     diffuse_energy  *= compute_diffuse_energy(F, surface.metallic);
     specular_energy *= F;
-    
-    return (D * V) * F;
+
+    return D * V * F;
 }
 
 inline float3 BRDF_Specular_Anisotropic(Surface surface, float3 v, float3 l, float3 h, float n_dot_v, float n_dot_l, float n_dot_h, float l_dot_h, inout float3 diffuse_energy, inout float3 specular_energy)
@@ -178,36 +175,33 @@ inline float3 BRDF_Specular_Anisotropic(Surface surface, float3 v, float3 l, flo
     float3x3 TBN = float3x3(t, b, surface.normal);
 
     // Rotate tangent and bitagent
-    float rotation      = max(surface.anisotropic_rotation * PI2, FLT_MIN);     // convert material property to a full rotation
-    float2 direction    = float2(cos(rotation), sin(rotation));                 // convert rotation to direction
-    t                   = normalize(mul(float3(direction, 0.0f), TBN).xyz);     // compute direction derived tangent
-    b                   = normalize(cross(surface.normal, t));                  // re-compute bitangent
+    float rotation      = max(surface.anisotropic_rotation * PI2, FLT_MIN); // convert material property to a full rotation
+    float2 direction    = float2(cos(rotation), sin(rotation));             // convert rotation to direction
+    t                   = normalize(mul(float3(direction, 0.0f), TBN).xyz); // compute direction derived tangent
+    b                   = normalize(cross(surface.normal, t));              // re-compute bitangent
 
     float alpha_ggx = surface.roughness;
-    float aspect    = fast_sqrt(1.0 - surface.anisotropic * 0.9);
+    float aspect    = sqrt(1.0 - surface.anisotropic * 0.9);
     float ax        = alpha_ggx / aspect;
     float ay        = alpha_ggx * aspect;
     float XdotH     = dot(t, h);
     float YdotH     = dot(b, h);
     
     // specular anisotropic BRDF
-    float D     = D_GGX_Anisotropic(n_dot_h, ax, ay, XdotH, YdotH);
-    float V     = V_GGX_anisotropic_2cos(n_dot_v, ax, ay, XdotH, YdotH) * V_GGX_anisotropic_2cos(n_dot_v, ax, ay, XdotH, YdotH);
-    float f90   = saturate(dot(surface.F0, 50.0 * 0.33));
-    float3 F    = F_Schlick(surface.F0, f90, l_dot_h);
+    float D   = D_GGX_Anisotropic(n_dot_h, ax, ay, XdotH, YdotH);
+    float V   = V_GGX_anisotropic_2cos(n_dot_v, ax, ay, XdotH, YdotH) * V_GGX_anisotropic_2cos(n_dot_v, ax, ay, XdotH, YdotH);
+    float f90 = saturate(dot(surface.F0, 50.0 * 0.33));
+    float3 F  = F_Schlick(surface.F0, f90, l_dot_h);
 
     diffuse_energy  *= compute_diffuse_energy(F, surface.metallic);
     specular_energy *= F;
     
-    return (D * V) * F;
+    return D * V * F;
 }
 
 inline float3 BRDF_Specular_Clearcoat(Surface surface, float n_dot_h, float v_dot_h, inout float3 diffuse_energy, inout float3 specular_energy)
 {
-    // remapping and linearization
-    float roughness = clamp(surface.clearcoat_roughness, 0.089f, 1.0f);
-    float a         = roughness * roughness;
-    float a2        = pow(roughness, 4.0f);
+    float a2 = pow4(surface.roughness);
     
     float D     = D_GGX(a2, n_dot_h);
     float V     = V_Kelemen(v_dot_h);
@@ -216,26 +210,23 @@ inline float3 BRDF_Specular_Clearcoat(Surface surface, float n_dot_h, float v_do
     diffuse_energy  *= compute_diffuse_energy(F, surface.metallic);
     specular_energy *= F;
 
-    return (D * V) * F;
+    return D * V * F;
 }
 
 inline float3 BRDF_Specular_Sheen(Surface surface, float n_dot_v, float n_dot_l, float n_dot_h, inout float3 diffuse_energy, inout float3 specular_energy)
 {
-    // remapping and linearization
-    float roughness = clamp(surface.roughness, 0.089f, 1.0f);
-
     // Mix between white and using base color for sheen reflection
     float tint  = surface.sheen_tint * surface.sheen_tint;
     float3 f0   = lerp(1.0f, surface.F0, tint);
     
-    float D     = D_Charlie(roughness, n_dot_h);
+    float D     = D_Charlie(surface.roughness, n_dot_h);
     float V     = V_Neubelt(n_dot_v, n_dot_l);
     float3 F    = f0 * surface.sheen;
 
     diffuse_energy  *= compute_diffuse_energy(F, surface.metallic);
     specular_energy *= F;
 
-    return (D * V) * F;
+    return D * V * F;
 }
 /*------------------------------------------------------------------------------
     Image based lighting
@@ -303,5 +294,3 @@ inline float3 Brdf_Specular_Ibl(Surface surface, float3 normal, float3 camera_to
 
     return prefiltered_color * specular_energy;
 }
-
-

@@ -66,6 +66,12 @@ float min3(float3 value) { return min(min(value.x, value.y), value.z); }
 float max2(float2 value) { return max(value.x, value.y); }
 float max3(float3 value) { return max(max(value.x, value.y), value.z); }
 
+float pow4(float x)
+{
+	float xx = x*x;
+	return xx * xx;
+}
+
 bool is_saturated(float value)   { return value == saturate(value); }
 bool is_saturated(float2 value)  { return is_saturated(value.x) && is_saturated(value.y); }
 bool is_saturated(float3 value)  { return is_saturated(value.x) && is_saturated(value.y) && is_saturated(value.z); }
@@ -248,6 +254,14 @@ float3x3 makeTBN(float3 n, float3 t)
     float3 b = cross(n, t);
     // create matrix
     return float3x3(t, b, n); 
+}
+
+// Unpack a normal stored in a normal map. The X and Y components are rescaled from [0,1] to [-1,1] and Z is reconstructed.
+float3 unpack_normal(float2 normal)
+{
+    normal = normal * 2.0f - 1.0f;
+    float z = sqrt(saturate(1.0f - dot(normal, normal)));
+    return float3(normal, z);
 }
 
 /*------------------------------------------------------------------------------
