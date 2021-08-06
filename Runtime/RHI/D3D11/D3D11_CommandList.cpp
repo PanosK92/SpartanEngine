@@ -185,10 +185,10 @@ namespace Spartan
             device_context->OMGetBlendState(&blend_state_set, blend_factor_set.data(), &mask_set);
 
             // Current state
-            ID3D11BlendState* blend_state       = static_cast<ID3D11BlendState*>(pipeline_state.blend_state ? pipeline_state.blend_state->GetResource() : nullptr);
-            const float blendFactor             = pipeline_state.blend_state ? pipeline_state.blend_state->GetBlendFactor() : 0.0f;
-            std::array<FLOAT, 4> blend_factor   = { blendFactor, blendFactor, blendFactor, blendFactor };
-            const UINT mask                           = 0;
+            ID3D11BlendState* blend_state     = static_cast<ID3D11BlendState*>(pipeline_state.blend_state ? pipeline_state.blend_state->GetResource() : nullptr);
+            const float blendFactor           = pipeline_state.blend_state ? pipeline_state.blend_state->GetBlendFactor() : 0.0f;
+            std::array<FLOAT, 4> blend_factor = { blendFactor, blendFactor, blendFactor, blendFactor };
+            const UINT mask                   = 0;
 
             // Set if dirty
             if (blend_state_set != blend_state || blend_factor_set != blend_factor || mask_set != mask)

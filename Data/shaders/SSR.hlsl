@@ -23,11 +23,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Common.hlsl"
 //===================
 
-static const float g_ssr_max_distance               = 80.0f;
-static const uint g_ssr_max_steps                   = 32;
-static const uint g_ssr_binary_search_steps         = 25;
-static const float g_ssr_thickness                  = 0.0001f;
-static const float g_ssr_camera_facing_threshold    = 0.8f; // Higher values allow for more camera facing rays to be traced.
+static const float g_ssr_max_distance            = 80.0f;
+static const uint g_ssr_max_steps                = 32;
+static const uint g_ssr_binary_search_steps      = 25;
+static const float g_ssr_thickness               = 0.0001f;
+static const float g_ssr_camera_facing_threshold = 0.8f; // Higher values allow for more camera facing rays to be traced.
 
 bool intersect_depth_buffer(float2 ray_pos, float2 ray_start, float ray_length, float z_start, float z_end, out float depth_delta)
 {
@@ -117,12 +117,22 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     if (thread_id.x >= uint(g_resolution_rt.x) || thread_id.y >= uint(g_resolution_rt.y))
         return;
 
-    float2 hit_uv = 0.0f;
+    // Construct surface
+    Surface surface;
+    surface.Build(thread_id.xy);
+
     float alpha   = 0.0f;
+    float3 color  = 0.0f;
+    
+    if (surface.is_sky())
+    {
+        tex_out_rgba[thread_id.xy] = float4(color, alpha);
+        return;
+    }
 
     // Skip pixels which are fully rough
-    float roughness = tex_material.Load(int3(thread_id.xy, 0)).r;
-    if (roughness < 1.0f)
+    float2 hit_uv = -1.0f;
+    if (surface.roughness < 1.0f)
     {
         // Compute reflection direction in view space
         float3 normal          = get_normal_view_space(thread_id.xy);
@@ -139,5 +149,9 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         }
     }
 
-    tex_out_rgba[thread_id.xy] = float4(hit_uv.x, hit_uv.y, alpha, 0.0f);
+    bool valid_uv    = hit_uv.x != - 1.0f;
+    bool valid_alpha = alpha != 0.0f;
+    color            = (valid_uv && valid_alpha) ? tex.SampleLevel(sampler_bilinear_clamp, hit_uv, 0).rgb : 0.0f;
+
+    tex_out_rgba[thread_id.xy] = float4(color, alpha);
 }

@@ -67,10 +67,21 @@ float min3(float3 value) { return min(min(value.x, value.y), value.z); }
 float max2(float2 value) { return max(value.x, value.y); }
 float max3(float3 value) { return max(max(value.x, value.y), value.z); }
 
+float pow2(float x)
+{
+    return x * x;
+}
+
+float pow3(float x)
+{
+    float xx = x*x;
+    return xx * x;
+}
+
 float pow4(float x)
 {
-	float xx = x*x;
-	return xx * xx;
+    float xx = x*x;
+    return xx * xx;
 }
 
 bool is_saturated(float value)   { return value == saturate(value); }
@@ -645,23 +656,6 @@ static const float3 hemisphere_samples[64] =
     float3(0.41729, -0.15485, 0.46251),
     float3(-0.44272, -0.67928, 0.1865)
 };
-
-inline float3 sample_environment(float2 uv, float mip_level)
-{
-    // We are currently using a spherical environment map which has a 2:1 ratio, so at the smallest 
-    // mipmap we have to do a bit of blending otherwise we'll get a visible seem in the middle.
-    if (mip_level == g_envrionement_max_mip)
-    {
-        float2 mip_size = float2(2, 1);
-        float dx = mip_size.x;
-
-        float3 tl = (tex_environment.SampleLevel(sampler_bilinear_clamp, uv + float2(-dx, 0.0f), mip_level).rgb);
-        float3 tr = (tex_environment.SampleLevel(sampler_bilinear_clamp, uv + float2(dx, 0.0f), mip_level).rgb);
-        return (tl + tr) / 2.0f;
-    }
-
-    return tex_environment.SampleLevel(sampler_trilinear_clamp, uv, mip_level).rgb;
-}
 
 //= INCLUDES ================
 #include "common_struct.hlsl"

@@ -323,6 +323,7 @@ namespace Spartan
             m_cb_frame_cpu.shadow_resolution          = GetOptionValue<float>(Renderer_Option_Value::ShadowResolution);
             m_cb_frame_cpu.frame                      = static_cast<uint32_t>(m_frame_num);
             m_cb_frame_cpu.frame_mip_count            = RENDER_TARGET(RendererRt::Frame_Render)->GetMipCount();
+            m_cb_frame_cpu.ssr_mip_count              = RENDER_TARGET(RendererRt::Ssr)->GetMipCount();
                                                       
             // These must match what Common_Buffer.hlsl is reading
             m_cb_frame_cpu.set_bit(GetOption(Render_ScreenSpaceReflections),             1 << 0);

@@ -70,7 +70,8 @@ namespace Spartan
         uint32_t options;
 
         uint32_t frame_mip_count;
-        Math::Vector3 padding;
+        uint32_t ssr_mip_count;
+        Math::Vector2 padding;
 
         void set_bit(const bool set, const uint32_t bit)
         {
@@ -108,7 +109,8 @@ namespace Spartan
                 resolution_render           == rhs.resolution_render           &&
                 taa_jitter_offset           == rhs.taa_jitter_offset           &&
                 options                     == rhs.options                     &&
-                frame_mip_count             == rhs.frame_mip_count;
+                frame_mip_count             == rhs.frame_mip_count             &&
+                ssr_mip_count               == rhs.ssr_mip_count;
         }
         bool operator!=(const Cb_Frame& rhs) const { return !(*this == rhs); }
     };
