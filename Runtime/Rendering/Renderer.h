@@ -179,8 +179,7 @@ namespace Spartan
         void Pass_Depth_Prepass(RHI_CommandList* cmd_list);
         void Pass_GBuffer(RHI_CommandList* cmd_list, const bool is_transparent_pass);
         void Pass_Ssao(RHI_CommandList* cmd_list);
-        void Pass_Ssr(RHI_CommandList* cmd_list);
-        void Pass_Reflections(RHI_CommandList* cmd_list, RHI_Texture* tex_out, RHI_Texture* tex_frame);
+        void Pass_Ssr(RHI_CommandList* cmd_list, RHI_Texture* tex_in);
         void Pass_Light(RHI_CommandList* cmd_list, const bool is_transparent_pass);
         void Pass_Light_Composition(RHI_CommandList* cmd_list, RHI_Texture* tex_out, const bool is_transparent_pass);
         void Pass_Light_ImageBased(RHI_CommandList* cmd_list, RHI_Texture* tex_out, const bool is_transparent_pass);

@@ -74,7 +74,7 @@ void setup(inout AU4 const0, inout AU4 const1, inout AU4 const2, inout AU4 const
 #endif
 
 #if SHARPEN
-        const float sharpness = 0.2f; // AMDs recommended value  - Goes from 0.0 (sharpest) to about 2.0
+        const float sharpness = 0.2f; // AMDs recommended value - Goes from 0.0 (sharpest) to about 2.0
         FsrRcasCon(const0, sharpness);
 #endif
 }
@@ -114,3 +114,4 @@ void mainCS(uint3 LocalThreadId : SV_GroupThreadID, uint3 WorkGroupId : SV_Group
     pos.x -= 8u;
     filter(pos, const0, const1, const2, const3);
 }
+

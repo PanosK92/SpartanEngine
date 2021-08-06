@@ -60,7 +60,8 @@ cbuffer BufferFrame : register(b0)
     uint g_options;
 
     uint g_frame_mip_count;
-    float3 g_padding;
+    uint g_ssr_mip_count;
+    float2 g_padding;
 };
 
 // Medium frequency - Updates per render pass
