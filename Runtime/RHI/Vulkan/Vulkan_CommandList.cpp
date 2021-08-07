@@ -365,8 +365,8 @@ namespace Spartan
         const uint32_t clear_stencil        /*= rhi_stencil_load*/
     )
     {
-        // Validate command list state
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
+        SP_ASSERT(texture->CanBeCleared());
 
         if (m_render_pass_active)
         {
@@ -521,7 +521,7 @@ namespace Spartan
         );
 
         // Transition to the initial layouts
-        for (uint32_t i = 0; i < static_cast<uint32_t>(layouts_initial_source.size()); i++)
+        for (uint32_t i = 0; i < source->GetMipCount(); i++)
         {
             source->SetLayout(layouts_initial_source[i], this, i);
             destination->SetLayout(layouts_initial_destination[i], this, i);
