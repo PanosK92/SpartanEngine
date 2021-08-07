@@ -344,8 +344,6 @@ namespace Spartan
     {
         if (m_viewport.width != width || m_viewport.height != height)
         {
-            Flush(); // viewport quad might be in use
-
             m_brdf_specular_lut_rendered = false; // todo, Vulkan needs to re-renderer it, it shouldn't, what am I missing ?
 
             // Update viewport
@@ -353,6 +351,7 @@ namespace Spartan
             m_viewport.height   = height;
 
             // Update full-screen quad
+            Flush(); // viewport quad might be in use
             m_viewport_quad = Math::Rectangle(0, 0, width, height);
             m_viewport_quad.CreateBuffers(this);
 
@@ -686,12 +685,9 @@ namespace Spartan
         });
     }
 
-    const shared_ptr<Spartan::RHI_Texture>& Renderer::GetEnvironmentTexture()
+    const shared_ptr<RHI_Texture>& Renderer::GetEnvironmentTexture()
     {
-        if (m_tex_environment != nullptr)
-            return m_tex_environment;
-
-        return m_tex_default_white;
+        return m_tex_environment;
     }
 
     void Renderer::SetEnvironmentTexture(const shared_ptr<RHI_Texture> texture)
