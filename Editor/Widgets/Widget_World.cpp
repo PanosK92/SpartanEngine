@@ -189,7 +189,7 @@ void Widget_World::TreeAddEntity(Entity* entity)
     // Keep a copy of the selected item's rect so that we can scroll to bring it into view
     if ((node_flags & ImGuiTreeNodeFlags_Selected) && m_expand_to_selection)
     {
-        m_selected_entity_rect = m_window->DC.LastItemRect;
+        m_selected_entity_rect = ImGui::GetCurrentContext()->LastItemData.Rect;
     }
 
     // Manually detect some useful states
