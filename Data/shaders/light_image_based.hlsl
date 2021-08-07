@@ -66,7 +66,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     const float3 specular_energy = F * envBRDF.x + envBRDF.y;
     
     // Get ssr color
-    float mip_level         = lerp(0, g_ssr_mip_count, pow3(surface.roughness)); // pow3 roughness, mainly to get ssr to blur at the same rate as the environment (which has more mips)
+    float mip_level         = lerp(0, g_ssr_mip_count, surface.roughness);
     const float4 ssr_sample = (is_ssr_enabled() && !g_is_transparent_pass) ? tex_ssr.SampleLevel(sampler_trilinear_clamp, surface.uv, mip_level) : 0.0f;
     const float3 color_ssr  = ssr_sample.rgb * specular_energy;
     const float ssr_alpha   = ssr_sample.a;
@@ -97,3 +97,4 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 
     return float4(saturate_11(lerp(color_environment, color_ssr, ssr_alpha)), 0.0f);
 }
+

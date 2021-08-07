@@ -39,7 +39,7 @@ AF4 SpdLoadSourceImage(ASU2 p, AU1 slice)
     return tex.SampleLevel(sampler_bilinear_clamp, uv, 0);
 }
 
-// Load from  MIP 5
+// Load from mip 5
 AF4 SpdLoad(ASU2 pos, AU1 slice)
 {
     return tex_out_rgba_mips[5][pos];
