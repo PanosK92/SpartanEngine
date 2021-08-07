@@ -60,10 +60,10 @@ struct Surface
         return max(x, ((x * a + b) * x + c) * x);
     }
     
-    void Build(uint2 position_screen, bool use_albedo = true)
+    void Build(uint2 position_screen, bool use_albedo, bool use_ssao, bool replace_color_with_one)
     {
         // Sample render targets
-        float4 sample_albedo   = tex_albedo[position_screen];
+        float4 sample_albedo   = use_albedo ? tex_albedo[position_screen] : 0.0f;
         float4 sample_normal   = tex_normal[position_screen];
         float4 sample_material = tex_material[position_screen];
         float sample_depth     = get_depth(position_screen);
@@ -74,11 +74,11 @@ struct Surface
         normal = sample_normal.xyz;
         id     = unpack_float16_to_uint32(sample_normal.a);
 
-        albedo               = use_albedo ? sample_albedo.rgb : 1.0f;
+        albedo               = replace_color_with_one ? 1.0f : sample_albedo.rgb;
         alpha                = sample_albedo.a;
         roughness            = sample_material.r;
         metallic             = sample_material.g;
-        emissive             = sample_material.b * sample_albedo.rgb * 10.0f;
+        emissive             = sample_material.b * (use_albedo ? albedo : 1.0f) * 10.0f;
         F0                   = lerp(0.04f, albedo, metallic);
         clearcoat            = mat_clearcoat_clearcoatRough_aniso_anisoRot[id].x;
         clearcoat_roughness  = mat_clearcoat_clearcoatRough_aniso_anisoRot[id].y;
@@ -89,34 +89,35 @@ struct Surface
 
         // Occlusion + GI
         {
-            // Determine what we can do
-            bool do_ssao    = is_ssao_enabled() && !g_is_transparent_pass;
-            bool do_ssao_gi = do_ssao && is_ssao_gi_enabled();
-            
-            // Sample ssao texture
-            float4 ssao = do_ssao ? tex_ssao[position_screen] : float4(0.0f, 0.0f, 0.0f, 1.0f);
+            occlusion = 1.0f;
 
-            // Combine ssao with material ao
-            float visibility = min(sample_material.a, ssao.a);
+            if (is_ssao_enabled() && use_ssao && !g_is_transparent_pass)
+            {
+                // Sample ssao texture
+                float4 ssao = tex_ssao[position_screen];
 
-            if (do_ssao_gi)
-            {
-                occlusion   = visibility;
-                emissive    += ssao.rgb * sample_albedo.rgb;
-            }
-            else
-            {
-                // If ssao gi is not enabled, approximate some light bouncing
-                occlusion = multi_bounce_ao(visibility, sample_albedo.rgb);
+                // Combine ssao with material ao
+                float visibility = min(sample_material.a, ssao.a);
+
+                if (is_ssao_gi_enabled())
+                {
+                    occlusion = visibility;
+                    emissive  += ssao.rgb * albedo;
+                }
+                else
+                {
+                    // If ssao gi is not enabled, approximate some light bouncing
+                    occlusion = multi_bounce_ao(visibility, albedo);
+                }
             }
         }
         
         // Reconstruct position from depth
-        float x             = uv.x * 2.0f - 1.0f;
-        float y             = (1.0f - uv.y) * 2.0f - 1.0f;
-        float4 pos_clip     = float4(x, y, depth, 1.0f);
-        float4 pos_world    = mul(pos_clip, g_view_projection_inverted);
-        position            = pos_world.xyz / pos_world.w;
+        float x          = uv.x * 2.0f - 1.0f;
+        float y          = (1.0f - uv.y) * 2.0f - 1.0f;
+        float4 pos_clip  = float4(x, y, depth, 1.0f);
+        float4 pos_world = mul(pos_clip, g_view_projection_inverted);
+        position         = pos_world.xyz / pos_world.w;
 
         camera_to_pixel        = position - g_camera_position.xyz;
         camera_to_pixel_length = length(camera_to_pixel);
@@ -204,19 +205,19 @@ struct Light
     
     void Build(Surface surface)
     {
-        color               = cb_light_color.rgb;
-        position            = cb_light_position.xyz;
-        intensity           = cb_light_intensity_range_angle_bias.x;
-        far                 = cb_light_intensity_range_angle_bias.y;
-        angle               = cb_light_intensity_range_angle_bias.z;
-        bias                = cb_light_intensity_range_angle_bias.w;
-        forward             = cb_light_direction.xyz;
-        normal_bias         = cb_light_normal_bias;
-        near                = 0.1f;
-        distance_to_pixel   = length(surface.position - position);
-        to_pixel            = compute_direction(position, surface);
-        n_dot_l             = saturate(dot(surface.normal, -to_pixel)); // Pre-compute n_dot_l since it's used in many places
-        radiance            = color * intensity * compute_attenuation(surface.position) * surface.occlusion * n_dot_l;
+        color             = cb_light_color.rgb;
+        position          = cb_light_position.xyz;
+        intensity         = cb_light_intensity_range_angle_bias.x;
+        far               = cb_light_intensity_range_angle_bias.y;
+        angle             = cb_light_intensity_range_angle_bias.z;
+        bias              = cb_light_intensity_range_angle_bias.w;
+        forward           = cb_light_direction.xyz;
+        normal_bias       = cb_light_normal_bias;
+        near              = 0.1f;
+        distance_to_pixel = length(surface.position - position);
+        to_pixel          = compute_direction(position, surface);
+        n_dot_l           = saturate(dot(surface.normal, -to_pixel)); // Pre-compute n_dot_l since it's used in many places
+        radiance          = color * intensity * compute_attenuation(surface.position) * surface.occlusion * n_dot_l;
         #if DIRECTIONAL
         array_size = 4;
         #else
@@ -226,4 +227,5 @@ struct Light
 };
 
 #endif // SPARTAN_COMMON_STRUCT
+
 

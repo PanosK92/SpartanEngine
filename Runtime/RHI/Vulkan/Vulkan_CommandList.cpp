@@ -502,23 +502,30 @@ namespace Spartan
         blit_region.dstSubresource.layerCount   = destination->GetMipCount();
         blit_region.dstOffsets[1]               = blit_size;
 
-        RHI_Image_Layout layout_initial_source      = source->GetLayout(0);
-        RHI_Image_Layout layout_initial_destination = destination->GetLayout(0);
+        // Save the initial layouts
+        std::array<RHI_Image_Layout, 12> layouts_initial_source      = source->GetLayouts();
+        std::array<RHI_Image_Layout, 12> layouts_initial_destination = destination->GetLayouts();
 
+        // Transition to blit appropriate layouts
         source->SetLayout(RHI_Image_Layout::Transfer_Src_Optimal, this);
         destination->SetLayout(RHI_Image_Layout::Transfer_Dst_Optimal, this);
 
+        // Blit
         vkCmdBlitImage(
             static_cast<VkCommandBuffer>(m_cmd_buffer),
             static_cast<VkImage>(source->Get_Resource()),       VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
             static_cast<VkImage>(destination->Get_Resource()),  VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
             1,
             &blit_region,
-            VK_FILTER_NEAREST);
+            VK_FILTER_NEAREST
+        );
 
-        // Set the image layouts back to what they were
-        source->SetLayout(layout_initial_source, this);
-        destination->SetLayout(layout_initial_destination, this);
+        // Transition to the initial layouts
+        for (uint32_t i = 0; i < static_cast<uint32_t>(layouts_initial_source.size()); i++)
+        {
+            source->SetLayout(layouts_initial_source[i], this, i);
+            destination->SetLayout(layouts_initial_destination[i], this, i);
+        }
     }
 
     void RHI_CommandList::SetViewport(const RHI_Viewport& viewport) const

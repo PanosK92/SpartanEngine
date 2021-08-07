@@ -35,8 +35,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 
     // Create surface
     Surface surface;
-    bool use_albedo = false; // we write out pure light color (just a choice)
-    surface.Build(thread_id.xy, use_albedo);
+    surface.Build(thread_id.xy, true, true, true);
 
     // If this is a transparent pass, ignore all opaque pixels, and vice versa.
     bool early_exit_1 = !g_is_transparent_pass && surface.is_transparent() && !surface.is_sky(); // do shade sky pixels during the opaque pass (volumetric lighting)
@@ -84,16 +83,16 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     if (any(light.radiance) && !surface.is_sky())
     {
         // Compute some vectors and dot products
-        float3 l        = -light.to_pixel;
-        float3 v        = -surface.camera_to_pixel;
-        float3 h        = normalize(v + l);
-        float l_dot_h   = saturate(dot(l, h));
-        float v_dot_h   = saturate(dot(v, h));
-        float n_dot_v   = saturate(dot(surface.normal, v));
-        float n_dot_h   = saturate(dot(surface.normal, h));
+        float3 l      = -light.to_pixel;
+        float3 v      = -surface.camera_to_pixel;
+        float3 h      = normalize(v + l);
+        float l_dot_h = saturate(dot(l, h));
+        float v_dot_h = saturate(dot(v, h));
+        float n_dot_v = saturate(dot(surface.normal, v));
+        float n_dot_h = saturate(dot(surface.normal, h));
 
-        float3 diffuse_energy       = 1.0f;
-        float3 reflective_energy    = 1.0f;
+        float3 diffuse_energy    = 1.0f;
+        float3 reflective_energy = 1.0f;
         
         // Specular
         if (surface.anisotropic == 0.0f)
@@ -122,12 +121,12 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 
         // Subsurface scattering from LIDL
         {
-            //const float thickness_edge  = 0.1f;
-            //const float thickness_face  = 1.0f;
-            //const float distortion      = 0.65f;
-            //const float ambient         = 1.0f - surface.alpha;
-            //const float scale           = 1.0f;
-            //const float power           = 0.8f;
+            //const float thickness_edge = 0.1f;
+            //const float thickness_face = 1.0f;
+            //const float distortion     = 0.65f;
+            //const float ambient        = 1.0f - surface.alpha;
+            //const float scale          = 1.0f;
+            //const float power          = 0.8f;
             
             //float thickness = lerp(thickness_edge, thickness_face, n_dot_v);
             //float3 h        = normalize(l + surface.normal * distortion);
@@ -147,7 +146,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 
     // Volumetric
 #if VOLUMETRIC
-    light_volumetric += VolumetricLighting(surface, light) * get_fog_factor(surface);
-    tex_out_rgb3[thread_id.xy]  += saturate_16(light_volumetric);
+    light_volumetric           += VolumetricLighting(surface, light) * get_fog_factor(surface);
+    tex_out_rgb3[thread_id.xy] += saturate_16(light_volumetric);
 #endif
 }

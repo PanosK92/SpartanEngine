@@ -346,13 +346,11 @@ namespace Spartan
     {
         if (m_viewport.width != width || m_viewport.height != height)
         {
-            m_brdf_specular_lut_rendered = false; // todo, Vulkan needs to re-renderer it, it shouldn't, what am I missing ?
-
-            // Update viewport
-            Flush();
             m_viewport.width  = width;
             m_viewport.height = height;
             m_viewport_quad   = Math::Rectangle(0, 0, width, height);
+
+            Flush();
             m_viewport_quad.CreateBuffers(this);
 
             m_update_ortho_proj = true;

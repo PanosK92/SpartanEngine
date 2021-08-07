@@ -55,7 +55,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     
     // Construct surface
     Surface surface;
-    surface.Build(pos);
+    surface.Build(pos, true, true, false);
 
     // TODO: Use the stencil buffer to avoid transparents or simply add SSR for transparents
 
@@ -97,4 +97,3 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 
     return float4(saturate_11(lerp(color_environment, color_ssr, ssr_alpha)), 0.0f);
 }
-

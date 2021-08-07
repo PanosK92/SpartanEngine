@@ -655,9 +655,11 @@ namespace Spartan
 
             cmd_list->SetTexture(RendererBindings_Uav::rgba,             tex_ssr); // write to that
             cmd_list->SetTexture(RendererBindings_Srv::tex,              tex_in);  // reflect from that
+            cmd_list->SetTexture(RendererBindings_Srv::gbuffer_albedo,   RENDER_TARGET(RendererRt::Gbuffer_Albedo));
             cmd_list->SetTexture(RendererBindings_Srv::gbuffer_normal,   RENDER_TARGET(RendererRt::Gbuffer_Normal));
             cmd_list->SetTexture(RendererBindings_Srv::gbuffer_depth,    RENDER_TARGET(RendererRt::Gbuffer_Depth));
             cmd_list->SetTexture(RendererBindings_Srv::gbuffer_material, RENDER_TARGET(RendererRt::Gbuffer_Material));
+            cmd_list->SetTexture(RendererBindings_Srv::ssao,             RENDER_TARGET(RendererRt::Ssao)); // not used but set to prevent Vulkan validation error
 
             cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
             cmd_list->EndRenderPass();
@@ -668,7 +670,7 @@ namespace Spartan
         Pass_AMD_FidelityFX_SinglePassDowsnampler(cmd_list, tex_ssr, luminance_antiflicker);
 
         // Blur the smaller mips to reduce blockiness/flickering
-        uint32_t higher_mips_to_blur = 3;
+        uint32_t higher_mips_to_blur = 2;
         uint32_t mip_index_end       = tex_ssr->GetMipCount() - 1;
         for (uint32_t i = mip_index_end; i > mip_index_end - higher_mips_to_blur; i--)
         {
@@ -2330,26 +2332,26 @@ namespace Spartan
             return;
 
         // Acquire render target
-        RHI_Texture* render_target = RENDER_TARGET(RendererRt::Brdf_Specular_Lut).get();
+        RHI_Texture* tex_brdf_specular_lut = RENDER_TARGET(RendererRt::Brdf_Specular_Lut).get();
 
         // Set render state
         static RHI_PipelineState pso;
-        pso.shader_compute   = shader;
-        pso.pass_name        = "Pass_BrdfSpecularLut";
+        pso.shader_compute = shader;
+        pso.pass_name      = "Pass_BrdfSpecularLut";
 
         // Draw
         if (cmd_list->BeginRenderPass(pso))
         {
             // Update uber buffer
-            m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(render_target->GetWidth()), static_cast<float>(render_target->GetHeight()));
+            m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(tex_brdf_specular_lut->GetWidth()), static_cast<float>(tex_brdf_specular_lut->GetHeight()));
             Update_Cb_Uber(cmd_list);
 
-            const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(render_target->GetWidth()) / m_thread_group_count));
-            const uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(render_target->GetHeight()) / m_thread_group_count));
+            const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_brdf_specular_lut->GetWidth()) / m_thread_group_count));
+            const uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_brdf_specular_lut->GetHeight()) / m_thread_group_count));
             const uint32_t thread_group_count_z = 1;
             const bool async = false;
 
-            cmd_list->SetTexture(RendererBindings_Uav::rg, render_target);
+            cmd_list->SetTexture(RendererBindings_Uav::rg, tex_brdf_specular_lut);
             cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
             cmd_list->EndRenderPass();
 
