@@ -119,10 +119,10 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 
     // Construct surface
     Surface surface;
-    surface.Build(thread_id.xy);
+    surface.Build(thread_id.xy, false, false, false);
 
-    float alpha   = 0.0f;
-    float3 color  = 0.0f;
+    float alpha  = 0.0f;
+    float3 color = 0.0f;
     
     if (surface.is_sky())
     {
