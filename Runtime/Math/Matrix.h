@@ -447,7 +447,8 @@ namespace Spartan::Math
         float m01 = 0.0f, m11 = 0.0f, m21 = 0.0f, m31 = 0.0f;
         float m02 = 0.0f, m12 = 0.0f, m22 = 0.0f, m32 = 0.0f;
         float m03 = 0.0f, m13 = 0.0f, m23 = 0.0f, m33 = 0.0f;
-        // Note: HLSL expects column-major by default
+        // Note: DirectX compiler assumes column-major as a default,
+        // we go with it so that we can map directly map matrices to the GPU.
 
         static const Matrix Identity;
     };
