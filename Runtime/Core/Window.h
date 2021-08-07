@@ -1,10 +1,11 @@
 #pragma once
 
-//= INCLUDES ========
+//= INCLUDES ==========
 #include <string>
 #include <functional>
 #include "Engine.h"
-//===================
+#include "ISubsystem.h"
+//=====================
 
 //= FORWARD DECLARATIONS =========
 struct SDL_Window;
@@ -19,9 +20,9 @@ namespace Spartan
         Window(Context* context);
         ~Window();
 
-        //= ISubsystem ======================
+        //= ISubsystem =========================
         void OnTick(double delta_time) override;
-        //===================================
+        //======================================
 
         void Show();
         void Hide();
