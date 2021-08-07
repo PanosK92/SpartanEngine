@@ -37,26 +37,26 @@ namespace Spartan
         public:
             Rectangle()
             {
-                left    = std::numeric_limits<float>::max();
-                top     = std::numeric_limits<float>::max();
-                right   = std::numeric_limits<float>::lowest();
-                bottom  = std::numeric_limits<float>::lowest();
+                left   = 0.0f;
+                top    = 0.0f;
+                right  = 0.0f;
+                bottom = 0.0f;
             }
 
             Rectangle(const float left, const float top, const float right, const float bottom)
             {
-                this->left      = left;
-                this->top       = top;
-                this->right     = right;
-                this->bottom    = bottom;
+                this->left   = left;
+                this->top    = top;
+                this->right  = right;
+                this->bottom = bottom;
             }
 
             Rectangle(const Rectangle& rectangle)
             {
-                left    = rectangle.left;
-                top     = rectangle.top;
-                right   = rectangle.right;
-                bottom  = rectangle.bottom;
+                left   = rectangle.left;
+                top    = rectangle.top;
+                right  = rectangle.right;
+                bottom = rectangle.bottom;
             }
 
             ~Rectangle() = default;
@@ -64,56 +64,57 @@ namespace Spartan
             bool operator==(const Rectangle& rhs) const
             {
                 return
-                    left    == rhs.left     &&
-                    top     == rhs.top      &&
-                    right   == rhs.right    &&
-                    bottom  == rhs.bottom;
+                    left   == rhs.left  &&
+                    top    == rhs.top   &&
+                    right  == rhs.right &&
+                    bottom == rhs.bottom;
             }
 
             bool operator!=(const Rectangle& rhs) const
             {
                 return
-                    left    != rhs.left     ||
-                    top     != rhs.top      ||
-                    right   != rhs.right    ||
-                    bottom  != rhs.bottom;
+                    left   != rhs.left  ||
+                    top    != rhs.top   ||
+                    right  != rhs.right ||
+                    bottom != rhs.bottom;
             }
 
             bool IsDefined() const
             {
-                return  left    != 0.0f ||
-                        top     != 0.0f ||
-                        right   != 0.0f ||
-                        bottom  != 0.0f;
+                return  left   != 0.0f ||
+                        top    != 0.0f ||
+                        right  != 0.0f ||
+                        bottom != 0.0f;
             }
 
-            float Width() const { return right - left; }
+            float Width()  const { return right - left; }
             float Height() const { return bottom - top; }
 
             // Merge a point.
             void Merge(const Vector2& point)
             {
-                left    = Math::Helper::Min(left,     point.x);
-                top     = Math::Helper::Min(top,      point.y);
-                right   = Math::Helper::Max(right,    point.x);
-                bottom  = Math::Helper::Max(bottom,   point.y);
+                left   = Math::Helper::Min(left,   point.x);
+                top    = Math::Helper::Min(top,    point.y);
+                right  = Math::Helper::Max(right,  point.x);
+                bottom = Math::Helper::Max(bottom, point.y);
             }
 
             bool CreateBuffers(Renderer* renderer);
-            static int GetIndexCount() { return 6; }
-            RHI_IndexBuffer* GetIndexBuffer()   const { return m_indexBuffer.get(); }
-            RHI_VertexBuffer* GetVertexBuffer() const { return m_vertexBuffer.get(); }
 
-            float left;
-            float top;
-            float right;
-            float bottom;
+            static int GetIndexCount()                { return 6; }
+            RHI_IndexBuffer* GetIndexBuffer()   const { return m_index_buffer.get(); }
+            RHI_VertexBuffer* GetVertexBuffer() const { return m_vertex_buffer.get(); }
+
+            float left   = 0.0f;
+            float top    = 0.0f;
+            float right  = 0.0f;
+            float bottom = 0.0f;
 
             static const Rectangle Zero;
 
         private:
-            std::shared_ptr<RHI_VertexBuffer> m_vertexBuffer;
-            std::shared_ptr<RHI_IndexBuffer> m_indexBuffer;
+            std::shared_ptr<RHI_VertexBuffer> m_vertex_buffer;
+            std::shared_ptr<RHI_IndexBuffer> m_index_buffer;
         };
     }
 }
