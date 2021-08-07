@@ -269,15 +269,16 @@ namespace Spartan
         {
             if (m_update_ortho_proj || m_near_plane != m_camera->GetNearPlane() || m_far_plane != m_camera->GetFarPlane())
             {
-                m_cb_frame_cpu.projection_ortho         = Matrix::CreateOrthographicLH(m_viewport.width, m_viewport.height, m_near_plane, m_far_plane);
-                m_cb_frame_cpu.view_projection_ortho    = Matrix::CreateLookAtLH(Vector3(0, 0, -m_near_plane), Vector3::Forward, Vector3::Up) * m_cb_frame_cpu.projection_ortho;
-                m_update_ortho_proj                     = false;
+                m_near_plane = m_camera->GetNearPlane();
+                m_far_plane  = m_camera->GetFarPlane();
+
+                m_cb_frame_cpu.projection_ortho      = Matrix::CreateOrthographicLH(m_viewport.width, m_viewport.height, m_near_plane, m_far_plane);
+                m_cb_frame_cpu.view_projection_ortho = Matrix::CreateLookAtLH(Vector3(0, 0, -m_near_plane), Vector3::Forward, Vector3::Up) * m_cb_frame_cpu.projection_ortho;
+                m_update_ortho_proj                  = false;
             }
-            
-            m_near_plane                = m_camera->GetNearPlane();
-            m_far_plane                 = m_camera->GetFarPlane();
-            m_cb_frame_cpu.view         = m_camera->GetViewMatrix();
-            m_cb_frame_cpu.projection   = m_camera->GetProjectionMatrix();
+
+            m_cb_frame_cpu.view       = m_camera->GetViewMatrix();
+            m_cb_frame_cpu.projection = m_camera->GetProjectionMatrix();
             
             // TAA - Generate jitter
             if (GetOption(Render_AntiAliasing_Taa))
@@ -347,12 +348,10 @@ namespace Spartan
             m_brdf_specular_lut_rendered = false; // todo, Vulkan needs to re-renderer it, it shouldn't, what am I missing ?
 
             // Update viewport
-            m_viewport.width    = width;
-            m_viewport.height   = height;
-
-            // Update full-screen quad
-            Flush(); // viewport quad might be in use
-            m_viewport_quad = Math::Rectangle(0, 0, width, height);
+            Flush();
+            m_viewport.width  = width;
+            m_viewport.height = height;
+            m_viewport_quad   = Math::Rectangle(0, 0, width, height);
             m_viewport_quad.CreateBuffers(this);
 
             m_update_ortho_proj = true;

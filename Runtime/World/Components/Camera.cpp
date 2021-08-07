@@ -41,15 +41,15 @@ namespace Spartan
 {
     Camera::Camera(Context* context, Entity* entity, uint32_t id /*= 0*/) : IComponent(context, entity, id)
     {   
-        m_renderer  = m_context->GetSubsystem<Renderer>();
-        m_input     = m_context->GetSubsystem<Input>();
+        m_renderer = m_context->GetSubsystem<Renderer>();
+        m_input    = m_context->GetSubsystem<Input>();
     }
 
     void Camera::OnInitialize()
     {
-        m_view              = ComputeViewMatrix();
-        m_projection        = ComputeProjection(m_renderer->GetOption(Render_ReverseZ));
-        m_view_projection   = m_view * m_projection;
+        m_view            = ComputeViewMatrix();
+        m_projection      = ComputeProjection(m_renderer->GetOption(Render_ReverseZ));
+        m_view_projection = m_view * m_projection;
     }
 
     void Camera::OnTick(double delta_time)
@@ -57,8 +57,8 @@ namespace Spartan
         const auto& current_viewport = m_renderer->GetViewport();
         if (m_last_known_viewport != current_viewport)
         {
-            m_last_known_viewport   = current_viewport;
-            m_is_dirty                = true;
+            m_last_known_viewport = current_viewport;
+            m_is_dirty            = true;
         }
 
         // DIRTY CHECK
@@ -77,10 +77,10 @@ namespace Spartan
         if (!m_is_dirty)
             return;
 
-        m_view              = ComputeViewMatrix();
-        m_projection        = ComputeProjection(m_renderer->GetOption(Render_ReverseZ));
-        m_view_projection   = m_view * m_projection;
-        m_frustum          = Frustum(GetViewMatrix(), GetProjectionMatrix(), m_renderer->GetOption(Render_ReverseZ) ? GetNearPlane() : GetFarPlane());
+        m_view            = ComputeViewMatrix();
+        m_projection      = ComputeProjection(m_renderer->GetOption(Render_ReverseZ));
+        m_view_projection = m_view * m_projection;
+        m_frustum         = Frustum(GetViewMatrix(), GetProjectionMatrix(), m_renderer->GetOption(Render_ReverseZ) ? GetNearPlane() : GetFarPlane());
 
         m_is_dirty = false;
     }
@@ -108,27 +108,35 @@ namespace Spartan
         stream->Read(&m_near_plane);
         stream->Read(&m_far_plane);
 
-        m_view              = ComputeViewMatrix();
-        m_projection        = ComputeProjection(m_renderer->GetOption(Render_ReverseZ));
-        m_view_projection   = m_view * m_projection;
+        m_view            = ComputeViewMatrix();
+        m_projection      = ComputeProjection(m_renderer->GetOption(Render_ReverseZ));
+        m_view_projection = m_view * m_projection;
     }
 
     void Camera::SetNearPlane(const float near_plane)
     {
-        m_near_plane = Helper::Max(0.01f, near_plane);
-        m_is_dirty = true;
+        // Anything below this value will cause an infinitely small number in the orthographic view projection matrix [3,2].
+        // The will cause the renderer's viewport quad vertices to be transformed in a way that will cause it to not be visible.
+        const float near_plane_min = 0.121f;
+        near_plane = Helper::Max(near_plane_min, near_plane);
+
+        if (m_near_plane != near_plane)
+        {
+            m_near_plane = Helper::Max(near_plane_min, near_plane);
+            m_is_dirty   = true;
+        }
     }
 
     void Camera::SetFarPlane(const float far_plane)
     {
         m_far_plane = far_plane;
-        m_is_dirty = true;
+        m_is_dirty  = true;
     }
 
     void Camera::SetProjection(const ProjectionType projection)
     {
         m_projection_type = projection;
-        m_is_dirty = true;
+        m_is_dirty        = true;
     }
 
     float Camera::GetFovHorizontalDeg() const
@@ -144,7 +152,7 @@ namespace Spartan
     void Camera::SetFovHorizontalDeg(const float fov)
     {
         m_fov_horizontal_rad = Helper::DegreesToRadians(fov);
-        m_is_dirty = true;
+        m_is_dirty           = true;
     }
 
     const RHI_Viewport& Camera::GetViewport() const
@@ -154,9 +162,9 @@ namespace Spartan
 
     bool Camera::IsInViewFrustum(Renderable* renderable) const
     {
-        const BoundingBox& box  = renderable->GetAabb();
-        const Vector3 center    = box.GetCenter();
-        const Vector3 extents   = box.GetExtents();
+        const BoundingBox& box = renderable->GetAabb();
+        const Vector3 center   = box.GetCenter();
+        const Vector3 extents  = box.GetExtents();
 
         return m_frustum.IsVisible(center, extents);
     }
@@ -173,9 +181,9 @@ namespace Spartan
             return false;
 
         // Create mouse ray
-        Vector3 ray_start   = GetTransform()->GetPosition();
-        Vector3 ray_end     = Unproject(m_input->GetMousePositionRelativeToEditorViewport());
-        m_ray               = Ray(ray_start, ray_end);
+        Vector3 ray_start = GetTransform()->GetPosition();
+        Vector3 ray_end   = Unproject(m_input->GetMousePositionRelativeToEditorViewport());
+        m_ray             = Ray(ray_start, ray_end);
 
         // Traces ray against all AABBs in the world
         vector<RayHit> hits;
@@ -269,7 +277,7 @@ namespace Spartan
         const auto& viewport = GetViewport();
 
         // A non reverse-z projection matrix is need, if it we don't have it, we create it
-        const auto projection = m_renderer->GetOption(Render_ReverseZ) ? Matrix::CreatePerspectiveFieldOfViewLH(GetFovVerticalRad(), viewport.AspectRatio(), m_near_plane, m_far_plane) : m_projection;
+        const auto projection = m_renderer->GetOption(Render_ReverseZ) ? Matrix::CreatePerspectiveFieldOfViewLH(GetFovVerticalRad(), viewport.GetAspectRatio(), m_near_plane, m_far_plane) : m_projection;
 
         // Convert world space position to clip space position
         const auto position_clip = position_world * m_view * projection;
@@ -465,7 +473,7 @@ namespace Spartan
 
         if (m_projection_type == Projection_Perspective)
         {
-            return Matrix::CreatePerspectiveFieldOfViewLH(GetFovVerticalRad(), GetViewport().AspectRatio(), _near, _far);
+            return Matrix::CreatePerspectiveFieldOfViewLH(GetFovVerticalRad(), GetViewport().GetAspectRatio(), _near, _far);
         }
         else if (m_projection_type == Projection_Orthographic)
         {

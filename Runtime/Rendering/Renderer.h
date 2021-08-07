@@ -304,13 +304,13 @@ namespace Spartan
         Math::Vector2 m_resolution_render   = Math::Vector2::Zero;
         Math::Vector2 m_resolution_output   = Math::Vector2::Zero;
         RHI_Viewport m_viewport             = RHI_Viewport(0, 0, 0, 0);
+        Math::Rectangle m_viewport_quad     = Math::Rectangle(0, 0, 0, 0);
 
         // Options
         uint64_t m_options = 0;
         std::unordered_map<Renderer_Option_Value, float> m_option_values;
 
         // Misc
-        Math::Rectangle m_viewport_quad;
         std::unique_ptr<Font> m_font;
         Math::Vector2 m_taa_jitter                  = Math::Vector2::Zero;
         Math::Vector2 m_taa_jitter_previous         = Math::Vector2::Zero;

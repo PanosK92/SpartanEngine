@@ -51,16 +51,16 @@ void Widget_Viewport::TickVisible()
         return;
 
     // Get size
-    float width     = static_cast<float>(ImGui::GetWindowContentRegionMax().x - ImGui::GetWindowContentRegionMin().x);
-    float height    = static_cast<float>(ImGui::GetWindowContentRegionMax().y - ImGui::GetWindowContentRegionMin().y);
+    float width  = static_cast<float>(ImGui::GetWindowContentRegionMax().x - ImGui::GetWindowContentRegionMin().x);
+    float height = static_cast<float>(ImGui::GetWindowContentRegionMax().y - ImGui::GetWindowContentRegionMin().y);
 
     // Update engine's viewport
     if (m_width != width || m_height != height)
     {
         m_renderer->SetViewport(width, height);
 
-        m_width     = width;
-        m_height    = height;
+        m_width  = width;
+        m_height = height;
     }
 
     // Let the input system know about the position of this viewport within the editor.
