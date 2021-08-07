@@ -115,9 +115,7 @@ namespace Spartan
 
     void Camera::SetNearPlane(const float near_plane)
     {
-        // Anything below this value can sometimes cause an infinitely small number in the orthographic view projection matrix [3,2].
-        // The will cause the renderer's viewport quad vertices to be transformed in a way that will cause it to not be visible.
-        float near_plane_limited = Helper::Max(0.221f, near_plane);
+        float near_plane_limited = Helper::Max(near_plane, 0.01f);
 
         if (m_near_plane != near_plane_limited)
         {

@@ -904,24 +904,24 @@ void Widget_Properties::ShowCamera(Camera* camera) const
 
         // Clipping Planes
         ImGui::Text("Clipping Planes");
-        ImGui::SameLine(WidgetHelper::g_column);       ImGui::PushItemWidth(130); ImGui::InputFloat("Near", &near_plane, 0.1f, 0.1f, "%.3f", input_text_flags); ImGui::PopItemWidth();
-        ImGui::SetCursorPosX(WidgetHelper::g_column);  ImGui::PushItemWidth(130); ImGui::InputFloat("Far", &far_plane, 0.1f, 0.1f, "%.3f", input_text_flags); ImGui::PopItemWidth();
+        ImGui::SameLine(WidgetHelper::g_column);      ImGui::PushItemWidth(130); ImGui::InputFloat("Near", &near_plane, 0.01f, 0.01f, "%.2f", input_text_flags); ImGui::PopItemWidth();
+        ImGui::SetCursorPosX(WidgetHelper::g_column); ImGui::PushItemWidth(130); ImGui::InputFloat("Far", &far_plane, 0.01f, 0.01f, "%.2f", input_text_flags); ImGui::PopItemWidth();
 
         // FPS Control
         ImGui::Text("FPS Control");
         ImGui::SameLine(WidgetHelper::g_column); ImGui::Checkbox("##camera_fps_control", &fps_control_enabled);
         ImGuiEx::Tooltip("Enables FPS control while holding down the right mouse button");
 
-        //= MAP ====================================================================================================================
-        if (aperture != camera->GetAperture())                              camera->SetAperture(aperture);
-        if (shutter_speed != camera->GetShutterSpeed())                     camera->SetShutterSpeed(shutter_speed);
-        if (iso != camera->GetIso())                                        camera->SetIso(iso);
-        if (fov != camera->GetFovHorizontalDeg())                           camera->SetFovHorizontalDeg(fov);
-        if (near_plane != camera->GetNearPlane())                           camera->SetNearPlane(near_plane);
-        if (far_plane != camera->GetFarPlane())                             camera->SetFarPlane(far_plane);
-        if (fps_control_enabled != camera->GetFpsControlEnabled())          camera->SetFpsControlEnabled(fps_control_enabled);
-        if (m_colorPicker_camera->GetColor() != camera->GetClearColor())    camera->SetClearColor(m_colorPicker_camera->GetColor());
-        //==========================================================================================================================
+        //= MAP =================================================================================================================
+        if (aperture != camera->GetAperture())                           camera->SetAperture(aperture);
+        if (shutter_speed != camera->GetShutterSpeed())                  camera->SetShutterSpeed(shutter_speed);
+        if (iso != camera->GetIso())                                     camera->SetIso(iso);
+        if (fov != camera->GetFovHorizontalDeg())                        camera->SetFovHorizontalDeg(fov);
+        if (near_plane != camera->GetNearPlane())                        camera->SetNearPlane(near_plane);
+        if (far_plane != camera->GetFarPlane())                          camera->SetFarPlane(far_plane);
+        if (fps_control_enabled != camera->GetFpsControlEnabled())       camera->SetFpsControlEnabled(fps_control_enabled);
+        if (m_colorPicker_camera->GetColor() != camera->GetClearColor()) camera->SetClearColor(m_colorPicker_camera->GetColor());
+        //=======================================================================================================================
     }
     WidgetHelper::ComponentEnd();
 }
