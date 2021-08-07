@@ -510,15 +510,14 @@ namespace Spartan::vulkan_utility
             flags |= (texture->GetFlags() & RHI_Texture_Rt_Color)        ? VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT         : 0;
 
             // If the texture has data, it will be staged.
-            // If the texture is a render target, it can be blitted.
-            if (texture->HasData() || texture->IsRenderTargetColor() || texture->IsRenderTargetDepthStencil())
+            if (texture->HasData())
             {
                 flags |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT; // source of a transfer command.
-                flags |= VK_IMAGE_USAGE_TRANSFER_DST_BIT; // destination of a transfer command (and also if it's a render target, it can be cleared)
+                flags |= VK_IMAGE_USAGE_TRANSFER_DST_BIT; // destination of a transfer command
             }
 
-            // If it's a render target, it can be cleared, so it needs a destination bit
-            if (texture->IsRenderTargetColor() || texture->IsRenderTargetDepthStencil())
+            // If the texture is a render target, it can be blitted.
+            if (texture->CanBeCleared())
             {
                 flags |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
             }

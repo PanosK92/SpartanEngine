@@ -41,7 +41,8 @@ namespace Spartan
         RHI_Texture_PerMipView              = 1 << 5,
         RHI_Texture_Grayscale               = 1 << 6,
         RHI_Texture_Transparent             = 1 << 7,
-        RHI_Texture_GenerateMipsWhenLoading = 1 << 8
+        RHI_Texture_CanBeCleared            = 1 << 8,
+        RHI_Texture_GenerateMipsWhenLoading = 1 << 9
     };
 
     enum RHI_Shader_View_Type : uint8_t
@@ -111,13 +112,14 @@ namespace Spartan
         bool IsRenderTargetDepthStencil() const { return m_flags & RHI_Texture_Rt_DepthStencil; }
         bool IsRenderTargetColor()        const { return m_flags & RHI_Texture_Rt_Color; }
         bool HasPerMipView()              const { return m_flags & RHI_Texture_PerMipView; }
+        bool CanBeCleared()               const { return m_flags & RHI_Texture_CanBeCleared || IsRenderTargetDepthStencil() || IsRenderTargetColor(); }
 
         // Format type
         bool IsDepthFormat()        const { return m_format == RHI_Format_D32_Float || m_format == RHI_Format_D32_Float_S8X24_Uint; }
         bool IsStencilFormat()      const { return m_format == RHI_Format_D32_Float_S8X24_Uint; }
         bool IsDepthStencilFormat() const { return IsDepthFormat() || IsStencilFormat(); }
         bool IsColorFormat()        const { return !IsDepthStencilFormat(); }
-
+        
         // Layout
         void SetLayout(const RHI_Image_Layout layout, RHI_CommandList* cmd_list, const int mip = -1, const bool ranged = true);
         RHI_Image_Layout GetLayout(const uint32_t mip) const { return m_layout[mip]; }

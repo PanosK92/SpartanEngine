@@ -396,6 +396,8 @@ namespace Spartan
         const uint32_t clear_stencil        /*= rhi_stencil_load*/
     )
     {
+        SP_ASSERT(texture->CanBeCleared());
+
         if (storage)
         {
             SP_ASSERT(texture->IsUav());

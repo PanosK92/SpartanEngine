@@ -64,7 +64,6 @@ namespace Spartan
         m_options |= Render_Debug_Lights;
         m_options |= Render_Debug_Physics;
         m_options |= Render_Bloom;
-       /// m_options |= Render_DepthOfField; // Disabled until it's bugs are fixed
         m_options |= Render_VolumetricFog;
         m_options |= Render_MotionBlur;
         m_options |= Render_Ssao;
@@ -72,17 +71,18 @@ namespace Spartan
         m_options |= Render_ScreenSpaceReflections;
         m_options |= Render_AntiAliasing_Taa;
         m_options |= Render_Sharpening_AMD_FidelityFX_ContrastAdaptiveSharpening;
+        // m_options |= Render_DepthOfField; // Disabled until it's bugs are fixed
         //m_options |= Render_DepthPrepass; // todo: fix for vulkan
 
         // Option values
-        m_option_values[Renderer_Option_Value::Anisotropy]          = 16.0f;
-        m_option_values[Renderer_Option_Value::ShadowResolution]    = 2048.0f;
-        m_option_values[Renderer_Option_Value::Tonemapping]         = static_cast<float>(Renderer_ToneMapping_Off);
-        m_option_values[Renderer_Option_Value::Gamma]               = 2.2f;
-        m_option_values[Renderer_Option_Value::Sharpen_Strength]    = 1.0f;
-        m_option_values[Renderer_Option_Value::Bloom_Intensity]     = 0.2f;
-        m_option_values[Renderer_Option_Value::Fog]                 = 0.03f;
-        m_option_values[Renderer_Option_Value::Ssao_Gi]             = 1.0f;
+        m_option_values[Renderer_Option_Value::Anisotropy]       = 16.0f;
+        m_option_values[Renderer_Option_Value::ShadowResolution] = 2048.0f;
+        m_option_values[Renderer_Option_Value::Tonemapping]      = static_cast<float>(Renderer_ToneMapping_Off);
+        m_option_values[Renderer_Option_Value::Gamma]            = 2.2f;
+        m_option_values[Renderer_Option_Value::Sharpen_Strength] = 1.0f;
+        m_option_values[Renderer_Option_Value::Bloom_Intensity]  = 0.2f;
+        m_option_values[Renderer_Option_Value::Fog]              = 0.03f;
+        m_option_values[Renderer_Option_Value::Ssao_Gi]          = 1.0f;
 
         // Subscribe to events
         SP_SUBSCRIBE_TO_EVENT(EventType::WorldResolved, SP_EVENT_HANDLER_VARIANT(OnRenderablesAcquire));

@@ -209,16 +209,20 @@ namespace Spartan
 
     void RHI_Texture::SetLayout(const RHI_Image_Layout new_layout, RHI_CommandList* cmd_list, const int mip /*= -1*/, const bool ranged /*= true*/)
     {
-        bool individual_mip_requested = mip != -1;
+        const bool individual_mip_requested = mip != -1;
+        const uint32_t mip_start            = individual_mip_requested ? mip : 0;
+        const uint32_t mip_remaining        = m_mip_count - mip_start;
+        const uint32_t mip_range            = ranged ? (individual_mip_requested ? mip_remaining : m_mip_count) : mip_remaining;
+        RHI_Image_Layout current_layout     = m_layout[mip_start];
 
+        // Verify the texture has per mip views (if a specific mip was requested)
         if (individual_mip_requested)
         {
             SP_ASSERT(HasPerMipView());
         }
 
-        const uint32_t mip_start        = individual_mip_requested ? mip : 0;
-        const uint32_t mip_range        = ranged ? (individual_mip_requested ? (m_mip_count - mip) : m_mip_count) : 1;
-        RHI_Image_Layout current_layout = m_layout[mip_start];
+        // Verify that we didn't do anything wrong in the above calculations
+        SP_ASSERT(mip_remaining <= m_mip_count);
 
         // Check if this texture is still initialising (can happen due to multithreading)
         if (current_layout == RHI_Image_Layout::Undefined)
