@@ -186,7 +186,6 @@ namespace Spartan
 
             // Misc
             RENDER_TARGET(RendererRt::Bloom) = make_shared<RHI_Texture2D>(m_context, width_output, height_output, mip_count_to_8px, RHI_Format_R11G11B10_Float,    RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipView, "rt_bloom");
-            RENDER_TARGET(RendererRt::Blur)  = make_unique<RHI_Texture2D>(m_context, width_output, height_output, 1,                RHI_Format_R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv,                          "rt_blur");
         }
 
         // Fixed resolution
@@ -199,15 +198,24 @@ namespace Spartan
         // Dynamic resolution
         if (create_dynamic)
         {
-            RHI_Texture* rt_taa_history = RENDER_TARGET(RendererRt::Taa_History).get();
-            bool upsampling_enabled     = GetOption(Render_Upsample_TAA);
-            uint32_t width              = upsampling_enabled ? width_output  : width_render;
-            uint32_t height             = upsampling_enabled ? height_output : height_render;
+            // Blur
+            bool is_output_larger = width_output > width_render && height_output > height_render;
+            uint32_t width  = is_output_larger ? width_output : width_render;
+            uint32_t height = is_output_larger ? height_output : height_render;
+            RENDER_TARGET(RendererRt::Blur) = make_unique<RHI_Texture2D>(m_context, width, height, 1, RHI_Format_R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv, "rt_blur");
 
-            if (!rt_taa_history || (rt_taa_history->GetWidth() != width || rt_taa_history->GetHeight() != height))
+            // TAA History
             {
-                RENDER_TARGET(RendererRt::Taa_History) = make_unique<RHI_Texture2D>(m_context, width, height, 1, RHI_Format_R11G11B10_Float, RHI_Texture_Uav | RHI_Texture_Srv, "rt_taa_history");
-                LOG_INFO("Taa history resolution has been set to %dx%d", width, height);
+                RHI_Texture* rt_taa_history = RENDER_TARGET(RendererRt::Taa_History).get();
+                bool upsampling_enabled     = GetOption(Render_Upsample_TAA);
+                width                       = upsampling_enabled ? width_output  : width_render;
+                height                      = upsampling_enabled ? height_output : height_render;
+
+                if (!rt_taa_history || (rt_taa_history->GetWidth() != width || rt_taa_history->GetHeight() != height))
+                {
+                    RENDER_TARGET(RendererRt::Taa_History) = make_unique<RHI_Texture2D>(m_context, width, height, 1, RHI_Format_R11G11B10_Float, RHI_Texture_Uav | RHI_Texture_Srv, "rt_taa_history");
+                    LOG_INFO("Taa history resolution has been set to %dx%d", width, height);
+                }
             }
         }
     }
