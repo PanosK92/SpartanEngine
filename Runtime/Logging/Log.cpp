@@ -49,7 +49,7 @@ namespace Spartan
         lock_guard<mutex> guard(m_mutex_log);
 
         const bool log_to_file = m_logger.expired() || m_log_to_file;
-        LogToFile(text, type);
+
         if (log_to_file)
         {
             m_log_buffer.emplace_back(text, type);
