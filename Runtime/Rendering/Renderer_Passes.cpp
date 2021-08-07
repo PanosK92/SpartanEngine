@@ -666,6 +666,17 @@ namespace Spartan
         // Generate frame mips so that we can simulate roughness
         const bool luminance_antiflicker = false;
         Pass_AMD_FidelityFX_SinglePassDowsnampler(cmd_list, tex_ssr, luminance_antiflicker);
+
+        // Blur the smaller mips to reduce blockiness/flickering
+        uint32_t higher_mips_to_blur = 3;
+        uint32_t mip_index_end       = tex_ssr->GetMipCount() - 1;
+        for (uint32_t i = mip_index_end; i > mip_index_end - higher_mips_to_blur; i--)
+        {
+            const bool depth_aware   = true;
+            const float sigma        = 4.0f;
+            const float pixel_stride = 1.0;
+            Pass_Blur_Gaussian(cmd_list, tex_ssr, depth_aware, sigma, pixel_stride, i);
+        }
     }
 
     void Renderer::Pass_Light(RHI_CommandList* cmd_list, const bool is_transparent_pass)
@@ -1596,7 +1607,14 @@ namespace Spartan
         // GitHub:          https://github.com/GPUOpen-Effects/FidelityFX-SPD
         // Documentation:   https://github.com/GPUOpen-Effects/FidelityFX-SPD/blob/master/docs/FidelityFX_SPD.pdf
 
+        uint32_t generated_mips_count = tex->GetMipCount() - 1; // all mips but the top
+        uint32_t smallest_width = tex->GetWidth() >> generated_mips_count;
+        uint32_t smallest_height = tex->GetWidth() >> generated_mips_count;
+
+        // Ensure that the input texture meets the requirements.
         SP_ASSERT(tex->HasPerMipView());
+        SP_ASSERT(generated_mips_count <= 12);                  // As per documentation (page 22)
+        SP_ASSERT(smallest_width >= 8 || smallest_height >= 8); // Based on debugging, it won't do anything below a dimension of 8.
 
         // Acquire shader
         RHI_Shader* shader = m_shaders[luminance_antiflicker ? RendererShader::AMD_FidelityFX_SPD_LuminanceAntiflicker_C : RendererShader::AMD_FidelityFX_SPD_C].get();
@@ -1612,11 +1630,6 @@ namespace Spartan
         // Draw
         if (cmd_list->BeginRenderPass(pso))
         {
-            uint32_t generated_mips_count = tex->GetMipCount() - 1; // all mips but the top
-
-            // As per documentation (page 22)
-            SP_ASSERT(generated_mips_count <= 12);
-
             // As per documentation (page 22)
             const uint32_t thread_group_count_x = (tex->GetWidth() + 63) >> 6;
             const uint32_t thread_group_count_y = (tex->GetHeight() + 63) >> 6;

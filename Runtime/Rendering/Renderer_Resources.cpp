@@ -138,34 +138,23 @@ namespace Spartan
         // rt_hdr/rt_hdr_2/rt_dof_half/rt_dof_half_2/rt_post_process_hdr/rt_post_process_hdr_2/rt_post_process_ldr/rt_post_process_ldr_2: Investigate using less bits but have an alpha channel
         // rt_ssao/rt_ssao_blurred: If gi is disabled, the texture format could just be RHI_Format_R8_Unorm, but calling CreateRenderTextures() dynamically will re-create a lot of textures. Find an elegant solution to improve CreateRenderTextures().
 
-        // Deduce how many mips are required to scale down to or below 16px (in any dimension)
-        uint32_t mip_count_to_16px = 1;
+        // Deduce how many mips are required to scale down any dimension close to 8px (or exactly)
+        uint32_t mip_count_to_8px = 1;
         uint32_t width             = width_render;
         uint32_t height            = height_render;
-        while (width > 16 && height > 16)
+        while ((width / 2) > 8 && (height / 2) > 8)
         {
             width /= 2;
             height /= 2;
-            mip_count_to_16px++;
-        }
-
-        // Deduce how many mips are required to scale down to or below 1px (in any dimension)
-        uint32_t mip_count_to_1px = 1;
-        width                     = width_render;
-        height                    = height_render;
-        while (width > 1 && height > 1)
-        {
-            width /= 2;
-            height /= 2;
-            mip_count_to_1px++;
+            mip_count_to_8px++;
         }
 
         // Render resolution
         if (create_render)
         {
             // Frame (HDR)
-            RENDER_TARGET(RendererRt::Frame_Render)   = make_unique<RHI_Texture2D>(m_context, width_render, height_render, mip_count_to_16px, RHI_Format_R11G11B10_Float, RHI_Texture_Rt_Color | RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipView, "rt_frame_render");
-            RENDER_TARGET(RendererRt::Frame_Render_2) = make_unique<RHI_Texture2D>(m_context, width_render, height_render, mip_count_to_16px, RHI_Format_R11G11B10_Float, RHI_Texture_Rt_Color | RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipView, "rt_frame_render_2");
+            RENDER_TARGET(RendererRt::Frame_Render)   = make_unique<RHI_Texture2D>(m_context, width_render, height_render, mip_count_to_8px, RHI_Format_R11G11B10_Float, RHI_Texture_Rt_Color | RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipView, "rt_frame_render");
+            RENDER_TARGET(RendererRt::Frame_Render_2) = make_unique<RHI_Texture2D>(m_context, width_render, height_render, mip_count_to_8px, RHI_Format_R11G11B10_Float, RHI_Texture_Rt_Color | RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipView, "rt_frame_render_2");
 
             // G-Buffer
             RENDER_TARGET(RendererRt::Gbuffer_Albedo)   = make_shared<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R8G8B8A8_Unorm,     RHI_Texture_Rt_Color        | RHI_Texture_Srv,                                       "rt_gbuffer_albedo");
@@ -182,10 +171,10 @@ namespace Spartan
             RENDER_TARGET(RendererRt::Light_Volumetric)           = make_unique<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R11G11B10_Float, RHI_Texture_Uav | RHI_Texture_Srv, "rt_light_volumetric");
 
             // Misc
-            RENDER_TARGET(RendererRt::Ssao)       = make_unique<RHI_Texture2D>(m_context, width_render,     height_render,     1,                 RHI_Format_R16G16B16A16_Snorm, RHI_Texture_Uav | RHI_Texture_Srv,                          "rt_ssao");
-            RENDER_TARGET(RendererRt::Ssr)        = make_shared<RHI_Texture2D>(m_context, width_render,     height_render,     mip_count_to_1px,  RHI_Format_R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipView, "rt_ssr");
-            RENDER_TARGET(RendererRt::Dof_Half)   = make_unique<RHI_Texture2D>(m_context, width_render / 2, height_render / 2, 1,                 RHI_Format_R16G16B16A16_Float, RHI_Texture_Uav,                                            "rt_dof_half");
-            RENDER_TARGET(RendererRt::Dof_Half_2) = make_unique<RHI_Texture2D>(m_context, width_render / 2, height_render / 2, 1,                 RHI_Format_R16G16B16A16_Float, RHI_Texture_Uav,                                            "rt_dof_half_2");
+            RENDER_TARGET(RendererRt::Ssao)       = make_unique<RHI_Texture2D>(m_context, width_render,     height_render,     1,                RHI_Format_R16G16B16A16_Snorm, RHI_Texture_Uav | RHI_Texture_Srv,                          "rt_ssao");
+            RENDER_TARGET(RendererRt::Ssr)        = make_shared<RHI_Texture2D>(m_context, width_render,     height_render,     mip_count_to_8px, RHI_Format_R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipView, "rt_ssr");
+            RENDER_TARGET(RendererRt::Dof_Half)   = make_unique<RHI_Texture2D>(m_context, width_render / 2, height_render / 2, 1,                RHI_Format_R16G16B16A16_Float, RHI_Texture_Uav,                                            "rt_dof_half");
+            RENDER_TARGET(RendererRt::Dof_Half_2) = make_unique<RHI_Texture2D>(m_context, width_render / 2, height_render / 2, 1,                RHI_Format_R16G16B16A16_Float, RHI_Texture_Uav,                                            "rt_dof_half_2");
         }
 
         // Output resolution
@@ -196,8 +185,8 @@ namespace Spartan
             RENDER_TARGET(RendererRt::Frame_Output_2) = make_unique<RHI_Texture2D>(m_context, width_output, height_output, 1, RHI_Format_R11G11B10_Float, RHI_Texture_Rt_Color | RHI_Texture_Uav | RHI_Texture_Srv, "rt_frame_output_2");
 
             // Misc
-            RENDER_TARGET(RendererRt::Bloom) = make_shared<RHI_Texture2D>(m_context, width_output, height_output, mip_count_to_16px, RHI_Format_R11G11B10_Float,    RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipView, "rt_bloom");
-            RENDER_TARGET(RendererRt::Blur)  = make_unique<RHI_Texture2D>(m_context, width_output, height_output, 1,                 RHI_Format_R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv,                          "rt_blur");
+            RENDER_TARGET(RendererRt::Bloom) = make_shared<RHI_Texture2D>(m_context, width_output, height_output, mip_count_to_8px, RHI_Format_R11G11B10_Float,    RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipView, "rt_bloom");
+            RENDER_TARGET(RendererRt::Blur)  = make_unique<RHI_Texture2D>(m_context, width_output, height_output, 1,                RHI_Format_R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv,                          "rt_blur");
         }
 
         // Fixed resolution
