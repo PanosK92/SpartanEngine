@@ -425,15 +425,15 @@ namespace Spartan
                 direction.Normalize();
 
                 // Compute speed
-                m_movement_speed += m_movement_acceleration * direction * delta_time;
-                m_movement_speed.ClampMagnitude(m_movement_speed_max * delta_time);
+                m_movement_speed += m_movement_acceleration * direction * static_cast<float>(delta_time);
+                m_movement_speed.ClampMagnitude(m_movement_speed_max * static_cast<float>(delta_time));
             }
         }
 
         // Translation
         {
             // Apply movement drag
-            m_movement_speed *= 1.0f - Helper::Saturate(m_movement_drag * delta_time);
+            m_movement_speed *= 1.0f - Helper::Saturate(m_movement_drag * static_cast<float>(delta_time));
 
             // Translate for as long as there is speed
             if (m_movement_speed != Vector3::Zero)

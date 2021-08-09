@@ -58,6 +58,11 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     surface.Build(pos, true, true, false);
 
     // TODO: Use the stencil buffer to avoid transparents or simply add SSR for transparents
+    // If this is a transparent pass, ignore all opaque pixels, and vice versa.
+    bool early_exit_1 = !g_is_transparent_pass && surface.is_transparent();
+    bool early_exit_2 = g_is_transparent_pass && surface.is_opaque();
+    if (early_exit_1 || early_exit_2 || surface.is_sky())
+        discard;
 
     // Compute specular energy
     const float n_dot_v          = saturate(dot(-surface.camera_to_pixel, surface.normal));
@@ -68,9 +73,9 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     // Get ssr color
     float mip_level         = lerp(0, g_ssr_mip_count, surface.roughness);
     const float4 ssr_sample = (is_ssr_enabled() && !g_is_transparent_pass) ? tex_ssr.SampleLevel(sampler_trilinear_clamp, surface.uv, mip_level) : 0.0f;
-    const float3 color_ssr  = ssr_sample.rgb * specular_energy;
-    const float ssr_alpha   = ssr_sample.a;
-    
+    const float3 color_ssr  = ssr_sample.rgb;
+    const float ssr_alpha   = ssr_sample.a * luminance(specular_energy);
+
     // Get environment color
     float3 color_environment = 0.0f;
     if (ssr_alpha != 1.0f)

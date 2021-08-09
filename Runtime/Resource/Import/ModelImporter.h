@@ -70,7 +70,6 @@ namespace Spartan
         // Loading
         void LoadMesh(aiMesh* assimp_mesh, Entity* entity_parent, const ModelParams& params);
         void LoadBones(const aiMesh* assimp_mesh, const ModelParams& params);
-        std::shared_ptr<Material> LoadMaterial(aiMaterial* assimp_material, const ModelParams& params);
 
         // Dependencies
         Context* m_context;

@@ -28,27 +28,21 @@
 #ifdef DEBUG
 #define SP_ASSERT(expression) assert(expression)
 #else
-#define SP_ASSERT(expression)   \
-if (!(##expression))            \
-{                               \
-    LOG_ERROR(#expression);     \
-    SP_DEBUG_BREAK();           \
+#define SP_ASSERT(expression) \
+if (!(##expression))          \
+{                             \
+    LOG_ERROR(#expression);   \
+    SP_DEBUG_BREAK();         \
 }
 #endif
 
 // Delete
-#define SP_DELETE(x)    \
-if (x)                  \
-{                       \
-    delete x;           \
-    x = nullptr;        \
+#define SP_DELETE(x) \
+if (x)               \
+{                    \
+    delete x;        \
+    x = nullptr;     \
 }
-
-// Platform 
-//#define API_GRAPHICS_D3D11    -> Defined by solution generation script
-//#define API_GRAPHICS_D3D12    -> Defined by solution generation script
-//#define API_GRAPHICS_VULKAN   -> Defined by solution generation script
-#define API_INPUT_WINDOWS //    -> Explicitly defined for now
 
 // Fix windows macros
 #ifndef WIN32_LEAN_AND_MEAN

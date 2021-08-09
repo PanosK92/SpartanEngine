@@ -84,21 +84,21 @@ namespace Spartan
 
     void Renderer::CreateRasterizerStates()
     {
-        float depth_bias                = GetOption(Render_ReverseZ) ? -m_depth_bias : m_depth_bias;
-        float depth_bias_slope_scaled   = GetOption(Render_ReverseZ) ? -m_depth_bias_slope_scaled : m_depth_bias_slope_scaled;
+        float depth_bias              = GetOption(Render_ReverseZ) ? -m_depth_bias : m_depth_bias;
+        float depth_bias_slope_scaled = GetOption(Render_ReverseZ) ? -m_depth_bias_slope_scaled : m_depth_bias_slope_scaled;
 
-        m_rasterizer_cull_back_solid        = make_shared<RHI_RasterizerState>(m_rhi_device, RHI_Cull_Mode::Back, RHI_Fill_Mode::Solid,     true,  false, false);
-        m_rasterizer_cull_back_wireframe    = make_shared<RHI_RasterizerState>(m_rhi_device, RHI_Cull_Mode::Back, RHI_Fill_Mode::Wireframe, true,  false, true);
-        m_rasterizer_light_point_spot       = make_shared<RHI_RasterizerState>(m_rhi_device, RHI_Cull_Mode::Back, RHI_Fill_Mode::Solid,     true,  false, false, depth_bias,        m_depth_bias_clamp, depth_bias_slope_scaled);
-        m_rasterizer_light_directional      = make_shared<RHI_RasterizerState>(m_rhi_device, RHI_Cull_Mode::Back, RHI_Fill_Mode::Solid,     false, false, false, depth_bias * 0.1f, m_depth_bias_clamp, depth_bias_slope_scaled);
+        m_rasterizer_cull_back_solid     = make_shared<RHI_RasterizerState>(m_rhi_device, RHI_Cull_Mode::Back, RHI_Fill_Mode::Solid,     true,  false, false);
+        m_rasterizer_cull_back_wireframe = make_shared<RHI_RasterizerState>(m_rhi_device, RHI_Cull_Mode::Back, RHI_Fill_Mode::Wireframe, true,  false, true);
+        m_rasterizer_light_point_spot    = make_shared<RHI_RasterizerState>(m_rhi_device, RHI_Cull_Mode::Back, RHI_Fill_Mode::Solid,     true,  false, false, depth_bias,        m_depth_bias_clamp, depth_bias_slope_scaled);
+        m_rasterizer_light_directional   = make_shared<RHI_RasterizerState>(m_rhi_device, RHI_Cull_Mode::Back, RHI_Fill_Mode::Solid,     false, false, false, depth_bias * 0.1f, m_depth_bias_clamp, depth_bias_slope_scaled);
     }
 
     void Renderer::CreateBlendStates()
     {
         // blend_enabled, source_blend, dest_blend, blend_op, source_blend_alpha, dest_blend_alpha, blend_op_alpha, blend_factor
-        m_blend_disabled    = make_shared<RHI_BlendState>(m_rhi_device, false);
-        m_blend_alpha       = make_shared<RHI_BlendState>(m_rhi_device, true, RHI_Blend::Src_Alpha, RHI_Blend::Inv_Src_Alpha, RHI_Blend_Operation::Add, RHI_Blend::One, RHI_Blend::One, RHI_Blend_Operation::Add, 0.0f);
-        m_blend_additive    = make_shared<RHI_BlendState>(m_rhi_device, true, RHI_Blend::One,       RHI_Blend::One,           RHI_Blend_Operation::Add, RHI_Blend::One, RHI_Blend::One, RHI_Blend_Operation::Add, 1.0f);
+        m_blend_disabled = make_shared<RHI_BlendState>(m_rhi_device, false);
+        m_blend_alpha    = make_shared<RHI_BlendState>(m_rhi_device, true, RHI_Blend::Src_Alpha, RHI_Blend::Inv_Src_Alpha, RHI_Blend_Operation::Add, RHI_Blend::One, RHI_Blend::One, RHI_Blend_Operation::Add, 0.0f);
+        m_blend_additive = make_shared<RHI_BlendState>(m_rhi_device, true, RHI_Blend::One,       RHI_Blend::One,           RHI_Blend_Operation::Add, RHI_Blend::One, RHI_Blend::One, RHI_Blend_Operation::Add, 1.0f);
     }
 
     void Renderer::CreateSamplers(const bool create_only_anisotropic /*= false*/)
@@ -128,8 +128,8 @@ namespace Spartan
         uint32_t height_render = static_cast<uint32_t>(m_resolution_render.y);
 
         // Get output resolution
-        uint32_t width_output   = static_cast<uint32_t>(m_resolution_output.x);
-        uint32_t height_output  = static_cast<uint32_t>(m_resolution_output.y);
+        uint32_t width_output  = static_cast<uint32_t>(m_resolution_output.x);
+        uint32_t height_output = static_cast<uint32_t>(m_resolution_output.y);
 
         // Ensure none of the textures is being used by the GPU
         Flush();
@@ -148,6 +148,9 @@ namespace Spartan
             height /= 2;
             mip_count_to_16px++;
         }
+
+        // Deduce how many mips are required to scale down any dimension close to 32px (or exactly)
+        uint32_t mip_count_to_32px = mip_count_to_16px - 1;
 
         // Render resolution
         if (create_render)
@@ -172,7 +175,7 @@ namespace Spartan
 
             // Misc
             RENDER_TARGET(RendererRt::Ssao)       = make_unique<RHI_Texture2D>(m_context, width_render,     height_render,     1,                 RHI_Format_R16G16B16A16_Snorm, RHI_Texture_Uav | RHI_Texture_Srv,                          "rt_ssao");
-            RENDER_TARGET(RendererRt::Ssr)        = make_shared<RHI_Texture2D>(m_context, width_render,     height_render,     mip_count_to_16px, RHI_Format_R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipView, "rt_ssr");
+            RENDER_TARGET(RendererRt::Ssr)        = make_shared<RHI_Texture2D>(m_context, width_render,     height_render,     mip_count_to_32px, RHI_Format_R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipView, "rt_ssr");
             RENDER_TARGET(RendererRt::Dof_Half)   = make_unique<RHI_Texture2D>(m_context, width_render / 2, height_render / 2, 1,                 RHI_Format_R16G16B16A16_Float, RHI_Texture_Uav,                                            "rt_dof_half");
             RENDER_TARGET(RendererRt::Dof_Half_2) = make_unique<RHI_Texture2D>(m_context, width_render / 2, height_render / 2, 1,                 RHI_Format_R16G16B16A16_Float, RHI_Texture_Uav,                                            "rt_dof_half_2");
         }
