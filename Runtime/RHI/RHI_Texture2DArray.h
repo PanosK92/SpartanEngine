@@ -31,7 +31,7 @@ namespace Spartan
     class SPARTAN_CLASS RHI_Texture2DArray : public RHI_Texture
     {
     public:
-        RHI_Texture2DArray(Context* context, const uint16_t flags = RHI_Texture_Srv, const bool generate_mipmaps = false, const char* name = nullptr) : RHI_Texture(context)
+        RHI_Texture2DArray(Context* context, const uint32_t flags = RHI_Texture_Srv, const bool generate_mipmaps = false, const char* name = nullptr) : RHI_Texture(context)
         {
             m_resource_type = ResourceType::Texture2dArray;
             m_flags         = flags;
@@ -44,7 +44,7 @@ namespace Spartan
         }
 
         // Creates a texture without any data (intended for usage as a render target)
-        RHI_Texture2DArray(Context* context, const uint32_t width, const uint32_t height, const RHI_Format format, const uint32_t array_length, const uint16_t flags, std::string name = "") : RHI_Texture(context)
+        RHI_Texture2DArray(Context* context, const uint32_t width, const uint32_t height, const RHI_Format format, const uint32_t array_length, const uint32_t flags, std::string name = "") : RHI_Texture(context)
         {
             m_object_name   = name;
             m_resource_type = ResourceType::Texture2dArray;

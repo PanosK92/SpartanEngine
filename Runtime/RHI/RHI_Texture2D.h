@@ -32,7 +32,7 @@ namespace Spartan
     {
     public:
         // Creates a texture without data (intended for manual loading)
-        RHI_Texture2D(Context* context, const uint16_t flags = RHI_Texture_Srv, const bool generate_mipmaps = false, const char* name = nullptr) : RHI_Texture(context)
+        RHI_Texture2D(Context* context, const uint32_t flags = RHI_Texture_Srv, const bool generate_mipmaps = false, const char* name = nullptr) : RHI_Texture(context)
         {
             m_resource_type = ResourceType::Texture2d;
             m_array_length  = 0;
@@ -47,7 +47,7 @@ namespace Spartan
         }
 
         // Creates a texture from data (intended for sampling)
-        RHI_Texture2D(Context* context, const uint32_t width, const uint32_t height, const RHI_Format format, const uint16_t flags, const std::vector<RHI_Texture_Slice>& data) : RHI_Texture(context)
+        RHI_Texture2D(Context* context, const uint32_t width, const uint32_t height, const RHI_Format format, const uint32_t flags, const std::vector<RHI_Texture_Slice>& data) : RHI_Texture(context)
         {
             m_resource_type = ResourceType::Texture2d;
             m_width         = width;
@@ -64,7 +64,7 @@ namespace Spartan
         }
 
         // Creates a texture without any data (intended for usage as a render target)
-        RHI_Texture2D(Context* context, const uint32_t width, const uint32_t height, const uint32_t mip_count, const RHI_Format format, const uint16_t flags, const char* name = nullptr) : RHI_Texture(context)
+        RHI_Texture2D(Context* context, const uint32_t width, const uint32_t height, const uint32_t mip_count, const RHI_Format format, const uint32_t flags, const char* name = nullptr) : RHI_Texture(context)
         {
             m_resource_type = ResourceType::Texture2d;
             m_width         = width;

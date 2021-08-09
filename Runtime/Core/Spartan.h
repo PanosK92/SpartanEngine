@@ -50,6 +50,7 @@ SP_WARNINGS_OFF
 #include <assimp/scene.h>
 #include <assimp/DefaultLogger.hpp>
 #include <assimp/ProgressHandler.hpp>
+#include <assimp/pbrmaterial.h>
 
 // Audio
 #include <fmod.hpp>

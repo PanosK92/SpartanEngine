@@ -189,12 +189,13 @@ namespace Spartan
 
         // Try to get the texture
         const auto tex_name = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path);
-        if (auto texture = m_context->GetSubsystem<ResourceCache>()->GetByName<RHI_Texture2D>(tex_name))
+        shared_ptr<RHI_Texture> texture = m_context->GetSubsystem<ResourceCache>()->GetByName<RHI_Texture2D>(tex_name);
+
+        if (texture)
         {
             material->SetTextureSlot(texture_type, texture);
         }
-        // If we didn't get a texture, it's not cached, hence we have to load it and cache it now
-        else
+        else // If we didn't get a texture, it's not cached, hence we have to load it and cache it now
         {
             // Load texture
             bool generate_mipmaps = true;
@@ -211,8 +212,8 @@ namespace Spartan
         auto success = true;
 
         // Get geometry
-        const auto indices    = m_mesh->Indices_Get();
-        const auto vertices    = m_mesh->Vertices_Get();
+        const auto indices  = m_mesh->Indices_Get();
+        const auto vertices = m_mesh->Vertices_Get();
 
         if (!indices.empty())
         {

@@ -35,12 +35,12 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    static UINT GetBindFlags(uint16_t flags)
+    static UINT GetBindFlags(uint32_t flags)
     {
         UINT flags_d3d11 = 0;
 
-        flags_d3d11 |= (flags & RHI_Texture_Srv)                       ? D3D11_BIND_SHADER_RESOURCE  : 0;
-        flags_d3d11 |= (flags & RHI_Texture_Uav)                       ? D3D11_BIND_UNORDERED_ACCESS : 0;
+        flags_d3d11 |= (flags & RHI_Texture_Srv)             ? D3D11_BIND_SHADER_RESOURCE  : 0;
+        flags_d3d11 |= (flags & RHI_Texture_Uav)             ? D3D11_BIND_UNORDERED_ACCESS : 0;
         flags_d3d11 |= (flags & RHI_Texture_Rt_DepthStencil) ? D3D11_BIND_DEPTH_STENCIL    : 0;
         flags_d3d11 |= (flags & RHI_Texture_Rt_Color)        ? D3D11_BIND_RENDER_TARGET    : 0;
 

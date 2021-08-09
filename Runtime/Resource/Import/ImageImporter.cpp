@@ -40,11 +40,11 @@ namespace Spartan
     // A struct that rescaling threads will work with
     struct RescaleJob
     {
-        uint32_t width          = 0;
-        uint32_t height         = 0;
-        uint32_t channel_count  = 0;
-        RHI_Texture_Mip* mip    = nullptr;
-        bool done               = false;
+        uint32_t width         = 0;
+        uint32_t height        = 0;
+        uint32_t channel_count = 0;
+        RHI_Texture_Mip* mip   = nullptr;
+        bool done              = false;
         
         RescaleJob(const uint32_t width, const uint32_t height, const uint32_t channel_count)
         {
@@ -76,7 +76,7 @@ namespace Spartan
     
         return size;
     }
-    
+
     static uint32_t get_channel_count(FIBITMAP* bitmap)
     {
         SP_ASSERT(bitmap != nullptr);
@@ -86,7 +86,7 @@ namespace Spartan
     
         return channel_count;
     }
-    
+
     static RHI_Format get_rhi_format(const uint32_t bytes_per_channel, const uint32_t channel_count)
     {
         const uint32_t bits_per_channel = bytes_per_channel * 8;
@@ -130,6 +130,25 @@ namespace Spartan
         return bitmap;
     }
 
+    static FIBITMAP* rescale(FIBITMAP* bitmap, const uint32_t width, const uint32_t height)
+    {
+        SP_ASSERT(bitmap != nullptr);
+        SP_ASSERT(width != 0);
+        SP_ASSERT(height != 0);
+
+        FIBITMAP* previous_bitmap = bitmap;
+        bitmap = FreeImage_Rescale(previous_bitmap, width, height, filter_downsample);
+
+        if (!bitmap)
+        {
+            LOG_ERROR("Failed");
+            return previous_bitmap;
+        }
+
+        FreeImage_Unload(previous_bitmap);
+        return bitmap;
+    }
+
     static FIBITMAP* apply_bitmap_corrections(FIBITMAP* bitmap)
     {
         SP_ASSERT(bitmap != nullptr);
@@ -158,12 +177,12 @@ namespace Spartan
         // Vulkan tells you, your GPU doesn't support it.
         // D3D11 seems to be doing some sort of emulation under the hood while throwing some warnings regarding sampling it.
         // So to prevent that, we maintain the 32 bits and convert to an RGBA format.
-        const uint32_t image_bits_per_channel   = get_bytes_per_channel(bitmap) * 8;
-        const uint32_t image_channels           = get_channel_count(bitmap);
-        const bool is_r32g32b32_float           = image_channels == 3 && image_bits_per_channel == 32;
+        const uint32_t image_bits_per_channel = get_bytes_per_channel(bitmap) * 8;
+        const uint32_t image_channels         = get_channel_count(bitmap);
+        const bool is_r32g32b32_float         = image_channels == 3 && image_bits_per_channel == 32;
         if (is_r32g32b32_float)
         {
-            const auto previous_bitmap = bitmap;
+            FIBITMAP* previous_bitmap = bitmap;
             bitmap = FreeImage_ConvertToRGBAF(bitmap);
             FreeImage_Unload(previous_bitmap);
         }
@@ -185,23 +204,84 @@ namespace Spartan
     
         return bitmap;
     }
- 
-    static FIBITMAP* rescale(FIBITMAP* bitmap, const uint32_t width, const uint32_t height)
+
+    static void get_bits_from_bitmap(RHI_Texture_Mip* mip, FIBITMAP* bitmap, const uint32_t width, const uint32_t height, const uint32_t channel_count)
     {
+        // Validate
+        SP_ASSERT(mip != nullptr);
         SP_ASSERT(bitmap != nullptr);
         SP_ASSERT(width != 0);
         SP_ASSERT(height != 0);
-    
-        const auto previous_bitmap    = bitmap;
-        bitmap                        = FreeImage_Rescale(previous_bitmap, width, height, filter_downsample);
-        if (!bitmap)
+        SP_ASSERT(channel_count != 0);
+
+        // Compute expected data size and reserve enough memory
+        const size_t size_bytes = width * height * channel_count * get_bytes_per_channel(bitmap);
+        if (size_bytes != mip->bytes.size())
         {
-            LOG_ERROR("Failed");
-            return previous_bitmap;
+            mip->bytes.clear();
+            mip->bytes.reserve(size_bytes);
+            mip->bytes.resize(size_bytes);
         }
-    
-        FreeImage_Unload(previous_bitmap);
-        return bitmap;
+
+        // Copy the data over to our vector
+        BYTE* bits = FreeImage_GetBits(bitmap);
+        memcpy(&mip->bytes[0], bits, size_bytes);
+    }
+
+    static void generate_mips(Context* context, FIBITMAP* bitmap, RHI_Texture* texture, uint32_t width, uint32_t height, uint32_t channels, const uint32_t slice_index)
+    {
+        SP_ASSERT(texture != nullptr);
+
+        // Create a RescaleJob for every mip that we need
+        vector<RescaleJob> jobs;
+        while (width > 1 && height > 1)
+        {
+            width  = Math::Helper::Max(width / 2, 1U);
+            height = Math::Helper::Max(height / 2, 1U);
+            jobs.emplace_back(width, height, channels);
+
+            // Resize the RHI_Texture vector accordingly
+            const auto size = width * height * channels;
+            RHI_Texture_Mip& mip = texture->CreateMip(slice_index);
+            mip.bytes.reserve(size);
+            mip.bytes.resize(size);
+        }
+
+        // Pass data pointers (now that the RHI_Texture mip vector has been constructed)
+        for (uint32_t i = 0; i < jobs.size(); i++)
+        {
+            // reminder: i + 1 because the 0 mip is the default image size
+            jobs[i].mip = &texture->GetMip(0, i + 1);
+        }
+
+        // Parallelize mipmap generation using multiple threads (because FreeImage_Rescale() is expensive)
+        Threading* threading = context->GetSubsystem<Threading>();
+        for (auto& job : jobs)
+        {
+            threading->AddTask([&job, &bitmap]()
+            {
+                FIBITMAP* bitmap_scaled = FreeImage_Rescale(bitmap, job.width, job.height, filter_downsample);
+                get_bits_from_bitmap(job.mip, bitmap_scaled, job.width, job.height, job.channel_count);
+                FreeImage_Unload(bitmap_scaled);
+                job.done = true;
+            });
+        }
+
+        // Wait until all mips have been generated
+        auto ready = false;
+        while (!ready)
+        {
+            ready = true;
+            for (const auto& job : jobs)
+            {
+                if (!job.done)
+                {
+                    ready = false;
+                }
+            }
+
+            this_thread::sleep_for(chrono::milliseconds(16));
+        }
     }
 
     ImageImporter::ImageImporter(Context* context)
@@ -240,8 +320,8 @@ namespace Spartan
         }
 
         // Acquire image format
-        FREE_IMAGE_FORMAT format    = FreeImage_GetFileType(file_path.c_str(), 0);
-        format                      = (format == FIF_UNKNOWN) ? FreeImage_GetFIFFromFilename(file_path.c_str()) : format;  // If the format is unknown, try to work it out from the file path
+        FREE_IMAGE_FORMAT format = FreeImage_GetFileType(file_path.c_str(), 0);
+        format                   = (format == FIF_UNKNOWN) ? FreeImage_GetFIFFromFilename(file_path.c_str()) : format;  // If the format is unknown, try to work it out from the file path
         if (!FreeImage_FIFSupportsReading(format)) // If the format is still unknown, give up
         {
             LOG_ERROR("Unsupported format");
@@ -269,15 +349,15 @@ namespace Spartan
         }
 
         // Deduce image properties
-        const uint32_t image_bytes_per_channel  = get_bytes_per_channel(bitmap);
-        const uint32_t image_channel_count      = get_channel_count(bitmap);
-        const RHI_Format image_format           = get_rhi_format(image_bytes_per_channel, image_channel_count);
+        const uint32_t bytes_per_channel = get_bytes_per_channel(bitmap);
+        const uint32_t channel_count     = get_channel_count(bitmap);
+        const RHI_Format image_format    = get_rhi_format(bytes_per_channel, channel_count);
 
         // Perform any scaling (if necessary)
-        const auto user_define_dimensions   = (texture->GetWidth() != 0 && texture->GetHeight() != 0);
-        const auto dimension_mismatch       = (FreeImage_GetWidth(bitmap) != texture->GetWidth() && FreeImage_GetHeight(bitmap) != texture->GetHeight());
-        const auto scale                    = user_define_dimensions && dimension_mismatch;
-        bitmap                              = scale ? rescale(bitmap, texture->GetWidth(), texture->GetHeight()) : bitmap;
+        const bool user_define_dimensions = (texture->GetWidth() != 0 && texture->GetHeight() != 0);
+        const bool dimension_mismatch     = (FreeImage_GetWidth(bitmap) != texture->GetWidth() && FreeImage_GetHeight(bitmap) != texture->GetHeight());
+        const bool scale                  = user_define_dimensions && dimension_mismatch;
+        bitmap                            = scale ? rescale(bitmap, texture->GetWidth(), texture->GetHeight()) : bitmap;
 
         // Deduce image properties
         const unsigned int image_width  = FreeImage_GetWidth(bitmap);
@@ -285,110 +365,26 @@ namespace Spartan
 
         // Fill RGBA vector with the data from the FIBITMAP
         RHI_Texture_Mip& mip = texture->CreateMip(slice_index);
-        GetBitsFromFibitmap(&mip, bitmap, image_width, image_height, image_channel_count);
+        get_bits_from_bitmap(&mip, bitmap, image_width, image_height, channel_count);
 
-        // If the texture supports mipmaps, generate them
+        // If the texture requires mips, generate them
         if (texture->GetFlags() & RHI_Texture_GenerateMipsWhenLoading)
         {
-            GenerateMipmaps(bitmap, texture, image_width, image_height, image_channel_count, slice_index);
+            generate_mips(m_context, bitmap, texture, image_width, image_height, channel_count, slice_index);
         }
 
         // Free memory 
         FreeImage_Unload(bitmap);
 
         // Fill RHI_Texture with image properties
-        texture->SetBitsPerChannel(image_bytes_per_channel * 8);
+        texture->SetBitsPerChannel(bytes_per_channel * 8);
         texture->SetWidth(image_width);
         texture->SetHeight(image_height);
-        texture->SetChannelCount(image_channel_count);
+        texture->SetChannelCount(channel_count);
         texture->SetTransparency(image_is_transparent);
         texture->SetFormat(image_format);
         texture->SetGrayscale(image_is_grayscale);
 
         return true;
-    }
-
-    bool ImageImporter::GetBitsFromFibitmap(RHI_Texture_Mip* mip, FIBITMAP* bitmap, const uint32_t width, const uint32_t height, const uint32_t channels) const
-    {
-        // Validate
-        SP_ASSERT(mip != nullptr);
-        SP_ASSERT(width != 0);
-        SP_ASSERT(height != 0);
-        SP_ASSERT(channels != 0);
-
-        // Compute expected data size and reserve enough memory
-        const size_t size_bytes = width * height * channels * get_bytes_per_channel(bitmap);
-        if (size_bytes != mip->bytes.size())
-        {
-            mip->bytes.clear();
-            mip->bytes.reserve(size_bytes);
-            mip->bytes.resize(size_bytes);
-        }
-
-        // Copy the data over to our vector
-        const auto bits = FreeImage_GetBits(bitmap);
-        memcpy(&mip->bytes[0], bits, size_bytes);
-
-        return true;
-    }
-
-    void ImageImporter::GenerateMipmaps(FIBITMAP* bitmap, RHI_Texture* texture, uint32_t width, uint32_t height, uint32_t channels, const uint32_t slice_index)
-    {
-        // Validate
-        SP_ASSERT(texture != nullptr);
-    
-        // Create a RescaleJob for every mip that we need
-        vector<RescaleJob> jobs;
-        while (width > 1 && height > 1)
-        {
-            width   = Math::Helper::Max(width / 2, static_cast<uint32_t>(1));
-            height  = Math::Helper::Max(height / 2, static_cast<uint32_t>(1));
-            jobs.emplace_back(width, height, channels);
-            
-            // Resize the RHI_Texture vector accordingly
-            const auto size = width * height * channels;
-            RHI_Texture_Mip& mip = texture->CreateMip(slice_index);
-            mip.bytes.reserve(size);
-            mip.bytes.resize(size);
-        }
-
-        // Pass data pointers (now that the RHI_Texture mip vector has been constructed)
-        for (uint32_t i = 0; i < jobs.size(); i++)
-        {
-            // reminder: i + 1 because the 0 mip is the default image size
-            jobs[i].mip = &texture->GetMip(0, i + 1);
-        }
-
-        // Parallelize mipmap generation using multiple threads (because FreeImage_Rescale() is expensive)
-        auto threading = m_context->GetSubsystem<Threading>();
-        for (auto& job : jobs)
-        {
-            threading->AddTask([this, &job, &bitmap]()
-            {
-                FIBITMAP* bitmap_scaled = FreeImage_Rescale(bitmap, job.width, job.height, filter_downsample);
-                if (!GetBitsFromFibitmap(job.mip, bitmap_scaled, job.width, job.height, job.channel_count))
-                {
-                    LOG_ERROR("Failed to create mip level %dx%d", job.width, job.height);
-                }
-                FreeImage_Unload(bitmap_scaled);
-                job.done = true;
-            });
-        }
-
-        // Wait until all mipmaps have been generated
-        auto ready = false;
-        while (!ready)
-        {
-            ready = true;
-            for (const auto& job : jobs)
-            {
-                if (!job.done)
-                {
-                    ready = false;
-                }
-            }
-
-            this_thread::sleep_for(chrono::milliseconds(16));
-        }
     }
 }

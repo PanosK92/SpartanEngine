@@ -32,8 +32,8 @@ namespace Spartan
 {
     Timer::Timer(Context* context) : ISubsystem(context)
     {
-        m_time_start        = chrono::high_resolution_clock::now();
-        m_time_sleep_end    = chrono::high_resolution_clock::now();
+        m_time_start     = chrono::high_resolution_clock::now();
+        m_time_sleep_end = chrono::high_resolution_clock::now();
     }
 
     void Timer::OnTick(double _delta_time)
