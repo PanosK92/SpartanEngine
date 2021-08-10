@@ -23,9 +23,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Common.hlsl"
 //===================
 
-static const float g_ssr_max_distance            = 80.0f;
-static const uint g_ssr_max_steps                = 32;
-static const uint g_ssr_binary_search_steps      = 25;
+static const float g_ssr_max_distance            = 200.0f;
+static const uint g_ssr_max_steps                = 64;
+static const uint g_ssr_binary_search_steps      = 24;
 static const float g_ssr_thickness               = 0.0001f;
 static const float g_ssr_camera_facing_threshold = 0.8f; // Higher values allow for more camera facing rays to be traced.
 
@@ -60,7 +60,7 @@ float2 trace_ray(uint2 screen_pos, float3 ray_start_vs, float3 ray_dir_vs)
         ray_pos += ray_step;
 
         // Early exit if the ray is out of screen
-        if (ray_pos.x < 0 || ray_pos.x > 1 || ray_pos.y < 0 || ray_pos.y > 1)
+        if (!is_valid_uv(ray_pos))
             return 0.0f;
         
         // Intersect depth buffer

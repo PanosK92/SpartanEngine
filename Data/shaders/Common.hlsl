@@ -89,6 +89,8 @@ bool is_saturated(float2 value)  { return is_saturated(value.x) && is_saturated(
 bool is_saturated(float3 value)  { return is_saturated(value.x) && is_saturated(value.y) && is_saturated(value.z); }
 bool is_saturated(float4 value)  { return is_saturated(value.x) && is_saturated(value.y) && is_saturated(value.z) && is_saturated(value.w); }
 
+bool is_valid_uv(float2 value) { return value.x >= 0.0f && value.x <= 1.0f || value.y >= 0.0f && value.y <= 1.0f; }
+
 /*------------------------------------------------------------------------------
     SATURATE
 ------------------------------------------------------------------------------*/
