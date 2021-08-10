@@ -46,13 +46,14 @@ float2 get_velocity_max_3x3(float2 texCoord, Texture2D texture_velocity, Texture
         [unroll]
         for(int x = -1; x <= 1; ++x)
         {
-            float2 offset	= float2(x, y) * g_texel_size;
+            float2 offset   = float2(x, y) * g_texel_size;
             float2 velocity = tex_velocity.SampleLevel(sampler_point_clamp, texCoord + offset, 0).xy;
             float length2   = dot(velocity, velocity);
+            
             if(length2 > max_length2)
             {
-                max_velocity    = velocity;
-                max_length2     = length2;
+                max_velocity = velocity;
+                max_length2  = length2;
             }
         }
     }
@@ -72,12 +73,13 @@ float2 get_velocity_closest_3x3(float2 texCoord)
         [unroll]
         for(int x = -1; x <= 1; ++x)
         {
-            float2 offset   = float2(x, y) * g_texel_size;
-            float depth     = tex_depth.SampleLevel(sampler_point_clamp, texCoord + offset, 0).r;
-            if(depth > min_depth) // Reverse-z, so looking for max to find min depth
+            float2 offset = float2(x, y) * g_texel_size;
+            float depth   = get_linear_depth(texCoord + offset);
+            
+            if(depth < min_depth)
             {
-                min_depth   = depth;
-                min_uv  	= texCoord + offset;
+                min_depth = depth;
+                min_uv    = texCoord + offset;
             }
         }
     }
@@ -97,12 +99,13 @@ float2 get_velocity_furthest_3x3(float2 texCoord, Texture2D texture_velocity, Te
         [unroll]
         for(int x = -1; x <= 1; ++x)
         {
-            float2 offset   = float2(x, y) * g_texel_size;
-            float depth = tex_depth.SampleLevel(sampler_point_clamp, texCoord + offset, 0).r;
-            if(depth < max_depth) // Reverse-z, so looking for min to find max depth
+            float2 offset = float2(x, y) * g_texel_size;
+            float depth   = get_linear_depth(texCoord + offset);
+            
+            if(depth > max_depth)
             {
-                max_depth   = depth;
-                max_uv      = texCoord + offset;
+                max_depth = depth;
+                max_uv    = texCoord + offset;
             }
         }
     }

@@ -76,7 +76,7 @@ float3 clip_history(uint2 thread_id, uint group_index, uint3 group_id, Texture2D
     float3 color_max = max(ctl, max(ctc, max(ctr, max(cml, max(cmc, max(cmr, max(cbl, max(cbc, cbr))))))));
     float3 color_avg = (ctl + ctc + ctr + cml + cmc + cmr + cbl + cbc + cbr) / 9.0f;
 
-    const float box_size = lerp(0.5f, 2.5f, smoothstep(0.02f, 0.0f, length(velocity)));
+    const float box_size = lerp(0.5f, 1.0f, smoothstep(0.02f, 0.0f, length(velocity)));
     
     return saturate_16(clip_aabb(color_min, color_max, clamp(color_avg, color_min, color_max), color_history, box_size));
 }
@@ -254,4 +254,3 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID, uint group_index : SV_GroupIn
 
     tex_out_rgb[thread_id.xy] = temporal_antialiasing(thread_id.xy, group_index, group_id, tex, tex2);
 }
-

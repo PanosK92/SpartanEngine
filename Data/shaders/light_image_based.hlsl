@@ -66,6 +66,9 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     if (early_exit_1 || early_exit_2 || surface.is_sky())
         discard;
 
+    // Just a hack to tone down IBL since it comes from a static texture
+    float3 light_ambient  = saturate(g_directional_light_intensity / 128000.0f) * surface.occlusion;
+    
     // Compute specular energy
     const float n_dot_v          = saturate(dot(-surface.camera_to_pixel, surface.normal));
     const float3 F               = F_Schlick_Roughness(surface.F0, n_dot_v, surface.roughness);
@@ -74,7 +77,6 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 
     // IBL - Diffuse
     float3 diffuse_energy = compute_diffuse_energy(specular_energy, surface.metallic); // Used to town down diffuse such as that only non metals have it
-    float3 light_ambient  = saturate(g_directional_light_intensity / 128000.0f) * surface.occlusion; // just a hack
     float3 ibl_diffuse    = sample_environment(direction_sphere_uv(surface.normal), g_envrionement_max_mip) * surface.albedo.rgb * light_ambient * diffuse_energy;
     ibl_diffuse           *= surface.alpha; // Fade out for transparents
 
@@ -97,7 +99,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
         const float3 reflection            = reflect(surface.camera_to_pixel, surface.normal);
         float3 dominant_specular_direction = get_dominant_specular_direction(surface.normal, reflection, surface.roughness);
         float mip_level                    = lerp(0, g_envrionement_max_mip, surface.roughness);
-        ibl_specular_environment           = sample_environment(direction_sphere_uv(dominant_specular_direction), mip_level) ;
+        ibl_specular_environment           = sample_environment(direction_sphere_uv(dominant_specular_direction), mip_level) * light_ambient;
     }
 
     // Blend between speculars and account for the specular energy
