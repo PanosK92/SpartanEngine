@@ -74,7 +74,8 @@ PixelOutputType mainPS(PixelInputType input)
     float2 position_current  = (input.position_ss_current.xy / input.position_ss_current.w);
     float2 position_previous = (input.position_ss_previous.xy / input.position_ss_previous.w);
     float2 position_delta    = position_current - position_previous;
-    float2 velocity          = (position_delta - g_taa_jitter_offset) * float2(0.5f, -0.5f);
+    float2 velocity          = (position_delta - g_taa_jitter_offset);
+    velocity                 *= float2(0.5f, -0.5f); // ndc to uv
 
     // Make TBN
 #if HEIGHT_MAP || NORMAL_MAP
