@@ -97,10 +97,10 @@ namespace Spartan
     {
         const float cam_z = m_camera->GetTransform()->GetPosition().z + m_camera->GetNearPlane() + 5.0f;
 
-        DrawLine(Vector3(rectangle.left,    rectangle.top,      cam_z), Vector3(rectangle.right,    rectangle.top,      cam_z), color, color, duration, depth);
-        DrawLine(Vector3(rectangle.right,   rectangle.top,      cam_z), Vector3(rectangle.right,    rectangle.bottom,   cam_z), color, color, duration, depth);
-        DrawLine(Vector3(rectangle.right,   rectangle.bottom,   cam_z), Vector3(rectangle.left,     rectangle.bottom,   cam_z), color, color, duration, depth);
-        DrawLine(Vector3(rectangle.left,    rectangle.bottom,   cam_z), Vector3(rectangle.left,     rectangle.top,      cam_z), color, color, duration, depth);
+        DrawLine(Vector3(rectangle.left,    rectangle.top,      cam_z), Vector3(rectangle.right, rectangle.top,    cam_z), color, color, duration, depth);
+        DrawLine(Vector3(rectangle.right,   rectangle.top,      cam_z), Vector3(rectangle.right, rectangle.bottom, cam_z), color, color, duration, depth);
+        DrawLine(Vector3(rectangle.right,   rectangle.bottom,   cam_z), Vector3(rectangle.left,  rectangle.bottom, cam_z), color, color, duration, depth);
+        DrawLine(Vector3(rectangle.left,    rectangle.bottom,   cam_z), Vector3(rectangle.left,  rectangle.top,    cam_z), color, color, duration, depth);
     }
 
     void Renderer::DrawBox(const BoundingBox& box, const Vector4& color, const float duration /*= 0.0f*/, const bool depth /*= true*/)

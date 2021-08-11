@@ -71,11 +71,11 @@ PixelOutputType mainPS(PixelInputType input)
     float occlusion = 1.0f;
 
     // Velocity
-    float2 position_current  = (input.position_ss_current.xy / input.position_ss_current.w);
-    float2 position_previous = (input.position_ss_previous.xy / input.position_ss_previous.w);
-    float2 position_delta    = position_current - position_previous;
-    float2 velocity          = (position_delta - g_taa_jitter_offset);
-    velocity                 *= float2(0.5f, -0.5f); // ndc to uv
+    float2 position_ndc_current  = (input.position_ss_current.xy / input.position_ss_current.w);
+    float2 position_ndc_previous = (input.position_ss_previous.xy / input.position_ss_previous.w);
+    float2 position_delta        = position_ndc_current - position_ndc_previous;
+    float2 velocity              = (position_delta - g_taa_jitter_offset); // remove TAA jitter
+    velocity                     *= float2(0.5f, -0.5f);                   // to uv (no need for +0.5f since it's delta, not a position)
 
     // Make TBN
 #if HEIGHT_MAP || NORMAL_MAP

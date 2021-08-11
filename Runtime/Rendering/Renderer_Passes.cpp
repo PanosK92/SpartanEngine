@@ -108,7 +108,7 @@ namespace Spartan
             Pass_Depth_Prepass(cmd_list);
             Pass_GBuffer(cmd_list, is_transparent_pass);
             Pass_Ssao(cmd_list);
-            Pass_Ssr(cmd_list, rt1);
+            Pass_Ssr(cmd_list, rt2);
             Pass_Light(cmd_list, is_transparent_pass); // compute diffuse and specular buffers
             Pass_Light_Composition(cmd_list, rt1, is_transparent_pass); // compose diffuse, specular, ssao, volumetric etc.
             Pass_Light_ImageBased(cmd_list, rt1, is_transparent_pass); // apply IBL and SSR
@@ -1606,12 +1606,12 @@ namespace Spartan
     {
         // AMD FidelityFX Single Pass Downsampler.
         // Provides an RDNA™-optimized solution for generating up to 12 MIP levels of a texture.
-        // GitHub:          https://github.com/GPUOpen-Effects/FidelityFX-SPD
-        // Documentation:   https://github.com/GPUOpen-Effects/FidelityFX-SPD/blob/master/docs/FidelityFX_SPD.pdf
+        // GitHub:        https://github.com/GPUOpen-Effects/FidelityFX-SPD
+        // Documentation: https://github.com/GPUOpen-Effects/FidelityFX-SPD/blob/master/docs/FidelityFX_SPD.pdf
 
         uint32_t generated_mips_count = tex->GetMipCount() - 1; // all mips but the top
-        uint32_t smallest_width = tex->GetWidth() >> generated_mips_count;
-        uint32_t smallest_height = tex->GetWidth() >> generated_mips_count;
+        uint32_t smallest_width       = tex->GetWidth() >> generated_mips_count;
+        uint32_t smallest_height      = tex->GetWidth() >> generated_mips_count;
 
         // Ensure that the input texture meets the requirements.
         SP_ASSERT(tex->HasPerMipView());
@@ -2221,90 +2221,88 @@ namespace Spartan
         if (m_render_target_debug == RendererRt::Undefined)
             return true;
 
-        // Bind correct texture & shader pass
-        RHI_Texture* texture          = RENDER_TARGET(m_render_target_debug).get();
-        RendererShader shader_type    = RendererShader::Copy_Point_C;
+        uint32_t options = 0;
 
-        if (m_render_target_debug == RendererRt::Gbuffer_Albedo)
+        // Has to match the shader
+        #define HAS_UAV       1U << 0
+        #define PACK          1U << 1
+        #define GAMMA_CORRECT 1U << 2
+        #define BOOST         1U << 3
+        #define ABS           1U << 4
+        #define CHANNEL_R     1U << 5
+        #define CHANNEL_A     1U << 6
+        #define CHANNEL_RG    1U << 7
+        #define CHANNEL_RGB   1U << 8
+
+        RHI_Texture* render_target = RENDER_TARGET(m_render_target_debug).get();
+
+        if (render_target->IsUav())
         {
-            shader_type = RendererShader::DebugChannelRgbGammaCorrect_C;
+            options |= HAS_UAV;
+        }
+
+        if (m_render_target_debug == RendererRt::Gbuffer_Albedo            ||
+            m_render_target_debug == RendererRt::Light_Diffuse             ||
+            m_render_target_debug == RendererRt::Light_Diffuse_Transparent ||
+            m_render_target_debug == RendererRt::Light_Specular            ||
+            m_render_target_debug == RendererRt::Light_Specular_Transparent ||
+            m_render_target_debug == RendererRt::Ssr ||
+            m_render_target_debug == RendererRt::Dof_Half ||
+            m_render_target_debug == RendererRt::Dof_Half_2 ||
+            m_render_target_debug == RendererRt::Light_Volumetric ||
+            m_render_target_debug == RendererRt::Bloom
+            )
+        {
+            options |= CHANNEL_RGB;
+            options |= GAMMA_CORRECT;
         }
 
         if (m_render_target_debug == RendererRt::Gbuffer_Normal)
         {
-            shader_type = RendererShader::DebugNormal_C;
-        }
-
-        if (m_render_target_debug == RendererRt::Light_Diffuse || m_render_target_debug == RendererRt::Light_Diffuse_Transparent)
-        {
-            shader_type = RendererShader::DebugChannelRgbGammaCorrect_C;
-        }
-
-        if (m_render_target_debug == RendererRt::Light_Specular || m_render_target_debug == RendererRt::Light_Specular_Transparent)
-        {
-            shader_type = RendererShader::DebugChannelRgbGammaCorrect_C;
+            options |= PACK;
         }
 
         if (m_render_target_debug == RendererRt::Gbuffer_Velocity)
         {
-            shader_type = RendererShader::DebugVelocity_C;
+            options |= CHANNEL_RG;
+            options |= ABS;
+            options |= BOOST;
         }
 
         if (m_render_target_debug == RendererRt::Gbuffer_Depth)
         {
-            shader_type = RendererShader::DebugChannelR_C;
+            options |= CHANNEL_R;
         }
 
         if (m_render_target_debug == RendererRt::Ssao)
         {
-            texture = m_options & Render_Ssao ? RENDER_TARGET(RendererRt::Ssao).get() : m_tex_default_white.get();
-            bool do_gi = GetOptionValue<bool>(Renderer_Option_Value::Ssao_Gi);
-            shader_type = do_gi ? RendererShader::DebugChannelRgbGammaCorrect_C : RendererShader::DebugChannelR_C;
-        }
-
-        if (m_render_target_debug == RendererRt::Ssr)
-        {
-            shader_type = RendererShader::DebugChannelRgbGammaCorrect_C;
-        }
-
-        if (m_render_target_debug == RendererRt::Dof_Half)
-        {
-            texture = RENDER_TARGET(RendererRt::Dof_Half).get();
-            shader_type = RendererShader::DebugChannelRgbGammaCorrect_C;
-        }
-
-        if (m_render_target_debug == RendererRt::Dof_Half_2)
-        {
-            texture = RENDER_TARGET(RendererRt::Dof_Half_2).get();
-            shader_type = RendererShader::DebugChannelRgbGammaCorrect_C;
-        }
-
-        if (m_render_target_debug == RendererRt::Light_Volumetric)
-        {
-            shader_type = RendererShader::DebugChannelRgbGammaCorrect_C;
-        }
-
-        if (m_render_target_debug == RendererRt::Bloom)
-        {
-            shader_type = RendererShader::DebugChannelRgbGammaCorrect_C;
+            if (GetOptionValue<bool>(Renderer_Option_Value::Ssao_Gi))
+            {
+                options |= CHANNEL_RGB;
+                options |= GAMMA_CORRECT;
+            }
+            else
+            {
+                options |= CHANNEL_R;
+            }
         }
 
         // Acquire shaders
-        RHI_Shader* shader = m_shaders[shader_type].get();
+        RHI_Shader* shader = m_shaders[RendererShader::Debug_C].get();
         if (!shader->IsCompiled())
             return false;
 
         // Set render state
         static RHI_PipelineState pso;
-        pso.shader_compute   = shader;
-        pso.pass_name        = "Pass_DebugBuffer";
+        pso.shader_compute = shader;
+        pso.pass_name      = "Pass_DebugBuffer";
 
         // Draw
         if (cmd_list->BeginRenderPass(pso))
         {
             // Update uber buffer
             m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
-            m_cb_uber_cpu.transform     = m_cb_frame_cpu.view_projection_ortho;
+            m_cb_uber_cpu.options_debug = options;
             Update_Cb_Uber(cmd_list);
 
             const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / m_thread_group_count));
@@ -2313,7 +2311,15 @@ namespace Spartan
             const bool async = false;
 
             cmd_list->SetTexture(RendererBindings_Uav::rgba, tex_out);
-            cmd_list->SetTexture(RendererBindings_Srv::tex, texture);
+            if (render_target->IsUav())
+            {
+                cmd_list->SetTexture(RendererBindings_Uav::rgba2, render_target);
+            }
+            else
+            {
+                cmd_list->SetTexture(RendererBindings_Srv::tex, render_target);
+            }
+            
             cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
             cmd_list->EndRenderPass();
         }

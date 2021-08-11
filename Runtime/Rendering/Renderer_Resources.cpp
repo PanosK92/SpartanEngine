@@ -176,8 +176,8 @@ namespace Spartan
             // Misc
             RENDER_TARGET(RendererRt::Ssao)       = make_unique<RHI_Texture2D>(m_context, width_render,     height_render,     1,                 RHI_Format_R16G16B16A16_Snorm, RHI_Texture_Uav | RHI_Texture_Srv,                          "rt_ssao");
             RENDER_TARGET(RendererRt::Ssr)        = make_shared<RHI_Texture2D>(m_context, width_render,     height_render,     mip_count_to_32px, RHI_Format_R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipView, "rt_ssr");
-            RENDER_TARGET(RendererRt::Dof_Half)   = make_unique<RHI_Texture2D>(m_context, width_render / 2, height_render / 2, 1,                 RHI_Format_R16G16B16A16_Float, RHI_Texture_Uav,                                            "rt_dof_half");
-            RENDER_TARGET(RendererRt::Dof_Half_2) = make_unique<RHI_Texture2D>(m_context, width_render / 2, height_render / 2, 1,                 RHI_Format_R16G16B16A16_Float, RHI_Texture_Uav,                                            "rt_dof_half_2");
+            RENDER_TARGET(RendererRt::Dof_Half)   = make_unique<RHI_Texture2D>(m_context, width_render / 2, height_render / 2, 1,                 RHI_Format_R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv,                          "rt_dof_half");
+            RENDER_TARGET(RendererRt::Dof_Half_2) = make_unique<RHI_Texture2D>(m_context, width_render / 2, height_render / 2, 1,                 RHI_Format_R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv,                          "rt_dof_half_2");
         }
 
         // Output resolution
@@ -445,32 +445,8 @@ namespace Spartan
         }
 
         // Debug
-        {
-            // Normal
-            m_shaders[RendererShader::DebugNormal_C] = make_shared<RHI_Shader>(m_context);
-            m_shaders[RendererShader::DebugNormal_C]->AddDefine("NORMAL");
-            m_shaders[RendererShader::DebugNormal_C]->Compile(RHI_Shader_Compute, dir_shaders + "debug.hlsl", async);
-
-            // Velocity
-            m_shaders[RendererShader::DebugVelocity_C] = make_shared<RHI_Shader>(m_context);
-            m_shaders[RendererShader::DebugVelocity_C]->AddDefine("VELOCITY");
-            m_shaders[RendererShader::DebugVelocity_C]->Compile(RHI_Shader_Compute, dir_shaders + "debug.hlsl", async);
-
-            // R channel
-            m_shaders[RendererShader::DebugChannelR_C] = make_shared<RHI_Shader>(m_context);
-            m_shaders[RendererShader::DebugChannelR_C]->AddDefine("R_CHANNEL");
-            m_shaders[RendererShader::DebugChannelR_C]->Compile(RHI_Shader_Compute, dir_shaders + "debug.hlsl", async);
-
-            // A channel
-            m_shaders[RendererShader::DebugChannelA_C] = make_shared<RHI_Shader>(m_context);
-            m_shaders[RendererShader::DebugChannelA_C]->AddDefine("A_CHANNEL");
-            m_shaders[RendererShader::DebugChannelA_C]->Compile(RHI_Shader_Compute, dir_shaders + "debug.hlsl", async);
-
-            // A channel with gamma correction
-            m_shaders[RendererShader::DebugChannelRgbGammaCorrect_C] = make_shared<RHI_Shader>(m_context);
-            m_shaders[RendererShader::DebugChannelRgbGammaCorrect_C]->AddDefine("RGB_CHANNEL_GAMMA_CORRECT");
-            m_shaders[RendererShader::DebugChannelRgbGammaCorrect_C]->Compile(RHI_Shader_Compute, dir_shaders + "debug.hlsl", async);
-        }
+        m_shaders[RendererShader::Debug_C] = make_shared<RHI_Shader>(m_context);
+        m_shaders[RendererShader::Debug_C]->Compile(RHI_Shader_Compute, dir_shaders + "debug.hlsl", async);
     }
 
     void Renderer::CreateFonts()
