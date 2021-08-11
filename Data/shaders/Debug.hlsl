@@ -29,35 +29,47 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     if (thread_id.x >= uint(g_resolution_rt.x) || thread_id.y >= uint(g_resolution_rt.y))
         return;
     
-    float4 color = 0.0f;
+    float4 color = has_uav() ? tex_out_rgba2[thread_id.xy] : tex[thread_id.xy];
+
+    if (needs_packing())
+    {
+        color.rgb = pack(color.rgb);
+    }
+
+    if (needs_gamma_correction())
+    {
+        color.rgb = gamma(color.rgb);
+    }
+  
+    if (needs_channel_r())
+    {
+        color = float4(color.rrr, 1.0f);
+    }
+
+    if (needs_channel_a())
+    {
+        color = float4(color.aaa, 1.0f);
+    }
+
+    if (needs_channel_rg())
+    {
+        color = float4(color.r, color.g, 0.0f, 1.0f);
+    }
+
+    if (needs_channel_rgb())
+    {
+        color = float4(color.rgb, 1.0f);
+    }
+
+    if (needs_abs())
+    {
+        color = abs(color);
+    }
     
-#if NORMAL
-    float3 normal   = tex[thread_id.xy].rgb;
-    normal          = pack(normal);
-    color           = float4(normal, 1.0f);
-#endif
-
-#if VELOCITY
-    float3 velocity = tex[thread_id.xy].rgb;
-    velocity        = abs(velocity) * 50.0f;
-    color           = float4(velocity, 1.0f);
-#endif
-
-#if R_CHANNEL
-    float r = tex[thread_id.xy].r;
-    color   = float4(r, r, r, 1.0f);
-#endif
-
-#if A_CHANNEL
-    float a = tex[thread_id.xy].a;
-    color   = float4(a, a, a, 1.0f);
-#endif
-
-#if RGB_CHANNEL_GAMMA_CORRECT
-    float3 rgb  = tex[thread_id.xy].rgb;
-    rgb         = gamma(rgb);
-    color       = float4(rgb, 1.0f);
-#endif
+    if (needs_boost())
+    {
+        color.rgb *= 10.0f;
+    }
     
     tex_out_rgba[thread_id.xy] = color;
 }

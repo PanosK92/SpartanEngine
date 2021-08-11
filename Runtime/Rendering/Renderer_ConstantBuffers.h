@@ -130,7 +130,8 @@ namespace Spartan
         Math::Vector2 resolution_rt;
 
         Math::Vector2 resolution_in;
-        Math::Vector2 padding;
+        uint32_t options_debug;
+        float padding;
 
         Math::Vector4 mat_albedo;
 
@@ -168,7 +169,8 @@ namespace Spartan
                 resolution_rt       == rhs.resolution_rt        &&
                 resolution_in       == rhs.resolution_in        &&
                 mip_count           == rhs.mip_count            &&
-                work_group_count    == rhs.work_group_count;
+                work_group_count    == rhs.work_group_count     &&
+                options_debug       == rhs.options_debug;
         }
 
         bool operator!=(const Cb_Uber& rhs) const { return !(*this == rhs); }

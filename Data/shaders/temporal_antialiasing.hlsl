@@ -90,7 +90,7 @@ float3 sample_catmull_rom_9(Texture2D stex, float2 uv, float2 resolution)
     // down the sample location to get the exact center of our "starting" texel. The starting texel will be at
     // location [1, 1] in the grid, where [0, 0] is the top left corner.
     float2 samplePos = uv * resolution;
-    float2 texPos1 = floor(samplePos - 0.5f) + 0.5f;
+    float2 texPos1   = floor(samplePos - 0.5f) + 0.5f;
 
     // Compute the fractional offset from our starting texel to our original sample location, which we'll
     // feed into the Catmull-Rom spline function to get our filter weights.
@@ -234,7 +234,7 @@ float3 temporal_antialiasing(uint2 pos_out, uint group_index, uint3 group_id, Te
     {
         // Tonemap
         color_history = reinhard(color_history);
-        color_input = reinhard(color_input);
+        color_input   = reinhard(color_input);
 
         // Lerp/blend
         color_resolved = lerp(color_history, color_input, blend_factor);

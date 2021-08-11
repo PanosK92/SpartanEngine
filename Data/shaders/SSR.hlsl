@@ -149,6 +149,9 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         }
     }
 
+    // Reproject
+    hit_uv= get_reprojected_uv(hit_uv);
+
     bool valid_uv    = hit_uv.x != - 1.0f;
     bool valid_alpha = alpha != 0.0f;
     color            = (valid_uv && valid_alpha) ? tex.SampleLevel(sampler_bilinear_clamp, hit_uv, 0).rgb : 0.0f;

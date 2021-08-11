@@ -67,7 +67,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
         discard;
 
     // Just a hack to tone down IBL since it comes from a static texture
-    float3 light_ambient  = saturate(g_directional_light_intensity / 128000.0f) * surface.occlusion;
+    float3 light_ambient = saturate(g_directional_light_intensity / 128000.0f) * surface.occlusion;
     
     // Compute specular energy
     const float n_dot_v          = saturate(dot(-surface.camera_to_pixel, surface.normal));
@@ -80,8 +80,14 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     float3 ibl_diffuse    = sample_environment(direction_sphere_uv(surface.normal), g_envrionement_max_mip) * surface.albedo.rgb * light_ambient * diffuse_energy;
     ibl_diffuse           *= surface.alpha; // Fade out for transparents
 
+    // IBL - Specular
+    const float3 reflection            = reflect(surface.camera_to_pixel, surface.normal);
+    float3 dominant_specular_direction = get_dominant_specular_direction(surface.normal, reflection, surface.roughness);
+    float mip_level                    = lerp(0, g_envrionement_max_mip, surface.roughness);
+    float3 ibl_specular_environment    = sample_environment(direction_sphere_uv(dominant_specular_direction), mip_level) * light_ambient;
+    
     // Get ssr color
-    float mip_level         = lerp(0, g_ssr_mip_count, surface.roughness);
+    mip_level               = lerp(0, g_ssr_mip_count, surface.roughness);
     const float4 ssr_sample = (is_ssr_enabled() && !g_is_transparent_pass) ? tex_ssr.SampleLevel(sampler_trilinear_clamp, surface.uv, mip_level) : 0.0f;
     const float3 color_ssr  = ssr_sample.rgb ;
     float ssr_alpha         = ssr_sample.a;
@@ -90,16 +96,6 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     if (surface.roughness > g_ssr_fallback_threshold_roughness)
     {
         ssr_alpha = lerp(ssr_alpha, 0.0f, (surface.roughness - g_ssr_fallback_threshold_roughness) / (1.0f - g_ssr_fallback_threshold_roughness));
-    }
-    
-    // IBL - Specular
-    float3 ibl_specular_environment = 0.0f;
-    if (ssr_alpha != 1.0f && any(light_ambient))
-    {
-        const float3 reflection            = reflect(surface.camera_to_pixel, surface.normal);
-        float3 dominant_specular_direction = get_dominant_specular_direction(surface.normal, reflection, surface.roughness);
-        float mip_level                    = lerp(0, g_envrionement_max_mip, surface.roughness);
-        ibl_specular_environment           = sample_environment(direction_sphere_uv(dominant_specular_direction), mip_level) * light_ambient;
     }
 
     // Blend between speculars and account for the specular energy

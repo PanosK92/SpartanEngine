@@ -51,13 +51,13 @@ float compute_occlusion(float3 origin_position, float3 origin_normal, float3 sam
 
 float4 ground_truth_ambient_occlusion(int2 pos)
 {
-    const float2 origin_uv          = (pos + 0.5f) / g_resolution_rt;
-    const float3 origin_position    = get_position_view_space(pos);
-    const float3 origin_normal      = get_normal_view_space(pos);
+    const float2 origin_uv       = (pos + 0.5f) / g_resolution_rt;
+    const float3 origin_position = get_position_view_space(pos);
+    const float3 origin_normal   = get_normal_view_space(pos);
     
     // Compute step in pixels
-    float pixel_offset  = max((g_ao_radius * g_resolution_rt.x * 0.5f) / origin_position.z, (float)g_ao_steps);
-    float step_offset   = pixel_offset / (g_ao_steps + 1); // divide by steps + 1 so that the farthest samples are not fully attenuated
+    float pixel_offset = max((g_ao_radius * g_resolution_rt.x * 0.5f) / origin_position.z, (float)g_ao_steps);
+    float step_offset  = pixel_offset / (g_ao_steps + 1); // divide by steps + 1 so that the farthest samples are not fully attenuated
 
     // Comute rotation step
     const float step_direction = PI2 / (float)g_ao_directions;
@@ -80,16 +80,16 @@ float4 ground_truth_ambient_occlusion(int2 pos)
         [unroll]
         for (uint step_index = 0; step_index < g_ao_steps; ++step_index)
         {
-            float2 uv_offset        = round(max(step_offset * (step_index + ray_offset), 1 + step_index)) * rotation_direction;
-            float2 sample_uv        = origin_uv + uv_offset;
-            float3 sample_position  = get_position_view_space(sample_uv);
-            float transport         = compute_occlusion(origin_position, origin_normal, sample_position);
-            
+            float2 uv_offset       = round(max(step_offset * (step_index + ray_offset), 1 + step_index)) * rotation_direction;
+            float2 sample_uv       = origin_uv + uv_offset;
+            float3 sample_position = get_position_view_space(sample_uv);
+            float transport        = compute_occlusion(origin_position, origin_normal, sample_position);
+
             light.a += transport;
 #if GI
-            float3 diffuse  = tex_light_diffuse.SampleLevel(sampler_bilinear_clamp, sample_uv, 0).rgb;
-            float3 albedo   = tex_albedo.SampleLevel(sampler_bilinear_clamp, sample_uv, 0).rgb;
-            light.rgb       += diffuse * albedo * transport *  screen_fade(sample_uv);
+            float3 diffuse = tex_light_diffuse.SampleLevel(sampler_bilinear_clamp, sample_uv, 0).rgb;
+            float3 albedo  = tex_albedo.SampleLevel(sampler_bilinear_clamp, sample_uv, 0).rgb;
+            light.rgb      += diffuse * albedo * transport *  screen_fade(sample_uv);
 #endif
         }
     }

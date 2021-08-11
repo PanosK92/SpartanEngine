@@ -426,6 +426,110 @@ uint direction_to_cube_face_index(const float3 direction)
 }
 
 /*------------------------------------------------------------------------------
+                                    VELOCITY
+------------------------------------------------------------------------------*/
+float2 get_velocity(const float2 uv)
+{
+    return tex_velocity.SampleLevel(sampler_point_clamp, uv, 0).xy;
+}
+
+// Returns average velocity (cross pattern)
+float2 get_velocity_avg(float2 texCoord)
+{
+    float dx = g_texel_size.x;
+    float dy = g_texel_size.y;
+    
+    float2 tl = tex_velocity.SampleLevel(sampler_point_clamp, texCoord + float2(-dx, -dy), 0).xy;
+    float2 tr = tex_velocity.SampleLevel(sampler_point_clamp, texCoord + float2(dx, -dy), 0).xy;
+    float2 bl = tex_velocity.SampleLevel(sampler_point_clamp, texCoord + float2(-dx, dy), 0).xy;
+    float2 br = tex_velocity.SampleLevel(sampler_point_clamp, texCoord + float2(dx, dy), 0).xy;
+    float2 ce = tex_velocity.SampleLevel(sampler_point_clamp, texCoord, 0).xy;
+    
+    return (tl + tr + bl + br + ce) / 5.0f;
+}
+
+// Returns max velocity (3x3 neighborhood)
+float2 get_velocity_max_3x3(float2 texCoord, Texture2D texture_velocity, Texture2D texture_depth)
+{   
+    float2 max_velocity = 0.0f;
+    float max_length2 	= 0.0f;
+    
+    [unroll]
+    for(int y = -1; y <= 1; ++y)
+    {
+        [unroll]
+        for(int x = -1; x <= 1; ++x)
+        {
+            float2 offset   = float2(x, y) * g_texel_size;
+            float2 velocity = tex_velocity.SampleLevel(sampler_point_clamp, texCoord + offset, 0).xy;
+            float length2   = dot(velocity, velocity);
+            
+            if(length2 > max_length2)
+            {
+                max_velocity = velocity;
+                max_length2  = length2;
+            }
+        }
+    }
+
+    return max_velocity;
+}
+
+// Returns velocity with closest depth (3x3 neighborhood)
+float2 get_velocity_closest_3x3(float2 texCoord)
+{   
+    float min_depth = 0.0f;
+    float2 min_uv   = texCoord;
+    
+    [unroll]
+    for(int y = -1; y <= 1; ++y)
+    {
+        [unroll]
+        for(int x = -1; x <= 1; ++x)
+        {
+            float2 offset = float2(x, y) * g_texel_size;
+            float depth   = get_linear_depth(texCoord + offset);
+            
+            if(depth < min_depth)
+            {
+                min_depth = depth;
+                min_uv    = texCoord + offset;
+            }
+        }
+    }
+
+    return tex_velocity.SampleLevel(sampler_point_clamp, min_uv, 0).xy;
+}
+
+// Returns velocity with furthest depth (3x3 neighborhood)
+float2 get_velocity_furthest_3x3(float2 texCoord, Texture2D texture_velocity, Texture2D texture_depth)
+{   
+    float max_depth = 1.0f;
+    float2 max_uv   = texCoord;
+    
+    [unroll]
+    for(int y = -1; y <= 1; ++y)
+    {
+        [unroll]
+        for(int x = -1; x <= 1; ++x)
+        {
+            float2 offset = float2(x, y) * g_texel_size;
+            float depth   = get_linear_depth(texCoord + offset);
+            
+            if(depth > max_depth)
+            {
+                max_depth = depth;
+                max_uv    = texCoord + offset;
+            }
+        }
+    }
+
+    return tex_velocity.SampleLevel(sampler_point_clamp, max_uv, 0).xy;
+}
+
+float2 get_reprojected_uv(const float2 uv) { return uv - get_velocity(uv); }
+
+/*------------------------------------------------------------------------------
     LUMINANCE
 ------------------------------------------------------------------------------*/
 static const float3 lumCoeff = float3(0.299f, 0.587f, 0.114f);
