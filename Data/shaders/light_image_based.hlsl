@@ -40,8 +40,7 @@ float3 sample_environment(float2 uv, float mip_level)
     // So we have to do a bit of blending otherwise we'll get a visible seem in the middle.
     if (mip_level >= g_envrionement_max_mip)
     {
-        // Shift by half a texel to the right, so that we are in-between the two pixels
-        uv.x += (1.0f / g_resolution_environment.x) * 0.5f;
+        uv = float2(0.5f, 0.0);
     }
 
     return tex_environment.SampleLevel(sampler_trilinear_clamp, uv, mip_level).rgb;
