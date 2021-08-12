@@ -51,7 +51,7 @@ float2 trace_ray(uint2 screen_pos, float3 ray_start_vs, float3 ray_dir_vs)
 
     // Adjust position with some temporal noise (TAA will do some magic later)
     float offset = get_noise_interleaved_gradient(screen_pos);
-    ray_pos += ray_step * offset;
+    ray_pos += 0.000001f * offset;
     
     // Ray-march
     for (uint i = 0; i < g_ssr_max_steps; i++)
