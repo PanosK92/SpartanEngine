@@ -61,8 +61,9 @@ static const float alpha_mask_threshold = 0.6f;
 /*------------------------------------------------------------------------------
     MATH
 ------------------------------------------------------------------------------*/
-float min2(float2 value) { return min(value.x, value.y); }
-float min3(float3 value) { return min(min(value.x, value.y), value.z); }
+float min2(float2 value)              { return min(value.x, value.y); }
+float min3(float3 value)              { return min(min(value.x, value.y), value.z); }
+float min3(float x, float y, float z) { return min(min(x, y), z); }
 
 float max2(float2 value) { return max(value.x, value.y); }
 float max3(float3 value) { return max(max(value.x, value.y), value.z); }
@@ -206,7 +207,7 @@ float3 world_to_ndc(float3 x, float4x4 transform) // shadow mapping
 
 float3 view_to_ndc(float3 x, bool is_position = true)
 {
-    float4 ndc = mul(float4(x, (float) is_position), g_projection);
+    float4 ndc = mul(float4(x, (float)is_position), g_projection);
     return ndc.xyz / ndc.w;
 }
 
@@ -231,6 +232,15 @@ float2 view_to_uv(float3 x, bool is_position = true)
 float2 ndc_to_uv(float3 x)
 {
     return x.xy * float2(0.5f, -0.5f) + 0.5f;
+}
+
+float3 get_position_ws_from_depth(const float2 uv, const float depth)
+{
+    float x          = uv.x * 2.0f - 1.0f;
+    float y          = (1.0f - uv.y) * 2.0f - 1.0f;
+    float4 pos_clip  = float4(x, y, depth, 1.0f);
+    float4 pos_world = mul(pos_clip, g_view_projection_inverted);
+    return             pos_world.xyz / pos_world.w;
 }
 
 /*------------------------------------------------------------------------------

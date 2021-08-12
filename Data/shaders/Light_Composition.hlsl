@@ -84,7 +84,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         }
         
         // Compose everything
-        float3 light_ds = light_diffuse * surface.albedo + light_specular + + surface.emissive;
+        float3 light_ds = light_diffuse * surface.albedo + light_specular + surface.emissive;
         color.rgb += lerp(light_ds, light_refraction, 1.0f - surface.alpha);
     }
 

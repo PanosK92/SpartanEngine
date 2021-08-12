@@ -278,8 +278,9 @@ namespace Spartan
                 m_update_ortho_proj                  = false;
             }
 
-            m_cb_frame_cpu.view       = m_camera->GetViewMatrix();
-            m_cb_frame_cpu.projection = m_camera->GetProjectionMatrix();
+            m_cb_frame_cpu.view                 = m_camera->GetViewMatrix();
+            m_cb_frame_cpu.projection           = m_camera->GetProjectionMatrix();
+            m_cb_frame_cpu.projection_inverted  = Matrix::Invert(m_cb_frame_cpu.projection);
             
             // TAA - Generate jitter
             if (GetOption(Render_AntiAliasing_Taa))
@@ -326,7 +327,8 @@ namespace Spartan
             m_cb_frame_cpu.frame                      = static_cast<uint32_t>(m_frame_num);
             m_cb_frame_cpu.frame_mip_count            = RENDER_TARGET(RendererRt::Frame_Render)->GetMipCount();
             m_cb_frame_cpu.ssr_mip_count              = RENDER_TARGET(RendererRt::Ssr)->GetMipCount();
-                                                      
+            m_cb_frame_cpu.resolution_environment     = m_tex_environment ? (Vector2(m_tex_environment->GetWidth(), m_tex_environment->GetHeight())) : Vector2::Zero;
+
             // These must match what Common_Buffer.hlsl is reading
             m_cb_frame_cpu.set_bit(GetOption(Render_ScreenSpaceReflections),             1 << 0);
             m_cb_frame_cpu.set_bit(GetOption(Render_Upsample_TAA),                       1 << 1);

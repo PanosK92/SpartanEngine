@@ -34,6 +34,7 @@ namespace Spartan
     {
         Math::Matrix view;
         Math::Matrix projection;
+        Math::Matrix projection_inverted;
         Math::Matrix projection_ortho;
         Math::Matrix view_projection;
         Math::Matrix view_projection_inv;
@@ -71,7 +72,7 @@ namespace Spartan
 
         uint32_t frame_mip_count;
         uint32_t ssr_mip_count;
-        Math::Vector2 padding;
+        Math::Vector2 resolution_environment;
 
         void set_bit(const bool set, const uint32_t bit)
         {
@@ -83,6 +84,7 @@ namespace Spartan
             return
                 view                        == rhs.view                        &&
                 projection                  == rhs.projection                  &&
+                projection_inverted         == rhs.projection_inverted         &&
                 projection_ortho            == rhs.projection_ortho            &&
                 view_projection             == rhs.view_projection             &&
                 view_projection_inv         == rhs.view_projection_inv         &&
@@ -110,7 +112,8 @@ namespace Spartan
                 taa_jitter_offset           == rhs.taa_jitter_offset           &&
                 options                     == rhs.options                     &&
                 frame_mip_count             == rhs.frame_mip_count             &&
-                ssr_mip_count               == rhs.ssr_mip_count;
+                ssr_mip_count               == rhs.ssr_mip_count               &&
+                resolution_environment      == rhs.resolution_environment;
         }
         bool operator!=(const Cb_Frame& rhs) const { return !(*this == rhs); }
     };
