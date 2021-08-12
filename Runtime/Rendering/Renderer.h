@@ -58,17 +58,17 @@ namespace Spartan
     {
     public:
         // Constants
-        const uint32_t m_resolution_shadow_min  = 128;
-        const float m_gizmo_size_max            = 2.0f;
-        const float m_gizmo_size_min            = 0.1f;
-        const float m_thread_group_count        = 8.0f;
-        const float m_depth_bias                = 0.004f; // bias that's applied directly into the depth buffer
-        const float m_depth_bias_clamp          = 0.0f;
-        const float m_depth_bias_slope_scaled   = 2.0f;
-        float m_gizmo_transform_size            = 0.015f;
-        float m_gizmo_transform_speed           = 12.0f;
-        #define DEBUG_COLOR                     Math::Vector4(0.41f, 0.86f, 1.0f, 1.0f)
-        #define RENDER_TARGET(rt_enum)          m_render_targets[static_cast<uint8_t>(rt_enum)]
+        const uint32_t m_resolution_shadow_min = 128;
+        const float m_gizmo_size_max           = 2.0f;
+        const float m_gizmo_size_min           = 0.1f;
+        const float m_thread_group_count       = 8.0f;
+        const float m_depth_bias               = 0.004f; // bias that's applied directly into the depth buffer
+        const float m_depth_bias_clamp         = 0.0f;
+        const float m_depth_bias_slope_scaled  = 2.0f;
+        float m_gizmo_transform_size           = 0.015f;
+        float m_gizmo_transform_speed          = 12.0f;
+        #define DEBUG_COLOR                    Math::Vector4(0.41f, 0.86f, 1.0f, 1.0f)
+        #define RENDER_TARGET(rt_enum)         m_render_targets[static_cast<uint8_t>(rt_enum)]
 
         Renderer(Context* context);
         ~Renderer();

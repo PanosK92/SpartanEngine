@@ -111,14 +111,8 @@ struct Surface
                 }
             }
         }
-        
-        // Reconstruct position from depth
-        float x          = uv.x * 2.0f - 1.0f;
-        float y          = (1.0f - uv.y) * 2.0f - 1.0f;
-        float4 pos_clip  = float4(x, y, depth, 1.0f);
-        float4 pos_world = mul(pos_clip, g_view_projection_inverted);
-        position         = pos_world.xyz / pos_world.w;
 
+        position               = get_position_ws_from_depth(uv, depth);
         camera_to_pixel        = position - g_camera_position.xyz;
         camera_to_pixel_length = length(camera_to_pixel);
         camera_to_pixel        = normalize(camera_to_pixel);

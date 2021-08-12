@@ -36,16 +36,12 @@ float3 get_dominant_specular_direction(float3 normal, float3 reflection, float r
 
 float3 sample_environment(float2 uv, float mip_level)
 {
-    // We are currently using a spherical environment map which has a 2:1 ratio, so at the smallest 
-    // mipmap we have to do a bit of blending otherwise we'll get a visible seem in the middle.
-    if (mip_level == g_envrionement_max_mip)
+    // We are currently using a spherical environment map which has a smallest mip size of 2x1.
+    // So we have to do a bit of blending otherwise we'll get a visible seem in the middle.
+    if (mip_level >= g_envrionement_max_mip)
     {
-        float2 mip_size = float2(2, 1);
-        float dx = mip_size.x;
-
-        float3 tl = (tex_environment.SampleLevel(sampler_bilinear_clamp, uv + float2(-dx, 0.0f), mip_level).rgb);
-        float3 tr = (tex_environment.SampleLevel(sampler_bilinear_clamp, uv + float2(dx, 0.0f), mip_level).rgb);
-        return (tl + tr) / 2.0f;
+        // Shift by half a texel to the right, so that we are in-between the two pixels
+        uv.x += (1.0f / g_resolution_environment.x) * 0.5f;
     }
 
     return tex_environment.SampleLevel(sampler_trilinear_clamp, uv, mip_level).rgb;

@@ -24,6 +24,7 @@ cbuffer BufferFrame : register(b0)
 {
     matrix g_view;
     matrix g_projection;
+    matrix g_projection_inverted;
     matrix g_projection_orthographic;
     matrix g_view_projection;
     matrix g_view_projection_inverted;
@@ -61,7 +62,7 @@ cbuffer BufferFrame : register(b0)
 
     uint g_frame_mip_count;
     uint g_ssr_mip_count;
-    float2 g_padding;
+    float2 g_resolution_environment;
 };
 
 // Medium frequency - Updates per render pass
