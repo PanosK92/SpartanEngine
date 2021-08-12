@@ -108,7 +108,7 @@ namespace Spartan
             Pass_Depth_Prepass(cmd_list);
             Pass_GBuffer(cmd_list, is_transparent_pass);
             Pass_Ssao(cmd_list);
-            Pass_Ssr(cmd_list, rt2);
+            Pass_Ssr(cmd_list, rt1);
             Pass_Light(cmd_list, is_transparent_pass); // compute diffuse and specular buffers
             Pass_Light_Composition(cmd_list, rt1, is_transparent_pass); // compose diffuse, specular, ssao, volumetric etc.
             Pass_Light_ImageBased(cmd_list, rt1, is_transparent_pass); // apply IBL and SSR
