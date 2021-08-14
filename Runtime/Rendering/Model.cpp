@@ -198,8 +198,7 @@ namespace Spartan
         else // If we didn't get a texture, it's not cached, hence we have to load it and cache it now
         {
             // Load texture
-            bool generate_mipmaps = true;
-            texture = make_shared<RHI_Texture2D>(m_context, generate_mipmaps);
+            texture = make_shared<RHI_Texture2D>(m_context, RHI_Texture_Srv | RHI_Texture_Loading_GenerateMips | RHI_Texture_Loading_Compress);
             texture->LoadFromFile(file_path);
 
             // Set the texture to the provided material

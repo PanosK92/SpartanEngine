@@ -68,6 +68,7 @@ Platform | API | Status | Quality | Binaries
 - AMD FidelityFX Contrast Adaptive Sharpening
 - AMD FidelityFX Single Pass Downsampler
 - AMD FidelityFX Super Resolution
+- AMD Compressonator for texture compression
 
 # Roadmap
 

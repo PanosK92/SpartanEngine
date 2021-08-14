@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Rendering/Renderer.h"
 #include "../Resource/ResourceCache.h"
 #include "../Resource/Import/ImageImporter.h"
+#include "compressonator.h"
 //===========================================
 
 //= NAMESPACES =====
@@ -36,6 +37,25 @@ using namespace std;
 
 namespace Spartan
 {
+    static CMP_FORMAT rhi_format_amd_format(const RHI_Format format)
+    {
+        CMP_FORMAT format_amd = CMP_FORMAT::CMP_FORMAT_Unknown;
+
+        switch (format)
+        {
+            case RHI_Format::RHI_Format_R8G8B8A8_Unorm:
+                format_amd = CMP_FORMAT::CMP_FORMAT_RGBA_8888;
+
+            // Compressed
+            case RHI_Format::RHI_Format_BC7:
+                format_amd = CMP_FORMAT::CMP_FORMAT_BC7;
+        }
+
+        SP_ASSERT(format_amd != CMP_FORMAT::CMP_FORMAT_Unknown);
+
+        return format_amd;
+    }
+
     RHI_Texture::RHI_Texture(Context* context) : IResource(context, ResourceType::Texture)
     {
         SP_ASSERT(context != nullptr);
@@ -230,7 +250,7 @@ namespace Spartan
         return m_data[array_index].mips[mip_index];
     }
 
-    Spartan::RHI_Texture_Slice& RHI_Texture::GetSlice(const uint32_t array_index)
+    RHI_Texture_Slice& RHI_Texture::GetSlice(const uint32_t array_index)
     {
         static RHI_Texture_Slice empty;
 
@@ -247,9 +267,9 @@ namespace Spartan
         // If this is an array, try to find all the textures
         if (m_resource_type == ResourceType::Texture2dArray)
         {
-            string file_path_extension      = FileSystem::GetExtensionFromFilePath(file_path);
-            string file_path_no_extension   = FileSystem::GetFilePathWithoutExtension(file_path);
-            string file_path_no_digit       = file_path_no_extension.substr(0, file_path_no_extension.size() - 1);
+            string file_path_extension    = FileSystem::GetExtensionFromFilePath(file_path);
+            string file_path_no_extension = FileSystem::GetFilePathWithoutExtension(file_path);
+            string file_path_no_digit     = file_path_no_extension.substr(0, file_path_no_extension.size() - 1);
 
             uint32_t index = 1;
             string file_path_guess = file_path_no_digit + to_string(index) + file_path_extension;
@@ -271,6 +291,87 @@ namespace Spartan
         // Set resource file path so it can be used by the resource cache
         SetResourceFilePath(file_path);
 
+        // Compress texture
+        if (m_flags & RHI_Texture_Loading_Compress)
+        {
+            //Compress(RHI_Format::RHI_Format_BC7);
+        }
+
+        return true;
+    }
+
+    bool RHI_Texture::Compress(const RHI_Format format)
+    {
+        bool has_alpha_channel = GetTransparency();
+
+        for (uint32_t index_array = 0; index_array < m_array_length; index_array++)
+        { 
+            for (uint32_t index_mip = 0; index_mip < m_mip_count; index_mip++)
+            {
+                uint32_t width            = m_width >> index_mip;
+                uint32_t height           = m_height >> index_mip;
+                uint32_t src_pitch        = width * m_channel_count * (m_bits_per_channel / 8); // Line width in bytes
+                uint32_t dest_pitch       = src_pitch;
+                RHI_Texture_Mip& src_data = GetMip(index_array, index_mip);
+
+                 // Source
+                CMP_Texture src_texture = {};
+                src_texture.dwSize      = sizeof(src_texture);
+                src_texture.format      = rhi_format_amd_format(m_format);
+                src_texture.dwWidth     = width;
+                src_texture.dwHeight    = height;
+                src_texture.dwPitch     = src_pitch;
+                src_texture.dwDataSize  = CMP_CalculateBufferSize(&src_texture);
+                src_texture.pData       = reinterpret_cast<CMP_BYTE*>(&src_data.bytes[0]);
+
+                vector<std::byte> dst_data;
+                dst_data.reserve(src_texture.dwDataSize);
+                dst_data.resize(src_texture.dwDataSize);
+
+                // Destination
+                CMP_Texture dst_texture = {};
+                dst_texture.dwSize      = sizeof(dst_texture);
+                dst_texture.dwWidth     = width;
+                dst_texture.dwHeight    = height;
+                dst_texture.dwPitch     = dest_pitch;
+                dst_texture.format      = rhi_format_amd_format(format);
+                dst_texture.dwDataSize  = CMP_CalculateBufferSize(&dst_texture);
+                dst_texture.pData       = reinterpret_cast<CMP_BYTE*>(&dst_data[0]);
+
+                // Alpha threshold
+                CMP_BYTE alpha_threshold = has_alpha_channel ? 128 : 0;
+
+                // Compression quality
+                float compression_quality = 0.05f; // Default (per AMD)
+
+                // Compression speed
+                CMP_Speed compression_speed = CMP_Speed::CMP_Speed_Normal; // ignored for BC6H and BC7
+                if (dst_texture.format == CMP_FORMAT_BC1 && alpha_threshold != 0)
+                {
+                    // For BC1, if the compression speed is not set to normal, the alpha threshold will be ignored
+                    compression_speed = CMP_Speed::CMP_Speed_Normal;
+                }
+                
+                // Compression
+                CMP_CompressOptions options = {};
+                options.dwSize              = sizeof(options);
+                //options.bDXT1UseAlpha     = has1BitAlphaChannel; // Encode single-bit alpha data. Only valid when compressing to DXT1 & BC1.
+                options.nAlphaThreshold     = alpha_threshold;     // The alpha threshold to use when compressing to DXT1 & BC1 with bDXT1UseAlpha.
+                options.nCompressionSpeed   = compression_speed;   // The trade-off between compression speed & quality. This value is ignored for BC6H and BC7 (for BC7 the compression speed depends on fquaility value).
+                options.fquality            = compression_quality; // Quality of encoding. This value ranges between 0.0 and 1.0. Default set to 1.0f (in tpacinfo.cpp).
+                options.dwnumThreads        = 0;                   // Number of threads to initialize for encoding (0 auto, 128 max).
+                options.nEncodeWith         = CMP_HPC;             // Use CPU High Performance Compute Encoder
+                
+                // Convert the source texture to the destination texture (this can be compression, decompression or converting between two uncompressed formats)
+                if (CMP_ConvertTexture(&src_texture, &dst_texture, &options, nullptr) != CMP_OK)
+                {
+                    LOG_ERROR("Failed to compress texture.");
+                    return false;
+                }
+            }
+        }
+
+        m_format = RHI_Format::RHI_Format_BC7;
         return true;
     }
 

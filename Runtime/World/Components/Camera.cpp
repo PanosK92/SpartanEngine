@@ -24,12 +24,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Camera.h"
 #include "Transform.h"
 #include "Renderable.h"
-#include "../Display/Display.h"
 #include "../Entity.h"
 #include "../World.h"
 #include "../../Input/Input.h"
 #include "../../IO/FileStream.h"
 #include "../../Rendering/Renderer.h"
+#include "../../Display/Display.h"
 //===================================
 
 //= NAMESPACES ===============

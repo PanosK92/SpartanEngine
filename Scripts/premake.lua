@@ -137,7 +137,7 @@ project (RUNTIME_NAME)
 	includedirs { "../ThirdParty/pugixml_1.11.4" }
 	includedirs { "../ThirdParty/Mono_6.12.0.86" }
 	includedirs { "../ThirdParty/SDL2_2.0.14" }
-    includedirs { "../Runtime/Core" }
+    includedirs { "../ThirdParty/Compressonator_4.2.5185" }
 	includedirs { ADDITIONAL_INCLUDES[0], ADDITIONAL_INCLUDES[1], ADDITIONAL_INCLUDES[2] }
 
 	-- Libraries
@@ -156,6 +156,7 @@ project (RUNTIME_NAME)
 		links { "IrrXML_debug" }
 		links { "libmono-static-sgen_debug.lib" }
 		links { "SDL2_debug.lib" }
+		links { "Compressonator_MT_debug.lib" }
 		links { ADDITIONAL_LIBRARIES_DBG[0], ADDITIONAL_LIBRARIES_DBG[1], ADDITIONAL_LIBRARIES_DBG[2], ADDITIONAL_LIBRARIES_DBG[3] }
 
 	--	"Release"
@@ -174,6 +175,7 @@ project (RUNTIME_NAME)
 		links { "IrrXML" }
 		links { "libmono-static-sgen.lib" }
 		links { "SDL2.lib" }
+		links { "Compressonator_MT.lib" }
 		links { ADDITIONAL_LIBRARIES[0], ADDITIONAL_LIBRARIES[1], ADDITIONAL_LIBRARIES[2], ADDITIONAL_LIBRARIES[3] }
 
 -- Editor --------------------------------------------------------------------------------------------------

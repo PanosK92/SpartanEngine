@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =========================
+//= INCLUDES ============================
 #include "Spartan.h"
 #include "Light.h"
 #include "Transform.h"
@@ -28,10 +28,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World.h"
 #include "../../IO/FileStream.h"
 #include "../../Rendering/Renderer.h"
-#include "../RHI/RHI_Texture2D.h"
-#include "../RHI/RHI_TextureCube.h"
-#include "../RHI/RHI_Texture2DArray.h"
-//====================================
+#include "../../RHI/RHI_Texture2D.h"
+#include "../../RHI/RHI_TextureCube.h"
+#include "../../RHI/RHI_Texture2DArray.h"
+//=======================================
 
 //= NAMESPACES ===============
 using namespace Spartan::Math;

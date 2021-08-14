@@ -120,7 +120,7 @@ namespace Spartan::d3d11_utility
         };
 
         // Get all available adapters
-        auto adapters = get_available_adapters(factory);
+        std::vector<IDXGIAdapter*> adapters = get_available_adapters(factory);
         release(factory);
         if (adapters.empty())
         {
@@ -130,7 +130,7 @@ namespace Spartan::d3d11_utility
 
         // Save all available adapters
         DXGI_ADAPTER_DESC adapter_desc;
-        for (auto display_adapter : adapters)
+        for (IDXGIAdapter* display_adapter : adapters)
         {
             if (FAILED(display_adapter->GetDesc(&adapter_desc)))
             {
@@ -145,40 +145,40 @@ namespace Spartan::d3d11_utility
 
             globals::rhi_device->RegisterPhysicalDevice(PhysicalDevice
             (
-                11 << 22,                                                   // api version
-                0,                                                          // driver version
-                adapter_desc.VendorId,                                      // vendor id
-                RHI_PhysicalDevice_Type::Unknown,                           // type
-                &name[0],                                                   // name
-                static_cast<uint64_t>(adapter_desc.DedicatedVideoMemory),   // memory
-                static_cast<void*>(display_adapter))                        // data
+                11 << 22,                                                 // api version
+                0,                                                        // driver version
+                adapter_desc.VendorId,                                    // vendor id
+                RHI_PhysicalDevice_Type::Unknown,                         // type
+                &name[0],                                                 // name
+                static_cast<uint64_t>(adapter_desc.DedicatedVideoMemory), // memory
+                static_cast<void*>(display_adapter))                      // data
             );
         }
 
         // DISPLAY MODES
         const auto get_display_modes = [](IDXGIAdapter* adapter, RHI_Format format)
         {
+            bool result = false;
+
             // Enumerate the primary adapter output (monitor).
             IDXGIOutput* adapter_output = nullptr;
-            bool result = SUCCEEDED(adapter->EnumOutputs(0, &adapter_output));
-            if (result)
+            if (error_check(adapter->EnumOutputs(0, &adapter_output)))
             {
                 // Get supported display mode count
                 UINT display_mode_count = 0;
-                result = SUCCEEDED(adapter_output->GetDisplayModeList(d3d11_format[format], DXGI_ENUM_MODES_INTERLACED, &display_mode_count, nullptr));
-                if (result)
+                if (error_check(adapter_output->GetDisplayModeList(d3d11_format[format], DXGI_ENUM_MODES_INTERLACED, &display_mode_count, nullptr)))
                 {
                     // Get display modes
                     std::vector<DXGI_MODE_DESC> display_modes;
                     display_modes.resize(display_mode_count);
-                    result = SUCCEEDED(adapter_output->GetDisplayModeList(d3d11_format[format], DXGI_ENUM_MODES_INTERLACED, &display_mode_count, &display_modes[0]));
-                    if (result)
+                    if (error_check(adapter_output->GetDisplayModeList(d3d11_format[format], DXGI_ENUM_MODES_INTERLACED, &display_mode_count, &display_modes[0])))
                     {
                         // Save all the display modes
                         for (const DXGI_MODE_DESC& mode : display_modes)
                         {
                             bool update_fps_limit_to_highest_hz = true;
                             Display::RegisterDisplayMode(DisplayMode(mode.Width, mode.Height, mode.RefreshRate.Numerator, mode.RefreshRate.Denominator), update_fps_limit_to_highest_hz, globals::rhi_device->GetContext());
+                            result = true;
                         }
                     }
                 }

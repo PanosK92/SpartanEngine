@@ -465,29 +465,29 @@ namespace Spartan
         // Get standard texture directory
         const string dir_texture = m_resource_cache->GetResourceDirectory(ResourceDirectory::Textures) + "/";
 
-        m_tex_default_noise_normal = make_shared<RHI_Texture2D>(m_context, RHI_Texture_Srv, false, "default_noise_normal");
+        m_tex_default_noise_normal = make_shared<RHI_Texture2D>(m_context, RHI_Texture_Srv, "default_noise_normal");
         m_tex_default_noise_normal->LoadFromFile(dir_texture + "noise_normal.png");
 
-        m_tex_default_noise_blue = static_pointer_cast<RHI_Texture>(make_shared<RHI_Texture2DArray>(m_context, RHI_Texture_Srv, false, "default_noise_blue"));
+        m_tex_default_noise_blue = static_pointer_cast<RHI_Texture>(make_shared<RHI_Texture2DArray>(m_context, RHI_Texture_Srv, "default_noise_blue"));
         m_tex_default_noise_blue->LoadFromFile(dir_texture + "noise_blue_0.png");
 
-        m_tex_default_white = make_shared<RHI_Texture2D>(m_context, RHI_Texture_Srv, false, "default_white");
+        m_tex_default_white = make_shared<RHI_Texture2D>(m_context, RHI_Texture_Srv, "default_white");
         m_tex_default_white->LoadFromFile(dir_texture + "white.png");
 
-        m_tex_default_black = make_shared<RHI_Texture2D>(m_context, RHI_Texture_Srv, false, "default_black");
+        m_tex_default_black = make_shared<RHI_Texture2D>(m_context, RHI_Texture_Srv, "default_black");
         m_tex_default_black->LoadFromFile(dir_texture + "black.png");
 
-        m_tex_default_transparent = make_shared<RHI_Texture2D>(m_context, RHI_Texture_Srv, false, "default_transparent");
+        m_tex_default_transparent = make_shared<RHI_Texture2D>(m_context, RHI_Texture_Srv, "default_transparent");
         m_tex_default_transparent->LoadFromFile(dir_texture + "transparent.png");
 
         // Gizmo icons
-        m_tex_gizmo_light_directional = make_shared<RHI_Texture2D>(m_context, RHI_Texture_Srv, false, "default_icon_light_directional");
+        m_tex_gizmo_light_directional = make_shared<RHI_Texture2D>(m_context, RHI_Texture_Srv, "default_icon_light_directional");
         m_tex_gizmo_light_directional->LoadFromFile(dir_texture + "sun.png");
 
-        m_tex_gizmo_light_point = make_shared<RHI_Texture2D>(m_context, RHI_Texture_Srv, false, "default_icon_light_point");
+        m_tex_gizmo_light_point = make_shared<RHI_Texture2D>(m_context, RHI_Texture_Srv, "default_icon_light_point");
         m_tex_gizmo_light_point->LoadFromFile(dir_texture + "light_bulb.png");
 
-        m_tex_gizmo_light_spot = make_shared<RHI_Texture2D>(m_context, RHI_Texture_Srv, false, "default_icon_light_spot");
+        m_tex_gizmo_light_spot = make_shared<RHI_Texture2D>(m_context, RHI_Texture_Srv, "default_icon_light_spot");
         m_tex_gizmo_light_spot->LoadFromFile(dir_texture + "flashlight.png");
     }
 }

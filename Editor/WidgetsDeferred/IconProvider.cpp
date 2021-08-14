@@ -166,8 +166,7 @@ const Thumbnail& IconProvider::Thumbnail_Load(const string& file_path, Icon_Type
     if (FileSystem::IsSupportedImageFile(file_path) || FileSystem::IsEngineTextureFile(file_path))
     {
         // Make a cheap texture
-        bool m_generate_mipmaps = false;
-        auto texture = make_shared<RHI_Texture2D>(m_context, RHI_Texture_Srv, m_generate_mipmaps);
+        auto texture = make_shared<RHI_Texture2D>(m_context, RHI_Texture_Srv);
         texture->SetWidth(size);
         texture->SetHeight(size);
 

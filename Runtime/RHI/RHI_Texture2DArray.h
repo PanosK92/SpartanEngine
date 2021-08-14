@@ -35,7 +35,7 @@ namespace Spartan
         {
             m_resource_type = ResourceType::Texture2dArray;
             m_flags         = flags;
-            m_flags         |= generate_mipmaps ? RHI_Texture_GenerateMipsWhenLoading : 0;
+            m_flags         |= generate_mipmaps ? RHI_Texture_Loading_GenerateMips : 0;
 
             if (name != nullptr)
             {
