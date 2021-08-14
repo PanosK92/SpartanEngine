@@ -73,7 +73,7 @@ namespace Spartan::d3d11_utility
             case E_INVALIDARG:                             return "E_INVALIDARG";                             // One or more arguments are invalid.
         }
 
-        return (std::string("Unknown error code: %d") + std::system_category().message(error_code)).c_str();
+        return (std::string("Unknown error code: %d", std::system_category().message(error_code).c_str()).c_str());
     }
 
     constexpr bool error_check(const HRESULT result)
