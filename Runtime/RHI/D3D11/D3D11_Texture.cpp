@@ -101,23 +101,23 @@ namespace Spartan
         const bool has_initial_data = !data.empty() && !data[0].mips.empty() && !data[0].mips[0].bytes.empty();
 
         // Describe
-        D3D11_TEXTURE2D_DESC texture_desc   = {};
-        texture_desc.Width                  = static_cast<UINT>(width);
-        texture_desc.Height                 = static_cast<UINT>(height);
-        texture_desc.ArraySize              = static_cast<UINT>(array_size);
-        texture_desc.MipLevels              = static_cast<UINT>(mip_count);
-        texture_desc.Format                 = format;
-        texture_desc.SampleDesc.Count       = 1;
-        texture_desc.SampleDesc.Quality     = 0;
-        texture_desc.Usage                  = has_initial_data ? D3D11_USAGE_IMMUTABLE : D3D11_USAGE_DEFAULT;
-        texture_desc.BindFlags              = flags;
-        texture_desc.MiscFlags              = 0;
-        texture_desc.CPUAccessFlags         = 0;
+        D3D11_TEXTURE2D_DESC texture_desc = {};
+        texture_desc.Width                = static_cast<UINT>(width);
+        texture_desc.Height               = static_cast<UINT>(height);
+        texture_desc.ArraySize            = static_cast<UINT>(array_size);
+        texture_desc.MipLevels            = static_cast<UINT>(mip_count);
+        texture_desc.Format               = format;
+        texture_desc.SampleDesc.Count     = 1;
+        texture_desc.SampleDesc.Quality   = 0;
+        texture_desc.Usage                = has_initial_data ? D3D11_USAGE_IMMUTABLE : D3D11_USAGE_DEFAULT;
+        texture_desc.BindFlags            = flags;
+        texture_desc.MiscFlags            = 0;
+        texture_desc.CPUAccessFlags       = 0;
 
         if (resource_type == ResourceType::TextureCube)
         {
-            texture_desc.Usage      = (flags & D3D11_BIND_RENDER_TARGET) || (flags & D3D11_BIND_DEPTH_STENCIL) ? D3D11_USAGE_DEFAULT : D3D11_USAGE_IMMUTABLE;
-            texture_desc.MiscFlags  = D3D11_RESOURCE_MISC_TEXTURECUBE;
+            texture_desc.Usage     = (flags & D3D11_BIND_RENDER_TARGET) || (flags & D3D11_BIND_DEPTH_STENCIL) ? D3D11_USAGE_DEFAULT : D3D11_USAGE_IMMUTABLE;
+            texture_desc.MiscFlags = D3D11_RESOURCE_MISC_TEXTURECUBE;
         }
 
         // Set initial data
@@ -130,10 +130,10 @@ namespace Spartan
                 {
                     uint32_t mip_width = width >> index_mip;
 
-                    D3D11_SUBRESOURCE_DATA& subresource_data    = vec_subresource_data.emplace_back(D3D11_SUBRESOURCE_DATA{});
-                    subresource_data.pSysMem                    = data[index_array].mips[index_mip].bytes.data();       // Data pointer
-                    subresource_data.SysMemPitch                = mip_width * channel_count * (bits_per_channel / 8);   // Line width in bytes
-                    subresource_data.SysMemSlicePitch           = 0;                                                    // This is only used for 3D textures
+                    D3D11_SUBRESOURCE_DATA& subresource_data = vec_subresource_data.emplace_back(D3D11_SUBRESOURCE_DATA{});
+                    subresource_data.pSysMem                 = data[index_array].mips[index_mip].bytes.data();       // Data pointer
+                    subresource_data.SysMemPitch             = mip_width * channel_count * (bits_per_channel / 8);   // Line width in bytes
+                    subresource_data.SysMemSlicePitch        = 0;                                                    // This is only used for 3D textures
                 }
             }
         }

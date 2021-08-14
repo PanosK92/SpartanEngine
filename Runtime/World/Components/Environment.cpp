@@ -148,11 +148,8 @@ namespace Spartan
     {
         LOG_INFO("Creating sky sphere...");
 
-        // Todo: For proper IBL, take it as step further and compute convoluted mips
-        bool generate_mipmaps = true;
-
         // Skysphere
-        shared_ptr<RHI_Texture2D> texture = make_shared<RHI_Texture2D>(GetContext(), RHI_Texture_Srv, generate_mipmaps);
+        shared_ptr<RHI_Texture2D> texture = make_shared<RHI_Texture2D>(GetContext(), RHI_Texture_Srv | RHI_Texture_Loading_GenerateMips);
         if (texture->LoadFromFile(file_path))
         {
             // Set sky sphere to renderer

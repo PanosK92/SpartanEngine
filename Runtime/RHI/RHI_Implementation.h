@@ -76,6 +76,8 @@ static const DXGI_FORMAT d3d11_format[] =
     // Depth
     DXGI_FORMAT_D32_FLOAT,
     DXGI_FORMAT_D32_FLOAT_S8X24_UINT,
+    // Compressed
+    DXGI_FORMAT_BC7_UNORM,
 
     DXGI_FORMAT_UNKNOWN
 };
@@ -207,6 +209,8 @@ static const VkFormat vulkan_format[] =
     // DEPTH
     VK_FORMAT_D32_SFLOAT,
     VK_FORMAT_D32_SFLOAT_S8_UINT,
+    // Compressed
+    VK_FORMAT_BC7_UNORM_BLOCK,
 
     VK_FORMAT_MAX_ENUM
 };

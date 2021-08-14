@@ -42,7 +42,8 @@ namespace Spartan
         RHI_Texture_Grayscale               = 1 << 6,
         RHI_Texture_Transparent             = 1 << 7,
         RHI_Texture_CanBeCleared            = 1 << 8,
-        RHI_Texture_GenerateMipsWhenLoading = 1 << 9
+        RHI_Texture_Loading_GenerateMips    = 1 << 9,
+        RHI_Texture_Loading_Compress        = 1 << 10
     };
 
     enum RHI_Shader_View_Type : uint8_t
@@ -142,6 +143,7 @@ namespace Spartan
     protected:
         bool LoadFromFile_NativeFormat(const std::string& file_path);
         bool LoadFromFile_ForeignFormat(const std::string& file_path);
+        bool Compress(const RHI_Format format);
         static uint32_t GetChannelCountFromFormat(RHI_Format format);
         bool CreateResourceGpu();
         void DestroyResourceGpu();

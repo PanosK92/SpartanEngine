@@ -368,7 +368,7 @@ namespace Spartan
         get_bits_from_bitmap(&mip, bitmap, image_width, image_height, channel_count);
 
         // If the texture requires mips, generate them
-        if (texture->GetFlags() & RHI_Texture_GenerateMipsWhenLoading)
+        if (texture->GetFlags() & RHI_Texture_Loading_GenerateMips)
         {
             generate_mips(m_context, bitmap, texture, image_width, image_height, channel_count, slice_index);
         }

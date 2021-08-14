@@ -202,9 +202,39 @@ namespace Spartan
         // DEPTH
         RHI_Format_D32_Float,
         RHI_Format_D32_Float_S8X24_Uint,
+        // Compressed
+        RHI_Format_BC7,
 
         RHI_Format_Undefined
     };
+
+    static const char* rhi_format_to_string(const RHI_Format result)
+    {
+        switch (result)
+        {
+            case RHI_Format_R8_Unorm:             return "RHI_Format_R8_Unorm";
+            case RHI_Format_R16_Uint:             return "RHI_Format_R16_Uint";
+            case RHI_Format_R16_Float:            return "RHI_Format_R16_Float";
+            case RHI_Format_R32_Uint:             return "RHI_Format_R32_Uint";
+            case RHI_Format_R32_Float:            return "RHI_Format_R32_Float";
+            case RHI_Format_R8G8_Unorm:           return "RHI_Format_R8G8_Unorm";
+            case RHI_Format_R16G16_Float:         return "RHI_Format_R16G16_Float";
+            case RHI_Format_R32G32_Float:         return "RHI_Format_R32G32_Float";
+            case RHI_Format_R11G11B10_Float:      return "RHI_Format_R11G11B10_Float";
+            case RHI_Format_R32G32B32_Float:      return "RHI_Format_R32G32B32_Float";
+            case RHI_Format_R8G8B8A8_Unorm:       return "RHI_Format_R8G8B8A8_Unorm";
+            case RHI_Format_R10G10B10A2_Unorm:    return "RHI_Format_R10G10B10A2_Unorm";
+            case RHI_Format_R16G16B16A16_Snorm:   return "RHI_Format_R16G16B16A16_Snorm";
+            case RHI_Format_R16G16B16A16_Float:   return "RHI_Format_R16G16B16A16_Float";
+            case RHI_Format_R32G32B32A32_Float:   return "RHI_Format_R32G32B32A32_Float";
+            case RHI_Format_D32_Float:            return "RHI_Format_D32_Float";
+            case RHI_Format_D32_Float_S8X24_Uint: return "RHI_Format_D32_Float_S8X24_Uint";
+            case RHI_Format_BC7:                  return "RHI_Format_BC7";
+            case RHI_Format_Undefined:            return "RHI_Format_Undefined";
+        }
+
+        return "Unknown format";
+    }
 
     enum class RHI_Blend
     {
@@ -266,30 +296,6 @@ namespace Spartan
         Submitted,
         Signaled
     };
-
-    inline const char* rhi_format_to_string(const RHI_Format result)
-    {
-        switch (result)
-        {
-            case RHI_Format_R8_Unorm:               return "RHI_Format_R8_Unorm";
-            case RHI_Format_R16_Uint:               return "RHI_Format_R16_Uint";
-            case RHI_Format_R16_Float:              return "RHI_Format_R16_Float";
-            case RHI_Format_R32_Uint:               return "RHI_Format_R32_Uint";
-            case RHI_Format_R32_Float:              return "RHI_Format_R32_Float";
-            case RHI_Format_R8G8_Unorm:             return "RHI_Format_R8G8_Unorm";
-            case RHI_Format_R16G16_Float:           return "RHI_Format_R16G16_Float";
-            case RHI_Format_R32G32_Float:           return "RHI_Format_R32G32_Float";
-            case RHI_Format_R32G32B32_Float:        return "RHI_Format_R32G32B32_Float";
-            case RHI_Format_R8G8B8A8_Unorm:         return "RHI_Format_R8G8B8A8_Unorm";
-            case RHI_Format_R16G16B16A16_Float:     return "RHI_Format_R16G16B16A16_Float";
-            case RHI_Format_R32G32B32A32_Float:     return "RHI_Format_R32G32B32A32_Float";
-            case RHI_Format_D32_Float:              return "RHI_Format_D32_Float";
-            case RHI_Format_D32_Float_S8X24_Uint:   return "RHI_Format_D32_Float_S8X24_Uint";
-            case RHI_Format_Undefined:              return "RHI_Format_Undefined";
-        }
-
-        return "Unknown format";
-    }
 
     enum RHI_Shader_Type : uint8_t
     {

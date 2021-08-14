@@ -32,13 +32,12 @@ namespace Spartan
     {
     public:
         // Creates a texture without data (intended for manual loading)
-        RHI_Texture2D(Context* context, const uint32_t flags = RHI_Texture_Srv, const bool generate_mipmaps = false, const char* name = nullptr) : RHI_Texture(context)
+        RHI_Texture2D(Context* context, const uint32_t flags = RHI_Texture_Srv, const char* name = nullptr) : RHI_Texture(context)
         {
             m_resource_type = ResourceType::Texture2d;
             m_array_length  = 0;
             m_mip_count     = 0;
             m_flags         = flags;
-            m_flags         |= generate_mipmaps ? RHI_Texture_GenerateMipsWhenLoading : 0;
 
             if (name != nullptr)
             {

@@ -23,7 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Spartan.h"
 #include "Renderer.h"
 #include "Model.h"
-#include "Window.h"
 #include "Gizmos/Grid.h"
 #include "Gizmos/TransformGizmo.h"
 #include "Font/Font.h"
@@ -46,6 +45,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_DescriptorSetLayoutCache.h"
 #include "../RHI/RHI_Implementation.h"
 #include "../RHI/RHI_Semaphore.h"
+#include "../Core/Window.h"
 //==============================================
 
 //= NAMESPACES ===============
