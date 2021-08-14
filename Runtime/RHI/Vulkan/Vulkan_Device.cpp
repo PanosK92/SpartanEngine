@@ -21,10 +21,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =====================
 #include "Spartan.h"
-#include "Window.h"
 #include "../RHI_Implementation.h"
 #include "../RHI_Semaphore.h"
 #include "../RHI_Fence.h"
+#include "../../Core/Window.h"
 //================================
 
 //= NAMESPACES ===============
