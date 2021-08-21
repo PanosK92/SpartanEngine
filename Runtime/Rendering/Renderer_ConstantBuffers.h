@@ -95,7 +95,7 @@ namespace Spartan
                 time                        == rhs.time                        &&
                 frame                       == rhs.frame                       &&
                 camera_aperture             == rhs.camera_aperture             &&
-                camera_shutter_speed         == rhs.camera_shutter_speed       &&
+                camera_shutter_speed        == rhs.camera_shutter_speed        &&
                 camera_iso                  == rhs.camera_iso                  &&
                 camera_near                 == rhs.camera_near                 &&
                 camera_far                  == rhs.camera_far                  &&
@@ -154,25 +154,25 @@ namespace Spartan
         bool operator==(const Cb_Uber& rhs) const
         {
             return
-                transform           == rhs.transform            &&
-                transform_previous  == rhs.transform_previous   &&
-                mat_id              == rhs.mat_id               &&
-                mat_albedo          == rhs.mat_albedo           &&
-                mat_tiling_uv       == rhs.mat_tiling_uv        &&
-                mat_offset_uv       == rhs.mat_offset_uv        &&
-                mat_roughness_mul   == rhs.mat_roughness_mul    &&
-                mat_metallic_mul    == rhs.mat_metallic_mul     &&
-                mat_normal_mul      == rhs.mat_normal_mul       &&
-                mat_height_mul      == rhs.mat_height_mul       &&
-                color               == rhs.color                &&
-                transform_axis      == rhs.transform_axis       &&
-                blur_sigma          == rhs.blur_sigma           &&
-                blur_direction      == rhs.blur_direction       &&
-                is_transparent_pass == rhs.is_transparent_pass  &&
-                resolution_rt       == rhs.resolution_rt        &&
-                resolution_in       == rhs.resolution_in        &&
-                mip_count           == rhs.mip_count            &&
-                work_group_count    == rhs.work_group_count     &&
+                transform           == rhs.transform           &&
+                transform_previous  == rhs.transform_previous  &&
+                mat_id              == rhs.mat_id              &&
+                mat_albedo          == rhs.mat_albedo          &&
+                mat_tiling_uv       == rhs.mat_tiling_uv       &&
+                mat_offset_uv       == rhs.mat_offset_uv       &&
+                mat_roughness_mul   == rhs.mat_roughness_mul   &&
+                mat_metallic_mul    == rhs.mat_metallic_mul    &&
+                mat_normal_mul      == rhs.mat_normal_mul      &&
+                mat_height_mul      == rhs.mat_height_mul      &&
+                color               == rhs.color               &&
+                transform_axis      == rhs.transform_axis      &&
+                blur_sigma          == rhs.blur_sigma          &&
+                blur_direction      == rhs.blur_direction      &&
+                is_transparent_pass == rhs.is_transparent_pass &&
+                resolution_rt       == rhs.resolution_rt       &&
+                resolution_in       == rhs.resolution_in       &&
+                mip_count           == rhs.mip_count           &&
+                work_group_count    == rhs.work_group_count    &&
                 options_debug       == rhs.options_debug;
         }
 
@@ -192,11 +192,16 @@ namespace Spartan
         bool operator==(const Cb_Light& rhs)
         {
             return
-                view_projection             == rhs.view_projection              &&
-                intensity_range_angle_bias  == rhs.intensity_range_angle_bias   &&
-                normal_bias                 == rhs.normal_bias                  &&
-                color                       == rhs.color                        &&
-                position                    == rhs.position                     &&
+                view_projection[0]          == rhs.view_projection[0]         &&
+                view_projection[1]          == rhs.view_projection[1]         &&
+                view_projection[2]          == rhs.view_projection[2]         &&
+                view_projection[3]          == rhs.view_projection[3]         &&
+                view_projection[4]          == rhs.view_projection[4]         &&
+                view_projection[5]          == rhs.view_projection[5]         &&
+                intensity_range_angle_bias  == rhs.intensity_range_angle_bias &&
+                normal_bias                 == rhs.normal_bias                &&
+                color                       == rhs.color                      &&
+                position                    == rhs.position                   &&
                 direction                   == rhs.direction;
         }
     };

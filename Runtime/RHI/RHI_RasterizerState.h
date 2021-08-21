@@ -53,7 +53,7 @@ namespace Spartan
         bool GetScissorEnabled()        const { return m_scissor_enabled; }
         bool GetAntialisedLineEnabled() const { return m_antialised_line_enabled; }
         bool IsInitialized()            const { return m_initialized; }
-        void* GetResource()             const { return m_buffer; }
+        void* GetResource()             const { return m_resource; }
         float GetLineWidth()            const { return m_line_width; }
         float GetDepthBias()            const { return m_depth_bias; }
         float GetDepthBiasClamp()       const { return m_depth_bias_clamp; }
@@ -88,6 +88,6 @@ namespace Spartan
         bool m_initialized = false;
         
         // Rasterizer state view
-        void* m_buffer = nullptr;
+        void* m_resource = nullptr;
     };
 }

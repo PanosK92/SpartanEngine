@@ -272,8 +272,8 @@ namespace Spartan
             if (shared_ptr<RHI_Texture> texture = material->GetTexture_PtrShared(texture_type))
             {
                 Material_Property proper_type = texture_type;
-                proper_type = (proper_type == Material_Normal && texture->GetGrayscale()) ? Material_Height : proper_type;
-                proper_type = (proper_type == Material_Height && !texture->GetGrayscale()) ? Material_Normal : proper_type;
+                proper_type = (proper_type == Material_Normal && texture->IsGrayscale()) ? Material_Height : proper_type;
+                proper_type = (proper_type == Material_Height && !texture->IsGrayscale()) ? Material_Normal : proper_type;
 
                 if (proper_type != texture_type)
                 {

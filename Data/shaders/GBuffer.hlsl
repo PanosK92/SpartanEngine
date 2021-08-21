@@ -75,7 +75,7 @@ PixelOutputType mainPS(PixelInputType input)
     float2 position_ndc_previous = (input.position_ss_previous.xy / input.position_ss_previous.w);
     float2 position_delta        = position_ndc_current - position_ndc_previous;
     float2 velocity              = (position_delta - g_taa_jitter_offset); // remove TAA jitter
-    velocity                     *= float2(0.5f, -0.5f);                   // to uv (no need for +0.5f since it's delta, not a position)
+    velocity                     *= float2(0.5f, -0.5f);                   // to uv (no need for +0.5f since it's a delta, not a position)
 
     // Make TBN
 #if HEIGHT_MAP || NORMAL_MAP
@@ -130,16 +130,14 @@ PixelOutputType mainPS(PixelInputType input)
 #endif
 
     // Specular anti-aliasing
-#if NORMAL_MAP
-    static const float strength       = 4.0f;
-    static const float max_roughness2 = 0.18;
+    static const float strength       = 6.0f;
+    static const float max_roughness2 = 1.0f;
     float roughness2                  = roughness * roughness;
     float3 dndu                       = ddx(normal), dndv = ddy(normal);
     float variance                    = (dot(dndu, dndu) + dot(dndv, dndv));
     float kernelRoughness2            = min(variance * strength, max_roughness2);
     float filteredRoughness2          = saturate(roughness2 + kernelRoughness2);
     roughness                         = fast_sqrt(filteredRoughness2);
-#endif
 
     // Write to G-Buffer
     g_buffer.albedo   = albedo;

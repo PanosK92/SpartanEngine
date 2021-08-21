@@ -84,7 +84,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     // Get ssr color
     mip_level               = lerp(0, g_ssr_mip_count, surface.roughness);
     const float4 ssr_sample = (is_ssr_enabled() && !g_is_transparent_pass) ? tex_ssr.SampleLevel(sampler_trilinear_clamp, surface.uv, mip_level) : 0.0f;
-    const float3 color_ssr  = ssr_sample.rgb ;
+    const float3 color_ssr  = ssr_sample.rgb;
     float ssr_alpha         = ssr_sample.a;
 
     // Remap alpha above a certain roughness threshold in order to hide blocky reflections (from very small mips)

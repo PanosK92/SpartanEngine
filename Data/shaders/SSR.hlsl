@@ -21,13 +21,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =========
 #include "Common.hlsl"
-//===================
+//====================
 
-static const float g_ssr_max_distance            = 200.0f;
-static const uint g_ssr_max_steps                = 128;
-static const uint g_ssr_binary_search_steps      = 24;
-static const float g_ssr_thickness               = 0.0001f;
-static const float g_ssr_camera_facing_threshold = 0.8f; // Higher values allow for more camera facing rays to be traced.
+static const float g_ssr_max_distance       = 100.0f;
+static const uint g_ssr_max_steps           = 64;
+static const uint g_ssr_binary_search_steps = 24;
+static const float g_ssr_thickness          = 0.0001f;
 
 float compute_alpha(uint2 screen_pos, float2 hit_uv, float v_dot_r)
 {
@@ -36,7 +35,7 @@ float compute_alpha(uint2 screen_pos, float2 hit_uv, float v_dot_r)
     alpha *= screen_fade(hit_uv);
 
     // Reject if the reflection vector is pointing back at the viewer.
-    alpha *= saturate(g_ssr_camera_facing_threshold - v_dot_r);
+    alpha *= saturate(-v_dot_r);
 
     // If the UV is invalid fade completely
     alpha *= all(hit_uv);
@@ -137,7 +136,7 @@ float2 trace_ray(uint2 screen_pos, float3 ray_start_vs, float3 ray_dir_vs)
 
     // Adjust position with some temporal noise (TAA will do some magic later)
     float offset = get_noise_interleaved_gradient(screen_pos);
-    ray_pos      += ray_step * offset * 0.001f;
+    ray_pos      += ray_step * offset * 0.0001f;
     
     // Ray-march
     for (uint i = 0; i < g_ssr_max_steps; i++)
@@ -212,20 +211,20 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         float3 reflection      = normalize(reflect(camera_to_pixel, normal));
         float v_dot_r          = dot(-camera_to_pixel, reflection);
 
-        // Don't trace rays which are almost facing the camera
-        if (v_dot_r < g_ssr_camera_facing_threshold)
+        // Don't trace rays which facing the camera
+        if (v_dot_r < 0.0f)
         { 
             hit_uv = trace_ray(thread_id.xy, position, reflection);
             alpha  = compute_alpha(thread_id.xy, hit_uv, v_dot_r);
         }
     }
 
-    // Reproject
-    hit_uv= get_reprojected_uv(hit_uv);
-
+    // Sample scene color
+    hit_uv = get_reprojected_uv(hit_uv);
     bool valid_uv    = hit_uv.x != - 1.0f;
     bool valid_alpha = alpha != 0.0f;
     color            = (valid_uv && valid_alpha) ? tex.SampleLevel(sampler_bilinear_clamp, hit_uv, 0).rgb : 0.0f;
 
     tex_out_rgba[thread_id.xy] = float4(color, alpha);
 }
+

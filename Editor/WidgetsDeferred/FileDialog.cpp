@@ -507,9 +507,9 @@ void FileDialog::ItemContextMenu(FileDialogItem* item)
     ImGui::EndPopup();
 }
 
-bool FileDialog::DialogUpdateFromDirectory(const std::string& path)
+bool FileDialog::DialogUpdateFromDirectory(const string& file_path)
 {
-    if (!FileSystem::IsDirectory(path))
+    if (!FileSystem::IsDirectory(file_path))
     {
         LOG_ERROR("Provided path doesn't point to a directory.");
         return false;
@@ -519,39 +519,38 @@ bool FileDialog::DialogUpdateFromDirectory(const std::string& path)
     m_items.shrink_to_fit();
 
     // Get directories
-    auto child_directories = FileSystem::GetDirectoriesInDirectory(path);
-    for (const auto& child_dir : child_directories)
+    auto directories = FileSystem::GetDirectoriesInDirectory(file_path);
+    for (const string& directory : directories)
     {
-        m_items.emplace_back(child_dir, IconProvider::Get().Thumbnail_Load(child_dir, Thumbnail_Folder, static_cast<int>(m_item_size.x)));
+        m_items.emplace_back(directory, IconProvider::Get().LoadFromFile(directory, IconType::Directory_Folder, static_cast<uint32_t>(m_item_size.x)));
     }
 
     // Get files (based on filter)
-    vector<string> child_files;
     if (m_filter == FileDialog_Filter_All)
     {
-        child_files = FileSystem::GetFilesInDirectory(path);
-        for (const auto& child_file : child_files)
+        vector<string> paths_anything = FileSystem::GetFilesInDirectory(file_path);
+        for (const string& anything : paths_anything)
         {
-            if (!FileSystem::IsEngineTextureFile(child_file) && !FileSystem::IsEngineModelFile(child_file))
+            if (!FileSystem::IsEngineTextureFile(anything) && !FileSystem::IsEngineModelFile(anything))
             {
-                m_items.emplace_back(child_file, IconProvider::Get().Thumbnail_Load(child_file, Thumbnail_Custom, static_cast<int>(m_item_size.x)));
+                m_items.emplace_back(anything, IconProvider::Get().LoadFromFile(anything, IconType::NotAssigned, static_cast<uint32_t>(m_item_size.x)));
             }
         }
     }
-    else if (m_filter == FileDialog_Filter_Scene)
+    else if (m_filter == FileDialog_Filter_World)
     {
-        child_files = FileSystem::GetSupportedSceneFilesInDirectory(path);
-        for (const auto& child_file : child_files)
+        vector<string> paths_world = FileSystem::GetSupportedSceneFilesInDirectory(file_path);
+        for (const string& world : paths_world)
         {
-            m_items.emplace_back(child_file, IconProvider::Get().Thumbnail_Load(child_file, Thumbnail_File_World, static_cast<int>(m_item_size.x)));
+            m_items.emplace_back(world, IconProvider::Get().LoadFromFile(world, IconType::Directory_File_World, static_cast<uint32_t>(m_item_size.x)));
         }
     }
     else if (m_filter == FileDialog_Filter_Model)
     {
-        child_files = FileSystem::GetSupportedModelFilesInDirectory(path);
-        for (const auto& child_file : child_files)
+        vector<string> paths_models = FileSystem::GetSupportedModelFilesInDirectory(file_path);
+        for (const string& model : paths_models)
         {
-            m_items.emplace_back(child_file, IconProvider::Get().Thumbnail_Load(child_file, Thumbnail_File_Model, static_cast<int>(m_item_size.x)));
+            m_items.emplace_back(model, IconProvider::Get().LoadFromFile(model, IconType::Directory_File_Model, static_cast<uint32_t>(m_item_size.x)));
         }
     }
 

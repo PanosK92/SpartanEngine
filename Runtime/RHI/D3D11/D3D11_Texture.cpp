@@ -35,7 +35,7 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    static UINT GetBindFlags(uint32_t flags)
+    static UINT get_bind_flags(uint32_t flags)
     {
         UINT flags_d3d11 = 0;
 
@@ -47,7 +47,7 @@ namespace Spartan
         return flags_d3d11;
     }
 
-    static DXGI_FORMAT GetDepthFormat(RHI_Format format)
+    static DXGI_FORMAT get_depth_format(RHI_Format format)
     {
         if (format == RHI_Format_D32_Float_S8X24_Uint)
             return DXGI_FORMAT_R32G8X24_TYPELESS;
@@ -58,7 +58,7 @@ namespace Spartan
         return d3d11_format[format];
     }
 
-    static DXGI_FORMAT GetDepthFormatDsv(RHI_Format format)
+    static DXGI_FORMAT get_depth_format_dsv(RHI_Format format)
     {
         if (format == RHI_Format_D32_Float_S8X24_Uint)
             return DXGI_FORMAT_D32_FLOAT_S8X24_UINT;
@@ -69,7 +69,7 @@ namespace Spartan
         return d3d11_format[format];
     }
 
-    static DXGI_FORMAT GetDepthFormatSrv(RHI_Format format)
+    static DXGI_FORMAT get_depth_format_srv(RHI_Format format)
     {
         if (format == RHI_Format_D32_Float_S8X24_Uint)
         {
@@ -83,7 +83,7 @@ namespace Spartan
         return d3d11_format[format];
     }
 
-    static bool CreateTexture(
+    static bool create_texture(
         ID3D11Texture2D*& texture,
         const ResourceType resource_type,
         const uint32_t width,
@@ -98,7 +98,12 @@ namespace Spartan
         const shared_ptr<RHI_Device>& rhi_device
     )
     {
-        const bool has_initial_data = !data.empty() && !data[0].mips.empty() && !data[0].mips[0].bytes.empty();
+        SP_ASSERT(width != 0);
+        SP_ASSERT(height != 0);
+        SP_ASSERT(array_size != 0);
+        SP_ASSERT(mip_count != 0);
+
+        const bool has_data = !data.empty() && !data[0].mips.empty() && !data[0].mips[0].bytes.empty();
 
         // Describe
         D3D11_TEXTURE2D_DESC texture_desc = {};
@@ -109,7 +114,7 @@ namespace Spartan
         texture_desc.Format               = format;
         texture_desc.SampleDesc.Count     = 1;
         texture_desc.SampleDesc.Quality   = 0;
-        texture_desc.Usage                = has_initial_data ? D3D11_USAGE_IMMUTABLE : D3D11_USAGE_DEFAULT;
+        texture_desc.Usage                = (has_data && !(flags & D3D11_BIND_UNORDERED_ACCESS)) ? D3D11_USAGE_IMMUTABLE : D3D11_USAGE_DEFAULT;
         texture_desc.BindFlags            = flags;
         texture_desc.MiscFlags            = 0;
         texture_desc.CPUAccessFlags       = 0;
@@ -121,30 +126,32 @@ namespace Spartan
         }
 
         // Set initial data
-        vector<D3D11_SUBRESOURCE_DATA> vec_subresource_data;
-        if (has_initial_data)
+        vector<D3D11_SUBRESOURCE_DATA> texture_data;
+        if (has_data)
         {
+            SP_ASSERT(channel_count != 0);
+            SP_ASSERT(bits_per_channel != 0);
+
             for (uint32_t index_array = 0; index_array < array_size; index_array++)
             {
                 for (uint32_t index_mip = 0; index_mip < mip_count; index_mip++)
                 {
-                    uint32_t mip_width = width >> index_mip;
-
-                    D3D11_SUBRESOURCE_DATA& subresource_data = vec_subresource_data.emplace_back(D3D11_SUBRESOURCE_DATA{});
-                    subresource_data.pSysMem                 = data[index_array].mips[index_mip].bytes.data();       // Data pointer
-                    subresource_data.SysMemPitch             = mip_width * channel_count * (bits_per_channel / 8);   // Line width in bytes
-                    subresource_data.SysMemSlicePitch        = 0;                                                    // This is only used for 3D textures
+                    D3D11_SUBRESOURCE_DATA& subresource_data = texture_data.emplace_back(D3D11_SUBRESOURCE_DATA{});
+                    subresource_data.pSysMem                 = data[index_array].mips[index_mip].bytes.data();                // Data pointer
+                    subresource_data.SysMemPitch             = (width >> index_mip) * channel_count * (bits_per_channel / 8); // Line width in bytes
+                    subresource_data.SysMemSlicePitch        = 0;                                                             // This is only used for 3D textures
                 }
             }
         }
 
         // Create
-        bool result = d3d11_utility::error_check(rhi_device->GetContextRhi()->device->CreateTexture2D(&texture_desc, vec_subresource_data.data(), &texture));
-        return result;
+        return d3d11_utility::error_check(rhi_device->GetContextRhi()->device->CreateTexture2D(&texture_desc, texture_data.data(), &texture));
     }
 
-    static bool CreateRenderTargetView(void* texture, array<void*, rhi_max_render_target_count>& views, const ResourceType resource_type, const DXGI_FORMAT format, const uint32_t array_size, const shared_ptr<RHI_Device>& rhi_device)
+    static bool create_render_target_view(void* texture, array<void*, rhi_max_render_target_count>& views, const ResourceType resource_type, const DXGI_FORMAT format, const uint32_t array_size, const shared_ptr<RHI_Device>& rhi_device)
     {
+        SP_ASSERT(texture != nullptr);
+
         // Describe
         D3D11_RENDER_TARGET_VIEW_DESC desc = {};
         desc.Format                        = format;
@@ -164,15 +171,17 @@ namespace Spartan
         return true;
     }
 
-    static bool CreateDepthStencilView(void* texture, array<void*, rhi_max_render_target_count>& views, const ResourceType resource_type, const DXGI_FORMAT format, const uint32_t array_size, const bool has_stencil, const bool read_only, const shared_ptr<RHI_Device>& rhi_device)
+    static bool create_depth_stencil_view(void* texture, array<void*, rhi_max_render_target_count>& views, const ResourceType resource_type, const DXGI_FORMAT format, const uint32_t array_size, const bool has_stencil, const bool read_only, const shared_ptr<RHI_Device>& rhi_device)
     {
+        SP_ASSERT(texture != nullptr);
+
         // Describe
-        D3D11_DEPTH_STENCIL_VIEW_DESC desc  = {};
-        desc.Format                         = format;
-        desc.ViewDimension                  = resource_type == ResourceType::Texture2d ? D3D11_DSV_DIMENSION_TEXTURE2D : D3D11_DSV_DIMENSION_TEXTURE2DARRAY;
-        desc.Texture2DArray.MipSlice        = 0;
-        desc.Texture2DArray.ArraySize       = 1;
-        desc.Flags                          = 0;
+        D3D11_DEPTH_STENCIL_VIEW_DESC desc = {};
+        desc.Format                        = format;
+        desc.ViewDimension                 = resource_type == ResourceType::Texture2d ? D3D11_DSV_DIMENSION_TEXTURE2D : D3D11_DSV_DIMENSION_TEXTURE2DARRAY;
+        desc.Texture2DArray.MipSlice       = 0;
+        desc.Texture2DArray.ArraySize      = 1;
+        desc.Flags                         = 0;
 
         if (read_only)
         {
@@ -196,11 +205,13 @@ namespace Spartan
         return true;
     }
 
-    static bool CreateShaderResourceView(void* texture, void*& view, const ResourceType resource_type, const DXGI_FORMAT format, const uint32_t array_size, const uint32_t mip_count, const uint32_t top_mip, const shared_ptr<RHI_Device>& rhi_device)
+    static bool create_shader_resource_view(void* texture, void*& view, const ResourceType resource_type, const DXGI_FORMAT format, const uint32_t array_size, const uint32_t mip_count, const uint32_t top_mip, const shared_ptr<RHI_Device>& rhi_device)
     {
+        SP_ASSERT(texture != nullptr);
+
         // Describe
-        D3D11_SHADER_RESOURCE_VIEW_DESC desc   = {};
-        desc.Format                            = format;
+        D3D11_SHADER_RESOURCE_VIEW_DESC desc = {};
+        desc.Format                          = format;
 
         if (resource_type == ResourceType::Texture2d)
         {
@@ -229,11 +240,13 @@ namespace Spartan
         return d3d11_utility::error_check(rhi_device->GetContextRhi()->device->CreateShaderResourceView(static_cast<ID3D11Resource*>(texture), &desc, reinterpret_cast<ID3D11ShaderResourceView**>(&view)));
     }
 
-    static bool CreateUnorderedAccessView(void* texture, void*& view, const ResourceType resource_type, const DXGI_FORMAT format, const uint32_t array_size, const uint32_t mip, const shared_ptr<RHI_Device>& rhi_device)
+    static bool create_unordered_access_view(void* texture, void*& view, const ResourceType resource_type, const DXGI_FORMAT format, const uint32_t array_size, const uint32_t mip, const shared_ptr<RHI_Device>& rhi_device)
     {
+        SP_ASSERT(texture != nullptr);
+
         // Describe
-        D3D11_UNORDERED_ACCESS_VIEW_DESC desc   = {};
-        desc.Format                             = format;
+        D3D11_UNORDERED_ACCESS_VIEW_DESC desc = {};
+        desc.Format                           = format;
 
         if (resource_type == ResourceType::Texture2d)
         {
@@ -242,10 +255,10 @@ namespace Spartan
         }
         else if (resource_type == ResourceType::Texture2dArray)
         {
-            desc.ViewDimension                      = D3D11_UAV_DIMENSION_TEXTURE2DARRAY;
-            desc.Texture2DArray.MipSlice            = mip;
-            desc.Texture2DArray.FirstArraySlice     = 0;
-            desc.Texture2DArray.ArraySize           = static_cast<UINT>(array_size);
+            desc.ViewDimension                  = D3D11_UAV_DIMENSION_TEXTURE2DARRAY;
+            desc.Texture2DArray.MipSlice        = mip;
+            desc.Texture2DArray.FirstArraySlice = 0;
+            desc.Texture2DArray.ArraySize       = static_cast<UINT>(array_size);
         }
 
         // Create
@@ -270,17 +283,17 @@ namespace Spartan
         bool result_ds  = true;
 
         // Get texture flags
-        const UINT flags = GetBindFlags(m_flags);
+        const UINT flags = get_bind_flags(m_flags);
 
         // Resolve formats
-        const DXGI_FORMAT format        = GetDepthFormat(m_format);
-        const DXGI_FORMAT format_dsv    = GetDepthFormatDsv(m_format);
-        const DXGI_FORMAT format_srv    = GetDepthFormatSrv(m_format);
+        const DXGI_FORMAT format     = get_depth_format(m_format);
+        const DXGI_FORMAT format_dsv = get_depth_format_dsv(m_format);
+        const DXGI_FORMAT format_srv = get_depth_format_srv(m_format);
 
         ID3D11Texture2D* resource = nullptr;
 
         // TEXTURE
-        result_tex = CreateTexture
+        result_tex = create_texture
         (
             resource,
             m_resource_type,
@@ -296,10 +309,12 @@ namespace Spartan
             m_rhi_device
         );
 
+        SP_ASSERT(resource != nullptr);
+
         // RESOURCE VIEW
         if (IsSrv())
         {
-            result_srv = CreateShaderResourceView(
+            result_srv = create_shader_resource_view(
                 resource,
                 m_resource_view_srv,
                 m_resource_type,
@@ -310,11 +325,11 @@ namespace Spartan
                 m_rhi_device
             );
 
-            if (HasPerMipView())
+            if (HasPerMipViews())
             {
                 for (uint32_t i = 0; i < m_mip_count; i++)
                 {
-                    bool result = CreateShaderResourceView(
+                    bool result = create_shader_resource_view(
                         resource,
                         m_resource_views_srv[i],
                         m_resource_type,
@@ -333,7 +348,7 @@ namespace Spartan
         // UNORDERED ACCESS VIEW
         if (IsUav())
         {
-            result_uav = CreateUnorderedAccessView(
+            result_uav = create_unordered_access_view(
                 resource,
                 m_resource_view_uav,
                 m_resource_type,
@@ -343,11 +358,11 @@ namespace Spartan
                 m_rhi_device
             );
 
-            if (HasPerMipView())
+            if (HasPerMipViews())
             {
                 for (uint32_t i = 0; i < m_mip_count; i++)
                 {
-                    bool result = CreateUnorderedAccessView(
+                    bool result = create_unordered_access_view(
                         resource,
                         m_resource_views_uav[i],
                         m_resource_type,
@@ -365,7 +380,7 @@ namespace Spartan
         // DEPTH-STENCIL VIEW
         if (IsRenderTargetDepthStencil())
         {
-            result_ds = CreateDepthStencilView
+            result_ds = create_depth_stencil_view
             (
                 resource,
                 m_resource_view_depthStencil,
@@ -379,7 +394,7 @@ namespace Spartan
 
             if (m_flags & RHI_Texture_Rt_DepthStencilReadOnly)
             {
-                result_ds = CreateDepthStencilView
+                result_ds = create_depth_stencil_view
                 (
                     resource,
                     m_resource_view_depthStencilReadOnly,
@@ -396,7 +411,7 @@ namespace Spartan
         // RENDER TARGET VIEW
         if (IsRenderTargetColor())
         {
-            result_rt = CreateRenderTargetView
+            result_rt = create_render_target_view
             (
                 resource,
                 m_resource_view_renderTarget,
@@ -412,32 +427,37 @@ namespace Spartan
         return result_tex && result_srv && result_uav && result_rt && result_ds;
     }
 
-    void RHI_Texture::DestroyResourceGpu()
+    void RHI_Texture::DestroyResourceGpu(const bool destroy_main, const bool destroy_per_view)
     {
-        d3d11_utility::release(static_cast<ID3D11Texture2D*>(m_resource));
-
-        d3d11_utility::release(static_cast<ID3D11ShaderResourceView*>(m_resource_view_srv));
-        d3d11_utility::release(static_cast<ID3D11UnorderedAccessView*>(m_resource_view_uav));
-
-        for (uint32_t i = 0; i < m_mip_count; i++)
+        if (destroy_main)
         {
-            d3d11_utility::release(static_cast<ID3D11ShaderResourceView*>(m_resource_views_srv[i]));
-            d3d11_utility::release(static_cast<ID3D11UnorderedAccessView*>(m_resource_views_uav[i]));
+            d3d11_utility::release<ID3D11Texture2D>(m_resource);
+            d3d11_utility::release<ID3D11ShaderResourceView>(m_resource_view_srv);
+            d3d11_utility::release<ID3D11UnorderedAccessView>(m_resource_view_uav);
+
+            for (void*& resource : m_resource_view_renderTarget)
+            {
+                d3d11_utility::release<ID3D11RenderTargetView>(resource);
+            }
+
+            for (void*& resource : m_resource_view_depthStencil)
+            {
+                d3d11_utility::release<ID3D11DepthStencilView>(resource);
+            }
+
+            for (void*& resource : m_resource_view_depthStencilReadOnly)
+            {
+                d3d11_utility::release<ID3D11DepthStencilView>(resource);
+            }
         }
 
-        for (void*& resource : m_resource_view_renderTarget)
+        if (destroy_per_view)
         {
-            d3d11_utility::release(static_cast<ID3D11RenderTargetView*>(resource));
-        }
-
-        for (void*& resource : m_resource_view_depthStencil)
-        {
-            d3d11_utility::release(static_cast<ID3D11DepthStencilView*>(resource));
-        }
-
-        for (void*& resource : m_resource_view_depthStencilReadOnly)
-        {
-            d3d11_utility::release(static_cast<ID3D11DepthStencilView*>(resource));
+            for (uint32_t i = 0; i < m_mip_count; i++)
+            {
+                d3d11_utility::release<ID3D11ShaderResourceView>(m_resource_views_srv[i]);
+                d3d11_utility::release<ID3D11UnorderedAccessView>(m_resource_views_uav[i]);
+            }
         }
     }
 }

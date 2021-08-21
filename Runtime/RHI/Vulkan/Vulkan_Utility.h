@@ -784,7 +784,7 @@ namespace Spartan::vulkan_utility
 
         inline void set_layout(void* cmd_buffer, RHI_Texture* texture, const uint32_t mip_start, const uint32_t mip_range, const uint32_t array_length, const RHI_Image_Layout layout_old, const RHI_Image_Layout layout_new)
         {
-            set_layout(cmd_buffer, texture->Get_Resource(), get_aspect_mask(texture), mip_start, mip_range, array_length, layout_old, layout_new);
+            set_layout(cmd_buffer, texture->GetResource(), get_aspect_mask(texture), mip_start, mip_range, array_length, layout_old, layout_new);
         }
 
         namespace view

@@ -257,11 +257,11 @@ namespace Spartan
 
                 if (pipeline_state.render_target_depth_texture_read_only)
                 {
-                    depth_stencil = static_cast<ID3D11DepthStencilView*>(pipeline_state.render_target_depth_texture->Get_Resource_View_DepthStencilReadOnly(pipeline_state.render_target_depth_stencil_texture_array_index));
+                    depth_stencil = static_cast<ID3D11DepthStencilView*>(pipeline_state.render_target_depth_texture->GetResource_View_DepthStencilReadOnly(pipeline_state.render_target_depth_stencil_texture_array_index));
                 }
                 else
                 {
-                    depth_stencil = static_cast<ID3D11DepthStencilView*>(pipeline_state.render_target_depth_texture->Get_Resource_View_DepthStencil(pipeline_state.render_target_depth_stencil_texture_array_index));
+                    depth_stencil = static_cast<ID3D11DepthStencilView*>(pipeline_state.render_target_depth_texture->GetResource_View_DepthStencil(pipeline_state.render_target_depth_stencil_texture_array_index));
                 }
             }
 
@@ -282,7 +282,7 @@ namespace Spartan
                         {
                             SP_ASSERT(pipeline_state.render_target_color_textures[i]->IsRenderTargetColor());
 
-                            ID3D11RenderTargetView* rt = static_cast<ID3D11RenderTargetView*>(pipeline_state.render_target_color_textures[i]->Get_Resource_View_RenderTarget(pipeline_state.render_target_color_texture_array_index));
+                            ID3D11RenderTargetView* rt = static_cast<ID3D11RenderTargetView*>(pipeline_state.render_target_color_textures[i]->GetResource_View_RenderTarget(pipeline_state.render_target_color_texture_array_index));
                             render_targets[i] = rt;
                         }
                     }
@@ -361,7 +361,7 @@ namespace Spartan
                 {
                     m_rhi_device->GetContextRhi()->device_context->ClearRenderTargetView
                     (
-                        static_cast<ID3D11RenderTargetView*>(const_cast<void*>(pipeline_state.render_target_color_textures[i]->Get_Resource_View_RenderTarget(pipeline_state.render_target_color_texture_array_index))),
+                        static_cast<ID3D11RenderTargetView*>(const_cast<void*>(pipeline_state.render_target_color_textures[i]->GetResource_View_RenderTarget(pipeline_state.render_target_color_texture_array_index))),
                         pipeline_state.clear_color[i].Data()
                     );
                 }
@@ -378,7 +378,7 @@ namespace Spartan
             {
                 m_rhi_device->GetContextRhi()->device_context->ClearDepthStencilView
                 (
-                    static_cast<ID3D11DepthStencilView*>(pipeline_state.render_target_depth_texture->Get_Resource_View_DepthStencil(pipeline_state.render_target_depth_stencil_texture_array_index)),
+                    static_cast<ID3D11DepthStencilView*>(pipeline_state.render_target_depth_texture->GetResource_View_DepthStencil(pipeline_state.render_target_depth_stencil_texture_array_index)),
                     clear_flags,
                     static_cast<FLOAT>(pipeline_state.clear_depth),
                     static_cast<UINT8>(pipeline_state.clear_stencil)
@@ -406,13 +406,13 @@ namespace Spartan
                 return;
 
             // TODO: Assuming the UAV is a float, which almost always is, but I should fix it anyway
-            m_rhi_device->GetContextRhi()->device_context->ClearUnorderedAccessViewFloat(static_cast<ID3D11UnorderedAccessView*>(texture->Get_Resource_View_Uav()), clear_color.Data());
+            m_rhi_device->GetContextRhi()->device_context->ClearUnorderedAccessViewFloat(static_cast<ID3D11UnorderedAccessView*>(texture->GetResource_View_Uav()), clear_color.Data());
 
-            if (texture->HasPerMipView())
+            if (texture->HasPerMipViews())
             {
                 for (uint32_t i = 0; i < texture->GetMipCount(); i++)
                 {
-                    m_rhi_device->GetContextRhi()->device_context->ClearUnorderedAccessViewFloat(static_cast<ID3D11UnorderedAccessView*>(texture->Get_Resource_Views_Uav(i)), clear_color.Data());
+                    m_rhi_device->GetContextRhi()->device_context->ClearUnorderedAccessViewFloat(static_cast<ID3D11UnorderedAccessView*>(texture->GetResource_Views_Uav(i)), clear_color.Data());
                 }
             }
         }
@@ -425,7 +425,7 @@ namespace Spartan
 
                 m_rhi_device->GetContextRhi()->device_context->ClearRenderTargetView
                 (
-                    static_cast<ID3D11RenderTargetView*>(const_cast<void*>(texture->Get_Resource_View_RenderTarget(color_index))),
+                    static_cast<ID3D11RenderTargetView*>(const_cast<void*>(texture->GetResource_View_RenderTarget(color_index))),
                     clear_color.Data()
                 );
             }
@@ -441,7 +441,7 @@ namespace Spartan
                 {
                     m_rhi_device->GetContextRhi()->device_context->ClearDepthStencilView
                     (
-                        static_cast<ID3D11DepthStencilView*>(texture->Get_Resource_View_DepthStencil(depth_stencil_index)),
+                        static_cast<ID3D11DepthStencilView*>(texture->GetResource_View_DepthStencil(depth_stencil_index)),
                         clear_flags,
                         static_cast<FLOAT>(clear_depth),
                         static_cast<UINT8>(clear_stencil)
@@ -494,8 +494,8 @@ namespace Spartan
         // Ensure restrictions based on: https://docs.microsoft.com/en-us/windows/win32/api/d3d11/nf-d3d11-id3d11devicecontext-copyresource
         SP_ASSERT(source != nullptr);
         SP_ASSERT(destination != nullptr);
-        SP_ASSERT(source->Get_Resource() != nullptr);
-        SP_ASSERT(destination->Get_Resource() != nullptr);
+        SP_ASSERT(source->GetResource() != nullptr);
+        SP_ASSERT(destination->GetResource() != nullptr);
         SP_ASSERT(source->GetObjectId() != destination->GetObjectId());
         SP_ASSERT(source->GetFormat() == destination->GetFormat());
         SP_ASSERT(source->GetWidth() == destination->GetWidth());
@@ -503,7 +503,7 @@ namespace Spartan
         SP_ASSERT(source->GetArrayLength() == destination->GetArrayLength());
         SP_ASSERT(source->GetMipCount() == destination->GetMipCount());
 
-        m_rhi_device->GetContextRhi()->device_context->CopyResource(static_cast<ID3D11Resource*>(destination->Get_Resource()), static_cast<ID3D11Resource*>(source->Get_Resource()));
+        m_rhi_device->GetContextRhi()->device_context->CopyResource(static_cast<ID3D11Resource*>(destination->GetResource()), static_cast<ID3D11Resource*>(source->GetResource()));
     }
 
     void RHI_CommandList::SetViewport(const RHI_Viewport& viewport) const
@@ -678,11 +678,11 @@ namespace Spartan
             {
                 if (uav)
                 {
-                    resources[0] = mip_requested ? texture->Get_Resource_Views_Uav(mip) : texture->Get_Resource_View_Uav();
+                    resources[0] = mip_requested ? texture->GetResource_Views_Uav(mip) : texture->GetResource_View_Uav();
                 }
                 else
                 {
-                    resources[0] = mip_requested ? texture->Get_Resource_Views_Srv(mip) : texture->Get_Resource_View_Srv();
+                    resources[0] = mip_requested ? texture->GetResource_Views_Srv(mip) : texture->GetResource_View_Srv();
                 }
             }
             else
@@ -690,7 +690,7 @@ namespace Spartan
                 for (uint32_t i = 0; i < range; i++)
                 {
                     uint32_t mip_offset = mip + i;
-                    resources[i] = uav ? texture->Get_Resource_Views_Uav(mip_offset) : texture->Get_Resource_Views_Srv(mip_offset);
+                    resources[i] = uav ? texture->GetResource_Views_Uav(mip_offset) : texture->GetResource_Views_Srv(mip_offset);
                 }
             }
         }
@@ -749,7 +749,7 @@ namespace Spartan
 
     void RHI_CommandList::SetStructuredBuffer(const uint32_t slot, RHI_StructuredBuffer* structured_buffer) const
     {
-        array<void*, 1> view_array          = { structured_buffer ? structured_buffer->GetResource() : nullptr };
+        array<void*, 1> view_array          = { structured_buffer ? structured_buffer->GetResourceUav() : nullptr };
         const UINT range                    = 1;
         ID3D11DeviceContext* device_context = m_rhi_device->GetContextRhi()->device_context;
 

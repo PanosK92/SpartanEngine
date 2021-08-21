@@ -136,14 +136,16 @@ namespace Spartan
         RHI_Texture* GetDefaultTextureBlack()       const { return m_tex_default_black.get(); }
         RHI_Texture* GetDefaultTextureTransparent() const { return m_tex_default_transparent.get(); }
 
-        // Global shader resources
-        void SetGlobalShaderObjectTransform(RHI_CommandList* cmd_list, const Math::Matrix& transform);
-        void SetGlobalShaderResources(RHI_CommandList* cmd_list) const;
+        // Global uber constant buffer calls
+        void SetCbUberTransform(RHI_CommandList* cmd_list, const Math::Matrix& transform);
+        void SetCbUberColor(RHI_CommandList* cmd_list, const Math::Vector4& color);
 
         // Rendering
         bool IsRenderingAllowed() const { return m_is_rendering_allowed; }
 
         // Misc
+        void SetGlobalShaderResources(RHI_CommandList* cmd_list) const;
+        void RequestTextureMipGeneration(RHI_Texture* texture);
         const std::shared_ptr<RHI_Device>& GetRhiDevice()           const { return m_rhi_device; }
         RHI_PipelineCache* GetPipelineCache()                       const { return m_pipeline_cache.get(); }
         RHI_DescriptorSetLayoutCache* GetDescriptorLayoutSetCache() const { return m_descriptor_set_layout_cache.get(); }
@@ -206,6 +208,7 @@ namespace Spartan
         void Pass_Text(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
         void Pass_BrdfSpecularLut(RHI_CommandList* cmd_list);
         void Pass_Copy(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out, const bool bilinear);
+        void Pass_Generate_Mips();
 
         // Constant buffers
         bool Update_Cb_Frame(RHI_CommandList* cmd_list);
@@ -312,20 +315,24 @@ namespace Spartan
 
         // Misc
         std::unique_ptr<Font> m_font;
-        Math::Vector2 m_taa_jitter                  = Math::Vector2::Zero;
-        Math::Vector2 m_taa_jitter_previous         = Math::Vector2::Zero;
-        RendererRt m_render_target_debug            = RendererRt::Undefined;
-        bool m_initialised                          = false;
-        float m_near_plane                          = 0.0f;
-        float m_far_plane                           = 0.0f;
-        uint64_t m_frame_num                        = 0;
-        bool m_is_odd_frame                         = false;
-        bool m_brdf_specular_lut_rendered           = false;
-        bool m_update_ortho_proj                    = true;
-        std::atomic<bool> m_is_rendering_allowed    = true;
-        std::atomic<bool> m_flush_requested         = false;
-        uint32_t m_cmd_index                        = std::numeric_limits<uint32_t>::max();
+        Math::Vector2 m_taa_jitter               = Math::Vector2::Zero;
+        Math::Vector2 m_taa_jitter_previous      = Math::Vector2::Zero;
+        RendererRt m_render_target_debug         = RendererRt::Undefined;
+        bool m_initialised                       = false;
+        float m_near_plane                       = 0.0f;
+        float m_far_plane                        = 0.0f;
+        uint64_t m_frame_num                     = 0;
+        bool m_is_odd_frame                      = false;
+        bool m_update_ortho_proj                 = true;
+        std::atomic<bool> m_is_rendering_allowed = true;
+        std::atomic<bool> m_flush_requested      = false;
+        bool m_brdf_specular_lut_rendered        = false;
+        uint32_t m_cmd_index                     = std::numeric_limits<uint32_t>::max();
         std::thread::id m_render_thread_id;
+
+        // Requests for mip generation
+        std::vector<RHI_Texture*> m_textures_mip_generation;
+        std::atomic<bool> m_is_generating_mips = false;
 
         // RHI Core
         std::shared_ptr<RHI_Device> m_rhi_device;

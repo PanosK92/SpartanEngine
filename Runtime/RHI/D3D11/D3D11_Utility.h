@@ -88,11 +88,12 @@ namespace Spartan::d3d11_utility
     }
 
     template <typename T>
-    constexpr void release(T* ptr)
+    constexpr void release(void*& ptr)
     {
         if (ptr)
         {
-            ptr->Release();
+            static_cast<T*>(ptr)->Release();
+            ptr = nullptr;
         }
     }
 
@@ -123,7 +124,8 @@ namespace Spartan::d3d11_utility
 
         // Get all available adapters
         std::vector<IDXGIAdapter*> adapters = get_available_adapters(factory);
-        release(factory);
+        factory->Release();
+        factory = nullptr;
         if (adapters.empty())
         {
             LOG_ERROR("Couldn't find any adapters");

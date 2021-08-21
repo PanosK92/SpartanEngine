@@ -21,7 +21,6 @@ SOLUTION_NAME				= "Spartan"
 EDITOR_NAME					= "Editor"
 RUNTIME_NAME				= "Runtime"
 TARGET_NAME					= "Spartan" -- Name of executable
-DEBUG_FORMAT				= "c7"
 EDITOR_DIR					= "../" .. EDITOR_NAME
 RUNTIME_DIR					= "../" .. RUNTIME_NAME
 IGNORE_FILES				= {}
@@ -66,7 +65,7 @@ end
 solution (SOLUTION_NAME)
 	location ".."
 	systemversion "latest"
-	cppdialect "C++17"
+	cppdialect "C++20"
 	language "C++"
 	platforms { "Windows", "Linux" }
 	configurations { "Debug", "Release" }
@@ -89,16 +88,17 @@ solution (SOLUTION_NAME)
 	--	"Debug"
 	filter "configurations:Debug"
 		defines { "DEBUG" }
-		debugformat (DEBUG_FORMAT)
+		flags { "MultiProcessorCompile" }
+		optimize "Off"
 		symbols "On"
-		flags { "MultiProcessorCompile", "LinkTimeOptimization" }
+		debugformat "c7"
 		
 	--	"Release"
 	filter "configurations:Release"
 		defines { "NDEBUG" }
-		flags { "MultiProcessorCompile" }
-		symbols "Off"
+		flags { "MultiProcessorCompile", "LinkTimeOptimization" }
 		optimize "Speed"
+		symbols "Off"
 
 -- Runtime -------------------------------------------------------------------------------------------------
 project (RUNTIME_NAME)
@@ -204,7 +204,7 @@ project (EDITOR_NAME)
 	-- Includes
 	includedirs { "../" .. RUNTIME_NAME }
 	includedirs { "../ThirdParty/FreeType_2.11.0" } -- ImGui font atlas
-	includedirs { "../ThirdParty/SDL2_2.0.14" } -- ImGui window
+	includedirs { "../ThirdParty/SDL2_2.0.14" }     -- ImGui windows
 
 	-- Libraries
 	libdirs (LIBRARY_DIR)

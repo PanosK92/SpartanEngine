@@ -374,7 +374,7 @@ namespace Spartan
             return;
         }
 
-        if (!texture || !texture->Get_Resource_View_Srv())
+        if (!texture || !texture->GetResource_View_Srv())
         {
             LOG_ERROR("Texture is null.");
             return;
@@ -395,7 +395,7 @@ namespace Spartan
 
             image_subresource_range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 
-            vkCmdClearColorImage(static_cast<VkCommandBuffer>(m_cmd_buffer), static_cast<VkImage>(texture->Get_Resource()), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &_clear_color, 1, &image_subresource_range);
+            vkCmdClearColorImage(static_cast<VkCommandBuffer>(m_cmd_buffer), static_cast<VkImage>(texture->GetResource()), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &_clear_color, 1, &image_subresource_range);
         }
         else if (texture->IsDepthStencilFormat())
         {
@@ -411,7 +411,7 @@ namespace Spartan
                 image_subresource_range.aspectMask |= VK_IMAGE_ASPECT_DEPTH_BIT;
             }
 
-            vkCmdClearDepthStencilImage(static_cast<VkCommandBuffer>(m_cmd_buffer), static_cast<VkImage>(texture->Get_Resource()), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clear_depth_stencil, 1, &image_subresource_range);
+            vkCmdClearDepthStencilImage(static_cast<VkCommandBuffer>(m_cmd_buffer), static_cast<VkImage>(texture->GetResource()), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clear_depth_stencil, 1, &image_subresource_range);
         }
     }
 
@@ -480,8 +480,8 @@ namespace Spartan
         // D3D11 baggage: https://docs.microsoft.com/en-us/windows/win32/api/d3d11/nf-d3d11-id3d11devicecontext-copyresource
         SP_ASSERT(source != nullptr);
         SP_ASSERT(destination != nullptr);
-        SP_ASSERT(source->Get_Resource() != nullptr);
-        SP_ASSERT(destination->Get_Resource() != nullptr);
+        SP_ASSERT(source->GetResource() != nullptr);
+        SP_ASSERT(destination->GetResource() != nullptr);
         SP_ASSERT(source->GetObjectId() != destination->GetObjectId());
         SP_ASSERT(source->GetFormat() == destination->GetFormat());
         SP_ASSERT(source->GetWidth() == destination->GetWidth());
@@ -494,13 +494,13 @@ namespace Spartan
         blit_size.y          = source->GetHeight();
         blit_size.z          = 1;
 
-        VkImageBlit blit_region                 = {};
-        blit_region.srcSubresource.aspectMask   = VK_IMAGE_ASPECT_COLOR_BIT;
-        blit_region.srcSubresource.layerCount   = source->GetMipCount();
-        blit_region.srcOffsets[1]               = blit_size;
-        blit_region.dstSubresource.aspectMask   = VK_IMAGE_ASPECT_COLOR_BIT;
-        blit_region.dstSubresource.layerCount   = destination->GetMipCount();
-        blit_region.dstOffsets[1]               = blit_size;
+        VkImageBlit blit_region               = {};
+        blit_region.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        blit_region.srcSubresource.layerCount = source->GetMipCount();
+        blit_region.srcOffsets[1]             = blit_size;
+        blit_region.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        blit_region.dstSubresource.layerCount = destination->GetMipCount();
+        blit_region.dstOffsets[1]             = blit_size;
 
         // Save the initial layouts
         std::array<RHI_Image_Layout, 12> layouts_initial_source      = source->GetLayouts();
@@ -513,8 +513,8 @@ namespace Spartan
         // Blit
         vkCmdBlitImage(
             static_cast<VkCommandBuffer>(m_cmd_buffer),
-            static_cast<VkImage>(source->Get_Resource()),       VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-            static_cast<VkImage>(destination->Get_Resource()),  VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            static_cast<VkImage>(source->GetResource()),      VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+            static_cast<VkImage>(destination->GetResource()), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
             1,
             &blit_region,
             VK_FILTER_NEAREST
@@ -667,7 +667,7 @@ namespace Spartan
         }
 
         // Null textures are allowed, and get replaced with a default texture here
-        if (!texture || !texture->Get_Resource_View_Srv())
+        if (!texture || !texture->GetResource_View_Srv())
         {
             texture = m_renderer->GetDefaultTextureTransparent();
         }

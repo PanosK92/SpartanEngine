@@ -35,16 +35,17 @@ namespace Spartan
         // Creates a texture from data (intended for sampling)
         RHI_TextureCube(Context* context, const uint32_t width, const uint32_t height, const RHI_Format format, const uint32_t flags, const std::vector<RHI_Texture_Slice>& data) : RHI_Texture(context)
         {
-            m_resource_type = ResourceType::TextureCube;
-            m_width         = width;
-            m_height        = height;
-            m_viewport      = RHI_Viewport(0, 0, static_cast<float>(width), static_cast<float>(height));
-            m_channel_count = GetChannelCountFromFormat(format);
-            m_format        = format;
-            m_data          = data;
-            m_array_length  = 6;
-            m_mip_count     = GetSlice(0).GetMipCount();
-            m_flags         = flags;
+            m_resource_type    = ResourceType::TextureCube;
+            m_width            = width;
+            m_height           = height;
+            m_viewport         = RHI_Viewport(0, 0, static_cast<float>(width), static_cast<float>(height));
+            m_format           = format;
+            m_data             = data;
+            m_array_length     = 6;
+            m_mip_count        = GetSlice(0).GetMipCount();
+            m_flags            = flags;
+            m_channel_count    = FormatToChannelCount(m_format);
+            m_bits_per_channel = FormatToBitsPerChannel(m_format);
 
             RHI_TextureCube::CreateResourceGpu();
         }
@@ -56,11 +57,9 @@ namespace Spartan
             m_resource_type = ResourceType::TextureCube;
             m_width         = width;
             m_height        = height;
-            m_channel_count = GetChannelCountFromFormat(format);
             m_viewport      = RHI_Viewport(0, 0, static_cast<float>(width), static_cast<float>(height));
             m_format        = format;
             m_array_length  = 6;
-            m_mip_count     = 1;
             m_flags         = flags;
 
             CreateResourceGpu();

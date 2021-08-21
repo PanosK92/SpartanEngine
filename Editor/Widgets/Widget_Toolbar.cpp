@@ -44,24 +44,24 @@ Widget_Toolbar::Widget_Toolbar(Editor* editor) : Widget(editor)
     m_is_window = false;
 
     m_flags =
-        ImGuiWindowFlags_NoCollapse         |
-        ImGuiWindowFlags_NoResize           |
-        ImGuiWindowFlags_NoMove             |
-        ImGuiWindowFlags_NoSavedSettings    |
-        ImGuiWindowFlags_NoScrollbar        |
+        ImGuiWindowFlags_NoCollapse      |
+        ImGuiWindowFlags_NoResize        |
+        ImGuiWindowFlags_NoMove          |
+        ImGuiWindowFlags_NoSavedSettings |
+        ImGuiWindowFlags_NoScrollbar     |
         ImGuiWindowFlags_NoTitleBar;
 
-    m_widgets[Icon_Profiler]            = m_editor->GetWidget<Widget_Profiler>();
-    m_widgets[Icon_ResourceCache]       = m_editor->GetWidget<Widget_ResourceCache>();
-    m_widgets[Icon_Component_Script]    = m_editor->GetWidget<Widget_ShaderEditor>();
-    m_widgets[Icon_Component_Options]   = m_editor->GetWidget<Widget_RenderOptions>();
+    m_widgets[IconType::Button_Profiler]      = m_editor->GetWidget<Widget_Profiler>();
+    m_widgets[IconType::Button_ResourceCache] = m_editor->GetWidget<Widget_ResourceCache>();
+    m_widgets[IconType::Component_Script]     = m_editor->GetWidget<Widget_ShaderEditor>();
+    m_widgets[IconType::Component_Options]    = m_editor->GetWidget<Widget_RenderOptions>();
 
     m_context->m_engine->EngineMode_Disable(Engine_Game);
 }
 
 void Widget_Toolbar::TickAlways()
 {
-    auto show_button = [this](Icon_Type icon_type, const function<bool()>& get_visibility, const function<void()>& make_visible)
+    auto show_button = [this](IconType icon_type, const function<bool()>& get_visibility, const function<void()>& make_visible)
     {
         ImGui::SameLine();
         ImGui::PushStyleColor(ImGuiCol_Button, get_visibility() ? ImGui::GetStyle().Colors[ImGuiCol_ButtonActive] : ImGui::GetStyle().Colors[ImGuiCol_Button]);
@@ -73,12 +73,12 @@ void Widget_Toolbar::TickAlways()
     };
 
     // Play button
-    show_button(Icon_Button_Play, [this]() { return m_context->m_engine->EngineMode_IsSet(Engine_Game); }, [this]() { m_context->m_engine->EngineMode_Toggle(Engine_Game); });
+    show_button(IconType::Button_Play, [this]() { return m_context->m_engine->EngineMode_IsSet(Engine_Game); }, [this]() { m_context->m_engine->EngineMode_Toggle(Engine_Game); });
 
     for (auto& widget_it : m_widgets)
     {
-        Widget* widget              = widget_it.second;
-        const Icon_Type widget_icon = widget_it.first;
+        Widget* widget             = widget_it.second;
+        const IconType widget_icon = widget_it.first;
 
         show_button(widget_icon, [this, &widget](){ return widget->GetVisible(); }, [this, &widget]() { widget->SetVisible(true); });
     }

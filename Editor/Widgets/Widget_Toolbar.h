@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <unordered_map>
 //======================
 
-enum Icon_Type;
+enum class IconType;
 
 class Widget_Toolbar : public Widget
 {
@@ -36,6 +36,6 @@ public:
     void TickAlways() override;
 
 private:
-    std::unordered_map<Icon_Type, Widget*> m_widgets;
+    std::unordered_map<IconType, Widget*> m_widgets;
     float m_button_size = 16.0f;
 };

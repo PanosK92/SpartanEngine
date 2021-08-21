@@ -35,26 +35,55 @@ using namespace std;
 
 namespace Spartan
 {
-    static FREE_IMAGE_FILTER filter_downsample = FREE_IMAGE_FILTER::FILTER_BOX;
-    
-    // A struct that rescaling threads will work with
-    struct RescaleJob
+    static bool get_is_srgb(FIBITMAP* bitmap)
     {
-        uint32_t width         = 0;
-        uint32_t height        = 0;
-        uint32_t channel_count = 0;
-        RHI_Texture_Mip* mip   = nullptr;
-        bool done              = false;
-        
-        RescaleJob(const uint32_t width, const uint32_t height, const uint32_t channel_count)
+        if (FIICCPROFILE* icc_profile = FreeImage_GetICCProfile(bitmap))
         {
-            this->width         = width;
-            this->height        = height;
-            this->channel_count = channel_count;
+            int i, tag_count, tag_ofs, tag_size;
+            unsigned char* icc, * tag, * icc_end;
+            char tag_data[256];
+
+            if (!icc_profile->data)
+                return false;
+
+            icc = static_cast<unsigned char*>(icc_profile->data);
+            if (icc[36] != 'a' || icc[37] != 'c' || icc[38] != 's' || icc[39] != 'p')
+                return false; // not an ICC file
+
+            icc_end = icc + icc_profile->size;
+            tag_count = icc[128 + 0] * 0x1000000 + icc[128 + 1] * 0x10000 + icc[128 + 2] * 0x100 + icc[128 + 3];
+
+            // search for 'desc' tag
+            for (i = 0; i < tag_count; i++)
+            {
+                tag = icc + 128 + 4 + i * 12;
+                if (tag > icc_end)
+                    return false; // invalid ICC file
+
+                // check for a desc flag
+                if (memcmp(tag, "desc", 4) == 0)
+                {
+                    tag_ofs = tag[4] * 0x1000000 + tag[5] * 0x10000 + tag[6] * 0x100 + tag[7];
+                    tag_size = tag[8] * 0x1000000 + tag[9] * 0x10000 + tag[10] * 0x100 + tag[11];
+
+                    if (tag_ofs + tag_size > icc_profile->size)
+                        return false; // invalid ICC file
+
+                    strncpy(tag_data, (char*)(icc + tag_ofs + 12), min(255, tag_size - 12));
+                    if (strcmp(tag_data, "sRGB IEC61966-2.1") == 0 || strcmp(tag_data, "sRGB IEC61966-2-1") == 0 || strcmp(tag_data, "sRGB IEC61966") == 0 || strcmp(tag_data, "* wsRGB") == 0)
+                        return true;
+
+                    return false;
+                }
+            }
+
+            return false;
         }
-    };
-    
-    static uint32_t get_bytes_per_channel(FIBITMAP* bitmap)
+
+        return false;
+    }
+
+    static uint32_t get_bits_per_channel(FIBITMAP* bitmap)
     {
         SP_ASSERT(bitmap != nullptr);
     
@@ -73,60 +102,101 @@ namespace Spartan
         {
             size = sizeof(float);
         }
-    
-        return size;
+
+        SP_ASSERT(size != 0);
+
+        return size * 8;
     }
 
     static uint32_t get_channel_count(FIBITMAP* bitmap)
     {
         SP_ASSERT(bitmap != nullptr);
-    
-        const uint32_t bytes_per_pixel  = FreeImage_GetLine(bitmap) / FreeImage_GetWidth(bitmap);
-        const uint32_t channel_count    = bytes_per_pixel / get_bytes_per_channel(bitmap);
+
+        const uint32_t bits_per_pixel   = FreeImage_GetBPP(bitmap);
+        const uint32_t bits_per_channel = get_bits_per_channel(bitmap);
+        const uint32_t channel_count    = bits_per_pixel / bits_per_channel;
+
+        SP_ASSERT(channel_count != 0);
     
         return channel_count;
     }
 
-    static RHI_Format get_rhi_format(const uint32_t bytes_per_channel, const uint32_t channel_count)
+    static RHI_Format get_rhi_format(const uint32_t bits_per_channel, const uint32_t channel_count)
     {
-        const uint32_t bits_per_channel = bytes_per_channel * 8;
-    
+        SP_ASSERT(bits_per_channel != 0);
+        SP_ASSERT(channel_count != 0);
+
+        RHI_Format format = RHI_Format_Undefined;
+
         if (channel_count == 1)
         {
-            if (bits_per_channel == 8)  return RHI_Format_R8_Unorm;
+            if (bits_per_channel == 8)
+            {
+                format = RHI_Format_R8_Unorm;
+            }
+            else if (bits_per_channel == 16)
+            {
+                format = RHI_Format_R16_Unorm;
+            }
         }
         else if (channel_count == 2)
         {
-            if (bits_per_channel == 8)  return RHI_Format_R8G8_Unorm;
+            if (bits_per_channel == 8)
+            {
+                format = RHI_Format_R8G8_Unorm;
+            }
         }
         else if (channel_count == 3)
         {
-            if (bits_per_channel == 32) return RHI_Format_R32G32B32A32_Float;
+            if (bits_per_channel == 32)
+            {
+                format = RHI_Format_R32G32B32_Float;
+            }
         }
         else if (channel_count == 4)
         {
-            if (bits_per_channel == 8)  return RHI_Format_R8G8B8A8_Unorm;
-            if (bits_per_channel == 16) return RHI_Format_R16G16B16A16_Float;
-            if (bits_per_channel == 32) return RHI_Format_R32G32B32A32_Float;
+            if (bits_per_channel == 8)
+            {
+                format = RHI_Format_R8G8B8A8_Unorm;
+            }
+            else if (bits_per_channel == 16)
+            {
+                format = RHI_Format_R16G16B16A16_Unorm;
+            }
+            else if (bits_per_channel == 32)
+            {
+                format = RHI_Format_R32G32B32A32_Float;
+            }
         }
-    
-        LOG_ERROR("Could not deduce format");
-        return RHI_Format_Undefined;
+
+        SP_ASSERT(format != RHI_Format_Undefined);
+
+        return format;
+    }
+
+    static FIBITMAP* convert_to_8bits(FIBITMAP* bitmap)
+    {
+        SP_ASSERT(bitmap != nullptr);
+
+        FIBITMAP* previous_bitmap = bitmap;
+        bitmap = FreeImage_ConvertTo8Bits(previous_bitmap);
+        FreeImage_Unload(previous_bitmap);
+
+        SP_ASSERT(bitmap != nullptr);
+
+        return bitmap;
     }
 
     static FIBITMAP* convert_to_32bits(FIBITMAP* bitmap)
     {
         SP_ASSERT(bitmap != nullptr);
 
-        const auto previous_bitmap = bitmap;
+        FIBITMAP* previous_bitmap = bitmap;
         bitmap = FreeImage_ConvertTo32Bits(previous_bitmap);
-        if (!bitmap)
-        {
-            LOG_ERROR("Failed (%d bpp, %d channels).", FreeImage_GetBPP(previous_bitmap), get_channel_count(previous_bitmap));
-            return nullptr;
-        }
-
         FreeImage_Unload(previous_bitmap);
+
+        SP_ASSERT(bitmap != nullptr);
+
         return bitmap;
     }
 
@@ -137,7 +207,7 @@ namespace Spartan
         SP_ASSERT(height != 0);
 
         FIBITMAP* previous_bitmap = bitmap;
-        bitmap = FreeImage_Rescale(previous_bitmap, width, height, filter_downsample);
+        bitmap = FreeImage_Rescale(previous_bitmap, width, height, FREE_IMAGE_FILTER::FILTER_LANCZOS3);
 
         if (!bitmap)
         {
@@ -166,9 +236,17 @@ namespace Spartan
                 FreeImage_Unload(previous_bitmap);
             }
         }
-    
-        // Convert it to 32 bits (if lower)
-        if (FreeImage_GetBPP(bitmap) < 32)
+
+        // Texture below 8 bits get converted to 8 bits.
+        // This is because I've stumbled upon issues with anything less than 4 bits. Investigate if this can be handled.
+        if (FreeImage_GetBPP(bitmap) < 8)
+        {
+            bitmap = convert_to_8bits(bitmap);
+        }
+
+        // Textures with 3 channels and 8 bit per channel get converted to 32 bits.
+        // This is because there is no such RHI_FORMAT format.
+        if (get_channel_count(bitmap) == 3 && get_bits_per_channel(bitmap) == 8)
         {
             bitmap = convert_to_32bits(bitmap);
         }
@@ -177,10 +255,7 @@ namespace Spartan
         // Vulkan tells you, your GPU doesn't support it.
         // D3D11 seems to be doing some sort of emulation under the hood while throwing some warnings regarding sampling it.
         // So to prevent that, we maintain the 32 bits and convert to an RGBA format.
-        const uint32_t image_bits_per_channel = get_bytes_per_channel(bitmap) * 8;
-        const uint32_t image_channels         = get_channel_count(bitmap);
-        const bool is_r32g32b32_float         = image_channels == 3 && image_bits_per_channel == 32;
-        if (is_r32g32b32_float)
+        if (get_channel_count(bitmap) == 3 && get_bits_per_channel(bitmap) == 32)
         {
             FIBITMAP* previous_bitmap = bitmap;
             bitmap = FreeImage_ConvertToRGBAF(bitmap);
@@ -205,7 +280,7 @@ namespace Spartan
         return bitmap;
     }
 
-    static void get_bits_from_bitmap(RHI_Texture_Mip* mip, FIBITMAP* bitmap, const uint32_t width, const uint32_t height, const uint32_t channel_count)
+    static void get_bits_from_bitmap(RHI_Texture_Mip* mip, FIBITMAP* bitmap, const uint32_t width, const uint32_t height, const uint32_t channel_count, const uint32_t bits_per_channel)
     {
         // Validate
         SP_ASSERT(mip != nullptr);
@@ -215,7 +290,7 @@ namespace Spartan
         SP_ASSERT(channel_count != 0);
 
         // Compute expected data size and reserve enough memory
-        const size_t size_bytes = width * height * channel_count * get_bytes_per_channel(bitmap);
+        const size_t size_bytes = static_cast<size_t>(width) * static_cast<size_t>(height) * static_cast<size_t>(channel_count) * static_cast<size_t>(bits_per_channel / 8);
         if (size_bytes != mip->bytes.size())
         {
             mip->bytes.clear();
@@ -226,62 +301,6 @@ namespace Spartan
         // Copy the data over to our vector
         BYTE* bits = FreeImage_GetBits(bitmap);
         memcpy(&mip->bytes[0], bits, size_bytes);
-    }
-
-    static void generate_mips(Context* context, FIBITMAP* bitmap, RHI_Texture* texture, uint32_t width, uint32_t height, uint32_t channels, const uint32_t slice_index)
-    {
-        SP_ASSERT(texture != nullptr);
-
-        // Create a RescaleJob for every mip that we need
-        vector<RescaleJob> jobs;
-        while (width > 1 && height > 1)
-        {
-            width  = Math::Helper::Max(width / 2, 1U);
-            height = Math::Helper::Max(height / 2, 1U);
-            jobs.emplace_back(width, height, channels);
-
-            // Resize the RHI_Texture vector accordingly
-            const auto size = width * height * channels;
-            RHI_Texture_Mip& mip = texture->CreateMip(slice_index);
-            mip.bytes.reserve(size);
-            mip.bytes.resize(size);
-        }
-
-        // Pass data pointers (now that the RHI_Texture mip vector has been constructed)
-        for (uint32_t i = 0; i < jobs.size(); i++)
-        {
-            // reminder: i + 1 because the 0 mip is the default image size
-            jobs[i].mip = &texture->GetMip(0, i + 1);
-        }
-
-        // Parallelize mipmap generation using multiple threads (because FreeImage_Rescale() is expensive)
-        Threading* threading = context->GetSubsystem<Threading>();
-        for (auto& job : jobs)
-        {
-            threading->AddTask([&job, &bitmap]()
-            {
-                FIBITMAP* bitmap_scaled = FreeImage_Rescale(bitmap, job.width, job.height, filter_downsample);
-                get_bits_from_bitmap(job.mip, bitmap_scaled, job.width, job.height, job.channel_count);
-                FreeImage_Unload(bitmap_scaled);
-                job.done = true;
-            });
-        }
-
-        // Wait until all mips have been generated
-        auto ready = false;
-        while (!ready)
-        {
-            ready = true;
-            for (const auto& job : jobs)
-            {
-                if (!job.done)
-                {
-                    ready = false;
-                }
-            }
-
-            this_thread::sleep_for(chrono::milliseconds(16));
-        }
     }
 
     ImageImporter::ImageImporter(Context* context)
@@ -320,16 +339,26 @@ namespace Spartan
         }
 
         // Acquire image format
-        FREE_IMAGE_FORMAT format = FreeImage_GetFileType(file_path.c_str(), 0);
-        format                   = (format == FIF_UNKNOWN) ? FreeImage_GetFIFFromFilename(file_path.c_str()) : format;  // If the format is unknown, try to work it out from the file path
-        if (!FreeImage_FIFSupportsReading(format)) // If the format is still unknown, give up
+        FREE_IMAGE_FORMAT format = FIF_UNKNOWN;
         {
-            LOG_ERROR("Unsupported format");
-            return false;
+            format = FreeImage_GetFileType(file_path.c_str(), 0);
+
+            // If the format is unknown, try to work it out from the file path
+            if (format == FIF_UNKNOWN)
+            {
+                format = FreeImage_GetFIFFromFilename(file_path.c_str());
+            }
+
+            // If the format is still unknown, give up
+            if (!FreeImage_FIFSupportsReading(format)) 
+            {
+                LOG_ERROR("Unsupported format");
+                return false;
+            }
         }
 
         // Load the image
-        auto bitmap = FreeImage_Load(format, file_path.c_str());
+        FIBITMAP* bitmap = FreeImage_Load(format, file_path.c_str());
         if (!bitmap)
         {
             LOG_ERROR("Failed to load \"%s\"", file_path.c_str());
@@ -337,10 +366,11 @@ namespace Spartan
         }
 
         // Deduce image properties. Important that this is done here, before ApplyBitmapCorrections(), as after that, results for grayscale seem to be always false
-        const bool image_is_transparent = FreeImage_IsTransparent(bitmap);
-        const bool image_is_grayscale   = FreeImage_GetColorType(bitmap) == FREE_IMAGE_COLOR_TYPE::FIC_MINISBLACK;
+        const bool is_transparent = FreeImage_IsTransparent(bitmap);
+        const bool is_grayscale   = FreeImage_GetColorType(bitmap) == FREE_IMAGE_COLOR_TYPE::FIC_MINISBLACK;
+        const bool is_srgb        = get_is_srgb(bitmap);
 
-        // Perform some fix ups
+        // Perform some corrections
         bitmap = apply_bitmap_corrections(bitmap);
         if (!bitmap)
         {
@@ -349,41 +379,44 @@ namespace Spartan
         }
 
         // Deduce image properties
-        const uint32_t bytes_per_channel = get_bytes_per_channel(bitmap);
-        const uint32_t channel_count     = get_channel_count(bitmap);
-        const RHI_Format image_format    = get_rhi_format(bytes_per_channel, channel_count);
-
-        // Perform any scaling (if necessary)
+        const uint32_t bits_per_channel   = get_bits_per_channel(bitmap);
+        const uint32_t channel_count      = get_channel_count(bitmap);
+        const RHI_Format image_format     = get_rhi_format(bits_per_channel, channel_count);
         const bool user_define_dimensions = (texture->GetWidth() != 0 && texture->GetHeight() != 0);
         const bool dimension_mismatch     = (FreeImage_GetWidth(bitmap) != texture->GetWidth() && FreeImage_GetHeight(bitmap) != texture->GetHeight());
         const bool scale                  = user_define_dimensions && dimension_mismatch;
         bitmap                            = scale ? rescale(bitmap, texture->GetWidth(), texture->GetHeight()) : bitmap;
-
-        // Deduce image properties
-        const unsigned int image_width  = FreeImage_GetWidth(bitmap);
-        const unsigned int image_height = FreeImage_GetHeight(bitmap);
+        const unsigned int width          = FreeImage_GetWidth(bitmap);
+        const unsigned int height         = FreeImage_GetHeight(bitmap);
 
         // Fill RGBA vector with the data from the FIBITMAP
         RHI_Texture_Mip& mip = texture->CreateMip(slice_index);
-        get_bits_from_bitmap(&mip, bitmap, image_width, image_height, channel_count);
-
-        // If the texture requires mips, generate them
-        if (texture->GetFlags() & RHI_Texture_Loading_GenerateMips)
-        {
-            generate_mips(m_context, bitmap, texture, image_width, image_height, channel_count, slice_index);
-        }
+        get_bits_from_bitmap(&mip, bitmap, width, height, channel_count, bits_per_channel);
 
         // Free memory 
         FreeImage_Unload(bitmap);
 
         // Fill RHI_Texture with image properties
-        texture->SetBitsPerChannel(bytes_per_channel * 8);
-        texture->SetWidth(image_width);
-        texture->SetHeight(image_height);
-        texture->SetChannelCount(channel_count);
-        texture->SetTransparency(image_is_transparent);
-        texture->SetFormat(image_format);
-        texture->SetGrayscale(image_is_grayscale);
+        {
+            SP_ASSERT(bits_per_channel != 0);
+            SP_ASSERT(channel_count != 0);
+            SP_ASSERT(width != 0);
+            SP_ASSERT(height != 0);
+
+            texture->SetBitsPerChannel(bits_per_channel);
+            texture->SetWidth(width);
+            texture->SetHeight(height);
+            texture->SetChannelCount(channel_count);
+            texture->SetFormat(image_format);
+
+            uint32_t flags = texture->GetFlags();
+
+            flags |= is_transparent ? RHI_Texture_Transparent : 0;
+            flags |= is_grayscale   ? RHI_Texture_Grayscale : 0;
+            flags |= is_srgb        ? RHI_Texture_Srgb : 0;
+
+            texture->SetFlags(flags);
+        }
 
         return true;
     }

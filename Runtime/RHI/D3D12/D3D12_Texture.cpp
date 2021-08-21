@@ -44,7 +44,7 @@ namespace Spartan
         return false;
     }
 
-    void RHI_Texture::DestroyResourceGpu()
+    void RHI_Texture::DestroyResourceGpu(const bool destroy_main, const bool destroy_per_view)
     {
 
     }

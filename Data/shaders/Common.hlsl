@@ -85,38 +85,38 @@ float pow4(float x)
     return xx * xx;
 }
 
-bool is_saturated(float value)   { return value == saturate(value); }
-bool is_saturated(float2 value)  { return is_saturated(value.x) && is_saturated(value.y); }
-bool is_saturated(float3 value)  { return is_saturated(value.x) && is_saturated(value.y) && is_saturated(value.z); }
-bool is_saturated(float4 value)  { return is_saturated(value.x) && is_saturated(value.y) && is_saturated(value.z) && is_saturated(value.w); }
+bool is_saturated(float value)  { return value == saturate(value); }
+bool is_saturated(float2 value) { return is_saturated(value.x) && is_saturated(value.y); }
+bool is_saturated(float3 value) { return is_saturated(value.x) && is_saturated(value.y) && is_saturated(value.z); }
+bool is_saturated(float4 value) { return is_saturated(value.x) && is_saturated(value.y) && is_saturated(value.z) && is_saturated(value.w); }
 
-bool is_valid_uv(float2 value) { return value.x >= 0.0f && value.x <= 1.0f || value.y >= 0.0f && value.y <= 1.0f; }
+bool is_valid_uv(float2 value) { return (value.x >= 0.0f && value.x <= 1.0f) || (value.y >= 0.0f && value.y <= 1.0f); }
 
 /*------------------------------------------------------------------------------
     SATURATE
 ------------------------------------------------------------------------------*/
-float    saturate_11(float x)    { return clamp(x, FLT_MIN, FLT_MAX_11); }
-float2   saturate_11(float2 x)   { return clamp(x, FLT_MIN, FLT_MAX_11); }
-float3   saturate_11(float3 x)   { return clamp(x, FLT_MIN, FLT_MAX_11); }
-float4   saturate_11(float4 x)   { return clamp(x, FLT_MIN, FLT_MAX_11); }
+float  saturate_11(float x)  { return clamp(x, FLT_MIN, FLT_MAX_11); }
+float2 saturate_11(float2 x) { return clamp(x, FLT_MIN, FLT_MAX_11); }
+float3 saturate_11(float3 x) { return clamp(x, FLT_MIN, FLT_MAX_11); }
+float4 saturate_11(float4 x) { return clamp(x, FLT_MIN, FLT_MAX_11); }
 
-float    saturate_16(float x)    { return clamp(x, FLT_MIN, FLT_MAX_16); }
-float2   saturate_16(float2 x)   { return clamp(x, FLT_MIN, FLT_MAX_16); }
-float3   saturate_16(float3 x)   { return clamp(x, FLT_MIN, FLT_MAX_16); }
-float4   saturate_16(float4 x)   { return clamp(x, FLT_MIN, FLT_MAX_16); }
+float  saturate_16(float x)  { return clamp(x, FLT_MIN, FLT_MAX_16); }
+float2 saturate_16(float2 x) { return clamp(x, FLT_MIN, FLT_MAX_16); }
+float3 saturate_16(float3 x) { return clamp(x, FLT_MIN, FLT_MAX_16); }
+float4 saturate_16(float4 x) { return clamp(x, FLT_MIN, FLT_MAX_16); }
 
 /*------------------------------------------------------------------------------
     PACKING/UNPACKING
 ------------------------------------------------------------------------------*/
-float3 unpack(float3 value)  { return value * 2.0f - 1.0f; }
-float3 pack(float3 value)    { return value * 0.5f + 0.5f; }
-float2 unpack(float2 value)  { return value * 2.0f - 1.0f; }
-float2 pack(float2 value)    { return value * 0.5f + 0.5f; }
-float unpack(float value)    { return value * 2.0f - 1.0f; }
-float pack(float value)      { return value * 0.5f + 0.5f; }
+float3 unpack(float3 value) { return value * 2.0f - 1.0f; }
+float3 pack(float3 value)   { return value * 0.5f + 0.5f; }
+float2 unpack(float2 value) { return value * 2.0f - 1.0f; }
+float2 pack(float2 value)   { return value * 0.5f + 0.5f; }
+float  unpack(float value)  { return value * 2.0f - 1.0f; }
+float  pack(float value)    { return value * 0.5f + 0.5f; }
 
-float pack_uint32_to_float16(uint i)   { return (float)i / FLT_MAX_16; }
-uint unpack_float16_to_uint32(float f) { return round(f * FLT_MAX_16); }
+float pack_uint32_to_float16(uint i)    { return (float)i / FLT_MAX_16; }
+uint  unpack_float16_to_uint32(float f) { return round(f * FLT_MAX_16); }
 
 float pack_float_int(float f, uint i, uint numBitI, uint numBitTarget)
 {
@@ -290,13 +290,13 @@ float3x3 makeTBN(float3 n, float3 t)
 /*------------------------------------------------------------------------------
     DEPTH
 ------------------------------------------------------------------------------*/
-float get_depth(uint2 pos)
+float get_depth(uint2 position)
 {
-    // Load returns 0 for any value accessed out of bounds, so clamp.
-    pos.x = clamp(pos.x, 0, g_resolution_render.x);
-    pos.y = clamp(pos.y, 0, g_resolution_render.y);
-    
-    return tex_depth.Load(int3(pos, 0)).r;
+    // Clamp position
+    position.x = clamp(position.x, 0, g_resolution_render.x - 1);
+    position.y = clamp(position.y, 0, g_resolution_render.y - 1);
+
+    return tex_depth[position].r;
 }
 
 float get_depth(float2 uv)
@@ -440,7 +440,7 @@ uint direction_to_cube_face_index(const float3 direction)
 ------------------------------------------------------------------------------*/
 float2 get_velocity(const float2 uv)
 {
-    return tex_velocity.SampleLevel(sampler_point_clamp, uv, 0).xy;
+    return tex_velocity.SampleLevel(sampler_bilinear_clamp, uv, 0).xy;
 }
 
 // Returns average velocity (cross pattern)
@@ -539,6 +539,16 @@ float2 get_velocity_furthest_3x3(float2 texCoord, Texture2D texture_velocity, Te
 
 float2 get_reprojected_uv(const float2 uv) { return uv - get_velocity(uv); }
 
+uint2 get_reprojected_position(uint2 position)
+{
+    float2 uv = (position + 0.5f) / g_resolution_render;
+
+    // Reproject
+    uv -= get_velocity(uv);
+
+    return uv * g_resolution_render;
+}
+
 /*------------------------------------------------------------------------------
     LUMINANCE
 ------------------------------------------------------------------------------*/
@@ -587,11 +597,11 @@ float get_direction()
 float get_noise_interleaved_gradient(float2 screen_pos)
 {
     // Temporal factor
-    float taaOn         = (float)is_taa_enabled();
-    float frameCount    = (float)g_frame;
-    float frameStep     = taaOn * float(frameCount % 16) / 16.0f;
-    screen_pos.x        += frameStep * 4.7526;
-    screen_pos.y        += frameStep * 3.1914;
+    float taaOn      = (float)is_taa_enabled();
+    float frameCount = (float)g_frame;
+    float frameStep  = taaOn * float(frameCount % 16) / 16.0f;
+    screen_pos.x     += frameStep * 4.7526;
+    screen_pos.y     += frameStep * 3.1914;
 
     float3 magic = float3(0.06711056f, 0.00583715f, 52.9829189f);
     return frac(magic.z * frac(dot(screen_pos, magic.xy)));
@@ -667,9 +677,71 @@ float draw_circle_view_space(float3 origin, float radius, float2 uv)
 }
 
 /*------------------------------------------------------------------------------
+                                  TONEMAPPING
+------------------------------------------------------------------------------*/
+float3 reinhard(float3 hdr, float k = 1.0f) { return hdr / (hdr + k); }
+float3 reinhard_inverse(float3 sdr, float k = 1.0) { return k * sdr / (k - sdr); }
+
+float3 uncharted_2(float3 x)
+{
+    float A = 0.15;
+    float B = 0.50;
+    float C = 0.10;
+    float D = 0.20;
+    float E = 0.02;
+    float F = 0.30;
+    float W = 11.2;
+    return ((x * (A * x + C * B) + D * E) / (x * (A * x + B) + D * F)) - E / F;
+}
+
+//== ACESFitted ===========================
+//  Baking Lab
+//  by MJP and David Neubelt
+//  http://mynameismjp.wordpress.com/
+//  All code licensed under the MIT license
+//=========================================
+
+// sRGB => XYZ => D65_2_D60 => AP1 => RRT_SAT
+static const float3x3 aces_mat_input =
+{
+    {0.59719, 0.35458, 0.04823},
+    {0.07600, 0.90834, 0.01566},
+    {0.02840, 0.13383, 0.83777}
+};
+
+// ODT_SAT => XYZ => D60_2_D65 => sRGB
+static const float3x3 aces_mat_output =
+{
+    { 1.60475, -0.53108, -0.07367},
+    {-0.10208,  1.10813, -0.00605},
+    {-0.00327, -0.07276,  1.07602}
+};
+
+float3 RRTAndODTFit(float3 v)
+{
+    float3 a = v * (v + 0.0245786f) - 0.000090537f;
+    float3 b = v * (0.983729f * v + 0.4329510f) + 0.238081f;
+    return a / b;
+}
+
+float3 aces_fitted(float3 color)
+{
+    color = mul(aces_mat_input, color);
+
+    // Apply RRT and ODT
+    color = RRTAndODTFit(color);
+
+    color = mul(aces_mat_output, color);
+
+    // Clamp to [0, 1]
+    color = saturate(color);
+
+    return color;
+}
+
+/*------------------------------------------------------------------------------
     MISC
 ------------------------------------------------------------------------------*/
-
 float3 compute_diffuse_energy(float3 F, float metallic)
 {
     float3 kS = F;          // The energy of light that gets reflected - Equal to Fresnel

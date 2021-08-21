@@ -34,7 +34,7 @@ namespace Spartan
 {
     void RHI_ConstantBuffer::_destroy()
     {
-        d3d11_utility::release(static_cast<ID3D11Buffer*>(m_buffer));
+        d3d11_utility::release<ID3D11Buffer>(m_resource);
     }
 
     RHI_ConstantBuffer::RHI_ConstantBuffer(const std::shared_ptr<RHI_Device>& rhi_device, const string& name, bool is_dynamic /*= false*/)
@@ -48,10 +48,10 @@ namespace Spartan
     {
         SP_ASSERT(m_rhi_device != nullptr);
         SP_ASSERT(m_rhi_device->GetContextRhi()->device_context != nullptr);
-        SP_ASSERT(m_buffer != nullptr);
+        SP_ASSERT(m_resource != nullptr);
 
         D3D11_MAPPED_SUBRESOURCE mapped_resource;
-        const auto result = m_rhi_device->GetContextRhi()->device_context->Map(static_cast<ID3D11Buffer*>(m_buffer), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped_resource);
+        const auto result = m_rhi_device->GetContextRhi()->device_context->Map(static_cast<ID3D11Buffer*>(m_resource), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped_resource);
         if (FAILED(result))
         {
             LOG_ERROR("Failed to map constant buffer.");
@@ -65,9 +65,9 @@ namespace Spartan
     {
         SP_ASSERT(m_rhi_device != nullptr);
         SP_ASSERT(m_rhi_device->GetContextRhi()->device_context != nullptr);
-        SP_ASSERT(m_buffer != nullptr);
+        SP_ASSERT(m_resource != nullptr);
 
-        m_rhi_device->GetContextRhi()->device_context->Unmap(static_cast<ID3D11Buffer*>(m_buffer), 0);
+        m_rhi_device->GetContextRhi()->device_context->Unmap(static_cast<ID3D11Buffer*>(m_resource), 0);
         return true;
     }
 
@@ -88,7 +88,7 @@ namespace Spartan
         buffer_desc.MiscFlags            = 0;
         buffer_desc.StructureByteStride = 0;
 
-        const auto result = m_rhi_device->GetContextRhi()->device->CreateBuffer(&buffer_desc, nullptr, reinterpret_cast<ID3D11Buffer**>(&m_buffer));
+        const auto result = m_rhi_device->GetContextRhi()->device->CreateBuffer(&buffer_desc, nullptr, reinterpret_cast<ID3D11Buffer**>(&m_resource));
         if (FAILED(result))
         {
             LOG_ERROR("Failed to create constant buffer");

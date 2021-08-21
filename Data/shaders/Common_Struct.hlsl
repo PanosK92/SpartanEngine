@@ -53,10 +53,10 @@ struct Surface
     // Activision GTAO paper: https://www.activision.com/cdn/research/s2016_pbs_activision_occlusion.pptx
     float3 multi_bounce_ao(float visibility, float3 albedo)
     {
-        float3 a    = 2.0404 * albedo - 0.3324;
-        float3 b    = -4.7951 * albedo + 0.6417;
-        float3 c    = 2.7552 * albedo + 0.6903;
-        float x     = visibility;
+        float3 a = 2.0404 * albedo - 0.3324;
+        float3 b = -4.7951 * albedo + 0.6417;
+        float3 c = 2.7552 * albedo + 0.6903;
+        float x  = visibility;
         return max(x, ((x * a + b) * x + c) * x);
     }
     
