@@ -34,7 +34,7 @@ namespace Spartan
 {
     void RHI_IndexBuffer::_destroy()
     {
-        d3d11_utility::release(static_cast<ID3D11Buffer*>(m_resource));
+        d3d11_utility::release<ID3D11Buffer>(m_resource);
     }
 
     bool RHI_IndexBuffer::_create(const void* indices)

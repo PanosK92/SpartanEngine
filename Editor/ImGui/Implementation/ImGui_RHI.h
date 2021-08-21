@@ -50,21 +50,21 @@ namespace ImGui::RHI
     void InitializePlatformInterface();
 
     // Engine subsystems
-    Context*    g_context   = nullptr;
-    Renderer*   g_renderer  = nullptr;
+    Context*  g_context  = nullptr;
+    Renderer* g_renderer = nullptr;
 
     // RHI resources
-    static shared_ptr<RHI_Device>                                           g_rhi_device;
-    static unique_ptr<RHI_Texture>                                          g_texture;
-    static unordered_map<uint32_t, vector<unique_ptr<RHI_VertexBuffer>>>    g_vertex_buffers;
-    static unordered_map<uint32_t, vector<unique_ptr<RHI_IndexBuffer>>>     g_index_buffers;
-    static unique_ptr<RHI_DepthStencilState>                                g_depth_stencil_state;
-    static unique_ptr<RHI_RasterizerState>                                  g_rasterizer_state;
-    static unique_ptr<RHI_BlendState>                                       g_blend_state;
-    static unique_ptr<RHI_Shader>                                           g_shader_vertex;
-    static unique_ptr<RHI_Shader>                                           g_shader_pixel;
-    static shared_ptr<RHI_CommandList>                                      g_cmd_list;
-    static RHI_CommandList* g_used_cmd_list                                 = nullptr;
+    static shared_ptr<RHI_Device>                                        g_rhi_device;
+    static unique_ptr<RHI_Texture>                                       g_texture;
+    static unordered_map<uint32_t, vector<unique_ptr<RHI_VertexBuffer>>> g_vertex_buffers;
+    static unordered_map<uint32_t, vector<unique_ptr<RHI_IndexBuffer>>>  g_index_buffers;
+    static unique_ptr<RHI_DepthStencilState>                             g_depth_stencil_state;
+    static unique_ptr<RHI_RasterizerState>                               g_rasterizer_state;
+    static unique_ptr<RHI_BlendState>                                    g_blend_state;
+    static unique_ptr<RHI_Shader>                                        g_shader_vertex;
+    static unique_ptr<RHI_Shader>                                        g_shader_pixel;
+    static shared_ptr<RHI_CommandList>                                   g_cmd_list;
+    static RHI_CommandList* g_used_cmd_list                              = nullptr;
 
     struct WindowData
     {
@@ -77,10 +77,10 @@ namespace ImGui::RHI
 
     inline bool Initialize(Context* context)
     {
-        g_context       = context;
-        g_renderer      = context->GetSubsystem<Renderer>();
-        g_rhi_device    = g_renderer->GetRhiDevice();
-        g_cmd_list      = g_renderer->GetSwapChain()->CreateCmdList();
+        g_context    = context;
+        g_renderer   = context->GetSubsystem<Renderer>();
+        g_rhi_device = g_renderer->GetRhiDevice();
+        g_cmd_list   = g_renderer->GetSwapChain()->CreateCmdList();
 
         SP_ASSERT(g_context != nullptr);
         SP_ASSERT(g_rhi_device != nullptr);
@@ -105,21 +105,26 @@ namespace ImGui::RHI
             (
                 g_rhi_device,
                 true,
-                RHI_Blend::Src_Alpha,       // source blend
-                RHI_Blend::Inv_Src_Alpha,   // destination blend
-                RHI_Blend_Operation::Add,   // blend op
-                RHI_Blend::Inv_Src_Alpha,   // source blend alpha
-                RHI_Blend::Zero,            // destination blend alpha
-                RHI_Blend_Operation::Add    // destination op alpha
+                RHI_Blend::Src_Alpha,     // source blend
+                RHI_Blend::Inv_Src_Alpha, // destination blend
+                RHI_Blend_Operation::Add, // blend op
+                RHI_Blend::Inv_Src_Alpha, // source blend alpha
+                RHI_Blend::Zero,          // destination blend alpha
+                RHI_Blend_Operation::Add  // destination op alpha
             );
 
             // Compile shaders
-            const std::string shader_path = g_context->GetSubsystem<ResourceCache>()->GetResourceDirectory(ResourceDirectory::Shaders) + "\\ImGui.hlsl";
-            g_shader_vertex = make_unique<RHI_Shader>(g_context, RHI_Vertex_Type::Pos2dTexCol8);
-            bool async = false;
-            g_shader_vertex->Compile(RHI_Shader_Vertex, shader_path, async);
-            g_shader_pixel = make_unique<RHI_Shader>(g_context);
-            g_shader_pixel->Compile(RHI_Shader_Pixel, shader_path, async);
+            {
+                const std::string shader_path = g_context->GetSubsystem<ResourceCache>()->GetResourceDirectory(ResourceDirectory::Shaders) + "\\ImGui.hlsl";
+
+                bool async = false;
+
+                g_shader_vertex = make_unique<RHI_Shader>(g_context, RHI_Vertex_Type::Pos2dTexCol8);
+                g_shader_vertex->Compile(RHI_Shader_Vertex, shader_path, async);
+
+                g_shader_pixel = make_unique<RHI_Shader>(g_context);
+                g_shader_pixel->Compile(RHI_Shader_Pixel, shader_path, async);
+            }
         }
 
         // Font atlas
@@ -144,9 +149,9 @@ namespace ImGui::RHI
 
         // Setup back-end capabilities flags
         auto& io = GetIO();
-        io.BackendFlags         |= ImGuiBackendFlags_RendererHasViewports;
-        io.BackendFlags         |= ImGuiBackendFlags_RendererHasVtxOffset;
-        io.BackendRendererName  = "RHI";
+        io.BackendFlags        |= ImGuiBackendFlags_RendererHasViewports;
+        io.BackendFlags        |= ImGuiBackendFlags_RendererHasVtxOffset;
+        io.BackendRendererName = "RHI";
         if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
         {
             InitializePlatformInterface();
@@ -258,6 +263,12 @@ namespace ImGui::RHI
         pipeline_state.primitive_topology       = RHI_PrimitiveTopology_Mode::TriangleList;
         pipeline_state.pass_name                = is_child_window ? "pass_imgui_window_child" : "pass_imgui_window_main";
 
+        // If a texture only has channel R, we update a constant buffer so that in the shader, we can copy
+        // the R channel to G and B. This way the user will see a grayscale texture instead of red tinted one.
+        Vector4 bound_texture_channel_rgb = Vector4(1.0f, 1.0f, 1.0f, 1.0f);
+        Vector4 bound_texture_channel_r   = Vector4(1.0f, 0.0f, 0.0f, 1.0f);
+        Vector4 bound_texture_channels    = bound_texture_channel_rgb;
+
         // Record commands
         if (g_used_cmd_list->BeginRenderPass(pipeline_state))
         {
@@ -277,7 +288,7 @@ namespace ImGui::RHI
                     0.0f, 0.0f, 0.0f, 1.0f
                 );
 
-                g_renderer->SetGlobalShaderObjectTransform(g_used_cmd_list, wvp);
+                g_renderer->SetCbUberTransform(g_used_cmd_list, wvp);
             }
 
             // Transition layouts
@@ -298,9 +309,9 @@ namespace ImGui::RHI
             g_used_cmd_list->SetBufferIndex(index_buffer);
 
             // Render command lists
-            int global_vtx_offset   = 0;
-            int global_idx_offset   = 0;
-            const ImVec2& clip_off  = draw_data->DisplayPos;
+            int global_vtx_offset  = 0;
+            int global_idx_offset  = 0;
+            const ImVec2& clip_off = draw_data->DisplayPos;
             Math::Rectangle scissor_rect;
             for (int i = 0; i < draw_data->CmdListsCount; i++)
             {
@@ -315,14 +326,27 @@ namespace ImGui::RHI
                     else
                     {
                         // Compute scissor rectangle
-                        scissor_rect.left      = pcmd->ClipRect.x - clip_off.x;
-                        scissor_rect.top       = pcmd->ClipRect.y - clip_off.y;
-                        scissor_rect.right     = pcmd->ClipRect.z - clip_off.x;
-                        scissor_rect.bottom    = pcmd->ClipRect.w - clip_off.y;
+                        scissor_rect.left   = pcmd->ClipRect.x - clip_off.x;
+                        scissor_rect.top    = pcmd->ClipRect.y - clip_off.y;
+                        scissor_rect.right  = pcmd->ClipRect.z - clip_off.x;
+                        scissor_rect.bottom = pcmd->ClipRect.w - clip_off.y;
 
-                        // Apply scissor rectangle, bind texture and draw
+                        // Set scissor rectangle
                         g_used_cmd_list->SetScissorRectangle(scissor_rect);
-                        g_used_cmd_list->SetTexture(RendererBindings_Srv::tex, static_cast<RHI_Texture*>(pcmd->TextureId));
+
+                        // Set texture
+                        RHI_Texture* texture = static_cast<RHI_Texture*>(pcmd->TextureId);
+                        g_used_cmd_list->SetTexture(RendererBindings_Srv::tex, texture);
+
+                        // Check how many channels the texture has and let the shader now.
+                        if (texture)
+                        {
+                            // The uber constant buffer updates only if needed, no need to do any state checking here.
+                            bound_texture_channels = texture->GetChannelCount() == 1 ? bound_texture_channel_r : bound_texture_channel_rgb;
+                            g_renderer->SetCbUberColor(g_used_cmd_list, bound_texture_channels);
+                        }
+
+                        // Draw
                         g_used_cmd_list->DrawIndexed(pcmd->ElemCount, pcmd->IdxOffset + global_idx_offset, pcmd->VtxOffset + global_vtx_offset);
                     }
 
@@ -464,11 +488,11 @@ namespace ImGui::RHI
 
     inline void InitializePlatformInterface()
     {
-        ImGuiPlatformIO& platform_io        = ImGui::GetPlatformIO();
-        platform_io.Renderer_CreateWindow   = RHI_Window_Create;
-        platform_io.Renderer_DestroyWindow  = RHI_Window_Destroy;
-        platform_io.Renderer_SetWindowSize  = RHI_Window_SetSize;
-        platform_io.Renderer_RenderWindow   = RHI_Window_Render;
-        platform_io.Renderer_SwapBuffers    = RHI_Window_Present;
+        ImGuiPlatformIO& platform_io       = ImGui::GetPlatformIO();
+        platform_io.Renderer_CreateWindow  = RHI_Window_Create;
+        platform_io.Renderer_DestroyWindow = RHI_Window_Destroy;
+        platform_io.Renderer_SetWindowSize = RHI_Window_SetSize;
+        platform_io.Renderer_RenderWindow  = RHI_Window_Render;
+        platform_io.Renderer_SwapBuffers   = RHI_Window_Present;
     }
 }

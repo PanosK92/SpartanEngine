@@ -107,14 +107,16 @@ namespace Spartan
                         return E_FAIL;
 
                     // Release old device.
-                    d3d11_utility::release(temp_device);
+                    temp_device->Release();
+                    temp_device = nullptr;
 
                     // Query old device context for newer interface.
                     if (!d3d11_utility::error_check(temp_context->QueryInterface(__uuidof(ID3D11DeviceContext4), (void**)&m_rhi_context->device_context)))
                         return E_FAIL;
 
                     // Release old context.
-                    d3d11_utility::release(temp_context);
+                    temp_context->Release();
+                    temp_context = nullptr;
                 }
 
                 return result;
@@ -213,9 +215,14 @@ namespace Spartan
 
     RHI_Device::~RHI_Device()
     {
-        d3d11_utility::release(m_rhi_context->device_context);
-        d3d11_utility::release(m_rhi_context->device);
-        d3d11_utility::release(m_rhi_context->annotation);
+        m_rhi_context->device_context->Release();
+        m_rhi_context->device_context = nullptr;
+
+        m_rhi_context->device->Release();
+        m_rhi_context->device = nullptr;
+
+        m_rhi_context->annotation->Release();
+        m_rhi_context->annotation = nullptr;
     }
 
     bool RHI_Device::Queue_Submit(const RHI_Queue_Type type, const uint32_t wait_flags, void* cmd_buffer, RHI_Semaphore* wait_semaphore /*= nullptr*/, RHI_Semaphore* signal_semaphore /*= nullptr*/, RHI_Fence* signal_fence /*= nullptr*/) const

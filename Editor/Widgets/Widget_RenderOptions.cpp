@@ -38,12 +38,12 @@ using namespace Spartan;
 using namespace Spartan::Math;
 //============================
 
-namespace WidgetHelper
+namespace widget_helper
 {
     static Renderer* renderer;
 
-    static const float k_width_input_numeric    = 120.0f;
-    static const float k_width_combo_box        = 120.0f;
+    static const float k_width_input_numeric = 120.0f;
+    static const float k_width_combo_box     = 120.0f;
 
     void Initialise(Renderer* _renderer)
     {
@@ -148,9 +148,9 @@ namespace WidgetHelper
 
     void Int(const char* label, int& option, int step = 1)
     {
-        WidgetHelper::FirstColumn();
+        widget_helper::FirstColumn();
         ImGui::Text(label);
-        WidgetHelper::SecondColumn();
+        widget_helper::SecondColumn();
         ImGui::PushID(static_cast<int>(ImGui::GetCursorPosY()));
         ImGui::PushItemWidth(k_width_input_numeric);
         ImGui::InputInt("##shadow_resolution", &option, step);
@@ -161,46 +161,46 @@ namespace WidgetHelper
 
 Widget_RenderOptions::Widget_RenderOptions(Editor* editor) : Widget(editor)
 {
-    m_title         = "Renderer Options";
-    m_flags         |= ImGuiWindowFlags_AlwaysAutoResize;
-    m_is_visible    = false;
-    m_renderer      = m_context->GetSubsystem<Renderer>();
-    m_alpha         = 1.0f;
-    m_position      = k_widget_position_screen_center;
-    m_size          = Vector2(600.0f, 1000.0f);
+    m_title      = "Renderer Options";
+    m_flags      |= ImGuiWindowFlags_AlwaysAutoResize;
+    m_is_visible = false;
+    m_renderer   = m_context->GetSubsystem<Renderer>();
+    m_alpha      = 1.0f;
+    m_position   = k_widget_position_screen_center;
+    m_size       = Vector2(600.0f, 1000.0f);
 }
 
 void Widget_RenderOptions::TickVisible()
 {
     // Reflect options from engine
-    bool do_bloom                   = m_renderer->GetOption(Render_Bloom);
-    bool do_dof                     = m_renderer->GetOption(Render_DepthOfField);
-    bool do_volumetric_fog          = m_renderer->GetOption(Render_VolumetricFog);
-    bool do_ssao                    = m_renderer->GetOption(Render_Ssao);
-    bool ssao_gi                    = m_renderer->GetOptionValue<bool>(Renderer_Option_Value::Ssao_Gi);
-    bool do_sss                     = m_renderer->GetOption(Render_ScreenSpaceShadows);
-    bool do_ssr                     = m_renderer->GetOption(Render_ScreenSpaceReflections);
-    bool do_taa                     = m_renderer->GetOption(Render_AntiAliasing_Taa);
-    bool do_fxaa                    = m_renderer->GetOption(Render_AntiAliasing_Fxaa);
-    bool do_motion_blur             = m_renderer->GetOption(Render_MotionBlur);
-    bool do_film_grain              = m_renderer->GetOption(Render_FilmGrain);
-    bool do_sharperning             = m_renderer->GetOption(Render_Sharpening_AMD_FidelityFX_ContrastAdaptiveSharpening);
-    bool do_chromatic_aberration    = m_renderer->GetOption(Render_ChromaticAberration);
-    bool do_dithering               = m_renderer->GetOption(Render_Dithering);
-    int resolution_shadow           = m_renderer->GetOptionValue<int>(Renderer_Option_Value::ShadowResolution);
-    bool debug_physics              = m_renderer->GetOption(Render_Debug_Physics);
-    bool debug_aabb                 = m_renderer->GetOption(Render_Debug_Aabb);
-    bool debug_light                = m_renderer->GetOption(Render_Debug_Lights);
-    bool debug_transform            = m_renderer->GetOption(Render_Debug_Transform);
-    bool debug_selection_outline    = m_renderer->GetOption(Render_Debug_SelectionOutline);
-    bool debug_picking_ray          = m_renderer->GetOption(Render_Debug_PickingRay);
-    bool debug_grid                 = m_renderer->GetOption(Render_Debug_Grid);
-    bool debug_performance_metrics  = m_renderer->GetOption(Render_Debug_PerformanceMetrics);
-    bool debug_wireframe            = m_renderer->GetOption(Render_Debug_Wireframe);
-    bool do_depth_prepass           = m_renderer->GetOption(Render_DepthPrepass);
-    bool do_reverse_z               = m_renderer->GetOption(Render_ReverseZ);
-    bool do_upsample_taa            = m_renderer->GetOption(Render_Upsample_TAA);
-    bool do_upsample_amd            = m_renderer->GetOption(Render_Upsample_AMD_FidelityFX_SuperResolution);
+    bool do_bloom                  = m_renderer->GetOption(Render_Bloom);
+    bool do_dof                    = m_renderer->GetOption(Render_DepthOfField);
+    bool do_volumetric_fog         = m_renderer->GetOption(Render_VolumetricFog);
+    bool do_ssao                   = m_renderer->GetOption(Render_Ssao);
+    bool ssao_gi                   = m_renderer->GetOptionValue<bool>(Renderer_Option_Value::Ssao_Gi);
+    bool do_sss                    = m_renderer->GetOption(Render_ScreenSpaceShadows);
+    bool do_ssr                    = m_renderer->GetOption(Render_ScreenSpaceReflections);
+    bool do_taa                    = m_renderer->GetOption(Render_AntiAliasing_Taa);
+    bool do_fxaa                   = m_renderer->GetOption(Render_AntiAliasing_Fxaa);
+    bool do_motion_blur            = m_renderer->GetOption(Render_MotionBlur);
+    bool do_film_grain             = m_renderer->GetOption(Render_FilmGrain);
+    bool do_sharperning            = m_renderer->GetOption(Render_Sharpening_AMD_FidelityFX_ContrastAdaptiveSharpening);
+    bool do_chromatic_aberration   = m_renderer->GetOption(Render_ChromaticAberration);
+    bool do_dithering              = m_renderer->GetOption(Render_Dithering);
+    int resolution_shadow          = m_renderer->GetOptionValue<int>(Renderer_Option_Value::ShadowResolution);
+    bool debug_physics             = m_renderer->GetOption(Render_Debug_Physics);
+    bool debug_aabb                = m_renderer->GetOption(Render_Debug_Aabb);
+    bool debug_light               = m_renderer->GetOption(Render_Debug_Lights);
+    bool debug_transform           = m_renderer->GetOption(Render_Debug_Transform);
+    bool debug_selection_outline   = m_renderer->GetOption(Render_Debug_SelectionOutline);
+    bool debug_picking_ray         = m_renderer->GetOption(Render_Debug_PickingRay);
+    bool debug_grid                = m_renderer->GetOption(Render_Debug_Grid);
+    bool debug_performance_metrics = m_renderer->GetOption(Render_Debug_PerformanceMetrics);
+    bool debug_wireframe           = m_renderer->GetOption(Render_Debug_Wireframe);
+    bool do_depth_prepass          = m_renderer->GetOption(Render_DepthPrepass);
+    bool do_reverse_z              = m_renderer->GetOption(Render_ReverseZ);
+    bool do_upsample_taa           = m_renderer->GetOption(Render_Upsample_TAA);
+    bool do_upsample_amd           = m_renderer->GetOption(Render_Upsample_AMD_FidelityFX_SuperResolution);
 
     // Present options (with a table)
     {
@@ -245,7 +245,7 @@ void Widget_RenderOptions::TickVisible()
             ImGuiTableFlags_BordersInnerV   |   // Draw vertical borders between columns.
             ImGuiTableFlags_SizingFixedFit;     // Columns default to _WidthFixed or _WidthAuto (if resizable or not resizable), matching contents width.
 
-        WidgetHelper::Initialise(m_renderer);
+        widget_helper::Initialise(m_renderer);
         
         // Table
         if (ImGui::BeginTable("##render_options", column_count, flags, size))
@@ -254,12 +254,12 @@ void Widget_RenderOptions::TickVisible()
             ImGui::TableSetupColumn("Value");
             ImGui::TableHeadersRow();
 
-            if (WidgetHelper::Option("Resolution"))
+            if (widget_helper::Option("Resolution"))
             {
                 // Render
                 Vector2 resolution_render = m_renderer->GetResolutionRender();
                 uint32_t resolution_render_index = get_display_mode_index(resolution_render);
-                if (WidgetHelper::ComboBox("Render resolution", display_modes_string, resolution_render_index))
+                if (widget_helper::ComboBox("Render resolution", display_modes_string, resolution_render_index))
                 {
                     m_renderer->SetResolutionRender(display_modes[resolution_render_index].width, display_modes[resolution_render_index].height);
                 }
@@ -267,7 +267,7 @@ void Widget_RenderOptions::TickVisible()
                 // Output
                 Vector2 resolution_output = m_renderer->GetResolutionOutput();
                 uint32_t resolution_output_index = get_display_mode_index(resolution_output);
-                if (WidgetHelper::ComboBox("Output resolution", display_modes_string, resolution_output_index))
+                if (widget_helper::ComboBox("Output resolution", display_modes_string, resolution_output_index))
                 {
                     m_renderer->SetResolutionOutput(display_modes[resolution_output_index].width, display_modes[resolution_output_index].height);
                 }
@@ -281,7 +281,7 @@ void Widget_RenderOptions::TickVisible()
 
                     ImGuiEx::PushDisabled(!upsampling_allowed);
 
-                    if (WidgetHelper::ComboBox("Upsampling", upsampling_modes, upsampling_mode_index))
+                    if (widget_helper::ComboBox("Upsampling", upsampling_modes, upsampling_mode_index))
                     {
                         if (upsampling_mode_index == 0)
                         {
@@ -304,109 +304,109 @@ void Widget_RenderOptions::TickVisible()
                 }
             }
 
-            if (WidgetHelper::Option("Screen space lighting"))
+            if (widget_helper::Option("Screen space lighting"))
             {
                 // SSR
-                WidgetHelper::CheckBox("SSR - Screen space reflections", do_ssr);
+                widget_helper::CheckBox("SSR - Screen space reflections", do_ssr);
 
                 // SSAO
-                WidgetHelper::CheckBox("SSAO - Screen space ambient occlusion", do_ssao);
+                widget_helper::CheckBox("SSAO - Screen space ambient occlusion", do_ssao);
 
                 // SSAO + GI
                 {
                     ImGuiEx::PushDisabled(!do_ssao);
-                    WidgetHelper::CheckBox("SSAO GI - Screen space global illumination", ssao_gi, "Use SSAO to compute diffuse global illumination");
+                    widget_helper::CheckBox("SSAO GI - Screen space global illumination", ssao_gi, "Use SSAO to compute diffuse global illumination");
                     ImGuiEx::PopDisabled(!do_ssao);
                 }
             }
 
-            if (WidgetHelper::Option("Anti-Aliasing"))
+            if (widget_helper::Option("Anti-Aliasing"))
             {
                 // TAA
-                WidgetHelper::CheckBox("TAA - Temporal anti-aliasing", do_taa, "Used to improve many stochastic effects, you want this to always be enabled.");
+                widget_helper::CheckBox("TAA - Temporal anti-aliasing", do_taa, "Used to improve many stochastic effects, you want this to always be enabled.");
 
                 // FXAA
-                WidgetHelper::CheckBox("FXAA - Fast approximate anti-aliasing", do_fxaa);
+                widget_helper::CheckBox("FXAA - Fast approximate anti-aliasing", do_fxaa);
             }
 
-            if (WidgetHelper::Option("Camera"))
+            if (widget_helper::Option("Camera"))
             {
                 // Tonemapping
                 static vector<string> tonemapping_options = { "Off", "ACES", "Reinhard", "Uncharted 2" };
                 uint32_t selection_index = m_renderer->GetOptionValue<uint32_t>(Renderer_Option_Value::Tonemapping);
-                if (WidgetHelper::ComboBox("Tonemapping", tonemapping_options, selection_index))
+                if (widget_helper::ComboBox("Tonemapping", tonemapping_options, selection_index))
                 {
                     m_renderer->SetOptionValue(Renderer_Option_Value::Tonemapping, static_cast<float>(selection_index));
                 }
 
                 // Gamma
-                WidgetHelper::RenderOptionValue("Gamma", Renderer_Option_Value::Gamma);
+                widget_helper::RenderOptionValue("Gamma", Renderer_Option_Value::Gamma);
 
                 // Bloom
-                WidgetHelper::CheckBox("Bloom", do_bloom);
+                widget_helper::CheckBox("Bloom", do_bloom);
                 {
                     ImGuiEx::PushDisabled(!do_bloom);
-                    WidgetHelper::RenderOptionValue("Bloom intensity", Renderer_Option_Value::Bloom_Intensity, "", 0.001f);
+                    widget_helper::RenderOptionValue("Bloom intensity", Renderer_Option_Value::Bloom_Intensity, "", 0.001f);
                     ImGuiEx::PopDisabled(!do_bloom);
                 }
 
                 // Motion blur
-                WidgetHelper::CheckBox("Motion blur (controlled by the camera's shutter speed)", do_motion_blur);
+                widget_helper::CheckBox("Motion blur (controlled by the camera's shutter speed)", do_motion_blur);
 
                 // Depth of Field
-                WidgetHelper::CheckBox("Depth of field (controlled by the camera's aperture) - WIP", do_dof);
+                widget_helper::CheckBox("Depth of field (controlled by the camera's aperture) - WIP", do_dof);
 
                 // Chromatic aberration
-                WidgetHelper::CheckBox("Chromatic aberration (controlled by the camera's aperture)", do_chromatic_aberration, "Emulates the inability of old cameras to focus all colors in the same focal point.");
+                widget_helper::CheckBox("Chromatic aberration (controlled by the camera's aperture)", do_chromatic_aberration, "Emulates the inability of old cameras to focus all colors in the same focal point.");
 
                 // Film grain
-                WidgetHelper::CheckBox("Film grain", do_film_grain);
+                widget_helper::CheckBox("Film grain", do_film_grain);
             }
 
-            if (WidgetHelper::Option("Lights"))
+            if (widget_helper::Option("Lights"))
             {
                 // Volumetric fog
-                WidgetHelper::CheckBox("Volumetric fog", do_volumetric_fog, "Requires a light with shadows enabled.");
+                widget_helper::CheckBox("Volumetric fog", do_volumetric_fog, "Requires a light with shadows enabled.");
                 {
                     // Density
                     ImGuiEx::PushDisabled(!do_volumetric_fog);
-                    WidgetHelper::RenderOptionValue("Volumetric fog density", Renderer_Option_Value::Fog, "", 0.01f, 0.0f, 16.0f, "%.2f");
+                    widget_helper::RenderOptionValue("Volumetric fog density", Renderer_Option_Value::Fog, "", 0.01f, 0.0f, 16.0f, "%.2f");
                     ImGuiEx::PopDisabled(!do_volumetric_fog);
                 }
 
                 // Screen space shadows
-                WidgetHelper::CheckBox("Screen space shadows", do_sss);
+                widget_helper::CheckBox("Screen space shadows", do_sss);
 
                 // Shadow resolution
-                WidgetHelper::Int("Shadow resolution", resolution_shadow);
+                widget_helper::Int("Shadow resolution", resolution_shadow);
             }
 
-            if (WidgetHelper::Option("Misc"))
+            if (widget_helper::Option("Misc"))
             {
                 // Dithering
-                WidgetHelper::CheckBox("Dithering", do_dithering, "Reduces color banding");
+                widget_helper::CheckBox("Dithering", do_dithering, "Reduces color banding");
 
                 // Sharpen
-                WidgetHelper::CheckBox("Sharpening (AMD FidelityFX CAS)", do_sharperning, "Contrast adaptive sharpening. Areas of the image that are already sharp are sharpened less, while areas that lack detail are sharpened more.");
+                widget_helper::CheckBox("Sharpening (AMD FidelityFX CAS)", do_sharperning, "Contrast adaptive sharpening. Areas of the image that are already sharp are sharpened less, while areas that lack detail are sharpened more.");
 
                 // Sharpen strength
                 ImGuiEx::PushDisabled(!do_sharperning);
-                WidgetHelper::RenderOptionValue("Sharpening strength", Renderer_Option_Value::Sharpen_Strength, "", 0.1f, 0.0f, 1.0f);
+                widget_helper::RenderOptionValue("Sharpening strength", Renderer_Option_Value::Sharpen_Strength, "", 0.1f, 0.0f, 1.0f);
                 ImGuiEx::PopDisabled(!do_sharperning);
 
                 // FPS Limit
                 {
                     Timer* timer = m_context->GetSubsystem<Timer>();
                     
-                    WidgetHelper::FirstColumn();
+                    widget_helper::FirstColumn();
                     const FpsLimitType fps_limit_type = timer->GetFpsLimitType();
                     string label = "FPS Limit - " + string((fps_limit_type == FpsLimitType::FixedToMonitor) ? "Fixed to monitor" : (fps_limit_type == FpsLimitType::Unlocked ? "Unlocked" : "Fixed"));
                     ImGui::Text(label.c_str());
 
-                    WidgetHelper::SecondColumn();
+                    widget_helper::SecondColumn();
                     {
                         double fps_target = timer->GetFpsLimit();
-                        ImGui::PushItemWidth(WidgetHelper::k_width_input_numeric);
+                        ImGui::PushItemWidth(widget_helper::k_width_input_numeric);
                         ImGui::InputDouble("##fps_limit", &fps_target, 0.0, 0.0f, "%.1f");
                         ImGui::PopItemWidth();
                         timer->SetFpsLimit(fps_target);
@@ -414,35 +414,35 @@ void Widget_RenderOptions::TickVisible()
                 }
 
                 // Depth-PrePass
-                WidgetHelper::CheckBox("Depth PrePass", do_depth_prepass);
+                widget_helper::CheckBox("Depth PrePass", do_depth_prepass);
 
                 // Reverse-Z
-                WidgetHelper::CheckBox("Depth Reverse-Z", do_reverse_z);
+                widget_helper::CheckBox("Depth Reverse-Z", do_reverse_z);
             }
 
-            if (WidgetHelper::Option("Editor", false))
+            if (widget_helper::Option("Editor", false))
             {
-                WidgetHelper::CheckBox("Transform", debug_transform);
+                widget_helper::CheckBox("Transform", debug_transform);
                 {
                     ImGuiEx::PushDisabled(!debug_transform);
-                    WidgetHelper::Float("Transform size", m_renderer->m_gizmo_transform_size, 0.0025f);
-                    WidgetHelper::Float("Transform speed", m_renderer->m_gizmo_transform_speed, 1.0f);
+                    widget_helper::Float("Transform size", m_renderer->m_gizmo_transform_size, 0.0025f);
+                    widget_helper::Float("Transform speed", m_renderer->m_gizmo_transform_speed, 1.0f);
                     ImGuiEx::PopDisabled(!debug_transform);
                 }
 
-                WidgetHelper::CheckBox("Selection outline", debug_selection_outline);
-                WidgetHelper::CheckBox("Physics", debug_physics);
-                WidgetHelper::CheckBox("AABBs - Axis-aligned bounding boxes", debug_aabb);
-                WidgetHelper::CheckBox("Lights", debug_light);
-                WidgetHelper::CheckBox("Picking ray", debug_picking_ray);
-                WidgetHelper::CheckBox("Grid", debug_grid);  
-                WidgetHelper::CheckBox("Wireframe", debug_wireframe);
+                widget_helper::CheckBox("Selection outline", debug_selection_outline);
+                widget_helper::CheckBox("Physics", debug_physics);
+                widget_helper::CheckBox("AABBs - Axis-aligned bounding boxes", debug_aabb);
+                widget_helper::CheckBox("Lights", debug_light);
+                widget_helper::CheckBox("Picking ray", debug_picking_ray);
+                widget_helper::CheckBox("Grid", debug_grid);  
+                widget_helper::CheckBox("Wireframe", debug_wireframe);
             }
 
-            if (WidgetHelper::Option("Debug", false))
+            if (widget_helper::Option("Debug", false))
             {
                 // Performance metrics
-                if (WidgetHelper::CheckBox("Performance Metrics", debug_performance_metrics) && !m_renderer->GetOption(Render_Debug_PerformanceMetrics))
+                if (widget_helper::CheckBox("Performance Metrics", debug_performance_metrics) && !m_renderer->GetOption(Render_Debug_PerformanceMetrics))
                 {
                     // Reset metrics on activation
                     m_profiler->ResetMetrics();
@@ -466,7 +466,7 @@ void Widget_RenderOptions::TickVisible()
 
                     // Combo box
                     uint32_t selection_index = static_cast<uint32_t>(m_renderer->GetRenderTargetDebug());
-                    if (WidgetHelper::ComboBox("Render target", render_target_options, selection_index))
+                    if (widget_helper::ComboBox("Render target", render_target_options, selection_index))
                     {
                         m_renderer->SetRenderTargetDebug(static_cast<RendererRt>(selection_index));
                     }

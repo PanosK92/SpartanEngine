@@ -264,7 +264,7 @@ namespace Spartan
                 if (RHI_Texture* texture = render_target_color_textures[i])
                 {
                     SP_ASSERT(texture->IsRenderTargetColor());
-                    attachments.emplace_back(texture->Get_Resource_View_RenderTarget(render_target_color_texture_array_index));
+                    attachments.emplace_back(texture->GetResource_View_RenderTarget(render_target_color_texture_array_index));
                 }
             }
             
@@ -272,7 +272,7 @@ namespace Spartan
             if (render_target_depth_texture)
             {
                 SP_ASSERT(render_target_depth_texture->IsRenderTargetDepthStencil());
-                attachments.emplace_back(render_target_depth_texture->Get_Resource_View_DepthStencil(render_target_depth_stencil_texture_array_index));
+                attachments.emplace_back(render_target_depth_texture->GetResource_View_DepthStencil(render_target_depth_stencil_texture_array_index));
             }
 
             // Create a frame buffer

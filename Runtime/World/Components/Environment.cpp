@@ -149,7 +149,7 @@ namespace Spartan
         LOG_INFO("Creating sky sphere...");
 
         // Skysphere
-        shared_ptr<RHI_Texture2D> texture = make_shared<RHI_Texture2D>(GetContext(), RHI_Texture_Srv | RHI_Texture_Loading_GenerateMips);
+        shared_ptr<RHI_Texture2D> texture = make_shared<RHI_Texture2D>(GetContext(), RHI_Texture_Srv | RHI_Texture_Mips);
         if (texture->LoadFromFile(file_path))
         {
             // Set sky sphere to renderer

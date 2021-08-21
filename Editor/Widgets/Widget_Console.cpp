@@ -50,7 +50,7 @@ void Widget_Console::TickVisible()
     if (ImGuiEx::Button("Clear")) { Clear();} ImGui::SameLine();
 
     // Lambda for info, warning, error filter buttons
-    const auto button_log_type_visibility_toggle = [this](const Icon_Type icon, uint32_t index)
+    const auto button_log_type_visibility_toggle = [this](const IconType icon, uint32_t index)
     {
         bool& visibility = m_log_type_visibility[index];
         ImGui::PushStyleColor(ImGuiCol_Button, visibility ? ImGui::GetStyle().Colors[ImGuiCol_Button] : ImGui::GetStyle().Colors[ImGuiCol_FrameBg]);
@@ -66,9 +66,9 @@ void Widget_Console::TickVisible()
     };
 
     // Log category visibility buttons
-    button_log_type_visibility_toggle(Icon_Console_Info,       0);
-    button_log_type_visibility_toggle(Icon_Console_Warning,    1);
-    button_log_type_visibility_toggle(Icon_Console_Error,      2);
+    button_log_type_visibility_toggle(IconType::Console_Info,    0);
+    button_log_type_visibility_toggle(IconType::Console_Warning, 1);
+    button_log_type_visibility_toggle(IconType::Console_Error,   2);
 
     // Text filter
     const float label_width = 37.0f; //ImGui::CalcTextSize("Filter", nullptr, true).x;

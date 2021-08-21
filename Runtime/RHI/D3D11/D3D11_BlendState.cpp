@@ -78,6 +78,6 @@ namespace Spartan
 
     RHI_BlendState::~RHI_BlendState()
     {
-        d3d11_utility::release(static_cast<ID3D11BlendState*>(m_resource));
+        d3d11_utility::release<ID3D11BlendState>(m_resource);
     }
 }

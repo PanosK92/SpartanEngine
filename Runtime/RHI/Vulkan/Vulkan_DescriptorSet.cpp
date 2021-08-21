@@ -49,7 +49,7 @@ namespace Spartan
         {
             RHI_Texture* texture = static_cast<RHI_Texture*>(descriptor.data);
             bool set_individual_mip = descriptor.mip != -1;
-            return set_individual_mip ? texture->Get_Resource_Views_Srv(descriptor.mip) : texture->Get_Resource_View_Srv();
+            return set_individual_mip ? texture->GetResource_Views_Srv(descriptor.mip) : texture->GetResource_View_Srv();
         }
         else if (descriptor.type == RHI_Descriptor_Type::ConstantBuffer)
         {
@@ -154,7 +154,7 @@ namespace Spartan
                             image_index++;
 
                             info_images[image_index].sampler        = nullptr;
-                            info_images[image_index].imageView      = static_cast<VkImageView>(texture->Get_Resource_Views_Srv(mip_index));
+                            info_images[image_index].imageView      = static_cast<VkImageView>(texture->GetResource_Views_Srv(mip_index));
                             info_images[image_index].imageLayout    = vulkan_image_layout[static_cast<uint8_t>(texture->GetLayout(mip_index))];
 
                             descriptor_count++;

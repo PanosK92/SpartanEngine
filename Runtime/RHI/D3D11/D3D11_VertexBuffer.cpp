@@ -34,7 +34,7 @@ namespace Spartan
 {
     void RHI_VertexBuffer::_destroy()
     {
-        d3d11_utility::release(static_cast<ID3D11Buffer*>(m_buffer));
+        d3d11_utility::release<ID3D11Buffer>(m_buffer);
     }
 
     bool RHI_VertexBuffer::_create(const void* vertices)
@@ -57,10 +57,10 @@ namespace Spartan
         buffer_desc.StructureByteStride = 0;
 
         // fill in the subresource data.
-        D3D11_SUBRESOURCE_DATA init_data    = {};
-        init_data.pSysMem                   = vertices;
-        init_data.SysMemPitch               = 0;
-        init_data.SysMemSlicePitch          = 0;
+        D3D11_SUBRESOURCE_DATA init_data = {};
+        init_data.pSysMem                = vertices;
+        init_data.SysMemPitch            = 0;
+        init_data.SysMemSlicePitch       = 0;
 
         const auto ptr      = reinterpret_cast<ID3D11Buffer**>(&m_buffer);
         const auto result   = m_rhi_device->GetContextRhi()->device->CreateBuffer(&buffer_desc, is_dynamic ? nullptr : &init_data, ptr);

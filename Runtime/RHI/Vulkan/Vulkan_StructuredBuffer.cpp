@@ -33,10 +33,10 @@ namespace Spartan
 {
     RHI_StructuredBuffer::RHI_StructuredBuffer(const shared_ptr<RHI_Device>& rhi_device, const uint32_t stride, const uint32_t element_count, const void* data /*= nullptr*/)
     {
-        m_rhi_device        = rhi_device;
-        m_stride            = stride;
-        m_element_count     = element_count;
-        m_object_size_gpu   = stride * element_count;
+        m_rhi_device      = rhi_device;
+        m_stride          = stride;
+        m_element_count   = element_count;
+        m_object_size_gpu = stride * element_count;
 
         // Create buffer
         {

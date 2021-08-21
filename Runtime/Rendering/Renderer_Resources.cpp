@@ -48,7 +48,7 @@ namespace Spartan
     void Renderer::CreateConstantBuffers()
     {
         const bool is_dynamic       = true;
-        const uint32_t offset_count = 1024; // should be big enough (buffers can dynamically reallocate anyway)
+        const uint32_t offset_count = 1024; // should be big enough for Vulkan (buffers can dynamically reallocate anyway)
 
         m_cb_frame_gpu = make_shared<RHI_ConstantBuffer>(m_rhi_device, "frame", is_dynamic);
         m_cb_frame_gpu->Create<Cb_Frame>(offset_count);
@@ -66,7 +66,7 @@ namespace Spartan
     void Renderer::CreateStructuredBuffers()
     {
         static uint32_t counter = 0;
-        uint32_t element_count = 1;
+        uint32_t element_count  = 1;
         m_sb_counter = make_shared<RHI_StructuredBuffer>(m_rhi_device, static_cast<uint32_t>(sizeof(uint32_t)), element_count, static_cast<void*>(&counter));
     }
 
@@ -75,11 +75,11 @@ namespace Spartan
         RHI_Comparison_Function reverse_z_aware_comp_func = GetComparisonFunction();
 
         // arguments: depth_test, depth_write, depth_function, stencil_test, stencil_write, stencil_function
-        m_depth_stencil_off_off = make_shared<RHI_DepthStencilState>(m_rhi_device, false, false, RHI_Comparison_Function::Never,    false, false, RHI_Comparison_Function::Never);  // no depth or stencil
-        m_depth_stencil_rw_off  = make_shared<RHI_DepthStencilState>(m_rhi_device, true,  true,  reverse_z_aware_comp_func,         false, false, RHI_Comparison_Function::Never);  // depth
-        m_depth_stencil_r_off   = make_shared<RHI_DepthStencilState>(m_rhi_device, true,  false, reverse_z_aware_comp_func,         false, false, RHI_Comparison_Function::Never);  // depth
-        m_depth_stencil_off_r   = make_shared<RHI_DepthStencilState>(m_rhi_device, false, false, RHI_Comparison_Function::Never,    true,  false, RHI_Comparison_Function::Equal);  // depth + stencil
-        m_depth_stencil_rw_w    = make_shared<RHI_DepthStencilState>(m_rhi_device, true,  true,  reverse_z_aware_comp_func,         false, true,  RHI_Comparison_Function::Always); // depth + stencil
+        m_depth_stencil_off_off = make_shared<RHI_DepthStencilState>(m_rhi_device, false, false, RHI_Comparison_Function::Never, false, false, RHI_Comparison_Function::Never);  // no depth or stencil
+        m_depth_stencil_rw_off  = make_shared<RHI_DepthStencilState>(m_rhi_device, true,  true,  reverse_z_aware_comp_func,      false, false, RHI_Comparison_Function::Never);  // depth
+        m_depth_stencil_r_off   = make_shared<RHI_DepthStencilState>(m_rhi_device, true,  false, reverse_z_aware_comp_func,      false, false, RHI_Comparison_Function::Never);  // depth
+        m_depth_stencil_off_r   = make_shared<RHI_DepthStencilState>(m_rhi_device, false, false, RHI_Comparison_Function::Never, true,  false, RHI_Comparison_Function::Equal);  // depth + stencil
+        m_depth_stencil_rw_w    = make_shared<RHI_DepthStencilState>(m_rhi_device, true,  true,  reverse_z_aware_comp_func,      false, true,  RHI_Comparison_Function::Always); // depth + stencil
     }
 
     void Renderer::CreateRasterizerStates()
@@ -110,7 +110,7 @@ namespace Spartan
         // minification, magnification, mip, sampler address mode, comparison, anisotropy, comparison, mip lod bias
         if (!create_only_anisotropic)
         {
-            m_sampler_compare_depth   = make_shared<RHI_Sampler>(m_rhi_device, RHI_Filter::Linear,  RHI_Filter::Linear,  RHI_Sampler_Mipmap_Mode::Nearest, RHI_Sampler_Address_Mode::Clamp, depth_comparison, 0, true);
+            m_sampler_compare_depth   = make_shared<RHI_Sampler>(m_rhi_device, RHI_Filter::Linear,  RHI_Filter::Linear,  RHI_Sampler_Mipmap_Mode::Nearest, RHI_Sampler_Address_Mode::Clamp, depth_comparison, 0.0f, true);
             m_sampler_point_clamp     = make_shared<RHI_Sampler>(m_rhi_device, RHI_Filter::Nearest, RHI_Filter::Nearest, RHI_Sampler_Mipmap_Mode::Nearest, RHI_Sampler_Address_Mode::Clamp, RHI_Comparison_Function::Always);
             m_sampler_point_wrap      = make_shared<RHI_Sampler>(m_rhi_device, RHI_Filter::Nearest, RHI_Filter::Nearest, RHI_Sampler_Mipmap_Mode::Nearest, RHI_Sampler_Address_Mode::Wrap,  RHI_Comparison_Function::Always);
             m_sampler_bilinear_clamp  = make_shared<RHI_Sampler>(m_rhi_device, RHI_Filter::Linear,  RHI_Filter::Linear,  RHI_Sampler_Mipmap_Mode::Nearest, RHI_Sampler_Address_Mode::Clamp, RHI_Comparison_Function::Always);
@@ -141,25 +141,23 @@ namespace Spartan
         // rt_ssao/rt_ssao_blurred: If gi is disabled, the texture format could just be RHI_Format_R8_Unorm, but calling CreateRenderTextures() dynamically will re-create a lot of textures. Find an elegant solution to improve CreateRenderTextures().
 
         // Deduce how many mips are required to scale down any dimension close to 16px (or exactly)
-        uint32_t mip_count_to_16px = 1;
-        uint32_t width             = width_render;
-        uint32_t height            = height_render;
-        while ((width / 2) > 16 && (height / 2) > 16)
+        uint32_t mip_count           = 1;
+        uint32_t width               = width_render;
+        uint32_t height              = height_render;
+        uint32_t smallest_dimension  = 1;
+        while (width > smallest_dimension && height > smallest_dimension)
         {
             width /= 2;
             height /= 2;
-            mip_count_to_16px++;
+            mip_count++;
         }
-
-        // Deduce how many mips are required to scale down any dimension close to 32px (or exactly)
-        uint32_t mip_count_to_32px = mip_count_to_16px - 1;
 
         // Render resolution
         if (create_render)
         {
             // Frame (HDR)
-            RENDER_TARGET(RendererRt::Frame_Render)   = make_unique<RHI_Texture2D>(m_context, width_render, height_render, mip_count_to_16px, RHI_Format_R11G11B10_Float, RHI_Texture_Rt_Color | RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipView, "rt_frame_render");
-            RENDER_TARGET(RendererRt::Frame_Render_2) = make_unique<RHI_Texture2D>(m_context, width_render, height_render, mip_count_to_16px, RHI_Format_R11G11B10_Float, RHI_Texture_Rt_Color | RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipView, "rt_frame_render_2");
+            RENDER_TARGET(RendererRt::Frame_Render)   = make_unique<RHI_Texture2D>(m_context, width_render, height_render, mip_count, RHI_Format_R11G11B10_Float, RHI_Texture_Rt_Color | RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipViews, "rt_frame_render");
+            RENDER_TARGET(RendererRt::Frame_Render_2) = make_unique<RHI_Texture2D>(m_context, width_render, height_render, mip_count, RHI_Format_R11G11B10_Float, RHI_Texture_Rt_Color | RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipViews, "rt_frame_render_2");
 
             // G-Buffer
             RENDER_TARGET(RendererRt::Gbuffer_Albedo)   = make_shared<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R8G8B8A8_Unorm,     RHI_Texture_Rt_Color        | RHI_Texture_Srv,                                       "rt_gbuffer_albedo");
@@ -175,11 +173,15 @@ namespace Spartan
             RENDER_TARGET(RendererRt::Light_Specular_Transparent) = make_unique<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R11G11B10_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_CanBeCleared, "rt_light_specular_transparent");
             RENDER_TARGET(RendererRt::Light_Volumetric)           = make_unique<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R11G11B10_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_CanBeCleared, "rt_light_volumetric");
 
-            // Misc
-            RENDER_TARGET(RendererRt::Ssao)       = make_unique<RHI_Texture2D>(m_context, width_render,     height_render,     1,                 RHI_Format_R16G16B16A16_Snorm, RHI_Texture_Uav | RHI_Texture_Srv,                          "rt_ssao");
-            RENDER_TARGET(RendererRt::Ssr)        = make_shared<RHI_Texture2D>(m_context, width_render,     height_render,     mip_count_to_32px, RHI_Format_R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipView, "rt_ssr");
-            RENDER_TARGET(RendererRt::Dof_Half)   = make_unique<RHI_Texture2D>(m_context, width_render / 2, height_render / 2, 1,                 RHI_Format_R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv,                          "rt_dof_half");
-            RENDER_TARGET(RendererRt::Dof_Half_2) = make_unique<RHI_Texture2D>(m_context, width_render / 2, height_render / 2, 1,                 RHI_Format_R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv,                          "rt_dof_half_2");
+            // SSR
+            RENDER_TARGET(RendererRt::Ssr) = make_shared<RHI_Texture2D>(m_context, width_render, height_render, mip_count, RHI_Format_R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipViews, "rt_ssr");
+
+            // SSAO
+            RENDER_TARGET(RendererRt::Ssao) = make_unique<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R16G16B16A16_Snorm, RHI_Texture_Uav | RHI_Texture_Srv, "rt_ssao");
+
+            // Dof
+            RENDER_TARGET(RendererRt::Dof_Half)   = make_unique<RHI_Texture2D>(m_context, width_render / 2, height_render / 2, 1, RHI_Format_R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv, "rt_dof_half");
+            RENDER_TARGET(RendererRt::Dof_Half_2) = make_unique<RHI_Texture2D>(m_context, width_render / 2, height_render / 2, 1, RHI_Format_R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv, "rt_dof_half_2");
         }
 
         // Output resolution
@@ -189,8 +191,8 @@ namespace Spartan
             RENDER_TARGET(RendererRt::Frame_Output)   = make_unique<RHI_Texture2D>(m_context, width_output, height_output, 1, RHI_Format_R11G11B10_Float, RHI_Texture_Rt_Color | RHI_Texture_Uav | RHI_Texture_Srv, "rt_frame_output");
             RENDER_TARGET(RendererRt::Frame_Output_2) = make_unique<RHI_Texture2D>(m_context, width_output, height_output, 1, RHI_Format_R11G11B10_Float, RHI_Texture_Rt_Color | RHI_Texture_Uav | RHI_Texture_Srv, "rt_frame_output_2");
 
-            // Misc
-            RENDER_TARGET(RendererRt::Bloom) = make_shared<RHI_Texture2D>(m_context, width_output, height_output, mip_count_to_16px, RHI_Format_R11G11B10_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipView, "rt_bloom");
+            // Bloom
+            RENDER_TARGET(RendererRt::Bloom) = make_shared<RHI_Texture2D>(m_context, width_output, height_output, mip_count, RHI_Format_R11G11B10_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipViews, "rt_bloom");
         }
 
         // Fixed resolution
@@ -205,8 +207,8 @@ namespace Spartan
         {
             // Blur
             bool is_output_larger = width_output > width_render && height_output > height_render;
-            uint32_t width  = is_output_larger ? width_output : width_render;
-            uint32_t height = is_output_larger ? height_output : height_render;
+            uint32_t width        = is_output_larger ? width_output : width_render;
+            uint32_t height       = is_output_larger ? height_output : height_render;
             RENDER_TARGET(RendererRt::Blur) = make_unique<RHI_Texture2D>(m_context, width, height, 1, RHI_Format_R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv, "rt_blur");
 
             // TAA History

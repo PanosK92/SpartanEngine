@@ -79,6 +79,9 @@ namespace Spartan
 
         SCOPED_TIME_BLOCK(m_profiler);
 
+        // Generate mips for any pending texture requests
+        Pass_Generate_Mips();
+
         // Update frame constant buffer
         Pass_UpdateFrameBuffer(cmd_list);
 
@@ -448,8 +451,8 @@ namespace Spartan
             // Set pixel shader
             pso.shader_pixel = static_cast<RHI_Shader*>(it.second.get());
 
-            // Skip the shader it failed to compiled or hasn't compiled yet
-            if (!pso.shader_pixel->IsCompiled())
+            // Skip the shader it failed to compile or hasn't compiled yet
+            if (!pso.shader_pixel || !pso.shader_pixel->IsCompiled())
                 continue;
 
             // Set pass name
@@ -633,7 +636,7 @@ namespace Spartan
         if (!shader_c->IsCompiled())
             return;
 
-        // Acquire render target
+        // Acquire render targets
         RHI_Texture* tex_ssr = RENDER_TARGET(RendererRt::Ssr).get();
 
         // Set render state
@@ -670,13 +673,11 @@ namespace Spartan
         Pass_AMD_FidelityFX_SinglePassDowsnampler(cmd_list, tex_ssr, luminance_antiflicker);
 
         // Blur the smaller mips to reduce blockiness/flickering
-        uint32_t higher_mips_to_blur = 2;
-        uint32_t mip_index_end       = tex_ssr->GetMipCount() - 1;
-        for (uint32_t i = mip_index_end; i > mip_index_end - higher_mips_to_blur; i--)
+        for (uint32_t i = 1; i < tex_ssr->GetMipCount(); i++)
         {
-            const bool depth_aware   = true;
-            const float sigma        = 4.0f;
-            const float pixel_stride = 1.0;
+            const bool depth_aware      = true;
+            const float sigma           = 2.0f;
+            const float pixel_stride    = 1.0;
             Pass_Blur_Gaussian(cmd_list, tex_ssr, depth_aware, sigma, pixel_stride, i);
         }
     }
@@ -880,7 +881,7 @@ namespace Spartan
         // If we need to blur a specific mip, ensure that the texture has per mip views
         if (mip_requested)
         {
-            SP_ASSERT(tex_in->HasPerMipView());
+            SP_ASSERT(tex_in->HasPerMipViews());
         }
 
         // Compute width and height
@@ -1609,14 +1610,13 @@ namespace Spartan
         // GitHub:        https://github.com/GPUOpen-Effects/FidelityFX-SPD
         // Documentation: https://github.com/GPUOpen-Effects/FidelityFX-SPD/blob/master/docs/FidelityFX_SPD.pdf
 
-        uint32_t generated_mips_count = tex->GetMipCount() - 1; // all mips but the top
-        uint32_t smallest_width       = tex->GetWidth() >> generated_mips_count;
-        uint32_t smallest_height      = tex->GetWidth() >> generated_mips_count;
+        uint32_t output_mip_count = tex->GetMipCount() - 1;
+        uint32_t smallest_width   = tex->GetWidth() >> output_mip_count;
+        uint32_t smallest_height  = tex->GetWidth() >> output_mip_count;
 
         // Ensure that the input texture meets the requirements.
-        SP_ASSERT(tex->HasPerMipView());
-        SP_ASSERT(generated_mips_count <= 12);                  // As per documentation (page 22)
-        SP_ASSERT(smallest_width >= 8 || smallest_height >= 8); // Based on debugging, it won't do anything below a dimension of 8.
+        SP_ASSERT(tex->HasPerMipViews());
+        SP_ASSERT(output_mip_count <= 12); // As per documentation (page 22)
 
         // Acquire shader
         RHI_Shader* shader = m_shaders[luminance_antiflicker ? RendererShader::AMD_FidelityFX_SPD_LuminanceAntiflicker_C : RendererShader::AMD_FidelityFX_SPD_C].get();
@@ -1626,8 +1626,8 @@ namespace Spartan
 
         // Set render state
         static RHI_PipelineState pso;
-        pso.shader_compute  = shader;
-        pso.pass_name       = "Pass_AMD_FidelityFX_SinglePassDowsnampler";
+        pso.shader_compute = shader;
+        pso.pass_name      = "Pass_AMD_FidelityFX_SinglePassDowsnampler";
 
         // Draw
         if (cmd_list->BeginRenderPass(pso))
@@ -1640,7 +1640,7 @@ namespace Spartan
         
             // Update uber buffer
             m_cb_uber_cpu.resolution_rt    = Vector2(static_cast<float>(tex->GetWidth()), static_cast<float>(tex->GetHeight()));
-            m_cb_uber_cpu.mip_count        = generated_mips_count;
+            m_cb_uber_cpu.mip_count        = output_mip_count;
             m_cb_uber_cpu.work_group_count = thread_group_count_x * thread_group_count_y * thread_group_count_z;
             Update_Cb_Uber(cmd_list);
         
@@ -1655,8 +1655,8 @@ namespace Spartan
     void Renderer::Pass_AMD_FidelityFX_SuperResolution(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out, RHI_Texture* tex_out_scratch)
     {
         // Acquire shaders
-        RHI_Shader* shader_upsample_c   = m_shaders[RendererShader::AMD_FidelityFX_FSR_Upsample_C].get();
-        RHI_Shader* shader_sharpen_c    = m_shaders[RendererShader::AMD_FidelityFX_FSR_Sharpen_C].get();
+        RHI_Shader* shader_upsample_c = m_shaders[RendererShader::AMD_FidelityFX_FSR_Upsample_C].get();
+        RHI_Shader* shader_sharpen_c  = m_shaders[RendererShader::AMD_FidelityFX_FSR_Sharpen_C].get();
         if (!shader_upsample_c->IsCompiled() || !shader_sharpen_c->IsCompiled())
             return;
 
@@ -1669,11 +1669,11 @@ namespace Spartan
 
             if (cmd_list->BeginRenderPass(pso))
             {
-                static const int thread_group_work_region_dim   = 16;
-                const uint32_t thread_group_count_x             = (tex_out->GetWidth() + (thread_group_work_region_dim - 1)) / thread_group_work_region_dim;
-                const uint32_t thread_group_count_y             = (tex_out->GetHeight() + (thread_group_work_region_dim - 1)) / thread_group_work_region_dim;
-                const uint32_t thread_group_count_z             = 1;
-                const bool async                                = false;
+                static const int thread_group_work_region_dim = 16;
+                const uint32_t thread_group_count_x           = (tex_out->GetWidth() + (thread_group_work_region_dim - 1)) / thread_group_work_region_dim;
+                const uint32_t thread_group_count_y           = (tex_out->GetHeight() + (thread_group_work_region_dim - 1)) / thread_group_work_region_dim;
+                const uint32_t thread_group_count_z           = 1;
+                const bool async                              = false;
 
                 cmd_list->SetTexture(RendererBindings_Uav::rgb, tex_out_scratch);
                 cmd_list->SetTexture(RendererBindings_Srv::tex, tex_in);
@@ -1691,11 +1691,11 @@ namespace Spartan
 
             if (cmd_list->BeginRenderPass(pso))
             {
-                static const int thread_group_work_region_dim   = 16;
-                const uint32_t thread_group_count_x             = (tex_out->GetWidth() + (thread_group_work_region_dim - 1)) / thread_group_work_region_dim;
-                const uint32_t thread_group_count_y             = (tex_out->GetHeight() + (thread_group_work_region_dim - 1)) / thread_group_work_region_dim;
-                const uint32_t thread_group_count_z             = 1;
-                const bool async                                = false;
+                static const int thread_group_work_region_dim = 16;
+                const uint32_t thread_group_count_x           = (tex_out->GetWidth() + (thread_group_work_region_dim - 1)) / thread_group_work_region_dim;
+                const uint32_t thread_group_count_y           = (tex_out->GetHeight() + (thread_group_work_region_dim - 1)) / thread_group_work_region_dim;
+                const uint32_t thread_group_count_z           = 1;
+                const bool async                              = false;
 
                 cmd_list->SetTexture(RendererBindings_Uav::rgb, tex_out);
                 cmd_list->SetTexture(RendererBindings_Srv::tex, tex_out_scratch);
@@ -2431,5 +2431,40 @@ namespace Spartan
             cmd_list->DrawIndexed(m_viewport_quad.GetIndexCount());
             cmd_list->EndRenderPass();
         }
+    }
+
+    void Renderer::Pass_Generate_Mips()
+    {
+        m_is_generating_mips = true;
+
+        for (RHI_Texture* texture : m_textures_mip_generation)
+        {
+            SP_ASSERT(texture != nullptr);
+
+            // Ensure the texture has mips.
+            SP_ASSERT(texture->HasMips());
+
+            // Ensure the texture has per mip views, which is required for the downsampler.
+            SP_ASSERT(texture->HasPerMipViews());
+
+            // Downsample
+            const bool luminance_antiflicker = false;
+            Pass_AMD_FidelityFX_SinglePassDowsnampler(m_cmd_current, texture, luminance_antiflicker);
+
+            // Remove unnecessary flags from texture (were only needed for the downsampling)
+            uint32_t flags = texture->GetFlags();
+            flags &= ~RHI_Texture_PerMipViews;
+            flags &= ~RHI_Texture_Uav;
+            texture->SetFlags(flags);
+
+            // Destroy the resources associated with those flags
+            const bool destroy_main     = false;
+            const bool destroy_per_view = true;
+            texture->DestroyResourceGpu(destroy_main, destroy_per_view);
+        }
+
+        m_textures_mip_generation.clear();
+
+        m_is_generating_mips = false;
     }
 }

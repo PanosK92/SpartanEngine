@@ -35,8 +35,8 @@ static const uint   g_shadow_samples                    = 3;
 static const float  g_shadow_filter_size                = 3.0f;
 static const float  g_shadow_cascade_blend_threshold    = 0.8f;
 #else
-static const uint   g_shadow_samples        = 8; // penumbra requires a higher sample count to look good
-static const float  g_shadow_filter_size    = 5.0f;
+static const uint   g_shadow_samples        = 3;
+static const float  g_shadow_filter_size    = 3.0f;
 #endif
 
 // technique - vogel

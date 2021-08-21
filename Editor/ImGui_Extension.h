@@ -51,12 +51,12 @@ public:
 
     void Initialize(Spartan::Context* context)
     {
-        g_context           = context;
-        g_resource_cache    = context->GetSubsystem<Spartan::ResourceCache>();
-        g_world             = context->GetSubsystem<Spartan::World>();
-        g_threading         = context->GetSubsystem<Spartan::Threading>();
-        g_renderer          = context->GetSubsystem<Spartan::Renderer>();
-        g_input             = context->GetSubsystem<Spartan::Input>();
+        g_context        = context;
+        g_resource_cache = context->GetSubsystem<Spartan::ResourceCache>();
+        g_world          = context->GetSubsystem<Spartan::World>();
+        g_threading      = context->GetSubsystem<Spartan::Threading>();
+        g_renderer       = context->GetSubsystem<Spartan::Renderer>();
+        g_input          = context->GetSubsystem<Spartan::Input>();
     }
 
     void LoadModel(const std::string& file_path) const
@@ -123,14 +123,14 @@ public:
         g_selected_entity = g_renderer->SnapTransformHandleToEntity(entity);
     }
 
-    Spartan::Context*               g_context               = nullptr;
-    Spartan::ResourceCache*         g_resource_cache        = nullptr;
-    Spartan::World*                 g_world                 = nullptr;
-    Spartan::Threading*             g_threading             = nullptr;
-    Spartan::Renderer*              g_renderer              = nullptr;
-    Spartan::Input*                 g_input                 = nullptr;
-    std::weak_ptr<Spartan::Entity>  g_selected_entity;
-    std::function<void()>           g_on_entity_selected    = nullptr;
+    Spartan::Context*              g_context            = nullptr;
+    Spartan::ResourceCache*        g_resource_cache     = nullptr;
+    Spartan::World*                g_world              = nullptr;
+    Spartan::Threading*            g_threading          = nullptr;
+    Spartan::Renderer*             g_renderer           = nullptr;
+    Spartan::Input*                g_input              = nullptr;
+    std::weak_ptr<Spartan::Entity> g_selected_entity;   
+    std::function<void()>          g_on_entity_selected = nullptr;
 };
 
 namespace ImGuiEx
@@ -178,15 +178,15 @@ namespace ImGuiEx
         (
             static_cast<ImTextureID>(texture),
             size,
-            ImVec2(0, 0),           // uv0
-            ImVec2(1, 1),           // uv1
-            -1,                     // frame padding
-            ImColor(0, 0, 0, 0),    // background
-            default_tint            // tint
+            ImVec2(0, 0),        // uv0
+            ImVec2(1, 1),        // uv1
+            -1,                  // frame padding
+            ImColor(0, 0, 0, 0), // background
+            default_tint         // tint
         );
     }
 
-    inline bool ImageButton(const Icon_Type icon, const float size, bool border = false)
+    inline bool ImageButton(const IconType icon, const float size, bool border = false)
     {
         if (!border)
         {
@@ -211,7 +211,7 @@ namespace ImGuiEx
         return result;
     }
 
-    inline bool ImageButton(const char* id, const Icon_Type icon, const float size, bool border = false)
+    inline bool ImageButton(const char* id, const IconType icon, const float size, bool border = false)
     {
         if (!border)
         {
@@ -284,7 +284,7 @@ namespace ImGuiEx
         );
     }
 
-    inline void Image(const Icon_Type icon, const float size)
+    inline void Image(const IconType icon, const float size)
     {
         ImGui::Image(
             static_cast<void*>(IconProvider::Get().GetTextureByType(icon)),
@@ -348,16 +348,16 @@ namespace ImGuiEx
         // Image
         ImGui::BeginGroup();
         {
-            Spartan::RHI_Texture* texture   = image.get();
-            const ImVec2 pos_image          = ImGui::GetCursorPos();
-            const ImVec2 pos_button         = ImVec2(ImGui::GetCursorPosX() + slot_size.x - button_size * 2.0f + 6.0f, ImGui::GetCursorPosY() + 1.0f);
+            Spartan::RHI_Texture* texture = image.get();
+            const ImVec2 pos_image        = ImGui::GetCursorPos();
+            const ImVec2 pos_button       = ImVec2(ImGui::GetCursorPosX() + slot_size.x - button_size * 2.0f + 6.0f, ImGui::GetCursorPosY() + 1.0f);
 
             // Remove button
             if (image != nullptr)
             {
                 ImGui::SetCursorPos(pos_button);
                 ImGui::PushID(static_cast<int>(pos_button.x + pos_button.y));
-                if (ImGuiEx::ImageButton("", Icon_Component_Material_RemoveTexture, button_size, true))
+                if (ImGuiEx::ImageButton("", IconType::Component_Material_RemoveTexture, button_size, true))
                 {
                     texture = nullptr;
                     setter(nullptr);
@@ -379,7 +379,7 @@ namespace ImGuiEx
             if (texture != nullptr)
             {
                 ImGui::SetCursorPos(pos_button);
-                ImGuiEx::ImageButton("", Icon_Component_Material_RemoveTexture, button_size, true);
+                ImGuiEx::ImageButton("", IconType::Component_Material_RemoveTexture, button_size, true);
             }
         }
         ImGui::EndGroup();

@@ -45,11 +45,11 @@ namespace _Widget_MenuBar
 
 Widget_MenuBar::Widget_MenuBar(Editor* editor) : Widget(editor)
 {
-    m_title                 = "MenuBar";
-    m_is_window             = false;
-    m_tool_bar              = make_unique<Widget_Toolbar>(editor);
-    m_file_dialog           = make_unique<FileDialog>(m_context, true, FileDialog_Type_FileSelection, FileDialog_Op_Open, FileDialog_Filter_Scene);
-    _Widget_MenuBar::world  = m_context->GetSubsystem<World>();
+    m_title                = "MenuBar";
+    m_is_window            = false;
+    m_tool_bar             = make_unique<Widget_Toolbar>(editor);
+    m_file_dialog          = make_unique<FileDialog>(m_context, true, FileDialog_Type_FileSelection, FileDialog_Op_Open, FileDialog_Filter_World);
+    _Widget_MenuBar::world = m_context->GetSubsystem<World>();
 }
 
 void Widget_MenuBar::TickAlways()
@@ -146,7 +146,7 @@ void Widget_MenuBar::ShowFileDialog() const
         else if (m_file_dialog->GetOperation() == FileDialog_Op_Save)
         {
             // Scene
-            if (m_file_dialog->GetFilter() == FileDialog_Filter_Scene)
+            if (m_file_dialog->GetFilter() == FileDialog_Filter_World)
             {
                 EditorHelper::Get().SaveWorld(_Widget_MenuBar::g_fileDialogSelection);
                 _Widget_MenuBar::g_fileDialogVisible = false;

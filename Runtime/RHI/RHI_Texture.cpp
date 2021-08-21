@@ -45,10 +45,12 @@ namespace Spartan
         {
             case RHI_Format::RHI_Format_R8G8B8A8_Unorm:
                 format_amd = CMP_FORMAT::CMP_FORMAT_RGBA_8888;
+                break;
 
             // Compressed
             case RHI_Format::RHI_Format_BC7:
                 format_amd = CMP_FORMAT::CMP_FORMAT_BC7;
+                break;
         }
 
         SP_ASSERT(format_amd != CMP_FORMAT::CMP_FORMAT_Unknown);
@@ -60,7 +62,7 @@ namespace Spartan
     {
         SP_ASSERT(context != nullptr);
 
-        Renderer* renderer = m_context->GetSubsystem<Renderer>();
+        Renderer* renderer = context->GetSubsystem<Renderer>();
         SP_ASSERT(renderer != nullptr);
 
         m_rhi_device = context->GetSubsystem<Renderer>()->GetRhiDevice();
@@ -75,20 +77,22 @@ namespace Spartan
         m_data.clear();
         m_data.shrink_to_fit();
 
-        DestroyResourceGpu();
+        bool destroy_main     = true;
+        bool destroy_per_view = true;
+        DestroyResourceGpu(destroy_main, destroy_per_view);
     }
 
     bool RHI_Texture::SaveToFile(const string& file_path)
     {
         // If a file already exists, get the byte count
-        uint32_t byte_count = 0;
+        m_object_size_cpu = 0;
         {
             if (FileSystem::Exists(file_path))
             {
                 auto file = make_unique<FileStream>(file_path, FileStream_Read);
                 if (file->IsOpen())
                 {
-                    file->Read(&byte_count);
+                    file->Read(&m_object_size_cpu);
                 }
             }
         }
@@ -99,25 +103,27 @@ namespace Spartan
             return false;
 
         // If the existing file has texture data but we don't, don't overwrite them
-        bool dont_overwrite_data = byte_count != 0 && !HasData();
+        bool dont_overwrite_data = m_object_size_cpu != 0 && !HasData();
         if (dont_overwrite_data)
         {
             file->Skip
             (
-                sizeof(uint32_t) +    // byte count
-                sizeof(uint32_t) +    // array size
-                sizeof(uint32_t) +    // mip count
-                byte_count            // bytes
+                sizeof(m_object_size_cpu) + // byte count
+                sizeof(m_array_length)    + // array length
+                sizeof(m_mip_count)       + // mip count
+                m_object_size_cpu           // bytes
             );
         }
         else
         {
-            byte_count = GetByteCount();
+            ComputeMemoryUsage();
 
-            // Write data
-            file->Write(byte_count);
+            // Write mip info
+            file->Write(m_object_size_cpu);
             file->Write(m_array_length);
             file->Write(m_mip_count);
+
+            // Write mip data
             for (RHI_Texture_Slice& slice : m_data)
             {
                 for (RHI_Texture_Mip& mip : slice.mips)
@@ -132,11 +138,11 @@ namespace Spartan
         }
 
         // Write properties
-        file->Write(m_bits_per_channel);
         file->Write(m_width);
         file->Write(m_height);
-        file->Write(static_cast<uint32_t>(m_format));
         file->Write(m_channel_count);
+        file->Write(m_bits_per_channel);
+        file->Write(static_cast<uint32_t>(m_format));
         file->Write(m_flags);
         file->Write(GetObjectId());
         file->Write(GetResourceFilePath());
@@ -144,12 +150,12 @@ namespace Spartan
         return true;
     }
 
-    bool RHI_Texture::LoadFromFile(const string& path)
+    bool RHI_Texture::LoadFromFile(const string& file_path)
     {
         // Validate file path
-        if (!FileSystem::IsFile(path))
+        if (!FileSystem::IsFile(file_path))
         {
-            LOG_ERROR("\"%s\" is not a valid file path.", path.c_str());
+            LOG_ERROR("\"%s\" is not a valid file path.", file_path.c_str());
             return false;
         }
 
@@ -158,60 +164,146 @@ namespace Spartan
         m_load_state = LoadState::Started;
 
         // Load from disk
-        bool texture_data_loaded = false;
-        if (FileSystem::IsEngineTextureFile(path)) // engine format (binary)
+        bool loaded            = false;
+        bool is_native_format  = FileSystem::IsEngineTextureFile(file_path);
+        bool is_foreign_format = FileSystem::IsSupportedImageFile(file_path);
         {
-            texture_data_loaded = LoadFromFile_NativeFormat(path);
-        }
-        else if (FileSystem::IsSupportedImageFile(path)) // foreign format (most known image formats)
-        {
-            texture_data_loaded = LoadFromFile_ForeignFormat(path);
+            if (is_native_format)
+            {
+                auto file = make_unique<FileStream>(file_path, FileStream_Read);
+                if (!file->IsOpen())
+                    return false;
+
+                m_data.clear();
+                m_data.shrink_to_fit();
+
+                // Read mip info
+                file->Read(&m_object_size_cpu);
+                file->Read(&m_array_length);
+                file->Read(&m_mip_count);
+
+                // Read mip data
+                m_data.resize(m_array_length);
+                for (RHI_Texture_Slice& slice : m_data)
+                {
+                    slice.mips.resize(m_mip_count);
+                    for (RHI_Texture_Mip& mip : slice.mips)
+                    {
+                        file->Read(&mip.bytes);
+                    }
+                }
+
+                // Read properties
+                file->Read(&m_width);
+                file->Read(&m_height);
+                file->Read(&m_channel_count);
+                file->Read(&m_bits_per_channel);
+                file->Read(reinterpret_cast<uint32_t*>(&m_format));
+                file->Read(&m_flags);
+                SetObjectId(file->ReadAs<uint32_t>());
+                SetResourceFilePath(file->ReadAs<string>());
+
+                loaded = true;
+            }
+            else if (is_foreign_format) // foreign format (most known image formats)
+            {
+                vector<string> file_paths = { file_path };
+
+                // If this is an array, try to find all the textures
+                if (m_resource_type == ResourceType::Texture2dArray)
+                {
+                    string file_path_extension    = FileSystem::GetExtensionFromFilePath(file_path);
+                    string file_path_no_extension = FileSystem::GetFilePathWithoutExtension(file_path);
+                    string file_path_no_digit     = file_path_no_extension.substr(0, file_path_no_extension.size() - 1);
+
+                    uint32_t index = 1;
+                    string file_path_guess = file_path_no_digit + to_string(index) + file_path_extension;
+                    while (FileSystem::Exists(file_path_guess))
+                    {
+                        file_paths.emplace_back(file_path_guess);
+                        file_path_guess = file_path_no_digit + to_string(++index) + file_path_extension;
+                    }
+                }
+
+                // Load texture
+                ImageImporter* image_importer = m_context->GetSubsystem<ResourceCache>()->GetImageImporter();
+                for (uint32_t slice_index = 0; slice_index < static_cast<uint32_t>(file_paths.size()); slice_index++)
+                {
+                    if (!image_importer->Load(file_paths[slice_index], slice_index, this))
+                        return false;
+                }
+
+                // Set resource file path so it can be used by the resource cache.
+                SetResourceFilePath(file_path);
+
+                // Compress texture
+                if (m_flags & RHI_Texture_Compressed)
+                {
+                    //Compress(RHI_Format::RHI_Format_BC7);
+                }
+
+                loaded = true;
+            }
         }
 
-        // Ensure that we have the data
-        if (!texture_data_loaded)
+        // Verify that loading was successful.
+        if (!loaded)
         {
-            LOG_ERROR("Failed to load \"%s\".", path.c_str());
+            LOG_ERROR("Failed to load \"%s\".", file_path.c_str());
             m_load_state = LoadState::Failed;
             return false;
+        }
+
+        // Prepare for mip generation (if needed).
+        if (m_flags & RHI_Texture_Mips)
+        {
+            // if it's native format, that mip count has already been loaded.
+            if (!is_native_format) 
+            {
+                // Deduce how many mips are required to scale down any dimension to 1px.
+                uint32_t width              = m_width;
+                uint32_t height             = m_height;
+                uint32_t smallest_dimension = 1;
+                while (width > smallest_dimension && height > smallest_dimension)
+                {
+                    width /= 2;
+                    height /= 2;
+                    CreateMip(0);
+                }
+            }
+
+            // Ensure the texture has the appropriate flags so that it can be used to generate mips on the GPU.
+            // Once the mips have been generated, those flags and the resources associated with them, will be removed.
+            m_flags |= RHI_Texture_PerMipViews;
+            m_flags |= RHI_Texture_Uav;
         }
 
         // Create GPU resource
         if (!CreateResourceGpu())
         {
-            LOG_ERROR("Failed to create shader resource for \"%s\".", GetResourceFilePathNative().c_str());
+            string path = is_native_format ? GetResourceFilePathNative() : GetResourceFilePath();
+            LOG_ERROR("Failed to create shader resource for \"%s\".", path.c_str());
             m_load_state = LoadState::Failed;
             return false;
         }
 
-        // Only clear texture bytes if that's an engine texture, if not, it's not serialized yet.
-        if (FileSystem::IsEngineTextureFile(path))
+        // If this was a native texture (means the data is already saved) and the GPU resource
+        // has been created, then clear the data as we don't need them anymore.
+        if (is_native_format)
         {
             m_data.clear();
             m_data.shrink_to_fit();
         }
 
-        // Compute memory usage
-        {
-            m_object_size_cpu = 0;
-            m_object_size_gpu = 0;
-            for (uint32_t array_index = 0; array_index < m_array_length; array_index++)
-            {
-                for (uint32_t mip_index = 0; mip_index < m_mip_count; mip_index++)
-                {
-                    const uint32_t mip_width    = m_width >> mip_index;
-                    const uint32_t mip_height   = m_height >> mip_index;
-
-                    if (HasData())
-                    {
-                        m_object_size_cpu += m_data[array_index].mips[mip_index].bytes.size() * sizeof(std::byte);
-                    }
-                    m_object_size_gpu += mip_width * mip_height * (m_bits_per_channel / 8);
-                }
-            }
-        }
+        ComputeMemoryUsage();
 
         m_load_state = LoadState::Completed;
+
+        // Request GPU based mip generation (if needed)
+        if (m_flags & RHI_Texture_Mips)
+        {
+            m_context->GetSubsystem<Renderer>()->RequestTextureMipGeneration(this);
+        }
 
         return true;
     }
@@ -227,11 +319,21 @@ namespace Spartan
         // Create mip
         RHI_Texture_Mip& mip = m_data[array_index].mips.emplace_back();
 
+        // Allocate memory even if there are no initial data.
+        // This is to prevent APIs from failing to create a texture with mips that don't point to any mip memory.
+        // This memory will be either overwritten from initial data or cleared after the mips are generated on the GPU.
+        uint32_t mip_index      = m_data[array_index].GetMipCount() - 1;
+        uint32_t width          = m_width >> mip_index;
+        uint32_t height         = m_height >> mip_index;
+        const size_t size_bytes = static_cast<size_t>(width) * static_cast<size_t>(height) * static_cast<size_t>(m_channel_count) * static_cast<size_t>(m_bits_per_channel / 8);
+        mip.bytes.resize(size_bytes);
+        mip.bytes.reserve(mip.bytes.size());
+
         // Update array index and mip count
         if (!m_data.empty())
         {
-            m_array_length    = static_cast<uint32_t>(m_data.size());
-            m_mip_count     = m_data[0].GetMipCount();
+            m_array_length = static_cast<uint32_t>(m_data.size());
+            m_mip_count    = m_data[0].GetMipCount();
         }
 
         return mip;
@@ -260,49 +362,9 @@ namespace Spartan
         return m_data[array_index];
     }
 
-    bool RHI_Texture::LoadFromFile_ForeignFormat(const string& file_path)
-    {
-        vector<string> file_paths = { file_path };
-
-        // If this is an array, try to find all the textures
-        if (m_resource_type == ResourceType::Texture2dArray)
-        {
-            string file_path_extension    = FileSystem::GetExtensionFromFilePath(file_path);
-            string file_path_no_extension = FileSystem::GetFilePathWithoutExtension(file_path);
-            string file_path_no_digit     = file_path_no_extension.substr(0, file_path_no_extension.size() - 1);
-
-            uint32_t index = 1;
-            string file_path_guess = file_path_no_digit + to_string(index) + file_path_extension;
-            while (FileSystem::Exists(file_path_guess))
-            {
-                file_paths.emplace_back(file_path_guess);
-                file_path_guess = file_path_no_digit + to_string(++index) + file_path_extension;
-            }
-        }
-
-        // Load texture
-        ImageImporter* image_importer = m_context->GetSubsystem<ResourceCache>()->GetImageImporter();
-        for (uint32_t slice_index = 0; slice_index < static_cast<uint32_t>(file_paths.size()); slice_index++)
-        {
-            if (!image_importer->Load(file_paths[slice_index], slice_index, this))
-                return false;
-        }
-
-        // Set resource file path so it can be used by the resource cache
-        SetResourceFilePath(file_path);
-
-        // Compress texture
-        if (m_flags & RHI_Texture_Loading_Compress)
-        {
-            //Compress(RHI_Format::RHI_Format_BC7);
-        }
-
-        return true;
-    }
-
     bool RHI_Texture::Compress(const RHI_Format format)
     {
-        bool has_alpha_channel = GetTransparency();
+        bool has_alpha_channel = IsTransparent();
 
         for (uint32_t index_array = 0; index_array < m_array_length; index_array++)
         { 
@@ -375,79 +437,122 @@ namespace Spartan
         return true;
     }
 
-    bool RHI_Texture::LoadFromFile_NativeFormat(const string& file_path)
+    void RHI_Texture::ComputeMemoryUsage()
     {
-        auto file = make_unique<FileStream>(file_path, FileStream_Read);
-        if (!file->IsOpen())
-            return false;
+        m_object_size_cpu = 0;
+        m_object_size_gpu = 0;
 
-        m_data.clear();
-        m_data.shrink_to_fit();
-
-        // Read data
-        uint32_t byte_count = file->ReadAs<uint32_t>();
-        m_array_length      = file->ReadAs<uint32_t>();
-        m_mip_count         = file->ReadAs<uint32_t>();
-        m_data.resize(m_array_length);
-        for (RHI_Texture_Slice& slice : m_data)
+        for (uint32_t array_index = 0; array_index < m_array_length; array_index++)
         {
-            slice.mips.resize(m_mip_count);
-            for (RHI_Texture_Mip& mip : slice.mips)
+            for (uint32_t mip_index = 0; mip_index < m_mip_count; mip_index++)
             {
-                file->Read(&mip.bytes);
+                const uint32_t mip_width  = m_width >> mip_index;
+                const uint32_t mip_height = m_height >> mip_index;
+
+                if (array_index < m_data.size())
+                {
+                    if (mip_index < m_data[array_index].mips.size())
+                    {
+                        m_object_size_cpu += m_data[array_index].mips[mip_index].bytes.size();
+                    }
+                }
+                m_object_size_gpu += mip_width * mip_height * m_channel_count * (m_bits_per_channel / 8);
             }
         }
-
-        // Read properties
-        file->Read(&m_bits_per_channel);
-        file->Read(&m_width);
-        file->Read(&m_height);
-        file->Read(reinterpret_cast<uint32_t*>(&m_format));
-        file->Read(&m_channel_count);
-        file->Read(&m_flags);
-        SetObjectId(file->ReadAs<uint32_t>());
-        SetResourceFilePath(file->ReadAs<string>());
-
-        return true;
     }
 
-    uint32_t RHI_Texture::GetChannelCountFromFormat(const RHI_Format format)
+    uint32_t RHI_Texture::FormatToBitsPerChannel(const RHI_Format format)
     {
+        uint32_t bits = 0;
+
         switch (format)
         {
-            case RHI_Format_R8_Unorm:               return 1;
-            case RHI_Format_R16_Uint:               return 1;
-            case RHI_Format_R16_Float:              return 1;
-            case RHI_Format_R32_Uint:               return 1;
-            case RHI_Format_R32_Float:              return 1;
-            case RHI_Format_R8G8_Unorm:             return 2;
-            case RHI_Format_R16G16_Float:           return 2;
-            case RHI_Format_R32G32_Float:           return 2;
-            case RHI_Format_R11G11B10_Float:        return 3;
-            case RHI_Format_R16G16B16A16_Snorm:     return 3;
-            case RHI_Format_R32G32B32_Float:        return 3;
-            case RHI_Format_R8G8B8A8_Unorm:         return 4;
-            case RHI_Format_R10G10B10A2_Unorm:      return 4;
-            case RHI_Format_R16G16B16A16_Float:     return 4;
-            case RHI_Format_R32G32B32A32_Float:     return 4;
-            case RHI_Format_D32_Float:              return 1;
-            case RHI_Format_D32_Float_S8X24_Uint:   return 2;
-            default:                                return 0;
+            case RHI_Format_R8_Unorm:           bits = 8;  break;
+            case RHI_Format_R8_Uint:            bits = 8;  break;
+            case RHI_Format_R16_Unorm:          bits = 16; break;
+            case RHI_Format_R16_Uint:           bits = 16; break;
+            case RHI_Format_R16_Float:          bits = 16; break;
+            case RHI_Format_R32_Uint:           bits = 32; break;
+            case RHI_Format_R32_Float:          bits = 32; break;
+            case RHI_Format_R8G8_Unorm:         bits = 8;  break;
+            case RHI_Format_R16G16_Float:       bits = 16; break;
+            case RHI_Format_R32G32_Float:       bits = 32; break;
+            case RHI_Format_R32G32B32_Float:    bits = 32; break;
+            case RHI_Format_R8G8B8A8_Unorm:     bits = 8;  break;
+            case RHI_Format_R16G16B16A16_Unorm: bits = 16; break;
+            case RHI_Format_R16G16B16A16_Snorm: bits = 16; break;
+            case RHI_Format_R16G16B16A16_Float: bits = 16; break;
+            case RHI_Format_R32G32B32A32_Float: bits = 32; break;
         }
+
+        SP_ASSERT(bits != 0);
+
+        return bits;
     }
 
-    uint32_t RHI_Texture::GetByteCount()
+    uint32_t RHI_Texture::FormatToChannelCount(const RHI_Format format)
     {
-        uint32_t byte_count = 0;
+        uint32_t channel_count = 0;
 
-        for (const RHI_Texture_Slice& slice : m_data)
+        switch (format)
         {
-            for (const RHI_Texture_Mip& mip : slice.mips)
-            {
-                byte_count += static_cast<uint32_t>(mip.bytes.size());
-            }
+            case RHI_Format_R8_Unorm:           channel_count = 1; break;
+            case RHI_Format_R8_Uint:            channel_count = 1; break;
+            case RHI_Format_R16_Unorm:          channel_count = 1; break;
+            case RHI_Format_R16_Uint:           channel_count = 1; break;
+            case RHI_Format_R16_Float:          channel_count = 1; break;
+            case RHI_Format_R32_Uint:           channel_count = 1; break;
+            case RHI_Format_R32_Float:          channel_count = 1; break;
+            case RHI_Format_R8G8_Unorm:         channel_count = 2; break;
+            case RHI_Format_R16G16_Float:       channel_count = 2; break;
+            case RHI_Format_R32G32_Float:       channel_count = 2; break;
+            case RHI_Format_R11G11B10_Float:    channel_count = 3; break;
+            case RHI_Format_R32G32B32_Float:    channel_count = 3; break;
+            case RHI_Format_R8G8B8A8_Unorm:     channel_count = 4; break;
+            case RHI_Format_R10G10B10A2_Unorm:  channel_count = 4; break;
+            case RHI_Format_R16G16B16A16_Unorm: channel_count = 4; break;
+            case RHI_Format_R16G16B16A16_Snorm: channel_count = 4; break;
+            case RHI_Format_R16G16B16A16_Float: channel_count = 4; break;
+            case RHI_Format_R32G32B32A32_Float: channel_count = 4; break;
         }
 
-        return byte_count;
+        SP_ASSERT(channel_count != 0);
+
+        return channel_count;
+    }
+
+    std::string RHI_Texture::FormatToString(const RHI_Format result)
+    {
+        std::string format = nullptr;
+
+        switch (result)
+        {
+            case RHI_Format_R8_Unorm:             format = "RHI_Format_R8_Unorm";             break;
+            case RHI_Format_R8_Uint:              format = "RHI_Format_R8_Uint";              break;
+            case RHI_Format_R16_Unorm:            format = "RHI_Format_R16_Unorm";            break;
+            case RHI_Format_R16_Uint:             format = "RHI_Format_R16_Uint";             break;
+            case RHI_Format_R16_Float:            format = "RHI_Format_R16_Float";            break;
+            case RHI_Format_R32_Uint:             format = "RHI_Format_R32_Uint";             break;
+            case RHI_Format_R32_Float:            format = "RHI_Format_R32_Float";            break;
+            case RHI_Format_R8G8_Unorm:           format = "RHI_Format_R8G8_Unorm";           break;
+            case RHI_Format_R16G16_Float:         format = "RHI_Format_R16G16_Float";         break;
+            case RHI_Format_R32G32_Float:         format = "RHI_Format_R32G32_Float";         break;
+            case RHI_Format_R11G11B10_Float:      format = "RHI_Format_R11G11B10_Float";      break;
+            case RHI_Format_R32G32B32_Float:      format = "RHI_Format_R32G32B32_Float";      break;
+            case RHI_Format_R8G8B8A8_Unorm:       format = "RHI_Format_R8G8B8A8_Unorm";       break;
+            case RHI_Format_R10G10B10A2_Unorm:    format = "RHI_Format_R10G10B10A2_Unorm";    break;
+            case RHI_Format_R16G16B16A16_Unorm:   format = "RHI_Format_R16G16B16A16_Unorm";   break;
+            case RHI_Format_R16G16B16A16_Snorm:   format = "RHI_Format_R16G16B16A16_Snorm";   break;
+            case RHI_Format_R16G16B16A16_Float:   format = "RHI_Format_R16G16B16A16_Float";   break;
+            case RHI_Format_R32G32B32A32_Float:   format = "RHI_Format_R32G32B32A32_Float";   break;
+            case RHI_Format_D32_Float:            format = "RHI_Format_D32_Float";            break;
+            case RHI_Format_D32_Float_S8X24_Uint: format = "RHI_Format_D32_Float_S8X24_Uint"; break;
+            case RHI_Format_BC7:                  format = "RHI_Format_BC7";                  break;
+            case RHI_Format_Undefined:            format = "RHI_Format_Undefined";            break;
+        }
+
+        SP_ASSERT(!format.empty());
+
+        return format;
     }
 }

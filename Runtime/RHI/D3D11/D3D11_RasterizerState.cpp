@@ -73,12 +73,12 @@ namespace Spartan
         desc.ScissorEnable          = scissor_enabled;
 
         // Create rasterizer state
-        auto rasterizer_state    = static_cast<ID3D11RasterizerState*>(m_buffer);
-        m_initialized = d3d11_utility::error_check(rhi_device->GetContextRhi()->device->CreateRasterizerState(&desc, reinterpret_cast<ID3D11RasterizerState**>(&m_buffer)));
+        auto rasterizer_state    = static_cast<ID3D11RasterizerState*>(m_resource);
+        m_initialized = d3d11_utility::error_check(rhi_device->GetContextRhi()->device->CreateRasterizerState(&desc, reinterpret_cast<ID3D11RasterizerState**>(&m_resource)));
     }
 
     RHI_RasterizerState::~RHI_RasterizerState()
     {
-        d3d11_utility::release(static_cast<ID3D11RasterizerState*>(m_buffer));
+        d3d11_utility::release<ID3D11RasterizerState>(m_resource);
     }
 }

@@ -685,7 +685,7 @@ namespace Spartan
         });
     }
 
-    const shared_ptr<RHI_Texture>& Renderer::GetEnvironmentTexture()
+	const shared_ptr<RHI_Texture>& Renderer::GetEnvironmentTexture()
     {
         return m_tex_environment;
     }
@@ -822,9 +822,36 @@ namespace Spartan
         return RHI_Context::texture_2d_dimension_max;
     }
 
-    void Renderer::SetGlobalShaderObjectTransform(RHI_CommandList* cmd_list, const Math::Matrix& transform)
+    void Renderer::SetCbUberTransform(RHI_CommandList* cmd_list, const Matrix& transform)
     {
         m_cb_uber_cpu.transform = transform;
         Update_Cb_Uber(cmd_list);
     }
+
+    void Renderer::SetCbUberColor(RHI_CommandList* cmd_list, const Vector4& color)
+    {
+        m_cb_uber_cpu.color = color;
+        Update_Cb_Uber(cmd_list);
+    }
+
+    void Renderer::RequestTextureMipGeneration(RHI_Texture* texture)
+    {
+        SP_ASSERT(texture != nullptr);
+
+        // Ensure the texture requires mips
+        SP_ASSERT(texture->HasMips());
+
+        // Ensure that the texture has per mip views since they are required for GPU downsampling.
+        SP_ASSERT(texture->HasPerMipViews());
+
+        // Wait
+        while (m_is_generating_mips)
+        {
+            LOG_INFO("Waiting for the renderer to finish the currently active mip generation pass...");
+            this_thread::sleep_for(chrono::milliseconds(16));
+        }
+
+        m_textures_mip_generation.push_back(texture);
+    }
+
 }

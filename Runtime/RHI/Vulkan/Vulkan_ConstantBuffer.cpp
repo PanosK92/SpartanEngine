@@ -37,7 +37,7 @@ namespace Spartan
 {
     void RHI_ConstantBuffer::_destroy()
     {
-        if (!m_buffer)
+        if (!m_resource)
             return;
 
         // Make sure that no descriptor sets refers to this buffer.
@@ -60,14 +60,14 @@ namespace Spartan
         }
 
         // Destroy
-        vulkan_utility::buffer::destroy(m_buffer);
+        vulkan_utility::buffer::destroy(m_resource);
     }
 
     RHI_ConstantBuffer::RHI_ConstantBuffer(const std::shared_ptr<RHI_Device>& rhi_device, const string& name, bool is_dynamic /*= false*/)
     {
-        m_rhi_device    = rhi_device;
-        m_object_name   = name;
-        m_is_dynamic    = is_dynamic;
+        m_rhi_device = rhi_device;
+        m_object_name = name;
+        m_is_dynamic = is_dynamic;
     }
 
     bool RHI_ConstantBuffer::_create()
@@ -90,7 +90,7 @@ namespace Spartan
         VkMemoryPropertyFlags flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
         flags |= !m_persistent_mapping ? VK_MEMORY_PROPERTY_HOST_COHERENT_BIT : 0;
         bool written_frequently = true;
-        VmaAllocation allocation = vulkan_utility::buffer::create(m_buffer, m_object_size_gpu, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, flags, written_frequently, nullptr);
+        VmaAllocation allocation = vulkan_utility::buffer::create(m_resource, m_object_size_gpu, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, flags, written_frequently, nullptr);
         if (!allocation)
         {
             LOG_ERROR("Failed to allocate buffer");
@@ -100,7 +100,7 @@ namespace Spartan
         m_allocation = static_cast<void*>(allocation);
 
         // Set debug name
-        vulkan_utility::debug::set_name(static_cast<VkBuffer>(m_buffer), m_object_name.c_str());
+        vulkan_utility::debug::set_name(static_cast<VkBuffer>(m_resource), m_object_name.c_str());
 
         return true;
     }

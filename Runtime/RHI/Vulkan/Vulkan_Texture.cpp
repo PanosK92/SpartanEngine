@@ -61,18 +61,18 @@ namespace Spartan
             }
         }
 
-        vulkan_utility::debug::set_name(static_cast<VkImage>(texture->Get_Resource()), name.c_str());
+        vulkan_utility::debug::set_name(static_cast<VkImage>(texture->GetResource()), name.c_str());
 
         if (texture->IsSrv())
         {
-            vulkan_utility::debug::set_name(static_cast<VkImageView>(texture->Get_Resource_View_Srv()), name.c_str());
+            vulkan_utility::debug::set_name(static_cast<VkImageView>(texture->GetResource_View_Srv()), name.c_str());
         }
 
-        if (texture->HasPerMipView())
+        if (texture->HasPerMipViews())
         {
             for (uint32_t i = 0; i < texture->GetMipCount(); i++)
             {
-                vulkan_utility::debug::set_name(static_cast<VkImageView>(texture->Get_Resource_Views_Srv(i)), name.c_str());
+                vulkan_utility::debug::set_name(static_cast<VkImageView>(texture->GetResource_Views_Srv(i)), name.c_str());
             }
         }
     }
@@ -165,7 +165,7 @@ namespace Spartan
             vkCmdCopyBufferToImage(
                 cmd_buffer,
                 static_cast<VkBuffer>(staging_buffer),
-                static_cast<VkImage>(texture->Get_Resource()),
+                static_cast<VkImage>(texture->GetResource()),
                 vulkan_image_layout[static_cast<uint8_t>(layout)],
                 static_cast<uint32_t>(regions.size()),
                 regions.data()
@@ -218,7 +218,7 @@ namespace Spartan
         // Verify the texture has per mip views (if a specific mip was requested)
         if (individual_mip_requested)
         {
-            SP_ASSERT(HasPerMipView());
+            SP_ASSERT(HasPerMipViews());
         }
 
         // Verify that we didn't do anything wrong in the above calculations
@@ -295,7 +295,7 @@ namespace Spartan
                 if (!vulkan_utility::image::view::create(m_resource, m_resource_view_srv, this, 0, m_array_length, 0, m_mip_count, IsDepthFormat(), false))
                     return false;
 
-                if (HasPerMipView())
+                if (HasPerMipViews())
                 {
                     for (uint32_t i = 0; i < m_mip_count; i++)
                     {
@@ -330,12 +330,10 @@ namespace Spartan
         return true;
     }
 
-    void RHI_Texture::DestroyResourceGpu()
+    void RHI_Texture::DestroyResourceGpu(const bool destroy_main, const bool destroy_per_view)
     {
-        if (!m_rhi_device || !m_rhi_device->IsInitialised())
-        {
-            LOG_ERROR("Invalid RHI Device.");
-        }
+        SP_ASSERT(m_rhi_device != nullptr);
+        SP_ASSERT(m_rhi_device->IsInitialised());
 
         // Make sure that no descriptor sets refers to this texture
         if (IsSrv())
@@ -360,18 +358,28 @@ namespace Spartan
         // De-allocate everything
         m_data.clear();
 
-        vulkan_utility::image::view::destroy(m_resource_view_srv);
-
-        for (uint32_t i = 0; i < m_mip_count; i++)
+        if (destroy_main)
         {
-            vulkan_utility::image::view::destroy(m_resource_views_srv[i]);
+            vulkan_utility::image::view::destroy(m_resource_view_srv);
+
+            for (uint32_t i = 0; i < rhi_max_render_target_count; i++)
+            {
+                vulkan_utility::image::view::destroy(m_resource_view_depthStencil[i]);
+                vulkan_utility::image::view::destroy(m_resource_view_renderTarget[i]);
+            }
         }
 
-        for (uint32_t i = 0; i < rhi_max_render_target_count; i++)
+        if (destroy_per_view)
         {
-            vulkan_utility::image::view::destroy(m_resource_view_depthStencil[i]);
-            vulkan_utility::image::view::destroy(m_resource_view_renderTarget[i]);
+            for (uint32_t i = 0; i < m_mip_count; i++)
+            {
+                vulkan_utility::image::view::destroy(m_resource_views_srv[i]);
+            }
         }
-        vulkan_utility::image::destroy(this);
+
+        if (destroy_main)
+        {
+            vulkan_utility::image::destroy(this);
+        }
     }
 }

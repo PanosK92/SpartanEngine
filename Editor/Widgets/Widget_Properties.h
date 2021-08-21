@@ -82,7 +82,7 @@ private:
     void Drop_AutoAddComponents() const;
 
     // Color pickers
-    std::unique_ptr<ButtonColorPicker> m_colorPicker_material;
+    std::unique_ptr<ButtonColorPicker> m_material_color_picker;
     std::unique_ptr<ButtonColorPicker> m_colorPicker_light;
     std::unique_ptr<ButtonColorPicker> m_colorPicker_camera;
 };

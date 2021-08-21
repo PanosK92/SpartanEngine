@@ -19,7 +19,9 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
+//= INCLUDES =========
 #include "Common.hlsl"
+//====================
 
 struct PS_INPUT
 {
@@ -39,5 +41,15 @@ PS_INPUT mainVS(Vertex_Pos2dUvColor input)
 
 float4 mainPS(PS_INPUT input) : SV_Target
 {
-    return input.color * tex.Sample(sampler_bilinear_wrap, input.uv);
+    float4 color_vertex  = input.color;
+    float4 color_texture = tex.Sample(sampler_bilinear_wrap, input.uv);
+
+    // Texture only has an R channel, copy it over to the other
+    // channels so that the user doesn't see a red tinted texture.
+    if (g_color.r != 0 && g_color.g == 0)
+    {
+        color_texture.rgb = color_texture.rrr;
+    }
+
+    return color_vertex * color_texture;
 }

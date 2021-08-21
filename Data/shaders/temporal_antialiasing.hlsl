@@ -19,68 +19,13 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===========
+//= INCLUDES =========
 #include "common.hlsl"
-#include "velocity.hlsl"
-//======================
+//====================
 
-float3 reinhard(float3 hdr, float k = 1.0f)
-{
-    return hdr / (hdr + k);
-}
-
-float3 reinhard_inverse(float3 sdr, float k = 1.0)
-{
-    return k * sdr / (k - sdr);
-}
-
-// From "Temporal Reprojection Anti-Aliasing"
-// https://github.com/playdeadgames/temporal
-float3 clip_aabb(float3 aabb_min, float3 aabb_max, float3 p, float3 q, float box_size)
-{
-    float3 r = q - p;
-    float3 rmax = (aabb_max - p.xyz) * box_size;
-    float3 rmin = (aabb_min - p.xyz) * box_size;
-
-    if (r.x > rmax.x + FLT_MIN)
-        r *= (rmax.x / r.x);
-    if (r.y > rmax.y + FLT_MIN)
-        r *= (rmax.y / r.y);
-    if (r.z > rmax.z + FLT_MIN)
-        r *= (rmax.z / r.z);
-
-    if (r.x < rmin.x - FLT_MIN)
-        r *= (rmin.x / r.x);
-    if (r.y < rmin.y - FLT_MIN)
-        r *= (rmin.y / r.y);
-    if (r.z < rmin.z - FLT_MIN)
-        r *= (rmin.z / r.z);
-
-    return p + r;
-}
-
-// Clip history to the neighbourhood of the current sample
-float3 clip_history(uint2 thread_id, uint group_index, uint3 group_id, Texture2D tex_input, float3 color_history, float2 velocity)
-{
-    float3 ctl = tex_input[thread_id + uint2(-1, -1)].rgb;
-    float3 ctc = tex_input[thread_id + uint2(0, -1)].rgb;
-    float3 ctr = tex_input[thread_id + uint2(1, -1)].rgb;
-    float3 cml = tex_input[thread_id + uint2(-1, 0)].rgb;
-    float3 cmc = tex_input[thread_id].rgb;
-    float3 cmr = tex_input[thread_id + uint2(1, 0)].rgb;
-    float3 cbl = tex_input[thread_id + uint2(-1, 1)].rgb;
-    float3 cbc = tex_input[thread_id + uint2(0, 1)].rgb;
-    float3 cbr = tex_input[thread_id + uint2(1, 1)].rgb;
-
-    float3 color_min = min(ctl, min(ctc, min(ctr, min(cml, min(cmc, min(cmr, min(cbl, min(cbc, cbr))))))));
-    float3 color_max = max(ctl, max(ctc, max(ctr, max(cml, max(cmc, max(cmr, max(cbl, max(cbc, cbr))))))));
-    float3 color_avg = (ctl + ctc + ctr + cml + cmc + cmr + cbl + cbc + cbr) / 9.0f;
-
-    const float box_size = lerp(0.5f, 1.0f, smoothstep(0.02f, 0.0f, length(velocity)));
-    
-    return saturate_16(clip_aabb(color_min, color_max, clamp(color_avg, color_min, color_max), color_history, box_size));
-}
-
+/*------------------------------------------------------------------------------
+                              HISTORY SAMPLING
+------------------------------------------------------------------------------*/
 float3 sample_catmull_rom_9(Texture2D stex, float2 uv, float2 resolution)
 {
     // Source: https://gist.github.com/TheRealMJP/c83b8c0f46b63f3a88a5986f4fa982b1
@@ -90,7 +35,7 @@ float3 sample_catmull_rom_9(Texture2D stex, float2 uv, float2 resolution)
     // down the sample location to get the exact center of our "starting" texel. The starting texel will be at
     // location [1, 1] in the grid, where [0, 0] is the top left corner.
     float2 samplePos = uv * resolution;
-    float2 texPos1   = floor(samplePos - 0.5f) + 0.5f;
+    float2 texPos1 = floor(samplePos - 0.5f) + 0.5f;
 
     // Compute the fractional offset from our starting texel to our original sample location, which we'll
     // feed into the Catmull-Rom spline function to get our filter weights.
@@ -114,8 +59,8 @@ float3 sample_catmull_rom_9(Texture2D stex, float2 uv, float2 resolution)
     float2 texPos3 = texPos1 + 2.0f;
     float2 texPos12 = texPos1 + offset12;
 
-    texPos0  /= resolution;
-    texPos3  /= resolution;
+    texPos0 /= resolution;
+    texPos3 /= resolution;
     texPos12 /= resolution;
 
     float3 result = float3(0.0f, 0.0f, 0.0f);
@@ -135,6 +80,68 @@ float3 sample_catmull_rom_9(Texture2D stex, float2 uv, float2 resolution)
     return max(result, 0.0f);
 }
 
+/*------------------------------------------------------------------------------
+                              HISTORY CLIPPING
+------------------------------------------------------------------------------*/
+
+// Based on "Temporal Reprojection Anti-Aliasing" - https://github.com/playdeadgames/temporal
+float3 clip_aabb(float3 aabb_min, float3 aabb_max, float3 p, float3 q)
+{
+    float3 r = q - p;
+    float3 rmax = (aabb_max - p.xyz);
+    float3 rmin = (aabb_min - p.xyz);
+
+    if (r.x > rmax.x + FLT_MIN)
+        r *= (rmax.x / r.x);
+    if (r.y > rmax.y + FLT_MIN)
+        r *= (rmax.y / r.y);
+    if (r.z > rmax.z + FLT_MIN)
+        r *= (rmax.z / r.z);
+
+    if (r.x < rmin.x - FLT_MIN)
+        r *= (rmin.x / r.x);
+    if (r.y < rmin.y - FLT_MIN)
+        r *= (rmin.y / r.y);
+    if (r.z < rmin.z - FLT_MIN)
+        r *= (rmin.z / r.z);
+
+    return p + r;
+}
+
+// Clip history to the neighbourhood of the current sample
+float3 clip_history(uint2 thread_id, uint group_index, uint3 group_id, Texture2D tex_input, float3 color_history, float2 velocity_closest)
+{
+    // Sample a 3x3 neighbourhood
+    float3 ctl = tex_input[thread_id + uint2(-1, -1)].rgb;
+    float3 ctc = tex_input[thread_id + uint2(0, -1)].rgb;
+    float3 ctr = tex_input[thread_id + uint2(1, -1)].rgb;
+    float3 cml = tex_input[thread_id + uint2(-1, 0)].rgb;
+    float3 cmc = tex_input[thread_id].rgb;
+    float3 cmr = tex_input[thread_id + uint2(1, 0)].rgb;
+    float3 cbl = tex_input[thread_id + uint2(-1, 1)].rgb;
+    float3 cbc = tex_input[thread_id + uint2(0, 1)].rgb;
+    float3 cbr = tex_input[thread_id + uint2(1, 1)].rgb;
+
+    // Compute min and max
+    float3 color_avg  = (ctl + ctc + ctr + cml + cmc + cmr + cbl + cbc + cbr) / 9.0f;
+    float3 color_avg2 = ((ctl * ctl) + (ctc * ctc) + (ctr * ctr) + (cml * cml) + (cmc * cmc) + (cmr * cmr) + (cbl * cbl) + (cbc * cbc) + (cbr * cbr)) / 9.0f;
+    float3 dev        = sqrt(abs(color_avg2 - (color_avg * color_avg)));
+    float box_size    = lerp(0.5f, 2.5f, smoothstep(0.02f, 0.0f, length(velocity_closest))); // Scale box size based on velocity
+    float3 color_min  = color_avg - dev * box_size;
+    float3 color_max  = color_avg + dev * box_size;
+
+    // Variance clipping
+    float3 color = clip_aabb(color_min, color_max, clamp(color_history, color_min, color_max), color_history);
+
+    // Clamp to prevent NaNs
+    color = saturate_16(color);
+
+    return color;
+}
+
+/*------------------------------------------------------------------------------
+                                UPSAMPLING
+------------------------------------------------------------------------------*/
 static const int2 kOffsets3x3[9] =
 {
     int2(-1, -1),

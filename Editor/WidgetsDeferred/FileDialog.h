@@ -43,7 +43,7 @@ enum FileDialog_Operation
 enum FileDialog_Filter
 {
     FileDialog_Filter_All,
-    FileDialog_Filter_Scene,
+    FileDialog_Filter_World,
     FileDialog_Filter_Model
 };
 
@@ -160,19 +160,19 @@ class FileDialogItem
 public:
     FileDialogItem(const std::string& path, const Thumbnail& thumbnail)
     {
-        m_path          = path;
-        m_thumbnail     = thumbnail;
-        m_id            = Spartan::SpartanObject::GenerateObjectId();
-        m_isDirectory   = Spartan::FileSystem::IsDirectory(path);
-        m_label         = Spartan::FileSystem::GetFileNameFromFilePath(path);
+        m_path        = path;
+        m_thumbnail   = thumbnail;
+        m_id          = Spartan::SpartanObject::GenerateObjectId();
+        m_isDirectory = Spartan::FileSystem::IsDirectory(path);
+        m_label       = Spartan::FileSystem::GetFileNameFromFilePath(path);
     }
 
-    const auto& GetPath()               const { return m_path; }
-    const auto& GetLabel()              const { return m_label; }
-    auto GetId()                        const { return m_id; }
-    Spartan::RHI_Texture* GetTexture()  const { return IconProvider::Get().GetTextureByThumbnail(m_thumbnail); }
-    auto IsDirectory()                  const { return m_isDirectory; }
-    auto GetTimeSinceLastClickMs()      const { return static_cast<float>(m_time_since_last_click.count()); }
+    const auto& GetPath()              const { return m_path; }
+    const auto& GetLabel()             const { return m_label; }
+    auto GetId()                       const { return m_id; }
+    Spartan::RHI_Texture* GetTexture() const { return IconProvider::Get().GetTextureByThumbnail(m_thumbnail); }
+    auto IsDirectory()                 const { return m_isDirectory; }
+    auto GetTimeSinceLastClickMs()     const { return static_cast<float>(m_time_since_last_click.count()); }
 
     void Clicked()    
     {
@@ -197,8 +197,8 @@ public:
     FileDialog(Spartan::Context* context, bool standalone_window, FileDialog_Type type, FileDialog_Operation operation, FileDialog_Filter filter);
 
     // Type & Filter
-    auto GetType()      const { return m_type; }
-    auto GetFilter()    const { return m_filter; }
+    auto GetType()   const { return m_type; }
+    auto GetFilter() const { return m_filter; }
 
     // Operation
     auto GetOperation() const { return m_operation; }
@@ -207,8 +207,8 @@ public:
     // Shows the dialog and returns true if a a selection was made
     bool Show(bool* is_visible, std::string* directory = nullptr, std::string* file_path = nullptr);
 
-    void SetCallbackOnItemClicked(const std::function<void(const std::string&)>& callback)            { m_callback_on_item_clicked = callback; }
-    void SetCallbackOnItemDoubleClicked(const std::function<void(const std::string&)>& callback)    { m_callback_on_item_double_clicked = callback; }
+    void SetCallbackOnItemClicked(const std::function<void(const std::string&)>& callback)       { m_callback_on_item_clicked = callback; }
+    void SetCallbackOnItemDoubleClicked(const std::function<void(const std::string&)>& callback) { m_callback_on_item_double_clicked = callback; }
 
 private:
     void ShowTop(bool* is_visible);
@@ -225,10 +225,10 @@ private:
     void EmptyAreaContextMenu();
 
     // Options
-    Spartan::Math::Vector2 m_position   = Spartan::Math::Vector2(-1.0f, -1.0f);
-    const bool m_drop_shadow            = true;
-    const float m_item_size_min         = 50.0f;
-    const float m_item_size_max         = 200.0f;
+    Spartan::Math::Vector2 m_position = Spartan::Math::Vector2(-1.0f, -1.0f);
+    const bool m_drop_shadow          = true;
+    const float m_item_size_min       = 50.0f;
+    const float m_item_size_max       = 200.0f;
     const Spartan::Math::Vector4 m_content_background_color = Spartan::Math::Vector4(0.0f, 0.0f, 0.0f, 50.0f);
 
     // Flags

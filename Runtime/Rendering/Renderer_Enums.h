@@ -26,10 +26,10 @@ namespace Spartan
     // Constant buffer bindings
     enum class RendererBindings_Cb
     {
-        frame       = 0,
-        uber        = 1,
-        light       = 2,
-        material    = 3
+        frame    = 0,
+        uber     = 1,
+        light    = 2,
+        material = 3
     };
 
     // SRV bindings
@@ -46,30 +46,30 @@ namespace Spartan
         material_mask      = 7,
 
         // G-buffer
-        gbuffer_albedo     = 8,
-        gbuffer_normal     = 9,
-        gbuffer_material   = 10,
-        gbuffer_velocity   = 11,
-        gbuffer_depth      = 12,
+        gbuffer_albedo   = 8,
+        gbuffer_normal   = 9,
+        gbuffer_material = 10,
+        gbuffer_velocity = 11,
+        gbuffer_depth    = 12,
 
         // Lighting
-        light_diffuse               = 13,
-        light_diffuse_transparent   = 14,
-        light_specular              = 15,
-        light_specular_transparent  = 16,
-        light_volumetric            = 17,
+        light_diffuse              = 13,
+        light_diffuse_transparent  = 14,
+        light_specular             = 15,
+        light_specular_transparent = 16,
+        light_volumetric           = 17,
 
         // Light depth/color maps
-        light_directional_depth    = 18,
-        light_directional_color    = 19,
-        light_point_depth          = 20,
-        light_point_color          = 21,
-        light_spot_depth           = 22,
-        light_spot_color           = 23,
+        light_directional_depth = 18,
+        light_directional_color = 19,
+        light_point_depth       = 20,
+        light_point_color       = 21,
+        light_spot_depth        = 22,
+        light_spot_color        = 23,
 
         // Noise
-        noise_normal    = 24,
-        noise_blue      = 25,
+        noise_normal = 24,
+        noise_blue   = 25,
 
         // Misc
         lutIbl      = 26,
@@ -85,14 +85,14 @@ namespace Spartan
     // UAV Bindings
     enum class RendererBindings_Uav
     {
-        r           = 0,
-        rg          = 1,
-        rgb         = 2,
-        rgb2        = 3,
-        rgb3        = 4,
-        rgba        = 5,
-        rgba2       = 6,
-        rgba_mips   = 7
+        r         = 0,
+        rg        = 1,
+        rgb       = 2,
+        rgb2      = 3,
+        rgb3      = 4,
+        rgba      = 5,
+        rgba2     = 6,
+        rgba_mips = 7
     };
 
     // Structured buffer bindings
@@ -186,32 +186,32 @@ namespace Spartan
     // Renderer/graphics options
     enum Renderer_Option : uint64_t
     {
-        Render_Debug_Aabb                                               = 1 << 0,
-        Render_Debug_PickingRay                                         = 1 << 1,
-        Render_Debug_Grid                                               = 1 << 2,
-        Render_Debug_Transform                                          = 1 << 3,
-        Render_Debug_SelectionOutline                                   = 1 << 4,
-        Render_Debug_Lights                                             = 1 << 5,
-        Render_Debug_PerformanceMetrics                                 = 1 << 6,
-        Render_Debug_Physics                                            = 1 << 7,
-        Render_Debug_Wireframe                                          = 1 << 8,
-        Render_Bloom                                                    = 1 << 9,
-        Render_VolumetricFog                                            = 1 << 10,
-        Render_AntiAliasing_Taa                                         = 1 << 11,
-        Render_AntiAliasing_Fxaa                                        = 1 << 12,
-        Render_Ssao                                                     = 1 << 13,
-        Render_ScreenSpaceShadows                                       = 1 << 14,
-        Render_ScreenSpaceReflections                                   = 1 << 15,
-        Render_MotionBlur                                               = 1 << 16,
-        Render_DepthOfField                                             = 1 << 17,
-        Render_FilmGrain                                                = 1 << 18,
-        Render_Sharpening_AMD_FidelityFX_ContrastAdaptiveSharpening     = 1 << 19,
-        Render_ChromaticAberration                                      = 1 << 20,
-        Render_Dithering                                                = 1 << 21,
-        Render_ReverseZ                                                 = 1 << 22,
-        Render_DepthPrepass                                             = 1 << 23,
-        Render_Upsample_TAA                                             = 1 << 24,
-        Render_Upsample_AMD_FidelityFX_SuperResolution                  = 1 << 25
+        Render_Debug_Aabb                                           = 1 << 0,
+        Render_Debug_PickingRay                                     = 1 << 1,
+        Render_Debug_Grid                                           = 1 << 2,
+        Render_Debug_Transform                                      = 1 << 3,
+        Render_Debug_SelectionOutline                               = 1 << 4,
+        Render_Debug_Lights                                         = 1 << 5,
+        Render_Debug_PerformanceMetrics                             = 1 << 6,
+        Render_Debug_Physics                                        = 1 << 7,
+        Render_Debug_Wireframe                                      = 1 << 8,
+        Render_Bloom                                                = 1 << 9,
+        Render_VolumetricFog                                        = 1 << 10,
+        Render_AntiAliasing_Taa                                     = 1 << 11,
+        Render_AntiAliasing_Fxaa                                    = 1 << 12,
+        Render_Ssao                                                 = 1 << 13,
+        Render_ScreenSpaceShadows                                   = 1 << 14,
+        Render_ScreenSpaceReflections                               = 1 << 15,
+        Render_MotionBlur                                           = 1 << 16,
+        Render_DepthOfField                                         = 1 << 17,
+        Render_FilmGrain                                            = 1 << 18,
+        Render_Sharpening_AMD_FidelityFX_ContrastAdaptiveSharpening = 1 << 19,
+        Render_ChromaticAberration                                  = 1 << 20,
+        Render_Dithering                                            = 1 << 21,
+        Render_ReverseZ                                             = 1 << 22,
+        Render_DepthPrepass                                         = 1 << 23,
+        Render_Upsample_TAA                                         = 1 << 24,
+        Render_Upsample_AMD_FidelityFX_SuperResolution              = 1 << 25
     };
 
     // Renderer/graphics options values
