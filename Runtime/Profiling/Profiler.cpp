@@ -156,7 +156,7 @@ namespace Spartan
         {
             AcquireGpuData();
 
-            // Create a string version of the rhi metrics
+            // Create a string version of the RHI metrics
             if (m_renderer->GetOptions() & Render_Debug_PerformanceMetrics)
             {
                 UpdateRhiMetricsString();
@@ -292,8 +292,8 @@ namespace Spartan
 
     void Profiler::UpdateRhiMetricsString()
     {
-        const auto texture_count    = m_resource_manager->GetResourceCount(ResourceType::Texture) + m_resource_manager->GetResourceCount(ResourceType::Texture2d) + m_resource_manager->GetResourceCount(ResourceType::TextureCube);
-        const auto material_count   = m_resource_manager->GetResourceCount(ResourceType::Material);
+        const uint32_t texture_count  = m_resource_manager->GetResourceCount(ResourceType::Texture) + m_resource_manager->GetResourceCount(ResourceType::Texture2d) + m_resource_manager->GetResourceCount(ResourceType::TextureCube);
+        const uint32_t material_count = m_resource_manager->GetResourceCount(ResourceType::Material);
 
         static const char* text =
             // Times

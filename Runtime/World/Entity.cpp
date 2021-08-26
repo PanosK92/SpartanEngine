@@ -145,7 +145,7 @@ namespace Spartan
             return;
 
         // call component Update()
-        for (const auto& component : m_components)
+        for (shared_ptr<IComponent>& component : m_components)
         {
             component->OnTick(delta_time);
         }
@@ -164,13 +164,13 @@ namespace Spartan
         // COMPONENTS
         {
             stream->Write(static_cast<uint32_t>(m_components.size()));
-            for (const auto& component : m_components)
+            for (shared_ptr<IComponent>& component : m_components)
             {
                 stream->Write(static_cast<uint32_t>(component->GetType()));
                 stream->Write(component->GetObjectId());
             }
 
-            for (const auto& component : m_components)
+            for (shared_ptr<IComponent>& component : m_components)
             {
                 component->Serialize(stream);
             }
@@ -178,19 +178,19 @@ namespace Spartan
 
         // CHILDREN
         {
-            auto children = GetTransform()->GetChildren();
+            vector<Transform*>& children = GetTransform()->GetChildren();
 
             // Children count
             stream->Write(static_cast<uint32_t>(children.size()));
 
             // Children IDs
-            for (const auto& child : children)
+            for (Transform* child : children)
             {
                 stream->Write(child->GetObjectId());
             }
 
             // Children
-            for (const auto& child : children)
+            for (Transform* child : children)
             {
                 if (child->GetEntity())
                 {
@@ -223,8 +223,8 @@ namespace Spartan
                 uint32_t type   = static_cast<uint32_t>(ComponentType::Unknown);
                 uint32_t id     = 0;
 
-                stream->Read(&type);    // load component's type
-                stream->Read(&id);        // load component's id
+                stream->Read(&type); // load component's type
+                stream->Read(&id);   // load component's id
 
                 auto component = AddComponent(static_cast<ComponentType>(type), id);
             }
@@ -232,7 +232,7 @@ namespace Spartan
             // Sometimes there are component dependencies, e.g. a collider that needs
             // to set it's shape to a rigibody. So, it's important to first create all 
             // the components (like above) and then deserialize them (like here).
-            for (const auto& component : m_components)
+            for (shared_ptr<IComponent>& component : m_components)
             {
                 component->Deserialize(stream);
             }
@@ -278,25 +278,25 @@ namespace Spartan
     IComponent* Entity::AddComponent(const ComponentType type, uint32_t id /*= 0*/)
     {
         // This is the only hardcoded part regarding components. It's 
-        // one function but it would be nice if that gets automated too, somehow...
+        // one function but it would be nice if that gets automated too.
 
         switch (type)
         {
-            case ComponentType::AudioListener:    return AddComponent<AudioListener>(id);
-            case ComponentType::AudioSource:    return AddComponent<AudioSource>(id);
-            case ComponentType::Camera:            return AddComponent<Camera>(id);
-            case ComponentType::Collider:        return AddComponent<Collider>(id);
-            case ComponentType::Constraint:        return AddComponent<Constraint>(id);
-            case ComponentType::Light:            return AddComponent<Light>(id);
-            case ComponentType::Renderable:        return AddComponent<Renderable>(id);
-            case ComponentType::RigidBody:        return AddComponent<RigidBody>(id);
-            case ComponentType::SoftBody:        return AddComponent<SoftBody>(id);
-            case ComponentType::Script:            return AddComponent<Script>(id);
-            case ComponentType::Environment:    return AddComponent<Environment>(id);
-            case ComponentType::Transform:        return AddComponent<Transform>(id);
-            case ComponentType::Terrain:           return AddComponent<Terrain>(id);
-            case ComponentType::Unknown:        return nullptr;
-            default:                            return nullptr;
+            case ComponentType::AudioListener: return AddComponent<AudioListener>(id);
+            case ComponentType::AudioSource:   return AddComponent<AudioSource>(id);
+            case ComponentType::Camera:        return AddComponent<Camera>(id);
+            case ComponentType::Collider:      return AddComponent<Collider>(id);
+            case ComponentType::Constraint:    return AddComponent<Constraint>(id);
+            case ComponentType::Light:         return AddComponent<Light>(id);
+            case ComponentType::Renderable:    return AddComponent<Renderable>(id);
+            case ComponentType::RigidBody:     return AddComponent<RigidBody>(id);
+            case ComponentType::SoftBody:      return AddComponent<SoftBody>(id);
+            case ComponentType::Script:        return AddComponent<Script>(id);
+            case ComponentType::Environment:   return AddComponent<Environment>(id);
+            case ComponentType::Transform:     return AddComponent<Transform>(id);
+            case ComponentType::Terrain:       return AddComponent<Terrain>(id);
+            case ComponentType::Unknown:       return nullptr;
+            default:                           return nullptr;
         }
 
         return nullptr;

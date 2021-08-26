@@ -58,8 +58,8 @@ namespace Spartan
 
     bool World::OnInitialise()
     {
-        m_input     = m_context->GetSubsystem<Input>();
-        m_profiler  = m_context->GetSubsystem<Profiler>();
+        m_input    = m_context->GetSubsystem<Input>();
+        m_profiler = m_context->GetSubsystem<Profiler>();
 
         CreateCamera();
         CreateEnvironment();
@@ -79,9 +79,9 @@ namespace Spartan
         // Tick entities
         {
             // Detect game toggling
-            const bool started      = m_context->m_engine->EngineMode_IsSet(Engine_Game) && m_was_in_editor_mode;
-            const bool stopped      = !m_context->m_engine->EngineMode_IsSet(Engine_Game) && !m_was_in_editor_mode;
-            m_was_in_editor_mode    = !m_context->m_engine->EngineMode_IsSet(Engine_Game);
+            const bool started   = m_context->m_engine->EngineMode_IsSet(Engine_Game) && m_was_in_editor_mode;
+            const bool stopped   = !m_context->m_engine->EngineMode_IsSet(Engine_Game) && !m_was_in_editor_mode;
+            m_was_in_editor_mode = !m_context->m_engine->EngineMode_IsSet(Engine_Game);
 
             // Start
             if (started)
@@ -287,7 +287,7 @@ namespace Spartan
     vector<shared_ptr<Entity>> World::EntityGetRoots()
     {
         vector<shared_ptr<Entity>> root_entities;
-        for (const auto& entity : m_entities)
+        for (const shared_ptr<Entity> entity : m_entities)
         {
             if (entity->GetTransform()->IsRoot())
             {
@@ -379,8 +379,8 @@ namespace Spartan
 
     shared_ptr<Entity> World::CreateCamera()
     {
-        ResourceCache* resource_cache   = m_context->GetSubsystem<ResourceCache>();
-        const string dir_scripts        = resource_cache->GetResourceDirectory(ResourceDirectory::Scripts) + "/";
+        ResourceCache* resource_cache = m_context->GetSubsystem<ResourceCache>();
+        const string dir_scripts      = resource_cache->GetResourceDirectory(ResourceDirectory::Scripts) + "/";
 
         shared_ptr<Entity> entity = EntityCreate();
         entity->SetName("Camera");

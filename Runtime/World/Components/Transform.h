@@ -42,29 +42,28 @@ namespace Spartan
 
         //= ICOMPONENT ===============================
         void OnInitialize() override;
+        void OnTick(double delta_time) override;
         void Serialize(FileStream* stream) override;
         void Deserialize(FileStream* stream) override;
         //============================================
 
-        void UpdateTransform();
-
         //= POSITION ==============================================================
         Math::Vector3 GetPosition()     const { return m_matrix.GetTranslation(); }
-        const auto& GetPositionLocal()  const { return m_positionLocal; }
+        const auto& GetPositionLocal()  const { return m_position_local; }
         void SetPosition(const Math::Vector3& position);
         void SetPositionLocal(const Math::Vector3& position);
         //=========================================================================
 
         //= ROTATION ===========================================================
         Math::Quaternion GetRotation() const { return m_matrix.GetRotation(); }
-        const auto& GetRotationLocal() const { return m_rotationLocal; }
+        const auto& GetRotationLocal() const { return m_rotation_local; }
         void SetRotation(const Math::Quaternion& rotation);
         void SetRotationLocal(const Math::Quaternion& rotation);
         //======================================================================
 
         //= SCALE =======================================================
         auto GetScale()             const { return m_matrix.GetScale(); }
-        const auto& GetScaleLocal() const { return m_scaleLocal; }
+        const auto& GetScaleLocal() const { return m_scale_local; }
         void SetScale(const Math::Vector3& scale);
         void SetScaleLocal(const Math::Vector3& scale);
         //===============================================================
@@ -83,42 +82,50 @@ namespace Spartan
         Math::Vector3 GetLeft()     const;
         //================================
 
-        //= HIERARCHY ==========================================================================
-        bool IsRoot() const        { return !HasParent(); }
-        bool HasParent() const    { return m_parent; }
+        //= HIERARCHY ============================================================================================
         void SetParent(Transform* new_parent);
-        void BecomeOrphan();
-        bool HasChildren() const            { return GetChildrenCount() > 0 ? true : false; }
-        uint32_t GetChildrenCount() const    { return static_cast<uint32_t>(m_children.size()); }
-        void AddChild(Transform* child);
-        Transform* GetRoot()            { return HasParent() ? GetParent()->GetRoot() : this; }
-        Transform* GetParent() const    { return m_parent; }
         Transform* GetChildByIndex(uint32_t index);
         Transform* GetChildByName(const std::string& name);
-        const std::vector<Transform*>& GetChildren() const    { return m_children; }
-    
         void AcquireChildren();
-        bool IsDescendantOf(const Transform* transform) const;
+        void RemoveChild(Transform* child);
+        void AddChild(Transform* child);
+        bool IsDescendantOf(Transform* transform) const;
         void GetDescendants(std::vector<Transform*>* descendants);
-        //======================================================================================
+        bool IsRoot()                                const { return m_parent == nullptr; }
+        bool HasParent()                             const { return m_parent != nullptr; }
+        bool HasChildren()                           const { return GetChildrenCount() > 0 ? true : false; }
+        uint32_t GetChildrenCount()                  const { return static_cast<uint32_t>(m_children.size()); }
+        Transform* GetRoot()                               { return HasParent() ? GetParent()->GetRoot() : this; }
+        Transform* GetParent()                       const { return m_parent; }
+        std::vector<Transform*>& GetChildren()             { return m_children; }
+        void MakeDirty()                                   { m_is_dirty = true; }
+        //========================================================================================================
 
-        void LookAt(const Math::Vector3& v)                       { m_lookAt = v; }
-        const Math::Matrix& GetMatrix()                     const { return m_matrix; }
-        const Math::Matrix& GetLocalMatrix()                const { return m_matrixLocal; }
-        const Math::Matrix& GetMatrixPrevious()             const { return m_matrix_previous; }
-        void SetWvpLastFrame(const Math::Matrix& matrix)          { m_matrix_previous = matrix;}
+        void LookAt(const Math::Vector3& v)                    { m_look_at = v; }
+        const Math::Matrix& GetMatrix()                  const { return m_matrix; }
+        const Math::Matrix& GetLocalMatrix()             const { return m_matrix_local; }
+        const Math::Matrix& GetMatrixPrevious()          const { return m_matrix_previous; }
+        void SetWvpLastFrame(const Math::Matrix& matrix)       { m_matrix_previous = matrix;}
 
     private:
+        // Internal functions don't propagate changes throughout the hierarchy.
+        // They just make enough changes so that the hierarchy can be resolved later (in one go).
+        void SetParent_Internal(Transform* parent);
+        void AddChild_Internal(Transform* child);
+        void RemoveChild_Internal(Transform* child);
+
+        void UpdateTransform();
         Math::Matrix GetParentTransformMatrix() const;
+        bool m_is_dirty = false;
 
         // local
-        Math::Vector3 m_positionLocal;
-        Math::Quaternion m_rotationLocal;
-        Math::Vector3 m_scaleLocal;
+        Math::Vector3 m_position_local;
+        Math::Quaternion m_rotation_local;
+        Math::Vector3 m_scale_local;
 
         Math::Matrix m_matrix;
-        Math::Matrix m_matrixLocal;
-        Math::Vector3 m_lookAt;
+        Math::Matrix m_matrix_local;
+        Math::Vector3 m_look_at;
 
         Transform* m_parent; // the parent of this transform
         std::vector<Transform*> m_children; // the children of this transform

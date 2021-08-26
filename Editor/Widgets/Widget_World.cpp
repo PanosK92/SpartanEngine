@@ -97,15 +97,15 @@ void Widget_World::TreeShow()
         // Dropping on the scene node should unparent the entity
         if (auto payload = ImGuiEx::ReceiveDragPayload(ImGuiEx::DragPayload_Entity))
         {
-            const auto entity_id = get<unsigned int>(payload->data);
-            if (const auto dropped_entity = _Widget_World::g_world->EntityGetById(entity_id))
+            const uint32_t entity_id = get<uint32_t>(payload->data);
+            if (const shared_ptr<Entity>& dropped_entity = _Widget_World::g_world->EntityGetById(entity_id))
             {
                 dropped_entity->GetTransform()->SetParent(nullptr);
             }
         }
 
-        auto rootentities = _Widget_World::g_world->EntityGetRoots();
-        for (const auto& entity : rootentities)
+        vector<shared_ptr<Entity>> root_entities = _Widget_World::g_world->EntityGetRoots();
+        for (const shared_ptr<Entity>& entity : root_entities)
         {
             TreeAddEntity(entity.get());
         }
@@ -141,11 +141,10 @@ void Widget_World::TreeAddEntity(Entity* entity)
     if (!entity)
         return;
 
-    m_expanded_to_selection             = false;
-    bool is_selected_entity             = false;
-    const bool is_visible_in_hierarchy  = entity->IsVisibleInHierarchy();
-    bool has_visible_children           = false;
-   
+    m_expanded_to_selection            = false;
+    bool is_selected_entity            = false;
+    const bool is_visible_in_hierarchy = entity->IsVisibleInHierarchy();
+    bool has_visible_children          = false;
 
     // Don't draw invisible entities
     if (!is_visible_in_hierarchy)
@@ -169,7 +168,7 @@ void Widget_World::TreeAddEntity(Entity* entity)
     node_flags |= has_visible_children ? ImGuiTreeNodeFlags_OpenOnArrow : ImGuiTreeNodeFlags_Leaf; 
 
     // Flag - Is selected?
-    if (const auto selected_entity = EditorHelper::Get().g_selected_entity.lock())
+    if (const shared_ptr<Entity> selected_entity = EditorHelper::Get().g_selected_entity.lock())
     {
         node_flags |= selected_entity->GetObjectId() == entity->GetObjectId() ? ImGuiTreeNodeFlags_Selected : node_flags;
 
@@ -184,7 +183,10 @@ void Widget_World::TreeAddEntity(Entity* entity)
         }
     }
 
-    const bool is_node_open = ImGui::TreeNodeEx(reinterpret_cast<void*>(static_cast<intptr_t>(entity->GetObjectId())), node_flags, entity->GetObjectName().c_str());
+    // Add node
+    const void* node_id     = reinterpret_cast<void*>(static_cast<uint64_t>(entity->GetObjectId()));
+    string node_name        = entity->GetObjectName();
+    const bool is_node_open = ImGui::TreeNodeEx(node_id, node_flags, node_name.c_str());
 
     // Keep a copy of the selected item's rect so that we can scroll to bring it into view
     if ((node_flags & ImGuiTreeNodeFlags_Selected) && m_expand_to_selection)
@@ -266,8 +268,8 @@ void Widget_World::EntityHandleDragDrop(Entity* entity_ptr) const
     // Drop
     if (auto payload = ImGuiEx::ReceiveDragPayload(ImGuiEx::DragPayload_Entity))
     {
-        const auto entity_id = get<unsigned int>(payload->data);
-        if (const auto dropped_entity = _Widget_World::g_world->EntityGetById(entity_id))
+        const uint32_t entity_id = get<uint32_t>(payload->data);
+        if (const shared_ptr<Entity>& dropped_entity = _Widget_World::g_world->EntityGetById(entity_id))
         {
             if (dropped_entity->GetObjectId() != entity_ptr->GetObjectId())
             {
@@ -494,13 +496,13 @@ void Widget_World::ActionEntityDelete(const shared_ptr<Entity>& entity)
 
 Entity* Widget_World::ActionEntityCreateEmpty()
 {
-    const auto entity = _Widget_World::g_world->EntityCreate().get();
-    if (const auto selected_entity = EditorHelper::Get().g_selected_entity.lock())
+    shared_ptr<Entity> entity = _Widget_World::g_world->EntityCreate();
+    if (const shared_ptr<Entity> selected_entity = EditorHelper::Get().g_selected_entity.lock())
     {
         entity->GetTransform()->SetParent(selected_entity->GetTransform());
     }
 
-    return entity;
+    return entity.get();
 }
 
 void Widget_World::ActionEntityCreateCube()

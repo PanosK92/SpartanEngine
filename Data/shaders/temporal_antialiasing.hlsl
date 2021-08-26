@@ -131,7 +131,7 @@ float3 clip_history(uint2 thread_id, uint group_index, uint3 group_id, Texture2D
     float3 color_max  = color_avg + dev * box_size;
 
     // Variance clipping
-    float3 color = clip_aabb(color_min, color_max, clamp(color_history, color_min, color_max), color_history);
+    float3 color = clip_aabb(color_min, color_max, clamp(color_avg, color_min, color_max), color_history);
 
     // Clamp to prevent NaNs
     color = saturate_16(color);

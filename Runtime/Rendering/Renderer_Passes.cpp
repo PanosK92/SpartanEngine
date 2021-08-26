@@ -2158,25 +2158,31 @@ namespace Spartan
     void Renderer::Pass_Text(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
     {
         // Early exit cases
-        const bool draw         = m_options & Render_Debug_PerformanceMetrics;
-        const bool empty        = m_profiler->GetMetrics().empty();
-        const auto& shader_v    = m_shaders[RendererShader::Font_V];
-        const auto& shader_p    = m_shaders[RendererShader::Font_P];
+        const bool draw      = m_options & Render_Debug_PerformanceMetrics;
+        const bool empty     = m_profiler->GetMetrics().empty();
+        const auto& shader_v = m_shaders[RendererShader::Font_V];
+        const auto& shader_p = m_shaders[RendererShader::Font_P];
         if (!draw || empty || !shader_v->IsCompiled() || !shader_p->IsCompiled())
             return;
 
+        // If the performance metrics are being drawn, the profiler has to be enabled.
+        if (!m_profiler->GetEnabled())
+        {
+            m_profiler->SetEnabled(true);
+        }
+
         // Set render state
         static RHI_PipelineState pso;
-        pso.shader_vertex                    = shader_v.get();
-        pso.shader_pixel                     = shader_p.get();
-        pso.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
-        pso.blend_state                      = m_blend_alpha.get();
-        pso.depth_stencil_state              = m_depth_stencil_off_off.get();
-        pso.vertex_buffer_stride             = m_font->GetVertexBuffer()->GetStride();
-        pso.render_target_color_textures[0]  = tex_out;
-        pso.primitive_topology               = RHI_PrimitiveTopology_Mode::TriangleList;
-        pso.viewport                         = tex_out->GetViewport();
-        pso.pass_name                        = "Pass_Text";
+        pso.shader_vertex                   = shader_v.get();
+        pso.shader_pixel                    = shader_p.get();
+        pso.rasterizer_state                = m_rasterizer_cull_back_solid.get();
+        pso.blend_state                     = m_blend_alpha.get();
+        pso.depth_stencil_state             = m_depth_stencil_off_off.get();
+        pso.vertex_buffer_stride            = m_font->GetVertexBuffer()->GetStride();
+        pso.render_target_color_textures[0] = tex_out;
+        pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
+        pso.viewport                        = tex_out->GetViewport();
+        pso.pass_name                       = "Pass_Text";
 
         // Update text
         const Vector2 text_pos = Vector2(-m_viewport.width * 0.5f + 5.0f, m_viewport.height * 0.5f - m_font->GetSize() - 2.0f);
@@ -2188,7 +2194,7 @@ namespace Spartan
             if (cmd_list->BeginRenderPass(pso))
             {
                 // Update uber buffer
-                m_cb_uber_cpu.resolution_rt    = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
+                m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
                 m_cb_uber_cpu.color         = m_font->GetColorOutline();
                 Update_Cb_Uber(cmd_list);
 

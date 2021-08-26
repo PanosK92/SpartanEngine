@@ -36,48 +36,64 @@ namespace Spartan
 {
     Transform::Transform(Context* context, Entity* entity, uint32_t id /*= 0*/) : IComponent(context, entity, id, this)
     {
-        m_positionLocal = Vector3::Zero;
-        m_rotationLocal = Quaternion(0, 0, 0, 1);
-        m_scaleLocal    = Vector3::One;
-        m_matrix        = Matrix::Identity;
-        m_matrixLocal   = Matrix::Identity;
-        m_matrix_previous  = Matrix::Identity;
-        m_parent        = nullptr;
+        m_position_local  = Vector3::Zero;
+        m_rotation_local  = Quaternion(0, 0, 0, 1);
+        m_scale_local     = Vector3::One;
+        m_matrix          = Matrix::Identity;
+        m_matrix_local    = Matrix::Identity;
+        m_matrix_previous = Matrix::Identity;
+        m_parent          = nullptr;
+        m_is_dirty        = true;
 
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_positionLocal, Vector3);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_rotationLocal, Quaternion);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_scaleLocal,    Vector3);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_matrix,        Matrix);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_matrixLocal,   Matrix);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_lookAt,        Vector3);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_position_local, Vector3);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_rotation_local, Quaternion);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_scale_local,    Vector3);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_matrix,         Matrix);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_matrix_local,   Matrix);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_look_at,        Vector3);
     }
 
     void Transform::OnInitialize()
     {
+        m_is_dirty = true;
+    }
+
+    void Transform::OnTick(double delta_time)
+    {
+        if (!m_is_dirty)
+            return;
+
         UpdateTransform();
+
+        m_is_dirty = false;
     }
 
     void Transform::Serialize(FileStream* stream)
     {
-        stream->Write(m_positionLocal);
-        stream->Write(m_rotationLocal);
-        stream->Write(m_scaleLocal);
-        stream->Write(m_lookAt);
+        // Properties
+        stream->Write(m_position_local);
+        stream->Write(m_rotation_local);
+        stream->Write(m_scale_local);
+        stream->Write(m_look_at);
+
+        // Hierarchy
         stream->Write(m_parent ? m_parent->GetEntity()->GetObjectId() : 0);
     }
 
     void Transform::Deserialize(FileStream* stream)
     {
-        stream->Read(&m_positionLocal);
-        stream->Read(&m_rotationLocal);
-        stream->Read(&m_scaleLocal);
-        stream->Read(&m_lookAt);
-        uint32_t parententity_id = 0;
-        stream->Read(&parententity_id);
+        // Properties
+        stream->Read(&m_position_local);
+        stream->Read(&m_rotation_local);
+        stream->Read(&m_scale_local);
+        stream->Read(&m_look_at);
 
-        if (parententity_id != 0)
+        // Hierarchy
+        uint32_t parent_entity_id = 0;
+        stream->Read(&parent_entity_id);
+        if (parent_entity_id != 0)
         {
-            if (const auto parent = GetContext()->GetSubsystem<World>()->EntityGetById(parententity_id))
+            if (const shared_ptr<Entity>& parent = m_context->GetSubsystem<World>()->EntityGetById(parent_entity_id))
             {
                 parent->GetTransform()->AddChild(this);
             }
@@ -89,20 +105,20 @@ namespace Spartan
     void Transform::UpdateTransform()
     {
         // Compute local transform
-        m_matrixLocal = Matrix(m_positionLocal, m_rotationLocal, m_scaleLocal);
+        m_matrix_local = Matrix(m_position_local, m_rotation_local, m_scale_local);
 
         // Compute world transform
-        if (!HasParent())
+        if (m_parent)
         {
-            m_matrix = m_matrixLocal;
+            m_matrix = m_matrix_local * m_parent->GetMatrix();
         }
         else
         {
-            m_matrix = m_matrixLocal * GetParentTransformMatrix();
+            m_matrix = m_matrix_local;
         }
-        
+
         // Update children
-        for (const auto& child : m_children)
+        for (Transform* child : m_children)
         {
             child->UpdateTransform();
         }
@@ -118,10 +134,10 @@ namespace Spartan
 
     void Transform::SetPositionLocal(const Vector3& position)
     {
-        if (m_positionLocal == position)
+        if (m_position_local == position)
             return;
 
-        m_positionLocal = position;
+        m_position_local = position;
         UpdateTransform();
     }
 
@@ -135,10 +151,10 @@ namespace Spartan
 
     void Transform::SetRotationLocal(const Quaternion& rotation)
     {
-        if (m_rotationLocal == rotation)
+        if (m_rotation_local == rotation)
             return;
 
-        m_rotationLocal = rotation;
+        m_rotation_local = rotation;
         UpdateTransform();
     }
 
@@ -152,15 +168,15 @@ namespace Spartan
 
     void Transform::SetScaleLocal(const Vector3& scale)
     {
-        if (m_scaleLocal == scale)
+        if (m_scale_local == scale)
             return;
 
-        m_scaleLocal = scale;
+        m_scale_local = scale;
 
         // A scale of 0 will cause a division by zero when decomposing the world transform matrix.
-        m_scaleLocal.x = (m_scaleLocal.x == 0.0f) ? Helper::EPSILON : m_scaleLocal.x;
-        m_scaleLocal.y = (m_scaleLocal.y == 0.0f) ? Helper::EPSILON : m_scaleLocal.y;
-        m_scaleLocal.z = (m_scaleLocal.z == 0.0f) ? Helper::EPSILON : m_scaleLocal.z;
+        m_scale_local.x = (m_scale_local.x == 0.0f) ? Helper::EPSILON : m_scale_local.x;
+        m_scale_local.y = (m_scale_local.y == 0.0f) ? Helper::EPSILON : m_scale_local.y;
+        m_scale_local.z = (m_scale_local.z == 0.0f) ? Helper::EPSILON : m_scale_local.z;
 
         UpdateTransform();
     }
@@ -169,11 +185,11 @@ namespace Spartan
     {
         if (!HasParent())
         {
-            SetPositionLocal(m_positionLocal + delta);
+            SetPositionLocal(m_position_local + delta);
         }
         else
         {
-            SetPositionLocal(m_positionLocal + GetParent()->GetMatrix().Inverted() * delta);
+            SetPositionLocal(m_position_local + GetParent()->GetMatrix().Inverted() * delta);
         }
     }
 
@@ -181,11 +197,11 @@ namespace Spartan
     {
         if (!HasParent())
         {
-            SetRotationLocal((m_rotationLocal * delta).Normalized());
+            SetRotationLocal((m_rotation_local * delta).Normalized());
         }
         else
         {
-            SetRotationLocal(m_rotationLocal * GetRotation().Inverse() * delta * GetRotation());
+            SetRotationLocal(m_rotation_local * GetRotation().Inverse() * delta * GetRotation());
         }    
     }
 
@@ -219,78 +235,6 @@ namespace Spartan
         return GetRotationLocal() * Vector3::Left;
     }
 
-    // Sets a parent for this transform
-    void Transform::SetParent(Transform* new_parent)
-    {
-        // This is the most complex function 
-        // in this script, tweak it with great caution.
-
-        // if the new parent is null, it means that this should become a root transform
-        if (!new_parent)
-        {
-            BecomeOrphan();
-            return;
-        }
-
-        // make sure the new parent is not this transform
-        if (GetObjectId() == new_parent->GetObjectId())
-            return;
-
-        // make sure the new parent is different from the existing parent
-        if (HasParent())
-        {
-            if (GetParent()->GetObjectId() == new_parent->GetObjectId())
-                return;
-        }
-
-        // if the new parent is a descendant of this transform
-        if (new_parent->IsDescendantOf(this))
-        {
-            // if this transform already has a parent
-            if (this->HasParent())
-            {
-                // assign the parent of this transform to the children
-                for (const auto& child : m_children)
-                {
-                    child->SetParent(GetParent());
-                }
-            }
-            else // if this transform doesn't have a parent
-            {
-                // make the children orphans
-                for (const auto& child : m_children)
-                {
-                    child->BecomeOrphan();
-                }
-            }
-        }
-
-        // Switch parent but keep a pointer to the old one
-        auto parent_old = m_parent;
-        m_parent = new_parent;
-        if (parent_old) parent_old->AcquireChildren(); // update the old parent (so it removes this child)
-
-        // make the new parent "aware" of this transform/child
-        if (m_parent)
-        {
-            m_parent->AcquireChildren();
-        }
-
-        UpdateTransform();
-    }
-
-    void Transform::AddChild(Transform* child)
-    {
-        if (!child)
-            return;
-
-        if (GetObjectId() == child->GetObjectId())
-            return;
-
-        child->SetParent(this);
-    }
-
-    // Returns a child with the given index
     Transform* Transform::GetChildByIndex(const uint32_t index)
     {
         if (!HasChildren())
@@ -318,6 +262,125 @@ namespace Spartan
         }
 
         return nullptr;
+    }
+
+    void Transform::SetParent(Transform* new_parent)
+    {
+        // Early exit if the parent is this transform (which is invalid).
+        if (new_parent)
+        {
+            if (GetObjectId() == new_parent->GetObjectId())
+                return;
+        }
+
+        // Early exit if the parent is already set.
+        if (m_parent && new_parent)
+        {
+            if (m_parent->GetObjectId() == new_parent->GetObjectId())
+                return;
+        }
+
+        // If the new parent is a descendant of this transform (e.g. dragging and dropping an entity onto one of it's children).
+        if (new_parent && new_parent->IsDescendantOf(this))
+        {
+            // Assign the parent of this transform to the children.
+            for (Transform* child : m_children)
+            {
+                child->SetParent_Internal(m_parent);
+            }
+
+            // Remove any children
+            m_children.clear();
+        }
+
+        // Remove this child from it's previous parent
+        if (m_parent)
+        {
+            m_parent->RemoveChild_Internal(this);
+        }
+
+        // Add this child to the new parent
+        if (new_parent)
+        {
+            new_parent->AddChild_Internal(this);
+            new_parent->MakeDirty();
+        }
+
+        // Assign the new parent.
+        m_parent   = new_parent;
+        m_is_dirty = true;
+    }
+
+    void Transform::AddChild(Transform* child)
+    {
+        SP_ASSERT(child != nullptr);
+
+        // Ensure that the child is not this transform.
+        if (child->GetObjectId() == GetObjectId())
+            return;
+
+        child->SetParent(this);
+    }
+
+    void Transform::RemoveChild(Transform* child)
+    {
+        SP_ASSERT(child != nullptr);
+
+        // Ensure the transform is not itself
+        if (child->GetObjectId() == GetObjectId())
+            return;
+
+        // Remove the child.
+        m_children.erase(remove_if(m_children.begin(), m_children.end(), [child](Transform* vec_transform) { return vec_transform->GetObjectId() == child->GetObjectId(); }), m_children.end());
+
+        // Remove the child's parent.
+        child->SetParent(nullptr);
+    }
+
+    void Transform::SetParent_Internal(Transform* new_parent)
+    {
+        // Ensure that parent is not this transform.
+        if (new_parent)
+        {
+            if (GetObjectId() == new_parent->GetObjectId())
+                return;
+        }
+
+        // Mark as dirty if the parent is about to really change.
+        if ((m_parent && !new_parent) || (!m_parent && new_parent))
+        {
+            m_is_dirty = true;
+        }
+
+        // Assign the new parent.
+        m_parent = new_parent;
+    }
+
+    void Transform::AddChild_Internal(Transform* child)
+    {
+        SP_ASSERT(child != nullptr);
+
+        // Ensure that the child is not this transform.
+        if (child->GetObjectId() == GetObjectId())
+            return;
+
+        // If this is not already a child, add it.
+        if (!(find(m_children.begin(), m_children.end(), child) != m_children.end()))
+        {
+            m_children.emplace_back(child);
+        }
+    }
+
+    void Transform::RemoveChild_Internal(Transform* child)
+    {
+        SP_ASSERT(child != nullptr);
+
+        // Ensure the transform is not itself
+        if (child->GetObjectId() == GetObjectId())
+            return;
+
+        // Remove the child
+        m_children.erase(remove_if(m_children.begin(), m_children.end(), [child](Transform* vec_transform) { return vec_transform->GetObjectId() == child->GetObjectId(); }), m_children.end());
     }
 
     // Searches the entire hierarchy, finds any children and saves them in m_children.
@@ -352,18 +415,20 @@ namespace Spartan
         }
     }
 
-    bool Transform::IsDescendantOf(const Transform* transform) const
+    bool Transform::IsDescendantOf(Transform* transform) const
     {
-        for (const Transform* child : transform->GetChildren())
-        {
-            if (GetObjectId() == child->GetObjectId())
-                return true;
+        SP_ASSERT(transform != nullptr);
 
-            if (child->HasChildren())
-            {
-                if (IsDescendantOf(child))
-                    return true;
-            }
+        if (!m_parent)
+            return false;
+
+        if (m_parent->GetObjectId() == transform->GetObjectId())
+            return true;
+
+        for (Transform* child : transform->GetChildren())
+        {
+            if (IsDescendantOf(child))
+                return true;
         }
 
         return false;
@@ -385,30 +450,5 @@ namespace Spartan
     Matrix Transform::GetParentTransformMatrix() const
     {
         return HasParent() ? GetParent()->GetMatrix() : Matrix::Identity;
-    }
-
-    // Makes this transform have no parent
-    void Transform::BecomeOrphan()
-    {
-        // if there is no parent, no need to do anything
-        if (!m_parent)
-            return;
-
-        // create a temporary reference to the parent
-        auto temp_ref = m_parent;
-
-        // delete the original reference
-        m_parent = nullptr;
-
-        // Update the transform without the parent now
-        UpdateTransform();
-
-        // make the parent search for children,
-        // that's indirect way of making the parent "forget"
-        // about this child, since it won't be able to find it
-        if (temp_ref)
-        {
-            temp_ref->AcquireChildren();
-        }
     }
 }
