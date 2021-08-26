@@ -35,12 +35,12 @@ using namespace Math;
 
 Widget_Profiler::Widget_Profiler(Editor* editor) : Widget(editor)
 {
-    m_flags         |= ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoScrollbar;
-    m_title         = "Profiler";
-    m_is_visible    = false;
-    m_profiler      = m_context->GetSubsystem<Profiler>();
-    m_size          = Vector2(1000, 715);
-    m_position      = k_widget_position_screen_center;
+    m_flags      |= ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoScrollbar;
+    m_title      = "Profiler";
+    m_is_visible = false;
+    m_profiler   = m_context->GetSubsystem<Profiler>();
+    m_size       = Vector2(1000, 715);
+    m_position   = k_widget_position_screen_center;
 }
 
 void Widget_Profiler::OnShow()
@@ -89,10 +89,10 @@ void Widget_Profiler::TickVisible()
     m_profiler->SetUpdateInterval(interval);
     ImGui::Separator();
 
-    TimeBlockType type                          = m_item_type == 0 ? TimeBlockType::Cpu : TimeBlockType::Gpu;
-    const std::vector<TimeBlock>& time_blocks   = m_profiler->GetTimeBlocks();
-    const uint32_t time_block_count             = static_cast<uint32_t>(time_blocks.size());
-    float time_last                             = type == TimeBlockType::Cpu ? m_profiler->GetTimeCpuLast() : m_profiler->GetTimeGpuLast();
+    TimeBlockType type                        = m_item_type == 0 ? TimeBlockType::Cpu : TimeBlockType::Gpu;
+    const std::vector<TimeBlock>& time_blocks = m_profiler->GetTimeBlocks();
+    const uint32_t time_block_count           = static_cast<uint32_t>(time_blocks.size());
+    float time_last                           = type == TimeBlockType::Cpu ? m_profiler->GetTimeCpuLast() : m_profiler->GetTimeGpuLast();
 
     // Time blocks
     for (uint32_t i = 0; i < time_block_count; i++)

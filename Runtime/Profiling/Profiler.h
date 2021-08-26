@@ -60,6 +60,7 @@ namespace Spartan
         void ResetMetrics();
 
         // Properties
+        bool GetEnabled()                               const { return m_profile; }
         void SetEnabled(const bool enabled)                   { m_profile = enabled; }
         const std::string& GetMetrics()                 const { return m_metrics; }
         const std::vector<TimeBlock>& GetTimeBlocks()   const { return m_time_blocks_read; }
@@ -76,22 +77,22 @@ namespace Spartan
         bool IsGpuStuttering()                          const { return m_is_stuttering_gpu; }
         
         // Metrics - RHI
-        uint32_t m_rhi_draw                         = 0;
-        uint32_t m_rhi_dispatch                     = 0;
-        uint32_t m_rhi_bindings_buffer_index        = 0;
-        uint32_t m_rhi_bindings_buffer_vertex       = 0;
-        uint32_t m_rhi_bindings_buffer_constant     = 0;
-        uint32_t m_rhi_bindings_buffer_structured   = 0;
-        uint32_t m_rhi_bindings_sampler             = 0;
-        uint32_t m_rhi_bindings_texture_sampled     = 0;
-        uint32_t m_rhi_bindings_shader_vertex       = 0;
-        uint32_t m_rhi_bindings_shader_pixel        = 0;
-        uint32_t m_rhi_bindings_shader_compute      = 0;
-        uint32_t m_rhi_bindings_render_target       = 0;
-        uint32_t m_rhi_bindings_texture_storage     = 0;
-        uint32_t m_rhi_bindings_descriptor_set      = 0;
-        uint32_t m_rhi_bindings_pipeline            = 0;
-        uint32_t m_rhi_pipeline_barriers            = 0;
+        uint32_t m_rhi_draw                       = 0;
+        uint32_t m_rhi_dispatch                   = 0;
+        uint32_t m_rhi_bindings_buffer_index      = 0;
+        uint32_t m_rhi_bindings_buffer_vertex     = 0;
+        uint32_t m_rhi_bindings_buffer_constant   = 0;
+        uint32_t m_rhi_bindings_buffer_structured = 0;
+        uint32_t m_rhi_bindings_sampler           = 0;
+        uint32_t m_rhi_bindings_texture_sampled   = 0;
+        uint32_t m_rhi_bindings_shader_vertex     = 0;
+        uint32_t m_rhi_bindings_shader_pixel      = 0;
+        uint32_t m_rhi_bindings_shader_compute    = 0;
+        uint32_t m_rhi_bindings_render_target     = 0;
+        uint32_t m_rhi_bindings_texture_storage   = 0;
+        uint32_t m_rhi_bindings_descriptor_set    = 0;
+        uint32_t m_rhi_bindings_pipeline          = 0;
+        uint32_t m_rhi_pipeline_barriers          = 0;
 
         // Metrics - Renderer
         uint32_t m_renderer_meshes_rendered = 0;
@@ -113,24 +114,24 @@ namespace Spartan
     private:
         void ClearRhiMetrics()
         {
-            m_rhi_draw                          = 0;
-            m_rhi_dispatch                      = 0;
-            m_renderer_meshes_rendered          = 0;
-            m_rhi_bindings_buffer_index         = 0;
-            m_rhi_bindings_buffer_vertex        = 0;
-            m_rhi_bindings_buffer_constant      = 0;
-            m_rhi_bindings_buffer_structured    = 0;
-            m_rhi_bindings_sampler              = 0;
-            m_rhi_bindings_texture_sampled      = 0;
-            m_rhi_bindings_shader_vertex        = 0;
-            m_rhi_bindings_shader_pixel         = 0;
-            m_rhi_bindings_shader_compute       = 0;
-            m_rhi_bindings_render_target        = 0;
-            m_rhi_bindings_texture_storage      = 0;
-            m_rhi_bindings_descriptor_set       = 0;
-            m_rhi_bindings_pipeline             = 0;
-            m_rhi_pipeline_barriers             = 0;
-        }
+            m_rhi_draw                       = 0;
+            m_rhi_dispatch                   = 0;
+            m_renderer_meshes_rendered       = 0;
+            m_rhi_bindings_buffer_index      = 0;
+            m_rhi_bindings_buffer_vertex     = 0;
+            m_rhi_bindings_buffer_constant   = 0;
+            m_rhi_bindings_buffer_structured = 0;
+            m_rhi_bindings_sampler           = 0;
+            m_rhi_bindings_texture_sampled   = 0;
+            m_rhi_bindings_shader_vertex     = 0;
+            m_rhi_bindings_shader_pixel      = 0;
+            m_rhi_bindings_shader_compute    = 0;
+            m_rhi_bindings_render_target     = 0;
+            m_rhi_bindings_texture_storage   = 0;
+            m_rhi_bindings_descriptor_set    = 0;
+            m_rhi_bindings_pipeline          = 0;
+            m_rhi_pipeline_barriers          = 0;
+        }                                    
 
         TimeBlock* GetNewTimeBlock();
         TimeBlock* GetLastIncompleteTimeBlock(TimeBlockType type = TimeBlockType::Undefined);
@@ -138,15 +139,15 @@ namespace Spartan
         void UpdateRhiMetricsString();
 
         // Profiling options
-        bool m_profile                      = false;
-        bool m_profile_cpu                  = true; // cheap
-        bool m_profile_gpu                  = true; // expensive
-        float m_profiling_interval_sec      = 0.3f;
-        float m_time_since_profiling_sec    = m_profiling_interval_sec;
+        bool m_profile                   = false;
+        bool m_profile_cpu               = true; // cheap
+        bool m_profile_gpu               = true; // expensive
+        float m_profiling_interval_sec   = 0.3f;
+        float m_time_since_profiling_sec = m_profiling_interval_sec;
 
         // Time blocks (double buffered)
-        uint32_t m_time_block_capacity  = 200;
-        uint32_t m_time_block_count     = 0;
+        uint32_t m_time_block_capacity = 200;
+        uint32_t m_time_block_count    = 0;
         std::vector<TimeBlock> m_time_blocks_write;
         std::vector<TimeBlock> m_time_blocks_read;
 
@@ -161,9 +162,9 @@ namespace Spartan
         uint32_t m_gpu_memory_used      = 0;
 
         // Stutter detection
-        float m_stutter_delta_ms    = 0.5f;
-        bool m_is_stuttering_cpu    = false;
-        bool m_is_stuttering_gpu    = false;
+        float m_stutter_delta_ms = 0.5f;
+        bool m_is_stuttering_cpu = false;
+        bool m_is_stuttering_gpu = false;
 
         // Misc
         bool m_poll                 = false;
@@ -172,9 +173,9 @@ namespace Spartan
         bool m_allow_time_block_end = true;
     
         // Dependencies
-        ResourceCache* m_resource_manager   = nullptr;
-        Renderer* m_renderer                = nullptr;
-        Timer* m_timer                      = nullptr;
+        ResourceCache* m_resource_manager = nullptr;
+        Renderer* m_renderer              = nullptr;
+        Timer* m_timer                    = nullptr;
     };
 
     class ScopedTimeBlock

@@ -139,13 +139,13 @@ namespace Spartan
         }
 
         // The type of the component
-        ComponentType m_type    = ComponentType::Unknown;
+        ComponentType m_type   = ComponentType::Unknown;
         // The state of the component
-        bool m_enabled          = false;
+        bool m_enabled         = false;
         // The owner of the component
-        Entity* m_entity        = nullptr;
+        Entity* m_entity       = nullptr;
         // The transform of the component (always exists)
-        Transform* m_transform  = nullptr;
+        Transform* m_transform = nullptr;
 
     private:
         // The attributes of the component

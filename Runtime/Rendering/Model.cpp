@@ -102,7 +102,6 @@ namespace Spartan
                 // Set the normalized scale to the root entity's transform
                 m_normalized_scale = GeometryComputeNormalizedScale();
                 m_root_entity.lock()->GetComponent<Transform>()->SetScale(m_normalized_scale);
-                m_root_entity.lock()->GetComponent<Transform>()->UpdateTransform();
             }
             else
             {

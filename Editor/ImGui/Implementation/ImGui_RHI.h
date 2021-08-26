@@ -199,8 +199,8 @@ namespace ImGui::RHI
         RHI_VertexBuffer* vertex_buffer = nullptr;
         RHI_IndexBuffer* index_buffer   = nullptr;
         {
-            const uint32_t swapchain_id         = swap_chain->GetObjectId();
-            const uint32_t swapchain_cmd_index  = g_renderer->GetCmdIndex();
+            const uint32_t swapchain_id        = swap_chain->GetObjectId();
+            const uint32_t swapchain_cmd_index = g_renderer->GetCmdIndex();
 
             const uint32_t gap =  Math::Helper::Clamp<uint32_t>((swapchain_cmd_index + 1) - static_cast<uint32_t>(g_vertex_buffers[swapchain_id].size()), 0, 10);
             for (uint32_t i = 0; i < gap; i++)
@@ -209,8 +209,8 @@ namespace ImGui::RHI
                 g_index_buffers[swapchain_id].emplace_back(make_unique<RHI_IndexBuffer>(g_rhi_device));
             }
 
-            vertex_buffer   = g_vertex_buffers[swapchain_id][swapchain_cmd_index].get();
-            index_buffer    = g_index_buffers[swapchain_id][swapchain_cmd_index].get();
+            vertex_buffer = g_vertex_buffers[swapchain_id][swapchain_cmd_index].get();
+            index_buffer  = g_index_buffers[swapchain_id][swapchain_cmd_index].get();
 
             // Grow vertex buffer as needed
             if (vertex_buffer->GetVertexCount() < static_cast<unsigned int>(draw_data->TotalVtxCount))

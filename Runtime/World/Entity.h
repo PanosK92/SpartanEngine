@@ -46,16 +46,16 @@ namespace Spartan
         void Serialize(FileStream* stream);
         void Deserialize(FileStream* stream, Transform* parent);
 
-        //= PROPERTIES ===================================================================================================
-        const std::string& GetObjectName() const                        { return m_object_name; }
-        void SetName(const std::string& name)                           { m_object_name = name; }
-
-        bool IsActive() const                                           { return m_is_active; }
-        void SetActive(const bool active)                               { m_is_active = active; }
-
-        bool IsVisibleInHierarchy() const                               { return m_hierarchy_visibility; }
-        void SetHierarchyVisibility(const bool hierarchy_visibility)    { m_hierarchy_visibility = hierarchy_visibility; }
-        //================================================================================================================
+        //= PROPERTIES ================================================================================================
+        const std::string& GetObjectName() const                     { return m_object_name; }
+        void SetName(const std::string& name)                        { m_object_name = name; }
+                                                                     
+        bool IsActive() const                                        { return m_is_active; }
+        void SetActive(const bool active)                            { m_is_active = active; }
+                                                                     
+        bool IsVisibleInHierarchy() const                            { return m_hierarchy_visibility; }
+        void SetHierarchyVisibility(const bool hierarchy_visibility) { m_hierarchy_visibility = hierarchy_visibility; }
+        //=============================================================================================================
 
         // Adds a component of type T
         template <class T>
@@ -75,8 +75,8 @@ namespace Spartan
             m_component_mask |= GetComponentMask(type);
 
             // Caching of rendering performance critical components
-            if constexpr (std::is_same<T, Transform>::value)    { m_transform   = static_cast<Transform*>(component.get()); }
-            if constexpr (std::is_same<T, Renderable>::value)   { m_renderable  = static_cast<Renderable*>(component.get()); }
+            if constexpr (std::is_same<T, Transform>::value)  { m_transform  = static_cast<Transform*>(component.get()); }
+            if constexpr (std::is_same<T, Renderable>::value) { m_renderable = static_cast<Renderable*>(component.get()); }
 
             // Initialize component
             component->SetType(type);
@@ -165,18 +165,18 @@ namespace Spartan
         void RemoveComponentById(uint32_t id);
         const auto& GetAllComponents() const { return m_components; }
 
-        void MarkForDestruction()           { m_destruction_pending = true; }
-        bool IsPendingDestruction() const   { return m_destruction_pending; }
+        void MarkForDestruction()         { m_destruction_pending = true; }
+        bool IsPendingDestruction() const { return m_destruction_pending; }
 
         // Direct access for performance critical usage (not safe)
-        Transform* GetTransform() const         { return m_transform; }
-        Renderable* GetRenderable() const       { return m_renderable; }
-        std::shared_ptr<Entity> GetPtrShared()  { return shared_from_this(); }
+        Transform* GetTransform() const        { return m_transform; }
+        Renderable* GetRenderable() const      { return m_renderable; }
+        std::shared_ptr<Entity> GetPtrShared() { return shared_from_this(); }
 
     private:
         constexpr uint32_t GetComponentMask(ComponentType type) { return static_cast<uint32_t>(1) << static_cast<uint32_t>(type); }
 
-        std::string m_object_name          = "Entity";
+        std::string m_object_name   = "Entity";
         bool m_is_active            = true;
         bool m_hierarchy_visibility = true;
         Transform* m_transform      = nullptr;
