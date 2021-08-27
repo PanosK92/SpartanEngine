@@ -87,7 +87,7 @@ namespace Spartan
     {
         SP_ASSERT(bitmap != nullptr);
     
-        const auto type = FreeImage_GetImageType(bitmap);
+        const FREE_IMAGE_TYPE type = FreeImage_GetImageType(bitmap);
         uint32_t size = 0;
     
         if (type == FIT_BITMAP)
@@ -174,6 +174,9 @@ namespace Spartan
         return format;
     }
 
+    // Converts a bitmap to 8 bits. If the bitmap was a high-color bitmap (16, 24 or 32-bit) or
+    // if it was a monochrome or greyscale bitmap (1 or 4-bit), the end result will be a greyscale
+    // bitmap, otherwise (1 or 4-bit palletised bitmaps) it will be a palletised bitmap.
     static FIBITMAP* convert_to_8bits(FIBITMAP* bitmap)
     {
         SP_ASSERT(bitmap != nullptr);
@@ -237,14 +240,14 @@ namespace Spartan
             }
         }
 
-        // Texture below 8 bits get converted to 8 bits.
-        // This is because I've stumbled upon issues with anything less than 4 bits. Investigate if this can be handled.
-        if (FreeImage_GetBPP(bitmap) < 8)
+        // Textures with few colors (typically less than 8 bits) and/or a palette color type, get converted to an R8G8B8A8.
+        // This is because get_channel_count() returns a single channel, and from there many issues start to occur.
+        if (FreeImage_GetColorsUsed(bitmap) <= 256 && FreeImage_GetColorType(bitmap) != FIC_RGB)
         {
-            bitmap = convert_to_8bits(bitmap);
+            bitmap = convert_to_32bits(bitmap);
         }
 
-        // Textures with 3 channels and 8 bit per channel get converted to 32 bits.
+        // Textures with 3 channels and 8 bit per channel get converted to an R8G8B8A8 format.
         // This is because there is no such RHI_FORMAT format.
         if (get_channel_count(bitmap) == 3 && get_bits_per_channel(bitmap) == 8)
         {
@@ -367,7 +370,7 @@ namespace Spartan
 
         // Deduce image properties. Important that this is done here, before ApplyBitmapCorrections(), as after that, results for grayscale seem to be always false
         const bool is_transparent = FreeImage_IsTransparent(bitmap);
-        const bool is_grayscale   = FreeImage_GetColorType(bitmap) == FREE_IMAGE_COLOR_TYPE::FIC_MINISBLACK;
+        const bool is_greyscale   = FreeImage_GetColorType(bitmap) == FREE_IMAGE_COLOR_TYPE::FIC_MINISBLACK;
         const bool is_srgb        = get_is_srgb(bitmap);
 
         // Perform some corrections
@@ -412,7 +415,7 @@ namespace Spartan
             uint32_t flags = texture->GetFlags();
 
             flags |= is_transparent ? RHI_Texture_Transparent : 0;
-            flags |= is_grayscale   ? RHI_Texture_Grayscale : 0;
+            flags |= is_greyscale   ? RHI_Texture_Greyscale : 0;
             flags |= is_srgb        ? RHI_Texture_Srgb : 0;
 
             texture->SetFlags(flags);
