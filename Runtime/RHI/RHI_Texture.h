@@ -39,7 +39,7 @@ namespace Spartan
         RHI_Texture_Rt_DepthStencil         = 1 << 3,
         RHI_Texture_Rt_DepthStencilReadOnly = 1 << 4,
         RHI_Texture_PerMipViews             = 1 << 5,
-        RHI_Texture_Grayscale               = 1 << 6,
+        RHI_Texture_Greyscale               = 1 << 6,
         RHI_Texture_Transparent             = 1 << 7,
         RHI_Texture_Srgb                    = 1 << 8,
         RHI_Texture_CanBeCleared            = 1 << 9,
@@ -112,7 +112,7 @@ namespace Spartan
         bool HasPerMipViews()               const { return m_flags & RHI_Texture_PerMipViews; }
         bool HasMips()                      const { return m_flags & RHI_Texture_Mips; }
         bool CanBeCleared()                 const { return m_flags & RHI_Texture_CanBeCleared || IsRenderTargetDepthStencil() || IsRenderTargetColor(); }
-        bool IsGrayscale()                  const { return m_flags & RHI_Texture_Grayscale; }
+        bool IsGrayscale()                  const { return m_flags & RHI_Texture_Greyscale; }
         bool IsTransparent()                const { return m_flags & RHI_Texture_Transparent; }
 
         // Format type
