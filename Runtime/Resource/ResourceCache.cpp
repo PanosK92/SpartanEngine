@@ -48,47 +48,50 @@ namespace Spartan
         const string data_dir = "Data\\";
 
         // Add engine standard resource directories
-        AddResourceDirectory(ResourceDirectory::Cubemaps,        data_dir + "environment");
-        AddResourceDirectory(ResourceDirectory::Fonts,           data_dir + "fonts");
-        AddResourceDirectory(ResourceDirectory::Icons,           data_dir + "icons");
-        AddResourceDirectory(ResourceDirectory::Scripts,         data_dir + "scripts");
-        AddResourceDirectory(ResourceDirectory::ShaderCompiler,  data_dir + "shader_compiler");
-        AddResourceDirectory(ResourceDirectory::Shaders,         data_dir + "shaders");
-        AddResourceDirectory(ResourceDirectory::Textures,        data_dir + "textures");
+        AddResourceDirectory(ResourceDirectory::Cubemaps,       data_dir + "environment");
+        AddResourceDirectory(ResourceDirectory::Fonts,          data_dir + "fonts");
+        AddResourceDirectory(ResourceDirectory::Icons,          data_dir + "icons");
+        AddResourceDirectory(ResourceDirectory::Scripts,        data_dir + "scripts");
+        AddResourceDirectory(ResourceDirectory::ShaderCompiler, data_dir + "shader_compiler");
+        AddResourceDirectory(ResourceDirectory::Shaders,        data_dir + "shaders");
+        AddResourceDirectory(ResourceDirectory::Textures,       data_dir + "textures");
 
         // Create project directory
         SetProjectDirectory("Project/");
 
         // Subscribe to events
-        SP_SUBSCRIBE_TO_EVENT(EventType::WorldSaveStart,    SP_EVENT_HANDLER(SaveResourcesToFiles));
-        SP_SUBSCRIBE_TO_EVENT(EventType::WorldLoadStart,    SP_EVENT_HANDLER(LoadResourcesFromFiles));
-        SP_SUBSCRIBE_TO_EVENT(EventType::WorldClear,        SP_EVENT_HANDLER(Clear));
+        SP_SUBSCRIBE_TO_EVENT(EventType::WorldSaveStart, SP_EVENT_HANDLER(SaveResourcesToFiles));
+        SP_SUBSCRIBE_TO_EVENT(EventType::WorldLoadStart, SP_EVENT_HANDLER(LoadResourcesFromFiles));
+        SP_SUBSCRIBE_TO_EVENT(EventType::WorldClear,     SP_EVENT_HANDLER(Clear));
     }
 
     ResourceCache::~ResourceCache()
     {
         // Unsubscribe from events
-        SP_UNSUBSCRIBE_FROM_EVENT(EventType::WorldSaveStart,    SP_EVENT_HANDLER(SaveResourcesToFiles));
-        SP_UNSUBSCRIBE_FROM_EVENT(EventType::WorldLoadStart,    SP_EVENT_HANDLER(LoadResourcesFromFiles));
-        SP_UNSUBSCRIBE_FROM_EVENT(EventType::WorldClear,        SP_EVENT_HANDLER(Clear));
+        SP_UNSUBSCRIBE_FROM_EVENT(EventType::WorldSaveStart, SP_EVENT_HANDLER(SaveResourcesToFiles));
+        SP_UNSUBSCRIBE_FROM_EVENT(EventType::WorldLoadStart, SP_EVENT_HANDLER(LoadResourcesFromFiles));
+        SP_UNSUBSCRIBE_FROM_EVENT(EventType::WorldClear,     SP_EVENT_HANDLER(Clear));
     }
 
     bool ResourceCache::OnInitialise()
     {
         // Importers
-        m_importer_image    = make_shared<ImageImporter>(m_context);
-        m_importer_model    = make_shared<ModelImporter>(m_context);
-        m_importer_font     = make_shared<FontImporter>(m_context);
+        m_importer_image = make_shared<ImageImporter>(m_context);
+        m_importer_model = make_shared<ModelImporter>(m_context);
+        m_importer_font  = make_shared<FontImporter>(m_context);
 
         return true;
     }
 
-    bool ResourceCache::IsCached(const string& resource_name, const ResourceType resource_type /*= Resource_Unknown*/)
+    bool ResourceCache::IsCached(const string& resource_name, const ResourceType resource_type)
     {
         SP_ASSERT(!resource_name.empty());
 
         for (shared_ptr<IResource>& resource : m_resources)
         {
+            if (resource->GetResourceType() != resource_type)
+                continue;
+
             if (resource_name == resource->GetResourceName())
                 return true;
         }
@@ -96,7 +99,18 @@ namespace Spartan
         return false;
     }
 
-    shared_ptr<IResource>& ResourceCache::GetByName(const string& name, const ResourceType type)
+    bool ResourceCache::IsCached(const uint64_t resource_id)
+    {
+        for (shared_ptr<IResource>& resource : m_resources)
+        {
+            if (resource_id == resource->GetObjectId())
+                return true;
+        }
+
+        return false;
+    }
+    
+	shared_ptr<IResource>& ResourceCache::GetByName(const string& name, const ResourceType type)
     {
         for (shared_ptr<IResource>& resource : m_resources)
         {
@@ -205,21 +219,21 @@ namespace Spartan
     void ResourceCache::LoadResourcesFromFiles()
     {
         // Open resource list file
-        auto file_path = GetProjectDirectoryAbsolute() + m_context->GetSubsystem<World>()->GetName() + "_resources.dat";
-        auto file = make_unique<FileStream>(file_path, FileStream_Read);
+        string file_path = GetProjectDirectoryAbsolute() + m_context->GetSubsystem<World>()->GetName() + "_resources.dat";
+        unique_ptr<FileStream> file = make_unique<FileStream>(file_path, FileStream_Read);
         if (!file->IsOpen())
             return;
 
         // Load resource count
-        const auto resource_count = file->ReadAs<uint32_t>();
+        const uint32_t resource_count = file->ReadAs<uint32_t>();
 
         for (uint32_t i = 0; i < resource_count; i++)
         {
             // Load resource file path
-            auto file_path = file->ReadAs<string>();
+            string file_path = file->ReadAs<string>();
 
             // Load resource type
-            const auto type = static_cast<ResourceType>(file->ReadAs<uint32_t>());
+            const ResourceType type = static_cast<ResourceType>(file->ReadAs<uint32_t>());
 
             switch (type)
             {

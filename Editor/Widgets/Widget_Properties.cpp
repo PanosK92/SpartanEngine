@@ -674,9 +674,9 @@ void Widget_Properties::ShowConstraint(Constraint* constraint) const
         ImGui::InputText("", &other_body_name, ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_ReadOnly);
         if (auto payload = ImGuiEx::ReceiveDragPayload(ImGuiEx::DragPayload_Entity))
         {
-            const auto entity_id    = get<unsigned int>(payload->data);
-            other_body                = widget_helper::scene->EntityGetById(entity_id);
-            other_body_dirty        = true;
+            const uint64_t entity_id = get<uint64_t>(payload->data);
+            other_body               = widget_helper::scene->EntityGetById(entity_id);
+            other_body_dirty         = true;
         }
         ImGui::PopItemWidth();
         ImGui::PopID();

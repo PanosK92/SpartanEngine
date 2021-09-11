@@ -207,6 +207,7 @@ namespace Spartan
         RHI_Format_D32_Float_S8X24_Uint,
         // Compressed
         RHI_Format_BC7,
+        RHI_Format_ASTC,
 
         RHI_Format_Undefined
     };

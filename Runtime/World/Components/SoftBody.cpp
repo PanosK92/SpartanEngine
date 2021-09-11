@@ -34,7 +34,7 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    SoftBody::SoftBody(Context* context, Entity* entity, uint32_t id /*= 0*/) : IComponent(context, entity, id)
+    SoftBody::SoftBody(Context* context, Entity* entity, uint64_t id /*= 0*/) : IComponent(context, entity, id)
     {
         m_physics = m_context->GetSubsystem<Physics>();
     }

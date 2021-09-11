@@ -56,8 +56,8 @@ namespace ImGui::RHI
     // RHI resources
     static shared_ptr<RHI_Device>                                        g_rhi_device;
     static unique_ptr<RHI_Texture>                                       g_texture;
-    static unordered_map<uint32_t, vector<unique_ptr<RHI_VertexBuffer>>> g_vertex_buffers;
-    static unordered_map<uint32_t, vector<unique_ptr<RHI_IndexBuffer>>>  g_index_buffers;
+    static unordered_map<uint64_t, vector<unique_ptr<RHI_VertexBuffer>>> g_vertex_buffers;
+    static unordered_map<uint64_t, vector<unique_ptr<RHI_IndexBuffer>>>  g_index_buffers;
     static unique_ptr<RHI_DepthStencilState>                             g_depth_stencil_state;
     static unique_ptr<RHI_RasterizerState>                               g_rasterizer_state;
     static unique_ptr<RHI_BlendState>                                    g_blend_state;
@@ -199,7 +199,7 @@ namespace ImGui::RHI
         RHI_VertexBuffer* vertex_buffer = nullptr;
         RHI_IndexBuffer* index_buffer   = nullptr;
         {
-            const uint32_t swapchain_id        = swap_chain->GetObjectId();
+            const uint64_t swapchain_id        = swap_chain->GetObjectId();
             const uint32_t swapchain_cmd_index = g_renderer->GetCmdIndex();
 
             const uint32_t gap =  Math::Helper::Clamp<uint32_t>((swapchain_cmd_index + 1) - static_cast<uint32_t>(g_vertex_buffers[swapchain_id].size()), 0, 10);

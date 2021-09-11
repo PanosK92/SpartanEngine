@@ -58,7 +58,7 @@ namespace Spartan
         void TimeBlockStart(const char* func_name, TimeBlockType type, RHI_CommandList* cmd_list = nullptr);
         void TimeBlockEnd();
         void ResetMetrics();
-
+        
         // Properties
         bool GetEnabled()                               const { return m_profile; }
         void SetEnabled(const bool enabled)                   { m_profile = enabled; }
@@ -93,6 +93,7 @@ namespace Spartan
         uint32_t m_rhi_bindings_descriptor_set    = 0;
         uint32_t m_rhi_bindings_pipeline          = 0;
         uint32_t m_rhi_pipeline_barriers          = 0;
+        uint32_t m_rhi_timeblock_count            = 0;
 
         // Metrics - Renderer
         uint32_t m_renderer_meshes_rendered = 0;
@@ -131,12 +132,13 @@ namespace Spartan
             m_rhi_bindings_descriptor_set    = 0;
             m_rhi_bindings_pipeline          = 0;
             m_rhi_pipeline_barriers          = 0;
-        }                                    
+            m_rhi_timeblock_count            = 0;
+        }
 
         TimeBlock* GetNewTimeBlock();
-        TimeBlock* GetLastIncompleteTimeBlock(TimeBlockType type = TimeBlockType::Undefined);
         void AcquireGpuData();
         void UpdateRhiMetricsString();
+        TimeBlock* GetLastIncompleteTimeBlock(TimeBlockType type = TimeBlockType::Undefined);
 
         // Profiling options
         bool m_profile                   = false;

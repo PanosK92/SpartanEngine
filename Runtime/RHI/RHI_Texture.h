@@ -78,10 +78,10 @@ namespace Spartan
 
         uint32_t GetWidth()                                const { return m_width; }
         void SetWidth(const uint32_t width)                      { m_width = width; }
-                                                                 
+
         uint32_t GetHeight()                               const { return m_height; }
         void SetHeight(const uint32_t height)                    { m_height = height; }
-                                                                                                                      
+
         uint32_t GetBitsPerChannel()                       const { return m_bits_per_channel; }
         void SetBitsPerChannel(const uint32_t bits)              { m_bits_per_channel = bits; }
         uint32_t GetBytesPerChannel()                      const { return m_bits_per_channel / 8; }
@@ -92,8 +92,8 @@ namespace Spartan
                                                                  
         RHI_Format GetFormat()                             const { return m_format; }
         void SetFormat(const RHI_Format format)                  { m_format = format; }
-                                                           
-        // Data                                            
+
+        // Data
         uint32_t GetArrayLength()                          const { return m_array_length; }
         uint32_t GetMipCount()                             const { return m_mip_count; }
         bool HasData()                                     const { return !m_data.empty() && !m_data[0].mips.empty() && !m_data[0].mips[0].bytes.empty(); };
@@ -129,7 +129,7 @@ namespace Spartan
         // Layout
         void SetLayout(const RHI_Image_Layout layout, RHI_CommandList* cmd_list, const int mip = -1, const bool ranged = true);
         RHI_Image_Layout GetLayout(const uint32_t mip) const { return m_layout[mip]; }
-        std::array<RHI_Image_Layout, 12> GetLayouts() const { return m_layout; }
+        std::array<RHI_Image_Layout, 12> GetLayouts()  const { return m_layout; }
 
         // Viewport
         const auto& GetViewport() const { return m_viewport; }

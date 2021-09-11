@@ -94,14 +94,14 @@ namespace Spartan
             m_resource_directory            = FileSystem::GetDirectoryFromFilePath(file_path_relative);
         }
         
-        ResourceType GetResourceType()                  const { return m_resource_type; }
-        const char* GetResourceTypeCstr()               const { return typeid(*this).name(); }
-        bool HasFilePathNative()                        const { return !m_resource_file_path_native.empty(); }
-        const std::string& GetResourceFilePath()        const { return m_resource_file_path_foreign; }
-        const std::string& GetResourceFilePathNative()  const { return m_resource_file_path_native; }
-        const std::string& GetResourceName()            const { return m_resource_name; }
-        const std::string& GetResourceFileName()        const { return m_resource_name; }
-        const std::string& GetResourceDirectory()       const { return m_resource_directory; }
+        ResourceType GetResourceType()                 const { return m_resource_type; }
+        const char* GetResourceTypeCstr()              const { return typeid(*this).name(); }
+        bool HasFilePathNative()                       const { return !m_resource_file_path_native.empty(); }
+        const std::string& GetResourceFilePath()       const { return m_resource_file_path_foreign; }
+        const std::string& GetResourceFilePathNative() const { return m_resource_file_path_native; }
+        const std::string& GetResourceName()           const { return m_resource_name; }
+        const std::string& GetResourceFileName()       const { return m_resource_name; }
+        const std::string& GetResourceDirectory()      const { return m_resource_directory; }
 
 
         // Misc

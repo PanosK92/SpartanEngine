@@ -97,7 +97,7 @@ void Widget_World::TreeShow()
         // Dropping on the scene node should unparent the entity
         if (auto payload = ImGuiEx::ReceiveDragPayload(ImGuiEx::DragPayload_Entity))
         {
-            const uint32_t entity_id = get<uint32_t>(payload->data);
+            const uint64_t entity_id = get<uint64_t>(payload->data);
             if (const shared_ptr<Entity>& dropped_entity = _Widget_World::g_world->EntityGetById(entity_id))
             {
                 dropped_entity->GetTransform()->SetParent(nullptr);
@@ -268,7 +268,7 @@ void Widget_World::EntityHandleDragDrop(Entity* entity_ptr) const
     // Drop
     if (auto payload = ImGuiEx::ReceiveDragPayload(ImGuiEx::DragPayload_Entity))
     {
-        const uint32_t entity_id = get<uint32_t>(payload->data);
+        const uint64_t entity_id = get<uint64_t>(payload->data);
         if (const shared_ptr<Entity>& dropped_entity = _Widget_World::g_world->EntityGetById(entity_id))
         {
             if (dropped_entity->GetObjectId() != entity_ptr->GetObjectId())

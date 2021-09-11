@@ -87,7 +87,7 @@ float3 sample_catmull_rom_9(Texture2D stex, float2 uv, float2 resolution)
 // Based on "Temporal Reprojection Anti-Aliasing" - https://github.com/playdeadgames/temporal
 float3 clip_aabb(float3 aabb_min, float3 aabb_max, float3 p, float3 q)
 {
-    float3 r = q - p;
+    float3 r    = q - p;
     float3 rmax = (aabb_max - p.xyz);
     float3 rmin = (aabb_min - p.xyz);
 
@@ -109,18 +109,18 @@ float3 clip_aabb(float3 aabb_min, float3 aabb_max, float3 p, float3 q)
 }
 
 // Clip history to the neighbourhood of the current sample
-float3 clip_history(uint2 thread_id, uint group_index, uint3 group_id, Texture2D tex_input, float3 color_history, float2 velocity_closest)
+float3 clip_history(int2 position, Texture2D tex_input, float3 color_history, float2 velocity_closest)
 {
     // Sample a 3x3 neighbourhood
-    float3 ctl = tex_input[thread_id + uint2(-1, -1)].rgb;
-    float3 ctc = tex_input[thread_id + uint2(0, -1)].rgb;
-    float3 ctr = tex_input[thread_id + uint2(1, -1)].rgb;
-    float3 cml = tex_input[thread_id + uint2(-1, 0)].rgb;
-    float3 cmc = tex_input[thread_id].rgb;
-    float3 cmr = tex_input[thread_id + uint2(1, 0)].rgb;
-    float3 cbl = tex_input[thread_id + uint2(-1, 1)].rgb;
-    float3 cbc = tex_input[thread_id + uint2(0, 1)].rgb;
-    float3 cbr = tex_input[thread_id + uint2(1, 1)].rgb;
+    float3 ctl = tex_input[position + int2(-1, -1)].rgb;
+    float3 ctc = tex_input[position + int2(0, -1)].rgb;
+    float3 ctr = tex_input[position + int2(1, -1)].rgb;
+    float3 cml = tex_input[position + int2(-1, 0)].rgb;
+    float3 cmc = tex_input[position].rgb;
+    float3 cmr = tex_input[position + int2(1, 0)].rgb;
+    float3 cbl = tex_input[position + int2(-1, 1)].rgb;
+    float3 cbc = tex_input[position + int2(0, 1)].rgb;
+    float3 cbr = tex_input[position + int2(1, 1)].rgb;
 
     // Compute min and max
     float3 color_avg  = (ctl + ctc + ctr + cml + cmc + cmr + cbl + cbc + cbr) / 9.0f;
@@ -140,8 +140,9 @@ float3 clip_history(uint2 thread_id, uint group_index, uint3 group_id, Texture2D
 }
 
 /*------------------------------------------------------------------------------
-                                UPSAMPLING
+                                UPSAMPLING [WIP]
 ------------------------------------------------------------------------------*/
+
 static const int2 kOffsets3x3[9] =
 {
     int2(-1, -1),
@@ -173,12 +174,12 @@ float3 get_input_sample(Texture2D tex_input, const uint2 pos_out)
     if (!is_taa_upsampling_enabled())
         return tex_input[pos_out].rgb;
 
-    const float2 uv = (pos_out + 0.5f) / g_resolution_rt;
+    const float2 uv                   = (pos_out + 0.5f) / g_resolution_rt;
     const float2 jitter_offset_pixels = g_taa_jitter_offset * g_resolution_render;
-    const float2 pos_input = uv * g_resolution_render;
-    const float2 pos_input_center = floor(pos_input) + 0.5f ;
-    const float2 pos_out_center = pos_out + 0.5f;
-    const float2 in_to_out = pos_out_center - pos_input_center;
+    const float2 pos_input            = uv * g_resolution_render;
+    const float2 pos_input_center     = floor(pos_input) + 0.5f;
+    const float2 pos_out_center       = pos_out + 0.5f;
+    const float2 in_to_out            = pos_out_center - pos_input_center;
 
     // Compute sample weights
     float weights[9];
@@ -204,7 +205,11 @@ float3 get_input_sample(Texture2D tex_input, const uint2 pos_out)
     return color;
 }
 
-float3 temporal_antialiasing(uint2 pos_out, uint group_index, uint3 group_id, Texture2D tex_history, Texture2D tex_input)
+/*------------------------------------------------------------------------------
+                                    TAA
+------------------------------------------------------------------------------*/
+
+float3 temporal_antialiasing(uint2 pos_out, Texture2D tex_history, Texture2D tex_input)
 {
     const float2 uv       = (pos_out + 0.5f) / g_resolution_rt;
     const uint2 pos_input = is_taa_upsampling_enabled() ? (uv * g_resolution_render) : pos_out;
@@ -213,18 +218,18 @@ float3 temporal_antialiasing(uint2 pos_out, uint group_index, uint3 group_id, Te
     float2 velocity       = get_velocity_closest_3x3(uv);
     float2 uv_reprojected = uv - velocity;
 
-    // If re-projected UV is out of screen, converge to current color immediately
-    if (!is_saturated(uv_reprojected))
-        return get_input_sample(tex_input, pos_out);
-
     // Get input color
     float3 color_input = get_input_sample(tex_input, pos_out);
-    
+
+    // If re-projected UV is out of screen, converge to current color immediately
+    if (!is_saturated(uv_reprojected))
+        return color_input;
+
     // Get history color (catmull-rom reduces a lot of the blurring that you get under motion)
     float3 color_history = sample_catmull_rom_9(tex_history, uv_reprojected, g_resolution_rt).rgb;
 
     // Clip history to the neighbourhood of the current sample
-    color_history = clip_history(pos_input, group_index, group_id, tex_input, color_history, velocity);
+    color_history = clip_history(pos_input, tex_input, color_history, velocity);
 
     // Compute blend factor
     float blend_factor = 1.0f / 16.0f;
@@ -254,10 +259,10 @@ float3 temporal_antialiasing(uint2 pos_out, uint group_index, uint3 group_id, Te
 }
 
 [numthreads(thread_group_count_x, thread_group_count_y, 1)]
-void mainCS(uint3 thread_id : SV_DispatchThreadID, uint group_index : SV_GroupIndex, uint3 group_id : SV_GroupID)
+void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
     if (thread_id.x >= uint(g_resolution_rt.x) || thread_id.y >= uint(g_resolution_rt.y))
         return;
 
-    tex_out_rgb[thread_id.xy] = temporal_antialiasing(thread_id.xy, group_index, group_id, tex, tex2);
+    tex_out_rgb[thread_id.xy] = temporal_antialiasing(thread_id.xy, tex, tex2);
 }

@@ -37,7 +37,7 @@ namespace Spartan
     class SPARTAN_CLASS Transform : public IComponent
     {
     public:
-        Transform(Context* context, Entity* entity, uint32_t id = 0);
+        Transform(Context* context, Entity* entity, uint64_t id = 0);
         ~Transform() = default;
 
         //= ICOMPONENT ===============================
@@ -82,7 +82,7 @@ namespace Spartan
         Math::Vector3 GetLeft()     const;
         //================================
 
-        //= HIERARCHY ============================================================================================
+        //= HIERARCHY ======================================================================================
         void SetParent(Transform* new_parent);
         Transform* GetChildByIndex(uint32_t index);
         Transform* GetChildByName(const std::string& name);
@@ -91,15 +91,15 @@ namespace Spartan
         void AddChild(Transform* child);
         bool IsDescendantOf(Transform* transform) const;
         void GetDescendants(std::vector<Transform*>* descendants);
-        bool IsRoot()                                const { return m_parent == nullptr; }
-        bool HasParent()                             const { return m_parent != nullptr; }
-        bool HasChildren()                           const { return GetChildrenCount() > 0 ? true : false; }
-        uint32_t GetChildrenCount()                  const { return static_cast<uint32_t>(m_children.size()); }
-        Transform* GetRoot()                               { return HasParent() ? GetParent()->GetRoot() : this; }
-        Transform* GetParent()                       const { return m_parent; }
-        std::vector<Transform*>& GetChildren()             { return m_children; }
-        void MakeDirty()                                   { m_is_dirty = true; }
-        //========================================================================================================
+        bool IsRoot()                          const { return m_parent == nullptr; }
+        bool HasParent()                       const { return m_parent != nullptr; }
+        bool HasChildren()                     const { return GetChildrenCount() > 0 ? true : false; }
+        uint32_t GetChildrenCount()            const { return static_cast<uint32_t>(m_children.size()); }
+        Transform* GetRoot()                         { return HasParent() ? GetParent()->GetRoot() : this; }
+        Transform* GetParent()                 const { return m_parent; }
+        std::vector<Transform*>& GetChildren()       { return m_children; }
+        void MakeDirty()                             { m_is_dirty = true; }
+        //==================================================================================================
 
         void LookAt(const Math::Vector3& v)                    { m_look_at = v; }
         const Math::Matrix& GetMatrix()                  const { return m_matrix; }

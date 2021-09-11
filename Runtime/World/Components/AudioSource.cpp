@@ -34,16 +34,16 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    AudioSource::AudioSource(Context* context, Entity* entity, uint32_t id /*= 0*/) : IComponent(context, entity, id)
+    AudioSource::AudioSource(Context* context, Entity* entity, uint64_t id /*= 0*/) : IComponent(context, entity, id)
     {
-        m_mute                = false;
-        m_play_on_start        = true;
-        m_loop                = false;
-        m_priority            = 128;
+        m_mute              = false;
+        m_play_on_start     = true;
+        m_loop              = false;
+        m_priority          = 128;
         m_volume            = 1.0f;
-        m_pitch                = 1.0f;
-        m_pan                = 0.0f;
-        m_audio_clip_loaded    = false;
+        m_pitch             = 1.0f;
+        m_pan               = 0.0f;
+        m_audio_clip_loaded = false;
     }
     
     void AudioSource::OnInitialize()

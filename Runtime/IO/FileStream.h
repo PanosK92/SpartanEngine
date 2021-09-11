@@ -54,7 +54,7 @@ namespace Spartan
         //= WRITING ==================================================
         template <class T, class = typename std::enable_if<
             std::is_same<T, bool>::value                ||
-            std::is_same<T, unsigned char>::value       ||        
+            std::is_same<T, unsigned char>::value       ||
             std::is_same<T, int>::value                 ||
             std::is_same<T, long>::value                ||
             std::is_same<T, long long>::value           ||
@@ -85,7 +85,7 @@ namespace Spartan
         void Write(const std::vector<uint32_t>& value);
         void Write(const std::vector<unsigned char>& value);
         void Write(const std::vector<std::byte>& value);
-        void Skip(uint32_t n);
+        void Skip(uint64_t n);
         //===========================================================
         
         //= READING ===========================================

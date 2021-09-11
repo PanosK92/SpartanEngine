@@ -34,7 +34,7 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    Transform::Transform(Context* context, Entity* entity, uint32_t id /*= 0*/) : IComponent(context, entity, id, this)
+    Transform::Transform(Context* context, Entity* entity, uint64_t id /*= 0*/) : IComponent(context, entity, id, this)
     {
         m_position_local  = Vector3::Zero;
         m_rotation_local  = Quaternion(0, 0, 0, 1);
@@ -89,7 +89,7 @@ namespace Spartan
         stream->Read(&m_look_at);
 
         // Hierarchy
-        uint32_t parent_entity_id = 0;
+        uint64_t parent_entity_id = 0;
         stream->Read(&parent_entity_id);
         if (parent_entity_id != 0)
         {

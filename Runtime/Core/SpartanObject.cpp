@@ -26,11 +26,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-    uint32_t g_id = 0;
+    uint64_t g_id = 0;
 
     SpartanObject::SpartanObject(Context* context /*= nullptr*/)
     {
         m_context   = context;
-        m_object_id        = GenerateObjectId();
+        m_object_id = GenerateObjectId();
     }
 }

@@ -60,9 +60,9 @@ namespace Spartan
         m_time_ms       = static_cast<double>(chrono::duration<double, milli>(m_time_start - m_time_sleep_start).count());
 
         // Compute smoothed delta time
-        const double frames_to_accumulate   = 10;
-        const double delta_feedback         = 1.0 / frames_to_accumulate;
-        m_delta_time_smoothed_ms            = m_delta_time_smoothed_ms * (1.0 - delta_feedback) + m_delta_time_ms * delta_feedback;
+        const double frames_to_accumulate = 10;
+        const double delta_feedback       = 1.0 / frames_to_accumulate;
+        m_delta_time_smoothed_ms          = m_delta_time_smoothed_ms * (1.0 - delta_feedback) + m_delta_time_ms * delta_feedback;
     }
 
     void Timer::SetFpsLimit(double fps_in)

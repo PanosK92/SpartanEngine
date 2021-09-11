@@ -844,6 +844,12 @@ namespace Spartan
         // Ensure that the texture has per mip views since they are required for GPU downsampling.
         SP_ASSERT(texture->HasPerMipViews());
 
+        // Ensure the texture hasn't already been added to the vector
+        for (const RHI_Texture* texture_it : m_textures_mip_generation)
+        {
+            SP_ASSERT(texture_it->GetObjectId() != texture->GetObjectId());
+        }
+
         // Wait
         while (m_is_generating_mips)
         {

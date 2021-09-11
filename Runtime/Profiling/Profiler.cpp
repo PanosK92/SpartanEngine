@@ -45,17 +45,22 @@ namespace Spartan
 
     Profiler::~Profiler()
     {
-        if (m_poll) OnFrameEnd();
+        if (m_poll)
+        {
+            OnFrameEnd();
+        }
+
         m_time_blocks_write.clear();
         m_time_blocks_read.clear();
+
         ClearRhiMetrics();
     }
 
     bool Profiler::OnInitialise()
     {
-        m_resource_manager    = m_context->GetSubsystem<ResourceCache>();
-        m_renderer            = m_context->GetSubsystem<Renderer>();
-        m_timer               = m_context->GetSubsystem<Timer>();
+        m_resource_manager = m_context->GetSubsystem<ResourceCache>();
+        m_renderer         = m_context->GetSubsystem<Renderer>();
+        m_timer            = m_context->GetSubsystem<Timer>();
 
         return true;
     }
@@ -78,9 +83,11 @@ namespace Spartan
             m_time_blocks_read.resize(new_size);
             m_time_blocks_write.reserve(new_size);
             m_time_blocks_write.resize(new_size);
-            LOG_WARNING("Time block list has grown to fit %d commands. Consider making the capacity larger to avoid re-allocations.", m_time_block_count + 1);
+
             m_increase_capacity = false;
-            m_poll = true;
+            m_poll              = true;
+
+            LOG_WARNING("Time block list has grown to fit %d commands. Consider making the capacity larger to avoid re-allocations.", m_time_block_count + 1);
         }
         else
         {
@@ -93,15 +100,15 @@ namespace Spartan
         // Compute timings
         {
             // Detect stutters
-            float frames_to_accumulate  = 5.0f;
-            float delta_feedback        = 1.0f / frames_to_accumulate;
-            m_is_stuttering_cpu         = m_time_cpu_last > (m_time_cpu_avg + m_stutter_delta_ms);
-            m_is_stuttering_gpu         = m_time_gpu_last > (m_time_gpu_avg + m_stutter_delta_ms);
+            float frames_to_accumulate = 5.0f;
+            float delta_feedback       = 1.0f / frames_to_accumulate;
+            m_is_stuttering_cpu        = m_time_cpu_last > (m_time_cpu_avg + m_stutter_delta_ms);
+            m_is_stuttering_gpu        = m_time_gpu_last > (m_time_gpu_avg + m_stutter_delta_ms);
 
-            frames_to_accumulate    = 20.0f;
-            delta_feedback          = 1.0f / frames_to_accumulate;
-            m_time_cpu_last         = 0.0f;
-            m_time_gpu_last         = 0.0f;
+            frames_to_accumulate = 20.0f;
+            delta_feedback       = 1.0f / frames_to_accumulate;
+            m_time_cpu_last      = 0.0f;
+            m_time_gpu_last      = 0.0f;
 
             for (const TimeBlock& time_block : m_time_blocks_read)
             {
@@ -131,9 +138,9 @@ namespace Spartan
 
             // Frame
             m_time_frame_last = static_cast<float>(m_timer->GetDeltaTimeMs());
-            m_time_frame_avg = m_time_frame_avg * (1.0f - delta_feedback) + m_time_frame_last * delta_feedback;
-            m_time_frame_min = Math::Helper::Min(m_time_frame_min, m_time_frame_last);
-            m_time_frame_max = Math::Helper::Max(m_time_frame_max, m_time_frame_last);
+            m_time_frame_avg  = m_time_frame_avg * (1.0f - delta_feedback) + m_time_frame_last * delta_feedback;
+            m_time_frame_min  = Math::Helper::Min(m_time_frame_min, m_time_frame_last);
+            m_time_frame_max  = Math::Helper::Max(m_time_frame_max, m_time_frame_last);
 
             // FPS
             m_fps = static_cast<float>(1.0 / delta_time);
@@ -143,8 +150,8 @@ namespace Spartan
         m_time_since_profiling_sec += static_cast<float>(delta_time);
         if (m_time_since_profiling_sec >= m_profiling_interval_sec)
         {
-            m_time_since_profiling_sec  = 0.0f;
-            m_poll                      = true;
+            m_time_since_profiling_sec = 0.0f;
+            m_poll                     = true;
         }
         else if (m_poll)
         {
@@ -216,7 +223,7 @@ namespace Spartan
 
         if (TimeBlock* time_block = GetNewTimeBlock())
         {
-            time_block->Begin(func_name, type, time_block_parent, cmd_list, m_renderer->GetRhiDevice());
+            time_block->Begin(++m_rhi_timeblock_count, func_name, type, time_block_parent, cmd_list, m_renderer->GetRhiDevice());
         }
     }
 
@@ -234,18 +241,18 @@ namespace Spartan
 
     void Profiler::ResetMetrics()
     {
-        m_time_frame_avg    = 0.0f;
-        m_time_frame_min    = std::numeric_limits<float>::max();
-        m_time_frame_max    = std::numeric_limits<float>::lowest();
-        m_time_frame_last   = 0.0f;
-        m_time_cpu_avg      = 0.0f;
-        m_time_cpu_min      = std::numeric_limits<float>::max();
-        m_time_cpu_max      = std::numeric_limits<float>::lowest();
-        m_time_cpu_last     = 0.0f;
-        m_time_gpu_avg      = 0.0f;
-        m_time_gpu_min      = std::numeric_limits<float>::max();
-        m_time_gpu_max      = std::numeric_limits<float>::lowest();
-        m_time_gpu_last     = 0.0f;
+        m_time_frame_avg  = 0.0f;
+        m_time_frame_min  = std::numeric_limits<float>::max();
+        m_time_frame_max  = std::numeric_limits<float>::lowest();
+        m_time_frame_last = 0.0f;
+        m_time_cpu_avg    = 0.0f;
+        m_time_cpu_min    = std::numeric_limits<float>::max();
+        m_time_cpu_max    = std::numeric_limits<float>::lowest();
+        m_time_cpu_last   = 0.0f;
+        m_time_gpu_avg    = 0.0f;
+        m_time_gpu_min    = std::numeric_limits<float>::max();
+        m_time_gpu_max    = std::numeric_limits<float>::lowest();
+        m_time_gpu_last   = 0.0f;
     }
 
     TimeBlock* Profiler::GetNewTimeBlock()
@@ -282,11 +289,11 @@ namespace Spartan
         RHI_Device* rhi_device = m_renderer->GetRhiDevice().get();
         if (const PhysicalDevice* physical_device = rhi_device->GetPrimaryPhysicalDevice())
         {
-            m_gpu_name              = physical_device->GetName();
-            m_gpu_memory_used       = RHI_CommandList::Gpu_GetMemoryUsed(rhi_device);
-            m_gpu_memory_available  = RHI_CommandList::Gpu_GetMemory(rhi_device);
-            m_gpu_driver            = physical_device->GetDriverVersion();
-            m_gpu_api               = physical_device->GetApiVersion();
+            m_gpu_name             = physical_device->GetName();
+            m_gpu_memory_used      = RHI_CommandList::Gpu_GetMemoryUsed(rhi_device);
+            m_gpu_memory_available = RHI_CommandList::Gpu_GetMemory(rhi_device);
+            m_gpu_driver           = physical_device->GetDriverVersion();
+            m_gpu_api              = physical_device->GetApiVersion();
         }
     }
 

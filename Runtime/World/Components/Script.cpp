@@ -33,7 +33,7 @@ using namespace std;
 
 namespace Spartan
 {
-    Script::Script(Context* context, Entity* entity, uint32_t id /*= 0*/) : IComponent(context, entity, id)
+    Script::Script(Context* context, Entity* entity, uint64_t id /*= 0*/) : IComponent(context, entity, id)
     {
         m_scripting = context->GetSubsystem<Scripting>();
     }

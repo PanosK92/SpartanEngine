@@ -35,7 +35,7 @@ namespace Spartan
     class SPARTAN_CLASS Script : public IComponent
     {
     public:
-        Script(Context* context, Entity* entity, uint32_t id = 0);
+        Script(Context* context, Entity* entity, uint64_t id = 0);
         ~Script() = default;
 
         //= ICOMPONENT ===============================
@@ -52,8 +52,8 @@ namespace Spartan
     private:
         std::string m_object_name;
         std::string m_file_path;
-        Scripting* m_scripting              = nullptr;
-        ScriptInstance* m_script_instance   = nullptr;
-        uint32_t m_script_instance_id       = 0;
+        Scripting* m_scripting            = nullptr;
+        ScriptInstance* m_script_instance = nullptr;
+        uint32_t m_script_instance_id     = 0;
     };
 }

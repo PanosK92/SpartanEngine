@@ -40,7 +40,7 @@ namespace Spartan
     class SPARTAN_CLASS SoftBody : public IComponent
     {
     public:
-        SoftBody(Context* context, Entity* entity, uint32_t id = 0);
+        SoftBody(Context* context, Entity* entity, uint64_t id = 0);
         ~SoftBody();
 
         //= ICOMPONENT ===============================

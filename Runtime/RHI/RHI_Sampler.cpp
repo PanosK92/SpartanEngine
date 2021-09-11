@@ -43,16 +43,16 @@ namespace Spartan
         SP_ASSERT(rhi_device != nullptr);
         SP_ASSERT(rhi_device->GetContextRhi()->device != nullptr);
 
-        m_resource              = nullptr;
-        m_rhi_device            = rhi_device;
-        m_filter_min            = filter_min;
-        m_filter_mag            = filter_mag;
-        m_filter_mipmap         = filter_mipmap;
-        m_sampler_address_mode  = sampler_address_mode;
-        m_comparison_function   = comparison_function;
-        m_anisotropy            = anisotropy;
-        m_comparison_enabled    = comparison_enabled;
-        m_mip_lod_bias          = mip_lod_bias;
+        m_resource             = nullptr;
+        m_rhi_device           = rhi_device;
+        m_filter_min           = filter_min;
+        m_filter_mag           = filter_mag;
+        m_filter_mipmap        = filter_mipmap;
+        m_sampler_address_mode = sampler_address_mode;
+        m_comparison_function  = comparison_function;
+        m_anisotropy           = anisotropy;
+        m_comparison_enabled   = comparison_enabled;
+        m_mip_lod_bias         = mip_lod_bias;
 
         CreateResource();
     }

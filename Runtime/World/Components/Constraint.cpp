@@ -38,15 +38,15 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    Constraint::Constraint(Context* context, Entity* entity, uint32_t id /*= 0*/) : IComponent(context, entity, id)
+    Constraint::Constraint(Context* context, Entity* entity, uint64_t id /*= 0*/) : IComponent(context, entity, id)
     {
-        m_constraint                = nullptr;
-        m_enabledEffective            = true;
-        m_collisionWithLinkedBody    = false;
-        m_errorReduction            = 0.0f;
-        m_constraintForceMixing        = 0.0f;
-        m_constraintType            = ConstraintType_Point;
-        m_physics                    = GetContext()->GetSubsystem<Physics>();
+        m_constraint              = nullptr;
+        m_enabledEffective        = true;
+        m_collisionWithLinkedBody = false;
+        m_errorReduction          = 0.0f;
+        m_constraintForceMixing   = 0.0f;
+        m_constraintType          = ConstraintType_Point;
+        m_physics                 = GetContext()->GetSubsystem<Physics>();
 
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_errorReduction, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_constraintForceMixing, float);

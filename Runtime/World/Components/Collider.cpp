@@ -38,12 +38,12 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    Collider::Collider(Context* context, Entity* entity, uint32_t id /*= 0*/) : IComponent(context, entity, id)
+    Collider::Collider(Context* context, Entity* entity, uint64_t id /*= 0*/) : IComponent(context, entity, id)
     {
         m_shapeType = ColliderShape_Box;
         m_center    = Vector3::Zero;
-        m_size        = Vector3::One;
-        m_shape        = nullptr;
+        m_size      = Vector3::One;
+        m_shape     = nullptr;
 
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_size, Vector3);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_center, Vector3);
@@ -57,8 +57,8 @@ namespace Spartan
         // If there is a mesh, use it's bounding box
         if (auto renderable = GetEntity()->GetRenderable())
         {
-            m_center    = Vector3::Zero;
-            m_size      = renderable->GetAabb().GetSize();
+            m_center = Vector3::Zero;
+            m_size   = renderable->GetAabb().GetSize();
         }
 
         Shape_Update();

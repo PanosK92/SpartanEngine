@@ -60,7 +60,7 @@ namespace Spartan
         void EntityRemove(const std::shared_ptr<Entity>& entity);
         std::vector<std::shared_ptr<Entity>> EntityGetRoots();
         const std::shared_ptr<Entity>& EntityGetByName(const std::string& name);
-        const std::shared_ptr<Entity>& EntityGetById(uint32_t id);
+        const std::shared_ptr<Entity>& EntityGetById(uint64_t id);
         const auto& EntityGetAll() const    { return m_entities; }
         //======================================================================
 

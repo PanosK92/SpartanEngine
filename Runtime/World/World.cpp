@@ -163,8 +163,8 @@ namespace Spartan
         }
 
         // Only save root entities as they will also save their descendants
-        auto root_actors = EntityGetRoots();
-        const auto root_entity_count = static_cast<uint32_t>(root_actors.size());
+        vector<shared_ptr<Entity>> root_actors = EntityGetRoots();
+        const uint32_t root_entity_count = static_cast<uint32_t>(root_actors.size());
 
         ProgressTracker::Get().SetJobCount(ProgressType::World, root_entity_count);
 
@@ -172,13 +172,13 @@ namespace Spartan
         file->Write(root_entity_count);
 
         // Save root entity IDs
-        for (const auto& root : root_actors)
+        for (shared_ptr<Entity>& root : root_actors)
         {
             file->Write(root->GetObjectId());
         }
 
         // Save root entities
-        for (const auto& root : root_actors)
+        for (shared_ptr<Entity>& root : root_actors)
         {
             root->Serialize(file.get());
             ProgressTracker::Get().IncrementJobsDone(ProgressType::World);
@@ -198,19 +198,24 @@ namespace Spartan
     {
         if (!FileSystem::Exists(file_path))
         {
-            LOG_ERROR("%s was not found.", file_path.c_str());
+            LOG_ERROR("\"%s\" was not found.", file_path.c_str());
             return false;
         }
 
         // Open file
-        auto file = make_unique<FileStream>(file_path, FileStream_Read);
+        unique_ptr<FileStream> file = make_unique<FileStream>(file_path, FileStream_Read);
         if (!file->IsOpen())
+        {
+            LOG_ERROR("Failed to open \"%s\"", file_path.c_str());
             return false;
+        }
+
+        ProgressTracker& progress_tracker = ProgressTracker::Get();
 
         // Start progress report and timing
-        ProgressTracker::Get().Reset(ProgressType::World);
-        ProgressTracker::Get().SetIsLoading(ProgressType::World, true);
-        ProgressTracker::Get().SetStatus(ProgressType::World, "Loading world...");
+        progress_tracker.Reset(ProgressType::World);
+        progress_tracker.SetIsLoading(ProgressType::World, true);
+        progress_tracker.SetStatus(ProgressType::World, "Loading world...");
         const Stopwatch timer;
 
         // Clear current entities
@@ -224,23 +229,23 @@ namespace Spartan
         // Load root entity count
         const uint32_t root_entity_count = file->ReadAs<uint32_t>();
 
-        ProgressTracker::Get().SetJobCount(ProgressType::World, root_entity_count);
+        progress_tracker.SetJobCount(ProgressType::World, root_entity_count);
 
         // Load root entity IDs
         for (uint32_t i = 0; i < root_entity_count; i++)
         {
             shared_ptr<Entity> entity = EntityCreate();
-            entity->SetObjectId(file->ReadAs<uint32_t>());
+            entity->SetObjectId(file->ReadAs<uint64_t>());
         }
 
         // Serialize root entities
         for (uint32_t i = 0; i < root_entity_count; i++)
         {
             m_entities[i]->Deserialize(file.get(), nullptr);
-            ProgressTracker::Get().IncrementJobsDone(ProgressType::World);
+            progress_tracker.IncrementJobsDone(ProgressType::World);
         }
 
-        ProgressTracker::Get().SetIsLoading(ProgressType::World, false);
+        progress_tracker.SetIsLoading(ProgressType::World, false);
         LOG_INFO("Loading took %.2f ms", timer.GetElapsedTimeMs());
 
         SP_FIRE_EVENT(EventType::WorldLoadEnd);
@@ -310,7 +315,7 @@ namespace Spartan
         return empty;
     }
 
-    const shared_ptr<Entity>& World::EntityGetById(const uint32_t id)
+    const shared_ptr<Entity>& World::EntityGetById(const uint64_t id)
     {
         for (const auto& entity : m_entities)
         {
