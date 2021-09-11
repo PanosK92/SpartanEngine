@@ -310,7 +310,7 @@ namespace ImGuiEx
 
     struct DragDropPayload
     {
-        typedef std::variant<const char*, unsigned int> dataVariant;
+        typedef std::variant<const char*, uint64_t> dataVariant;
         DragDropPayload(const DragPayloadType type = DragPayload_Unknown, const dataVariant data = nullptr)
         {
             this->type = type;

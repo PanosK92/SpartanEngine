@@ -64,7 +64,7 @@ namespace Spartan
     class SPARTAN_CLASS IComponent : public SpartanObject, public std::enable_shared_from_this<IComponent>
     {
     public:
-        IComponent(Context* context, Entity* entity, uint32_t id = 0, Transform* transform = nullptr);
+        IComponent(Context* context, Entity* entity, uint64_t id = 0, Transform* transform = nullptr);
         virtual ~IComponent() = default;
 
         // Runs when the component gets added
@@ -94,10 +94,10 @@ namespace Spartan
         //==========================================
 
         //= PROPERTIES ===============================================================================
-        Transform* GetTransform()           const { return m_transform; }
-        Context* GetContext()               const { return m_context; }
-        ComponentType GetType()             const { return m_type; }
-        void SetType(ComponentType type)          { m_type = type; }
+        Transform* GetTransform()        const { return m_transform; }
+        Context* GetContext()            const { return m_context; }
+        ComponentType GetType()          const { return m_type; }
+        void SetType(ComponentType type)       { m_type = type; }
 
         template <typename T>
         std::shared_ptr<T> GetPtrShared() { return std::dynamic_pointer_cast<T>(shared_from_this()); }

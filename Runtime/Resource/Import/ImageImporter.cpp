@@ -302,8 +302,8 @@ namespace Spartan
         }
 
         // Copy the data over to our vector
-        BYTE* bits = FreeImage_GetBits(bitmap);
-        memcpy(&mip->bytes[0], bits, size_bytes);
+        BYTE* bytes = FreeImage_GetBits(bitmap);
+        memcpy(&mip->bytes[0], bytes, size_bytes);
     }
 
     ImageImporter::ImageImporter(Context* context)

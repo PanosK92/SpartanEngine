@@ -103,7 +103,7 @@ namespace Spartan
 
     void Renderer::CreateSamplers(const bool create_only_anisotropic /*= false*/)
     {
-        uint32_t anisotropy                      = GetOptionValue<uint32_t>(Renderer_Option_Value::Anisotropy);
+        float anisotropy                         = GetOptionValue<float>(Renderer_Option_Value::Anisotropy);
         RHI_Comparison_Function depth_comparison = GetOption(Render_ReverseZ) ? RHI_Comparison_Function::Greater : RHI_Comparison_Function::Less;
         float mip_lod_bias                       = -log2(m_resolution_output.x / m_resolution_render.x); // negative mip bias when upscaling is active (helps bring in some texture detail)
 
@@ -456,7 +456,7 @@ namespace Spartan
     void Renderer::CreateFonts()
     {
         // Get standard font directory
-        const auto dir_font = m_resource_cache->GetResourceDirectory(ResourceDirectory::Fonts) + "/";
+        const string dir_font = m_resource_cache->GetResourceDirectory(ResourceDirectory::Fonts) + "/";
 
         // Load a font (used for performance metrics)
         m_font = make_unique<Font>(m_context, dir_font + "CalibriBold.ttf", 12, Vector4(0.8f, 0.8f, 0.8f, 1.0f));

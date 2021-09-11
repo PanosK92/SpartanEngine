@@ -38,7 +38,7 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    Environment::Environment(Context* context, Entity* entity, uint32_t id /*= 0*/) : IComponent(context, entity, id)
+    Environment::Environment(Context* context, Entity* entity, uint64_t id /*= 0*/) : IComponent(context, entity, id)
     {
         m_environment_type = Environment_Sphere;
 
@@ -48,12 +48,12 @@ namespace Spartan
         {
             m_file_paths =
             {
-                dir_cubemaps + "array/X+.tga",    // right
-                dir_cubemaps + "array/X-.tga",    // left
-                dir_cubemaps + "array/Y+.tga",    // up
-                dir_cubemaps + "array/Y-.tga",    // down
-                dir_cubemaps + "array/Z-.tga",    // back
-                dir_cubemaps + "array/Z+.tga"    // front
+                dir_cubemaps + "array/X+.tga", // right
+                dir_cubemaps + "array/X-.tga", // left
+                dir_cubemaps + "array/Y+.tga", // up
+                dir_cubemaps + "array/Y-.tga", // down
+                dir_cubemaps + "array/Z-.tga", // back
+                dir_cubemaps + "array/Z+.tga"  // front
             };
         }
         else if (m_environment_type == Environment_Sphere)

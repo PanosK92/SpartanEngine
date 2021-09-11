@@ -52,9 +52,9 @@ namespace Spartan
         ResourceCache(Context* context);
         ~ResourceCache();
 
-        //= Subsystem =============
+        //= ISubsystem ==============
         bool OnInitialise() override;
-        //=========================
+        //===========================
 
         // Get by name
         std::shared_ptr<IResource>& GetByName(const std::string& name, ResourceType type);
@@ -115,25 +115,6 @@ namespace Spartan
             // Cache it
             return std::static_pointer_cast<T>(m_resources.emplace_back(resource));
         }
-        bool IsCached(const std::string& resource_name, ResourceType resource_type);
-
-        template <class T>
-        void Remove(std::shared_ptr<T>& resource)
-        {
-            if (!resource)
-                return;
-
-            if (!IsCached(resource->GetResourceName(), resource->GetResourceType()))
-                return;
-
-            m_resources.erase(
-                std::remove_if(
-                    m_resources.begin(),
-                    m_resources.end(),
-                    [](std::shared_ptr<IResource> resource) { return dynamic_cast<SpartanObject*>(resource.get())->GetObjectId() == resource->GetObjectId(); }),
-                m_resources.end()
-            );
-        }
 
         // Loads a resource and adds it to the resource cache
         template <class T>
@@ -146,7 +127,7 @@ namespace Spartan
             }
 
             // Check if the resource is already loaded
-            const auto name = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path);
+            const std::string name = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path);
             if (IsCached(name, IResource::TypeToEnum<T>()))
                 return GetByName<T>(name);
 
@@ -167,30 +148,50 @@ namespace Spartan
             return Cache<T>(typed);
         }
 
-        //= MISC =============================================================
+        template <class T>
+        void Remove(std::shared_ptr<T>& resource)
+        {
+            if (!resource)
+                return;
+
+            if (!IsCached(resource->GetResourceName(), resource->GetResourceType()))
+                return;
+
+            m_resources.erase
+            (
+                std::remove_if
+                (
+                    m_resources.begin(),
+                    m_resources.end(),
+                    [](std::shared_ptr<IResource> resource) { return dynamic_cast<SpartanObject*>(resource.get())->GetObjectId() == resource->GetObjectId(); }
+                ),
+                m_resources.end()
+            );
+        }
+
         // Memory
         uint64_t GetMemoryUsageCpu(ResourceType type = ResourceType::Unknown);
         uint64_t GetMemoryUsageGpu(ResourceType type = ResourceType::Unknown);
-        // Returns all resources of a given type
         uint32_t GetResourceCount(ResourceType type = ResourceType::Unknown);
         void Clear();
-        //====================================================================
 
-        //= DIRECTORIES ================================================================
+        // Directories
         void AddResourceDirectory(ResourceDirectory type, const std::string& directory);
         std::string GetResourceDirectory(ResourceDirectory type);
         void SetProjectDirectory(const std::string& directory);
         std::string GetProjectDirectoryAbsolute() const;
-        const auto& GetProjectDirectory()   const { return m_project_directory; }
-        std::string GetResourceDirectory()  const { return "Data"; }
-        //==============================================================================
+        const auto& GetProjectDirectory()  const { return m_project_directory; }
+        std::string GetResourceDirectory() const { return "Data"; }
 
         // Importers
-        ModelImporter* GetModelImporter()   const { return m_importer_model.get(); }
-        ImageImporter* GetImageImporter()   const { return m_importer_image.get(); }
-        FontImporter* GetFontImporter()     const { return m_importer_font.get(); }
+        ModelImporter* GetModelImporter() const { return m_importer_model.get(); }
+        ImageImporter* GetImageImporter() const { return m_importer_image.get(); }
+        FontImporter* GetFontImporter()   const { return m_importer_font.get(); }
 
     private:
+        bool IsCached(const uint64_t resource_id);
+        bool IsCached(const std::string& resource_name, const ResourceType resource_type);
+
         // Event handlers
         void SaveResourcesToFiles();
         void LoadResourcesFromFiles();

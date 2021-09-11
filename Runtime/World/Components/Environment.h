@@ -37,7 +37,7 @@ namespace Spartan
     class SPARTAN_CLASS Environment : public IComponent
     {
     public:
-        Environment(Context* context, Entity* entity, uint32_t id = 0);
+        Environment(Context* context, Entity* entity, uint64_t id = 0);
         ~Environment() = default;
 
         //= IComponent ===============================

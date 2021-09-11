@@ -205,17 +205,17 @@ namespace Spartan
 
             // Set render state
             static RHI_PipelineState pso;
-            pso.shader_vertex                    = shader_v;
-            pso.shader_pixel                     = is_transparent_pass ? shader_p : nullptr;
-            pso.vertex_buffer_stride             = static_cast<uint32_t>(sizeof(RHI_Vertex_PosTex));
-            pso.blend_state                      = is_transparent_pass ? m_blend_alpha.get() : m_blend_disabled.get();
-            pso.depth_stencil_state              = is_transparent_pass ? m_depth_stencil_r_off.get() : m_depth_stencil_rw_off.get();
-            pso.render_target_color_textures[0]  = tex_color; // always bind so we can clear to white (in case there are no transparent objects)
-            pso.render_target_depth_texture      = tex_depth;
-            pso.clear_stencil                    = rhi_stencil_dont_care;
-            pso.viewport                         = tex_depth->GetViewport();
-            pso.primitive_topology               = RHI_PrimitiveTopology_Mode::TriangleList;
-            pso.pass_name                        = is_transparent_pass ? "Pass_ShadowMaps_Color" : "Pass_ShadowMaps_Depth";
+            pso.shader_vertex                   = shader_v;
+            pso.shader_pixel                    = is_transparent_pass ? shader_p : nullptr;
+            pso.vertex_buffer_stride            = static_cast<uint32_t>(sizeof(RHI_Vertex_PosTex));
+            pso.blend_state                     = is_transparent_pass ? m_blend_alpha.get() : m_blend_disabled.get();
+            pso.depth_stencil_state             = is_transparent_pass ? m_depth_stencil_r_off.get() : m_depth_stencil_rw_off.get();
+            pso.render_target_color_textures[0] = tex_color; // always bind so we can clear to white (in case there are no transparent objects)
+            pso.render_target_depth_texture     = tex_depth;
+            pso.clear_stencil                   = rhi_stencil_dont_care;
+            pso.viewport                        = tex_depth->GetViewport();
+            pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
+            pso.pass_name                       = is_transparent_pass ? "Pass_ShadowMaps_Color" : "Pass_ShadowMaps_Depth";
 
             for (uint32_t array_index = 0; array_index < tex_depth->GetArrayLength(); array_index++)
             {
@@ -244,7 +244,7 @@ namespace Spartan
 
                 // State tracking
                 bool render_pass_active     = false;
-                uint32_t m_set_material_id  = 0;
+                uint64_t m_set_material_id  = 0;
 
                 for (uint32_t entity_index = 0; entity_index < static_cast<uint32_t>(entities.size()); entity_index++)
                 {
@@ -345,7 +345,7 @@ namespace Spartan
         if (cmd_list->BeginRenderPass(pso))
         { 
             // Variables that help reduce state changes
-            uint32_t currently_bound_geometry = 0;
+            uint64_t currently_bound_geometry = 0;
             
             // Draw opaque
             for (const auto& entity : entities)
@@ -387,9 +387,9 @@ namespace Spartan
                 cmd_list->SetTexture(RendererBindings_Srv::material_mask,    material->GetTexture_Ptr(Material_AlphaMask));
 
                 // Update uber buffer
-                m_cb_uber_cpu.transform             = transform->GetMatrix();
-                m_cb_uber_cpu.color.w               = material->HasTexture(Material_Color) ? 1.0f : 0.0f;
-                m_cb_uber_cpu.is_transparent_pass   = material->HasTexture(Material_AlphaMask);
+                m_cb_uber_cpu.transform           = transform->GetMatrix();
+                m_cb_uber_cpu.color.w             = material->HasTexture(Material_Color) ? 1.0f : 0.0f;
+                m_cb_uber_cpu.is_transparent_pass = material->HasTexture(Material_AlphaMask);
                 Update_Cb_Uber(cmd_list);
             
                 // Draw
@@ -417,8 +417,8 @@ namespace Spartan
         RHI_Texture* tex_velocity = RENDER_TARGET(RendererRt::Gbuffer_Velocity).get();
         RHI_Texture* tex_depth    = RENDER_TARGET(RendererRt::Gbuffer_Depth).get();
 
-        bool depth_prepass  = GetOption(Render_DepthPrepass);
-        bool wireframe      = GetOption(Render_Debug_Wireframe);
+        bool depth_prepass = GetOption(Render_DepthPrepass);
+        bool wireframe     = GetOption(Render_Debug_Wireframe);
 
         // Set render state
         RHI_PipelineState pso;
@@ -442,7 +442,7 @@ namespace Spartan
         pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
 
         uint32_t material_index = 0;
-        uint32_t material_bound_id = 0;
+        uint64_t material_bound_id = 0;
         m_material_instances.fill(nullptr);
 
         // Iterate through all the G-Buffer shader variations

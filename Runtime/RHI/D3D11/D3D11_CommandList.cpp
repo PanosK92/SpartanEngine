@@ -337,8 +337,8 @@ namespace Spartan
 
     bool RHI_CommandList::EndRenderPass()
     {
-        // End marker and profiler (if enabled)
         Timeblock_End(m_pipeline_state);
+
         return true;
     }
 

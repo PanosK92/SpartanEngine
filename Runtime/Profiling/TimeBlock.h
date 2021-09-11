@@ -44,29 +44,31 @@ namespace Spartan
         TimeBlock() = default;
         ~TimeBlock();
 
-        void Begin(const char* name, TimeBlockType type, const TimeBlock* parent = nullptr, RHI_CommandList* cmd_list = nullptr, const std::shared_ptr<RHI_Device>& rhi_device = nullptr);
+        void Begin(const uint32_t id, const char* name, TimeBlockType type, const TimeBlock* parent = nullptr, RHI_CommandList* cmd_list = nullptr, const std::shared_ptr<RHI_Device>& rhi_device = nullptr);
         void End();
         void ComputeDuration(const uint32_t pass_index);
         void Reset();
-        TimeBlockType GetType()         const { return m_type; }
-        const char* GetName()           const { return m_name; }
-        const TimeBlock* GetParent()    const { return m_parent; }
-        uint32_t GetTreeDepth()         const { return m_tree_depth; }
-        uint32_t GetTreeDepthMax()      const { return m_max_tree_depth; }
-        float GetDuration()             const { return m_duration; }
-        bool IsComplete()               const { return m_is_complete; }
+        TimeBlockType GetType()      const { return m_type; }
+        const char* GetName()        const { return m_name; }
+        const TimeBlock* GetParent() const { return m_parent; }
+        uint32_t GetTreeDepth()      const { return m_tree_depth; }
+        uint32_t GetTreeDepthMax()   const { return m_max_tree_depth; }
+        float GetDuration()          const { return m_duration; }
+        bool IsComplete()            const { return m_is_complete; }
+        uint32_t GetId()             const { return m_id; }
 
     private:    
         static uint32_t FindTreeDepth(const TimeBlock* time_block, uint32_t depth = 0);
         static uint32_t m_max_tree_depth;
 
-        const char* m_name          = nullptr;
-        TimeBlockType m_type        = TimeBlockType::Undefined;
-        float m_duration            = 0.0f;
-        const TimeBlock* m_parent   = nullptr;
-        uint32_t m_tree_depth       = 0;
-        bool m_is_complete          = false;
-        RHI_Device* m_rhi_device    = nullptr;
+        const char* m_name        = nullptr;
+        TimeBlockType m_type      = TimeBlockType::Undefined;
+        float m_duration          = 0.0f;
+        const TimeBlock* m_parent = nullptr;
+        uint32_t m_tree_depth     = 0;
+        bool m_is_complete        = false;
+        RHI_Device* m_rhi_device  = nullptr;
+        uint32_t m_id             = 0;
 
         // CPU timing
         std::chrono::steady_clock::time_point m_start;

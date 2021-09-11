@@ -38,11 +38,11 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    static const float DEFAULT_MASS                 = 0.0f;
-    static const float DEFAULT_FRICTION             = 0.5f;
-    static const float DEFAULT_FRICTION_ROLLING     = 0.0f;
-    static const float DEFAULT_RESTITUTION          = 0.0f;    
-    static const float DEFAULT_DEACTIVATION_TIME    = 2000;
+    static const float DEFAULT_MASS              = 0.0f;
+    static const float DEFAULT_FRICTION          = 0.5f;
+    static const float DEFAULT_FRICTION_ROLLING  = 0.0f;
+    static const float DEFAULT_RESTITUTION       = 0.0f;
+    static const float DEFAULT_DEACTIVATION_TIME = 2000;
 
     class MotionState : public btMotionState
     {
@@ -72,22 +72,22 @@ namespace Spartan
         RigidBody* m_rigidBody;
     };
 
-    RigidBody::RigidBody(Context* context, Entity* entity, uint32_t id /*= 0*/) : IComponent(context, entity, id)
+    RigidBody::RigidBody(Context* context, Entity* entity, uint64_t id /*= 0*/) : IComponent(context, entity, id)
     {
         m_physics = GetContext()->GetSubsystem<Physics>();
 
-        m_in_world            = false;
-        m_mass                = DEFAULT_MASS;
-        m_restitution        = DEFAULT_RESTITUTION;
-        m_friction            = DEFAULT_FRICTION;
-        m_friction_rolling    = DEFAULT_FRICTION_ROLLING;
-        m_use_gravity        = true;
-        m_gravity           = m_physics->GetGravity();
-        m_is_kinematic        = false;
-        m_position_lock        = Vector3::Zero;
-        m_rotation_lock        = Vector3::Zero;
-        m_collision_shape    = nullptr;
-        m_rigidBody            = nullptr;
+        m_in_world         = false;
+        m_mass             = DEFAULT_MASS;
+        m_restitution      = DEFAULT_RESTITUTION;
+        m_friction         = DEFAULT_FRICTION;
+        m_friction_rolling = DEFAULT_FRICTION_ROLLING;
+        m_use_gravity      = true;
+        m_gravity          = m_physics->GetGravity();
+        m_is_kinematic     = false;
+        m_position_lock    = Vector3::Zero;
+        m_rotation_lock    = Vector3::Zero;
+        m_collision_shape  = nullptr;
+        m_rigidBody        = nullptr;
 
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_mass, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_friction, float);
@@ -98,7 +98,7 @@ namespace Spartan
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_gravity, Vector3);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_position_lock, Vector3);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_rotation_lock, Vector3);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_center_of_mass, Vector3);    
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_center_of_mass, Vector3);
     }
 
     RigidBody::~RigidBody()

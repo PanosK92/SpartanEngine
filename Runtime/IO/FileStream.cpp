@@ -129,7 +129,7 @@ namespace Spartan
         out.write(reinterpret_cast<const char*>(&value[0]), sizeof(std::byte) * size);
     }
 
-    void FileStream::Skip(uint32_t n)
+    void FileStream::Skip(uint64_t n)
     {
         // Set the seek cursor to offset n from the current position
         if (m_flags & FileStream_Write)

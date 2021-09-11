@@ -51,6 +51,10 @@ namespace Spartan
             case RHI_Format::RHI_Format_BC7:
                 format_amd = CMP_FORMAT::CMP_FORMAT_BC7;
                 break;
+
+            case RHI_Format::RHI_Format_ASTC:
+                format_amd = CMP_FORMAT::CMP_FORMAT_ASTC;
+                break;
         }
 
         SP_ASSERT(format_amd != CMP_FORMAT::CMP_FORMAT_Unknown);
@@ -163,7 +167,7 @@ namespace Spartan
         m_data.shrink_to_fit();
         m_load_state = LoadState::Started;
 
-        // Load from disk
+        // Load from drive
         bool loaded            = false;
         bool is_native_format  = FileSystem::IsEngineTextureFile(file_path);
         bool is_foreign_format = FileSystem::IsSupportedImageFile(file_path);
@@ -200,7 +204,7 @@ namespace Spartan
                 file->Read(&m_bits_per_channel);
                 file->Read(reinterpret_cast<uint32_t*>(&m_format));
                 file->Read(&m_flags);
-                SetObjectId(file->ReadAs<uint32_t>());
+                SetObjectId(file->ReadAs<uint64_t>());
                 SetResourceFilePath(file->ReadAs<string>());
 
                 loaded = true;
@@ -364,7 +368,7 @@ namespace Spartan
 
     bool RHI_Texture::Compress(const RHI_Format format)
     {
-        bool has_alpha_channel = IsTransparent();
+        bool success = true;
 
         for (uint32_t index_array = 0; index_array < m_array_length; index_array++)
         { 
@@ -372,8 +376,7 @@ namespace Spartan
             {
                 uint32_t width            = m_width >> index_mip;
                 uint32_t height           = m_height >> index_mip;
-                uint32_t src_pitch        = width * m_channel_count * (m_bits_per_channel / 8); // Line width in bytes
-                uint32_t dest_pitch       = src_pitch;
+                uint32_t src_pitch        = width * m_channel_count * (m_bits_per_channel / 8); // in bytes
                 RHI_Texture_Mip& src_data = GetMip(index_array, index_mip);
 
                  // Source
@@ -386,6 +389,7 @@ namespace Spartan
                 src_texture.dwDataSize  = CMP_CalculateBufferSize(&src_texture);
                 src_texture.pData       = reinterpret_cast<CMP_BYTE*>(&src_data.bytes[0]);
 
+                // Create a scratch buffer to hold the compressed data.
                 vector<std::byte> dst_data;
                 dst_data.reserve(src_texture.dwDataSize);
                 dst_data.resize(src_texture.dwDataSize);
@@ -393,15 +397,15 @@ namespace Spartan
                 // Destination
                 CMP_Texture dst_texture = {};
                 dst_texture.dwSize      = sizeof(dst_texture);
-                dst_texture.dwWidth     = width;
-                dst_texture.dwHeight    = height;
-                dst_texture.dwPitch     = dest_pitch;
+                dst_texture.dwWidth     = src_texture.dwWidth;
+                dst_texture.dwHeight    = src_texture.dwHeight;
+                dst_texture.dwPitch     = src_texture.dwPitch;
                 dst_texture.format      = rhi_format_amd_format(format);
                 dst_texture.dwDataSize  = CMP_CalculateBufferSize(&dst_texture);
                 dst_texture.pData       = reinterpret_cast<CMP_BYTE*>(&dst_data[0]);
 
                 // Alpha threshold
-                CMP_BYTE alpha_threshold = has_alpha_channel ? 128 : 0;
+                CMP_BYTE alpha_threshold = IsTransparent() ? 128 : 0;
 
                 // Compression quality
                 float compression_quality = 0.05f; // Default (per AMD)
@@ -419,22 +423,31 @@ namespace Spartan
                 options.dwSize              = sizeof(options);
                 //options.bDXT1UseAlpha     = has1BitAlphaChannel; // Encode single-bit alpha data. Only valid when compressing to DXT1 & BC1.
                 options.nAlphaThreshold     = alpha_threshold;     // The alpha threshold to use when compressing to DXT1 & BC1 with bDXT1UseAlpha.
-                options.nCompressionSpeed   = compression_speed;   // The trade-off between compression speed & quality. This value is ignored for BC6H and BC7 (for BC7 the compression speed depends on fquaility value).
+                options.nCompressionSpeed   = compression_speed;   // The trade-off between compression speed & quality. This value is ignored for BC6H and BC7 (for BC7 the compression speed depends on fquality value).
                 options.fquality            = compression_quality; // Quality of encoding. This value ranges between 0.0 and 1.0. Default set to 1.0f (in tpacinfo.cpp).
                 options.dwnumThreads        = 0;                   // Number of threads to initialize for encoding (0 auto, 128 max).
                 options.nEncodeWith         = CMP_HPC;             // Use CPU High Performance Compute Encoder
                 
                 // Convert the source texture to the destination texture (this can be compression, decompression or converting between two uncompressed formats)
-                if (CMP_ConvertTexture(&src_texture, &dst_texture, &options, nullptr) != CMP_OK)
+                if (CMP_ConvertTexture(&src_texture, &dst_texture, &options, nullptr) == CMP_OK)
                 {
-                    LOG_ERROR("Failed to compress texture.");
-                    return false;
+                    // Copy compressed data
+                    m_data[index_array].mips[index_mip].bytes = dst_data;
+
+                    // Assign new format
+                    m_format = format;
+                }
+                else
+                {
+                    LOG_ERROR("Failed to compress slice %d, mip %d.", index_array, index_mip);
+                    success = false;
+                    continue;
+
                 }
             }
         }
 
-        m_format = RHI_Format::RHI_Format_BC7;
-        return true;
+        return success;
     }
 
     void RHI_Texture::ComputeMemoryUsage()
@@ -521,9 +534,9 @@ namespace Spartan
         return channel_count;
     }
 
-    std::string RHI_Texture::FormatToString(const RHI_Format result)
+    string RHI_Texture::FormatToString(const RHI_Format result)
     {
-        std::string format = nullptr;
+        std::string format;
 
         switch (result)
         {

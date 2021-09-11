@@ -36,7 +36,7 @@ namespace Spartan
     class SPARTAN_CLASS Entity : public SpartanObject, public std::enable_shared_from_this<Entity>
     {
     public:
-        Entity(Context* context, uint32_t transform_id = 0);
+        Entity(Context* context, uint64_t transform_id = 0);
         ~Entity();
 
         void Clone();
@@ -46,20 +46,21 @@ namespace Spartan
         void Serialize(FileStream* stream);
         void Deserialize(FileStream* stream, Transform* parent);
 
-        //= PROPERTIES ================================================================================================
-        const std::string& GetObjectName() const                     { return m_object_name; }
-        void SetName(const std::string& name)                        { m_object_name = name; }
-                                                                     
-        bool IsActive() const                                        { return m_is_active; }
-        void SetActive(const bool active)                            { m_is_active = active; }
-                                                                     
+        // Name
+        const std::string& GetObjectName() const { return m_object_name; }
+        void SetName(const std::string& name)    { m_object_name = name; }
+
+        // Active
+        bool IsActive() const             { return m_is_active; }
+        void SetActive(const bool active) { m_is_active = active; }
+
+        // Visible
         bool IsVisibleInHierarchy() const                            { return m_hierarchy_visibility; }
         void SetHierarchyVisibility(const bool hierarchy_visibility) { m_hierarchy_visibility = hierarchy_visibility; }
-        //=============================================================================================================
 
         // Adds a component of type T
         template <class T>
-        T* AddComponent(uint32_t id = 0)
+        T* AddComponent(uint64_t id = 0)
         {
             const ComponentType type = IComponent::TypeToEnum<T>();
 
@@ -89,7 +90,7 @@ namespace Spartan
         }
 
         // Adds a component of ComponentType 
-        IComponent* AddComponent(ComponentType type, uint32_t id = 0);
+        IComponent* AddComponent(ComponentType type, uint64_t id = 0);
 
         // Returns a component of type T (if it exists)
         template <class T>
@@ -100,7 +101,7 @@ namespace Spartan
             if (!HasComponent(type))
                 return nullptr;
 
-            for (const auto& component : m_components)
+            for (std::shared_ptr<IComponent>& component : m_components)
             {
                 if (component->GetType() == type)
                     return static_cast<T*>(component.get());
@@ -119,7 +120,7 @@ namespace Spartan
             if (!HasComponent(type))
                 return components;
         
-            for (const auto& component : m_components)
+            for (std::shared_ptr<IComponent>& component : m_components)
             {
                 if (component->GetType() != type)
                     continue;
@@ -162,7 +163,7 @@ namespace Spartan
             SP_FIRE_EVENT(EventType::WorldResolve);
         }
 
-        void RemoveComponentById(uint32_t id);
+        void RemoveComponentById(uint64_t id);
         const auto& GetAllComponents() const { return m_components; }
 
         void MarkForDestruction()         { m_destruction_pending = true; }

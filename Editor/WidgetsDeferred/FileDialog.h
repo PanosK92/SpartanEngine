@@ -174,7 +174,7 @@ public:
     auto IsDirectory()                 const { return m_isDirectory; }
     auto GetTimeSinceLastClickMs()     const { return static_cast<float>(m_time_since_last_click.count()); }
 
-    void Clicked()    
+    void Clicked()
     {
         const auto now          = std::chrono::high_resolution_clock::now();
         m_time_since_last_click = now - m_last_click_time;
@@ -183,7 +183,7 @@ public:
     
 private:
     Thumbnail m_thumbnail;
-    unsigned int m_id;
+    uint64_t m_id;
     std::string m_path;
     std::string m_label;
     bool m_isDirectory;
@@ -244,7 +244,7 @@ private:
     uint32_t m_displayed_item_count;
 
     // Internal
-    mutable unsigned int m_context_menu_id;
+    mutable uint64_t m_context_menu_id;
     mutable ImGuiEx::DragDropPayload m_drag_drop_payload;
     float m_offset_bottom = 0.0f;
     FileDialog_Type m_type;

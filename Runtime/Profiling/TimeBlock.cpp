@@ -39,15 +39,16 @@ namespace Spartan
         Reset();
     }
 
-    void TimeBlock::Begin(const char* name, TimeBlockType type, const TimeBlock* parent /*= nullptr*/, RHI_CommandList* cmd_list /*= nullptr*/, const shared_ptr<RHI_Device>& rhi_device /*= nullptr*/)
+    void TimeBlock::Begin(const uint32_t id, const char* name, TimeBlockType type, const TimeBlock* parent /*= nullptr*/, RHI_CommandList* cmd_list /*= nullptr*/, const shared_ptr<RHI_Device>& rhi_device /*= nullptr*/)
     {
-        m_name                = name;
-        m_parent            = parent;
-        m_tree_depth        = FindTreeDepth(this);
-        m_rhi_device        = rhi_device.get();
-        m_cmd_list          = cmd_list;
-        m_type              = type;
-        m_max_tree_depth    = Math::Helper::Max(m_max_tree_depth, m_tree_depth);
+        m_id             = id;
+        m_name           = name;
+        m_parent         = parent;
+        m_tree_depth     = FindTreeDepth(this);
+        m_rhi_device     = rhi_device.get();
+        m_cmd_list       = cmd_list;
+        m_type           = type;
+        m_max_tree_depth = Math::Helper::Max(m_max_tree_depth, m_tree_depth);
 
         if (type == TimeBlockType::Cpu)
         {
