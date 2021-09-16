@@ -220,7 +220,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     }
 
     // Sample scene color
-    hit_uv = get_reprojected_uv(hit_uv);
+    hit_uv          -= tex_velocity.SampleLevel(sampler_bilinear_clamp, hit_uv, 0).xy; // reproject
     bool valid_uv    = hit_uv.x != - 1.0f;
     bool valid_alpha = alpha != 0.0f;
     color            = (valid_uv && valid_alpha) ? tex.SampleLevel(sampler_bilinear_clamp, hit_uv, 0).rgb : 0.0f;
