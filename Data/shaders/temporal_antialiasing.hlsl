@@ -336,7 +336,7 @@ float3 temporal_antialiasing(float2 uv, uint2 pos, uint3 group_id, Texture2D tex
         // Decrease blend factor when contrast is high
         float luminance_history   = luminance(color_history);
         float luminance_current   = luminance(color_input);
-        float unbiased_difference = abs(luminance_current - luminance_history) / ((max(luminance_current, luminance_history) + FLT_MIN));
+        float unbiased_difference = abs(luminance_current - luminance_history) / ((max(luminance_current, luminance_history) + 0.5f));
         blend_factor *= 1.0 - unbiased_difference;
     }
 
