@@ -43,6 +43,8 @@ static const float FLT_MAX_14           = 8191.0f;
 static const float FLT_MAX_16           = 32767.0f;
 static const float FLT_MAX_16U          = 65535.0f;
 static const float alpha_mask_threshold = 0.6f;
+static const float RPC_9                = 1.0f / 9.0f;
+static const float RPC_16               = 1.0f / 16.0f;
 
 /*------------------------------------------------------------------------------
     MACROS
@@ -292,16 +294,14 @@ float3x3 makeTBN(float3 n, float3 t)
 ------------------------------------------------------------------------------*/
 float get_depth(uint2 position)
 {
-    // Clamp position
-    position.x = clamp(position.x, 0, g_resolution_render.x - 1);
-    position.y = clamp(position.y, 0, g_resolution_render.y - 1);
-
+    // out of bounds check
+    position = clamp(position, uint2(0, 0), uint2(g_resolution_render) - uint2(1, 1));
     return tex_depth[position].r;
 }
 
 float get_depth(float2 uv)
 {
-    // effects like screen space shadows, can get artifacts if a point sampler is used
+    // effects like screen space shadows, can get artefacts if a point sampler is used
     return tex_depth.SampleLevel(sampler_bilinear_clamp, uv, 0).r;
 }
 
@@ -436,120 +436,6 @@ uint direction_to_cube_face_index(const float3 direction)
 }
 
 /*------------------------------------------------------------------------------
-                                    VELOCITY
-------------------------------------------------------------------------------*/
-float2 get_velocity(const float2 uv)
-{
-    return tex_velocity.SampleLevel(sampler_bilinear_clamp, uv, 0).xy;
-}
-
-// Returns average velocity (cross pattern)
-float2 get_velocity_avg(float2 texCoord)
-{
-    float dx = g_texel_size.x;
-    float dy = g_texel_size.y;
-    
-    float2 tl = tex_velocity.SampleLevel(sampler_point_clamp, texCoord + float2(-dx, -dy), 0).xy;
-    float2 tr = tex_velocity.SampleLevel(sampler_point_clamp, texCoord + float2(dx, -dy), 0).xy;
-    float2 bl = tex_velocity.SampleLevel(sampler_point_clamp, texCoord + float2(-dx, dy), 0).xy;
-    float2 br = tex_velocity.SampleLevel(sampler_point_clamp, texCoord + float2(dx, dy), 0).xy;
-    float2 ce = tex_velocity.SampleLevel(sampler_point_clamp, texCoord, 0).xy;
-    
-    return (tl + tr + bl + br + ce) / 5.0f;
-}
-
-// Returns max velocity (3x3 neighborhood)
-float2 get_velocity_max_3x3(float2 texCoord, Texture2D texture_velocity, Texture2D texture_depth)
-{   
-    float2 max_velocity = 0.0f;
-    float max_length2 	= 0.0f;
-    
-    [unroll]
-    for(int y = -1; y <= 1; ++y)
-    {
-        [unroll]
-        for(int x = -1; x <= 1; ++x)
-        {
-            float2 offset   = float2(x, y) * g_texel_size;
-            float2 velocity = tex_velocity.SampleLevel(sampler_point_clamp, texCoord + offset, 0).xy;
-            float length2   = dot(velocity, velocity);
-            
-            if(length2 > max_length2)
-            {
-                max_velocity = velocity;
-                max_length2  = length2;
-            }
-        }
-    }
-
-    return max_velocity;
-}
-
-// Returns velocity with closest depth (3x3 neighborhood)
-float2 get_velocity_closest_3x3(float2 texCoord)
-{   
-    float min_depth = 0.0f;
-    float2 min_uv   = texCoord;
-    
-    [unroll]
-    for(int y = -1; y <= 1; ++y)
-    {
-        [unroll]
-        for(int x = -1; x <= 1; ++x)
-        {
-            float2 offset = float2(x, y) * g_texel_size;
-            float depth   = get_linear_depth(texCoord + offset);
-            
-            if(depth < min_depth)
-            {
-                min_depth = depth;
-                min_uv    = texCoord + offset;
-            }
-        }
-    }
-
-    return tex_velocity.SampleLevel(sampler_point_clamp, min_uv, 0).xy;
-}
-
-// Returns velocity with furthest depth (3x3 neighborhood)
-float2 get_velocity_furthest_3x3(float2 texCoord, Texture2D texture_velocity, Texture2D texture_depth)
-{   
-    float max_depth = 1.0f;
-    float2 max_uv   = texCoord;
-    
-    [unroll]
-    for(int y = -1; y <= 1; ++y)
-    {
-        [unroll]
-        for(int x = -1; x <= 1; ++x)
-        {
-            float2 offset = float2(x, y) * g_texel_size;
-            float depth   = get_linear_depth(texCoord + offset);
-            
-            if(depth > max_depth)
-            {
-                max_depth = depth;
-                max_uv    = texCoord + offset;
-            }
-        }
-    }
-
-    return tex_velocity.SampleLevel(sampler_point_clamp, max_uv, 0).xy;
-}
-
-float2 get_reprojected_uv(const float2 uv) { return uv - get_velocity(uv); }
-
-uint2 get_reprojected_position(uint2 position)
-{
-    float2 uv = (position + 0.5f) / g_resolution_render;
-
-    // Reproject
-    uv -= get_velocity(uv);
-
-    return uv * g_resolution_render;
-}
-
-/*------------------------------------------------------------------------------
     LUMINANCE
 ------------------------------------------------------------------------------*/
 static const float3 lumCoeff = float3(0.299f, 0.587f, 0.114f);
@@ -583,14 +469,15 @@ float get_offset_non_temporal(uint2 screen_pos)
 static const float offsets[] = { 0.0f, 0.5f, 0.25f, 0.75f };
 float get_offset()
 {
-    return offsets[(g_frame % 4) * is_taa_enabled()];
+    return offsets[g_frame % 4] * is_taa_enabled();
 }
 
 // Based on Activision GTAO paper: https://www.activision.com/cdn/research/s2016_pbs_activision_occlusion.pptx
-static const float rotations[] = { 60.0f, 300.0f, 180.0f, 240.0f, 120.0f, 0.0f };
+// Rotationsa are 60.0f, 300.0f, 180.0f, 240.0f, 120.0f, 0.0f, devided by 360.0f.
+static const float rotations[] = { 0.1666f, 0.8333, 0.5f, 0.6666, 0.3333, 0.0f };
 float get_direction()
 {
-    return (rotations[(g_frame % 6) * is_taa_enabled()] / 360.0f);
+    return rotations[g_frame % 6] * is_taa_enabled();
 }
 
 // Derived from the interleaved gradient function from Jimenez 2014 http://goo.gl/eomGso
@@ -599,7 +486,7 @@ float get_noise_interleaved_gradient(float2 screen_pos)
     // Temporal factor
     float taaOn      = (float)is_taa_enabled();
     float frameCount = (float)g_frame;
-    float frameStep  = taaOn * float(frameCount % 16) / 16.0f;
+    float frameStep  = taaOn * float(frameCount % 16) * RPC_16;
     screen_pos.x     += frameStep * 4.7526;
     screen_pos.y     += frameStep * 3.1914;
 

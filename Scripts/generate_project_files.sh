@@ -2,7 +2,7 @@
 
 # Deduce OS we are running on
 is_windows=false
-if [ "$1" = "vs2019" ]; then
+if [ "$1" != "gmake2" ]; then
     is_windows=true
 fi
 

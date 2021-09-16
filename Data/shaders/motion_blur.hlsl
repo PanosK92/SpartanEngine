@@ -25,15 +25,42 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 static const uint g_motion_blur_samples = 16;
 
+// Returns max velocity (3x3 neighborhood)
+float2 get_velocity_max_3x3(uint2 pos)
+{
+    float2 max_velocity = 0.0f;
+    float max_length2   = 0.0f;
+
+    [unroll]
+    for (int y = -1; y <= 1; ++y)
+    {
+        [unroll]
+        for (int x = -1; x <= 1; ++x)
+        {
+            float2 velocity = tex_velocity.Load(int3(pos + float2(x, y), 0));
+            float length2   = dot(velocity, velocity);
+
+            if (length2 > max_length2)
+            {
+                max_velocity = velocity;
+                max_length2  = length2;
+            }
+        }
+    }
+
+    return max_velocity;
+}
+
 [numthreads(thread_group_count_x, thread_group_count_y, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
-    if (thread_id.x >= uint(g_resolution_rt.x) || thread_id.y >= uint(g_resolution_rt.y))
+    // out of bounds check
+    if (any(int2(thread_id.xy) >= g_resolution_rt.xy))
         return;
     
     const float2 uv = (thread_id.xy + 0.5f) / g_resolution_rt;
     float3 color    = tex[thread_id.xy].rgb;
-    float2 velocity = get_velocity_max_3x3(uv, tex_velocity, tex_depth);
+    float2 velocity = get_velocity_max_3x3(thread_id.xy);
 
     // Compute motion blur strength from camera's shutter speed
     float motion_blur_strength = saturate(g_camera_shutter_speed * 1.0f);

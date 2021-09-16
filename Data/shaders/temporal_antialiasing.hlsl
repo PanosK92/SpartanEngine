@@ -24,8 +24,125 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //====================
 
 /*------------------------------------------------------------------------------
+                           NEIGHBOURHOOD OFFSETS
+------------------------------------------------------------------------------*/
+
+static const int2 kOffsets3x3[9] =
+{
+    int2(-1, -1),
+    int2(0, -1),
+    int2(1, -1),
+    int2(-1, 0),
+    int2(0, 0),
+    int2(1, 0),
+    int2(-1, 1),
+    int2(0, 1),
+    int2(1, 1),
+};
+
+/*------------------------------------------------------------------------------
+                        THREAD GROUP SHARED MEMORY (LDS)
+------------------------------------------------------------------------------*/
+
+static const int kBorderSize     = 1;
+static const int kGroupSize      = thread_group_count_x;
+static const int kTileDimension  = kGroupSize + kBorderSize * 2;
+static const int kTileDimension2 = kTileDimension * kTileDimension;
+
+groupshared float3 tile_color[kTileDimension][kTileDimension];
+groupshared float  tile_depth[kTileDimension][kTileDimension];
+
+float3 load_color(int2 group_thread_id)
+{
+    group_thread_id += kBorderSize;
+    return tile_color[group_thread_id.x][group_thread_id.y];
+}
+
+void store_color(uint2 group_thread_id, float3 color)
+{
+    tile_color[group_thread_id.x][group_thread_id.y] = color;
+}
+
+float load_depth(int2 group_thread_id)
+{
+    group_thread_id += kBorderSize;
+    return tile_depth[group_thread_id.x][group_thread_id.y];
+}
+
+void store_depth(uint2 group_thread_id, float depth)
+{
+    tile_depth[group_thread_id.x][group_thread_id.y] = depth;
+}
+
+void store_color_depth(uint2 group_thread_id, uint2 thread_id)
+{
+    // out of bounds clamp
+    thread_id = clamp(thread_id, uint2(0, 0), uint2(g_resolution_render) - uint2(1, 1));
+
+    store_color(group_thread_id, tex2[thread_id]);
+    store_depth(group_thread_id, get_linear_depth(thread_id));
+}
+
+void populate_group_shared_memory(uint3 group_id, uint group_index)
+{
+    // Populate group shared memory
+    int2 group_top_left = group_id.xy * kGroupSize - kBorderSize;
+    if (group_index < (kTileDimension2 >> 2))
+    {
+        int2 group_thread_id_1 = int2(group_index                             % kTileDimension, group_index                             / kTileDimension);
+        int2 group_thread_id_2 = int2((group_index + (kTileDimension2 >> 2))  % kTileDimension, (group_index + (kTileDimension2 >> 2))  / kTileDimension);
+        int2 group_thread_id_3 = int2((group_index + (kTileDimension2 >> 1))  % kTileDimension, (group_index + (kTileDimension2 >> 1))  / kTileDimension);
+        int2 group_thread_id_4 = int2((group_index + kTileDimension2 * 3 / 4) % kTileDimension, (group_index + kTileDimension2 * 3 / 4) / kTileDimension);
+
+        store_color_depth(group_thread_id_1, group_top_left + group_thread_id_1);
+        store_color_depth(group_thread_id_2, group_top_left + group_thread_id_2);
+        store_color_depth(group_thread_id_3, group_top_left + group_thread_id_3);
+        store_color_depth(group_thread_id_4, group_top_left + group_thread_id_4);
+    }
+
+    // Wait for group threads to load store data.
+    GroupMemoryBarrierWithGroupSync();
+}
+
+/*------------------------------------------------------------------------------
+                                VELOCITY
+------------------------------------------------------------------------------*/
+
+void depth_test_min(uint2 pos, inout float min_depth, inout uint2 min_pos)
+{
+    float depth = load_depth(pos);
+
+    if (depth < min_depth)
+    {
+        min_depth = depth;
+        min_pos   = pos;
+    }
+}
+
+// Returns velocity with closest depth (3x3 neighborhood)
+float2 get_velocity_closest_3x3(uint2 pos, uint3 group_id)
+{
+    float min_depth = 0.0f;
+    uint2 min_pos   = pos;
+
+    depth_test_min(pos + kOffsets3x3[0], min_depth, min_pos);
+    depth_test_min(pos + kOffsets3x3[1], min_depth, min_pos);
+    depth_test_min(pos + kOffsets3x3[2], min_depth, min_pos);
+    depth_test_min(pos + kOffsets3x3[3], min_depth, min_pos);
+    depth_test_min(pos + kOffsets3x3[4], min_depth, min_pos);
+    depth_test_min(pos + kOffsets3x3[5], min_depth, min_pos);
+    depth_test_min(pos + kOffsets3x3[6], min_depth, min_pos);
+    depth_test_min(pos + kOffsets3x3[7], min_depth, min_pos);
+    depth_test_min(pos + kOffsets3x3[8], min_depth, min_pos);
+
+    int2 group_top_left = group_id.xy * kGroupSize - kBorderSize;
+    return tex_velocity[group_top_left + min_pos].xy;
+}
+
+/*------------------------------------------------------------------------------
                               HISTORY SAMPLING
 ------------------------------------------------------------------------------*/
+
 float3 sample_catmull_rom_9(Texture2D stex, float2 uv, float2 resolution)
 {
     // Source: https://gist.github.com/TheRealMJP/c83b8c0f46b63f3a88a5986f4fa982b1
@@ -109,26 +226,26 @@ float3 clip_aabb(float3 aabb_min, float3 aabb_max, float3 p, float3 q)
 }
 
 // Clip history to the neighbourhood of the current sample
-float3 clip_history(int2 position, Texture2D tex_input, float3 color_history, float2 velocity_closest)
+float3 clip_history_3x3(uint2 pos, float3 color_history, float2 velocity_closest)
 {
     // Sample a 3x3 neighbourhood
-    float3 ctl = tex_input[position + int2(-1, -1)].rgb;
-    float3 ctc = tex_input[position + int2(0, -1)].rgb;
-    float3 ctr = tex_input[position + int2(1, -1)].rgb;
-    float3 cml = tex_input[position + int2(-1, 0)].rgb;
-    float3 cmc = tex_input[position].rgb;
-    float3 cmr = tex_input[position + int2(1, 0)].rgb;
-    float3 cbl = tex_input[position + int2(-1, 1)].rgb;
-    float3 cbc = tex_input[position + int2(0, 1)].rgb;
-    float3 cbr = tex_input[position + int2(1, 1)].rgb;
+    float3 s1 = load_color(pos + kOffsets3x3[0]);
+    float3 s2 = load_color(pos + kOffsets3x3[1]);
+    float3 s3 = load_color(pos + kOffsets3x3[2]);
+    float3 s4 = load_color(pos + kOffsets3x3[3]);
+    float3 s5 = load_color(pos + kOffsets3x3[4]);
+    float3 s6 = load_color(pos + kOffsets3x3[5]);
+    float3 s7 = load_color(pos + kOffsets3x3[6]);
+    float3 s8 = load_color(pos + kOffsets3x3[7]);
+    float3 s9 = load_color(pos + kOffsets3x3[8]);
 
-    // Compute min and max
-    float3 color_avg  = (ctl + ctc + ctr + cml + cmc + cmr + cbl + cbc + cbr) / 9.0f;
-    float3 color_avg2 = ((ctl * ctl) + (ctc * ctc) + (ctr * ctr) + (cml * cml) + (cmc * cmc) + (cmr * cmr) + (cbl * cbl) + (cbc * cbc) + (cbr * cbr)) / 9.0f;
-    float3 dev        = sqrt(abs(color_avg2 - (color_avg * color_avg)));
-    float box_size    = lerp(0.5f, 2.5f, smoothstep(0.02f, 0.0f, length(velocity_closest))); // Scale box size based on velocity
-    float3 color_min  = color_avg - dev * box_size;
-    float3 color_max  = color_avg + dev * box_size;
+    // Compute min and max (with an adaptive box size, which greatly reduces ghosting)
+    float3 color_avg  = (s1 + s2 + s3 + s4 + s5 + s6 + s7 + s8 + s9) * RPC_9;
+    float3 color_avg2 = ((s1 * s1) + (s2 * s2) + (s3 * s3) + (s4 * s4) + (s5 * s5) + (s6 * s6) + (s7 * s7) + (s8 * s8) + (s9 * s9)) * RPC_9;
+    float box_size    = lerp(0.0f, 2.5f, smoothstep(0.02f, 0.0f, length(velocity_closest)));
+    float3 dev        = sqrt(abs(color_avg2 - (color_avg * color_avg))) * box_size;
+    float3 color_min  = color_avg - dev;
+    float3 color_max  = color_avg + dev;
 
     // Variance clipping
     float3 color = clip_aabb(color_min, color_max, clamp(color_avg, color_min, color_max), color_history);
@@ -140,25 +257,12 @@ float3 clip_history(int2 position, Texture2D tex_input, float3 color_history, fl
 }
 
 /*------------------------------------------------------------------------------
-                                UPSAMPLING [WIP]
+                            UPSAMPLING [WIP]
 ------------------------------------------------------------------------------*/
-
-static const int2 kOffsets3x3[9] =
-{
-    int2(-1, -1),
-    int2(0, -1),
-    int2(1, -1),
-    int2(-1, 0),
-    int2(0, 0),
-    int2(1, 0),
-    int2(-1, 1),
-    int2(0, 1),
-    int2(1, 1),
-};
 
 float distance_squared(float2 a_to_b, float2 offset)
 {
-    float2 v = a_to_b ;
+    float2 v = a_to_b - offset;
     return dot(v, v);
 }
 
@@ -169,17 +273,15 @@ float get_sample_weight(float distance_squared)
     return exp(distance_squared - dawa);
 }
 
-float3 get_input_sample(Texture2D tex_input, const uint2 pos_out)
+float3 get_input_sample(uint2 pos, uint3 group_id)
 {
     if (!is_taa_upsampling_enabled())
-        return tex_input[pos_out].rgb;
+        return load_color(pos);
 
-    const float2 uv                   = (pos_out + 0.5f) / g_resolution_rt;
-    const float2 jitter_offset_pixels = g_taa_jitter_offset * g_resolution_render;
-    const float2 pos_input            = uv * g_resolution_render;
-    const float2 pos_input_center     = floor(pos_input) + 0.5f;
-    const float2 pos_out_center       = pos_out + 0.5f;
-    const float2 in_to_out            = pos_out_center - pos_input_center;
+    int2 group_top_left           = group_id.xy * kGroupSize - kBorderSize;
+    const float2 uv               = (group_top_left + pos + 0.5f) / g_resolution_rt;
+    const float2 pos_input        = uv * g_resolution_render;
+    const float2 pos_input_center = floor(pos_input) + 0.5f;
 
     // Compute sample weights
     float weights[9];
@@ -188,7 +290,7 @@ float3 get_input_sample(Texture2D tex_input, const uint2 pos_out)
     [unroll]
     for (uint i = 0; i < 9; i++)
     {
-        weights[i] = get_sample_weight(distance_squared(pos_input_center, (float2)kOffsets3x3[i]));
+        weights[i] = get_sample_weight(distance_squared(pos_input_center, pos_input_center + (float2)kOffsets3x3[i]));
         weight_sum += weights[i];
     }
    weight_normaliser /= weight_sum;
@@ -199,7 +301,7 @@ float3 get_input_sample(Texture2D tex_input, const uint2 pos_out)
     for (uint j = 0; j < 9; j++)
     {
         float weigth = weights[j] * weight_normaliser;
-        color += tex_input[pos_input + (float2)kOffsets3x3[j]].rgb * weigth;
+        color += load_color(pos_input_center + (float2)kOffsets3x3[j]) * weigth;
     }
 
     return color;
@@ -209,17 +311,14 @@ float3 get_input_sample(Texture2D tex_input, const uint2 pos_out)
                                     TAA
 ------------------------------------------------------------------------------*/
 
-float3 temporal_antialiasing(uint2 pos_out, Texture2D tex_history, Texture2D tex_input)
+float3 temporal_antialiasing(float2 uv, uint2 pos, uint3 group_id, Texture2D tex_history)
 {
-    const float2 uv       = (pos_out + 0.5f) / g_resolution_rt;
-    const uint2 pos_input = is_taa_upsampling_enabled() ? (uv * g_resolution_render) : pos_out;
-
     // Get reprojected uv
-    float2 velocity       = get_velocity_closest_3x3(uv);
+    float2 velocity       = get_velocity_closest_3x3(pos, group_id);
     float2 uv_reprojected = uv - velocity;
 
     // Get input color
-    float3 color_input = get_input_sample(tex_input, pos_out);
+    float3 color_input = get_input_sample(pos, group_id);
 
     // If re-projected UV is out of screen, converge to current color immediately
     if (!is_saturated(uv_reprojected))
@@ -229,15 +328,15 @@ float3 temporal_antialiasing(uint2 pos_out, Texture2D tex_history, Texture2D tex
     float3 color_history = sample_catmull_rom_9(tex_history, uv_reprojected, g_resolution_rt).rgb;
 
     // Clip history to the neighbourhood of the current sample
-    color_history = clip_history(pos_input, tex_input, color_history, velocity);
+    color_history = clip_history_3x3(pos, color_history, velocity);
 
     // Compute blend factor
-    float blend_factor = 1.0f / 16.0f;
+    float blend_factor = RPC_16;
     {
         // Decrease blend factor when contrast is high
         float luminance_history   = luminance(color_history);
         float luminance_current   = luminance(color_input);
-        float unbiased_difference = abs(luminance_current - luminance_history) / ((max(luminance_current, luminance_history) + 0.5f));
+        float unbiased_difference = abs(luminance_current - luminance_history) / ((max(luminance_current, luminance_history) + FLT_MIN));
         blend_factor *= 1.0 - unbiased_difference;
     }
 
@@ -259,10 +358,16 @@ float3 temporal_antialiasing(uint2 pos_out, Texture2D tex_history, Texture2D tex
 }
 
 [numthreads(thread_group_count_x, thread_group_count_y, 1)]
-void mainCS(uint3 thread_id : SV_DispatchThreadID)
+void mainCS(uint3 thread_id : SV_DispatchThreadID, uint3 group_thread_id : SV_GroupThreadID, uint3 group_id : SV_GroupID, uint group_index : SV_GroupIndex)
 {
-    if (thread_id.x >= uint(g_resolution_rt.x) || thread_id.y >= uint(g_resolution_rt.y))
-        return;
+    populate_group_shared_memory(group_id, group_index);
 
-    tex_out_rgb[thread_id.xy] = temporal_antialiasing(thread_id.xy, tex, tex2);
+    // out of bounds check
+    if (any(int2(thread_id.xy) >= g_resolution_rt.xy))
+        return; 
+
+    const float2 uv = (thread_id.xy + 0.5f) / g_resolution_rt;
+    const uint2 pos =  group_thread_id.xy; // todo: make it work for upsampling
+
+    tex_out_rgb[thread_id.xy] = temporal_antialiasing(uv, pos, group_id, tex);
 }
