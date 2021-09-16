@@ -34,9 +34,6 @@ float compute_alpha(uint2 screen_pos, float2 hit_uv, float v_dot_r)
 
     alpha *= screen_fade(hit_uv);
 
-    // Reject if the reflection vector is pointing back at the viewer.
-    alpha *= saturate(-v_dot_r);
-
     // If the UV is invalid fade completely
     alpha *= all(hit_uv);
 
@@ -136,7 +133,7 @@ float2 trace_ray(uint2 screen_pos, float3 ray_start_vs, float3 ray_dir_vs)
 
     // Adjust position with some temporal noise (TAA will do some magic later)
     float offset = get_noise_interleaved_gradient(screen_pos);
-    ray_pos      += ray_step * offset * 0.0001f;
+    ray_pos      += ray_step * offset;
     
     // Ray-march
     for (uint i = 0; i < g_ssr_max_steps; i++)
