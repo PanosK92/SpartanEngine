@@ -279,6 +279,7 @@ float3 get_input_sample(uint2 pos, uint3 group_id)
         return load_color(pos);
 
     int2 group_top_left           = group_id.xy * kGroupSize - kBorderSize;
+    uint2 thread_id               = group_top_left + pos;
     const float2 uv               = (group_top_left + pos + 0.5f) / g_resolution_rt;
     const float2 pos_input        = uv * g_resolution_render;
     const float2 pos_input_center = floor(pos_input) + 0.5f;
@@ -290,7 +291,7 @@ float3 get_input_sample(uint2 pos, uint3 group_id)
     [unroll]
     for (uint i = 0; i < 9; i++)
     {
-        weights[i] = get_sample_weight(distance_squared(pos_input_center, pos_input_center + (float2)kOffsets3x3[i]));
+        weights[i] = get_sample_weight(distance_squared(pos, (float2)kOffsets3x3[i]));
         weight_sum += weights[i];
     }
    weight_normaliser /= weight_sum;
@@ -300,8 +301,8 @@ float3 get_input_sample(uint2 pos, uint3 group_id)
     [unroll]
     for (uint j = 0; j < 9; j++)
     {
-        float weigth = weights[j] * weight_normaliser;
-        color += load_color(pos_input_center + (float2)kOffsets3x3[j]) * weigth;
+        float weight = weights[j] * weight_normaliser;
+        color += load_color(pos + (float2)kOffsets3x3[j]); // * weight;
     }
 
     return color;
@@ -367,7 +368,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID, uint3 group_thread_id : SV_Gr
         return; 
 
     const float2 uv = (thread_id.xy + 0.5f) / g_resolution_rt;
-    const uint2 pos =  group_thread_id.xy; // todo: make it work for upsampling
+    const uint2 pos =  group_thread_id.xy;
 
     tex_out_rgb[thread_id.xy] = temporal_antialiasing(uv, pos, group_id, tex);
 }

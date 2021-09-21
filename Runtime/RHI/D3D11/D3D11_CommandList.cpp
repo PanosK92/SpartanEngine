@@ -90,11 +90,8 @@ namespace Spartan
 
     bool RHI_CommandList::BeginRenderPass(RHI_PipelineState& pipeline_state)
     {
-        if (!pipeline_state.IsValid())
-        {
-            LOG_ERROR("Invalid pipeline state");
-            return false;
-        }
+        SP_ASSERT(!m_render_pass_active);
+        SP_ASSERT(pipeline_state.IsValid());
 
         UnbindOutputTextures();
 
@@ -332,12 +329,18 @@ namespace Spartan
         m_renderer->SetGlobalShaderResources(this);
         m_profiler->m_rhi_bindings_pipeline++;
 
+        m_render_pass_active = true;
+
         return true;
     }
 
     bool RHI_CommandList::EndRenderPass()
     {
+        SP_ASSERT(m_render_pass_active);
+
         Timeblock_End(m_pipeline_state);
+
+        m_render_pass_active = false;
 
         return true;
     }

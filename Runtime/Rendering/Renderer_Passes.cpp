@@ -482,10 +482,6 @@ namespace Spartan
                     if (!static_cast<ShaderGBuffer*>(pso.shader_pixel)->IsSuitable(material->GetFlags()))
                         continue;
 
-                    // Skip transparent objects that won't contribute
-                    if (material->GetColorAlbedo().w == 0 && is_transparent_pass)
-                        continue;
-
                     // Get geometry
                     Model* model = renderable->GeometryModel();
                     if (!model || !model->GetVertexBuffer() || !model->GetIndexBuffer())

@@ -112,13 +112,13 @@ namespace Spartan
 
     void TimeBlock::Reset()
     {
-        m_name              = nullptr;
-        m_parent            = nullptr;
-        m_tree_depth        = 0;
-        m_duration          = 0.0f;
-        m_max_tree_depth    = 0;
-        m_type              = TimeBlockType::Undefined;
-        m_is_complete       = false;
+        m_name           = nullptr;
+        m_parent         = nullptr;
+        m_tree_depth     = 0;
+        m_duration       = 0.0f;
+        m_max_tree_depth = 0;
+        m_type           = TimeBlockType::Undefined;
+        m_is_complete    = false;
 
         if (m_rhi_device && m_rhi_device->IsInitialised())
         {
