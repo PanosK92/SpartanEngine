@@ -35,12 +35,14 @@ using namespace std;
 
 namespace Spartan
 {
+    static const int initial_capacity = 200;
+
     Profiler::Profiler(Context* context) : ISubsystem(context)
     {
-        m_time_blocks_read.reserve(m_time_block_capacity);
-        m_time_blocks_read.resize(m_time_block_capacity);
-        m_time_blocks_write.reserve(m_time_block_capacity);
-        m_time_blocks_write.resize(m_time_block_capacity);
+        m_time_blocks_read.reserve(initial_capacity);
+        m_time_blocks_read.resize(initial_capacity);
+        m_time_blocks_write.reserve(initial_capacity);
+        m_time_blocks_write.resize(initial_capacity);
     }
 
     Profiler::~Profiler()
@@ -49,9 +51,6 @@ namespace Spartan
         {
             OnFrameEnd();
         }
-
-        m_time_blocks_write.clear();
-        m_time_blocks_read.clear();
 
         ClearRhiMetrics();
     }
@@ -78,7 +77,9 @@ namespace Spartan
         {
             OnFrameEnd();
 
-            const uint32_t new_size = m_time_block_count + 100;
+            // Increase size by 100
+            const uint32_t new_size = m_time_blocks_write.size() + 100;
+
             m_time_blocks_read.reserve(new_size);
             m_time_blocks_read.resize(new_size);
             m_time_blocks_write.reserve(new_size);
@@ -87,7 +88,7 @@ namespace Spartan
             m_increase_capacity = false;
             m_poll              = true;
 
-            LOG_WARNING("Time block list has grown to fit %d commands. Consider making the capacity larger to avoid re-allocations.", m_time_block_count + 1);
+            LOG_WARNING("Time block list has grown to fit %d commands. Consider making the capacity larger to avoid re-allocations.", m_time_block_index + 1);
         }
         else
         {
@@ -175,36 +176,33 @@ namespace Spartan
 
     void Profiler::OnFrameEnd()
     {
-        // Clear time blocks
+        uint32_t pass_index_gpu = 0;
+        
+        for (uint32_t i = 0; i < m_time_block_index; i++)
         {
-            uint32_t pass_index_gpu = 0;
-
-            for (uint32_t i = 0; i < m_time_block_count; i++)
+            TimeBlock& time_block = m_time_blocks_write[i];
+        
+            if (time_block.IsComplete())
             {
-                TimeBlock& time_block = m_time_blocks_write[i];
-
-                if (time_block.IsComplete())
+                // Must not happen when TimeBlockEnd() ends as D3D11 waits
+                // too much for the results to be ready, which increases CPU time.
+                time_block.ComputeDuration(pass_index_gpu);
+                if (time_block.GetType() == TimeBlockType::Gpu)
                 {
-                    // Must not happen when TimeBlockEnd() ends as D3D11 waits
-                    // too much for the results to be ready, which increases CPU time.
-                    time_block.ComputeDuration(pass_index_gpu);
-                    if (time_block.GetType() == TimeBlockType::Gpu)
-                    {
-                        pass_index_gpu += 2;
-                    }
-
-                    m_time_blocks_read[i] = time_block;
+                    pass_index_gpu += 2;
                 }
-                else
-                {
-                    LOG_WARNING("TimeBlockEnd() was not called for time block \"%s\"", time_block.GetName());
-                }
-                
-                time_block.Reset();
+        
+                m_time_blocks_read[i] = time_block;
             }
-
-            m_time_block_count = 0;
+            else
+            {
+                LOG_WARNING("TimeBlockEnd() was not called for time block \"%s\"", time_block.GetName());
+            }
+            
+            time_block.Reset();
         }
+        
+        m_time_block_index = -1;
     }
 
     void Profiler::TimeBlockStart(const char* func_name, TimeBlockType type, RHI_CommandList* cmd_list /*= nullptr*/)
@@ -229,10 +227,6 @@ namespace Spartan
 
     void Profiler::TimeBlockEnd()
     {
-        // If the capacity 
-        if (m_increase_capacity)
-            return;
-
         if (TimeBlock* time_block = GetLastIncompleteTimeBlock())
         {
             time_block->End();
@@ -258,19 +252,19 @@ namespace Spartan
     TimeBlock* Profiler::GetNewTimeBlock()
     {
         // Increase capacity if needed
-        if (m_time_block_count >= static_cast<uint32_t>(m_time_blocks_write.size()))
+        if (m_time_block_index + 1 >= static_cast<int>(m_time_blocks_write.size()))
         {
             m_increase_capacity = true;
             return nullptr;
         }
 
         // Return a time block
-        return &m_time_blocks_write[m_time_block_count++];
+        return &m_time_blocks_write[++m_time_block_index];
     }
 
     TimeBlock* Profiler::GetLastIncompleteTimeBlock(TimeBlockType type /*= TimeBlock_Undefined*/)
     {
-        for (int i = m_time_block_count - 1; i >= 0; i--)
+        for (int i = m_time_block_index - 1; i >= 0; i--)
         {
             TimeBlock& time_block = m_time_blocks_write[i];
 

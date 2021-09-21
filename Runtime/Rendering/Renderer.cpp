@@ -627,13 +627,18 @@ namespace Spartan
             if (renderable)
             {
                 bool is_transparent = false;
+                bool is_visible     = true;
 
                 if (const Material* material = renderable->GetMaterial())
                 {
                     is_transparent = material->GetColorAlbedo().w < 1.0f;
+                    is_visible     = material->GetColorAlbedo().w != 0.0f;
                 }
 
-                m_entities[is_transparent ? Renderer_ObjectType::GeometryTransparent : Renderer_ObjectType::GeometryOpaque].emplace_back(entity.get());
+                if (is_visible)
+                {
+                    m_entities[is_transparent ? Renderer_ObjectType::GeometryTransparent : Renderer_ObjectType::GeometryOpaque].emplace_back(entity.get());
+                }
             }
 
             if (light)

@@ -148,8 +148,7 @@ namespace Spartan
         float m_time_since_profiling_sec = m_profiling_interval_sec;
 
         // Time blocks (double buffered)
-        uint32_t m_time_block_capacity = 200;
-        uint32_t m_time_block_count    = 0;
+        int m_time_block_index = -1;
         std::vector<TimeBlock> m_time_blocks_write;
         std::vector<TimeBlock> m_time_blocks_read;
 
