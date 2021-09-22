@@ -90,11 +90,8 @@ namespace Spartan
 
     void TimeBlock::ComputeDuration(const uint32_t pass_index)
     {
-        if (!m_is_complete)
-        {
-            LOG_WARNING("TimeBlock::Start() hasn't been called, ignoring time block %s.", m_name);
-            return;
-        }
+        // Ensure this time block has completed.
+        SP_ASSERT(m_is_complete);
 
         if (m_type == TimeBlockType::Cpu)
         {
@@ -126,6 +123,15 @@ namespace Spartan
             RHI_CommandList::Gpu_QueryRelease(m_query_start);
             RHI_CommandList::Gpu_QueryRelease(m_query_end);
         }
+    }
+
+    void TimeBlock::ClearGpuObjects()
+    {
+        m_query_disjoint = nullptr;
+        m_query_start    = nullptr;
+        m_query_end      = nullptr;
+        m_cmd_list       = nullptr;
+        m_rhi_device     = nullptr;
     }
 
     uint32_t TimeBlock::FindTreeDepth(const TimeBlock* time_block, uint32_t depth /*= 0*/)

@@ -105,7 +105,8 @@ namespace Spartan
 
     RHI_Device::~RHI_Device()
     {
-        d3d12_utility::release(m_rhi_context->device);
+        m_rhi_context->device->Release();
+        m_rhi_context->device = nullptr;
     }
 
     bool RHI_Device::Queue_Submit(const RHI_Queue_Type type, const uint32_t wait_flags, void* cmd_buffer, RHI_Semaphore* wait_semaphore /*= nullptr*/, RHI_Semaphore* signal_semaphore /*= nullptr*/, RHI_Fence* signal_fence /*= nullptr*/) const

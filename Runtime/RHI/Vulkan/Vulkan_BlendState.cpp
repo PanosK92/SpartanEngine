@@ -35,14 +35,14 @@ namespace Spartan
     RHI_BlendState::RHI_BlendState
     (
         const std::shared_ptr<RHI_Device>& device,
-        const bool blend_enabled                    /*= false*/,
-        const RHI_Blend source_blend                /*= Blend_Src_Alpha*/,
-        const RHI_Blend dest_blend                  /*= Blend_Inv_Src_Alpha*/,
-        const RHI_Blend_Operation blend_op          /*= Blend_Operation_Add*/,
-        const RHI_Blend source_blend_alpha          /*= Blend_One*/,
-        const RHI_Blend dest_blend_alpha            /*= Blend_One*/,
-        const RHI_Blend_Operation blend_op_alpha,   /*= Blend_Operation_Add*/
-        const float blend_factor                    /*= 0.0f*/
+        const bool blend_enabled                  /*= false*/,
+        const RHI_Blend source_blend              /*= Blend_Src_Alpha*/,
+        const RHI_Blend dest_blend                /*= Blend_Inv_Src_Alpha*/,
+        const RHI_Blend_Operation blend_op        /*= Blend_Operation_Add*/,
+        const RHI_Blend source_blend_alpha        /*= Blend_One*/,
+        const RHI_Blend dest_blend_alpha          /*= Blend_One*/,
+        const RHI_Blend_Operation blend_op_alpha, /*= Blend_Operation_Add*/
+        const float blend_factor                  /*= 0.0f*/
     )
     {
         // Save parameters

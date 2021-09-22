@@ -284,18 +284,19 @@ namespace Spartan
     {
         // Validate resolution
         m_present_enabled = RHI_Device::IsValidResolution(width, height);
+
         if (!m_present_enabled)
         {
             // Return true as when minimizing, a resolution
             // of 0,0 can be passed in, and this is fine.
-            return true;
+            return false;
         }
 
         // Only resize if needed
         if (!force)
         {
             if (m_width == width && m_height == height)
-                return true;
+                return false;
         }
 
         // Wait in case any command buffer is still in use

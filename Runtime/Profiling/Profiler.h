@@ -144,7 +144,7 @@ namespace Spartan
         bool m_profile                   = false;
         bool m_profile_cpu               = true; // cheap
         bool m_profile_gpu               = true; // expensive
-        float m_profiling_interval_sec   = 0.3f;
+        float m_profiling_interval_sec   = 0.2f;
         float m_time_since_profiling_sec = m_profiling_interval_sec;
 
         // Time blocks (double buffered)
@@ -170,7 +170,7 @@ namespace Spartan
         // Misc
         bool m_poll                 = false;
         std::string m_metrics       = "N/A";
-        bool m_increase_capacity    = 0.0f;
+        bool m_increase_capacity    = false;
         bool m_allow_time_block_end = true;
     
         // Dependencies

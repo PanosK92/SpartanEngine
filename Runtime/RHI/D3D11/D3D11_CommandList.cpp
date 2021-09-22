@@ -511,20 +511,29 @@ namespace Spartan
 
     void RHI_CommandList::SetViewport(const RHI_Viewport& viewport) const
     {
-        D3D11_VIEWPORT d3d11_viewport   = {};
-        d3d11_viewport.TopLeftX         = viewport.x;
-        d3d11_viewport.TopLeftY         = viewport.y;
-        d3d11_viewport.Width            = viewport.width;
-        d3d11_viewport.Height           = viewport.height;
-        d3d11_viewport.MinDepth         = viewport.depth_min;
-        d3d11_viewport.MaxDepth         = viewport.depth_max;
+        // Validate command list state
+        SP_ASSERT(m_state == RHI_CommandListState::Recording);
+
+        D3D11_VIEWPORT d3d11_viewport = {};
+        d3d11_viewport.TopLeftX       = viewport.x;
+        d3d11_viewport.TopLeftY       = viewport.y;
+        d3d11_viewport.Width          = viewport.width;
+        d3d11_viewport.Height         = viewport.height;
+        d3d11_viewport.MinDepth       = viewport.depth_min;
+        d3d11_viewport.MaxDepth       = viewport.depth_max;
 
         m_rhi_device->GetContextRhi()->device_context->RSSetViewports(1, &d3d11_viewport);
     }
 
     void RHI_CommandList::SetScissorRectangle(const Math::Rectangle& scissor_rectangle) const
     {
-        const D3D11_RECT d3d11_rectangle = { static_cast<LONG>(scissor_rectangle.left), static_cast<LONG>(scissor_rectangle.top), static_cast<LONG>(scissor_rectangle.right), static_cast<LONG>(scissor_rectangle.bottom) };
+        const D3D11_RECT d3d11_rectangle =
+        {
+            static_cast<LONG>(scissor_rectangle.left),
+            static_cast<LONG>(scissor_rectangle.top),
+            static_cast<LONG>(scissor_rectangle.right),
+            static_cast<LONG>(scissor_rectangle.bottom)
+        };
 
         m_rhi_device->GetContextRhi()->device_context->RSSetScissorRects(1, &d3d11_rectangle);
     }

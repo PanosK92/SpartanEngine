@@ -216,9 +216,6 @@ namespace Spartan
             Flush();
         }
 
-        if (!m_swap_chain->PresentEnabled() || !m_is_rendering_allowed)
-            return;
-
         // Resize swapchain to window size (if needed)
         {
             // Passing zero dimensions will cause the swapchain to not present at all
@@ -226,14 +223,17 @@ namespace Spartan
             uint32_t width  = static_cast<uint32_t>(window->IsMinimised() ? 0 : window->GetWidth());
             uint32_t height = static_cast<uint32_t>(window->IsMinimised() ? 0 : window->GetHeight());
 
-            if (!m_swap_chain->PresentEnabled() || m_swap_chain->GetWidth() != width || m_swap_chain->GetHeight() != height)
+            if ((m_swap_chain->GetWidth() != width || m_swap_chain->GetHeight() != height) || !m_swap_chain->PresentEnabled())
             {
-                m_swap_chain->Resize(static_cast<uint32_t>(width), static_cast<uint32_t>(height));
-
-                // Log
-                LOG_INFO("Swapchain resolution has been set to %dx%d", width, height);
+                if (m_swap_chain->Resize(width, height))
+                {
+                    LOG_INFO("Swapchain resolution has been set to %dx%d", width, height);
+                }
             }
         }
+
+        if (!m_swap_chain->PresentEnabled() || !m_is_rendering_allowed)
+            return;
 
         // Acquire appropriate command list
         m_cmd_index     = (m_cmd_index + 1) % static_cast<uint32_t>(m_cmd_lists.size());
@@ -242,10 +242,10 @@ namespace Spartan
         // Reset dynamic buffer indices when we come back to the first command list
         if (m_cmd_index == 0)
         {
-            m_cb_uber_offset_index      = 0;
-            m_cb_frame_offset_index     = 0;
-            m_cb_light_offset_index     = 0;
-            m_cb_material_offset_index  = 0;
+            m_cb_uber_offset_index     = 0;
+            m_cb_frame_offset_index    = 0;
+            m_cb_light_offset_index    = 0;
+            m_cb_material_offset_index = 0;
         }
 
         // Begin
@@ -278,22 +278,22 @@ namespace Spartan
                 m_update_ortho_proj                  = false;
             }
 
-            m_cb_frame_cpu.view                 = m_camera->GetViewMatrix();
-            m_cb_frame_cpu.projection           = m_camera->GetProjectionMatrix();
-            m_cb_frame_cpu.projection_inverted  = Matrix::Invert(m_cb_frame_cpu.projection);
+            m_cb_frame_cpu.view                = m_camera->GetViewMatrix();
+            m_cb_frame_cpu.projection          = m_camera->GetProjectionMatrix();
+            m_cb_frame_cpu.projection_inverted = Matrix::Invert(m_cb_frame_cpu.projection);
             
             // TAA - Generate jitter
             if (GetOption(Render_AntiAliasing_Taa))
             {
                 m_taa_jitter_previous = m_taa_jitter;
                 
-                const float scale           = 1.0f;
-                const uint8_t samples       = 16;
-                const uint64_t index        = m_frame_num % samples;
-                m_taa_jitter                = Utility::Sampling::Halton2D(index, 2, 3) * 2.0f - 1.0f;
-                m_taa_jitter.x              = (m_taa_jitter.x / m_resolution_render.x) * scale;
-                m_taa_jitter.y              = (m_taa_jitter.y / m_resolution_render.y) * scale;
-                m_cb_frame_cpu.projection   *= Matrix::CreateTranslation(Vector3(m_taa_jitter.x, m_taa_jitter.y, 0.0f));
+                const float scale         = 1.0f;
+                const uint8_t samples     = 16;
+                const uint64_t index      = m_frame_num % samples;
+                m_taa_jitter              = Utility::Sampling::Halton2D(index, 2, 3) * 2.0f - 1.0f;
+                m_taa_jitter.x            = (m_taa_jitter.x / m_resolution_render.x) * scale;
+                m_taa_jitter.y            = (m_taa_jitter.y / m_resolution_render.y) * scale;
+                m_cb_frame_cpu.projection *= Matrix::CreateTranslation(Vector3(m_taa_jitter.x, m_taa_jitter.y, 0.0f));
             }
             else
             {
