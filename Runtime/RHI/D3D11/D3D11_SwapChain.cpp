@@ -158,26 +158,23 @@ namespace Spartan
 
         // Validate resolution
         m_present_enabled = m_rhi_device->IsValidResolution(width, height);
+
         if (!m_present_enabled)
-        {
-            // Return true as when minimizing, a resolution
-            // of 0,0 can be passed in, and this is fine.
-            return true;
-        }
+            return false;
 
         // Only resize if needed
         if (!force)
         {
             if (m_width == width && m_height == height)
-                return true;
+                return false;
         }
 
         // Save new dimensions
-        m_width     = width;
-        m_height    = height;
+        m_width  = width;
+        m_height = height;
 
-        auto swap_chain            = static_cast<IDXGISwapChain*>(m_swap_chain_view);
-        auto render_target_view    = static_cast<ID3D11RenderTargetView*>(m_resource_view_renderTarget);
+        auto swap_chain         = static_cast<IDXGISwapChain*>(m_swap_chain_view);
+        auto render_target_view = static_cast<ID3D11RenderTargetView*>(m_resource_view_renderTarget);
 
         // Release previous stuff
         render_target_view->Release();

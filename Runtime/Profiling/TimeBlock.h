@@ -56,6 +56,7 @@ namespace Spartan
         float GetDuration()          const { return m_duration; }
         bool IsComplete()            const { return m_is_complete; }
         uint32_t GetId()             const { return m_id; }
+        void ClearGpuObjects();
 
     private:    
         static uint32_t FindTreeDepth(const TimeBlock* time_block, uint32_t depth = 0);

@@ -35,7 +35,7 @@ using namespace std;
 
 namespace Spartan
 {
-    static const int initial_capacity = 200;
+    static const int initial_capacity = 256;
 
     Profiler::Profiler(Context* context) : ISubsystem(context)
     {
@@ -78,17 +78,18 @@ namespace Spartan
             OnFrameEnd();
 
             // Increase size by 100
-            const uint32_t new_size = m_time_blocks_write.size() + 100;
+            const uint32_t size_old = static_cast<uint32_t>(m_time_blocks_write.size());
+            const uint32_t size_new = size_old + 100;
 
-            m_time_blocks_read.reserve(new_size);
-            m_time_blocks_read.resize(new_size);
-            m_time_blocks_write.reserve(new_size);
-            m_time_blocks_write.resize(new_size);
+            m_time_blocks_read.reserve(size_new);
+            m_time_blocks_read.resize(size_new);
+            m_time_blocks_write.reserve(size_new);
+            m_time_blocks_write.resize(size_new);
 
             m_increase_capacity = false;
             m_poll              = true;
 
-            LOG_WARNING("Time block list has grown to fit %d commands. Consider making the capacity larger to avoid re-allocations.", m_time_block_index + 1);
+            LOG_WARNING("Time block list has grown to fit %d commands. Consider making the capacity larger to avoid re-allocations.", size_old + 1);
         }
         else
         {
@@ -176,30 +177,39 @@ namespace Spartan
 
     void Profiler::OnFrameEnd()
     {
-        uint32_t pass_index_gpu = 0;
-        
-        for (uint32_t i = 0; i < m_time_block_index; i++)
+        // Copy completed time blocks write to time blocks read vector (double buffering)
         {
-            TimeBlock& time_block = m_time_blocks_write[i];
-        
-            if (time_block.IsComplete())
+            uint32_t pass_index_gpu = 0;
+
+            for (uint32_t i = 0; i < static_cast<uint32_t>(m_time_blocks_read.size()); i++)
             {
-                // Must not happen when TimeBlockEnd() ends as D3D11 waits
-                // too much for the results to be ready, which increases CPU time.
-                time_block.ComputeDuration(pass_index_gpu);
-                if (time_block.GetType() == TimeBlockType::Gpu)
+                TimeBlock& time_block = m_time_blocks_write[i];
+
+                // Compute time block duration
+                if (time_block.IsComplete())
                 {
-                    pass_index_gpu += 2;
+                    // ComputeDuration() must only be called here, at the end of the frame, and not in TimeBlockEnd().
+                    // This is because D3D11 waits too much for the results to be ready, which increases CPU time.
+                    time_block.ComputeDuration(pass_index_gpu);
+
+                    if (time_block.GetType() == TimeBlockType::Gpu)
+                    {
+                        pass_index_gpu += 2;
+                    }
                 }
-        
+                else if (time_block.GetType() != TimeBlockType::Undefined) // If undefined, then it wasn't used this frame, nothing wrong with that.
+                {
+                    LOG_WARNING("TimeBlockEnd() was not called for time block \"%s\"", time_block.GetName());
+                }
+
+                // Copy over
                 m_time_blocks_read[i] = time_block;
+                // Nullify gpu query objects as we don't want them to de-allocte twice (read and write vectors) once the profiler deconstructs.
+                m_time_blocks_read[i].ClearGpuObjects();
+
+                // Reset
+                time_block.Reset();
             }
-            else
-            {
-                LOG_WARNING("TimeBlockEnd() was not called for time block \"%s\"", time_block.GetName());
-            }
-            
-            time_block.Reset();
         }
         
         m_time_block_index = -1;
@@ -264,7 +274,7 @@ namespace Spartan
 
     TimeBlock* Profiler::GetLastIncompleteTimeBlock(TimeBlockType type /*= TimeBlock_Undefined*/)
     {
-        for (int i = m_time_block_index - 1; i >= 0; i--)
+        for (int i = m_time_block_index; i >= 0; i--)
         {
             TimeBlock& time_block = m_time_blocks_write[i];
 

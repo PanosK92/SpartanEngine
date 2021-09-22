@@ -92,12 +92,12 @@ namespace Spartan
     }
 
     void RHI_CommandList::ClearRenderTarget(RHI_Texture* texture,
-        const uint32_t color_index          /*= 0*/,
-        const uint32_t depth_stencil_index  /*= 0*/,
-        const bool storage                  /*= false*/,
-        const Math::Vector4& clear_color    /*= rhi_color_load*/,
-        const float clear_depth             /*= rhi_depth_load*/,
-        const uint32_t clear_stencil        /*= rhi_stencil_load*/
+        const uint32_t color_index         /*= 0*/,
+        const uint32_t depth_stencil_index /*= 0*/,
+        const bool storage                 /*= false*/,
+        const Math::Vector4& clear_color   /*= rhi_color_load*/,
+        const float clear_depth            /*= rhi_depth_load*/,
+        const uint32_t clear_stencil       /*= rhi_stencil_load*/
     )
     {
 
@@ -105,17 +105,66 @@ namespace Spartan
 
     bool RHI_CommandList::Draw(const uint32_t vertex_count)
     {
-       
+        // Validate command list state
+        SP_ASSERT(m_state == RHI_CommandListState::Recording);
+
+        // Ensure correct state before attempting to draw
+        if (!OnDraw())
+            return false;
+
+        // Draw
+        static_cast<ID3D12GraphicsCommandList*>(m_cmd_buffer)->DrawInstanced(
+            vertex_count, // VertexCountPerInstance
+            1,            // InstanceCount
+            0,            // StartVertexLocation
+            0             // StartInstanceLocation
+        );
+
+        // Profiler
+        m_profiler->m_rhi_draw++;
+
         return true;
     }
     
     bool RHI_CommandList::DrawIndexed(const uint32_t index_count, const uint32_t index_offset, const uint32_t vertex_offset)
     {
+        // Validate command list state
+        SP_ASSERT(m_state == RHI_CommandListState::Recording);
+
+        // Ensure correct state before attempting to draw
+        if (!OnDraw())
+            return false;
+
+        // Draw
+        static_cast<ID3D12GraphicsCommandList*>(m_cmd_buffer)->DrawIndexedInstanced(
+            index_count,   // IndexCountPerInstance
+            1,             // InstanceCount
+            index_offset,  // StartIndexLocation
+            vertex_offset, // BaseVertexLocation
+            0              // StartInstanceLocation
+        );
+
+        // Profile
+        m_profiler->m_rhi_draw++;
+
         return true;
     }
   
     bool RHI_CommandList::Dispatch(uint32_t x, uint32_t y, uint32_t z, bool async /*= false*/)
     {
+        // Validate command list state
+        SP_ASSERT(m_state == RHI_CommandListState::Recording);
+
+        // Ensure correct state before attempting to draw
+        if (!OnDraw())
+            return false;
+
+        // Dispatch
+        static_cast<ID3D12GraphicsCommandList*>(m_cmd_buffer)->Dispatch(x, y, z);
+
+        // Profiler
+        m_profiler->m_rhi_dispatch++;
+
         return true;
     }
 
@@ -126,12 +175,34 @@ namespace Spartan
 
     void RHI_CommandList::SetViewport(const RHI_Viewport& viewport) const
     {
-       
+        // Validate command list state
+        SP_ASSERT(m_state == RHI_CommandListState::Recording);
+
+        D3D12_VIEWPORT d3d12_viewport = {};
+        d3d12_viewport.TopLeftX       = viewport.x;
+        d3d12_viewport.TopLeftY       = viewport.y;
+        d3d12_viewport.Width          = viewport.width;
+        d3d12_viewport.Height         = viewport.height;
+        d3d12_viewport.MinDepth       = viewport.depth_min;
+        d3d12_viewport.MaxDepth       = viewport.depth_max;
+
+        static_cast<ID3D12GraphicsCommandList*>(m_cmd_buffer)->RSSetViewports(1, &d3d12_viewport);
     }
     
     void RHI_CommandList::SetScissorRectangle(const Math::Rectangle& scissor_rectangle) const
     {
-       
+        // Validate command list state
+        SP_ASSERT(m_state == RHI_CommandListState::Recording);
+
+        const D3D12_RECT d3d12_rectangle =
+        {
+            static_cast<LONG>(scissor_rectangle.left),
+            static_cast<LONG>(scissor_rectangle.top),
+            static_cast<LONG>(scissor_rectangle.right),
+            static_cast<LONG>(scissor_rectangle.bottom)
+        };
+
+        static_cast<ID3D12GraphicsCommandList*>(m_cmd_buffer)->RSSetScissorRects(1, &d3d12_rectangle);
     }
     
     void RHI_CommandList::SetBufferVertex(const RHI_VertexBuffer* buffer, const uint64_t offset /*= 0*/)

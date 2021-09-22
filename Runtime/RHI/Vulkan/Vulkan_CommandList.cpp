@@ -48,11 +48,11 @@ namespace Spartan
 {
     RHI_CommandList::RHI_CommandList(Context* context)
     {
-        m_renderer                      = context->GetSubsystem<Renderer>();
-        m_profiler                      = context->GetSubsystem<Profiler>();
-        m_rhi_device                    = m_renderer->GetRhiDevice().get();
-        m_pipeline_cache                = m_renderer->GetPipelineCache();
-        m_descriptor_set_layout_cache   = m_renderer->GetDescriptorLayoutSetCache();
+        m_renderer                    = context->GetSubsystem<Renderer>();
+        m_profiler                    = context->GetSubsystem<Profiler>();
+        m_rhi_device                  = m_renderer->GetRhiDevice().get();
+        m_pipeline_cache              = m_renderer->GetPipelineCache();
+        m_descriptor_set_layout_cache = m_renderer->GetDescriptorLayoutSetCache();
 
         RHI_Context* rhi_context = m_rhi_device->GetContextRhi();
 
@@ -424,6 +424,7 @@ namespace Spartan
         if (!OnDraw())
             return false;
 
+        // Draw
         vkCmdDraw(
             static_cast<VkCommandBuffer>(m_cmd_buffer), // commandBuffer
             vertex_count,                               // vertexCount
@@ -432,6 +433,7 @@ namespace Spartan
             0                                           // firstInstance
         );
 
+        // Profiler
         m_profiler->m_rhi_draw++;
 
         return true;
@@ -446,6 +448,7 @@ namespace Spartan
         if (!OnDraw())
             return false;
 
+        // Draw
         vkCmdDrawIndexed(
             static_cast<VkCommandBuffer>(m_cmd_buffer), // commandBuffer
             index_count,                                // indexCount
@@ -455,6 +458,7 @@ namespace Spartan
             0                                           // firstInstance
         );
 
+        // Profile
         m_profiler->m_rhi_draw++;
 
         return true;
@@ -469,7 +473,10 @@ namespace Spartan
         if (!OnDraw())
             return false;
 
+        // Dispatch
         vkCmdDispatch(static_cast<VkCommandBuffer>(m_cmd_buffer), x, y, z);
+
+        // Profiler
         m_profiler->m_rhi_dispatch++;
 
         return true;
@@ -533,13 +540,13 @@ namespace Spartan
         // Validate command list state
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
-        VkViewport vk_viewport    = {};
-        vk_viewport.x            = viewport.x;
-        vk_viewport.y            = viewport.y;
-        vk_viewport.width        = viewport.width;
-        vk_viewport.height        = viewport.height;
-        vk_viewport.minDepth    = viewport.depth_min;
-        vk_viewport.maxDepth    = viewport.depth_max;
+        VkViewport vk_viewport = {};
+        vk_viewport.x          = viewport.x;
+        vk_viewport.y          = viewport.y;
+        vk_viewport.width      = viewport.width;
+        vk_viewport.height     = viewport.height;
+        vk_viewport.minDepth   = viewport.depth_min;
+        vk_viewport.maxDepth   = viewport.depth_max;
 
         vkCmdSetViewport(
             static_cast<VkCommandBuffer>(m_cmd_buffer), // commandBuffer
@@ -555,10 +562,10 @@ namespace Spartan
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
         VkRect2D vk_scissor;
-        vk_scissor.offset.x            = static_cast<int32_t>(scissor_rectangle.left);
-        vk_scissor.offset.y            = static_cast<int32_t>(scissor_rectangle.top);
-        vk_scissor.extent.width        = static_cast<uint32_t>(scissor_rectangle.Width());
-        vk_scissor.extent.height    = static_cast<uint32_t>(scissor_rectangle.Height());
+        vk_scissor.offset.x      = static_cast<int32_t>(scissor_rectangle.left);
+        vk_scissor.offset.y      = static_cast<int32_t>(scissor_rectangle.top);
+        vk_scissor.extent.width  = static_cast<uint32_t>(scissor_rectangle.Width());
+        vk_scissor.extent.height = static_cast<uint32_t>(scissor_rectangle.Height());
 
         vkCmdSetScissor(
             static_cast<VkCommandBuffer>(m_cmd_buffer), // commandBuffer

@@ -55,9 +55,6 @@ void Widget_Profiler::OnHide()
 
 static void ShowTimeBlock(const TimeBlock& time_block, float total_time)
 {
-    if (!time_block.IsComplete())
-        return;
-
     float m_tree_depth_stride = 10;
 
     const char* name        = time_block.GetName();
@@ -99,6 +96,9 @@ void Widget_Profiler::TickVisible()
     {
         if (time_blocks[i].GetType() != type)
             continue;
+
+        if (!time_blocks[i].IsComplete())
+            return;
 
         ShowTimeBlock(time_blocks[i], time_last);
     }
