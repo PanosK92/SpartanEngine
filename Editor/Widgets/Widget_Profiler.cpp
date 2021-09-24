@@ -60,7 +60,7 @@ static void ShowTimeBlock(const TimeBlock& time_block, float total_time)
     const char* name        = time_block.GetName();
     const float duration    = time_block.GetDuration();
     const float fraction    = duration / total_time;
-    const float width       = fraction * ImGui::GetWindowContentRegionWidth();
+    const float width       = fraction * ImGuiEx::GetWindowContentRegionWidth();
     const auto& color       = ImGui::GetStyle().Colors[ImGuiCol_CheckMark];
     const ImVec2 pos_screen = ImGui::GetCursorScreenPos();
     const ImVec2 pos        = ImGui::GetCursorPos();
@@ -143,7 +143,7 @@ void Widget_Profiler::TickVisible()
         m_plot[m_plot.size() - 1] = time_last;
 
         // Show
-        ImGui::PlotLines("", m_plot.data(), static_cast<int>(m_plot.size()), 0, "", m_timings.m_min, m_timings.m_max, ImVec2(ImGui::GetWindowContentRegionWidth(), 80));
+        ImGui::PlotLines("", m_plot.data(), static_cast<int>(m_plot.size()), 0, "", m_timings.m_min, m_timings.m_max, ImVec2(ImGuiEx::GetWindowContentRegionWidth(), 80));
     }
 
     // VRAM

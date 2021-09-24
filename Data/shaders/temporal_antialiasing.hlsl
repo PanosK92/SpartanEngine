@@ -79,7 +79,7 @@ void store_color_depth(uint2 group_thread_id, uint2 thread_id)
     // out of bounds clamp
     thread_id = clamp(thread_id, uint2(0, 0), uint2(g_resolution_render) - uint2(1, 1));
 
-    store_color(group_thread_id, tex2[thread_id]);
+    store_color(group_thread_id, tex2[thread_id].rgb);
     store_depth(group_thread_id, get_linear_depth(thread_id));
 }
 

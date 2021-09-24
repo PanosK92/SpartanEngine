@@ -149,14 +149,13 @@ static const D3D11_BLEND_OP d3d11_blend_operation[] =
 };
 #endif
 
-// Definition - DirectX 11
+// Definition - DirectX 12
 #if defined(API_GRAPHICS_D3D12)
 #pragma comment(lib, "d3d12.lib")
 #pragma comment(lib, "dxgi.lib")
 #pragma warning(push, 0) // Hide warnings which belong DirectX
 #include <d3d12.h>
-#include <dxgi1_3.h>
-#include <dxgi1_4.h>
+#include <dxgi1_6.h>
 #pragma warning(pop)
 #endif
 
@@ -327,29 +326,29 @@ namespace Spartan
     struct RHI_Context
     {
         #if defined(API_GRAPHICS_D3D11)
-            RHI_Api_Type api_type                   = RHI_Api_Type::D3d11;
-            ID3D11Device5* device                   = nullptr;
-            ID3D11DeviceContext4* device_context    = nullptr;
-            ID3DUserDefinedAnnotation* annotation   = nullptr;
+            RHI_Api_Type api_type                 = RHI_Api_Type::D3d11;
+            ID3D11Device5* device                 = nullptr;
+            ID3D11DeviceContext4* device_context  = nullptr;
+            ID3DUserDefinedAnnotation* annotation = nullptr;
         #endif
 
         #if defined(API_GRAPHICS_D3D12)
-            RHI_Api_Type api_type   = RHI_Api_Type::D3d12;
-            ID3D12Device* device    = nullptr;
+            RHI_Api_Type api_type = RHI_Api_Type::D3d12;
+            ID3D12Device* device  = nullptr;
         #endif
 
         #if defined(API_GRAPHICS_VULKAN)
-            RHI_Api_Type api_type                                   = RHI_Api_Type::Vulkan;
-            uint32_t api_version                                    = 0;
-            VkInstance instance                                     = nullptr;
-            VkPhysicalDevice device_physical                        = nullptr;
-            VkDevice device                                         = nullptr;
-            VkPhysicalDeviceProperties device_properties            = {};
-            VkPhysicalDeviceVulkan12Features device_features_1_2    = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES };
-            VkPhysicalDeviceFeatures2 device_features               = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, &device_features_1_2 };
-            VkFormat surface_format                                 = VK_FORMAT_UNDEFINED;
-            VkColorSpaceKHR surface_color_space                     = VK_COLOR_SPACE_MAX_ENUM_KHR;
-            VmaAllocator allocator                                  = nullptr;
+            RHI_Api_Type api_type                                = RHI_Api_Type::Vulkan;
+            uint32_t api_version                                 = 0;
+            VkInstance instance                                  = nullptr;
+            VkPhysicalDevice device_physical                     = nullptr;
+            VkDevice device                                      = nullptr;
+            VkPhysicalDeviceProperties device_properties         = {};
+            VkPhysicalDeviceVulkan12Features device_features_1_2 = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES };
+            VkPhysicalDeviceFeatures2 device_features            = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, &device_features_1_2 };
+            VkFormat surface_format                              = VK_FORMAT_UNDEFINED;
+            VkColorSpaceKHR surface_color_space                  = VK_COLOR_SPACE_MAX_ENUM_KHR;
+            VmaAllocator allocator                               = nullptr;
             std::unordered_map<uint64_t, VmaAllocation> allocations;
 
             // Extensions

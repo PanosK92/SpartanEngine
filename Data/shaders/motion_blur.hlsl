@@ -37,7 +37,7 @@ float2 get_velocity_max_3x3(uint2 pos)
         [unroll]
         for (int x = -1; x <= 1; ++x)
         {
-            float2 velocity = tex_velocity.Load(int3(pos + float2(x, y), 0));
+            float2 velocity = tex_velocity.Load(int3(pos + float2(x, y), 0)).xy;
             float length2   = dot(velocity, velocity);
 
             if (length2 > max_length2)

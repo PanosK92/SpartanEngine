@@ -279,7 +279,7 @@ void Widget_RenderOptions::TickVisible()
                     static vector<string> upsampling_modes = { "Linear", "TAA upsampling - WIP", "AMD FidelityFX Super Resolution" };
                     uint32_t upsampling_mode_index = do_upsample_taa ? 1 : (do_upsample_amd ? 2 : 0);
 
-                    ImGuiEx::PushDisabled(!upsampling_allowed);
+                    ImGui::BeginDisabled(!upsampling_allowed);
 
                     if (widget_helper::ComboBox("Upsampling", upsampling_modes, upsampling_mode_index))
                     {
@@ -300,7 +300,7 @@ void Widget_RenderOptions::TickVisible()
                         }
                     }
 
-                    ImGuiEx::PopDisabled(!upsampling_allowed);
+                    ImGui::EndDisabled();
                 }
             }
 
@@ -314,9 +314,9 @@ void Widget_RenderOptions::TickVisible()
 
                 // SSAO + GI
                 {
-                    ImGuiEx::PushDisabled(!do_ssao);
+                    ImGui::BeginDisabled(!do_ssao);
                     widget_helper::CheckBox("SSAO GI - Screen space global illumination", ssao_gi, "Use SSAO to compute diffuse global illumination");
-                    ImGuiEx::PopDisabled(!do_ssao);
+                    ImGui::EndDisabled();
                 }
             }
 
@@ -345,9 +345,9 @@ void Widget_RenderOptions::TickVisible()
                 // Bloom
                 widget_helper::CheckBox("Bloom", do_bloom);
                 {
-                    ImGuiEx::PushDisabled(!do_bloom);
+                    ImGui::BeginDisabled(!do_bloom);
                     widget_helper::RenderOptionValue("Bloom intensity", Renderer_Option_Value::Bloom_Intensity, "", 0.001f);
-                    ImGuiEx::PopDisabled(!do_bloom);
+                    ImGui::EndDisabled();
                 }
 
                 // Motion blur
@@ -369,9 +369,9 @@ void Widget_RenderOptions::TickVisible()
                 widget_helper::CheckBox("Volumetric fog", do_volumetric_fog, "Requires a light with shadows enabled.");
                 {
                     // Density
-                    ImGuiEx::PushDisabled(!do_volumetric_fog);
+                    ImGui::BeginDisabled(!do_volumetric_fog);
                     widget_helper::RenderOptionValue("Volumetric fog density", Renderer_Option_Value::Fog, "", 0.01f, 0.0f, 16.0f, "%.2f");
-                    ImGuiEx::PopDisabled(!do_volumetric_fog);
+                    ImGui::EndDisabled();
                 }
 
                 // Screen space shadows
@@ -390,9 +390,9 @@ void Widget_RenderOptions::TickVisible()
                 widget_helper::CheckBox("Sharpening (AMD FidelityFX CAS)", do_sharperning, "Contrast adaptive sharpening. Areas of the image that are already sharp are sharpened less, while areas that lack detail are sharpened more.");
 
                 // Sharpen strength
-                ImGuiEx::PushDisabled(!do_sharperning);
+                ImGui::BeginDisabled(!do_sharperning);
                 widget_helper::RenderOptionValue("Sharpening strength", Renderer_Option_Value::Sharpen_Strength, "", 0.1f, 0.0f, 1.0f);
-                ImGuiEx::PopDisabled(!do_sharperning);
+                ImGui::EndDisabled();
 
                 // FPS Limit
                 {
@@ -424,10 +424,10 @@ void Widget_RenderOptions::TickVisible()
             {
                 widget_helper::CheckBox("Transform", debug_transform);
                 {
-                    ImGuiEx::PushDisabled(!debug_transform);
+                    ImGui::BeginDisabled(!debug_transform);
                     widget_helper::Float("Transform size", m_renderer->m_gizmo_transform_size, 0.0025f);
                     widget_helper::Float("Transform speed", m_renderer->m_gizmo_transform_speed, 1.0f);
-                    ImGuiEx::PopDisabled(!debug_transform);
+                    ImGui::EndDisabled();
                 }
 
                 widget_helper::CheckBox("Selection outline", debug_selection_outline);

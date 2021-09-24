@@ -51,10 +51,23 @@ namespace Spartan
 {
     RHI_CommandList::RHI_CommandList(Context* context)
     {
-    
+        //D3D12_COMMAND_QUEUE_DESC queue_desc = {};
+        //queue_desc.Flags                    = D3D12_COMMAND_QUEUE_FLAG_NONE;
+        //queue_desc.Type                     = D3D12_COMMAND_LIST_TYPE_DIRECT;
+        //queue_desc.NodeMask                 = 0;
+        //
+        //d3d12_utility::error::check(m_rhi_device->GetContextRhi()->device->CreateCommandQueue(&queue_desc, IID_PPV_ARGS(reinterpret_cast<ID3D12CommandQueue**>(&m_resource))));
+        //d3d12_utility::debug::set_name(m_resource, "cmd_queue_direct");
     }
     
-    RHI_CommandList::~RHI_CommandList() = default;
+    RHI_CommandList::~RHI_CommandList()
+    {
+        // Wait in case it's still in use by the GPU
+        m_rhi_device->Queue_WaitAll();
+
+        // Command list
+        d3d12_utility::release<ID3D12CommandQueue>(m_resource);
+    }
 
     bool RHI_CommandList::Begin()
     {
@@ -88,7 +101,7 @@ namespace Spartan
 
     void RHI_CommandList::ClearPipelineStateRenderTargets(RHI_PipelineState& pipeline_state)
     {
-        
+
     }
 
     void RHI_CommandList::ClearRenderTarget(RHI_Texture* texture,
@@ -113,7 +126,7 @@ namespace Spartan
             return false;
 
         // Draw
-        static_cast<ID3D12GraphicsCommandList*>(m_cmd_buffer)->DrawInstanced(
+        static_cast<ID3D12GraphicsCommandList*>(m_resource)->DrawInstanced(
             vertex_count, // VertexCountPerInstance
             1,            // InstanceCount
             0,            // StartVertexLocation
@@ -136,7 +149,7 @@ namespace Spartan
             return false;
 
         // Draw
-        static_cast<ID3D12GraphicsCommandList*>(m_cmd_buffer)->DrawIndexedInstanced(
+        static_cast<ID3D12GraphicsCommandList*>(m_resource)->DrawIndexedInstanced(
             index_count,   // IndexCountPerInstance
             1,             // InstanceCount
             index_offset,  // StartIndexLocation
@@ -160,7 +173,7 @@ namespace Spartan
             return false;
 
         // Dispatch
-        static_cast<ID3D12GraphicsCommandList*>(m_cmd_buffer)->Dispatch(x, y, z);
+        static_cast<ID3D12GraphicsCommandList*>(m_resource)->Dispatch(x, y, z);
 
         // Profiler
         m_profiler->m_rhi_dispatch++;
@@ -186,7 +199,7 @@ namespace Spartan
         d3d12_viewport.MinDepth       = viewport.depth_min;
         d3d12_viewport.MaxDepth       = viewport.depth_max;
 
-        static_cast<ID3D12GraphicsCommandList*>(m_cmd_buffer)->RSSetViewports(1, &d3d12_viewport);
+        static_cast<ID3D12GraphicsCommandList*>(m_resource)->RSSetViewports(1, &d3d12_viewport);
     }
     
     void RHI_CommandList::SetScissorRectangle(const Math::Rectangle& scissor_rectangle) const
@@ -202,7 +215,7 @@ namespace Spartan
             static_cast<LONG>(scissor_rectangle.bottom)
         };
 
-        static_cast<ID3D12GraphicsCommandList*>(m_cmd_buffer)->RSSetScissorRects(1, &d3d12_rectangle);
+        static_cast<ID3D12GraphicsCommandList*>(m_resource)->RSSetScissorRects(1, &d3d12_rectangle);
     }
     
     void RHI_CommandList::SetBufferVertex(const RHI_VertexBuffer* buffer, const uint64_t offset /*= 0*/)

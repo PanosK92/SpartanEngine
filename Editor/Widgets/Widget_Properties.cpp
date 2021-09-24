@@ -115,7 +115,7 @@ namespace widget_helper
 
             ImGui::SetCursorPosY(original_pen_y + 5.0f);
             ImGuiEx::Image(icon_enum, 15);
-            ImGui::SameLine(ImGui::GetWindowContentRegionWidth() - icon_width + 1.0f); ImGui::SetCursorPosY(original_pen_y);
+            ImGui::SameLine(ImGuiEx::GetWindowContentRegionWidth() - icon_width + 1.0f); ImGui::SetCursorPosY(original_pen_y);
             if (ImGuiEx::ImageButton(name.c_str(), IconType::Component_Options, icon_width))
             {
                 g_contex_menu_id = name;
@@ -447,7 +447,7 @@ void Widget_Properties::ShowRenderable(Renderable* renderable) const
         ImGui::PushID("##material_name");
         ImGui::PushItemWidth(200.0f);
         ImGui::InputText("", &material_name, ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_ReadOnly);
-        if (auto payload = ImGuiEx::ReceiveDragPayload(ImGuiEx::DragPayload_Material))
+        if (auto payload = ImGuiEx::ReceiveDragPayload(ImGuiEx::DragPayloadType::DragPayload_Material))
         {
             renderable->SetMaterial(std::get<const char*>(payload->data));
         }
@@ -672,7 +672,7 @@ void Widget_Properties::ShowConstraint(Constraint* constraint) const
         ImGui::PushID("##OtherBodyName");
         ImGui::PushItemWidth(200.0f);
         ImGui::InputText("", &other_body_name, ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_ReadOnly);
-        if (auto payload = ImGuiEx::ReceiveDragPayload(ImGuiEx::DragPayload_Entity))
+        if (auto payload = ImGuiEx::ReceiveDragPayload(ImGuiEx::DragPayloadType::DragPayload_Entity))
         {
             const uint64_t entity_id = get<uint64_t>(payload->data);
             other_body               = widget_helper::scene->EntityGetById(entity_id);
@@ -1017,7 +1017,7 @@ void Widget_Properties::ShowAudioSource(AudioSource* audio_source) const
         ImGui::SameLine(widget_helper::g_column); ImGui::PushItemWidth(250.0f);
         ImGui::InputText("##audioSourceAudioClip", &audio_clip_name, ImGuiInputTextFlags_ReadOnly);
         ImGui::PopItemWidth();
-        if (auto payload = ImGuiEx::ReceiveDragPayload(ImGuiEx::DragPayload_Audio))
+        if (auto payload = ImGuiEx::ReceiveDragPayload(ImGuiEx::DragPayloadType::DragPayload_Audio))
         {
             audio_source->SetAudioClip(std::get<const char*>(payload->data));
         }
@@ -1201,7 +1201,7 @@ void Widget_Properties::ComponentContextMenu_Add() const
 
 void Widget_Properties::Drop_AutoAddComponents() const
 {
-    if (auto payload = ImGuiEx::ReceiveDragPayload(ImGuiEx::DragPayload_Script))
+    if (auto payload = ImGuiEx::ReceiveDragPayload(ImGuiEx::DragPayloadType::DragPayload_Script))
     {
         if (auto script_component = m_inspected_entity.lock()->AddComponent<Script>())
         {
