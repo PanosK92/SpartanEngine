@@ -38,10 +38,7 @@ namespace Spartan
         ~RHI_Device();
 
         // Physical device
-        void RegisterPhysicalDevice(const PhysicalDevice& physical_device);
         const PhysicalDevice* GetPrimaryPhysicalDevice();
-        void SetPrimaryPhysicalDevice(const uint32_t index);
-        const std::vector<PhysicalDevice>& GetPhysicalDevices() const { return m_physical_devices; }
 
         // Queue
         bool QueuePresent(void* swapchain_view, uint32_t* image_index, RHI_Semaphore* wait_semaphore = nullptr) const;
@@ -67,6 +64,15 @@ namespace Spartan
         void*& GetCmdPoolGraphics()               { return m_cmd_pool_graphics; }
 
     private:
+        // Physical device
+        bool DetectPhysicalDevices();
+        void RegisterPhysicalDevice(const PhysicalDevice& physical_device);
+        bool SelectPrimaryPhysicalDevice();
+        void SetPrimaryPhysicalDevice(const uint32_t index);
+
+        // Display modes
+        bool DetectDisplayModes(const PhysicalDevice* physical_device, const RHI_Format format);
+
         // Queues
         void* m_queue_graphics          = nullptr;
         void* m_queue_compute           = nullptr;

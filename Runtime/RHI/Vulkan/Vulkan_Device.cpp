@@ -140,10 +140,18 @@ namespace Spartan
         }
 
         // Find a physical device
-        if (!vulkan_utility::device::choose_physical_device(context->GetSubsystem<Window>()->GetHandle()))
         {
-            LOG_ERROR("Failed to find a suitable physical device.");
-            return;
+            if (!DetectPhysicalDevices())
+            {
+                LOG_ERROR("Failed to detect any devices");
+                return;
+            }
+
+            if (!SelectPrimaryPhysicalDevice())
+            {
+                LOG_ERROR("Failed to detect any devices");
+                return;
+            }
         }
 
         // Device
@@ -280,8 +288,6 @@ namespace Spartan
                 return;
         }
 
-        vulkan_utility::display::detect_display_modes();
-
         // Initialise the memory allocator
         m_rhi_context->InitialiseAllocator();
 
@@ -324,6 +330,175 @@ namespace Spartan
             vkDestroyDevice(m_rhi_context->device, nullptr);
             vkDestroyInstance(m_rhi_context->instance, nullptr);
         }
+    }
+
+    bool RHI_Device::DetectPhysicalDevices()
+    {
+        uint32_t device_count = 0;
+        if (!vulkan_utility::error::check(vkEnumeratePhysicalDevices(m_rhi_context->instance, &device_count, nullptr)))
+            return false;
+        
+        if (device_count == 0)
+        {
+            LOG_ERROR("There are no available devices.");
+            return false;
+        }
+        
+        vector<VkPhysicalDevice> physical_devices(device_count);
+        if (!vulkan_utility::error::check(vkEnumeratePhysicalDevices(m_rhi_context->instance, &device_count, physical_devices.data())))
+            return false;
+        
+        // Go through all the devices
+        for (const VkPhysicalDevice& device_physical : physical_devices)
+        {
+            // Get device properties
+            VkPhysicalDeviceProperties device_properties = {};
+            vkGetPhysicalDeviceProperties(device_physical, &device_properties);
+        
+            VkPhysicalDeviceMemoryProperties device_memory_properties = {};
+            vkGetPhysicalDeviceMemoryProperties(device_physical, &device_memory_properties);
+        
+            RHI_PhysicalDevice_Type type = RHI_PhysicalDevice_Type::Unknown;
+            if (device_properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU) type = RHI_PhysicalDevice_Type::Integrated;
+            if (device_properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)   type = RHI_PhysicalDevice_Type::Discrete;
+            if (device_properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU)    type = RHI_PhysicalDevice_Type::Virtual;
+            if (device_properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_CPU)            type = RHI_PhysicalDevice_Type::Cpu;
+        
+            // Let the engine know about it as it will sort all of the devices from best to worst
+            RegisterPhysicalDevice(PhysicalDevice
+            (
+                device_properties.apiVersion,                                        // api version
+                device_properties.driverVersion,                                     // driver version
+                device_properties.vendorID,                                          // vendor id
+                type,                                                                // type
+                &device_properties.deviceName[0],                                    // name
+                static_cast<uint64_t>(device_memory_properties.memoryHeaps[0].size), // memory
+                static_cast<void*>(device_physical)                                  // data
+            ));
+        }
+
+        return true;
+    }
+
+    bool RHI_Device::SelectPrimaryPhysicalDevice()
+    {
+        auto get_queue_family_index = [](VkQueueFlagBits queue_flags, const vector<VkQueueFamilyProperties>& queue_family_properties, uint32_t* index)
+        {
+            // Dedicated queue for compute
+            // Try to find a queue family index that supports compute but not graphics
+            if (queue_flags & VK_QUEUE_COMPUTE_BIT)
+            {
+                for (uint32_t i = 0; i < static_cast<uint32_t>(queue_family_properties.size()); i++)
+                {
+                    if ((queue_family_properties[i].queueFlags & queue_flags) && ((queue_family_properties[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) == 0))
+                    {
+                        *index = i;
+                        return true;
+                    }
+                }
+            }
+
+            // Dedicated queue for transfer
+            // Try to find a queue family index that supports transfer but not graphics and compute
+            if (queue_flags & VK_QUEUE_TRANSFER_BIT)
+            {
+                for (uint32_t i = 0; i < static_cast<uint32_t>(queue_family_properties.size()); i++)
+                {
+                    if ((queue_family_properties[i].queueFlags & queue_flags) && ((queue_family_properties[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) == 0) && ((queue_family_properties[i].queueFlags & VK_QUEUE_COMPUTE_BIT) == 0))
+                    {
+                        *index = i;
+                        return true;
+                    }
+                }
+            }
+
+            // For other queue types or if no separate compute queue is present, return the first one to support the requested flags
+            for (uint32_t i = 0; i < static_cast<uint32_t>(queue_family_properties.size()); i++)
+            {
+                if (queue_family_properties[i].queueFlags & queue_flags)
+                {
+                    *index = i;
+                    return true;
+                }
+            }
+
+            return false;
+        };
+
+        auto get_queue_family_indices = [this, &get_queue_family_index](const VkPhysicalDevice& physical_device)
+        {
+            uint32_t queue_family_count = 0;
+            vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &queue_family_count, nullptr);
+
+            vector<VkQueueFamilyProperties> queue_families_properties(queue_family_count);
+            vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &queue_family_count, queue_families_properties.data());
+
+            // Graphics
+            uint32_t index = 0;
+            if (get_queue_family_index(VK_QUEUE_GRAPHICS_BIT, queue_families_properties, &index))
+            {
+                SetQueueIndex(RHI_Queue_Type::Graphics, index);
+            }
+            else
+            {
+                LOG_ERROR("Graphics queue not suported.");
+                return false;
+            }
+
+            // Compute
+            if (get_queue_family_index(VK_QUEUE_GRAPHICS_BIT, queue_families_properties, &index))
+            {
+                SetQueueIndex(RHI_Queue_Type::Compute, index);
+            }
+            else
+            {
+                LOG_ERROR("Compute queue not suported.");
+                return false;
+            }
+
+            // Copy
+            if (get_queue_family_index(VK_QUEUE_TRANSFER_BIT, queue_families_properties, &index))
+            {
+                SetQueueIndex(RHI_Queue_Type::Copy, index);
+            }
+            else
+            {
+                LOG_ERROR("Copy queue not suported.");
+                return false;
+            }
+
+            return true;
+        };
+
+        // Go through all the devices (sorted from best to worst based on their properties)
+        for (uint32_t device_index = 0; device_index < m_physical_devices.size(); device_index++)
+        {
+            VkPhysicalDevice device = static_cast<VkPhysicalDevice>(m_physical_devices[device_index].GetData());
+
+            // Get the first device that has a graphics, a compute and a transfer queue
+            if (get_queue_family_indices(device))
+            {
+                SetPrimaryPhysicalDevice(device_index);
+                m_rhi_context->device_physical = device;
+                break;
+            }
+        }
+
+        return DetectDisplayModes(GetPrimaryPhysicalDevice(), RHI_Format_R8G8B8A8_Unorm); // TODO: Format should be determined based on what the swap chain supports.
+    }
+
+    bool RHI_Device::DetectDisplayModes(const PhysicalDevice* physical_device, const RHI_Format format)
+    {
+        // VK_KHR_Display is not supported and I don't want to use anything OS specific to acquire the display modes, must think of something.
+
+        const bool update_fps_limit_to_highest_hz = true;
+        Display::RegisterDisplayMode(DisplayMode(640, 480, 165, 1),   update_fps_limit_to_highest_hz, m_context);
+        Display::RegisterDisplayMode(DisplayMode(720, 576, 165, 1),   update_fps_limit_to_highest_hz, m_context);
+        Display::RegisterDisplayMode(DisplayMode(1280, 720, 165, 1),  update_fps_limit_to_highest_hz, m_context);
+        Display::RegisterDisplayMode(DisplayMode(1920, 1080, 165, 1), update_fps_limit_to_highest_hz, m_context);
+        Display::RegisterDisplayMode(DisplayMode(2560, 1440, 165, 1), update_fps_limit_to_highest_hz, m_context);
+
+        return true;
     }
 
     bool RHI_Device::QueuePresent(void* swapchain_view, uint32_t* image_index, RHI_Semaphore* wait_semaphore /*= nullptr*/) const

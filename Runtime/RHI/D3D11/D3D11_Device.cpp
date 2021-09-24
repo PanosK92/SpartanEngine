@@ -57,15 +57,22 @@ namespace Spartan
         d3d11_utility::globals::rhi_device  = this;
         const bool multithread_protection   = true;
 
-        // Detect adapters
-        d3d11_utility::DetectAdapters();
+        // Find a physical device
+        {
+            if (!DetectPhysicalDevices())
+            {
+                LOG_ERROR("Failed to detect any devices");
+                return;
+            }
+
+            if (!SelectPrimaryPhysicalDevice())
+            {
+                LOG_ERROR("Failed to detect any devices");
+                return;
+            }
+        }
 
         const PhysicalDevice* physical_device = GetPrimaryPhysicalDevice();
-        if (!physical_device)
-        {
-            LOG_ERROR("Failed to detect any devices");
-            return;
-        }
 
         // Create device
         {
@@ -80,17 +87,11 @@ namespace Spartan
             // The order of the feature levels that we'll try to create a device with
             vector<D3D_FEATURE_LEVEL> feature_levels =
             {
-                D3D_FEATURE_LEVEL_11_1,
-                D3D_FEATURE_LEVEL_11_0,
-                D3D_FEATURE_LEVEL_10_1,
-                D3D_FEATURE_LEVEL_10_0,
-                D3D_FEATURE_LEVEL_9_3,
-                D3D_FEATURE_LEVEL_9_2,
-                D3D_FEATURE_LEVEL_9_1
+                D3D_FEATURE_LEVEL_11_1
             };
 
-            auto adapter = static_cast<IDXGIAdapter*>(physical_device->GetData());
-            auto driver_type = adapter ? D3D_DRIVER_TYPE_UNKNOWN : D3D_DRIVER_TYPE_HARDWARE;
+            IDXGIAdapter* adapter       = static_cast<IDXGIAdapter*>(physical_device->GetData());
+            D3D_DRIVER_TYPE driver_type = adapter ? D3D_DRIVER_TYPE_UNKNOWN : D3D_DRIVER_TYPE_HARDWARE;
 
             auto create_device = [this, &adapter, &driver_type, &device_flags, &feature_levels]()
             {
@@ -98,16 +99,16 @@ namespace Spartan
                 ID3D11DeviceContext* temp_context = nullptr;
 
                 const HRESULT result = D3D11CreateDevice(
-                    adapter,                                    // pAdapter: If nullptr, the default adapter will be used
-                    driver_type,                                // DriverType
-                    nullptr,                                    // HMODULE: nullptr because DriverType = D3D_DRIVER_TYPE_HARDWARE
-                    device_flags,                               // Flags
-                    feature_levels.data(),                      // pFeatureLevels
-                    static_cast<UINT>(feature_levels.size()),   // FeatureLevels
-                    D3D11_SDK_VERSION,                          // SDKVersion
-                    &temp_device,                               // ppDevice
-                    nullptr,                                    // pFeatureLevel
-                    &temp_context                               // ppImmediateContext
+                    adapter,                                  // pAdapter: If nullptr, the default adapter will be used
+                    driver_type,                              // DriverType
+                    nullptr,                                  // HMODULE: nullptr because DriverType = D3D_DRIVER_TYPE_HARDWARE
+                    device_flags,                             // Flags
+                    feature_levels.data(),                    // pFeatureLevels
+                    static_cast<UINT>(feature_levels.size()), // FeatureLevels
+                    D3D11_SDK_VERSION,                        // SDKVersion
+                    &temp_device,                             // ppDevice
+                    nullptr,                                  // pFeatureLevel
+                    &temp_context                             // ppImmediateContext
                 );
 
                 if (SUCCEEDED(result))
@@ -151,47 +152,10 @@ namespace Spartan
         }
 
         // Log feature level
+        if (Settings* settings = m_context->GetSubsystem<Settings>())
         {
-            auto log_feature_level = [this](const std::string& level)
-            {
-                auto settings = m_context->GetSubsystem<Settings>();
-                settings->RegisterThirdPartyLib("DirectX", level, "https://www.microsoft.com/en-us/download/details.aspx?id=17431");
-                LOG_INFO("DirectX %s", level.c_str());
-            };
-
-            switch (m_rhi_context->device->GetFeatureLevel())
-            {
-                case D3D_FEATURE_LEVEL_9_1:
-                    log_feature_level("9.1");
-                    break;
-
-                case D3D_FEATURE_LEVEL_9_2:
-                    log_feature_level("9.2");
-                    break;
-
-                case D3D_FEATURE_LEVEL_9_3:
-                    log_feature_level("9.3");
-                    break;
-
-                case D3D_FEATURE_LEVEL_10_0:
-                    log_feature_level("10.0");
-                    break;
-
-                case D3D_FEATURE_LEVEL_10_1:
-                    log_feature_level("10.1");
-                    break;
-
-                case D3D_FEATURE_LEVEL_11_0:
-                    log_feature_level("11.0");
-                    break;
-
-                case D3D_FEATURE_LEVEL_11_1:
-                    log_feature_level("11.1");
-                    break;
-                case D3D_FEATURE_LEVEL_12_0: break;
-                case D3D_FEATURE_LEVEL_12_1: break;
-                default: ;
-            }
+            settings->RegisterThirdPartyLib("DirectX", "11.1", "https://www.microsoft.com/en-us/download/details.aspx?id=17431");
+            LOG_INFO("DirectX 11.1");
         }
 
         // Multi-thread protection
@@ -233,6 +197,133 @@ namespace Spartan
 
         m_rhi_context->annotation->Release();
         m_rhi_context->annotation = nullptr;
+    }
+
+    bool RHI_Device::DetectPhysicalDevices()
+    {
+        // Create DirectX graphics interface factory
+        IDXGIFactory1* factory;
+        const auto result = CreateDXGIFactory1(IID_PPV_ARGS(&factory));
+        if (FAILED(result))
+        {
+            LOG_ERROR("Failed to create a DirectX graphics interface factory, %s.", d3d11_utility::dxgi_error_to_string(result));
+            return false;
+        }
+
+        const auto get_available_adapters = [](IDXGIFactory1* factory)
+        {
+            uint32_t i = 0;
+            IDXGIAdapter* adapter;
+            vector<IDXGIAdapter*> adapters;
+            while (factory->EnumAdapters(i, &adapter) != DXGI_ERROR_NOT_FOUND)
+            {
+                adapters.emplace_back(adapter);
+                ++i;
+            }
+
+            return adapters;
+        };
+
+        // Get all available adapters
+        vector<IDXGIAdapter*> adapters = get_available_adapters(factory);
+        factory->Release();
+        factory = nullptr;
+        if (adapters.empty())
+        {
+            LOG_ERROR("Couldn't find any adapters");
+            return false;
+        }
+
+        // Save all available adapters
+        DXGI_ADAPTER_DESC adapter_desc;
+        for (IDXGIAdapter* display_adapter : adapters)
+        {
+            if (FAILED(display_adapter->GetDesc(&adapter_desc)))
+            {
+                LOG_ERROR("Failed to get adapter description");
+                continue;
+            }
+
+            // Of course it wouldn't be simple, lets convert the device name
+            char name[128];
+            auto def_char = ' ';
+            WideCharToMultiByte(CP_ACP, 0, adapter_desc.Description, -1, name, 128, &def_char, nullptr);
+
+            RegisterPhysicalDevice(PhysicalDevice
+            (
+                11 << 22,                                                 // api version
+                0,                                                        // driver version
+                adapter_desc.VendorId,                                    // vendor id
+                RHI_PhysicalDevice_Type::Unknown,                         // type
+                &name[0],                                                 // name
+                static_cast<uint64_t>(adapter_desc.DedicatedVideoMemory), // memory
+                static_cast<void*>(display_adapter))                      // data
+            );
+        }
+
+        return true;
+    }
+
+    bool RHI_Device::SelectPrimaryPhysicalDevice()
+    {
+        for (uint32_t device_index = 0; device_index < m_physical_devices.size(); device_index++)
+        {
+            // Adapters are ordered by memory (descending), so stop on the first success
+            if (DetectDisplayModes(&m_physical_devices[device_index], RHI_Format_R8G8B8A8_Unorm)) // TODO: Format should be determined based on what the swap chain supports.
+            {
+                SetPrimaryPhysicalDevice(device_index);
+                return true;
+            }
+            else
+            {
+                LOG_ERROR("Failed to get display modes for \"%s\".", m_physical_devices[device_index].GetName().c_str());
+            }
+        }
+
+        // If we failed to detect any display modes but we have at least one adapter, use it.
+        if (m_physical_devices.size() != 0)
+        {
+            LOG_ERROR("Failed to detect display modes for all physical devices, falling back to first available.");
+            SetPrimaryPhysicalDevice(0);
+            return true;
+        }
+
+        return false;
+    }
+
+    bool RHI_Device::DetectDisplayModes(const PhysicalDevice* physical_device, const RHI_Format format)
+    {
+        bool result = false;
+
+        IDXGIAdapter* adapter = static_cast<IDXGIAdapter*>(physical_device->GetData());
+
+        // Enumerate the primary adapter output (monitor).
+        IDXGIOutput* adapter_output = nullptr;
+        if (d3d11_utility::error_check(adapter->EnumOutputs(0, &adapter_output)))
+        {
+            // Get supported display mode count
+            UINT display_mode_count = 0;
+            if (d3d11_utility::error_check(adapter_output->GetDisplayModeList(d3d11_format[format], DXGI_ENUM_MODES_INTERLACED, &display_mode_count, nullptr)))
+            {
+                // Get display modes
+                vector<DXGI_MODE_DESC> display_modes;
+                display_modes.resize(display_mode_count);
+                if (d3d11_utility::error_check(adapter_output->GetDisplayModeList(d3d11_format[format], DXGI_ENUM_MODES_INTERLACED, &display_mode_count, &display_modes[0])))
+                {
+                    // Save all the display modes
+                    for (const DXGI_MODE_DESC& mode : display_modes)
+                    {
+                        bool update_fps_limit_to_highest_hz = true;
+                        Display::RegisterDisplayMode(DisplayMode(mode.Width, mode.Height, mode.RefreshRate.Numerator, mode.RefreshRate.Denominator), update_fps_limit_to_highest_hz, m_context);
+                        result = true;
+                    }
+                }
+            }
+
+            adapter_output->Release();
+        }
+
+        return result;
     }
 
     bool RHI_Device::QueuePresent(void* swapchain_view, uint32_t* image_index, RHI_Semaphore* wait_semaphore /*= nullptr*/) const

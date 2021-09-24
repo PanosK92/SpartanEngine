@@ -177,7 +177,7 @@ namespace Spartan
         // Variables to minimise state changes
         uint32_t m_vertex_buffer_id     = 0;
         uint64_t m_vertex_buffer_offset = 0;
-        uint32_t m_index_buffer_id      = 0;
+        uint64_t m_index_buffer_id      = 0;
         uint64_t m_index_buffer_offset  = 0;
     };
 }
