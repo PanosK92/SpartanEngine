@@ -52,6 +52,12 @@ namespace Spartan
         uint32_t GetQueueIndex(const RHI_Queue_Type type) const;
         void SetQueueIndex(const RHI_Queue_Type type, const uint32_t index);
 
+        // Device limits
+        static uint32_t GetMaxTexture1dDimension() { return m_max_texture_1d_dimension; }
+        static uint32_t GetMaxTexture2dDimension() { return m_max_texture_1d_dimension; }
+        static uint32_t GetMaxTexture3dDimension() { return m_max_texture_1d_dimension; }
+        static uint32_t GetMaxTextureArrayLayers() { return m_max_texture_array_layers; }
+
         // Misc
         static bool IsValidResolution(const uint32_t width, const uint32_t height);
         auto IsInitialised()                const { return m_initialized; }
@@ -59,10 +65,6 @@ namespace Spartan
         Context* GetContext()               const { return m_context; }
         uint32_t GetEnabledGraphicsStages() const { return m_enabled_graphics_shader_stages; }
         void*& GetCmdPoolGraphics()               { return m_cmd_pool_graphics; }
-
-        // Device limits
-        static inline uint32_t m_texture_2d_dimension_max = 16384; // D3D11 & D3D12
-        static const uint8_t m_descriptors_max            = 255;
 
     private:
         // Queues
@@ -72,6 +74,13 @@ namespace Spartan
         uint32_t m_queue_graphics_index = 0;
         uint32_t m_queue_compute_index  = 0;
         uint32_t m_queue_copy_index     = 0;
+
+        // Device limits
+        static uint32_t m_max_texture_1d_dimension;
+        static uint32_t m_max_texture_2d_dimension;
+        static uint32_t m_max_texture_3d_dimension;
+        static uint32_t m_max_texture_cube_dimension;
+        static uint32_t m_max_texture_array_layers;
 
         // Misc
         uint32_t m_physical_device_index          = 0;

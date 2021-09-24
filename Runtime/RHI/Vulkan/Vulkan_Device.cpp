@@ -34,6 +34,12 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
+    uint32_t RHI_Device::m_max_texture_1d_dimension   = 0;
+    uint32_t RHI_Device::m_max_texture_2d_dimension   = 0;
+    uint32_t RHI_Device::m_max_texture_3d_dimension   = 0;
+    uint32_t RHI_Device::m_max_texture_cube_dimension = 0;
+    uint32_t RHI_Device::m_max_texture_array_layers   = 0;
+
     RHI_Device::RHI_Device(Context* context)
     {
         m_context       = context;
@@ -155,11 +161,11 @@ namespace Spartan
                 float queue_priority = 1.0f;
                 for (const uint32_t& queue_family : unique_queue_families)
                 {
-                    VkDeviceQueueCreateInfo queue_create_info   = {};
-                    queue_create_info.sType                     = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-                    queue_create_info.queueFamilyIndex          = queue_family;
-                    queue_create_info.queueCount                = 1;
-                    queue_create_info.pQueuePriorities          = &queue_priority;
+                    VkDeviceQueueCreateInfo queue_create_info = {};
+                    queue_create_info.sType                   = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+                    queue_create_info.queueFamilyIndex        = queue_family;
+                    queue_create_info.queueCount              = 1;
+                    queue_create_info.pQueuePriorities        = &queue_priority;
                     queue_create_infos.push_back(queue_create_info);
                 }
             }
@@ -167,8 +173,12 @@ namespace Spartan
             // Get device properties
             vkGetPhysicalDeviceProperties(static_cast<VkPhysicalDevice>(m_rhi_context->device_physical), &m_rhi_context->device_properties);
 
-            // Resource limits
-            RHI_Device::m_texture_2d_dimension_max = m_rhi_context->device_properties.limits.maxImageDimension2D;
+            // Detect device limits
+            m_max_texture_1d_dimension   = m_rhi_context->device_properties.limits.maxImageDimension1D;
+            m_max_texture_2d_dimension   = m_rhi_context->device_properties.limits.maxImageDimension2D;
+            m_max_texture_3d_dimension   = m_rhi_context->device_properties.limits.maxImageDimension3D;
+            m_max_texture_cube_dimension = m_rhi_context->device_properties.limits.maxImageDimensionCube;
+            m_max_texture_array_layers   = m_rhi_context->device_properties.limits.maxImageArrayLayers;
 
             // Disable profiler if timestamps are not supported
             if (m_rhi_context->profiler && !m_rhi_context->device_properties.limits.timestampComputeAndGraphics)
@@ -178,8 +188,8 @@ namespace Spartan
             }
 
             // Get device features
-            VkPhysicalDeviceVulkan12Features device_features_1_2_enabled    = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES };
-            VkPhysicalDeviceFeatures2 device_features_enabled               = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, &device_features_1_2_enabled };
+            VkPhysicalDeviceVulkan12Features device_features_1_2_enabled = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES };
+            VkPhysicalDeviceFeatures2 device_features_enabled            = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, &device_features_1_2_enabled };
             {
                 // A macro to make enabling features a little easier
                 #define ENABLE_FEATURE(device_features, enabled_features, feature)                                \

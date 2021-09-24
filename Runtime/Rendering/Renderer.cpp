@@ -735,7 +735,7 @@ namespace Spartan
         }
         else if (option == Renderer_Option_Value::ShadowResolution)
         {
-            value = Helper::Clamp(value, static_cast<float>(m_resolution_shadow_min), static_cast<float>(RHI_Device::m_texture_2d_dimension_max));
+            value = Helper::Clamp(value, static_cast<float>(m_resolution_shadow_min), static_cast<float>(RHI_Device::GetMaxTexture2dDimension()));
         }
 
         if (m_option_values[option] == value)

@@ -98,16 +98,18 @@ namespace Spartan
         // Validate descriptor set
         SP_ASSERT(m_resource != nullptr);
 
+        const uint32_t descriptor_count = 255;
+
         vector<VkDescriptorImageInfo> info_images;
-        info_images.resize(RHI_Device::m_descriptors_max);
-        info_images.reserve(RHI_Device::m_descriptors_max);
+        info_images.resize(descriptor_count);
+        info_images.reserve(descriptor_count);
         int image_index = -1;
 
         vector<VkDescriptorBufferInfo> info_buffers;
-        info_buffers.resize(RHI_Device::m_descriptors_max);
-        info_buffers.reserve(RHI_Device::m_descriptors_max);
+        info_buffers.resize(descriptor_count);
+        info_buffers.reserve(descriptor_count);
 
-        array<VkWriteDescriptorSet, RHI_Device::m_descriptors_max> descriptor_sets;
+        array<VkWriteDescriptorSet, descriptor_count> descriptor_sets;
         uint32_t index = 0;
 
         for (const RHI_Descriptor & descriptor : descriptors)

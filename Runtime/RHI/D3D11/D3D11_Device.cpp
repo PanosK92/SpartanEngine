@@ -36,8 +36,21 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
+    uint32_t RHI_Device::m_max_texture_1d_dimension   = 0;
+    uint32_t RHI_Device::m_max_texture_2d_dimension   = 0;
+    uint32_t RHI_Device::m_max_texture_3d_dimension   = 0;
+    uint32_t RHI_Device::m_max_texture_cube_dimension = 0;
+    uint32_t RHI_Device::m_max_texture_array_layers   = 0;
+
     RHI_Device::RHI_Device(Context* context)
     {
+        // Detect device limits
+        m_max_texture_1d_dimension   = D3D11_REQ_TEXTURE1D_U_DIMENSION;
+        m_max_texture_2d_dimension   = D3D11_REQ_TEXTURE2D_U_OR_V_DIMENSION;
+        m_max_texture_3d_dimension   = D3D11_REQ_TEXTURE3D_U_V_OR_W_DIMENSION;
+        m_max_texture_cube_dimension = D3D11_REQ_TEXTURECUBE_DIMENSION;
+        m_max_texture_array_layers   = D3D11_REQ_TEXTURE2D_ARRAY_AXIS_DIMENSION;
+
         m_context                           = context;
         m_rhi_context                       = make_shared<RHI_Context>();
         d3d11_utility::globals::rhi_context = m_rhi_context.get();
@@ -224,7 +237,6 @@ namespace Spartan
 
     bool RHI_Device::QueuePresent(void* swapchain_view, uint32_t* image_index, RHI_Semaphore* wait_semaphore /*= nullptr*/) const
     {
-
         return true;
     }
 
