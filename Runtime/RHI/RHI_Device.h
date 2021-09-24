@@ -61,7 +61,7 @@ namespace Spartan
         void*& GetCmdPoolGraphics()               { return m_cmd_pool_graphics; }
 
         // Device limits
-        static inline uint32_t m_texture_2d_dimension_max = 16384;
+        static inline uint32_t m_texture_2d_dimension_max = 16384; // D3D11 & D3D12
         static const uint8_t m_descriptors_max            = 255;
 
     private:
