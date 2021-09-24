@@ -58,6 +58,9 @@ namespace Spartan
         //
         //d3d12_utility::error::check(m_rhi_device->GetContextRhi()->device->CreateCommandQueue(&queue_desc, IID_PPV_ARGS(reinterpret_cast<ID3D12CommandQueue**>(&m_resource))));
         //d3d12_utility::debug::set_name(m_resource, "cmd_queue_direct");
+
+        ID3D12CommandAllocator* allocator = static_cast<ID3D12CommandAllocator*>(m_rhi_device->GetCmdPoolGraphics());
+        d3d12_utility::error::check(m_rhi_device->GetContextRhi()->device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, allocator, nullptr, IID_PPV_ARGS(reinterpret_cast<ID3D12CommandQueue**>(&m_resource))));
     }
     
     RHI_CommandList::~RHI_CommandList()
@@ -71,11 +74,38 @@ namespace Spartan
 
     bool RHI_CommandList::Begin()
     {
+        // If the command list is in use, wait for it
+        if (m_state == RHI_CommandListState::Submitted)
+        {
+            if (!Wait())
+            {
+                LOG_ERROR("Failed to wait");
+                return false;
+            }
+        }
+
+        // Unlike Vulkan, D3D12 wraps both begin and reset under Reset().
+        if (!d3d12_utility::error::check(static_cast<ID3D12GraphicsCommandList*>(m_resource)->Reset(static_cast<ID3D12CommandAllocator*>(m_rhi_device->GetCmdPoolGraphics()), nullptr)))
+            return false;
+
+        // Validate command list state
+        SP_ASSERT(m_state == RHI_CommandListState::Idle);
+
+        m_state = RHI_CommandListState::Recording;
+        m_flushed = false;
+
         return true;
     }
 
     bool RHI_CommandList::End()
     {
+        // Validate command list state
+        SP_ASSERT(m_state == RHI_CommandListState::Recording);
+
+        if (!d3d12_utility::error::check(static_cast<ID3D12GraphicsCommandList*>(m_resource)->Close()))
+            return false;
+
+        m_state = RHI_CommandListState::Ended;
         return true;
     }
 
@@ -86,6 +116,15 @@ namespace Spartan
 
     bool RHI_CommandList::Reset()
     {
+        // Validate command list state
+        SP_ASSERT(m_state == RHI_CommandListState::Recording);
+
+        lock_guard<mutex> guard(m_mutex_reset);
+
+        if (!d3d12_utility::error::check(static_cast<ID3D12GraphicsCommandList*>(m_resource)->Reset(static_cast<ID3D12CommandAllocator*>(m_rhi_device->GetCmdPoolGraphics()), nullptr)))
+            return false;
+
+        m_state = RHI_CommandListState::Idle;
         return true;
     }
 

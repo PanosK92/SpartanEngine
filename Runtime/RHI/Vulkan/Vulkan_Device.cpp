@@ -40,8 +40,8 @@ namespace Spartan
         m_rhi_context   = make_shared<RHI_Context>();
 
         // Pass pointer to the widely used utility namespace
-        vulkan_utility::globals::rhi_device     = this;
-        vulkan_utility::globals::rhi_context    = m_rhi_context.get();
+        vulkan_utility::globals::rhi_device  = this;
+        vulkan_utility::globals::rhi_context = m_rhi_context.get();
         
         // Create instance
         VkApplicationInfo app_info = {};
@@ -148,8 +148,8 @@ namespace Spartan
                 vector<uint32_t> unique_queue_families =
                 {
                     m_rhi_context->queue_graphics_index,
-                    m_rhi_context->queue_transfer_index,
-                    m_rhi_context->queue_compute_index
+                    m_rhi_context->queue_compute_index,
+                    m_rhi_context->queue_copy_index
                 };
 
                 float queue_priority = 1.0f;
@@ -182,15 +182,15 @@ namespace Spartan
             VkPhysicalDeviceFeatures2 device_features_enabled               = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, &device_features_1_2_enabled };
             {
                 // A macro to make enabling features a little easier
-                #define ENABLE_FEATURE(device_features, enabled_features, feature)                                  \
-                if (device_features.feature)                                                                        \
-                {                                                                                                   \
-                    enabled_features.feature = VK_TRUE;                                                             \
-                }                                                                                                   \
-                else                                                                                                \
-                {                                                                                                   \
-                    LOG_WARNING("Requested device feature " #feature " is not supported by the physical device");   \
-                    enabled_features.feature = VK_FALSE;                                                            \
+                #define ENABLE_FEATURE(device_features, enabled_features, feature)                                \
+                if (device_features.feature)                                                                      \
+                {                                                                                                 \
+                    enabled_features.feature = VK_TRUE;                                                           \
+                }                                                                                                 \
+                else                                                                                              \
+                {                                                                                                 \
+                    LOG_WARNING("Requested device feature " #feature " is not supported by the physical device"); \
+                    enabled_features.feature = VK_FALSE;                                                          \
                 }
 
                 // Get
@@ -202,7 +202,7 @@ namespace Spartan
                 ENABLE_FEATURE(m_rhi_context->device_features.features, device_features_enabled.features, wideLines)
                 ENABLE_FEATURE(m_rhi_context->device_features.features, device_features_enabled.features, imageCubeArray)
                 ENABLE_FEATURE(m_rhi_context->device_features_1_2,      device_features_1_2_enabled,      timelineSemaphore)
-            }                                                                                             
+            }
 
             // Determine enabled graphics shader stages
             m_enabled_graphics_shader_stages = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
@@ -218,8 +218,8 @@ namespace Spartan
             // Enable partially bound descriptors
             VkPhysicalDeviceDescriptorIndexingFeatures descriptor_indexing_features = {};
             {
-                descriptor_indexing_features.sType                              = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;
-                descriptor_indexing_features.descriptorBindingPartiallyBound    = true;
+                descriptor_indexing_features.sType                           = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;
+                descriptor_indexing_features.descriptorBindingPartiallyBound = true;
                 device_features_enabled.pNext = &descriptor_indexing_features;
             }
 
@@ -238,7 +238,7 @@ namespace Spartan
 
                 if (m_rhi_context->debug)
                 {
-                    create_info.enabledLayerCount    = static_cast<uint32_t>(m_rhi_context->validation_layers.size());
+                    create_info.enabledLayerCount   = static_cast<uint32_t>(m_rhi_context->validation_layers.size());
                     create_info.ppEnabledLayerNames = m_rhi_context->validation_layers.data();
                 }
                 else
@@ -250,46 +250,62 @@ namespace Spartan
             // Create
             if (!vulkan_utility::error::check(vkCreateDevice(m_rhi_context->device_physical, &create_info, nullptr, &m_rhi_context->device)))
                 return;
+        }
 
-            // Get queues
+        // Get a graphics, compute and a copy queue.
+        {
             vkGetDeviceQueue(m_rhi_context->device, m_rhi_context->queue_graphics_index, 0, reinterpret_cast<VkQueue*>(&m_rhi_context->queue_graphics));
-            vkGetDeviceQueue(m_rhi_context->device, m_rhi_context->queue_transfer_index, 0, reinterpret_cast<VkQueue*>(&m_rhi_context->queue_transfer));
             vkGetDeviceQueue(m_rhi_context->device, m_rhi_context->queue_compute_index,  0, reinterpret_cast<VkQueue*>(&m_rhi_context->queue_compute));
-            
+            vkGetDeviceQueue(m_rhi_context->device, m_rhi_context->queue_copy_index,     0, reinterpret_cast<VkQueue*>(&m_rhi_context->queue_copy));
+        }
+
+        // Create command pool
+        {
+            VkCommandPoolCreateInfo cmd_pool_info = {};
+            cmd_pool_info.sType                   = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+            cmd_pool_info.queueFamilyIndex        = Queue_Index(RHI_Queue_Type::Graphics);
+            cmd_pool_info.flags                   = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+
+            if(!vulkan_utility::error::check(vkCreateCommandPool(m_rhi_context->device, &cmd_pool_info, nullptr, reinterpret_cast<VkCommandPool*>(&m_cmd_pool_graphics))))
+                return;
         }
 
         vulkan_utility::display::detect_display_modes();
 
         // Initialise the memory allocator
-        m_rhi_context->initalise_allocator();
-
-        // Create command pool
-        vulkan_utility::command_pool::create(m_cmd_pool, RHI_Queue_Type::Graphics);
+        m_rhi_context->InitialiseAllocator();
 
         // Detect and log version
-        string version_major = to_string(VK_VERSION_MAJOR(app_info.apiVersion));
-        string version_minor = to_string(VK_VERSION_MINOR(app_info.apiVersion));
-        string version_patch = to_string(VK_VERSION_PATCH(app_info.apiVersion));
-        Settings* settings   = m_context->GetSubsystem<Settings>();
-        string version       = version_major + "." + version_minor + "." + version_patch;
-        settings->RegisterThirdPartyLib("Vulkan", version_major + "." + version_minor + "." + version_patch, "https://vulkan.lunarg.com/");
-        LOG_INFO("Vulkan %s", version.c_str());
+        {
+            string version_major = to_string(VK_VERSION_MAJOR(app_info.apiVersion));
+            string version_minor = to_string(VK_VERSION_MINOR(app_info.apiVersion));
+            string version_patch = to_string(VK_VERSION_PATCH(app_info.apiVersion));
+            string version       = version_major + "." + version_minor + "." + version_patch;
+
+            LOG_INFO("Vulkan %s", version.c_str());
+
+            if (Settings* settings = m_context->GetSubsystem<Settings>())
+            {
+                settings->RegisterThirdPartyLib("Vulkan", version_major + "." + version_minor + "." + version_patch, "https://vulkan.lunarg.com/");
+            }
+        }
 
         m_initialized = true;
     }
 
     RHI_Device::~RHI_Device()
     {
-        if (!m_rhi_context || !m_rhi_context->queue_graphics)
-            return;
+        SP_ASSERT(m_rhi_context != nullptr);
+        SP_ASSERT(m_rhi_context->queue_graphics != nullptr);
 
         // Command pool
-        vulkan_utility::command_pool::destroy(m_cmd_pool);
+        vkDestroyCommandPool(m_rhi_context->device, static_cast<VkCommandPool>(m_cmd_pool_graphics), nullptr);
+        m_cmd_pool_graphics = nullptr;
 
         // Release resources
         if (Queue_WaitAll())
         {
-            m_rhi_context->destroy_allocator();
+            m_rhi_context->DestroyAllocator();
 
             if (m_rhi_context->debug)
             {
@@ -337,8 +353,8 @@ namespace Spartan
         if (signal_semaphore) SP_ASSERT(signal_semaphore->GetState() == RHI_Semaphore_State::Idle);
 
         // Get semaphore Vulkan resources
-        void* vk_wait_semaphore   = wait_semaphore    ? wait_semaphore->GetResource()   : nullptr;
-        void* vk_signal_semaphore = signal_semaphore  ? signal_semaphore->GetResource() : nullptr;
+        void* vk_wait_semaphore   = wait_semaphore   ? wait_semaphore->GetResource()   : nullptr;
+        void* vk_signal_semaphore = signal_semaphore ? signal_semaphore->GetResource() : nullptr;
 
         // Submit info
         VkSubmitInfo submit_info         = {};

@@ -93,6 +93,24 @@ namespace Spartan
             return;
         }
 
+        // Create a graphics, compute and a copy queue.
+        {
+            D3D12_COMMAND_QUEUE_DESC queue_desc = {};
+            queue_desc.Flags                    = D3D12_COMMAND_QUEUE_FLAG_NONE;
+
+            queue_desc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
+            d3d12_utility::error::check(m_rhi_context->device->CreateCommandQueue(&queue_desc, IID_PPV_ARGS(reinterpret_cast<ID3D12CommandQueue**>(&m_rhi_context->queue_graphics))));
+
+            queue_desc.Type = D3D12_COMMAND_LIST_TYPE_COMPUTE;
+            d3d12_utility::error::check(m_rhi_context->device->CreateCommandQueue(&queue_desc, IID_PPV_ARGS(reinterpret_cast<ID3D12CommandQueue**>(&m_rhi_context->queue_compute))));
+
+            queue_desc.Type = D3D12_COMMAND_LIST_TYPE_COPY;
+            d3d12_utility::error::check(m_rhi_context->device->CreateCommandQueue(&queue_desc, IID_PPV_ARGS(reinterpret_cast<ID3D12CommandQueue**>(&m_rhi_context->queue_copy))));
+        }
+
+        // Create command list allocator
+        d3d12_utility::error::check(m_rhi_context->device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(reinterpret_cast<ID3D12CommandAllocator**>(&m_cmd_pool_graphics))));
+
         // Log feature level
         if (Settings* settings = m_context->GetSubsystem<Settings>())
         {
@@ -106,8 +124,22 @@ namespace Spartan
 
     RHI_Device::~RHI_Device()
     {
-        m_rhi_context->device->Release();
-        m_rhi_context->device = nullptr;
+        SP_ASSERT(m_rhi_context != nullptr);
+        SP_ASSERT(m_rhi_context->queue_graphics != nullptr);
+
+        // Command queues
+        d3d12_utility::release<ID3D12CommandQueue>(m_rhi_context->queue_graphics);
+        d3d12_utility::release<ID3D12CommandQueue>(m_rhi_context->queue_compute);
+        d3d12_utility::release<ID3D12CommandQueue>(m_rhi_context->queue_copy);
+
+        // Command allocator
+        d3d12_utility::release<ID3D12CommandAllocator>(m_cmd_pool_graphics);
+
+        if (Queue_WaitAll())
+        {
+            m_rhi_context->device->Release();
+            m_rhi_context->device = nullptr;
+        }
     }
 
     bool RHI_Device::Queue_Submit(const RHI_Queue_Type type, const uint32_t wait_flags, void* cmd_buffer, RHI_Semaphore* wait_semaphore /*= nullptr*/, RHI_Semaphore* signal_semaphore /*= nullptr*/, RHI_Fence* signal_fence /*= nullptr*/) const
