@@ -57,7 +57,7 @@ namespace Spartan
         RHI_Context* rhi_context = m_rhi_device->GetContextRhi();
 
         // Command buffer
-        vulkan_utility::command_buffer::create(m_rhi_device->GetCmdPool(), m_resource, VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+        vulkan_utility::command_buffer::create(m_rhi_device->GetCmdPoolGraphics(), m_resource, VK_COMMAND_BUFFER_LEVEL_PRIMARY);
         vulkan_utility::debug::set_name(static_cast<VkCommandBuffer>(m_resource), "cmd_list");
 
         // Sync - Fence
@@ -87,7 +87,7 @@ namespace Spartan
         m_rhi_device->Queue_WaitAll();
 
         // Command buffer
-        vulkan_utility::command_buffer::destroy(m_rhi_device->GetCmdPool(), m_resource);
+        vulkan_utility::command_buffer::destroy(m_rhi_device->GetCmdPoolGraphics(), m_resource);
 
         // Query pool
         if (m_query_pool)

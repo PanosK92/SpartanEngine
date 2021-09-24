@@ -161,16 +161,16 @@ namespace Spartan::vulkan_utility
                 return false;
             }
 
-            if (!get_queue_family_index(VK_QUEUE_TRANSFER_BIT, queue_families_properties, &globals::rhi_context->queue_transfer_index))
-            {
-                LOG_WARNING("Transfer queue not suported, using graphics instead.");
-                globals::rhi_context->queue_transfer_index = globals::rhi_context->queue_graphics_index;
-            }
-
             if (!get_queue_family_index(VK_QUEUE_COMPUTE_BIT, queue_families_properties, &globals::rhi_context->queue_compute_index))
             {
                 LOG_WARNING("Compute queue not suported, using graphics instead.");
                 globals::rhi_context->queue_compute_index = globals::rhi_context->queue_graphics_index;
+            }
+
+            if (!get_queue_family_index(VK_QUEUE_TRANSFER_BIT, queue_families_properties, &globals::rhi_context->queue_copy_index))
+            {
+                LOG_WARNING("Transfer queue not suported, using graphics instead.");
+                globals::rhi_context->queue_copy_index = globals::rhi_context->queue_graphics_index;
             }
 
             return true;
@@ -299,27 +299,6 @@ namespace Spartan::vulkan_utility
         }
     }
 
-    namespace command_pool
-    {
-        inline bool create(void*& cmd_pool, const RHI_Queue_Type queue_type)
-        {
-            VkCommandPoolCreateInfo cmd_pool_info   = {};
-            cmd_pool_info.sType                     = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-            cmd_pool_info.queueFamilyIndex          = globals::rhi_device->Queue_Index(queue_type);
-            cmd_pool_info.flags                     = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-
-            VkCommandPool* cmd_pool_vk = reinterpret_cast<VkCommandPool*>(&cmd_pool);
-            return error::check(vkCreateCommandPool(globals::rhi_device->GetContextRhi()->device, &cmd_pool_info, nullptr, cmd_pool_vk));
-        }
-
-        inline void destroy(void*& cmd_pool)
-        {
-            VkCommandPool cmd_pool_vk = static_cast<VkCommandPool>(cmd_pool);
-            vkDestroyCommandPool(globals::rhi_context->device, cmd_pool_vk, nullptr);
-            cmd_pool = nullptr;
-        }
-    }
-
     namespace command_buffer
     {
         inline bool create(void*& cmd_pool, void*& cmd_buffer, const VkCommandBufferLevel level)
@@ -357,7 +336,9 @@ namespace Spartan::vulkan_utility
             ~cmdbi_object()
             {
                 command_buffer::destroy(cmd_pool, cmd_buffer);
-                command_pool::destroy(cmd_pool);
+
+                vkDestroyCommandPool(globals::rhi_context->device, static_cast<VkCommandPool>(cmd_pool), nullptr);
+                cmd_pool = nullptr;
             }
 
             bool begin(const RHI_Queue_Type queue_type)
@@ -372,8 +353,15 @@ namespace Spartan::vulkan_utility
                 if (!initialised)
                 {
                     // Create command pool
-                    if (!command_pool::create(cmd_pool, queue_type))
-                        return false;
+                    {
+                        VkCommandPoolCreateInfo cmd_pool_info = {};
+                        cmd_pool_info.sType                   = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+                        cmd_pool_info.queueFamilyIndex        = globals::rhi_device->Queue_Index(queue_type);
+                        cmd_pool_info.flags                   = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+
+                        if (!vulkan_utility::error::check(vkCreateCommandPool(globals::rhi_context->device, &cmd_pool_info, nullptr, reinterpret_cast<VkCommandPool*>(&cmd_pool))))
+                            return false;
+                    }
 
                     // Create command buffer
                     if (!command_buffer::create(cmd_pool, cmd_buffer, VK_COMMAND_BUFFER_LEVEL_PRIMARY))

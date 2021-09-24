@@ -380,8 +380,8 @@ namespace Spartan
                 std::vector<const char*> extensions_instance                    = { "VK_KHR_surface", "VK_KHR_win32_surface" };
             #endif
                 
-                bool initalise_allocator();
-                void destroy_allocator();
+                bool InitialiseAllocator();
+                void DestroyAllocator();
         #endif
 
         // Debugging
@@ -400,12 +400,12 @@ namespace Spartan
         static const uint8_t descriptors_max            = 255;
 
         // Queues
-        void* queue_graphics            = nullptr;
-        void* queue_compute             = nullptr;
-        void* queue_transfer            = nullptr;
-        uint32_t queue_graphics_index   = 0;
-        uint32_t queue_transfer_index   = 0;
-        uint32_t queue_compute_index    = 0;
+        void* queue_graphics          = nullptr;
+        void* queue_compute           = nullptr;
+        void* queue_copy              = nullptr;
+        uint32_t queue_graphics_index = 0;
+        uint32_t queue_compute_index  = 0;
+        uint32_t queue_copy_index     = 0;
     };
 }
 

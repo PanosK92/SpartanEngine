@@ -82,7 +82,7 @@ namespace Spartan
         }
         else if (type == RHI_Queue_Type::Transfer)
         {
-            return m_rhi_context->queue_transfer;
+            return m_rhi_context->queue_copy;
         }
         else if (type == RHI_Queue_Type::Compute)
         {
@@ -100,7 +100,7 @@ namespace Spartan
         }
         else if (type == RHI_Queue_Type::Transfer)
         {
-            return m_rhi_context->queue_transfer_index;
+            return m_rhi_context->queue_copy_index;
         }
         else if (type == RHI_Queue_Type::Compute)
         {

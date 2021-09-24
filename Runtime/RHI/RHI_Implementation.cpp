@@ -31,18 +31,18 @@ using namespace std;
 namespace Spartan
 {
 #ifdef API_GRAPHICS_VULKAN
-    bool RHI_Context::initalise_allocator()
+    bool RHI_Context::InitialiseAllocator()
     {
-        VmaAllocatorCreateInfo allocator_info   = {};
-        allocator_info.physicalDevice           = device_physical;
-        allocator_info.device                   = device;
-        allocator_info.instance                 = instance;
-        allocator_info.vulkanApiVersion         = api_version;
+        VmaAllocatorCreateInfo allocator_info= {};
+        allocator_info.physicalDevice        = device_physical;
+        allocator_info.device                = device;
+        allocator_info.instance              = instance;
+        allocator_info.vulkanApiVersion      = api_version;
         
         return vulkan_utility::error::check(vmaCreateAllocator(&allocator_info, &allocator));
     }
 
-    void RHI_Context::destroy_allocator()
+    void RHI_Context::DestroyAllocator()
     {
         if (allocator != nullptr)
         {
