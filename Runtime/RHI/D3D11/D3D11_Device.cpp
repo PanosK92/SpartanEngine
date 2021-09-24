@@ -47,9 +47,6 @@ namespace Spartan
         // Detect adapters
         d3d11_utility::DetectAdapters();
 
-        // Resource limits
-        RHI_Context::texture_2d_dimension_max = D3D11_REQ_TEXTURE2D_U_OR_V_DIMENSION;
-
         const PhysicalDevice* physical_device = GetPrimaryPhysicalDevice();
         if (!physical_device)
         {
@@ -225,12 +222,18 @@ namespace Spartan
         m_rhi_context->annotation = nullptr;
     }
 
-    bool RHI_Device::Queue_Submit(const RHI_Queue_Type type, const uint32_t wait_flags, void* cmd_buffer, RHI_Semaphore* wait_semaphore /*= nullptr*/, RHI_Semaphore* signal_semaphore /*= nullptr*/, RHI_Fence* signal_fence /*= nullptr*/) const
+    bool RHI_Device::QueuePresent(void* swapchain_view, uint32_t* image_index, RHI_Semaphore* wait_semaphore /*= nullptr*/) const
+    {
+
+        return true;
+    }
+
+    bool RHI_Device::QueueSubmit(const RHI_Queue_Type type, const uint32_t wait_flags, void* cmd_buffer, RHI_Semaphore* wait_semaphore /*= nullptr*/, RHI_Semaphore* signal_semaphore /*= nullptr*/, RHI_Fence* signal_fence /*= nullptr*/) const
     {
         return true;
     }
 
-    bool RHI_Device::Queue_Wait(const RHI_Queue_Type type) const
+    bool RHI_Device::QueueWait(const RHI_Queue_Type type) const
     {
         m_rhi_context->device_context->Flush();
         return true;
