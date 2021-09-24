@@ -64,7 +64,7 @@ namespace Spartan::d3d12_utility
                 case DXGI_ERROR_ACCESS_DENIED:                return "DXGI_ERROR_ACCESS_DENIED";                // You tried to use a resource to which you did not have the required access privileges. This error is most typically caused when you write to a shared resource with read-only access.
                 case DXGI_ERROR_NAME_ALREADY_EXISTS:          return "DXGI_ERROR_NAME_ALREADY_EXISTS";          // The supplied name of a resource in a call to IDXGIResource1::CreateSharedHandle is already associated with some other resource.
                 case DXGI_ERROR_SDK_COMPONENT_MISSING:        return "DXGI_ERROR_SDK_COMPONENT_MISSING";        // The operation depends on an SDK component that is missing or mismatched.
-                case E_INVALIDARG:							  return "E_INVALIDARG";                            // One or more arguments are invalid.
+                case E_INVALIDARG:                            return "E_INVALIDARG";                            // One or more arguments are invalid.
                 case E_OUTOFMEMORY:                           return "E_OUTOFMEMORY";                           // Direct3D could not allocate sufficient memory to complete the call.
             }                                                 
 
@@ -95,7 +95,7 @@ namespace Spartan::d3d12_utility
 
     namespace debug
     {
-        void set_name(void* obj, const char* name)
+        inline void set_name(void* obj, const char* name)
         {
             SP_ASSERT(obj != nullptr);
             SP_ASSERT(name != nullptr);
