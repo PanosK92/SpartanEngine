@@ -125,5 +125,4 @@ namespace Spartan
             m_queue_compute_index = index;
         }
     }
-
 }

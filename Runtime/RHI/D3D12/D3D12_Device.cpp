@@ -57,6 +57,21 @@ namespace Spartan
         d3d12_utility::globals::rhi_context = m_rhi_context.get();
         d3d12_utility::globals::rhi_device  = this;
 
+        // Find a physical device
+        {
+            if (!DetectPhysicalDevices())
+            {
+                LOG_ERROR("Failed to detect any devices");
+                return;
+            }
+
+            if (!SelectPrimaryPhysicalDevice())
+            {
+                LOG_ERROR("Failed to detect any devices");
+                return;
+            }
+        }
+
         // Debug layer
         UINT dxgi_factory_flags = 0;
         if (m_rhi_context->debug)
@@ -128,7 +143,7 @@ namespace Spartan
         if (Settings* settings = m_context->GetSubsystem<Settings>())
         {
             std::string level = "12.0";
-            settings->RegisterThirdPartyLib("DirectX", level, "https://www.microsoft.com/en-us/download/details.aspx?id=17431");
+            settings->RegisterThirdPartyLib("DirectX", level, "https://en.wikipedia.org/wiki/DirectX");
             LOG_INFO("DirectX %s", level.c_str());
         }
 
@@ -153,6 +168,133 @@ namespace Spartan
             m_rhi_context->device->Release();
             m_rhi_context->device = nullptr;
         }
+    }
+
+    bool RHI_Device::DetectPhysicalDevices()
+    {
+        // Create DirectX graphics interface factory
+        IDXGIFactory1* factory;
+        const auto result = CreateDXGIFactory1(IID_PPV_ARGS(&factory));
+        if (FAILED(result))
+        {
+            LOG_ERROR("Failed to create a DirectX graphics interface factory, %s.", d3d12_utility::error::dxgi_error_to_string(result));
+            return false;
+        }
+
+        const auto get_available_adapters = [](IDXGIFactory1* factory)
+        {
+            uint32_t i = 0;
+            IDXGIAdapter* adapter;
+            vector<IDXGIAdapter*> adapters;
+            while (factory->EnumAdapters(i, &adapter) != DXGI_ERROR_NOT_FOUND)
+            {
+                adapters.emplace_back(adapter);
+                ++i;
+            }
+
+            return adapters;
+        };
+
+        // Get all available adapters
+        vector<IDXGIAdapter*> adapters = get_available_adapters(factory);
+        factory->Release();
+        factory = nullptr;
+        if (adapters.empty())
+        {
+            LOG_ERROR("Couldn't find any adapters");
+            return false;
+        }
+
+        // Save all available adapters
+        DXGI_ADAPTER_DESC adapter_desc;
+        for (IDXGIAdapter* display_adapter : adapters)
+        {
+            if (FAILED(display_adapter->GetDesc(&adapter_desc)))
+            {
+                LOG_ERROR("Failed to get adapter description");
+                continue;
+            }
+
+            // Of course it wouldn't be simple, lets convert the device name
+            char name[128];
+            auto def_char = ' ';
+            WideCharToMultiByte(CP_ACP, 0, adapter_desc.Description, -1, name, 128, &def_char, nullptr);
+
+            RegisterPhysicalDevice(PhysicalDevice
+            (
+                11 << 22,                                                 // api version
+                0,                                                        // driver version
+                adapter_desc.VendorId,                                    // vendor id
+                RHI_PhysicalDevice_Type::Unknown,                         // type
+                &name[0],                                                 // name
+                static_cast<uint64_t>(adapter_desc.DedicatedVideoMemory), // memory
+                static_cast<void*>(display_adapter))                      // data
+            );
+        }
+
+        return true;
+    }
+
+    bool RHI_Device::SelectPrimaryPhysicalDevice()
+    {
+        for (uint32_t device_index = 0; device_index < m_physical_devices.size(); device_index++)
+        {
+            // Adapters are ordered by memory (descending), so stop on the first success
+            if (DetectDisplayModes(&m_physical_devices[device_index], RHI_Format_R8G8B8A8_Unorm)) // TODO: Format should be determined based on what the swap chain supports.
+            {
+                SetPrimaryPhysicalDevice(device_index);
+                return true;
+            }
+            else
+            {
+                LOG_ERROR("Failed to get display modes for \"%s\".", m_physical_devices[device_index].GetName().c_str());
+            }
+        }
+
+        // If we failed to detect any display modes but we have at least one adapter, use it.
+        if (m_physical_devices.size() != 0)
+        {
+            LOG_ERROR("Failed to detect display modes for all physical devices, falling back to first available.");
+            SetPrimaryPhysicalDevice(0);
+            return true;
+        }
+
+        return false;
+    }
+
+    bool RHI_Device::DetectDisplayModes(const PhysicalDevice* physical_device, const RHI_Format format)
+    {
+        bool result = false;
+
+        IDXGIAdapter* adapter = static_cast<IDXGIAdapter*>(physical_device->GetData());
+
+        // Enumerate the primary adapter output (monitor).
+        IDXGIOutput* adapter_output = nullptr;
+        if (d3d12_utility::error::check(adapter->EnumOutputs(0, &adapter_output)))
+        {
+            // Get supported display mode count
+            UINT display_mode_count = 0;
+            if (d3d12_utility::error::check(adapter_output->GetDisplayModeList(d3d12_format[format], DXGI_ENUM_MODES_INTERLACED, &display_mode_count, nullptr)))
+            {
+                // Get display modes
+                vector<DXGI_MODE_DESC> display_modes;
+                display_modes.resize(display_mode_count);
+                if (d3d12_utility::error::check(adapter_output->GetDisplayModeList(d3d12_format[format], DXGI_ENUM_MODES_INTERLACED, &display_mode_count, &display_modes[0])))
+                {
+                    // Save all the display modes
+                    for (const DXGI_MODE_DESC& mode : display_modes)
+                    {
+                        bool update_fps_limit_to_highest_hz = true;
+                        Display::RegisterDisplayMode(DisplayMode(mode.Width, mode.Height, mode.RefreshRate.Numerator, mode.RefreshRate.Denominator), update_fps_limit_to_highest_hz, m_context);
+                        result = true;
+                    }
+                }
+            }
+
+            adapter_output->Release();
+        }
+
+        return result;
     }
 
     bool RHI_Device::QueueSubmit(const RHI_Queue_Type type, const uint32_t wait_flags, void* cmd_buffer, RHI_Semaphore* wait_semaphore /*= nullptr*/, RHI_Semaphore* signal_semaphore /*= nullptr*/, RHI_Fence* signal_fence /*= nullptr*/) const
