@@ -63,9 +63,9 @@ namespace Spartan
         std::shared_ptr<RHI_CommandList> CreateCmdList();
 
         // GPU Resources
-        void* Get_Resource(uint32_t i = 0)      const { return m_resource[i]; }
-        void* Get_Resource_View(uint32_t i = 0) const { return m_resource_view[i]; }
-        void* Get_Resource_View_RenderTarget()  const { return m_resource_view_renderTarget; }
+        void* Get_Resource(uint32_t i = 0)      const { return m_backbuffer_resource[i]; }
+        void* Get_Resource_View(uint32_t i = 0) const { return m_backbuffer_resource_view[i]; }
+        void* Get_Resource_View_RenderTarget()  const { return m_resource_view; }
 
     private:
         bool AcquireNextImage();
@@ -80,17 +80,17 @@ namespace Spartan
         RHI_Format m_format     = RHI_Format_R8G8B8A8_Unorm;
 
         // API
-        void* m_swap_chain_view            = nullptr;
-        void* m_resource_view_renderTarget = nullptr;
-        void* m_surface                    = nullptr;
-        void* m_window_handle              = nullptr;
-        bool m_present_enabled             = true;
-        uint32_t m_semaphore_index         = std::numeric_limits<uint32_t>::max();
-        uint32_t m_image_index             = std::numeric_limits<uint32_t>::max();
-        RHI_Device* m_rhi_device           = nullptr;
+        void* m_resource           = nullptr;
+        void* m_resource_view      = nullptr;
+        void* m_surface            = nullptr;
+        void* m_window_handle      = nullptr;
+        bool m_present_enabled     = true;
+        uint32_t m_semaphore_index = std::numeric_limits<uint32_t>::max();
+        uint32_t m_image_index     = std::numeric_limits<uint32_t>::max();
+        RHI_Device* m_rhi_device   = nullptr;
 
         std::array<std::shared_ptr<RHI_Semaphore>, rhi_max_render_target_count> m_image_acquired_semaphore = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
-        std::array<void*, rhi_max_render_target_count> m_resource_view                                     = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
-        std::array<void*, rhi_max_render_target_count> m_resource                                          = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
+        std::array<void*, rhi_max_render_target_count> m_backbuffer_resource                               = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
+        std::array<void*, rhi_max_render_target_count> m_backbuffer_resource_view                          = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
     };
 }

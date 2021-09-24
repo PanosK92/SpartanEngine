@@ -97,19 +97,24 @@ namespace Spartan
         swap_chain_desc.SwapEffect            = d3d12_utility::swap_chain::get_swap_effect(m_flags);
         swap_chain_desc.SampleDesc.Count      = 1;
 
+        IDXGISwapChain1* swap_chain;
         d3d12_utility::error::check(factory->CreateSwapChainForHwnd(
             static_cast<ID3D12CommandQueue*>(m_rhi_device->GetQueue(RHI_Queue_Type::Graphics)), // Swap chain needs the queue so that it can force a flush on it.
             hwnd,
             &swap_chain_desc,
             nullptr,
             nullptr,
-            reinterpret_cast<IDXGISwapChain1**>(&m_swap_chain_view)
+            &swap_chain
         ));
+
+        m_resource = static_cast<void*>(swap_chain);
+
+        m_image_index = static_cast<IDXGISwapChain3*>(m_resource)->GetCurrentBackBufferIndex();
     }
     
     RHI_SwapChain::~RHI_SwapChain()
     {
-        d3d12_utility::release<IDXGISwapChain1>(m_swap_chain_view);
+        d3d12_utility::release<IDXGISwapChain3>(m_resource);
     }
     
     bool RHI_SwapChain::Resize(const uint32_t width, const uint32_t height, const bool force /*= false*/)
@@ -119,6 +124,8 @@ namespace Spartan
     
     bool RHI_SwapChain::AcquireNextImage()
     {
+        m_image_index = static_cast<IDXGISwapChain3*>(m_resource)->GetCurrentBackBufferIndex();
+
         return true;
     }
     
@@ -126,7 +133,7 @@ namespace Spartan
     {
         // Verify a few things
         SP_ASSERT(m_present_enabled);
-        SP_ASSERT(m_swap_chain_view != nullptr);
+        SP_ASSERT(m_resource != nullptr);
 
         // Present parameters
         const bool tearing_allowed = m_flags & RHI_Present_Immediate;
@@ -134,6 +141,18 @@ namespace Spartan
         const UINT flags           = (tearing_allowed && m_windowed) ? DXGI_PRESENT_ALLOW_TEARING : 0;
 
         // Present
-        return d3d12_utility::error::check(static_cast<IDXGISwapChain1*>(m_swap_chain_view)->Present(sync_interval, flags));
+        if (!d3d12_utility::error::check(static_cast<IDXGISwapChain3*>(m_resource)->Present(sync_interval, flags)))
+        {
+            return false;
+        }
+
+        // Acquire next image
+        if (!AcquireNextImage())
+        {
+            LOG_ERROR("Failed to acquire next image");
+            return false;
+        }
+
+        return true;
     }
 }

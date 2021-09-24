@@ -47,10 +47,10 @@ namespace Spartan
         RHI_Format format,
         uint32_t flags,
         void* window_handle,
-        void*& surface_out,
-        void*& swap_chain_view_out,
-        array<void*, rhi_max_render_target_count>& resource_textures,
-        array<void*, rhi_max_render_target_count>& resource_views,
+        void*& surface,
+        void*& swap_chain,
+        array<void*, rhi_max_render_target_count>& backbuffer_textures,
+        array<void*, rhi_max_render_target_count>& backbuffer_texture_views,
         array<std::shared_ptr<RHI_Semaphore>, rhi_max_render_target_count>& image_acquired_semaphore
     )
         {
@@ -62,18 +62,18 @@ namespace Spartan
             SP_ASSERT(IsWindow(hwnd));
 
             // Create surface
-            VkSurfaceKHR surface = nullptr;
+            VkSurfaceKHR _surface = nullptr;
             {
                 VkWin32SurfaceCreateInfoKHR create_info = {};
                 create_info.sType                       = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
                 create_info.hwnd                        = hwnd;
                 create_info.hinstance                   = GetModuleHandle(nullptr);
 
-                if (!vulkan_utility::error::check(vkCreateWin32SurfaceKHR(rhi_device->GetContextRhi()->instance, &create_info, nullptr, &surface)))
+                if (!vulkan_utility::error::check(vkCreateWin32SurfaceKHR(rhi_device->GetContextRhi()->instance, &create_info, nullptr, &_surface)))
                     return false;
 
                 VkBool32 present_support = false;
-                if (!vulkan_utility::error::check(vkGetPhysicalDeviceSurfaceSupportKHR(rhi_context->device_physical, rhi_device->GetQueueIndex(RHI_Queue_Type::Graphics), surface, &present_support)))
+                if (!vulkan_utility::error::check(vkGetPhysicalDeviceSurfaceSupportKHR(rhi_context->device_physical, rhi_device->GetQueueIndex(RHI_Queue_Type::Graphics), _surface, &present_support)))
                     return false;
 
                 if (!present_support)
@@ -84,7 +84,7 @@ namespace Spartan
             }
 
             // Get surface capabilities
-            VkSurfaceCapabilitiesKHR capabilities = vulkan_utility::surface::capabilities(surface);
+            VkSurfaceCapabilitiesKHR capabilities = vulkan_utility::surface::capabilities(_surface);
 
             // Compute extent
             *width            = Math::Helper::Clamp(*width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
@@ -92,14 +92,14 @@ namespace Spartan
             VkExtent2D extent = { *width, *height };
 
             // Detect surface format and color space
-            vulkan_utility::surface::detect_format_and_color_space(surface, &rhi_context->surface_format, &rhi_context->surface_color_space);
+            vulkan_utility::surface::detect_format_and_color_space(_surface, &rhi_context->surface_format, &rhi_context->surface_color_space);
 
             // Swap chain
-            VkSwapchainKHR swap_chain;
+            VkSwapchainKHR _swap_chain;
             {
                 VkSwapchainCreateInfoKHR create_info = {};
                 create_info.sType                    = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-                create_info.surface                  = surface;
+                create_info.surface                  = _surface;
                 create_info.minImageCount            = buffer_count;
                 create_info.imageFormat              = rhi_context->surface_format;
                 create_info.imageColorSpace          = rhi_context->surface_color_space;
@@ -123,11 +123,11 @@ namespace Spartan
 
                 create_info.preTransform   = capabilities.currentTransform;
                 create_info.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-                create_info.presentMode    = vulkan_utility::surface::set_present_mode(surface, flags);
+                create_info.presentMode    = vulkan_utility::surface::set_present_mode(_surface, flags);
                 create_info.clipped        = VK_TRUE;
                 create_info.oldSwapchain   = nullptr;
 
-                if (!vulkan_utility::error::check(vkCreateSwapchainKHR(rhi_context->device, &create_info, nullptr, &swap_chain)))
+                if (!vulkan_utility::error::check(vkCreateSwapchainKHR(rhi_context->device, &create_info, nullptr, &_swap_chain)))
                     return false;
             }
 
@@ -136,9 +136,9 @@ namespace Spartan
             vector<VkImage> images;
             {
                 // Get
-                vkGetSwapchainImagesKHR(rhi_context->device, swap_chain, &image_count, nullptr);
+                vkGetSwapchainImagesKHR(rhi_context->device, _swap_chain, &image_count, nullptr);
                 images.resize(image_count);
-                vkGetSwapchainImagesKHR(rhi_context->device, swap_chain, &image_count, images.data());
+                vkGetSwapchainImagesKHR(rhi_context->device, _swap_chain, &image_count, images.data());
 
                 // Transition layouts to VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
                 if (VkCommandBuffer cmd_buffer = vulkan_utility::command_buffer_immediate::begin(RHI_Queue_Type::Graphics))
@@ -158,18 +158,18 @@ namespace Spartan
             {
                 for (uint32_t i = 0; i < image_count; i++)
                 {
-                    resource_textures[i] = static_cast<void*>(images[i]);
+                    backbuffer_textures[i] = static_cast<void*>(images[i]);
 
                     // Name the image
                     vulkan_utility::debug::set_name(images[i], string(string("swapchain_image_") + to_string(i)).c_str());
 
-                    if (!vulkan_utility::image::view::create(static_cast<void*>(images[i]), resource_views[i], VK_IMAGE_VIEW_TYPE_2D, rhi_context->surface_format, VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1))
+                    if (!vulkan_utility::image::view::create(static_cast<void*>(images[i]), backbuffer_texture_views[i], VK_IMAGE_VIEW_TYPE_2D, rhi_context->surface_format, VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1))
                         return false;
                 }
             }
 
-            surface_out         = static_cast<void*>(surface);
-            swap_chain_view_out = static_cast<void*>(swap_chain);
+            surface         = static_cast<void*>(_surface);
+            swap_chain = static_cast<void*>(_swap_chain);
 
             // Semaphores
             for (uint32_t i = 0; i < buffer_count; i++)
@@ -184,7 +184,7 @@ namespace Spartan
         RHI_Device* rhi_device,
         uint8_t buffer_count,
         void*& surface,
-        void*& swap_chain_view,
+        void*& swap_chain,
         array<void*, rhi_max_render_target_count>& image_views,
         array<std::shared_ptr<RHI_Semaphore>, rhi_max_render_target_count>& image_acquired_semaphore
     )
@@ -198,10 +198,10 @@ namespace Spartan
         vulkan_utility::image::view::destroy(image_views);
     
         // Swap chain view
-        if (swap_chain_view)
+        if (swap_chain)
         {
-            vkDestroySwapchainKHR(rhi_context->device, static_cast<VkSwapchainKHR>(swap_chain_view), nullptr);
-            swap_chain_view = nullptr;
+            vkDestroySwapchainKHR(rhi_context->device, static_cast<VkSwapchainKHR>(swap_chain), nullptr);
+            swap_chain = nullptr;
         }
     
         // Surface
@@ -254,9 +254,9 @@ namespace Spartan
             m_flags,
             m_window_handle,
             m_surface,
-            m_swap_chain_view,
             m_resource,
-            m_resource_view,
+            m_backbuffer_resource,
+            m_backbuffer_resource_view,
             m_image_acquired_semaphore
         );
 
@@ -274,8 +274,8 @@ namespace Spartan
             m_rhi_device,
             m_buffer_count,
             m_surface,
-            m_swap_chain_view,
-            m_resource_view,
+            m_resource,
+            m_backbuffer_resource_view,
             m_image_acquired_semaphore
         );
     }
@@ -312,8 +312,8 @@ namespace Spartan
             m_rhi_device,
             m_buffer_count,
             m_surface,
-            m_swap_chain_view,
-            m_resource_view,
+            m_resource,
+            m_backbuffer_resource_view,
             m_image_acquired_semaphore
         );
 
@@ -328,9 +328,9 @@ namespace Spartan
             m_flags,
             m_window_handle,
             m_surface,
-            m_swap_chain_view,
             m_resource,
-            m_resource_view,
+            m_backbuffer_resource,
+            m_backbuffer_resource_view,
             m_image_acquired_semaphore
         );
 
@@ -366,12 +366,12 @@ namespace Spartan
 
         // Acquire next image
         VkResult result = vkAcquireNextImageKHR(
-            m_rhi_device->GetContextRhi()->device,                      // device
-            static_cast<VkSwapchainKHR>(m_swap_chain_view),             // swapchain
-            numeric_limits<uint64_t>::max(),                            // timeout
-            static_cast<VkSemaphore>(signal_semaphore->GetResource()),  // signal semaphore
-            nullptr,                                                    // signal fence
-            &m_image_index                                              // pImageIndex
+            m_rhi_device->GetContextRhi()->device,                     // device
+            static_cast<VkSwapchainKHR>(m_resource),                   // swapchain
+            numeric_limits<uint64_t>::max(),                           // timeout
+            static_cast<VkSemaphore>(signal_semaphore->GetResource()), // signal semaphore
+            nullptr,                                                   // signal fence
+            &m_image_index                                             // pImageIndex
         );
 
         // Recreate swapchain with different size (if needed)
@@ -413,7 +413,7 @@ namespace Spartan
         SP_ASSERT(m_present_enabled);
 
         // Present
-        if (!m_rhi_device->QueuePresent(m_swap_chain_view, &m_image_index, wait_semaphore))
+        if (!m_rhi_device->QueuePresent(m_resource, &m_image_index, wait_semaphore))
         {
             LOG_ERROR("Failed to present");
             return false;
