@@ -55,7 +55,7 @@ namespace Spartan
     RHI_StructuredBuffer::~RHI_StructuredBuffer()
     {
         // Wait in case it's still in use by the GPU
-        m_rhi_device->Queue_WaitAll();
+        m_rhi_device->QueueWaitAll();
 
         // Destroy buffer
         vulkan_utility::buffer::destroy(m_resource);

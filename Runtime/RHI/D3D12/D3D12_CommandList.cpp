@@ -51,14 +51,6 @@ namespace Spartan
 {
     RHI_CommandList::RHI_CommandList(Context* context)
     {
-        //D3D12_COMMAND_QUEUE_DESC queue_desc = {};
-        //queue_desc.Flags                    = D3D12_COMMAND_QUEUE_FLAG_NONE;
-        //queue_desc.Type                     = D3D12_COMMAND_LIST_TYPE_DIRECT;
-        //queue_desc.NodeMask                 = 0;
-        //
-        //d3d12_utility::error::check(m_rhi_device->GetContextRhi()->device->CreateCommandQueue(&queue_desc, IID_PPV_ARGS(reinterpret_cast<ID3D12CommandQueue**>(&m_resource))));
-        //d3d12_utility::debug::set_name(m_resource, "cmd_queue_direct");
-
         ID3D12CommandAllocator* allocator = static_cast<ID3D12CommandAllocator*>(m_rhi_device->GetCmdPoolGraphics());
         d3d12_utility::error::check(m_rhi_device->GetContextRhi()->device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, allocator, nullptr, IID_PPV_ARGS(reinterpret_cast<ID3D12CommandQueue**>(&m_resource))));
     }
@@ -66,7 +58,7 @@ namespace Spartan
     RHI_CommandList::~RHI_CommandList()
     {
         // Wait in case it's still in use by the GPU
-        m_rhi_device->Queue_WaitAll();
+        m_rhi_device->QueueWaitAll();
 
         // Command list
         d3d12_utility::release<ID3D12CommandQueue>(m_resource);

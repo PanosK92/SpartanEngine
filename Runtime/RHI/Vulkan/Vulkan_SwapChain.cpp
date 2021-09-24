@@ -56,19 +56,24 @@ namespace Spartan
         {
             RHI_Context* rhi_context = rhi_device->GetContextRhi();
 
+            // Verify window handle
+            const HWND hwnd = static_cast<HWND>(window_handle);
+            SP_ASSERT(hwnd != nullptr);
+            SP_ASSERT(IsWindow(hwnd));
+
             // Create surface
             VkSurfaceKHR surface = nullptr;
             {
                 VkWin32SurfaceCreateInfoKHR create_info = {};
                 create_info.sType                       = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
-                create_info.hwnd                        = static_cast<HWND>(window_handle);
+                create_info.hwnd                        = hwnd;
                 create_info.hinstance                   = GetModuleHandle(nullptr);
 
                 if (!vulkan_utility::error::check(vkCreateWin32SurfaceKHR(rhi_device->GetContextRhi()->instance, &create_info, nullptr, &surface)))
                     return false;
 
                 VkBool32 present_support = false;
-                if (!vulkan_utility::error::check(vkGetPhysicalDeviceSurfaceSupportKHR(rhi_context->device_physical, rhi_context->queue_graphics_index, surface, &present_support)))
+                if (!vulkan_utility::error::check(vkGetPhysicalDeviceSurfaceSupportKHR(rhi_context->device_physical, rhi_device->GetQueueIndex(RHI_Queue_Type::Graphics), surface, &present_support)))
                     return false;
 
                 if (!present_support)
@@ -82,9 +87,9 @@ namespace Spartan
             VkSurfaceCapabilitiesKHR capabilities = vulkan_utility::surface::capabilities(surface);
 
             // Compute extent
-            *width              = Math::Helper::Clamp(*width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
-            *height             = Math::Helper::Clamp(*height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
-            VkExtent2D extent   = { *width, *height };
+            *width            = Math::Helper::Clamp(*width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
+            *height           = Math::Helper::Clamp(*height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
+            VkExtent2D extent = { *width, *height };
 
             // Detect surface format and color space
             vulkan_utility::surface::detect_format_and_color_space(surface, &rhi_context->surface_format, &rhi_context->surface_color_space);
@@ -92,35 +97,35 @@ namespace Spartan
             // Swap chain
             VkSwapchainKHR swap_chain;
             {
-                VkSwapchainCreateInfoKHR create_info    = {};
-                create_info.sType                       = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-                create_info.surface                     = surface;
-                create_info.minImageCount               = buffer_count;
-                create_info.imageFormat                 = rhi_context->surface_format;
-                create_info.imageColorSpace             = rhi_context->surface_color_space;
-                create_info.imageExtent                 = extent;
-                create_info.imageArrayLayers            = 1;
-                create_info.imageUsage                  = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+                VkSwapchainCreateInfoKHR create_info = {};
+                create_info.sType                    = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+                create_info.surface                  = surface;
+                create_info.minImageCount            = buffer_count;
+                create_info.imageFormat              = rhi_context->surface_format;
+                create_info.imageColorSpace          = rhi_context->surface_color_space;
+                create_info.imageExtent              = extent;
+                create_info.imageArrayLayers         = 1;
+                create_info.imageUsage               = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
-                uint32_t queueFamilyIndices[] = { rhi_context->queue_compute_index, rhi_context->queue_graphics_index };
-                if (rhi_context->queue_compute_index != rhi_context->queue_graphics_index)
+                uint32_t queueFamilyIndices[] = { rhi_device->GetQueueIndex(RHI_Queue_Type::Compute), rhi_device->GetQueueIndex(RHI_Queue_Type::Graphics) };
+                if (queueFamilyIndices[0] != queueFamilyIndices[1])
                 {
-                    create_info.imageSharingMode        = VK_SHARING_MODE_CONCURRENT;
-                    create_info.queueFamilyIndexCount   = 2;
-                    create_info.pQueueFamilyIndices     = queueFamilyIndices;
+                    create_info.imageSharingMode      = VK_SHARING_MODE_CONCURRENT;
+                    create_info.queueFamilyIndexCount = 2;
+                    create_info.pQueueFamilyIndices   = queueFamilyIndices;
                 }
                 else
                 {
-                    create_info.imageSharingMode        = VK_SHARING_MODE_EXCLUSIVE;
-                    create_info.queueFamilyIndexCount   = 0;
-                    create_info.pQueueFamilyIndices     = nullptr;
+                    create_info.imageSharingMode      = VK_SHARING_MODE_EXCLUSIVE;
+                    create_info.queueFamilyIndexCount = 0;
+                    create_info.pQueueFamilyIndices   = nullptr;
                 }
 
-                create_info.preTransform    = capabilities.currentTransform;
-                create_info.compositeAlpha  = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-                create_info.presentMode     = vulkan_utility::surface::set_present_mode(surface, flags);
-                create_info.clipped         = VK_TRUE;
-                create_info.oldSwapchain    = nullptr;
+                create_info.preTransform   = capabilities.currentTransform;
+                create_info.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+                create_info.presentMode    = vulkan_utility::surface::set_present_mode(surface, flags);
+                create_info.clipped        = VK_TRUE;
+                create_info.oldSwapchain   = nullptr;
 
                 if (!vulkan_utility::error::check(vkCreateSwapchainKHR(rhi_context->device, &create_info, nullptr, &swap_chain)))
                     return false;
@@ -218,22 +223,16 @@ namespace Spartan
         const char* name            /*= nullptr */
     )
     {
+        // Verify device
         SP_ASSERT(rhi_device != nullptr);
         SP_ASSERT(rhi_device->GetContextRhi()->device != nullptr);
 
-        // Validate window handle
-        const auto hwnd = static_cast<HWND>(window_handle);
-        SP_ASSERT(hwnd != nullptr);
-        SP_ASSERT(IsWindow(hwnd));
-
-        // Validate resolution
-        if (!RHI_Device::IsValidResolution(width, height))
+        // Verify resolution
+        if (!rhi_device->IsValidResolution(width, height))
         {
             LOG_WARNING("%dx%d is an invalid resolution", width, height);
             return;
         }
-
-        m_object_name = name;
 
         // Copy parameters
         m_format        = format;
@@ -243,6 +242,7 @@ namespace Spartan
         m_height        = height;
         m_window_handle = window_handle;
         m_flags         = flags;
+        m_object_name   = name;
 
         m_initialised = swapchain_create
         (
@@ -266,7 +266,7 @@ namespace Spartan
     RHI_SwapChain::~RHI_SwapChain()
     {
         // Wait in case any command buffer is still in use
-        m_rhi_device->Queue_WaitAll();
+        m_rhi_device->QueueWaitAll();
 
         // Resources
         swapchain_destroy
@@ -300,7 +300,7 @@ namespace Spartan
         }
 
         // Wait in case any command buffer is still in use
-        m_rhi_device->Queue_WaitAll();
+        m_rhi_device->QueueWaitAll();
 
         // Save new dimensions
         m_width     = width;
@@ -413,7 +413,7 @@ namespace Spartan
         SP_ASSERT(m_present_enabled);
 
         // Present
-        if (!m_rhi_device->Queue_Present(m_swap_chain_view, &m_image_index, wait_semaphore))
+        if (!m_rhi_device->QueuePresent(m_swap_chain_view, &m_image_index, wait_semaphore))
         {
             LOG_ERROR("Failed to present");
             return false;

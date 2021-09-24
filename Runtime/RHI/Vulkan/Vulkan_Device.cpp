@@ -147,9 +147,9 @@ namespace Spartan
             {
                 vector<uint32_t> unique_queue_families =
                 {
-                    m_rhi_context->queue_graphics_index,
-                    m_rhi_context->queue_compute_index,
-                    m_rhi_context->queue_copy_index
+                    m_queue_graphics_index,
+                    m_queue_compute_index,
+                    m_queue_copy_index
                 };
 
                 float queue_priority = 1.0f;
@@ -168,7 +168,7 @@ namespace Spartan
             vkGetPhysicalDeviceProperties(static_cast<VkPhysicalDevice>(m_rhi_context->device_physical), &m_rhi_context->device_properties);
 
             // Resource limits
-            RHI_Context::texture_2d_dimension_max = m_rhi_context->device_properties.limits.maxImageDimension2D;
+            RHI_Device::m_texture_2d_dimension_max = m_rhi_context->device_properties.limits.maxImageDimension2D;
 
             // Disable profiler if timestamps are not supported
             if (m_rhi_context->profiler && !m_rhi_context->device_properties.limits.timestampComputeAndGraphics)
@@ -254,16 +254,16 @@ namespace Spartan
 
         // Get a graphics, compute and a copy queue.
         {
-            vkGetDeviceQueue(m_rhi_context->device, m_rhi_context->queue_graphics_index, 0, reinterpret_cast<VkQueue*>(&m_rhi_context->queue_graphics));
-            vkGetDeviceQueue(m_rhi_context->device, m_rhi_context->queue_compute_index,  0, reinterpret_cast<VkQueue*>(&m_rhi_context->queue_compute));
-            vkGetDeviceQueue(m_rhi_context->device, m_rhi_context->queue_copy_index,     0, reinterpret_cast<VkQueue*>(&m_rhi_context->queue_copy));
+            vkGetDeviceQueue(m_rhi_context->device, m_queue_graphics_index, 0, reinterpret_cast<VkQueue*>(&m_queue_graphics));
+            vkGetDeviceQueue(m_rhi_context->device, m_queue_compute_index,  0, reinterpret_cast<VkQueue*>(&m_queue_compute));
+            vkGetDeviceQueue(m_rhi_context->device, m_queue_copy_index,     0, reinterpret_cast<VkQueue*>(&m_queue_copy));
         }
 
         // Create command pool
         {
             VkCommandPoolCreateInfo cmd_pool_info = {};
             cmd_pool_info.sType                   = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-            cmd_pool_info.queueFamilyIndex        = Queue_Index(RHI_Queue_Type::Graphics);
+            cmd_pool_info.queueFamilyIndex        = GetQueueIndex(RHI_Queue_Type::Graphics);
             cmd_pool_info.flags                   = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 
             if(!vulkan_utility::error::check(vkCreateCommandPool(m_rhi_context->device, &cmd_pool_info, nullptr, reinterpret_cast<VkCommandPool*>(&m_cmd_pool_graphics))))
@@ -296,14 +296,14 @@ namespace Spartan
     RHI_Device::~RHI_Device()
     {
         SP_ASSERT(m_rhi_context != nullptr);
-        SP_ASSERT(m_rhi_context->queue_graphics != nullptr);
+        SP_ASSERT(m_queue_graphics != nullptr);
 
         // Command pool
         vkDestroyCommandPool(m_rhi_context->device, static_cast<VkCommandPool>(m_cmd_pool_graphics), nullptr);
         m_cmd_pool_graphics = nullptr;
 
         // Release resources
-        if (Queue_WaitAll())
+        if (QueueWaitAll())
         {
             m_rhi_context->DestroyAllocator();
 
@@ -316,7 +316,7 @@ namespace Spartan
         }
     }
 
-    bool RHI_Device::Queue_Present(void* swapchain_view, uint32_t* image_index, RHI_Semaphore* wait_semaphore /*= nullptr*/) const
+    bool RHI_Device::QueuePresent(void* swapchain_view, uint32_t* image_index, RHI_Semaphore* wait_semaphore /*= nullptr*/) const
     {
         // Validate semaphore state
         if (wait_semaphore) SP_ASSERT(wait_semaphore->GetState() == RHI_Semaphore_State::Signaled);
@@ -333,7 +333,7 @@ namespace Spartan
         present_info.pImageIndices      = image_index;
 
         lock_guard<mutex> lock(m_queue_mutex);
-        if (!vulkan_utility::error::check(vkQueuePresentKHR(static_cast<VkQueue>(m_rhi_context->queue_graphics), &present_info)))
+        if (!vulkan_utility::error::check(vkQueuePresentKHR(static_cast<VkQueue>(m_queue_graphics), &present_info)))
             return false;
 
         // Update semaphore state
@@ -343,7 +343,7 @@ namespace Spartan
         return true;
     }
 
-    bool RHI_Device::Queue_Submit(const RHI_Queue_Type type, const uint32_t wait_flags, void* cmd_buffer, RHI_Semaphore* wait_semaphore /*= nullptr*/, RHI_Semaphore* signal_semaphore /*= nullptr*/, RHI_Fence* signal_fence /*= nullptr*/) const
+    bool RHI_Device::QueueSubmit(const RHI_Queue_Type type, const uint32_t wait_flags, void* cmd_buffer, RHI_Semaphore* wait_semaphore /*= nullptr*/, RHI_Semaphore* signal_semaphore /*= nullptr*/, RHI_Fence* signal_fence /*= nullptr*/) const
     {
         // Validate input
         SP_ASSERT(cmd_buffer != nullptr);
@@ -372,7 +372,7 @@ namespace Spartan
         void* vk_signal_fence = signal_fence ? signal_fence->GetResource() : nullptr;
 
         lock_guard<mutex> lock(m_queue_mutex);
-        if (!vulkan_utility::error::check(vkQueueSubmit(static_cast<VkQueue>(Queue_Get(type)), 1, &submit_info, static_cast<VkFence>(vk_signal_fence))))
+        if (!vulkan_utility::error::check(vkQueueSubmit(static_cast<VkQueue>(GetQueue(type)), 1, &submit_info, static_cast<VkFence>(vk_signal_fence))))
             return false;
 
         // Update semaphore states
@@ -382,9 +382,9 @@ namespace Spartan
         return true;
     }
 
-    bool RHI_Device::Queue_Wait(const RHI_Queue_Type type) const
+    bool RHI_Device::QueueWait(const RHI_Queue_Type type) const
     {
         lock_guard<mutex> lock(m_queue_mutex);
-        return vulkan_utility::error::check(vkQueueWaitIdle(static_cast<VkQueue>(Queue_Get(type))));
+        return vulkan_utility::error::check(vkQueueWaitIdle(static_cast<VkQueue>(GetQueue(type))));
     }
 }

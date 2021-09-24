@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_CommandList.h"
 #include "../../Rendering/Renderer.h"
 #include "../../Profiling/Profiler.h"
+#include <wrl/client.h>
 //===================================
 
 //= NAMESPACES ================
@@ -47,12 +48,68 @@ namespace Spartan
         const char* name            /*= nullptr */
     )
     {
-    
+        // Verify device
+        SP_ASSERT(rhi_device != nullptr);
+        SP_ASSERT(rhi_device->GetContextRhi()->device != nullptr);
+
+        // Verify window handle
+        const HWND hwnd = static_cast<HWND>(window_handle);
+        SP_ASSERT(hwnd != nullptr);
+        SP_ASSERT(IsWindow(hwnd));
+
+        // Verify resolution
+        if (!rhi_device->IsValidResolution(width, height))
+        {
+            LOG_WARNING("%dx%d is an invalid resolution", width, height);
+            return;
+        }
+
+        // Get factory
+        Microsoft::WRL::ComPtr<IDXGIFactory4> factory;
+        {
+            INT dxgiFactoryFlags = 0;
+            if (!rhi_device->GetContextRhi()->debug)
+            {
+                dxgiFactoryFlags |= DXGI_CREATE_FACTORY_DEBUG;
+            }
+
+            if (!d3d12_utility::error::check(CreateDXGIFactory2(dxgiFactoryFlags, IID_PPV_ARGS(&factory))))
+                return;
+        }
+
+        // Copy parameters
+        m_format        = format;
+        m_rhi_device    = rhi_device.get();
+        m_buffer_count  = buffer_count;
+        m_width         = width;
+        m_height        = height;
+        m_window_handle = window_handle;
+        m_flags         = flags;
+        m_object_name   = name;
+
+        // Describe and create the swap chain.
+        DXGI_SWAP_CHAIN_DESC1 swap_chain_desc = {};
+        swap_chain_desc.BufferCount           = m_buffer_count;
+        swap_chain_desc.Width                 = m_width;
+        swap_chain_desc.Height                = m_height;
+        swap_chain_desc.Format                = d3d12_format[format];
+        swap_chain_desc.BufferUsage           = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+        swap_chain_desc.SwapEffect            = d3d12_utility::swap_chain::get_swap_effect(m_flags);
+        swap_chain_desc.SampleDesc.Count      = 1;
+
+        d3d12_utility::error::check(factory->CreateSwapChainForHwnd(
+            static_cast<ID3D12CommandQueue*>(m_rhi_device->GetQueue(RHI_Queue_Type::Graphics)), // Swap chain needs the queue so that it can force a flush on it.
+            hwnd,
+            &swap_chain_desc,
+            nullptr,
+            nullptr,
+            reinterpret_cast<IDXGISwapChain1**>(&m_swap_chain_view)
+        ));
     }
     
     RHI_SwapChain::~RHI_SwapChain()
     {
-    
+        d3d12_utility::release<IDXGISwapChain1>(m_swap_chain_view);
     }
     
     bool RHI_SwapChain::Resize(const uint32_t width, const uint32_t height, const bool force /*= false*/)
@@ -67,6 +124,16 @@ namespace Spartan
     
     bool RHI_SwapChain::Present(RHI_Semaphore* wait_semaphore)
     {
-        return true;
+        // Verify a few things
+        SP_ASSERT(m_present_enabled);
+        SP_ASSERT(m_swap_chain_view != nullptr);
+
+        // Present parameters
+        const bool tearing_allowed = m_flags & RHI_Present_Immediate;
+        const UINT sync_interval   = tearing_allowed ? 0 : 1; // sync interval can go up to 4, so this could be improved
+        const UINT flags           = (tearing_allowed && m_windowed) ? DXGI_PRESENT_ALLOW_TEARING : 0;
+
+        // Present
+        return d3d12_utility::error::check(static_cast<IDXGISwapChain1*>(m_swap_chain_view)->Present(sync_interval, flags));
     }
 }

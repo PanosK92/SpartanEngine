@@ -735,7 +735,7 @@ namespace Spartan
         }
         else if (option == Renderer_Option_Value::ShadowResolution)
         {
-            value = Helper::Clamp(value, static_cast<float>(m_resolution_shadow_min), static_cast<float>(RHI_Context::texture_2d_dimension_max));
+            value = Helper::Clamp(value, static_cast<float>(m_resolution_shadow_min), static_cast<float>(RHI_Device::m_texture_2d_dimension_max));
         }
 
         if (m_option_values[option] == value)
@@ -804,7 +804,7 @@ namespace Spartan
             {
                 LOG_INFO("Renderer thread is flushing...");
 
-                if (!m_rhi_device->Queue_WaitAll())
+                if (!m_rhi_device->QueueWaitAll())
                 {
                     LOG_ERROR("Failed to flush GPU");
                 }
@@ -820,11 +820,6 @@ namespace Spartan
         }
 
         m_flush_requested = false;
-    }
-
-    uint32_t Renderer::GetMaxResolution() const
-    {
-        return RHI_Context::texture_2d_dimension_max;
     }
 
     void Renderer::SetCbUberTransform(RHI_CommandList* cmd_list, const Matrix& transform)

@@ -37,7 +37,7 @@ namespace Spartan
         if (m_descriptor_pool)
         {
             // Wait in case it's still in use by the GPU
-            m_rhi_device->Queue_WaitAll();
+            m_rhi_device->QueueWaitAll();
 
             vkDestroyDescriptorPool(m_rhi_device->GetContextRhi()->device, static_cast<VkDescriptorPool>(m_descriptor_pool), nullptr);
             m_descriptor_pool = nullptr;
@@ -62,7 +62,7 @@ namespace Spartan
         if (m_descriptor_pool)
         {
             // Wait in case it's still in use by the GPU
-            m_rhi_device->Queue_WaitAll();
+            m_rhi_device->QueueWaitAll();
 
             vkDestroyDescriptorPool(m_rhi_device->GetContextRhi()->device, static_cast<VkDescriptorPool>(m_descriptor_pool), nullptr);
             m_descriptor_pool = nullptr;

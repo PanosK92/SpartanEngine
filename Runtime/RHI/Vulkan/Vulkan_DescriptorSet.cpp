@@ -99,15 +99,15 @@ namespace Spartan
         SP_ASSERT(m_resource != nullptr);
 
         vector<VkDescriptorImageInfo> info_images;
-        info_images.resize(RHI_Context::descriptors_max);
-        info_images.reserve(RHI_Context::descriptors_max);
+        info_images.resize(RHI_Device::m_descriptors_max);
+        info_images.reserve(RHI_Device::m_descriptors_max);
         int image_index = -1;
 
         vector<VkDescriptorBufferInfo> info_buffers;
-        info_buffers.resize(RHI_Context::descriptors_max);
-        info_buffers.reserve(RHI_Context::descriptors_max);
+        info_buffers.resize(RHI_Device::m_descriptors_max);
+        info_buffers.reserve(RHI_Device::m_descriptors_max);
 
-        array<VkWriteDescriptorSet, RHI_Context::descriptors_max> descriptor_sets;
+        array<VkWriteDescriptorSet, RHI_Device::m_descriptors_max> descriptor_sets;
         uint32_t index = 0;
 
         for (const RHI_Descriptor & descriptor : descriptors)

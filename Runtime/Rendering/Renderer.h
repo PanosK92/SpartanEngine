@@ -156,7 +156,6 @@ namespace Spartan
         auto GetShaders()                                           const { return m_shaders; }
         RHI_CommandList* GetCmdList()                               const { return m_cmd_current; }
         uint32_t GetCmdIndex()                                      const { return m_cmd_index;  }
-        uint32_t GetMaxResolution() const;
 
         // Passes
         void Pass_CopyToBackbuffer(RHI_CommandList* cmd_list);

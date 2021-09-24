@@ -100,8 +100,8 @@ namespace Spartan
     enum class RHI_Queue_Type
     {
         Graphics,
-        Transfer,
         Compute,
+        Copy,
         Undefined
     };
 

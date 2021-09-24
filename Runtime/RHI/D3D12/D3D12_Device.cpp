@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_RasterizerState.h"
 #include "../RHI_Shader.h"
 #include "../RHI_InputLayout.h"
-#include <wrl.h>
+#include <wrl/client.h>
 //=================================
 
 //= NAMESPACES ===============
@@ -99,13 +99,13 @@ namespace Spartan
             queue_desc.Flags                    = D3D12_COMMAND_QUEUE_FLAG_NONE;
 
             queue_desc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
-            d3d12_utility::error::check(m_rhi_context->device->CreateCommandQueue(&queue_desc, IID_PPV_ARGS(reinterpret_cast<ID3D12CommandQueue**>(&m_rhi_context->queue_graphics))));
+            d3d12_utility::error::check(m_rhi_context->device->CreateCommandQueue(&queue_desc, IID_PPV_ARGS(reinterpret_cast<ID3D12CommandQueue**>(&m_queue_graphics))));
 
             queue_desc.Type = D3D12_COMMAND_LIST_TYPE_COMPUTE;
-            d3d12_utility::error::check(m_rhi_context->device->CreateCommandQueue(&queue_desc, IID_PPV_ARGS(reinterpret_cast<ID3D12CommandQueue**>(&m_rhi_context->queue_compute))));
+            d3d12_utility::error::check(m_rhi_context->device->CreateCommandQueue(&queue_desc, IID_PPV_ARGS(reinterpret_cast<ID3D12CommandQueue**>(&m_queue_compute))));
 
             queue_desc.Type = D3D12_COMMAND_LIST_TYPE_COPY;
-            d3d12_utility::error::check(m_rhi_context->device->CreateCommandQueue(&queue_desc, IID_PPV_ARGS(reinterpret_cast<ID3D12CommandQueue**>(&m_rhi_context->queue_copy))));
+            d3d12_utility::error::check(m_rhi_context->device->CreateCommandQueue(&queue_desc, IID_PPV_ARGS(reinterpret_cast<ID3D12CommandQueue**>(&m_queue_copy))));
         }
 
         // Create command list allocator
@@ -125,29 +125,29 @@ namespace Spartan
     RHI_Device::~RHI_Device()
     {
         SP_ASSERT(m_rhi_context != nullptr);
-        SP_ASSERT(m_rhi_context->queue_graphics != nullptr);
+        SP_ASSERT(m_queue_graphics != nullptr);
 
         // Command queues
-        d3d12_utility::release<ID3D12CommandQueue>(m_rhi_context->queue_graphics);
-        d3d12_utility::release<ID3D12CommandQueue>(m_rhi_context->queue_compute);
-        d3d12_utility::release<ID3D12CommandQueue>(m_rhi_context->queue_copy);
+        d3d12_utility::release<ID3D12CommandQueue>(m_queue_graphics);
+        d3d12_utility::release<ID3D12CommandQueue>(m_queue_compute);
+        d3d12_utility::release<ID3D12CommandQueue>(m_queue_copy);
 
         // Command allocator
         d3d12_utility::release<ID3D12CommandAllocator>(m_cmd_pool_graphics);
 
-        if (Queue_WaitAll())
+        if (QueueWaitAll())
         {
             m_rhi_context->device->Release();
             m_rhi_context->device = nullptr;
         }
     }
 
-    bool RHI_Device::Queue_Submit(const RHI_Queue_Type type, const uint32_t wait_flags, void* cmd_buffer, RHI_Semaphore* wait_semaphore /*= nullptr*/, RHI_Semaphore* signal_semaphore /*= nullptr*/, RHI_Fence* signal_fence /*= nullptr*/) const
+    bool RHI_Device::QueueSubmit(const RHI_Queue_Type type, const uint32_t wait_flags, void* cmd_buffer, RHI_Semaphore* wait_semaphore /*= nullptr*/, RHI_Semaphore* signal_semaphore /*= nullptr*/, RHI_Fence* signal_fence /*= nullptr*/) const
     {
         return true;
     }
 
-    bool RHI_Device::Queue_Wait(const RHI_Queue_Type type) const
+    bool RHI_Device::QueueWait(const RHI_Queue_Type type) const
     {
         return true;
     }
