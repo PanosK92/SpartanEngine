@@ -92,4 +92,24 @@ namespace Spartan::d3d12_utility
             ptr = nullptr;
         }
     }
+
+    namespace debug
+    {
+        void set_name(void* obj, const char* name)
+        {
+            SP_ASSERT(obj != nullptr);
+            SP_ASSERT(name != nullptr);
+
+            std::string name_str = std::string(name);
+            wchar_t name_buffer[128];
+
+            // Truncate the string if it's too big (keep the tail as it likely has the most useful information - some name have full paths)
+            if (name_str.size() >= 128)
+                swprintf(name_buffer, 128, L"%S", name_str.substr(name_str.size() - 127, name_str.size()).c_str());
+            else
+                swprintf(name_buffer, name_str.size() + 1, L"%S", name_str.c_str());
+
+            static_cast<ID3D12Object*>(obj)->SetName(name_buffer);
+        }
+    }
 }

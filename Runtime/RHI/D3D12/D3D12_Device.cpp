@@ -48,16 +48,17 @@ namespace Spartan
         UINT dxgi_factory_flags = 0;
         if (m_rhi_context->debug)
         {
-            Microsoft::WRL::ComPtr<ID3D12Debug> debug_interface;
+            Microsoft::WRL::ComPtr<ID3D12Debug1> debug_interface;
             if (d3d12_utility::error::check(D3D12GetDebugInterface(IID_PPV_ARGS(&debug_interface))))
             {
                 debug_interface->EnableDebugLayer();
+                debug_interface->SetEnableGPUBasedValidation(true);
                 dxgi_factory_flags |= DXGI_CREATE_FACTORY_DEBUG;
             }
         }
 
         // Factory
-        Microsoft::WRL::ComPtr<IDXGIFactory4> factory;
+        Microsoft::WRL::ComPtr<IDXGIFactory6> factory;
         if (!d3d12_utility::error::check(CreateDXGIFactory2(dxgi_factory_flags, IID_PPV_ARGS(&factory))))
         {
             LOG_ERROR("Failed to created dxgi factory");

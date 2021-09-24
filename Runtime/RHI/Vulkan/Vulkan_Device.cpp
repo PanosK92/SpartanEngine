@@ -197,12 +197,12 @@ namespace Spartan
                 vkGetPhysicalDeviceFeatures2(m_rhi_context->device_physical, &m_rhi_context->device_features);
 
                 // Enable
-                ENABLE_FEATURE(m_rhi_context->device_features.features, device_features_enabled.features,   samplerAnisotropy)
-                ENABLE_FEATURE(m_rhi_context->device_features.features, device_features_enabled.features,   fillModeNonSolid)
-                ENABLE_FEATURE(m_rhi_context->device_features.features, device_features_enabled.features,   wideLines)
-                ENABLE_FEATURE(m_rhi_context->device_features.features, device_features_enabled.features,   imageCubeArray)
-                ENABLE_FEATURE(m_rhi_context->device_features_1_2,      device_features_1_2_enabled,        timelineSemaphore)
-            }
+                ENABLE_FEATURE(m_rhi_context->device_features.features, device_features_enabled.features, samplerAnisotropy)
+                ENABLE_FEATURE(m_rhi_context->device_features.features, device_features_enabled.features, fillModeNonSolid)
+                ENABLE_FEATURE(m_rhi_context->device_features.features, device_features_enabled.features, wideLines)
+                ENABLE_FEATURE(m_rhi_context->device_features.features, device_features_enabled.features, imageCubeArray)
+                ENABLE_FEATURE(m_rhi_context->device_features_1_2,      device_features_1_2_enabled,      timelineSemaphore)
+            }                                                                                             
 
             // Determine enabled graphics shader stages
             m_enabled_graphics_shader_stages = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
@@ -267,11 +267,11 @@ namespace Spartan
         vulkan_utility::command_pool::create(m_cmd_pool, RHI_Queue_Type::Graphics);
 
         // Detect and log version
-        string version_major    = to_string(VK_VERSION_MAJOR(app_info.apiVersion));
-        string version_minor    = to_string(VK_VERSION_MINOR(app_info.apiVersion));
-        string version_patch    = to_string(VK_VERSION_PATCH(app_info.apiVersion));
-        Settings* settings      = m_context->GetSubsystem<Settings>();
-        string version          = version_major + "." + version_minor + "." + version_patch;
+        string version_major = to_string(VK_VERSION_MAJOR(app_info.apiVersion));
+        string version_minor = to_string(VK_VERSION_MINOR(app_info.apiVersion));
+        string version_patch = to_string(VK_VERSION_PATCH(app_info.apiVersion));
+        Settings* settings   = m_context->GetSubsystem<Settings>();
+        string version       = version_major + "." + version_minor + "." + version_patch;
         settings->RegisterThirdPartyLib("Vulkan", version_major + "." + version_minor + "." + version_patch, "https://vulkan.lunarg.com/");
         LOG_INFO("Vulkan %s", version.c_str());
 

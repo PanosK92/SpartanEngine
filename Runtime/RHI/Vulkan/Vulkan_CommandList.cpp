@@ -57,8 +57,8 @@ namespace Spartan
         RHI_Context* rhi_context = m_rhi_device->GetContextRhi();
 
         // Command buffer
-        vulkan_utility::command_buffer::create(m_rhi_device->GetCmdPool(), m_cmd_buffer, VK_COMMAND_BUFFER_LEVEL_PRIMARY);
-        vulkan_utility::debug::set_name(static_cast<VkCommandBuffer>(m_cmd_buffer), "cmd_buffer");
+        vulkan_utility::command_buffer::create(m_rhi_device->GetCmdPool(), m_resource, VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+        vulkan_utility::debug::set_name(static_cast<VkCommandBuffer>(m_resource), "cmd_list");
 
         // Sync - Fence
         m_processed_fence = make_shared<RHI_Fence>(m_rhi_device, "cmd_buffer_processed");
@@ -69,10 +69,10 @@ namespace Spartan
         // Query pool
         if (rhi_context->profiler)
         {
-            VkQueryPoolCreateInfo query_pool_create_info    = {};
-            query_pool_create_info.sType                    = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
-            query_pool_create_info.queryType                = VK_QUERY_TYPE_TIMESTAMP;
-            query_pool_create_info.queryCount               = m_max_timestamps;
+            VkQueryPoolCreateInfo query_pool_create_info = {};
+            query_pool_create_info.sType                 = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
+            query_pool_create_info.queryType             = VK_QUERY_TYPE_TIMESTAMP;
+            query_pool_create_info.queryCount            = m_max_timestamps;
 
             auto query_pool = reinterpret_cast<VkQueryPool*>(&m_query_pool);
             vulkan_utility::error::check(vkCreateQueryPool(rhi_context->device, &query_pool_create_info, nullptr, query_pool));
@@ -87,7 +87,7 @@ namespace Spartan
         m_rhi_device->Queue_WaitAll();
 
         // Command buffer
-        vulkan_utility::command_buffer::destroy(m_rhi_device->GetCmdPool(), m_cmd_buffer);
+        vulkan_utility::command_buffer::destroy(m_rhi_device->GetCmdPool(), m_resource);
 
         // Query pool
         if (m_query_pool)
@@ -144,13 +144,13 @@ namespace Spartan
         VkCommandBufferBeginInfo begin_info = {};
         begin_info.sType                    = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
         begin_info.flags                    = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-        if (!vulkan_utility::error::check(vkBeginCommandBuffer(static_cast<VkCommandBuffer>(m_cmd_buffer), &begin_info)))
+        if (!vulkan_utility::error::check(vkBeginCommandBuffer(static_cast<VkCommandBuffer>(m_resource), &begin_info)))
             return false;
 
-        vkCmdResetQueryPool(static_cast<VkCommandBuffer>(m_cmd_buffer), static_cast<VkQueryPool>(m_query_pool), 0, m_max_timestamps);
+        vkCmdResetQueryPool(static_cast<VkCommandBuffer>(m_resource), static_cast<VkQueryPool>(m_query_pool), 0, m_max_timestamps);
 
-        m_state     = RHI_CommandListState::Recording;
-        m_flushed   = false;
+        m_state   = RHI_CommandListState::Recording;
+        m_flushed = false;
 
         return true;
     }
@@ -160,7 +160,7 @@ namespace Spartan
         // Validate command list state
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
-        if (!vulkan_utility::error::check(vkEndCommandBuffer(static_cast<VkCommandBuffer>(m_cmd_buffer))))
+        if (!vulkan_utility::error::check(vkEndCommandBuffer(static_cast<VkCommandBuffer>(m_resource))))
             return false;
 
         m_state = RHI_CommandListState::Ended;
@@ -205,7 +205,7 @@ namespace Spartan
         if (!m_rhi_device->Queue_Submit(
             RHI_Queue_Type::Graphics,                       // queue
             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,  // wait flags
-            static_cast<VkCommandBuffer>(m_cmd_buffer),     // cmd buffer
+            static_cast<VkCommandBuffer>(m_resource),     // cmd buffer
             wait_semaphore,                                 // wait semaphore
             signal_semaphore,                               // signal semaphore
             m_processed_fence.get()                         // signal fence
@@ -226,7 +226,7 @@ namespace Spartan
 
         lock_guard<mutex> guard(m_mutex_reset);
 
-        if (!vulkan_utility::error::check(vkResetCommandBuffer(static_cast<VkCommandBuffer>(m_cmd_buffer), VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT)))
+        if (!vulkan_utility::error::check(vkResetCommandBuffer(static_cast<VkCommandBuffer>(m_resource), VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT)))
             return false;
 
         m_state = RHI_CommandListState::Idle;
@@ -287,7 +287,7 @@ namespace Spartan
         if (m_render_pass_active)
         {
             // Render pass
-            vkCmdEndRenderPass(static_cast<VkCommandBuffer>(m_cmd_buffer));
+            vkCmdEndRenderPass(static_cast<VkCommandBuffer>(m_resource));
             m_render_pass_active = false;
         }
 
@@ -353,7 +353,7 @@ namespace Spartan
         if (attachment_count == 0)
             return;
 
-        vkCmdClearAttachments(static_cast<VkCommandBuffer>(m_cmd_buffer), attachment_count, attachments.data(), 1, &clear_rect);
+        vkCmdClearAttachments(static_cast<VkCommandBuffer>(m_resource), attachment_count, attachments.data(), 1, &clear_rect);
     }
 
     void RHI_CommandList::ClearRenderTarget(RHI_Texture* texture,
@@ -395,7 +395,7 @@ namespace Spartan
 
             image_subresource_range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 
-            vkCmdClearColorImage(static_cast<VkCommandBuffer>(m_cmd_buffer), static_cast<VkImage>(texture->GetResource()), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &_clear_color, 1, &image_subresource_range);
+            vkCmdClearColorImage(static_cast<VkCommandBuffer>(m_resource), static_cast<VkImage>(texture->GetResource()), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &_clear_color, 1, &image_subresource_range);
         }
         else if (texture->IsDepthStencilFormat())
         {
@@ -411,7 +411,7 @@ namespace Spartan
                 image_subresource_range.aspectMask |= VK_IMAGE_ASPECT_DEPTH_BIT;
             }
 
-            vkCmdClearDepthStencilImage(static_cast<VkCommandBuffer>(m_cmd_buffer), static_cast<VkImage>(texture->GetResource()), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clear_depth_stencil, 1, &image_subresource_range);
+            vkCmdClearDepthStencilImage(static_cast<VkCommandBuffer>(m_resource), static_cast<VkImage>(texture->GetResource()), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clear_depth_stencil, 1, &image_subresource_range);
         }
     }
 
@@ -426,7 +426,7 @@ namespace Spartan
 
         // Draw
         vkCmdDraw(
-            static_cast<VkCommandBuffer>(m_cmd_buffer), // commandBuffer
+            static_cast<VkCommandBuffer>(m_resource), // commandBuffer
             vertex_count,                               // vertexCount
             1,                                          // instanceCount
             0,                                          // firstVertex
@@ -450,7 +450,7 @@ namespace Spartan
 
         // Draw
         vkCmdDrawIndexed(
-            static_cast<VkCommandBuffer>(m_cmd_buffer), // commandBuffer
+            static_cast<VkCommandBuffer>(m_resource), // commandBuffer
             index_count,                                // indexCount
             1,                                          // instanceCount
             index_offset,                               // firstIndex
@@ -474,7 +474,7 @@ namespace Spartan
             return false;
 
         // Dispatch
-        vkCmdDispatch(static_cast<VkCommandBuffer>(m_cmd_buffer), x, y, z);
+        vkCmdDispatch(static_cast<VkCommandBuffer>(m_resource), x, y, z);
 
         // Profiler
         m_profiler->m_rhi_dispatch++;
@@ -519,7 +519,7 @@ namespace Spartan
 
         // Blit
         vkCmdBlitImage(
-            static_cast<VkCommandBuffer>(m_cmd_buffer),
+            static_cast<VkCommandBuffer>(m_resource),
             static_cast<VkImage>(source->GetResource()),      VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
             static_cast<VkImage>(destination->GetResource()), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
             1,
@@ -549,7 +549,7 @@ namespace Spartan
         vk_viewport.maxDepth   = viewport.depth_max;
 
         vkCmdSetViewport(
-            static_cast<VkCommandBuffer>(m_cmd_buffer), // commandBuffer
+            static_cast<VkCommandBuffer>(m_resource), // commandBuffer
             0,                                          // firstViewport
             1,                                          // viewportCount
             &vk_viewport                                // pViewports
@@ -568,7 +568,7 @@ namespace Spartan
         vk_scissor.extent.height = static_cast<uint32_t>(scissor_rectangle.Height());
 
         vkCmdSetScissor(
-            static_cast<VkCommandBuffer>(m_cmd_buffer), // commandBuffer
+            static_cast<VkCommandBuffer>(m_resource), // commandBuffer
             0,          // firstScissor
             1,          // scissorCount
             &vk_scissor // pScissors
@@ -587,7 +587,7 @@ namespace Spartan
         VkDeviceSize offsets[]        = { offset };
 
         vkCmdBindVertexBuffers(
-            static_cast<VkCommandBuffer>(m_cmd_buffer), // commandBuffer
+            static_cast<VkCommandBuffer>(m_resource), // commandBuffer
             0,                                          // firstBinding
             1,                                          // bindingCount
             vertex_buffers,                             // pBuffers
@@ -608,7 +608,7 @@ namespace Spartan
             return;
 
         vkCmdBindIndexBuffer(
-            static_cast<VkCommandBuffer>(m_cmd_buffer),                     // commandBuffer
+            static_cast<VkCommandBuffer>(m_resource),                     // commandBuffer
             static_cast<VkBuffer>(buffer->GetResource()),                   // buffer
             offset,                                                         // offset
             buffer->Is16Bit() ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32 // indexType
@@ -779,7 +779,7 @@ namespace Spartan
         if (!m_query_pool)
             return false;
 
-        vkCmdWriteTimestamp(static_cast<VkCommandBuffer>(m_cmd_buffer), VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, static_cast<VkQueryPool>(m_query_pool), m_timestamp_index++);
+        vkCmdWriteTimestamp(static_cast<VkCommandBuffer>(m_resource), VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, static_cast<VkQueryPool>(m_query_pool), m_timestamp_index++);
 
         return true;
     }
@@ -795,7 +795,7 @@ namespace Spartan
         if (!m_query_pool)
             return false;
 
-        vkCmdWriteTimestamp(static_cast<VkCommandBuffer>(m_cmd_buffer), VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, static_cast<VkQueryPool>(m_query_pool), m_timestamp_index++);
+        vkCmdWriteTimestamp(static_cast<VkCommandBuffer>(m_resource), VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, static_cast<VkQueryPool>(m_query_pool), m_timestamp_index++);
 
         return true;
     }
@@ -858,7 +858,7 @@ namespace Spartan
         // Allowed to markers ?
         if (m_rhi_device->GetContextRhi()->markers && pipeline_state->mark)
         {
-            vulkan_utility::debug::marker_begin(static_cast<VkCommandBuffer>(m_cmd_buffer), pipeline_state->pass_name, Vector4::Zero);
+            vulkan_utility::debug::marker_begin(static_cast<VkCommandBuffer>(m_resource), pipeline_state->pass_name, Vector4::Zero);
         }
     }
 
@@ -870,7 +870,7 @@ namespace Spartan
         // Allowed markers ?
         if (m_rhi_device->GetContextRhi()->markers && pipeline_state->mark)
         {
-            vulkan_utility::debug::marker_end(static_cast<VkCommandBuffer>(m_cmd_buffer));
+            vulkan_utility::debug::marker_end(static_cast<VkCommandBuffer>(m_resource));
         }
 
         // Allowed profiler ?
@@ -935,7 +935,7 @@ namespace Spartan
         render_pass_info.renderArea.extent.height = pipeline_state->GetHeight();
         render_pass_info.clearValueCount          = clear_value_count;
         render_pass_info.pClearValues             = clear_values.data();
-        vkCmdBeginRenderPass(static_cast<VkCommandBuffer>(m_cmd_buffer), &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
+        vkCmdBeginRenderPass(static_cast<VkCommandBuffer>(m_resource), &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
 
         m_render_pass_active = true;
 
@@ -974,7 +974,7 @@ namespace Spartan
             // Bind descriptor set
             vkCmdBindDescriptorSets
             (
-                static_cast<VkCommandBuffer>(m_cmd_buffer),                     // commandBuffer
+                static_cast<VkCommandBuffer>(m_resource),                     // commandBuffer
                 pipeline_bind_point,                                            // pipelineBindPoint
                 static_cast<VkPipelineLayout>(m_pipeline->GetPipelineLayout()), // layout
                 0,                                                              // firstSet
@@ -997,7 +997,7 @@ namespace Spartan
             // Bind point
             VkPipelineBindPoint pipeline_bind_point = m_pipeline_state->IsCompute() ? VK_PIPELINE_BIND_POINT_COMPUTE : VK_PIPELINE_BIND_POINT_GRAPHICS;
 
-            vkCmdBindPipeline(static_cast<VkCommandBuffer>(m_cmd_buffer), pipeline_bind_point, vk_pipeline);
+            vkCmdBindPipeline(static_cast<VkCommandBuffer>(m_resource), pipeline_bind_point, vk_pipeline);
             m_profiler->m_rhi_bindings_pipeline++;
             m_pipeline_active = true;
         }

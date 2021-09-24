@@ -92,7 +92,7 @@ void Widget_Viewport::TickVisible()
     }
 
     // Handle model drop
-    if (auto payload = ImGuiEx::ReceiveDragPayload(ImGuiEx::DragPayload_Model))
+    if (auto payload = ImGuiEx::ReceiveDragPayload(ImGuiEx::DragPayloadType::DragPayload_Model))
     {
         EditorHelper::Get().LoadModel(get<const char*>(payload->data));
     }

@@ -45,7 +45,16 @@ namespace Spartan
         const float depth_bias_slope_scaled /*= 0.0f */,
         const float line_width              /*= 1.0f */)
     {
-    
+        // Save properties
+        m_cull_mode               = cull_mode;
+        m_fill_mode               = fill_mode;
+        m_depth_clip_enabled      = depth_clip_enabled;
+        m_scissor_enabled         = scissor_enabled;
+        m_antialised_line_enabled = antialised_line_enabled;
+        m_depth_bias              = depth_bias;
+        m_depth_bias_clamp        = depth_bias_clamp;
+        m_depth_bias_slope_scaled = depth_bias_slope_scaled;
+        m_line_width              = line_width;
     }
 
     RHI_RasterizerState::~RHI_RasterizerState()

@@ -125,7 +125,7 @@ namespace Spartan
         
         // Misc
         void ResetDescriptorCache();
-        void* GetResource_CommandBuffer()       const { return m_cmd_buffer; }
+        void* GetResource_CommandBuffer()       const { return m_resource; }
         RHI_Semaphore* GetProcessedSemaphore()        { return m_processed_semaphore.get(); }
         const RHI_CommandListState GetState()   const { return m_state; }
 
@@ -145,7 +145,7 @@ namespace Spartan
         RHI_PipelineState* m_pipeline_state                         = nullptr;
         RHI_Device* m_rhi_device                                    = nullptr;
         Profiler* m_profiler                                        = nullptr;
-        void* m_cmd_buffer                                          = nullptr;
+        void* m_resource                                          = nullptr;
         std::shared_ptr<RHI_Fence> m_processed_fence                = nullptr;
         std::shared_ptr<RHI_Semaphore> m_processed_semaphore        = nullptr;
         void* m_query_pool                                          = nullptr;

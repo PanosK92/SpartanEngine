@@ -155,7 +155,7 @@ void FileDialog::ShowTop(bool* is_visible)
 
     // Size slider
     const float slider_width = 200.0f;
-    ImGui::SameLine(ImGui::GetWindowContentRegionWidth() - slider_width);
+    ImGui::SameLine(ImGuiEx::GetWindowContentRegionWidth() - slider_width);
     ImGui::PushItemWidth(slider_width);
     const float previous_width = m_item_size.x;
     ImGui::SliderFloat("##FileDialogSlider", &m_item_size.x, m_item_size_min, m_item_size_max);
@@ -174,18 +174,18 @@ void FileDialog::ShowTop(bool* is_visible)
 void FileDialog::ShowMiddle()
 {
     // Compute some useful stuff
-    const auto window           = ImGui::GetCurrentWindowRead();
-    const auto content_width    = ImGui::GetContentRegionAvail().x;
-    const auto content_height   = ImGui::GetContentRegionAvail().y - m_offset_bottom;
-    ImGuiContext& g             = *GImGui;
-    ImGuiStyle& style           = ImGui::GetStyle();
-    const float font_height     = g.FontSize;
-    const float label_height    = font_height;
-    const float text_offset     = 3.0f;
-    float pen_x_min             = 0.0f;
-    float pen_x                 = 0.0f;
-    bool new_line               = true;
-    m_displayed_item_count      = 0;
+    const auto window         = ImGui::GetCurrentWindowRead();
+    const auto content_width  = ImGui::GetContentRegionAvail().x;
+    const auto content_height = ImGui::GetContentRegionAvail().y - m_offset_bottom;
+    ImGuiContext& g           = *GImGui;
+    ImGuiStyle& style         = ImGui::GetStyle();
+    const float font_height   = g.FontSize;
+    const float label_height  = font_height;
+    const float text_offset   = 3.0f;
+    float pen_x_min           = 0.0f;
+    float pen_x               = 0.0f;
+    bool new_line             = true;
+    m_displayed_item_count    = 0;
     ImRect rect_button;
     ImRect rect_label;
 
@@ -450,11 +450,11 @@ void FileDialog::ItemDrag(FileDialogItem* item) const
             ImGuiEx::CreateDragPayload(m_drag_drop_payload);
         };
 
-        if (FileSystem::IsSupportedModelFile(item->GetPath()))  { set_payload(ImGuiEx::DragPayload_Model,       item->GetPath()); }
-        if (FileSystem::IsSupportedImageFile(item->GetPath()))  { set_payload(ImGuiEx::DragPayload_Texture,     item->GetPath()); }
-        if (FileSystem::IsSupportedAudioFile(item->GetPath()))  { set_payload(ImGuiEx::DragPayload_Audio,       item->GetPath()); }
-        if (FileSystem::IsEngineScriptFile(item->GetPath()))    { set_payload(ImGuiEx::DragPayload_Script,      item->GetPath()); }
-        if (FileSystem::IsEngineMaterialFile(item->GetPath()))  { set_payload(ImGuiEx::DragPayload_Material,    item->GetPath()); }
+        if (FileSystem::IsSupportedModelFile(item->GetPath())) { set_payload(ImGuiEx::DragPayloadType::DragPayload_Model,    item->GetPath()); }
+        if (FileSystem::IsSupportedImageFile(item->GetPath())) { set_payload(ImGuiEx::DragPayloadType::DragPayload_Texture,  item->GetPath()); }
+        if (FileSystem::IsSupportedAudioFile(item->GetPath())) { set_payload(ImGuiEx::DragPayloadType::DragPayload_Audio,    item->GetPath()); }
+        if (FileSystem::IsEngineScriptFile(item->GetPath()))   { set_payload(ImGuiEx::DragPayloadType::DragPayload_Script,   item->GetPath()); }
+        if (FileSystem::IsEngineMaterialFile(item->GetPath())) { set_payload(ImGuiEx::DragPayloadType::DragPayload_Material, item->GetPath()); }
 
         // Preview
         ImGuiEx::Image(item->GetTexture(), 50);

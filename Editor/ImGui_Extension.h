@@ -137,20 +137,9 @@ namespace ImGuiEx
 {
     static const ImVec4 default_tint(255, 255, 255, 255);
 
-    inline void PushDisabled(const bool is_disabled)
+    inline float GetWindowContentRegionWidth()
     {
-        if (is_disabled)
-        {
-            ImGui::PushDisabled();
-        }
-    }
-
-    inline void PopDisabled(const bool is_disabled)
-    {
-        if (is_disabled)
-        {
-            ImGui::PopDisabled();
-        }
+        return ImGui::GetWindowContentRegionMax().x - ImGui::GetWindowContentRegionMin().x;
     }
 
     // Collapsing header
@@ -297,7 +286,7 @@ namespace ImGuiEx
     }
 
     // Drag & Drop
-    enum DragPayloadType
+    enum class DragPayloadType
     {
         DragPayload_Unknown,
         DragPayload_Texture,
@@ -311,7 +300,7 @@ namespace ImGuiEx
     struct DragDropPayload
     {
         typedef std::variant<const char*, uint64_t> dataVariant;
-        DragDropPayload(const DragPayloadType type = DragPayload_Unknown, const dataVariant data = nullptr)
+        DragDropPayload(const DragPayloadType type = DragPayloadType::DragPayload_Unknown, const dataVariant data = nullptr)
         {
             this->type = type;
             this->data = data;
@@ -385,7 +374,7 @@ namespace ImGuiEx
         ImGui::EndGroup();
 
         // Drop target
-        if (auto payload = ImGuiEx::ReceiveDragPayload(ImGuiEx::DragPayload_Texture))
+        if (auto payload = ImGuiEx::ReceiveDragPayload(ImGuiEx::DragPayloadType::DragPayload_Texture))
         {
             try
             {

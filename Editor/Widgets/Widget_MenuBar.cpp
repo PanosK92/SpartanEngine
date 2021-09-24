@@ -165,7 +165,7 @@ void Widget_MenuBar::ShowAboutWindow() const
 
     ImGui::Text("Spartan %s", sp_version);
     ImGui::Text("Author: Panos Karabelas");
-    ImGui::SameLine(ImGui::GetWindowContentRegionWidth());
+    ImGui::SameLine(ImGuiEx::GetWindowContentRegionWidth());
     ImGui::SetCursorPosX(ImGui::GetCursorPosX() - 55);
     ImGui::SetCursorPosY(ImGui::GetCursorPosY() - 5);
     if (ImGuiEx::Button("GitHub"))
