@@ -36,7 +36,7 @@ namespace Spartan
     void RHI_IndexBuffer::_destroy()
     {
         // Wait in case it's still in use by the GPU
-        m_rhi_device->Queue_WaitAll();
+        m_rhi_device->QueueWaitAll();
 
         // Unmap
         if (m_mapped)
@@ -94,7 +94,7 @@ namespace Spartan
             // Copy staging buffer to destination buffer
             {
                 // Create command buffer
-                VkCommandBuffer cmd_buffer = vulkan_utility::command_buffer_immediate::begin(RHI_Queue_Type::Transfer);
+                VkCommandBuffer cmd_buffer = vulkan_utility::command_buffer_immediate::begin(RHI_Queue_Type::Copy);
 
                 VkBuffer* buffer_vk         = reinterpret_cast<VkBuffer*>(&m_resource);
                 VkBuffer* buffer_staging_vk = reinterpret_cast<VkBuffer*>(&staging_buffer);
@@ -105,7 +105,7 @@ namespace Spartan
                 vkCmdCopyBuffer(cmd_buffer, *buffer_staging_vk, *buffer_vk, 1, &copy_region);
 
                 // Flush and free command buffer
-                if (!vulkan_utility::command_buffer_immediate::end(RHI_Queue_Type::Transfer))
+                if (!vulkan_utility::command_buffer_immediate::end(RHI_Queue_Type::Copy))
                     return false;
 
                 // Destroy staging buffer

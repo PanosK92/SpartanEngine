@@ -104,7 +104,7 @@ namespace Spartan::vulkan_utility
 
     namespace device
     {
-        inline uint32_t get_queue_family_index(VkQueueFlagBits queue_flags, const std::vector<VkQueueFamilyProperties>& queue_family_properties, uint32_t* index)
+        inline bool get_queue_family_index(VkQueueFlagBits queue_flags, const std::vector<VkQueueFamilyProperties>& queue_family_properties, uint32_t* index)
         {
             // Dedicated queue for compute
             // Try to find a queue family index that supports compute but not graphics
@@ -155,22 +155,38 @@ namespace Spartan::vulkan_utility
             std::vector<VkQueueFamilyProperties> queue_families_properties(queue_family_count);
             vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &queue_family_count, queue_families_properties.data());
 
-            if (!get_queue_family_index(VK_QUEUE_GRAPHICS_BIT, queue_families_properties, &globals::rhi_context->queue_graphics_index))
+            // Graphics
+            uint32_t index = 0;
+            if (get_queue_family_index(VK_QUEUE_GRAPHICS_BIT, queue_families_properties, &index))
+            {
+                globals::rhi_device->SetQueueIndex(RHI_Queue_Type::Graphics, index);
+            }
+            else
             {
                 LOG_ERROR("Graphics queue not suported.");
                 return false;
             }
 
-            if (!get_queue_family_index(VK_QUEUE_COMPUTE_BIT, queue_families_properties, &globals::rhi_context->queue_compute_index))
+            // Compute
+            if (get_queue_family_index(VK_QUEUE_GRAPHICS_BIT, queue_families_properties, &index))
             {
-                LOG_WARNING("Compute queue not suported, using graphics instead.");
-                globals::rhi_context->queue_compute_index = globals::rhi_context->queue_graphics_index;
+                globals::rhi_device->SetQueueIndex(RHI_Queue_Type::Compute, index);
+            }
+            else
+            {
+                LOG_ERROR("Compute queue not suported.");
+                return false;
             }
 
-            if (!get_queue_family_index(VK_QUEUE_TRANSFER_BIT, queue_families_properties, &globals::rhi_context->queue_copy_index))
+            // Copy
+            if (get_queue_family_index(VK_QUEUE_TRANSFER_BIT, queue_families_properties, &index))
             {
-                LOG_WARNING("Transfer queue not suported, using graphics instead.");
-                globals::rhi_context->queue_copy_index = globals::rhi_context->queue_graphics_index;
+                globals::rhi_device->SetQueueIndex(RHI_Queue_Type::Copy, index);
+            }
+            else
+            {
+                LOG_ERROR("Copy queue not suported.");
+                return false;
             }
 
             return true;
@@ -356,7 +372,7 @@ namespace Spartan::vulkan_utility
                     {
                         VkCommandPoolCreateInfo cmd_pool_info = {};
                         cmd_pool_info.sType                   = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-                        cmd_pool_info.queueFamilyIndex        = globals::rhi_device->Queue_Index(queue_type);
+                        cmd_pool_info.queueFamilyIndex        = globals::rhi_device->GetQueueIndex(queue_type);
                         cmd_pool_info.flags                   = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 
                         if (!vulkan_utility::error::check(vkCreateCommandPool(globals::rhi_context->device, &cmd_pool_info, nullptr, reinterpret_cast<VkCommandPool*>(&cmd_pool))))
@@ -406,13 +422,13 @@ namespace Spartan::vulkan_utility
                     return false;
                 }
 
-                if (!globals::rhi_device->Queue_Submit(queue_type, wait_flags, cmd_buffer))
+                if (!globals::rhi_device->QueueSubmit(queue_type, wait_flags, cmd_buffer))
                 {
                     LOG_ERROR("Failed to submit to queue");
                     return false;
                 }
 
-                if (!globals::rhi_device->Queue_Wait(queue_type))
+                if (!globals::rhi_device->QueueWait(queue_type))
                 {
                     LOG_ERROR("Failed to wait for queue");
                     return false;
@@ -448,7 +464,7 @@ namespace Spartan::vulkan_utility
             {
                 wait_flags = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
             }
-            else if (queue_type == RHI_Queue_Type::Transfer)
+            else if (queue_type == RHI_Queue_Type::Copy)
             {
                 wait_flags = VK_PIPELINE_STAGE_TRANSFER_BIT;
             }

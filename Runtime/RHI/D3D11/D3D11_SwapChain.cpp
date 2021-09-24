@@ -47,15 +47,16 @@ namespace Spartan
         const char* name            /*= nullptr */
     )
     {
+        // Verify device
         SP_ASSERT(rhi_device != nullptr);
         SP_ASSERT(rhi_device->GetContextRhi()->device != nullptr);
 
-        // Get window handle
-        const auto hwnd = static_cast<HWND>(window_handle);
+        // Verify window handle
+        const HWND hwnd = static_cast<HWND>(window_handle);
         SP_ASSERT(hwnd != nullptr);
         SP_ASSERT(IsWindow(hwnd));
 
-        // Validate resolution
+        // Verify resolution
         if (!rhi_device->IsValidResolution(width, height))
         {
             LOG_WARNING("%dx%d is an invalid resolution", width, height);
@@ -80,28 +81,29 @@ namespace Spartan
         }
 
         // Save parameters
-        m_format        = format;
-        m_rhi_device    = rhi_device.get();
-        m_buffer_count  = buffer_count;
-        m_windowed      = true;
-        m_width         = width;
-        m_height        = height;
-        m_flags         = d3d11_utility::swap_chain::validate_flags(flags);
+        m_format       = format;
+        m_rhi_device   = rhi_device.get();
+        m_buffer_count = buffer_count;
+        m_windowed     = true;
+        m_width        = width;
+        m_height       = height;
+        m_flags        = d3d11_utility::swap_chain::validate_flags(flags);
+        m_object_name  = name;
 
         // Create swap chain
         {
-            DXGI_SWAP_CHAIN_DESC desc   = {};
-            desc.BufferCount            = static_cast<UINT>(buffer_count);
-            desc.BufferDesc.Width       = static_cast<UINT>(width);
-            desc.BufferDesc.Height      = static_cast<UINT>(height);
-            desc.BufferDesc.Format      = d3d11_format[format];
-            desc.BufferUsage            = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-            desc.OutputWindow           = hwnd;
-            desc.SampleDesc.Count       = 1;
-            desc.SampleDesc.Quality     = 0;
-            desc.Windowed               = m_windowed ? TRUE : FALSE;
-            desc.SwapEffect             = d3d11_utility::swap_chain::get_swap_effect(m_flags);
-            desc.Flags                  = d3d11_utility::swap_chain::get_flags(m_flags);
+            DXGI_SWAP_CHAIN_DESC desc = {};
+            desc.BufferCount          = static_cast<UINT>(buffer_count);
+            desc.BufferDesc.Width     = static_cast<UINT>(width);
+            desc.BufferDesc.Height    = static_cast<UINT>(height);
+            desc.BufferDesc.Format    = d3d11_format[format];
+            desc.BufferUsage          = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+            desc.OutputWindow         = hwnd;
+            desc.SampleDesc.Count     = 1;
+            desc.SampleDesc.Quality   = 0;
+            desc.Windowed             = m_windowed ? TRUE : FALSE;
+            desc.SwapEffect           = d3d11_utility::swap_chain::get_swap_effect(m_flags);
+            desc.Flags                = d3d11_utility::swap_chain::get_flags(m_flags);
 
             if (!d3d11_utility::error_check(dxgi_factory->CreateSwapChain(m_rhi_device->GetContextRhi()->device, &desc, reinterpret_cast<IDXGISwapChain**>(&m_swap_chain_view))))
             {

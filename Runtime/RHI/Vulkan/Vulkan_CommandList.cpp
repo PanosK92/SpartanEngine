@@ -84,7 +84,7 @@ namespace Spartan
     RHI_CommandList::~RHI_CommandList()
     {
         // Wait in case it's still in use by the GPU
-        m_rhi_device->Queue_WaitAll();
+        m_rhi_device->QueueWaitAll();
 
         // Command buffer
         vulkan_utility::command_buffer::destroy(m_rhi_device->GetCmdPoolGraphics(), m_resource);
@@ -202,7 +202,7 @@ namespace Spartan
             m_processed_fence->Reset();
         }
 
-        if (!m_rhi_device->Queue_Submit(
+        if (!m_rhi_device->QueueSubmit(
             RHI_Queue_Type::Graphics,                       // queue
             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,  // wait flags
             static_cast<VkCommandBuffer>(m_resource),     // cmd buffer

@@ -89,8 +89,8 @@ namespace Spartan
         uint32_t m_image_index              = std::numeric_limits<uint32_t>::max();
         RHI_Device* m_rhi_device            = nullptr;
 
-        std::array<std::shared_ptr<RHI_Semaphore>, rhi_max_render_target_count> m_image_acquired_semaphore  = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
-        std::array<void*, rhi_max_render_target_count> m_resource_view                                      = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
-        std::array<void*, rhi_max_render_target_count> m_resource                                           = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
+        std::array<std::shared_ptr<RHI_Semaphore>, rhi_max_render_target_count> m_image_acquired_semaphore = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
+        std::array<void*, rhi_max_render_target_count> m_resource_view                                     = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
+        std::array<void*, rhi_max_render_target_count> m_resource                                          = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
     };
 }

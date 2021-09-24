@@ -50,7 +50,7 @@ namespace Spartan
         }
 
         // Wait in case it's still in use by the GPU
-        m_rhi_device->Queue_WaitAll();
+        m_rhi_device->QueueWaitAll();
 
         // Unmap
         if (m_mapped)

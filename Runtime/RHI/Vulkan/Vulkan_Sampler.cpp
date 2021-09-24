@@ -67,7 +67,7 @@ namespace Spartan
         }
 
         // Wait in case it's still in use by the GPU
-        m_rhi_device->Queue_WaitAll();
+        m_rhi_device->QueueWaitAll();
 
         vkDestroySampler(m_rhi_device->GetContextRhi()->device, reinterpret_cast<VkSampler>(m_resource), nullptr);
     }

@@ -65,48 +65,65 @@ namespace Spartan
 
     bool RHI_Device::IsValidResolution(const uint32_t width, const uint32_t height)
     {
-        return  width  > 4 && width  <= RHI_Context::texture_2d_dimension_max &&
-                height > 4 && height <= RHI_Context::texture_2d_dimension_max;
+        return width  > 4 && width  <= RHI_Device::m_texture_2d_dimension_max &&
+               height > 4 && height <= RHI_Device::m_texture_2d_dimension_max;
     }
 
-    bool RHI_Device::Queue_WaitAll() const
+    bool RHI_Device::QueueWaitAll() const
     {
-        return Queue_Wait(RHI_Queue_Type::Graphics) && Queue_Wait(RHI_Queue_Type::Transfer) && Queue_Wait(RHI_Queue_Type::Compute);
+        return QueueWait(RHI_Queue_Type::Graphics) && QueueWait(RHI_Queue_Type::Copy) && QueueWait(RHI_Queue_Type::Compute);
     }
 
-    void* RHI_Device::Queue_Get(const RHI_Queue_Type type) const
+    void* RHI_Device::GetQueue(const RHI_Queue_Type type) const
     {
         if (type == RHI_Queue_Type::Graphics)
         {
-            return m_rhi_context->queue_graphics;
+            return m_queue_graphics;
         }
-        else if (type == RHI_Queue_Type::Transfer)
+        else if (type == RHI_Queue_Type::Copy)
         {
-            return m_rhi_context->queue_copy;
+            return m_queue_copy;
         }
         else if (type == RHI_Queue_Type::Compute)
         {
-            return m_rhi_context->queue_compute;
+            return m_queue_compute;
         }
 
         return nullptr;
     }
 
-    uint32_t RHI_Device::Queue_Index(const RHI_Queue_Type type) const
+    uint32_t RHI_Device::GetQueueIndex(const RHI_Queue_Type type) const
     {
         if (type == RHI_Queue_Type::Graphics)
         {
-            return m_rhi_context->queue_graphics_index;
+            return m_queue_graphics_index;
         }
-        else if (type == RHI_Queue_Type::Transfer)
+        else if (type == RHI_Queue_Type::Copy)
         {
-            return m_rhi_context->queue_copy_index;
+            return m_queue_copy_index;
         }
         else if (type == RHI_Queue_Type::Compute)
         {
-            return m_rhi_context->queue_compute_index;
+            return m_queue_compute_index;
         }
 
         return 0;
     }
+
+    void RHI_Device::SetQueueIndex(const RHI_Queue_Type type, const uint32_t index)
+    {
+        if (type == RHI_Queue_Type::Graphics)
+        {
+            m_queue_graphics_index = index;
+        }
+        else if (type == RHI_Queue_Type::Copy)
+        {
+            m_queue_copy_index = index;
+        }
+        else if (type == RHI_Queue_Type::Compute)
+        {
+            m_queue_compute_index = index;
+        }
+    }
+
 }

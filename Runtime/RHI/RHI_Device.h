@@ -44,12 +44,13 @@ namespace Spartan
         const std::vector<PhysicalDevice>& GetPhysicalDevices() const { return m_physical_devices; }
 
         // Queue
-        bool Queue_Present(void* swapchain_view, uint32_t* image_index, RHI_Semaphore* wait_semaphore = nullptr) const;
-        bool Queue_Submit(const RHI_Queue_Type type, const uint32_t wait_flags, void* cmd_buffer, RHI_Semaphore* wait_semaphore = nullptr, RHI_Semaphore* signal_semaphore = nullptr, RHI_Fence* signal_fence = nullptr) const;
-        bool Queue_Wait(const RHI_Queue_Type type) const;
-        bool Queue_WaitAll() const;
-        void* Queue_Get(const RHI_Queue_Type type) const;
-        uint32_t Queue_Index(const RHI_Queue_Type type) const;
+        bool QueuePresent(void* swapchain_view, uint32_t* image_index, RHI_Semaphore* wait_semaphore = nullptr) const;
+        bool QueueSubmit(const RHI_Queue_Type type, const uint32_t wait_flags, void* cmd_buffer, RHI_Semaphore* wait_semaphore = nullptr, RHI_Semaphore* signal_semaphore = nullptr, RHI_Fence* signal_fence = nullptr) const;
+        bool QueueWait(const RHI_Queue_Type type) const;
+        bool QueueWaitAll() const;
+        void* GetQueue(const RHI_Queue_Type type) const;
+        uint32_t GetQueueIndex(const RHI_Queue_Type type) const;
+        void SetQueueIndex(const RHI_Queue_Type type, const uint32_t index);
 
         // Misc
         static bool IsValidResolution(const uint32_t width, const uint32_t height);
@@ -59,13 +60,26 @@ namespace Spartan
         uint32_t GetEnabledGraphicsStages() const { return m_enabled_graphics_shader_stages; }
         void*& GetCmdPoolGraphics()               { return m_cmd_pool_graphics; }
 
+        // Device limits
+        static inline uint32_t m_texture_2d_dimension_max = 16384;
+        static const uint8_t m_descriptors_max            = 255;
+
     private:
-        std::vector<PhysicalDevice> m_physical_devices;
+        // Queues
+        void* m_queue_graphics          = nullptr;
+        void* m_queue_compute           = nullptr;
+        void* m_queue_copy              = nullptr;
+        uint32_t m_queue_graphics_index = 0;
+        uint32_t m_queue_compute_index  = 0;
+        uint32_t m_queue_copy_index     = 0;
+
+        // Misc
         uint32_t m_physical_device_index          = 0;
         uint32_t m_enabled_graphics_shader_stages = 0;
         void* m_cmd_pool_graphics                 = nullptr;
         bool m_initialized                        = false;
         mutable std::mutex m_queue_mutex;
+        std::vector<PhysicalDevice> m_physical_devices;
         std::shared_ptr<RHI_Context> m_rhi_context;
     };
 }

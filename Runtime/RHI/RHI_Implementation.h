@@ -157,6 +157,60 @@ static const D3D11_BLEND_OP d3d11_blend_operation[] =
 #include <d3d12.h>
 #include <dxgi1_6.h>
 #pragma warning(pop)
+
+static const D3D12_CULL_MODE d3d12_cull_mode[] =
+{
+    D3D12_CULL_MODE_NONE,
+    D3D12_CULL_MODE_FRONT,
+    D3D12_CULL_MODE_BACK
+};
+
+static const D3D12_FILL_MODE d3d12_polygon_mode[] =
+{
+    D3D12_FILL_MODE_SOLID,
+    D3D12_FILL_MODE_WIREFRAME
+};
+
+static const D3D12_PRIMITIVE_TOPOLOGY d3d12_primitive_topology[] =
+{
+    D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST,
+    D3D_PRIMITIVE_TOPOLOGY_LINELIST
+};
+
+static const DXGI_FORMAT d3d12_format[] =
+{
+    // R
+    DXGI_FORMAT_R8_UNORM,
+    DXGI_FORMAT_R8_UINT,
+    DXGI_FORMAT_R16_UNORM,
+    DXGI_FORMAT_R16_UINT,
+    DXGI_FORMAT_R16_FLOAT,
+    DXGI_FORMAT_R32_UINT,
+    DXGI_FORMAT_R32_FLOAT,
+    // RG
+    DXGI_FORMAT_R8G8_UNORM,
+    DXGI_FORMAT_R16G16_FLOAT,
+    DXGI_FORMAT_R32G32_FLOAT,
+    // RGB
+    DXGI_FORMAT_R11G11B10_FLOAT,
+    DXGI_FORMAT_R32G32B32_FLOAT,
+    // RGBA
+    DXGI_FORMAT_R8G8B8A8_UNORM,
+    DXGI_FORMAT_R10G10B10A2_UNORM,
+    DXGI_FORMAT_R16G16B16A16_UNORM,
+    DXGI_FORMAT_R16G16B16A16_SNORM,
+    DXGI_FORMAT_R16G16B16A16_FLOAT,
+    DXGI_FORMAT_R32G32B32A32_FLOAT,
+    // Depth
+    DXGI_FORMAT_D32_FLOAT,
+    DXGI_FORMAT_D32_FLOAT_S8X24_UINT,
+    // Compressed
+    DXGI_FORMAT_BC7_UNORM,
+    DXGI_FORMAT_UNKNOWN,
+
+    DXGI_FORMAT_UNKNOWN
+};
+
 #endif
 
 // Definition - Vulkan
@@ -394,18 +448,6 @@ namespace Spartan
             bool markers  = false;
             bool profiler = true;
         #endif
-
-        // Device limits
-        static inline uint32_t texture_2d_dimension_max = 16384;
-        static const uint8_t descriptors_max            = 255;
-
-        // Queues
-        void* queue_graphics          = nullptr;
-        void* queue_compute           = nullptr;
-        void* queue_copy              = nullptr;
-        uint32_t queue_graphics_index = 0;
-        uint32_t queue_compute_index  = 0;
-        uint32_t queue_copy_index     = 0;
     };
 }
 
