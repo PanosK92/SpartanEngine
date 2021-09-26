@@ -35,8 +35,8 @@ namespace Spartan
         RHI_RasterizerState() = default;
         RHI_RasterizerState(
             const std::shared_ptr<RHI_Device>& rhi_device,
-            const RHI_Cull_Mode cull_mode,
-            const RHI_Fill_Mode fill_mode,
+            const RHI_CullMode cull_mode,
+            const RHI_PolygonMode fill_mode,
             const bool depth_clip_enabled,
             const bool scissor_enabled,
             const bool antialised_line_enabled,
@@ -47,8 +47,8 @@ namespace Spartan
         );
         ~RHI_RasterizerState();
 
-        RHI_Cull_Mode GetCullMode()     const { return m_cull_mode; }
-        RHI_Fill_Mode GetFillMode()     const { return m_fill_mode; }
+        RHI_CullMode GetCullMode()     const { return m_cull_mode; }
+        RHI_PolygonMode GetPolygonMode()  const { return m_polygon_mode; }
         bool GetDepthClipEnabled()      const { return m_depth_clip_enabled; }
         bool GetScissorEnabled()        const { return m_scissor_enabled; }
         bool GetAntialisedLineEnabled() const { return m_antialised_line_enabled; }
@@ -63,7 +63,7 @@ namespace Spartan
         {
             return
                 m_cull_mode                 == rhs.GetCullMode()                &&
-                m_fill_mode                 == rhs.GetFillMode()                &&
+                m_polygon_mode                 == rhs.GetPolygonMode()                &&
                 m_depth_clip_enabled        == rhs.GetDepthClipEnabled()        &&
                 m_scissor_enabled           == rhs.GetScissorEnabled()          &&
                 m_antialised_line_enabled   == rhs.GetAntialisedLineEnabled()   &&
@@ -74,8 +74,8 @@ namespace Spartan
 
     private:
         // Properties
-        RHI_Cull_Mode m_cull_mode       = RHI_Cull_Mode::Undefined;
-        RHI_Fill_Mode m_fill_mode       = RHI_Fill_Mode::Undefined;
+        RHI_CullMode m_cull_mode       = RHI_CullMode::Undefined;
+        RHI_PolygonMode m_polygon_mode       = RHI_PolygonMode::Undefined;
         bool m_depth_clip_enabled       = false;
         bool m_scissor_enabled          = false;
         bool m_antialised_line_enabled  = false;

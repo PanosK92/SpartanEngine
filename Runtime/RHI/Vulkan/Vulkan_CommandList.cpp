@@ -975,14 +975,14 @@ namespace Spartan
             // Bind descriptor set
             vkCmdBindDescriptorSets
             (
-                static_cast<VkCommandBuffer>(m_resource),                     // commandBuffer
-                pipeline_bind_point,                                            // pipelineBindPoint
-                static_cast<VkPipelineLayout>(m_pipeline->GetPipelineLayout()), // layout
-                0,                                                              // firstSet
-                static_cast<uint32_t>(descriptor_sets.size()),                  // descriptorSetCount
-                reinterpret_cast<VkDescriptorSet*>(descriptor_sets.data()),     // pDescriptorSets
-                dynamic_offset_count,                                           // dynamicOffsetCount
-                !dynamic_offsets.empty() ? dynamic_offsets.data() : nullptr     // pDynamicOffsets
+                static_cast<VkCommandBuffer>(m_resource),                                // commandBuffer
+                pipeline_bind_point,                                                     // pipelineBindPoint
+                static_cast<VkPipelineLayout>(m_pipeline->GetResource_PipelineLayout()), // layout
+                0,                                                                       // firstSet
+                static_cast<uint32_t>(descriptor_sets.size()),                           // descriptorSetCount
+                reinterpret_cast<VkDescriptorSet*>(descriptor_sets.data()),              // pDescriptorSets
+                dynamic_offset_count,                                                    // dynamicOffsetCount
+                !dynamic_offsets.empty() ? dynamic_offsets.data() : nullptr              // pDynamicOffsets
             );
 
             m_profiler->m_rhi_bindings_descriptor_set++;
@@ -993,7 +993,7 @@ namespace Spartan
 
     bool RHI_CommandList::Deferred_BindPipeline()
     {
-        if (VkPipeline vk_pipeline = static_cast<VkPipeline>(m_pipeline->GetPipeline()))
+        if (VkPipeline vk_pipeline = static_cast<VkPipeline>(m_pipeline->GetResource_Pipeline()))
         {
             // Bind point
             VkPipelineBindPoint pipeline_bind_point = m_pipeline_state->IsCompute() ? VK_PIPELINE_BIND_POINT_COMPUTE : VK_PIPELINE_BIND_POINT_GRAPHICS;

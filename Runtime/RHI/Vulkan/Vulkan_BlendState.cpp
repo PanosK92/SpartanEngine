@@ -46,14 +46,14 @@ namespace Spartan
     )
     {
         // Save parameters
-        m_blend_enabled          = blend_enabled;
-        m_source_blend          = source_blend;
-        m_dest_blend            = dest_blend;
-        m_blend_op              = blend_op;
-        m_source_blend_alpha    = source_blend_alpha;
-        m_dest_blend_alpha      = dest_blend_alpha;
-        m_blend_op_alpha        = blend_op_alpha;
-        m_blend_factor          = blend_factor;
+        m_blend_enabled      = blend_enabled;
+        m_source_blend       = source_blend;
+        m_dest_blend         = dest_blend;
+        m_blend_op           = blend_op;
+        m_source_blend_alpha = source_blend_alpha;
+        m_dest_blend_alpha   = dest_blend_alpha;
+        m_blend_op_alpha     = blend_op_alpha;
+        m_blend_factor       = blend_factor;
     }
 
     RHI_BlendState::~RHI_BlendState()

@@ -31,6 +31,13 @@ using namespace std;
 
 namespace Spartan
 {
-    RHI_InputLayout::~RHI_InputLayout() {}
-    bool RHI_InputLayout::_CreateResource(void* vertex_shader_blob) { return true; }
+    RHI_InputLayout::~RHI_InputLayout()
+    {
+
+    }
+
+    bool RHI_InputLayout::_CreateResource(void* vertex_shader_blob)
+    {
+        return true;
+    }
 }

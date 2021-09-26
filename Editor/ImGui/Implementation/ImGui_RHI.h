@@ -93,8 +93,8 @@ namespace ImGui::RHI
             g_rasterizer_state = make_unique<RHI_RasterizerState>
             (
                 g_rhi_device,
-                RHI_Cull_Mode::None,
-                RHI_Fill_Mode::Solid,
+                RHI_CullMode::None,
+                RHI_PolygonMode::Solid,
                 true,    // depth clip
                 true,    // scissor
                 false,   // multi-sample

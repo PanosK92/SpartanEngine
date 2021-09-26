@@ -70,7 +70,6 @@ namespace Spartan
         desc.RenderTarget[0].DestBlendAlpha        = d3d11_blend_factor[static_cast<uint32_t>(dest_blend_alpha)];
         desc.RenderTarget[0].BlendOpAlpha          = d3d11_blend_operation[static_cast<uint32_t>(blend_op_alpha)];
         desc.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
-        desc.RenderTarget[0].BlendEnable           = blend_enabled;
 
         // Create
         m_initialized = d3d11_utility::error_check(rhi_device->GetContextRhi()->device->CreateBlendState(&desc, reinterpret_cast<ID3D11BlendState**>(&m_resource)));

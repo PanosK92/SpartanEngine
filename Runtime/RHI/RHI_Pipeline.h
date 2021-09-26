@@ -35,16 +35,16 @@ namespace Spartan
         RHI_Pipeline(const RHI_Device* rhi_device, RHI_PipelineState& pipeline_state, RHI_DescriptorSetLayout* descriptor_set_layout);
         ~RHI_Pipeline();
 
-        void* GetPipeline()                     const { return m_pipeline; }
-        void* GetPipelineLayout()               const { return m_pipeline_layout; }
-        RHI_PipelineState* GetPipelineState()         { return &m_state; }
+        void* GetResource_Pipeline()          const { return m_resource_pipeline; }
+        void* GetResource_PipelineLayout()    const { return m_resource_pipeline_layout; }
+        RHI_PipelineState* GetPipelineState()       { return &m_state; }
 
     private:
         RHI_PipelineState m_state;
  
         // API
-        void* m_pipeline        = nullptr;
-        void* m_pipeline_layout = nullptr;
+        void* m_resource_pipeline        = nullptr;
+        void* m_resource_pipeline_layout = nullptr;
 
         // Dependencies
         const RHI_Device* m_rhi_device;
