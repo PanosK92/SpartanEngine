@@ -32,7 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <fstream>
 #include <sstream>
 #include <limits>
-#include <assert.h>
+#include <cassert>
 #include <cstdint>
 #include <array>
 #include <atomic>
@@ -82,7 +82,7 @@ SP_WARNINGS_OFF
 // FreeType
 #include "freetype/ftstroke.h"
 
-//pugixml
+// pugixml
 #include "pugixml.hpp"
 
 // Mono

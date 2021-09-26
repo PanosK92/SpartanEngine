@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =====================
+//= INCLUDES ========================
 #include "Spartan.h"
 #include "../RHI_Implementation.h"
 #include "../RHI_Pipeline.h"
@@ -27,7 +27,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Shader.h"
 #include "../RHI_BlendState.h"
 #include "../RHI_DepthStencilState.h"
-//================================
+#include "../RHI_InputLayout.h"
+//===================================
 
 //= NAMESPACES =====
 using namespace std;
@@ -42,7 +43,15 @@ namespace Spartan
 
         if (pipeline_state.IsCompute())
         {
+            // Pipeline description
+            D3D12_COMPUTE_PIPELINE_STATE_DESC desc  = {};
+            //desc.pRootSignature                     = 0;
+            desc.CS                                 = { m_state.shader_compute->GetResource(), m_state.shader_compute->GetObjectSizeCpu() };
+            //desc.NodeMask                           = 0;
+            //desc.CachedPSO                          = 0;
+            //desc.Flags                              = 0;
 
+            d3d12_utility::error::check(m_rhi_device->GetContextRhi()->device->CreateComputePipelineState(&desc, IID_PPV_ARGS(reinterpret_cast<ID3D12PipelineState**>(&m_resource_pipeline))));
         }
         else if (pipeline_state.IsGraphics() || pipeline_state.IsDummy())
         {
@@ -87,12 +96,40 @@ namespace Spartan
             desc_depth_stencil_state.FrontFace.StencilFunc        = d3d12_comparison_function[static_cast<uint32_t>(m_state.depth_stencil_state->GetStencilComparisonFunction())];
             desc_depth_stencil_state.BackFace                     = desc_depth_stencil_state.FrontFace;
 
+            // Input layout
+            D3D12_INPUT_LAYOUT_DESC desc_input_layout = {};
+            vector<D3D12_INPUT_ELEMENT_DESC> vertex_attributes;
+            if (m_state.shader_vertex)
+            {
+                if (RHI_InputLayout* input_layout = m_state.shader_vertex->GetInputLayout().get())
+                {
+                    vertex_attributes.reserve(input_layout->GetAttributeDescriptions().size());
+
+                    for (const VertexAttribute& attribute : input_layout->GetAttributeDescriptions())
+                    {
+                        vertex_attributes.push_back
+                        ({
+                            attribute.name.c_str(),                     // SemanticName
+                            0,                                          // SemanticIndex
+                            d3d12_format[attribute.format],             // Format
+                            0,                                          // InputSlot
+                            attribute.offset,                           // AlignedByteOffset
+                            D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, // InputSlotClass
+                            0                                           // InstanceDataStepRate
+                        });
+                    }
+                }
+
+                desc_input_layout.pInputElementDescs = vertex_attributes.data();
+                desc_input_layout.NumElements        = static_cast<uint32_t>(vertex_attributes.size());
+            }
+
             // Pipeline description
             D3D12_GRAPHICS_PIPELINE_STATE_DESC desc = {};
-            //desc.InputLayout                        = { inputElementDescs, _countof(inputElementDescs) };
+            desc.InputLayout                        = desc_input_layout;
             //desc.pRootSignature                     = m_rootSignature.Get();
-            //desc.VS                                 = { m_state.shader_vertex->GetResource(), m_state.shader_vertex->GetBufferSize() };
-            //desc.PS                                 = { m_state.shader_pixel->GetResource(),  m_state.shader_pixel->GetBufferSize() };
+            desc.VS                                 = { m_state.shader_vertex->GetResource(), m_state.shader_vertex->GetObjectSizeCpu() };
+            desc.PS                                 = { m_state.shader_pixel->GetResource(),  m_state.shader_pixel->GetObjectSizeCpu() };
             desc.RasterizerState                    = desc_rasterizer;
             desc.BlendState                         = desc_blend_state;
             desc.DepthStencilState                  = desc_depth_stencil_state;
@@ -102,7 +139,7 @@ namespace Spartan
             desc.RTVFormats[0]                      = DXGI_FORMAT_R8G8B8A8_UNORM;
             desc.SampleDesc.Count                   = 1;
 
-            //d3d12_utility::error::check(m_rhi_device->GetContextRhi()->device->CreateGraphicsPipelineState(&desc, IID_PPV_ARGS(&m_resource_pipeline)));
+            d3d12_utility::error::check(m_rhi_device->GetContextRhi()->device->CreateGraphicsPipelineState(&desc, IID_PPV_ARGS(reinterpret_cast<ID3D12PipelineState**>(&m_resource_pipeline))));
         }
     }
     

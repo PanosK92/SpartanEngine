@@ -41,9 +41,19 @@ namespace Spartan
             // Wait in case it's still in use by the GPU
             m_rhi_device->QueueWaitAll();
 
-            //vkDestroyShaderModule(m_rhi_device->GetContextRhi()->device, static_cast<VkShaderModule>(m_resource), nullptr);
-            m_resource = nullptr;
+            d3d12_utility::release<IDxcResult>(m_resource);
         }
+    }
+
+    void* RHI_Shader::GetResource() const
+    {
+        IDxcResult* dxc_result = static_cast<IDxcResult*>(m_resource);
+
+        // Get compiled shader buffer
+        IDxcBlob* shader_buffer = nullptr;
+        dxc_result->GetResult(&shader_buffer);
+
+        return shader_buffer->GetBufferPointer();
     }
 
     void* RHI_Shader::Compile2()
@@ -77,8 +87,12 @@ namespace Spartan
         }
 
         // Compile
-        if (CComPtr<IDxcBlob> shader_buffer = DirecXShaderCompiler::Get().Compile(m_source, arguments))
+        if (IDxcResult* dxc_result = DirecXShaderCompiler::Get().Compile(m_source, arguments))
         {
+            // Get compiled shader buffer
+            IDxcBlob* shader_buffer = nullptr;
+            dxc_result->GetResult(&shader_buffer);
+
             // Reflect shader resources (so that descriptor sets can be created later)
             Reflect
             (
@@ -97,7 +111,9 @@ namespace Spartan
                 }
             }
 
-            return static_cast<void*>(shader_buffer);
+            m_object_size_cpu = shader_buffer->GetBufferSize();
+
+            return static_cast<void*>(dxc_result);
         }
 
         return nullptr;

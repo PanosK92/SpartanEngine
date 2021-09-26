@@ -125,9 +125,10 @@ namespace Spartan
             return true;
         }
 
-        RHI_Vertex_Type GetVertexType()        const { return m_vertex_type; }
-        const auto& GetAttributeDescriptions() const { return m_vertex_attributes; }
-        void* GetResource()                    const { return m_resource; }
+        RHI_Vertex_Type GetVertexType()                                const { return m_vertex_type; }
+        const std::vector<VertexAttribute>& GetAttributeDescriptions() const { return m_vertex_attributes; }
+        uint32_t GetAttributeCount()                                   const { return static_cast<uint32_t>(m_vertex_attributes.size()); }
+        void* GetResource()                                            const { return m_resource; }
 
         bool operator==(const RHI_InputLayout& rhs) const { return m_vertex_type == rhs.GetVertexType(); }
 

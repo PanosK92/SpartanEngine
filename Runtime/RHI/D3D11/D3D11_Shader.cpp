@@ -38,6 +38,11 @@ namespace Spartan
         d3d11_utility::release<ID3D11VertexShader>(m_resource);
     }
 
+    void* RHI_Shader::GetResource() const
+    {
+        return m_resource;
+    }
+
     void* RHI_Shader::Compile2()
     {
         SP_ASSERT(m_rhi_device != nullptr);

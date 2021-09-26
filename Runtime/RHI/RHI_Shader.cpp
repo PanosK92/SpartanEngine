@@ -188,7 +188,7 @@ namespace Spartan
         }
     }
 
-    void RHI_Shader::LoadSource(const std::string& file_path)
+	void RHI_Shader::LoadSource(const std::string& file_path)
     {
         // Get name and file path
         m_object_name = FileSystem::GetFileNameFromFilePath(file_path);

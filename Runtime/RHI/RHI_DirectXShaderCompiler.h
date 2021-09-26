@@ -250,7 +250,7 @@ namespace Spartan
             DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&m_compiler));;
         }
 
-        CComPtr<IDxcBlob> Compile(const std::string& source, std::vector<std::string>& arguments)
+        IDxcResult* Compile(const std::string& source, std::vector<std::string>& arguments)
         {
             // Get shader source
             DxcBuffer dxc_buffer;
@@ -284,33 +284,29 @@ namespace Spartan
             }
 
             // Compile
-            CComPtr<IDxcResult> dxc_result = nullptr;
-            {
-                m_compiler->Compile
-                (
-                    &dxc_buffer,                                     // Source text to compile
-                    arguments_lpcwstr.data(),                        // Array of pointers to arguments
-                    static_cast<uint32_t>(arguments_lpcwstr.size()), // Number of arguments
-                    nullptr,                                         // don't use an include handler
-                    IID_PPV_ARGS(&dxc_result)                        // IDxcResult: status, buffer, and errors
-                );
+            IDxcResult* dxc_result = nullptr;
+            m_compiler->Compile
+            (
+                &dxc_buffer,                                     // Source text to compile
+                arguments_lpcwstr.data(),                        // Array of pointers to arguments
+                static_cast<uint32_t>(arguments_lpcwstr.size()), // Number of arguments
+                nullptr,                                         // don't use an include handler
+                IID_PPV_ARGS(&dxc_result)                        // IDxcResult: status, buffer, and errors
+            );
 
-                if (!error_check(dxc_result))
+            // Check for errors
+            if (!error_check(dxc_result))
+            {
+                LOG_ERROR("Failed to compile");
+
+                if (dxc_result)
                 {
-                    LOG_ERROR("Failed to compile");
-                    return nullptr;
+                    dxc_result->Release();
+                    dxc_result = nullptr;
                 }
             }
 
-            // Get compiled shader buffer
-            CComPtr<IDxcBlob> blob_compiled = nullptr;
-            if (FAILED(dxc_result->GetResult(&blob_compiled)))
-            {
-                LOG_ERROR("Failed to get compiled shader buffer");
-                return nullptr;
-            }
-
-            return blob_compiled;
+            return dxc_result;
         }
 
         static DirecXShaderCompiler& Get()
