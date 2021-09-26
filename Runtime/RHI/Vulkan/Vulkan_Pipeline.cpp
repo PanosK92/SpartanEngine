@@ -38,8 +38,8 @@ namespace Spartan
 {
     RHI_Pipeline::RHI_Pipeline(const RHI_Device* rhi_device, RHI_PipelineState& pipeline_state, RHI_DescriptorSetLayout* descriptor_set_layout)
     {
-        m_rhi_device    = rhi_device;
-        m_state         = pipeline_state;
+        m_rhi_device = rhi_device;
+        m_state      = pipeline_state;
 
         // Pipeline layout
         {
@@ -59,11 +59,11 @@ namespace Spartan
             pipeline_layout_info.pSetLayouts                = reinterpret_cast<VkDescriptorSetLayout*>(layouts.data());
 
             // Create
-            if (!vulkan_utility::error::check(vkCreatePipelineLayout(m_rhi_device->GetContextRhi()->device, &pipeline_layout_info, nullptr, reinterpret_cast<VkPipelineLayout*>(&m_pipeline_layout))))
+            if (!vulkan_utility::error::check(vkCreatePipelineLayout(m_rhi_device->GetContextRhi()->device, &pipeline_layout_info, nullptr, reinterpret_cast<VkPipelineLayout*>(&m_resource_pipeline_layout))))
                 return;
 
             // Name
-            vulkan_utility::debug::set_name(static_cast<VkPipelineLayout>(m_pipeline_layout), m_state.pass_name);
+            vulkan_utility::debug::set_name(static_cast<VkPipelineLayout>(m_resource_pipeline_layout), m_state.pass_name);
         }
 
         if (pipeline_state.IsCompute())
@@ -71,10 +71,10 @@ namespace Spartan
             // Shader
             VkPipelineShaderStageCreateInfo shader_stage_info = {};
             {
-                shader_stage_info.sType     = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-                shader_stage_info.stage     = VK_SHADER_STAGE_COMPUTE_BIT;
-                shader_stage_info.module    = static_cast<VkShaderModule>(m_state.shader_compute->GetResource());
-                shader_stage_info.pName     = m_state.shader_compute->GetEntryPoint();
+                shader_stage_info.sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+                shader_stage_info.stage  = VK_SHADER_STAGE_COMPUTE_BIT;
+                shader_stage_info.module = static_cast<VkShaderModule>(m_state.shader_compute->GetResource());
+                shader_stage_info.pName  = m_state.shader_compute->GetEntryPoint();
 
                 // Validate shader stage
                 SP_ASSERT(shader_stage_info.module != nullptr);
@@ -83,13 +83,13 @@ namespace Spartan
 
             // Pipeline
             {
-                VkComputePipelineCreateInfo pipeline_info   = {};
-                pipeline_info.sType                         = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
-                pipeline_info.layout                        = static_cast<VkPipelineLayout>(m_pipeline_layout);
-                pipeline_info.stage                         = shader_stage_info;
+                VkComputePipelineCreateInfo pipeline_info = {};
+                pipeline_info.sType                       = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+                pipeline_info.layout                      = static_cast<VkPipelineLayout>(m_resource_pipeline_layout);
+                pipeline_info.stage                       = shader_stage_info;
 
                 // Pipeline creation
-                VkPipeline* pipeline = reinterpret_cast<VkPipeline*>(&m_pipeline);
+                VkPipeline* pipeline = reinterpret_cast<VkPipeline*>(&m_resource_pipeline);
                 if (!vulkan_utility::error::check(vkCreateComputePipelines(m_rhi_device->GetContextRhi()->device, nullptr, 1, &pipeline_info, nullptr, pipeline)))
                     return;
 
@@ -106,10 +106,10 @@ namespace Spartan
 
             // Viewport & Scissor
             vector<VkDynamicState> dynamic_states;
-            VkPipelineDynamicStateCreateInfo dynamic_state      = {};
-            VkViewport vkViewport                               = {};
-            VkRect2D scissor                                    = {};
-            VkPipelineViewportStateCreateInfo viewport_state    = {};
+            VkPipelineDynamicStateCreateInfo dynamic_state   = {};
+            VkViewport vkViewport                            = {};
+            VkRect2D scissor                                 = {};
+            VkPipelineViewportStateCreateInfo viewport_state = {};
             {
                 // If no viewport has been provided, assume dynamic
                 if (!m_state.viewport.IsDefined())
@@ -140,23 +140,23 @@ namespace Spartan
                 // Scissor
                 if (!m_state.scissor.IsDefined())
                 {
-                    scissor.offset          = { 0, 0 };
-                    scissor.extent.width    = static_cast<uint32_t>(vkViewport.width);
-                    scissor.extent.height   = static_cast<uint32_t>(vkViewport.height);
+                    scissor.offset        = { 0, 0 };
+                    scissor.extent.width  = static_cast<uint32_t>(vkViewport.width);
+                    scissor.extent.height = static_cast<uint32_t>(vkViewport.height);
                 }
                 else
                 {
-                    scissor.offset          = { static_cast<int32_t>(m_state.scissor.left), static_cast<int32_t>(m_state.scissor.top) };
-                    scissor.extent.width    = static_cast<uint32_t>(m_state.scissor.Width());
-                    scissor.extent.height   = static_cast<uint32_t>(m_state.scissor.Height());
+                    scissor.offset        = { static_cast<int32_t>(m_state.scissor.left), static_cast<int32_t>(m_state.scissor.top) };
+                    scissor.extent.width  = static_cast<uint32_t>(m_state.scissor.Width());
+                    scissor.extent.height = static_cast<uint32_t>(m_state.scissor.Height());
                 }
             
                 // Viewport state
-                viewport_state.sType            = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-                viewport_state.viewportCount    = 1;
-                viewport_state.pViewports       = &vkViewport;
-                viewport_state.scissorCount     = 1;
-                viewport_state.pScissors        = &scissor;
+                viewport_state.sType         = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+                viewport_state.viewportCount = 1;
+                viewport_state.pViewports    = &vkViewport;
+                viewport_state.scissorCount  = 1;
+                viewport_state.pScissors     = &scissor;
             }
             
             // Shader stages
@@ -165,11 +165,11 @@ namespace Spartan
             // Vertex shader
             if (m_state.shader_vertex)
             {
-                VkPipelineShaderStageCreateInfo shader_stage_info_vertex    = {};
-                shader_stage_info_vertex.sType                              = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-                shader_stage_info_vertex.stage                              = VK_SHADER_STAGE_VERTEX_BIT;
-                shader_stage_info_vertex.module                             = static_cast<VkShaderModule>(m_state.shader_vertex->GetResource());
-                shader_stage_info_vertex.pName                              = m_state.shader_vertex->GetEntryPoint();
+                VkPipelineShaderStageCreateInfo shader_stage_info_vertex = {};
+                shader_stage_info_vertex.sType                           = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+                shader_stage_info_vertex.stage                           = VK_SHADER_STAGE_VERTEX_BIT;
+                shader_stage_info_vertex.module                          = static_cast<VkShaderModule>(m_state.shader_vertex->GetResource());
+                shader_stage_info_vertex.pName                           = m_state.shader_vertex->GetEntryPoint();
 
                 // Validate shader stage
                 SP_ASSERT(shader_stage_info_vertex.module != nullptr);
@@ -228,11 +228,11 @@ namespace Spartan
             // Vertex input state
             VkPipelineVertexInputStateCreateInfo vertex_input_state = {};
             {
-                vertex_input_state.sType                            = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-                vertex_input_state.vertexBindingDescriptionCount    = 1;
-                vertex_input_state.pVertexBindingDescriptions       = &binding_description;
-                vertex_input_state.vertexAttributeDescriptionCount  = static_cast<uint32_t>(vertex_attribute_descs.size());
-                vertex_input_state.pVertexAttributeDescriptions     = vertex_attribute_descs.data();
+                vertex_input_state.sType                           = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+                vertex_input_state.vertexBindingDescriptionCount   = 1;
+                vertex_input_state.pVertexBindingDescriptions      = &binding_description;
+                vertex_input_state.vertexAttributeDescriptionCount = static_cast<uint32_t>(vertex_attribute_descs.size());
+                vertex_input_state.pVertexAttributeDescriptions    = vertex_attribute_descs.data();
             }
             
             // Input assembly
@@ -256,7 +256,7 @@ namespace Spartan
                 rasterizer_state.pNext                      = &rasterizer_state_depth_clip;
                 rasterizer_state.depthClampEnable           = VK_FALSE;
                 rasterizer_state.rasterizerDiscardEnable    = VK_FALSE;
-                rasterizer_state.polygonMode                = vulkan_polygon_mode[static_cast<uint32_t>(m_state.rasterizer_state->GetFillMode())];
+                rasterizer_state.polygonMode                = vulkan_polygon_mode[static_cast<uint32_t>(m_state.rasterizer_state->GetPolygonMode())];
                 rasterizer_state.lineWidth                  = m_rhi_device->GetContextRhi()->device_features.features.wideLines ? m_state.rasterizer_state->GetLineWidth() : 1.0f;
                 rasterizer_state.cullMode                   = vulkan_cull_mode[static_cast<uint32_t>(m_state.rasterizer_state->GetCullMode())];
                 rasterizer_state.frontFace                  = VK_FRONT_FACE_CLOCKWISE;
@@ -280,15 +280,15 @@ namespace Spartan
                 // Blend state attachments
                 {
                     // Same blend state for all
-                    VkPipelineColorBlendAttachmentState blend_state_attachment  = {};
-                    blend_state_attachment.colorWriteMask                       = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-                    blend_state_attachment.blendEnable                          = m_state.blend_state->GetBlendEnabled() ? VK_TRUE : VK_FALSE;
-                    blend_state_attachment.srcColorBlendFactor                  = vulkan_blend_factor[static_cast<uint32_t>(m_state.blend_state->GetSourceBlend())];
-                    blend_state_attachment.dstColorBlendFactor                  = vulkan_blend_factor[static_cast<uint32_t>(m_state.blend_state->GetDestBlend())];
-                    blend_state_attachment.colorBlendOp                         = vulkan_blend_operation[static_cast<uint32_t>(m_state.blend_state->GetBlendOp())];
-                    blend_state_attachment.srcAlphaBlendFactor                  = vulkan_blend_factor[static_cast<uint32_t>(m_state.blend_state->GetSourceBlendAlpha())];
-                    blend_state_attachment.dstAlphaBlendFactor                  = vulkan_blend_factor[static_cast<uint32_t>(m_state.blend_state->GetDestBlendAlpha())];
-                    blend_state_attachment.alphaBlendOp                         = vulkan_blend_operation[static_cast<uint32_t>(m_state.blend_state->GetBlendOpAlpha())];
+                    VkPipelineColorBlendAttachmentState blend_state_attachment = {};
+                    blend_state_attachment.colorWriteMask                      = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+                    blend_state_attachment.blendEnable                         = m_state.blend_state->GetBlendEnabled() ? VK_TRUE : VK_FALSE;
+                    blend_state_attachment.srcColorBlendFactor                 = vulkan_blend_factor[static_cast<uint32_t>(m_state.blend_state->GetSourceBlend())];
+                    blend_state_attachment.dstColorBlendFactor                 = vulkan_blend_factor[static_cast<uint32_t>(m_state.blend_state->GetDestBlend())];
+                    blend_state_attachment.colorBlendOp                        = vulkan_blend_operation[static_cast<uint32_t>(m_state.blend_state->GetBlendOp())];
+                    blend_state_attachment.srcAlphaBlendFactor                 = vulkan_blend_factor[static_cast<uint32_t>(m_state.blend_state->GetSourceBlendAlpha())];
+                    blend_state_attachment.dstAlphaBlendFactor                 = vulkan_blend_factor[static_cast<uint32_t>(m_state.blend_state->GetDestBlendAlpha())];
+                    blend_state_attachment.alphaBlendOp                        = vulkan_blend_operation[static_cast<uint32_t>(m_state.blend_state->GetBlendOpAlpha())];
 
                     // Swapchain
                     if (m_state.render_target_swapchain)
@@ -320,41 +320,41 @@ namespace Spartan
             // Depth-stencil state
             VkPipelineDepthStencilStateCreateInfo depth_stencil_state = {};
             {
-                depth_stencil_state.sType               = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-                depth_stencil_state.depthTestEnable     = m_state.depth_stencil_state->GetDepthTestEnabled();
-                depth_stencil_state.depthWriteEnable    = m_state.depth_stencil_state->GetDepthWriteEnabled();
-                depth_stencil_state.depthCompareOp      = vulkan_compare_operator[static_cast<uint32_t>(m_state.depth_stencil_state->GetDepthComparisonFunction())];
-                depth_stencil_state.stencilTestEnable   = m_state.depth_stencil_state->GetStencilTestEnabled();
-                depth_stencil_state.front.compareOp     = vulkan_compare_operator[static_cast<uint32_t>(m_state.depth_stencil_state->GetStencilComparisonFunction())];
-                depth_stencil_state.front.failOp        = vulkan_stencil_operation[static_cast<uint32_t>(m_state.depth_stencil_state->GetStencilFailOperation())];
-                depth_stencil_state.front.depthFailOp   = vulkan_stencil_operation[static_cast<uint32_t>(m_state.depth_stencil_state->GetStencilDepthFailOperation())];
-                depth_stencil_state.front.passOp        = vulkan_stencil_operation[static_cast<uint32_t>(m_state.depth_stencil_state->GetStencilPassOperation())];
-                depth_stencil_state.front.compareMask   = m_state.depth_stencil_state->GetStencilReadMask();
-                depth_stencil_state.front.writeMask     = m_state.depth_stencil_state->GetStencilWriteMask();
-                depth_stencil_state.front.reference     = 1;
-                depth_stencil_state.back                = depth_stencil_state.front;
+                depth_stencil_state.sType             = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+                depth_stencil_state.depthTestEnable   = m_state.depth_stencil_state->GetDepthTestEnabled();
+                depth_stencil_state.depthWriteEnable  = m_state.depth_stencil_state->GetDepthWriteEnabled();
+                depth_stencil_state.depthCompareOp    = vulkan_compare_operator[static_cast<uint32_t>(m_state.depth_stencil_state->GetDepthComparisonFunction())];
+                depth_stencil_state.stencilTestEnable = m_state.depth_stencil_state->GetStencilTestEnabled();
+                depth_stencil_state.front.compareOp   = vulkan_compare_operator[static_cast<uint32_t>(m_state.depth_stencil_state->GetStencilComparisonFunction())];
+                depth_stencil_state.front.failOp      = vulkan_stencil_operation[static_cast<uint32_t>(m_state.depth_stencil_state->GetStencilFailOperation())];
+                depth_stencil_state.front.depthFailOp = vulkan_stencil_operation[static_cast<uint32_t>(m_state.depth_stencil_state->GetStencilDepthFailOperation())];
+                depth_stencil_state.front.passOp      = vulkan_stencil_operation[static_cast<uint32_t>(m_state.depth_stencil_state->GetStencilPassOperation())];
+                depth_stencil_state.front.compareMask = m_state.depth_stencil_state->GetStencilReadMask();
+                depth_stencil_state.front.writeMask   = m_state.depth_stencil_state->GetStencilWriteMask();
+                depth_stencil_state.front.reference   = 1;
+                depth_stencil_state.back              = depth_stencil_state.front;
             }
 
             // Pipeline
             VkGraphicsPipelineCreateInfo pipeline_info = {};
             {
                 // Describe
-                pipeline_info.sType                 = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-                pipeline_info.stageCount            = static_cast<uint32_t>(shader_stages.size());
-                pipeline_info.pStages               = shader_stages.data();
-                pipeline_info.pVertexInputState     = &vertex_input_state;
-                pipeline_info.pInputAssemblyState   = &input_assembly_state;
-                pipeline_info.pDynamicState         = dynamic_states.empty() ? nullptr : &dynamic_state;
-                pipeline_info.pViewportState        = &viewport_state;
-                pipeline_info.pRasterizationState   = &rasterizer_state;
-                pipeline_info.pMultisampleState     = &multisampling_state;
-                pipeline_info.pColorBlendState      = &color_blend_state;
-                pipeline_info.pDepthStencilState    = &depth_stencil_state;
-                pipeline_info.layout                = static_cast<VkPipelineLayout>(m_pipeline_layout);
-                pipeline_info.renderPass            = static_cast<VkRenderPass>(m_state.GetRenderPass());
+                pipeline_info.sType               = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+                pipeline_info.stageCount          = static_cast<uint32_t>(shader_stages.size());
+                pipeline_info.pStages             = shader_stages.data();
+                pipeline_info.pVertexInputState   = &vertex_input_state;
+                pipeline_info.pInputAssemblyState = &input_assembly_state;
+                pipeline_info.pDynamicState       = dynamic_states.empty() ? nullptr : &dynamic_state;
+                pipeline_info.pViewportState      = &viewport_state;
+                pipeline_info.pRasterizationState = &rasterizer_state;
+                pipeline_info.pMultisampleState   = &multisampling_state;
+                pipeline_info.pColorBlendState    = &color_blend_state;
+                pipeline_info.pDepthStencilState  = &depth_stencil_state;
+                pipeline_info.layout              = static_cast<VkPipelineLayout>(m_resource_pipeline_layout);
+                pipeline_info.renderPass          = static_cast<VkRenderPass>(m_state.GetRenderPass());
             
                 // Create
-                auto pipeline = reinterpret_cast<VkPipeline*>(&m_pipeline);
+                auto pipeline = reinterpret_cast<VkPipeline*>(&m_resource_pipeline);
                 if (!vulkan_utility::error::check(vkCreateGraphicsPipelines(m_rhi_device->GetContextRhi()->device, nullptr, 1, &pipeline_info, nullptr, pipeline)))
                     return;
 
@@ -369,10 +369,10 @@ namespace Spartan
         // Wait in case it's still in use by the GPU
         m_rhi_device->QueueWaitAll();
     
-        vkDestroyPipeline(m_rhi_device->GetContextRhi()->device, static_cast<VkPipeline>(m_pipeline), nullptr);
-        m_pipeline = nullptr;
+        vkDestroyPipeline(m_rhi_device->GetContextRhi()->device, static_cast<VkPipeline>(m_resource_pipeline), nullptr);
+        m_resource_pipeline = nullptr;
         
-        vkDestroyPipelineLayout(m_rhi_device->GetContextRhi()->device, static_cast<VkPipelineLayout>(m_pipeline_layout), nullptr);
-        m_pipeline_layout = nullptr;
+        vkDestroyPipelineLayout(m_rhi_device->GetContextRhi()->device, static_cast<VkPipelineLayout>(m_resource_pipeline_layout), nullptr);
+        m_resource_pipeline_layout = nullptr;
     }
 }

@@ -36,11 +36,11 @@ namespace Spartan
     {
         VertexAttribute(const std::string& name, const uint32_t location, const uint32_t binding, const RHI_Format format, const uint32_t offset)
         {
-            this->name        = name;
-            this->location    = location;
-            this->binding    = binding;
-            this->format    = format;
-            this->offset    = offset;
+            this->name     = name;
+            this->location = location;
+            this->binding  = binding;
+            this->format   = format;
+            this->offset   = offset;
         }
 
         std::string name;

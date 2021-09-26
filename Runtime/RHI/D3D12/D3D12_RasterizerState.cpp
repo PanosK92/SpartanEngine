@@ -35,8 +35,8 @@ namespace Spartan
     RHI_RasterizerState::RHI_RasterizerState
     (
         const shared_ptr<RHI_Device>& rhi_device,
-        const RHI_Cull_Mode cull_mode,
-        const RHI_Fill_Mode fill_mode,
+        const RHI_CullMode cull_mode,
+        const RHI_PolygonMode polygon_mode,
         const bool depth_clip_enabled,
         const bool scissor_enabled,
         const bool antialised_line_enabled,
@@ -47,7 +47,7 @@ namespace Spartan
     {
         // Save properties
         m_cull_mode               = cull_mode;
-        m_fill_mode               = fill_mode;
+        m_polygon_mode            = polygon_mode;
         m_depth_clip_enabled      = depth_clip_enabled;
         m_scissor_enabled         = scissor_enabled;
         m_antialised_line_enabled = antialised_line_enabled;

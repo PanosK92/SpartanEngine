@@ -35,8 +35,8 @@ namespace Spartan
     RHI_RasterizerState::RHI_RasterizerState
     (
         const shared_ptr<RHI_Device>& rhi_device,
-        const RHI_Cull_Mode cull_mode,
-        const RHI_Fill_Mode fill_mode,
+        const RHI_CullMode cull_mode,
+        const RHI_PolygonMode polygon_mode,
         const bool depth_clip_enabled,
         const bool scissor_enabled,
         const bool antialised_line_enabled,
@@ -49,20 +49,20 @@ namespace Spartan
         SP_ASSERT(rhi_device->GetContextRhi()->device != nullptr);
 
         // Save properties
-        m_cull_mode                 = cull_mode;
-        m_fill_mode                 = fill_mode;
-        m_depth_clip_enabled        = depth_clip_enabled;
-        m_scissor_enabled           = scissor_enabled;
-        m_antialised_line_enabled   = antialised_line_enabled;
-        m_depth_bias                = depth_bias;
-        m_depth_bias_clamp          = depth_bias_clamp;
-        m_depth_bias_slope_scaled   = depth_bias_slope_scaled;
-        m_line_width                = line_width;
+        m_cull_mode               = cull_mode;
+        m_polygon_mode            = polygon_mode;
+        m_depth_clip_enabled      = depth_clip_enabled;
+        m_scissor_enabled         = scissor_enabled;
+        m_antialised_line_enabled = antialised_line_enabled;
+        m_depth_bias              = depth_bias;
+        m_depth_bias_clamp        = depth_bias_clamp;
+        m_depth_bias_slope_scaled = depth_bias_slope_scaled;
+        m_line_width              = line_width;
 
         // Create rasterizer description
         D3D11_RASTERIZER_DESC desc  = {};
         desc.CullMode               = d3d11_cull_mode[static_cast<uint32_t>(cull_mode)];
-        desc.FillMode               = d3d11_polygon_mode[static_cast<uint32_t>(fill_mode)];
+        desc.FillMode               = d3d11_polygon_mode[static_cast<uint32_t>(polygon_mode)];
         desc.FrontCounterClockwise  = false;
         desc.DepthBias              = static_cast<UINT>(Math::Helper::Floor(depth_bias * (float)(1 << 24)));
         desc.DepthBiasClamp         = depth_bias_clamp;
