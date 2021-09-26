@@ -19,14 +19,14 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =====================
+//= INCLUDES ============================
 #include "Spartan.h"
+#include "../RHI_Shader.h"
 #include "../RHI_Implementation.h"
 #include "../RHI_Device.h"
-#include "../RHI_Shader.h"
 #include "../RHI_InputLayout.h"
-#include <d3dcompiler.h>
-//================================
+#include "../RHI_DirectXShaderCompiler.h"
+//=======================================
 
 //= NAMESPACES =====
 using namespace std;
@@ -36,16 +36,89 @@ namespace Spartan
 {
     RHI_Shader::~RHI_Shader()
     {
+        if (m_resource)
+        {
+            // Wait in case it's still in use by the GPU
+            m_rhi_device->QueueWaitAll();
 
+            //vkDestroyShaderModule(m_rhi_device->GetContextRhi()->device, static_cast<VkShaderModule>(m_resource), nullptr);
+            m_resource = nullptr;
+        }
     }
 
-    void* RHI_Shader::Compile3()
+    void* RHI_Shader::Compile2()
     {
+        // Arguments (and defines)
+        vector<string> arguments;
+
+        // Arguments
+        {
+            arguments.emplace_back("-E"); arguments.emplace_back(GetEntryPoint());
+            arguments.emplace_back("-T"); arguments.emplace_back(GetTargetProfile());
+            arguments.emplace_back("-flegacy-macro-expansion"); // Expand the operands before performing token-pasting operation (fxc behavior)
+#ifdef DEBUG                                                    
+            arguments.emplace_back("-Od");                      // Disable optimizations
+            arguments.emplace_back("-Zi");                      // Enable debug information
+#endif
+        }
+
+        // Defines
+        {
+            // Add standard defines
+            arguments.emplace_back("-D"); arguments.emplace_back("VS=" + to_string(static_cast<uint8_t>(m_shader_type == RHI_Shader_Vertex)));
+            arguments.emplace_back("-D"); arguments.emplace_back("PS=" + to_string(static_cast<uint8_t>(m_shader_type == RHI_Shader_Pixel)));
+            arguments.emplace_back("-D"); arguments.emplace_back("CS=" + to_string(static_cast<uint8_t>(m_shader_type == RHI_Shader_Compute)));
+
+            // Add the rest of the defines
+            for (const auto& define : m_defines)
+            {
+                arguments.emplace_back("-D"); arguments.emplace_back(define.first + "=" + define.second);
+            }
+        }
+
+        // Compile
+        if (CComPtr<IDxcBlob> shader_buffer = DirecXShaderCompiler::Get().Compile(m_source, arguments))
+        {
+            // Reflect shader resources (so that descriptor sets can be created later)
+            Reflect
+            (
+                m_shader_type,
+                reinterpret_cast<uint32_t*>(shader_buffer->GetBufferPointer()),
+                static_cast<uint32_t>(shader_buffer->GetBufferSize() / 4)
+            );
+
+            // Create input layout
+            if (m_vertex_type != RHI_Vertex_Type::Unknown)
+            {
+                if (!m_input_layout->Create(m_vertex_type, nullptr))
+                {
+                    LOG_ERROR("Failed to create input layout for %s", m_object_name.c_str());
+                    return nullptr;
+                }
+            }
+
+            return static_cast<void*>(shader_buffer);
+        }
+
         return nullptr;
     }
 
     void RHI_Shader::Reflect(const RHI_Shader_Type shader_type, const uint32_t* ptr, uint32_t size)
     {
 
+    }
+
+    const char* RHI_Shader::GetTargetProfile() const
+    {
+        if (m_shader_type == RHI_Shader_Vertex)  return "vs_6_6";
+        if (m_shader_type == RHI_Shader_Pixel)   return "ps_6_6";
+        if (m_shader_type == RHI_Shader_Compute) return "cs_6_6";
+
+        return nullptr;
+    }
+
+    const char* RHI_Shader::GetShaderModel() const
+    {
+        return "6_0";
     }
 }

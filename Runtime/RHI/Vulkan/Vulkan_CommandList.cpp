@@ -109,7 +109,8 @@ namespace Spartan
             }
         }
 
-        // Validate command list state
+        // Verify a few things
+        SP_ASSERT(m_resource != nullptr);
         SP_ASSERT(m_state == RHI_CommandListState::Idle);
 
         // Get queries
@@ -120,9 +121,9 @@ namespace Spartan
                 {
                     if (m_timestamp_index != 0)
                     {
-                        const uint32_t query_count      = m_timestamp_index * 2;
-                        const size_t stride             = sizeof(uint64_t);
-                        const VkQueryResultFlags flags  = VK_QUERY_RESULT_64_BIT;
+                        const uint32_t query_count     = m_timestamp_index * 2;
+                        const size_t stride            = sizeof(uint64_t);
+                        const VkQueryResultFlags flags = VK_QUERY_RESULT_64_BIT;
 
                         vkGetQueryPoolResults(
                             m_rhi_device->GetContextRhi()->device,  // device
@@ -203,12 +204,12 @@ namespace Spartan
         }
 
         if (!m_rhi_device->QueueSubmit(
-            RHI_Queue_Type::Graphics,                       // queue
-            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,  // wait flags
-            static_cast<VkCommandBuffer>(m_resource),     // cmd buffer
-            wait_semaphore,                                 // wait semaphore
-            signal_semaphore,                               // signal semaphore
-            m_processed_fence.get()                         // signal fence
+            RHI_Queue_Type::Graphics,                      // queue
+            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, // wait flags
+            static_cast<VkCommandBuffer>(m_resource),      // cmd buffer
+            wait_semaphore,                                // wait semaphore
+            signal_semaphore,                              // signal semaphore
+            m_processed_fence.get()                        // signal fence
             ))
         {
             LOG_ERROR("Failed to submit the command list.");
@@ -263,8 +264,8 @@ namespace Spartan
         // Shader resources
         {
             // If the pipeline changed, resources have to be set again
-            m_vertex_buffer_id  = 0;
-            m_index_buffer_id   = 0;
+            m_vertex_buffer_id = 0;
+            m_index_buffer_id  = 0;
 
             // Vulkan doesn't have a persistent state so global resources have to be set
             m_renderer->SetGlobalShaderResources(this);

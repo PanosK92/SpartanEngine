@@ -51,8 +51,11 @@ namespace Spartan
 {
     RHI_CommandList::RHI_CommandList(Context* context)
     {
+        m_renderer   = context->GetSubsystem<Renderer>();
+        m_rhi_device = m_renderer->GetRhiDevice().get();
+
         ID3D12CommandAllocator* allocator = static_cast<ID3D12CommandAllocator*>(m_rhi_device->GetCmdPoolGraphics());
-        d3d12_utility::error::check(m_rhi_device->GetContextRhi()->device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, allocator, nullptr, IID_PPV_ARGS(reinterpret_cast<ID3D12CommandQueue**>(&m_resource))));
+        d3d12_utility::error::check(m_rhi_device->GetContextRhi()->device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, allocator, nullptr, IID_PPV_ARGS(reinterpret_cast<ID3D12GraphicsCommandList**>(&m_resource))));
     }
     
     RHI_CommandList::~RHI_CommandList()
@@ -76,12 +79,14 @@ namespace Spartan
             }
         }
 
+        // Verify a few things
+        SP_ASSERT(m_resource != nullptr);
+        SP_ASSERT(m_rhi_device != nullptr);
+        SP_ASSERT(m_state == RHI_CommandListState::Idle);
+
         // Unlike Vulkan, D3D12 wraps both begin and reset under Reset().
         if (!d3d12_utility::error::check(static_cast<ID3D12GraphicsCommandList*>(m_resource)->Reset(static_cast<ID3D12CommandAllocator*>(m_rhi_device->GetCmdPoolGraphics()), nullptr)))
             return false;
-
-        // Validate command list state
-        SP_ASSERT(m_state == RHI_CommandListState::Idle);
 
         m_state = RHI_CommandListState::Recording;
         m_flushed = false;
@@ -91,7 +96,8 @@ namespace Spartan
 
     bool RHI_CommandList::End()
     {
-        // Validate command list state
+        // Verify a few things
+        SP_ASSERT(m_resource != nullptr);
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
         if (!d3d12_utility::error::check(static_cast<ID3D12GraphicsCommandList*>(m_resource)->Close()))
@@ -108,7 +114,9 @@ namespace Spartan
 
     bool RHI_CommandList::Reset()
     {
-        // Validate command list state
+        // Verify a few things
+        SP_ASSERT(m_resource != nullptr);
+        SP_ASSERT(m_rhi_device != nullptr);
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
         lock_guard<mutex> guard(m_mutex_reset);

@@ -175,7 +175,7 @@ namespace Spartan
         std::array<uint64_t, m_max_timestamps> m_timestamps;
 
         // Variables to minimise state changes
-        uint32_t m_vertex_buffer_id     = 0;
+        uint64_t m_vertex_buffer_id     = 0;
         uint64_t m_vertex_buffer_offset = 0;
         uint64_t m_index_buffer_id      = 0;
         uint64_t m_index_buffer_offset  = 0;

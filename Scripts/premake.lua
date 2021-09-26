@@ -17,48 +17,45 @@
 -- IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 -- CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-SOLUTION_NAME				= "Spartan"
-EDITOR_NAME					= "Editor"
-RUNTIME_NAME				= "Runtime"
-TARGET_NAME					= "Spartan" -- Name of executable
-EDITOR_DIR					= "../" .. EDITOR_NAME
-RUNTIME_DIR					= "../" .. RUNTIME_NAME
-IGNORE_FILES				= {}
-ADDITIONAL_INCLUDES			= {}
-ADDITIONAL_LIBRARIES		= {}
-ADDITIONAL_LIBRARIES_DBG	= {}
-LIBRARY_DIR					= "../ThirdParty/libraries"
-OBJ_DIR						= "../Binaries/Obj"
-TARGET_DIR  				= "../Binaries"
-API_GRAPHICS				= _ARGS[1]
+SOLUTION_NAME				      = "Spartan"
+EDITOR_NAME					      = "Editor"
+RUNTIME_NAME				      = "Runtime"
+TARGET_NAME					      = "Spartan" -- Name of executable
+EDITOR_DIR					          = "../" .. EDITOR_NAME
+RUNTIME_DIR					      = "../" .. RUNTIME_NAME
+IGNORE_FILES				          = {}
+ADDITIONAL_INCLUDES          = {}
+ADDITIONAL_LIBRARIES		  = {}
+ADDITIONAL_LIBRARIES_DBG  = {}
+LIBRARY_DIR                           = "../ThirdParty/libraries"
+OBJ_DIR                                  = "../Binaries/Obj"
+TARGET_DIR                            = "../Binaries"
+API_GRAPHICS                        = _ARGS[1]
 
 -- Graphics api specific variables
 if API_GRAPHICS == "d3d11" then
-	API_GRAPHICS	= "API_GRAPHICS_D3D11"
-	TARGET_NAME		= TARGET_NAME .. "_d3d11"
-	IGNORE_FILES[0]	= RUNTIME_DIR .. "/RHI/D3D12/**"
-	IGNORE_FILES[1]	= RUNTIME_DIR .. "/RHI/Vulkan/**"
+	API_GRAPHICS	                         = "API_GRAPHICS_D3D11"
+	TARGET_NAME		                     = TARGET_NAME .. "_d3d11"
+	IGNORE_FILES[0]	                     = RUNTIME_DIR .. "/RHI/D3D12/**"
+	IGNORE_FILES[1]	                     = RUNTIME_DIR .. "/RHI/Vulkan/**"
 elseif API_GRAPHICS == "d3d12" then
 	API_GRAPHICS	= "API_GRAPHICS_D3D12"
-	TARGET_NAME		= TARGET_NAME .. "_d3d12"
-	IGNORE_FILES[0]	= RUNTIME_DIR .. "/RHI/D3D11/**"
-	IGNORE_FILES[1]	= RUNTIME_DIR .. "/RHI/Vulkan/**"
+	TARGET_NAME		                     = TARGET_NAME .. "_d3d12"
+	IGNORE_FILES[0]	                     = RUNTIME_DIR .. "/RHI/D3D11/**"
+	IGNORE_FILES[1]	                     = RUNTIME_DIR .. "/RHI/Vulkan/**"
 elseif API_GRAPHICS == "vulkan" then
-	API_GRAPHICS				= "API_GRAPHICS_VULKAN"
-	TARGET_NAME					= TARGET_NAME .. "_vulkan"
-	IGNORE_FILES[0]				= RUNTIME_DIR .. "/RHI/D3D11/**"
-	IGNORE_FILES[1]				= RUNTIME_DIR .. "/RHI/D3D12/**"
-	ADDITIONAL_INCLUDES[0] 		= "../ThirdParty/DirectXShaderCompiler_1.6.2106";
-	ADDITIONAL_INCLUDES[1] 		= "../ThirdParty/SPIRV-Cross-2021-01-15";
-	ADDITIONAL_INCLUDES[2] 		= "../ThirdParty/Vulkan_1.2.182.0";
-	ADDITIONAL_LIBRARIES[0] 	= "dxcompiler";
-	ADDITIONAL_LIBRARIES[1] 	= "spirv-cross-core";
-	ADDITIONAL_LIBRARIES[2] 	= "spirv-cross-hlsl";
-	ADDITIONAL_LIBRARIES[3] 	= "spirv-cross-glsl";
-	ADDITIONAL_LIBRARIES_DBG[0] = "dxcompiler";
-	ADDITIONAL_LIBRARIES_DBG[1] = "spirv-cross-core_debug";
-	ADDITIONAL_LIBRARIES_DBG[2] = "spirv-cross-hlsl_debug";
-	ADDITIONAL_LIBRARIES_DBG[3] = "spirv-cross-glsl_debug";
+	API_GRAPHICS				              = "API_GRAPHICS_VULKAN"
+	TARGET_NAME					          = TARGET_NAME .. "_vulkan"
+	IGNORE_FILES[0]				          = RUNTIME_DIR .. "/RHI/D3D11/**"
+	IGNORE_FILES[1]				          = RUNTIME_DIR .. "/RHI/D3D12/**"
+	ADDITIONAL_INCLUDES[0] 		  = "../ThirdParty/SPIRV-Cross-2021-01-15";
+	ADDITIONAL_INCLUDES[1] 		  = "../ThirdParty/Vulkan_1.2.182.0";
+	ADDITIONAL_LIBRARIES[0] 	      = "spirv-cross-core";
+	ADDITIONAL_LIBRARIES[1] 	      = "spirv-cross-hlsl";
+	ADDITIONAL_LIBRARIES[2] 	      = "spirv-cross-glsl";
+	ADDITIONAL_LIBRARIES_DBG[0] = "spirv-cross-core_debug";
+	ADDITIONAL_LIBRARIES_DBG[1] = "spirv-cross-hlsl_debug";
+	ADDITIONAL_LIBRARIES_DBG[2] = "spirv-cross-glsl_debug";
 end
 
 -- Solution
@@ -129,6 +126,7 @@ project (RUNTIME_NAME)
 	removefiles { IGNORE_FILES[0], IGNORE_FILES[1] }
 
 	-- Includes
+	includedirs { "../ThirdParty/DirectXShaderCompiler_1.6.2109" }
 	includedirs { "../ThirdParty/Assimp_5.0.1" }
 	includedirs { "../ThirdParty/Bullet_3.17" }
 	includedirs { "../ThirdParty/FMOD_1.10.10" }
@@ -138,7 +136,7 @@ project (RUNTIME_NAME)
 	includedirs { "../ThirdParty/Mono_6.12.0.86" }
 	includedirs { "../ThirdParty/SDL2_2.0.14" }
     includedirs { "../ThirdParty/Compressonator_4.2.5185" }
-	includedirs { ADDITIONAL_INCLUDES[0], ADDITIONAL_INCLUDES[1], ADDITIONAL_INCLUDES[2] }
+	includedirs { ADDITIONAL_INCLUDES[0], ADDITIONAL_INCLUDES[1] }
 
 	-- Libraries
 	libdirs (LIBRARY_DIR)
@@ -147,6 +145,7 @@ project (RUNTIME_NAME)
 	filter "configurations:Debug"
 		targetdir (TARGET_DIR)
 		debugdir (TARGET_DIR)
+		links { "dxcompiler" }
 		links { "assimp_debug" }
 		links { "fmodL64_vc" }
 		links { "FreeImageLib_debug" }
@@ -157,15 +156,13 @@ project (RUNTIME_NAME)
 		links { "libmono-static-sgen_debug.lib" }
 		links { "SDL2_debug.lib" }
 		links { "Compressonator_MT_debug.lib" }
-		links { ADDITIONAL_LIBRARIES_DBG[0], ADDITIONAL_LIBRARIES_DBG[1], ADDITIONAL_LIBRARIES_DBG[2], ADDITIONAL_LIBRARIES_DBG[3] }
+		links { ADDITIONAL_LIBRARIES_DBG[0], ADDITIONAL_LIBRARIES_DBG[1], ADDITIONAL_LIBRARIES_DBG[2] }
 
 	--	"Release"
 	filter "configurations:Release"
 		targetdir (TARGET_DIR)
 		debugdir (TARGET_DIR)
-		if API_GRAPHICS == "vulkan" then
-			links { "dxcompiler", "spirv-cross-core", "spirv-cross-hlsl", "spirv-cross-glsl" }
-		end
+		links { "dxcompiler" }
 		links { "assimp" }
 		links { "fmod64_vc" }
 		links { "FreeImageLib" }
@@ -176,7 +173,7 @@ project (RUNTIME_NAME)
 		links { "libmono-static-sgen.lib" }
 		links { "SDL2.lib" }
 		links { "Compressonator_MT.lib" }
-		links { ADDITIONAL_LIBRARIES[0], ADDITIONAL_LIBRARIES[1], ADDITIONAL_LIBRARIES[2], ADDITIONAL_LIBRARIES[3] }
+		links { ADDITIONAL_LIBRARIES[0], ADDITIONAL_LIBRARIES[1], ADDITIONAL_LIBRARIES[2] }
 
 -- Editor --------------------------------------------------------------------------------------------------
 project (EDITOR_NAME)
@@ -204,7 +201,7 @@ project (EDITOR_NAME)
 	-- Includes
 	includedirs { "../" .. RUNTIME_NAME }
 	includedirs { "../ThirdParty/FreeType_2.11.0" } -- ImGui font atlas
-	includedirs { "../ThirdParty/SDL2_2.0.14" }     -- ImGui windows
+	includedirs { "../ThirdParty/SDL2_2.0.14" } -- ImGui windows
 
 	-- Libraries
 	libdirs (LIBRARY_DIR)

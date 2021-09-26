@@ -45,8 +45,8 @@ namespace Spartan
 
         // Compilation
         void Compile(const RHI_Shader_Type type, const std::string& shader, bool async);
-        Shader_Compilation_State GetCompilationState()  const { return m_compilation_state; }
-        bool IsCompiled()                               const { return m_compilation_state == Shader_Compilation_State::Succeeded; }
+        Shader_Compilation_State GetCompilationState() const { return m_compilation_state; }
+        bool IsCompiled()                              const { return m_compilation_state == Shader_Compilation_State::Succeeded; }
         void WaitForCompilation();
 
         // Resource
@@ -55,14 +55,14 @@ namespace Spartan
 
         // Source
         void LoadSource(const std::string& file_path);
-        const std::vector<std::string>& GetNames()      const { return m_names; }
-        const std::vector<std::string>& GetFilePaths()  const { return m_file_paths; }
-        const std::vector<std::string>& GetSources()    const { return m_sources; }
+        const std::vector<std::string>& GetNames()     const { return m_names; }
+        const std::vector<std::string>& GetFilePaths() const { return m_file_paths; }
+        const std::vector<std::string>& GetSources()   const { return m_sources; }
         void SetSource(const uint32_t index, const std::string& source);
 
         // Defines
-        void AddDefine(const std::string& define, const std::string& value = "1")   { m_defines[define] = value; }
-        auto& GetDefines() const                                                    { return m_defines; }
+        void AddDefine(const std::string& define, const std::string& value = "1") { m_defines[define] = value; }
+        auto& GetDefines() const                                                  { return m_defines; }
 
         // Misc
         const std::vector<RHI_Descriptor>& GetDescriptors() const { return m_descriptors; }
@@ -78,8 +78,7 @@ namespace Spartan
 
     private:
         void ParseSource(const std::string& file_path);
-        void Compile2();
-        void* Compile3();
+        void* Compile2();
         void Reflect(const RHI_Shader_Type shader_type, const uint32_t* ptr, uint32_t size);
 
         std::string m_file_path;
@@ -91,9 +90,9 @@ namespace Spartan
         std::unordered_map<std::string, std::string> m_defines;
         std::vector<RHI_Descriptor> m_descriptors;
         std::shared_ptr<RHI_InputLayout> m_input_layout;
-        std::atomic<Shader_Compilation_State> m_compilation_state   = Shader_Compilation_State::Idle;
-        RHI_Shader_Type m_shader_type                               = RHI_Shader_Unknown;
-        RHI_Vertex_Type m_vertex_type                               = RHI_Vertex_Type::Unknown;
+        std::atomic<Shader_Compilation_State> m_compilation_state = Shader_Compilation_State::Idle;
+        RHI_Shader_Type m_shader_type                             = RHI_Shader_Unknown;
+        RHI_Vertex_Type m_vertex_type                             = RHI_Vertex_Type::Unknown;
 
         // API 
         void* m_resource = nullptr;

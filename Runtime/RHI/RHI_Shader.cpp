@@ -35,87 +35,88 @@ namespace Spartan
 {
     RHI_Shader::RHI_Shader(Context* context, const RHI_Vertex_Type vertex_type) : SpartanObject(context)
     {
-        m_rhi_device    = context->GetSubsystem<Renderer>()->GetRhiDevice();
-        m_input_layout  = make_shared<RHI_InputLayout>(m_rhi_device);
-        m_vertex_type   = vertex_type;
+        m_rhi_device   = context->GetSubsystem<Renderer>()->GetRhiDevice();
+        m_input_layout = make_shared<RHI_InputLayout>(m_rhi_device);
+        m_vertex_type  = vertex_type;
     }
 
-    void RHI_Shader::Compile2()
-    {
-        // Compile
-        m_compilation_state = Shader_Compilation_State::Compiling;
-        m_resource          = Compile3();
-        m_compilation_state = m_resource ? Shader_Compilation_State::Succeeded : Shader_Compilation_State::Failed;
-
-        // Log compilation result
-        {
-            string type_str = "unknown";
-            type_str        = m_shader_type == RHI_Shader_Vertex     ? "vertex"   : type_str;
-            type_str        = m_shader_type == RHI_Shader_Pixel      ? "pixel"    : type_str;
-            type_str        = m_shader_type == RHI_Shader_Compute    ? "compute"  : type_str;
-
-            string defines;
-            for (const auto& define : m_defines)
-            {
-                if (!defines.empty())
-                    defines += ", ";
-
-                defines += define.first + " = " + define.second;
-            }
-
-            if (m_compilation_state == Shader_Compilation_State::Succeeded)
-            {
-                if (defines.empty())
-                {
-                    LOG_INFO("Successfully compiled %s shader \"%s\".", type_str.c_str(), m_object_name.c_str());
-                }
-                else
-                {
-                    LOG_INFO("Successfully compiled %s shader \"%s\" with definitions \"%s\".", type_str.c_str(), m_object_name.c_str(), defines.c_str());
-                }
-            }
-            else if (m_compilation_state == Shader_Compilation_State::Failed)
-            {
-                if (defines.empty())
-                {
-                    LOG_ERROR("Failed to compile %s shader \"%s\".", type_str.c_str(), m_object_name.c_str());
-                }
-                else
-                {
-                    LOG_ERROR("Failed to compile %s shader \"%s\" with definitions \"%s\".", type_str.c_str(), m_object_name.c_str(), defines.c_str());
-                }
-            }
-        }
-    }
-
-    void RHI_Shader::Compile(const RHI_Shader_Type type, const std::string& shader, bool async)
+    void RHI_Shader::Compile(const RHI_Shader_Type type, const string& shader, bool async)
     {
         m_shader_type = type;
 
         // Source
         if (!FileSystem::IsFile(shader))
         {
-            m_object_name      = "N/A";
-            m_file_path = "N/A";
-            m_source    = shader;
+            m_object_name = "N/A";
+            m_file_path   = "N/A";
+            m_source      = shader;
         }
         else // File
         {
             LoadSource(shader);
         }
 
-        // Compile
-        m_compilation_state = Shader_Compilation_State::Idle;
-        if (!async)
+        // Lamda with the actual API specific compilation
+        auto compile_api_call = [this]()
         {
-            Compile2();
-        }
-        else
-        {
-            m_context->GetSubsystem<Threading>()->AddTask([this]()
+            // Compile
+            m_compilation_state = Shader_Compilation_State::Compiling;
+            m_resource          = Compile2();
+            m_compilation_state = m_resource ? Shader_Compilation_State::Succeeded : Shader_Compilation_State::Failed;
+
+            // Log compilation result
             {
-                Compile2();
-            });
+                string type_str = "unknown";
+                type_str        = m_shader_type == RHI_Shader_Vertex  ? "vertex"  : type_str;
+                type_str        = m_shader_type == RHI_Shader_Pixel   ? "pixel"   : type_str;
+                type_str        = m_shader_type == RHI_Shader_Compute ? "compute" : type_str;
+
+                string defines;
+                for (const auto& define : m_defines)
+                {
+                    if (!defines.empty())
+                        defines += ", ";
+
+                    defines += define.first + " = " + define.second;
+                }
+
+                if (m_compilation_state == Shader_Compilation_State::Succeeded)
+                {
+                    if (defines.empty())
+                    {
+                        LOG_INFO("Successfully compiled %s shader \"%s\".", type_str.c_str(), m_object_name.c_str());
+                    }
+                    else
+                    {
+                        LOG_INFO("Successfully compiled %s shader \"%s\" with definitions \"%s\".", type_str.c_str(), m_object_name.c_str(), defines.c_str());
+                    }
+                }
+                else if (m_compilation_state == Shader_Compilation_State::Failed)
+                {
+                    if (defines.empty())
+                    {
+                        LOG_ERROR("Failed to compile %s shader \"%s\".", type_str.c_str(), m_object_name.c_str());
+                    }
+                    else
+                    {
+                        LOG_ERROR("Failed to compile %s shader \"%s\" with definitions \"%s\".", type_str.c_str(), m_object_name.c_str(), defines.c_str());
+                    }
+                }
+            }
+        };
+
+        // Compile
+        {
+            m_compilation_state = Shader_Compilation_State::Idle;
+
+            if (!async)
+            {
+                compile_api_call();
+            }
+            else
+            {
+                m_context->GetSubsystem<Threading>()->AddTask(compile_api_call);
+            }
         }
     }
 
@@ -221,54 +222,10 @@ namespace Spartan
 
     const char* RHI_Shader::GetEntryPoint() const
     {
-        static const char* entry_point_empty = nullptr;
+        if (m_shader_type == RHI_Shader_Vertex)  return "mainVS";
+        if (m_shader_type == RHI_Shader_Pixel)   return "mainPS";
+        if (m_shader_type == RHI_Shader_Compute) return "mainCS";
 
-        static const char* entry_point_vs = "mainVS";
-        static const char* entry_point_ps = "mainPS";
-        static const char* entry_point_cs = "mainCS";
-
-        if (m_shader_type == RHI_Shader_Vertex)     return entry_point_vs;
-        if (m_shader_type == RHI_Shader_Pixel)      return entry_point_ps;
-        if (m_shader_type == RHI_Shader_Compute)    return entry_point_cs;
-
-        return entry_point_empty;
-    }
-
-    const char* RHI_Shader::GetTargetProfile() const
-    {
-        static const char* target_profile_empty = nullptr;
-
-        #if defined(API_GRAPHICS_D3D11)
-        static const char* target_profile_vs = "vs_5_0";
-        static const char* target_profile_ps = "ps_5_0";
-        static const char* target_profile_cs = "cs_5_0";
-        #elif defined(API_GRAPHICS_D3D12)
-        static const char* target_profile_vs = "vs_6_6";
-        static const char* target_profile_ps = "ps_6_6";
-        static const char* target_profile_cs = "cs_6_6";
-        #elif defined(API_GRAPHICS_VULKAN)
-        static const char* target_profile_vs = "vs_6_6";
-        static const char* target_profile_ps = "ps_6_6";
-        static const char* target_profile_cs = "cs_6_6";
-        #endif
-
-        if (m_shader_type == RHI_Shader_Vertex)     return target_profile_vs;
-        if (m_shader_type == RHI_Shader_Pixel)      return target_profile_ps;
-        if (m_shader_type == RHI_Shader_Compute)    return target_profile_cs;
-
-        return target_profile_empty;
-    }
-
-    const char* RHI_Shader::GetShaderModel() const
-    {
-        #if defined(API_GRAPHICS_D3D11)
-        static const char* shader_model = "5_0";
-        #elif defined(API_GRAPHICS_D3D12)
-        static const char* shader_model = "6_0";
-        #elif defined(API_GRAPHICS_VULKAN)
-        static const char* shader_model = "6_0";
-        #endif
-
-        return shader_model;
+        return nullptr;
     }
 }
