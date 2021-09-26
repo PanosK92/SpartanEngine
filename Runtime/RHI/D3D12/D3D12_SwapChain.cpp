@@ -107,9 +107,9 @@ namespace Spartan
             &swap_chain
         ));
 
-        m_resource = static_cast<void*>(swap_chain);
-
+        m_resource    = static_cast<void*>(swap_chain);
         m_image_index = static_cast<IDXGISwapChain3*>(m_resource)->GetCurrentBackBufferIndex();
+        m_initialised = true;
     }
     
     RHI_SwapChain::~RHI_SwapChain()

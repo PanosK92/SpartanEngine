@@ -22,7 +22,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =====================
 #include "Spartan.h"
 #include "../RHI_Implementation.h"
-#include "../RHI_Device.h"
 #include "../RHI_Shader.h"
 #include "../RHI_InputLayout.h"
 #include <d3dcompiler.h>
@@ -39,7 +38,7 @@ namespace Spartan
         d3d11_utility::release<ID3D11VertexShader>(m_resource);
     }
 
-    void* RHI_Shader::Compile3()
+    void* RHI_Shader::Compile2()
     {
         SP_ASSERT(m_rhi_device != nullptr);
         ID3D11Device5* d3d11_device = m_rhi_device->GetContextRhi()->device;
@@ -47,18 +46,18 @@ namespace Spartan
 
         // Compile flags
         uint32_t compile_flags = 0;
-        #ifdef DEBUG
+#ifdef DEBUG
         compile_flags |= D3DCOMPILE_DEBUG | D3DCOMPILE_PREFER_FLOW_CONTROL;
-        #elif NDEBUG
+#elif NDEBUG
         compile_flags |= D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_OPTIMIZATION_LEVEL3;
-        #endif
+#endif
 
         // Defines
         vector<D3D_SHADER_MACRO> defines =
         {
-            D3D_SHADER_MACRO{ "VS", m_shader_type == RHI_Shader_Vertex   ? "1" : "0" },
-            D3D_SHADER_MACRO{ "PS", m_shader_type == RHI_Shader_Pixel    ? "1" : "0" },
-            D3D_SHADER_MACRO{ "CS", m_shader_type == RHI_Shader_Compute  ? "1" : "0" }
+            D3D_SHADER_MACRO{ "VS", m_shader_type == RHI_Shader_Vertex ? "1" : "0" },
+            D3D_SHADER_MACRO{ "PS", m_shader_type == RHI_Shader_Pixel ? "1" : "0" },
+            D3D_SHADER_MACRO{ "CS", m_shader_type == RHI_Shader_Compute ? "1" : "0" }
         };
         for (const auto& define : m_defines)
         {
@@ -67,8 +66,8 @@ namespace Spartan
         defines.emplace_back(D3D_SHADER_MACRO{ nullptr, nullptr });
 
         // Compile
-        ID3DBlob* blob_error    = nullptr;
-        ID3DBlob* shader_blob   = nullptr;
+        ID3DBlob* blob_error = nullptr;
+        ID3DBlob* shader_blob = nullptr;
         HRESULT result = D3DCompile
         (
             m_source.c_str(),
@@ -154,5 +153,19 @@ namespace Spartan
     void RHI_Shader::Reflect(const RHI_Shader_Type shader_type, const uint32_t* ptr, uint32_t size)
     {
 
+    }
+
+    const char* RHI_Shader::GetTargetProfile() const
+    {
+        if (m_shader_type == RHI_Shader_Vertex)  return "vs_5_0";
+        if (m_shader_type == RHI_Shader_Pixel)   return "ps_5_0";
+        if (m_shader_type == RHI_Shader_Compute) return "cs_5_0";
+
+        return nullptr;
+    }
+
+    const char* RHI_Shader::GetShaderModel() const
+    {
+        return "5_0";
     }
 }

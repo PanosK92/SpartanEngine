@@ -66,9 +66,12 @@ namespace Spartan::d3d12_utility
                 case DXGI_ERROR_SDK_COMPONENT_MISSING:        return "DXGI_ERROR_SDK_COMPONENT_MISSING";        // The operation depends on an SDK component that is missing or mismatched.
                 case E_INVALIDARG:                            return "E_INVALIDARG";                            // One or more arguments are invalid.
                 case E_OUTOFMEMORY:                           return "E_OUTOFMEMORY";                           // Direct3D could not allocate sufficient memory to complete the call.
-            }                                                 
+                case E_NOINTERFACE:                           return "E_NOINTERFACE";                           // No such interface supported.
+                case E_FAIL:                                  return "E_FAIL";
+            }
 
-            return "Unknown error code";
+            SP_ASSERT(false && "Add the error as a switch case.");
+            return nullptr;
         }
 
         constexpr bool check(const HRESULT result)
