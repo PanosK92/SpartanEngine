@@ -158,6 +158,7 @@ static const D3D11_BLEND_OP d3d11_blend_operation[] =
 #pragma warning(push, 0) // Hide warnings which belong DirectX
 #include <d3d12.h>
 #include <dxgi1_6.h>
+#include <dxcapi.h>
 #pragma warning(pop)
 
 static const D3D12_CULL_MODE d3d12_cull_mode[] =

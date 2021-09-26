@@ -49,6 +49,11 @@ namespace Spartan
         }
     }
 
+    void* RHI_Shader::GetResource() const
+    {
+        return m_resource;
+    }
+
     void* RHI_Shader::Compile2()
     {
         // Arguments (and defines)
@@ -95,8 +100,12 @@ namespace Spartan
         }
 
         // Compile
-        if (CComPtr<IDxcBlob> shader_buffer = DirecXShaderCompiler::Get().Compile(m_source, arguments))
+        if (IDxcResult* dxc_result = DirecXShaderCompiler::Get().Compile(m_source, arguments))
         {
+            // Get compiled shader buffer
+            IDxcBlob* shader_buffer = nullptr;
+            dxc_result->GetResult(&shader_buffer);
+
             // Create shader module
             VkShaderModule shader_module         = nullptr;
             VkShaderModuleCreateInfo create_info = {};
@@ -107,7 +116,7 @@ namespace Spartan
             if (!vulkan_utility::error::check(vkCreateShaderModule(m_rhi_device->GetContextRhi()->device, &create_info, nullptr, &shader_module)))
             {
                 LOG_ERROR("Failed to create shader module.");
-                return nullptr;
+                shader_module = nullptr;
             }
 
             // Reflect shader resources (so that descriptor sets can be created later)
@@ -127,7 +136,10 @@ namespace Spartan
                     return nullptr;
                 }
             }
-            
+
+            // Release
+            dxc_result->Release();
+
             return static_cast<void*>(shader_module);
         }
 
@@ -136,6 +148,9 @@ namespace Spartan
 
     void RHI_Shader::Reflect(const RHI_Shader_Type shader_type, const uint32_t* ptr, const uint32_t size)
     {
+        SP_ASSERT(ptr != nullptr);
+        SP_ASSERT(size != 0);
+
         // Initialize compiler with SPIR-V data
         const auto compiler = spirv_cross::CompilerHLSL(ptr, size);
 
