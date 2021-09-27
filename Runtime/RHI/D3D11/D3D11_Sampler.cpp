@@ -45,7 +45,6 @@ namespace Spartan
         sampler_desc.MinLOD             = 0;
         sampler_desc.MaxLOD             = FLT_MAX;
     
-        // Create sampler state.
         d3d11_utility::error_check(m_rhi_device->GetContextRhi()->device->CreateSamplerState(&sampler_desc, reinterpret_cast<ID3D11SamplerState**>(&m_resource)));
     }
 

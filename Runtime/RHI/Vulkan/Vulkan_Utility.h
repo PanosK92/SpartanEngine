@@ -934,14 +934,14 @@ namespace Spartan::vulkan_utility
             }
         }
 
-        static PFN_vkCreateDebugUtilsMessengerEXT           create_messenger;
-        static VkDebugUtilsMessengerEXT                     messenger;
-        static PFN_vkDestroyDebugUtilsMessengerEXT          destroy_messenger;
-        static PFN_vkSetDebugUtilsObjectTagEXT              set_object_tag;
-        static PFN_vkSetDebugUtilsObjectNameEXT             set_object_name;
-        static PFN_vkCmdBeginDebugUtilsLabelEXT             marker_begin;
-        static PFN_vkCmdEndDebugUtilsLabelEXT               marker_end;
-        static PFN_vkGetPhysicalDeviceMemoryProperties2KHR  get_physical_device_memory_properties_2;
+        static PFN_vkCreateDebugUtilsMessengerEXT          create_messenger;
+        static VkDebugUtilsMessengerEXT                    messenger;
+        static PFN_vkDestroyDebugUtilsMessengerEXT         destroy_messenger;
+        static PFN_vkSetDebugUtilsObjectTagEXT             set_object_tag;
+        static PFN_vkSetDebugUtilsObjectNameEXT            set_object_name;
+        static PFN_vkCmdBeginDebugUtilsLabelEXT            marker_begin;
+        static PFN_vkCmdEndDebugUtilsLabelEXT              marker_end;
+        static PFN_vkGetPhysicalDeviceMemoryProperties2KHR get_physical_device_memory_properties_2;
     };
 
     class debug
@@ -978,11 +978,11 @@ namespace Spartan::vulkan_utility
         {
             if (functions::create_messenger)
             {
-                VkDebugUtilsMessengerCreateInfoEXT create_info  = {};
-                create_info.sType                               = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-                create_info.messageSeverity                     = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-                create_info.messageType                         = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-                create_info.pfnUserCallback                     = callback;
+                VkDebugUtilsMessengerCreateInfoEXT create_info = {};
+                create_info.sType                              = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+                create_info.messageSeverity                    = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+                create_info.messageType                        = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+                create_info.pfnUserCallback                    = callback;
 
                 functions::create_messenger(instance, &create_info, nullptr, &functions::messenger);
             }
@@ -1007,6 +1007,7 @@ namespace Spartan::vulkan_utility
             name_info.objectType                    = object_type;
             name_info.objectHandle                  = object;
             name_info.pObjectName                   = name;
+
             functions::set_object_name(globals::rhi_context->device, &name_info);
         }
 
@@ -1015,14 +1016,15 @@ namespace Spartan::vulkan_utility
             if (!functions::set_object_tag)
                 return;
 
-            VkDebugUtilsObjectTagInfoEXT tag_info   = {};
-            tag_info.sType                          = VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_TAG_INFO_EXT;
-            tag_info.pNext                          = nullptr;
-            tag_info.objectType                     = objectType;
-            tag_info.objectHandle                   = object;
-            tag_info.tagName                        = name;
-            tag_info.tagSize                        = tagSize;
-            tag_info.pTag                           = tag;
+            VkDebugUtilsObjectTagInfoEXT tag_info = {};
+            tag_info.sType                        = VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_TAG_INFO_EXT;
+            tag_info.pNext                        = nullptr;
+            tag_info.objectType                   = objectType;
+            tag_info.objectHandle                 = object;
+            tag_info.tagName                      = name;
+            tag_info.tagSize                      = tagSize;
+            tag_info.pTag                         = tag;
+
             functions::set_object_tag(globals::rhi_context->device, &tag_info);
         }
 
@@ -1031,14 +1033,15 @@ namespace Spartan::vulkan_utility
             if (!functions::marker_begin)
                 return;
 
-            VkDebugUtilsLabelEXT label  = {};
-            label.sType                 = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
-            label.pNext                 = nullptr;
-            label.pLabelName            = name;
-            label.color[0]              = color.x;
-            label.color[1]              = color.y;
-            label.color[2]              = color.z;
-            label.color[3]              = color.w;
+            VkDebugUtilsLabelEXT label = {};
+            label.sType                = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
+            label.pNext                = nullptr;
+            label.pLabelName           = name;
+            label.color[0]             = color.x;
+            label.color[1]             = color.y;
+            label.color[2]             = color.z;
+            label.color[3]             = color.w;
+
             functions::marker_begin(cmd_buffer, &label);
         }
 

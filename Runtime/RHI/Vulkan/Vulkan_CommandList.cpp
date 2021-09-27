@@ -650,7 +650,7 @@ namespace Spartan
         m_descriptor_set_layout_cache->SetSampler(slot, sampler);
     }
 
-    void RHI_CommandList::SetTexture(const uint32_t slot, RHI_Texture* texture, const int mip /*= -1*/, const bool ranged /*= false*/, const bool uav /*= false*/)
+    void RHI_CommandList::SetTexture(const uint32_t slot, RHI_Texture* texture, const int mip /*= -1*/, bool ranged /*= false*/, const bool uav /*= false*/)
     {
         // Validate command list state
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
@@ -680,8 +680,10 @@ namespace Spartan
             texture = m_renderer->GetDefaultTextureTransparent();
         }
 
-        const bool individual_mip = mip != -1;
-        RHI_Image_Layout current_layout = texture->GetLayout(individual_mip ? mip : 0);
+        // Acquire the layout of the requested mip
+        const bool mip_specified        = mip != -1;
+        uint32_t mip_start              = mip_specified ? mip : 0;
+        RHI_Image_Layout current_layout = texture->GetLayout(mip_start);
 
         // If the image has an invalid layout (can happen for a few frames during staging), replace with a default texture
         if (current_layout == RHI_Image_Layout::Undefined || current_layout == RHI_Image_Layout::Preinitialized)
@@ -699,27 +701,30 @@ namespace Spartan
             {
                 // According to section 13.1 of the Vulkan spec, storage textures have to be in a general layout.
                 // https://www.khronos.org/registry/vulkan/specs/1.1-extensions/html/vkspec.html#descriptorsets-storageimage
-                if (current_layout != RHI_Image_Layout::General)
-                {
-                    target_layout = RHI_Image_Layout::General;
-                }
+                target_layout = RHI_Image_Layout::General;
             }
             else
             {
                 // Color
-                if (texture->IsColorFormat() && current_layout != RHI_Image_Layout::Shader_Read_Only_Optimal)
+                if (texture->IsColorFormat())
                 {
                     target_layout = RHI_Image_Layout::Shader_Read_Only_Optimal;
                 }
 
                 // Depth
-                if (texture->IsDepthFormat() && current_layout != RHI_Image_Layout::Depth_Stencil_Read_Only_Optimal)
+                if (texture->IsDepthFormat())
                 {
                     target_layout = RHI_Image_Layout::Depth_Stencil_Read_Only_Optimal;
                 }
             }
 
-            bool transition_required = target_layout != RHI_Image_Layout::Undefined;
+            // Verify that an appropriate layout has been deduced
+            SP_ASSERT(target_layout != RHI_Image_Layout::Undefined);
+
+            // Determine if a layout transition is needed
+            bool layout_mismatch_mip_start = current_layout != target_layout;
+            bool layout_mismatch_mip_all   = !texture->DoAllMipsHaveTheSameLayout();
+            bool transition_required       = layout_mismatch_mip_start || layout_mismatch_mip_all;
 
             // Transition
             if (transition_required && !m_render_pass_active)
@@ -948,9 +953,9 @@ namespace Spartan
         // Validate command list state
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
-        // Descriptor set != null, result = true    -> a descriptor set must be bound
-        // Descriptor set == null, result = true    -> a descriptor set is already bound
-        // Descriptor set == null, result = false   -> a new descriptor was needed but we are out of memory (allocates next frame)
+        // Descriptor set != null, result = true  -> a descriptor set must be bound
+        // Descriptor set == null, result = true  -> a descriptor set is already bound
+        // Descriptor set == null, result = false -> a new descriptor was needed but we are out of memory (allocates next frame)
 
         RHI_DescriptorSet* descriptor_set = nullptr;
         bool result = m_descriptor_set_layout_cache->GetDescriptorSet(descriptor_set);

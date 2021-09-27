@@ -85,11 +85,11 @@ namespace Spartan
             return true;
         }
 
-        const uint32_t width            = texture->GetWidth();
-        const uint32_t height           = texture->GetHeight();
-        const uint32_t array_length     = texture->GetArrayLength();
-        const uint32_t mip_count        = texture->GetMipCount();
-        const uint32_t bytes_per_pixel  = texture->GetBytesPerPixel();
+        const uint32_t width           = texture->GetWidth();
+        const uint32_t height          = texture->GetHeight();
+        const uint32_t array_length    = texture->GetArrayLength();
+        const uint32_t mip_count       = texture->GetMipCount();
+        const uint32_t bytes_per_pixel = texture->GetBytesPerPixel();
 
         const uint32_t region_count = array_length * mip_count;
         regions.resize(region_count);
@@ -105,15 +105,15 @@ namespace Spartan
                 uint32_t mip_width      = width >> mip_index;
                 uint32_t mip_height     = height >> mip_index;
 
-                regions[region_index].bufferOffset                      = buffer_offset;
-                regions[region_index].bufferRowLength                   = 0;
-                regions[region_index].bufferImageHeight                 = 0;
-                regions[region_index].imageSubresource.aspectMask       = vulkan_utility::image::get_aspect_mask(texture);
-                regions[region_index].imageSubresource.mipLevel         = mip_index;
-                regions[region_index].imageSubresource.baseArrayLayer   = array_index;
-                regions[region_index].imageSubresource.layerCount       = 1;
-                regions[region_index].imageOffset                       = { 0, 0, 0 };
-                regions[region_index].imageExtent                       = { mip_width, mip_height, 1 };
+                regions[region_index].bufferOffset                    = buffer_offset;
+                regions[region_index].bufferRowLength                 = 0;
+                regions[region_index].bufferImageHeight               = 0;
+                regions[region_index].imageSubresource.aspectMask     = vulkan_utility::image::get_aspect_mask(texture);
+                regions[region_index].imageSubresource.mipLevel       = mip_index;
+                regions[region_index].imageSubresource.baseArrayLayer = array_index;
+                regions[region_index].imageSubresource.layerCount     = 1;
+                regions[region_index].imageOffset                     = { 0, 0, 0 };
+                regions[region_index].imageExtent                     = { mip_width, mip_height, 1 };
 
                 // Update staging buffer memory requirement (in bytes)
                 buffer_offset += static_cast<uint64_t>(mip_width) * static_cast<uint64_t>(mip_height) * static_cast<uint64_t>(bytes_per_pixel);
@@ -209,14 +209,13 @@ namespace Spartan
 
     void RHI_Texture::SetLayout(const RHI_Image_Layout new_layout, RHI_CommandList* cmd_list, const int mip /*= -1*/, const bool ranged /*= true*/)
     {
-        const bool individual_mip_requested = mip != -1;
-        const uint32_t mip_start            = individual_mip_requested ? mip : 0;
-        const uint32_t mip_remaining        = m_mip_count - mip_start;
-        const uint32_t mip_range            = ranged ? (individual_mip_requested ? mip_remaining : m_mip_count) : mip_remaining;
-        RHI_Image_Layout current_layout     = m_layout[mip_start];
+        const bool mip_specified = mip != -1;
+        uint32_t mip_start       = mip_specified ? mip : 0;
+        uint32_t mip_remaining   = m_mip_count - mip_start;
+        uint32_t mip_range       = ranged ? (mip_specified ? mip_remaining : m_mip_count) : mip_remaining;
 
         // Verify the texture has per mip views (if a specific mip was requested)
-        if (individual_mip_requested)
+        if (mip_specified)
         {
             SP_ASSERT(HasPerMipViews());
         }
@@ -224,18 +223,38 @@ namespace Spartan
         // Verify that we didn't do anything wrong in the above calculations
         SP_ASSERT(mip_remaining <= m_mip_count);
 
-        // Check if this texture is still initialising (can happen due to multithreading)
-        if (current_layout == RHI_Image_Layout::Undefined)
-            return;
-
         // Check if already set
-        if (current_layout == new_layout)
-            return;
+        {
+            if (mip_specified && !ranged)
+            {
+                if (m_layout[mip_start] == new_layout)
+                    return;
+            }
+            else
+            {
+                bool all_set = true;
+
+                for (uint32_t mip_index = mip_start; mip_index < mip_range; mip_index++)
+                {
+                    if (m_layout[mip_index] != new_layout)
+                    {
+                        mip_start     = mip_index;
+                        mip_remaining = m_mip_count - mip_start;
+                        mip_range     = ranged ? (mip_specified ? mip_remaining : m_mip_count) : mip_remaining;
+                        all_set       = false;
+                        break;
+                    }
+                }
+
+                if (all_set)
+                    return;
+            }
+        }
 
         // Insert memory barrier
         if (cmd_list)
         {
-            vulkan_utility::image::set_layout(static_cast<VkCommandBuffer>(cmd_list->GetResource_CommandBuffer()), this, mip_start, mip_range, m_array_length, current_layout, new_layout);
+            vulkan_utility::image::set_layout(static_cast<VkCommandBuffer>(cmd_list->GetResource_CommandBuffer()), this, mip_start, mip_range, m_array_length, m_layout[mip_start], new_layout);
             m_context->GetSubsystem<Profiler>()->m_rhi_pipeline_barriers++;
         }
 
@@ -312,13 +331,13 @@ namespace Spartan
             {
                 if (IsRenderTargetColor())
                 {
-                    if (!vulkan_utility::image::view::create(m_resource, m_resource_view_renderTarget[i], this, i, 1, 0, m_mip_count, false, false))
+                    if (!vulkan_utility::image::view::create(m_resource, m_resource_view_renderTarget[i], this, i, 1, 0, 1, false, false))
                         return false;
                 }
 
                 if (IsRenderTargetDepthStencil())
                 {
-                    if (!vulkan_utility::image::view::create(m_resource, m_resource_view_depthStencil[i], this, i, 1, 0, m_mip_count, true, false))
+                    if (!vulkan_utility::image::view::create(m_resource, m_resource_view_depthStencil[i], this, i, 1, 0, 1, true, false))
                         return false;
                 }
             }
@@ -334,6 +353,9 @@ namespace Spartan
     {
         SP_ASSERT(m_rhi_device != nullptr);
         SP_ASSERT(m_rhi_device->IsInitialised());
+
+        // Wait in case it's still in use by the GPU
+        m_rhi_device->QueueWaitAll();
 
         // Make sure that no descriptor sets refers to this texture
         if (IsSrv())
@@ -352,12 +374,7 @@ namespace Spartan
             }
         }
 
-        // Wait in case it's still in use by the GPU
-        m_rhi_device->QueueWaitAll();
-
         // De-allocate everything
-        m_data.clear();
-
         if (destroy_main)
         {
             vulkan_utility::image::view::destroy(m_resource_view_srv);

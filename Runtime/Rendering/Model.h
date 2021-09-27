@@ -75,11 +75,11 @@ namespace Spartan
         void AddTexture(std::shared_ptr<Material>& material, Material_Property texture_type, const std::string& file_path);
 
         // Misc
-        bool IsAnimated()                           const { return m_is_animated; }
-        void SetAnimated(const bool is_animated)          { m_is_animated = is_animated; }
-        const RHI_IndexBuffer* GetIndexBuffer()     const { return m_index_buffer.get(); }
-        const RHI_VertexBuffer* GetVertexBuffer()   const { return m_vertex_buffer.get(); }
-        auto GetSharedPtr()                                  { return shared_from_this(); }
+        bool IsAnimated()                         const { return m_is_animated; }
+        void SetAnimated(const bool is_animated)        { m_is_animated = is_animated; }
+        const RHI_IndexBuffer* GetIndexBuffer()   const { return m_index_buffer.get(); }
+        const RHI_VertexBuffer* GetVertexBuffer() const { return m_vertex_buffer.get(); }
+        auto GetSharedPtr()                             { return shared_from_this(); }
 
     private:
         // Geometry
@@ -92,11 +92,11 @@ namespace Spartan
         std::shared_ptr<RHI_IndexBuffer> m_index_buffer;
         std::shared_ptr<Mesh> m_mesh;
         Math::BoundingBox m_aabb;
-        float m_normalized_scale    = 1.0f;
-        bool m_is_animated            = false;
+        float m_normalized_scale = 1.0f;
+        bool m_is_animated       = false;
 
         // Dependencies
         ResourceCache* m_resource_manager;
-        std::shared_ptr<RHI_Device> m_rhi_device;    
+        std::shared_ptr<RHI_Device> m_rhi_device;
     };
 }

@@ -175,13 +175,13 @@ namespace Spartan
             delete m_model;
         }
 
-        m_geometryName          = name;
-        m_geometryIndexOffset   = index_offset;
-        m_geometryIndexCount    = index_count;
-        m_geometryVertexOffset  = vertex_offset;
-        m_geometryVertexCount   = vertex_count;
-        m_bounding_box          = bounding_box;
-        m_model                 = model;
+        m_geometryName         = name;
+        m_geometryIndexOffset  = index_offset;
+        m_geometryIndexCount   = index_count;
+        m_geometryVertexOffset = vertex_offset;
+        m_geometryVertexCount  = vertex_count;
+        m_bounding_box         = bounding_box;
+        m_model                = model;
     }
 
     void Renderable::GeometrySet(const Geometry_Type type)

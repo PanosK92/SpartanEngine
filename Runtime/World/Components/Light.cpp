@@ -473,9 +473,9 @@ namespace Spartan
 
     bool Light::IsInViewFrustrum(Renderable* renderable, uint32_t index) const
     {
-        const auto box          = renderable->GetAabb();
-        const auto center       = box.GetCenter();
-        const auto extents      = box.GetExtents();
+        const auto box     = renderable->GetAabb();
+        const auto center  = box.GetCenter();
+        const auto extents = box.GetExtents();
 
         // ensure that potential shadow casters from behind the near plane are not rejected
         const bool ignore_near_plane = (m_light_type == LightType::Directional) ? true : false;
