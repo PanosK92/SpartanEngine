@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016-2020 Panos Karabelas
+Copyright(c) 2016-2021 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -45,11 +45,20 @@ namespace Spartan
         const RHI_Stencil_Operation stencil_pass_op                 /*= RHI_Stencil_Replace */
     )
     {
-		
-	}
-
-	RHI_DepthStencilState::~RHI_DepthStencilState()
-	{
-		
-	}
+        // Save properties
+        m_depth_test_enabled          = depth_test;
+        m_depth_write_enabled         = depth_write;
+        m_depth_comparison_function   = depth_comparison_function;
+        m_stencil_test_enabled        = stencil_test;
+        m_stencil_write_enabled       = stencil_write;
+        m_stencil_comparison_function = stencil_comparison_function;
+        m_stencil_fail_op             = stencil_fail_op;
+        m_stencil_depth_fail_op       = stencil_depth_fail_op;
+        m_stencil_pass_op             = stencil_pass_op;
+    }
+    
+    RHI_DepthStencilState::~RHI_DepthStencilState()
+    {
+    
+    }
 }

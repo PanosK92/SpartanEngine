@@ -102,10 +102,10 @@ namespace Spartan
         inline void SetSampler(const uint32_t slot, const std::shared_ptr<RHI_Sampler>& sampler) const { SetSampler(slot, sampler.get()); }
 
         // Texture
-        void SetTexture(const uint32_t slot, RHI_Texture* texture, const int mip = -1, const bool ranged = false, const bool uav = false);
-        inline void SetTexture(const RendererBindings_Uav slot, RHI_Texture* texture, const int mip = -1, const bool ranged = false)                        { SetTexture(static_cast<uint32_t>(slot), texture,       mip, ranged, true); }
+        void SetTexture(                   const uint32_t slot,                        RHI_Texture* texture, const int mip = -1,       bool ranged = false, const bool uav = false);
+        inline void SetTexture(const RendererBindings_Uav slot,                        RHI_Texture* texture, const int mip = -1, const bool ranged = false) { SetTexture(static_cast<uint32_t>(slot), texture,       mip, ranged, true); }
         inline void SetTexture(const RendererBindings_Uav slot, const std::shared_ptr<RHI_Texture>& texture, const int mip = -1, const bool ranged = false) { SetTexture(static_cast<uint32_t>(slot), texture.get(), mip, ranged, true); }
-        inline void SetTexture(const RendererBindings_Srv slot, RHI_Texture* texture, const int mip = -1, const bool ranged = false)                        { SetTexture(static_cast<uint32_t>(slot), texture,       mip, ranged, false); }
+        inline void SetTexture(const RendererBindings_Srv slot,                        RHI_Texture* texture, const int mip = -1, const bool ranged = false) { SetTexture(static_cast<uint32_t>(slot), texture,       mip, ranged, false); }
         inline void SetTexture(const RendererBindings_Srv slot, const std::shared_ptr<RHI_Texture>& texture, const int mip = -1, const bool ranged = false) { SetTexture(static_cast<uint32_t>(slot), texture.get(), mip, ranged, false); }
 
         // Structured buffer

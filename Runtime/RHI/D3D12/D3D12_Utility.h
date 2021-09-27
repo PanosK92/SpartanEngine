@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016-2020 Panos Karabelas
+Copyright(c) 2016-2021 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -143,6 +143,27 @@ namespace Spartan::d3d12_utility
                 swprintf(name_buffer, name_str.size() + 1, L"%S", name_str.c_str());
 
             static_cast<ID3D12Object*>(obj)->SetName(name_buffer);
+        }
+    }
+
+    namespace sampler
+    {
+        inline D3D12_FILTER get_filter(const RHI_Filter filter_min, const RHI_Filter filter_mag, const RHI_Sampler_Mipmap_Mode filter_mipmap, bool anisotropy_enabled, bool comparison_enabled)
+        {
+            if (anisotropy_enabled)
+                return !comparison_enabled ? D3D12_FILTER_ANISOTROPIC : D3D12_FILTER_COMPARISON_ANISOTROPIC;
+
+            if ((filter_min == RHI_Filter::Nearest) && (filter_mag == RHI_Filter::Nearest)  && (filter_mipmap == RHI_Sampler_Mipmap_Mode::Nearest)) return !comparison_enabled ? D3D12_FILTER_MIN_MAG_MIP_POINT               : D3D12_FILTER_COMPARISON_MIN_MAG_MIP_POINT;
+            if ((filter_min == RHI_Filter::Nearest) && (filter_mag == RHI_Filter::Nearest)  && (filter_mipmap == RHI_Sampler_Mipmap_Mode::Linear))  return !comparison_enabled ? D3D12_FILTER_MIN_MAG_POINT_MIP_LINEAR        : D3D12_FILTER_COMPARISON_MIN_MAG_POINT_MIP_LINEAR;
+            if ((filter_min == RHI_Filter::Nearest) && (filter_mag == RHI_Filter::Linear)   && (filter_mipmap == RHI_Sampler_Mipmap_Mode::Nearest)) return !comparison_enabled ? D3D12_FILTER_MIN_POINT_MAG_LINEAR_MIP_POINT  : D3D12_FILTER_COMPARISON_MIN_POINT_MAG_LINEAR_MIP_POINT;
+            if ((filter_min == RHI_Filter::Nearest) && (filter_mag == RHI_Filter::Linear)   && (filter_mipmap == RHI_Sampler_Mipmap_Mode::Linear))  return !comparison_enabled ? D3D12_FILTER_MIN_POINT_MAG_MIP_LINEAR        : D3D12_FILTER_COMPARISON_MIN_POINT_MAG_MIP_LINEAR;
+            if ((filter_min == RHI_Filter::Linear)  && (filter_mag == RHI_Filter::Nearest)  && (filter_mipmap == RHI_Sampler_Mipmap_Mode::Nearest)) return !comparison_enabled ? D3D12_FILTER_MIN_LINEAR_MAG_MIP_POINT        : D3D12_FILTER_COMPARISON_MIN_LINEAR_MAG_MIP_POINT;
+            if ((filter_min == RHI_Filter::Linear)  && (filter_mag == RHI_Filter::Nearest)  && (filter_mipmap == RHI_Sampler_Mipmap_Mode::Linear))  return !comparison_enabled ? D3D12_FILTER_MIN_LINEAR_MAG_POINT_MIP_LINEAR : D3D12_FILTER_COMPARISON_MIN_LINEAR_MAG_POINT_MIP_LINEAR;
+            if ((filter_min == RHI_Filter::Linear)  && (filter_mag == RHI_Filter::Linear)   && (filter_mipmap == RHI_Sampler_Mipmap_Mode::Nearest)) return !comparison_enabled ? D3D12_FILTER_MIN_MAG_LINEAR_MIP_POINT        : D3D12_FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT;
+            if ((filter_min == RHI_Filter::Linear)  && (filter_mag == RHI_Filter::Linear)   && (filter_mipmap == RHI_Sampler_Mipmap_Mode::Linear))  return !comparison_enabled ? D3D12_FILTER_MIN_MAG_MIP_LINEAR              : D3D12_FILTER_COMPARISON_MIN_MAG_MIP_LINEAR;
+
+            SP_ASSERT(false && "D3D11_Sampler filter not supported.");
+            return D3D12_FILTER_MIN_MAG_MIP_POINT;
         }
     }
 }

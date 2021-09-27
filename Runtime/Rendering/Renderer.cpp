@@ -297,8 +297,8 @@ namespace Spartan
             }
             else
             {
-                m_taa_jitter            = Vector2::Zero;
-                m_taa_jitter_previous   = Vector2::Zero;
+                m_taa_jitter          = Vector2::Zero;
+                m_taa_jitter_previous = Vector2::Zero;
             }
             
             // Update the remaining of the frame buffer
@@ -782,12 +782,12 @@ namespace Spartan
 
     void Renderer::Flush()
     {
-        // External thread request a flush from the renderer thread (to avoid a myriad of thread issues and Vulkan errors)
+        // The external thread requests a flush from the renderer thread (to avoid a myriad of thread issues and Vulkan errors)
         bool flushing_from_different_thread = m_render_thread_id != this_thread::get_id();
         if (flushing_from_different_thread)
         {
-            m_is_rendering_allowed  = false;
-            m_flush_requested       = true;
+            m_is_rendering_allowed = false;
+            m_flush_requested      = true;
 
             while (m_flush_requested)
             {

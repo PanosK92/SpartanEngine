@@ -73,10 +73,10 @@ namespace Spartan
         Renderer(Context* context);
         ~Renderer();
 
-        //= ISubsystem ======================
+        //= ISubsystem =========================
         bool OnInitialise() override;
         void OnTick(double delta_time) override;
-        //===================================
+        //======================================
 
         // Primitive rendering
         void TickPrimitives(const double delta_time);
@@ -108,17 +108,17 @@ namespace Spartan
         RendererRt GetRenderTargetDebug() const                         { return m_render_target_debug; }
 
         // Depth
-        auto GetClearDepth()                { return GetOption(Render_ReverseZ) ? m_viewport.depth_min : m_viewport.depth_max; }
-        auto GetComparisonFunction() const  { return GetOption(Render_ReverseZ) ? RHI_Comparison_Function::GreaterEqual : RHI_Comparison_Function::LessEqual; }
+        auto GetClearDepth()               { return GetOption(Render_ReverseZ) ? m_viewport.depth_min : m_viewport.depth_max; }
+        auto GetComparisonFunction() const { return GetOption(Render_ReverseZ) ? RHI_Comparison_Function::GreaterEqual : RHI_Comparison_Function::LessEqual; }
 
         // Environment
         const std::shared_ptr<RHI_Texture>& GetEnvironmentTexture();
         void SetEnvironmentTexture(const std::shared_ptr<RHI_Texture> texture);
 
         // Options
-        uint64_t GetOptions()                           const { return m_options; }
-        void SetOptions(const uint64_t options)               { m_options = options; }
-        bool GetOption(const Renderer_Option option)    const { return m_options & option; }
+        uint64_t GetOptions()                        const { return m_options; }
+        void SetOptions(const uint64_t options)            { m_options = options; }
+        bool GetOption(const Renderer_Option option) const { return m_options & option; }
         void SetOption(Renderer_Option option, bool enable);
         
         // Options values
@@ -129,6 +129,8 @@ namespace Spartan
         // Swapchain
         RHI_SwapChain* GetSwapChain() const { return m_swap_chain.get(); }
         bool Present(RHI_CommandList* cmd_list);
+
+        // Sync
         void Flush();
 
         // Default textures

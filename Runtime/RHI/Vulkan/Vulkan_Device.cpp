@@ -340,7 +340,7 @@ namespace Spartan
         
         if (device_count == 0)
         {
-            LOG_ERROR("There are no available devices.");
+            LOG_ERROR("There are no available physical devices.");
             return false;
         }
         
@@ -446,7 +446,7 @@ namespace Spartan
             }
 
             // Compute
-            if (get_queue_family_index(VK_QUEUE_GRAPHICS_BIT, queue_families_properties, &index))
+            if (get_queue_family_index(VK_QUEUE_COMPUTE_BIT, queue_families_properties, &index))
             {
                 SetQueueIndex(RHI_Queue_Type::Compute, index);
             }

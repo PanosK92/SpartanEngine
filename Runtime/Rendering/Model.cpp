@@ -46,9 +46,9 @@ namespace Spartan
 {
     Model::Model(Context* context) : IResource(context, ResourceType::Model)
     {
-        m_resource_manager    = m_context->GetSubsystem<ResourceCache>();
-        m_rhi_device        = m_context->GetSubsystem<Renderer>()->GetRhiDevice();
-        m_mesh                = make_unique<Mesh>();
+        m_resource_manager = m_context->GetSubsystem<ResourceCache>();
+        m_rhi_device       = m_context->GetSubsystem<Renderer>()->GetRhiDevice();
+        m_mesh             = make_unique<Mesh>();
     }
 
     Model::~Model()
@@ -164,8 +164,8 @@ namespace Spartan
         SP_ASSERT(m_mesh->Vertices_Count() != 0);
 
         GeometryCreateBuffers();
-        m_normalized_scale    = GeometryComputeNormalizedScale();
-        m_aabb                = BoundingBox(m_mesh->Vertices_Get().data(), static_cast<uint32_t>(m_mesh->Vertices_Get().size()));
+        m_normalized_scale = GeometryComputeNormalizedScale();
+        m_aabb             = BoundingBox(m_mesh->Vertices_Get().data(), static_cast<uint32_t>(m_mesh->Vertices_Get().size()));
     }
 
     void Model::AddMaterial(shared_ptr<Material>& material, const shared_ptr<Entity>& entity) const
