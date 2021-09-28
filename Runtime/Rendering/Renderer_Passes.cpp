@@ -1167,8 +1167,8 @@ namespace Spartan
         {
             // Set render state
             static RHI_PipelineState pso;
-            pso.shader_compute  = shader_upsampleBlendMip;
-            pso.pass_name       = "Pass_PostProcess_BloomUpsampleBlendMip";
+            pso.shader_compute = shader_upsampleBlendMip;
+            pso.pass_name      = "Pass_PostProcess_BloomUpsampleBlendMip";
 
             // Draw
             if (cmd_list->BeginRenderPass(pso))
