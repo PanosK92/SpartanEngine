@@ -47,14 +47,19 @@ namespace Spartan
         return true;
     }
 
+    void RHI_CommandList::Discard()
+    {
+        m_discard = true;
+    }
+    
     bool RHI_CommandList::Flush(const bool restore_pipeline_state_after_flush)
     {
         if (m_state == RHI_CommandListState::Idle)
             return true;
 
         // If recording, end
-        bool was_recording      = false;
-        bool had_render_pass    = false;
+        bool was_recording   = false;
+        bool had_render_pass = false;
         if (m_state == RHI_CommandListState::Recording)
         {
             was_recording = true;

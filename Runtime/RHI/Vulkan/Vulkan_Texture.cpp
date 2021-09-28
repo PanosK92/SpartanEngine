@@ -354,23 +354,36 @@ namespace Spartan
         SP_ASSERT(m_rhi_device != nullptr);
         SP_ASSERT(m_rhi_device->IsInitialised());
 
-        // Wait in case it's still in use by the GPU
+        // Wait for any in-flight frames that might be using it.
         m_rhi_device->QueueWaitAll();
 
-        // Make sure that no descriptor sets refers to this texture
-        if (IsSrv())
+        // Destruction can happen during engine shutdown, in which case, the renderer might not exist, so, if statement.
+        if (Renderer* renderer = m_rhi_device->GetContext()->GetSubsystem<Renderer>())
         {
-            if (Renderer* renderer = m_rhi_device->GetContext()->GetSubsystem<Renderer>())
+            // Make sure that no descriptor sets refers to this texture.
+            if (IsSrv())
             {
                 if (RHI_DescriptorSetLayoutCache* descriptor_set_layout_cache = renderer->GetDescriptorLayoutSetCache())
                 {
-                    descriptor_set_layout_cache->RemoveTexture(this, -1);
-
-                    for (uint32_t i = 0; i < m_mip_count; i++)
+                    if (destroy_main)
                     {
-                        descriptor_set_layout_cache->RemoveTexture(this, i);
+                        descriptor_set_layout_cache->RemoveTexture(this, -1);
+                    }
+
+                    if (destroy_per_view)
+                    {
+                        for (uint32_t i = 0; i < m_mip_count; i++)
+                        {
+                            descriptor_set_layout_cache->RemoveTexture(this, i);
+                        }
                     }
                 }
+            }
+
+            // Discard the command list because it might be referring to invalidated descriptor sets.
+            if (RHI_CommandList* cmd_list = renderer->GetCmdList())
+            {
+                cmd_list->Discard();
             }
         }
 

@@ -102,11 +102,7 @@ namespace Spartan
         // If the command list is in use, wait for it
         if (m_state == RHI_CommandListState::Submitted)
         {
-            if (!Wait())
-            {
-                LOG_ERROR("Failed to wait");
-                return false;
-            }
+            SP_ASSERT(Wait());
         }
 
         // Verify a few things
@@ -172,6 +168,16 @@ namespace Spartan
     {
         // Validate command list state
         SP_ASSERT(m_state == RHI_CommandListState::Ended);
+
+        if (m_discard)
+        {
+            wait_semaphore->Reset();
+
+            m_discard = false;
+            m_state   = RHI_CommandListState::Submitted;
+
+            return true;
+        }
 
         // Get signal semaphore
         RHI_Semaphore* signal_semaphore = nullptr;

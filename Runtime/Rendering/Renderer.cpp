@@ -780,7 +780,7 @@ namespace Spartan
         return m_swap_chain->Present(wait_semaphore);
     }
 
-    void Renderer::Flush()
+	void Renderer::Flush()
     {
         // The external thread requests a flush from the renderer thread (to avoid a myriad of thread issues and Vulkan errors)
         bool flushing_from_different_thread = m_render_thread_id != this_thread::get_id();
