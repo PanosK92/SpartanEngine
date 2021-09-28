@@ -1202,8 +1202,8 @@ namespace Spartan
         {
             // Set render state
             static RHI_PipelineState pso;
-            pso.shader_compute   = shader_blendFrame;
-            pso.pass_name        = "Pass_PostProcess_BloomBlendFrame";
+            pso.shader_compute = shader_blendFrame;
+            pso.pass_name      = "Pass_PostProcess_BloomBlendFrame";
 
             // Draw
             if (cmd_list->BeginRenderPass(pso))
