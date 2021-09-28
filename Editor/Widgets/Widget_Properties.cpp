@@ -363,23 +363,26 @@ void Widget_Properties::ShowLight(Light* light) const
         ImGui::Text("Shadows");
         ImGui::SameLine(widget_helper::g_column); ImGui::Checkbox("##light_shadows", &shadows);
 
-        // Screen space shadows
-        ImGui::Text("Screen Space Shadows");
-        ImGui::SameLine(widget_helper::g_column); ImGui::Checkbox("##light_shadows_screen_space", &shadows_screen_space);
-        ImGuiEx::Tooltip("Small scale shadows which add detail were surfaces meet, also known as contact shadows");
-
-        if (shadows)
+        // Shadow supplements
+        ImGui::BeginDisabled(!shadows);
         {
             // Transparent shadows
             ImGui::Text("Transparent Shadows");
             ImGui::SameLine(widget_helper::g_column); ImGui::Checkbox("##light_shadows_transparent", &shadows_transparent);
             ImGuiEx::Tooltip("Allows transparent objects to cast colored translucent shadows");
-        }
 
-        // Volumetric
-        ImGui::Text("Volumetric");
-        ImGui::SameLine(widget_helper::g_column); ImGui::Checkbox("##light_volumetric", &volumetric);
-        ImGuiEx::Tooltip("The shadow map is used to determine which parts of the \"air\" should be lit");
+            // Volumetric
+            ImGui::Text("Volumetric");
+            ImGui::SameLine(widget_helper::g_column); ImGui::Checkbox("##light_volumetric", &volumetric);
+            ImGuiEx::Tooltip("The shadow map is used to determine which parts of the \"air\" should be lit");
+
+        }
+        ImGui::EndDisabled();
+
+        // Screen space shadows
+        ImGui::Text("Screen Space Shadows");
+        ImGui::SameLine(widget_helper::g_column); ImGui::Checkbox("##light_shadows_screen_space", &shadows_screen_space);
+        ImGuiEx::Tooltip("Small scale shadows which add detail were surfaces meet, also known as contact shadows");
 
         // Bias
         ImGui::Text("Bias");

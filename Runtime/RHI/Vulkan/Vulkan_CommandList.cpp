@@ -171,7 +171,10 @@ namespace Spartan
 
         if (m_discard)
         {
-            wait_semaphore->Reset();
+            if (wait_semaphore)
+            {
+                wait_semaphore->Reset();
+            }
 
             m_discard = false;
             m_state   = RHI_CommandListState::Submitted;
@@ -729,7 +732,7 @@ namespace Spartan
 
             // Determine if a layout transition is needed
             bool layout_mismatch_mip_start = current_layout != target_layout;
-            bool layout_mismatch_mip_all   = !texture->DoAllMipsHaveTheSameLayout();
+            bool layout_mismatch_mip_all   = !texture->DoAllMipsHaveTheSameLayout() && !mip_specified;
             bool transition_required       = layout_mismatch_mip_start || layout_mismatch_mip_all;
 
             // Transition
