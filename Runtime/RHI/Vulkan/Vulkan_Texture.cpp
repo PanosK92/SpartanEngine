@@ -303,7 +303,10 @@ namespace Spartan
             }
 
             // Update this texture with the new layout
-            m_layout.fill(target_layout);
+            for (uint32_t i = 0; i < m_mip_count; i++)
+            {
+                m_layout[i] = target_layout;
+            }
         }
 
         // Create image views

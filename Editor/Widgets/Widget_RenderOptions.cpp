@@ -332,7 +332,7 @@ void Widget_RenderOptions::TickVisible()
             if (widget_helper::Option("Camera"))
             {
                 // Tonemapping
-                static vector<string> tonemapping_options = { "Off", "ACES", "Reinhard", "Uncharted 2" };
+                static vector<string> tonemapping_options = { "Off", "ACES", "Reinhard", "Uncharted 2", "Matrix"};
                 uint32_t selection_index = m_renderer->GetOptionValue<uint32_t>(Renderer_Option_Value::Tonemapping);
                 if (widget_helper::ComboBox("Tonemapping", tonemapping_options, selection_index))
                 {
