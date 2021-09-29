@@ -77,7 +77,7 @@ Feature     					 	| Completion | Notes
 :-          					 	| :-         | :-
 SDL integration 					| 100%		 | Use SDL for window creation and input (this also enables PlayStation controller support).
 Screen space global illumination 	| 100%		 | One bounce of indirect diffuse and specular light.
-Depth-of-field					 	| 90%        | Controlled by Camera aperture (fix some remaining bugs).
+Depth-of-field					 	| 100%        | Controlled by camera aperture.
 Temporal upsampling					| 50%		 | Reconstruct a high resolution output from a low resolution input (fix some remaining bugs).
 DirectX 12						 	| 10%		 | RHI has already matured thanks to adding Vulkan, this should be easy.
 C# scripting (Replace AngelScript) 	| 50%		 | Using Mono (low priority since the engine is not ready for scripting games).
