@@ -354,7 +354,7 @@ void Widget_RenderOptions::TickVisible()
                 widget_helper::CheckBox("Motion blur (controlled by the camera's shutter speed)", do_motion_blur);
 
                 // Depth of Field
-                widget_helper::CheckBox("Depth of field (controlled by the camera's aperture) - WIP", do_dof);
+                widget_helper::CheckBox("Depth of field (controlled by the camera's aperture)", do_dof);
 
                 // Chromatic aberration
                 widget_helper::CheckBox("Chromatic aberration (controlled by the camera's aperture)", do_chromatic_aberration, "Emulates the inability of old cameras to focus all colors in the same focal point.");

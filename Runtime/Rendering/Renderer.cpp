@@ -71,7 +71,7 @@ namespace Spartan
         m_options |= Render_ScreenSpaceReflections;
         m_options |= Render_AntiAliasing_Taa;
         m_options |= Render_Sharpening_AMD_FidelityFX_ContrastAdaptiveSharpening;
-        // m_options |= Render_DepthOfField; // Disabled until it's bugs are fixed
+        m_options |= Render_DepthOfField; // Disabled until it's bugs are fixed
         //m_options |= Render_DepthPrepass; // todo: fix for vulkan
 
         // Option values

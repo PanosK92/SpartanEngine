@@ -85,7 +85,7 @@ float3 matrix_movie(float3 keannu)
     static const float pow_a = 3.0f / 2.0f;
     static const float pow_b = 4.0f / 5.0f;
 
-    return float3(pow(keannu.r, pow_a), pow(keannu.g, pow_b), pow(keannu.b, pow_a));
+    return float3(pow(abs(keannu.r), pow_a), pow(abs(keannu.g), pow_b), pow(abs(keannu.b), pow_a));
 }
 
 float3 ToneMap(float3 color)

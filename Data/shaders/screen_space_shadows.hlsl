@@ -45,7 +45,7 @@ float ScreenSpaceShadows(Surface surface, Light light)
     
     // Save the original depth
     float depth_original = ray_pos.z;
-    
+
     // Ray march towards the light
     float occlusion = 0.0;
     float2 ray_uv   = 0.0f;

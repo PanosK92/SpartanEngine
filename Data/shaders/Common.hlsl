@@ -63,9 +63,11 @@ static const float RPC_16               = 1.0f / 16.0f;
 /*------------------------------------------------------------------------------
     MATH
 ------------------------------------------------------------------------------*/
-float min2(float2 value)              { return min(value.x, value.y); }
-float min3(float3 value)              { return min(min(value.x, value.y), value.z); }
-float min3(float x, float y, float z) { return min(min(x, y), z); }
+float min2(float2 value)                                { return min(value.x, value.y); }
+float min3(float3 value)                                { return min(min(value.x, value.y), value.z); }
+float min3(float a, float b, float c)                   { return min(min(a, b), c); }
+float min4(float a, float b, float c, float d)          { return min(min(min(a, b), c), d); }
+float min5(float a, float b, float c, float d, float e) { return min(min(min(min(a, b), c), d), e); }
 
 float max2(float2 value) { return max(value.x, value.y); }
 float max3(float3 value) { return max(max(value.x, value.y), value.z); }
