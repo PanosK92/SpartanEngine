@@ -23,10 +23,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Common.hlsl"
 //====================
 
-static const float g_film_grain_intensity   = 0.002f;
-static const float g_film_grain_speed       = 3.0f;
-static const float g_film_grain_mean        = 0.0f; // What gray level noise should tend to.
-static const float g_film_grain_variance    = 0.5f; // Controls the contrast/variance of noise.
+static const float g_film_grain_intensity = 0.002f;
+static const float g_film_grain_speed     = 3.0f;
+static const float g_film_grain_mean      = 0.0f; // What gray level noise should tend to.
+static const float g_film_grain_variance  = 0.5f; // Controls the contrast/variance of noise.
 
 float gaussian(float z, float u, float o) {
     return (1.0 / (o * sqrt(2.0 * 3.1415))) * exp(-(((z - u) * (z - u)) / (2.0 * (o * o))));
@@ -42,16 +42,14 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     float3 color    = tex[thread_id.xy].rgb;
 
     // Film grain
-    float t             = g_time * float(g_film_grain_speed);
-    float seed          = dot(uv, float2(12.9898, 78.233));
-    float noise         = frac(sin(seed) * 43758.5453 + t);
-    noise               = gaussian(noise, float(g_film_grain_mean), float(g_film_grain_variance) * float(g_film_grain_variance));
-    float3 film_grain   =  noise * (1.0f - color) * g_film_grain_intensity;
+    float t          = g_time * float(g_film_grain_speed);
+    float seed       = dot(uv, float2(12.9898, 78.233));
+    float noise      = frac(sin(seed) * 43758.5453 + t);
+    noise            = gaussian(noise, float(g_film_grain_mean), float(g_film_grain_variance) * float(g_film_grain_variance));
+    float film_grain =  noise * g_film_grain_intensity;
 
     // Iso noise
-    noise               = get_random(frac(uv.x * uv.y * g_time));
-    noise               *= g_camera_iso * 0.00001f;
-    float3 iso_noise    = noise * (1.0f - color);
+    float iso_noise = get_random(frac(uv.x * uv.y * g_time)) * g_camera_iso * 0.000002f;
     
     // Additive blending
     color.rgb += (film_grain + iso_noise) * 0.5f;

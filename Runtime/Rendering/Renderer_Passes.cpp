@@ -1387,17 +1387,17 @@ namespace Spartan
     void Renderer::Pass_PostProcess_DepthOfField(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
     {
         // Acquire shaders
-        RHI_Shader* shader_downsampleCoc    = m_shaders[RendererShader::Dof_DownsampleCoc_C].get();
-        RHI_Shader* shader_bokeh            = m_shaders[RendererShader::Dof_Bokeh_C].get();
-        RHI_Shader* shader_tent             = m_shaders[RendererShader::Dof_Tent_C].get();
-        RHI_Shader* shader_upsampleBlend    = m_shaders[RendererShader::Dof_UpscaleBlend_C].get();
+        RHI_Shader* shader_downsampleCoc = m_shaders[RendererShader::Dof_DownsampleCoc_C].get();
+        RHI_Shader* shader_bokeh         = m_shaders[RendererShader::Dof_Bokeh_C].get();
+        RHI_Shader* shader_tent          = m_shaders[RendererShader::Dof_Tent_C].get();
+        RHI_Shader* shader_upsampleBlend = m_shaders[RendererShader::Dof_UpscaleBlend_C].get();
         if (!shader_downsampleCoc->IsCompiled() || !shader_bokeh->IsCompiled() || !shader_tent->IsCompiled() || !shader_upsampleBlend->IsCompiled())
             return;
 
         // Acquire render targets
-        RHI_Texture* tex_bokeh_half     = RENDER_TARGET(RendererRt::Dof_Half).get();
-        RHI_Texture* tex_bokeh_half_2   = RENDER_TARGET(RendererRt::Dof_Half_2).get();
-        RHI_Texture* tex_depth          = RENDER_TARGET(RendererRt::Gbuffer_Depth).get();
+        RHI_Texture* tex_bokeh_half   = RENDER_TARGET(RendererRt::Dof_Half).get();
+        RHI_Texture* tex_bokeh_half_2 = RENDER_TARGET(RendererRt::Dof_Half_2).get();
+        RHI_Texture* tex_depth        = RENDER_TARGET(RendererRt::Gbuffer_Depth).get();
 
         // Downsample and compute circle of confusion
         {

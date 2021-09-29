@@ -23,8 +23,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Common.hlsl"
 //====================
 
-static const uint g_dof_sample_count        = 22;
-static const float g_dof_bokeh_radius       = 8.0f;
+static const uint g_dof_sample_count  = 22;
+static const float g_dof_bokeh_radius = 4.0f;
 
 // From https://github.com/Unity-Technologies/PostProcessing/
 // blob/v2/PostProcessing/Shaders/Builtins/DiskKernels.hlsl
@@ -54,28 +54,31 @@ static const float2 g_dof_samples[22] =
     float2(0.90096885, -0.43388376),
 };
 
-// Returns the focal depth by computing the average depth in a cross pattern neighborhood
-float get_focal_depth(float2 texel_size)
+// Returns the average depth in a cross pattern neighborhood
+float get_focal_depth()
 {
-    uint2 center    = 0.5f / texel_size;
-    float dx        = g_dof_bokeh_radius * texel_size.x;
-    float dy        = g_dof_bokeh_radius * texel_size.y;
+    const float2 uv         = float2(0.5f, 0.5f); // center
+    const float2 texel_size = float2(1.0f / g_resolution_render.x, 1.0f / g_resolution_render.y);
+    const float radius      = 10.0f;
+    const float4 o          = texel_size.xyxy * float2(-radius, radius).xxyy;
 
-    float tl = get_linear_depth(center + uint2(-1, -1));
-    float tr = get_linear_depth(center + uint2(1, -1));
-    float bl = get_linear_depth(center + uint2(-1, 1));
-    float br = get_linear_depth(center + uint2(+1, 1));
-    float ce = get_linear_depth(center);
+    float s1 = get_linear_depth(uv + o.xy);
+    float s2 = get_linear_depth(uv + o.zy);
+    float s3 = get_linear_depth(uv + o.xw);
+    float s4 = get_linear_depth(uv + o.zw);
+    float s5 = get_linear_depth(uv);
 
-    return min(min(min(min(tl, tr), bl), br), ce);
+    return (s1 + s2 + s3 + s4 + s5) * 0.2f;
 }
 
-float circle_of_confusion(float2 uv, float focal_depth)
+float circle_of_confusion(float2 uv)
 {
-    float depth         = get_linear_depth(uv);
-    float focus_range   = g_camera_aperture;
-    float coc           = abs(depth - focal_depth) / (focus_range + FLT_MIN);
-    return saturate(coc);
+    float depth          = get_linear_depth(uv);
+    float focus_distance = get_focal_depth();
+    float focus_range    = g_camera_aperture;
+    float coc            = (depth - focus_distance) / (focus_range + FLT_MIN);
+
+    return saturate(abs(coc));
 }
 
 #if DOWNSAMPLE_CIRCLE_OF_CONFUSION
@@ -87,24 +90,16 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 
     const float2 uv = (thread_id.xy + 0.5f) / g_resolution_rt;
 
+    // Coc
+    const float4 o = g_texel_size.xyxy * float2(-0.5, 0.5).xxyy;
+    float coc1     = circle_of_confusion(uv + o.xy);
+    float coc2     = circle_of_confusion(uv + o.zy);
+    float coc3     = circle_of_confusion(uv + o.xw);
+    float coc4     = circle_of_confusion(uv + o.zw);
+    float coc      = (coc1 + coc2 + coc3 + coc4) * 0.25f;
+
     // Color
     float3 color = tex.SampleLevel(sampler_bilinear_clamp, uv, 0).rgb;
-
-    // Coc
-    float focal_depth   = get_focal_depth(g_texel_size * 0.5f); // Autofocus
-    float dx            = g_texel_size.x * 0.5f;
-    float dy            = g_texel_size.y * 0.5f;
-    float2 uv_tl        = uv + float2(-dx, -dy);
-    float2 uv_tr        = uv + float2(dx, -dy);
-    float2 uv_bl        = uv + float2(-dx, dy);
-    float2 uv_br        = uv + float2(dx, dy);
-    float coc_tl        = circle_of_confusion(uv_tl, focal_depth);
-    float coc_tr        = circle_of_confusion(uv_tr, focal_depth);
-    float coc_bl        = circle_of_confusion(uv_bl, focal_depth);
-    float coc_br        = circle_of_confusion(uv_br, focal_depth);
-    float coc_min       = min(min(min(coc_tl, coc_tr), coc_bl), coc_br);
-    float coc_max       = max(max(max(coc_tl, coc_tr), coc_bl), coc_br);
-    float coc           = coc_max >= -coc_min ? coc_max : coc_min;
 
     tex_out_rgba[thread_id.xy] = float4(color, coc);
 }
@@ -120,16 +115,16 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     const float2 uv = (thread_id.xy + 0.5f) / g_resolution_rt;
 
     // Sample color
-    float4 color = 0.0f;
+    float3 color = 0.0f;
     [unroll]
     for (uint i = 0; i < g_dof_sample_count; i++)
     {
-        float2 sample_uv = uv + g_dof_samples[i] * g_texel_size * g_dof_bokeh_radius;
-        color += tex.SampleLevel(sampler_bilinear_clamp, sample_uv, 0);
+        float2 offset = g_dof_samples[i] * g_texel_size * g_dof_bokeh_radius;
+        color += tex.SampleLevel(sampler_bilinear_clamp, uv + offset, 0).rgb;
     }
     color /= (float)g_dof_sample_count;
 
-    tex_out_rgba[thread_id.xy] = saturate_16(color);
+    tex_out_rgba[thread_id.xy] = float4(color, tex[thread_id.xy].a);
 }
 #endif
 
@@ -141,15 +136,16 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         return;
 
     const float2 uv = (thread_id.xy + 0.5f) / g_resolution_rt;
-    const float dx  = g_texel_size.x * 0.5f;
-    const float dy  = g_texel_size.y * 0.5f;
+    const float4 o  = g_texel_size.xyxy * float2(-0.5, 0.5).xxyy;
 
-    float4 tl = tex.SampleLevel(sampler_bilinear_clamp, uv + float2(-dx, -dy), 0);
-    float4 tr = tex.SampleLevel(sampler_bilinear_clamp, uv + float2(dx, -dy), 0);
-    float4 bl = tex.SampleLevel(sampler_bilinear_clamp, uv + float2(-dx, dy), 0);
-    float4 br = tex.SampleLevel(sampler_bilinear_clamp, uv + float2(dx, dy), 0);
+    float3 s1 = tex.SampleLevel(sampler_bilinear_clamp, uv + o.xy, 0).rgb;
+    float3 s2 = tex.SampleLevel(sampler_bilinear_clamp, uv + o.zy, 0).rgb;
+    float3 s3 = tex.SampleLevel(sampler_bilinear_clamp, uv + o.xw, 0).rgb;
+    float3 s4 = tex.SampleLevel(sampler_bilinear_clamp, uv + o.zw, 0).rgb;
 
-    tex_out_rgba[thread_id.xy] = (tl + tr + bl + br) * 0.25f;
+    float coc = tex[thread_id.xy].a;
+
+    tex_out_rgba[thread_id.xy] = float4((s1 + s2 + s3 + s4) * 0.25f, coc);
 }
 #endif
 
@@ -163,15 +159,15 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     const float2 uv = (thread_id.xy + 0.5f) / g_resolution_rt;
 
     // Get dof and coc
-    float4 bokeh    = tex2.SampleLevel(sampler_bilinear_clamp, uv, 0);
-    float3 dof      = bokeh.rgb;
-    float coc       = bokeh.a;
+    float4 bokeh = tex2.SampleLevel(sampler_bilinear_clamp, uv, 0);
+    float3 dof   = bokeh.rgb;
+    float coc    = bokeh.a;
 
     // prevent blurry background from bleeding onto sharp foreground
-    float focal_depth = get_focal_depth(g_texel_size);
+    float focal_depth = get_focal_depth();
     if (get_linear_depth(uv) > focal_depth)
     {
-        //coc = 0.0f;
+       //coc = 0.0f;
     }
 
     // Compute final color
