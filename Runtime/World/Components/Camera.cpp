@@ -331,51 +331,17 @@ namespace Spartan
         // Y-axis movement: Q, E.
         if (m_fps_control_enabled)
         {
-            FpsControl(delta_time);
+            ProcessInputFpsControl(delta_time);
         }
 
         // Shortcuts
         {
             // Focus on selected entity: F.
-            {
-                // Trigger
-                if (m_input->GetKeyDown(KeyCode::F))
-                {
-                    if (Entity* entity = m_renderer->GetTransformHandleEntity())
-                    {
-                        LOG_INFO("Focusing on entity \"%s\"...", entity->GetTransform()->GetEntityName().c_str());
-                        m_lerp_to_target_position = entity->GetTransform()->GetPosition();
-                        m_lerp_to_target_speed    = Vector3::Distance(m_lerp_to_target_position, m_transform->GetPosition()) * 0.1f;
-                        m_lerp_to_target          = true;
-                    }
-                }
-
-                // Lerp
-                if (m_lerp_to_target)
-                {
-                    m_lerp_to_target_alpha += m_lerp_to_target_speed * static_cast<float>(delta_time);
-
-                    // Position
-                    Vector3 interpolated_position = Vector3::Lerp(m_transform->GetPosition(), m_lerp_to_target_position, m_lerp_to_target_alpha);
-                    m_transform->SetPosition(interpolated_position);
-
-                    // Rotation
-                    Vector3 target_direction         = (m_lerp_to_target_position - m_transform->GetPosition()).Normalized();
-                    Quaternion interpolated_rotation = Quaternion::Lerp(m_transform->GetRotation(), Quaternion::FromLookRotation(target_direction), m_lerp_to_target_alpha);
-                    //m_transform->SetRotation(interpolated_rotation);
-
-                    if (m_lerp_to_target_alpha >= 1.0f)
-                    {
-                        m_lerp_to_target          = false;
-                        m_lerp_to_target_alpha    = 0.0f;
-                        m_lerp_to_target_position = Vector3::Zero;
-                    }
-                }
-            }
+            ProcessInputLerpToEntity(delta_time);
         }
     }
 
-    void Camera::FpsControl(double delta_time)
+    void Camera::ProcessInputFpsControl(double delta_time)
     {
         // Detect if fps control should be activated
         {
@@ -430,9 +396,9 @@ namespace Spartan
                 // Snap to initial camera rotation (if this is the first time running)
                 if (m_mouse_rotation == Vector2::Zero)
                 {
-                    const Quaternion rotation   = m_transform->GetRotation();
-                    m_mouse_rotation.x          = rotation.Yaw();
-                    m_mouse_rotation.y          = rotation.Pitch();
+                    const Quaternion rotation = m_transform->GetRotation();
+                    m_mouse_rotation.x        = rotation.Yaw();
+                    m_mouse_rotation.y        = rotation.Pitch();
                 }
 
                 // Get mouse delta
@@ -448,9 +414,9 @@ namespace Spartan
                 m_mouse_rotation.y = Helper::Clamp(m_mouse_rotation.y, -90.0f, 90.0f);
 
                 // Compute rotation
-                const Quaternion xQuaternion    = Quaternion::FromAngleAxis(m_mouse_rotation.x * Helper::DEG_TO_RAD, Vector3::Up);
-                const Quaternion yQuaternion    = Quaternion::FromAngleAxis(m_mouse_rotation.y * Helper::DEG_TO_RAD, Vector3::Right);
-                const Quaternion rotation       = xQuaternion * yQuaternion;
+                const Quaternion xQuaternion = Quaternion::FromAngleAxis(m_mouse_rotation.x * Helper::DEG_TO_RAD, Vector3::Up);
+                const Quaternion yQuaternion = Quaternion::FromAngleAxis(m_mouse_rotation.y * Helper::DEG_TO_RAD, Vector3::Right);
+                const Quaternion rotation    = xQuaternion * yQuaternion;
 
                 // Rotate
                 m_transform->SetRotationLocal(rotation);
@@ -487,6 +453,57 @@ namespace Spartan
             if (m_movement_speed != Vector3::Zero)
             {
                 m_transform->Translate(m_movement_speed);
+            }
+        }
+    }
+
+    void Camera::ProcessInputLerpToEntity(double delta_time)
+    {
+        // Trigger
+        if (m_input->GetKeyDown(KeyCode::F))
+        {
+            if (Entity* entity = m_renderer->GetTransformHandleEntity())
+            {
+                LOG_INFO("Focusing on entity \"%s\"...", entity->GetTransform()->GetEntityName().c_str());
+
+                // Get lerp target position.
+                Transform* target_transform = entity->GetTransform();
+                m_lerp_to_target_position = target_transform->GetPosition();
+
+                // If the entity has a mesh, make sure we don't lerp in it but rather in front of it.
+                if (Renderable* renderable = entity->GetRenderable())
+                {
+                    Vector3 target_direction  = (m_lerp_to_target_position - m_transform->GetPosition()).Normalized();
+                    m_lerp_to_target_position -= target_direction * renderable->GetBoundingBox().GetExtents().Length() * 2.0f;
+                }
+
+                // Compute lerp speed based on how far the entity is from the camera.
+                m_lerp_to_target_speed = Vector3::Distance(m_lerp_to_target_position, m_transform->GetPosition()) * 0.1f;
+                m_lerp_to_target       = true;
+            }
+        }
+
+        // Lerp
+        if (m_lerp_to_target)
+        {
+            // Alpha
+            m_lerp_to_target_alpha += m_lerp_to_target_speed * static_cast<float>(delta_time);
+
+            // Position
+            Vector3 interpolated_position = Vector3::Lerp(m_transform->GetPosition(), m_lerp_to_target_position, m_lerp_to_target_alpha);
+            m_transform->SetPosition(interpolated_position);
+
+            // Rotation
+            Vector3 target_direction         = (m_lerp_to_target_position - m_transform->GetPosition()).Normalized();
+            Quaternion interpolated_rotation = Quaternion::Lerp(m_transform->GetRotation(), Quaternion::FromLookRotation(target_direction), m_lerp_to_target_alpha);
+            //m_transform->SetRotation(interpolated_rotation);
+
+            // If the lerp has completed or the user has initiated fps control, stop lerping.
+            if (m_lerp_to_target_alpha >= 1.0f || m_fps_control_assumed)
+            {
+                m_lerp_to_target          = false;
+                m_lerp_to_target_alpha    = 0.0f;
+                m_lerp_to_target_position = Vector3::Zero;
             }
         }
     }
