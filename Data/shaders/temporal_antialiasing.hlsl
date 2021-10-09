@@ -45,14 +45,14 @@ static const int2 kOffsets3x3[9] =
 ------------------------------------------------------------------------------*/
 
 static const int kBorderSize     = 1;
-static const int kGroupSize      = thread_group_count_x;
+static const int kGroupSize      = THREAD_GROUP_COUNT_X;
 static const int kTileDimension  = kGroupSize + kBorderSize * 2;
 static const int kTileDimension2 = kTileDimension * kTileDimension;
 
 groupshared float3 tile_color[kTileDimension][kTileDimension];
 groupshared float  tile_depth[kTileDimension][kTileDimension];
 
-float3 load_color(int2 group_thread_id)
+float3 load_color(uint2 group_thread_id)
 {
     group_thread_id += kBorderSize;
     return tile_color[group_thread_id.x][group_thread_id.y];
@@ -63,7 +63,7 @@ void store_color(uint2 group_thread_id, float3 color)
     tile_color[group_thread_id.x][group_thread_id.y] = color;
 }
 
-float load_depth(int2 group_thread_id)
+float load_depth(uint2 group_thread_id)
 {
     group_thread_id += kBorderSize;
     return tile_depth[group_thread_id.x][group_thread_id.y];
@@ -120,9 +120,9 @@ void depth_test_min(uint2 pos, inout float min_depth, inout uint2 min_pos)
 }
 
 // Returns velocity with closest depth (3x3 neighborhood)
-float2 get_velocity_closest_3x3(uint2 pos, uint3 group_id)
+void get_closest_pixel_velocity_depth_3x3(in uint2 pos, uint3 group_id, uint2 group_top_left, out float2 velocity, out float depth)
 {
-    float min_depth = 0.0f;
+    float min_depth = 1.0f;
     uint2 min_pos   = pos;
 
     depth_test_min(pos + kOffsets3x3[0], min_depth, min_pos);
@@ -135,8 +135,11 @@ float2 get_velocity_closest_3x3(uint2 pos, uint3 group_id)
     depth_test_min(pos + kOffsets3x3[7], min_depth, min_pos);
     depth_test_min(pos + kOffsets3x3[8], min_depth, min_pos);
 
-    int2 group_top_left = group_id.xy * kGroupSize - kBorderSize;
-    return tex_velocity[group_top_left + min_pos].xy;
+    // Velocity out
+    velocity = tex_velocity[group_top_left + min_pos].xy;
+
+    // Depth out
+    depth = min_depth;
 }
 
 /*------------------------------------------------------------------------------
@@ -312,10 +315,33 @@ float3 get_input_sample(uint2 pos, uint3 group_id)
                                     TAA
 ------------------------------------------------------------------------------*/
 
+float get_factor_luminance(float3 color_history, float3 color_input)
+{
+    float luminance_history   = luminance(color_history);
+    float luminance_current   = luminance(color_input);
+    float unbiased_difference = abs(luminance_current - luminance_history) / (max(luminance_current, luminance_history) + 0.5f);
+
+    return 1.0f - unbiased_difference;
+}
+
+float get_factor_dissoclusion(float2 uv_reprojected, float2 resolution, float depth)
+{
+    float depth_previous = load_depth(uv_reprojected * resolution);
+    float delta          = depth == 1.0f;// step(depth, depth_previous);
+
+    return delta;
+}
+
 float3 temporal_antialiasing(float2 uv, uint2 pos, uint3 group_id, Texture2D tex_history)
 {
+    uint2 group_top_left = group_id.xy * kGroupSize - kBorderSize;
+
+    // Get the velocity and depth of the closest pixel
+    float2 velocity = 0.0f;
+    float depth     = 0.0f;
+    get_closest_pixel_velocity_depth_3x3(pos, group_id, group_top_left, velocity, depth);
+
     // Get reprojected uv
-    float2 velocity       = get_velocity_closest_3x3(pos, group_id);
     float2 uv_reprojected = uv - velocity;
 
     // Get input color
@@ -334,11 +360,11 @@ float3 temporal_antialiasing(float2 uv, uint2 pos, uint3 group_id, Texture2D tex
     // Compute blend factor
     float blend_factor = RPC_16;
     {
-        // Decrease blend factor when contrast is high
-        float luminance_history   = luminance(color_history);
-        float luminance_current   = luminance(color_input);
-        float unbiased_difference = abs(luminance_current - luminance_history) / ((max(luminance_current, luminance_history) + 0.5f));
-        blend_factor *= 1.0 - unbiased_difference;
+        // Decrease blend factor when contrast is high (reduces jitter around edges with speculars)
+        blend_factor *= get_factor_luminance(color_history, color_input);
+
+        // Increase blend factor when there is dissoclusion.
+        //float factor_dissoclusion = get_factor_dissoclusion(uv, uv_reprojected, g_resolution_rt);
     }
 
     // Resolve
@@ -355,17 +381,19 @@ float3 temporal_antialiasing(float2 uv, uint2 pos, uint3 group_id, Texture2D tex
         color_resolved = reinhard_inverse(color_resolved);
     }
 
+    float test = get_factor_dissoclusion(uv_reprojected, g_resolution_rt, depth);
+    //return float3(test, color_input.g, color_input.b);
     return color_resolved;
 }
 
-[numthreads(thread_group_count_x, thread_group_count_y, 1)]
+[numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID, uint3 group_thread_id : SV_GroupThreadID, uint3 group_id : SV_GroupID, uint group_index : SV_GroupIndex)
 {
     populate_group_shared_memory(group_id, group_index);
 
-    // out of bounds check
+    // Out of bounds check
     if (any(int2(thread_id.xy) >= g_resolution_rt.xy))
-        return; 
+        return;
 
     const float2 uv = (thread_id.xy + 0.5f) / g_resolution_rt;
     const uint2 pos =  group_thread_id.xy;

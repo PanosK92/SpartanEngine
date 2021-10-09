@@ -55,7 +55,7 @@ Texture2D tex_noise_normal    : register(t24);
 Texture2DArray tex_noise_blue : register(t25);
 
 // Misc
-Texture2D tex_lutIbl      : register(t26);
+Texture2D tex_lut_ibl     : register(t26);
 Texture2D tex_environment : register(t27);
 Texture2D tex_ssao        : register(t28);
 Texture2D tex_ssr         : register(t29);

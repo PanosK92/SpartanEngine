@@ -24,10 +24,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "fog.hlsl"
 //====================
 
-[numthreads(thread_group_count_x, thread_group_count_y, 1)]
+[numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
-    if (thread_id.x >= uint(g_resolution_rt.x) || thread_id.y >= uint(g_resolution_rt.y))
+    // Out of bounds check
+    if (any(int2(thread_id.xy) >= g_resolution_rt.xy))
         return;
 
     Surface surface;
@@ -85,7 +86,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         
         // Compose everything
         float3 light_ds = light_diffuse * surface.albedo + light_specular + surface.emissive;
-        color.rgb += lerp(light_ds, light_refraction, 1.0f - surface.alpha);
+        color.rgb       += lerp(light_ds, light_refraction, 1.0f - surface.alpha);
     }
 
     // Accumulate fog

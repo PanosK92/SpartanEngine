@@ -175,10 +175,10 @@ inline float3 BRDF_Specular_Anisotropic(Surface surface, float3 v, float3 l, flo
     float3x3 TBN = float3x3(t, b, surface.normal);
 
     // Rotate tangent and bitagent
-    float rotation      = max(surface.anisotropic_rotation * PI2, FLT_MIN); // convert material property to a full rotation
-    float2 direction    = float2(cos(rotation), sin(rotation));             // convert rotation to direction
-    t                   = normalize(mul(float3(direction, 0.0f), TBN).xyz); // compute direction derived tangent
-    b                   = normalize(cross(surface.normal, t));              // re-compute bitangent
+    float rotation   = max(surface.anisotropic_rotation * PI2, FLT_MIN); // convert material property to a full rotation
+    float2 direction = float2(cos(rotation), sin(rotation));             // convert rotation to direction
+    t                = normalize(mul(float3(direction, 0.0f), TBN).xyz); // compute direction derived tangent
+    b                = normalize(cross(surface.normal, t));              // re-compute bitangent
 
     float alpha_ggx = surface.roughness;
     float aspect    = sqrt(1.0 - surface.anisotropic * 0.9);
@@ -203,9 +203,9 @@ inline float3 BRDF_Specular_Clearcoat(Surface surface, float n_dot_h, float v_do
 {
     float a2 = pow4(surface.roughness);
     
-    float D     = D_GGX(a2, n_dot_h);
-    float V     = V_Kelemen(v_dot_h);
-    float3 F    = F_Schlick(0.04, 1.0, v_dot_h) * surface.clearcoat;
+    float D  = D_GGX(a2, n_dot_h);
+    float V  = V_Kelemen(v_dot_h);
+    float3 F = F_Schlick(0.04, 1.0, v_dot_h) * surface.clearcoat;
 
     diffuse_energy  *= compute_diffuse_energy(F, surface.metallic);
     specular_energy *= F;
@@ -216,12 +216,12 @@ inline float3 BRDF_Specular_Clearcoat(Surface surface, float n_dot_h, float v_do
 inline float3 BRDF_Specular_Sheen(Surface surface, float n_dot_v, float n_dot_l, float n_dot_h, inout float3 diffuse_energy, inout float3 specular_energy)
 {
     // Mix between white and using base color for sheen reflection
-    float tint  = surface.sheen_tint * surface.sheen_tint;
-    float3 f0   = lerp(1.0f, surface.F0, tint);
+    float tint = surface.sheen_tint * surface.sheen_tint;
+    float3 f0  = lerp(1.0f, surface.F0, tint);
     
-    float D     = D_Charlie(surface.roughness, n_dot_h);
-    float V     = V_Neubelt(n_dot_v, n_dot_l);
-    float3 F    = f0 * surface.sheen;
+    float D  = D_Charlie(surface.roughness, n_dot_h);
+    float V  = V_Neubelt(n_dot_v, n_dot_l);
+    float3 F = f0 * surface.sheen;
 
     diffuse_energy  *= compute_diffuse_energy(F, surface.metallic);
     specular_energy *= F;

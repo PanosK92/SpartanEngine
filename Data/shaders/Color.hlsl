@@ -27,9 +27,9 @@ Pixel_PosColor mainVS(Vertex_PosColor input)
 {
     Pixel_PosColor output;
         
-    input.position.w    = 1.0f;
-    output.position     = mul(input.position, g_view_projection_unjittered);
-    output.color        = input.color;
+    input.position.w = 1.0f;
+    output.position  = mul(input.position, g_view_projection_unjittered);
+    output.color     = input.color;
     
     return output;
 }

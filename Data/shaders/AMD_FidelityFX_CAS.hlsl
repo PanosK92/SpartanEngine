@@ -37,14 +37,16 @@ float3 CasLoad(float2 pos)
 // Lets you transform input from the load into a linear color space between 0 and 1.
 void CasInput(inout float r, inout float g, inout float b)
 {
+
 }
 
 #include "ffx_cas.h"
 
-[numthreads(thread_group_count_x, thread_group_count_y, 1)]
+[numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
-    if (thread_id.x >= uint(g_resolution_rt.x) || thread_id.y >= uint(g_resolution_rt.y))
+    // Out of bounds check
+    if (any(int2(thread_id.xy) >= g_resolution_rt.xy))
         return;
 
     float4 const0;

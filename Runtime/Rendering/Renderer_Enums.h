@@ -129,7 +129,6 @@ namespace Spartan
         BloomBlendFrame_C,
         BloomUpsampleBlendMip_C,
         ToneMapping_C,
-        GammaCorrection_C,
         Dithering_C,
         Debug_C,
         BrdfSpecularLut_C,

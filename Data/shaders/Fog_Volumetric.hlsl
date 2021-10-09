@@ -92,10 +92,10 @@ float3 VolumetricLighting(Surface surface, Light light)
     float3 fog = 0.0f;
 
     // Only ray march if this pixel is within the light's radius
-    float3 ray_pos      = surface.position;
-    float3 ray_dir      = -surface.camera_to_pixel;
-    float step_length   = surface.camera_to_pixel_length / (float)g_vl_steps;
-    float3 ray_step     = ray_dir * step_length;
+    float3 ray_pos    = surface.position;
+    float3 ray_dir    = -surface.camera_to_pixel;
+    float step_length = surface.camera_to_pixel_length / (float)g_vl_steps;
+    float3 ray_step   = ray_dir * step_length;
     
     // Offset ray to get away with way less steps and great detail
     float offset = get_noise_interleaved_gradient(surface.uv * g_shadow_resolution);

@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //====================
 
 static const uint g_dof_sample_count  = 22;
-static const float g_dof_bokeh_radius = 4.0f;
+static const float g_dof_bokeh_radius = 5.5f;
 
 // From https://github.com/Unity-Technologies/PostProcessing/
 // blob/v2/PostProcessing/Shaders/Builtins/DiskKernels.hlsl
@@ -71,32 +71,35 @@ float get_focal_depth()
     return (s1 + s2 + s3 + s4 + s5) * 0.2f;
 }
 
-float circle_of_confusion(float2 uv)
+float circle_of_confusion(float2 uv, float focus_distance)
 {
-    float depth          = get_linear_depth(uv);
-    float focus_distance = get_focal_depth();
-    float focus_range    = g_camera_aperture;
-    float coc            = (depth - focus_distance) / (focus_range + FLT_MIN);
+    float depth       = get_linear_depth(uv);
+    float focus_range = g_camera_aperture * 0.4f;
+    float coc         = ((depth - focus_distance) / (focus_range + FLT_MIN)) * g_dof_bokeh_radius;
 
-    return saturate(abs(coc));
+    return coc;
 }
 
 #if DOWNSAMPLE_CIRCLE_OF_CONFUSION
-[numthreads(thread_group_count_x, thread_group_count_y, 1)]
+[numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
-    if (thread_id.x >= uint(g_resolution_rt.x) || thread_id.y >= uint(g_resolution_rt.y))
+    // Out of bounds check
+    if (any(int2(thread_id.xy) >= g_resolution_rt.xy))
         return;
 
     const float2 uv = (thread_id.xy + 0.5f) / g_resolution_rt;
 
     // Coc
-    const float4 o = g_texel_size.xyxy * float2(-0.5, 0.5).xxyy;
-    float coc1     = circle_of_confusion(uv + o.xy);
-    float coc2     = circle_of_confusion(uv + o.zy);
-    float coc3     = circle_of_confusion(uv + o.xw);
-    float coc4     = circle_of_confusion(uv + o.zw);
-    float coc      = (coc1 + coc2 + coc3 + coc4) * 0.25f;
+    const float4 o          = g_texel_size.xyxy * float2(-0.5, 0.5).xxyy;
+    const float focal_depth = get_focal_depth();
+    float coc1              = circle_of_confusion(uv + o.xy, focal_depth);
+    float coc2              = circle_of_confusion(uv + o.zy, focal_depth);
+    float coc3              = circle_of_confusion(uv + o.xw, focal_depth);
+    float coc4              = circle_of_confusion(uv + o.zw, focal_depth);
+    float coc_min           = min4(coc1, coc2, coc3, coc4);
+    float coc_max           = max4(coc1, coc2, coc3, coc4);
+    float coc               = coc_max >= -coc_min ? coc_max : coc_min;
 
     // Color
     float3 color = tex.SampleLevel(sampler_bilinear_clamp, uv, 0).rgb;
@@ -106,33 +109,43 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 #endif
 
 #if BOKEH
-[numthreads(thread_group_count_x, thread_group_count_y, 1)]
+[numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
-    if (thread_id.x >= uint(g_resolution_rt.x) || thread_id.y >= uint(g_resolution_rt.y))
+    // Out of bounds check
+    if (any(int2(thread_id.xy) >= g_resolution_rt.xy))
         return;
-    
+
     const float2 uv = (thread_id.xy + 0.5f) / g_resolution_rt;
 
     // Sample color
     float3 color = 0.0f;
+    float weight = 0.0f;
     [unroll]
     for (uint i = 0; i < g_dof_sample_count; i++)
     {
-        float2 offset = g_dof_samples[i] * g_texel_size * g_dof_bokeh_radius;
-        color += tex.SampleLevel(sampler_bilinear_clamp, uv + offset, 0).rgb;
+        float2 radius = g_dof_samples[i] * g_dof_bokeh_radius;
+        float4 s = tex.SampleLevel(sampler_bilinear_clamp, uv + radius * g_texel_size, 0);
+
+        // If the sample's CoC is at least as large as the kernel radius, use it.
+        if (abs(s.a) >= length(radius))
+        {
+            color  += s.rgb;
+            weight += 1.0f;
+        }
     }
-    color /= (float)g_dof_sample_count;
+    color /= weight;
 
     tex_out_rgba[thread_id.xy] = float4(color, tex[thread_id.xy].a);
 }
 #endif
 
 #if TENT
-[numthreads(thread_group_count_x, thread_group_count_y, 1)]
+[numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
-    if (thread_id.x >= uint(g_resolution_rt.x) || thread_id.y >= uint(g_resolution_rt.y))
+    // Out of bounds check
+    if (any(int2(thread_id.xy) >= g_resolution_rt.xy))
         return;
 
     const float2 uv = (thread_id.xy + 0.5f) / g_resolution_rt;
@@ -150,10 +163,11 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 #endif
 
 #if UPSCALE_BLEND
-[numthreads(thread_group_count_x, thread_group_count_y, 1)]
+[numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
-    if (thread_id.x >= uint(g_resolution_rt.x) || thread_id.y >= uint(g_resolution_rt.y))
+    // Out of bounds check
+    if (any(int2(thread_id.xy) >= g_resolution_rt.xy))
         return;
 
     const float2 uv = (thread_id.xy + 0.5f) / g_resolution_rt;
@@ -172,6 +186,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 
     // Compute final color
     float4 base = tex[thread_id.xy];
-    tex_out_rgba[thread_id.xy] = lerp(base, float4(dof, base.a), coc);
+    float blend = smoothstep(0.0f, 1.0f, abs(coc));
+    tex_out_rgba[thread_id.xy] = lerp(base, float4(dof, base.a), blend);
 }
 #endif

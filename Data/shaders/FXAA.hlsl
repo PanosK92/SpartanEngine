@@ -32,9 +32,13 @@ static const float g_fxaa_subPix            = 0.75f;    // The amount of sub-pix
 static const float g_fxaa_edgeThreshold     = 0.166f;   // The minimum amount of local contrast required to apply algorithm.
 static const float g_fxaa_edgeThresholdMin  = 0.0833f;  // Trims the algorithm from processing darks
 
-[numthreads(thread_group_count_x, thread_group_count_y, 1)]
+[numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
+    // Out of bounds check
+    if (any(int2(thread_id.xy) >= g_resolution_rt.xy))
+        return;
+
     const float2 uv = (thread_id.xy + 0.5f) / g_resolution_rt;
 
     FxaaTex fxaa_tex = { sampler_bilinear_clamp, tex };

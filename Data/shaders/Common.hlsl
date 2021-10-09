@@ -32,33 +32,33 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 /*------------------------------------------------------------------------------
     CONSTANTS
 ------------------------------------------------------------------------------*/
-static const float PI                   = 3.14159265f;
-static const float PI2                  = PI * 2;
-static const float PI4                  = PI * 4;
-static const float INV_PI               = 0.31830988f;
-static const float FLT_MIN              = 0.00000001f;
-static const float FLT_MAX_10           = 511.0f;
-static const float FLT_MAX_11           = 1023.0f;
-static const float FLT_MAX_14           = 8191.0f;
-static const float FLT_MAX_16           = 32767.0f;
-static const float FLT_MAX_16U          = 65535.0f;
-static const float alpha_mask_threshold = 0.6f;
-static const float RPC_9                = 1.0f / 9.0f;
-static const float RPC_16               = 1.0f / 16.0f;
+static const float PI                  = 3.14159265f;
+static const float PI2                 = 6.28318530f;
+static const float PI4                 = 12.5663706f;
+static const float INV_PI              = 0.31830988f;
+static const float FLT_MIN             = 0.00000001f;
+static const float FLT_MAX_10          = 511.0f;
+static const float FLT_MAX_11          = 1023.0f;
+static const float FLT_MAX_14          = 8191.0f;
+static const float FLT_MAX_16          = 32767.0f;
+static const float FLT_MAX_16U         = 65535.0f;
+static const float ALPHA_THRESHOLD     = 0.6f;
+static const float RPC_9               = 0.11111111111f;
+static const float RPC_16              = 0.0625f;
+static const float ENVIRONMENT_MAX_MIP = 11.0f;
+static const uint THREAD_GROUP_COUNT_X = 8;
+static const uint THREAD_GROUP_COUNT_Y = 8;
+static const uint THREAD_GROUP_COUNT   = 64;
 
 /*------------------------------------------------------------------------------
     MACROS
 ------------------------------------------------------------------------------*/
 #define g_texel_size             float2(1.0f / g_resolution_rt.x, 1.0f / g_resolution_rt.y)
 #define g_shadow_texel_size      (1.0f / g_shadow_resolution)
-#define thread_group_count_x     8
-#define thread_group_count_y     8
-#define thread_group_count       64
 #define degamma(color)           pow(abs(color), g_gamma)
 #define gamma(color)             pow(abs(color), 1.0f / g_gamma)
 #define g_tex_noise_normal_scale float2(g_resolution_render.x / 256.0f, g_resolution_render.y / 256.0f)
 #define g_tex_noise_blue_scale   float2(g_resolution_render.x / 470.0f, g_resolution_render.y / 470.0f)
-#define g_envrionement_max_mip   11.0f
 
 /*------------------------------------------------------------------------------
     MATH
@@ -69,8 +69,10 @@ float min3(float a, float b, float c)                   { return min(min(a, b), 
 float min4(float a, float b, float c, float d)          { return min(min(min(a, b), c), d); }
 float min5(float a, float b, float c, float d, float e) { return min(min(min(min(a, b), c), d), e); }
 
-float max2(float2 value) { return max(value.x, value.y); }
-float max3(float3 value) { return max(max(value.x, value.y), value.z); }
+float max2(float2 value)                                { return max(value.x, value.y); }
+float max3(float3 value)                                { return max(max(value.x, value.y), value.z); }
+float max4(float a, float b, float c, float d)          { return max(max(max(a, b), c), d); }
+float max5(float a, float b, float c, float d, float e) { return max(max(max(max(a, b), c), d), e); }
 
 float pow2(float x)
 {

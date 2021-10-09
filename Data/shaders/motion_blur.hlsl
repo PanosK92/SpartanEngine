@@ -51,10 +51,10 @@ float2 get_velocity_max_3x3(uint2 pos)
     return max_velocity;
 }
 
-[numthreads(thread_group_count_x, thread_group_count_y, 1)]
+[numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
-    // out of bounds check
+    // Out of bounds check
     if (any(int2(thread_id.xy) >= g_resolution_rt.xy))
         return;
     

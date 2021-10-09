@@ -43,10 +43,11 @@ float3 tent_antiflicker_filter(float2 uv, Texture2D tex, float2 texel_size)
 }
 
 #if LUMINANCE
-[numthreads(thread_group_count_x, thread_group_count_y, 1)]
+[numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
-    if (thread_id.x >= uint(g_resolution_rt.x) || thread_id.y >= uint(g_resolution_rt.y))
+    // Out of bounds check
+    if (any(int2(thread_id.xy) >= g_resolution_rt.xy))
         return;
 
     float3 color = tex[thread_id.xy].rgb;
@@ -55,10 +56,11 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 #endif
 
 #if UPSAMPLE_BLEND_MIP
-[numthreads(thread_group_count_x, thread_group_count_y, 1)]
+[numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
-    if (thread_id.x >= uint(g_resolution_rt.x) || thread_id.y >= uint(g_resolution_rt.y))
+    // Out of bounds check
+    if (any(int2(thread_id.xy) >= g_resolution_rt.xy))
         return;
 
     const float2 uv            = (thread_id.xy + 0.5f) / g_resolution_rt;
@@ -68,10 +70,11 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 #endif
 
 #if BLEND_FRAME
-[numthreads(thread_group_count_x, thread_group_count_y, 1)]
+[numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
-    if (thread_id.x >= uint(g_resolution_rt.x) || thread_id.y >= uint(g_resolution_rt.y))
+    // Out of bounds check
+    if (any(int2(thread_id.xy) >= g_resolution_rt.xy))
         return;
 
     float3 color_frame  = tex[thread_id.xy].rgb;

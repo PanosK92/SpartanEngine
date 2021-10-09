@@ -20,27 +20,28 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES =========
-#include "Common.hlsl"
+#include "common.hlsl"
 //====================
 
 // http://alex.vlachos.com/graphics/Alex_Vlachos_Advanced_VR_Rendering_GDC2015.pdf
 inline float3 dither(uint2 screen_pos)
 {
-    float3 dither   = dot(float2(171.0f, 231.0f), float2(screen_pos));
-    dither          = frac(dither / float3(103.0f, 71.0f, 97.0f));
-    dither          /= 255.0f;
+    float3 dither = dot(float2(171.0f, 231.0f), float2(screen_pos));
+    dither        = frac(dither / float3(103.0f, 71.0f, 97.0f));
+    dither        /= 255.0f;
     
     return dither;
 }
 
-[numthreads(thread_group_count_x, thread_group_count_y, 1)]
+[numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
-    if (thread_id.x >= uint(g_resolution_rt.x) || thread_id.y >= uint(g_resolution_rt.y))
+    // Out of bounds check
+    if (any(int2(thread_id.xy) >= g_resolution_rt.xy))
         return;
 
-    float3 color    = tex[thread_id.xy].rgb;
-    color.rgb       += dither(thread_id.xy);
+    float3 color = tex[thread_id.xy].rgb;
+    color.rgb    += dither(thread_id.xy);
     
     tex_out_rgb[thread_id.xy] = color;
 }
