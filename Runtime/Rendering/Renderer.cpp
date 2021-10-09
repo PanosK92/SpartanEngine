@@ -195,7 +195,7 @@ namespace Spartan
         return true;
     }
 
-    weak_ptr<Spartan::Entity> Renderer::SnapTransformHandleToEntity(const shared_ptr<Entity>& entity) const
+    weak_ptr<Entity> Renderer::SnapTransformHandleToEntity(const shared_ptr<Entity>& entity) const
     {
         return m_transform_handle->SetSelectedEntity(entity);
     }
@@ -203,6 +203,11 @@ namespace Spartan
     bool Renderer::IsTransformHandleEditing() const
     {
         return m_transform_handle->IsEditing();
+    }
+
+    Entity* Renderer::GetTransformHandleEntity()
+    {
+        return m_transform_handle->GetSelectedEntity();
     }
 
     void Renderer::OnTick(double delta_time)

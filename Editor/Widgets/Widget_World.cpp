@@ -37,6 +37,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Components/Renderable.h"
 #include "World/Components/Environment.h"
 #include "World/Components/Terrain.h"
+#include "../Editor.h"
+#include "Widget_MenuBar.h"
 //=========================================
 
 //= NAMESPACES ==========
@@ -223,9 +225,9 @@ void Widget_World::TreeAddEntity(Entity* entity)
 
 void Widget_World::HandleClicking()
 {
-    const auto is_window_hovered    = ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup | ImGuiHoveredFlags_AllowWhenBlockedByActiveItem);
-    const auto left_click           = ImGui::IsMouseClicked(0);
-    const auto right_click          = ImGui::IsMouseClicked(1);
+    const auto is_window_hovered = ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup | ImGuiHoveredFlags_AllowWhenBlockedByActiveItem);
+    const auto left_click        = ImGui::IsMouseClicked(0);
+    const auto right_click       = ImGui::IsMouseClicked(1);
 
     // Since we are handling clicking manually, we must ensure we are inside the window
     if (!is_window_hovered)
@@ -483,9 +485,25 @@ void Widget_World::PopupEntityRename() const
 
 void Widget_World::HandleKeyShortcuts()
 {
+    // Delete
     if (_Widget_World::g_input->GetKey(KeyCode::Delete))
     {
         ActionEntityDelete(EditorHelper::Get().g_selected_entity.lock());
+    }
+
+    // Save: Ctrl + S
+    if (_Widget_World::g_input->GetKey(KeyCode::Ctrl_Left) && _Widget_World::g_input->GetKeyDown(KeyCode::S))
+    {
+        const string& file_path = _Widget_World::g_world->GetFilePath();
+
+        if (file_path.empty())
+        {
+            m_editor->GetWidget<Widget_MenuBar>()->ShowSaveDialog();
+        }
+        else
+        {
+            EditorHelper::Get().SaveWorld(_Widget_World::g_world->GetFilePath());
+        }
     }
 }
 

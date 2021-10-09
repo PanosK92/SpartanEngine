@@ -78,14 +78,12 @@ void Widget_MenuBar::TickAlways()
 
             if (ImGui::MenuItem("Save"))
             {
-                m_file_dialog->SetOperation(FileDialog_Op_Save);
-                _Widget_MenuBar::g_fileDialogVisible = true;
+                ShowSaveDialog();
             }
 
             if (ImGui::MenuItem("Save As..."))
             {
-                m_file_dialog->SetOperation(FileDialog_Op_Save);
-                _Widget_MenuBar::g_fileDialogVisible = true;
+                ShowSaveDialog();
             }
 
             ImGui::EndMenu();
@@ -93,9 +91,9 @@ void Widget_MenuBar::TickAlways()
 
         if (ImGui::BeginMenu("View"))
         {
-            ImGui::MenuItem("ImGui Metrics",    nullptr, &_Widget_MenuBar::imgui_metrics);
-            ImGui::MenuItem("ImGui Style",      nullptr, &_Widget_MenuBar::imgui_style);
-            ImGui::MenuItem("ImGui Demo",       nullptr, &_Widget_MenuBar::imgui_demo);
+            ImGui::MenuItem("ImGui Metrics", nullptr, &_Widget_MenuBar::imgui_metrics);
+            ImGui::MenuItem("ImGui Style",   nullptr, &_Widget_MenuBar::imgui_style);
+            ImGui::MenuItem("ImGui Demo",    nullptr, &_Widget_MenuBar::imgui_demo);
             ImGui::EndMenu();
         }
 
@@ -108,7 +106,6 @@ void Widget_MenuBar::TickAlways()
         // Tool bar
         ImGui::Spacing();
         m_tool_bar->Tick();
-        
 
         ImGui::EndMainMenuBar();
     }
@@ -119,11 +116,17 @@ void Widget_MenuBar::TickAlways()
     if (_Widget_MenuBar::imgui_style)   { ImGui::Begin("Style Editor", nullptr, ImGuiWindowFlags_NoDocking); ImGui::ShowStyleEditor(); ImGui::End(); }
     if (_Widget_MenuBar::imgui_demo)    { ImGui::ShowDemoWindow(&_Widget_MenuBar::imgui_demo); }
 
-    ShowFileDialog();
-    ShowAboutWindow();
+    DrawFileDialog();
+    DrawAboutWindow();
 }
 
-void Widget_MenuBar::ShowFileDialog() const
+void Widget_MenuBar::ShowSaveDialog()
+{
+    m_file_dialog->SetOperation(FileDialog_Op_Save);
+    _Widget_MenuBar::g_fileDialogVisible = true;
+}
+
+void Widget_MenuBar::DrawFileDialog() const
 {
     if (_Widget_MenuBar::g_fileDialogVisible)
     {
@@ -155,7 +158,7 @@ void Widget_MenuBar::ShowFileDialog() const
     }
 }
 
-void Widget_MenuBar::ShowAboutWindow() const
+void Widget_MenuBar::DrawAboutWindow() const
 {
     if (!_Widget_MenuBar::g_showAboutWindow)
         return;

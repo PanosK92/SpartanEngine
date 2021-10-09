@@ -149,7 +149,9 @@ namespace Spartan
         {
             file_path += EXTENSION_WORLD;
         }
-        m_name = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path);
+
+        m_name      = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path);
+        m_file_path = file_path;
 
         // Notify subsystems that need to save data
         SP_FIRE_EVENT(EventType::WorldSaveStart);
@@ -186,7 +188,7 @@ namespace Spartan
 
         // Finish with progress report and timer
         ProgressTracker::Get().SetIsLoading(ProgressType::World, false);
-        LOG_INFO("Saving took %.2f ms", timer.GetElapsedTimeMs());
+        LOG_INFO("World \"%s\" has been saved. Duration %.2f ms", m_file_path.c_str(), timer.GetElapsedTimeMs());
 
         // Notify subsystems waiting for us to finish
         SP_FIRE_EVENT(EventType::WorldSavedEnd);
@@ -221,7 +223,8 @@ namespace Spartan
         // Clear current entities
         Clear();
 
-        m_name = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path);
+        m_name      = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path);
+        m_file_path = file_path;
 
         // Notify subsystems that need to load data
         SP_FIRE_EVENT(EventType::WorldLoadStart);
@@ -246,7 +249,7 @@ namespace Spartan
         }
 
         progress_tracker.SetIsLoading(ProgressType::World, false);
-        LOG_INFO("Loading took %.2f ms", timer.GetElapsedTimeMs());
+        LOG_INFO("World \"%s\" has been loaded. Duration %.2f ms", m_file_path.c_str(), timer.GetElapsedTimeMs());
 
         SP_FIRE_EVENT(EventType::WorldLoadEnd);
 
@@ -337,6 +340,9 @@ namespace Spartan
 
         // Clear the entities
         m_entities.clear();
+
+        m_name.clear();
+        m_file_path.clear();
 
         m_resolve = true;
     }

@@ -170,6 +170,10 @@ namespace Spartan::Math
         // Return absolute vector
         [[nodiscard]] Vector3 Abs() const { return Vector3(Helper::Abs(x), Helper::Abs(y), Helper::Abs(z)); }
 
+        // Linear interpolation with another vector.
+        Vector3 Lerp(const Vector3& v, float t)                                    const { return *this * (1.0f - t) + v * t; }
+        static inline Vector3 Lerp(const Vector3& a, const Vector3& b, const float t)    { return a + (b - a) * t; }
+
         Vector3 operator*(const Vector3& b) const
         {
             return Vector3(

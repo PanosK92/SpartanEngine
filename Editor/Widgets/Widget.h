@@ -62,21 +62,21 @@ public:
     void SetVisible(bool is_visible)  { m_is_visible = is_visible; }
 
 protected:
-    bool m_is_window                    = true;
-    bool m_is_visible                   = true;
-    int m_flags                         = ImGuiWindowFlags_NoCollapse;
-    float m_height                      = 0;
-    float m_alpha                       = -1.0f;
-    Spartan::Math::Vector2 m_position   = k_widget_default_propery;
-    Spartan::Math::Vector2 m_size       = k_widget_default_propery;
-    Spartan::Math::Vector2 m_size_min   = k_widget_default_propery;
-    Spartan::Math::Vector2 m_size_max   = k_widget_default_propery;
-    Spartan::Math::Vector2 m_padding    = k_widget_default_propery;
-    Editor* m_editor                    = nullptr;
-    Spartan::Context* m_context         = nullptr;
-    Spartan::Profiler* m_profiler       = nullptr;
-    ImGuiWindow* m_window               = nullptr;
-    std::string m_title                 = "Title";
+    bool m_is_window                  = true;
+    bool m_is_visible                 = true;
+    int m_flags                       = ImGuiWindowFlags_NoCollapse;
+    float m_height                    = 0;
+    float m_alpha                     = -1.0f;
+    Spartan::Math::Vector2 m_position = k_widget_default_propery;
+    Spartan::Math::Vector2 m_size     = k_widget_default_propery;
+    Spartan::Math::Vector2 m_size_min = k_widget_default_propery;
+    Spartan::Math::Vector2 m_size_max = k_widget_default_propery;
+    Spartan::Math::Vector2 m_padding  = k_widget_default_propery;
+    Editor* m_editor                  = nullptr;
+    Spartan::Context* m_context       = nullptr;
+    Spartan::Profiler* m_profiler     = nullptr;
+    ImGuiWindow* m_window             = nullptr;
+    std::string m_title               = "Title";
 
 private:
     uint8_t m_var_pushes = 0;
