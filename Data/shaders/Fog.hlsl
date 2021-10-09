@@ -34,5 +34,4 @@ float get_fog_factor(const float pixel_y, const float pixel_z)
     return g_fog_density;
 }
 
-
 float get_fog_factor(const Surface surface) { return get_fog_factor(surface.position.y, surface.camera_to_pixel_length); }

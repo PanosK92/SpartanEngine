@@ -125,7 +125,7 @@ bool is_taa_upsampling_enabled() { return g_options & uint(1U << 1);}
 bool is_ssao_enabled()           { return g_options & uint(1U << 2);}
 bool is_ssao_gi_enabled()        { return g_options & uint(1U << 3);}
 
-// Options debug
+// Options Debug
 bool has_uav()                { return g_options_debug & uint(1U << 0); }
 bool needs_packing()          { return g_options_debug & uint(1U << 1); }
 bool needs_gamma_correction() { return g_options_debug & uint(1U << 2); }

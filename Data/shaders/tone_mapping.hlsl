@@ -20,7 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES =========
-#include "Common.hlsl"
+#include "common.hlsl"
 //====================
 
 float3 uncharted_2(float3 x)
@@ -88,7 +88,7 @@ float3 matrix_movie(float3 keannu)
     return float3(pow(abs(keannu.r), pow_a), pow(abs(keannu.g), pow_b), pow(abs(keannu.b), pow_a));
 }
 
-float3 ToneMap(float3 color)
+float3 tone_map(float3 color)
 {
     [branch]
     if (g_toneMapping == 0) // OFF
@@ -119,15 +119,14 @@ float3 ToneMap(float3 color)
     return color;
 }
 
-[numthreads(thread_group_count_x, thread_group_count_y, 1)]
+[numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
-    if (thread_id.x >= uint(g_resolution_rt.x) || thread_id.y >= uint(g_resolution_rt.y))
+    // Out of bounds check
+    if (any(int2(thread_id.xy) >= g_resolution_rt.xy))
         return;
-    
+
+    // Tone map and gamma correct
     float3 color = tex[thread_id.xy].rgb;
-    tex_out_rgb[thread_id.xy] = ToneMap(color);
+    tex_out_rgb[thread_id.xy] = gamma(tone_map(color));
 }
-
-
-

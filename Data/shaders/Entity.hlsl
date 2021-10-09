@@ -35,11 +35,11 @@ PixelInputType mainVS(Vertex_PosUvNorTan input)
 {
     PixelInputType output;
 
-    input.position.w    = 1.0f;
-    output.positionWS   = mul(input.position, g_transform).xyz;
-    output.position     = mul(float4(output.positionWS, 1.0f), g_view_projection_unjittered);
-    output.normal       = mul(input.normal, (float3x3)g_transform);
-    output.uv           = input.uv;
+    input.position.w  = 1.0f;
+    output.positionWS = mul(input.position, g_transform).xyz;
+    output.position   = mul(float4(output.positionWS, 1.0f), g_view_projection_unjittered);
+    output.normal     = mul(input.normal, (float3x3)g_transform);
+    output.uv         = input.uv;
 
     return output;
 }

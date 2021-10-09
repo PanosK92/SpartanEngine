@@ -27,9 +27,9 @@ Pixel_PosUv mainVS(Vertex_PosUv input)
 {
     Pixel_PosUv output;
 
-    input.position.w    = 1.0f;
-    output.position     = mul(input.position, g_view_projection_orthographic);
-    output.uv           = input.uv;
+    input.position.w = 1.0f;
+    output.position  = mul(input.position, g_view_projection_orthographic);
+    output.uv        = input.uv;
 
     return output;
 }

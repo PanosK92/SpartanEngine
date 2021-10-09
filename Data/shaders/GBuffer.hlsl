@@ -51,7 +51,7 @@ PixelInputType mainVS(Vertex_PosUvNorTan input)
     output.position_ss_current  = output.position;
     output.position_ss_previous = mul(input.position, g_transform_previous);
     output.position_ss_previous = mul(output.position_ss_previous, g_view_projection_previous);
-    output.normal               = normalize(mul(input.normal, (float3x3)g_transform)).xyz;
+    output.normal               = normalize(mul(input.normal,  (float3x3)g_transform)).xyz;
     output.tangent              = normalize(mul(input.tangent, (float3x3)g_transform)).xyz;
     output.uv                   = input.uv;
     
@@ -91,13 +91,13 @@ PixelOutputType mainPS(PixelInputType input)
     
 #if ALPHA_MASK_MAP
     float alpha_mask = tex_material_mask.Sample(sampler_anisotropic_wrap, uv).r;
-    if (alpha_mask <= alpha_mask_threshold)
+    if (alpha_mask <= ALPHA_THRESHOLD)
         discard;
 #endif
 
 #if ALBEDO_MAP
     float4 albedo_sample = tex_material_albedo.Sample(sampler_anisotropic_wrap, uv);
-    if (albedo_sample.a <= alpha_mask_threshold)
+    if (albedo_sample.a <= ALPHA_THRESHOLD)
         discard;
     
     albedo_sample.a   = 1.0f;

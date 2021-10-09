@@ -496,8 +496,8 @@ namespace Spartan
                     cmd_list->SetBufferVertex(model->GetVertexBuffer());
 
                     // Bind material
-                    const bool firs_run       = material_index == 0;
-                    const bool new_material   = material_bound_id != material->GetObjectId();
+                    const bool firs_run     = material_index == 0;
+                    const bool new_material = material_bound_id != material->GetObjectId();
                     if (firs_run || new_material)
                     {
                         material_bound_id = material->GetObjectId();
@@ -1030,10 +1030,18 @@ namespace Spartan
         }
 
         // Tone-Mapping
-        if (m_option_values[Renderer_Option_Value::Tonemapping] != 0)
+        // Run even when tone-mapping is disabled since it's where gamma correction is also done.
         {
             Pass_PostProcess_ToneMapping(cmd_list, rt_frame_render_output_in, rt_frame_render_output_out);
-            rt_frame_render_output_in.swap(rt_frame_render_output_out);
+
+            if (GetOption(Render_AntiAliasing_Fxaa) ||
+                GetOption(Render_Dithering)         ||
+                GetOption(Render_FilmGrain)         ||
+                GetOption(Render_ChromaticAberration)
+                )
+            {
+                rt_frame_render_output_in.swap(rt_frame_render_output_out);
+            }
         }
 
         // FXAA
@@ -1063,9 +1071,6 @@ namespace Spartan
             Pass_PostProcess_ChromaticAberration(cmd_list, rt_frame_render_output_in, rt_frame_render_output_out);
             rt_frame_render_output_in.swap(rt_frame_render_output_out);
         }
-
-        // Gamma correction
-        Pass_PostProcess_GammaCorrection(cmd_list, rt_frame_render_output_in, rt_frame_render_output_out);
 
         // Passes that render on top of each other
         Pass_Outline(cmd_list, rt_frame_render_output_out.get());
@@ -1257,37 +1262,6 @@ namespace Spartan
         }
     }
 
-    void Renderer::Pass_PostProcess_GammaCorrection(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
-    {
-        // Acquire shaders
-        RHI_Shader* shader_c = m_shaders[RendererShader::GammaCorrection_C].get();
-        if (!shader_c->IsCompiled())
-            return;
-
-        // Set render state
-        static RHI_PipelineState pso;
-        pso.shader_compute   = shader_c;
-        pso.pass_name        = "Pass_PostProcess_GammaCorrection";
-
-        // Draw
-        if (cmd_list->BeginRenderPass(pso))
-        {
-            // Update uber buffer
-            m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
-            Update_Cb_Uber(cmd_list);
-
-            const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / m_thread_group_count));
-            const uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetHeight()) / m_thread_group_count));
-            const uint32_t thread_group_count_z = 1;
-            const bool async                    = false;
-
-            cmd_list->SetTexture(RendererBindings_Uav::rgb, tex_out);
-            cmd_list->SetTexture(RendererBindings_Srv::tex, tex_in);
-            cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
-            cmd_list->EndRenderPass();
-        }
-    }
-
     void Renderer::Pass_PostProcess_Fxaa(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
     {
         // Acquire shaders
@@ -1430,8 +1404,8 @@ namespace Spartan
         {
             // Set render state
             static RHI_PipelineState pso;
-            pso.shader_compute   = shader_bokeh;
-            pso.pass_name        = "Pass_PostProcess_Dof_Bokeh";
+            pso.shader_compute = shader_bokeh;
+            pso.pass_name      = "Pass_PostProcess_Dof_Bokeh";
 
             // Draw
             if (cmd_list->BeginRenderPass(pso))

@@ -100,10 +100,11 @@ float4 ground_truth_ambient_occlusion(uint2 pos)
     return light;
 }
 
-[numthreads(thread_group_count_x, thread_group_count_y, 1)]
+[numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
-    if (thread_id.x >= uint(g_resolution_rt.x) || thread_id.y >= uint(g_resolution_rt.y))
+    // Out of bounds check
+    if (any(int2(thread_id.xy) >= g_resolution_rt.xy))
         return;
 
 #if GI
@@ -112,4 +113,3 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     tex_out_r[thread_id.xy] = ground_truth_ambient_occlusion(thread_id.xy).a;
 #endif
 }
-

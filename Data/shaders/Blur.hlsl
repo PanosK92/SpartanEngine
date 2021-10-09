@@ -98,10 +98,11 @@ float4 depth_aware_gaussian_blur(const uint2 pos)
     return color / weight_sum;
 }
 
-[numthreads(thread_group_count_x, thread_group_count_y, 1)]
+[numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
-    if (thread_id.x >= uint(g_resolution_in.x) || thread_id.y >= uint(g_resolution_in.y))
+    // Out of bounds check
+    if (any(int2(thread_id.xy) >= g_resolution_rt.xy))
         return;
 
     float4 color = 0.0f;

@@ -126,20 +126,20 @@ struct Surface
 struct Light
 {
     // Properties
-    float3  color;
-    float3  position;
-    float   intensity;
-    float3  to_pixel;
-    float3  forward;
-    float   distance_to_pixel;
-    float   angle;
-    float   bias;
-    float   normal_bias;
-    float   near;
-    float   far;
-    float3  radiance;
-    float   n_dot_l;
-    uint    array_size;
+    float3 color;
+    float3 position;
+    float  intensity;
+    float3 to_pixel;
+    float3 forward;
+    float  distance_to_pixel;
+    float  angle;
+    float  bias;
+    float  normal_bias;
+    float  near;
+    float  far;
+    float3 radiance;
+    float  n_dot_l;
+    uint   array_size;
 
     // attenuation functions are derived from Frostbite
     // https://media.contentapi.ea.com/content/dam/eacom/frostbite/files/course-notes-moving-frostbite-to-pbr-v2.pdf
