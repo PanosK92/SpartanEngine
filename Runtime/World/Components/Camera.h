@@ -130,7 +130,8 @@ namespace Spartan
 
     private:
         void ProcessInput(double delta_time);
-        void FpsControl(double delta_time);
+        void ProcessInputFpsControl(double delta_time);
+        void ProcessInputLerpToEntity(double delta_time);
 
         float m_aperture                        = 50.0f;        // Size of the lens diaphragm (mm). Controls depth of field and chromatic aberration.
         float m_shutter_speed                   = 1.0f / 60.0f; // Length of time for which the camera shutter is open (sec). Also controls the amount of motion blur.

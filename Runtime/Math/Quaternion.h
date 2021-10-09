@@ -161,23 +161,25 @@ namespace Spartan::Math
             }
         }
 
-        static inline Quaternion FromLookRotation(const Vector3& direction, const Vector3& upDirection = Vector3::Up)
+        static inline Quaternion FromLookRotation(const Vector3& direction, const Vector3& up_direction = Vector3::Up)
         {
-            Quaternion ret;
+            Quaternion result;
             const Vector3 forward = direction.Normalized();
 
-            Vector3 v = forward.Cross(upDirection);
+            Vector3 v = forward.Cross(up_direction);
             if (v.LengthSquared() >= Helper::EPSILON)
             {
                 v.Normalize();
-                const Vector3 up = v.Cross(forward);
+                const Vector3 up    = v.Cross(forward);
                 const Vector3 right = up.Cross(forward);
-                ret.FromAxes(right, up, forward);
+                result.FromAxes(right, up, forward);
             }
             else
-                ret = Quaternion::FromToRotation(Vector3::Forward, forward);
+            {
+                result = Quaternion::FromToRotation(Vector3::Forward, forward);
+            }
 
-            return ret;
+            return result;
         }
 
         static inline Quaternion FromToRotation(const Quaternion& start, const Quaternion& end) { return start.Inverse() * end; }
