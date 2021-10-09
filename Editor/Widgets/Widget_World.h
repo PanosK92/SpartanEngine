@@ -50,7 +50,7 @@ private:
     void Popups();
     void PopupContextMenu() const;
     void PopupEntityRename() const;
-    static void HandleKeyShortcuts();
+    void HandleKeyShortcuts();
 
     // Context menu actions
     static void ActionEntityDelete(const std::shared_ptr<Spartan::Entity>& entity);

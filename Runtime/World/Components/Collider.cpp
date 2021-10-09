@@ -190,9 +190,9 @@ namespace Spartan
 
             // Construct hull approximation
             m_shape = new btConvexHullShape(
-                (btScalar*)&vertices[0],                                    // points
-                renderable->GeometryVertexCount(),                            // point count
-                static_cast<uint32_t>(sizeof(RHI_Vertex_PosTexNorTan)));    // stride
+                (btScalar*)&vertices[0],                                 // points
+                renderable->GeometryVertexCount(),                       // point count
+                static_cast<uint32_t>(sizeof(RHI_Vertex_PosTexNorTan))); // stride
 
             // Scaling has to be done before (potential) optimization
             m_shape->setLocalScaling(ToBtVector3(worldScale));

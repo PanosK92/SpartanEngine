@@ -36,11 +36,12 @@ public:
     Widget_MenuBar(Editor* editor);
 
     void TickAlways() override;
-    static float GetPadding() { return 8.0f; }
+    void ShowSaveDialog();
 
+    static float GetPadding() { return 8.0f; }
 private:
-    void ShowFileDialog() const;
-    void ShowAboutWindow() const;
+    void DrawFileDialog() const;
+    void DrawAboutWindow() const;
 
     std::unique_ptr<Widget_Toolbar> m_tool_bar;
     std::unique_ptr<FileDialog> m_file_dialog;

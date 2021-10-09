@@ -101,6 +101,7 @@ namespace Spartan
         // Transform handle
         std::weak_ptr<Entity> SnapTransformHandleToEntity(const std::shared_ptr<Entity>& entity) const;
         bool IsTransformHandleEditing() const;
+        Entity* GetTransformHandleEntity();
 
         // Debug/Visualise a render targets
         const auto& GetRenderTargets()                                  { return m_render_targets; }

@@ -125,11 +125,11 @@ namespace Spartan::Math
         }
 
         // Returns yaw in degrees
-        auto Yaw() const    { return ToEulerAngles().y; }
+        auto Yaw() const   { return ToEulerAngles().y; }
         // Returns pitch in degrees
-        auto Pitch() const  { return ToEulerAngles().x; }
+        auto Pitch() const { return ToEulerAngles().x; }
         // Returns roll in degrees
-        auto Roll() const   { return ToEulerAngles().z; }
+        auto Roll() const  { return ToEulerAngles().z; }
 
         static inline Quaternion FromToRotation(const Vector3& start, const Vector3& end)
         {
@@ -180,13 +180,10 @@ namespace Spartan::Math
             return ret;
         }
 
-        static inline Quaternion FromToRotation(const Quaternion& start, const Quaternion& end)
-        {
-            return start.Inverse() * end;
-        }
+        static inline Quaternion FromToRotation(const Quaternion& start, const Quaternion& end) { return start.Inverse() * end; }
 
-        auto Conjugate() const        { return Quaternion(-x, -y, -z, w); }
-        float LengthSquared() const    { return (x * x) + (y * y) + (z * z) + (w * w); }
+        auto Conjugate() const      { return Quaternion(-x, -y, -z, w); }
+        float LengthSquared() const { return (x * x) + (y * y) + (z * z) + (w * w); }
 
         // Normalizes the quaternion
         void Normalize()
@@ -212,7 +209,9 @@ namespace Spartan::Math
                 return (*this) * length_inverted;
             }
             else
+            {
                 return *this;
+            }
         }
 
         // Returns the inverse
@@ -220,30 +219,40 @@ namespace Spartan::Math
         {
             const float length_squared = LengthSquared();
             if (length_squared == 1.0f)
+            {
                 return Conjugate();
+            }
             else if (length_squared >= Helper::EPSILON)
+            {
                 return Conjugate() * (1.0f / length_squared);
+            }
             else
+            {
                 return Identity;
+            }
         }
 
-        Quaternion& operator =(const Quaternion& rhs)
-        = default;
+        // Calculate dot product.
+        float Dot(const Quaternion& rhs) const { return w * rhs.w + x * rhs.x + y * rhs.y + z * rhs.z; }
+
+        // Normalized linear interpolation with another quaternion.
+        Quaternion lerp(const Quaternion& rhs, float t)                                        { return ((*this) + ((rhs - (*this)) * t)).Normalized(); }
+        static inline Quaternion Lerp(const Quaternion& a, const Quaternion& b, const float t) { return a + (b - a) * t; }
 
         static inline Quaternion Multiply(const Quaternion& Qa, const Quaternion& Qb)
         {
-            const float x = Qa.x;
-            const float y = Qa.y;
-            const float z = Qa.z;
-            const float w = Qa.w;
-            const float num4 = Qb.x;
-            const float num3 = Qb.y;
-            const float num2 = Qb.z;
-            const float num = Qb.w;
+            const float x     = Qa.x;
+            const float y     = Qa.y;
+            const float z     = Qa.z;
+            const float w     = Qa.w;
+            const float num4  = Qb.x;
+            const float num3  = Qb.y;
+            const float num2  = Qb.z;
+            const float num   = Qb.w;
             const float num12 = (y * num2) - (z * num3);
             const float num11 = (z * num4) - (x * num2);
             const float num10 = (x * num3) - (y * num4);
-            const float num9 = ((x * num4) + (y * num3)) + (z * num2);
+            const float num9  = ((x * num4) + (y * num3)) + (z * num2);
 
             return Quaternion(
                 ((x * num) + (num4 * w)) + num12,
@@ -253,15 +262,21 @@ namespace Spartan::Math
             );
         }
 
-        Quaternion operator*(const Quaternion& rhs) const
-        {
-            return Multiply(*this, rhs);
-        }
+        // Assign
+        Quaternion& operator =(const Quaternion& rhs) = default;
 
-        void operator*=(const Quaternion& rhs)
-        {
-            *this = Multiply(*this, rhs);
-        }
+        // Add
+        Quaternion operator+(const Quaternion& rhs) const { return Quaternion(w + rhs.w, x + rhs.x, y + rhs.y, z + rhs.z); }
+
+        // Subtract
+        Quaternion operator-(const Quaternion& rhs) const { return Quaternion(w - rhs.w, x - rhs.x, y - rhs.y, z - rhs.z); }
+
+        // Return negation.
+        Quaternion operator -() const { return Quaternion(-x, -y, -z, -w); }
+
+        Quaternion operator*(const Quaternion& rhs) const { return Multiply(*this, rhs); }
+
+        void operator*=(const Quaternion& rhs) { *this = Multiply(*this, rhs); }
 
         Vector3 operator*(const Vector3& rhs) const
         {
@@ -285,10 +300,7 @@ namespace Spartan::Math
         Quaternion operator *(float rhs) const { return Quaternion(x * rhs, y * rhs, z * rhs, w * rhs); }
 
         // Test for equality with a quaternion
-        bool operator ==(const Quaternion& rhs) const
-        {
-            return x == rhs.x && y == rhs.y && z == rhs.z && w == rhs.w;
-        }
+        bool operator ==(const Quaternion& rhs) const { return x == rhs.x && y == rhs.y && z == rhs.z && w == rhs.w; }
 
         // Test for inequality with a quaternion
         bool operator!=(const Quaternion& rhs) const { return !(*this == rhs); }
@@ -306,5 +318,5 @@ namespace Spartan::Math
 
     // Reverse order operators
     inline SPARTAN_CLASS Vector3 operator*(const Vector3& lhs, const Quaternion& rhs) { return rhs * lhs; }
-    inline SPARTAN_CLASS Quaternion operator*(float lhs, const Quaternion& rhs) { return rhs * lhs; }
+    inline SPARTAN_CLASS Quaternion operator*(float lhs, const Quaternion& rhs)       { return rhs * lhs; }
 }

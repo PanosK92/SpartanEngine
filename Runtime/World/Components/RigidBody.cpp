@@ -516,13 +516,13 @@ namespace Spartan
             
             // Info
             btRigidBody::btRigidBodyConstructionInfo constructionInfo(m_mass, motion_state, m_collision_shape, local_intertia);
-            constructionInfo.m_mass                = m_mass;
-            constructionInfo.m_friction            = m_friction;
-            constructionInfo.m_rollingFriction    = m_friction_rolling;
-            constructionInfo.m_restitution        = m_restitution;
-            constructionInfo.m_collisionShape    = m_collision_shape;
-            constructionInfo.m_localInertia        = local_intertia;
-            constructionInfo.m_motionState        = motion_state;
+            constructionInfo.m_mass            = m_mass;
+            constructionInfo.m_friction        = m_friction;
+            constructionInfo.m_rollingFriction = m_friction_rolling;
+            constructionInfo.m_restitution     = m_restitution;
+            constructionInfo.m_collisionShape  = m_collision_shape;
+            constructionInfo.m_localInertia    = local_intertia;
+            constructionInfo.m_motionState     = motion_state;
 
             m_rigidBody = new btRigidBody(constructionInfo);
             m_rigidBody->setUserPointer(this);

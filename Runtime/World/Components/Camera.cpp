@@ -69,10 +69,7 @@ namespace Spartan
             m_is_dirty = true;
         }
 
-        if (m_fps_control_enabled)
-        {
-            FpsControl(delta_time);
-        }
+        ProcessInput(delta_time);
 
         if (!m_is_dirty)
             return;
@@ -287,7 +284,7 @@ namespace Spartan
         return position_screen;
     }
 
-    Math::Rectangle Camera::Project(const BoundingBox& bounding_box) const
+    Rectangle Camera::Project(const BoundingBox& bounding_box) const
     {
         const Vector3& min = bounding_box.GetMin();
         const Vector3& max = bounding_box.GetMax();
@@ -325,6 +322,57 @@ namespace Spartan
         auto position_world                    = position_clip * view_projection_inverted;
 
         return position_world;
+    }
+
+    void Camera::ProcessInput(double delta_time)
+    {
+        // FPS camera controls.
+        // X-axis movement: W, A, S, D.
+        // Y-axis movement: Q, E.
+        if (m_fps_control_enabled)
+        {
+            FpsControl(delta_time);
+        }
+
+        // Shortcuts
+        {
+            // Focus on selected entity: F.
+            {
+                // Trigger
+                if (m_input->GetKeyDown(KeyCode::F))
+                {
+                    if (Entity* entity = m_renderer->GetTransformHandleEntity())
+                    {
+                        LOG_INFO("Focusing on entity \"%s\"...", entity->GetTransform()->GetEntityName().c_str());
+                        m_lerp_to_target_position = entity->GetTransform()->GetPosition();
+                        m_lerp_to_target_speed    = Vector3::Distance(m_lerp_to_target_position, m_transform->GetPosition()) * 0.1f;
+                        m_lerp_to_target          = true;
+                    }
+                }
+
+                // Lerp
+                if (m_lerp_to_target)
+                {
+                    m_lerp_to_target_alpha += m_lerp_to_target_speed * static_cast<float>(delta_time);
+
+                    // Position
+                    Vector3 interpolated_position = Vector3::Lerp(m_transform->GetPosition(), m_lerp_to_target_position, m_lerp_to_target_alpha);
+                    m_transform->SetPosition(interpolated_position);
+
+                    // Rotation
+                    Vector3 target_direction         = (m_lerp_to_target_position - m_transform->GetPosition()).Normalized();
+                    Quaternion interpolated_rotation = Quaternion::Lerp(m_transform->GetRotation(), Quaternion::FromLookRotation(target_direction), m_lerp_to_target_alpha);
+                    //m_transform->SetRotation(interpolated_rotation);
+
+                    if (m_lerp_to_target_alpha >= 1.0f)
+                    {
+                        m_lerp_to_target          = false;
+                        m_lerp_to_target_alpha    = 0.0f;
+                        m_lerp_to_target_position = Vector3::Zero;
+                    }
+                }
+            }
+        }
     }
 
     void Camera::FpsControl(double delta_time)
