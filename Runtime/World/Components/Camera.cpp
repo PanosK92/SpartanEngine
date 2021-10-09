@@ -375,9 +375,9 @@ namespace Spartan
         // Input
         if (m_fps_control_assumed)
         {
-            // Mouse look
+            // Mouse look.
             {
-                // Wrap around left and right screen edges (to allow for infinite scrolling)
+                // Wrap around left and right screen edges (to allow for infinite scrolling).
                 {
                     uint32_t edge_padding = 5;
                     Math::Vector2 mouse_position = m_input->GetMousePosition();
@@ -393,27 +393,23 @@ namespace Spartan
                     }
                 }
 
-                // Snap to initial camera rotation (if this is the first time running)
-                if (m_mouse_rotation == Vector2::Zero)
-                {
-                    const Quaternion rotation = m_transform->GetRotation();
-                    m_mouse_rotation.x        = rotation.Yaw();
-                    m_mouse_rotation.y        = rotation.Pitch();
-                }
+                // Get camera rotation.
+                m_mouse_rotation.x = m_transform->GetRotation().Yaw();
+                m_mouse_rotation.y = m_transform->GetRotation().Pitch();
 
-                // Get mouse delta
+                // Get mouse delta.
                 const Vector2 mouse_delta = m_input->GetMouseDelta() * m_mouse_sensitivity;
 
-                // Lerp to it
+                // Lerp to it.
                 m_mouse_smoothed = Helper::Lerp(m_mouse_smoothed, mouse_delta, Helper::Saturate(1.0f - m_mouse_smoothing));
 
-                // Accumulate rotation
+                // Accumulate rotation.
                 m_mouse_rotation += m_mouse_smoothed;
 
-                // Clamp rotation along the x-axis
+                // Clamp rotation along the x-axis.
                 m_mouse_rotation.y = Helper::Clamp(m_mouse_rotation.y, -90.0f, 90.0f);
 
-                // Compute rotation
+                // Compute rotation.
                 const Quaternion xQuaternion = Quaternion::FromAngleAxis(m_mouse_rotation.x * Helper::DEG_TO_RAD, Vector3::Up);
                 const Quaternion yQuaternion = Quaternion::FromAngleAxis(m_mouse_rotation.y * Helper::DEG_TO_RAD, Vector3::Right);
                 const Quaternion rotation    = xQuaternion * yQuaternion;
@@ -422,13 +418,13 @@ namespace Spartan
                 m_transform->SetRotationLocal(rotation);
             }
 
-            // Keyboard movement
+            // Keyboard movement.
             {
-                // Compute max speed
+                // Compute max speed.
                 m_movement_speed_max += m_input->GetMouseWheelDelta().y / 2.0f;
                 m_movement_speed_max = Helper::Clamp(m_movement_speed_max, m_movement_speed_min, numeric_limits<float>::max());
 
-                // Compute direction
+                // Compute direction.
                 Vector3 direction = Vector3::Zero;
                 if (m_input->GetKey(KeyCode::W)) direction += m_transform->GetForward();
                 if (m_input->GetKey(KeyCode::S)) direction += m_transform->GetBackward();
@@ -438,7 +434,7 @@ namespace Spartan
                 if (m_input->GetKey(KeyCode::E)) direction += m_transform->GetUp();
                 direction.Normalize();
 
-                // Compute speed
+                // Compute speed.
                 m_movement_speed += m_movement_acceleration * direction * static_cast<float>(delta_time);
                 m_movement_speed.ClampMagnitude(m_movement_speed_max * static_cast<float>(delta_time));
             }
@@ -446,10 +442,10 @@ namespace Spartan
 
         // Translation
         {
-            // Apply movement drag
+            // Apply movement drag.
             m_movement_speed *= 1.0f - Helper::Saturate(m_movement_drag * static_cast<float>(delta_time));
 
-            // Translate for as long as there is speed
+            // Translate for as long as there is speed.
             if (m_movement_speed != Vector3::Zero)
             {
                 m_transform->Translate(m_movement_speed);
