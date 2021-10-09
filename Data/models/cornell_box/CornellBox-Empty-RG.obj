@@ -1,0 +1,72 @@
+# An empty Cornell Box with red and blue walls in OBJ format.
+# Note that the real box is not a perfect cube, so
+# the faces are imperfect in this data set.
+#
+# Created by Guedis Cardenas and Morgan McGuire at Williams College, 2011
+# Released into the Public Domain.
+#
+# http://graphics.cs.williams.edu/data
+# http://www.graphics.cornell.edu/online/box/data.html
+#
+
+mtllib CornellBox-Empty-RG.mtl
+
+# Object floor
+v  -1.01  0.00   0.99
+v   1.00  0.00   0.99
+v   1.00  0.00  -1.04
+v  -0.99  0.00  -1.04
+
+g floor
+usemtl floor
+f -4 -3 -2 -1
+
+# Object ceiling 
+v  -1.02  1.99   0.99  
+v  -1.02  1.99  -1.04
+v   1.00  1.99  -1.04
+v   1.00  1.99   0.99
+
+g ceiling
+usemtl ceiling
+f -4 -3 -2 -1
+
+# Object backwall  
+v  -0.99  0.00  -1.04 
+v   1.00  0.00  -1.04
+v   1.00  1.99  -1.04
+v  -1.02  1.99  -1.04
+
+g backWall
+usemtl backWall
+f -4 -3 -2 -1
+
+## Object rightwall 
+v	1.00  0.00  -1.04   
+v	1.00  0.00   0.99
+v	1.00  1.99   0.99
+v	1.00  1.99  -1.04
+
+g rightWall
+usemtl rightWall
+f -4 -3 -2 -1
+
+## Object leftWall   
+v  -1.01  0.00   0.99
+v  -0.99  0.00  -1.04
+v  -1.02  1.99  -1.04
+v  -1.02  1.99   0.99
+
+g leftWall
+usemtl leftWall
+f -4 -3 -2 -1
+
+## Object light 
+v	-0.24  1.98   0.16
+v	-0.24  1.98  -0.22
+v	 0.23  1.98  -0.22
+v	 0.23  1.98   0.16
+
+g light
+usemtl light
+f -4 -3 -2 -1

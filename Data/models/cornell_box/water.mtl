@@ -1,0 +1,11 @@
+# Water for the Cornell Box as seen in Henrik Jensen's 
+# "Realistic Image Synthesis Using Photon Mapping" (Page 109 Fig. 9.14) in OBJ format.
+
+newmtl water
+	Ka 0.01 0.01 0.01
+    Kd 0.01 0.01 0.01
+    Ks 0.30 0.30 0.30
+    Tf 0.10 0.10 0.10
+    Ns 200
+    Ni 1.33
+    illum 7

@@ -1,0 +1,76 @@
+# 3ds Max Wavefront OBJ Exporter v0.97b - (c)2007 guruware
+# File Created: 05.12.2012 22:05:26
+
+newmtl sphere
+	Ns 40.0000
+	Ni 1.5000
+	d 1.0000
+	Tr 0.0000
+	Tf 1.0000 1.0000 1.0000 
+	illum 2
+	Ka 0.4860 0.6310 0.6630
+	Kd 0.4860 0.6310 0.6630
+	Ks 0.9000 0.9000 0.9000
+	Ke 0.0000 0.0000 0.0000
+
+newmtl shortBox
+	Ns 40.0000
+	Ni 1.5000
+	d 1.0000
+	Tr 0.0000
+	Tf 1.0000 1.0000 1.0000 
+	illum 2
+	Ka 0.5250 0.5100 0.4800
+	Kd 0.5250 0.5100 0.4800
+	Ks 0.8000 0.8000 0.8000
+	Ke 0.0000 0.0000 0.0000
+
+
+newmtl leftWall
+  Ns 10.0000
+  Ni 1.5000
+  illum 2
+  Ka 0.63 0.065 0.05 # Red
+  Kd 0.63 0.065 0.05
+  Ks 0 0 0
+  Ke 0 0 0
+
+
+newmtl rightWall
+  Ns 10.0000
+  Ni 1.5000
+  illum 2
+  Ka 0.14 0.45 0.091 # Green
+  Kd 0.14 0.45 0.091
+  Ks 0 0 0
+  Ke 0 0 0
+
+  
+newmtl floor
+  Ns 10.0000
+  Ni 1.0000
+  illum 2
+  Ka 0.725 0.71 0.68 # White
+  Kd 0.725 0.71 0.68
+  Ks 0 0 0
+  Ke 0 0 0
+
+
+newmtl ceiling
+  Ns 10.0000
+  Ni 1.0000
+  illum 2
+  Ka 0.725 0.71 0.68 # White
+  Kd 0.725 0.71 0.68
+  Ks 0     0    0
+  Ke 0     0    0
+  
+
+newmtl backWall
+  Ns 10.0000
+  Ni 1.0000
+  illum 2
+  Ka 0.725 0.71 0.68 # White
+  Kd 0.725 0.71 0.68
+  Ks 0 0 0
+  Ke 0 0 0
