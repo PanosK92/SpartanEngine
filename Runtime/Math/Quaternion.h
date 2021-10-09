@@ -54,11 +54,13 @@ namespace Spartan::Math
         // The axis of rotation.
         static inline Quaternion FromAngleAxis(float angle, const Vector3& axis)
         {
-            const float half    = angle * 0.5f;
-            const float sin    = sinf(half);
-            const float cos    = cosf(half);
+            const float half = angle * 0.5f;
+            const float sin  = sinf(half);
+            const float cos  = cosf(half);
+
             return Quaternion(axis.x * sin, axis.y * sin, axis.z * sin, cos);
         }
+
         void FromAxes(const Vector3& xAxis, const Vector3& yAxis, const Vector3& zAxis);
 
         // Creates a new Quaternion from the specified yaw, pitch and roll angles.
@@ -67,16 +69,16 @@ namespace Spartan::Math
         // Roll around the z axis in radians.
         static inline Quaternion FromYawPitchRoll(float yaw, float pitch, float roll)
         {
-            const float halfRoll    = roll * 0.5f;
+            const float halfRoll  = roll * 0.5f;
             const float halfPitch = pitch * 0.5f;
-            const float halfYaw    = yaw * 0.5f;
+            const float halfYaw   = yaw * 0.5f;
 
-            const float sinRoll    = sin(halfRoll);
-            const float cosRoll    = cos(halfRoll);
-            const float sinPitch    = sin(halfPitch);
-            const float cosPitch    = cos(halfPitch);
-            const float sinYaw    = sin(halfYaw);
-            const float cosYaw    = cos(halfYaw);
+            const float sinRoll  = sin(halfRoll);
+            const float cosRoll  = cos(halfRoll);
+            const float sinPitch = sin(halfPitch);
+            const float cosPitch = cos(halfPitch);
+            const float sinYaw   = sin(halfYaw);
+            const float cosYaw   = cos(halfYaw);
 
             return Quaternion(
                 cosYaw * sinPitch * cosRoll + sinYaw * cosPitch * sinRoll,
@@ -85,51 +87,6 @@ namespace Spartan::Math
                 cosYaw * cosPitch * cosRoll + sinYaw * sinPitch * sinRoll
             );
         }
-        // Euler angles to quaternion (input in degrees)
-        static inline auto FromEulerAngles(const Vector3& rotation)                              { return FromYawPitchRoll(rotation.y * Helper::DEG_TO_RAD, rotation.x * Helper::DEG_TO_RAD, rotation.z * Helper::DEG_TO_RAD); }
-        static inline auto FromEulerAngles(float rotationX, float rotationY, float rotationZ)    { return FromYawPitchRoll(rotationY * Helper::DEG_TO_RAD, rotationX * Helper::DEG_TO_RAD, rotationZ * Helper::DEG_TO_RAD); }
-
-        // Returns Euler angles in degrees
-        Vector3 ToEulerAngles() const
-        {
-            // Derivation from http://www.geometrictools.com/Documentation/EulerAngles.pdf
-            // Order of rotations: Z first, then X, then Y
-            const float check = 2.0f * (-y * z + w * x);
-
-            if (check < -0.995f)
-            {
-                return Vector3
-                (
-                    -90.0f,
-                    0.0f,
-                    -atan2f(2.0f * (x * z - w * y), 1.0f - 2.0f * (y * y + z * z)) * Helper::RAD_TO_DEG
-                );
-            }
-
-            if (check > 0.995f)
-            {
-                return Vector3
-                (
-                    90.0f,
-                    0.0f,
-                    atan2f(2.0f * (x * z - w * y), 1.0f - 2.0f * (y * y + z * z)) * Helper::RAD_TO_DEG
-                );
-            }
-
-            return Vector3
-            (
-                asinf(check) * Helper::RAD_TO_DEG,
-                atan2f(2.0f * (x * z + w * y), 1.0f - 2.0f * (x * x + y * y)) * Helper::RAD_TO_DEG,
-                atan2f(2.0f * (x * y + w * z), 1.0f - 2.0f * (x * x + z * z)) * Helper::RAD_TO_DEG
-            );
-        }
-
-        // Returns yaw in degrees
-        auto Yaw() const   { return ToEulerAngles().y; }
-        // Returns pitch in degrees
-        auto Pitch() const { return ToEulerAngles().x; }
-        // Returns roll in degrees
-        auto Roll() const  { return ToEulerAngles().z; }
 
         static inline Quaternion FromToRotation(const Vector3& start, const Vector3& end)
         {
@@ -184,6 +141,45 @@ namespace Spartan::Math
 
         static inline Quaternion FromToRotation(const Quaternion& start, const Quaternion& end) { return start.Inverse() * end; }
 
+        static inline Quaternion Lerp(const Quaternion& a, const Quaternion& b, const float t)
+        {
+            Quaternion quaternion;
+
+            if (Dot(a, b) >= 0)
+            {
+                quaternion = a * (1 - t) + b * t;
+            }
+            else
+            {
+                quaternion = a * (1 - t) - b * t;
+            }
+
+            return quaternion.Normalized();
+        }
+
+        static inline Quaternion Multiply(const Quaternion& Qa, const Quaternion& Qb)
+        {
+            const float x     = Qa.x;
+            const float y     = Qa.y;
+            const float z     = Qa.z;
+            const float w     = Qa.w;
+            const float num4  = Qb.x;
+            const float num3  = Qb.y;
+            const float num2  = Qb.z;
+            const float num   = Qb.w;
+            const float num12 = (y * num2) - (z * num3);
+            const float num11 = (z * num4) - (x * num2);
+            const float num10 = (x * num3) - (y * num4);
+            const float num9  = ((x * num4) + (y * num3)) + (z * num2);
+
+            return Quaternion(
+                ((x * num) + (num4 * w)) + num12,
+                ((y * num) + (num3 * w)) + num11,
+                ((z * num) + (num2 * w)) + num10,
+                (w * num) - num9
+            );
+        }
+
         auto Conjugate() const      { return Quaternion(-x, -y, -z, w); }
         float LengthSquared() const { return (x * x) + (y * y) + (z * z) + (w * w); }
 
@@ -234,48 +230,72 @@ namespace Spartan::Math
             }
         }
 
-        // Calculate dot product.
-        float Dot(const Quaternion& rhs) const { return w * rhs.w + x * rhs.x + y * rhs.y + z * rhs.z; }
-
-        // Normalized linear interpolation with another quaternion.
-        Quaternion lerp(const Quaternion& rhs, float t)                                        { return ((*this) + ((rhs - (*this)) * t)).Normalized(); }
-        static inline Quaternion Lerp(const Quaternion& a, const Quaternion& b, const float t) { return a + (b - a) * t; }
-
-        static inline Quaternion Multiply(const Quaternion& Qa, const Quaternion& Qb)
+         // Returns Euler angles in degrees
+        Vector3 ToEulerAngles() const
         {
-            const float x     = Qa.x;
-            const float y     = Qa.y;
-            const float z     = Qa.z;
-            const float w     = Qa.w;
-            const float num4  = Qb.x;
-            const float num3  = Qb.y;
-            const float num2  = Qb.z;
-            const float num   = Qb.w;
-            const float num12 = (y * num2) - (z * num3);
-            const float num11 = (z * num4) - (x * num2);
-            const float num10 = (x * num3) - (y * num4);
-            const float num9  = ((x * num4) + (y * num3)) + (z * num2);
+            // Derivation from http://www.geometrictools.com/Documentation/EulerAngles.pdf
+            // Order of rotations: Z first, then X, then Y
+            const float check = 2.0f * (-y * z + w * x);
 
-            return Quaternion(
-                ((x * num) + (num4 * w)) + num12,
-                ((y * num) + (num3 * w)) + num11,
-                ((z * num) + (num2 * w)) + num10,
-                (w * num) - num9
+            if (check < -0.995f)
+            {
+                return Vector3
+                (
+                    -90.0f,
+                    0.0f,
+                    -atan2f(2.0f * (x * z - w * y), 1.0f - 2.0f * (y * y + z * z)) * Helper::RAD_TO_DEG
+                );
+            }
+
+            if (check > 0.995f)
+            {
+                return Vector3
+                (
+                    90.0f,
+                    0.0f,
+                    atan2f(2.0f * (x * z - w * y), 1.0f - 2.0f * (y * y + z * z)) * Helper::RAD_TO_DEG
+                );
+            }
+
+            return Vector3
+            (
+                asinf(check) * Helper::RAD_TO_DEG,
+                atan2f(2.0f * (x * z + w * y), 1.0f - 2.0f * (x * x + y * y)) * Helper::RAD_TO_DEG,
+                atan2f(2.0f * (x * y + w * z), 1.0f - 2.0f * (x * x + z * z)) * Helper::RAD_TO_DEG
             );
         }
 
+        // Euler angles to quaternion (input in degrees)
+        static inline auto FromEulerAngles(const Vector3& rotation)                           { return FromYawPitchRoll(rotation.y * Helper::DEG_TO_RAD, rotation.x * Helper::DEG_TO_RAD, rotation.z * Helper::DEG_TO_RAD); }
+        static inline auto FromEulerAngles(float rotationX, float rotationY, float rotationZ) { return FromYawPitchRoll(rotationY * Helper::DEG_TO_RAD,  rotationX * Helper::DEG_TO_RAD,  rotationZ * Helper::DEG_TO_RAD); }
+
+        // Returns yaw in degrees
+        float Yaw() const   { return ToEulerAngles().y; }
+        // Returns pitch in degrees
+        float Pitch() const { return ToEulerAngles().x; }
+        // Returns roll in degrees
+        float Roll() const  { return ToEulerAngles().z; }
+
+        // Calculate dot product.
+        float Dot(const Quaternion& rhs)                            const { return w * rhs.w + x * rhs.x + y * rhs.y + z * rhs.z; }
+        static inline float Dot(const Quaternion& a, const Quaternion& b) { return a.w * b.w + a.x * b.x + a.y * b.y + a.z * b.z; }
+
+        // Normalized linear interpolation with another quaternion.
+        Quaternion lerp(const Quaternion& rhs, float t) { return ((*this) + ((rhs - (*this)) * t)).Normalized(); }
+
         // Assign
-        Quaternion& operator =(const Quaternion& rhs) = default;
+        Quaternion& operator=(const Quaternion& rhs) = default;
 
         // Add
-        Quaternion operator+(const Quaternion& rhs) const { return Quaternion(w + rhs.w, x + rhs.x, y + rhs.y, z + rhs.z); }
+        Quaternion operator+(const Quaternion& rhs) const { return Quaternion(x + rhs.x, y + rhs.y, z + rhs.z, w + rhs.w); }
 
         // Subtract
-        Quaternion operator-(const Quaternion& rhs) const { return Quaternion(w - rhs.w, x - rhs.x, y - rhs.y, z - rhs.z); }
+        Quaternion operator-(const Quaternion& rhs) const { return Quaternion(x - rhs.x, y - rhs.y, z - rhs.z, w - rhs.w); }
 
         // Return negation.
-        Quaternion operator -() const { return Quaternion(-x, -y, -z, -w); }
+        Quaternion operator-() const { return Quaternion(-x, -y, -z, -w); }
 
+        // Multiply
         Quaternion operator*(const Quaternion& rhs) const { return Multiply(*this, rhs); }
 
         void operator*=(const Quaternion& rhs) { *this = Multiply(*this, rhs); }
@@ -289,7 +309,7 @@ namespace Spartan::Math
             return rhs + 2.0f * (cross1 * w + cross2);
         }
 
-        Quaternion& operator *=(float rhs)
+        Quaternion& operator*=(float rhs)
         {            
             x *= rhs;
             y *= rhs;
@@ -299,19 +319,12 @@ namespace Spartan::Math
             return *this;
         }
 
-        Quaternion operator *(float rhs) const { return Quaternion(x * rhs, y * rhs, z * rhs, w * rhs); }
+        Quaternion operator*(float rhs) const { return Quaternion(x * rhs, y * rhs, z * rhs, w * rhs); }
 
-        // Test for equality with a quaternion
-        bool operator ==(const Quaternion& rhs) const { return x == rhs.x && y == rhs.y && z == rhs.z && w == rhs.w; }
-
-        // Test for inequality with a quaternion
+        // Equality
+        bool operator==(const Quaternion& rhs) const { return x == rhs.x && y == rhs.y && z == rhs.z && w == rhs.w; }
         bool operator!=(const Quaternion& rhs) const { return !(*this == rhs); }
-
-        // Test for equality with a quaternion, using epsilon
-        bool Equals(const Quaternion& rhs) const
-        {
-            return Helper::Equals(x, rhs.x) && Helper::Equals(y, rhs.y) && Helper::Equals(z, rhs.z) && Helper::Equals(w, rhs.w);
-        }
+        bool Equals(const Quaternion& rhs)     const { return Helper::Equals(x, rhs.x) && Helper::Equals(y, rhs.y) && Helper::Equals(z, rhs.z) && Helper::Equals(w, rhs.w); }
 
         std::string ToString() const;
         float x, y, z, w;
