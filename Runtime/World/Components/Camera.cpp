@@ -406,8 +406,8 @@ namespace Spartan
                 // Accumulate rotation.
                 m_mouse_rotation += m_mouse_smoothed;
 
-                // Clamp rotation along the x-axis.
-                m_mouse_rotation.y = Helper::Clamp(m_mouse_rotation.y, -90.0f, 90.0f);
+                // Clamp rotation along the x-axis (but not exactly at 90 degrees, this is to avoid a gimbal lock).
+                m_mouse_rotation.y = Helper::Clamp(m_mouse_rotation.y, -80.0f, 80.0f);
 
                 // Compute rotation.
                 const Quaternion xQuaternion = Quaternion::FromAngleAxis(m_mouse_rotation.x * Helper::DEG_TO_RAD, Vector3::Up);
