@@ -82,7 +82,7 @@ namespace Spartan
         m_option_values[Renderer_Option_Value::Sharpen_Strength] = 1.0f;
         m_option_values[Renderer_Option_Value::Bloom_Intensity]  = 0.2f;
         m_option_values[Renderer_Option_Value::Fog]              = 0.03f;
-        m_option_values[Renderer_Option_Value::Ssao_Gi]          = 1.0f;
+        m_option_values[Renderer_Option_Value::Ssao_Gi]          = 0.0f; // disable by default until performance becomes more acceptable.
 
         // Subscribe to events.
         SP_SUBSCRIBE_TO_EVENT(EventType::WorldResolved, SP_EVENT_HANDLER_VARIANT(OnRenderablesAcquire));
