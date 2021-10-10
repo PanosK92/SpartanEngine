@@ -425,7 +425,7 @@ namespace Spartan
         }
     }
 
-    bool RHI_CommandList::Draw(const uint32_t vertex_count)
+    bool RHI_CommandList::Draw(const uint32_t vertex_count, uint32_t vertex_start_index /*= 0*/)
     {
         // Validate command list state
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
