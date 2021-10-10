@@ -341,6 +341,8 @@ namespace Spartan
             m_cb_frame_cpu.set_bit(GetOptionValue<bool>(Renderer_Option_Value::Ssao_Gi), 1 << 3);
         }
 
+        UpdateLines();
+
         Pass_Main(m_cmd_current);
 
         TickPrimitives(delta_time);
@@ -658,8 +660,8 @@ namespace Spartan
             }
         }
 
-        RenderablesSort(&m_entities[Renderer_ObjectType::GeometryOpaque]);
-        RenderablesSort(&m_entities[Renderer_ObjectType::GeometryTransparent]);
+        SortRenderables(&m_entities[Renderer_ObjectType::GeometryOpaque]);
+        SortRenderables(&m_entities[Renderer_ObjectType::GeometryTransparent]);
     }
 
     void Renderer::OnClear()
@@ -674,7 +676,7 @@ namespace Spartan
         m_is_rendering_allowed = true;
     }
 
-    void Renderer::RenderablesSort(vector<Entity*>* renderables)
+    void Renderer::SortRenderables(vector<Entity*>* renderables)
     {
         if (!m_camera || renderables->size() <= 2)
             return;
@@ -695,7 +697,90 @@ namespace Spartan
         });
     }
 
-	const shared_ptr<RHI_Texture>& Renderer::GetEnvironmentTexture()
+    void Renderer::UpdateLines()
+    {
+        // Generate lines for debug primitives supported by the renderer
+
+        // Picking ray
+        if (m_options & Render_Debug_PickingRay)
+        {
+            const auto& ray = m_camera->GetPickingRay();
+            DrawLine(ray.GetStart(), ray.GetStart() + ray.GetDirection() * m_camera->GetFarPlane(), Vector4(0, 1, 0, 1));
+        }
+        
+        // Lights
+        if (m_options & Render_Debug_Lights)
+        {
+            auto& lights = m_entities[Renderer_ObjectType::Light];
+            for (const auto& entity : lights)
+            {
+                const Entity* entity_selected = m_transform_handle->GetSelectedEntity();
+                if (entity_selected && entity_selected->GetObjectId() == entity->GetObjectId())
+                { 
+                    Light* light = entity->GetComponent<Light>();
+        
+                    if (light->GetLightType() == LightType::Directional)
+                    {
+                        Vector3 pos_start = light->GetTransform()->GetPosition();
+                        Vector3 pos_end   = -pos_start;
+                        DrawLine(pos_start, pos_end);
+        
+                    }
+                    else if (light->GetLightType() == LightType::Point)
+                    {
+                        Vector3 center          = light->GetTransform()->GetPosition();
+                        float radius            = light->GetRange();
+                        uint32_t segment_count  = 64;
+        
+                        DrawCircle(center, Vector3::Up, radius, segment_count);
+                        DrawCircle(center, Vector3::Right, radius, segment_count);
+                        DrawCircle(center, Vector3::Forward, radius, segment_count);
+                    }
+                    else if (light->GetLightType() == LightType::Spot)
+                    {
+                        // tan(angle) = opposite/adjacent
+                        // opposite = adjacent * tan(angle)
+                        float opposite  = light->GetRange() * Math::Helper::Tan(light->GetAngle());
+        
+                        Vector3 pos_end_center = light->GetTransform()->GetForward() * light->GetRange();
+                        Vector3 pos_end_up     = pos_end_center + light->GetTransform()->GetUp()      * opposite;
+                        Vector3 pos_end_right  = pos_end_center + light->GetTransform()->GetRight()   * opposite;
+                        Vector3 pos_end_down   = pos_end_center + light->GetTransform()->GetDown()    * opposite;
+                        Vector3 pos_end_left   = pos_end_center + light->GetTransform()->GetLeft()    * opposite;
+        
+                        Vector3 pos_start = light->GetTransform()->GetPosition();
+                        DrawLine(pos_start, pos_start + pos_end_center);
+                        DrawLine(pos_start, pos_start + pos_end_up);
+                        DrawLine(pos_start, pos_start + pos_end_right);
+                        DrawLine(pos_start, pos_start + pos_end_down);
+                        DrawLine(pos_start, pos_start + pos_end_left);
+                    }
+                }
+            }
+        }
+        
+        // AABBs
+        if (m_options & Render_Debug_Aabb)
+        {
+            for (const auto& entity : m_entities[Renderer_ObjectType::GeometryOpaque])
+            {
+                if (auto renderable = entity->GetRenderable())
+                {
+                    DrawBox(renderable->GetAabb(), Vector4(0.41f, 0.86f, 1.0f, 1.0f));
+                }
+            }
+        
+            for (const auto& entity : m_entities[Renderer_ObjectType::GeometryTransparent])
+            {
+                if (auto renderable = entity->GetRenderable())
+                {
+                    DrawBox(renderable->GetAabb(), Vector4(0.41f, 0.86f, 1.0f, 1.0f));
+                }
+            }
+        }
+    }
+
+    const shared_ptr<RHI_Texture>& Renderer::GetEnvironmentTexture()
     {
         return m_tex_environment;
     }

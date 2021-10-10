@@ -101,11 +101,11 @@ namespace Spartan
         void MakeDirty()                             { m_is_dirty = true; }
         //==================================================================================================
 
-        void LookAt(const Math::Vector3& v)                    { m_look_at = v; }
-        const Math::Matrix& GetMatrix()                  const { return m_matrix; }
-        const Math::Matrix& GetLocalMatrix()             const { return m_matrix_local; }
-        const Math::Matrix& GetMatrixPrevious()          const { return m_matrix_previous; }
-        void SetWvpLastFrame(const Math::Matrix& matrix)       { m_matrix_previous = matrix;}
+        void LookAt(const Math::Vector3& v)                      { m_look_at = v; }
+        const Math::Matrix& GetMatrix()                    const { return m_matrix; }
+        const Math::Matrix& GetLocalMatrix()               const { return m_matrix_local; }
+        const Math::Matrix& GetMatrixPrevious()            const { return m_matrix_previous; }
+        void SetMatrixPrevious(const Math::Matrix& matrix)       { m_matrix_previous = matrix;}
 
     private:
         // Internal functions don't propagate changes throughout the hierarchy.

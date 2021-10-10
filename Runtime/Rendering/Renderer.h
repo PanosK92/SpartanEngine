@@ -221,7 +221,10 @@ namespace Spartan
         void OnRenderablesAcquire(const Variant& renderables);
         void OnClear();
         void OnWorldLoaded();
-        void RenderablesSort(std::vector<Entity*>* renderables);
+
+        // Misc
+        void SortRenderables(std::vector<Entity*>* renderables);
+        void UpdateLines();
 
         // Render targets
         std::array<std::shared_ptr<RHI_Texture>, 23> m_render_targets;

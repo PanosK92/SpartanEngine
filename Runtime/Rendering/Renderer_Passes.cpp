@@ -544,7 +544,7 @@ namespace Spartan
                         m_cb_uber_cpu.transform_previous = transform->GetMatrixPrevious();
 
                         // Save matrix for velocity computation
-                        transform->SetWvpLastFrame(m_cb_uber_cpu.transform);
+                        transform->SetMatrixPrevious(m_cb_uber_cpu.transform);
 
                         // Update object buffer
                         if (!Update_Cb_Uber(cmd_list))
@@ -1717,92 +1717,10 @@ namespace Spartan
                 m_cb_uber_cpu.resolution_rt = m_resolution_render;
                 m_cb_uber_cpu.transform     = m_gizmo_grid->ComputeWorldMatrix(m_camera->GetTransform()) * m_cb_frame_cpu.view_projection_unjittered;
                 Update_Cb_Uber(cmd_list);
-        
-                cmd_list->SetBufferIndex(m_gizmo_grid->GetIndexBuffer().get());
+
                 cmd_list->SetBufferVertex(m_gizmo_grid->GetVertexBuffer().get());
-                cmd_list->DrawIndexed(m_gizmo_grid->GetIndexCount());
+                cmd_list->Draw(m_gizmo_grid->GetVertexCount());
                 cmd_list->EndRenderPass();
-            }
-        }
-
-        // Generate lines for debug primitives supported by the renderer
-        {
-            // Picking ray
-            if (draw_picking_ray)
-            {
-                const auto& ray = m_camera->GetPickingRay();
-                DrawLine(ray.GetStart(), ray.GetStart() + ray.GetDirection() * m_camera->GetFarPlane(), Vector4(0, 1, 0, 1));
-            }
-
-            // Lights
-            if (draw_lights)
-            {
-                auto& lights = m_entities[Renderer_ObjectType::Light];
-                for (const auto& entity : lights)
-                {
-                    const Entity* entity_selected = m_transform_handle->GetSelectedEntity();
-                    if (entity_selected && entity_selected->GetObjectId() == entity->GetObjectId())
-                    { 
-                        Light* light = entity->GetComponent<Light>();
-
-                        if (light->GetLightType() == LightType::Directional)
-                        {
-                            Vector3 pos_start = light->GetTransform()->GetPosition();
-                            Vector3 pos_end   = -pos_start;
-                            DrawLine(pos_start, pos_end);
-
-                        }
-                        else if (light->GetLightType() == LightType::Point)
-                        {
-                            Vector3 center          = light->GetTransform()->GetPosition();
-                            float radius            = light->GetRange();
-                            uint32_t segment_count  = 64;
-
-                            DrawCircle(center, Vector3::Up, radius, segment_count);
-                            DrawCircle(center, Vector3::Right, radius, segment_count);
-                            DrawCircle(center, Vector3::Forward, radius, segment_count);
-                        }
-                        else if (light->GetLightType() == LightType::Spot)
-                        {
-                            // tan(angle) = opposite/adjacent
-                            // opposite = adjacent * tan(angle)
-                            float opposite  = light->GetRange() * Math::Helper::Tan(light->GetAngle());
-
-                            Vector3 pos_end_center  = light->GetTransform()->GetForward() * light->GetRange();
-                            Vector3 pos_end_up      = pos_end_center + light->GetTransform()->GetUp()      * opposite;
-                            Vector3 pos_end_right   = pos_end_center + light->GetTransform()->GetRight()   * opposite;
-                            Vector3 pos_end_down    = pos_end_center + light->GetTransform()->GetDown()    * opposite;
-                            Vector3 pos_end_left    = pos_end_center + light->GetTransform()->GetLeft()    * opposite;
-
-                            Vector3 pos_start = light->GetTransform()->GetPosition();
-                            DrawLine(pos_start, pos_start + pos_end_center);
-                            DrawLine(pos_start, pos_start + pos_end_up);
-                            DrawLine(pos_start, pos_start + pos_end_right);
-                            DrawLine(pos_start, pos_start + pos_end_down);
-                            DrawLine(pos_start, pos_start + pos_end_left);
-                        }
-                    }
-                }
-            }
-
-            // AABBs
-            if (draw_aabb)
-            {
-                for (const auto& entity : m_entities[Renderer_ObjectType::GeometryOpaque])
-                {
-                    if (auto renderable = entity->GetRenderable())
-                    {
-                        DrawBox(renderable->GetAabb(), Vector4(0.41f, 0.86f, 1.0f, 1.0f));
-                    }
-                }
-
-                for (const auto& entity : m_entities[Renderer_ObjectType::GeometryTransparent])
-                {
-                    if (auto renderable = entity->GetRenderable())
-                    {
-                        DrawBox(renderable->GetAabb(), Vector4(0.41f, 0.86f, 1.0f, 1.0f));
-                    }
-                }
             }
         }
 

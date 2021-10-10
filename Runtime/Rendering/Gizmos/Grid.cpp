@@ -24,7 +24,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Grid.h"
 #include "../../World/Components/Transform.h"
 #include "../../RHI/RHI_VertexBuffer.h"
-#include "../../RHI/RHI_IndexBuffer.h"
 #include "../../RHI/RHI_Vertex.h"
 //===========================================
 
@@ -37,14 +36,17 @@ namespace Spartan
 {
     Grid::Grid(shared_ptr<RHI_Device> rhi_device)
     {
-        m_indexCount    = 0;
-        m_terrainHeight = 200;
-        m_terrainWidth    = 200;
-
+        // Create vertices.
         vector<RHI_Vertex_PosCol> vertices;
-        vector<unsigned> indices;
-        BuildGrid(&vertices, &indices);
-        CreateBuffers(vertices, indices, rhi_device);
+        BuildGrid(&vertices);
+        m_vertex_count = static_cast<uint32_t>(vertices.size());
+
+        // Create vertex buffer.
+        m_vertex_buffer = make_shared<RHI_VertexBuffer>(rhi_device);
+        if (!m_vertex_buffer->Create(vertices))
+        {
+            LOG_ERROR("Failed to create vertex buffer.");
+        }
     }
 
     const Matrix& Grid::ComputeWorldMatrix(Transform* camera)
@@ -52,38 +54,38 @@ namespace Spartan
         // To get the grid to feel infinite, it has to follow the camera,
         // but only by increments of the grid's spacing size. This gives the illusion 
         // that the grid never moves and if the grid is large enough, the user can't tell.
-        const auto gridSpacing = 1.0f;
-        const auto translation = Vector3
+        const float grid_spacing  = 1.0f;
+        const Vector3 translation = Vector3
         (
-            static_cast<int>(camera->GetPosition().x / gridSpacing) * gridSpacing, 
+            static_cast<int>(camera->GetPosition().x / grid_spacing) * grid_spacing, 
             0.0f, 
-            static_cast<int>(camera->GetPosition().z / gridSpacing) * gridSpacing
+            static_cast<int>(camera->GetPosition().z / grid_spacing) * grid_spacing
         );
     
-        m_world = Matrix::CreateScale(gridSpacing) * Matrix::CreateTranslation(translation);
+        m_world = Matrix::CreateScale(grid_spacing) * Matrix::CreateTranslation(translation);
 
         return m_world;
     }
 
-    void Grid::BuildGrid(vector<RHI_Vertex_PosCol>* vertices, vector<uint32_t>* indices)
+    void Grid::BuildGrid(vector<RHI_Vertex_PosCol>* vertices)
     {
-        const auto halfSizeW = int(m_terrainWidth * 0.5f);
-        const auto halfSizeH = int(m_terrainHeight * 0.5f);
+        const int halfSizeW = int(m_terrain_width * 0.5f);
+        const int halfSizeH = int(m_terrain_height * 0.5f);
 
-        for (auto j = -halfSizeH; j < halfSizeH; j++)
+        for (int j = -halfSizeH; j < halfSizeH; j++)
         {
-            for (auto i = -halfSizeW; i < halfSizeW; i++)
+            for (int i = -halfSizeW; i < halfSizeW; i++)
             {
                 // Become more transparent, the further out we go
-                const auto alphaWidth    = 1.0f - static_cast<float>(Helper::Abs(j)) / static_cast<float>(halfSizeH);
-                const auto alphaHeight    = 1.0f - static_cast<float>(Helper::Abs(i)) / static_cast<float>(halfSizeW);
-                auto alpha                = (alphaWidth + alphaHeight) * 0.5f;
-                alpha                    = Helper::Pow(alpha, 10.0f);
+                const float alphaWidth  = 1.0f - static_cast<float>(Helper::Abs(j)) / static_cast<float>(halfSizeH);
+                const float alphaHeight = 1.0f - static_cast<float>(Helper::Abs(i)) / static_cast<float>(halfSizeW);
+                float alpha             = (alphaWidth + alphaHeight) * 0.5f;
+                alpha                   = Helper::Pow(alpha, 10.0f);
 
                 // LINE 1
                 // Upper left.
-                auto positionX = static_cast<float>(i);
-                auto positionZ = static_cast<float>(j + 1);
+                float positionX = static_cast<float>(i);
+                float positionZ = static_cast<float>(j + 1);
                 vertices->emplace_back(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, alpha));
 
                 // Upper right.
@@ -125,30 +127,5 @@ namespace Spartan
                 vertices->emplace_back(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, alpha));
             }
         }
-
-        for (uint32_t i = 0; i < vertices->size(); i++)
-        {
-            indices->emplace_back(i);
-        }
-        m_indexCount = static_cast<uint32_t>(indices->size());
-    }
-
-    bool Grid::CreateBuffers(vector<RHI_Vertex_PosCol>& vertices, vector<unsigned>& indices, shared_ptr<RHI_Device>& rhi_device)
-    {
-        m_vertexBuffer = make_shared<RHI_VertexBuffer>(rhi_device);
-        if (!m_vertexBuffer->Create(vertices))
-        {
-            LOG_ERROR("Failed to create vertex buffer.");
-            return false;
-        }
-
-        m_indexBuffer = make_shared<RHI_IndexBuffer>(rhi_device);
-        if (!m_indexBuffer->Create(indices))
-        {
-            LOG_ERROR("Failed to create index buffer.");
-            return false;
-        }
-
-        return true;
     }
 }
