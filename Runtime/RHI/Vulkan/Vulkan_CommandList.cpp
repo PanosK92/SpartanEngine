@@ -437,10 +437,10 @@ namespace Spartan
         // Draw
         vkCmdDraw(
             static_cast<VkCommandBuffer>(m_resource), // commandBuffer
-            vertex_count,                               // vertexCount
-            1,                                          // instanceCount
-            0,                                          // firstVertex
-            0                                           // firstInstance
+            vertex_count,                             // vertexCount
+            1,                                        // instanceCount
+            vertex_start_index,                       // firstVertex
+            0                                         // firstInstance
         );
 
         // Profiler

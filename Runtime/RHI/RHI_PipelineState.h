@@ -82,8 +82,8 @@ namespace Spartan
         };
 
         // RT indices (affect render pass)
-        uint32_t render_target_color_texture_array_index            = 0;
-        uint32_t render_target_depth_stencil_texture_array_index    = 0;
+        uint32_t render_target_color_texture_array_index         = 0;
+        uint32_t render_target_depth_stencil_texture_array_index = 0;
 
         // Clear values
         float clear_depth       = rhi_depth_load;
@@ -101,9 +101,9 @@ namespace Spartan
         };
 
         // Profiling
-        const char* pass_name   = nullptr;
-        bool mark               = false;
-        bool profile            = false;
+        const char* pass_name = nullptr;
+        bool mark             = false;
+        bool profile          = false;
         //============================================================================
 
     private:

@@ -79,7 +79,6 @@ namespace Spartan
         //======================================
 
         // Primitive rendering
-        void TickPrimitives(const double delta_time);
         void DrawLine(const Math::Vector3& from, const Math::Vector3& to, const Math::Vector4& color_from = DEBUG_COLOR, const Math::Vector4& color_to = DEBUG_COLOR, const float duration = 0.0f, const bool depth = true);
         void DrawTriangle(const Math::Vector3& v0, const Math::Vector3& v1, const Math::Vector3& v2, const Math::Vector4& color = DEBUG_COLOR, const float duration = 0.0f, const bool depth = true);
         void DrawRectangle(const Math::Rectangle& rectangle, const Math::Vector4& color = DEBUG_COLOR, const float duration = 0.0f, const bool depth = true);
@@ -224,7 +223,10 @@ namespace Spartan
 
         // Misc
         void SortRenderables(std::vector<Entity*>* renderables);
-        void UpdateLines();
+
+        // Lines
+        void Lines_PreMain();
+        void Lines_PostMain(const double delta_time);
 
         // Render targets
         std::array<std::shared_ptr<RHI_Texture>, 23> m_render_targets;
@@ -297,10 +299,10 @@ namespace Spartan
 
         // Line rendering
         std::shared_ptr<RHI_VertexBuffer> m_vertex_buffer_lines;
-        std::vector<RHI_Vertex_PosCol> m_lines_depth_disabled;
-        std::vector<RHI_Vertex_PosCol> m_lines_depth_enabled;
-        std::vector<float> m_lines_depth_disabled_duration;
-        std::vector<float> m_lines_depth_enabled_duration;
+        std::vector<RHI_Vertex_PosCol> m_line_vertices;
+        std::vector<float> m_lines_duration;
+        uint32_t m_lines_index_depth_off = 0;
+        uint32_t m_lines_index_depth_on  = 0;
 
         // Gizmos
         std::unique_ptr<TransformGizmo> m_transform_handle;
@@ -308,10 +310,10 @@ namespace Spartan
         Math::Rectangle m_gizmo_light_rect;
 
         // Resolution & Viewport
-        Math::Vector2 m_resolution_render   = Math::Vector2::Zero;
-        Math::Vector2 m_resolution_output   = Math::Vector2::Zero;
-        RHI_Viewport m_viewport             = RHI_Viewport(0, 0, 0, 0);
-        Math::Rectangle m_viewport_quad     = Math::Rectangle(0, 0, 0, 0);
+        Math::Vector2 m_resolution_render = Math::Vector2::Zero;
+        Math::Vector2 m_resolution_output = Math::Vector2::Zero;
+        RHI_Viewport m_viewport           = RHI_Viewport(0, 0, 0, 0);
+        Math::Rectangle m_viewport_quad   = Math::Rectangle(0, 0, 0, 0);
 
         // Options
         uint64_t m_options = 0;

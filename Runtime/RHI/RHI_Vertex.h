@@ -85,8 +85,8 @@ namespace Spartan
             this->col[3] = col.w;
         }
 
-        float pos[3]    = {0};
-        float col[4]    = {0};
+        float pos[3] = {0};
+        float col[4] = {0};
     };
 
     struct RHI_Vertex_Pos2dTexCol8

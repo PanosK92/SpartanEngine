@@ -75,7 +75,7 @@ namespace Spartan
         void ClearRenderTarget(RHI_Texture* texture, const uint32_t color_index = 0, const uint32_t depth_stencil_index = 0, const bool storage = false, const Math::Vector4& clear_color = rhi_color_load, const float clear_depth = rhi_depth_load, const uint32_t clear_stencil = rhi_stencil_load);
 
         // Draw
-        bool Draw(uint32_t vertex_count);
+        bool Draw(uint32_t vertex_count, uint32_t vertex_start_index = 0);
         bool DrawIndexed(uint32_t index_count, uint32_t index_offset = 0, uint32_t vertex_offset = 0);
 
         // Dispatch
