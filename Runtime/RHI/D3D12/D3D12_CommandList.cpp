@@ -155,7 +155,7 @@ namespace Spartan
 
     }
 
-    bool RHI_CommandList::Draw(const uint32_t vertex_count)
+    bool RHI_CommandList::Draw(const uint32_t vertex_count, uint32_t vertex_start_index /*= 0*/)
     {
         // Validate command list state
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
@@ -166,10 +166,10 @@ namespace Spartan
 
         // Draw
         static_cast<ID3D12GraphicsCommandList*>(m_resource)->DrawInstanced(
-            vertex_count, // VertexCountPerInstance
-            1,            // InstanceCount
-            0,            // StartVertexLocation
-            0             // StartInstanceLocation
+            vertex_count,       // VertexCountPerInstance
+            1,                  // InstanceCount
+            vertex_start_index, // StartVertexLocation
+            0                   // StartInstanceLocation
         );
 
         // Profiler
