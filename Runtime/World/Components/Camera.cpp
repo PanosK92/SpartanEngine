@@ -463,14 +463,15 @@ namespace Spartan
                 LOG_INFO("Focusing on entity \"%s\"...", entity->GetTransform()->GetEntityName().c_str());
 
                 // Get lerp target position.
-                Transform* target_transform = entity->GetTransform();
-                m_lerp_to_target_position = target_transform->GetPosition();
+                m_lerp_to_target_position = entity->GetTransform()->GetPosition();
 
-                // If the entity has a mesh, make sure we don't lerp in it but rather in front of it.
+                // If the entity has a renderable component, we can get a more accurate target position.
                 if (Renderable* renderable = entity->GetRenderable())
                 {
+                    m_lerp_to_target_position = renderable->GetAabb().GetCenter();
+
                     Vector3 target_direction  = (m_lerp_to_target_position - m_transform->GetPosition()).Normalized();
-                    m_lerp_to_target_position -= target_direction * renderable->GetBoundingBox().GetExtents().Length() * 2.0f;
+                    m_lerp_to_target_position -= target_direction * renderable->GetAabb().GetExtents().Length() * 2.0f;
                 }
 
                 // Compute lerp speed based on how far the entity is from the camera.

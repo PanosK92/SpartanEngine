@@ -46,8 +46,13 @@ namespace Spartan
          uint32_t vertex_count = static_cast<uint32_t>(m_line_vertices.size());
         if (index + 2 >= vertex_count)
         {
-            uint32_t new_vertex_count = vertex_count == 0 ? 4 : vertex_count * 2;
-            LOG_INFO("Line buffer can hold %d vertices but %d are needed, resizing the buffer to fit %d vertices.", vertex_count, index + 2, new_vertex_count);
+            uint32_t new_vertex_count = vertex_count == 0 ? 32768 : vertex_count * 2;
+
+            // If this is not the first allocation, inform the user.
+            if (vertex_count != 0)
+            {
+                LOG_INFO("Line buffer can hold %d vertices but %d are needed, resizing the buffer to fit %d vertices.", vertex_count, index + 2, new_vertex_count);
+            }
 
             m_lines_index_depth_off = numeric_limits<uint32_t>::max(); // max because it's incremented below.
             m_lines_index_depth_on  = (new_vertex_count / 2) - 1;      // -1 because it's incremented below.
