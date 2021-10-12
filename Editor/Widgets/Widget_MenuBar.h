@@ -42,6 +42,8 @@ public:
 private:
     void DrawFileDialog() const;
     void DrawAboutWindow() const;
+    void DrawShortcutsWindow() const;
+    void HandleKeyShortcuts() const;
 
     std::unique_ptr<Widget_Toolbar> m_tool_bar;
     std::unique_ptr<FileDialog> m_file_dialog;
