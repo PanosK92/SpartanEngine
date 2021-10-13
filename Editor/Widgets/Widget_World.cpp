@@ -498,7 +498,7 @@ void Widget_World::HandleKeyShortcuts()
 
         if (file_path.empty())
         {
-            m_editor->GetWidget<Widget_MenuBar>()->ShowSaveDialog();
+            m_editor->GetWidget<widget_menubar>()->ShowSaveDialog();
         }
         else
         {
