@@ -498,12 +498,18 @@ void Widget_World::HandleKeyShortcuts()
 
         if (file_path.empty())
         {
-            m_editor->GetWidget<widget_menubar>()->ShowSaveDialog();
+            m_editor->GetWidget<Widget_MenuBar>()->ShowWorldSaveDialog();
         }
         else
         {
             EditorHelper::Get().SaveWorld(_Widget_World::g_world->GetFilePath());
         }
+    }
+
+    // Load: Ctrl + L
+    if (_Widget_World::g_input->GetKey(KeyCode::Ctrl_Left) && _Widget_World::g_input->GetKeyDown(KeyCode::L))
+    {
+        m_editor->GetWidget<Widget_MenuBar>()->ShowWorldLoadDialog();
     }
 }
 

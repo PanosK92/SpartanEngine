@@ -45,7 +45,7 @@ namespace _Widget_MenuBar
     static string g_fileDialogSelection;
 }
 
-widget_menubar::widget_menubar(Editor *editor) : Widget(editor)
+Widget_MenuBar::Widget_MenuBar(Editor *editor) : Widget(editor)
 {
     m_title                  = "MenuBar";
     m_is_window              = false;
@@ -55,7 +55,7 @@ widget_menubar::widget_menubar(Editor *editor) : Widget(editor)
     _Widget_MenuBar::world   = m_context->GetSubsystem<World>();
 }
 
-void widget_menubar::TickAlways()
+void Widget_MenuBar::TickAlways()
 {
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(GetPadding(), GetPadding()));
     ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
@@ -63,7 +63,7 @@ void widget_menubar::TickAlways()
     if (ImGui::BeginMainMenuBar())
     {
         if (ImGui::BeginMenu("World"))
-       
+        {
             if (ImGui::MenuItem("New"))
             {
                 m_context->GetSubsystem<World>()->New();
@@ -73,20 +73,19 @@ void widget_menubar::TickAlways()
 
             if (ImGui::MenuItem("Load"))
             {
-                m_file_dialog->SetOperation(FileDialog_Op_Load);
-                _Widget_MenuBar::g_fileDialogVisible = true;
+                ShowWorldLoadDialog();
             }
 
             ImGui::Separator();
 
             if (ImGui::MenuItem("Save", "Ctrl+S"))
             {
-                ShowSaveDialog();
+                ShowWorldSaveDialog();
             }
 
             if (ImGui::MenuItem("Save As...", "Ctrl+S"))
             {
-                ShowSaveDialog();
+                ShowWorldSaveDialog();
             }
 
             ImGui::EndMenu();
@@ -139,7 +138,7 @@ void widget_menubar::TickAlways()
     DrawShortcutsWindow();
 }
 
-void widget_menubar::HandleKeyShortcuts() const
+void Widget_MenuBar::HandleKeyShortcuts() const
 {
     if (_Widget_MenuBar::g_input->GetKey(KeyCode::Ctrl_Left) && _Widget_MenuBar::g_input->GetKeyDown(KeyCode::P))
     {
@@ -147,13 +146,19 @@ void widget_menubar::HandleKeyShortcuts() const
     }
 }
 
-void widget_menubar::ShowSaveDialog()
+void Widget_MenuBar::ShowWorldSaveDialog()
 {
     m_file_dialog->SetOperation(FileDialog_Op_Save);
     _Widget_MenuBar::g_fileDialogVisible = true;
 }
 
-void widget_menubar::DrawFileDialog() const
+void Widget_MenuBar::ShowWorldLoadDialog()
+{
+    m_file_dialog->SetOperation(FileDialog_Op_Load);
+    _Widget_MenuBar::g_fileDialogVisible = true;
+}
+
+void Widget_MenuBar::DrawFileDialog() const
 {
     if (_Widget_MenuBar::g_fileDialogVisible)
     {
@@ -185,7 +190,7 @@ void widget_menubar::DrawFileDialog() const
     }
 }
 
-void widget_menubar::DrawShortcutsWindow() const
+void Widget_MenuBar::DrawShortcutsWindow() const
 {
     if (!_Widget_MenuBar::g_showShortcutsWindow)
         return;
@@ -207,7 +212,8 @@ void widget_menubar::DrawShortcutsWindow() const
             Shortcut shortcuts[] =
             {
                 {(char*)"Ctrl+P",      (char*)"Open shortcuts & input reference window"},
-                {(char*)"Ctrl+S",      (char*)"Save project"},
+                {(char*)"Ctrl+S",      (char*)"Save world"},
+                {(char*)"Ctrl+L",      (char*)"Load world"},
                 {(char*)"Right click", (char*)"Enable first person camera control"},
                 {(char*)"W, A, S, D",  (char*)"Move camera (X, Z axis)"},
                 {(char*)"Q, E",        (char*)"Change camera elevation (Y axis)"},
@@ -231,7 +237,7 @@ void widget_menubar::DrawShortcutsWindow() const
     ImGui::End();
 }
 
-void widget_menubar::DrawAboutWindow() const
+void Widget_MenuBar::DrawAboutWindow() const
 {
     if (!_Widget_MenuBar::g_showAboutWindow)
         return;
