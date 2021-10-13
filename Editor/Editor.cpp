@@ -70,7 +70,7 @@ const ImVec4 k_color_check               = ImVec4(26.0f / 255.0f, 140.0f / 255.0
 
 namespace _editor
 {
-    widget_menubar* widget_menu_bar = nullptr;
+    Widget_MenuBar* widget_menu_bar = nullptr;
     Widget* widget_world            = nullptr;
     Renderer* renderer              = nullptr;
     RHI_SwapChain* swapchain        = nullptr;
@@ -299,7 +299,7 @@ void Editor::Initialise()
     m_widgets.emplace_back(make_shared<Widget_ResourceCache>(this));
     m_widgets.emplace_back(make_shared<Widget_ShaderEditor>(this));
     m_widgets.emplace_back(make_shared<Widget_RenderOptions>(this));
-    m_widgets.emplace_back(make_shared<widget_menubar>(this)); _editor::widget_menu_bar = static_cast<widget_menubar*>(m_widgets.back().get());
+    m_widgets.emplace_back(make_shared<Widget_MenuBar>(this)); _editor::widget_menu_bar = static_cast<Widget_MenuBar*>(m_widgets.back().get());
     m_widgets.emplace_back(make_shared<Widget_Viewport>(this));
     m_widgets.emplace_back(make_shared<Widget_Assets>(this));
     m_widgets.emplace_back(make_shared<Widget_Properties>(this));

@@ -30,13 +30,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Spartan { class Context; }
 class Widget_Toolbar;
 
-class widget_menubar : public Widget
+class Widget_MenuBar : public Widget
 {
 public:
-    widget_menubar(Editor* editor);
+    Widget_MenuBar(Editor* editor);
 
     void TickAlways() override;
-    void ShowSaveDialog();
+    void ShowWorldSaveDialog();
+    void ShowWorldLoadDialog();
 
     static float GetPadding() { return 8.0f; }
 private:
