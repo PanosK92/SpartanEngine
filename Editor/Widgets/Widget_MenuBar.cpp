@@ -45,7 +45,7 @@ namespace _Widget_MenuBar
     static string g_fileDialogSelection;
 }
 
-Widget_MenuBar::Widget_MenuBar(Editor *editor) : Widget(editor)
+widget_menubar::widget_menubar(Editor *editor) : Widget(editor)
 {
     m_title                  = "MenuBar";
     m_is_window              = false;
@@ -55,7 +55,7 @@ Widget_MenuBar::Widget_MenuBar(Editor *editor) : Widget(editor)
     _Widget_MenuBar::world   = m_context->GetSubsystem<World>();
 }
 
-void Widget_MenuBar::TickAlways()
+void widget_menubar::TickAlways()
 {
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(GetPadding(), GetPadding()));
     ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
@@ -63,7 +63,7 @@ void Widget_MenuBar::TickAlways()
     if (ImGui::BeginMainMenuBar())
     {
         if (ImGui::BeginMenu("World"))
-        {
+       
             if (ImGui::MenuItem("New"))
             {
                 m_context->GetSubsystem<World>()->New();
@@ -95,15 +95,15 @@ void Widget_MenuBar::TickAlways()
         if (ImGui::BeginMenu("View"))
         {
             ImGui::MenuItem("ImGui Metrics", nullptr, &_Widget_MenuBar::imgui_metrics);
-            ImGui::MenuItem("ImGui Style", nullptr, &_Widget_MenuBar::imgui_style);
-            ImGui::MenuItem("ImGui Demo", nullptr, &_Widget_MenuBar::imgui_demo);
+            ImGui::MenuItem("ImGui Style",   nullptr, &_Widget_MenuBar::imgui_style);
+            ImGui::MenuItem("ImGui Demo",    nullptr, &_Widget_MenuBar::imgui_demo);
             ImGui::EndMenu();
         }
 
         if (ImGui::BeginMenu("Help"))
         {
             ImGui::MenuItem("About", nullptr, &_Widget_MenuBar::g_showAboutWindow);
-            ImGui::MenuItem("Shortcuts", "Ctrl+P", &_Widget_MenuBar::g_showShortcutsWindow);
+            ImGui::MenuItem("Shortcuts & Input Reference", "Ctrl+P", &_Widget_MenuBar::g_showShortcutsWindow);
             ImGui::EndMenu();
         }
 
@@ -139,7 +139,7 @@ void Widget_MenuBar::TickAlways()
     DrawShortcutsWindow();
 }
 
-void Widget_MenuBar::HandleKeyShortcuts() const
+void widget_menubar::HandleKeyShortcuts() const
 {
     if (_Widget_MenuBar::g_input->GetKey(KeyCode::Ctrl_Left) && _Widget_MenuBar::g_input->GetKeyDown(KeyCode::P))
     {
@@ -147,13 +147,13 @@ void Widget_MenuBar::HandleKeyShortcuts() const
     }
 }
 
-void Widget_MenuBar::ShowSaveDialog()
+void widget_menubar::ShowSaveDialog()
 {
     m_file_dialog->SetOperation(FileDialog_Op_Save);
     _Widget_MenuBar::g_fileDialogVisible = true;
 }
 
-void Widget_MenuBar::DrawFileDialog() const
+void widget_menubar::DrawFileDialog() const
 {
     if (_Widget_MenuBar::g_fileDialogVisible)
     {
@@ -185,112 +185,118 @@ void Widget_MenuBar::DrawFileDialog() const
     }
 }
 
-void Widget_MenuBar::DrawShortcutsWindow() const
+void widget_menubar::DrawShortcutsWindow() const
 {
     if (!_Widget_MenuBar::g_showShortcutsWindow)
         return;
 
     ImGui::SetNextWindowContentSize(ImVec2(540.f, 360.f));
     ImGui::SetNextWindowFocus();
-    ImGui::Begin("Shortcuts reference", &_Widget_MenuBar::g_showShortcutsWindow, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoDocking);
-
-    static float col_a = 220.0f;
-    static float col_b = 20.0f;
+    ImGui::Begin("Shortcuts & Input Reference", &_Widget_MenuBar::g_showShortcutsWindow, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoDocking);
     {
-        struct Shortcut
-        {
-            char *shortcut;
-            char *usage;
-        };
+        static float col_a = 220.0f;
+        static float col_b = 20.0f;
 
-        Shortcut shortcuts[] =
         {
-            {(char *)"Ctrl+S", (char *)"Save project"},
-            {(char *)"F",      (char *)"Center camera on object"},
-            {(char *)"Ctrl+P", (char *)"Open shortcuts reference"}
-        };
+            struct Shortcut
+            {
+                char *shortcut;
+                char *usage;
+            };
 
-        ImGui::NewLine();
-        ImGui::SameLine(col_b);
-        ImGui::Text("Shortcut");
-        ImGui::SameLine(col_a);
-        ImGui::Text("Usage");
+            Shortcut shortcuts[] =
+            {
+                {(char*)"Ctrl+P",      (char*)"Open shortcuts & input reference window"},
+                {(char*)"Ctrl+S",      (char*)"Save project"},
+                {(char*)"Right click", (char*)"Enable first person camera control"},
+                {(char*)"W, A, S, D",  (char*)"Move camera (X, Z axis)"},
+                {(char*)"Q, E",        (char*)"Change camera elevation (Y axis)"},
+                {(char*)"F",           (char*)"Center camera on object"}
+            };
 
-        for (const Shortcut& shortcut : shortcuts)
-        {
-            ImGui::BulletText(shortcut.shortcut);
+            ImGui::NewLine();
+            ImGui::SameLine(col_b);
+            ImGui::Text("Shortcut");
             ImGui::SameLine(col_a);
-            ImGui::Text(shortcut.usage);
+            ImGui::Text("Usage");
+
+            for (const Shortcut& shortcut : shortcuts)
+            {
+                ImGui::BulletText(shortcut.shortcut);
+                ImGui::SameLine(col_a);
+                ImGui::Text(shortcut.usage);
+            }
         }
     }
     ImGui::End();
 }
 
-void Widget_MenuBar::DrawAboutWindow() const
+void widget_menubar::DrawAboutWindow() const
 {
     if (!_Widget_MenuBar::g_showAboutWindow)
         return;
 
     ImGui::SetNextWindowFocus();
     ImGui::Begin("About", &_Widget_MenuBar::g_showAboutWindow, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoDocking);
-
-    ImGui::Text("Spartan %s", sp_version);
-    ImGui::Text("Author: Panos Karabelas");
-    ImGui::SameLine(ImGuiEx::GetWindowContentRegionWidth());
-    ImGui::SetCursorPosX(ImGui::GetCursorPosX() - 55);
-    ImGui::SetCursorPosY(ImGui::GetCursorPosY() - 5);
-
-    if (ImGuiEx::Button("GitHub"))
     {
-        FileSystem::OpenDirectoryWindow("https://github.com/PanosK92/SpartanEngine");
-    }
+        ImGui::Text("Spartan %s", sp_version);
+        ImGui::Text("Author: Panos Karabelas");
+        ImGui::SameLine(ImGuiEx::GetWindowContentRegionWidth());
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() - 55);
+        ImGui::SetCursorPosY(ImGui::GetCursorPosY() - 5);
 
-    ImGui::Separator();
-
-    ImGui::BeginChildFrame(ImGui::GetID("about_license"), ImVec2(0, ImGui::GetTextLineHeightWithSpacing() * 15.5f), ImGuiWindowFlags_NoMove);
-    ImGui::Text("MIT License");
-    ImGui::Text("Permission is hereby granted, free of charge, to any person obtaining a copy");
-    ImGui::Text("of this software and associated documentation files(the \"Software\"), to deal");
-    ImGui::Text("in the Software without restriction, including without limitation the rights");
-    ImGui::Text("to use, copy, modify, merge, publish, distribute, sublicense, and / or sell");
-    ImGui::Text("copies of the Software, and to permit persons to whom the Software is furnished");
-    ImGui::Text("to do so, subject to the following conditions :");
-    ImGui::Text("The above copyright notice and this permission notice shall be included in");
-    ImGui::Text("all copies or substantial portions of the Software.");
-    ImGui::Text("THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR");
-    ImGui::Text("IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS");
-    ImGui::Text("FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.IN NO EVENT SHALL THE AUTHORS OR");
-    ImGui::Text("COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER");
-    ImGui::Text("IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN");
-    ImGui::Text("CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.");
-    ImGui::EndChildFrame();
-
-    ImGui::Separator();
-
-    static float col_a = 220.0f;
-    static float col_b = 340.0f;
-
-    ImGui::Text("Third party libraries");
-    {
-        ImGui::Text("Name");
-        ImGui::SameLine(col_a);
-        ImGui::Text("Version");
-        ImGui::SameLine(col_b);
-        ImGui::Text("URL");
-        for (const ThirdPartyLib &lib : m_context->GetSubsystem<Settings>()->GetThirdPartyLibs())
+        if (ImGuiEx::Button("GitHub"))
         {
-            ImGui::BulletText(lib.name.c_str());
+            FileSystem::OpenDirectoryWindow("https://github.com/PanosK92/SpartanEngine");
+        }
+
+        ImGui::Separator();
+
+        ImGui::BeginChildFrame(ImGui::GetID("about_license"), ImVec2(0, ImGui::GetTextLineHeightWithSpacing() * 15.5f), ImGuiWindowFlags_NoMove);
+        ImGui::Text("MIT License");
+        ImGui::Text("Permission is hereby granted, free of charge, to any person obtaining a copy");
+        ImGui::Text("of this software and associated documentation files(the \"Software\"), to deal");
+        ImGui::Text("in the Software without restriction, including without limitation the rights");
+        ImGui::Text("to use, copy, modify, merge, publish, distribute, sublicense, and / or sell");
+        ImGui::Text("copies of the Software, and to permit persons to whom the Software is furnished");
+        ImGui::Text("to do so, subject to the following conditions :");
+        ImGui::Text("The above copyright notice and this permission notice shall be included in");
+        ImGui::Text("all copies or substantial portions of the Software.");
+        ImGui::Text("THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR");
+        ImGui::Text("IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS");
+        ImGui::Text("FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.IN NO EVENT SHALL THE AUTHORS OR");
+        ImGui::Text("COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER");
+        ImGui::Text("IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN");
+        ImGui::Text("CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.");
+        ImGui::EndChildFrame();
+
+        ImGui::Separator();
+
+        static float col_a = 220.0f;
+        static float col_b = 340.0f;
+
+        ImGui::Text("Third party libraries");
+        {
+            ImGui::Text("Name");
             ImGui::SameLine(col_a);
-            ImGui::Text(lib.version.c_str());
+            ImGui::Text("Version");
             ImGui::SameLine(col_b);
-            ImGui::PushID(lib.url.c_str());
-            if (ImGuiEx::Button(lib.url.c_str()))
+            ImGui::Text("URL");
+
+            for (const ThirdPartyLib &lib : m_context->GetSubsystem<Settings>()->GetThirdPartyLibs())
             {
-                FileSystem::OpenDirectoryWindow(lib.url);
+                ImGui::BulletText(lib.name.c_str());
+                ImGui::SameLine(col_a);
+                ImGui::Text(lib.version.c_str());
+                ImGui::SameLine(col_b);
+                ImGui::PushID(lib.url.c_str());
+                if (ImGuiEx::Button(lib.url.c_str()))
+                {
+                    FileSystem::OpenDirectoryWindow(lib.url);
+                }
+                ImGui::PopID();
             }
-            ImGui::PopID();
         }
     }
-
     ImGui::End();
 }
