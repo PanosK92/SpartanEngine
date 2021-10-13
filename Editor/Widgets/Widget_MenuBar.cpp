@@ -215,8 +215,8 @@ void Widget_MenuBar::DrawShortcutsWindow() const
                 {(char*)"Ctrl+S",      (char*)"Save world"},
                 {(char*)"Ctrl+L",      (char*)"Load world"},
                 {(char*)"Right click", (char*)"Enable first person camera control"},
-                {(char*)"W, A, S, D",  (char*)"Move camera (X, Z axis)"},
-                {(char*)"Q, E",        (char*)"Change camera elevation (Y axis)"},
+                {(char*)"W, A, S, D",  (char*)"Move camera"},
+                {(char*)"Q, E",        (char*)"Change camera elevation"},
                 {(char*)"F",           (char*)"Center camera on object"}
             };
 
