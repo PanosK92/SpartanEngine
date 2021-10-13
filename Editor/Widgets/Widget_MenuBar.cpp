@@ -143,7 +143,6 @@ void Widget_MenuBar::HandleKeyShortcuts() const
 {
     if (_Widget_MenuBar::g_input->GetKey(KeyCode::Ctrl_Left) && _Widget_MenuBar::g_input->GetKeyDown(KeyCode::P))
     {
-        // FIXME: shortcut doesn't work
         _Widget_MenuBar::g_showShortcutsWindow = !_Widget_MenuBar::g_showShortcutsWindow;
     }
 }
