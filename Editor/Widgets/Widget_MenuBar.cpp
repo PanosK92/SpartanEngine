@@ -35,24 +35,24 @@ using namespace Spartan;
 namespace _Widget_MenuBar
 {
     static bool g_showShortcutsWindow = false;
-    static bool g_showAboutWindow = false;
-    static bool g_fileDialogVisible = false;
-    static bool imgui_metrics = false;
-    static bool imgui_style = false;
-    static bool imgui_demo = false;
-    static Input *g_input = nullptr;
-    World *world = nullptr;
+    static bool g_showAboutWindow     = false;
+    static bool g_fileDialogVisible   = false;
+    static bool imgui_metrics         = false;
+    static bool imgui_style           = false;
+    static bool imgui_demo            = false;
+    static Input *g_input             = nullptr;
+    World *world                      = nullptr;
     static string g_fileDialogSelection;
 }
 
 Widget_MenuBar::Widget_MenuBar(Editor *editor) : Widget(editor)
 {
-    m_title = "MenuBar";
-    m_is_window = false;
-    m_tool_bar = make_unique<Widget_Toolbar>(editor);
-    m_file_dialog = make_unique<FileDialog>(m_context, true, FileDialog_Type_FileSelection, FileDialog_Op_Open, FileDialog_Filter_World);
+    m_title                  = "MenuBar";
+    m_is_window              = false;
+    m_tool_bar               = make_unique<Widget_Toolbar>(editor);
+    m_file_dialog            = make_unique<FileDialog>(m_context, true, FileDialog_Type_FileSelection, FileDialog_Op_Open, FileDialog_Filter_World);
     _Widget_MenuBar::g_input = m_context->GetSubsystem<Input>();
-    _Widget_MenuBar::world = m_context->GetSubsystem<World>();
+    _Widget_MenuBar::world   = m_context->GetSubsystem<World>();
 }
 
 void Widget_MenuBar::TickAlways()
@@ -79,12 +79,12 @@ void Widget_MenuBar::TickAlways()
 
             ImGui::Separator();
 
-            if (ImGui::MenuItem("Save"))
+            if (ImGui::MenuItem("Save", "Ctrl+S"))
             {
                 ShowSaveDialog();
             }
 
-            if (ImGui::MenuItem("Save As..."))
+            if (ImGui::MenuItem("Save As...", "Ctrl+S"))
             {
                 ShowSaveDialog();
             }
@@ -103,7 +103,7 @@ void Widget_MenuBar::TickAlways()
         if (ImGui::BeginMenu("Help"))
         {
             ImGui::MenuItem("About", nullptr, &_Widget_MenuBar::g_showAboutWindow);
-            ImGui::MenuItem("Shortcuts", nullptr, &_Widget_MenuBar::g_showShortcutsWindow);
+            ImGui::MenuItem("Shortcuts", "Ctrl+P", &_Widget_MenuBar::g_showShortcutsWindow);
             ImGui::EndMenu();
         }
 
@@ -120,12 +120,14 @@ void Widget_MenuBar::TickAlways()
     {
         ImGui::ShowMetricsWindow();
     }
+
     if (_Widget_MenuBar::imgui_style)
     {
         ImGui::Begin("Style Editor", nullptr, ImGuiWindowFlags_NoDocking);
         ImGui::ShowStyleEditor();
         ImGui::End();
     }
+
     if (_Widget_MenuBar::imgui_demo)
     {
         ImGui::ShowDemoWindow(&_Widget_MenuBar::imgui_demo);
@@ -136,9 +138,10 @@ void Widget_MenuBar::TickAlways()
     DrawAboutWindow();
     DrawShortcutsWindow();
 }
+
 void Widget_MenuBar::HandleKeyShortcuts() const
 {
-    if (ImGui::IsKeyPressed(_Widget_MenuBar::g_input->GetKey(KeyCode::Ctrl_Left) && _Widget_MenuBar::g_input->GetKeyDown(KeyCode::P)))
+    if (_Widget_MenuBar::g_input->GetKey(KeyCode::Ctrl_Left) && _Widget_MenuBar::g_input->GetKeyDown(KeyCode::P))
     {
         // FIXME: shortcut doesn't work
         _Widget_MenuBar::g_showShortcutsWindow = !_Widget_MenuBar::g_showShortcutsWindow;
@@ -182,33 +185,39 @@ void Widget_MenuBar::DrawFileDialog() const
         }
     }
 }
+
 void Widget_MenuBar::DrawShortcutsWindow() const
 {
     if (!_Widget_MenuBar::g_showShortcutsWindow)
         return;
+
     ImGui::SetNextWindowContentSize(ImVec2(540.f, 360.f));
     ImGui::SetNextWindowFocus();
     ImGui::Begin("Shortcuts reference", &_Widget_MenuBar::g_showShortcutsWindow, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoDocking);
+
     static float col_a = 220.0f;
     static float col_b = 20.0f;
     {
-        // ImGui::Text("File Management");
-        // ImGui::Separator();
         struct Shortcut
         {
             char *shortcut;
             char *usage;
         };
-        Shortcut shortcuts[] = {
-            {(char *)"Ctrl+S", (char *)"save project"},
-            {(char *)"F", (char *)"Center Camera on object"},
-            {(char *)"Ctrl+P", (char *)"Open shortcuts reference"}};
+
+        Shortcut shortcuts[] =
+        {
+            {(char *)"Ctrl+S", (char *)"Save project"},
+            {(char *)"F",      (char *)"Center camera on object"},
+            {(char *)"Ctrl+P", (char *)"Open shortcuts reference"}
+        };
+
         ImGui::NewLine();
         ImGui::SameLine(col_b);
         ImGui::Text("Shortcut");
         ImGui::SameLine(col_a);
         ImGui::Text("Usage");
-        for (const Shortcut &shortcut : shortcuts)
+
+        for (const Shortcut& shortcut : shortcuts)
         {
             ImGui::BulletText(shortcut.shortcut);
             ImGui::SameLine(col_a);
@@ -217,6 +226,7 @@ void Widget_MenuBar::DrawShortcutsWindow() const
     }
     ImGui::End();
 }
+
 void Widget_MenuBar::DrawAboutWindow() const
 {
     if (!_Widget_MenuBar::g_showAboutWindow)
@@ -230,6 +240,7 @@ void Widget_MenuBar::DrawAboutWindow() const
     ImGui::SameLine(ImGuiEx::GetWindowContentRegionWidth());
     ImGui::SetCursorPosX(ImGui::GetCursorPosX() - 55);
     ImGui::SetCursorPosY(ImGui::GetCursorPosY() - 5);
+
     if (ImGuiEx::Button("GitHub"))
     {
         FileSystem::OpenDirectoryWindow("https://github.com/PanosK92/SpartanEngine");

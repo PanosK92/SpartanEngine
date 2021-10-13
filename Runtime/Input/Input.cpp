@@ -76,8 +76,8 @@ namespace Spartan
 
     void Input::OnEvent(const Variant& event_variant)
     {
-        SDL_Event* event_sdl    = event_variant.Get<SDL_Event*>();
-        Uint32 event_type       = event_sdl->type;
+        SDL_Event* event_sdl = event_variant.Get<SDL_Event*>();
+        Uint32 event_type    = event_sdl->type;
 
         if (event_type == SDL_MOUSEWHEEL)
         {
