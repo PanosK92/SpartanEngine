@@ -721,11 +721,21 @@ namespace Spartan
             toggled = true;
         }
 
-        if (toggled)
+        if (!toggled)
+            return;
+
+        if (option == Renderer_Option::Render_Upsample_TAA || option == Renderer_Option::Render_Upsample_AMD_FidelityFX_SuperResolution)
         {
-            if (option == Renderer_Option::Render_Upsample_TAA || option == Renderer_Option::Render_Upsample_AMD_FidelityFX_SuperResolution)
+            CreateRenderTextures(false, false, false, true);
+        }
+
+        if (option == Render_ReverseZ)
+        {
+            CreateDepthStencilStates();
+
+            if (m_camera)
             {
-                CreateRenderTextures(false, false, false, true);
+                m_camera->MakeDirty();
             }
         }
     }

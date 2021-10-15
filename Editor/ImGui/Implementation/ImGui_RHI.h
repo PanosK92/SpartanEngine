@@ -88,7 +88,7 @@ namespace ImGui::RHI
 
         // Create required RHI objects
         {
-            g_depth_stencil_state = make_unique<RHI_DepthStencilState>(g_rhi_device, false, false, g_renderer->GetComparisonFunction());
+            g_depth_stencil_state = make_unique<RHI_DepthStencilState>(g_rhi_device, false, false, RHI_Comparison_Function::Always);
 
             g_rasterizer_state = make_unique<RHI_RasterizerState>
             (
