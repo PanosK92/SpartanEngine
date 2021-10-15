@@ -416,10 +416,8 @@ void Widget_RenderOptions::TickVisible()
                 // Depth-PrePass
                 widget_helper::CheckBox("Depth PrePass", do_depth_prepass);
 
-                // Reverse-Z (disabled until turning it off actually works)
-                ImGui::BeginDisabled(true);
+                // Reverse-Z
                 widget_helper::CheckBox("Depth Reverse-Z", do_reverse_z);
-                ImGui::EndDisabled();
             }
 
             if (widget_helper::Option("Editor", false))

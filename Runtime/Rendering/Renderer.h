@@ -108,8 +108,7 @@ namespace Spartan
         RendererRt GetRenderTargetDebug() const                         { return m_render_target_debug; }
 
         // Depth
-        auto GetClearDepth()               { return GetOption(Render_ReverseZ) ? m_viewport.depth_min : m_viewport.depth_max; }
-        auto GetComparisonFunction() const { return GetOption(Render_ReverseZ) ? RHI_Comparison_Function::GreaterEqual : RHI_Comparison_Function::LessEqual; }
+        float GetClearDepth()                                 { return GetOption(Render_ReverseZ) ? m_viewport.depth_min : m_viewport.depth_max; }
 
         // Environment
         const std::shared_ptr<RHI_Texture>& GetEnvironmentTexture();

@@ -60,11 +60,11 @@ namespace Spartan
         void Deserialize(FileStream* stream) override;
         //============================================
 
-        //= MATRICES ======================================================================
-        const Math::Matrix& GetViewMatrix()             const { return m_view; }
-        const Math::Matrix& GetProjectionMatrix()       const { return m_projection; }
-        const Math::Matrix& GetViewProjectionMatrix()   const { return m_view_projection; }
-        //=================================================================================
+        //= MATRICES ====================================================================
+        const Math::Matrix& GetViewMatrix()           const { return m_view; }
+        const Math::Matrix& GetProjectionMatrix()     const { return m_projection; }
+        const Math::Matrix& GetViewProjectionMatrix() const { return m_view_projection; }
+        //===============================================================================
 
         //= RAYCASTING ======================================================
         // Returns the ray the camera uses to do picking
@@ -123,6 +123,7 @@ namespace Spartan
         bool GetFpsControlEnabled()                     const { return m_fps_control_enabled; }
         void SetFpsControlEnabled(const bool enabled)         { m_fps_control_enabled = enabled; }
         bool IsFpsControlled()                          const { return m_fps_control_assumed; }
+        void MakeDirty()                                      { m_is_dirty = true; }
         //========================================================================================
 
         Math::Matrix ComputeViewMatrix() const;

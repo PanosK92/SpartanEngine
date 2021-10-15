@@ -72,7 +72,7 @@ namespace Spartan
 
     void Renderer::CreateDepthStencilStates()
     {
-        RHI_Comparison_Function reverse_z_aware_comp_func = GetComparisonFunction();
+        RHI_Comparison_Function reverse_z_aware_comp_func = GetOption(Render_ReverseZ) ? RHI_Comparison_Function::GreaterEqual : RHI_Comparison_Function::LessEqual;
 
         // arguments: depth_test, depth_write, depth_function, stencil_test, stencil_write, stencil_function
         m_depth_stencil_off_off = make_shared<RHI_DepthStencilState>(m_rhi_device, false, false, RHI_Comparison_Function::Never, false, false, RHI_Comparison_Function::Never);  // no depth or stencil
