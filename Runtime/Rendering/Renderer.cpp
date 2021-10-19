@@ -71,7 +71,7 @@ namespace Spartan
         m_options |= Render_ScreenSpaceReflections;
         m_options |= Render_AntiAliasing_Taa;
         m_options |= Render_Sharpening_AMD_FidelityFX_ContrastAdaptiveSharpening;
-        m_options |= Render_DepthOfField; // Disabled until it's bugs are fixed
+        m_options |= Render_DepthOfField;
         //m_options |= Render_DepthPrepass; // todo: fix for vulkan
 
         // Option values.
@@ -85,9 +85,10 @@ namespace Spartan
         m_option_values[Renderer_Option_Value::Ssao_Gi]          = 0.0f; // disable by default until performance becomes more acceptable.
 
         // Subscribe to events.
-        SP_SUBSCRIBE_TO_EVENT(EventType::WorldResolved, SP_EVENT_HANDLER_VARIANT(OnRenderablesAcquire));
-        SP_SUBSCRIBE_TO_EVENT(EventType::WorldPreClear, SP_EVENT_HANDLER(OnClear));
-        SP_SUBSCRIBE_TO_EVENT(EventType::WorldLoadEnd,  SP_EVENT_HANDLER(OnWorldLoaded));
+        SP_SUBSCRIBE_TO_EVENT(EventType::WorldResolved,             SP_EVENT_HANDLER_VARIANT(OnRenderablesAcquire));
+        SP_SUBSCRIBE_TO_EVENT(EventType::WorldPreClear,             SP_EVENT_HANDLER(OnClear));
+        SP_SUBSCRIBE_TO_EVENT(EventType::WorldLoadEnd,              SP_EVENT_HANDLER(OnWorldLoaded));
+        SP_SUBSCRIBE_TO_EVENT(EventType::WindowOnFullScreenToggled, SP_EVENT_HANDLER(OnFullScreenToggled));
 
         // Get thread id.
         m_render_thread_id = this_thread::get_id();
@@ -96,12 +97,10 @@ namespace Spartan
     Renderer::~Renderer()
     {
         // Unsubscribe from events
-        SP_UNSUBSCRIBE_FROM_EVENT(EventType::WorldResolved, SP_EVENT_HANDLER_VARIANT(OnRenderablesAcquire));
-        SP_UNSUBSCRIBE_FROM_EVENT(EventType::WorldPreClear, SP_EVENT_HANDLER(OnClear));
-        SP_UNSUBSCRIBE_FROM_EVENT(EventType::WorldLoadEnd,  SP_EVENT_HANDLER(OnWorldLoaded));
-
-        m_entities.clear();
-        m_camera = nullptr;
+        SP_UNSUBSCRIBE_FROM_EVENT(EventType::WorldResolved,             SP_EVENT_HANDLER_VARIANT(OnRenderablesAcquire));
+        SP_UNSUBSCRIBE_FROM_EVENT(EventType::WorldPreClear,             SP_EVENT_HANDLER(OnClear));
+        SP_UNSUBSCRIBE_FROM_EVENT(EventType::WorldLoadEnd,              SP_EVENT_HANDLER(OnWorldLoaded));
+        SP_UNSUBSCRIBE_FROM_EVENT(EventType::WindowOnFullScreenToggled, SP_EVENT_HANDLER(OnFullScreenToggled));
 
         // Log to file as the renderer is no more
         LOG_TO_FILE(true);
@@ -109,9 +108,26 @@ namespace Spartan
 
     bool Renderer::OnInitialise()
     {
-        // Get required systems
-        m_resource_cache    = m_context->GetSubsystem<ResourceCache>();
-        m_profiler          = m_context->GetSubsystem<Profiler>();
+        m_initialised = false;
+
+        // Get window subsystem (required in order to know a windows size and also create a swapchain for it).
+        Window* window = m_context->GetSubsystem<Window>();
+        if (!window)
+        {
+            LOG_ERROR("The Renderer subsystem requires a Window subsystem.");
+            return false;
+        }
+
+        // Get resource cache subsystem (required in order to know from which paths to load shaders, textures and fonts).
+        m_resource_cache = m_context->GetSubsystem<ResourceCache>();
+        if (!m_resource_cache)
+        {
+            LOG_ERROR("The Renderer subsystem requires a ResourceCache subsystem.");
+            return false;
+        }
+
+        // Get profiler subsystem (used to profile things but not required)
+        m_profiler = m_context->GetSubsystem<Profiler>();
 
         // Create device
         m_rhi_device = make_shared<RHI_Device>(m_context);
@@ -127,10 +143,24 @@ namespace Spartan
         // Create descriptor set layout cache
         m_descriptor_set_layout_cache = make_shared<RHI_DescriptorSetLayoutCache>(m_rhi_device.get());
 
-        // Get window
-        Window* window          = m_context->GetSubsystem<Window>();
-        uint32_t window_width   = window->GetWidth();
-        uint32_t window_height  = window->GetHeight();
+        // Create command lists
+        for (uint32_t i = 0; i < m_swap_chain_buffer_count; i++)
+        {
+            m_cmd_lists.emplace_back(make_shared<RHI_CommandList>(m_context));
+        }
+
+        // Transform handle
+        m_transform_handle = make_unique<TransformGizmo>(m_context);
+
+        // Line buffer
+        m_vertex_buffer_lines = make_shared<RHI_VertexBuffer>(m_rhi_device);
+
+        // World grid
+        m_gizmo_grid = make_unique<Grid>(m_rhi_device);
+
+        // Get window size
+        uint32_t window_width  = window->GetWidth();
+        uint32_t window_height = window->GetHeight();
 
         // Create swap chain
         {
@@ -143,8 +173,8 @@ namespace Spartan
                 RHI_Format_R8G8B8A8_Unorm,
                 m_swap_chain_buffer_count,
                 RHI_Present_Immediate | RHI_Swap_Flip_Discard,
-                "swapchain_main"
-            );
+                "swapchain_renderer"
+             );
 
             if (!m_swap_chain->IsInitialised())
             {
@@ -153,22 +183,9 @@ namespace Spartan
             }
         }
 
-        // Create command lists
-        for (uint32_t i = 0; i < m_swap_chain_buffer_count; i++)
-        {
-            m_cmd_lists.emplace_back(make_shared<RHI_CommandList>(m_rhi_device->GetContext()));
-        }
-
         // Full-screen quad
         m_viewport_quad = Math::Rectangle(0, 0, static_cast<float>(window_width), static_cast<float>(window_height));
         m_viewport_quad.CreateBuffers(this);
-
-        // Line buffer
-        m_vertex_buffer_lines = make_shared<RHI_VertexBuffer>(m_rhi_device);
-
-        // Editor specific
-        m_gizmo_grid = make_unique<Grid>(m_rhi_device);
-        m_transform_handle = make_unique<TransformGizmo>(m_context);
 
         // Set render, output and viewport resolution/size to whatever the window is (initially)
         SetResolutionRender(window_width, window_height, false);
@@ -186,13 +203,10 @@ namespace Spartan
         CreateStructuredBuffers();
         CreateTextures();
 
-        if (!m_initialised)
-        {
-            // Log on-screen as the renderer is ready
-            LOG_TO_FILE(false);
-            m_initialised = true;
-        }
+        // Log on-screen as the renderer is ready
+        LOG_TO_FILE(false);
 
+        m_initialised = true;
         return true;
     }
 
@@ -375,8 +389,8 @@ namespace Spartan
         }
 
         // Make sure we are pixel perfect
-        width   -= (width   % 2 != 0) ? 1 : 0;
-        height  -= (height  % 2 != 0) ? 1 : 0;
+        width  -= (width   % 2 != 0) ? 1 : 0;
+        height -= (height  % 2 != 0) ? 1 : 0;
 
         // Silently return if resolution is already set
         if (m_resolution_render.x == width && m_resolution_render.y == height)
@@ -387,9 +401,9 @@ namespace Spartan
         m_resolution_render.y = static_cast<float>(height);
 
         // Set as active display mode
-        DisplayMode display_mode    = Display::GetActiveDisplayMode();
-        display_mode.width          = width;
-        display_mode.height         = height;
+        DisplayMode display_mode = Display::GetActiveDisplayMode();
+        display_mode.width       = width;
+        display_mode.height      = height;
         Display::SetActiveDisplayMode(display_mode);
 
         // Register display mode (in case it doesn't exist) but maintain the fps limit
@@ -419,7 +433,7 @@ namespace Spartan
         }
 
         // Make sure we are pixel perfect
-        width -= (width % 2 != 0) ? 1 : 0;
+        width  -= (width % 2 != 0) ? 1 : 0;
         height -= (height % 2 != 0) ? 1 : 0;
 
         // Silently return if resolution is already set
@@ -568,11 +582,11 @@ namespace Spartan
             luminous_intensity *= 255.0f; // this is a hack, must fix whats my color units
         }
 
-        m_cb_light_cpu.intensity_range_angle_bias   = Vector4(luminous_intensity, light->GetRange(), light->GetAngle(), GetOption(Render_ReverseZ) ? light->GetBias() : -light->GetBias());
-        m_cb_light_cpu.color                        = light->GetColor();
-        m_cb_light_cpu.normal_bias                  = light->GetNormalBias();
-        m_cb_light_cpu.position                     = light->GetTransform()->GetPosition();
-        m_cb_light_cpu.direction                    = light->GetTransform()->GetForward();
+        m_cb_light_cpu.intensity_range_angle_bias = Vector4(luminous_intensity, light->GetRange(), light->GetAngle(), GetOption(Render_ReverseZ) ? light->GetBias() : -light->GetBias());
+        m_cb_light_cpu.color                      = light->GetColor();
+        m_cb_light_cpu.normal_bias                = light->GetNormalBias();
+        m_cb_light_cpu.position                   = light->GetTransform()->GetPosition();
+        m_cb_light_cpu.direction                  = light->GetTransform()->GetForward();
 
         if (!update_dynamic_buffer<Cb_Light>(cmd_list, m_cb_light_gpu.get(), m_cb_light_cpu, m_cb_light_cpu_previous, m_cb_light_offset_index))
             return false;
@@ -626,9 +640,9 @@ namespace Spartan
                 continue;
 
             // Get all the components we are interested in
-            Renderable* renderable  = entity->GetComponent<Renderable>();
-            Light* light            = entity->GetComponent<Light>();
-            Camera* camera          = entity->GetComponent<Camera>();
+            Renderable* renderable = entity->GetComponent<Renderable>();
+            Light* light           = entity->GetComponent<Light>();
+            Camera* camera         = entity->GetComponent<Camera>();
 
             if (renderable)
             {
@@ -673,6 +687,24 @@ namespace Spartan
     void Renderer::OnWorldLoaded()
     {
         m_is_rendering_allowed = true;
+    }
+
+    void Renderer::OnFullScreenToggled()
+    {
+        Window* window = m_context->GetSubsystem<Window>();
+
+        if (window->IsFullScreen())
+        {
+            m_resolution_output_previous = m_resolution_output;
+
+            SetViewport(static_cast<float>(window->GetWidth()), static_cast<float>(window->GetHeight()));
+            SetResolutionOutput(window->GetWidth(), window->GetHeight());
+        }
+        else
+        {
+            SetViewport(m_resolution_output_previous.x, m_resolution_output_previous.y);
+            SetResolutionOutput(static_cast<uint32_t>(m_resolution_output_previous.x), static_cast<uint32_t>(m_resolution_output_previous.y));
+        }
     }
 
     void Renderer::SortRenderables(vector<Entity*>* renderables)

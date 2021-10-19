@@ -40,32 +40,33 @@ Note: Currently, this is a blocking event system
 ====================================================================================
 */
 
-//= MACROS =======================================================================================================
-#define SP_EVENT_HANDLER(function)                     [this](const Spartan::Variant& var)    { function(); }
-#define SP_EVENT_HANDLER_STATIC(function)              [](const Spartan::Variant& var)        { function(); }
-
-#define SP_EVENT_HANDLER_VARIANT(function)             [this](const Spartan::Variant& var)    { function(var); }
-#define SP_EVENT_HANDLER_VARIANT_STATIC(function)      [](const Spartan::Variant& var)        { function(var); }
-
-#define SP_FIRE_EVENT(eventID)                         Spartan::EventSystem::Get().Fire(eventID)
-#define SP_FIRE_EVENT_DATA(eventID, data)              Spartan::EventSystem::Get().Fire(eventID, data)
-
-#define SP_SUBSCRIBE_TO_EVENT(eventID, function)       Spartan::EventSystem::Get().Subscribe(eventID, function);
-#define SP_UNSUBSCRIBE_FROM_EVENT(eventID, function)   Spartan::EventSystem::Get().Unsubscribe(eventID, function);
-//================================================================================================================
+//= MACROS =====================================================================================================
+#define SP_EVENT_HANDLER(function)                   [this](const Spartan::Variant& var)    { function(); }
+#define SP_EVENT_HANDLER_STATIC(function)            [](const Spartan::Variant& var)        { function(); }
+                                                     
+#define SP_EVENT_HANDLER_VARIANT(function)           [this](const Spartan::Variant& var)    { function(var); }
+#define SP_EVENT_HANDLER_VARIANT_STATIC(function)    [](const Spartan::Variant& var)        { function(var); }
+                                                     
+#define SP_FIRE_EVENT(eventID)                       Spartan::EventSystem::Get().Fire(eventID)
+#define SP_FIRE_EVENT_DATA(eventID, data)            Spartan::EventSystem::Get().Fire(eventID, data)
+                                                     
+#define SP_SUBSCRIBE_TO_EVENT(eventID, function)     Spartan::EventSystem::Get().Subscribe(eventID, function);
+#define SP_UNSUBSCRIBE_FROM_EVENT(eventID, function) Spartan::EventSystem::Get().Unsubscribe(eventID, function);
+//==============================================================================================================
 
 enum class EventType
 {
-    FrameEnd,       // A frame ends
-    WorldSaveStart, // The world is about to be saved to a file
-    WorldSavedEnd,  // The world finished saving to file
-    WorldLoadStart, // The world is about to be loaded from a file
-    WorldLoadEnd,   // The world finished loading from file
-    WorldPreClear,  // The world is about to clear everything
-    WorldClear,     // The world is clear everything
-    WorldResolve,   // The world is resolving
-    WorldResolved,  // The world has finished resolving
-    EventSDL,       // An SDL event
+    FrameEnd,                 // A frame ends
+    WorldSaveStart,           // The world is about to be saved to a file
+    WorldSavedEnd,            // The world finished saving to file
+    WorldLoadStart,           // The world is about to be loaded from a file
+    WorldLoadEnd,             // The world finished loading from file
+    WorldPreClear,            // The world is about to clear everything
+    WorldClear,               // The world is clear everything
+    WorldResolve,             // The world is resolving
+    WorldResolved,            // The world has finished resolving
+    EventSDL,                 // An SDL event
+    WindowOnFullScreenToggled
 };
 
 namespace Spartan

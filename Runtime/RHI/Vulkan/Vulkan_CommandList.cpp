@@ -443,8 +443,10 @@ namespace Spartan
             0                                         // firstInstance
         );
 
-        // Profiler
-        m_profiler->m_rhi_draw++;
+        if (m_profiler)
+        {
+            m_profiler->m_rhi_draw++;
+        }
 
         return true;
     }
@@ -486,8 +488,10 @@ namespace Spartan
         // Dispatch
         vkCmdDispatch(static_cast<VkCommandBuffer>(m_resource), x, y, z);
 
-        // Profiler
-        m_profiler->m_rhi_dispatch++;
+        if (m_profiler)
+        {
+            m_profiler->m_rhi_dispatch++;
+        }
 
         return true;
     }
@@ -604,9 +608,13 @@ namespace Spartan
             offsets                                     // pOffsets
         );
 
-        m_profiler->m_rhi_bindings_buffer_vertex++;
         m_vertex_buffer_id      = buffer->GetObjectId();
         m_vertex_buffer_offset  = offset;
+
+        if (m_profiler)
+        {
+            m_profiler->m_rhi_bindings_buffer_vertex++;
+        }
     }
 
     void RHI_CommandList::SetBufferIndex(const RHI_IndexBuffer* buffer, const uint64_t offset /*= 0*/)
@@ -624,9 +632,13 @@ namespace Spartan
             buffer->Is16Bit() ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32 // indexType
         );
 
-        m_profiler->m_rhi_bindings_buffer_index++;
         m_index_buffer_id       = buffer->GetObjectId();
         m_index_buffer_offset   = offset;
+
+        if (m_profiler)
+        {
+            m_profiler->m_rhi_bindings_buffer_index++;
+        }
     }
 
     void RHI_CommandList::SetConstantBuffer(const uint32_t slot, const uint8_t scope, RHI_ConstantBuffer* constant_buffer) const
@@ -999,7 +1011,10 @@ namespace Spartan
                 !dynamic_offsets.empty() ? dynamic_offsets.data() : nullptr              // pDynamicOffsets
             );
 
-            m_profiler->m_rhi_bindings_descriptor_set++;
+            if (m_profiler)
+            {
+                m_profiler->m_rhi_bindings_descriptor_set++;
+            }
         }
 
         return result;
@@ -1013,8 +1028,13 @@ namespace Spartan
             VkPipelineBindPoint pipeline_bind_point = m_pipeline_state->IsCompute() ? VK_PIPELINE_BIND_POINT_COMPUTE : VK_PIPELINE_BIND_POINT_GRAPHICS;
 
             vkCmdBindPipeline(static_cast<VkCommandBuffer>(m_resource), pipeline_bind_point, vk_pipeline);
-            m_profiler->m_rhi_bindings_pipeline++;
+
             m_pipeline_active = true;
+
+            if (m_profiler)
+            {
+                m_profiler->m_rhi_bindings_pipeline++;
+            }
         }
         else
         {

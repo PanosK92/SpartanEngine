@@ -107,7 +107,7 @@ namespace Spartan
         RHI_Comparison_Function depth_comparison = GetOption(Render_ReverseZ) ? RHI_Comparison_Function::Greater : RHI_Comparison_Function::Less;
         float mip_lod_bias                       = -log2(m_resolution_output.x / m_resolution_render.x); // negative mip bias when upscaling is active (helps bring in some texture detail)
 
-        // minification, magnification, mip, sampler address mode, comparison, anisotropy, comparison, mip lod bias
+        // sampler parameters: minification, magnification, mip, sampler address mode, comparison, anisotropy, comparison enabled, mip lod bias
         if (!create_only_anisotropic)
         {
             m_sampler_compare_depth   = make_shared<RHI_Sampler>(m_rhi_device, RHI_Filter::Linear,  RHI_Filter::Linear,  RHI_Sampler_Mipmap_Mode::Nearest, RHI_Sampler_Address_Mode::Clamp, depth_comparison, 0.0f, true);

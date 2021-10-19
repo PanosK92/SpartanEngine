@@ -57,18 +57,9 @@ namespace Spartan
     class SPARTAN_CLASS Renderer : public ISubsystem
     {
     public:
-        // Constants
-        const uint32_t m_resolution_shadow_min = 128;
-        const float m_gizmo_size_max           = 2.0f;
-        const float m_gizmo_size_min           = 0.1f;
-        const float m_thread_group_count       = 8.0f;
-        const float m_depth_bias               = 0.004f; // bias that's applied directly into the depth buffer
-        const float m_depth_bias_clamp         = 0.0f;
-        const float m_depth_bias_slope_scaled  = 2.0f;
-        float m_gizmo_transform_size           = 0.015f;
-        float m_gizmo_transform_speed          = 12.0f;
-        #define DEBUG_COLOR                    Math::Vector4(0.41f, 0.86f, 1.0f, 1.0f)
-        #define RENDER_TARGET(rt_enum)         m_render_targets[static_cast<uint8_t>(rt_enum)]
+        // Defines
+        #define DEBUG_COLOR            Math::Vector4(0.41f, 0.86f, 1.0f, 1.0f)
+        #define RENDER_TARGET(rt_enum) m_render_targets[static_cast<uint8_t>(rt_enum)]
 
         Renderer(Context* context);
         ~Renderer();
@@ -108,7 +99,7 @@ namespace Spartan
         RendererRt GetRenderTargetDebug() const                         { return m_render_target_debug; }
 
         // Depth
-        float GetClearDepth()                                 { return GetOption(Render_ReverseZ) ? m_viewport.depth_min : m_viewport.depth_max; }
+        float GetClearDepth() { return GetOption(Render_ReverseZ) ? m_viewport.depth_min : m_viewport.depth_max; }
 
         // Environment
         const std::shared_ptr<RHI_Texture>& GetEnvironmentTexture();
@@ -161,6 +152,10 @@ namespace Spartan
         // Passes
         void Pass_CopyToBackbuffer(RHI_CommandList* cmd_list);
 
+        // Adjustable parameters
+        float m_gizmo_transform_size  = 0.015f;
+        float m_gizmo_transform_speed = 12.0f;
+
     private:
         // Resource creation
         void CreateConstantBuffers();
@@ -204,7 +199,7 @@ namespace Spartan
         void Pass_Outline(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
         void Pass_Icons(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
         void Pass_TransformHandle(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
-        void Pass_Text(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
+        void Pass_PeformanceMetrics(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
         void Pass_BrdfSpecularLut(RHI_CommandList* cmd_list);
         void Pass_Copy(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out, const bool bilinear);
         void Pass_Generate_Mips();
@@ -219,6 +214,7 @@ namespace Spartan
         void OnRenderablesAcquire(const Variant& renderables);
         void OnClear();
         void OnWorldLoaded();
+        void OnFullScreenToggled();
 
         // Misc
         void SortRenderables(std::vector<Entity*>* renderables);
@@ -309,10 +305,11 @@ namespace Spartan
         Math::Rectangle m_gizmo_light_rect;
 
         // Resolution & Viewport
-        Math::Vector2 m_resolution_render = Math::Vector2::Zero;
-        Math::Vector2 m_resolution_output = Math::Vector2::Zero;
-        RHI_Viewport m_viewport           = RHI_Viewport(0, 0, 0, 0);
-        Math::Rectangle m_viewport_quad   = Math::Rectangle(0, 0, 0, 0);
+        Math::Vector2 m_resolution_render          = Math::Vector2::Zero;
+        Math::Vector2 m_resolution_output          = Math::Vector2::Zero;
+        Math::Vector2 m_resolution_output_previous = Math::Vector2::Zero;
+        RHI_Viewport m_viewport                    = RHI_Viewport(0, 0, 0, 0);
+        Math::Rectangle m_viewport_quad            = Math::Rectangle(0, 0, 0, 0);
 
         // Options
         uint64_t m_options = 0;
@@ -334,6 +331,15 @@ namespace Spartan
         bool m_brdf_specular_lut_rendered        = false;
         uint32_t m_cmd_index                     = std::numeric_limits<uint32_t>::max();
         std::thread::id m_render_thread_id;
+
+        // Constants
+        const uint32_t m_resolution_shadow_min = 128;
+        const float m_gizmo_size_max           = 2.0f;
+        const float m_gizmo_size_min           = 0.1f;
+        const float m_thread_group_count       = 8.0f;
+        const float m_depth_bias               = 0.004f; // bias that's applied directly into the depth buffer
+        const float m_depth_bias_clamp         = 0.0f;
+        const float m_depth_bias_slope_scaled  = 2.0f;
 
         // Requests for mip generation
         std::vector<RHI_Texture*> m_textures_mip_generation;

@@ -209,7 +209,7 @@ void Widget_MenuBar::DrawShortcutsWindow() const
                 char *usage;
             };
 
-            Shortcut shortcuts[] =
+            static const Shortcut shortcuts[] =
             {
                 {(char*)"Ctrl+P",      (char*)"Open shortcuts & input reference window"},
                 {(char*)"Ctrl+S",      (char*)"Save world"},
@@ -217,7 +217,8 @@ void Widget_MenuBar::DrawShortcutsWindow() const
                 {(char*)"Right click", (char*)"Enable first person camera control"},
                 {(char*)"W, A, S, D",  (char*)"Move camera"},
                 {(char*)"Q, E",        (char*)"Change camera elevation"},
-                {(char*)"F",           (char*)"Center camera on object"}
+                {(char*)"F",           (char*)"Center camera on object"},
+                {(char*)"Alt+Enter",   (char*)"Toggle fullscreen viewport"}
             };
 
             ImGui::NewLine();
