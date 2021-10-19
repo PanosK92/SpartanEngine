@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Window.h"
 #include "SDL.h"
 #include "SDL_syswm.h"
+#include "../Input/Input.h"
 //====================
 
 //= LINKING ============================
@@ -64,12 +65,12 @@ namespace Spartan
         // Create window
         uint32_t flags = SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_MAXIMIZED;
         m_window = SDL_CreateWindow(
-            m_title.c_str(),            // window title
-            SDL_WINDOWPOS_UNDEFINED,    // initial x position
-            SDL_WINDOWPOS_UNDEFINED,    // initial y position
-            m_width,                    // width in pixels
-            m_height,                   // height in pixels
-            flags                       // flags - see below
+            m_title.c_str(),         // window title
+            SDL_WINDOWPOS_UNDEFINED, // initial x position
+            SDL_WINDOWPOS_UNDEFINED, // initial y position
+            m_width,                 // width in pixels
+            m_height,                // height in pixels
+            flags                    // flags - see below
         );
 
         if (!m_window)
@@ -115,7 +116,7 @@ namespace Spartan
                     //Window has been moved to data1, data2
                     break;
                 case SDL_WINDOWEVENT_RESIZED:
-                    m_width = static_cast<uint32_t>(sdl_event.window.data1);
+                    m_width  = static_cast<uint32_t>(sdl_event.window.data1);
                     m_height = static_cast<uint32_t>(sdl_event.window.data2);
                     break;
                 case SDL_WINDOWEVENT_SIZE_CHANGED:
@@ -162,6 +163,16 @@ namespace Spartan
 
             SP_FIRE_EVENT_DATA(EventType::EventSDL, &sdl_event);
         }
+
+        // Handle shortcuts
+        if (Input* input = m_context->GetSubsystem<Input>())
+        {
+            // Toggle fullscreen
+            if (input->GetKey(KeyCode::Alt_Right) && input->GetKeyDown(KeyCode::Enter))
+            {
+                ToggleFullScreen();
+            }
+        }
     }
 
     void Window::Show()
@@ -189,11 +200,37 @@ namespace Spartan
     {
         SP_ASSERT(m_window != nullptr);
 
+        LOG_INFO("Entering full screen mode...");
+
         SDL_SetWindowFullscreen(m_window, SDL_WINDOW_FULLSCREEN);
         m_fullscreen = true;
     }
 
-    void Window::FullScreenBorderless()
+    void Window::Windowed()
+    {
+        SP_ASSERT(m_window != nullptr);
+
+        LOG_INFO("Entering windowed mode...");
+
+        SDL_SetWindowFullscreen(m_window, 0);
+        m_fullscreen = false;
+    }
+
+    void Window::ToggleFullScreen()
+	{
+        if (!m_fullscreen)
+        {
+            FullScreen();
+        }
+        else
+        {
+            Windowed();
+        }
+
+        SP_FIRE_EVENT(EventType::WindowOnFullScreenToggled);
+	}
+
+	void Window::FullScreenBorderless()
     {
         SP_ASSERT(m_window != nullptr);
 

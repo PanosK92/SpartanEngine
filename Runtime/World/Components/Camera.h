@@ -89,20 +89,20 @@ namespace Spartan
         float GetShutterSpeed() const                   { return m_shutter_speed; }
         void SetShutterSpeed(const float shutter_speed) { m_shutter_speed = shutter_speed; }
 
-        float GetIso() const            { return m_iso; }
-        void SetIso(const float iso)    { m_iso = iso; }
+        float GetIso() const         { return m_iso; }
+        void SetIso(const float iso) { m_iso = iso; }
 
         float GetEv100()    const { return std::log2((m_aperture * m_aperture) / m_shutter_speed * 100.0f / m_iso);} // Reference: https://google.github.io/filament/Filament.md.html#lighting/units/lightunitsvalidation
         float GetExposure() const { return 1.0f / (std::pow(2.0f, GetEv100()) * 1.2f); } // Frostbite: https://seblagarde.files.wordpress.com/2015/07/course_notes_moving_frostbite_to_pbr_v32.pdf
 
-        //= PLANES/PROJECTION =================================================
+        //= PLANES/PROJECTION ================================================
         void SetNearPlane(float near_plane);
         void SetFarPlane(float far_plane);
         void SetProjection(ProjectionType projection);
-        float GetNearPlane()                const { return m_near_plane; }
-        float GetFarPlane()                 const { return m_far_plane; }
-        ProjectionType GetProjectionType()  const { return m_projection_type; }
-        //=====================================================================
+        float GetNearPlane()               const { return m_near_plane; }
+        float GetFarPlane()                const { return m_far_plane; }
+        ProjectionType GetProjectionType() const { return m_projection_type; }
+        //====================================================================
 
         //= FOV ==========================================================
         float GetFovHorizontalRad() const { return m_fov_horizontal_rad; }
@@ -117,14 +117,14 @@ namespace Spartan
         bool IsInViewFrustum(const Math::Vector3& center, const Math::Vector3& extents) const;
         //====================================================================================
 
-        //= MISC =================================================================================
-        const Math::Vector4& GetClearColor() const            { return m_clear_color; }
-        void SetClearColor(const Math::Vector4& color)        { m_clear_color = color; }
-        bool GetFpsControlEnabled()                     const { return m_fps_control_enabled; }
-        void SetFpsControlEnabled(const bool enabled)         { m_fps_control_enabled = enabled; }
-        bool IsFpsControlled()                          const { return m_fps_control_assumed; }
-        void MakeDirty()                                      { m_is_dirty = true; }
-        //========================================================================================
+        //= MISC ================================================================================
+        const Math::Vector4& GetClearColor() const           { return m_clear_color; }
+        void SetClearColor(const Math::Vector4& color)       { m_clear_color = color; }
+        bool GetFpsControlEnabled()                    const { return m_fps_control_enabled; }
+        void SetFpsControlEnabled(const bool enabled)        { m_fps_control_enabled = enabled; }
+        bool IsFpsControlled()                         const { return m_fps_control_assumed; }
+        void MakeDirty()                                     { m_is_dirty = true; }
+        //=======================================================================================
 
         Math::Matrix ComputeViewMatrix() const;
         Math::Matrix ComputeProjection(const bool reverse_z, const float near_plane = 0.0f, const float far_plane = 0.0f);

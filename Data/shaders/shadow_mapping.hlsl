@@ -31,17 +31,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 // technique - all
 #if DIRECTIONAL
-static const uint   g_shadow_samples                    = 3;
-static const float  g_shadow_filter_size                = 3.0f;
-static const float  g_shadow_cascade_blend_threshold    = 0.8f;
+static const uint   g_shadow_samples                 = 3;
+static const float  g_shadow_filter_size             = 3.0f;
+static const float  g_shadow_cascade_blend_threshold = 0.8f;
 #else
-static const uint   g_shadow_samples        = 3;
-static const float  g_shadow_filter_size    = 3.0f;
+static const uint   g_shadow_samples     = 3;
+static const float  g_shadow_filter_size = 3.0f;
 #endif
 
 // technique - vogel
-static const uint   g_penumbra_samples      = 8;
-static const float  g_penumbra_filter_size  = 128.0f;
+static const uint   g_penumbra_samples     = 8;
+static const float  g_penumbra_filter_size = 128.0f;
 
 // technique - pre-calculated
 static const float g_pcf_filter_size = (sqrt((float)g_shadow_samples) - 1.0f) / 2.0f;

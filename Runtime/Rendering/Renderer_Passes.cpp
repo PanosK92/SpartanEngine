@@ -553,7 +553,11 @@ namespace Spartan
 
                     // Render
                     cmd_list->DrawIndexed(renderable->GeometryIndexCount(), renderable->GeometryIndexOffset(), renderable->GeometryVertexOffset());
-                    m_profiler->m_renderer_meshes_rendered++;
+
+                    if (m_profiler)
+                    {
+                        m_profiler->m_renderer_meshes_rendered++;
+                    }
                 }
 
                 cmd_list->EndRenderPass();
@@ -1078,7 +1082,7 @@ namespace Spartan
         Pass_Lines(cmd_list, rt_frame_render_output_out.get());
         Pass_Icons(cmd_list, rt_frame_render_output_out.get());
         Pass_DebugBuffer(cmd_list, rt_frame_render_output_out.get());
-        Pass_Text(cmd_list, rt_frame_render_output_out.get());
+        Pass_PeformanceMetrics(cmd_list, rt_frame_render_output_out.get());
 
         // Swap textures
         rt_frame_render_output_in.swap(rt_frame_render_output_out);
@@ -2024,8 +2028,11 @@ namespace Spartan
         }
     }
 
-    void Renderer::Pass_Text(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
+    void Renderer::Pass_PeformanceMetrics(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
     {
+        if (!m_profiler)
+            return;
+
         // Early exit cases
         const bool draw      = m_options & Render_Debug_PerformanceMetrics;
         const bool empty     = m_profiler->GetMetrics().empty();
@@ -2051,7 +2058,7 @@ namespace Spartan
         pso.render_target_color_textures[0] = tex_out;
         pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
         pso.viewport                        = tex_out->GetViewport();
-        pso.pass_name                       = "Pass_Text";
+        pso.pass_name                       = "Pass_PeformanceMetrics";
 
         // Update text
         const Vector2 text_pos = Vector2(-m_viewport.width * 0.5f + 5.0f, m_viewport.height * 0.5f - m_font->GetSize() - 2.0f);

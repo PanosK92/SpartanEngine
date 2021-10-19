@@ -32,7 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #define TIME_BLOCK_START_NAMED(profiler, name)  profiler->TimeBlockStart(name, Spartan::TimeBlockType::Cpu, nullptr);
 #define TIME_BLOCK_END(profiler)                profiler->TimeBlockEnd();
-#define SCOPED_TIME_BLOCK(profiler)             ScopedTimeBlock time_block = ScopedTimeBlock(profiler, __FUNCTION__)
+#define SCOPED_TIME_BLOCK(profiler)             if (profiler) { ScopedTimeBlock time_block = ScopedTimeBlock(profiler, __FUNCTION__); }
 
 namespace Spartan
 {

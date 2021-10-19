@@ -70,9 +70,9 @@ namespace Spartan
         m_context = context;
 
         // In case no Spartan.ini file exists, set the resolution to whatever the display is using.
-        m_resolution_output.x   = static_cast<float>(Display::GetWidth());
-        m_resolution_output.y   = static_cast<float>(Display::GetHeight());
-        m_resolution_render     = m_resolution_output;
+        m_resolution_output.x = static_cast<float>(Display::GetWidth());
+        m_resolution_output.y = static_cast<float>(Display::GetHeight());
+        m_resolution_render   = m_resolution_output;
 
         // Register third party libs which don't register on their own as they are not part of some other initiliasation procedure
         RegisterThirdPartyLib("pugixml", "1.11.46", "https://github.com/zeux/pugixml");
@@ -125,18 +125,18 @@ namespace Spartan
         _Settings::fout.open(_Settings::file_name, ofstream::out);
 
         // Write the settings
-        _Settings::write_setting(_Settings::fout, "bFullScreen",                m_is_fullscreen);
-        _Settings::write_setting(_Settings::fout, "bIsMouseVisible",            m_is_mouse_visible);
-        _Settings::write_setting(_Settings::fout, "iResolutionOutputWidth",     m_resolution_output.x);
-        _Settings::write_setting(_Settings::fout, "iResolutionOutputHeight",    m_resolution_output.y);
-        _Settings::write_setting(_Settings::fout, "iResolutionRenderWidth",     m_resolution_render.x);
-        _Settings::write_setting(_Settings::fout, "iResolutionRenderHeight",    m_resolution_render.y);
-        _Settings::write_setting(_Settings::fout, "iShadowMapResolution",       m_shadow_map_resolution);
-        _Settings::write_setting(_Settings::fout, "iAnisotropy",                m_anisotropy);
-        _Settings::write_setting(_Settings::fout, "iTonemapping",               m_tonemapping);
-        _Settings::write_setting(_Settings::fout, "fFPSLimit",                  m_fps_limit);
-        _Settings::write_setting(_Settings::fout, "iMaxThreadCount",            m_max_thread_count);
-        _Settings::write_setting(_Settings::fout, "iRendererFlags",             m_renderer_flags);
+        _Settings::write_setting(_Settings::fout, "bFullScreen",             m_is_fullscreen);
+        _Settings::write_setting(_Settings::fout, "bIsMouseVisible",         m_is_mouse_visible);
+        _Settings::write_setting(_Settings::fout, "iResolutionOutputWidth",  m_resolution_output.x);
+        _Settings::write_setting(_Settings::fout, "iResolutionOutputHeight", m_resolution_output.y);
+        _Settings::write_setting(_Settings::fout, "iResolutionRenderWidth",  m_resolution_render.x);
+        _Settings::write_setting(_Settings::fout, "iResolutionRenderHeight", m_resolution_render.y);
+        _Settings::write_setting(_Settings::fout, "iShadowMapResolution",    m_shadow_map_resolution);
+        _Settings::write_setting(_Settings::fout, "iAnisotropy",             m_anisotropy);
+        _Settings::write_setting(_Settings::fout, "iTonemapping",            m_tonemapping);
+        _Settings::write_setting(_Settings::fout, "fFPSLimit",               m_fps_limit);
+        _Settings::write_setting(_Settings::fout, "iMaxThreadCount",         m_max_thread_count);
+        _Settings::write_setting(_Settings::fout, "iRendererFlags",          m_renderer_flags);
 
         // Close the file.
         _Settings::fout.close();
@@ -148,18 +148,18 @@ namespace Spartan
         _Settings::fin.open(_Settings::file_name, ifstream::in);
 
         // Read the settings
-        _Settings::read_setting(_Settings::fin, "bFullScreen",              m_is_fullscreen);
-        _Settings::read_setting(_Settings::fin, "bIsMouseVisible",          m_is_mouse_visible);
-        _Settings::read_setting(_Settings::fin, "iResolutionOutputWidth",   m_resolution_output.x);
-        _Settings::read_setting(_Settings::fin, "iResolutionOutputHeight",  m_resolution_output.y);
-        _Settings::read_setting(_Settings::fin, "iResolutionRenderWidth",   m_resolution_render.x);
-        _Settings::read_setting(_Settings::fin, "iResolutionRenderHeight",  m_resolution_render.y);
-        _Settings::read_setting(_Settings::fin, "iShadowMapResolution",     m_shadow_map_resolution);
-        _Settings::read_setting(_Settings::fin, "iAnisotropy",              m_anisotropy);
-        _Settings::read_setting(_Settings::fin, "iTonemapping",             m_tonemapping);
-        _Settings::read_setting(_Settings::fin, "fFPSLimit",                m_fps_limit);
-        _Settings::read_setting(_Settings::fin, "iMaxThreadCount",          m_max_thread_count);
-        _Settings::read_setting(_Settings::fin, "iRendererFlags",           m_renderer_flags);
+        _Settings::read_setting(_Settings::fin, "bFullScreen",             m_is_fullscreen);
+        _Settings::read_setting(_Settings::fin, "bIsMouseVisible",         m_is_mouse_visible);
+        _Settings::read_setting(_Settings::fin, "iResolutionOutputWidth",  m_resolution_output.x);
+        _Settings::read_setting(_Settings::fin, "iResolutionOutputHeight", m_resolution_output.y);
+        _Settings::read_setting(_Settings::fin, "iResolutionRenderWidth",  m_resolution_render.x);
+        _Settings::read_setting(_Settings::fin, "iResolutionRenderHeight", m_resolution_render.y);
+        _Settings::read_setting(_Settings::fin, "iShadowMapResolution",    m_shadow_map_resolution);
+        _Settings::read_setting(_Settings::fin, "iAnisotropy",             m_anisotropy);
+        _Settings::read_setting(_Settings::fin, "iTonemapping",            m_tonemapping);
+        _Settings::read_setting(_Settings::fin, "fFPSLimit",               m_fps_limit);
+        _Settings::read_setting(_Settings::fin, "iMaxThreadCount",         m_max_thread_count);
+        _Settings::read_setting(_Settings::fin, "iRendererFlags",          m_renderer_flags);
 
         // Close the file.
         _Settings::fin.close();
@@ -172,14 +172,6 @@ namespace Spartan
         if (Timer* timer = m_context->GetSubsystem<Timer>())
         {
             timer->SetFpsLimit(m_fps_limit);
-        }
-
-        if (Window* window = m_context->GetSubsystem<Window>())
-        {
-            if (m_is_fullscreen)
-            {
-                window->FullScreen();
-            }
         }
 
         if (Input* input = m_context->GetSubsystem<Input>())
@@ -201,6 +193,14 @@ namespace Spartan
             else
             {
                 LOG_ERROR("Renderer hasn't initialised, can't map any settings");
+            }
+        }
+
+        if (Window* window = m_context->GetSubsystem<Window>())
+        {
+            if (m_is_fullscreen)
+            {
+                window->FullScreen();
             }
         }
     }
