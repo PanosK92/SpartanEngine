@@ -17,42 +17,42 @@
 -- IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 -- CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-SOLUTION_NAME				      = "Spartan"
-EDITOR_NAME					      = "Editor"
-RUNTIME_NAME				      = "Runtime"
-TARGET_NAME					      = "Spartan" -- Name of executable
-EDITOR_DIR					          = "../" .. EDITOR_NAME
-RUNTIME_DIR					      = "../" .. RUNTIME_NAME
-IGNORE_FILES				          = {}
-ADDITIONAL_INCLUDES          = {}
-ADDITIONAL_LIBRARIES		  = {}
-ADDITIONAL_LIBRARIES_DBG  = {}
-LIBRARY_DIR                           = "../ThirdParty/libraries"
-OBJ_DIR                                  = "../Binaries/Obj"
-TARGET_DIR                            = "../Binaries"
-API_GRAPHICS                        = _ARGS[1]
+SOLUTION_NAME            = "Spartan"
+EDITOR_NAME              = "Editor"
+RUNTIME_NAME             = "Runtime"
+TARGET_NAME              = "Spartan" -- Name of executable
+EDITOR_DIR               = "../" .. EDITOR_NAME
+RUNTIME_DIR              = "../" .. RUNTIME_NAME
+IGNORE_FILES             = {}
+ADDITIONAL_INCLUDES      = {}
+ADDITIONAL_LIBRARIES     = {}
+ADDITIONAL_LIBRARIES_DBG = {}
+LIBRARY_DIR              = "../ThirdParty/libraries"
+OBJ_DIR                  = "../Binaries/Obj"
+TARGET_DIR               = "../Binaries"
+API_GRAPHICS             = _ARGS[1]
 
 -- Graphics api specific variables
 if API_GRAPHICS == "d3d11" then
-	API_GRAPHICS	                         = "API_GRAPHICS_D3D11"
-	TARGET_NAME		                     = TARGET_NAME .. "_d3d11"
-	IGNORE_FILES[0]	                     = RUNTIME_DIR .. "/RHI/D3D12/**"
-	IGNORE_FILES[1]	                     = RUNTIME_DIR .. "/RHI/Vulkan/**"
+	API_GRAPHICS                = "API_GRAPHICS_D3D11"
+	TARGET_NAME                 = TARGET_NAME .. "_d3d11"
+	IGNORE_FILES[0]	            = RUNTIME_DIR .. "/RHI/D3D12/**"
+	IGNORE_FILES[1]	            = RUNTIME_DIR .. "/RHI/Vulkan/**"
 elseif API_GRAPHICS == "d3d12" then
-	API_GRAPHICS	= "API_GRAPHICS_D3D12"
-	TARGET_NAME		                     = TARGET_NAME .. "_d3d12"
-	IGNORE_FILES[0]	                     = RUNTIME_DIR .. "/RHI/D3D11/**"
-	IGNORE_FILES[1]	                     = RUNTIME_DIR .. "/RHI/Vulkan/**"
+	API_GRAPHICS                = "API_GRAPHICS_D3D12"
+	TARGET_NAME                 = TARGET_NAME .. "_d3d12"
+	IGNORE_FILES[0]             = RUNTIME_DIR .. "/RHI/D3D11/**"
+	IGNORE_FILES[1]             = RUNTIME_DIR .. "/RHI/Vulkan/**"
 elseif API_GRAPHICS == "vulkan" then
-	API_GRAPHICS				              = "API_GRAPHICS_VULKAN"
-	TARGET_NAME					          = TARGET_NAME .. "_vulkan"
-	IGNORE_FILES[0]				          = RUNTIME_DIR .. "/RHI/D3D11/**"
-	IGNORE_FILES[1]				          = RUNTIME_DIR .. "/RHI/D3D12/**"
-	ADDITIONAL_INCLUDES[0] 		  = "../ThirdParty/SPIRV-Cross-2021-01-15";
-	ADDITIONAL_INCLUDES[1] 		  = "../ThirdParty/Vulkan_1.2.189.2";
-	ADDITIONAL_LIBRARIES[0] 	      = "spirv-cross-core";
-	ADDITIONAL_LIBRARIES[1] 	      = "spirv-cross-hlsl";
-	ADDITIONAL_LIBRARIES[2] 	      = "spirv-cross-glsl";
+	API_GRAPHICS                = "API_GRAPHICS_VULKAN"
+	TARGET_NAME                 = TARGET_NAME .. "_vulkan"
+	IGNORE_FILES[0]             = RUNTIME_DIR .. "/RHI/D3D11/**"
+	IGNORE_FILES[1]             = RUNTIME_DIR .. "/RHI/D3D12/**"
+	ADDITIONAL_INCLUDES[0]      = "../ThirdParty/SPIRV-Cross-2021-01-15";
+	ADDITIONAL_INCLUDES[1]      = "../ThirdParty/Vulkan_1.2.189.2";
+	ADDITIONAL_LIBRARIES[0]     = "spirv-cross-core";
+	ADDITIONAL_LIBRARIES[1]     = "spirv-cross-hlsl";
+	ADDITIONAL_LIBRARIES[2]     = "spirv-cross-glsl";
 	ADDITIONAL_LIBRARIES_DBG[0] = "spirv-cross-core_debug";
 	ADDITIONAL_LIBRARIES_DBG[1] = "spirv-cross-hlsl_debug";
 	ADDITIONAL_LIBRARIES_DBG[2] = "spirv-cross-glsl_debug";

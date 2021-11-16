@@ -46,6 +46,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_Implementation.h"
 #include "../RHI/RHI_Semaphore.h"
 #include "../Core/Window.h"
+#include "../Input/Input.h"
 //==============================================
 
 //= NAMESPACES ===============
@@ -81,7 +82,7 @@ namespace Spartan
         m_option_values[Renderer_Option_Value::Gamma]            = 2.2f;
         m_option_values[Renderer_Option_Value::Sharpen_Strength] = 1.0f;
         m_option_values[Renderer_Option_Value::Bloom_Intensity]  = 0.2f;
-        m_option_values[Renderer_Option_Value::Fog]              = 0.03f;
+        m_option_values[Renderer_Option_Value::Fog]              = 0.08f;
         m_option_values[Renderer_Option_Value::Ssao_Gi]          = 0.0f; // disable by default until performance becomes more acceptable.
 
         // Subscribe to events.
@@ -691,20 +692,25 @@ namespace Spartan
 
     void Renderer::OnFullScreenToggled()
     {
-        Window* window = m_context->GetSubsystem<Window>();
+        Window* window            = m_context->GetSubsystem<Window>();
+        Input* input              = m_context->GetSubsystem<Input>();
+        const bool is_full_screen = window->IsFullScreen();
 
-        if (window->IsFullScreen())
+        if (is_full_screen)
         {
+            m_viewport_previous          = m_viewport;
             m_resolution_output_previous = m_resolution_output;
-
+            
             SetViewport(static_cast<float>(window->GetWidth()), static_cast<float>(window->GetHeight()));
             SetResolutionOutput(window->GetWidth(), window->GetHeight());
         }
         else
         {
-            SetViewport(m_resolution_output_previous.x, m_resolution_output_previous.y);
+            SetViewport(m_viewport_previous.x, m_viewport_previous.y);
             SetResolutionOutput(static_cast<uint32_t>(m_resolution_output_previous.x), static_cast<uint32_t>(m_resolution_output_previous.y));
         }
+
+        input->SetMouseCursorVisible(!is_full_screen);
     }
 
     void Renderer::SortRenderables(vector<Entity*>* renderables)

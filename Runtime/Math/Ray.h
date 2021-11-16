@@ -21,10 +21,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===========================
+//= INCLUDES ==========================
 #include "Vector3.h"
-#include "../Core/Spartan_Definitions.h"
-//======================================
+#include "../Core/SpartanDefinitions.h"
+//=====================================
 
 namespace Spartan
 {
@@ -50,10 +50,10 @@ namespace Spartan
             float HitDistance(const Vector3& v1, const Vector3& v2, const Vector3& v3, Vector3* out_normal = nullptr, Vector3* out_bary = nullptr) const;
             float HitDistance(const Sphere& sphere) const;
 
-            const auto& GetStart()      const { return m_start; }
-            const auto& GetEnd()        const { return m_end; }
-            const auto& GetLength()     const { return m_length; }
-            const auto& GetDirection()  const { return m_direction; }
+            const auto& GetStart()     const { return m_start; }
+            const auto& GetEnd()       const { return m_end; }
+            const auto& GetLength()    const { return m_length; }
+            const auto& GetDirection() const { return m_direction; }
 
         private:
             Vector3 m_start;

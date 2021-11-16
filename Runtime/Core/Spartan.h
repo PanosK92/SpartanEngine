@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 // Engine macros
-#include "Spartan_Definitions.h"
+#include "SpartanDefinitions.h"
 
 //= STD ================
 #include <string>

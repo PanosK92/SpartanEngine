@@ -21,15 +21,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===================
+//= INCLUDES ==================
 #include "../Math/Vector2.h"
 #include "../Math/Vector3.h"
 #include "../Math/Vector4.h"
 #include "../Math/Quaternion.h"
 #include "../Math/Matrix.h"
 #include <variant>
-#include "Spartan_Definitions.h"
-//==============================
+#include "SpartanDefinitions.h"
+//=============================
 
 //= FORWARD DECLARATIONS =========
 namespace Spartan
@@ -39,25 +39,25 @@ namespace Spartan
 typedef union SDL_Event SDL_Event;
 //================================
 
-#define _VARIANT_TYPES                              \
-    char,                                           \
-    unsigned char,                                  \
-    int,                                            \
-    uint32_t,                                       \
-    bool,                                           \
-    float,                                          \
-    double,                                         \
-    void*,                                          \
-    Spartan::Entity*,                               \
-    std::shared_ptr<Spartan::Entity>,               \
-    std::weak_ptr<Spartan::Entity>,                 \
-    std::vector<std::weak_ptr<Spartan::Entity>>,    \
-    std::vector<std::shared_ptr<Spartan::Entity>>,  \
-    Spartan::Math::Vector2,                         \
-    Spartan::Math::Vector3,                         \
-    Spartan::Math::Vector4,                         \
-    Spartan::Math::Matrix,                          \
-    Spartan::Math::Quaternion,                      \
+#define _VARIANT_TYPES                             \
+    char,                                          \
+    unsigned char,                                 \
+    int,                                           \
+    uint32_t,                                      \
+    bool,                                          \
+    float,                                         \
+    double,                                        \
+    void*,                                         \
+    Spartan::Entity*,                              \
+    std::shared_ptr<Spartan::Entity>,              \
+    std::weak_ptr<Spartan::Entity>,                \
+    std::vector<std::weak_ptr<Spartan::Entity>>,   \
+    std::vector<std::shared_ptr<Spartan::Entity>>, \
+    Spartan::Math::Vector2,                        \
+    Spartan::Math::Vector3,                        \
+    Spartan::Math::Vector4,                        \
+    Spartan::Math::Matrix,                         \
+    Spartan::Math::Quaternion,                     \
     SDL_Event*
 
 #define VARIANT_TYPES std::variant<_VARIANT_TYPES>

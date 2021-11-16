@@ -140,6 +140,7 @@ struct Light
     float3 radiance;
     float  n_dot_l;
     uint   array_size;
+    float  attenuation;
 
     // attenuation functions are derived from Frostbite
     // https://media.contentapi.ea.com/content/dam/eacom/frostbite/files/course-notes-moving-frostbite-to-pbr-v2.pdf
@@ -172,11 +173,11 @@ struct Light
         float attenuation = 0.0f;
         
         #if DIRECTIONAL
-        attenuation     = saturate(dot(-forward.xyz, float3(0.0f, 1.0f, 0.0f)));
-        #elif POINT
-        attenuation     = compute_attenuation_distance(surface_position);
-        #elif SPOT
-        attenuation     = compute_attenuation_distance(surface_position) * compute_attenuation_angle();
+        attenuation = saturate(dot(-forward.xyz, float3(0.0f, 1.0f, 0.0f)));
+        #elif POINT 
+        attenuation = compute_attenuation_distance(surface_position);
+        #elif SPOT  
+        attenuation = compute_attenuation_distance(surface_position) * compute_attenuation_angle();
         #endif
     
         return attenuation;
@@ -211,7 +212,8 @@ struct Light
         distance_to_pixel = length(surface.position - position);
         to_pixel          = compute_direction(position, surface);
         n_dot_l           = saturate(dot(surface.normal, -to_pixel)); // Pre-compute n_dot_l since it's used in many places
-        radiance          = color * intensity * compute_attenuation(surface.position) * surface.occlusion * n_dot_l;
+        attenuation       = compute_attenuation(surface.position);
+        radiance          = color * intensity * attenuation * surface.occlusion * n_dot_l;
         #if DIRECTIONAL
         array_size = 4;
         #else
@@ -221,5 +223,3 @@ struct Light
 };
 
 #endif // SPARTAN_COMMON_STRUCT
-
-
