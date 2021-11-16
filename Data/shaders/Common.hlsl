@@ -500,8 +500,17 @@ float get_noise_interleaved_gradient(float2 screen_pos)
 
 float get_noise_blue(float2 screen_pos)
 {
-    float2 uv = (screen_pos + 0.5f) * g_tex_noise_blue_scale;
+    // Temporal factor - animated blue noise image
+    //float taaOn      = (float)is_taa_enabled();
+    //float frameCount = (float)g_frame;
+    //float frameStep  = taaOn * float(frameCount % 16) * RPC_16;
+    //screen_pos.x     += frameStep * 4.7526;
+    //screen_pos.y    += frameStep * 3.1914;
+
+    // Temporal factor - alternate between blue noise images
     float slice = (g_frame % 8) * (float)is_taa_enabled();
+
+    float2 uv = (screen_pos + 0.5f) * g_tex_noise_blue_scale;
     return tex_noise_blue.SampleLevel(sampler_point_wrap, float3(uv.x, uv.y, slice), 0).r;
 }
 

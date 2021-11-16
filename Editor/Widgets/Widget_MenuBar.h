@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Widget.h"
 #include <memory>
 #include "../WidgetsDeferred/FileDialog.h"
+#include "Widget_Toolbar.h"
 //========================================
 
 namespace Spartan { class Context; }

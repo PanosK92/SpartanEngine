@@ -21,18 +21,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===========================
+//= INCLUDES ==========================
 #include <string>
 #include <vector>
 #include "TimeBlock.h"
 #include "../Core/ISubsystem.h"
 #include "../Core/Stopwatch.h"
-#include "../Core/Spartan_Definitions.h"
-//======================================
+#include "../Core/SpartanDefinitions.h"
+//=====================================
 
-#define TIME_BLOCK_START_NAMED(profiler, name)  profiler->TimeBlockStart(name, Spartan::TimeBlockType::Cpu, nullptr);
-#define TIME_BLOCK_END(profiler)                profiler->TimeBlockEnd();
-#define SCOPED_TIME_BLOCK(profiler)             if (profiler) { ScopedTimeBlock time_block = ScopedTimeBlock(profiler, __FUNCTION__); }
+#define TIME_BLOCK_START_NAMED(profiler, name) profiler->TimeBlockStart(name, Spartan::TimeBlockType::Cpu, nullptr);
+#define TIME_BLOCK_END(profiler)               profiler->TimeBlockEnd();
+#define SCOPED_TIME_BLOCK(profiler)            if (profiler) { ScopedTimeBlock time_block = ScopedTimeBlock(profiler, __FUNCTION__); }
 
 namespace Spartan
 {
@@ -60,21 +60,21 @@ namespace Spartan
         void ResetMetrics();
         
         // Properties
-        bool GetEnabled()                               const { return m_profile; }
-        void SetEnabled(const bool enabled)                   { m_profile = enabled; }
-        const std::string& GetMetrics()                 const { return m_metrics; }
-        const std::vector<TimeBlock>& GetTimeBlocks()   const { return m_time_blocks_read; }
-        float GetTimeCpuLast()                          const { return m_time_cpu_last; }
-        float GetTimeGpuLast()                          const { return m_time_gpu_last; }
-        float GetTimeFrameLast()                        const { return m_time_frame_last; }
-        float GetFps()                                  const { return m_fps; }
-        float GetUpdateInterval()                       const { return m_profiling_interval_sec; }
-        void SetUpdateInterval(float internval)               { m_profiling_interval_sec = internval; }
-        const auto& GpuGetName()                        const { return m_gpu_name; }
-        uint32_t GpuGetMemoryAvailable()                const { return m_gpu_memory_available; }
-        uint32_t GpuGetMemoryUsed()                     const { return m_gpu_memory_used; }
-        bool IsCpuStuttering()                          const { return m_is_stuttering_cpu; }
-        bool IsGpuStuttering()                          const { return m_is_stuttering_gpu; }
+        bool GetEnabled()                             const { return m_profile; }
+        void SetEnabled(const bool enabled)                 { m_profile = enabled; }
+        const std::string& GetMetrics()               const { return m_metrics; }
+        const std::vector<TimeBlock>& GetTimeBlocks() const { return m_time_blocks_read; }
+        float GetTimeCpuLast()                        const { return m_time_cpu_last; }
+        float GetTimeGpuLast()                        const { return m_time_gpu_last; }
+        float GetTimeFrameLast()                      const { return m_time_frame_last; }
+        float GetFps()                                const { return m_fps; }
+        float GetUpdateInterval()                     const { return m_profiling_interval_sec; }
+        void SetUpdateInterval(float internval)             { m_profiling_interval_sec = internval; }
+        const auto& GpuGetName()                      const { return m_gpu_name; }
+        uint32_t GpuGetMemoryAvailable()              const { return m_gpu_memory_available; }
+        uint32_t GpuGetMemoryUsed()                   const { return m_gpu_memory_used; }
+        bool IsCpuStuttering()                        const { return m_is_stuttering_cpu; }
+        bool IsGpuStuttering()                        const { return m_is_stuttering_gpu; }
         
         // Metrics - RHI
         uint32_t m_rhi_draw                       = 0;

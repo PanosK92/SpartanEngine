@@ -3,10 +3,10 @@ name: windows_d3d11
 on: [push, pull_request]
 
 jobs:
-  job_vs2019_d3d11:
-    runs-on: [windows-2019]    
+  job_vs2022_d3d11:
+    runs-on: [windows-2022]    
     env:
-      MSBUILD_PATH: C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\
+      MSBUILD_PATH: C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\
 
     steps:
       - uses: actions/checkout@v1
@@ -15,7 +15,7 @@ jobs:
    
       - name: Generate project files
         shell: cmd
-        run: 'Generate_VS2019_D3D11'
+        run: 'Generate_VS2022_D3D11'
           
       - name: Build
         shell: cmd

@@ -307,9 +307,10 @@ namespace Spartan
         // Resolution & Viewport
         Math::Vector2 m_resolution_render          = Math::Vector2::Zero;
         Math::Vector2 m_resolution_output          = Math::Vector2::Zero;
-        Math::Vector2 m_resolution_output_previous = Math::Vector2::Zero;
         RHI_Viewport m_viewport                    = RHI_Viewport(0, 0, 0, 0);
         Math::Rectangle m_viewport_quad            = Math::Rectangle(0, 0, 0, 0);
+        Math::Vector2 m_resolution_output_previous = Math::Vector2::Zero;
+        RHI_Viewport m_viewport_previous           = RHI_Viewport(0, 0, 0, 0);
 
         // Options
         uint64_t m_options = 0;

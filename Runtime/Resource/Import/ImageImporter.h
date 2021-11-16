@@ -21,12 +21,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==============================
+//= INCLUDES =============================
 #include <vector>
 #include <string>
 #include "../../RHI/RHI_Definition.h"
-#include "../../Core/Spartan_Definitions.h"
-//=========================================
+#include "../../Core/SpartanDefinitions.h"
+//========================================
 
 struct FIBITMAP;
 

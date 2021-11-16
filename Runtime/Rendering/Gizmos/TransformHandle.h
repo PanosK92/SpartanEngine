@@ -21,13 +21,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==============================
+//= INCLUDES =============================
 #include "TransformEnums.h"
 #include "TransformHandleAxis.h"
 #include <memory>
 #include "../Model.h"
-#include "../../Core/Spartan_Definitions.h"
-//=========================================
+#include "../../Core/SpartanDefinitions.h"
+//========================================
 
 namespace Spartan
 {
@@ -67,17 +67,17 @@ namespace Spartan
         TransformHandleAxis m_handle_y;
         TransformHandleAxis m_handle_z;
         TransformHandleAxis m_handle_xyz;
-        bool m_handle_x_intersected             = false;
-        bool m_handle_y_intersected             = false;
-        bool m_handle_z_intersected             = false;
-        bool m_handle_xyz_intersected           = false;
-        TransformHandleType m_type              = TransformHandleType::Unknown;
-        Math::Vector3 m_ray_previous            = Math::Vector3::Zero;
-        Math::Vector3 m_ray_current             = Math::Vector3::Zero;
-        bool m_offset_handle_axes_from_center   = true;
-        Context* m_context                      = nullptr;
-        Renderer* m_renderer                    = nullptr;
-        Input* m_input                          = nullptr;
+        bool m_handle_x_intersected           = false;
+        bool m_handle_y_intersected           = false;
+        bool m_handle_z_intersected           = false;
+        bool m_handle_xyz_intersected         = false;
+        TransformHandleType m_type            = TransformHandleType::Unknown;
+        Math::Vector3 m_ray_previous          = Math::Vector3::Zero;
+        Math::Vector3 m_ray_current           = Math::Vector3::Zero;
+        bool m_offset_handle_axes_from_center = true;
+        Context* m_context                    = nullptr;
+        Renderer* m_renderer                  = nullptr;
+        Input* m_input                        = nullptr;
         std::unique_ptr<Model> m_axis_model;
     };
 }

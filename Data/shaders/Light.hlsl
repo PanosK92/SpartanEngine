@@ -23,7 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 #include "brdf.hlsl"
 #include "shadow_mapping.hlsl"
-#include "fog_volumetric.hlsl"
 #include "fog.hlsl"
 //============================
 
@@ -147,7 +146,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 
     // Volumetric
 #if VOLUMETRIC
-    light_volumetric           += VolumetricLighting(surface, light) * get_fog_factor(surface);
+    light_volumetric           += VolumetricLighting(surface, light);
     tex_out_rgb3[thread_id.xy] += saturate_16(light_volumetric);
 #endif
 }
