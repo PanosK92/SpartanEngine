@@ -81,7 +81,7 @@ namespace Spartan
 
         // Register library
         string version = to_string(SDL_MAJOR_VERSION) + "." + to_string(SDL_MINOR_VERSION) + "." + to_string(SDL_PATCHLEVEL);
-        m_context->GetSubsystem<Settings>()->RegisterThirdPartyLib("SDL", version, "https://www.libsdl.org/download-2.0.php");
+        m_context->GetSubsystem<Settings>()->RegisterThirdPartyLib("SDL", version, "https://github.com/libsdl-org/SDL/releases");
     }
 
     Window::~Window()

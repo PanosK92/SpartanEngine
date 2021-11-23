@@ -33,8 +33,8 @@ namespace Spartan
     public:
         RHI_VertexBuffer(const std::shared_ptr<RHI_Device>& rhi_device, const uint32_t stride = 0) 
         {
-            m_rhi_device    = rhi_device;
-            m_stride        = stride;
+            m_rhi_device = rhi_device;
+            m_stride     = stride;
         }
 
         ~RHI_VertexBuffer()
@@ -45,36 +45,36 @@ namespace Spartan
         template<typename T>
         bool Create(const std::vector<T>& vertices)
         {
-            m_stride            = static_cast<uint32_t>(sizeof(T));
-            m_vertex_count      = static_cast<uint32_t>(vertices.size());
-            m_object_size_gpu   = static_cast<uint64_t>(m_stride * m_vertex_count);
+            m_stride          = static_cast<uint32_t>(sizeof(T));
+            m_vertex_count    = static_cast<uint32_t>(vertices.size());
+            m_object_size_gpu = static_cast<uint64_t>(m_stride * m_vertex_count);
             return _create(static_cast<const void*>(vertices.data()));
         }
 
         template<typename T>
         bool Create(const T* vertices, const uint32_t vertex_count)
         {
-            m_stride            = static_cast<uint32_t>(sizeof(T));
-            m_vertex_count      = vertex_count;
-            m_object_size_gpu   = static_cast<uint64_t>(m_stride * m_vertex_count);
+            m_stride          = static_cast<uint32_t>(sizeof(T));
+            m_vertex_count    = vertex_count;
+            m_object_size_gpu = static_cast<uint64_t>(m_stride * m_vertex_count);
             return _create(static_cast<const void*>(vertices));
         }
 
         template<typename T>
         bool CreateDynamic(const uint32_t vertex_count)
         {
-            m_stride            = static_cast<uint32_t>(sizeof(T));
-            m_vertex_count      = vertex_count;
-            m_object_size_gpu   = static_cast<uint64_t>(m_stride * m_vertex_count);
+            m_stride          = static_cast<uint32_t>(sizeof(T));
+            m_vertex_count    = vertex_count;
+            m_object_size_gpu = static_cast<uint64_t>(m_stride * m_vertex_count);
             return _create(nullptr);
         }
 
         void* Map();
         bool Unmap();
 
-        void* GetResource()         const { return m_buffer; }
-        uint32_t GetStride()        const { return m_stride; }
-        uint32_t GetVertexCount()   const { return m_vertex_count; }
+        void* GetResource()       const { return m_buffer; }
+        uint32_t GetStride()      const { return m_stride; }
+        uint32_t GetVertexCount() const { return m_vertex_count; }
 
     private:
         bool _create(const void* vertices);

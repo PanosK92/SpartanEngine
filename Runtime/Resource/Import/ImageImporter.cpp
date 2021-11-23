@@ -66,7 +66,7 @@ namespace Spartan
                     tag_ofs = tag[4] * 0x1000000 + tag[5] * 0x10000 + tag[6] * 0x100 + tag[7];
                     tag_size = tag[8] * 0x1000000 + tag[9] * 0x10000 + tag[10] * 0x100 + tag[11];
 
-                    if (tag_ofs + tag_size > icc_profile->size)
+                    if (static_cast<uint32_t>(tag_ofs + tag_size) > icc_profile->size)
                         return false; // invalid ICC file
 
                     strncpy_s(tag_data, (char*)(icc + tag_ofs + 12), min(255, tag_size - 12));

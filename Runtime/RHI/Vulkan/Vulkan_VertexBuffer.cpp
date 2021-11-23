@@ -117,7 +117,7 @@ namespace Spartan
         }
 
         // Set debug name
-        vulkan_utility::debug::set_name(static_cast<VkBuffer>(m_buffer), "vertex_buffer");
+        vulkan_utility::debug::set_name(static_cast<VkBuffer>(m_buffer), m_object_name.c_str());
 
         return true;
     }

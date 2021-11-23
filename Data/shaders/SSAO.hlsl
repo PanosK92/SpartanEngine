@@ -31,6 +31,7 @@ static const float g_ao_intensity_gi        = 10.0f;
 static const float g_ao_occlusion_bias      = 0.0f;
 
 static const float ao_samples       = (float)(g_ao_directions * g_ao_steps);
+static const float ao_samples_rcp   = 1.0f / ao_samples;
 static const float ao_radius2       = g_ao_radius * g_ao_radius;
 static const float ao_negInvRadius2 = -1.0f / ao_radius2;
 
@@ -94,8 +95,8 @@ float4 ground_truth_ambient_occlusion(uint2 pos)
         }
     }
 
-    light.a   = 1.0f - saturate(light.a * g_ao_intensity_occlusion / ao_samples);
-    light.rgb = saturate(light.rgb * g_ao_intensity_gi / ao_samples) * light.a;
+    light.a   = 1.0f - saturate(light.a * g_ao_intensity_occlusion * ao_samples_rcp);
+    light.rgb = saturate(light.rgb * g_ao_intensity_gi * ao_samples_rcp) * light.a;
 
     return light;
 }

@@ -186,7 +186,7 @@ void Widget_RenderOptions::TickVisible()
     bool do_film_grain             = m_renderer->GetOption(Render_FilmGrain);
     bool do_sharperning            = m_renderer->GetOption(Render_Sharpening_AMD_FidelityFX_ContrastAdaptiveSharpening);
     bool do_chromatic_aberration   = m_renderer->GetOption(Render_ChromaticAberration);
-    bool do_dithering              = m_renderer->GetOption(Render_Dithering);
+    bool do_debanding              = m_renderer->GetOption(Render_Debanding);
     int resolution_shadow          = m_renderer->GetOptionValue<int>(Renderer_Option_Value::ShadowResolution);
     bool debug_physics             = m_renderer->GetOption(Render_Debug_Physics);
     bool debug_aabb                = m_renderer->GetOption(Render_Debug_Aabb);
@@ -384,7 +384,7 @@ void Widget_RenderOptions::TickVisible()
             if (helper::Option("Misc"))
             {
                 // Dithering
-                helper::CheckBox("Dithering", do_dithering, "Reduces color banding");
+                helper::CheckBox("Debanding", do_debanding, "Reduces color banding");
 
                 // Sharpen
                 helper::CheckBox("Sharpening (AMD FidelityFX CAS)", do_sharperning, "Contrast adaptive sharpening. Areas of the image that are already sharp are sharpened less, while areas that lack detail are sharpened more.");
@@ -496,7 +496,7 @@ void Widget_RenderOptions::TickVisible()
     m_renderer->SetOption(Render_FilmGrain, do_film_grain);
     m_renderer->SetOption(Render_Sharpening_AMD_FidelityFX_ContrastAdaptiveSharpening, do_sharperning);
     m_renderer->SetOption(Render_ChromaticAberration, do_chromatic_aberration);
-    m_renderer->SetOption(Render_Dithering, do_dithering);
+    m_renderer->SetOption(Render_Debanding, do_debanding);
     m_renderer->SetOptionValue(Renderer_Option_Value::ShadowResolution, static_cast<float>(resolution_shadow));
     m_renderer->SetOption(Render_Debug_Transform, debug_transform);
     m_renderer->SetOption(Render_Debug_SelectionOutline, debug_selection_outline);

@@ -370,8 +370,8 @@ namespace Spartan
         m_shaders[RendererShader::MotionBlur_C]->Compile(RHI_Shader_Compute, dir_shaders + "motion_blur.hlsl", async);
 
         // Dithering
-        m_shaders[RendererShader::Dithering_C] = make_shared<RHI_Shader>(m_context);
-        m_shaders[RendererShader::Dithering_C]->Compile(RHI_Shader_Compute, dir_shaders + "dithering.hlsl", async);
+        m_shaders[RendererShader::Debanding_C] = make_shared<RHI_Shader>(m_context);
+        m_shaders[RendererShader::Debanding_C]->Compile(RHI_Shader_Compute, dir_shaders + "debanding.hlsl", async);
 
         // SSAO
         {

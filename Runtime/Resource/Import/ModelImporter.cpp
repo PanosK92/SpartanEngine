@@ -52,7 +52,27 @@ namespace Spartan
         );
     }
 
-    static void set_entity_transform(const aiNode* node, Entity* entity)
+    static Vector4 convert_vector4(const aiColor4D& ai_color)
+    {
+        return Vector4(ai_color.r, ai_color.g, ai_color.b, ai_color.a);
+    }
+
+    static Vector3 convert_vector3(const aiVector3D& ai_vector)
+    {
+        return Vector3(ai_vector.x, ai_vector.y, ai_vector.z);
+    }
+
+    static Vector2 convert_vector2(const aiVector2D& ai_vector)
+    {
+        return Vector2(ai_vector.x, ai_vector.y);
+    }
+
+    static Quaternion convert_quaternion(const aiQuaternion& ai_quaternion)
+    {
+        return Quaternion(ai_quaternion.x, ai_quaternion.y, ai_quaternion.z, ai_quaternion.w);
+    }
+
+    constexpr void set_entity_transform(const aiNode* node, Entity* entity)
     {
         if (!entity)
             return;
@@ -80,58 +100,7 @@ namespace Spartan
         }
     }
 
-    static Vector4 convert_vector4(const aiColor4D& ai_color)
-    {
-        return Vector4(ai_color.r, ai_color.g, ai_color.b, ai_color.a);
-    }
-
-    static Vector3 convert_vector3(const aiVector3D& ai_vector)
-    {
-        return Vector3(ai_vector.x, ai_vector.y, ai_vector.z);
-    }
-
-    static Vector2 convert_vector2(const aiVector2D& ai_vector)
-    {
-        return Vector2(ai_vector.x, ai_vector.y);
-    }
-
-    static Quaternion convert_quaternion(const aiQuaternion& ai_quaternion)
-    {
-        return Quaternion(ai_quaternion.x, ai_quaternion.y, ai_quaternion.z, ai_quaternion.w);
-    }
-
-    // Implement Assimp:Logger
-    class AssimpLogger : public Logger
-    {
-    public:
-        bool attachStream(LogStream* pStream, uint32_t severity) override { return true; }
-        bool detatchStream(LogStream* pStream, uint32_t severity) override { return true; }
-
-    private:
-        void OnDebug(const char* message) override
-        {
-#ifdef DEBUG
-            LOG_INFO(message, LogType::Info);
-#endif
-        }
-
-        void OnInfo(const char* message) override
-        {
-            LOG_INFO(message, LogType::Info);
-        }
-
-        void OnWarn(const char* message) override
-        {
-            LOG_WARNING(message, LogType::Warning);
-        }
-
-        void OnError(const char* message) override
-        {
-            LOG_ERROR(message, LogType::Error);
-        }
-    };
-
-    // Implement Assimp::ProgressHandler
+    // Implement Assimp's progress reporting interface
     class AssimpProgress : public ProgressHandler
     {
     public:
@@ -372,11 +341,7 @@ namespace Spartan
         // Enable progress tracking
         importer.SetPropertyBool(AI_CONFIG_GLOB_MEASURE_TIME, true);
         importer.SetProgressHandler(new AssimpProgress(file_path));
-        #ifdef DEBUG
-        // Enable logging
-        DefaultLogger::set(new AssimpLogger());
-        #endif
-        
+      
         const auto importer_flags =
             aiProcess_MakeLeftHanded |           // directx style.
             aiProcess_FlipUVs |                  // directx style.

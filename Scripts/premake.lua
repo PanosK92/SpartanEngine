@@ -127,7 +127,7 @@ project (RUNTIME_NAME)
 
 	-- Includes
 	includedirs { "../ThirdParty/DirectXShaderCompiler_1.6.2109" }
-	includedirs { "../ThirdParty/Assimp_5.0.1" }
+	includedirs { "../ThirdParty/Assimp_5.1.1" }
 	includedirs { "../ThirdParty/Bullet_3.17" }
 	includedirs { "../ThirdParty/FMOD_1.10.10" }
 	includedirs { "../ThirdParty/FreeImage_3.18.0" }
@@ -151,8 +151,6 @@ project (RUNTIME_NAME)
 		links { "FreeImageLib_debug" }
 		links { "freetype_debug" }
 		links { "BulletCollision_debug", "BulletDynamics_debug", "BulletSoftBody_debug", "LinearMath_debug" }
-		links { "pugixml_debug" }
-		links { "IrrXML_debug" }
 		links { "libmono-static-sgen_debug.lib" }
 		links { "SDL2_debug.lib" }
 		links { "Compressonator_MT_debug.lib" }
@@ -168,8 +166,6 @@ project (RUNTIME_NAME)
 		links { "FreeImageLib" }
 		links { "freetype" }
 		links { "BulletCollision", "BulletDynamics", "BulletSoftBody", "LinearMath" }
-		links { "pugixml" }
-		links { "IrrXML" }
 		links { "libmono-static-sgen.lib" }
 		links { "SDL2.lib" }
 		links { "Compressonator_MT.lib" }
