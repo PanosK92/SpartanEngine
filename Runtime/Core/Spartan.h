@@ -44,13 +44,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 SP_WARNINGS_OFF
 
 // Assimp
-#include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>
 #include <assimp/version.h>
 #include <assimp/scene.h>
-#include <assimp/DefaultLogger.hpp>
+#include <assimp/material.h>
+#include <assimp/Importer.hpp>
 #include <assimp/ProgressHandler.hpp>
-#include <assimp/pbrmaterial.h>
 
 // Audio
 #include <fmod.hpp>

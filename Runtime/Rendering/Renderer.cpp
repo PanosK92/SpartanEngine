@@ -73,6 +73,7 @@ namespace Spartan
         m_options |= Render_AntiAliasing_Taa;
         m_options |= Render_Sharpening_AMD_FidelityFX_ContrastAdaptiveSharpening;
         m_options |= Render_DepthOfField;
+        m_options |= Render_Debanding;
         //m_options |= Render_DepthPrepass; // todo: fix for vulkan
 
         // Option values.
@@ -374,6 +375,7 @@ namespace Spartan
             m_viewport_quad   = Math::Rectangle(0, 0, width, height);
 
             Flush();
+
             m_viewport_quad.CreateBuffers(this);
 
             m_update_ortho_proj = true;

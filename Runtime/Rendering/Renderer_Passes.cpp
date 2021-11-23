@@ -1034,19 +1034,9 @@ namespace Spartan
         }
 
         // Tone-Mapping
-        // Run even when tone-mapping is disabled since it's where gamma correction is also done.
-        {
-            Pass_PostProcess_ToneMapping(cmd_list, rt_frame_render_output_in, rt_frame_render_output_out);
-
-            if (GetOption(Render_AntiAliasing_Fxaa) ||
-                GetOption(Render_Dithering)         ||
-                GetOption(Render_FilmGrain)         ||
-                GetOption(Render_ChromaticAberration)
-                )
-            {
-                rt_frame_render_output_in.swap(rt_frame_render_output_out);
-            }
-        }
+        // Run even when tone-mapping is disabled since this is where gamma correction is also done.
+        Pass_PostProcess_ToneMapping(cmd_list, rt_frame_render_output_in, rt_frame_render_output_out);
+        rt_frame_render_output_in.swap(rt_frame_render_output_out);
 
         // FXAA
         if (GetOption(Render_AntiAliasing_Fxaa))
@@ -1055,10 +1045,10 @@ namespace Spartan
             rt_frame_render_output_in.swap(rt_frame_render_output_out);
         }
 
-        // Dithering
-        if (GetOption(Render_Dithering))
+        // Debanding
+        if (GetOption(Render_Debanding))
         {
-            Pass_PostProcess_Dithering(cmd_list, rt_frame_render_output_in, rt_frame_render_output_out);
+            Pass_PostProcess_Debanding(cmd_list, rt_frame_render_output_in, rt_frame_render_output_out);
             rt_frame_render_output_in.swap(rt_frame_render_output_out);
         }
 
@@ -1075,6 +1065,8 @@ namespace Spartan
             Pass_PostProcess_ChromaticAberration(cmd_list, rt_frame_render_output_in, rt_frame_render_output_out);
             rt_frame_render_output_in.swap(rt_frame_render_output_out);
         }
+
+        rt_frame_render_output_in.swap(rt_frame_render_output_out);
 
         // Passes that render on top of each other
         Pass_Outline(cmd_list, rt_frame_render_output_out.get());
@@ -1485,17 +1477,17 @@ namespace Spartan
         }
     }
 
-    void Renderer::Pass_PostProcess_Dithering(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
+    void Renderer::Pass_PostProcess_Debanding(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
     {
         // Acquire shaders
-        RHI_Shader* shader = m_shaders[RendererShader::Dithering_C].get();
+        RHI_Shader* shader = m_shaders[RendererShader::Debanding_C].get();
         if (!shader->IsCompiled())
             return;
 
         // Set render state
         static RHI_PipelineState pso;
         pso.shader_compute   = shader;
-        pso.pass_name        = "Pass_PostProcess_Dithering";
+        pso.pass_name        = "Pass_PostProcess_Debanding";
 
         // Draw
         if (cmd_list->BeginRenderPass(pso))

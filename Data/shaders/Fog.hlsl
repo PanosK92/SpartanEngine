@@ -51,6 +51,7 @@ static const uint g_vl_steps                    = 16;
 static const float g_vl_scattering              = 0.8f; // [0, 1]
 static const float g_vl_pow                     = 1000.0f;
 static const float g_vl_cascade_blend_threshold = 0.1f;
+static const float g_vl_steps_rcp               = 1.0f / g_vl_steps;
 static const float g_vl_scattering2             = g_vl_scattering * g_vl_scattering;
 static const float g_vl_x                       = 1 - g_vl_scattering2;
 static const float g_vl_y                       = 1 + g_vl_scattering2;
@@ -110,7 +111,7 @@ float3 vl_raymarch(Light light, float3 ray_pos, float3 ray_step, float3 ray_dir,
         ray_pos += ray_step;
     }
 
-    return fog_accumulation / (float)g_vl_steps;
+    return saturate(fog_accumulation * g_vl_steps_rcp);
 }
 
 float3 VolumetricLighting(Surface surface, Light light)
@@ -171,3 +172,4 @@ float3 VolumetricLighting(Surface surface, Light light)
 
     return fog_regular * fog_volumetric;
 }
+

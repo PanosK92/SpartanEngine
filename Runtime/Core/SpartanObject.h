@@ -42,6 +42,7 @@ namespace Spartan
 
         // Name
         const std::string& GetObjectName() const { return m_object_name; }
+        void SetObjectName(const std::string& name) { m_object_name = name; }
 
         // Id
         const uint64_t GetObjectId()        const { return m_object_id; }

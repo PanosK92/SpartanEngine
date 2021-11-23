@@ -75,9 +75,9 @@ namespace Spartan
         m_resolution_render   = m_resolution_output;
 
         // Register third party libs which don't register on their own as they are not part of some other initiliasation procedure
-        RegisterThirdPartyLib("pugixml", "1.11.46", "https://github.com/zeux/pugixml");
+        RegisterThirdPartyLib("pugixml", "1.11.4", "https://github.com/zeux/pugixml");
         RegisterThirdPartyLib("SPIRV-Cross", "2021-01-15", "https://github.com/KhronosGroup/SPIRV-Cross");
-        RegisterThirdPartyLib("DirectXShaderCompiler", "1.6.2106", "https://github.com/microsoft/DirectXShaderCompiler");
+        RegisterThirdPartyLib("DirectXShaderCompiler", "1.6.2109", "https://github.com/microsoft/DirectXShaderCompiler");
     }
 
     Settings::~Settings()

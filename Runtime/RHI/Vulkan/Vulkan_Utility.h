@@ -566,21 +566,21 @@ namespace Spartan::vulkan_utility
 
         inline void set_layout(void* cmd_buffer, void* image, const VkImageAspectFlags aspect_mask, const uint32_t mip_start, const uint32_t mip_range, const uint32_t array_length, const RHI_Image_Layout layout_old, const RHI_Image_Layout layout_new)
         {
-            VkImageMemoryBarrier image_barrier              = {};
-            image_barrier.sType                             = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-            image_barrier.pNext                             = nullptr;
-            image_barrier.oldLayout                         = vulkan_image_layout[static_cast<VkImageLayout>(layout_old)];
-            image_barrier.newLayout                         = vulkan_image_layout[static_cast<VkImageLayout>(layout_new)];
-            image_barrier.srcQueueFamilyIndex               = VK_QUEUE_FAMILY_IGNORED;
-            image_barrier.dstQueueFamilyIndex               = VK_QUEUE_FAMILY_IGNORED;
-            image_barrier.image                             = static_cast<VkImage>(image);
-            image_barrier.subresourceRange.aspectMask       = aspect_mask;
-            image_barrier.subresourceRange.baseMipLevel     = mip_start;
-            image_barrier.subresourceRange.levelCount       = mip_range;
-            image_barrier.subresourceRange.baseArrayLayer   = 0;
-            image_barrier.subresourceRange.layerCount       = array_length;
-            image_barrier.srcAccessMask                     = layout_to_access_mask(image_barrier.oldLayout, false);
-            image_barrier.dstAccessMask                     = layout_to_access_mask(image_barrier.newLayout, true);
+            VkImageMemoryBarrier image_barrier            = {};
+            image_barrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+            image_barrier.pNext                           = nullptr;
+            image_barrier.oldLayout                       = vulkan_image_layout[static_cast<VkImageLayout>(layout_old)];
+            image_barrier.newLayout                       = vulkan_image_layout[static_cast<VkImageLayout>(layout_new)];
+            image_barrier.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+            image_barrier.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+            image_barrier.image                           = static_cast<VkImage>(image);
+            image_barrier.subresourceRange.aspectMask     = aspect_mask;
+            image_barrier.subresourceRange.baseMipLevel   = mip_start;
+            image_barrier.subresourceRange.levelCount     = mip_range;
+            image_barrier.subresourceRange.baseArrayLayer = 0;
+            image_barrier.subresourceRange.layerCount     = array_length;
+            image_barrier.srcAccessMask                   = layout_to_access_mask(image_barrier.oldLayout, false);
+            image_barrier.dstAccessMask                   = layout_to_access_mask(image_barrier.newLayout, true);
 
             VkPipelineStageFlags source_stage = 0;
             {
@@ -616,16 +616,16 @@ namespace Spartan::vulkan_utility
 
             vkCmdPipelineBarrier
             (
-                static_cast<VkCommandBuffer>(cmd_buffer),   // commandBuffer
-                source_stage,                               // srcStageMask
-                destination_stage,                          // dstStageMask
-                0,                                          // dependencyFlags
-                0,                                          // memoryBarrierCount
-                nullptr,                                    // pMemoryBarriers
-                0,                                          // bufferMemoryBarrierCount
-                nullptr,                                    // pBufferMemoryBarriers
-                1,                                          // imageMemoryBarrierCount
-                &image_barrier                              // pImageMemoryBarriers
+                static_cast<VkCommandBuffer>(cmd_buffer), // commandBuffer
+                source_stage,                             // srcStageMask
+                destination_stage,                        // dstStageMask
+                0,                                        // dependencyFlags
+                0,                                        // memoryBarrierCount
+                nullptr,                                  // pMemoryBarriers
+                0,                                        // bufferMemoryBarrierCount
+                nullptr,                                  // pBufferMemoryBarriers
+                1,                                        // imageMemoryBarrierCount
+                &image_barrier                            // pImageMemoryBarriers
             );
         }
 

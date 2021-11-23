@@ -212,7 +212,7 @@ namespace Spartan
         const bool mip_specified = mip != -1;
         uint32_t mip_start       = mip_specified ? mip : 0;
         uint32_t mip_remaining   = m_mip_count - mip_start;
-        uint32_t mip_range       = ranged ? (mip_specified ? mip_remaining : m_mip_count) : mip_remaining;
+        uint32_t mip_range       = ranged ? (mip_specified ? mip_remaining : m_mip_count) : 1;
 
         // Verify the texture has per mip views (if a specific mip was requested)
         if (mip_specified)
