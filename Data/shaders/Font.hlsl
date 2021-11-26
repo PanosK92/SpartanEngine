@@ -45,7 +45,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     color.a = color.r;
 
     // Color it
-    color *= g_color;
+    color *= g_mat_color;
 
     return color;
 }

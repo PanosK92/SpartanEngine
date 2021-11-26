@@ -42,6 +42,6 @@ void mainPS(Pixel_PosUv input)
     if (g_is_transparent_pass && tex_material_mask.Sample(sampler_anisotropic_wrap, input.uv).r <= ALPHA_THRESHOLD)
         discard;
 
-    if (g_color.a == 1.0f && tex_material_albedo.Sample(sampler_anisotropic_wrap, input.uv).a <= ALPHA_THRESHOLD)
+    if (g_mat_color.a == 1.0f && tex_material_albedo.Sample(sampler_anisotropic_wrap, input.uv).a <= ALPHA_THRESHOLD)
         discard;
 }

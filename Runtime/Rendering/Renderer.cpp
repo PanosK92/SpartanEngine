@@ -889,7 +889,7 @@ namespace Spartan
 
     void Renderer::SetCbUberColor(RHI_CommandList* cmd_list, const Vector4& color)
     {
-        m_cb_uber_cpu.color = color;
+        m_cb_uber_cpu.mat_color = color;
         Update_Cb_Uber(cmd_list);
     }
 

@@ -78,56 +78,68 @@ PixelOutputType mainPS(PixelInputType input)
     velocity                     *= float2(0.5f, -0.5f);                   // to uv (no need for +0.5f since it's a delta, not a position)
 
     // Make TBN
-#if HEIGHT_MAP || NORMAL_MAP
-    float3x3 TBN = makeTBN(input.normal, input.tangent);
-#endif
+    float3x3 TBN = 0.0f;
+    if (has_texture_height() || has_texture_normal())
+    {
+        TBN = makeTBN(input.normal, input.tangent);
+    }
 
-#if HEIGHT_MAP
     // Parallax Mapping
-    float height_scale     = g_mat_height * 0.04f;
-    float3 camera_to_pixel = normalize(g_camera_position - input.position.xyz);
-    uv                     = ParallaxMapping(tex_material_height, sampler_anisotropic_wrap, uv, camera_to_pixel, TBN, height_scale);
-#endif
-    
-#if ALPHA_MASK_MAP
-    float alpha_mask = tex_material_mask.Sample(sampler_anisotropic_wrap, uv).r;
-    if (alpha_mask <= ALPHA_THRESHOLD)
-        discard;
-#endif
+    if (has_texture_height())
+    {
+        float height_scale     = g_mat_height * 0.04f;
+        float3 camera_to_pixel = normalize(g_camera_position - input.position.xyz);
+        uv                     = ParallaxMapping(tex_material_height, sampler_anisotropic_wrap, uv, camera_to_pixel, TBN, height_scale);
+    }
 
-#if ALBEDO_MAP
-    float4 albedo_sample = tex_material_albedo.Sample(sampler_anisotropic_wrap, uv);
-    if (albedo_sample.a <= ALPHA_THRESHOLD)
-        discard;
-    
-    albedo_sample.a   = 1.0f;
-    albedo_sample.rgb = degamma(albedo_sample.rgb);
-    albedo            *= albedo_sample;
-#endif
-    
-#if ROUGHNESS_MAP
-    roughness *= tex_material_roughness.Sample(sampler_anisotropic_wrap, uv).r;
-#endif
-    
-#if METALLIC_MAP
-    metallic *= tex_material_metallic.Sample(sampler_anisotropic_wrap, uv).r;
-#endif
-    
-#if NORMAL_MAP
-    // Get tangent space normal and apply intensity
-    float3 tangent_normal  = normalize(unpack(tex_material_normal.Sample(sampler_anisotropic_wrap, uv).rgb));
-    float normal_intensity = clamp(g_mat_normal, 0.012f, g_mat_normal);
-    tangent_normal.xy      *= saturate(normal_intensity);
-    normal                 = normalize(mul(tangent_normal, TBN).xyz); // Transform to world space
-#endif
+    // Alpha mask
+    if (has_texture_alpha_mask())
+    {
+        float alpha_mask = tex_material_mask.Sample(sampler_anisotropic_wrap, uv).r;
+        if (alpha_mask <= ALPHA_THRESHOLD)
+            discard;
+    }
 
-#if OCCLUSION_MAP
-    occlusion = tex_material_occlusion.Sample(sampler_anisotropic_wrap, uv).r;
-#endif
+    // Albedo
+    if (has_texture_albedo())
+    {
+        float4 albedo_sample = tex_material_albedo.Sample(sampler_anisotropic_wrap, uv);
+        if (albedo_sample.a <= ALPHA_THRESHOLD)
+            discard;
     
-#if EMISSION_MAP
-    emission = luminance(tex_material_emission.Sample(sampler_anisotropic_wrap, uv).rgb);
-#endif
+        albedo_sample.a   = 1.0f;
+        albedo_sample.rgb = degamma(albedo_sample.rgb);
+        albedo            *= albedo_sample;
+    }
+    
+    if (has_texture_roughness())
+    {
+        roughness *= tex_material_roughness.Sample(sampler_anisotropic_wrap, uv).r;
+    }
+    
+    if (has_texture_metallic())
+    {
+        metallic *= tex_material_metallic.Sample(sampler_anisotropic_wrap, uv).r;
+    }
+    
+    if (has_texture_normal())
+    {
+        // Get tangent space normal and apply intensity
+        float3 tangent_normal  = normalize(unpack(tex_material_normal.Sample(sampler_anisotropic_wrap, uv).rgb));
+        float normal_intensity = clamp(g_mat_normal, 0.012f, g_mat_normal);
+        tangent_normal.xy      *= saturate(normal_intensity);
+        normal                 = normalize(mul(tangent_normal, TBN).xyz); // Transform to world space
+    }
+
+    if (has_texture_occlusion())
+    {
+        occlusion = tex_material_occlusion.Sample(sampler_anisotropic_wrap, uv).r;
+    }
+    
+    if (has_texture_emissive())
+    {
+        emission = luminance(tex_material_emission.Sample(sampler_anisotropic_wrap, uv).rgb);
+    }
 
     // Specular anti-aliasing
     static const float strength       = 6.0f;
@@ -140,8 +152,8 @@ PixelOutputType mainPS(PixelInputType input)
     roughness                         = fast_sqrt(filteredRoughness2);
 
     // Write to G-Buffer
-    g_buffer.albedo   = albedo;
-    g_buffer.normal   = float4(normal, pack_uint32_to_float16(g_mat_id));
+    g_buffer.albedo = albedo;
+    g_buffer.normal = float4(normal, pack_uint32_to_float16(g_mat_id));
     g_buffer.material = float4(roughness, metallic, emission, occlusion);
     g_buffer.velocity = velocity;
 
