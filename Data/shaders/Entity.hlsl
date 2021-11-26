@@ -49,7 +49,7 @@ float4 mainPS(PixelInputType input) : SV_TARGET
 	float4 color = 0.0f;
 
 #ifdef TRANSFORM
-    float3 color_diffuse = g_transform_axis.xyz;
+    float3 color_diffuse = g_float3.xyz;
     float3 color_ambient = color_diffuse * 0.3f;
     float3 color_specular = 1.0f;
     float3 lightPos = float3(10.0f, 10.0f, 10.0f);

@@ -19,22 +19,24 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-// = INCLUDES ========
+//= INCLUDES =========
 #include "common.hlsl"
 //====================
 
-Pixel_PosColor mainVS(Vertex_PosColor input)
+Pixel_PosNor mainVS(Vertex_PosUvNorTan input)
 {
-    Pixel_PosColor output;
-        
+    Pixel_PosNor output;
+
+    float4x4 wvp = mul(g_transform, g_view_projection_unjittered);
+
     input.position.w = 1.0f;
-    output.position  = mul(input.position, g_view_projection_unjittered);
-    output.color     = input.color;
-    
+    output.position  = mul(input.position, wvp);
+    output.normal    = normalize(mul(input.normal, (float3x3)g_transform)).xyz;
+
     return output;
 }
 
-float4 mainPS(Pixel_PosColor input) : SV_TARGET
+float4 mainPS(Pixel_PosNor input) : SV_TARGET
 {
-    return input.color;
+    return float4(tex_reflection_probe.SampleLevel(sampler_bilinear_clamp, reflect(g_camera_direction, input.normal), 0.0f).rgb, 1.0f);
 }

@@ -34,9 +34,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
+    //= FWD DECLARATIONS =
     class Camera;
     class Renderable;
     class Renderer;
+    //====================
 
     enum class LightType
     {
@@ -47,9 +49,9 @@ namespace Spartan
 
     struct ShadowSlice
     {
-        Math::Vector3 min       = Math::Vector3::Zero;
-        Math::Vector3 max       = Math::Vector3::Zero;
-        Math::Vector3 center    = Math::Vector3::Zero;
+        Math::Vector3 min    = Math::Vector3::Zero;
+        Math::Vector3 max    = Math::Vector3::Zero;
+        Math::Vector3 center = Math::Vector3::Zero;
         Math::Frustum frustum;
     };
 
@@ -119,7 +121,7 @@ namespace Spartan
         uint32_t GetShadowArraySize() const;
         void CreateShadowMap();
 
-        bool IsInViewFrustrum(Renderable* renderable, uint32_t index) const;
+        bool IsInViewFrustum(Renderable* renderable, uint32_t index) const;
 
     private:
         void ComputeViewMatrix();
@@ -146,12 +148,17 @@ namespace Spartan
         float m_angle_rad           = 0.5f;       // about 30 degrees
         float m_time_of_day         = 1.0f;
         bool m_initialized          = false;
-        bool m_is_dirty             = true;
         std::array<Math::Matrix, 6> m_matrix_view;
         std::array<Math::Matrix, 6> m_matrix_projection;
+
+        // Dirty checks
+        bool m_is_dirty                     = true;
         Math::Quaternion m_previous_rot     = Math::Quaternion::Identity;
         Math::Vector3 m_previous_pos        = Math::Vector3::Infinity;
         Math::Matrix m_previous_camera_view = Math::Matrix::Identity;
+        bool m_previous_reverse_z           = false;
+
+        // Dependencies
         Renderer* m_renderer;
     };
 }

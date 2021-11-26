@@ -51,6 +51,7 @@ void IconProvider::Initialize(Context* context)
     LoadFromFile(data_dir + "Icons/component_componentOptions.png",       IconType::Component_Options);
     LoadFromFile(data_dir + "Icons/component_audioListener.png",          IconType::Component_AudioListener);
     LoadFromFile(data_dir + "Icons/component_audioSource.png",            IconType::Component_AudioSource);
+    LoadFromFile(data_dir + "Icons/component_reflectionProbe.png",        IconType::Component_ReflectionProbe);
     LoadFromFile(data_dir + "Icons/component_camera.png",                 IconType::Component_Camera); 
     LoadFromFile(data_dir + "Icons/component_collider.png",               IconType::Component_Collider);
     LoadFromFile(data_dir + "Icons/component_light.png",                  IconType::Component_Light);

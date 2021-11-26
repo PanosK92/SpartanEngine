@@ -126,7 +126,7 @@ namespace Spartan
 
         Math::Vector4 color;
     
-        Math::Vector3 transform_axis;
+        Math::Vector3 float3;
         float blur_sigma;
 
         Math::Vector2 blur_direction;
@@ -134,7 +134,7 @@ namespace Spartan
 
         Math::Vector2 resolution_in;
         uint32_t options_debug;
-        float padding;
+        float radius;
 
         Math::Vector4 mat_albedo;
 
@@ -151,29 +151,40 @@ namespace Spartan
         uint32_t mip_count;
         uint32_t work_group_count;
 
+        uint32_t mat_has_tex_albedo;
+        uint32_t reflection_proble_available;
+        Math::Vector2 padding;
+
+        Math::Vector3 extents;
+        float paddding2;
+
         bool operator==(const Cb_Uber& rhs) const
         {
             return
-                transform           == rhs.transform           &&
-                transform_previous  == rhs.transform_previous  &&
-                mat_id              == rhs.mat_id              &&
-                mat_albedo          == rhs.mat_albedo          &&
-                mat_tiling_uv       == rhs.mat_tiling_uv       &&
-                mat_offset_uv       == rhs.mat_offset_uv       &&
-                mat_roughness_mul   == rhs.mat_roughness_mul   &&
-                mat_metallic_mul    == rhs.mat_metallic_mul    &&
-                mat_normal_mul      == rhs.mat_normal_mul      &&
-                mat_height_mul      == rhs.mat_height_mul      &&
-                color               == rhs.color               &&
-                transform_axis      == rhs.transform_axis      &&
-                blur_sigma          == rhs.blur_sigma          &&
-                blur_direction      == rhs.blur_direction      &&
-                is_transparent_pass == rhs.is_transparent_pass &&
-                resolution_rt       == rhs.resolution_rt       &&
-                resolution_in       == rhs.resolution_in       &&
-                mip_count           == rhs.mip_count           &&
-                work_group_count    == rhs.work_group_count    &&
-                options_debug       == rhs.options_debug;
+                transform                   == rhs.transform                   &&
+                transform_previous          == rhs.transform_previous          &&
+                mat_id                      == rhs.mat_id                      &&
+                mat_albedo                  == rhs.mat_albedo                  &&
+                mat_tiling_uv               == rhs.mat_tiling_uv               &&
+                mat_offset_uv               == rhs.mat_offset_uv               &&
+                mat_roughness_mul           == rhs.mat_roughness_mul           &&
+                mat_metallic_mul            == rhs.mat_metallic_mul            &&
+                mat_normal_mul              == rhs.mat_normal_mul              &&
+                mat_height_mul              == rhs.mat_height_mul              &&
+                color                       == rhs.color                       &&
+                float3                      == rhs.float3                      &&
+                blur_sigma                  == rhs.blur_sigma                  &&
+                blur_direction              == rhs.blur_direction              &&
+                is_transparent_pass         == rhs.is_transparent_pass         &&
+                resolution_rt               == rhs.resolution_rt               &&
+                resolution_in               == rhs.resolution_in               &&
+                mip_count                   == rhs.mip_count                   &&
+                work_group_count            == rhs.work_group_count            &&
+                mat_has_tex_albedo          == rhs.mat_has_tex_albedo          &&
+                reflection_proble_available == rhs.reflection_proble_available &&
+                radius                      == rhs.radius                      &&
+                extents                     == rhs.extents                     &&
+                options_debug               == rhs.options_debug;
         }
 
         bool operator!=(const Cb_Uber& rhs) const { return !(*this == rhs); }

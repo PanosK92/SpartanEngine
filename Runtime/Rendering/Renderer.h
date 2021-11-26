@@ -164,6 +164,7 @@ namespace Spartan
         void CreateRasterizerStates();
         void CreateBlendStates();
         void CreateFonts();
+        void CreateMeshes();
         void CreateTextures();
         void CreateShaders();
         void CreateSamplers(const bool create_only_anisotropic = false);
@@ -173,6 +174,7 @@ namespace Spartan
         void Pass_Main(RHI_CommandList* cmd_list);
         void Pass_UpdateFrameBuffer(RHI_CommandList* cmd_list);
         void Pass_ShadowMaps(RHI_CommandList* cmd_list, const bool is_transparent_pass);
+        void Pass_ReflectionProbes(RHI_CommandList* cmd_list);
         void Pass_Depth_Prepass(RHI_CommandList* cmd_list);
         void Pass_GBuffer(RHI_CommandList* cmd_list, const bool is_transparent_pass);
         void Pass_Ssao(RHI_CommandList* cmd_list);
@@ -196,6 +198,7 @@ namespace Spartan
         void Pass_AMD_FidelityFX_SuperResolution(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out, RHI_Texture* tex_out_scratch);
         bool Pass_DebugBuffer(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
         void Pass_Lines(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
+        void Pass_DebugMeshes(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
         void Pass_Outline(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
         void Pass_Icons(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
         void Pass_TransformHandle(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
@@ -255,6 +258,7 @@ namespace Spartan
         // Rasterizer states
         std::shared_ptr<RHI_RasterizerState> m_rasterizer_cull_back_solid;
         std::shared_ptr<RHI_RasterizerState> m_rasterizer_cull_back_wireframe;
+        std::shared_ptr<RHI_RasterizerState> m_rasterizer_cull_none_solid;
         std::shared_ptr<RHI_RasterizerState> m_rasterizer_light_point_spot;
         std::shared_ptr<RHI_RasterizerState> m_rasterizer_light_directional;
 
@@ -303,6 +307,8 @@ namespace Spartan
         std::unique_ptr<TransformGizmo> m_transform_handle;
         std::unique_ptr<Grid> m_gizmo_grid;
         Math::Rectangle m_gizmo_light_rect;
+        std::shared_ptr<RHI_VertexBuffer> m_sphere_vertex_buffer;
+        std::shared_ptr<RHI_IndexBuffer> m_sphere_index_buffer;
 
         // Resolution & Viewport
         Math::Vector2 m_resolution_render          = Math::Vector2::Zero;

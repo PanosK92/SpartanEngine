@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =============
+//= INCLUDES ===============
 #include "Spartan.h"
 #include "IComponent.h"
 #include "Light.h"
@@ -35,8 +35,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Renderable.h"
 #include "Transform.h"
 #include "Terrain.h"
+#include "ReflectionProbe.h"
 #include "../Entity.h"
-//========================
+//==========================
 
 //= NAMESPACES =====
 using namespace std;
@@ -70,17 +71,18 @@ namespace Spartan
     #define REGISTER_COMPONENT(T, enumT) template<> SPARTAN_CLASS ComponentType IComponent::TypeToEnum<T>() { validate_component_type<T>(); return enumT; }
 
     // To add a new component to the engine, simply register it here
-    REGISTER_COMPONENT(AudioListener, ComponentType::AudioListener)
-    REGISTER_COMPONENT(AudioSource,   ComponentType::AudioSource)
-    REGISTER_COMPONENT(Camera,        ComponentType::Camera)
-    REGISTER_COMPONENT(Collider,      ComponentType::Collider)
-    REGISTER_COMPONENT(Constraint,    ComponentType::Constraint)
-    REGISTER_COMPONENT(Light,         ComponentType::Light)
-    REGISTER_COMPONENT(Renderable,    ComponentType::Renderable)
-    REGISTER_COMPONENT(RigidBody,     ComponentType::RigidBody)
-    REGISTER_COMPONENT(SoftBody,      ComponentType::SoftBody)
-    REGISTER_COMPONENT(Script,        ComponentType::Script)
-    REGISTER_COMPONENT(Environment,   ComponentType::Environment)
-    REGISTER_COMPONENT(Terrain,       ComponentType::Terrain)
-    REGISTER_COMPONENT(Transform,     ComponentType::Transform)
+    REGISTER_COMPONENT(AudioListener,   ComponentType::AudioListener)
+    REGISTER_COMPONENT(AudioSource,     ComponentType::AudioSource)
+    REGISTER_COMPONENT(Camera,          ComponentType::Camera)
+    REGISTER_COMPONENT(Collider,        ComponentType::Collider)
+    REGISTER_COMPONENT(Constraint,      ComponentType::Constraint)
+    REGISTER_COMPONENT(Light,           ComponentType::Light)
+    REGISTER_COMPONENT(Renderable,      ComponentType::Renderable)
+    REGISTER_COMPONENT(RigidBody,       ComponentType::RigidBody)
+    REGISTER_COMPONENT(SoftBody,        ComponentType::SoftBody)
+    REGISTER_COMPONENT(Script,          ComponentType::Script)
+    REGISTER_COMPONENT(Environment,     ComponentType::Environment)
+    REGISTER_COMPONENT(Terrain,         ComponentType::Terrain)
+    REGISTER_COMPONENT(Transform,       ComponentType::Transform)
+    REGISTER_COMPONENT(ReflectionProbe, ComponentType::ReflectionProbe)
 }

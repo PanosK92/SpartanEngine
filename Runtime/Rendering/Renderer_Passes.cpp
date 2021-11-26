@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==============================
+//= INCLUDES ===================================
 #include "Spartan.h"
 #include "Renderer.h"
 #include "Model.h"
@@ -32,6 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_CommandList.h"
 #include "../RHI/RHI_Implementation.h"
 #include "../RHI/RHI_VertexBuffer.h"
+#include "../RHI/RHI_IndexBuffer.h"
 #include "../RHI/RHI_PipelineState.h"
 #include "../RHI/RHI_Texture.h"
 #include "../RHI/RHI_SwapChain.h"
@@ -40,7 +41,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World/Components/Light.h"
 #include "../World/Components/Transform.h"
 #include "../World/Components/Renderable.h"
-//=========================================
+#include "../World/Components/ReflectionProbe.h"
+//==============================================
 
 //= NAMESPACES ===============
 using namespace std;
@@ -103,6 +105,8 @@ namespace Spartan
                 Pass_ShadowMaps(cmd_list, true);
             }
         }
+
+        Pass_ReflectionProbes(cmd_list);
 
         // Opaque
         {
@@ -168,7 +172,7 @@ namespace Spartan
         // Opaque objects write their depth information to a depth buffer, using just a vertex shader.
         // Transparent objects read the opaque depth but don't write their own, instead, they write their color information using a pixel shader.
 
-        // Acquire shader
+        // Acquire shaders
         RHI_Shader* shader_v = m_shaders[RendererShader::Depth_Light_V].get();
         RHI_Shader* shader_p = m_shaders[RendererShader::Depth_Light_P].get();
         if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
@@ -243,8 +247,8 @@ namespace Spartan
                 }
 
                 // State tracking
-                bool render_pass_active     = false;
-                uint64_t m_set_material_id  = 0;
+                bool render_pass_active    = false;
+                uint64_t m_set_material_id = 0;
 
                 for (uint32_t entity_index = 0; entity_index < static_cast<uint32_t>(entities.size()); entity_index++)
                 {
@@ -270,7 +274,7 @@ namespace Spartan
                         continue;
 
                     // Skip objects outside of the view frustum
-                    if (!light->IsInViewFrustrum(renderable, array_index))
+                    if (!light->IsInViewFrustum(renderable, array_index))
                         continue;
 
                     if (!render_pass_active)
@@ -309,6 +313,120 @@ namespace Spartan
                 {
                     cmd_list->EndRenderPass();
                 }
+            }
+        }
+    }
+
+    void Renderer::Pass_ReflectionProbes(RHI_CommandList* cmd_list)
+    {
+        // Acquire shaders
+        RHI_Shader* shader_v = m_shaders[RendererShader::Reflection_Probe_V].get();
+        RHI_Shader* shader_p = m_shaders[RendererShader::Reflection_Probe_P].get();
+        if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
+            return;
+
+        // Acquire reflections probes
+        const vector<Entity*>& probes = m_entities[Renderer_ObjectType::ReflectionProbe];
+        if (probes.empty())
+            return;
+
+        // Acquire renderables
+        const vector<Entity*>& renderables = m_entities[Renderer_ObjectType::GeometryOpaque];
+        if (renderables.empty())
+            return;
+
+        // Acquire lights
+        const vector<Entity*>& lights = m_entities[Renderer_ObjectType::Light];
+        if (lights.empty())
+            return;
+
+        // For each reflection probe
+        for (uint32_t probe_index = 0; probe_index < static_cast<uint32_t>(probes.size()); probe_index++)
+        {
+            ReflectionProbe* probe = probes[probe_index]->GetComponent<ReflectionProbe>();
+            if (!probe)
+                continue;
+
+            // Set render state
+            static RHI_PipelineState pso;
+            pso.shader_vertex                   = shader_v;
+            pso.shader_pixel                    = shader_p;
+            pso.rasterizer_state                = m_rasterizer_cull_back_solid.get();
+            pso.blend_state                     = m_blend_disabled.get();
+            pso.depth_stencil_state             = m_depth_stencil_rw_off.get();
+            pso.render_target_color_textures[0] = probe->GetColorTexture();
+            pso.render_target_depth_texture     = probe->GetDepthTexture();
+            pso.clear_color[0]                  = Vector4::Zero;
+            pso.clear_depth                     = GetClearDepth();
+            pso.clear_stencil                   = rhi_stencil_dont_care;
+            pso.viewport                        = probe->GetColorTexture()->GetViewport();
+            pso.pass_name                       = "Pass_ReflectionProbes";
+            pso.vertex_buffer_stride            = static_cast<uint32_t>(sizeof(RHI_Vertex_PosTexNorTan));
+            pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
+
+            // For each cube face
+            for (uint32_t index_array = 0; index_array < probe->GetColorTexture()->GetArrayLength(); index_array++)
+            {
+                // Set render target texture array index
+                pso.render_target_color_texture_array_index = index_array;
+
+                // Begin render pass
+                cmd_list->BeginRenderPass(pso);
+
+                // Compute view projection matrix
+                Matrix view_projection = probe->GetViewMatrix(index_array) * probe->GetProjectionMatrix();
+
+                // For each renderable entity
+                for (uint32_t index_renderable = 0; index_renderable < static_cast<uint32_t>(renderables.size()); index_renderable++)
+                {
+                    Entity* entity = renderables[index_renderable];
+
+                    // For each light entity
+                    for (uint32_t index_light = 0; index_light < static_cast<uint32_t>(lights.size()); index_light++)
+                    {
+                        Entity* light = lights[index_light];
+
+                        // Get renderable
+                        Renderable* renderable = entity->GetRenderable();
+                        if (!renderable)
+                            continue;
+
+                        // Get material
+                        Material* material = renderable->GetMaterial();
+                        if (!material)
+                            continue;
+
+                        // Get geometry
+                        Model* model = renderable->GeometryModel();
+                        if (!model || !model->GetVertexBuffer() || !model->GetIndexBuffer())
+                            continue;
+
+                        // Skip objects outside of the view frustum
+                        if (!probe->IsInViewFrustum(renderable, index_array))
+                            continue;
+
+                        // Set geometry (will only happen if not already set)
+                        cmd_list->SetBufferIndex(model->GetIndexBuffer());
+                        cmd_list->SetBufferVertex(model->GetVertexBuffer());
+
+                        // Bind material textures
+                        cmd_list->SetTexture(RendererBindings_Srv::material_albedo, material->GetTexture_Ptr(Material_Color));
+
+                        // Update uber buffer with material properties
+                        m_cb_uber_cpu.mat_albedo = material->GetColorAlbedo();
+                        m_cb_uber_cpu.mat_has_tex_albedo = material->HasTexture(Material_Color);
+
+                        // Update uber buffer with cascade transform
+                        m_cb_uber_cpu.transform = entity->GetTransform()->GetMatrix() * view_projection;
+                        Update_Cb_Uber(cmd_list);
+
+                        // Update light buffer
+                        Update_Cb_Light(cmd_list, light->GetComponent<Light>());
+
+                        cmd_list->DrawIndexed(renderable->GeometryIndexCount(), renderable->GeometryIndexOffset(), renderable->GeometryVertexOffset());
+                    }
+                }
+                cmd_list->EndRenderPass();
             }
         }
     }
@@ -441,7 +559,7 @@ namespace Spartan
         pso.vertex_buffer_stride            = static_cast<uint32_t>(sizeof(RHI_Vertex_PosTexNorTan));
         pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
 
-        uint32_t material_index = 0;
+        uint32_t material_index    = 0;
         uint64_t material_bound_id = 0;
         m_material_instances.fill(nullptr);
 
@@ -828,6 +946,9 @@ namespace Spartan
         if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
             return;
 
+        // Get reflection probe entities
+        const vector<Entity*>& probes = m_entities[Renderer_ObjectType::ReflectionProbe];
+
         // Set render state
         static RHI_PipelineState pso;
         pso.shader_vertex                   = shader_v;
@@ -848,11 +969,6 @@ namespace Spartan
         // Begin commands
         if (cmd_list->BeginRenderPass(pso))
         {
-            // Update uber buffer
-            m_cb_uber_cpu.resolution_rt       = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
-            m_cb_uber_cpu.is_transparent_pass = is_transparent_pass;
-            Update_Cb_Uber(cmd_list);
-
             // Setup command list
             cmd_list->SetTexture(RendererBindings_Srv::gbuffer_albedo,   RENDER_TARGET(RendererRt::Gbuffer_Albedo));
             cmd_list->SetTexture(RendererBindings_Srv::gbuffer_normal,   RENDER_TARGET(RendererRt::Gbuffer_Normal));
@@ -862,6 +978,21 @@ namespace Spartan
             cmd_list->SetTexture(RendererBindings_Srv::ssr,              RENDER_TARGET(RendererRt::Ssr));
             cmd_list->SetTexture(RendererBindings_Srv::lutIbl,           RENDER_TARGET(RendererRt::Brdf_Specular_Lut));
             cmd_list->SetTexture(RendererBindings_Srv::environment,      GetEnvironmentTexture());
+
+            if (!probes.empty())
+            {
+                ReflectionProbe* probe = probes[0]->GetComponent<ReflectionProbe>();
+
+                cmd_list->SetTexture(RendererBindings_Srv::reflection_probe, probe->GetColorTexture());
+                m_cb_uber_cpu.extents = probe->GetExtents();
+                m_cb_uber_cpu.float3  = probe->GetTransform()->GetPosition();
+            }
+
+            // Update uber buffer
+            m_cb_uber_cpu.resolution_rt               = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
+            m_cb_uber_cpu.is_transparent_pass         = is_transparent_pass;
+            m_cb_uber_cpu.reflection_proble_available = !probes.empty();
+            Update_Cb_Uber(cmd_list);
 
             cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
             cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
@@ -1038,13 +1169,6 @@ namespace Spartan
         Pass_PostProcess_ToneMapping(cmd_list, rt_frame_render_output_in, rt_frame_render_output_out);
         rt_frame_render_output_in.swap(rt_frame_render_output_out);
 
-        // FXAA
-        if (GetOption(Render_AntiAliasing_Fxaa))
-        {
-            Pass_PostProcess_Fxaa(cmd_list, rt_frame_render_output_in, rt_frame_render_output_out);
-            rt_frame_render_output_in.swap(rt_frame_render_output_out);
-        }
-
         // Debanding
         if (GetOption(Render_Debanding))
         {
@@ -1052,10 +1176,10 @@ namespace Spartan
             rt_frame_render_output_in.swap(rt_frame_render_output_out);
         }
 
-        // Film grain
-        if (GetOption(Render_FilmGrain))
+        // FXAA
+        if (GetOption(Render_AntiAliasing_Fxaa))
         {
-            Pass_PostProcess_FilmGrain(cmd_list, rt_frame_render_output_in, rt_frame_render_output_out);
+            Pass_PostProcess_Fxaa(cmd_list, rt_frame_render_output_in, rt_frame_render_output_out);
             rt_frame_render_output_in.swap(rt_frame_render_output_out);
         }
 
@@ -1066,9 +1190,17 @@ namespace Spartan
             rt_frame_render_output_in.swap(rt_frame_render_output_out);
         }
 
+        // Film grain
+        if (GetOption(Render_FilmGrain))
+        {
+            Pass_PostProcess_FilmGrain(cmd_list, rt_frame_render_output_in, rt_frame_render_output_out);
+            rt_frame_render_output_in.swap(rt_frame_render_output_out);
+        }
+
         rt_frame_render_output_in.swap(rt_frame_render_output_out);
 
         // Passes that render on top of each other
+        Pass_DebugMeshes(cmd_list, rt_frame_render_output_out.get());
         Pass_Outline(cmd_list, rt_frame_render_output_out.get());
         Pass_TransformHandle(cmd_list, rt_frame_render_output_out.get());
         Pass_Lines(cmd_list, rt_frame_render_output_out.get());
@@ -1702,7 +1834,7 @@ namespace Spartan
             pso.viewport                        = tex_out->GetViewport();
             pso.primitive_topology              = RHI_PrimitiveTopology_Mode::LineList;
             pso.pass_name                       = "Pass_Lines_Grid";
-        
+
             // Create and submit command list
             if (cmd_list->BeginRenderPass(pso))
             {
@@ -1741,6 +1873,7 @@ namespace Spartan
             pso.render_target_color_textures[0] = tex_out;
             pso.viewport                        = tex_out->GetViewport();
             pso.primitive_topology              = RHI_PrimitiveTopology_Mode::LineList;
+            pso.vertex_buffer_stride            = m_vertex_buffer_lines->GetStride();
 
             // Depth off
             if (draw_lines_depth_off)
@@ -1882,22 +2015,22 @@ namespace Spartan
         {
             // Set render state
             static RHI_PipelineState pso;
-            pso.shader_vertex                    = shader_gizmo_transform_v;
-            pso.shader_pixel                     = shader_gizmo_transform_p;
-            pso.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
-            pso.blend_state                      = m_blend_alpha.get();
-            pso.depth_stencil_state              = m_depth_stencil_off_off.get();
-            pso.vertex_buffer_stride             = m_transform_handle->GetVertexBuffer()->GetStride();
-            pso.render_target_color_textures[0]  = tex_out;
-            pso.primitive_topology               = RHI_PrimitiveTopology_Mode::TriangleList;
-            pso.viewport                         = tex_out->GetViewport();
+            pso.shader_vertex                   = shader_gizmo_transform_v;
+            pso.shader_pixel                    = shader_gizmo_transform_p;
+            pso.rasterizer_state                = m_rasterizer_cull_back_solid.get();
+            pso.blend_state                     = m_blend_alpha.get();
+            pso.depth_stencil_state             = m_depth_stencil_off_off.get();
+            pso.vertex_buffer_stride            = m_transform_handle->GetVertexBuffer()->GetStride();
+            pso.render_target_color_textures[0] = tex_out;
+            pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
+            pso.viewport                        = tex_out->GetViewport();
 
             // Axis - X
             pso.pass_name = "Pass_Handle_Axis_X";
             if (cmd_list->BeginRenderPass(pso))
             {
-                m_cb_uber_cpu.transform         = m_transform_handle->GetHandle()->GetTransform(Vector3::Right);
-                m_cb_uber_cpu.transform_axis    = m_transform_handle->GetHandle()->GetColor(Vector3::Right);
+                m_cb_uber_cpu.transform = m_transform_handle->GetHandle()->GetTransform(Vector3::Right);
+                m_cb_uber_cpu.float3    = m_transform_handle->GetHandle()->GetColor(Vector3::Right);
                 Update_Cb_Uber(cmd_list);
             
                 cmd_list->SetBufferIndex(m_transform_handle->GetIndexBuffer());
@@ -1910,8 +2043,8 @@ namespace Spartan
             pso.pass_name = "Pass_Handle_Axis_Y";
             if (cmd_list->BeginRenderPass(pso))
             {
-                m_cb_uber_cpu.transform         = m_transform_handle->GetHandle()->GetTransform(Vector3::Up);
-                m_cb_uber_cpu.transform_axis    = m_transform_handle->GetHandle()->GetColor(Vector3::Up);
+                m_cb_uber_cpu.transform = m_transform_handle->GetHandle()->GetTransform(Vector3::Up);
+                m_cb_uber_cpu.float3    = m_transform_handle->GetHandle()->GetColor(Vector3::Up);
                 Update_Cb_Uber(cmd_list);
 
                 cmd_list->SetBufferIndex(m_transform_handle->GetIndexBuffer());
@@ -1924,8 +2057,8 @@ namespace Spartan
             pso.pass_name = "Pass_Handle_Axis_Z";
             if (cmd_list->BeginRenderPass(pso))
             {
-                m_cb_uber_cpu.transform         = m_transform_handle->GetHandle()->GetTransform(Vector3::Forward);
-                m_cb_uber_cpu.transform_axis    = m_transform_handle->GetHandle()->GetColor(Vector3::Forward);
+                m_cb_uber_cpu.transform = m_transform_handle->GetHandle()->GetTransform(Vector3::Forward);
+                m_cb_uber_cpu.float3    = m_transform_handle->GetHandle()->GetColor(Vector3::Forward);
                 Update_Cb_Uber(cmd_list);
 
                 cmd_list->SetBufferIndex(m_transform_handle->GetIndexBuffer());
@@ -1940,8 +2073,8 @@ namespace Spartan
                 pso.pass_name = "Pass_Gizmos_Axis_XYZ";
                 if (cmd_list->BeginRenderPass(pso))
                 {
-                    m_cb_uber_cpu.transform         = m_transform_handle->GetHandle()->GetTransform(Vector3::One);
-                    m_cb_uber_cpu.transform_axis    = m_transform_handle->GetHandle()->GetColor(Vector3::One);
+                    m_cb_uber_cpu.transform = m_transform_handle->GetHandle()->GetTransform(Vector3::One);
+                    m_cb_uber_cpu.float3    = m_transform_handle->GetHandle()->GetColor(Vector3::One);
                     Update_Cb_Uber(cmd_list);
 
                     cmd_list->SetBufferIndex(m_transform_handle->GetIndexBuffer());
@@ -1950,6 +2083,63 @@ namespace Spartan
                     cmd_list->EndRenderPass();
                 }
             }
+        }
+    }
+
+    void Renderer::Pass_DebugMeshes(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
+    {
+        if (!GetOption(Render_Debug_ReflectionProbes))
+            return;
+
+        // Acquire color shaders.
+        RHI_Shader* shader_v = m_shaders[RendererShader::Debug_ReflectionProbe_V].get();
+        RHI_Shader* shader_p = m_shaders[RendererShader::Debug_ReflectionProbe_P].get();
+        if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
+            return;
+
+        // Get reflection probe entities
+        const vector<Entity*>& probes = m_entities[Renderer_ObjectType::ReflectionProbe];
+        if (probes.empty())
+            return;
+
+        // Set render state
+        static RHI_PipelineState pso;
+        pso.shader_vertex                   = shader_v;
+        pso.shader_pixel                    = shader_p;
+        pso.rasterizer_state                = m_rasterizer_cull_back_solid.get();
+        pso.blend_state                     = m_blend_disabled.get();
+        pso.depth_stencil_state             = m_depth_stencil_r_off.get();
+        pso.render_target_color_textures[0] = tex_out;
+        pso.render_target_depth_texture     = RENDER_TARGET(RendererRt::Gbuffer_Depth).get();
+        pso.viewport                        = tex_out->GetViewport();
+        pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
+        pso.vertex_buffer_stride            = m_sphere_vertex_buffer->GetStride();
+        pso.pass_name                       = "Pass_Debug_ReflectionProbes";
+        
+        // Create and submit command list
+        if (cmd_list->BeginRenderPass(pso))
+        {
+            cmd_list->SetBufferIndex(m_sphere_index_buffer.get());
+            cmd_list->SetBufferVertex(m_sphere_vertex_buffer.get());
+
+            for (uint32_t probe_index = 0; probe_index < static_cast<uint32_t>(probes.size()); probe_index++)
+            {
+                if (ReflectionProbe* probe = probes[probe_index]->GetComponent<ReflectionProbe>())
+                {
+                    // Update uber buffer
+                    m_cb_uber_cpu.transform = probe->GetTransform()->GetMatrix();
+                    Update_Cb_Uber(cmd_list);
+
+                    cmd_list->SetTexture(RendererBindings_Srv::reflection_probe, probe->GetColorTexture());
+                    cmd_list->DrawIndexed(m_sphere_index_buffer->GetIndexCount());
+
+                    // Draw a box which represents the extents of the reflection probe (which is used as a geometry proxy for parallaxed corrected cubemap reflections)
+                    BoundingBox extents = BoundingBox(probe->GetTransform()->GetPosition() - probe->GetExtents(), probe->GetTransform()->GetPosition() + probe->GetExtents());
+                    DrawBox(extents);
+                }
+            }
+
+            cmd_list->EndRenderPass();
         }
     }
 
@@ -2162,7 +2352,7 @@ namespace Spartan
         }
 
         // Acquire shaders
-        RHI_Shader* shader = m_shaders[RendererShader::Debug_C].get();
+        RHI_Shader* shader = m_shaders[RendererShader::Debug_Texture_C].get();
         if (!shader->IsCompiled())
             return false;
 

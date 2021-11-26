@@ -35,6 +35,7 @@ enum class IconType
     Component_Options,
     Component_AudioListener,
     Component_AudioSource,
+    Component_ReflectionProbe,
     Component_Camera,
     Component_Collider,
     Component_Light,

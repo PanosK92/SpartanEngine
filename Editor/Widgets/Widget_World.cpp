@@ -19,9 +19,11 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==============================
+//= INCLUDES ================================
 #include "Widget_World.h"
 #include "Widget_Properties.h"
+#include "Widget_MenuBar.h"
+#include "../Editor.h"
 #include "../ImGui_Extension.h"
 #include "../ImGui/Source/imgui_stdlib.h"
 #include "Rendering/Model.h"
@@ -37,9 +39,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Components/Renderable.h"
 #include "World/Components/Environment.h"
 #include "World/Components/Terrain.h"
-#include "../Editor.h"
-#include "Widget_MenuBar.h"
-//=========================================
+#include "World/Components/ReflectionProbe.h"
+//===========================================
 
 //= NAMESPACES ==========
 using namespace std;
@@ -445,6 +446,17 @@ void Widget_World::PopupContextMenu() const
         ActionEntityCreateTerrain();
     }
 
+    // PROBE
+    if (ImGui::BeginMenu("Probe"))
+    {
+        if (ImGui::MenuItem("Reflection Probe"))
+        {
+            ActionEntityCreateReflectionProbe();
+        }
+
+        ImGui::EndMenu();
+    }
+
     ImGui::EndPopup();
 }
 
@@ -662,4 +674,11 @@ void Widget_World::ActionEntityCreateSkybox()
     auto entity = ActionEntityCreateEmpty();
     entity->AddComponent<Environment>();
     entity->SetName("Environment");
+}
+
+void Widget_World::ActionEntityCreateReflectionProbe()
+{
+    auto entity = ActionEntityCreateEmpty();
+    entity->AddComponent<ReflectionProbe>();
+    entity->SetName("ReflectionProbe");
 }

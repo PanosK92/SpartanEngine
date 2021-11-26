@@ -80,11 +80,11 @@ namespace Spartan::Math
             point.y < m_min.y || point.y > m_max.y ||
             point.z < m_min.z || point.z > m_max.z)
         {
-            return Outside;
+            return Intersection::Outside;
         }
         else
         {
-            return Inside;
+            return Intersection::Inside;
         }
     }
 
@@ -94,18 +94,18 @@ namespace Spartan::Math
             box.m_max.y < m_min.y || box.m_min.y > m_max.y ||
             box.m_max.z < m_min.z || box.m_min.z > m_max.z)
         {
-            return Outside;
+            return Intersection::Outside;
         }
         else if (
                 box.m_min.x < m_min.x || box.m_max.x > m_max.x ||
                 box.m_min.y < m_min.y || box.m_max.y > m_max.y ||
                 box.m_min.z < m_min.z || box.m_max.z > m_max.z)
         {
-            return Intersects;
+            return Intersection::Intersects;
         }
         else
         {
-            return Inside;
+            return Intersection::Inside;
         }
     }
 

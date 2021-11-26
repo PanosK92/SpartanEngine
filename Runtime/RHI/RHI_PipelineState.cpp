@@ -56,17 +56,17 @@ namespace Spartan
         mark    = pass_name != nullptr;
 
         // Deduce states
-        bool has_shader_compute     = shader_compute    ? shader_compute->IsCompiled()  : false;
-        bool has_shader_vertex      = shader_vertex     ? shader_vertex->IsCompiled()   : false;
-        bool has_shader_pixel       = shader_pixel      ? shader_pixel->IsCompiled()    : false;
-        bool has_render_target      = render_target_color_textures[0] || render_target_depth_texture;   // Check that there is at least one render target
-        bool has_backbuffer         = render_target_swapchain;                                          // Check that no both the swapchain and the color render target are active
-        bool has_graphics_states    = rasterizer_state && blend_state && depth_stencil_state && primitive_topology != RHI_PrimitiveTopology_Mode::RHI_PrimitiveTopology_Unknown;
-        bool is_graphics_pso        = (has_shader_vertex || has_shader_pixel) && !has_shader_compute;
-        bool is_compute_pso         = has_shader_compute && (!has_shader_vertex && !has_shader_pixel);
+        bool has_shader_compute  = shader_compute ? shader_compute->IsCompiled() : false;
+        bool has_shader_vertex   = shader_vertex  ? shader_vertex->IsCompiled()  : false;
+        bool has_shader_pixel    = shader_pixel   ? shader_pixel->IsCompiled()   : false;
+        bool has_render_target   = render_target_color_textures[0] || render_target_depth_texture; // Check that there is at least one render target
+        bool has_backbuffer      = render_target_swapchain;                                        // Check that no both the swapchain and the color render target are active
+        bool has_graphics_states = rasterizer_state && blend_state && depth_stencil_state && primitive_topology != RHI_PrimitiveTopology_Mode::RHI_PrimitiveTopology_Unknown;
+        bool is_graphics_pso     = (has_shader_vertex || has_shader_pixel) && !has_shader_compute;
+        bool is_compute_pso      = has_shader_compute && (!has_shader_vertex && !has_shader_pixel);
 
         // Note: Sometimes a pipeline state is needed just to update a constant buffer, therefore
-        // a piepeline state can have no shaders but still be valid.
+        // a pipeline state can have no shaders but still be valid.
 
         // Validate graphics states
         if (is_graphics_pso && !has_graphics_states)

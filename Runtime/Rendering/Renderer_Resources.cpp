@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ShaderGBuffer.h"
 #include "ShaderLight.h"
 #include "Font/Font.h"
+#include "../Utilities/Geometry.h"
 #include "../Resource/ResourceCache.h"
 #include "../RHI/RHI_Texture2D.h"
 #include "../RHI/RHI_Texture2DArray.h"
@@ -36,6 +37,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_DepthStencilState.h"
 #include "../RHI/RHI_SwapChain.h"
 #include "../RHI/RHI_StructuredBuffer.h"
+#include "../RHI/RHI_VertexBuffer.h"
+#include "../RHI/RHI_IndexBuffer.h"
 //=======================================
 
 //= NAMESPACES ===============
@@ -422,6 +425,12 @@ namespace Spartan
         m_shaders[RendererShader::Color_P] = make_shared<RHI_Shader>(m_context);
         m_shaders[RendererShader::Color_P]->Compile(RHI_Shader_Pixel, dir_shaders + "color.hlsl", async);
 
+        // Reflection probe
+        m_shaders[RendererShader::Reflection_Probe_V] = make_shared<RHI_Shader>(m_context, RHI_Vertex_Type::PosTexNorTan);
+        m_shaders[RendererShader::Reflection_Probe_V]->Compile(RHI_Shader_Vertex, dir_shaders + "reflection_probe.hlsl", async);
+        m_shaders[RendererShader::Reflection_Probe_P] = make_shared<RHI_Shader>(m_context);
+        m_shaders[RendererShader::Reflection_Probe_P]->Compile(RHI_Shader_Pixel, dir_shaders + "reflection_probe.hlsl", async);
+
         // AMD FidelityFX
         {
             // Sharpening
@@ -445,8 +454,15 @@ namespace Spartan
         }
 
         // Debug
-        m_shaders[RendererShader::Debug_C] = make_shared<RHI_Shader>(m_context);
-        m_shaders[RendererShader::Debug_C]->Compile(RHI_Shader_Compute, dir_shaders + "debug.hlsl", async);
+        {
+            m_shaders[RendererShader::Debug_Texture_C] = make_shared<RHI_Shader>(m_context);
+            m_shaders[RendererShader::Debug_Texture_C]->Compile(RHI_Shader_Compute, dir_shaders + "debug_texture.hlsl", async);
+
+            m_shaders[RendererShader::Debug_ReflectionProbe_V] = make_shared<RHI_Shader>(m_context, RHI_Vertex_Type::PosTexNorTan);
+            m_shaders[RendererShader::Debug_ReflectionProbe_V]->Compile(RHI_Shader_Vertex, dir_shaders + "debug_reflection_probe.hlsl", async);
+            m_shaders[RendererShader::Debug_ReflectionProbe_P] = make_shared<RHI_Shader>(m_context);
+            m_shaders[RendererShader::Debug_ReflectionProbe_P]->Compile(RHI_Shader_Pixel, dir_shaders + "debug_reflection_probe.hlsl", async);
+        }
     }
 
     void Renderer::CreateFonts()
@@ -456,6 +472,22 @@ namespace Spartan
 
         // Load a font (used for performance metrics)
         m_font = make_unique<Font>(m_context, dir_font + "CalibriBold.ttf", 12, Vector4(0.8f, 0.8f, 0.8f, 1.0f));
+    }
+
+    void Renderer::CreateMeshes()
+    {
+        // Create a sphere
+
+        vector<RHI_Vertex_PosTexNorTan> vertices;
+        vector<uint32_t> indices;
+
+        Utility::Geometry::CreateSphere(&vertices, &indices, 1.0f, 20, 20);
+
+        m_sphere_vertex_buffer = make_shared<RHI_VertexBuffer>(m_rhi_device);
+        m_sphere_vertex_buffer->Create(vertices);
+
+        m_sphere_index_buffer = make_shared<RHI_IndexBuffer>(m_rhi_device);
+        m_sphere_index_buffer->Create(indices);
     }
 
     void Renderer::CreateTextures()

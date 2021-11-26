@@ -73,7 +73,7 @@ cbuffer BufferUber : register(b1)
 
     float4 g_color;
 
-    float3 g_transform_axis;
+    float3 g_float3;
     float g_blur_sigma;
     
     float2 g_blur_direction;
@@ -81,7 +81,7 @@ cbuffer BufferUber : register(b1)
 
     float2 g_resolution_in;
     uint g_options_debug;
-    float g_padding2;
+    float g_radius;
 
     float4 g_mat_color;
 
@@ -97,6 +97,13 @@ cbuffer BufferUber : register(b1)
     uint g_is_transparent_pass;
     uint g_mip_count;
     uint g_work_group_count;
+
+    uint g_mat_has_tex_albedo;
+    uint g_reflection_probe_available;
+    float2 g_padding;
+
+    float3 g_extents;
+    float g_padding2;
 };
 
 // High frequency - Updates per light

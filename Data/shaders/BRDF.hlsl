@@ -144,27 +144,37 @@ inline float3 Diffuse_OrenNayar(float3 diffuse_color, float Roughness, float NoV
     return diffuse_color / PI * ( C1 + C2 ) * ( 1 + Roughness * 0.5 );
 }
 
+inline float3 BRDF_Diffuse(float3 albedo, float roughhness, float n_dot_v, float n_dot_l, float v_dot_h)
+{
+    return Diffuse_OrenNayar(albedo, roughhness, n_dot_v, n_dot_l, v_dot_h);
+}
+
 inline float3 BRDF_Diffuse(Surface surface, float n_dot_v, float n_dot_l, float v_dot_h)
 {
-    return Diffuse_OrenNayar(surface.albedo.rgb, surface.roughness, n_dot_v, n_dot_l, v_dot_h);
+    return BRDF_Diffuse(surface.albedo.rgb, surface.roughness, n_dot_v, n_dot_l, v_dot_h);
 }
 
 /*------------------------------------------------------------------------------
     Specular
 ------------------------------------------------------------------------------*/
 
-inline float3 BRDF_Specular_Isotropic(Surface surface, float n_dot_v, float n_dot_l, float n_dot_h, float v_dot_h, inout float3 diffuse_energy, inout float3 specular_energy)
+inline float3 BRDF_Specular_Isotropic(float roughness, float metallic, float3 F0, float n_dot_v, float n_dot_l, float n_dot_h, float v_dot_h, inout float3 diffuse_energy, inout float3 specular_energy)
 {
-    float a2 = pow4(surface.roughness);
+    float a2 = pow4(roughness);
 
-    float V  = V_SmithJointApprox(a2, n_dot_v, n_dot_l);
-    float D  = D_GGX(a2, n_dot_h);
-    float3 F = F_Schlick(surface.F0, v_dot_h);
+    float V = V_SmithJointApprox(a2, n_dot_v, n_dot_l);
+    float D = D_GGX(a2, n_dot_h);
+    float3 F = F_Schlick(F0, v_dot_h);
 
-    diffuse_energy  *= compute_diffuse_energy(F, surface.metallic);
+    diffuse_energy *= compute_diffuse_energy(F, metallic);
     specular_energy *= F;
 
     return D * V * F;
+}
+
+inline float3 BRDF_Specular_Isotropic(Surface surface, float n_dot_v, float n_dot_l, float n_dot_h, float v_dot_h, inout float3 diffuse_energy, inout float3 specular_energy)
+{
+    return BRDF_Specular_Isotropic(surface.roughness, surface.metallic, surface.F0, n_dot_v, n_dot_l, n_dot_h, v_dot_h, diffuse_energy, specular_energy);
 }
 
 inline float3 BRDF_Specular_Anisotropic(Surface surface, float3 v, float3 l, float3 h, float n_dot_v, float n_dot_l, float n_dot_h, float l_dot_h, inout float3 diffuse_energy, inout float3 specular_energy)
