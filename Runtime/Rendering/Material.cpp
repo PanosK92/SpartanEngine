@@ -23,7 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Spartan.h"
 #include "Material.h"
 #include "Renderer.h"
-#include "ShaderGBuffer.h"
 #include "../Resource/ResourceCache.h"
 #include "../IO/XmlDocument.h"
 #include "../RHI/RHI_Texture2D.h"
@@ -53,9 +52,6 @@ namespace Spartan
         SetProperty(Material_Anisotropic_Rotation,  0.0f);
         SetProperty(Material_Sheen,                 0.0f);
         SetProperty(Material_Sheen_Tint,            0.0f);
-
-        // Ensure an a suitable shader exists
-        ShaderGBuffer::GenerateVariation(context, m_flags);
     }
 
     bool Material::LoadFromFile(const string& file_path)
@@ -98,9 +94,6 @@ namespace Spartan
             }
             SetTextureSlot(tex_type, texture, GetProperty(tex_type));
         }
-
-        // Ensure an a suitable shader exists
-        ShaderGBuffer::GenerateVariation(m_context, m_flags);
 
         m_object_size_cpu = sizeof(*this);
 
@@ -160,9 +153,6 @@ namespace Spartan
             m_textures.erase(type);
             m_flags &= ~type;
         }
-
-        // Ensure an a suitable shader exists
-        ShaderGBuffer::GenerateVariation(m_context, m_flags);
     }
 
     void Material::SetTextureSlot(const Material_Property type, const std::shared_ptr<RHI_Texture2D>& texture)

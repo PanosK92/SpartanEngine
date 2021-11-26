@@ -19,14 +19,13 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =======================
+//= INCLUDES =====================
 #include "Widget_ShaderEditor.h"
 #include "Rendering/Renderer.h"
 #include "Rendering/ShaderLight.h"
-#include "Rendering/ShaderGBuffer.h"
 #include "../ImGui_Extension.h"
 #include <fstream>
-//==================================
+//================================
 
 //= NAMESPACES =========
 using namespace std;
@@ -210,12 +209,6 @@ void Widget_ShaderEditor::GetShaderInstances()
         {
             m_shaders.emplace_back(it.second.get());
         }
-    }
-
-    // Gbuffer - Contained in shaders but not compiled itself, it holds variations in it instead
-    for (const auto& it : ShaderGBuffer::GetVariations())
-    {
-        m_shaders.emplace_back(it.second.get());
     }
 
     // Light - Contained in shaders but not compiled itself, it holds variations in it instead

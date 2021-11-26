@@ -71,8 +71,6 @@ cbuffer BufferUber : register(b1)
     matrix g_transform;
     matrix g_transform_previous;
 
-    float4 g_color;
-
     float3 g_float3;
     float g_blur_sigma;
     
@@ -94,16 +92,15 @@ cbuffer BufferUber : register(b1)
     float g_mat_height;
 
     uint g_mat_id;
+    uint g_mat_textures;
     uint g_is_transparent_pass;
     uint g_mip_count;
-    uint g_work_group_count;
-
-    uint g_mat_has_tex_albedo;
-    uint g_reflection_probe_available;
-    float2 g_padding;
 
     float3 g_extents;
-    float g_padding2;
+    uint g_work_group_count;
+
+    uint g_reflection_probe_available;
+    float3 g_padding;
 };
 
 // High frequency - Updates per light
@@ -125,14 +122,24 @@ cbuffer BufferMaterial : register(b3)
     float4 mat_sheen_sheenTint_pad[g_max_materials];
 }
 
-// Options
+// Options g-buffer textures
+bool has_texture_height()     { return g_mat_textures & uint(1U << 0);}
+bool has_texture_normal()     { return g_mat_textures & uint(1U << 1);}
+bool has_texture_albedo()     { return g_mat_textures & uint(1U << 2);}
+bool has_texture_roughness()  { return g_mat_textures & uint(1U << 3);}
+bool has_texture_metallic()   { return g_mat_textures & uint(1U << 4);}
+bool has_texture_alpha_mask() { return g_mat_textures & uint(1U << 5);}
+bool has_texture_emissive()   { return g_mat_textures & uint(1U << 6);}
+bool has_texture_occlusion()  { return g_mat_textures & uint(1U << 7);}
+
+// Options passes
 bool is_taa_enabled()            { return any(g_taa_jitter_offset); }
 bool is_ssr_enabled()            { return g_options & uint(1U << 0);}
 bool is_taa_upsampling_enabled() { return g_options & uint(1U << 1);}
 bool is_ssao_enabled()           { return g_options & uint(1U << 2);}
 bool is_ssao_gi_enabled()        { return g_options & uint(1U << 3);}
 
-// Options Debug
+// Options debug
 bool has_uav()                { return g_options_debug & uint(1U << 0); }
 bool needs_packing()          { return g_options_debug & uint(1U << 1); }
 bool needs_gamma_correction() { return g_options_debug & uint(1U << 2); }

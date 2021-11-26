@@ -59,7 +59,7 @@ float4 mainPS(Pixel_Input input) : SV_TARGET
     //float n_dot_h = saturate(dot(input.normal, h));
 
     float4 albedo = g_mat_color;
-    if (g_mat_has_tex_albedo != 0)
+    if (has_texture_albedo() != 0)
     {
         albedo *= tex_material_albedo.Sample(sampler_point_wrap, input.uv);
         albedo.rgb = degamma(albedo.rgb);

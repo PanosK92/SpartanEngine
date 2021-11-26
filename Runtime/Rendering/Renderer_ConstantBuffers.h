@@ -124,8 +124,6 @@ namespace Spartan
         Math::Matrix transform;
         Math::Matrix transform_previous;
 
-        Math::Vector4 color;
-    
         Math::Vector3 float3;
         float blur_sigma;
 
@@ -136,7 +134,7 @@ namespace Spartan
         uint32_t options_debug;
         float radius;
 
-        Math::Vector4 mat_albedo;
+        Math::Vector4 mat_color;
 
         Math::Vector2 mat_tiling_uv;
         Math::Vector2 mat_offset_uv;
@@ -147,16 +145,15 @@ namespace Spartan
         float mat_height_mul;
 
         uint32_t mat_id;
+        uint32_t mat_textures;
         uint32_t is_transparent_pass;
         uint32_t mip_count;
-        uint32_t work_group_count;
-
-        uint32_t mat_has_tex_albedo;
-        uint32_t reflection_proble_available;
-        Math::Vector2 padding;
 
         Math::Vector3 extents;
-        float paddding2;
+        uint32_t work_group_count;
+
+        uint32_t reflection_proble_available;
+        Math::Vector3 padding;
 
         bool operator==(const Cb_Uber& rhs) const
         {
@@ -164,14 +161,13 @@ namespace Spartan
                 transform                   == rhs.transform                   &&
                 transform_previous          == rhs.transform_previous          &&
                 mat_id                      == rhs.mat_id                      &&
-                mat_albedo                  == rhs.mat_albedo                  &&
+                mat_color                   == rhs.mat_color                   &&
                 mat_tiling_uv               == rhs.mat_tiling_uv               &&
                 mat_offset_uv               == rhs.mat_offset_uv               &&
                 mat_roughness_mul           == rhs.mat_roughness_mul           &&
                 mat_metallic_mul            == rhs.mat_metallic_mul            &&
                 mat_normal_mul              == rhs.mat_normal_mul              &&
                 mat_height_mul              == rhs.mat_height_mul              &&
-                color                       == rhs.color                       &&
                 float3                      == rhs.float3                      &&
                 blur_sigma                  == rhs.blur_sigma                  &&
                 blur_direction              == rhs.blur_direction              &&
@@ -180,10 +176,10 @@ namespace Spartan
                 resolution_in               == rhs.resolution_in               &&
                 mip_count                   == rhs.mip_count                   &&
                 work_group_count            == rhs.work_group_count            &&
-                mat_has_tex_albedo          == rhs.mat_has_tex_albedo          &&
                 reflection_proble_available == rhs.reflection_proble_available &&
                 radius                      == rhs.radius                      &&
                 extents                     == rhs.extents                     &&
+                mat_textures                == rhs.mat_textures                &&
                 options_debug               == rhs.options_debug;
         }
 

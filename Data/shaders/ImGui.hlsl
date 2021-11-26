@@ -46,7 +46,7 @@ float4 mainPS(PS_INPUT input) : SV_Target
 
     // Texture only has an R channel, copy it over to the other
     // channels so that the user doesn't see a red tinted texture.
-    if (g_color.r != 0 && g_color.g == 0)
+    if (g_mat_color.r != 0 && g_mat_color.g == 0)
     {
         color_texture.rgb = color_texture.rrr;
     }
