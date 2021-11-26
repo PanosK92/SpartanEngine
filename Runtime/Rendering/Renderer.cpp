@@ -34,6 +34,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World/Components/Renderable.h"
 #include "../World/Components/Camera.h"
 #include "../World/Components/Light.h"
+#include "../World/Components/ReflectionProbe.h"
 #include "../RHI/RHI_Device.h"
 #include "../RHI/RHI_PipelineCache.h"
 #include "../RHI/RHI_ConstantBuffer.h"
@@ -62,6 +63,7 @@ namespace Spartan
         m_options |= Render_ReverseZ;
         m_options |= Render_Debug_Transform;
         m_options |= Render_Debug_Grid;
+        m_options |= Render_Debug_ReflectionProbes;
         m_options |= Render_Debug_Lights;
         m_options |= Render_Debug_Physics;
         m_options |= Render_Bloom;
@@ -201,6 +203,7 @@ namespace Spartan
         CreateBlendStates();
         CreateRenderTextures(true, true, true, true);
         CreateFonts();
+        CreateMeshes();
         CreateSamplers(false);
         CreateStructuredBuffers();
         CreateTextures();
@@ -642,12 +645,7 @@ namespace Spartan
             if (!entity || !entity->IsActive())
                 continue;
 
-            // Get all the components we are interested in
-            Renderable* renderable = entity->GetComponent<Renderable>();
-            Light* light           = entity->GetComponent<Light>();
-            Camera* camera         = entity->GetComponent<Camera>();
-
-            if (renderable)
+            if (Renderable* renderable = entity->GetComponent<Renderable>())
             {
                 bool is_transparent = false;
                 bool is_visible     = true;
@@ -664,15 +662,20 @@ namespace Spartan
                 }
             }
 
-            if (light)
+            if (Light* light = entity->GetComponent<Light>())
             {
                 m_entities[Renderer_ObjectType::Light].emplace_back(entity.get());
             }
 
-            if (camera)
+            if (Camera* camera = entity->GetComponent<Camera>())
             {
                 m_entities[Renderer_ObjectType::Camera].emplace_back(entity.get());
                 m_camera = camera->GetPtrShared<Camera>();
+            }
+
+            if (ReflectionProbe* reflection_probe = entity->GetComponent<ReflectionProbe>())
+            {
+                m_entities[Renderer_ObjectType::ReflectionProbe].emplace_back(entity.get());
             }
         }
 
@@ -915,5 +918,4 @@ namespace Spartan
 
         m_textures_mip_generation.push_back(texture);
     }
-
 }

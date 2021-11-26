@@ -92,13 +92,13 @@ namespace Spartan
 
     Renderable::Renderable(Context* context, Entity* entity, uint64_t id /*= 0*/) : IComponent(context, entity, id)
     {
-        m_geometry_type         = Geometry_Custom;
-        m_geometryIndexOffset   = 0;
-        m_geometryIndexCount    = 0;
-        m_geometryVertexOffset  = 0;
-        m_geometryVertexCount   = 0;
-        m_material_default      = false;
-        m_cast_shadows          = true;
+        m_geometry_type        = Geometry_Custom;
+        m_geometryIndexOffset  = 0;
+        m_geometryIndexCount   = 0;
+        m_geometryVertexOffset = 0;
+        m_geometryVertexCount  = 0;
+        m_material_default     = false;
+        m_cast_shadows         = true;
 
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_material_default,      bool);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_material,              Material*);

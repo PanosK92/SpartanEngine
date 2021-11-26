@@ -44,6 +44,7 @@ namespace Spartan
     class Script;
     class Terrain;
     class Environment;
+    class ReflectionProbe;
     class IComponent;
 }
 
@@ -75,6 +76,7 @@ private:
     void ShowTerrain(Spartan::Terrain* terrain) const;
     void ShowAudioSource(Spartan::AudioSource* audio_source) const;
     void ShowAudioListener(Spartan::AudioListener* audio_listener) const;
+    void ShowReflectionProbe(Spartan::ReflectionProbe* reflection_probe) const;
     void ShowScript(Spartan::Script* script) const;
 
     void ShowAddComponentButton() const;

@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ========================
+//= INCLUDES ==========================
 #include "Spartan.h"
 #include "Entity.h"
 #include "World.h"
@@ -36,8 +36,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Components/AudioSource.h"
 #include "Components/AudioListener.h"
 #include "Components/Terrain.h"
+#include "Components/ReflectionProbe.h"
 #include "../IO/FileStream.h"
-//===================================
+//=====================================
 
 //= NAMESPACES =====
 using namespace std;
@@ -275,21 +276,22 @@ namespace Spartan
 
         switch (type)
         {
-            case ComponentType::AudioListener: component = static_cast<IComponent*>(AddComponent<AudioListener>(id)); break;
-            case ComponentType::AudioSource:   component = static_cast<IComponent*>(AddComponent<AudioSource>(id));   break;
-            case ComponentType::Camera:        component = static_cast<IComponent*>(AddComponent<Camera>(id));        break;
-            case ComponentType::Collider:      component = static_cast<IComponent*>(AddComponent<Collider>(id));      break;
-            case ComponentType::Constraint:    component = static_cast<IComponent*>(AddComponent<Constraint>(id));    break;
-            case ComponentType::Light:         component = static_cast<IComponent*>(AddComponent<Light>(id));         break;
-            case ComponentType::Renderable:    component = static_cast<IComponent*>(AddComponent<Renderable>(id));    break;
-            case ComponentType::RigidBody:     component = static_cast<IComponent*>(AddComponent<RigidBody>(id));     break;
-            case ComponentType::SoftBody:      component = static_cast<IComponent*>(AddComponent<SoftBody>(id));      break;
-            case ComponentType::Script:        component = static_cast<IComponent*>(AddComponent<Script>(id));        break;
-            case ComponentType::Environment:   component = static_cast<IComponent*>(AddComponent<Environment>(id));   break;
-            case ComponentType::Transform:     component = static_cast<IComponent*>(AddComponent<Transform>(id));     break;
-            case ComponentType::Terrain:       component = static_cast<IComponent*>(AddComponent<Terrain>(id));       break;
-            case ComponentType::Unknown:       component = nullptr;                                                   break;
-            default:                           component = nullptr;                                                   break;
+            case ComponentType::AudioListener:   component = static_cast<IComponent*>(AddComponent<AudioListener>(id));   break;
+            case ComponentType::AudioSource:     component = static_cast<IComponent*>(AddComponent<AudioSource>(id));     break;
+            case ComponentType::Camera:          component = static_cast<IComponent*>(AddComponent<Camera>(id));          break;
+            case ComponentType::Collider:        component = static_cast<IComponent*>(AddComponent<Collider>(id));        break;
+            case ComponentType::Constraint:      component = static_cast<IComponent*>(AddComponent<Constraint>(id));      break;
+            case ComponentType::Light:           component = static_cast<IComponent*>(AddComponent<Light>(id));           break;
+            case ComponentType::Renderable:      component = static_cast<IComponent*>(AddComponent<Renderable>(id));      break;
+            case ComponentType::RigidBody:       component = static_cast<IComponent*>(AddComponent<RigidBody>(id));       break;
+            case ComponentType::SoftBody:        component = static_cast<IComponent*>(AddComponent<SoftBody>(id));        break;
+            case ComponentType::Script:          component = static_cast<IComponent*>(AddComponent<Script>(id));          break;
+            case ComponentType::Environment:     component = static_cast<IComponent*>(AddComponent<Environment>(id));     break;
+            case ComponentType::Transform:       component = static_cast<IComponent*>(AddComponent<Transform>(id));       break;
+            case ComponentType::Terrain:         component = static_cast<IComponent*>(AddComponent<Terrain>(id));         break;
+            case ComponentType::ReflectionProbe: component = static_cast<IComponent*>(AddComponent<ReflectionProbe>(id)); break;
+            case ComponentType::Unknown:         component = nullptr;                                                     break;
+            default:                             component = nullptr;                                                     break;
         }
 
         SP_ASSERT(component != nullptr);

@@ -45,7 +45,7 @@ namespace Spartan::Math
             return Helper::INFINITY_;
         
         // Check for ray origin being inside the box
-        if (box.IsInside(m_start))
+        if (box.IsInside(m_start) == Intersection::Inside)
             return 0.0f;
 
         auto dist = Helper::INFINITY_;

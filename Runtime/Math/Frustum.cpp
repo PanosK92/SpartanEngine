@@ -99,10 +99,10 @@ namespace Spartan::Math
         }
 
         // Check sphere first as it's cheaper
-        if (CheckSphere(center, radius) != Outside)
+        if (CheckSphere(center, radius) != Intersection::Outside)
             return true;
 
-        if (CheckCube(center, radius) != Outside)
+        if (CheckCube(center, radius) != Intersection::Outside)
             return true;
 
         return false;
@@ -110,7 +110,7 @@ namespace Spartan::Math
 
     Intersection Frustum::CheckCube(const Vector3& center, const Vector3& extent) const
     {
-        Intersection result = Inside;
+        Intersection result = Intersection::Inside;
         Plane plane_abs;
 
         // Check if any one point of the cube is in the view frustum.
@@ -128,13 +128,13 @@ namespace Spartan::Math
 
             if (d_p_r < -plane.d)
             {
-                result = Outside;
+                result = Intersection::Outside;
                 break;
             }
 
             if (d_m_r < -plane.d)
             {
-                result = Intersects;
+                result = Intersection::Intersects;
             }
         }
 
@@ -151,14 +151,14 @@ namespace Spartan::Math
 
             // if this distance is < -sphere.radius, we are outside
             if (distance < -radius)
-                return Outside;
+                return Intersection::Outside;
 
             // else if the distance is between +- radius, then we intersect
             if (static_cast<float>(Helper::Abs(distance)) < radius)
-                return Intersects;
+                return Intersection::Intersects;
         }
 
         // otherwise we are fully in view
-        return Inside;
+        return Intersection::Inside;
     }
 }

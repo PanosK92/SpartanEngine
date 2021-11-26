@@ -20,7 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES =========
-#include "Common.hlsl"
+#include "common.hlsl"
 //====================
 
 Pixel_PosUv mainVS(Vertex_PosUv input)
@@ -28,8 +28,8 @@ Pixel_PosUv mainVS(Vertex_PosUv input)
     Pixel_PosUv output;
 
     input.position.w = 1.0f;
-    output.position = mul(input.position, g_transform);
-    output.uv = input.uv;
+    output.position  = mul(input.position, g_transform);
+    output.uv        = input.uv;
 
     return output;
 }

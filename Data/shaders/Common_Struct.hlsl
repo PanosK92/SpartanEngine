@@ -183,22 +183,22 @@ struct Light
         return attenuation;
     }
     
-    float3 compute_direction(float3 light_position, Surface surface)
+    float3 compute_direction(float3 light_position, float3 fragment_position)
     {
         float3 direction = 0.0f;
         
         #if DIRECTIONAL
         direction   = normalize(forward.xyz);
         #elif POINT
-        direction   = normalize(surface.position - light_position);
+        direction   = normalize(fragment_position - light_position);
         #elif SPOT
-        direction   = normalize(surface.position - light_position);
+        direction   = normalize(fragment_position - light_position);
         #endif
     
         return direction;
     }
-    
-    void Build(Surface surface)
+
+    void Build(float3 surface_position, float3 surface_normal, float3 surface_occlusion)
     {
         color             = cb_light_color.rgb;
         position          = cb_light_position.xyz;
@@ -209,16 +209,21 @@ struct Light
         forward           = cb_light_direction.xyz;
         normal_bias       = cb_light_normal_bias;
         near              = 0.1f;
-        distance_to_pixel = length(surface.position - position);
-        to_pixel          = compute_direction(position, surface);
-        n_dot_l           = saturate(dot(surface.normal, -to_pixel)); // Pre-compute n_dot_l since it's used in many places
-        attenuation       = compute_attenuation(surface.position);
-        radiance          = color * intensity * attenuation * surface.occlusion * n_dot_l;
+        distance_to_pixel = length(surface_position - position);
+        to_pixel          = compute_direction(position, surface_position);
+        n_dot_l           = saturate(dot(surface_normal, -to_pixel)); // Pre-compute n_dot_l since it's used in many places
+        attenuation       = compute_attenuation(surface_position);
+        radiance          = color * intensity * attenuation * surface_occlusion * n_dot_l;
         #if DIRECTIONAL
         array_size = 4;
         #else
         array_size = 1;
         #endif
+    }
+	
+	void Build(Surface surface)
+    {
+        Build(surface.position, surface.normal, surface.occlusion);
     }
 };
 

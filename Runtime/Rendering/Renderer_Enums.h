@@ -72,14 +72,15 @@ namespace Spartan
         noise_blue   = 25,
 
         // Misc
-        lutIbl      = 26,
-        environment = 27,
-        ssao        = 28,
-        ssr         = 29,
-        frame       = 30,
-        tex         = 31,
-        tex2        = 32,
-        font_atlas  = 33
+        lutIbl           = 26,
+        environment      = 27,
+        ssao             = 28,
+        ssr              = 29,
+        frame            = 30,
+        tex              = 31,
+        tex2             = 32,
+        font_atlas       = 33,
+        reflection_probe = 34
     };
 
     // UAV Bindings
@@ -130,7 +131,9 @@ namespace Spartan
         BloomUpsampleBlendMip_C,
         ToneMapping_C,
         Debanding_C,
-        Debug_C,
+        Debug_Texture_C,
+        Debug_ReflectionProbe_V,
+        Debug_ReflectionProbe_P,
         BrdfSpecularLut_C,
         Light_C,
         Light_Composition_C,
@@ -147,6 +150,8 @@ namespace Spartan
         BlurGaussian_C,
         BlurGaussianBilateral_C,
         Entity_Outline_P,
+        Reflection_Probe_V,
+        Reflection_Probe_P,
         AMD_FidelityFX_CAS_C,
         AMD_FidelityFX_SPD_C,
         AMD_FidelityFX_SPD_LuminanceAntiflicker_C,
@@ -188,29 +193,30 @@ namespace Spartan
         Render_Debug_Aabb                                           = 1 << 0,
         Render_Debug_PickingRay                                     = 1 << 1,
         Render_Debug_Grid                                           = 1 << 2,
-        Render_Debug_Transform                                      = 1 << 3,
-        Render_Debug_SelectionOutline                               = 1 << 4,
-        Render_Debug_Lights                                         = 1 << 5,
-        Render_Debug_PerformanceMetrics                             = 1 << 6,
-        Render_Debug_Physics                                        = 1 << 7,
-        Render_Debug_Wireframe                                      = 1 << 8,
-        Render_Bloom                                                = 1 << 9,
-        Render_VolumetricFog                                        = 1 << 10,
-        Render_AntiAliasing_Taa                                     = 1 << 11,
-        Render_AntiAliasing_Fxaa                                    = 1 << 12,
-        Render_Ssao                                                 = 1 << 13,
-        Render_ScreenSpaceShadows                                   = 1 << 14,
-        Render_ScreenSpaceReflections                               = 1 << 15,
-        Render_MotionBlur                                           = 1 << 16,
-        Render_DepthOfField                                         = 1 << 17,
-        Render_FilmGrain                                            = 1 << 18,
-        Render_Sharpening_AMD_FidelityFX_ContrastAdaptiveSharpening = 1 << 19,
-        Render_ChromaticAberration                                  = 1 << 20,
-        Render_Debanding                                            = 1 << 21,
-        Render_ReverseZ                                             = 1 << 22,
-        Render_DepthPrepass                                         = 1 << 23,
-        Render_Upsample_TAA                                         = 1 << 24,
-        Render_Upsample_AMD_FidelityFX_SuperResolution              = 1 << 25
+        Render_Debug_ReflectionProbes                               = 1 << 3,
+        Render_Debug_Transform                                      = 1 << 4,
+        Render_Debug_SelectionOutline                               = 1 << 5,
+        Render_Debug_Lights                                         = 1 << 6,
+        Render_Debug_PerformanceMetrics                             = 1 << 7,
+        Render_Debug_Physics                                        = 1 << 8,
+        Render_Debug_Wireframe                                      = 1 << 9,
+        Render_Bloom                                                = 1 << 10,
+        Render_VolumetricFog                                        = 1 << 11,
+        Render_AntiAliasing_Taa                                     = 1 << 12,
+        Render_AntiAliasing_Fxaa                                    = 1 << 13,
+        Render_Ssao                                                 = 1 << 14,
+        Render_ScreenSpaceShadows                                   = 1 << 15,
+        Render_ScreenSpaceReflections                               = 1 << 16,
+        Render_MotionBlur                                           = 1 << 17,
+        Render_DepthOfField                                         = 1 << 18,
+        Render_FilmGrain                                            = 1 << 19,
+        Render_Sharpening_AMD_FidelityFX_ContrastAdaptiveSharpening = 1 << 20,
+        Render_ChromaticAberration                                  = 1 << 21,
+        Render_Debanding                                            = 1 << 22,
+        Render_ReverseZ                                             = 1 << 23,
+        Render_DepthPrepass                                         = 1 << 24,
+        Render_Upsample_TAA                                         = 1 << 25,
+        Render_Upsample_AMD_FidelityFX_SuperResolution              = 1 << 26
     };
 
     // Renderer/graphics options values
@@ -241,6 +247,7 @@ namespace Spartan
         GeometryOpaque,
         GeometryTransparent,
         Light,
-        Camera
+        Camera,
+        ReflectionProbe
     };
 }

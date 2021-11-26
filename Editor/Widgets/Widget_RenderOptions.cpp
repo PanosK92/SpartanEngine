@@ -195,6 +195,7 @@ void Widget_RenderOptions::TickVisible()
     bool debug_selection_outline   = m_renderer->GetOption(Render_Debug_SelectionOutline);
     bool debug_picking_ray         = m_renderer->GetOption(Render_Debug_PickingRay);
     bool debug_grid                = m_renderer->GetOption(Render_Debug_Grid);
+    bool debug_reflection_probes   = m_renderer->GetOption(Render_Debug_ReflectionProbes);
     bool debug_performance_metrics = m_renderer->GetOption(Render_Debug_PerformanceMetrics);
     bool debug_wireframe           = m_renderer->GetOption(Render_Debug_Wireframe);
     bool do_depth_prepass          = m_renderer->GetOption(Render_DepthPrepass);
@@ -435,7 +436,8 @@ void Widget_RenderOptions::TickVisible()
                 helper::CheckBox("AABBs - Axis-aligned bounding boxes", debug_aabb);
                 helper::CheckBox("Lights", debug_light);
                 helper::CheckBox("Picking ray", debug_picking_ray);
-                helper::CheckBox("Grid", debug_grid);  
+                helper::CheckBox("Grid", debug_grid);
+                helper::CheckBox("Reflection probes", debug_reflection_probes);
                 helper::CheckBox("Wireframe", debug_wireframe);
             }
 
@@ -505,6 +507,7 @@ void Widget_RenderOptions::TickVisible()
     m_renderer->SetOption(Render_Debug_Lights, debug_light);
     m_renderer->SetOption(Render_Debug_PickingRay, debug_picking_ray);
     m_renderer->SetOption(Render_Debug_Grid, debug_grid);
+    m_renderer->SetOption(Render_Debug_ReflectionProbes, debug_reflection_probes);
     m_renderer->SetOption(Render_Debug_PerformanceMetrics, debug_performance_metrics);
     m_renderer->SetOption(Render_Debug_Wireframe, debug_wireframe);
     m_renderer->SetOption(Render_DepthPrepass, do_depth_prepass);

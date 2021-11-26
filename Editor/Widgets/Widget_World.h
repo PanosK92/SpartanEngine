@@ -72,7 +72,8 @@ private:
     static void ActionEntityCreateAudioSource();
     static void ActionEntityCreateAudioListener();
     static void ActionEntityCreateSkybox();
-    
+    static void ActionEntityCreateReflectionProbe();
+
     std::shared_ptr<Spartan::Entity> m_entity_empty;
     bool m_expand_to_selection      = false;
     bool m_expanded_to_selection    = false;

@@ -55,14 +55,15 @@ Texture2D tex_noise_normal    : register(t24);
 Texture2DArray tex_noise_blue : register(t25);
 
 // Misc
-Texture2D tex_lut_ibl     : register(t26);
-Texture2D tex_environment : register(t27);
-Texture2D tex_ssao        : register(t28);
-Texture2D tex_ssr         : register(t29);
-Texture2D tex_frame       : register(t30);
-Texture2D tex             : register(t31);
-Texture2D tex2            : register(t32);
-Texture2D tex_font_atlas  : register(t33);
+Texture2D tex_lut_ibl            : register(t26);
+Texture2D tex_environment        : register(t27);
+Texture2D tex_ssao               : register(t28);
+Texture2D tex_ssr                : register(t29);
+Texture2D tex_frame              : register(t30);
+Texture2D tex                    : register(t31);
+Texture2D tex2                   : register(t32);
+Texture2D tex_font_atlas         : register(t33);
+TextureCube tex_reflection_probe : register(t34);
 
 // RWTexture2D
 RWTexture2D<float> tex_out_r                               : register(u0);

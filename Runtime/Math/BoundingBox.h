@@ -56,19 +56,19 @@ namespace Spartan
             BoundingBox& operator =(const BoundingBox& rhs) = default;
 
             // Returns the center
-            Vector3 GetCenter() const   { return (m_max + m_min) * 0.5f; }
+            Vector3 GetCenter() const { return (m_max + m_min) * 0.5f; }
 
             // Returns the size
-            Vector3 GetSize() const     { return m_max - m_min; }
+            Vector3 GetSize() const { return m_max - m_min; }
 
             // Returns extents
-            Vector3 GetExtents() const  { return (m_max - m_min) * 0.5f; }
+            Vector3 GetExtents() const { return (m_max - m_min) * 0.5f; }
 
             // Test if a point is inside
             Intersection IsInside(const Vector3& point) const;
 
             // Test if a bounding box is inside
-            Intersection IsInside (const BoundingBox& box) const;
+            Intersection IsInside(const BoundingBox& box) const;
 
             // Returns a transformed bounding box
             BoundingBox Transform(const Matrix& transform) const;
@@ -79,14 +79,14 @@ namespace Spartan
             const Vector3& GetMin() const { return m_min; }
             const Vector3& GetMax() const { return m_max; }
 
-            void Undefine()            { m_min = Vector3::InfinityNeg; m_max = Vector3::Infinity; }
-            bool Defined() const    { return m_min.x != INFINITY; }
+            void Undefine()      { m_min = Vector3::InfinityNeg; m_max = Vector3::Infinity; }
+            bool Defined() const { return m_min.x != INFINITY; }
 
             static const BoundingBox Zero;
 
         private:
             Vector3 m_min;
-            Vector3 m_max;    
+            Vector3 m_max;
         };
     }
 }

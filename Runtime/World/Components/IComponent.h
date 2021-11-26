@@ -52,6 +52,7 @@ namespace Spartan
         Environment,
         Transform,
         Terrain,
+        ReflectionProbe,
         Unknown
     };
 

@@ -69,3 +69,17 @@ struct Pixel_PosColor
     float4 position : SV_POSITION;
     float4 color    : COLOR;
 };
+
+struct Pixel_PosNor
+{
+    float4 position : SV_POSITION;
+    float3 normal   : NORMAL;
+};
+
+struct Pixel_PosUvNorTan
+{
+    float4 position : SV_POSITION;
+    float2 uv       : TEXCOORD;
+    float3 normal   : NORMAL;
+    float3 tangent  : TANGENT;
+};

@@ -58,12 +58,12 @@ namespace Spartan
 
     void Light::OnInitialize()
     {
-        
+
     }
 
     void Light::OnStart()
     {
-        
+
     }
 
     void Light::OnTick(double delta_time)
@@ -78,24 +78,29 @@ namespace Spartan
             m_initialized = true;
         }
 
-        // Position and rotation dirty check
-        if (m_previous_pos != m_transform->GetPosition() || m_previous_rot != m_transform->GetRotation())
+        // Dirty checks
         {
-            m_previous_pos = m_transform->GetPosition();
-            m_previous_rot = m_transform->GetRotation();
-
-            m_is_dirty = true;
-        }
-
-        // Camera dirty check (needed for directional light cascade computations)
-        if (m_light_type == LightType::Directional)
-        {
-            if (shared_ptr<Camera> camera = m_renderer->GetCamera())
+            // Position, rotation and reverse-z
+            const bool reverse_z = m_renderer ? m_renderer->GetOption(Render_ReverseZ) : false;
+            if (m_previous_pos != m_transform->GetPosition() || m_previous_rot != m_transform->GetRotation() || m_previous_reverse_z != reverse_z)
             {
-                if (m_previous_camera_view != camera->GetViewMatrix())
+                m_previous_pos       = m_transform->GetPosition();
+                m_previous_rot       = m_transform->GetRotation();
+                m_previous_reverse_z = reverse_z;
+
+                m_is_dirty = true;
+            }
+
+            // Camera (needed for directional light cascade computations)
+            if (m_light_type == LightType::Directional)
+            {
+                if (shared_ptr<Camera> camera = m_renderer->GetCamera())
                 {
-                    m_previous_camera_view = camera->GetViewMatrix();
-                    m_is_dirty = true;
+                    if (m_previous_camera_view != camera->GetViewMatrix())
+                    {
+                        m_previous_camera_view = camera->GetViewMatrix();
+                        m_is_dirty = true;
+                    }
                 }
             }
         }
@@ -168,8 +173,8 @@ namespace Spartan
         if (m_light_type == type)
             return;
 
-        m_light_type    = type;
-        m_is_dirty      = true;
+        m_light_type = type;
+        m_is_dirty   = true;
 
         if (m_shadows_enabled)
         {
@@ -189,8 +194,8 @@ namespace Spartan
         if (m_shadows_enabled == cast_shadows)
             return;
 
-        m_shadows_enabled   = cast_shadows;
-        m_is_dirty          = true;
+        m_shadows_enabled = cast_shadows;
+        m_is_dirty        = true;
 
         CreateShadowMap();
     }
@@ -200,8 +205,8 @@ namespace Spartan
         if (m_shadows_transparent_enabled == cast_transparent_shadows)
             return;
 
-        m_shadows_transparent_enabled   = cast_transparent_shadows;
-        m_is_dirty                      = true;
+        m_shadows_transparent_enabled = cast_transparent_shadows;
+        m_is_dirty                    = true;
 
         CreateShadowMap();
     }
@@ -250,7 +255,7 @@ namespace Spartan
         }
         else if (m_light_type == LightType::Point)
         {
-            const Vector3 position = GetTransform()->GetPosition();
+            const Vector3 position = m_transform->GetPosition();
 
             // Compute view for each side of the cube map
             m_matrix_view[0] = Matrix::CreateLookAtLH(position, position + Vector3::Right,      Vector3::Up);       // x+
@@ -279,14 +284,14 @@ namespace Spartan
         }
         else
         {
-            const uint32_t width        = m_shadow_map.texture_depth->GetWidth();
-            const uint32_t height       = m_shadow_map.texture_depth->GetHeight();
-            const float aspect_ratio    = static_cast<float>(width) / static_cast<float>(height);
-            const float fov             = m_light_type == LightType::Spot ? m_angle_rad * 2.0f : Math::Helper::PI_DIV_2;
-            const float near_plane      = reverse_z ? m_range : 0.3f;
-            const float far_plane       = reverse_z ? 0.3f : m_range;
-            m_matrix_projection[index]  = Matrix::CreatePerspectiveFieldOfViewLH(fov, aspect_ratio, near_plane, far_plane);
-            shadow_slice.frustum        = Frustum(m_matrix_view[index], m_matrix_projection[index], far_plane);
+            const uint32_t width       = m_shadow_map.texture_depth->GetWidth();
+            const uint32_t height      = m_shadow_map.texture_depth->GetHeight();
+            const float aspect_ratio   = static_cast<float>(width) / static_cast<float>(height);
+            const float fov            = m_light_type == LightType::Spot ? m_angle_rad * 2.0f : Math::Helper::PI_DIV_2;
+            const float near_plane     = reverse_z ? m_range : 0.3f;
+            const float far_plane      = reverse_z ? 0.3f : m_range;
+            m_matrix_projection[index] = Matrix::CreatePerspectiveFieldOfViewLH(fov, aspect_ratio, near_plane, far_plane);
+            shadow_slice.frustum       = Frustum(m_matrix_view[index], m_matrix_projection[0], far_plane);
         }
 
         return true;
@@ -471,7 +476,7 @@ namespace Spartan
         }
     }
 
-    bool Light::IsInViewFrustrum(Renderable* renderable, uint32_t index) const
+    bool Light::IsInViewFrustum(Renderable* renderable, uint32_t index) const
     {
         const auto box     = renderable->GetAabb();
         const auto center  = box.GetCenter();
