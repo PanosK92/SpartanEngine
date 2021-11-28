@@ -162,8 +162,8 @@ struct Light
         float scale             = 1.0f / max(0.001f, cos_inner - cos_outer);
         float offset            = -cos_outer * scale;
 
-        float cd            = dot(to_pixel, forward);
-        float attenuation   = saturate(cd * scale + offset);
+        float cd           = dot(to_pixel, forward);
+        float attenuation  = saturate(cd * scale + offset);
         return attenuation * attenuation;
     }
 
@@ -172,14 +172,19 @@ struct Light
     {
         float attenuation = 0.0f;
         
-        #if DIRECTIONAL
-        attenuation = saturate(dot(-forward.xyz, float3(0.0f, 1.0f, 0.0f)));
-        #elif POINT 
-        attenuation = compute_attenuation_distance(surface_position);
-        #elif SPOT  
-        attenuation = compute_attenuation_distance(surface_position) * compute_attenuation_angle();
-        #endif
-    
+        if (light_is_directional())
+        {
+            attenuation = saturate(dot(-forward.xyz, float3(0.0f, 1.0f, 0.0f)));
+        }
+        else if (light_is_point())
+        {
+            attenuation = compute_attenuation_distance(surface_position);
+        }
+        else if (light_is_spot())
+        {
+            attenuation = compute_attenuation_distance(surface_position) * compute_attenuation_angle();
+        }
+
         return attenuation;
     }
     
@@ -187,13 +192,18 @@ struct Light
     {
         float3 direction = 0.0f;
         
-        #if DIRECTIONAL
-        direction   = normalize(forward.xyz);
-        #elif POINT
-        direction   = normalize(fragment_position - light_position);
-        #elif SPOT
-        direction   = normalize(fragment_position - light_position);
-        #endif
+        if (light_is_directional())
+        {
+            direction = normalize(forward.xyz);
+        }
+        else if (light_is_point())
+        {
+            direction = normalize(fragment_position - light_position);
+        }
+        else if (light_is_spot())
+        {
+            direction = normalize(fragment_position - light_position);
+        }
     
         return direction;
     }
@@ -214,14 +224,10 @@ struct Light
         n_dot_l           = saturate(dot(surface_normal, -to_pixel)); // Pre-compute n_dot_l since it's used in many places
         attenuation       = compute_attenuation(surface_position);
         radiance          = color * intensity * attenuation * surface_occlusion * n_dot_l;
-        #if DIRECTIONAL
-        array_size = 4;
-        #else
-        array_size = 1;
-        #endif
+        array_size        = light_is_directional() ? 4 : 1;
     }
-	
-	void Build(Surface surface)
+
+    void Build(Surface surface)
     {
         Build(surface.position, surface.normal, surface.occlusion);
     }

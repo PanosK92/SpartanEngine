@@ -40,6 +40,64 @@ namespace Spartan
         m_vertex_type  = vertex_type;
     }
 
+    // Actual API specific compilation
+    static void CompileShader(
+        atomic<Shader_Compilation_State>& compilation_state,
+        RHI_Shader_Type shader_type,
+        const std::unordered_map<std::string, std::string>& defines,
+        string& object_name,
+        void*& resource,
+        function<void*()> compile2
+    )
+    {
+        const Stopwatch timer;
+
+        // Compile
+        compilation_state = Shader_Compilation_State::Compiling;
+        resource          = compile2();
+        compilation_state = resource ? Shader_Compilation_State::Succeeded : Shader_Compilation_State::Failed;
+
+        // Log compilation result
+        {
+            string type_str = "unknown";
+            type_str = shader_type == RHI_Shader_Vertex  ? "vertex"  : type_str;
+            type_str = shader_type == RHI_Shader_Pixel   ? "pixel"   : type_str;
+            type_str = shader_type == RHI_Shader_Compute ? "compute" : type_str;
+
+            string defines_str;
+            for (const auto& define : defines)
+            {
+                if (!defines_str.empty())
+                    defines_str += ", ";
+
+                defines_str += define.first + " = " + define.second;
+            }
+
+            if (compilation_state == Shader_Compilation_State::Succeeded)
+            {
+                if (defines_str.empty())
+                {
+                    LOG_INFO("Successfully compiled %s shader \"%s\" in %.2f ms.", type_str.c_str(), object_name.c_str(), timer.GetElapsedTimeMs());
+                }
+                else
+                {
+                    LOG_INFO("Successfully compiled %s shader \"%s\" with definitions \"%s\" in %.2f ms.", type_str.c_str(), object_name.c_str(), defines_str.c_str(), timer.GetElapsedTimeMs());
+                }
+            }
+            else if (compilation_state == Shader_Compilation_State::Failed)
+            {
+                if (defines_str.empty())
+                {
+                    LOG_ERROR("Failed to compile %s shader \"%s\".", type_str.c_str(), object_name.c_str());
+                }
+                else
+                {
+                    LOG_ERROR("Failed to compile %s shader \"%s\" with definitions \"%s\".", type_str.c_str(), object_name.c_str(), defines_str.c_str());
+                }
+            }
+        }
+
+    };
     void RHI_Shader::Compile(const RHI_Shader_Type type, const string& shader, bool async)
     {
         m_shader_type = type;
@@ -56,66 +114,17 @@ namespace Spartan
             LoadSource(shader);
         }
 
-        // Lamda with the actual API specific compilation
-        auto compile_api_call = [this]()
-        {
-            // Compile
-            m_compilation_state = Shader_Compilation_State::Compiling;
-            m_resource          = Compile2();
-            m_compilation_state = m_resource ? Shader_Compilation_State::Succeeded : Shader_Compilation_State::Failed;
-
-            // Log compilation result
-            {
-                string type_str = "unknown";
-                type_str        = m_shader_type == RHI_Shader_Vertex  ? "vertex"  : type_str;
-                type_str        = m_shader_type == RHI_Shader_Pixel   ? "pixel"   : type_str;
-                type_str        = m_shader_type == RHI_Shader_Compute ? "compute" : type_str;
-
-                string defines;
-                for (const auto& define : m_defines)
-                {
-                    if (!defines.empty())
-                        defines += ", ";
-
-                    defines += define.first + " = " + define.second;
-                }
-
-                if (m_compilation_state == Shader_Compilation_State::Succeeded)
-                {
-                    if (defines.empty())
-                    {
-                        LOG_INFO("Successfully compiled %s shader \"%s\".", type_str.c_str(), m_object_name.c_str());
-                    }
-                    else
-                    {
-                        LOG_INFO("Successfully compiled %s shader \"%s\" with definitions \"%s\".", type_str.c_str(), m_object_name.c_str(), defines.c_str());
-                    }
-                }
-                else if (m_compilation_state == Shader_Compilation_State::Failed)
-                {
-                    if (defines.empty())
-                    {
-                        LOG_ERROR("Failed to compile %s shader \"%s\".", type_str.c_str(), m_object_name.c_str());
-                    }
-                    else
-                    {
-                        LOG_ERROR("Failed to compile %s shader \"%s\" with definitions \"%s\".", type_str.c_str(), m_object_name.c_str(), defines.c_str());
-                    }
-                }
-            }
-        };
-
         // Compile
         {
             m_compilation_state = Shader_Compilation_State::Idle;
 
             if (!async)
             {
-                compile_api_call();
+                CompileShader(m_compilation_state, m_shader_type, m_defines, m_object_name, m_resource, std::bind(&RHI_Shader::Compile2, this));
             }
             else
             {
-                m_context->GetSubsystem<Threading>()->AddTask(compile_api_call);
+                m_context->GetSubsystem<Threading>()->AddTask([this]() { CompileShader(m_compilation_state, m_shader_type, m_defines, m_object_name, m_resource, std::bind(&RHI_Shader::Compile2, this)); });
             }
         }
     }
@@ -141,7 +150,6 @@ namespace Spartan
 
         string file_source = buffer.str();
         string file_directory = FileSystem::GetDirectoryFromFilePath(file_path);
-        
         
         // Build combined source (go through every line)
         istringstream stream(file_source);

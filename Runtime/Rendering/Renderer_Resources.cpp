@@ -22,7 +22,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ============================
 #include "Spartan.h"
 #include "Renderer.h"
-#include "ShaderLight.h"
 #include "Font/Font.h"
 #include "../Utilities/Geometry.h"
 #include "../Resource/ResourceCache.h"
@@ -237,14 +236,15 @@ namespace Spartan
         // Get standard shader directory
         const auto dir_shaders = m_resource_cache->GetResourceDirectory(ResourceDirectory::Shaders) + "\\";
 
-        // Shader which compile different variations when needed
-        m_shaders[RendererShader::Light_C]   = make_shared<ShaderLight>(m_context);
-
         // G-Buffer
         m_shaders[RendererShader::Gbuffer_V] = make_shared<RHI_Shader>(m_context, RHI_Vertex_Type::PosTexNorTan);
         m_shaders[RendererShader::Gbuffer_V]->Compile(RHI_Shader_Vertex, dir_shaders + "gbuffer.hlsl", async);
         m_shaders[RendererShader::Gbuffer_P] = make_shared<RHI_Shader>(m_context);
         m_shaders[RendererShader::Gbuffer_P]->Compile(RHI_Shader_Pixel, dir_shaders + "gbuffer.hlsl", async);
+
+        // Light
+        m_shaders[RendererShader::Light_C] = make_shared<RHI_Shader>(m_context);
+        m_shaders[RendererShader::Light_C]->Compile(RHI_Shader_Compute, dir_shaders + "light.hlsl", async);
 
         // Quad
         m_shaders[RendererShader::Quad_V] = make_shared<RHI_Shader>(m_context, RHI_Vertex_Type::PosTex);

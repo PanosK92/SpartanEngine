@@ -358,7 +358,8 @@ namespace Spartan
             m_cb_frame_cpu.set_bit(GetOption(Render_ScreenSpaceReflections),             1 << 0);
             m_cb_frame_cpu.set_bit(GetOption(Render_Upsample_TAA),                       1 << 1);
             m_cb_frame_cpu.set_bit(GetOption(Render_Ssao),                               1 << 2);
-            m_cb_frame_cpu.set_bit(GetOptionValue<bool>(Renderer_Option_Value::Ssao_Gi), 1 << 3);
+            m_cb_frame_cpu.set_bit(GetOption(Render_VolumetricFog),                      1 << 3);
+            m_cb_frame_cpu.set_bit(GetOptionValue<bool>(Renderer_Option_Value::Ssao_Gi), 1 << 4);
         }
 
         Lines_PreMain();
@@ -593,6 +594,14 @@ namespace Spartan
         m_cb_light_cpu.normal_bias                = light->GetNormalBias();
         m_cb_light_cpu.position                   = light->GetTransform()->GetPosition();
         m_cb_light_cpu.direction                  = light->GetTransform()->GetForward();
+        m_cb_light_cpu.options                    = 0;
+        m_cb_light_cpu.options                    |= light->GetLightType() == LightType::Directional ? (1 << 0) : 0;
+        m_cb_light_cpu.options                    |= light->GetLightType() == LightType::Point       ? (1 << 1) : 0;
+        m_cb_light_cpu.options                    |= light->GetLightType() == LightType::Spot        ? (1 << 2) : 0;
+        m_cb_light_cpu.options                    |= light->GetShadowsEnabled()                      ? (1 << 3) : 0;
+        m_cb_light_cpu.options                    |= light->GetShadowsTransparentEnabled()           ? (1 << 4) : 0;
+        m_cb_light_cpu.options                    |= light->GetShadowsScreenSpaceEnabled()           ? (1 << 5) : 0;
+        m_cb_light_cpu.options                    |= light->GetVolumetricEnabled()                   ? (1 << 6) : 0;
 
         if (!update_dynamic_buffer<Cb_Light>(cmd_list, m_cb_light_gpu.get(), m_cb_light_cpu, m_cb_light_cpu_previous, m_cb_light_offset_index))
             return false;
