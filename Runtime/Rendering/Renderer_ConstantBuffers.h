@@ -195,6 +195,8 @@ namespace Spartan
         float normal_bias;
         Math::Vector4 position;
         Math::Vector4 direction;
+        uint32_t options;
+        Math::Vector3 padding;
     
         bool operator==(const Cb_Light& rhs)
         {
@@ -209,7 +211,8 @@ namespace Spartan
                 normal_bias                 == rhs.normal_bias                &&
                 color                       == rhs.color                      &&
                 position                    == rhs.position                   &&
-                direction                   == rhs.direction;
+                direction                   == rhs.direction                  &&
+                options                     == rhs.options;
         }
     };
 

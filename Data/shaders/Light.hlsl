@@ -19,7 +19,10 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =================
+#define FOG_REGULAR 1
+#define FOG_VOLUMETRIC 1
+
+//= INCLUDES =========
 #include "common.hlsl"
 #include "brdf.hlsl"
 #include "shadow_mapping.hlsl"
@@ -29,18 +32,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
-    // Out of bounds check
-    if (any(int2(thread_id.xy) >= g_resolution_rt.xy))
-        return;
-
     // Create surface
     Surface surface;
     surface.Build(thread_id.xy, true, true, true);
 
-    // If this is a transparent pass, ignore all opaque pixels, and vice versa.
-    bool early_exit_1 = !g_is_transparent_pass && surface.is_transparent() && !surface.is_sky(); // do shade sky pixels during the opaque pass (volumetric lighting)
-    bool early_exit_2 = g_is_transparent_pass && surface.is_opaque();
-    if (early_exit_1 || early_exit_2)
+    // Early exit cases
+    bool early_exit_out_of_bounds = any(int2(thread_id.xy) >= g_resolution_rt.xy);
+    bool early_exit_1             = !g_is_transparent_pass && surface.is_transparent() && !surface.is_sky(); // do shade sky pixels during the opaque pass (volumetric lighting)
+    bool early_exit_2             = g_is_transparent_pass && surface.is_opaque();
+    if (early_exit_out_of_bounds || early_exit_1 || early_exit_2)
         return;
 
     // Create light
@@ -51,18 +51,16 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     float4 shadow = 1.0f;
     {
         // Shadow mapping
-        #if SHADOWS
+        if (light_has_shadows())
         {
             shadow = Shadow_Map(surface, light);
         }
-        #endif
         
         // Screen space shadows
-        #if SHADOWS_SCREEN_SPACE
+        if (light_has_shadows_screen_space())
         {
             shadow.a = min(shadow.a, ScreenSpaceShadows(surface, light));
         }
-        #endif
 
         // Ensure that the shadow is as transparent as the material
         if (g_is_transparent_pass)
@@ -79,8 +77,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     float3 light_volumetric = 0.0f;
 
     // Reflectance equation
-    [branch]
-    if (any(light.radiance) && !surface.is_sky())
+    if (!surface.is_sky())
     {
         // Compute some vectors and dot products
         float3 l      = -light.to_pixel;
@@ -145,8 +142,9 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     tex_out_rgb2[thread_id.xy] += saturate_16(light_specular * light.radiance);
 
     // Volumetric
-#if VOLUMETRIC
-    light_volumetric           += VolumetricLighting(surface, light);
-    tex_out_rgb3[thread_id.xy] += saturate_16(light_volumetric);
-#endif
+    if (light_is_volumetric() && is_volumetric_fog_enabled())
+    {
+        light_volumetric           += VolumetricLighting(surface, light);
+        tex_out_rgb3[thread_id.xy] += saturate_16(light_volumetric);
+    }
 }

@@ -22,9 +22,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =====================
 #include "Widget_ShaderEditor.h"
 #include "Rendering/Renderer.h"
-#include "Rendering/ShaderLight.h"
 #include "../ImGui_Extension.h"
 #include <fstream>
+#include "RHI/RHI_Shader.h"
 //================================
 
 //= NAMESPACES =========
@@ -209,12 +209,6 @@ void Widget_ShaderEditor::GetShaderInstances()
         {
             m_shaders.emplace_back(it.second.get());
         }
-    }
-
-    // Light - Contained in shaders but not compiled itself, it holds variations in it instead
-    for (const auto& it : ShaderLight::GetVariations())
-    {
-        m_shaders.emplace_back(it.second.get());
     }
 
     // Order them alphabetically

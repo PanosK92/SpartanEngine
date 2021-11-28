@@ -19,9 +19,16 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
+
+//= INCLUDES =========
+#include "common.hlsl"
+//====================
+
 /*------------------------------------------------------------------------------
     REGULAR FOG
 ------------------------------------------------------------------------------*/
+
+#if FOG_REGULAR
 
 static const float g_fog_start        = -0.5f;
 static const float g_fog_end          = 5.0f;
@@ -43,9 +50,12 @@ float get_fog_factor(const Surface surface)
     return get_fog_factor(surface.position.y, surface.camera_to_pixel_length);
 }
 
+#endif
 /*------------------------------------------------------------------------------
     VOLUMETRIC FOG
 ------------------------------------------------------------------------------*/
+
+#if FOG_VOLUMETRIC
 
 static const uint g_vl_steps                    = 16;
 static const float g_vl_scattering              = 0.8f; // [0, 1]
@@ -66,43 +76,51 @@ float3 vl_raymarch(Light light, float3 ray_pos, float3 ray_step, float3 ray_dir,
 {
     float3 fog_accumulation= 0.0f;
 
-    [unroll]
     for (uint i = 0; i < g_vl_steps; i++)
     {
         float3 fog = 1.0f;
 
         // Attenuate
-        #if DIRECTIONAL
-        fog *= compute_mie_scattering(dot(light.to_pixel, ray_dir));
-        #else
-        fog *= light.attenuation;
-        #endif
+        if (light_is_directional())
+        {
+            fog *= compute_mie_scattering(dot(light.to_pixel, ray_dir));
+        }
+        else
+        {
+            fog *= light.attenuation;
+        }
 
-        #if SHADOWS == 1 ||  SHADOWS_TRANSPARENT == 1
-        float3 pos_ndc = world_to_ndc(ray_pos, cb_light_view_projection[cascade_index]);
-        #endif
+        float3 pos_ndc = 0.0f;
+        if (light_has_shadows() || light_has_shadows_transparent())
+        {
+            pos_ndc = world_to_ndc(ray_pos, cb_light_view_projection[cascade_index]);
+        }
 
         // Shadows - Opaque
-        #if SHADOWS
+        if (light_has_shadows())
         {
-            #if POINT
-            fog *= shadow_compare_depth(normalize(ray_pos - light.position), pos_ndc.z);
-            #else // directional & spot
-            fog *= shadow_compare_depth(float3(ndc_to_uv(pos_ndc), cascade_index), pos_ndc.z);
-            #endif
+            if (light_is_point())
+            {
+                fog *= shadow_compare_depth(normalize(ray_pos - light.position), pos_ndc.z);
+            }
+            else // directional & spot
+            {
+                fog *= shadow_compare_depth(float3(ndc_to_uv(pos_ndc), cascade_index), pos_ndc.z);
+            }
         }
-        #endif
 
         // Shadows - Transparent
-        #if SHADOWS_TRANSPARENT
+        if (light_has_shadows_transparent())
         {
-            #if POINT
-            fog *= shadow_sample_color(normalize(ray_pos - light.position));
-            #else // directional & spot
-            fog *= shadow_sample_color(float3(ndc_to_uv(pos_ndc), cascade_index));
-            #endif
+            if (light_is_point())
+            {
+                fog *= shadow_sample_color(normalize(ray_pos - light.position));
+            }
+            else // directional & spot
+            {
+                fog *= shadow_sample_color(float3(ndc_to_uv(pos_ndc), cascade_index));
+            }
         }
-        #endif
 
         // Accumulate
         fog_accumulation += fog;
@@ -126,50 +144,51 @@ float3 VolumetricLighting(Surface surface, Light light)
     float offset = get_noise_interleaved_gradient(surface.uv * g_shadow_resolution);
     ray_pos += ray_step * offset;
 
-#if DIRECTIONAL
-    [unroll]
-    for (uint cascade_index = 0; cascade_index < light.array_size; cascade_index++)
+    if (light_is_directional())
     {
-        // Project into light space
-        float3 pos_ndc  = world_to_ndc(ray_pos, cb_light_view_projection[cascade_index]);
-        float2 pos_uv   = ndc_to_uv(pos_ndc);
-    
-        // Ensure not out of bound
-        [branch]
-        if (is_saturated(pos_uv))
+        for (uint cascade_index = 0; cascade_index < light.array_size; cascade_index++)
         {
-            // Ray-march
-            fog += vl_raymarch(light, ray_pos, ray_step, ray_dir, cascade_index);
-    
-            // If we are close to the edge a secondary cascade exists, lerp with it.
-            float cascade_fade = (max2(abs(pos_ndc.xy)) - g_shadow_cascade_blend_threshold) * 4.0f;
-            cascade_index++;
-            [branch]
-            if (cascade_fade > 0.0f && cascade_index < light.array_size - 1)
+            // Project into light space
+            float3 pos_ndc = world_to_ndc(ray_pos, cb_light_view_projection[cascade_index]);
+            float2 pos_uv  = ndc_to_uv(pos_ndc);
+        
+            // Ensure not out of bound
+            if (is_saturated(pos_uv))
             {
-                // Ray-march using the next cascade
-                float3 fog_secondary = vl_raymarch(light, ray_pos, ray_step, ray_dir, cascade_index);
-    
-                // Blend cascades
-                fog = lerp(fog, fog_secondary, cascade_fade);
+                // Ray-march
+                fog += vl_raymarch(light, ray_pos, ray_step, ray_dir, cascade_index);
+        
+                // If we are close to the edge a secondary cascade exists, lerp with it.
+                float cascade_fade = (max2(abs(pos_ndc.xy)) - g_shadow_cascade_blend_threshold) * 4.0f;
+                cascade_index++;
+                if (cascade_fade > 0.0f && cascade_index < light.array_size - 1)
+                {
+                    // Ray-march using the next cascade
+                    float3 fog_secondary = vl_raymarch(light, ray_pos, ray_step, ray_dir, cascade_index);
+        
+                    // Blend cascades
+                    fog = lerp(fog, fog_secondary, cascade_fade);
+                    break;
+                }
                 break;
             }
-            break;
         }
     }
-#else // POINT/SPOT
+    else // POINT/SPOT
+    {
+        uint projection_index = 0;
 
-    uint projection_index = 0;
-#if POINT
-    projection_index = direction_to_cube_face_index(light.to_pixel);
-#endif
-
-    fog = vl_raymarch(light, ray_pos, ray_step, ray_dir, projection_index);
-#endif
+        if (light_is_point())
+        {
+            projection_index = direction_to_cube_face_index(light.to_pixel);
+        }
+    
+        fog = vl_raymarch(light, ray_pos, ray_step, ray_dir, projection_index);
+    }
 
     float fog_regular     = get_fog_factor(surface);
     float3 fog_volumetric = fog * light.color * light.intensity * light.attenuation;
 
     return fog_regular * fog_volumetric;
 }
-
+#endif

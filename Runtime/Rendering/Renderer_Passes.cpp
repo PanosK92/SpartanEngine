@@ -23,7 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Spartan.h"
 #include "Renderer.h"
 #include "Model.h"
-#include "ShaderLight.h"
 #include "Font/Font.h"
 #include "Gizmos/Grid.h"
 #include "Gizmos/TransformGizmo.h"
@@ -35,6 +34,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_PipelineState.h"
 #include "../RHI/RHI_Texture.h"
 #include "../RHI/RHI_SwapChain.h"
+#include "../RHI/RHI_Shader.h"
 #include "../World/Entity.h"
 #include "../World/Components/Camera.h"
 #include "../World/Components/Light.h"
@@ -223,8 +223,8 @@ namespace Spartan
             for (uint32_t array_index = 0; array_index < tex_depth->GetArrayLength(); array_index++)
             {
                 // Set render target texture array index
-                pso.render_target_color_texture_array_index          = array_index;
-                pso.render_target_depth_stencil_texture_array_index  = array_index;
+                pso.render_target_color_texture_array_index         = array_index;
+                pso.render_target_depth_stencil_texture_array_index = array_index;
 
                 // Set clear values
                 pso.clear_color[0] = Vector4::One;
@@ -792,14 +792,19 @@ namespace Spartan
 
     void Renderer::Pass_Light(RHI_CommandList* cmd_list, const bool is_transparent_pass)
     {
+        // Acquire shaders
+        RHI_Shader* shader_c = m_shaders[RendererShader::Light_C].get();
+        if (!shader_c->IsCompiled())
+            return;
+
         // Acquire lights
         const vector<Entity*>& entities = m_entities[Renderer_ObjectType::Light];
         if (entities.empty())
             return;
 
         // Acquire render targets
-        RHI_Texture* tex_diffuse    = is_transparent_pass ? RENDER_TARGET(RendererRt::Light_Diffuse_Transparent).get()   : RENDER_TARGET(RendererRt::Light_Diffuse).get();
-        RHI_Texture* tex_specular   = is_transparent_pass ? RENDER_TARGET(RendererRt::Light_Specular_Transparent).get()  : RENDER_TARGET(RendererRt::Light_Specular).get();
+        RHI_Texture* tex_diffuse    = is_transparent_pass ? RENDER_TARGET(RendererRt::Light_Diffuse_Transparent).get()  : RENDER_TARGET(RendererRt::Light_Diffuse).get();
+        RHI_Texture* tex_specular   = is_transparent_pass ? RENDER_TARGET(RendererRt::Light_Specular_Transparent).get() : RENDER_TARGET(RendererRt::Light_Specular).get();
         RHI_Texture* tex_volumetric = RENDER_TARGET(RendererRt::Light_Volumetric).get();
 
         // Clear render targets
@@ -809,28 +814,18 @@ namespace Spartan
 
         // Set render state
         static RHI_PipelineState pso;
-        pso.pass_name = is_transparent_pass ? "Pass_Light_Transparent" : "Pass_Light_Opaque";
+        pso.shader_compute = shader_c;
+        pso.pass_name      = is_transparent_pass ? "Pass_Light_Transparent" : "Pass_Light_Opaque";
 
-        // Iterate through all the light entities
-        for (const auto& entity : entities)
+        if (cmd_list->BeginRenderPass(pso))
         {
-            if (Light* light = entity->GetComponent<Light>())
+            // Iterate through all the light entities
+            for (const auto& entity : entities)
             {
-                if (light->GetIntensity() != 0)
+                if (Light* light = entity->GetComponent<Light>())
                 {
-                    // Set pixel shader
-                    pso.shader_compute = static_cast<RHI_Shader*>(ShaderLight::GetVariation(m_context, light, m_options));
-
-                    // Skip the shader it failed to compiled or hasn't compiled yet
-                    if (!pso.shader_compute->IsCompiled())
-                        continue;
-
-                    // Draw
-                    if (cmd_list->BeginRenderPass(pso))
+                    if (light->GetIntensity() != 0)
                     {
-                        // Update materials structured buffer (light pass will access it using material IDs)
-                        Update_Cb_Material(cmd_list);
-
                         cmd_list->SetTexture(RendererBindings_Uav::rgb,              tex_diffuse);
                         cmd_list->SetTexture(RendererBindings_Uav::rgb2,             tex_specular);
                         cmd_list->SetTexture(RendererBindings_Uav::rgb3,             tex_volumetric);
@@ -839,13 +834,13 @@ namespace Spartan
                         cmd_list->SetTexture(RendererBindings_Srv::gbuffer_material, RENDER_TARGET(RendererRt::Gbuffer_Material));
                         cmd_list->SetTexture(RendererBindings_Srv::gbuffer_depth,    RENDER_TARGET(RendererRt::Gbuffer_Depth));
                         cmd_list->SetTexture(RendererBindings_Srv::ssao,             RENDER_TARGET(RendererRt::Ssao));
-
+                        
                         // Set shadow map
                         if (light->GetShadowsEnabled())
                         {
                             RHI_Texture* tex_depth = light->GetDepthTexture();
                             RHI_Texture* tex_color = light->GetShadowsTransparentEnabled() ? light->GetColorTexture() : m_tex_default_white.get();
-
+                        
                             if (light->GetLightType() == LightType::Directional)
                             {
                                 cmd_list->SetTexture(RendererBindings_Srv::light_directional_depth, tex_depth);
@@ -862,25 +857,28 @@ namespace Spartan
                                 cmd_list->SetTexture(RendererBindings_Srv::light_spot_color, tex_color);
                             }
                         }
-
+                        
+                        // Update materials structured buffer (light pass will access it using material IDs)
+                        Update_Cb_Material(cmd_list);
+                        
                         // Update light buffer
                         Update_Cb_Light(cmd_list, light);
-
+                        
                         // Update uber buffer
                         m_cb_uber_cpu.resolution_rt       = Vector2(static_cast<float>(tex_diffuse->GetWidth()), static_cast<float>(tex_diffuse->GetHeight()));
                         m_cb_uber_cpu.is_transparent_pass = is_transparent_pass;
                         Update_Cb_Uber(cmd_list);
-
+                        
                         const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_diffuse->GetWidth()) / m_thread_group_count));
                         const uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_diffuse->GetHeight()) / m_thread_group_count));
                         const uint32_t thread_group_count_z = 1;
                         const bool async = false;
-
+                        
                         cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
-                        cmd_list->EndRenderPass();
                     }
                 }
             }
+            cmd_list->EndRenderPass();
         }
     }
 

@@ -112,6 +112,8 @@ cbuffer LightBuffer : register(b2)
     float cb_light_normal_bias;
     float4 cb_light_position;
     float4 cb_light_direction;
+    uint cb_options;
+    uint3 cb_padding;
 };
 
 // Low frequency - Updates once per frame
@@ -132,12 +134,22 @@ bool has_texture_alpha_mask() { return g_mat_textures & uint(1U << 5);}
 bool has_texture_emissive()   { return g_mat_textures & uint(1U << 6);}
 bool has_texture_occlusion()  { return g_mat_textures & uint(1U << 7);}
 
+// Options lighting
+bool light_is_directional()           { return cb_options & uint(1U << 0);}
+bool light_is_point()                 { return cb_options & uint(1U << 1);}
+bool light_is_spot()                  { return cb_options & uint(1U << 2);}
+bool light_has_shadows()              { return cb_options & uint(1U << 3);}
+bool light_has_shadows_transparent()  { return cb_options & uint(1U << 4);}
+bool light_has_shadows_screen_space() { return cb_options & uint(1U << 5);}
+bool light_is_volumetric()            { return cb_options & uint(1U << 6);}
+
 // Options passes
 bool is_taa_enabled()            { return any(g_taa_jitter_offset); }
 bool is_ssr_enabled()            { return g_options & uint(1U << 0);}
 bool is_taa_upsampling_enabled() { return g_options & uint(1U << 1);}
 bool is_ssao_enabled()           { return g_options & uint(1U << 2);}
-bool is_ssao_gi_enabled()        { return g_options & uint(1U << 3);}
+bool is_volumetric_fog_enabled() { return g_options & uint(1U << 3);}
+bool is_ssao_gi_enabled()        { return g_options & uint(1U << 4);}
 
 // Options debug
 bool has_uav()                { return g_options_debug & uint(1U << 0); }

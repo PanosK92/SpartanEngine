@@ -118,7 +118,7 @@ namespace Spartan
         static void Write(const std::weak_ptr<Entity>& entity, LogType type);
         static void Write(const std::shared_ptr<Entity>& entity, LogType type);
 
-        static bool m_log_to_file;     
+        static bool m_log_to_file;
 
     private:
         static void FlushBuffer();
