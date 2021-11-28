@@ -409,12 +409,16 @@ namespace Spartan
                         cmd_list->SetBufferVertex(model->GetVertexBuffer());
 
                         // Bind material textures
-                        cmd_list->SetTexture(RendererBindings_Srv::material_albedo, material->GetTexture_Ptr(Material_Color));
+                        cmd_list->SetTexture(RendererBindings_Srv::material_albedo,    material->GetTexture_Ptr(Material_Color));
+                        cmd_list->SetTexture(RendererBindings_Srv::material_roughness, material->GetTexture_Ptr(Material_Metallic));
+                        cmd_list->SetTexture(RendererBindings_Srv::material_metallic,  material->GetTexture_Ptr(Material_Metallic));
 
                         // Update uber buffer with material properties
                         m_cb_uber_cpu.mat_color    = material->GetColorAlbedo();
                         m_cb_uber_cpu.mat_textures = 0;
-                        m_cb_uber_cpu.mat_textures |= material->HasTexture(Material_Color) ? (1 << 2) : 0;
+                        m_cb_uber_cpu.mat_textures |= material->HasTexture(Material_Color)     ? (1 << 2) : 0;
+                        m_cb_uber_cpu.mat_textures |= material->HasTexture(Material_Roughness) ? (1 << 3) : 0;
+                        m_cb_uber_cpu.mat_textures |= material->HasTexture(Material_Metallic)  ? (1 << 4) : 0;
 
                         // Update uber buffer with cascade transform
                         m_cb_uber_cpu.transform = entity->GetTransform()->GetMatrix() * view_projection;
