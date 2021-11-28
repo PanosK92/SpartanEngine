@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../RHI/RHI_Texture2D.h"
 #include "../../Rendering/Renderer.h"
 #include "../../IO/FileStream.h"
+#include "../../RHI/RHI_Device.h"
 //====================================
 
 //= NAMESPACES ===============
@@ -129,12 +130,12 @@ namespace Spartan
 
     void ReflectionProbe::SetResolution(const uint32_t resolution)
     {
-        uint32_t new_value = Math::Helper::Clamp<uint32_t>(resolution, 16, 4096);
+        uint32_t new_value = Math::Helper::Clamp<uint32_t>(resolution, 16, RHI_Device::GetMaxTextureCubeDimension());
 
         if (m_resolution == new_value)
             return;
 
-        m_resolution = resolution;
+        m_resolution = new_value;
 
         CreateTextures();
     }

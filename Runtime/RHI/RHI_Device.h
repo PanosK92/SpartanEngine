@@ -50,10 +50,11 @@ namespace Spartan
         void SetQueueIndex(const RHI_Queue_Type type, const uint32_t index);
 
         // Device limits
-        static uint32_t GetMaxTexture1dDimension() { return m_max_texture_1d_dimension; }
-        static uint32_t GetMaxTexture2dDimension() { return m_max_texture_1d_dimension; }
-        static uint32_t GetMaxTexture3dDimension() { return m_max_texture_1d_dimension; }
-        static uint32_t GetMaxTextureArrayLayers() { return m_max_texture_array_layers; }
+        static uint32_t GetMaxTexture1dDimension()   { return m_max_texture_1d_dimension; }
+        static uint32_t GetMaxTexture2dDimension()   { return m_max_texture_2d_dimension; }
+        static uint32_t GetMaxTexture3dDimension()   { return m_max_texture_3d_dimension; }
+        static uint32_t GetMaxTextureCubeDimension() { return m_max_texture_cube_dimension; }
+        static uint32_t GetMaxTextureArrayLayers()   { return m_max_texture_array_layers; }
 
         // Misc
         static bool IsValidResolution(const uint32_t width, const uint32_t height);

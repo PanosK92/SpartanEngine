@@ -116,12 +116,12 @@ PixelOutputType mainPS(PixelInputType input)
     {
         roughness *= tex_material_roughness.Sample(sampler_anisotropic_wrap, uv).r;
     }
-    
+
     if (has_texture_metallic())
     {
         metallic *= tex_material_metallic.Sample(sampler_anisotropic_wrap, uv).r;
     }
-    
+
     if (has_texture_normal())
     {
         // Get tangent space normal and apply intensity
