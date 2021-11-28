@@ -359,7 +359,8 @@ namespace Spartan
             m_cb_frame_cpu.set_bit(GetOption(Render_Upsample_TAA),                       1 << 1);
             m_cb_frame_cpu.set_bit(GetOption(Render_Ssao),                               1 << 2);
             m_cb_frame_cpu.set_bit(GetOption(Render_VolumetricFog),                      1 << 3);
-            m_cb_frame_cpu.set_bit(GetOptionValue<bool>(Renderer_Option_Value::Ssao_Gi), 1 << 4);
+            m_cb_frame_cpu.set_bit(GetOption(Render_ScreenSpaceShadows),                 1 << 4);
+            m_cb_frame_cpu.set_bit(GetOptionValue<bool>(Renderer_Option_Value::Ssao_Gi), 1 << 5);
         }
 
         Lines_PreMain();

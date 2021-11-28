@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 static const uint  g_sss_max_steps                     = 12;    // Max ray steps, affects quality and performance.
 static const float g_sss_ray_max_distance              = 0.05f; // Max shadow length, longer shadows are less accurate.
 static const float g_sss_thickness                     = 0.05f; // Depth testing thickness.
-static const float g_sss_max_delta_from_original_depth = 0.01f; // The maximum allowed depth deviation from the original pixel (a big deviation decreased the probabilty that the pixel is the occluder).
+static const float g_sss_max_delta_from_original_depth = 0.005f; // The maximum allowed depth deviation from the original pixel (a big deviation decreased the probabilty that the pixel is the occluder).
 static const float g_sss_step_length                   = g_sss_ray_max_distance / (float)g_sss_max_steps;
 
 //= INLUCES ==========
@@ -80,3 +80,4 @@ float ScreenSpaceShadows(Surface surface, Light light)
     // Convert to visibility
     return 1.0f - occlusion;
 }
+
