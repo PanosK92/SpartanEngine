@@ -234,3 +234,4 @@ struct Light
 };
 
 #endif // SPARTAN_COMMON_STRUCT
+

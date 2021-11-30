@@ -70,6 +70,9 @@ namespace Spartan
         float GetFarPlane() const { return m_plane_far; }
         void SetFarPlane(const float far_plane);
 
+        bool GetNeedsToUpdate() const { return m_needs_to_update; }
+        uint32_t GetUpdateFaceStartIndex() const { return m_update_face_start_index; }
+
         const Math::BoundingBox& GetAabb() const { return m_aabb; }
 
     private:
@@ -81,11 +84,11 @@ namespace Spartan
         uint32_t m_resolution = 512;
 
         // Defines the are within which all rendered objects will received parallax corrected cubemap reflections.
-        Math::Vector3 m_extents = Math::Vector3(4.0f, 2.0f, 4.0f);
+        Math::Vector3 m_extents  = Math::Vector3(4.0f, 2.0f, 4.0f);
         Math::BoundingBox m_aabb = Math::BoundingBox::Zero;
 
         // How often should the reflection update.
-        uint32_t m_update_interval_frames = 1;
+        uint32_t m_update_interval_frames = 0;
 
         // How many faces of the cubemap to update per update.
         uint32_t m_update_face_count = 6;
@@ -98,6 +101,12 @@ namespace Spartan
         std::array<Math::Matrix, 6> m_matrix_view;
         Math::Matrix m_matrix_projection;
         std::array< Math::Frustum, 6> m_frustum;
+
+        // Updating
+        uint32_t m_frames_since_last_update = 0;
+        uint32_t m_update_face_start_index  = 0;
+        bool m_needs_to_update              = false;
+        bool m_first_update                 = true;
 
         // Textures
         std::shared_ptr<RHI_Texture> m_texture_color;

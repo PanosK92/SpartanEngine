@@ -52,6 +52,37 @@ namespace Spartan
 
     void ReflectionProbe::OnTick(double delta_time)
     {
+        // Determine if it's time to update
+        if (m_frames_since_last_update >= m_update_interval_frames)
+        {
+            if (!m_first_update)
+            {
+                m_update_face_start_index += m_update_face_count;
+
+                if (m_update_face_start_index + m_update_face_count > 6)
+                {
+                    m_update_face_start_index = 0;
+                }
+            }
+            else
+            {
+                m_update_face_start_index = 0;
+            }
+            
+            m_first_update             = false;
+            m_frames_since_last_update = 0;
+            m_needs_to_update          = true;
+        }
+        else
+        {
+            m_needs_to_update = false;
+        }
+
+        m_frames_since_last_update++;
+
+        if (!m_needs_to_update)
+            return;
+
         // Reverse z change check
         bool reverse_z_changed = false;
         bool reverse_z = m_context->GetSubsystem<Renderer>()->GetOption(Render_ReverseZ);
@@ -147,7 +178,7 @@ namespace Spartan
 
     void ReflectionProbe::SetUpdateIntervalFrames(const uint32_t update_interval_frame)
     {
-        m_update_interval_frames = Math::Helper::Clamp<uint32_t>(update_interval_frame, 1, 100);
+        m_update_interval_frames = Math::Helper::Clamp<uint32_t>(update_interval_frame, 0, 128);
     }
 
     void ReflectionProbe::SetUpdateFaceCount(const uint32_t update_face_count)

@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 static const uint g_ao_directions           = 2;
 static const uint g_ao_steps                = 2;
-static const float g_ao_radius              = 0.5f;
+static const float g_ao_radius              = 1.5f;
 static const float g_ao_intensity_occlusion = 3.5f;
 static const float g_ao_intensity_gi        = 10.0f;
 static const float g_ao_occlusion_bias      = 0.0f;
@@ -114,3 +114,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     tex_out_r[thread_id.xy] = ground_truth_ambient_occlusion(thread_id.xy).a;
 #endif
 }
+
+
+
+

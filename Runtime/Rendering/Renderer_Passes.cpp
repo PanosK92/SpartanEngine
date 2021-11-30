@@ -343,7 +343,7 @@ namespace Spartan
         for (uint32_t probe_index = 0; probe_index < static_cast<uint32_t>(probes.size()); probe_index++)
         {
             ReflectionProbe* probe = probes[probe_index]->GetComponent<ReflectionProbe>();
-            if (!probe)
+            if (!probe || !probe->GetNeedsToUpdate())
                 continue;
 
             // Set render state
@@ -351,7 +351,7 @@ namespace Spartan
             pso.shader_vertex                   = shader_v;
             pso.shader_pixel                    = shader_p;
             pso.rasterizer_state                = m_rasterizer_cull_back_solid.get();
-            pso.blend_state                     = m_blend_disabled.get();
+            pso.blend_state                     = m_blend_additive.get();
             pso.depth_stencil_state             = m_depth_stencil_rw_off.get();
             pso.render_target_color_textures[0] = probe->GetColorTexture();
             pso.render_target_depth_texture     = probe->GetDepthTexture();
@@ -363,17 +363,19 @@ namespace Spartan
             pso.vertex_buffer_stride            = static_cast<uint32_t>(sizeof(RHI_Vertex_PosTexNorTan));
             pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
 
-            // For each cube face
-            for (uint32_t index_array = 0; index_array < probe->GetColorTexture()->GetArrayLength(); index_array++)
+            // Update cube faces
+            uint32_t index_start = probe->GetUpdateFaceStartIndex();
+            uint32_t index_end   = (index_start + probe->GetUpdateFaceCount()) % 7;
+            for (uint32_t face_index = index_start; face_index < index_end; face_index++)
             {
                 // Set render target texture array index
-                pso.render_target_color_texture_array_index = index_array;
+                pso.render_target_color_texture_array_index = face_index;
 
                 // Begin render pass
                 cmd_list->BeginRenderPass(pso);
 
                 // Compute view projection matrix
-                Matrix view_projection = probe->GetViewMatrix(index_array) * probe->GetProjectionMatrix();
+                Matrix view_projection = probe->GetViewMatrix(face_index) * probe->GetProjectionMatrix();
 
                 // For each renderable entity
                 for (uint32_t index_renderable = 0; index_renderable < static_cast<uint32_t>(renderables.size()); index_renderable++)
@@ -383,51 +385,55 @@ namespace Spartan
                     // For each light entity
                     for (uint32_t index_light = 0; index_light < static_cast<uint32_t>(lights.size()); index_light++)
                     {
-                        Entity* light = lights[index_light];
+                        if (Light* light = lights[index_light]->GetComponent<Light>())
+                        {
+                            if (light->GetIntensity() != 0)
+                            {
+                                // Get renderable
+                                Renderable* renderable = entity->GetRenderable();
+                                if (!renderable)
+                                    continue;
 
-                        // Get renderable
-                        Renderable* renderable = entity->GetRenderable();
-                        if (!renderable)
-                            continue;
+                                // Get material
+                                Material* material = renderable->GetMaterial();
+                                if (!material)
+                                    continue;
 
-                        // Get material
-                        Material* material = renderable->GetMaterial();
-                        if (!material)
-                            continue;
+                                // Get geometry
+                                Model* model = renderable->GeometryModel();
+                                if (!model || !model->GetVertexBuffer() || !model->GetIndexBuffer())
+                                    continue;
 
-                        // Get geometry
-                        Model* model = renderable->GeometryModel();
-                        if (!model || !model->GetVertexBuffer() || !model->GetIndexBuffer())
-                            continue;
+                                // Skip objects outside of the view frustum
+                                if (!probe->IsInViewFrustum(renderable, face_index))
+                                    continue;
 
-                        // Skip objects outside of the view frustum
-                        if (!probe->IsInViewFrustum(renderable, index_array))
-                            continue;
+                                // Set geometry (will only happen if not already set)
+                                cmd_list->SetBufferIndex(model->GetIndexBuffer());
+                                cmd_list->SetBufferVertex(model->GetVertexBuffer());
 
-                        // Set geometry (will only happen if not already set)
-                        cmd_list->SetBufferIndex(model->GetIndexBuffer());
-                        cmd_list->SetBufferVertex(model->GetVertexBuffer());
+                                // Bind material textures
+                                cmd_list->SetTexture(RendererBindings_Srv::material_albedo,    material->GetTexture_Ptr(Material_Color));
+                                cmd_list->SetTexture(RendererBindings_Srv::material_roughness, material->GetTexture_Ptr(Material_Metallic));
+                                cmd_list->SetTexture(RendererBindings_Srv::material_metallic,  material->GetTexture_Ptr(Material_Metallic));
 
-                        // Bind material textures
-                        cmd_list->SetTexture(RendererBindings_Srv::material_albedo,    material->GetTexture_Ptr(Material_Color));
-                        cmd_list->SetTexture(RendererBindings_Srv::material_roughness, material->GetTexture_Ptr(Material_Metallic));
-                        cmd_list->SetTexture(RendererBindings_Srv::material_metallic,  material->GetTexture_Ptr(Material_Metallic));
+                                // Update uber buffer with material properties
+                                m_cb_uber_cpu.mat_color    = material->GetColorAlbedo();
+                                m_cb_uber_cpu.mat_textures = 0;
+                                m_cb_uber_cpu.mat_textures |= material->HasTexture(Material_Color)     ? (1 << 2) : 0;
+                                m_cb_uber_cpu.mat_textures |= material->HasTexture(Material_Roughness) ? (1 << 3) : 0;
+                                m_cb_uber_cpu.mat_textures |= material->HasTexture(Material_Metallic)  ? (1 << 4) : 0;
 
-                        // Update uber buffer with material properties
-                        m_cb_uber_cpu.mat_color    = material->GetColorAlbedo();
-                        m_cb_uber_cpu.mat_textures = 0;
-                        m_cb_uber_cpu.mat_textures |= material->HasTexture(Material_Color)     ? (1 << 2) : 0;
-                        m_cb_uber_cpu.mat_textures |= material->HasTexture(Material_Roughness) ? (1 << 3) : 0;
-                        m_cb_uber_cpu.mat_textures |= material->HasTexture(Material_Metallic)  ? (1 << 4) : 0;
+                                // Update uber buffer with cascade transform
+                                m_cb_uber_cpu.transform = entity->GetTransform()->GetMatrix() * view_projection;
+                                Update_Cb_Uber(cmd_list);
 
-                        // Update uber buffer with cascade transform
-                        m_cb_uber_cpu.transform = entity->GetTransform()->GetMatrix() * view_projection;
-                        Update_Cb_Uber(cmd_list);
+                                // Update light buffer
+                                Update_Cb_Light(cmd_list, light, RHI_Shader_Pixel);
 
-                        // Update light buffer
-                        Update_Cb_Light(cmd_list, light->GetComponent<Light>());
-
-                        cmd_list->DrawIndexed(renderable->GeometryIndexCount(), renderable->GeometryIndexOffset(), renderable->GeometryVertexOffset());
+                                cmd_list->DrawIndexed(renderable->GeometryIndexCount(), renderable->GeometryIndexOffset(), renderable->GeometryVertexOffset());
+                            }
+                        }
                     }
                 }
                 cmd_list->EndRenderPass();
@@ -866,7 +872,7 @@ namespace Spartan
                         Update_Cb_Material(cmd_list);
                         
                         // Update light buffer
-                        Update_Cb_Light(cmd_list, light);
+                        Update_Cb_Light(cmd_list, light, RHI_Shader_Compute);
                         
                         // Update uber buffer
                         m_cb_uber_cpu.resolution_rt       = Vector2(static_cast<float>(tex_diffuse->GetWidth()), static_cast<float>(tex_diffuse->GetHeight()));
@@ -2110,8 +2116,8 @@ namespace Spartan
         // Create and submit command list
         if (cmd_list->BeginRenderPass(pso))
         {
-            cmd_list->SetBufferIndex(m_sphere_index_buffer.get());
             cmd_list->SetBufferVertex(m_sphere_vertex_buffer.get());
+            cmd_list->SetBufferIndex(m_sphere_index_buffer.get());
 
             for (uint32_t probe_index = 0; probe_index < static_cast<uint32_t>(probes.size()); probe_index++)
             {
@@ -2124,7 +2130,7 @@ namespace Spartan
                     cmd_list->SetTexture(RendererBindings_Srv::reflection_probe, probe->GetColorTexture());
                     cmd_list->DrawIndexed(m_sphere_index_buffer->GetIndexCount());
 
-                    // Draw a box which represents the extents of the reflection probe (which is used as a geometry proxy for parallaxed corrected cubemap reflections)
+                    // Draw a box which represents the extents of the reflection probe (which is used as a geometry proxy for parallax corrected cubemap reflections)
                     BoundingBox extents = BoundingBox(probe->GetTransform()->GetPosition() - probe->GetExtents(), probe->GetTransform()->GetPosition() + probe->GetExtents());
                     DrawBox(extents);
                 }
