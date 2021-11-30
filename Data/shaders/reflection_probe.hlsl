@@ -86,5 +86,5 @@ float4 mainPS(Pixel_Input input) : SV_TARGET
     float3 specular          = BRDF_Specular_Isotropic(roughness, metallic, F0, n_dot_v, light.n_dot_l, n_dot_h, v_dot_h, diffuse_energy, reflective_energy);
     float3 diffuse           = BRDF_Diffuse(albedo.rgb, roughness, n_dot_v, light.n_dot_l, v_dot_h) * diffuse_energy;
 
-    return float4((diffuse + specular) , albedo.a);
+    return float4((diffuse + specular) * light.radiance , albedo.a);
 }

@@ -481,7 +481,7 @@ namespace Spartan
         vector<RHI_Vertex_PosTexNorTan> vertices;
         vector<uint32_t> indices;
 
-        Utility::Geometry::CreateSphere(&vertices, &indices, 1.0f, 20, 20);
+        Utility::Geometry::CreateSphere(&vertices, &indices, 0.2f, 20, 20);
 
         m_sphere_vertex_buffer = make_shared<RHI_VertexBuffer>(m_rhi_device);
         m_sphere_vertex_buffer->Create(vertices);

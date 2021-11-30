@@ -562,7 +562,7 @@ namespace Spartan
         return true;
     }
 
-    bool Renderer::Update_Cb_Light(RHI_CommandList* cmd_list, const Light* light)
+    bool Renderer::Update_Cb_Light(RHI_CommandList* cmd_list, const Light* light, const RHI_Shader_Type scope)
     {
         SP_ASSERT(cmd_list != nullptr);
 
@@ -608,7 +608,7 @@ namespace Spartan
             return false;
 
         // Dynamic buffers with offsets have to be rebound whenever the offset changes
-        cmd_list->SetConstantBuffer(RendererBindings_Cb::light, RHI_Shader_Compute, m_cb_light_gpu);
+        cmd_list->SetConstantBuffer(RendererBindings_Cb::light, scope, m_cb_light_gpu);
 
         return true;
     }

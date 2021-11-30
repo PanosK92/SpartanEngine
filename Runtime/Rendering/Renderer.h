@@ -210,7 +210,7 @@ namespace Spartan
         // Constant buffers
         bool Update_Cb_Frame(RHI_CommandList* cmd_list);
         bool Update_Cb_Uber(RHI_CommandList* cmd_list);
-        bool Update_Cb_Light(RHI_CommandList* cmd_list, const Light* light);
+        bool Update_Cb_Light(RHI_CommandList* cmd_list, const Light* light, const RHI_Shader_Type scope);
         bool Update_Cb_Material(RHI_CommandList* cmd_list);
 
         // Event handlers
