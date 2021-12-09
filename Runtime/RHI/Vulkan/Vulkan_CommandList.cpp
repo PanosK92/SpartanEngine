@@ -287,7 +287,7 @@ namespace Spartan
     {
         // If the render pass is about to end, there are clear values, but there have been no draw calls,
         // then Deferred_BeginRenderPass() was never called, and any render targets were never cleared.
-        // In this case we manually clear it them
+        // In this case we manually clear them.
         if (m_pipeline_state->HasClearValues() && !m_render_pass_active)
         {
             Deferred_BeginRenderPass();

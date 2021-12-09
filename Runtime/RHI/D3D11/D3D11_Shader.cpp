@@ -53,15 +53,15 @@ namespace Spartan
         uint32_t compile_flags = 0;
 #ifdef DEBUG
         compile_flags |= D3DCOMPILE_DEBUG | D3DCOMPILE_PREFER_FLOW_CONTROL;
-#elif NDEBUG
+#else
         compile_flags |= D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_OPTIMIZATION_LEVEL3;
 #endif
 
         // Defines
         vector<D3D_SHADER_MACRO> defines =
         {
-            D3D_SHADER_MACRO{ "VS", m_shader_type == RHI_Shader_Vertex ? "1" : "0" },
-            D3D_SHADER_MACRO{ "PS", m_shader_type == RHI_Shader_Pixel ? "1" : "0" },
+            D3D_SHADER_MACRO{ "VS", m_shader_type == RHI_Shader_Vertex  ? "1" : "0" },
+            D3D_SHADER_MACRO{ "PS", m_shader_type == RHI_Shader_Pixel   ? "1" : "0" },
             D3D_SHADER_MACRO{ "CS", m_shader_type == RHI_Shader_Compute ? "1" : "0" }
         };
         for (const auto& define : m_defines)

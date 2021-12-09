@@ -37,6 +37,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_StructuredBuffer.h"
 #include "../RHI/RHI_VertexBuffer.h"
 #include "../RHI/RHI_IndexBuffer.h"
+#include "../RHI/RHI_TextureCube.h"
 //=======================================
 
 //= NAMESPACES ===============
@@ -377,14 +378,8 @@ namespace Spartan
         m_shaders[RendererShader::Debanding_C]->Compile(RHI_Shader_Compute, dir_shaders + "debanding.hlsl", async);
 
         // SSAO
-        {
-            m_shaders[RendererShader::Ssao_C] = make_shared<RHI_Shader>(m_context);
-            m_shaders[RendererShader::Ssao_C]->Compile(RHI_Shader_Compute, dir_shaders + "ssao.hlsl", async);
-
-            m_shaders[RendererShader::Ssao_Gi_C] = make_shared<RHI_Shader>(m_context);
-            m_shaders[RendererShader::Ssao_Gi_C]->AddDefine("GI");
-            m_shaders[RendererShader::Ssao_Gi_C]->Compile(RHI_Shader_Compute, dir_shaders + "ssao.hlsl", async);
-        }
+        m_shaders[RendererShader::Ssao_C] = make_shared<RHI_Shader>(m_context);
+        m_shaders[RendererShader::Ssao_C]->Compile(RHI_Shader_Compute, dir_shaders + "ssao.hlsl", async);
 
         // Light
         {
@@ -495,29 +490,39 @@ namespace Spartan
         // Get standard texture directory
         const string dir_texture = m_resource_cache->GetResourceDirectory(ResourceDirectory::Textures) + "/";
 
-        m_tex_default_noise_normal = make_shared<RHI_Texture2D>(m_context, RHI_Texture_Srv, "default_noise_normal");
-        m_tex_default_noise_normal->LoadFromFile(dir_texture + "noise_normal.png");
+        // Noise
+        {
+            m_tex_default_noise_normal = make_shared<RHI_Texture2D>(m_context, RHI_Texture_Srv, "default_noise_normal");
+            m_tex_default_noise_normal->LoadFromFile(dir_texture + "noise_normal.png");
 
-        m_tex_default_noise_blue = static_pointer_cast<RHI_Texture>(make_shared<RHI_Texture2DArray>(m_context, RHI_Texture_Srv, "default_noise_blue"));
-        m_tex_default_noise_blue->LoadFromFile(dir_texture + "noise_blue_0.png");
+            m_tex_default_noise_blue = static_pointer_cast<RHI_Texture>(make_shared<RHI_Texture2DArray>(m_context, RHI_Texture_Srv, "default_noise_blue"));
+            m_tex_default_noise_blue->LoadFromFile(dir_texture + "noise_blue_0.png");
+        }
 
-        m_tex_default_white = make_shared<RHI_Texture2D>(m_context, RHI_Texture_Srv, "default_white");
-        m_tex_default_white->LoadFromFile(dir_texture + "white.png");
+        // Colored
+        {
+            m_tex_default_white = make_shared<RHI_Texture2D>(m_context, RHI_Texture_Srv, "default_white");
+            m_tex_default_white->LoadFromFile(dir_texture + "white.png");
 
-        m_tex_default_black = make_shared<RHI_Texture2D>(m_context, RHI_Texture_Srv, "default_black");
-        m_tex_default_black->LoadFromFile(dir_texture + "black.png");
+            m_tex_default_transparent = make_shared<RHI_Texture2D>(m_context, RHI_Texture_Srv, "default_transparent");
+            m_tex_default_transparent->LoadFromFile(dir_texture + "transparent.png");
+        }
 
-        m_tex_default_transparent = make_shared<RHI_Texture2D>(m_context, RHI_Texture_Srv, "default_transparent");
-        m_tex_default_transparent->LoadFromFile(dir_texture + "transparent.png");
+        // Empty
+        m_tex_default_empty         = make_shared<RHI_Texture2D>(m_context, RHI_Texture_Srv, "default_empty");
+        m_tex_default_empty_cubemap = make_unique<RHI_TextureCube>(m_context, 1, 1, RHI_Format_R8_Unorm, RHI_Texture_Srv, "default_empty_cubemap");
+        m_tex_default_empty_array   = make_unique<RHI_Texture2DArray>(m_context, 1, 1, RHI_Format_R8_Unorm, 1, RHI_Texture_Srv, "default_empty_array");
 
         // Gizmo icons
-        m_tex_gizmo_light_directional = make_shared<RHI_Texture2D>(m_context, RHI_Texture_Srv, "default_icon_light_directional");
-        m_tex_gizmo_light_directional->LoadFromFile(dir_texture + "sun.png");
+        {
+            m_tex_gizmo_light_directional = make_shared<RHI_Texture2D>(m_context, RHI_Texture_Srv, "default_icon_light_directional");
+            m_tex_gizmo_light_directional->LoadFromFile(dir_texture + "sun.png");
 
-        m_tex_gizmo_light_point = make_shared<RHI_Texture2D>(m_context, RHI_Texture_Srv, "default_icon_light_point");
-        m_tex_gizmo_light_point->LoadFromFile(dir_texture + "light_bulb.png");
+            m_tex_gizmo_light_point = make_shared<RHI_Texture2D>(m_context, RHI_Texture_Srv, "default_icon_light_point");
+            m_tex_gizmo_light_point->LoadFromFile(dir_texture + "light_bulb.png");
 
-        m_tex_gizmo_light_spot = make_shared<RHI_Texture2D>(m_context, RHI_Texture_Srv, "default_icon_light_spot");
-        m_tex_gizmo_light_spot->LoadFromFile(dir_texture + "flashlight.png");
+            m_tex_gizmo_light_spot = make_shared<RHI_Texture2D>(m_context, RHI_Texture_Srv, "default_icon_light_spot");
+            m_tex_gizmo_light_spot->LoadFromFile(dir_texture + "flashlight.png");
+        }
     }
 }

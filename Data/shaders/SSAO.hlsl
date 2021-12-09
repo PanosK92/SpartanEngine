@@ -72,13 +72,11 @@ float4 ground_truth_ambient_occlusion(uint2 pos)
 
     // Compute occlusion
     float4 light = 0;
-    [unroll]
     for (uint direction_index = 0; direction_index < g_ao_directions; direction_index++)
     {
         const float rotation_angle      = (direction_index + noise_gradient_temporal + offset_rotation_temporal) * step_direction;
         const float2 rotation_direction = float2(cos(rotation_angle), sin(rotation_angle)) * g_texel_size;
 
-        [unroll]
         for (uint step_index = 0; step_index < g_ao_steps; ++step_index)
         {
             const float2 uv_offset       = round(max(step_offset * (step_index + ray_offset), 1 + step_index)) * rotation_direction;
@@ -87,11 +85,12 @@ float4 ground_truth_ambient_occlusion(uint2 pos)
             const float transport        = compute_occlusion(origin_position, origin_normal, sample_position) * screen_fade(origin_uv);
 
             light.a += transport;
-#if GI
-            float3 diffuse = tex_light_diffuse[sample_pos].rgb;
-            float3 albedo  = tex_albedo[sample_pos].rgb;
-            light.rgb      += diffuse * albedo * transport;
-#endif
+            if (is_ssao_gi_enabled())
+            {
+                float3 diffuse = tex_light_diffuse[sample_pos].rgb;
+                float3 albedo  = tex_albedo[sample_pos].rgb;
+                light.rgb      += diffuse * albedo * transport;
+            }
         }
     }
 
@@ -108,13 +107,13 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     if (any(int2(thread_id.xy) >= g_resolution_rt.xy))
         return;
 
-#if GI
-    tex_out_rgba[thread_id.xy] = ground_truth_ambient_occlusion(thread_id.xy);
-#else
-    tex_out_r[thread_id.xy] = ground_truth_ambient_occlusion(thread_id.xy).a;
-#endif
+    if (is_ssao_gi_enabled())
+    {
+        tex_out_rgba[thread_id.xy] = ground_truth_ambient_occlusion(thread_id.xy);
+    }
+    else
+    {
+        tex_out_r[thread_id.xy] = ground_truth_ambient_occlusion(thread_id.xy).a;
+    }
 }
-
-
-
 

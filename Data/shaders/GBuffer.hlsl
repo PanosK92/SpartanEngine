@@ -93,24 +93,28 @@ PixelOutputType mainPS(PixelInputType input)
     }
 
     // Alpha mask
+    float alpha_mask = 1.0f;
     if (has_texture_alpha_mask())
     {
-        float alpha_mask = tex_material_mask.Sample(sampler_anisotropic_wrap, uv).r;
-        if (alpha_mask <= ALPHA_THRESHOLD)
-            discard;
+        alpha_mask = tex_material_mask.Sample(sampler_anisotropic_wrap, uv).r;
     }
 
     // Albedo
     if (has_texture_albedo())
     {
         float4 albedo_sample = tex_material_albedo.Sample(sampler_anisotropic_wrap, uv);
-        if (albedo_sample.a <= ALPHA_THRESHOLD)
-            discard;
-    
-        albedo_sample.a   = 1.0f;
+
+        // Read albedo's alpha channel as an alpha mask as well.
+        alpha_mask      = min(alpha_mask, albedo_sample.a);
+        albedo_sample.a = 1.0f;
+
         albedo_sample.rgb = degamma(albedo_sample.rgb);
         albedo            *= albedo_sample;
     }
+
+    // Discard masked pixels
+    if (alpha_mask <= ALPHA_THRESHOLD)
+        discard;
     
     if (has_texture_roughness())
     {
@@ -159,3 +163,4 @@ PixelOutputType mainPS(PixelInputType input)
 
     return g_buffer;
 }
+

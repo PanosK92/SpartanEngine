@@ -42,16 +42,16 @@ namespace Spartan
 {
     TransformGizmo::TransformGizmo(Context* context)
     {
-        m_context       = context;
-        m_input         = context->GetSubsystem<Input>();
-        m_world         = context->GetSubsystem<World>();
-        m_type          = TransformHandleType::Position;
-        m_space         = TransformHandleSpace::World;
-        m_is_editing    = false;
+        m_context    = context;
+        m_input      = context->GetSubsystem<Input>();
+        m_world      = context->GetSubsystem<World>();
+        m_type       = TransformHandleType::Position;
+        m_space      = TransformHandleSpace::World;
+        m_is_editing = false;
 
-        m_handles[TransformHandleType::Position]    = make_shared<TransformPosition>(context);
-        m_handles[TransformHandleType::Scale]       = make_shared<TransformScale>(context);
-        m_handles[TransformHandleType::Rotation]    = make_shared<TransformRotation>(context);
+        m_handles[TransformHandleType::Position] = make_shared<TransformPosition>(context);
+        m_handles[TransformHandleType::Scale]    = make_shared<TransformScale>(context);
+        m_handles[TransformHandleType::Rotation] = make_shared<TransformRotation>(context);
     }
 
     bool TransformGizmo::Tick(Camera* camera, const float handle_size, const float handle_speed)
@@ -128,8 +128,8 @@ namespace Spartan
         return m_handles[m_type]->GetIndexBuffer();
     }
 
-     const TransformHandle* TransformGizmo::GetHandle()
-     {
-         return m_handles[m_type].get();
-     }
+    const TransformHandle* TransformGizmo::GetHandle()
+    {
+        return m_handles[m_type].get();
+    }
 }

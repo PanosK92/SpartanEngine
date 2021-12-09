@@ -36,11 +36,11 @@ namespace Spartan
 {
     TransformHandleAxis::TransformHandleAxis(TransformHandleType type, const Math::Vector3& axis, Context* context)
     {
-        m_axis      = axis;
-        m_type      = type;
-        m_context   = context;
-        m_renderer  = context->GetSubsystem<Renderer>();
-        m_input     = context->GetSubsystem<Input>();
+        m_axis     = axis;
+        m_type     = type;
+        m_context  = context;
+        m_renderer = context->GetSubsystem<Renderer>();
+        m_input    = context->GetSubsystem<Input>();
     }
 
     void TransformHandleAxis::UpdateTransform()
@@ -48,8 +48,8 @@ namespace Spartan
         if (m_type == TransformHandleType::Unknown)
             return;
 
-        m_transform         = Math::Matrix(m_position, m_rotation, m_scale);
-        m_box_transformed   = m_box.Transform(m_transform);
+        m_transform       = Math::Matrix(m_position, m_rotation, m_scale);
+        m_box_transformed = m_box.Transform(m_transform);
     }
 
     void TransformHandleAxis::ApplyDeltaToTransform(Transform* transform, const TransformHandleSpace space)

@@ -143,7 +143,6 @@ namespace Spartan
         Font_V,
         Font_P,
         Ssao_C,
-        Ssao_Gi_C,
         Ssr_C,
         Entity_V,
         Entity_Transform_P,

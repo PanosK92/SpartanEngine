@@ -127,9 +127,9 @@ namespace Spartan
                 {
                     image_index++;
 
-                    info_images[image_index].sampler        = static_cast<VkSampler>(resource);
-                    info_images[image_index].imageView      = nullptr;
-                    info_images[image_index].imageLayout    = VK_IMAGE_LAYOUT_UNDEFINED;
+                    info_images[image_index].sampler     = static_cast<VkSampler>(resource);
+                    info_images[image_index].imageView   = nullptr;
+                    info_images[image_index].imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
                     descriptor_count++;
                     descriptor_index_start = image_index;
@@ -142,9 +142,9 @@ namespace Spartan
                     {
                         image_index++;
 
-                        info_images[image_index].sampler        = nullptr;
-                        info_images[image_index].imageView      = static_cast<VkImageView>(resource);
-                        info_images[image_index].imageLayout    = vulkan_image_layout[static_cast<uint8_t>(texture->GetLayout(set_individual_mip ? descriptor.mip : 0))];
+                        info_images[image_index].sampler     = nullptr;
+                        info_images[image_index].imageView   = static_cast<VkImageView>(resource);
+                        info_images[image_index].imageLayout = vulkan_image_layout[static_cast<uint8_t>(texture->GetLayout(set_individual_mip ? descriptor.mip : 0))];
 
                         descriptor_count++;
                         descriptor_index_start = image_index;
@@ -155,9 +155,9 @@ namespace Spartan
                         {
                             image_index++;
 
-                            info_images[image_index].sampler        = nullptr;
-                            info_images[image_index].imageView      = static_cast<VkImageView>(texture->GetResource_Views_Srv(mip_index));
-                            info_images[image_index].imageLayout    = vulkan_image_layout[static_cast<uint8_t>(texture->GetLayout(mip_index))];
+                            info_images[image_index].sampler     = nullptr;
+                            info_images[image_index].imageView   = static_cast<VkImageView>(texture->GetResource_Views_Srv(mip_index));
+                            info_images[image_index].imageLayout = vulkan_image_layout[static_cast<uint8_t>(texture->GetLayout(mip_index))];
 
                             descriptor_count++;
 
@@ -172,18 +172,18 @@ namespace Spartan
                 }
                 else if (descriptor.type == RHI_Descriptor_Type::ConstantBuffer)
                 {
-                    info_buffers[index].buffer  = static_cast<VkBuffer>(resource);
-                    info_buffers[index].offset  = descriptor.offset;
-                    info_buffers[index].range   = descriptor.range;
+                    info_buffers[index].buffer = static_cast<VkBuffer>(resource);
+                    info_buffers[index].offset = descriptor.offset;
+                    info_buffers[index].range  = descriptor.range;
 
                     descriptor_count++;
                     descriptor_index_start = index;
                 }
                 else if (descriptor.type == RHI_Descriptor_Type::StructuredBuffer)
                 {
-                    info_buffers[index].buffer  = static_cast<VkBuffer>(resource);
-                    info_buffers[index].offset  = descriptor.offset;
-                    info_buffers[index].range   = descriptor.range;
+                    info_buffers[index].buffer = static_cast<VkBuffer>(resource);
+                    info_buffers[index].offset = descriptor.offset;
+                    info_buffers[index].range  = descriptor.range;
 
                     descriptor_count++;
                     descriptor_index_start = index;
