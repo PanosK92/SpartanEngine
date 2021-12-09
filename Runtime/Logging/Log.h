@@ -112,9 +112,9 @@ namespace Spartan
         static void Write(const Math::Matrix& value, LogType type);
 
         // Manually handled types
-        static void Write(const bool value, const LogType type)                                { Write(value ? "True" : "False", type); }
-        template<typename T> static void Write(std::weak_ptr<T> ptr, const LogType type)    { Write(ptr.expired() ? "Expired" : typeid(ptr).name(), type); }
-        template<typename T> static void Write(std::shared_ptr<T> ptr, const LogType type)    { Write(ptr ? typeid(ptr).name() : "Null", type); }
+        static void Write(const bool value, const LogType type)                            { Write(value ? "True" : "False", type); }
+        template<typename T> static void Write(std::weak_ptr<T> ptr, const LogType type)   { Write(ptr.expired() ? "Expired" : typeid(ptr).name(), type); }
+        template<typename T> static void Write(std::shared_ptr<T> ptr, const LogType type) { Write(ptr ? typeid(ptr).name() : "Null", type); }
         static void Write(const std::weak_ptr<Entity>& entity, LogType type);
         static void Write(const std::shared_ptr<Entity>& entity, LogType type);
 
@@ -127,9 +127,11 @@ namespace Spartan
 
         static std::mutex m_mutex_log;
         static std::weak_ptr<ILogger> m_logger;
-        static std::ofstream m_fout;    
+        static std::ofstream m_fout;
         static std::string m_log_file_name;
         static bool m_first_log;
         static std::vector<LogCmd> m_log_buffer;
+        static bool m_only_unique_logs;
+        static std::vector<std::string> m_error_logs;
     };
 }

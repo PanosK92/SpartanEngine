@@ -121,7 +121,10 @@ namespace Spartan
 
         if (resource_type == ResourceType::TextureCube)
         {
-            texture_desc.Usage     = (flags & D3D11_BIND_RENDER_TARGET) || (flags & D3D11_BIND_DEPTH_STENCIL) ? D3D11_USAGE_DEFAULT : D3D11_USAGE_IMMUTABLE;
+            bool is_rt            = flags & D3D11_BIND_RENDER_TARGET;
+            bool is_depth_stencil = flags & D3D11_BIND_DEPTH_STENCIL;
+
+            texture_desc.Usage     = (is_rt || is_depth_stencil || !has_data) ? D3D11_USAGE_DEFAULT : D3D11_USAGE_IMMUTABLE;
             texture_desc.MiscFlags = D3D11_RESOURCE_MISC_TEXTURECUBE;
         }
 

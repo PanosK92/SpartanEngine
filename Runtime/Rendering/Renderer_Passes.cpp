@@ -563,7 +563,7 @@ namespace Spartan
         pso.clear_color[3]                  = !is_transparent_pass ? Vector4::Zero : rhi_color_load;
         pso.render_target_depth_texture     = tex_depth;
         pso.clear_depth                     = (is_transparent_pass || depth_prepass) ? rhi_depth_load : GetClearDepth();
-        pso.clear_stencil                   = !is_transparent_pass ? 0 : rhi_stencil_dont_care;
+        pso.clear_stencil                   = rhi_stencil_dont_care;
         pso.viewport                        = tex_albedo->GetViewport();
         pso.vertex_buffer_stride            = static_cast<uint32_t>(sizeof(RHI_Vertex_PosTexNorTan));
         pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
@@ -690,10 +690,8 @@ namespace Spartan
         if ((m_options & Render_Ssao) == 0)
             return;
 
-        bool do_gi = GetOptionValue<bool>(Renderer_Option_Value::Ssao_Gi);
-
         // Acquire shaders
-        RHI_Shader* shader_c = m_shaders[do_gi ? RendererShader::Ssao_Gi_C : RendererShader::Ssao_C].get();
+        RHI_Shader* shader_c = m_shaders[RendererShader::Ssao_C].get();
         if (!shader_c->IsCompiled())
             return;
 
@@ -707,8 +705,8 @@ namespace Spartan
 
         // Set render state
         static RHI_PipelineState pso;
-        pso.shader_compute   = shader_c;
-        pso.pass_name        = "Pass_Ssao";
+        pso.shader_compute = shader_c;
+        pso.pass_name      = "Pass_Ssao";
 
         // Draw
         if (cmd_list->BeginRenderPass(pso))
@@ -721,6 +719,8 @@ namespace Spartan
             const uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_ssao->GetHeight()) / m_thread_group_count));
             const uint32_t thread_group_count_z = 1;
             const bool async = false;
+
+            bool do_gi = GetOptionValue<bool>(Renderer_Option_Value::Ssao_Gi);
 
             cmd_list->SetTexture(do_gi ? RendererBindings_Uav::rgba : RendererBindings_Uav::r, tex_ssao);
             cmd_list->SetTexture(RendererBindings_Srv::gbuffer_normal, tex_normal);
@@ -845,24 +845,38 @@ namespace Spartan
                         cmd_list->SetTexture(RendererBindings_Srv::gbuffer_depth,    RENDER_TARGET(RendererRt::Gbuffer_Depth));
                         cmd_list->SetTexture(RendererBindings_Srv::ssao,             RENDER_TARGET(RendererRt::Ssao));
                         
-                        // Set shadow map
-                        if (light->GetShadowsEnabled())
+                        // Set shadow maps
                         {
+                            // We always bind all the shadow maps, regardless of the light type or if shadows are enabled.
+                            // This is because we are using an uber shader and APIs like Vulkan, expect all texture slots to be bound with something.
+
                             RHI_Texture* tex_depth = light->GetDepthTexture();
                             RHI_Texture* tex_color = light->GetShadowsTransparentEnabled() ? light->GetColorTexture() : m_tex_default_white.get();
-                        
+
                             if (light->GetLightType() == LightType::Directional)
                             {
                                 cmd_list->SetTexture(RendererBindings_Srv::light_directional_depth, tex_depth);
                                 cmd_list->SetTexture(RendererBindings_Srv::light_directional_color, tex_color);
+                                cmd_list->SetTexture(RendererBindings_Srv::light_point_depth, m_tex_default_empty_cubemap);
+                                cmd_list->SetTexture(RendererBindings_Srv::light_point_color, m_tex_default_empty_cubemap);
+                                cmd_list->SetTexture(RendererBindings_Srv::light_spot_depth, m_tex_default_empty);
+                                cmd_list->SetTexture(RendererBindings_Srv::light_spot_color, m_tex_default_empty);
                             }
                             else if (light->GetLightType() == LightType::Point)
                             {
+                                cmd_list->SetTexture(RendererBindings_Srv::light_directional_depth, m_tex_default_empty_array);
+                                cmd_list->SetTexture(RendererBindings_Srv::light_directional_color, m_tex_default_empty_array);
                                 cmd_list->SetTexture(RendererBindings_Srv::light_point_depth, tex_depth);
                                 cmd_list->SetTexture(RendererBindings_Srv::light_point_color, tex_color);
+                                cmd_list->SetTexture(RendererBindings_Srv::light_spot_depth, m_tex_default_empty);
+                                cmd_list->SetTexture(RendererBindings_Srv::light_spot_color, m_tex_default_empty);
                             }
                             else if (light->GetLightType() == LightType::Spot)
                             {
+                                cmd_list->SetTexture(RendererBindings_Srv::light_directional_depth, m_tex_default_empty_array);
+                                cmd_list->SetTexture(RendererBindings_Srv::light_directional_color, m_tex_default_empty_array);
+                                cmd_list->SetTexture(RendererBindings_Srv::light_point_depth, m_tex_default_empty_cubemap);
+                                cmd_list->SetTexture(RendererBindings_Srv::light_point_color, m_tex_default_empty_cubemap);
                                 cmd_list->SetTexture(RendererBindings_Srv::light_spot_depth, tex_depth);
                                 cmd_list->SetTexture(RendererBindings_Srv::light_spot_color, tex_color);
                             }

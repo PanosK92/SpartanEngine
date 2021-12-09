@@ -37,14 +37,33 @@ namespace Spartan
     ofstream Log::m_fout;
     mutex Log::m_mutex_log;
     vector<LogCmd> Log::m_log_buffer;
+    vector<string> Log::m_error_logs;
     string Log::m_log_file_name = "log.txt";
-    bool Log::m_log_to_file     = true; // start logging to file (unless changed by the user, e.g. Renderer initialization was successful, so logging can happen on screen)
+    bool Log::m_log_to_file     = true; // start logging to file (this will eventually become false, e.g. Renderer initialization was successful, so logging can happen on screen)
     bool Log::m_first_log       = true;
-   
-    // Everything resolves to this
+#ifdef DEBUG
+    bool Log::m_only_unique_logs = true;
+#else
+    bool Log::m_only_unique_logs = false;
+#endif
+
+    // All functions resolve to this one
     void Log::Write(const char* text, const LogType type)
     {
         SP_ASSERT(text != nullptr);
+
+        // Only log unique text. Enabled only in debug configuration.
+        if (m_only_unique_logs)
+        {
+            if (find(m_error_logs.begin(), m_error_logs.end(), text) == m_error_logs.end())
+            {
+                m_error_logs.emplace_back(text);
+            }
+            else
+            {
+                return;
+            }
+        }
 
         lock_guard<mutex> guard(m_mutex_log);
 
