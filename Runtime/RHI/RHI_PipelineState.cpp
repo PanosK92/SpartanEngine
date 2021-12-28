@@ -122,13 +122,6 @@ namespace Spartan
         return 0;
     }
 
-    void RHI_PipelineState::ResetClearValues()
-    {
-        clear_color.fill(rhi_color_load);
-        clear_depth   = rhi_depth_load;
-        clear_stencil = rhi_stencil_load;
-    }
-
     bool RHI_PipelineState::HasClearValues()
     {
         if (clear_depth != rhi_depth_load && clear_depth != rhi_depth_dont_care)

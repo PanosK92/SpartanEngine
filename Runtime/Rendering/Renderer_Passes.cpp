@@ -679,9 +679,6 @@ namespace Spartan
             }
         
             cmd_list->EndRenderPass();
-        
-            // Reset clear values after the first render pass
-            pso.ResetClearValues();
         }
     }
 
