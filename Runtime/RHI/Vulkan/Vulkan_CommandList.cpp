@@ -285,18 +285,17 @@ namespace Spartan
 
     bool RHI_CommandList::EndRenderPass()
     {
-        // If the render pass is about to end, there are clear values, but there have been no draw calls,
-        // then Deferred_BeginRenderPass() was never called, and any render targets were never cleared.
-        // In this case we manually clear them.
-        if (m_pipeline_state->HasClearValues() && !m_render_pass_active)
+        // If the render pass is not active (draw/dispatch calls where never issued) but there are clear values,
+        // then begin the render pass so that we can clear any attached buffers as requested.
+        // Note: Per Vulkan, this approached is faster than calling vkCmdClearAttachments(), which is used by ClearPipelineStateRenderTargets().
+        if (!m_render_pass_active && m_pipeline_state->HasClearValues())
         {
             Deferred_BeginRenderPass();
-            ClearPipelineStateRenderTargets(*m_pipeline_state);
         }
 
+        // End
         if (m_render_pass_active)
         {
-            // Render pass
             vkCmdEndRenderPass(static_cast<VkCommandBuffer>(m_resource));
             m_render_pass_active = false;
         }
