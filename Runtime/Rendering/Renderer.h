@@ -229,6 +229,9 @@ namespace Spartan
         // Render targets
         std::array<std::shared_ptr<RHI_Texture>, 23> m_render_targets;
 
+        // Shaders
+        std::unordered_map<RendererShader, std::shared_ptr<RHI_Shader>> m_shaders;
+
         // Standard textures
         std::shared_ptr<RHI_Texture> m_tex_environment;
         std::shared_ptr<RHI_Texture> m_tex_default_noise_normal;
@@ -241,9 +244,6 @@ namespace Spartan
         std::shared_ptr<RHI_Texture> m_tex_gizmo_light_directional;
         std::shared_ptr<RHI_Texture> m_tex_gizmo_light_point;
         std::shared_ptr<RHI_Texture> m_tex_gizmo_light_spot;
-
-        // Shaders
-        std::unordered_map<RendererShader, std::shared_ptr<RHI_Shader>> m_shaders;
 
         // Depth-stencil states
         std::shared_ptr<RHI_DepthStencilState> m_depth_stencil_off_off;

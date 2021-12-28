@@ -350,15 +350,15 @@ namespace Spartan
                 attachment.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
             }
         
-            attachment.clearValue.depthStencil.depth    = pipeline_state.clear_depth;
-            attachment.clearValue.depthStencil.stencil  = pipeline_state.clear_stencil;
+            attachment.clearValue.depthStencil.depth   = pipeline_state.clear_depth;
+            attachment.clearValue.depthStencil.stencil = pipeline_state.clear_stencil;
         }
 
-        VkClearRect clear_rect           = {};
-        clear_rect.baseArrayLayer        = 0;
-        clear_rect.layerCount            = 1;
-        clear_rect.rect.extent.width     = pipeline_state.GetWidth();
-        clear_rect.rect.extent.height    = pipeline_state.GetHeight();
+        VkClearRect clear_rect        = {};
+        clear_rect.baseArrayLayer     = 0;
+        clear_rect.layerCount         = 1;
+        clear_rect.rect.extent.width  = pipeline_state.GetWidth();
+        clear_rect.rect.extent.height = pipeline_state.GetHeight();
 
         if (attachment_count == 0)
             return;
@@ -463,11 +463,11 @@ namespace Spartan
         // Draw
         vkCmdDrawIndexed(
             static_cast<VkCommandBuffer>(m_resource), // commandBuffer
-            index_count,                                // indexCount
-            1,                                          // instanceCount
-            index_offset,                               // firstIndex
-            vertex_offset,                              // vertexOffset
-            0                                           // firstInstance
+            index_count,                              // indexCount
+            1,                                        // instanceCount
+            index_offset,                             // firstIndex
+            vertex_offset,                            // vertexOffset
+            0                                         // firstInstance
         );
 
         // Profile
@@ -602,10 +602,10 @@ namespace Spartan
 
         vkCmdBindVertexBuffers(
             static_cast<VkCommandBuffer>(m_resource), // commandBuffer
-            0,                                          // firstBinding
-            1,                                          // bindingCount
-            vertex_buffers,                             // pBuffers
-            offsets                                     // pOffsets
+            0,                                        // firstBinding
+            1,                                        // bindingCount
+            vertex_buffers,                           // pBuffers
+            offsets                                   // pOffsets
         );
 
         m_vertex_buffer_id      = buffer->GetObjectId();
@@ -626,7 +626,7 @@ namespace Spartan
             return;
 
         vkCmdBindIndexBuffer(
-            static_cast<VkCommandBuffer>(m_resource),                     // commandBuffer
+            static_cast<VkCommandBuffer>(m_resource),                       // commandBuffer
             static_cast<VkBuffer>(buffer->GetResource()),                   // buffer
             offset,                                                         // offset
             buffer->Is16Bit() ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32 // indexType
