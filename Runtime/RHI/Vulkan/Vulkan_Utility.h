@@ -406,6 +406,78 @@ namespace Spartan::vulkan_utility
 
         void destroy(RHI_Texture* texture);
 
+        inline VkPipelineStageFlags layout_to_access_mask(const VkImageLayout layout, const bool is_destination_mask)
+        {
+            VkPipelineStageFlags access_mask = 0;
+
+            switch (layout)
+            {
+            case VK_IMAGE_LAYOUT_UNDEFINED:
+                if (is_destination_mask)
+                {
+                    LOG_ERROR("The new layout used in a transition must not be VK_IMAGE_LAYOUT_UNDEFINED.");
+                }
+                break;
+
+            case VK_IMAGE_LAYOUT_GENERAL:
+                access_mask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
+                break;
+
+            case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
+                access_mask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+                break;
+
+            case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
+                access_mask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+                break;
+
+            case VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL:
+                access_mask = VK_ACCESS_SHADER_READ_BIT;
+                break;
+
+            case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:
+                access_mask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_INPUT_ATTACHMENT_READ_BIT;
+                break;
+
+            case VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL:
+                access_mask = VK_ACCESS_TRANSFER_READ_BIT;
+                break;
+
+            case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:
+                access_mask = VK_ACCESS_TRANSFER_WRITE_BIT;
+                break;
+
+            case VK_IMAGE_LAYOUT_PREINITIALIZED:
+                if (!is_destination_mask)
+                {
+                    access_mask = VK_ACCESS_HOST_WRITE_BIT;
+                }
+                else
+                {
+                    LOG_ERROR("The new layout used in a transition must not be VK_IMAGE_LAYOUT_PREINITIALIZED.");
+                }
+                break;
+
+            case VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL:
+                access_mask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+                break;
+
+            case VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL:
+                access_mask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+                break;
+
+            case VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:
+                access_mask = VK_ACCESS_MEMORY_READ_BIT;
+                break;
+
+            default:
+                LOG_ERROR("Unexpected image layout");
+                break;
+            }
+
+            return access_mask;
+        }
+
         inline VkPipelineStageFlags access_flags_to_pipeline_stage(VkAccessFlags access_flags, const VkPipelineStageFlags enabled_graphics_shader_stages)
         {
             VkPipelineStageFlags stages = 0;
@@ -455,11 +527,11 @@ namespace Spartan::vulkan_utility
                     break;
 
                 case VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT:
-                    stages |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+                    stages |= VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
                     break;
 
                 case VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT:
-                    stages |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+                    stages |= VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
                     break;
 
                 case VK_ACCESS_TRANSFER_READ_BIT:
@@ -490,78 +562,6 @@ namespace Spartan::vulkan_utility
                 }
             }
             return stages;
-        }
-
-        inline VkPipelineStageFlags layout_to_access_mask(const VkImageLayout layout, const bool is_destination_mask)
-        {
-            VkPipelineStageFlags access_mask = 0;
-
-            switch (layout)
-            {
-            case VK_IMAGE_LAYOUT_UNDEFINED:
-                if (is_destination_mask)
-                {
-                    LOG_ERROR("The new layout used in a transition must not be VK_IMAGE_LAYOUT_UNDEFINED.");
-                }
-                break;
-
-            case VK_IMAGE_LAYOUT_GENERAL:
-                access_mask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
-                break;
-
-            case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
-                access_mask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-                break;
-
-            case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
-                access_mask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-                break;
-
-            case VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL:
-                access_mask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
-                break;
-
-            case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:
-                access_mask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_INPUT_ATTACHMENT_READ_BIT;
-                break;
-
-            case VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL:
-                access_mask = VK_ACCESS_TRANSFER_READ_BIT;
-                break;
-
-            case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:
-                access_mask = VK_ACCESS_TRANSFER_WRITE_BIT;
-                break;
-
-            case VK_IMAGE_LAYOUT_PREINITIALIZED:
-                if (!is_destination_mask)
-                {
-                    access_mask = VK_ACCESS_HOST_WRITE_BIT;
-                }
-                else
-                {
-                    LOG_ERROR("The new layout used in a transition must not be VK_IMAGE_LAYOUT_PREINITIALIZED.");
-                }
-                break;
-
-            case VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL:
-                access_mask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
-                break;
-
-            case VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL:
-                access_mask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
-                break;
-
-            case VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:
-                access_mask = VK_ACCESS_MEMORY_READ_BIT;
-                break;
-
-            default:
-                LOG_ERROR("Unexpected image layout");
-                break;
-            }
-
-            return access_mask;
         }
 
         inline void set_layout(void* cmd_buffer, void* image, const VkImageAspectFlags aspect_mask, const uint32_t mip_start, const uint32_t mip_range, const uint32_t array_length, const RHI_Image_Layout layout_old, const RHI_Image_Layout layout_new)

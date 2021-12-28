@@ -58,7 +58,7 @@ float4 ground_truth_ambient_occlusion(uint2 pos)
     
     // Compute step in pixels
     const float pixel_offset = max((g_ao_radius * g_resolution_rt.x * 0.5f) / origin_position.z, (float)g_ao_steps);
-    const float step_offset  = pixel_offset / (g_ao_steps + 1); // divide by steps + 1 so that the farthest samples are not fully attenuated
+    const float step_offset  = pixel_offset / float(g_ao_steps + 1.0f); // divide by steps + 1 so that the farthest samples are not fully attenuated
 
     // Comute rotation step
     const float step_direction = PI2 / (float)g_ao_directions;
@@ -107,13 +107,5 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     if (any(int2(thread_id.xy) >= g_resolution_rt.xy))
         return;
 
-    if (is_ssao_gi_enabled())
-    {
-        tex_out_rgba[thread_id.xy] = ground_truth_ambient_occlusion(thread_id.xy);
-    }
-    else
-    {
-        tex_out_r[thread_id.xy] = ground_truth_ambient_occlusion(thread_id.xy).a;
-    }
+    tex_out_rgba[thread_id.xy] = ground_truth_ambient_occlusion(thread_id.xy);
 }
-

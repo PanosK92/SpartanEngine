@@ -52,8 +52,10 @@ namespace Spartan
     {
         SP_ASSERT(text != nullptr);
 
+        lock_guard<mutex> guard(m_mutex_log);
+
         // Only log unique text. Enabled only in debug configuration.
-        if (m_only_unique_logs)
+        if (m_only_unique_logs && type == LogType::Error)
         {
             if (find(m_error_logs.begin(), m_error_logs.end(), text) == m_error_logs.end())
             {
@@ -65,9 +67,7 @@ namespace Spartan
             }
         }
 
-        lock_guard<mutex> guard(m_mutex_log);
-
-        const bool log_to_file = m_logger.expired() || m_log_to_file;
+        const bool log_to_file = true;// m_logger.expired() || m_log_to_file;
 
         if (log_to_file)
         {

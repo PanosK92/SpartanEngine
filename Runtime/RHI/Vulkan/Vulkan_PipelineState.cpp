@@ -88,8 +88,8 @@ namespace Spartan
         vector<VkAttachmentDescription> attachment_descriptions;
         vector<VkAttachmentReference> attachment_references;
         {
-            VkAttachmentLoadOp load_op_stencil      = get_stencil_load_op(clear_value_stencil);
-            VkAttachmentStoreOp store_op_stencil    = get_stencil_store_op(depth_stencil_state);
+            VkAttachmentLoadOp load_op_stencil   = get_stencil_load_op(clear_value_stencil);
+            VkAttachmentStoreOp store_op_stencil = get_stencil_store_op(depth_stencil_state);
 
             // Color
             {
@@ -123,15 +123,15 @@ namespace Spartan
 
                         VkImageLayout layout = vulkan_image_layout[static_cast<uint8_t>(texture->GetLayout(0))];
 
-                        VkAttachmentDescription attachment_desc  = {};
-                        attachment_desc.format                   = vulkan_format[texture->GetFormat()];
-                        attachment_desc.samples                  = VK_SAMPLE_COUNT_1_BIT;
-                        attachment_desc.loadOp                   = get_color_load_op(render_target_color_clear[i]);
-                        attachment_desc.storeOp                  = VK_ATTACHMENT_STORE_OP_STORE;
-                        attachment_desc.stencilLoadOp            = load_op_stencil;
-                        attachment_desc.stencilStoreOp           = store_op_stencil;
-                        attachment_desc.initialLayout            = layout;
-                        attachment_desc.finalLayout              = layout;
+                        VkAttachmentDescription attachment_desc = {};
+                        attachment_desc.format                  = vulkan_format[texture->GetFormat()];
+                        attachment_desc.samples                 = VK_SAMPLE_COUNT_1_BIT;
+                        attachment_desc.loadOp                  = get_color_load_op(render_target_color_clear[i]);
+                        attachment_desc.storeOp                 = VK_ATTACHMENT_STORE_OP_STORE;
+                        attachment_desc.stencilLoadOp           = load_op_stencil;
+                        attachment_desc.stencilStoreOp          = store_op_stencil;
+                        attachment_desc.initialLayout           = layout;
+                        attachment_desc.finalLayout             = layout;
 
                         // Description
                         attachment_descriptions.push_back(attachment_desc);
@@ -146,15 +146,15 @@ namespace Spartan
             {
                 VkImageLayout layout = vulkan_image_layout[static_cast<uint8_t>(render_target_depth_texture->GetLayout(0))];
 
-                VkAttachmentDescription attachment_desc  = {};
-                attachment_desc.format                   = vulkan_format[render_target_depth_texture->GetFormat()];
-                attachment_desc.samples                  = VK_SAMPLE_COUNT_1_BIT;
-                attachment_desc.loadOp                   = get_depth_load_op(clear_value_depth);
-                attachment_desc.storeOp                  = VK_ATTACHMENT_STORE_OP_STORE;
-                attachment_desc.stencilLoadOp            = load_op_stencil;
-                attachment_desc.stencilStoreOp           = store_op_stencil;
-                attachment_desc.initialLayout            = layout;
-                attachment_desc.finalLayout              = layout;
+                VkAttachmentDescription attachment_desc = {};
+                attachment_desc.format                  = vulkan_format[render_target_depth_texture->GetFormat()];
+                attachment_desc.samples                 = VK_SAMPLE_COUNT_1_BIT;
+                attachment_desc.loadOp                  = get_depth_load_op(clear_value_depth);
+                attachment_desc.storeOp                 = VK_ATTACHMENT_STORE_OP_STORE;
+                attachment_desc.stencilLoadOp           = load_op_stencil;
+                attachment_desc.stencilStoreOp          = store_op_stencil;
+                attachment_desc.initialLayout           = layout;
+                attachment_desc.finalLayout             = layout;
 
                 // Description
                 attachment_descriptions.push_back(attachment_desc);

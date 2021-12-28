@@ -695,13 +695,8 @@ namespace Spartan
         if (!shader_c->IsCompiled())
             return;
 
-        // Acquire textures
-        RHI_Texture* tex_ssao     = RENDER_TARGET(RendererRt::Ssao).get();
-        RHI_Texture* tex_depth    = RENDER_TARGET(RendererRt::Gbuffer_Depth).get();
-        RHI_Texture* tex_normal   = RENDER_TARGET(RendererRt::Gbuffer_Normal).get();
-        RHI_Texture* tex_albedo   = RENDER_TARGET(RendererRt::Gbuffer_Albedo).get();
-        RHI_Texture* tex_velocity = RENDER_TARGET(RendererRt::Gbuffer_Velocity).get();
-        RHI_Texture* tex_diffuse  = RENDER_TARGET(RendererRt::Light_Diffuse).get();
+        // Acquire render target
+        RHI_Texture* tex_ssao = RENDER_TARGET(RendererRt::Ssao).get();
 
         // Set render state
         static RHI_PipelineState pso;
@@ -720,17 +715,12 @@ namespace Spartan
             const uint32_t thread_group_count_z = 1;
             const bool async = false;
 
-            bool do_gi = GetOptionValue<bool>(Renderer_Option_Value::Ssao_Gi);
-
-            cmd_list->SetTexture(do_gi ? RendererBindings_Uav::rgba : RendererBindings_Uav::r, tex_ssao);
-            cmd_list->SetTexture(RendererBindings_Srv::gbuffer_normal, tex_normal);
-            cmd_list->SetTexture(RendererBindings_Srv::gbuffer_depth, tex_depth);
-            if (do_gi)
-            {
-                cmd_list->SetTexture(RendererBindings_Srv::gbuffer_albedo,   tex_albedo);
-                cmd_list->SetTexture(RendererBindings_Srv::gbuffer_velocity, tex_velocity);
-                cmd_list->SetTexture(RendererBindings_Srv::light_diffuse,    tex_diffuse);
-            }
+            cmd_list->SetTexture(RendererBindings_Uav::rgba,             tex_ssao);
+            cmd_list->SetTexture(RendererBindings_Srv::gbuffer_normal,   RENDER_TARGET(RendererRt::Gbuffer_Normal));
+            cmd_list->SetTexture(RendererBindings_Srv::gbuffer_depth,    RENDER_TARGET(RendererRt::Gbuffer_Depth));
+            cmd_list->SetTexture(RendererBindings_Srv::gbuffer_albedo,   RENDER_TARGET(RendererRt::Gbuffer_Albedo));
+            cmd_list->SetTexture(RendererBindings_Srv::gbuffer_velocity, RENDER_TARGET(RendererRt::Gbuffer_Velocity));
+            cmd_list->SetTexture(RendererBindings_Srv::light_diffuse,    RENDER_TARGET(RendererRt::Light_Diffuse));
 
             cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
             cmd_list->EndRenderPass();
@@ -793,9 +783,9 @@ namespace Spartan
         // Blur the smaller mips to reduce blockiness/flickering
         for (uint32_t i = 1; i < tex_ssr->GetMipCount(); i++)
         {
-            const bool depth_aware      = true;
-            const float sigma           = 2.0f;
-            const float pixel_stride    = 1.0;
+            const bool depth_aware   = true;
+            const float sigma        = 2.0f;
+            const float pixel_stride = 1.0;
             Pass_Blur_Gaussian(cmd_list, tex_ssr, depth_aware, sigma, pixel_stride, i);
         }
     }
@@ -2358,7 +2348,7 @@ namespace Spartan
             }
             else
             {
-                options |= CHANNEL_R;
+                options |= CHANNEL_A;
             }
         }
 
