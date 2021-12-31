@@ -22,9 +22,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =================================
 #include "Spartan.h"
 #include "TransformHandleOperatorAxis.h"
-#include "../Renderer.h"
 #include "../../Input/Input.h"
 #include "../../World/Components/Transform.h"
+#include "../../Rendering/Renderer.h"
 //============================================
 
 //= NAMESPACES ===============

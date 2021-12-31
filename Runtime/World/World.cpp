@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==================================
+//= INCLUDES ===============================
 #include "Spartan.h"
 #include "World.h"
 #include "Entity.h"
@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Components/Light.h"
 #include "Components/Environment.h"
 #include "Components/AudioListener.h"
+#include "TransformHandle/TransformHandle.h"
 #include "../Resource/ResourceCache.h"
 #include "../Resource/ProgressTracker.h"
 #include "../IO/FileStream.h"
@@ -35,8 +36,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Input/Input.h"
 #include "../RHI/RHI_Device.h"
 #include "../Rendering/Renderer.h"
-#include "../Rendering/Gizmos/TransformHandle.h"
-//=============================================
+//==========================================
 
 //= NAMESPACES ================
 using namespace std;

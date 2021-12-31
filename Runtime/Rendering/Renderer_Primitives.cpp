@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =============================
+//= INCLUDES ========================================
 #include "Spartan.h"
 #include "Renderer.h"
 #include "../World/Components/Camera.h"
@@ -28,8 +28,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World/Entity.h"
 #include "../World/World.h"
 #include "../World/Components/Renderable.h"
-#include "Gizmos/TransformHandle.h"
-//========================================
+#include "../World/TransformHandle/TransformHandle.h"
+//===================================================
 
 //= NAMESPACES ===============
 using namespace std;

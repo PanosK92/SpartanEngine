@@ -19,13 +19,12 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===================================
+//= INCLUDES ========================================
 #include "Spartan.h"
 #include "Renderer.h"
 #include "Model.h"
+#include "Grid.h"
 #include "Font/Font.h"
-#include "Gizmos/Grid.h"
-#include "Gizmos/TransformHandle.h"
 #include "../Profiling/Profiler.h"
 #include "../RHI/RHI_CommandList.h"
 #include "../RHI/RHI_Implementation.h"
@@ -42,7 +41,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World/Components/Renderable.h"
 #include "../World/Components/ReflectionProbe.h"
 #include "../World/World.h"
-//==============================================
+#include "../World/TransformHandle/TransformHandle.h"
+//===================================================
 
 //= NAMESPACES ===============
 using namespace std;

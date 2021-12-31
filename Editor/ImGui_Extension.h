@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ================================
+//= INCLUDES =====================================
 #include <string>
 #include <variant>
 #include <chrono>
@@ -36,9 +36,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Input/Input.h"
 #include "World/World.h"
 #include "World/Components/Camera.h"
+#include "World/TransformHandle/TransformHandle.h"
 #include "Display/Display.h"
-#include "Rendering/Gizmos/TransformHandle.h"
-//===========================================
+//================================================
 
 class EditorHelper
 {
