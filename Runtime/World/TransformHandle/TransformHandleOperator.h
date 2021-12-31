@@ -21,16 +21,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =============================
+//= INCLUDES ===========================
 #include "TransformEnums.h"
 #include "TransformHandleOperatorAxis.h"
 #include <memory>
-#include "../Model.h"
-#include "../../Core/SpartanDefinitions.h"
-//========================================
+#include "../../Rendering/Model.h"
+//======================================
 
 namespace Spartan
 {
+    //= FWD DECLARATIONS ==
     class Renderer;
     class Context;
     class RHI_VertexBuffer;
@@ -38,6 +38,8 @@ namespace Spartan
     class Entity;
     class Input;
     class Camera;
+    class Model;
+    //=====================
 
     class SPARTAN_CLASS TransformHandleOperator
     {

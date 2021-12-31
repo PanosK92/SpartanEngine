@@ -21,8 +21,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ========================
 #include "Spartan.h"
-#include "TransformScale.h"
+#include "TransformPosition.h"
 #include "../../Utilities/Geometry.h"
+#include "../../Rendering/Model.h"
 //===================================
 
 //= NAMESPACES ===============
@@ -32,39 +33,36 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    TransformScale::TransformScale(Context* context) : TransformHandleOperator(context, TransformHandleType::Scale)
+    TransformPosition::TransformPosition(Context* context) : TransformHandleOperator(context, TransformHandleType::Position)
     {
         // Create model
         vector<RHI_Vertex_PosTexNorTan> vertices;
         vector<uint32_t> indices;
 
-        Utility::Geometry::CreateCube(&vertices, &indices);
+        Utility::Geometry::CreateCone(&vertices, &indices);
 
         m_axis_model = make_unique<Model>(m_context);
         m_axis_model->AppendGeometry(indices, vertices);
         m_axis_model->UpdateGeometry();
 
         // Create an axis for each axis of control and fourth axis which control all of them
-        m_handle_x      = TransformHandleOperatorAxis(m_type, Vector3::Right, m_context);
-        m_handle_y      = TransformHandleOperatorAxis(m_type, Vector3::Up, m_context);
-        m_handle_z      = TransformHandleOperatorAxis(m_type, Vector3::Forward, m_context);
-        m_handle_xyz    = TransformHandleOperatorAxis(m_type, Vector3::One, m_context);
+        m_handle_x = TransformHandleOperatorAxis(m_type, Vector3::Right, m_context);
+        m_handle_y = TransformHandleOperatorAxis(m_type, Vector3::Up, m_context);
+        m_handle_z = TransformHandleOperatorAxis(m_type, Vector3::Forward, m_context);
 
         // Create bounding boxes for the handles, based on the vertices used
-        m_handle_x.m_box    = BoundingBox(vertices.data(), static_cast<uint32_t>(vertices.size()));
-        m_handle_y.m_box    = m_handle_x.m_box;
-        m_handle_z.m_box    = m_handle_x.m_box;
-        m_handle_xyz.m_box  = m_handle_x.m_box;
+        m_handle_x.m_box = BoundingBox(vertices.data(), static_cast<uint32_t>(vertices.size()));
+        m_handle_y.m_box = m_handle_x.m_box;
+        m_handle_z.m_box = m_handle_x.m_box;
 
         m_offset_handle_axes_from_center = true;
     }
 
-    void TransformScale::InteresectionTest(const Math::Ray& camera_to_mouse)
+    void TransformPosition::InteresectionTest(const Math::Ray& camera_to_mouse)
     {
         // Test if the ray intersects any of the handles
-        m_handle_x_intersected      = camera_to_mouse.HitDistance(m_handle_x.m_box_transformed)   != Math::Helper::INFINITY_;
-        m_handle_y_intersected      = camera_to_mouse.HitDistance(m_handle_y.m_box_transformed)   != Math::Helper::INFINITY_;
-        m_handle_z_intersected      = camera_to_mouse.HitDistance(m_handle_z.m_box_transformed)   != Math::Helper::INFINITY_;
-        m_handle_xyz_intersected    = camera_to_mouse.HitDistance(m_handle_xyz.m_box_transformed) != Math::Helper::INFINITY_;
+        m_handle_x_intersected = camera_to_mouse.HitDistance(m_handle_x.m_box_transformed) != Math::Helper::INFINITY_;
+        m_handle_y_intersected = camera_to_mouse.HitDistance(m_handle_y.m_box_transformed) != Math::Helper::INFINITY_;
+        m_handle_z_intersected = camera_to_mouse.HitDistance(m_handle_z.m_box_transformed) != Math::Helper::INFINITY_;
     }
 }

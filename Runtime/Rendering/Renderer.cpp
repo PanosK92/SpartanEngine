@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Spartan.h"
 #include "Renderer.h"
 #include "Model.h"
-#include "Gizmos/Grid.h"
+#include "Grid.h"
 #include "Font/Font.h"
 #include "../Utilities/Sampling.h"
 #include "../Profiling/Profiler.h"

@@ -23,7 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Spartan.h"
 #include "TransformRotation.h"
 #include "../../Utilities/Geometry.h"
-#include "../Renderer.h"
 //===================================
 
 //= NAMESPACES ===============

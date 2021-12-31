@@ -22,12 +22,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =================================
 #include "Spartan.h"
 #include "TransformHandleOperator.h"
-#include "../Renderer.h"
 #include "../../Input/Input.h"
 #include "../../World/Entity.h"
 #include "../../World/Components/Camera.h"
 #include "../../World/Components/Transform.h"
 #include "../../World/Components/Renderable.h"
+#include "../../Rendering/Model.h"
+#include "../../Rendering/Renderer.h"
 //============================================
 
 //= NAMESPACES ===============
