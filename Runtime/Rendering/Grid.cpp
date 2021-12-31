@@ -19,13 +19,13 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ================================
+//= INCLUDES =============================
 #include "Spartan.h"
 #include "Grid.h"
-#include "../../World/Components/Transform.h"
-#include "../../RHI/RHI_VertexBuffer.h"
-#include "../../RHI/RHI_Vertex.h"
-//===========================================
+#include "../RHI/RHI_Vertex.h"
+#include "../RHI/RHI_VertexBuffer.h"
+#include "../World/Components/Transform.h"
+//========================================
 
 //= NAMESPACES ================
 using namespace std;
