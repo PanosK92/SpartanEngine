@@ -34,10 +34,10 @@ namespace Spartan
     class Input;
     class Transform;
 
-    struct TransformHandleAxis
+    struct TransformHandleOperatorAxis
     {
-        TransformHandleAxis() = default;
-        TransformHandleAxis(TransformHandleType type, const Math::Vector3& axis, Context* context);
+        TransformHandleOperatorAxis() = default;
+        TransformHandleOperatorAxis(TransformHandleType type, const Math::Vector3& axis, Context* context);
 
         void UpdateTransform();
         void ApplyDeltaToTransform(Transform* transform, const TransformHandleSpace space);

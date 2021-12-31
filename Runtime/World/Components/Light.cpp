@@ -82,13 +82,10 @@ namespace Spartan
         {
             // Position, rotation and reverse-z
             const bool reverse_z = m_renderer ? m_renderer->GetOption(Render_ReverseZ) : false;
-            if (m_previous_pos != m_transform->GetPosition() || m_previous_rot != m_transform->GetRotation() || m_previous_reverse_z != reverse_z)
+            if (m_transform->HasPositionChangedThisFrame() || m_transform->HasRotationChangedThisFrame() || m_previous_reverse_z != reverse_z)
             {
-                m_previous_pos       = m_transform->GetPosition();
-                m_previous_rot       = m_transform->GetRotation();
                 m_previous_reverse_z = reverse_z;
-
-                m_is_dirty = true;
+                m_is_dirty           = true;
             }
 
             // Camera (needed for directional light cascade computations)
@@ -246,9 +243,9 @@ namespace Spartan
         }
         else if (m_light_type == LightType::Spot)
         {   
-            const Vector3 position  = m_transform->GetPosition();
-            const Vector3 forward   = m_transform->GetForward();
-            const Vector3 up        = m_transform->GetUp();
+            const Vector3 position = m_transform->GetPosition();
+            const Vector3 forward  = m_transform->GetForward();
+            const Vector3 up       = m_transform->GetUp();
 
             // Compute
             m_matrix_view[0] = Matrix::CreateLookAtLH(position, position + forward, up);

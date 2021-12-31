@@ -152,7 +152,6 @@ namespace Spartan
         void* m_resource                                            = nullptr;
         std::shared_ptr<RHI_Fence> m_processed_fence                = nullptr;
         std::shared_ptr<RHI_Semaphore> m_processed_semaphore        = nullptr;
-        void* m_query_pool                                          = nullptr;
         std::atomic<bool> m_render_pass_active                      = false;
         std::atomic<bool> m_pipeline_active                         = false;
         std::atomic<bool> m_flushed                                 = false;
@@ -175,8 +174,9 @@ namespace Spartan
         uint32_t m_output_textures_index = 0;
 
         // Profiling
-        uint32_t m_timestamp_index = 0;
-        static const uint32_t m_max_timestamps = 256;
+        void* m_query_pool                     = nullptr;
+        uint32_t m_timestamp_index             = 0;
+        static const uint32_t m_max_timestamps = 512;
         std::array<uint64_t, m_max_timestamps> m_timestamps;
 
         // Variables to minimise state changes

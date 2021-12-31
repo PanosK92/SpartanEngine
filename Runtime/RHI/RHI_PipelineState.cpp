@@ -257,8 +257,8 @@ namespace Spartan
                     RHI_Image_Layout layout = RHI_Image_Layout::Color_Attachment_Optimal;
 
                     texture->SetLayout(layout, cmd_list);
-                    render_target_color_layout_initial   = layout;
-                    render_target_color_layout_final     = layout;
+                    render_target_color_layout_initial = layout;
+                    render_target_color_layout_final   = layout;
                 }
             }
 
@@ -267,8 +267,8 @@ namespace Spartan
             {
                 RHI_Image_Layout layout = RHI_Image_Layout::Present_Src;
 
-                render_target_color_layout_initial   = layout;
-                render_target_color_layout_final     = layout;
+                render_target_color_layout_initial = layout;
+                render_target_color_layout_final   = layout;
             }
         }
         
@@ -278,8 +278,8 @@ namespace Spartan
             RHI_Image_Layout layout = render_target_depth_texture_read_only ? RHI_Image_Layout::Depth_Stencil_Read_Only_Optimal :  RHI_Image_Layout::Depth_Stencil_Attachment_Optimal;
         
             texture->SetLayout(layout, cmd_list);
-            render_target_depth_layout_initial   = layout;
-            render_target_depth_layout_final     = layout;
+            render_target_depth_layout_initial = layout;
+            render_target_depth_layout_final   = layout;
         }
     }
 }

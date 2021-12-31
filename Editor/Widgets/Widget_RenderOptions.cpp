@@ -426,19 +426,19 @@ void Widget_RenderOptions::TickVisible()
                 helper::CheckBox("Transform", debug_transform);
                 {
                     ImGui::BeginDisabled(!debug_transform);
-                    helper::Float("Transform size", m_renderer->m_gizmo_transform_size, 0.0025f);
-                    helper::Float("Transform speed", m_renderer->m_gizmo_transform_speed, 1.0f);
+                    helper::Float("Transform size",  m_context->GetSubsystem<World>()->m_gizmo_transform_size, 0.0025f);
+                    helper::Float("Transform speed", m_context->GetSubsystem<World>()->m_gizmo_transform_speed, 1.0f);
                     ImGui::EndDisabled();
                 }
 
-                helper::CheckBox("Selection outline", debug_selection_outline);
-                helper::CheckBox("Physics", debug_physics);
+                helper::CheckBox("Selection outline",                   debug_selection_outline);
+                helper::CheckBox("Physics",                             debug_physics);
                 helper::CheckBox("AABBs - Axis-aligned bounding boxes", debug_aabb);
-                helper::CheckBox("Lights", debug_light);
-                helper::CheckBox("Picking ray", debug_picking_ray);
-                helper::CheckBox("Grid", debug_grid);
-                helper::CheckBox("Reflection probes", debug_reflection_probes);
-                helper::CheckBox("Wireframe", debug_wireframe);
+                helper::CheckBox("Lights",                              debug_light);
+                helper::CheckBox("Picking ray",                         debug_picking_ray);
+                helper::CheckBox("Grid",                                debug_grid);
+                helper::CheckBox("Reflection probes",                   debug_reflection_probes);
+                helper::CheckBox("Wireframe",                           debug_wireframe);
             }
 
             if (helper::Option("Debug", false))

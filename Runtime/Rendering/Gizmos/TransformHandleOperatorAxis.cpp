@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =================================
 #include "Spartan.h"
-#include "TransformHandleAxis.h"
+#include "TransformHandleOperatorAxis.h"
 #include "../Renderer.h"
 #include "../../Input/Input.h"
 #include "../../World/Components/Transform.h"
@@ -34,7 +34,7 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    TransformHandleAxis::TransformHandleAxis(TransformHandleType type, const Math::Vector3& axis, Context* context)
+    TransformHandleOperatorAxis::TransformHandleOperatorAxis(TransformHandleType type, const Math::Vector3& axis, Context* context)
     {
         m_axis     = axis;
         m_type     = type;
@@ -43,7 +43,7 @@ namespace Spartan
         m_input    = context->GetSubsystem<Input>();
     }
 
-    void TransformHandleAxis::UpdateTransform()
+    void TransformHandleOperatorAxis::UpdateTransform()
     {
         if (m_type == TransformHandleType::Unknown)
             return;
@@ -52,7 +52,7 @@ namespace Spartan
         m_box_transformed = m_box.Transform(m_transform);
     }
 
-    void TransformHandleAxis::ApplyDeltaToTransform(Transform* transform, const TransformHandleSpace space)
+    void TransformHandleOperatorAxis::ApplyDeltaToTransform(Transform* transform, const TransformHandleSpace space)
     {
         if (m_type == TransformHandleType::Unknown)
             return;
@@ -118,7 +118,7 @@ namespace Spartan
         }
     }
 
-    void TransformHandleAxis::DrawPrimitives(const Vector3& transform_center) const
+    void TransformHandleOperatorAxis::DrawPrimitives(const Vector3& transform_center) const
     {
         if (m_type == TransformHandleType::Unknown)
             return;
@@ -142,7 +142,7 @@ namespace Spartan
         }
     }
 
-    const Spartan::Math::Vector3& TransformHandleAxis::GetColor() const
+    const Spartan::Math::Vector3& TransformHandleOperatorAxis::GetColor() const
     {
         if (m_is_disabled)
             return m_color_disabled;

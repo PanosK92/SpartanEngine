@@ -22,62 +22,51 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES =============================
-#include "TransformEnums.h"
-#include "TransformHandleAxis.h"
 #include <memory>
-#include "../Model.h"
+#include "TransformHandleOperator.h"
 #include "../../Core/SpartanDefinitions.h"
+#include <unordered_map>
 //========================================
 
 namespace Spartan
 {
-    class Renderer;
-    class Context;
-    class RHI_VertexBuffer;
-    class RHI_IndexBuffer;
-    class Entity;
+    class World;
     class Input;
     class Camera;
+    class Context;
+    class Entity;
+    class RHI_IndexBuffer;
+    class RHI_VertexBuffer;
 
     class SPARTAN_CLASS TransformHandle
     {
     public:
-        TransformHandle(Context* context, const TransformHandleType transform_handle_type);
+        TransformHandle(Context* context);
         ~TransformHandle() = default;
 
-        bool Tick(TransformHandleSpace space, Entity* entity, Camera* camera, float handle_size, float handle_speed);
-        const Math::Matrix& GetTransform(const Math::Vector3& axis) const;
-        const Math::Vector3& GetColor(const Math::Vector3& axis) const;
+        // Ticks the gizmo and returns true if it needs to be queried for rendering
+        bool Tick(Camera* camera, float handle_size, float handle_speed);
+
+        std::weak_ptr<Spartan::Entity> SetSelectedEntity(const std::shared_ptr<Entity>& entity);
+        uint32_t GetIndexCount();
         const RHI_VertexBuffer* GetVertexBuffer();
         const RHI_IndexBuffer* GetIndexBuffer();
-        bool HasModel() const { return m_axis_model != nullptr; }
-        bool IsEditing() const;
-        bool IsHovered() const;
-
+        const TransformHandleOperator* GetHandle();
+        bool DrawXYZ()              const { return m_type == TransformHandleType::Scale; }
+        bool IsEditing()            const { return m_is_editing; }
+        Entity* GetSelectedEntity() const { return m_entity_selected.lock().get(); }
+        bool GetNeedsToRender()     const { return m_needs_to_render; }
+        
     private:
-        void ReflectEntityTransform(TransformHandleSpace space, Entity* entity, Camera* camera, float handle_size);
-        void UpdateHandleAxesState();
-        void UpdateHandleAxesMouseDelta(Camera* camera, const Math::Vector3& ray_end, const float handle_speed);
+        bool m_is_editing      = false;
+        bool m_needs_to_render = false;
 
-    protected:
-        // Test if the ray intersects any of the handles
-        virtual void InteresectionTest(const Math::Ray& camera_to_pixel) = 0;
-
-        TransformHandleAxis m_handle_x;
-        TransformHandleAxis m_handle_y;
-        TransformHandleAxis m_handle_z;
-        TransformHandleAxis m_handle_xyz;
-        bool m_handle_x_intersected           = false;
-        bool m_handle_y_intersected           = false;
-        bool m_handle_z_intersected           = false;
-        bool m_handle_xyz_intersected         = false;
-        TransformHandleType m_type            = TransformHandleType::Unknown;
-        Math::Vector3 m_ray_previous          = Math::Vector3::Zero;
-        Math::Vector3 m_ray_current           = Math::Vector3::Zero;
-        bool m_offset_handle_axes_from_center = true;
-        Context* m_context                    = nullptr;
-        Renderer* m_renderer                  = nullptr;
-        Input* m_input                        = nullptr;
-        std::unique_ptr<Model> m_axis_model;
+        std::weak_ptr<Entity> m_entity_selected;
+        std::unordered_map<TransformHandleType, std::shared_ptr<TransformHandleOperator>> m_handles;
+        TransformHandleType m_type = TransformHandleType::Unknown;
+        TransformHandleSpace m_space;
+        Context* m_context;
+        Input* m_input;
+        World* m_world;
     };
 }

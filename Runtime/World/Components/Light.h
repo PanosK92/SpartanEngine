@@ -144,8 +144,8 @@ namespace Spartan
         Math::Vector4 m_color_rgb   = Math::Vector4(1.0f, 0.76f, 0.57f, 1.0f);
         bool m_volumetric_enabled   = true;
         float m_range               = 10.0f;
-        float m_intensity           = 128000.0f;  // sun lux
-        float m_angle_rad           = 0.5f;       // about 30 degrees
+        float m_intensity           = 128000.0f; // sun lux
+        float m_angle_rad           = 0.5f;      // about 30 degrees
         float m_time_of_day         = 1.0f;
         bool m_initialized          = false;
         std::array<Math::Matrix, 6> m_matrix_view;
@@ -153,8 +153,6 @@ namespace Spartan
 
         // Dirty checks
         bool m_is_dirty                     = true;
-        Math::Quaternion m_previous_rot     = Math::Quaternion::Identity;
-        Math::Vector3 m_previous_pos        = Math::Vector3::Infinity;
         Math::Matrix m_previous_camera_view = Math::Matrix::Identity;
         bool m_previous_reverse_z           = false;
 

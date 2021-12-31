@@ -72,15 +72,16 @@ namespace Spartan
         noise_blue   = 25,
 
         // Misc
-        lutIbl           = 26,
-        environment      = 27,
-        ssao             = 28,
-        ssr              = 29,
-        frame            = 30,
-        tex              = 31,
-        tex2             = 32,
-        font_atlas       = 33,
-        reflection_probe = 34
+        lutIbl            = 26,
+        environment       = 27,
+        ssao              = 28,
+        ssao_bent_normals = 29,
+        ssr               = 30,
+        frame             = 31,
+        tex               = 32,
+        tex2              = 33,
+        font_atlas        = 34,
+        reflection_probe  = 35
     };
 
     // UAV Bindings
@@ -180,6 +181,7 @@ namespace Spartan
         Dof_Half,
         Dof_Half_2,
         Ssao,
+        Ssao_BentNormals,
         Ssr,
         Taa_History,
         Bloom,

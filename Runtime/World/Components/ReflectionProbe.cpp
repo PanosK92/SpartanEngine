@@ -92,20 +92,12 @@ namespace Spartan
             reverse_z_changed    = true;
         }
 
-        // Position change check
-        bool position_changed = false;
-        if (m_previous_pos != m_transform->GetPosition())
-        {
-            m_previous_pos   = m_transform->GetPosition();
-            position_changed = true;
-        }
-
         if (reverse_z_changed)
         {
             ComputeProjectionMatrix();
         }
 
-        if (position_changed)
+        if (m_transform->HasPositionChangedThisFrame())
         { 
             // Compute view for each side of the cube map
             const Vector3 position = m_transform->GetPosition();
@@ -119,7 +111,7 @@ namespace Spartan
             m_aabb = BoundingBox(position - m_extents, position + m_extents);
         }
 
-        if (reverse_z_changed || position_changed)
+        if (reverse_z_changed || m_transform->HasPositionChangedThisFrame())
         {
             // Compute frustum
             for (uint32_t i = 0; i < m_texture_color->GetArrayLength(); i++)

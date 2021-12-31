@@ -38,9 +38,9 @@ namespace Spartan
 {
     RHI_DescriptorSetLayout::RHI_DescriptorSetLayout(const RHI_Device* rhi_device, const vector<RHI_Descriptor>& descriptors, const string& name)
     {
-        m_rhi_device    = rhi_device;
-        m_descriptors   = descriptors;
-        m_object_name   = name;
+        m_rhi_device  = rhi_device;
+        m_descriptors = descriptors;
+        m_object_name = name;
         CreateResource(m_descriptors);
         m_dynamic_offsets.fill(rhi_dynamic_offset_empty);
 
@@ -74,9 +74,9 @@ namespace Spartan
                 }
 
                 // Update
-                descriptor.data     = static_cast<void*>(constant_buffer);
-                descriptor.offset   = constant_buffer->GetOffset();
-                descriptor.range    = constant_buffer->GetStride();
+                descriptor.data   = static_cast<void*>(constant_buffer);
+                descriptor.offset = constant_buffer->GetOffset();
+                descriptor.range  = constant_buffer->GetStride();
 
                 return;
             }
@@ -127,10 +127,10 @@ namespace Spartan
                 m_needs_to_bind = descriptor.mip    != mip      ? true : m_needs_to_bind;
 
                 // Update
-                descriptor.data         = static_cast<void*>(texture);
-                descriptor.layout       = layout;
-                descriptor.mip          = mip;
-                descriptor.array_size   = mip_count;
+                descriptor.data       = static_cast<void*>(texture);
+                descriptor.layout     = layout;
+                descriptor.mip        = mip;
+                descriptor.array_size = mip_count;
 
                 return;
             }

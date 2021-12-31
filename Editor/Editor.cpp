@@ -235,14 +235,14 @@ void Editor::Tick()
 {
     while (!_editor::window->WantsToClose())
     {
-        // Engine - Tick
-        m_engine->Tick();
-
         if (!_editor::renderer || !_editor::renderer->IsInitialised())
             continue;
 
         if (_editor::window->IsFullScreen())
         {
+            // Engine - Tick
+            m_engine->Tick();
+
             _editor::renderer->Pass_CopyToBackbuffer(_editor::renderer->GetCmdList());
         }
         else
@@ -259,6 +259,9 @@ void Editor::Tick()
             {
                 widget->Tick();
             }
+
+            // Engine - Tick
+            m_engine->Tick();
 
             // Editor - End
             if (m_editor_begun)

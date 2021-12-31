@@ -138,7 +138,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     }
 
     // Diffuse and specular
-    tex_out_rgb[thread_id.xy]  += saturate_16(light_diffuse * light.radiance);
+    tex_out_rgb[thread_id.xy]  += saturate_16(light_diffuse * light.radiance + surface.gi);
     tex_out_rgb2[thread_id.xy] += saturate_16(light_specular * light.radiance);
 
     // Volumetric

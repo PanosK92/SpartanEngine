@@ -37,9 +37,9 @@ namespace Spartan
         template<typename T>
         bool Create(const uint32_t offset_count = 1)
         {
-            m_stride            = static_cast<uint32_t>(sizeof(T));
-            m_offset_count      = offset_count;
-            m_object_size_gpu   = static_cast<uint64_t>(m_stride * m_offset_count);
+            m_stride          = static_cast<uint32_t>(sizeof(T));
+            m_offset_count    = offset_count;
+            m_object_size_gpu = static_cast<uint64_t>(m_stride * m_offset_count);
 
             return _create();
         }
@@ -47,14 +47,14 @@ namespace Spartan
         void* Map();
         bool Unmap(const uint64_t offset = 0, const uint64_t size = 0);
 
-        void* GetResource()         const { return m_resource; }
-        uint32_t GetStride()        const { return m_stride; }
-        uint32_t GetOffsetCount()   const { return m_offset_count; }
+        void* GetResource()       const { return m_resource; }
+        uint32_t GetStride()      const { return m_stride; }
+        uint32_t GetOffsetCount() const { return m_offset_count; }
 
         // Static offset - The kind of offset that is used when updating the buffer.
-        uint32_t GetOffset()                                const { return m_offset_index * m_stride; }
-        uint32_t GetOffsetIndex()                           const { return m_offset_index; }
-        void SetOffsetIndex(const uint32_t offset_index)          { m_offset_index = offset_index; }
+        uint32_t GetOffset()                             const { return m_offset_index * m_stride; }
+        uint32_t GetOffsetIndex()                        const { return m_offset_index; }
+        void SetOffsetIndex(const uint32_t offset_index)       { m_offset_index = offset_index; }
         
         // Dynamic offset - The kind of offset that is used when binding descriptor sets.
         bool IsDynamic()                                        const { return m_is_dynamic; }

@@ -22,12 +22,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ===============
-#include "TransformHandle.h"
+#include "TransformHandleOperator.h"
 //==========================
 
 namespace Spartan
 {
-    class SPARTAN_CLASS TransformScale : public TransformHandle
+    class SPARTAN_CLASS TransformScale : public TransformHandleOperator
     {
     public:
         TransformScale(Context* context = nullptr);

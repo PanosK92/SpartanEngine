@@ -250,6 +250,9 @@ namespace Spartan
             }
         }
 
+        // Assign texture name to the object name since Vulkan is using this for it's validation layer.
+        m_object_name = GetResourceName();
+
         // Verify that loading was successful.
         if (!loaded)
         {

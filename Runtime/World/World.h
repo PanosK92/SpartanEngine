@@ -31,10 +31,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
+    //= FWD DECLARATIONS =
     class Entity;
     class Light;
     class Input;
     class Profiler;
+    class TransformHandle;
+    //====================
 
     class SPARTAN_CLASS World : public ISubsystem
     {
@@ -65,6 +68,11 @@ namespace Spartan
         const auto& EntityGetAll() const { return m_entities; }
         //======================================================================
 
+        // Transform handle
+        std::shared_ptr<TransformHandle> GetTransformHandle() { return m_transform_handle; }
+        float m_gizmo_transform_size  = 0.015f;
+        float m_gizmo_transform_speed = 12.0f;
+
     private:
         void Clear();
         void _EntityRemove(const std::shared_ptr<Entity>& entity);
@@ -82,6 +90,7 @@ namespace Spartan
         Input* m_input            = nullptr;
         Profiler* m_profiler      = nullptr;
 
+        std::shared_ptr<TransformHandle> m_transform_handle;
         std::vector<std::shared_ptr<Entity>> m_entities;
     };
 }

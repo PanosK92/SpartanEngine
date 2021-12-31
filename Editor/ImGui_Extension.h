@@ -21,11 +21,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ============================
+//= INCLUDES ================================
 #include <string>
 #include <variant>
+#include <chrono>
 #include "WidgetsDeferred/IconProvider.h"
 #include "ImGui/Source/imgui.h"
+#include "ImGui/Source/imgui_internal.h"
 #include "RHI/RHI_Texture.h"
 #include "RHI/RHI_Texture2D.h"
 #include "Rendering/Renderer.h"
@@ -34,10 +36,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Input/Input.h"
 #include "World/World.h"
 #include "World/Components/Camera.h"
-#include <chrono>
 #include "Display/Display.h"
-#include "ImGui/Source/imgui_internal.h"
-//=======================================
+#include "Rendering/Gizmos/TransformHandle.h"
+//===========================================
 
 class EditorHelper
 {
@@ -98,7 +99,7 @@ public:
     void PickEntity()
     {
         // If the transform handle hasn't finished editing don't do anything.
-        if (g_renderer->IsTransformHandleEditing())
+        if (g_world->GetTransformHandle()->IsEditing())
             return;
 
         // Get camera
@@ -110,7 +111,7 @@ public:
         std::shared_ptr<Spartan::Entity> entity;
         camera->Pick(entity);
 
-        // Set the transform gizmo to the selected entity
+        // Set the transform handle to the selected entity
         SetSelectedEntity(entity);
 
         // Fire callback
@@ -119,8 +120,8 @@ public:
 
     void SetSelectedEntity(const std::shared_ptr<Spartan::Entity>& entity)
     {
-        // keep returned entity instead as the transform gizmo can decide to reject it
-        g_selected_entity = g_renderer->SnapTransformHandleToEntity(entity);
+        // keep returned entity instead as the transform handle can decide to reject it
+        g_selected_entity = g_world->GetTransformHandle()->SetSelectedEntity(entity);
     }
 
     Spartan::Context*              g_context            = nullptr;
