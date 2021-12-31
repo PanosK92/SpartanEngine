@@ -42,7 +42,7 @@ namespace Spartan
     {
         string name = texture->GetObjectName();
 
-        // If a name hasn't been defined, try to make a reasonable one
+        // If a name hasn't been defined, try to make a reasonable one.
         if (name.empty())
         {
             if (texture->IsSrv())

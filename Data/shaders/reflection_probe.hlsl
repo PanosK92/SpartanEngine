@@ -48,7 +48,7 @@ Pixel_Input mainVS(Vertex_PosUvNorTan input)
 float4 mainPS(Pixel_Input input) : SV_TARGET
 {
     Light light;
-    light.Build(input.position_ws, input.normal, 1.0f);
+    light.Build(input.position_ws, input.normal, 1.0f, 0.0f);
 
     // Compute some vectors and dot products
     float3 l      = -light.to_pixel;

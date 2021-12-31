@@ -32,7 +32,7 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    TransformScale::TransformScale(Context* context) : TransformHandle(context, TransformHandleType::Scale)
+    TransformScale::TransformScale(Context* context) : TransformHandleOperator(context, TransformHandleType::Scale)
     {
         // Create model
         vector<RHI_Vertex_PosTexNorTan> vertices;
@@ -45,10 +45,10 @@ namespace Spartan
         m_axis_model->UpdateGeometry();
 
         // Create an axis for each axis of control and fourth axis which control all of them
-        m_handle_x      = TransformHandleAxis(m_type, Vector3::Right, m_context);
-        m_handle_y      = TransformHandleAxis(m_type, Vector3::Up, m_context);
-        m_handle_z      = TransformHandleAxis(m_type, Vector3::Forward, m_context);
-        m_handle_xyz    = TransformHandleAxis(m_type, Vector3::One, m_context);
+        m_handle_x      = TransformHandleOperatorAxis(m_type, Vector3::Right, m_context);
+        m_handle_y      = TransformHandleOperatorAxis(m_type, Vector3::Up, m_context);
+        m_handle_z      = TransformHandleOperatorAxis(m_type, Vector3::Forward, m_context);
+        m_handle_xyz    = TransformHandleOperatorAxis(m_type, Vector3::One, m_context);
 
         // Create bounding boxes for the handles, based on the vertices used
         m_handle_x.m_box    = BoundingBox(vertices.data(), static_cast<uint32_t>(vertices.size()));

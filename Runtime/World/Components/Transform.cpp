@@ -65,7 +65,10 @@ namespace Spartan
 
         UpdateTransform();
 
-        m_is_dirty = false;
+        m_is_dirty                    = false;
+        m_position_changed_this_frame = false;
+        m_rotation_changed_this_frame = true;
+        m_scale_changed_this_frame    = true;
     }
 
     void Transform::Serialize(FileStream* stream)
@@ -139,6 +142,8 @@ namespace Spartan
 
         m_position_local = position;
         UpdateTransform();
+
+        m_position_changed_this_frame = true;
     }
 
     void Transform::SetRotation(const Quaternion& rotation)
@@ -156,6 +161,8 @@ namespace Spartan
 
         m_rotation_local = rotation;
         UpdateTransform();
+
+        m_rotation_changed_this_frame = true;
     }
 
     void Transform::SetScale(const Vector3& scale)
@@ -179,6 +186,8 @@ namespace Spartan
         m_scale_local.z = (m_scale_local.z == 0.0f) ? Helper::EPSILON : m_scale_local.z;
 
         UpdateTransform();
+
+        m_scale_changed_this_frame = true;
     }
 
     void Transform::Translate(const Vector3& delta)

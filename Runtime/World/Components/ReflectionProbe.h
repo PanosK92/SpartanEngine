@@ -113,7 +113,6 @@ namespace Spartan
         std::shared_ptr<RHI_Texture> m_texture_depth;
 
         // Dirty checks
-        Math::Vector3 m_previous_pos = Math::Vector3::Infinity;
         bool m_previous_reverse_z = false;
     };
 }

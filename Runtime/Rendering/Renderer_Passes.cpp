@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Model.h"
 #include "Font/Font.h"
 #include "Gizmos/Grid.h"
-#include "Gizmos/TransformGizmo.h"
+#include "Gizmos/TransformHandle.h"
 #include "../Profiling/Profiler.h"
 #include "../RHI/RHI_CommandList.h"
 #include "../RHI/RHI_Implementation.h"
@@ -41,6 +41,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World/Components/Transform.h"
 #include "../World/Components/Renderable.h"
 #include "../World/Components/ReflectionProbe.h"
+#include "../World/World.h"
 //==============================================
 
 //= NAMESPACES ===============
@@ -712,12 +713,12 @@ namespace Spartan
             const uint32_t thread_group_count_z = 1;
             const bool async = false;
 
-            cmd_list->SetTexture(RendererBindings_Uav::rgba,             tex_ssao);
-            cmd_list->SetTexture(RendererBindings_Srv::gbuffer_normal,   RENDER_TARGET(RendererRt::Gbuffer_Normal));
-            cmd_list->SetTexture(RendererBindings_Srv::gbuffer_depth,    RENDER_TARGET(RendererRt::Gbuffer_Depth));
-            cmd_list->SetTexture(RendererBindings_Srv::gbuffer_albedo,   RENDER_TARGET(RendererRt::Gbuffer_Albedo));
-            cmd_list->SetTexture(RendererBindings_Srv::gbuffer_velocity, RENDER_TARGET(RendererRt::Gbuffer_Velocity));
-            cmd_list->SetTexture(RendererBindings_Srv::light_diffuse,    RENDER_TARGET(RendererRt::Light_Diffuse));
+            cmd_list->SetTexture(RendererBindings_Uav::rgba,           tex_ssao);
+            cmd_list->SetTexture(RendererBindings_Uav::rgba2,          RENDER_TARGET(RendererRt::Ssao_BentNormals));
+            cmd_list->SetTexture(RendererBindings_Srv::gbuffer_albedo, RENDER_TARGET(RendererRt::Gbuffer_Albedo));
+            cmd_list->SetTexture(RendererBindings_Srv::gbuffer_normal, RENDER_TARGET(RendererRt::Gbuffer_Normal));
+            cmd_list->SetTexture(RendererBindings_Srv::gbuffer_depth,  RENDER_TARGET(RendererRt::Gbuffer_Depth));
+            cmd_list->SetTexture(RendererBindings_Srv::light_diffuse,  RENDER_TARGET(RendererRt::Light_Diffuse));
 
             cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
             cmd_list->EndRenderPass();
@@ -823,14 +824,15 @@ namespace Spartan
                 {
                     if (light->GetIntensity() != 0)
                     {
-                        cmd_list->SetTexture(RendererBindings_Uav::rgb,              tex_diffuse);
-                        cmd_list->SetTexture(RendererBindings_Uav::rgb2,             tex_specular);
-                        cmd_list->SetTexture(RendererBindings_Uav::rgb3,             tex_volumetric);
-                        cmd_list->SetTexture(RendererBindings_Srv::gbuffer_albedo,   RENDER_TARGET(RendererRt::Gbuffer_Albedo));
-                        cmd_list->SetTexture(RendererBindings_Srv::gbuffer_normal,   RENDER_TARGET(RendererRt::Gbuffer_Normal));
-                        cmd_list->SetTexture(RendererBindings_Srv::gbuffer_material, RENDER_TARGET(RendererRt::Gbuffer_Material));
-                        cmd_list->SetTexture(RendererBindings_Srv::gbuffer_depth,    RENDER_TARGET(RendererRt::Gbuffer_Depth));
-                        cmd_list->SetTexture(RendererBindings_Srv::ssao,             RENDER_TARGET(RendererRt::Ssao));
+                        cmd_list->SetTexture(RendererBindings_Uav::rgb,               tex_diffuse);
+                        cmd_list->SetTexture(RendererBindings_Uav::rgb2,              tex_specular);
+                        cmd_list->SetTexture(RendererBindings_Uav::rgb3,              tex_volumetric);
+                        cmd_list->SetTexture(RendererBindings_Srv::gbuffer_albedo,    RENDER_TARGET(RendererRt::Gbuffer_Albedo));
+                        cmd_list->SetTexture(RendererBindings_Srv::gbuffer_normal,    RENDER_TARGET(RendererRt::Gbuffer_Normal));
+                        cmd_list->SetTexture(RendererBindings_Srv::gbuffer_material,  RENDER_TARGET(RendererRt::Gbuffer_Material));
+                        cmd_list->SetTexture(RendererBindings_Srv::gbuffer_depth,     RENDER_TARGET(RendererRt::Gbuffer_Depth));
+                        cmd_list->SetTexture(RendererBindings_Srv::ssao,              RENDER_TARGET(RendererRt::Ssao));
+                        cmd_list->SetTexture(RendererBindings_Srv::ssao_bent_normals, RENDER_TARGET(RendererRt::Ssao_BentNormals));
                         
                         // Set shadow maps
                         {
@@ -984,6 +986,10 @@ namespace Spartan
                 cmd_list->SetTexture(RendererBindings_Srv::reflection_probe, probe->GetColorTexture());
                 m_cb_uber_cpu.extents = probe->GetExtents();
                 m_cb_uber_cpu.float3  = probe->GetTransform()->GetPosition();
+            }
+            else
+            {
+                cmd_list->SetTexture(RendererBindings_Srv::reflection_probe, m_tex_default_empty_cubemap);
             }
 
             // Update uber buffer
@@ -2003,13 +2009,14 @@ namespace Spartan
             return;
 
         // Acquire resources
-        RHI_Shader* shader_gizmo_transform_v    = m_shaders[RendererShader::Entity_V].get();
-        RHI_Shader* shader_gizmo_transform_p    = m_shaders[RendererShader::Entity_Transform_P].get();
+        RHI_Shader* shader_gizmo_transform_v = m_shaders[RendererShader::Entity_V].get();
+        RHI_Shader* shader_gizmo_transform_p = m_shaders[RendererShader::Entity_Transform_P].get();
         if (!shader_gizmo_transform_v->IsCompiled() || !shader_gizmo_transform_p->IsCompiled())
             return;
 
         // Transform
-        if (m_transform_handle->Tick(m_camera.get(), m_gizmo_transform_size, m_gizmo_transform_speed))
+        shared_ptr<TransformHandle> transform_handle = m_context->GetSubsystem<World>()->GetTransformHandle();
+        if (transform_handle->GetNeedsToRender())
         {
             // Set render state
             static RHI_PipelineState pso;
@@ -2018,7 +2025,7 @@ namespace Spartan
             pso.rasterizer_state                = m_rasterizer_cull_back_solid.get();
             pso.blend_state                     = m_blend_alpha.get();
             pso.depth_stencil_state             = m_depth_stencil_off_off.get();
-            pso.vertex_buffer_stride            = m_transform_handle->GetVertexBuffer()->GetStride();
+            pso.vertex_buffer_stride            = transform_handle->GetVertexBuffer()->GetStride();
             pso.render_target_color_textures[0] = tex_out;
             pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
             pso.viewport                        = tex_out->GetViewport();
@@ -2027,13 +2034,13 @@ namespace Spartan
             pso.pass_name = "Pass_Handle_Axis_X";
             if (cmd_list->BeginRenderPass(pso))
             {
-                m_cb_uber_cpu.transform = m_transform_handle->GetHandle()->GetTransform(Vector3::Right);
-                m_cb_uber_cpu.float3    = m_transform_handle->GetHandle()->GetColor(Vector3::Right);
+                m_cb_uber_cpu.transform = transform_handle->GetHandle()->GetTransform(Vector3::Right);
+                m_cb_uber_cpu.float3    = transform_handle->GetHandle()->GetColor(Vector3::Right);
                 Update_Cb_Uber(cmd_list);
             
-                cmd_list->SetBufferIndex(m_transform_handle->GetIndexBuffer());
-                cmd_list->SetBufferVertex(m_transform_handle->GetVertexBuffer());
-                cmd_list->DrawIndexed(m_transform_handle->GetIndexCount());
+                cmd_list->SetBufferIndex(transform_handle->GetIndexBuffer());
+                cmd_list->SetBufferVertex(transform_handle->GetVertexBuffer());
+                cmd_list->DrawIndexed(transform_handle->GetIndexCount());
                 cmd_list->EndRenderPass();
             }
             
@@ -2041,13 +2048,13 @@ namespace Spartan
             pso.pass_name = "Pass_Handle_Axis_Y";
             if (cmd_list->BeginRenderPass(pso))
             {
-                m_cb_uber_cpu.transform = m_transform_handle->GetHandle()->GetTransform(Vector3::Up);
-                m_cb_uber_cpu.float3    = m_transform_handle->GetHandle()->GetColor(Vector3::Up);
+                m_cb_uber_cpu.transform = transform_handle->GetHandle()->GetTransform(Vector3::Up);
+                m_cb_uber_cpu.float3    = transform_handle->GetHandle()->GetColor(Vector3::Up);
                 Update_Cb_Uber(cmd_list);
 
-                cmd_list->SetBufferIndex(m_transform_handle->GetIndexBuffer());
-                cmd_list->SetBufferVertex(m_transform_handle->GetVertexBuffer());
-                cmd_list->DrawIndexed(m_transform_handle->GetIndexCount());
+                cmd_list->SetBufferIndex(transform_handle->GetIndexBuffer());
+                cmd_list->SetBufferVertex(transform_handle->GetVertexBuffer());
+                cmd_list->DrawIndexed(transform_handle->GetIndexCount());
                 cmd_list->EndRenderPass();
             }
             
@@ -2055,29 +2062,29 @@ namespace Spartan
             pso.pass_name = "Pass_Handle_Axis_Z";
             if (cmd_list->BeginRenderPass(pso))
             {
-                m_cb_uber_cpu.transform = m_transform_handle->GetHandle()->GetTransform(Vector3::Forward);
-                m_cb_uber_cpu.float3    = m_transform_handle->GetHandle()->GetColor(Vector3::Forward);
+                m_cb_uber_cpu.transform = transform_handle->GetHandle()->GetTransform(Vector3::Forward);
+                m_cb_uber_cpu.float3    = transform_handle->GetHandle()->GetColor(Vector3::Forward);
                 Update_Cb_Uber(cmd_list);
 
-                cmd_list->SetBufferIndex(m_transform_handle->GetIndexBuffer());
-                cmd_list->SetBufferVertex(m_transform_handle->GetVertexBuffer());
-                cmd_list->DrawIndexed(m_transform_handle->GetIndexCount());
+                cmd_list->SetBufferIndex(transform_handle->GetIndexBuffer());
+                cmd_list->SetBufferVertex(transform_handle->GetVertexBuffer());
+                cmd_list->DrawIndexed(transform_handle->GetIndexCount());
                 cmd_list->EndRenderPass();
             }
             
             // Axes - XYZ
-            if (m_transform_handle->DrawXYZ())
+            if (transform_handle->DrawXYZ())
             {
                 pso.pass_name = "Pass_Gizmos_Axis_XYZ";
                 if (cmd_list->BeginRenderPass(pso))
                 {
-                    m_cb_uber_cpu.transform = m_transform_handle->GetHandle()->GetTransform(Vector3::One);
-                    m_cb_uber_cpu.float3    = m_transform_handle->GetHandle()->GetColor(Vector3::One);
+                    m_cb_uber_cpu.transform = transform_handle->GetHandle()->GetTransform(Vector3::One);
+                    m_cb_uber_cpu.float3    = transform_handle->GetHandle()->GetColor(Vector3::One);
                     Update_Cb_Uber(cmd_list);
 
-                    cmd_list->SetBufferIndex(m_transform_handle->GetIndexBuffer());
-                    cmd_list->SetBufferVertex(m_transform_handle->GetVertexBuffer());
-                    cmd_list->DrawIndexed(m_transform_handle->GetIndexCount());
+                    cmd_list->SetBufferIndex(transform_handle->GetIndexBuffer());
+                    cmd_list->SetBufferVertex(transform_handle->GetVertexBuffer());
+                    cmd_list->DrawIndexed(transform_handle->GetIndexCount());
                     cmd_list->EndRenderPass();
                 }
             }
@@ -2146,7 +2153,7 @@ namespace Spartan
         if (!GetOption(Render_Debug_SelectionOutline))
             return;
 
-        if (const Entity* entity = m_transform_handle->GetSelectedEntity())
+        if (const Entity* entity = m_context->GetSubsystem<World>()->GetTransformHandle()->GetSelectedEntity())
         {
             // Get renderable
             const Renderable* renderable = entity->GetRenderable();
@@ -2319,7 +2326,8 @@ namespace Spartan
             options |= GAMMA_CORRECT;
         }
 
-        if (m_render_target_debug == RendererRt::Gbuffer_Normal)
+        if (m_render_target_debug == RendererRt::Gbuffer_Normal ||
+            m_render_target_debug == RendererRt::Ssao_BentNormals)
         {
             options |= PACK;
         }
@@ -2341,7 +2349,7 @@ namespace Spartan
             if (GetOptionValue<bool>(Renderer_Option_Value::Ssao_Gi))
             {
                 options |= CHANNEL_RGB;
-                options |= GAMMA_CORRECT;
+                //options |= GAMMA_CORRECT;
             }
             else
             {

@@ -26,8 +26,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World/Components/Transform.h"
 #include "../World/Components/Light.h"
 #include "../World/Entity.h"
+#include "../World/World.h"
 #include "../World/Components/Renderable.h"
-#include "Gizmos/TransformGizmo.h"
+#include "Gizmos/TransformHandle.h"
 //========================================
 
 //= NAMESPACES ===============
@@ -200,7 +201,7 @@ namespace Spartan
             auto& lights = m_entities[Renderer_ObjectType::Light];
             for (const auto& entity : lights)
             {
-                const Entity* entity_selected = m_transform_handle->GetSelectedEntity();
+                const Entity* entity_selected = m_context->GetSubsystem<World>()->GetTransformHandle()->GetSelectedEntity();
                 if (entity_selected && entity_selected->GetObjectId() == entity->GetObjectId())
                 { 
                     Light* light = entity->GetComponent<Light>();

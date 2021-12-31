@@ -52,8 +52,8 @@ namespace Spartan
         void SetTexture(const std::shared_ptr<RHI_Texture>& texture);
 
     private:
-        void SetFromTextureArray(const std::vector<std::string>& texturePaths);
-        void SetFromTextureSphere(const std::string& texturePath);
+        void SetFromTextureArray(const std::vector<std::string>& file_paths);
+        void SetFromTextureSphere(const std::string& file_path);
 
         std::vector<std::string> m_file_paths;
         Environment_Type m_environment_type;

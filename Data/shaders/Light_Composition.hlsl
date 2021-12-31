@@ -34,7 +34,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         return;
 
     Surface surface;
-    surface.Build(thread_id.xy, true, true, false);
+    surface.Build(thread_id.xy, true, false, false);
 
     // If this is a transparent pass, ignore all opaque pixels, and vice versa.
     bool early_exit_1 = !g_is_transparent_pass && surface.is_transparent() && !surface.is_sky(); // do shade sky pixels during the opaque pass (tint it)

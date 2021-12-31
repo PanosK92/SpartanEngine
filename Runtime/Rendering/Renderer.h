@@ -37,7 +37,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-    // Forward declarations
+    //= FWD DECLARATIONS =
     class Entity;
     class Camera;
     class Light;
@@ -45,8 +45,8 @@ namespace Spartan
     class Font;
     class Variant;
     class Grid;
-    class TransformGizmo;
     class Profiler;
+    //====================
 
     namespace Math
     {
@@ -87,11 +87,6 @@ namespace Spartan
         // Resolution output
         const Math::Vector2& GetResolutionOutput() const { return m_resolution_output; }
         void SetResolutionOutput (uint32_t width, uint32_t height, bool recreate_resources = true);
-
-        // Transform handle
-        std::weak_ptr<Entity> SnapTransformHandleToEntity(const std::shared_ptr<Entity>& entity) const;
-        bool IsTransformHandleEditing() const;
-        Entity* GetTransformHandleEntity();
 
         // Debug/Visualise a render targets
         const auto& GetRenderTargets()                                  { return m_render_targets; }
@@ -151,10 +146,6 @@ namespace Spartan
 
         // Passes
         void Pass_CopyToBackbuffer(RHI_CommandList* cmd_list);
-
-        // Adjustable parameters
-        float m_gizmo_transform_size  = 0.015f;
-        float m_gizmo_transform_speed = 12.0f;
 
     private:
         // Resource creation
@@ -227,7 +218,7 @@ namespace Spartan
         void Lines_PostMain(const double delta_time);
 
         // Render targets
-        std::array<std::shared_ptr<RHI_Texture>, 23> m_render_targets;
+        std::array<std::shared_ptr<RHI_Texture>, 24> m_render_targets;
 
         // Shaders
         std::unordered_map<RendererShader, std::shared_ptr<RHI_Shader>> m_shaders;
@@ -306,7 +297,6 @@ namespace Spartan
         uint32_t m_lines_index_depth_on  = 0;
 
         // Gizmos
-        std::unique_ptr<TransformGizmo> m_transform_handle;
         std::unique_ptr<Grid> m_gizmo_grid;
         Math::Rectangle m_gizmo_light_rect;
         std::shared_ptr<RHI_VertexBuffer> m_sphere_vertex_buffer;

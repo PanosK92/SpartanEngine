@@ -44,7 +44,7 @@ namespace Spartan
         }
 
         // Creates a texture from data (intended for sampling)
-        RHI_Texture2D(Context* context, const uint32_t width, const uint32_t height, const RHI_Format format, const uint32_t flags, const std::vector<RHI_Texture_Slice>& data) : RHI_Texture(context)
+        RHI_Texture2D(Context* context, const uint32_t width, const uint32_t height, const RHI_Format format, const uint32_t flags, const std::vector<RHI_Texture_Slice>& data, const char* name = nullptr) : RHI_Texture(context)
         {
             m_resource_type    = ResourceType::Texture2d;
             m_width            = width;
@@ -56,6 +56,11 @@ namespace Spartan
             m_flags            = flags;
             m_channel_count    = FormatToChannelCount(m_format);
             m_bits_per_channel = FormatToBitsPerChannel(m_format);
+
+            if (name != nullptr)
+            {
+                m_object_name = name;
+            }
 
             RHI_Texture2D::CreateResourceGpu();
         }

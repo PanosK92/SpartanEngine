@@ -43,7 +43,7 @@ namespace Spartan
         m_environment_type = Environment_Sphere;
 
         // Default texture paths
-        const auto dir_cubemaps = GetContext()->GetSubsystem<ResourceCache>()->GetResourceDirectory(ResourceDirectory::Cubemaps) + "/";
+        const string dir_cubemaps = GetContext()->GetSubsystem<ResourceCache>()->GetResourceDirectory(ResourceDirectory::Cubemaps) + "/";
         if (m_environment_type == Enviroment_Cubemap)
         {
             m_file_paths =
@@ -124,7 +124,7 @@ namespace Spartan
         if (file_paths.empty())
             return;
 
-        LOG_INFO("Creating sky box...");
+        LOG_INFO("Loading sky box...");
 
         ResourceCache* resource_cache = m_context->GetSubsystem<ResourceCache>();
 
@@ -146,7 +146,7 @@ namespace Spartan
 
     void Environment::SetFromTextureSphere(const string& file_path)
     {
-        LOG_INFO("Creating sky sphere...");
+        LOG_INFO("Loading sky sphere...");
 
         // Skysphere
         shared_ptr<RHI_Texture2D> texture = make_shared<RHI_Texture2D>(GetContext(), RHI_Texture_Srv | RHI_Texture_Mips);

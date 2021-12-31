@@ -281,11 +281,11 @@ namespace Spartan::vulkan_utility
                 return true;
             }
 
-            void* cmd_pool                  = nullptr;
-            void* cmd_buffer                = nullptr;
-            RHI_Queue_Type queue_type       = RHI_Queue_Type::Undefined;
-            std::atomic<bool> initialised   = false;
-            std::atomic<bool> recording     = false;
+            void* cmd_pool                = nullptr;
+            void* cmd_buffer              = nullptr;
+            RHI_Queue_Type queue_type     = RHI_Queue_Type::Undefined;
+            std::atomic<bool> initialised = false;
+            std::atomic<bool> recording   = false;
         };
 
         static VkCommandBuffer begin(const RHI_Queue_Type queue_type)

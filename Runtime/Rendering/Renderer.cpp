@@ -24,7 +24,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Renderer.h"
 #include "Model.h"
 #include "Gizmos/Grid.h"
-#include "Gizmos/TransformGizmo.h"
 #include "Font/Font.h"
 #include "../Utilities/Sampling.h"
 #include "../Profiling/Profiler.h"
@@ -153,9 +152,6 @@ namespace Spartan
             m_cmd_lists.emplace_back(make_shared<RHI_CommandList>(m_context));
         }
 
-        // Transform handle
-        m_transform_handle = make_unique<TransformGizmo>(m_context);
-
         // Line buffer
         m_vertex_buffer_lines = make_shared<RHI_VertexBuffer>(m_rhi_device);
 
@@ -213,21 +209,6 @@ namespace Spartan
 
         m_initialised = true;
         return true;
-    }
-
-    weak_ptr<Entity> Renderer::SnapTransformHandleToEntity(const shared_ptr<Entity>& entity) const
-    {
-        return m_transform_handle->SetSelectedEntity(entity);
-    }
-
-    bool Renderer::IsTransformHandleEditing() const
-    {
-        return m_transform_handle->IsEditing();
-    }
-
-    Entity* Renderer::GetTransformHandleEntity()
-    {
-        return m_transform_handle->GetSelectedEntity();
     }
 
     void Renderer::OnTick(double delta_time)

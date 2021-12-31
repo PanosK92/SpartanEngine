@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==========================
+//= INCLUDES ==================================
 #include "Spartan.h"
 #include "World.h"
 #include "Entity.h"
@@ -32,10 +32,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Resource/ProgressTracker.h"
 #include "../IO/FileStream.h"
 #include "../Profiling/Profiler.h"
-#include "../Rendering/Renderer.h"
 #include "../Input/Input.h"
 #include "../RHI/RHI_Device.h"
-//=====================================
+#include "../Rendering/Renderer.h"
+#include "../Rendering/Gizmos/TransformHandle.h"
+//=============================================
 
 //= NAMESPACES ================
 using namespace std;
@@ -52,8 +53,8 @@ namespace Spartan
 
     World::~World()
     {
-        m_input     = nullptr;
-        m_profiler  = nullptr;
+        m_input    = nullptr;
+        m_profiler = nullptr;
     }
 
     bool World::OnInitialise()
@@ -70,16 +71,23 @@ namespace Spartan
 
     void World::OnTick(double delta_time)
     {
+        if (!m_transform_handle)
+        {
+            m_transform_handle = make_shared<TransformHandle>(m_context);
+        }
+
         // If something is being loaded, don't tick as entities are probably being added
         if (IsLoading())
             return;
 
         SCOPED_TIME_BLOCK(m_profiler);
 
+        m_transform_handle->Tick(m_context->GetSubsystem<Renderer>()->GetCamera().get(), m_gizmo_transform_size, m_gizmo_transform_speed);
+
         // Tick entities
         {
             // Detect game toggling
-            const bool started   = m_context->m_engine->EngineMode_IsSet(Engine_Game) && m_was_in_editor_mode;
+            const bool started   = m_context->m_engine->EngineMode_IsSet(Engine_Game)  && m_was_in_editor_mode;
             const bool stopped   = !m_context->m_engine->EngineMode_IsSet(Engine_Game) && !m_was_in_editor_mode;
             m_was_in_editor_mode = !m_context->m_engine->EngineMode_IsSet(Engine_Game);
 

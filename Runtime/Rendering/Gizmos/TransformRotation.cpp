@@ -33,12 +33,12 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    TransformRotation::TransformRotation(Context* context) : TransformHandle(context, TransformHandleType::Rotation)
+    TransformRotation::TransformRotation(Context* context) : TransformHandleOperator(context, TransformHandleType::Rotation)
     {
         // Create an axis for each axis of control and fourth axis which control all of them
-        m_handle_x = TransformHandleAxis(m_type, Vector3::Right, m_context);
-        m_handle_y = TransformHandleAxis(m_type, Vector3::Up, m_context);
-        m_handle_z = TransformHandleAxis(m_type, Vector3::Forward, m_context);
+        m_handle_x = TransformHandleOperatorAxis(m_type, Vector3::Right, m_context);
+        m_handle_y = TransformHandleOperatorAxis(m_type, Vector3::Up, m_context);
+        m_handle_z = TransformHandleOperatorAxis(m_type, Vector3::Forward, m_context);
 
         m_offset_handle_axes_from_center = false;
     }

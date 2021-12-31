@@ -82,6 +82,12 @@ namespace Spartan
         Math::Vector3 GetLeft()     const;
         //================================
 
+        //= DIRTY CHECKS =================================================================
+        bool HasPositionChangedThisFrame() const { return m_position_changed_this_frame; }
+        bool HasRotationChangedThisFrame() const { return m_rotation_changed_this_frame; }
+        bool HasScaleChangedThisFrame()    const { return m_scale_changed_this_frame; }
+        //================================================================================
+
         //= HIERARCHY ======================================================================================
         void SetParent(Transform* new_parent);
         Transform* GetChildByIndex(uint32_t index);
@@ -131,5 +137,9 @@ namespace Spartan
         std::vector<Transform*> m_children; // the children of this transform
 
         Math::Matrix m_matrix_previous;
+
+        bool m_position_changed_this_frame = false;
+        bool m_rotation_changed_this_frame = false;
+        bool m_scale_changed_this_frame    = false;
     };
 }

@@ -49,8 +49,8 @@ namespace Spartan
 {
     void Renderer::CreateConstantBuffers()
     {
-        const bool is_dynamic       = true;
-        const uint32_t offset_count = 1024; // should be big enough for Vulkan (buffers can dynamically reallocate anyway)
+        const bool is_dynamic = true;
+        const uint32_t offset_count = 2048; // should be big enough for Vulkan (buffers can dynamically reallocate anyway)
 
         m_cb_frame_gpu = make_shared<RHI_ConstantBuffer>(m_rhi_device, "frame", is_dynamic);
         m_cb_frame_gpu->Create<Cb_Frame>(offset_count);
@@ -68,7 +68,7 @@ namespace Spartan
     void Renderer::CreateStructuredBuffers()
     {
         static uint32_t counter = 0;
-        uint32_t element_count  = 1;
+        const uint32_t element_count  = 1;
         m_sb_counter = make_shared<RHI_StructuredBuffer>(m_rhi_device, static_cast<uint32_t>(sizeof(uint32_t)), element_count, static_cast<void*>(&counter));
     }
 
@@ -179,7 +179,8 @@ namespace Spartan
             RENDER_TARGET(RendererRt::Ssr) = make_shared<RHI_Texture2D>(m_context, width_render, height_render, mip_count, RHI_Format_R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipViews, "rt_ssr");
 
             // SSAO
-            RENDER_TARGET(RendererRt::Ssao) = make_unique<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R16G16B16A16_Snorm, RHI_Texture_Uav | RHI_Texture_Srv, "rt_ssao");
+            RENDER_TARGET(RendererRt::Ssao)             = make_unique<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R16G16B16A16_Snorm, RHI_Texture_Uav | RHI_Texture_Srv, "rt_ssao");
+            RENDER_TARGET(RendererRt::Ssao_BentNormals) = make_unique<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R16G16B16A16_Snorm, RHI_Texture_Uav | RHI_Texture_Srv, "rt_ssao_bent_normals");
 
             // Dof
             RENDER_TARGET(RendererRt::Dof_Half)   = make_unique<RHI_Texture2D>(m_context, width_render / 2, height_render / 2, 1, RHI_Format_R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv, "rt_dof_half");

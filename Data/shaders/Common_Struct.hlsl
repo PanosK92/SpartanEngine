@@ -40,6 +40,8 @@ struct Surface
     float   sheen;
     float   sheen_tint;
     float3  occlusion;
+    float3  gi;
+    float3  bent_normal;
     float3  emissive;
     float3  F0;
     int     id;
@@ -90,25 +92,20 @@ struct Surface
         // Occlusion + GI
         {
             occlusion = 1.0f;
+            gi        = 0.0f;
 
             if (is_ssao_enabled() && use_ssao && !g_is_transparent_pass)
             {
                 // Sample ssao texture
                 float4 ssao = tex_ssao[position_screen];
+                bent_normal = tex_ssao_bent_normals[position_screen];
 
-                // Combine ssao with material ao
-                float visibility = min(sample_material.a, ssao.a);
+                // Combine occlusion with material ao
+                ssao.a    = min(sample_material.a, ssao.a);
+                occlusion = multi_bounce_ao(ssao.a, albedo);
 
-                if (is_ssao_gi_enabled())
-                {
-                    occlusion = visibility;
-                    emissive  += ssao.rgb * albedo;
-                }
-                else
-                {
-                    // If ssao gi is not enabled, approximate some light bouncing
-                    occlusion = multi_bounce_ao(visibility, albedo);
-                }
+                // If ssao gi is not enabled, approximate some light bouncing
+                gi = is_ssao_gi_enabled() ? ssao.rgb * 2.0f  : 0.0f;
             }
         }
 
@@ -139,6 +136,7 @@ struct Light
     float  far;
     float3 radiance;
     float  n_dot_l;
+    float  bent_dot_l;
     uint   array_size;
     float  attenuation;
 
@@ -187,7 +185,7 @@ struct Light
 
         return attenuation;
     }
-    
+
     float3 compute_direction(float3 light_position, float3 fragment_position)
     {
         float3 direction = 0.0f;
@@ -204,11 +202,11 @@ struct Light
         {
             direction = normalize(fragment_position - light_position);
         }
-    
+
         return direction;
     }
 
-    void Build(float3 surface_position, float3 surface_normal, float3 surface_occlusion)
+    void Build(float3 surface_position, float3 surface_normal, float3 surface_occlusion, float3 surface_bent_normal)
     {
         color             = cb_light_color.rgb;
         position          = cb_light_position.xyz;
@@ -223,15 +221,23 @@ struct Light
         to_pixel          = compute_direction(position, surface_position);
         n_dot_l           = saturate(dot(surface_normal, -to_pixel)); // Pre-compute n_dot_l since it's used in many places
         attenuation       = compute_attenuation(surface_position);
-        radiance          = color * intensity * attenuation * surface_occlusion * n_dot_l;
+        radiance          = color * intensity * attenuation * n_dot_l;
         array_size        = light_is_directional() ? 4 : 1;
+        
+        // Apply SSAO
+        bent_dot_l = float3(0.0f, 1.0f, 0.0f);
+        if (is_ssao_enabled() && luminance(surface_occlusion) != 1.0f)
+        {
+            float strength  = 4.0f;
+            bent_dot_l      = 1.0f - saturate(dot(surface_bent_normal, world_to_view(-to_pixel, false))) * strength;
+            radiance        *= bent_dot_l;
+        }
     }
 
     void Build(Surface surface)
     {
-        Build(surface.position, surface.normal, surface.occlusion);
+        Build(surface.position, surface.normal, surface.occlusion, surface.bent_normal);
     }
 };
 
 #endif // SPARTAN_COMMON_STRUCT
-

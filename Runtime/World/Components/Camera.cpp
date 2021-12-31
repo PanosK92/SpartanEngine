@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ========================
+//= INCLUDES ======================================
 #include "Spartan.h"
 #include "Camera.h"
 #include "Transform.h"
@@ -30,7 +30,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../IO/FileStream.h"
 #include "../../Rendering/Renderer.h"
 #include "../../Display/Display.h"
-//===================================
+#include "../../Rendering/Gizmos/TransformHandle.h"
+//=================================================
 
 //= NAMESPACES ===============
 using namespace Spartan::Math;
@@ -458,7 +459,7 @@ namespace Spartan
         // Trigger
         if (m_input->GetKeyDown(KeyCode::F))
         {
-            if (Entity* entity = m_renderer->GetTransformHandleEntity())
+            if (Entity* entity = m_context->GetSubsystem<World>()->GetTransformHandle()->GetSelectedEntity())
             {
                 LOG_INFO("Focusing on entity \"%s\"...", entity->GetTransform()->GetEntityName().c_str());
 
