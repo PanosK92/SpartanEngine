@@ -88,7 +88,7 @@ namespace Spartan
         const Math::Vector2& GetResolutionOutput() const { return m_resolution_output; }
         void SetResolutionOutput (uint32_t width, uint32_t height, bool recreate_resources = true);
 
-        // Debug/Visualise a render targets
+        // Debug/Visualise render targets
         const auto& GetRenderTargets()                                  { return m_render_targets; }
         void SetRenderTargetDebug(const RendererRt render_target_debug) { m_render_target_debug = render_target_debug; }
         RendererRt GetRenderTargetDebug() const                         { return m_render_target_debug; }
@@ -97,8 +97,7 @@ namespace Spartan
         float GetClearDepth() { return GetOption(Render_ReverseZ) ? m_viewport.depth_min : m_viewport.depth_max; }
 
         // Environment
-        const std::shared_ptr<RHI_Texture>& GetEnvironmentTexture();
-        void SetEnvironmentTexture(const std::shared_ptr<RHI_Texture> texture);
+        const std::shared_ptr<RHI_Texture> GetEnvironmentTexture();
 
         // Options
         uint64_t GetOptions()                        const { return m_options; }
@@ -224,7 +223,6 @@ namespace Spartan
         std::unordered_map<RendererShader, std::shared_ptr<RHI_Shader>> m_shaders;
 
         // Standard textures
-        std::shared_ptr<RHI_Texture> m_tex_environment;
         std::shared_ptr<RHI_Texture> m_tex_default_noise_normal;
         std::shared_ptr<RHI_Texture> m_tex_default_noise_blue;
         std::shared_ptr<RHI_Texture> m_tex_default_white;

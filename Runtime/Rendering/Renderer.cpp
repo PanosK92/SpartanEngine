@@ -47,6 +47,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_Semaphore.h"
 #include "../Core/Window.h"
 #include "../Input/Input.h"
+#include "../World/Components/Environment.h"
 //==============================================
 
 //= NAMESPACES ===============
@@ -333,7 +334,7 @@ namespace Spartan
             m_cb_frame_cpu.frame                      = static_cast<uint32_t>(m_frame_num);
             m_cb_frame_cpu.frame_mip_count            = RENDER_TARGET(RendererRt::Frame_Render)->GetMipCount();
             m_cb_frame_cpu.ssr_mip_count              = RENDER_TARGET(RendererRt::Ssr)->GetMipCount();
-            m_cb_frame_cpu.resolution_environment     = m_tex_environment ? (Vector2(m_tex_environment->GetWidth(), m_tex_environment->GetHeight())) : Vector2::Zero;
+            m_cb_frame_cpu.resolution_environment     = Vector2(GetEnvironmentTexture()->GetWidth(), GetEnvironmentTexture()->GetHeight());
 
             // These must match what Common_Buffer.hlsl is reading
             m_cb_frame_cpu.set_bit(GetOption(Render_ScreenSpaceReflections),             1 << 0);
@@ -668,6 +669,11 @@ namespace Spartan
             {
                 m_entities[Renderer_ObjectType::ReflectionProbe].emplace_back(entity.get());
             }
+
+            if (Environment* environment = entity->GetComponent<Environment>())
+            {
+                m_entities[Renderer_ObjectType::Environment].emplace_back(entity.get());
+            }
         }
 
         SortRenderables(&m_entities[Renderer_ObjectType::GeometryOpaque]);
@@ -730,14 +736,20 @@ namespace Spartan
         });
     }
 
-    const shared_ptr<RHI_Texture>& Renderer::GetEnvironmentTexture()
+    const shared_ptr<RHI_Texture> Renderer::GetEnvironmentTexture()
     {
-        return m_tex_environment;
-    }
+        if (Entity* entity = m_entities[Renderer_ObjectType::Environment].front())
+        {
+            if (Environment* environment = entity->GetComponent<Environment>())
+            {
+                if (environment->GetTexture())
+                {
+                    return environment->GetTexture();
+                }
+            }
+        }
 
-    void Renderer::SetEnvironmentTexture(const shared_ptr<RHI_Texture> texture)
-    {
-        m_tex_environment = texture;
+        return m_tex_default_empty;
     }
 
     void Renderer::SetOption(Renderer_Option option, bool enable)
@@ -747,12 +759,12 @@ namespace Spartan
         if (enable && !GetOption(option))
         {
             m_options |= option;
-            toggled = true;
+            toggled   = true;
         }
         else if (!enable && GetOption(option))
         {
             m_options &= ~option;
-            toggled = true;
+            toggled   = true;
         }
 
         if (!toggled)

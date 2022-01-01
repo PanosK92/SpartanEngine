@@ -249,6 +249,7 @@ namespace Spartan
         GeometryTransparent,
         Light,
         Camera,
-        ReflectionProbe
+        ReflectionProbe,
+        Environment
     };
 }
