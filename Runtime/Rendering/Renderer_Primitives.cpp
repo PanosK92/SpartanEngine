@@ -150,6 +150,10 @@ namespace Spartan
 
     void Renderer::Lines_PostMain(const double delta_time)
     {
+        // Generate lines for debug primitives supported by the renderer
+        m_lines_index_depth_off = numeric_limits<uint32_t>::max(); // max +1 will wrap it to 0.
+        m_lines_index_depth_on  = (static_cast<uint32_t>(m_line_vertices.size()) / 2) - 1; // -1 because +1 will make it go to size / 2.
+
         // TODO
         // Remove lines which have expired
 
@@ -184,10 +188,6 @@ namespace Spartan
 
     void Renderer::Lines_PreMain()
     {
-        // Generate lines for debug primitives supported by the renderer
-        m_lines_index_depth_off = numeric_limits<uint32_t>::max(); // max +1 will wrap it to 0.
-        m_lines_index_depth_on  = (static_cast<uint32_t>(m_line_vertices.size()) / 2) - 1; // -1 because +1 will make it go to size / 2.
-
         // Picking ray
         if (m_options & Render_Debug_PickingRay)
         {
