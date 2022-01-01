@@ -24,7 +24,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Environment.h"
 #include "../../IO/FileStream.h"
 #include "../../Threading/Threading.h"
-#include "../../Rendering/Renderer.h"
 #include "../../RHI/RHI_Texture2D.h"
 #include "../../RHI/RHI_TextureCube.h"
 #include "../../Resource/ResourceCache.h"
@@ -106,14 +105,9 @@ namespace Spartan
         m_is_dirty = true;
     }
 
-    const shared_ptr<RHI_Texture>& Environment::GetTexture() const
-    {
-        return m_context->GetSubsystem<Renderer>()->GetEnvironmentTexture();
-    }
-
     void Environment::SetTexture(const shared_ptr<RHI_Texture>& texture)
     {
-        m_context->GetSubsystem<Renderer>()->SetEnvironmentTexture(texture);
+        m_texture = texture;
 
         // Save file path for serialization/deserialization
         m_file_paths = { texture ? texture->GetResourceFilePath() : "" };

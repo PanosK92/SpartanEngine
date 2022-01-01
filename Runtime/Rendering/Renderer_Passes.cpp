@@ -904,8 +904,8 @@ namespace Spartan
 
         // Set render state
         static RHI_PipelineState pso;
-        pso.shader_compute   = shader_c;
-        pso.pass_name        = is_transparent_pass ? "Pass_Light_Composition_Transparent" : "Pass_Light_Composition_Opaque";
+        pso.shader_compute = shader_c;
+        pso.pass_name      = is_transparent_pass ? "Pass_Light_Composition_Transparent" : "Pass_Light_Composition_Opaque";
 
         // Begin commands
         if (cmd_list->BeginRenderPass(pso))
@@ -955,7 +955,7 @@ namespace Spartan
         pso.shader_pixel                    = shader_p;
         pso.rasterizer_state                = m_rasterizer_cull_back_solid.get();
         pso.depth_stencil_state             = m_depth_stencil_off_off.get();
-        pso.blend_state                     = m_blend_additive.get();
+        pso.blend_state                     = is_transparent_pass ? m_blend_additive.get() : m_blend_disabled.get();
         pso.render_target_color_textures[0] = tex_out;
         pso.clear_color[0]                  = rhi_color_load;
         pso.render_target_depth_texture     = nullptr;

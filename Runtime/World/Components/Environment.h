@@ -48,7 +48,7 @@ namespace Spartan
 
         void LoadDefault();
 
-        const std::shared_ptr<RHI_Texture>& GetTexture() const;
+        const std::shared_ptr<RHI_Texture> GetTexture() const { return m_texture; };
         void SetTexture(const std::shared_ptr<RHI_Texture>& texture);
 
     private:
@@ -56,6 +56,7 @@ namespace Spartan
         void SetFromTextureSphere(const std::string& file_path);
 
         std::vector<std::string> m_file_paths;
+        std::shared_ptr<RHI_Texture> m_texture;
         Environment_Type m_environment_type;
         bool m_is_dirty = false;
     };

@@ -296,12 +296,12 @@ namespace Spartan
     static const uint32_t rhi_shader_shift_register_s = 300;
 
     // Descriptor set limits
-    static const uint8_t rhi_descriptor_max_storage_textures            = 10;
-    static const uint8_t rhi_descriptor_max_storage_buffers             = 10;
-    static const uint8_t rhi_descriptor_max_constant_buffers            = 10;
-    static const uint8_t rhi_descriptor_max_constant_buffers_dynamic    = 10;
-    static const uint8_t rhi_descriptor_max_samplers                    = 10;
-    static const uint8_t rhi_descriptor_max_textures                    = 10;
+    static const uint8_t rhi_descriptor_max_storage_textures         = 10;
+    static const uint8_t rhi_descriptor_max_storage_buffers          = 10;
+    static const uint8_t rhi_descriptor_max_constant_buffers         = 10;
+    static const uint8_t rhi_descriptor_max_constant_buffers_dynamic = 10;
+    static const uint8_t rhi_descriptor_max_samplers                 = 10;
+    static const uint8_t rhi_descriptor_max_textures                 = 10;
     
     static const Math::Vector4  rhi_color_dont_care           = Math::Vector4(-std::numeric_limits<float>::infinity(), 0.0f, 0.0f, 0.0f);
     static const Math::Vector4  rhi_color_load                = Math::Vector4(std::numeric_limits<float>::infinity(), 0.0f, 0.0f, 0.0f);
