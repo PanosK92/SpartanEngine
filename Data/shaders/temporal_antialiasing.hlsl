@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016-2021 Panos Karabelas
+Copyright(c) 2016-2022 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -319,9 +319,9 @@ float get_factor_luminance(float3 color_history, float3 color_input)
 {
     float luminance_history   = luminance(color_history);
     float luminance_current   = luminance(color_input);
-    float unbiased_difference = abs(luminance_current - luminance_history) / (max(luminance_current, luminance_history) + 0.5f);
+    float unbiased_difference = abs(luminance_current - luminance_history) / max(luminance_current, luminance_history);
 
-    return 1.0f - unbiased_difference;
+    return -unbiased_difference * RPC_16;
 }
 
 float get_factor_dissoclusion(float2 uv_reprojected, float2 resolution, float depth)
@@ -358,13 +358,10 @@ float3 temporal_antialiasing(float2 uv, uint2 pos, uint3 group_id, Texture2D tex
     color_history = clip_history_3x3(pos, color_history, velocity);
 
     // Compute blend factor
-    float blend_factor = RPC_16;
+    float blend_factor = RPC_16; // We want to be able to accumulate as many jitter samples as we generated, that is, 16.
     {
-        // Decrease blend factor when contrast is high (reduces jitter around edges with speculars)
-        blend_factor *= get_factor_luminance(color_history, color_input);
-
-        // Increase blend factor when there is dissoclusion.
-        //float factor_dissoclusion = get_factor_dissoclusion(uv, uv_reprojected, g_resolution_rt);
+        // Decrease blend factor if the luminance changed a lot (reduces flickering coming from sub-pixel specular highlights).
+        blend_factor += get_factor_luminance(color_history, color_input);
     }
 
     // Resolve
@@ -381,8 +378,6 @@ float3 temporal_antialiasing(float2 uv, uint2 pos, uint3 group_id, Texture2D tex
         color_resolved = reinhard_inverse(color_resolved);
     }
 
-    float test = get_factor_dissoclusion(uv_reprojected, g_resolution_rt, depth);
-    //return float3(test, color_input.g, color_input.b);
     return color_resolved;
 }
 
