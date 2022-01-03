@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016-2021 Panos Karabelas
+Copyright(c) 2016-2022 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -191,33 +191,33 @@ namespace Spartan
     // Renderer/graphics options
     enum Renderer_Option : uint64_t
     {
-        Render_Debug_Aabb                                           = 1 << 0,
-        Render_Debug_PickingRay                                     = 1 << 1,
-        Render_Debug_Grid                                           = 1 << 2,
-        Render_Debug_ReflectionProbes                               = 1 << 3,
-        Render_Debug_Transform                                      = 1 << 4,
-        Render_Debug_SelectionOutline                               = 1 << 5,
-        Render_Debug_Lights                                         = 1 << 6,
-        Render_Debug_PerformanceMetrics                             = 1 << 7,
-        Render_Debug_Physics                                        = 1 << 8,
-        Render_Debug_Wireframe                                      = 1 << 9,
-        Render_Bloom                                                = 1 << 10,
-        Render_VolumetricFog                                        = 1 << 11,
-        Render_AntiAliasing_Taa                                     = 1 << 12,
-        Render_AntiAliasing_Fxaa                                    = 1 << 13,
-        Render_Ssao                                                 = 1 << 14,
-        Render_ScreenSpaceShadows                                   = 1 << 15,
-        Render_ScreenSpaceReflections                               = 1 << 16,
-        Render_MotionBlur                                           = 1 << 17,
-        Render_DepthOfField                                         = 1 << 18,
-        Render_FilmGrain                                            = 1 << 19,
-        Render_Sharpening_AMD_FidelityFX_ContrastAdaptiveSharpening = 1 << 20,
-        Render_ChromaticAberration                                  = 1 << 21,
-        Render_Debanding                                            = 1 << 22,
-        Render_ReverseZ                                             = 1 << 23,
-        Render_DepthPrepass                                         = 1 << 24,
-        Render_Upsample_TAA                                         = 1 << 25,
-        Render_Upsample_AMD_FidelityFX_SuperResolution              = 1 << 26
+        Debug_Aabb                                           = 1 << 0,
+        Debug_PickingRay                                     = 1 << 1,
+        Debug_Grid                                           = 1 << 2,
+        Debug_ReflectionProbes                               = 1 << 3,
+        Transform_Handle                                     = 1 << 4,
+        Debug_SelectionOutline                               = 1 << 5,
+        Debug_Lights                                         = 1 << 6,
+        Debug_PerformanceMetrics                             = 1 << 7,
+        Debug_Physics                                        = 1 << 8,
+        Debug_Wireframe                                      = 1 << 9,
+        Bloom                                                = 1 << 10,
+        VolumetricFog                                        = 1 << 11,
+        AntiAliasing_Taa                                     = 1 << 12,
+        AntiAliasing_Fxaa                                    = 1 << 13,
+        Ssao                                                 = 1 << 14,
+        ScreenSpaceShadows                                   = 1 << 15,
+        ScreenSpaceReflections                               = 1 << 16,
+        MotionBlur                                           = 1 << 17,
+        DepthOfField                                         = 1 << 18,
+        FilmGrain                                            = 1 << 19,
+        Sharpening_AMD_FidelityFX_ContrastAdaptiveSharpening = 1 << 20,
+        ChromaticAberration                                  = 1 << 21,
+        Debanding                                            = 1 << 22,
+        ReverseZ                                             = 1 << 23,
+        DepthPrepass                                         = 1 << 24,
+        Upsample_TAA                                         = 1 << 25,
+        Upsample_AMD_FidelityFX_SuperResolution              = 1 << 26
     };
 
     // Renderer/graphics options values

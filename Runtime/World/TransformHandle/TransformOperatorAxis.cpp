@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016-2021 Panos Karabelas
+Copyright(c) 2016-2022 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =================================
 #include "Spartan.h"
-#include "TransformHandleOperatorAxis.h"
+#include "TransformOperatorAxis.h"
 #include "../../Input/Input.h"
 #include "../../World/Components/Transform.h"
 #include "../../Rendering/Renderer.h"
@@ -34,7 +34,7 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    TransformHandleOperatorAxis::TransformHandleOperatorAxis(TransformHandleType type, const Math::Vector3& axis, Context* context)
+    TransformOperatorAxis::TransformOperatorAxis(TransformHandleType type, const Math::Vector3& axis, Context* context)
     {
         m_axis     = axis;
         m_type     = type;
@@ -43,7 +43,7 @@ namespace Spartan
         m_input    = context->GetSubsystem<Input>();
     }
 
-    void TransformHandleOperatorAxis::UpdateTransform()
+    void TransformOperatorAxis::UpdateTransform()
     {
         if (m_type == TransformHandleType::Unknown)
             return;
@@ -52,7 +52,7 @@ namespace Spartan
         m_box_transformed = m_box.Transform(m_transform);
     }
 
-    void TransformHandleOperatorAxis::ApplyDeltaToTransform(Transform* transform, const TransformHandleSpace space)
+    void TransformOperatorAxis::ApplyDeltaToTransform(Transform* transform, const TransformHandleSpace space)
     {
         if (m_type == TransformHandleType::Unknown)
             return;
@@ -118,7 +118,7 @@ namespace Spartan
         }
     }
 
-    void TransformHandleOperatorAxis::DrawPrimitives(const Vector3& transform_center) const
+    void TransformOperatorAxis::DrawPrimitives(const Vector3& transform_center) const
     {
         if (m_type == TransformHandleType::Unknown)
             return;
@@ -142,7 +142,7 @@ namespace Spartan
         }
     }
 
-    const Spartan::Math::Vector3& TransformHandleOperatorAxis::GetColor() const
+    const Spartan::Math::Vector3& TransformOperatorAxis::GetColor() const
     {
         if (m_is_disabled)
             return m_color_disabled;

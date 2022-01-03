@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016-2021 Panos Karabelas
+Copyright(c) 2016-2022 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -81,7 +81,7 @@ namespace Spartan
         // Dirty checks
         {
             // Position, rotation and reverse-z
-            const bool reverse_z = m_renderer ? m_renderer->GetOption(Render_ReverseZ) : false;
+            const bool reverse_z = m_renderer ? m_renderer->GetOption(Renderer_Option::ReverseZ) : false;
             if (m_transform->HasPositionChangedThisFrame() || m_transform->HasRotationChangedThisFrame() || m_previous_reverse_z != reverse_z)
             {
                 m_previous_reverse_z = reverse_z;
@@ -269,7 +269,7 @@ namespace Spartan
         SP_ASSERT(index < m_shadow_map.texture_depth->GetArrayLength());
 
         ShadowSlice& shadow_slice   = m_shadow_map.slices[index];
-        const bool reverse_z        = m_renderer ? m_renderer->GetOption(Render_ReverseZ) : false;
+        const bool reverse_z        = m_renderer ? m_renderer->GetOption(ReverseZ) : false;
 
         if (m_light_type == LightType::Directional)
         {

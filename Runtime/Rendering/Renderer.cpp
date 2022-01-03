@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016-2021 Panos Karabelas
+Copyright(c) 2016-2022 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -60,22 +60,22 @@ namespace Spartan
     Renderer::Renderer(Context* context) : ISubsystem(context)
     {
         // Options
-        m_options |= Render_ReverseZ;
-        m_options |= Render_Debug_Transform;
-        m_options |= Render_Debug_Grid;
-        m_options |= Render_Debug_ReflectionProbes;
-        m_options |= Render_Debug_Lights;
-        m_options |= Render_Debug_Physics;
-        m_options |= Render_Bloom;
-        m_options |= Render_VolumetricFog;
-        m_options |= Render_MotionBlur;
-        m_options |= Render_Ssao;
-        m_options |= Render_ScreenSpaceShadows;
-        m_options |= Render_ScreenSpaceReflections;
-        m_options |= Render_AntiAliasing_Taa;
-        m_options |= Render_Sharpening_AMD_FidelityFX_ContrastAdaptiveSharpening;
-        m_options |= Render_DepthOfField;
-        m_options |= Render_Debanding;
+        m_options |= Renderer_Option::ReverseZ;
+        m_options |= Renderer_Option::Transform_Handle;
+        m_options |= Renderer_Option::Debug_Grid;
+        m_options |= Renderer_Option::Debug_ReflectionProbes;
+        m_options |= Renderer_Option::Debug_Lights;
+        m_options |= Renderer_Option::Debug_Physics;
+        m_options |= Renderer_Option::Bloom;
+        m_options |= Renderer_Option::VolumetricFog;
+        m_options |= Renderer_Option::MotionBlur;
+        m_options |= Renderer_Option::Ssao;
+        m_options |= Renderer_Option::ScreenSpaceShadows;
+        m_options |= Renderer_Option::ScreenSpaceReflections;
+        m_options |= Renderer_Option::AntiAliasing_Taa;
+        m_options |= Renderer_Option::Sharpening_AMD_FidelityFX_ContrastAdaptiveSharpening;
+        m_options |= Renderer_Option::DepthOfField;
+        m_options |= Renderer_Option::Debanding;
         //m_options |= Render_DepthPrepass; // todo: fix for vulkan
 
         // Option values.
@@ -290,7 +290,7 @@ namespace Spartan
             m_cb_frame_cpu.projection_inverted = Matrix::Invert(m_cb_frame_cpu.projection);
             
             // TAA - Generate jitter
-            if (GetOption(Render_AntiAliasing_Taa))
+            if (GetOption(Renderer_Option::AntiAliasing_Taa))
             {
                 m_taa_jitter_previous = m_taa_jitter;
                 
@@ -337,11 +337,11 @@ namespace Spartan
             m_cb_frame_cpu.resolution_environment     = Vector2(GetEnvironmentTexture()->GetWidth(), GetEnvironmentTexture()->GetHeight());
 
             // These must match what Common_Buffer.hlsl is reading
-            m_cb_frame_cpu.set_bit(GetOption(Render_ScreenSpaceReflections),             1 << 0);
-            m_cb_frame_cpu.set_bit(GetOption(Render_Upsample_TAA),                       1 << 1);
-            m_cb_frame_cpu.set_bit(GetOption(Render_Ssao),                               1 << 2);
-            m_cb_frame_cpu.set_bit(GetOption(Render_VolumetricFog),                      1 << 3);
-            m_cb_frame_cpu.set_bit(GetOption(Render_ScreenSpaceShadows),                 1 << 4);
+            m_cb_frame_cpu.set_bit(GetOption(Renderer_Option::ScreenSpaceReflections),             1 << 0);
+            m_cb_frame_cpu.set_bit(GetOption(Renderer_Option::Upsample_TAA),                       1 << 1);
+            m_cb_frame_cpu.set_bit(GetOption(Renderer_Option::Ssao),                               1 << 2);
+            m_cb_frame_cpu.set_bit(GetOption(Renderer_Option::VolumetricFog),                      1 << 3);
+            m_cb_frame_cpu.set_bit(GetOption(Renderer_Option::ScreenSpaceShadows),                 1 << 4);
             m_cb_frame_cpu.set_bit(GetOptionValue<bool>(Renderer_Option_Value::Ssao_Gi), 1 << 5);
         }
 
@@ -572,7 +572,7 @@ namespace Spartan
             luminous_intensity *= 255.0f; // this is a hack, must fix whats my color units
         }
 
-        m_cb_light_cpu.intensity_range_angle_bias = Vector4(luminous_intensity, light->GetRange(), light->GetAngle(), GetOption(Render_ReverseZ) ? light->GetBias() : -light->GetBias());
+        m_cb_light_cpu.intensity_range_angle_bias = Vector4(luminous_intensity, light->GetRange(), light->GetAngle(), GetOption(Renderer_Option::ReverseZ) ? light->GetBias() : -light->GetBias());
         m_cb_light_cpu.color                      = light->GetColor();
         m_cb_light_cpu.normal_bias                = light->GetNormalBias();
         m_cb_light_cpu.position                   = light->GetTransform()->GetPosition();
@@ -770,12 +770,12 @@ namespace Spartan
         if (!toggled)
             return;
 
-        if (option == Renderer_Option::Render_Upsample_TAA || option == Renderer_Option::Render_Upsample_AMD_FidelityFX_SuperResolution)
+        if (option == Renderer_Option::Upsample_TAA || option == Renderer_Option::Upsample_AMD_FidelityFX_SuperResolution)
         {
             CreateRenderTextures(false, false, false, true);
         }
 
-        if (option == Render_ReverseZ)
+        if (option == Renderer_Option::ReverseZ)
         {
             CreateDepthStencilStates();
 

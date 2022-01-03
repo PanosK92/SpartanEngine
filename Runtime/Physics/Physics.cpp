@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016-2021 Panos Karabelas
+Copyright(c) 2016-2022 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -118,7 +118,7 @@ namespace Spartan
             return;
         
         // Debug draw
-        if (m_renderer->GetOptions() & Render_Debug_Physics)
+        if (m_renderer->GetOptions() & Renderer_Option::Debug_Physics)
         {
             m_world->debugDrawWorld();
         }

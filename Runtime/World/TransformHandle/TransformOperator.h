@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016-2021 Panos Karabelas
+Copyright(c) 2016-2022 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===========================
 #include "TransformEnums.h"
-#include "TransformHandleOperatorAxis.h"
+#include "TransformOperatorAxis.h"
 #include <memory>
 #include "../../Rendering/Model.h"
 //======================================
@@ -41,11 +41,11 @@ namespace Spartan
     class Model;
     //=====================
 
-    class SPARTAN_CLASS TransformHandleOperator
+    class SPARTAN_CLASS TransformOperator
     {
     public:
-        TransformHandleOperator(Context* context, const TransformHandleType transform_handle_type);
-        ~TransformHandleOperator() = default;
+        TransformOperator(Context* context, const TransformHandleType transform_handle_type);
+        ~TransformOperator() = default;
 
         bool Tick(TransformHandleSpace space, Entity* entity, Camera* camera, float handle_size, float handle_speed);
         const Math::Matrix& GetTransform(const Math::Vector3& axis) const;
@@ -65,10 +65,10 @@ namespace Spartan
         // Test if the ray intersects any of the handles
         virtual void InteresectionTest(const Math::Ray& camera_to_pixel) = 0;
 
-        TransformHandleOperatorAxis m_handle_x;
-        TransformHandleOperatorAxis m_handle_y;
-        TransformHandleOperatorAxis m_handle_z;
-        TransformHandleOperatorAxis m_handle_xyz;
+        TransformOperatorAxis m_handle_x;
+        TransformOperatorAxis m_handle_y;
+        TransformOperatorAxis m_handle_z;
+        TransformOperatorAxis m_handle_xyz;
         bool m_handle_x_intersected           = false;
         bool m_handle_y_intersected           = false;
         bool m_handle_z_intersected           = false;

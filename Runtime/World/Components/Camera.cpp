@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016-2021 Panos Karabelas
+Copyright(c) 2016-2022 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -50,7 +50,7 @@ namespace Spartan
     void Camera::OnInitialize()
     {
         m_view            = ComputeViewMatrix();
-        m_projection      = ComputeProjection(m_renderer->GetOption(Render_ReverseZ));
+        m_projection      = ComputeProjection(m_renderer->GetOption(Renderer_Option::ReverseZ));
         m_view_projection = m_view * m_projection;
     }
 
@@ -77,9 +77,9 @@ namespace Spartan
             return;
 
         m_view            = ComputeViewMatrix();
-        m_projection      = ComputeProjection(m_renderer->GetOption(Render_ReverseZ));
+        m_projection      = ComputeProjection(m_renderer->GetOption(Renderer_Option::ReverseZ));
         m_view_projection = m_view * m_projection;
-        m_frustum         = Frustum(GetViewMatrix(), GetProjectionMatrix(), m_renderer->GetOption(Render_ReverseZ) ? GetNearPlane() : GetFarPlane());
+        m_frustum         = Frustum(GetViewMatrix(), GetProjectionMatrix(), m_renderer->GetOption(Renderer_Option::ReverseZ) ? GetNearPlane() : GetFarPlane());
 
         m_is_dirty = false;
     }
@@ -108,7 +108,7 @@ namespace Spartan
         stream->Read(&m_far_plane);
 
         m_view            = ComputeViewMatrix();
-        m_projection      = ComputeProjection(m_renderer->GetOption(Render_ReverseZ));
+        m_projection      = ComputeProjection(m_renderer->GetOption(Renderer_Option::ReverseZ));
         m_view_projection = m_view * m_projection;
     }
 
@@ -273,7 +273,7 @@ namespace Spartan
         const auto& viewport = GetViewport();
 
         // A non reverse-z projection matrix is need, if it we don't have it, we create it
-        const auto projection = m_renderer->GetOption(Render_ReverseZ) ? Matrix::CreatePerspectiveFieldOfViewLH(GetFovVerticalRad(), viewport.GetAspectRatio(), m_near_plane, m_far_plane) : m_projection;
+        const auto projection = m_renderer->GetOption(Renderer_Option::ReverseZ) ? Matrix::CreatePerspectiveFieldOfViewLH(GetFovVerticalRad(), viewport.GetAspectRatio(), m_near_plane, m_far_plane) : m_projection;
 
         // Convert world space position to clip space position
         const auto position_clip = position_world * m_view * projection;

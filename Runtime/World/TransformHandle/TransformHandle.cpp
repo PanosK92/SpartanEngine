@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016-2021 Panos Karabelas
+Copyright(c) 2016-2022 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -49,9 +49,9 @@ namespace Spartan
         m_space      = TransformHandleSpace::World;
         m_is_editing = false;
 
-        m_handles[TransformHandleType::Position] = make_shared<TransformPosition>(context);
-        m_handles[TransformHandleType::Scale]    = make_shared<TransformScale>(context);
-        m_handles[TransformHandleType::Rotation] = make_shared<TransformRotation>(context);
+        TransformOperator[TransformHandleType::Position] = make_shared<TransformPosition>(context);
+        TransformOperator[TransformHandleType::Scale]    = make_shared<TransformScale>(context);
+        TransformOperator[TransformHandleType::Rotation] = make_shared<TransformRotation>(context);
     }
 
     bool TransformHandle::Tick(Camera* camera, const float handle_size, const float handle_speed)
@@ -89,8 +89,10 @@ namespace Spartan
             }
         }
 
-        m_handles[m_type]->Tick(m_space, selected_entity.get(), camera, handle_size, handle_speed);
-        m_is_editing = m_handles[m_type]->IsEditing();
+        // Update operators
+        TransformOperator[m_type]->Tick(m_space, selected_entity.get(), camera, handle_size, handle_speed);
+
+        m_is_editing = TransformOperator[m_type]->IsEditing();
 
         return true;
     }
@@ -102,7 +104,7 @@ namespace Spartan
         {
             // If in front of the entity the handles from the previous entity
             // are actual being hovered, then a selection not selected the new entity.
-            if (!m_handles[m_type]->IsHovered())
+            if (!TransformOperator[m_type]->IsHovered())
             {
                 m_entity_selected = entity;
             }
@@ -113,21 +115,21 @@ namespace Spartan
 
     uint32_t TransformHandle::GetIndexCount()
     {
-        return m_handles[m_type]->GetIndexBuffer()->GetIndexCount();
+        return TransformOperator[m_type]->GetIndexBuffer()->GetIndexCount();
     }
 
     const RHI_VertexBuffer* TransformHandle::GetVertexBuffer()
     {
-        return m_handles[m_type]->GetVertexBuffer();
+        return TransformOperator[m_type]->GetVertexBuffer();
     }
 
     const RHI_IndexBuffer* TransformHandle::GetIndexBuffer()
     {
-        return m_handles[m_type]->GetIndexBuffer();
+        return TransformOperator[m_type]->GetIndexBuffer();
     }
 
-    const TransformHandleOperator* TransformHandle::GetHandle()
+    const TransformOperator* TransformHandle::GetHandle()
     {
-        return m_handles[m_type].get();
+        return TransformOperator[m_type].get();
     }
 }

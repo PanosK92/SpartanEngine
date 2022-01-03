@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016-2021 Panos Karabelas
+Copyright(c) 2016-2022 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -189,14 +189,14 @@ namespace Spartan
     void Renderer::Lines_PreMain()
     {
         // Picking ray
-        if (m_options & Render_Debug_PickingRay)
+        if (m_options & Renderer_Option::Debug_PickingRay)
         {
             const auto& ray = m_camera->GetPickingRay();
             DrawLine(ray.GetStart(), ray.GetStart() + ray.GetDirection() * m_camera->GetFarPlane(), Vector4(0, 1, 0, 1));
         }
         
         // Lights
-        if (m_options & Render_Debug_Lights)
+        if (m_options & Renderer_Option::Debug_Lights)
         {
             auto& lights = m_entities[Renderer_ObjectType::Light];
             for (const auto& entity : lights)
@@ -247,7 +247,7 @@ namespace Spartan
         }
         
         // AABBs
-        if (m_options & Render_Debug_Aabb)
+        if (m_options & Renderer_Option::Debug_Aabb)
         {
             for (const auto& entity : m_entities[Renderer_ObjectType::GeometryOpaque])
             {

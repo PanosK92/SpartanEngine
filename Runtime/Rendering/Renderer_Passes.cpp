@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016-2021 Panos Karabelas
+Copyright(c) 2016-2022 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -444,7 +444,7 @@ namespace Spartan
 
     void Renderer::Pass_Depth_Prepass(RHI_CommandList* cmd_list)
     {
-        if ((m_options & Render_DepthPrepass) == 0)
+        if ((m_options & Renderer_Option::DepthPrepass) == 0)
             return;
 
         // Acquire shaders
@@ -544,8 +544,8 @@ namespace Spartan
         RHI_Texture* tex_velocity = RENDER_TARGET(RendererRt::Gbuffer_Velocity).get();
         RHI_Texture* tex_depth    = RENDER_TARGET(RendererRt::Gbuffer_Depth).get();
 
-        bool depth_prepass = GetOption(Render_DepthPrepass);
-        bool wireframe     = GetOption(Render_Debug_Wireframe);
+        bool depth_prepass = GetOption(Renderer_Option::DepthPrepass);
+        bool wireframe     = GetOption(Renderer_Option::Debug_Wireframe);
 
         // We consider (in the shaders) that sky is opaque, that's why the clear value has an alpha of 1.0f.
         static Vector4 clear_color_sky = Vector4(0.0f, 0.0f, 0.0f, 1.0f);
@@ -688,7 +688,7 @@ namespace Spartan
 
     void Renderer::Pass_Ssao(RHI_CommandList* cmd_list)
     {
-        if ((m_options & Render_Ssao) == 0)
+        if ((m_options & Renderer_Option::Ssao) == 0)
             return;
 
         // Acquire shaders
@@ -736,7 +736,7 @@ namespace Spartan
 
     void Renderer::Pass_Ssr(RHI_CommandList* cmd_list, RHI_Texture* tex_in)
     {
-        if ((m_options & Render_ScreenSpaceReflections) == 0)
+        if ((m_options & Renderer_Option::ScreenSpaceReflections) == 0)
             return;
 
         // Acquire shaders
@@ -1109,7 +1109,7 @@ namespace Spartan
         shared_ptr<RHI_Texture>& rt_frame_render_output_out = RENDER_TARGET(RendererRt::Frame_Output_2); // output res
 
         // Depth of Field
-        if (GetOption(Render_DepthOfField))
+        if (GetOption(Renderer_Option::DepthOfField))
         {
             Pass_PostProcess_DepthOfField(cmd_list, rt_frame_render_in, rt_frame_render_out);
             rt_frame_render_in.swap(rt_frame_render_out);
@@ -1121,9 +1121,9 @@ namespace Spartan
         bool resolution_output_different = m_resolution_output != m_resolution_render;
 
         // TAA
-        if (GetOption(Render_AntiAliasing_Taa))
+        if (GetOption(Renderer_Option::AntiAliasing_Taa))
         {
-            if (GetOption(Render_Upsample_TAA) && resolution_output_larger)
+            if (GetOption(Renderer_Option::Upsample_TAA) && resolution_output_larger)
             {
                 Pass_PostProcess_TAA(cmd_list, rt_frame_render_in, rt_frame_render_output_in);
                 upsampled = true; // taa writes directly in the high res buffer
@@ -1136,7 +1136,7 @@ namespace Spartan
         }
 
         // Upsample - AMD FidelityFX SuperResolution - TODO: This needs to be in perceptual space and normalised to 0, 1 range.
-        if (GetOption(Render_Upsample_AMD_FidelityFX_SuperResolution) && resolution_output_larger)
+        if (GetOption(Renderer_Option::Upsample_AMD_FidelityFX_SuperResolution) && resolution_output_larger)
         {
             Pass_AMD_FidelityFX_SuperResolution(cmd_list, rt_frame_render_in.get(), rt_frame_render_output_in.get(), rt_frame_render_output_out.get());
             upsampled = true;
@@ -1151,21 +1151,21 @@ namespace Spartan
         }
 
         // Motion Blur
-        if (GetOption(Render_MotionBlur))
+        if (GetOption(Renderer_Option::MotionBlur))
         {
             Pass_PostProcess_MotionBlur(cmd_list, rt_frame_render_output_in, rt_frame_render_output_out);
             rt_frame_render_output_in.swap(rt_frame_render_output_out);
         }
 
         // Bloom
-        if (GetOption(Render_Bloom))
+        if (GetOption(Renderer_Option::Bloom))
         {
             Pass_PostProcess_Bloom(cmd_list, rt_frame_render_output_in, rt_frame_render_output_out);
             rt_frame_render_output_in.swap(rt_frame_render_output_out);
         }
 
         // Sharpening
-        if (GetOption(Render_Sharpening_AMD_FidelityFX_ContrastAdaptiveSharpening))
+        if (GetOption(Renderer_Option::Sharpening_AMD_FidelityFX_ContrastAdaptiveSharpening))
         {
             Pass_AMD_FidelityFX_ContrastAdaptiveSharpening(cmd_list, rt_frame_render_output_in, rt_frame_render_output_out);
             rt_frame_render_output_in.swap(rt_frame_render_output_out);
@@ -1177,28 +1177,28 @@ namespace Spartan
         rt_frame_render_output_in.swap(rt_frame_render_output_out);
 
         // Debanding
-        if (GetOption(Render_Debanding))
+        if (GetOption(Renderer_Option::Debanding))
         {
             Pass_PostProcess_Debanding(cmd_list, rt_frame_render_output_in, rt_frame_render_output_out);
             rt_frame_render_output_in.swap(rt_frame_render_output_out);
         }
 
         // FXAA
-        if (GetOption(Render_AntiAliasing_Fxaa))
+        if (GetOption(Renderer_Option::AntiAliasing_Fxaa))
         {
             Pass_PostProcess_Fxaa(cmd_list, rt_frame_render_output_in, rt_frame_render_output_out);
             rt_frame_render_output_in.swap(rt_frame_render_output_out);
         }
 
         // Chromatic aberration
-        if (GetOption(Render_ChromaticAberration))
+        if (GetOption(Renderer_Option::ChromaticAberration))
         {
             Pass_PostProcess_ChromaticAberration(cmd_list, rt_frame_render_output_in, rt_frame_render_output_out);
             rt_frame_render_output_in.swap(rt_frame_render_output_out);
         }
 
         // Film grain
-        if (GetOption(Render_FilmGrain))
+        if (GetOption(Renderer_Option::FilmGrain))
         {
             Pass_PostProcess_FilmGrain(cmd_list, rt_frame_render_output_in, rt_frame_render_output_out);
             rt_frame_render_output_in.swap(rt_frame_render_output_out);
@@ -1813,7 +1813,7 @@ namespace Spartan
 
     void Renderer::Pass_Lines(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
     {
-        const bool draw_grid            = m_options & Render_Debug_Grid;
+        const bool draw_grid            = m_options & Renderer_Option::Debug_Grid;
         const bool draw_lines_depth_off = m_lines_index_depth_off != numeric_limits<uint32_t>::max();
         const bool draw_lines_depth_on  = m_lines_index_depth_on > ((m_line_vertices.size() / 2) - 1);
         if (!draw_grid && !draw_lines_depth_off && !draw_lines_depth_on)
@@ -1925,7 +1925,7 @@ namespace Spartan
 
     void Renderer::Pass_Icons(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
     {
-        if (!(m_options & Render_Debug_Lights))
+        if (!(m_options & Renderer_Option::Debug_Lights))
             return;
 
         // Acquire resources
@@ -2012,7 +2012,7 @@ namespace Spartan
 
     void Renderer::Pass_TransformHandle(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
     {
-        if (!GetOption(Render_Debug_Transform))
+        if (!GetOption(Transform_Handle))
             return;
 
         // Acquire resources
@@ -2100,7 +2100,7 @@ namespace Spartan
 
     void Renderer::Pass_DebugMeshes(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
     {
-        if (!GetOption(Render_Debug_ReflectionProbes))
+        if (!GetOption(Renderer_Option::Debug_ReflectionProbes))
             return;
 
         // Acquire color shaders.
@@ -2157,7 +2157,7 @@ namespace Spartan
 
     void Renderer::Pass_Outline(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
     {
-        if (!GetOption(Render_Debug_SelectionOutline))
+        if (!GetOption(Renderer_Option::Debug_SelectionOutline))
             return;
 
         if (const Entity* entity = m_context->GetSubsystem<World>()->GetTransformHandle()->GetSelectedEntity())
@@ -2228,7 +2228,7 @@ namespace Spartan
             return;
 
         // Early exit cases
-        const bool draw      = m_options & Render_Debug_PerformanceMetrics;
+        const bool draw      = m_options & Renderer_Option::Debug_PerformanceMetrics;
         const bool empty     = m_profiler->GetMetrics().empty();
         const auto& shader_v = m_shaders[RendererShader::Font_V];
         const auto& shader_p = m_shaders[RendererShader::Font_P];

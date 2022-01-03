@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016-2021 Panos Karabelas
+Copyright(c) 2016-2022 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =================================
 #include "Spartan.h"
-#include "TransformHandleOperator.h"
+#include "TransformOperator.h"
 #include "../../Input/Input.h"
 #include "../../World/Entity.h"
 #include "../../World/Components/Camera.h"
@@ -38,7 +38,7 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    TransformHandleOperator::TransformHandleOperator(Context* context, const TransformHandleType transform_handle_type)
+    TransformOperator::TransformOperator(Context* context, const TransformHandleType transform_handle_type)
     {
         m_context  = context;
         m_type     = transform_handle_type;
@@ -46,7 +46,7 @@ namespace Spartan
         m_input    = context->GetSubsystem<Input>();
     }
 
-    bool TransformHandleOperator::Tick(const TransformHandleSpace space, Entity* entity, Camera* camera, const float handle_size, const float handle_speed)
+    bool TransformOperator::Tick(const TransformHandleSpace space, Entity* entity, Camera* camera, const float handle_size, const float handle_speed)
     {
         SP_ASSERT(entity != nullptr);
         SP_ASSERT(camera != nullptr);
@@ -85,7 +85,7 @@ namespace Spartan
         return m_handle_x.m_is_editing || m_handle_y.m_is_editing || m_handle_z.m_is_editing || m_handle_xyz.m_is_editing;
     }
 
-    void TransformHandleOperator::ReflectEntityTransform(const TransformHandleSpace space, Entity* entity, Camera* camera, const float handle_size)
+    void TransformOperator::ReflectEntityTransform(const TransformHandleSpace space, Entity* entity, Camera* camera, const float handle_size)
     {
         // Get entity's components
         Transform* entity_transform   = entity->GetTransform();             // Transform alone is not enough
@@ -133,7 +133,7 @@ namespace Spartan
         m_handle_xyz.UpdateTransform();
     }
 
-    void TransformHandleOperator::UpdateHandleAxesState()
+    void TransformOperator::UpdateHandleAxesState()
     {
         // Mark a handle as hovered, only if it's the only hovered handle (during the previous frame)
         m_handle_x.m_is_hovered   = m_handle_x_intersected   && !(m_handle_y.m_is_hovered || m_handle_z.m_is_hovered);
@@ -148,7 +148,7 @@ namespace Spartan
         m_handle_xyz.m_is_disabled = !m_handle_xyz.m_is_editing && (m_handle_x.m_is_editing || m_handle_y.m_is_editing || m_handle_z.m_is_editing);
     }
 
-    void TransformHandleOperator::UpdateHandleAxesMouseDelta(Camera* camera, const Vector3& ray_end, const float handle_speed)
+    void TransformOperator::UpdateHandleAxesMouseDelta(Camera* camera, const Vector3& ray_end, const float handle_speed)
     {
         // Track delta
         m_ray_previous        = m_ray_current != Vector3::Zero ? m_ray_current : ray_end; // ignore big delta in the first run
@@ -168,7 +168,7 @@ namespace Spartan
         m_handle_xyz.m_delta = m_handle_x.m_delta + m_handle_y.m_delta + m_handle_z.m_delta;
     }
 
-    const Matrix& TransformHandleOperator::GetTransform(const Vector3& axis) const
+    const Matrix& TransformOperator::GetTransform(const Vector3& axis) const
     {
         if (axis == Vector3::Right)
             return m_handle_x.m_transform;
@@ -182,7 +182,7 @@ namespace Spartan
         return m_handle_xyz.m_transform;
     }
 
-    const Vector3& TransformHandleOperator::GetColor(const Vector3& axis) const
+    const Vector3& TransformOperator::GetColor(const Vector3& axis) const
     {
         if (axis == Vector3::Right)
             return m_handle_x.GetColor();
@@ -196,17 +196,17 @@ namespace Spartan
         return m_handle_xyz.GetColor();
     }
 
-    const RHI_VertexBuffer* TransformHandleOperator::GetVertexBuffer()
+    const RHI_VertexBuffer* TransformOperator::GetVertexBuffer()
     {
         return m_axis_model ? m_axis_model->GetVertexBuffer() : nullptr;
     }
 
-    const RHI_IndexBuffer* TransformHandleOperator::GetIndexBuffer()
+    const RHI_IndexBuffer* TransformOperator::GetIndexBuffer()
     {
         return m_axis_model ? m_axis_model->GetIndexBuffer() : nullptr;
     }
 
-    bool TransformHandleOperator::IsEditing() const
+    bool TransformOperator::IsEditing() const
     {
         if (m_handle_x.m_type != TransformHandleType::Unknown && m_handle_x.m_is_editing)
             return true;
@@ -223,7 +223,7 @@ namespace Spartan
         return false;
     }
 
-    bool TransformHandleOperator::IsHovered() const
+    bool TransformOperator::IsHovered() const
     {
         if (m_handle_x.m_type != TransformHandleType::Unknown && m_handle_x.m_is_hovered)
             return true;
