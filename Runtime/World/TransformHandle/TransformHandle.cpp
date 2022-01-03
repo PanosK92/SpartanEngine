@@ -92,10 +92,6 @@ namespace Spartan
         m_handles[m_type]->Tick(m_space, selected_entity.get(), camera, handle_size, handle_speed);
         m_is_editing = m_handles[m_type]->IsEditing();
 
-        // Finally, render the currently selected transform handle only if it hash mashes.
-        // e.g. the rotation transform does it's own custom rendering.
-        m_needs_to_render = m_handles[m_type]->HasModel();
-
         return true;
     }
 

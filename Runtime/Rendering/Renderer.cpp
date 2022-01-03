@@ -82,7 +82,7 @@ namespace Spartan
         m_option_values[Renderer_Option_Value::Anisotropy]       = 16.0f;
         m_option_values[Renderer_Option_Value::ShadowResolution] = 2048.0f;
         m_option_values[Renderer_Option_Value::Tonemapping]      = static_cast<float>(Renderer_ToneMapping_Off);
-        m_option_values[Renderer_Option_Value::Gamma]            = 2.2f;
+        m_option_values[Renderer_Option_Value::Gamma]            = 1.5f;
         m_option_values[Renderer_Option_Value::Sharpen_Strength] = 1.0f;
         m_option_values[Renderer_Option_Value::Bloom_Intensity]  = 0.2f;
         m_option_values[Renderer_Option_Value::Fog]              = 0.08f;

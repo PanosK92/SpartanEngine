@@ -94,7 +94,7 @@ struct Surface
             occlusion = 1.0f;
             gi        = 0.0f;
 
-            if (is_ssao_enabled() && use_ssao && !g_is_transparent_pass)
+            if (is_ssao_enabled() && use_ssao)
             {
                 // Sample ssao texture
                 float4 ssao = tex_ssao[position_screen];
@@ -117,7 +117,7 @@ struct Surface
 
     bool is_sky()         { return id == 0; }
     bool is_transparent() { return alpha != 1.0f; }
-    bool is_opaque()      { return !is_transparent(); }
+    bool is_opaque()      { return alpha == 1.0f; }
 };
 
 struct Light

@@ -55,7 +55,6 @@ namespace Spartan
         bool DrawXYZ()              const { return m_type == TransformHandleType::Scale; }
         bool IsEditing()            const { return m_is_editing; }
         Entity* GetSelectedEntity() const { return m_entity_selected.lock().get(); }
-        bool GetNeedsToRender()     const { return m_needs_to_render; }
         
     private:
         bool m_is_editing      = false;
