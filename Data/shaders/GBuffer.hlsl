@@ -67,14 +67,14 @@ PixelOutputType mainPS(PixelInputType input)
     float2 velocity              = (position_delta - g_taa_jitter_offset); // remove TAA jitter
     velocity                     *= float2(0.5f, -0.5f);                   // to uv (no need for +0.5f since it's a delta, not a position)
 
-    // Make TBN
+    // TBN
     float3x3 TBN = 0.0f;
     if (has_texture_height() || has_texture_normal())
     {
         TBN = makeTBN(input.normal, input.tangent);
     }
 
-    // Parallax Mapping
+    // Parallax mapping
     float2 uv = float2(input.uv.x * g_mat_tiling.x + g_mat_offset.x, input.uv.y * g_mat_tiling.y + g_mat_offset.y);
     if (has_texture_height())
     {
@@ -108,18 +108,21 @@ PixelOutputType mainPS(PixelInputType input)
     if (alpha_mask <= ALPHA_THRESHOLD)
         discard;
 
+    // Roughness
     float roughness = g_mat_roughness;
     if (has_texture_roughness())
     {
         roughness *= tex_material_roughness.Sample(sampler_anisotropic_wrap, uv).r;
     }
 
+    // Metallic
     float metallic = g_mat_metallic;
     if (has_texture_metallic())
     {
         metallic *= tex_material_metallic.Sample(sampler_anisotropic_wrap, uv).r;
     }
 
+    // Normal
     float3 normal = input.normal.xyz;
     if (has_texture_normal())
     {
@@ -130,12 +133,14 @@ PixelOutputType mainPS(PixelInputType input)
         normal                 = normalize(mul(tangent_normal, TBN).xyz);
     }
 
+    // Occlusion
     float occlusion = 1.0f;
     if (has_texture_occlusion())
     {
         occlusion = tex_material_occlusion.Sample(sampler_anisotropic_wrap, uv).r;
     }
 
+    // Emission
     float emission = 0.0f;
     if (has_texture_emissive())
     {
@@ -143,13 +148,17 @@ PixelOutputType mainPS(PixelInputType input)
     }
 
     // Specular anti-aliasing
-    static const float strength = 4.0f;
-    float roughness2            = roughness * roughness;
-    float3 dndu                 = ddx(normal), dndv = ddy(normal);
-    float variance              = (dot(dndu, dndu) + dot(dndv, dndv));
-    float kernelRoughness2      = min(variance * strength, 1.0f);
-    float filteredRoughness2    = saturate(roughness2 + kernelRoughness2);
-    roughness                   = fast_sqrt(filteredRoughness2);
+    {
+        static const float strength           = 1.0f;
+        static const float max_roughness_gain = 0.02f;
+
+        float roughness2         = roughness * roughness;
+        float3 dndu              = ddx(normal), dndv = ddy(normal);
+        float variance           = (dot(dndu, dndu) + dot(dndv, dndv));
+        float kernelRoughness2   = min(variance * strength, max_roughness_gain);
+        float filteredRoughness2 = saturate(roughness2 + kernelRoughness2);
+        roughness                = fast_sqrt(filteredRoughness2);
+    }
 
     // Write to G-Buffer
     PixelOutputType g_buffer;

@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016-2021 Panos Karabelas
+Copyright(c) 2016-2022 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -82,7 +82,13 @@ namespace Spartan
 
         SCOPED_TIME_BLOCK(m_profiler);
 
-        m_transform_handle->Tick(m_context->GetSubsystem<Renderer>()->GetCamera().get(), m_gizmo_transform_size, m_gizmo_transform_speed);
+        if (Renderer* renderer = m_context->GetSubsystem<Renderer>())
+        {
+            if (renderer->GetOption(Renderer_Option::Transform_Handle))
+            {
+                m_transform_handle->Tick(renderer->GetCamera().get(), m_gizmo_transform_size, m_gizmo_transform_speed);
+            }
+        }
 
         // Tick entities
         {

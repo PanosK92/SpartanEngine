@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016-2021 Panos Karabelas
+Copyright(c) 2016-2022 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =============================
 #include <memory>
-#include "TransformHandleOperator.h"
+#include "TransformOperator.h"
 #include "../../Core/SpartanDefinitions.h"
 #include <unordered_map>
 //========================================
@@ -51,7 +51,7 @@ namespace Spartan
         uint32_t GetIndexCount();
         const RHI_VertexBuffer* GetVertexBuffer();
         const RHI_IndexBuffer* GetIndexBuffer();
-        const TransformHandleOperator* GetHandle();
+        const TransformOperator* GetHandle();
         bool DrawXYZ()              const { return m_type == TransformHandleType::Scale; }
         bool IsEditing()            const { return m_is_editing; }
         Entity* GetSelectedEntity() const { return m_entity_selected.lock().get(); }
@@ -61,7 +61,7 @@ namespace Spartan
         bool m_needs_to_render = false;
 
         std::weak_ptr<Entity> m_entity_selected;
-        std::unordered_map<TransformHandleType, std::shared_ptr<TransformHandleOperator>> m_handles;
+        std::unordered_map<TransformHandleType, std::shared_ptr<TransformOperator>> TransformOperator;
         TransformHandleType m_type = TransformHandleType::Unknown;
         TransformHandleSpace m_space;
         Context* m_context;

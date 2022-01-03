@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016-2021 Panos Karabelas
+Copyright(c) 2016-2022 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -173,35 +173,35 @@ Widget_RenderOptions::Widget_RenderOptions(Editor* editor) : Widget(editor)
 void Widget_RenderOptions::TickVisible()
 {
     // Reflect options from engine
-    bool do_bloom                  = m_renderer->GetOption(Render_Bloom);
-    bool do_dof                    = m_renderer->GetOption(Render_DepthOfField);
-    bool do_volumetric_fog         = m_renderer->GetOption(Render_VolumetricFog);
-    bool do_ssao                   = m_renderer->GetOption(Render_Ssao);
+    bool do_bloom                  = m_renderer->GetOption(Renderer_Option::Bloom);
+    bool do_dof                    = m_renderer->GetOption(Renderer_Option::DepthOfField);
+    bool do_volumetric_fog         = m_renderer->GetOption(Renderer_Option::VolumetricFog);
+    bool do_ssao                   = m_renderer->GetOption(Renderer_Option::Ssao);
+    bool do_sss                    = m_renderer->GetOption(Renderer_Option::ScreenSpaceShadows);
+    bool do_ssr                    = m_renderer->GetOption(Renderer_Option::ScreenSpaceReflections);
+    bool do_taa                    = m_renderer->GetOption(Renderer_Option::AntiAliasing_Taa);
+    bool do_fxaa                   = m_renderer->GetOption(Renderer_Option::AntiAliasing_Fxaa);
+    bool do_motion_blur            = m_renderer->GetOption(Renderer_Option::MotionBlur);
+    bool do_film_grain             = m_renderer->GetOption(Renderer_Option::FilmGrain);
+    bool do_sharperning            = m_renderer->GetOption(Renderer_Option::Sharpening_AMD_FidelityFX_ContrastAdaptiveSharpening);
+    bool do_chromatic_aberration   = m_renderer->GetOption(Renderer_Option::ChromaticAberration);
+    bool do_debanding              = m_renderer->GetOption(Renderer_Option::Debanding);
+    bool debug_physics             = m_renderer->GetOption(Renderer_Option::Debug_Physics);
+    bool debug_aabb                = m_renderer->GetOption(Renderer_Option::Debug_Aabb);
+    bool debug_light               = m_renderer->GetOption(Renderer_Option::Debug_Lights);
+    bool debug_transform           = m_renderer->GetOption(Renderer_Option::Transform_Handle);
+    bool debug_selection_outline   = m_renderer->GetOption(Renderer_Option::Debug_SelectionOutline);
+    bool debug_picking_ray         = m_renderer->GetOption(Renderer_Option::Debug_PickingRay);
+    bool debug_grid                = m_renderer->GetOption(Renderer_Option::Debug_Grid);
+    bool debug_reflection_probes   = m_renderer->GetOption(Renderer_Option::Debug_ReflectionProbes);
+    bool debug_performance_metrics = m_renderer->GetOption(Renderer_Option::Debug_PerformanceMetrics);
+    bool debug_wireframe           = m_renderer->GetOption(Renderer_Option::Debug_Wireframe);
+    bool do_depth_prepass          = m_renderer->GetOption(Renderer_Option::DepthPrepass);
+    bool do_reverse_z              = m_renderer->GetOption(Renderer_Option::ReverseZ);
+    bool do_upsample_taa           = m_renderer->GetOption(Renderer_Option::Upsample_TAA);
+    bool do_upsample_amd           = m_renderer->GetOption(Renderer_Option::Upsample_AMD_FidelityFX_SuperResolution);
     bool ssao_gi                   = m_renderer->GetOptionValue<bool>(Renderer_Option_Value::Ssao_Gi);
-    bool do_sss                    = m_renderer->GetOption(Render_ScreenSpaceShadows);
-    bool do_ssr                    = m_renderer->GetOption(Render_ScreenSpaceReflections);
-    bool do_taa                    = m_renderer->GetOption(Render_AntiAliasing_Taa);
-    bool do_fxaa                   = m_renderer->GetOption(Render_AntiAliasing_Fxaa);
-    bool do_motion_blur            = m_renderer->GetOption(Render_MotionBlur);
-    bool do_film_grain             = m_renderer->GetOption(Render_FilmGrain);
-    bool do_sharperning            = m_renderer->GetOption(Render_Sharpening_AMD_FidelityFX_ContrastAdaptiveSharpening);
-    bool do_chromatic_aberration   = m_renderer->GetOption(Render_ChromaticAberration);
-    bool do_debanding              = m_renderer->GetOption(Render_Debanding);
     int resolution_shadow          = m_renderer->GetOptionValue<int>(Renderer_Option_Value::ShadowResolution);
-    bool debug_physics             = m_renderer->GetOption(Render_Debug_Physics);
-    bool debug_aabb                = m_renderer->GetOption(Render_Debug_Aabb);
-    bool debug_light               = m_renderer->GetOption(Render_Debug_Lights);
-    bool debug_transform           = m_renderer->GetOption(Render_Debug_Transform);
-    bool debug_selection_outline   = m_renderer->GetOption(Render_Debug_SelectionOutline);
-    bool debug_picking_ray         = m_renderer->GetOption(Render_Debug_PickingRay);
-    bool debug_grid                = m_renderer->GetOption(Render_Debug_Grid);
-    bool debug_reflection_probes   = m_renderer->GetOption(Render_Debug_ReflectionProbes);
-    bool debug_performance_metrics = m_renderer->GetOption(Render_Debug_PerformanceMetrics);
-    bool debug_wireframe           = m_renderer->GetOption(Render_Debug_Wireframe);
-    bool do_depth_prepass          = m_renderer->GetOption(Render_DepthPrepass);
-    bool do_reverse_z              = m_renderer->GetOption(Render_ReverseZ);
-    bool do_upsample_taa           = m_renderer->GetOption(Render_Upsample_TAA);
-    bool do_upsample_amd           = m_renderer->GetOption(Render_Upsample_AMD_FidelityFX_SuperResolution);
 
     // Present options (with a table)
     {
@@ -444,7 +444,7 @@ void Widget_RenderOptions::TickVisible()
             if (helper::Option("Debug", false))
             {
                 // Performance metrics
-                if (helper::CheckBox("Performance Metrics", debug_performance_metrics) && !m_renderer->GetOption(Render_Debug_PerformanceMetrics))
+                if (helper::CheckBox("Performance Metrics", debug_performance_metrics) && !m_renderer->GetOption(Renderer_Option::Debug_PerformanceMetrics))
                 {
                     // Reset metrics on activation
                     m_profiler->ResetMetrics();
@@ -485,33 +485,33 @@ void Widget_RenderOptions::TickVisible()
     }
 
     // Map options to engine
-    m_renderer->SetOption(Render_Bloom, do_bloom);
-    m_renderer->SetOption(Render_DepthOfField, do_dof);
-    m_renderer->SetOption(Render_VolumetricFog, do_volumetric_fog);
-    m_renderer->SetOption(Render_Ssao, do_ssao);
-    m_renderer->SetOption(Render_ScreenSpaceShadows, do_sss);
-    m_renderer->SetOption(Render_ScreenSpaceReflections, do_ssr);
-    m_renderer->SetOptionValue(Renderer_Option_Value::Ssao_Gi, static_cast<float>(ssao_gi));
-    m_renderer->SetOption(Render_AntiAliasing_Taa, do_taa);
-    m_renderer->SetOption(Render_AntiAliasing_Fxaa, do_fxaa);
-    m_renderer->SetOption(Render_MotionBlur, do_motion_blur);
-    m_renderer->SetOption(Render_FilmGrain, do_film_grain);
-    m_renderer->SetOption(Render_Sharpening_AMD_FidelityFX_ContrastAdaptiveSharpening, do_sharperning);
-    m_renderer->SetOption(Render_ChromaticAberration, do_chromatic_aberration);
-    m_renderer->SetOption(Render_Debanding, do_debanding);
-    m_renderer->SetOptionValue(Renderer_Option_Value::ShadowResolution, static_cast<float>(resolution_shadow));
-    m_renderer->SetOption(Render_Debug_Transform, debug_transform);
-    m_renderer->SetOption(Render_Debug_SelectionOutline, debug_selection_outline);
-    m_renderer->SetOption(Render_Debug_Physics, debug_physics);
-    m_renderer->SetOption(Render_Debug_Aabb, debug_aabb);
-    m_renderer->SetOption(Render_Debug_Lights, debug_light);
-    m_renderer->SetOption(Render_Debug_PickingRay, debug_picking_ray);
-    m_renderer->SetOption(Render_Debug_Grid, debug_grid);
-    m_renderer->SetOption(Render_Debug_ReflectionProbes, debug_reflection_probes);
-    m_renderer->SetOption(Render_Debug_PerformanceMetrics, debug_performance_metrics);
-    m_renderer->SetOption(Render_Debug_Wireframe, debug_wireframe);
-    m_renderer->SetOption(Render_DepthPrepass, do_depth_prepass);
-    m_renderer->SetOption(Render_ReverseZ, do_reverse_z);
-    m_renderer->SetOption(Render_Upsample_TAA, do_upsample_taa);
-    m_renderer->SetOption(Render_Upsample_AMD_FidelityFX_SuperResolution, do_upsample_amd);
+    m_renderer->SetOption(Renderer_Option::Bloom,                                                do_bloom);
+    m_renderer->SetOption(Renderer_Option::DepthOfField,                                         do_dof);
+    m_renderer->SetOption(Renderer_Option::VolumetricFog,                                        do_volumetric_fog);
+    m_renderer->SetOption(Renderer_Option::Ssao,                                                 do_ssao);
+    m_renderer->SetOption(Renderer_Option::ScreenSpaceShadows,                                   do_sss);
+    m_renderer->SetOption(Renderer_Option::ScreenSpaceReflections,                               do_ssr);
+    m_renderer->SetOption(Renderer_Option::AntiAliasing_Taa,                                     do_taa);
+    m_renderer->SetOption(Renderer_Option::AntiAliasing_Fxaa,                                    do_fxaa);
+    m_renderer->SetOption(Renderer_Option::MotionBlur,                                           do_motion_blur);
+    m_renderer->SetOption(Renderer_Option::FilmGrain,                                            do_film_grain);
+    m_renderer->SetOption(Renderer_Option::Sharpening_AMD_FidelityFX_ContrastAdaptiveSharpening, do_sharperning);
+    m_renderer->SetOption(Renderer_Option::ChromaticAberration,                                  do_chromatic_aberration);
+    m_renderer->SetOption(Renderer_Option::Debanding,                                            do_debanding);
+    m_renderer->SetOption(Renderer_Option::Transform_Handle,                                     debug_transform);
+    m_renderer->SetOption(Renderer_Option::Debug_SelectionOutline,                               debug_selection_outline);
+    m_renderer->SetOption(Renderer_Option::Debug_Physics,                                        debug_physics);
+    m_renderer->SetOption(Renderer_Option::Debug_Aabb,                                           debug_aabb);
+    m_renderer->SetOption(Renderer_Option::Debug_Lights,                                         debug_light);
+    m_renderer->SetOption(Renderer_Option::Debug_PickingRay,                                     debug_picking_ray);
+    m_renderer->SetOption(Renderer_Option::Debug_Grid,                                           debug_grid);
+    m_renderer->SetOption(Renderer_Option::Debug_ReflectionProbes,                               debug_reflection_probes);
+    m_renderer->SetOption(Renderer_Option::Debug_PerformanceMetrics,                             debug_performance_metrics);
+    m_renderer->SetOption(Renderer_Option::Debug_Wireframe,                                      debug_wireframe);
+    m_renderer->SetOption(Renderer_Option::DepthPrepass,                                         do_depth_prepass);
+    m_renderer->SetOption(Renderer_Option::ReverseZ,                                             do_reverse_z);
+    m_renderer->SetOption(Renderer_Option::Upsample_TAA,                                         do_upsample_taa);
+    m_renderer->SetOption(Renderer_Option::Upsample_AMD_FidelityFX_SuperResolution,              do_upsample_amd);
+    m_renderer->SetOptionValue(Renderer_Option_Value::Ssao_Gi,                                   static_cast<float>(ssao_gi));
+    m_renderer->SetOptionValue(Renderer_Option_Value::ShadowResolution,                          static_cast<float>(resolution_shadow));
 }

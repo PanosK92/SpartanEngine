@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016-2021 Panos Karabelas
+Copyright(c) 2016-2022 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -94,7 +94,7 @@ namespace Spartan
         RendererRt GetRenderTargetDebug() const                         { return m_render_target_debug; }
 
         // Depth
-        float GetClearDepth() { return GetOption(Render_ReverseZ) ? m_viewport.depth_min : m_viewport.depth_max; }
+        float GetClearDepth() { return GetOption(Renderer_Option::ReverseZ) ? m_viewport.depth_min : m_viewport.depth_max; }
 
         // Environment
         const std::shared_ptr<RHI_Texture> GetEnvironmentTexture();

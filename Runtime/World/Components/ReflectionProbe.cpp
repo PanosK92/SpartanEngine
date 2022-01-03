@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016-2021 Panos Karabelas
+Copyright(c) 2016-2022 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -85,7 +85,7 @@ namespace Spartan
 
         // Reverse z change check
         bool reverse_z_changed = false;
-        bool reverse_z = m_context->GetSubsystem<Renderer>()->GetOption(Render_ReverseZ);
+        bool reverse_z = m_context->GetSubsystem<Renderer>()->GetOption(Renderer_Option::ReverseZ);
         if (m_previous_reverse_z != reverse_z)
         {
             m_previous_reverse_z = reverse_z;
@@ -212,7 +212,7 @@ namespace Spartan
 
     void ReflectionProbe::ComputeProjectionMatrix()
     {
-        bool reverse_z           = m_context->GetSubsystem<Renderer>()->GetOption(Render_ReverseZ);
+        bool reverse_z           = m_context->GetSubsystem<Renderer>()->GetOption(Renderer_Option::ReverseZ);
         const float near_plane   = reverse_z ? m_plane_far : m_plane_near;
         const float far_plane    = reverse_z ? m_plane_near : m_plane_far;
         const float fov          = Math::Helper::PI_DIV_2; // 90 degrees
@@ -222,7 +222,7 @@ namespace Spartan
 
     void ReflectionProbe::ComputeFrustums()
     {
-        bool reverse_z = m_context->GetSubsystem<Renderer>()->GetOption(Render_ReverseZ);
+        bool reverse_z = m_context->GetSubsystem<Renderer>()->GetOption(Renderer_Option::ReverseZ);
 
         for (uint32_t i = 0; i < m_texture_color->GetArrayLength(); i++)
         {

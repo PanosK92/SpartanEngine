@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016-2021 Panos Karabelas
+Copyright(c) 2016-2022 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -74,7 +74,7 @@ namespace Spartan
 
     void Renderer::CreateDepthStencilStates()
     {
-        RHI_Comparison_Function reverse_z_aware_comp_func = GetOption(Render_ReverseZ) ? RHI_Comparison_Function::GreaterEqual : RHI_Comparison_Function::LessEqual;
+        RHI_Comparison_Function reverse_z_aware_comp_func = GetOption(Renderer_Option::ReverseZ) ? RHI_Comparison_Function::GreaterEqual : RHI_Comparison_Function::LessEqual;
 
         // arguments: depth_test, depth_write, depth_function, stencil_test, stencil_write, stencil_function
         m_depth_stencil_off_off = make_shared<RHI_DepthStencilState>(m_rhi_device, false, false, RHI_Comparison_Function::Never, false, false, RHI_Comparison_Function::Never);  // no depth or stencil
@@ -86,8 +86,8 @@ namespace Spartan
 
     void Renderer::CreateRasterizerStates()
     {
-        float depth_bias              = GetOption(Render_ReverseZ) ? -m_depth_bias : m_depth_bias;
-        float depth_bias_slope_scaled = GetOption(Render_ReverseZ) ? -m_depth_bias_slope_scaled : m_depth_bias_slope_scaled;
+        float depth_bias              = GetOption(Renderer_Option::ReverseZ) ? -m_depth_bias : m_depth_bias;
+        float depth_bias_slope_scaled = GetOption(Renderer_Option::ReverseZ) ? -m_depth_bias_slope_scaled : m_depth_bias_slope_scaled;
 
         m_rasterizer_cull_back_solid     = make_shared<RHI_RasterizerState>(m_rhi_device, RHI_CullMode::Back, RHI_PolygonMode::Solid,     true,  false, false);
         m_rasterizer_cull_back_wireframe = make_shared<RHI_RasterizerState>(m_rhi_device, RHI_CullMode::Back, RHI_PolygonMode::Wireframe, true,  false, true);
@@ -106,7 +106,7 @@ namespace Spartan
     void Renderer::CreateSamplers(const bool create_only_anisotropic /*= false*/)
     {
         float anisotropy                         = GetOptionValue<float>(Renderer_Option_Value::Anisotropy);
-        RHI_Comparison_Function depth_comparison = GetOption(Render_ReverseZ) ? RHI_Comparison_Function::Greater : RHI_Comparison_Function::Less;
+        RHI_Comparison_Function depth_comparison = GetOption(Renderer_Option::ReverseZ) ? RHI_Comparison_Function::Greater : RHI_Comparison_Function::Less;
         float mip_lod_bias                       = -log2(m_resolution_output.x / m_resolution_render.x); // negative mip bias when upscaling is active (helps bring in some texture detail)
 
         // sampler parameters: minification, magnification, mip, sampler address mode, comparison, anisotropy, comparison enabled, mip lod bias
@@ -217,7 +217,7 @@ namespace Spartan
             // TAA History
             {
                 RHI_Texture* rt_taa_history = RENDER_TARGET(RendererRt::Taa_History).get();
-                bool upsampling_enabled     = GetOption(Render_Upsample_TAA);
+                bool upsampling_enabled     = GetOption(Renderer_Option::Upsample_TAA);
                 width                       = upsampling_enabled ? width_output  : width_render;
                 height                      = upsampling_enabled ? height_output : height_render;
 

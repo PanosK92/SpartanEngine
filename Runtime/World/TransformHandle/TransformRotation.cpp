@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016-2021 Panos Karabelas
+Copyright(c) 2016-2022 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -32,20 +32,20 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    TransformRotation::TransformRotation(Context* context) : TransformHandleOperator(context, TransformHandleType::Rotation)
+    TransformRotation::TransformRotation(Context* context) : TransformOperator(context, TransformHandleType::Rotation)
     {
         // Create an axis for each axis of control and fourth axis which control all of them
-        m_handle_x = TransformHandleOperatorAxis(m_type, Vector3::Right, m_context);
-        m_handle_y = TransformHandleOperatorAxis(m_type, Vector3::Up, m_context);
-        m_handle_z = TransformHandleOperatorAxis(m_type, Vector3::Forward, m_context);
+        m_handle_x = TransformOperatorAxis(m_type, Vector3::Right, m_context);
+        m_handle_y = TransformOperatorAxis(m_type, Vector3::Up, m_context);
+        m_handle_z = TransformOperatorAxis(m_type, Vector3::Forward, m_context);
 
         m_offset_handle_axes_from_center = false;
     }
 
     void TransformRotation::InteresectionTest(const Math::Ray& camera_to_mouse)
     {
-        const float circle_radius       = m_handle_x.m_scale.Length() * 5.0f;
-        const float circle_thickness    = 0.05f;
+        const float circle_radius    = m_handle_x.m_scale.Length() * 5.0f;
+        const float circle_thickness = 0.05f;
 
         // Construct 3 planes, 1 for each axis
         const Plane plane_x = Plane(m_handle_x.m_axis, -m_handle_x.m_position.x);
