@@ -302,7 +302,7 @@ float3 get_input_sample(uint2 pos, uint3 group_id)
             weights[i] = get_sample_weight(distance_squared(pos, (float2)kOffsets3x3[i]));
             weight_sum += weights[i];
         }
-   w    eight_normaliser /= weight_sum;
+        weight_normaliser /= weight_sum;
         
         // Fetch color samples
         float3 color = 0.0f;
