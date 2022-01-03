@@ -547,6 +547,9 @@ namespace Spartan
         bool depth_prepass = GetOption(Render_DepthPrepass);
         bool wireframe     = GetOption(Render_Debug_Wireframe);
 
+        // We consider (in the shaders) that sky is opaque, that's why the clear value has an alpha of 1.0f.
+        static Vector4 clear_color_sky = Vector4(0.0f, 0.0f, 0.0f, 1.0f);
+
         // Set render state
         RHI_PipelineState pso;
         pso.shader_vertex                   = shader_v;
@@ -555,13 +558,13 @@ namespace Spartan
         pso.rasterizer_state                = wireframe ? m_rasterizer_cull_back_wireframe.get() : m_rasterizer_cull_back_solid.get();
         pso.depth_stencil_state             = is_transparent_pass ? m_depth_stencil_rw_w.get() : (depth_prepass ? m_depth_stencil_r_off.get() : m_depth_stencil_rw_off.get());
         pso.render_target_color_textures[0] = tex_albedo;
-        pso.clear_color[0]                  = !is_transparent_pass ? Vector4::Zero : rhi_color_load;
+        pso.clear_color[0]                  = !is_transparent_pass ? clear_color_sky : rhi_color_load;
         pso.render_target_color_textures[1] = tex_normal;
-        pso.clear_color[1]                  = !is_transparent_pass ? Vector4::Zero : rhi_color_load;
+        pso.clear_color[1]                  = !is_transparent_pass ? clear_color_sky : rhi_color_load;
         pso.render_target_color_textures[2] = tex_material;
-        pso.clear_color[2]                  = !is_transparent_pass ? Vector4::Zero : rhi_color_load;
+        pso.clear_color[2]                  = !is_transparent_pass ? clear_color_sky : rhi_color_load;
         pso.render_target_color_textures[3] = tex_velocity;
-        pso.clear_color[3]                  = !is_transparent_pass ? Vector4::Zero : rhi_color_load;
+        pso.clear_color[3]                  = !is_transparent_pass ? clear_color_sky : rhi_color_load;
         pso.render_target_depth_texture     = tex_depth;
         pso.clear_depth                     = (is_transparent_pass || depth_prepass) ? rhi_depth_load : GetClearDepth();
         pso.clear_stencil                   = rhi_stencil_dont_care;
@@ -955,7 +958,7 @@ namespace Spartan
         pso.shader_pixel                    = shader_p;
         pso.rasterizer_state                = m_rasterizer_cull_back_solid.get();
         pso.depth_stencil_state             = m_depth_stencil_off_off.get();
-        pso.blend_state                     = is_transparent_pass ? m_blend_additive.get() : m_blend_disabled.get();
+        pso.blend_state                     = m_blend_additive.get();
         pso.render_target_color_textures[0] = tex_out;
         pso.clear_color[0]                  = rhi_color_load;
         pso.render_target_depth_texture     = nullptr;
@@ -1206,8 +1209,8 @@ namespace Spartan
         // Passes that render on top of each other
         Pass_DebugMeshes(cmd_list, rt_frame_render_output_out.get());
         Pass_Outline(cmd_list, rt_frame_render_output_out.get());
-        Pass_TransformHandle(cmd_list, rt_frame_render_output_out.get());
         Pass_Lines(cmd_list, rt_frame_render_output_out.get());
+        Pass_TransformHandle(cmd_list, rt_frame_render_output_out.get());
         Pass_Icons(cmd_list, rt_frame_render_output_out.get());
         Pass_DebugBuffer(cmd_list, rt_frame_render_output_out.get());
         Pass_PeformanceMetrics(cmd_list, rt_frame_render_output_out.get());
@@ -2020,7 +2023,7 @@ namespace Spartan
 
         // Transform
         shared_ptr<TransformHandle> transform_handle = m_context->GetSubsystem<World>()->GetTransformHandle();
-        if (transform_handle->GetNeedsToRender())
+        if (transform_handle->GetSelectedEntity() != nullptr)
         {
             // Set render state
             static RHI_PipelineState pso;

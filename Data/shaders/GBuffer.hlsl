@@ -60,16 +60,6 @@ PixelInputType mainVS(Vertex_PosUvNorTan input)
 
 PixelOutputType mainPS(PixelInputType input)
 {
-    PixelOutputType g_buffer;
-
-    float2 uv       = float2(input.uv.x * g_mat_tiling.x + g_mat_offset.x, input.uv.y * g_mat_tiling.y + g_mat_offset.y);
-    float4 albedo   = g_mat_color;
-    float roughness = g_mat_roughness;
-    float metallic  = g_mat_metallic;
-    float3 normal   = input.normal.xyz;
-    float emission  = 0.0f;
-    float occlusion = 1.0f;
-
     // Velocity
     float2 position_ndc_current  = (input.position_ss_current.xy / input.position_ss_current.w);
     float2 position_ndc_previous = (input.position_ss_previous.xy / input.position_ss_previous.w);
@@ -85,6 +75,7 @@ PixelOutputType mainPS(PixelInputType input)
     }
 
     // Parallax Mapping
+    float2 uv = float2(input.uv.x * g_mat_tiling.x + g_mat_offset.x, input.uv.y * g_mat_tiling.y + g_mat_offset.y);
     if (has_texture_height())
     {
         float height_scale     = g_mat_height * 0.04f;
@@ -100,6 +91,7 @@ PixelOutputType mainPS(PixelInputType input)
     }
 
     // Albedo
+    float4 albedo = g_mat_color;
     if (has_texture_albedo())
     {
         float4 albedo_sample = tex_material_albedo.Sample(sampler_anisotropic_wrap, uv);
@@ -115,52 +107,56 @@ PixelOutputType mainPS(PixelInputType input)
     // Discard masked pixels
     if (alpha_mask <= ALPHA_THRESHOLD)
         discard;
-    
+
+    float roughness = g_mat_roughness;
     if (has_texture_roughness())
     {
         roughness *= tex_material_roughness.Sample(sampler_anisotropic_wrap, uv).r;
     }
 
+    float metallic = g_mat_metallic;
     if (has_texture_metallic())
     {
         metallic *= tex_material_metallic.Sample(sampler_anisotropic_wrap, uv).r;
     }
 
+    float3 normal = input.normal.xyz;
     if (has_texture_normal())
     {
-        // Get tangent space normal and apply intensity
+        // Get tangent space normal and apply the user defined intensity. Then transform it to world space.
         float3 tangent_normal  = normalize(unpack(tex_material_normal.Sample(sampler_anisotropic_wrap, uv).rgb));
         float normal_intensity = clamp(g_mat_normal, 0.012f, g_mat_normal);
         tangent_normal.xy      *= saturate(normal_intensity);
-        normal                 = normalize(mul(tangent_normal, TBN).xyz); // Transform to world space
+        normal                 = normalize(mul(tangent_normal, TBN).xyz);
     }
 
+    float occlusion = 1.0f;
     if (has_texture_occlusion())
     {
         occlusion = tex_material_occlusion.Sample(sampler_anisotropic_wrap, uv).r;
     }
-    
+
+    float emission = 0.0f;
     if (has_texture_emissive())
     {
         emission = luminance(tex_material_emission.Sample(sampler_anisotropic_wrap, uv).rgb);
     }
 
     // Specular anti-aliasing
-    static const float strength       = 6.0f;
-    static const float max_roughness2 = 1.0f;
-    float roughness2                  = roughness * roughness;
-    float3 dndu                       = ddx(normal), dndv = ddy(normal);
-    float variance                    = (dot(dndu, dndu) + dot(dndv, dndv));
-    float kernelRoughness2            = min(variance * strength, max_roughness2);
-    float filteredRoughness2          = saturate(roughness2 + kernelRoughness2);
-    roughness                         = fast_sqrt(filteredRoughness2);
+    static const float strength = 4.0f;
+    float roughness2            = roughness * roughness;
+    float3 dndu                 = ddx(normal), dndv = ddy(normal);
+    float variance              = (dot(dndu, dndu) + dot(dndv, dndv));
+    float kernelRoughness2      = min(variance * strength, 1.0f);
+    float filteredRoughness2    = saturate(roughness2 + kernelRoughness2);
+    roughness                   = fast_sqrt(filteredRoughness2);
 
     // Write to G-Buffer
-    g_buffer.albedo = albedo;
-    g_buffer.normal = float4(normal, pack_uint32_to_float16(g_mat_id));
+    PixelOutputType g_buffer;
+    g_buffer.albedo   = albedo;
+    g_buffer.normal   = float4(normal, pack_uint32_to_float16(g_mat_id));
     g_buffer.material = float4(roughness, metallic, emission, occlusion);
     g_buffer.velocity = velocity;
 
     return g_buffer;
 }
-

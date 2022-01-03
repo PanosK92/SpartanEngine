@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "brdf.hlsl"
 //==================
 
-static const float g_ssr_fallback_threshold_roughness = 0.7f; // value above which blending with the environment is forced
+static const float g_ssr_fallback_threshold_roughness = 0.7f; // value above which blending with the environment texture, is forced.
 
 // From Sebastien Lagarde Moving Frostbite to PBR page 69
 float3 get_dominant_specular_direction(float3 normal, float3 reflection, float roughness)
@@ -71,14 +71,9 @@ float3 get_parallax_corrected_reflection(Surface surface, float3 position_probe,
     return reflection;
 }
 
-bool is_inside_box(float3 p, float3 min, float3 max)
+bool is_inside_box(in float3 p, in float3 min, in float3 max)
 {
-    if (p.x < min.x || p.x > max.x || p.y < min.y || p.y > max.y || p.z < min.z || p. z > max.z)
-    {
-        return false;
-    }
-
-    return true;
+    return (p.x < min.x || p.x > max.x || p.y < min.y || p.y > max.y || p.z < min.z || p.z > max.z) ? false : true;
 }
 
 float4 mainPS(Pixel_PosUv input) : SV_TARGET
@@ -87,13 +82,14 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     
     // Construct surface
     Surface surface;
-    surface.Build(pos, true, true, false);
+    bool use_ssao = is_opaque_pass(); // we don't do ssao for transparents.
+    surface.Build(pos, true, use_ssao, false);
 
-    // TODO: Use the stencil buffer to avoid transparents or simply add SSR for transparents
-    // If this is a transparent pass, ignore all opaque pixels, and vice versa.
-    bool early_exit_1 = !g_is_transparent_pass && surface.is_transparent();
-    bool early_exit_2 = g_is_transparent_pass && surface.is_opaque();
-    if (early_exit_1 || early_exit_2 || surface.is_sky())
+     // If this is a transparent pass, ignore all opaque pixels, and vice versa.
+    bool early_exit_1 = is_opaque_pass()      && surface.is_transparent();
+    bool early_exit_2 = is_transparent_pass() && surface.is_opaque();
+    bool early_exit_3 = surface.is_sky(); // we don't want to do IBL on the sky itself.
+    if (early_exit_1 || early_exit_2 || early_exit_3)
         discard;
 
     // Just a hack to tone down IBL since it comes from a static texture
@@ -162,4 +158,3 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     // Perfection achieved
     return float4(saturate_11(ibl_diffuse + ibl_specular), 0.0f);
 }
-

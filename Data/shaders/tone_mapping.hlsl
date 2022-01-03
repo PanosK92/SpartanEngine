@@ -90,7 +90,6 @@ float3 matrix_movie(float3 keannu)
 
 float3 tone_map(float3 color)
 {
-    [branch]
     if (g_toneMapping == 0) // OFF
     {
         // Do nothing

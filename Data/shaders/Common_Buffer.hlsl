@@ -162,3 +162,7 @@ bool needs_channel_r()        { return g_options_debug & uint(1U << 5); }
 bool needs_channel_a()        { return g_options_debug & uint(1U << 6); }
 bool needs_channel_rg()       { return g_options_debug & uint(1U << 7); }
 bool needs_channel_rgb()      { return g_options_debug & uint(1U << 8); }
+
+// Misc
+bool is_opaque_pass()      { return g_is_transparent_pass == 0; }
+bool is_transparent_pass() { return g_is_transparent_pass == 1; }
