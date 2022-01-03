@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016-2021 Panos Karabelas
+Copyright(c) 2016-2022 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -98,7 +98,7 @@ struct Surface
             {
                 // Sample ssao texture
                 float4 ssao = tex_ssao[position_screen];
-                bent_normal = tex_ssao_bent_normals[position_screen];
+                bent_normal = tex_ssao_bent_normals[position_screen].xyz;
 
                 // Combine occlusion with material ao
                 ssao.a    = min(sample_material.a, ssao.a);
@@ -225,7 +225,7 @@ struct Light
         array_size        = light_is_directional() ? 4 : 1;
         
         // Apply SSAO
-        bent_dot_l = float3(0.0f, 1.0f, 0.0f);
+        bent_dot_l = 0.0f;
         if (is_ssao_enabled() && luminance(surface_occlusion) != 1.0f)
         {
             float strength  = 4.0f;
