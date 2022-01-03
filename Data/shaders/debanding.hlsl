@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016-2021 Panos Karabelas
+Copyright(c) 2016-2022 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -43,7 +43,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         return;
 
     float3 color = tex[thread_id.xy].rgb;
-    float rnd    = dither(thread_id.xy * g_resolution_rt.xy);
+    float rnd    = dither(thread_id.xy * g_resolution_rt.xy).x;
     
     tex_out_rgb[thread_id.xy] = color + lerp(-g_debanding_offset, g_debanding_offset, rnd);
 }
