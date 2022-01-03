@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016-2021 Panos Karabelas
+Copyright(c) 2016-2022 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -61,8 +61,12 @@ float shadow_compare_depth(float3 uv, float compare)
         // float3 -> uv, 0
         return tex_light_spot_depth.SampleCmpLevelZero(sampler_compare_depth, uv.xy, compare).r;
     }
-
-    return 0.0f;
+    else
+    {
+        // Return within an else statement in order to avoid a warning.
+        // Warning X4000: use of potentially uninitialized variable.
+        return 0.0f;
+    }
 }
 
 float shadow_sample_depth(float3 uv)
@@ -82,8 +86,12 @@ float shadow_sample_depth(float3 uv)
         // float3 -> uv, 0
         return tex_light_spot_depth.SampleLevel(sampler_point_clamp, uv.xy, 0).r;
     }
-
-    return 0.0f;
+    else
+    {
+        // Return within an else statement in order to avoid a warning.
+        // Warning X4000: use of potentially uninitialized variable.
+        return 0.0f;
+    }
 }
 
 float3 shadow_sample_color(float3 uv)
@@ -103,8 +111,12 @@ float3 shadow_sample_color(float3 uv)
         // float3 -> uv, 0
         return tex_light_spot_color.SampleLevel(sampler_point_clamp, uv.xy, 0).rgb;
     }
-
-    return 0.0f;
+    else
+    {
+        // Return within an else statement in order to avoid a warning.
+        // Warning X4000: use of potentially uninitialized variable.
+        return 0.0f;
+    }
 }
 
 /*------------------------------------------------------------------------------
