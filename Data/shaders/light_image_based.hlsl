@@ -155,6 +155,15 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     // Modulate outcoming energy
     ibl_specular *= specular_energy;
 
+    // Assume that the dominant sepcular direction is the negated light direction and do some ssao.
+    float bent_dot_l = 1.0f;
+    if (is_ssao_enabled() && use_ssao)
+    {
+        float strength        = 2.0f;
+        float3 pixel_to_light = dominant_specular_direction;
+        bent_dot_l            -= saturate(dot(surface.bent_normal, world_to_view(pixel_to_light, false)) * strength);
+    }
+
     // Perfection achieved
-    return float4(saturate_11(ibl_diffuse + ibl_specular), 0.0f);
+    return float4(saturate_11(ibl_diffuse + ibl_specular) * bent_dot_l, 0.0f);
 }

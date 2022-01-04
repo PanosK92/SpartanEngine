@@ -58,7 +58,7 @@ Texture2DArray tex_noise_blue : register(t25);
 Texture2D tex_lut_ibl            : register(t26);
 Texture2D tex_environment        : register(t27);
 Texture2D tex_ssao               : register(t28);
-Texture2D tex_ssao_bent_normals  : register(t29);
+Texture2D tex_ssao_gi            : register(t29);
 Texture2D tex_ssr                : register(t30);
 Texture2D tex_frame              : register(t31);
 Texture2D tex                    : register(t32);
