@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 static const uint g_ao_directions      = 2;
 static const uint g_ao_steps           = 2;
-static const float g_ao_radius         = 1.0f;
+static const float g_ao_radius         = 2.0f;
 static const float g_ao_occlusion_bias = 0.0f;
 
 static const float ao_samples       = (float)(g_ao_directions * g_ao_steps);
@@ -38,7 +38,7 @@ float compute_falloff(float distance_squared)
     return saturate(distance_squared * ao_negInvRadius2 + 1.0f);
 }
 
-float compute_occlusion(float3 origin_normal, float3 origin_to_sample)
+float compute_visibility(float3 origin_normal, float3 origin_to_sample)
 {
     float distance_squared  = dot(origin_to_sample, origin_to_sample);
     float n_dot_v           = dot(origin_normal, origin_to_sample) * rsqrt(distance_squared);
@@ -48,7 +48,7 @@ float compute_occlusion(float3 origin_normal, float3 origin_to_sample)
 }
 
 // Screen space directional and temporal ground truth ambient occlusion with global illumination and bent normals.
-void compute_uber_ssao(uint2 pos, inout float4 light, inout float3 bent_normal)
+void compute_uber_ssao(uint2 pos, inout float3 bent_normal, inout float occlusion, inout float3 diffuse_bounce)
 {
     const float2 origin_uv       = (pos + 0.5f) / g_resolution_rt;
     const float3 origin_position = get_position_view_space(pos);
@@ -80,15 +80,15 @@ void compute_uber_ssao(uint2 pos, inout float4 light, inout float3 bent_normal)
             uint2 sample_pos        = (origin_uv + uv_offset) * g_resolution_rt;
             float3 sample_position  = get_position_view_space(sample_pos);
             float3 origin_to_sample = sample_position - origin_position;
-            float visibility        = compute_occlusion(origin_normal, origin_to_sample) * screen_fade(origin_uv);
+            float visibility        = compute_visibility(origin_normal, origin_to_sample) * screen_fade(origin_uv);
 
             // Occlusion
-            light.a += visibility;
+            occlusion += visibility;
 
             // Light
             if (is_ssao_gi_enabled())
             {
-                light.rgb += tex_light_diffuse[sample_pos].rgb * tex_albedo[sample_pos].rgb * visibility;
+                diffuse_bounce += tex_light_diffuse[sample_pos].rgb * tex_albedo[sample_pos].rgb * visibility;
             }
 
             // Bent normal
@@ -96,9 +96,9 @@ void compute_uber_ssao(uint2 pos, inout float4 light, inout float3 bent_normal)
         }
     }
 
-    light.a     = 1.0f - saturate(light.a * ao_samples_rcp);
-    light.rgb   = saturate(light.rgb * ao_samples_rcp);
-    bent_normal *= ao_samples_rcp;
+    bent_normal   *= ao_samples_rcp;
+    occlusion      = 1.0f - saturate(occlusion * ao_samples_rcp);
+    diffuse_bounce = saturate(diffuse_bounce);
 }
 
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
@@ -108,11 +108,14 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     if (any(int2(thread_id.xy) >= g_resolution_rt.xy))
         return;
 
-    float4 light       = 0.0f;
-    float3 bent_normal = 0.0f;
+    float3 bent_normal    = 0.0f;
+    float occlusion       = 0.0f;
+    float3 diffuse_bounce = 0.0f;
+    compute_uber_ssao(thread_id.xy, bent_normal, occlusion, diffuse_bounce);
 
-    compute_uber_ssao(thread_id.xy, light, bent_normal);
-
-    tex_out_rgba[thread_id.xy]  = light;
-    tex_out_rgba2[thread_id.xy] = float4(bent_normal, 1.0f);
+    tex_out_rgba[thread_id.xy]  = float4(bent_normal, occlusion);
+    tex_out_rgba2[thread_id.xy] = float4(diffuse_bounce, 1.0f);
 }
+
+
+

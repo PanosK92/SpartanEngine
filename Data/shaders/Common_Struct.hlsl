@@ -91,21 +91,23 @@ struct Surface
 
         // Occlusion + GI
         {
-            occlusion = 1.0f;
-            gi        = 0.0f;
+            occlusion   = 1.0f;
+            gi          = 0.0f;
+            bent_normal = normal;
 
             if (is_ssao_enabled() && use_ssao)
             {
                 // Sample ssao texture
                 float4 ssao = tex_ssao[position_screen];
-                bent_normal = tex_ssao_bent_normals[position_screen].xyz;
+                bent_normal = ssao.xyz;
+                occlusion   = ssao.a;
 
-                // Combine occlusion with material ao
-                ssao.a    = min(sample_material.a, ssao.a);
+                // Combine occlusion with material occlusion (baked texture).
+                occlusion = min(sample_material.a, occlusion);
                 occlusion = multi_bounce_ao(ssao.a, albedo);
 
                 // If ssao gi is not enabled, approximate some light bouncing
-                gi = is_ssao_gi_enabled() ? ssao.rgb * 2.0f  : 0.0f;
+                gi = is_ssao_gi_enabled() ? tex_ssao_gi[position_screen].rgb * 1.0f : 0.0f;
             }
         }
 
@@ -226,10 +228,10 @@ struct Light
         
         // Apply SSAO
         bent_dot_l = 0.0f;
-        if (is_ssao_enabled() && luminance(surface_occlusion) != 1.0f)
+        if (is_ssao_enabled())
         {
             float strength  = 4.0f;
-            bent_dot_l      = 1.0f - saturate(dot(surface_bent_normal, world_to_view(-to_pixel, false))) * strength;
+            bent_dot_l      = 1.0f - saturate(dot(surface_bent_normal, world_to_view(-to_pixel, false)) * strength);
             radiance        *= bent_dot_l;
         }
     }
@@ -241,3 +243,5 @@ struct Light
 };
 
 #endif // SPARTAN_COMMON_STRUCT
+
+

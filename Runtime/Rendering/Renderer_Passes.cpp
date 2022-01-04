@@ -696,8 +696,9 @@ namespace Spartan
         if (!shader_c->IsCompiled())
             return;
 
-        // Acquire render target
-        RHI_Texture* tex_ssao = RENDER_TARGET(RendererRt::Ssao).get();
+        // Acquire render targets
+        RHI_Texture* tex_ssao    = RENDER_TARGET(RendererRt::Ssao).get();
+        RHI_Texture* tex_ssao_gi = RENDER_TARGET(RendererRt::Ssao_Gi).get();
 
         // Set render state
         static RHI_PipelineState pso;
@@ -717,7 +718,7 @@ namespace Spartan
             const bool async = false;
 
             cmd_list->SetTexture(RendererBindings_Uav::rgba,           tex_ssao);
-            cmd_list->SetTexture(RendererBindings_Uav::rgba2,          RENDER_TARGET(RendererRt::Ssao_BentNormals));
+            cmd_list->SetTexture(RendererBindings_Uav::rgba2,          tex_ssao_gi);
             cmd_list->SetTexture(RendererBindings_Srv::gbuffer_albedo, RENDER_TARGET(RendererRt::Gbuffer_Albedo));
             cmd_list->SetTexture(RendererBindings_Srv::gbuffer_normal, RENDER_TARGET(RendererRt::Gbuffer_Normal));
             cmd_list->SetTexture(RendererBindings_Srv::gbuffer_depth,  RENDER_TARGET(RendererRt::Gbuffer_Depth));
@@ -729,9 +730,10 @@ namespace Spartan
 
         // Blur
         const bool depth_aware   = true;
-        const float sigma        = 2.0f;
+        const float sigma        = 4.0f;
         const float pixel_stride = 2.0f;
         Pass_Blur_Gaussian(cmd_list, tex_ssao, depth_aware, sigma, pixel_stride);
+        Pass_Blur_Gaussian(cmd_list, tex_ssao_gi, depth_aware, sigma, pixel_stride);
     }
 
     void Renderer::Pass_Ssr(RHI_CommandList* cmd_list, RHI_Texture* tex_in)
@@ -835,7 +837,7 @@ namespace Spartan
                         cmd_list->SetTexture(RendererBindings_Srv::gbuffer_material,  RENDER_TARGET(RendererRt::Gbuffer_Material));
                         cmd_list->SetTexture(RendererBindings_Srv::gbuffer_depth,     RENDER_TARGET(RendererRt::Gbuffer_Depth));
                         cmd_list->SetTexture(RendererBindings_Srv::ssao,              RENDER_TARGET(RendererRt::Ssao));
-                        cmd_list->SetTexture(RendererBindings_Srv::ssao_bent_normals, RENDER_TARGET(RendererRt::Ssao_BentNormals));
+                        cmd_list->SetTexture(RendererBindings_Srv::ssao_gi,           RENDER_TARGET(RendererRt::Ssao_Gi));
                         
                         // Set shadow maps
                         {
@@ -2334,7 +2336,7 @@ namespace Spartan
         }
 
         if (m_render_target_debug == RendererRt::Gbuffer_Normal ||
-            m_render_target_debug == RendererRt::Ssao_BentNormals)
+            m_render_target_debug == RendererRt::Ssao_Gi)
         {
             options |= PACK;
         }
@@ -2353,15 +2355,14 @@ namespace Spartan
 
         if (m_render_target_debug == RendererRt::Ssao)
         {
-            if (GetOptionValue<bool>(Renderer_Option_Value::Ssao_Gi))
-            {
-                options |= CHANNEL_RGB;
-                //options |= GAMMA_CORRECT;
-            }
-            else
-            {
-                options |= CHANNEL_A;
-            }
+            options |= CHANNEL_RGB;
+            options |= PACK;
+        }
+
+        if (m_render_target_debug == RendererRt::Ssao_Gi)
+        {
+            options |= CHANNEL_RGB;
+            options |= GAMMA_CORRECT;
         }
 
         // Acquire shaders
