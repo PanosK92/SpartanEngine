@@ -21,37 +21,55 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ================
+//= INCLUDES ==================
 #include "Widget.h"
-#include "RHI/RHI_Viewport.h"
-//===========================
+#include "Profiling/Profiler.h"
+#include "Math/MathHelper.h"
+#include "Core/Timer.h"
+#include <array>
+//=============================
 
-//= FORWARD DECLARATIONS =
-namespace Spartan
+struct Timings
 {
-    class Renderer;
-    class Settings;
-    class World;
-    class Input;
-}
-//========================
+    Timings() { Clear(); }
 
-class Widget_Viewport : public Widget
+    void AddSample(const float sample)
+    {
+        m_min = Spartan::Math::Helper::Min(m_min, sample);
+        m_max = Spartan::Math::Helper::Max(m_max, sample);
+        m_sum += sample;
+        m_sample_count++;
+        m_avg = float(m_sum / static_cast<float>(m_sample_count));
+    }
+
+    void Clear()
+    {
+        m_min           = FLT_MAX;
+        m_max           = FLT_MIN;
+        m_avg           = 0.0f;
+        m_sum           = 0.0f;
+        m_sample_count  = 0;
+    }
+
+    float m_min;
+    float m_max;
+    float m_avg;
+    double m_sum;
+    uint64_t m_sample_count;
+};
+
+class Profiler : public Widget
 {
 public:
-    Widget_Viewport(Editor* editor);
+    Profiler(Editor* editor);
 
+    void OnShow() override;
+    void OnHide() override;
     void TickVisible() override;
 
 private:
-    float m_width                           = 0.0f;
-    float m_height                          = 0.0f;
-    Spartan::Math::Vector2 m_offset         = Spartan::Math::Vector2::Zero;
-    float m_window_padding                  = 4.0f;
-    bool m_has_resolution_been_set          = false;
-    uint8_t m_frames_count                  = 0;
-    Spartan::Renderer* m_renderer           = nullptr;
-    Spartan::Settings* m_settings           = nullptr;
-    Spartan::World* m_world                 = nullptr;
-    Spartan::Input* m_input                 = nullptr;
+    std::array<float, 400> m_plot;
+    Timings m_timings;
+    Spartan::Profiler* m_profiler;
+    int m_item_type = 1;
 };

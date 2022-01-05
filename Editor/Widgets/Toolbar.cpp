@@ -20,25 +20,25 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES ==============================
-#include "Widget_Toolbar.h"
-#include "Widget_Profiler.h"
-#include "Widget_ResourceCache.h"
-#include "Widget_ShaderEditor.h"
-#include "Widget_RenderOptions.h"
+#include "Toolbar.h"
+#include "Profiler.h"
+#include "ResourceViewer.h"
+#include "ShaderEditor.h"
+#include "RenderOptions.h"
+#include "TextureViewer.h"
 #include "Core/Engine.h"
 #include "Rendering/Model.h"
-#include "../ImGui_Extension.h"
+#include "../ImGuiExtension.h"
 #include "../ImGui/Source/imgui_internal.h"
 #include "../Editor.h"
 //=========================================
 
-//= NAMESPACES =========
+//= NAMESPACES ===============
 using namespace std;
-using namespace Spartan;
-using namespace Math;
-//======================
+using namespace Spartan::Math;
+//============================
 
-Widget_Toolbar::Widget_Toolbar(Editor* editor) : Widget(editor)
+Toolbar::Toolbar(Editor* editor) : Widget(editor)
 {
     m_title     = "Toolbar";
     m_is_window = false;
@@ -51,15 +51,16 @@ Widget_Toolbar::Widget_Toolbar(Editor* editor) : Widget(editor)
         ImGuiWindowFlags_NoScrollbar     |
         ImGuiWindowFlags_NoTitleBar;
 
-    m_widgets[IconType::Button_Profiler]      = m_editor->GetWidget<Widget_Profiler>();
-    m_widgets[IconType::Button_ResourceCache] = m_editor->GetWidget<Widget_ResourceCache>();
-    m_widgets[IconType::Component_Script]     = m_editor->GetWidget<Widget_ShaderEditor>();
-    m_widgets[IconType::Component_Options]    = m_editor->GetWidget<Widget_RenderOptions>();
+    m_widgets[IconType::Button_Profiler]       = m_editor->GetWidget<Profiler>();
+    m_widgets[IconType::Button_ResourceCache]  = m_editor->GetWidget<ResourceViewer>();
+    m_widgets[IconType::Component_Script]      = m_editor->GetWidget<ShaderEditor>();
+    m_widgets[IconType::Component_Options]     = m_editor->GetWidget<RenderOptions>();
+    m_widgets[IconType::Component_Environment] = m_editor->GetWidget<TextureViewer>();
 
-    m_context->m_engine->EngineMode_Disable(Engine_Game);
+    m_context->m_engine->EngineMode_Disable(Spartan::Engine_Mode::Engine_Game);
 }
 
-void Widget_Toolbar::TickAlways()
+void Toolbar::TickAlways()
 {
     auto show_button = [this](IconType icon_type, const function<bool()>& get_visibility, const function<void()>& make_visible)
     {
@@ -73,7 +74,11 @@ void Widget_Toolbar::TickAlways()
     };
 
     // Play button
-    show_button(IconType::Button_Play, [this]() { return m_context->m_engine->EngineMode_IsSet(Engine_Game); }, [this]() { m_context->m_engine->EngineMode_Toggle(Engine_Game); });
+    show_button(
+        IconType::Button_Play,
+        [this](){ return m_context->m_engine->EngineMode_IsSet(Spartan::Engine_Mode::Engine_Game); },
+        [this](){ m_context->m_engine->EngineMode_Toggle(Spartan::Engine_Mode::Engine_Game); }
+    );
 
     for (auto& widget_it : m_widgets)
     {

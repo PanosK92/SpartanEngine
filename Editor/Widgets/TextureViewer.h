@@ -21,36 +21,25 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ====================================
+//= INCLUDES ======
 #include "Widget.h"
-#include <vector>
-#include "../WidgetsDeferred/Widget_TextEditor.h"
-//===============================================
+//=================
 
+//= FWD DECLARATIONS =
 namespace Spartan
 {
-    class RHI_Shader;
     class Renderer;
 }
+//====================
 
-class Widget_ShaderEditor : public Widget
+class TextureViewer : public Widget
 {
 public:
-    Widget_ShaderEditor(Editor* editor);
+    TextureViewer(Editor* editor);
 
     void TickVisible() override;
 
 private:
-    void ShowShaderSource();
-    void ShowShaderList();
-    void ShowControls();
-    void GetShaderInstances();
-
-    Spartan::RHI_Shader* m_shader = nullptr;
-    std::string m_shader_name     = "N/A";
-    Spartan::Renderer* m_renderer = nullptr;
-    int32_t m_index_displayed     = -1;
-    bool m_first_run              = true;
-    std::unique_ptr<Widget_TextEditor> m_text_editor;
-    std::vector<Spartan::RHI_Shader*> m_shaders;
+    Spartan::Renderer* m_renderer;
+    uint32_t m_texture_index = 0;
 };

@@ -23,14 +23,21 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ======
 #include "Widget.h"
+#include <memory>
 //=================
 
-class Widget_ResourceCache : public Widget
+class FileDialog;
+
+class AssetViewer : public Widget
 {
 public:
-    Widget_ResourceCache(Editor* editor);
+    AssetViewer(Editor* editor);
 
     void TickVisible() override;
 
 private:
+    void OnPathClicked(const std::string& path) const;
+
+    std::unique_ptr<FileDialog> m_fileDialogView;
+    std::unique_ptr<FileDialog> m_fileDialogLoad;
 };

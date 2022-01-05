@@ -20,8 +20,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES ====================================
-#include "Widget_Properties.h"
-#include "../ImGui_Extension.h"
+#include "Properties.h"
+#include "../ImGuiExtension.h"
 #include "../ImGui/Source/imgui_stdlib.h"
 #include "../ImGui/Source/imgui_internal.h"
 #include "../WidgetsDeferred/ButtonColorPicker.h"
@@ -49,13 +49,13 @@ using namespace Spartan;
 using namespace Math;
 //======================
 
-weak_ptr<Entity> Widget_Properties::m_inspected_entity;
-weak_ptr<Material> Widget_Properties::m_inspected_material;
+weak_ptr<Entity> Properties::m_inspected_entity;
+weak_ptr<Material> Properties::m_inspected_material;
 
 namespace helper
 {
     static ResourceCache* resource_cache;
-    static World* scene;
+    static World* world;
     static Vector3 rotation_hint;
 
     static string g_contex_menu_id;
@@ -71,7 +71,7 @@ namespace helper
             {
                 if (ImGui::MenuItem("Remove"))
                 {
-                    if (auto entity = Widget_Properties::m_inspected_entity.lock())
+                    if (auto entity = Properties::m_inspected_entity.lock())
                     {
                         if (component)
                         {
@@ -138,20 +138,20 @@ namespace helper
     }
 }
 
-Widget_Properties::Widget_Properties(Editor* editor) : Widget(editor)
+Properties::Properties(Editor* editor) : Widget(editor)
 {
     m_title  = "Properties";
-    m_size.x = 500; // min width
+    m_size_initial.x = 500; // min width
 
     m_colorPicker_light     = make_unique<ButtonColorPicker>("Light Color Picker");
-    m_material_color_picker  = make_unique<ButtonColorPicker>("Material Color Picker");
+    m_material_color_picker = make_unique<ButtonColorPicker>("Material Color Picker");
     m_colorPicker_camera    = make_unique<ButtonColorPicker>("Camera Color Picker");
 
     helper::resource_cache  = m_context->GetSubsystem<ResourceCache>();
-    helper::scene           = m_context->GetSubsystem<World>();
+    helper::world           = m_context->GetSubsystem<World>();
 }
 
-void Widget_Properties::TickVisible()
+void Properties::TickVisible()
 {
     // If the world is loading new entities, don't parse their materials
     if (m_context->GetSubsystem<World>()->IsLoading())
@@ -195,7 +195,7 @@ void Widget_Properties::TickVisible()
     ImGui::PopItemWidth();
 }
 
-void Widget_Properties::Inspect(const weak_ptr<Entity>& entity)
+void Properties::Inspect(const weak_ptr<Entity>& entity)
 {
     m_inspected_entity = entity;
 
@@ -216,13 +216,13 @@ void Widget_Properties::Inspect(const weak_ptr<Entity>& entity)
     m_inspected_material.reset();
 }
 
-void Widget_Properties::Inspect(const weak_ptr<Material>& material)
+void Properties::Inspect(const weak_ptr<Material>& material)
 {
     m_inspected_entity.reset();
     m_inspected_material = material;
 }
 
-void Widget_Properties::ShowTransform(Transform* transform) const
+void Properties::ShowTransform(Transform* transform) const
 {
     enum class Axis
     {
@@ -307,7 +307,7 @@ void Widget_Properties::ShowTransform(Transform* transform) const
     helper::ComponentEnd();
 }
 
-void Widget_Properties::ShowLight(Light* light) const
+void Properties::ShowLight(Light* light) const
 {
     if (!light)
         return;
@@ -429,7 +429,7 @@ void Widget_Properties::ShowLight(Light* light) const
     helper::ComponentEnd();
 }
 
-void Widget_Properties::ShowRenderable(Renderable* renderable) const
+void Properties::ShowRenderable(Renderable* renderable) const
 {
     if (!renderable)
         return;
@@ -470,7 +470,7 @@ void Widget_Properties::ShowRenderable(Renderable* renderable) const
     helper::ComponentEnd();
 }
 
-void Widget_Properties::ShowRigidBody(RigidBody* rigid_body) const
+void Properties::ShowRigidBody(RigidBody* rigid_body) const
 {
     if (!rigid_body)
         return;
@@ -558,7 +558,7 @@ void Widget_Properties::ShowRigidBody(RigidBody* rigid_body) const
     helper::ComponentEnd();
 }
 
-void Widget_Properties::ShowSoftBody(SoftBody* soft_body) const
+void Properties::ShowSoftBody(SoftBody* soft_body) const
 {
     if (!soft_body)
         return;
@@ -574,7 +574,7 @@ void Widget_Properties::ShowSoftBody(SoftBody* soft_body) const
     helper::ComponentEnd();
 }
 
-void Widget_Properties::ShowCollider(Collider* collider) const
+void Properties::ShowCollider(Collider* collider) const
 {
     if (!collider)
         return;
@@ -644,7 +644,7 @@ void Widget_Properties::ShowCollider(Collider* collider) const
     helper::ComponentEnd();
 }
 
-void Widget_Properties::ShowConstraint(Constraint* constraint) const
+void Properties::ShowConstraint(Constraint* constraint) const
 {
     if (!constraint)
         return;
@@ -684,7 +684,7 @@ void Widget_Properties::ShowConstraint(Constraint* constraint) const
         if (auto payload = ImGuiEx::ReceiveDragPayload(ImGuiEx::DragPayloadType::DragPayload_Entity))
         {
             const uint64_t entity_id = get<uint64_t>(payload->data);
-            other_body               = helper::scene->EntityGetById(entity_id);
+            other_body               = helper::world->EntityGetById(entity_id);
             other_body_dirty         = true;
         }
         ImGui::PopItemWidth();
@@ -739,7 +739,7 @@ void Widget_Properties::ShowConstraint(Constraint* constraint) const
     helper::ComponentEnd();
 }
 
-void Widget_Properties::ShowMaterial(Material* material) const
+void Properties::ShowMaterial(Material* material) const
 {
     if (!material)
         return;
@@ -858,7 +858,7 @@ void Widget_Properties::ShowMaterial(Material* material) const
     helper::ComponentEnd();
 }
 
-void Widget_Properties::ShowCamera(Camera* camera) const
+void Properties::ShowCamera(Camera* camera) const
 {
     if (!camera)
         return;
@@ -937,7 +937,7 @@ void Widget_Properties::ShowCamera(Camera* camera) const
     helper::ComponentEnd();
 }
 
-void Widget_Properties::ShowEnvironment(Environment* environment) const
+void Properties::ShowEnvironment(Environment* environment) const
 {
     if (!environment)
         return;
@@ -951,7 +951,7 @@ void Widget_Properties::ShowEnvironment(Environment* environment) const
     helper::ComponentEnd();
 }
 
-void Widget_Properties::ShowTerrain(Terrain* terrain) const
+void Properties::ShowTerrain(Terrain* terrain) const
 {
     if (!terrain)
         return;
@@ -1003,7 +1003,7 @@ void Widget_Properties::ShowTerrain(Terrain* terrain) const
     helper::ComponentEnd();
 }
 
-void Widget_Properties::ShowAudioSource(AudioSource* audio_source) const
+void Properties::ShowAudioSource(AudioSource* audio_source) const
 {
     if (!audio_source)
         return;
@@ -1072,7 +1072,7 @@ void Widget_Properties::ShowAudioSource(AudioSource* audio_source) const
     helper::ComponentEnd();
 }
 
-void Widget_Properties::ShowAudioListener(AudioListener* audio_listener) const
+void Properties::ShowAudioListener(AudioListener* audio_listener) const
 {
     if (!audio_listener)
         return;
@@ -1084,7 +1084,7 @@ void Widget_Properties::ShowAudioListener(AudioListener* audio_listener) const
     helper::ComponentEnd();
 }
 
-void Widget_Properties::ShowReflectionProbe(Spartan::ReflectionProbe* reflection_probe) const
+void Properties::ShowReflectionProbe(Spartan::ReflectionProbe* reflection_probe) const
 {
     if (!reflection_probe)
         return;
@@ -1149,7 +1149,7 @@ void Widget_Properties::ShowReflectionProbe(Spartan::ReflectionProbe* reflection
     helper::ComponentEnd();
 }
 
-void Widget_Properties::ShowScript(Script* script) const
+void Properties::ShowScript(Script* script) const
 {
     if (!script)
         return;
@@ -1171,7 +1171,7 @@ void Widget_Properties::ShowScript(Script* script) const
     helper::ComponentEnd();
 }
 
-void Widget_Properties::ShowAddComponentButton() const
+void Properties::ShowAddComponentButton() const
 {
     ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 5);
     ImGui::SetCursorPosX(ImGui::GetWindowWidth() * 0.5f - 50);
@@ -1182,7 +1182,7 @@ void Widget_Properties::ShowAddComponentButton() const
     ComponentContextMenu_Add();
 }
 
-void Widget_Properties::ComponentContextMenu_Add() const
+void Properties::ComponentContextMenu_Add() const
 {
     if (ImGui::BeginPopup("##ComponentContextMenu_Add"))
     {
@@ -1284,7 +1284,7 @@ void Widget_Properties::ComponentContextMenu_Add() const
     }
 }
 
-void Widget_Properties::Drop_AutoAddComponents() const
+void Properties::Drop_AutoAddComponents() const
 {
     if (auto payload = ImGuiEx::ReceiveDragPayload(ImGuiEx::DragPayloadType::DragPayload_Script))
     {

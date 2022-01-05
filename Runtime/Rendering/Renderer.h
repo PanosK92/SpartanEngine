@@ -26,7 +26,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <array>
 #include <atomic>
 #include "Renderer_ConstantBuffers.h"
-#include "Renderer_Enums.h"
 #include "Material.h"
 #include "../Core/ISubsystem.h"
 #include "../Math/Rectangle.h"
@@ -56,10 +55,238 @@ namespace Spartan
 
     class SPARTAN_CLASS Renderer : public ISubsystem
     {
+        // Enums
     public:
+        enum class Bindings_Cb
+        {
+            frame    = 0,
+            uber     = 1,
+            light    = 2,
+            material = 3
+        };
+
+        // SRV bindings
+        enum class Bindings_Srv
+        {
+            // Material
+            material_albedo    = 0,
+            material_roughness = 1,
+            material_metallic  = 2,
+            material_normal    = 3,
+            material_height    = 4,
+            material_occlusion = 5,
+            material_emission  = 6,
+            material_mask      = 7,
+
+            // G-buffer
+            gbuffer_albedo   = 8,
+            gbuffer_normal   = 9,
+            gbuffer_material = 10,
+            gbuffer_velocity = 11,
+            gbuffer_depth    = 12,
+
+            // Lighting
+            light_diffuse              = 13,
+            light_diffuse_transparent  = 14,
+            light_specular             = 15,
+            light_specular_transparent = 16,
+            light_volumetric           = 17,
+
+            // Light depth/color maps
+            light_directional_depth = 18,
+            light_directional_color = 19,
+            light_point_depth       = 20,
+            light_point_color       = 21,
+            light_spot_depth        = 22,
+            light_spot_color        = 23,
+
+            // Noise
+            noise_normal = 24,
+            noise_blue   = 25,
+
+            // Misc
+            lutIbl            = 26,
+            environment       = 27,
+            ssao              = 28,
+            ssao_gi           = 29,
+            ssr               = 30,
+            frame             = 31,
+            tex               = 32,
+            tex2              = 33,
+            font_atlas        = 34,
+            reflection_probe  = 35
+        };
+
+        // UAV Bindings
+        enum class Bindings_Uav
+        {
+            r         = 0,
+            rg        = 1,
+            rgb       = 2,
+            rgb2      = 3,
+            rgb3      = 4,
+            rgba      = 5,
+            rgba2     = 6,
+            rgba_mips = 7
+        };
+
+        // Structured buffer bindings
+        enum class Bindings_Sb
+        {
+            counter = 19
+        };
+
+        // Shaders
+        enum class Shader : uint8_t
+        {
+            Gbuffer_V,
+            Gbuffer_P,
+            Depth_Prepass_V,
+            Depth_Prepass_P,
+            Depth_Light_V,
+            Depth_Light_P,
+            Quad_V,
+            Copy_Point_C,
+            Copy_Bilinear_C,
+            Copy_Point_P,
+            Copy_Bilinear_P,
+            Fxaa_C,
+            FilmGrain_C,
+            Taa_C,
+            MotionBlur_C,
+            Dof_DownsampleCoc_C,
+            Dof_Bokeh_C,
+            Dof_Tent_C,
+            Dof_UpscaleBlend_C,
+            ChromaticAberration_C,
+            BloomLuminance_C,
+            BloomDownsample_C,
+            BloomBlendFrame_C,
+            BloomUpsampleBlendMip_C,
+            ToneMapping_C,
+            Debanding_C,
+            Debug_Texture_C,
+            Debug_ReflectionProbe_V,
+            Debug_ReflectionProbe_P,
+            BrdfSpecularLut_C,
+            Light_C,
+            Light_Composition_C,
+            Light_ImageBased_P,
+            Color_V,
+            Color_P,
+            Font_V,
+            Font_P,
+            Ssao_C,
+            Ssr_C,
+            Entity_V,
+            Entity_Transform_P,
+            BlurGaussian_C,
+            BlurGaussianBilateral_C,
+            Entity_Outline_P,
+            Reflection_Probe_V,
+            Reflection_Probe_P,
+            AMD_FidelityFX_CAS_C,
+            AMD_FidelityFX_SPD_C,
+            AMD_FidelityFX_SPD_LuminanceAntiflicker_C,
+            AMD_FidelityFX_FSR_Upsample_C,
+            AMD_FidelityFX_FSR_Sharpen_C
+        };
+
+        // Render targets
+        enum class RenderTarget : uint8_t
+        {
+            Undefined,
+            Gbuffer_Albedo,
+            Gbuffer_Normal,
+            Gbuffer_Material,
+            Gbuffer_Velocity,
+            Gbuffer_Depth,
+            Brdf_Specular_Lut,
+            Light_Diffuse,
+            Light_Diffuse_Transparent,
+            Light_Specular,
+            Light_Specular_Transparent,
+            Light_Volumetric,
+            Frame_Render,
+            Frame_Render_2,
+            Frame_Output,
+            Frame_Output_2,
+            Dof_Half,
+            Dof_Half_2,
+            Ssao,
+            Ssao_Gi,
+            Ssr,
+            Taa_History,
+            Bloom,
+            Blur
+        };
+
+        enum Option : uint64_t
+        {
+            Debug_Aabb                                           = 1 << 0,
+            Debug_PickingRay                                     = 1 << 1,
+            Debug_Grid                                           = 1 << 2,
+            Debug_ReflectionProbes                               = 1 << 3,
+            Transform_Handle                                     = 1 << 4,
+            Debug_SelectionOutline                               = 1 << 5,
+            Debug_Lights                                         = 1 << 6,
+            Debug_PerformanceMetrics                             = 1 << 7,
+            Debug_Physics                                        = 1 << 8,
+            Debug_Wireframe                                      = 1 << 9,
+            Bloom                                                = 1 << 10,
+            VolumetricFog                                        = 1 << 11,
+            AntiAliasing_Taa                                     = 1 << 12,
+            AntiAliasing_Fxaa                                    = 1 << 13,
+            Ssao                                                 = 1 << 14,
+            ScreenSpaceShadows                                   = 1 << 15,
+            ScreenSpaceReflections                               = 1 << 16,
+            MotionBlur                                           = 1 << 17,
+            DepthOfField                                         = 1 << 18,
+            FilmGrain                                            = 1 << 19,
+            Sharpening_AMD_FidelityFX_ContrastAdaptiveSharpening = 1 << 20,
+            ChromaticAberration                                  = 1 << 21,
+            Debanding                                            = 1 << 22,
+            ReverseZ                                             = 1 << 23,
+            DepthPrepass                                         = 1 << 24,
+            Upsample_TAA                                         = 1 << 25,
+            Upsample_AMD_FidelityFX_SuperResolution              = 1 << 26
+        };
+
+        // Renderer/graphics options values
+        enum class OptionValue
+        {
+            Anisotropy,
+            ShadowResolution,
+            Tonemapping,
+            Gamma,
+            Bloom_Intensity,
+            Sharpen_Strength,
+            Fog,
+            Ssao_Gi
+        };
+
+        // Tonemapping
+        enum class Tonemapping
+        {
+            Renderer_ToneMapping_Off,
+            Renderer_ToneMapping_ACES,
+            Renderer_ToneMapping_Reinhard,
+            Renderer_ToneMapping_Uncharted2
+        };
+
+        // Renderable object types
+        enum class ObjectType
+        {
+            GeometryOpaque,
+            GeometryTransparent,
+            Light,
+            Camera,
+            ReflectionProbe,
+            Environment
+        };
+
         // Defines
-        #define DEBUG_COLOR            Math::Vector4(0.41f, 0.86f, 1.0f, 1.0f)
-        #define RENDER_TARGET(rt_enum) m_render_targets[static_cast<uint8_t>(rt_enum)]
+        #define DEBUG_COLOR Math::Vector4(0.41f, 0.86f, 1.0f, 1.0f)
 
         Renderer(Context* context);
         ~Renderer();
@@ -88,13 +315,14 @@ namespace Spartan
         const Math::Vector2& GetResolutionOutput() const { return m_resolution_output; }
         void SetResolutionOutput (uint32_t width, uint32_t height, bool recreate_resources = true);
 
-        // Debug/Visualise render targets
-        const auto& GetRenderTargets()                                  { return m_render_targets; }
-        void SetRenderTargetDebug(const RendererRt render_target_debug) { m_render_target_debug = render_target_debug; }
-        RendererRt GetRenderTargetDebug() const                         { return m_render_target_debug; }
+        // Render targets
+        std::shared_ptr<RHI_Texture> GetRenderTarget(const RenderTarget rt_enum) { return m_render_targets[static_cast<uint8_t>(rt_enum)]; }
+        const auto& GetRenderTargets()                                         { return m_render_targets; }
+        void SetRenderTargetDebug(const RenderTarget render_target_debug)        { m_render_target_debug = render_target_debug; }
+        RenderTarget GetRenderTargetDebug() const                                { return m_render_target_debug; }
 
         // Depth
-        float GetClearDepth() { return GetOption(Renderer_Option::ReverseZ) ? m_viewport.depth_min : m_viewport.depth_max; }
+        float GetClearDepth() { return GetOption(Renderer::Option::ReverseZ) ? m_viewport.depth_min : m_viewport.depth_max; }
 
         // Environment
         const std::shared_ptr<RHI_Texture> GetEnvironmentTexture();
@@ -102,13 +330,13 @@ namespace Spartan
         // Options
         uint64_t GetOptions()                        const { return m_options; }
         void SetOptions(const uint64_t options)            { m_options = options; }
-        bool GetOption(const Renderer_Option option) const { return m_options & option; }
-        void SetOption(Renderer_Option option, bool enable);
+        bool GetOption(const Renderer::Option option) const { return m_options & option; }
+        void SetOption(Renderer::Option option, bool enable);
         
         // Options values
         template<typename T>
-        T GetOptionValue(const Renderer_Option_Value option) { return static_cast<T>(m_option_values[option]); }
-        void SetOptionValue(Renderer_Option_Value option, float value);
+        T GetOptionValue(const Renderer::OptionValue option) { return static_cast<T>(m_option_values[option]); }
+        void SetOptionValue(Renderer::OptionValue option, float value);
 
         // Swapchain
         RHI_SwapChain* GetSwapChain() const { return m_swap_chain.get(); }
@@ -135,7 +363,7 @@ namespace Spartan
         const std::shared_ptr<RHI_Device>& GetRhiDevice()           const { return m_rhi_device; }
         RHI_PipelineCache* GetPipelineCache()                       const { return m_pipeline_cache.get(); }
         RHI_DescriptorSetLayoutCache* GetDescriptorLayoutSetCache() const { return m_descriptor_set_layout_cache.get(); }
-        RHI_Texture* GetFrameTexture()                                    { return RENDER_TARGET(RendererRt::Frame_Output).get(); }
+        RHI_Texture* GetFrameTexture()                                    { return GetRenderTarget(Renderer::RenderTarget::Frame_Output).get(); }
         auto GetFrameNum()                                          const { return m_frame_num; }
         std::shared_ptr<Camera> GetCamera()                         const { return m_camera; }
         auto IsInitialised()                                        const { return m_initialised; }
@@ -220,7 +448,7 @@ namespace Spartan
         std::array<std::shared_ptr<RHI_Texture>, 24> m_render_targets;
 
         // Shaders
-        std::unordered_map<RendererShader, std::shared_ptr<RHI_Shader>> m_shaders;
+        std::unordered_map<Renderer::Shader, std::shared_ptr<RHI_Shader>> m_shaders;
 
         // Standard textures
         std::shared_ptr<RHI_Texture> m_tex_default_noise_normal;
@@ -310,13 +538,13 @@ namespace Spartan
 
         // Options
         uint64_t m_options = 0;
-        std::unordered_map<Renderer_Option_Value, float> m_option_values;
+        std::unordered_map<Renderer::OptionValue, float> m_option_values;
 
         // Misc
         std::unique_ptr<Font> m_font;
         Math::Vector2 m_taa_jitter               = Math::Vector2::Zero;
         Math::Vector2 m_taa_jitter_previous      = Math::Vector2::Zero;
-        RendererRt m_render_target_debug         = RendererRt::Undefined;
+        RenderTarget m_render_target_debug         = RenderTarget::Undefined;
         bool m_initialised                       = false;
         float m_near_plane                       = 0.0f;
         float m_far_plane                        = 0.0f;
@@ -354,7 +582,7 @@ namespace Spartan
         std::shared_ptr<RHI_SwapChain> m_swap_chain;
 
         // Entity references
-        std::unordered_map<Renderer_ObjectType, std::vector<Entity*>> m_entities;
+        std::unordered_map<ObjectType, std::vector<Entity*>> m_entities;
         std::array<Material*, m_max_material_instances> m_material_instances;
         std::shared_ptr<Camera> m_camera;
 

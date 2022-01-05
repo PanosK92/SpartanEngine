@@ -21,21 +21,21 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ======
-#include <string>
+//= INCLUDES ===========
 #include "Widget.h"
-//=================
+#include <unordered_map>
+//======================
 
-class Widget_ProgressDialog : public Widget
+enum class IconType;
+
+class Toolbar : public Widget
 {
 public:
-    Widget_ProgressDialog(Editor* editor);
-    ~Widget_ProgressDialog() = default;
+    Toolbar(Editor* editor);
 
     void TickAlways() override;
-    void TickVisible() override;
 
 private:
-    float m_progress;
-    std::string m_progressStatus;
+    std::unordered_map<IconType, Widget*> m_widgets;
+    float m_button_size = 16.0f;
 };

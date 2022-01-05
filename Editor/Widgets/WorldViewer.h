@@ -29,10 +29,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan { class Entity; }
 
-class Widget_World : public Widget
+class WorldViewer : public Widget
 {
 public:
-    Widget_World(Editor* editor);
+    WorldViewer(Editor* editor);
 
     void TickVisible() override;
 

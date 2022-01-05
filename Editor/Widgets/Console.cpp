@@ -20,9 +20,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES ==============================
-#include "Widget_Console.h"
+#include "Console.h"
 #include "Rendering/Model.h"
-#include "../ImGui_Extension.h"
+#include "../ImGuiExtension.h"
 #include "../ImGui/Source/imgui_internal.h"
 //=========================================
 
@@ -32,7 +32,7 @@ using namespace Spartan;
 using namespace Math;
 //======================
 
-Widget_Console::Widget_Console(Editor* editor) : Widget(editor)
+Console::Console(Editor* editor) : Widget(editor)
 {
     m_title = "Console";
 
@@ -44,7 +44,7 @@ Widget_Console::Widget_Console(Editor* editor) : Widget(editor)
     Log::SetLogger(m_logger);
 }
 
-void Widget_Console::TickVisible()
+void Console::TickVisible()
 {
     // Clear Button
     if (ImGuiEx::Button("Clear")) { Clear();} ImGui::SameLine();
@@ -159,7 +159,7 @@ void Widget_Console::TickVisible()
     m_is_reading = false;
 }
 
-void Widget_Console::AddLogPackage(const LogPackage& package)
+void Console::AddLogPackage(const LogPackage& package)
 {
     // Wait for reading to finish
     while (m_is_reading) { this_thread::sleep_for(std::chrono::milliseconds(16)); }
@@ -181,7 +181,7 @@ void Widget_Console::AddLogPackage(const LogPackage& package)
     }
 }
 
-void Widget_Console::Clear()
+void Console::Clear()
 {
     m_logs.clear();
     m_logs.shrink_to_fit();

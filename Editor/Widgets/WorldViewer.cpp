@@ -20,11 +20,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES ================================
-#include "Widget_World.h"
-#include "Widget_Properties.h"
-#include "Widget_MenuBar.h"
+#include "WorldViewer.h"
+#include "Properties.h"
+#include "MenuBar.h"
 #include "../Editor.h"
-#include "../ImGui_Extension.h"
+#include "../ImGuiExtension.h"
 #include "../ImGui/Source/imgui_stdlib.h"
 #include "Rendering/Model.h"
 #include "World/Entity.h"
@@ -49,7 +49,7 @@ using namespace Spartan;
 
 namespace _Widget_World
 {
-    static World* g_world           = nullptr;
+    static Spartan::World* g_world  = nullptr;
     static Input* g_input           = nullptr;
     static bool g_popupRenameentity = false;
     static ImGuiEx::DragDropPayload g_payload;
@@ -59,19 +59,19 @@ namespace _Widget_World
     static Entity* g_entity_clicked = nullptr;
 }
 
-Widget_World::Widget_World(Editor* editor) : Widget(editor)
+WorldViewer::WorldViewer(Editor* editor) : Widget(editor)
 {
     m_title = "World";
     m_flags |= ImGuiWindowFlags_HorizontalScrollbar;
 
-    _Widget_World::g_world = m_context->GetSubsystem<World>();
+    _Widget_World::g_world = m_context->GetSubsystem<Spartan::World>();
     _Widget_World::g_input = m_context->GetSubsystem<Input>();
 
     // Subscribe to entity clicked engine event
     EditorHelper::Get().g_on_entity_selected = [this](){ SetSelectedEntity(EditorHelper::Get().g_selected_entity.lock(), false); };
 }
 
-void Widget_World::TickVisible()
+void WorldViewer::TickVisible()
 {
     // If the world is loading new entities, don't parse the hierarchy
     if (_Widget_World::g_world->IsLoading())
@@ -91,7 +91,7 @@ void Widget_World::TickVisible()
     }
 }
 
-void Widget_World::TreeShow()
+void WorldViewer::TreeShow()
 {
     OnTreeBegin();
 
@@ -127,19 +127,19 @@ void Widget_World::TreeShow()
     OnTreeEnd();
 }
 
-void Widget_World::OnTreeBegin()
+void WorldViewer::OnTreeBegin()
 {
     _Widget_World::g_entity_hovered = nullptr;
 }
 
-void Widget_World::OnTreeEnd()
+void WorldViewer::OnTreeEnd()
 {
     HandleKeyShortcuts();
     HandleClicking();
     Popups();
 }
 
-void Widget_World::TreeAddEntity(Entity* entity)
+void WorldViewer::TreeAddEntity(Entity* entity)
 {
     if (!entity)
         return;
@@ -224,7 +224,7 @@ void Widget_World::TreeAddEntity(Entity* entity)
     }
 }
 
-void Widget_World::HandleClicking()
+void WorldViewer::HandleClicking()
 {
     const auto is_window_hovered = ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup | ImGuiHoveredFlags_AllowWhenBlockedByActiveItem);
     const auto left_click        = ImGui::IsMouseClicked(0);
@@ -258,7 +258,7 @@ void Widget_World::HandleClicking()
     }
 }
 
-void Widget_World::EntityHandleDragDrop(Entity* entity_ptr) const
+void WorldViewer::EntityHandleDragDrop(Entity* entity_ptr) const
 {
     // Drag
     if (ImGui::BeginDragDropSource())
@@ -282,7 +282,7 @@ void Widget_World::EntityHandleDragDrop(Entity* entity_ptr) const
     }
 }
 
-void Widget_World::SetSelectedEntity(const shared_ptr<Entity>& entity, const bool from_editor /*= true*/)
+void WorldViewer::SetSelectedEntity(const shared_ptr<Entity>& entity, const bool from_editor /*= true*/)
 {
     m_expand_to_selection = true;
 
@@ -292,16 +292,16 @@ void Widget_World::SetSelectedEntity(const shared_ptr<Entity>& entity, const boo
         EditorHelper::Get().SetSelectedEntity(entity);
     }
 
-    Widget_Properties::Inspect(entity);
+    Properties::Inspect(entity);
 }
 
-void Widget_World::Popups()
+void WorldViewer::Popups()
 {
     PopupContextMenu();
     PopupEntityRename();
 }
 
-void Widget_World::PopupContextMenu() const
+void WorldViewer::PopupContextMenu() const
 {
     if (!ImGui::BeginPopup("##HierarchyContextMenu"))
         return;
@@ -460,7 +460,7 @@ void Widget_World::PopupContextMenu() const
     ImGui::EndPopup();
 }
 
-void Widget_World::PopupEntityRename() const
+void WorldViewer::PopupEntityRename() const
 {
     if (_Widget_World::g_popupRenameentity)
     {
@@ -495,7 +495,7 @@ void Widget_World::PopupEntityRename() const
     }
 }
 
-void Widget_World::HandleKeyShortcuts()
+void WorldViewer::HandleKeyShortcuts()
 {
     // Delete
     if (_Widget_World::g_input->GetKey(KeyCode::Delete))
@@ -510,7 +510,7 @@ void Widget_World::HandleKeyShortcuts()
 
         if (file_path.empty())
         {
-            m_editor->GetWidget<Widget_MenuBar>()->ShowWorldSaveDialog();
+            m_editor->GetWidget<MenuBar>()->ShowWorldSaveDialog();
         }
         else
         {
@@ -521,16 +521,16 @@ void Widget_World::HandleKeyShortcuts()
     // Load: Ctrl + L
     if (_Widget_World::g_input->GetKey(KeyCode::Ctrl_Left) && _Widget_World::g_input->GetKeyDown(KeyCode::L))
     {
-        m_editor->GetWidget<Widget_MenuBar>()->ShowWorldLoadDialog();
+        m_editor->GetWidget<MenuBar>()->ShowWorldLoadDialog();
     }
 }
 
-void Widget_World::ActionEntityDelete(const shared_ptr<Entity>& entity)
+void WorldViewer::ActionEntityDelete(const shared_ptr<Entity>& entity)
 {
     _Widget_World::g_world->EntityRemove(entity);
 }
 
-Entity* Widget_World::ActionEntityCreateEmpty()
+Entity* WorldViewer::ActionEntityCreateEmpty()
 {
     shared_ptr<Entity> entity = _Widget_World::g_world->EntityCreate();
     if (const shared_ptr<Entity> selected_entity = EditorHelper::Get().g_selected_entity.lock())
@@ -541,7 +541,7 @@ Entity* Widget_World::ActionEntityCreateEmpty()
     return entity.get();
 }
 
-void Widget_World::ActionEntityCreateCube()
+void WorldViewer::ActionEntityCreateCube()
 {
     auto entity = ActionEntityCreateEmpty();
     auto renderable = entity->AddComponent<Renderable>();
@@ -550,7 +550,7 @@ void Widget_World::ActionEntityCreateCube()
     entity->SetName("Cube");
 }
 
-void Widget_World::ActionEntityCreateQuad()
+void WorldViewer::ActionEntityCreateQuad()
 {
     auto entity = ActionEntityCreateEmpty();
     auto renderable = entity->AddComponent<Renderable>();
@@ -559,7 +559,7 @@ void Widget_World::ActionEntityCreateQuad()
     entity->SetName("Quad");
 }
 
-void Widget_World::ActionEntityCreateSphere()
+void WorldViewer::ActionEntityCreateSphere()
 {
     auto entity = ActionEntityCreateEmpty();
     auto renderable = entity->AddComponent<Renderable>();
@@ -568,7 +568,7 @@ void Widget_World::ActionEntityCreateSphere()
     entity->SetName("Sphere");
 }
 
-void Widget_World::ActionEntityCreateCylinder()
+void WorldViewer::ActionEntityCreateCylinder()
 {
     auto entity = ActionEntityCreateEmpty();
     auto renderable = entity->AddComponent<Renderable>();
@@ -577,7 +577,7 @@ void Widget_World::ActionEntityCreateCylinder()
     entity->SetName("Cylinder");
 }
 
-void Widget_World::ActionEntityCreateCone()
+void WorldViewer::ActionEntityCreateCone()
 {
     auto entity = ActionEntityCreateEmpty();
     auto renderable = entity->AddComponent<Renderable>();
@@ -586,28 +586,28 @@ void Widget_World::ActionEntityCreateCone()
     entity->SetName("Cone");
 }
 
-void Widget_World::ActionEntityCreateCamera()
+void WorldViewer::ActionEntityCreateCamera()
 {
     auto entity = ActionEntityCreateEmpty();
     entity->AddComponent<Camera>();
     entity->SetName("Camera");
 }
 
-void Widget_World::ActionEntityCreateTerrain()
+void WorldViewer::ActionEntityCreateTerrain()
 {
     auto entity = ActionEntityCreateEmpty();
     entity->AddComponent<Terrain>();
     entity->SetName("Terrain");
 }
 
-void Widget_World::ActionEntityCreateLightDirectional()
+void WorldViewer::ActionEntityCreateLightDirectional()
 {
     auto entity = ActionEntityCreateEmpty();
     entity->AddComponent<Light>()->SetLightType(LightType::Directional);
     entity->SetName("Directional");
 }
 
-void Widget_World::ActionEntityCreateLightPoint()
+void WorldViewer::ActionEntityCreateLightPoint()
 {
     auto entity = ActionEntityCreateEmpty();
     entity->SetName("Point");
@@ -617,7 +617,7 @@ void Widget_World::ActionEntityCreateLightPoint()
     light->SetIntensity(2600.0f); // your typical 150 watt light bulb
 }
 
-void Widget_World::ActionEntityCreateLightSpot()
+void WorldViewer::ActionEntityCreateLightSpot()
 {
     auto entity = ActionEntityCreateEmpty();
     entity->SetName("Spot");
@@ -627,56 +627,56 @@ void Widget_World::ActionEntityCreateLightSpot()
     light->SetIntensity(2600.0f); // your typical 150 watt light bulb
 }
 
-void Widget_World::ActionEntityCreateRigidBody()
+void WorldViewer::ActionEntityCreateRigidBody()
 {
     auto entity = ActionEntityCreateEmpty();
     entity->AddComponent<RigidBody>();
     entity->SetName("RigidBody");
 }
 
-void Widget_World::ActionEntityCreateSoftBody()
+void WorldViewer::ActionEntityCreateSoftBody()
 {
     auto entity = ActionEntityCreateEmpty();
     entity->AddComponent<SoftBody>();
     entity->SetName("SoftBody");
 }
 
-void Widget_World::ActionEntityCreateCollider()
+void WorldViewer::ActionEntityCreateCollider()
 {
     auto entity = ActionEntityCreateEmpty();
     entity->AddComponent<Collider>();
     entity->SetName("Collider");
 }
 
-void Widget_World::ActionEntityCreateConstraint()
+void WorldViewer::ActionEntityCreateConstraint()
 {
     auto entity = ActionEntityCreateEmpty();
     entity->AddComponent<Constraint>();
     entity->SetName("Constraint");
 }
 
-void Widget_World::ActionEntityCreateAudioSource()
+void WorldViewer::ActionEntityCreateAudioSource()
 {
     auto entity = ActionEntityCreateEmpty();
     entity->AddComponent<AudioSource>();
     entity->SetName("AudioSource");
 }
 
-void Widget_World::ActionEntityCreateAudioListener()
+void WorldViewer::ActionEntityCreateAudioListener()
 {
     auto entity = ActionEntityCreateEmpty();
     entity->AddComponent<AudioListener>();
     entity->SetName("AudioListener");
 }
 
-void Widget_World::ActionEntityCreateSkybox()
+void WorldViewer::ActionEntityCreateSkybox()
 {
     auto entity = ActionEntityCreateEmpty();
     entity->AddComponent<Environment>();
     entity->SetName("Environment");
 }
 
-void Widget_World::ActionEntityCreateReflectionProbe()
+void WorldViewer::ActionEntityCreateReflectionProbe()
 {
     auto entity = ActionEntityCreateEmpty();
     entity->AddComponent<ReflectionProbe>();

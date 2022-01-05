@@ -22,22 +22,20 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ======
+#include <string>
 #include "Widget.h"
-#include <memory>
 //=================
 
-class FileDialog;
-
-class Widget_Assets : public Widget
+class ProgressDialog : public Widget
 {
 public:
-    Widget_Assets(Editor* editor);
+    ProgressDialog(Editor* editor);
+    ~ProgressDialog() = default;
 
+    void TickAlways() override;
     void TickVisible() override;
 
 private:
-    void OnPathClicked(const std::string& path) const;
-
-    std::unique_ptr<FileDialog> m_fileDialogView;
-    std::unique_ptr<FileDialog> m_fileDialogLoad;
+    float m_progress;
+    std::string m_progressStatus;
 };

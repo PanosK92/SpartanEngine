@@ -20,11 +20,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES =============================
-#include "Widget_MenuBar.h"
-#include "Widget_Toolbar.h"
-#include "../WidgetsDeferred/FileDialog.h"
+#include "MenuBar.h"
+#include "Toolbar.h"
 #include "Core/Settings.h"
 #include "Rendering/Model.h"
+#include "../WidgetsDeferred/FileDialog.h"
 //========================================
 
 //= NAMESPACES ==========
@@ -40,22 +40,22 @@ namespace _Widget_MenuBar
     static bool imgui_metrics         = false;
     static bool imgui_style           = false;
     static bool imgui_demo            = false;
-    static Input *g_input             = nullptr;
-    World *world                      = nullptr;
+    static Input* g_input             = nullptr;
+    static World* g_world             = nullptr;
     static string g_fileDialogSelection;
 }
 
-Widget_MenuBar::Widget_MenuBar(Editor *editor) : Widget(editor)
+MenuBar::MenuBar(Editor *editor) : Widget(editor)
 {
     m_title                  = "MenuBar";
     m_is_window              = false;
-    m_tool_bar               = make_unique<Widget_Toolbar>(editor);
+    m_tool_bar               = make_unique<Toolbar>(editor);
     m_file_dialog            = make_unique<FileDialog>(m_context, true, FileDialog_Type_FileSelection, FileDialog_Op_Open, FileDialog_Filter_World);
     _Widget_MenuBar::g_input = m_context->GetSubsystem<Input>();
-    _Widget_MenuBar::world   = m_context->GetSubsystem<World>();
+    _Widget_MenuBar::g_world = m_context->GetSubsystem<World>();
 }
 
-void Widget_MenuBar::TickAlways()
+void MenuBar::TickAlways()
 {
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(GetPadding(), GetPadding()));
     ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
@@ -138,7 +138,7 @@ void Widget_MenuBar::TickAlways()
     DrawShortcutsWindow();
 }
 
-void Widget_MenuBar::HandleKeyShortcuts() const
+void MenuBar::HandleKeyShortcuts() const
 {
     if (_Widget_MenuBar::g_input->GetKey(KeyCode::Ctrl_Left) && _Widget_MenuBar::g_input->GetKeyDown(KeyCode::P))
     {
@@ -146,19 +146,19 @@ void Widget_MenuBar::HandleKeyShortcuts() const
     }
 }
 
-void Widget_MenuBar::ShowWorldSaveDialog()
+void MenuBar::ShowWorldSaveDialog()
 {
     m_file_dialog->SetOperation(FileDialog_Op_Save);
     _Widget_MenuBar::g_fileDialogVisible = true;
 }
 
-void Widget_MenuBar::ShowWorldLoadDialog()
+void MenuBar::ShowWorldLoadDialog()
 {
     m_file_dialog->SetOperation(FileDialog_Op_Load);
     _Widget_MenuBar::g_fileDialogVisible = true;
 }
 
-void Widget_MenuBar::DrawFileDialog() const
+void MenuBar::DrawFileDialog() const
 {
     if (_Widget_MenuBar::g_fileDialogVisible)
     {
@@ -190,7 +190,7 @@ void Widget_MenuBar::DrawFileDialog() const
     }
 }
 
-void Widget_MenuBar::DrawShortcutsWindow() const
+void MenuBar::DrawShortcutsWindow() const
 {
     if (!_Widget_MenuBar::g_showShortcutsWindow)
         return;
@@ -238,7 +238,7 @@ void Widget_MenuBar::DrawShortcutsWindow() const
     ImGui::End();
 }
 
-void Widget_MenuBar::DrawAboutWindow() const
+void MenuBar::DrawAboutWindow() const
 {
     if (!_Widget_MenuBar::g_showAboutWindow)
         return;

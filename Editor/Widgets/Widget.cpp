@@ -30,10 +30,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 Widget::Widget(Editor* editor)
 {
-    m_editor    = editor;
-    m_context   = editor->GetContext();
-    m_profiler  = m_context->GetSubsystem<Spartan::Profiler>();
-    m_window    = nullptr;
+    m_editor   = editor;
+    m_context  = editor->GetContext();
+    m_profiler = m_context->GetSubsystem<Spartan::Profiler>();
+    m_window   = nullptr;
 }
 
 void Widget::TickAlways()
@@ -71,19 +71,19 @@ void Widget::Tick()
     // ImGui::Begin()
     bool begun = false;
     {
-        if (!m_is_visible)
+        if (!m_visible)
             return;
 
         TIME_BLOCK_START_NAMED(m_profiler, m_title.c_str());
 
-        // Size
-        if (m_size != k_widget_default_propery)
+        // Size initial
+        if (m_size_initial != k_widget_default_propery)
         {
-            ImGui::SetNextWindowSize(m_size, ImGuiCond_FirstUseEver);
+            ImGui::SetNextWindowSize(m_size_initial, ImGuiCond_FirstUseEver);
         }
 
-        // Max size
-        if (m_size_min != k_widget_default_propery || m_size_max != k_widget_default_propery)
+        // Size min max
+        if (m_size_min != k_widget_default_propery || m_size_max != FLT_MAX)
         {
             ImGui::SetNextWindowSizeConstraints(m_size_min, m_size_max);
         }
@@ -119,7 +119,7 @@ void Widget::Tick()
         OnPushStyleVar();
 
         // Begin
-        if (ImGui::Begin(m_title.c_str(), &m_is_visible, m_flags))
+        if (ImGui::Begin(m_title.c_str(), &m_visible, m_flags))
         {
             m_window = ImGui::GetCurrentWindow();
             m_height = ImGui::GetWindowHeight();
@@ -139,7 +139,7 @@ void Widget::Tick()
         {
             OnShow();
         }
-        else if (!m_is_visible)
+        else if (!m_visible)
         {
             OnHide();
         }

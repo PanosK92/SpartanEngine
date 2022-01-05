@@ -20,8 +20,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES =============================
-#include "Widget_Assets.h"
-#include "Widget_Properties.h"
+#include "AssetViewer.h"
+#include "Properties.h"
 #include "Rendering/Model.h"
 #include "../WidgetsDeferred/FileDialog.h"
 //========================================
@@ -38,7 +38,7 @@ namespace Widget_Assets_Statics
     static string g_double_clicked_path_import_dialog;
 }
 
-Widget_Assets::Widget_Assets(Editor* editor) : Widget(editor)
+AssetViewer::AssetViewer(Editor* editor) : Widget(editor)
 {
     m_title          = "Assets";
     m_fileDialogView = make_unique<FileDialog>(m_context, false, FileDialog_Type_Browser,       FileDialog_Op_Load, FileDialog_Filter_All);
@@ -49,7 +49,7 @@ Widget_Assets::Widget_Assets(Editor* editor) : Widget(editor)
     m_fileDialogView->SetCallbackOnItemClicked([this](const string& str) { OnPathClicked(str); });
 }
 
-void Widget_Assets::TickVisible()
+void AssetViewer::TickVisible()
 {    
     if (ImGuiEx::Button("Import"))
     {
@@ -73,7 +73,7 @@ void Widget_Assets::TickVisible()
     }
 }
 
-void Widget_Assets::OnPathClicked(const std::string& path) const
+void AssetViewer::OnPathClicked(const std::string& path) const
 {
     if (!FileSystem::IsFile(path))
         return;
@@ -81,6 +81,6 @@ void Widget_Assets::OnPathClicked(const std::string& path) const
     if (FileSystem::IsEngineMaterialFile(path))
     {
         const auto material = m_context->GetSubsystem<ResourceCache>()->Load<Material>(path);
-        Widget_Properties::Inspect(material);
+        Properties::Inspect(material);
     }
 }

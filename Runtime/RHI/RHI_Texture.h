@@ -121,11 +121,6 @@ namespace Spartan
         bool IsDepthStencilFormat() const { return IsDepthFormat() || IsStencilFormat(); }
         bool IsColorFormat()        const { return !IsDepthStencilFormat(); }
 
-        // Format helpers
-        static uint32_t FormatToBitsPerChannel(const RHI_Format format);
-        static uint32_t FormatToChannelCount(const RHI_Format format);
-        static std::string FormatToString(const RHI_Format result);
-
         // Layout
         void SetLayout(const RHI_Image_Layout layout, RHI_CommandList* cmd_list, const int mip = -1, const bool ranged = true);
         RHI_Image_Layout GetLayout(const uint32_t mip) const { return m_layout[mip]; }

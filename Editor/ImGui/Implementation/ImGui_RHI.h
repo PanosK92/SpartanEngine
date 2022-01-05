@@ -336,7 +336,7 @@ namespace ImGui::RHI
 
                         // Set texture
                         RHI_Texture* texture = static_cast<RHI_Texture*>(pcmd->TextureId);
-                        g_used_cmd_list->SetTexture(RendererBindings_Srv::tex, texture);
+                        g_used_cmd_list->SetTexture(Renderer::Bindings_Srv::tex, texture);
 
                         // Check how many channels the texture has and let the shader now.
                         if (texture)

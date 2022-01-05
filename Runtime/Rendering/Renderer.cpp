@@ -55,38 +55,40 @@ using namespace std;
 using namespace Spartan::Math;
 //============================
 
+#define RENDER_TARGET(rt_enum) m_render_targets[static_cast<uint8_t>(rt_enum)]
+
 namespace Spartan
 {
     Renderer::Renderer(Context* context) : ISubsystem(context)
     {
         // Options
-        m_options |= Renderer_Option::ReverseZ;
-        m_options |= Renderer_Option::Transform_Handle;
-        m_options |= Renderer_Option::Debug_Grid;
-        m_options |= Renderer_Option::Debug_ReflectionProbes;
-        m_options |= Renderer_Option::Debug_Lights;
-        m_options |= Renderer_Option::Debug_Physics;
-        m_options |= Renderer_Option::Bloom;
-        m_options |= Renderer_Option::VolumetricFog;
-        m_options |= Renderer_Option::MotionBlur;
-        m_options |= Renderer_Option::Ssao;
-        m_options |= Renderer_Option::ScreenSpaceShadows;
-        m_options |= Renderer_Option::ScreenSpaceReflections;
-        m_options |= Renderer_Option::AntiAliasing_Taa;
-        m_options |= Renderer_Option::Sharpening_AMD_FidelityFX_ContrastAdaptiveSharpening;
-        m_options |= Renderer_Option::DepthOfField;
-        m_options |= Renderer_Option::Debanding;
+        m_options |= Renderer::Option::ReverseZ;
+        m_options |= Renderer::Option::Transform_Handle;
+        m_options |= Renderer::Option::Debug_Grid;
+        m_options |= Renderer::Option::Debug_ReflectionProbes;
+        m_options |= Renderer::Option::Debug_Lights;
+        m_options |= Renderer::Option::Debug_Physics;
+        m_options |= Renderer::Option::Bloom;
+        m_options |= Renderer::Option::VolumetricFog;
+        m_options |= Renderer::Option::MotionBlur;
+        m_options |= Renderer::Option::Ssao;
+        m_options |= Renderer::Option::ScreenSpaceShadows;
+        m_options |= Renderer::Option::ScreenSpaceReflections;
+        m_options |= Renderer::Option::AntiAliasing_Taa;
+        m_options |= Renderer::Option::Sharpening_AMD_FidelityFX_ContrastAdaptiveSharpening;
+        m_options |= Renderer::Option::DepthOfField;
+        m_options |= Renderer::Option::Debanding;
         //m_options |= Render_DepthPrepass; // todo: fix for vulkan
 
         // Option values.
-        m_option_values[Renderer_Option_Value::Anisotropy]       = 16.0f;
-        m_option_values[Renderer_Option_Value::ShadowResolution] = 2048.0f;
-        m_option_values[Renderer_Option_Value::Tonemapping]      = static_cast<float>(Renderer_ToneMapping_Off);
-        m_option_values[Renderer_Option_Value::Gamma]            = 1.5f;
-        m_option_values[Renderer_Option_Value::Sharpen_Strength] = 1.0f;
-        m_option_values[Renderer_Option_Value::Bloom_Intensity]  = 0.2f;
-        m_option_values[Renderer_Option_Value::Fog]              = 0.08f;
-        m_option_values[Renderer_Option_Value::Ssao_Gi]          = 1.0f;
+        m_option_values[Renderer::OptionValue::Anisotropy]       = 16.0f;
+        m_option_values[Renderer::OptionValue::ShadowResolution] = 2048.0f;
+        m_option_values[Renderer::OptionValue::Tonemapping]      = static_cast<float>(Tonemapping::Renderer_ToneMapping_Off);
+        m_option_values[Renderer::OptionValue::Gamma]            = 1.5f;
+        m_option_values[Renderer::OptionValue::Sharpen_Strength] = 1.0f;
+        m_option_values[Renderer::OptionValue::Bloom_Intensity]  = 0.2f;
+        m_option_values[Renderer::OptionValue::Fog]              = 0.08f;
+        m_option_values[Renderer::OptionValue::Ssao_Gi]          = 1.0f;
 
         // Subscribe to events.
         SP_SUBSCRIBE_TO_EVENT(EventType::WorldResolved,             SP_EVENT_HANDLER_VARIANT(OnRenderablesAcquire));
@@ -261,14 +263,14 @@ namespace Spartan
         // If there is no camera, clear to black
         if (!m_camera)
         {
-            m_cmd_current->ClearRenderTarget(RENDER_TARGET(RendererRt::Frame_Output).get(), 0, 0, false, Vector4(0.0f, 0.0f, 0.0f, 1.0f));
+            m_cmd_current->ClearRenderTarget(RENDER_TARGET(RenderTarget::Frame_Output).get(), 0, 0, false, Vector4(0.0f, 0.0f, 0.0f, 1.0f));
             return;
         }
 
         // If there is not camera but no other entities to render, clear to camera's color
-        if (m_entities[Renderer_ObjectType::GeometryOpaque].empty() && m_entities[Renderer_ObjectType::GeometryTransparent].empty() && m_entities[Renderer_ObjectType::Light].empty())
+        if (m_entities[ObjectType::GeometryOpaque].empty() && m_entities[ObjectType::GeometryTransparent].empty() && m_entities[ObjectType::Light].empty())
         {
-            m_cmd_current->ClearRenderTarget(RENDER_TARGET(RendererRt::Frame_Output).get(), 0, 0, false, m_camera->GetClearColor());
+            m_cmd_current->ClearRenderTarget(RENDER_TARGET(RenderTarget::Frame_Output).get(), 0, 0, false, m_camera->GetClearColor());
             return;
         }
 
@@ -290,7 +292,7 @@ namespace Spartan
             m_cb_frame_cpu.projection_inverted = Matrix::Invert(m_cb_frame_cpu.projection);
             
             // TAA - Generate jitter
-            if (GetOption(Renderer_Option::AntiAliasing_Taa))
+            if (GetOption(Renderer::Option::AntiAliasing_Taa))
             {
                 m_taa_jitter_previous = m_taa_jitter;
                 
@@ -325,24 +327,24 @@ namespace Spartan
             m_cb_frame_cpu.taa_jitter_offset          = m_taa_jitter - m_taa_jitter_previous;
             m_cb_frame_cpu.delta_time                 = static_cast<float>(m_context->GetSubsystem<Timer>()->GetDeltaTimeSmoothedSec());
             m_cb_frame_cpu.time                       = static_cast<float>(m_context->GetSubsystem<Timer>()->GetTimeSec());
-            m_cb_frame_cpu.bloom_intensity            = GetOptionValue<float>(Renderer_Option_Value::Bloom_Intensity);
-            m_cb_frame_cpu.sharpen_strength           = GetOptionValue<float>(Renderer_Option_Value::Sharpen_Strength);
-            m_cb_frame_cpu.fog                        = GetOptionValue<float>(Renderer_Option_Value::Fog);
-            m_cb_frame_cpu.tonemapping                = GetOptionValue<float>(Renderer_Option_Value::Tonemapping);
-            m_cb_frame_cpu.gamma                      = GetOptionValue<float>(Renderer_Option_Value::Gamma);
-            m_cb_frame_cpu.shadow_resolution          = GetOptionValue<float>(Renderer_Option_Value::ShadowResolution);
+            m_cb_frame_cpu.bloom_intensity            = GetOptionValue<float>(Renderer::OptionValue::Bloom_Intensity);
+            m_cb_frame_cpu.sharpen_strength           = GetOptionValue<float>(Renderer::OptionValue::Sharpen_Strength);
+            m_cb_frame_cpu.fog                        = GetOptionValue<float>(Renderer::OptionValue::Fog);
+            m_cb_frame_cpu.tonemapping                = GetOptionValue<float>(Renderer::OptionValue::Tonemapping);
+            m_cb_frame_cpu.gamma                      = GetOptionValue<float>(Renderer::OptionValue::Gamma);
+            m_cb_frame_cpu.shadow_resolution          = GetOptionValue<float>(Renderer::OptionValue::ShadowResolution);
             m_cb_frame_cpu.frame                      = static_cast<uint32_t>(m_frame_num);
-            m_cb_frame_cpu.frame_mip_count            = RENDER_TARGET(RendererRt::Frame_Render)->GetMipCount();
-            m_cb_frame_cpu.ssr_mip_count              = RENDER_TARGET(RendererRt::Ssr)->GetMipCount();
+            m_cb_frame_cpu.frame_mip_count            = RENDER_TARGET(RenderTarget::Frame_Render)->GetMipCount();
+            m_cb_frame_cpu.ssr_mip_count              = RENDER_TARGET(RenderTarget::Ssr)->GetMipCount();
             m_cb_frame_cpu.resolution_environment     = Vector2(GetEnvironmentTexture()->GetWidth(), GetEnvironmentTexture()->GetHeight());
 
             // These must match what Common_Buffer.hlsl is reading
-            m_cb_frame_cpu.set_bit(GetOption(Renderer_Option::ScreenSpaceReflections),             1 << 0);
-            m_cb_frame_cpu.set_bit(GetOption(Renderer_Option::Upsample_TAA),                       1 << 1);
-            m_cb_frame_cpu.set_bit(GetOption(Renderer_Option::Ssao),                               1 << 2);
-            m_cb_frame_cpu.set_bit(GetOption(Renderer_Option::VolumetricFog),                      1 << 3);
-            m_cb_frame_cpu.set_bit(GetOption(Renderer_Option::ScreenSpaceShadows),                 1 << 4);
-            m_cb_frame_cpu.set_bit(GetOptionValue<bool>(Renderer_Option_Value::Ssao_Gi), 1 << 5);
+            m_cb_frame_cpu.set_bit(GetOption(Renderer::Option::ScreenSpaceReflections),             1 << 0);
+            m_cb_frame_cpu.set_bit(GetOption(Renderer::Option::Upsample_TAA),                       1 << 1);
+            m_cb_frame_cpu.set_bit(GetOption(Renderer::Option::Ssao),                               1 << 2);
+            m_cb_frame_cpu.set_bit(GetOption(Renderer::Option::VolumetricFog),                      1 << 3);
+            m_cb_frame_cpu.set_bit(GetOption(Renderer::Option::ScreenSpaceShadows),                 1 << 4);
+            m_cb_frame_cpu.set_bit(GetOptionValue<bool>(Renderer::OptionValue::Ssao_Gi), 1 << 5);
         }
 
         Lines_PreMain();
@@ -511,7 +513,7 @@ namespace Spartan
         SP_ASSERT(cmd_list != nullptr);
 
         // Update directional light intensity, just grab the first one
-        for (const auto& entity : m_entities[Renderer_ObjectType::Light])
+        for (const auto& entity : m_entities[ObjectType::Light])
         {
             if (Light* light = entity->GetComponent<Light>())
             {
@@ -526,7 +528,7 @@ namespace Spartan
             return false;
 
         // Dynamic buffers with offsets have to be rebound whenever the offset changes
-        cmd_list->SetConstantBuffer(RendererBindings_Cb::frame, RHI_Shader_Vertex | RHI_Shader_Pixel | RHI_Shader_Compute, m_cb_frame_gpu);
+        cmd_list->SetConstantBuffer(Renderer::Bindings_Cb::frame, RHI_Shader_Vertex | RHI_Shader_Pixel | RHI_Shader_Compute, m_cb_frame_gpu);
 
         return true;
     }
@@ -539,7 +541,7 @@ namespace Spartan
             return false;
 
         // Dynamic buffers with offsets have to be rebound whenever the offset changes
-        cmd_list->SetConstantBuffer(RendererBindings_Cb::uber, RHI_Shader_Vertex | RHI_Shader_Pixel | RHI_Shader_Compute, m_cb_uber_gpu);
+        cmd_list->SetConstantBuffer(Renderer::Bindings_Cb::uber, RHI_Shader_Vertex | RHI_Shader_Pixel | RHI_Shader_Compute, m_cb_uber_gpu);
 
         return true;
     }
@@ -572,7 +574,7 @@ namespace Spartan
             luminous_intensity *= 255.0f; // this is a hack, must fix whats my color units
         }
 
-        m_cb_light_cpu.intensity_range_angle_bias = Vector4(luminous_intensity, light->GetRange(), light->GetAngle(), GetOption(Renderer_Option::ReverseZ) ? light->GetBias() : -light->GetBias());
+        m_cb_light_cpu.intensity_range_angle_bias = Vector4(luminous_intensity, light->GetRange(), light->GetAngle(), GetOption(Renderer::Option::ReverseZ) ? light->GetBias() : -light->GetBias());
         m_cb_light_cpu.color                      = light->GetColor();
         m_cb_light_cpu.normal_bias                = light->GetNormalBias();
         m_cb_light_cpu.position                   = light->GetTransform()->GetPosition();
@@ -590,7 +592,7 @@ namespace Spartan
             return false;
 
         // Dynamic buffers with offsets have to be rebound whenever the offset changes
-        cmd_list->SetConstantBuffer(RendererBindings_Cb::light, scope, m_cb_light_gpu);
+        cmd_list->SetConstantBuffer(Renderer::Bindings_Cb::light, scope, m_cb_light_gpu);
 
         return true;
     }
@@ -618,7 +620,7 @@ namespace Spartan
             return false;
 
         // Dynamic buffers with offsets have to be rebound whenever the offset changes
-        cmd_list->SetConstantBuffer(RendererBindings_Cb::material, RHI_Shader_Pixel, m_cb_material_gpu);
+        cmd_list->SetConstantBuffer(Renderer::Bindings_Cb::material, RHI_Shader_Pixel, m_cb_material_gpu);
 
         return true;
     }
@@ -650,34 +652,34 @@ namespace Spartan
 
                 if (is_visible)
                 {
-                    m_entities[is_transparent ? Renderer_ObjectType::GeometryTransparent : Renderer_ObjectType::GeometryOpaque].emplace_back(entity.get());
+                    m_entities[is_transparent ? ObjectType::GeometryTransparent : ObjectType::GeometryOpaque].emplace_back(entity.get());
                 }
             }
 
             if (Light* light = entity->GetComponent<Light>())
             {
-                m_entities[Renderer_ObjectType::Light].emplace_back(entity.get());
+                m_entities[ObjectType::Light].emplace_back(entity.get());
             }
 
             if (Camera* camera = entity->GetComponent<Camera>())
             {
-                m_entities[Renderer_ObjectType::Camera].emplace_back(entity.get());
+                m_entities[ObjectType::Camera].emplace_back(entity.get());
                 m_camera = camera->GetPtrShared<Camera>();
             }
 
             if (ReflectionProbe* reflection_probe = entity->GetComponent<ReflectionProbe>())
             {
-                m_entities[Renderer_ObjectType::ReflectionProbe].emplace_back(entity.get());
+                m_entities[ObjectType::ReflectionProbe].emplace_back(entity.get());
             }
 
             if (Environment* environment = entity->GetComponent<Environment>())
             {
-                m_entities[Renderer_ObjectType::Environment].emplace_back(entity.get());
+                m_entities[ObjectType::Environment].emplace_back(entity.get());
             }
         }
 
-        SortRenderables(&m_entities[Renderer_ObjectType::GeometryOpaque]);
-        SortRenderables(&m_entities[Renderer_ObjectType::GeometryTransparent]);
+        SortRenderables(&m_entities[ObjectType::GeometryOpaque]);
+        SortRenderables(&m_entities[ObjectType::GeometryTransparent]);
     }
 
     void Renderer::OnClear()
@@ -738,7 +740,7 @@ namespace Spartan
 
     const shared_ptr<RHI_Texture> Renderer::GetEnvironmentTexture()
     {
-        if (Entity* entity = m_entities[Renderer_ObjectType::Environment].front())
+        if (Entity* entity = m_entities[ObjectType::Environment].front())
         {
             if (Environment* environment = entity->GetComponent<Environment>())
             {
@@ -752,7 +754,7 @@ namespace Spartan
         return m_tex_default_empty;
     }
 
-    void Renderer::SetOption(Renderer_Option option, bool enable)
+    void Renderer::SetOption(Renderer::Option option, bool enable)
     {
         bool toggled = false;
 
@@ -770,12 +772,12 @@ namespace Spartan
         if (!toggled)
             return;
 
-        if (option == Renderer_Option::Upsample_TAA || option == Renderer_Option::Upsample_AMD_FidelityFX_SuperResolution)
+        if (option == Renderer::Option::Upsample_TAA || option == Renderer::Option::Upsample_AMD_FidelityFX_SuperResolution)
         {
             CreateRenderTextures(false, false, false, true);
         }
 
-        if (option == Renderer_Option::ReverseZ)
+        if (option == Renderer::Option::ReverseZ)
         {
             CreateDepthStencilStates();
 
@@ -786,16 +788,16 @@ namespace Spartan
         }
     }
 
-    void Renderer::SetOptionValue(Renderer_Option_Value option, float value)
+    void Renderer::SetOptionValue(Renderer::OptionValue option, float value)
     {
         if (!m_rhi_device || !m_rhi_device->GetContextRhi())
             return;
 
-        if (option == Renderer_Option_Value::Anisotropy)
+        if (option == Renderer::OptionValue::Anisotropy)
         {
             value = Helper::Clamp(value, 0.0f, 16.0f);
         }
-        else if (option == Renderer_Option_Value::ShadowResolution)
+        else if (option == Renderer::OptionValue::ShadowResolution)
         {
             value = Helper::Clamp(value, static_cast<float>(m_resolution_shadow_min), static_cast<float>(RHI_Device::GetMaxTexture2dDimension()));
         }
@@ -806,9 +808,9 @@ namespace Spartan
         m_option_values[option] = value;
 
         // Shadow resolution handling
-        if (option == Renderer_Option_Value::ShadowResolution)
+        if (option == Renderer::OptionValue::ShadowResolution)
         {
-            const auto& light_entities = m_entities[Renderer_ObjectType::Light];
+            const auto& light_entities = m_entities[ObjectType::Light];
             for (const auto& light_entity : light_entities)
             {
                 auto light = light_entity->GetComponent<Light>();

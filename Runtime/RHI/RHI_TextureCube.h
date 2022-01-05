@@ -44,8 +44,8 @@ namespace Spartan
             m_array_length     = 6;
             m_mip_count        = GetSlice(0).GetMipCount();
             m_flags            = flags;
-            m_channel_count    = FormatToChannelCount(m_format);
-            m_bits_per_channel = FormatToBitsPerChannel(m_format);
+            m_channel_count    = RhiFormatToChannelCount(m_format);
+            m_bits_per_channel = RhiFormatToBitsPerChannel(m_format);
 
             RHI_TextureCube::CreateResourceGpu();
         }

@@ -48,10 +48,10 @@ namespace Spartan
     class IComponent;
 }
 
-class Widget_Properties : public Widget
+class Properties : public Widget
 {
 public:
-    Widget_Properties(Editor* editor);
+    Properties(Editor* editor);
 
     void TickVisible() override;
 
