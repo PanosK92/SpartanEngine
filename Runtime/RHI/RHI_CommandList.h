@@ -21,19 +21,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===========================
+//= INCLUDES =====================
 #include <array>
 #include <atomic>
 #include "RHI_Definition.h"
 #include "../Core/SpartanObject.h"
-#include "../Rendering/Renderer_Enums.h"
-//======================================
+#include "../Rendering/Renderer.h"
+//================================
 
 namespace Spartan
 {
     // Forward declarations
     class Profiler;
-    class Renderer;
     class Context;
     namespace Math
     {
@@ -99,22 +98,22 @@ namespace Spartan
 
         // Constant buffer
         void SetConstantBuffer(const uint32_t slot, const uint8_t scope, RHI_ConstantBuffer* constant_buffer) const;
-        inline void SetConstantBuffer(const RendererBindings_Cb slot, const uint8_t scope, const std::shared_ptr<RHI_ConstantBuffer>& constant_buffer) const { SetConstantBuffer(static_cast<uint32_t>(slot), scope, constant_buffer.get()); }
+        inline void SetConstantBuffer(const Renderer::Bindings_Cb slot, const uint8_t scope, const std::shared_ptr<RHI_ConstantBuffer>& constant_buffer) const { SetConstantBuffer(static_cast<uint32_t>(slot), scope, constant_buffer.get()); }
 
         // Sampler
         void SetSampler(const uint32_t slot, RHI_Sampler* sampler) const;
         inline void SetSampler(const uint32_t slot, const std::shared_ptr<RHI_Sampler>& sampler) const { SetSampler(slot, sampler.get()); }
 
         // Texture
-        void SetTexture(                   const uint32_t slot,                        RHI_Texture* texture, const int mip = -1,       bool ranged = false, const bool uav = false);
-        inline void SetTexture(const RendererBindings_Uav slot,                        RHI_Texture* texture, const int mip = -1, const bool ranged = false) { SetTexture(static_cast<uint32_t>(slot), texture,       mip, ranged, true); }
-        inline void SetTexture(const RendererBindings_Uav slot, const std::shared_ptr<RHI_Texture>& texture, const int mip = -1, const bool ranged = false) { SetTexture(static_cast<uint32_t>(slot), texture.get(), mip, ranged, true); }
-        inline void SetTexture(const RendererBindings_Srv slot,                        RHI_Texture* texture, const int mip = -1, const bool ranged = false) { SetTexture(static_cast<uint32_t>(slot), texture,       mip, ranged, false); }
-        inline void SetTexture(const RendererBindings_Srv slot, const std::shared_ptr<RHI_Texture>& texture, const int mip = -1, const bool ranged = false) { SetTexture(static_cast<uint32_t>(slot), texture.get(), mip, ranged, false); }
+        void SetTexture(const uint32_t slot, RHI_Texture* texture, const int mip = -1,bool ranged = false, const bool uav = false);
+        inline void SetTexture(const Renderer::Bindings_Uav slot,                        RHI_Texture* texture, const int mip = -1, const bool ranged = false) { SetTexture(static_cast<uint32_t>(slot), texture,       mip, ranged, true); }
+        inline void SetTexture(const Renderer::Bindings_Uav slot, const std::shared_ptr<RHI_Texture>& texture, const int mip = -1, const bool ranged = false) { SetTexture(static_cast<uint32_t>(slot), texture.get(), mip, ranged, true); }
+        inline void SetTexture(const Renderer::Bindings_Srv slot,                        RHI_Texture* texture, const int mip = -1, const bool ranged = false) { SetTexture(static_cast<uint32_t>(slot), texture,       mip, ranged, false); }
+        inline void SetTexture(const Renderer::Bindings_Srv slot, const std::shared_ptr<RHI_Texture>& texture, const int mip = -1, const bool ranged = false) { SetTexture(static_cast<uint32_t>(slot), texture.get(), mip, ranged, false); }
 
         // Structured buffer
         void SetStructuredBuffer(const uint32_t slot, RHI_StructuredBuffer* structured_buffer) const;
-        inline void SetStructuredBuffer(const RendererBindings_Sb slot, const std::shared_ptr<RHI_StructuredBuffer>& structured_buffer) const { SetStructuredBuffer(static_cast<uint32_t>(slot), structured_buffer.get()); }
+        inline void SetStructuredBuffer(const Renderer::Bindings_Sb slot, const std::shared_ptr<RHI_StructuredBuffer>& structured_buffer) const { SetStructuredBuffer(static_cast<uint32_t>(slot), structured_buffer.get()); }
 
         // Timestamps
         bool Timestamp_Start(void* query_disjoint = nullptr, void* query_start = nullptr);

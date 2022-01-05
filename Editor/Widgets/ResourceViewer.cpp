@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ======================
-#include "Widget_ResourceCache.h"
+#include "ResourceViewer.h"
 #include "Resource/ResourceCache.h"
 #include "../ImGui/Source/imgui.h"
 #include "Core/SpartanObject.h"
@@ -33,12 +33,12 @@ using namespace std;
 using namespace Spartan;
 //=======================
 
-Widget_ResourceCache::Widget_ResourceCache(Editor* editor) : Widget(editor)
+ResourceViewer::ResourceViewer(Editor* editor) : Widget(editor)
 {
-    m_title         = "Resource Cache";
-    m_size          = ImVec2(1366, 768);
-    m_is_visible    = false;
-    m_position      = k_widget_position_screen_center;
+    m_title        = "Resource Viewer";
+    m_size_initial = ImVec2(1366, 768);
+    m_visible      = false;
+    m_position     = k_widget_position_screen_center;
 }
 
 inline void print_memory(uint64_t memory)
@@ -57,7 +57,7 @@ inline void print_memory(uint64_t memory)
     }
 }
 
-void Widget_ResourceCache::TickVisible()
+void ResourceViewer::TickVisible()
 {
     auto resource_cache             = m_context->GetSubsystem<ResourceCache>();
     auto resources                  = resource_cache->GetByType();

@@ -58,10 +58,10 @@ private:
     log_func m_log_func;
 };
 
-class Widget_Console : public Widget
+class Console : public Widget
 {
 public:
-    Widget_Console(Editor* editor);
+    Console(Editor* editor);
 
     void TickVisible() override;
     void AddLogPackage(const LogPackage& package);

@@ -185,9 +185,9 @@ namespace Spartan
             {
                 renderer->SetResolutionOutput(static_cast<uint32_t>(m_resolution_output.x), static_cast<uint32_t>(m_resolution_output.y));
                 renderer->SetResolutionRender(static_cast<uint32_t>(m_resolution_render.x), static_cast<uint32_t>(m_resolution_render.y));
-                renderer->SetOptionValue(Renderer_Option_Value::ShadowResolution, static_cast<float>(m_shadow_map_resolution));
-                renderer->SetOptionValue(Renderer_Option_Value::Anisotropy, static_cast<float>(m_anisotropy));
-                renderer->SetOptionValue(Renderer_Option_Value::Tonemapping, static_cast<float>(m_tonemapping));
+                renderer->SetOptionValue(Renderer::OptionValue::ShadowResolution, static_cast<float>(m_shadow_map_resolution));
+                renderer->SetOptionValue(Renderer::OptionValue::Anisotropy, static_cast<float>(m_anisotropy));
+                renderer->SetOptionValue(Renderer::OptionValue::Tonemapping, static_cast<float>(m_tonemapping));
                 renderer->SetOptions(m_renderer_flags);
             }
             else
@@ -215,9 +215,9 @@ namespace Spartan
         m_is_mouse_visible      = m_context->GetSubsystem<Input>()->GetMouseCursorVisible();
         m_resolution_output     = renderer->GetResolutionOutput();
         m_resolution_render     = renderer->GetResolutionRender();
-        m_shadow_map_resolution = renderer->GetOptionValue<uint32_t>(Renderer_Option_Value::ShadowResolution);
-        m_anisotropy            = renderer->GetOptionValue<uint32_t>(Renderer_Option_Value::Anisotropy);
-        m_tonemapping           = renderer->GetOptionValue<uint32_t>(Renderer_Option_Value::Tonemapping);
+        m_shadow_map_resolution = renderer->GetOptionValue<uint32_t>(Renderer::OptionValue::ShadowResolution);
+        m_anisotropy            = renderer->GetOptionValue<uint32_t>(Renderer::OptionValue::Anisotropy);
+        m_tonemapping           = renderer->GetOptionValue<uint32_t>(Renderer::OptionValue::Tonemapping);
         m_renderer_flags        = renderer->GetOptions();
     }
 }

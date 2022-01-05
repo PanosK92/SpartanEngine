@@ -85,7 +85,7 @@ namespace Spartan
 
         // Reverse z change check
         bool reverse_z_changed = false;
-        bool reverse_z = m_context->GetSubsystem<Renderer>()->GetOption(Renderer_Option::ReverseZ);
+        bool reverse_z = m_context->GetSubsystem<Renderer>()->GetOption(Renderer::Option::ReverseZ);
         if (m_previous_reverse_z != reverse_z)
         {
             m_previous_reverse_z = reverse_z;
@@ -212,7 +212,7 @@ namespace Spartan
 
     void ReflectionProbe::ComputeProjectionMatrix()
     {
-        bool reverse_z           = m_context->GetSubsystem<Renderer>()->GetOption(Renderer_Option::ReverseZ);
+        bool reverse_z           = m_context->GetSubsystem<Renderer>()->GetOption(Renderer::Option::ReverseZ);
         const float near_plane   = reverse_z ? m_plane_far : m_plane_near;
         const float far_plane    = reverse_z ? m_plane_near : m_plane_far;
         const float fov          = Math::Helper::PI_DIV_2; // 90 degrees
@@ -222,7 +222,7 @@ namespace Spartan
 
     void ReflectionProbe::ComputeFrustums()
     {
-        bool reverse_z = m_context->GetSubsystem<Renderer>()->GetOption(Renderer_Option::ReverseZ);
+        bool reverse_z = m_context->GetSubsystem<Renderer>()->GetOption(Renderer::Option::ReverseZ);
 
         for (uint32_t i = 0; i < m_texture_color->GetArrayLength(); i++)
         {

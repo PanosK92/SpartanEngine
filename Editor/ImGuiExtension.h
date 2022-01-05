@@ -240,7 +240,7 @@ namespace ImGuiEx
         );
     }
 
-    inline void Image(Spartan::RHI_Texture* texture, const float size, bool border = false)
+    inline void Image(Spartan::RHI_Texture* texture, const Spartan::Math::Vector2& size, bool border = false)
     {
         if (!border)
         {
@@ -249,7 +249,7 @@ namespace ImGuiEx
 
         ImGui::Image(
             static_cast<ImTextureID>(texture),
-            ImVec2(size, size),
+            size,
             ImVec2(0, 0),
             ImVec2(1, 1),
             default_tint,       // tint
@@ -437,6 +437,13 @@ namespace ImGuiEx
 
     inline bool ComboBox(const char* label, const std::vector<std::string>& options, uint32_t* selection_index)
     {
+        // Clamp the selection index in case it's larger than the actual option count.
+        const uint32_t option_count = static_cast<uint32_t>(options.size());
+        if (*selection_index >= option_count)
+        {
+            *selection_index = option_count - 1;
+        }
+
         bool selection_made             = false;
         std::string selection_string    = options[*selection_index];
 

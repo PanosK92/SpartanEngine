@@ -19,41 +19,40 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==================
-#include "Widget_Profiler.h"
-#include "Math/Vector3.h"
-#include "Core/Context.h"
-#include "Math/Vector2.h"
-#include "../ImGui_Extension.h"
-//=============================
+//= INCLUDES =================
+#include "Profiler.h"         
+#include "Math/Vector3.h"     
+#include "Core/Context.h"     
+#include "Math/Vector2.h"     
+#include "../ImGuiExtension.h"
+//============================
 
-//= NAMESPACES =========
+//= NAMESPACES ===============
 using namespace std;
-using namespace Spartan;
-using namespace Math;
-//======================
+using namespace Spartan::Math;
+//============================
 
-Widget_Profiler::Widget_Profiler(Editor* editor) : Widget(editor)
+Profiler::Profiler(Editor* editor) : Widget(editor)
 {
-    m_flags      |= ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoScrollbar;
-    m_title      = "Profiler";
-    m_is_visible = false;
-    m_profiler   = m_context->GetSubsystem<Profiler>();
-    m_size       = Vector2(1000, 715);
-    m_position   = k_widget_position_screen_center;
+    m_flags        |= ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoScrollbar;
+    m_title        = "Profiler";
+    m_visible      = false;
+    m_profiler     = m_context->GetSubsystem<Spartan::Profiler>();
+    m_size_initial = Vector2(1000, 715);
+    m_position     = k_widget_position_screen_center;
 }
 
-void Widget_Profiler::OnShow()
+void Profiler::OnShow()
 {
     m_profiler->SetEnabled(true);
 }
 
-void Widget_Profiler::OnHide()
+void Profiler::OnHide()
 {
     m_profiler->SetEnabled(false);
 }
 
-static void ShowTimeBlock(const TimeBlock& time_block, float total_time)
+static void ShowTimeBlock(const Spartan::TimeBlock& time_block, float total_time)
 {
     float m_tree_depth_stride = 10;
 
@@ -73,7 +72,7 @@ static void ShowTimeBlock(const TimeBlock& time_block, float total_time)
     ImGui::Text("%s - %.2f ms", name, duration);
 }
 
-void Widget_Profiler::TickVisible()
+void Profiler::TickVisible()
 {
     int previous_item_type = m_item_type;
 
@@ -86,10 +85,10 @@ void Widget_Profiler::TickVisible()
     m_profiler->SetUpdateInterval(interval);
     ImGui::Separator();
 
-    TimeBlockType type                        = m_item_type == 0 ? TimeBlockType::Cpu : TimeBlockType::Gpu;
-    const std::vector<TimeBlock>& time_blocks = m_profiler->GetTimeBlocks();
-    const uint32_t time_block_count           = static_cast<uint32_t>(time_blocks.size());
-    float time_last                           = type == TimeBlockType::Cpu ? m_profiler->GetTimeCpuLast() : m_profiler->GetTimeGpuLast();
+    Spartan::TimeBlockType type                        = m_item_type == 0 ? Spartan::TimeBlockType::Cpu : Spartan::TimeBlockType::Gpu;
+    const std::vector<Spartan::TimeBlock>& time_blocks = m_profiler->GetTimeBlocks();
+    const uint32_t time_block_count                    = static_cast<uint32_t>(time_blocks.size());
+    float time_last                                    = type == Spartan::TimeBlockType::Cpu ? m_profiler->GetTimeCpuLast() : m_profiler->GetTimeGpuLast();
 
     // Time blocks
     for (uint32_t i = 0; i < time_block_count; i++)
@@ -128,7 +127,7 @@ void Widget_Profiler::TickVisible()
             if (ImGuiEx::Button("Clear")) { m_timings.Clear(); }
             ImGui::SameLine();
             ImGui::Text("Cur:%.2f, Avg:%.2f, Min:%.2f, Max:%.2f", time_last, m_timings.m_avg, m_timings.m_min, m_timings.m_max);
-            bool is_stuttering = type == TimeBlockType::Cpu ? m_profiler->IsCpuStuttering() : m_profiler->IsGpuStuttering();
+            bool is_stuttering = type == Spartan::TimeBlockType::Cpu ? m_profiler->IsCpuStuttering() : m_profiler->IsGpuStuttering();
             ImGui::SameLine();
             ImGui::TextColored(ImVec4(is_stuttering ? 1.0f : 0.0f, is_stuttering ? 0.0f : 1.0f, 0.0f, 1.0f), is_stuttering ? "Stuttering: Yes" : "Stuttering: No");
         }
@@ -147,7 +146,7 @@ void Widget_Profiler::TickVisible()
     }
 
     // VRAM
-    if (type == TimeBlockType::Gpu)
+    if (type == Spartan::TimeBlockType::Gpu)
     {
         ImGui::Separator();
 

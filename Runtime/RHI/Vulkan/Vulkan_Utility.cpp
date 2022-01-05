@@ -55,14 +55,14 @@ namespace Spartan::vulkan_utility
         // Ensure the format is supported by the GPU
         if (image_tiling == VK_IMAGE_TILING_MAX_ENUM)
         {
-            LOG_ERROR("GPU does not support the usage of %s as a %s.", RHI_Texture::FormatToString(format), is_render_target_depth_stencil ? "depth-stencil attachment" : "color attachment");
+            LOG_ERROR("GPU does not support the usage of %s as a %s.", RhiFormatToString(format), is_render_target_depth_stencil ? "depth-stencil attachment" : "color attachment");
             return false;
         }
         
         // Reject any image which has a non-optimal format
         if (image_tiling != VK_IMAGE_TILING_OPTIMAL)
         {
-            LOG_ERROR("Format %s does not support optimal tiling, considering switching to a more efficient format.", RHI_Texture::FormatToString(format));
+            LOG_ERROR("Format %s does not support optimal tiling, considering switching to a more efficient format.", RhiFormatToString(format));
             return false;
         }
 

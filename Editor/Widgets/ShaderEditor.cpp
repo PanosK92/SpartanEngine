@@ -20,9 +20,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES =====================
-#include "Widget_ShaderEditor.h"
+#include "ShaderEditor.h"
 #include "Rendering/Renderer.h"
-#include "../ImGui_Extension.h"
+#include "../ImGuiExtension.h"
 #include <fstream>
 #include "RHI/RHI_Shader.h"
 //================================
@@ -35,19 +35,19 @@ using namespace Spartan;
 static const float k_vertical_split_percentage           = 0.7f;
 static const float k_horizontal_split_offset_from_bottom = 81.0f;
 
-Widget_ShaderEditor::Widget_ShaderEditor(Editor* editor) : Widget(editor)
+ShaderEditor::ShaderEditor(Editor* editor) : Widget(editor)
 {
-    m_title       = "Shader Editor";
-    m_flags       |= ImGuiWindowFlags_NoScrollbar;
-    m_is_visible  = false;
-    m_size        = ImVec2(1366, 1000);
-    m_text_editor = make_unique<Widget_TextEditor>();
-    m_renderer    = m_context->GetSubsystem<Renderer>();
-    m_position    = k_widget_position_screen_center;
-    m_alpha       = 1.0f;
+    m_title        = "Shader Editor";
+    m_flags        |= ImGuiWindowFlags_NoScrollbar;
+    m_visible      = false;
+    m_size_initial = ImVec2(1366, 1000);
+    m_text_editor  = make_unique<Widget_TextEditor>();
+    m_renderer     = m_context->GetSubsystem<Renderer>();
+    m_position     = k_widget_position_screen_center;
+    m_alpha        = 1.0f;
 }
 
-void Widget_ShaderEditor::TickVisible()
+void ShaderEditor::TickVisible()
 {
     // Source
     ShowShaderSource();
@@ -60,7 +60,7 @@ void Widget_ShaderEditor::TickVisible()
     ShowControls();
 }
 
-void Widget_ShaderEditor::ShowShaderSource()
+void ShaderEditor::ShowShaderSource()
 {
     if (ImGui::BeginChild("##shader_editor_source", ImVec2(ImGui::GetContentRegionMax().x * k_vertical_split_percentage, ImGui::GetContentRegionMax().y - k_horizontal_split_offset_from_bottom), true, ImGuiWindowFlags_NoScrollbar))
     {
@@ -106,7 +106,7 @@ void Widget_ShaderEditor::ShowShaderSource()
     ImGui::EndChild();
 }
 
-void Widget_ShaderEditor::ShowShaderList()
+void ShaderEditor::ShowShaderList()
 {
     GetShaderInstances();
 
@@ -162,7 +162,7 @@ void Widget_ShaderEditor::ShowShaderList()
     ImGui::EndChild();
 }
 
-void Widget_ShaderEditor::ShowControls()
+void ShaderEditor::ShowControls()
 {
     if (ImGui::BeginChild("##shader_editor_controls", ImVec2(0.0f, 0.0f), true, ImGuiWindowFlags_NoScrollbar))
     {
@@ -198,9 +198,9 @@ void Widget_ShaderEditor::ShowControls()
     ImGui::EndChild();
 }
 
-void Widget_ShaderEditor::GetShaderInstances()
+void ShaderEditor::GetShaderInstances()
 {
-    unordered_map<RendererShader, shared_ptr<RHI_Shader>> shaders = m_renderer->GetShaders();
+    unordered_map<Renderer::Shader, shared_ptr<RHI_Shader>> shaders = m_renderer->GetShaders();
     m_shaders.clear();
 
     for (const auto& it : shaders)

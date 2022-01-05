@@ -20,7 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES ========================
-#include "Widget_ProgressDialog.h"
+#include "ProgressDialog.h"
 #include "Resource/ProgressTracker.h"
 //===================================
 
@@ -30,17 +30,17 @@ using namespace Spartan;
 using namespace Spartan::Math;
 //============================
 
-Widget_ProgressDialog::Widget_ProgressDialog(Editor* editor) : Widget(editor)
+ProgressDialog::ProgressDialog(Editor* editor) : Widget(editor)
 {
-    m_title         = "Hold on...";
-    m_is_visible    = false;
-    m_progress      = 0.0f;
-    m_size          = Vector2(500.0f, 83.0f);
-    m_flags         |= ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoDocking;
-    m_position      = k_widget_position_screen_center;
+    m_title        = "Hold on...";
+    m_visible      = false;
+    m_progress     = 0.0f;
+    m_size_initial = Vector2(500.0f, 83.0f);
+    m_flags        |= ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoDocking;
+    m_position     = k_widget_position_screen_center;
 }
 
-void Widget_ProgressDialog::TickAlways()
+void ProgressDialog::TickAlways()
 {
     // Determine if an operation is in progress
     ProgressTracker& progressReport  = ProgressTracker::Get();
@@ -64,10 +64,10 @@ void Widget_ProgressDialog::TickAlways()
     SetVisible(in_progress);
 }
 
-void Widget_ProgressDialog::TickVisible()
+void ProgressDialog::TickVisible()
 {
     ImGui::SetWindowFocus();
-    ImGui::PushItemWidth(m_size.x - ImGui::GetStyle().WindowPadding.x * 2.0f);
+    ImGui::PushItemWidth(m_size_initial.x - ImGui::GetStyle().WindowPadding.x * 2.0f);
     ImGui::ProgressBar(m_progress, ImVec2(0.0f, 0.0f));
     ImGui::Text(m_progressStatus.c_str());
     ImGui::PopItemWidth();

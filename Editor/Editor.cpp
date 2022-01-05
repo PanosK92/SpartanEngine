@@ -28,26 +28,26 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "SDL.h"
 #include "Rendering/Model.h"
 #include "Profiling/Profiler.h"
-#include "ImGui_Extension.h"
+#include "ImGuiExtension.h"
 #include "ImGui/Implementation/ImGui_RHI.h"
 #include "ImGui/Implementation/imgui_impl_sdl.h"
-#include "Widgets/Widget_Assets.h"
-#include "Widgets/Widget_Console.h"
-#include "Widgets/Widget_MenuBar.h"
-#include "Widgets/Widget_ProgressDialog.h"
-#include "Widgets/Widget_Properties.h"
-#include "Widgets/Widget_Viewport.h"
-#include "Widgets/Widget_World.h"
-#include "Widgets/Widget_ShaderEditor.h"
-#include "Widgets/Widget_ResourceCache.h"
-#include "Widgets/Widget_Profiler.h"
-#include "Widgets/Widget_RenderOptions.h"
+#include "Widgets/AssetViewer.h"
+#include "Widgets/Console.h"
+#include "Widgets/MenuBar.h"
+#include "Widgets/ProgressDialog.h"
+#include "Widgets/Properties.h"
+#include "Widgets/Viewport.h"
+#include "Widgets/WorldViewer.h"
+#include "Widgets/ShaderEditor.h"
+#include "Widgets/ResourceViewer.h"
+#include "Widgets/Profiler.h"
+#include "Widgets/RenderOptions.h"
+#include "Widgets/TextureViewer.h"
 //==============================================
 
-//= NAMESPACES ==========
+//= NAMESPACES =====
 using namespace std;
-using namespace Spartan;
-//=======================
+//==================
 
 //= EDITOR OPTIONS ========================================================================================
 // Shapes
@@ -70,20 +70,20 @@ const ImVec4 k_color_check               = ImVec4(26.0f / 255.0f, 140.0f / 255.0
 
 namespace _editor
 {
-    Widget_MenuBar* widget_menu_bar = nullptr;
-    Widget* widget_world            = nullptr;
-    Renderer* renderer              = nullptr;
-    RHI_SwapChain* swapchain        = nullptr;
-    Profiler* profiler              = nullptr;
-    Window* window                  = nullptr;
+    MenuBar* widget_menu_bar                 = nullptr;
+    Widget* widget_world                     = nullptr;
+    Spartan::Renderer* renderer              = nullptr;
+    Spartan::RHI_SwapChain* swapchain        = nullptr;
+    Spartan::Profiler* profiler              = nullptr;
+    Spartan::Window* window                  = nullptr;
     shared_ptr<Spartan::RHI_Device> rhi_device;
 }
 
-static void ImGui_Initialise(Context* context)
+static void ImGui_Initialise(Spartan::Context* context)
 {
     // Version validation
     IMGUI_CHECKVERSION();
-    context->GetSubsystem<Settings>()->RegisterThirdPartyLib("Dear ImGui", IMGUI_VERSION, "https://github.com/ocornut/imgui");
+    context->GetSubsystem<Spartan::Settings>()->RegisterThirdPartyLib("Dear ImGui", IMGUI_VERSION, "https://github.com/ocornut/imgui");
 
     // Context creation
     ImGui::CreateContext();
@@ -97,7 +97,7 @@ static void ImGui_Initialise(Context* context)
     io.ConfigViewportsNoTaskBarIcon = true;
 
     // Font
-    const string dir_fonts = context->GetSubsystem<ResourceCache>()->GetResourceDirectory(ResourceDirectory::Fonts) + "/";
+    const string dir_fonts = context->GetSubsystem<Spartan::ResourceCache>()->GetResourceDirectory(Spartan::ResourceDirectory::Fonts) + "/";
     io.Fonts->AddFontFromFileTTF((dir_fonts + "Calibri.ttf").c_str(), k_font_size);
     io.FontGlobalScale = k_font_scale;
 
@@ -106,7 +106,7 @@ static void ImGui_Initialise(Context* context)
     ImGui::RHI::Initialize(context);
 }
 
-static void ImGui_ProcessEvent(const Variant& event_variant)
+static void ImGui_ProcessEvent(const Spartan::Variant& event_variant)
 {
     SDL_Event* event_sdl = event_variant.Get<SDL_Event*>();
     ImGui_ImplSDL2_ProcessEvent(event_sdl);
@@ -202,13 +202,13 @@ static void ImGui_ApplyStyle()
 Editor::Editor()
 {
     // Create engine
-    m_engine = make_unique<Engine>();
+    m_engine = make_unique<Spartan::Engine>();
 
     // Acquire useful engine subsystems
     m_context           = m_engine->GetContext();
-    _editor::profiler   = m_context->GetSubsystem<Profiler>();
-    _editor::renderer   = m_context->GetSubsystem<Renderer>();
-    _editor::window     = m_context->GetSubsystem<Window>();
+    _editor::profiler   = m_context->GetSubsystem<Spartan::Profiler>();
+    _editor::renderer   = m_context->GetSubsystem<Spartan::Renderer>();
+    _editor::window     = m_context->GetSubsystem<Spartan::Window>();
     _editor::rhi_device = _editor::renderer->GetRhiDevice();
     _editor::swapchain  = _editor::renderer->GetSwapChain();
     
@@ -294,17 +294,18 @@ void Editor::Initialise()
     EditorHelper::Get().Initialize(m_context);
 
     // Create all ImGui widgets
-    m_widgets.emplace_back(make_shared<Widget_Console>(this));
-    m_widgets.emplace_back(make_shared<Widget_Profiler>(this));
-    m_widgets.emplace_back(make_shared<Widget_ResourceCache>(this));
-    m_widgets.emplace_back(make_shared<Widget_ShaderEditor>(this));
-    m_widgets.emplace_back(make_shared<Widget_RenderOptions>(this));
-    m_widgets.emplace_back(make_shared<Widget_MenuBar>(this)); _editor::widget_menu_bar = static_cast<Widget_MenuBar*>(m_widgets.back().get());
-    m_widgets.emplace_back(make_shared<Widget_Viewport>(this));
-    m_widgets.emplace_back(make_shared<Widget_Assets>(this));
-    m_widgets.emplace_back(make_shared<Widget_Properties>(this));
-    m_widgets.emplace_back(make_shared<Widget_World>(this)); _editor::widget_world = m_widgets.back().get();
-    m_widgets.emplace_back(make_shared<Widget_ProgressDialog>(this));
+    m_widgets.emplace_back(make_shared<Console>(this));
+    m_widgets.emplace_back(make_shared<Profiler>(this));
+    m_widgets.emplace_back(make_shared<ResourceViewer>(this));
+    m_widgets.emplace_back(make_shared<ShaderEditor>(this));
+    m_widgets.emplace_back(make_shared<RenderOptions>(this));
+    m_widgets.emplace_back(make_shared<TextureViewer>(this));
+    m_widgets.emplace_back(make_shared<MenuBar>(this)); _editor::widget_menu_bar = static_cast<MenuBar*>(m_widgets.back().get());
+    m_widgets.emplace_back(make_shared<Viewport>(this));
+    m_widgets.emplace_back(make_shared<AssetViewer>(this));
+    m_widgets.emplace_back(make_shared<Properties>(this));
+    m_widgets.emplace_back(make_shared<WorldViewer>(this)); _editor::widget_world = m_widgets.back().get();
+    m_widgets.emplace_back(make_shared<ProgressDialog>(this));
 }
 
 void Editor::BeginWindow()
@@ -353,10 +354,10 @@ void Editor::BeginWindow()
 
             // DockBuilderSplitNode(ImGuiID node_id, ImGuiDir split_dir, float size_ratio_for_node_at_dir, ImGuiID* out_id_dir, ImGuiID* out_id_other);
             ImGuiID dock_main_id             = window_id;
-            ImGuiID dock_right_id            = ImGui::DockBuilderSplitNode(dock_main_id,     ImGuiDir_Right, 0.2f,   nullptr, &dock_main_id);
-            const ImGuiID dock_right_down_id = ImGui::DockBuilderSplitNode(dock_right_id,    ImGuiDir_Down,  0.6f,   nullptr, &dock_right_id);
-            ImGuiID dock_down_id             = ImGui::DockBuilderSplitNode(dock_main_id,     ImGuiDir_Down,  0.25f,  nullptr, &dock_main_id);
-            const ImGuiID dock_down_right_id = ImGui::DockBuilderSplitNode(dock_down_id,     ImGuiDir_Right, 0.6f,   nullptr, &dock_down_id);
+            ImGuiID dock_right_id            = ImGui::DockBuilderSplitNode(dock_main_id,  ImGuiDir_Right, 0.2f,  nullptr, &dock_main_id);
+            const ImGuiID dock_right_down_id = ImGui::DockBuilderSplitNode(dock_right_id, ImGuiDir_Down,  0.6f,  nullptr, &dock_right_id);
+            ImGuiID dock_down_id             = ImGui::DockBuilderSplitNode(dock_main_id,  ImGuiDir_Down,  0.25f, nullptr, &dock_main_id);
+            const ImGuiID dock_down_right_id = ImGui::DockBuilderSplitNode(dock_down_id,  ImGuiDir_Right, 0.6f,  nullptr, &dock_down_id);
 
             // Dock windows
             ImGui::DockBuilderDockWindow("World",      dock_right_id);

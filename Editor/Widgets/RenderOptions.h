@@ -27,10 +27,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan { class Renderer; }
 
-class Widget_RenderOptions : public Widget
+class RenderOptions : public Widget
 {
 public:
-    Widget_RenderOptions(Editor* editor);
+    RenderOptions(Editor* editor);
 
     void TickVisible() override;
 

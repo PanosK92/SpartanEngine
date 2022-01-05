@@ -21,21 +21,36 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===========
+//= INCLUDES ====================================
 #include "Widget.h"
-#include <unordered_map>
-//======================
+#include <vector>
+#include "../WidgetsDeferred/Widget_TextEditor.h"
+//===============================================
 
-enum class IconType;
+namespace Spartan
+{
+    class RHI_Shader;
+    class Renderer;
+}
 
-class Widget_Toolbar : public Widget
+class ShaderEditor : public Widget
 {
 public:
-    Widget_Toolbar(Editor* editor);
+    ShaderEditor(Editor* editor);
 
-    void TickAlways() override;
+    void TickVisible() override;
 
 private:
-    std::unordered_map<IconType, Widget*> m_widgets;
-    float m_button_size = 16.0f;
+    void ShowShaderSource();
+    void ShowShaderList();
+    void ShowControls();
+    void GetShaderInstances();
+
+    Spartan::RHI_Shader* m_shader = nullptr;
+    std::string m_shader_name     = "N/A";
+    Spartan::Renderer* m_renderer = nullptr;
+    int32_t m_index_displayed     = -1;
+    bool m_first_run              = true;
+    std::unique_ptr<Widget_TextEditor> m_text_editor;
+    std::vector<Spartan::RHI_Shader*> m_shaders;
 };

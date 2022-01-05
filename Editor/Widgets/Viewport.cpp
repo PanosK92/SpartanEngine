@@ -19,13 +19,13 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==================
-#include "Widget_Viewport.h"
+//= INCLUDES =================
+#include "Viewport.h"
 #include "Core/Timer.h"
 #include "Core/Settings.h"
 #include "Rendering/Model.h"
-#include "../ImGui_Extension.h"
-//=============================
+#include "../ImGuiExtension.h"
+//============================
 
 //= NAMESPACES =========
 using namespace std;
@@ -33,19 +33,19 @@ using namespace Spartan;
 using namespace Math;
 //======================
 
-Widget_Viewport::Widget_Viewport(Editor* editor) : Widget(editor)
+Viewport::Viewport(Editor* editor) : Widget(editor)
 {
-    m_title    = "Viewport";
-    m_size     = Vector2(400, 250);
-    m_flags    |= ImGuiWindowFlags_NoScrollbar;
-    m_padding  = Vector2(2.0f);
-    m_world    = m_context->GetSubsystem<World>();
-    m_renderer = m_context->GetSubsystem<Renderer>();
-    m_settings = m_context->GetSubsystem<Settings>();
-    m_input    = m_context->GetSubsystem<Input>();
+    m_title        = "Viewport";
+    m_size_initial = Vector2(400, 250);
+    m_flags        |= ImGuiWindowFlags_NoScrollbar;
+    m_padding      = Vector2(2.0f);
+    m_world        = m_context->GetSubsystem<World>();
+    m_renderer     = m_context->GetSubsystem<Renderer>();
+    m_settings     = m_context->GetSubsystem<Settings>();
+    m_input        = m_context->GetSubsystem<Input>();
 }
 
-void Widget_Viewport::TickVisible()
+void Viewport::TickVisible()
 {
     if (!m_renderer)
         return;

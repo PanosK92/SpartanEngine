@@ -21,55 +21,32 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==================
+//= INCLUDES =============================
 #include "Widget.h"
-#include "Profiling/Profiler.h"
-#include "Math/MathHelper.h"
-#include "Core/Timer.h"
-#include <array>
-//=============================
+#include <memory>
+#include "../WidgetsDeferred/FileDialog.h"
+#include "Toolbar.h"
+//========================================
 
-struct Timings
-{
-    Timings() { Clear(); }
+namespace Spartan { class Context; }
+class Toolbar;
 
-    void AddSample(const float sample)
-    {
-        m_min = Spartan::Math::Helper::Min(m_min, sample);
-        m_max = Spartan::Math::Helper::Max(m_max, sample);
-        m_sum += sample;
-        m_sample_count++;
-        m_avg = float(m_sum / static_cast<float>(m_sample_count));
-    }
-
-    void Clear()
-    {
-        m_min           = FLT_MAX;
-        m_max           = FLT_MIN;
-        m_avg           = 0.0f;
-        m_sum           = 0.0f;
-        m_sample_count  = 0;
-    }
-
-    float m_min;
-    float m_max;
-    float m_avg;
-    double m_sum;
-    uint64_t m_sample_count;
-};
-
-class Widget_Profiler : public Widget
+class MenuBar : public Widget
 {
 public:
-    Widget_Profiler(Editor* editor);
+    MenuBar(Editor* editor);
 
-    void OnShow() override;
-    void OnHide() override;
-    void TickVisible() override;
+    void TickAlways() override;
+    void ShowWorldSaveDialog();
+    void ShowWorldLoadDialog();
 
+    static float GetPadding() { return 8.0f; }
 private:
-    std::array<float, 400> m_plot;
-    Timings m_timings;
-    Spartan::Profiler* m_profiler;
-    int m_item_type = 1;
+    void DrawFileDialog() const;
+    void DrawAboutWindow() const;
+    void DrawShortcutsWindow() const;
+    void HandleKeyShortcuts() const;
+
+    std::unique_ptr<Toolbar> m_tool_bar;
+    std::unique_ptr<FileDialog> m_file_dialog;
 };
