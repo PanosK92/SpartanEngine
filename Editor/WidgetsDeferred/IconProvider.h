@@ -51,7 +51,7 @@ enum class IconType
     Component_Transform,
     Console_Info,
     Console_Warning,
-    Console_Error,    
+    Console_Error,
     Button_Play,
     Button_Profiler,
     Button_ResourceCache,
@@ -68,7 +68,8 @@ enum class IconType
     Directory_File_Ini,
     Directory_File_Exe,
     Directory_File_Script,
-    Directory_File_Font
+    Directory_File_Font,
+    Directory_File_Texture
 };
 
 namespace Spartan { class Context; }

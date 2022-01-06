@@ -51,11 +51,11 @@ Toolbar::Toolbar(Editor* editor) : Widget(editor)
         ImGuiWindowFlags_NoScrollbar     |
         ImGuiWindowFlags_NoTitleBar;
 
-    m_widgets[IconType::Button_Profiler]       = m_editor->GetWidget<Profiler>();
-    m_widgets[IconType::Button_ResourceCache]  = m_editor->GetWidget<ResourceViewer>();
-    m_widgets[IconType::Component_Script]      = m_editor->GetWidget<ShaderEditor>();
-    m_widgets[IconType::Component_Options]     = m_editor->GetWidget<RenderOptions>();
-    m_widgets[IconType::Component_Environment] = m_editor->GetWidget<TextureViewer>();
+    m_widgets[IconType::Button_Profiler]        = m_editor->GetWidget<Profiler>();
+    m_widgets[IconType::Button_ResourceCache]   = m_editor->GetWidget<ResourceViewer>();
+    m_widgets[IconType::Component_Script]       = m_editor->GetWidget<ShaderEditor>();
+    m_widgets[IconType::Component_Options]      = m_editor->GetWidget<RenderOptions>();
+    m_widgets[IconType::Directory_File_Texture] = m_editor->GetWidget<TextureViewer>();
 
     m_context->m_engine->EngineMode_Disable(Spartan::Engine_Mode::Engine_Game);
 }

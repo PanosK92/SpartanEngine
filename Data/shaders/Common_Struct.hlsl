@@ -107,7 +107,7 @@ struct Surface
                 occlusion = multi_bounce_ao(ssao.a, albedo);
 
                 // If ssao gi is not enabled, approximate some light bouncing
-                gi = is_ssao_gi_enabled() ? tex_ssao_gi[position_screen].rgb * 1.0f : 0.0f;
+                gi = is_ssao_gi_enabled() ? tex_ssao_gi[position_screen].rgb : 0.0f;
             }
         }
 
@@ -207,7 +207,7 @@ struct Light
         return direction;
     }
 
-    void Build(float3 surface_position, float3 surface_normal, float3 surface_occlusion, float3 surface_bent_normal)
+    void Build(float3 surface_position, float3 surface_normal, float3 surface_bent_normal)
     {
         color             = cb_light_color.rgb;
         position          = cb_light_position.xyz;
@@ -227,8 +227,7 @@ struct Light
         // Apply SSAO
         if (is_ssao_enabled())
         {
-            float strength   = 2.0f;
-            float bent_dot_l = 1.0f - saturate(dot(surface_bent_normal, world_to_view(-to_pixel, false)) * strength);
+            float bent_dot_l = 1.0f - saturate(dot(surface_bent_normal, world_to_view(-to_pixel, false)));
             n_dot_l          = min(n_dot_l, bent_dot_l);
         }
 
@@ -237,9 +236,8 @@ struct Light
 
     void Build(Surface surface)
     {
-        Build(surface.position, surface.normal, surface.occlusion, surface.bent_normal);
+        Build(surface.position, surface.normal, surface.bent_normal);
     }
 };
 
 #endif // SPARTAN_COMMON_STRUCT
-

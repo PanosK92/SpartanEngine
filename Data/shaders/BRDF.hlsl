@@ -56,9 +56,8 @@ inline float V_Smith(float a2, float n_dot_v, float n_dot_l)
 
 // Appoximation of joint Smith term for GGX
 // [Heitz 2014, "Understanding the Masking-Shadowing Function in Microfacet-Based BRDFs"]
-inline float V_SmithJointApprox(float a2, float n_dot_v, float n_dot_l)
+inline float V_SmithJointApprox(float a, float n_dot_v, float n_dot_l)
 {
-    float a          = sqrt(a2);
     float Vis_SmithV = n_dot_l * (n_dot_v * (1 - a) + a);
     float Vis_SmithL = n_dot_v * (n_dot_l * (1 - a) + a);
     return saturate_16(0.5 * rcp(Vis_SmithV + Vis_SmithL));
@@ -88,7 +87,7 @@ float V_Neubelt(float n_dot_v, float n_dot_l)
 
 // GGX / Trowbridge-Reitz
 // [Walter et al. 2007, "Microfacet models for refraction through rough surfaces"]
-inline float D_GGX(float a2, float n_dot_h)
+float D_GGX(float a2, float n_dot_h)
 {
     float d = (n_dot_h * a2 - n_dot_h) * n_dot_h + 1; // 2 mad
     return a2 / (PI * d * d); // 4 mul, 1 rcp
@@ -117,13 +116,13 @@ float D_Charlie(float roughness, float NoH)
     Diffuse
 ------------------------------------------------------------------------------*/
 
-inline float3 Diffuse_Lambert(float3 diffuse_color)
+float3 Diffuse_Lambert(float3 diffuse_color)
 {
     return diffuse_color * (1 / PI);
 }
 
 // [Burley 2012, "Physically-Based Shading at Disney"]
-inline float3 Diffuse_Burley(float3 diffuse_color, float Roughness, float NoV, float NoL, float VoH)
+float3 Diffuse_Burley(float3 diffuse_color, float Roughness, float NoV, float NoL, float VoH)
 {
     float FD90 = 0.5 + 2 * VoH * VoH * Roughness;
     float FdV = 1 + (FD90 - 1) * pow(1 - NoV, 5);
@@ -132,7 +131,7 @@ inline float3 Diffuse_Burley(float3 diffuse_color, float Roughness, float NoV, f
 }
 
 // Diffuse - [Gotanda 2012, "Beyond a Simple Physically Based Blinn-Phong Model in Real-Time"]
-inline float3 Diffuse_OrenNayar(float3 diffuse_color, float Roughness, float NoV, float NoL, float VoH)
+float3 Diffuse_OrenNayar(float3 diffuse_color, float Roughness, float NoV, float NoL, float VoH)
 {
     float a     = Roughness * Roughness;
     float s     = a;                    // ( 1.29 + 0.5 * a );
@@ -144,12 +143,12 @@ inline float3 Diffuse_OrenNayar(float3 diffuse_color, float Roughness, float NoV
     return diffuse_color / PI * ( C1 + C2 ) * ( 1 + Roughness * 0.5 );
 }
 
-inline float3 BRDF_Diffuse(float3 albedo, float roughhness, float n_dot_v, float n_dot_l, float v_dot_h)
+float3 BRDF_Diffuse(float3 albedo, float roughhness, float n_dot_v, float n_dot_l, float v_dot_h)
 {
     return Diffuse_OrenNayar(albedo, roughhness, n_dot_v, n_dot_l, v_dot_h);
 }
 
-inline float3 BRDF_Diffuse(Surface surface, float n_dot_v, float n_dot_l, float v_dot_h)
+float3 BRDF_Diffuse(Surface surface, float n_dot_v, float n_dot_l, float v_dot_h)
 {
     return BRDF_Diffuse(surface.albedo.rgb, surface.roughness, n_dot_v, n_dot_l, v_dot_h);
 }
@@ -158,23 +157,24 @@ inline float3 BRDF_Diffuse(Surface surface, float n_dot_v, float n_dot_l, float 
     Specular
 ------------------------------------------------------------------------------*/
 
-inline float3 BRDF_Specular_Isotropic(float roughness, float metallic, float3 F0, float n_dot_v, float n_dot_l, float n_dot_h, float v_dot_h, inout float3 diffuse_energy, inout float3 specular_energy)
+float3 BRDF_Specular_Isotropic(float roughness, float metallic, float3 F0, float n_dot_v, float n_dot_l, float n_dot_h, float v_dot_h, float l_dot_h, inout float3 diffuse_energy, inout float3 specular_energy)
 {
+    float a  = pow2(roughness);
     float a2 = pow4(roughness);
 
-    float V = V_SmithJointApprox(a2, n_dot_v, n_dot_l);
-    float D = D_GGX(a2, n_dot_h);
+    float V  = V_SmithJointApprox(a, n_dot_v, n_dot_l);
+    float D  = D_GGX(a2, n_dot_h);
     float3 F = F_Schlick(F0, v_dot_h);
 
-    diffuse_energy *= compute_diffuse_energy(F, metallic);
+    diffuse_energy  *= compute_diffuse_energy(F, metallic);
     specular_energy *= F;
 
     return D * V * F;
 }
 
-inline float3 BRDF_Specular_Isotropic(Surface surface, float n_dot_v, float n_dot_l, float n_dot_h, float v_dot_h, inout float3 diffuse_energy, inout float3 specular_energy)
+float3 BRDF_Specular_Isotropic(Surface surface, float n_dot_v, float n_dot_l, float n_dot_h, float v_dot_h, float l_dot_h, inout float3 diffuse_energy, inout float3 specular_energy)
 {
-    return BRDF_Specular_Isotropic(surface.roughness, surface.metallic, surface.F0, n_dot_v, n_dot_l, n_dot_h, v_dot_h, diffuse_energy, specular_energy);
+    return BRDF_Specular_Isotropic(surface.roughness, surface.metallic, surface.F0, n_dot_v, n_dot_l, n_dot_h, v_dot_h, l_dot_h, diffuse_energy, specular_energy);
 }
 
 inline float3 BRDF_Specular_Anisotropic(Surface surface, float3 v, float3 l, float3 h, float n_dot_v, float n_dot_l, float n_dot_h, float l_dot_h, inout float3 diffuse_energy, inout float3 specular_energy)
@@ -238,3 +238,5 @@ inline float3 BRDF_Specular_Sheen(Surface surface, float n_dot_v, float n_dot_l,
 
     return D * V * F;
 }
+
+
