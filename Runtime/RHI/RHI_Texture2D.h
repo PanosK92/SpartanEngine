@@ -75,6 +75,7 @@ namespace Spartan
             m_format        = format;
             m_mip_count     = mip_count;
             m_flags         = flags;
+            m_channel_count = RhiFormatToChannelCount(format);
 
             if (name != nullptr)
             {

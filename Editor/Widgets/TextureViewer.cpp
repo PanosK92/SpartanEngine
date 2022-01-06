@@ -77,47 +77,34 @@ void TextureViewer::TickVisible()
         ImGuiEx::Image(texture.get(), Vector2(width, height), border);
 
         // Magnifying glass
-        if (ImGui::IsItemHovered())
+        if (m_magnifying_glass && ImGui::IsItemHovered())
         {
-            ImVec2 pos        = ImGui::GetCursorScreenPos();
-            ImGuiIO& io       = ImGui::GetIO();
-            float region_sz   = 32.0f;
-            float region_x    = io.MousePos.x - pos.x - region_sz * 0.5f;
-            float region_y    = io.MousePos.y - pos.y - region_sz * 0.5f;
-            float zoom        = 8.0f;
-            ImVec4 tint_col   = ImVec4(1.0f, 1.0f, 1.0f, 1.0f); // No tint
-            ImVec4 border_col = ImVec4(1.0f, 1.0f, 1.0f, 0.5f); // 50% opaque white
+            const float region_sz   = 32.0f;
+            const float zoom        = 16.0f;
+            const ImVec4 tint_col   = ImVec4(1.0f, 1.0f, 1.0f, 1.0f); // No tint
+            const ImVec4 border_col = ImVec4(1.0f, 1.0f, 1.0f, 0.5f); // 50% opaque white
+
+            ImVec2 pos     = ImGui::GetCursorScreenPos();
+            ImGuiIO& io    = ImGui::GetIO();
+            float region_x = io.MousePos.x - pos.x - region_sz * 0.5f;
+            float region_y = io.MousePos.y - pos.y - region_sz * 0.5f;
 
             ImGui::BeginTooltip();
             {
-                if (region_x < 0.0f)
-                {
-                    region_x = 0.0f;
-                }
-                else if (region_x > width - region_sz)
-                {
-                    region_x = width - region_sz;
-                }
-                if (region_y < 0.0f)
-                {
-                    region_y = 0.0f;
-                }
-                else if (region_y > height - region_sz)
-                {
-                    region_y = height - region_sz;
-                }
+                region_x = clamp(region_x, 0.0f, width - region_sz);
+                region_y = clamp(region_y, 0.0f, height - region_sz);
 
-                ImGui::Text("Min: (%.2f, %.2f)", region_x, region_y);
-                ImGui::Text("Max: (%.2f, %.2f)", region_x + region_sz, region_y + region_sz);
-
-                ImVec2 uv0 = ImVec2((region_x) / width, (region_y) / height);
+                ImVec2 uv0 = ImVec2(region_x / width, region_y / height);
                 ImVec2 uv1 = ImVec2((region_x + region_sz) / width, (region_y + region_sz) / height);
                 ImGui::Image(static_cast<ImTextureID>(texture.get()), ImVec2(region_sz * zoom, region_sz * zoom), uv0, uv1, tint_col, border_col);
             }
             ImGui::EndTooltip();
         }
 
+        ImGui::Checkbox("Magnifying glass", &m_magnifying_glass);
+
         // Information
+        ImGui::SameLine();
         ImGui::Text(
             string(
                 "Name: "       + texture->GetObjectName() +

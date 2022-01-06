@@ -155,7 +155,6 @@ namespace Spartan
     bool RHI_SwapChain::Resize(const uint32_t width, const uint32_t height, const bool force /*= false*/)
     {
         SP_ASSERT(m_resource != nullptr);
-        SP_ASSERT(m_resource_view != nullptr);
 
         // Validate resolution
         m_present_enabled = m_rhi_device->IsValidResolution(width, height);
@@ -174,13 +173,7 @@ namespace Spartan
         m_width  = width;
         m_height = height;
 
-        IDXGISwapChain* swap_chain                 = static_cast<IDXGISwapChain*>(m_resource);
-        ID3D11RenderTargetView* render_target_view = static_cast<ID3D11RenderTargetView*>(m_resource_view);
-
-        // Release previous stuff
-        render_target_view->Release();
-        render_target_view = nullptr;
-        m_resource_view = nullptr;
+        IDXGISwapChain* swap_chain = static_cast<IDXGISwapChain*>(m_resource);
 
         // Set this flag to enable an application to switch modes by calling IDXGISwapChain::ResizeTarget.
         // When switching from windowed to full-screen mode, the display mode (or monitor resolution)
@@ -206,7 +199,7 @@ namespace Spartan
                 return false;
             }
         }
-    
+
         // Resize swapchain buffers
         const UINT d3d11_flags = d3d11_utility::swap_chain::get_flags(d3d11_utility::swap_chain::validate_flags(m_flags));
         auto result = swap_chain->ResizeBuffers(m_buffer_count, static_cast<UINT>(width), static_cast<UINT>(height), d3d11_format[m_format], d3d11_flags);
@@ -226,16 +219,28 @@ namespace Spartan
         }
 
         // Create render target view
-        result = m_rhi_device->GetContextRhi()->device->CreateRenderTargetView(backbuffer, nullptr, &render_target_view);
-        backbuffer->Release();
-        backbuffer = nullptr;
-        if (FAILED(result))
         {
-            LOG_ERROR("Failed to create render target view, %s.", d3d11_utility::dxgi_error_to_string(result));
-            return false;
-        }
-        m_resource_view = static_cast<void*>(render_target_view);
+            ID3D11RenderTargetView* render_target_view = static_cast<ID3D11RenderTargetView*>(m_resource_view);
 
+            // Release previous one.
+            if (render_target_view)
+            {
+                render_target_view->Release();
+                render_target_view = nullptr;
+            }
+
+            // Create new one.
+            result = m_rhi_device->GetContextRhi()->device->CreateRenderTargetView(backbuffer, nullptr, &render_target_view);
+            backbuffer->Release();
+            backbuffer = nullptr;
+            if (FAILED(result))
+            {
+                LOG_ERROR("Failed to create render target view, %s.", d3d11_utility::dxgi_error_to_string(result));
+                return false;
+            }
+
+            m_resource_view = static_cast<void*>(render_target_view);
+        }
         return true;
     }
 
