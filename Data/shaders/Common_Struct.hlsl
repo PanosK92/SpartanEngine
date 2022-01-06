@@ -138,7 +138,6 @@ struct Light
     float  far;
     float3 radiance;
     float  n_dot_l;
-    float  bent_dot_l;
     uint   array_size;
     float  attenuation;
 
@@ -223,17 +222,17 @@ struct Light
         to_pixel          = compute_direction(position, surface_position);
         n_dot_l           = saturate(dot(surface_normal, -to_pixel)); // Pre-compute n_dot_l since it's used in many places
         attenuation       = compute_attenuation(surface_position);
-        radiance          = color * intensity * attenuation * n_dot_l;
         array_size        = light_is_directional() ? 4 : 1;
         
         // Apply SSAO
-        bent_dot_l = 0.0f;
         if (is_ssao_enabled())
         {
-            float strength  = 4.0f;
-            bent_dot_l      = 1.0f - saturate(dot(surface_bent_normal, world_to_view(-to_pixel, false)) * strength);
-            radiance        *= bent_dot_l;
+            float strength   = 2.0f;
+            float bent_dot_l = 1.0f - saturate(dot(surface_bent_normal, world_to_view(-to_pixel, false)) * strength);
+            n_dot_l          = min(n_dot_l, bent_dot_l);
         }
+
+        radiance = color * intensity * attenuation * n_dot_l;
     }
 
     void Build(Surface surface)
@@ -243,5 +242,4 @@ struct Light
 };
 
 #endif // SPARTAN_COMMON_STRUCT
-
 

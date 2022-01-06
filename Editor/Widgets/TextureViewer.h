@@ -40,6 +40,7 @@ public:
     void TickVisible() override;
 
 private:
-    Spartan::Renderer* m_renderer;
-    uint32_t m_texture_index = 0;
+    Spartan::Renderer* m_renderer = nullptr;
+    uint32_t m_texture_index      = 0;
+    bool m_magnifying_glass       = false;
 };

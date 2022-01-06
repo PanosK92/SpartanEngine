@@ -326,7 +326,7 @@ float get_factor_luminance(float3 color_history, float3 color_input)
     float luminance_current   = luminance(color_input);
     float unbiased_difference = abs(luminance_current - luminance_history) / max(luminance_current, luminance_history);
 
-    return -unbiased_difference * RPC_16;
+    return unbiased_difference ;
 }
 
 float get_factor_dissoclusion(float2 uv_reprojected, float2 resolution, float depth)
@@ -366,7 +366,7 @@ float3 temporal_antialiasing(float2 uv, uint2 pos, uint3 group_id, Texture2D tex
     float blend_factor = RPC_16; // We want to be able to accumulate as many jitter samples as we generated, that is, 16.
     {
         // Decrease blend factor if the luminance changed a lot (reduces flickering coming from sub-pixel specular highlights).
-        blend_factor += get_factor_luminance(color_history, color_input);
+        blend_factor *= get_factor_luminance(color_history, color_input);
     }
 
     // Resolve
@@ -400,3 +400,4 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID, uint3 group_thread_id : SV_Gr
 
     tex_out_rgb[thread_id.xy] = temporal_antialiasing(uv, pos, group_id, tex);
 }
+
