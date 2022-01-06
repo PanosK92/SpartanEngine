@@ -82,21 +82,18 @@ void compute_uber_ssao(uint2 pos, inout float3 bent_normal, inout float occlusio
             float3 origin_to_sample = sample_position - origin_position;
             float visibility        = compute_visibility(origin_normal, origin_to_sample) * screen_fade(origin_uv);
 
-            // Occlusion
-            occlusion += visibility;
+            occlusion   += visibility;
+            bent_normal += normalize(origin_to_sample) * visibility;
 
             // Light
             if (is_ssao_gi_enabled())
             {
                 diffuse_bounce += tex_light_diffuse[sample_pos].rgb * tex_albedo[sample_pos].rgb * visibility;
             }
-
-            // Bent normal
-            bent_normal += normalize(origin_to_sample) * visibility;
         }
     }
 
-    bent_normal   *= ao_samples_rcp;
+    bent_normal    *= ao_samples_rcp;
     occlusion      = 1.0f - saturate(occlusion * ao_samples_rcp);
     diffuse_bounce = saturate(diffuse_bounce);
 }
@@ -116,6 +113,3 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     tex_out_rgba[thread_id.xy]  = float4(bent_normal, occlusion);
     tex_out_rgba2[thread_id.xy] = float4(diffuse_bounce, 1.0f);
 }
-
-
-

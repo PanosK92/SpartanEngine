@@ -94,7 +94,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         // Specular
         if (surface.anisotropic == 0.0f)
         {
-            light_specular += BRDF_Specular_Isotropic(surface, n_dot_v, light.n_dot_l, n_dot_h, v_dot_h, diffuse_energy, reflective_energy);
+            light_specular += BRDF_Specular_Isotropic(surface, n_dot_v, light.n_dot_l, n_dot_h, v_dot_h, l_dot_h, diffuse_energy, reflective_energy);
         }
         else
         {

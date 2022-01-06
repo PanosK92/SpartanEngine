@@ -85,6 +85,7 @@ void IconProvider::Initialize(Context* context)
     LoadFromFile(data_dir + "Icons/exe.png",                              IconType::Directory_File_Exe);
     LoadFromFile(data_dir + "Icons/script.png",                           IconType::Directory_File_Script);
     LoadFromFile(data_dir + "Icons/font.png",                             IconType::Directory_File_Font);
+    LoadFromFile(data_dir + "Icons/texture.png",                          IconType::Directory_File_Texture);
 }
 
 RHI_Texture* IconProvider::GetTextureByType(IconType type)

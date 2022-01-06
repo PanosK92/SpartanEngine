@@ -140,10 +140,6 @@ namespace Spartan
         // Ensure none of the textures is being used by the GPU
         Flush();
 
-        // rt_gbuffer_normal: From and below Texture_Format_R8G8B8A8_UNORM, normals have noticeable banding.
-        // rt_hdr/rt_hdr_2/rt_dof_half/rt_dof_half_2/rt_post_process_hdr/rt_post_process_hdr_2/rt_post_process_ldr/rt_post_process_ldr_2: Investigate using less bits but have an alpha channel
-        // rt_ssao/rt_ssao_blurred: If gi is disabled, the texture format could just be RHI_Format_R8_Unorm, but calling CreateRenderTextures() dynamically will re-create a lot of textures. Find an elegant solution to improve CreateRenderTextures().
-
         // Deduce how many mips are required to scale down any dimension close to 16px (or exactly)
         uint32_t mip_count           = 1;
         uint32_t width               = width_render;
@@ -155,6 +151,9 @@ namespace Spartan
             height /= 2;
             mip_count++;
         }
+
+        // Notes.
+        // Gbuffer_Normal: Any format with or below 8 bits per channel, will produce banding.
 
         // Render resolution
         if (create_render)

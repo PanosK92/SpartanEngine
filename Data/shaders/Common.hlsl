@@ -36,6 +36,7 @@ static const float PI                  = 3.14159265f;
 static const float PI2                 = 6.28318530f;
 static const float PI4                 = 12.5663706f;
 static const float INV_PI              = 0.31830988f;
+static const float PI_HALF             = PI * 0.5f;
 static const float FLT_MIN             = 0.00000001f;
 static const float FLT_MAX_10          = 511.0f;
 static const float FLT_MAX_11          = 1023.0f;
