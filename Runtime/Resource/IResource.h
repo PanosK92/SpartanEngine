@@ -48,14 +48,6 @@ namespace Spartan
         Shader
     };
 
-    enum class LoadState
-    {
-        Idle,
-        Started,
-        Completed,
-        Failed
-    };
-
     class SPARTAN_CLASS IResource : public SpartanObject
     {
     public:
@@ -103,21 +95,20 @@ namespace Spartan
         const std::string& GetResourceFileName()       const { return m_resource_name; }
         const std::string& GetResourceDirectory()      const { return m_resource_directory; }
 
-
         // Misc
-        LoadState GetLoadState() const { return m_load_state; }
+        bool IsLoading() const { return m_is_loading; }
 
         // IO
-        virtual bool SaveToFile(const std::string& file_path)    { return true; }
-        virtual bool LoadFromFile(const std::string& file_path)    { return true; }
+        virtual bool SaveToFile(const std::string& file_path) { return true; }
+        virtual bool LoadFromFile(const std::string& file_path) { return true; }
 
         // Type
         template <typename T>
         static constexpr ResourceType TypeToEnum();
 
     protected:
-        ResourceType m_resource_type        = ResourceType::Unknown;
-        std::atomic<LoadState> m_load_state = LoadState::Idle;
+        ResourceType m_resource_type   = ResourceType::Unknown;
+        std::atomic<bool> m_is_loading = false;
 
     private:
         std::string m_resource_name;

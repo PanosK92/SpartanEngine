@@ -67,7 +67,7 @@ namespace Spartan
             }
         }
 
-        const bool log_to_file = m_logger.expired() || m_log_to_file;
+        const bool log_to_file = true;// m_logger.expired() || m_log_to_file;
 
         if (log_to_file)
         {

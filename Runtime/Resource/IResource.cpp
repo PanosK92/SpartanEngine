@@ -40,7 +40,6 @@ IResource::IResource(Context* context, const ResourceType type)
 {
     m_context       = context;
     m_resource_type = type;
-    m_load_state    = LoadState::Idle;
 }
 
 template <typename T>

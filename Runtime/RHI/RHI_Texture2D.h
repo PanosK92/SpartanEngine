@@ -62,7 +62,7 @@ namespace Spartan
                 m_object_name = name;
             }
 
-            RHI_Texture2D::CreateResourceGpu();
+            RHI_Texture2D::RHI_CreateResource();
         }
 
         // Creates a texture without any data (intended for usage as a render target)
@@ -82,7 +82,7 @@ namespace Spartan
                 m_object_name = name;
             }
 
-            CreateResourceGpu();
+            RHI_Texture2D::RHI_CreateResource();
         }
 
         ~RHI_Texture2D() = default;

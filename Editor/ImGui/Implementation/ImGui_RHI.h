@@ -276,11 +276,11 @@ namespace ImGui::RHI
             // Our visible ImGui space lies from draw_data->DisplayPos (top left) to 
             // draw_data->DisplayPos+data_data->DisplaySize (bottom right). DisplayMin is (0,0) for single viewport apps.
             {
-                const float L       = draw_data->DisplayPos.x;
-                const float R       = draw_data->DisplayPos.x + draw_data->DisplaySize.x;
-                const float T       = draw_data->DisplayPos.y;
-                const float B       = draw_data->DisplayPos.y + draw_data->DisplaySize.y;
-                const Matrix wvp    = Matrix
+                const float L    = draw_data->DisplayPos.x;
+                const float R    = draw_data->DisplayPos.x + draw_data->DisplaySize.x;
+                const float T    = draw_data->DisplayPos.y;
+                const float B    = draw_data->DisplayPos.y + draw_data->DisplaySize.y;
+                const Matrix wvp = Matrix
                 (
                     2.0f / (R - L), 0.0f, 0.0f, (R + L) / (L - R),
                     0.0f, 2.0f / (T - B), 0.0f, (T + B) / (B - T),
@@ -289,20 +289,6 @@ namespace ImGui::RHI
                 );
 
                 g_renderer->SetCbUberTransform(g_used_cmd_list, wvp);
-            }
-
-            // Transition layouts
-            for (auto i = 0; i < draw_data->CmdListsCount; i++)
-            {
-                auto cmd_list_imgui = draw_data->CmdLists[i];
-                for (int cmd_i = 0; cmd_i < cmd_list_imgui->CmdBuffer.Size; cmd_i++)
-                {
-                    const auto pcmd = &cmd_list_imgui->CmdBuffer[cmd_i];
-                    if (RHI_Texture* texture = static_cast<RHI_Texture*>(pcmd->TextureId))
-                    {
-                        texture->SetLayout(RHI_Image_Layout::Shader_Read_Only_Optimal, g_used_cmd_list);
-                    }
-                }
             }
 
             g_used_cmd_list->SetBufferVertex(vertex_buffer);

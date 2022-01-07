@@ -47,7 +47,7 @@ namespace Spartan
             m_channel_count    = RhiFormatToChannelCount(m_format);
             m_bits_per_channel = RhiFormatToBitsPerChannel(m_format);
 
-            RHI_TextureCube::CreateResourceGpu();
+            RHI_TextureCube::RHI_CreateResource();
         }
 
         // Creates a texture without data (intended for use as a render target)
@@ -62,7 +62,7 @@ namespace Spartan
             m_array_length  = 6;
             m_flags         = flags;
 
-            CreateResourceGpu();
+            RHI_TextureCube::RHI_CreateResource();
         }
 
         ~RHI_TextureCube() = default;

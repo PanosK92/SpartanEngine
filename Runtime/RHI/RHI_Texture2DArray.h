@@ -54,7 +54,7 @@ namespace Spartan
             m_array_length  = array_length;
             m_flags         = flags;
 
-            CreateResourceGpu();
+            RHI_CreateResource();
         }
 
         ~RHI_Texture2DArray() = default;

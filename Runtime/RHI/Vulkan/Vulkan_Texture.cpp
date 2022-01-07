@@ -27,7 +27,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_TextureCube.h"
 #include "../RHI_CommandList.h"
 #include "../RHI_DescriptorSetLayoutCache.h"
-#include "../../Profiling/Profiler.h"
 #include "../../Rendering/Renderer.h"
 //==========================================
 
@@ -207,65 +206,12 @@ namespace Spartan
         return target_layout;
     }
 
-    void RHI_Texture::SetLayout(const RHI_Image_Layout new_layout, RHI_CommandList* cmd_list, const int mip /*= -1*/, const bool ranged /*= true*/)
+    void RHI_Texture::RHI_SetLayout(const RHI_Image_Layout new_layout, RHI_CommandList* cmd_list, const int mip_start, const int mip_range)
     {
-        const bool mip_specified = mip != -1;
-        uint32_t mip_start       = mip_specified ? mip : 0;
-        uint32_t mip_remaining   = m_mip_count - mip_start;
-        uint32_t mip_range       = ranged ? (mip_specified ? mip_remaining : m_mip_count) : 1;
-
-        // Verify the texture has per mip views (if a specific mip was requested)
-        if (mip_specified)
-        {
-            SP_ASSERT(HasPerMipViews());
-        }
-
-        // Verify that we didn't do anything wrong in the above calculations
-        SP_ASSERT(mip_remaining <= m_mip_count);
-
-        // Check if already set
-        {
-            if (mip_specified && !ranged)
-            {
-                if (m_layout[mip_start] == new_layout)
-                    return;
-            }
-            else
-            {
-                bool all_set = true;
-
-                for (uint32_t mip_index = mip_start; mip_index < mip_range; mip_index++)
-                {
-                    if (m_layout[mip_index] != new_layout)
-                    {
-                        mip_start     = mip_index;
-                        mip_remaining = m_mip_count - mip_start;
-                        mip_range     = ranged ? (mip_specified ? mip_remaining : m_mip_count) : mip_remaining;
-                        all_set       = false;
-                        break;
-                    }
-                }
-
-                if (all_set)
-                    return;
-            }
-        }
-
-        // Insert memory barrier
-        if (cmd_list)
-        {
-            vulkan_utility::image::set_layout(static_cast<VkCommandBuffer>(cmd_list->GetResource_CommandBuffer()), this, mip_start, mip_range, m_array_length, m_layout[mip_start], new_layout);
-            m_context->GetSubsystem<Profiler>()->m_rhi_pipeline_barriers++;
-        }
-
-        // Update layout
-        for (uint32_t i = mip_start; i < mip_start + mip_range; i++)
-        {
-            m_layout[i] = new_layout;
-        }
+        vulkan_utility::image::set_layout(static_cast<VkCommandBuffer>(cmd_list->GetResource_CommandBuffer()), this, mip_start, mip_range, m_array_length, m_layout[mip_start], new_layout);
     }
 
-    bool RHI_Texture::CreateResourceGpu()
+    bool RHI_Texture::RHI_CreateResource()
     {
         SP_ASSERT(m_rhi_device != nullptr);
         SP_ASSERT(m_rhi_device->GetContextRhi()->device != nullptr);
@@ -352,7 +298,7 @@ namespace Spartan
         return true;
     }
 
-    void RHI_Texture::DestroyResourceGpu(const bool destroy_main, const bool destroy_per_view)
+    void RHI_Texture::RHI_DestroyResource(const bool destroy_main, const bool destroy_per_view)
     {
         SP_ASSERT(m_rhi_device != nullptr);
         SP_ASSERT(m_rhi_device->IsInitialised());
