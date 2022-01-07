@@ -102,7 +102,7 @@ RHI_Texture* IconProvider::GetTextureByThumbnail(const Thumbnail& thumbnail)
 {
     for (const auto& thumbnailTemp : m_thumbnails)
     {
-        if (thumbnailTemp.texture->GetLoadState() != LoadState::Completed)
+        if (thumbnailTemp.texture->IsLoading())
             continue;
 
         if (thumbnailTemp.texture->GetObjectId() == thumbnail.texture->GetObjectId())
@@ -164,8 +164,8 @@ const Thumbnail& IconProvider::LoadFromFile(const string& file_path, IconType ty
     // Texture
     if (FileSystem::IsSupportedImageFile(file_path) || FileSystem::IsEngineTextureFile(file_path))
     {
-        // Make a cheap texture
-        auto texture = make_shared<RHI_Texture2D>(m_context, RHI_Texture_Srv);
+        // Created a texture
+        auto texture = make_shared<RHI_Texture2D>(m_context, RHI_Texture_Flags::RHI_Texture_Srv);
         texture->SetWidth(size);
         texture->SetHeight(size);
 

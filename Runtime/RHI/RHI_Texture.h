@@ -136,14 +136,15 @@ namespace Spartan
         void* GetResource_View_Uav()                                      const { return m_resource_view_uav; }
         void* GetResource_Views_Srv(const uint32_t i)                     const { return m_resource_views_srv[i]; }
         void* GetResource_Views_Uav(const uint32_t i)                     const { return m_resource_views_uav[i]; }
-        void* GetResource_View_DepthStencil(const uint32_t i = 0)         const { return i < m_resource_view_depthStencil.size() ? m_resource_view_depthStencil[i] : nullptr; }
+        void* GetResource_View_DepthStencil(const uint32_t i = 0)         const { return i < m_resource_view_depthStencil.size()         ? m_resource_view_depthStencil[i]         : nullptr; }
         void* GetResource_View_DepthStencilReadOnly(const uint32_t i = 0) const { return i < m_resource_view_depthStencilReadOnly.size() ? m_resource_view_depthStencilReadOnly[i] : nullptr; }
-        void* GetResource_View_RenderTarget(const uint32_t i = 0)         const { return i < m_resource_view_renderTarget.size() ? m_resource_view_renderTarget[i] : nullptr; }
-        void DestroyResourceGpu(const bool destroy_main, const bool destroy_per_view);
+        void* GetResource_View_RenderTarget(const uint32_t i = 0)         const { return i < m_resource_view_renderTarget.size()         ? m_resource_view_renderTarget[i]         : nullptr; }
+        void RHI_DestroyResource(const bool destroy_main, const bool destroy_per_view);
 
     protected:
         bool Compress(const RHI_Format format);
-        bool CreateResourceGpu();
+        bool RHI_CreateResource();
+        void RHI_SetLayout(const RHI_Image_Layout new_layout, RHI_CommandList* cmd_list, const int mip_start, const int mip_range);
 
         uint32_t m_bits_per_channel = 0;
         uint32_t m_width            = 0;

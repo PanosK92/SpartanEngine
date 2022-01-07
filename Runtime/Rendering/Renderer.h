@@ -535,27 +535,33 @@ namespace Spartan
         Math::Rectangle m_viewport_quad            = Math::Rectangle(0, 0, 0, 0);
         Math::Vector2 m_resolution_output_previous = Math::Vector2::Zero;
         RHI_Viewport m_viewport_previous           = RHI_Viewport(0, 0, 0, 0);
+        Math::Vector2 m_viewport_size_pending      = Math::Vector2::Zero;
 
         // Options
         uint64_t m_options = 0;
         std::unordered_map<Renderer::OptionValue, float> m_option_values;
 
+        // Dirty states
+        bool m_dirty_viewport                = false;
+        bool m_dirty_orthographic_projection = true;
+
         // Misc
         std::unique_ptr<Font> m_font;
-        Math::Vector2 m_taa_jitter               = Math::Vector2::Zero;
-        Math::Vector2 m_taa_jitter_previous      = Math::Vector2::Zero;
-        RenderTarget m_render_target_debug         = RenderTarget::Undefined;
-        bool m_initialised                       = false;
-        float m_near_plane                       = 0.0f;
-        float m_far_plane                        = 0.0f;
-        uint64_t m_frame_num                     = 0;
-        bool m_is_odd_frame                      = false;
-        bool m_update_ortho_proj                 = true;
+        Math::Vector2 m_taa_jitter         = Math::Vector2::Zero;
+        Math::Vector2 m_taa_jitter_previous= Math::Vector2::Zero;
+        RenderTarget m_render_target_debug = RenderTarget::Undefined;
+        bool m_initialised                 = false;
+        float m_near_plane                 = 0.0f;
+        float m_far_plane                  = 0.0f;
+        uint64_t m_frame_num               = 0;
+        bool m_is_odd_frame                = false;
+        bool m_brdf_specular_lut_rendered  = false;
+        uint32_t m_cmd_index               = std::numeric_limits<uint32_t>::max();
+
+        // Threading
+        std::thread::id m_render_thread_id;
         std::atomic<bool> m_is_rendering_allowed = true;
         std::atomic<bool> m_flush_requested      = false;
-        bool m_brdf_specular_lut_rendered        = false;
-        uint32_t m_cmd_index                     = std::numeric_limits<uint32_t>::max();
-        std::thread::id m_render_thread_id;
 
         // Constants
         const uint32_t m_resolution_shadow_min = 128;

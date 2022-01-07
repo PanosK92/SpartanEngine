@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Rendering/Renderer.h"
 #include "../Resource/ResourceCache.h"
 #include "../Resource/Import/ImageImporter.h"
+#include "../Profiling/Profiler.h"
 #include "compressonator.h"
 //===========================================
 
@@ -83,7 +84,7 @@ namespace Spartan
 
         bool destroy_main     = true;
         bool destroy_per_view = true;
-        DestroyResourceGpu(destroy_main, destroy_per_view);
+        RHI_DestroyResource(destroy_main, destroy_per_view);
     }
 
     bool RHI_Texture::SaveToFile(const string& file_path)
@@ -163,9 +164,10 @@ namespace Spartan
             return false;
         }
 
+        m_is_loading = true;
+
         m_data.clear();
         m_data.shrink_to_fit();
-        m_load_state = LoadState::Started;
 
         // Load from drive
         bool loaded            = false;
@@ -176,7 +178,10 @@ namespace Spartan
             {
                 auto file = make_unique<FileStream>(file_path, FileStream_Read);
                 if (!file->IsOpen())
+                {
+                    m_is_loading = false;
                     return false;
+                }
 
                 m_data.clear();
                 m_data.shrink_to_fit();
@@ -234,7 +239,10 @@ namespace Spartan
                 for (uint32_t slice_index = 0; slice_index < static_cast<uint32_t>(file_paths.size()); slice_index++)
                 {
                     if (!image_importer->Load(file_paths[slice_index], slice_index, this))
+                    {
+                        m_is_loading = false;
                         return false;
+                    }
                 }
 
                 // Set resource file path so it can be used by the resource cache.
@@ -251,13 +259,16 @@ namespace Spartan
         }
 
         // Assign texture name to the object name since Vulkan is using this for it's validation layer.
-        m_object_name = GetResourceName();
+        if (m_object_name.empty())
+        {
+            m_object_name = GetResourceName();
+        }
 
         // Verify that loading was successful.
         if (!loaded)
         {
             LOG_ERROR("Failed to load \"%s\".", file_path.c_str());
-            m_load_state = LoadState::Failed;
+            m_is_loading = false;
             return false;
         }
 
@@ -286,11 +297,11 @@ namespace Spartan
         }
 
         // Create GPU resource
-        if (!CreateResourceGpu())
+        if (!RHI_CreateResource())
         {
             string path = is_native_format ? GetResourceFilePathNative() : GetResourceFilePath();
             LOG_ERROR("Failed to create shader resource for \"%s\".", path.c_str());
-            m_load_state = LoadState::Failed;
+            m_is_loading = false;
             return false;
         }
 
@@ -304,14 +315,13 @@ namespace Spartan
 
         ComputeMemoryUsage();
 
-        m_load_state = LoadState::Completed;
-
         // Request GPU based mip generation (if needed)
         if (m_flags & RHI_Texture_Mips)
         {
             m_context->GetSubsystem<Renderer>()->RequestTextureMipGeneration(this);
         }
 
+        m_is_loading = false;
         return true;
     }
 
@@ -474,6 +484,75 @@ namespace Spartan
                 }
                 m_object_size_gpu += mip_width * mip_height * m_channel_count * (m_bits_per_channel / 8);
             }
+        }
+    }
+
+    void RHI_Texture::SetLayout(const RHI_Image_Layout new_layout, RHI_CommandList* cmd_list, const int mip /*= -1*/, const bool ranged /*= true*/)
+    {
+        const bool mip_specified = mip != -1;
+        uint32_t mip_start       = mip_specified ? mip : 0;
+        uint32_t mip_remaining   = m_mip_count - mip_start;
+        uint32_t mip_range       = ranged ? (mip_specified ? mip_remaining : m_mip_count) : 1;
+
+        // Assert on some requirements
+        {
+            // Verify the texture has per mip views (if a specific mip was requested)
+            if (mip_specified)
+            {
+                SP_ASSERT(HasPerMipViews());
+            }
+
+            // Verify that we didn't do anything wrong in the above calculations
+            SP_ASSERT(mip_remaining <= m_mip_count);
+        }
+
+        // Check if already set
+        {
+            if (mip_specified && !ranged)
+            {
+                if (m_layout[mip_start] == new_layout)
+                    return;
+            }
+            else
+            {
+                bool all_set = true;
+
+                for (uint32_t mip_index = mip_start; mip_index < mip_range; mip_index++)
+                {
+                    if (m_layout[mip_index] != new_layout)
+                    {
+                        mip_start     = mip_index;
+                        mip_remaining = m_mip_count - mip_start;
+                        mip_range     = ranged ? (mip_specified ? mip_remaining : m_mip_count) : mip_remaining;
+                        all_set       = false;
+                        break;
+                    }
+                }
+
+                if (all_set)
+                    return;
+            }
+        }
+
+        // Insert memory barrier
+        if (cmd_list != nullptr)
+        {
+            // Wait in case this texture loading in another thread.
+            while (IsLoading())
+            {
+                LOG_INFO("Waiting for texture \"%s\" to finish loading...", m_object_name.c_str());
+                this_thread::sleep_for(chrono::milliseconds(16));
+            }
+
+            // Transition
+            RHI_SetLayout(new_layout, cmd_list, mip_start, mip_range);
+            m_context->GetSubsystem<Profiler>()->m_rhi_pipeline_barriers++;
+        }
+
+        // Update layout
+        for (uint32_t i = mip_start; i < mip_start + mip_range; i++)
+        {
+            m_layout[i] = new_layout;
         }
     }
 

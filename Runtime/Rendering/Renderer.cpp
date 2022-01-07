@@ -274,23 +274,44 @@ namespace Spartan
             return;
         }
 
+        // Update viewport
+        if (m_dirty_viewport)
+        {
+            // Update viewport
+            m_viewport.width  = m_viewport_size_pending.x;
+            m_viewport.height = m_viewport_size_pending.y;
+
+            // Update quad
+            m_viewport_quad = Math::Rectangle(0, 0, m_viewport.width, m_viewport.height);
+            m_viewport_quad.CreateBuffers(this);
+
+            // Update orthographic projection
+            m_dirty_orthographic_projection = true;
+
+            m_dirty_viewport = false;
+        }
+
         // Update frame buffer
         {
-            if (m_update_ortho_proj || m_near_plane != m_camera->GetNearPlane() || m_far_plane != m_camera->GetFarPlane())
+            // Matrices
             {
-                m_near_plane = m_camera->GetNearPlane();
-                m_far_plane  = m_camera->GetFarPlane();
+                if (m_dirty_orthographic_projection || m_near_plane != m_camera->GetNearPlane() || m_far_plane != m_camera->GetFarPlane())
+                {
+                    m_near_plane = m_camera->GetNearPlane();
+                    m_far_plane  = m_camera->GetFarPlane();
 
-                // Near clip does not affect depth accuracy in orthographic projection, so set it to 0 to avoid problems which can result an infinitely small [3,2] after the multiplication below.
-                m_cb_frame_cpu.projection_ortho      = Matrix::CreateOrthographicLH(m_viewport.width, m_viewport.height, 0.0f, m_far_plane);
-                m_cb_frame_cpu.view_projection_ortho = Matrix::CreateLookAtLH(Vector3(0, 0, -m_near_plane), Vector3::Forward, Vector3::Up) * m_cb_frame_cpu.projection_ortho;
-                m_update_ortho_proj                  = false;
+                    // Near clip does not affect depth accuracy in orthographic projection, so set it to 0 to avoid problems which can result an infinitely small [3,2] after the multiplication below.
+                    m_cb_frame_cpu.projection_ortho      = Matrix::CreateOrthographicLH(m_viewport.width, m_viewport.height, 0.0f, m_far_plane);
+                    m_cb_frame_cpu.view_projection_ortho = Matrix::CreateLookAtLH(Vector3(0, 0, -m_near_plane), Vector3::Forward, Vector3::Up) * m_cb_frame_cpu.projection_ortho;
+
+                    m_dirty_orthographic_projection = false;
+                }
+
+                m_cb_frame_cpu.view                = m_camera->GetViewMatrix();
+                m_cb_frame_cpu.projection          = m_camera->GetProjectionMatrix();
+                m_cb_frame_cpu.projection_inverted = Matrix::Invert(m_cb_frame_cpu.projection);
             }
 
-            m_cb_frame_cpu.view                = m_camera->GetViewMatrix();
-            m_cb_frame_cpu.projection          = m_camera->GetProjectionMatrix();
-            m_cb_frame_cpu.projection_inverted = Matrix::Invert(m_cb_frame_cpu.projection);
-            
             // TAA - Generate jitter
             if (GetOption(Renderer::Option::AntiAliasing_Taa))
             {
@@ -359,15 +380,10 @@ namespace Spartan
     {
         if (m_viewport.width != width || m_viewport.height != height)
         {
-            m_viewport.width  = width;
-            m_viewport.height = height;
-            m_viewport_quad   = Math::Rectangle(0, 0, width, height);
+            m_viewport_size_pending.x = width;
+            m_viewport_size_pending.y = height;
 
-            Flush();
-
-            m_viewport_quad.CreateBuffers(this);
-
-            m_update_ortho_proj = true;
+            m_dirty_viewport = true;
         }
     }
 

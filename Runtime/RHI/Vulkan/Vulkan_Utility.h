@@ -566,6 +566,9 @@ namespace Spartan::vulkan_utility
 
         inline void set_layout(void* cmd_buffer, void* image, const VkImageAspectFlags aspect_mask, const uint32_t mip_start, const uint32_t mip_range, const uint32_t array_length, const RHI_Image_Layout layout_old, const RHI_Image_Layout layout_new)
         {
+            SP_ASSERT(cmd_buffer != nullptr);
+            SP_ASSERT(image != nullptr);
+
             VkImageMemoryBarrier image_barrier            = {};
             image_barrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
             image_barrier.pNext                           = nullptr;
@@ -631,6 +634,9 @@ namespace Spartan::vulkan_utility
 
         inline void set_layout(void* cmd_buffer, RHI_Texture* texture, const uint32_t mip_start, const uint32_t mip_range, const uint32_t array_length, const RHI_Image_Layout layout_old, const RHI_Image_Layout layout_new)
         {
+            SP_ASSERT(cmd_buffer != nullptr);
+            SP_ASSERT(texture != nullptr);
+
             set_layout(cmd_buffer, texture->GetResource(), get_aspect_mask(texture), mip_start, mip_range, array_length, layout_old, layout_new);
         }
 

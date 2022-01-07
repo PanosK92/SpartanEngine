@@ -2540,7 +2540,7 @@ namespace Spartan
             // Destroy the resources associated with those flags
             const bool destroy_main     = false;
             const bool destroy_per_view = true;
-            texture->DestroyResourceGpu(destroy_main, destroy_per_view);
+            texture->RHI_DestroyResource(destroy_main, destroy_per_view);
         }
 
         m_textures_mip_generation.clear();
