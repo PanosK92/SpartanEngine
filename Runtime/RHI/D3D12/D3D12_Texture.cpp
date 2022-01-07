@@ -34,17 +34,17 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    void RHI_Texture::SetLayout(const RHI_Image_Layout new_layout, RHI_CommandList* cmd_list, const int mip /*= -1*/, const bool ranged /*= true*/)
+    void RHI_Texture::RHI_SetLayout(const RHI_Image_Layout new_layout, RHI_CommandList* cmd_list, const int mip_start, const int mip_range)
     {
 
     }
 
-    bool RHI_Texture::CreateResourceGpu()
+    bool RHI_Texture::RHI_CreateResource()
     {
         return false;
     }
 
-    void RHI_Texture::DestroyResourceGpu(const bool destroy_main, const bool destroy_per_view)
+    void RHI_Texture::RHI_DestroyResource(const bool destroy_main, const bool destroy_per_view)
     {
 
     }
