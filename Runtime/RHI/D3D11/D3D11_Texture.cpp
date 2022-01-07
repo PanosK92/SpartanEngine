@@ -268,12 +268,12 @@ namespace Spartan
         return d3d11_utility::error_check(rhi_device->GetContextRhi()->device->CreateUnorderedAccessView(static_cast<ID3D11Resource*>(texture), &desc, reinterpret_cast<ID3D11UnorderedAccessView**>(&view)));
     }
 
-    void RHI_Texture::SetLayout(const RHI_Image_Layout new_layout, RHI_CommandList* cmd_list, const int mip /*= -1*/, const bool ranged /*= true*/)
+    void RHI_Texture::RHI_SetLayout(const RHI_Image_Layout new_layout, RHI_CommandList* cmd_list, const int mip_start, const int mip_range)
     {
 
     }
 
-    bool RHI_Texture::CreateResourceGpu()
+    bool RHI_Texture::RHI_CreateResource()
     {
         // Validate
         SP_ASSERT(m_rhi_device != nullptr);
@@ -430,7 +430,7 @@ namespace Spartan
         return result_tex && result_srv && result_uav && result_rt && result_ds;
     }
 
-    void RHI_Texture::DestroyResourceGpu(const bool destroy_main, const bool destroy_per_view)
+    void RHI_Texture::RHI_DestroyResource(const bool destroy_main, const bool destroy_per_view)
     {
         if (destroy_main)
         {
