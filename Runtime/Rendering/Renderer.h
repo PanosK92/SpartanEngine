@@ -79,42 +79,43 @@ namespace Spartan
             material_mask      = 7,
 
             // G-buffer
-            gbuffer_albedo   = 8,
-            gbuffer_normal   = 9,
-            gbuffer_material = 10,
-            gbuffer_velocity = 11,
-            gbuffer_depth    = 12,
+            gbuffer_albedo            = 8,
+            gbuffer_normal            = 9,
+            gbuffer_material          = 10,
+            gbuffer_velocity          = 11,
+            gbuffer_velocity_previous = 12,
+            gbuffer_depth             = 13,
 
             // Lighting
-            light_diffuse              = 13,
-            light_diffuse_transparent  = 14,
-            light_specular             = 15,
-            light_specular_transparent = 16,
-            light_volumetric           = 17,
+            light_diffuse              = 14,
+            light_diffuse_transparent  = 15,
+            light_specular             = 16,
+            light_specular_transparent = 17,
+            light_volumetric           = 19,
 
             // Light depth/color maps
-            light_directional_depth = 18,
-            light_directional_color = 19,
-            light_point_depth       = 20,
-            light_point_color       = 21,
-            light_spot_depth        = 22,
-            light_spot_color        = 23,
+            light_directional_depth = 19,
+            light_directional_color = 20,
+            light_point_depth       = 21,
+            light_point_color       = 22,
+            light_spot_depth        = 23,
+            light_spot_color        = 24,
 
             // Noise
-            noise_normal = 24,
-            noise_blue   = 25,
+            noise_normal = 25,
+            noise_blue   = 26,
 
             // Misc
-            lutIbl            = 26,
-            environment       = 27,
-            ssao              = 28,
-            ssao_gi           = 29,
-            ssr               = 30,
-            frame             = 31,
-            tex               = 32,
-            tex2              = 33,
-            font_atlas        = 34,
-            reflection_probe  = 35
+            lutIbl           = 27,
+            environment      = 28,
+            ssao             = 29,
+            ssao_gi          = 30,
+            ssr              = 31,
+            frame            = 32,
+            tex              = 33,
+            tex2             = 34,
+            font_atlas       = 35,
+            reflection_probe = 36
         };
 
         // UAV Bindings
@@ -200,6 +201,7 @@ namespace Spartan
             Gbuffer_Normal,
             Gbuffer_Material,
             Gbuffer_Velocity,
+            Gbuffer_VelocityPrevious,
             Gbuffer_Depth,
             Brdf_Specular_Lut,
             Light_Diffuse,
@@ -445,7 +447,7 @@ namespace Spartan
         void Lines_PostMain(const double delta_time);
 
         // Render targets
-        std::array<std::shared_ptr<RHI_Texture>, 24> m_render_targets;
+        std::array<std::shared_ptr<RHI_Texture>, 25> m_render_targets;
 
         // Shaders
         std::unordered_map<Renderer::Shader, std::shared_ptr<RHI_Shader>> m_shaders;
