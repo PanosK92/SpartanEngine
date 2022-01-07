@@ -540,11 +540,12 @@ namespace Spartan
             return;
 
         // Acquire render targets
-        RHI_Texture* tex_albedo   = RENDER_TARGET(RenderTarget::Gbuffer_Albedo).get();
-        RHI_Texture* tex_normal   = RENDER_TARGET(RenderTarget::Gbuffer_Normal).get();
-        RHI_Texture* tex_material = RENDER_TARGET(RenderTarget::Gbuffer_Material).get();
-        RHI_Texture* tex_velocity = RENDER_TARGET(RenderTarget::Gbuffer_Velocity).get();
-        RHI_Texture* tex_depth    = RENDER_TARGET(RenderTarget::Gbuffer_Depth).get();
+        RHI_Texture* tex_albedo                  = RENDER_TARGET(RenderTarget::Gbuffer_Albedo).get();
+        RHI_Texture* tex_normal                  = RENDER_TARGET(RenderTarget::Gbuffer_Normal).get();
+        RHI_Texture* tex_material                = RENDER_TARGET(RenderTarget::Gbuffer_Material).get();
+        RHI_Texture* tex_velocity                = RENDER_TARGET(RenderTarget::Gbuffer_Velocity).get();
+        RHI_Texture* tex_velocity_previous_frame = RENDER_TARGET(RenderTarget::Gbuffer_VelocityPrevious).get();
+        RHI_Texture* tex_depth                   = RENDER_TARGET(RenderTarget::Gbuffer_Depth).get();
 
         bool depth_prepass = GetOption(Renderer::Option::DepthPrepass);
         bool wireframe     = GetOption(Renderer::Option::Debug_Wireframe);
@@ -579,10 +580,13 @@ namespace Spartan
         uint64_t material_bound_id = 0;
         m_material_instances.fill(nullptr);
         auto& entities = m_entities[is_transparent_pass ? ObjectType::GeometryTransparent : ObjectType::GeometryOpaque];
-        
+
         // Record commands
         if (cmd_list->BeginRenderPass(pso))
-        { 
+        {
+            // Keep previous velocity (for TAA).
+            cmd_list->Blit(tex_velocity, tex_velocity_previous_frame);
+
             for (uint32_t i = 0; i < static_cast<uint32_t>(entities.size()); i++)
             {
                 Entity* entity = entities[i];
@@ -1235,8 +1239,8 @@ namespace Spartan
 
         // Set render state
         static RHI_PipelineState pso;
-        pso.shader_compute   = shader_c;
-        pso.pass_name        = "Pass_PostProcess_TAA";
+        pso.shader_compute = shader_c;
+        pso.pass_name      = "Pass_PostProcess_TAA";
 
         // Draw
         if (cmd_list->BeginRenderPass(pso))
@@ -1250,11 +1254,12 @@ namespace Spartan
             const uint32_t thread_group_count_z = 1;
             const bool async = false;
 
-            cmd_list->SetTexture(Renderer::Bindings_Uav::rgb,              tex_out);
-            cmd_list->SetTexture(Renderer::Bindings_Srv::tex,              tex_history);
-            cmd_list->SetTexture(Renderer::Bindings_Srv::tex2,             tex_in);
-            cmd_list->SetTexture(Renderer::Bindings_Srv::gbuffer_velocity, RENDER_TARGET(RenderTarget::Gbuffer_Velocity));
-            cmd_list->SetTexture(Renderer::Bindings_Srv::gbuffer_depth,    RENDER_TARGET(RenderTarget::Gbuffer_Depth));
+            cmd_list->SetTexture(Renderer::Bindings_Uav::rgb,                       tex_out);
+            cmd_list->SetTexture(Renderer::Bindings_Srv::tex,                       tex_history);
+            cmd_list->SetTexture(Renderer::Bindings_Srv::tex2,                      tex_in);
+            cmd_list->SetTexture(Renderer::Bindings_Srv::gbuffer_velocity,          RENDER_TARGET(RenderTarget::Gbuffer_Velocity));
+            cmd_list->SetTexture(Renderer::Bindings_Srv::gbuffer_velocity_previous, RENDER_TARGET(RenderTarget::Gbuffer_VelocityPrevious));
+            cmd_list->SetTexture(Renderer::Bindings_Srv::gbuffer_depth,             RENDER_TARGET(RenderTarget::Gbuffer_Depth));
             cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
             cmd_list->EndRenderPass();
         }

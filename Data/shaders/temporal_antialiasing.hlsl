@@ -23,6 +23,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 //====================
 
+static const float g_taa_blend_min = 0.0f;
+static const float g_taa_blend_max = 0.2f;
+
 /*------------------------------------------------------------------------------
                            NEIGHBOURHOOD OFFSETS
 ------------------------------------------------------------------------------*/
@@ -324,17 +327,19 @@ float get_factor_luminance(float3 color_history, float3 color_input)
 {
     float luminance_history   = luminance(color_history);
     float luminance_current   = luminance(color_input);
-    float unbiased_difference = abs(luminance_current - luminance_history) / max(luminance_current, luminance_history);
+    float unbiased_difference = abs(luminance_current - luminance_history) / (max(luminance_current, luminance_history) + FLT_MIN);
 
-    return unbiased_difference ;
+    return saturate(unbiased_difference);
 }
 
-float get_factor_dissoclusion(float2 uv_reprojected, float2 resolution, float depth)
+float get_factor_dissoclusion(float2 velocity, float2 uv_reprojected)
 {
-    float depth_previous = load_depth(uv_reprojected * resolution);
-    float delta          = depth == 1.0f;// step(depth, depth_previous);
+    float velocity_previous         = tex_velocity_previous[uv_reprojected * g_resolution_render].xy;
+    float velocity_length2_previous = dot(velocity_previous, velocity_previous);
+    float velocity_length2          = dot(velocity, velocity);
+    float velocity_ratio            = abs(velocity_length2_previous - velocity_length2) / (max(velocity_length2_previous, velocity_length2) + FLT_MIN);
 
-    return delta;
+    return saturate(velocity_ratio * 24);
 }
 
 float3 temporal_antialiasing(float2 uv, uint2 pos, uint3 group_id, Texture2D tex_history)
@@ -359,14 +364,21 @@ float3 temporal_antialiasing(float2 uv, uint2 pos, uint3 group_id, Texture2D tex
     // Get history color (catmull-rom reduces a lot of the blurring that you get under motion)
     float3 color_history = sample_catmull_rom_9(tex_history, uv_reprojected, g_resolution_rt).rgb;
 
-    // Clip history to the neighbourhood of the current sample
+    // Clip history to the neighbourhood of the current sample. Fixes a lot of the ghosting.
     color_history = clip_history_3x3(pos, color_history, velocity);
 
     // Compute blend factor
     float blend_factor = RPC_16; // We want to be able to accumulate as many jitter samples as we generated, that is, 16.
     {
+        // Increase blend factor when there is dissoclusion. Fixes a lot of the remaining ghosting.
+        float factor_dissoclusion = get_factor_dissoclusion(velocity, uv_reprojected);
+
         // Decrease blend factor if the luminance changed a lot (reduces flickering coming from sub-pixel specular highlights).
-        blend_factor *= get_factor_luminance(color_history, color_input);
+        //float factor_luminance = get_factor_luminance(color_history, color_input);
+
+        // Add to the blend factor
+        blend_factor += factor_dissoclusion;
+        blend_factor = clamp(blend_factor, g_taa_blend_min, g_taa_blend_max);
     }
 
     // Resolve
@@ -400,4 +412,5 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID, uint3 group_thread_id : SV_Gr
 
     tex_out_rgb[thread_id.xy] = temporal_antialiasing(uv, pos, group_id, tex);
 }
+
 

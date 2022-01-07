@@ -30,41 +30,42 @@ Texture2D tex_material_emission  : register (t6);
 Texture2D tex_material_mask      : register (t7);
 
 // G-buffer
-Texture2D tex_albedo   : register(t8);
-Texture2D tex_normal   : register(t9);
-Texture2D tex_material : register(t10);
-Texture2D tex_velocity : register(t11);
-Texture2D tex_depth    : register(t12);
+Texture2D tex_albedo            : register(t8);
+Texture2D tex_normal            : register(t9);
+Texture2D tex_material          : register(t10);
+Texture2D tex_velocity          : register(t11);
+Texture2D tex_velocity_previous : register(t12);
+Texture2D tex_depth             : register(t13);
 
-Texture2D tex_light_diffuse              : register(t13);
-Texture2D tex_light_diffuse_transparent  : register(t14);
-Texture2D tex_light_specular             : register(t15);
-Texture2D tex_light_specular_transparent : register(t16);
-Texture2D tex_light_volumetric           : register(t17);
+Texture2D tex_light_diffuse              : register(t14);
+Texture2D tex_light_diffuse_transparent  : register(t15);
+Texture2D tex_light_specular             : register(t16);
+Texture2D tex_light_specular_transparent : register(t17);
+Texture2D tex_light_volumetric           : register(t18);
 
 // Light depth/color maps
-Texture2DArray tex_light_directional_depth : register(t18);
-Texture2DArray tex_light_directional_color : register(t19);
-TextureCube tex_light_point_depth          : register(t20);
-TextureCube tex_light_point_color          : register(t21);
-Texture2D tex_light_spot_depth             : register(t22);
-Texture2D tex_light_spot_color             : register(t23);
+Texture2DArray tex_light_directional_depth : register(t19);
+Texture2DArray tex_light_directional_color : register(t20);
+TextureCube tex_light_point_depth          : register(t21);
+TextureCube tex_light_point_color          : register(t22);
+Texture2D tex_light_spot_depth             : register(t23);
+Texture2D tex_light_spot_color             : register(t24);
 
 // Noise
-Texture2D tex_noise_normal    : register(t24);
-Texture2DArray tex_noise_blue : register(t25);
+Texture2D tex_noise_normal    : register(t25);
+Texture2DArray tex_noise_blue : register(t26);
 
 // Misc
-Texture2D tex_lut_ibl            : register(t26);
-Texture2D tex_environment        : register(t27);
-Texture2D tex_ssao               : register(t28);
-Texture2D tex_ssao_gi            : register(t29);
-Texture2D tex_ssr                : register(t30);
-Texture2D tex_frame              : register(t31);
-Texture2D tex                    : register(t32);
-Texture2D tex2                   : register(t33);
-Texture2D tex_font_atlas         : register(t34);
-TextureCube tex_reflection_probe : register(t35);
+Texture2D tex_lut_ibl            : register(t27);
+Texture2D tex_environment        : register(t28);
+Texture2D tex_ssao               : register(t29);
+Texture2D tex_ssao_gi            : register(t30);
+Texture2D tex_ssr                : register(t31);
+Texture2D tex_frame              : register(t32);
+Texture2D tex                    : register(t33);
+Texture2D tex2                   : register(t34);
+Texture2D tex_font_atlas         : register(t35);
+TextureCube tex_reflection_probe : register(t36);
 
 // RWTexture2D
 RWTexture2D<float> tex_out_r                               : register(u0);
