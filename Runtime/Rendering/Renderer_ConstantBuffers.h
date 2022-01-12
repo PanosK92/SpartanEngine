@@ -66,13 +66,16 @@ namespace Spartan
         Math::Vector2 resolution_render;
         Math::Vector2 resolution_output;
 
-        Math::Vector2 taa_jitter_offset;
+        Math::Vector2 taa_jitter_current;
+        Math::Vector2 taa_jitter_previous;
+
         float fog;
         uint32_t options;
-
         uint32_t frame_mip_count;
         uint32_t ssr_mip_count;
+
         Math::Vector2 resolution_environment;
+        Math::Vector2 padding;
 
         void set_bit(const bool set, const uint32_t bit)
         {
@@ -109,7 +112,8 @@ namespace Spartan
                 fog                         == rhs.fog                         &&
                 resolution_output           == rhs.resolution_output           &&
                 resolution_render           == rhs.resolution_render           &&
-                taa_jitter_offset           == rhs.taa_jitter_offset           &&
+                taa_jitter_current          == rhs.taa_jitter_current          &&
+                taa_jitter_previous         == rhs.taa_jitter_previous         &&
                 options                     == rhs.options                     &&
                 frame_mip_count             == rhs.frame_mip_count             &&
                 ssr_mip_count               == rhs.ssr_mip_count               &&

@@ -177,6 +177,7 @@ void RenderOptions::TickVisible()
     bool do_dof                    = m_renderer->GetOption(Renderer::Option::DepthOfField);
     bool do_volumetric_fog         = m_renderer->GetOption(Renderer::Option::VolumetricFog);
     bool do_ssao                   = m_renderer->GetOption(Renderer::Option::Ssao);
+    bool do_ssao_gi                = m_renderer->GetOption(Renderer::Option::Ssao_Gi);
     bool do_sss                    = m_renderer->GetOption(Renderer::Option::ScreenSpaceShadows);
     bool do_ssr                    = m_renderer->GetOption(Renderer::Option::ScreenSpaceReflections);
     bool do_taa                    = m_renderer->GetOption(Renderer::Option::AntiAliasing_Taa);
@@ -200,7 +201,6 @@ void RenderOptions::TickVisible()
     bool do_reverse_z              = m_renderer->GetOption(Renderer::Option::ReverseZ);
     bool do_upsample_taa           = m_renderer->GetOption(Renderer::Option::Upsample_TAA);
     bool do_upsample_amd           = m_renderer->GetOption(Renderer::Option::Upsample_AMD_FidelityFX_SuperResolution);
-    bool ssao_gi                   = m_renderer->GetOptionValue<bool>(Renderer::OptionValue::Ssao_Gi);
     int resolution_shadow          = m_renderer->GetOptionValue<int>(Renderer::OptionValue::ShadowResolution);
 
     // Present options (with a table)
@@ -316,7 +316,7 @@ void RenderOptions::TickVisible()
                 // SSAO + GI
                 {
                     ImGui::BeginDisabled(!do_ssao);
-                    helper::CheckBox("SSAO GI - Screen space global illumination", ssao_gi, "Use SSAO to compute diffuse global illumination");
+                    helper::CheckBox("SSAO GI - Screen space global illumination", do_ssao_gi, "Use SSAO to compute diffuse global illumination");
                     ImGui::EndDisabled();
                 }
             }
@@ -489,6 +489,7 @@ void RenderOptions::TickVisible()
     m_renderer->SetOption(Renderer::Option::DepthOfField,                                         do_dof);
     m_renderer->SetOption(Renderer::Option::VolumetricFog,                                        do_volumetric_fog);
     m_renderer->SetOption(Renderer::Option::Ssao,                                                 do_ssao);
+    m_renderer->SetOption(Renderer::Option::Ssao_Gi,                                              do_ssao_gi);
     m_renderer->SetOption(Renderer::Option::ScreenSpaceShadows,                                   do_sss);
     m_renderer->SetOption(Renderer::Option::ScreenSpaceReflections,                               do_ssr);
     m_renderer->SetOption(Renderer::Option::AntiAliasing_Taa,                                     do_taa);
@@ -512,6 +513,5 @@ void RenderOptions::TickVisible()
     m_renderer->SetOption(Renderer::Option::ReverseZ,                                             do_reverse_z);
     m_renderer->SetOption(Renderer::Option::Upsample_TAA,                                         do_upsample_taa);
     m_renderer->SetOption(Renderer::Option::Upsample_AMD_FidelityFX_SuperResolution,              do_upsample_amd);
-    m_renderer->SetOptionValue(Renderer::OptionValue::Ssao_Gi,                                    static_cast<float>(ssao_gi));
     m_renderer->SetOptionValue(Renderer::OptionValue::ShadowResolution,                           static_cast<float>(resolution_shadow));
 }

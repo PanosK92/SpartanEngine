@@ -72,6 +72,7 @@ namespace Spartan
         m_options |= Renderer::Option::VolumetricFog;
         m_options |= Renderer::Option::MotionBlur;
         m_options |= Renderer::Option::Ssao;
+        m_options |= Renderer::Option::Ssao_Gi;
         m_options |= Renderer::Option::ScreenSpaceShadows;
         m_options |= Renderer::Option::ScreenSpaceReflections;
         m_options |= Renderer::Option::AntiAliasing_Taa;
@@ -88,7 +89,6 @@ namespace Spartan
         m_option_values[Renderer::OptionValue::Sharpen_Strength] = 1.0f;
         m_option_values[Renderer::OptionValue::Bloom_Intensity]  = 0.2f;
         m_option_values[Renderer::OptionValue::Fog]              = 0.08f;
-        m_option_values[Renderer::OptionValue::Ssao_Gi]          = 1.0f;
 
         // Subscribe to events.
         SP_SUBSCRIBE_TO_EVENT(EventType::WorldResolved,             SP_EVENT_HANDLER_VARIANT(OnRenderablesAcquire));
@@ -98,6 +98,8 @@ namespace Spartan
 
         // Get thread id.
         m_render_thread_id = this_thread::get_id();
+
+        m_material_instances.fill(nullptr);
     }
 
     Renderer::~Renderer()
@@ -317,12 +319,11 @@ namespace Spartan
             {
                 m_taa_jitter_previous = m_taa_jitter;
                 
-                const float scale         = 1.0f;
                 const uint8_t samples     = 16;
-                const uint64_t index      = m_frame_num % samples;
+                const uint8_t index       = m_frame_num % samples;
                 m_taa_jitter              = Utility::Sampling::Halton2D(index, 2, 3) * 2.0f - 1.0f;
-                m_taa_jitter.x            = (m_taa_jitter.x / m_resolution_render.x) * scale;
-                m_taa_jitter.y            = (m_taa_jitter.y / m_resolution_render.y) * scale;
+                m_taa_jitter.x            = (m_taa_jitter.x / m_resolution_render.x);
+                m_taa_jitter.y            = (m_taa_jitter.y / m_resolution_render.y);
                 m_cb_frame_cpu.projection *= Matrix::CreateTranslation(Vector3(m_taa_jitter.x, m_taa_jitter.y, 0.0f));
             }
             else
@@ -345,7 +346,8 @@ namespace Spartan
             m_cb_frame_cpu.camera_direction           = m_camera->GetTransform()->GetForward();
             m_cb_frame_cpu.resolution_output          = m_resolution_output;
             m_cb_frame_cpu.resolution_render          = m_resolution_render;
-            m_cb_frame_cpu.taa_jitter_offset          = m_taa_jitter - m_taa_jitter_previous;
+            m_cb_frame_cpu.taa_jitter_current         = m_taa_jitter;
+            m_cb_frame_cpu.taa_jitter_previous        = m_taa_jitter_previous;
             m_cb_frame_cpu.delta_time                 = static_cast<float>(m_context->GetSubsystem<Timer>()->GetDeltaTimeSmoothedSec());
             m_cb_frame_cpu.time                       = static_cast<float>(m_context->GetSubsystem<Timer>()->GetTimeSec());
             m_cb_frame_cpu.bloom_intensity            = GetOptionValue<float>(Renderer::OptionValue::Bloom_Intensity);
@@ -360,12 +362,12 @@ namespace Spartan
             m_cb_frame_cpu.resolution_environment     = Vector2(GetEnvironmentTexture()->GetWidth(), GetEnvironmentTexture()->GetHeight());
 
             // These must match what Common_Buffer.hlsl is reading
-            m_cb_frame_cpu.set_bit(GetOption(Renderer::Option::ScreenSpaceReflections),             1 << 0);
-            m_cb_frame_cpu.set_bit(GetOption(Renderer::Option::Upsample_TAA),                       1 << 1);
-            m_cb_frame_cpu.set_bit(GetOption(Renderer::Option::Ssao),                               1 << 2);
-            m_cb_frame_cpu.set_bit(GetOption(Renderer::Option::VolumetricFog),                      1 << 3);
-            m_cb_frame_cpu.set_bit(GetOption(Renderer::Option::ScreenSpaceShadows),                 1 << 4);
-            m_cb_frame_cpu.set_bit(GetOptionValue<bool>(Renderer::OptionValue::Ssao_Gi), 1 << 5);
+            m_cb_frame_cpu.set_bit(GetOption(Renderer::Option::ScreenSpaceReflections), 1 << 0);
+            m_cb_frame_cpu.set_bit(GetOption(Renderer::Option::Upsample_TAA),           1 << 1);
+            m_cb_frame_cpu.set_bit(GetOption(Renderer::Option::Ssao),                   1 << 2);
+            m_cb_frame_cpu.set_bit(GetOption(Renderer::Option::VolumetricFog),          1 << 3);
+            m_cb_frame_cpu.set_bit(GetOption(Renderer::Option::ScreenSpaceShadows),     1 << 4);
+            m_cb_frame_cpu.set_bit(GetOption(Renderer::Option::Ssao_Gi),                1 << 5);
         }
 
         Lines_PreMain();

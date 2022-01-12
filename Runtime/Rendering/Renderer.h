@@ -240,18 +240,19 @@ namespace Spartan
             AntiAliasing_Taa                                     = 1 << 12,
             AntiAliasing_Fxaa                                    = 1 << 13,
             Ssao                                                 = 1 << 14,
-            ScreenSpaceShadows                                   = 1 << 15,
-            ScreenSpaceReflections                               = 1 << 16,
-            MotionBlur                                           = 1 << 17,
-            DepthOfField                                         = 1 << 18,
-            FilmGrain                                            = 1 << 19,
-            Sharpening_AMD_FidelityFX_ContrastAdaptiveSharpening = 1 << 20,
-            ChromaticAberration                                  = 1 << 21,
-            Debanding                                            = 1 << 22,
-            ReverseZ                                             = 1 << 23,
-            DepthPrepass                                         = 1 << 24,
-            Upsample_TAA                                         = 1 << 25,
-            Upsample_AMD_FidelityFX_SuperResolution              = 1 << 26
+            Ssao_Gi                                              = 1 << 15,
+            ScreenSpaceShadows                                   = 1 << 16,
+            ScreenSpaceReflections                               = 1 << 17,
+            MotionBlur                                           = 1 << 18,
+            DepthOfField                                         = 1 << 19,
+            FilmGrain                                            = 1 << 20,
+            Sharpening_AMD_FidelityFX_ContrastAdaptiveSharpening = 1 << 21,
+            ChromaticAberration                                  = 1 << 22,
+            Debanding                                            = 1 << 23,
+            ReverseZ                                             = 1 << 24,
+            DepthPrepass                                         = 1 << 25,
+            Upsample_TAA                                         = 1 << 26,
+            Upsample_AMD_FidelityFX_SuperResolution              = 1 << 27
         };
 
         // Renderer/graphics options values
@@ -263,8 +264,7 @@ namespace Spartan
             Gamma,
             Bloom_Intensity,
             Sharpen_Strength,
-            Fog,
-            Ssao_Gi
+            Fog
         };
 
         // Tonemapping
