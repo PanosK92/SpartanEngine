@@ -910,9 +910,9 @@ namespace Spartan
         Update_Cb_Uber(cmd_list);
     }
 
-    void Renderer::SetCbUberColor(RHI_CommandList* cmd_list, const Vector4& color)
+    void Renderer::SetCbUberTextureVisualisationOptions(RHI_CommandList* cmd_list, const uint32_t options)
     {
-        m_cb_uber_cpu.mat_color = color;
+        m_cb_uber_cpu.options_texture_visualisation = options;
         Update_Cb_Uber(cmd_list);
     }
 

@@ -166,7 +166,6 @@ namespace Spartan
             BloomUpsampleBlendMip_C,
             ToneMapping_C,
             Debanding_C,
-            Debug_Texture_C,
             Debug_ReflectionProbe_V,
             Debug_ReflectionProbe_P,
             BrdfSpecularLut_C,
@@ -319,9 +318,7 @@ namespace Spartan
 
         // Render targets
         std::shared_ptr<RHI_Texture> GetRenderTarget(const RenderTarget rt_enum) { return m_render_targets[static_cast<uint8_t>(rt_enum)]; }
-        const auto& GetRenderTargets()                                         { return m_render_targets; }
-        void SetRenderTargetDebug(const RenderTarget render_target_debug)        { m_render_target_debug = render_target_debug; }
-        RenderTarget GetRenderTargetDebug() const                                { return m_render_target_debug; }
+        const auto& GetRenderTargets()                                           { return m_render_targets; }
 
         // Depth
         float GetClearDepth() { return GetOption(Renderer::Option::ReverseZ) ? m_viewport.depth_min : m_viewport.depth_max; }
@@ -354,7 +351,7 @@ namespace Spartan
 
         // Global uber constant buffer calls
         void SetCbUberTransform(RHI_CommandList* cmd_list, const Math::Matrix& transform);
-        void SetCbUberColor(RHI_CommandList* cmd_list, const Math::Vector4& color);
+        void SetCbUberTextureVisualisationOptions(RHI_CommandList* cmd_list, const uint32_t options);
 
         // Rendering
         bool IsRenderingAllowed() const { return m_is_rendering_allowed; }
@@ -416,7 +413,6 @@ namespace Spartan
         void Pass_AMD_FidelityFX_ContrastAdaptiveSharpening(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
         void Pass_AMD_FidelityFX_SinglePassDowsnampler(RHI_CommandList* cmd_list, RHI_Texture* tex, const bool luminance_antiflicker);
         void Pass_AMD_FidelityFX_SuperResolution(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out, RHI_Texture* tex_out_scratch);
-        bool Pass_DebugBuffer(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
         void Pass_Lines(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
         void Pass_DebugMeshes(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
         void Pass_Outline(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
@@ -549,16 +545,15 @@ namespace Spartan
 
         // Misc
         std::unique_ptr<Font> m_font;
-        Math::Vector2 m_taa_jitter         = Math::Vector2::Zero;
-        Math::Vector2 m_taa_jitter_previous= Math::Vector2::Zero;
-        RenderTarget m_render_target_debug = RenderTarget::Undefined;
-        bool m_initialised                 = false;
-        float m_near_plane                 = 0.0f;
-        float m_far_plane                  = 0.0f;
-        uint64_t m_frame_num               = 0;
-        bool m_is_odd_frame                = false;
-        bool m_brdf_specular_lut_rendered  = false;
-        uint32_t m_cmd_index               = std::numeric_limits<uint32_t>::max();
+        Math::Vector2 m_taa_jitter          = Math::Vector2::Zero;
+        Math::Vector2 m_taa_jitter_previous = Math::Vector2::Zero;
+        bool m_initialised                  = false;
+        float m_near_plane                  = 0.0f;
+        float m_far_plane                   = 0.0f;
+        uint64_t m_frame_num                = 0;
+        bool m_is_odd_frame                 = false;
+        bool m_brdf_specular_lut_rendered   = false;
+        uint32_t m_cmd_index                = std::numeric_limits<uint32_t>::max();
 
         // Threading
         std::thread::id m_render_thread_id;

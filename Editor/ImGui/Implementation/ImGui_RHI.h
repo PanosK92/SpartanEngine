@@ -263,12 +263,6 @@ namespace ImGui::RHI
         pipeline_state.primitive_topology       = RHI_PrimitiveTopology_Mode::TriangleList;
         pipeline_state.pass_name                = is_child_window ? "pass_imgui_window_child" : "pass_imgui_window_main";
 
-        // If a texture only has channel R, we update a constant buffer so that in the shader, we can copy
-        // the R channel to G and B. This way the user will see a grayscale texture instead of red tinted one.
-        Vector4 bound_texture_channel_rgb = Vector4(1.0f, 1.0f, 1.0f, 1.0f);
-        Vector4 bound_texture_channel_r   = Vector4(1.0f, 0.0f, 0.0f, 1.0f);
-        Vector4 bound_texture_channels    = bound_texture_channel_rgb;
-
         // Record commands
         if (g_used_cmd_list->BeginRenderPass(pipeline_state))
         {
@@ -324,12 +318,17 @@ namespace ImGui::RHI
                         RHI_Texture* texture = static_cast<RHI_Texture*>(pcmd->TextureId);
                         g_used_cmd_list->SetTexture(Renderer::Bindings_Srv::tex, texture);
 
-                        // Check how many channels the texture has and let the shader now.
+                        // Make sure single channel texture appear white instead of red.
                         if (texture)
                         {
+                            if (texture->GetChannelCount() == 1)
+                            {
+                                texture->SetFlag(RHI_Texture_Flags::RHI_Texture_Visualise);
+                                texture->SetFlag(RHI_Texture_Flags::RHI_Texture_Visualise_Channel_R);
+                            }
+
                             // The uber constant buffer updates only if needed, no need to do any state checking here.
-                            bound_texture_channels = texture->GetChannelCount() == 1 ? bound_texture_channel_r : bound_texture_channel_rgb;
-                            g_renderer->SetCbUberColor(g_used_cmd_list, bound_texture_channels);
+                            g_renderer->SetCbUberTextureVisualisationOptions(g_used_cmd_list, texture->GetFlags());
                         }
 
                         // Draw

@@ -1220,7 +1220,6 @@ namespace Spartan
         Pass_Lines(cmd_list, rt_frame_render_output_out.get());
         Pass_TransformHandle(cmd_list, rt_frame_render_output_out.get());
         Pass_Icons(cmd_list, rt_frame_render_output_out.get());
-        Pass_DebugBuffer(cmd_list, rt_frame_render_output_out.get());
         Pass_PeformanceMetrics(cmd_list, rt_frame_render_output_out.get());
 
         // Swap textures
@@ -2299,117 +2298,6 @@ namespace Spartan
             cmd_list->DrawIndexed(m_font->GetIndexCount());
             cmd_list->EndRenderPass();
         }
-    }
-
-    bool Renderer::Pass_DebugBuffer(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
-    {
-        if (m_render_target_debug == RenderTarget::Undefined)
-            return true;
-
-        uint32_t options = 0;
-
-        // Has to match the shader
-        #define HAS_UAV       1U << 0
-        #define PACK          1U << 1
-        #define GAMMA_CORRECT 1U << 2
-        #define BOOST         1U << 3
-        #define ABS           1U << 4
-        #define CHANNEL_R     1U << 5
-        #define CHANNEL_A     1U << 6
-        #define CHANNEL_RG    1U << 7
-        #define CHANNEL_RGB   1U << 8
-
-        RHI_Texture* render_target = RENDER_TARGET(m_render_target_debug).get();
-
-        if (render_target->IsUav())
-        {
-            options |= HAS_UAV;
-        }
-
-        if (m_render_target_debug == RenderTarget::Gbuffer_Albedo            ||
-            m_render_target_debug == RenderTarget::Light_Diffuse             ||
-            m_render_target_debug == RenderTarget::Light_Diffuse_Transparent ||
-            m_render_target_debug == RenderTarget::Light_Specular            ||
-            m_render_target_debug == RenderTarget::Light_Specular_Transparent ||
-            m_render_target_debug == RenderTarget::Ssr ||
-            m_render_target_debug == RenderTarget::Dof_Half ||
-            m_render_target_debug == RenderTarget::Dof_Half_2 ||
-            m_render_target_debug == RenderTarget::Light_Volumetric ||
-            m_render_target_debug == RenderTarget::Bloom
-            )
-        {
-            options |= CHANNEL_RGB;
-            options |= GAMMA_CORRECT;
-        }
-
-        if (m_render_target_debug == RenderTarget::Gbuffer_Normal ||
-            m_render_target_debug == RenderTarget::Ssao_Gi)
-        {
-            options |= PACK;
-        }
-
-        if (m_render_target_debug == RenderTarget::Gbuffer_Velocity)
-        {
-            options |= CHANNEL_RG;
-            options |= ABS;
-            options |= BOOST;
-        }
-
-        if (m_render_target_debug == RenderTarget::Gbuffer_Depth)
-        {
-            options |= CHANNEL_R;
-        }
-
-        if (m_render_target_debug == RenderTarget::Ssao)
-        {
-            options |= CHANNEL_RGB;
-            options |= PACK;
-        }
-
-        if (m_render_target_debug == RenderTarget::Ssao_Gi)
-        {
-            options |= CHANNEL_RGB;
-            options |= GAMMA_CORRECT;
-        }
-
-        // Acquire shaders
-        RHI_Shader* shader = m_shaders[Renderer::Shader::Debug_Texture_C].get();
-        if (!shader->IsCompiled())
-            return false;
-
-        // Set render state
-        static RHI_PipelineState pso;
-        pso.shader_compute = shader;
-        pso.pass_name      = "Pass_DebugBuffer";
-
-        // Draw
-        if (cmd_list->BeginRenderPass(pso))
-        {
-            // Update uber buffer
-            m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
-            m_cb_uber_cpu.options_debug = options;
-            Update_Cb_Uber(cmd_list);
-
-            const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / m_thread_group_count));
-            const uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetHeight()) / m_thread_group_count));
-            const uint32_t thread_group_count_z = 1;
-            const bool async = false;
-
-            cmd_list->SetTexture(Renderer::Bindings_Uav::rgba, tex_out);
-            if (render_target->IsUav())
-            {
-                cmd_list->SetTexture(Renderer::Bindings_Uav::rgba2, render_target);
-            }
-            else
-            {
-                cmd_list->SetTexture(Renderer::Bindings_Srv::tex, render_target);
-            }
-            
-            cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
-            cmd_list->EndRenderPass();
-        }
-
-        return true;
     }
 
     void Renderer::Pass_BrdfSpecularLut(RHI_CommandList* cmd_list)
