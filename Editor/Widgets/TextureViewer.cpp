@@ -69,7 +69,7 @@ void TextureViewer::TickVisible()
         texture->SetFlag(RHI_Texture_Flags::RHI_Texture_Visualise);
 
         // Calculate a percentage that once multiplied with the texture dimensions, the texture will always be displayed within the window.
-        float bottom_padding              = 250.0f; // to fit the information text
+        float bottom_padding              = 200.0f; // to fit the information text
         float texture_shrink_percentage_x = ImGui::GetWindowWidth() / static_cast<float>(texture->GetWidth());
         float texture_shrink_percentage_y = ImGui::GetWindowHeight() / static_cast<float>(texture->GetHeight() + bottom_padding);
         float texture_shrink_percentage   = min(texture_shrink_percentage_x, texture_shrink_percentage_y);
@@ -112,36 +112,32 @@ void TextureViewer::TickVisible()
         ImGui::BeginGroup();
         {
             // Information
-            ImGui::Text(
-                string(
-                    "Name: "       + texture->GetObjectName() +
-                    ", Size: "     + to_string(texture->GetWidth()) + "x" + to_string(texture->GetHeight()) +
-                    ", Channels: " + to_string(texture->GetChannelCount()) +
-                    ", Format: "   + RhiFormatToString(texture->GetFormat())
-                ).c_str()
-            );
-
             ImGui::BeginGroup();
-            {
-                // Channels
-                ImGui::BeginGroup();
-                ImGui::Text("Channels");
-                ImGui::Checkbox("R", &m_channel_r);
-                ImGui::Checkbox("G", &m_channel_g);
-                ImGui::Checkbox("B", &m_channel_b);
-                ImGui::Checkbox("A", &m_channel_a);
-                ImGui::EndGroup();
+            ImGui::Text(("Name: " + texture->GetObjectName()).c_str());
+            ImGui::Text(("Dimensions: " + to_string(texture->GetWidth()) + "x" + to_string(texture->GetHeight())).c_str());
+            ImGui::Text(("Channels: " + to_string(texture->GetChannelCount())).c_str());
+            ImGui::Text(("Format: " + RhiFormatToString(texture->GetFormat())).c_str());
+            ImGui::EndGroup();
 
-                // Misc
-                ImGui::SameLine();
-                ImGui::BeginGroup();
-                ImGui::Checkbox("Gamma correct", &m_gamma_correct);
-                ImGui::Checkbox("Pack", &m_pack);
-                ImGui::Checkbox("Boost", &m_boost);
-                ImGui::Checkbox("Abs", &m_abs);
-                ImGui::Checkbox("Point sampling", &m_point_sampling);
-                ImGui::EndGroup();
-            }
+            // Channels
+            ImGui::SameLine();
+            ImGui::BeginGroup();
+            ImGui::Text("Channels");
+            ImGui::Checkbox("R", &m_channel_r);
+            ImGui::Checkbox("G", &m_channel_g);
+            ImGui::Checkbox("B", &m_channel_b);
+            ImGui::Checkbox("A", &m_channel_a);
+            ImGui::EndGroup();
+
+            // Misc
+            ImGui::SameLine();
+            ImGui::BeginGroup();
+            ImGui::Checkbox("Gamma correct", &m_gamma_correct);
+            ImGui::Checkbox("Pack", &m_pack);
+            ImGui::Checkbox("Boost", &m_boost);
+            ImGui::Checkbox("Abs", &m_abs);
+            ImGui::Checkbox("Point sampling", &m_point_sampling);
+            ImGui::EndGroup();
         }
         ImGui::EndGroup();
 
