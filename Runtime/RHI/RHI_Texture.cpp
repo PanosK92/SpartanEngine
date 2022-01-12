@@ -379,6 +379,18 @@ namespace Spartan
         return m_data[array_index];
     }
 
+    void RHI_Texture::SetFlag(const uint32_t flag, bool enabled /*= true*/)
+    {
+        if (enabled)
+        {
+            m_flags |= flag;
+        }
+        else
+        {
+            m_flags &= ~flag;
+        }
+    }
+    
     bool RHI_Texture::Compress(const RHI_Format format)
     {
         bool success = true;

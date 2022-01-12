@@ -41,6 +41,15 @@ public:
 
 private:
     Spartan::Renderer* m_renderer = nullptr;
-    uint32_t m_texture_index      = 0;
+    uint32_t m_texture_index      = 1;
     bool m_magnifying_glass       = false;
+    bool m_channel_r              = true;
+    bool m_channel_g              = true;
+    bool m_channel_b              = true;
+    bool m_channel_a              = true;
+    bool m_gamma_correct          = false;
+    bool m_pack                   = false;
+    bool m_boost                  = false;
+    bool m_abs                    = false;
+    bool m_point_sampling         = false;
 };

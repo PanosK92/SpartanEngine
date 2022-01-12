@@ -444,8 +444,8 @@ namespace ImGuiEx
             *selection_index = option_count - 1;
         }
 
-        bool selection_made             = false;
-        std::string selection_string    = options[*selection_index];
+        bool selection_made          = false;
+        std::string selection_string = options[*selection_index];
 
         if (ImGui::BeginCombo(label, selection_string.c_str()))
         {

@@ -453,9 +453,6 @@ namespace Spartan
 
         // Debug
         {
-            m_shaders[Renderer::Shader::Debug_Texture_C] = make_shared<RHI_Shader>(m_context);
-            m_shaders[Renderer::Shader::Debug_Texture_C]->Compile(RHI_Shader_Compute, dir_shaders + "debug_texture.hlsl", async);
-
             m_shaders[Renderer::Shader::Debug_ReflectionProbe_V] = make_shared<RHI_Shader>(m_context, RHI_Vertex_Type::PosTexNorTan);
             m_shaders[Renderer::Shader::Debug_ReflectionProbe_V]->Compile(RHI_Shader_Vertex, dir_shaders + "debug_reflection_probe.hlsl", async);
             m_shaders[Renderer::Shader::Debug_ReflectionProbe_P] = make_shared<RHI_Shader>(m_context);

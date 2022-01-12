@@ -135,7 +135,7 @@ namespace Spartan
         Math::Vector2 resolution_rt;
 
         Math::Vector2 resolution_in;
-        uint32_t options_debug;
+        uint32_t options_texture_visualisation;
         float radius;
 
         Math::Vector4 mat_color;
@@ -162,29 +162,29 @@ namespace Spartan
         bool operator==(const Cb_Uber& rhs) const
         {
             return
-                transform                   == rhs.transform                   &&
-                transform_previous          == rhs.transform_previous          &&
-                mat_id                      == rhs.mat_id                      &&
-                mat_color                   == rhs.mat_color                   &&
-                mat_tiling_uv               == rhs.mat_tiling_uv               &&
-                mat_offset_uv               == rhs.mat_offset_uv               &&
-                mat_roughness_mul           == rhs.mat_roughness_mul           &&
-                mat_metallic_mul            == rhs.mat_metallic_mul            &&
-                mat_normal_mul              == rhs.mat_normal_mul              &&
-                mat_height_mul              == rhs.mat_height_mul              &&
-                float3                      == rhs.float3                      &&
-                blur_sigma                  == rhs.blur_sigma                  &&
-                blur_direction              == rhs.blur_direction              &&
-                is_transparent_pass         == rhs.is_transparent_pass         &&
-                resolution_rt               == rhs.resolution_rt               &&
-                resolution_in               == rhs.resolution_in               &&
-                mip_count                   == rhs.mip_count                   &&
-                work_group_count            == rhs.work_group_count            &&
-                reflection_proble_available == rhs.reflection_proble_available &&
-                radius                      == rhs.radius                      &&
-                extents                     == rhs.extents                     &&
-                mat_textures                == rhs.mat_textures                &&
-                options_debug               == rhs.options_debug;
+                transform                     == rhs.transform                   &&
+                transform_previous            == rhs.transform_previous          &&
+                mat_id                        == rhs.mat_id                      &&
+                mat_color                     == rhs.mat_color                   &&
+                mat_tiling_uv                 == rhs.mat_tiling_uv               &&
+                mat_offset_uv                 == rhs.mat_offset_uv               &&
+                mat_roughness_mul             == rhs.mat_roughness_mul           &&
+                mat_metallic_mul              == rhs.mat_metallic_mul            &&
+                mat_normal_mul                == rhs.mat_normal_mul              &&
+                mat_height_mul                == rhs.mat_height_mul              &&
+                float3                        == rhs.float3                      &&
+                blur_sigma                    == rhs.blur_sigma                  &&
+                blur_direction                == rhs.blur_direction              &&
+                is_transparent_pass           == rhs.is_transparent_pass         &&
+                resolution_rt                 == rhs.resolution_rt               &&
+                resolution_in                 == rhs.resolution_in               &&
+                mip_count                     == rhs.mip_count                   &&
+                work_group_count              == rhs.work_group_count            &&
+                reflection_proble_available   == rhs.reflection_proble_available &&
+                radius                        == rhs.radius                      &&
+                extents                       == rhs.extents                     &&
+                mat_textures                  == rhs.mat_textures                &&
+                options_texture_visualisation == rhs.options_texture_visualisation;
         }
 
         bool operator!=(const Cb_Uber& rhs) const { return !(*this == rhs); }

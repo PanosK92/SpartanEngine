@@ -419,6 +419,13 @@ void RenderOptions::TickVisible()
 
                 // Reverse-Z
                 helper::CheckBox("Depth Reverse-Z", do_reverse_z);
+
+                // Performance metrics
+                if (helper::CheckBox("Performance Metrics", debug_performance_metrics) && !m_renderer->GetOption(Renderer::Option::Debug_PerformanceMetrics))
+                {
+                    // Reset metrics on activation
+                    m_profiler->ResetMetrics();
+                }
             }
 
             if (helper::Option("Editor", false))
@@ -439,40 +446,6 @@ void RenderOptions::TickVisible()
                 helper::CheckBox("Grid",                                debug_grid);
                 helper::CheckBox("Reflection probes",                   debug_reflection_probes);
                 helper::CheckBox("Wireframe",                           debug_wireframe);
-            }
-
-            if (helper::Option("Debug", false))
-            {
-                // Performance metrics
-                if (helper::CheckBox("Performance Metrics", debug_performance_metrics) && !m_renderer->GetOption(Renderer::Option::Debug_PerformanceMetrics))
-                {
-                    // Reset metrics on activation
-                    m_profiler->ResetMetrics();
-                }
-
-                // Render target
-                {
-                    // Get render targets
-                    static vector<string> render_target_options;
-                    if (render_target_options.empty())
-                    {
-                        render_target_options.emplace_back("None");
-                        for (const shared_ptr<RHI_Texture>& render_target : m_renderer->GetRenderTargets())
-                        {
-                            if (render_target)
-                            {
-                                render_target_options.emplace_back(render_target->GetObjectName());
-                            }
-                        }
-                    }
-
-                    // Combo box
-                    uint32_t selection_index = static_cast<uint32_t>(m_renderer->GetRenderTargetDebug());
-                    if (helper::ComboBox("Render target", render_target_options, selection_index))
-                    {
-                        m_renderer->SetRenderTargetDebug(static_cast<Renderer::RenderTarget>(selection_index));
-                    }
-                }
             }
 
             ImGui::EndTable();

@@ -59,13 +59,17 @@ void TextureViewer::TickVisible()
     }
 
     // Display them in a combo box.
-    ImGuiEx::ComboBox("Render target", render_target_options, &m_texture_index);
+    ImGui::Text("Render target");
+    ImGui::SameLine();
+    ImGuiEx::ComboBox("##render_target", render_target_options, &m_texture_index);
 
     // Display the selected texture
     if (shared_ptr<RHI_Texture> texture = m_renderer->GetRenderTarget(static_cast<Renderer::RenderTarget>(m_texture_index)))
     {
+        texture->SetFlag(RHI_Texture_Flags::RHI_Texture_Visualise);
+
         // Calculate a percentage that once multiplied with the texture dimensions, the texture will always be displayed within the window.
-        float bottom_padding              = 100.0f; // to fit the information text
+        float bottom_padding              = 250.0f; // to fit the information text
         float texture_shrink_percentage_x = ImGui::GetWindowWidth() / static_cast<float>(texture->GetWidth());
         float texture_shrink_percentage_y = ImGui::GetWindowHeight() / static_cast<float>(texture->GetHeight() + bottom_padding);
         float texture_shrink_percentage   = min(texture_shrink_percentage_x, texture_shrink_percentage_y);
@@ -101,17 +105,55 @@ void TextureViewer::TickVisible()
             ImGui::EndTooltip();
         }
 
-        ImGui::Checkbox("Magnifying glass", &m_magnifying_glass);
+        // Disable for now as it's buggy.
+        //ImGui::Checkbox("Magnifying glass", &m_magnifying_glass);
 
-        // Information
-        ImGui::SameLine();
-        ImGui::Text(
-            string(
-                "Name: "       + texture->GetObjectName() +
-                ", Size: "     + to_string(texture->GetWidth()) + "x" + to_string(texture->GetHeight()) +
-                ", Channels: " + to_string(texture->GetChannelCount()) +
-                ", Format: "   + RhiFormatToString(texture->GetFormat())
-            ).c_str()
-        );
+        // Properties
+        ImGui::BeginGroup();
+        {
+            // Information
+            ImGui::Text(
+                string(
+                    "Name: "       + texture->GetObjectName() +
+                    ", Size: "     + to_string(texture->GetWidth()) + "x" + to_string(texture->GetHeight()) +
+                    ", Channels: " + to_string(texture->GetChannelCount()) +
+                    ", Format: "   + RhiFormatToString(texture->GetFormat())
+                ).c_str()
+            );
+
+            ImGui::BeginGroup();
+            {
+                // Channels
+                ImGui::BeginGroup();
+                ImGui::Text("Channels");
+                ImGui::Checkbox("R", &m_channel_r);
+                ImGui::Checkbox("G", &m_channel_g);
+                ImGui::Checkbox("B", &m_channel_b);
+                ImGui::Checkbox("A", &m_channel_a);
+                ImGui::EndGroup();
+
+                // Misc
+                ImGui::SameLine();
+                ImGui::BeginGroup();
+                ImGui::Checkbox("Gamma correct", &m_gamma_correct);
+                ImGui::Checkbox("Pack", &m_pack);
+                ImGui::Checkbox("Boost", &m_boost);
+                ImGui::Checkbox("Abs", &m_abs);
+                ImGui::Checkbox("Point sampling", &m_point_sampling);
+                ImGui::EndGroup();
+            }
+        }
+        ImGui::EndGroup();
+
+        // Map changes to texture
+        texture->SetFlag(RHI_Texture_Flags::RHI_Texture_Visualise_Channel_R,    m_channel_r);
+        texture->SetFlag(RHI_Texture_Flags::RHI_Texture_Visualise_Channel_G,    m_channel_g);
+        texture->SetFlag(RHI_Texture_Flags::RHI_Texture_Visualise_Channel_B,    m_channel_b);
+        texture->SetFlag(RHI_Texture_Flags::RHI_Texture_Visualise_Channel_A,    m_channel_a);
+        texture->SetFlag(RHI_Texture_Flags::RHI_Texture_Visualise_GammaCorrect, m_gamma_correct);
+        texture->SetFlag(RHI_Texture_Flags::RHI_Texture_Visualise_Pack,         m_pack);
+        texture->SetFlag(RHI_Texture_Flags::RHI_Texture_Visualise_Boost,        m_boost);
+        texture->SetFlag(RHI_Texture_Flags::RHI_Texture_Visualise_Abs,          m_abs);
+        texture->SetFlag(RHI_Texture_Flags::RHI_Texture_Visualise_Sample_Point, m_point_sampling);
     }
 }

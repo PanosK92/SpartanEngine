@@ -81,7 +81,7 @@ cbuffer BufferUber : register(b1)
     float2 g_resolution_rt;
 
     float2 g_resolution_in;
-    uint g_options_debug;
+    uint g_texture_flags;
     float g_radius;
 
     float4 g_mat_color;
@@ -155,16 +155,17 @@ bool is_volumetric_fog_enabled()       { return g_options & uint(1U << 3);}
 bool is_screen_space_shadows_enabled() { return g_options & uint(1U << 4);}
 bool is_ssao_gi_enabled()              { return g_options & uint(1U << 5);}
 
-// Options debug
-bool has_uav()                { return g_options_debug & uint(1U << 0); }
-bool needs_packing()          { return g_options_debug & uint(1U << 1); }
-bool needs_gamma_correction() { return g_options_debug & uint(1U << 2); }
-bool needs_boost()            { return g_options_debug & uint(1U << 3); }
-bool needs_abs()              { return g_options_debug & uint(1U << 4); }
-bool needs_channel_r()        { return g_options_debug & uint(1U << 5); }
-bool needs_channel_a()        { return g_options_debug & uint(1U << 6); }
-bool needs_channel_rg()       { return g_options_debug & uint(1U << 7); }
-bool needs_channel_rgb()      { return g_options_debug & uint(1U << 8); }
+// Options texture visualisation
+bool texture_visualise()        { return g_texture_flags & uint(1U << 12); }
+bool texture_pack()             { return g_texture_flags & uint(1U << 13); }
+bool texture_gamma_correction() { return g_texture_flags & uint(1U << 14); }
+bool texture_boost()            { return g_texture_flags & uint(1U << 15); }
+bool texture_abs()              { return g_texture_flags & uint(1U << 16); }
+bool texture_channel_r()        { return g_texture_flags & uint(1U << 17); }
+bool texture_channel_g()        { return g_texture_flags & uint(1U << 18); }
+bool texture_channel_b()        { return g_texture_flags & uint(1U << 19); }
+bool texture_channel_a()        { return g_texture_flags & uint(1U << 20); }
+bool texture_sample_point()     { return g_texture_flags & uint(1U << 21); }
 
 // Misc
 bool is_opaque_pass()      { return g_is_transparent_pass == 0; }
