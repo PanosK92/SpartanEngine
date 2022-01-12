@@ -31,6 +31,7 @@
 #define SP_ASSERT(expression) \
 if (!(##expression))          \
 {                             \
+    LOG_TO_FILE(true)         \
     LOG_ERROR(#expression);   \
     SP_DEBUG_BREAK();         \
 }

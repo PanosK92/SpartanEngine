@@ -61,11 +61,9 @@ PixelInputType mainVS(Vertex_PosUvNorTan input)
 PixelOutputType mainPS(PixelInputType input)
 {
     // Velocity
-    float2 position_ndc_current  = (input.position_ss_current.xy / input.position_ss_current.w);
-    float2 position_ndc_previous = (input.position_ss_previous.xy / input.position_ss_previous.w);
-    float2 position_delta        = position_ndc_current - position_ndc_previous;
-    float2 velocity              = (position_delta - g_taa_jitter_offset); // remove TAA jitter
-    velocity                     *= float2(0.5f, -0.5f);                   // to uv (no need for +0.5f since it's a delta, not a position)
+    float2 position_uv_current  = ndc_to_uv((input.position_ss_current.xy / input.position_ss_current.w) - g_taa_jitter_current);
+    float2 position_uv_previous = ndc_to_uv((input.position_ss_previous.xy / input.position_ss_previous.w) - g_taa_jitter_previous);
+    float2 velocity_uv          = position_uv_current - position_uv_previous;
 
     // TBN
     float3x3 TBN = 0.0f;
@@ -165,7 +163,8 @@ PixelOutputType mainPS(PixelInputType input)
     g_buffer.albedo   = albedo;
     g_buffer.normal   = float4(normal, pack_uint32_to_float16(g_mat_id));
     g_buffer.material = float4(roughness, metallic, emission, occlusion);
-    g_buffer.velocity = velocity;
+    g_buffer.velocity = velocity_uv;
 
     return g_buffer;
 }
+

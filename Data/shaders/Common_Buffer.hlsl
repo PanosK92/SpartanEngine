@@ -56,13 +56,16 @@ cbuffer BufferFrame : register(b0)
     float2 g_resolution_render;
     float2 g_resolution_output;
 
-    float2 g_taa_jitter_offset;
+    float2 g_taa_jitter_current;
+    float2 g_taa_jitter_previous;
+
     float g_fog_density;
     uint g_options;
-
     uint g_frame_mip_count;
     uint g_ssr_mip_count;
+
     float2 g_resolution_environment;
+    float2 g_padding;
 };
 
 // Medium frequency - Updates per render pass
@@ -100,7 +103,7 @@ cbuffer BufferUber : register(b1)
     uint g_work_group_count;
 
     uint g_reflection_probe_available;
-    float3 g_padding;
+    float3 g_padding2;
 };
 
 // High frequency - Updates per light
@@ -144,7 +147,7 @@ bool light_has_shadows_screen_space() { return cb_options & uint(1U << 5);}
 bool light_is_volumetric()            { return cb_options & uint(1U << 6);}
 
 // Options passes
-bool is_taa_enabled()                  { return any(g_taa_jitter_offset); }
+bool is_taa_enabled()                  { return any(g_taa_jitter_current); }
 bool is_ssr_enabled()                  { return g_options & uint(1U << 0);}
 bool is_taa_upsampling_enabled()       { return g_options & uint(1U << 1);}
 bool is_ssao_enabled()                 { return g_options & uint(1U << 2);}
