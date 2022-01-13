@@ -39,11 +39,9 @@ namespace Spartan
 {
     Environment::Environment(Context* context, Entity* entity, uint64_t id /*= 0*/) : IComponent(context, entity, id)
     {
-        m_environment_type = Environment_Sphere;
-
         // Default texture paths
         const string dir_cubemaps = GetContext()->GetSubsystem<ResourceCache>()->GetResourceDirectory(ResourceDirectory::Cubemaps) + "/";
-        if (m_environment_type == Enviroment_Cubemap)
+        if (m_environment_type == EnvironmentType::Cubemap)
         {
             m_file_paths =
             {
@@ -55,7 +53,7 @@ namespace Spartan
                 dir_cubemaps + "array/Z+.tga"  // front
             };
         }
-        else if (m_environment_type == Environment_Sphere)
+        else if (m_environment_type == EnvironmentType::Sphere)
         {
             m_file_paths = { dir_cubemaps + "syferfontein_0d_clear_4k.hdr" };
         }
@@ -82,17 +80,17 @@ namespace Spartan
 
     void Environment::Deserialize(FileStream* stream)
     {
-        m_environment_type = static_cast<Environment_Type>(stream->ReadAs<uint8_t>());
+        m_environment_type = static_cast<EnvironmentType>(stream->ReadAs<uint8_t>());
         stream->Read(&m_file_paths);
 
         m_context->GetSubsystem<Threading>()->AddTask([this]
         {
-            if (m_environment_type == Enviroment_Cubemap)
+            if (m_environment_type == EnvironmentType::Cubemap)
             {
                 SetFromTextureArray(m_file_paths);
                 
             }
-            else if (m_environment_type == Environment_Sphere)
+            else if (m_environment_type == EnvironmentType::Sphere)
             {
                 
                 SetFromTextureSphere(m_file_paths.front());

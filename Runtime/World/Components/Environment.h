@@ -28,10 +28,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-    enum Environment_Type
+    enum class EnvironmentType
     {
-        Enviroment_Cubemap,
-        Environment_Sphere
+        Cubemap,
+        Sphere
     };
 
     class SPARTAN_CLASS Environment : public IComponent
@@ -57,7 +57,7 @@ namespace Spartan
 
         std::vector<std::string> m_file_paths;
         std::shared_ptr<RHI_Texture> m_texture;
-        Environment_Type m_environment_type;
-        bool m_is_dirty = false;
+        EnvironmentType m_environment_type = EnvironmentType::Sphere;
+        bool m_is_dirty                    = false;
     };
 }

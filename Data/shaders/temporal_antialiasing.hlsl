@@ -328,9 +328,9 @@ float get_factor_dissoclusion(float2 uv_reprojected, float2 velocity)
 {
 
     float2 velocity_previous = tex_velocity_previous[uv_reprojected * g_resolution_render].xy;
-    float dissoclusion       = length(velocity_previous - velocity) - 0.00001f;
+    float dissoclusion       = length(velocity_previous - velocity) - 0.0001f;
 
-    return saturate(dissoclusion * 100000.0f);
+    return saturate(dissoclusion * 100.0f);
 }
 
 float3 temporal_antialiasing(uint2 pos_group_top_left, uint2 pos_group, uint2 pos_screen, float2 uv, Texture2D tex_history)
@@ -360,7 +360,7 @@ float3 temporal_antialiasing(uint2 pos_group_top_left, uint2 pos_group, uint2 po
 
         // Increase blend factor when there is dissoclusion (fixes a lot of the remaining ghosting).
         float factor_dissoclusion = get_factor_dissoclusion(uv_reprojected, velocity);
-        
+
         // Add to the blend factor
         blend_factor = saturate(blend_factor + factor_screen + factor_dissoclusion);
     }
@@ -398,3 +398,4 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID, uint3 group_thread_id : SV_Gr
 
     tex_out_rgb[thread_id.xy] = temporal_antialiasing(pos_group_top_left, pos_group, pos_screen, uv, tex);
 }
+
