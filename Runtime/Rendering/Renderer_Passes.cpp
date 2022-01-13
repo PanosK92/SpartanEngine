@@ -581,12 +581,12 @@ namespace Spartan
         m_material_instances.fill(nullptr);
         auto& entities = m_entities[is_transparent_pass ? ObjectType::GeometryTransparent : ObjectType::GeometryOpaque];
 
+        // Keep previous velocity (for TAA).
+        cmd_list->Blit(tex_velocity, tex_velocity_previous_frame);
+
         // Record commands
         if (cmd_list->BeginRenderPass(pso))
         {
-            // Keep previous velocity (for TAA).
-            cmd_list->Blit(tex_velocity, tex_velocity_previous_frame);
-
             for (uint32_t i = 0; i < static_cast<uint32_t>(entities.size()); i++)
             {
                 Entity* entity = entities[i];
