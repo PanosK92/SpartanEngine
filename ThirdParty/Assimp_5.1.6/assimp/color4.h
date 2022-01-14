@@ -5,8 +5,6 @@ Open Asset Import Library (assimp)
 
 Copyright (c) 2006-2021, assimp team
 
-
-
 All rights reserved.
 
 Redistribution and use of this software in source and binary forms,
@@ -40,72 +38,64 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ---------------------------------------------------------------------------
 */
-/** @file vector2.h
- *  @brief 2D vector structure, including operators when compiling in C++
+/** @file color4.h
+ *  @brief RGBA color structure, including operators when compiling in C++
  */
 #pragma once
-#ifndef AI_VECTOR2D_H_INC
-#define AI_VECTOR2D_H_INC
+#ifndef AI_COLOR4D_H_INC
+#define AI_COLOR4D_H_INC
 
 #ifdef __GNUC__
 #   pragma GCC system_header
 #endif
 
-#ifdef __cplusplus
-#   include <cmath>
-#else
-#   include <math.h>
-#endif
+#include <assimp/defs.h>
 
-#include "defs.h"
+#ifdef __cplusplus
 
 // ----------------------------------------------------------------------------------
-/** Represents a two-dimensional vector.
- */
-
-#ifdef __cplusplus
+/** Represents a color in Red-Green-Blue space including an
+*   alpha component. Color values range from 0 to 1. */
+// ----------------------------------------------------------------------------------
 template <typename TReal>
-class aiVector2t {
+class aiColor4t {
 public:
-    aiVector2t () : x(), y() {}
-    aiVector2t (TReal _x, TReal _y) : x(_x), y(_y) {}
-    explicit aiVector2t (TReal _xyz) : x(_xyz), y(_xyz) {}
-    aiVector2t (const aiVector2t& o) = default;
+    aiColor4t() AI_NO_EXCEPT : r(), g(), b(), a() {}
+    aiColor4t (TReal _r, TReal _g, TReal _b, TReal _a)
+        : r(_r), g(_g), b(_b), a(_a) {}
+    explicit aiColor4t (TReal _r) : r(_r), g(_r), b(_r), a(_r) {}
+    aiColor4t (const aiColor4t& o) = default;
 
-    void Set( TReal pX, TReal pY);
-    TReal SquareLength() const ;
-    TReal Length() const ;
-    aiVector2t& Normalize();
+    // combined operators
+    const aiColor4t& operator += (const aiColor4t& o);
+    const aiColor4t& operator -= (const aiColor4t& o);
+    const aiColor4t& operator *= (TReal f);
+    const aiColor4t& operator /= (TReal f);
 
-    const aiVector2t& operator += (const aiVector2t& o);
-    const aiVector2t& operator -= (const aiVector2t& o);
-    const aiVector2t& operator *= (TReal f);
-    const aiVector2t& operator /= (TReal f);
+    // comparison
+    bool operator == (const aiColor4t& other) const;
+    bool operator != (const aiColor4t& other) const;
+    bool operator <  (const aiColor4t& other) const;
 
-    TReal operator[](unsigned int i) const;
+    // color tuple access, rgba order
+    inline TReal operator[](unsigned int i) const;
+    inline TReal& operator[](unsigned int i);
 
-    bool operator== (const aiVector2t& other) const;
-    bool operator!= (const aiVector2t& other) const;
+    /** check whether a color is (close to) black */
+    inline bool IsBlack() const;
 
-    bool Equal(const aiVector2t& other, TReal epsilon = 1e-6) const;
+    // Red, green, blue and alpha color values
+    TReal r, g, b, a;
+};  // !struct aiColor4D
 
-    aiVector2t& operator= (TReal f);
-    const aiVector2t SymMul(const aiVector2t& o);
-
-    template <typename TOther>
-    operator aiVector2t<TOther> () const;
-
-    TReal x, y;
-};
-
-typedef aiVector2t<ai_real> aiVector2D;
+typedef aiColor4t<ai_real> aiColor4D;
 
 #else
 
-struct aiVector2D {
-    ai_real x, y;
+struct aiColor4D {
+    ai_real r, g, b, a;
 };
 
 #endif // __cplusplus
 
-#endif // AI_VECTOR2D_H_INC
+#endif // AI_COLOR4D_H_INC
