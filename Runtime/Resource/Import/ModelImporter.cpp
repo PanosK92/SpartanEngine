@@ -346,22 +346,22 @@ namespace Spartan
             aiProcess_MakeLeftHanded |           // directx style.
             aiProcess_FlipUVs |                  // directx style.
             aiProcess_FlipWindingOrder |         // directx style.
-            aiProcess_CalcTangentSpace |         
-            aiProcess_GenSmoothNormals |         
-            aiProcess_JoinIdenticalVertices |    
-            aiProcess_OptimizeMeshes |           // reduce the number of meshes
+            aiProcess_CalcTangentSpace |
+            aiProcess_GenSmoothNormals |
+            aiProcess_GenUVCoords |
+            aiProcess_JoinIdenticalVertices |
             aiProcess_ImproveCacheLocality |     // re-order triangles for better vertex cache locality.
-            aiProcess_RemoveRedundantMaterials | // remove redundant/unreferenced materials.
-            aiProcess_LimitBoneWeights |         
-            aiProcess_SplitLargeMeshes |         
-            aiProcess_Triangulate |              
-            aiProcess_GenUVCoords |              
+            aiProcess_LimitBoneWeights |
+            aiProcess_Triangulate |
             aiProcess_SortByPType |              // splits meshes with more than one primitive type in homogeneous sub-meshes.
             aiProcess_FindDegenerates |          // convert degenerate primitives to proper lines or points.
             aiProcess_FindInvalidData |
             aiProcess_FindInstances |
-            aiProcess_ValidateDataStructure |
-            aiProcess_Debone;
+            aiProcess_ValidateDataStructure;
+            //aiProcess_Debone|
+            //aiProcess_SplitLargeMeshes |
+            //aiProcess_OptimizeMeshes |           // reduce the number of meshes
+            //aiProcess_RemoveRedundantMaterials | // remove redundant/unreferenced materials.
 
         // aiProcess_FixInfacingNormals - is not reliable and fails often.
         // aiProcess_OptimizeGraph      - works but because it merges as nodes as possible, you can't really click and select anything other than the entire thing.
@@ -374,8 +374,8 @@ namespace Spartan
             compute_node_count(scene->mRootNode, &job_count);
             ProgressTracker::Get().SetJobCount(ProgressType::ModelImporter, job_count);
 
-            params.scene            = scene;
-            params.has_animation    = scene->mNumAnimations != 0;
+            params.scene         = scene;
+            params.has_animation = scene->mNumAnimations != 0;
 
             // Create root entity to match Assimp's root node
             const bool is_active = false;
