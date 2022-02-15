@@ -41,7 +41,7 @@ namespace Spartan
         {
         public:
             Ray() = default;
-            Ray(const Vector3& start, const Vector3& end);
+            Ray(const Vector3& start, const Vector3& direction);
             ~Ray() = default;
 
             // Returns hit distance or infinity if there is no hit.
@@ -50,16 +50,19 @@ namespace Spartan
             float HitDistance(const Vector3& v1, const Vector3& v2, const Vector3& v3, Vector3* out_normal = nullptr, Vector3* out_bary = nullptr) const;
             float HitDistance(const Sphere& sphere) const;
 
-            const auto& GetStart()     const { return m_start; }
-            const auto& GetEnd()       const { return m_end; }
-            const auto& GetLength()    const { return m_length; }
-            const auto& GetDirection() const { return m_direction; }
+            // Returns the distance.
+            float Distance(const Vector3& point) const;
+            float Distance(const Vector3& point, Vector3& closest_point) const;
+
+            // Returns the closest point.
+            Vector3 ClosestPoint(const Ray& ray) const;
+
+            const Vector3& GetStart()     const { return m_origin; }
+            const Vector3& GetDirection() const { return m_direction; }
 
         private:
-            Vector3 m_start;
-            Vector3 m_end;
+            Vector3 m_origin;
             Vector3 m_direction;
-            float m_length = 0.0f;
         };
     }
 }

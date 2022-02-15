@@ -377,7 +377,7 @@ namespace Spartan
         m_frame_num++;
         m_is_odd_frame = (m_frame_num % 2) == 1;
     }
-
+    
     void Renderer::SetViewport(float width, float height)
     {
         if (m_viewport.width != width || m_viewport.height != height)

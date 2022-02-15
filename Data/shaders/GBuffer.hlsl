@@ -72,8 +72,13 @@ PixelOutputType mainPS(PixelInputType input)
         TBN = makeTBN(input.normal, input.tangent);
     }
 
+    // Compute UV coordinates.
+    float2 taa_jitter_uv_space = ddx_fine(input.uv) * g_taa_jitter_current.x + ddy_fine(input.uv) * g_taa_jitter_current.y;
+    float2 uv                  = input.uv - ((float) is_taa_enabled() * taa_jitter_uv_space);                            // If TAA is enabled, remove jitter (less blurring).
+    uv                         = float2(uv.x * g_mat_tiling.x + g_mat_offset.x, uv.y * g_mat_tiling.y + g_mat_offset.y); // Apply material tiling and offset.
+
     // Parallax mapping
-    float2 uv = float2(input.uv.x * g_mat_tiling.x + g_mat_offset.x, input.uv.y * g_mat_tiling.y + g_mat_offset.y);
+    
     if (has_texture_height())
     {
         float height_scale     = g_mat_height * 0.04f;
@@ -167,4 +172,5 @@ PixelOutputType mainPS(PixelInputType input)
 
     return g_buffer;
 }
+
 

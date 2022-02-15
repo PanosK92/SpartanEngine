@@ -47,7 +47,7 @@ namespace Spartan
         TransformOperator(Context* context, const TransformHandleType transform_handle_type);
         ~TransformOperator() = default;
 
-        bool Tick(TransformHandleSpace space, Entity* entity, Camera* camera, float handle_size, float handle_speed);
+        void Tick(TransformHandleSpace space, Entity* entity, Camera* camera, float handle_size);
         const Math::Matrix& GetTransform(const Math::Vector3& axis) const;
         const Math::Vector3& GetColor(const Math::Vector3& axis) const;
         const RHI_VertexBuffer* GetVertexBuffer();
@@ -57,13 +57,15 @@ namespace Spartan
         bool IsHovered() const;
 
     private:
-        void ReflectEntityTransform(TransformHandleSpace space, Entity* entity, Camera* camera, float handle_size);
-        void UpdateHandleAxesState();
-        void UpdateHandleAxesMouseDelta(Camera* camera, const Math::Vector3& ray_end, const float handle_speed);
+        void SnapToTransform(TransformHandleSpace space, Entity* entity, Camera* camera, float handle_size);
 
     protected:
-        // Test if the ray intersects any of the handles
-        virtual void InteresectionTest(const Math::Ray& camera_to_pixel) = 0;
+        // Test if the mouse ray intersects any of the handles.
+        virtual void InteresectionTest(const Math::Ray& mouse_ray) = 0;
+        // Compute transformation (position, rotation or scale) delta.
+        virtual void ComputeDelta(const Math::Ray& mouse_ray, const Camera* camera) = 0;
+        // Map the transformation delta to the entity's transform.
+        virtual void MapToTransform(Transform* transform, const TransformHandleSpace space) = 0;
 
         TransformOperatorAxis m_handle_x;
         TransformOperatorAxis m_handle_y;
@@ -74,9 +76,11 @@ namespace Spartan
         bool m_handle_z_intersected           = false;
         bool m_handle_xyz_intersected         = false;
         TransformHandleType m_type            = TransformHandleType::Unknown;
-        Math::Vector3 m_ray_previous          = Math::Vector3::Zero;
-        Math::Vector3 m_ray_current           = Math::Vector3::Zero;
         bool m_offset_handle_axes_from_center = true;
+        float m_offset_handle_from_center     = 0.0f;
+        Math::Vector3 m_position              = Math::Vector3::Zero;
+        Math::Vector3 m_rotation              = Math::Vector3::Zero;
+        Math::Vector3 m_scale                 = Math::Vector3::Zero;
         Context* m_context                    = nullptr;
         Renderer* m_renderer                  = nullptr;
         Input* m_input                        = nullptr;

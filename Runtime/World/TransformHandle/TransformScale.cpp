@@ -24,6 +24,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "TransformScale.h"
 #include "../../Utilities/Geometry.h"
 #include "../../Rendering/Model.h"
+#include "../Components/Camera.h"
+#include "../Components/Transform.h"
 //===================================
 
 //= NAMESPACES ===============
@@ -60,12 +62,78 @@ namespace Spartan
         m_offset_handle_axes_from_center = true;
     }
 
-    void TransformScale::InteresectionTest(const Math::Ray& camera_to_mouse)
+    void TransformScale::InteresectionTest(const Math::Ray& mouse_ray)
     {
         // Test if the ray intersects any of the handles
-        m_handle_x_intersected   = camera_to_mouse.HitDistance(m_handle_x.m_box_transformed)   != Math::Helper::INFINITY_;
-        m_handle_y_intersected   = camera_to_mouse.HitDistance(m_handle_y.m_box_transformed)   != Math::Helper::INFINITY_;
-        m_handle_z_intersected   = camera_to_mouse.HitDistance(m_handle_z.m_box_transformed)   != Math::Helper::INFINITY_;
-        m_handle_xyz_intersected = camera_to_mouse.HitDistance(m_handle_xyz.m_box_transformed) != Math::Helper::INFINITY_;
+        m_handle_x_intersected   = mouse_ray.HitDistance(m_handle_x.m_box_transformed)   != Math::Helper::INFINITY_;
+        m_handle_y_intersected   = mouse_ray.HitDistance(m_handle_y.m_box_transformed)   != Math::Helper::INFINITY_;
+        m_handle_z_intersected   = mouse_ray.HitDistance(m_handle_z.m_box_transformed)   != Math::Helper::INFINITY_;
+        m_handle_xyz_intersected = mouse_ray.HitDistance(m_handle_xyz.m_box_transformed) != Math::Helper::INFINITY_;
+    }
+
+    static Vector3 GetMousePointOnAxis(const Camera* camera, const Ray& mouse_ray, const TransformOperatorAxis& axis_handle)
+    {
+        // Find the intersection point between the camera plane and the mouse ray.
+        Vector3 normal             = camera->GetTransform()->GetForward();
+        float distance_from_origin = 0.0f;
+        Plane screen_plane         = Plane(normal, distance_from_origin);
+        Vector3 plane_interesection_point = Vector3::Zero;
+        mouse_ray.HitDistance(screen_plane, &plane_interesection_point);
+
+        // Find the point on the z-axis which is the closest to the ray-plane intersection point.
+        Vector3 closest_point = Vector3::Zero;
+        Ray(Vector3::Zero, axis_handle.m_axis).Distance(plane_interesection_point, closest_point);
+
+        return closest_point;
+    }
+
+    void TransformScale::ComputeDelta(const Math::Ray& mouse_ray, const Camera* camera)
+    {
+        Vector3 mouse_point_on_axis = Vector3::Zero;
+        float sign = 1.0f;
+
+        if (m_handle_x.m_is_editing)
+        {
+            mouse_point_on_axis = GetMousePointOnAxis(camera, mouse_ray, m_handle_x);
+        }
+        else if (m_handle_y.m_is_editing)
+        {
+            mouse_point_on_axis = GetMousePointOnAxis(camera, mouse_ray, m_handle_y);
+        }
+        else if (m_handle_z.m_is_editing)
+        {
+            mouse_point_on_axis = GetMousePointOnAxis(camera, mouse_ray, m_handle_z);
+        }
+        else if (m_handle_xyz.m_is_editing)
+        {
+            float x = GetMousePointOnAxis(camera, mouse_ray, m_handle_x).x;
+            float y = GetMousePointOnAxis(camera, mouse_ray, m_handle_y).y;
+            float z = GetMousePointOnAxis(camera, mouse_ray, m_handle_z).z;
+
+            mouse_point_on_axis.x = Math::Helper::Max3(x, y, z);
+            mouse_point_on_axis.y = mouse_point_on_axis.x;
+            mouse_point_on_axis.z = mouse_point_on_axis.x;
+
+            sign = Math::Helper::Sign(Vector3::Dot(mouse_ray.GetDirection(), Vector3::Right));
+            LOG_INFO("%f", sign);
+        }
+
+        bool is_first_editing_run      = m_handle_x.m_is_first_editing_run || m_handle_y.m_is_first_editing_run || m_handle_z.m_is_first_editing_run || m_handle_xyz.m_is_first_editing_run;
+        m_delta                        = !is_first_editing_run ? (mouse_point_on_axis - m_previous_mouse_point_on_axis) : 0.0f;
+        m_previous_mouse_point_on_axis = mouse_point_on_axis;
+    }
+
+    void TransformScale::MapToTransform(Transform* transform, const TransformHandleSpace space)
+    {
+        SP_ASSERT(transform != nullptr);
+
+        if (space == TransformHandleSpace::World)
+        {
+            transform->SetScale(transform->GetScale() + m_delta);
+        }
+        else
+        {
+            transform->SetScaleLocal(transform->GetScaleLocal() + m_delta);
+        }
     }
 }

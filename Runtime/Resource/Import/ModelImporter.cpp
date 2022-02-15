@@ -366,7 +366,7 @@ namespace Spartan
         // aiProcess_FixInfacingNormals - is not reliable and fails often.
         // aiProcess_OptimizeGraph      - works but because it merges as nodes as possible, you can't really click and select anything other than the entire thing.
 
-        // Read the 3D model file from disk
+        // Read the 3D model file from disc
         if (const aiScene* scene = importer.ReadFile(file_path, importer_flags))
         {
             // Update progress tracking

@@ -34,6 +34,14 @@ namespace Spartan
         ~TransformRotation() = default;
 
     protected:
-        void InteresectionTest(const Math::Ray& camera_to_mouse) override;
+        void InteresectionTest(const Math::Ray& mouse_ray) override;
+        void ComputeDelta(const Math::Ray& mouse_ray, const Camera* camera) override;
+        void MapToTransform(Transform* transform, const TransformHandleSpace space) override;
+
+    private:
+        Math::Vector3 m_initial_direction;
+        Math::Vector3 m_intersection_axis;
+        float m_previous_angle = 0.0f;
+        float m_angle_delta    = 0.0f;
     };
 }

@@ -29,13 +29,10 @@ using namespace std;
 
 namespace Spartan::Math
 {
-    Ray::Ray(const Vector3& start, const Vector3& end)
+    Ray::Ray(const Vector3& start, const Vector3& direction)
     {
-        m_start                     = start;
-        m_end                       = end;
-        const Vector3 start_to_end  = (end - start);
-        m_length                    = start_to_end.Length();
-        m_direction                 = start_to_end.Normalized();
+        m_origin     = start;
+        m_direction = direction.Normalized();
     }
 
     float Ray::HitDistance(const BoundingBox& box) const
@@ -45,90 +42,90 @@ namespace Spartan::Math
             return Helper::INFINITY_;
         
         // Check for ray origin being inside the box
-        if (box.IsInside(m_start) == Intersection::Inside)
+        if (box.IsInside(m_origin) == Intersection::Inside)
             return 0.0f;
 
-        auto dist = Helper::INFINITY_;
+        float distance = Helper::INFINITY_;
 
         // Check for intersecting in the X-direction
-        if (m_start.x < box.GetMin().x && m_direction.x > 0.0f)
+        if (m_origin.x < box.GetMin().x && m_direction.x > 0.0f)
         {
-            const auto x = (box.GetMin().x - m_start.x) / m_direction.x;
-            if (x < dist)
+            const float x = (box.GetMin().x - m_origin.x) / m_direction.x;
+            if (x < distance)
             {
-                const auto point = m_start + x * m_direction;
+                const Vector3 point = m_origin + x * m_direction;
                 if (point.y >= box.GetMin().y && point.y <= box.GetMax().y && point.z >= box.GetMin().z && point.z <= box.GetMax().z)
                 {
-                    dist = x;
+                    distance = x;
                 }
             }
         }
-        if (m_start.x > box.GetMax().x && m_direction.x < 0.0f)
+        if (m_origin.x > box.GetMax().x && m_direction.x < 0.0f)
         {
-            const auto x = (box.GetMax().x - m_start.x) / m_direction.x;
-            if (x < dist)
+            const float x = (box.GetMax().x - m_origin.x) / m_direction.x;
+            if (x < distance)
             {
-                const auto point = m_start + x * m_direction;
+                const Vector3 point = m_origin + x * m_direction;
                 if (point.y >= box.GetMin().y && point.y <= box.GetMax().y && point.z >= box.GetMin().z && point.z <= box.GetMax().z)
                 {
-                    dist = x;
+                    distance = x;
                 }
             }
         }
 
         // Check for intersecting in the Y-direction
-        if (m_start.y < box.GetMin().y && m_direction.y > 0.0f)
+        if (m_origin.y < box.GetMin().y && m_direction.y > 0.0f)
         {
-            const auto x = (box.GetMin().y - m_start.y) / m_direction.y;
-            if (x < dist)
+            const float x = (box.GetMin().y - m_origin.y) / m_direction.y;
+            if (x < distance)
             {
-                const auto point = m_start + x * m_direction;
+                const Vector3 point = m_origin + x * m_direction;
                 if (point.x >= box.GetMin().x && point.x <= box.GetMax().x && point.z >= box.GetMin().z && point.z <= box.GetMax().z)
                 {
-                    dist = x;
+                    distance = x;
                 }
             }
         }
-        if (m_start.y > box.GetMax().y && m_direction.y < 0.0f)
+        if (m_origin.y > box.GetMax().y && m_direction.y < 0.0f)
         {
-            const auto x = (box.GetMax().y - m_start.y) / m_direction.y;
-            if (x < dist)
+            const float x = (box.GetMax().y - m_origin.y) / m_direction.y;
+            if (x < distance)
             {
-                const auto point = m_start + x * m_direction;
+                const Vector3 point = m_origin + x * m_direction;
                 if (point.x >= box.GetMin().x && point.x <= box.GetMax().x && point.z >= box.GetMin().z && point.z <= box.GetMax().z)
                 {
-                    dist = x;
+                    distance = x;
                 }
             }
         }
 
         // Check for intersecting in the Z-direction
-        if (m_start.z < box.GetMin().z && m_direction.z > 0.0f)
+        if (m_origin.z < box.GetMin().z && m_direction.z > 0.0f)
         {
-            const auto x = (box.GetMin().z - m_start.z) / m_direction.z;
-            if (x < dist)
+            const float x = (box.GetMin().z - m_origin.z) / m_direction.z;
+            if (x < distance)
             {
-                const auto point = m_start + x * m_direction;
+                const Vector3 point = m_origin + x * m_direction;
                 if (point.x >= box.GetMin().x && point.x <= box.GetMax().x && point.y >= box.GetMin().y && point.y <= box.GetMax().y)
                 {
-                    dist = x;
+                    distance = x;
                 }
             }
         }
-        if (m_start.z > box.GetMax().z && m_direction.z < 0.0f)
+        if (m_origin.z > box.GetMax().z && m_direction.z < 0.0f)
         {
-            const auto x = (box.GetMax().z - m_start.z) / m_direction.z;
-            if (x < dist)
+            const float x = (box.GetMax().z - m_origin.z) / m_direction.z;
+            if (x < distance)
             {
-                const auto point = m_start + x * m_direction;
+                const Vector3 point = m_origin + x * m_direction;
                 if (point.x >= box.GetMin().x && point.x <= box.GetMax().x && point.y >= box.GetMin().y && point.y <= box.GetMax().y)
                 {
-                    dist = x;
+                    distance = x;
                 }
             }
         }
 
-        return dist;
+        return distance;
     }
 
     float Ray::HitDistance(const Plane& plane, Vector3* intersection_point /*= nullptr*/) const
@@ -136,12 +133,12 @@ namespace Spartan::Math
         float d = plane.normal.Dot(m_direction);
         if (Helper::Abs(d) >= Helper::EPSILON)
         {
-            float t = -(plane.normal.Dot(m_start) + plane.d) / d;
+            float t = -(plane.normal.Dot(m_origin) + plane.d) / d;
             if (t >= 0.0f)
             {
                 if (intersection_point)
                 {
-                    *intersection_point = m_start + t * m_direction;
+                    *intersection_point = m_origin + t * m_direction;
                 }
                 return t;
             }
@@ -171,7 +168,7 @@ namespace Spartan::Math
         if (det >= Helper::EPSILON)
         {
             // Calculate u & v parameters and test
-            Vector3 t(m_start - v1);
+            Vector3 t(m_origin - v1);
             float u = t.Dot(p);
             if (u >= 0.0f && u <= det)
             {
@@ -199,9 +196,9 @@ namespace Spartan::Math
         return Helper::INFINITY_;
     }
 
-    float Ray::HitDistance(const Sphere & sphere) const
+    float Ray::HitDistance(const Sphere& sphere) const
     {
-        Vector3 centeredOrigin = m_start - sphere.center;
+        Vector3 centeredOrigin = m_origin - sphere.center;
         float squaredRadius = sphere.radius * sphere.radius;
 
         // Check if ray originates inside the sphere
@@ -225,5 +222,40 @@ namespace Spartan::Math
             return dist;
         else
             return (-b + dSqrt) / (2.0f * a);
+    }
+
+    float Ray::Distance(const Vector3& point) const
+    {
+        const Vector3 closest_point = m_origin + (m_direction * (point - m_origin).Dot(m_direction));
+        return (closest_point - point).Length();
+    }
+
+    float Ray::Distance(const Vector3& point, Vector3& closest_point) const
+    {
+        closest_point = m_origin + (m_direction * (point - m_origin).Dot(m_direction));
+        return (closest_point - point).Length();
+    }
+
+    Vector3 Ray::ClosestPoint(const Ray& ray) const
+    {
+        // Algorithm based on http://paulbourke.net/geometry/lineline3d/
+        Vector3 p13 = m_origin - ray.m_origin;
+        Vector3 p43 = ray.m_direction;
+        Vector3 p21 = m_direction;
+        
+        float d1343 = p13.Dot(p43);
+        float d4321 = p43.Dot(p21);
+        float d1321 = p13.Dot(p21);
+        float d4343 = p43.Dot(p43);
+        float d2121 = p21.Dot(p21);
+        
+        float d = d2121 * d4343 - d4321 * d4321;
+        if (Helper::Abs(d) < Helper::EPSILON)
+            return m_origin;
+
+        float n = d1343 * d4321 - d1321 * d4343;
+        float a = n / d;
+        
+        return m_origin + a * m_direction;
     }
 }

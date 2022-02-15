@@ -211,7 +211,7 @@ namespace Spartan
         else
         {
             SetRotationLocal(m_rotation_local * GetRotation().Inverse() * delta * GetRotation());
-        }    
+        }
     }
 
     Vector3 Transform::GetUp() const

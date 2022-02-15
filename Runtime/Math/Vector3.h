@@ -93,18 +93,24 @@ namespace Spartan::Math
         // Return normalized vector
         [[nodiscard]] Vector3 Normalized() const
         {
-            const auto length_squared = LengthSquared();
-            if (!Helper::Equals(length_squared, 1.0f) && length_squared > 0.0f)
-            {
-                const auto length_inverted = 1.0f / Helper::Sqrt(length_squared);
-                return (*this) * length_inverted;
-            }
-            else
-                return *this;
+            Vector3 v = *this;
+            v.Normalize();
+            return v;
         }
 
         // Returns normalized vector
         static inline Vector3 Normalize(const Vector3& v) { return v.Normalized(); }
+
+        inline bool IsNormalized() const
+        {
+            static const float THRESH_VECTOR_NORMALIZED = 0.01f;
+            return (Helper::Abs(1.f - LengthSquared()) < THRESH_VECTOR_NORMALIZED);
+        }
+
+        inline float Max()
+        {
+            return Helper::Max3(x, y, z);
+        }
 
         // Returns the dot product
         static inline float Dot(const Vector3& v1, const Vector3& v2) { return (v1.x * v2.x + v1.y * v2.y + v1.z * v2.z); }
@@ -125,9 +131,9 @@ namespace Spartan::Math
         [[nodiscard]] Vector3 Cross(const Vector3& v2) const { return Cross(*this, v2); }
 
         // Returns the length
-        [[nodiscard]] float Length() const          { return Helper::Sqrt(x * x + y * y + z * z); }
-        // Returns the squared length
-        [[nodiscard]] float LengthSquared() const   { return x * x + y * y + z * z; }
+        [[nodiscard]] float Length() const        { return Helper::Sqrt(x * x + y * y + z * z); }
+        // Returns the squared length             
+        [[nodiscard]] float LengthSquared() const { return x * x + y * y + z * z; }
 
         // Returns a copy of /vector/ with its magnitude clamped to /maxLength/.
         inline void ClampMagnitude(float maxLength)
@@ -150,6 +156,20 @@ namespace Spartan::Math
                 y = normalized_y * maxLength;
                 z = normalized_z * maxLength;
             }
+        }
+
+        inline void FindBestAxisVectors(Vector3& Axis1, Vector3& Axis2) const
+        {
+            const float NX = Helper::Abs(x);
+            const float NY = Helper::Abs(y);
+            const float NZ = Helper::Abs(z);
+
+            // Find best basis vectors.
+            if (NZ > NX && NZ > NY)	Axis1 = Vector3(1, 0, 0);
+            else                    Axis1 = Vector3(0, 0, 1);
+
+            Axis1 = (Axis1 - *this * (Axis1.Dot(*this))).Normalized();
+            Axis2 = Axis1.Cross(*this);
         }
 
         inline float Distance(const Vector3& x)                                 { return ((*this) - x).Length(); }

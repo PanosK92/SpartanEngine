@@ -77,21 +77,21 @@ namespace Spartan
         }
     }
 
-    void Renderer::DrawTriangle(const Math::Vector3& v0, const Math::Vector3& v1, const Math::Vector3& v2, const Math::Vector4& color /*= DEBUG_COLOR*/, const float duration /*= 0.0f*/, bool depth /*= true*/)
+    void Renderer::DrawTriangle(const Vector3& v0, const Vector3& v1, const Vector3& v2, const Vector4& color /*= DEBUG_COLOR*/, const float duration /*= 0.0f*/, bool depth /*= true*/)
     {
         DrawLine(v0, v1, color, color, duration, depth);
         DrawLine(v1, v2, color, color, duration, depth);
         DrawLine(v2, v0, color, color, duration, depth);
     }
 
-    void Renderer::DrawRectangle(const Math::Rectangle& rectangle, const Math::Vector4& color /*= DebugColor*/, const float duration /*= 0.0f*/, bool depth /*= true*/)
+    void Renderer::DrawRectangle(const Rectangle& rectangle, const Vector4& color /*= DebugColor*/, const float duration /*= 0.0f*/, bool depth /*= true*/)
     {
         const float cam_z = m_camera->GetTransform()->GetPosition().z + m_camera->GetNearPlane() + 5.0f;
 
-        DrawLine(Vector3(rectangle.left,    rectangle.top,      cam_z), Vector3(rectangle.right, rectangle.top,    cam_z), color, color, duration, depth);
-        DrawLine(Vector3(rectangle.right,   rectangle.top,      cam_z), Vector3(rectangle.right, rectangle.bottom, cam_z), color, color, duration, depth);
-        DrawLine(Vector3(rectangle.right,   rectangle.bottom,   cam_z), Vector3(rectangle.left,  rectangle.bottom, cam_z), color, color, duration, depth);
-        DrawLine(Vector3(rectangle.left,    rectangle.bottom,   cam_z), Vector3(rectangle.left,  rectangle.top,    cam_z), color, color, duration, depth);
+        DrawLine(Vector3(rectangle.left,  rectangle.top,    cam_z), Vector3(rectangle.right, rectangle.top,    cam_z), color, color, duration, depth);
+        DrawLine(Vector3(rectangle.right, rectangle.top,    cam_z), Vector3(rectangle.right, rectangle.bottom, cam_z), color, color, duration, depth);
+        DrawLine(Vector3(rectangle.right, rectangle.bottom, cam_z), Vector3(rectangle.left,  rectangle.bottom, cam_z), color, color, duration, depth);
+        DrawLine(Vector3(rectangle.left,  rectangle.bottom, cam_z), Vector3(rectangle.left,  rectangle.top,    cam_z), color, color, duration, depth);
     }
 
     void Renderer::DrawBox(const BoundingBox& box, const Vector4& color, const float duration /*= 0.0f*/, const bool depth /*= true*/)
@@ -113,10 +113,13 @@ namespace Spartan
         DrawLine(Vector3(min.x, max.y, max.z), Vector3(min.x, min.y, max.z), color, color, duration, depth);
     }
 
-    void Renderer::DrawCircle(const Math::Vector3& center, const Math::Vector3& axis, const float radius, const uint32_t segment_count, const Math::Vector4& color /*= DEBUG_COLOR*/, const float duration /*= 0.0f*/, const bool depth /*= true*/)
+    void Renderer::DrawCircle(const Vector3& center, const Vector3& axis, const float radius, uint32_t segment_count, const Vector4& color /*= DEBUG_COLOR*/, const float duration /*= 0.0f*/, const bool depth /*= true*/)
     {
-        if (radius <= 0.0f || segment_count <= 0)
+        if (radius <= 0.0f)
             return;
+
+        // Need at least 4 segments
+        segment_count = Helper::Max<uint32_t>(segment_count, 4);
 
         vector<Vector3> points;
         points.reserve(segment_count + 1);
@@ -146,6 +149,91 @@ namespace Spartan
         {
             DrawLine(points[i], points[i + 1], color, color, duration, depth);
         }
+    }
+
+    void Renderer::DrawSphere(const Vector3& center, float radius, uint32_t segment_count, const Vector4& color /*= DEBUG_COLOR*/, const float duration /*= 0.0f*/, const bool depth /*= true*/)
+    {
+        // Need at least 4 segments
+        segment_count = Helper::Max<uint32_t>(segment_count, 4);
+
+        Vector3 Vertex1, Vertex2, Vertex3, Vertex4;
+        const float AngleInc = 2.f * Helper::PI / float(segment_count);
+        uint32_t NumSegmentsY = segment_count;
+        float Latitude = AngleInc;
+        uint32_t NumSegmentsX;
+        float Longitude;
+        float SinY1 = 0.0f, CosY1 = 1.0f, SinY2, CosY2;
+        float SinX, CosX;
+
+        while (NumSegmentsY--)
+        {
+            SinY2 = Helper::Sin(Latitude);
+            CosY2 = Helper::Cos(Latitude);
+
+            Vertex1 = Vector3(SinY1, 0.0f, CosY1) * radius + center;
+            Vertex3 = Vector3(SinY2, 0.0f, CosY2) * radius + center;
+            Longitude = AngleInc;
+
+            NumSegmentsX = segment_count;
+            while (NumSegmentsX--)
+            {
+                SinX = Helper::Sin(Longitude);
+                CosX = Helper::Cos(Longitude);
+
+                Vertex2 = Vector3((CosX * SinY1), (SinX * SinY1), CosY1) * radius + center;
+                Vertex4 = Vector3((CosX * SinY2), (SinX * SinY2), CosY2) * radius + center;
+
+                DrawLine(Vertex1, Vertex2, color, color, duration, depth);
+                DrawLine(Vertex1, Vertex3, color, color, duration, depth);
+
+                Vertex1 = Vertex2;
+                Vertex3 = Vertex4;
+                Longitude += AngleInc;
+            }
+            SinY1 = SinY2;
+            CosY1 = CosY2;
+            Latitude += AngleInc;
+        }
+    }
+
+    void Renderer::DrawDirectionalArrow(const Vector3& start, const Vector3& end, float arrow_size, const Vector4& color /*= DEBUG_COLOR*/, const float duration /*= 0.0f*/, const bool depth /*= true*/)
+    {
+        arrow_size = Helper::Max<float>(0.1f, arrow_size);
+
+        DrawLine(start, end, color, color, duration, depth);
+
+        Vector3 Dir = (end - start);
+        Dir.Normalize();
+        Vector3 Up(0, 0, 1);
+        Vector3 Right = Dir.Cross(Up);
+        if (!Right.IsNormalized())
+        {
+            Dir.FindBestAxisVectors(Up, Right);
+        }
+
+        Matrix TM;
+        TM.m00 = Dir.x;   TM.m01 = Dir.y;   TM.m02 = Dir.z;
+        TM.m10 = Right.x; TM.m11 = Right.y; TM.m12 = Right.z;
+        TM.m20 = Up.x;    TM.m21 = Up.y;    TM.m22 = Up.z;
+
+        // since dir is x direction, my arrow will be pointing +y, -x and -y, -x
+        float arrow_sqrt = Helper::Sqrt(arrow_size);
+        Vector3 arrow_pos;
+        DrawLine(end, end + TM * Vector3(-arrow_sqrt, arrow_sqrt, 0), color, color, duration, depth);
+        DrawLine(end, end + TM * Vector3(-arrow_sqrt, -arrow_sqrt, 0), color, color, duration, depth);
+    }
+
+    void Renderer::DrawPlane(const Math::Plane& plane, const Math::Vector4& color /*= DEBUG_COLOR*/, const float duration /*= 0.0f*/, const bool depth /*= true*/)
+    {
+        // Arrow indicating normal
+        Vector3 plane_origin = plane.normal * plane.d;
+        DrawDirectionalArrow(plane_origin, plane_origin + plane.normal * 2.0f, 0.2f, color, duration, depth);
+
+        Vector3 U, V;
+        plane.normal.FindBestAxisVectors(U, V);
+        static const float scale = 10000.0f;
+        DrawLine(plane_origin - U * scale, plane_origin + U * scale, color, color, duration, depth);
+        DrawLine(plane_origin - V * scale, plane_origin + V * scale, color, color, duration, depth);
     }
 
     void Renderer::Lines_PostMain(const double delta_time)
