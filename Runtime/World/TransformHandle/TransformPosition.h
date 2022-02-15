@@ -34,6 +34,12 @@ namespace Spartan
         ~TransformPosition() = default;
 
     protected:
-        void InteresectionTest(const Math::Ray& camera_to_mouse) override;
+        void InteresectionTest(const Math::Ray& mouse_ray) override;
+        void ComputeDelta(const Math::Ray& mouse_ray, const Camera* camera) override;
+        void MapToTransform(Transform* transform, const TransformHandleSpace space) override;
+
+    private:
+        Math::Vector3 m_previous_mouse_point_on_axis = Math::Vector3::Zero;
+        Math::Vector3 m_delta                        = Math::Vector3::Zero;
     };
 }

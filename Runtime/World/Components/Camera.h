@@ -66,7 +66,7 @@ namespace Spartan
         const Math::Matrix& GetViewProjectionMatrix() const { return m_view_projection; }
         //===============================================================================
 
-        //= RAYCASTING ======================================================
+        //= RAYCASTING ====================================================================================================
         // Returns the ray the camera uses to do picking
         const Math::Ray& GetPickingRay() const { return m_ray; }
 
@@ -74,14 +74,14 @@ namespace Spartan
         bool Pick(std::shared_ptr<Entity>& entity);
 
         // Converts a world point to a screen point
-        Math::Vector2 Project(const Math::Vector3& position_world) const;
+        Math::Vector2 WorldToScreenCoordinates(const Math::Vector3& position_world) const;
 
         // Converts a world bounding box to a screen rectangle
-        Math::Rectangle Project(const Math::BoundingBox& bounding_box) const;
+        Math::Rectangle WorldToScreenCoordinates(const Math::BoundingBox& bounding_box) const;
 
-        // Converts a screen point to a world point
-        Math::Vector3 Unproject(const Math::Vector2& position_screen) const;
-        //===================================================================
+        // Converts a screen point to a world point. Z can be 0.0f to 1.0f and it will lerp between the near and far plane.
+        Math::Vector3 ScreenToWorldCoordinates(const Math::Vector2& position_screen, const float z) const;
+        //=================================================================================================================
 
         float GetAperture() const { return m_aperture; }
         void SetAperture(const float aperture) { m_aperture = aperture; }

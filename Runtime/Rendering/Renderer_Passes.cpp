@@ -1973,7 +1973,7 @@ namespace Spartan
                     if (v_dot_l > 0.5f)
                     {
                         // Compute light screen space position and scale (based on distance from the camera)
-                        const Vector2 position_light_screen = m_camera->Project(position_light_world);
+                        const Vector2 position_light_screen = m_camera->WorldToScreenCoordinates(position_light_world);
                         const float distance                = (position_camera_world - position_light_world).Length() + Helper::EPSILON;
                         float scale                         = m_gizmo_size_max / distance;
                         scale                               = Helper::Clamp(scale, m_gizmo_size_min, m_gizmo_size_max);
@@ -2033,6 +2033,11 @@ namespace Spartan
         shared_ptr<TransformHandle> transform_handle = m_context->GetSubsystem<World>()->GetTransformHandle();
         if (transform_handle->GetSelectedEntity() != nullptr)
         {
+            // The rotation transform draws line primitives, it doesn't have a model that needs to be rendered here.
+            bool needs_to_render = transform_handle->GetVertexBuffer() != nullptr;
+            if (!needs_to_render)
+                return;
+
             // Set render state
             static RHI_PipelineState pso;
             pso.shader_vertex                   = shader_gizmo_transform_v;

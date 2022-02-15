@@ -52,72 +52,6 @@ namespace Spartan
         m_box_transformed = m_box.Transform(m_transform);
     }
 
-    void TransformOperatorAxis::ApplyDeltaToTransform(Transform* transform, const TransformHandleSpace space)
-    {
-        if (m_type == TransformHandleType::Unknown)
-            return;
-
-        // First press
-        if (m_is_hovered && m_input->GetKeyDown(KeyCode::Click_Left))
-        {
-            m_is_editing = true;
-        }
-
-        // Editing can happen here
-        if (m_is_editing && m_input->GetKey(KeyCode::Click_Left))
-        {
-            if (m_type == TransformHandleType::Position)
-            {
-                Vector3 position = transform->GetPosition();
-                position += m_delta * m_axis;
-
-                if (space == TransformHandleSpace::World)
-                {
-                    transform->SetPosition(position);
-                }
-                else
-                {
-                    transform->SetPositionLocal(position);
-                }
-            }
-            else if (m_type == TransformHandleType::Scale)
-            {
-                Vector3 scale = transform->GetScale();
-                scale += m_delta * m_axis;
-
-                if (space == TransformHandleSpace::World)
-                {
-                    transform->SetScale(scale);
-                }
-                else
-                {
-                    transform->SetScaleLocal(scale);
-                }
-            }
-            else if (m_type == TransformHandleType::Rotation)
-            {
-                Vector3 rotation = transform->GetRotation().ToEulerAngles();
-                const float speed_multiplier = 10.0f;
-                rotation += m_delta * m_axis * speed_multiplier;
-
-                if (space == TransformHandleSpace::World)
-                {
-                    transform->SetRotation(Quaternion::FromEulerAngles(rotation));
-                }
-                else
-                {
-                    transform->SetRotationLocal(Quaternion::FromEulerAngles(rotation));
-                }
-            }
-        }
-
-        // Last press (on release)
-        if (m_is_editing && m_input->GetKeyUp(KeyCode::Click_Left))
-        {
-            m_is_editing = false;
-        }
-    }
-
     void TransformOperatorAxis::DrawPrimitives(const Vector3& transform_center) const
     {
         if (m_type == TransformHandleType::Unknown)
@@ -125,12 +59,12 @@ namespace Spartan
 
         // Draw axis circle
         if (m_type == TransformHandleType::Rotation)
-        {
+        { 
             const Vector3 center        = m_box_transformed.GetCenter();
-            const float radius          = m_scale.Length() * 5.0f;
-            const uint32_t segmentCount = 64;
-            const Vector4 color         = Vector4(GetColor(), 1.0f);
-            m_renderer->DrawCircle(center, m_axis, radius, segmentCount, color, 0.0f, false);
+            const float radius           = m_scale.Length() * 5.0f;
+            const uint32_t segment_count = 64;
+            const Vector4 color          = Vector4(GetColor(), 1.0f);
+            m_renderer->DrawCircle(center, m_axis, radius, segment_count, color, 0.0f, false);
         }
         // Draw axis line (connect the handle with the origin of the transform)
         else

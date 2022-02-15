@@ -45,7 +45,7 @@ namespace Spartan
         ~TransformHandle() = default;
 
         // Ticks the gizmo and returns true if it needs to be queried for rendering
-        bool Tick(Camera* camera, float handle_size, float handle_speed);
+        bool Tick(Camera* camera, float handle_size);
 
         std::weak_ptr<Spartan::Entity> SetSelectedEntity(const std::shared_ptr<Entity>& entity);
         uint32_t GetIndexCount();
@@ -57,15 +57,15 @@ namespace Spartan
         Entity* GetSelectedEntity() const { return m_entity_selected.lock().get(); }
         
     private:
-        bool m_is_editing      = false;
         bool m_needs_to_render = false;
+        bool m_is_editing      = false;
 
         std::weak_ptr<Entity> m_entity_selected;
-        std::unordered_map<TransformHandleType, std::shared_ptr<TransformOperator>> TransformOperator;
+        std::unordered_map<TransformHandleType, std::shared_ptr<TransformOperator>> m_transform_operator;
         TransformHandleType m_type = TransformHandleType::Unknown;
         TransformHandleSpace m_space;
-        Context* m_context;
-        Input* m_input;
-        World* m_world;
+        Context* m_context = nullptr;
+        Input* m_input     = nullptr;
+        World* m_world     = nullptr;
     };
 }

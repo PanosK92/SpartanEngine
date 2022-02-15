@@ -434,7 +434,6 @@ void RenderOptions::TickVisible()
                 {
                     ImGui::BeginDisabled(!debug_transform);
                     helper::Float("Transform size",  m_context->GetSubsystem<World>()->m_gizmo_transform_size, 0.0025f);
-                    helper::Float("Transform speed", m_context->GetSubsystem<World>()->m_gizmo_transform_speed, 1.0f);
                     ImGui::EndDisabled();
                 }
 

@@ -78,7 +78,7 @@ namespace Spartan::Math
                 1, 0, 0, 0,
                 0, 1, 0, 0,
                 0, 0, 1, 0,
-                translation.x, translation.y, translation.z, 1
+                translation.x, translation.y, translation.z, 1.0f
             );
         }
         //=========================================================
@@ -86,15 +86,15 @@ namespace Spartan::Math
         //= ROTATION =====================================================================================
         static inline Matrix CreateRotation(const Quaternion& rotation)
         {
-            const float num9    = rotation.x * rotation.x;
-            const float num8    = rotation.y * rotation.y;
-            const float num7    = rotation.z * rotation.z;
-            const float num6    = rotation.x * rotation.y;
-            const float num5    = rotation.z * rotation.w;
-            const float num4    = rotation.z * rotation.x;
-            const float num3    = rotation.y * rotation.w;
-            const float num2    = rotation.y * rotation.z;
-            const float num        = rotation.x * rotation.w;
+            const float num9 = rotation.x * rotation.x;
+            const float num8 = rotation.y * rotation.y;
+            const float num7 = rotation.z * rotation.z;
+            const float num6 = rotation.x * rotation.y;
+            const float num5 = rotation.z * rotation.w;
+            const float num4 = rotation.z * rotation.x;
+            const float num3 = rotation.y * rotation.w;
+            const float num2 = rotation.y * rotation.z;
+            const float num  = rotation.x * rotation.w;
 
             return Matrix(
                 1.0f - (2.0f * (num8 + num7)),

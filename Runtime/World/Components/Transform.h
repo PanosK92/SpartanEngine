@@ -47,26 +47,26 @@ namespace Spartan
         void Deserialize(FileStream* stream) override;
         //============================================
 
-        //= POSITION ==============================================================
-        Math::Vector3 GetPosition()     const { return m_matrix.GetTranslation(); }
-        const auto& GetPositionLocal()  const { return m_position_local; }
+        //= POSITION ======================================================================
+        Math::Vector3 GetPosition()             const { return m_matrix.GetTranslation(); }
+        const Math::Vector3& GetPositionLocal() const { return m_position_local; }
         void SetPosition(const Math::Vector3& position);
         void SetPositionLocal(const Math::Vector3& position);
-        //=========================================================================
+        //=================================================================================
 
-        //= ROTATION ===========================================================
-        Math::Quaternion GetRotation() const { return m_matrix.GetRotation(); }
-        const auto& GetRotationLocal() const { return m_rotation_local; }
+        //= ROTATION ======================================================================
+        Math::Quaternion GetRotation()             const { return m_matrix.GetRotation(); }
+        const Math::Quaternion& GetRotationLocal() const { return m_rotation_local; }
         void SetRotation(const Math::Quaternion& rotation);
         void SetRotationLocal(const Math::Quaternion& rotation);
-        //======================================================================
+        //=================================================================================
 
-        //= SCALE =======================================================
-        auto GetScale()             const { return m_matrix.GetScale(); }
-        const auto& GetScaleLocal() const { return m_scale_local; }
+        //= SCALE ================================================================
+        Math::Vector3 GetScale()             const { return m_matrix.GetScale(); }
+        const Math::Vector3& GetScaleLocal() const { return m_scale_local; }
         void SetScale(const Math::Vector3& scale);
         void SetScaleLocal(const Math::Vector3& scale);
-        //===============================================================
+        //========================================================================
 
         //= TRANSLATION/ROTATION ==================
         void Translate(const Math::Vector3& delta);

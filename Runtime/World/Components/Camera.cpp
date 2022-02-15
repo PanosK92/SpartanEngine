@@ -177,9 +177,9 @@ namespace Spartan
             return false;
 
         // Create mouse ray
-        Vector3 ray_start = GetTransform()->GetPosition();
-        Vector3 ray_end   = Unproject(m_input->GetMousePositionRelativeToEditorViewport());
-        m_ray             = Ray(ray_start, ray_end);
+        Vector3 ray_start     = GetTransform()->GetPosition();
+        Vector3 ray_direction = ScreenToWorldCoordinates(m_input->GetMousePositionRelativeToEditorViewport(), 1.0f);
+        m_ray                 = Ray(ray_start, ray_direction);
 
         // Traces ray against all AABBs in the world
         vector<RayHit> hits;
@@ -203,7 +203,7 @@ namespace Spartan
 
                 hits.emplace_back(
                     entity,                                             // Entity
-                    m_ray.GetStart() + distance * m_ray.GetDirection(), // Position
+                    m_ray.GetStart() + m_ray.GetDirection() * distance, // Position
                     distance,                                           // Distance
                     distance == 0.0f                                    // Inside
                 );
@@ -223,9 +223,6 @@ namespace Spartan
             picked = hits.front().m_entity;
             return true;
         }
-
-        // Draw picking ray
-        //m_renderer->DrawDebugLine(ray_start, ray_end, Vector4(0, 1, 0, 1), Vector4(0, 1, 0, 1), 5.0f, true);
 
         // If there are more hits, perform triangle intersection
         float distance_min = numeric_limits<float>::max();
@@ -256,9 +253,6 @@ namespace Spartan
                 
                 if (distance < distance_min)
                 {
-                    // Draw min distance triangle
-                    //m_renderer->DrawDebugTriangle(p1_world, p2_world, p3_world, Vector4(1.0f, 0.0f, 0.0f, 1.0f), 5.0f, false);
-
                     picked = hit.m_entity;
                     distance_min = distance;
                 }
@@ -268,15 +262,15 @@ namespace Spartan
         return picked != nullptr;
     }
 
-    Vector2 Camera::Project(const Vector3& position_world) const
+    Vector2 Camera::WorldToScreenCoordinates(const Vector3& position_world) const
     {
-        const auto& viewport = GetViewport();
+        const RHI_Viewport& viewport = GetViewport();
 
         // A non reverse-z projection matrix is need, if it we don't have it, we create it
-        const auto projection = m_renderer->GetOption(Renderer::Option::ReverseZ) ? Matrix::CreatePerspectiveFieldOfViewLH(GetFovVerticalRad(), viewport.GetAspectRatio(), m_near_plane, m_far_plane) : m_projection;
+        const Matrix projection = m_renderer->GetOption(Renderer::Option::ReverseZ) ? Matrix::CreatePerspectiveFieldOfViewLH(GetFovVerticalRad(), viewport.GetAspectRatio(), m_near_plane, m_far_plane) : m_projection;
 
         // Convert world space position to clip space position
-        const auto position_clip = position_world * m_view * projection;
+        const Vector3 position_clip = position_world * m_view * projection;
 
         // Convert clip space position to screen space position
         Vector2 position_screen;
@@ -286,7 +280,7 @@ namespace Spartan
         return position_screen;
     }
 
-    Rectangle Camera::Project(const BoundingBox& bounding_box) const
+    Rectangle Camera::WorldToScreenCoordinates(const BoundingBox& bounding_box) const
     {
         const Vector3& min = bounding_box.GetMin();
         const Vector3& max = bounding_box.GetMax();
@@ -304,26 +298,30 @@ namespace Spartan
         Math::Rectangle rectangle;
         for (Vector3& corner : corners)
         {
-            rectangle.Merge(Project(corner));
+            rectangle.Merge(WorldToScreenCoordinates(corner));
         }
 
         return rectangle;
     }
 
-    Vector3 Camera::Unproject(const Vector2& position_screen) const
+    Vector3 Camera::ScreenToWorldCoordinates(const Vector2& position_screen, const float z) const
     {
+        const RHI_Viewport& viewport = GetViewport();
+
+        // A non reverse-z projection matrix is need, if it we don't have it, we create it
+        const Matrix projection = m_renderer->GetOption(Renderer::Option::ReverseZ) ? Matrix::CreatePerspectiveFieldOfViewLH(GetFovVerticalRad(), viewport.GetAspectRatio(), m_near_plane, m_far_plane) : m_projection;
+
         // Convert screen space position to clip space position
         Vector3 position_clip;
-        const auto& viewport = m_renderer->GetViewport();
         position_clip.x = (position_screen.x / viewport.width) * 2.0f - 1.0f;
         position_clip.y = (position_screen.y / viewport.height) * -2.0f + 1.0f;
-        position_clip.z = m_near_plane;
+        position_clip.z = clamp(z, 0.0f, 1.0f);
 
         // Compute world space position
-        const auto view_projection_inverted    = m_view_projection.Inverted();
-        auto position_world                    = position_clip * view_projection_inverted;
+        Matrix view_projection_inverted = (m_view * projection).Inverted();
+        Vector4 position_world          = Vector4(position_clip, 1.0f) * view_projection_inverted;
 
-        return position_world;
+        return Vector3(position_world) / position_world.w;
     }
 
     void Camera::ProcessInput(double delta_time)

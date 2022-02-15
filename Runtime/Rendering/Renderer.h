@@ -28,10 +28,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Renderer_ConstantBuffers.h"
 #include "Material.h"
 #include "../Core/ISubsystem.h"
-#include "../Math/Rectangle.h"
 #include "../RHI/RHI_Definition.h"
 #include "../RHI/RHI_Viewport.h"
 #include "../RHI/RHI_Vertex.h"
+#include "../Math/Rectangle.h"
+#include "../Math/Plane.h"
 //===================================
 
 namespace Spartan
@@ -297,12 +298,15 @@ namespace Spartan
         void OnTick(double delta_time) override;
         //======================================
 
-        // Primitive rendering
+        // Primitive rendering (excellent for debugging)
         void DrawLine(const Math::Vector3& from, const Math::Vector3& to, const Math::Vector4& color_from = DEBUG_COLOR, const Math::Vector4& color_to = DEBUG_COLOR, const float duration = 0.0f, const bool depth = true);
         void DrawTriangle(const Math::Vector3& v0, const Math::Vector3& v1, const Math::Vector3& v2, const Math::Vector4& color = DEBUG_COLOR, const float duration = 0.0f, const bool depth = true);
         void DrawRectangle(const Math::Rectangle& rectangle, const Math::Vector4& color = DEBUG_COLOR, const float duration = 0.0f, const bool depth = true);
         void DrawBox(const Math::BoundingBox& box, const Math::Vector4& color = DEBUG_COLOR, const float duration = 0.0f, const bool depth = true);
-        void DrawCircle(const Math::Vector3& center, const Math::Vector3& axis, const float radius, const uint32_t segment_count, const Math::Vector4& color = DEBUG_COLOR, const float duration = 0.0f, const bool depth = true);
+        void DrawCircle(const Math::Vector3& center, const Math::Vector3& axis, const float radius, uint32_t segment_count, const Math::Vector4& color = DEBUG_COLOR, const float duration = 0.0f, const bool depth = true);
+        void DrawSphere(const Math::Vector3& center, float radius, uint32_t segment_count, const Math::Vector4& color = DEBUG_COLOR, const float duration = 0.0f, const bool depth = true);
+        void DrawDirectionalArrow(const Math::Vector3& start, const Math::Vector3& end, float arrow_size, const Math::Vector4& color = DEBUG_COLOR, const float duration = 0.0f, const bool depth = true);
+        void DrawPlane(const Math::Plane& plane, const Math::Vector4& color = DEBUG_COLOR, const float duration = 0.0f, const bool depth = true);
 
         // Viewport
         const RHI_Viewport& GetViewport() const { return m_viewport; }

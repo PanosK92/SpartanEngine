@@ -412,19 +412,19 @@ void Properties::ShowLight(Light* light) const
             ImGui::PushItemWidth(300); ImGuiEx::DragFloatWrap("##lightAngle", &angle, 0.01f, 1.0f, 179.0f); ImGui::PopItemWidth();
         }
 
-        //= MAP ======================================================================================================================
-        if (intensity != light->GetIntensity())                             light->SetIntensity(intensity);
-        if (shadows != light->GetShadowsEnabled())                          light->SetShadowsEnabled(shadows);
-        if (shadows_screen_space != light->GetShadowsScreenSpaceEnabled())  light->SetShadowsScreenSpaceEnabled(shadows_screen_space);
-        if (shadows_transparent != light->GetShadowsTransparentEnabled())   light->SetShadowsTransparentEnabled(shadows_transparent);
-        if (volumetric != light->GetVolumetricEnabled())                    light->SetVolumetricEnabled(volumetric);
-        if (bias != light->GetBias())                                       light->SetBias(bias);
-        if (normal_bias != light->GetNormalBias())                          light->SetNormalBias(normal_bias);
-        if (angle != light->GetAngle() * Math::Helper::RAD_TO_DEG * 0.5f)   light->SetAngle(angle * Math::Helper::DEG_TO_RAD * 0.5f);
-        if (range != light->GetRange())                                     light->SetRange(range);
-        if (time_of_day != light->GetTimeOfDay())                           light->SetTimeOfDay(time_of_day);
-        if (m_colorPicker_light->GetColor() != light->GetColor())           light->SetColor(m_colorPicker_light->GetColor());
-        //============================================================================================================================
+        //= MAP =====================================================================================================================
+        if (intensity != light->GetIntensity())                            light->SetIntensity(intensity);
+        if (shadows != light->GetShadowsEnabled())                         light->SetShadowsEnabled(shadows);
+        if (shadows_screen_space != light->GetShadowsScreenSpaceEnabled()) light->SetShadowsScreenSpaceEnabled(shadows_screen_space);
+        if (shadows_transparent != light->GetShadowsTransparentEnabled())  light->SetShadowsTransparentEnabled(shadows_transparent);
+        if (volumetric != light->GetVolumetricEnabled())                   light->SetVolumetricEnabled(volumetric);
+        if (bias != light->GetBias())                                      light->SetBias(bias);
+        if (normal_bias != light->GetNormalBias())                         light->SetNormalBias(normal_bias);
+        if (angle != light->GetAngle() * Math::Helper::RAD_TO_DEG * 0.5f)  light->SetAngle(angle * Math::Helper::DEG_TO_RAD * 0.5f);
+        if (range != light->GetRange())                                    light->SetRange(range);
+        if (time_of_day != light->GetTimeOfDay())                          light->SetTimeOfDay(time_of_day);
+        if (m_colorPicker_light->GetColor() != light->GetColor())          light->SetColor(m_colorPicker_light->GetColor());
+        //===========================================================================================================================
     }
     helper::ComponentEnd();
 }

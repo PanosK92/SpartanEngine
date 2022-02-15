@@ -40,7 +40,6 @@ namespace Spartan
         TransformOperatorAxis(TransformHandleType type, const Math::Vector3& axis, Context* context);
 
         void UpdateTransform();
-        void ApplyDeltaToTransform(Transform* transform, const TransformHandleSpace space);
         void DrawPrimitives(const Math::Vector3& transform_center) const;
         const Math::Vector3& GetColor() const;
 
@@ -51,16 +50,17 @@ namespace Spartan
         Math::Vector3 m_scale               = Math::Vector3::One;
         Math::BoundingBox m_box             = Math::BoundingBox::Zero;
         Math::BoundingBox m_box_transformed = Math::BoundingBox::Zero;
-        float m_delta                       = 0.0f;
         bool m_is_editing                   = false;
         bool m_is_hovered                   = false;
         bool m_is_disabled                  = false;
+        bool m_is_editing_previous          = false;
+        bool m_is_first_editing_run         = false;
         Math::Vector3 m_color_active        = Math::Vector3(1.0f, 1.0f, 0.0f);
         Math::Vector3 m_color_disabled      = Math::Vector3(0.5f, 0.5f, 0.5f);
         TransformHandleType m_type          = TransformHandleType::Unknown;
 
-        Context* m_context      = nullptr;
-        Renderer* m_renderer    = nullptr;
-        Input* m_input          = nullptr;
+        Context* m_context   = nullptr;
+        Renderer* m_renderer = nullptr;
+        Input* m_input       = nullptr;
     };
 }

@@ -71,7 +71,6 @@ namespace Spartan
         // Transform handle
         std::shared_ptr<TransformHandle> GetTransformHandle() { return m_transform_handle; }
         float m_gizmo_transform_size  = 0.015f;
-        float m_gizmo_transform_speed = 12.0f;
 
     private:
         void Clear();

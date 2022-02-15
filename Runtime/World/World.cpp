@@ -86,7 +86,7 @@ namespace Spartan
         {
             if (renderer->GetOption(Renderer::Option::Transform_Handle))
             {
-                m_transform_handle->Tick(renderer->GetCamera().get(), m_gizmo_transform_size, m_gizmo_transform_speed);
+                m_transform_handle->Tick(renderer->GetCamera().get(), m_gizmo_transform_size);
             }
         }
 

@@ -49,12 +49,12 @@ namespace Spartan
         m_space      = TransformHandleSpace::World;
         m_is_editing = false;
 
-        TransformOperator[TransformHandleType::Position] = make_shared<TransformPosition>(context);
-        TransformOperator[TransformHandleType::Scale]    = make_shared<TransformScale>(context);
-        TransformOperator[TransformHandleType::Rotation] = make_shared<TransformRotation>(context);
+        m_transform_operator[TransformHandleType::Position] = make_shared<TransformPosition>(context);
+        m_transform_operator[TransformHandleType::Rotation] = make_shared<TransformRotation>(context);
+        m_transform_operator[TransformHandleType::Scale]    = make_shared<TransformScale>(context);
     }
 
-    bool TransformHandle::Tick(Camera* camera, const float handle_size, const float handle_speed)
+    bool TransformHandle::Tick(Camera* camera, const float handle_size)
     {
         shared_ptr<Entity> selected_entity = m_entity_selected.lock();
 
@@ -81,18 +81,18 @@ namespace Spartan
             }
             else if (m_input->GetKeyDown(KeyCode::E))
             {
-                m_type = TransformHandleType::Scale;
+                m_type = TransformHandleType::Rotation;
             }
             else if (m_input->GetKeyDown(KeyCode::R))
             {
-                m_type = TransformHandleType::Rotation;
+                m_type = TransformHandleType::Scale;
             }
         }
 
         // Update operators
-        TransformOperator[m_type]->Tick(m_space, selected_entity.get(), camera, handle_size, handle_speed);
+        m_transform_operator[m_type]->Tick(m_space, selected_entity.get(), camera, handle_size);
 
-        m_is_editing = TransformOperator[m_type]->IsEditing();
+        m_is_editing = m_transform_operator[m_type]->IsEditing();
 
         return true;
     }
@@ -104,7 +104,7 @@ namespace Spartan
         {
             // If in front of the entity the handles from the previous entity
             // are actual being hovered, then a selection not selected the new entity.
-            if (!TransformOperator[m_type]->IsHovered())
+            if (!m_transform_operator[m_type]->IsHovered())
             {
                 m_entity_selected = entity;
             }
@@ -115,21 +115,21 @@ namespace Spartan
 
     uint32_t TransformHandle::GetIndexCount()
     {
-        return TransformOperator[m_type]->GetIndexBuffer()->GetIndexCount();
+        return m_transform_operator[m_type]->GetIndexBuffer()->GetIndexCount();
     }
 
     const RHI_VertexBuffer* TransformHandle::GetVertexBuffer()
     {
-        return TransformOperator[m_type]->GetVertexBuffer();
+        return m_transform_operator[m_type]->GetVertexBuffer();
     }
 
     const RHI_IndexBuffer* TransformHandle::GetIndexBuffer()
     {
-        return TransformOperator[m_type]->GetIndexBuffer();
+        return m_transform_operator[m_type]->GetIndexBuffer();
     }
 
     const TransformOperator* TransformHandle::GetHandle()
     {
-        return TransformOperator[m_type].get();
+        return m_transform_operator[m_type].get();
     }
 }

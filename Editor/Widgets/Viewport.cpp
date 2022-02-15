@@ -86,7 +86,7 @@ void Viewport::TickVisible()
     m_input->SetMouseIsInViewport(ImGui::IsItemHovered());
 
     // If this widget was released, make the engine pick an entity.
-    if (ImGui::IsMouseDown(0) && ImGui::IsItemHovered())
+    if (ImGui::IsMouseClicked(0) && ImGui::IsItemHovered())
     {
         EditorHelper::Get().PickEntity();
     }
