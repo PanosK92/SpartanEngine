@@ -31,7 +31,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Logging/Log.h"
 #include "../../Math/Vector4.h"
 #include "../../Display/Display.h"
-
 //===================================
 
 namespace Spartan::vulkan_utility
