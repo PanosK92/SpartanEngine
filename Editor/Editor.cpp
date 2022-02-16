@@ -131,7 +131,7 @@ static void ImGui_ApplyColors()
     // Colors
     colors[ImGuiCol_Text]                  = k_color_text;
     colors[ImGuiCol_TextDisabled]          = k_color_text_disabled;
-    colors[ImGuiCol_WindowBg]              = k_color_dark;                  // Background of normal windows
+    colors[ImGuiCol_WindowBg]              = k_color_mid;                   // Background of normal windows
     colors[ImGuiCol_ChildBg]               = k_color_mid;                   // Background of child windows
     colors[ImGuiCol_PopupBg]               = k_color_dark;                  // Background of popups, menus, tooltips windows
     colors[ImGuiCol_Border]                = k_color_interactive;
