@@ -755,14 +755,12 @@ namespace Spartan
             bool transition_required       = layout_mismatch_mip_start || layout_mismatch_mip_all;
 
             // Transition
-            if (transition_required && !m_render_pass_active)
+            if (transition_required)
             {
+                // Can't transition texture to target layout while a render pass is active.
+                SP_ASSERT(!m_render_pass_active);
+
                 texture->SetLayout(target_layout, this, mip, ranged);
-            }
-            else if (transition_required && m_render_pass_active)
-            {
-                LOG_ERROR("Can't transition texture to target layout while a render pass is active, replacing with a default texture");
-                texture = m_renderer->GetDefaultTextureTransparent();
             }
         }
 

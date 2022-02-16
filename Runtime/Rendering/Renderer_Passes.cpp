@@ -151,6 +151,10 @@ namespace Spartan
         }
 
         Pass_PostProcess(cmd_list);
+
+        // No further rendering is done on the final image, and it displayed by ImGui, so set the correct layout now
+        // because the ImGui rendering backend can't. Since Vulkan won't allow setting a layout within a render pass.
+        RENDER_TARGET(RenderTarget::Frame_Output)->SetLayout(RHI_Image_Layout::Shader_Read_Only_Optimal, cmd_list);
     }
 
     void Renderer::Pass_UpdateFrameBuffer(RHI_CommandList* cmd_list)
