@@ -74,9 +74,6 @@
 
 #include "Core/Window.h"
 #include "Rendering/Renderer.h"
-#include "RHI/RHI_Device.h"
-#include "RHI/RHI_Implementation.h"
-#include "RHI/RHI_Definition.h"
 
 #if SDL_VERSION_ATLEAST(2,0,4) && !defined(__EMSCRIPTEN__) && !defined(__ANDROID__) && !(defined(__APPLE__) && TARGET_OS_IOS)
 #define SDL_HAS_CAPTURE_AND_GLOBAL_MOUSE    1
@@ -386,7 +383,7 @@ bool ImGui_ImplSDL2_Init(Spartan::Context* context)
 
     // Initialise some ImGui stuff
     bd->Window = static_cast<SDL_Window*>(context->GetSubsystem<Spartan::Window>()->GetHandleSDL());
-    bd->UseVulkan = context->GetSubsystem<Spartan::Renderer>()->GetRhiDevice()->GetContextRhi()->api_type == Spartan::RHI_Api_Type::Vulkan;
+    bd->UseVulkan = context->GetSubsystem<Spartan::Renderer>()->GetApiType() == Spartan::RHI_Api_Type::Vulkan;
 
     io.SetClipboardTextFn = ImGui_ImplSDL2_SetClipboardText;
     io.GetClipboardTextFn = ImGui_ImplSDL2_GetClipboardText;

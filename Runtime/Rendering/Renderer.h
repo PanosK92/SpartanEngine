@@ -361,6 +361,7 @@ namespace Spartan
         bool IsRenderingAllowed() const { return m_is_rendering_allowed; }
 
         // Misc
+        RHI_Api_Type GetApiType() const;
         void SetGlobalShaderResources(RHI_CommandList* cmd_list) const;
         void RequestTextureMipGeneration(RHI_Texture* texture);
         const std::shared_ptr<RHI_Device>& GetRhiDevice()           const { return m_rhi_device; }
