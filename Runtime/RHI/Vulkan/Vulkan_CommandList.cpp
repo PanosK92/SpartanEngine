@@ -541,10 +541,18 @@ namespace Spartan
         );
 
         // Transition to the initial layouts
-        for (uint32_t i = 0; i < source->GetMipCount(); i++)
+        if (source->GetMipCount() > 1)
         {
-            source->SetLayout(layouts_initial_source[i], this, i);
-            destination->SetLayout(layouts_initial_destination[i], this, i);
+            for (uint32_t i = 0; i < source->GetMipCount(); i++)
+            {
+                source->SetLayout(layouts_initial_source[i], this, i);
+                destination->SetLayout(layouts_initial_destination[i], this, i);
+            }
+        }
+        else
+        {
+            source->SetLayout(layouts_initial_source[0], this, -1);
+            destination->SetLayout(layouts_initial_destination[0], this, -1);
         }
     }
 
