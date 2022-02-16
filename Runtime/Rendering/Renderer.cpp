@@ -916,6 +916,11 @@ namespace Spartan
         Update_Cb_Uber(cmd_list);
     }
 
+    RHI_Api_Type Renderer::GetApiType() const
+    {
+        return m_rhi_device->GetContextRhi()->api_type;
+    }
+    
     void Renderer::RequestTextureMipGeneration(RHI_Texture* texture)
     {
         SP_ASSERT(texture != nullptr);
