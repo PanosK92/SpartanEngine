@@ -102,7 +102,7 @@ static void ImGui_Initialise(Spartan::Context* context)
     io.FontGlobalScale = k_font_scale;
 
     // Initialise SDL (windows, input) and RHI (rendering)
-    ImGui_ImplSDL2_Init(static_cast<SDL_Window*>(_editor::window->GetHandleSDL()));
+    ImGui_ImplSDL2_Init(context);
     ImGui::RHI::Initialize(context);
 }
 
@@ -248,7 +248,7 @@ void Editor::Tick()
         else
         {
             // ImGui - Begin
-            ImGui_ImplSDL2_NewFrame(m_context);
+            ImGui_ImplSDL2_NewFrame();
             ImGui::NewFrame();
 
             // Editor - Begin

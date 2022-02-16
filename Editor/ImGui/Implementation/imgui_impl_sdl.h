@@ -3,10 +3,10 @@
 // (Info: SDL2 is a cross-platform general purpose library for handling windows, inputs, graphics context creation, etc.)
 
 // Implemented features:
-//  [X] Platform: Mouse cursor shape and visibility. Disable with 'io.ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange'.
 //  [X] Platform: Clipboard support.
-//  [X] Platform: Keyboard arrays indexed using SDL_SCANCODE_* codes, e.g. ImGui::IsKeyPressed(SDL_SCANCODE_SPACE).
+//  [X] Platform: Keyboard support. Since 1.87 we are using the io.AddKeyEvent() function. Pass ImGuiKey values to all key functions e.g. ImGui::IsKeyPressed(ImGuiKey_Space). [Legacy SDL_SCANCODE_* values will also be supported unless IMGUI_DISABLE_OBSOLETE_KEYIO is set]
 //  [X] Platform: Gamepad support. Enabled with 'io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad'.
+//  [X] Platform: Mouse cursor shape and visibility. Disable with 'io.ConfigFlags |= ImGuiConfigFlags_NoMouseCursorChange'.
 //  [X] Platform: Multi-viewport support (multiple windows). Enable with 'io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable'.
 // Missing features:
 //  [ ] Platform: SDL2 handling of IME under Windows appears to be broken and it explicitly disable the regular Windows IME. You can restore Windows IME by compiling SDL with SDL_DISABLE_WINDOWS_IME.
@@ -22,10 +22,11 @@
 #include "../Source/imgui.h"
 
 struct SDL_Window;
+struct SDL_Renderer;
 typedef union SDL_Event SDL_Event;
 namespace Spartan { class Context; }
 
-IMGUI_IMPL_API bool ImGui_ImplSDL2_Init(SDL_Window* window);
+IMGUI_IMPL_API bool ImGui_ImplSDL2_Init(Spartan::Context* context);
 IMGUI_IMPL_API void ImGui_ImplSDL2_Shutdown();
-IMGUI_IMPL_API void ImGui_ImplSDL2_NewFrame(Spartan::Context* context);
+IMGUI_IMPL_API void ImGui_ImplSDL2_NewFrame();
 IMGUI_IMPL_API bool ImGui_ImplSDL2_ProcessEvent(const SDL_Event* event);
