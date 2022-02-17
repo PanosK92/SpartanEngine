@@ -323,7 +323,7 @@ namespace Spartan::vulkan_utility
 
     namespace buffer
     {
-        VmaAllocation create(void*& _buffer, const uint64_t size, VkBufferUsageFlags usage, VkMemoryPropertyFlags memory_property_flags, const bool written_frequently = false, const void* data = nullptr);
+        VmaAllocation create(void*& _buffer, const uint64_t size, VkBufferUsageFlags usage, VkMemoryPropertyFlags memory_property_flags, const bool is_mappable, const void* data);
         void destroy(void*& _buffer);
     }
 

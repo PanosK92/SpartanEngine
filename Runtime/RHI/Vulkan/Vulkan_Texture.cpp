@@ -120,7 +120,8 @@ namespace Spartan
         }
 
         // Create staging buffer
-        VmaAllocation allocation = vulkan_utility::buffer::create(staging_buffer, buffer_offset, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+        bool is_mappable = false;
+        VmaAllocation allocation = vulkan_utility::buffer::create(staging_buffer, buffer_offset, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, is_mappable, nullptr);
 
         // Copy array and mip level data to the staging buffer
         void* data = nullptr;

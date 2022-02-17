@@ -67,27 +67,30 @@ namespace Spartan
         bool use_staging = indices != nullptr;
         if (!use_staging)
         {
+            m_is_mappable = true;
+
             VkMemoryPropertyFlags flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
             flags |= !m_persistent_mapping ? VK_MEMORY_PROPERTY_HOST_COHERENT_BIT : 0;
-            VmaAllocation allocation = vulkan_utility::buffer::create(m_resource, m_object_size_gpu, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, flags, true);
+            VmaAllocation allocation = vulkan_utility::buffer::create(m_resource, m_object_size_gpu, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, flags, m_is_mappable, nullptr);
             if (!allocation)
                 return false;
 
-            m_allocation    = static_cast<void*>(allocation);
-            m_is_mappable   = true;
+            m_allocation = static_cast<void*>(allocation);
         }
         else
         {
             // The reason we use staging is because memory with VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT is not mappable but it's fast, we want that.
 
+            m_is_mappable = false;
+
             // Create staging/source buffer and copy the indices to it
             void* staging_buffer = nullptr;
-            VmaAllocation allocation_staging = vulkan_utility::buffer::create(staging_buffer, m_object_size_gpu, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, false, indices);
+            VmaAllocation allocation_staging = vulkan_utility::buffer::create(staging_buffer, m_object_size_gpu, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, m_is_mappable, indices);
             if (!allocation_staging)
                 return false;
 
             // Create destination buffer
-            VmaAllocation allocation = vulkan_utility::buffer::create(m_resource, m_object_size_gpu, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+            VmaAllocation allocation = vulkan_utility::buffer::create(m_resource, m_object_size_gpu, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, false, nullptr);
             if (!allocation)
                 return false;
 
@@ -112,8 +115,7 @@ namespace Spartan
                 vulkan_utility::buffer::destroy(staging_buffer);
             }
 
-            m_allocation    = static_cast<void*>(allocation);
-            m_is_mappable   = false;
+            m_allocation = static_cast<void*>(allocation);
         }
 
         // Set debug name
