@@ -49,15 +49,17 @@ namespace Spartan
         uint32_t GetQueueIndex(const RHI_Queue_Type type) const;
         void SetQueueIndex(const RHI_Queue_Type type, const uint32_t index);
 
-        // Device limits
-        static uint32_t GetMaxTexture1dDimension()   { return m_max_texture_1d_dimension; }
-        static uint32_t GetMaxTexture2dDimension()   { return m_max_texture_2d_dimension; }
-        static uint32_t GetMaxTexture3dDimension()   { return m_max_texture_3d_dimension; }
-        static uint32_t GetMaxTextureCubeDimension() { return m_max_texture_cube_dimension; }
-        static uint32_t GetMaxTextureArrayLayers()   { return m_max_texture_array_layers; }
+        // Device properties
+        uint32_t GetMaxTexture1dDimension()            const { return m_max_texture_1d_dimension; }
+        uint32_t GetMaxTexture2dDimension()            const { return m_max_texture_2d_dimension; }
+        uint32_t GetMaxTexture3dDimension()            const { return m_max_texture_3d_dimension; }
+        uint32_t GetMaxTextureCubeDimension()          const { return m_max_texture_cube_dimension; }
+        uint32_t GetMaxTextureArrayLayers()            const { return m_max_texture_array_layers; }
+        uint64_t GetMinUniformBufferOffsetAllignment() const { return m_min_uniform_buffer_offset_alignment; }
+        float GetTimestampPeriod()                     const { return m_timestamp_period; }
 
         // Misc
-        static bool IsValidResolution(const uint32_t width, const uint32_t height);
+        bool IsValidResolution(const uint32_t width, const uint32_t height);
         auto IsInitialised()                const { return m_initialized; }
         RHI_Context* GetContextRhi()        const { return m_rhi_context.get(); }
         Context* GetContext()               const { return m_context; }
@@ -82,12 +84,15 @@ namespace Spartan
         uint32_t m_queue_compute_index  = 0;
         uint32_t m_queue_copy_index     = 0;
 
-        // Device limits
-        static uint32_t m_max_texture_1d_dimension;
-        static uint32_t m_max_texture_2d_dimension;
-        static uint32_t m_max_texture_3d_dimension;
-        static uint32_t m_max_texture_cube_dimension;
-        static uint32_t m_max_texture_array_layers;
+        // Device properties
+        uint32_t m_max_texture_1d_dimension            = 0;
+        uint32_t m_max_texture_2d_dimension            = 0;
+        uint32_t m_max_texture_3d_dimension            = 0;
+        uint32_t m_max_texture_cube_dimension          = 0;
+        uint32_t m_max_texture_array_layers            = 0;
+        uint64_t m_min_uniform_buffer_offset_alignment = 0;
+        float m_timestamp_period                       = 0;
+        bool m_wide_lines                              = false;
 
         // Misc
         uint32_t m_physical_device_index          = 0;

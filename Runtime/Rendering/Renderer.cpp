@@ -392,7 +392,7 @@ namespace Spartan
     void Renderer::SetResolutionRender(uint32_t width, uint32_t height, bool recreate_resources /*= true*/)
     {
         // Return if resolution is invalid
-        if (!RHI_Device::IsValidResolution(width, height))
+        if (!m_rhi_device->IsValidResolution(width, height))
         {
             LOG_WARNING("%dx%d is an invalid resolution", width, height);
             return;
@@ -817,7 +817,7 @@ namespace Spartan
         }
         else if (option == Renderer::OptionValue::ShadowResolution)
         {
-            value = Helper::Clamp(value, static_cast<float>(m_resolution_shadow_min), static_cast<float>(RHI_Device::GetMaxTexture2dDimension()));
+            value = Helper::Clamp(value, static_cast<float>(m_resolution_shadow_min), static_cast<float>(m_rhi_device->GetMaxTexture2dDimension()));
         }
 
         if (m_option_values[option] == value)

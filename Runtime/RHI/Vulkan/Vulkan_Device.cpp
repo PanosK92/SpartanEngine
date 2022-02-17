@@ -34,12 +34,6 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    uint32_t RHI_Device::m_max_texture_1d_dimension   = 0;
-    uint32_t RHI_Device::m_max_texture_2d_dimension   = 0;
-    uint32_t RHI_Device::m_max_texture_3d_dimension   = 0;
-    uint32_t RHI_Device::m_max_texture_cube_dimension = 0;
-    uint32_t RHI_Device::m_max_texture_array_layers   = 0;
-
     RHI_Device::RHI_Device(Context* context)
     {
         m_context       = context;
@@ -179,66 +173,105 @@ namespace Spartan
             }
 
             // Get device properties
-            vkGetPhysicalDeviceProperties(static_cast<VkPhysicalDevice>(m_rhi_context->device_physical), &m_rhi_context->device_properties);
+            VkPhysicalDeviceProperties device_properties = {};
+            vkGetPhysicalDeviceProperties(static_cast<VkPhysicalDevice>(m_rhi_context->device_physical), &device_properties);
 
-            // Detect device limits
-            m_max_texture_1d_dimension   = m_rhi_context->device_properties.limits.maxImageDimension1D;
-            m_max_texture_2d_dimension   = m_rhi_context->device_properties.limits.maxImageDimension2D;
-            m_max_texture_3d_dimension   = m_rhi_context->device_properties.limits.maxImageDimension3D;
-            m_max_texture_cube_dimension = m_rhi_context->device_properties.limits.maxImageDimensionCube;
-            m_max_texture_array_layers   = m_rhi_context->device_properties.limits.maxImageArrayLayers;
+            // Save some properties
+            m_max_texture_1d_dimension            = device_properties.limits.maxImageDimension1D;
+            m_max_texture_2d_dimension            = device_properties.limits.maxImageDimension2D;
+            m_max_texture_3d_dimension            = device_properties.limits.maxImageDimension3D;
+            m_max_texture_cube_dimension          = device_properties.limits.maxImageDimensionCube;
+            m_max_texture_array_layers            = device_properties.limits.maxImageArrayLayers;
+            m_min_uniform_buffer_offset_alignment = device_properties.limits.minUniformBufferOffsetAlignment;
+            m_timestamp_period                    = device_properties.limits.timestampPeriod;
 
             // Disable profiler if timestamps are not supported
-            if (m_rhi_context->profiler && !m_rhi_context->device_properties.limits.timestampComputeAndGraphics)
+            if (m_rhi_context->profiler && !device_properties.limits.timestampComputeAndGraphics)
             {
                 LOG_WARNING("Device doesn't support timestamps, disabling profiler...");
                 m_rhi_context->profiler = false;
             }
 
-            // Get device features
-            VkPhysicalDeviceVulkan12Features device_features_1_2_enabled = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES };
-            VkPhysicalDeviceFeatures2 device_features_enabled            = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, &device_features_1_2_enabled };
+            // Feature: Vulkan 1.3 features
+            VkPhysicalDeviceVulkan13Features device_features_1_3 = {};
+            device_features_1_3.sType                            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+
+            // Feature: Vulkan 1.2 features
+            VkPhysicalDeviceVulkan12Features device_features_1_2 = {};
+            device_features_1_2.sType                            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+            device_features_1_2.pNext                            = &device_features_1_3;
+
+            // Feature: Physical device features
+            VkPhysicalDeviceFeatures2 device_features = {};
+            device_features.sType                     = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+            device_features.pNext                     = &device_features_1_2;
+
+            // Feature: Dynamic rendering
+            VkPhysicalDeviceDynamicRenderingFeaturesKHR dynamic_rendering_features = {};
+            dynamic_rendering_features.sType                                       = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR;
+            dynamic_rendering_features.dynamicRendering                            = VK_TRUE;
+            dynamic_rendering_features.pNext                                       = &device_features;
+
+            // Feature: Partially bound descriptors
+            VkPhysicalDeviceDescriptorIndexingFeatures descriptor_indexing_features = {};
+            descriptor_indexing_features.sType                                      = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;
+            descriptor_indexing_features.descriptorBindingPartiallyBound            = VK_TRUE;
+            descriptor_indexing_features.pNext                                      = &dynamic_rendering_features;
+
+            // Enable certain features
             {
-                // A macro to make enabling features a little easier
-                #define ENABLE_FEATURE(device_features, enabled_features, feature)                                \
-                if (device_features.feature)                                                                      \
-                {                                                                                                 \
-                    enabled_features.feature = VK_TRUE;                                                           \
-                }                                                                                                 \
-                else                                                                                              \
-                {                                                                                                 \
-                    LOG_WARNING("Requested device feature " #feature " is not supported by the physical device"); \
-                    enabled_features.feature = VK_FALSE;                                                          \
+                // Check what's supported
+                VkPhysicalDeviceFeatures2 device_features_supported            = {};
+                VkPhysicalDeviceVulkan12Features device_features_1_2_supported = {};
+                VkPhysicalDeviceVulkan13Features device_features_1_3_supported = {};
+                {
+                    device_features_1_3_supported.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+
+                    device_features_1_2_supported.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+                    device_features_1_2_supported.pNext = &device_features_1_3_supported;
+
+                    device_features_supported.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+                    device_features_supported.pNext = &device_features_1_2_supported;
+
+                    vkGetPhysicalDeviceFeatures2(m_rhi_context->device_physical, &device_features_supported);
                 }
 
-                // Get
-                vkGetPhysicalDeviceFeatures2(m_rhi_context->device_physical, &m_rhi_context->device_features);
+                // Anisotropic filtering
+                SP_ASSERT(device_features_supported.features.samplerAnisotropy == VK_TRUE);
+                device_features.features.samplerAnisotropy = VK_TRUE;
 
-                // Enable
-                ENABLE_FEATURE(m_rhi_context->device_features.features, device_features_enabled.features, samplerAnisotropy)
-                ENABLE_FEATURE(m_rhi_context->device_features.features, device_features_enabled.features, fillModeNonSolid)
-                ENABLE_FEATURE(m_rhi_context->device_features.features, device_features_enabled.features, wideLines)
-                ENABLE_FEATURE(m_rhi_context->device_features.features, device_features_enabled.features, imageCubeArray)
-                ENABLE_FEATURE(m_rhi_context->device_features_1_2,      device_features_1_2_enabled,      timelineSemaphore)
+                // Line and point rendering
+                SP_ASSERT(device_features_supported.features.fillModeNonSolid == VK_TRUE);
+                device_features.features.fillModeNonSolid = VK_TRUE;
+
+                // Lines with adjustable thickness
+                SP_ASSERT(device_features_supported.features.wideLines == VK_TRUE);
+                device_features.features.wideLines = VK_TRUE;
+
+                // Cubemaps
+                SP_ASSERT(device_features_supported.features.imageCubeArray == VK_TRUE);
+                device_features.features.imageCubeArray = VK_TRUE;
+
+                // Timeline semaphores
+                SP_ASSERT(device_features_1_2_supported.timelineSemaphore == VK_TRUE);
+                device_features_1_2.timelineSemaphore = VK_TRUE;
+
+                // Rendering without render passes and frame buffer objects
+                SP_ASSERT(device_features_1_3_supported.dynamicRendering == VK_TRUE);
+                device_features_1_3.dynamicRendering = VK_TRUE;
             }
 
-            // Determine enabled graphics shader stages
-            m_enabled_graphics_shader_stages = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-            if (device_features_enabled.features.geometryShader)
+            // Enable certain graphics shader stages
             {
-                m_enabled_graphics_shader_stages |= VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT;
-            }
-            if (device_features_enabled.features.tessellationShader)
-            {
-                m_enabled_graphics_shader_stages |= VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT | VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT;
-            }
-
-            // Enable partially bound descriptors
-            VkPhysicalDeviceDescriptorIndexingFeatures descriptor_indexing_features = {};
-            {
-                descriptor_indexing_features.sType                           = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;
-                descriptor_indexing_features.descriptorBindingPartiallyBound = true;
-                device_features_enabled.pNext = &descriptor_indexing_features;
+                m_enabled_graphics_shader_stages = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+                if (device_features.features.geometryShader)
+                {
+                    m_enabled_graphics_shader_stages |= VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT;
+                }
+                if (device_features.features.tessellationShader)
+                {
+                    m_enabled_graphics_shader_stages |= VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT | VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT;
+                }
             }
 
             // Get the supported extensions out of the requested extensions
@@ -250,7 +283,7 @@ namespace Spartan
                 create_info.sType                   = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
                 create_info.queueCreateInfoCount    = static_cast<uint32_t>(queue_create_infos.size());
                 create_info.pQueueCreateInfos       = queue_create_infos.data();
-                create_info.pNext                   = &device_features_enabled;
+                create_info.pNext                   = &device_features;
                 create_info.enabledExtensionCount   = static_cast<uint32_t>(extensions_supported.size());
                 create_info.ppEnabledExtensionNames = extensions_supported.data();
 

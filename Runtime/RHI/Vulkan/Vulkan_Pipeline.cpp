@@ -252,26 +252,26 @@ namespace Spartan
                 rasterizer_state_depth_clip.flags           = 0;
                 rasterizer_state_depth_clip.depthClipEnable = m_state.rasterizer_state->GetDepthClipEnabled();
                 
-                rasterizer_state.sType                      = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-                rasterizer_state.pNext                      = &rasterizer_state_depth_clip;
-                rasterizer_state.depthClampEnable           = VK_FALSE;
-                rasterizer_state.rasterizerDiscardEnable    = VK_FALSE;
-                rasterizer_state.polygonMode                = vulkan_polygon_mode[static_cast<uint32_t>(m_state.rasterizer_state->GetPolygonMode())];
-                rasterizer_state.lineWidth                  = m_rhi_device->GetContextRhi()->device_features.features.wideLines ? m_state.rasterizer_state->GetLineWidth() : 1.0f;
-                rasterizer_state.cullMode                   = vulkan_cull_mode[static_cast<uint32_t>(m_state.rasterizer_state->GetCullMode())];
-                rasterizer_state.frontFace                  = VK_FRONT_FACE_CLOCKWISE;
-                rasterizer_state.depthBiasEnable            = m_state.rasterizer_state->GetDepthBias() != 0.0f ? VK_TRUE : VK_FALSE;
-                rasterizer_state.depthBiasConstantFactor    = Math::Helper::Floor(m_state.rasterizer_state->GetDepthBias() * (float)(1 << 24));
-                rasterizer_state.depthBiasClamp             = m_state.rasterizer_state->GetDepthBiasClamp();
-                rasterizer_state.depthBiasSlopeFactor       = m_state.rasterizer_state->GetDepthBiasSlopeScaled();
+                rasterizer_state.sType                   = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+                rasterizer_state.pNext                   = &rasterizer_state_depth_clip;
+                rasterizer_state.depthClampEnable        = VK_FALSE;
+                rasterizer_state.rasterizerDiscardEnable = VK_FALSE;
+                rasterizer_state.polygonMode             = vulkan_polygon_mode[static_cast<uint32_t>(m_state.rasterizer_state->GetPolygonMode())];
+                rasterizer_state.lineWidth               = m_state.rasterizer_state->GetLineWidth();
+                rasterizer_state.cullMode                = vulkan_cull_mode[static_cast<uint32_t>(m_state.rasterizer_state->GetCullMode())];
+                rasterizer_state.frontFace               = VK_FRONT_FACE_CLOCKWISE;
+                rasterizer_state.depthBiasEnable         = m_state.rasterizer_state->GetDepthBias() != 0.0f ? VK_TRUE : VK_FALSE;
+                rasterizer_state.depthBiasConstantFactor = Math::Helper::Floor(m_state.rasterizer_state->GetDepthBias() * (float)(1 << 24));
+                rasterizer_state.depthBiasClamp          = m_state.rasterizer_state->GetDepthBiasClamp();
+                rasterizer_state.depthBiasSlopeFactor    = m_state.rasterizer_state->GetDepthBiasSlopeScaled();
             }
             
             // Mutlisampling
             VkPipelineMultisampleStateCreateInfo multisampling_state = {};
             {
-                multisampling_state.sType                   = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-                multisampling_state.sampleShadingEnable     = VK_FALSE;
-                multisampling_state.rasterizationSamples    = VK_SAMPLE_COUNT_1_BIT;
+                multisampling_state.sType                = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+                multisampling_state.sampleShadingEnable  = VK_FALSE;
+                multisampling_state.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
             }
             
             VkPipelineColorBlendStateCreateInfo color_blend_state = {};

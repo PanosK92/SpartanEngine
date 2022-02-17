@@ -283,7 +283,7 @@ namespace Spartan
     bool RHI_SwapChain::Resize(const uint32_t width, const uint32_t height, const bool force /*= false*/)
     {
         // Validate resolution
-        m_present_enabled = RHI_Device::IsValidResolution(width, height);
+        m_present_enabled = m_rhi_device->IsValidResolution(width, height);
 
         if (!m_present_enabled)
         {

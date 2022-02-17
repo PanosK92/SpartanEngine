@@ -153,7 +153,7 @@ namespace Spartan
 
     void ReflectionProbe::SetResolution(const uint32_t resolution)
     {
-        uint32_t new_value = Math::Helper::Clamp<uint32_t>(resolution, 16, RHI_Device::GetMaxTextureCubeDimension());
+        uint32_t new_value = Math::Helper::Clamp<uint32_t>(resolution, 16, m_context->GetSubsystem<Renderer>()->GetRhiDevice()->GetMaxTextureCubeDimension());
 
         if (m_resolution == new_value)
             return;
