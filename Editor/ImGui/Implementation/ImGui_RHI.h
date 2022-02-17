@@ -315,12 +315,11 @@ namespace ImGui::RHI
                         g_used_cmd_list->SetScissorRectangle(scissor_rect);
 
                         // Set texture
-                        RHI_Texture* texture = static_cast<RHI_Texture*>(pcmd->TextureId);
-                        g_used_cmd_list->SetTexture(Renderer::Bindings_Srv::tex, texture);
-
-                        // Make sure single channel texture appear white instead of red.
-                        if (texture)
+                        if (RHI_Texture* texture = static_cast<RHI_Texture*>(pcmd->TextureId))
                         {
+                            g_used_cmd_list->SetTexture(Renderer::Bindings_Srv::tex, texture);
+
+                            // Make sure single channel texture appear white instead of red.
                             if (texture->GetChannelCount() == 1)
                             {
                                 texture->SetFlag(RHI_Texture_Flags::RHI_Texture_Visualise);

@@ -86,7 +86,7 @@ namespace Spartan::vulkan_utility
         create_info.sharingMode       = VK_SHARING_MODE_EXCLUSIVE;
 
         VmaAllocationCreateInfo allocation_info = {};
-        allocation_info.usage                   = VMA_MEMORY_USAGE_GPU_ONLY;
+        allocation_info.usage                   = VMA_MEMORY_USAGE_AUTO;
 
         // Create image, allocate memory and bind memory to image
         VmaAllocation allocation;
@@ -102,8 +102,8 @@ namespace Spartan::vulkan_utility
 
     void image::destroy(RHI_Texture* texture)
     {
-        void*& resource         = texture->GetResource();
-        uint64_t allocation_id  = texture->GetObjectId();
+        void*& resource        = texture->GetResource();
+        uint64_t allocation_id = texture->GetObjectId();
 
         auto it = globals::rhi_context->allocations.find(allocation_id);
         if (it != globals::rhi_context->allocations.end())
@@ -114,20 +114,21 @@ namespace Spartan::vulkan_utility
         }
     }
 
-    VmaAllocation buffer::create(void*& _buffer, const uint64_t size, VkBufferUsageFlags usage, VkMemoryPropertyFlags memory_property_flags, const bool written_frequently /*= false*/, const void* data /*= nullptr*/)
+    VmaAllocation buffer::create(void*& _buffer, const uint64_t size, VkBufferUsageFlags usage, VkMemoryPropertyFlags memory_property_flags, const bool is_mappable, const void* data)
     {
         VmaAllocator allocator = globals::rhi_context->allocator;
 
         VkBufferCreateInfo buffer_create_info = {};
         buffer_create_info.sType              = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
         buffer_create_info.size               = size;
-        buffer_create_info.usage              = usage;
+        buffer_create_info.usage              = VMA_MEMORY_USAGE_AUTO;
         buffer_create_info.sharingMode        = VK_SHARING_MODE_EXCLUSIVE;
 
         bool used_for_staging = (usage & VK_BUFFER_USAGE_TRANSFER_SRC_BIT) != 0;
 
         VmaAllocationCreateInfo allocation_create_info = {};
-        allocation_create_info.usage                   = used_for_staging ? VMA_MEMORY_USAGE_CPU_ONLY : (written_frequently ? VMA_MEMORY_USAGE_CPU_TO_GPU : VMA_MEMORY_USAGE_GPU_ONLY);
+        allocation_create_info.usage                   = used_for_staging ? VMA_MEMORY_USAGE_CPU_ONLY : (is_mappable ? VMA_MEMORY_USAGE_CPU_TO_GPU : VMA_MEMORY_USAGE_GPU_ONLY);
+        allocation_create_info.flags                   = is_mappable ? VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT : 0;
         allocation_create_info.preferredFlags          = memory_property_flags;
 
         // Create buffer, allocate memory and bind it to the buffer
@@ -145,8 +146,8 @@ namespace Spartan::vulkan_utility
             VkMemoryPropertyFlags memory_flags;
             vmaGetMemoryTypeProperties(allocator, allocation_info.memoryType, &memory_flags);
 
-            bool is_mappable        = (memory_flags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) != 0;
-            bool is_host_coherent   = (memory_flags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) != 0;
+            bool is_mappable      = (memory_flags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) != 0;
+            bool is_host_coherent = (memory_flags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) != 0;
 
             // Memory in Vulkan doesn't need to be unmapped before using it on GPU, but unless a
             // memory type has VK_MEMORY_PROPERTY_HOST_COHERENT_BIT flag set, you need to manually
