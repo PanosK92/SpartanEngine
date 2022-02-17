@@ -848,7 +848,7 @@ namespace Spartan
             return 0.0f;
 
         uint64_t duration   = Math::Helper::Clamp<uint64_t>(end - start, 0, std::numeric_limits<uint64_t>::max());
-        float duration_ms   = static_cast<float>(duration * m_rhi_device->GetContextRhi()->device_properties.limits.timestampPeriod * 1e-6f);
+        float duration_ms   = static_cast<float>(duration * m_rhi_device->GetTimestampPeriod() * 1e-6f);
 
         return duration_ms;
     }

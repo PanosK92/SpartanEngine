@@ -79,7 +79,7 @@ namespace Spartan
         _destroy();
 
         // Calculate required alignment based on minimum device offset alignment
-        size_t min_ubo_alignment = m_rhi_device->GetContextRhi()->device_properties.limits.minUniformBufferOffsetAlignment;
+        size_t min_ubo_alignment = m_rhi_device->GetMinUniformBufferOffsetAllignment();
         if (min_ubo_alignment > 0)
         {
             m_stride = static_cast<uint32_t>((m_stride + min_ubo_alignment - 1) & ~(min_ubo_alignment - 1));

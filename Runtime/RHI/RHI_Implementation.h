@@ -464,9 +464,6 @@ namespace Spartan
             VkInstance instance                                  = nullptr;
             VkPhysicalDevice device_physical                     = nullptr;
             VkDevice device                                      = nullptr;
-            VkPhysicalDeviceProperties device_properties         = {};
-            VkPhysicalDeviceVulkan12Features device_features_1_2 = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES };
-            VkPhysicalDeviceFeatures2 device_features            = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, &device_features_1_2 };
             VkFormat surface_format                              = VK_FORMAT_UNDEFINED;
             VkColorSpaceKHR surface_color_space                  = VK_COLOR_SPACE_MAX_ENUM_KHR;
             VmaAllocator allocator                               = nullptr;
@@ -490,16 +487,15 @@ namespace Spartan
                 Identify specific sections within a VkQueue or VkCommandBuffer using labels to aid organization and offline analysis in external tools.
 
                 */
-                std::vector<const char*> extensions_device                      = { "VK_KHR_swapchain", "VK_EXT_memory_budget", "VK_EXT_depth_clip_enable", "VK_KHR_timeline_semaphore" };
                 std::vector<const char*> validation_layers                      = { "VK_LAYER_KHRONOS_validation" };
                 std::vector<VkValidationFeatureEnableEXT> validation_extensions = { VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT, VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT };
                 std::vector<const char*> extensions_instance                    = { "VK_KHR_surface", "VK_KHR_win32_surface", "VK_EXT_debug_report", "VK_EXT_debug_utils" };
             #else
-                std::vector<const char*> extensions_device                      = { "VK_KHR_swapchain", "VK_EXT_memory_budget", "VK_EXT_depth_clip_enable", "VK_KHR_timeline_semaphore" };
                 std::vector<const char*> validation_layers                      = { };
                 std::vector<VkValidationFeatureEnableEXT> validation_extensions = { };
                 std::vector<const char*> extensions_instance                    = { "VK_KHR_surface", "VK_KHR_win32_surface" };
             #endif
+                std::vector<const char*> extensions_device = { "VK_KHR_swapchain", "VK_EXT_memory_budget", "VK_EXT_depth_clip_enable", "VK_KHR_timeline_semaphore", "VK_KHR_dynamic_rendering" };
                 
                 bool InitialiseAllocator();
                 void DestroyAllocator();

@@ -36,12 +36,6 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    uint32_t RHI_Device::m_max_texture_1d_dimension   = 0;
-    uint32_t RHI_Device::m_max_texture_2d_dimension   = 0;
-    uint32_t RHI_Device::m_max_texture_3d_dimension   = 0;
-    uint32_t RHI_Device::m_max_texture_cube_dimension = 0;
-    uint32_t RHI_Device::m_max_texture_array_layers   = 0;
-
     RHI_Device::RHI_Device(Context* context)
     {
         // Detect device limits
