@@ -544,17 +544,16 @@ namespace Spartan
             return;
 
         // Acquire render targets
-        RHI_Texture* tex_albedo                  = RENDER_TARGET(RenderTarget::Gbuffer_Albedo).get();
-        RHI_Texture* tex_normal                  = RENDER_TARGET(RenderTarget::Gbuffer_Normal).get();
-        RHI_Texture* tex_material                = RENDER_TARGET(RenderTarget::Gbuffer_Material).get();
-        RHI_Texture* tex_velocity                = RENDER_TARGET(RenderTarget::Gbuffer_Velocity).get();
-        RHI_Texture* tex_velocity_previous_frame = RENDER_TARGET(RenderTarget::Gbuffer_VelocityPrevious).get();
-        RHI_Texture* tex_depth                   = RENDER_TARGET(RenderTarget::Gbuffer_Depth).get();
+        RHI_Texture* tex_albedo   = RENDER_TARGET(RenderTarget::Gbuffer_Albedo).get();
+        RHI_Texture* tex_normal   = RENDER_TARGET(RenderTarget::Gbuffer_Normal).get();
+        RHI_Texture* tex_material = RENDER_TARGET(RenderTarget::Gbuffer_Material).get();
+        RHI_Texture* tex_velocity = RENDER_TARGET(!m_is_odd_frame ? RenderTarget::Gbuffer_Velocity : RenderTarget::Gbuffer_Velocity_2).get();
+        RHI_Texture* tex_depth    = RENDER_TARGET(RenderTarget::Gbuffer_Depth).get();
 
         bool depth_prepass = GetOption(Renderer::Option::DepthPrepass);
         bool wireframe     = GetOption(Renderer::Option::Debug_Wireframe);
 
-        // We consider (in the shaders) that sky is opaque, that's why the clear value has an alpha of 1.0f.
+        // We consider (in the shaders) that the sky is opaque, that's why the clear value has an alpha of 1.0f.
         static Vector4 clear_color_sky = Vector4(0.0f, 0.0f, 0.0f, 1.0f);
 
         // Set render state
@@ -585,114 +584,121 @@ namespace Spartan
         m_material_instances.fill(nullptr);
         auto& entities = m_entities[is_transparent_pass ? ObjectType::GeometryTransparent : ObjectType::GeometryOpaque];
 
-        // Keep previous velocity (for TAA).
-        cmd_list->Blit(tex_velocity, tex_velocity_previous_frame);
-
         // Record commands
-        if (cmd_list->BeginRenderPass(pso))
-        {
-            for (uint32_t i = 0; i < static_cast<uint32_t>(entities.size()); i++)
+        uint32_t entity_count        = static_cast<uint32_t>(entities.size());
+        static bool is_gbuffer_clear = false;
+        bool needs_to_clear          = entity_count == 0 && !is_gbuffer_clear;
+        if (entity_count != 0 || needs_to_clear)
+        { 
+            if (cmd_list->BeginRenderPass(pso))
             {
-                Entity* entity = entities[i];
-        
-                // Get renderable
-                Renderable* renderable = entity->GetRenderable();
-                if (!renderable)
-                    continue;
-        
-                // Get material
-                Material* material = renderable->GetMaterial();
-                if (!material)
-                    continue;
-        
-                // Get geometry
-                Model* model = renderable->GeometryModel();
-                if (!model || !model->GetVertexBuffer() || !model->GetIndexBuffer())
-                    continue;
-        
-                // Skip objects outside of the view frustum
-                if (!m_camera->IsInViewFrustum(renderable))
-                    continue;
-        
-                // Set geometry (will only happen if not already set)
-                cmd_list->SetBufferIndex(model->GetIndexBuffer());
-                cmd_list->SetBufferVertex(model->GetVertexBuffer());
-        
-                // Bind material
-                const bool firs_run     = material_index == 0;
-                const bool new_material = material_bound_id != material->GetObjectId();
-                if (firs_run || new_material)
+                for (uint32_t i = 0; i < entity_count; i++)
                 {
-                    material_bound_id = material->GetObjectId();
-
-                    // Keep track of used material instances (they get mapped to shaders)
-                    if (material_index + 1 < m_material_instances.size())
-                    {
-                        // Advance index (0 is reserved for the sky)
-                        material_index++;
-        
-                        // Keep reference
-                        m_material_instances[material_index] = material;
-                    }
-                    else
-                    {
-                        LOG_ERROR("Material instance array has reached it's maximum capacity of %d elements. Consider increasing the size.", m_max_material_instances);
-                    }
-        
-                    // Bind material textures
-                    cmd_list->SetTexture(Renderer::Bindings_Srv::material_albedo,    material->GetTexture_Ptr(Material_Color));
-                    cmd_list->SetTexture(Renderer::Bindings_Srv::material_roughness, material->GetTexture_Ptr(Material_Roughness));
-                    cmd_list->SetTexture(Renderer::Bindings_Srv::material_metallic,  material->GetTexture_Ptr(Material_Metallic));
-                    cmd_list->SetTexture(Renderer::Bindings_Srv::material_normal,    material->GetTexture_Ptr(Material_Normal));
-                    cmd_list->SetTexture(Renderer::Bindings_Srv::material_height,    material->GetTexture_Ptr(Material_Height));
-                    cmd_list->SetTexture(Renderer::Bindings_Srv::material_occlusion, material->GetTexture_Ptr(Material_Occlusion));
-                    cmd_list->SetTexture(Renderer::Bindings_Srv::material_emission,  material->GetTexture_Ptr(Material_Emission));
-                    cmd_list->SetTexture(Renderer::Bindings_Srv::material_mask,      material->GetTexture_Ptr(Material_AlphaMask));
-                
-                    // Update uber buffer with material properties
-                    m_cb_uber_cpu.mat_id            = material_index;
-                    m_cb_uber_cpu.mat_color         = material->GetColorAlbedo();
-                    m_cb_uber_cpu.mat_tiling_uv     = material->GetTiling();
-                    m_cb_uber_cpu.mat_offset_uv     = material->GetOffset();
-                    m_cb_uber_cpu.mat_roughness_mul = material->GetProperty(Material_Roughness);
-                    m_cb_uber_cpu.mat_metallic_mul  = material->GetProperty(Material_Metallic);
-                    m_cb_uber_cpu.mat_normal_mul    = material->GetProperty(Material_Normal);
-                    m_cb_uber_cpu.mat_height_mul    = material->GetProperty(Material_Height);
-                    m_cb_uber_cpu.mat_textures      = 0;
-                    m_cb_uber_cpu.mat_textures      |= material->HasTexture(Material_Height)    ? (1 << 0) : 0;
-                    m_cb_uber_cpu.mat_textures      |= material->HasTexture(Material_Normal)    ? (1 << 1) : 0;
-                    m_cb_uber_cpu.mat_textures      |= material->HasTexture(Material_Color)     ? (1 << 2) : 0;
-                    m_cb_uber_cpu.mat_textures      |= material->HasTexture(Material_Roughness) ? (1 << 3) : 0;
-                    m_cb_uber_cpu.mat_textures      |= material->HasTexture(Material_Metallic)  ? (1 << 4) : 0;
-                    m_cb_uber_cpu.mat_textures      |= material->HasTexture(Material_AlphaMask) ? (1 << 5) : 0;
-                    m_cb_uber_cpu.mat_textures      |= material->HasTexture(Material_Emission)  ? (1 << 6) : 0;
-                    m_cb_uber_cpu.mat_textures      |= material->HasTexture(Material_Occlusion) ? (1 << 7) : 0;
-                }
-        
-                // Update uber buffer with entity transform
-                if (Transform* transform = entity->GetTransform())
-                {
-                    m_cb_uber_cpu.transform          = transform->GetMatrix();
-                    m_cb_uber_cpu.transform_previous = transform->GetMatrixPrevious();
-        
-                    // Save matrix for velocity computation
-                    transform->SetMatrixPrevious(m_cb_uber_cpu.transform);
-        
-                    // Update object buffer
-                    if (!Update_Cb_Uber(cmd_list))
+                    Entity* entity = entities[i];
+            
+                    // Get renderable
+                    Renderable* renderable = entity->GetRenderable();
+                    if (!renderable)
                         continue;
+            
+                    // Get material
+                    Material* material = renderable->GetMaterial();
+                    if (!material)
+                        continue;
+            
+                    // Get geometry
+                    Model* model = renderable->GeometryModel();
+                    if (!model || !model->GetVertexBuffer() || !model->GetIndexBuffer())
+                        continue;
+            
+                    // Skip objects outside of the view frustum
+                    if (!m_camera->IsInViewFrustum(renderable))
+                        continue;
+            
+                    // Set geometry (will only happen if not already set)
+                    cmd_list->SetBufferIndex(model->GetIndexBuffer());
+                    cmd_list->SetBufferVertex(model->GetVertexBuffer());
+            
+                    // Bind material
+                    const bool firs_run     = material_index == 0;
+                    const bool new_material = material_bound_id != material->GetObjectId();
+                    if (firs_run || new_material)
+                    {
+                        material_bound_id = material->GetObjectId();
+
+                        // Keep track of used material instances (they get mapped to shaders)
+                        if (material_index + 1 < m_material_instances.size())
+                        {
+                            // Advance index (0 is reserved for the sky)
+                            material_index++;
+            
+                            // Keep reference
+                            m_material_instances[material_index] = material;
+                        }
+                        else
+                        {
+                            LOG_ERROR("Material instance array has reached it's maximum capacity of %d elements. Consider increasing the size.", m_max_material_instances);
+                        }
+            
+                        // Bind material textures
+                        cmd_list->SetTexture(Renderer::Bindings_Srv::material_albedo,    material->GetTexture_Ptr(Material_Color));
+                        cmd_list->SetTexture(Renderer::Bindings_Srv::material_roughness, material->GetTexture_Ptr(Material_Roughness));
+                        cmd_list->SetTexture(Renderer::Bindings_Srv::material_metallic,  material->GetTexture_Ptr(Material_Metallic));
+                        cmd_list->SetTexture(Renderer::Bindings_Srv::material_normal,    material->GetTexture_Ptr(Material_Normal));
+                        cmd_list->SetTexture(Renderer::Bindings_Srv::material_height,    material->GetTexture_Ptr(Material_Height));
+                        cmd_list->SetTexture(Renderer::Bindings_Srv::material_occlusion, material->GetTexture_Ptr(Material_Occlusion));
+                        cmd_list->SetTexture(Renderer::Bindings_Srv::material_emission,  material->GetTexture_Ptr(Material_Emission));
+                        cmd_list->SetTexture(Renderer::Bindings_Srv::material_mask,      material->GetTexture_Ptr(Material_AlphaMask));
+                    
+                        // Update uber buffer with material properties
+                        m_cb_uber_cpu.mat_id            = material_index;
+                        m_cb_uber_cpu.mat_color         = material->GetColorAlbedo();
+                        m_cb_uber_cpu.mat_tiling_uv     = material->GetTiling();
+                        m_cb_uber_cpu.mat_offset_uv     = material->GetOffset();
+                        m_cb_uber_cpu.mat_roughness_mul = material->GetProperty(Material_Roughness);
+                        m_cb_uber_cpu.mat_metallic_mul  = material->GetProperty(Material_Metallic);
+                        m_cb_uber_cpu.mat_normal_mul    = material->GetProperty(Material_Normal);
+                        m_cb_uber_cpu.mat_height_mul    = material->GetProperty(Material_Height);
+                        m_cb_uber_cpu.mat_textures      = 0;
+                        m_cb_uber_cpu.mat_textures      |= material->HasTexture(Material_Height)    ? (1 << 0) : 0;
+                        m_cb_uber_cpu.mat_textures      |= material->HasTexture(Material_Normal)    ? (1 << 1) : 0;
+                        m_cb_uber_cpu.mat_textures      |= material->HasTexture(Material_Color)     ? (1 << 2) : 0;
+                        m_cb_uber_cpu.mat_textures      |= material->HasTexture(Material_Roughness) ? (1 << 3) : 0;
+                        m_cb_uber_cpu.mat_textures      |= material->HasTexture(Material_Metallic)  ? (1 << 4) : 0;
+                        m_cb_uber_cpu.mat_textures      |= material->HasTexture(Material_AlphaMask) ? (1 << 5) : 0;
+                        m_cb_uber_cpu.mat_textures      |= material->HasTexture(Material_Emission)  ? (1 << 6) : 0;
+                        m_cb_uber_cpu.mat_textures      |= material->HasTexture(Material_Occlusion) ? (1 << 7) : 0;
+                    }
+            
+                    // Update uber buffer with entity transform
+                    if (Transform* transform = entity->GetTransform())
+                    {
+                        m_cb_uber_cpu.transform          = transform->GetMatrix();
+                        m_cb_uber_cpu.transform_previous = transform->GetMatrixPrevious();
+            
+                        // Save matrix for velocity computation
+                        transform->SetMatrixPrevious(m_cb_uber_cpu.transform);
+            
+                        // Update object buffer
+                        if (!Update_Cb_Uber(cmd_list))
+                            continue;
+                    }
+            
+                    // Render
+                    cmd_list->DrawIndexed(renderable->GeometryIndexCount(), renderable->GeometryIndexOffset(), renderable->GeometryVertexOffset());
+            
+                    if (m_profiler)
+                    {
+                        m_profiler->m_renderer_meshes_rendered++;
+                    }
+
+                    is_gbuffer_clear = false;
                 }
-        
-                // Render
-                cmd_list->DrawIndexed(renderable->GeometryIndexCount(), renderable->GeometryIndexOffset(), renderable->GeometryVertexOffset());
-        
-                if (m_profiler)
-                {
-                    m_profiler->m_renderer_meshes_rendered++;
-                }
+            
+                cmd_list->EndRenderPass();
             }
-        
-            cmd_list->EndRenderPass();
+
+            is_gbuffer_clear = true;
         }
     }
 
@@ -1260,8 +1266,8 @@ namespace Spartan
             cmd_list->SetTexture(Renderer::Bindings_Uav::rgb,                       tex_out);
             cmd_list->SetTexture(Renderer::Bindings_Srv::tex,                       tex_history);
             cmd_list->SetTexture(Renderer::Bindings_Srv::tex2,                      tex_in);
-            cmd_list->SetTexture(Renderer::Bindings_Srv::gbuffer_velocity,          RENDER_TARGET(RenderTarget::Gbuffer_Velocity));
-            cmd_list->SetTexture(Renderer::Bindings_Srv::gbuffer_velocity_previous, RENDER_TARGET(RenderTarget::Gbuffer_VelocityPrevious));
+            cmd_list->SetTexture(Renderer::Bindings_Srv::gbuffer_velocity,          RENDER_TARGET(!m_is_odd_frame ? RenderTarget::Gbuffer_Velocity : RenderTarget::Gbuffer_Velocity_2));
+            cmd_list->SetTexture(Renderer::Bindings_Srv::gbuffer_velocity_previous, RENDER_TARGET(m_is_odd_frame  ? RenderTarget::Gbuffer_Velocity : RenderTarget::Gbuffer_Velocity_2));
             cmd_list->SetTexture(Renderer::Bindings_Srv::gbuffer_depth,             RENDER_TARGET(RenderTarget::Gbuffer_Depth));
             cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
             cmd_list->EndRenderPass();
