@@ -34,6 +34,78 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
+    static bool is_present_device_extension(const char* extension_name, VkPhysicalDevice device_physical)
+    {
+        uint32_t extension_count = 0;
+        vkEnumerateDeviceExtensionProperties(device_physical, nullptr, &extension_count, nullptr);
+
+        vector<VkExtensionProperties> extensions(extension_count);
+        vkEnumerateDeviceExtensionProperties(device_physical, nullptr, &extension_count, extensions.data());
+
+        for (const auto& extension : extensions)
+        {
+            if (strcmp(extension_name, extension.extensionName) == 0)
+                return true;
+        }
+
+        return false;
+    }
+
+    static bool is_present_instance(const char* extension_name)
+    {
+        uint32_t extension_count = 0;
+        vkEnumerateInstanceExtensionProperties(nullptr, &extension_count, nullptr);
+
+        vector<VkExtensionProperties> extensions(extension_count);
+        vkEnumerateInstanceExtensionProperties(nullptr, &extension_count, extensions.data());
+
+        for (const auto& extension : extensions)
+        {
+            if (strcmp(extension_name, extension.extensionName) == 0)
+                return true;
+        }
+
+        return false;
+    }
+
+    static vector<const char*> get_extension_supporting_physical_device(const vector<const char*>& extensions, VkPhysicalDevice device_physical)
+    {
+        vector<const char*> extensions_supported;
+
+        for (const auto& extension : extensions)
+        {
+            if (is_present_device_extension(extension, device_physical))
+            {
+                extensions_supported.emplace_back(extension);
+            }
+            else
+            {
+                LOG_ERROR("Device extension \"%s\" is not supported", extension);
+            }
+        }
+
+        return extensions_supported;
+    }
+
+    static vector<const char*> get_supported_extensions(const vector<const char*>& extensions)
+    {
+        vector<const char*> extensions_supported;
+
+        for (const auto& extension : extensions)
+        {
+            if (is_present_instance(extension))
+            {
+                extensions_supported.emplace_back(extension);
+            }
+            else
+            {
+                LOG_ERROR("Instance extension \"%s\" is not supported", extension);
+            }
+        }
+
+        return extensions_supported;
+    }
+
     RHI_Device::RHI_Device(Context* context)
     {
         m_context       = context;
@@ -89,7 +161,7 @@ namespace Spartan
             app_info.apiVersion         = m_rhi_context->api_version;
 
             // Get the supported extensions out of the requested extensions
-            vector<const char*> extensions_supported = vulkan_utility::extension::get_supported_instance(m_rhi_context->extensions_instance);
+            vector<const char*> extensions_supported = get_supported_extensions(m_rhi_context->extensions_instance);
 
             VkInstanceCreateInfo create_info    = {};
             create_info.sType                   = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
@@ -143,7 +215,7 @@ namespace Spartan
 
             if (!SelectPrimaryPhysicalDevice())
             {
-                LOG_ERROR("Failed to detect any devices");
+                LOG_ERROR("Failed to find a suitable device");
                 return;
             }
         }
@@ -275,7 +347,7 @@ namespace Spartan
             }
 
             // Get the supported extensions out of the requested extensions
-            vector<const char*> extensions_supported = vulkan_utility::extension::get_supported_device(m_rhi_context->extensions_device, m_rhi_context->device_physical);
+            vector<const char*> extensions_supported = get_extension_supporting_physical_device(m_rhi_context->extensions_device, m_rhi_context->device_physical);
 
             // Device create info
             VkDeviceCreateInfo create_info = {};

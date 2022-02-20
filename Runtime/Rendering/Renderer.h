@@ -201,7 +201,7 @@ namespace Spartan
             Gbuffer_Normal,
             Gbuffer_Material,
             Gbuffer_Velocity,
-            Gbuffer_VelocityPrevious,
+            Gbuffer_Velocity_2,
             Gbuffer_Depth,
             Brdf_Specular_Lut,
             Light_Diffuse,
