@@ -769,7 +769,7 @@ namespace Spartan
             }
         }
 
-        return m_tex_default_empty;
+        return m_tex_default_transparent;
     }
 
     void Renderer::SetOption(Renderer::Option option, bool enable)

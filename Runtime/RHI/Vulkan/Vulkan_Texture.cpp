@@ -37,7 +37,120 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    inline void set_debug_name(RHI_Texture* texture)
+    static VkImageTiling get_format_tiling(const RHI_Format format, VkFormatFeatureFlags feature_flags)
+    {
+        // Get format properties
+        VkFormatProperties format_properties;
+        vkGetPhysicalDeviceFormatProperties(vulkan_utility::globals::rhi_context->device_physical, vulkan_format[format], &format_properties);
+
+        // Check for optimal support
+        if (format_properties.optimalTilingFeatures & feature_flags)
+            return VK_IMAGE_TILING_OPTIMAL;
+
+        // Check for linear support
+        if (format_properties.linearTilingFeatures & feature_flags)
+            return VK_IMAGE_TILING_LINEAR;
+
+        return VK_IMAGE_TILING_MAX_ENUM;
+    }
+
+    static VkImageUsageFlags get_usage_flags(const RHI_Texture* texture)
+    {
+        VkImageUsageFlags flags = 0;
+
+        flags |= (texture->GetFlags() & RHI_Texture_Srv)             ? VK_IMAGE_USAGE_SAMPLED_BIT                  : 0;
+        flags |= (texture->GetFlags() & RHI_Texture_Uav)             ? VK_IMAGE_USAGE_STORAGE_BIT                  : 0;
+        flags |= (texture->GetFlags() & RHI_Texture_Rt_DepthStencil) ? VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT : 0;
+        flags |= (texture->GetFlags() & RHI_Texture_Rt_Color)        ? VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT         : 0;
+
+        // If the texture has data, it will be staged.
+        if (texture->HasData())
+        {
+            flags |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT; // source of a transfer command.
+            flags |= VK_IMAGE_USAGE_TRANSFER_DST_BIT; // destination of a transfer command
+        }
+
+        // If the texture is a render target, it can be blitted.
+        if (texture->CanBeCleared())
+        {
+            flags |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+        }
+
+        return flags;
+    }
+
+    static bool create_image(RHI_Texture* texture)
+    {
+        // Deduce format flags
+        bool is_render_target_depth_stencil = texture->IsRenderTargetDepthStencil();
+        VkFormatFeatureFlags format_flags  = is_render_target_depth_stencil ? VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT : VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT;
+
+        // Deduce image tiling
+        RHI_Format format           = texture->GetFormat();
+        VkImageTiling image_tiling  = get_format_tiling(format, format_flags);
+        
+        // Ensure the format is supported by the GPU
+        if (image_tiling == VK_IMAGE_TILING_MAX_ENUM)
+        {
+            LOG_ERROR("GPU does not support the usage of %s as a %s.", RhiFormatToString(format), is_render_target_depth_stencil ? "depth-stencil attachment" : "color attachment");
+            return false;
+        }
+        
+        // Warn if the the image is using a non-optimal format
+        if (image_tiling != VK_IMAGE_TILING_OPTIMAL)
+        {
+            LOG_WARNING("Format %s does not support optimal tiling, considering switching to a more efficient format.", RhiFormatToString(format));
+        }
+
+        // Set layout to preinitialised (required by Vulkan)
+        texture->SetLayout(RHI_Image_Layout::Preinitialized, nullptr);
+
+        VkImageCreateInfo create_info = {};
+        create_info.sType             = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+        create_info.imageType         = VK_IMAGE_TYPE_2D;
+        create_info.flags             = (texture->GetResourceType() == ResourceType::TextureCube) ? VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT : 0;
+        create_info.usage             = get_usage_flags(texture);
+        create_info.extent.width      = texture->GetWidth();
+        create_info.extent.height     = texture->GetHeight();
+        create_info.extent.depth      = 1;
+        create_info.mipLevels         = texture->GetMipCount();
+        create_info.arrayLayers       = texture->GetArrayLength();
+        create_info.format            = vulkan_format[format];
+        create_info.tiling            = VK_IMAGE_TILING_OPTIMAL;
+        create_info.initialLayout     = vulkan_image_layout[static_cast<uint8_t>(texture->GetLayout(0))];
+        create_info.samples           = VK_SAMPLE_COUNT_1_BIT;
+        create_info.sharingMode       = VK_SHARING_MODE_EXCLUSIVE;
+
+        VmaAllocationCreateInfo allocation_info = {};
+        allocation_info.usage                   = VMA_MEMORY_USAGE_AUTO;
+
+        // Create image
+        VmaAllocation allocation;
+        void*& resource = texture->GetResource();
+        if (!vulkan_utility::error::check(vmaCreateImage(vulkan_utility::globals::rhi_context->allocator, &create_info, &allocation_info, reinterpret_cast<VkImage*>(&resource), &allocation, nullptr)))
+            return false;
+
+        // Keep allocation reference
+        vulkan_utility::globals::rhi_context->allocations[texture->GetObjectId()] = allocation;
+
+        return true;
+    }
+
+    static void destroy_image(RHI_Texture* texture)
+    {
+        void*& resource        = texture->GetResource();
+        uint64_t allocation_id = texture->GetObjectId();
+
+        auto it = vulkan_utility::globals::rhi_context->allocations.find(allocation_id);
+        if (it != vulkan_utility::globals::rhi_context->allocations.end())
+        {
+            VmaAllocation allocation = it->second;
+            vmaDestroyImage(vulkan_utility::globals::rhi_context->allocator, static_cast<VkImage>(resource), allocation);
+            vulkan_utility::globals::rhi_context->allocations.erase(allocation_id);
+        }
+    }
+
+    static void set_debug_name(RHI_Texture* texture)
     {
         string name = texture->GetObjectName();
 
@@ -217,7 +330,7 @@ namespace Spartan
         SP_ASSERT(m_rhi_device->GetContextRhi()->device != nullptr);
 
         // Create image
-        if (!vulkan_utility::image::create(this))
+        if (!create_image(this))
         {
             LOG_ERROR("Failed to create image");
             return false;
@@ -358,7 +471,7 @@ namespace Spartan
 
         if (destroy_main)
         {
-            vulkan_utility::image::destroy(this);
+            destroy_image(this);
         }
     }
 }

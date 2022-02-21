@@ -203,6 +203,7 @@ namespace Spartan
         RHI_Format_R16G16B16A16_Float,
         RHI_Format_R32G32B32A32_Float,
         // DEPTH
+        RHI_Format_D16_Unorm,
         RHI_Format_D32_Float,
         RHI_Format_D32_Float_S8X24_Uint,
         // Compressed

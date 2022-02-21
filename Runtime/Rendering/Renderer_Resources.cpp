@@ -490,7 +490,7 @@ namespace Spartan
         // Get standard texture directory
         const string dir_texture = m_resource_cache->GetResourceDirectory(ResourceDirectory::Textures) + "/";
 
-        // Noise
+        // Noise textures
         {
             m_tex_default_noise_normal = make_shared<RHI_Texture2D>(m_context, RHI_Texture_Srv, "default_noise_normal");
             m_tex_default_noise_normal->LoadFromFile(dir_texture + "noise_normal.png");
@@ -499,19 +499,17 @@ namespace Spartan
             m_tex_default_noise_blue->LoadFromFile(dir_texture + "noise_blue_0.png");
         }
 
-        // Colored
+        // Color textures
         {
             m_tex_default_white = make_shared<RHI_Texture2D>(m_context, RHI_Texture_Srv, "default_white");
             m_tex_default_white->LoadFromFile(dir_texture + "white.png");
 
+            m_tex_default_black = make_shared<RHI_Texture2D>(m_context, RHI_Texture_Srv, "default_black");
+            m_tex_default_black->LoadFromFile(dir_texture + "black.png");
+
             m_tex_default_transparent = make_shared<RHI_Texture2D>(m_context, RHI_Texture_Srv, "default_transparent");
             m_tex_default_transparent->LoadFromFile(dir_texture + "transparent.png");
         }
-
-        // Empty
-        m_tex_default_empty         = make_shared<RHI_Texture2D>(m_context, RHI_Texture_Srv, "default_empty");
-        m_tex_default_empty_cubemap = make_unique<RHI_TextureCube>(m_context, 1, 1, RHI_Format_R8_Unorm, RHI_Texture_Srv, "default_empty_cubemap");
-        m_tex_default_empty_array   = make_unique<RHI_Texture2DArray>(m_context, 1, 1, RHI_Format_R8_Unorm, 1, RHI_Texture_Srv, "default_empty_array");
 
         // Gizmo icons
         {
