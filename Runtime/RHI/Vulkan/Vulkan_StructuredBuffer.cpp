@@ -41,9 +41,9 @@ namespace Spartan
         // Create buffer
         {
             VkMemoryPropertyFlags flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
-            bool written_frequently = false;
+            bool is_mappable = (data == nullptr);
 
-            VmaAllocation allocation = vulkan_utility::buffer::create(m_resource, m_object_size_gpu, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, flags, written_frequently, data);
+            VmaAllocation allocation = vulkan_utility::buffer::create(m_resource, m_object_size_gpu, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, flags, is_mappable, data);
             if (!allocation)
                 return;
 
@@ -66,7 +66,7 @@ namespace Spartan
         SP_ASSERT(m_rhi_device != nullptr);
         SP_ASSERT(m_resource != nullptr);
 
-        LOG_ERROR("Not implemented");
+        SP_ASSERT(false && "Not implemented");
 
         return nullptr;
     }
@@ -76,6 +76,6 @@ namespace Spartan
         SP_ASSERT(m_rhi_device != nullptr);
         SP_ASSERT(m_resource != nullptr);
 
-        LOG_ERROR("Not implemented");
+        SP_ASSERT(false && "Not implemented");
     }
 }

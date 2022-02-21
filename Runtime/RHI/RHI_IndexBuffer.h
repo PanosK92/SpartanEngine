@@ -31,9 +31,10 @@ namespace Spartan
     class RHI_IndexBuffer : public SpartanObject
     {
     public:
-        RHI_IndexBuffer(const std::shared_ptr<RHI_Device>& rhi_device)
+        RHI_IndexBuffer(const std::shared_ptr<RHI_Device>& rhi_device, const char* name)
         {
-            m_rhi_device = rhi_device;
+            m_rhi_device  = rhi_device;
+            m_object_name = name;
         }
 
         ~RHI_IndexBuffer()

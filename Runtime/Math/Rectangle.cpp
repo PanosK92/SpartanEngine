@@ -70,7 +70,7 @@ namespace Spartan::Math
         // Create index buffer
         const uint32_t indices[6] = { 0, 1, 2, 3, 4, 5 };
 
-        m_index_buffer = make_shared<RHI_IndexBuffer>(renderer->GetRhiDevice());
+        m_index_buffer = make_shared<RHI_IndexBuffer>(renderer->GetRhiDevice(), "rectangle");
         m_index_buffer->SetObjectName("index_buffer_rectangle");
         if (!m_index_buffer->Create(indices, 6))
         {

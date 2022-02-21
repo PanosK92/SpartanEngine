@@ -206,7 +206,7 @@ namespace ImGui::RHI
             for (uint32_t i = 0; i < gap; i++)
             {
                 g_vertex_buffers[swapchain_id].emplace_back(make_unique<RHI_VertexBuffer>(g_rhi_device, static_cast<uint32_t>(sizeof(ImDrawVert))));
-                g_index_buffers[swapchain_id].emplace_back(make_unique<RHI_IndexBuffer>(g_rhi_device));
+                g_index_buffers[swapchain_id].emplace_back(make_unique<RHI_IndexBuffer>(g_rhi_device, "imgui"));
             }
 
             vertex_buffer = g_vertex_buffers[swapchain_id][swapchain_cmd_index].get();

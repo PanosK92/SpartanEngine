@@ -215,7 +215,7 @@ namespace Spartan
 
         if (!indices.empty())
         {
-            m_index_buffer = make_shared<RHI_IndexBuffer>(m_rhi_device);
+            m_index_buffer = make_shared<RHI_IndexBuffer>(m_rhi_device, "model");
             if (!m_index_buffer->Create(indices))
             {
                 LOG_ERROR("Failed to create index buffer for \"%s\".", GetResourceName().c_str());
