@@ -41,9 +41,7 @@ namespace Spartan
         // Create buffer
         {
             VkMemoryPropertyFlags flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
-            bool is_mappable = (data == nullptr);
-
-            VmaAllocation allocation = vulkan_utility::buffer::create(m_resource, m_object_size_gpu, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, flags, is_mappable, data);
+            VmaAllocation allocation = vulkan_utility::buffer::create(m_resource, m_object_size_gpu, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, flags, data);
             if (!allocation)
                 return;
 

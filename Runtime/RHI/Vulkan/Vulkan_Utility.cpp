@@ -114,10 +114,11 @@ namespace Spartan::vulkan_utility
         }
     }
 
-    VmaAllocation buffer::create(void*& _buffer, const uint64_t size, VkBufferUsageFlags usage, VkMemoryPropertyFlags memory_property_flags, const bool is_mappable, const void* data)
+    VmaAllocation buffer::create(void*& _buffer, const uint64_t size, VkBufferUsageFlags usage, VkMemoryPropertyFlags memory_property_flags, const void* data)
     {
         VmaAllocator allocator = globals::rhi_context->allocator;
 
+        // Buffer info
         VkBufferCreateInfo buffer_create_info = {};
         buffer_create_info.sType              = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
         buffer_create_info.size               = size;
@@ -125,14 +126,15 @@ namespace Spartan::vulkan_utility
         buffer_create_info.sharingMode        = VK_SHARING_MODE_EXCLUSIVE;
 
         bool used_for_staging = (usage & VK_BUFFER_USAGE_TRANSFER_SRC_BIT) != 0;
+        bool is_mappable      = (memory_property_flags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) != 0;
 
+        // Allocation info
         VmaAllocationCreateInfo allocation_create_info = {};
         allocation_create_info.usage                   = VMA_MEMORY_USAGE_AUTO;
-       // allocation_create_info.flags                   |= used_for_staging ? VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT : 0;
-        allocation_create_info.flags                   |= is_mappable ? VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT : 0;
+        allocation_create_info.flags                   = used_for_staging ? VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT : (is_mappable ? VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT : 0);
         allocation_create_info.preferredFlags          = memory_property_flags;
 
-        // Create buffer, allocate memory and bind it to the buffer
+        // Create the buffer
         VmaAllocation allocation = nullptr;
         VmaAllocationInfo allocation_info;
         if (!error::check(vmaCreateBuffer(allocator, &buffer_create_info, &allocation_create_info, reinterpret_cast<VkBuffer*>(&_buffer), &allocation, &allocation_info)))
@@ -144,42 +146,22 @@ namespace Spartan::vulkan_utility
         // If a pointer to the buffer data has been passed, map the buffer and copy over the data
         if (data != nullptr)
         {
+            SP_ASSERT(is_mappable && "Can't map, you need to create a buffer, with a VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT memory flag.");
+
             // Memory in Vulkan doesn't need to be unmapped before using it on GPU, but unless a
             // memory type has VK_MEMORY_PROPERTY_HOST_COHERENT_BIT flag set, you need to manually
-            // invalidate cache before reading of mapped pointer and flush cache after writing to
-            // mapped pointer. Map/unmap operations don't do that automatically.
+            // invalidate cache before reading a mapped pointer and flush cache after writing to
+            // it. Map/unmap operations don't do that automatically.
 
-            VkMemoryPropertyFlags memory_flags;
-            vmaGetMemoryTypeProperties(allocator, allocation_info.memoryType, &memory_flags);
-
-            // If mappable
-            if (is_mappable)
+            void* mapped = nullptr;
+            if (error::check(vmaMapMemory(allocator, allocation, &mapped)))
             {
-                bool is_host_coherent = (memory_flags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) != 0;
+                memcpy(mapped, data, size);
 
-                if (!is_host_coherent)
-                {
-                    if (!error::check(vmaInvalidateAllocation(allocator, allocation, 0, size)))
-                        return allocation;
-                }
+                if (!error::check(vmaFlushAllocation(allocator, allocation, 0, size)))
+                    return allocation;
 
-                void* mapped = nullptr;
-                if (error::check(vmaMapMemory(allocator, allocation, &mapped)))
-                {
-                    memcpy(mapped, data, size);
-
-                    if (!is_host_coherent)
-                    {
-                        if (!error::check(vmaFlushAllocation(allocator, allocation, 0, size)))
-                            return allocation;
-                    }
-
-                    vmaUnmapMemory(allocator, allocation);
-                }
-            }
-            else
-            {
-                LOG_ERROR("Allocation ended up in non-mappable memory. You need to create CPU-side buffer, with VMA_MEMORY_USAGE_CPU_ONLY, and make a transfer.");
+                vmaUnmapMemory(allocator, allocation);
             }
         }
 
