@@ -698,7 +698,7 @@ namespace Spartan
                 cmd_list->EndRenderPass();
             }
 
-            is_gbuffer_clear = true;
+            is_gbuffer_clear = entity_count == 0;
         }
     }
 

@@ -702,7 +702,7 @@ namespace Spartan
             return;
         }
 
-        // Null textures are allowed, and get replaced with a default texture here
+        // Null textures are allowed, and we replace them with a transparent texture.
         if (!texture || !texture->GetResource_View_Srv())
         {
             texture = m_renderer->GetDefaultTextureTransparent();
