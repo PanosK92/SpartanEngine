@@ -68,8 +68,8 @@ namespace Spartan
         if (m_is_mappable)
         {
             VkMemoryPropertyFlags flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
-            flags |= !m_persistent_mapping ? VK_MEMORY_PROPERTY_HOST_COHERENT_BIT : 0;;
-            VmaAllocation allocation = vulkan_utility::buffer::create(m_buffer, m_object_size_gpu, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, flags, true, nullptr);
+            flags |= !m_persistent_mapping ? VK_MEMORY_PROPERTY_HOST_COHERENT_BIT : 0;
+            VmaAllocation allocation = vulkan_utility::buffer::create(m_buffer, m_object_size_gpu, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, flags, nullptr);
             if (!allocation)
                 return false;
 
@@ -79,13 +79,12 @@ namespace Spartan
         {
             // Create staging/source buffer and copy the vertices to it
             void* staging_buffer = nullptr;
-            VmaAllocation allocation_staging = vulkan_utility::buffer::create(staging_buffer, m_object_size_gpu, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, true, vertices);
+            VmaAllocation allocation_staging = vulkan_utility::buffer::create(staging_buffer, m_object_size_gpu, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, vertices);
             if (!allocation_staging)
                 return false;
 
             // Create destination buffer
-            bool is_mappable = false;
-            VmaAllocation allocation = vulkan_utility::buffer::create(m_buffer, m_object_size_gpu, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, false, nullptr);
+            VmaAllocation allocation = vulkan_utility::buffer::create(m_buffer, m_object_size_gpu, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, nullptr);
             if (!allocation)
                 return false;
 

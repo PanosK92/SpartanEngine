@@ -89,8 +89,7 @@ namespace Spartan
         // Create buffer
         VkMemoryPropertyFlags flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
         flags |= !m_persistent_mapping ? VK_MEMORY_PROPERTY_HOST_COHERENT_BIT : 0;
-        bool written_frequently = true;
-        VmaAllocation allocation = vulkan_utility::buffer::create(m_resource, m_object_size_gpu, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, flags, written_frequently, nullptr);
+        VmaAllocation allocation = vulkan_utility::buffer::create(m_resource, m_object_size_gpu, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, flags, nullptr);
         if (!allocation)
         {
             LOG_ERROR("Failed to allocate buffer");

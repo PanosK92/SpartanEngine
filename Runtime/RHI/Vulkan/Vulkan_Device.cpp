@@ -108,8 +108,8 @@ namespace Spartan
 
     RHI_Device::RHI_Device(Context* context)
     {
-        m_context       = context;
-        m_rhi_context   = make_shared<RHI_Context>();
+        m_context     = context;
+        m_rhi_context = make_shared<RHI_Context>();
 
         // Pass pointer to the widely used utility namespace
         vulkan_utility::globals::rhi_device  = this;
@@ -171,10 +171,10 @@ namespace Spartan
             create_info.enabledLayerCount       = 0;
 
             // Validation features
-            VkValidationFeaturesEXT validation_features         = {};
-            validation_features.sType                           = VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT;
-            validation_features.enabledValidationFeatureCount   = static_cast<uint32_t>(m_rhi_context->validation_extensions.size());
-            validation_features.pEnabledValidationFeatures      = m_rhi_context->validation_extensions.data();
+            VkValidationFeaturesEXT validation_features       = {};
+            validation_features.sType                         = VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT;
+            validation_features.enabledValidationFeatureCount = static_cast<uint32_t>(m_rhi_context->validation_extensions.size());
+            validation_features.pEnabledValidationFeatures    = m_rhi_context->validation_extensions.data();
 
             if (m_rhi_context->debug)
             {
