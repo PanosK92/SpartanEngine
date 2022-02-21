@@ -329,48 +329,6 @@ namespace Spartan::vulkan_utility
 
     namespace image
     {
-        inline VkImageTiling get_format_tiling(const RHI_Format format, VkFormatFeatureFlags feature_flags)
-        {
-            // Get format properties
-            VkFormatProperties format_properties;
-            vkGetPhysicalDeviceFormatProperties(globals::rhi_context->device_physical, vulkan_format[format], &format_properties);
-
-            // Check for optimal support
-            if (format_properties.optimalTilingFeatures & feature_flags)
-                return VK_IMAGE_TILING_OPTIMAL;
-
-            // Check for linear support
-            if (format_properties.linearTilingFeatures & feature_flags)
-                return VK_IMAGE_TILING_LINEAR;
-
-            return VK_IMAGE_TILING_MAX_ENUM;
-        }
-
-        inline VkImageUsageFlags get_usage_flags(const RHI_Texture* texture)
-        {
-            VkImageUsageFlags flags = 0;
-
-            flags |= (texture->GetFlags() & RHI_Texture_Srv)             ? VK_IMAGE_USAGE_SAMPLED_BIT                  : 0;
-            flags |= (texture->GetFlags() & RHI_Texture_Uav)             ? VK_IMAGE_USAGE_STORAGE_BIT                  : 0;
-            flags |= (texture->GetFlags() & RHI_Texture_Rt_DepthStencil) ? VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT : 0;
-            flags |= (texture->GetFlags() & RHI_Texture_Rt_Color)        ? VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT         : 0;
-
-            // If the texture has data, it will be staged.
-            if (texture->HasData())
-            {
-                flags |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT; // source of a transfer command.
-                flags |= VK_IMAGE_USAGE_TRANSFER_DST_BIT; // destination of a transfer command
-            }
-
-            // If the texture is a render target, it can be blitted.
-            if (texture->CanBeCleared())
-            {
-                flags |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-            }
-
-            return flags;
-        }
-
         inline VkImageAspectFlags get_aspect_mask(const RHI_Texture* texture, const bool only_depth = false, const bool only_stencil = false)
         {
             VkImageAspectFlags aspect_mask = 0;
@@ -400,10 +358,6 @@ namespace Spartan::vulkan_utility
 
             return aspect_mask;
         }
-
-        bool create(RHI_Texture* texture);
-
-        void destroy(RHI_Texture* texture);
 
         inline VkPipelineStageFlags layout_to_access_mask(const VkImageLayout layout, const bool is_destination_mask)
         {
@@ -641,7 +595,17 @@ namespace Spartan::vulkan_utility
 
         namespace view
         {
-            inline bool create(void* image, void*& image_view, VkImageViewType type, const VkFormat format, const VkImageAspectFlags aspect_mask, const uint32_t array_index, const uint32_t array_length, const uint32_t mip_index, const uint32_t mip_count)
+            inline bool create(
+                void* image,
+                void*& image_view,
+                VkImageViewType type,
+                const VkFormat format,
+                const VkImageAspectFlags aspect_mask,
+                const uint32_t array_index,
+                const uint32_t array_length,
+                const uint32_t mip_index,
+                const uint32_t mip_count
+            )
             {
                 VkImageViewCreateInfo create_info           = {};
                 create_info.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -661,7 +625,17 @@ namespace Spartan::vulkan_utility
                 return error::check(vkCreateImageView(globals::rhi_context->device, &create_info, nullptr, reinterpret_cast<VkImageView*>(&image_view)));
             }
 
-            inline bool create(void* image, void*& image_view, const RHI_Texture* texture, const uint32_t array_index, const uint32_t array_length, const uint32_t mip_index, const uint32_t mip_count, const bool only_depth, const bool only_stencil)
+            inline bool create(
+                void* image,
+                void*& image_view,
+                const RHI_Texture* texture,
+                const uint32_t array_index,
+                const uint32_t array_length,
+                const uint32_t mip_index,
+                const uint32_t mip_count,
+                const bool only_depth,
+                const bool only_stencil
+            )
             {
                 VkImageViewType type = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
 

@@ -168,7 +168,7 @@ namespace Spartan
                 }
             }
 
-            surface         = static_cast<void*>(_surface);
+            surface    = static_cast<void*>(_surface);
             swap_chain = static_cast<void*>(_swap_chain);
 
             // Semaphores

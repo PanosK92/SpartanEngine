@@ -110,7 +110,7 @@ namespace Spartan
         uint32_t GetArrayLength()                          const { return m_array_length; }
         uint32_t GetMipCount()                             const { return m_mip_count; }
         bool HasData()                                     const { return !m_data.empty() && !m_data[0].mips.empty() && !m_data[0].mips[0].bytes.empty(); };
-        std::vector<RHI_Texture_Slice>& GetData()                 { return m_data; }
+        std::vector<RHI_Texture_Slice>& GetData()                { return m_data; }
         RHI_Texture_Mip& CreateMip(const uint32_t array_index);
         RHI_Texture_Mip& GetMip(const uint32_t array_index, const uint32_t mip_index);
         RHI_Texture_Slice& GetSlice(const uint32_t array_index);
@@ -128,9 +128,9 @@ namespace Spartan
         bool CanBeCleared()                 const { return m_flags & RHI_Texture_CanBeCleared || IsRenderTargetDepthStencil() || IsRenderTargetColor(); }
         bool IsGrayscale()                  const { return m_flags & RHI_Texture_Greyscale; }
         bool IsTransparent()                const { return m_flags & RHI_Texture_Transparent; }
-                                            
+
         // Format type
-        bool IsDepthFormat()        const { return m_format == RHI_Format_D32_Float || m_format == RHI_Format_D32_Float_S8X24_Uint; }
+        bool IsDepthFormat()        const { return m_format == RHI_Format_D16_Unorm || m_format == RHI_Format_D32_Float || m_format == RHI_Format_D32_Float_S8X24_Uint; }
         bool IsStencilFormat()      const { return m_format == RHI_Format_D32_Float_S8X24_Uint; }
         bool IsDepthStencilFormat() const { return IsDepthFormat() || IsStencilFormat(); }
         bool IsColorFormat()        const { return !IsDepthStencilFormat(); }

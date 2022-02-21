@@ -70,18 +70,14 @@ namespace Spartan
             layout_bindings[i].stageFlags           = stage_flags;
             layout_bindings[i].pImmutableSamplers   = nullptr;
 
-            // Enable partially bound descriptors.
-            // Say we have an array of textures with a length of 10, but we only want to bind the first 5.
-            // Vulkan will print a validation error about the rest, we don't want that.
-            bool is_array = descriptor.array_size > 1;
-            layout_binding_flags[i] = is_array ? VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT : 0;
+            layout_binding_flags[i] = VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT; // Support partially bound descriptor, individual resources an arrays can be null.
         }
 
-        VkDescriptorSetLayoutBindingFlagsCreateInfoEXT flags_info   = {};
-        flags_info.sType                                            = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO_EXT;
-        flags_info.pNext                                            = nullptr;
-        flags_info.bindingCount                                     = static_cast<uint32_t>(descriptors.size());
-        flags_info.pBindingFlags                                    = layout_binding_flags.data();
+        VkDescriptorSetLayoutBindingFlagsCreateInfoEXT flags_info = {};
+        flags_info.sType                                          = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO_EXT;
+        flags_info.pNext                                          = nullptr;
+        flags_info.bindingCount                                   = static_cast<uint32_t>(descriptors.size());
+        flags_info.pBindingFlags                                  = layout_binding_flags.data();
 
         // Create info
         VkDescriptorSetLayoutCreateInfo create_info = {};

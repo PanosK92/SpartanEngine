@@ -260,7 +260,7 @@ namespace Spartan
             // Disable profiler if timestamps are not supported
             if (m_rhi_context->profiler && !device_properties.limits.timestampComputeAndGraphics)
             {
-                LOG_WARNING("Device doesn't support timestamps, disabling profiler...");
+                LOG_ERROR("Device doesn't support timestamps, disabling profiler...");
                 m_rhi_context->profiler = false;
             }
 
@@ -323,6 +323,10 @@ namespace Spartan
                 // Cubemaps
                 SP_ASSERT(device_features_supported.features.imageCubeArray == VK_TRUE);
                 device_features.features.imageCubeArray = VK_TRUE;
+
+                // Partially bound descriptors
+                SP_ASSERT(device_features_1_2_supported.descriptorBindingPartiallyBound == VK_TRUE);
+                device_features_1_2.descriptorBindingPartiallyBound = VK_TRUE;
 
                 // Timeline semaphores
                 SP_ASSERT(device_features_1_2_supported.timelineSemaphore == VK_TRUE);

@@ -867,26 +867,14 @@ namespace Spartan
                             {
                                 cmd_list->SetTexture(Renderer::Bindings_Srv::light_directional_depth, tex_depth);
                                 cmd_list->SetTexture(Renderer::Bindings_Srv::light_directional_color, tex_color);
-                                cmd_list->SetTexture(Renderer::Bindings_Srv::light_point_depth, m_tex_default_empty_cubemap);
-                                cmd_list->SetTexture(Renderer::Bindings_Srv::light_point_color, m_tex_default_empty_cubemap);
-                                cmd_list->SetTexture(Renderer::Bindings_Srv::light_spot_depth, m_tex_default_empty);
-                                cmd_list->SetTexture(Renderer::Bindings_Srv::light_spot_color, m_tex_default_empty);
                             }
                             else if (light->GetLightType() == LightType::Point)
                             {
-                                cmd_list->SetTexture(Renderer::Bindings_Srv::light_directional_depth, m_tex_default_empty_array);
-                                cmd_list->SetTexture(Renderer::Bindings_Srv::light_directional_color, m_tex_default_empty_array);
                                 cmd_list->SetTexture(Renderer::Bindings_Srv::light_point_depth, tex_depth);
                                 cmd_list->SetTexture(Renderer::Bindings_Srv::light_point_color, tex_color);
-                                cmd_list->SetTexture(Renderer::Bindings_Srv::light_spot_depth, m_tex_default_empty);
-                                cmd_list->SetTexture(Renderer::Bindings_Srv::light_spot_color, m_tex_default_empty);
                             }
                             else if (light->GetLightType() == LightType::Spot)
                             {
-                                cmd_list->SetTexture(Renderer::Bindings_Srv::light_directional_depth, m_tex_default_empty_array);
-                                cmd_list->SetTexture(Renderer::Bindings_Srv::light_directional_color, m_tex_default_empty_array);
-                                cmd_list->SetTexture(Renderer::Bindings_Srv::light_point_depth, m_tex_default_empty_cubemap);
-                                cmd_list->SetTexture(Renderer::Bindings_Srv::light_point_color, m_tex_default_empty_cubemap);
                                 cmd_list->SetTexture(Renderer::Bindings_Srv::light_spot_depth, tex_depth);
                                 cmd_list->SetTexture(Renderer::Bindings_Srv::light_spot_color, tex_color);
                             }
@@ -1007,10 +995,6 @@ namespace Spartan
                 cmd_list->SetTexture(Renderer::Bindings_Srv::reflection_probe, probe->GetColorTexture());
                 m_cb_uber_cpu.extents = probe->GetExtents();
                 m_cb_uber_cpu.float3  = probe->GetTransform()->GetPosition();
-            }
-            else
-            {
-                cmd_list->SetTexture(Renderer::Bindings_Srv::reflection_probe, m_tex_default_empty_cubemap);
             }
 
             // Update uber buffer

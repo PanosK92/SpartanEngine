@@ -348,10 +348,10 @@ namespace Spartan
         // Sync
         void Flush();
 
-        // Default textures
+        // Default colored textures
         RHI_Texture* GetDefaultTextureWhite()       const { return m_tex_default_white.get(); }
+        RHI_Texture* GetDefaultTextureBlack()       const { return m_tex_default_black.get(); }
         RHI_Texture* GetDefaultTextureTransparent() const { return m_tex_default_transparent.get(); }
-        RHI_Texture* GetDefaultTextureEmpty()       const { return m_tex_default_empty.get(); }
 
         // Global uber constant buffer calls
         void SetCbUberTransform(RHI_CommandList* cmd_list, const Math::Matrix& transform);
@@ -457,10 +457,8 @@ namespace Spartan
         std::shared_ptr<RHI_Texture> m_tex_default_noise_normal;
         std::shared_ptr<RHI_Texture> m_tex_default_noise_blue;
         std::shared_ptr<RHI_Texture> m_tex_default_white;
+        std::shared_ptr<RHI_Texture> m_tex_default_black;
         std::shared_ptr<RHI_Texture> m_tex_default_transparent;
-        std::shared_ptr<RHI_Texture> m_tex_default_empty;
-        std::shared_ptr<RHI_Texture> m_tex_default_empty_cubemap;
-        std::shared_ptr<RHI_Texture> m_tex_default_empty_array;
         std::shared_ptr<RHI_Texture> m_tex_gizmo_light_directional;
         std::shared_ptr<RHI_Texture> m_tex_gizmo_light_point;
         std::shared_ptr<RHI_Texture> m_tex_gizmo_light_spot;

@@ -57,7 +57,6 @@ void Console::TickVisible()
         if (ImGuiEx::ImageButton(icon, 15.0f))
         {
             visibility = !visibility;
-            m_scroll_to_bottom = true;
         }
         ImGui::PopStyleColor();
         ImGui::SameLine();
