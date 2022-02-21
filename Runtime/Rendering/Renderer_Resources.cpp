@@ -481,7 +481,7 @@ namespace Spartan
         m_sphere_vertex_buffer = make_shared<RHI_VertexBuffer>(m_rhi_device);
         m_sphere_vertex_buffer->Create(vertices);
 
-        m_sphere_index_buffer = make_shared<RHI_IndexBuffer>(m_rhi_device);
+        m_sphere_index_buffer = make_shared<RHI_IndexBuffer>(m_rhi_device, "sphere");
         m_sphere_index_buffer->Create(indices);
     }
 

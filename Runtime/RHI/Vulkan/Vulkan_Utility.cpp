@@ -121,14 +121,15 @@ namespace Spartan::vulkan_utility
         VkBufferCreateInfo buffer_create_info = {};
         buffer_create_info.sType              = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
         buffer_create_info.size               = size;
-        buffer_create_info.usage              = VMA_MEMORY_USAGE_AUTO;
+        buffer_create_info.usage              = usage;
         buffer_create_info.sharingMode        = VK_SHARING_MODE_EXCLUSIVE;
 
         bool used_for_staging = (usage & VK_BUFFER_USAGE_TRANSFER_SRC_BIT) != 0;
 
         VmaAllocationCreateInfo allocation_create_info = {};
-        allocation_create_info.usage                   = used_for_staging ? VMA_MEMORY_USAGE_CPU_ONLY : (is_mappable ? VMA_MEMORY_USAGE_CPU_TO_GPU : VMA_MEMORY_USAGE_GPU_ONLY);
-        allocation_create_info.flags                   = is_mappable ? VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT : 0;
+        allocation_create_info.usage                   = VMA_MEMORY_USAGE_AUTO;
+       // allocation_create_info.flags                   |= used_for_staging ? VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT : 0;
+        allocation_create_info.flags                   |= is_mappable ? VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT : 0;
         allocation_create_info.preferredFlags          = memory_property_flags;
 
         // Create buffer, allocate memory and bind it to the buffer
@@ -143,19 +144,19 @@ namespace Spartan::vulkan_utility
         // If a pointer to the buffer data has been passed, map the buffer and copy over the data
         if (data != nullptr)
         {
-            VkMemoryPropertyFlags memory_flags;
-            vmaGetMemoryTypeProperties(allocator, allocation_info.memoryType, &memory_flags);
-
-            bool is_mappable      = (memory_flags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) != 0;
-            bool is_host_coherent = (memory_flags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) != 0;
-
             // Memory in Vulkan doesn't need to be unmapped before using it on GPU, but unless a
             // memory type has VK_MEMORY_PROPERTY_HOST_COHERENT_BIT flag set, you need to manually
             // invalidate cache before reading of mapped pointer and flush cache after writing to
             // mapped pointer. Map/unmap operations don't do that automatically.
 
+            VkMemoryPropertyFlags memory_flags;
+            vmaGetMemoryTypeProperties(allocator, allocation_info.memoryType, &memory_flags);
+
+            // If mappable
             if (is_mappable)
             {
+                bool is_host_coherent = (memory_flags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) != 0;
+
                 if (!is_host_coherent)
                 {
                     if (!error::check(vmaInvalidateAllocation(allocator, allocation, 0, size)))
@@ -178,7 +179,7 @@ namespace Spartan::vulkan_utility
             }
             else
             {
-                LOG_ERROR("Allocation ended up in non-mappable memory. You need to create CPU-side buffer in VMA_MEMORY_USAGE_CPU_ONLY and make a transfer.");
+                LOG_ERROR("Allocation ended up in non-mappable memory. You need to create CPU-side buffer, with VMA_MEMORY_USAGE_CPU_ONLY, and make a transfer.");
             }
         }
 

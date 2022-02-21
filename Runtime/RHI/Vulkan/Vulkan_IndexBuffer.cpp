@@ -64,28 +64,23 @@ namespace Spartan
         // invalidate cache before reading of mapped pointer and flush cache after writing to
         // mapped pointer. Map/unmap operations don't do that automatically.
 
-        bool use_staging = indices != nullptr;
-        if (!use_staging)
-        {
-            m_is_mappable = true;
+        m_is_mappable = indices == nullptr;
 
+        if (m_is_mappable)
+        {
             VkMemoryPropertyFlags flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
             flags |= !m_persistent_mapping ? VK_MEMORY_PROPERTY_HOST_COHERENT_BIT : 0;
-            VmaAllocation allocation = vulkan_utility::buffer::create(m_resource, m_object_size_gpu, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, flags, m_is_mappable, nullptr);
+            VmaAllocation allocation = vulkan_utility::buffer::create(m_resource, m_object_size_gpu, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, flags, true, nullptr);
             if (!allocation)
                 return false;
 
             m_allocation = static_cast<void*>(allocation);
         }
-        else
+        else // The reason we use staging is because memory with VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT is not mappable but it's fast, we want that.
         {
-            // The reason we use staging is because memory with VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT is not mappable but it's fast, we want that.
-
-            m_is_mappable = false;
-
             // Create staging/source buffer and copy the indices to it
             void* staging_buffer = nullptr;
-            VmaAllocation allocation_staging = vulkan_utility::buffer::create(staging_buffer, m_object_size_gpu, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, m_is_mappable, indices);
+            VmaAllocation allocation_staging = vulkan_utility::buffer::create(staging_buffer, m_object_size_gpu, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, true, indices);
             if (!allocation_staging)
                 return false;
 

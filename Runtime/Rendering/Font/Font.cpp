@@ -46,7 +46,7 @@ namespace Spartan
     {
         m_rhi_device        = m_context->GetSubsystem<Renderer>()->GetRhiDevice();
         m_vertex_buffer     = make_shared<RHI_VertexBuffer>(m_rhi_device);
-        m_index_buffer      = make_shared<RHI_IndexBuffer>(m_rhi_device);
+        m_index_buffer      = make_shared<RHI_IndexBuffer>(m_rhi_device, "font");
         m_char_max_width    = 0;
         m_char_max_height   = 0;
         m_color             = color;
