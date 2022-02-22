@@ -321,8 +321,6 @@ namespace Spartan
             // TAA - Generate jitter
             if (GetOption(Renderer::Option::AntiAliasing_Taa))
             {
-                m_taa_jitter_previous = m_taa_jitter;
-                
                 const uint8_t samples     = 16;
                 const uint8_t index       = m_frame_num % samples;
                 m_taa_jitter              = Utility::Sampling::Halton2D(index, 2, 3) * 2.0f - 1.0f;
@@ -332,8 +330,7 @@ namespace Spartan
             }
             else
             {
-                m_taa_jitter          = Vector2::Zero;
-                m_taa_jitter_previous = Vector2::Zero;
+                m_taa_jitter = Vector2::Zero;
             }
             
             // Update the remaining of the frame buffer
@@ -350,8 +347,8 @@ namespace Spartan
             m_cb_frame_cpu.camera_direction           = m_camera->GetTransform()->GetForward();
             m_cb_frame_cpu.resolution_output          = m_resolution_output;
             m_cb_frame_cpu.resolution_render          = m_resolution_render;
+            m_cb_frame_cpu.taa_jitter_previous        = m_cb_frame_cpu.taa_jitter_current;
             m_cb_frame_cpu.taa_jitter_current         = m_taa_jitter;
-            m_cb_frame_cpu.taa_jitter_previous        = m_taa_jitter_previous;
             m_cb_frame_cpu.delta_time                 = static_cast<float>(m_context->GetSubsystem<Timer>()->GetDeltaTimeSmoothedSec());
             m_cb_frame_cpu.time                       = static_cast<float>(m_context->GetSubsystem<Timer>()->GetTimeSec());
             m_cb_frame_cpu.bloom_intensity            = GetOptionValue<float>(Renderer::OptionValue::Bloom_Intensity);
