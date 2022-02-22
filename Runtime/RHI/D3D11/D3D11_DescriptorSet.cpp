@@ -38,10 +38,9 @@ namespace Spartan
 
     }
 
-    bool RHI_DescriptorSet::Create()
+    void RHI_DescriptorSet::Create()
     {
 
-        return true;
     }
 
     void RHI_DescriptorSet::Update(const vector<RHI_Descriptor>& descriptors)
