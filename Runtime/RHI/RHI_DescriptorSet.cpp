@@ -39,9 +39,7 @@ namespace Spartan
             m_object_name = name;
         }
 
-        if (Create())
-        {
-            Update(descriptors);
-        }
+        Create();
+        Update(descriptors);
     }
 }

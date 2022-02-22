@@ -111,7 +111,7 @@ namespace Spartan
         SP_UNSUBSCRIBE_FROM_EVENT(EventType::WindowOnFullScreenToggled, SP_EVENT_HANDLER(OnFullScreenToggled));
 
         // Log to file as the renderer is no more
-        LOG_TO_FILE(true);
+        Log::m_log_to_file = true;
     }
 
     bool Renderer::OnInitialise()
@@ -209,9 +209,6 @@ namespace Spartan
         CreateStructuredBuffers();
         CreateTextures();
 
-        // Log on-screen as the renderer is ready
-        LOG_TO_FILE(false);
-
         m_initialised = true;
         return true;
     }
@@ -221,6 +218,13 @@ namespace Spartan
         SP_ASSERT(m_rhi_device != nullptr);
         SP_ASSERT(m_rhi_device->IsInitialised());
         SP_ASSERT(m_swap_chain != nullptr);
+
+        // If a frame has alraedy been rendered, then it's probably safe to stop logging
+        // to a file and start logging on-screen. Meaning, the logs will render in the console widget.
+        if (m_frame_num == 1 && Log::m_log_to_file)
+        {
+           Log::m_log_to_file = false;
+        }
 
         if (m_flush_requested)
         {
