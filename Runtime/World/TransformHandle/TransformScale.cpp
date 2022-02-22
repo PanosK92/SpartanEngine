@@ -114,7 +114,7 @@ namespace Spartan
             mouse_point_on_axis.y = mouse_point_on_axis.x;
             mouse_point_on_axis.z = mouse_point_on_axis.x;
 
-            sign = Math::Helper::Sign(Vector3::Dot(mouse_ray.GetDirection(), Vector3::Right));
+            sign = static_cast<float>(Math::Helper::Sign(Vector3::Dot(mouse_ray.GetDirection(), Vector3::Right)));
             LOG_INFO("%f", sign);
         }
 
