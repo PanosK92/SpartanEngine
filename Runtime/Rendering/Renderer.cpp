@@ -219,7 +219,7 @@ namespace Spartan
         SP_ASSERT(m_rhi_device->IsInitialised());
         SP_ASSERT(m_swap_chain != nullptr);
 
-        // If a frame has alraedy been rendered, then it's probably safe to stop logging
+        // If a frame has already been rendered, then it's probably safe to stop logging
         // to a file and start logging on-screen. Meaning, the logs will render in the console widget.
         if (m_frame_num == 1 && Log::m_log_to_file)
         {

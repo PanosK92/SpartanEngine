@@ -28,12 +28,12 @@
 #ifdef DEBUG
 #define SP_ASSERT(expression) assert(expression)
 #else
-#define SP_ASSERT(expression) \
-if (!(##expression))          \
-{                             \
-    LOG_TO_FILE(true)         \
-    LOG_ERROR(#expression);   \
-    SP_DEBUG_BREAK();         \
+#define SP_ASSERT(expression)           \
+if (!(##expression))                    \
+{                                       \
+    Spartan::Log::m_log_to_file = true; \
+    LOG_ERROR(#expression);             \
+    SP_DEBUG_BREAK();                   \
 }
 #endif
 
