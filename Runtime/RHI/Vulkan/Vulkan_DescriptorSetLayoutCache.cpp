@@ -70,20 +70,7 @@ namespace Spartan
 
         // Create pool
         CreateDescriptorPool(descriptor_set_capacity);
-
-        // Log
-        if (descriptor_set_capacity > m_descriptor_set_capacity)
-        {
-            LOG_INFO("Capacity has been increased to %d elements", descriptor_set_capacity);
-        }
-        else if (descriptor_set_capacity < m_descriptor_set_capacity)
-        {
-            LOG_INFO("Capacity has been decreased to %d elements", descriptor_set_capacity);
-        }
-        else
-        {
-            LOG_INFO("Descriptor pool has been reset");
-        }
+        LOG_INFO("Capacity has been set to %d elements", descriptor_set_capacity);
     }
 
     void RHI_DescriptorSetLayoutCache::SetDescriptorSetCapacity(uint32_t descriptor_set_capacity)
@@ -101,29 +88,29 @@ namespace Spartan
         m_descriptor_set_capacity = descriptor_set_capacity;
     }
 
-    bool RHI_DescriptorSetLayoutCache::CreateDescriptorPool(uint32_t descriptor_set_capacity)
+    void RHI_DescriptorSetLayoutCache::CreateDescriptorPool(uint32_t descriptor_set_capacity)
     {
         // Pool sizes
         array<VkDescriptorPoolSize, 6> pool_sizes =
         {
-            VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_SAMPLER,                   rhi_descriptor_max_samplers },
-            VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,             rhi_descriptor_max_textures },
-            VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,             rhi_descriptor_max_storage_textures },
-            VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,            rhi_descriptor_max_storage_buffers },
-            VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,            rhi_descriptor_max_constant_buffers },
-            VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,    rhi_descriptor_max_constant_buffers_dynamic }
+            VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_SAMPLER,                rhi_descriptor_max_samplers },
+            VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,          rhi_descriptor_max_textures },
+            VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,          rhi_descriptor_max_storage_textures },
+            VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,         rhi_descriptor_max_storage_buffers },
+            VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         rhi_descriptor_max_constant_buffers },
+            VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, rhi_descriptor_max_constant_buffers_dynamic }
         };
 
         // Create info
         VkDescriptorPoolCreateInfo pool_create_info = {};
-        pool_create_info.sType          = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-        pool_create_info.flags          = 0;
-        pool_create_info.poolSizeCount  = static_cast<uint32_t>(pool_sizes.size());
-        pool_create_info.pPoolSizes     = pool_sizes.data();
-        pool_create_info.maxSets        = descriptor_set_capacity;
+        pool_create_info.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+        pool_create_info.flags         = 0;
+        pool_create_info.poolSizeCount = static_cast<uint32_t>(pool_sizes.size());
+        pool_create_info.pPoolSizes    = pool_sizes.data();
+        pool_create_info.maxSets       = descriptor_set_capacity;
 
-        // Pool
-        VkDescriptorPool* descriptor_pool = reinterpret_cast<VkDescriptorPool*>(&m_descriptor_pool);
-        return vulkan_utility::error::check(vkCreateDescriptorPool(m_rhi_device->GetContextRhi()->device, &pool_create_info, nullptr, descriptor_pool));
+        // Create
+        bool created = vulkan_utility::error::check(vkCreateDescriptorPool(m_rhi_device->GetContextRhi()->device, &pool_create_info, nullptr, reinterpret_cast<VkDescriptorPool*>(&m_descriptor_pool)));
+        SP_ASSERT(created && "Failed to create descriptor pool.");
     }
 }

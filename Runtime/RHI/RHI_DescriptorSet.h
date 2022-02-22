@@ -40,7 +40,7 @@ namespace Spartan
         void* GetResource() { return m_resource; }
 
     private:
-        bool Create();
+        void Create();
         void Update(const std::vector<RHI_Descriptor>& descriptors);
 
         void* m_resource = nullptr;

@@ -148,9 +148,9 @@ namespace Spartan
                 m_needs_to_bind = descriptor.range  != structured_buffer->GetObjectSizeGpu()    ? true : m_needs_to_bind;
 
                 // Update
-                descriptor.data     = static_cast<void*>(structured_buffer);
-                descriptor.offset   = 0;
-                descriptor.range    = structured_buffer->GetObjectSizeGpu();
+                descriptor.data   = static_cast<void*>(structured_buffer);
+                descriptor.offset = 0;
+                descriptor.range  = structured_buffer->GetObjectSizeGpu();
 
                 return;
             }
@@ -169,9 +169,9 @@ namespace Spartan
                     m_needs_to_bind = true;
 
                     // Update
-                    descriptor.data     = nullptr;
-                    descriptor.offset   = 0;
-                    descriptor.range    = 0;
+                    descriptor.data   = nullptr;
+                    descriptor.offset = 0;
+                    descriptor.range  = 0;
 
                     return;
                 }
@@ -191,9 +191,9 @@ namespace Spartan
                     m_needs_to_bind = true;
 
                     // Update
-                    descriptor.data     = nullptr;
-                    descriptor.layout   = RHI_Image_Layout::Undefined;
-                    descriptor.mip      = 0;
+                    descriptor.data   = nullptr;
+                    descriptor.layout = RHI_Image_Layout::Undefined;
+                    descriptor.mip    = 0;
 
                     return;
                 }

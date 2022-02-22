@@ -68,7 +68,7 @@ namespace Spartan
 
     }
 
-    bool RHI_DescriptorSet::Create()
+    void RHI_DescriptorSet::Create()
     {
         // Validate descriptor set
         SP_ASSERT(m_resource == nullptr);
@@ -77,20 +77,18 @@ namespace Spartan
         array<void*, 1> descriptor_set_layouts = { m_descriptor_set_layout_cache->GetCurrentDescriptorSetLayout()->GetResource() };
 
         // Allocate info
-        VkDescriptorSetAllocateInfo allocate_info   = {};
-        allocate_info.sType                         = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-        allocate_info.descriptorPool                = static_cast<VkDescriptorPool>(m_descriptor_set_layout_cache->GetResource_DescriptorPool());
-        allocate_info.descriptorSetCount            = 1;
-        allocate_info.pSetLayouts                   = reinterpret_cast<VkDescriptorSetLayout*>(descriptor_set_layouts.data());
+        VkDescriptorSetAllocateInfo allocate_info = {};
+        allocate_info.sType                       = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+        allocate_info.descriptorPool              = static_cast<VkDescriptorPool>(m_descriptor_set_layout_cache->GetResource_DescriptorPool());
+        allocate_info.descriptorSetCount          = 1;
+        allocate_info.pSetLayouts                 = reinterpret_cast<VkDescriptorSetLayout*>(descriptor_set_layouts.data());
 
         // Allocate
-        if (!vulkan_utility::error::check(vkAllocateDescriptorSets(m_rhi_device->GetContextRhi()->device, &allocate_info, reinterpret_cast<VkDescriptorSet*>(&m_resource))))
-            return false;
+        bool allocated = vulkan_utility::error::check(vkAllocateDescriptorSets(m_rhi_device->GetContextRhi()->device, &allocate_info, reinterpret_cast<VkDescriptorSet*>(&m_resource)));
+        SP_ASSERT(allocated && "Failed to allocate descriptor set.");
 
         // Name
         vulkan_utility::debug::set_name(*reinterpret_cast<VkDescriptorSet*>(&m_resource), m_object_name.c_str());
-
-        return true;
     }
 
     void RHI_DescriptorSet::Update(const vector<RHI_Descriptor>& descriptors)
