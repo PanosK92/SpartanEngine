@@ -40,9 +40,19 @@ namespace Spartan
         ~Entity();
 
         void Clone();
-        void Start();
-        void Stop();
+
+        // Runs once, before the simulation ends.
+        void OnStart();
+
+        // Runs once, after the simulation ends.
+        void OnStop();
+
+        // Runs every frame, before any subsystem or entity ticks.
+        void OnPreTick();
+
+        // Runs every frame.
         void Tick(double delta_time);
+
         void Serialize(FileStream* stream);
         void Deserialize(FileStream* stream, Transform* parent);
 

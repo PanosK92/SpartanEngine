@@ -69,6 +69,14 @@ namespace Spartan
         return true;
     }
 
+    void World::OnPreTick()
+    {
+        for (shared_ptr<Entity>& entity : m_entities)
+        {
+            entity->OnPreTick();
+        }
+    }
+
     void World::OnTick(double delta_time)
     {
         if (!m_transform_handle)
@@ -102,7 +110,7 @@ namespace Spartan
             {
                 for (shared_ptr<Entity>& entity : m_entities)
                 {
-                    entity->Start();
+                    entity->OnStart();
                 }
             }
 
@@ -111,7 +119,7 @@ namespace Spartan
             {
                 for (shared_ptr<Entity>& entity : m_entities)
                 {
-                    entity->Stop();
+                    entity->OnStop();
                 }
             }
 

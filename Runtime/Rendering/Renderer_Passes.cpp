@@ -2424,7 +2424,7 @@ namespace Spartan
             Pass_AMD_FidelityFX_SinglePassDowsnampler(m_cmd_current, texture, luminance_antiflicker);
         }
 
-        m_dirty_mip_generation_vector = true;
-        m_is_generating_mips          = false;
+        m_mip_generation_textures_clear_pending = true;
+        m_is_generating_mips                    = false;
     }
 }
