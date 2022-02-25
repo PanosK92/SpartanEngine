@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../RHI/RHI_TextureCube.h"
 #include "../../Resource/ResourceCache.h"
 #include "../../Resource/Import/ImageImporter.h"
+#include "../../Rendering/Renderer.h"
 //==============================================
 
 //= NAMESPACES ===============
@@ -56,20 +57,20 @@ namespace Spartan
         else if (m_environment_type == EnvironmentType::Sphere)
         {
             m_file_paths = { dir_cubemaps + "syferfontein_0d_clear_4k.hdr" };
-        }
+        }     
     }
 
     void Environment::OnTick(double delta_time)
     {
-        if (!m_is_dirty)
-            return;
-
-        m_context->GetSubsystem<Threading>()->AddTask([this]
+        if (m_is_dirty)
         {
-            SetFromTextureSphere(m_file_paths.front());
-        });
+            m_context->GetSubsystem<Threading>()->AddTask([this]
+            {
+                SetFromTextureSphere(m_file_paths.front());
+            });
 
-        m_is_dirty = false;
+            m_is_dirty = false;
+        }
     }
 
     void Environment::Serialize(FileStream* stream)
@@ -98,17 +99,14 @@ namespace Spartan
         });
     }
 
-    void Environment::LoadDefault()
+    const shared_ptr<Spartan::RHI_Texture> Environment::GetTexture() const
     {
-        m_is_dirty = true;
+        return m_context->GetSubsystem<Renderer>()->GetEnvironmentTexture();
     }
 
     void Environment::SetTexture(const shared_ptr<RHI_Texture>& texture)
     {
-        m_texture = texture;
-
-        // Save file path for serialization/deserialization
-        m_file_paths = { texture ? texture->GetResourceFilePath() : "" };
+        m_context->GetSubsystem<Renderer>()->SetEnvironmentTexture(texture);
     }
 
     void Environment::SetFromTextureArray(const vector<string>& file_paths)
@@ -121,7 +119,7 @@ namespace Spartan
         ResourceCache* resource_cache = m_context->GetSubsystem<ResourceCache>();
 
         // Load all textures (sides)
-        shared_ptr<RHI_TextureCube> texture = make_shared<RHI_TextureCube>(GetContext());
+        shared_ptr<RHI_Texture> texture = make_shared<RHI_TextureCube>(GetContext());
         for (uint32_t slice_index = 0; static_cast<uint32_t>(file_paths.size()); slice_index++)
         {
             resource_cache->GetImageImporter()->Load(file_paths[slice_index], slice_index, static_cast<RHI_Texture*>(texture.get()));
@@ -130,8 +128,11 @@ namespace Spartan
         // Set resource file path
         texture->SetResourceFilePath(resource_cache->GetProjectDirectory() + "environment" + EXTENSION_TEXTURE);
 
-        // Apply sky sphere to renderer
-        SetTexture(static_pointer_cast<RHI_Texture>(texture));
+        // Save file path for serialization/deserialization
+        m_file_paths = { texture->GetResourceFilePath() };
+
+        // Pass the texture to the renderer.
+        SetTexture(texture);
 
         LOG_INFO("Sky box has been created successfully");
     }
@@ -141,15 +142,19 @@ namespace Spartan
         LOG_INFO("Loading sky sphere...");
 
         // Create texture
-        m_texture = make_shared<RHI_Texture2D>(GetContext(), RHI_Texture_Srv | RHI_Texture_Mips);
+        shared_ptr<RHI_Texture> texture = make_shared<RHI_Texture2D>(GetContext(), RHI_Texture_Srv | RHI_Texture_Mips);
 
-        if (m_texture->LoadFromFile(file_path))
-        {
-            LOG_INFO("Sky sphere has been created successfully");
-        }
-        else
+        if (!texture->LoadFromFile(file_path))
         {
             LOG_ERROR("Sky sphere creation failed");
         }
+
+        // Save file path for serialization/deserialization
+        m_file_paths = { texture->GetResourceFilePath() };
+        
+        // Pass the texture to the renderer.
+        SetTexture(texture);
+        
+        LOG_INFO("Sky sphere has been created successfully");
     }
 }

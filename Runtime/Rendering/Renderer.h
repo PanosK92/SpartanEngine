@@ -283,8 +283,7 @@ namespace Spartan
             GeometryTransparent,
             Light,
             Camera,
-            ReflectionProbe,
-            Environment
+            ReflectionProbe
         };
 
         // Defines
@@ -294,7 +293,7 @@ namespace Spartan
         ~Renderer();
 
         //= ISubsystem =========================
-        bool OnInitialise() override;
+        bool OnInitialize() override;
         void OnTick(double delta_time) override;
         //======================================
 
@@ -329,6 +328,7 @@ namespace Spartan
 
         // Environment
         const std::shared_ptr<RHI_Texture> GetEnvironmentTexture();
+        void SetEnvironmentTexture(std::shared_ptr<RHI_Texture> texture);
 
         // Options
         uint64_t GetOptions()                        const { return m_options; }
@@ -537,14 +537,16 @@ namespace Spartan
         Math::Vector2 m_resolution_output_previous = Math::Vector2::Zero;
         RHI_Viewport m_viewport_previous           = RHI_Viewport(0, 0, 0, 0);
         Math::Vector2 m_viewport_size_pending      = Math::Vector2::Zero;
+        std::shared_ptr<RHI_Texture> m_environment_texture;
 
         // Options
         uint64_t m_options = 0;
         std::unordered_map<Renderer::OptionValue, float> m_option_values;
 
-        // Dirty states
-        bool m_dirty_viewport                = false;
-        bool m_dirty_orthographic_projection = true;
+        // Dirty flags
+        bool m_dirty_viewport                           = false;
+        bool m_dirty_orthographic_projection            = true;
+        std::atomic<bool> m_dirty_mip_generation_vector = false;
 
         // Misc
         std::unique_ptr<Font> m_font;

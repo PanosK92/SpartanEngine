@@ -45,10 +45,10 @@ namespace Spartan
         World(Context* context);
         ~World();
 
-        //= ISubsystem ======================
-        bool OnInitialise() override;
+        //= ISubsystem =========================
+        bool OnInitialize() override;
         void OnTick(double delta_time) override;
-        //===================================
+        //======================================
         
         void New();
         bool SaveToFile(const std::string& filePath);

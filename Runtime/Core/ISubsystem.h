@@ -37,10 +37,22 @@ namespace Spartan
         ISubsystem(Context* context) { m_context = context; }
         virtual ~ISubsystem() = default;
 
-        virtual bool OnInitialise() { return true; }
+        // Runs when the subsystems need to initialize.
+        virtual bool OnInitialize() { return true; }
+
+        // Runs after the subsystems have initialized. Useful, if a particular subsystem needs to use another, initialized subsystem.
+        virtual void OnPostInitialize() {}
+
+        // Runs once evry frame and before OnTick().
         virtual void OnPreTick() {}
+
+        // Runs every frame.
         virtual void OnTick(double delta_time) {}
+
+        // Runs every frame and after OnTick().
         virtual void OnPostTick() {}
+
+        // Runs when the subsystems need to shutdown.
         virtual void OnShutdown() {}
 
         template <typename T>

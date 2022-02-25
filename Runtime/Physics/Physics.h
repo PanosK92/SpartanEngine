@@ -53,7 +53,7 @@ namespace Spartan
         ~Physics();
 
         //= Subsystem =======================
-        bool OnInitialise() override;
+        bool OnInitialize() override;
         void OnTick(double delta_time) override;
         //===================================
 

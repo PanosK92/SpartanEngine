@@ -50,7 +50,8 @@ namespace Spartan
         m_context = make_shared<Context>();
         m_context->m_engine = this;
 
-        // Register subsystems (order matters)
+        // Subsystem: Add.
+        // Addition order matters as it's also the tick order.
         m_context->AddSubsystem<Settings>();
         m_context->AddSubsystem<Timer>();
         m_context->AddSubsystem<Threading>();
@@ -64,13 +65,16 @@ namespace Spartan
         m_context->AddSubsystem<Renderer>();
         m_context->AddSubsystem<Profiler>();
 
-        // Initialize above subsystems
-        m_context->OnInitialise();
-        m_context->OnPreTick();
+        // Subsystem: Initialize.
+        m_context->OnInitialize();
+
+        // Subsystem: Post-initialize.
+        m_context->OnPostInitialize();
     }
 
     Engine::~Engine()
     {
+        // Subsystem: Shutdown.
         m_context->OnShutdown();
 
         // Does this need to become a subsystem ?
@@ -81,8 +85,14 @@ namespace Spartan
     {
         Timer* timer = m_context->GetSubsystem<Timer>();
 
+        // Subsystem: Pre-tick.
+        m_context->OnPreTick();
+
+        // Subsystem: Tick.
         m_context->OnTick(TickType::Variable, timer->GetDeltaTimeSec());
         m_context->OnTick(TickType::Smoothed, timer->GetDeltaTimeSmoothedSec());
+
+        // Subsystem: Post-tick.
         m_context->OnPostTick();
     }
 }

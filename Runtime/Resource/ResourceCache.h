@@ -53,7 +53,7 @@ namespace Spartan
         ~ResourceCache();
 
         //= ISubsystem ==============
-        bool OnInitialise() override;
+        bool OnInitialize() override;
         //===========================
 
         // Get by name

@@ -57,7 +57,7 @@ namespace Spartan
         m_profiler = nullptr;
     }
 
-    bool World::OnInitialise()
+    bool World::OnInitialize()
     {
         m_input    = m_context->GetSubsystem<Input>();
         m_profiler = m_context->GetSubsystem<Profiler>();
@@ -397,7 +397,7 @@ namespace Spartan
     {
         shared_ptr<Entity> environment = EntityCreate();
         environment->SetName("Environment");
-        environment->AddComponent<Environment>()->LoadDefault();
+        environment->AddComponent<Environment>();
 
         return environment;
     }
