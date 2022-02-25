@@ -46,9 +46,7 @@ namespace Spartan
         void Deserialize(FileStream* stream) override;
         //============================================
 
-        void LoadDefault();
-
-        const std::shared_ptr<RHI_Texture> GetTexture() const { return m_texture; };
+        const std::shared_ptr<RHI_Texture> GetTexture() const;
         void SetTexture(const std::shared_ptr<RHI_Texture>& texture);
 
     private:
@@ -56,8 +54,7 @@ namespace Spartan
         void SetFromTextureSphere(const std::string& file_path);
 
         std::vector<std::string> m_file_paths;
-        std::shared_ptr<RHI_Texture> m_texture;
         EnvironmentType m_environment_type = EnvironmentType::Sphere;
-        bool m_is_dirty                    = false;
+        bool m_is_dirty = true;
     };
 }

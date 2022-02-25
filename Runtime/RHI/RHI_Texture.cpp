@@ -70,7 +70,7 @@ namespace Spartan
         Renderer* renderer = context->GetSubsystem<Renderer>();
         SP_ASSERT(renderer != nullptr);
 
-        m_rhi_device = context->GetSubsystem<Renderer>()->GetRhiDevice();
+        m_rhi_device = renderer->GetRhiDevice();
         SP_ASSERT(m_rhi_device != nullptr);
         SP_ASSERT(m_rhi_device->GetContextRhi()->device != nullptr);
 

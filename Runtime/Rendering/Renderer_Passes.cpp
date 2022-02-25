@@ -2422,21 +2422,9 @@ namespace Spartan
             // Downsample
             const bool luminance_antiflicker = false;
             Pass_AMD_FidelityFX_SinglePassDowsnampler(m_cmd_current, texture, luminance_antiflicker);
-
-            // Remove unnecessary flags from texture (were only needed for the downsampling)
-            uint32_t flags = texture->GetFlags();
-            flags &= ~RHI_Texture_PerMipViews;
-            flags &= ~RHI_Texture_Uav;
-            texture->SetFlags(flags);
-
-            // Destroy the resources associated with those flags
-            const bool destroy_main     = false;
-            const bool destroy_per_view = true;
-            texture->RHI_DestroyResource(destroy_main, destroy_per_view);
         }
 
-        m_textures_mip_generation.clear();
-
-        m_is_generating_mips = false;
+        m_dirty_mip_generation_vector = true;
+        m_is_generating_mips          = false;
     }
 }

@@ -1256,7 +1256,7 @@ void Properties::ComponentContextMenu_Add() const
             {
                 if (ImGui::MenuItem("Environment"))
                 {
-                    entity->AddComponent<Environment>()->LoadDefault();
+                    entity->AddComponent<Environment>();
                 }
 
                 ImGui::EndMenu();

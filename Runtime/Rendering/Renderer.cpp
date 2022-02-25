@@ -114,7 +114,7 @@ namespace Spartan
         Log::m_log_to_file = true;
     }
 
-    bool Renderer::OnInitialise()
+    bool Renderer::OnInitialize()
     {
         m_initialised = false;
 
@@ -295,6 +295,28 @@ namespace Spartan
             m_dirty_orthographic_projection = true;
 
             m_dirty_viewport = false;
+        }
+
+        if (m_dirty_mip_generation_vector)
+        {
+            for (RHI_Texture* texture : m_textures_mip_generation)
+            {
+                // Remove unnecessary flags from texture (were only needed for the downsampling)
+                uint32_t flags = texture->GetFlags();
+                flags &= ~RHI_Texture_PerMipViews;
+                flags &= ~RHI_Texture_Uav;
+                texture->SetFlags(flags);
+
+                // Destroy the resources associated with those flags
+                {
+                    const bool destroy_main    = false;
+                    const bool destroy_per_view = true;
+                    texture->RHI_DestroyResource(destroy_main, destroy_per_view);
+                }
+            }
+
+            m_textures_mip_generation.clear();
+            m_dirty_mip_generation_vector = false;
         }
 
         // Update frame buffer
@@ -690,11 +712,6 @@ namespace Spartan
             {
                 m_entities[ObjectType::ReflectionProbe].emplace_back(entity.get());
             }
-
-            if (Environment* environment = entity->GetComponent<Environment>())
-            {
-                m_entities[ObjectType::Environment].emplace_back(entity.get());
-            }
         }
 
         SortRenderables(&m_entities[ObjectType::GeometryOpaque]);
@@ -759,18 +776,12 @@ namespace Spartan
 
     const shared_ptr<RHI_Texture> Renderer::GetEnvironmentTexture()
     {
-        if (Entity* entity = m_entities[ObjectType::Environment].front())
-        {
-            if (Environment* environment = entity->GetComponent<Environment>())
-            {
-                if (environment->GetTexture())
-                {
-                    return environment->GetTexture();
-                }
-            }
-        }
+        return m_environment_texture ? m_environment_texture : m_tex_default_black;
+    }
 
-        return m_tex_default_transparent;
+    void Renderer::SetEnvironmentTexture(shared_ptr<RHI_Texture> texture)
+    {
+        m_environment_texture = texture;
     }
 
     void Renderer::SetOption(Renderer::Option option, bool enable)
@@ -925,6 +936,7 @@ namespace Spartan
     void Renderer::RequestTextureMipGeneration(RHI_Texture* texture)
     {
         SP_ASSERT(texture != nullptr);
+        SP_ASSERT(texture->GetResource_View_Srv() != nullptr);
 
         // Ensure the texture requires mips
         SP_ASSERT(texture->HasMips());

@@ -91,24 +91,22 @@ namespace Spartan
             return nullptr;
         }
 
-        void OnInitialise()
+        void OnInitialize()
         {
-            std::vector<uint32_t> failed_indices;
-
-            // Initialise subsystems
             for (uint32_t i = 0; i < static_cast<uint32_t>(m_subsystems.size()); i++)
             {
-                if (!m_subsystems[i].ptr->OnInitialise())
+                if (!m_subsystems[i].ptr->OnInitialize())
                 {
-                    failed_indices.emplace_back(i);
                     LOG_ERROR("Failed to initialize %s", typeid(*m_subsystems[i].ptr).name());
                 }
             }
+        }
 
-            // Removes that ones that failed
-            for (const uint32_t failed_index : failed_indices)
+        void OnPostInitialize()
+        {
+            for (const _subystem& subsystem : m_subsystems)
             {
-                m_subsystems.erase(m_subsystems.begin() + failed_index);
+                subsystem.ptr->OnPostInitialize();
             }
         }
 

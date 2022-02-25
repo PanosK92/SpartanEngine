@@ -51,10 +51,10 @@ namespace Spartan
         Settings(Context* context);
         ~Settings();
 
-        //= Subsystem ==============
-        void OnPreTick() override;
+        //= Subsystem ===================
+        void OnPostInitialize() override;
         void OnShutdown() override;
-        //==========================
+        //===============================
 
         //= Third party libraries registration =================================================================
         void RegisterThirdPartyLib(const std::string& name, const std::string& version, const std::string& url);

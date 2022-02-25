@@ -85,7 +85,7 @@ namespace Spartan
 
     }
 
-    void Settings::OnPreTick()
+    void Settings::OnPostInitialize()
     {
         // We are in initialising during OnPreTick() as
         // we need all the subsystems to be initialised

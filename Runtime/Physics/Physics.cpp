@@ -88,7 +88,7 @@ namespace Spartan
         SP_DELETE(m_debug_draw);
     }
 
-    bool Physics::OnInitialise()
+    bool Physics::OnInitialize()
     {
         // Get dependencies
         m_renderer = m_context->GetSubsystem<Renderer>();

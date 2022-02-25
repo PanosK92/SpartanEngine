@@ -55,7 +55,7 @@ namespace Spartan
         ClearRhiMetrics();
     }
 
-    bool Profiler::OnInitialise()
+    bool Profiler::OnInitialize()
     {
         m_resource_manager = m_context->GetSubsystem<ResourceCache>();
         m_renderer         = m_context->GetSubsystem<Renderer>();

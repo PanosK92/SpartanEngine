@@ -47,7 +47,7 @@ namespace Spartan
         ~Scripting();
 
         //= Subsystem =============
-        bool OnInitialise() override;
+        bool OnInitialize() override;
         //=========================
 
         uint32_t Load(const std::string& file_path, Script* script_component);
