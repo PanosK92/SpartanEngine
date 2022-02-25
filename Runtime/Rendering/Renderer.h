@@ -537,16 +537,14 @@ namespace Spartan
         Math::Vector2 m_resolution_output_previous = Math::Vector2::Zero;
         RHI_Viewport m_viewport_previous           = RHI_Viewport(0, 0, 0, 0);
         Math::Vector2 m_viewport_size_pending      = Math::Vector2::Zero;
+
+        // Environment texture
         std::shared_ptr<RHI_Texture> m_environment_texture;
+        std::shared_ptr<RHI_Texture> m_environment_texture_temp;
 
         // Options
         uint64_t m_options = 0;
         std::unordered_map<Renderer::OptionValue, float> m_option_values;
-
-        // Dirty flags
-        bool m_dirty_viewport                           = false;
-        bool m_dirty_orthographic_projection            = true;
-        std::atomic<bool> m_dirty_mip_generation_vector = false;
 
         // Misc
         std::unique_ptr<Font> m_font;
@@ -558,11 +556,8 @@ namespace Spartan
         bool m_is_odd_frame               = false;
         bool m_brdf_specular_lut_rendered = false;
         uint32_t m_cmd_index              = std::numeric_limits<uint32_t>::max();
-
-        // Threading
         std::thread::id m_render_thread_id;
-        std::atomic<bool> m_is_rendering_allowed = true;
-        std::atomic<bool> m_flush_requested      = false;
+
 
         // Constants
         const uint32_t m_resolution_shadow_min = 128;
@@ -575,7 +570,16 @@ namespace Spartan
 
         // Requests for mip generation
         std::vector<RHI_Texture*> m_textures_mip_generation;
-        std::atomic<bool> m_is_generating_mips = false;
+        
+
+        // States
+        std::atomic<bool> m_is_rendering_allowed                  = true;
+        std::atomic<bool> m_flush_requested                       = false;
+        std::atomic<bool> m_is_generating_mips                    = false;
+        bool m_dirty_viewport                                     = false;
+        bool m_dirty_orthographic_projection                      = true;
+        std::atomic<bool> m_mip_generation_textures_clear_pending = false;
+        std::atomic<bool> m_environment_texture_swap_pending      = false;
 
         // RHI Core
         std::shared_ptr<RHI_Device> m_rhi_device;

@@ -114,7 +114,7 @@ namespace Spartan
         clone_entity_and_descendants(this);
     }
 
-    void Entity::Start()
+    void Entity::OnStart()
     {
         // call component Start()
         for (auto const& component : m_components)
@@ -123,12 +123,21 @@ namespace Spartan
         }
     }
 
-    void Entity::Stop()
+    void Entity::OnStop()
     {
         // call component Stop()
         for (auto const& component : m_components)
         {
             component->OnStop();
+        }
+    }
+
+    void Entity::OnPreTick()
+    {
+        // call component OnPreTick()
+        for (auto const& component : m_components)
+        {
+            component->OnPreTick();
         }
     }
 

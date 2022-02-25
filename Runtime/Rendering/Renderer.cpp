@@ -297,7 +297,14 @@ namespace Spartan
             m_dirty_viewport = false;
         }
 
-        if (m_dirty_mip_generation_vector)
+        if (m_environment_texture_swap_pending)
+        {
+            m_environment_texture              = m_environment_texture_temp;
+            m_environment_texture_temp         = nullptr;
+            m_environment_texture_swap_pending = false;
+        }
+
+        if (m_mip_generation_textures_clear_pending)
         {
             for (RHI_Texture* texture : m_textures_mip_generation)
             {
@@ -316,7 +323,7 @@ namespace Spartan
             }
 
             m_textures_mip_generation.clear();
-            m_dirty_mip_generation_vector = false;
+            m_mip_generation_textures_clear_pending = false;
         }
 
         // Update frame buffer
@@ -781,7 +788,8 @@ namespace Spartan
 
     void Renderer::SetEnvironmentTexture(shared_ptr<RHI_Texture> texture)
     {
-        m_environment_texture = texture;
+        m_environment_texture_temp         = texture;
+        m_environment_texture_swap_pending = true;
     }
 
     void Renderer::SetOption(Renderer::Option option, bool enable)
