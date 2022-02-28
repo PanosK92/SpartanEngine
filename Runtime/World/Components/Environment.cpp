@@ -64,7 +64,11 @@ namespace Spartan
     {
         if (m_is_dirty)
         {
-            SetFromTextureSphere(m_file_paths.front());
+            m_context->GetSubsystem<Threading>()->AddTask([this]()
+            {
+                SetFromTextureSphere(m_file_paths.front());
+            });
+            
             m_is_dirty = false;
         }
     }

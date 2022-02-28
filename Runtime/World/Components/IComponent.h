@@ -80,9 +80,6 @@ namespace Spartan
         // Runs when the component is removed
         virtual void OnRemove() {}
 
-        // Runs every frame, before any subystems, entities and components tick.
-        virtual void OnPreTick() {}
-
         // Runs every frame
         virtual void OnTick(double delta_time) {}
 

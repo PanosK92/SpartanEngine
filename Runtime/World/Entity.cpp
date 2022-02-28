@@ -134,11 +134,7 @@ namespace Spartan
 
     void Entity::OnPreTick()
     {
-        // call component OnPreTick()
-        for (auto const& component : m_components)
-        {
-            component->OnPreTick();
-        }
+
     }
 
 	void Entity::Tick(double delta_time)
