@@ -64,10 +64,9 @@ namespace Spartan
 
     RHI_CommandList::~RHI_CommandList() = default;
 
-    bool RHI_CommandList::Begin()
+    void RHI_CommandList::Begin()
     {
         m_state = RHI_CommandListState::Recording;
-        return true;
     }
 
     bool RHI_CommandList::End()

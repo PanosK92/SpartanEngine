@@ -67,31 +67,23 @@ namespace Spartan
         d3d12_utility::release<ID3D12CommandQueue>(m_resource);
     }
 
-    bool RHI_CommandList::Begin()
+    void RHI_CommandList::Begin()
     {
         // If the command list is in use, wait for it
         if (m_state == RHI_CommandListState::Submitted)
         {
-            if (!Wait())
-            {
-                LOG_ERROR("Failed to wait");
-                return false;
-            }
+            Wait();
         }
 
-        // Verify a few things
+        // Validate a few things
         SP_ASSERT(m_resource != nullptr);
         SP_ASSERT(m_rhi_device != nullptr);
         SP_ASSERT(m_state == RHI_CommandListState::Idle);
 
         // Unlike Vulkan, D3D12 wraps both begin and reset under Reset().
-        if (!d3d12_utility::error::check(static_cast<ID3D12GraphicsCommandList*>(m_resource)->Reset(static_cast<ID3D12CommandAllocator*>(m_rhi_device->GetCmdPoolGraphics()), nullptr)))
-            return false;
+        SP_ASSERT(d3d12_utility::error::check(static_cast<ID3D12GraphicsCommandList*>(m_resource)->Reset(static_cast<ID3D12CommandAllocator*>(m_rhi_device->GetCmdPoolGraphics()), nullptr)) && "Failed to reset command list");
 
         m_state = RHI_CommandListState::Recording;
-        m_flushed = false;
-
-        return true;
     }
 
     bool RHI_CommandList::End()

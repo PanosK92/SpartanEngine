@@ -427,11 +427,7 @@ namespace ImGui::RHI
 
         window->cmd_index = (window->cmd_index + 1) % window->buffer_count;
 
-        if (!window->cmd_lists[window->cmd_index]->Begin())
-        {
-            LOG_ERROR("Failed to begin command list");
-            return;
-        }
+        window->cmd_lists[window->cmd_index]->Begin();
 
         const bool clear = !(viewport->Flags & ImGuiViewportFlags_NoRendererClear);
         Render(viewport->DrawData, window, clear);
