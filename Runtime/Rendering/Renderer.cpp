@@ -280,7 +280,7 @@ namespace Spartan
             return;
         }
 
-        // Update viewport
+        // Handle viewport update requests.
         if (m_dirty_viewport)
         {
             // Update viewport
@@ -297,6 +297,7 @@ namespace Spartan
             m_dirty_viewport = false;
         }
 
+        // Handle environment texture assignment requests.
         if (m_environment_texture_swap_pending)
         {
             m_environment_texture              = m_environment_texture_temp;
@@ -304,26 +305,12 @@ namespace Spartan
             m_environment_texture_swap_pending = false;
         }
 
-        if (m_mip_generation_textures_clear_pending)
+        // Handle texture mip generation requests.
+        if (m_textures_mip_generation_pending.empty())
         {
-            for (RHI_Texture* texture : m_textures_mip_generation)
-            {
-                // Remove unnecessary flags from texture (were only needed for the downsampling)
-                uint32_t flags = texture->GetFlags();
-                flags &= ~RHI_Texture_PerMipViews;
-                flags &= ~RHI_Texture_Uav;
-                texture->SetFlags(flags);
-
-                // Destroy the resources associated with those flags
-                {
-                    const bool destroy_main    = false;
-                    const bool destroy_per_view = true;
-                    texture->RHI_DestroyResource(destroy_main, destroy_per_view);
-                }
-            }
-
-            m_textures_mip_generation.clear();
-            m_mip_generation_textures_clear_pending = false;
+            m_mip_generation_requests_allowed = false;
+            m_textures_mip_generation.insert(m_textures_mip_generation.end(), m_textures_mip_generation_pending.begin(), m_textures_mip_generation_pending.end());
+            m_mip_generation_requests_allowed = true;
         }
 
         // Update frame buffer
@@ -943,28 +930,16 @@ namespace Spartan
     
     void Renderer::RequestTextureMipGeneration(RHI_Texture* texture)
     {
+        if (!m_mip_generation_requests_allowed)
+            return;
+
         SP_ASSERT(texture != nullptr);
         SP_ASSERT(texture->GetResource_View_Srv() != nullptr);
-
         // Ensure the texture requires mips
         SP_ASSERT(texture->HasMips());
-
         // Ensure that the texture has per mip views since they are required for GPU downsampling.
         SP_ASSERT(texture->HasPerMipViews());
 
-        // Ensure the texture hasn't already been added to the vector
-        for (const RHI_Texture* texture_it : m_textures_mip_generation)
-        {
-            SP_ASSERT(texture_it->GetObjectId() != texture->GetObjectId());
-        }
-
-        // Wait
-        while (m_is_generating_mips)
-        {
-            LOG_INFO("Waiting for the renderer to finish the currently active mip generation pass...");
-            this_thread::sleep_for(chrono::milliseconds(16));
-        }
-
-        m_textures_mip_generation.push_back(texture);
+        m_textures_mip_generation_pending.push_back(texture);
     }
 }
