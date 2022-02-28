@@ -67,17 +67,20 @@ namespace Spartan
             }
         }
 
-        const bool log_to_file = m_logger.expired() || m_log_to_file;
+        bool logger_enabled = !m_logger.expired();
 
-        if (log_to_file)
-        {
-            m_log_buffer.emplace_back(text, type);
-            LogToFile(text, type);
-        }
-        else
+        // Always log in-engine
+        if (logger_enabled)
         {
             FlushBuffer();
             LogString(text, type);
+        }
+
+        // Log to file if requested or if an in-engine logger is not available.
+        if (m_log_to_file || !logger_enabled)
+        {
+            m_log_buffer.emplace_back(text, type);
+            LogToFile(text, type);
         }
     }
 
@@ -211,8 +214,8 @@ namespace Spartan
     {
         SP_ASSERT(text != nullptr);
 
-        const string prefix        = (type == LogType::Info) ? "Info:" : (type == LogType::Warning) ? "Warning:" : "Error:";
-        const auto final_text    = prefix + " " + text;
+        const string prefix   = (type == LogType::Info) ? "Info:" : (type == LogType::Warning) ? "Warning:" : "Error:";
+        const auto final_text = prefix + " " + text;
 
         // Delete the previous log file (if it exists)
         if (m_first_log)

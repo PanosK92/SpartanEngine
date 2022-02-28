@@ -54,12 +54,12 @@ namespace Spartan
         ~RHI_CommandList();
     
         // Command list
-        bool Begin();
+        void Begin();
         bool End();
         bool Submit(RHI_Semaphore* wait_semaphore);
         bool Reset();
         // Waits for any submitted work (if any).
-        bool Wait();
+        void Wait();
         // Causes the command list to ignore the first submission call (useful when the command list refers to resources which have been destroyed).
         void Discard();
         // Submits all work, waits for it, and then resets to the last known pipeline state (optional).

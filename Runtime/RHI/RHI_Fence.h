@@ -35,7 +35,7 @@ namespace Spartan
         ~RHI_Fence();
 
         bool IsSignaled();
-        bool Wait(uint64_t timeout = std::numeric_limits<uint64_t>::max());
+        bool Wait(uint64_t timeout_nanoseconds = 1000000000); // that's a timeout of a second
         bool Reset();
 
         void* GetResource() { return m_resource; }

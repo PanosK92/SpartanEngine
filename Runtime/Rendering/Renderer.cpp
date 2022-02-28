@@ -251,8 +251,8 @@ namespace Spartan
             return;
 
         // Acquire appropriate command list
-        m_cmd_index     = (m_cmd_index + 1) % static_cast<uint32_t>(m_cmd_lists.size());
-        m_cmd_current   = m_cmd_index < static_cast<uint32_t>(m_cmd_lists.size()) ? m_cmd_lists[m_cmd_index].get() : nullptr;
+        m_cmd_index   = (m_cmd_index + 1) % static_cast<uint32_t>(m_cmd_lists.size());
+        m_cmd_current = m_cmd_index < static_cast<uint32_t>(m_cmd_lists.size()) ? m_cmd_lists[m_cmd_index].get() : nullptr;
 
         // Reset dynamic buffer indices when we come back to the first command list
         if (m_cmd_index == 0)
@@ -429,8 +429,8 @@ namespace Spartan
         }
 
         // Make sure we are pixel perfect
-        width  -= (width   % 2 != 0) ? 1 : 0;
-        height -= (height  % 2 != 0) ? 1 : 0;
+        width  -= (width  % 2 != 0) ? 1 : 0;
+        height -= (height % 2 != 0) ? 1 : 0;
 
         // Silently return if resolution is already set
         if (m_resolution_render.x == width && m_resolution_render.y == height)

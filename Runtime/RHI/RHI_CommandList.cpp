@@ -30,21 +30,19 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-    bool RHI_CommandList::Wait()
+    void RHI_CommandList::Wait()
     {
+        // Validate state.
         SP_ASSERT(m_state == RHI_CommandListState::Submitted);
 
-        // Wait on the fence
-        if (!m_processed_fence->Wait())
-            return false;
+        // Wait for the fence.
+        SP_ASSERT(m_processed_fence->Wait() && "Timeout while waiting for command list fence.");
 
         // Reset the semaphore
         m_processed_semaphore->Reset();
 
         m_descriptor_set_layout_cache->GrowIfNeeded();
         m_state = RHI_CommandListState::Idle;
-
-        return true;
     }
 
     void RHI_CommandList::Discard()
@@ -91,8 +89,7 @@ namespace Spartan
         {
             if (was_recording)
             {
-                if (!Begin())
-                    return false;
+                Begin();
             }
 
             if (had_render_pass)

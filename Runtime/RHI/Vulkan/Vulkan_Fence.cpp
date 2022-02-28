@@ -65,9 +65,9 @@ namespace Spartan
         return vkGetFenceStatus(m_rhi_device->GetContextRhi()->device, reinterpret_cast<VkFence>(m_resource)) == VK_SUCCESS;
     }
 
-    bool RHI_Fence::Wait(uint64_t timeout /*= std::numeric_limits<uint64_t>::max()*/)
+    bool RHI_Fence::Wait(uint64_t timeout_nanoseconds /*= 1000000000*/)
     {
-        return vulkan_utility::error::check(vkWaitForFences(m_rhi_device->GetContextRhi()->device, 1, reinterpret_cast<VkFence*>(&m_resource), true, timeout));
+        return vulkan_utility::error::check(vkWaitForFences(m_rhi_device->GetContextRhi()->device, 1, reinterpret_cast<VkFence*>(&m_resource), true, timeout_nanoseconds));
     }
 
     bool RHI_Fence::Reset()

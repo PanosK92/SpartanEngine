@@ -97,16 +97,17 @@ namespace Spartan
         }
     }
 
-    bool RHI_CommandList::Begin()
+    void RHI_CommandList::Begin()
     {
         // If the command list is in use, wait for it
         if (m_state == RHI_CommandListState::Submitted)
         {
-            SP_ASSERT(Wait());
+            Wait();
         }
 
-        // Verify a few things
+        // Validate a few things
         SP_ASSERT(m_resource != nullptr);
+        SP_ASSERT(m_rhi_device != nullptr);
         SP_ASSERT(m_state == RHI_CommandListState::Idle);
 
         // Get queries
@@ -141,15 +142,12 @@ namespace Spartan
         VkCommandBufferBeginInfo begin_info = {};
         begin_info.sType                    = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
         begin_info.flags                    = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-        if (!vulkan_utility::error::check(vkBeginCommandBuffer(static_cast<VkCommandBuffer>(m_resource), &begin_info)))
-            return false;
+        SP_ASSERT(vulkan_utility::error::check(vkBeginCommandBuffer(static_cast<VkCommandBuffer>(m_resource), &begin_info)) && "Failed to begin command lsit");
 
         vkCmdResetQueryPool(static_cast<VkCommandBuffer>(m_resource), static_cast<VkQueryPool>(m_query_pool), 0, m_max_timestamps);
 
         m_state   = RHI_CommandListState::Recording;
         m_flushed = false;
-
-        return true;
     }
 
     bool RHI_CommandList::End()
