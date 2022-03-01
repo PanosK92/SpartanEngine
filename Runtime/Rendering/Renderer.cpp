@@ -280,37 +280,67 @@ namespace Spartan
             return;
         }
 
-        // Handle viewport update requests.
-        if (m_dirty_viewport)
+        // Handle requests (they can come from different threads)
         {
-            // Update viewport
-            m_viewport.width  = m_viewport_size_pending.x;
-            m_viewport.height = m_viewport_size_pending.y;
+            m_reading_requests = true;
 
-            // Update quad
-            m_viewport_quad = Math::Rectangle(0, 0, m_viewport.width, m_viewport.height);
-            m_viewport_quad.CreateBuffers(this);
+            // Handle viewport update requests
+            if (m_dirty_viewport)
+            {
+                // Update viewport
+                m_viewport.width  = m_viewport_size_pending.x;
+                m_viewport.height = m_viewport_size_pending.y;
 
-            // Update orthographic projection
-            m_dirty_orthographic_projection = true;
+                // Update quad
+                m_viewport_quad = Math::Rectangle(0, 0, m_viewport.width, m_viewport.height);
+                m_viewport_quad.CreateBuffers(this);
 
-            m_dirty_viewport = false;
-        }
+                // Update orthographic projection
+                m_dirty_orthographic_projection = true;
 
-        // Handle environment texture assignment requests.
-        if (m_environment_texture_swap_pending)
-        {
-            m_environment_texture              = m_environment_texture_temp;
-            m_environment_texture_temp         = nullptr;
-            m_environment_texture_swap_pending = false;
-        }
+                m_dirty_viewport = false;
+            }
 
-        // Handle texture mip generation requests.
-        if (m_textures_mip_generation_pending.empty())
-        {
-            m_mip_generation_requests_allowed = false;
-            m_textures_mip_generation.insert(m_textures_mip_generation.end(), m_textures_mip_generation_pending.begin(), m_textures_mip_generation_pending.end());
-            m_mip_generation_requests_allowed = true;
+            // Handle environment texture assignment requests
+            if (m_environment_texture_temp)
+            {
+                m_environment_texture      = m_environment_texture_temp;
+                m_environment_texture_temp = nullptr;
+            }
+
+            // Handle texture mip generation requests
+            {
+                // Clear any previously processed textures
+                if (!m_textures_mip_generation.empty())
+                {
+                    for (RHI_Texture* texture : m_textures_mip_generation)
+                    {
+                        // Remove unnecessary flags from texture (were only needed for the downsampling)
+                        uint32_t flags = texture->GetFlags();
+                        flags &= ~RHI_Texture_PerMipViews;
+                        flags &= ~RHI_Texture_Uav;
+                        texture->SetFlags(flags);
+
+                        // Destroy the resources associated with those flags
+                        {
+                            const bool destroy_main     = false;
+                            const bool destroy_per_view = true;
+                            texture->RHI_DestroyResource(destroy_main, destroy_per_view);
+                        }
+                    }
+
+                    m_textures_mip_generation.clear();
+                }
+
+                // Add any newly requested textures
+                if (!m_textures_mip_generation_pending.empty())
+                {
+                    m_textures_mip_generation.insert(m_textures_mip_generation.end(), m_textures_mip_generation_pending.begin(), m_textures_mip_generation_pending.end());
+                    m_textures_mip_generation_pending.clear();
+                }
+            }
+
+            m_reading_requests = false;
         }
 
         // Update frame buffer
@@ -397,6 +427,16 @@ namespace Spartan
     
     void Renderer::SetViewport(float width, float height)
     {
+        if (IsCallingFromOtherThread())
+        {
+            while (m_reading_requests)
+            {
+                LOG_INFO("External thread is waiting for the renderer thread...");
+                this_thread::sleep_for(chrono::milliseconds(16));
+            }
+        }
+
+
         if (m_viewport.width != width || m_viewport.height != height)
         {
             m_viewport_size_pending.x = width;
@@ -768,6 +808,11 @@ namespace Spartan
         });
     }
 
+    bool Renderer::IsCallingFromOtherThread()
+    {
+        return m_render_thread_id != this_thread::get_id();
+    }
+
     const shared_ptr<RHI_Texture> Renderer::GetEnvironmentTexture()
     {
         return m_environment_texture ? m_environment_texture : m_tex_default_black;
@@ -775,8 +820,17 @@ namespace Spartan
 
     void Renderer::SetEnvironmentTexture(shared_ptr<RHI_Texture> texture)
     {
-        m_environment_texture_temp         = texture;
-        m_environment_texture_swap_pending = true;
+        if (IsCallingFromOtherThread())
+        {
+            while (m_reading_requests)
+            {
+                LOG_INFO("External thread is waiting for the renderer thread...");
+                this_thread::sleep_for(chrono::milliseconds(16));
+            }
+        }
+
+        lock_guard<mutex> guard(m_environment_texture_mutex);
+        m_environment_texture_temp = texture;
     }
 
     void Renderer::SetOption(Renderer::Option option, bool enable)
@@ -872,8 +926,7 @@ namespace Spartan
 	void Renderer::Flush()
     {
         // The external thread requests a flush from the renderer thread (to avoid a myriad of thread issues and Vulkan errors)
-        bool flushing_from_different_thread = m_render_thread_id != this_thread::get_id();
-        if (flushing_from_different_thread)
+        if (IsCallingFromOtherThread())
         {
             m_is_rendering_allowed = false;
             m_flush_requested      = true;
@@ -930,16 +983,22 @@ namespace Spartan
     
     void Renderer::RequestTextureMipGeneration(RHI_Texture* texture)
     {
-        if (!m_mip_generation_requests_allowed)
-            return;
+        if (IsCallingFromOtherThread())
+        {
+            while (m_reading_requests)
+            {
+                LOG_INFO("External thread is waiting for the renderer thread...");
+                this_thread::sleep_for(chrono::milliseconds(16));
+            }
+        }
 
+        // Validate
         SP_ASSERT(texture != nullptr);
-        SP_ASSERT(texture->GetResource_View_Srv() != nullptr);
-        // Ensure the texture requires mips
-        SP_ASSERT(texture->HasMips());
-        // Ensure that the texture has per mip views since they are required for GPU downsampling.
-        SP_ASSERT(texture->HasPerMipViews());
+        SP_ASSERT(texture->GetResource_View_Srv() != nullptr);     
+        SP_ASSERT(texture->HasMips());        // Ensure the texture requires mips
+        SP_ASSERT(texture->HasPerMipViews()); // Ensure that the texture has per mip views since they are required for GPU downsampling.
 
+        lock_guard<mutex> guard(m_texture_mip_generation_mutex);
         m_textures_mip_generation_pending.push_back(texture);
     }
 }

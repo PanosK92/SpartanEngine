@@ -427,9 +427,9 @@ namespace Spartan
                                 // Update uber buffer with material properties
                                 m_cb_uber_cpu.mat_color    = material->GetColorAlbedo();
                                 m_cb_uber_cpu.mat_textures = 0;
-                                m_cb_uber_cpu.mat_textures |= material->HasTexture(Material_Color)     ? (1 << 2) : 0;
-                                m_cb_uber_cpu.mat_textures |= material->HasTexture(Material_Roughness) ? (1 << 3) : 0;
-                                m_cb_uber_cpu.mat_textures |= material->HasTexture(Material_Metallic)  ? (1 << 4) : 0;
+                                m_cb_uber_cpu.mat_textures |= material->HasTexture(Material_Color)     ? (1U << 2) : 0;
+                                m_cb_uber_cpu.mat_textures |= material->HasTexture(Material_Roughness) ? (1U << 3) : 0;
+                                m_cb_uber_cpu.mat_textures |= material->HasTexture(Material_Metallic)  ? (1U << 4) : 0;
 
                                 // Update uber buffer with cascade transform
                                 m_cb_uber_cpu.transform = entity->GetTransform()->GetMatrix() * view_projection;
@@ -660,14 +660,14 @@ namespace Spartan
                         m_cb_uber_cpu.mat_normal_mul    = material->GetProperty(Material_Normal);
                         m_cb_uber_cpu.mat_height_mul    = material->GetProperty(Material_Height);
                         m_cb_uber_cpu.mat_textures      = 0;
-                        m_cb_uber_cpu.mat_textures      |= material->HasTexture(Material_Height)    ? (1 << 0) : 0;
-                        m_cb_uber_cpu.mat_textures      |= material->HasTexture(Material_Normal)    ? (1 << 1) : 0;
-                        m_cb_uber_cpu.mat_textures      |= material->HasTexture(Material_Color)     ? (1 << 2) : 0;
-                        m_cb_uber_cpu.mat_textures      |= material->HasTexture(Material_Roughness) ? (1 << 3) : 0;
-                        m_cb_uber_cpu.mat_textures      |= material->HasTexture(Material_Metallic)  ? (1 << 4) : 0;
-                        m_cb_uber_cpu.mat_textures      |= material->HasTexture(Material_AlphaMask) ? (1 << 5) : 0;
-                        m_cb_uber_cpu.mat_textures      |= material->HasTexture(Material_Emission)  ? (1 << 6) : 0;
-                        m_cb_uber_cpu.mat_textures      |= material->HasTexture(Material_Occlusion) ? (1 << 7) : 0;
+                        m_cb_uber_cpu.mat_textures      |= material->HasTexture(Material_Height)    ? (1U << 0) : 0;
+                        m_cb_uber_cpu.mat_textures      |= material->HasTexture(Material_Normal)    ? (1U << 1) : 0;
+                        m_cb_uber_cpu.mat_textures      |= material->HasTexture(Material_Color)     ? (1U << 2) : 0;
+                        m_cb_uber_cpu.mat_textures      |= material->HasTexture(Material_Roughness) ? (1U << 3) : 0;
+                        m_cb_uber_cpu.mat_textures      |= material->HasTexture(Material_Metallic)  ? (1U << 4) : 0;
+                        m_cb_uber_cpu.mat_textures      |= material->HasTexture(Material_AlphaMask) ? (1U << 5) : 0;
+                        m_cb_uber_cpu.mat_textures      |= material->HasTexture(Material_Emission)  ? (1U << 6) : 0;
+                        m_cb_uber_cpu.mat_textures      |= material->HasTexture(Material_Occlusion) ? (1U << 7) : 0;
                     }
             
                     // Update uber buffer with entity transform
@@ -2420,24 +2420,6 @@ namespace Spartan
             // Downsample
             const bool luminance_antiflicker = false;
             Pass_AMD_FidelityFX_SinglePassDowsnampler(m_cmd_current, texture, luminance_antiflicker);
-
-            for (RHI_Texture* texture : m_textures_mip_generation)
-            {
-                // Remove unnecessary flags from texture (were only needed for the downsampling)
-                uint32_t flags = texture->GetFlags();
-                flags &= ~RHI_Texture_PerMipViews;
-                flags &= ~RHI_Texture_Uav;
-                texture->SetFlags(flags);
-
-                // Destroy the resources associated with those flags
-                {
-                    const bool destroy_main = false;
-                    const bool destroy_per_view = true;
-                    texture->RHI_DestroyResource(destroy_main, destroy_per_view);
-                }
-            }
         }
-
-        m_textures_mip_generation.clear();
     }
 }
