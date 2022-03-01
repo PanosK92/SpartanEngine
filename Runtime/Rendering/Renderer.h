@@ -442,6 +442,7 @@ namespace Spartan
 
         // Misc
         void SortRenderables(std::vector<Entity*>* renderables);
+        bool IsCallingFromOtherThread();
 
         // Lines
         void Lines_PreMain();
@@ -541,6 +542,7 @@ namespace Spartan
         // Environment texture
         std::shared_ptr<RHI_Texture> m_environment_texture;
         std::shared_ptr<RHI_Texture> m_environment_texture_temp;
+        std::mutex m_environment_texture_mutex;
 
         // Options
         uint64_t m_options = 0;
@@ -571,14 +573,14 @@ namespace Spartan
         // Requests for mip generation
         std::vector<RHI_Texture*> m_textures_mip_generation;
         std::vector<RHI_Texture*> m_textures_mip_generation_pending;
+        std::mutex m_texture_mip_generation_mutex;
 
         // States
-        std::atomic<bool> m_is_rendering_allowed             = true;
-        std::atomic<bool> m_flush_requested                  = false;
-        bool m_dirty_viewport                                = false;
-        bool m_dirty_orthographic_projection                 = true;
-        std::atomic<bool> m_environment_texture_swap_pending = false;
-        std::atomic<bool> m_mip_generation_requests_allowed  = true;
+        std::atomic<bool> m_is_rendering_allowed = true;
+        std::atomic<bool> m_flush_requested      = false;
+        bool m_dirty_viewport                    = false;
+        bool m_dirty_orthographic_projection     = true;
+        std::atomic<bool> m_reading_requests     = false;
 
         // RHI Core
         std::shared_ptr<RHI_Device> m_rhi_device;
