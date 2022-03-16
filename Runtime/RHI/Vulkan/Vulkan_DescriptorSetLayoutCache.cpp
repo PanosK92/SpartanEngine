@@ -44,7 +44,7 @@ namespace Spartan
         }
     }
 
-    void RHI_DescriptorSetLayoutCache::Reset(uint32_t descriptor_set_capacity /*= 0*/)
+    void RHI_DescriptorSetLayoutCache::Reset(uint32_t descriptor_set_capacity)
     {
         // If the requested capacity is zero, then only recreate the descriptor pool
         if (descriptor_set_capacity == 0)

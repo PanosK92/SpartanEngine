@@ -866,7 +866,7 @@ namespace Spartan
     {
         if (m_descriptor_set_layout_cache)
         {
-            m_descriptor_set_layout_cache->Reset();
+            m_descriptor_set_layout_cache->Reset(0);
         }
     }
 

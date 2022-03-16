@@ -116,8 +116,14 @@ namespace Spartan
         vulkan_utility::globals::rhi_context = m_rhi_context.get();
         
         // Create instance
-        VkApplicationInfo app_info = {};
+        VkApplicationInfo app_info  = {};
         {
+            app_info.sType              = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+            app_info.pApplicationName   = sp_version;
+            app_info.pEngineName        = sp_version;
+            app_info.engineVersion      = VK_MAKE_VERSION(1, 0, 0);
+            app_info.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
+
             // Deduce API version to use
             {
                 // Get sdk version
@@ -141,24 +147,20 @@ namespace Spartan
                 }
 
                 // Choose the version which is supported by both the sdk and the driver
-                m_rhi_context->api_version = Helper::Min(sdk_version, driver_version);
+                app_info.apiVersion = Helper::Min(sdk_version, driver_version);
 
                 // In case the SDK is not supported by the driver, prompt the user to update
                 if (sdk_version > driver_version)
                 {
                     // Detect and log version
-                    string driver_version_str   = to_string(VK_VERSION_MAJOR(driver_version)) + "." + to_string(VK_VERSION_MINOR(driver_version)) + "." + to_string(VK_VERSION_PATCH(driver_version));
-                    string sdk_version_str      = to_string(VK_VERSION_MAJOR(sdk_version)) + "." + to_string(VK_VERSION_MINOR(sdk_version)) + "." + to_string(VK_VERSION_PATCH(sdk_version));
+                    string driver_version_str = to_string(VK_API_VERSION_MAJOR(driver_version)) + "." + to_string(VK_API_VERSION_MINOR(driver_version)) + "." + to_string(VK_API_VERSION_PATCH(driver_version));
+                    string sdk_version_str    = to_string(VK_API_VERSION_MAJOR(sdk_version)) + "." + to_string(VK_API_VERSION_MINOR(sdk_version)) + "." + to_string(VK_API_VERSION_PATCH(sdk_version));
                     LOG_WARNING("Falling back to Vulkan %s. Please update your graphics drivers to support Vulkan %s.", driver_version_str.c_str(), sdk_version_str.c_str());
                 }
-            }
 
-            app_info.sType              = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-            app_info.pApplicationName   = sp_version;
-            app_info.pEngineName        = sp_version;
-            app_info.engineVersion      = VK_MAKE_VERSION(1, 0, 0);
-            app_info.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
-            app_info.apiVersion         = m_rhi_context->api_version;
+                //  Save API version
+                m_rhi_context->api_version_str = to_string(VK_API_VERSION_MAJOR(app_info.apiVersion)) + "." + to_string(VK_API_VERSION_MINOR(app_info.apiVersion)) + "." + to_string(VK_API_VERSION_PATCH(app_info.apiVersion));
+            }
 
             // Get the supported extensions out of the requested extensions
             vector<const char*> extensions_supported = get_supported_extensions(m_rhi_context->extensions_instance);
@@ -401,8 +403,16 @@ namespace Spartan
                 return;
         }
 
-        // Initialise the memory allocator
-        m_rhi_context->InitialiseAllocator();
+        // Create memory allocator
+        {
+            VmaAllocatorCreateInfo allocator_info = {};
+            allocator_info.physicalDevice         = m_rhi_context->device_physical;
+            allocator_info.device                 = m_rhi_context->device;
+            allocator_info.instance               = m_rhi_context->instance;
+            allocator_info.vulkanApiVersion       = app_info.apiVersion;
+
+            SP_ASSERT(vulkan_utility::error::check(vmaCreateAllocator(&allocator_info, &m_rhi_context->allocator)) && "Failed to create memory allocator");
+        }
 
         // Detect and log version
         {
@@ -434,7 +444,12 @@ namespace Spartan
         // Release resources
         if (QueueWaitAll())
         {
-            m_rhi_context->DestroyAllocator();
+            // Destroy allocator
+            if (m_rhi_context->allocator != nullptr)
+            {
+                vmaDestroyAllocator(m_rhi_context->allocator);
+                m_rhi_context->allocator = nullptr;
+            }
 
             if (m_rhi_context->debug)
             {

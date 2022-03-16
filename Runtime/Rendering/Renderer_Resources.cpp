@@ -163,6 +163,7 @@ namespace Spartan
             RENDER_TARGET(RenderTarget::Frame_Render_2) = make_unique<RHI_Texture2D>(m_context, width_render, height_render, mip_count, RHI_Format_R11G11B10_Float, RHI_Texture_Rt_Color | RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipViews, "rt_frame_render_2");
 
             // G-Buffer
+            // Velocity: Only one velocity buffer is written to. But we alteranate which of the two we write to, every frame, so that we can have a previous velocity buffer. This helps compute dissoclussion in the TAA shader.
             RENDER_TARGET(RenderTarget::Gbuffer_Albedo)     = make_shared<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R8G8B8A8_Unorm,     RHI_Texture_Rt_Color        | RHI_Texture_Srv,                                       "rt_gbuffer_albedo");
             RENDER_TARGET(RenderTarget::Gbuffer_Normal)     = make_shared<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R16G16B16A16_Float, RHI_Texture_Rt_Color        | RHI_Texture_Srv,                                       "rt_gbuffer_normal");
             RENDER_TARGET(RenderTarget::Gbuffer_Material)   = make_shared<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R8G8B8A8_Unorm,     RHI_Texture_Rt_Color        | RHI_Texture_Srv,                                       "rt_gbuffer_material");

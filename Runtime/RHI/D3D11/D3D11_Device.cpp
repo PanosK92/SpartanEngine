@@ -84,6 +84,9 @@ namespace Spartan
                 D3D_FEATURE_LEVEL_11_1
             };
 
+            // Save API version
+            m_rhi_context->api_version_str = "11.1";
+
             IDXGIAdapter* adapter       = static_cast<IDXGIAdapter*>(physical_device->GetData());
             D3D_DRIVER_TYPE driver_type = adapter ? D3D_DRIVER_TYPE_UNKNOWN : D3D_DRIVER_TYPE_HARDWARE;
 
