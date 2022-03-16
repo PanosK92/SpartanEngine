@@ -110,7 +110,7 @@ namespace Spartan
         array<VkWriteDescriptorSet, descriptor_count> descriptor_sets;
         uint32_t index = 0;
 
-        for (const RHI_Descriptor & descriptor : descriptors)
+        for (const RHI_Descriptor& descriptor : descriptors)
         {
             // Ignore null resources (this is legal, as a render pass can choose to not use one or more resources)
             if (void* resource = resource_from_descriptor(descriptor))

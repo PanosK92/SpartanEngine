@@ -297,7 +297,7 @@ namespace Spartan
             m_gpu_memory_used      = RHI_CommandList::Gpu_GetMemoryUsed(rhi_device);
             m_gpu_memory_available = RHI_CommandList::Gpu_GetMemory(rhi_device);
             m_gpu_driver           = physical_device->GetDriverVersion();
-            m_gpu_api              = physical_device->GetApiVersion();
+            m_gpu_api              = rhi_device->GetContextRhi()->api_version_str;
         }
     }
 
@@ -319,9 +319,9 @@ namespace Spartan
             "GPU:\t%06.2f\t%06.2f\t%06.2f\t%06.2f ms\n"
             "\n"
             // GPU
-            "API:\t\t%s\n"
             "GPU:\t%s\n"
             "VRAM:\t%d/%d MB\n"
+            "API:\t\t%s\n"
             "Driver:\t%s\n"
             "\n"
             // Resolution
@@ -363,9 +363,10 @@ namespace Spartan
             m_time_frame_avg,   m_time_frame_min,   m_time_frame_max,   m_time_frame_last,
             m_time_cpu_avg,     m_time_cpu_min,     m_time_cpu_max,     m_time_cpu_last,
             m_time_gpu_avg,     m_time_gpu_min,     m_time_gpu_max,     m_time_gpu_last,
-            m_gpu_api.c_str(),
+
             m_gpu_name.c_str(),
             m_gpu_memory_used, m_gpu_memory_available,
+            m_gpu_api.c_str(),
             m_gpu_driver.c_str(),
 
             // Resolution

@@ -35,7 +35,7 @@ namespace Spartan
         ~RHI_DescriptorSetLayoutCache();
 
         void SetPipelineState(RHI_PipelineState& pipeline_state);
-        void Reset(uint32_t descriptor_set_capacity = 0);
+        void Reset(uint32_t descriptor_set_capacity);
 
         // Descriptor resource updating
         void SetConstantBuffer(const uint32_t slot, RHI_ConstantBuffer* constant_buffer);

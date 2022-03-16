@@ -449,6 +449,8 @@ namespace Spartan
 {
     struct RHI_Context
     {
+        std::string api_version_str;
+
         #if defined(API_GRAPHICS_D3D11)
             RHI_Api_Type api_type                 = RHI_Api_Type::D3d11;
             ID3D11Device5* device                 = nullptr;
@@ -462,14 +464,13 @@ namespace Spartan
         #endif
 
         #if defined(API_GRAPHICS_VULKAN)
-            RHI_Api_Type api_type                                = RHI_Api_Type::Vulkan;
-            uint32_t api_version                                 = 0;
-            VkInstance instance                                  = nullptr;
-            VkPhysicalDevice device_physical                     = nullptr;
-            VkDevice device                                      = nullptr;
-            VkFormat surface_format                              = VK_FORMAT_UNDEFINED;
-            VkColorSpaceKHR surface_color_space                  = VK_COLOR_SPACE_MAX_ENUM_KHR;
-            VmaAllocator allocator                               = nullptr;
+            RHI_Api_Type api_type               = RHI_Api_Type::Vulkan;
+            VkInstance instance                 = nullptr;
+            VkPhysicalDevice device_physical    = nullptr;
+            VkDevice device                     = nullptr;
+            VkFormat surface_format             = VK_FORMAT_UNDEFINED;
+            VkColorSpaceKHR surface_color_space = VK_COLOR_SPACE_MAX_ENUM_KHR;
+            VmaAllocator allocator              = nullptr;
             std::unordered_map<uint64_t, VmaAllocation> allocations;
 
             // Extensions

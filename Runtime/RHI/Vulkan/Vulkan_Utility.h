@@ -502,16 +502,6 @@ namespace Spartan::vulkan_utility
                 case VK_ACCESS_HOST_WRITE_BIT:
                     stages |= VK_PIPELINE_STAGE_HOST_BIT;
                     break;
-
-                case VK_ACCESS_MEMORY_READ_BIT:
-                    break;
-
-                case VK_ACCESS_MEMORY_WRITE_BIT:
-                    break;
-
-                default:
-                    LOG_ERROR("Unknown memory access flag");
-                    break;
                 }
             }
             return stages;
@@ -544,13 +534,9 @@ namespace Spartan::vulkan_utility
                 {
                     source_stage = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
                 }
-                else if (image_barrier.srcAccessMask != 0)
-                {
-                    source_stage = access_flags_to_pipeline_stage(image_barrier.srcAccessMask, globals::rhi_device->GetEnabledGraphicsStages());
-                }
                 else
                 {
-                    source_stage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+                    source_stage = access_flags_to_pipeline_stage(image_barrier.srcAccessMask, globals::rhi_device->GetEnabledGraphicsStages());
                 }
             }
 
@@ -560,13 +546,9 @@ namespace Spartan::vulkan_utility
                 {
                     destination_stage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
                 }
-                else if (image_barrier.dstAccessMask != 0)
-                {
-                    destination_stage = access_flags_to_pipeline_stage(image_barrier.dstAccessMask, globals::rhi_device->GetEnabledGraphicsStages());
-                }
                 else
                 {
-                    destination_stage = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+                    destination_stage = access_flags_to_pipeline_stage(image_barrier.dstAccessMask, globals::rhi_device->GetEnabledGraphicsStages());
                 }
             }
 
