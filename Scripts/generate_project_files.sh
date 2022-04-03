@@ -8,7 +8,7 @@ fi
 
 # Delete any files which are not needed for a CI artifact to be created
 echo "1. Deleting uncessery files from the binary directory..."
-./Scripts/clean.sh
+./Scripts/clean.sh $2
 
 # Extract third-party libraries (that the project will link to)
 echo
@@ -23,15 +23,15 @@ echo "==========================================================================
 # Copy engine data to the binary directory
 echo
 echo "3. Copying required data to the binary directory..."
-mkdir -p Binaries/
-cp -r Data Binaries
+mkdir -p "Binaries/$2"
+cp -r Data "Binaries/$2"
 
 # Copy engine DLLs to the binary directory
 echo
 echo "4. Copying required DLLs to the binary directory..."
-cp ThirdParty/libraries/dxcompiler.dll Binaries/
-cp ThirdParty/libraries/fmod64.dll Binaries/
-cp ThirdParty/libraries/fmodL64.dll	Binaries/
+cp ThirdParty/libraries/dxcompiler.dll "Binaries/$2"
+cp ThirdParty/libraries/fmod64.dll "Binaries/$2"
+cp ThirdParty/libraries/fmodL64.dll	"Binaries/$2"
 
 # Generate project files
 echo

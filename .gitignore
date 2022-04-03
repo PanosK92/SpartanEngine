@@ -252,3 +252,4 @@ ModelManifest.xml
 .fake/
 
 .vscode/
+*.bak

@@ -28,24 +28,30 @@ ADDITIONAL_INCLUDES      = {}
 ADDITIONAL_LIBRARIES     = {}
 ADDITIONAL_LIBRARIES_DBG = {}
 LIBRARY_DIR              = "../ThirdParty/libraries"
-OBJ_DIR                  = "../Binaries/Obj"
-TARGET_DIR               = "../Binaries"
 API_GRAPHICS             = _ARGS[1]
+TARGET_DIR               = "../Binaries/" .. API_GRAPHICS
+OBJ_DIR                  = "../Binaries/Obj/" .. API_GRAPHICS
 
 -- Graphics api specific variables
 if API_GRAPHICS == "d3d11" then
 	API_GRAPHICS                = "API_GRAPHICS_D3D11"
 	TARGET_NAME                 = TARGET_NAME .. "_d3d11"
+	SOLUTION_NAME				= SOLUTION_NAME .. "_d3d11"
+	RUNTIME_NAME             	= RUNTIME_NAME .. "_d3d11"
 	IGNORE_FILES[0]	            = RUNTIME_DIR .. "/RHI/D3D12/**"
 	IGNORE_FILES[1]	            = RUNTIME_DIR .. "/RHI/Vulkan/**"
 elseif API_GRAPHICS == "d3d12" then
 	API_GRAPHICS                = "API_GRAPHICS_D3D12"
 	TARGET_NAME                 = TARGET_NAME .. "_d3d12"
+	SOLUTION_NAME				= SOLUTION_NAME .. "_d3d12"
+	RUNTIME_NAME             	= RUNTIME_NAME .. "_d3d12"
 	IGNORE_FILES[0]             = RUNTIME_DIR .. "/RHI/D3D11/**"
 	IGNORE_FILES[1]             = RUNTIME_DIR .. "/RHI/Vulkan/**"
 elseif API_GRAPHICS == "vulkan" then
 	API_GRAPHICS                = "API_GRAPHICS_VULKAN"
 	TARGET_NAME                 = TARGET_NAME .. "_vulkan"
+	SOLUTION_NAME				= SOLUTION_NAME .. "_vulkan"
+	RUNTIME_NAME             	= RUNTIME_NAME .. "_vulkan"
 	IGNORE_FILES[0]             = RUNTIME_DIR .. "/RHI/D3D11/**"
 	IGNORE_FILES[1]             = RUNTIME_DIR .. "/RHI/D3D12/**"
 	ADDITIONAL_INCLUDES[0]      = "../ThirdParty/SPIRV-Cross-2021-01-15";
