@@ -1,4 +1,5 @@
 
+
 <img align="left" width="128" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/Data/logo256.png"/>
 
 # Spartan Engine [![Discord](https://img.shields.io/discord/677302405263785986?label=Discord)](https://discord.gg/TG5r2BS)
@@ -27,6 +28,10 @@ Platform | API | Status | Quality | Binaries
 <img align="center" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/Data/readme_screen_1.1.jpg"/>
 <img align="center" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/Data/readme_screen_2.1.jpg"/>
 <img align="center" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/Data/readme_screen_3.2.jpg"/>
+
+# Livestreams
+[
+![](https://am3pap002files.storage.live.com/y4m668NLa90wXlIgOKHRYwgaXWRxxdqMFr2U4zE1ZTPl55iZfEbmbNJMASJLxYrpXe6rb0TgYfNJRLOwb9eJV1ncDTueeBQtKxhC2m0N_g4G8II87RV9yRU_l7X8b294hA70yziCMCnMlbA9-w8UTT1eDvj9srgU6RxGspRYAKJwPDKPtBdYXPFS4FHtZq2kOgBhu2taWMrJplNriPGcQEMTumN6BAdWp-xrHzwEfA1OjM?encodeFailures=1&width=2213&height=1245)](https://www.youtube.com/watch?v=QcytU6AKwqk)
 
 ## Features (v0.31)
 - 10+ font file formats support (FreeType)
