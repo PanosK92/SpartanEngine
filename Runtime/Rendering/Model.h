@@ -35,7 +35,6 @@ namespace Spartan
     class ResourceCache;
     class Entity;
     class Mesh;
-    namespace Math{ class BoundingBox; }
 
     class SPARTAN_CLASS Model : public IResource, public std::enable_shared_from_this<Model>
     {
