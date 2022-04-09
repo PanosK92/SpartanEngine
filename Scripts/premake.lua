@@ -64,7 +64,7 @@ solution (SOLUTION_NAME)
 	systemversion "latest"
 	cppdialect "C++20"
 	language "C++"
-	platforms { "Windows", "Linux" }
+	platforms { "Windows"}
 	configurations { "Debug", "Release" }
 
 	-- Defines
@@ -78,25 +78,28 @@ solution (SOLUTION_NAME)
 		system "Windows"
 		architecture "x64"
 
-    filter { "platforms:Linux" }
-		system "Linux"
-		architecture "x86_64"
+	--	"Troubleshoot"
+	-- filter "configurations:Troubleshoot"
+	-- 	defines { "DEBUG" }
+	-- 	flags { "MultiProcessorCompile" }
+	-- 	optimize "Off"
+	-- 	symbols "On"
+	-- 	debugformat "c7"
 
-	--	"Debug"
+	--	"Release"
 	filter "configurations:Debug"
 		defines { "DEBUG" }
-		flags { "MultiProcessorCompile" }
-		optimize "Off"
+		flags { "MultiProcessorCompile", "LinkTimeOptimization" }
+		optimize "Speed"
 		symbols "On"
-		debugformat "c7"
-		
-	--	"Release"
+		-- debugformat "c7"
+
 	filter "configurations:Release"
 		defines { "NDEBUG" }
 		flags { "MultiProcessorCompile", "LinkTimeOptimization" }
 		optimize "Speed"
 		symbols "Off"
-
+	filter ""
 -- Runtime -------------------------------------------------------------------------------------------------
 project (RUNTIME_NAME)
 	location (RUNTIME_DIR)
@@ -109,7 +112,7 @@ project (RUNTIME_NAME)
 	defines{ "SPARTAN_RUNTIME", API_GRAPHICS }
     files "./CORE/**"
 
-	-- Procompiled headers
+	-- Precompiled headers
 	pchheader "Spartan.h"
 	pchsource "../Runtime/Core/Spartan.cpp"
 
@@ -141,20 +144,34 @@ project (RUNTIME_NAME)
 	-- Libraries
 	libdirs (LIBRARY_DIR)
 
+	-- filter "configurations:Troubleshoot"
+	-- 	targetdir (TARGET_DIR)
+	-- 	debugdir (TARGET_DIR)
+	-- 	links { "dxcompiler" }
+	-- 	links { "assimp_debug" }
+	-- 	links { "fmodL64_vc" }
+	-- 	links { "FreeImageLib_debug" }
+	-- 	links { "freetype_debug" }
+	-- 	links { "BulletCollision_debug", "BulletDynamics_debug", "BulletSoftBody_debug", "LinearMath_debug" }
+	-- 	links { "libmono-static-sgen_debug.lib" }
+	-- 	links { "SDL2_debug.lib" }
+	-- 	links { "Compressonator_MT_debug.lib" }
+	-- 	links { ADDITIONAL_LIBRARIES_DBG[0], ADDITIONAL_LIBRARIES_DBG[1], ADDITIONAL_LIBRARIES_DBG[2] }
+
 	--	"Debug"
 	filter "configurations:Debug"
 		targetdir (TARGET_DIR)
 		debugdir (TARGET_DIR)
 		links { "dxcompiler" }
-		links { "assimp_debug" }
-		links { "fmodL64_vc" }
-		links { "FreeImageLib_debug" }
+		links { "assimp" }
+		links { "fmod64_vc" }
+		links { "FreeImageLib" }
 		links { "freetype_debug" }
-		links { "BulletCollision_debug", "BulletDynamics_debug", "BulletSoftBody_debug", "LinearMath_debug" }
-		links { "libmono-static-sgen_debug.lib" }
+		links { "BulletCollision", "BulletDynamics", "BulletSoftBody", "LinearMath" }
+		links { "libmono-static-sgen.lib" }
 		links { "SDL2_debug.lib" }
-		links { "Compressonator_MT_debug.lib" }
-		links { ADDITIONAL_LIBRARIES_DBG[0], ADDITIONAL_LIBRARIES_DBG[1], ADDITIONAL_LIBRARIES_DBG[2] }
+		links { "Compressonator_MT.lib" }
+		links { ADDITIONAL_LIBRARIES[0], ADDITIONAL_LIBRARIES[1], ADDITIONAL_LIBRARIES[2] }
 
 	--	"Release"
 	filter "configurations:Release"
@@ -170,6 +187,7 @@ project (RUNTIME_NAME)
 		links { "SDL2.lib" }
 		links { "Compressonator_MT.lib" }
 		links { ADDITIONAL_LIBRARIES[0], ADDITIONAL_LIBRARIES[1], ADDITIONAL_LIBRARIES[2] }
+	filter ""
 
 -- Editor --------------------------------------------------------------------------------------------------
 project (EDITOR_NAME)
@@ -217,3 +235,4 @@ project (EDITOR_NAME)
 		debugdir (TARGET_DIR)
 		links { "freetype" }
 		links { "SDL2.lib" }
+	filter ""

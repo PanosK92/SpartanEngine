@@ -252,3 +252,6 @@ ModelManifest.xml
 .fake/
 
 .vscode/
+imgui.ini
+log.txt
+Spartan.ini
