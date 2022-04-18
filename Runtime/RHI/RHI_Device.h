@@ -49,6 +49,13 @@ namespace Spartan
         uint32_t GetQueueIndex(const RHI_Queue_Type type) const;
         void SetQueueIndex(const RHI_Queue_Type type, const uint32_t index);
 
+        // Queries
+        void QueryCreate(void** query = nullptr, RHI_Query_Type type = RHI_Query_Type::Timestamp);
+        void QueryRelease(void*& query);
+        void QueryBegin(void* query);
+        void QueryEnd(void* query);
+        void QueryGetData(void* query);
+
         // Device properties
         uint32_t GetMaxTexture1dDimension()            const { return m_max_texture_1d_dimension; }
         uint32_t GetMaxTexture2dDimension()            const { return m_max_texture_2d_dimension; }

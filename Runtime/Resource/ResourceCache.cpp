@@ -43,7 +43,7 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    ResourceCache::ResourceCache(Context* context) : ISubsystem(context)
+    ResourceCache::ResourceCache(Context* context) : Subsystem(context)
     {
         const string data_dir = "Data\\";
 

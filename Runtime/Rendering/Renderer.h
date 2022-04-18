@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <atomic>
 #include "Renderer_ConstantBuffers.h"
 #include "Material.h"
-#include "../Core/ISubsystem.h"
+#include "../Core/Subsystem.h"
 #include "../RHI/RHI_Definition.h"
 #include "../RHI/RHI_Viewport.h"
 #include "../RHI/RHI_Vertex.h"
@@ -54,7 +54,7 @@ namespace Spartan
         class Frustum;
     }
 
-    class SPARTAN_CLASS Renderer : public ISubsystem
+    class SPARTAN_CLASS Renderer : public Subsystem
     {
         // Enums
     public:

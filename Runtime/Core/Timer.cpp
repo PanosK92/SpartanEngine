@@ -30,7 +30,7 @@ using namespace std;
 
 namespace Spartan
 {
-    Timer::Timer(Context* context) : ISubsystem(context)
+    Timer::Timer(Context* context) : Subsystem(context)
     {
         m_time_start     = chrono::high_resolution_clock::now();
         m_time_sleep_end = chrono::high_resolution_clock::now();

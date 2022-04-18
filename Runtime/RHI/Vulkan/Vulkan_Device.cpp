@@ -700,4 +700,29 @@ namespace Spartan
         lock_guard<mutex> lock(m_queue_mutex);
         return vulkan_utility::error::check(vkQueueWaitIdle(static_cast<VkQueue>(GetQueue(type))));
     }
+
+    void RHI_Device::QueryCreate(void** query, const RHI_Query_Type type)
+    {
+
+    }
+
+    void RHI_Device::QueryRelease(void*& query)
+    {
+
+    }
+
+    void RHI_Device::QueryBegin(void* query)
+    {
+
+    }
+
+    void RHI_Device::QueryEnd(void* query)
+    {
+
+    }
+
+    void RHI_Device::QueryGetData(void* query)
+    {
+
+    }
 }

@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ==================
-#include "ISubsystem.h"
+#include "Subsystem.h"
 #include "../Logging/Log.h"
 #include "SpartanDefinitions.h"
 //=============================
@@ -39,13 +39,13 @@ namespace Spartan
 
     struct _subystem
     {
-        _subystem(const std::shared_ptr<ISubsystem>& subsystem, TickType tick_group)
+        _subystem(const std::shared_ptr<Subsystem>& subsystem, TickType tick_group)
         {
             ptr = subsystem;
             this->tick_group = tick_group;
         }
 
-        std::shared_ptr<ISubsystem> ptr;
+        std::shared_ptr<Subsystem> ptr;
         TickType tick_group;
     };
 

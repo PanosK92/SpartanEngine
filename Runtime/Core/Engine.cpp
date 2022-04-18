@@ -62,8 +62,8 @@ namespace Spartan
         m_context->AddSubsystem<Physics>();
         m_context->AddSubsystem<Scripting>(TickType::Smoothed);
         m_context->AddSubsystem<World>(TickType::Smoothed);
-        m_context->AddSubsystem<Renderer>();
         m_context->AddSubsystem<Profiler>();
+        m_context->AddSubsystem<Renderer>();
 
         // Subsystem: Initialize.
         m_context->OnInitialize();
@@ -83,14 +83,12 @@ namespace Spartan
 
     void Engine::Tick() const
     {
-        Timer* timer = m_context->GetSubsystem<Timer>();
-
         // Subsystem: Pre-tick.
         m_context->OnPreTick();
 
         // Subsystem: Tick.
-        m_context->OnTick(TickType::Variable, timer->GetDeltaTimeSec());
-        m_context->OnTick(TickType::Smoothed, timer->GetDeltaTimeSmoothedSec());
+        m_context->OnTick(TickType::Variable, m_context->GetSubsystem<Timer>()->GetDeltaTimeSec());
+        m_context->OnTick(TickType::Smoothed, m_context->GetSubsystem<Timer>()->GetDeltaTimeSmoothedSec());
 
         // Subsystem: Post-tick.
         m_context->OnPostTick();

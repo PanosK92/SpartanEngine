@@ -76,7 +76,6 @@ namespace Spartan
         std::chrono::steady_clock::time_point m_end;
     
         // GPU timing
-        void* m_query_disjoint      = nullptr;
         void* m_query_start         = nullptr;
         void* m_query_end           = nullptr;
         RHI_CommandList* m_cmd_list = nullptr;

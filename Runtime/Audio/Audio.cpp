@@ -33,7 +33,7 @@ using namespace FMOD;
 
 namespace Spartan
 {
-    Audio::Audio(Context* context) : ISubsystem(context)
+    Audio::Audio(Context* context) : Subsystem(context)
     {
 
     }

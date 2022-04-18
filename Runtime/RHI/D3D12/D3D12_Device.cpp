@@ -300,4 +300,29 @@ namespace Spartan
     {
         return true;
     }
+
+    void RHI_Device::QueryCreate(void** query, const RHI_Query_Type type)
+    {
+
+    }
+
+    void RHI_Device::QueryRelease(void*& query)
+    {
+
+    }
+
+    void RHI_Device::QueryBegin(void* query)
+    {
+
+    }
+
+    void RHI_Device::QueryEnd(void* query)
+    {
+
+    }
+
+    void RHI_Device::QueryGetData(void* query)
+    {
+
+    }
 }
