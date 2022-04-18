@@ -31,11 +31,11 @@ namespace Spartan
 {
     class Context;
 
-    class SPARTAN_CLASS ISubsystem : public std::enable_shared_from_this<ISubsystem>
+    class SPARTAN_CLASS Subsystem : public std::enable_shared_from_this<Subsystem>
     {        
     public:
-        ISubsystem(Context* context) { m_context = context; }
-        virtual ~ISubsystem() = default;
+        Subsystem(Context* context) { m_context = context; }
+        virtual ~Subsystem() = default;
 
         // Runs when the subsystems need to initialize.
         virtual bool OnInitialize() { return true; }
@@ -63,5 +63,5 @@ namespace Spartan
     };
 
     template<typename T>
-    constexpr void validate_subsystem_type() { static_assert(std::is_base_of<ISubsystem, T>::value, "Provided type does not implement ISubystem"); }
+    constexpr void validate_subsystem_type() { static_assert(std::is_base_of<Subsystem, T>::value, "Provided type does not implement ISubystem"); }
 }

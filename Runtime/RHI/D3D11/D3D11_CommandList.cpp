@@ -844,48 +844,31 @@ namespace Spartan
         }
     }
 
-    bool RHI_CommandList::Timestamp_Start(void* query_disjoint /*= nullptr*/, void* query_start /*= nullptr*/)
+    bool RHI_CommandList::Timestamp_Start(void* query)
     {
-        SP_ASSERT(query_disjoint != nullptr);
-        SP_ASSERT(query_start != nullptr);
         SP_ASSERT(m_rhi_device != nullptr);
 
-        RHI_Context* rhi_context = m_rhi_device->GetContextRhi();
-
-        rhi_context->device_context->Begin(static_cast<ID3D11Query*>(query_disjoint));
-        rhi_context->device_context->End(static_cast<ID3D11Query*>(query_start));
+        m_rhi_device->QueryEnd(query);
 
         return true;
     }
 
-    bool RHI_CommandList::Timestamp_End(void* query_disjoint /*= nullptr*/, void* query_end /*= nullptr*/)
+    bool RHI_CommandList::Timestamp_End(void* query)
     {
-        SP_ASSERT(query_disjoint != nullptr);
-        SP_ASSERT(query_end != nullptr);
         SP_ASSERT(m_rhi_device != nullptr);
 
-        RHI_Context* rhi_context = m_rhi_device->GetContextRhi();
-
-        rhi_context->device_context->End(static_cast<ID3D11Query*>(query_end));
-        rhi_context->device_context->End(static_cast<ID3D11Query*>(query_disjoint));
+        m_rhi_device->QueryEnd(query);
 
         return true;
     }
 
-    float RHI_CommandList::Timestamp_GetDuration(void* query_disjoint, void* query_start, void* query_end, const uint32_t pass_index)
+    float RHI_CommandList::Timestamp_GetDuration(void* query_start, void* query_end, const uint32_t pass_index)
     {
-        SP_ASSERT(query_disjoint != nullptr);
         SP_ASSERT(query_start != nullptr);
         SP_ASSERT(query_end != nullptr);
         SP_ASSERT(m_rhi_device != nullptr);
 
         RHI_Context* rhi_context = m_rhi_device->GetContextRhi();
-
-        // Check whether timestamps were disjoint during the last frame
-        D3D10_QUERY_DATA_TIMESTAMP_DISJOINT disjoint_data = {};
-        while (rhi_context->device_context->GetData(static_cast<ID3D11Query*>(query_disjoint), &disjoint_data, sizeof(disjoint_data), 0) != S_OK);
-        if (disjoint_data.Disjoint)
-            return 0.0f;
 
         // Get start time
         uint64_t start_time = 0; 
@@ -897,7 +880,7 @@ namespace Spartan
 
         // Compute duration in ms
         const uint64_t delta        = end_time - start_time;
-        const double duration_ms    = (delta * 1000.0) / static_cast<double>(disjoint_data.Frequency);
+        const double duration_ms    = (delta * 1000.0) / static_cast<double>(m_rhi_device->GetTimestampPeriod());
 
         return static_cast<float>(duration_ms);
     }
@@ -929,33 +912,6 @@ namespace Spartan
         }
 
         return 0;
-    }
-
-    bool RHI_CommandList::Gpu_QueryCreate(RHI_Device* rhi_device, void** query, const RHI_Query_Type type)
-    {
-        SP_ASSERT(rhi_device != nullptr);
-        SP_ASSERT(rhi_device->GetContextRhi()->device != nullptr);
-
-        D3D11_QUERY_DESC desc   = {};
-        desc.Query              = (type == RHI_Query_Type::Timestamp_Disjoint) ? D3D11_QUERY_TIMESTAMP_DISJOINT : D3D11_QUERY_TIMESTAMP;
-        desc.MiscFlags          = 0;
-        const auto result = rhi_device->GetContextRhi()->device->CreateQuery(&desc, reinterpret_cast<ID3D11Query**>(query));
-        if (FAILED(result))
-        {
-            LOG_ERROR("Failed to create ID3D11Query");
-            return false;
-        }
-
-        return true;
-    }
-
-    void RHI_CommandList::Gpu_QueryRelease(void*& query_object)
-    {
-        if (!query_object)
-            return;
-
-        static_cast<ID3D11Query*>(query_object)->Release();
-        query_object = nullptr;
     }
 
     void RHI_CommandList::Timeblock_Start(const RHI_PipelineState* pipeline_state)

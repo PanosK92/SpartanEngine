@@ -40,7 +40,7 @@ using namespace std;
 
 namespace Spartan
 {
-    Scripting::Scripting(Context* context) : ISubsystem(context)
+    Scripting::Scripting(Context* context) : Subsystem(context)
     {
         // Subscribe to events
         SP_SUBSCRIBE_TO_EVENT(EventType::WorldClear, SP_EVENT_HANDLER(Clear));

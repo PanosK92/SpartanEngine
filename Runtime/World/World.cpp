@@ -45,7 +45,7 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    World::World(Context* context) : ISubsystem(context)
+    World::World(Context* context) : Subsystem(context)
     {
         // Subscribe to events
         SP_SUBSCRIBE_TO_EVENT(EventType::WorldResolve, [this](Variant) { m_resolve = true; });

@@ -116,15 +116,13 @@ namespace Spartan
         inline void SetStructuredBuffer(const Renderer::Bindings_Sb slot, const std::shared_ptr<RHI_StructuredBuffer>& structured_buffer) const { SetStructuredBuffer(static_cast<uint32_t>(slot), structured_buffer.get()); }
 
         // Timestamps
-        bool Timestamp_Start(void* query_disjoint = nullptr, void* query_start = nullptr);
-        bool Timestamp_End(void* query_disjoint = nullptr, void* query_end = nullptr);
-        float Timestamp_GetDuration(void* query_disjoint, void* query_start, void* query_end, const uint32_t pass_index);
+        bool Timestamp_Start(void* query);
+        bool Timestamp_End(void* query);
+        float Timestamp_GetDuration(void* query_start, void* query_end, const uint32_t pass_index);
 
         // GPU
         static uint32_t Gpu_GetMemory(RHI_Device* rhi_device);
         static uint32_t Gpu_GetMemoryUsed(RHI_Device* rhi_device);
-        static bool Gpu_QueryCreate(RHI_Device* rhi_device, void** query = nullptr, RHI_Query_Type type = RHI_Query_Type::Timestamp);
-        static void Gpu_QueryRelease(void*& query_object);
         
         // Misc
         void ResetDescriptorCache();

@@ -279,17 +279,17 @@ namespace Spartan
 
     }
 
-    bool RHI_CommandList::Timestamp_Start(void* query_disjoint /*= nullptr*/, void* query_start /*= nullptr*/)
+    bool RHI_CommandList::Timestamp_Start(void* query)
     {
         return true;
     }
 
-    bool RHI_CommandList::Timestamp_End(void* query_disjoint /*= nullptr*/, void* query_end /*= nullptr*/)
+    bool RHI_CommandList::Timestamp_End(void* query)
     {
         return true;
     }
 
-    float RHI_CommandList::Timestamp_GetDuration(void* query_disjoint, void* query_start, void* query_end, const uint32_t pass_index)
+    float RHI_CommandList::Timestamp_GetDuration(void* query_start, void* query_end, const uint32_t pass_index)
     {
         return 0.0f;
     }
@@ -297,16 +297,6 @@ namespace Spartan
     uint32_t RHI_CommandList::Gpu_GetMemoryUsed(RHI_Device* rhi_device)
     {
         return 0;
-    }
-
-    bool RHI_CommandList::Gpu_QueryCreate(RHI_Device* rhi_device, void** query, const RHI_Query_Type type)
-    {
-        return true;
-    }
-
-    void RHI_CommandList::Gpu_QueryRelease(void*& query_object)
-    {
-
     }
 
     void RHI_CommandList::Timeblock_Start(const RHI_PipelineState* pipeline_state)

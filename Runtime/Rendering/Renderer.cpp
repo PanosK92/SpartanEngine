@@ -59,7 +59,7 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    Renderer::Renderer(Context* context) : ISubsystem(context)
+    Renderer::Renderer(Context* context) : Subsystem(context)
     {
         // Options
         m_options |= Renderer::Option::ReverseZ;
@@ -920,7 +920,12 @@ namespace Spartan
             wait_semaphore = wait_semaphore->GetState() == RHI_Semaphore_State::Signaled ? wait_semaphore : nullptr;
         }
 
-        return m_swap_chain->Present(wait_semaphore);
+        bool presented = m_swap_chain->Present(wait_semaphore);
+
+        // Notify subsystems that need to calculate things after presenting, like the profiler.
+        SP_FIRE_EVENT(EventType::PostPresent);
+
+        return presented;
     }
 
 	void Renderer::Flush()

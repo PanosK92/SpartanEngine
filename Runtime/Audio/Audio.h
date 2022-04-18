@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ==================
-#include "../Core/ISubsystem.h"
+#include "../Core/Subsystem.h"
 //=============================
 
 //= FORWARD DECLARATIONS =
@@ -37,7 +37,7 @@ namespace Spartan
     class Transform;
     class Profiler;
 
-    class Audio : public ISubsystem
+    class Audio : public Subsystem
     {
     public:
         Audio(Context* context);

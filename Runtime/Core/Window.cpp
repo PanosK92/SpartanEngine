@@ -40,7 +40,7 @@ using namespace std;
 
 namespace Spartan
 {
-    Window::Window(Context* context) : ISubsystem(context)
+    Window::Window(Context* context) : Subsystem(context)
     {
         // Initialise video subsystem (if needed)
         if (SDL_WasInit(SDL_INIT_VIDEO) != 1)

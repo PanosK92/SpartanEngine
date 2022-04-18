@@ -32,7 +32,7 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    Input::Input(Context* context) : ISubsystem(context)
+    Input::Input(Context* context) : Subsystem(context)
     {
         // Initialise events subsystem (if needed)
         if (SDL_WasInit(SDL_INIT_EVENTS) != 1)

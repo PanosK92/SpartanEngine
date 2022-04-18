@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <string>
 #include <vector>
 #include "TimeBlock.h"
-#include "../Core/ISubsystem.h"
+#include "../Core/Subsystem.h"
 #include "../Core/Stopwatch.h"
 #include "../Core/SpartanDefinitions.h"
 //=====================================
@@ -43,18 +43,18 @@ namespace Spartan
     class Variant;
     class Timer;
 
-    class SPARTAN_CLASS Profiler : public ISubsystem
+    class SPARTAN_CLASS Profiler : public Subsystem
     {
     public:
         Profiler(Context* context);
         ~Profiler();
 
-        //= Subsystem ==========================
+        //= Subsystem ===============
         bool OnInitialize() override;
-        void OnTick(double delta_time) override;
-        //======================================
+        void OnPreTick() override;
+        void OnPostTick() override;
+        //===========================
 
-        void OnFrameEnd();
         void TimeBlockStart(const char* func_name, TimeBlockType type, RHI_CommandList* cmd_list = nullptr);
         void TimeBlockEnd();
         void ResetMetrics();
@@ -113,6 +113,11 @@ namespace Spartan
         float m_time_gpu_last   = 0.0f;
 
     private:
+        // Event handlers
+        void OnPostPresent();
+
+        void SwapBuffers();
+
         void ClearRhiMetrics()
         {
             m_rhi_draw                       = 0;
@@ -172,6 +177,7 @@ namespace Spartan
         std::string m_metrics       = "N/A";
         bool m_increase_capacity    = false;
         bool m_allow_time_block_end = true;
+        void* m_query_disjoint      = nullptr;
     
         // Dependencies
         ResourceCache* m_resource_manager = nullptr;

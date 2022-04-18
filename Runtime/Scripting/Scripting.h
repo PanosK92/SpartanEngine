@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <vector>
 #include <string>
 #include "ScriptInstance.h"
-#include "../Core/ISubsystem.h"
+#include "../Core/Subsystem.h"
 //=============================
 
 //= FORWARD DECLARATIONS =
@@ -40,7 +40,7 @@ namespace Spartan
 
     static const uint32_t SCRIPT_NOT_LOADED = 0;
 
-    class Scripting : public ISubsystem
+    class Scripting : public Subsystem
     {
     public:
         Scripting(Context* context);

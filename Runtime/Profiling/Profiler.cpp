@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_Device.h"
 #include "../RHI/RHI_CommandList.h"
 #include "../RHI/RHI_Implementation.h"
+#include "../Core/EventSystem.h"
 //====================================
 
 //= NAMESPACES =====
@@ -37,20 +38,24 @@ namespace Spartan
 {
     static const int initial_capacity = 256;
 
-    Profiler::Profiler(Context* context) : ISubsystem(context)
+    Profiler::Profiler(Context* context) : Subsystem(context)
     {
         m_time_blocks_read.reserve(initial_capacity);
         m_time_blocks_read.resize(initial_capacity);
         m_time_blocks_write.reserve(initial_capacity);
         m_time_blocks_write.resize(initial_capacity);
+
+        SP_SUBSCRIBE_TO_EVENT(EventType::PostPresent, SP_EVENT_HANDLER(OnPostPresent));
     }
 
     Profiler::~Profiler()
     {
         if (m_poll)
         {
-            OnFrameEnd();
+            SwapBuffers();
         }
+
+        m_renderer->GetRhiDevice()->QueryRelease(m_query_disjoint);
 
         ClearRhiMetrics();
     }
@@ -64,22 +69,25 @@ namespace Spartan
         return true;
     }
 
-    void Profiler::OnTick(double delta_time)
+    void Profiler::OnPreTick()
     {
-        if (!m_renderer)
-            return;
-
         RHI_Device* rhi_device = m_renderer->GetRhiDevice().get();
         if (!rhi_device || !rhi_device->GetContextRhi()->profiler)
             return;
 
+        if (m_query_disjoint == nullptr)
+        {
+            m_renderer->GetRhiDevice()->QueryCreate(&m_query_disjoint, RHI_Query_Type::Timestamp_Disjoint);
+        }
+
+        // Increase time block capacity (if needed)
         if (m_increase_capacity)
         {
-            OnFrameEnd();
+            SwapBuffers();
 
-            // Increase size by 100
+            // Double the size
             const uint32_t size_old = static_cast<uint32_t>(m_time_blocks_write.size());
-            const uint32_t size_new = size_old + 100;
+            const uint32_t size_new = size_old << 1;
 
             m_time_blocks_read.reserve(size_new);
             m_time_blocks_read.resize(size_new);
@@ -89,16 +97,14 @@ namespace Spartan
             m_increase_capacity = false;
             m_poll              = true;
 
-            LOG_WARNING("Time block list has grown to fit %d commands. Consider making the capacity larger to avoid re-allocations.", size_old + 1);
-        }
-        else
-        {
-            if (m_profile && m_poll)
-            {
-                OnFrameEnd();
-            }
+            LOG_WARNING("Time block list has grown to %d. Consider making the default capacity as large by default, to avoid re-allocating.", size_new);
         }
 
+        ClearRhiMetrics();
+    }
+
+    void Profiler::OnPostTick()
+    {
         // Compute timings
         {
             // Detect stutters
@@ -145,11 +151,11 @@ namespace Spartan
             m_time_frame_max  = Math::Helper::Max(m_time_frame_max, m_time_frame_last);
 
             // FPS
-            m_fps = static_cast<float>(1.0 / delta_time);
+            m_fps = static_cast<float>(1.0 / m_timer->GetDeltaTimeSec());
         }
 
         // Check whether we should profile or not
-        m_time_since_profiling_sec += static_cast<float>(delta_time);
+        m_time_since_profiling_sec += static_cast<float>(m_timer->GetDeltaTimeSec());
         if (m_time_since_profiling_sec >= m_profiling_interval_sec)
         {
             m_time_since_profiling_sec = 0.0f;
@@ -163,6 +169,8 @@ namespace Spartan
         // Updating every m_profiling_interval_sec
         if (m_poll)
         {
+            m_renderer->GetRhiDevice()->QueryBegin(m_query_disjoint);
+
             AcquireGpuData();
 
             // Create a string version of the RHI metrics
@@ -172,10 +180,22 @@ namespace Spartan
             }
         }
 
-        ClearRhiMetrics();
+        if (m_profile && m_poll)
+        {
+            SwapBuffers();
+        }
     }
 
-    void Profiler::OnFrameEnd()
+    void Profiler::OnPostPresent()
+    {
+        if (m_poll)
+        {
+            m_renderer->GetRhiDevice()->QueryEnd(m_query_disjoint);
+            m_renderer->GetRhiDevice()->QueryGetData(m_query_disjoint);
+        }
+    }
+
+    void Profiler::SwapBuffers()
     {
         // Copy completed time blocks write to time blocks read vector (double buffering)
         {

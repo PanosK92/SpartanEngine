@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==================
 #include <unordered_map>
 #include "IResource.h"
-#include "../Core/ISubsystem.h"
+#include "../Core/Subsystem.h"
 #include "../Rendering/Model.h"
 //=============================
 
@@ -46,7 +46,7 @@ namespace Spartan
         Textures
     };
 
-    class SPARTAN_CLASS ResourceCache : public ISubsystem
+    class SPARTAN_CLASS ResourceCache : public Subsystem
     {
     public:
         ResourceCache(Context* context);

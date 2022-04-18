@@ -57,16 +57,15 @@ namespace Spartan
         else if (type == TimeBlockType::Gpu)
         {
             // Create required queries
-            if (!m_query_disjoint)
+            if (!m_query_start)
             {
-                RHI_CommandList::Gpu_QueryCreate(m_rhi_device, &m_query_disjoint, RHI_Query_Type::Timestamp_Disjoint);
-                RHI_CommandList::Gpu_QueryCreate(m_rhi_device, &m_query_start, RHI_Query_Type::Timestamp);
-                RHI_CommandList::Gpu_QueryCreate(m_rhi_device, &m_query_end, RHI_Query_Type::Timestamp);
+                m_rhi_device->QueryCreate(&m_query_start, RHI_Query_Type::Timestamp);
+                m_rhi_device->QueryCreate(&m_query_end, RHI_Query_Type::Timestamp);
             }
 
             if (cmd_list)
             {
-                cmd_list->Timestamp_Start(m_query_disjoint, m_query_start);
+                cmd_list->Timestamp_Start(m_query_start);
             }
         }
     }
@@ -81,7 +80,7 @@ namespace Spartan
         {
             if (m_cmd_list)
             {
-                m_cmd_list->Timestamp_End(m_query_disjoint, m_query_end);
+                m_cmd_list->Timestamp_End(m_query_end);
             }
         }
 
@@ -102,7 +101,7 @@ namespace Spartan
         {
             if (m_cmd_list)
             {
-                m_duration = m_cmd_list->Timestamp_GetDuration(m_query_disjoint, m_query_start, m_query_end, pass_index);
+                m_duration = m_cmd_list->Timestamp_GetDuration(m_query_start, m_query_end, pass_index);
             }
         }
     }
@@ -117,21 +116,19 @@ namespace Spartan
         m_type           = TimeBlockType::Undefined;
         m_is_complete    = false;
 
-        if (m_rhi_device && m_rhi_device->IsInitialised())
+        if (m_rhi_device && m_rhi_device->IsInitialised() && m_query_start != nullptr && m_query_end != nullptr)
         {
-            RHI_CommandList::Gpu_QueryRelease(m_query_disjoint);
-            RHI_CommandList::Gpu_QueryRelease(m_query_start);
-            RHI_CommandList::Gpu_QueryRelease(m_query_end);
+            m_rhi_device->QueryRelease(m_query_start);
+            m_rhi_device->QueryRelease(m_query_end);
         }
     }
 
     void TimeBlock::ClearGpuObjects()
     {
-        m_query_disjoint = nullptr;
-        m_query_start    = nullptr;
-        m_query_end      = nullptr;
-        m_cmd_list       = nullptr;
-        m_rhi_device     = nullptr;
+        m_query_start = nullptr;
+        m_query_end   = nullptr;
+        m_cmd_list    = nullptr;
+        m_rhi_device  = nullptr;
     }
 
     uint32_t TimeBlock::FindTreeDepth(const TimeBlock* time_block, uint32_t depth /*= 0*/)

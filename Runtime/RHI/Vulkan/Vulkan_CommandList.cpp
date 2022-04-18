@@ -798,7 +798,7 @@ namespace Spartan
         return static_cast<uint32_t>(device_memory_budget_properties.heapUsage[0] / 1024 / 1024); // MBs
     }
 
-    bool RHI_CommandList::Timestamp_Start(void* query_disjoint /*= nullptr*/, void* query_start /*= nullptr*/)
+    bool RHI_CommandList::Timestamp_Start(void* query)
     {
         // Validate command list state
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
@@ -814,7 +814,7 @@ namespace Spartan
         return true;
     }
 
-    bool RHI_CommandList::Timestamp_End(void* query_disjoint /*= nullptr*/, void* query_end /*= nullptr*/)
+    bool RHI_CommandList::Timestamp_End(void* query)
     {
         // Validate command list state
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
@@ -830,7 +830,7 @@ namespace Spartan
         return true;
     }
 
-    float RHI_CommandList::Timestamp_GetDuration(void* query_disjoint, void* query_start, void* query_end, const uint32_t pass_index)
+    float RHI_CommandList::Timestamp_GetDuration(void* query_start, void* query_end, const uint32_t pass_index)
     {
         if (pass_index + 1 >= m_timestamps.size())
         {
@@ -838,28 +838,17 @@ namespace Spartan
             return 0.0f;
         }
 
-        uint64_t start  = m_timestamps[pass_index];
-        uint64_t end    = m_timestamps[pass_index + 1];
+        uint64_t start = m_timestamps[pass_index];
+        uint64_t end   = m_timestamps[pass_index + 1];
 
         // If end has not been acquired yet (zero), early exit
         if (end < start)
             return 0.0f;
 
-        uint64_t duration   = Math::Helper::Clamp<uint64_t>(end - start, 0, std::numeric_limits<uint64_t>::max());
-        float duration_ms   = static_cast<float>(duration * m_rhi_device->GetTimestampPeriod() * 1e-6f);
+        uint64_t duration = Math::Helper::Clamp<uint64_t>(end - start, 0, std::numeric_limits<uint64_t>::max());
+        float duration_ms = static_cast<float>(duration * m_rhi_device->GetTimestampPeriod() * 1e-6f);
 
         return duration_ms;
-    }
-
-    bool RHI_CommandList::Gpu_QueryCreate(RHI_Device* rhi_device, void** query /*= nullptr*/, RHI_Query_Type type /*= RHI_Query_Timestamp*/)
-    {
-        // Not needed
-        return true;
-    }
-
-    void RHI_CommandList::Gpu_QueryRelease(void*& query_object)
-    {
-        // Not needed
     }
 
     void RHI_CommandList::ResetDescriptorCache()
