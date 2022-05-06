@@ -79,7 +79,7 @@ namespace Spartan
         if (visible == GetMouseCursorVisible())
             return;
 
-        if (static_cast<bool>(SDL_ShowCursor(static_cast<int>(visible))) != visible)
+        if (static_cast<bool>(SDL_ShowCursor(static_cast<int>(visible))) == visible)
         {
             LOG_ERROR("Failed to change cursor visibility");
         }
