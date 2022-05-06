@@ -85,7 +85,6 @@ void store_color_depth(uint2 group_thread_id, uint2 thread_id)
 
 void populate_group_shared_memory(uint2 group_id, uint group_index)
 {
-    // Populate group shared memory
     int2 group_top_left = group_id.xy * kGroupSize - kBorderSize;
     if (group_index < (kTileDimension2 >> 2))
     {
@@ -333,10 +332,10 @@ float get_factor_dissoclusion(float2 uv_reprojected, float2 velocity)
     return saturate(dissoclusion * 2000.0f);
 }
 
-float3 temporal_antialiasing(uint2 pos_group_top_left, uint2 pos_group, uint2 pos_screen, float2 uv, Texture2D tex_history)
+float3 temporal_antialiasing(uint2 thread_id, uint2 pos_group_top_left, uint2 pos_group, uint2 pos_screen, float2 uv, Texture2D tex_history)
 {
     // Get the velocity of the current pixel
-    float2 velocity = tex_velocity[pos_screen].xy;
+    float2 velocity = tex_velocity[thread_id].xy;
 
     // Get reprojected uv
     float2 uv_reprojected = uv - velocity;
@@ -355,7 +354,7 @@ float3 temporal_antialiasing(uint2 pos_group_top_left, uint2 pos_group, uint2 po
     // Compute blend factor
     float blend_factor = RPC_16; // We want to be able to accumulate as many jitter samples as we generated, that is, 16.
     {
-        // If re-projected UV is out of screen, converge to current color immediatel
+        // If re-projected UV is out of screen, converge to current color immediately
         float factor_screen = !is_saturated(uv_reprojected);
 
         // Increase blend factor when there is dissoclusion (fixes a lot of the remaining ghosting).
@@ -396,5 +395,5 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID, uint3 group_thread_id : SV_Gr
     const uint2 pos_screen         = pos_group_top_left + pos_group;
     const float2 uv                = (thread_id.xy + 0.5f) / g_resolution_rt;
 
-    tex_out_rgb[thread_id.xy] = temporal_antialiasing(pos_group_top_left, pos_group, pos_screen, uv, tex);
+    tex_out_rgb[thread_id.xy] = temporal_antialiasing(thread_id.xy, pos_group_top_left, pos_group, pos_screen, uv, tex);
 }
