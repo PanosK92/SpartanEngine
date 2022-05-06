@@ -102,7 +102,7 @@ namespace Spartan
             );
 
             // Create input layout
-            if (m_vertex_type != RHI_Vertex_Type::Unknown)
+            if (m_vertex_type != RHI_Vertex_Type::Undefined)
             {
                 if (!m_input_layout->Create(m_vertex_type, nullptr))
                 {
