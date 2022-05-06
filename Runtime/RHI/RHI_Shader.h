@@ -40,11 +40,11 @@ namespace Spartan
     {
     public:
         RHI_Shader() = default;
-        RHI_Shader(Context* context, const RHI_Vertex_Type vertex_type = RHI_Vertex_Type::Unknown);
+        RHI_Shader(Context* context, const RHI_Vertex_Type vertex_type = RHI_Vertex_Type::Undefined);
         ~RHI_Shader();
 
         // Compilation
-        void Compile(const RHI_Shader_Type type, const std::string& shader, bool async);
+        void Compile(const RHI_Shader_Type type, const std::string& file_path, bool async);
         Shader_Compilation_State GetCompilationState() const { return m_compilation_state; }
         bool IsCompiled()                              const { return m_compilation_state == Shader_Compilation_State::Succeeded; }
         void WaitForCompilation();
@@ -65,6 +65,7 @@ namespace Spartan
         auto& GetDefines() const                                                  { return m_defines; }
 
         // Misc
+        const uint32_t GetVertexSize() const;
         const std::vector<RHI_Descriptor>& GetDescriptors()      const { return m_descriptors; }
         const std::shared_ptr<RHI_InputLayout>& GetInputLayout() const { return m_input_layout; } // only valid for vertex shader
         const auto& GetFilePath()                                const { return m_file_path; }
@@ -92,7 +93,7 @@ namespace Spartan
         std::shared_ptr<RHI_InputLayout> m_input_layout;
         std::atomic<Shader_Compilation_State> m_compilation_state = Shader_Compilation_State::Idle;
         RHI_Shader_Type m_shader_type                             = RHI_Shader_Unknown;
-        RHI_Vertex_Type m_vertex_type                             = RHI_Vertex_Type::Unknown;
+        RHI_Vertex_Type m_vertex_type                             = RHI_Vertex_Type::Undefined;
         void* m_resource                                          = nullptr;
     };
 }

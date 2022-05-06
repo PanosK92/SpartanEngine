@@ -203,7 +203,7 @@ namespace Spartan
             VkVertexInputBindingDescription binding_description = {};
             binding_description.binding                         = 0;
             binding_description.inputRate                       = VK_VERTEX_INPUT_RATE_VERTEX;
-            binding_description.stride                          = m_state.vertex_buffer_stride;
+            binding_description.stride                          = m_state.shader_vertex ? m_state.shader_vertex->GetVertexSize() : 0;
             
             // Vertex attributes description
             vector<VkVertexInputAttributeDescription> vertex_attribute_descs;

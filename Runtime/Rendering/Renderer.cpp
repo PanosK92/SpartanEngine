@@ -188,10 +188,6 @@ namespace Spartan
             }
         }
 
-        // Full-screen quad
-        m_viewport_quad = Math::Rectangle(0, 0, static_cast<float>(window_width), static_cast<float>(window_height));
-        m_viewport_quad.CreateBuffers(this);
-
         // Set render, output and viewport resolution/size to whatever the window is (initially)
         SetResolutionRender(window_width, window_height, false);
         SetResolutionOutput(window_width, window_height, false);
@@ -283,23 +279,6 @@ namespace Spartan
         // Handle requests (they can come from different threads)
         {
             m_reading_requests = true;
-
-            // Handle viewport update requests
-            if (m_dirty_viewport)
-            {
-                // Update viewport
-                m_viewport.width  = m_viewport_size_pending.x;
-                m_viewport.height = m_viewport_size_pending.y;
-
-                // Update quad
-                m_viewport_quad = Math::Rectangle(0, 0, m_viewport.width, m_viewport.height);
-                m_viewport_quad.CreateBuffers(this);
-
-                // Update orthographic projection
-                m_dirty_orthographic_projection = true;
-
-                m_dirty_viewport = false;
-            }
 
             // Handle environment texture assignment requests
             if (m_environment_texture_temp)
@@ -436,13 +415,12 @@ namespace Spartan
             }
         }
 
-
         if (m_viewport.width != width || m_viewport.height != height)
         {
-            m_viewport_size_pending.x = width;
-            m_viewport_size_pending.y = height;
+            m_viewport.width = width;
+            m_viewport.height = height;
 
-            m_dirty_viewport = true;
+            m_dirty_orthographic_projection = true;
         }
     }
 

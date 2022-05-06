@@ -98,21 +98,18 @@ namespace Spartan
         }
 
     };
-    void RHI_Shader::Compile(const RHI_Shader_Type type, const string& shader, bool async)
+    void RHI_Shader::Compile(const RHI_Shader_Type type, const string& file_path, bool async)
     {
         m_shader_type = type;
 
-        // Source
-        if (!FileSystem::IsFile(shader))
+        if (!FileSystem::IsFile(file_path))
         {
-            m_object_name = "N/A";
-            m_file_path   = "N/A";
-            m_source      = shader;
+            LOG_ERROR("\"%s\" doesn't exist.", file_path.c_str());
+            return;
         }
-        else // File
-        {
-            LoadSource(shader);
-        }
+
+        // Load
+        LoadSource(file_path);
 
         // Compile
         {
@@ -226,6 +223,11 @@ namespace Spartan
         }
 
         m_sources[index] = source;
+    }
+
+    const uint32_t RHI_Shader::GetVertexSize() const
+    {
+        return m_input_layout->GetVertexSize();
     }
 
     const char* RHI_Shader::GetEntryPoint() const

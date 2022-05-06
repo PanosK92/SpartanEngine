@@ -147,6 +147,7 @@ namespace Spartan
             Depth_Prepass_P,
             Depth_Light_V,
             Depth_Light_P,
+            FullscreenTriangle_V,
             Quad_V,
             Copy_Point_C,
             Copy_Bilinear_C,
@@ -534,10 +535,8 @@ namespace Spartan
         Math::Vector2 m_resolution_render          = Math::Vector2::Zero;
         Math::Vector2 m_resolution_output          = Math::Vector2::Zero;
         RHI_Viewport m_viewport                    = RHI_Viewport(0, 0, 0, 0);
-        Math::Rectangle m_viewport_quad            = Math::Rectangle(0, 0, 0, 0);
         Math::Vector2 m_resolution_output_previous = Math::Vector2::Zero;
         RHI_Viewport m_viewport_previous           = RHI_Viewport(0, 0, 0, 0);
-        Math::Vector2 m_viewport_size_pending      = Math::Vector2::Zero;
 
         // Environment texture
         std::shared_ptr<RHI_Texture> m_environment_texture;
@@ -578,7 +577,6 @@ namespace Spartan
         // States
         std::atomic<bool> m_is_rendering_allowed = true;
         std::atomic<bool> m_flush_requested      = false;
-        bool m_dirty_viewport                    = false;
         bool m_dirty_orthographic_projection     = true;
         std::atomic<bool> m_reading_requests     = false;
 
