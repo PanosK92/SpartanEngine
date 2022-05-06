@@ -111,7 +111,7 @@ namespace Spartan
 
         // Mouse
         void SetMouseCursorVisible(const bool visible);
-        bool GetMouseCursorVisible()                            const { return m_mouse_cursor_visible; }
+        bool GetMouseCursorVisible()                            const;
         void SetMouseIsInViewport(const bool is_in_viewport)          { m_mouse_is_in_viewport = is_in_viewport; }
         bool GetMouseIsInViewport()                             const { return m_mouse_is_in_viewport; }
         const Math::Vector2& GetMousePosition()                 const { return m_mouse_position; }
@@ -148,7 +148,6 @@ namespace Spartan
         Math::Vector2 m_mouse_wheel_delta       = Math::Vector2::Zero;
         Math::Vector2 m_editor_viewport_offset  = Math::Vector2::Zero;
         bool m_mouse_is_in_viewport             = true;
-        bool m_mouse_cursor_visible             = true;
 
         // Controller
         void* m_controller                      = nullptr;
