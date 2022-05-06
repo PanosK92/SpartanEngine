@@ -93,6 +93,7 @@ namespace Spartan
 
         m_rasterizer_cull_back_solid     = make_shared<RHI_RasterizerState>(m_rhi_device, RHI_CullMode::Back, RHI_PolygonMode::Solid,     true,  false, false);
         m_rasterizer_cull_back_wireframe = make_shared<RHI_RasterizerState>(m_rhi_device, RHI_CullMode::Back, RHI_PolygonMode::Wireframe, true,  false, true);
+        m_rasterizer_cull_none_solid     = make_shared<RHI_RasterizerState>(m_rhi_device, RHI_CullMode::Back, RHI_PolygonMode::Solid,     true, false, false);
         m_rasterizer_light_point_spot    = make_shared<RHI_RasterizerState>(m_rhi_device, RHI_CullMode::Back, RHI_PolygonMode::Solid,     true,  false, false, depth_bias,        m_depth_bias_clamp, depth_bias_slope_scaled);
         m_rasterizer_light_directional   = make_shared<RHI_RasterizerState>(m_rhi_device, RHI_CullMode::Back, RHI_PolygonMode::Solid,     false, false, false, depth_bias * 0.1f, m_depth_bias_clamp, depth_bias_slope_scaled);
     }
@@ -250,6 +251,10 @@ namespace Spartan
         // Light
         m_shaders[Renderer::Shader::Light_C] = make_shared<RHI_Shader>(m_context);
         m_shaders[Renderer::Shader::Light_C]->Compile(RHI_Shader_Compute, dir_shaders + "light.hlsl", async);
+
+        // Fullscreen triangle
+        m_shaders[Renderer::Shader::FullscreenTriangle_V] = make_shared<RHI_Shader>(m_context, RHI_Vertex_Type::Undefined);
+        m_shaders[Renderer::Shader::FullscreenTriangle_V]->Compile(RHI_Shader_Vertex, dir_shaders + "fullscreen_triangle.hlsl", async);
 
         // Quad
         m_shaders[Renderer::Shader::Quad_V] = make_shared<RHI_Shader>(m_context, RHI_Vertex_Type::PosTex);

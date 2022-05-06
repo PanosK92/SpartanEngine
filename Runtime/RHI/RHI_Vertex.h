@@ -29,7 +29,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-    struct RHI_Vertex_Undefined{};
+    struct RHI_Vertex_Undefined
+    {
+
+    };
 
     struct RHI_Vertex_Pos
     {
@@ -129,15 +132,15 @@ namespace Spartan
         float tan[3] = { 0 };
     };
 
-    static_assert(std::is_trivially_copyable<RHI_Vertex_Pos>::value,            "RHI_Vertex_Pos is not trivially copyable");
-    static_assert(std::is_trivially_copyable<RHI_Vertex_PosTex>::value,         "RHI_Vertex_PosTex is not trivially copyable");
-    static_assert(std::is_trivially_copyable<RHI_Vertex_PosCol>::value,         "RHI_Vertex_PosCol is not trivially copyable");
-    static_assert(std::is_trivially_copyable<RHI_Vertex_Pos2dTexCol8>::value,   "RHI_Vertex_Pos2dTexCol8 is not trivially copyable");
-    static_assert(std::is_trivially_copyable<RHI_Vertex_PosTexNorTan>::value,   "RHI_Vertex_PosTexNorTan is not trivially copyable");
+    static_assert(std::is_trivially_copyable<RHI_Vertex_Pos>::value,          "RHI_Vertex_Pos is not trivially copyable");
+    static_assert(std::is_trivially_copyable<RHI_Vertex_PosTex>::value,       "RHI_Vertex_PosTex is not trivially copyable");
+    static_assert(std::is_trivially_copyable<RHI_Vertex_PosCol>::value,       "RHI_Vertex_PosCol is not trivially copyable");
+    static_assert(std::is_trivially_copyable<RHI_Vertex_Pos2dTexCol8>::value, "RHI_Vertex_Pos2dTexCol8 is not trivially copyable");
+    static_assert(std::is_trivially_copyable<RHI_Vertex_PosTexNorTan>::value, "RHI_Vertex_PosTexNorTan is not trivially copyable");
 
     enum class RHI_Vertex_Type
     {
-        Unknown,
+        Undefined,
         Pos,
         PosCol,
         PosTex,

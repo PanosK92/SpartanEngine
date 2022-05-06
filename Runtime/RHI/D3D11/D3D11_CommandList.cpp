@@ -236,7 +236,7 @@ namespace Spartan
         }
 
         // Primitive topology
-        if (pipeline_state.primitive_topology != RHI_PrimitiveTopology_Mode::RHI_PrimitiveTopology_Unknown)
+        if (pipeline_state.primitive_topology != RHI_PrimitiveTopology_Mode::Undefined)
         {
             // New state
             const D3D11_PRIMITIVE_TOPOLOGY topology = d3d11_primitive_topology[static_cast<uint32_t>(pipeline_state.primitive_topology)];

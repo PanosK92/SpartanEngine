@@ -217,7 +217,6 @@ namespace Spartan
             static RHI_PipelineState pso;
             pso.shader_vertex                   = shader_v;
             pso.shader_pixel                    = is_transparent_pass ? shader_p : nullptr;
-            pso.vertex_buffer_stride            = static_cast<uint32_t>(sizeof(RHI_Vertex_PosTex));
             pso.blend_state                     = is_transparent_pass ? m_blend_alpha.get() : m_blend_disabled.get();
             pso.depth_stencil_state             = is_transparent_pass ? m_depth_stencil_r_off.get() : m_depth_stencil_rw_off.get();
             pso.render_target_color_textures[0] = tex_color; // always bind so we can clear to white (in case there are no transparent objects)
@@ -367,7 +366,6 @@ namespace Spartan
             pso.clear_stencil                   = rhi_stencil_dont_care;
             pso.viewport                        = probe->GetColorTexture()->GetViewport();
             pso.pass_name                       = "Pass_ReflectionProbes";
-            pso.vertex_buffer_stride            = static_cast<uint32_t>(sizeof(RHI_Vertex_PosTexNorTan));
             pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
 
             // Update cube faces
@@ -473,7 +471,6 @@ namespace Spartan
         pso.clear_depth                 = GetClearDepth();
         pso.viewport                    = tex_depth->GetViewport();
         pso.primitive_topology          = RHI_PrimitiveTopology_Mode::TriangleList;
-        pso.vertex_buffer_stride        = static_cast<uint32_t>(sizeof(RHI_Vertex_PosTex));
         pso.pass_name                   = "Pass_Depth_Prepass";
 
         // Record commands
@@ -575,7 +572,6 @@ namespace Spartan
         pso.clear_depth                     = (is_transparent_pass || depth_prepass) ? rhi_depth_load : GetClearDepth();
         pso.clear_stencil                   = rhi_stencil_dont_care;
         pso.viewport                        = tex_albedo->GetViewport();
-        pso.vertex_buffer_stride            = static_cast<uint32_t>(sizeof(RHI_Vertex_PosTexNorTan));
         pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
         pso.pass_name                       = is_transparent_pass ? "GBuffer_Transparent" : "GBuffer_Opaque";
 
@@ -950,7 +946,7 @@ namespace Spartan
     void Renderer::Pass_Light_ImageBased(RHI_CommandList* cmd_list, RHI_Texture* tex_out, const bool is_transparent_pass)
     {
         // Acquire shaders
-        RHI_Shader* shader_v = m_shaders[Renderer::Shader::Quad_V].get();
+        RHI_Shader* shader_v = m_shaders[Renderer::Shader::FullscreenTriangle_V].get();
         RHI_Shader* shader_p = m_shaders[Renderer::Shader::Light_ImageBased_P].get();
         if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
             return;
@@ -971,7 +967,6 @@ namespace Spartan
         pso.clear_depth                     = rhi_depth_dont_care;
         pso.clear_stencil                   = rhi_stencil_dont_care;
         pso.viewport                        = tex_out->GetViewport();
-        pso.vertex_buffer_stride            = m_viewport_quad.GetVertexBuffer()->GetStride();
         pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
         pso.pass_name                       = is_transparent_pass ? "Pass_Light_ImageBased_Transparent" : "Pass_Light_ImageBased_Opaque";
 
@@ -1003,9 +998,7 @@ namespace Spartan
             m_cb_uber_cpu.reflection_proble_available = !probes.empty();
             Update_Cb_Uber(cmd_list);
 
-            cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
-            cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
-            cmd_list->DrawIndexed(Rectangle::GetIndexCount());
+            cmd_list->Draw(3, 0);
             cmd_list->EndRenderPass();
         }
     }
@@ -1837,7 +1830,6 @@ namespace Spartan
             pso.rasterizer_state                = m_rasterizer_cull_back_wireframe.get();
             pso.blend_state                     = m_blend_alpha.get();
             pso.depth_stencil_state             = m_depth_stencil_r_off.get();
-            pso.vertex_buffer_stride            = m_gizmo_grid->GetVertexBuffer()->GetStride();
             pso.render_target_color_textures[0] = tex_out;
             pso.render_target_depth_texture     = RENDER_TARGET(RenderTarget::Gbuffer_Depth).get();
             pso.viewport                        = tex_out->GetViewport();
@@ -1881,11 +1873,9 @@ namespace Spartan
                 pso.shader_vertex                   = shader_color_v;
                 pso.shader_pixel                    = shader_color_p;
                 pso.rasterizer_state                = m_rasterizer_cull_back_wireframe.get();
-                pso.vertex_buffer_stride            = m_vertex_buffer_lines->GetStride();
                 pso.render_target_color_textures[0] = tex_out;
                 pso.viewport                        = tex_out->GetViewport();
                 pso.primitive_topology              = RHI_PrimitiveTopology_Mode::LineList;
-                pso.vertex_buffer_stride            = m_vertex_buffer_lines->GetStride();
 
                 // Depth off
                 if (draw_lines_depth_off)
@@ -1931,24 +1921,23 @@ namespace Spartan
             return;
 
         // Acquire resources
-        auto& lights                    = m_entities[ObjectType::Light];
-        const auto& shader_quad_v       = m_shaders[Renderer::Shader::Quad_V];
-        const auto& shader_texture_p    = m_shaders[Renderer::Shader::Copy_Bilinear_P];
-        if (lights.empty() || !shader_quad_v->IsCompiled() || !shader_texture_p->IsCompiled())
+        auto& lights         = m_entities[ObjectType::Light];
+        RHI_Shader* shader_v = m_shaders[Renderer::Shader::Quad_V].get();
+        RHI_Shader* shader_p = m_shaders[Renderer::Shader::Copy_Bilinear_P].get();
+        if (lights.empty() || !shader_v->IsCompiled() || !shader_p->IsCompiled())
             return;
 
         // Set render state
         static RHI_PipelineState pso;
-        pso.shader_vertex                    = shader_quad_v.get();
-        pso.shader_pixel                     = shader_texture_p.get();
-        pso.rasterizer_state                 = m_rasterizer_cull_back_solid.get();
-        pso.blend_state                      = m_blend_alpha.get();
-        pso.depth_stencil_state              = m_depth_stencil_off_off.get();
-        pso.vertex_buffer_stride             = m_viewport_quad.GetVertexBuffer()->GetStride(); // stride matches rect
-        pso.render_target_color_textures[0]  = tex_out;
-        pso.primitive_topology               = RHI_PrimitiveTopology_Mode::TriangleList;
-        pso.viewport                         = tex_out->GetViewport();
-        pso.pass_name                        = "Pass_Icons";
+        pso.shader_vertex                   = shader_v;
+        pso.shader_pixel                    = shader_p;
+        pso.rasterizer_state                = m_rasterizer_cull_back_solid.get();
+        pso.blend_state                     = m_blend_alpha.get();
+        pso.depth_stencil_state             = m_depth_stencil_off_off.get();
+        pso.render_target_color_textures[0] = tex_out;
+        pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
+        pso.viewport                        = tex_out->GetViewport();
+        pso.pass_name                       = "Pass_Icons";
 
         // For each light
         for (const auto& entity : lights)
@@ -1958,10 +1947,10 @@ namespace Spartan
                 // Light can be null if it just got removed and our buffer doesn't update till the next frame
                 if (Light* light = entity->GetComponent<Light>())
                 {
-                    Vector3 position_light_world        = entity->GetTransform()->GetPosition();
-                    Vector3 position_camera_world       = m_camera->GetTransform()->GetPosition();
-                    Vector3 direction_camera_to_light   = (position_light_world - position_camera_world).Normalized();
-                    const float v_dot_l                 = Vector3::Dot(m_camera->GetTransform()->GetForward(), direction_camera_to_light);
+                    Vector3 position_light_world      = entity->GetTransform()->GetPosition();
+                    Vector3 position_camera_world     = m_camera->GetTransform()->GetPosition();
+                    Vector3 direction_camera_to_light = (position_light_world - position_camera_world).Normalized();
+                    const float v_dot_l               = Vector3::Dot(m_camera->GetTransform()->GetForward(), direction_camera_to_light);
 
                     // Only draw if it's inside our view
                     if (v_dot_l > 0.5f)
@@ -2039,7 +2028,6 @@ namespace Spartan
             pso.rasterizer_state                = m_rasterizer_cull_back_solid.get();
             pso.blend_state                     = m_blend_alpha.get();
             pso.depth_stencil_state             = m_depth_stencil_off_off.get();
-            pso.vertex_buffer_stride            = transform_handle->GetVertexBuffer()->GetStride();
             pso.render_target_color_textures[0] = tex_out;
             pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
             pso.viewport                        = tex_out->GetViewport();
@@ -2132,7 +2120,6 @@ namespace Spartan
         pso.render_target_depth_texture     = RENDER_TARGET(RenderTarget::Gbuffer_Depth).get();
         pso.viewport                        = tex_out->GetViewport();
         pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
-        pso.vertex_buffer_stride            = m_sphere_vertex_buffer->GetStride();
         pso.pass_name                       = "Pass_Debug_ReflectionProbes";
         
         // Create and submit command list
@@ -2200,7 +2187,6 @@ namespace Spartan
             pso.rasterizer_state                         = m_rasterizer_cull_back_solid.get();
             pso.blend_state                              = m_blend_alpha.get();
             pso.depth_stencil_state                      = m_depth_stencil_r_off.get();
-            pso.vertex_buffer_stride                     = model->GetVertexBuffer()->GetStride();
             pso.render_target_color_textures[0]          = tex_out;
             pso.render_target_depth_texture              = tex_depth;
             pso.render_target_depth_texture_read_only    = true;
@@ -2255,7 +2241,6 @@ namespace Spartan
         pso.rasterizer_state                = m_rasterizer_cull_back_solid.get();
         pso.blend_state                     = m_blend_alpha.get();
         pso.depth_stencil_state             = m_depth_stencil_off_off.get();
-        pso.vertex_buffer_stride            = m_font->GetVertexBuffer()->GetStride();
         pso.render_target_color_textures[0] = tex_out;
         pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
         pso.viewport                        = tex_out->GetViewport();
@@ -2371,7 +2356,7 @@ namespace Spartan
     void Renderer::Pass_CopyToBackbuffer(RHI_CommandList* cmd_list)
     {
         // Acquire shaders
-        RHI_Shader* shader_v = m_shaders[Renderer::Shader::Quad_V].get();
+        RHI_Shader* shader_v = m_shaders[Renderer::Shader::FullscreenTriangle_V].get();
         RHI_Shader* shader_p = m_shaders[Renderer::Shader::Copy_Point_P].get();
         if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
             return;
@@ -2383,7 +2368,6 @@ namespace Spartan
         pso.rasterizer_state         = m_rasterizer_cull_back_solid.get();
         pso.blend_state              = m_blend_disabled.get();
         pso.depth_stencil_state      = m_depth_stencil_off_off.get();
-        pso.vertex_buffer_stride     = m_viewport_quad.GetVertexBuffer()->GetStride();
         pso.render_target_swapchain  = m_swap_chain.get();
         pso.clear_color[0]           = rhi_color_dont_care;
         pso.primitive_topology       = RHI_PrimitiveTopology_Mode::TriangleList;
@@ -2398,9 +2382,7 @@ namespace Spartan
             Update_Cb_Uber(cmd_list);
 
             cmd_list->SetTexture(Renderer::Bindings_Srv::tex, RENDER_TARGET(RenderTarget::Frame_Output).get());
-            cmd_list->SetBufferVertex(m_viewport_quad.GetVertexBuffer());
-            cmd_list->SetBufferIndex(m_viewport_quad.GetIndexBuffer());
-            cmd_list->DrawIndexed(m_viewport_quad.GetIndexCount());
+            cmd_list->DrawIndexed(3, 0);
             cmd_list->EndRenderPass();
         }
     }

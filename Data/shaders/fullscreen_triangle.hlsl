@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016-2022 Panos Karabelas
+Copyright(c) 2016-2021 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -19,27 +19,17 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==================
-#include "Spartan.h"
-#include "RHI_DescriptorSet.h"
-//=============================
+//= INCLUDES =========
+#include "common.hlsl"
+//====================
 
-//= NAMESPACES =====
-using namespace std;
-//==================
 
-namespace Spartan
+Pixel_PosUv mainVS(uint vertexID : SV_VertexID)
 {
-    RHI_DescriptorSet::RHI_DescriptorSet(const RHI_Device* rhi_device, const RHI_DescriptorSetLayoutCache* descriptor_set_layout_cache, const vector<RHI_Descriptor>& descriptors, const char* name)
-    {
-        m_rhi_device                  = rhi_device;
-        m_descriptor_set_layout_cache = descriptor_set_layout_cache;
-        if (name)
-        {
-            m_object_name = name;
-        }
+    Pixel_PosUv output;
 
-        Create();
-        Update(descriptors);
-    }
+	output.uv 		= float2((vertexID << 1) & 2, vertexID & 2);
+    output.position = float4(output.uv * float2(2, -2) + float2(-1, 1), 0, 1);
+
+    return output;
 }

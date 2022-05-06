@@ -128,13 +128,10 @@ namespace Spartan
             );
             
             // Create input layout
-            if (m_vertex_type != RHI_Vertex_Type::Unknown)
+            if (!m_input_layout->Create(m_vertex_type, nullptr))
             {
-                if (!m_input_layout->Create(m_vertex_type, nullptr))
-                {
-                    LOG_ERROR("Failed to create input layout for %s", m_object_name.c_str());
-                    return nullptr;
-                }
+                LOG_ERROR("Failed to create input layout for %s", m_object_name.c_str());
+                return nullptr;
             }
 
             // Release
