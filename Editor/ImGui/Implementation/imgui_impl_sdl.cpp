@@ -539,10 +539,11 @@ static void ImGui_ImplSDL2_UpdateMouseCursor()
     else if (!is_visible)
     {
         // Show OS mouse cursor
-        SDL_SetCursor(bd->MouseCursors[imgui_cursor] ? bd->MouseCursors[imgui_cursor] : bd->MouseCursors[ImGuiMouseCursor_Arrow]);
         input->SetMouseCursorVisible(true);
         is_visible = true;
     }
+
+    SDL_SetCursor(bd->MouseCursors[imgui_cursor] ? bd->MouseCursors[imgui_cursor] : bd->MouseCursors[ImGuiMouseCursor_Arrow]);
 }
 
 static void ImGui_ImplSDL2_UpdateGamepads()
