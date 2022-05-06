@@ -83,9 +83,6 @@ namespace Spartan
 
         SCOPED_TIME_BLOCK(m_profiler);
 
-        // Generate mips for any pending texture requests
-        Pass_Generate_Mips();
-
         // Update frame constant buffer
         Pass_UpdateFrameBuffer(cmd_list);
 
@@ -152,7 +149,7 @@ namespace Spartan
 
         Pass_PostProcess(cmd_list);
 
-        // No further rendering is done on the final image, and it displayed by ImGui, so set the correct layout now
+        // No further rendering is done on the final image, and it's displayed by ImGui, so set the correct layout now
         // because the ImGui rendering backend can't. Since Vulkan won't allow setting a layout within a render pass.
         RENDER_TARGET(RenderTarget::Frame_Output)->SetLayout(RHI_Image_Layout::Shader_Read_Only_Optimal, cmd_list);
     }
