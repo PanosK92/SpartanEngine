@@ -319,6 +319,9 @@ namespace Spartan
                 }
             }
 
+            // Generate mips for any pending texture requests
+            Pass_Generate_Mips();
+
             m_reading_requests = false;
         }
 
