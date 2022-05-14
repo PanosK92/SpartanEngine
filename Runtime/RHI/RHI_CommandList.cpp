@@ -32,7 +32,6 @@ namespace Spartan
 {
     void RHI_CommandList::Wait()
     {
-        // Validate state.
         SP_ASSERT(m_state == RHI_CommandListState::Submitted);
 
         // Wait for the fence.
@@ -42,6 +41,7 @@ namespace Spartan
         m_processed_semaphore->Reset();
 
         m_descriptor_set_layout_cache->GrowIfNeeded();
+
         m_state = RHI_CommandListState::Idle;
     }
 

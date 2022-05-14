@@ -460,6 +460,11 @@ namespace Spartan
         }
     }
 
+    bool RHI_Device::ResetCommandPool()
+    {
+        return vulkan_utility::error::check(vkResetCommandPool(m_rhi_context->device, static_cast<VkCommandPool>(m_cmd_pool_graphics), 0));
+    }
+
     bool RHI_Device::DetectPhysicalDevices()
     {
         uint32_t device_count = 0;
