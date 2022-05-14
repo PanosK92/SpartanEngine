@@ -325,4 +325,9 @@ namespace Spartan
     {
 
     }
+
+    bool RHI_Device::ResetCommandPool()
+    {
+        return true;
+    }
 }
