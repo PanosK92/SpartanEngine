@@ -54,7 +54,7 @@ namespace Spartan
         m_renderer   = context->GetSubsystem<Renderer>();
         m_rhi_device = m_renderer->GetRhiDevice().get();
 
-        ID3D12CommandAllocator* allocator = static_cast<ID3D12CommandAllocator*>(m_rhi_device->GetCmdPoolGraphics());
+        ID3D12CommandAllocator* allocator = static_cast<ID3D12CommandAllocator*>(m_rhi_device->GetCommandPoolGraphics());
         d3d12_utility::error::check(m_rhi_device->GetContextRhi()->device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, allocator, nullptr, IID_PPV_ARGS(reinterpret_cast<ID3D12GraphicsCommandList**>(&m_resource))));
     }
     
@@ -81,7 +81,7 @@ namespace Spartan
         SP_ASSERT(m_state == RHI_CommandListState::Idle);
 
         // Unlike Vulkan, D3D12 wraps both begin and reset under Reset().
-        SP_ASSERT(d3d12_utility::error::check(static_cast<ID3D12GraphicsCommandList*>(m_resource)->Reset(static_cast<ID3D12CommandAllocator*>(m_rhi_device->GetCmdPoolGraphics()), nullptr)) && "Failed to reset command list");
+        SP_ASSERT(d3d12_utility::error::check(static_cast<ID3D12GraphicsCommandList*>(m_resource)->Reset(static_cast<ID3D12CommandAllocator*>(m_rhi_device->GetCommandPoolGraphics()), nullptr)) && "Failed to reset command list");
 
         m_state = RHI_CommandListState::Recording;
     }
@@ -113,7 +113,7 @@ namespace Spartan
 
         lock_guard<mutex> guard(m_mutex_reset);
 
-        if (!d3d12_utility::error::check(static_cast<ID3D12GraphicsCommandList*>(m_resource)->Reset(static_cast<ID3D12CommandAllocator*>(m_rhi_device->GetCmdPoolGraphics()), nullptr)))
+        if (!d3d12_utility::error::check(static_cast<ID3D12GraphicsCommandList*>(m_resource)->Reset(static_cast<ID3D12CommandAllocator*>(m_rhi_device->GetCommandPoolGraphics()), nullptr)))
             return false;
 
         m_state = RHI_CommandListState::Idle;

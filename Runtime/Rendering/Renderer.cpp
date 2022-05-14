@@ -246,10 +246,16 @@ namespace Spartan
         m_cmd_index   = (m_cmd_index + 1) % static_cast<uint32_t>(m_cmd_lists.size());
         m_cmd_current = m_cmd_index < static_cast<uint32_t>(m_cmd_lists.size()) ? m_cmd_lists[m_cmd_index].get() : nullptr;
 
-        // Reset command lists (via resetting the command pool)
+        // Resetting
         if (m_cmd_index == 0)
         {
-            // If this is not the first run, it means that we have to wait as well.
+            // Reset dynamic buffer indices
+            m_cb_uber_offset_index     = 0;
+            m_cb_frame_offset_index    = 0;
+            m_cb_light_offset_index    = 0;
+            m_cb_material_offset_index = 0;
+
+            // If this is not the first run, wait for the command lists
             if (m_frame_num != 0)
             {
                 for (uint32_t i = 0; i < static_cast<uint32_t>(m_cmd_lists.size()); i++)
@@ -258,16 +264,8 @@ namespace Spartan
                 }
             }
 
+            // Reset command lists (via resetting the command pool)
             m_rhi_device->ResetCommandPool();
-        }
-
-        // Reset dynamic buffer indices when we come back to the first command list
-        if (m_cmd_index == 0)
-        {
-            m_cb_uber_offset_index     = 0;
-            m_cb_frame_offset_index    = 0;
-            m_cb_light_offset_index    = 0;
-            m_cb_material_offset_index = 0;
         }
 
         // Begin
