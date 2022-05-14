@@ -35,7 +35,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World/Components/Light.h"
 #include "../World/Components/ReflectionProbe.h"
 #include "../RHI/RHI_Device.h"
-#include "../RHI/RHI_PipelineCache.h"
 #include "../RHI/RHI_ConstantBuffer.h"
 #include "../RHI/RHI_StructuredBuffer.h"
 #include "../RHI/RHI_CommandList.h"
@@ -144,9 +143,6 @@ namespace Spartan
             LOG_ERROR("Failed to create device.");
             return false;
         }
-
-        // Create pipeline cache
-        m_pipeline_cache = make_shared<RHI_PipelineCache>(m_rhi_device.get());
 
         // Create descriptor set layout cache
         m_descriptor_set_layout_cache = make_shared<RHI_DescriptorSetLayoutCache>(m_rhi_device.get());

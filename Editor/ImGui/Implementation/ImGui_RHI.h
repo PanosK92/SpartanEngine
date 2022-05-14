@@ -255,7 +255,7 @@ namespace ImGui::RHI
         pipeline_state.blend_state              = g_blend_state.get();
         pipeline_state.depth_stencil_state      = g_depth_stencil_state.get();
         pipeline_state.render_target_swapchain  = swap_chain;
-        pipeline_state.clear_color[0]           = clear ? Vector4(0.0f, 0.0f, 0.0f, 1.0f) : rhi_color_load;
+        pipeline_state.clear_color[0]           = clear ? Vector4(0.0f, 0.0f, 0.0f, 1.0f) : rhi_color_dont_care;
         pipeline_state.viewport.width           = draw_data->DisplaySize.x;
         pipeline_state.viewport.height          = draw_data->DisplaySize.y;
         pipeline_state.dynamic_scissor          = true;

@@ -54,11 +54,10 @@ namespace Spartan
 
     RHI_CommandList::RHI_CommandList(Context* context)
     {
-        m_renderer                      = context->GetSubsystem<Renderer>();
-        m_profiler                      = context->GetSubsystem<Profiler>();
-        m_rhi_device                    = m_renderer->GetRhiDevice().get();
-        m_pipeline_cache                = m_renderer->GetPipelineCache();
-        m_descriptor_set_layout_cache   = m_renderer->GetDescriptorLayoutSetCache();
+        m_renderer                    = context->GetSubsystem<Renderer>();
+        m_profiler                    = context->GetSubsystem<Profiler>();
+        m_rhi_device                  = m_renderer->GetRhiDevice().get();
+        m_descriptor_set_layout_cache = m_renderer->GetDescriptorLayoutSetCache();
         m_timestamps.fill(0);
     }
 
@@ -89,16 +88,15 @@ namespace Spartan
 
     bool RHI_CommandList::BeginRenderPass(RHI_PipelineState& pipeline_state)
     {
-        SP_ASSERT(!m_render_pass_active);
         SP_ASSERT(pipeline_state.IsValid());
 
         UnbindOutputTextures();
 
         // Keep a local pointer for convenience 
-        m_pipeline_state = &pipeline_state;
+        m_pipeline_state = pipeline_state;
 
         // Start marker and profiler (if enabled)
-        Timeblock_Start(m_pipeline_state);
+        Timeblock_Start(pipeline_state.pass_name, pipeline_state.profile, pipeline_state.gpu_marker);
 
         ID3D11DeviceContext* device_context = m_rhi_device->GetContextRhi()->device_context;
 
@@ -344,20 +342,12 @@ namespace Spartan
             m_profiler->m_rhi_bindings_pipeline++;
         }
 
-        m_render_pass_active = true;
-
         return true;
     }
 
-    bool RHI_CommandList::EndRenderPass()
+    void RHI_CommandList::EndRenderPass()
     {
-        SP_ASSERT(m_render_pass_active);
-
-        Timeblock_End(m_pipeline_state);
-
-        m_render_pass_active = false;
-
-        return true;
+        Timeblock_End();
     }
 
     void RHI_CommandList::ClearPipelineStateRenderTargets(RHI_PipelineState& pipeline_state)
@@ -390,8 +380,8 @@ namespace Spartan
         if (pipeline_state.render_target_depth_texture)
         {
             UINT clear_flags = 0;
-            clear_flags |= (pipeline_state.clear_depth      != rhi_depth_load     && pipeline_state.clear_depth   != rhi_depth_dont_care)   ? D3D11_CLEAR_DEPTH     : 0;
-            clear_flags |= (pipeline_state.clear_stencil    != rhi_stencil_load   && pipeline_state.clear_stencil != rhi_stencil_dont_care) ? D3D11_CLEAR_STENCIL   : 0;
+            clear_flags |= (pipeline_state.clear_depth   != rhi_depth_stencil_load && pipeline_state.clear_depth   != rhi_depth_stencil_dont_care) ? D3D11_CLEAR_DEPTH   : 0;
+            clear_flags |= (pipeline_state.clear_stencil != rhi_depth_stencil_load && pipeline_state.clear_stencil != rhi_depth_stencil_dont_care) ? D3D11_CLEAR_STENCIL : 0;
             if (clear_flags != 0)
             {
                 m_rhi_device->GetContextRhi()->device_context->ClearDepthStencilView
@@ -411,7 +401,7 @@ namespace Spartan
         const bool storage                  /*= false*/,
         const Math::Vector4& clear_color    /*= rhi_color_load*/,
         const float clear_depth             /*= rhi_depth_load*/,
-        const uint32_t clear_stencil        /*= rhi_stencil_load*/
+        const float clear_stencil           /*= rhi_stencil_load*/
     )
     {
         SP_ASSERT(texture->CanBeCleared());
@@ -449,12 +439,12 @@ namespace Spartan
             }
             else if (texture->IsRenderTargetDepthStencil())
             {
-                if ((clear_depth == rhi_depth_load || clear_depth == rhi_depth_dont_care) && (clear_stencil == rhi_stencil_load || clear_stencil == rhi_stencil_dont_care))
+                if ((clear_depth == rhi_depth_stencil_load || clear_depth == rhi_depth_stencil_dont_care) && (clear_stencil == rhi_depth_stencil_load || clear_stencil == rhi_depth_stencil_dont_care))
                     return;
 
                 UINT clear_flags = 0;
-                clear_flags |= (clear_depth     != rhi_depth_load   && clear_depth   != rhi_depth_dont_care)     ? D3D11_CLEAR_DEPTH : 0;
-                clear_flags |= (clear_stencil   != rhi_stencil_load && clear_stencil != rhi_stencil_dont_care)   ? D3D11_CLEAR_STENCIL : 0;
+                clear_flags |= (clear_depth   != rhi_depth_stencil_load && clear_depth   != rhi_depth_stencil_dont_care) ? D3D11_CLEAR_DEPTH : 0;
+                clear_flags |= (clear_stencil != rhi_depth_stencil_load && clear_stencil != rhi_depth_stencil_dont_care) ? D3D11_CLEAR_STENCIL : 0;
                 if (clear_flags != 0)
                 {
                     m_rhi_device->GetContextRhi()->device_context->ClearDepthStencilView
@@ -469,7 +459,7 @@ namespace Spartan
         }
     }
 
-    bool RHI_CommandList::Draw(const uint32_t vertex_count, uint32_t vertex_start_index /*= 0*/)
+    void RHI_CommandList::Draw(const uint32_t vertex_count, uint32_t vertex_start_index /*= 0*/)
     {
         m_rhi_device->GetContextRhi()->device_context->Draw(static_cast<UINT>(vertex_count), static_cast<UINT>(vertex_start_index));
 
@@ -477,11 +467,9 @@ namespace Spartan
         {
             m_profiler->m_rhi_draw++;
         }
-
-        return true;
     }
 
-    bool RHI_CommandList::DrawIndexed(const uint32_t index_count, const uint32_t index_offset, const uint32_t vertex_offset)
+    void RHI_CommandList::DrawIndexed(const uint32_t index_count, const uint32_t index_offset, const uint32_t vertex_offset)
     {
         m_rhi_device->GetContextRhi()->device_context->DrawIndexed
         (
@@ -494,11 +482,9 @@ namespace Spartan
         {
             m_profiler->m_rhi_draw++;
         }
-
-        return true;
     }
 
-    bool RHI_CommandList::Dispatch(uint32_t x, uint32_t y, uint32_t z, bool async /*= false*/)
+    void RHI_CommandList::Dispatch(uint32_t x, uint32_t y, uint32_t z, bool async /*= false*/)
     {
         ID3D11Device5* device = m_rhi_device->GetContextRhi()->device;
         ID3D11DeviceContext4* device_context = m_rhi_device->GetContextRhi()->device_context;
@@ -513,8 +499,6 @@ namespace Spartan
         // If we try to bind the resource but it's still bound as a computer shader output the runtime will automatically set the it to null.
         const void* resource_array[8] = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
         device_context->CSSetUnorderedAccessViews(0, 8, reinterpret_cast<ID3D11UnorderedAccessView* const*>(&resource_array), nullptr);
-
-        return true;
     }
 
     void RHI_CommandList::Blit(RHI_Texture* source, RHI_Texture* destination)
@@ -683,7 +667,7 @@ namespace Spartan
         const void* sampler_array[1]        = { sampler ? sampler->GetResource() : nullptr };
         ID3D11DeviceContext* device_context = m_rhi_device->GetContextRhi()->device_context;
 
-        if (m_pipeline_state->IsCompute())
+        if (m_pipeline_state.IsCompute())
         {
             // Set only if not already set
             ID3D11SamplerState* set_sampler = nullptr;
@@ -788,7 +772,7 @@ namespace Spartan
         // SRV
         else
         {
-            const uint8_t scope = m_pipeline_state->IsCompute() ? RHI_Shader_Compute : RHI_Shader_Pixel;
+            const uint8_t scope = m_pipeline_state.IsCompute() ? RHI_Shader_Compute : RHI_Shader_Pixel;
 
             array<void*, m_resource_array_length_max> set_resources;
             set_resources.fill(nullptr);
@@ -914,44 +898,40 @@ namespace Spartan
         return 0;
     }
 
-    void RHI_CommandList::Timeblock_Start(const RHI_PipelineState* pipeline_state)
+    void RHI_CommandList::Timeblock_Start(const char* name, const bool profile, const bool gpu_markers)
     {
-        if (!pipeline_state || !pipeline_state->pass_name)
-            return;
+        SP_ASSERT(name != nullptr);
 
         RHI_Context* rhi_context = m_rhi_device->GetContextRhi();
 
         // Allowed to profile ?
-        if (rhi_context->profiler && pipeline_state->profile)
+        if (rhi_context->profiler && profile)
         {
             if (m_profiler)
             {
-                m_profiler->TimeBlockStart(pipeline_state->pass_name, TimeBlockType::Cpu, this);
-                m_profiler->TimeBlockStart(pipeline_state->pass_name, TimeBlockType::Gpu, this);
+                m_profiler->TimeBlockStart(name, TimeBlockType::Cpu, this);
+                m_profiler->TimeBlockStart(name, TimeBlockType::Gpu, this);
             }
         }
 
         // Allowed to mark ?
-        if (rhi_context->markers && pipeline_state->mark)
+        if (rhi_context->gpu_markers && gpu_markers)
         {
-            m_rhi_device->GetContextRhi()->annotation->BeginEvent(FileSystem::StringToWstring(pipeline_state->pass_name).c_str());
+            m_rhi_device->GetContextRhi()->annotation->BeginEvent(FileSystem::StringToWstring(name).c_str());
         }
     }
 
-    void RHI_CommandList::Timeblock_End(const RHI_PipelineState* pipeline_state)
+    void RHI_CommandList::Timeblock_End()
     {
-        if (!pipeline_state)
-            return;
-
         // Allowed to mark ?
         RHI_Context* rhi_context = m_rhi_device->GetContextRhi();
-        if (rhi_context->markers && pipeline_state->mark)
+        if (rhi_context->gpu_markers && m_pipeline_state.gpu_marker)
         {
             rhi_context->annotation->EndEvent();
         }
 
         // Allowed to profile ?
-        if (rhi_context->profiler && pipeline_state->profile)
+        if (rhi_context->profiler && m_pipeline_state.profile)
         {
             if (m_profiler)
             {
@@ -961,24 +941,25 @@ namespace Spartan
         }
     }
 
-    bool RHI_CommandList::Deferred_BeginRenderPass()
+    void RHI_CommandList::StartMarker(const char* name)
     {
-        return true;
+        if (m_rhi_device->GetContextRhi()->gpu_markers)
+        {
+            m_rhi_device->GetContextRhi()->annotation->BeginEvent(FileSystem::StringToWstring(name).c_str());
+        }
     }
 
-    bool RHI_CommandList::Deferred_BindPipeline()
+    void RHI_CommandList::EndMarker()
     {
-        return true;
+        if (m_rhi_device->GetContextRhi()->gpu_markers)
+        {
+            m_rhi_device->GetContextRhi()->annotation->EndEvent();
+        }
     }
 
-    bool RHI_CommandList::Deferred_BindDescriptorSet()
+    void RHI_CommandList::OnDraw()
     {
-        return true;
-    }
-
-    bool RHI_CommandList::OnDraw()
-    {
-        return true;
+ 
     }
 
     void RHI_CommandList::UnbindOutputTextures()

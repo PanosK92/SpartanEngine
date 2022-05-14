@@ -76,6 +76,7 @@ namespace Spartan
             #ifdef DEBUG
             arguments.emplace_back("-Od");                                                                                                         // Disable optimizations
             arguments.emplace_back("-Zi");                                                                                                         // Enable debug information
+            arguments.emplace_back("-Qembed_debug");                                                                                               // Embed PDB in shader container (must be used with /Zi)
             #endif
 
             // Negate SV_Position.y before writing to stage output in VS/DS/GS to accommodate Vulkan's coordinate system

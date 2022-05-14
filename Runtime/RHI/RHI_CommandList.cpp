@@ -56,19 +56,10 @@ namespace Spartan
             return true;
 
         // If recording, end
-        bool was_recording   = false;
-        bool had_render_pass = false;
+        bool was_recording = false;
         if (m_state == RHI_CommandListState::Recording)
         {
             was_recording = true;
-
-            if (m_render_pass_active)
-            {
-                had_render_pass = true;
-
-                if (!EndRenderPass())
-                    return false;
-            }
 
             if (!End())
                 return false;
@@ -90,12 +81,6 @@ namespace Spartan
             if (was_recording)
             {
                 Begin();
-            }
-
-            if (had_render_pass)
-            {
-                if (!BeginRenderPass(*m_pipeline_state))
-                    return false;
             }
         }
 

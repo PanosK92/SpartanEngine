@@ -33,7 +33,6 @@ namespace Spartan
     class RHI_Device;
     class RHI_CommandList;
     class RHI_PipelineState;
-    class RHI_PipelineCache;
     class RHI_Pipeline;
     class RHI_DescriptorSet;
     class RHI_DescriptorSetLayout;
@@ -306,10 +305,8 @@ namespace Spartan
     
     static const Math::Vector4  rhi_color_dont_care           = Math::Vector4(-std::numeric_limits<float>::infinity(), 0.0f, 0.0f, 0.0f);
     static const Math::Vector4  rhi_color_load                = Math::Vector4(std::numeric_limits<float>::infinity(), 0.0f, 0.0f, 0.0f);
-    static const float          rhi_depth_dont_care           = -std::numeric_limits<float>::infinity();
-    static const float          rhi_depth_load                = std::numeric_limits<float>::infinity();
-    static const uint32_t       rhi_stencil_dont_care         = (std::numeric_limits<uint32_t>::max)();
-    static const uint32_t       rhi_stencil_load              = (std::numeric_limits<uint32_t>::max)() - 1;
+    #define                     rhi_depth_stencil_dont_care   3.402823466e+38F
+    #define                     rhi_depth_stencil_load        (3.402823466e+38F - 1.0f)
     static const uint8_t        rhi_max_render_target_count   = 8;
     static const uint8_t        rhi_max_constant_buffer_count = 8;
     static const uint32_t       rhi_dynamic_offset_empty      = (std::numeric_limits<uint32_t>::max)();

@@ -99,11 +99,6 @@ namespace Spartan
         }
         else if (pipeline_state.IsGraphics() || pipeline_state.IsDummy())
         {
-            if (pipeline_state.IsGraphics())
-            {
-                m_state.CreateFrameBuffer(rhi_device);
-            }
-
             // Viewport & Scissor
             vector<VkDynamicState> dynamic_states;
             VkPipelineDynamicStateCreateInfo dynamic_state   = {};
@@ -229,8 +224,8 @@ namespace Spartan
             VkPipelineVertexInputStateCreateInfo vertex_input_state = {};
             {
                 vertex_input_state.sType                           = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-                vertex_input_state.vertexBindingDescriptionCount   = 1;
-                vertex_input_state.pVertexBindingDescriptions      = &binding_description;
+                vertex_input_state.vertexBindingDescriptionCount   = m_state.can_use_vertex_index_buffers ? 1 : 0;
+                vertex_input_state.pVertexBindingDescriptions      = m_state.can_use_vertex_index_buffers ? &binding_description : nullptr;
                 vertex_input_state.vertexAttributeDescriptionCount = static_cast<uint32_t>(vertex_attribute_descs.size());
                 vertex_input_state.pVertexAttributeDescriptions    = vertex_attribute_descs.data();
             }
@@ -336,22 +331,49 @@ namespace Spartan
             }
 
             // Pipeline
-            VkGraphicsPipelineCreateInfo pipeline_info = {};
             {
-                // Describe
-                pipeline_info.sType               = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-                pipeline_info.stageCount          = static_cast<uint32_t>(shader_stages.size());
-                pipeline_info.pStages             = shader_stages.data();
-                pipeline_info.pVertexInputState   = &vertex_input_state;
-                pipeline_info.pInputAssemblyState = &input_assembly_state;
-                pipeline_info.pDynamicState       = dynamic_states.empty() ? nullptr : &dynamic_state;
-                pipeline_info.pViewportState      = &viewport_state;
-                pipeline_info.pRasterizationState = &rasterizer_state;
-                pipeline_info.pMultisampleState   = &multisampling_state;
-                pipeline_info.pColorBlendState    = &color_blend_state;
-                pipeline_info.pDepthStencilState  = &depth_stencil_state;
-                pipeline_info.layout              = static_cast<VkPipelineLayout>(m_resource_pipeline_layout);
-                pipeline_info.renderPass          = static_cast<VkRenderPass>(m_state.GetRenderPass());
+                // Pipeline dynamic rendering
+                VkPipelineRenderingCreateInfoKHR pipeline_rendering_create_info = {};
+                vector<VkFormat> attachment_formats;
+                {
+                    // Swapchain buffer as a render target
+                    if (m_state.render_target_swapchain)
+                    {
+                        attachment_formats.push_back(m_rhi_device->GetContextRhi()->surface_format);
+                    }
+                    else // Regular render target(s)
+                    {
+                        for (uint32_t i = 0; i < rhi_max_render_target_count; i++)
+                        {
+                            RHI_Texture* texture = m_state.render_target_color_textures[i];
+                            if (texture == nullptr)
+                                break;
+
+                            attachment_formats.push_back(vulkan_format[texture->GetFormat()]);
+                        }
+                    }
+
+                    pipeline_rendering_create_info.sType                   = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR;
+                    pipeline_rendering_create_info.colorAttachmentCount    = static_cast<uint32_t>(attachment_formats.size());
+                    pipeline_rendering_create_info.pColorAttachmentFormats = attachment_formats.data();
+                }
+
+                // Pipeline
+                VkGraphicsPipelineCreateInfo pipeline_info = {};
+                pipeline_info.pNext                        = &pipeline_rendering_create_info;
+                pipeline_info.sType                        = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+                pipeline_info.stageCount                   = static_cast<uint32_t>(shader_stages.size());
+                pipeline_info.pStages                      = shader_stages.data();
+                pipeline_info.pVertexInputState            = &vertex_input_state;
+                pipeline_info.pInputAssemblyState          = &input_assembly_state;
+                pipeline_info.pDynamicState                = dynamic_states.empty() ? nullptr : &dynamic_state;
+                pipeline_info.pViewportState               = &viewport_state;
+                pipeline_info.pRasterizationState          = &rasterizer_state;
+                pipeline_info.pMultisampleState            = &multisampling_state;
+                pipeline_info.pColorBlendState             = &color_blend_state;
+                pipeline_info.pDepthStencilState           = &depth_stencil_state;
+                pipeline_info.layout                       = static_cast<VkPipelineLayout>(m_resource_pipeline_layout);
+                pipeline_info.renderPass                   = nullptr;
             
                 // Create
                 auto pipeline = reinterpret_cast<VkPipeline*>(&m_resource_pipeline);

@@ -128,7 +128,7 @@ namespace Spartan
 
             // Generate frame mips so that the reflections can simulate roughness
             const bool luminance_antiflicker = true;
-            Pass_AMD_FidelityFX_SinglePassDowsnampler(cmd_list, rt2, luminance_antiflicker);
+            Pass_AMD_FidelityFX_SinglePassDownsampler(cmd_list, rt2, luminance_antiflicker);
 
             // Blur the smaller mips to reduce blockiness/flickering
             for (uint32_t i = 1; i < rt2->GetMipCount(); i++)
@@ -158,7 +158,9 @@ namespace Spartan
     {
         // Set render state
         static RHI_PipelineState pso;
-        pso.pass_name = "Pass_UpdateFrameBuffer";
+        pso.profile    = false;
+        pso.gpu_marker = false;
+        pso.pass_name  = "Pass_UpdateFrameBuffer";
 
         // Draw
         if (cmd_list->BeginRenderPass(pso))
@@ -218,7 +220,7 @@ namespace Spartan
             pso.depth_stencil_state             = is_transparent_pass ? m_depth_stencil_r_off.get() : m_depth_stencil_rw_off.get();
             pso.render_target_color_textures[0] = tex_color; // always bind so we can clear to white (in case there are no transparent objects)
             pso.render_target_depth_texture     = tex_depth;
-            pso.clear_stencil                   = rhi_stencil_dont_care;
+            pso.clear_stencil                   = rhi_depth_stencil_dont_care;
             pso.viewport                        = tex_depth->GetViewport();
             pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
             pso.pass_name                       = is_transparent_pass ? "Pass_ShadowMaps_Color" : "Pass_ShadowMaps_Depth";
@@ -231,7 +233,7 @@ namespace Spartan
 
                 // Set clear values
                 pso.clear_color[0] = Vector4::One;
-                pso.clear_depth    = is_transparent_pass ? rhi_depth_load : GetClearDepth();
+                pso.clear_depth    = is_transparent_pass ? rhi_depth_stencil_load : GetClearDepth();
 
                 const Matrix& view_projection = light->GetViewMatrix(array_index) * light->GetProjectionMatrix(array_index);
 
@@ -360,7 +362,7 @@ namespace Spartan
             pso.render_target_depth_texture     = probe->GetDepthTexture();
             pso.clear_color[0]                  = Vector4::Zero;
             pso.clear_depth                     = GetClearDepth();
-            pso.clear_stencil                   = rhi_stencil_dont_care;
+            pso.clear_stencil                   = rhi_depth_stencil_dont_care;
             pso.viewport                        = probe->GetColorTexture()->GetViewport();
             pso.pass_name                       = "Pass_ReflectionProbes";
             pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
@@ -566,8 +568,8 @@ namespace Spartan
         pso.render_target_color_textures[3] = tex_velocity;
         pso.clear_color[3]                  = !is_transparent_pass ? clear_color_sky : rhi_color_load;
         pso.render_target_depth_texture     = tex_depth;
-        pso.clear_depth                     = (is_transparent_pass || depth_prepass) ? rhi_depth_load : GetClearDepth();
-        pso.clear_stencil                   = rhi_stencil_dont_care;
+        pso.clear_depth                     = (is_transparent_pass || depth_prepass) ? rhi_depth_stencil_load : GetClearDepth();
+        pso.clear_stencil                   = rhi_depth_stencil_dont_care;
         pso.viewport                        = tex_albedo->GetViewport();
         pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
         pso.pass_name                       = is_transparent_pass ? "GBuffer_Transparent" : "GBuffer_Opaque";
@@ -709,6 +711,8 @@ namespace Spartan
         RHI_Texture* tex_ssao    = RENDER_TARGET(RenderTarget::Ssao).get();
         RHI_Texture* tex_ssao_gi = RENDER_TARGET(RenderTarget::Ssao_Gi).get();
 
+        cmd_list->StartMarker("Pass_Ssao");
+
         // Set render state
         static RHI_PipelineState pso;
         pso.shader_compute = shader_c;
@@ -743,6 +747,8 @@ namespace Spartan
         const float pixel_stride = 2.0f;
         Pass_Blur_Gaussian(cmd_list, tex_ssao, depth_aware, sigma, pixel_stride);
         Pass_Blur_Gaussian(cmd_list, tex_ssao_gi, depth_aware, sigma, pixel_stride);
+
+        cmd_list->EndMarker();
     }
 
     void Renderer::Pass_Ssr(RHI_CommandList* cmd_list, RHI_Texture* tex_in)
@@ -757,6 +763,8 @@ namespace Spartan
 
         // Acquire render targets
         RHI_Texture* tex_ssr = RENDER_TARGET(RenderTarget::Ssr).get();
+
+        cmd_list->StartMarker("Pass_Ssr");
 
         // Set render state
         static RHI_PipelineState pso;
@@ -782,7 +790,6 @@ namespace Spartan
             cmd_list->SetTexture(Renderer::Bindings_Srv::gbuffer_depth,    RENDER_TARGET(RenderTarget::Gbuffer_Depth));
             cmd_list->SetTexture(Renderer::Bindings_Srv::gbuffer_material, RENDER_TARGET(RenderTarget::Gbuffer_Material));
             cmd_list->SetTexture(Renderer::Bindings_Srv::gbuffer_velocity, RENDER_TARGET(RenderTarget::Gbuffer_Velocity));
-            cmd_list->SetTexture(Renderer::Bindings_Srv::ssao,             RENDER_TARGET(RenderTarget::Ssao)); // not used but set to prevent Vulkan validation error
 
             cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
             cmd_list->EndRenderPass();
@@ -790,7 +797,7 @@ namespace Spartan
 
         // Generate frame mips so that we can simulate roughness
         const bool luminance_antiflicker = false;
-        Pass_AMD_FidelityFX_SinglePassDowsnampler(cmd_list, tex_ssr, luminance_antiflicker);
+        Pass_AMD_FidelityFX_SinglePassDownsampler(cmd_list, tex_ssr, luminance_antiflicker);
 
         // Blur the smaller mips to reduce blockiness/flickering
         for (uint32_t i = 1; i < tex_ssr->GetMipCount(); i++)
@@ -800,6 +807,8 @@ namespace Spartan
             const float pixel_stride = 1.0;
             Pass_Blur_Gaussian(cmd_list, tex_ssr, depth_aware, sigma, pixel_stride, i);
         }
+
+        cmd_list->EndMarker();
     }
 
     void Renderer::Pass_Light(RHI_CommandList* cmd_list, const bool is_transparent_pass)
@@ -960,12 +969,10 @@ namespace Spartan
         pso.blend_state                     = m_blend_additive.get();
         pso.render_target_color_textures[0] = tex_out;
         pso.clear_color[0]                  = rhi_color_load;
-        pso.render_target_depth_texture     = nullptr;
-        pso.clear_depth                     = rhi_depth_dont_care;
-        pso.clear_stencil                   = rhi_stencil_dont_care;
         pso.viewport                        = tex_out->GetViewport();
         pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
         pso.pass_name                       = is_transparent_pass ? "Pass_Light_ImageBased_Transparent" : "Pass_Light_ImageBased_Opaque";
+        pso.can_use_vertex_index_buffers    = false;
 
         // Begin commands
         if (cmd_list->BeginRenderPass(pso))
@@ -1100,6 +1107,8 @@ namespace Spartan
         shared_ptr<RHI_Texture>& rt_frame_render_output_in  = RENDER_TARGET(RenderTarget::Frame_Output);   // output res
         shared_ptr<RHI_Texture>& rt_frame_render_output_out = RENDER_TARGET(RenderTarget::Frame_Output_2); // output res
 
+        cmd_list->StartMarker("Pass_PostProcess");
+
         // Depth of Field
         if (GetOption(Renderer::Option::DepthOfField))
         {
@@ -1196,6 +1205,8 @@ namespace Spartan
             rt_frame_render_output_in.swap(rt_frame_render_output_out);
         }
 
+        cmd_list->EndMarker();
+
         rt_frame_render_output_in.swap(rt_frame_render_output_out);
 
         // Passes that render on top of each other
@@ -1265,6 +1276,8 @@ namespace Spartan
         // Acquire render target
         RHI_Texture* tex_bloom = RENDER_TARGET(RenderTarget::Bloom).get();
 
+        cmd_list->StartMarker("Pass_Bloom");
+
         // Luminance
         {
             // Set render state
@@ -1293,7 +1306,7 @@ namespace Spartan
 
         // Generate mips
         const bool luminance_antiflicker = true;
-        Pass_AMD_FidelityFX_SinglePassDowsnampler(cmd_list, tex_bloom, luminance_antiflicker);
+        Pass_AMD_FidelityFX_SinglePassDownsampler(cmd_list, tex_bloom, luminance_antiflicker);
 
         // Starting from the lowest mip, upsample and blend with the higher one
         {
@@ -1356,6 +1369,8 @@ namespace Spartan
                 cmd_list->EndRenderPass();
             }
         }
+
+        cmd_list->EndMarker();
     }
 
     void Renderer::Pass_PostProcess_ToneMapping(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
@@ -1701,7 +1716,7 @@ namespace Spartan
         }
     }
 
-    void Renderer::Pass_AMD_FidelityFX_SinglePassDowsnampler(RHI_CommandList* cmd_list, RHI_Texture* tex, const bool luminance_antiflicker)
+    void Renderer::Pass_AMD_FidelityFX_SinglePassDownsampler(RHI_CommandList* cmd_list, RHI_Texture* tex, const bool luminance_antiflicker)
     {
         // AMD FidelityFX Single Pass Downsampler.
         // Provides an RDNA™-optimized solution for generating up to 12 MIP levels of a texture.
@@ -2231,6 +2246,8 @@ namespace Spartan
             m_profiler->SetEnabled(true);
         }
 
+        cmd_list->StartMarker("Pass_PeformanceMetrics");
+
         // Set render state
         static RHI_PipelineState pso;
         pso.shader_vertex                   = shader_v.get();
@@ -2241,6 +2258,7 @@ namespace Spartan
         pso.render_target_color_textures[0] = tex_out;
         pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
         pso.viewport                        = tex_out->GetViewport();
+        pso.gpu_marker                      = false;
         pso.pass_name                       = "Pass_PeformanceMetrics";
 
         // Update text
@@ -2279,6 +2297,8 @@ namespace Spartan
             cmd_list->DrawIndexed(m_font->GetIndexCount());
             cmd_list->EndRenderPass();
         }
+
+        cmd_list->EndMarker();
     }
 
     void Renderer::Pass_BrdfSpecularLut(RHI_CommandList* cmd_list)
@@ -2398,7 +2418,7 @@ namespace Spartan
 
             // Downsample
             const bool luminance_antiflicker = false;
-            Pass_AMD_FidelityFX_SinglePassDowsnampler(m_cmd_current, texture, luminance_antiflicker);
+            Pass_AMD_FidelityFX_SinglePassDownsampler(m_cmd_current, texture, luminance_antiflicker);
         }
     }
 }
