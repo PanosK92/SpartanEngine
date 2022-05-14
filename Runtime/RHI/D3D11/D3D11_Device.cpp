@@ -382,4 +382,9 @@ namespace Spartan
 
         m_timestamp_period = static_cast<float>(disjoint_data.Frequency);
     }
+
+    bool RHI_Device::ResetCommandPool()
+    {
+        return true;
+    }
 }
