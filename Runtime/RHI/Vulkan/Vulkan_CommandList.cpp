@@ -87,7 +87,7 @@ namespace Spartan
         RHI_Context* rhi_context = m_rhi_device->GetContextRhi();
 
         // Command buffer
-        vulkan_utility::command_buffer::create(m_rhi_device->GetCmdPoolGraphics(), m_resource, VK_COMMAND_BUFFER_LEVEL_PRIMARY);
+        vulkan_utility::command_buffer::create(m_rhi_device->GetCommandPoolGraphics(), m_resource, VK_COMMAND_BUFFER_LEVEL_PRIMARY);
         vulkan_utility::debug::set_name(static_cast<VkCommandBuffer>(m_resource), "cmd_list");
 
         // Sync - Fence
@@ -117,7 +117,7 @@ namespace Spartan
         m_rhi_device->QueueWaitAll();
 
         // Command buffer
-        vulkan_utility::command_buffer::destroy(m_rhi_device->GetCmdPoolGraphics(), m_resource);
+        vulkan_utility::command_buffer::destroy(m_rhi_device->GetCommandPoolGraphics(), m_resource);
 
         // Query pool
         if (m_query_pool)
@@ -129,15 +129,7 @@ namespace Spartan
 
     void RHI_CommandList::Begin()
     {
-        // If the command list is in use, wait for it
-        if (m_state == RHI_CommandListState::Submitted)
-        {
-            Wait();
-        }
-
-        // Validate a few things
-        SP_ASSERT(m_resource != nullptr);
-        SP_ASSERT(m_rhi_device != nullptr);
+        // Validate command list state
         SP_ASSERT(m_state == RHI_CommandListState::Idle);
 
         // Get queries
@@ -172,7 +164,7 @@ namespace Spartan
         VkCommandBufferBeginInfo begin_info = {};
         begin_info.sType                    = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
         begin_info.flags                    = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-        SP_ASSERT(vulkan_utility::error::check(vkBeginCommandBuffer(static_cast<VkCommandBuffer>(m_resource), &begin_info)) && "Failed to begin command lsit");
+        SP_ASSERT(vulkan_utility::error::check(vkBeginCommandBuffer(static_cast<VkCommandBuffer>(m_resource), &begin_info)) && "Failed to begin command list");
 
         vkCmdResetQueryPool(static_cast<VkCommandBuffer>(m_resource), static_cast<VkQueryPool>(m_query_pool), 0, m_max_timestamps);
 
@@ -270,7 +262,6 @@ namespace Spartan
         m_state = RHI_CommandListState::Idle;
         return true;
     }
-
     bool RHI_CommandList::BeginRenderPass(RHI_PipelineState& pipeline_state)
     {
         // Validate command list state

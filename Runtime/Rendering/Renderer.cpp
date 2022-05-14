@@ -246,6 +246,21 @@ namespace Spartan
         m_cmd_index   = (m_cmd_index + 1) % static_cast<uint32_t>(m_cmd_lists.size());
         m_cmd_current = m_cmd_index < static_cast<uint32_t>(m_cmd_lists.size()) ? m_cmd_lists[m_cmd_index].get() : nullptr;
 
+        // Reset command lists (via resetting the command pool)
+        if (m_cmd_index == 0)
+        {
+            // If this is not the first run, it means that we have to wait as well.
+            if (m_frame_num != 0)
+            {
+                for (uint32_t i = 0; i < static_cast<uint32_t>(m_cmd_lists.size()); i++)
+                {
+                    m_cmd_lists[i]->Wait();
+                }
+            }
+
+            m_rhi_device->ResetCommandPool();
+        }
+
         // Reset dynamic buffer indices when we come back to the first command list
         if (m_cmd_index == 0)
         {

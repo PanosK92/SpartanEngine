@@ -59,6 +59,7 @@ namespace Spartan
         bool End();
         bool Submit(RHI_Semaphore* wait_semaphore);
         bool Reset();
+
         // Waits for any submitted work (if any).
         void Wait();
         // Causes the command list to ignore the first submission call (useful when the command list refers to resources which have been destroyed).
@@ -136,12 +137,14 @@ namespace Spartan
         // GPU
         static uint32_t Gpu_GetMemory(RHI_Device* rhi_device);
         static uint32_t Gpu_GetMemoryUsed(RHI_Device* rhi_device);
-        
+
+        // State
+        const RHI_CommandListState GetState() const { return m_state; }
+
         // Misc
         void ResetDescriptorCache();
         void* GetResource_CommandBuffer()      const { return m_resource; }
         RHI_Semaphore* GetProcessedSemaphore()       { return m_processed_semaphore.get(); }
-        const RHI_CommandListState GetState()  const { return m_state; }
 
     private:    
         void Timeblock_Start(const char* name, const bool profile, const bool gpu_markers);
