@@ -40,21 +40,16 @@ namespace Spartan
 {
     RHI_PipelineState::RHI_PipelineState()
     {
-        m_frame_buffers.fill(nullptr);
         clear_color.fill(rhi_color_load);
     }
 
     RHI_PipelineState::~RHI_PipelineState()
     {
-        DestroyFrameBuffer();
+
     }
 
     bool RHI_PipelineState::IsValid()
     {
-        // Deduce if marking and profiling should occur
-        profile = pass_name != nullptr;
-        mark    = pass_name != nullptr;
-
         // Deduce states
         bool has_shader_compute  = shader_compute ? shader_compute->IsCompiled() : false;
         bool has_shader_vertex   = shader_vertex  ? shader_vertex->IsCompiled()  : false;
@@ -71,7 +66,6 @@ namespace Spartan
         // Validate graphics states
         if (is_graphics_pso && !has_graphics_states)
         {
-            LOG_ERROR("Invalid graphics pipeline state. Not all required graphics states have been provided.");
             return false;
         }
 
@@ -80,13 +74,11 @@ namespace Spartan
         {
             if (!has_render_target && !has_backbuffer)
             {
-                LOG_ERROR("Invalid graphics pipeline state. No render targets or a backbuffer have been provided.");
                 return false;
             }
 
             if (has_render_target && has_backbuffer)
             {
-                LOG_ERROR("Invalid graphics pipeline state. Both a render target and a backbuffer have been provided.");
                 return false;
             }
         }
@@ -124,10 +116,10 @@ namespace Spartan
 
     bool RHI_PipelineState::HasClearValues()
     {
-        if (clear_depth != rhi_depth_load && clear_depth != rhi_depth_dont_care)
+        if (clear_depth != rhi_depth_stencil_load && clear_depth != rhi_depth_stencil_dont_care)
             return true;
 
-        if (clear_stencil != rhi_stencil_load && clear_stencil != rhi_stencil_dont_care)
+        if (clear_stencil != rhi_depth_stencil_load && clear_stencil != rhi_depth_stencil_dont_care)
             return true;
 
         for (const Math::Vector4& color : clear_color)
@@ -139,58 +131,59 @@ namespace Spartan
         return false;
     }
     
-    uint32_t RHI_PipelineState::ComputeHash()
+    uint32_t RHI_PipelineState::ComputeHash() const
     {
-        m_hash = 0;
+        uint32_t hash = 0;
 
-        Utility::Hash::hash_combine(m_hash, dynamic_scissor);
-        Utility::Hash::hash_combine(m_hash, viewport.x);
-        Utility::Hash::hash_combine(m_hash, viewport.y);
-        Utility::Hash::hash_combine(m_hash, viewport.width);
-        Utility::Hash::hash_combine(m_hash, viewport.height);
-        Utility::Hash::hash_combine(m_hash, primitive_topology);
-        Utility::Hash::hash_combine(m_hash, render_target_color_texture_array_index);
-        Utility::Hash::hash_combine(m_hash, render_target_depth_stencil_texture_array_index);
-        Utility::Hash::hash_combine(m_hash, render_target_swapchain ? render_target_swapchain->GetObjectId() : 0);
+        Utility::Hash::hash_combine(hash, can_use_vertex_index_buffers);
+        Utility::Hash::hash_combine(hash, dynamic_scissor);
+        Utility::Hash::hash_combine(hash, viewport.x);
+        Utility::Hash::hash_combine(hash, viewport.y);
+        Utility::Hash::hash_combine(hash, viewport.width);
+        Utility::Hash::hash_combine(hash, viewport.height);
+        Utility::Hash::hash_combine(hash, primitive_topology);
+        Utility::Hash::hash_combine(hash, render_target_color_texture_array_index);
+        Utility::Hash::hash_combine(hash, render_target_depth_stencil_texture_array_index);
+        Utility::Hash::hash_combine(hash, render_target_swapchain ? render_target_swapchain->GetObjectId() : 0);
 
         if (!dynamic_scissor)
         {
-            Utility::Hash::hash_combine(m_hash, scissor.left);
-            Utility::Hash::hash_combine(m_hash, scissor.top);
-            Utility::Hash::hash_combine(m_hash, scissor.right);
-            Utility::Hash::hash_combine(m_hash, scissor.bottom);
+            Utility::Hash::hash_combine(hash, scissor.left);
+            Utility::Hash::hash_combine(hash, scissor.top);
+            Utility::Hash::hash_combine(hash, scissor.right);
+            Utility::Hash::hash_combine(hash, scissor.bottom);
         }
 
         if (rasterizer_state)
         {
-            Utility::Hash::hash_combine(m_hash, rasterizer_state->GetObjectId());
+            Utility::Hash::hash_combine(hash, rasterizer_state->GetObjectId());
         }
 
         if (blend_state)
         {
-            Utility::Hash::hash_combine(m_hash, blend_state->GetObjectId());
+            Utility::Hash::hash_combine(hash, blend_state->GetObjectId());
         }
 
         if (depth_stencil_state)
         {
-            Utility::Hash::hash_combine(m_hash, depth_stencil_state->GetObjectId());
+            Utility::Hash::hash_combine(hash, depth_stencil_state->GetObjectId());
         }
 
         // Shaders
         {
             if (shader_compute)
             {
-                Utility::Hash::hash_combine(m_hash, shader_compute->GetObjectId());
+                Utility::Hash::hash_combine(hash, shader_compute->GetObjectId());
             }
 
             if (shader_vertex)
             {
-                Utility::Hash::hash_combine(m_hash, shader_vertex->GetObjectId());
+                Utility::Hash::hash_combine(hash, shader_vertex->GetObjectId());
             }
 
             if (shader_pixel)
             {
-                Utility::Hash::hash_combine(m_hash, shader_pixel->GetObjectId());
+                Utility::Hash::hash_combine(hash, shader_pixel->GetObjectId());
             }
         }
 
@@ -204,10 +197,10 @@ namespace Spartan
             {
                 if (RHI_Texture* texture = render_target_color_textures[i])
                 {
-                    Utility::Hash::hash_combine(m_hash, texture->GetObjectId());
+                    Utility::Hash::hash_combine(hash, texture->GetObjectId());
 
                     load_op = clear_color[i] == rhi_color_dont_care ? 0 : clear_color[i] == rhi_color_load ? 1 : 2;
-                    Utility::Hash::hash_combine(m_hash, load_op);
+                    Utility::Hash::hash_combine(hash, load_op);
 
                     has_rt_color = true;
                 }
@@ -216,13 +209,13 @@ namespace Spartan
             // Depth
             if (render_target_depth_texture)
             {
-                Utility::Hash::hash_combine(m_hash, render_target_depth_texture->GetObjectId());
+                Utility::Hash::hash_combine(hash, render_target_depth_texture->GetObjectId());
 
-                load_op = clear_depth == rhi_depth_dont_care ? 0 : clear_depth == rhi_depth_load ? 1 : 2;
-                Utility::Hash::hash_combine(m_hash, load_op);
+                load_op = clear_depth == rhi_depth_stencil_dont_care ? 0 : clear_depth == rhi_depth_stencil_load ? 1 : 2;
+                Utility::Hash::hash_combine(hash, load_op);
 
-                load_op = clear_stencil == rhi_stencil_dont_care ? 0 : clear_stencil == rhi_stencil_load ? 1 : 2;
-                Utility::Hash::hash_combine(m_hash, load_op);
+                load_op = clear_stencil == rhi_depth_stencil_dont_care ? 0 : clear_stencil == rhi_depth_stencil_load ? 1 : 2;
+                Utility::Hash::hash_combine(hash, load_op);
             }
         }
 
@@ -230,21 +223,21 @@ namespace Spartan
         {
             if (has_rt_color)
             {
-                Utility::Hash::hash_combine(m_hash, render_target_color_layout_initial);
-                Utility::Hash::hash_combine(m_hash, render_target_color_layout_final);
+                Utility::Hash::hash_combine(hash, render_target_color_layout_initial);
+                Utility::Hash::hash_combine(hash, render_target_color_layout_final);
             }
 
             if (render_target_depth_texture)
             {
-                Utility::Hash::hash_combine(m_hash, render_target_depth_layout_initial);
-                Utility::Hash::hash_combine(m_hash, render_target_depth_layout_final);
+                Utility::Hash::hash_combine(hash, render_target_depth_layout_initial);
+                Utility::Hash::hash_combine(hash, render_target_depth_layout_final);
             }
         }
 
-        return m_hash;
+        return hash;
     }
 
-    void RHI_PipelineState::TransitionRenderTargetLayouts(RHI_CommandList* cmd_list)
+void RHI_PipelineState::TransitionRenderTargetLayouts(RHI_CommandList* cmd_list)
     {
         // Color
         {

@@ -38,19 +38,14 @@ namespace Spartan
         ~RHI_PipelineState();
 
         bool IsValid();
-        bool CreateFrameBuffer(const RHI_Device* rhi_device);
-        void* GetFrameBuffer() const;
-        uint32_t ComputeHash();
         void TransitionRenderTargetLayouts(RHI_CommandList* cmd_list);
         uint32_t GetWidth() const;
         uint32_t GetHeight() const;
+        uint32_t ComputeHash() const;
         bool HasClearValues();
-        uint32_t GetHash()                            const { return m_hash; }
-        bool IsGraphics()                             const { return (shader_vertex != nullptr || shader_pixel != nullptr) && !shader_compute; }
-        bool IsCompute()                              const { return shader_compute != nullptr && !IsGraphics(); }
-        bool IsDummy()                                const { return !shader_compute && !shader_vertex && !shader_pixel; }
-        void* GetRenderPass()                         const { return m_render_pass; }
-        bool operator==(const RHI_PipelineState& rhs) const { return m_hash == rhs.GetHash(); }
+        bool IsGraphics() const { return (shader_vertex != nullptr || shader_pixel != nullptr) && !shader_compute; }
+        bool IsCompute()  const { return shader_compute != nullptr && !IsGraphics(); }
+        bool IsDummy()    const { return !shader_compute && !shader_vertex && !shader_pixel; }
 
         //= Static, modification can potentially generate a new pipeline ===================
         RHI_Shader* shader_vertex                     = nullptr;
@@ -64,6 +59,7 @@ namespace Spartan
         RHI_Viewport viewport                         = RHI_Viewport::Undefined;
         Math::Rectangle scissor                       = Math::Rectangle::Zero;
         bool dynamic_scissor                          = false;
+        bool can_use_vertex_index_buffers             = true;
 
         // RTs
         RHI_Texture* render_target_depth_texture = nullptr;
@@ -84,8 +80,8 @@ namespace Spartan
         uint32_t render_target_depth_stencil_texture_array_index = 0;
 
         // Clear values
-        float clear_depth       = rhi_depth_load;
-        uint32_t clear_stencil  = rhi_stencil_load;
+        float clear_depth   = rhi_depth_stencil_load;
+        float clear_stencil = rhi_depth_stencil_load;
         std::array<Math::Vector4, rhi_max_render_target_count> clear_color;
         //==================================================================================
 
@@ -100,21 +96,15 @@ namespace Spartan
 
         // Profiling
         const char* pass_name = nullptr;
-        bool mark             = false;
-        bool profile          = false;
+        bool gpu_marker       = true;
+        bool profile          = true;
         //============================================================================
 
     private:
-        void DestroyFrameBuffer();
-
         RHI_Image_Layout render_target_color_layout_initial = RHI_Image_Layout::Undefined;
         RHI_Image_Layout render_target_color_layout_final   = RHI_Image_Layout::Undefined;
         RHI_Image_Layout render_target_depth_layout_initial = RHI_Image_Layout::Undefined;
         RHI_Image_Layout render_target_depth_layout_final   = RHI_Image_Layout::Undefined;
-
-        uint32_t m_hash  = 0;
-        void* m_render_pass = nullptr;
-        std::array<void*, rhi_max_constant_buffer_count> m_frame_buffers;
 
         // Dependencies
         const RHI_Device* m_rhi_device = nullptr;

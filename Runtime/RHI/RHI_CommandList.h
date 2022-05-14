@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI_Definition.h"
 #include "../Core/SpartanObject.h"
 #include "../Rendering/Renderer.h"
+#include "RHI_PipelineState.h"
 //================================
 
 namespace Spartan
@@ -67,18 +68,26 @@ namespace Spartan
 
         // Render pass
         bool BeginRenderPass(RHI_PipelineState& pipeline_state);
-        bool EndRenderPass();
+        void EndRenderPass();
 
         // Clear
         void ClearPipelineStateRenderTargets(RHI_PipelineState& pipeline_state);
-        void ClearRenderTarget(RHI_Texture* texture, const uint32_t color_index = 0, const uint32_t depth_stencil_index = 0, const bool storage = false, const Math::Vector4& clear_color = rhi_color_load, const float clear_depth = rhi_depth_load, const uint32_t clear_stencil = rhi_stencil_load);
+        void ClearRenderTarget(
+            RHI_Texture* texture,
+            const uint32_t color_index = 0,
+            const uint32_t depth_stencil_index = 0,
+            const bool storage = false,
+            const Math::Vector4& clear_color = rhi_color_load,
+            const float clear_depth = rhi_depth_stencil_load,
+            const float clear_stencil = rhi_depth_stencil_load
+        );
 
         // Draw
-        bool Draw(uint32_t vertex_count, uint32_t vertex_start_index = 0);
-        bool DrawIndexed(uint32_t index_count, uint32_t index_offset = 0, uint32_t vertex_offset = 0);
+        void Draw(uint32_t vertex_count, uint32_t vertex_start_index = 0);
+        void DrawIndexed(uint32_t index_count, uint32_t index_offset = 0, uint32_t vertex_offset = 0);
 
         // Dispatch
-        bool Dispatch(uint32_t x, uint32_t y, uint32_t z, bool async = false);
+        void Dispatch(uint32_t x, uint32_t y, uint32_t z, bool async = false);
 
         // Blit
         void Blit(RHI_Texture* source, RHI_Texture* destination);
@@ -115,6 +124,10 @@ namespace Spartan
         void SetStructuredBuffer(const uint32_t slot, RHI_StructuredBuffer* structured_buffer) const;
         inline void SetStructuredBuffer(const Renderer::Bindings_Sb slot, const std::shared_ptr<RHI_StructuredBuffer>& structured_buffer) const { SetStructuredBuffer(static_cast<uint32_t>(slot), structured_buffer.get()); }
 
+        // Markers
+        void StartMarker(const char* name);
+        void EndMarker();
+
         // Timestamps
         bool Timestamp_Start(void* query);
         bool Timestamp_End(void* query);
@@ -126,33 +139,30 @@ namespace Spartan
         
         // Misc
         void ResetDescriptorCache();
-        void* GetResource_CommandBuffer()       const { return m_resource; }
-        RHI_Semaphore* GetProcessedSemaphore()        { return m_processed_semaphore.get(); }
-        const RHI_CommandListState GetState()   const { return m_state; }
+        void* GetResource_CommandBuffer()      const { return m_resource; }
+        RHI_Semaphore* GetProcessedSemaphore()       { return m_processed_semaphore.get(); }
+        const RHI_CommandListState GetState()  const { return m_state; }
 
-    private:
-        void Timeblock_Start(const RHI_PipelineState* pipeline_state);
-        void Timeblock_End(const RHI_PipelineState* pipeline_state);
-        bool Deferred_BeginRenderPass();
-        bool Deferred_BindPipeline();
-        bool Deferred_BindDescriptorSet();
-        bool OnDraw();
+    private:    
+        void Timeblock_Start(const char* name, const bool profile, const bool gpu_markers);
+        void Timeblock_End();
+
+        void OnDraw();
         void UnbindOutputTextures();
 
         RHI_Pipeline* m_pipeline                                    = nullptr; 
         Renderer* m_renderer                                        = nullptr;
-        RHI_PipelineCache* m_pipeline_cache                         = nullptr;
         RHI_DescriptorSetLayoutCache* m_descriptor_set_layout_cache = nullptr;
-        RHI_PipelineState* m_pipeline_state                         = nullptr;
+        RHI_PipelineState m_pipeline_state;
         RHI_Device* m_rhi_device                                    = nullptr;
         Profiler* m_profiler                                        = nullptr;
         void* m_resource                                            = nullptr;
         std::shared_ptr<RHI_Fence> m_processed_fence                = nullptr;
         std::shared_ptr<RHI_Semaphore> m_processed_semaphore        = nullptr;
-        std::atomic<bool> m_render_pass_active                      = false;
-        std::atomic<bool> m_pipeline_active                         = false;
         std::atomic<bool> m_flushed                                 = false;
         std::atomic<bool> m_discard                                 = false;
+        bool m_is_render_pass_active                                = false;
+        bool m_pipeline_state_changed                               = false;
         std::atomic<RHI_CommandListState> m_state                   = RHI_CommandListState::Idle;
         static const uint8_t m_resource_array_length_max            = 16;
         static bool m_memory_query_support;
@@ -175,6 +185,9 @@ namespace Spartan
         uint32_t m_timestamp_index             = 0;
         static const uint32_t m_max_timestamps = 512;
         std::array<uint64_t, m_max_timestamps> m_timestamps;
+
+        // <hash of pipeline state, pipeline state object>
+        static std::unordered_map<uint32_t, std::shared_ptr<RHI_Pipeline>> m_cache;
 
         // Variables to minimise state changes
         uint64_t m_vertex_buffer_id     = 0;

@@ -366,7 +366,6 @@ namespace Spartan
         void SetGlobalShaderResources(RHI_CommandList* cmd_list) const;
         void RequestTextureMipGeneration(RHI_Texture* texture);
         const std::shared_ptr<RHI_Device>& GetRhiDevice()           const { return m_rhi_device; }
-        RHI_PipelineCache* GetPipelineCache()                       const { return m_pipeline_cache.get(); }
         RHI_DescriptorSetLayoutCache* GetDescriptorLayoutSetCache() const { return m_descriptor_set_layout_cache.get(); }
         RHI_Texture* GetFrameTexture()                                    { return GetRenderTarget(Renderer::RenderTarget::Frame_Output).get(); }
         auto GetFrameNum()                                          const { return m_frame_num; }
@@ -417,7 +416,7 @@ namespace Spartan
         void Pass_PostProcess_Bloom(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
         void Pass_Blur_Gaussian(RHI_CommandList* cmd_list, RHI_Texture* tex_in, const bool depth_aware, const float sigma, const float pixel_stride, const int mip = -1);
         void Pass_AMD_FidelityFX_ContrastAdaptiveSharpening(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
-        void Pass_AMD_FidelityFX_SinglePassDowsnampler(RHI_CommandList* cmd_list, RHI_Texture* tex, const bool luminance_antiflicker);
+        void Pass_AMD_FidelityFX_SinglePassDownsampler(RHI_CommandList* cmd_list, RHI_Texture* tex, const bool luminance_antiflicker);
         void Pass_AMD_FidelityFX_SuperResolution(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out, RHI_Texture* tex_out_scratch);
         void Pass_Lines(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
         void Pass_DebugMeshes(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
@@ -582,7 +581,6 @@ namespace Spartan
 
         // RHI Core
         std::shared_ptr<RHI_Device> m_rhi_device;
-        std::shared_ptr<RHI_PipelineCache> m_pipeline_cache;
         std::shared_ptr<RHI_DescriptorSetLayoutCache> m_descriptor_set_layout_cache;
         std::vector<std::shared_ptr<RHI_CommandList>> m_cmd_lists;
         RHI_CommandList* m_cmd_current = nullptr;

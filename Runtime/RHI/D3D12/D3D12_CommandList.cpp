@@ -125,9 +125,9 @@ namespace Spartan
         return true;
     }
     
-    bool RHI_CommandList::EndRenderPass()
+    void RHI_CommandList::EndRenderPass()
     {
-        return true;
+
     }
 
     void RHI_CommandList::ClearPipelineStateRenderTargets(RHI_PipelineState& pipeline_state)
@@ -141,20 +141,19 @@ namespace Spartan
         const bool storage                 /*= false*/,
         const Math::Vector4& clear_color   /*= rhi_color_load*/,
         const float clear_depth            /*= rhi_depth_load*/,
-        const uint32_t clear_stencil       /*= rhi_stencil_load*/
+        const float clear_stencil          /*= rhi_stencil_load*/
     )
     {
 
     }
 
-    bool RHI_CommandList::Draw(const uint32_t vertex_count, uint32_t vertex_start_index /*= 0*/)
+    void RHI_CommandList::Draw(const uint32_t vertex_count, uint32_t vertex_start_index /*= 0*/)
     {
         // Validate command list state
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
         // Ensure correct state before attempting to draw
-        if (!OnDraw())
-            return false;
+        OnDraw();
 
         // Draw
         static_cast<ID3D12GraphicsCommandList*>(m_resource)->DrawInstanced(
@@ -166,18 +165,15 @@ namespace Spartan
 
         // Profiler
         m_profiler->m_rhi_draw++;
-
-        return true;
     }
     
-    bool RHI_CommandList::DrawIndexed(const uint32_t index_count, const uint32_t index_offset, const uint32_t vertex_offset)
+    void RHI_CommandList::DrawIndexed(const uint32_t index_count, const uint32_t index_offset, const uint32_t vertex_offset)
     {
         // Validate command list state
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
         // Ensure correct state before attempting to draw
-        if (!OnDraw())
-            return false;
+        OnDraw();
 
         // Draw
         static_cast<ID3D12GraphicsCommandList*>(m_resource)->DrawIndexedInstanced(
@@ -190,26 +186,21 @@ namespace Spartan
 
         // Profile
         m_profiler->m_rhi_draw++;
-
-        return true;
     }
   
-    bool RHI_CommandList::Dispatch(uint32_t x, uint32_t y, uint32_t z, bool async /*= false*/)
+    void RHI_CommandList::Dispatch(uint32_t x, uint32_t y, uint32_t z, bool async /*= false*/)
     {
         // Validate command list state
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
         // Ensure correct state before attempting to draw
-        if (!OnDraw())
-            return false;
+        OnDraw();
 
         // Dispatch
         static_cast<ID3D12GraphicsCommandList*>(m_resource)->Dispatch(x, y, z);
 
         // Profiler
         m_profiler->m_rhi_dispatch++;
-
-        return true;
     }
 
     void RHI_CommandList::Blit(RHI_Texture* source, RHI_Texture* destination)
@@ -299,34 +290,29 @@ namespace Spartan
         return 0;
     }
 
-    void RHI_CommandList::Timeblock_Start(const RHI_PipelineState* pipeline_state)
+    void RHI_CommandList::Timeblock_Start(const char* name, const bool profile, const bool gpu_markers)
     {
 
     }
 
-    void RHI_CommandList::Timeblock_End(const RHI_PipelineState* pipeline_state)
+    void RHI_CommandList::Timeblock_End()
     {
 
     }
 
-    bool RHI_CommandList::Deferred_BeginRenderPass()
+    void RHI_CommandList::StartMarker(const char* name)
     {
-        return true;
+
     }
 
-    bool RHI_CommandList::Deferred_BindPipeline()
+    void RHI_CommandList::EndMarker()
     {
-        return true;
+
     }
 
-    bool RHI_CommandList::Deferred_BindDescriptorSet()
+    void RHI_CommandList::OnDraw()
     {
-        return true;
-    }
 
-    bool RHI_CommandList::OnDraw()
-    {
-        return true;
     }
 
     void RHI_CommandList::UnbindOutputTextures()
