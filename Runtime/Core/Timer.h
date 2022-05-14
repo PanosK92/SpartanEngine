@@ -43,15 +43,15 @@ namespace Spartan
         Timer(Context* context);
         ~Timer() = default;
 
-        //= ISybsystem ======================
+        //= ISybsystem =========================
         void OnTick(double delta_time) override;
-        //===================================
+        //======================================
 
-        //= FPS ==============================================
+        //= FPS ============================================
         void SetFpsLimit(double fps);
         double GetFpsLimit()   const { return m_fps_limit; }
         FpsLimitType GetFpsLimitType();
-        //====================================================
+        //==================================================
 
         auto GetTimeMs()                const { return m_time_ms; }
         auto GetTimeSec()               const { return static_cast<float>(m_time_ms / 1000.0); }
