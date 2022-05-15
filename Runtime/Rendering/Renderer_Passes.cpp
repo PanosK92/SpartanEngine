@@ -1966,6 +1966,11 @@ namespace Spartan
         pso.viewport                        = tex_out->GetViewport();
         pso.pass_name                       = "Pass_Icons";
 
+        if (!m_camera)
+        {
+            return;
+        }
+
         // For each light
         for (const auto& entity : lights)
         {
