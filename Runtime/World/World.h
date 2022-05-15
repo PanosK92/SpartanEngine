@@ -76,7 +76,8 @@ namespace Spartan
     private:
         void Clear();
         void _EntityRemove(const std::shared_ptr<Entity>& entity);
-
+        void CreateDefaultWorldEntities();
+        
         //= COMMON ENTITY CREATION ======================
         std::shared_ptr<Entity> CreateEnvironment();
         std::shared_ptr<Entity> CreateCamera();
