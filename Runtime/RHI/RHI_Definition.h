@@ -258,6 +258,7 @@ namespace Spartan
         General,
         Preinitialized,
         Color_Attachment_Optimal,
+        Depth_Attachment_Optimal,
         Depth_Stencil_Attachment_Optimal,
         Depth_Stencil_Read_Only_Optimal,
         Shader_Read_Only_Optimal,
