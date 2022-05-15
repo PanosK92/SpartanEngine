@@ -83,75 +83,97 @@ namespace Spartan
 
         SCOPED_TIME_BLOCK(m_profiler);
 
-        // Update frame constant buffer
-        Pass_UpdateFrameBuffer(cmd_list);
-
-        // Generate brdf specular lut (only runs once)
-        Pass_BrdfSpecularLut(cmd_list);
-
         // Acquire render targets
-        RHI_Texture* rt1 = RENDER_TARGET(RenderTarget::Frame_Render).get();
-        RHI_Texture* rt2 = RENDER_TARGET(RenderTarget::Frame_Render_2).get();
+        RHI_Texture* rt1       = RENDER_TARGET(RenderTarget::Frame_Render).get();
+        RHI_Texture* rt2       = RENDER_TARGET(RenderTarget::Frame_Render_2).get();
+        RHI_Texture* rt_output = RENDER_TARGET(RenderTarget::Frame_Output).get();
 
-        // Determine if a transparent pass is required
-        const bool do_transparent_pass = !m_entities[ObjectType::GeometryTransparent].empty();
-
-        // Shadow maps
+        // If there is no camera, clear to black
+        if (!m_camera)
         {
-            Pass_ShadowMaps(cmd_list, false);
+            m_cmd_current->ClearRenderTarget(rt_output, 0, 0, false, Vector4(0.0f, 0.0f, 0.0f, 1.0f));
+        }
+        // If there are no entities, clear to the camera's color
+        else if (m_entities[ObjectType::GeometryOpaque].empty() && m_entities[ObjectType::GeometryTransparent].empty() && m_entities[ObjectType::Light].empty())
+        {
+            m_cmd_current->ClearRenderTarget(rt_output, 0, 0, false, m_camera->GetClearColor());
+        }
+        else // Render frame
+        {
+            // Update frame constant buffer
+            Pass_UpdateFrameBuffer(cmd_list);
+
+            // Generate brdf specular lut (only runs once)
+            Pass_BrdfSpecularLut(cmd_list);
+
+            // Determine if a transparent pass is required
+            const bool do_transparent_pass = !m_entities[ObjectType::GeometryTransparent].empty();
+
+            // Shadow maps
+            {
+                Pass_ShadowMaps(cmd_list, false);
+                if (do_transparent_pass)
+                {
+                    Pass_ShadowMaps(cmd_list, true);
+                }
+            }
+
+            Pass_ReflectionProbes(cmd_list);
+
+            // Opaque
+            {
+                bool is_transparent_pass = false;
+
+                Pass_Depth_Prepass(cmd_list);
+                Pass_GBuffer(cmd_list, is_transparent_pass);
+                Pass_Ssao(cmd_list);
+                Pass_Ssr(cmd_list, rt1);
+                Pass_Light(cmd_list, is_transparent_pass); // compute diffuse and specular buffers
+                Pass_Light_Composition(cmd_list, rt1, is_transparent_pass); // compose diffuse, specular, ssao, volumetric etc.
+                Pass_Light_ImageBased(cmd_list, rt1, is_transparent_pass); // apply IBL and SSR
+            }
+
+            // Transparent
             if (do_transparent_pass)
             {
-                Pass_ShadowMaps(cmd_list, true);
-            }
-        }
+                // Blit the frame so that refraction can sample from it
+                cmd_list->Blit(rt1, rt2);
 
-        Pass_ReflectionProbes(cmd_list);
+                // Generate frame mips so that the reflections can simulate roughness
+                const bool luminance_antiflicker = true;
+                Pass_AMD_FidelityFX_SinglePassDownsampler(cmd_list, rt2, luminance_antiflicker);
 
-        // Opaque
-        {
-            bool is_transparent_pass = false;
+                // Blur the smaller mips to reduce blockiness/flickering
+                for (uint32_t i = 1; i < rt2->GetMipCount(); i++)
+                {
+                    const bool depth_aware = false;
+                    const float sigma = 2.0f;
+                    const float pixel_stride = 1.0;
+                    Pass_Blur_Gaussian(cmd_list, rt2, depth_aware, sigma, pixel_stride, i);
+                }
 
-            Pass_Depth_Prepass(cmd_list);
-            Pass_GBuffer(cmd_list, is_transparent_pass);
-            Pass_Ssao(cmd_list);
-            Pass_Ssr(cmd_list, rt1);
-            Pass_Light(cmd_list, is_transparent_pass); // compute diffuse and specular buffers
-            Pass_Light_Composition(cmd_list, rt1, is_transparent_pass); // compose diffuse, specular, ssao, volumetric etc.
-            Pass_Light_ImageBased(cmd_list, rt1, is_transparent_pass); // apply IBL and SSR
-        }
+                bool is_transparent_pass = true;
 
-        // Transparent
-        if (do_transparent_pass)
-        {
-            // Blit the frame so that refraction can sample from it
-            cmd_list->Blit(rt1, rt2);
-
-            // Generate frame mips so that the reflections can simulate roughness
-            const bool luminance_antiflicker = true;
-            Pass_AMD_FidelityFX_SinglePassDownsampler(cmd_list, rt2, luminance_antiflicker);
-
-            // Blur the smaller mips to reduce blockiness/flickering
-            for (uint32_t i = 1; i < rt2->GetMipCount(); i++)
-            {
-                const bool depth_aware      = false;
-                const float sigma           = 2.0f;
-                const float pixel_stride    = 1.0;
-                Pass_Blur_Gaussian(cmd_list, rt2, depth_aware, sigma, pixel_stride, i);
+                Pass_GBuffer(cmd_list, is_transparent_pass);
+                Pass_Light(cmd_list, is_transparent_pass);
+                Pass_Light_Composition(cmd_list, rt1, is_transparent_pass);
+                Pass_Light_ImageBased(cmd_list, rt1, is_transparent_pass);
             }
 
-            bool is_transparent_pass = true;
-
-            Pass_GBuffer(cmd_list, is_transparent_pass);
-            Pass_Light(cmd_list, is_transparent_pass);
-            Pass_Light_Composition(cmd_list, rt1, is_transparent_pass);
-            Pass_Light_ImageBased(cmd_list, rt1, is_transparent_pass);
+            Pass_PostProcess(cmd_list);
         }
 
-        Pass_PostProcess(cmd_list);
+        // Editor related stuff - Passes that render on top of each other
+        Pass_DebugMeshes(cmd_list, rt_output);
+        Pass_Outline(cmd_list, rt_output);
+        Pass_Lines(cmd_list, rt_output);
+        Pass_TransformHandle(cmd_list, rt_output);
+        Pass_Icons(cmd_list, rt_output);
+        Pass_PeformanceMetrics(cmd_list, rt_output);
 
         // No further rendering is done on the final image, and it's displayed by ImGui, so set the correct layout now
         // because the ImGui rendering backend can't. Since Vulkan won't allow setting a layout within a render pass.
-        RENDER_TARGET(RenderTarget::Frame_Output)->SetLayout(RHI_Image_Layout::Shader_Read_Only_Optimal, cmd_list);
+        rt_output->SetLayout(RHI_Image_Layout::Shader_Read_Only_Optimal, cmd_list);
     }
 
     void Renderer::Pass_UpdateFrameBuffer(RHI_CommandList* cmd_list)
@@ -1207,16 +1229,6 @@ namespace Spartan
 
         cmd_list->EndMarker();
 
-        rt_frame_render_output_in.swap(rt_frame_render_output_out);
-
-        // Passes that render on top of each other
-        Pass_DebugMeshes(cmd_list, rt_frame_render_output_out.get());
-        Pass_Outline(cmd_list, rt_frame_render_output_out.get());
-        Pass_Lines(cmd_list, rt_frame_render_output_out.get());
-        Pass_TransformHandle(cmd_list, rt_frame_render_output_out.get());
-        Pass_Icons(cmd_list, rt_frame_render_output_out.get());
-        Pass_PeformanceMetrics(cmd_list, rt_frame_render_output_out.get());
-
         // Swap textures
         rt_frame_render_output_in.swap(rt_frame_render_output_out);
     }
@@ -2018,14 +2030,17 @@ namespace Spartan
         if (!GetOption(Transform_Handle))
             return;
 
-        // Acquire resources
-        RHI_Shader* shader_gizmo_transform_v = m_shaders[Renderer::Shader::Entity_V].get();
-        RHI_Shader* shader_gizmo_transform_p = m_shaders[Renderer::Shader::Entity_Transform_P].get();
-        if (!shader_gizmo_transform_v->IsCompiled() || !shader_gizmo_transform_p->IsCompiled())
+        // Acquire shaders
+        RHI_Shader* shader_v = m_shaders[Renderer::Shader::Entity_V].get();
+        RHI_Shader* shader_p = m_shaders[Renderer::Shader::Entity_Transform_P].get();
+        if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
             return;
 
-        // Transform
+        // Get transform handle (can be null during engine startup)
         shared_ptr<TransformHandle> transform_handle = m_context->GetSubsystem<World>()->GetTransformHandle();
+        if (!transform_handle)
+            return;
+
         if (transform_handle->GetSelectedEntity() != nullptr)
         {
             // The rotation transform draws line primitives, it doesn't have a model that needs to be rendered here.
@@ -2035,8 +2050,8 @@ namespace Spartan
 
             // Set render state
             static RHI_PipelineState pso;
-            pso.shader_vertex                   = shader_gizmo_transform_v;
-            pso.shader_pixel                    = shader_gizmo_transform_p;
+            pso.shader_vertex                   = shader_v;
+            pso.shader_pixel                    = shader_p;
             pso.rasterizer_state                = m_rasterizer_cull_back_solid.get();
             pso.blend_state                     = m_blend_alpha.get();
             pso.depth_stencil_state             = m_depth_stencil_off_off.get();
