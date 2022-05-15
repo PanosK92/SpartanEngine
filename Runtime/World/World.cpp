@@ -62,9 +62,7 @@ namespace Spartan
         m_input    = m_context->GetSubsystem<Input>();
         m_profiler = m_context->GetSubsystem<Profiler>();
 
-        CreateCamera();
-        CreateEnvironment();
-        CreateDirectionalLight();
+        CreateDefaultWorldEntities();
 
         return true;
     }
@@ -155,6 +153,7 @@ namespace Spartan
     void World::New()
     {
         Clear();
+        CreateDefaultWorldEntities();
     }
 
     bool World::SaveToFile(const string& filePathIn)
@@ -399,6 +398,13 @@ namespace Spartan
         {
             parent->AcquireChildren();
         }
+    }
+
+    void World::CreateDefaultWorldEntities()
+    {
+        CreateCamera();
+        CreateEnvironment();
+        CreateDirectionalLight();
     }
 
     shared_ptr<Entity> World::CreateEnvironment()
