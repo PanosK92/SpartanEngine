@@ -62,9 +62,9 @@ namespace Spartan
         std::shared_ptr<RHI_CommandList> CreateCmdList();
 
         // GPU Resources
-        void* Get_Resource(uint32_t i = 0)      const { return m_backbuffer_resource[i]; }
-        void* Get_Resource_View(uint32_t i = 0) const { return m_backbuffer_resource_view[i]; }
-        void* Get_Resource_View_RenderTarget()  const { return m_resource_view; }
+        void* Get_Resource()                   const { return m_backbuffer_resource[0]; }
+        void* Get_Resource_View()              const { return m_backbuffer_resource_view[m_image_index]; }
+        void* Get_Resource_View_RenderTarget() const { return m_resource_view; }
 
     private:
         bool AcquireNextImage();

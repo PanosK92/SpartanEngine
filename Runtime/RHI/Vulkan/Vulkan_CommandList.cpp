@@ -45,7 +45,7 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    std::unordered_map<uint32_t, std::shared_ptr<RHI_Pipeline>> RHI_CommandList::m_cache;
+    unordered_map<uint32_t, shared_ptr<RHI_Pipeline>> RHI_CommandList::m_cache;
 
     static VkAttachmentLoadOp get_color_load_op(const Math::Vector4& color)
     {
@@ -923,7 +923,7 @@ namespace Spartan
                 {
                     VkRenderingAttachmentInfo color_attachment = {};
                     color_attachment.sType                     = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
-                    color_attachment.imageView                 = static_cast<VkImageView>(m_pipeline_state.render_target_swapchain->Get_Resource_View(m_pipeline_state.render_target_swapchain->GetImageIndex()));
+                    color_attachment.imageView                 = static_cast<VkImageView>(m_pipeline_state.render_target_swapchain->Get_Resource_View());
                     color_attachment.imageLayout               = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
                     color_attachment.loadOp                    = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
                     color_attachment.storeOp                   = VK_ATTACHMENT_STORE_OP_STORE;

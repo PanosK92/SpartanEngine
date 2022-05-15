@@ -271,107 +271,98 @@ namespace Spartan
         // Begin
         m_cmd_current->Begin();
 
-        // If there is no camera, clear to black
-        if (!m_camera)
+        // Handle requests (they can come from different threads)
         {
-            m_cmd_current->ClearRenderTarget(RENDER_TARGET(RenderTarget::Frame_Output).get(), 0, 0, false, Vector4(0.0f, 0.0f, 0.0f, 1.0f));
-        }
-        // If there is not camera but no other entities to render, clear to camera's color
-        else if (m_entities[ObjectType::GeometryOpaque].empty() && m_entities[ObjectType::GeometryTransparent].empty() && m_entities[ObjectType::Light].empty())
-        {
-            m_cmd_current->ClearRenderTarget(RENDER_TARGET(RenderTarget::Frame_Output).get(), 0, 0, false, m_camera->GetClearColor());
-        }
-        else // Render frame
-        { 
-            // Handle requests (they can come from different threads)
+            m_reading_requests = true;
+
+            // Handle environment texture assignment requests
+            if (m_environment_texture_temp)
             {
-                m_reading_requests = true;
-
-                // Handle environment texture assignment requests
-                if (m_environment_texture_temp)
-                {
-                    m_environment_texture      = m_environment_texture_temp;
-                    m_environment_texture_temp = nullptr;
-                }
-
-                // Handle texture mip generation requests
-                {
-                    // Clear any previously processed textures
-                    if (!m_textures_mip_generation.empty())
-                    {
-                        for (RHI_Texture* texture : m_textures_mip_generation)
-                        {
-                            // Remove unnecessary flags from texture (were only needed for the downsampling)
-                            uint32_t flags = texture->GetFlags();
-                            flags &= ~RHI_Texture_PerMipViews;
-                            flags &= ~RHI_Texture_Uav;
-                            texture->SetFlags(flags);
-
-                            // Destroy the resources associated with those flags
-                            {
-                                const bool destroy_main     = false;
-                                const bool destroy_per_view = true;
-                                texture->RHI_DestroyResource(destroy_main, destroy_per_view);
-                            }
-                        }
-
-                        m_textures_mip_generation.clear();
-                    }
-
-                    // Add any newly requested textures
-                    if (!m_textures_mip_generation_pending.empty())
-                    {
-                        m_textures_mip_generation.insert(m_textures_mip_generation.end(), m_textures_mip_generation_pending.begin(), m_textures_mip_generation_pending.end());
-                        m_textures_mip_generation_pending.clear();
-                    }
-                }
-
-                // Generate mips for any pending texture requests
-                Pass_Generate_Mips();
-
-                m_reading_requests = false;
+                m_environment_texture      = m_environment_texture_temp;
+                m_environment_texture_temp = nullptr;
             }
 
-            // Update frame buffer
+            // Handle texture mip generation requests
             {
-                // Matrices
+                // Clear any previously processed textures
+                if (!m_textures_mip_generation.empty())
                 {
-                    if (m_dirty_orthographic_projection || m_near_plane != m_camera->GetNearPlane() || m_far_plane != m_camera->GetFarPlane())
+                    for (RHI_Texture* texture : m_textures_mip_generation)
                     {
-                        m_near_plane = m_camera->GetNearPlane();
-                        m_far_plane  = m_camera->GetFarPlane();
+                        // Remove unnecessary flags from texture (were only needed for the downsampling)
+                        uint32_t flags = texture->GetFlags();
+                        flags &= ~RHI_Texture_PerMipViews;
+                        flags &= ~RHI_Texture_Uav;
+                        texture->SetFlags(flags);
 
-                        // Near clip does not affect depth accuracy in orthographic projection, so set it to 0 to avoid problems which can result an infinitely small [3,2] after the multiplication below.
-                        m_cb_frame_cpu.projection_ortho      = Matrix::CreateOrthographicLH(m_viewport.width, m_viewport.height, 0.0f, m_far_plane);
-                        m_cb_frame_cpu.view_projection_ortho = Matrix::CreateLookAtLH(Vector3(0, 0, -m_near_plane), Vector3::Forward, Vector3::Up) * m_cb_frame_cpu.projection_ortho;
-
-                        m_dirty_orthographic_projection = false;
+                        // Destroy the resources associated with those flags
+                        {
+                            const bool destroy_main     = false;
+                            const bool destroy_per_view = true;
+                            texture->RHI_DestroyResource(destroy_main, destroy_per_view);
+                        }
                     }
 
-                    m_cb_frame_cpu.view                = m_camera->GetViewMatrix();
-                    m_cb_frame_cpu.projection          = m_camera->GetProjectionMatrix();
-                    m_cb_frame_cpu.projection_inverted = Matrix::Invert(m_cb_frame_cpu.projection);
+                    m_textures_mip_generation.clear();
                 }
 
-                // TAA - Generate jitter
-                if (GetOption(Renderer::Option::AntiAliasing_Taa))
+                // Add any newly requested textures
+                if (!m_textures_mip_generation_pending.empty())
                 {
-                    const uint8_t samples     = 16;
-                    const uint8_t index       = m_frame_num % samples;
-                    m_taa_jitter              = Utility::Sampling::Halton2D(index, 2, 3) * 2.0f - 1.0f;
-                    m_taa_jitter.x            = (m_taa_jitter.x / m_resolution_render.x);
-                    m_taa_jitter.y            = (m_taa_jitter.y / m_resolution_render.y);
-                    m_cb_frame_cpu.projection *= Matrix::CreateTranslation(Vector3(m_taa_jitter.x, m_taa_jitter.y, 0.0f));
+                    m_textures_mip_generation.insert(m_textures_mip_generation.end(), m_textures_mip_generation_pending.begin(), m_textures_mip_generation_pending.end());
+                    m_textures_mip_generation_pending.clear();
                 }
-                else
+            }
+
+            // Generate mips for any pending texture requests
+            Pass_Generate_Mips();
+
+            m_reading_requests = false;
+        }
+
+        // Update frame buffer
+        {
+            // Matrices
+            if (m_camera)
+            {
+                if (m_dirty_orthographic_projection || m_near_plane != m_camera->GetNearPlane() || m_far_plane != m_camera->GetFarPlane())
                 {
-                    m_taa_jitter = Vector2::Zero;
+                    m_near_plane = m_camera->GetNearPlane();
+                    m_far_plane  = m_camera->GetFarPlane();
+
+                    // Near clip does not affect depth accuracy in orthographic projection, so set it to 0 to avoid problems which can result an infinitely small [3,2] after the multiplication below.
+                    m_cb_frame_cpu.projection_ortho      = Matrix::CreateOrthographicLH(m_viewport.width, m_viewport.height, 0.0f, m_far_plane);
+                    m_cb_frame_cpu.view_projection_ortho = Matrix::CreateLookAtLH(Vector3(0, 0, -m_near_plane), Vector3::Forward, Vector3::Up) * m_cb_frame_cpu.projection_ortho;
+
+                    m_dirty_orthographic_projection = false;
                 }
-                
-                // Update the remaining of the frame buffer
-                m_cb_frame_cpu.view_projection_previous   = m_cb_frame_cpu.view_projection;
-                m_cb_frame_cpu.view_projection            = m_cb_frame_cpu.view * m_cb_frame_cpu.projection;
-                m_cb_frame_cpu.view_projection_inv        = Matrix::Invert(m_cb_frame_cpu.view_projection);
+
+                m_cb_frame_cpu.view                = m_camera->GetViewMatrix();
+                m_cb_frame_cpu.projection          = m_camera->GetProjectionMatrix();
+                m_cb_frame_cpu.projection_inverted = Matrix::Invert(m_cb_frame_cpu.projection);
+            }
+
+            // TAA - Generate jitter
+            if (GetOption(Renderer::Option::AntiAliasing_Taa))
+            {
+                const uint8_t samples     = 16;
+                const uint8_t index       = m_frame_num % samples;
+                m_taa_jitter              = Utility::Sampling::Halton2D(index, 2, 3) * 2.0f - 1.0f;
+                m_taa_jitter.x            = (m_taa_jitter.x / m_resolution_render.x);
+                m_taa_jitter.y            = (m_taa_jitter.y / m_resolution_render.y);
+                m_cb_frame_cpu.projection *= Matrix::CreateTranslation(Vector3(m_taa_jitter.x, m_taa_jitter.y, 0.0f));
+            }
+            else
+            {
+                m_taa_jitter = Vector2::Zero;
+            }
+            
+            // Update the remaining of the frame buffer
+            m_cb_frame_cpu.view_projection_previous   = m_cb_frame_cpu.view_projection;
+            m_cb_frame_cpu.view_projection            = m_cb_frame_cpu.view * m_cb_frame_cpu.projection;
+            m_cb_frame_cpu.view_projection_inv        = Matrix::Invert(m_cb_frame_cpu.view_projection);
+            if (m_camera)
+            { 
                 m_cb_frame_cpu.view_projection_unjittered = m_cb_frame_cpu.view * m_camera->GetProjectionMatrix();
                 m_cb_frame_cpu.camera_aperture            = m_camera->GetAperture();
                 m_cb_frame_cpu.camera_shutter_speed       = m_camera->GetShutterSpeed();
@@ -380,36 +371,37 @@ namespace Spartan
                 m_cb_frame_cpu.camera_far                 = m_camera->GetFarPlane();
                 m_cb_frame_cpu.camera_position            = m_camera->GetTransform()->GetPosition();
                 m_cb_frame_cpu.camera_direction           = m_camera->GetTransform()->GetForward();
-                m_cb_frame_cpu.resolution_output          = m_resolution_output;
-                m_cb_frame_cpu.resolution_render          = m_resolution_render;
-                m_cb_frame_cpu.taa_jitter_previous        = m_cb_frame_cpu.taa_jitter_current;
-                m_cb_frame_cpu.taa_jitter_current         = m_taa_jitter;
-                m_cb_frame_cpu.delta_time                 = static_cast<float>(m_context->GetSubsystem<Timer>()->GetDeltaTimeSmoothedSec());
-                m_cb_frame_cpu.time                       = static_cast<float>(m_context->GetSubsystem<Timer>()->GetTimeSec());
-                m_cb_frame_cpu.bloom_intensity            = GetOptionValue<float>(Renderer::OptionValue::Bloom_Intensity);
-                m_cb_frame_cpu.sharpen_strength           = GetOptionValue<float>(Renderer::OptionValue::Sharpen_Strength);
-                m_cb_frame_cpu.fog                        = GetOptionValue<float>(Renderer::OptionValue::Fog);
-                m_cb_frame_cpu.tonemapping                = GetOptionValue<float>(Renderer::OptionValue::Tonemapping);
-                m_cb_frame_cpu.gamma                      = GetOptionValue<float>(Renderer::OptionValue::Gamma);
-                m_cb_frame_cpu.shadow_resolution          = GetOptionValue<float>(Renderer::OptionValue::ShadowResolution);
-                m_cb_frame_cpu.frame                      = static_cast<uint32_t>(m_frame_num);
-                m_cb_frame_cpu.frame_mip_count            = RENDER_TARGET(RenderTarget::Frame_Render)->GetMipCount();
-                m_cb_frame_cpu.ssr_mip_count              = RENDER_TARGET(RenderTarget::Ssr)->GetMipCount();
-                m_cb_frame_cpu.resolution_environment     = Vector2(GetEnvironmentTexture()->GetWidth(), GetEnvironmentTexture()->GetHeight());
-
-                // These must match what Common_Buffer.hlsl is reading
-                m_cb_frame_cpu.set_bit(GetOption(Renderer::Option::ScreenSpaceReflections), 1 << 0);
-                m_cb_frame_cpu.set_bit(GetOption(Renderer::Option::Upsample_TAA),           1 << 1);
-                m_cb_frame_cpu.set_bit(GetOption(Renderer::Option::Ssao),                   1 << 2);
-                m_cb_frame_cpu.set_bit(GetOption(Renderer::Option::VolumetricFog),          1 << 3);
-                m_cb_frame_cpu.set_bit(GetOption(Renderer::Option::ScreenSpaceShadows),     1 << 4);
-                m_cb_frame_cpu.set_bit(GetOption(Renderer::Option::Ssao_Gi),                1 << 5);
             }
+            m_cb_frame_cpu.resolution_output          = m_resolution_output;
+            m_cb_frame_cpu.resolution_render          = m_resolution_render;
+            m_cb_frame_cpu.taa_jitter_previous        = m_cb_frame_cpu.taa_jitter_current;
+            m_cb_frame_cpu.taa_jitter_current         = m_taa_jitter;
+            m_cb_frame_cpu.delta_time                 = static_cast<float>(m_context->GetSubsystem<Timer>()->GetDeltaTimeSmoothedSec());
+            m_cb_frame_cpu.time                       = static_cast<float>(m_context->GetSubsystem<Timer>()->GetTimeSec());
+            m_cb_frame_cpu.bloom_intensity            = GetOptionValue<float>(Renderer::OptionValue::Bloom_Intensity);
+            m_cb_frame_cpu.sharpen_strength           = GetOptionValue<float>(Renderer::OptionValue::Sharpen_Strength);
+            m_cb_frame_cpu.fog                        = GetOptionValue<float>(Renderer::OptionValue::Fog);
+            m_cb_frame_cpu.tonemapping                = GetOptionValue<float>(Renderer::OptionValue::Tonemapping);
+            m_cb_frame_cpu.gamma                      = GetOptionValue<float>(Renderer::OptionValue::Gamma);
+            m_cb_frame_cpu.shadow_resolution          = GetOptionValue<float>(Renderer::OptionValue::ShadowResolution);
+            m_cb_frame_cpu.frame                      = static_cast<uint32_t>(m_frame_num);
+            m_cb_frame_cpu.frame_mip_count            = RENDER_TARGET(RenderTarget::Frame_Render)->GetMipCount();
+            m_cb_frame_cpu.ssr_mip_count              = RENDER_TARGET(RenderTarget::Ssr)->GetMipCount();
+            m_cb_frame_cpu.resolution_environment     = Vector2(GetEnvironmentTexture()->GetWidth(), GetEnvironmentTexture()->GetHeight());
 
-            Lines_PreMain();
-            Pass_Main(m_cmd_current);
-            Lines_PostMain(delta_time);
+            // These must match what Common_Buffer.hlsl is reading
+            m_cb_frame_cpu.set_bit(GetOption(Renderer::Option::ScreenSpaceReflections), 1 << 0);
+            m_cb_frame_cpu.set_bit(GetOption(Renderer::Option::Upsample_TAA),           1 << 1);
+            m_cb_frame_cpu.set_bit(GetOption(Renderer::Option::Ssao),                   1 << 2);
+            m_cb_frame_cpu.set_bit(GetOption(Renderer::Option::VolumetricFog),          1 << 3);
+            m_cb_frame_cpu.set_bit(GetOption(Renderer::Option::ScreenSpaceShadows),     1 << 4);
+            m_cb_frame_cpu.set_bit(GetOption(Renderer::Option::Ssao_Gi),                1 << 5);
         }
+
+        Lines_PreMain();
+        Pass_Main(m_cmd_current);
+        Lines_PostMain(delta_time);
+
         // Submit
         m_cmd_current->End();
         m_cmd_current->Submit(nullptr);
