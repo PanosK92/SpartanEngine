@@ -30,8 +30,7 @@ Platform | API | Status | Quality | Binaries
 <img align="center" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/Data/readme_screen_3.2.jpg"/>
 
 # Livestreams
-[
-![](https://am3pap002files.storage.live.com/y4m668NLa90wXlIgOKHRYwgaXWRxxdqMFr2U4zE1ZTPl55iZfEbmbNJMASJLxYrpXe6rb0TgYfNJRLOwb9eJV1ncDTueeBQtKxhC2m0N_g4G8II87RV9yRU_l7X8b294hA70yziCMCnMlbA9-w8UTT1eDvj9srgU6RxGspRYAKJwPDKPtBdYXPFS4FHtZq2kOgBhu2taWMrJplNriPGcQEMTumN6BAdWp-xrHzwEfA1OjM?encodeFailures=1&width=2213&height=1245)](https://www.youtube.com/watch?v=QcytU6AKwqk)
+[![](https://am3pap002files.storage.live.com/y4m0Gtqc6y7iXZhYsaPfB-Omogma7YloiyFg6g0SArz5gTthu18FnpQi21kWLIFlY0okDgtMDU2c3LYd_tlAcQMeWiVO8E3fUdBvsU9DqhUzDznBjSL3fuiBeFpbxSRyBpG7H802RunL8ll1NxcW_y1vCdIbYh3G-EXAc6NEH5WDHt6ETFPMe_rvVb8afZvFLSrILvLhysJOndRW0WH1U52TAYGf3gjay99hO2Up5X_aQA?encodeFailures=1&width=2560&height=1440)](https://www.youtube.com/watch?v=QcytU6AKwqk)
 
 ## Features (v0.31)
 - 10+ font file formats support (FreeType)
