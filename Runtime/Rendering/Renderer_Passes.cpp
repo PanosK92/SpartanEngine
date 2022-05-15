@@ -1865,7 +1865,10 @@ namespace Spartan
             {
                 // Update uber buffer
                 m_cb_uber_cpu.resolution_rt = m_resolution_render;
-                m_cb_uber_cpu.transform     = m_gizmo_grid->ComputeWorldMatrix(m_camera->GetTransform()) * m_cb_frame_cpu.view_projection_unjittered;
+                if (m_camera)
+                {
+                    m_cb_uber_cpu.transform = m_gizmo_grid->ComputeWorldMatrix(m_camera->GetTransform()) * m_cb_frame_cpu.view_projection_unjittered;
+                }
                 Update_Cb_Uber(cmd_list);
 
                 cmd_list->SetBufferVertex(m_gizmo_grid->GetVertexBuffer().get());
