@@ -69,14 +69,6 @@ namespace Spartan
         return VK_ATTACHMENT_LOAD_OP_CLEAR;
     };
 
-    static VkAttachmentStoreOp get_depth_stencil_store_op(const RHI_DepthStencilState* depth_stencil_state)
-    {
-        if (!depth_stencil_state)
-            return VK_ATTACHMENT_STORE_OP_DONT_CARE;
-
-        return depth_stencil_state->GetStencilWriteEnabled() ? VK_ATTACHMENT_STORE_OP_STORE : VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    };
-
     RHI_CommandList::RHI_CommandList(Context* context)
     {
         m_renderer                    = context->GetSubsystem<Renderer>();
@@ -914,6 +906,7 @@ namespace Spartan
             rendering_info.colorAttachmentCount = 0;
             rendering_info.pColorAttachments    = nullptr;
             rendering_info.pDepthAttachment     = nullptr;
+            rendering_info.pStencilAttachment   = nullptr;
 
             // Color attachments
             vector<VkRenderingAttachmentInfo> attachments_color;
@@ -970,10 +963,8 @@ namespace Spartan
                 attachment_depth_stencil.imageView               = static_cast<VkImageView>(m_pipeline_state.render_target_depth_texture->GetResource_View_DepthStencil(m_pipeline_state.render_target_depth_stencil_texture_array_index));
                 attachment_depth_stencil.imageLayout             = vulkan_image_layout[static_cast<uint8_t>(m_pipeline_state.render_target_depth_texture->GetLayout(0))];
                 attachment_depth_stencil.loadOp                  = get_depth_stencil_load_op(m_pipeline_state.clear_depth);
-                attachment_depth_stencil.storeOp                 = get_depth_stencil_store_op(m_pipeline_state.depth_stencil_state);
-                attachment_depth_stencil.clearValue.depthStencil = { m_pipeline_state.clear_depth, static_cast<uint32_t>(m_pipeline_state.clear_stencil) };
-
-                SP_ASSERT(attachment_depth_stencil.imageView != nullptr);
+                attachment_depth_stencil.storeOp                 = VK_ATTACHMENT_STORE_OP_STORE;
+                attachment_depth_stencil.clearValue.depthStencil = { m_pipeline_state.clear_depth, 0 };
 
                 rendering_info.pDepthAttachment = &attachment_depth_stencil;
 

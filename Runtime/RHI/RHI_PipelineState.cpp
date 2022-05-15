@@ -219,21 +219,6 @@ namespace Spartan
             }
         }
 
-        // Initial and final layouts
-        {
-            if (has_rt_color)
-            {
-                Utility::Hash::hash_combine(hash, render_target_color_layout_initial);
-                Utility::Hash::hash_combine(hash, render_target_color_layout_final);
-            }
-
-            if (render_target_depth_texture)
-            {
-                Utility::Hash::hash_combine(hash, render_target_depth_layout_initial);
-                Utility::Hash::hash_combine(hash, render_target_depth_layout_final);
-            }
-        }
-
         return hash;
     }
 
@@ -249,8 +234,6 @@ void RHI_PipelineState::TransitionRenderTargetLayouts(RHI_CommandList* cmd_list)
                     RHI_Image_Layout layout = RHI_Image_Layout::Color_Attachment_Optimal;
 
                     texture->SetLayout(layout, cmd_list);
-                    render_target_color_layout_initial = layout;
-                    render_target_color_layout_final   = layout;
                 }
             }
 
@@ -258,20 +241,20 @@ void RHI_PipelineState::TransitionRenderTargetLayouts(RHI_CommandList* cmd_list)
             if (RHI_SwapChain* swapchain = render_target_swapchain)
             {
                 RHI_Image_Layout layout = RHI_Image_Layout::Present_Src;
-
-                render_target_color_layout_initial = layout;
-                render_target_color_layout_final   = layout;
             }
         }
         
         // Depth
         if (RHI_Texture* texture = render_target_depth_texture)
         {
-            RHI_Image_Layout layout = render_target_depth_texture_read_only ? RHI_Image_Layout::Depth_Stencil_Read_Only_Optimal :  RHI_Image_Layout::Depth_Stencil_Attachment_Optimal;
-        
+            RHI_Image_Layout layout = texture->IsStencilFormat() ? RHI_Image_Layout::Depth_Stencil_Attachment_Optimal : RHI_Image_Layout::Depth_Attachment_Optimal;
+
+            if (render_target_depth_texture_read_only)
+            {
+                layout = RHI_Image_Layout::Depth_Stencil_Read_Only_Optimal;
+            }
+
             texture->SetLayout(layout, cmd_list);
-            render_target_depth_layout_initial = layout;
-            render_target_depth_layout_final   = layout;
         }
     }
 }

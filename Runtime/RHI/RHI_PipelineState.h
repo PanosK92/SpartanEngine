@@ -101,12 +101,6 @@ namespace Spartan
         //============================================================================
 
     private:
-        RHI_Image_Layout render_target_color_layout_initial = RHI_Image_Layout::Undefined;
-        RHI_Image_Layout render_target_color_layout_final   = RHI_Image_Layout::Undefined;
-        RHI_Image_Layout render_target_depth_layout_initial = RHI_Image_Layout::Undefined;
-        RHI_Image_Layout render_target_depth_layout_final   = RHI_Image_Layout::Undefined;
-
-        // Dependencies
         const RHI_Device* m_rhi_device = nullptr;
     };
 }
