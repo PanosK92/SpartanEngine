@@ -1966,64 +1966,66 @@ namespace Spartan
         pso.viewport                        = tex_out->GetViewport();
         pso.pass_name                       = "Pass_Icons";
 
+        if (!m_camera)
+        {
+            return;
+        }
+
         // For each light
         for (const auto& entity : lights)
         {
             if (cmd_list->BeginRenderPass(pso))
             {
-                if (m_camera)
+                // Light can be null if it just got removed and our buffer doesn't update till the next frame
+                if (Light* light = entity->GetComponent<Light>())
                 {
-                    // Light can be null if it just got removed and our buffer doesn't update till the next frame
-                    if (Light* light = entity->GetComponent<Light>())
+                    Vector3 position_light_world      = entity->GetTransform()->GetPosition();
+                    Vector3 position_camera_world     = m_camera->GetTransform()->GetPosition();
+                    Vector3 direction_camera_to_light = (position_light_world - position_camera_world).Normalized();
+                    const float v_dot_l               = Vector3::Dot(m_camera->GetTransform()->GetForward(), direction_camera_to_light);
+
+                    // Only draw if it's inside our view
+                    if (v_dot_l > 0.5f)
                     {
-                        Vector3 position_light_world      = entity->GetTransform()->GetPosition();
-                        Vector3 position_camera_world     = m_camera->GetTransform()->GetPosition();
-                        Vector3 direction_camera_to_light = (position_light_world - position_camera_world).Normalized();
-                        const float v_dot_l               = Vector3::Dot(m_camera->GetTransform()->GetForward(), direction_camera_to_light);
+                        // Compute light screen space position and scale (based on distance from the camera)
+                        const Vector2 position_light_screen = m_camera->WorldToScreenCoordinates(position_light_world);
+                        const float distance                = (position_camera_world - position_light_world).Length() + Helper::EPSILON;
+                        float scale                         = m_gizmo_size_max / distance;
+                        scale                               = Helper::Clamp(scale, m_gizmo_size_min, m_gizmo_size_max);
 
-                        // Only draw if it's inside our view
-                        if (v_dot_l > 0.5f)
+                        // Choose texture based on light type
+                        shared_ptr<RHI_Texture> light_tex = nullptr;
+                        const LightType type = light->GetLightType();
+                        if (type == LightType::Directional) light_tex = m_tex_gizmo_light_directional;
+                        else if (type == LightType::Point)  light_tex = m_tex_gizmo_light_point;
+                        else if (type == LightType::Spot)   light_tex = m_tex_gizmo_light_spot;
+
+                        // Construct appropriate rectangle
+                        const float tex_width = light_tex->GetWidth() * scale;
+                        const float tex_height = light_tex->GetHeight() * scale;
+                        Math::Rectangle rectangle = Math::Rectangle
+                        (
+                            position_light_screen.x - tex_width * 0.5f,
+                            position_light_screen.y - tex_height * 0.5f,
+                            position_light_screen.x + tex_width,
+                            position_light_screen.y + tex_height
+                        );
+
+                        if (rectangle != m_gizmo_light_rect)
                         {
-                            // Compute light screen space position and scale (based on distance from the camera)
-                            const Vector2 position_light_screen = m_camera->WorldToScreenCoordinates(position_light_world);
-                            const float distance                = (position_camera_world - position_light_world).Length() + Helper::EPSILON;
-                            float scale                         = m_gizmo_size_max / distance;
-                            scale                               = Helper::Clamp(scale, m_gizmo_size_min, m_gizmo_size_max);
-
-                            // Choose texture based on light type
-                            shared_ptr<RHI_Texture> light_tex = nullptr;
-                            const LightType type = light->GetLightType();
-                            if (type == LightType::Directional) light_tex = m_tex_gizmo_light_directional;
-                            else if (type == LightType::Point)  light_tex = m_tex_gizmo_light_point;
-                            else if (type == LightType::Spot)   light_tex = m_tex_gizmo_light_spot;
-
-                            // Construct appropriate rectangle
-                            const float tex_width = light_tex->GetWidth() * scale;
-                            const float tex_height = light_tex->GetHeight() * scale;
-                            Math::Rectangle rectangle = Math::Rectangle
-                            (
-                                position_light_screen.x - tex_width * 0.5f,
-                                position_light_screen.y - tex_height * 0.5f,
-                                position_light_screen.x + tex_width,
-                                position_light_screen.y + tex_height
-                            );
-
-                            if (rectangle != m_gizmo_light_rect)
-                            {
-                                m_gizmo_light_rect = rectangle;
-                                m_gizmo_light_rect.CreateBuffers(this);
-                            }
-
-                            // Update uber buffer
-                            m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(tex_width), static_cast<float>(tex_width));
-                            m_cb_uber_cpu.transform     = m_cb_frame_cpu.view_projection_ortho;
-                            Update_Cb_Uber(cmd_list);
-
-                            cmd_list->SetTexture(Renderer::Bindings_Srv::tex, light_tex);
-                            cmd_list->SetBufferIndex(m_gizmo_light_rect.GetIndexBuffer());
-                            cmd_list->SetBufferVertex(m_gizmo_light_rect.GetVertexBuffer());
-                            cmd_list->DrawIndexed(Rectangle::GetIndexCount());
+                            m_gizmo_light_rect = rectangle;
+                            m_gizmo_light_rect.CreateBuffers(this);
                         }
+
+                        // Update uber buffer
+                        m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(tex_width), static_cast<float>(tex_width));
+                        m_cb_uber_cpu.transform     = m_cb_frame_cpu.view_projection_ortho;
+                        Update_Cb_Uber(cmd_list);
+
+                        cmd_list->SetTexture(Renderer::Bindings_Srv::tex, light_tex);
+                        cmd_list->SetBufferIndex(m_gizmo_light_rect.GetIndexBuffer());
+                        cmd_list->SetBufferVertex(m_gizmo_light_rect.GetVertexBuffer());
+                        cmd_list->DrawIndexed(Rectangle::GetIndexCount());
                     }
                 }
                 cmd_list->EndRenderPass();
