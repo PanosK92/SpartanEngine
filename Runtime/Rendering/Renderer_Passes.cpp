@@ -2370,7 +2370,7 @@ namespace Spartan
         }
     }
 
-    void Renderer::Pass_CopyToBackbuffer(RHI_CommandList* cmd_list)
+    void Renderer::Pass_CopyToBackbuffer()
     {
         // Acquire shaders
         RHI_Shader* shader_v = m_shaders[Renderer::Shader::FullscreenTriangle_V].get();
@@ -2392,15 +2392,15 @@ namespace Spartan
         pso.pass_name                = "Pass_CopyToBackbuffer";
 
         // Record commands
-        if (cmd_list->BeginRenderPass(pso))
+        if (m_cmd_current->BeginRenderPass(pso))
         {
             // Update uber buffer
             m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(m_swap_chain->GetWidth()), static_cast<float>(m_swap_chain->GetHeight()));
-            Update_Cb_Uber(cmd_list);
+            Update_Cb_Uber(m_cmd_current);
 
-            cmd_list->SetTexture(Renderer::Bindings_Srv::tex, RENDER_TARGET(RenderTarget::Frame_Output).get());
-            cmd_list->DrawIndexed(3, 0);
-            cmd_list->EndRenderPass();
+            m_cmd_current->SetTexture(Renderer::Bindings_Srv::tex, RENDER_TARGET(RenderTarget::Frame_Output).get());
+            m_cmd_current->DrawIndexed(3, 0);
+            m_cmd_current->EndRenderPass();
         }
     }
 

@@ -59,13 +59,8 @@ namespace Spartan
         bool End();
         bool Submit(RHI_Semaphore* wait_semaphore);
         bool Reset();
-
-        // Waits for any submitted work (if any).
-        void Wait();
-        // Causes the command list to ignore the first submission call (useful when the command list refers to resources which have been destroyed).
-        void Discard();
-        // Submits all work, waits for it, and then resets to the last known pipeline state (optional).
-        bool Flush(const bool restore_pipeline_state_after_flush);
+        void Wait();    // Waits for any submitted work
+        void Discard(); // Causes the command list to ignore one submission call (useful when the command list refers to resources which have been destroyed).
 
         // Render pass
         bool BeginRenderPass(RHI_PipelineState& pipeline_state);
@@ -143,8 +138,7 @@ namespace Spartan
 
         // Misc
         void ResetDescriptorCache();
-        void* GetResource_CommandBuffer()      const { return m_resource; }
-        RHI_Semaphore* GetProcessedSemaphore()       { return m_processed_semaphore.get(); }
+        void* GetResource_CommandBuffer() const { return m_resource; }
 
     private:    
         void Timeblock_Start(const char* name, const bool profile, const bool gpu_markers);
@@ -161,11 +155,9 @@ namespace Spartan
         Profiler* m_profiler                                        = nullptr;
         void* m_resource                                            = nullptr;
         std::shared_ptr<RHI_Fence> m_processed_fence                = nullptr;
-        std::shared_ptr<RHI_Semaphore> m_processed_semaphore        = nullptr;
-        std::atomic<bool> m_flushed                                 = false;
         std::atomic<bool> m_discard                                 = false;
         bool m_is_render_pass_active                                = false;
-        bool m_pipeline_state_changed                               = false;
+        bool m_pipeline_dirty                                       = false;
         std::atomic<RHI_CommandListState> m_state                   = RHI_CommandListState::Idle;
         static const uint8_t m_resource_array_length_max            = 16;
         static bool m_memory_query_support;

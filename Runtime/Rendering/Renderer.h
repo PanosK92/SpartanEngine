@@ -344,7 +344,7 @@ namespace Spartan
 
         // Swapchain
         RHI_SwapChain* GetSwapChain() const { return m_swap_chain.get(); }
-        bool Present(RHI_CommandList* cmd_list);
+        bool Present();
 
         // Sync
         void Flush();
@@ -358,9 +358,6 @@ namespace Spartan
         void SetCbUberTransform(RHI_CommandList* cmd_list, const Math::Matrix& transform);
         void SetCbUberTextureVisualisationOptions(RHI_CommandList* cmd_list, const uint32_t options);
 
-        // Rendering
-        bool IsRenderingAllowed() const { return m_is_rendering_allowed; }
-
         // Misc
         RHI_Api_Type GetApiType() const;
         void SetGlobalShaderResources(RHI_CommandList* cmd_list) const;
@@ -372,11 +369,11 @@ namespace Spartan
         std::shared_ptr<Camera> GetCamera()                         const { return m_camera; }
         auto IsInitialised()                                        const { return m_initialised; }
         auto GetShaders()                                           const { return m_shaders; }
-        RHI_CommandList* GetCmdList()                               const { return m_cmd_current; }
         uint32_t GetCmdIndex()                                      const { return m_cmd_index;  }
+        RHI_CommandList* GetCmdList()                               const { return m_cmd_current; }
 
         // Passes
-        void Pass_CopyToBackbuffer(RHI_CommandList* cmd_list);
+        void Pass_CopyToBackbuffer();
 
     private:
         // Resource creation
