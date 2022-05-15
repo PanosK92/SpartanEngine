@@ -407,10 +407,12 @@ namespace Spartan
         return true;
     }
 
-    bool RHI_SwapChain::Present(RHI_Semaphore* wait_semaphore)
+    bool RHI_SwapChain::Present()
     {
         // Validate swapchain state
         SP_ASSERT(m_present_enabled);
+
+        RHI_Semaphore* wait_semaphore = m_image_acquired_semaphore[m_semaphore_index].get();
 
         // Present
         if (!m_rhi_device->QueuePresent(m_resource, &m_image_index, wait_semaphore))

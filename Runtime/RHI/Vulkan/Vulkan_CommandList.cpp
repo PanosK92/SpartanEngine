@@ -93,9 +93,6 @@ namespace Spartan
         // Sync - Fence
         m_processed_fence = make_shared<RHI_Fence>(m_rhi_device, "cmd_buffer_processed");
 
-        // Sync - Semaphore
-        m_processed_semaphore = make_shared<RHI_Semaphore>(m_rhi_device, false, "cmd_buffer_processed");
-
         // Query pool
         if (rhi_context->profiler)
         {
@@ -168,8 +165,8 @@ namespace Spartan
 
         vkCmdResetQueryPool(static_cast<VkCommandBuffer>(m_resource), static_cast<VkQueryPool>(m_query_pool), 0, m_max_timestamps);
 
-        m_state   = RHI_CommandListState::Recording;
-        m_flushed = false;
+        m_state = RHI_CommandListState::Recording;
+        m_pipeline_dirty = true;
     }
 
     bool RHI_CommandList::End()
@@ -202,30 +199,6 @@ namespace Spartan
             return true;
         }
 
-        // Get signal semaphore
-        RHI_Semaphore* signal_semaphore = nullptr;
-        if (m_pipeline)
-        {
-            if (RHI_PipelineState* state = m_pipeline->GetPipelineState())
-            {
-                if (state->render_target_swapchain)
-                {
-                    // If the swapchain is not presenting (e.g. minimised window), don't submit any work
-                    if (!state->render_target_swapchain->PresentEnabled())
-                    {
-                        m_state = RHI_CommandListState::Submitted;
-                        return true;
-                    }
-
-                    // Ensure the processed semaphore can be used
-                    SP_ASSERT(m_processed_semaphore->GetState() == RHI_Semaphore_State::Idle);
-
-                    // Swapchain waits for this when presenting
-                    signal_semaphore = m_processed_semaphore.get(); 
-                }
-            }
-        }
-
         // Reset fence if it wasn't waited for
         if (m_processed_fence->IsSignaled())
         {
@@ -237,7 +210,7 @@ namespace Spartan
             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, // wait flags
             static_cast<VkCommandBuffer>(m_resource),      // cmd buffer
             wait_semaphore,                                // wait semaphore
-            signal_semaphore,                              // signal semaphore
+            nullptr,                                       // signal semaphore
             m_processed_fence.get()                        // signal fence
             ))
         {
@@ -260,8 +233,10 @@ namespace Spartan
             return false;
 
         m_state = RHI_CommandListState::Idle;
+
         return true;
     }
+
     bool RHI_CommandList::BeginRenderPass(RHI_PipelineState& pipeline_state)
     {
         // Validate command list state
@@ -281,7 +256,8 @@ namespace Spartan
         pipeline_state.TransitionRenderTargetLayouts(this);
 
         // If no pipeline exists for this state, create one
-        uint32_t hash = pipeline_state.ComputeHash();
+        uint32_t hash_previous = m_pipeline_state.ComputeHash();
+        uint32_t hash          = pipeline_state.ComputeHash();
         auto it = m_cache.find(hash);
         if (it == m_cache.end())
         {
@@ -290,13 +266,18 @@ namespace Spartan
             LOG_INFO("A new pipeline has been created.");
         }
 
-        m_pipeline               = it->second.get();
-        m_pipeline_state_changed = m_pipeline_state.IsValid() ? (m_pipeline_state.ComputeHash() != hash) : true;
-        m_pipeline_state         = pipeline_state;
+        m_pipeline       = it->second.get();
+        m_pipeline_state = pipeline_state;
 
-        if (m_pipeline_state_changed)
+        // Determine if the pipeline is dirty
+        if (!m_pipeline_dirty)
         {
-            // If the pipeline changed, resources have to be set again
+            m_pipeline_dirty = hash_previous != hash;
+        }
+
+        // If the pipeline changed, resources have to be set again
+        if (m_pipeline_dirty)
+        {
             m_vertex_buffer_id = 0;
             m_index_buffer_id  = 0;
         }
@@ -917,9 +898,6 @@ namespace Spartan
 
     void RHI_CommandList::OnDraw()
     {
-        if (m_flushed)
-            return;
-
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
         SP_ASSERT(m_pipeline);
 
@@ -1013,7 +991,7 @@ namespace Spartan
         }
 
         // Bind pipeline
-        if (m_pipeline_state_changed)
+        if (m_pipeline_dirty)
         {
             // Get
             VkPipeline vk_pipeline = static_cast<VkPipeline>(m_pipeline->GetResource_Pipeline());
@@ -1029,7 +1007,7 @@ namespace Spartan
                 m_profiler->m_rhi_bindings_pipeline++;
             }
 
-            m_pipeline_state_changed = false;
+            m_pipeline_dirty = false;
         }
 
         // Bind descriptor sets

@@ -37,9 +37,6 @@ namespace Spartan
         // Wait for the fence.
         SP_ASSERT(m_processed_fence->Wait() && "Timeout while waiting for command list fence.");
 
-        // Reset the semaphore
-        m_processed_semaphore->Reset();
-
         m_descriptor_set_layout_cache->GrowIfNeeded();
 
         m_state = RHI_CommandListState::Idle;
@@ -50,45 +47,6 @@ namespace Spartan
         m_discard = true;
     }
     
-    bool RHI_CommandList::Flush(const bool restore_pipeline_state_after_flush)
-    {
-        if (m_state == RHI_CommandListState::Idle)
-            return true;
-
-        // If recording, end
-        bool was_recording = false;
-        if (m_state == RHI_CommandListState::Recording)
-        {
-            was_recording = true;
-
-            if (!End())
-                return false;
-        }
-
-        // If ended, submit
-        if (m_state == RHI_CommandListState::Ended)
-        {
-            if (!Submit(nullptr))
-                return false;
-        }
-
-        // Flush
-        Wait();
-
-        // If idle, restore state (if any)
-        if (restore_pipeline_state_after_flush && m_state == RHI_CommandListState::Idle)
-        {
-            if (was_recording)
-            {
-                Begin();
-            }
-        }
-
-        m_flushed = true;
-
-        return true;
-    }
-
     uint32_t RHI_CommandList::Gpu_GetMemory(RHI_Device* rhi_device)
     {
         if (const PhysicalDevice* physical_device = rhi_device->GetPrimaryPhysicalDevice())
