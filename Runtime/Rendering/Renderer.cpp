@@ -287,7 +287,7 @@ namespace Spartan
                 // Clear any previously processed textures
                 if (!m_textures_mip_generation.empty())
                 {
-                    for (RHI_Texture* texture : m_textures_mip_generation)
+                    for (shared_ptr<RHI_Texture> texture : m_textures_mip_generation)
                     {
                         // Remove unnecessary flags from texture (were only needed for the downsampling)
                         uint32_t flags = texture->GetFlags();
@@ -953,7 +953,7 @@ namespace Spartan
         return m_rhi_device->GetContextRhi()->api_type;
     }
     
-    void Renderer::RequestTextureMipGeneration(RHI_Texture* texture)
+    void Renderer::RequestTextureMipGeneration(shared_ptr<RHI_Texture> texture)
     {
         if (IsCallingFromOtherThread())
         {

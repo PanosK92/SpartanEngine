@@ -211,6 +211,7 @@ namespace Spartan
         }
 
         m_state = RHI_CommandListState::Submitted;
+
         return true;
     }
 
@@ -276,6 +277,94 @@ namespace Spartan
 
         // Start marker and profiler (if used)
         Timeblock_Start(pipeline_state.pass_name, pipeline_state.profile, pipeline_state.gpu_marker);
+
+        // Start rendering
+        if (m_pipeline_state.IsGraphics())
+        {
+            SP_ASSERT(!m_is_render_pass_active);
+
+            VkRenderingInfo rendering_info      = {};
+            rendering_info.sType                = VK_STRUCTURE_TYPE_RENDERING_INFO_KHR;
+            rendering_info.renderArea           = { 0, 0, m_pipeline_state.GetWidth(), m_pipeline_state.GetHeight() };
+            rendering_info.layerCount           = 1;
+            rendering_info.colorAttachmentCount = 0;
+            rendering_info.pColorAttachments    = nullptr;
+            rendering_info.pDepthAttachment     = nullptr;
+            rendering_info.pStencilAttachment   = nullptr;
+
+            // Color attachments
+            vector<VkRenderingAttachmentInfo> attachments_color;
+            {
+                // Swapchain buffer as a render target
+                if (m_pipeline_state.render_target_swapchain)
+                {
+                    VkRenderingAttachmentInfo color_attachment = {};
+                    color_attachment.sType                     = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
+                    color_attachment.imageView                 = static_cast<VkImageView>(m_pipeline_state.render_target_swapchain->Get_Resource_View());
+                    color_attachment.imageLayout               = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+                    color_attachment.loadOp                    = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+                    color_attachment.storeOp                   = VK_ATTACHMENT_STORE_OP_STORE;
+
+                    SP_ASSERT(color_attachment.imageView != nullptr);
+
+                    attachments_color.push_back(color_attachment);
+                }
+                else // Regular render target(s)
+                { 
+                    for (uint32_t i = 0; i < rhi_max_render_target_count; i++)
+                    {
+                        RHI_Texture* rt = m_pipeline_state.render_target_color_textures[i];
+
+                        if (rt == nullptr)
+                            break;
+
+                        SP_ASSERT(rt->IsRenderTargetColor());
+
+                        VkRenderingAttachmentInfo color_attachment = {};
+                        color_attachment.sType                     = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
+                        color_attachment.imageView                 = static_cast<VkImageView>(rt->GetResource_View_RenderTarget(m_pipeline_state.render_target_color_texture_array_index));
+                        color_attachment.imageLayout               = vulkan_image_layout[static_cast<uint8_t>(rt->GetLayout(0))];
+                        color_attachment.loadOp                    = get_color_load_op(m_pipeline_state.clear_color[i]);
+                        color_attachment.storeOp                   = VK_ATTACHMENT_STORE_OP_STORE;
+                        color_attachment.clearValue.color          = { m_pipeline_state.clear_color[i].x, m_pipeline_state.clear_color[i].y, m_pipeline_state.clear_color[i].z, m_pipeline_state.clear_color[i].w };
+
+                        SP_ASSERT(color_attachment.imageView != nullptr);
+
+                        attachments_color.push_back(color_attachment);
+                    }
+                }
+                rendering_info.colorAttachmentCount = static_cast<uint32_t>(attachments_color.size());
+                rendering_info.pColorAttachments    = attachments_color.data();
+            }
+
+            // Depth-stencil attachment
+            VkRenderingAttachmentInfoKHR attachment_depth_stencil = {};
+            if (m_pipeline_state.render_target_depth_texture != nullptr)
+            {
+                SP_ASSERT(m_pipeline_state.render_target_depth_texture->IsRenderTargetDepthStencil());
+
+                attachment_depth_stencil.sType                   = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
+                attachment_depth_stencil.imageView               = static_cast<VkImageView>(m_pipeline_state.render_target_depth_texture->GetResource_View_DepthStencil(m_pipeline_state.render_target_depth_stencil_texture_array_index));
+                attachment_depth_stencil.imageLayout             = vulkan_image_layout[static_cast<uint8_t>(m_pipeline_state.render_target_depth_texture->GetLayout(0))];
+                attachment_depth_stencil.loadOp                  = get_depth_stencil_load_op(m_pipeline_state.clear_depth);
+                attachment_depth_stencil.storeOp                 = VK_ATTACHMENT_STORE_OP_STORE;
+                attachment_depth_stencil.clearValue.depthStencil = { m_pipeline_state.clear_depth, 0 };
+
+                rendering_info.pDepthAttachment = &attachment_depth_stencil;
+
+                // We are using the combined depth-stencil approach.
+                // This means we can assign the depth attachment as the stencil attachment.
+                if (m_pipeline_state.render_target_depth_texture->IsStencilFormat())
+                {
+                    rendering_info.pStencilAttachment = rendering_info.pDepthAttachment;
+                }
+            }
+
+            // Begin dynamic render pass instance
+            vkCmdBeginRendering(static_cast<VkCommandBuffer>(m_resource), &rendering_info);
+
+            m_is_render_pass_active = true;
+        }
 
         return true;
     }
@@ -893,94 +982,6 @@ namespace Spartan
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
         SP_ASSERT(m_pipeline);
 
-        // Less than ideal but it should do for now
-        m_renderer->SetGlobalShaderResources(this);
-
-        // Start rendering
-        if (m_pipeline_state.IsGraphics() && !m_is_render_pass_active)
-        {
-            VkRenderingInfo rendering_info      = {};
-            rendering_info.sType                = VK_STRUCTURE_TYPE_RENDERING_INFO_KHR;
-            rendering_info.renderArea           = { 0, 0, m_pipeline_state.GetWidth(), m_pipeline_state.GetHeight() };
-            rendering_info.layerCount           = 1;
-            rendering_info.colorAttachmentCount = 0;
-            rendering_info.pColorAttachments    = nullptr;
-            rendering_info.pDepthAttachment     = nullptr;
-            rendering_info.pStencilAttachment   = nullptr;
-
-            // Color attachments
-            vector<VkRenderingAttachmentInfo> attachments_color;
-            {
-                // Swapchain buffer as a render target
-                if (m_pipeline_state.render_target_swapchain)
-                {
-                    VkRenderingAttachmentInfo color_attachment = {};
-                    color_attachment.sType                     = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
-                    color_attachment.imageView                 = static_cast<VkImageView>(m_pipeline_state.render_target_swapchain->Get_Resource_View());
-                    color_attachment.imageLayout               = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-                    color_attachment.loadOp                    = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-                    color_attachment.storeOp                   = VK_ATTACHMENT_STORE_OP_STORE;
-
-                    SP_ASSERT(color_attachment.imageView != nullptr);
-
-                    attachments_color.push_back(color_attachment);
-                }
-                else // Regular render target(s)
-                { 
-                    for (uint32_t i = 0; i < rhi_max_render_target_count; i++)
-                    {
-                        RHI_Texture* rt = m_pipeline_state.render_target_color_textures[i];
-
-                        if (rt == nullptr)
-                            break;
-
-                        SP_ASSERT(rt->IsRenderTargetColor());
-
-                        VkRenderingAttachmentInfo color_attachment = {};
-                        color_attachment.sType                     = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
-                        color_attachment.imageView                 = static_cast<VkImageView>(rt->GetResource_View_RenderTarget(m_pipeline_state.render_target_color_texture_array_index));
-                        color_attachment.imageLayout               = vulkan_image_layout[static_cast<uint8_t>(rt->GetLayout(0))];
-                        color_attachment.loadOp                    = get_color_load_op(m_pipeline_state.clear_color[i]);
-                        color_attachment.storeOp                   = VK_ATTACHMENT_STORE_OP_STORE;
-                        color_attachment.clearValue.color          = { m_pipeline_state.clear_color[i].x, m_pipeline_state.clear_color[i].y, m_pipeline_state.clear_color[i].z, m_pipeline_state.clear_color[i].w };
-
-                        SP_ASSERT(color_attachment.imageView != nullptr);
-
-                        attachments_color.push_back(color_attachment);
-                    }
-                }
-                rendering_info.colorAttachmentCount = static_cast<uint32_t>(attachments_color.size());
-                rendering_info.pColorAttachments    = attachments_color.data();
-            }
-
-            // Depth-stencil attachment
-            VkRenderingAttachmentInfoKHR attachment_depth_stencil = {};
-            if (m_pipeline_state.render_target_depth_texture != nullptr)
-            {
-                SP_ASSERT(m_pipeline_state.render_target_depth_texture->IsRenderTargetDepthStencil());
-
-                attachment_depth_stencil.sType                   = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
-                attachment_depth_stencil.imageView               = static_cast<VkImageView>(m_pipeline_state.render_target_depth_texture->GetResource_View_DepthStencil(m_pipeline_state.render_target_depth_stencil_texture_array_index));
-                attachment_depth_stencil.imageLayout             = vulkan_image_layout[static_cast<uint8_t>(m_pipeline_state.render_target_depth_texture->GetLayout(0))];
-                attachment_depth_stencil.loadOp                  = get_depth_stencil_load_op(m_pipeline_state.clear_depth);
-                attachment_depth_stencil.storeOp                 = VK_ATTACHMENT_STORE_OP_STORE;
-                attachment_depth_stencil.clearValue.depthStencil = { m_pipeline_state.clear_depth, 0 };
-
-                rendering_info.pDepthAttachment = &attachment_depth_stencil;
-
-                // We are using the combined depth-stencil approach.
-                // This means we can assign the depth attachment as the stencil attachment.
-                if (m_pipeline_state.render_target_depth_texture->IsStencilFormat())
-                {
-                    rendering_info.pStencilAttachment = rendering_info.pDepthAttachment;
-                }
-            }
-
-            // Begin dynamic render pass instance
-            vkCmdBeginRendering(static_cast<VkCommandBuffer>(m_resource), &rendering_info);
-            m_is_render_pass_active = true;
-        }
-
         // Bind pipeline
         if (m_pipeline_dirty)
         {
@@ -1003,6 +1004,8 @@ namespace Spartan
 
         // Bind descriptor sets
         {
+            m_renderer->SetGlobalShaderResources(this);
+
             // Descriptor set != null, result = true  -> a descriptor set must be bound
             // Descriptor set == null, result = true  -> a descriptor set is already bound
             // Descriptor set == null, result = false -> a new descriptor was needed but we are out of memory (allocates next frame)
