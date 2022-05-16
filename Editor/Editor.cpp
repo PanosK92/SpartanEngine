@@ -36,6 +36,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Widgets/MenuBar.h"
 #include "Widgets/ProgressDialog.h"
 #include "Widgets/Properties.h"
+#include "Widgets/CameraBookmarkViewer.h"
 #include "Widgets/Viewport.h"
 #include "Widgets/WorldViewer.h"
 #include "Widgets/ShaderEditor.h"
@@ -304,6 +305,7 @@ void Editor::Initialise()
     m_widgets.emplace_back(make_shared<Viewport>(this));
     m_widgets.emplace_back(make_shared<AssetViewer>(this));
     m_widgets.emplace_back(make_shared<Properties>(this));
+    m_widgets.emplace_back(make_shared<CameraBookmarkViewer>(this));
     m_widgets.emplace_back(make_shared<WorldViewer>(this)); _editor::widget_world = m_widgets.back().get();
     m_widgets.emplace_back(make_shared<ProgressDialog>(this));
 }
