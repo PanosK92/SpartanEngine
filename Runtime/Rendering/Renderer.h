@@ -361,7 +361,7 @@ namespace Spartan
         // Misc
         RHI_Api_Type GetApiType() const;
         void SetGlobalShaderResources(RHI_CommandList* cmd_list) const;
-        void RequestTextureMipGeneration(RHI_Texture* texture);
+        void RequestTextureMipGeneration(std::shared_ptr<RHI_Texture> texture);
         const std::shared_ptr<RHI_Device>& GetRhiDevice()           const { return m_rhi_device; }
         RHI_DescriptorSetLayoutCache* GetDescriptorLayoutSetCache() const { return m_descriptor_set_layout_cache.get(); }
         RHI_Texture* GetFrameTexture()                                    { return GetRenderTarget(Renderer::RenderTarget::Frame_Output).get(); }
@@ -566,8 +566,8 @@ namespace Spartan
         const float m_depth_bias_slope_scaled  = 2.0f;
 
         // Requests for mip generation
-        std::vector<RHI_Texture*> m_textures_mip_generation;
-        std::vector<RHI_Texture*> m_textures_mip_generation_pending;
+        std::vector<std::shared_ptr<RHI_Texture>> m_textures_mip_generation;
+        std::vector<std::shared_ptr<RHI_Texture>> m_textures_mip_generation_pending;
         std::mutex m_texture_mip_generation_mutex;
 
         // States

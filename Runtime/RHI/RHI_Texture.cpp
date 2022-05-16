@@ -318,7 +318,7 @@ namespace Spartan
         // Request GPU based mip generation (if needed)
         if (m_flags & RHI_Texture_Mips)
         {
-            m_context->GetSubsystem<Renderer>()->RequestTextureMipGeneration(this);
+            m_context->GetSubsystem<Renderer>()->RequestTextureMipGeneration(shared_from_this());
         }
 
         m_is_loading = false;
