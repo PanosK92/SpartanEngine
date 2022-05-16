@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <string>
 #include "../Core/Subsystem.h"
 #include "../Core/SpartanDefinitions.h"
+#include "../Math/Vector3.h"
 //=====================================
 
 namespace Spartan
@@ -38,6 +39,12 @@ namespace Spartan
     class Profiler;
     class TransformHandle;
     //====================
+
+    struct CameraBookmark
+    {
+        Spartan::Math::Vector3 position = Spartan::Math::Vector3::Zero;
+        Spartan::Math::Vector3 rotation = Spartan::Math::Vector3::Zero;
+    };
 
     class SPARTAN_CLASS World : public Subsystem
     {
@@ -69,6 +76,11 @@ namespace Spartan
         const auto& EntityGetAll() const { return m_entities; }
         //======================================================================
 
+        //= CAMERA BOOKMARKS ============================
+        inline void AddCameraBookmark(CameraBookmark bookmark) { m_cameraBookmarks.emplace_back(bookmark); };
+        inline const std::vector<CameraBookmark>& GetCameraBookmarks() const { return m_cameraBookmarks; };
+        //===============================================
+
         // Transform handle
         std::shared_ptr<TransformHandle> GetTransformHandle() { return m_transform_handle; }
         float m_gizmo_transform_size  = 0.015f;
@@ -76,9 +88,9 @@ namespace Spartan
     private:
         void Clear();
         void _EntityRemove(const std::shared_ptr<Entity>& entity);
-        void CreateDefaultWorldEntities();
-        
+
         //= COMMON ENTITY CREATION ======================
+        void CreateDefaultWorldEntities();
         std::shared_ptr<Entity> CreateEnvironment();
         std::shared_ptr<Entity> CreateCamera();
         std::shared_ptr<Entity> CreateDirectionalLight();
@@ -93,5 +105,6 @@ namespace Spartan
 
         std::shared_ptr<TransformHandle> m_transform_handle;
         std::vector<std::shared_ptr<Entity>> m_entities;
+        std::vector<CameraBookmark> m_cameraBookmarks;
     };
 }
