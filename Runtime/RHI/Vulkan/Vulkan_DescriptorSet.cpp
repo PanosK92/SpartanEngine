@@ -19,16 +19,16 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===============================
+//= INCLUDES ==========================
 #include "Spartan.h"
 #include "../RHI_DescriptorSet.h"
 #include "../RHI_Implementation.h"
 #include "../RHI_DescriptorSetLayout.h"
-#include "../RHI_DescriptorSetLayoutCache.h"
 #include "../RHI_Sampler.h"
 #include "../RHI_ConstantBuffer.h"
 #include "../RHI_StructuredBuffer.h"
-//==========================================
+#include "../RHI_CommandList.h"
+//=====================================
 
 //= NAMESPACES =====
 using namespace std;
@@ -63,23 +63,18 @@ namespace Spartan
         return nullptr;
     }
 
-    RHI_DescriptorSet::~RHI_DescriptorSet()
-    {
-
-    }
-
-    void RHI_DescriptorSet::Create()
+    void RHI_DescriptorSet::Create(RHI_DescriptorSetLayout* descriptor_set_layout)
     {
         // Validate descriptor set
         SP_ASSERT(m_resource == nullptr);
 
         // Descriptor set layouts
-        array<void*, 1> descriptor_set_layouts = { m_descriptor_set_layout_cache->GetCurrentDescriptorSetLayout()->GetResource() };
+        array<void*, 1> descriptor_set_layouts = { descriptor_set_layout->GetResource() };
 
         // Allocate info
         VkDescriptorSetAllocateInfo allocate_info = {};
         allocate_info.sType                       = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-        allocate_info.descriptorPool              = static_cast<VkDescriptorPool>(m_descriptor_set_layout_cache->GetResource_DescriptorPool());
+        allocate_info.descriptorPool              = static_cast<VkDescriptorPool>(RHI_CommandList::Descriptors_GetPool());
         allocate_info.descriptorSetCount          = 1;
         allocate_info.pSetLayouts                 = reinterpret_cast<VkDescriptorSetLayout*>(descriptor_set_layouts.data());
 

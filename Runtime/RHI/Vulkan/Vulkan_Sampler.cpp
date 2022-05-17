@@ -19,14 +19,14 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===============================
+//= INCLUDES ========================
 #include "Spartan.h"
 #include "../RHI_Implementation.h"
 #include "../RHI_Sampler.h"
 #include "../RHI_Device.h"
-#include "../RHI_DescriptorSetLayoutCache.h"
 #include "../../Rendering/Renderer.h"
-//==========================================
+#include "../RHI_CommandList.h"
+//===================================
 
 namespace Spartan
 {
@@ -57,18 +57,19 @@ namespace Spartan
 
     RHI_Sampler::~RHI_Sampler()
     {
-        // Make sure that no descriptor sets refers to this sampler
+        // Discard the current command list in case it's referencing the sampler.
         if (Renderer* renderer = m_rhi_device->GetContext()->GetSubsystem<Renderer>())
         {
-            if (RHI_DescriptorSetLayoutCache* descriptor_set_layout_cache = renderer->GetDescriptorLayoutSetCache())
+            if (RHI_CommandList* cmd_list = renderer->GetCmdList())
             {
-                descriptor_set_layout_cache->RemoveSampler(this);
+                cmd_list->Discard();
             }
         }
 
         // Wait in case it's still in use by the GPU
         m_rhi_device->QueueWaitAll();
 
+        // Destroy
         vkDestroySampler(m_rhi_device->GetContextRhi()->device, reinterpret_cast<VkSampler>(m_resource), nullptr);
     }
 }

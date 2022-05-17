@@ -19,16 +19,15 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===============================
+//= INCLUDES ========================
 #include "Spartan.h"
 #include "../RHI_Implementation.h"
 #include "../RHI_Device.h"
 #include "../RHI_Texture2D.h"
 #include "../RHI_TextureCube.h"
 #include "../RHI_CommandList.h"
-#include "../RHI_DescriptorSetLayoutCache.h"
 #include "../../Rendering/Renderer.h"
-//==========================================
+//===================================
 
 //= NAMESPACES ===============
 using namespace std;
@@ -422,27 +421,6 @@ namespace Spartan
         // Destruction can happen during engine shutdown, in which case, the renderer might not exist, so, if statement.
         if (Renderer* renderer = m_rhi_device->GetContext()->GetSubsystem<Renderer>())
         {
-            // Make sure that no descriptor sets refers to this texture.
-            if (IsSrv())
-            {
-                if (RHI_DescriptorSetLayoutCache* descriptor_set_layout_cache = renderer->GetDescriptorLayoutSetCache())
-                {
-                    if (destroy_main)
-                    {
-                        descriptor_set_layout_cache->RemoveTexture(this, -1);
-                    }
-
-                    if (destroy_per_view)
-                    {
-                        for (uint32_t i = 0; i < m_mip_count; i++)
-                        {
-                            descriptor_set_layout_cache->RemoveTexture(this, i);
-                        }
-                    }
-                }
-            }
-
-            // Discard the command list because it might be referring to invalidated descriptor sets.
             if (RHI_CommandList* cmd_list = renderer->GetCmdList())
             {
                 cmd_list->Discard();

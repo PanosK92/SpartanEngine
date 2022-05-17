@@ -20,36 +20,35 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES ===================================
-#include "Spartan.h"
-#include "Renderer.h"
-#include "Model.h"
-#include "Grid.h"
-#include "Font/Font.h"
-#include "../Utilities/Sampling.h"
-#include "../Profiling/Profiler.h"
-#include "../Resource/ResourceCache.h"
-#include "../World/Entity.h"
-#include "../World/Components/Transform.h"
-#include "../World/Components/Renderable.h"
-#include "../World/Components/Camera.h"
-#include "../World/Components/Light.h"
+#include "Spartan.h"                            
+#include "Renderer.h"                           
+#include "Model.h"                              
+#include "Grid.h"                               
+#include "Font/Font.h"                          
+#include "../Utilities/Sampling.h"              
+#include "../Profiling/Profiler.h"              
+#include "../Resource/ResourceCache.h"          
+#include "../World/Entity.h"                    
+#include "../World/Components/Transform.h"      
+#include "../World/Components/Renderable.h"     
+#include "../World/Components/Camera.h"         
+#include "../World/Components/Light.h"          
 #include "../World/Components/ReflectionProbe.h"
-#include "../RHI/RHI_Device.h"
-#include "../RHI/RHI_ConstantBuffer.h"
-#include "../RHI/RHI_StructuredBuffer.h"
-#include "../RHI/RHI_CommandList.h"
-#include "../RHI/RHI_Texture2D.h"
-#include "../RHI/RHI_SwapChain.h"
-#include "../RHI/RHI_VertexBuffer.h"
-#include "../RHI/RHI_DescriptorSetLayoutCache.h"
-#include "../RHI/RHI_Implementation.h"
-#include "../RHI/RHI_Semaphore.h"
-#include "../Core/Window.h"
-#include "../Input/Input.h"
-#include "../World/Components/Environment.h"
+#include "../RHI/RHI_Device.h"                  
+#include "../RHI/RHI_ConstantBuffer.h"          
+#include "../RHI/RHI_StructuredBuffer.h"        
+#include "../RHI/RHI_CommandList.h"             
+#include "../RHI/RHI_Texture2D.h"               
+#include "../RHI/RHI_SwapChain.h"               
+#include "../RHI/RHI_VertexBuffer.h"            
+#include "../RHI/RHI_Implementation.h"          
+#include "../RHI/RHI_Semaphore.h"               
+#include "../Core/Window.h"                     
+#include "../Input/Input.h"                     
+#include "../World/Components/Environment.h"    
 //==============================================
 
-//= NAMESPACES ===============
+//= NAMESPACES ===============                  
 using namespace std;
 using namespace Spartan::Math;
 //============================
@@ -143,9 +142,6 @@ namespace Spartan
             LOG_ERROR("Failed to create device.");
             return false;
         }
-
-        // Create descriptor set layout cache
-        m_descriptor_set_layout_cache = make_shared<RHI_DescriptorSetLayoutCache>(m_rhi_device.get());
 
         // Create command lists
         for (uint32_t i = 0; i < m_swap_chain_buffer_count; i++)

@@ -25,9 +25,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <array>
 #include <atomic>
 #include "RHI_Definition.h"
+#include "RHI_PipelineState.h"
+#include "RHI_Descriptor.h"
 #include "../Core/SpartanObject.h"
 #include "../Rendering/Renderer.h"
-#include "RHI_PipelineState.h"
 //================================
 
 namespace Spartan
@@ -133,11 +134,19 @@ namespace Spartan
         static uint32_t Gpu_GetMemory(RHI_Device* rhi_device);
         static uint32_t Gpu_GetMemoryUsed(RHI_Device* rhi_device);
 
+        // Descriptors
+        void Descriptors_GetLayoutFromPipelineState(RHI_PipelineState& pipeline_state);
+        uint32_t Descriptors_GetDescriptorSetCount() const;
+        bool Descriptors_HasEnoughCapacity() const;
+        void Descriptors_GetDescriptorsFromPipelineState(RHI_PipelineState& pipeline_state, std::vector<RHI_Descriptor>& descriptors);
+        void Descriptors_GrowPool();
+        void Descriptors_ResetPool(uint32_t descriptor_set_capacity);
+        static void* Descriptors_GetPool() { return m_descriptor_pool; }
+
         // State
         const RHI_CommandListState GetState() const { return m_state; }
 
         // Misc
-        void ResetDescriptorCache();
         void* GetResource_CommandBuffer() const { return m_resource; }
 
     private:    
@@ -147,21 +156,31 @@ namespace Spartan
         void OnDraw();
         void UnbindOutputTextures();
 
-        RHI_Pipeline* m_pipeline                                    = nullptr; 
-        Renderer* m_renderer                                        = nullptr;
-        RHI_DescriptorSetLayoutCache* m_descriptor_set_layout_cache = nullptr;
-        RHI_PipelineState m_pipeline_state;
-        RHI_Device* m_rhi_device                                    = nullptr;
-        Profiler* m_profiler                                        = nullptr;
-        void* m_resource                                            = nullptr;
-        std::shared_ptr<RHI_Fence> m_processed_fence                = nullptr;
-        std::atomic<bool> m_discard                                 = false;
-        bool m_is_render_pass_active                                = false;
-        bool m_pipeline_dirty                                       = false;
-        std::atomic<RHI_CommandListState> m_state                   = RHI_CommandListState::Idle;
-        static const uint8_t m_resource_array_length_max            = 16;
+        RHI_Pipeline* m_pipeline                         = nullptr; 
+        Renderer* m_renderer                             = nullptr;
+        RHI_Device* m_rhi_device                         = nullptr;
+        Profiler* m_profiler                             = nullptr;
+        void* m_resource                                 = nullptr;
+        std::shared_ptr<RHI_Fence> m_processed_fence     = nullptr;
+        std::atomic<bool> m_discard                      = false;
+        bool m_is_render_pass_active                     = false;
+        bool m_pipeline_dirty                            = false;
+        std::atomic<RHI_CommandListState> m_state        = RHI_CommandListState::Idle;
+        static const uint8_t m_resource_array_length_max = 16;
         static bool m_memory_query_support;
         std::mutex m_mutex_reset;
+
+        // Descriptors
+        std::unordered_map<std::size_t, std::shared_ptr<RHI_DescriptorSetLayout>> m_descriptor_set_layouts;
+        RHI_DescriptorSetLayout* m_descriptor_layout_current = nullptr;
+        uint32_t m_descriptor_set_capacity = 0;
+        std::atomic<bool> m_descriptor_pool_resseting = false;
+        static void* m_descriptor_pool;
+
+        // Pipelines
+        RHI_PipelineState m_pipeline_state;
+        // <hash of pipeline state, pipeline state object>
+        static std::unordered_map<uint32_t, std::shared_ptr<RHI_Pipeline>> m_cache;
 
         // Keep track of output textures so that we can unbind them and prevent
         // D3D11 warnings when trying to bind them as SRVs in following passes
@@ -180,9 +199,6 @@ namespace Spartan
         uint32_t m_timestamp_index             = 0;
         static const uint32_t m_max_timestamps = 512;
         std::array<uint64_t, m_max_timestamps> m_timestamps;
-
-        // <hash of pipeline state, pipeline state object>
-        static std::unordered_map<uint32_t, std::shared_ptr<RHI_Pipeline>> m_cache;
 
         // Variables to minimise state changes
         uint64_t m_vertex_buffer_id     = 0;

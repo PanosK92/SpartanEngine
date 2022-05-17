@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ============================
+//= INCLUDES =======================
 #include "Spartan.h"
 #include "RHI_DescriptorSetLayout.h"
 #include "RHI_ConstantBuffer.h"
@@ -27,8 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI_Sampler.h"
 #include "RHI_Texture.h"
 #include "RHI_DescriptorSet.h"
-#include "RHI_DescriptorSetLayoutCache.h"
-//=======================================
+//==================================
 
 //= NAMESPACES =====
 using namespace std;
@@ -157,70 +156,6 @@ namespace Spartan
         }
     }
 
-    void RHI_DescriptorSetLayout::RemoveConstantBuffer(RHI_ConstantBuffer* constant_buffer)
-    {
-        for (RHI_Descriptor& descriptor : m_descriptors)
-        {
-            if (descriptor.type == RHI_Descriptor_Type::ConstantBuffer)
-            {
-                if (descriptor.data == constant_buffer)
-                {
-                    // Determine if the descriptor set needs to bind (affects vkUpdateDescriptorSets)
-                    m_needs_to_bind = true;
-
-                    // Update
-                    descriptor.data   = nullptr;
-                    descriptor.offset = 0;
-                    descriptor.range  = 0;
-
-                    return;
-                }
-            }
-        }
-    }
-
-    void RHI_DescriptorSetLayout::RemoveTexture(RHI_Texture* texture, const int mip)
-    {
-        for (RHI_Descriptor& descriptor : m_descriptors)
-        {
-            if (descriptor.type == RHI_Descriptor_Type::Texture)
-            {
-                if (descriptor.data == texture)
-                {
-                    // Determine if the descriptor set needs to bind (affects vkUpdateDescriptorSets)
-                    m_needs_to_bind = true;
-
-                    // Update
-                    descriptor.data   = nullptr;
-                    descriptor.layout = RHI_Image_Layout::Undefined;
-                    descriptor.mip    = 0;
-
-                    return;
-                }
-            }
-        }
-    }
-
-    void RHI_DescriptorSetLayout::RemoveSampler(RHI_Sampler* sampler)
-    {
-        for (RHI_Descriptor& descriptor : m_descriptors)
-        {
-            if (descriptor.type == RHI_Descriptor_Type::Sampler)
-            {
-                if (descriptor.data == sampler)
-                {
-                    // Determine if the descriptor set needs to bind (affects vkUpdateDescriptorSets)
-                    m_needs_to_bind = true;
-
-                    // Update
-                    descriptor.data = nullptr;
-
-                    return;
-                }
-            }
-        }
-    }
-
     void RHI_DescriptorSetLayout::ClearDescriptorData()
     {
         for (RHI_Descriptor& descriptor : m_descriptors)
@@ -230,7 +165,7 @@ namespace Spartan
         }
     }
 
-    bool RHI_DescriptorSetLayout::GetDescriptorSet(RHI_DescriptorSetLayoutCache* descriptor_set_layout_cache, RHI_DescriptorSet*& descriptor_set)
+    bool RHI_DescriptorSetLayout::GetDescriptorSet(RHI_DescriptorSet*& descriptor_set, bool has_enough_capacity)
     {
         // Integrate descriptor data into the hash
         uint32_t hash = m_hash;
@@ -245,10 +180,10 @@ namespace Spartan
         if (it == m_descriptor_sets.end())
         {
             // Only allocate if the descriptor set cache hash enough capacity
-            if (descriptor_set_layout_cache->HasEnoughCapacity())
+            if (has_enough_capacity)
             {
                 // Create descriptor set
-                m_descriptor_sets[hash] = RHI_DescriptorSet(m_rhi_device, descriptor_set_layout_cache, m_descriptors, m_object_name.c_str());
+                m_descriptor_sets[hash] = RHI_DescriptorSet(m_rhi_device, m_descriptors, this, m_object_name.c_str());
 
                 // Out
                 descriptor_set = &m_descriptor_sets[hash];
