@@ -366,32 +366,23 @@ namespace Spartan::vulkan_utility
             switch (layout)
             {
             case VK_IMAGE_LAYOUT_UNDEFINED:
-                if (is_destination_mask)
-                {
-                    LOG_ERROR("The new layout used in a transition must not be VK_IMAGE_LAYOUT_UNDEFINED.");
-                }
+                SP_ASSERT(!is_destination_mask && "The new layout used in a transition must not be VK_IMAGE_LAYOUT_UNDEFINED.");
+                break;
+
+            case VK_IMAGE_LAYOUT_PREINITIALIZED:
+                SP_ASSERT(!is_destination_mask && "The new layout used in a transition must not be VK_IMAGE_LAYOUT_PREINITIALIZED.");
+                access_mask = VK_ACCESS_HOST_WRITE_BIT;
                 break;
 
             case VK_IMAGE_LAYOUT_GENERAL:
                 access_mask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
                 break;
 
-            case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
-                access_mask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+            case VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:
+                access_mask = VK_ACCESS_MEMORY_READ_BIT;
                 break;
 
-            case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
-                access_mask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-                break;
-
-            case VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL:
-                access_mask = VK_ACCESS_SHADER_READ_BIT;
-                break;
-
-            case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:
-                access_mask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_INPUT_ATTACHMENT_READ_BIT;
-                break;
-
+            // Transfer
             case VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL:
                 access_mask = VK_ACCESS_TRANSFER_READ_BIT;
                 break;
@@ -400,15 +391,18 @@ namespace Spartan::vulkan_utility
                 access_mask = VK_ACCESS_TRANSFER_WRITE_BIT;
                 break;
 
-            case VK_IMAGE_LAYOUT_PREINITIALIZED:
-                if (!is_destination_mask)
-                {
-                    access_mask = VK_ACCESS_HOST_WRITE_BIT;
-                }
-                else
-                {
-                    LOG_ERROR("The new layout used in a transition must not be VK_IMAGE_LAYOUT_PREINITIALIZED.");
-                }
+            // Color attachments
+            case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
+                access_mask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+                break;
+
+            // Depth attachments
+            case VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL:
+                access_mask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+                break;
+
+            case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
+                access_mask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
                 break;
 
             case VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL:
@@ -419,8 +413,17 @@ namespace Spartan::vulkan_utility
                 access_mask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
                 break;
 
-            case VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:
-                access_mask = VK_ACCESS_MEMORY_READ_BIT;
+            // Shader reads
+            case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:
+                access_mask = VK_ACCESS_SHADER_READ_BIT;
+                break;
+
+            case VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL:
+                access_mask = VK_ACCESS_SHADER_READ_BIT;
+                break;
+
+            case VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL:
+                access_mask = VK_ACCESS_SHADER_READ_BIT;
                 break;
 
             default:
@@ -431,9 +434,10 @@ namespace Spartan::vulkan_utility
             return access_mask;
         }
 
-        inline VkPipelineStageFlags access_flags_to_pipeline_stage(VkAccessFlags access_flags, const VkPipelineStageFlags enabled_graphics_shader_stages)
+        inline VkPipelineStageFlags access_flags_to_pipeline_stage(VkAccessFlags access_flags)
         {
             VkPipelineStageFlags stages = 0;
+            uint32_t enabled_graphics_stages = globals::rhi_device->GetEnabledGraphicsStages();
 
             while (access_flags != 0)
             {
@@ -456,21 +460,23 @@ namespace Spartan::vulkan_utility
                     break;
 
                 case VK_ACCESS_UNIFORM_READ_BIT:
-                    stages |= enabled_graphics_shader_stages | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+                    stages |= enabled_graphics_stages | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
                     break;
 
                 case VK_ACCESS_INPUT_ATTACHMENT_READ_BIT:
                     stages |= VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
                     break;
 
+                // Shader
                 case VK_ACCESS_SHADER_READ_BIT:
-                    stages |= enabled_graphics_shader_stages | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+                    stages |= enabled_graphics_stages | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
                     break;
 
                 case VK_ACCESS_SHADER_WRITE_BIT:
-                    stages |= enabled_graphics_shader_stages | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+                    stages |= enabled_graphics_stages | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
                     break;
 
+                // Color attachments
                 case VK_ACCESS_COLOR_ATTACHMENT_READ_BIT:
                     stages |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
                     break;
@@ -479,6 +485,7 @@ namespace Spartan::vulkan_utility
                     stages |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
                     break;
 
+                // Depth stencil attachments
                 case VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT:
                     stages |= VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
                     break;
@@ -487,6 +494,7 @@ namespace Spartan::vulkan_utility
                     stages |= VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
                     break;
 
+                // Transfer
                 case VK_ACCESS_TRANSFER_READ_BIT:
                     stages |= VK_PIPELINE_STAGE_TRANSFER_BIT;
                     break;
@@ -495,6 +503,7 @@ namespace Spartan::vulkan_utility
                     stages |= VK_PIPELINE_STAGE_TRANSFER_BIT;
                     break;
 
+                // Host
                 case VK_ACCESS_HOST_READ_BIT:
                     stages |= VK_PIPELINE_STAGE_HOST_BIT;
                     break;
@@ -536,7 +545,7 @@ namespace Spartan::vulkan_utility
                 }
                 else
                 {
-                    source_stage = access_flags_to_pipeline_stage(image_barrier.srcAccessMask, globals::rhi_device->GetEnabledGraphicsStages());
+                    source_stage = access_flags_to_pipeline_stage(image_barrier.srcAccessMask);
                 }
             }
 
@@ -548,7 +557,7 @@ namespace Spartan::vulkan_utility
                 }
                 else
                 {
-                    destination_stage = access_flags_to_pipeline_stage(image_barrier.dstAccessMask, globals::rhi_device->GetEnabledGraphicsStages());
+                    destination_stage = access_flags_to_pipeline_stage(image_barrier.dstAccessMask);
                 }
             }
 

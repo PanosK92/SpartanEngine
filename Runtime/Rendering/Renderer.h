@@ -362,15 +362,14 @@ namespace Spartan
         RHI_Api_Type GetApiType() const;
         void SetGlobalShaderResources(RHI_CommandList* cmd_list) const;
         void RequestTextureMipGeneration(std::shared_ptr<RHI_Texture> texture);
-        const std::shared_ptr<RHI_Device>& GetRhiDevice()           const { return m_rhi_device; }
-        RHI_DescriptorSetLayoutCache* GetDescriptorLayoutSetCache() const { return m_descriptor_set_layout_cache.get(); }
-        RHI_Texture* GetFrameTexture()                                    { return GetRenderTarget(Renderer::RenderTarget::Frame_Output).get(); }
-        auto GetFrameNum()                                          const { return m_frame_num; }
-        std::shared_ptr<Camera> GetCamera()                         const { return m_camera; }
-        auto IsInitialised()                                        const { return m_initialised; }
-        auto GetShaders()                                           const { return m_shaders; }
-        uint32_t GetCmdIndex()                                      const { return m_cmd_index;  }
-        RHI_CommandList* GetCmdList()                               const { return m_cmd_current; }
+        const std::shared_ptr<RHI_Device>& GetRhiDevice() const { return m_rhi_device; }
+        RHI_Texture* GetFrameTexture()                          { return GetRenderTarget(Renderer::RenderTarget::Frame_Output).get(); }
+        auto GetFrameNum()                                const { return m_frame_num; }
+        std::shared_ptr<Camera> GetCamera()               const { return m_camera; }
+        auto IsInitialised()                              const { return m_initialised; }
+        auto GetShaders()                                 const { return m_shaders; }
+        uint32_t GetCmdIndex()                            const { return m_cmd_index;  }
+        RHI_CommandList* GetCmdList()                     const { return m_cmd_current; }
 
         // Passes
         void Pass_CopyToBackbuffer();
@@ -578,7 +577,6 @@ namespace Spartan
 
         // RHI Core
         std::shared_ptr<RHI_Device> m_rhi_device;
-        std::shared_ptr<RHI_DescriptorSetLayoutCache> m_descriptor_set_layout_cache;
         std::vector<std::shared_ptr<RHI_CommandList>> m_cmd_lists;
         RHI_CommandList* m_cmd_current = nullptr;
 

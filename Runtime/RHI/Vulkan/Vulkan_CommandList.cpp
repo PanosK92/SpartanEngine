@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===============================
+//= INCLUDES ==========================
 #include "Spartan.h"
 #include "../RHI_Implementation.h"
 #include "../RHI_CommandList.h"
@@ -31,12 +31,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Sampler.h"
 #include "../RHI_DescriptorSet.h"
 #include "../RHI_DescriptorSetLayout.h"
-#include "../RHI_DescriptorSetLayoutCache.h"
 #include "../RHI_Semaphore.h"
 #include "../RHI_Fence.h"
 #include "../../Profiling/Profiler.h"
 #include "../../Rendering/Renderer.h"
-//==========================================
+#include "../RHI_Shader.h"
+//=====================================
 
 //= NAMESPACES ==============
 using namespace std;
@@ -46,6 +46,7 @@ using namespace Spartan::Math;
 namespace Spartan
 {
     unordered_map<uint32_t, shared_ptr<RHI_Pipeline>> RHI_CommandList::m_cache;
+    void* RHI_CommandList::m_descriptor_pool = nullptr;
 
     static VkAttachmentLoadOp get_color_load_op(const Math::Vector4& color)
     {
@@ -71,10 +72,9 @@ namespace Spartan
 
     RHI_CommandList::RHI_CommandList(Context* context)
     {
-        m_renderer                    = context->GetSubsystem<Renderer>();
-        m_profiler                    = context->GetSubsystem<Profiler>();
-        m_rhi_device                  = m_renderer->GetRhiDevice().get();
-        m_descriptor_set_layout_cache = m_renderer->GetDescriptorLayoutSetCache();
+        m_renderer   = context->GetSubsystem<Renderer>();
+        m_profiler   = context->GetSubsystem<Profiler>();
+        m_rhi_device = m_renderer->GetRhiDevice().get();
 
         RHI_Context* rhi_context = m_rhi_device->GetContextRhi();
 
@@ -98,6 +98,9 @@ namespace Spartan
 
             m_timestamps.fill(0);
         }
+
+        // Set the descriptor set capacity to an initial value
+        Descriptors_ResetPool(2048);
     }
 
     RHI_CommandList::~RHI_CommandList()
@@ -236,7 +239,7 @@ namespace Spartan
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
         // Update the descriptor cache with the pipeline state
-        m_descriptor_set_layout_cache->SetPipelineState(pipeline_state);
+        Descriptors_GetLayoutFromPipelineState(pipeline_state);
 
         // Validate it
         if (!pipeline_state.IsValid())
@@ -255,7 +258,7 @@ namespace Spartan
         if (it == m_cache.end())
         {
             // Cache a new pipeline
-            it = m_cache.emplace(make_pair(hash, move(make_shared<RHI_Pipeline>(m_rhi_device, pipeline_state, m_descriptor_set_layout_cache->GetCurrentDescriptorSetLayout())))).first;
+            it = m_cache.emplace(make_pair(hash, move(make_shared<RHI_Pipeline>(m_rhi_device, pipeline_state, m_descriptor_layout_current)))).first;
             LOG_INFO("A new pipeline has been created.");
         }
 
@@ -713,14 +716,14 @@ namespace Spartan
         // Validate command list state
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
-        if (!m_descriptor_set_layout_cache->GetCurrentDescriptorSetLayout())
+        if (!m_descriptor_layout_current)
         {
             LOG_WARNING("Descriptor layout not set, try setting constant buffer \"%s\" within a render pass", constant_buffer->GetObjectName().c_str());
             return;
         }
 
         // Set (will only happen if it's not already set)
-        m_descriptor_set_layout_cache->SetConstantBuffer(slot, constant_buffer);
+        m_descriptor_layout_current->SetConstantBuffer(slot, constant_buffer);
     }
 
     void RHI_CommandList::SetSampler(const uint32_t slot, RHI_Sampler* sampler) const
@@ -728,14 +731,14 @@ namespace Spartan
         // Validate command list state
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
-        if (!m_descriptor_set_layout_cache->GetCurrentDescriptorSetLayout())
+        if (!m_descriptor_layout_current)
         {
             LOG_WARNING("Descriptor layout not set, try setting sampler \"%s\" within a render pass", sampler->GetObjectName().c_str());
             return;
         }
 
         // Set (will only happen if it's not already set)
-        m_descriptor_set_layout_cache->SetSampler(slot, sampler);
+        m_descriptor_layout_current->SetSampler(slot, sampler);
     }
 
     void RHI_CommandList::SetTexture(const uint32_t slot, RHI_Texture* texture, const int mip /*= -1*/, bool ranged /*= false*/, const bool uav /*= false*/)
@@ -756,7 +759,7 @@ namespace Spartan
             }
         }
 
-        if (!m_descriptor_set_layout_cache->GetCurrentDescriptorSetLayout())
+        if (!m_descriptor_layout_current)
         {
             LOG_WARNING("Descriptor layout not set, try setting texture \"%s\" within a render pass", texture->GetObjectName().c_str());
             return;
@@ -822,7 +825,7 @@ namespace Spartan
         }
 
         // Set (will only happen if it's not already set)
-        m_descriptor_set_layout_cache->SetTexture(slot, texture, mip, ranged);
+        m_descriptor_layout_current->SetTexture(slot, texture, mip, ranged);
     }
 
     void RHI_CommandList::SetStructuredBuffer(const uint32_t slot, RHI_StructuredBuffer* structured_buffer) const
@@ -830,13 +833,13 @@ namespace Spartan
         // Validate command list state
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
-        if (!m_descriptor_set_layout_cache->GetCurrentDescriptorSetLayout())
+        if (!m_descriptor_layout_current)
         {
             LOG_WARNING("Descriptor layout not set, try setting structured buffer \"%s\" within a render pass", structured_buffer->GetObjectName().c_str());
             return;
         }
 
-        m_descriptor_set_layout_cache->SetStructuredBuffer(slot, structured_buffer);
+        m_descriptor_layout_current->SetStructuredBuffer(slot, structured_buffer);
     }
 
     uint32_t RHI_CommandList::Gpu_GetMemoryUsed(RHI_Device* rhi_device)
@@ -969,14 +972,6 @@ namespace Spartan
         }
     }
 
-    void RHI_CommandList::ResetDescriptorCache()
-    {
-        if (m_descriptor_set_layout_cache)
-        {
-            m_descriptor_set_layout_cache->Reset(0);
-        }
-    }
-
     void RHI_CommandList::OnDraw()
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
@@ -1011,7 +1006,7 @@ namespace Spartan
             // Descriptor set == null, result = false -> a new descriptor was needed but we are out of memory (allocates next frame)
 
             RHI_DescriptorSet* descriptor_set = nullptr;
-            bool result = m_descriptor_set_layout_cache->GetDescriptorSet(descriptor_set);
+            bool result = m_descriptor_layout_current->GetDescriptorSet(descriptor_set, Descriptors_HasEnoughCapacity());
 
             if (result && descriptor_set != nullptr)
             {
@@ -1019,9 +1014,8 @@ namespace Spartan
                 VkPipelineBindPoint pipeline_bind_point = m_pipeline_state.IsCompute() ? VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_COMPUTE : VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS;
 
                 // Dynamic offsets
-                RHI_DescriptorSetLayout* descriptor_set_layout = m_descriptor_set_layout_cache->GetCurrentDescriptorSetLayout();
-                const array<uint32_t, rhi_max_constant_buffer_count> dynamic_offsets = descriptor_set_layout->GetDynamicOffsets();
-                uint32_t dynamic_offset_count = descriptor_set_layout->GetDynamicOffsetCount();
+                const array<uint32_t, rhi_max_constant_buffer_count> dynamic_offsets = m_descriptor_layout_current->GetDynamicOffsets();
+                uint32_t dynamic_offset_count = m_descriptor_layout_current->GetDynamicOffsetCount();
 
                 // Validate descriptor sets
                 array<void*, 1> descriptor_sets = { descriptor_set->GetResource() };
@@ -1034,12 +1028,12 @@ namespace Spartan
                 vkCmdBindDescriptorSets
                 (
                     static_cast<VkCommandBuffer>(m_resource),                                // commandBuffer
-                    pipeline_bind_point,                                                     // pipelineBindPoint
+                    pipeline_bind_point,                                       // pipelineBindPoint
                     static_cast<VkPipelineLayout>(m_pipeline->GetResource_PipelineLayout()), // layout
-                    0,                                                                       // firstSet
-                    static_cast<uint32_t>(descriptor_sets.size()),                           // descriptorSetCount
-                    reinterpret_cast<VkDescriptorSet*>(descriptor_sets.data()),              // pDescriptorSets
-                    dynamic_offset_count,                                                    // dynamicOffsetCount
+                    0,                                                                // firstSet
+                    static_cast<uint32_t>(descriptor_sets.size()),            // descriptorSetCount
+                    reinterpret_cast<VkDescriptorSet*>(descriptor_sets.data()), // pDescriptorSets
+                    dynamic_offset_count,                                     // dynamicOffsetCount
                     !dynamic_offsets.empty() ? dynamic_offsets.data() : nullptr              // pDynamicOffsets
                 );
 
@@ -1054,5 +1048,107 @@ namespace Spartan
     void RHI_CommandList::UnbindOutputTextures()
     {
 
+    }
+
+    void RHI_CommandList::Descriptors_GetLayoutFromPipelineState(RHI_PipelineState& pipeline_state)
+    {
+        // Get pipeline
+        vector<RHI_Descriptor> descriptors;
+        Descriptors_GetDescriptorsFromPipelineState(pipeline_state, descriptors);
+
+        // Compute a hash for the descriptors
+        uint32_t hash = 0;
+        for (const RHI_Descriptor& descriptor : descriptors)
+        {
+            Utility::Hash::hash_combine(hash, descriptor.ComputeHash(false));
+        }
+
+        // Search for a descriptor set layout which matches this hash
+        auto it     = m_descriptor_set_layouts.find(hash);
+        bool cached = it != m_descriptor_set_layouts.end();
+
+        // If there is no descriptor set layout for this particular hash, create one
+        if (!cached)
+        {
+            // Create a name for the descriptor set layout, very useful for Vulkan debugging
+            string name  = "CS:" + (pipeline_state.shader_compute ? pipeline_state.shader_compute->GetObjectName() : "null");
+            name        += "-VS:" + (pipeline_state.shader_vertex ? pipeline_state.shader_vertex->GetObjectName()  : "null");
+            name        += "-PS:" + (pipeline_state.shader_pixel  ? pipeline_state.shader_pixel->GetObjectName()   : "null");
+
+            // Emplace a new descriptor set layout
+            it = m_descriptor_set_layouts.emplace(make_pair(hash, make_shared<RHI_DescriptorSetLayout>(m_rhi_device, descriptors, name.c_str()))).first;
+        }
+
+        // Get the descriptor set layout we will be using
+        m_descriptor_layout_current = it->second.get();
+
+        // Clear any data data the the descriptors might contain from previous uses (and hence can possibly be invalid by now)
+        if (cached)
+        {
+            m_descriptor_layout_current->ClearDescriptorData();
+        }
+
+        // Make it bind
+        m_descriptor_layout_current->NeedsToBind();
+    }
+
+    void RHI_CommandList::Descriptors_ResetPool(uint32_t descriptor_set_capacity)
+    {
+        // If the requested capacity is zero, then only recreate the descriptor pool
+        if (descriptor_set_capacity == 0)
+        {
+            descriptor_set_capacity = m_descriptor_set_capacity;
+        }
+
+        if (m_descriptor_set_capacity == descriptor_set_capacity)
+        {
+            LOG_WARNING("Capacity is already %d, is this reset needed ?");
+        }
+
+        m_descriptor_pool_resseting = true;
+
+        // Destroy layouts (and descriptor sets)
+        m_descriptor_set_layouts.clear();
+        m_descriptor_layout_current = nullptr;
+
+        // Destroy pool
+        if (m_descriptor_pool)
+        {
+            // Wait in case it's still in use by the GPU
+            m_rhi_device->QueueWaitAll();
+
+            vkDestroyDescriptorPool(m_rhi_device->GetContextRhi()->device, static_cast<VkDescriptorPool>(m_descriptor_pool), nullptr);
+            m_descriptor_pool = nullptr;
+        }
+
+        // Create pool
+        {
+            // Pool sizes
+            array<VkDescriptorPoolSize, 6> pool_sizes =
+            {
+                VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_SAMPLER,                rhi_descriptor_max_samplers },
+                VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,          rhi_descriptor_max_textures },
+                VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,          rhi_descriptor_max_storage_textures },
+                VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,         rhi_descriptor_max_storage_buffers },
+                VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         rhi_descriptor_max_constant_buffers },
+                VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, rhi_descriptor_max_constant_buffers_dynamic }
+            };
+
+            // Create info
+            VkDescriptorPoolCreateInfo pool_create_info = {};
+            pool_create_info.sType                      = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+            pool_create_info.flags                      = 0;
+            pool_create_info.poolSizeCount              = static_cast<uint32_t>(pool_sizes.size());
+            pool_create_info.pPoolSizes                 = pool_sizes.data();
+            pool_create_info.maxSets                    = descriptor_set_capacity;
+
+            // Create
+            bool created = vulkan_utility::error::check(vkCreateDescriptorPool(m_rhi_device->GetContextRhi()->device, &pool_create_info, nullptr, reinterpret_cast<VkDescriptorPool*>(&m_descriptor_pool)));
+            SP_ASSERT(created && "Failed to create descriptor pool.");
+        }
+
+        LOG_INFO("Capacity has been set to %d elements", descriptor_set_capacity);
+        m_descriptor_set_capacity   = descriptor_set_capacity;
+        m_descriptor_pool_resseting = false;
     }
 }

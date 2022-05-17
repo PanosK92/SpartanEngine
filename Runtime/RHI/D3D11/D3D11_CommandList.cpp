@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===============================
+//= INCLUDES ========================
 #include "Spartan.h"
 #include "../RHI_Implementation.h"
 #include "../RHI_CommandList.h"
@@ -38,15 +38,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_InputLayout.h"
 #include "../RHI_SwapChain.h"
 #include "../RHI_PipelineState.h"
-#include "../RHI_DescriptorSetLayoutCache.h"
 #include "../../Profiling/Profiler.h"
 #include "../../Rendering/Renderer.h"
-//==========================================
+//===================================
 
-//= NAMESPACES ===============
+//= NAMESPACES =====
 using namespace std;
-using namespace Spartan::Math;
-//============================
+//==================
 
 namespace Spartan
 {
@@ -54,10 +52,9 @@ namespace Spartan
 
     RHI_CommandList::RHI_CommandList(Context* context)
     {
-        m_renderer                    = context->GetSubsystem<Renderer>();
-        m_profiler                    = context->GetSubsystem<Profiler>();
-        m_rhi_device                  = m_renderer->GetRhiDevice().get();
-        m_descriptor_set_layout_cache = m_renderer->GetDescriptorLayoutSetCache();
+        m_renderer   = context->GetSubsystem<Renderer>();
+        m_profiler   = context->GetSubsystem<Profiler>();
+        m_rhi_device = m_renderer->GetRhiDevice().get();
         m_timestamps.fill(0);
     }
 
@@ -988,5 +985,15 @@ namespace Spartan
         }
 
         m_output_textures_index = 0;
+    }
+
+    void RHI_CommandList::Descriptors_GetLayoutFromPipelineState(RHI_PipelineState& pipeline_state)
+    {
+        
+    }
+
+    void RHI_CommandList::Descriptors_ResetPool(uint32_t descriptor_set_capacity)
+    {
+        
     }
 }
