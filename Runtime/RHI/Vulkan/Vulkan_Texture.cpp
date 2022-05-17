@@ -415,9 +415,6 @@ namespace Spartan
         SP_ASSERT(m_rhi_device != nullptr);
         SP_ASSERT(m_rhi_device->IsInitialised());
 
-        // Wait for any in-flight frames that might be using it.
-        m_rhi_device->QueueWaitAll();
-
         // Destruction can happen during engine shutdown, in which case, the renderer might not exist, so, if statement.
         if (Renderer* renderer = m_rhi_device->GetContext()->GetSubsystem<Renderer>())
         {
@@ -426,6 +423,9 @@ namespace Spartan
                 cmd_list->Discard();
             }
         }
+
+        // Wait for any in-flight frames that might be using it.
+        m_rhi_device->QueueWaitAll();
 
         // De-allocate everything
         if (destroy_main)
