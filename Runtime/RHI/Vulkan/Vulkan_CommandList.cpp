@@ -59,7 +59,7 @@ namespace Spartan
         return VK_ATTACHMENT_LOAD_OP_CLEAR;
     };
 
-    static VkAttachmentLoadOp get_depth_stencil_load_op(const float depth)
+    static VkAttachmentLoadOp get_depth_load_op(const float depth)
     {
         if (depth == rhi_depth_stencil_dont_care)
             return VK_ATTACHMENT_LOAD_OP_DONT_CARE;
@@ -349,7 +349,7 @@ namespace Spartan
                 attachment_depth_stencil.sType                   = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
                 attachment_depth_stencil.imageView               = static_cast<VkImageView>(m_pipeline_state.render_target_depth_texture->GetResource_View_DepthStencil(m_pipeline_state.render_target_depth_stencil_texture_array_index));
                 attachment_depth_stencil.imageLayout             = vulkan_image_layout[static_cast<uint8_t>(m_pipeline_state.render_target_depth_texture->GetLayout(0))];
-                attachment_depth_stencil.loadOp                  = get_depth_stencil_load_op(m_pipeline_state.clear_depth);
+                attachment_depth_stencil.loadOp                  = get_depth_load_op(m_pipeline_state.clear_depth);
                 attachment_depth_stencil.storeOp                 = VK_ATTACHMENT_STORE_OP_STORE;
                 attachment_depth_stencil.clearValue.depthStencil = { m_pipeline_state.clear_depth, 0 };
 
@@ -1028,12 +1028,12 @@ namespace Spartan
                 vkCmdBindDescriptorSets
                 (
                     static_cast<VkCommandBuffer>(m_resource),                                // commandBuffer
-                    pipeline_bind_point,                                       // pipelineBindPoint
+                    pipeline_bind_point,                                                     // pipelineBindPoint
                     static_cast<VkPipelineLayout>(m_pipeline->GetResource_PipelineLayout()), // layout
-                    0,                                                                // firstSet
-                    static_cast<uint32_t>(descriptor_sets.size()),            // descriptorSetCount
-                    reinterpret_cast<VkDescriptorSet*>(descriptor_sets.data()), // pDescriptorSets
-                    dynamic_offset_count,                                     // dynamicOffsetCount
+                    0,                                                                       // firstSet
+                    static_cast<uint32_t>(descriptor_sets.size()),                           // descriptorSetCount
+                    reinterpret_cast<VkDescriptorSet*>(descriptor_sets.data()),              // pDescriptorSets
+                    dynamic_offset_count,                                                    // dynamicOffsetCount
                     !dynamic_offsets.empty() ? dynamic_offsets.data() : nullptr              // pDynamicOffsets
                 );
 

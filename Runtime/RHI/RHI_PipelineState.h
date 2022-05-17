@@ -45,7 +45,6 @@ namespace Spartan
         bool HasClearValues();
         bool IsGraphics() const { return (shader_vertex != nullptr || shader_pixel != nullptr) && !shader_compute; }
         bool IsCompute()  const { return shader_compute != nullptr && !IsGraphics(); }
-        bool IsDummy()    const { return !shader_compute && !shader_vertex && !shader_pixel; }
 
         //= Static, modification can potentially generate a new pipeline ===================
         RHI_Shader* shader_vertex                     = nullptr;
