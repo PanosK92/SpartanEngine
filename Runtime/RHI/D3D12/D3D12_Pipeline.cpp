@@ -53,7 +53,7 @@ namespace Spartan
 
             d3d12_utility::error::check(m_rhi_device->GetContextRhi()->device->CreateComputePipelineState(&desc, IID_PPV_ARGS(reinterpret_cast<ID3D12PipelineState**>(&m_resource_pipeline))));
         }
-        else if (pipeline_state.IsGraphics() || pipeline_state.IsDummy())
+        else if (pipeline_state.IsGraphics())
         {
             // Rasterizer description
             D3D12_RASTERIZER_DESC desc_rasterizer = {};
