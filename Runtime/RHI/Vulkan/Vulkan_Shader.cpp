@@ -76,6 +76,7 @@ namespace Spartan
             #ifdef DEBUG
             arguments.emplace_back("-Od");                                                                                                         // Disable optimizations
             arguments.emplace_back("-Zi");                                                                                                         // Enable debug information
+            arguments.emplace_back("-Qembed_debug");                                                                                               // Embed PDB in shader container (must be used with /Zi)
             #endif
 
             // Negate SV_Position.y before writing to stage output in VS/DS/GS to accommodate Vulkan's coordinate system
@@ -128,13 +129,10 @@ namespace Spartan
             );
             
             // Create input layout
-            if (m_vertex_type != RHI_Vertex_Type::Unknown)
+            if (!m_input_layout->Create(m_vertex_type, nullptr))
             {
-                if (!m_input_layout->Create(m_vertex_type, nullptr))
-                {
-                    LOG_ERROR("Failed to create input layout for %s", m_object_name.c_str());
-                    return nullptr;
-                }
+                LOG_ERROR("Failed to create input layout for %s", m_object_name.c_str());
+                return nullptr;
             }
 
             // Release

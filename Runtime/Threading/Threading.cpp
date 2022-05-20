@@ -30,7 +30,7 @@ using namespace std;
 
 namespace Spartan
 {
-    Threading::Threading(Context* context) : ISubsystem(context)
+    Threading::Threading(Context* context) : Subsystem(context)
     {
         m_stopping                               = false;
         m_thread_count_support                  = thread::hardware_concurrency();

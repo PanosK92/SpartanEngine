@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ==========
-#include "ISubsystem.h"
+#include "Subsystem.h"
 #include <chrono>
 //=====================
 
@@ -37,21 +37,21 @@ namespace Spartan
         FixedToMonitor
     };
 
-    class SPARTAN_CLASS Timer : public ISubsystem
+    class SPARTAN_CLASS Timer : public Subsystem
     {
     public:
         Timer(Context* context);
         ~Timer() = default;
 
-        //= ISybsystem ======================
+        //= ISybsystem =========================
         void OnTick(double delta_time) override;
-        //===================================
+        //======================================
 
-        //= FPS ==============================================
+        //= FPS ============================================
         void SetFpsLimit(double fps);
         double GetFpsLimit()   const { return m_fps_limit; }
         FpsLimitType GetFpsLimitType();
-        //====================================================
+        //==================================================
 
         auto GetTimeMs()                const { return m_time_ms; }
         auto GetTimeSec()               const { return static_cast<float>(m_time_ms / 1000.0); }
@@ -72,7 +72,7 @@ namespace Spartan
 
         // FPS
         double m_fps_min                = 10.0;
-        double m_fps_max                = 1000.0;
+        double m_fps_max                = 5000.0;
         double m_fps_limit              = m_fps_min; // if it's lower than the monitor's hz, it will be updated to match it, so start with something low.
         bool m_user_selected_fps_target = false;
     };

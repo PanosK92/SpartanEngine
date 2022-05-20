@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===============================
+//= INCLUDES =========================
 #include "Spartan.h"
 #include "../RHI_Implementation.h"
 #include "../RHI_CommandList.h"
@@ -37,10 +37,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_InputLayout.h"
 #include "../RHI_SwapChain.h"
 #include "../RHI_PipelineState.h"
-#include "../RHI_DescriptorSetLayoutCache.h"
 #include "../../Profiling/Profiler.h"
 #include "../../Rendering/Renderer.h"
-//==========================================
+//====================================
 
 //= NAMESPACES ===============
 using namespace std;
@@ -54,7 +53,7 @@ namespace Spartan
         m_renderer   = context->GetSubsystem<Renderer>();
         m_rhi_device = m_renderer->GetRhiDevice().get();
 
-        ID3D12CommandAllocator* allocator = static_cast<ID3D12CommandAllocator*>(m_rhi_device->GetCmdPoolGraphics());
+        ID3D12CommandAllocator* allocator = static_cast<ID3D12CommandAllocator*>(m_rhi_device->GetCommandPoolGraphics());
         d3d12_utility::error::check(m_rhi_device->GetContextRhi()->device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, allocator, nullptr, IID_PPV_ARGS(reinterpret_cast<ID3D12GraphicsCommandList**>(&m_resource))));
     }
     
@@ -81,7 +80,7 @@ namespace Spartan
         SP_ASSERT(m_state == RHI_CommandListState::Idle);
 
         // Unlike Vulkan, D3D12 wraps both begin and reset under Reset().
-        SP_ASSERT(d3d12_utility::error::check(static_cast<ID3D12GraphicsCommandList*>(m_resource)->Reset(static_cast<ID3D12CommandAllocator*>(m_rhi_device->GetCmdPoolGraphics()), nullptr)) && "Failed to reset command list");
+        SP_ASSERT(d3d12_utility::error::check(static_cast<ID3D12GraphicsCommandList*>(m_resource)->Reset(static_cast<ID3D12CommandAllocator*>(m_rhi_device->GetCommandPoolGraphics()), nullptr)) && "Failed to reset command list");
 
         m_state = RHI_CommandListState::Recording;
     }
@@ -113,7 +112,7 @@ namespace Spartan
 
         lock_guard<mutex> guard(m_mutex_reset);
 
-        if (!d3d12_utility::error::check(static_cast<ID3D12GraphicsCommandList*>(m_resource)->Reset(static_cast<ID3D12CommandAllocator*>(m_rhi_device->GetCmdPoolGraphics()), nullptr)))
+        if (!d3d12_utility::error::check(static_cast<ID3D12GraphicsCommandList*>(m_resource)->Reset(static_cast<ID3D12CommandAllocator*>(m_rhi_device->GetCommandPoolGraphics()), nullptr)))
             return false;
 
         m_state = RHI_CommandListState::Idle;
@@ -125,9 +124,9 @@ namespace Spartan
         return true;
     }
     
-    bool RHI_CommandList::EndRenderPass()
+    void RHI_CommandList::EndRenderPass()
     {
-        return true;
+
     }
 
     void RHI_CommandList::ClearPipelineStateRenderTargets(RHI_PipelineState& pipeline_state)
@@ -141,20 +140,19 @@ namespace Spartan
         const bool storage                 /*= false*/,
         const Math::Vector4& clear_color   /*= rhi_color_load*/,
         const float clear_depth            /*= rhi_depth_load*/,
-        const uint32_t clear_stencil       /*= rhi_stencil_load*/
+        const float clear_stencil          /*= rhi_stencil_load*/
     )
     {
 
     }
 
-    bool RHI_CommandList::Draw(const uint32_t vertex_count, uint32_t vertex_start_index /*= 0*/)
+    void RHI_CommandList::Draw(const uint32_t vertex_count, uint32_t vertex_start_index /*= 0*/)
     {
         // Validate command list state
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
         // Ensure correct state before attempting to draw
-        if (!OnDraw())
-            return false;
+        OnDraw();
 
         // Draw
         static_cast<ID3D12GraphicsCommandList*>(m_resource)->DrawInstanced(
@@ -166,18 +164,15 @@ namespace Spartan
 
         // Profiler
         m_profiler->m_rhi_draw++;
-
-        return true;
     }
     
-    bool RHI_CommandList::DrawIndexed(const uint32_t index_count, const uint32_t index_offset, const uint32_t vertex_offset)
+    void RHI_CommandList::DrawIndexed(const uint32_t index_count, const uint32_t index_offset, const uint32_t vertex_offset)
     {
         // Validate command list state
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
         // Ensure correct state before attempting to draw
-        if (!OnDraw())
-            return false;
+        OnDraw();
 
         // Draw
         static_cast<ID3D12GraphicsCommandList*>(m_resource)->DrawIndexedInstanced(
@@ -190,26 +185,21 @@ namespace Spartan
 
         // Profile
         m_profiler->m_rhi_draw++;
-
-        return true;
     }
   
-    bool RHI_CommandList::Dispatch(uint32_t x, uint32_t y, uint32_t z, bool async /*= false*/)
+    void RHI_CommandList::Dispatch(uint32_t x, uint32_t y, uint32_t z, bool async /*= false*/)
     {
         // Validate command list state
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
         // Ensure correct state before attempting to draw
-        if (!OnDraw())
-            return false;
+        OnDraw();
 
         // Dispatch
         static_cast<ID3D12GraphicsCommandList*>(m_resource)->Dispatch(x, y, z);
 
         // Profiler
         m_profiler->m_rhi_dispatch++;
-
-        return true;
     }
 
     void RHI_CommandList::Blit(RHI_Texture* source, RHI_Texture* destination)
@@ -279,17 +269,17 @@ namespace Spartan
 
     }
 
-    bool RHI_CommandList::Timestamp_Start(void* query_disjoint /*= nullptr*/, void* query_start /*= nullptr*/)
+    bool RHI_CommandList::Timestamp_Start(void* query)
     {
         return true;
     }
 
-    bool RHI_CommandList::Timestamp_End(void* query_disjoint /*= nullptr*/, void* query_end /*= nullptr*/)
+    bool RHI_CommandList::Timestamp_End(void* query)
     {
         return true;
     }
 
-    float RHI_CommandList::Timestamp_GetDuration(void* query_disjoint, void* query_start, void* query_end, const uint32_t pass_index)
+    float RHI_CommandList::Timestamp_GetDuration(void* query_start, void* query_end, const uint32_t pass_index)
     {
         return 0.0f;
     }
@@ -299,47 +289,42 @@ namespace Spartan
         return 0;
     }
 
-    bool RHI_CommandList::Gpu_QueryCreate(RHI_Device* rhi_device, void** query, const RHI_Query_Type type)
-    {
-        return true;
-    }
-
-    void RHI_CommandList::Gpu_QueryRelease(void*& query_object)
+    void RHI_CommandList::Timeblock_Start(const char* name, const bool profile, const bool gpu_markers)
     {
 
     }
 
-    void RHI_CommandList::Timeblock_Start(const RHI_PipelineState* pipeline_state)
+    void RHI_CommandList::Timeblock_End()
     {
 
     }
 
-    void RHI_CommandList::Timeblock_End(const RHI_PipelineState* pipeline_state)
+    void RHI_CommandList::StartMarker(const char* name)
     {
 
     }
 
-    bool RHI_CommandList::Deferred_BeginRenderPass()
+    void RHI_CommandList::EndMarker()
     {
-        return true;
+
     }
 
-    bool RHI_CommandList::Deferred_BindPipeline()
+    void RHI_CommandList::OnDraw()
     {
-        return true;
-    }
 
-    bool RHI_CommandList::Deferred_BindDescriptorSet()
-    {
-        return true;
-    }
-
-    bool RHI_CommandList::OnDraw()
-    {
-        return true;
     }
 
     void RHI_CommandList::UnbindOutputTextures()
+    {
+
+    }
+
+    void RHI_CommandList::Descriptors_GetLayoutFromPipelineState(RHI_PipelineState& pipeline_state)
+    {
+
+    }
+
+    void RHI_CommandList::Descriptors_ResetPool(uint32_t descriptor_set_capacity)
     {
 
     }

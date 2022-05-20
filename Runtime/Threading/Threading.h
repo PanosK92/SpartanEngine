@@ -29,7 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <unordered_map>
 #include <functional>
 #include "../Logging/Log.h"
-#include "../Core/ISubsystem.h"
+#include "../Core/Subsystem.h"
 //=============================
 
 namespace Spartan
@@ -48,7 +48,7 @@ namespace Spartan
         function_type m_function;
     };
 
-    class Threading : public ISubsystem
+    class Threading : public Subsystem
     {
     public:
         Threading(Context* context);

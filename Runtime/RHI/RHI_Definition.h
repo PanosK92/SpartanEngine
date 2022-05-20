@@ -33,11 +33,9 @@ namespace Spartan
     class RHI_Device;
     class RHI_CommandList;
     class RHI_PipelineState;
-    class RHI_PipelineCache;
     class RHI_Pipeline;
     class RHI_DescriptorSet;
     class RHI_DescriptorSetLayout;
-    class RHI_DescriptorSetLayoutCache;
     class RHI_SwapChain;
     class RHI_RasterizerState;
     class RHI_BlendState;
@@ -115,7 +113,7 @@ namespace Spartan
     {
         TriangleList,
         LineList,
-        RHI_PrimitiveTopology_Unknown
+        Undefined
     };
 
     enum class RHI_CullMode
@@ -259,6 +257,7 @@ namespace Spartan
         General,
         Preinitialized,
         Color_Attachment_Optimal,
+        Depth_Attachment_Optimal,
         Depth_Stencil_Attachment_Optimal,
         Depth_Stencil_Read_Only_Optimal,
         Shader_Read_Only_Optimal,
@@ -276,10 +275,10 @@ namespace Spartan
 
     enum RHI_Shader_Type : uint8_t
     {
-        RHI_Shader_Unknown  = 0,
-        RHI_Shader_Vertex   = 1 << 0,
-        RHI_Shader_Pixel    = 1 << 1,
-        RHI_Shader_Compute  = 1 << 2,
+        RHI_Shader_Unknown = 0,
+        RHI_Shader_Vertex  = 1 << 0,
+        RHI_Shader_Pixel   = 1 << 1,
+        RHI_Shader_Compute = 1 << 2,
     };
 
     enum class Shader_Compilation_State
@@ -297,19 +296,17 @@ namespace Spartan
     static const uint32_t rhi_shader_shift_register_s = 300;
 
     // Descriptor set limits
-    static const uint16_t rhi_descriptor_max_storage_textures         = 1024;
-    static const uint16_t rhi_descriptor_max_storage_buffers          = 1024;
-    static const uint16_t rhi_descriptor_max_constant_buffers         = 1024;
-    static const uint16_t rhi_descriptor_max_constant_buffers_dynamic = 1024;
-    static const uint16_t rhi_descriptor_max_samplers                 = 1024;
-    static const uint16_t rhi_descriptor_max_textures                 = 1024;
+    static const uint16_t rhi_descriptor_max_storage_textures         = 2048;
+    static const uint16_t rhi_descriptor_max_storage_buffers          = 2048;
+    static const uint16_t rhi_descriptor_max_constant_buffers         = 2048;
+    static const uint16_t rhi_descriptor_max_constant_buffers_dynamic = 2048;
+    static const uint16_t rhi_descriptor_max_samplers                 = 2048;
+    static const uint16_t rhi_descriptor_max_textures                 = 2048;
     
     static const Math::Vector4  rhi_color_dont_care           = Math::Vector4(-std::numeric_limits<float>::infinity(), 0.0f, 0.0f, 0.0f);
     static const Math::Vector4  rhi_color_load                = Math::Vector4(std::numeric_limits<float>::infinity(), 0.0f, 0.0f, 0.0f);
-    static const float          rhi_depth_dont_care           = -std::numeric_limits<float>::infinity();
-    static const float          rhi_depth_load                = std::numeric_limits<float>::infinity();
-    static const uint32_t       rhi_stencil_dont_care         = (std::numeric_limits<uint32_t>::max)();
-    static const uint32_t       rhi_stencil_load              = (std::numeric_limits<uint32_t>::max)() - 1;
+    #define                     rhi_depth_stencil_dont_care   3.402823466e+38F
+    #define                     rhi_depth_stencil_load        (3.402823466e+38F - 1.0f)
     static const uint8_t        rhi_max_render_target_count   = 8;
     static const uint8_t        rhi_max_constant_buffer_count = 8;
     static const uint32_t       rhi_dynamic_offset_empty      = (std::numeric_limits<uint32_t>::max)();

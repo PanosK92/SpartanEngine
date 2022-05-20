@@ -129,7 +129,7 @@ namespace Spartan
         return true;
     }
     
-    bool RHI_SwapChain::Present(RHI_Semaphore* wait_semaphore)
+    bool RHI_SwapChain::Present()
     {
         // Verify a few things
         SP_ASSERT(m_present_enabled);

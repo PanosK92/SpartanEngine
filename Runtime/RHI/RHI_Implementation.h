@@ -426,6 +426,7 @@ static const VkImageLayout vulkan_image_layout[] =
     VK_IMAGE_LAYOUT_GENERAL,
     VK_IMAGE_LAYOUT_PREINITIALIZED,
     VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+    VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
     VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
     VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL,
     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
@@ -507,13 +508,13 @@ namespace Spartan
 
         // Debugging
         #ifdef DEBUG
-            bool debug    = true;
-            bool markers  = true;
-            bool profiler = true;
+            bool debug       = true;
+            bool gpu_markers = true;
+            bool profiler    = true;
         #else
-            bool debug    = false;
-            bool markers  = false;
-            bool profiler = true;
+            bool debug       = false;
+            bool gpu_markers = false;
+            bool profiler    = true;
         #endif
     };
 }

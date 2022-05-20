@@ -69,29 +69,20 @@ namespace Spartan
         }
     }
 
+    bool Input::GetMouseCursorVisible() const
+    {
+        return SDL_ShowCursor(SDL_QUERY) == 1;
+    }
+
     void Input::SetMouseCursorVisible(const bool visible)
     {
-        if (visible == m_mouse_cursor_visible)
+        if (visible == GetMouseCursorVisible())
             return;
 
-        if (visible)
+        if (static_cast<bool>(SDL_ShowCursor(static_cast<int>(visible))) == visible)
         {
-            if (SDL_ShowCursor(SDL_ENABLE) != 0)
-            {
-                LOG_ERROR("Failed to show cursor");
-                return;
-            }
+            LOG_ERROR("Failed to change cursor visibility");
         }
-        else
-        {
-            if (SDL_ShowCursor(SDL_DISABLE) != 1)
-            {
-                LOG_ERROR("Failed to hide cursor");
-                return;
-            }
-        }
-
-        m_mouse_cursor_visible = visible;
     }
 
     void Input::SetMousePosition(const Math::Vector2& position)

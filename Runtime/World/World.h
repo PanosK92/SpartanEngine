@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <vector>
 #include <memory>
 #include <string>
-#include "../Core/ISubsystem.h"
+#include "../Core/Subsystem.h"
 #include "../Core/SpartanDefinitions.h"
 //=====================================
 
@@ -39,7 +39,7 @@ namespace Spartan
     class TransformHandle;
     //====================
 
-    class SPARTAN_CLASS World : public ISubsystem
+    class SPARTAN_CLASS World : public Subsystem
     {
     public:
         World(Context* context);
@@ -76,7 +76,8 @@ namespace Spartan
     private:
         void Clear();
         void _EntityRemove(const std::shared_ptr<Entity>& entity);
-
+        void CreateDefaultWorldEntities();
+        
         //= COMMON ENTITY CREATION ======================
         std::shared_ptr<Entity> CreateEnvironment();
         std::shared_ptr<Entity> CreateCamera();

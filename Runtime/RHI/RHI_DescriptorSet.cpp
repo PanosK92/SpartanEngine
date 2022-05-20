@@ -30,16 +30,16 @@ using namespace std;
 
 namespace Spartan
 {
-    RHI_DescriptorSet::RHI_DescriptorSet(const RHI_Device* rhi_device, const RHI_DescriptorSetLayoutCache* descriptor_set_layout_cache, const vector<RHI_Descriptor>& descriptors, const char* name)
+    RHI_DescriptorSet::RHI_DescriptorSet(const RHI_Device* rhi_device, const vector<RHI_Descriptor>& descriptors, RHI_DescriptorSetLayout* descriptor_set_layout, const char* name)
     {
-        m_rhi_device                    = rhi_device;
-        m_descriptor_set_layout_cache   = descriptor_set_layout_cache;
+        m_rhi_device = rhi_device;
+
         if (name)
         {
             m_object_name = name;
         }
 
-        Create();
+        Create(descriptor_set_layout);
         Update(descriptors);
     }
 }

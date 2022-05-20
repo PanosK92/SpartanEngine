@@ -4,7 +4,7 @@
 #include <string>
 #include <functional>
 #include "Engine.h"
-#include "ISubsystem.h"
+#include "Subsystem.h"
 //=====================
 
 //= FORWARD DECLARATIONS =========
@@ -14,7 +14,7 @@ typedef union SDL_Event SDL_Event;
 
 namespace Spartan
 {
-    class SPARTAN_CLASS Window : public ISubsystem
+    class SPARTAN_CLASS Window : public Subsystem
     {
     public:
         Window(Context* context);

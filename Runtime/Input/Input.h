@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==================
 #include <array>
 #include "../Math/Vector2.h"
-#include "../Core/ISubsystem.h"
+#include "../Core/Subsystem.h"
 #include "../Core/Variant.h"
 //=============================
 
@@ -84,7 +84,7 @@ namespace Spartan
         Touchpad, // PS4/PS5 touchpad button
     };
 
-    class SPARTAN_CLASS Input : public ISubsystem
+    class SPARTAN_CLASS Input : public Subsystem
     {
     public:
         Input(Context* context);
@@ -111,7 +111,7 @@ namespace Spartan
 
         // Mouse
         void SetMouseCursorVisible(const bool visible);
-        bool GetMouseCursorVisible()                            const { return m_mouse_cursor_visible; }
+        bool GetMouseCursorVisible()                            const;
         void SetMouseIsInViewport(const bool is_in_viewport)          { m_mouse_is_in_viewport = is_in_viewport; }
         bool GetMouseIsInViewport()                             const { return m_mouse_is_in_viewport; }
         const Math::Vector2& GetMousePosition()                 const { return m_mouse_position; }
@@ -148,7 +148,6 @@ namespace Spartan
         Math::Vector2 m_mouse_wheel_delta       = Math::Vector2::Zero;
         Math::Vector2 m_editor_viewport_offset  = Math::Vector2::Zero;
         bool m_mouse_is_in_viewport             = true;
-        bool m_mouse_cursor_visible             = true;
 
         // Controller
         void* m_controller                      = nullptr;

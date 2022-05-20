@@ -44,18 +44,14 @@ namespace Spartan
         void SetTexture(const uint32_t slot, RHI_Texture* texture, const int mip, const bool ranged);
         void SetStructuredBuffer(const uint32_t slot, RHI_StructuredBuffer* structured_buffer);
 
-        // Remove
-        void RemoveConstantBuffer(RHI_ConstantBuffer* constant_buffer);
-        void RemoveTexture(RHI_Texture* texture, const int mip);
-        void RemoveSampler(RHI_Sampler* sampler);
-
+        // Misc
         void ClearDescriptorData();
-        bool GetDescriptorSet(RHI_DescriptorSetLayoutCache* descriptor_set_layout_cache, RHI_DescriptorSet*& descriptor_set);
+        bool GetDescriptorSet(RHI_DescriptorSet*& descriptor_set, bool has_enough_capacity);
         const std::array<uint32_t, rhi_max_constant_buffer_count> GetDynamicOffsets() const;
-        uint32_t GetDynamicOffsetCount()    const;
-        uint32_t GetDescriptorSetCount()    const { return static_cast<uint32_t>(m_descriptor_sets.size()); }
-        void NeedsToBind()                        { m_needs_to_bind = true; }
-        void* GetResource()                 const { return m_resource; }
+        uint32_t GetDynamicOffsetCount() const;
+        uint32_t GetDescriptorSetCount() const { return static_cast<uint32_t>(m_descriptor_sets.size()); }
+        void NeedsToBind()                     { m_needs_to_bind = true; }
+        void* GetResource()              const { return m_resource; }
 
     private:
         void CreateResource(const std::vector<RHI_Descriptor>& descriptors);

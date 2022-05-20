@@ -49,6 +49,13 @@ namespace Spartan
         uint32_t GetQueueIndex(const RHI_Queue_Type type) const;
         void SetQueueIndex(const RHI_Queue_Type type, const uint32_t index);
 
+        // Queries
+        void QueryCreate(void** query = nullptr, RHI_Query_Type type = RHI_Query_Type::Timestamp);
+        void QueryRelease(void*& query);
+        void QueryBegin(void* query);
+        void QueryEnd(void* query);
+        void QueryGetData(void* query);
+
         // Device properties
         uint32_t GetMaxTexture1dDimension()            const { return m_max_texture_1d_dimension; }
         uint32_t GetMaxTexture2dDimension()            const { return m_max_texture_2d_dimension; }
@@ -58,13 +65,16 @@ namespace Spartan
         uint64_t GetMinUniformBufferOffsetAllignment() const { return m_min_uniform_buffer_offset_alignment; }
         float GetTimestampPeriod()                     const { return m_timestamp_period; }
 
+        // Command pool
+        bool ResetCommandPool();
+        void*& GetCommandPoolGraphics() { return m_cmd_pool_graphics; }
+
         // Misc
         bool IsValidResolution(const uint32_t width, const uint32_t height);
         auto IsInitialised()                const { return m_initialized; }
         RHI_Context* GetContextRhi()        const { return m_rhi_context.get(); }
         Context* GetContext()               const { return m_context; }
         uint32_t GetEnabledGraphicsStages() const { return m_enabled_graphics_shader_stages; }
-        void*& GetCmdPoolGraphics()               { return m_cmd_pool_graphics; }
 
     private:
         // Physical device

@@ -74,6 +74,7 @@
 
 #include "Core/Window.h"
 #include "Rendering/Renderer.h"
+#include <Input/Input.h>
 
 #if SDL_VERSION_ATLEAST(2,0,4) && !defined(__EMSCRIPTEN__) && !defined(__ANDROID__) && !(defined(__APPLE__) && TARGET_OS_IOS)
 #define SDL_HAS_CAPTURE_AND_GLOBAL_MOUSE    1
@@ -93,15 +94,16 @@ static const Uint32 SDL_WINDOW_VULKAN = 0x10000000;
 // SDL Data
 struct ImGui_ImplSDL2_Data
 {
-    SDL_Window* Window;
-    SDL_Renderer* Renderer;
-    Uint64          Time;
-    Uint32          MouseWindowID;
-    int             MouseButtonsDown;
-    SDL_Cursor* MouseCursors[ImGuiMouseCursor_COUNT];
-    char* ClipboardTextData;
-    bool            MouseCanUseGlobalState;
-    bool            UseVulkan;
+    SDL_Window*       Window;
+    SDL_Renderer*     Renderer;
+    Uint64            Time;
+    Uint32            MouseWindowID;
+    int               MouseButtonsDown;
+    SDL_Cursor*       MouseCursors[ImGuiMouseCursor_COUNT];
+    char*             ClipboardTextData;
+    bool              MouseCanUseGlobalState;
+    bool              UseVulkan;
+    Spartan::Context* engine_context;
 
     ImGui_ImplSDL2_Data() { memset(this, 0, sizeof(*this)); }
 };
@@ -384,6 +386,7 @@ bool ImGui_ImplSDL2_Init(Spartan::Context* context)
     // Initialise some ImGui stuff
     bd->Window = static_cast<SDL_Window*>(context->GetSubsystem<Spartan::Window>()->GetHandleSDL());
     bd->UseVulkan = context->GetSubsystem<Spartan::Renderer>()->GetApiType() == Spartan::RHI_Api_Type::Vulkan;
+    bd->engine_context = context;
 
     io.SetClipboardTextFn = ImGui_ImplSDL2_SetClipboardText;
     io.GetClipboardTextFn = ImGui_ImplSDL2_GetClipboardText;
@@ -518,20 +521,29 @@ static void ImGui_ImplSDL2_UpdateMouseCursor()
     ImGuiIO& io = ImGui::GetIO();
     if (io.ConfigFlags & ImGuiConfigFlags_NoMouseCursorChange)
         return;
-    ImGui_ImplSDL2_Data* bd = ImGui_ImplSDL2_GetBackendData();
 
+    ImGui_ImplSDL2_Data* bd = ImGui_ImplSDL2_GetBackendData();
     ImGuiMouseCursor imgui_cursor = ImGui::GetMouseCursor();
-    if (io.MouseDrawCursor || imgui_cursor == ImGuiMouseCursor_None)
+    Spartan::Input* input = bd->engine_context->GetSubsystem<Spartan::Input>();
+
+    // State tracking to prevent ImGui from setting the cursor every frame
+    // and interfering with the engine wanting to control the state.
+    static bool is_visible = false;
+
+    if ((io.MouseDrawCursor || imgui_cursor == ImGuiMouseCursor_None) && is_visible)
     {
         // Hide OS mouse cursor if imgui is drawing it or if it wants no cursor
-        SDL_ShowCursor(SDL_FALSE);
+        input->SetMouseCursorVisible(false);
+        is_visible = false;
     }
-    else
+    else if (!is_visible)
     {
         // Show OS mouse cursor
-        SDL_SetCursor(bd->MouseCursors[imgui_cursor] ? bd->MouseCursors[imgui_cursor] : bd->MouseCursors[ImGuiMouseCursor_Arrow]);
-        SDL_ShowCursor(SDL_TRUE);
+        input->SetMouseCursorVisible(true);
+        is_visible = true;
     }
+
+    SDL_SetCursor(bd->MouseCursors[imgui_cursor] ? bd->MouseCursors[imgui_cursor] : bd->MouseCursors[ImGuiMouseCursor_Arrow]);
 }
 
 static void ImGui_ImplSDL2_UpdateGamepads()

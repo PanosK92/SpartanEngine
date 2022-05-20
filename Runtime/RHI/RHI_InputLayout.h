@@ -62,41 +62,42 @@ namespace Spartan
 
         bool Create(const RHI_Vertex_Type vertex_type, void* vertex_shader_blob = nullptr)
         {
-            if (vertex_type == RHI_Vertex_Type::Unknown)
-            {
-                LOG_ERROR("Unknown vertex type");
-                return false;
-            }
-
             const uint32_t binding = 0;
 
-            if (vertex_type == RHI_Vertex_Type::Pos)
+            if (vertex_type == RHI_Vertex_Type::Undefined)
+            {
+                m_vertex_size = sizeof(RHI_Vertex_Undefined);
+            }
+            else if (vertex_type == RHI_Vertex_Type::Pos)
             {
                 m_vertex_attributes =
                 {
                     { "POSITION", 0, binding, RHI_Format_R32G32B32_Float, offsetof(RHI_Vertex_Pos, pos) }
                 };
-            }
 
-            if (vertex_type == RHI_Vertex_Type::PosTex)
+                m_vertex_size = sizeof(RHI_Vertex_Pos);
+            }
+            else if (vertex_type == RHI_Vertex_Type::PosTex)
             {
                 m_vertex_attributes =
                 {
-                    { "POSITION", 0, binding, RHI_Format_R32G32B32_Float,   offsetof(RHI_Vertex_PosTex, pos) },
-                    { "TEXCOORD", 1, binding, RHI_Format_R32G32_Float,      offsetof(RHI_Vertex_PosTex, tex) }
+                    { "POSITION", 0, binding, RHI_Format_R32G32B32_Float, offsetof(RHI_Vertex_PosTex, pos) },
+                    { "TEXCOORD", 1, binding, RHI_Format_R32G32_Float,    offsetof(RHI_Vertex_PosTex, tex) }
                 };
-            }
 
-            if (vertex_type == RHI_Vertex_Type::PosCol)
+                m_vertex_size = sizeof(RHI_Vertex_PosTex);
+            }
+            else if (vertex_type == RHI_Vertex_Type::PosCol)
             {
                 m_vertex_attributes =
                 {
                     { "POSITION",    0, binding, RHI_Format_R32G32B32_Float,    offsetof(RHI_Vertex_PosCol, pos) },
                     { "COLOR",       1, binding, RHI_Format_R32G32B32A32_Float, offsetof(RHI_Vertex_PosCol, col) }
                 };
-            }
 
-            if (vertex_type == RHI_Vertex_Type::Pos2dTexCol8)
+                m_vertex_size = sizeof(RHI_Vertex_PosCol);
+            }
+            else if (vertex_type == RHI_Vertex_Type::Pos2dTexCol8)
             {
                 m_vertex_attributes =
                 {
@@ -104,9 +105,10 @@ namespace Spartan
                     { "TEXCOORD",    1, binding, RHI_Format_R32G32_Float,   offsetof(RHI_Vertex_Pos2dTexCol8, tex) },
                     { "COLOR",       2, binding, RHI_Format_R8G8B8A8_Unorm, offsetof(RHI_Vertex_Pos2dTexCol8, col) }
                 };
-            }
 
-            if (vertex_type == RHI_Vertex_Type::PosTexNorTan)
+                m_vertex_size = sizeof(RHI_Vertex_Pos2dTexCol8);
+            }
+            else if (vertex_type == RHI_Vertex_Type::PosTexNorTan)
             {
                 m_vertex_attributes =
                 {
@@ -115,7 +117,10 @@ namespace Spartan
                     { "NORMAL",     2, binding, RHI_Format_R32G32B32_Float, offsetof(RHI_Vertex_PosTexNorTan, nor) },
                     { "TANGENT",    3, binding, RHI_Format_R32G32B32_Float, offsetof(RHI_Vertex_PosTexNorTan, tan) }
                 };
+
+                m_vertex_size = sizeof(RHI_Vertex_PosTexNorTan);
             }
+
 
             if (vertex_shader_blob && !m_vertex_attributes.empty())
             {
@@ -126,6 +131,7 @@ namespace Spartan
         }
 
         RHI_Vertex_Type GetVertexType()                                const { return m_vertex_type; }
+        const uint32_t GetVertexSize()                                 const { return m_vertex_size; }
         const std::vector<VertexAttribute>& GetAttributeDescriptions() const { return m_vertex_attributes; }
         uint32_t GetAttributeCount()                                   const { return static_cast<uint32_t>(m_vertex_attributes.size()); }
         void* GetResource()                                            const { return m_resource; }
@@ -134,6 +140,7 @@ namespace Spartan
 
     private:
         RHI_Vertex_Type m_vertex_type;
+        uint32_t m_vertex_size;
 
         // API
         bool _CreateResource(void* vertex_shader_blob);

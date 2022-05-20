@@ -37,7 +37,7 @@ namespace Spartan
 {
     static const bool m_soft_body_support = true;
 
-    Physics::Physics(Context* context) : ISubsystem(context)
+    Physics::Physics(Context* context) : Subsystem(context)
     {
         m_broadphase        = new btDbvtBroadphase();
         m_constraint_solver = new btSequentialImpulseConstraintSolver();

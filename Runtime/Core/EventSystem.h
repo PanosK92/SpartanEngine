@@ -56,7 +56,7 @@ Note: Currently, this is a blocking event system
 
 enum class EventType
 {
-    FrameEnd,                 // A frame ends
+    PostPresent,
     WorldSaveStart,           // The world is about to be saved to a file
     WorldSavedEnd,            // The world finished saving to file
     WorldLoadStart,           // The world is about to be loaded from a file

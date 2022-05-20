@@ -64,7 +64,6 @@ namespace ImGui::RHI
     static unique_ptr<RHI_Shader>                                        g_shader_vertex;
     static unique_ptr<RHI_Shader>                                        g_shader_pixel;
     static shared_ptr<RHI_CommandList>                                   g_cmd_list;
-    static RHI_CommandList* g_used_cmd_list                              = nullptr;
 
     struct WindowData
     {
@@ -177,23 +176,16 @@ namespace ImGui::RHI
             return;
 
         // Get swap chain and cmd list
-        bool is_child_window        = window_data != nullptr;
-        RHI_SwapChain* swap_chain   = is_child_window ? window_data->swapchain : g_renderer->GetSwapChain();
-        g_used_cmd_list             = is_child_window ? window_data->cmd_lists[window_data->cmd_index]: g_renderer->GetCmdList();
+        bool is_child_window      = window_data != nullptr;
+        RHI_SwapChain* swap_chain = is_child_window ? window_data->swapchain : g_renderer->GetSwapChain();
+        RHI_CommandList* cmd_list = is_child_window ? window_data->cmd_lists[window_data->cmd_index] : g_cmd_list.get();
 
-        // The Renderer gets flushed during world loading, so rendering might not be allowed by the time this function executes.
-        // In this case, we use our own command list so we can keep the editor rendering (specifically, the loading bar) active.
-        if (!is_child_window && !g_renderer->IsRenderingAllowed())
+        if (cmd_list->GetState() == Spartan::RHI_CommandListState::Submitted)
         {
-            g_used_cmd_list = g_cmd_list.get();
-            g_used_cmd_list->Begin();
+            cmd_list->Wait();
         }
 
-        // Validate command list
-        SP_ASSERT(g_used_cmd_list != nullptr);
-
-        if (g_used_cmd_list->GetState() != Spartan::RHI_CommandListState::Recording)
-            return;
+        cmd_list->Begin();
 
         // Update vertex and index buffers
         RHI_VertexBuffer* vertex_buffer = nullptr;
@@ -230,7 +222,7 @@ namespace ImGui::RHI
             
             // Copy and convert all vertices into a single contiguous buffer
             ImDrawVert* vtx_dst = static_cast<ImDrawVert*>(vertex_buffer->Map());
-            ImDrawIdx* idx_dst = static_cast<ImDrawIdx*>(index_buffer->Map());
+            ImDrawIdx* idx_dst  = static_cast<ImDrawIdx*>(index_buffer->Map());
             if (vtx_dst && idx_dst)
             {
                 for (auto i = 0; i < draw_data->CmdListsCount; i++)
@@ -254,9 +246,8 @@ namespace ImGui::RHI
         pipeline_state.rasterizer_state         = g_rasterizer_state.get();
         pipeline_state.blend_state              = g_blend_state.get();
         pipeline_state.depth_stencil_state      = g_depth_stencil_state.get();
-        pipeline_state.vertex_buffer_stride     = vertex_buffer->GetStride();
         pipeline_state.render_target_swapchain  = swap_chain;
-        pipeline_state.clear_color[0]           = clear ? Vector4(0.0f, 0.0f, 0.0f, 1.0f) : rhi_color_load;
+        pipeline_state.clear_color[0]           = clear ? Vector4(0.0f, 0.0f, 0.0f, 1.0f) : rhi_color_dont_care;
         pipeline_state.viewport.width           = draw_data->DisplaySize.x;
         pipeline_state.viewport.height          = draw_data->DisplaySize.y;
         pipeline_state.dynamic_scissor          = true;
@@ -264,7 +255,7 @@ namespace ImGui::RHI
         pipeline_state.pass_name                = is_child_window ? "pass_imgui_window_child" : "pass_imgui_window_main";
 
         // Record commands
-        if (g_used_cmd_list->BeginRenderPass(pipeline_state))
+        if (cmd_list->BeginRenderPass(pipeline_state))
         {
             // Setup orthographic projection matrix into our constant buffer
             // Our visible ImGui space lies from draw_data->DisplayPos (top left) to 
@@ -282,11 +273,11 @@ namespace ImGui::RHI
                     0.0f, 0.0f, 0.0f, 1.0f
                 );
 
-                g_renderer->SetCbUberTransform(g_used_cmd_list, wvp);
+                g_renderer->SetCbUberTransform(cmd_list, wvp);
             }
 
-            g_used_cmd_list->SetBufferVertex(vertex_buffer);
-            g_used_cmd_list->SetBufferIndex(index_buffer);
+            cmd_list->SetBufferVertex(vertex_buffer);
+            cmd_list->SetBufferIndex(index_buffer);
 
             // Render command lists
             int global_vtx_offset  = 0;
@@ -312,12 +303,12 @@ namespace ImGui::RHI
                         scissor_rect.bottom = pcmd->ClipRect.w - clip_off.y;
 
                         // Set scissor rectangle
-                        g_used_cmd_list->SetScissorRectangle(scissor_rect);
+                        cmd_list->SetScissorRectangle(scissor_rect);
 
                         // Set texture
                         if (RHI_Texture* texture = static_cast<RHI_Texture*>(pcmd->TextureId))
                         {
-                            g_used_cmd_list->SetTexture(Renderer::Bindings_Srv::tex, texture);
+                            cmd_list->SetTexture(Renderer::Bindings_Srv::tex, texture);
 
                             // Make sure single channel texture appear white instead of red.
                             if (texture->GetChannelCount() == 1)
@@ -327,11 +318,11 @@ namespace ImGui::RHI
                             }
 
                             // The uber constant buffer updates only if needed, no need to do any state checking here.
-                            g_renderer->SetCbUberTextureVisualisationOptions(g_used_cmd_list, texture->GetFlags());
+                            g_renderer->SetCbUberTextureVisualisationOptions(cmd_list, texture->GetFlags());
                         }
 
                         // Draw
-                        g_used_cmd_list->DrawIndexed(pcmd->ElemCount, pcmd->IdxOffset + global_idx_offset, pcmd->VtxOffset + global_vtx_offset);
+                        cmd_list->DrawIndexed(pcmd->ElemCount, pcmd->IdxOffset + global_idx_offset, pcmd->VtxOffset + global_vtx_offset);
                     }
 
                 }
@@ -339,13 +330,11 @@ namespace ImGui::RHI
                 global_vtx_offset += cmd_list_imgui->VtxBuffer.Size;
             }
 
-            g_used_cmd_list->EndRenderPass();
+            cmd_list->EndRenderPass();
         }
-    }
 
-    inline RHI_CommandList* GetUsedCmdList()
-    {
-        return g_used_cmd_list;
+        cmd_list->End();
+        cmd_list->Submit(nullptr);
     }
 
     //--------------------------------------------
@@ -427,23 +416,8 @@ namespace ImGui::RHI
 
         window->cmd_index = (window->cmd_index + 1) % window->buffer_count;
 
-        window->cmd_lists[window->cmd_index]->Begin();
-
         const bool clear = !(viewport->Flags & ImGuiViewportFlags_NoRendererClear);
         Render(viewport->DrawData, window, clear);
-
-        if (!window->cmd_lists[window->cmd_index]->End())
-        {
-            LOG_ERROR("Failed to end command list");
-            return;
-        }
-
-        RHI_Semaphore* wait_semaphore = window->image_acquired ? nullptr : window->swapchain->GetImageAcquiredSemaphore();
-        if (!window->cmd_lists[window->cmd_index]->Submit(wait_semaphore))
-        {
-            LOG_ERROR("Failed to submit command list");
-            return;
-        }
 
         if (window->swapchain->GetBufferCount() == 1)
         {
@@ -463,7 +437,7 @@ namespace ImGui::RHI
         SP_ASSERT(cmd_list->GetState() == Spartan::RHI_CommandListState::Submitted);
 
         // Present
-        window->swapchain->Present(cmd_list->GetProcessedSemaphore());
+        window->swapchain->Present();
     }
 
     inline void InitializePlatformInterface()

@@ -460,6 +460,11 @@ namespace Spartan
         }
     }
 
+    bool RHI_Device::ResetCommandPool()
+    {
+        return vulkan_utility::error::check(vkResetCommandPool(m_rhi_context->device, static_cast<VkCommandPool>(m_cmd_pool_graphics), 0));
+    }
+
     bool RHI_Device::DetectPhysicalDevices()
     {
         uint32_t device_count = 0;
@@ -699,5 +704,30 @@ namespace Spartan
     {
         lock_guard<mutex> lock(m_queue_mutex);
         return vulkan_utility::error::check(vkQueueWaitIdle(static_cast<VkQueue>(GetQueue(type))));
+    }
+
+    void RHI_Device::QueryCreate(void** query, const RHI_Query_Type type)
+    {
+
+    }
+
+    void RHI_Device::QueryRelease(void*& query)
+    {
+
+    }
+
+    void RHI_Device::QueryBegin(void* query)
+    {
+
+    }
+
+    void RHI_Device::QueryEnd(void* query)
+    {
+
+    }
+
+    void RHI_Device::QueryGetData(void* query)
+    {
+
     }
 }

@@ -25,6 +25,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <array>
 #include <atomic>
 #include "RHI_Definition.h"
+#include "RHI_PipelineState.h"
+#include "RHI_Descriptor.h"
 #include "../Core/SpartanObject.h"
 #include "../Rendering/Renderer.h"
 //================================
@@ -58,27 +60,31 @@ namespace Spartan
         bool End();
         bool Submit(RHI_Semaphore* wait_semaphore);
         bool Reset();
-        // Waits for any submitted work (if any).
-        void Wait();
-        // Causes the command list to ignore the first submission call (useful when the command list refers to resources which have been destroyed).
-        void Discard();
-        // Submits all work, waits for it, and then resets to the last known pipeline state (optional).
-        bool Flush(const bool restore_pipeline_state_after_flush);
+        void Wait();    // Waits for any submitted work
+        void Discard(); // Causes the command list to ignore one submission call (useful when the command list refers to resources which have been destroyed).
 
         // Render pass
         bool BeginRenderPass(RHI_PipelineState& pipeline_state);
-        bool EndRenderPass();
+        void EndRenderPass();
 
         // Clear
         void ClearPipelineStateRenderTargets(RHI_PipelineState& pipeline_state);
-        void ClearRenderTarget(RHI_Texture* texture, const uint32_t color_index = 0, const uint32_t depth_stencil_index = 0, const bool storage = false, const Math::Vector4& clear_color = rhi_color_load, const float clear_depth = rhi_depth_load, const uint32_t clear_stencil = rhi_stencil_load);
+        void ClearRenderTarget(
+            RHI_Texture* texture,
+            const uint32_t color_index = 0,
+            const uint32_t depth_stencil_index = 0,
+            const bool storage = false,
+            const Math::Vector4& clear_color = rhi_color_load,
+            const float clear_depth = rhi_depth_stencil_load,
+            const float clear_stencil = rhi_depth_stencil_load
+        );
 
         // Draw
-        bool Draw(uint32_t vertex_count, uint32_t vertex_start_index = 0);
-        bool DrawIndexed(uint32_t index_count, uint32_t index_offset = 0, uint32_t vertex_offset = 0);
+        void Draw(uint32_t vertex_count, uint32_t vertex_start_index = 0);
+        void DrawIndexed(uint32_t index_count, uint32_t index_offset = 0, uint32_t vertex_offset = 0);
 
         // Dispatch
-        bool Dispatch(uint32_t x, uint32_t y, uint32_t z, bool async = false);
+        void Dispatch(uint32_t x, uint32_t y, uint32_t z, bool async = false);
 
         // Blit
         void Blit(RHI_Texture* source, RHI_Texture* destination);
@@ -115,50 +121,66 @@ namespace Spartan
         void SetStructuredBuffer(const uint32_t slot, RHI_StructuredBuffer* structured_buffer) const;
         inline void SetStructuredBuffer(const Renderer::Bindings_Sb slot, const std::shared_ptr<RHI_StructuredBuffer>& structured_buffer) const { SetStructuredBuffer(static_cast<uint32_t>(slot), structured_buffer.get()); }
 
+        // Markers
+        void StartMarker(const char* name);
+        void EndMarker();
+
         // Timestamps
-        bool Timestamp_Start(void* query_disjoint = nullptr, void* query_start = nullptr);
-        bool Timestamp_End(void* query_disjoint = nullptr, void* query_end = nullptr);
-        float Timestamp_GetDuration(void* query_disjoint, void* query_start, void* query_end, const uint32_t pass_index);
+        bool Timestamp_Start(void* query);
+        bool Timestamp_End(void* query);
+        float Timestamp_GetDuration(void* query_start, void* query_end, const uint32_t pass_index);
 
         // GPU
         static uint32_t Gpu_GetMemory(RHI_Device* rhi_device);
         static uint32_t Gpu_GetMemoryUsed(RHI_Device* rhi_device);
-        static bool Gpu_QueryCreate(RHI_Device* rhi_device, void** query = nullptr, RHI_Query_Type type = RHI_Query_Type::Timestamp);
-        static void Gpu_QueryRelease(void*& query_object);
-        
-        // Misc
-        void ResetDescriptorCache();
-        void* GetResource_CommandBuffer()       const { return m_resource; }
-        RHI_Semaphore* GetProcessedSemaphore()        { return m_processed_semaphore.get(); }
-        const RHI_CommandListState GetState()   const { return m_state; }
 
-    private:
-        void Timeblock_Start(const RHI_PipelineState* pipeline_state);
-        void Timeblock_End(const RHI_PipelineState* pipeline_state);
-        bool Deferred_BeginRenderPass();
-        bool Deferred_BindPipeline();
-        bool Deferred_BindDescriptorSet();
-        bool OnDraw();
+        // Descriptors
+        void Descriptors_GetLayoutFromPipelineState(RHI_PipelineState& pipeline_state);
+        uint32_t Descriptors_GetDescriptorSetCount() const;
+        bool Descriptors_HasEnoughCapacity() const;
+        void Descriptors_GetDescriptorsFromPipelineState(RHI_PipelineState& pipeline_state, std::vector<RHI_Descriptor>& descriptors);
+        void Descriptors_GrowPool();
+        void Descriptors_ResetPool(uint32_t descriptor_set_capacity);
+        static void* Descriptors_GetPool() { return m_descriptor_pool; }
+
+        // State
+        const RHI_CommandListState GetState() const { return m_state; }
+
+        // Misc
+        void* GetResource_CommandBuffer() const { return m_resource; }
+
+    private:    
+        void Timeblock_Start(const char* name, const bool profile, const bool gpu_markers);
+        void Timeblock_End();
+
+        void OnDraw();
         void UnbindOutputTextures();
 
-        RHI_Pipeline* m_pipeline                                    = nullptr; 
-        Renderer* m_renderer                                        = nullptr;
-        RHI_PipelineCache* m_pipeline_cache                         = nullptr;
-        RHI_DescriptorSetLayoutCache* m_descriptor_set_layout_cache = nullptr;
-        RHI_PipelineState* m_pipeline_state                         = nullptr;
-        RHI_Device* m_rhi_device                                    = nullptr;
-        Profiler* m_profiler                                        = nullptr;
-        void* m_resource                                            = nullptr;
-        std::shared_ptr<RHI_Fence> m_processed_fence                = nullptr;
-        std::shared_ptr<RHI_Semaphore> m_processed_semaphore        = nullptr;
-        std::atomic<bool> m_render_pass_active                      = false;
-        std::atomic<bool> m_pipeline_active                         = false;
-        std::atomic<bool> m_flushed                                 = false;
-        std::atomic<bool> m_discard                                 = false;
-        std::atomic<RHI_CommandListState> m_state                   = RHI_CommandListState::Idle;
-        static const uint8_t m_resource_array_length_max            = 16;
+        RHI_Pipeline* m_pipeline                         = nullptr; 
+        Renderer* m_renderer                             = nullptr;
+        RHI_Device* m_rhi_device                         = nullptr;
+        Profiler* m_profiler                             = nullptr;
+        void* m_resource                                 = nullptr;
+        std::shared_ptr<RHI_Fence> m_processed_fence     = nullptr;
+        std::atomic<bool> m_discard                      = false;
+        bool m_is_render_pass_active                     = false;
+        bool m_pipeline_dirty                            = false;
+        std::atomic<RHI_CommandListState> m_state        = RHI_CommandListState::Idle;
+        static const uint8_t m_resource_array_length_max = 16;
         static bool m_memory_query_support;
         std::mutex m_mutex_reset;
+
+        // Descriptors
+        std::unordered_map<std::size_t, std::shared_ptr<RHI_DescriptorSetLayout>> m_descriptor_set_layouts;
+        RHI_DescriptorSetLayout* m_descriptor_layout_current = nullptr;
+        uint32_t m_descriptor_set_capacity = 0;
+        std::atomic<bool> m_descriptor_pool_resseting = false;
+        static void* m_descriptor_pool;
+
+        // Pipelines
+        RHI_PipelineState m_pipeline_state;
+        // <hash of pipeline state, pipeline state object>
+        static std::unordered_map<uint32_t, std::shared_ptr<RHI_Pipeline>> m_cache;
 
         // Keep track of output textures so that we can unbind them and prevent
         // D3D11 warnings when trying to bind them as SRVs in following passes

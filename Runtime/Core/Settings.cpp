@@ -65,7 +65,7 @@ namespace _Settings
 
 namespace Spartan
 {
-    Settings::Settings(Context* context) : ISubsystem(context)
+    Settings::Settings(Context* context) : Subsystem(context)
     {
         m_context = context;
 

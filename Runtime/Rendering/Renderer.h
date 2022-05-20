@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <atomic>
 #include "Renderer_ConstantBuffers.h"
 #include "Material.h"
-#include "../Core/ISubsystem.h"
+#include "../Core/Subsystem.h"
 #include "../RHI/RHI_Definition.h"
 #include "../RHI/RHI_Viewport.h"
 #include "../RHI/RHI_Vertex.h"
@@ -54,7 +54,7 @@ namespace Spartan
         class Frustum;
     }
 
-    class SPARTAN_CLASS Renderer : public ISubsystem
+    class SPARTAN_CLASS Renderer : public Subsystem
     {
         // Enums
     public:
@@ -147,6 +147,7 @@ namespace Spartan
             Depth_Prepass_P,
             Depth_Light_V,
             Depth_Light_P,
+            FullscreenTriangle_V,
             Quad_V,
             Copy_Point_C,
             Copy_Bilinear_C,
@@ -343,7 +344,7 @@ namespace Spartan
 
         // Swapchain
         RHI_SwapChain* GetSwapChain() const { return m_swap_chain.get(); }
-        bool Present(RHI_CommandList* cmd_list);
+        bool Present();
 
         // Sync
         void Flush();
@@ -357,26 +358,21 @@ namespace Spartan
         void SetCbUberTransform(RHI_CommandList* cmd_list, const Math::Matrix& transform);
         void SetCbUberTextureVisualisationOptions(RHI_CommandList* cmd_list, const uint32_t options);
 
-        // Rendering
-        bool IsRenderingAllowed() const { return m_is_rendering_allowed; }
-
         // Misc
         RHI_Api_Type GetApiType() const;
         void SetGlobalShaderResources(RHI_CommandList* cmd_list) const;
-        void RequestTextureMipGeneration(RHI_Texture* texture);
-        const std::shared_ptr<RHI_Device>& GetRhiDevice()           const { return m_rhi_device; }
-        RHI_PipelineCache* GetPipelineCache()                       const { return m_pipeline_cache.get(); }
-        RHI_DescriptorSetLayoutCache* GetDescriptorLayoutSetCache() const { return m_descriptor_set_layout_cache.get(); }
-        RHI_Texture* GetFrameTexture()                                    { return GetRenderTarget(Renderer::RenderTarget::Frame_Output).get(); }
-        auto GetFrameNum()                                          const { return m_frame_num; }
-        std::shared_ptr<Camera> GetCamera()                         const { return m_camera; }
-        auto IsInitialised()                                        const { return m_initialised; }
-        auto GetShaders()                                           const { return m_shaders; }
-        RHI_CommandList* GetCmdList()                               const { return m_cmd_current; }
-        uint32_t GetCmdIndex()                                      const { return m_cmd_index;  }
+        void RequestTextureMipGeneration(std::shared_ptr<RHI_Texture> texture);
+        const std::shared_ptr<RHI_Device>& GetRhiDevice() const { return m_rhi_device; }
+        RHI_Texture* GetFrameTexture()                          { return GetRenderTarget(Renderer::RenderTarget::Frame_Output).get(); }
+        auto GetFrameNum()                                const { return m_frame_num; }
+        std::shared_ptr<Camera> GetCamera()               const { return m_camera; }
+        auto IsInitialised()                              const { return m_initialised; }
+        auto GetShaders()                                 const { return m_shaders; }
+        uint32_t GetCmdIndex()                            const { return m_cmd_index;  }
+        RHI_CommandList* GetCmdList()                     const { return m_cmd_current; }
 
         // Passes
-        void Pass_CopyToBackbuffer(RHI_CommandList* cmd_list);
+        void Pass_CopyToBackbuffer();
 
     private:
         // Resource creation
@@ -416,7 +412,7 @@ namespace Spartan
         void Pass_PostProcess_Bloom(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
         void Pass_Blur_Gaussian(RHI_CommandList* cmd_list, RHI_Texture* tex_in, const bool depth_aware, const float sigma, const float pixel_stride, const int mip = -1);
         void Pass_AMD_FidelityFX_ContrastAdaptiveSharpening(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
-        void Pass_AMD_FidelityFX_SinglePassDowsnampler(RHI_CommandList* cmd_list, RHI_Texture* tex, const bool luminance_antiflicker);
+        void Pass_AMD_FidelityFX_SinglePassDownsampler(RHI_CommandList* cmd_list, RHI_Texture* tex, const bool luminance_antiflicker);
         void Pass_AMD_FidelityFX_SuperResolution(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out, RHI_Texture* tex_out_scratch);
         void Pass_Lines(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
         void Pass_DebugMeshes(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
@@ -534,10 +530,8 @@ namespace Spartan
         Math::Vector2 m_resolution_render          = Math::Vector2::Zero;
         Math::Vector2 m_resolution_output          = Math::Vector2::Zero;
         RHI_Viewport m_viewport                    = RHI_Viewport(0, 0, 0, 0);
-        Math::Rectangle m_viewport_quad            = Math::Rectangle(0, 0, 0, 0);
         Math::Vector2 m_resolution_output_previous = Math::Vector2::Zero;
         RHI_Viewport m_viewport_previous           = RHI_Viewport(0, 0, 0, 0);
-        Math::Vector2 m_viewport_size_pending      = Math::Vector2::Zero;
 
         // Environment texture
         std::shared_ptr<RHI_Texture> m_environment_texture;
@@ -571,21 +565,18 @@ namespace Spartan
         const float m_depth_bias_slope_scaled  = 2.0f;
 
         // Requests for mip generation
-        std::vector<RHI_Texture*> m_textures_mip_generation;
-        std::vector<RHI_Texture*> m_textures_mip_generation_pending;
+        std::vector<std::shared_ptr<RHI_Texture>> m_textures_mip_generation;
+        std::vector<std::shared_ptr<RHI_Texture>> m_textures_mip_generation_pending;
         std::mutex m_texture_mip_generation_mutex;
 
         // States
         std::atomic<bool> m_is_rendering_allowed = true;
         std::atomic<bool> m_flush_requested      = false;
-        bool m_dirty_viewport                    = false;
         bool m_dirty_orthographic_projection     = true;
         std::atomic<bool> m_reading_requests     = false;
 
         // RHI Core
         std::shared_ptr<RHI_Device> m_rhi_device;
-        std::shared_ptr<RHI_PipelineCache> m_pipeline_cache;
-        std::shared_ptr<RHI_DescriptorSetLayoutCache> m_descriptor_set_layout_cache;
         std::vector<std::shared_ptr<RHI_CommandList>> m_cmd_lists;
         RHI_CommandList* m_cmd_current = nullptr;
 

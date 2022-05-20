@@ -20,37 +20,35 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES ===================================
-#include "Spartan.h"
-#include "Renderer.h"
-#include "Model.h"
-#include "Grid.h"
-#include "Font/Font.h"
-#include "../Utilities/Sampling.h"
-#include "../Profiling/Profiler.h"
-#include "../Resource/ResourceCache.h"
-#include "../World/Entity.h"
-#include "../World/Components/Transform.h"
-#include "../World/Components/Renderable.h"
-#include "../World/Components/Camera.h"
-#include "../World/Components/Light.h"
+#include "Spartan.h"                            
+#include "Renderer.h"                           
+#include "Model.h"                              
+#include "Grid.h"                               
+#include "Font/Font.h"                          
+#include "../Utilities/Sampling.h"              
+#include "../Profiling/Profiler.h"              
+#include "../Resource/ResourceCache.h"          
+#include "../World/Entity.h"                    
+#include "../World/Components/Transform.h"      
+#include "../World/Components/Renderable.h"     
+#include "../World/Components/Camera.h"         
+#include "../World/Components/Light.h"          
 #include "../World/Components/ReflectionProbe.h"
-#include "../RHI/RHI_Device.h"
-#include "../RHI/RHI_PipelineCache.h"
-#include "../RHI/RHI_ConstantBuffer.h"
-#include "../RHI/RHI_StructuredBuffer.h"
-#include "../RHI/RHI_CommandList.h"
-#include "../RHI/RHI_Texture2D.h"
-#include "../RHI/RHI_SwapChain.h"
-#include "../RHI/RHI_VertexBuffer.h"
-#include "../RHI/RHI_DescriptorSetLayoutCache.h"
-#include "../RHI/RHI_Implementation.h"
-#include "../RHI/RHI_Semaphore.h"
-#include "../Core/Window.h"
-#include "../Input/Input.h"
-#include "../World/Components/Environment.h"
+#include "../RHI/RHI_Device.h"                  
+#include "../RHI/RHI_ConstantBuffer.h"          
+#include "../RHI/RHI_StructuredBuffer.h"        
+#include "../RHI/RHI_CommandList.h"             
+#include "../RHI/RHI_Texture2D.h"               
+#include "../RHI/RHI_SwapChain.h"               
+#include "../RHI/RHI_VertexBuffer.h"            
+#include "../RHI/RHI_Implementation.h"          
+#include "../RHI/RHI_Semaphore.h"               
+#include "../Core/Window.h"                     
+#include "../Input/Input.h"                     
+#include "../World/Components/Environment.h"    
 //==============================================
 
-//= NAMESPACES ===============
+//= NAMESPACES ===============                  
 using namespace std;
 using namespace Spartan::Math;
 //============================
@@ -59,7 +57,7 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    Renderer::Renderer(Context* context) : ISubsystem(context)
+    Renderer::Renderer(Context* context) : Subsystem(context)
     {
         // Options
         m_options |= Renderer::Option::ReverseZ;
@@ -145,12 +143,6 @@ namespace Spartan
             return false;
         }
 
-        // Create pipeline cache
-        m_pipeline_cache = make_shared<RHI_PipelineCache>(m_rhi_device.get());
-
-        // Create descriptor set layout cache
-        m_descriptor_set_layout_cache = make_shared<RHI_DescriptorSetLayoutCache>(m_rhi_device.get());
-
         // Create command lists
         for (uint32_t i = 0; i < m_swap_chain_buffer_count; i++)
         {
@@ -187,10 +179,6 @@ namespace Spartan
                 return false;
             }
         }
-
-        // Full-screen quad
-        m_viewport_quad = Math::Rectangle(0, 0, static_cast<float>(window_width), static_cast<float>(window_height));
-        m_viewport_quad.CreateBuffers(this);
 
         // Set render, output and viewport resolution/size to whatever the window is (initially)
         SetResolutionRender(window_width, window_height, false);
@@ -254,52 +242,34 @@ namespace Spartan
         m_cmd_index   = (m_cmd_index + 1) % static_cast<uint32_t>(m_cmd_lists.size());
         m_cmd_current = m_cmd_index < static_cast<uint32_t>(m_cmd_lists.size()) ? m_cmd_lists[m_cmd_index].get() : nullptr;
 
-        // Reset dynamic buffer indices when we come back to the first command list
+        // Resetting
         if (m_cmd_index == 0)
         {
+            // Reset dynamic buffer indices
             m_cb_uber_offset_index     = 0;
             m_cb_frame_offset_index    = 0;
             m_cb_light_offset_index    = 0;
             m_cb_material_offset_index = 0;
+
+            // If this is not the first run, wait for the command lists
+            if (m_frame_num != 0)
+            {
+                for (uint32_t i = 0; i < static_cast<uint32_t>(m_cmd_lists.size()); i++)
+                {
+                    m_cmd_lists[i]->Wait();
+                }
+            }
+
+            // Reset command lists (via resetting the command pool)
+            m_rhi_device->ResetCommandPool();
         }
 
         // Begin
         m_cmd_current->Begin();
 
-        // If there is no camera, clear to black
-        if (!m_camera)
-        {
-            m_cmd_current->ClearRenderTarget(RENDER_TARGET(RenderTarget::Frame_Output).get(), 0, 0, false, Vector4(0.0f, 0.0f, 0.0f, 1.0f));
-            return;
-        }
-
-        // If there is not camera but no other entities to render, clear to camera's color
-        if (m_entities[ObjectType::GeometryOpaque].empty() && m_entities[ObjectType::GeometryTransparent].empty() && m_entities[ObjectType::Light].empty())
-        {
-            m_cmd_current->ClearRenderTarget(RENDER_TARGET(RenderTarget::Frame_Output).get(), 0, 0, false, m_camera->GetClearColor());
-            return;
-        }
-
         // Handle requests (they can come from different threads)
         {
             m_reading_requests = true;
-
-            // Handle viewport update requests
-            if (m_dirty_viewport)
-            {
-                // Update viewport
-                m_viewport.width  = m_viewport_size_pending.x;
-                m_viewport.height = m_viewport_size_pending.y;
-
-                // Update quad
-                m_viewport_quad = Math::Rectangle(0, 0, m_viewport.width, m_viewport.height);
-                m_viewport_quad.CreateBuffers(this);
-
-                // Update orthographic projection
-                m_dirty_orthographic_projection = true;
-
-                m_dirty_viewport = false;
-            }
 
             // Handle environment texture assignment requests
             if (m_environment_texture_temp)
@@ -313,7 +283,7 @@ namespace Spartan
                 // Clear any previously processed textures
                 if (!m_textures_mip_generation.empty())
                 {
-                    for (RHI_Texture* texture : m_textures_mip_generation)
+                    for (shared_ptr<RHI_Texture> texture : m_textures_mip_generation)
                     {
                         // Remove unnecessary flags from texture (were only needed for the downsampling)
                         uint32_t flags = texture->GetFlags();
@@ -340,12 +310,16 @@ namespace Spartan
                 }
             }
 
+            // Generate mips for any pending texture requests
+            Pass_Generate_Mips();
+
             m_reading_requests = false;
         }
 
         // Update frame buffer
         {
             // Matrices
+            if (m_camera)
             {
                 if (m_dirty_orthographic_projection || m_near_plane != m_camera->GetNearPlane() || m_far_plane != m_camera->GetFarPlane())
                 {
@@ -383,14 +357,17 @@ namespace Spartan
             m_cb_frame_cpu.view_projection_previous   = m_cb_frame_cpu.view_projection;
             m_cb_frame_cpu.view_projection            = m_cb_frame_cpu.view * m_cb_frame_cpu.projection;
             m_cb_frame_cpu.view_projection_inv        = Matrix::Invert(m_cb_frame_cpu.view_projection);
-            m_cb_frame_cpu.view_projection_unjittered = m_cb_frame_cpu.view * m_camera->GetProjectionMatrix();
-            m_cb_frame_cpu.camera_aperture            = m_camera->GetAperture();
-            m_cb_frame_cpu.camera_shutter_speed       = m_camera->GetShutterSpeed();
-            m_cb_frame_cpu.camera_iso                 = m_camera->GetIso();
-            m_cb_frame_cpu.camera_near                = m_camera->GetNearPlane();
-            m_cb_frame_cpu.camera_far                 = m_camera->GetFarPlane();
-            m_cb_frame_cpu.camera_position            = m_camera->GetTransform()->GetPosition();
-            m_cb_frame_cpu.camera_direction           = m_camera->GetTransform()->GetForward();
+            if (m_camera)
+            { 
+                m_cb_frame_cpu.view_projection_unjittered = m_cb_frame_cpu.view * m_camera->GetProjectionMatrix();
+                m_cb_frame_cpu.camera_aperture            = m_camera->GetAperture();
+                m_cb_frame_cpu.camera_shutter_speed       = m_camera->GetShutterSpeed();
+                m_cb_frame_cpu.camera_iso                 = m_camera->GetIso();
+                m_cb_frame_cpu.camera_near                = m_camera->GetNearPlane();
+                m_cb_frame_cpu.camera_far                 = m_camera->GetFarPlane();
+                m_cb_frame_cpu.camera_position            = m_camera->GetTransform()->GetPosition();
+                m_cb_frame_cpu.camera_direction           = m_camera->GetTransform()->GetForward();
+            }
             m_cb_frame_cpu.resolution_output          = m_resolution_output;
             m_cb_frame_cpu.resolution_render          = m_resolution_render;
             m_cb_frame_cpu.taa_jitter_previous        = m_cb_frame_cpu.taa_jitter_current;
@@ -421,6 +398,10 @@ namespace Spartan
         Pass_Main(m_cmd_current);
         Lines_PostMain(delta_time);
 
+        // Submit
+        m_cmd_current->End();
+        m_cmd_current->Submit(nullptr);
+
         m_frame_num++;
         m_is_odd_frame = (m_frame_num % 2) == 1;
     }
@@ -436,13 +417,12 @@ namespace Spartan
             }
         }
 
-
         if (m_viewport.width != width || m_viewport.height != height)
         {
-            m_viewport_size_pending.x = width;
-            m_viewport_size_pending.y = height;
+            m_viewport.width = width;
+            m_viewport.height = height;
 
-            m_dirty_viewport = true;
+            m_dirty_orthographic_projection = true;
         }
     }
 
@@ -540,7 +520,7 @@ namespace Spartan
         {
             if (offset_index >= buffer_gpu->GetOffsetCount())
             {
-                cmd_list->Flush(true);
+                cmd_list->Discard();
                 const uint32_t new_size = Math::Helper::NextPowerOfTwo(offset_index + 1);
                 if (!buffer_gpu->Create<T>(new_size))
                 {
@@ -901,26 +881,17 @@ namespace Spartan
         }
     }
 
-    bool Renderer::Present(RHI_CommandList* cmd_list)
+    bool Renderer::Present()
     {
-        // Finalise command list
-        if (cmd_list->GetState() == RHI_CommandListState::Recording)
-        {
-            cmd_list->End();
-            cmd_list->Submit(m_swap_chain->GetImageAcquiredSemaphore());
-        }
-
         if (!m_swap_chain->PresentEnabled())
             return false;
 
-        // Wait semaphore (null for D3D11)
-        RHI_Semaphore* wait_semaphore = cmd_list->GetProcessedSemaphore();
-        if (wait_semaphore)
-        {
-            wait_semaphore = wait_semaphore->GetState() == RHI_Semaphore_State::Signaled ? wait_semaphore : nullptr;
-        }
+        bool presented = m_swap_chain->Present();
 
-        return m_swap_chain->Present(wait_semaphore);
+        // Notify subsystems that need to calculate things after presenting, like the profiler.
+        SP_FIRE_EVENT(EventType::PostPresent);
+
+        return presented;
     }
 
 	void Renderer::Flush()
@@ -954,10 +925,7 @@ namespace Spartan
 
             if (m_cmd_current)
             {
-                if (!m_cmd_current->Flush(false))
-                {
-                    LOG_ERROR("Failed to flush command list");
-                }
+                m_cmd_current->Discard();
             }
         }
 
@@ -981,7 +949,7 @@ namespace Spartan
         return m_rhi_device->GetContextRhi()->api_type;
     }
     
-    void Renderer::RequestTextureMipGeneration(RHI_Texture* texture)
+    void Renderer::RequestTextureMipGeneration(shared_ptr<RHI_Texture> texture)
     {
         if (IsCallingFromOtherThread())
         {

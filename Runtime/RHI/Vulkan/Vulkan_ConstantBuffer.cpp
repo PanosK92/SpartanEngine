@@ -19,15 +19,14 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===============================
+//= INCLUDES ========================
 #include "Spartan.h"
 #include "../RHI_Implementation.h"
 #include "../RHI_ConstantBuffer.h"
 #include "../RHI_Device.h"
 #include "../RHI_CommandList.h"
-#include "../RHI_DescriptorSetLayoutCache.h"
 #include "../../Rendering/Renderer.h"
-//==========================================
+//===================================
 
 //= NAMESPACES =====
 using namespace std;
@@ -40,12 +39,12 @@ namespace Spartan
         if (!m_resource)
             return;
 
-        // Make sure that no descriptor sets refers to this buffer.
+        // Discard the current command list in case it's referencing the buffer.
         if (Renderer* renderer = m_rhi_device->GetContext()->GetSubsystem<Renderer>())
         {
-            if (RHI_DescriptorSetLayoutCache* descriptor_set_layout_cache = renderer->GetDescriptorLayoutSetCache())
+            if (RHI_CommandList* cmd_list = renderer->GetCmdList())
             {
-                descriptor_set_layout_cache->RemoveConstantBuffer(this);
+                cmd_list->Discard();
             }
         }
 

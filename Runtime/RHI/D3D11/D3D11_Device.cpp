@@ -338,4 +338,53 @@ namespace Spartan
         m_rhi_context->device_context->Flush();
         return true;
     }
+
+    void RHI_Device::QueryCreate(void** query, const RHI_Query_Type type)
+    {
+        SP_ASSERT(*query == nullptr);
+
+        D3D11_QUERY_DESC desc = {};
+        desc.Query            = (type == RHI_Query_Type::Timestamp_Disjoint) ? D3D11_QUERY_TIMESTAMP_DISJOINT : D3D11_QUERY_TIMESTAMP;
+        desc.MiscFlags        = 0;
+
+        SP_ASSERT(SUCCEEDED(m_rhi_context->device->CreateQuery(&desc, reinterpret_cast<ID3D11Query**>(query))));
+    }
+
+    void RHI_Device::QueryRelease(void*& query)
+    {
+        SP_ASSERT(query != nullptr);
+
+        static_cast<ID3D11Query*>(query)->Release();
+        query = nullptr;
+    }
+
+    void RHI_Device::QueryBegin(void* query)
+    {
+        SP_ASSERT(query != nullptr);
+
+        m_rhi_context->device_context->Begin(static_cast<ID3D11Query*>(query));
+    }
+
+    void RHI_Device::QueryEnd(void* query)
+    {
+        SP_ASSERT(query != nullptr);
+
+        m_rhi_context->device_context->End(static_cast<ID3D11Query*>(query));
+    }
+
+    void RHI_Device::QueryGetData(void* query)
+    {
+        SP_ASSERT(query != nullptr);
+
+        // Check whether timestamps were disjoint during the last frame
+        D3D10_QUERY_DATA_TIMESTAMP_DISJOINT disjoint_data = {};
+        while (m_rhi_context->device_context->GetData(static_cast<ID3D11Query*>(query), &disjoint_data, sizeof(disjoint_data), 0) != S_OK);
+
+        m_timestamp_period = static_cast<float>(disjoint_data.Frequency);
+    }
+
+    bool RHI_Device::ResetCommandPool()
+    {
+        return true;
+    }
 }
