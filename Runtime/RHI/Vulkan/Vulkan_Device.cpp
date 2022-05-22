@@ -258,6 +258,7 @@ namespace Spartan
             m_max_texture_array_layers            = device_properties.limits.maxImageArrayLayers;
             m_min_uniform_buffer_offset_alignment = device_properties.limits.minUniformBufferOffsetAlignment;
             m_timestamp_period                    = device_properties.limits.timestampPeriod;
+            m_max_bound_descriptor_sets           = device_properties.limits.maxBoundDescriptorSets;
 
             // Disable profiler if timestamps are not supported
             if (m_rhi_context->profiler && !device_properties.limits.timestampComputeAndGraphics)
@@ -414,6 +415,9 @@ namespace Spartan
             SP_ASSERT(vulkan_utility::error::check(vmaCreateAllocator(&allocator_info, &m_rhi_context->allocator)) && "Failed to create memory allocator");
         }
 
+        // Set the descriptor set capacity to an initial value
+        SetDescriptorSetCapacity(2048);
+
         // Detect and log version
         {
             string version_major = to_string(VK_VERSION_MAJOR(app_info.apiVersion));
@@ -437,24 +441,31 @@ namespace Spartan
         SP_ASSERT(m_rhi_context != nullptr);
         SP_ASSERT(m_queue_graphics != nullptr);
 
-        // Command pool
-        vkDestroyCommandPool(m_rhi_context->device, static_cast<VkCommandPool>(m_cmd_pool_graphics), nullptr);
-        m_cmd_pool_graphics = nullptr;
-
-        // Release resources
+        // Wait for all queues
         if (QueueWaitAll())
         {
-            // Destroy allocator
+            // Command pool
+            vkDestroyCommandPool(m_rhi_context->device, static_cast<VkCommandPool>(m_cmd_pool_graphics), nullptr);
+            m_cmd_pool_graphics = nullptr;
+
+            // Descriptor pool
+            vkDestroyDescriptorPool(m_rhi_context->device, static_cast<VkDescriptorPool>(m_descriptor_pool), nullptr);
+            m_descriptor_pool = nullptr;
+
+            // Allocator
             if (m_rhi_context->allocator != nullptr)
             {
                 vmaDestroyAllocator(m_rhi_context->allocator);
                 m_rhi_context->allocator = nullptr;
             }
 
+            // Debug messenger
             if (m_rhi_context->debug)
             {
                 vulkan_utility::debug::shutdown(m_rhi_context->instance);
             }
+
+            // Device and instance
             vkDestroyDevice(m_rhi_context->device, nullptr);
             vkDestroyInstance(m_rhi_context->instance, nullptr);
         }
@@ -729,5 +740,48 @@ namespace Spartan
     void RHI_Device::QueryGetData(void* query)
     {
 
+    }
+
+    void RHI_Device::SetDescriptorSetCapacity(uint32_t descriptor_set_capacity)
+    {
+        // If the requested capacity is zero, then only recreate the descriptor pool
+        if (descriptor_set_capacity == 0)
+        {
+            descriptor_set_capacity = m_descriptor_set_capacity;
+        }
+
+        if (m_descriptor_set_capacity == descriptor_set_capacity)
+        {
+            LOG_WARNING("Capacity is already %d, is this reset needed ?");
+        }
+
+        // Create pool
+        {
+            // Pool sizes
+            array<VkDescriptorPoolSize, 6> pool_sizes =
+            {
+                VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_SAMPLER,                rhi_descriptor_max_samplers },
+                VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,          rhi_descriptor_max_textures },
+                VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,          rhi_descriptor_max_storage_textures },
+                VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,         rhi_descriptor_max_storage_buffers },
+                VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         rhi_descriptor_max_constant_buffers },
+                VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, rhi_descriptor_max_constant_buffers_dynamic }
+            };
+
+            // Create info
+            VkDescriptorPoolCreateInfo pool_create_info = {};
+            pool_create_info.sType                      = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+            pool_create_info.flags                      = 0;
+            pool_create_info.poolSizeCount              = static_cast<uint32_t>(pool_sizes.size());
+            pool_create_info.pPoolSizes                 = pool_sizes.data();
+            pool_create_info.maxSets                    = descriptor_set_capacity;
+
+            // Create
+            bool created = vulkan_utility::error::check(vkCreateDescriptorPool(m_rhi_context->device, &pool_create_info, nullptr, reinterpret_cast<VkDescriptorPool*>(&m_descriptor_pool)));
+            SP_ASSERT(created && "Failed to create descriptor pool.");
+        }
+
+        LOG_INFO("Capacity has been set to %d elements", descriptor_set_capacity);
+        m_descriptor_set_capacity = descriptor_set_capacity;
     }
 }

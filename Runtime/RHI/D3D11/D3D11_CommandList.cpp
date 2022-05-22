@@ -991,9 +991,4 @@ namespace Spartan
     {
         
     }
-
-    void RHI_CommandList::Descriptors_ResetPool(uint32_t descriptor_set_capacity)
-    {
-        
-    }
 }

@@ -45,8 +45,7 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    unordered_map<uint32_t, shared_ptr<RHI_Pipeline>> RHI_CommandList::m_cache;
-    void* RHI_CommandList::m_descriptor_pool = nullptr;
+    unordered_map<uint32_t, shared_ptr<RHI_Pipeline>> RHI_CommandList::m_pipelines;
 
     static VkAttachmentLoadOp get_color_load_op(const Math::Vector4& color)
     {
@@ -98,9 +97,6 @@ namespace Spartan
 
             m_timestamps.fill(0);
         }
-
-        // Set the descriptor set capacity to an initial value
-        Descriptors_ResetPool(2048);
     }
 
     RHI_CommandList::~RHI_CommandList()
@@ -233,37 +229,37 @@ namespace Spartan
         return true;
     }
 
-    bool RHI_CommandList::BeginRenderPass(RHI_PipelineState& pipeline_state)
+    bool RHI_CommandList::BeginRenderPass(RHI_PipelineState& new_pipeline_state)
     {
         // Validate command list state
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
         // Update the descriptor cache with the pipeline state
-        Descriptors_GetLayoutFromPipelineState(pipeline_state);
+        Descriptors_GetLayoutFromPipelineState(new_pipeline_state);
 
         // Validate it
-        if (!pipeline_state.IsValid())
+        if (!new_pipeline_state.IsValid())
         {
             LOG_ERROR("Invalid pipeline state");
             return false;
         }
 
         // Render target layout transitions
-        pipeline_state.TransitionRenderTargetLayouts(this);
+        new_pipeline_state.TransitionRenderTargetLayouts(this);
 
         // If no pipeline exists for this state, create one
         uint32_t hash_previous = m_pipeline_state.ComputeHash();
-        uint32_t hash          = pipeline_state.ComputeHash();
-        auto it = m_cache.find(hash);
-        if (it == m_cache.end())
+        uint32_t hash          = new_pipeline_state.ComputeHash();
+        auto it = m_pipelines.find(hash);
+        if (it == m_pipelines.end())
         {
-            // Cache a new pipeline
-            it = m_cache.emplace(make_pair(hash, move(make_shared<RHI_Pipeline>(m_rhi_device, pipeline_state, m_descriptor_layout_current)))).first;
+            // Create a new pipeline
+            it = m_pipelines.emplace(make_pair(hash, move(make_shared<RHI_Pipeline>(m_rhi_device, new_pipeline_state, m_descriptor_layout_current)))).first;
             LOG_INFO("A new pipeline has been created.");
         }
 
         m_pipeline       = it->second.get();
-        m_pipeline_state = pipeline_state;
+        m_pipeline_state = new_pipeline_state;
 
         // Determine if the pipeline is dirty
         if (!m_pipeline_dirty)
@@ -279,7 +275,7 @@ namespace Spartan
         }
 
         // Start marker and profiler (if used)
-        Timeblock_Start(pipeline_state.pass_name, pipeline_state.profile, pipeline_state.gpu_marker);
+        Timeblock_Start(new_pipeline_state.pass_name, new_pipeline_state.profile, new_pipeline_state.gpu_marker);
 
         // Start rendering
         if (m_pipeline_state.IsGraphics())
@@ -1001,23 +997,17 @@ namespace Spartan
         {
             m_renderer->SetGlobalShaderResources(this);
 
-            // Descriptor set != null, result = true  -> a descriptor set must be bound
-            // Descriptor set == null, result = true  -> a descriptor set is already bound
-            // Descriptor set == null, result = false -> a new descriptor was needed but we are out of memory (allocates next frame)
-
             RHI_DescriptorSet* descriptor_set = nullptr;
-            bool result = m_descriptor_layout_current->GetDescriptorSet(descriptor_set, Descriptors_HasEnoughCapacity());
+            m_descriptor_layout_current->GetDescriptorSet(descriptor_set);
 
-            if (result && descriptor_set != nullptr)
+            bool descriptor_set_already_bound = descriptor_set == nullptr;
+            if (!descriptor_set_already_bound)
             {
-                // Bind point
-                VkPipelineBindPoint pipeline_bind_point = m_pipeline_state.IsCompute() ? VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_COMPUTE : VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS;
-
                 // Dynamic offsets
                 const array<uint32_t, rhi_max_constant_buffer_count> dynamic_offsets = m_descriptor_layout_current->GetDynamicOffsets();
                 uint32_t dynamic_offset_count = m_descriptor_layout_current->GetDynamicOffsetCount();
 
-                // Validate descriptor sets
+                // Get descriptor sets
                 array<void*, 1> descriptor_sets = { descriptor_set->GetResource() };
                 for (uint32_t i = 0; i < static_cast<uint32_t>(descriptor_sets.size()); i++)
                 {
@@ -1027,14 +1017,14 @@ namespace Spartan
                 // Bind descriptor set
                 vkCmdBindDescriptorSets
                 (
-                    static_cast<VkCommandBuffer>(m_resource),                                // commandBuffer
-                    pipeline_bind_point,                                                     // pipelineBindPoint
-                    static_cast<VkPipelineLayout>(m_pipeline->GetResource_PipelineLayout()), // layout
-                    0,                                                                       // firstSet
-                    static_cast<uint32_t>(descriptor_sets.size()),                           // descriptorSetCount
-                    reinterpret_cast<VkDescriptorSet*>(descriptor_sets.data()),              // pDescriptorSets
-                    dynamic_offset_count,                                                    // dynamicOffsetCount
-                    !dynamic_offsets.empty() ? dynamic_offsets.data() : nullptr              // pDynamicOffsets
+                    static_cast<VkCommandBuffer>(m_resource),                                                                                                   // commandBuffer
+                    m_pipeline_state.IsCompute() ? VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_COMPUTE : VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS,  // pipelineBindPoint
+                    static_cast<VkPipelineLayout>(m_pipeline->GetResource_PipelineLayout()),                                                                    // layout
+                    0,                                                                                                                                          // firstSet
+                    static_cast<uint32_t>(descriptor_sets.size()),                                                                                              // descriptorSetCount
+                    reinterpret_cast<VkDescriptorSet*>(descriptor_sets.data()),                                                                                 // pDescriptorSets
+                    dynamic_offset_count,                                                                                                                       // dynamicOffsetCount
+                    !dynamic_offsets.empty() ? dynamic_offsets.data() : nullptr                                                                                 // pDynamicOffsets
                 );
 
                 if (m_profiler)
@@ -1090,65 +1080,5 @@ namespace Spartan
 
         // Make it bind
         m_descriptor_layout_current->NeedsToBind();
-    }
-
-    void RHI_CommandList::Descriptors_ResetPool(uint32_t descriptor_set_capacity)
-    {
-        // If the requested capacity is zero, then only recreate the descriptor pool
-        if (descriptor_set_capacity == 0)
-        {
-            descriptor_set_capacity = m_descriptor_set_capacity;
-        }
-
-        if (m_descriptor_set_capacity == descriptor_set_capacity)
-        {
-            LOG_WARNING("Capacity is already %d, is this reset needed ?");
-        }
-
-        m_descriptor_pool_resseting = true;
-
-        // Destroy layouts (and descriptor sets)
-        m_descriptor_set_layouts.clear();
-        m_descriptor_layout_current = nullptr;
-
-        // Destroy pool
-        if (m_descriptor_pool)
-        {
-            // Wait in case it's still in use by the GPU
-            m_rhi_device->QueueWaitAll();
-
-            vkDestroyDescriptorPool(m_rhi_device->GetContextRhi()->device, static_cast<VkDescriptorPool>(m_descriptor_pool), nullptr);
-            m_descriptor_pool = nullptr;
-        }
-
-        // Create pool
-        {
-            // Pool sizes
-            array<VkDescriptorPoolSize, 6> pool_sizes =
-            {
-                VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_SAMPLER,                rhi_descriptor_max_samplers },
-                VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,          rhi_descriptor_max_textures },
-                VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,          rhi_descriptor_max_storage_textures },
-                VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,         rhi_descriptor_max_storage_buffers },
-                VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         rhi_descriptor_max_constant_buffers },
-                VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, rhi_descriptor_max_constant_buffers_dynamic }
-            };
-
-            // Create info
-            VkDescriptorPoolCreateInfo pool_create_info = {};
-            pool_create_info.sType                      = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-            pool_create_info.flags                      = 0;
-            pool_create_info.poolSizeCount              = static_cast<uint32_t>(pool_sizes.size());
-            pool_create_info.pPoolSizes                 = pool_sizes.data();
-            pool_create_info.maxSets                    = descriptor_set_capacity;
-
-            // Create
-            bool created = vulkan_utility::error::check(vkCreateDescriptorPool(m_rhi_device->GetContextRhi()->device, &pool_create_info, nullptr, reinterpret_cast<VkDescriptorPool*>(&m_descriptor_pool)));
-            SP_ASSERT(created && "Failed to create descriptor pool.");
-        }
-
-        LOG_INFO("Capacity has been set to %d elements", descriptor_set_capacity);
-        m_descriptor_set_capacity   = descriptor_set_capacity;
-        m_descriptor_pool_resseting = false;
     }
 }

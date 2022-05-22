@@ -42,8 +42,6 @@ namespace Spartan
         // Wait for the fence.
         SP_ASSERT(m_processed_fence->Wait() && "Timeout while waiting for command list fence.");
 
-        Descriptors_GrowPool();
-
         m_state = RHI_CommandListState::Idle;
     }
 
@@ -60,44 +58,6 @@ namespace Spartan
         }
     
         return 0;
-    }
-
-    void RHI_CommandList::Descriptors_GrowPool()
-    {
-        // If there is room for at least one more descriptor set (hence +1), we don't need to re-allocate yet
-        const uint32_t required_capacity = Descriptors_GetDescriptorSetCount() + 1;
-
-        // If we are over-budget, re-allocate the descriptor pool with double size
-        if (required_capacity > m_descriptor_set_capacity)
-        {
-            Descriptors_ResetPool(m_descriptor_set_capacity * 2);
-        }
-    }
-
-    uint32_t RHI_CommandList::Descriptors_GetDescriptorSetCount() const
-    {
-        // Instead of updating descriptors to not reference it, the RHI_Texture2D destructor
-        // resets the descriptor set layout cache. This can happen from another thread hence
-        //  we do this wait here. Ideally ~RHI_Texture2D() is made to work right.
-        while (m_descriptor_pool_resseting)
-        {
-            LOG_INFO("Waiting for descriptor set layouts to be cleared...");
-            this_thread::sleep_for(chrono::milliseconds(16));
-        }
-
-        uint32_t descriptor_set_count = 0;
-        for (const auto& it : m_descriptor_set_layouts)
-        {
-            descriptor_set_count += it.second->GetDescriptorSetCount();
-        }
-
-        return descriptor_set_count;
-    }
-
-    bool RHI_CommandList::Descriptors_HasEnoughCapacity() const
-    {
-        uint32_t required_capacity = Descriptors_GetDescriptorSetCount();
-        return m_descriptor_set_capacity > required_capacity;
     }
 
     void RHI_CommandList::Descriptors_GetDescriptorsFromPipelineState(RHI_PipelineState& pipeline_state, vector<RHI_Descriptor>& descriptors)

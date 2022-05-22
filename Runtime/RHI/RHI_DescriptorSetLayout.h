@@ -29,13 +29,21 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI_Descriptor.h"
 //================================
 
+// A descriptor set layout is created by individual descriptors.
+// The descriptors come from shader reflection and contain no resource pointers.
+// The descriptor set layout resource is part of the pipeline creation.
+// 
+// The descriptors that are a member RHI_DescriptorSetLayout also hold resource pointers.
+// These descriptors are used to created a descriptor set.
+// The descriptor is what is actually bound before any draw/dispatch calls.
+ 
 namespace Spartan
 {
     class SPARTAN_CLASS RHI_DescriptorSetLayout : public SpartanObject
     {
     public:
         RHI_DescriptorSetLayout() = default;
-        RHI_DescriptorSetLayout(const RHI_Device* rhi_device, const std::vector<RHI_Descriptor>& descriptors, const std::string& name);
+        RHI_DescriptorSetLayout(RHI_Device* rhi_device, const std::vector<RHI_Descriptor>& descriptors, const std::string& name);
         ~RHI_DescriptorSetLayout();
 
         // Set
@@ -46,10 +54,9 @@ namespace Spartan
 
         // Misc
         void ClearDescriptorData();
-        bool GetDescriptorSet(RHI_DescriptorSet*& descriptor_set, bool has_enough_capacity);
+        void GetDescriptorSet(RHI_DescriptorSet*& descriptor_set);
         const std::array<uint32_t, rhi_max_constant_buffer_count> GetDynamicOffsets() const;
         uint32_t GetDynamicOffsetCount() const;
-        uint32_t GetDescriptorSetCount() const { return static_cast<uint32_t>(m_descriptor_sets.size()); }
         void NeedsToBind()                     { m_needs_to_bind = true; }
         void* GetResource()              const { return m_resource; }
 
@@ -60,15 +67,12 @@ namespace Spartan
         void* m_resource = nullptr;
         uint32_t m_hash = 0;
 
-        // Descriptor sets
-        std::unordered_map<uint32_t, RHI_DescriptorSet> m_descriptor_sets;
-
         // Descriptors
         std::vector<RHI_Descriptor> m_descriptors;
 
         // Misc
         bool m_needs_to_bind = false;
         std::array<uint32_t, rhi_max_constant_buffer_count> m_dynamic_offsets;
-        const RHI_Device* m_rhi_device = nullptr;
+        RHI_Device* m_rhi_device = nullptr;
     };
 }
