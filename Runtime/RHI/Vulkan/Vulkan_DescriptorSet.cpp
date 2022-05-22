@@ -27,7 +27,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Sampler.h"
 #include "../RHI_ConstantBuffer.h"
 #include "../RHI_StructuredBuffer.h"
-#include "../RHI_CommandList.h"
 //=====================================
 
 //= NAMESPACES =====
@@ -74,7 +73,7 @@ namespace Spartan
         // Allocate info
         VkDescriptorSetAllocateInfo allocate_info = {};
         allocate_info.sType                       = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-        allocate_info.descriptorPool              = static_cast<VkDescriptorPool>(RHI_CommandList::Descriptors_GetPool());
+        allocate_info.descriptorPool              = static_cast<VkDescriptorPool>(m_rhi_device->GetDescriptorPool());
         allocate_info.descriptorSetCount          = 1;
         allocate_info.pSetLayouts                 = reinterpret_cast<VkDescriptorSetLayout*>(descriptor_set_layouts.data());
 

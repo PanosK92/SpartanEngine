@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI_Sampler.h"
 #include "RHI_Texture.h"
 #include "RHI_DescriptorSet.h"
+#include "RHI_Device.h"
 //==================================
 
 //= NAMESPACES =====
@@ -35,7 +36,7 @@ using namespace std;
 
 namespace Spartan
 {
-    RHI_DescriptorSetLayout::RHI_DescriptorSetLayout(const RHI_Device* rhi_device, const vector<RHI_Descriptor>& descriptors, const string& name)
+    RHI_DescriptorSetLayout::RHI_DescriptorSetLayout(RHI_Device* rhi_device, const vector<RHI_Descriptor>& descriptors, const string& name)
     {
         m_rhi_device  = rhi_device;
         m_descriptors = descriptors;
@@ -143,8 +144,8 @@ namespace Spartan
             if ((descriptor.type == RHI_Descriptor_Type::StructuredBuffer) && descriptor.slot == slot + rhi_shader_shift_register_u)
             {
                 // Determine if the descriptor set needs to bind (affects vkUpdateDescriptorSets)
-                m_needs_to_bind = descriptor.data   != structured_buffer                        ? true : m_needs_to_bind;
-                m_needs_to_bind = descriptor.range  != structured_buffer->GetObjectSizeGpu()    ? true : m_needs_to_bind;
+                m_needs_to_bind = descriptor.data   != structured_buffer                     ? true : m_needs_to_bind;
+                m_needs_to_bind = descriptor.range  != structured_buffer->GetObjectSizeGpu() ? true : m_needs_to_bind;
 
                 // Update
                 descriptor.data   = static_cast<void*>(structured_buffer);
@@ -165,7 +166,7 @@ namespace Spartan
         }
     }
 
-    bool RHI_DescriptorSetLayout::GetDescriptorSet(RHI_DescriptorSet*& descriptor_set, bool has_enough_capacity)
+    void RHI_DescriptorSetLayout::GetDescriptorSet(RHI_DescriptorSet*& descriptor_set)
     {
         // Integrate descriptor data into the hash
         uint32_t hash = m_hash;
@@ -176,22 +177,18 @@ namespace Spartan
         }
 
         // If we don't have a descriptor set to match that state, create one
-        const auto it = m_descriptor_sets.find(hash);
-        if (it == m_descriptor_sets.end())
+        unordered_map<uint32_t, RHI_DescriptorSet>& descriptor_sets = m_rhi_device->GetDescriptorSets();
+        const auto it = descriptor_sets.find(hash);
+        if (it == descriptor_sets.end())
         {
             // Only allocate if the descriptor set cache hash enough capacity
-            if (has_enough_capacity)
-            {
-                // Create descriptor set
-                m_descriptor_sets[hash] = RHI_DescriptorSet(m_rhi_device, m_descriptors, this, m_object_name.c_str());
+            SP_ASSERT(m_rhi_device->HasDescriptorSetCapacity() && "Descriptor pool has no more memory to allocate another descriptor set");
 
-                // Out
-                descriptor_set = &m_descriptor_sets[hash];
-            }
-            else
-            {
-                return false;
-            }
+            // Create descriptor set
+            descriptor_sets[hash] = RHI_DescriptorSet(m_rhi_device, m_descriptors, this, m_object_name.c_str());
+
+            // Out
+            descriptor_set = &descriptor_sets[hash];
         }
         else // retrieve the existing one
         {
@@ -201,15 +198,13 @@ namespace Spartan
                 m_needs_to_bind = false;
             }
         }
-
-        return true;
     }
 
     const array<uint32_t, Spartan::rhi_max_constant_buffer_count> RHI_DescriptorSetLayout::GetDynamicOffsets() const
     {
-        // vkCmdBindDescriptorSets expects an array without empty values
-
         array<uint32_t, Spartan::rhi_max_constant_buffer_count> dynamic_offsets;
+
+        // vkCmdBindDescriptorSets expects the array to be filled.
         dynamic_offsets.fill(0);
 
         uint32_t j = 0;

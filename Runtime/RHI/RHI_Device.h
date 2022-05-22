@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <memory>
 #include "../Display/DisplayMode.h"
 #include "RHI_PhysicalDevice.h"
+#include "RHI_DescriptorSet.h"
 //=================================
 
 namespace Spartan
@@ -69,6 +70,12 @@ namespace Spartan
         bool ResetCommandPool();
         void*& GetCommandPoolGraphics() { return m_cmd_pool_graphics; }
 
+        // Descriptors
+        void* GetDescriptorPool()                                            { return m_descriptor_pool; }
+        std::unordered_map<uint32_t, RHI_DescriptorSet>& GetDescriptorSets() { return m_descriptor_sets; }
+        bool HasDescriptorSetCapacity();
+        void SetDescriptorSetCapacity(uint32_t descriptor_set_capacity);
+
         // Misc
         bool IsValidResolution(const uint32_t width, const uint32_t height);
         auto IsInitialised()                const { return m_initialized; }
@@ -94,6 +101,11 @@ namespace Spartan
         uint32_t m_queue_compute_index  = 0;
         uint32_t m_queue_copy_index     = 0;
 
+        // Descriptors
+        std::unordered_map<uint32_t, RHI_DescriptorSet> m_descriptor_sets;
+        void* m_descriptor_pool            = nullptr;
+        uint32_t m_descriptor_set_capacity = 0;
+
         // Device properties
         uint32_t m_max_texture_1d_dimension            = 0;
         uint32_t m_max_texture_2d_dimension            = 0;
@@ -103,6 +115,7 @@ namespace Spartan
         uint64_t m_min_uniform_buffer_offset_alignment = 0;
         float m_timestamp_period                       = 0;
         bool m_wide_lines                              = false;
+        uint32_t m_max_bound_descriptor_sets           = 4; // worst case scenario
 
         // Misc
         uint32_t m_physical_device_index          = 0;

@@ -134,20 +134,10 @@ namespace Spartan
         static uint32_t Gpu_GetMemory(RHI_Device* rhi_device);
         static uint32_t Gpu_GetMemoryUsed(RHI_Device* rhi_device);
 
-        // Descriptors
-        void Descriptors_GetLayoutFromPipelineState(RHI_PipelineState& pipeline_state);
-        uint32_t Descriptors_GetDescriptorSetCount() const;
-        bool Descriptors_HasEnoughCapacity() const;
-        void Descriptors_GetDescriptorsFromPipelineState(RHI_PipelineState& pipeline_state, std::vector<RHI_Descriptor>& descriptors);
-        void Descriptors_GrowPool();
-        void Descriptors_ResetPool(uint32_t descriptor_set_capacity);
-        static void* Descriptors_GetPool() { return m_descriptor_pool; }
-
-        // State
-        const RHI_CommandListState GetState() const { return m_state; }
-
         // Misc
+        const RHI_CommandListState GetState() const { return m_state; }
         void* GetResource_CommandBuffer() const { return m_resource; }
+
 
     private:    
         void Timeblock_Start(const char* name, const bool profile, const bool gpu_markers);
@@ -155,6 +145,10 @@ namespace Spartan
 
         void OnDraw();
         void UnbindOutputTextures();
+
+        // Descriptors
+        void Descriptors_GetLayoutFromPipelineState(RHI_PipelineState& pipeline_state);
+        void Descriptors_GetDescriptorsFromPipelineState(RHI_PipelineState& pipeline_state, std::vector<RHI_Descriptor>& descriptors);
 
         RHI_Pipeline* m_pipeline                         = nullptr; 
         Renderer* m_renderer                             = nullptr;
@@ -173,14 +167,11 @@ namespace Spartan
         // Descriptors
         std::unordered_map<std::size_t, std::shared_ptr<RHI_DescriptorSetLayout>> m_descriptor_set_layouts;
         RHI_DescriptorSetLayout* m_descriptor_layout_current = nullptr;
-        uint32_t m_descriptor_set_capacity = 0;
-        std::atomic<bool> m_descriptor_pool_resseting = false;
-        static void* m_descriptor_pool;
 
         // Pipelines
         RHI_PipelineState m_pipeline_state;
         // <hash of pipeline state, pipeline state object>
-        static std::unordered_map<uint32_t, std::shared_ptr<RHI_Pipeline>> m_cache;
+        static std::unordered_map<uint32_t, std::shared_ptr<RHI_Pipeline>> m_pipelines;
 
         // Keep track of output textures so that we can unbind them and prevent
         // D3D11 warnings when trying to bind them as SRVs in following passes

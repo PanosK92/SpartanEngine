@@ -125,4 +125,10 @@ namespace Spartan
             m_queue_compute_index = index;
         }
     }
+
+    bool RHI_Device::HasDescriptorSetCapacity()
+    {
+        const uint32_t required_capacity = static_cast<uint32_t>(m_descriptor_sets.size());
+        return m_descriptor_set_capacity > required_capacity;
+    }
 }
