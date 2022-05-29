@@ -42,7 +42,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_SwapChain.h"               
 #include "../RHI/RHI_VertexBuffer.h"            
 #include "../RHI/RHI_Implementation.h"          
-#include "../RHI/RHI_Semaphore.h"               
+#include "../RHI/RHI_Semaphore.h"
+#include "../RHI/RHI_CommandPool.h"
 #include "../Core/Window.h"                     
 #include "../Input/Input.h"                     
 #include "../World/Components/Environment.h"    
@@ -137,17 +138,10 @@ namespace Spartan
 
         // Create device
         m_rhi_device = make_shared<RHI_Device>(m_context);
-        if (!m_rhi_device->IsInitialised())
-        {
-            LOG_ERROR("Failed to create device.");
-            return false;
-        }
 
         // Create command lists
-        for (uint32_t i = 0; i < m_swap_chain_buffer_count; i++)
-        {
-            m_cmd_lists.emplace_back(make_shared<RHI_CommandList>(m_context));
-        }
+        m_cmd_pool = make_shared<RHI_CommandPool>(m_rhi_device.get(), "renderer");
+        m_cmd_pool->AllocateCommandLists(m_swap_chain_buffer_count);
 
         // Line buffer
         m_vertex_buffer_lines = make_shared<RHI_VertexBuffer>(m_rhi_device);
@@ -204,7 +198,6 @@ namespace Spartan
     void Renderer::OnTick(double delta_time)
     {
         SP_ASSERT(m_rhi_device != nullptr);
-        SP_ASSERT(m_rhi_device->IsInitialised());
         SP_ASSERT(m_swap_chain != nullptr);
 
         // If a frame has already been rendered, then it's probably safe to stop logging
@@ -238,33 +231,19 @@ namespace Spartan
         if (!m_swap_chain->PresentEnabled() || !m_is_rendering_allowed)
             return;
 
-        // Acquire appropriate command list
-        m_cmd_index   = (m_cmd_index + 1) % static_cast<uint32_t>(m_cmd_lists.size());
-        m_cmd_current = m_cmd_index < static_cast<uint32_t>(m_cmd_lists.size()) ? m_cmd_lists[m_cmd_index].get() : nullptr;
-
-        // Resetting
-        if (m_cmd_index == 0)
+        // Tick the command list pool.
+        // If it returns true, it means it has also reset.
+        if (m_cmd_pool->Tick())
         {
             // Reset dynamic buffer indices
             m_cb_uber_offset_index     = 0;
             m_cb_frame_offset_index    = 0;
             m_cb_light_offset_index    = 0;
             m_cb_material_offset_index = 0;
-
-            // If this is not the first run, wait for the command lists
-            if (m_frame_num != 0)
-            {
-                for (uint32_t i = 0; i < static_cast<uint32_t>(m_cmd_lists.size()); i++)
-                {
-                    m_cmd_lists[i]->Wait();
-                }
-            }
-
-            // Reset command lists (via resetting the command pool)
-            m_rhi_device->ResetCommandPool();
         }
 
         // Begin
+        m_cmd_current = m_cmd_pool->GetCommandList();
         m_cmd_current->Begin();
 
         // Handle requests (they can come from different threads)
@@ -400,7 +379,7 @@ namespace Spartan
 
         // Submit
         m_cmd_current->End();
-        m_cmd_current->Submit(nullptr);
+        m_cmd_current->Submit();
 
         m_frame_num++;
         m_is_odd_frame = (m_frame_num % 2) == 1;
@@ -968,5 +947,10 @@ namespace Spartan
 
         lock_guard<mutex> guard(m_texture_mip_generation_mutex);
         m_textures_mip_generation_pending.push_back(texture);
+    }
+
+    uint32_t Renderer::GetCmdIndex() const
+    {
+        return m_cmd_pool->GetCommandListIndex();
     }
 }

@@ -149,8 +149,7 @@ namespace Spartan
                     }
 
                     // End/flush
-                    if (!vulkan_utility::command_buffer_immediate::end(RHI_Queue_Type::Graphics))
-                        return false;
+                    vulkan_utility::command_buffer_immediate::end(RHI_Queue_Type::Graphics);
                 }
             }
 

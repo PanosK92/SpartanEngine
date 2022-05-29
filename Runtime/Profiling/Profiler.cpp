@@ -335,7 +335,7 @@ namespace Spartan
             // Detailed times
             "\t\tavg\t\tmin\t\tmax\t\tlast\n"
             "Total:\t%06.2f\t%06.2f\t%06.2f\t%06.2f ms\n"
-            "CPU:\t\t%06.2f\t%06.2f\t%06.2f\t%06.2f ms\n"
+            "CPU:\t%06.2f\t%06.2f\t%06.2f\t%06.2f ms\n"
             "GPU:\t%06.2f\t%06.2f\t%06.2f\t%06.2f ms\n"
             "\n"
             // GPU
@@ -345,31 +345,32 @@ namespace Spartan
             "Driver:\t%s\n"
             "\n"
             // Resolution
-            "Output resolution:\t%dx%d\n"
-            "Render resolution:\t\t%dx%d\n"
+            "Output resolution:\t\t%dx%d\n"
+            "Render resolution:\t%dx%d\n"
             "Viewport resolution:\t%dx%d\n"
             "\n"
             // Renderer
             "Meshes rendered:\t%d\n"
-            "Textures:\t\t\t%d\n"
+            "Textures:\t\t%d\n"
             "Materials:\t\t%d\n"
             "\n"
             // RHI
-            "Draw:\t\t\t%d\n"
-            "Dispatch:\t\t\t%d\n"
-            "Index buffer:\t\t%d\n"
-            "Vertex buffer:\t\t%d\n"
-            "Constant buffer:\t%d\n"
-            "Sampler:\t\t\t%d\n"
-            "Texture sampled:\t%d\n"
-            "Texture storage:\t%d\n"
-            "Shader vertex:\t%d\n"
-            "Shader pixel:\t\t%d\n"
-            "Shader compute:\t%d\n"
-            "Render target:\t%d\n"
-            "Pipeline:\t\t\t%d\n"
-            "Descriptor set:\t%d\n"
-            "Pipeline barrier:\t%d";
+            "Draw:\t\t\t\t\t%d\n"
+            "Dispatch:\t\t\t\t%d\n"
+            "Index buffer:\t\t\t\t%d\n"
+            "Vertex buffer:\t\t\t%d\n"
+            "Constant buffer:\t\t\t%d\n"
+            "Sampler:\t\t\t\t\t%d\n"
+            "Texture sampled:\t\t\t%d\n"
+            "Texture storage:\t\t\t%d\n"
+            "Shader vertex:\t\t\t%d\n"
+            "Shader pixel:\t\t\t\t%d\n"
+            "Shader compute:\t\t\t%d\n"
+            "Render target:\t\t\t%d\n"
+            "Pipeline:\t\t\t\t\t%d\n"
+            "Descriptor set:\t\t\t%d\n"
+            "Pipeline barrier:\t\t\t%d\n"
+            "Descriptor pool capacity:\t%d";
 
         static char buffer[2048];
         sprintf_s
@@ -414,7 +415,8 @@ namespace Spartan
             m_rhi_bindings_render_target,
             m_rhi_bindings_pipeline,
             m_rhi_bindings_descriptor_set,
-            m_rhi_pipeline_barriers
+            m_rhi_pipeline_barriers,
+            m_descriptor_pool_capacity
         );
 
         m_metrics = string(buffer);

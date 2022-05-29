@@ -48,13 +48,16 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    RHI_CommandList::RHI_CommandList(Context* context)
+    RHI_CommandList::RHI_CommandList(Context* context, RHI_CommandPool* cmd_pool, const char* name)
     {
-        m_renderer   = context->GetSubsystem<Renderer>();
-        m_rhi_device = m_renderer->GetRhiDevice().get();
+        m_renderer    = context->GetSubsystem<Renderer>();
+        m_profiler    = context->GetSubsystem<Profiler>();
+        m_rhi_device  = m_renderer->GetRhiDevice().get();
+        m_object_name = name;
+        m_timestamps.fill(0);
 
-        ID3D12CommandAllocator* allocator = static_cast<ID3D12CommandAllocator*>(m_rhi_device->GetCommandPoolGraphics());
-        d3d12_utility::error::check(m_rhi_device->GetContextRhi()->device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, allocator, nullptr, IID_PPV_ARGS(reinterpret_cast<ID3D12GraphicsCommandList**>(&m_resource))));
+        //ID3D12CommandAllocator* allocator = static_cast<ID3D12CommandAllocator*>(m_rhi_device->GetCommandPoolGraphics());
+        //d3d12_utility::error::check(m_rhi_device->GetContextRhi()->device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, allocator, nullptr, IID_PPV_ARGS(reinterpret_cast<ID3D12GraphicsCommandList**>(&m_resource))));
     }
     
     RHI_CommandList::~RHI_CommandList()
@@ -80,7 +83,7 @@ namespace Spartan
         SP_ASSERT(m_state == RHI_CommandListState::Idle);
 
         // Unlike Vulkan, D3D12 wraps both begin and reset under Reset().
-        SP_ASSERT(d3d12_utility::error::check(static_cast<ID3D12GraphicsCommandList*>(m_resource)->Reset(static_cast<ID3D12CommandAllocator*>(m_rhi_device->GetCommandPoolGraphics()), nullptr)) && "Failed to reset command list");
+        //SP_ASSERT(d3d12_utility::error::check(static_cast<ID3D12GraphicsCommandList*>(m_resource)->Reset(static_cast<ID3D12CommandAllocator*>(m_rhi_device->GetCommandPoolGraphics()), nullptr)) && "Failed to reset command list");
 
         m_state = RHI_CommandListState::Recording;
     }
@@ -98,7 +101,7 @@ namespace Spartan
         return true;
     }
 
-    bool RHI_CommandList::Submit(RHI_Semaphore* wait_semaphore)
+    bool RHI_CommandList::Submit()
     {
         return true;
     }
@@ -112,8 +115,8 @@ namespace Spartan
 
         lock_guard<mutex> guard(m_mutex_reset);
 
-        if (!d3d12_utility::error::check(static_cast<ID3D12GraphicsCommandList*>(m_resource)->Reset(static_cast<ID3D12CommandAllocator*>(m_rhi_device->GetCommandPoolGraphics()), nullptr)))
-            return false;
+       // if (!d3d12_utility::error::check(static_cast<ID3D12GraphicsCommandList*>(m_resource)->Reset(static_cast<ID3D12CommandAllocator*>(m_rhi_device->GetCommandPoolGraphics()), nullptr)))
+            //return false;
 
         m_state = RHI_CommandListState::Idle;
         return true;

@@ -131,7 +131,7 @@ namespace Spartan
         }
 
         // Create command list allocator
-        d3d12_utility::error::check(m_rhi_context->device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(reinterpret_cast<ID3D12CommandAllocator**>(&m_cmd_pool_graphics))));
+        //d3d12_utility::error::check(m_rhi_context->device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(reinterpret_cast<ID3D12CommandAllocator**>(&m_cmd_pool_graphics))));
 
         // Log feature level
         if (Settings* settings = m_context->GetSubsystem<Settings>())
@@ -140,8 +140,6 @@ namespace Spartan
             settings->RegisterThirdPartyLib("DirectX", level, "https://en.wikipedia.org/wiki/DirectX");
             LOG_INFO("DirectX %s", level.c_str());
         }
-
-        m_initialized = true;
     }
 
     RHI_Device::~RHI_Device()
@@ -155,7 +153,7 @@ namespace Spartan
         d3d12_utility::release<ID3D12CommandQueue>(m_queue_copy);
 
         // Command allocator
-        d3d12_utility::release<ID3D12CommandAllocator>(m_cmd_pool_graphics);
+        //d3d12_utility::release<ID3D12CommandAllocator>(m_cmd_pool_graphics);
 
         if (QueueWaitAll())
         {
@@ -324,10 +322,5 @@ namespace Spartan
     void RHI_Device::QueryGetData(void* query)
     {
 
-    }
-
-    bool RHI_Device::ResetCommandPool()
-    {
-        return true;
     }
 }

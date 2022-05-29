@@ -116,7 +116,7 @@ namespace Spartan
         m_type           = TimeBlockType::Undefined;
         m_is_complete    = false;
 
-        if (m_rhi_device && m_rhi_device->IsInitialised() && m_query_start != nullptr && m_query_end != nullptr)
+        if (m_rhi_device && m_query_start != nullptr && m_query_end != nullptr)
         {
             m_rhi_device->QueryRelease(m_query_start);
             m_rhi_device->QueryRelease(m_query_end);

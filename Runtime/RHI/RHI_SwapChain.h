@@ -59,7 +59,6 @@ namespace Spartan
         uint32_t GetImageIndex()  const { return m_image_index; }
         bool IsInitialised()      const { return m_initialised; }
         bool PresentEnabled()     const { return m_present_enabled; }
-        std::shared_ptr<RHI_CommandList> CreateCmdList();
 
         // GPU Resources
         void* Get_Resource()                   const { return m_backbuffer_resource[0]; }

@@ -19,13 +19,14 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =====================
+//= INCLUDES ========================
 #include "Spartan.h"
 #include "../RHI_Implementation.h"
 #include "../RHI_Semaphore.h"
 #include "../RHI_Fence.h"
 #include "../../Core/Window.h"
-//================================
+#include "../../Profiling/Profiler.h"
+//===================================
 
 //= NAMESPACES ===============
 using namespace std;
@@ -194,8 +195,7 @@ namespace Spartan
                 }
             }
 
-            if (!vulkan_utility::error::check(vkCreateInstance(&create_info, nullptr, &m_rhi_context->instance)))
-                return;
+            SP_ASSERT(vulkan_utility::error::check(vkCreateInstance(&create_info, nullptr, &m_rhi_context->instance)) && "Failed to create instance");
         }
 
         // Get function pointers (from extensions)
@@ -209,17 +209,9 @@ namespace Spartan
 
         // Find a physical device
         {
-            if (!DetectPhysicalDevices())
-            {
-                LOG_ERROR("Failed to detect any devices");
-                return;
-            }
+            SP_ASSERT(DetectPhysicalDevices() && "Failed to detect any devices");
 
-            if (!SelectPrimaryPhysicalDevice())
-            {
-                LOG_ERROR("Failed to find a suitable device");
-                return;
-            }
+            SP_ASSERT(SelectPrimaryPhysicalDevice() && "Failed to find a suitable device");
         }
 
         // Device
@@ -382,8 +374,7 @@ namespace Spartan
             }
 
             // Create
-            if (!vulkan_utility::error::check(vkCreateDevice(m_rhi_context->device_physical, &create_info, nullptr, &m_rhi_context->device)))
-                return;
+            SP_ASSERT(vulkan_utility::error::check(vkCreateDevice(m_rhi_context->device_physical, &create_info, nullptr, &m_rhi_context->device)) && "Failed to create device");
         }
 
         // Get a graphics, compute and a copy queue.
@@ -391,17 +382,6 @@ namespace Spartan
             vkGetDeviceQueue(m_rhi_context->device, m_queue_graphics_index, 0, reinterpret_cast<VkQueue*>(&m_queue_graphics));
             vkGetDeviceQueue(m_rhi_context->device, m_queue_compute_index,  0, reinterpret_cast<VkQueue*>(&m_queue_compute));
             vkGetDeviceQueue(m_rhi_context->device, m_queue_copy_index,     0, reinterpret_cast<VkQueue*>(&m_queue_copy));
-        }
-
-        // Create command pool
-        {
-            VkCommandPoolCreateInfo cmd_pool_info = {};
-            cmd_pool_info.sType                   = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-            cmd_pool_info.queueFamilyIndex        = GetQueueIndex(RHI_Queue_Type::Graphics);
-            cmd_pool_info.flags                   = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-
-            if(!vulkan_utility::error::check(vkCreateCommandPool(m_rhi_context->device, &cmd_pool_info, nullptr, reinterpret_cast<VkCommandPool*>(&m_cmd_pool_graphics))))
-                return;
         }
 
         // Create memory allocator
@@ -416,7 +396,7 @@ namespace Spartan
         }
 
         // Set the descriptor set capacity to an initial value
-        SetDescriptorSetCapacity(2048);
+        SetDescriptorSetCapacity(1024);
 
         // Detect and log version
         {
@@ -432,8 +412,6 @@ namespace Spartan
                 settings->RegisterThirdPartyLib("Vulkan", version_major + "." + version_minor + "." + version_patch, "https://vulkan.lunarg.com/");
             }
         }
-
-        m_initialized = true;
     }
 
     RHI_Device::~RHI_Device()
@@ -444,10 +422,6 @@ namespace Spartan
         // Wait for all queues
         if (QueueWaitAll())
         {
-            // Command pool
-            vkDestroyCommandPool(m_rhi_context->device, static_cast<VkCommandPool>(m_cmd_pool_graphics), nullptr);
-            m_cmd_pool_graphics = nullptr;
-
             // Descriptor pool
             vkDestroyDescriptorPool(m_rhi_context->device, static_cast<VkDescriptorPool>(m_descriptor_pool), nullptr);
             m_descriptor_pool = nullptr;
@@ -469,11 +443,6 @@ namespace Spartan
             vkDestroyDevice(m_rhi_context->device, nullptr);
             vkDestroyInstance(m_rhi_context->instance, nullptr);
         }
-    }
-
-    bool RHI_Device::ResetCommandPool()
-    {
-        return vulkan_utility::error::check(vkResetCommandPool(m_rhi_context->device, static_cast<VkCommandPool>(m_cmd_pool_graphics), 0));
     }
 
     bool RHI_Device::DetectPhysicalDevices()
@@ -648,7 +617,8 @@ namespace Spartan
     bool RHI_Device::QueuePresent(void* swapchain_view, uint32_t* image_index, RHI_Semaphore* wait_semaphore /*= nullptr*/) const
     {
         // Validate semaphore state
-        if (wait_semaphore) SP_ASSERT(wait_semaphore->GetState() == RHI_Semaphore_State::Signaled);
+        if (wait_semaphore) SP_ASSERT(wait_semaphore->GetState() == RHI_Semaphore_State::Signaled
+            && "The wait semaphore has already been signaled and not waited for");
 
         // Get semaphore Vulkan resource
         void* vk_wait_semaphore = wait_semaphore ? wait_semaphore->GetResource() : nullptr;
@@ -667,15 +637,16 @@ namespace Spartan
 
         // Update semaphore state
         if (wait_semaphore)
+        {
             wait_semaphore->SetState(RHI_Semaphore_State::Idle);
+        }
 
         return true;
     }
 
     bool RHI_Device::QueueSubmit(const RHI_Queue_Type type, const uint32_t wait_flags, void* cmd_buffer, RHI_Semaphore* wait_semaphore /*= nullptr*/, RHI_Semaphore* signal_semaphore /*= nullptr*/, RHI_Fence* signal_fence /*= nullptr*/) const
     {
-        // Validate input
-        SP_ASSERT(cmd_buffer != nullptr);
+        SP_ASSERT(cmd_buffer != nullptr && "Invalid command buffer");
 
         // Validate semaphore states
         if (wait_semaphore)   SP_ASSERT(wait_semaphore->GetState() == RHI_Semaphore_State::Signaled);
@@ -783,5 +754,10 @@ namespace Spartan
 
         LOG_INFO("Capacity has been set to %d elements", descriptor_set_capacity);
         m_descriptor_set_capacity = descriptor_set_capacity;
+
+        if (Profiler* profiler = m_context->GetSubsystem<Profiler>())
+        {
+            profiler->m_descriptor_pool_capacity = m_descriptor_set_capacity;
+        }
     }
 }

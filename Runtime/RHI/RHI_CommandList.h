@@ -41,27 +41,20 @@ namespace Spartan
         class Rectangle;
     }
 
-    enum class RHI_CommandListState : uint8_t
-    {
-        Idle,
-        Recording,
-        Ended,
-        Submitted
-    };
-
     class SPARTAN_CLASS RHI_CommandList : public SpartanObject
     {
     public:
-        RHI_CommandList(Context* context);
+        RHI_CommandList(Context* context, RHI_CommandPool* cmd_pool, const char* name);
         ~RHI_CommandList();
-    
-        // Command list
+
         void Begin();
         bool End();
-        bool Submit(RHI_Semaphore* wait_semaphore);
+        bool Submit();
         bool Reset();
-        void Wait();    // Waits for any submitted work
-        void Discard(); // Causes the command list to ignore one submission call (useful when the command list refers to resources which have been destroyed).
+        // Waits for the command list to finish being processed. Returns false if no waiting took place.
+        void Wait();
+        // Causes the command list to ignore one submission call (useful when the command list refers to resources which have been destroyed).
+        void Discard();
 
         // Render pass
         bool BeginRenderPass(RHI_PipelineState& pipeline_state);
@@ -134,12 +127,14 @@ namespace Spartan
         static uint32_t Gpu_GetMemory(RHI_Device* rhi_device);
         static uint32_t Gpu_GetMemoryUsed(RHI_Device* rhi_device);
 
-        // Misc
+        // State
         const RHI_CommandListState GetState() const { return m_state; }
-        void* GetResource_CommandBuffer() const { return m_resource; }
+        bool IsExecuting();
 
+        // Misc
+        void* GetResource_CommandBuffer()     const { return m_resource; }
 
-    private:    
+    private:
         void Timeblock_Start(const char* name, const bool profile, const bool gpu_markers);
         void Timeblock_End();
 
@@ -150,19 +145,21 @@ namespace Spartan
         void Descriptors_GetLayoutFromPipelineState(RHI_PipelineState& pipeline_state);
         void Descriptors_GetDescriptorsFromPipelineState(RHI_PipelineState& pipeline_state, std::vector<RHI_Descriptor>& descriptors);
 
-        RHI_Pipeline* m_pipeline                         = nullptr; 
-        Renderer* m_renderer                             = nullptr;
-        RHI_Device* m_rhi_device                         = nullptr;
-        Profiler* m_profiler                             = nullptr;
-        void* m_resource                                 = nullptr;
-        std::shared_ptr<RHI_Fence> m_processed_fence     = nullptr;
-        std::atomic<bool> m_discard                      = false;
-        bool m_is_render_pass_active                     = false;
-        bool m_pipeline_dirty                            = false;
-        std::atomic<RHI_CommandListState> m_state        = RHI_CommandListState::Idle;
-        static const uint8_t m_resource_array_length_max = 16;
+        RHI_Pipeline* m_pipeline                          = nullptr; 
+        Renderer* m_renderer                              = nullptr;
+        RHI_Device* m_rhi_device                          = nullptr;
+        Profiler* m_profiler                              = nullptr;
+        void* m_resource                                  = nullptr;
+        std::atomic<bool> m_discard                       = false;
+        bool m_is_render_pass_active                      = false;
+        bool m_pipeline_dirty                             = false;
+        std::atomic<RHI_CommandListState> m_state         = RHI_CommandListState::Idle;
+        static const uint8_t m_resource_array_length_max  = 16;
         static bool m_memory_query_support;
         std::mutex m_mutex_reset;
+
+        // Sync
+        std::shared_ptr<RHI_Fence> m_proccessed_fence;
 
         // Descriptors
         std::unordered_map<std::size_t, std::shared_ptr<RHI_DescriptorSetLayout>> m_descriptor_set_layouts;

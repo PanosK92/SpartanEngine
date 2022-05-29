@@ -50,11 +50,12 @@ namespace Spartan
 {
     bool RHI_CommandList::m_memory_query_support = true;
 
-    RHI_CommandList::RHI_CommandList(Context* context)
+    RHI_CommandList::RHI_CommandList(Context* context, RHI_CommandPool* cmd_pool, const char* name)
     {
-        m_renderer   = context->GetSubsystem<Renderer>();
-        m_profiler   = context->GetSubsystem<Profiler>();
-        m_rhi_device = m_renderer->GetRhiDevice().get();
+        m_renderer    = context->GetSubsystem<Renderer>();
+        m_profiler    = context->GetSubsystem<Profiler>();
+        m_rhi_device  = m_renderer->GetRhiDevice().get();
+        m_object_name = name;
         m_timestamps.fill(0);
     }
 
@@ -71,7 +72,7 @@ namespace Spartan
         return true;
     }
 
-    bool RHI_CommandList::Submit(RHI_Semaphore* wait_semaphore)
+    bool RHI_CommandList::Submit()
     {
         m_state = RHI_CommandListState::Submitted;
         return true;

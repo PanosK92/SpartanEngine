@@ -180,8 +180,6 @@ namespace Spartan
                 return;
             }
         }
-
-        m_initialized = true;
     }
 
     RHI_Device::~RHI_Device()
@@ -381,10 +379,5 @@ namespace Spartan
         while (m_rhi_context->device_context->GetData(static_cast<ID3D11Query*>(query), &disjoint_data, sizeof(disjoint_data), 0) != S_OK);
 
         m_timestamp_period = static_cast<float>(disjoint_data.Frequency);
-    }
-
-    bool RHI_Device::ResetCommandPool()
-    {
-        return true;
     }
 }

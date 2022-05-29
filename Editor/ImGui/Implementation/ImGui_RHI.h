@@ -38,6 +38,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI/RHI_RasterizerState.h"
 #include "RHI/RHI_DepthStencilState.h"
 #include "RHI/RHI_Semaphore.h"
+#include "RHI/RHI_CommandPool.h"
 //====================================
 
 namespace ImGui::RHI
@@ -54,23 +55,25 @@ namespace ImGui::RHI
     Renderer* g_renderer = nullptr;
 
     // RHI resources
-    static shared_ptr<RHI_Device>                                        g_rhi_device;
-    static unique_ptr<RHI_Texture>                                       g_texture;
+    static shared_ptr<RHI_Device>            g_rhi_device;
+    static unique_ptr<RHI_Texture>           g_texture;
+    static shared_ptr<RHI_DepthStencilState> g_depth_stencil_state;
+    static shared_ptr<RHI_RasterizerState>   g_rasterizer_state;
+    static shared_ptr<RHI_BlendState>        g_blend_state;
+    static unique_ptr<RHI_Shader>            g_shader_vertex;
+    static unique_ptr<RHI_Shader>            g_shader_pixel;
+    static shared_ptr<RHI_Semaphore>         g_semaphore;
+    static shared_ptr<RHI_CommandPool>       g_cmd_pool;
+
+    // RHI resources - per swapchain buffer
     static unordered_map<uint64_t, vector<unique_ptr<RHI_VertexBuffer>>> g_vertex_buffers;
     static unordered_map<uint64_t, vector<unique_ptr<RHI_IndexBuffer>>>  g_index_buffers;
-    static unique_ptr<RHI_DepthStencilState>                             g_depth_stencil_state;
-    static unique_ptr<RHI_RasterizerState>                               g_rasterizer_state;
-    static unique_ptr<RHI_BlendState>                                    g_blend_state;
-    static unique_ptr<RHI_Shader>                                        g_shader_vertex;
-    static unique_ptr<RHI_Shader>                                        g_shader_pixel;
-    static shared_ptr<RHI_CommandList>                                   g_cmd_list;
 
     struct WindowData
     {
-        int cmd_index = -1;
-        static const uint32_t buffer_count = 2;
+        uint32_t buffer_count = 2;
         RHI_SwapChain* swapchain;
-        array<RHI_CommandList*, buffer_count> cmd_lists;
+        RHI_CommandPool* cmd_pool;
         bool image_acquired = false;
     };
 
@@ -79,28 +82,32 @@ namespace ImGui::RHI
         g_context    = context;
         g_renderer   = context->GetSubsystem<Renderer>();
         g_rhi_device = g_renderer->GetRhiDevice();
-        g_cmd_list   = g_renderer->GetSwapChain()->CreateCmdList();
+
+        // Command lists
+        g_cmd_pool = make_shared<RHI_CommandPool>(g_rhi_device.get(), "imgui");
+        g_cmd_pool->AllocateCommandLists(g_renderer->GetSwapChain()->GetBufferCount());
+
+        //g_semaphore = make_shared<RHI_Semaphore>(g_rhi_device);
 
         SP_ASSERT(g_context != nullptr);
         SP_ASSERT(g_rhi_device != nullptr);
-        SP_ASSERT(g_rhi_device->IsInitialised());
 
         // Create required RHI objects
         {
-            g_depth_stencil_state = make_unique<RHI_DepthStencilState>(g_rhi_device, false, false, RHI_Comparison_Function::Always);
+            g_depth_stencil_state = make_shared<RHI_DepthStencilState>(g_rhi_device, false, false, RHI_Comparison_Function::Always);
 
-            g_rasterizer_state = make_unique<RHI_RasterizerState>
+            g_rasterizer_state = make_shared<RHI_RasterizerState>
             (
                 g_rhi_device,
                 RHI_CullMode::None,
                 RHI_PolygonMode::Solid,
-                true,    // depth clip
-                true,    // scissor
-                false,   // multi-sample
-                false    // anti-aliased lines
+                true,  // depth clip
+                true,  // scissor
+                false, // multi-sample
+                false  // anti-aliased lines
             );
 
-            g_blend_state = make_unique<RHI_BlendState>
+            g_blend_state = make_shared<RHI_BlendState>
             (
                 g_rhi_device,
                 true,
@@ -176,15 +183,15 @@ namespace ImGui::RHI
             return;
 
         // Get swap chain and cmd list
-        bool is_child_window      = window_data != nullptr;
-        RHI_SwapChain* swap_chain = is_child_window ? window_data->swapchain : g_renderer->GetSwapChain();
-        RHI_CommandList* cmd_list = is_child_window ? window_data->cmd_lists[window_data->cmd_index] : g_cmd_list.get();
+        bool is_child_window               = window_data != nullptr;
+        RHI_SwapChain* swap_chain          = is_child_window ? window_data->swapchain : g_renderer->GetSwapChain();
+        RHI_CommandPool* cmd_list_pool = is_child_window ? window_data->cmd_pool : g_cmd_pool.get();
 
-        if (cmd_list->GetState() == Spartan::RHI_CommandListState::Submitted)
-        {
-            cmd_list->Wait();
-        }
+        // Tick command list pool and get the appropriate command list
+        cmd_list_pool->Tick();
+        RHI_CommandList* cmd_list = cmd_list_pool->GetCommandList();
 
+        // Begin the command list
         cmd_list->Begin();
 
         // Update vertex and index buffers
@@ -227,11 +234,11 @@ namespace ImGui::RHI
             {
                 for (auto i = 0; i < draw_data->CmdListsCount; i++)
                 {
-                    const ImDrawList* cmd_list = draw_data->CmdLists[i];
-                    memcpy(vtx_dst, cmd_list->VtxBuffer.Data, cmd_list->VtxBuffer.Size * sizeof(ImDrawVert));
-                    memcpy(idx_dst, cmd_list->IdxBuffer.Data, cmd_list->IdxBuffer.Size * sizeof(ImDrawIdx));
-                    vtx_dst += cmd_list->VtxBuffer.Size;
-                    idx_dst += cmd_list->IdxBuffer.Size;
+                    const ImDrawList* imgui_cmd_list = draw_data->CmdLists[i];
+                    memcpy(vtx_dst, imgui_cmd_list->VtxBuffer.Data, imgui_cmd_list->VtxBuffer.Size * sizeof(ImDrawVert));
+                    memcpy(idx_dst, imgui_cmd_list->IdxBuffer.Data, imgui_cmd_list->IdxBuffer.Size * sizeof(ImDrawIdx));
+                    vtx_dst += imgui_cmd_list->VtxBuffer.Size;
+                    idx_dst += imgui_cmd_list->IdxBuffer.Size;
                 }
             
                 vertex_buffer->Unmap();
@@ -334,7 +341,7 @@ namespace ImGui::RHI
         }
 
         cmd_list->End();
-        cmd_list->Submit(nullptr);
+        cmd_list->Submit();
     }
 
     //--------------------------------------------
@@ -367,10 +374,9 @@ namespace ImGui::RHI
 
         SP_ASSERT(window->swapchain->IsInitialised());
 
-        for (uint32_t i = 0; i < window->buffer_count; i++)
-        {
-            window->cmd_lists[i] = new RHI_CommandList(g_context);
-        }
+        // Allocate command lists
+        window->cmd_pool = new RHI_CommandPool(g_rhi_device.get(), "imgui_child_window");
+        window->cmd_pool->AllocateCommandLists(window->buffer_count);
 
         viewport->RendererUserData = window;
     }
@@ -382,12 +388,7 @@ namespace ImGui::RHI
         if (WindowData* window = RHI_GetWindowData(viewport))
         {
             delete window->swapchain;
-
-            for (uint32_t i = 0; i < window->buffer_count; i++)
-            {
-                delete window->cmd_lists[i];
-            }
-
+            delete window->cmd_pool;
             delete window;
         }
 
@@ -414,8 +415,6 @@ namespace ImGui::RHI
         WindowData* window = RHI_GetWindowData(viewport);
         SP_ASSERT(window != nullptr);
 
-        window->cmd_index = (window->cmd_index + 1) % window->buffer_count;
-
         const bool clear = !(viewport->Flags & ImGuiViewportFlags_NoRendererClear);
         Render(viewport->DrawData, window, clear);
 
@@ -431,10 +430,8 @@ namespace ImGui::RHI
         WindowData* window = RHI_GetWindowData(viewport);
         SP_ASSERT(window != nullptr);
 
-        RHI_CommandList* cmd_list = window->cmd_lists[window->cmd_index];
-
         // Validate cmd list state
-        SP_ASSERT(cmd_list->GetState() == Spartan::RHI_CommandListState::Submitted);
+        SP_ASSERT(window->cmd_pool->GetCommandList()->GetState() == Spartan::RHI_CommandListState::Submitted);
 
         // Present
         window->swapchain->Present();

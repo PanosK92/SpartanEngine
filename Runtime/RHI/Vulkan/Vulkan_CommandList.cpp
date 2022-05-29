@@ -33,12 +33,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_DescriptorSetLayout.h"
 #include "../RHI_Semaphore.h"
 #include "../RHI_Fence.h"
+#include "../RHI_Shader.h"
+#include "../RHI_CommandPool.h"
 #include "../../Profiling/Profiler.h"
 #include "../../Rendering/Renderer.h"
-#include "../RHI_Shader.h"
 //=====================================
 
-//= NAMESPACES ==============
+//= NAMESPACES ===============
 using namespace std;
 using namespace Spartan::Math;
 //============================
@@ -69,20 +70,32 @@ namespace Spartan
         return VK_ATTACHMENT_LOAD_OP_CLEAR;
     };
 
-    RHI_CommandList::RHI_CommandList(Context* context)
+    RHI_CommandList::RHI_CommandList(Context* context, RHI_CommandPool* cmd_pool, const char* name) : SpartanObject(context)
     {
-        m_renderer   = context->GetSubsystem<Renderer>();
-        m_profiler   = context->GetSubsystem<Profiler>();
-        m_rhi_device = m_renderer->GetRhiDevice().get();
+        m_renderer    = context->GetSubsystem<Renderer>();
+        m_profiler    = context->GetSubsystem<Profiler>();
+        m_rhi_device  = m_renderer->GetRhiDevice().get();
+        m_object_name = name;
 
         RHI_Context* rhi_context = m_rhi_device->GetContextRhi();
 
         // Command buffer
-        vulkan_utility::command_buffer::create(m_rhi_device->GetCommandPoolGraphics(), m_resource, VK_COMMAND_BUFFER_LEVEL_PRIMARY);
-        vulkan_utility::debug::set_name(static_cast<VkCommandBuffer>(m_resource), "cmd_list");
+        {
+            VkCommandBufferAllocateInfo allocate_info = {};
+            allocate_info.sType                       = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+            allocate_info.commandPool                 = static_cast<VkCommandPool>(cmd_pool->GetResource());
+            allocate_info.level                       = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+            allocate_info.commandBufferCount          = 1;
 
-        // Sync - Fence
-        m_processed_fence = make_shared<RHI_Fence>(m_rhi_device, "cmd_buffer_processed");
+            // Allocate
+            SP_ASSERT(vulkan_utility::error::check(
+                vkAllocateCommandBuffers(m_rhi_device->GetContextRhi()->device, &allocate_info, reinterpret_cast<VkCommandBuffer*>(&m_resource))) &&
+                "Failed to allocate command buffer"
+            );
+
+            // Name
+            vulkan_utility::debug::set_name(static_cast<VkCommandBuffer>(m_resource), name);
+        }
 
         // Query pool
         if (rhi_context->profiler)
@@ -97,15 +110,16 @@ namespace Spartan
 
             m_timestamps.fill(0);
         }
+
+        // Sync objects
+        string fence_name  = string(name) + "_fence";
+        m_proccessed_fence = make_shared<RHI_Fence>(m_rhi_device, fence_name.c_str());
     }
 
     RHI_CommandList::~RHI_CommandList()
     {
         // Wait in case it's still in use by the GPU
         m_rhi_device->QueueWaitAll();
-
-        // Command buffer
-        vulkan_utility::command_buffer::destroy(m_rhi_device->GetCommandPoolGraphics(), m_resource);
 
         // Query pool
         if (m_query_pool)
@@ -149,14 +163,17 @@ namespace Spartan
             m_timestamp_index = 0;
         }
 
+        // Begin command buffer
         VkCommandBufferBeginInfo begin_info = {};
         begin_info.sType                    = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
         begin_info.flags                    = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-        SP_ASSERT(vulkan_utility::error::check(vkBeginCommandBuffer(static_cast<VkCommandBuffer>(m_resource), &begin_info)) && "Failed to begin command list");
+        SP_ASSERT(vulkan_utility::error::check(vkBeginCommandBuffer(static_cast<VkCommandBuffer>(m_resource), &begin_info)) && "Failed to begin command buffer");
 
+        // Reset query pool - Has to be done after vkBeginCommandBuffer or a VK_DEVICE_LOST will occur
         vkCmdResetQueryPool(static_cast<VkCommandBuffer>(m_resource), static_cast<VkQueryPool>(m_query_pool), 0, m_max_timestamps);
 
-        m_state = RHI_CommandListState::Recording;
+        // Update states
+        m_state          = RHI_CommandListState::Recording;
         m_pipeline_dirty = true;
     }
 
@@ -172,37 +189,26 @@ namespace Spartan
         return true;
     }
 
-    bool RHI_CommandList::Submit(RHI_Semaphore* wait_semaphore)
+    bool RHI_CommandList::Submit()
     {
         // Validate command list state
         SP_ASSERT(m_state == RHI_CommandListState::Ended);
 
         if (m_discard)
         {
-            if (wait_semaphore)
-            {
-                wait_semaphore->Reset();
-            }
-
             m_discard = false;
             m_state   = RHI_CommandListState::Submitted;
 
             return true;
         }
 
-        // Reset fence if it wasn't waited for
-        if (m_processed_fence->IsSignaled())
-        {
-            m_processed_fence->Reset();
-        }
-
         if (!m_rhi_device->QueueSubmit(
             RHI_Queue_Type::Graphics,                      // queue
             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, // wait flags
             static_cast<VkCommandBuffer>(m_resource),      // cmd buffer
-            wait_semaphore,                                // wait semaphore
+            nullptr,                                       // wait semaphore
             nullptr,                                       // signal semaphore
-            m_processed_fence.get()                        // signal fence
+            m_proccessed_fence.get()                       // signal fence
             ))
         {
             LOG_ERROR("Failed to submit the command list.");
@@ -217,7 +223,7 @@ namespace Spartan
     bool RHI_CommandList::Reset()
     {
         // Validate command list state
-        SP_ASSERT(m_state == RHI_CommandListState::Recording);
+        SP_ASSERT(m_state == RHI_CommandListState::Submitted);
 
         lock_guard<mutex> guard(m_mutex_reset);
 
@@ -243,9 +249,6 @@ namespace Spartan
             LOG_ERROR("Invalid pipeline state");
             return false;
         }
-
-        // Render target layout transitions
-        new_pipeline_state.TransitionRenderTargetLayouts(this);
 
         // If no pipeline exists for this state, create one
         uint32_t hash_previous = m_pipeline_state.ComputeHash();
@@ -277,6 +280,20 @@ namespace Spartan
         // Start marker and profiler (if used)
         Timeblock_Start(new_pipeline_state.pass_name, new_pipeline_state.profile, new_pipeline_state.gpu_marker);
 
+
+            // Depth
+            if (RHI_Texture* texture = new_pipeline_state.render_target_depth_texture)
+            {
+                RHI_Image_Layout layout = texture->IsStencilFormat() ? RHI_Image_Layout::Depth_Stencil_Attachment_Optimal : RHI_Image_Layout::Depth_Attachment_Optimal;
+
+                if (new_pipeline_state.render_target_depth_texture_read_only)
+                {
+                    layout = RHI_Image_Layout::Depth_Stencil_Read_Only_Optimal;
+                }
+
+                texture->SetLayout(layout, this);
+            }
+
         // Start rendering
         if (m_pipeline_state.IsGraphics())
         {
@@ -300,7 +317,7 @@ namespace Spartan
                     VkRenderingAttachmentInfo color_attachment = {};
                     color_attachment.sType                     = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
                     color_attachment.imageView                 = static_cast<VkImageView>(m_pipeline_state.render_target_swapchain->Get_Resource_View());
-                    color_attachment.imageLayout               = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+                    color_attachment.imageLayout               = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR; // swapchain always has this layout
                     color_attachment.loadOp                    = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
                     color_attachment.storeOp                   = VK_ATTACHMENT_STORE_OP_STORE;
 
@@ -318,6 +335,12 @@ namespace Spartan
                             break;
 
                         SP_ASSERT(rt->IsRenderTargetColor());
+
+                        // Transition to the appropriate layout
+                        if (rt->GetLayout(0) != RHI_Image_Layout::Color_Attachment_Optimal)
+                        {
+                            rt->SetLayout(RHI_Image_Layout::Color_Attachment_Optimal, this);
+                        }
 
                         VkRenderingAttachmentInfo color_attachment = {};
                         color_attachment.sType                     = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
@@ -340,11 +363,21 @@ namespace Spartan
             VkRenderingAttachmentInfoKHR attachment_depth_stencil = {};
             if (m_pipeline_state.render_target_depth_texture != nullptr)
             {
-                SP_ASSERT(m_pipeline_state.render_target_depth_texture->IsRenderTargetDepthStencil());
+                RHI_Texture* rt = m_pipeline_state.render_target_depth_texture;
+
+                SP_ASSERT(rt->IsRenderTargetDepthStencil());
+
+                // Transition to the appropriate layout
+                RHI_Image_Layout layout = rt->IsStencilFormat() ? RHI_Image_Layout::Depth_Stencil_Attachment_Optimal : RHI_Image_Layout::Depth_Attachment_Optimal;
+                if (new_pipeline_state.render_target_depth_texture_read_only)
+                {
+                    layout = RHI_Image_Layout::Depth_Stencil_Read_Only_Optimal;
+                }
+                rt->SetLayout(layout, this);
 
                 attachment_depth_stencil.sType                   = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
-                attachment_depth_stencil.imageView               = static_cast<VkImageView>(m_pipeline_state.render_target_depth_texture->GetResource_View_DepthStencil(m_pipeline_state.render_target_depth_stencil_texture_array_index));
-                attachment_depth_stencil.imageLayout             = vulkan_image_layout[static_cast<uint8_t>(m_pipeline_state.render_target_depth_texture->GetLayout(0))];
+                attachment_depth_stencil.imageView               = static_cast<VkImageView>(rt->GetResource_View_DepthStencil(m_pipeline_state.render_target_depth_stencil_texture_array_index));
+                attachment_depth_stencil.imageLayout             = vulkan_image_layout[static_cast<uint8_t>(rt->GetLayout(0))];
                 attachment_depth_stencil.loadOp                  = get_depth_load_op(m_pipeline_state.clear_depth);
                 attachment_depth_stencil.storeOp                 = VK_ATTACHMENT_STORE_OP_STORE;
                 attachment_depth_stencil.clearValue.depthStencil = { m_pipeline_state.clear_depth, 0 };
@@ -1017,14 +1050,14 @@ namespace Spartan
                 // Bind descriptor set
                 vkCmdBindDescriptorSets
                 (
-                    static_cast<VkCommandBuffer>(m_resource),                                                                                                   // commandBuffer
-                    m_pipeline_state.IsCompute() ? VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_COMPUTE : VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS,  // pipelineBindPoint
-                    static_cast<VkPipelineLayout>(m_pipeline->GetResource_PipelineLayout()),                                                                    // layout
-                    0,                                                                                                                                          // firstSet
-                    static_cast<uint32_t>(descriptor_sets.size()),                                                                                              // descriptorSetCount
-                    reinterpret_cast<VkDescriptorSet*>(descriptor_sets.data()),                                                                                 // pDescriptorSets
-                    dynamic_offset_count,                                                                                                                       // dynamicOffsetCount
-                    !dynamic_offsets.empty() ? dynamic_offsets.data() : nullptr                                                                                 // pDynamicOffsets
+                    static_cast<VkCommandBuffer>(m_resource),                                                                                                  // commandBuffer
+                    m_pipeline_state.IsCompute() ? VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_COMPUTE : VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS, // pipelineBindPoint
+                    static_cast<VkPipelineLayout>(m_pipeline->GetResource_PipelineLayout()),                                                                   // layout
+                    0,                                                                                                                                         // firstSet
+                    static_cast<uint32_t>(descriptor_sets.size()),                                                                                             // descriptorSetCount
+                    reinterpret_cast<VkDescriptorSet*>(descriptor_sets.data()),                                                                                // pDescriptorSets
+                    dynamic_offset_count,                                                                                                                      // dynamicOffsetCount
+                    !dynamic_offsets.empty() ? dynamic_offsets.data() : nullptr                                                                                // pDynamicOffsets
                 );
 
                 if (m_profiler)
