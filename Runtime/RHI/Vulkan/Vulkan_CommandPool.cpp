@@ -36,51 +36,71 @@ namespace Spartan
     {
         m_rhi_device  = rhi_device;
         m_object_name = name;
+        m_resources.fill(nullptr);
 
         VkCommandPoolCreateInfo cmd_pool_info = {};
         cmd_pool_info.sType                   = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
         cmd_pool_info.queueFamilyIndex        = rhi_device->GetQueueIndex(RHI_Queue_Type::Graphics);
         cmd_pool_info.flags                   = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT; // specifies that command buffers allocated from the pool will be short-lived
 
-        // Create
-        SP_ASSERT(vulkan_utility::error::check(
-            vkCreateCommandPool(m_rhi_device->GetContextRhi()->device, &cmd_pool_info, nullptr, reinterpret_cast<VkCommandPool*>(&m_resource))) &&
-            "Failed to create command pool"
-        );
+
+        // Create pool 
+        for (uint32_t i = 0; i < static_cast<uint32_t>(m_resources.size()); i++)
+        {
+            SP_ASSERT(vulkan_utility::error::check(
+                vkCreateCommandPool(m_rhi_device->GetContextRhi()->device, &cmd_pool_info, nullptr, reinterpret_cast<VkCommandPool*>(&m_resources[i]))) &&
+                "Failed to create command pool"
+            );
+        }
 
         // Name
-        vulkan_utility::debug::set_name(static_cast<VkCommandPool>(m_resource), name);
+        for (uint32_t i = 0; i < static_cast<uint32_t>(m_resources.size()); i++)
+        {
+            vulkan_utility::debug::set_name(static_cast<VkCommandPool>(m_resources[i]), (m_object_name + string("_") + to_string(i)).c_str());
+        }
     }
 
     RHI_CommandPool::~RHI_CommandPool()
     {
-        if (!m_resource)
+        if (!m_resources[0])
             return;
 
         // Wait in case it's still in use by the GPU
         m_rhi_device->QueueWaitAll();
 
         VkDevice device = m_rhi_device->GetContextRhi()->device;
-        VkCommandPool cmd_pool = static_cast<VkCommandPool>(m_resource);
 
         // Free command buffers
-        for (shared_ptr<RHI_CommandList> cmd_list : m_cmd_lists)
+        for (uint32_t index_pool = 0; index_pool < static_cast<uint32_t>(m_resources.size()); index_pool++)
         {
-            VkCommandBuffer command_buffer = reinterpret_cast<VkCommandBuffer>(cmd_list->GetResource_CommandBuffer());
-            vkFreeCommandBuffers(device, cmd_pool, 1, &command_buffer);
+            for (uint32_t index_cmd_list = 0; index_cmd_list < GetCommandListCount(); index_cmd_list++)
+            {
+                VkCommandPool cmd_pool                         = static_cast<VkCommandPool>(m_resources[index_pool]);
+                vector<shared_ptr<RHI_CommandList>>& cmd_lists = index_pool == 0 ? m_cmd_lists_0 : m_cmd_lists_1;
+                VkCommandBuffer cmd_buffer                     = reinterpret_cast<VkCommandBuffer>(cmd_lists[index_cmd_list]->GetResource_CommandBuffer());
+
+                vkFreeCommandBuffers(device, cmd_pool, 1, &cmd_buffer);
+            }
         }
 
-        // Destroy pool
-        vkDestroyCommandPool(device, cmd_pool, nullptr);
-        m_resource = nullptr;
+        // Destroy pools
+        for (uint32_t i = 0; i < static_cast<uint32_t>(m_resources.size()); i++)
+        {
+            vkDestroyCommandPool(device, static_cast<VkCommandPool>(m_resources[i]), nullptr);
+            m_resources[i] = nullptr;
+        }
     }
 
     void RHI_CommandPool::Reset()
     {
-        SP_ASSERT(m_resource && "Can't reset an uninitialised command list pool");
+        SP_ASSERT(m_resources[0] && "Can't reset an uninitialised command list pool");
 
-        // See if any of the command lists are executing;
-        for (shared_ptr<RHI_CommandList> cmd_list : m_cmd_lists)
+        // Advance pool index
+        m_pool_index = (m_pool_index + 1) % 2;
+        
+        // Wait for any command lists to finish executing
+        vector<shared_ptr<RHI_CommandList>>& cmd_lists = m_pool_index == 0 ? m_cmd_lists_0 : m_cmd_lists_1;
+        for (shared_ptr<RHI_CommandList> cmd_list : cmd_lists)
         {
             if (cmd_list->GetState() == RHI_CommandListState::Submitted)
             {
@@ -88,8 +108,9 @@ namespace Spartan
             }
         }
 
-        // If no command list is executing, reset the command pool
-        SP_ASSERT(vulkan_utility::error::check(vkResetCommandPool(m_rhi_device->GetContextRhi()->device, static_cast<VkCommandPool>(m_resource), 0))
-            && "Failed to reset command pool");
+        // Reset the command pool
+        VkDevice device = m_rhi_device->GetContextRhi()->device;
+        VkCommandPool pool = static_cast<VkCommandPool>(GetResource());
+        SP_ASSERT(vulkan_utility::error::check(vkResetCommandPool(device, static_cast<VkCommandPool>(GetResource()), 0)) && "Failed to reset command pool");
     }
 }

@@ -2272,7 +2272,7 @@ namespace Spartan
         pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
         pso.viewport                        = tex_out->GetViewport();
         pso.gpu_marker                      = false;
-        pso.pass_name                       = "Pass_PeformanceMetrics";
+        pso.pass_name                       = "Pass_PeformanceMetrics_Outline";
 
         // Update text
         const Vector2 text_pos = Vector2(-m_viewport.width * 0.5f + 5.0f, m_viewport.height * 0.5f - m_font->GetSize() - 2.0f);
@@ -2296,7 +2296,8 @@ namespace Spartan
             }
         }
 
-        // Draw 
+        // Draw
+        pso.pass_name = "Pass_PeformanceMetrics_Inline";
         if (cmd_list->BeginRenderPass(pso))
         {
             // Update uber buffer

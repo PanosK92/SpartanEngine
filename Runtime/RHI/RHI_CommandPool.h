@@ -37,23 +37,25 @@ namespace Spartan
         ~RHI_CommandPool();
 
         void AllocateCommandLists(const uint32_t command_list_count);
-        // Keeps track of the cmd_list_index.
-        // Returns true if the command pool has reset itself.
         bool Tick();
 
-        RHI_CommandList* GetCommandList()    { return m_cmd_lists[m_cmd_list_index].get(); }
-        uint32_t GetCommandListCount() const { return static_cast<uint32_t>(m_cmd_lists.size()); }
+        RHI_CommandList* GetCommandList()    { return m_pool_index == 0 ? m_cmd_lists_0[m_cmd_list_index].get() : m_cmd_lists_1[m_cmd_list_index].get(); }
+        uint32_t GetCommandListCount() const { return static_cast<uint32_t>(m_cmd_lists_0.size()); }
         uint32_t GetCommandListIndex() const { return m_cmd_list_index; }
-        void*& GetResource()                 { return m_resource; }
+        void*& GetResource()                 { return m_resources[m_pool_index]; }
 
     private:
         void Reset();
 
         // Command lists
-        std::vector<std::shared_ptr<RHI_CommandList>> m_cmd_lists;
+        std::vector<std::shared_ptr<RHI_CommandList>> m_cmd_lists_0;
+        std::vector<std::shared_ptr<RHI_CommandList>> m_cmd_lists_1;
         int m_cmd_list_index = -1;
 
-        void* m_resource         = nullptr;
+        // Pools
+        std::array<void*, 2> m_resources;
+        uint32_t m_pool_index = 0;
+
         RHI_Device* m_rhi_device = nullptr;
     };
 }

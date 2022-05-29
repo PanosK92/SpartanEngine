@@ -43,8 +43,11 @@ namespace Spartan
         if (executing)
         {
             // Uncomment this warning log to observe the frequency of command list fence waits
-            //LOG_WARNING("Waiting for command list \"%s\" to be processed by the queue...", m_object_name.c_str());
-            m_proccessed_fence->Wait();
+            LOG_WARNING("Waiting for command list \"%s\" to be processed by the queue...", m_object_name.c_str());
+            if (!m_proccessed_fence->Wait())
+            {
+                LOG_ERROR("Timed out while waiting for command list \"%s\"", m_object_name.c_str());
+            }
         }
 
         m_proccessed_fence->Reset();
@@ -86,8 +89,7 @@ namespace Spartan
 
         if (pipeline_state.IsCompute())
         {
-            // Wait for compilation
-            pipeline_state.shader_compute->WaitForCompilation();
+            SP_ASSERT(pipeline_state.shader_compute->GetCompilationState() == Shader_Compilation_State::Succeeded && "Shader hasn't compiled");
 
             // Get compute shader descriptors
             descriptors = pipeline_state.shader_compute->GetDescriptors();
@@ -95,8 +97,7 @@ namespace Spartan
         }
         else if (pipeline_state.IsGraphics())
         {
-            // Wait for compilation
-            pipeline_state.shader_vertex->WaitForCompilation();
+            SP_ASSERT(pipeline_state.shader_vertex->GetCompilationState() == Shader_Compilation_State::Succeeded && "Shader hasn't compiled");
 
             // Get vertex shader descriptors
             descriptors = pipeline_state.shader_vertex->GetDescriptors();
@@ -105,8 +106,7 @@ namespace Spartan
             // If there is a pixel shader, merge it's resources into our map as well
             if (pipeline_state.shader_pixel)
             {
-                // Wait for compilation
-                pipeline_state.shader_pixel->WaitForCompilation();
+                SP_ASSERT(pipeline_state.shader_pixel->GetCompilationState() == Shader_Compilation_State::Succeeded && "Shader hasn't compiled");
 
                 for (const RHI_Descriptor& descriptor_reflected : pipeline_state.shader_pixel->GetDescriptors())
                 {

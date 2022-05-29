@@ -70,7 +70,7 @@ namespace Spartan
         return VK_ATTACHMENT_LOAD_OP_CLEAR;
     };
 
-    RHI_CommandList::RHI_CommandList(Context* context, RHI_CommandPool* cmd_pool, const char* name) : SpartanObject(context)
+    RHI_CommandList::RHI_CommandList(Context* context, void* cmd_pool_resource, const char* name) : SpartanObject(context)
     {
         m_renderer    = context->GetSubsystem<Renderer>();
         m_profiler    = context->GetSubsystem<Profiler>();
@@ -83,7 +83,7 @@ namespace Spartan
         {
             VkCommandBufferAllocateInfo allocate_info = {};
             allocate_info.sType                       = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-            allocate_info.commandPool                 = static_cast<VkCommandPool>(cmd_pool->GetResource());
+            allocate_info.commandPool                 = static_cast<VkCommandPool>(cmd_pool_resource);
             allocate_info.level                       = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
             allocate_info.commandBufferCount          = 1;
 
