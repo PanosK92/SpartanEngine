@@ -48,7 +48,7 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    RHI_CommandList::RHI_CommandList(Context* context, RHI_CommandPool* cmd_pool, const char* name)
+    RHI_CommandList::RHI_CommandList(Context* context, void* cmd_pool, const char* name)
     {
         m_renderer    = context->GetSubsystem<Renderer>();
         m_profiler    = context->GetSubsystem<Profiler>();

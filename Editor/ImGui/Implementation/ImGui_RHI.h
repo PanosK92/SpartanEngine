@@ -185,15 +185,13 @@ namespace ImGui::RHI
             return;
 
         // Get swap chain and cmd list
-        bool is_child_window               = window_data != nullptr;
-        RHI_SwapChain* swap_chain          = is_child_window ? window_data->swapchain : g_renderer->GetSwapChain();
+        bool is_child_window           = window_data != nullptr;
+        RHI_SwapChain* swap_chain      = is_child_window ? window_data->swapchain : g_renderer->GetSwapChain();
         RHI_CommandPool* cmd_list_pool = is_child_window ? window_data->cmd_pool : g_cmd_pool.get();
 
-        // Tick command list pool and get the appropriate command list
+        // Begin the command list
         cmd_list_pool->Tick();
         RHI_CommandList* cmd_list = cmd_list_pool->GetCommandList();
-
-        // Begin the command list
         cmd_list->Begin();
 
         // Update vertex and index buffers

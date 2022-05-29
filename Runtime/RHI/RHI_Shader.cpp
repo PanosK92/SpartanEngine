@@ -177,23 +177,7 @@ namespace Spartan
         m_sources.emplace_back(file_source);
     }
 
-    void RHI_Shader::WaitForCompilation()
-    {
-        // Wait
-        while (m_compilation_state == Shader_Compilation_State::Compiling)
-        {
-            LOG_INFO("Waiting for shader \"%s\" to compile...", m_object_name.c_str());
-            std::this_thread::sleep_for(std::chrono::milliseconds(16));
-        }
-        
-        // Log error in case of failure
-        if (m_compilation_state != Shader_Compilation_State::Succeeded)
-        {
-            LOG_ERROR("Shader \"%s\" failed compile", m_object_name.c_str());
-        }
-    }
-
-	void RHI_Shader::LoadSource(const std::string& file_path)
+    void RHI_Shader::LoadSource(const std::string& file_path)
     {
         // Get name and file path
         m_object_name = FileSystem::GetFileNameFromFilePath(file_path);

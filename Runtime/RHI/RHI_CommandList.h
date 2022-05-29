@@ -44,7 +44,7 @@ namespace Spartan
     class SPARTAN_CLASS RHI_CommandList : public SpartanObject
     {
     public:
-        RHI_CommandList(Context* context, RHI_CommandPool* cmd_pool, const char* name);
+        RHI_CommandList(Context* context, void* cmd_pool_resource, const char* name);
         ~RHI_CommandList();
 
         void Begin();

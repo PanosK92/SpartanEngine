@@ -47,7 +47,6 @@ namespace Spartan
         void Compile(const RHI_Shader_Type type, const std::string& file_path, bool async);
         Shader_Compilation_State GetCompilationState() const { return m_compilation_state; }
         bool IsCompiled()                              const { return m_compilation_state == Shader_Compilation_State::Succeeded; }
-        void WaitForCompilation();
 
         // Resource
         void* GetResource() const;

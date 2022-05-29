@@ -231,67 +231,65 @@ namespace Spartan
         if (!m_swap_chain->PresentEnabled() || !m_is_rendering_allowed)
             return;
 
-        // Tick the command list pool.
-        // If it returns true, it means it has also reset.
-        if (m_cmd_pool->Tick())
+        // Begin
+        bool command_pool_reset = m_cmd_pool->Tick();
+        m_cmd_current = m_cmd_pool->GetCommandList();
+        m_cmd_current->Begin();
+
+        // Reset
+        if (command_pool_reset)
         {
             // Reset dynamic buffer indices
             m_cb_uber_offset_index     = 0;
             m_cb_frame_offset_index    = 0;
             m_cb_light_offset_index    = 0;
             m_cb_material_offset_index = 0;
-        }
 
-        // Begin
-        m_cmd_current = m_cmd_pool->GetCommandList();
-        m_cmd_current->Begin();
-
-        // Handle requests (they can come from different threads)
-        {
+            // Handle requests (they can come from different threads)
             m_reading_requests = true;
-
-            // Handle environment texture assignment requests
-            if (m_environment_texture_temp)
             {
-                m_environment_texture      = m_environment_texture_temp;
-                m_environment_texture_temp = nullptr;
-            }
-
-            // Handle texture mip generation requests
-            {
-                // Clear any previously processed textures
-                if (!m_textures_mip_generation.empty())
+                // Handle environment texture assignment requests
+                if (m_environment_texture_temp)
                 {
-                    for (shared_ptr<RHI_Texture> texture : m_textures_mip_generation)
-                    {
-                        // Remove unnecessary flags from texture (were only needed for the downsampling)
-                        uint32_t flags = texture->GetFlags();
-                        flags &= ~RHI_Texture_PerMipViews;
-                        flags &= ~RHI_Texture_Uav;
-                        texture->SetFlags(flags);
+                    m_environment_texture      = m_environment_texture_temp;
+                    m_environment_texture_temp = nullptr;
+                }
 
-                        // Destroy the resources associated with those flags
+                // Handle texture mip generation requests
+                {
+                    // Clear any previously processed textures
+                    if (!m_textures_mip_generation.empty())
+                    {
+                        for (shared_ptr<RHI_Texture> texture : m_textures_mip_generation)
                         {
-                            const bool destroy_main     = false;
-                            const bool destroy_per_view = true;
-                            texture->RHI_DestroyResource(destroy_main, destroy_per_view);
+                            // Remove unnecessary flags from texture (were only needed for the downsampling)
+                            uint32_t flags = texture->GetFlags();
+                            flags &= ~RHI_Texture_PerMipViews;
+                            flags &= ~RHI_Texture_Uav;
+                            texture->SetFlags(flags);
+
+                            // Destroy the resources associated with those flags
+                            {
+                                const bool destroy_main = false;
+                                const bool destroy_per_view = true;
+                                texture->RHI_DestroyResource(destroy_main, destroy_per_view);
+                            }
                         }
+
+                        m_textures_mip_generation.clear();
                     }
 
-                    m_textures_mip_generation.clear();
+                    // Add any newly requested textures
+                    if (!m_textures_mip_generation_pending.empty())
+                    {
+                        m_textures_mip_generation.insert(m_textures_mip_generation.end(), m_textures_mip_generation_pending.begin(), m_textures_mip_generation_pending.end());
+                        m_textures_mip_generation_pending.clear();
+                    }
                 }
 
-                // Add any newly requested textures
-                if (!m_textures_mip_generation_pending.empty())
-                {
-                    m_textures_mip_generation.insert(m_textures_mip_generation.end(), m_textures_mip_generation_pending.begin(), m_textures_mip_generation_pending.end());
-                    m_textures_mip_generation_pending.clear();
-                }
+                // Generate mips for any pending texture requests
+                Pass_Generate_Mips();
             }
-
-            // Generate mips for any pending texture requests
-            Pass_Generate_Mips();
-
             m_reading_requests = false;
         }
 
