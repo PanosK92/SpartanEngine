@@ -157,30 +157,6 @@ namespace Spartan::vulkan_utility
         }
     }
 
-    namespace command_buffer
-    {
-        inline bool create(void*& cmd_pool, void*& cmd_buffer, const VkCommandBufferLevel level)
-        {
-            VkCommandPool cmd_pool_vk       = static_cast<VkCommandPool>(cmd_pool);
-            VkCommandBuffer* cmd_buffer_vk  = reinterpret_cast<VkCommandBuffer*>(&cmd_buffer);
-
-            VkCommandBufferAllocateInfo allocate_info   = {};
-            allocate_info.sType                         = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-            allocate_info.commandPool                   = cmd_pool_vk;
-            allocate_info.level                         = level;
-            allocate_info.commandBufferCount            = 1;
-
-            return error::check(vkAllocateCommandBuffers(globals::rhi_context->device, &allocate_info, cmd_buffer_vk));
-        }
-
-        inline void destroy(void*& cmd_pool, void*& cmd_buffer)
-        {
-            VkCommandPool cmd_pool_vk       = static_cast<VkCommandPool>(cmd_pool);
-            VkCommandBuffer* cmd_buffer_vk  = reinterpret_cast<VkCommandBuffer*>(&cmd_buffer);
-            vkFreeCommandBuffers(globals::rhi_context->device, cmd_pool_vk, 1, cmd_buffer_vk);
-        }
-    }
-
     // Thread-safe immediate command buffer
     class command_buffer_immediate
     {
@@ -191,15 +167,19 @@ namespace Spartan::vulkan_utility
         struct cmdbi_object
         {
             cmdbi_object() = default;
+
             ~cmdbi_object()
             {
-                command_buffer::destroy(cmd_pool, cmd_buffer);
+                VkCommandPool cmd_pool_vk      = static_cast<VkCommandPool>(cmd_pool);
+                VkCommandBuffer* cmd_buffer_vk = reinterpret_cast<VkCommandBuffer*>(&cmd_buffer);
+
+                vkFreeCommandBuffers(globals::rhi_context->device, cmd_pool_vk, 1, cmd_buffer_vk);
 
                 vkDestroyCommandPool(globals::rhi_context->device, static_cast<VkCommandPool>(cmd_pool), nullptr);
                 cmd_pool = nullptr;
             }
 
-            bool begin(const RHI_Queue_Type queue_type)
+            void begin(const RHI_Queue_Type queue_type)
             {
                 // Wait
                 while (recording)
@@ -217,67 +197,55 @@ namespace Spartan::vulkan_utility
                         cmd_pool_info.queueFamilyIndex        = globals::rhi_device->GetQueueIndex(queue_type);
                         cmd_pool_info.flags                   = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 
-                        if (!vulkan_utility::error::check(vkCreateCommandPool(globals::rhi_context->device, &cmd_pool_info, nullptr, reinterpret_cast<VkCommandPool*>(&cmd_pool))))
-                            return false;
+                        SP_ASSERT(error::check(
+                            vkCreateCommandPool(globals::rhi_context->device, &cmd_pool_info, nullptr, reinterpret_cast<VkCommandPool*>(&cmd_pool))) &&
+                            "Failed to created command pool"
+                        );
                     }
 
                     // Create command buffer
-                    if (!command_buffer::create(cmd_pool, cmd_buffer, VK_COMMAND_BUFFER_LEVEL_PRIMARY))
-                        return false;
+                    {
+                        VkCommandPool cmd_pool_vk = static_cast<VkCommandPool>(cmd_pool);
+                        VkCommandBuffer* cmd_buffer_vk = reinterpret_cast<VkCommandBuffer*>(&cmd_buffer);
+
+                        VkCommandBufferAllocateInfo allocate_info = {};
+                        allocate_info.sType                       = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+                        allocate_info.commandPool                 = cmd_pool_vk;
+                        allocate_info.level                       = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+                        allocate_info.commandBufferCount          = 1;
+
+                        SP_ASSERT(error::check(
+                            vkAllocateCommandBuffers(globals::rhi_context->device, &allocate_info, cmd_buffer_vk)) &&
+                            "Failed to allocate command buffer"
+                        );
+                    }
 
                     initialised = true;
                     this->queue_type = queue_type;
                 }
 
-                if (!initialised)
-                    return false;
-
-                // Begin
-                VkCommandBufferBeginInfo begin_info = {};
-                begin_info.sType                    = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-                begin_info.flags                    = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-                if (error::check(vkBeginCommandBuffer(static_cast<VkCommandBuffer>(cmd_buffer), &begin_info)))
-                {
-                    recording = true;
+                if (initialised)
+                { 
+                    // Begin
+                    VkCommandBufferBeginInfo begin_info = {};
+                    begin_info.sType                    = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+                    begin_info.flags                    = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+                    if (error::check(vkBeginCommandBuffer(static_cast<VkCommandBuffer>(cmd_buffer), &begin_info)))
+                    {
+                        recording = true;
+                    }
                 }
-
-                return recording;
             }
 
-            bool submit(const uint32_t wait_flags)
+            void submit(const uint32_t wait_flags)
             {
-                if (!initialised)
-                {
-                    LOG_ERROR("Can't submit as the command buffer failed to initialise");
-                    return false;
-                }
-
-                if (!recording)
-                {
-                    LOG_ERROR("Can't submit as the command buffer didn't record anything");
-                    return false;
-                }
-
-                if (!error::check(vkEndCommandBuffer(static_cast<VkCommandBuffer>(cmd_buffer))))
-                {
-                    LOG_ERROR("Failed to end command buffer");
-                    return false;
-                }
-
-                if (!globals::rhi_device->QueueSubmit(queue_type, wait_flags, cmd_buffer))
-                {
-                    LOG_ERROR("Failed to submit to queue");
-                    return false;
-                }
-
-                if (!globals::rhi_device->QueueWait(queue_type))
-                {
-                    LOG_ERROR("Failed to wait for queue");
-                    return false;
-                }
+                SP_ASSERT(initialised && "Can't submit as the command buffer failed to initialise");
+                SP_ASSERT(recording && "Can't submit as the command buffer didn't record anything");
+                SP_ASSERT(error::check(vkEndCommandBuffer(static_cast<VkCommandBuffer>(cmd_buffer))) && "Failed to end command buffer");
+                SP_ASSERT(globals::rhi_device->QueueSubmit(queue_type, wait_flags, cmd_buffer) && "Failed to submit to queue");
+                SP_ASSERT(globals::rhi_device->QueueWait(queue_type) && "Failed to wait for queue");
 
                 recording = false;
-                return true;
             }
 
             void* cmd_pool                = nullptr;
@@ -293,13 +261,12 @@ namespace Spartan::vulkan_utility
 
             cmdbi_object& cmbdi = m_objects[queue_type];
 
-            if (!cmbdi.begin(queue_type))
-                return nullptr;
+            cmbdi.begin(queue_type);
 
             return static_cast<VkCommandBuffer>(cmbdi.cmd_buffer);
         }
 
-        static bool end(const RHI_Queue_Type queue_type)
+        static void end(const RHI_Queue_Type queue_type)
         {
             uint32_t wait_flags;
             if (queue_type == RHI_Queue_Type::Graphics)
@@ -312,7 +279,7 @@ namespace Spartan::vulkan_utility
             }
 
             std::lock_guard<std::mutex> lock(m_mutex_end);
-            return m_objects[queue_type].submit(wait_flags);
+            m_objects[queue_type].submit(wait_flags);
         }
 
     private:

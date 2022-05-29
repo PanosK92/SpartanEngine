@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016-2022 Panos Karabelas
+Copyright(c) 2016-2021 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -19,34 +19,31 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#pragma once
+//= INCLUDES ==================
+#include "Spartan.h"
+#include "../RHI_CommandPool.h"
+#include "../RHI_Device.h"
+//=============================
 
-//= INCLUDES =====================
-#include "../Core/SpartanObject.h"
-#include "RHI_Definition.h"
-//================================
+//= NAMESPACES =====
+using namespace std;
+//==================
 
 namespace Spartan
 {
-    class RHI_Fence : public SpartanObject
+    RHI_CommandPool::RHI_CommandPool(RHI_Device* rhi_device, const char* name) : SpartanObject(rhi_device->GetContext())
     {
-    public:
-        RHI_Fence(RHI_Device* rhi_device, const char* name = nullptr);
-        ~RHI_Fence();
+        m_rhi_device  = rhi_device;
+        m_object_name = name;
+    }
 
-        // Returns true if the false was signaled.
-        bool IsSignaled();
+    RHI_CommandPool::~RHI_CommandPool()
+    {
 
-        // Returns true when the fence is signaled and false in case of a timeout.
-        bool Wait(uint64_t timeout_nanoseconds = 1000000000 /* one second */);
+    }
 
-        // Resets the fence
-        bool Reset();
-
-        void* GetResource() { return m_resource; }
-
-    private:
-        void* m_resource = nullptr;
-        RHI_Device* m_rhi_device = nullptr;
-    };
+    bool RHI_CommandPool::Reset()
+    {
+        return true;
+    }
 }

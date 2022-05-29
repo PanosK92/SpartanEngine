@@ -57,8 +57,8 @@ namespace Spartan
 
     RHI_Semaphore::RHI_Semaphore(RHI_Device* rhi_device, bool is_timeline /*= false*/, const char* name /*= nullptr*/)
     {
-        m_is_timeline   = is_timeline;
-        m_rhi_device    = rhi_device;
+        m_is_timeline = is_timeline;
+        m_rhi_device  = rhi_device;
 
         create_image(m_rhi_device->GetContextRhi()->device, m_is_timeline, m_resource);
 

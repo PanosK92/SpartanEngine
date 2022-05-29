@@ -31,6 +31,7 @@ namespace Spartan
 {
     struct RHI_Context;
     class RHI_Device;
+    class RHI_CommandPool;
     class RHI_CommandList;
     class RHI_PipelineState;
     class RHI_Pipeline;
@@ -287,6 +288,14 @@ namespace Spartan
         Compiling,
         Succeeded,
         Failed
+    };
+
+    enum class RHI_CommandListState : uint8_t
+    {
+        Idle,
+        Recording,
+        Ended,
+        Submitted
     };
 
     // Shader register slot shifts (required to produce spirv from hlsl)

@@ -361,6 +361,7 @@ namespace Spartan
         // Misc
         RHI_Api_Type GetApiType() const;
         void SetGlobalShaderResources(RHI_CommandList* cmd_list) const;
+        uint32_t GetCmdIndex() const;
         void RequestTextureMipGeneration(std::shared_ptr<RHI_Texture> texture);
         const std::shared_ptr<RHI_Device>& GetRhiDevice() const { return m_rhi_device; }
         RHI_Texture* GetFrameTexture()                          { return GetRenderTarget(Renderer::RenderTarget::Frame_Output).get(); }
@@ -368,7 +369,6 @@ namespace Spartan
         std::shared_ptr<Camera> GetCamera()               const { return m_camera; }
         auto IsInitialised()                              const { return m_initialised; }
         auto GetShaders()                                 const { return m_shaders; }
-        uint32_t GetCmdIndex()                            const { return m_cmd_index;  }
         RHI_CommandList* GetCmdList()                     const { return m_cmd_current; }
 
         // Passes
@@ -551,7 +551,6 @@ namespace Spartan
         uint64_t m_frame_num              = 0;
         bool m_is_odd_frame               = false;
         bool m_brdf_specular_lut_rendered = false;
-        uint32_t m_cmd_index              = std::numeric_limits<uint32_t>::max();
         std::thread::id m_render_thread_id;
 
 
@@ -577,11 +576,11 @@ namespace Spartan
 
         // RHI Core
         std::shared_ptr<RHI_Device> m_rhi_device;
-        std::vector<std::shared_ptr<RHI_CommandList>> m_cmd_lists;
+        std::shared_ptr<RHI_CommandPool> m_cmd_pool;
         RHI_CommandList* m_cmd_current = nullptr;
 
         // Swapchain
-        static const uint8_t m_swap_chain_buffer_count = 3;
+        static const uint8_t m_swap_chain_buffer_count = 2;
         std::shared_ptr<RHI_SwapChain> m_swap_chain;
 
         // Entity references

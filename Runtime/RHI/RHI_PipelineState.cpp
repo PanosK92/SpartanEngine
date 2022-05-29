@@ -221,40 +221,4 @@ namespace Spartan
 
         return hash;
     }
-
-void RHI_PipelineState::TransitionRenderTargetLayouts(RHI_CommandList* cmd_list)
-    {
-        // Color
-        {
-            // Texture
-            for (auto i = 0; i < rhi_max_render_target_count; i++)
-            {
-                if (RHI_Texture* texture = render_target_color_textures[i])
-                {
-                    RHI_Image_Layout layout = RHI_Image_Layout::Color_Attachment_Optimal;
-
-                    texture->SetLayout(layout, cmd_list);
-                }
-            }
-
-            // Swapchain
-            if (RHI_SwapChain* swapchain = render_target_swapchain)
-            {
-                RHI_Image_Layout layout = RHI_Image_Layout::Present_Src;
-            }
-        }
-        
-        // Depth
-        if (RHI_Texture* texture = render_target_depth_texture)
-        {
-            RHI_Image_Layout layout = texture->IsStencilFormat() ? RHI_Image_Layout::Depth_Stencil_Attachment_Optimal : RHI_Image_Layout::Depth_Attachment_Optimal;
-
-            if (render_target_depth_texture_read_only)
-            {
-                layout = RHI_Image_Layout::Depth_Stencil_Read_Only_Optimal;
-            }
-
-            texture->SetLayout(layout, cmd_list);
-        }
-    }
 }

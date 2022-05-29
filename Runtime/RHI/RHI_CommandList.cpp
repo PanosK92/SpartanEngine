@@ -37,11 +37,17 @@ namespace Spartan
 {
     void RHI_CommandList::Wait()
     {
-        SP_ASSERT(m_state == RHI_CommandListState::Submitted);
+        SP_ASSERT(m_state == RHI_CommandListState::Submitted && "The command list hasn't been submitted, can't wait for it.");
 
-        // Wait for the fence.
-        SP_ASSERT(m_processed_fence->Wait() && "Timeout while waiting for command list fence.");
+        bool executing = !m_proccessed_fence->IsSignaled();
+        if (executing)
+        {
+            // Uncomment this warning log to observe the frequency of command list fence waits
+            //LOG_WARNING("Waiting for command list \"%s\" to be processed by the queue...", m_object_name.c_str());
+            m_proccessed_fence->Wait();
+        }
 
+        m_proccessed_fence->Reset();
         m_state = RHI_CommandListState::Idle;
     }
 
@@ -58,6 +64,11 @@ namespace Spartan
         }
     
         return 0;
+    }
+
+    bool RHI_CommandList::IsExecuting()
+    {
+        return m_state == RHI_CommandListState::Submitted && !m_proccessed_fence->IsSignaled();
     }
 
     void RHI_CommandList::Descriptors_GetDescriptorsFromPipelineState(RHI_PipelineState& pipeline_state, vector<RHI_Descriptor>& descriptors)

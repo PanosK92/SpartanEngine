@@ -283,8 +283,7 @@ namespace Spartan
             );
 
             // End/flush
-            if (!vulkan_utility::command_buffer_immediate::end(RHI_Queue_Type::Graphics))
-                return false;
+            vulkan_utility::command_buffer_immediate::end(RHI_Queue_Type::Graphics);
 
             // Free staging buffer
             vulkan_utility::buffer::destroy(staging_buffer);
@@ -354,11 +353,7 @@ namespace Spartan
             vulkan_utility::image::set_layout(cmd_buffer, this, 0, m_mip_count, m_array_length, m_layout[0], target_layout);
         
             // Flush
-            if (!vulkan_utility::command_buffer_immediate::end(RHI_Queue_Type::Graphics))
-            {
-                LOG_ERROR("Failed to end command buffer");
-                return false;
-            }
+            vulkan_utility::command_buffer_immediate::end(RHI_Queue_Type::Graphics);
 
             // Update this texture with the new layout
             for (uint32_t i = 0; i < m_mip_count; i++)
@@ -413,7 +408,6 @@ namespace Spartan
     void RHI_Texture::RHI_DestroyResource(const bool destroy_main, const bool destroy_per_view)
     {
         SP_ASSERT(m_rhi_device != nullptr);
-        SP_ASSERT(m_rhi_device->IsInitialised());
 
         // Destruction can happen during engine shutdown, in which case, the renderer might not exist, so, if statement.
         if (Renderer* renderer = m_rhi_device->GetContext()->GetSubsystem<Renderer>())

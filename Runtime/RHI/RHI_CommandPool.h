@@ -24,29 +24,36 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =====================
 #include "../Core/SpartanObject.h"
 #include "RHI_Definition.h"
+#include "RHI_CommandList.h"
+#include <vector>
 //================================
 
 namespace Spartan
 {
-    class RHI_Fence : public SpartanObject
+    class RHI_CommandPool : public SpartanObject
     {
     public:
-        RHI_Fence(RHI_Device* rhi_device, const char* name = nullptr);
-        ~RHI_Fence();
+        RHI_CommandPool(RHI_Device* rhi_device, const char* name);
+        ~RHI_CommandPool();
 
-        // Returns true if the false was signaled.
-        bool IsSignaled();
+        void AllocateCommandLists(const uint32_t command_list_count);
+        // Keeps track of the cmd_list_index.
+        // Returns true if the command pool has reset itself.
+        bool Tick();
 
-        // Returns true when the fence is signaled and false in case of a timeout.
-        bool Wait(uint64_t timeout_nanoseconds = 1000000000 /* one second */);
-
-        // Resets the fence
-        bool Reset();
-
-        void* GetResource() { return m_resource; }
+        RHI_CommandList* GetCommandList()    { return m_cmd_lists[m_cmd_list_index].get(); }
+        uint32_t GetCommandListCount() const { return static_cast<uint32_t>(m_cmd_lists.size()); }
+        uint32_t GetCommandListIndex() const { return m_cmd_list_index; }
+        void*& GetResource()                 { return m_resource; }
 
     private:
-        void* m_resource = nullptr;
+        bool Reset();
+
+        // Command lists
+        std::vector<std::shared_ptr<RHI_CommandList>> m_cmd_lists;
+        int m_cmd_list_index = -1;
+
+        void* m_resource         = nullptr;
         RHI_Device* m_rhi_device = nullptr;
     };
 }

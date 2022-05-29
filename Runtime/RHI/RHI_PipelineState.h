@@ -38,7 +38,6 @@ namespace Spartan
         ~RHI_PipelineState();
 
         bool IsValid();
-        void TransitionRenderTargetLayouts(RHI_CommandList* cmd_list);
         uint32_t GetWidth() const;
         uint32_t GetHeight() const;
         uint32_t ComputeHash() const;

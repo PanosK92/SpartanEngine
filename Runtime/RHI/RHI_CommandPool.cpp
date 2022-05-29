@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016-2022 Panos Karabelas
+Copyright(c) 2016-2021 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -21,9 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===============
 #include "Spartan.h"
-#include "RHI_SwapChain.h"
-#include "RHI_Device.h"
-#include "RHI_CommandList.h"
+#include "RHI_CommandPool.h"
 //==========================
 
 //= NAMESPACES =====
@@ -32,8 +30,34 @@ using namespace std;
 
 namespace Spartan
 {
-    shared_ptr<Spartan::RHI_CommandList> RHI_SwapChain::CreateCmdList()
+    void RHI_CommandPool::AllocateCommandLists(const uint32_t command_list_count)
     {
-        return make_shared<RHI_CommandList>(m_rhi_device->GetContext());
+        for (uint32_t i = 0; i < command_list_count; i++)
+        {
+            string cmd_list_name = m_object_name + "_command_list_" + to_string(i);
+            shared_ptr<RHI_CommandList> cmd_list = make_shared<RHI_CommandList>(m_context, this, cmd_list_name.c_str());
+            m_cmd_lists.emplace_back(cmd_list);
+        }
+    }
+
+    bool RHI_CommandPool::Tick()
+    {
+        if (m_cmd_list_index == -1)
+        {
+            m_cmd_list_index = 0;
+            return false;
+        }
+
+        // Calculate command list index
+        m_cmd_list_index = (m_cmd_list_index + 1) % GetCommandListCount();
+
+        // Reset the command pool
+        if (m_cmd_list_index == 0)
+        {
+            Reset();
+            return true;
+        }
+
+        return false;
     }
 }
