@@ -860,17 +860,15 @@ namespace Spartan
         }
     }
 
-    bool Renderer::Present()
+    void Renderer::Present()
     {
         if (!m_swap_chain->PresentEnabled())
-            return false;
+            return;
 
-        bool presented = m_swap_chain->Present();
+        m_swap_chain->Present();
 
         // Notify subsystems that need to calculate things after presenting, like the profiler.
         SP_FIRE_EVENT(EventType::PostPresent);
-
-        return presented;
     }
 
 	void Renderer::Flush()

@@ -343,14 +343,13 @@ namespace Spartan
         return m_initialised;
     }
 
-    bool RHI_SwapChain::AcquireNextImage()
+    void RHI_SwapChain::AcquireNextImage()
     {
-        if (!m_present_enabled)
-            return true;
+        SP_ASSERT(m_present_enabled && "No need to acquire next image when presenting is disabled");
 
         // Return if the swapchain has a single buffer and it has already been acquired
         if (m_buffer_count == 1 && m_image_index != numeric_limits<uint32_t>::max())
-            return true;
+            return;
 
         // Get signal semaphore
         m_semaphore_index = (m_semaphore_index + 1) % m_buffer_count;
@@ -381,52 +380,35 @@ namespace Spartan
             if (!Resize(m_width, m_height, true))
             {
                 LOG_ERROR("Failed to resize swapchain");
-                return false;
+                return;
             }
 
-            return AcquireNextImage();
+            AcquireNextImage();
+            return;
         }
 
-        if (result == VK_NOT_READY)
-        {
-            LOG_INFO("vkAcquireNextImageKHR() not ready");
-            return false;
-        }
-
-        // Check result
-        if (!vulkan_utility::error::check(result))
-        {
-            LOG_ERROR("Failed to acquire next image");
-            return false;
-        }
+        SP_ASSERT(result == VK_SUCCESS && "Failed to acquire next image");
 
         // Update semaphore state
         signal_semaphore->SetState(RHI_Semaphore_State::Signaled);
-
-        return true;
     }
 
-    bool RHI_SwapChain::Present()
+    void RHI_SwapChain::Present()
     {
-        // Validate swapchain state
-        SP_ASSERT(m_present_enabled);
+        SP_ASSERT(m_resource != nullptr && "Can't present, the swapchain has not been initialised");
+        SP_ASSERT(m_present_enabled && "Can't present, presenting has been disabled");
 
+        // Get the semaphore that present should wait for
         RHI_Semaphore* wait_semaphore = m_image_acquired_semaphore[m_semaphore_index].get();
 
         // Present
         if (!m_rhi_device->QueuePresent(m_resource, &m_image_index, wait_semaphore))
         {
             LOG_ERROR("Failed to present");
-            return false;
+            return;
         }
 
         // Acquire next image
-        if (!AcquireNextImage())
-        {
-            LOG_ERROR("Failed to acquire next image");
-            return false;
-        }
-
-        return true;
+        AcquireNextImage();
     }
 }

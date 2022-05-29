@@ -344,7 +344,7 @@ namespace Spartan
 
         // Swapchain
         RHI_SwapChain* GetSwapChain() const { return m_swap_chain.get(); }
-        bool Present();
+        void Present();
 
         // Sync
         void Flush();

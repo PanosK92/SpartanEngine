@@ -122,18 +122,15 @@ namespace Spartan
         return true;
     }
     
-    bool RHI_SwapChain::AcquireNextImage()
+    void RHI_SwapChain::AcquireNextImage()
     {
         m_image_index = static_cast<IDXGISwapChain3*>(m_resource)->GetCurrentBackBufferIndex();
-
-        return true;
     }
     
-    bool RHI_SwapChain::Present()
+    void RHI_SwapChain::Present()
     {
-        // Verify a few things
-        SP_ASSERT(m_present_enabled);
-        SP_ASSERT(m_resource != nullptr);
+        SP_ASSERT(m_resource != nullptr && "Can't present, the swapchain has not been initialised");
+        SP_ASSERT(m_present_enabled && "Can't present, presenting has been disabled");
 
         // Present parameters
         const bool tearing_allowed = m_flags & RHI_Present_Immediate;
@@ -141,18 +138,9 @@ namespace Spartan
         const UINT flags           = (tearing_allowed && m_windowed) ? DXGI_PRESENT_ALLOW_TEARING : 0;
 
         // Present
-        if (!d3d12_utility::error::check(static_cast<IDXGISwapChain3*>(m_resource)->Present(sync_interval, flags)))
-        {
-            return false;
-        }
+        SP_ASSERT(d3d12_utility::error::check(static_cast<IDXGISwapChain3*>(m_resource)->Present(sync_interval, flags))
+            && "Failed to present")
 
-        // Acquire next image
-        if (!AcquireNextImage())
-        {
-            LOG_ERROR("Failed to acquire next image");
-            return false;
-        }
-
-        return true;
+        AcquireNextImage();
     }
 }
