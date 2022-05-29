@@ -618,7 +618,7 @@ namespace Spartan
     {
         // Validate semaphore state
         if (wait_semaphore) SP_ASSERT(wait_semaphore->GetState() == RHI_Semaphore_State::Signaled
-            && "The wait semaphore has already been signaled and not waited for");
+            && "The wait semaphore hasn't been signaled");
 
         // Get semaphore Vulkan resource
         void* vk_wait_semaphore = wait_semaphore ? wait_semaphore->GetResource() : nullptr;

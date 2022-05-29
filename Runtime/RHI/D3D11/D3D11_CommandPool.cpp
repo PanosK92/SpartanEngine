@@ -42,8 +42,8 @@ namespace Spartan
 
     }
 
-    bool RHI_CommandPool::Reset()
+    void RHI_CommandPool::Reset()
     {
-        return true;
+
     }
 }

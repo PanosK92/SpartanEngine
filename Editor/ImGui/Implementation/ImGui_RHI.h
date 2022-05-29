@@ -43,9 +43,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace ImGui::RHI
 {
+    //= NAMESPACES =========
     using namespace Spartan;
     using namespace Math;
     using namespace std;
+    //======================
 
     // Forward Declarations
     void InitializePlatformInterface();

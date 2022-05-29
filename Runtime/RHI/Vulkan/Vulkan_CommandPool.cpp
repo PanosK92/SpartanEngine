@@ -40,7 +40,7 @@ namespace Spartan
         VkCommandPoolCreateInfo cmd_pool_info = {};
         cmd_pool_info.sType                   = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
         cmd_pool_info.queueFamilyIndex        = rhi_device->GetQueueIndex(RHI_Queue_Type::Graphics);
-        cmd_pool_info.flags                   = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+        cmd_pool_info.flags                   = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT; // specifies that command buffers allocated from the pool will be short-lived
 
         // Create
         SP_ASSERT(vulkan_utility::error::check(
@@ -75,17 +75,21 @@ namespace Spartan
         m_resource = nullptr;
     }
 
-    bool RHI_CommandPool::Reset()
+    void RHI_CommandPool::Reset()
     {
-        SP_ASSERT(m_resource && "Uninitialised command list pool");
+        SP_ASSERT(m_resource && "Can't reset an uninitialised command list pool");
 
-        // Wait for any command lists that might still be executing
+        // See if any of the command lists are executing;
         for (shared_ptr<RHI_CommandList> cmd_list : m_cmd_lists)
         {
-            cmd_list->Wait();
+            if (cmd_list->GetState() == RHI_CommandListState::Submitted)
+            {
+                cmd_list->Wait();
+            }
         }
 
-        // Reset the command pool
-        return vulkan_utility::error::check(vkResetCommandPool(m_rhi_device->GetContextRhi()->device, static_cast<VkCommandPool>(m_resource), 0));
+        // If no command list is executing, reset the command pool
+        SP_ASSERT(vulkan_utility::error::check(vkResetCommandPool(m_rhi_device->GetContextRhi()->device, static_cast<VkCommandPool>(m_resource), 0))
+            && "Failed to reset command pool");
     }
 }

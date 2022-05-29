@@ -244,15 +244,15 @@ namespace Spartan
         return true;
     }
 
-    bool RHI_SwapChain::AcquireNextImage()
+    void RHI_SwapChain::AcquireNextImage()
     {
-        return true;
+
     }
 
-    bool RHI_SwapChain::Present()
+    void RHI_SwapChain::Present()
     {
-        SP_ASSERT(m_present_enabled);
-        SP_ASSERT(m_resource != nullptr);
+        SP_ASSERT(m_resource != nullptr && "Can't present, the swapchain has not been initialised");
+        SP_ASSERT(m_present_enabled && "Can't present, presenting has been disabled");
 
         // Present parameters
         const bool tearing_allowed = m_flags & RHI_Present_Immediate;
@@ -260,6 +260,6 @@ namespace Spartan
         const UINT flags           = (tearing_allowed && m_windowed) ? DXGI_PRESENT_ALLOW_TEARING : 0;
 
         // Present
-        return d3d11_utility::error_check(static_cast<IDXGISwapChain*>(m_resource)->Present(sync_interval, flags));
+        SP_ASSERT(d3d11_utility::error_check(static_cast<IDXGISwapChain*>(m_resource)->Present(sync_interval, flags)) && "Failed to present");
     }
 }

@@ -49,7 +49,7 @@ namespace Spartan
         ~RHI_SwapChain();
 
         bool Resize(uint32_t width, uint32_t height, const bool force = false);
-        bool Present();
+        void Present();
 
         // Misc
         uint32_t GetWidth()       const { return m_width; }
@@ -66,7 +66,7 @@ namespace Spartan
         void* Get_Resource_View_RenderTarget() const { return m_resource_view; }
 
     private:
-        bool AcquireNextImage();
+        void AcquireNextImage();
 
         // Properties
         bool m_initialised      = false;

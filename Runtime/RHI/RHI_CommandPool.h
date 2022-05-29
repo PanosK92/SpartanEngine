@@ -47,7 +47,7 @@ namespace Spartan
         void*& GetResource()                 { return m_resource; }
 
     private:
-        bool Reset();
+        void Reset();
 
         // Command lists
         std::vector<std::shared_ptr<RHI_CommandList>> m_cmd_lists;
