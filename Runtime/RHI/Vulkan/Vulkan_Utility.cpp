@@ -43,7 +43,8 @@ namespace Spartan::vulkan_utility
     mutex                                                                 command_buffer_immediate::m_mutex_begin;
     mutex                                                                 command_buffer_immediate::m_mutex_end;
     unordered_map<RHI_Queue_Type, command_buffer_immediate::cmdbi_object> command_buffer_immediate::m_objects;
-    static mutex mutex_vma_alloaction;
+    static mutex mutex_vma_allocation_buffer;
+    static mutex mutex_vma_allocation_texture;
 
     VmaAllocation buffer::create(void*& _buffer, const uint64_t size, VkBufferUsageFlags usage, VkMemoryPropertyFlags memory_property_flags, const void* data)
     {
@@ -72,7 +73,7 @@ namespace Spartan::vulkan_utility
             return nullptr;
 
         // Allocations can come both from the main as well as worker threads (loading), so lock this context.
-        lock_guard<mutex> lock(mutex_vma_alloaction);
+        lock_guard<mutex> lock(mutex_vma_allocation_buffer);
 
         // Keep allocation reference
         globals::rhi_context->allocations[reinterpret_cast<uint64_t>(_buffer)] = allocation;
@@ -106,6 +107,9 @@ namespace Spartan::vulkan_utility
     {
         if (!_buffer)
             return;
+
+        // Deallocations can come both from the main as well as worker threads, so lock this context.
+        lock_guard<mutex> lock(mutex_vma_allocation_buffer);
 
         uint64_t allocation_id = reinterpret_cast<uint64_t>(_buffer);
         auto it = globals::rhi_context->allocations.find(allocation_id);

@@ -34,11 +34,11 @@ namespace Spartan
     {
         for (uint32_t index_pool = 0; index_pool < static_cast<uint32_t>(m_resources.size()); index_pool++)
         {
-            for (uint32_t index_cmd_list = 0; index_cmd_list < command_list_count; index_cmd_list++)
+            for (uint32_t i = 0; i < command_list_count; i++)
             {
-                string cmd_list_name                           = m_object_name + "_cmd_pool_0_cmd_list_" + to_string(m_cmd_lists_0.size());
+                vector<shared_ptr<RHI_CommandList>>& cmd_lists = m_cmd_lists[index_pool];
+                string cmd_list_name                           = m_object_name + "_cmd_pool_" + to_string(index_pool) + "_cmd_list_" + to_string(cmd_lists.size());
                 shared_ptr<RHI_CommandList> cmd_list           = make_shared<RHI_CommandList>(m_context, m_resources[index_pool], cmd_list_name.c_str());
-                vector<shared_ptr<RHI_CommandList>>& cmd_lists = index_pool == 0 ? m_cmd_lists_0 : m_cmd_lists_1;
 
                 cmd_lists.emplace_back(cmd_list);
             }
@@ -47,9 +47,11 @@ namespace Spartan
 
     bool RHI_CommandPool::Tick()
     {
-        if (m_cmd_list_index == -1)
+        if (m_pool_index == -1)
         {
+            m_pool_index     = 0;
             m_cmd_list_index = 0;
+
             return false;
         }
 

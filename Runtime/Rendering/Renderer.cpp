@@ -154,25 +154,17 @@ namespace Spartan
         uint32_t window_height = window->GetHeight();
 
         // Create swap chain
-        {
-            m_swap_chain = make_shared<RHI_SwapChain>
-            (
-                window->GetHandle(),
-                m_rhi_device,
-                window_width,
-                window_height,
-                RHI_Format_R8G8B8A8_Unorm,
-                m_swap_chain_buffer_count,
-                RHI_Present_Immediate | RHI_Swap_Flip_Discard,
-                "swapchain_renderer"
-             );
-
-            if (!m_swap_chain->IsInitialised())
-            {
-                LOG_ERROR("Failed to create swap chain.");
-                return false;
-            }
-        }
+        m_swap_chain = make_shared<RHI_SwapChain>
+        (
+            window->GetHandle(),
+            m_rhi_device,
+            window_width,
+            window_height,
+            RHI_Format_R8G8B8A8_Unorm,
+            m_swap_chain_buffer_count,
+            RHI_Present_Immediate | RHI_Swap_Flip_Discard,
+            "renderer_swapchain"
+         );
 
         // Set render, output and viewport resolution/size to whatever the window is (initially)
         SetResolutionRender(window_width, window_height, false);

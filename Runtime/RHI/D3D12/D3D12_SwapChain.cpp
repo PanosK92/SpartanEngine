@@ -109,7 +109,6 @@ namespace Spartan
 
         m_resource    = static_cast<void*>(swap_chain);
         m_image_index = static_cast<IDXGISwapChain3*>(m_resource)->GetCurrentBackBufferIndex();
-        m_initialised = true;
     }
     
     RHI_SwapChain::~RHI_SwapChain()
@@ -139,8 +138,13 @@ namespace Spartan
 
         // Present
         SP_ASSERT(d3d12_utility::error::check(static_cast<IDXGISwapChain3*>(m_resource)->Present(sync_interval, flags))
-            && "Failed to present")
+            && "Failed to present");
 
         AcquireNextImage();
+    }
+
+    void RHI_SwapChain::SetLayout(const RHI_Image_Layout& layout, RHI_CommandList* cmd_list)
+    {
+
     }
 }

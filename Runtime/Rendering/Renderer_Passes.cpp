@@ -2392,6 +2392,9 @@ namespace Spartan
         if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
             return;
 
+        // Transition swap chain image
+        m_swap_chain->SetLayout(RHI_Image_Layout::Color_Attachment_Optimal, m_cmd_current);
+
         // Set render state
         static RHI_PipelineState pso = {};
         pso.shader_vertex            = shader_v;
@@ -2416,6 +2419,9 @@ namespace Spartan
             m_cmd_current->DrawIndexed(3, 0);
             m_cmd_current->EndRenderPass();
         }
+
+        // Transition swap chain image
+        m_swap_chain->SetLayout(RHI_Image_Layout::Present_Src, m_cmd_current);
     }
 
     void Renderer::Pass_Generate_Mips()

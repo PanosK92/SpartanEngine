@@ -132,7 +132,7 @@ namespace Spartan
         bool IsExecuting();
 
         // Misc
-        void* GetResource_CommandBuffer()     const { return m_resource; }
+        void* GetResource() const { return m_resource; }
 
     private:
         void Timeblock_Start(const char* name, const bool profile, const bool gpu_markers);

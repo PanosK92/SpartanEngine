@@ -39,8 +39,8 @@ namespace Spartan
         void AllocateCommandLists(const uint32_t command_list_count);
         bool Tick();
 
-        RHI_CommandList* GetCommandList()    { return m_pool_index == 0 ? m_cmd_lists_0[m_cmd_list_index].get() : m_cmd_lists_1[m_cmd_list_index].get(); }
-        uint32_t GetCommandListCount() const { return static_cast<uint32_t>(m_cmd_lists_0.size()); }
+        RHI_CommandList* GetCommandList()    { return m_cmd_lists[m_pool_index][m_cmd_list_index].get(); }
+        uint32_t GetCommandListCount() const { return static_cast<uint32_t>(m_cmd_lists[0].size()); }
         uint32_t GetCommandListIndex() const { return m_cmd_list_index; }
         void*& GetResource()                 { return m_resources[m_pool_index]; }
 
@@ -48,13 +48,12 @@ namespace Spartan
         void Reset();
 
         // Command lists
-        std::vector<std::shared_ptr<RHI_CommandList>> m_cmd_lists_0;
-        std::vector<std::shared_ptr<RHI_CommandList>> m_cmd_lists_1;
+        std::array<std::vector<std::shared_ptr<RHI_CommandList>>, 2> m_cmd_lists;
         int m_cmd_list_index = -1;
 
         // Pools
         std::array<void*, 2> m_resources;
-        uint32_t m_pool_index = 0;
+        int m_pool_index = -1;
 
         RHI_Device* m_rhi_device = nullptr;
     };
