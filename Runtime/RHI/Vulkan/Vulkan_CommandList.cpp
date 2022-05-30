@@ -237,7 +237,6 @@ namespace Spartan
 
     bool RHI_CommandList::BeginRenderPass(RHI_PipelineState& new_pipeline_state)
     {
-        // Validate command list state
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
         // Update the descriptor cache with the pipeline state
@@ -280,20 +279,6 @@ namespace Spartan
         // Start marker and profiler (if used)
         Timeblock_Start(new_pipeline_state.pass_name, new_pipeline_state.profile, new_pipeline_state.gpu_marker);
 
-
-            // Depth
-            if (RHI_Texture* texture = new_pipeline_state.render_target_depth_texture)
-            {
-                RHI_Image_Layout layout = texture->IsStencilFormat() ? RHI_Image_Layout::Depth_Stencil_Attachment_Optimal : RHI_Image_Layout::Depth_Attachment_Optimal;
-
-                if (new_pipeline_state.render_target_depth_texture_read_only)
-                {
-                    layout = RHI_Image_Layout::Depth_Stencil_Read_Only_Optimal;
-                }
-
-                texture->SetLayout(layout, this);
-            }
-
         // Start rendering
         if (m_pipeline_state.IsGraphics())
         {
@@ -312,12 +297,19 @@ namespace Spartan
             vector<VkRenderingAttachmentInfo> attachments_color;
             {
                 // Swapchain buffer as a render target
-                if (m_pipeline_state.render_target_swapchain)
+                RHI_SwapChain* swapchain = m_pipeline_state.render_target_swapchain;
+                if (swapchain)
                 {
+                    // Transition to the appropriate layout
+                    if (swapchain->GetLayout() != RHI_Image_Layout::Color_Attachment_Optimal)
+                    {
+                        swapchain->SetLayout(RHI_Image_Layout::Color_Attachment_Optimal, this);
+                    }
+
                     VkRenderingAttachmentInfo color_attachment = {};
                     color_attachment.sType                     = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
-                    color_attachment.imageView                 = static_cast<VkImageView>(m_pipeline_state.render_target_swapchain->Get_Resource_View());
-                    color_attachment.imageLayout               = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR; // swapchain always has this layout
+                    color_attachment.imageView                 = static_cast<VkImageView>(swapchain->Get_Resource_View());
+                    color_attachment.imageLayout               = vulkan_image_layout[static_cast<uint8_t>(swapchain->GetLayout())];
                     color_attachment.loadOp                    = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
                     color_attachment.storeOp                   = VK_ATTACHMENT_STORE_OP_STORE;
 

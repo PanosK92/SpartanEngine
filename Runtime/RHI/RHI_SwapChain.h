@@ -51,14 +51,17 @@ namespace Spartan
         bool Resize(uint32_t width, uint32_t height, const bool force = false);
         void Present();
 
+        // Layout
+        RHI_Image_Layout GetLayout() const { return m_layouts[m_image_index]; }
+        void SetLayout(const RHI_Image_Layout& layout, RHI_CommandList* cmd_list);
+
         // Misc
-        uint32_t GetWidth()       const { return m_width; }
-        uint32_t GetHeight()      const { return m_height; }
-        uint32_t GetBufferCount() const { return m_buffer_count; }
-        uint32_t GetFlags()       const { return m_flags; }
-        uint32_t GetImageIndex()  const { return m_image_index; }
-        bool IsInitialised()      const { return m_initialised; }
-        bool PresentEnabled()     const { return m_present_enabled; }
+        uint32_t GetWidth()          const { return m_width; }
+        uint32_t GetHeight()         const { return m_height; }
+        uint32_t GetBufferCount()    const { return m_buffer_count; }
+        uint32_t GetFlags()          const { return m_flags; }
+        uint32_t GetImageIndex()     const { return m_image_index; }
+        bool PresentEnabled()        const { return m_present_enabled; }
 
         // GPU Resources
         void* Get_Resource()                   const { return m_backbuffer_resource[0]; }
@@ -69,13 +72,13 @@ namespace Spartan
         void AcquireNextImage();
 
         // Properties
-        bool m_initialised      = false;
-        bool m_windowed         = false;
-        uint32_t m_buffer_count = 0;
-        uint32_t m_width        = 0;
-        uint32_t m_height       = 0;
-        uint32_t m_flags        = 0;
-        RHI_Format m_format     = RHI_Format_R8G8B8A8_Unorm;
+        bool m_windowed                           = false;
+        uint32_t m_buffer_count                   = 0;
+        uint32_t m_width                          = 0;
+        uint32_t m_height                         = 0;
+        uint32_t m_flags                          = 0;
+        RHI_Format m_format                       = RHI_Format_R8G8B8A8_Unorm;
+        std::array<RHI_Image_Layout, 4> m_layouts = { RHI_Image_Layout::Undefined, RHI_Image_Layout::Undefined, RHI_Image_Layout::Undefined, RHI_Image_Layout::Undefined };
 
         // API
         void* m_resource           = nullptr;

@@ -133,7 +133,6 @@ namespace Spartan
         }
 
         m_semaphore_index = 0;
-        m_initialised     = true;
     }
 
     RHI_SwapChain::~RHI_SwapChain()
@@ -261,5 +260,10 @@ namespace Spartan
 
         // Present
         SP_ASSERT(d3d11_utility::error_check(static_cast<IDXGISwapChain*>(m_resource)->Present(sync_interval, flags)) && "Failed to present");
+    }
+
+    void RHI_SwapChain::SetLayout(const RHI_Image_Layout& layout, RHI_CommandList* cmd_list)
+    {
+
     }
 }

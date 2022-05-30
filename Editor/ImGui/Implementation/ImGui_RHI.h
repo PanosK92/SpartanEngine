@@ -340,6 +340,11 @@ namespace ImGui::RHI
             cmd_list->EndRenderPass();
         }
 
+        if (!is_child_window)
+        {
+            swap_chain->SetLayout(RHI_Image_Layout::Present_Src, cmd_list);
+        }
+
         cmd_list->End();
         cmd_list->Submit();
     }
@@ -371,8 +376,6 @@ namespace ImGui::RHI
             RHI_Present_Immediate | RHI_Swap_Flip_Discard,
             (string("swapchain_child_") + string(to_string(viewport->ID))).c_str()
         );
-
-        SP_ASSERT(window->swapchain->IsInitialised());
 
         // Allocate command lists
         window->cmd_pool = new RHI_CommandPool(g_rhi_device.get(), "imgui_child_window");

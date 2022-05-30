@@ -501,7 +501,7 @@ namespace Spartan::vulkan_utility
             image_barrier.subresourceRange.levelCount     = mip_range;
             image_barrier.subresourceRange.baseArrayLayer = 0;
             image_barrier.subresourceRange.layerCount     = array_length;
-            image_barrier.srcAccessMask                   = layout_to_access_mask(image_barrier.oldLayout, false);
+            image_barrier.srcAccessMask                   = layout_to_access_mask(image_barrier.oldLayout, false); // stages in which operations occur, that have to be waited on
             image_barrier.dstAccessMask                   = layout_to_access_mask(image_barrier.newLayout, true);
 
             VkPipelineStageFlags source_stage = 0;

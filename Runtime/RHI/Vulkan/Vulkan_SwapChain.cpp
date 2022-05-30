@@ -38,13 +38,14 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    static bool swapchain_create
+    static void swapchain_create
     (
         RHI_Device* rhi_device,
         uint32_t* width,
         uint32_t* height,
         uint32_t buffer_count,
         RHI_Format format,
+        array<RHI_Image_Layout, 4> layouts,
         uint32_t flags,
         void* window_handle,
         void*& surface,
@@ -69,18 +70,25 @@ namespace Spartan
                 create_info.hwnd                        = hwnd;
                 create_info.hinstance                   = GetModuleHandle(nullptr);
 
-                if (!vulkan_utility::error::check(vkCreateWin32SurfaceKHR(rhi_device->GetContextRhi()->instance, &create_info, nullptr, &_surface)))
-                    return false;
+                SP_ASSERT(vulkan_utility::error::check(
+                    vkCreateWin32SurfaceKHR(
+                        rhi_device->GetContextRhi()->instance,
+                        &create_info,
+                        nullptr,
+                        &_surface
+                    )) && "Failed to created Win32 surface");
 
                 VkBool32 present_support = false;
-                if (!vulkan_utility::error::check(vkGetPhysicalDeviceSurfaceSupportKHR(rhi_context->device_physical, rhi_device->GetQueueIndex(RHI_Queue_Type::Graphics), _surface, &present_support)))
-                    return false;
 
-                if (!present_support)
-                {
-                    LOG_ERROR("The device does not support this kind of surface.");
-                    return false;
-                }
+                SP_ASSERT(
+                    vulkan_utility::error::check(vkGetPhysicalDeviceSurfaceSupportKHR(
+                        rhi_context->device_physical,
+                            rhi_device->GetQueueIndex(RHI_Queue_Type::Graphics),
+                            _surface,
+                            &present_support
+                    )) && "Failed to get physical device surface support");
+
+                SP_ASSERT(present_support && "The device does not support this kind of surface");
             }
 
             // Get surface capabilities
@@ -127,8 +135,7 @@ namespace Spartan
                 create_info.clipped        = VK_TRUE;
                 create_info.oldSwapchain   = nullptr;
 
-                if (!vulkan_utility::error::check(vkCreateSwapchainKHR(rhi_context->device, &create_info, nullptr, &_swap_chain)))
-                    return false;
+                SP_ASSERT(vulkan_utility::error::check(vkCreateSwapchainKHR(rhi_context->device, &create_info, nullptr, &_swap_chain)) && "Failed to create swapchain");
             }
 
             // Images
@@ -143,9 +150,10 @@ namespace Spartan
                 // Transition layouts to VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
                 if (VkCommandBuffer cmd_buffer = vulkan_utility::command_buffer_immediate::begin(RHI_Queue_Type::Graphics))
                 {
-                    for (VkImage& image : images)
+                    for (uint32_t i = 0; i < static_cast<uint32_t>(images.size()); i++)
                     {
-                        vulkan_utility::image::set_layout(reinterpret_cast<void*>(cmd_buffer), reinterpret_cast<void*>(image), VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 1, RHI_Image_Layout::Undefined, RHI_Image_Layout::Present_Src);
+                        vulkan_utility::image::set_layout(reinterpret_cast<void*>(cmd_buffer), reinterpret_cast<void*>(images[i]), VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 1, layouts[i], RHI_Image_Layout::Color_Attachment_Optimal);
+                        layouts[i] = RHI_Image_Layout::Color_Attachment_Optimal;
                     }
 
                     // End/flush
@@ -162,8 +170,15 @@ namespace Spartan
                     // Name the image
                     vulkan_utility::debug::set_name(images[i], string(string("swapchain_image_") + to_string(i)).c_str());
 
-                    if (!vulkan_utility::image::view::create(static_cast<void*>(images[i]), backbuffer_texture_views[i], VK_IMAGE_VIEW_TYPE_2D, rhi_context->surface_format, VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1))
-                        return false;
+                    SP_ASSERT(
+                        vulkan_utility::image::view::create(
+                            static_cast<void*>(images[i]),
+                            backbuffer_texture_views[i],
+                            VK_IMAGE_VIEW_TYPE_2D,
+                            rhi_context->surface_format,
+                            VK_IMAGE_ASPECT_COLOR_BIT,
+                            0, 1, 0, 1
+                        ) && "Failed to create image view");
                 }
             }
 
@@ -175,8 +190,6 @@ namespace Spartan
             {
                 image_acquired_semaphore[i] = make_shared<RHI_Semaphore>(rhi_device, false, (string("swapchain_image_acquired_semaphore_") + to_string(i)).c_str());
             }
-
-            return true;
         }
     
     static void swapchain_destroy(
@@ -243,13 +256,14 @@ namespace Spartan
         m_flags         = flags;
         m_object_name   = name;
 
-        m_initialised = swapchain_create
+        swapchain_create
         (
             m_rhi_device,
             &m_width,
             &m_height,
             m_buffer_count,
             m_format,
+            m_layouts,
             m_flags,
             m_window_handle,
             m_surface,
@@ -302,8 +316,8 @@ namespace Spartan
         m_rhi_device->QueueWaitAll();
 
         // Save new dimensions
-        m_width     = width;
-        m_height    = height;
+        m_width  = width;
+        m_height = height;
 
         // Destroy previous swap chain
         swapchain_destroy
@@ -317,13 +331,14 @@ namespace Spartan
         );
 
         // Create the swap chain with the new dimensions
-        m_initialised = swapchain_create
+        swapchain_create
         (
             m_rhi_device,
             &m_width,
             &m_height,
             m_buffer_count,
             m_format,
+            m_layouts,
             m_flags,
             m_window_handle,
             m_surface,
@@ -335,12 +350,9 @@ namespace Spartan
 
         // The pipeline state used by the pipeline will now be invalid since it's referring to a destroyed swap chain view.
         // By generating a new ID, the pipeline cache will automatically generate a new pipeline for this swap chain.
-        if (m_initialised)
-        {
-            m_object_id = GenerateObjectId();
-        }
+        m_object_id = GenerateObjectId();
 
-        return m_initialised;
+        return true;
     }
 
     void RHI_SwapChain::AcquireNextImage()
@@ -410,5 +422,21 @@ namespace Spartan
 
         // Acquire next image
         AcquireNextImage();
+    }
+
+    void RHI_SwapChain::SetLayout(const RHI_Image_Layout& layout, RHI_CommandList* cmd_list)
+    {
+        if (m_layouts[m_image_index] == layout)
+            return;
+
+        vulkan_utility::image::set_layout(
+            reinterpret_cast<void*>(cmd_list->GetResource()),
+            reinterpret_cast<void*>(m_backbuffer_resource[m_image_index]),
+            VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 1,
+            m_layouts[m_image_index],
+            layout
+        );
+
+        m_layouts[m_image_index] = layout;
     }
 }
