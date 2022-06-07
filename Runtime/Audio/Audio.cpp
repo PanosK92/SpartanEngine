@@ -24,6 +24,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Audio.h"
 #include "../Profiling/Profiler.h"
 #include "../World/Components/Transform.h"
+SP_WARNINGS_OFF
+#include <fmod.hpp>
+#include <fmod_errors.h>
+SP_WARNINGS_ON
 //========================================
 
 //= NAMESPACES ======
@@ -62,46 +66,40 @@ namespace Spartan
         }
     }
 
-    bool Audio::OnInitialize()
+    void Audio::OnInitialize()
     {
         // Create FMOD instance
         m_result_fmod = System_Create(&m_system_fmod);
         if (m_result_fmod != FMOD_OK)
         {
             LogErrorFmod(m_result_fmod);
-            return false;
+            SP_ASSERT(0 && "Failed to create FMOD instance");
         }
 
-        // Check FMOD version
+        // Get FMOD version
         uint32_t version;
         m_result_fmod = m_system_fmod->getVersion(&version);
         if (m_result_fmod != FMOD_OK)
         {
             LogErrorFmod(m_result_fmod);
-            return false;
+            SP_ASSERT(0 && "Failed to get FMOD version");
         }
 
-        if (version < FMOD_VERSION)
-        {
-            LogErrorFmod(m_result_fmod);
-            return false;
-        }
-
-        // Make sure there is a sound card devices on the machine
-        auto driver_count = 0;
+        // Make sure there is a sound device on the machine
+        int driver_count = 0;
         m_result_fmod = m_system_fmod->getNumDrivers(&driver_count);
         if (m_result_fmod != FMOD_OK)
         {
             LogErrorFmod(m_result_fmod);
-            return false;
+            SP_ASSERT(0 && "Failed to get a sound device");
         }
 
-        // Initialize FMOD
+        // Initialise FMOD
         m_result_fmod = m_system_fmod->init(m_max_channels, FMOD_INIT_NORMAL, nullptr);
         if (m_result_fmod != FMOD_OK)
         {
             LogErrorFmod(m_result_fmod);
-            return false;
+            SP_ASSERT(0 && "Failed to initialise FMOD");
         }
 
         // Set 3D settings
@@ -109,10 +107,8 @@ namespace Spartan
         if (m_result_fmod != FMOD_OK)
         {
             LogErrorFmod(m_result_fmod);
-            return false;
+            SP_ASSERT(0 && "Failed to set 3D settomgs");
         }
-
-        m_initialized = true;
 
         // Get version
         stringstream ss;
@@ -127,17 +123,12 @@ namespace Spartan
 
         // Subscribe to events
         SP_SUBSCRIBE_TO_EVENT(EventType::WorldClear, [this](Variant) { m_listener = nullptr; });
-   
-        return true;
     }
 
     void Audio::OnTick(double delta_time)
     {
         // Don't play audio if the engine is not in game mode
         if (!m_context->m_engine->EngineMode_IsSet(Engine_Game))
-            return;
-
-        if (!m_initialized)
             return;
 
         SCOPED_TIME_BLOCK(m_profiler);

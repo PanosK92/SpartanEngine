@@ -82,8 +82,8 @@ namespace Spartan
         return nullptr;
     }
     
-    bool RHI_IndexBuffer::Unmap()
+    void RHI_IndexBuffer::Unmap()
     {
-        return true;
+
     }
 }

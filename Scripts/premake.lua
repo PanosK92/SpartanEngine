@@ -48,14 +48,8 @@ elseif API_GRAPHICS == "vulkan" then
 	TARGET_NAME                 = TARGET_NAME .. "_vulkan"
 	IGNORE_FILES[0]             = RUNTIME_DIR .. "/RHI/D3D11/**"
 	IGNORE_FILES[1]             = RUNTIME_DIR .. "/RHI/D3D12/**"
-	ADDITIONAL_INCLUDES[0]      = "../ThirdParty/SPIRV-Cross-2021-01-15";
+	ADDITIONAL_INCLUDES[0]      = "../ThirdParty/SPIRV-Cross-03-06-2022";
 	ADDITIONAL_INCLUDES[1]      = "../ThirdParty/Vulkan_1.3.211.0";
-	ADDITIONAL_LIBRARIES[0]     = "spirv-cross-core";
-	ADDITIONAL_LIBRARIES[1]     = "spirv-cross-hlsl";
-	ADDITIONAL_LIBRARIES[2]     = "spirv-cross-glsl";
-	ADDITIONAL_LIBRARIES_DBG[0] = "spirv-cross-core_debug";
-	ADDITIONAL_LIBRARIES_DBG[1] = "spirv-cross-hlsl_debug";
-	ADDITIONAL_LIBRARIES_DBG[2] = "spirv-cross-glsl_debug";
 end
 
 -- Solution
@@ -126,7 +120,7 @@ project (RUNTIME_NAME)
 	removefiles { IGNORE_FILES[0], IGNORE_FILES[1] }
 
 	-- Includes
-	includedirs { "../ThirdParty/DirectXShaderCompiler_1.6.2109" }
+	includedirs { "../ThirdParty/DirectXShaderCompiler-03-06-2022" }
 	includedirs { "../ThirdParty/Assimp_5.2.2" }
 	includedirs { "../ThirdParty/Bullet_3.21" }
 	includedirs { "../ThirdParty/FMOD_1.10.10" }
@@ -154,7 +148,12 @@ project (RUNTIME_NAME)
 		links { "libmono-static-sgen_debug.lib" }
 		links { "SDL2_debug.lib" }
 		links { "Compressonator_MT_debug.lib" }
-		links { ADDITIONAL_LIBRARIES_DBG[0], ADDITIONAL_LIBRARIES_DBG[1], ADDITIONAL_LIBRARIES_DBG[2] }
+	    links { "spirv-cross-c_debug" }
+	    links { "spirv-cross-core_debug" }
+	    links { "spirv-cross-cpp_debug" }
+	    links { "spirv-cross-glsl_debug" }
+	    links { "spirv-cross-hlsl_debug" }
+	    links { "spirv-cross-reflect_debug" }
 
 	--	"Release"
 	filter "configurations:Release"
@@ -169,7 +168,12 @@ project (RUNTIME_NAME)
 		links { "libmono-static-sgen.lib" }
 		links { "SDL2.lib" }
 		links { "Compressonator_MT.lib" }
-		links { ADDITIONAL_LIBRARIES[0], ADDITIONAL_LIBRARIES[1], ADDITIONAL_LIBRARIES[2] }
+	    links { "spirv-cross-c" }
+	    links { "spirv-cross-core" }
+	    links { "spirv-cross-cpp" }
+	    links { "spirv-cross-glsl" }
+	    links { "spirv-cross-hlsl" }
+	    links { "spirv-cross-reflect" }
 
 -- Editor --------------------------------------------------------------------------------------------------
 project (EDITOR_NAME)

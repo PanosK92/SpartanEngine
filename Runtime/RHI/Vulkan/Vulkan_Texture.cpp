@@ -78,7 +78,7 @@ namespace Spartan
         return flags;
     }
 
-    static bool create_image(RHI_Texture* texture)
+    static void create_image(RHI_Texture* texture)
     {
         // Deduce format flags
         bool is_render_target_depth_stencil = texture->IsRenderTargetDepthStencil();
@@ -91,8 +91,7 @@ namespace Spartan
         // Ensure the format is supported by the GPU
         if (image_tiling == VK_IMAGE_TILING_MAX_ENUM)
         {
-            LOG_ERROR("GPU does not support the usage of %s as a %s.", RhiFormatToString(format), is_render_target_depth_stencil ? "depth-stencil attachment" : "color attachment");
-            return false;
+            SP_ASSERT(0 && "The GPU doesn't support this format");
         }
         
         // Warn if the the image is using a non-optimal format
@@ -101,7 +100,7 @@ namespace Spartan
             LOG_WARNING("Format %s does not support optimal tiling, considering switching to a more efficient format.", RhiFormatToString(format));
         }
 
-        // Set layout to preinitialised (required by Vulkan)
+        // Set layout to pre-initialised (required by Vulkan)
         texture->SetLayout(RHI_Image_Layout::Preinitialized, nullptr);
 
         VkImageCreateInfo create_info = {};
@@ -120,33 +119,9 @@ namespace Spartan
         create_info.samples           = VK_SAMPLE_COUNT_1_BIT;
         create_info.sharingMode       = VK_SHARING_MODE_EXCLUSIVE;
 
-        VmaAllocationCreateInfo allocation_info = {};
-        allocation_info.usage                   = VMA_MEMORY_USAGE_AUTO;
-
         // Create image
-        VmaAllocation allocation;
         void*& resource = texture->GetResource();
-        if (!vulkan_utility::error::check(vmaCreateImage(vulkan_utility::globals::rhi_context->allocator, &create_info, &allocation_info, reinterpret_cast<VkImage*>(&resource), &allocation, nullptr)))
-            return false;
-
-        // Keep allocation reference
-        vulkan_utility::globals::rhi_context->allocations[texture->GetObjectId()] = allocation;
-
-        return true;
-    }
-
-    static void destroy_image(RHI_Texture* texture)
-    {
-        void*& resource        = texture->GetResource();
-        uint64_t allocation_id = texture->GetObjectId();
-
-        auto it = vulkan_utility::globals::rhi_context->allocations.find(allocation_id);
-        if (it != vulkan_utility::globals::rhi_context->allocations.end())
-        {
-            VmaAllocation allocation = it->second;
-            vmaDestroyImage(vulkan_utility::globals::rhi_context->allocator, static_cast<VkImage>(resource), allocation);
-            vulkan_utility::globals::rhi_context->allocations.erase(allocation_id);
-        }
+        vulkan_utility::vma_allocator::create_texture(create_info, resource);
     }
 
     static void set_debug_name(RHI_Texture* texture)
@@ -232,24 +207,24 @@ namespace Spartan
         }
 
         // Create staging buffer
-        VmaAllocation allocation = vulkan_utility::buffer::create(staging_buffer, buffer_offset, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, nullptr);
+        vulkan_utility::vma_allocator::create_buffer(staging_buffer, buffer_offset, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
         // Copy array and mip level data to the staging buffer
-        void* data = nullptr;
+        void* mapped_data = nullptr;
         buffer_offset = 0;
-        if (vulkan_utility::error::check(vmaMapMemory(vulkan_utility::globals::rhi_context->allocator, allocation, &data)))
+        vulkan_utility::vma_allocator::map(staging_buffer, mapped_data);
         {
             for (uint32_t array_index = 0; array_index < array_length; array_index++)
             {
                 for (uint32_t mip_index = 0; mip_index < mip_count; mip_index++)
                 {
                     uint64_t buffer_size = static_cast<uint64_t>(width >> mip_index) * static_cast<uint64_t>(height >> mip_index) * static_cast<uint64_t>(bytes_per_pixel);
-                    memcpy(static_cast<std::byte*>(data) + buffer_offset, texture->GetMip(array_index, mip_index).bytes.data(), buffer_size);
+                    memcpy(static_cast<std::byte*>(mapped_data) + buffer_offset, texture->GetMip(array_index, mip_index).bytes.data(), buffer_size);
                     buffer_offset += buffer_size;
                 }
             }
 
-            vmaUnmapMemory(vulkan_utility::globals::rhi_context->allocator, allocation);
+            vulkan_utility::vma_allocator::unmap(staging_buffer, mapped_data);
         }
 
         return true;
@@ -286,7 +261,7 @@ namespace Spartan
             vulkan_utility::command_buffer_immediate::end(RHI_Queue_Type::Graphics);
 
             // Free staging buffer
-            vulkan_utility::buffer::destroy(staging_buffer);
+            vulkan_utility::vma_allocator::destroy_buffer(staging_buffer);
 
             // Update texture layout
             texture->SetLayout(layout, nullptr);
@@ -327,12 +302,7 @@ namespace Spartan
         SP_ASSERT(m_rhi_device != nullptr);
         SP_ASSERT(m_rhi_device->GetContextRhi()->device != nullptr);
 
-        // Create image
-        if (!create_image(this))
-        {
-            LOG_ERROR("Failed to create image");
-            return false;
-        }
+        create_image(this);
 
         // If the texture has any data, stage it
         if (HasData())
@@ -443,7 +413,7 @@ namespace Spartan
 
         if (destroy_main)
         {
-            destroy_image(this);
+            vulkan_utility::vma_allocator::destroy_texture(m_resource);
         }
     }
 }

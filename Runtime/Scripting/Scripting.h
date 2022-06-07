@@ -24,18 +24,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==================
 #include <vector>
 #include <string>
-#include "ScriptInstance.h"
 #include "../Core/Subsystem.h"
 //=============================
-
-//= FORWARD DECLARATIONS =
-struct _MonoDomain;
-//========================
 
 namespace Spartan
 {
     //= FORWARD DECLARATIONS =
     class Script;
+    struct ScriptInstance;
     //========================
 
     static const uint32_t SCRIPT_NOT_LOADED = 0;
@@ -46,9 +42,9 @@ namespace Spartan
         Scripting(Context* context);
         ~Scripting();
 
-        //= Subsystem =============
-        bool OnInitialize() override;
-        //=========================
+        //= Subsystem ===============
+        void OnInitialize() override;
+        //===========================
 
         uint32_t Load(const std::string& file_path, Script* script_component);
         ScriptInstance* GetScript(const uint32_t id);
@@ -59,7 +55,7 @@ namespace Spartan
     private:
         bool CompileApiAssembly();
 
-        MonoDomain* m_domain = nullptr;
+        void* m_domain = nullptr;
         std::unordered_map<uint32_t, ScriptInstance> m_scripts;
         uint32_t m_script_id = SCRIPT_NOT_LOADED;
         bool m_api_assembly_compiled = false;

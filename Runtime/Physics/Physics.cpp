@@ -19,14 +19,22 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =====================
+//= INCLUDES ===================================================================
 #include "Spartan.h"
 #include "Physics.h"
 #include "PhysicsDebugDraw.h"
 #include "BulletPhysicsHelper.h"
 #include "../Profiling/Profiler.h"
 #include "../Rendering/Renderer.h"
-//================================
+SP_WARNINGS_OFF
+#include "BulletCollision/BroadphaseCollision/btDbvtBroadphase.h"
+#include "BulletDynamics/ConstraintSolver/btSequentialImpulseConstraintSolver.h"
+#include "BulletSoftBody/btSoftBodyRigidBodyCollisionConfiguration.h"
+#include "BulletCollision/CollisionDispatch/btCollisionDispatcher.h"
+#include "BulletDynamics/Dynamics/btDiscreteDynamicsWorld.h"
+#include "BulletSoftBody/btSoftRigidDynamicsWorld.h"
+SP_WARNINGS_ON
+//==============================================================================
 
 //= NAMESPACES ================
 using namespace std;
@@ -45,36 +53,36 @@ namespace Spartan
         if (m_soft_body_support)
         {
             // Create
-            m_collision_configuration  = new btSoftBodyRigidBodyCollisionConfiguration();
-            m_collision_dispatcher     = new btCollisionDispatcher(m_collision_configuration);
-            m_world                    = new btSoftRigidDynamicsWorld(m_collision_dispatcher, m_broadphase, m_constraint_solver, m_collision_configuration);
+            m_collision_configuration = new btSoftBodyRigidBodyCollisionConfiguration();
+            m_collision_dispatcher    = new btCollisionDispatcher(m_collision_configuration);
+            m_world                   = new btSoftRigidDynamicsWorld(m_collision_dispatcher, m_broadphase, m_constraint_solver, m_collision_configuration);
 
             // Setup         
             m_world_info = new btSoftBodyWorldInfo();
             m_world_info->m_sparsesdf.Initialize();
-            m_world->getDispatchInfo().m_enableSPU  = true;
-            m_world_info->m_dispatcher              = m_collision_dispatcher;
-            m_world_info->m_broadphase              = m_broadphase;
-            m_world_info->air_density               = (btScalar)1.2;
-            m_world_info->water_density             = 0;
-            m_world_info->water_offset              = 0;
-            m_world_info->water_normal              = btVector3(0, 0, 0);
-            m_world_info->m_gravity                 = ToBtVector3(m_gravity);
+            m_world->getDispatchInfo().m_enableSPU = true;
+            m_world_info->m_dispatcher             = m_collision_dispatcher;
+            m_world_info->m_broadphase             = m_broadphase;
+            m_world_info->air_density              = (btScalar)1.2;
+            m_world_info->water_density            = 0;
+            m_world_info->water_offset             = 0;
+            m_world_info->water_normal             = btVector3(0, 0, 0);
+            m_world_info->m_gravity                = ToBtVector3(m_gravity);
 
         }
         else
         {
             // Create
-            m_collision_configuration   = new btDefaultCollisionConfiguration();
-            m_collision_dispatcher      = new btCollisionDispatcher(m_collision_configuration);
-            m_world                     = new btDiscreteDynamicsWorld(m_collision_dispatcher, m_broadphase, m_constraint_solver, m_collision_configuration);
+            m_collision_configuration = new btDefaultCollisionConfiguration();
+            m_collision_dispatcher    = new btCollisionDispatcher(m_collision_configuration);
+            m_world                   = new btDiscreteDynamicsWorld(m_collision_dispatcher, m_broadphase, m_constraint_solver, m_collision_configuration);
         }
 
         // Setup
         m_world->setGravity(ToBtVector3(m_gravity));
-        m_world->getDispatchInfo().m_useContinuous  = true;
-        m_world->getSolverInfo().m_splitImpulse     = false;
-        m_world->getSolverInfo().m_numIterations    = m_max_solve_iterations;
+        m_world->getDispatchInfo().m_useContinuous = true;
+        m_world->getSolverInfo().m_splitImpulse = false;
+        m_world->getSolverInfo().m_numIterations = m_max_solve_iterations;
     }
 
     Physics::~Physics()
@@ -88,7 +96,7 @@ namespace Spartan
         SP_DELETE(m_debug_draw);
     }
 
-    bool Physics::OnInitialize()
+    void Physics::OnInitialize()
     {
         // Get dependencies
         m_renderer = m_context->GetSubsystem<Renderer>();
@@ -108,8 +116,6 @@ namespace Spartan
                 m_world->setDebugDrawer(m_debug_draw);
             }
         }
-
-        return true;
     }
 
     void Physics::OnTick(double delta_time_sec)

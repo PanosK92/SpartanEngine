@@ -39,15 +39,11 @@ namespace Spartan
         m_object_size_gpu = stride * element_count;
 
         // Create buffer
-        {
-            VkMemoryPropertyFlags flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
-            VmaAllocation allocation = vulkan_utility::buffer::create(m_resource, m_object_size_gpu, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, flags, data);
-            if (!allocation)
-                return;
+        VkMemoryPropertyFlags flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+        vulkan_utility::vma_allocator::create_buffer(m_resource, m_object_size_gpu, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, flags, data);
 
-            // Set debug name
-            vulkan_utility::debug::set_name(static_cast<VkBuffer>(m_resource), "structured_buffer");
-        }
+        // Set debug name
+        vulkan_utility::debug::set_name(static_cast<VkBuffer>(m_resource), "structured_buffer");
     }
 
     RHI_StructuredBuffer::~RHI_StructuredBuffer()
@@ -56,24 +52,17 @@ namespace Spartan
         m_rhi_device->QueueWaitAll();
 
         // Destroy buffer
-        vulkan_utility::buffer::destroy(m_resource);
+        vulkan_utility::vma_allocator::destroy_buffer(m_resource);
     }
 
     void* RHI_StructuredBuffer::Map()
     {
-        SP_ASSERT(m_rhi_device != nullptr);
-        SP_ASSERT(m_resource != nullptr);
-
-        SP_ASSERT(false && "Not implemented");
-
+        SP_ASSERT(0 && "Not implemented");
         return nullptr;
     }
 
     void RHI_StructuredBuffer::Unmap()
     {
-        SP_ASSERT(m_rhi_device != nullptr);
-        SP_ASSERT(m_resource != nullptr);
-
-        SP_ASSERT(false && "Not implemented");
+        SP_ASSERT(0 && "Not implemented");
     }
 }

@@ -34,8 +34,15 @@ namespace Spartan
     {
     public:
         RHI_DescriptorSet() = default;
-        RHI_DescriptorSet(RHI_Device* rhi_device, const std::vector<RHI_Descriptor>& descriptors, RHI_DescriptorSetLayout* descriptor_set_layout, const char* name);
         ~RHI_DescriptorSet() = default;
+
+        RHI_DescriptorSet(RHI_Device* rhi_device, const std::vector<RHI_Descriptor>& descriptors, RHI_DescriptorSetLayout* descriptor_set_layout, const char* name)
+        {
+            m_rhi_device = rhi_device;
+            if (name) { m_object_name = name;}
+            Create(descriptor_set_layout);
+            Update(descriptors);
+        }
 
         void* GetResource() { return m_resource; }
 
@@ -43,7 +50,7 @@ namespace Spartan
         void Create(RHI_DescriptorSetLayout* descriptor_set_layout);
         void Update(const std::vector<RHI_Descriptor>& descriptors);
 
-        void* m_resource = nullptr;
+        void* m_resource         = nullptr;
         RHI_Device* m_rhi_device = nullptr;
     };
 }

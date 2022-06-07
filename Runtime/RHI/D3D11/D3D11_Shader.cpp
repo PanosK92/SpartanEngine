@@ -168,9 +168,4 @@ namespace Spartan
 
         return nullptr;
     }
-
-    const char* RHI_Shader::GetShaderModel() const
-    {
-        return "5_0";
-    }
 }

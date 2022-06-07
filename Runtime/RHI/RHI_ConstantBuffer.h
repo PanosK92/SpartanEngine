@@ -31,52 +31,47 @@ namespace Spartan
     class SPARTAN_CLASS RHI_ConstantBuffer : public SpartanObject
     {
     public:
-        RHI_ConstantBuffer(const std::shared_ptr<RHI_Device>& rhi_device, const std::string& name, bool is_dynamic = false);
+        RHI_ConstantBuffer(const std::shared_ptr<RHI_Device>& rhi_device, const std::string& name);
         ~RHI_ConstantBuffer() { _destroy(); }
 
         template<typename T>
-        bool Create(const uint32_t offset_count = 1)
+        bool Create(const uint32_t element_count = 1)
         {
-            m_stride          = static_cast<uint32_t>(sizeof(T));
-            m_offset_count    = offset_count;
-            m_object_size_gpu = static_cast<uint64_t>(m_stride * m_offset_count);
+            m_element_count   = element_count;
+            m_stride          = static_cast<uint64_t>(sizeof(T));
+            m_object_size_gpu = static_cast<uint64_t>(m_stride * m_element_count);
 
             return _create();
         }
 
+        // Maps memory (if not already mapped) and returns a pointer to it.
         void* Map();
-        bool Unmap(const uint64_t offset = 0, const uint64_t size = 0);
+        // Unmaps mapped memory
+        void Unmap();
+        // Flushes mapped memory range
+        void Flush(const uint64_t size, const uint64_t offset);
 
+        void ResetOffset()              { m_reset_offset = true; }
+        bool GetResetOffset()     const { return m_reset_offset; }
+        bool IsPersistentBuffer() const { return m_persistent_mapping; }
         void* GetResource()       const { return m_resource; }
-        uint32_t GetStride()      const { return m_stride; }
-        uint32_t GetOffsetCount() const { return m_offset_count; }
-
-        // Static offset - The kind of offset that is used when updating the buffer.
-        uint32_t GetOffset()                             const { return m_offset_index * m_stride; }
-        uint32_t GetOffsetIndex()                        const { return m_offset_index; }
-        void SetOffsetIndex(const uint32_t offset_index)       { m_offset_index = offset_index; }
-        
-        // Dynamic offset - The kind of offset that is used when binding descriptor sets.
-        bool IsDynamic()                                        const { return m_is_dynamic; }
-        uint32_t GetOffsetDynamic()                             const { return m_offset_dynamic_index * m_stride; }
-        uint32_t GetOffsetIndexDynamic()                        const { return m_offset_dynamic_index; }
-        void SetOffsetIndexDynamic(const uint32_t offset_index)       { m_offset_dynamic_index = offset_index; }
+        uint64_t GetStride()      const { return m_stride; }
+        uint64_t GetOffset()      const { return m_offset; }
+        uint32_t GetStrideCount() const { return m_element_count; }
 
     private:
         bool _create();
         void _destroy();
 
-        bool m_is_dynamic               = false;    // only affects Vulkan
-        bool m_persistent_mapping       = true;     // only affects Vulkan, saves 2 ms of CPU time
-        void* m_mapped                  = nullptr;
-        uint32_t m_stride               = 0;
-        uint32_t m_offset_count         = 1;
-        uint32_t m_offset_index         = 0;
-        uint32_t m_offset_dynamic_index = 0;
+        bool m_persistent_mapping = false;
+        void* m_mapped_data       = nullptr;
+        uint64_t m_stride         = 0;
+        uint32_t m_element_count  = 0;
+        uint32_t m_offset         = 0;
+        bool m_reset_offset       = true;
 
         // API
-        void* m_resource   = nullptr;
-        void* m_allocation = nullptr;
+        void* m_resource = nullptr;
 
         // Dependencies
         std::shared_ptr<RHI_Device> m_rhi_device;

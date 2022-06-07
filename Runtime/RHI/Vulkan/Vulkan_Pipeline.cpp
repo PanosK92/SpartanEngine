@@ -321,7 +321,7 @@ namespace Spartan
                 // This means no render passes and no frame buffer objects.
                 VkPipelineRenderingCreateInfoKHR pipeline_rendering_create_info = {};
                 vector<VkFormat> attachment_formats_color;
-                VkFormat attachment_format_depth = VK_FORMAT_UNDEFINED;
+                VkFormat attachment_format_depth_stencil = VK_FORMAT_UNDEFINED;
                 {
                     // Swapchain buffer as a render target
                     if (m_state.render_target_swapchain)
@@ -343,13 +343,14 @@ namespace Spartan
                     // Depth
                     if (m_state.render_target_depth_texture)
                     {
-                        attachment_format_depth = vulkan_format[m_state.render_target_depth_texture->GetFormat()];
+                        attachment_format_depth_stencil = vulkan_format[m_state.render_target_depth_texture->GetFormat()];
                     }
 
                     pipeline_rendering_create_info.sType                   = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR;
                     pipeline_rendering_create_info.colorAttachmentCount    = static_cast<uint32_t>(attachment_formats_color.size());
                     pipeline_rendering_create_info.pColorAttachmentFormats = attachment_formats_color.data();
-                    pipeline_rendering_create_info.depthAttachmentFormat   = attachment_format_depth;
+                    pipeline_rendering_create_info.depthAttachmentFormat   = attachment_format_depth_stencil;
+                    pipeline_rendering_create_info.stencilAttachmentFormat = attachment_format_depth_stencil;
                 }
 
                 // Describe

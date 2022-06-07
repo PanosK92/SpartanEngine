@@ -50,7 +50,7 @@ namespace Spartan
         ~Profiler();
 
         //= Subsystem ===============
-        bool OnInitialize() override;
+        void OnInitialize() override;
         void OnPreTick() override;
         void OnPostTick() override;
         //===========================

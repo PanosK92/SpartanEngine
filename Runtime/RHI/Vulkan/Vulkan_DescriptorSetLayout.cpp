@@ -69,7 +69,7 @@ namespace Spartan
             layout_bindings[i].stageFlags         = stage_flags;
             layout_bindings[i].pImmutableSamplers = nullptr;
 
-            // Support partially bound descriptors, individual resources an arrays can be null.
+            // Support partially bound descriptors, for example, a shade array doesn't necessarily have to be fully bound.
             layout_binding_flags[i] = VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT; 
         }
 

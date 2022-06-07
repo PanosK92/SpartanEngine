@@ -19,14 +19,20 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==========================
+//= INCLUDES ===========================
 #include "Spartan.h"
 #include "Scripting.h"
 #include "ScriptingHelper.h"
 #include "ScriptingApi.h"
 #include "../Resource/ResourceCache.h"
 #include "../World/Components/Script.h"
-//=====================================
+SP_WARNINGS_OFF
+#include "mono/jit/jit.h"
+#include "mono/metadata/appdomain.h"
+#include "mono/metadata/threads.h"
+#include "mono/metadata/object.h"
+SP_WARNINGS_ON
+//======================================
 
 //= LIBRARIES =====================
 #pragma comment(lib, "version.lib")
@@ -48,10 +54,10 @@ namespace Spartan
 
     Scripting::~Scripting()
     {
-        mono_jit_cleanup(m_domain);
+        mono_jit_cleanup(static_cast<MonoDomain*>(m_domain));
     }
 
-    bool Scripting::OnInitialize()
+    void Scripting::OnInitialize()
     {
         ScriptingHelper::resource_cache = m_context->GetSubsystem<ResourceCache>();
 
@@ -67,14 +73,12 @@ namespace Spartan
         m_domain = mono_jit_init_version("Spartan", "v4.0.30319");
         if (!m_domain)
         {
-            LOG_ERROR("mono_jit_init failed");
-            return false;
+            SP_ASSERT(0 && "mono_jit_init failed");
         }
 
-        if (!mono_domain_set(m_domain, false))
+        if (!mono_domain_set(static_cast<MonoDomain*>(m_domain), false))
         {
-            LOG_ERROR("mono_domain_set failed");
-            return false;
+            SP_ASSERT(0 && "mono_domain_set failed");
         }
 
         // soft debugger needs this
@@ -82,9 +86,30 @@ namespace Spartan
 
         // Get version
         m_context->GetSubsystem<Settings>()->RegisterThirdPartyLib("Mono", "6.10.0.104", "https://www.mono-project.com/");
-
-        return true;
     }
+
+    struct ScriptInstance
+    {
+        MonoAssembly* assembly = nullptr;
+        MonoImage* image = nullptr;
+        MonoClass* klass = nullptr;
+        MonoObject* object = nullptr;
+        MonoMethod* method_start = nullptr;
+        MonoMethod* method_update = nullptr;
+
+        template<class T>
+        bool SetValue(T* value, const std::string& name)
+        {
+            if (MonoClassField* field = mono_class_get_field_from_name(klass, name.c_str()))
+            {
+                mono_field_set_value(object, field, value);
+                return true;
+            }
+
+            LOG_ERROR("Failed to set value for field %s", name.c_str());
+            return false;
+        }
+    };
 
     uint32_t Scripting::Load(const std::string& file_path, Script* script_component)
     {
@@ -98,7 +123,7 @@ namespace Spartan
         ScriptInstance script;
         const string class_name = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path);
 
-        script.assembly = ScriptingHelper::compile_and_load_assembly(m_domain, file_path);
+        script.assembly = ScriptingHelper::compile_and_load_assembly(static_cast<MonoDomain*>(m_domain), file_path);
         if (!script.assembly)
         {
             LOG_ERROR("Failed to load assembly");
@@ -123,7 +148,7 @@ namespace Spartan
         }
         
         // Create class instance
-        script.object = mono_object_new(m_domain, script.klass);
+        script.object = mono_object_new(static_cast<MonoDomain*>(m_domain), script.klass);
         if (!script.object)
         {
             mono_image_close(script.image);
@@ -213,7 +238,7 @@ namespace Spartan
     {
         // Get callbacks assembly
         const string api_cs           = ScriptingHelper::resource_cache->GetResourceDirectory(ResourceDirectory::Scripts) + "/" + "Spartan.cs";
-        MonoAssembly* api_assembly    = ScriptingHelper::compile_and_load_assembly(m_domain, api_cs, false);
+        MonoAssembly* api_assembly    = ScriptingHelper::compile_and_load_assembly(static_cast<MonoDomain*>(m_domain), api_cs, false);
         if (!api_assembly)
         {
             LOG_ERROR("Failed to get api assembly");

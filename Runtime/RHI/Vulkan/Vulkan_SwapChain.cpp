@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_CommandList.h"
 #include "../RHI_Pipeline.h"
 #include "../RHI_Semaphore.h"
+#include "../RHI_CommandPool.h"
 #include "../../Profiling/Profiler.h"
 #include "../../Rendering/Renderer.h"
 //===================================
@@ -50,9 +51,9 @@ namespace Spartan
         void* window_handle,
         void*& surface,
         void*& swap_chain,
-        array<void*, rhi_max_render_target_count>& backbuffer_textures,
-        array<void*, rhi_max_render_target_count>& backbuffer_texture_views,
-        array<std::shared_ptr<RHI_Semaphore>, rhi_max_render_target_count>& image_acquired_semaphore
+        array<void*, 3>& backbuffer_textures,
+        array<void*, 3>& backbuffer_texture_views,
+        array<std::shared_ptr<RHI_Semaphore>, 3>& image_acquired_semaphore
     )
         {
             RHI_Context* rhi_context = rhi_device->GetContextRhi();
@@ -197,8 +198,8 @@ namespace Spartan
         uint8_t buffer_count,
         void*& surface,
         void*& swap_chain,
-        array<void*, rhi_max_render_target_count>& image_views,
-        array<std::shared_ptr<RHI_Semaphore>, rhi_max_render_target_count>& image_acquired_semaphore
+        array<void*, 3>& image_views,
+        array<std::shared_ptr<RHI_Semaphore>, 3>& image_acquired_semaphore
     )
     {
         RHI_Context* rhi_context = rhi_device->GetContextRhi();
@@ -229,22 +230,22 @@ namespace Spartan
         const shared_ptr<RHI_Device>& rhi_device,
         const uint32_t width,
         const uint32_t height,
-        const RHI_Format format     /*= Format_R8G8B8A8_UNORM */,
-        const uint32_t buffer_count /*= 2 */,
-        const uint32_t flags        /*= Present_Immediate */,
-        const char* name            /*= nullptr */
+        const RHI_Format format,
+        const uint32_t buffer_count,
+        const uint32_t flags,
+        const char* name
     )
     {
-        // Verify device
-        SP_ASSERT(rhi_device != nullptr);
-        SP_ASSERT(rhi_device->GetContextRhi()->device != nullptr);
-
         // Verify resolution
         if (!rhi_device->IsValidResolution(width, height))
         {
             LOG_WARNING("%dx%d is an invalid resolution", width, height);
             return;
         }
+
+        m_semaphore_image_acquired.fill(nullptr);
+        m_backbuffer_resource.fill(nullptr);
+        m_backbuffer_resource_view.fill(nullptr);
 
         // Copy parameters
         m_format        = format;
@@ -270,7 +271,7 @@ namespace Spartan
             m_resource,
             m_backbuffer_resource,
             m_backbuffer_resource_view,
-            m_image_acquired_semaphore
+            m_semaphore_image_acquired
         );
 
         AcquireNextImage();
@@ -289,7 +290,7 @@ namespace Spartan
             m_surface,
             m_resource,
             m_backbuffer_resource_view,
-            m_image_acquired_semaphore
+            m_semaphore_image_acquired
         );
     }
 
@@ -327,7 +328,7 @@ namespace Spartan
             m_surface,
             m_resource,
             m_backbuffer_resource_view,
-            m_image_acquired_semaphore
+            m_semaphore_image_acquired
         );
 
         // Create the swap chain with the new dimensions
@@ -345,7 +346,7 @@ namespace Spartan
             m_resource,
             m_backbuffer_resource,
             m_backbuffer_resource_view,
-            m_image_acquired_semaphore
+            m_semaphore_image_acquired
         );
 
         // The pipeline state used by the pipeline will now be invalid since it's referring to a destroyed swap chain view.
@@ -360,12 +361,12 @@ namespace Spartan
         SP_ASSERT(m_present_enabled && "No need to acquire next image when presenting is disabled");
 
         // Return if the swapchain has a single buffer and it has already been acquired
-        if (m_buffer_count == 1 && m_image_index != numeric_limits<uint32_t>::max())
+        if (m_buffer_count == 1 && m_index_image_acquired != numeric_limits<uint32_t>::max())
             return;
 
         // Get signal semaphore
         m_semaphore_index = (m_semaphore_index + 1) % m_buffer_count;
-        RHI_Semaphore* signal_semaphore = m_image_acquired_semaphore[m_semaphore_index].get();
+        RHI_Semaphore* signal_semaphore = m_semaphore_image_acquired[m_semaphore_index].get();
 
         // Reset semaphore if it wasn't waited for
         if (signal_semaphore->GetState() != RHI_Semaphore_State::Idle)
@@ -381,7 +382,7 @@ namespace Spartan
             numeric_limits<uint64_t>::max(),                           // timeout
             static_cast<VkSemaphore>(signal_semaphore->GetResource()), // signal semaphore
             nullptr,                                                   // signal fence
-            &m_image_index                                             // pImageIndex
+            &m_index_image_acquired                                             // pImageIndex
         );
 
         // Recreate swapchain with different size (if needed)
@@ -410,11 +411,35 @@ namespace Spartan
         SP_ASSERT(m_resource != nullptr && "Can't present, the swapchain has not been initialised");
         SP_ASSERT(m_present_enabled && "Can't present, presenting has been disabled");
 
-        // Get the semaphore that present should wait for
-        RHI_Semaphore* wait_semaphore = m_image_acquired_semaphore[m_semaphore_index].get();
+        // Get the semaphores that present should wait for
+        static vector<RHI_Semaphore*> wait_semaphores;
+        {
+            wait_semaphores.clear();
+
+            // The first is simply the image acquired semaphore
+            wait_semaphores.emplace_back(m_semaphore_image_acquired[m_semaphore_index].get());
+
+            // The others are all the command lists
+            const vector<shared_ptr<RHI_CommandPool>>& cmd_pools = m_rhi_device->GetCommandPools();
+            for (shared_ptr<RHI_CommandPool> cmd_pool : cmd_pools)
+            {
+                // Is this command pool presenting to this swap chain ? If so, wait on those semaphores
+                if (m_object_id == cmd_pool->GetSwapchainId())
+                {
+                    RHI_Semaphore* semaphore = cmd_pool->GetCurrentCommandList()->GetSemaphoreProccessed();
+
+                    // Command lists can be discarded (when they reference destroyed memory).
+                    // In cases like that, the command lists are not submitted and as a result, the semaphore won't be signaled.
+                    if (semaphore->GetState() == RHI_Semaphore_State::Signaled)
+                    {
+                        wait_semaphores.emplace_back(semaphore);
+                    }
+                }
+            }
+        }
 
         // Present
-        if (!m_rhi_device->QueuePresent(m_resource, &m_image_index, wait_semaphore))
+        if (!m_rhi_device->QueuePresent(m_resource, &m_index_image_acquired, wait_semaphores))
         {
             LOG_ERROR("Failed to present");
             return;
@@ -426,17 +451,17 @@ namespace Spartan
 
     void RHI_SwapChain::SetLayout(const RHI_Image_Layout& layout, RHI_CommandList* cmd_list)
     {
-        if (m_layouts[m_image_index] == layout)
+        if (m_layouts[m_index_image_acquired] == layout)
             return;
 
         vulkan_utility::image::set_layout(
             reinterpret_cast<void*>(cmd_list->GetResource()),
-            reinterpret_cast<void*>(m_backbuffer_resource[m_image_index]),
+            reinterpret_cast<void*>(m_backbuffer_resource[m_index_image_acquired]),
             VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 1,
-            m_layouts[m_image_index],
+            m_layouts[m_index_image_acquired],
             layout
         );
 
-        m_layouts[m_image_index] = layout;
+        m_layouts[m_index_image_acquired] = layout;
     }
 }

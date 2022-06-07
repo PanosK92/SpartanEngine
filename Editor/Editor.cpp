@@ -70,12 +70,12 @@ const ImVec4 k_color_check               = ImVec4(26.0f / 255.0f, 140.0f / 255.0
 
 namespace _editor
 {
-    MenuBar* widget_menu_bar                 = nullptr;
-    Widget* widget_world                     = nullptr;
-    Spartan::Renderer* renderer              = nullptr;
-    Spartan::RHI_SwapChain* swapchain        = nullptr;
-    Spartan::Profiler* profiler              = nullptr;
-    Spartan::Window* window                  = nullptr;
+    MenuBar* widget_menu_bar          = nullptr;
+    Widget* widget_world              = nullptr;
+    Spartan::Renderer* renderer       = nullptr;
+    Spartan::RHI_SwapChain* swapchain = nullptr;
+    Spartan::Profiler* profiler       = nullptr;
+    Spartan::Window* window           = nullptr;
     shared_ptr<Spartan::RHI_Device> rhi_device;
 }
 
@@ -95,6 +95,7 @@ static void ImGui_Initialise(Spartan::Context* context)
     io.ConfigFlags                  |= ImGuiConfigFlags_ViewportsEnable;
     io.ConfigWindowsResizeFromEdges = true;
     io.ConfigViewportsNoTaskBarIcon = true;
+    io.IniFilename                  = "editor.ini";
 
     // Font
     const string dir_fonts = context->GetSubsystem<Spartan::ResourceCache>()->GetResourceDirectory(Spartan::ResourceDirectory::Fonts) + "/";
@@ -213,14 +214,7 @@ Editor::Editor()
     _editor::swapchain  = _editor::renderer->GetSwapChain();
     
     // Initialise Editor/ImGui
-    if (_editor::renderer->IsInitialised())
-    {
-        Initialise();
-    }
-    else
-    {
-        LOG_ERROR("Editor failed to initialise, renderer subsystem is required but it has also failed to initialise.");
-    }
+    Initialise();
 
     // Allow ImGui get event's from the engine's event processing loop
     SP_SUBSCRIBE_TO_EVENT(EventType::EventSDL, SP_EVENT_HANDLER_VARIANT_STATIC(ImGui_ProcessEvent));
@@ -237,9 +231,6 @@ void Editor::Tick()
     {
         // Engine - Tick
         m_engine->Tick();
-
-        if (!_editor::renderer || !_editor::renderer->IsInitialised())
-            continue;
 
         if (_editor::window->IsFullScreen())
         {

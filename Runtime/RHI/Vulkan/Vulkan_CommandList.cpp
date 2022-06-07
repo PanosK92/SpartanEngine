@@ -112,8 +112,8 @@ namespace Spartan
         }
 
         // Sync objects
-        string fence_name  = string(name) + "_fence";
-        m_proccessed_fence = make_shared<RHI_Fence>(m_rhi_device, fence_name.c_str());
+        m_proccessed_fence     = make_shared<RHI_Fence>(m_rhi_device, name);
+        m_proccessed_semaphore = make_shared<RHI_Semaphore>(m_rhi_device, false, name);
     }
 
     RHI_CommandList::~RHI_CommandList()
@@ -131,6 +131,8 @@ namespace Spartan
 
     void RHI_CommandList::Begin()
     {
+        m_discard = false;
+
         // Validate command list state
         SP_ASSERT(m_state == RHI_CommandListState::Idle);
 
@@ -196,9 +198,7 @@ namespace Spartan
 
         if (m_discard)
         {
-            m_discard = false;
-            m_state   = RHI_CommandListState::Submitted;
-
+            m_state = RHI_CommandListState::Submitted;
             return true;
         }
 
@@ -207,7 +207,7 @@ namespace Spartan
             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, // wait flags
             static_cast<VkCommandBuffer>(m_resource),      // cmd buffer
             nullptr,                                       // wait semaphore
-            nullptr,                                       // signal semaphore
+            m_proccessed_semaphore.get(),                  // signal semaphore
             m_proccessed_fence.get()                       // signal fence
             ))
         {
@@ -367,12 +367,13 @@ namespace Spartan
                 }
                 rt->SetLayout(layout, this);
 
-                attachment_depth_stencil.sType                   = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
-                attachment_depth_stencil.imageView               = static_cast<VkImageView>(rt->GetResource_View_DepthStencil(m_pipeline_state.render_target_depth_stencil_texture_array_index));
-                attachment_depth_stencil.imageLayout             = vulkan_image_layout[static_cast<uint8_t>(rt->GetLayout(0))];
-                attachment_depth_stencil.loadOp                  = get_depth_load_op(m_pipeline_state.clear_depth);
-                attachment_depth_stencil.storeOp                 = VK_ATTACHMENT_STORE_OP_STORE;
-                attachment_depth_stencil.clearValue.depthStencil = { m_pipeline_state.clear_depth, 0 };
+                attachment_depth_stencil.sType                           = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
+                attachment_depth_stencil.imageView                       = static_cast<VkImageView>(rt->GetResource_View_DepthStencil(m_pipeline_state.render_target_depth_stencil_texture_array_index));
+                attachment_depth_stencil.imageLayout                     = vulkan_image_layout[static_cast<uint8_t>(rt->GetLayout(0))];
+                attachment_depth_stencil.loadOp                          = get_depth_load_op(m_pipeline_state.clear_depth);
+                attachment_depth_stencil.storeOp                         = VK_ATTACHMENT_STORE_OP_STORE;
+                attachment_depth_stencil.clearValue.depthStencil.depth   = m_pipeline_state.clear_depth;
+                attachment_depth_stencil.clearValue.depthStencil.stencil = m_pipeline_state.clear_stencil;
 
                 rendering_info.pDepthAttachment = &attachment_depth_stencil;
 
@@ -519,7 +520,6 @@ namespace Spartan
 
     void RHI_CommandList::Draw(const uint32_t vertex_count, uint32_t vertex_start_index /*= 0*/)
     {
-        // Validate command list state
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
         // Ensure correct state before attempting to draw
@@ -542,7 +542,6 @@ namespace Spartan
 
     void RHI_CommandList::DrawIndexed(const uint32_t index_count, const uint32_t index_offset, const uint32_t vertex_offset)
     {
-        // Validate command list state
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
         // Ensure correct state before attempting to draw
@@ -564,7 +563,6 @@ namespace Spartan
 
     void RHI_CommandList::Dispatch(uint32_t x, uint32_t y, uint32_t z, bool async /*= false*/)
     {
-        // Validate command list state
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
         // Ensure correct state before attempting to dispatch
@@ -699,8 +697,8 @@ namespace Spartan
             offsets                                   // pOffsets
         );
 
-        m_vertex_buffer_id      = buffer->GetObjectId();
-        m_vertex_buffer_offset  = offset;
+        m_vertex_buffer_id     = buffer->GetObjectId();
+        m_vertex_buffer_offset = offset;
 
         if (m_profiler)
         {
@@ -723,8 +721,8 @@ namespace Spartan
             buffer->Is16Bit() ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32 // indexType
         );
 
-        m_index_buffer_id       = buffer->GetObjectId();
-        m_index_buffer_offset   = offset;
+        m_index_buffer_id     = buffer->GetObjectId();
+        m_index_buffer_offset = offset;
 
         if (m_profiler)
         {
@@ -897,36 +895,29 @@ namespace Spartan
         }
     }
 
-    bool RHI_CommandList::Timestamp_Start(void* query)
+    void RHI_CommandList::Timestamp_Start(void* query)
     {
         // Validate command list state
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
         if (!m_rhi_device->GetContextRhi()->profiler)
-            return true;
+            return;
 
         if (!m_query_pool)
-            return false;
+            return;
 
         vkCmdWriteTimestamp(static_cast<VkCommandBuffer>(m_resource), VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, static_cast<VkQueryPool>(m_query_pool), m_timestamp_index++);
-
-        return true;
     }
 
-    bool RHI_CommandList::Timestamp_End(void* query)
+    void RHI_CommandList::Timestamp_End(void* query)
     {
-        // Validate command list state
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
+        SP_ASSERT(m_query_pool != nullptr);
 
         if (!m_rhi_device->GetContextRhi()->profiler)
-            return true;
-
-        if (!m_query_pool)
-            return false;
+            return;
 
         vkCmdWriteTimestamp(static_cast<VkCommandBuffer>(m_resource), VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, static_cast<VkQueryPool>(m_query_pool), m_timestamp_index++);
-
-        return true;
     }
 
     float RHI_CommandList::Timestamp_GetDuration(void* query_start, void* query_end, const uint32_t pass_index)
@@ -1022,34 +1013,25 @@ namespace Spartan
         {
             m_renderer->SetGlobalShaderResources(this);
 
-            RHI_DescriptorSet* descriptor_set = nullptr;
-            m_descriptor_layout_current->GetDescriptorSet(descriptor_set);
-
-            bool descriptor_set_already_bound = descriptor_set == nullptr;
-            if (!descriptor_set_already_bound)
+            // If the descriptor set is null, it means we don't need to bind anything.
+            if (RHI_DescriptorSet* descriptor_set = m_descriptor_layout_current->GetDescriptorSet())
             {
-                // Dynamic offsets
-                const array<uint32_t, rhi_max_constant_buffer_count> dynamic_offsets = m_descriptor_layout_current->GetDynamicOffsets();
-                uint32_t dynamic_offset_count = m_descriptor_layout_current->GetDynamicOffsetCount();
-
                 // Get descriptor sets
                 array<void*, 1> descriptor_sets = { descriptor_set->GetResource() };
-                for (uint32_t i = 0; i < static_cast<uint32_t>(descriptor_sets.size()); i++)
-                {
-                    SP_ASSERT(descriptor_sets[i] != nullptr);
-                }
 
                 // Bind descriptor set
                 vkCmdBindDescriptorSets
                 (
-                    static_cast<VkCommandBuffer>(m_resource),                                                                                                  // commandBuffer
-                    m_pipeline_state.IsCompute() ? VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_COMPUTE : VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS, // pipelineBindPoint
-                    static_cast<VkPipelineLayout>(m_pipeline->GetResource_PipelineLayout()),                                                                   // layout
-                    0,                                                                                                                                         // firstSet
-                    static_cast<uint32_t>(descriptor_sets.size()),                                                                                             // descriptorSetCount
-                    reinterpret_cast<VkDescriptorSet*>(descriptor_sets.data()),                                                                                // pDescriptorSets
-                    dynamic_offset_count,                                                                                                                      // dynamicOffsetCount
-                    !dynamic_offsets.empty() ? dynamic_offsets.data() : nullptr                                                                                // pDynamicOffsets
+                    static_cast<VkCommandBuffer>(m_resource),                                // commandBuffer
+                    m_pipeline_state.IsCompute() ?                                           // pipelineBindPoint
+                    VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_COMPUTE :                    
+                    VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS,                    
+                    static_cast<VkPipelineLayout>(m_pipeline->GetResource_PipelineLayout()), // layout
+                    0,                                                                       // firstSet
+                    static_cast<uint32_t>(descriptor_sets.size()),                           // descriptorSetCount
+                    reinterpret_cast<VkDescriptorSet*>(descriptor_sets.data()),              // pDescriptorSets
+                    m_descriptor_layout_current->GetConstantBufferCount(),                   // dynamicOffsetCount
+                    m_descriptor_layout_current->GetDynamicOffsets()                         // pDynamicOffsets
                 );
 
                 if (m_profiler)

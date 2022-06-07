@@ -23,9 +23,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ======================
 #include "../Core/SpartanObject.h"
+#include "../Display/DisplayMode.h"
 #include <mutex>
 #include <memory>
-#include "../Display/DisplayMode.h"
 #include "RHI_PhysicalDevice.h"
 #include "RHI_DescriptorSet.h"
 //=================================
@@ -42,7 +42,7 @@ namespace Spartan
         const PhysicalDevice* GetPrimaryPhysicalDevice();
 
         // Queue
-        bool QueuePresent(void* swapchain_view, uint32_t* image_index, RHI_Semaphore* wait_semaphore = nullptr) const;
+        bool QueuePresent(void* swapchain_view, uint32_t* image_index, std::vector<RHI_Semaphore*>& wait_semaphores) const;
         bool QueueSubmit(const RHI_Queue_Type type, const uint32_t wait_flags, void* cmd_buffer, RHI_Semaphore* wait_semaphore = nullptr, RHI_Semaphore* signal_semaphore = nullptr, RHI_Fence* signal_fence = nullptr) const;
         bool QueueWait(const RHI_Queue_Type type) const;
         bool QueueWaitAll() const;
@@ -72,6 +72,10 @@ namespace Spartan
         bool HasDescriptorSetCapacity();
         void SetDescriptorSetCapacity(uint32_t descriptor_set_capacity);
 
+        // Command pools
+        RHI_CommandPool* AllocateCommandPool(const char* name, const uint64_t swap_chain_id);
+        const std::vector<std::shared_ptr<RHI_CommandPool>>& GetCommandPools() { return m_cmd_pools; }
+
         // Misc
         bool IsValidResolution(const uint32_t width, const uint32_t height);
         RHI_Context* GetContextRhi()        const { return m_rhi_context.get(); }
@@ -100,6 +104,9 @@ namespace Spartan
         std::unordered_map<uint32_t, RHI_DescriptorSet> m_descriptor_sets;
         void* m_descriptor_pool            = nullptr;
         uint32_t m_descriptor_set_capacity = 0;
+
+        // Command pools
+        std::vector<std::shared_ptr<RHI_CommandPool>> m_cmd_pools;
 
         // Device properties
         uint32_t m_max_texture_1d_dimension            = 0;

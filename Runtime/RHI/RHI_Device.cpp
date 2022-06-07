@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Spartan.h"
 #include "RHI_Device.h"
 #include "RHI_Implementation.h"
+#include "RHI_CommandPool.h"
 //=============================
 
 //= NAMESPACES ===============
@@ -63,7 +64,12 @@ namespace Spartan
         }
     }
 
-	bool RHI_Device::IsValidResolution(const uint32_t width, const uint32_t height)
+    RHI_CommandPool* RHI_Device::AllocateCommandPool(const char* name, const uint64_t swap_chain_id)
+    {
+        return m_cmd_pools.emplace_back(make_shared<RHI_CommandPool>(this, name, swap_chain_id)).get();
+    }
+    
+    bool RHI_Device::IsValidResolution(const uint32_t width, const uint32_t height)
     {
         return width  > 4 && width  <= m_max_texture_2d_dimension &&
                height > 4 && height <= m_max_texture_2d_dimension;

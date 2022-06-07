@@ -58,6 +58,49 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
+    template<typename T>
+    void update_dynamic_buffer(RHI_CommandList* cmd_list, RHI_ConstantBuffer* buffer_constant, T& buffer_cpu, T& buffer_cpu_mapped)
+    {
+        // Only update if needed
+        if (buffer_cpu == buffer_cpu_mapped)
+            return;
+
+        // If the buffer's memory won't fit another update, the re-allocate double the memory
+        if (buffer_constant->GetOffset() + buffer_constant->GetStride() >= buffer_constant->GetObjectSizeGpu())
+        {
+            buffer_constant->Create<T>(buffer_constant->GetStrideCount() * 2);
+        }
+
+        // Update
+        {
+            // GPU
+            {
+                uint64_t stride = buffer_constant->GetStride();
+                uint64_t offset = buffer_constant->GetResetOffset() ? 0 : (buffer_constant->GetOffset() + stride);
+
+                // Map (Vulkan uses persistent mapping so it will simply return the already mapped pointer)
+                T* buffer_gpu = static_cast<T*>(buffer_constant->Map());
+
+                // Copy
+                memcpy(reinterpret_cast<std::byte*>(buffer_gpu) + offset, reinterpret_cast<std::byte*>(&buffer_cpu), stride);
+
+                // Flush/Unmap
+                if (buffer_constant->IsPersistentBuffer()) // Vulkan
+                {
+                    buffer_constant->Flush(stride, offset);
+                }
+                else // D3D11
+                {
+                    buffer_constant->Unmap();
+                }
+
+            }
+
+            // CPU
+            buffer_cpu_mapped = buffer_cpu;
+        }
+    }
+
     Renderer::Renderer(Context* context) : Subsystem(context)
     {
         // Options
@@ -113,25 +156,15 @@ namespace Spartan
         Log::m_log_to_file = true;
     }
 
-    bool Renderer::OnInitialize()
+    void Renderer::OnInitialize()
     {
-        m_initialised = false;
-
         // Get window subsystem (required in order to know a windows size and also create a swapchain for it).
         Window* window = m_context->GetSubsystem<Window>();
-        if (!window)
-        {
-            LOG_ERROR("The Renderer subsystem requires a Window subsystem.");
-            return false;
-        }
+        SP_ASSERT(window && "The Renderer subsystem requires a Window subsystem.");
 
         // Get resource cache subsystem (required in order to know from which paths to load shaders, textures and fonts).
         m_resource_cache = m_context->GetSubsystem<ResourceCache>();
-        if (!m_resource_cache)
-        {
-            LOG_ERROR("The Renderer subsystem requires a ResourceCache subsystem.");
-            return false;
-        }
+        SP_ASSERT(window && "The Renderer subsystem requires a ResourceCache subsystem.");
 
         // Get profiler subsystem (used to profile things but not required)
         m_profiler = m_context->GetSubsystem<Profiler>();
@@ -139,12 +172,8 @@ namespace Spartan
         // Create device
         m_rhi_device = make_shared<RHI_Device>(m_context);
 
-        // Create command lists
-        m_cmd_pool = make_shared<RHI_CommandPool>(m_rhi_device.get(), "renderer");
-        m_cmd_pool->AllocateCommandLists(m_swap_chain_buffer_count);
-
         // Line buffer
-        m_vertex_buffer_lines = make_shared<RHI_VertexBuffer>(m_rhi_device);
+        m_vertex_buffer_lines = make_shared<RHI_VertexBuffer>(m_rhi_device, true, "renderer_lines");
 
         // World grid
         m_gizmo_grid = make_unique<Grid>(m_rhi_device);
@@ -163,8 +192,14 @@ namespace Spartan
             RHI_Format_R8G8B8A8_Unorm,
             m_swap_chain_buffer_count,
             RHI_Present_Immediate | RHI_Swap_Flip_Discard,
-            "renderer_swapchain"
+            "renderer"
          );
+
+        // Create command pool
+        m_cmd_pool = m_rhi_device->AllocateCommandPool("renderer", m_swap_chain->GetObjectId());
+
+        // Create command lists
+        m_cmd_pool->AllocateCommandLists(m_swap_chain_buffer_count);
 
         // Set render, output and viewport resolution/size to whatever the window is (initially)
         SetResolutionRender(window_width, window_height, false);
@@ -182,16 +217,10 @@ namespace Spartan
         CreateSamplers(false);
         CreateStructuredBuffers();
         CreateTextures();
-
-        m_initialised = true;
-        return true;
     }
 
     void Renderer::OnTick(double delta_time)
     {
-        SP_ASSERT(m_rhi_device != nullptr);
-        SP_ASSERT(m_swap_chain != nullptr);
-
         // If a frame has already been rendered, then it's probably safe to stop logging
         // to a file and start logging on-screen. Meaning, the logs will render in the console widget.
         if (m_frame_num == 1 && Log::m_log_to_file)
@@ -223,19 +252,22 @@ namespace Spartan
         if (!m_swap_chain->PresentEnabled() || !m_is_rendering_allowed)
             return;
 
+        m_frame_num++;
+        m_is_odd_frame = (m_frame_num % 2) == 1;
+
         // Begin
         bool command_pool_reset = m_cmd_pool->Tick();
-        m_cmd_current = m_cmd_pool->GetCommandList();
+        m_cmd_current = m_cmd_pool->GetCurrentCommandList();
         m_cmd_current->Begin();
 
         // Reset
         if (command_pool_reset)
         {
             // Reset dynamic buffer indices
-            m_cb_uber_offset_index     = 0;
-            m_cb_frame_offset_index    = 0;
-            m_cb_light_offset_index    = 0;
-            m_cb_material_offset_index = 0;
+            m_cb_uber_gpu->ResetOffset();
+            m_cb_frame_gpu->ResetOffset();
+            m_cb_light_gpu->ResetOffset();
+            m_cb_material_gpu->ResetOffset();
 
             // Handle requests (they can come from different threads)
             m_reading_requests = true;
@@ -323,9 +355,9 @@ namespace Spartan
             }
             
             // Update the remaining of the frame buffer
-            m_cb_frame_cpu.view_projection_previous   = m_cb_frame_cpu.view_projection;
-            m_cb_frame_cpu.view_projection            = m_cb_frame_cpu.view * m_cb_frame_cpu.projection;
-            m_cb_frame_cpu.view_projection_inv        = Matrix::Invert(m_cb_frame_cpu.view_projection);
+            m_cb_frame_cpu.view_projection_previous = m_cb_frame_cpu.view_projection;
+            m_cb_frame_cpu.view_projection          = m_cb_frame_cpu.view * m_cb_frame_cpu.projection;
+            m_cb_frame_cpu.view_projection_inv      = Matrix::Invert(m_cb_frame_cpu.view_projection);
             if (m_camera)
             { 
                 m_cb_frame_cpu.view_projection_unjittered = m_cb_frame_cpu.view * m_camera->GetProjectionMatrix();
@@ -337,22 +369,22 @@ namespace Spartan
                 m_cb_frame_cpu.camera_position            = m_camera->GetTransform()->GetPosition();
                 m_cb_frame_cpu.camera_direction           = m_camera->GetTransform()->GetForward();
             }
-            m_cb_frame_cpu.resolution_output          = m_resolution_output;
-            m_cb_frame_cpu.resolution_render          = m_resolution_render;
-            m_cb_frame_cpu.taa_jitter_previous        = m_cb_frame_cpu.taa_jitter_current;
-            m_cb_frame_cpu.taa_jitter_current         = m_taa_jitter;
-            m_cb_frame_cpu.delta_time                 = static_cast<float>(m_context->GetSubsystem<Timer>()->GetDeltaTimeSmoothedSec());
-            m_cb_frame_cpu.time                       = static_cast<float>(m_context->GetSubsystem<Timer>()->GetTimeSec());
-            m_cb_frame_cpu.bloom_intensity            = GetOptionValue<float>(Renderer::OptionValue::Bloom_Intensity);
-            m_cb_frame_cpu.sharpen_strength           = GetOptionValue<float>(Renderer::OptionValue::Sharpen_Strength);
-            m_cb_frame_cpu.fog                        = GetOptionValue<float>(Renderer::OptionValue::Fog);
-            m_cb_frame_cpu.tonemapping                = GetOptionValue<float>(Renderer::OptionValue::Tonemapping);
-            m_cb_frame_cpu.gamma                      = GetOptionValue<float>(Renderer::OptionValue::Gamma);
-            m_cb_frame_cpu.shadow_resolution          = GetOptionValue<float>(Renderer::OptionValue::ShadowResolution);
-            m_cb_frame_cpu.frame                      = static_cast<uint32_t>(m_frame_num);
-            m_cb_frame_cpu.frame_mip_count            = RENDER_TARGET(RenderTarget::Frame_Render)->GetMipCount();
-            m_cb_frame_cpu.ssr_mip_count              = RENDER_TARGET(RenderTarget::Ssr)->GetMipCount();
-            m_cb_frame_cpu.resolution_environment     = Vector2(GetEnvironmentTexture()->GetWidth(), GetEnvironmentTexture()->GetHeight());
+            m_cb_frame_cpu.resolution_output      = m_resolution_output;
+            m_cb_frame_cpu.resolution_render      = m_resolution_render;
+            m_cb_frame_cpu.taa_jitter_previous    = m_cb_frame_cpu.taa_jitter_current;
+            m_cb_frame_cpu.taa_jitter_current     = m_taa_jitter;
+            m_cb_frame_cpu.delta_time             = static_cast<float>(m_context->GetSubsystem<Timer>()->GetDeltaTimeSmoothedSec());
+            m_cb_frame_cpu.time                   = static_cast<float>(m_context->GetSubsystem<Timer>()->GetTimeSec());
+            m_cb_frame_cpu.bloom_intensity        = GetOptionValue<float>(Renderer::OptionValue::Bloom_Intensity);
+            m_cb_frame_cpu.sharpen_strength       = GetOptionValue<float>(Renderer::OptionValue::Sharpen_Strength);
+            m_cb_frame_cpu.fog                    = GetOptionValue<float>(Renderer::OptionValue::Fog);
+            m_cb_frame_cpu.tonemapping            = GetOptionValue<float>(Renderer::OptionValue::Tonemapping);
+            m_cb_frame_cpu.gamma                  = GetOptionValue<float>(Renderer::OptionValue::Gamma);
+            m_cb_frame_cpu.shadow_resolution      = GetOptionValue<float>(Renderer::OptionValue::ShadowResolution);
+            m_cb_frame_cpu.frame                  = static_cast<uint32_t>(m_frame_num);
+            m_cb_frame_cpu.frame_mip_count        = RENDER_TARGET(RenderTarget::Frame_Render)->GetMipCount();
+            m_cb_frame_cpu.ssr_mip_count          = RENDER_TARGET(RenderTarget::Ssr)->GetMipCount();
+            m_cb_frame_cpu.resolution_environment = Vector2(GetEnvironmentTexture()->GetWidth(), GetEnvironmentTexture()->GetHeight());
 
             // These must match what Common_Buffer.hlsl is reading
             m_cb_frame_cpu.set_bit(GetOption(Renderer::Option::ScreenSpaceReflections), 1 << 0);
@@ -370,9 +402,6 @@ namespace Spartan
         // Submit
         m_cmd_current->End();
         m_cmd_current->Submit();
-
-        m_frame_num++;
-        m_is_odd_frame = (m_frame_num % 2) == 1;
     }
     
     void Renderer::SetViewport(float width, float height)
@@ -473,69 +502,8 @@ namespace Spartan
         LOG_INFO("Output resolution output has been set to %dx%d", width, height);
     }
 
-    template<typename T>
-    bool update_dynamic_buffer(RHI_CommandList* cmd_list, RHI_ConstantBuffer* buffer_gpu, T& buffer_cpu, T& buffer_cpu_previous, uint32_t& offset_index)
+    void Renderer::Update_Cb_Frame(RHI_CommandList* cmd_list)
     {
-        SP_ASSERT(cmd_list != nullptr);
-
-        // Only update if needed
-        if (buffer_cpu == buffer_cpu_previous)
-            return true;
-
-        offset_index++;
-
-        // Re-allocate buffer with double size (if needed)
-        if (buffer_gpu->IsDynamic())
-        {
-            if (offset_index >= buffer_gpu->GetOffsetCount())
-            {
-                cmd_list->Discard();
-                const uint32_t new_size = Math::Helper::NextPowerOfTwo(offset_index + 1);
-                if (!buffer_gpu->Create<T>(new_size))
-                {
-                    LOG_ERROR("Failed to re-allocate %s buffer with %d offsets", buffer_gpu->GetObjectName().c_str(), new_size);
-                    return false;
-                }
-                LOG_INFO("Increased %s buffer offsets to %d, that's %d kb", buffer_gpu->GetObjectName().c_str(), new_size, (new_size * buffer_gpu->GetStride()) / 1000);
-            }
-        }
-
-        // Set new buffer offset
-        if (buffer_gpu->IsDynamic())
-        {
-            buffer_gpu->SetOffsetIndexDynamic(offset_index);
-        }
-
-        // Map
-        T* buffer = static_cast<T*>(buffer_gpu->Map());
-        if (!buffer)
-        {
-            LOG_ERROR("Failed to map buffer");
-            return false;
-        }
-
-        const uint64_t size   = buffer_gpu->GetStride();
-        const uint64_t offset = offset_index * size;
-
-        // Update
-        if (buffer_gpu->IsDynamic())
-        {
-            memcpy(reinterpret_cast<std::byte*>(buffer) + offset, reinterpret_cast<std::byte*>(&buffer_cpu), size);
-        }
-        else
-        {
-            *buffer = buffer_cpu;
-        }
-        buffer_cpu_previous = buffer_cpu;
-
-        // Unmap
-        return buffer_gpu->Unmap(offset, size);
-    }
-
-    bool Renderer::Update_Cb_Frame(RHI_CommandList* cmd_list)
-    {
-        SP_ASSERT(cmd_list != nullptr);
-
         // Update directional light intensity, just grab the first one
         for (const auto& entity : m_entities[ObjectType::Light])
         {
@@ -548,38 +516,22 @@ namespace Spartan
             }
         }
 
-        if (!update_dynamic_buffer<Cb_Frame>(cmd_list, m_cb_frame_gpu.get(), m_cb_frame_cpu, m_cb_frame_cpu_previous, m_cb_frame_offset_index))
-            return false;
+        update_dynamic_buffer<Cb_Frame>(cmd_list, m_cb_frame_gpu.get(), m_cb_frame_cpu, m_cb_frame_cpu_mapped);
 
-        // Dynamic buffers with offsets have to be rebound whenever the offset changes
+        // Bind because the offset just changed
         cmd_list->SetConstantBuffer(Renderer::Bindings_Cb::frame, RHI_Shader_Vertex | RHI_Shader_Pixel | RHI_Shader_Compute, m_cb_frame_gpu);
-
-        return true;
     }
 
-    bool Renderer::Update_Cb_Uber(RHI_CommandList* cmd_list)
+    void Renderer::Update_Cb_Uber(RHI_CommandList* cmd_list)
     {
-        SP_ASSERT(cmd_list != nullptr);
+        update_dynamic_buffer<Cb_Uber>(cmd_list, m_cb_uber_gpu.get(), m_cb_uber_cpu, m_cb_uber_cpu_mapped);
 
-        if (!update_dynamic_buffer<Cb_Uber>(cmd_list, m_cb_uber_gpu.get(), m_cb_uber_cpu, m_cb_uber_cpu_previous, m_cb_uber_offset_index))
-            return false;
-
-        // Dynamic buffers with offsets have to be rebound whenever the offset changes
+        // Bind because the offset just changed
         cmd_list->SetConstantBuffer(Renderer::Bindings_Cb::uber, RHI_Shader_Vertex | RHI_Shader_Pixel | RHI_Shader_Compute, m_cb_uber_gpu);
-
-        return true;
     }
 
-    bool Renderer::Update_Cb_Light(RHI_CommandList* cmd_list, const Light* light, const RHI_Shader_Type scope)
+    void Renderer::Update_Cb_Light(RHI_CommandList* cmd_list, const Light* light, const RHI_Shader_Type scope)
     {
-        SP_ASSERT(cmd_list != nullptr);
-
-        if (!light)
-        {
-            LOG_ERROR("Invalid light");
-            return false;
-        }
-
         for (uint32_t i = 0; i < light->GetShadowArraySize(); i++)
         {
             m_cb_light_cpu.view_projection[i] = light->GetViewMatrix(i) * light->GetProjectionMatrix(i);
@@ -594,7 +546,7 @@ namespace Spartan
         }
         else if (light->GetLightType() == LightType::Spot)
         {
-            luminous_intensity /= Math::Helper::PI; // lumen s to candelas
+            luminous_intensity /= Math::Helper::PI; // lumens to candelas
             luminous_intensity *= 255.0f; // this is a hack, must fix whats my color units
         }
 
@@ -612,19 +564,14 @@ namespace Spartan
         m_cb_light_cpu.options                    |= light->GetShadowsScreenSpaceEnabled()           ? (1 << 5) : 0;
         m_cb_light_cpu.options                    |= light->GetVolumetricEnabled()                   ? (1 << 6) : 0;
 
-        if (!update_dynamic_buffer<Cb_Light>(cmd_list, m_cb_light_gpu.get(), m_cb_light_cpu, m_cb_light_cpu_previous, m_cb_light_offset_index))
-            return false;
+        update_dynamic_buffer<Cb_Light>(cmd_list, m_cb_light_gpu.get(), m_cb_light_cpu, m_cb_light_cpu_mapped);
 
-        // Dynamic buffers with offsets have to be rebound whenever the offset changes
+        // Bind because the offset just changed
         cmd_list->SetConstantBuffer(Renderer::Bindings_Cb::light, scope, m_cb_light_gpu);
-
-        return true;
     }
 
-    bool Renderer::Update_Cb_Material(RHI_CommandList* cmd_list)
+    void Renderer::Update_Cb_Material(RHI_CommandList* cmd_list)
     {
-        SP_ASSERT(cmd_list != nullptr);
-
         // Update
         for (uint32_t i = 0; i < m_max_material_instances; i++)
         {
@@ -640,13 +587,10 @@ namespace Spartan
             m_cb_material_cpu.mat_sheen_sheenTint_pad[i].y = material->GetProperty(Material_Sheen_Tint);
         }
 
-        if (!update_dynamic_buffer<Cb_Material>(cmd_list, m_cb_material_gpu.get(), m_cb_material_cpu, m_cb_material_cpu_previous, m_cb_material_offset_index))
-            return false;
+        update_dynamic_buffer<Cb_Material>(cmd_list, m_cb_material_gpu.get(), m_cb_material_cpu, m_cb_material_cpu_mapped);
 
-        // Dynamic buffers with offsets have to be rebound whenever the offset changes
+        // Bind because the offset just changed
         cmd_list->SetConstantBuffer(Renderer::Bindings_Cb::material, RHI_Shader_Pixel, m_cb_material_gpu);
-
-        return true;
     }
 
     void Renderer::OnRenderablesAcquire(const Variant& entities_variant)
@@ -861,7 +805,7 @@ namespace Spartan
         SP_FIRE_EVENT(EventType::PostPresent);
     }
 
-	void Renderer::Flush()
+    void Renderer::Flush()
     {
         // The external thread requests a flush from the renderer thread (to avoid a myriad of thread issues and Vulkan errors)
         if (IsCallingFromOtherThread())
@@ -899,23 +843,11 @@ namespace Spartan
         m_flush_requested = false;
     }
 
-    void Renderer::SetCbUberTransform(RHI_CommandList* cmd_list, const Matrix& transform)
-    {
-        m_cb_uber_cpu.transform = transform;
-        Update_Cb_Uber(cmd_list);
-    }
-
-    void Renderer::SetCbUberTextureVisualisationOptions(RHI_CommandList* cmd_list, const uint32_t options)
-    {
-        m_cb_uber_cpu.options_texture_visualisation = options;
-        Update_Cb_Uber(cmd_list);
-    }
-
     RHI_Api_Type Renderer::GetApiType() const
     {
         return m_rhi_device->GetContextRhi()->api_type;
     }
-    
+
     void Renderer::RequestTextureMipGeneration(shared_ptr<RHI_Texture> texture)
     {
         if (IsCallingFromOtherThread())
@@ -929,7 +861,7 @@ namespace Spartan
 
         // Validate
         SP_ASSERT(texture != nullptr);
-        SP_ASSERT(texture->GetResource_View_Srv() != nullptr);     
+        SP_ASSERT(texture->GetResource_View_Srv() != nullptr);
         SP_ASSERT(texture->HasMips());        // Ensure the texture requires mips
         SP_ASSERT(texture->HasPerMipViews()); // Ensure that the texture has per mip views since they are required for GPU downsampling.
 

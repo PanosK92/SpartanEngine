@@ -52,10 +52,10 @@ namespace Spartan
         Physics(Context* context);
         ~Physics();
 
-        //= Subsystem =======================
-        bool OnInitialize() override;
+        //= Subsystem ==========================
+        void OnInitialize() override;
         void OnTick(double delta_time) override;
-        //===================================
+        //======================================
 
         // Rigid body
         void AddBody(btRigidBody* body) const;

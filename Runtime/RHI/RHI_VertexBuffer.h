@@ -31,10 +31,11 @@ namespace Spartan
     class RHI_VertexBuffer : public SpartanObject
     {
     public:
-        RHI_VertexBuffer(const std::shared_ptr<RHI_Device>& rhi_device, const uint32_t stride = 0) 
+        RHI_VertexBuffer(const std::shared_ptr<RHI_Device>& rhi_device, bool is_mappable, const char* name)
         {
-            m_rhi_device = rhi_device;
-            m_stride     = stride;
+            m_rhi_device  = rhi_device;
+            m_is_mappable = is_mappable;
+            m_object_name = name;
         }
 
         ~RHI_VertexBuffer()
@@ -70,9 +71,9 @@ namespace Spartan
         }
 
         void* Map();
-        bool Unmap();
+        void Unmap();
 
-        void* GetResource()       const { return m_buffer; }
+        void* GetResource()       const { return m_resource; }
         uint32_t GetStride()      const { return m_stride; }
         uint32_t GetVertexCount() const { return m_vertex_count; }
 
@@ -80,15 +81,13 @@ namespace Spartan
         bool _create(const void* vertices);
         void _destroy();
 
-        bool m_persistent_mapping   = true; // only affects Vulkan
-        void* m_mapped              = nullptr;
-        uint32_t m_stride           = 0;
-        uint32_t m_vertex_count     = 0;
+        void* m_mapped_data     = nullptr;
+        uint32_t m_stride       = 0;
+        uint32_t m_vertex_count = 0;
 
         // API
         std::shared_ptr<RHI_Device> m_rhi_device;
-        void* m_buffer      = nullptr;
-        void* m_allocation  = nullptr;
-        bool m_is_mappable  = true;
+        void* m_resource   = nullptr;
+        bool m_is_mappable = false;
     };
 }

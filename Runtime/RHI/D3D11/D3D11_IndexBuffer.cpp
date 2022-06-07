@@ -86,13 +86,10 @@ namespace Spartan
         return mapped_resource.pData;
     }
 
-    bool RHI_IndexBuffer::Unmap()
+    void RHI_IndexBuffer::Unmap()
     {
-        SP_ASSERT(m_rhi_device != nullptr);
-        SP_ASSERT(m_rhi_device->GetContextRhi()->device_context != nullptr);
         SP_ASSERT(m_resource != nullptr);
 
         m_rhi_device->GetContextRhi()->device_context->Unmap(static_cast<ID3D11Resource*>(m_resource), 0);
-        return true;
     }
 }

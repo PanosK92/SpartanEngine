@@ -93,12 +93,9 @@ namespace Spartan
 
         void OnInitialize()
         {
-            for (uint32_t i = 0; i < static_cast<uint32_t>(m_subsystems.size()); i++)
+            for (const _subystem& subsystem : m_subsystems)
             {
-                if (!m_subsystems[i].ptr->OnInitialize())
-                {
-                    LOG_ERROR("Failed to initialize %s", typeid(*m_subsystems[i].ptr).name());
-                }
+                subsystem.ptr->OnInitialize();
             }
         }
 

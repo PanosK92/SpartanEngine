@@ -57,14 +57,12 @@ namespace Spartan
         m_profiler = nullptr;
     }
 
-    bool World::OnInitialize()
+    void World::OnInitialize()
     {
         m_input    = m_context->GetSubsystem<Input>();
         m_profiler = m_context->GetSubsystem<Profiler>();
 
         CreateDefaultWorldEntities();
-
-        return true;
     }
 
     void World::OnPreTick()

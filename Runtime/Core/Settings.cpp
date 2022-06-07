@@ -38,7 +38,7 @@ namespace _Settings
 {
     ofstream fout;
     ifstream fin;
-    string file_name = "Spartan.ini";
+    string file_name = "spartan.ini";
 
     template <class T>
     void write_setting(ofstream& fout, const string& name, T value)
@@ -181,19 +181,12 @@ namespace Spartan
 
         if (Renderer* renderer = m_context->GetSubsystem<Renderer>())
         {
-            if (renderer->IsInitialised())
-            {
-                renderer->SetResolutionOutput(static_cast<uint32_t>(m_resolution_output.x), static_cast<uint32_t>(m_resolution_output.y));
-                renderer->SetResolutionRender(static_cast<uint32_t>(m_resolution_render.x), static_cast<uint32_t>(m_resolution_render.y));
-                renderer->SetOptionValue(Renderer::OptionValue::ShadowResolution, static_cast<float>(m_shadow_map_resolution));
-                renderer->SetOptionValue(Renderer::OptionValue::Anisotropy, static_cast<float>(m_anisotropy));
-                renderer->SetOptionValue(Renderer::OptionValue::Tonemapping, static_cast<float>(m_tonemapping));
-                renderer->SetOptions(m_renderer_flags);
-            }
-            else
-            {
-                LOG_ERROR("Renderer hasn't initialised, can't map any settings");
-            }
+            renderer->SetResolutionOutput(static_cast<uint32_t>(m_resolution_output.x), static_cast<uint32_t>(m_resolution_output.y));
+            renderer->SetResolutionRender(static_cast<uint32_t>(m_resolution_render.x), static_cast<uint32_t>(m_resolution_render.y));
+            renderer->SetOptionValue(Renderer::OptionValue::ShadowResolution, static_cast<float>(m_shadow_map_resolution));
+            renderer->SetOptionValue(Renderer::OptionValue::Anisotropy, static_cast<float>(m_anisotropy));
+            renderer->SetOptionValue(Renderer::OptionValue::Tonemapping, static_cast<float>(m_tonemapping));
+            renderer->SetOptions(m_renderer_flags);
         }
 
         if (Window* window = m_context->GetSubsystem<Window>())

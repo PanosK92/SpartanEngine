@@ -294,7 +294,7 @@ namespace Spartan
         ~Renderer();
 
         //= ISubsystem =========================
-        bool OnInitialize() override;
+        void OnInitialize() override;
         void OnTick(double delta_time) override;
         //======================================
 
@@ -354,9 +354,13 @@ namespace Spartan
         RHI_Texture* GetDefaultTextureBlack()       const { return m_tex_default_black.get(); }
         RHI_Texture* GetDefaultTextureTransparent() const { return m_tex_default_transparent.get(); }
 
-        // Global uber constant buffer calls
-        void SetCbUberTransform(RHI_CommandList* cmd_list, const Math::Matrix& transform);
-        void SetCbUberTextureVisualisationOptions(RHI_CommandList* cmd_list, const uint32_t options);
+        // Constant buffers
+        void Update_Cb_Frame(RHI_CommandList* cmd_list);
+        void Update_Cb_Uber(RHI_CommandList* cmd_list);
+        void Update_Cb_Light(RHI_CommandList* cmd_list, const Light* light, const RHI_Shader_Type scope);
+        void Update_Cb_Material(RHI_CommandList* cmd_list);
+        // Returns the CPU struct which can be mapped to the GPU uber buffer
+        Cb_Uber& GetUberBufferCpu() { return m_cb_uber_cpu; }
 
         // Misc
         RHI_Api_Type GetApiType() const;
@@ -367,7 +371,6 @@ namespace Spartan
         RHI_Texture* GetFrameTexture()                          { return GetRenderTarget(Renderer::RenderTarget::Frame_Output).get(); }
         auto GetFrameNum()                                const { return m_frame_num; }
         std::shared_ptr<Camera> GetCamera()               const { return m_camera; }
-        auto IsInitialised()                              const { return m_initialised; }
         auto GetShaders()                                 const { return m_shaders; }
         RHI_CommandList* GetCmdList()                     const { return m_cmd_current; }
 
@@ -423,12 +426,6 @@ namespace Spartan
         void Pass_BrdfSpecularLut(RHI_CommandList* cmd_list);
         void Pass_Copy(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out, const bool bilinear);
         void Pass_Generate_Mips();
-
-        // Constant buffers
-        bool Update_Cb_Frame(RHI_CommandList* cmd_list);
-        bool Update_Cb_Uber(RHI_CommandList* cmd_list);
-        bool Update_Cb_Light(RHI_CommandList* cmd_list, const Light* light, const RHI_Shader_Type scope);
-        bool Update_Cb_Material(RHI_CommandList* cmd_list);
 
         // Event handlers
         void OnRenderablesAcquire(const Variant& renderables);
@@ -490,24 +487,20 @@ namespace Spartan
 
         //= CONSTANT BUFFERS =================================
         Cb_Frame m_cb_frame_cpu;
-        Cb_Frame m_cb_frame_cpu_previous;
+        Cb_Frame m_cb_frame_cpu_mapped;
         std::shared_ptr<RHI_ConstantBuffer> m_cb_frame_gpu;
-        uint32_t m_cb_frame_offset_index = 0;
 
         Cb_Uber m_cb_uber_cpu;
-        Cb_Uber m_cb_uber_cpu_previous;
+        Cb_Uber m_cb_uber_cpu_mapped;
         std::shared_ptr<RHI_ConstantBuffer> m_cb_uber_gpu;
-        uint32_t m_cb_uber_offset_index = 0;
 
         Cb_Light m_cb_light_cpu;
-        Cb_Light m_cb_light_cpu_previous;
+        Cb_Light m_cb_light_cpu_mapped;
         std::shared_ptr<RHI_ConstantBuffer> m_cb_light_gpu;
-        uint32_t m_cb_light_offset_index = 0;
 
         Cb_Material m_cb_material_cpu;
-        Cb_Material m_cb_material_cpu_previous;
+        Cb_Material m_cb_material_cpu_mapped;
         std::shared_ptr<RHI_ConstantBuffer> m_cb_material_gpu;
-        uint32_t m_cb_material_offset_index = 0;
         //====================================================
 
         // Structured buffers
@@ -545,10 +538,9 @@ namespace Spartan
         // Misc
         std::unique_ptr<Font> m_font;
         Math::Vector2 m_taa_jitter        = Math::Vector2::Zero;
-        bool m_initialised                = false;
         float m_near_plane                = 0.0f;
         float m_far_plane                 = 0.0f;
-        uint64_t m_frame_num              = 0;
+        uint64_t m_frame_num              = std::numeric_limits<uint64_t>::max();
         bool m_is_odd_frame               = false;
         bool m_brdf_specular_lut_rendered = false;
         std::thread::id m_render_thread_id;
@@ -576,7 +568,7 @@ namespace Spartan
 
         // RHI Core
         std::shared_ptr<RHI_Device> m_rhi_device;
-        std::shared_ptr<RHI_CommandPool> m_cmd_pool;
+        RHI_CommandPool* m_cmd_pool = nullptr;
         RHI_CommandList* m_cmd_current = nullptr;
 
         // Swapchain

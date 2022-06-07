@@ -31,9 +31,10 @@ SP_WARNINGS_OFF
 SP_WARNINGS_ON
 //=======================================
 
-//= NAMESPACES =====
+//= NAMESPACES =======================
 using namespace std;
-//==================
+using namespace SPIRV_CROSS_NAMESPACE;
+//====================================
 
 namespace Spartan
 {
@@ -61,10 +62,13 @@ namespace Spartan
 
         // Arguments
         {
+            // This would be nice but if enabled, it forces you to use extension SPV_GOOGLE_user_type, which I can't seem to enable.
+            // Search for "-fspv-reflect" here: https://github.com/microsoft/DirectXShaderCompiler/blob/main/docs/SPIR-V.rst#hlsl-types
+            // arguments.emplace_back("-fspv-reflect"); // Emit additional SPIR-V instructions to aid reflection
+
             arguments.emplace_back("-E"); arguments.emplace_back(GetEntryPoint());
             arguments.emplace_back("-T"); arguments.emplace_back(GetTargetProfile());
             arguments.emplace_back("-spirv");                                                                                                      // Generate SPIR-V code
-            arguments.emplace_back("-fspv-reflect");                                                                                               // Emit additional SPIR-V instructions to aid reflection
             arguments.emplace_back("-fspv-target-env=vulkan1.1");                                                                                  // Specify the target environment: vulkan1.0 (default) or vulkan1.1
             arguments.emplace_back("-fvk-b-shift"); arguments.emplace_back(to_string(rhi_shader_shift_register_b)); arguments.emplace_back("all"); // Specify Vulkan binding number shift for b-type (buffer) register
             arguments.emplace_back("-fvk-t-shift"); arguments.emplace_back(to_string(rhi_shader_shift_register_t)); arguments.emplace_back("all"); // Specify Vulkan binding number shift for t-type (texture) register
@@ -148,31 +152,27 @@ namespace Spartan
     {
         SP_ASSERT(ptr != nullptr);
         SP_ASSERT(size != 0);
-
+        
         // Initialize compiler with SPIR-V data
-        const auto compiler = spirv_cross::CompilerHLSL(ptr, size);
+        const CompilerHLSL compiler = CompilerHLSL(ptr, size);
 
         // The SPIR-V is now parsed, and we can perform reflection on it
-        spirv_cross::ShaderResources resources = compiler.get_shader_resources();
+        ShaderResources resources = compiler.get_shader_resources();
 
-        // Get textures
-        for (const auto& resource : resources.separate_images)
-        {
-            m_descriptors.emplace_back
-            (
-                resource.name,                                                                                                   // name
-                RHI_Descriptor_Type::Texture,                                                                                    // type
-                RHI_Image_Layout::Shader_Read_Only_Optimal,                                                                      // layout
-                compiler.get_decoration(resource.id, spv::DecorationBinding),                                                    // slot
-                Math::Helper::Clamp<uint32_t>(compiler.get_type(resource.type_id).array[0], 1, numeric_limits<uint32_t>::max()), // array size
-                shader_type,                                                                                                     // stage
-                false,                                                                                                           // is_storage
-                false                                                                                                            // is_dynamic_constant_buffer
-            );
-        }
+        // Pre-allocate enough memory for the descriptor vector
+        uint32_t count = static_cast<uint32_t>
+        (
+            resources.storage_images.size()  +
+            resources.storage_buffers.size() +
+            resources.uniform_buffers.size() +
+            resources.separate_images.size() +
+            resources.separate_samplers.size()
+        );
+
+        m_descriptors.reserve(count);
 
         // Get storage images
-        for (const auto& resource : resources.storage_images)
+        for (const Resource& resource : resources.storage_images)
         {
             m_descriptors.emplace_back
             (
@@ -181,14 +181,12 @@ namespace Spartan
                 RHI_Image_Layout::General,                                                                                       // layout
                 compiler.get_decoration(resource.id, spv::DecorationBinding),                                                    // slot
                 Math::Helper::Clamp<uint32_t>(compiler.get_type(resource.type_id).array[0], 1, numeric_limits<uint32_t>::max()), // array size
-                shader_type,                                                                                                     // stage
-                true,                                                                                                            // is_storage
-                false                                                                                                            // is_dynamic_constant_buffer
+                shader_type                                                                                                      // stage
             );
         }
 
         // Get storage buffers
-        for (const auto& resource : resources.storage_buffers)
+        for (const Resource& resource : resources.storage_buffers)
         {
             m_descriptors.emplace_back
             (
@@ -197,14 +195,12 @@ namespace Spartan
                 RHI_Image_Layout::Undefined,                                                                                     // layout
                 compiler.get_decoration(resource.id, spv::DecorationBinding),                                                    // slot
                 Math::Helper::Clamp<uint32_t>(compiler.get_type(resource.type_id).array[0], 1, numeric_limits<uint32_t>::max()), // array size
-                shader_type,                                                                                                     // stage
-                true,                                                                                                            // is_storage
-                false                                                                                                            // is_dynamic_constant_buffer
+                shader_type                                                                                                      // stage
             );
         }
 
         // Get constant buffers
-        for (const auto& resource : resources.uniform_buffers)
+        for (const Resource& resource : resources.uniform_buffers)
         {
             m_descriptors.emplace_back
             (
@@ -213,14 +209,26 @@ namespace Spartan
                 RHI_Image_Layout::Undefined,                                                                                     // layout
                 compiler.get_decoration(resource.id, spv::DecorationBinding),                                                    // slot
                 Math::Helper::Clamp<uint32_t>(compiler.get_type(resource.type_id).array[0], 1, numeric_limits<uint32_t>::max()), // array size
-                shader_type,                                                                                                     // stage
-                false,                                                                                                           // is_storage
-                false                                                                                                            // is_dynamic_constant_buffer
+                shader_type                                                                                                      // stage
+            );
+        }
+
+        // Get textures
+        for (const Resource& resource : resources.separate_images)
+        {
+            m_descriptors.emplace_back
+            (
+                resource.name,                                                                                                   // name
+                RHI_Descriptor_Type::Texture,                                                                                    // type
+                RHI_Image_Layout::Shader_Read_Only_Optimal,                                                                      // layout
+                compiler.get_decoration(resource.id, spv::DecorationBinding),                                                    // slot
+                Math::Helper::Clamp<uint32_t>(compiler.get_type(resource.type_id).array[0], 1, numeric_limits<uint32_t>::max()), // array size
+                shader_type                                                                                                      // stage
             );
         }
 
         // Get samplers
-        for (const auto& resource : resources.separate_samplers)
+        for (const Resource& resource : resources.separate_samplers)
         {
             m_descriptors.emplace_back
             (
@@ -229,9 +237,7 @@ namespace Spartan
                 RHI_Image_Layout::Undefined,                                                                                     // layout
                 compiler.get_decoration(resource.id, spv::DecorationBinding),                                                    // slot
                 Math::Helper::Clamp<uint32_t>(compiler.get_type(resource.type_id).array[1], 1, numeric_limits<uint32_t>::max()), // array size
-                shader_type,                                                                                                     // stage
-                false,                                                                                                           // is_storage
-                false                                                                                                            // is_dynamic_constant_buffer
+                shader_type                                                                                                      // stage
             );
         }
     }
@@ -243,10 +249,5 @@ namespace Spartan
         if (m_shader_type == RHI_Shader_Compute) return "cs_6_7";
 
         return nullptr;
-    }
-
-    const char* RHI_Shader::GetShaderModel() const
-    {
-        return "6_0";
     }
 }
