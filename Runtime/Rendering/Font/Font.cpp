@@ -44,12 +44,12 @@ namespace Spartan
 {
     Font::Font(Context* context, const string& file_path, const int font_size, const Vector4& color) : IResource(context, ResourceType::Font)
     {
-        m_rhi_device        = m_context->GetSubsystem<Renderer>()->GetRhiDevice();
-        m_vertex_buffer     = make_shared<RHI_VertexBuffer>(m_rhi_device);
-        m_index_buffer      = make_shared<RHI_IndexBuffer>(m_rhi_device, "font");
-        m_char_max_width    = 0;
-        m_char_max_height   = 0;
-        m_color             = color;
+        m_rhi_device      = m_context->GetSubsystem<Renderer>()->GetRhiDevice();
+        m_vertex_buffer   = make_shared<RHI_VertexBuffer>(m_rhi_device, true, "font");
+        m_index_buffer    = make_shared<RHI_IndexBuffer>(m_rhi_device, true, "font");
+        m_char_max_width  = 0;
+        m_char_max_height = 0;
+        m_color           = color;
         
         SetSize(font_size);
         Font::LoadFromFile(file_path);
@@ -87,8 +87,8 @@ namespace Spartan
 
     void Font::SetText(const string& text, const Vector2& position)
     {
-        const bool same_text    = text == m_current_text;
-        const bool has_buffers  = (m_vertex_buffer && m_index_buffer);
+        const bool same_text   = text == m_current_text;
+        const bool has_buffers = (m_vertex_buffer && m_index_buffer);
 
         if (same_text || !has_buffers)
             return;
@@ -104,13 +104,13 @@ namespace Spartan
 
             if (text_char == ASCII_TAB)
             {
-                const uint32_t space_offset         = m_glyphs[ASCII_SPACE].horizontal_advance;
-                const uint32_t space_count          = 8; // spaces in a typical terminal
-                const uint32_t tab_spacing          = space_offset * space_count;
-                const uint32_t offset_from_start    = static_cast<uint32_t>(Math::Helper::Abs(pen.x - position.x));
-                const uint32_t next_column_index    = (offset_from_start / tab_spacing) + 1;
-                const uint32_t offset_to_column     = (next_column_index * tab_spacing) - offset_from_start;
-                pen.x                               += offset_to_column;
+                const uint32_t space_offset      = m_glyphs[ASCII_SPACE].horizontal_advance;
+                const uint32_t space_count       = 8; // spaces in a typical terminal
+                const uint32_t tab_spacing       = space_offset * space_count;
+                const uint32_t offset_from_start = static_cast<uint32_t>(Math::Helper::Abs(pen.x - position.x));
+                const uint32_t next_column_index = (offset_from_start / tab_spacing) + 1;
+                const uint32_t offset_to_column  = (next_column_index * tab_spacing) - offset_from_start;
+                pen.x                            += offset_to_column;
             }
             else if (text_char == ASCII_NEW_LINE)
             {
@@ -177,20 +177,18 @@ namespace Spartan
             }
         }
 
-        bool mapped_vertex = false;
         if (const auto vertex_buffer = static_cast<RHI_Vertex_PosTex*>(m_vertex_buffer->Map()))
         {
             copy(vertices.begin(), vertices.end(), vertex_buffer);
-            mapped_vertex = m_vertex_buffer->Unmap();
+            m_vertex_buffer->Unmap();
         }
 
-        bool mapped_index = false;
         if (const auto index_buffer = static_cast<uint32_t*>(m_index_buffer->Map()))
         {
             copy(indices.begin(), indices.end(), index_buffer);
-            mapped_index = m_index_buffer->Unmap();
+            m_index_buffer->Unmap();
         }
 
-        return mapped_vertex && mapped_index;
+        return true;
     }
 }

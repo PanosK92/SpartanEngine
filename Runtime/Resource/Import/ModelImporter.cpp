@@ -23,14 +23,25 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Spartan.h"
 #include "ModelImporter.h"
 #include "../ProgressTracker.h"
+#include "../../RHI/RHI_Vertex.h"
 #include "../../RHI/RHI_Texture.h"
 #include "../../Rendering/Model.h"
 #include "../../Rendering/Animation.h"
 #include "../../World/World.h"
-#include "../../World/Components/Renderable.h"
 #include "../../World/Entity.h"
+#include "../../World/Components/Renderable.h"
 #include "../../World/Components/Transform.h"
-#include "../../RHI/RHI_Vertex.h"
+SP_WARNINGS_OFF
+#include "assimp/color4.h"
+#include "assimp/matrix4x4.h"
+#include "assimp/vector2.h"
+#include "assimp/quaternion.h"
+#include "assimp/scene.h"
+#include "assimp/ProgressHandler.hpp"
+#include "assimp/version.h"
+#include "assimp/Importer.hpp"
+#include "assimp/postprocess.h"
+SP_WARNINGS_ON
 //============================================
 
 //= NAMESPACES ================
@@ -325,7 +336,7 @@ namespace Spartan
         params.model                       = model;
 
         // Set up an Assimp importer
-        Importer importer;    
+        Importer importer;
         // Set normal smoothing angle
         importer.SetPropertyFloat(AI_CONFIG_PP_GSN_MAX_SMOOTHING_ANGLE, params.max_normal_smoothing_angle);
         // Set tangent smoothing angle

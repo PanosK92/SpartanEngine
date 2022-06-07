@@ -31,13 +31,12 @@ SP_WARNINGS_ON
 namespace Spartan
 {
     /*
-    Version: dxcompiler.dll: 1.7 - 1.6.0.3274 (de6a8ed4a)
+    Version: dxcompiler.dll: 1.7 - 1.6.0.3586 (e20926ae2)
     
     USAGE: dxc.exe [options] <inputs>
     
     Common Options:
       -help              Display available options
-      -nologo            Suppress copyright message
       -Qunused-arguments Don't emit warning for unused driver arguments
       --version          Display compiler version information
     
@@ -55,12 +54,9 @@ namespace Spartan
       -enable-16bit-types     Enable 16bit types and disable min precision types. Available in HLSL 2018 and shader model 6.2
       -enable-lifetime-markers
                               Enable generation of lifetime markers
-      -enable-operator-overloading
-                              Enable operator overloading support for HLSL.
       -enable-payload-qualifiers
                               Enables support for payload access qualifiers for raytracing payloads in SM 6.6.
-      -enable-templates       Enable template support for HLSL.
-      -encoding <value>       Set default encoding for text outputs (utf8|utf16) default=utf8
+      -encoding <value>       Set default encoding for source inputs and text outputs (utf8|utf16(win)|utf32(*nix)|wide) default=utf8
       -export-shaders-only    Only export shaders when compiling a library
       -exports <value>        Specify exports when compiling a library: export1[[,export1_clone,...]=internal_name][;...]
       -E <value>              Entry point name
@@ -87,7 +83,7 @@ namespace Spartan
       -Gfa                    Avoid flow control constructs
       -Gfp                    Prefer flow control constructs
       -Gis                    Force IEEE strictness
-      -HV <value>             HLSL version (2016, 2017, 2018). Default is 2018
+      -HV <value>             HLSL version (2016, 2017, 2018, 2021). Default is 2018
       -H                      Show header includes and nesting depth
       -ignore-line-directives Ignore line directives
       -I <value>              Add directory to include search path
@@ -118,11 +114,17 @@ namespace Spartan
       -Vi                     Display details about the include process.
       -Vn <name>              Use <name> as variable name in header file
       -WX                     Treat warnings as errors
-      -Zi                     Enable debug information
+      -Zi                     Enable debug information. Cannot be used together with -Zs
       -Zpc                    Pack matrices in column-major order
       -Zpr                    Pack matrices in row-major order
       -Zsb                    Compute Shader Hash considering only output binary
       -Zss                    Compute Shader Hash considering source information
+      -Zs                     Generate small PDB with just sources and compile options. Cannot be used together with -Zi
+    
+    OPTIONS:
+      -MD        Write a file with .d extension that will contain the list of the compilation target dependencies.
+      -MF <file> Write the specfied file that will contain the list of the compilation target dependencies.
+      -M         Dumps the list of the compilation target dependencies.
     
     Optimization Options:
       -O0 Optimization Level 0
@@ -131,6 +133,7 @@ namespace Spartan
       -O3 Optimization Level 3 (Default)
     
     Rewriter Options:
+      -decl-global-cb         Collect all global constants outside cbuffer declarations into cbuffer GlobalCB { ... }. Still experimental, not all dependency scenarios handled.
       -extract-entry-uniforms Move uniform parameters from entry point to global scope
       -global-extern-by-default
                               Set extern on non-static globals
@@ -145,13 +148,16 @@ namespace Spartan
     
     SPIR-V CodeGen Options:
       -fspv-debug=<value>     Specify whitelist of debug info category (file -> source -> line, tool)
+      -fspv-entrypoint-name=<value>
+                              Specify the SPIR-V entry point name. Defaults to the HLSL entry point name.
       -fspv-extension=<value> Specify SPIR-V extension permitted to use
       -fspv-flatten-resource-arrays
                               Flatten arrays of resources so each array element takes one binding number
+      -fspv-print-all         Print the SPIR-V module before each pass and after the last one. Useful for debugging SPIR-V legalization and optimization passes.
       -fspv-reduce-load-size  Replaces loads of composite objects to reduce memory pressure for the loads
       -fspv-reflect           Emit additional SPIR-V instructions to aid reflection
       -fspv-target-env=<value>
-                              Specify the target environment: vulkan1.0 (default) or vulkan1.1
+                              Specify the target environment: vulkan1.0 (default), vulkan1.1, vulkan1.1spirv1.4, vulkan1.2, vulkan1.3, or universal1.5
       -fvk-auto-shift-bindings
                               Apply fvk-*-shift to resources without an explicit register assignment.
       -fvk-b-shift <shift> <space>
@@ -192,7 +198,6 @@ namespace Spartan
                             Attach root signature to shader bytecode
       -verifyrootsignature <file>
                             Verify shader bytecode with root signature
-      -Zs                   Generate small PDB with just sources and compile options.
     
     Warning Options:
       -W[no-]<warning> Enable/Disable the specified warning

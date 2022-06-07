@@ -422,6 +422,8 @@ namespace Spartan
         // Wait for all queues
         if (QueueWaitAll())
         {
+            m_cmd_pools.clear();
+
             // Descriptor pool
             vkDestroyDescriptorPool(m_rhi_context->device, static_cast<VkDescriptorPool>(m_descriptor_pool), nullptr);
             m_descriptor_pool = nullptr;
@@ -614,19 +616,22 @@ namespace Spartan
         return true;
     }
 
-    bool RHI_Device::QueuePresent(void* swapchain_view, uint32_t* image_index, RHI_Semaphore* wait_semaphore /*= nullptr*/) const
+    bool RHI_Device::QueuePresent(void* swapchain_view, uint32_t* image_index, std::vector<RHI_Semaphore*>& wait_semaphores) const
     {
-        // Validate semaphore state
-        if (wait_semaphore) SP_ASSERT(wait_semaphore->GetState() == RHI_Semaphore_State::Signaled
-            && "The wait semaphore hasn't been signaled");
+        static array<VkSemaphore, 3> vk_wait_semaphores;
 
         // Get semaphore Vulkan resource
-        void* vk_wait_semaphore = wait_semaphore ? wait_semaphore->GetResource() : nullptr;
+        uint32_t semaphore_count = static_cast<uint32_t>(wait_semaphores.size());
+        for (uint32_t i = 0; i < semaphore_count; i++)
+        {
+            SP_ASSERT(wait_semaphores[i]->GetState() == RHI_Semaphore_State::Signaled && "The wait semaphore hasn't been signaled");
+            vk_wait_semaphores[i] = static_cast<VkSemaphore>(wait_semaphores[i]->GetResource());
+        }
 
         VkPresentInfoKHR present_info   = {};
         present_info.sType              = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-        present_info.waitSemaphoreCount = wait_semaphore ? 1 : 0;
-        present_info.pWaitSemaphores    = wait_semaphore ? reinterpret_cast<VkSemaphore*>(&vk_wait_semaphore) : nullptr;
+        present_info.waitSemaphoreCount = semaphore_count;
+        present_info.pWaitSemaphores    = vk_wait_semaphores.data();
         present_info.swapchainCount     = 1;
         present_info.pSwapchains        = reinterpret_cast<VkSwapchainKHR*>(&swapchain_view);
         present_info.pImageIndices      = image_index;
@@ -636,9 +641,9 @@ namespace Spartan
             return false;
 
         // Update semaphore state
-        if (wait_semaphore)
+        for (uint32_t i = 0; i < semaphore_count; i++)
         {
-            wait_semaphore->SetState(RHI_Semaphore_State::Idle);
+            wait_semaphores[i]->SetState(RHI_Semaphore_State::Idle);
         }
 
         return true;
@@ -649,8 +654,8 @@ namespace Spartan
         SP_ASSERT(cmd_buffer != nullptr && "Invalid command buffer");
 
         // Validate semaphore states
-        if (wait_semaphore)   SP_ASSERT(wait_semaphore->GetState() == RHI_Semaphore_State::Signaled);
-        if (signal_semaphore) SP_ASSERT(signal_semaphore->GetState() == RHI_Semaphore_State::Idle);
+        if (wait_semaphore)   SP_ASSERT(wait_semaphore->GetState() != RHI_Semaphore_State::Idle && "Wait semaphore is in an idle state and will never be signaled");
+        if (signal_semaphore) SP_ASSERT(signal_semaphore->GetState() != RHI_Semaphore_State::Signaled && "Signal semaphore is already in a signaled state, it can't be re-signaled.");
 
         // Get semaphore Vulkan resources
         void* vk_wait_semaphore   = wait_semaphore   ? wait_semaphore->GetResource()   : nullptr;
@@ -729,13 +734,12 @@ namespace Spartan
         // Create pool
         {
             // Pool sizes
-            array<VkDescriptorPoolSize, 6> pool_sizes =
+            array<VkDescriptorPoolSize, 5> pool_sizes =
             {
                 VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_SAMPLER,                rhi_descriptor_max_samplers },
                 VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,          rhi_descriptor_max_textures },
                 VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,          rhi_descriptor_max_storage_textures },
                 VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,         rhi_descriptor_max_storage_buffers },
-                VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         rhi_descriptor_max_constant_buffers },
                 VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, rhi_descriptor_max_constant_buffers_dynamic }
             };
 

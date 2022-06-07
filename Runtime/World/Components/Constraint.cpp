@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =================================
+//= INCLUDES =======================================================
 #include "Spartan.h"
 #include "Constraint.h"
 #include "RigidBody.h"
@@ -29,7 +29,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../IO/FileStream.h"
 #include "../../Physics/Physics.h"
 #include "../../Physics/BulletPhysicsHelper.h"
-//============================================
+SP_WARNINGS_OFF
+#include "BulletDynamics/ConstraintSolver/btConeTwistConstraint.h"
+#include "BulletDynamics/ConstraintSolver/btSliderConstraint.h"
+#include "BulletDynamics/ConstraintSolver/btHingeConstraint.h"
+#include "BulletDynamics/ConstraintSolver/btPoint2PointConstraint.h"
+SP_WARNINGS_ON
+//==================================================================
 
 //= NAMESPACES ===============
 using namespace std;

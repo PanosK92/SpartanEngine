@@ -107,8 +107,8 @@ namespace Spartan
             &swap_chain
         ));
 
-        m_resource    = static_cast<void*>(swap_chain);
-        m_image_index = static_cast<IDXGISwapChain3*>(m_resource)->GetCurrentBackBufferIndex();
+        m_resource             = static_cast<void*>(swap_chain);
+        m_index_image_acquired = static_cast<IDXGISwapChain3*>(m_resource)->GetCurrentBackBufferIndex();
     }
     
     RHI_SwapChain::~RHI_SwapChain()
@@ -123,7 +123,7 @@ namespace Spartan
     
     void RHI_SwapChain::AcquireNextImage()
     {
-        m_image_index = static_cast<IDXGISwapChain3*>(m_resource)->GetCurrentBackBufferIndex();
+        m_index_image_acquired = static_cast<IDXGISwapChain3*>(m_resource)->GetCurrentBackBufferIndex();
     }
     
     void RHI_SwapChain::Present()

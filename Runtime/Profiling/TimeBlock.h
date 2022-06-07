@@ -29,7 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-    class RHI_Device;
+    class Renderer;
 
     enum class TimeBlockType
     {
@@ -44,7 +44,7 @@ namespace Spartan
         TimeBlock() = default;
         ~TimeBlock();
 
-        void Begin(const uint32_t id, const char* name, TimeBlockType type, const TimeBlock* parent = nullptr, RHI_CommandList* cmd_list = nullptr, const std::shared_ptr<RHI_Device>& rhi_device = nullptr);
+        void Begin(const uint32_t id, const char* name, TimeBlockType type, const TimeBlock* parent = nullptr, RHI_CommandList* cmd_list = nullptr);
         void End();
         void ComputeDuration(const uint32_t pass_index);
         void Reset();
@@ -68,16 +68,18 @@ namespace Spartan
         const TimeBlock* m_parent = nullptr;
         uint32_t m_tree_depth     = 0;
         bool m_is_complete        = false;
-        RHI_Device* m_rhi_device  = nullptr;
         uint32_t m_id             = 0;
+
+        // Dependencies
+        RHI_Device* m_rhi_device    = nullptr;
+        RHI_CommandList* m_cmd_list = nullptr;
 
         // CPU timing
         std::chrono::steady_clock::time_point m_start;
         std::chrono::steady_clock::time_point m_end;
     
         // GPU timing
-        void* m_query_start         = nullptr;
-        void* m_query_end           = nullptr;
-        RHI_CommandList* m_cmd_list = nullptr;
+        void* m_query_start = nullptr;
+        void* m_query_end   = nullptr;
     };
 }

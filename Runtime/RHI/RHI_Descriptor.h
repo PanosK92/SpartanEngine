@@ -34,25 +34,23 @@ namespace Spartan
 
         RHI_Descriptor(const RHI_Descriptor& descriptor)
         {
-            type                        = descriptor.type;
-            layout                      = descriptor.layout;
-            slot                        = descriptor.slot;
-            stage                       = descriptor.stage;
-            is_dynamic_constant_buffer  = descriptor.is_dynamic_constant_buffer;
-            name                        = descriptor.name;
-            mip                         = descriptor.mip;
-            array_size                  = descriptor.array_size;
+            type       = descriptor.type;
+            layout     = descriptor.layout;
+            slot       = descriptor.slot;
+            stage      = descriptor.stage;
+            name       = descriptor.name;
+            mip        = descriptor.mip;
+            array_size = descriptor.array_size;
         }
 
-        RHI_Descriptor(const std::string& name, const RHI_Descriptor_Type type, const RHI_Image_Layout layout, const uint32_t slot, const uint32_t array_size, const uint32_t stage, const bool is_storage, const bool is_dynamic_constant_buffer)
+        RHI_Descriptor(const std::string& name, const RHI_Descriptor_Type type, const RHI_Image_Layout layout, const uint32_t slot, const uint32_t array_size, const uint32_t stage)
         {
-            this->type                          = type;
-            this->layout                        = layout;
-            this->slot                          = slot;
-            this->stage                         = stage;
-            this->is_dynamic_constant_buffer    = is_dynamic_constant_buffer;
-            this->name                          = name;
-            this->array_size                    = array_size;
+            this->type       = type;
+            this->layout     = layout;
+            this->slot       = slot;
+            this->stage      = stage;
+            this->name       = name;
+            this->array_size = array_size;
         }
 
         uint32_t ComputeHash(bool include_data) const
@@ -61,9 +59,7 @@ namespace Spartan
 
             Utility::Hash::hash_combine(hash, slot);
             Utility::Hash::hash_combine(hash, stage);
-            Utility::Hash::hash_combine(hash, offset);
             Utility::Hash::hash_combine(hash, range);
-            Utility::Hash::hash_combine(hash, is_dynamic_constant_buffer);
             Utility::Hash::hash_combine(hash, static_cast<uint32_t>(type));
             Utility::Hash::hash_combine(hash, static_cast<uint32_t>(layout));
 
@@ -78,18 +74,17 @@ namespace Spartan
 
         bool IsStorage() const { return type == RHI_Descriptor_Type::TextureStorage; }
 
-        uint32_t slot                   = 0;
-        uint32_t stage                  = 0;
-        uint64_t offset                 = 0;
-        uint64_t range                  = 0;
-        RHI_Descriptor_Type type        = RHI_Descriptor_Type::Undefined;
-        RHI_Image_Layout layout         = RHI_Image_Layout::Undefined;
-        bool is_dynamic_constant_buffer = false;
-        uint32_t array_size             = 0;
+        uint32_t slot            = 0;
+        uint32_t stage           = 0;
+        uint64_t offset          = 0;
+        uint64_t range           = 0;
+        uint32_t array_size      = 0;
+        RHI_Descriptor_Type type = RHI_Descriptor_Type::Undefined;
+        RHI_Image_Layout layout  = RHI_Image_Layout::Undefined;
 
         // Data
-        int mip     = -1;
-        void* data  = nullptr;
+        int mip    = -1;
+        void* data = nullptr;
 
         // Misc
         std::string name;

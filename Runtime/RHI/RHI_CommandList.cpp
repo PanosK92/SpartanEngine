@@ -39,11 +39,12 @@ namespace Spartan
     {
         SP_ASSERT(m_state == RHI_CommandListState::Submitted && "The command list hasn't been submitted, can't wait for it.");
 
-        bool executing = !m_proccessed_fence->IsSignaled();
+        bool executing = !m_proccessed_fence->IsSignaled() && !m_discard;
         if (executing)
         {
             // Uncomment this warning log to observe the frequency of command list fence waits
             LOG_WARNING("Waiting for command list \"%s\" to be processed by the queue...", m_object_name.c_str());
+
             if (!m_proccessed_fence->Wait())
             {
                 LOG_ERROR("Timed out while waiting for command list \"%s\"", m_object_name.c_str());
@@ -52,6 +53,7 @@ namespace Spartan
 
         m_proccessed_fence->Reset();
         m_state = RHI_CommandListState::Idle;
+
     }
 
     void RHI_CommandList::Discard()
@@ -130,24 +132,6 @@ namespace Spartan
                     if (!updated_existing)
                     {
                         descriptors.emplace_back(descriptor_reflected);
-                    }
-                }
-            }
-        }
-
-        // Change constant buffers to dynamic (if requested)
-        if (descriptors_acquired)
-        {
-            for (uint32_t i = 0; i < rhi_max_constant_buffer_count; i++)
-            {
-                for (RHI_Descriptor& descriptor : descriptors)
-                {
-                    if (descriptor.type == RHI_Descriptor_Type::ConstantBuffer)
-                    {
-                        if (descriptor.slot == pipeline_state.dynamic_constant_buffer_slots[i] + rhi_shader_shift_register_b)
-                        {
-                            descriptor.is_dynamic_constant_buffer = true;
-                        }
                     }
                 }
             }

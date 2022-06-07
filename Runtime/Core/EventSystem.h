@@ -36,7 +36,7 @@ To unsubscribe a function from an event -> SP_SUBSCRIBE_TO_EVENT(EVENT_ID, Handl
 To fire an event                        -> SP_FIRE_EVENT(EVENT_ID);
 To fire an event with data              -> SP_FIRE_EVENT_DATA(EVENT_ID, Variant);
 
-Note: Currently, this is a blocking event system
+Note: This is a blocking event system
 ====================================================================================
 */
 
@@ -57,15 +57,15 @@ Note: Currently, this is a blocking event system
 enum class EventType
 {
     PostPresent,
-    WorldSaveStart,           // The world is about to be saved to a file
-    WorldSavedEnd,            // The world finished saving to file
-    WorldLoadStart,           // The world is about to be loaded from a file
-    WorldLoadEnd,             // The world finished loading from file
-    WorldPreClear,            // The world is about to clear everything
-    WorldClear,               // The world is clear everything
-    WorldResolve,             // The world is resolving
-    WorldResolved,            // The world has finished resolving
-    EventSDL,                 // An SDL event
+    WorldSaveStart,            // The world is about to be saved to a file
+    WorldSavedEnd,             // The world finished saving to file
+    WorldLoadStart,            // The world is about to be loaded from a file
+    WorldLoadEnd,              // The world finished loading from file
+    WorldPreClear,             // The world is about to clear everything
+    WorldClear,                // The world is clear everything
+    WorldResolve,              // The world is resolving
+    WorldResolved,             // The world has finished resolving
+    EventSDL,                  // An SDL event
     WindowOnFullScreenToggled
 };
 
@@ -89,8 +89,8 @@ namespace Spartan
 
         void Unsubscribe(const EventType event_id, subscriber&& function)
         {
-            const size_t function_adress    = *reinterpret_cast<long*>(reinterpret_cast<char*>(&function));
-            auto& subscribers               = m_subscribers[event_id];
+            const size_t function_adress = *reinterpret_cast<long*>(reinterpret_cast<char*>(&function));
+            auto& subscribers            = m_subscribers[event_id];
 
             for (auto it = subscribers.begin(); it != subscribers.end();)
             {
@@ -114,9 +114,9 @@ namespace Spartan
             }
         }
 
-        void Clear() 
+        void Clear()
         {
-            m_subscribers.clear(); 
+            m_subscribers.clear();
         }
 
     private:

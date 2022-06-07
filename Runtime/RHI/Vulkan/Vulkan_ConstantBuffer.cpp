@@ -36,44 +36,22 @@ namespace Spartan
 {
     void RHI_ConstantBuffer::_destroy()
     {
-        if (!m_resource)
-            return;
-
-        // Discard the current command list in case it's referencing the buffer.
-        if (Renderer* renderer = m_rhi_device->GetContext()->GetSubsystem<Renderer>())
-        {
-            if (RHI_CommandList* cmd_list = renderer->GetCmdList())
-            {
-                cmd_list->Discard();
-            }
-        }
-
-        // Wait in case it's still in use by the GPU
+        // Wait
         m_rhi_device->QueueWaitAll();
 
-        // Unmap
-        if (m_mapped)
-        {
-            vmaUnmapMemory(m_rhi_device->GetContextRhi()->allocator, static_cast<VmaAllocation>(m_allocation));
-            m_mapped = nullptr;
-        }
-
         // Destroy
-        vulkan_utility::buffer::destroy(m_resource);
+        vulkan_utility::vma_allocator::destroy_buffer(m_resource);
     }
 
-    RHI_ConstantBuffer::RHI_ConstantBuffer(const std::shared_ptr<RHI_Device>& rhi_device, const string& name, bool is_dynamic /*= false*/)
+    RHI_ConstantBuffer::RHI_ConstantBuffer(const std::shared_ptr<RHI_Device>& rhi_device, const string& name)
     {
-        m_rhi_device = rhi_device;
-        m_object_name = name;
-        m_is_dynamic = is_dynamic;
+        m_rhi_device         = rhi_device;
+        m_object_name        = name;
+        m_persistent_mapping = true;
     }
 
     bool RHI_ConstantBuffer::_create()
     {
-        SP_ASSERT(m_rhi_device != nullptr);
-        SP_ASSERT(m_rhi_device->GetContextRhi()->device != nullptr);
-
         // Destroy previous buffer
         _destroy();
 
@@ -81,69 +59,40 @@ namespace Spartan
         size_t min_ubo_alignment = m_rhi_device->GetMinUniformBufferOffsetAllignment();
         if (min_ubo_alignment > 0)
         {
-            m_stride = static_cast<uint32_t>((m_stride + min_ubo_alignment - 1) & ~(min_ubo_alignment - 1));
+            m_stride = static_cast<uint64_t>((m_stride + min_ubo_alignment - 1) & ~(min_ubo_alignment - 1));
         }
-        m_object_size_gpu = m_offset_count * m_stride;
+        m_object_size_gpu = m_stride * m_element_count;
+
+        // Define memory properties
+        VkMemoryPropertyFlags flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT; // mappable
 
         // Create buffer
-        VkMemoryPropertyFlags flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
-        flags |= !m_persistent_mapping ? VK_MEMORY_PROPERTY_HOST_COHERENT_BIT : 0;
-        VmaAllocation allocation = vulkan_utility::buffer::create(m_resource, m_object_size_gpu, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, flags, nullptr);
-        if (!allocation)
-        {
-            LOG_ERROR("Failed to allocate buffer");
-            return false;
-        }
+        vulkan_utility::vma_allocator::create_buffer(m_resource, m_object_size_gpu, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, flags);
 
-        m_allocation = static_cast<void*>(allocation);
+        // Get mapped data pointer
+        m_mapped_data = vulkan_utility::vma_allocator::get_mapped_data_from_buffer(m_resource);
 
         // Set debug name
-        vulkan_utility::debug::set_name(static_cast<VkBuffer>(m_resource), m_object_name.c_str());
+        vulkan_utility::debug::set_name(static_cast<VkBuffer>(m_resource), (m_object_name + string("_size_") + to_string(m_object_size_gpu)).c_str());
 
         return true;
     }
 
     void* RHI_ConstantBuffer::Map()
     {
-        SP_ASSERT(m_rhi_device != nullptr);
-        SP_ASSERT(m_rhi_device->GetContextRhi()->device != nullptr);
-        SP_ASSERT(m_allocation != nullptr);
-
-        if (!m_mapped)
-        {
-            if (!vulkan_utility::error::check(vmaMapMemory(m_rhi_device->GetContextRhi()->allocator, static_cast<VmaAllocation>(m_allocation), reinterpret_cast<void**>(&m_mapped))))
-            {
-                LOG_ERROR("Failed to map memory");
-                return nullptr;
-            }
-        }
-
-        return m_mapped;
+        return m_mapped_data;
     }
 
-    bool RHI_ConstantBuffer::Unmap(const uint64_t offset /*= 0*/, const uint64_t size /*= 0*/)
+    void RHI_ConstantBuffer::Unmap()
     {
-        SP_ASSERT(m_rhi_device != nullptr);
-        SP_ASSERT(m_rhi_device->GetContextRhi()->device != nullptr);
-        SP_ASSERT(m_allocation != nullptr);
+        // buffer is mapped on creation and unmapped during destruction
+    }
 
-        if (m_persistent_mapping)
-        {
-            if (!vulkan_utility::error::check(vmaFlushAllocation(m_rhi_device->GetContextRhi()->allocator, static_cast<VmaAllocation>(m_allocation), offset, size != 0 ? size : VK_WHOLE_SIZE)))
-            {
-                LOG_ERROR("Failed to flush memory");
-                return false;
-            }
-        }
-        else
-        {
-            if (m_mapped)
-            {
-                vmaUnmapMemory(m_rhi_device->GetContextRhi()->allocator, static_cast<VmaAllocation>(m_allocation));
-                m_mapped = nullptr;
-            }
-        }
+    void RHI_ConstantBuffer::Flush(const uint64_t size, const uint64_t offset)
+    {
+        vulkan_utility::vma_allocator::flush(m_resource, offset, size);
 
-        return true;
+        m_offset       = static_cast<uint32_t>(offset);
+        m_reset_offset = false;
     }
 }

@@ -1,4 +1,4 @@
-/*
+#/*
 Copyright(c) 2016-2022 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -51,25 +51,24 @@ namespace Spartan
 {
     void Renderer::CreateConstantBuffers()
     {
-        const bool is_dynamic = true;
-        const uint32_t offset_count = 2048; // should be big enough for Vulkan (buffers can dynamically reallocate anyway)
+        const uint32_t offset_count = 1024; // buffers can dynamically re-allocate anyway, no need to go big.
 
-        m_cb_frame_gpu = make_shared<RHI_ConstantBuffer>(m_rhi_device, "frame", is_dynamic);
+        m_cb_frame_gpu = make_shared<RHI_ConstantBuffer>(m_rhi_device, "frame");
         m_cb_frame_gpu->Create<Cb_Frame>(offset_count);
 
-        m_cb_uber_gpu = make_shared<RHI_ConstantBuffer>(m_rhi_device, "uber", is_dynamic);
+        m_cb_uber_gpu = make_shared<RHI_ConstantBuffer>(m_rhi_device, "uber");
         m_cb_uber_gpu->Create<Cb_Uber>(offset_count);
 
-        m_cb_light_gpu = make_shared<RHI_ConstantBuffer>(m_rhi_device, "light", is_dynamic);
+        m_cb_light_gpu = make_shared<RHI_ConstantBuffer>(m_rhi_device, "light");
         m_cb_light_gpu->Create<Cb_Light>(offset_count);
 
-        m_cb_material_gpu = make_shared<RHI_ConstantBuffer>(m_rhi_device, "material", is_dynamic);
+        m_cb_material_gpu = make_shared<RHI_ConstantBuffer>(m_rhi_device, "material");
         m_cb_material_gpu->Create<Cb_Material>(offset_count);
     }
 
     void Renderer::CreateStructuredBuffers()
     {
-        static uint32_t counter = 0;
+        static uint32_t counter       = 0;
         const uint32_t element_count  = 1;
         m_sb_counter = make_shared<RHI_StructuredBuffer>(m_rhi_device, static_cast<uint32_t>(sizeof(uint32_t)), element_count, static_cast<void*>(&counter));
     }
@@ -484,10 +483,10 @@ namespace Spartan
 
         Utility::Geometry::CreateSphere(&vertices, &indices, 0.2f, 20, 20);
 
-        m_sphere_vertex_buffer = make_shared<RHI_VertexBuffer>(m_rhi_device);
+        m_sphere_vertex_buffer = make_shared<RHI_VertexBuffer>(m_rhi_device, false, "sphere");
         m_sphere_vertex_buffer->Create(vertices);
 
-        m_sphere_index_buffer = make_shared<RHI_IndexBuffer>(m_rhi_device, "sphere");
+        m_sphere_index_buffer = make_shared<RHI_IndexBuffer>(m_rhi_device, false, "sphere");
         m_sphere_index_buffer->Create(indices);
     }
 

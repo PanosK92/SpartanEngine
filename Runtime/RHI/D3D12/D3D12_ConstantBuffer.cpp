@@ -32,28 +32,33 @@ using namespace std;
 
 namespace Spartan
 {
+    bool RHI_ConstantBuffer::_create()
+    {
+        return true;
+    }
+
     void RHI_ConstantBuffer::_destroy()
     {
-        
+ 
     }
 
-    RHI_ConstantBuffer::RHI_ConstantBuffer(const std::shared_ptr<RHI_Device>& rhi_device, const string& name, bool is_dynamic /*= false*/)
+    RHI_ConstantBuffer::RHI_ConstantBuffer(const std::shared_ptr<RHI_Device>& rhi_device, const string& name)
     {
-        
+    
     }
 
-	void* RHI_ConstantBuffer::Map()
+    void* RHI_ConstantBuffer::Map()
     {
         return nullptr;
-	}
+    }
 
-	bool RHI_ConstantBuffer::Unmap(const uint64_t offset /*= 0*/, const uint64_t size /*= 0*/)
-	{
-		return true;
-	}
+    void RHI_ConstantBuffer::Unmap()
+    {
 
-	bool RHI_ConstantBuffer::_create()
-	{
-		return true;
-	}
+    }
+
+    void RHI_ConstantBuffer::Flush(const uint64_t size, const uint64_t offset)
+    {
+
+    }
 }

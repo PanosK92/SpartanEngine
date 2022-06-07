@@ -215,7 +215,7 @@ namespace Spartan
 
         if (!indices.empty())
         {
-            m_index_buffer = make_shared<RHI_IndexBuffer>(m_rhi_device, "model");
+            m_index_buffer = make_shared<RHI_IndexBuffer>(m_rhi_device, false, "model");
             if (!m_index_buffer->Create(indices))
             {
                 LOG_ERROR("Failed to create index buffer for \"%s\".", GetResourceName().c_str());
@@ -230,7 +230,7 @@ namespace Spartan
 
         if (!vertices.empty())
         {
-            m_vertex_buffer = make_shared<RHI_VertexBuffer>(m_rhi_device);
+            m_vertex_buffer = make_shared<RHI_VertexBuffer>(m_rhi_device, false, "model");
             if (!m_vertex_buffer->Create(vertices))
             {
                 LOG_ERROR("Failed to create vertex buffer for \"%s\".", GetResourceName().c_str());

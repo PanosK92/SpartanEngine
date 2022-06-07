@@ -60,13 +60,11 @@ namespace Spartan
         ClearRhiMetrics();
     }
 
-    bool Profiler::OnInitialize()
+    void Profiler::OnInitialize()
     {
         m_resource_manager = m_context->GetSubsystem<ResourceCache>();
         m_renderer         = m_context->GetSubsystem<Renderer>();
         m_timer            = m_context->GetSubsystem<Timer>();
-
-        return true;
     }
 
     void Profiler::OnPreTick()
@@ -224,7 +222,7 @@ namespace Spartan
 
                 // Copy over
                 m_time_blocks_read[i] = time_block;
-                // Nullify gpu query objects as we don't want them to de-allocte twice (read and write vectors) once the profiler deconstructs.
+                // Nullify GPU query objects as we don't want them to de-allocate twice (read and write vectors) once the profiler deconstructs.
                 m_time_blocks_read[i].ClearGpuObjects();
 
                 // Reset
@@ -251,7 +249,7 @@ namespace Spartan
 
         if (TimeBlock* time_block = GetNewTimeBlock())
         {
-            time_block->Begin(++m_rhi_timeblock_count, func_name, type, time_block_parent, cmd_list, m_renderer->GetRhiDevice());
+            time_block->Begin(++m_rhi_timeblock_count, func_name, type, time_block_parent, cmd_list);
         }
     }
 

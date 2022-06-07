@@ -64,8 +64,7 @@ namespace ImGui::RHI
     static shared_ptr<RHI_BlendState>        g_blend_state;
     static unique_ptr<RHI_Shader>            g_shader_vertex;
     static unique_ptr<RHI_Shader>            g_shader_pixel;
-    static shared_ptr<RHI_Semaphore>         g_semaphore;
-    static shared_ptr<RHI_CommandPool>       g_cmd_pool;
+    static RHI_CommandPool*                  g_cmd_pool;
 
     // RHI resources - per swapchain buffer
     static unordered_map<uint64_t, vector<unique_ptr<RHI_VertexBuffer>>> g_vertex_buffers;
@@ -85,11 +84,10 @@ namespace ImGui::RHI
         g_renderer   = context->GetSubsystem<Renderer>();
         g_rhi_device = g_renderer->GetRhiDevice();
 
-        // Command lists
-        g_cmd_pool = make_shared<RHI_CommandPool>(g_rhi_device.get(), "imgui");
+        // Allocate command pool
+        g_cmd_pool = g_rhi_device->AllocateCommandPool("imgui", g_renderer->GetSwapChain()->GetObjectId());
+        // Allocate command lists
         g_cmd_pool->AllocateCommandLists(g_renderer->GetSwapChain()->GetBufferCount());
-
-        //g_semaphore = make_shared<RHI_Semaphore>(g_rhi_device);
 
         SP_ASSERT(g_context != nullptr);
         SP_ASSERT(g_rhi_device != nullptr);
@@ -187,11 +185,11 @@ namespace ImGui::RHI
         // Get swap chain and cmd list
         bool is_child_window           = window_data != nullptr;
         RHI_SwapChain* swap_chain      = is_child_window ? window_data->swapchain : g_renderer->GetSwapChain();
-        RHI_CommandPool* cmd_list_pool = is_child_window ? window_data->cmd_pool : g_cmd_pool.get();
+        RHI_CommandPool* cmd_list_pool = is_child_window ? window_data->cmd_pool : g_cmd_pool;
 
         // Begin the command list
         cmd_list_pool->Tick();
-        RHI_CommandList* cmd_list = cmd_list_pool->GetCommandList();
+        RHI_CommandList* cmd_list = cmd_list_pool->GetCurrentCommandList();
         cmd_list->Begin();
 
         // Update vertex and index buffers
@@ -204,8 +202,9 @@ namespace ImGui::RHI
             const uint32_t gap =  Math::Helper::Clamp<uint32_t>((swapchain_cmd_index + 1) - static_cast<uint32_t>(g_vertex_buffers[swapchain_id].size()), 0, 10);
             for (uint32_t i = 0; i < gap; i++)
             {
-                g_vertex_buffers[swapchain_id].emplace_back(make_unique<RHI_VertexBuffer>(g_rhi_device, static_cast<uint32_t>(sizeof(ImDrawVert))));
-                g_index_buffers[swapchain_id].emplace_back(make_unique<RHI_IndexBuffer>(g_rhi_device, "imgui"));
+                bool is_mappable = true;
+                g_vertex_buffers[swapchain_id].emplace_back(make_unique<RHI_VertexBuffer>(g_rhi_device, is_mappable, "imgui"));
+                g_index_buffers[swapchain_id].emplace_back(make_unique<RHI_IndexBuffer>(g_rhi_device, is_mappable, "imgui"));
             }
 
             vertex_buffer = g_vertex_buffers[swapchain_id][swapchain_cmd_index].get();
@@ -260,27 +259,30 @@ namespace ImGui::RHI
         pipeline_state.dynamic_scissor          = true;
         pipeline_state.primitive_topology       = RHI_PrimitiveTopology_Mode::TriangleList;
         pipeline_state.pass_name                = is_child_window ? "pass_imgui_window_child" : "pass_imgui_window_main";
+        // don't profile child windows, the profiler also requires more work in order to not
+        // crash when the are brought back into the main viewport and their command pool is destroyed
+        pipeline_state.profile                  = !is_child_window;
 
         // Record commands
         if (cmd_list->BeginRenderPass(pipeline_state))
         {
+            Cb_Uber& constant_buffer = g_renderer->GetUberBufferCpu();
+
             // Setup orthographic projection matrix into our constant buffer
             // Our visible ImGui space lies from draw_data->DisplayPos (top left) to 
             // draw_data->DisplayPos+data_data->DisplaySize (bottom right). DisplayMin is (0,0) for single viewport apps.
             {
-                const float L    = draw_data->DisplayPos.x;
-                const float R    = draw_data->DisplayPos.x + draw_data->DisplaySize.x;
-                const float T    = draw_data->DisplayPos.y;
-                const float B    = draw_data->DisplayPos.y + draw_data->DisplaySize.y;
-                const Matrix wvp = Matrix
+                const float L             = draw_data->DisplayPos.x;
+                const float R             = draw_data->DisplayPos.x + draw_data->DisplaySize.x;
+                const float T             = draw_data->DisplayPos.y;
+                const float B             = draw_data->DisplayPos.y + draw_data->DisplaySize.y;
+                constant_buffer.transform = Matrix
                 (
                     2.0f / (R - L), 0.0f, 0.0f, (R + L) / (L - R),
                     0.0f, 2.0f / (T - B), 0.0f, (T + B) / (B - T),
                     0.0f, 0.0f, 0.5f, 0.5f,
                     0.0f, 0.0f, 0.0f, 1.0f
                 );
-
-                g_renderer->SetCbUberTransform(cmd_list, wvp);
             }
 
             cmd_list->SetBufferVertex(vertex_buffer);
@@ -324,9 +326,11 @@ namespace ImGui::RHI
                                 texture->SetFlag(RHI_Texture_Flags::RHI_Texture_Visualise_Channel_R);
                             }
 
-                            // The uber constant buffer updates only if needed, no need to do any state checking here.
-                            g_renderer->SetCbUberTextureVisualisationOptions(cmd_list, texture->GetFlags());
+                            constant_buffer.options_texture_visualisation = texture->GetFlags();
                         }
+
+                        // Update and bind the uber constant buffer (will only happen if the data changes)
+                        g_renderer->Update_Cb_Uber(cmd_list);
 
                         // Draw
                         cmd_list->DrawIndexed(pcmd->ElemCount, pcmd->IdxOffset + global_idx_offset, pcmd->VtxOffset + global_vtx_offset);
@@ -377,8 +381,9 @@ namespace ImGui::RHI
             (string("swapchain_child_") + string(to_string(viewport->ID))).c_str()
         );
 
+        // Allocate command pool
+        window->cmd_pool = g_rhi_device->AllocateCommandPool("imgui_child_window", window->swapchain->GetObjectId());
         // Allocate command lists
-        window->cmd_pool = new RHI_CommandPool(g_rhi_device.get(), "imgui_child_window");
         window->cmd_pool->AllocateCommandLists(window->buffer_count);
 
         viewport->RendererUserData = window;
@@ -434,7 +439,7 @@ namespace ImGui::RHI
         SP_ASSERT(window != nullptr);
 
         // Validate cmd list state
-        SP_ASSERT(window->cmd_pool->GetCommandList()->GetState() == Spartan::RHI_CommandListState::Submitted);
+        SP_ASSERT(window->cmd_pool->GetCurrentCommandList()->GetState() == Spartan::RHI_CommandListState::Submitted);
 
         // Present
         window->swapchain->Present();

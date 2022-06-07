@@ -21,9 +21,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =========================
+//= INCLUDES ===========================
 #include "../Resource/ResourceCache.h"
-//====================================
+SP_WARNINGS_OFF
+#include <mono/metadata/assembly.h>
+#include "mono/metadata/appdomain.h"
+#include "mono/metadata/debug-helpers.h"
+SP_WARNINGS_ON
+//======================================
 
 namespace Spartan::ScriptingHelper
 {

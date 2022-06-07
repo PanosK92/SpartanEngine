@@ -33,16 +33,17 @@ namespace Spartan
     class RHI_CommandPool : public SpartanObject
     {
     public:
-        RHI_CommandPool(RHI_Device* rhi_device, const char* name);
+        RHI_CommandPool(RHI_Device* rhi_device, const char* name, const uint64_t swap_chain_id);
         ~RHI_CommandPool();
 
         void AllocateCommandLists(const uint32_t command_list_count);
         bool Tick();
 
-        RHI_CommandList* GetCommandList()    { return m_cmd_lists[m_pool_index][m_cmd_list_index].get(); }
-        uint32_t GetCommandListCount() const { return static_cast<uint32_t>(m_cmd_lists[0].size()); }
-        uint32_t GetCommandListIndex() const { return m_cmd_list_index; }
-        void*& GetResource()                 { return m_resources[m_pool_index]; }
+        RHI_CommandList* GetCurrentCommandList()       { return m_cmd_lists[m_pool_index][m_cmd_list_index].get(); }
+        uint32_t GetCommandListCount()           const { return static_cast<uint32_t>(m_cmd_lists[0].size()); }
+        uint32_t GetCommandListIndex()           const { return m_cmd_list_index; }
+        void*& GetResource()                           { return m_resources[m_pool_index]; }
+        uint64_t GetSwapchainId()                const { return m_swap_chain_id; }
 
     private:
         void Reset();
@@ -51,10 +52,15 @@ namespace Spartan
         std::array<std::vector<std::shared_ptr<RHI_CommandList>>, 2> m_cmd_lists;
         int m_cmd_list_index = -1;
 
-        // Pools
+        // Two internal pools, this is a ring buffer.
+        // This allows us to alternate between the pools instead for the command lists of a single on, with a fence.
         std::array<void*, 2> m_resources;
         int m_pool_index = -1;
 
+        // The swapchain for which this thread pool's command lists will be presenting to.
+        uint64_t m_swap_chain_id = 0;
+
+        // Dependences
         RHI_Device* m_rhi_device = nullptr;
     };
 }

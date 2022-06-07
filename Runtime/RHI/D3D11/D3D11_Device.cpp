@@ -321,7 +321,7 @@ namespace Spartan
         return result;
     }
 
-    bool RHI_Device::QueuePresent(void* swapchain_view, uint32_t* image_index, RHI_Semaphore* wait_semaphore /*= nullptr*/) const
+    bool RHI_Device::QueuePresent(void* swapchain_view, uint32_t* image_index, std::vector<RHI_Semaphore*>& wait_semaphores) const
     {
         return true;
     }

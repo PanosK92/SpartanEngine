@@ -125,39 +125,39 @@ namespace Spartan
     // High frequency - Updates like crazy
     struct Cb_Uber
     {
-        Math::Matrix transform;
-        Math::Matrix transform_previous;
+        Math::Matrix transform          = Math::Matrix::Identity;
+        Math::Matrix transform_previous = Math::Matrix::Identity;
 
-        Math::Vector3 float3;
-        float blur_sigma;
+        Math::Vector3 float3 = Math::Vector3::Zero;
+        float blur_sigma     = 0.0f;
 
-        Math::Vector2 blur_direction;
-        Math::Vector2 resolution_rt;
+        Math::Vector2 blur_direction = Math::Vector2::Zero;
+        Math::Vector2 resolution_rt  = Math::Vector2::Zero;
 
-        Math::Vector2 resolution_in;
-        uint32_t options_texture_visualisation;
-        float radius;
+        Math::Vector2 resolution_in            = Math::Vector2::Zero;
+        uint32_t options_texture_visualisation = 0;
+        float radius                           = 0.0f;
 
-        Math::Vector4 mat_color;
+        Math::Vector4 mat_color = Math::Vector4::Zero;
 
-        Math::Vector2 mat_tiling_uv;
-        Math::Vector2 mat_offset_uv;
+        Math::Vector2 mat_tiling_uv = Math::Vector2::Zero;
+        Math::Vector2 mat_offset_uv = Math::Vector2::Zero;
 
-        float mat_roughness_mul;
-        float mat_metallic_mul;
-        float mat_normal_mul;
-        float mat_height_mul;
+        float mat_roughness_mul = 0.0f;
+        float mat_metallic_mul  = 0.0f;
+        float mat_normal_mul    = 0.0f;
+        float mat_height_mul    = 0.0f;
 
-        uint32_t mat_id;
-        uint32_t mat_textures;
-        uint32_t is_transparent_pass;
-        uint32_t mip_count;
+        uint32_t mat_id              = 0;
+        uint32_t mat_textures        = 0;
+        uint32_t is_transparent_pass = 0;
+        uint32_t mip_count           = 0;
 
-        Math::Vector3 extents;
-        uint32_t work_group_count;
+        Math::Vector3 extents     = Math::Vector3::Zero;
+        uint32_t work_group_count = 0;
 
-        uint32_t reflection_proble_available;
-        Math::Vector3 padding;
+        uint32_t reflection_proble_available = 0;
+        Math::Vector3 padding = Math::Vector3::Zero;
 
         bool operator==(const Cb_Uber& rhs) const
         {

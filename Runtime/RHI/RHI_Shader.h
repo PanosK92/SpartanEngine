@@ -71,7 +71,6 @@ namespace Spartan
         RHI_Shader_Type GetShaderStage()                         const { return m_shader_type; }
         const char* GetEntryPoint()                              const;
         const char* GetTargetProfile()                           const;
-        const char* GetShaderModel()                             const;
 
     protected:
         std::shared_ptr<RHI_Device> m_rhi_device;

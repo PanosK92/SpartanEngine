@@ -91,8 +91,8 @@ namespace Spartan
             {
                 m_vertex_attributes =
                 {
-                    { "POSITION",    0, binding, RHI_Format_R32G32B32_Float,    offsetof(RHI_Vertex_PosCol, pos) },
-                    { "COLOR",       1, binding, RHI_Format_R32G32B32A32_Float, offsetof(RHI_Vertex_PosCol, col) }
+                    { "POSITION", 0, binding, RHI_Format_R32G32B32_Float,    offsetof(RHI_Vertex_PosCol, pos) },
+                    { "COLOR",    1, binding, RHI_Format_R32G32B32A32_Float, offsetof(RHI_Vertex_PosCol, col) }
                 };
 
                 m_vertex_size = sizeof(RHI_Vertex_PosCol);
@@ -101,9 +101,9 @@ namespace Spartan
             {
                 m_vertex_attributes =
                 {
-                    { "POSITION",    0, binding, RHI_Format_R32G32_Float,   offsetof(RHI_Vertex_Pos2dTexCol8, pos) },
-                    { "TEXCOORD",    1, binding, RHI_Format_R32G32_Float,   offsetof(RHI_Vertex_Pos2dTexCol8, tex) },
-                    { "COLOR",       2, binding, RHI_Format_R8G8B8A8_Unorm, offsetof(RHI_Vertex_Pos2dTexCol8, col) }
+                    { "POSITION", 0, binding, RHI_Format_R32G32_Float,   offsetof(RHI_Vertex_Pos2dTexCol8, pos) },
+                    { "TEXCOORD", 1, binding, RHI_Format_R32G32_Float,   offsetof(RHI_Vertex_Pos2dTexCol8, tex) },
+                    { "COLOR",    2, binding, RHI_Format_R8G8B8A8_Unorm, offsetof(RHI_Vertex_Pos2dTexCol8, col) }
                 };
 
                 m_vertex_size = sizeof(RHI_Vertex_Pos2dTexCol8);
@@ -112,15 +112,14 @@ namespace Spartan
             {
                 m_vertex_attributes =
                 {
-                    { "POSITION",   0, binding, RHI_Format_R32G32B32_Float, offsetof(RHI_Vertex_PosTexNorTan, pos) },
-                    { "TEXCOORD",   1, binding, RHI_Format_R32G32_Float,    offsetof(RHI_Vertex_PosTexNorTan, tex) },
-                    { "NORMAL",     2, binding, RHI_Format_R32G32B32_Float, offsetof(RHI_Vertex_PosTexNorTan, nor) },
-                    { "TANGENT",    3, binding, RHI_Format_R32G32B32_Float, offsetof(RHI_Vertex_PosTexNorTan, tan) }
+                    { "POSITION", 0, binding, RHI_Format_R32G32B32_Float, offsetof(RHI_Vertex_PosTexNorTan, pos) },
+                    { "TEXCOORD", 1, binding, RHI_Format_R32G32_Float,    offsetof(RHI_Vertex_PosTexNorTan, tex) },
+                    { "NORMAL",   2, binding, RHI_Format_R32G32B32_Float, offsetof(RHI_Vertex_PosTexNorTan, nor) },
+                    { "TANGENT",  3, binding, RHI_Format_R32G32B32_Float, offsetof(RHI_Vertex_PosTexNorTan, tan) }
                 };
 
                 m_vertex_size = sizeof(RHI_Vertex_PosTexNorTan);
             }
-
 
             if (vertex_shader_blob && !m_vertex_attributes.empty())
             {

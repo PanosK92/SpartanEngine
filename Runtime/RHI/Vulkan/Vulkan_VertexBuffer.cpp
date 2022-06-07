@@ -36,64 +36,46 @@ namespace Spartan
 {
     void RHI_VertexBuffer::_destroy()
     {
-        // Wait in case it's still in use by the GPU
+        // Wait
         m_rhi_device->QueueWaitAll();
 
-        // Unmap
-        if (m_mapped)
-        {
-            vmaUnmapMemory(m_rhi_device->GetContextRhi()->allocator, static_cast<VmaAllocation>(m_allocation));
-            m_mapped = nullptr;
-        }
-
         // Destroy
-        vulkan_utility::buffer::destroy(m_buffer);
+        vulkan_utility::vma_allocator::destroy_buffer(m_resource);
     }
 
     bool RHI_VertexBuffer::_create(const void* vertices)
     {
-        SP_ASSERT(m_rhi_device != nullptr);
-        SP_ASSERT(m_rhi_device->GetContextRhi()->device != nullptr);
-
         // Destroy previous buffer
         _destroy();
     
-        // Memory in Vulkan doesn't need to be unmapped before using it on GPU, but unless a
-        // memory type has VK_MEMORY_PROPERTY_HOST_COHERENT_BIT flag set, you need to manually
-        // invalidate cache before reading of mapped pointer and flush cache after writing to
-        // mapped pointer. Map/unmap operations don't do that automatically.
-
         m_is_mappable = vertices == nullptr;
 
         if (m_is_mappable)
         {
-            VkMemoryPropertyFlags flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
-            flags |= !m_persistent_mapping ? VK_MEMORY_PROPERTY_HOST_COHERENT_BIT : 0;
-            VmaAllocation allocation = vulkan_utility::buffer::create(m_buffer, m_object_size_gpu, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, flags, nullptr);
-            if (!allocation)
-                return false;
+            // Define memory properties
+            VkMemoryPropertyFlags flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT; // mappable
 
-            m_allocation = static_cast<void*>(allocation);
+            // Created
+            vulkan_utility::vma_allocator::create_buffer(m_resource, m_object_size_gpu, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, flags);
+
+            // Get mapped data pointer
+            m_mapped_data = vulkan_utility::vma_allocator::get_mapped_data_from_buffer(m_resource);
         }
         else // The reason we use staging is because memory with VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, the buffer is not not mappable but it's fast, we want that.
         {
             // Create staging/source buffer and copy the vertices to it
             void* staging_buffer = nullptr;
-            VmaAllocation allocation_staging = vulkan_utility::buffer::create(staging_buffer, m_object_size_gpu, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, vertices);
-            if (!allocation_staging)
-                return false;
+            vulkan_utility::vma_allocator::create_buffer(staging_buffer, m_object_size_gpu, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, vertices);
 
             // Create destination buffer
-            VmaAllocation allocation = vulkan_utility::buffer::create(m_buffer, m_object_size_gpu, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, nullptr);
-            if (!allocation)
-                return false;
+            vulkan_utility::vma_allocator::create_buffer(m_resource, m_object_size_gpu, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
             // Copy staging buffer to destination buffer
             {
                 // Create command buffer
                 VkCommandBuffer cmd_buffer = vulkan_utility::command_buffer_immediate::begin(RHI_Queue_Type::Copy);
 
-                VkBuffer* buffer_vk         = reinterpret_cast<VkBuffer*>(&m_buffer);
+                VkBuffer* buffer_vk         = reinterpret_cast<VkBuffer*>(&m_resource);
                 VkBuffer* buffer_staging_vk = reinterpret_cast<VkBuffer*>(&staging_buffer);
 
                 // Copy
@@ -105,78 +87,23 @@ namespace Spartan
                 vulkan_utility::command_buffer_immediate::end(RHI_Queue_Type::Copy);
 
                 // Destroy staging resources
-                vulkan_utility::buffer::destroy(staging_buffer);
+                vulkan_utility::vma_allocator::destroy_buffer(staging_buffer);
             }
-
-            m_allocation = static_cast<void*>(allocation);
         }
 
         // Set debug name
-        vulkan_utility::debug::set_name(static_cast<VkBuffer>(m_buffer), m_object_name.c_str());
+        vulkan_utility::debug::set_name(static_cast<VkBuffer>(m_resource), m_object_name.c_str());
 
         return true;
     }
 
     void* RHI_VertexBuffer::Map()
     {
-        if (!m_is_mappable)
-        {
-            LOG_ERROR("Not mappable, can only be updated via staging");
-            return nullptr;
-        }
-
-        SP_ASSERT(m_rhi_device != nullptr);
-        SP_ASSERT(m_rhi_device->GetContextRhi()->device != nullptr);
-
-        if (!m_allocation)
-        {
-            LOG_ERROR("Invalid allocation");
-            return nullptr;
-        }
-
-        if (!m_mapped)
-        {
-            if (!vulkan_utility::error::check(vmaMapMemory(m_rhi_device->GetContextRhi()->allocator, static_cast<VmaAllocation>(m_allocation), reinterpret_cast<void**>(&m_mapped))))
-            {
-                LOG_ERROR("Failed to map memory");
-                return nullptr;
-            }
-        }
-
-        return m_mapped;
+        return m_mapped_data;
     }
 
-    bool RHI_VertexBuffer::Unmap()
+    void RHI_VertexBuffer::Unmap()
     {
-        if (!m_is_mappable)
-        {
-            LOG_ERROR("Not mappable, can only be updated via staging");
-            return false;
-        }
-
-        if (!m_allocation)
-        {
-            LOG_ERROR("Invalid allocation");
-            return false;
-        }
-
-        if (m_persistent_mapping)
-        {
-            if (!vulkan_utility::error::check(vmaFlushAllocation(m_rhi_device->GetContextRhi()->allocator, static_cast<VmaAllocation>(m_allocation), 0, m_object_size_gpu)))
-            {
-                LOG_ERROR("Failed to flush memory");
-                return false;
-            }
-        }
-        else
-        {
-            if (m_mapped)
-            {
-                vmaUnmapMemory(m_rhi_device->GetContextRhi()->allocator, static_cast<VmaAllocation>(m_allocation));
-                m_mapped = nullptr;
-            }
-        }
-
-        return true;
+        // buffer is mapped on creation and unmapped during destruction
     }
 }

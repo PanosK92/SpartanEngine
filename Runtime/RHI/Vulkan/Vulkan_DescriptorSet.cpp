@@ -90,7 +90,7 @@ namespace Spartan
         // Validate descriptor set
         SP_ASSERT(m_resource != nullptr);
 
-        const uint32_t descriptor_count = 255;
+        const uint32_t descriptor_count = 256;
 
         vector<VkDescriptorImageInfo> info_images;
         info_images.resize(descriptor_count);
@@ -111,7 +111,6 @@ namespace Spartan
             {
                 bool set_individual_mip         = descriptor.mip != -1;
                 bool is_array_of_textures       = descriptor.array_size > 1;
-                uint32_t descriptor_count       = 0;
                 uint32_t descriptor_index_start = 0;
                 uint32_t array_size             = 1;
 
@@ -123,7 +122,6 @@ namespace Spartan
                     info_images[image_index].imageView   = nullptr;
                     info_images[image_index].imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
-                    descriptor_count++;
                     descriptor_index_start = image_index;
                 }
                 else if (descriptor.type == RHI_Descriptor_Type::Texture || descriptor.type == RHI_Descriptor_Type::TextureStorage)
@@ -138,7 +136,6 @@ namespace Spartan
                         info_images[image_index].imageView   = static_cast<VkImageView>(resource);
                         info_images[image_index].imageLayout = vulkan_image_layout[static_cast<uint8_t>(texture->GetLayout(set_individual_mip ? descriptor.mip : 0))];
 
-                        descriptor_count++;
                         descriptor_index_start = image_index;
                     }
                     else // array of textures (not a Texture2DArray)
@@ -150,8 +147,6 @@ namespace Spartan
                             info_images[image_index].sampler     = nullptr;
                             info_images[image_index].imageView   = static_cast<VkImageView>(texture->GetResource_Views_Srv(mip_index));
                             info_images[image_index].imageLayout = vulkan_image_layout[static_cast<uint8_t>(texture->GetLayout(mip_index))];
-
-                            descriptor_count++;
 
                             if (mip_index == descriptor.mip)
                             {
@@ -165,10 +160,9 @@ namespace Spartan
                 else if (descriptor.type == RHI_Descriptor_Type::ConstantBuffer)
                 {
                     info_buffers[index].buffer = static_cast<VkBuffer>(resource);
-                    info_buffers[index].offset = descriptor.offset;
+                    info_buffers[index].offset = 0; // we use an offset, but it's dynamic and it's passed with vkCmdBindDescriptorSets
                     info_buffers[index].range  = descriptor.range;
 
-                    descriptor_count++;
                     descriptor_index_start = index;
                 }
                 else if (descriptor.type == RHI_Descriptor_Type::StructuredBuffer)
@@ -177,7 +171,6 @@ namespace Spartan
                     info_buffers[index].offset = descriptor.offset;
                     info_buffers[index].range  = descriptor.range;
 
-                    descriptor_count++;
                     descriptor_index_start = index;
                 }
 
@@ -198,11 +191,11 @@ namespace Spartan
         }
 
         vkUpdateDescriptorSets(
-            m_rhi_device->GetContextRhi()->device,  // device
-            index,                                  // descriptorWriteCount
-            descriptor_sets.data(),                 // pDescriptorWrites
-            0,                                      // descriptorCopyCount
-            nullptr                                 // pDescriptorCopies
+            m_rhi_device->GetContextRhi()->device, // device
+            index,                                 // descriptorWriteCount
+            descriptor_sets.data(),                // pDescriptorWrites
+            0,                                     // descriptorCopyCount
+            nullptr                                // pDescriptorCopies
         );
     }
 }

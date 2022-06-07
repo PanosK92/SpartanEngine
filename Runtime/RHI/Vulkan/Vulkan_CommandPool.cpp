@@ -32,10 +32,11 @@ using namespace std;
 
 namespace Spartan
 {
-    RHI_CommandPool::RHI_CommandPool(RHI_Device* rhi_device, const char* name) : SpartanObject(rhi_device->GetContext())
+    RHI_CommandPool::RHI_CommandPool(RHI_Device* rhi_device, const char* name, const uint64_t swap_chain_id) : SpartanObject(rhi_device->GetContext())
     {
-        m_rhi_device  = rhi_device;
-        m_object_name = name;
+        m_rhi_device    = rhi_device;
+        m_object_name   = name;
+        m_swap_chain_id = swap_chain_id;
         m_resources.fill(nullptr);
 
         VkCommandPoolCreateInfo cmd_pool_info = {};
@@ -65,7 +66,7 @@ namespace Spartan
         if (!m_resources[0])
             return;
 
-        // Wait in case it's still in use by the GPU
+        // Wait for GPU
         m_rhi_device->QueueWaitAll();
 
         VkDevice device = m_rhi_device->GetContextRhi()->device;

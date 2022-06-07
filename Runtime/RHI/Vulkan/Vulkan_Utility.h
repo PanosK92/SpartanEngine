@@ -288,10 +288,16 @@ namespace Spartan::vulkan_utility
         static std::unordered_map<RHI_Queue_Type, cmdbi_object> m_objects;
     };
 
-    namespace buffer
+    namespace vma_allocator
     {
-        VmaAllocation create(void*& _buffer, const uint64_t size, VkBufferUsageFlags usage, VkMemoryPropertyFlags memory_property_flags, const void* data);
-        void destroy(void*& _buffer);
+        void create_buffer(void*& resource, const uint64_t size, VkBufferUsageFlags usage, VkMemoryPropertyFlags memory_property_flags, const void* data_initial = nullptr);
+        void destroy_buffer(void*& resource);
+        void* get_mapped_data_from_buffer(void* buffer);
+        void create_texture(const VkImageCreateInfo& create_info, void*& resource);
+        void destroy_texture(void*& resource);
+        void map(void* resource, void*& mapped_data);
+        void unmap(void* resource, void*& mapped_data);
+        void flush(void* resource, uint64_t offset, uint64_t size);
     }
 
     namespace image
@@ -622,7 +628,7 @@ namespace Spartan::vulkan_utility
                 image_view = nullptr;
             }
 
-            inline void destroy(std::array<void*, rhi_max_render_target_count>& image_views)
+            inline void destroy(std::array<void*, 3>& image_views)
             {
                 for (void*& image_view : image_views)
                 {
@@ -1031,7 +1037,7 @@ namespace Spartan::vulkan_utility
             return VkDescriptorType::VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 
         if (descriptor.type == RHI_Descriptor_Type::ConstantBuffer)
-            return descriptor.is_dynamic_constant_buffer ? VkDescriptorType::VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC : VkDescriptorType::VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            return VkDescriptorType::VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
 
         LOG_ERROR("Invalid descriptor type");
         return VkDescriptorType::VK_DESCRIPTOR_TYPE_MAX_ENUM;

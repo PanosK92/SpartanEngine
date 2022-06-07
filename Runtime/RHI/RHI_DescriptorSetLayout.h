@@ -54,25 +54,25 @@ namespace Spartan
 
         // Misc
         void ClearDescriptorData();
-        void GetDescriptorSet(RHI_DescriptorSet*& descriptor_set);
-        const std::array<uint32_t, rhi_max_constant_buffer_count> GetDynamicOffsets() const;
-        uint32_t GetDynamicOffsetCount() const;
-        void NeedsToBind()                     { m_needs_to_bind = true; }
-        void* GetResource()              const { return m_resource; }
+        RHI_DescriptorSet* GetDescriptorSet();
+        const uint32_t* GetDynamicOffsets();
+        uint32_t GetConstantBufferCount();
+        void NeedsToBind()        { m_needs_to_bind = true; }
+        void* GetResource() const { return m_resource; }
 
     private:
         void CreateResource(const std::vector<RHI_Descriptor>& descriptors);
 
         // Descriptor set layout
         void* m_resource = nullptr;
-        uint32_t m_hash = 0;
+        uint32_t m_hash  = 0;
 
         // Descriptors
         std::vector<RHI_Descriptor> m_descriptors;
 
         // Misc
+        std::array<uint32_t, Spartan::rhi_max_constant_buffer_count> m_dynamic_offsets;
         bool m_needs_to_bind = false;
-        std::array<uint32_t, rhi_max_constant_buffer_count> m_dynamic_offsets;
         RHI_Device* m_rhi_device = nullptr;
     };
 }

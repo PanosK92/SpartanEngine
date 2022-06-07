@@ -43,22 +43,21 @@ namespace Spartan
         Audio(Context* context);
         ~Audio();
 
-        //= ISubsystem ======================
-        bool OnInitialize() override;
+        //= ISubsystem =========================
+        void OnInitialize() override;
         void OnTick(double delta_time) override;
-        //===================================
-
+        //======================================
+        
         auto GetSystemFMOD() const { return m_system_fmod; }
         void SetListenerTransform(Transform* transform);
 
     private:
         void LogErrorFmod(int error) const;
 
-        uint32_t m_result_fmod        = 0;
-        uint32_t m_max_channels        = 32;
-        float m_distance_entity        = 1.0f;
-        bool m_initialized            = false;
-        Transform* m_listener        = nullptr;
+        uint32_t m_result_fmod      = 0;
+        uint32_t m_max_channels     = 32;
+        float m_distance_entity     = 1.0f;
+        Transform* m_listener       = nullptr;
         Profiler* m_profiler        = nullptr;
         FMOD::System* m_system_fmod = nullptr;
     };

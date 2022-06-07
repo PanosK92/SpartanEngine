@@ -38,7 +38,7 @@ namespace Spartan
         virtual ~Subsystem() = default;
 
         // Runs when the subsystems need to initialize.
-        virtual bool OnInitialize() { return true; }
+        virtual void OnInitialize() {}
 
         // Runs after the subsystems have initialized. Useful, if a particular subsystem needs to use another, initialized subsystem.
         virtual void OnPostInitialize() {}

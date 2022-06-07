@@ -119,8 +119,8 @@ namespace Spartan
         void EndMarker();
 
         // Timestamps
-        bool Timestamp_Start(void* query);
-        bool Timestamp_End(void* query);
+        void Timestamp_Start(void* query);
+        void Timestamp_End(void* query);
         float Timestamp_GetDuration(void* query_start, void* query_end, const uint32_t pass_index);
 
         // GPU
@@ -130,6 +130,9 @@ namespace Spartan
         // State
         const RHI_CommandListState GetState() const { return m_state; }
         bool IsExecuting();
+
+        // Sync
+        RHI_Semaphore* GetSemaphoreProccessed() { return m_proccessed_semaphore.get(); }
 
         // Misc
         void* GetResource() const { return m_resource; }
@@ -160,6 +163,7 @@ namespace Spartan
 
         // Sync
         std::shared_ptr<RHI_Fence> m_proccessed_fence;
+        std::shared_ptr<RHI_Semaphore> m_proccessed_semaphore;
 
         // Descriptors
         std::unordered_map<std::size_t, std::shared_ptr<RHI_DescriptorSetLayout>> m_descriptor_set_layouts;

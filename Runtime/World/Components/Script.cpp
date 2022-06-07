@@ -80,9 +80,9 @@ namespace Spartan
         }
 
         // Initialise
-        m_script_instance   = m_scripting->GetScript(id);
-        m_file_path         = file_path;
-        m_object_name              = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path);
+        m_script_instance = m_scripting->GetScript(id);
+        m_file_path       = file_path;
+        m_object_name     = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path);
 
         return true;
     }

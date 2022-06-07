@@ -42,7 +42,7 @@ namespace Spartan
         m_vertex_count = static_cast<uint32_t>(vertices.size());
 
         // Create vertex buffer.
-        m_vertex_buffer = make_shared<RHI_VertexBuffer>(rhi_device);
+        m_vertex_buffer = make_shared<RHI_VertexBuffer>(rhi_device, false, "grid");
         if (!m_vertex_buffer->Create(vertices))
         {
             LOG_ERROR("Failed to create vertex buffer.");

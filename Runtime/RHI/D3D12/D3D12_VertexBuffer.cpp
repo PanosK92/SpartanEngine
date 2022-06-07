@@ -80,8 +80,8 @@ namespace Spartan
         return nullptr;
     }
     
-    bool RHI_VertexBuffer::Unmap()
+    void RHI_VertexBuffer::Unmap()
     {
-        return true;
+
     }
 }

@@ -50,7 +50,7 @@ namespace Spartan
 {
     bool RHI_CommandList::m_memory_query_support = true;
 
-    RHI_CommandList::RHI_CommandList(Context* context, void* cmd_pool, const char* name)
+    RHI_CommandList::RHI_CommandList(Context* context, void* cmd_pool, const char* name) : SpartanObject(context)
     {
         m_renderer    = context->GetSubsystem<Renderer>();
         m_profiler    = context->GetSubsystem<Profiler>();
@@ -826,22 +826,16 @@ namespace Spartan
         }
     }
 
-    bool RHI_CommandList::Timestamp_Start(void* query)
+    void RHI_CommandList::Timestamp_Start(void* query)
     {
-        SP_ASSERT(m_rhi_device != nullptr);
-
+        SP_ASSERT(m_rhi_device);
         m_rhi_device->QueryEnd(query);
-
-        return true;
     }
 
-    bool RHI_CommandList::Timestamp_End(void* query)
+    void RHI_CommandList::Timestamp_End(void* query)
     {
-        SP_ASSERT(m_rhi_device != nullptr);
-
+        SP_ASSERT(m_rhi_device);
         m_rhi_device->QueryEnd(query);
-
-        return true;
     }
 
     float RHI_CommandList::Timestamp_GetDuration(void* query_start, void* query_end, const uint32_t pass_index)

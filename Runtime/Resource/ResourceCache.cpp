@@ -73,14 +73,12 @@ namespace Spartan
         SP_UNSUBSCRIBE_FROM_EVENT(EventType::WorldClear,     SP_EVENT_HANDLER(Clear));
     }
 
-    bool ResourceCache::OnInitialize()
+    void ResourceCache::OnInitialize()
     {
         // Importers
         m_importer_image = make_shared<ImageImporter>(m_context);
         m_importer_model = make_shared<ModelImporter>(m_context);
         m_importer_font  = make_shared<FontImporter>(m_context);
-
-        return true;
     }
 
     bool ResourceCache::IsCached(const string& resource_name, const ResourceType resource_type)

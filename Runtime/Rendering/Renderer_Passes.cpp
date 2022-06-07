@@ -329,8 +329,7 @@ namespace Spartan
 
                     // Update uber buffer with cascade transform
                     m_cb_uber_cpu.transform = entity->GetTransform()->GetMatrix() * view_projection;
-                    if (!Update_Cb_Uber(cmd_list))
-                        continue;
+                    Update_Cb_Uber(cmd_list);
 
                     cmd_list->DrawIndexed(renderable->GeometryIndexCount(), renderable->GeometryIndexOffset(), renderable->GeometryVertexOffset());
                 }
@@ -692,8 +691,7 @@ namespace Spartan
                     transform->SetMatrixPrevious(m_cb_uber_cpu.transform);
 
                     // Update object buffer
-                    if (!Update_Cb_Uber(cmd_list))
-                        continue;
+                    Update_Cb_Uber(cmd_list);
                 }
 
                 // Render
@@ -1110,117 +1108,130 @@ namespace Spartan
 
     void Renderer::Pass_PostProcess(RHI_CommandList* cmd_list)
     {
-        // IN:  RenderTarget_Composition_Hdr
-        // OUT: RenderTarget_Composition_Ldr
+        // IN:  Frame_Render, which is and HDR render resolution render target (with a second texture so passes can alternate between them)
+        // OUT: Frame_Output, which is and LDR output resolution render target (with a second texture so passes can alternate between them)
 
         // Acquire render targets
-        shared_ptr<RHI_Texture>& rt_frame_render_in         = RENDER_TARGET(RenderTarget::Frame_Render);   // render res
-        shared_ptr<RHI_Texture>& rt_frame_render_out        = RENDER_TARGET(RenderTarget::Frame_Render_2); // render res
-        shared_ptr<RHI_Texture>& rt_frame_render_output_in  = RENDER_TARGET(RenderTarget::Frame_Output);   // output res
-        shared_ptr<RHI_Texture>& rt_frame_render_output_out = RENDER_TARGET(RenderTarget::Frame_Output_2); // output res
+        shared_ptr<RHI_Texture>& rt_frame_render_1 = RENDER_TARGET(RenderTarget::Frame_Render);   // render res
+        shared_ptr<RHI_Texture>& rt_frame_render_2 = RENDER_TARGET(RenderTarget::Frame_Render_2); // render res
+        shared_ptr<RHI_Texture>& rt_frame_output_1 = RENDER_TARGET(RenderTarget::Frame_Output);   // output res
+        shared_ptr<RHI_Texture>& rt_frame_output_2 = RENDER_TARGET(RenderTarget::Frame_Output_2); // output res
+
+        // Textures are alternated (swapped) after every pass so we track one of them
+        // This allows us to check later if we need to peform a swap between output 1 and 2.
+        uint64_t frame_output_in_id = rt_frame_output_1->GetObjectId();
 
         cmd_list->StartMarker("Pass_PostProcess");
 
-        // Depth of Field
-        if (GetOption(Renderer::Option::DepthOfField))
+        // RENDER RESOLUTION
+        bool upsampled = false;
         {
-            Pass_PostProcess_DepthOfField(cmd_list, rt_frame_render_in, rt_frame_render_out);
-            rt_frame_render_in.swap(rt_frame_render_out);
-        }
-
-        // Upsampling vars
-        bool upsampled                   = false;
-        bool resolution_output_larger    = m_resolution_output.x > m_resolution_render.x || m_resolution_output.y > m_resolution_render.y;
-        bool resolution_output_different = m_resolution_output != m_resolution_render;
-
-        // TAA
-        if (GetOption(Renderer::Option::AntiAliasing_Taa))
-        {
-            if (GetOption(Renderer::Option::Upsample_TAA) && resolution_output_larger)
+            // Depth of Field
+            if (GetOption(Renderer::Option::DepthOfField))
             {
-                Pass_PostProcess_TAA(cmd_list, rt_frame_render_in, rt_frame_render_output_in);
-                upsampled = true; // taa writes directly in the high res buffer
+                Pass_PostProcess_DepthOfField(cmd_list, rt_frame_render_1, rt_frame_render_2);
+                rt_frame_render_1.swap(rt_frame_render_2);
             }
-            else
+
+            bool resolution_output_larger = m_resolution_output.x > m_resolution_render.x || m_resolution_output.y > m_resolution_render.y;
+
+            // TAA
+            if (GetOption(Renderer::Option::AntiAliasing_Taa))
             {
-                Pass_PostProcess_TAA(cmd_list, rt_frame_render_in, rt_frame_render_out);
-                rt_frame_render_in.swap(rt_frame_render_out);
+                if (GetOption(Renderer::Option::Upsample_TAA) && resolution_output_larger)
+                {
+                    Pass_PostProcess_TAA(cmd_list, rt_frame_render_1, rt_frame_output_1);
+                    upsampled = true; // TAA writes directly in the high res buffer
+                }
+                else
+                {
+                    Pass_PostProcess_TAA(cmd_list, rt_frame_render_1, rt_frame_render_2);
+                    rt_frame_render_1.swap(rt_frame_render_2);
+                }
+            }
+
+            // Upsample - AMD FidelityFX SuperResolution - TODO: This needs to be in perceptual space and normalised to 0, 1 range.
+            if (GetOption(Renderer::Option::Upsample_AMD_FidelityFX_SuperResolution) && resolution_output_larger)
+            {
+                Pass_AMD_FidelityFX_SuperResolution(cmd_list, rt_frame_render_1.get(), rt_frame_output_1.get(), rt_frame_output_2.get());
+                upsampled = true;
             }
         }
 
-        // Upsample - AMD FidelityFX SuperResolution - TODO: This needs to be in perceptual space and normalised to 0, 1 range.
-        if (GetOption(Renderer::Option::Upsample_AMD_FidelityFX_SuperResolution) && resolution_output_larger)
-        {
-            Pass_AMD_FidelityFX_SuperResolution(cmd_list, rt_frame_render_in.get(), rt_frame_render_output_in.get(), rt_frame_render_output_out.get());
-            upsampled = true;
-        }
-
-        // If we haven't upsampled, do a bilinear upscale (different output resolution) or a blit (same output resolution)
+        // RENDER RESOLUTION -> OUTPUT RESOLUTION
         if (!upsampled)
         {
+            bool resolution_output_different = m_resolution_output != m_resolution_render;
+            bool bilinear                    = resolution_output_different;
+
             // D3D11 baggage, can't blit to a texture with different resolution or mip count
-            bool bilinear = resolution_output_different;
-            Pass_Copy(cmd_list, rt_frame_render_in.get(), rt_frame_render_output_in.get(), bilinear);
+            Pass_Copy(cmd_list, rt_frame_render_1.get(), rt_frame_output_1.get(), bilinear);
         }
 
-        // Motion Blur
-        if (GetOption(Renderer::Option::MotionBlur))
+        // OUTPUT RESOLUTION
         {
-            Pass_PostProcess_MotionBlur(cmd_list, rt_frame_render_output_in, rt_frame_render_output_out);
-            rt_frame_render_output_in.swap(rt_frame_render_output_out);
-        }
+            // Motion Blur
+            if (GetOption(Renderer::Option::MotionBlur))
+            {
+                Pass_PostProcess_MotionBlur(cmd_list, rt_frame_output_1, rt_frame_output_2);
+                rt_frame_output_1.swap(rt_frame_output_2);
+            }
 
-        // Bloom
-        if (GetOption(Renderer::Option::Bloom))
-        {
-            Pass_PostProcess_Bloom(cmd_list, rt_frame_render_output_in, rt_frame_render_output_out);
-            rt_frame_render_output_in.swap(rt_frame_render_output_out);
-        }
+            // Bloom
+            if (GetOption(Renderer::Option::Bloom))
+            {
+                Pass_PostProcess_Bloom(cmd_list, rt_frame_output_1, rt_frame_output_2);
+                rt_frame_output_1.swap(rt_frame_output_2);
+            }
 
-        // Sharpening
-        if (GetOption(Renderer::Option::Sharpening_AMD_FidelityFX_ContrastAdaptiveSharpening))
-        {
-            Pass_AMD_FidelityFX_ContrastAdaptiveSharpening(cmd_list, rt_frame_render_output_in, rt_frame_render_output_out);
-            rt_frame_render_output_in.swap(rt_frame_render_output_out);
-        }
+            // Sharpening
+            if (GetOption(Renderer::Option::Sharpening_AMD_FidelityFX_ContrastAdaptiveSharpening))
+            {
+                Pass_AMD_FidelityFX_ContrastAdaptiveSharpening(cmd_list, rt_frame_output_1, rt_frame_output_2);
+                rt_frame_output_1.swap(rt_frame_output_2);
+            }
 
-        // Tone-Mapping
-        // Run even when tone-mapping is disabled since this is where gamma correction is also done.
-        Pass_PostProcess_ToneMapping(cmd_list, rt_frame_render_output_in, rt_frame_render_output_out);
-        rt_frame_render_output_in.swap(rt_frame_render_output_out);
+            // Tone-Mapping
+            // Run even when tone-mapping is disabled since this is where gamma correction is also done.
+            Pass_PostProcess_ToneMapping(cmd_list, rt_frame_output_1, rt_frame_output_2);
+            rt_frame_output_1.swap(rt_frame_output_2);
 
-        // Debanding
-        if (GetOption(Renderer::Option::Debanding))
-        {
-            Pass_PostProcess_Debanding(cmd_list, rt_frame_render_output_in, rt_frame_render_output_out);
-            rt_frame_render_output_in.swap(rt_frame_render_output_out);
-        }
+            // Debanding
+            if (GetOption(Renderer::Option::Debanding))
+            {
+                Pass_PostProcess_Debanding(cmd_list, rt_frame_output_1, rt_frame_output_2);
+                rt_frame_output_1.swap(rt_frame_output_2);
+            }
 
-        // FXAA
-        if (GetOption(Renderer::Option::AntiAliasing_Fxaa))
-        {
-            Pass_PostProcess_Fxaa(cmd_list, rt_frame_render_output_in, rt_frame_render_output_out);
-            rt_frame_render_output_in.swap(rt_frame_render_output_out);
-        }
+            // FXAA
+            if (GetOption(Renderer::Option::AntiAliasing_Fxaa))
+            {
+                Pass_PostProcess_Fxaa(cmd_list, rt_frame_output_1, rt_frame_output_2);
+                rt_frame_output_1.swap(rt_frame_output_2);
+            }
 
-        // Chromatic aberration
-        if (GetOption(Renderer::Option::ChromaticAberration))
-        {
-            Pass_PostProcess_ChromaticAberration(cmd_list, rt_frame_render_output_in, rt_frame_render_output_out);
-            rt_frame_render_output_in.swap(rt_frame_render_output_out);
-        }
+            // Chromatic aberration
+            if (GetOption(Renderer::Option::ChromaticAberration))
+            {
+                Pass_PostProcess_ChromaticAberration(cmd_list, rt_frame_output_1, rt_frame_output_2);
+                rt_frame_output_1.swap(rt_frame_output_2);
+            }
 
-        // Film grain
-        if (GetOption(Renderer::Option::FilmGrain))
-        {
-            Pass_PostProcess_FilmGrain(cmd_list, rt_frame_render_output_in, rt_frame_render_output_out);
-            rt_frame_render_output_in.swap(rt_frame_render_output_out);
+            // Film grain
+            if (GetOption(Renderer::Option::FilmGrain))
+            {
+                Pass_PostProcess_FilmGrain(cmd_list, rt_frame_output_1, rt_frame_output_2);
+                rt_frame_output_1.swap(rt_frame_output_2);
+            }
+
+            // If the pointer doesn't point to the texture it used, swap back to it so that it does.
+            if (frame_output_in_id != rt_frame_output_1->GetObjectId())
+            {
+                rt_frame_output_1.swap(rt_frame_output_2);
+            }
         }
 
         cmd_list->EndMarker();
-
-        // Swap textures
-        rt_frame_render_output_in.swap(rt_frame_render_output_out);
     }
 
     void Renderer::Pass_PostProcess_TAA(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
@@ -2363,7 +2374,7 @@ namespace Spartan
         // Set render state
         static RHI_PipelineState pso;
         pso.shader_compute  = shader_c;
-        pso.pass_name       = "Pass_CopyBilinear";
+        pso.pass_name       = bilinear ? "Pass_Copy_Bilinear" : "Pass_Copy_Point";
 
         // Draw
         if (cmd_list->BeginRenderPass(pso))
