@@ -1,8 +1,9 @@
-name: windows_d3d11
+name: build_upload_release
 
 on: [push, pull_request]
 
 jobs:
+
 #= Build D3D11 =======================================================================================================
   build_d3d11:
     runs-on: [windows-2022]    
@@ -24,8 +25,9 @@ jobs:
       - uses: actions/upload-artifact@master  
         with:
           name: windows_d3d11
-          path: Binaries
- #= Build D3D12 =======================================================================================================       
+          path: binaries
+
+ #= Build D3D12 =======================================================================================================
   build_d3d12:
     runs-on: [windows-2022]    
     env:
@@ -46,8 +48,9 @@ jobs:
       - uses: actions/upload-artifact@master  
         with:
           name: windows_d3d12
-          path: Binaries
-#= Build Vulkan ========================================================================================================      
+          path: binaries
+
+#= Build Vulkan ========================================================================================================
   build_vulkan:
     runs-on: [windows-2022]    
     env:
@@ -68,22 +71,9 @@ jobs:
       - uses: actions/upload-artifact@master  
         with:
           name: windows_vulkan
-          path: Binaries
-#= Changelog =========================================================================================================
-  generate-changelog:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v2
-      with:
-        fetch-depth: 0
-    - uses: BobAnkh/auto-generate-changelog@master
-      with:
-        REPO_NAME: '<PanosK92>/<SpartanEngine>'
-        ACCESS_TOKEN: ${{secrets.GITHUB_TOKEN}}
-        PATH: 'CHANGELOG.md'
-        COMMIT_MESSAGE: 'docs(CHANGELOG): update release notes'
-        TYPE: 'feat:Feature,fix:Bug Fixes,docs:Documentation,refactor:Refactor,perf:Performance Improvements'
-#= Release ===========================================================================================================    
+          path: binaries
+
+#= Release ===========================================================================================================
   pre-release:
     name: "Pre Release"
     runs-on: "ubuntu-latest"
@@ -97,19 +87,18 @@ jobs:
       - name: Download D3D11 build
         uses: actions/download-artifact@master
         with:
-          name: d3d11
-          path: d3d11
+          name: windows_d3d11
+          path: binaries
       - name: Download D3D12 build
         uses: actions/download-artifact@master
         with:
-          name: d3d12
-          path: d3d12
+          name: windows_d3d12
+          path: binaries
       - name: Download Vulkan build
         uses: actions/download-artifact@master
         with:
-          name: vulkan
-          path: vulkan
-
+          name: windows_vulkan
+          path: binaries
       - uses: "marvinpinto/action-automatic-releases@latest"
         with:
           repo_token: "${{ secrets.GITHUB_TOKEN }}"
