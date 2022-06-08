@@ -11,15 +11,12 @@ jobs:
   pre-release:
     name: "Pre Release"
     runs-on: "ubuntu-latest"
-  needs:
-      - "windows_d3d11"
-      - "windows_d3d12"
-      - "windows_vulkan"
     steps:
-      # ...
-      - name: "Build & test"
-        run: |
-          echo "done!"
+      - name: Download D3D11 build
+        uses: actions/download-artifact@v3
+        with:
+          name: d3d11
+          path: d3d11
 
       - uses: "marvinpinto/action-automatic-releases@latest"
         with:
