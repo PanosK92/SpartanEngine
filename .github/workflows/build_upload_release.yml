@@ -10,7 +10,7 @@ jobs:
     env:
       MSBUILD_PATH: C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v3
         with:
           fetch-depth: 1
       
@@ -38,7 +38,7 @@ jobs:
     env:
       MSBUILD_PATH: C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v3
         with:
           fetch-depth: 1
       
@@ -67,7 +67,7 @@ jobs:
       MSBUILD_PATH: C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\
     steps:
       
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v3
         with:
           fetch-depth: 1
       
@@ -109,7 +109,7 @@ jobs:
         uses: actions/download-artifact@master
         with:
           name: windows_d3d11
-          path: windows_d3d11
+          path: binaries
       
       - name: Download D3D12 build
         uses: actions/download-artifact@master
@@ -131,5 +131,8 @@ jobs:
           prerelease: true
           title: "Development Build"
           files: |
-            LICENSE.txt
+            windows_d3d11/*
+            windows_d3d12/*
+            windows_vulkan/*
             *.jar
+            LICENSE.txt
