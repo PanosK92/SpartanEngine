@@ -109,19 +109,19 @@ jobs:
         uses: actions/download-artifact@master
         with:
           name: windows_d3d11
-          path: out
+          path: windows_d3d11
       
       - name: Download D3D12 build
         uses: actions/download-artifact@master
         with:
           name: windows_d3d12
-          path: out
+          path: windows_d3d12
      
       - name: Download Vulkan build
         uses: actions/download-artifact@master
         with:
           name: windows_vulkan
-          path: out
+          path: windows_vulkan
       
       - name: Publish release
         uses: "marvinpinto/action-automatic-releases@latest"
