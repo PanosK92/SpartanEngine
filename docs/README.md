@@ -1,5 +1,6 @@
 
 
+
 <img align="left" width="128" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/Data/logo256.png"/>
 
 # Spartan Engine [![Discord](https://img.shields.io/discord/677302405263785986?label=Discord)](https://discord.gg/TG5r2BS)
@@ -25,12 +26,12 @@ Platform | API | Status | Quality | Binaries
 
 ## Media
 [![](https://i.imgur.com/j6zIEI9.jpg)](https://www.youtube.com/watch?v=RIae1ma_DSo)
-<img align="center" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/Data/readme_screen_1.1.jpg"/>
+<img align="center" width src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/Data/readme_screen_1.1.jpg"/>
 <img align="center" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/Data/readme_screen_2.1.jpg"/>
 <img align="center" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/Data/readme_screen_3.2.jpg"/>
 
 # Livestreams
-[![](https://am3pap002files.storage.live.com/y4m0Gtqc6y7iXZhYsaPfB-Omogma7YloiyFg6g0SArz5gTthu18FnpQi21kWLIFlY0okDgtMDU2c3LYd_tlAcQMeWiVO8E3fUdBvsU9DqhUzDznBjSL3fuiBeFpbxSRyBpG7H802RunL8ll1NxcW_y1vCdIbYh3G-EXAc6NEH5WDHt6ETFPMe_rvVb8afZvFLSrILvLhysJOndRW0WH1U52TAYGf3gjay99hO2Up5X_aQA?encodeFailures=1&width=2560&height=1440)](https://www.youtube.com/watch?v=QcytU6AKwqk)
+[![](https://am3pap002files.storage.live.com/y4pAdpUpHJNTJLUOcLDvAUnYt2zqNGDIBMGWZ9wpyFi3sfIi69bZcvomXLcwfIVGJln0zq_mU4WWzzLvia2T_o3qBMWzjxNclvwS8dW86GpeEtWInTp1ODYqTNgb88ozkTLGksaaI_WwpiKsJK1noeH-Q9wcz-EwQqSvYmn4bPCa5pBT_bKi1n_OhGgqkFwLQGLZHFxQE35yb_rfDJFBF0jDktxOmtEfzM6bwFVxqmSNuc/livestream_thumbnail.jpg?psid=1&width=2214&height=1245)](https://www.youtube.com/watch?v=QcytU6AKwqk)
 
 ## Features (v0.31)
 - 10+ font file formats support (FreeType)
@@ -103,8 +104,8 @@ Linux support			 	        | -          | Vulkan and SDL is there, working on a l
 - [Contributing](https://github.com/PanosK92/SpartanEngine/blob/master/docs/CONTRIBUTING.md) - Guidelines on how to contribute.
 
 # Dependencies
-- [DirectX End-User Runtimes](https://www.microsoft.com/en-us/download/details.aspx?id=8109).
-- [Microsoft Visual C++ Redistributable for Visual Studio 2019](https://aka.ms/vs/16/release/VC_redist.x64.exe).
+- [DirectX End-User Runtimes](https://www.microsoft.com/en-us/download/details.aspx?id=8109) - For the DirectX build.
+- [Microsoft Visual C++ Redistributable for Visual Studio 2022](https://aka.ms/vs/17/release/vc_redist.x64.exe).
 - Windows 10.
 
 # License
