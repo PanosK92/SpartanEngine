@@ -45,7 +45,7 @@ jobs:
         shell: cmd
         run: 'Generate_VS2022_D3D12'       
      
-     - name: Build
+      - name: Build
         shell: cmd
         run: '"%MSBUILD_PATH%\MSBuild.exe" /p:Platform=Windows /p:Configuration=Release /m Spartan.sln'         
       
