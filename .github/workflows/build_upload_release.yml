@@ -1,0 +1,50 @@
+name: windows_d3d11
+
+on: [push, pull_request]
+
+jobs:
+  build_d3d11:
+    runs-on: [windows-2022]    
+    env:
+      MSBUILD_PATH: C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\
+    steps:
+      - uses: actions/checkout@v1
+        with:
+          fetch-depth: 1
+      - name: Generate project files
+        shell: cmd
+        run: 'Generate_VS2022_D3D11'       
+      - name: Build
+        shell: cmd
+        run: '"%MSBUILD_PATH%\MSBuild.exe" /p:Platform=Windows /p:Configuration=Release /m Spartan.sln'         
+      - name: Clean up for artifact upload
+        shell: bash
+        run: ./Scripts/clean.sh
+      - uses: actions/upload-artifact@master  
+        with:
+          name: windows_d3d11
+          path: Binaries
+          
+  pre-release:
+    name: "Pre Release"
+    runs-on: "ubuntu-latest"
+    needs:
+      - build_d3d11
+    permissions:
+      contents: write
+    steps:
+      - name: Download D3D11 build
+        uses: actions/download-artifact@v3
+        with:
+          name: d3d11
+          path: d3d11
+
+      - uses: "marvinpinto/action-automatic-releases@latest"
+        with:
+          repo_token: "${{ secrets.GITHUB_TOKEN }}"
+          automatic_release_tag: "latest"
+          prerelease: true
+          title: "Development Build"
+          files: |
+            LICENSE.txt
+            *.jar
