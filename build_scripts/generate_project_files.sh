@@ -10,9 +10,9 @@ fi
 echo
 echo "= 1. Extracting third-party dependencies... ==========================================="
 if [ "$is_windows" = false ]; then
-	 Scripts/7za e ThirdParty/libraries/libraries.7z -oThirdParty/libraries/ -aoa
+	 build_scripts/7za e ThirdParty/libraries/libraries.7z -oThirdParty/libraries/ -aoa
 else 
-	 Scripts/7z.exe e ThirdParty/libraries/libraries.7z -oThirdParty/libraries/ -aoa
+	 build_scripts/7z.exe e ThirdParty/libraries/libraries.7z -oThirdParty/libraries/ -aoa
 fi
 echo "======================================================================================="
 
@@ -37,4 +37,4 @@ else
 	echo "4. Generating Visual Studio solution..."
 fi
 echo
-Scripts/premake5 --file=Scripts/premake.lua $@
+build_scripts/premake5 --file=build_scripts/premake.lua $@
