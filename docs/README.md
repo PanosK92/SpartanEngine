@@ -26,6 +26,7 @@
 # Livestreams
 A first livestream has taken place, it's an introduction to the engine and myself, as requested by the Discord community.
 I'll explore various things, more technical as well, as we go forward.
+
 [![](https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/Data/readme_1.3.jpg)](https://www.youtube.com/watch?v=QcytU6AKwqk)
 
 ## Features (v0.31)
