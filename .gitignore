@@ -12,8 +12,8 @@
 *.VC.opendb
 *.VC.db
 /Binaries
-/third_party/libraries/*.lib
-/third_party/libraries/*.dll
+/ThirdParty/libraries/*.lib
+/ThirdParty/libraries/*.dll
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
