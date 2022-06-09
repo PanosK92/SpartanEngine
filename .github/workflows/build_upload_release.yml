@@ -122,7 +122,7 @@ jobs:
           prerelease: true
           title: "Development Build"
           files: |
-            binaries_d3d11/*
-            binaries_d3d12/*
-            binaries_vulkan/*
+            build_d3d11.7z
+            build_d3d12.7z
+            build_vulkan.7z
             LICENSE.txt
