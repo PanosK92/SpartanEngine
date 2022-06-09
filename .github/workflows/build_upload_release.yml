@@ -11,9 +11,7 @@ jobs:
       MSBUILD_PATH: C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\
     steps:
       - uses: actions/checkout@v3
-        with:
-          fetch-depth: 1
-      
+
       - name: Generate project files
         shell: cmd
         run: 'Generate_VS2022_D3D11'       
@@ -27,10 +25,10 @@ jobs:
         run: ./Scripts/clean.sh
       
       - name: Upload artifact
-        uses: actions/upload-artifact@master   
+        uses: actions/upload-artifact@master  
         with:
           name: windows_d3d11
-          path: out
+          path: binaries
 
  #= Build D3D12 =======================================================================================================
   build_d3d12:
@@ -39,9 +37,7 @@ jobs:
       MSBUILD_PATH: C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\
     steps:
       - uses: actions/checkout@v3
-        with:
-          fetch-depth: 1
-      
+
       - name: Generate project files
         shell: cmd
         run: 'Generate_VS2022_D3D12'       
@@ -55,10 +51,10 @@ jobs:
         run: ./Scripts/clean.sh
       
       - name: Upload artifact
-        uses: actions/upload-artifact@master  
+        uses: actions/upload-artifact@master
         with:
           name: windows_d3d12
-          path: out
+          path: binaries
 
 #= Build Vulkan ========================================================================================================
   build_vulkan:
@@ -68,9 +64,7 @@ jobs:
     steps:
       
       - uses: actions/checkout@v3
-        with:
-          fetch-depth: 1
-      
+
       - name: Generate project files
         shell: cmd
         run: 'Generate_VS2022_Vulkan'       
@@ -87,7 +81,7 @@ jobs:
         uses: actions/upload-artifact@master  
         with:
           name: windows_vulkan
-          path: out
+          path: binaries
 
 #= Release ===========================================================================================================
   pre-release:
@@ -102,9 +96,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-      
-      - run: mkdir -p out
-      
+    
       - name: Download D3D11 build
         uses: actions/download-artifact@master
         with:
@@ -115,13 +107,13 @@ jobs:
         uses: actions/download-artifact@master
         with:
           name: windows_d3d12
-          path: windows_d3d12
+          path: binaries
      
       - name: Download Vulkan build
         uses: actions/download-artifact@master
         with:
           name: windows_vulkan
-          path: windows_vulkan
+          path: binaries
       
       - name: Publish release
         uses: "marvinpinto/action-automatic-releases@latest"
