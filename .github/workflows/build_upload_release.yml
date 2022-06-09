@@ -123,8 +123,7 @@ jobs:
           prerelease: true
           title: "Development Build"
           files: |
-            windows_d3d11/*
-            windows_d3d12/*
-            windows_vulkan/*
-            *.jar
+            windows_d3d11
+            windows_d3d12
+            windows_vulkan
             LICENSE.txt
