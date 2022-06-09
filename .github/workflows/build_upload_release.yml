@@ -40,7 +40,7 @@ jobs:
 
       - name: Generate project files
         shell: cmd
-        run: 'scripts/generate_vs2022_d3d12.bat'
+        run: 'generate_vs2022_d3d12.bat'
       
       - name: Build
         shell: cmd
