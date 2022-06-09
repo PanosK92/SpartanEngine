@@ -6,7 +6,7 @@ jobs:
 
 #= Build D3D11 =======================================================================================================
   build_d3d11:
-    runs-on: [windows-2022]    
+    runs-on: "windows-2022"    
     env:
       MSBUILD_PATH: C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\
     steps:
@@ -28,11 +28,11 @@ jobs:
         uses: actions/upload-artifact@master  
         with:
           name: windows_d3d11
-          path: binaries
+          path: binaries/d3d11
 
  #= Build D3D12 =======================================================================================================
   build_d3d12:
-    runs-on: [windows-2022]    
+    runs-on: "windows-2022"    
     env:
       MSBUILD_PATH: C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\
     steps:
@@ -54,11 +54,11 @@ jobs:
         uses: actions/upload-artifact@master
         with:
           name: windows_d3d12
-          path: binaries
+          path: binaries/d3d12
 
 #= Build Vulkan ========================================================================================================
   build_vulkan:
-    runs-on: [windows-2022]    
+    runs-on: "windows-2022"   
     env:
       MSBUILD_PATH: C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\
     steps:
@@ -81,7 +81,7 @@ jobs:
         uses: actions/upload-artifact@master  
         with:
           name: windows_vulkan
-          path: binaries
+          path: binaries/vulkan
 
 #= Release ===========================================================================================================
   pre-release:
@@ -101,19 +101,19 @@ jobs:
         uses: actions/download-artifact@master
         with:
           name: windows_d3d11
-          path: binaries
+          path: binaries/d3d11
       
       - name: Download D3D12 build
         uses: actions/download-artifact@master
         with:
           name: windows_d3d12
-          path: binaries
+          path: binaries/d3d12
      
       - name: Download Vulkan build
         uses: actions/download-artifact@master
         with:
           name: windows_vulkan
-          path: binaries
+          path: binaries/vulkan
       
       - name: Publish release
         uses: "marvinpinto/action-automatic-releases@latest"
@@ -123,7 +123,7 @@ jobs:
           prerelease: true
           title: "Development Build"
           files: |
-            windows_d3d11
-            windows_d3d12
-            windows_vulkan
+            binaries/d3d11/*
+            binaries/d3d12/*
+            binaries/vulkan/*
             LICENSE.txt
