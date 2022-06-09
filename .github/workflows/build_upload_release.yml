@@ -28,7 +28,7 @@ jobs:
         uses: actions/upload-artifact@master  
         with:
           name: windows_d3d11
-          path: binaries/d3d11
+          path: binaries
 
  #= Build D3D12 =======================================================================================================
   build_d3d12:
@@ -54,7 +54,7 @@ jobs:
         uses: actions/upload-artifact@master
         with:
           name: windows_d3d12
-          path: binaries/d3d12
+          path: binaries
 
 #= Build Vulkan ========================================================================================================
   build_vulkan:
@@ -81,7 +81,7 @@ jobs:
         uses: actions/upload-artifact@master  
         with:
           name: windows_vulkan
-          path: binaries/vulkan
+          path: binaries
 
 #= Release ===========================================================================================================
   pre-release:
@@ -101,19 +101,19 @@ jobs:
         uses: actions/download-artifact@master
         with:
           name: windows_d3d11
-          path: binaries/d3d11
+          path: binaries_d3d11
       
       - name: Download D3D12 build
         uses: actions/download-artifact@master
         with:
           name: windows_d3d12
-          path: binaries/d3d12
+          path: binaries_d3d12
      
       - name: Download Vulkan build
         uses: actions/download-artifact@master
         with:
           name: windows_vulkan
-          path: binaries/vulkan
+          path: binaries_vulkan
       
       - name: Publish release
         uses: "marvinpinto/action-automatic-releases@latest"
@@ -123,7 +123,7 @@ jobs:
           prerelease: true
           title: "Development Build"
           files: |
-            binaries/d3d11/*
-            binaries/d3d12/*
-            binaries/vulkan/*
+            binaries_d3d11/*
+            binaries_d3d12/*
+            binaries_vulkan/*
             LICENSE.txt
