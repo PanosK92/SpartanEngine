@@ -17,13 +17,6 @@
 
 <img align="left" width="32" src="https://opensource.org/files/OSIApproved_1.png">Embracing the open source ethos and respecting the <a href="https://en.wikipedia.org/wiki/MIT_License">MIT license</a> is greatly appreciated. This means that you can copy all the code you want as long as you include a copy of the original license.</p>
 
-## Download
-Platform | API | Quality | Binaries
-:-:|:-:|:-:|:-:|
-<img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/docs/logo_windows.png" width="20"/>|<img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/docs/logo_d3d11.png" width="100"/>|Stable|[Download](https://nightly.link/PanosK92/SpartanEngine/workflows/windows_d3d11/master/windows_d3d11.zip)
-<img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/docs/logo_windows.png" width="20"/>|<img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/docs/logo_vulkan.png" width="100"/>|Beta|[Download](https://nightly.link/PanosK92/SpartanEngine/workflows/windows_vulkan/master/windows_vulkan.zip)
-<img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/docs/logo_windows.png" width="20"/>|<img src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/docs/logo_d3d12.png" width="100"/>|Alpha|Soon
-
 ## Media
 [![](https://i.imgur.com/j6zIEI9.jpg)](https://www.youtube.com/watch?v=RIae1ma_DSo)
 <img align="center" width src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/Data/readme_screen_1.1.jpg"/>
