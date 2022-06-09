@@ -14,7 +14,7 @@ jobs:
 
       - name: Generate project files
         shell: cmd
-        run: 'scripts\generate_vs2022_d3d11.bat'
+        run: 'scripts/generate_vs2022_d3d11.bat'
       
       - name: Build
         shell: cmd
@@ -22,7 +22,7 @@ jobs:
         
       - name: Create artifact
         shell: cmd
-        run: 'scripts\package_artifact.bat d3d11'
+        run: 'scripts/package_artifact.bat d3d11'
       
       - name: Upload artifact
         uses: actions/upload-artifact@master
@@ -40,7 +40,7 @@ jobs:
 
       - name: Generate project files
         shell: cmd
-        run: 'scripts\generate_vs2022_d3d12.bat'
+        run: 'scripts/generate_vs2022_d3d12.bat'
       
       - name: Build
         shell: cmd
@@ -48,7 +48,7 @@ jobs:
         
       - name: Create artifact
         shell: cmd
-        run: 'scripts\package_artifact.bat d3d12'
+        run: 'scripts/package_artifact.bat d3d12'
       
       - name: Upload artifact
         uses: actions/upload-artifact@master
@@ -66,7 +66,7 @@ jobs:
 
       - name: Generate project files
         shell: cmd
-        run: 'scripts\generate_vs2022_vulkan.bat'
+        run: 'scripts/generate_vs2022_vulkan.bat'
       
       - name: Build
         shell: cmd
@@ -74,7 +74,7 @@ jobs:
         
       - name: Create artifact
         shell: cmd
-        run: 'scripts\package_artifact.bat vulkan'
+        run: 'scripts/package_artifact.bat vulkan'
       
       - name: Upload artifact
         uses: actions/upload-artifact@master
