@@ -19,12 +19,12 @@
 
 ## Media
 [![](https://i.imgur.com/j6zIEI9.jpg)](https://www.youtube.com/watch?v=RIae1ma_DSo)
-<img align="center" width src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/Data/readme_screen_1.1.jpg"/>
-<img align="center" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/Data/readme_screen_2.1.jpg"/>
-<img align="center" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/Data/readme_screen_3.2.jpg"/>
+<img align="center" width src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/Data/readme_1.0.jpg"/>
+<img align="center" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/Data/readme_1.1.jpg"/>
+<img align="center" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/Data/readme_1.2.jpg"/>
 
 # Livestreams
-[![](https://am3pap002files.storage.live.com/y4pAdpUpHJNTJLUOcLDvAUnYt2zqNGDIBMGWZ9wpyFi3sfIi69bZcvomXLcwfIVGJln0zq_mU4WWzzLvia2T_o3qBMWzjxNclvwS8dW86GpeEtWInTp1ODYqTNgb88ozkTLGksaaI_WwpiKsJK1noeH-Q9wcz-EwQqSvYmn4bPCa5pBT_bKi1n_OhGgqkFwLQGLZHFxQE35yb_rfDJFBF0jDktxOmtEfzM6bwFVxqmSNuc/livestream_thumbnail.jpg?psid=1&width=2214&height=1245)](https://www.youtube.com/watch?v=QcytU6AKwqk)
+[![](https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/Data/readme_1.3.jpg)](https://www.youtube.com/watch?v=QcytU6AKwqk)
 
 ## Features (v0.31)
 - 10+ font file formats support (FreeType)
