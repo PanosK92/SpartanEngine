@@ -10,24 +10,24 @@ fi
 echo
 echo "= 1. Extracting third-party dependencies... ==========================================="
 if [ "$is_windows" = false ]; then
-	 build_scripts/7za e third_party/libraries/libraries.7z -othird_party/libraries/ -aoa
+	 Scripts/7za e ThirdParty/libraries/libraries.7z -oThirdParty/libraries/ -aoa
 else 
-	 build_scripts/7z.exe e third_party/libraries/libraries.7z -othird_party/libraries/ -aoa
+	 Scripts/7z.exe e ThirdParty/libraries/libraries.7z -oThirdParty/libraries/ -aoa
 fi
 echo "======================================================================================="
 
 # Copy engine data to the binary directory
 echo
 echo "2. Copying required data to the binary directory..."
-mkdir -p binaries/
-cp -r Data binaries
+mkdir -p Binaries/
+cp -r Data Binaries
 
 # Copy engine DLLs to the binary directory
 echo
 echo "3. Copying required DLLs to the binary directory..."
-cp third_party/libraries/dxcompiler.dll Binaries/
-cp third_party/libraries/fmod64.dll Binaries/
-cp third_party/libraries/fmodL64.dll Binaries/
+cp ThirdParty/libraries/dxcompiler.dll Binaries/
+cp ThirdParty/libraries/fmod64.dll Binaries/
+cp ThirdParty/libraries/fmodL64.dll Binaries/
 
 # Generate project files
 echo
@@ -37,4 +37,4 @@ else
 	echo "4. Generating Visual Studio solution..."
 fi
 echo
-build_scripts/premake5 --file=build_scripts/premake.lua $@
+Scripts/premake5 --file=Scripts/premake.lua $@

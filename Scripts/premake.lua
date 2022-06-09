@@ -17,19 +17,19 @@
 -- IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 -- CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-SOLUTION_NAME            = "spartan"
-EDITOR_NAME              = "editor"
-RUNTIME_NAME             = "runtime"
-TARGET_NAME              = "spartan" -- Name of executable
+SOLUTION_NAME            = "Spartan"
+EDITOR_NAME              = "Editor"
+RUNTIME_NAME             = "Runtime"
+TARGET_NAME              = "Spartan" -- Name of executable
 EDITOR_DIR               = "../" .. EDITOR_NAME
 RUNTIME_DIR              = "../" .. RUNTIME_NAME
 IGNORE_FILES             = {}
 ADDITIONAL_INCLUDES      = {}
 ADDITIONAL_LIBRARIES     = {}
 ADDITIONAL_LIBRARIES_DBG = {}
-LIBRARY_DIR              = "../third_party/libraries"
-OBJ_DIR                  = "../binaries/Obj"
-TARGET_DIR               = "../binaries"
+LIBRARY_DIR              = "../ThirdParty/libraries"
+OBJ_DIR                  = "../Binaries/Obj"
+TARGET_DIR               = "../Binaries"
 API_GRAPHICS             = _ARGS[1]
 
 -- Graphics api specific variables
@@ -48,8 +48,8 @@ elseif API_GRAPHICS == "vulkan" then
 	TARGET_NAME                 = TARGET_NAME .. "_vulkan"
 	IGNORE_FILES[0]             = RUNTIME_DIR .. "/RHI/D3D11/**"
 	IGNORE_FILES[1]             = RUNTIME_DIR .. "/RHI/D3D12/**"
-	ADDITIONAL_INCLUDES[0]      = "../third_party/SPIRV-Cross-03-06-2022";
-	ADDITIONAL_INCLUDES[1]      = "../third_party/Vulkan_1.3.211.0";
+	ADDITIONAL_INCLUDES[0]      = "../ThirdParty/SPIRV-Cross-03-06-2022";
+	ADDITIONAL_INCLUDES[1]      = "../ThirdParty/Vulkan_1.3.211.0";
 end
 
 -- Solution
@@ -120,16 +120,16 @@ project (RUNTIME_NAME)
 	removefiles { IGNORE_FILES[0], IGNORE_FILES[1] }
 
 	-- Includes
-	includedirs { "../third_party/DirectXShaderCompiler-03-06-2022" }
-	includedirs { "../third_party/Assimp_5.2.2" }
-	includedirs { "../third_party/Bullet_3.21" }
-	includedirs { "../third_party/FMOD_1.10.10" }
-	includedirs { "../third_party/FreeImage_3.18.0" }
-	includedirs { "../third_party/FreeType_2.11.0" }
-	includedirs { "../third_party/pugixml_1.11.4" }
-	includedirs { "../third_party/Mono_6.12.0.86" }
-	includedirs { "../third_party/SDL2_2.0.14" }
-    includedirs { "../third_party/Compressonator_4.2.5185" }
+	includedirs { "../ThirdParty/DirectXShaderCompiler-03-06-2022" }
+	includedirs { "../ThirdParty/Assimp_5.2.2" }
+	includedirs { "../ThirdParty/Bullet_3.21" }
+	includedirs { "../ThirdParty/FMOD_1.10.10" }
+	includedirs { "../ThirdParty/FreeImage_3.18.0" }
+	includedirs { "../ThirdParty/FreeType_2.11.0" }
+	includedirs { "../ThirdParty/pugixml_1.11.4" }
+	includedirs { "../ThirdParty/Mono_6.12.0.86" }
+	includedirs { "../ThirdParty/SDL2_2.0.14" }
+    includedirs { "../ThirdParty/Compressonator_4.2.5185" }
 	includedirs { ADDITIONAL_INCLUDES[0], ADDITIONAL_INCLUDES[1] }
 
 	-- Libraries
@@ -200,8 +200,8 @@ project (EDITOR_NAME)
 
 	-- Includes
 	includedirs { "../" .. RUNTIME_NAME }
-	includedirs { "../third_party/FreeType_2.11.0" } -- ImGui font atlas
-	includedirs { "../third_party/SDL2_2.0.14" } -- ImGui windows
+	includedirs { "../ThirdParty/FreeType_2.11.0" } -- ImGui font atlas
+	includedirs { "../ThirdParty/SDL2_2.0.14" } -- ImGui windows
 
 	-- Libraries
 	libdirs (LIBRARY_DIR)
