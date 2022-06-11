@@ -259,26 +259,29 @@ namespace ImGui::RHI
             }
         }
 
-        // Set render state
-        static RHI_PipelineState pipeline_state = {};
-        pipeline_state.shader_vertex            = g_shader_vertex.get();
-        pipeline_state.shader_pixel             = g_shader_pixel.get();
-        pipeline_state.rasterizer_state         = g_rasterizer_state.get();
-        pipeline_state.blend_state              = g_blend_state.get();
-        pipeline_state.depth_stencil_state      = g_depth_stencil_state.get();
-        pipeline_state.render_target_swapchain  = swap_chain;
-        pipeline_state.clear_color[0]           = clear ? Vector4(0.0f, 0.0f, 0.0f, 1.0f) : rhi_color_dont_care;
-        pipeline_state.viewport.width           = draw_data->DisplaySize.x;
-        pipeline_state.viewport.height          = draw_data->DisplaySize.y;
-        pipeline_state.dynamic_scissor          = true;
-        pipeline_state.primitive_topology       = RHI_PrimitiveTopology_Mode::TriangleList;
-        pipeline_state.pass_name                = is_child_window ? "pass_imgui_window_child" : "pass_imgui_window_main";
+        // Define pipeline state
+        static RHI_PipelineState pso = {};
+        pso.shader_vertex            = g_shader_vertex.get();
+        pso.shader_pixel             = g_shader_pixel.get();
+        pso.rasterizer_state         = g_rasterizer_state.get();
+        pso.blend_state              = g_blend_state.get();
+        pso.depth_stencil_state      = g_depth_stencil_state.get();
+        pso.render_target_swapchain  = swap_chain;
+        pso.clear_color[0]           = clear ? Vector4(0.0f, 0.0f, 0.0f, 1.0f) : rhi_color_dont_care;
+        pso.viewport.width           = draw_data->DisplaySize.x;
+        pso.viewport.height          = draw_data->DisplaySize.y;
+        pso.dynamic_scissor          = true;
+        pso.primitive_topology       = RHI_PrimitiveTopology_Mode::TriangleList;
+        pso.pass_name                = is_child_window ? "pass_imgui_window_child" : "pass_imgui_window_main";
         // don't profile child windows, the profiler also requires more work in order to not
         // crash when the are brought back into the main viewport and their command pool is destroyed
-        pipeline_state.profile                  = !is_child_window;
+        pso.profile                  = !is_child_window;
 
-        // Record commands
-        if (cmd_list->BeginRenderPass(pipeline_state))
+        // Set pipeline state
+        cmd_list->SetPipelineState(pso);
+
+        // Render
+        cmd_list->BeginRenderPass();
         {
             // Setup orthographic projection matrix into our constant buffer
             // Our visible ImGui space lies from draw_data->DisplayPos (top left) to 

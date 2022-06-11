@@ -49,7 +49,10 @@ using namespace std;
 using namespace Spartan::Math;
 //============================
 
-#define RENDER_TARGET(rt_enum) m_render_targets[static_cast<uint8_t>(rt_enum)]
+// A helper macro to work around the verboseness of some C++ concepts.
+#define RENDER_TARGET(rt_enum)    m_render_targets[static_cast<uint8_t>(rt_enum)]
+#define thread_group_count_x(tex) static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex->GetWidth()) / m_thread_group_count))
+#define thread_group_count_y(tex) static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex->GetHeight()) / m_thread_group_count))
 
 namespace Spartan
 {
@@ -178,14 +181,17 @@ namespace Spartan
 
     void Renderer::Pass_UpdateFrameBuffer(RHI_CommandList* cmd_list)
     {
-        // Set render state
+        // Define pipeline state
         static RHI_PipelineState pso;
         pso.profile    = false;
         pso.gpu_marker = false;
         pso.pass_name  = "Pass_UpdateFrameBuffer";
 
-        // Draw
-        if (cmd_list->BeginRenderPass(pso))
+        // Set pipeline state
+        cmd_list->SetPipelineState(pso);
+
+        // Render
+        cmd_list->BeginRenderPass();
         {
             Update_Cb_Frame(cmd_list);
             cmd_list->EndRenderPass();
@@ -234,7 +240,7 @@ namespace Spartan
             if (!tex_depth)
                 continue;
 
-            // Set render state
+            // Define pipeline state
             static RHI_PipelineState pso;
             pso.shader_vertex                   = shader_v;
             pso.shader_pixel                    = is_transparent_pass ? shader_p : nullptr;
@@ -272,6 +278,9 @@ namespace Spartan
                     pso.rasterizer_state = m_rasterizer_light_point_spot.get();
                 }
 
+                // Set pipeline state
+                cmd_list->SetPipelineState(pso);
+
                 // State tracking
                 bool render_pass_active    = false;
                 uint64_t m_set_material_id = 0;
@@ -305,7 +314,8 @@ namespace Spartan
 
                     if (!render_pass_active)
                     {
-                        render_pass_active = cmd_list->BeginRenderPass(pso);
+                        cmd_list->BeginRenderPass();
+                        render_pass_active = true;
                     }
 
                     // Bind material (only for transparents)
@@ -315,7 +325,7 @@ namespace Spartan
                         RHI_Texture* tex_albedo = material->GetTexture_Ptr(Material_Color);
                         cmd_list->SetTexture(Renderer::Bindings_Srv::tex, tex_albedo ? tex_albedo : m_tex_default_white.get());
 
-                        // Update uber buffer with material properties
+                        // Set uber buffer with material properties
                         m_cb_uber_cpu.mat_color     = material->GetColorAlbedo();
                         m_cb_uber_cpu.mat_tiling_uv = material->GetTiling();
                         m_cb_uber_cpu.mat_offset_uv = material->GetOffset();
@@ -327,7 +337,7 @@ namespace Spartan
                     cmd_list->SetBufferIndex(model->GetIndexBuffer());
                     cmd_list->SetBufferVertex(model->GetVertexBuffer());
 
-                    // Update uber buffer with cascade transform
+                    // Set uber buffer with cascade transform
                     m_cb_uber_cpu.transform = entity->GetTransform()->GetMatrix() * view_projection;
                     Update_Cb_Uber(cmd_list);
 
@@ -372,7 +382,7 @@ namespace Spartan
             if (!probe || !probe->GetNeedsToUpdate())
                 continue;
 
-            // Set render state
+            // Define pipeline state
             static RHI_PipelineState pso;
             pso.shader_vertex                   = shader_v;
             pso.shader_pixel                    = shader_p;
@@ -396,8 +406,11 @@ namespace Spartan
                 // Set render target texture array index
                 pso.render_target_color_texture_array_index = face_index;
 
+                // Set pipeline state
+                cmd_list->SetPipelineState(pso);
+
                 // Begin render pass
-                cmd_list->BeginRenderPass(pso);
+                cmd_list->BeginRenderPass();
 
                 // Compute view projection matrix
                 Matrix view_projection = probe->GetViewMatrix(face_index) * probe->GetProjectionMatrix();
@@ -442,14 +455,14 @@ namespace Spartan
                                 cmd_list->SetTexture(Renderer::Bindings_Srv::material_roughness, material->GetTexture_Ptr(Material_Metallic));
                                 cmd_list->SetTexture(Renderer::Bindings_Srv::material_metallic,  material->GetTexture_Ptr(Material_Metallic));
 
-                                // Update uber buffer with material properties
+                                // Set uber buffer with material properties
                                 m_cb_uber_cpu.mat_color    = material->GetColorAlbedo();
                                 m_cb_uber_cpu.mat_textures = 0;
                                 m_cb_uber_cpu.mat_textures |= material->HasTexture(Material_Color)     ? (1U << 2) : 0;
                                 m_cb_uber_cpu.mat_textures |= material->HasTexture(Material_Roughness) ? (1U << 3) : 0;
                                 m_cb_uber_cpu.mat_textures |= material->HasTexture(Material_Metallic)  ? (1U << 4) : 0;
 
-                                // Update uber buffer with cascade transform
+                                // Set uber buffer with cascade transform
                                 m_cb_uber_cpu.transform = entity->GetTransform()->GetMatrix() * view_projection;
                                 Update_Cb_Uber(cmd_list);
 
@@ -480,7 +493,7 @@ namespace Spartan
         RHI_Texture* tex_depth = RENDER_TARGET(RenderTarget::Gbuffer_Depth).get();
         const auto& entities = m_entities[ObjectType::GeometryOpaque];
 
-        // Set render state
+        // Define pipeline state
         static RHI_PipelineState pso;
         pso.shader_vertex               = shader_v;
         pso.shader_pixel                = shader_p; // alpha testing
@@ -493,8 +506,11 @@ namespace Spartan
         pso.primitive_topology          = RHI_PrimitiveTopology_Mode::TriangleList;
         pso.pass_name                   = "Pass_Depth_Prepass";
 
-        // Record commands
-        if (cmd_list->BeginRenderPass(pso))
+        // Set pipeline state
+        cmd_list->SetPipelineState(pso);
+
+        // Render
+        cmd_list->BeginRenderPass();
         { 
             // Variables that help reduce state changes
             uint64_t currently_bound_geometry = 0;
@@ -538,7 +554,7 @@ namespace Spartan
                 cmd_list->SetTexture(Renderer::Bindings_Srv::material_albedo,  material->GetTexture_Ptr(Material_Color));
                 cmd_list->SetTexture(Renderer::Bindings_Srv::material_mask,    material->GetTexture_Ptr(Material_AlphaMask));
 
-                // Update uber buffer
+                // Set uber buffer
                 m_cb_uber_cpu.transform           = transform->GetMatrix();
                 m_cb_uber_cpu.mat_color.w         = material->HasTexture(Material_Color) ? 1.0f : 0.0f;
                 m_cb_uber_cpu.is_transparent_pass = material->HasTexture(Material_AlphaMask);
@@ -573,7 +589,7 @@ namespace Spartan
         // We consider (in the shaders) that the sky is opaque, that's why the clear value has an alpha of 1.0f.
         static Vector4 clear_color_sky = Vector4(0.0f, 0.0f, 0.0f, 1.0f);
 
-        // Set render state
+        // Define pipeline state
         RHI_PipelineState pso;
         pso.shader_vertex                   = shader_v;
         pso.shader_pixel                    = shader_p;
@@ -595,13 +611,16 @@ namespace Spartan
         pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
         pso.pass_name                       = is_transparent_pass ? "GBuffer_Transparent" : "GBuffer_Opaque";
 
+        // Set pipeline state
+        cmd_list->SetPipelineState(pso);
+
         uint32_t material_index    = 0;
         uint64_t material_bound_id = 0;
         m_material_instances.fill(nullptr);
         auto& entities = m_entities[is_transparent_pass ? ObjectType::GeometryTransparent : ObjectType::GeometryOpaque];
 
-        // Record commands
-        if (cmd_list->BeginRenderPass(pso))
+        // Render
+        cmd_list->BeginRenderPass();
         {
             for (uint32_t i = 0; i < static_cast<uint32_t>(entities.size()); i++)
             {
@@ -652,16 +671,16 @@ namespace Spartan
                     }
 
                     // Bind material textures
-                    cmd_list->SetTexture(Renderer::Bindings_Srv::material_albedo, material->GetTexture_Ptr(Material_Color));
+                    cmd_list->SetTexture(Renderer::Bindings_Srv::material_albedo,    material->GetTexture_Ptr(Material_Color));
                     cmd_list->SetTexture(Renderer::Bindings_Srv::material_roughness, material->GetTexture_Ptr(Material_Roughness));
-                    cmd_list->SetTexture(Renderer::Bindings_Srv::material_metallic, material->GetTexture_Ptr(Material_Metallic));
-                    cmd_list->SetTexture(Renderer::Bindings_Srv::material_normal, material->GetTexture_Ptr(Material_Normal));
-                    cmd_list->SetTexture(Renderer::Bindings_Srv::material_height, material->GetTexture_Ptr(Material_Height));
+                    cmd_list->SetTexture(Renderer::Bindings_Srv::material_metallic,  material->GetTexture_Ptr(Material_Metallic));
+                    cmd_list->SetTexture(Renderer::Bindings_Srv::material_normal,    material->GetTexture_Ptr(Material_Normal));
+                    cmd_list->SetTexture(Renderer::Bindings_Srv::material_height,    material->GetTexture_Ptr(Material_Height));
                     cmd_list->SetTexture(Renderer::Bindings_Srv::material_occlusion, material->GetTexture_Ptr(Material_Occlusion));
-                    cmd_list->SetTexture(Renderer::Bindings_Srv::material_emission, material->GetTexture_Ptr(Material_Emission));
-                    cmd_list->SetTexture(Renderer::Bindings_Srv::material_mask, material->GetTexture_Ptr(Material_AlphaMask));
+                    cmd_list->SetTexture(Renderer::Bindings_Srv::material_emission,  material->GetTexture_Ptr(Material_Emission));
+                    cmd_list->SetTexture(Renderer::Bindings_Srv::material_mask,      material->GetTexture_Ptr(Material_AlphaMask));
 
-                    // Update uber buffer with material properties
+                    // Set uber buffer with material properties
                     m_cb_uber_cpu.mat_id            = material_index;
                     m_cb_uber_cpu.mat_color         = material->GetColorAlbedo();
                     m_cb_uber_cpu.mat_tiling_uv     = material->GetTiling();
@@ -681,7 +700,7 @@ namespace Spartan
                     m_cb_uber_cpu.mat_textures     |= material->HasTexture(Material_Occlusion) ? (1U << 7) : 0;
                 }
 
-                // Update uber buffer with entity transform
+                // Set uber buffer with entity transform
                 if (Transform* transform = entity->GetTransform())
                 {
                     m_cb_uber_cpu.transform = transform->GetMatrix();
@@ -723,33 +742,32 @@ namespace Spartan
 
         cmd_list->StartMarker("Pass_Ssao");
 
-        // Set render state
+        // Define pipeline state
         static RHI_PipelineState pso;
         pso.shader_compute = shader_c;
         pso.pass_name      = "Pass_Ssao";
 
-        // Draw
-        if (cmd_list->BeginRenderPass(pso))
+        // Set pipeline state
+        cmd_list->SetPipelineState(pso);
+
+        // Set uber buffer
+        m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(tex_ssao->GetWidth()), static_cast<float>(tex_ssao->GetHeight()));
+        Update_Cb_Uber(cmd_list);
+
+        // Set textures
+        cmd_list->SetTexture(Renderer::Bindings_Uav::rgba,           tex_ssao);
+        cmd_list->SetTexture(Renderer::Bindings_Uav::rgba2,          tex_ssao_gi);
+        cmd_list->SetTexture(Renderer::Bindings_Srv::gbuffer_albedo, RENDER_TARGET(RenderTarget::Gbuffer_Albedo));
+        cmd_list->SetTexture(Renderer::Bindings_Srv::gbuffer_normal, RENDER_TARGET(RenderTarget::Gbuffer_Normal));
+        cmd_list->SetTexture(Renderer::Bindings_Srv::gbuffer_depth,  RENDER_TARGET(RenderTarget::Gbuffer_Depth));
+        cmd_list->SetTexture(Renderer::Bindings_Srv::light_diffuse,  RENDER_TARGET(RenderTarget::Light_Diffuse));
+
+        // Render
+        cmd_list->BeginRenderPass();
         {
-            // Update uber buffer
-            m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(tex_ssao->GetWidth()), static_cast<float>(tex_ssao->GetHeight()));
-            Update_Cb_Uber(cmd_list);
-
-            const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_ssao->GetWidth()) / m_thread_group_count));
-            const uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_ssao->GetHeight()) / m_thread_group_count));
-            const uint32_t thread_group_count_z = 1;
-            const bool async = false;
-
-            cmd_list->SetTexture(Renderer::Bindings_Uav::rgba,           tex_ssao);
-            cmd_list->SetTexture(Renderer::Bindings_Uav::rgba2,          tex_ssao_gi);
-            cmd_list->SetTexture(Renderer::Bindings_Srv::gbuffer_albedo, RENDER_TARGET(RenderTarget::Gbuffer_Albedo));
-            cmd_list->SetTexture(Renderer::Bindings_Srv::gbuffer_normal, RENDER_TARGET(RenderTarget::Gbuffer_Normal));
-            cmd_list->SetTexture(Renderer::Bindings_Srv::gbuffer_depth,  RENDER_TARGET(RenderTarget::Gbuffer_Depth));
-            cmd_list->SetTexture(Renderer::Bindings_Srv::light_diffuse,  RENDER_TARGET(RenderTarget::Light_Diffuse));
-
-            cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
-            cmd_list->EndRenderPass();
+            cmd_list->Dispatch(thread_group_count_x(tex_ssao), thread_group_count_y(tex_ssao));
         }
+        cmd_list->EndRenderPass();
 
         // Blur
         const bool depth_aware   = true;
@@ -776,34 +794,33 @@ namespace Spartan
 
         cmd_list->StartMarker("Pass_Ssr");
 
-        // Set render state
+        // Define pipeline state
         static RHI_PipelineState pso;
         pso.shader_compute = shader_c;
         pso.pass_name      = "Pass_Ssr";
 
-        // Trace
-        if (cmd_list->BeginRenderPass(pso))
+        // Set pipeline state
+        cmd_list->SetPipelineState(pso);
+
+        // Set uber buffer
+        m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(tex_ssr->GetWidth()), static_cast<float>(tex_ssr->GetHeight()));
+        Update_Cb_Uber(cmd_list);
+
+        // Set textures
+        cmd_list->SetTexture(Renderer::Bindings_Uav::rgba, tex_ssr);   // write to that
+        cmd_list->SetTexture(Renderer::Bindings_Srv::tex, tex_in);     // reflect from that
+        cmd_list->SetTexture(Renderer::Bindings_Srv::gbuffer_albedo,   RENDER_TARGET(RenderTarget::Gbuffer_Albedo));
+        cmd_list->SetTexture(Renderer::Bindings_Srv::gbuffer_normal,   RENDER_TARGET(RenderTarget::Gbuffer_Normal));
+        cmd_list->SetTexture(Renderer::Bindings_Srv::gbuffer_depth,    RENDER_TARGET(RenderTarget::Gbuffer_Depth));
+        cmd_list->SetTexture(Renderer::Bindings_Srv::gbuffer_material, RENDER_TARGET(RenderTarget::Gbuffer_Material));
+        cmd_list->SetTexture(Renderer::Bindings_Srv::gbuffer_velocity, RENDER_TARGET(RenderTarget::Gbuffer_Velocity));
+
+        // Render
+        cmd_list->BeginRenderPass();
         {
-            // Update uber buffer
-            m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(tex_ssr->GetWidth()), static_cast<float>(tex_ssr->GetHeight()));
-            Update_Cb_Uber(cmd_list);
-
-            const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_ssr->GetWidth()) / m_thread_group_count));
-            const uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_ssr->GetHeight()) / m_thread_group_count));
-            const uint32_t thread_group_count_z = 1;
-            const bool async = false;
-
-            cmd_list->SetTexture(Renderer::Bindings_Uav::rgba,             tex_ssr); // write to that
-            cmd_list->SetTexture(Renderer::Bindings_Srv::tex,              tex_in);  // reflect from that
-            cmd_list->SetTexture(Renderer::Bindings_Srv::gbuffer_albedo,   RENDER_TARGET(RenderTarget::Gbuffer_Albedo));
-            cmd_list->SetTexture(Renderer::Bindings_Srv::gbuffer_normal,   RENDER_TARGET(RenderTarget::Gbuffer_Normal));
-            cmd_list->SetTexture(Renderer::Bindings_Srv::gbuffer_depth,    RENDER_TARGET(RenderTarget::Gbuffer_Depth));
-            cmd_list->SetTexture(Renderer::Bindings_Srv::gbuffer_material, RENDER_TARGET(RenderTarget::Gbuffer_Material));
-            cmd_list->SetTexture(Renderer::Bindings_Srv::gbuffer_velocity, RENDER_TARGET(RenderTarget::Gbuffer_Velocity));
-
-            cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
-            cmd_list->EndRenderPass();
+            cmd_list->Dispatch(thread_group_count_x(tex_ssr), thread_group_count_y(tex_ssr));
         }
+        cmd_list->EndRenderPass();
 
         // Generate frame mips so that we can simulate roughness
         const bool luminance_antiflicker = false;
@@ -843,12 +860,16 @@ namespace Spartan
         cmd_list->ClearRenderTarget(tex_specular,   0, 0, true, Vector4::Zero);
         cmd_list->ClearRenderTarget(tex_volumetric, 0, 0, true, Vector4::Zero);
 
-        // Set render state
+        // Define pipeline state
         static RHI_PipelineState pso;
         pso.shader_compute = shader_c;
         pso.pass_name      = is_transparent_pass ? "Pass_Light_Transparent" : "Pass_Light_Opaque";
 
-        if (cmd_list->BeginRenderPass(pso))
+        // Set pipeline state
+        cmd_list->SetPipelineState(pso);
+
+        // Render
+        cmd_list->BeginRenderPass();
         {
             // Iterate through all the light entities
             for (const auto& entity : entities)
@@ -898,17 +919,12 @@ namespace Spartan
                         // Update light buffer
                         Update_Cb_Light(cmd_list, light, RHI_Shader_Compute);
                         
-                        // Update uber buffer
+                        // Set uber buffer
                         m_cb_uber_cpu.resolution_rt       = Vector2(static_cast<float>(tex_diffuse->GetWidth()), static_cast<float>(tex_diffuse->GetHeight()));
                         m_cb_uber_cpu.is_transparent_pass = is_transparent_pass;
                         Update_Cb_Uber(cmd_list);
                         
-                        const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_diffuse->GetWidth()) / m_thread_group_count));
-                        const uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_diffuse->GetHeight()) / m_thread_group_count));
-                        const uint32_t thread_group_count_z = 1;
-                        const bool async = false;
-                        
-                        cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
+                        cmd_list->Dispatch(thread_group_count_x(tex_diffuse), thread_group_count_y(tex_diffuse));
                     }
                 }
             }
@@ -923,40 +939,38 @@ namespace Spartan
         if (!shader_c->IsCompiled())
             return;
 
-        // Set render state
+        // Define pipeline state
         static RHI_PipelineState pso;
         pso.shader_compute = shader_c;
         pso.pass_name      = is_transparent_pass ? "Pass_Light_Composition_Transparent" : "Pass_Light_Composition_Opaque";
 
-        // Begin commands
-        if (cmd_list->BeginRenderPass(pso))
+        // Set pipeline state
+        cmd_list->SetPipelineState(pso);
+
+        // Set uber buffer
+        m_cb_uber_cpu.resolution_rt       = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
+        m_cb_uber_cpu.is_transparent_pass = is_transparent_pass;
+        Update_Cb_Uber(cmd_list);
+
+        // Set textures
+        cmd_list->SetTexture(Renderer::Bindings_Uav::rgba, tex_out);
+        cmd_list->SetTexture(Renderer::Bindings_Srv::gbuffer_albedo,    RENDER_TARGET(RenderTarget::Gbuffer_Albedo));
+        cmd_list->SetTexture(Renderer::Bindings_Srv::gbuffer_material,  RENDER_TARGET(RenderTarget::Gbuffer_Material));
+        cmd_list->SetTexture(Renderer::Bindings_Srv::gbuffer_normal,    RENDER_TARGET(RenderTarget::Gbuffer_Normal));
+        cmd_list->SetTexture(Renderer::Bindings_Srv::gbuffer_depth,     RENDER_TARGET(RenderTarget::Gbuffer_Depth));
+        cmd_list->SetTexture(Renderer::Bindings_Srv::light_diffuse,     is_transparent_pass ? RENDER_TARGET(RenderTarget::Light_Diffuse_Transparent).get() : RENDER_TARGET(RenderTarget::Light_Diffuse).get());
+        cmd_list->SetTexture(Renderer::Bindings_Srv::light_specular,    is_transparent_pass ? RENDER_TARGET(RenderTarget::Light_Specular_Transparent).get() : RENDER_TARGET(RenderTarget::Light_Specular).get());
+        cmd_list->SetTexture(Renderer::Bindings_Srv::light_volumetric,  RENDER_TARGET(RenderTarget::Light_Volumetric));
+        cmd_list->SetTexture(Renderer::Bindings_Srv::frame,             RENDER_TARGET(RenderTarget::Frame_Render_2)); // refraction
+        cmd_list->SetTexture(Renderer::Bindings_Srv::ssao,              RENDER_TARGET(RenderTarget::Ssao));
+        cmd_list->SetTexture(Renderer::Bindings_Srv::environment,       GetEnvironmentTexture());
+
+        // Render
+        cmd_list->BeginRenderPass();
         {
-            // Update uber buffer
-            m_cb_uber_cpu.resolution_rt       = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
-            m_cb_uber_cpu.is_transparent_pass = is_transparent_pass;
-            Update_Cb_Uber(cmd_list);
-
-            const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / m_thread_group_count));
-            const uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetHeight()) / m_thread_group_count));
-            const uint32_t thread_group_count_z = 1;
-            const bool async = false;
-
-            // Setup command list
-            cmd_list->SetTexture(Renderer::Bindings_Uav::rgba,             tex_out);
-            cmd_list->SetTexture(Renderer::Bindings_Srv::gbuffer_albedo,   RENDER_TARGET(RenderTarget::Gbuffer_Albedo));
-            cmd_list->SetTexture(Renderer::Bindings_Srv::gbuffer_material, RENDER_TARGET(RenderTarget::Gbuffer_Material));
-            cmd_list->SetTexture(Renderer::Bindings_Srv::gbuffer_normal,   RENDER_TARGET(RenderTarget::Gbuffer_Normal));
-            cmd_list->SetTexture(Renderer::Bindings_Srv::gbuffer_depth,    RENDER_TARGET(RenderTarget::Gbuffer_Depth));
-            cmd_list->SetTexture(Renderer::Bindings_Srv::light_diffuse,    is_transparent_pass ? RENDER_TARGET(RenderTarget::Light_Diffuse_Transparent).get() : RENDER_TARGET(RenderTarget::Light_Diffuse).get());
-            cmd_list->SetTexture(Renderer::Bindings_Srv::light_specular,   is_transparent_pass ? RENDER_TARGET(RenderTarget::Light_Specular_Transparent).get() : RENDER_TARGET(RenderTarget::Light_Specular).get());
-            cmd_list->SetTexture(Renderer::Bindings_Srv::light_volumetric, RENDER_TARGET(RenderTarget::Light_Volumetric));
-            cmd_list->SetTexture(Renderer::Bindings_Srv::frame,            RENDER_TARGET(RenderTarget::Frame_Render_2)); // refraction
-            cmd_list->SetTexture(Renderer::Bindings_Srv::ssao,             RENDER_TARGET(RenderTarget::Ssao));
-            cmd_list->SetTexture(Renderer::Bindings_Srv::environment,      GetEnvironmentTexture());
-
-            cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
-            cmd_list->EndRenderPass();
+            cmd_list->Dispatch(thread_group_count_x(tex_out), thread_group_count_y(tex_out));
         }
+        cmd_list->EndRenderPass();
     }
 
     void Renderer::Pass_Light_ImageBased(RHI_CommandList* cmd_list, RHI_Texture* tex_out, const bool is_transparent_pass)
@@ -970,7 +984,7 @@ namespace Spartan
         // Get reflection probe entities
         const vector<Entity*>& probes = m_entities[ObjectType::ReflectionProbe];
 
-        // Set render state
+        // Define pipeline state
         static RHI_PipelineState pso;
         pso.shader_vertex                   = shader_v;
         pso.shader_pixel                    = shader_p;
@@ -984,34 +998,38 @@ namespace Spartan
         pso.pass_name                       = is_transparent_pass ? "Pass_Light_ImageBased_Transparent" : "Pass_Light_ImageBased_Opaque";
         pso.can_use_vertex_index_buffers    = false;
 
-        // Begin commands
-        if (cmd_list->BeginRenderPass(pso))
+        // Set pipeline state
+        cmd_list->SetPipelineState(pso);
+
+        // Set textures
+        cmd_list->SetTexture(Renderer::Bindings_Srv::gbuffer_albedo,   RENDER_TARGET(RenderTarget::Gbuffer_Albedo));
+        cmd_list->SetTexture(Renderer::Bindings_Srv::gbuffer_normal,   RENDER_TARGET(RenderTarget::Gbuffer_Normal));
+        cmd_list->SetTexture(Renderer::Bindings_Srv::gbuffer_material, RENDER_TARGET(RenderTarget::Gbuffer_Material));
+        cmd_list->SetTexture(Renderer::Bindings_Srv::gbuffer_depth,    RENDER_TARGET(RenderTarget::Gbuffer_Depth));
+        cmd_list->SetTexture(Renderer::Bindings_Srv::ssao,             RENDER_TARGET(RenderTarget::Ssao));
+        cmd_list->SetTexture(Renderer::Bindings_Srv::ssr,              RENDER_TARGET(RenderTarget::Ssr));
+        cmd_list->SetTexture(Renderer::Bindings_Srv::lutIbl,           RENDER_TARGET(RenderTarget::Brdf_Specular_Lut));
+        cmd_list->SetTexture(Renderer::Bindings_Srv::environment,      GetEnvironmentTexture());
+
+        // Set probe textures and data
+        if (!probes.empty())
         {
-            // Setup command list
-            cmd_list->SetTexture(Renderer::Bindings_Srv::gbuffer_albedo,   RENDER_TARGET(RenderTarget::Gbuffer_Albedo));
-            cmd_list->SetTexture(Renderer::Bindings_Srv::gbuffer_normal,   RENDER_TARGET(RenderTarget::Gbuffer_Normal));
-            cmd_list->SetTexture(Renderer::Bindings_Srv::gbuffer_material, RENDER_TARGET(RenderTarget::Gbuffer_Material));
-            cmd_list->SetTexture(Renderer::Bindings_Srv::gbuffer_depth,    RENDER_TARGET(RenderTarget::Gbuffer_Depth));
-            cmd_list->SetTexture(Renderer::Bindings_Srv::ssao,             RENDER_TARGET(RenderTarget::Ssao));
-            cmd_list->SetTexture(Renderer::Bindings_Srv::ssr,              RENDER_TARGET(RenderTarget::Ssr));
-            cmd_list->SetTexture(Renderer::Bindings_Srv::lutIbl,           RENDER_TARGET(RenderTarget::Brdf_Specular_Lut));
-            cmd_list->SetTexture(Renderer::Bindings_Srv::environment,      GetEnvironmentTexture());
+            ReflectionProbe* probe = probes[0]->GetComponent<ReflectionProbe>();
 
-            if (!probes.empty())
-            {
-                ReflectionProbe* probe = probes[0]->GetComponent<ReflectionProbe>();
+            cmd_list->SetTexture(Renderer::Bindings_Srv::reflection_probe, probe->GetColorTexture());
+            m_cb_uber_cpu.extents = probe->GetExtents();
+            m_cb_uber_cpu.float3  = probe->GetTransform()->GetPosition();
+        }
 
-                cmd_list->SetTexture(Renderer::Bindings_Srv::reflection_probe, probe->GetColorTexture());
-                m_cb_uber_cpu.extents = probe->GetExtents();
-                m_cb_uber_cpu.float3  = probe->GetTransform()->GetPosition();
-            }
+        // Set uber buffer
+        m_cb_uber_cpu.resolution_rt               = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
+        m_cb_uber_cpu.is_transparent_pass         = is_transparent_pass;
+        m_cb_uber_cpu.reflection_proble_available = !probes.empty();
+        Update_Cb_Uber(cmd_list);
 
-            // Update uber buffer
-            m_cb_uber_cpu.resolution_rt               = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
-            m_cb_uber_cpu.is_transparent_pass         = is_transparent_pass;
-            m_cb_uber_cpu.reflection_proble_available = !probes.empty();
-            Update_Cb_Uber(cmd_list);
-
+        // Render
+        cmd_list->BeginRenderPass();
+        {
             cmd_list->Draw(3, 0);
             cmd_list->EndRenderPass();
         }
@@ -1045,64 +1063,73 @@ namespace Spartan
         SP_ASSERT(tex_blur->GetWidth() >= width && tex_blur->GetHeight() >= height);
 
         // Compute thread group count
-        const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(width) / m_thread_group_count));
-        const uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(height) / m_thread_group_count));
-        const uint32_t thread_group_count_z = 1;
-        const bool async                    = false;
+        const uint32_t thread_group_count_x_ = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(width) / m_thread_group_count));
+        const uint32_t thread_group_count_y_ = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(height) / m_thread_group_count));
 
         // Horizontal pass
         {
-            // Set render state
+            // Define pipeline state
             static RHI_PipelineState pso;
             pso.shader_compute = shader_c;
             pso.pass_name      = "Pass_Blur_Gaussian_Horizontal";
 
-            if (cmd_list->BeginRenderPass(pso))
-            {
-                // Update uber buffer
-                m_cb_uber_cpu.resolution_rt  = Vector2(static_cast<float>(width), static_cast<float>(height));
-                m_cb_uber_cpu.resolution_in  = Vector2(static_cast<float>(width), static_cast<float>(height));
-                m_cb_uber_cpu.blur_direction = Vector2(pixel_stride, 0.0f);
-                m_cb_uber_cpu.blur_sigma     = sigma;
-                Update_Cb_Uber(cmd_list);
-            
-                cmd_list->SetTexture(Renderer::Bindings_Uav::rgba, tex_blur);
-                cmd_list->SetTexture(Renderer::Bindings_Srv::tex, tex_in, mip);
-                if (depth_aware)
-                {
-                    cmd_list->SetTexture(Renderer::Bindings_Srv::gbuffer_depth, tex_depth);
-                    cmd_list->SetTexture(Renderer::Bindings_Srv::gbuffer_normal, tex_normal);
-                }
+            // Set pipeline state
+            cmd_list->SetPipelineState(pso);
 
-                cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
-                cmd_list->EndRenderPass();
+            // Set uber buffer
+            m_cb_uber_cpu.resolution_rt  = Vector2(static_cast<float>(width), static_cast<float>(height));
+            m_cb_uber_cpu.resolution_in  = Vector2(static_cast<float>(width), static_cast<float>(height));
+            m_cb_uber_cpu.blur_direction = Vector2(pixel_stride, 0.0f);
+            m_cb_uber_cpu.blur_sigma = sigma;
+            Update_Cb_Uber(cmd_list);
+
+            // Set textures
+            cmd_list->SetTexture(Renderer::Bindings_Uav::rgba, tex_blur);
+            cmd_list->SetTexture(Renderer::Bindings_Srv::tex, tex_in, mip);
+            if (depth_aware)
+            {
+                cmd_list->SetTexture(Renderer::Bindings_Srv::gbuffer_depth, tex_depth);
+                cmd_list->SetTexture(Renderer::Bindings_Srv::gbuffer_normal, tex_normal);
             }
+
+            // Render
+            cmd_list->BeginRenderPass();
+            {
+                cmd_list->Dispatch(thread_group_count_x_, thread_group_count_y_);
+            }
+            cmd_list->EndRenderPass();
         }
 
         // Vertical pass
         {
-            // Set render state
+            // Define pipeline state
             static RHI_PipelineState pso;
             pso.shader_compute = shader_c;
             pso.pass_name      = "Pass_Blur_Gaussian_Vertical";
 
-            if (cmd_list->BeginRenderPass(pso))
+            // Set pipeline state
+            cmd_list->SetPipelineState(pso);
+
+            // Set uber buffer
+            m_cb_uber_cpu.resolution_rt  = Vector2(static_cast<float>(tex_blur->GetWidth()), static_cast<float>(tex_blur->GetHeight()));
+            m_cb_uber_cpu.blur_direction = Vector2(0.0f, pixel_stride);
+            Update_Cb_Uber(cmd_list);
+
+            // Set textures
+            cmd_list->SetTexture(Renderer::Bindings_Uav::rgba, tex_in, mip);
+            cmd_list->SetTexture(Renderer::Bindings_Srv::tex, tex_blur);
+            if (depth_aware)
             {
-                m_cb_uber_cpu.resolution_rt  = Vector2(static_cast<float>(tex_blur->GetWidth()), static_cast<float>(tex_blur->GetHeight()));
-                m_cb_uber_cpu.blur_direction = Vector2(0.0f, pixel_stride);
-                Update_Cb_Uber(cmd_list);
-
-                cmd_list->SetTexture(Renderer::Bindings_Uav::rgba, tex_in, mip);
-                cmd_list->SetTexture(Renderer::Bindings_Srv::tex, tex_blur);
-                if (depth_aware)
-                {
-                    cmd_list->SetTexture(Renderer::Bindings_Srv::gbuffer_depth, tex_depth);
-                    cmd_list->SetTexture(Renderer::Bindings_Srv::gbuffer_normal, tex_normal);
-                }
-
-                cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
-                cmd_list->EndRenderPass();
+                cmd_list->SetTexture(Renderer::Bindings_Srv::gbuffer_depth, tex_depth);
+                cmd_list->SetTexture(Renderer::Bindings_Srv::gbuffer_normal, tex_normal);
             }
+
+            // Render
+            cmd_list->BeginRenderPass();
+            {
+                cmd_list->Dispatch(thread_group_count_x_, thread_group_count_y_);
+            }
+            cmd_list->EndRenderPass();
         }
     }
 
@@ -1244,32 +1271,31 @@ namespace Spartan
         // Acquire history texture
         RHI_Texture* tex_history = RENDER_TARGET(RenderTarget::Taa_History).get();
 
-        // Set render state
+        // Define pipeline state
         static RHI_PipelineState pso;
         pso.shader_compute = shader_c;
         pso.pass_name      = "Pass_PostProcess_TAA";
 
-        // Draw
-        if (cmd_list->BeginRenderPass(pso))
+        // Set pipeline state
+        cmd_list->SetPipelineState(pso);
+
+        // Set uber buffer
+        m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
+        Update_Cb_Uber(cmd_list);
+
+        cmd_list->SetTexture(Renderer::Bindings_Uav::rgb,                       tex_out);
+        cmd_list->SetTexture(Renderer::Bindings_Srv::tex,                       tex_history);
+        cmd_list->SetTexture(Renderer::Bindings_Srv::tex2,                      tex_in);
+        cmd_list->SetTexture(Renderer::Bindings_Srv::gbuffer_velocity,          RENDER_TARGET(!m_is_odd_frame ? RenderTarget::Gbuffer_Velocity : RenderTarget::Gbuffer_Velocity_2));
+        cmd_list->SetTexture(Renderer::Bindings_Srv::gbuffer_velocity_previous, RENDER_TARGET(m_is_odd_frame ? RenderTarget::Gbuffer_Velocity : RenderTarget::Gbuffer_Velocity_2));
+        cmd_list->SetTexture(Renderer::Bindings_Srv::gbuffer_depth,             RENDER_TARGET(RenderTarget::Gbuffer_Depth));
+
+        // Render
+        cmd_list->BeginRenderPass();
         {
-            // Update uber buffer
-            m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
-            Update_Cb_Uber(cmd_list);
-
-            const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / m_thread_group_count));
-            const uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetHeight()) / m_thread_group_count));
-            const uint32_t thread_group_count_z = 1;
-            const bool async = false;
-
-            cmd_list->SetTexture(Renderer::Bindings_Uav::rgb,                       tex_out);
-            cmd_list->SetTexture(Renderer::Bindings_Srv::tex,                       tex_history);
-            cmd_list->SetTexture(Renderer::Bindings_Srv::tex2,                      tex_in);
-            cmd_list->SetTexture(Renderer::Bindings_Srv::gbuffer_velocity,          RENDER_TARGET(!m_is_odd_frame ? RenderTarget::Gbuffer_Velocity : RenderTarget::Gbuffer_Velocity_2));
-            cmd_list->SetTexture(Renderer::Bindings_Srv::gbuffer_velocity_previous, RENDER_TARGET(m_is_odd_frame  ? RenderTarget::Gbuffer_Velocity : RenderTarget::Gbuffer_Velocity_2));
-            cmd_list->SetTexture(Renderer::Bindings_Srv::gbuffer_depth,             RENDER_TARGET(RenderTarget::Gbuffer_Depth));
-            cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
-            cmd_list->EndRenderPass();
+            cmd_list->Dispatch(thread_group_count_x(tex_out), thread_group_count_y(tex_out));
         }
+        cmd_list->EndRenderPass();
 
         // D3D11 baggage, can't blit to a texture with a different mip count
         bool bilinear = false;
@@ -1293,28 +1319,28 @@ namespace Spartan
 
         // Luminance
         {
-            // Set render state
+            // Define pipeline state
             static RHI_PipelineState pso;
             pso.shader_compute = shader_luminance;
             pso.pass_name      = "Pass_PostProcess_BloomLuminance";
 
-            // Draw
-            if (cmd_list->BeginRenderPass(pso))
+            // Set pipeline state
+            cmd_list->SetPipelineState(pso);
+
+            // Set uber buffer
+            m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(tex_bloom->GetWidth()), static_cast<float>(tex_bloom->GetHeight()));
+            Update_Cb_Uber(cmd_list);
+
+            // Set textures
+            cmd_list->SetTexture(Renderer::Bindings_Uav::rgb, tex_bloom);
+            cmd_list->SetTexture(Renderer::Bindings_Srv::tex, tex_in);
+
+            // Render
+            cmd_list->BeginRenderPass();
             {
-                // Update uber buffer
-                m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(tex_bloom->GetWidth()), static_cast<float>(tex_bloom->GetHeight()));
-                Update_Cb_Uber(cmd_list);
-
-                const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_bloom->GetWidth()) / m_thread_group_count));
-                const uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_bloom->GetHeight()) / m_thread_group_count));
-                const uint32_t thread_group_count_z = 1;
-                const bool async                    = false;
-
-                cmd_list->SetTexture(Renderer::Bindings_Uav::rgb, tex_bloom);
-                cmd_list->SetTexture(Renderer::Bindings_Srv::tex, tex_in);
-                cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
-                cmd_list->EndRenderPass();
+                cmd_list->Dispatch(thread_group_count_x(tex_bloom), thread_group_count_y(tex_bloom));
             }
+            cmd_list->EndRenderPass();
         }
 
         // Generate mips
@@ -1323,13 +1349,16 @@ namespace Spartan
 
         // Starting from the lowest mip, upsample and blend with the higher one
         {
-            // Set render state
+            // Define pipeline state
             static RHI_PipelineState pso;
             pso.shader_compute = shader_upsampleBlendMip;
             pso.pass_name      = "Pass_PostProcess_BloomUpsampleBlendMip";
 
-            // Draw
-            if (cmd_list->BeginRenderPass(pso))
+            // Set pipeline state
+            cmd_list->SetPipelineState(pso);
+
+            // Render
+            cmd_list->BeginRenderPass();
             {
                 for (int i = static_cast<int>(tex_bloom->GetMipCount() - 1); i > 0; i--)
                 {
@@ -1338,18 +1367,16 @@ namespace Spartan
                     int mip_width_large   = tex_bloom->GetWidth() >> mip_index_big;
                     int mip_height_height = tex_bloom->GetHeight() >> mip_index_big;
 
-                    // Update uber buffer
+                    // Set uber buffer
                     m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(mip_width_large), static_cast<float>(mip_height_height));
                     Update_Cb_Uber(cmd_list);
 
-                    const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(mip_width_large) / m_thread_group_count));
-                    const uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(mip_height_height) / m_thread_group_count));
-                    const uint32_t thread_group_count_z = 1;
-                    const bool async = false;
+                    uint32_t thread_group_count_x_ = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(mip_width_large) / m_thread_group_count));
+                    uint32_t thread_group_count_y_ = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(mip_height_height) / m_thread_group_count));
 
                     cmd_list->SetTexture(Renderer::Bindings_Srv::tex, tex_bloom, mip_index_small);
                     cmd_list->SetTexture(Renderer::Bindings_Uav::rgb, tex_bloom, mip_index_big);
-                    cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
+                    cmd_list->Dispatch(thread_group_count_x_, thread_group_count_y_);
                 }
 
                 cmd_list->EndRenderPass();
@@ -1358,29 +1385,30 @@ namespace Spartan
 
         // Blend with the frame
         {
-            // Set render state
+            // Define pipeline state
             static RHI_PipelineState pso;
             pso.shader_compute = shader_blendFrame;
             pso.pass_name      = "Pass_PostProcess_BloomBlendFrame";
 
-            // Draw
-            if (cmd_list->BeginRenderPass(pso))
+            // Set pipeline state
+            cmd_list->SetPipelineState(pso);
+
+            // Set uber buffer
+            m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
+            Update_Cb_Uber(cmd_list);
+
+            // Set textures
+            cmd_list->SetTexture(Renderer::Bindings_Uav::rgb, tex_out.get());
+            cmd_list->SetTexture(Renderer::Bindings_Srv::tex, tex_in);
+            cmd_list->SetTexture(Renderer::Bindings_Srv::tex2, tex_bloom, 0);
+
+            // Render
+            cmd_list->BeginRenderPass();
             {
-                // Update uber buffer
-                m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
-                Update_Cb_Uber(cmd_list);
-
-                const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / m_thread_group_count));
-                const uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetHeight()) / m_thread_group_count));
-                const uint32_t thread_group_count_z = 1;
-                const bool async = false;
-
-                cmd_list->SetTexture(Renderer::Bindings_Uav::rgb, tex_out.get());
-                cmd_list->SetTexture(Renderer::Bindings_Srv::tex, tex_in);
-                cmd_list->SetTexture(Renderer::Bindings_Srv::tex2, tex_bloom, 0);
-                cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
-                cmd_list->EndRenderPass();
+                cmd_list->Dispatch(thread_group_count_x(tex_out), thread_group_count_y(tex_out));
             }
+
+            cmd_list->EndRenderPass();
         }
 
         cmd_list->EndMarker();
@@ -1393,28 +1421,28 @@ namespace Spartan
         if (!shader_c->IsCompiled())
             return;
 
-        // Set render state
+        // Define pipeline state
         static RHI_PipelineState pso;
         pso.shader_compute = shader_c;
         pso.pass_name      = "Pass_PostProcess_ToneMapping";
 
-        // Draw
-        if (cmd_list->BeginRenderPass(pso))
+        // Set pipeline state
+        cmd_list->SetPipelineState(pso);
+
+        // Set uber buffer
+        m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
+        Update_Cb_Uber(cmd_list);
+
+        // Set textures
+        cmd_list->SetTexture(Renderer::Bindings_Uav::rgb, tex_out);
+        cmd_list->SetTexture(Renderer::Bindings_Srv::tex, tex_in);
+
+        // Render
+        cmd_list->BeginRenderPass();
         {
-            // Update uber buffer
-            m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
-            Update_Cb_Uber(cmd_list);
-
-            const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / m_thread_group_count));
-            const uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetHeight()) / m_thread_group_count));
-            const uint32_t thread_group_count_z = 1;
-            const bool async = false;
-
-            cmd_list->SetTexture(Renderer::Bindings_Uav::rgb, tex_out);
-            cmd_list->SetTexture(Renderer::Bindings_Srv::tex, tex_in);
-            cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
-            cmd_list->EndRenderPass();
+            cmd_list->Dispatch(thread_group_count_x(tex_out), thread_group_count_y(tex_out));
         }
+        cmd_list->EndRenderPass();
     }
 
     void Renderer::Pass_PostProcess_Fxaa(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
@@ -1424,29 +1452,28 @@ namespace Spartan
         if (!shader_c->IsCompiled())
             return;
 
-        // Set render state
+        // Define pipeline state
         static RHI_PipelineState pso;
         pso.shader_compute = shader_c;
         pso.pass_name      = "Pass_PostProcess_FXAA";
 
-        // Draw
-        if (cmd_list->BeginRenderPass(pso))
+        // Set pipeline state
+        cmd_list->SetPipelineState(pso);
+
+        // Set uber buffer
+        m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
+        Update_Cb_Uber(cmd_list);
+
+        // Set textures
+        cmd_list->SetTexture(Renderer::Bindings_Srv::tex, tex_in);
+        cmd_list->SetTexture(Renderer::Bindings_Uav::rgb, tex_out);
+        
+        // Render
+        cmd_list->BeginRenderPass();
         {
-            // Compute thread count
-            const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / m_thread_group_count));
-            const uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetHeight()) / m_thread_group_count));
-            const uint32_t thread_group_count_z = 1;
-            const bool async = false;
-
-            // Update uber buffer
-            m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
-            Update_Cb_Uber(cmd_list);
-
-            cmd_list->SetTexture(Renderer::Bindings_Srv::tex, tex_in);
-            cmd_list->SetTexture(Renderer::Bindings_Uav::rgb, tex_out);
-            cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
-            cmd_list->EndRenderPass();
+            cmd_list->Dispatch(thread_group_count_x(tex_out), thread_group_count_y(tex_out));
         }
+        cmd_list->EndRenderPass();
     }
 
     void Renderer::Pass_PostProcess_ChromaticAberration(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
@@ -1456,28 +1483,28 @@ namespace Spartan
         if (!shader_c->IsCompiled())
             return;
 
-        // Set render state
+        // Define pipeline state
         static RHI_PipelineState pso;
         pso.shader_compute = shader_c;
         pso.pass_name      = "Pass_PostProcess_ChromaticAberration";
 
-        // Draw
-        if (cmd_list->BeginRenderPass(pso))
+        // Set pipeline state
+        cmd_list->SetPipelineState(pso);
+
+        // Set uber buffer
+        m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
+        Update_Cb_Uber(cmd_list);
+
+        // Set textures
+        cmd_list->SetTexture(Renderer::Bindings_Uav::rgb, tex_out);
+        cmd_list->SetTexture(Renderer::Bindings_Srv::tex, tex_in);
+
+        // Render
+        cmd_list->BeginRenderPass();
         {
-            // Update uber buffer
-            m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
-            Update_Cb_Uber(cmd_list);
-
-            const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / m_thread_group_count));
-            const uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetHeight()) / m_thread_group_count));
-            const uint32_t thread_group_count_z = 1;
-            const bool async                    = false;
-
-            cmd_list->SetTexture(Renderer::Bindings_Uav::rgb, tex_out);
-            cmd_list->SetTexture(Renderer::Bindings_Srv::tex, tex_in);
-            cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
-            cmd_list->EndRenderPass();
+            cmd_list->Dispatch(thread_group_count_x(tex_out), thread_group_count_y(tex_out));
         }
+        cmd_list->EndRenderPass();
     }
 
     void Renderer::Pass_PostProcess_MotionBlur(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
@@ -1487,30 +1514,30 @@ namespace Spartan
         if (!shader_c->IsCompiled())
             return;
 
-        // Set render state
+        // Define pipeline state
         static RHI_PipelineState pso;
         pso.shader_compute = shader_c;
         pso.pass_name      = "Pass_PostProcess_MotionBlur";
 
-        // Draw
-        if (cmd_list->BeginRenderPass(pso))
+        // Set pipeline state
+        cmd_list->SetPipelineState(pso);
+
+        // Set uber buffer
+        m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
+        Update_Cb_Uber(cmd_list);
+
+        // Set textures
+        cmd_list->SetTexture(Renderer::Bindings_Uav::rgb, tex_out);
+        cmd_list->SetTexture(Renderer::Bindings_Srv::tex, tex_in);
+        cmd_list->SetTexture(Renderer::Bindings_Srv::gbuffer_velocity, RENDER_TARGET(RenderTarget::Gbuffer_Velocity));
+        cmd_list->SetTexture(Renderer::Bindings_Srv::gbuffer_depth, RENDER_TARGET(RenderTarget::Gbuffer_Depth));
+
+        // Render
+        cmd_list->BeginRenderPass();
         {
-            // Update uber buffer
-            m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
-            Update_Cb_Uber(cmd_list);
-
-            const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / m_thread_group_count));
-            const uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetHeight()) / m_thread_group_count));
-            const uint32_t thread_group_count_z = 1;
-            const bool async                    = false;
-
-            cmd_list->SetTexture(Renderer::Bindings_Uav::rgb, tex_out);
-            cmd_list->SetTexture(Renderer::Bindings_Srv::tex, tex_in);
-            cmd_list->SetTexture(Renderer::Bindings_Srv::gbuffer_velocity, RENDER_TARGET(RenderTarget::Gbuffer_Velocity));
-            cmd_list->SetTexture(Renderer::Bindings_Srv::gbuffer_depth,    RENDER_TARGET(RenderTarget::Gbuffer_Depth));
-            cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
-            cmd_list->EndRenderPass();
+            cmd_list->Dispatch(thread_group_count_x(tex_out), thread_group_count_y(tex_out));
         }
+        cmd_list->EndRenderPass();
     }
 
     void Renderer::Pass_PostProcess_DepthOfField(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
@@ -1530,109 +1557,110 @@ namespace Spartan
 
         // Downsample and compute circle of confusion
         {
-            // Set render state
+            // Define pipeline state
             static RHI_PipelineState pso;
             pso.shader_compute = shader_downsampleCoc;
             pso.pass_name      = "Pass_PostProcess_Dof_DownsampleCoc";
 
-            // Draw
-            if (cmd_list->BeginRenderPass(pso))
+            // Set pipeline state
+            cmd_list->SetPipelineState(pso);
+
+            // Set uber buffer
+            m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(tex_bokeh_half->GetWidth()), static_cast<float>(tex_bokeh_half->GetHeight()));
+            Update_Cb_Uber(cmd_list);
+
+            // Set textures
+            cmd_list->SetTexture(Renderer::Bindings_Uav::rgba, tex_bokeh_half);
+            cmd_list->SetTexture(Renderer::Bindings_Srv::gbuffer_depth, tex_depth);
+            cmd_list->SetTexture(Renderer::Bindings_Srv::tex, tex_in);
+
+            // Render
+            cmd_list->BeginRenderPass();
             {
-                // Update uber buffer
-                m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(tex_bokeh_half->GetWidth()), static_cast<float>(tex_bokeh_half->GetHeight()));
-                Update_Cb_Uber(cmd_list);
-
-                const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_bokeh_half->GetWidth()) / m_thread_group_count));
-                const uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_bokeh_half->GetHeight()) / m_thread_group_count));
-                const uint32_t thread_group_count_z = 1;
-                const bool async                    = false;
-
-                cmd_list->SetTexture(Renderer::Bindings_Uav::rgba, tex_bokeh_half);
-                cmd_list->SetTexture(Renderer::Bindings_Srv::gbuffer_depth, tex_depth);
-                cmd_list->SetTexture(Renderer::Bindings_Srv::tex, tex_in);
-                cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
-                cmd_list->EndRenderPass();
+                cmd_list->Dispatch(thread_group_count_x(tex_bokeh_half), thread_group_count_y(tex_bokeh_half));
             }
+            cmd_list->EndRenderPass();
         }
 
         // Bokeh
         {
-            // Set render state
+            // Define pipeline state
             static RHI_PipelineState pso;
             pso.shader_compute = shader_bokeh;
             pso.pass_name      = "Pass_PostProcess_Dof_Bokeh";
 
-            // Draw
-            if (cmd_list->BeginRenderPass(pso))
+            // Set pipeline state
+            cmd_list->SetPipelineState(pso);
+
+            // Set uber buffer
+            m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(tex_bokeh_half_2->GetWidth()), static_cast<float>(tex_bokeh_half_2->GetHeight()));
+            Update_Cb_Uber(cmd_list);
+
+            // Set textures
+            cmd_list->SetTexture(Renderer::Bindings_Uav::rgba, tex_bokeh_half_2);
+            cmd_list->SetTexture(Renderer::Bindings_Srv::tex, tex_bokeh_half);
+
+            // Render
+            cmd_list->BeginRenderPass();
             {
-                // Update uber buffer
-                m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(tex_bokeh_half_2->GetWidth()), static_cast<float>(tex_bokeh_half_2->GetHeight()));
-                Update_Cb_Uber(cmd_list);
-
-                const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_bokeh_half_2->GetWidth()) / m_thread_group_count));
-                const uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_bokeh_half_2->GetHeight()) / m_thread_group_count));
-                const uint32_t thread_group_count_z = 1;
-                const bool async = false;
-
-                cmd_list->SetTexture(Renderer::Bindings_Uav::rgba, tex_bokeh_half_2);
-                cmd_list->SetTexture(Renderer::Bindings_Srv::tex, tex_bokeh_half);
-                cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
-                cmd_list->EndRenderPass();
+                cmd_list->Dispatch(thread_group_count_x(tex_bokeh_half_2), thread_group_count_y(tex_bokeh_half_2));
             }
+            cmd_list->EndRenderPass();
         }
 
         // Blur the bokeh using a tent filter
         {
-            // Set render state
+            // Define pipeline state
             static RHI_PipelineState pso;
             pso.shader_compute   = shader_tent;
             pso.pass_name        = "Pass_PostProcess_Dof_Tent";
 
-            // Draw
-            if (cmd_list->BeginRenderPass(pso))
+            // Set pipeline state
+            cmd_list->SetPipelineState(pso);
+
+            // Set uber buffer
+            m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(tex_bokeh_half->GetWidth()), static_cast<float>(tex_bokeh_half->GetHeight()));
+            Update_Cb_Uber(cmd_list);
+
+            // Set textures
+            cmd_list->SetTexture(Renderer::Bindings_Uav::rgba, tex_bokeh_half);
+            cmd_list->SetTexture(Renderer::Bindings_Srv::tex, tex_bokeh_half_2);
+
+            // Render
+            cmd_list->BeginRenderPass();
             {
-                // Update uber buffer
-                m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(tex_bokeh_half->GetWidth()), static_cast<float>(tex_bokeh_half->GetHeight()));
-                Update_Cb_Uber(cmd_list);
-
-                const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_bokeh_half->GetWidth()) / m_thread_group_count));
-                const uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_bokeh_half->GetHeight()) / m_thread_group_count));
-                const uint32_t thread_group_count_z = 1;
-                const bool async = false;
-
-                cmd_list->SetTexture(Renderer::Bindings_Uav::rgba, tex_bokeh_half);
-                cmd_list->SetTexture(Renderer::Bindings_Srv::tex, tex_bokeh_half_2);
-                cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
-                cmd_list->EndRenderPass();
+                cmd_list->Dispatch(thread_group_count_x(tex_bokeh_half), thread_group_count_y(tex_bokeh_half));
             }
+            cmd_list->EndRenderPass();
         }
 
         // Upscale & Blend
         {
-            // Set render state
+            // Define pipeline state
             static RHI_PipelineState pso;
-            pso.shader_compute   = shader_upsampleBlend;
-            pso.pass_name        = "Pass_PostProcess_Dof_UpscaleBlend";
+            pso.shader_compute = shader_upsampleBlend;
+            pso.pass_name      = "Pass_PostProcess_Dof_UpscaleBlend";
 
-            // Draw
-            if (cmd_list->BeginRenderPass(pso))
+            // Set pipeline state
+            cmd_list->SetPipelineState(pso);
+
+            // Set uber buffer
+            m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
+            Update_Cb_Uber(cmd_list);
+
+            // Set textures
+            cmd_list->SetTexture(Renderer::Bindings_Uav::rgba, tex_out);
+            cmd_list->SetTexture(Renderer::Bindings_Srv::gbuffer_depth, tex_depth);
+            cmd_list->SetTexture(Renderer::Bindings_Srv::tex, tex_in);
+            cmd_list->SetTexture(Renderer::Bindings_Srv::tex2, tex_bokeh_half);
+
+            // Render
+            cmd_list->BeginRenderPass();
             {
-                // Update uber buffer
-                m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
-                Update_Cb_Uber(cmd_list);
-
-                const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / m_thread_group_count));
-                const uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetHeight()) / m_thread_group_count));
-                const uint32_t thread_group_count_z = 1;
-                const bool async = false;
-
-                cmd_list->SetTexture(Renderer::Bindings_Uav::rgba, tex_out);
-                cmd_list->SetTexture(Renderer::Bindings_Srv::gbuffer_depth, tex_depth);
-                cmd_list->SetTexture(Renderer::Bindings_Srv::tex, tex_in);
-                cmd_list->SetTexture(Renderer::Bindings_Srv::tex2, tex_bokeh_half);
-                cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
-                cmd_list->EndRenderPass();
+                cmd_list->Dispatch(thread_group_count_x(tex_out), thread_group_count_y(tex_out));
+                
             }
+            cmd_list->EndRenderPass();
         }
     }
 
@@ -1643,28 +1671,28 @@ namespace Spartan
         if (!shader->IsCompiled())
             return;
 
-        // Set render state
+        // Define pipeline state
         static RHI_PipelineState pso;
-        pso.shader_compute   = shader;
-        pso.pass_name        = "Pass_PostProcess_Debanding";
+        pso.shader_compute = shader;
+        pso.pass_name      = "Pass_PostProcess_Debanding";
 
-        // Draw
-        if (cmd_list->BeginRenderPass(pso))
+        // Set pipeline state
+        cmd_list->SetPipelineState(pso);
+
+        // Set uber buffer
+        m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
+        Update_Cb_Uber(cmd_list);
+
+        // Set textures
+        cmd_list->SetTexture(Renderer::Bindings_Uav::rgb, tex_out);
+        cmd_list->SetTexture(Renderer::Bindings_Srv::tex, tex_in);
+
+        // Render
+        cmd_list->BeginRenderPass();
         {
-            // Update uber buffer
-            m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
-            Update_Cb_Uber(cmd_list);
-
-            const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / m_thread_group_count));
-            const uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetHeight()) / m_thread_group_count));
-            const uint32_t thread_group_count_z = 1;
-            const bool async = false;
-
-            cmd_list->SetTexture(Renderer::Bindings_Uav::rgb, tex_out);
-            cmd_list->SetTexture(Renderer::Bindings_Srv::tex, tex_in);
-            cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
-            cmd_list->EndRenderPass();
+            cmd_list->Dispatch(thread_group_count_x(tex_out), thread_group_count_y(tex_out));
         }
+        cmd_list->EndRenderPass();
     }
 
     void Renderer::Pass_PostProcess_FilmGrain(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
@@ -1674,26 +1702,24 @@ namespace Spartan
         if (!shader_c->IsCompiled())
             return;
 
-        // Set render state
+        // Define pipeline state
         static RHI_PipelineState pso;
         pso.shader_compute = shader_c;
         pso.pass_name      = "Pass_PostProcess_FilmGrain";
 
-        // Draw
-        if (cmd_list->BeginRenderPass(pso))
+        // Set pipeline state
+        cmd_list->SetPipelineState(pso);
+
+        // Render
+        cmd_list->BeginRenderPass();
         {
-            // Update uber buffer
+            // Set uber buffer
             m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
             Update_Cb_Uber(cmd_list);
 
-            const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / m_thread_group_count));
-            const uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetHeight()) / m_thread_group_count));
-            const uint32_t thread_group_count_z = 1;
-            const bool async                    = false;
-
             cmd_list->SetTexture(Renderer::Bindings_Uav::rgb, tex_out);
             cmd_list->SetTexture(Renderer::Bindings_Srv::tex, tex_in);
-            cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
+            cmd_list->Dispatch(thread_group_count_x(tex_out), thread_group_count_y(tex_out));
             cmd_list->EndRenderPass();
         }
     }
@@ -1705,28 +1731,28 @@ namespace Spartan
         if (!shader_c->IsCompiled())
             return;
 
-        // Set render state
+        // Define pipeline state
         static RHI_PipelineState pso;
         pso.shader_compute = shader_c;
         pso.pass_name      = "Pass_AMD_FidelityFX_ContrastAdaptiveSharpening";
 
-        // Draw
-        if (cmd_list->BeginRenderPass(pso))
+        // Set pipeline state
+        cmd_list->SetPipelineState(pso);
+
+        // Set uber buffer
+        m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
+        Update_Cb_Uber(cmd_list);
+
+        // Set textures
+        cmd_list->SetTexture(Renderer::Bindings_Uav::rgb, tex_out);
+        cmd_list->SetTexture(Renderer::Bindings_Srv::tex, tex_in);
+
+        // Render
+        cmd_list->BeginRenderPass();
         {
-            // Update uber buffer
-            m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
-            Update_Cb_Uber(cmd_list);
-
-            const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / m_thread_group_count));
-            const uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetHeight()) / m_thread_group_count));
-            const uint32_t thread_group_count_z = 1;
-            const bool async                    = false;
-
-            cmd_list->SetTexture(Renderer::Bindings_Uav::rgb, tex_out);
-            cmd_list->SetTexture(Renderer::Bindings_Srv::tex, tex_in);
-            cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
-            cmd_list->EndRenderPass();
+            cmd_list->Dispatch(thread_group_count_x(tex_out), thread_group_count_y(tex_out));
         }
+        cmd_list->EndRenderPass();
     }
 
     void Renderer::Pass_AMD_FidelityFX_SinglePassDownsampler(RHI_CommandList* cmd_list, RHI_Texture* tex, const bool luminance_antiflicker)
@@ -1750,32 +1776,37 @@ namespace Spartan
         if (!shader->IsCompiled())
             return;
 
-        // Set render state
+        // Define render state
         static RHI_PipelineState pso;
         pso.shader_compute = shader;
         pso.pass_name      = "Pass_AMD_FidelityFX_SinglePassDowsnampler";
 
-        // Draw
-        if (cmd_list->BeginRenderPass(pso))
+        // Set pipeline state
+        cmd_list->SetPipelineState(pso);
+
+        // As per documentation (page 22)
+        const uint32_t thread_group_count_x_ = (tex->GetWidth() + 63) >> 6;
+        const uint32_t thread_group_count_y_ = (tex->GetHeight() + 63) >> 6;
+
+        // Set uber buffer
+        m_cb_uber_cpu.resolution_rt    = Vector2(static_cast<float>(tex->GetWidth()), static_cast<float>(tex->GetHeight()));
+        m_cb_uber_cpu.mip_count        = output_mip_count;
+        m_cb_uber_cpu.work_group_count = thread_group_count_x_ * thread_group_count_y_;
+        Update_Cb_Uber(cmd_list);
+
+        // Set structured buffer
+        cmd_list->SetStructuredBuffer(Renderer::Bindings_Sb::counter, m_sb_counter);
+
+        // Set textures
+        cmd_list->SetTexture(Renderer::Bindings_Srv::tex, tex, 0); // top mip
+        cmd_list->SetTexture(Renderer::Bindings_Uav::rgba_mips, tex, 1, true); // rest of the mips
+
+        // Render
+        cmd_list->BeginRenderPass();
         {
-            // As per documentation (page 22)
-            const uint32_t thread_group_count_x = (tex->GetWidth() + 63) >> 6;
-            const uint32_t thread_group_count_y = (tex->GetHeight() + 63) >> 6;
-            const uint32_t thread_group_count_z = 1;
-            const bool async                    = false;
-        
-            // Update uber buffer
-            m_cb_uber_cpu.resolution_rt    = Vector2(static_cast<float>(tex->GetWidth()), static_cast<float>(tex->GetHeight()));
-            m_cb_uber_cpu.mip_count        = output_mip_count;
-            m_cb_uber_cpu.work_group_count = thread_group_count_x * thread_group_count_y * thread_group_count_z;
-            Update_Cb_Uber(cmd_list);
-        
-            cmd_list->SetTexture(Renderer::Bindings_Srv::tex, tex, 0); // top mip
-            cmd_list->SetTexture(Renderer::Bindings_Uav::rgba_mips, tex, 1, true); // rest of the mips
-            cmd_list->SetStructuredBuffer(Renderer::Bindings_Sb::counter, m_sb_counter);
-            cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
-            cmd_list->EndRenderPass();
+            cmd_list->Dispatch(thread_group_count_x_, thread_group_count_y_);
         }
+        cmd_list->EndRenderPass();
     }
 
     void Renderer::Pass_AMD_FidelityFX_SuperResolution(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out, RHI_Texture* tex_out_scratch)
@@ -1788,44 +1819,52 @@ namespace Spartan
 
         // Upsample
         {
-            // Set render state
+            // Define render state
             static RHI_PipelineState pso;
             pso.shader_compute = shader_upsample_c;
             pso.pass_name      = "Pass_AMD_FidelityFX_SuperResolution_Upsample";
 
-            if (cmd_list->BeginRenderPass(pso))
+            // Set pipeline state
+            cmd_list->SetPipelineState(pso);
+
+            // Set textures
+            cmd_list->SetTexture(Renderer::Bindings_Uav::rgb, tex_out_scratch);
+            cmd_list->SetTexture(Renderer::Bindings_Srv::tex, tex_in);
+
+            // Render
+            cmd_list->BeginRenderPass();
             {
                 static const int thread_group_work_region_dim = 16;
-                const uint32_t thread_group_count_x           = (tex_out->GetWidth() + (thread_group_work_region_dim - 1)) / thread_group_work_region_dim;
-                const uint32_t thread_group_count_y           = (tex_out->GetHeight() + (thread_group_work_region_dim - 1)) / thread_group_work_region_dim;
-                const uint32_t thread_group_count_z           = 1;
-                const bool async                              = false;
+                const uint32_t thread_group_count_x_          = (tex_out->GetWidth() + (thread_group_work_region_dim - 1)) / thread_group_work_region_dim;
+                const uint32_t thread_group_count_y_          = (tex_out->GetHeight() + (thread_group_work_region_dim - 1)) / thread_group_work_region_dim;
 
-                cmd_list->SetTexture(Renderer::Bindings_Uav::rgb, tex_out_scratch);
-                cmd_list->SetTexture(Renderer::Bindings_Srv::tex, tex_in);
-                cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
-                cmd_list->EndRenderPass();
+                cmd_list->Dispatch(thread_group_count_x_, thread_group_count_y_);
             }
+            cmd_list->EndRenderPass();
         }
 
         // Sharpen
         {
-            // Set render state
+            // Define pipeline state
             static RHI_PipelineState pso;
             pso.shader_compute  = shader_sharpen_c;
             pso.pass_name       = "Pass_AMD_FidelityFX_SuperResolution_Sharpen";
 
-            if (cmd_list->BeginRenderPass(pso))
-            {
-                static const int thread_group_work_region_dim = 16;
-                const uint32_t thread_group_count_x           = (tex_out->GetWidth() + (thread_group_work_region_dim - 1)) / thread_group_work_region_dim;
-                const uint32_t thread_group_count_y           = (tex_out->GetHeight() + (thread_group_work_region_dim - 1)) / thread_group_work_region_dim;
-                const uint32_t thread_group_count_z           = 1;
-                const bool async                              = false;
+            // Set pipeline state
+            cmd_list->SetPipelineState(pso);
 
-                cmd_list->SetTexture(Renderer::Bindings_Uav::rgb, tex_out);
-                cmd_list->SetTexture(Renderer::Bindings_Srv::tex, tex_out_scratch);
-                cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
+            // Set textures
+            cmd_list->SetTexture(Renderer::Bindings_Uav::rgb, tex_out);
+            cmd_list->SetTexture(Renderer::Bindings_Srv::tex, tex_out_scratch);
+
+            // Render
+            cmd_list->BeginRenderPass();
+            {
+                static const int thread_group_work_region_dim  = 16;
+                const uint32_t thread_group_count_x_           = (tex_out->GetWidth() + (thread_group_work_region_dim - 1)) / thread_group_work_region_dim;
+                const uint32_t thread_group_count_y_           = (tex_out->GetHeight() + (thread_group_work_region_dim - 1)) / thread_group_work_region_dim;
+
+                cmd_list->Dispatch(thread_group_count_x(tex_out), thread_group_count_y(tex_out));
                 cmd_list->EndRenderPass();
             }
         }
@@ -1848,7 +1887,7 @@ namespace Spartan
         // Grid
         if (draw_grid)
         {
-            // Set render state
+            // Define pipeline state
             static RHI_PipelineState pso;
             pso.shader_vertex                   = shader_color_v;
             pso.shader_pixel                    = shader_color_p;
@@ -1861,10 +1900,13 @@ namespace Spartan
             pso.primitive_topology              = RHI_PrimitiveTopology_Mode::LineList;
             pso.pass_name                       = "Pass_Lines_Grid";
 
-            // Create and submit command list
-            if (cmd_list->BeginRenderPass(pso))
+            // Set pipeline state
+            cmd_list->SetPipelineState(pso);
+
+            // Render
+            cmd_list->BeginRenderPass();
             {
-                // Update uber buffer
+                // Set uber buffer
                 m_cb_uber_cpu.resolution_rt = m_resolution_render;
                 if (m_camera)
                 {
@@ -1896,7 +1938,7 @@ namespace Spartan
                 std::copy(m_line_vertices.begin(), m_line_vertices.end(), buffer);
                 m_vertex_buffer_lines->Unmap();
 
-                // Set render state
+                // Define pipeline state
                 static RHI_PipelineState pso;
                 pso.shader_vertex                   = shader_color_v;
                 pso.shader_pixel                    = shader_color_p;
@@ -1908,13 +1950,16 @@ namespace Spartan
                 // Depth off
                 if (draw_lines_depth_off)
                 {
-                    // Set remaining render state
+                    // Define pipeline state
                     pso.blend_state         = m_blend_disabled.get();
                     pso.depth_stencil_state = m_depth_stencil_off_off.get();
                     pso.pass_name           = "Pass_Lines_Depth_Off";
-        
-                    // Create and submit command list
-                    if (cmd_list->BeginRenderPass(pso))
+
+                    // Set pipeline state
+                    cmd_list->SetPipelineState(pso);
+
+                    // Render
+                    cmd_list->BeginRenderPass();
                     {
                         cmd_list->SetBufferVertex(m_vertex_buffer_lines.get());
                         cmd_list->Draw(m_lines_index_depth_off + 1);
@@ -1925,14 +1970,17 @@ namespace Spartan
                 // Depth on
                 if (m_lines_index_depth_on > (vertex_count / 2) - 1)
                 {
-                    // Set remaining render state
+                    // Define pipeline state
                     pso.blend_state                 = m_blend_alpha.get();
                     pso.depth_stencil_state         = m_depth_stencil_r_off.get();
                     pso.render_target_depth_texture = RENDER_TARGET(RenderTarget::Gbuffer_Depth).get();
                     pso.pass_name                   = "Pass_Lines_Depth_On";
-        
-                    // Create and submit command list
-                    if (cmd_list->BeginRenderPass(pso))
+
+                    // Set pipeline state
+                    cmd_list->SetPipelineState(pso);
+
+                    // Render
+                    cmd_list->BeginRenderPass();
                     {
                         cmd_list->SetBufferVertex(m_vertex_buffer_lines.get());
                         cmd_list->Draw((m_lines_index_depth_on - (vertex_count / 2)) + 1, vertex_count / 2);
@@ -1955,7 +2003,7 @@ namespace Spartan
         if (lights.empty() || !shader_v->IsCompiled() || !shader_p->IsCompiled())
             return;
 
-        // Set render state
+        // Define pipeline state
         static RHI_PipelineState pso;
         pso.shader_vertex                   = shader_v;
         pso.shader_pixel                    = shader_p;
@@ -1967,6 +2015,9 @@ namespace Spartan
         pso.viewport                        = tex_out->GetViewport();
         pso.pass_name                       = "Pass_Icons";
 
+        // Set pipeline state
+        cmd_list->SetPipelineState(pso);
+
         if (!m_camera)
         {
             return;
@@ -1975,7 +2026,8 @@ namespace Spartan
         // For each light
         for (const auto& entity : lights)
         {
-            if (cmd_list->BeginRenderPass(pso))
+            // Render
+            cmd_list->BeginRenderPass();
             {
                 // Light can be null if it just got removed and our buffer doesn't update till the next frame
                 if (Light* light = entity->GetComponent<Light>())
@@ -2018,7 +2070,7 @@ namespace Spartan
                             m_gizmo_light_rect.CreateBuffers(this);
                         }
 
-                        // Update uber buffer
+                        // Set uber buffer
                         m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(tex_width), static_cast<float>(tex_width));
                         m_cb_uber_cpu.transform     = m_cb_frame_cpu.view_projection_ortho;
                         Update_Cb_Uber(cmd_list);
@@ -2070,7 +2122,8 @@ namespace Spartan
 
             // Axis - X
             pso.pass_name = "Pass_Handle_Axis_X";
-            if (cmd_list->BeginRenderPass(pso))
+            cmd_list->SetPipelineState(pso);
+            cmd_list->BeginRenderPass();
             {
                 m_cb_uber_cpu.transform = transform_handle->GetHandle()->GetTransform(Vector3::Right);
                 m_cb_uber_cpu.float3    = transform_handle->GetHandle()->GetColor(Vector3::Right);
@@ -2084,7 +2137,8 @@ namespace Spartan
             
             // Axis - Y
             pso.pass_name = "Pass_Handle_Axis_Y";
-            if (cmd_list->BeginRenderPass(pso))
+            cmd_list->SetPipelineState(pso);
+            cmd_list->BeginRenderPass();
             {
                 m_cb_uber_cpu.transform = transform_handle->GetHandle()->GetTransform(Vector3::Up);
                 m_cb_uber_cpu.float3    = transform_handle->GetHandle()->GetColor(Vector3::Up);
@@ -2098,7 +2152,8 @@ namespace Spartan
             
             // Axis - Z
             pso.pass_name = "Pass_Handle_Axis_Z";
-            if (cmd_list->BeginRenderPass(pso))
+            cmd_list->SetPipelineState(pso);
+            cmd_list->BeginRenderPass();
             {
                 m_cb_uber_cpu.transform = transform_handle->GetHandle()->GetTransform(Vector3::Forward);
                 m_cb_uber_cpu.float3    = transform_handle->GetHandle()->GetColor(Vector3::Forward);
@@ -2114,7 +2169,8 @@ namespace Spartan
             if (transform_handle->DrawXYZ())
             {
                 pso.pass_name = "Pass_Gizmos_Axis_XYZ";
-                if (cmd_list->BeginRenderPass(pso))
+                cmd_list->SetPipelineState(pso);
+                cmd_list->BeginRenderPass();
                 {
                     m_cb_uber_cpu.transform = transform_handle->GetHandle()->GetTransform(Vector3::One);
                     m_cb_uber_cpu.float3    = transform_handle->GetHandle()->GetColor(Vector3::One);
@@ -2145,7 +2201,7 @@ namespace Spartan
         if (probes.empty())
             return;
 
-        // Set render state
+        // Define pipeline state
         static RHI_PipelineState pso;
         pso.shader_vertex                   = shader_v;
         pso.shader_pixel                    = shader_p;
@@ -2157,9 +2213,12 @@ namespace Spartan
         pso.viewport                        = tex_out->GetViewport();
         pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
         pso.pass_name                       = "Pass_Debug_ReflectionProbes";
-        
-        // Create and submit command list
-        if (cmd_list->BeginRenderPass(pso))
+
+        // Set pipeline state
+        cmd_list->SetPipelineState(pso);
+
+        // Render
+        cmd_list->BeginRenderPass();
         {
             cmd_list->SetBufferVertex(m_sphere_vertex_buffer.get());
             cmd_list->SetBufferIndex(m_sphere_index_buffer.get());
@@ -2168,7 +2227,7 @@ namespace Spartan
             {
                 if (ReflectionProbe* probe = probes[probe_index]->GetComponent<ReflectionProbe>())
                 {
-                    // Update uber buffer
+                    // Set uber buffer
                     m_cb_uber_cpu.transform = probe->GetTransform()->GetMatrix();
                     Update_Cb_Uber(cmd_list);
 
@@ -2216,7 +2275,7 @@ namespace Spartan
             RHI_Texture* tex_depth  = RENDER_TARGET(RenderTarget::Gbuffer_Depth).get();
             RHI_Texture* tex_normal = RENDER_TARGET(RenderTarget::Gbuffer_Normal).get();
 
-            // Set render state
+            // Define render state
             static RHI_PipelineState pso;
             pso.shader_vertex                            = shader_v.get();
             pso.shader_pixel                             = shader_p.get();
@@ -2230,10 +2289,13 @@ namespace Spartan
             pso.viewport                                 = tex_out->GetViewport();
             pso.pass_name                                = "Pass_Outline";
 
-            // Record commands
-            if (cmd_list->BeginRenderPass(pso))
+            // Set pipeline state
+            cmd_list->SetPipelineState(pso);
+
+            // Render
+            cmd_list->BeginRenderPass();
             {
-                 // Update uber buffer with entity transform
+                 // Set uber buffer with entity transform
                 if (Transform* transform = entity->GetTransform())
                 {
                     m_cb_uber_cpu.transform     = transform->GetMatrix();
@@ -2272,7 +2334,7 @@ namespace Spartan
 
         cmd_list->StartMarker("Pass_PeformanceMetrics");
 
-        // Set render state
+        // Define pipeline state
         static RHI_PipelineState pso;
         pso.shader_vertex                   = shader_v.get();
         pso.shader_pixel                    = shader_p.get();
@@ -2285,6 +2347,9 @@ namespace Spartan
         pso.gpu_marker                      = false;
         pso.pass_name                       = "Pass_PeformanceMetrics_Outline";
 
+        // Set pipeline state
+        cmd_list->SetPipelineState(pso);
+
         // Update text
         const Vector2 text_pos = Vector2(-m_viewport.width * 0.5f + 5.0f, m_viewport.height * 0.5f - m_font->GetSize() - 2.0f);
         m_font->SetText(m_profiler->GetMetrics(), text_pos);
@@ -2292,9 +2357,9 @@ namespace Spartan
         // Draw outline
         if (m_font->GetOutline() != Font_Outline_None && m_font->GetOutlineSize() != 0)
         { 
-            if (cmd_list->BeginRenderPass(pso))
+            cmd_list->BeginRenderPass();
             {
-                // Update uber buffer
+                // Set uber buffer
                 m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
                 m_cb_uber_cpu.mat_color     = m_font->GetColorOutline();
                 Update_Cb_Uber(cmd_list);
@@ -2309,9 +2374,10 @@ namespace Spartan
 
         // Draw
         pso.pass_name = "Pass_PeformanceMetrics_Inline";
-        if (cmd_list->BeginRenderPass(pso))
+        cmd_list->SetPipelineState(pso);
+        cmd_list->BeginRenderPass();
         {
-            // Update uber buffer
+            // Set uber buffer
             m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
             m_cb_uber_cpu.mat_color     = m_font->GetColor();
             Update_Cb_Uber(cmd_list);
@@ -2339,29 +2405,29 @@ namespace Spartan
         // Acquire render target
         RHI_Texture* tex_brdf_specular_lut = RENDER_TARGET(RenderTarget::Brdf_Specular_Lut).get();
 
-        // Set render state
+        // Define render state
         static RHI_PipelineState pso;
         pso.shader_compute = shader;
         pso.pass_name      = "Pass_BrdfSpecularLut";
 
-        // Draw
-        if (cmd_list->BeginRenderPass(pso))
+        // Set pipeline state
+        cmd_list->SetPipelineState(pso);
+
+        // Set uber buffer
+        m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(tex_brdf_specular_lut->GetWidth()), static_cast<float>(tex_brdf_specular_lut->GetHeight()));
+        Update_Cb_Uber(cmd_list);
+
+        // Set texture
+        cmd_list->SetTexture(Renderer::Bindings_Uav::rg, tex_brdf_specular_lut);
+
+        // Render
+        cmd_list->BeginRenderPass();
         {
-            // Update uber buffer
-            m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(tex_brdf_specular_lut->GetWidth()), static_cast<float>(tex_brdf_specular_lut->GetHeight()));
-            Update_Cb_Uber(cmd_list);
-
-            const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_brdf_specular_lut->GetWidth()) / m_thread_group_count));
-            const uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_brdf_specular_lut->GetHeight()) / m_thread_group_count));
-            const uint32_t thread_group_count_z = 1;
-            const bool async = false;
-
-            cmd_list->SetTexture(Renderer::Bindings_Uav::rg, tex_brdf_specular_lut);
-            cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
-            cmd_list->EndRenderPass();
-
-            m_brdf_specular_lut_rendered = true;
+            cmd_list->Dispatch(thread_group_count_x(tex_brdf_specular_lut), thread_group_count_y(tex_brdf_specular_lut));
         }
+        cmd_list->EndRenderPass();
+
+        m_brdf_specular_lut_rendered = true;
     }
 
     void Renderer::Pass_Copy(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out, const bool bilinear)
@@ -2371,28 +2437,27 @@ namespace Spartan
         if (!shader_c->IsCompiled())
             return;
 
-        // Set render state
+        // Define render state
         static RHI_PipelineState pso;
         pso.shader_compute  = shader_c;
         pso.pass_name       = bilinear ? "Pass_Copy_Bilinear" : "Pass_Copy_Point";
 
-        // Draw
-        if (cmd_list->BeginRenderPass(pso))
+        // Set pipeline state
+        cmd_list->SetPipelineState(pso);
+
+        // Set uber buffer
+        m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
+        Update_Cb_Uber(cmd_list);
+
+        cmd_list->SetTexture(Renderer::Bindings_Uav::rgb, tex_out);
+        cmd_list->SetTexture(Renderer::Bindings_Srv::tex, tex_in);
+
+        // Render
+        cmd_list->BeginRenderPass();
         {
-            // Update uber buffer
-            m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
-            Update_Cb_Uber(cmd_list);
-
-            const uint32_t thread_group_count_x = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetWidth()) / m_thread_group_count));
-            const uint32_t thread_group_count_y = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex_out->GetHeight()) / m_thread_group_count));
-            const uint32_t thread_group_count_z = 1;
-            const bool async = false;
-
-            cmd_list->SetTexture(Renderer::Bindings_Uav::rgb, tex_out);
-            cmd_list->SetTexture(Renderer::Bindings_Srv::tex, tex_in);
-            cmd_list->Dispatch(thread_group_count_x, thread_group_count_y, thread_group_count_z, async);
-            cmd_list->EndRenderPass();
+            cmd_list->Dispatch(thread_group_count_x(tex_out), thread_group_count_y(tex_out));
         }
+        cmd_list->EndRenderPass();
     }
 
     void Renderer::Pass_CopyToBackbuffer()
@@ -2406,7 +2471,7 @@ namespace Spartan
         // Transition swap chain image
         m_swap_chain->SetLayout(RHI_Image_Layout::Color_Attachment_Optimal, m_cmd_current);
 
-        // Set render state
+        // Define render state
         static RHI_PipelineState pso = {};
         pso.shader_vertex            = shader_v;
         pso.shader_pixel             = shader_p;
@@ -2419,23 +2484,28 @@ namespace Spartan
         pso.viewport                 = m_viewport;
         pso.pass_name                = "Pass_CopyToBackbuffer";
 
-        // Record commands
-        if (m_cmd_current->BeginRenderPass(pso))
-        {
-            // Update uber buffer
-            m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(m_swap_chain->GetWidth()), static_cast<float>(m_swap_chain->GetHeight()));
-            Update_Cb_Uber(m_cmd_current);
+        // Set pipeline state
+        m_cmd_current->SetPipelineState(pso);
 
-            m_cmd_current->SetTexture(Renderer::Bindings_Srv::tex, RENDER_TARGET(RenderTarget::Frame_Output).get());
+        // Set uber buffer
+        m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(m_swap_chain->GetWidth()), static_cast<float>(m_swap_chain->GetHeight()));
+        Update_Cb_Uber(m_cmd_current);
+
+        // Set texture
+        m_cmd_current->SetTexture(Renderer::Bindings_Srv::tex, RENDER_TARGET(RenderTarget::Frame_Output).get());
+
+        // Render
+        m_cmd_current->BeginRenderPass();
+        {
             m_cmd_current->DrawIndexed(3, 0);
-            m_cmd_current->EndRenderPass();
         }
+        m_cmd_current->EndRenderPass();
 
         // Transition swap chain image
         m_swap_chain->SetLayout(RHI_Image_Layout::Present_Src, m_cmd_current);
     }
 
-    void Renderer::Pass_Generate_Mips()
+    void Renderer::Pass_Generate_Mips(RHI_CommandList* cmd_list)
     {
         for (shared_ptr<RHI_Texture> texture : m_textures_mip_generation)
         {
@@ -2450,6 +2520,9 @@ namespace Spartan
             // Downsample
             const bool luminance_antiflicker = false;
             Pass_AMD_FidelityFX_SinglePassDownsampler(m_cmd_current, texture.get(), luminance_antiflicker);
+
+            // Set all generated mips to read only optimal
+            texture->SetLayout(RHI_Image_Layout::Shader_Read_Only_Optimal, cmd_list, 1, true);
         }
     }
 }

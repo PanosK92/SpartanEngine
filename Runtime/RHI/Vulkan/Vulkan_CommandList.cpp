@@ -235,172 +235,133 @@ namespace Spartan
         return true;
     }
 
-    bool RHI_CommandList::BeginRenderPass(RHI_PipelineState& new_pipeline_state)
+    void RHI_CommandList::BeginRenderPass()
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
-
-        // Update the descriptor cache with the pipeline state
-        Descriptors_GetLayoutFromPipelineState(new_pipeline_state);
-
-        // Validate it
-        if (!new_pipeline_state.IsValid())
-        {
-            LOG_ERROR("Invalid pipeline state");
-            return false;
-        }
-
-        // If no pipeline exists for this state, create one
-        uint32_t hash_previous = m_pipeline_state.ComputeHash();
-        uint32_t hash          = new_pipeline_state.ComputeHash();
-        auto it = m_pipelines.find(hash);
-        if (it == m_pipelines.end())
-        {
-            // Create a new pipeline
-            it = m_pipelines.emplace(make_pair(hash, move(make_shared<RHI_Pipeline>(m_rhi_device, new_pipeline_state, m_descriptor_layout_current)))).first;
-            LOG_INFO("A new pipeline has been created.");
-        }
-
-        m_pipeline       = it->second.get();
-        m_pipeline_state = new_pipeline_state;
-
-        // Determine if the pipeline is dirty
-        if (!m_pipeline_dirty)
-        {
-            m_pipeline_dirty = hash_previous != hash;
-        }
-
-        // If the pipeline changed, resources have to be set again
-        if (m_pipeline_dirty)
-        {
-            m_vertex_buffer_id = 0;
-            m_index_buffer_id  = 0;
-        }
+        SP_ASSERT(!m_is_rendering && "The command list is already rendering");
 
         // Start marker and profiler (if used)
-        Timeblock_Start(new_pipeline_state.pass_name, new_pipeline_state.profile, new_pipeline_state.gpu_marker);
+        Timeblock_Start(m_pso.pass_name, m_pso.profile, m_pso.gpu_marker);
 
-        // Start rendering
-        if (m_pipeline_state.IsGraphics())
+        if (!m_pso.IsGraphics())
+            return;
+
+        VkRenderingInfo rendering_info      = {};
+        rendering_info.sType                = VK_STRUCTURE_TYPE_RENDERING_INFO_KHR;
+        rendering_info.renderArea           = { 0, 0, m_pso.GetWidth(), m_pso.GetHeight() };
+        rendering_info.layerCount           = 1;
+        rendering_info.colorAttachmentCount = 0;
+        rendering_info.pColorAttachments    = nullptr;
+        rendering_info.pDepthAttachment     = nullptr;
+        rendering_info.pStencilAttachment   = nullptr;
+
+        // Color attachments
+        vector<VkRenderingAttachmentInfo> attachments_color;
         {
-            SP_ASSERT(!m_is_render_pass_active);
-
-            VkRenderingInfo rendering_info      = {};
-            rendering_info.sType                = VK_STRUCTURE_TYPE_RENDERING_INFO_KHR;
-            rendering_info.renderArea           = { 0, 0, m_pipeline_state.GetWidth(), m_pipeline_state.GetHeight() };
-            rendering_info.layerCount           = 1;
-            rendering_info.colorAttachmentCount = 0;
-            rendering_info.pColorAttachments    = nullptr;
-            rendering_info.pDepthAttachment     = nullptr;
-            rendering_info.pStencilAttachment   = nullptr;
-
-            // Color attachments
-            vector<VkRenderingAttachmentInfo> attachments_color;
+            // Swapchain buffer as a render target
+            RHI_SwapChain* swapchain = m_pso.render_target_swapchain;
+            if (swapchain)
             {
-                // Swapchain buffer as a render target
-                RHI_SwapChain* swapchain = m_pipeline_state.render_target_swapchain;
-                if (swapchain)
+                // Transition to the appropriate layout
+                if (swapchain->GetLayout() != RHI_Image_Layout::Color_Attachment_Optimal)
                 {
+                    swapchain->SetLayout(RHI_Image_Layout::Color_Attachment_Optimal, this);
+                }
+
+                VkRenderingAttachmentInfo color_attachment = {};
+                color_attachment.sType                     = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
+                color_attachment.imageView                 = static_cast<VkImageView>(swapchain->Get_Resource_View());
+                color_attachment.imageLayout               = vulkan_image_layout[static_cast<uint8_t>(swapchain->GetLayout())];
+                color_attachment.loadOp                    = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+                color_attachment.storeOp                   = VK_ATTACHMENT_STORE_OP_STORE;
+
+                SP_ASSERT(color_attachment.imageView != nullptr);
+
+                attachments_color.push_back(color_attachment);
+            }
+            else // Regular render target(s)
+            { 
+                for (uint32_t i = 0; i < rhi_max_render_target_count; i++)
+                {
+                    RHI_Texture* rt = m_pso.render_target_color_textures[i];
+
+                    if (rt == nullptr)
+                        break;
+
+                    SP_ASSERT(rt->IsRenderTargetColor());
+
                     // Transition to the appropriate layout
-                    if (swapchain->GetLayout() != RHI_Image_Layout::Color_Attachment_Optimal)
+                    if (rt->GetLayout(0) != RHI_Image_Layout::Color_Attachment_Optimal)
                     {
-                        swapchain->SetLayout(RHI_Image_Layout::Color_Attachment_Optimal, this);
+                        rt->SetLayout(RHI_Image_Layout::Color_Attachment_Optimal, this);
                     }
 
                     VkRenderingAttachmentInfo color_attachment = {};
                     color_attachment.sType                     = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
-                    color_attachment.imageView                 = static_cast<VkImageView>(swapchain->Get_Resource_View());
-                    color_attachment.imageLayout               = vulkan_image_layout[static_cast<uint8_t>(swapchain->GetLayout())];
-                    color_attachment.loadOp                    = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+                    color_attachment.imageView                 = static_cast<VkImageView>(rt->GetResource_View_RenderTarget(m_pso.render_target_color_texture_array_index));
+                    color_attachment.imageLayout               = vulkan_image_layout[static_cast<uint8_t>(rt->GetLayout(0))];
+                    color_attachment.loadOp                    = get_color_load_op(m_pso.clear_color[i]);
                     color_attachment.storeOp                   = VK_ATTACHMENT_STORE_OP_STORE;
+                    color_attachment.clearValue.color          = { m_pso.clear_color[i].x, m_pso.clear_color[i].y, m_pso.clear_color[i].z, m_pso.clear_color[i].w };
 
                     SP_ASSERT(color_attachment.imageView != nullptr);
 
                     attachments_color.push_back(color_attachment);
                 }
-                else // Regular render target(s)
-                { 
-                    for (uint32_t i = 0; i < rhi_max_render_target_count; i++)
-                    {
-                        RHI_Texture* rt = m_pipeline_state.render_target_color_textures[i];
-
-                        if (rt == nullptr)
-                            break;
-
-                        SP_ASSERT(rt->IsRenderTargetColor());
-
-                        // Transition to the appropriate layout
-                        if (rt->GetLayout(0) != RHI_Image_Layout::Color_Attachment_Optimal)
-                        {
-                            rt->SetLayout(RHI_Image_Layout::Color_Attachment_Optimal, this);
-                        }
-
-                        VkRenderingAttachmentInfo color_attachment = {};
-                        color_attachment.sType                     = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
-                        color_attachment.imageView                 = static_cast<VkImageView>(rt->GetResource_View_RenderTarget(m_pipeline_state.render_target_color_texture_array_index));
-                        color_attachment.imageLayout               = vulkan_image_layout[static_cast<uint8_t>(rt->GetLayout(0))];
-                        color_attachment.loadOp                    = get_color_load_op(m_pipeline_state.clear_color[i]);
-                        color_attachment.storeOp                   = VK_ATTACHMENT_STORE_OP_STORE;
-                        color_attachment.clearValue.color          = { m_pipeline_state.clear_color[i].x, m_pipeline_state.clear_color[i].y, m_pipeline_state.clear_color[i].z, m_pipeline_state.clear_color[i].w };
-
-                        SP_ASSERT(color_attachment.imageView != nullptr);
-
-                        attachments_color.push_back(color_attachment);
-                    }
-                }
-                rendering_info.colorAttachmentCount = static_cast<uint32_t>(attachments_color.size());
-                rendering_info.pColorAttachments    = attachments_color.data();
             }
-
-            // Depth-stencil attachment
-            VkRenderingAttachmentInfoKHR attachment_depth_stencil = {};
-            if (m_pipeline_state.render_target_depth_texture != nullptr)
-            {
-                RHI_Texture* rt = m_pipeline_state.render_target_depth_texture;
-
-                SP_ASSERT(rt->IsRenderTargetDepthStencil());
-
-                // Transition to the appropriate layout
-                RHI_Image_Layout layout = rt->IsStencilFormat() ? RHI_Image_Layout::Depth_Stencil_Attachment_Optimal : RHI_Image_Layout::Depth_Attachment_Optimal;
-                if (new_pipeline_state.render_target_depth_texture_read_only)
-                {
-                    layout = RHI_Image_Layout::Depth_Stencil_Read_Only_Optimal;
-                }
-                rt->SetLayout(layout, this);
-
-                attachment_depth_stencil.sType                           = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
-                attachment_depth_stencil.imageView                       = static_cast<VkImageView>(rt->GetResource_View_DepthStencil(m_pipeline_state.render_target_depth_stencil_texture_array_index));
-                attachment_depth_stencil.imageLayout                     = vulkan_image_layout[static_cast<uint8_t>(rt->GetLayout(0))];
-                attachment_depth_stencil.loadOp                          = get_depth_load_op(m_pipeline_state.clear_depth);
-                attachment_depth_stencil.storeOp                         = VK_ATTACHMENT_STORE_OP_STORE;
-                attachment_depth_stencil.clearValue.depthStencil.depth   = m_pipeline_state.clear_depth;
-                attachment_depth_stencil.clearValue.depthStencil.stencil = m_pipeline_state.clear_stencil;
-
-                rendering_info.pDepthAttachment = &attachment_depth_stencil;
-
-                // We are using the combined depth-stencil approach.
-                // This means we can assign the depth attachment as the stencil attachment.
-                if (m_pipeline_state.render_target_depth_texture->IsStencilFormat())
-                {
-                    rendering_info.pStencilAttachment = rendering_info.pDepthAttachment;
-                }
-            }
-
-            // Begin dynamic render pass instance
-            vkCmdBeginRendering(static_cast<VkCommandBuffer>(m_resource), &rendering_info);
-
-            m_is_render_pass_active = true;
+            rendering_info.colorAttachmentCount = static_cast<uint32_t>(attachments_color.size());
+            rendering_info.pColorAttachments    = attachments_color.data();
         }
 
-        return true;
+        // Depth-stencil attachment
+        VkRenderingAttachmentInfoKHR attachment_depth_stencil = {};
+        if (m_pso.render_target_depth_texture != nullptr)
+        {
+            RHI_Texture* rt = m_pso.render_target_depth_texture;
+
+            SP_ASSERT(rt->IsRenderTargetDepthStencil());
+
+            // Transition to the appropriate layout
+            RHI_Image_Layout layout = rt->IsStencilFormat() ? RHI_Image_Layout::Depth_Stencil_Attachment_Optimal : RHI_Image_Layout::Depth_Attachment_Optimal;
+            if (m_pso.render_target_depth_texture_read_only)
+            {
+                layout = RHI_Image_Layout::Depth_Stencil_Read_Only_Optimal;
+            }
+            rt->SetLayout(layout, this);
+
+            attachment_depth_stencil.sType                           = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
+            attachment_depth_stencil.imageView                       = static_cast<VkImageView>(rt->GetResource_View_DepthStencil(m_pso.render_target_depth_stencil_texture_array_index));
+            attachment_depth_stencil.imageLayout                     = vulkan_image_layout[static_cast<uint8_t>(rt->GetLayout(0))];
+            attachment_depth_stencil.loadOp                          = get_depth_load_op(m_pso.clear_depth);
+            attachment_depth_stencil.storeOp                         = VK_ATTACHMENT_STORE_OP_STORE;
+            attachment_depth_stencil.clearValue.depthStencil.depth   = m_pso.clear_depth;
+            attachment_depth_stencil.clearValue.depthStencil.stencil = m_pso.clear_stencil;
+
+            rendering_info.pDepthAttachment = &attachment_depth_stencil;
+
+            // We are using the combined depth-stencil approach.
+            // This means we can assign the depth attachment as the stencil attachment.
+            if (m_pso.render_target_depth_texture->IsStencilFormat())
+            {
+                rendering_info.pStencilAttachment = rendering_info.pDepthAttachment;
+            }
+        }
+
+        // Begin dynamic render pass instance
+        vkCmdBeginRendering(static_cast<VkCommandBuffer>(m_resource), &rendering_info);
+
+        m_is_rendering = true;
+
+        return;
     }
 
     void RHI_CommandList::EndRenderPass()
     {
         // End rendering
-        if (m_is_render_pass_active)
+        if (m_is_rendering)
         {
             vkCmdEndRendering(static_cast<VkCommandBuffer>(m_resource));
-            m_is_render_pass_active = false;
+            m_is_rendering = false;
         }   
 
         // End profiling
@@ -561,7 +522,7 @@ namespace Spartan
         m_profiler->m_rhi_draw++;
     }
 
-    void RHI_CommandList::Dispatch(uint32_t x, uint32_t y, uint32_t z, bool async /*= false*/)
+    void RHI_CommandList::Dispatch(uint32_t x, uint32_t y, uint32_t z /*= 1*/, bool async /*= false*/)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
@@ -839,6 +800,7 @@ namespace Spartan
             // Transition
             if (transition_required)
             {
+                SP_ASSERT(!m_is_rendering && "Can't transition to a different layout while rendering");
                 texture->SetLayout(target_layout, this, mip, ranged);
             }
         }
@@ -968,13 +930,13 @@ namespace Spartan
     void RHI_CommandList::Timeblock_End()
     {
         // Allowed markers ?
-        if (m_rhi_device->GetContextRhi()->gpu_markers && m_pipeline_state.gpu_marker)
+        if (m_rhi_device->GetContextRhi()->gpu_markers && m_pso.gpu_marker)
         {
             vulkan_utility::debug::marker_end(static_cast<VkCommandBuffer>(m_resource));
         }
 
         // Allowed profiler ?
-        if (m_rhi_device->GetContextRhi()->profiler && m_pipeline_state.profile)
+        if (m_rhi_device->GetContextRhi()->profiler && m_pso.profile)
         {
             if (m_profiler)
             {
@@ -997,7 +959,7 @@ namespace Spartan
             SP_ASSERT(vk_pipeline != nullptr);
 
             // Bind
-            VkPipelineBindPoint pipeline_bind_point = m_pipeline_state.IsCompute() ? VK_PIPELINE_BIND_POINT_COMPUTE : VK_PIPELINE_BIND_POINT_GRAPHICS;
+            VkPipelineBindPoint pipeline_bind_point = m_pso.IsCompute() ? VK_PIPELINE_BIND_POINT_COMPUTE : VK_PIPELINE_BIND_POINT_GRAPHICS;
             vkCmdBindPipeline(static_cast<VkCommandBuffer>(m_resource), pipeline_bind_point, vk_pipeline);
 
             // Profile
@@ -1023,7 +985,7 @@ namespace Spartan
                 vkCmdBindDescriptorSets
                 (
                     static_cast<VkCommandBuffer>(m_resource),                                // commandBuffer
-                    m_pipeline_state.IsCompute() ?                                           // pipelineBindPoint
+                    m_pso.IsCompute() ?                                           // pipelineBindPoint
                     VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_COMPUTE :                    
                     VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS,                    
                     static_cast<VkPipelineLayout>(m_pipeline->GetResource_PipelineLayout()), // layout
