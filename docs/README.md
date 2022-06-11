@@ -18,7 +18,7 @@
 <img align="left" width="32" src="https://opensource.org/files/OSIApproved_1.png">Embracing the open source ethos and respecting the <a href="https://en.wikipedia.org/wiki/MIT_License">MIT license</a> is greatly appreciated. This means that you can copy all the code you want as long as you include a copy of the original license.</p>
 
 ## Build status
-![build_status](https://github.com/PanosK92/SpartanEngine/actions/workflows/d3d11_d3d12_vulkan.yml/badge.svg)
+![build_status](https://github.com/PanosK92/SpartanEngine/actions/workflows/workflow.yml/badge.svg)
 
 ## Media
 [![](https://i.imgur.com/j6zIEI9.jpg)](https://www.youtube.com/watch?v=RIae1ma_DSo)
