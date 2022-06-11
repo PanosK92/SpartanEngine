@@ -1,4 +1,4 @@
-name: build_upload_release
+name: d3d11_d3d12_vulkam
 
 on: [push, pull_request]
 
