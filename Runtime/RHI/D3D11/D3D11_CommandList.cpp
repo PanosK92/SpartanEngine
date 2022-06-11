@@ -91,9 +91,6 @@ namespace Spartan
 
         UnbindOutputTextures();
 
-        // Start marker and profiler (if enabled)
-        Timeblock_Start(m_pso.pass_name, m_pso.profile, m_pso.gpu_marker);
-
         ID3D11DeviceContext* device_context = m_rhi_device->GetContextRhi()->device_context;
 
         // Input layout
@@ -346,7 +343,7 @@ namespace Spartan
 
     void RHI_CommandList::EndRenderPass()
     {
-        Timeblock_End();
+
     }
 
     void RHI_CommandList::ClearPipelineStateRenderTargets(RHI_PipelineState& m_pso)
@@ -827,19 +824,19 @@ namespace Spartan
         }
     }
 
-    void RHI_CommandList::Timestamp_Start(void* query)
+    void RHI_CommandList::BeginTimestamp(void* query)
     {
         SP_ASSERT(m_rhi_device);
         m_rhi_device->QueryEnd(query);
     }
 
-    void RHI_CommandList::Timestamp_End(void* query)
+    void RHI_CommandList::EndTimestamp(void* query)
     {
         SP_ASSERT(m_rhi_device);
         m_rhi_device->QueryEnd(query);
     }
 
-    float RHI_CommandList::Timestamp_GetDuration(void* query_start, void* query_end, const uint32_t pass_index)
+    float RHI_CommandList::GetTimestampDuration(void* query_start, void* query_end, const uint32_t pass_index)
     {
         SP_ASSERT(query_start != nullptr);
         SP_ASSERT(query_end != nullptr);
@@ -891,50 +888,44 @@ namespace Spartan
         return 0;
     }
 
-    void RHI_CommandList::Timeblock_Start(const char* name, const bool profile, const bool gpu_markers)
+    void RHI_CommandList::BeginTimeblock(const char* name, const bool gpu_marker, const bool gpu_timing)
     {
         SP_ASSERT(name != nullptr);
 
         RHI_Context* rhi_context = m_rhi_device->GetContextRhi();
 
         // Allowed to profile ?
-        if (rhi_context->profiler && profile)
+        if (rhi_context->gpu_profiling && gpu_timing && m_profiler)
         {
-            if (m_profiler)
-            {
-                m_profiler->TimeBlockStart(name, TimeBlockType::Cpu, this);
-                m_profiler->TimeBlockStart(name, TimeBlockType::Gpu, this);
-            }
+            m_profiler->TimeBlockStart(name, TimeBlockType::Cpu, this);
+            m_profiler->TimeBlockStart(name, TimeBlockType::Gpu, this);
         }
 
         // Allowed to mark ?
-        if (rhi_context->gpu_markers && gpu_markers)
+        if (rhi_context->gpu_markers && gpu_marker)
         {
             m_rhi_device->GetContextRhi()->annotation->BeginEvent(FileSystem::StringToWstring(name).c_str());
         }
     }
 
-    void RHI_CommandList::Timeblock_End()
+    void RHI_CommandList::EndTimeBlock()
     {
         // Allowed to mark ?
         RHI_Context* rhi_context = m_rhi_device->GetContextRhi();
-        if (rhi_context->gpu_markers && m_pso.gpu_marker)
+        if (rhi_context->gpu_markers)
         {
             rhi_context->annotation->EndEvent();
         }
 
         // Allowed to profile ?
-        if (rhi_context->profiler && m_pso.profile)
+        if (rhi_context->gpu_profiling && m_profiler)
         {
-            if (m_profiler)
-            {
-                m_profiler->TimeBlockEnd(); // cpu
-                m_profiler->TimeBlockEnd(); // gpu
-            }
+            m_profiler->TimeBlockEnd(); // cpu
+            m_profiler->TimeBlockEnd(); // gpu
         }
     }
 
-    void RHI_CommandList::StartMarker(const char* name)
+    void RHI_CommandList::BeginMarker(const char* name)
     {
         if (m_rhi_device->GetContextRhi()->gpu_markers)
         {

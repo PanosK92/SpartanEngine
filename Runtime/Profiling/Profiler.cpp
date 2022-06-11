@@ -70,7 +70,7 @@ namespace Spartan
     void Profiler::OnPreTick()
     {
         RHI_Device* rhi_device = m_renderer->GetRhiDevice().get();
-        if (!rhi_device || !rhi_device->GetContextRhi()->profiler)
+        if (!rhi_device || !rhi_device->GetContextRhi()->gpu_profiling)
             return;
 
         if (m_query_disjoint == nullptr)

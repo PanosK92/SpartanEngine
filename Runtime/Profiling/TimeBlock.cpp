@@ -66,7 +66,7 @@ namespace Spartan
                 m_rhi_device->QueryCreate(&m_query_end, RHI_Query_Type::Timestamp);
             }
 
-            cmd_list->Timestamp_Start(m_query_start);
+            cmd_list->BeginTimestamp(m_query_start);
         }
     }
 
@@ -78,7 +78,7 @@ namespace Spartan
         }
         else if (m_type == TimeBlockType::Gpu)
         {
-            m_cmd_list->Timestamp_End(m_query_end);
+            m_cmd_list->EndTimestamp(m_query_end);
         }
 
         m_is_complete = true;
@@ -96,7 +96,7 @@ namespace Spartan
         }
         else if (m_type == TimeBlockType::Gpu)
         {
-            m_duration = m_cmd_list->Timestamp_GetDuration(m_query_start, m_query_end, pass_index);
+            m_duration = m_cmd_list->GetTimestampDuration(m_query_start, m_query_end, pass_index);
         }
     }
 

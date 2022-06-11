@@ -116,13 +116,17 @@ namespace Spartan
         inline void SetStructuredBuffer(const Renderer::Bindings_Sb slot, const std::shared_ptr<RHI_StructuredBuffer>& structured_buffer) const { SetStructuredBuffer(static_cast<uint32_t>(slot), structured_buffer.get()); }
 
         // Markers
-        void StartMarker(const char* name);
+        void BeginMarker(const char* name);
         void EndMarker();
 
         // Timestamps
-        void Timestamp_Start(void* query);
-        void Timestamp_End(void* query);
-        float Timestamp_GetDuration(void* query_start, void* query_end, const uint32_t pass_index);
+        void BeginTimestamp(void* query);
+        void EndTimestamp(void* query);
+        float GetTimestampDuration(void* query_start, void* query_end, const uint32_t pass_index);
+
+        // Timeblocks (Markers + Timestamps)
+        void BeginTimeblock(const char* name, const bool gpu_marker = true, const bool gpu_timing = true);
+        void EndTimeblock();
 
         // GPU
         static uint32_t Gpu_GetMemory(RHI_Device* rhi_device);
@@ -139,9 +143,6 @@ namespace Spartan
         void* GetResource() const { return m_resource; }
 
     private:
-        void Timeblock_Start(const char* name, const bool profile, const bool gpu_markers);
-        void Timeblock_End();
-
         void OnDraw();
         void UnbindOutputTextures();
 
@@ -149,7 +150,7 @@ namespace Spartan
         void Descriptors_GetLayoutFromPipelineState(RHI_PipelineState& pipeline_state);
         void Descriptors_GetDescriptorsFromPipelineState(RHI_PipelineState& pipeline_state, std::vector<RHI_Descriptor>& descriptors);
 
-        RHI_Pipeline* m_pipeline                          = nullptr; 
+        RHI_Pipeline* m_pipeline                          = nullptr;
         Renderer* m_renderer                              = nullptr;
         RHI_Device* m_rhi_device                          = nullptr;
         Profiler* m_profiler                              = nullptr;
@@ -188,6 +189,7 @@ namespace Spartan
         uint32_t m_output_textures_index = 0;
 
         // Profiling
+        bool m_timeblock_is_active             = false;
         void* m_query_pool                     = nullptr;
         uint32_t m_timestamp_index             = 0;
         static const uint32_t m_max_timestamps = 512;

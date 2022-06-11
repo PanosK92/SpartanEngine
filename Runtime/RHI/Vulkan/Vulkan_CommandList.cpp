@@ -98,7 +98,7 @@ namespace Spartan
         }
 
         // Query pool
-        if (rhi_context->profiler)
+        if (rhi_context->gpu_profiling)
         {
             VkQueryPoolCreateInfo query_pool_create_info = {};
             query_pool_create_info.sType                 = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
@@ -138,7 +138,7 @@ namespace Spartan
 
         // Get queries
         {
-            if (m_rhi_device->GetContextRhi()->profiler)
+            if (m_rhi_device->GetContextRhi()->gpu_profiling)
             {
                 if (m_query_pool)
                 {
@@ -276,9 +276,6 @@ namespace Spartan
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
         SP_ASSERT(!m_is_rendering && "The command list is already rendering");
 
-        // Start marker and profiler (if used)
-        Timeblock_Start(m_pso.pass_name, m_pso.profile, m_pso.gpu_marker);
-
         if (!m_pso.IsGraphics())
             return;
 
@@ -387,21 +384,15 @@ namespace Spartan
         vkCmdBeginRendering(static_cast<VkCommandBuffer>(m_resource), &rendering_info);
 
         m_is_rendering = true;
-
-        return;
     }
 
     void RHI_CommandList::EndRenderPass()
     {
-        // End rendering
         if (m_is_rendering)
         {
             vkCmdEndRendering(static_cast<VkCommandBuffer>(m_resource));
             m_is_rendering = false;
         }   
-
-        // End profiling
-        Timeblock_End();
     }
 
     void RHI_CommandList::ClearPipelineStateRenderTargets(RHI_PipelineState& pipeline_state)
@@ -877,7 +868,7 @@ namespace Spartan
         return static_cast<uint32_t>(device_memory_budget_properties.heapUsage[0] / 1024 / 1024); // MBs
     }
 
-    void RHI_CommandList::StartMarker(const char* name)
+    void RHI_CommandList::BeginMarker(const char* name)
     {
         if (m_rhi_device->GetContextRhi()->gpu_markers)
         {
@@ -893,12 +884,12 @@ namespace Spartan
         }
     }
 
-    void RHI_CommandList::Timestamp_Start(void* query)
+    void RHI_CommandList::BeginTimestamp(void* query)
     {
         // Validate command list state
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
-        if (!m_rhi_device->GetContextRhi()->profiler)
+        if (!m_rhi_device->GetContextRhi()->gpu_profiling)
             return;
 
         if (!m_query_pool)
@@ -907,18 +898,18 @@ namespace Spartan
         vkCmdWriteTimestamp(static_cast<VkCommandBuffer>(m_resource), VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, static_cast<VkQueryPool>(m_query_pool), m_timestamp_index++);
     }
 
-    void RHI_CommandList::Timestamp_End(void* query)
+    void RHI_CommandList::EndTimestamp(void* query)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
         SP_ASSERT(m_query_pool != nullptr);
 
-        if (!m_rhi_device->GetContextRhi()->profiler)
+        if (!m_rhi_device->GetContextRhi()->gpu_profiling)
             return;
 
         vkCmdWriteTimestamp(static_cast<VkCommandBuffer>(m_resource), VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, static_cast<VkQueryPool>(m_query_pool), m_timestamp_index++);
     }
 
-    float RHI_CommandList::Timestamp_GetDuration(void* query_start, void* query_end, const uint32_t pass_index)
+    float RHI_CommandList::GetTimestampDuration(void* query_start, void* query_end, const uint32_t pass_index)
     {
         if (pass_index + 1 >= m_timestamps.size())
         {
@@ -939,47 +930,45 @@ namespace Spartan
         return duration_ms;
     }
 
-    void RHI_CommandList::Timeblock_Start(const char* name, const bool profile, const bool gpu_markers)
+    void RHI_CommandList::BeginTimeblock(const char* name, const bool gpu_marker, const bool gpu_timing)
     {
-        if (profile || gpu_markers)
-        {
-            SP_ASSERT(name != nullptr);
-        }
+        SP_ASSERT(!m_timeblock_is_active && "The previous time block is still active");
+        SP_ASSERT(name != nullptr);
 
         // Allowed profiler ?
-        if (m_rhi_device->GetContextRhi()->profiler)
+        if (m_rhi_device->GetContextRhi()->gpu_profiling && gpu_timing && m_profiler)
         {
-            if (m_profiler && profile)
-            {
-                m_profiler->TimeBlockStart(name, TimeBlockType::Cpu, this);
-                m_profiler->TimeBlockStart(name, TimeBlockType::Gpu, this);
-            }
+            m_profiler->TimeBlockStart(name, TimeBlockType::Cpu, this);
+            m_profiler->TimeBlockStart(name, TimeBlockType::Gpu, this);
         }
 
         // Allowed to markers ?
-        if (m_rhi_device->GetContextRhi()->gpu_markers && gpu_markers)
+        if (m_rhi_device->GetContextRhi()->gpu_markers && gpu_marker)
         {
             vulkan_utility::debug::marker_begin(static_cast<VkCommandBuffer>(m_resource), name, Vector4::Zero);
         }
+
+        m_timeblock_is_active = true;
     }
 
-    void RHI_CommandList::Timeblock_End()
+    void RHI_CommandList::EndTimeblock()
     {
+        SP_ASSERT(m_timeblock_is_active && "A time block wasn't started");
+
         // Allowed markers ?
-        if (m_rhi_device->GetContextRhi()->gpu_markers && m_pso.gpu_marker)
+        if (m_rhi_device->GetContextRhi()->gpu_markers)
         {
             vulkan_utility::debug::marker_end(static_cast<VkCommandBuffer>(m_resource));
         }
 
         // Allowed profiler ?
-        if (m_rhi_device->GetContextRhi()->profiler && m_pso.profile)
+        if (m_rhi_device->GetContextRhi()->gpu_profiling && m_profiler)
         {
-            if (m_profiler)
-            {
-                m_profiler->TimeBlockEnd(); // cpu
-                m_profiler->TimeBlockEnd(); // gpu
-            }
+            m_profiler->TimeBlockEnd(); // cpu
+            m_profiler->TimeBlockEnd(); // gpu
         }
+
+        m_timeblock_is_active = false;
     }
 
     void RHI_CommandList::OnDraw()

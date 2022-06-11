@@ -514,13 +514,13 @@ namespace Spartan
 
         // Debugging
         #ifdef DEBUG
-            bool debug       = true;
-            bool gpu_markers = true;
-            bool profiler    = true;
+            bool debug         = true;
+            bool gpu_markers   = true;
+            bool gpu_profiling = true;
         #else
-            bool debug       = false;
-            bool gpu_markers = false;
-            bool profiler    = true;
+            bool debug         = false;
+            bool gpu_markers   = false;
+            bool gpu_profiling = true;
         #endif
     };
 }
