@@ -122,6 +122,12 @@ namespace Spartan
         return true;
     }
 
+    void RHI_CommandList::SetPipelineState(RHI_PipelineState& pso)
+    {
+        SP_ASSERT(pso.IsValid() && "Pipeline state is invalid");
+        SP_ASSERT(m_state == RHI_CommandListState::Recording);
+    }
+
     void RHI_CommandList::BeginRenderPass()
     {
 
