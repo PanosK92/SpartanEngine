@@ -1,4 +1,4 @@
-name: d3d11_d3d12_vulkam
+name: d3d11_d3d12_vulkan_
 
 on: [push, pull_request]
 
