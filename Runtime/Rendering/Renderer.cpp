@@ -473,7 +473,12 @@ namespace Spartan
             }
         }
 
-        m_cb_frame_gpu->AutoUpdate<Cb_Frame>( m_cb_frame_cpu, m_cb_frame_cpu_mapped);
+        bool reallocated = m_cb_frame_gpu->AutoUpdate<Cb_Frame>( m_cb_frame_cpu, m_cb_frame_cpu_mapped);
+
+        if (reallocated)
+        {
+            cmd_list->Discard();
+        }
 
         // Bind because the offset just changed
         cmd_list->SetConstantBuffer(Renderer::Bindings_Cb::frame, RHI_Shader_Vertex | RHI_Shader_Pixel | RHI_Shader_Compute, m_cb_frame_gpu);
@@ -481,7 +486,12 @@ namespace Spartan
 
     void Renderer::Update_Cb_Uber(RHI_CommandList* cmd_list)
     {
-        m_cb_uber_gpu->AutoUpdate<Cb_Uber>(m_cb_uber_cpu, m_cb_uber_cpu_mapped);
+        bool reallocated = m_cb_uber_gpu->AutoUpdate<Cb_Uber>(m_cb_uber_cpu, m_cb_uber_cpu_mapped);
+
+        if (reallocated)
+        {
+            cmd_list->Discard();
+        }
 
         // Bind because the offset just changed
         cmd_list->SetConstantBuffer(Renderer::Bindings_Cb::uber, RHI_Shader_Vertex | RHI_Shader_Pixel | RHI_Shader_Compute, m_cb_uber_gpu);
@@ -521,7 +531,12 @@ namespace Spartan
         m_cb_light_cpu.options                    |= light->GetShadowsScreenSpaceEnabled()           ? (1 << 5) : 0;
         m_cb_light_cpu.options                    |= light->GetVolumetricEnabled()                   ? (1 << 6) : 0;
 
-        m_cb_light_gpu->AutoUpdate<Cb_Light>(m_cb_light_cpu, m_cb_light_cpu_mapped);
+        bool reallocated = m_cb_light_gpu->AutoUpdate<Cb_Light>(m_cb_light_cpu, m_cb_light_cpu_mapped);
+
+        if (reallocated)
+        {
+            cmd_list->Discard();
+        }
 
         // Bind because the offset just changed
         cmd_list->SetConstantBuffer(Renderer::Bindings_Cb::light, scope, m_cb_light_gpu);
@@ -544,7 +559,12 @@ namespace Spartan
             m_cb_material_cpu.mat_sheen_sheenTint_pad[i].y = material->GetProperty(Material_Sheen_Tint);
         }
 
-        m_cb_material_gpu->AutoUpdate<Cb_Material>(m_cb_material_cpu, m_cb_material_cpu_mapped);
+        bool reallocated = m_cb_material_gpu->AutoUpdate<Cb_Material>(m_cb_material_cpu, m_cb_material_cpu_mapped);
+
+        if (reallocated)
+        {
+            cmd_list->Discard();
+        }
 
         // Bind because the offset just changed
         cmd_list->SetConstantBuffer(Renderer::Bindings_Cb::material, RHI_Shader_Pixel, m_cb_material_gpu);

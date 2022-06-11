@@ -100,7 +100,7 @@ namespace ImGui::RHI
         // Create required RHI objects
         {
             m_cb_imgui_gpu = make_shared<RHI_ConstantBuffer>(g_rhi_device, "imgui");
-            m_cb_imgui_gpu->Create<Cb_ImGui>(1024);
+            m_cb_imgui_gpu->Create<Cb_ImGui>(256);
 
             g_depth_stencil_state = make_shared<RHI_DepthStencilState>(g_rhi_device, false, false, RHI_Comparison_Function::Always);
 
