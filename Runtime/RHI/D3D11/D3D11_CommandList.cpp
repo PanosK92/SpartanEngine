@@ -84,24 +84,22 @@ namespace Spartan
         return true;
     }
 
-    bool RHI_CommandList::BeginRenderPass(RHI_PipelineState& pipeline_state)
+    void RHI_CommandList::SetPipelineState(RHI_PipelineState& pso)
     {
-        SP_ASSERT(pipeline_state.IsValid());
+        SP_ASSERT(pso.IsValid() && "Pipeline state is invalid");
+        m_pso = pso;
 
         UnbindOutputTextures();
 
-        // Keep a local pointer for convenience 
-        m_pipeline_state = pipeline_state;
-
         // Start marker and profiler (if enabled)
-        Timeblock_Start(pipeline_state.pass_name, pipeline_state.profile, pipeline_state.gpu_marker);
+        Timeblock_Start(m_pso.pass_name, m_pso.profile, m_pso.gpu_marker);
 
         ID3D11DeviceContext* device_context = m_rhi_device->GetContextRhi()->device_context;
 
         // Input layout
         {
             // New state
-            ID3D11InputLayout* input_layout = static_cast<ID3D11InputLayout*>(pipeline_state.shader_vertex ? pipeline_state.shader_vertex->GetInputLayout()->GetResource() : nullptr);
+            ID3D11InputLayout* input_layout = static_cast<ID3D11InputLayout*>(m_pso.shader_vertex ? m_pso.shader_vertex->GetInputLayout()->GetResource() : nullptr);
 
             // Current state
             ID3D11InputLayout* input_layout_set = nullptr;
@@ -117,7 +115,7 @@ namespace Spartan
         // Vertex shader
         {
             // New state
-            ID3D11VertexShader* shader = static_cast<ID3D11VertexShader*>(pipeline_state.shader_vertex ? pipeline_state.shader_vertex->GetResource() : nullptr);
+            ID3D11VertexShader* shader = static_cast<ID3D11VertexShader*>(m_pso.shader_vertex ? m_pso.shader_vertex->GetResource() : nullptr);
 
             // Current state
             ID3D11VertexShader* set_shader = nullptr; UINT instance_count = 256; ID3D11ClassInstance* instances[256];
@@ -138,7 +136,7 @@ namespace Spartan
         // Pixel shader
         {
             // New state
-            ID3D11PixelShader* shader = static_cast<ID3D11PixelShader*>(pipeline_state.shader_pixel ? pipeline_state.shader_pixel->GetResource() : nullptr);
+            ID3D11PixelShader* shader = static_cast<ID3D11PixelShader*>(m_pso.shader_pixel ? m_pso.shader_pixel->GetResource() : nullptr);
 
             // Current state
             ID3D11PixelShader* set_shader = nullptr; UINT instance_count = 256; ID3D11ClassInstance* instances[256];
@@ -159,7 +157,7 @@ namespace Spartan
         // Compute shader
         {
             // New state
-            ID3D11ComputeShader* shader = static_cast<ID3D11ComputeShader*>(pipeline_state.shader_compute ? pipeline_state.shader_compute->GetResource() : nullptr);
+            ID3D11ComputeShader* shader = static_cast<ID3D11ComputeShader*>(m_pso.shader_compute ? m_pso.shader_compute->GetResource() : nullptr);
 
             // Current state
             ID3D11ComputeShader* set_shader = nullptr; UINT instance_count = 256; ID3D11ClassInstance* instances[256];
@@ -180,16 +178,16 @@ namespace Spartan
         // Blend state
         {
             // New state
-            ID3D11BlendState* blend_state_set       = nullptr;
-            std::array<FLOAT, 4> blend_factor_set   = { 0.0f };
-            UINT mask_set                           = 0;
+            ID3D11BlendState* blend_state_set = nullptr;
+            std::array<FLOAT, 4> blend_factor_set = { 0.0f };
+            UINT mask_set = 0;
             device_context->OMGetBlendState(&blend_state_set, blend_factor_set.data(), &mask_set);
 
             // Current state
-            ID3D11BlendState* blend_state     = static_cast<ID3D11BlendState*>(pipeline_state.blend_state ? pipeline_state.blend_state->GetResource() : nullptr);
-            const float blendFactor           = pipeline_state.blend_state ? pipeline_state.blend_state->GetBlendFactor() : 0.0f;
+            ID3D11BlendState* blend_state = static_cast<ID3D11BlendState*>(m_pso.blend_state ? m_pso.blend_state->GetResource() : nullptr);
+            const float blendFactor = m_pso.blend_state ? m_pso.blend_state->GetBlendFactor() : 0.0f;
             std::array<FLOAT, 4> blend_factor = { blendFactor, blendFactor, blendFactor, blendFactor };
-            const UINT mask                   = 0;
+            const UINT mask = 0;
 
             // Set if dirty
             if (blend_state_set != blend_state || blend_factor_set != blend_factor || mask_set != mask)
@@ -201,7 +199,7 @@ namespace Spartan
         // Depth stencil state
         {
             // New state
-            ID3D11DepthStencilState* depth_stencil_state = static_cast<ID3D11DepthStencilState*>(pipeline_state.depth_stencil_state ? pipeline_state.depth_stencil_state->GetResource() : nullptr);
+            ID3D11DepthStencilState* depth_stencil_state = static_cast<ID3D11DepthStencilState*>(m_pso.depth_stencil_state ? m_pso.depth_stencil_state->GetResource() : nullptr);
 
             // Current state
             ID3D11DepthStencilState* depth_stencil_state_set = nullptr;
@@ -218,7 +216,7 @@ namespace Spartan
         // Rasterizer state
         {
             // New state
-            ID3D11RasterizerState* rasterizer_state = static_cast<ID3D11RasterizerState*>(pipeline_state.rasterizer_state ? pipeline_state.rasterizer_state->GetResource() : nullptr);
+            ID3D11RasterizerState* rasterizer_state = static_cast<ID3D11RasterizerState*>(m_pso.rasterizer_state ? m_pso.rasterizer_state->GetResource() : nullptr);
 
             // Current state
             ID3D11RasterizerState* rasterizer_state_set = nullptr;
@@ -232,10 +230,10 @@ namespace Spartan
         }
 
         // Primitive topology
-        if (pipeline_state.primitive_topology != RHI_PrimitiveTopology_Mode::Undefined)
+        if (m_pso.primitive_topology != RHI_PrimitiveTopology_Mode::Undefined)
         {
             // New state
-            const D3D11_PRIMITIVE_TOPOLOGY topology = d3d11_primitive_topology[static_cast<uint32_t>(pipeline_state.primitive_topology)];
+            const D3D11_PRIMITIVE_TOPOLOGY topology = d3d11_primitive_topology[static_cast<uint32_t>(m_pso.primitive_topology)];
 
             // Current state
             D3D11_PRIMITIVE_TOPOLOGY topology_set;
@@ -244,7 +242,7 @@ namespace Spartan
             // Set if dirty
             if (topology_set != topology)
             {
-                device_context->IASetPrimitiveTopology(d3d11_primitive_topology[static_cast<uint32_t>(pipeline_state.primitive_topology)]);
+                device_context->IASetPrimitiveTopology(d3d11_primitive_topology[static_cast<uint32_t>(m_pso.primitive_topology)]);
             }
         }
 
@@ -252,17 +250,17 @@ namespace Spartan
         {
             // Detect depth stencil targets
             ID3D11DepthStencilView* depth_stencil = nullptr;
-            if (pipeline_state.render_target_depth_texture)
+            if (m_pso.render_target_depth_texture)
             {
-                SP_ASSERT(pipeline_state.render_target_depth_texture->IsRenderTargetDepthStencil());
+                SP_ASSERT(m_pso.render_target_depth_texture->IsRenderTargetDepthStencil());
 
-                if (pipeline_state.render_target_depth_texture_read_only)
+                if (m_pso.render_target_depth_texture_read_only)
                 {
-                    depth_stencil = static_cast<ID3D11DepthStencilView*>(pipeline_state.render_target_depth_texture->GetResource_View_DepthStencilReadOnly(pipeline_state.render_target_depth_stencil_texture_array_index));
+                    depth_stencil = static_cast<ID3D11DepthStencilView*>(m_pso.render_target_depth_texture->GetResource_View_DepthStencilReadOnly(m_pso.render_target_depth_stencil_texture_array_index));
                 }
                 else
                 {
-                    depth_stencil = static_cast<ID3D11DepthStencilView*>(pipeline_state.render_target_depth_texture->GetResource_View_DepthStencil(pipeline_state.render_target_depth_stencil_texture_array_index));
+                    depth_stencil = static_cast<ID3D11DepthStencilView*>(m_pso.render_target_depth_texture->GetResource_View_DepthStencil(m_pso.render_target_depth_stencil_texture_array_index));
                 }
             }
 
@@ -270,20 +268,20 @@ namespace Spartan
             std::array<ID3D11RenderTargetView*, rhi_max_render_target_count> render_targets = { nullptr };
             {
                 // Swapchain
-                if (pipeline_state.render_target_swapchain)
+                if (m_pso.render_target_swapchain)
                 {
-                    render_targets[0] = { static_cast<ID3D11RenderTargetView*>(pipeline_state.render_target_swapchain->Get_Resource_View_RenderTarget()) };
+                    render_targets[0] = { static_cast<ID3D11RenderTargetView*>(m_pso.render_target_swapchain->Get_Resource_View_RenderTarget()) };
                 }
                 // Textures
                 else
                 {
                     for (uint8_t i = 0; i < rhi_max_render_target_count; i++)
                     {
-                        if (pipeline_state.render_target_color_textures[i])
+                        if (m_pso.render_target_color_textures[i])
                         {
-                            SP_ASSERT(pipeline_state.render_target_color_textures[i]->IsRenderTargetColor());
+                            SP_ASSERT(m_pso.render_target_color_textures[i]->IsRenderTargetColor());
 
-                            ID3D11RenderTargetView* rt = static_cast<ID3D11RenderTargetView*>(pipeline_state.render_target_color_textures[i]->GetResource_View_RenderTarget(pipeline_state.render_target_color_texture_array_index));
+                            ID3D11RenderTargetView* rt = static_cast<ID3D11RenderTargetView*>(m_pso.render_target_color_textures[i]->GetResource_View_RenderTarget(m_pso.render_target_color_texture_array_index));
                             render_targets[i] = rt;
                         }
                     }
@@ -325,13 +323,13 @@ namespace Spartan
         }
 
         // Viewport
-        if (pipeline_state.viewport.IsDefined())
+        if (m_pso.viewport.IsDefined())
         {
-            SetViewport(pipeline_state.viewport);
+            SetViewport(m_pso.viewport);
         }
 
         // Clear render target(s)
-        ClearPipelineStateRenderTargets(pipeline_state);
+        ClearPipelineStateRenderTargets(m_pso);
 
         m_renderer->SetGlobalShaderResources(this);
 
@@ -339,8 +337,11 @@ namespace Spartan
         {
             m_profiler->m_rhi_bindings_pipeline++;
         }
+    }
 
-        return true;
+    void RHI_CommandList::BeginRenderPass()
+    {
+
     }
 
     void RHI_CommandList::EndRenderPass()
@@ -348,46 +349,46 @@ namespace Spartan
         Timeblock_End();
     }
 
-    void RHI_CommandList::ClearPipelineStateRenderTargets(RHI_PipelineState& pipeline_state)
+    void RHI_CommandList::ClearPipelineStateRenderTargets(RHI_PipelineState& m_pso)
     {
         // Color
         for (uint8_t i = 0; i < rhi_max_render_target_count; i++)
         {
-            if (pipeline_state.clear_color[i] != rhi_color_load && pipeline_state.clear_color[i] != rhi_color_dont_care)
+            if (m_pso.clear_color[i] != rhi_color_load && m_pso.clear_color[i] != rhi_color_dont_care)
             {
-                if (pipeline_state.render_target_swapchain)
+                if (m_pso.render_target_swapchain)
                 {
                     m_rhi_device->GetContextRhi()->device_context->ClearRenderTargetView
                     (
-                        static_cast<ID3D11RenderTargetView*>(const_cast<void*>(pipeline_state.render_target_swapchain->Get_Resource_View_RenderTarget())),
-                        pipeline_state.clear_color[i].Data()
+                        static_cast<ID3D11RenderTargetView*>(const_cast<void*>(m_pso.render_target_swapchain->Get_Resource_View_RenderTarget())),
+                        m_pso.clear_color[i].Data()
                     );
                 }
-                else if (pipeline_state.render_target_color_textures[i])
+                else if (m_pso.render_target_color_textures[i])
                 {
                     m_rhi_device->GetContextRhi()->device_context->ClearRenderTargetView
                     (
-                        static_cast<ID3D11RenderTargetView*>(const_cast<void*>(pipeline_state.render_target_color_textures[i]->GetResource_View_RenderTarget(pipeline_state.render_target_color_texture_array_index))),
-                        pipeline_state.clear_color[i].Data()
+                        static_cast<ID3D11RenderTargetView*>(const_cast<void*>(m_pso.render_target_color_textures[i]->GetResource_View_RenderTarget(m_pso.render_target_color_texture_array_index))),
+                        m_pso.clear_color[i].Data()
                     );
                 }
             }
         }
 
         // Depth-stencil
-        if (pipeline_state.render_target_depth_texture)
+        if (m_pso.render_target_depth_texture)
         {
             UINT clear_flags = 0;
-            clear_flags |= (pipeline_state.clear_depth   != rhi_depth_stencil_load && pipeline_state.clear_depth   != rhi_depth_stencil_dont_care) ? D3D11_CLEAR_DEPTH   : 0;
-            clear_flags |= (pipeline_state.clear_stencil != rhi_depth_stencil_load && pipeline_state.clear_stencil != rhi_depth_stencil_dont_care) ? D3D11_CLEAR_STENCIL : 0;
+            clear_flags |= (m_pso.clear_depth   != rhi_depth_stencil_load && m_pso.clear_depth   != rhi_depth_stencil_dont_care) ? D3D11_CLEAR_DEPTH   : 0;
+            clear_flags |= (m_pso.clear_stencil != rhi_depth_stencil_load && m_pso.clear_stencil != rhi_depth_stencil_dont_care) ? D3D11_CLEAR_STENCIL : 0;
             if (clear_flags != 0)
             {
                 m_rhi_device->GetContextRhi()->device_context->ClearDepthStencilView
                 (
-                    static_cast<ID3D11DepthStencilView*>(pipeline_state.render_target_depth_texture->GetResource_View_DepthStencil(pipeline_state.render_target_depth_stencil_texture_array_index)),
+                    static_cast<ID3D11DepthStencilView*>(m_pso.render_target_depth_texture->GetResource_View_DepthStencil(m_pso.render_target_depth_stencil_texture_array_index)),
                     clear_flags,
-                    static_cast<FLOAT>(pipeline_state.clear_depth),
-                    static_cast<UINT8>(pipeline_state.clear_stencil)
+                    static_cast<FLOAT>(m_pso.clear_depth),
+                    static_cast<UINT8>(m_pso.clear_stencil)
                 );
             }
         }
@@ -665,7 +666,7 @@ namespace Spartan
         const void* sampler_array[1]        = { sampler ? sampler->GetResource() : nullptr };
         ID3D11DeviceContext* device_context = m_rhi_device->GetContextRhi()->device_context;
 
-        if (m_pipeline_state.IsCompute())
+        if (m_pso.IsCompute())
         {
             // Set only if not already set
             ID3D11SamplerState* set_sampler = nullptr;
@@ -770,7 +771,7 @@ namespace Spartan
         // SRV
         else
         {
-            const uint8_t scope = m_pipeline_state.IsCompute() ? RHI_Shader_Compute : RHI_Shader_Pixel;
+            const uint8_t scope = m_pso.IsCompute() ? RHI_Shader_Compute : RHI_Shader_Pixel;
 
             array<void*, m_resource_array_length_max> set_resources;
             set_resources.fill(nullptr);
@@ -917,13 +918,13 @@ namespace Spartan
     {
         // Allowed to mark ?
         RHI_Context* rhi_context = m_rhi_device->GetContextRhi();
-        if (rhi_context->gpu_markers && m_pipeline_state.gpu_marker)
+        if (rhi_context->gpu_markers && m_pso.gpu_marker)
         {
             rhi_context->annotation->EndEvent();
         }
 
         // Allowed to profile ?
-        if (rhi_context->profiler && m_pipeline_state.profile)
+        if (rhi_context->profiler && m_pso.profile)
         {
             if (m_profiler)
             {
@@ -982,7 +983,7 @@ namespace Spartan
         m_output_textures_index = 0;
     }
 
-    void RHI_CommandList::Descriptors_GetLayoutFromPipelineState(RHI_PipelineState& pipeline_state)
+    void RHI_CommandList::Descriptors_GetLayoutFromPipelineState(RHI_PipelineState& m_pso)
     {
         
     }

@@ -36,6 +36,7 @@ using namespace std;
 
 namespace Spartan
 {
+
     void RHI_CommandList::Wait()
     {
         SP_ASSERT(m_state == RHI_CommandListState::Submitted && "The command list hasn't been submitted, can't wait for it.");
@@ -62,42 +63,6 @@ namespace Spartan
         m_discard = true;
     }
     
-    void RHI_CommandList::SetPipelineState(RHI_PipelineState& pso)
-    {
-        SP_ASSERT(pso.IsValid() && "Pipeline state is invalid");
-        SP_ASSERT(m_state == RHI_CommandListState::Recording);
-
-        // Update the descriptor cache with the pipeline state
-        Descriptors_GetLayoutFromPipelineState(pso);
-
-        // If no pipeline exists for this state, create one
-        uint32_t hash_previous = m_pso.ComputeHash();
-        uint32_t hash = pso.ComputeHash();
-        auto it = m_pipelines.find(hash);
-        if (it == m_pipelines.end())
-        {
-            // Create a new pipeline
-            it = m_pipelines.emplace(make_pair(hash, move(make_shared<RHI_Pipeline>(m_rhi_device, pso, m_descriptor_layout_current)))).first;
-            LOG_INFO("A new pipeline has been created.");
-        }
-
-        m_pipeline = it->second.get();
-        m_pso      = pso;
-
-        // Determine if the pipeline is dirty
-        if (!m_pipeline_dirty)
-        {
-            m_pipeline_dirty = hash_previous != hash;
-        }
-
-        // If the pipeline changed, resources have to be set again
-        if (m_pipeline_dirty)
-        {
-            m_vertex_buffer_id = 0;
-            m_index_buffer_id  = 0;
-        }
-    }
-
     uint32_t RHI_CommandList::Gpu_GetMemory(RHI_Device* rhi_device)
     {
         if (const PhysicalDevice* physical_device = rhi_device->GetPrimaryPhysicalDevice())
