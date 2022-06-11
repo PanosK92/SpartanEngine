@@ -122,9 +122,9 @@ namespace Spartan
         return true;
     }
 
-    bool RHI_CommandList::BeginRenderPass(RHI_PipelineState& pipeline_state)
+    void RHI_CommandList::BeginRenderPass()
     {
-        return true;
+
     }
     
     void RHI_CommandList::EndRenderPass()
