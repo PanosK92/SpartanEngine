@@ -134,9 +134,9 @@ namespace Spartan
         Math::Vector2 blur_direction = Math::Vector2::Zero;
         Math::Vector2 resolution_rt  = Math::Vector2::Zero;
 
-        Math::Vector2 resolution_in            = Math::Vector2::Zero;
-        uint32_t options_texture_visualisation = 0;
-        float radius                           = 0.0f;
+        Math::Vector2 resolution_in = Math::Vector2::Zero;
+        float padding               = 0.0f;
+        float radius                = 0.0f;
 
         Math::Vector4 mat_color = Math::Vector4::Zero;
 
@@ -157,7 +157,7 @@ namespace Spartan
         uint32_t work_group_count = 0;
 
         uint32_t reflection_proble_available = 0;
-        Math::Vector3 padding = Math::Vector3::Zero;
+        Math::Vector3 padding2 = Math::Vector3::Zero;
 
         bool operator==(const Cb_Uber& rhs) const
         {
@@ -183,8 +183,7 @@ namespace Spartan
                 reflection_proble_available   == rhs.reflection_proble_available &&
                 radius                        == rhs.radius                      &&
                 extents                       == rhs.extents                     &&
-                mat_textures                  == rhs.mat_textures                &&
-                options_texture_visualisation == rhs.options_texture_visualisation;
+                mat_textures                  == rhs.mat_textures;
         }
 
         bool operator!=(const Cb_Uber& rhs) const { return !(*this == rhs); }
@@ -235,5 +234,20 @@ namespace Spartan
         }
 
         bool operator!=(const Cb_Material& rhs) const { return !(*this == rhs); }
+    };
+
+    // High frequency - update multiply times per frame, ImGui driven
+    struct Cb_ImGui
+    {
+        Math::Matrix transform = Math::Matrix::Identity;
+        uint32_t options_texture_visualisation = 0;
+        Math::Vector3 padding = Math::Vector3::Zero;
+
+        bool operator==(const Cb_ImGui& rhs) const
+        {
+            return
+                transform == rhs.transform &&
+                options_texture_visualisation == rhs.options_texture_visualisation;
+        }
     };
 }

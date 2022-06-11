@@ -58,49 +58,6 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    template<typename T>
-    void update_dynamic_buffer(RHI_CommandList* cmd_list, RHI_ConstantBuffer* buffer_constant, T& buffer_cpu, T& buffer_cpu_mapped)
-    {
-        // Only update if needed
-        if (buffer_cpu == buffer_cpu_mapped)
-            return;
-
-        // If the buffer's memory won't fit another update, the re-allocate double the memory
-        if (buffer_constant->GetOffset() + buffer_constant->GetStride() >= buffer_constant->GetObjectSizeGpu())
-        {
-            buffer_constant->Create<T>(buffer_constant->GetStrideCount() * 2);
-        }
-
-        // Update
-        {
-            // GPU
-            {
-                uint64_t stride = buffer_constant->GetStride();
-                uint64_t offset = buffer_constant->GetResetOffset() ? 0 : (buffer_constant->GetOffset() + stride);
-
-                // Map (Vulkan uses persistent mapping so it will simply return the already mapped pointer)
-                T* buffer_gpu = static_cast<T*>(buffer_constant->Map());
-
-                // Copy
-                memcpy(reinterpret_cast<std::byte*>(buffer_gpu) + offset, reinterpret_cast<std::byte*>(&buffer_cpu), stride);
-
-                // Flush/Unmap
-                if (buffer_constant->IsPersistentBuffer()) // Vulkan
-                {
-                    buffer_constant->Flush(stride, offset);
-                }
-                else // D3D11
-                {
-                    buffer_constant->Unmap();
-                }
-
-            }
-
-            // CPU
-            buffer_cpu_mapped = buffer_cpu;
-        }
-    }
-
     Renderer::Renderer(Context* context) : Subsystem(context)
     {
         // Options
@@ -516,7 +473,7 @@ namespace Spartan
             }
         }
 
-        update_dynamic_buffer<Cb_Frame>(cmd_list, m_cb_frame_gpu.get(), m_cb_frame_cpu, m_cb_frame_cpu_mapped);
+        m_cb_frame_gpu->AutoUpdate<Cb_Frame>( m_cb_frame_cpu, m_cb_frame_cpu_mapped);
 
         // Bind because the offset just changed
         cmd_list->SetConstantBuffer(Renderer::Bindings_Cb::frame, RHI_Shader_Vertex | RHI_Shader_Pixel | RHI_Shader_Compute, m_cb_frame_gpu);
@@ -524,7 +481,7 @@ namespace Spartan
 
     void Renderer::Update_Cb_Uber(RHI_CommandList* cmd_list)
     {
-        update_dynamic_buffer<Cb_Uber>(cmd_list, m_cb_uber_gpu.get(), m_cb_uber_cpu, m_cb_uber_cpu_mapped);
+        m_cb_uber_gpu->AutoUpdate<Cb_Uber>(m_cb_uber_cpu, m_cb_uber_cpu_mapped);
 
         // Bind because the offset just changed
         cmd_list->SetConstantBuffer(Renderer::Bindings_Cb::uber, RHI_Shader_Vertex | RHI_Shader_Pixel | RHI_Shader_Compute, m_cb_uber_gpu);
@@ -564,7 +521,7 @@ namespace Spartan
         m_cb_light_cpu.options                    |= light->GetShadowsScreenSpaceEnabled()           ? (1 << 5) : 0;
         m_cb_light_cpu.options                    |= light->GetVolumetricEnabled()                   ? (1 << 6) : 0;
 
-        update_dynamic_buffer<Cb_Light>(cmd_list, m_cb_light_gpu.get(), m_cb_light_cpu, m_cb_light_cpu_mapped);
+        m_cb_light_gpu->AutoUpdate<Cb_Light>(m_cb_light_cpu, m_cb_light_cpu_mapped);
 
         // Bind because the offset just changed
         cmd_list->SetConstantBuffer(Renderer::Bindings_Cb::light, scope, m_cb_light_gpu);
@@ -587,7 +544,7 @@ namespace Spartan
             m_cb_material_cpu.mat_sheen_sheenTint_pad[i].y = material->GetProperty(Material_Sheen_Tint);
         }
 
-        update_dynamic_buffer<Cb_Material>(cmd_list, m_cb_material_gpu.get(), m_cb_material_cpu, m_cb_material_cpu_mapped);
+        m_cb_material_gpu->AutoUpdate<Cb_Material>(m_cb_material_cpu, m_cb_material_cpu_mapped);
 
         // Bind because the offset just changed
         cmd_list->SetConstantBuffer(Renderer::Bindings_Cb::material, RHI_Shader_Pixel, m_cb_material_gpu);

@@ -72,7 +72,7 @@ namespace Spartan
 
         // Misc
         std::array<uint32_t, Spartan::rhi_max_constant_buffer_count> m_dynamic_offsets;
-        bool m_needs_to_bind = false;
+        bool m_needs_to_bind     = false;
         RHI_Device* m_rhi_device = nullptr;
     };
 }
