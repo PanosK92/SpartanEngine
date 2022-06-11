@@ -63,7 +63,8 @@ namespace Spartan
             frame    = 0,
             uber     = 1,
             light    = 2,
-            material = 3
+            material = 3,
+            imgui    = 4
         };
 
         // SRV bindings
@@ -354,14 +355,6 @@ namespace Spartan
         RHI_Texture* GetDefaultTextureBlack()       const { return m_tex_default_black.get(); }
         RHI_Texture* GetDefaultTextureTransparent() const { return m_tex_default_transparent.get(); }
 
-        // Constant buffers
-        void Update_Cb_Frame(RHI_CommandList* cmd_list);
-        void Update_Cb_Uber(RHI_CommandList* cmd_list);
-        void Update_Cb_Light(RHI_CommandList* cmd_list, const Light* light, const RHI_Shader_Type scope);
-        void Update_Cb_Material(RHI_CommandList* cmd_list);
-        // Returns the CPU struct which can be mapped to the GPU uber buffer
-        Cb_Uber& GetUberBufferCpu() { return m_cb_uber_cpu; }
-
         // Misc
         RHI_Api_Type GetApiType() const;
         void SetGlobalShaderResources(RHI_CommandList* cmd_list) const;
@@ -378,6 +371,12 @@ namespace Spartan
         void Pass_CopyToBackbuffer();
 
     private:
+        // Constant buffers
+        void Update_Cb_Frame(RHI_CommandList* cmd_list);
+        void Update_Cb_Uber(RHI_CommandList* cmd_list);
+        void Update_Cb_Light(RHI_CommandList* cmd_list, const Light* light, const RHI_Shader_Type scope);
+        void Update_Cb_Material(RHI_CommandList* cmd_list);
+
         // Resource creation
         void CreateConstantBuffers();
         void CreateStructuredBuffers();

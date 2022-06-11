@@ -39,6 +39,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI/RHI_DepthStencilState.h"
 #include "RHI/RHI_Semaphore.h"
 #include "RHI/RHI_CommandPool.h"
+#include "RHI/RHI_ConstantBuffer.h"
 //====================================
 
 namespace ImGui::RHI
@@ -65,6 +66,10 @@ namespace ImGui::RHI
     static unique_ptr<RHI_Shader>            g_shader_vertex;
     static unique_ptr<RHI_Shader>            g_shader_pixel;
     static RHI_CommandPool*                  g_cmd_pool;
+
+    static shared_ptr<RHI_ConstantBuffer>    m_cb_imgui_gpu;
+    static Cb_ImGui m_cb_imgui_cpu;
+    static Cb_ImGui m_cb_imgui_cpu_mapped;
 
     // RHI resources - per swapchain buffer
     static unordered_map<uint64_t, vector<unique_ptr<RHI_VertexBuffer>>> g_vertex_buffers;
@@ -94,6 +99,9 @@ namespace ImGui::RHI
 
         // Create required RHI objects
         {
+            m_cb_imgui_gpu = make_shared<RHI_ConstantBuffer>(g_rhi_device, "imgui");
+            m_cb_imgui_gpu->Create<Cb_ImGui>(1024);
+
             g_depth_stencil_state = make_shared<RHI_DepthStencilState>(g_rhi_device, false, false, RHI_Comparison_Function::Always);
 
             g_rasterizer_state = make_shared<RHI_RasterizerState>
@@ -188,9 +196,15 @@ namespace ImGui::RHI
         RHI_CommandPool* cmd_list_pool = is_child_window ? window_data->cmd_pool : g_cmd_pool;
 
         // Begin the command list
-        cmd_list_pool->Tick();
+        bool command_pool_reset = cmd_list_pool->Tick();
         RHI_CommandList* cmd_list = cmd_list_pool->GetCurrentCommandList();
         cmd_list->Begin();
+
+        // Reset
+        if (command_pool_reset)
+        {
+            m_cb_imgui_gpu->ResetOffset();
+        }
 
         // Update vertex and index buffers
         RHI_VertexBuffer* vertex_buffer = nullptr;
@@ -266,8 +280,6 @@ namespace ImGui::RHI
         // Record commands
         if (cmd_list->BeginRenderPass(pipeline_state))
         {
-            Cb_Uber& constant_buffer = g_renderer->GetUberBufferCpu();
-
             // Setup orthographic projection matrix into our constant buffer
             // Our visible ImGui space lies from draw_data->DisplayPos (top left) to 
             // draw_data->DisplayPos+data_data->DisplaySize (bottom right). DisplayMin is (0,0) for single viewport apps.
@@ -276,7 +288,7 @@ namespace ImGui::RHI
                 const float R             = draw_data->DisplayPos.x + draw_data->DisplaySize.x;
                 const float T             = draw_data->DisplayPos.y;
                 const float B             = draw_data->DisplayPos.y + draw_data->DisplaySize.y;
-                constant_buffer.transform = Matrix
+                m_cb_imgui_cpu.transform = Matrix
                 (
                     2.0f / (R - L), 0.0f, 0.0f, (R + L) / (L - R),
                     0.0f, 2.0f / (T - B), 0.0f, (T + B) / (B - T),
@@ -326,11 +338,16 @@ namespace ImGui::RHI
                                 texture->SetFlag(RHI_Texture_Flags::RHI_Texture_Visualise_Channel_R);
                             }
 
-                            constant_buffer.options_texture_visualisation = texture->GetFlags();
+                            m_cb_imgui_cpu.options_texture_visualisation = texture->GetFlags();
                         }
 
                         // Update and bind the uber constant buffer (will only happen if the data changes)
-                        g_renderer->Update_Cb_Uber(cmd_list);
+                        {
+                            m_cb_imgui_gpu->AutoUpdate<Cb_ImGui>(m_cb_imgui_cpu, m_cb_imgui_cpu_mapped);
+
+                            // Bind because the offset just changed
+                            cmd_list->SetConstantBuffer(Renderer::Bindings_Cb::imgui, RHI_Shader_Vertex | RHI_Shader_Pixel, m_cb_imgui_gpu);
+                        }
 
                         // Draw
                         cmd_list->DrawIndexed(pcmd->ElemCount, pcmd->IdxOffset + global_idx_offset, pcmd->VtxOffset + global_vtx_offset);

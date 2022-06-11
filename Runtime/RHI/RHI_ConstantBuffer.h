@@ -44,6 +44,48 @@ namespace Spartan
             return _create();
         }
 
+        template<typename T>
+        void AutoUpdate(T& buffer_cpu, T& buffer_cpu_mapped)
+        {
+            // Only update if needed
+            if (buffer_cpu == buffer_cpu_mapped)
+                return;
+
+            // If the buffer's memory won't fit another update, the re-allocate double the memory
+            if (m_offset + m_stride >= m_object_size_gpu)
+            {
+                Create<T>(m_element_count * 2);
+            }
+
+            // Update
+            {
+                // GPU
+                {
+                    uint64_t offset = m_reset_offset ? 0 : (m_offset + m_stride);
+
+                    // Map (Vulkan uses persistent mapping so it will simply return the already mapped pointer)
+                    T* buffer_gpu = static_cast<T*>(Map());
+
+                    // Copy
+                    memcpy(reinterpret_cast<std::byte*>(buffer_gpu) + offset, reinterpret_cast<std::byte*>(&buffer_cpu), m_stride);
+
+                    // Flush/Unmap
+                    if (m_persistent_mapping) // Vulkan
+                    {
+                        Flush(m_stride, offset);
+                    }
+                    else // D3D11
+                    {
+                        Unmap();
+                    }
+
+                }
+
+                // CPU
+                buffer_cpu_mapped = buffer_cpu;
+            }
+        }
+
         // Maps memory (if not already mapped) and returns a pointer to it.
         void* Map();
         // Unmaps mapped memory
