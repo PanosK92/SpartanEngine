@@ -206,6 +206,13 @@ namespace ImGui::RHI
             m_cb_imgui_gpu->ResetOffset();
         }
 
+        // Begin timeblock
+        const char* name = is_child_window ? "pass_imgui_window_child" : "pass_imgui_window_main";
+        // don't profile child windows, the profiler also requires more work in order to not
+        // crash when the are brought back into the main viewport and their command pool is destroyed
+        bool gpu_timing = !is_child_window;
+        cmd_list->BeginTimeblock(name, true, gpu_timing);
+
         // Update vertex and index buffers
         RHI_VertexBuffer* vertex_buffer = nullptr;
         RHI_IndexBuffer* index_buffer   = nullptr;
@@ -272,10 +279,6 @@ namespace ImGui::RHI
         pso.viewport.height          = draw_data->DisplaySize.y;
         pso.dynamic_scissor          = true;
         pso.primitive_topology       = RHI_PrimitiveTopology_Mode::TriangleList;
-        pso.pass_name                = is_child_window ? "pass_imgui_window_child" : "pass_imgui_window_main";
-        // don't profile child windows, the profiler also requires more work in order to not
-        // crash when the are brought back into the main viewport and their command pool is destroyed
-        pso.profile                  = !is_child_window;
 
         // Set pipeline state
         cmd_list->SetPipelineState(pso);
@@ -363,6 +366,8 @@ namespace ImGui::RHI
 
             cmd_list->EndRenderPass();
         }
+
+        cmd_list->EndTimeblock();
 
         if (!is_child_window)
         {

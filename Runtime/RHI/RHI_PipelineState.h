@@ -73,20 +73,9 @@ namespace Spartan
         std::array<Math::Vector4, rhi_max_render_target_count> clear_color;
         //==================================================================================
 
-        //= Dynamic, modification wont' createda new pipeline ==============================
+        //= Dynamic, modification wont' createda new pipeline =
         bool render_target_depth_texture_read_only = false;
-
-        // Constant buffer slots which refer to dynamic buffers (-1 means unused)
-        std::array<int, rhi_max_constant_buffer_count> dynamic_constant_buffer_slots =
-        {
-            0, 1, 2, 3, 4, -1, -1, -1
-        };
-
-        // Profiling
-        const char* pass_name = nullptr;
-        bool gpu_marker       = true;
-        bool profile          = true;
-        //============================================================================
+        //=====================================================
 
     private:
         const RHI_Device* m_rhi_device = nullptr;

@@ -278,17 +278,17 @@ namespace Spartan
 
     }
 
-    void RHI_CommandList::Timestamp_Start(void* query)
+    void RHI_CommandList::BeginTimestamp(void* query)
     {
 
     }
 
-    void RHI_CommandList::Timestamp_End(void* query)
+    void RHI_CommandList::EndTimestamp(void* query)
     {
 
     }
 
-    float RHI_CommandList::Timestamp_GetDuration(void* query_start, void* query_end, const uint32_t pass_index)
+    float RHI_CommandList::GetTimestampDuration(void* query_start, void* query_end, const uint32_t pass_index)
     {
         return 0.0f;
     }
@@ -298,17 +298,17 @@ namespace Spartan
         return 0;
     }
 
-    void RHI_CommandList::Timeblock_Start(const char* name, const bool profile, const bool gpu_markers)
+    void RHI_CommandList::BeginTimeblock(const char* name, const bool gpu_marker, const bool gpu_timing)
     {
 
     }
 
-    void RHI_CommandList::Timeblock_End()
+    void RHI_CommandList::EndTimeblock()
     {
 
     }
 
-    void RHI_CommandList::StartMarker(const char* name)
+    void RHI_CommandList::BeginMarker(const char* name)
     {
 
     }

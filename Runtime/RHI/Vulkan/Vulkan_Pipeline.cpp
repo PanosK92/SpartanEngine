@@ -63,7 +63,7 @@ namespace Spartan
                 return;
 
             // Name
-            vulkan_utility::debug::set_name(static_cast<VkPipelineLayout>(m_resource_pipeline_layout), m_state.pass_name);
+            //vulkan_utility::debug::set_name(static_cast<VkPipelineLayout>(m_resource_pipeline_layout), m_state.pass_name);
         }
 
         // Viewport & Scissor
@@ -374,7 +374,7 @@ namespace Spartan
                 vulkan_utility::error::check(vkCreateGraphicsPipelines(m_rhi_device->GetContextRhi()->device, nullptr, 1, &pipeline_info, nullptr, pipeline));
 
                 SP_ASSERT(*pipeline != nullptr && "Failed to create graphics pipeline");
-                vulkan_utility::debug::set_name(*pipeline, m_state.pass_name);
+                //vulkan_utility::debug::set_name(*pipeline, m_state.pass_name);
             }
             else if (pipeline_state.IsCompute())
             {
@@ -388,7 +388,7 @@ namespace Spartan
                 vulkan_utility::error::check(vkCreateComputePipelines(m_rhi_device->GetContextRhi()->device, nullptr, 1, &pipeline_info, nullptr, pipeline));
 
                 SP_ASSERT(*pipeline != nullptr && "Failed to create compute pipeline");
-                vulkan_utility::debug::set_name(*pipeline, m_state.pass_name);
+                //vulkan_utility::debug::set_name(*pipeline, m_state.pass_name);
             }
         }
     }

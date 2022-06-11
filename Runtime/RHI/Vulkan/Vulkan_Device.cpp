@@ -253,10 +253,10 @@ namespace Spartan
             m_max_bound_descriptor_sets           = device_properties.limits.maxBoundDescriptorSets;
 
             // Disable profiler if timestamps are not supported
-            if (m_rhi_context->profiler && !device_properties.limits.timestampComputeAndGraphics)
+            if (m_rhi_context->gpu_profiling && !device_properties.limits.timestampComputeAndGraphics)
             {
-                LOG_ERROR("Device doesn't support timestamps, disabling profiler...");
-                m_rhi_context->profiler = false;
+                LOG_ERROR("Device doesn't support timestamps, disabling profiling...");
+                m_rhi_context->gpu_profiling = false;
             }
 
             // Feature: Vulkan 1.3 features
