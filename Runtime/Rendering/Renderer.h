@@ -424,7 +424,7 @@ namespace Spartan
         void Pass_PeformanceMetrics(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
         void Pass_BrdfSpecularLut(RHI_CommandList* cmd_list);
         void Pass_Copy(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out, const bool bilinear);
-        void Pass_Generate_Mips();
+        void Pass_Generate_Mips(RHI_CommandList* cmd_list);
 
         // Event handlers
         void OnRenderablesAcquire(const Variant& renderables);

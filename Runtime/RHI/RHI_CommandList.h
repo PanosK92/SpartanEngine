@@ -57,7 +57,8 @@ namespace Spartan
         void Discard();
 
         // Render pass
-        bool BeginRenderPass(RHI_PipelineState& pipeline_state);
+        void SetPipelineState(RHI_PipelineState& pso);
+        void BeginRenderPass();
         void EndRenderPass();
 
         // Clear
@@ -77,7 +78,7 @@ namespace Spartan
         void DrawIndexed(uint32_t index_count, uint32_t index_offset = 0, uint32_t vertex_offset = 0);
 
         // Dispatch
-        void Dispatch(uint32_t x, uint32_t y, uint32_t z, bool async = false);
+        void Dispatch(uint32_t x, uint32_t y, uint32_t z = 1, bool async = false);
 
         // Blit
         void Blit(RHI_Texture* source, RHI_Texture* destination);
@@ -154,7 +155,7 @@ namespace Spartan
         Profiler* m_profiler                              = nullptr;
         void* m_resource                                  = nullptr;
         std::atomic<bool> m_discard                       = false;
-        bool m_is_render_pass_active                      = false;
+        bool m_is_rendering                               = false;
         bool m_pipeline_dirty                             = false;
         std::atomic<RHI_CommandListState> m_state         = RHI_CommandListState::Idle;
         static const uint8_t m_resource_array_length_max  = 16;
@@ -170,7 +171,7 @@ namespace Spartan
         RHI_DescriptorSetLayout* m_descriptor_layout_current = nullptr;
 
         // Pipelines
-        RHI_PipelineState m_pipeline_state;
+        RHI_PipelineState m_pso;
         // <hash of pipeline state, pipeline state object>
         static std::unordered_map<uint32_t, std::shared_ptr<RHI_Pipeline>> m_pipelines;
 

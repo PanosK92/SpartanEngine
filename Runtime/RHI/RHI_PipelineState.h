@@ -61,17 +61,7 @@ namespace Spartan
 
         // RTs
         RHI_Texture* render_target_depth_texture = nullptr;
-        std::array<RHI_Texture*, rhi_max_render_target_count> render_target_color_textures =
-        {
-            nullptr,
-            nullptr,
-            nullptr,
-            nullptr,
-            nullptr,
-            nullptr,
-            nullptr,
-            nullptr
-        };
+        std::array<RHI_Texture*, rhi_max_render_target_count> render_target_color_textures;
 
         // RT indices (affect render pass)
         uint32_t render_target_color_texture_array_index         = 0;
@@ -83,7 +73,7 @@ namespace Spartan
         std::array<Math::Vector4, rhi_max_render_target_count> clear_color;
         //==================================================================================
 
-        //= Dynamic, modification is free ============================================
+        //= Dynamic, modification wont' createda new pipeline ==============================
         bool render_target_depth_texture_read_only = false;
 
         // Constant buffer slots which refer to dynamic buffers (-1 means unused)

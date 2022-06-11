@@ -41,6 +41,7 @@ namespace Spartan
     RHI_PipelineState::RHI_PipelineState()
     {
         clear_color.fill(rhi_color_load);
+        render_target_color_textures.fill(nullptr);
     }
 
     RHI_PipelineState::~RHI_PipelineState()
