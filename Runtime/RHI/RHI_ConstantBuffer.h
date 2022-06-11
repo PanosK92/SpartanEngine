@@ -44,17 +44,25 @@ namespace Spartan
             return _create();
         }
 
+        // This function will handle updating the buffer. This involves:
+        // - State tracking, meaning that updates will take place only if needed.
+        // - Offset tracking, meaning that on every update, the offset will be shifted and used in the next update.
+        // - Re-allocating with a bigger size, in case additional offsets are required. On re-allocation, true is returned.
+        // - Deciding between flushing (vulkan) or unamapping (d3d11).
         template<typename T>
-        void AutoUpdate(T& buffer_cpu, T& buffer_cpu_mapped)
+        bool AutoUpdate(T& buffer_cpu, T& buffer_cpu_mapped)
         {
+            bool reallocate = m_offset + m_stride >= m_object_size_gpu;
+
             // Only update if needed
             if (buffer_cpu == buffer_cpu_mapped)
-                return;
+                return reallocate;
 
             // If the buffer's memory won't fit another update, the re-allocate double the memory
-            if (m_offset + m_stride >= m_object_size_gpu)
+            if (reallocate)
             {
                 Create<T>(m_element_count * 2);
+                LOG_INFO("Buffer \"%s\" has been re-allocated with a size of %d bytes", m_object_name.c_str(), m_object_size_gpu);
             }
 
             // Update
@@ -84,6 +92,8 @@ namespace Spartan
                 // CPU
                 buffer_cpu_mapped = buffer_cpu;
             }
+
+            return reallocate;
         }
 
         // Maps memory (if not already mapped) and returns a pointer to it.
