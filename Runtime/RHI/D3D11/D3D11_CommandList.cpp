@@ -908,7 +908,7 @@ namespace Spartan
         }
     }
 
-    void RHI_CommandList::EndTimeBlock()
+    void RHI_CommandList::EndTimeblock()
     {
         // Allowed to mark ?
         RHI_Context* rhi_context = m_rhi_device->GetContextRhi();
