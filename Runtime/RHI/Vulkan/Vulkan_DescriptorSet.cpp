@@ -109,7 +109,8 @@ namespace Spartan
             // Ignore null resources (this is legal, as a render pass can choose to not use one or more resources)
             if (void* resource = resource_from_descriptor(descriptor))
             {
-                bool set_individual_mip         = descriptor.mip != -1;
+                const bool mip_specified        = descriptor.mip != -1;
+                uint32_t mip_start              = mip_specified ? descriptor.mip : 0;
                 bool is_array_of_textures       = descriptor.array_size > 1;
                 uint32_t descriptor_index_start = 0;
                 uint32_t array_size             = 1;
@@ -134,13 +135,13 @@ namespace Spartan
 
                         info_images[image_index].sampler     = nullptr;
                         info_images[image_index].imageView   = static_cast<VkImageView>(resource);
-                        info_images[image_index].imageLayout = vulkan_image_layout[static_cast<uint8_t>(texture->GetLayout(set_individual_mip ? descriptor.mip : 0))];
+                        info_images[image_index].imageLayout = vulkan_image_layout[static_cast<uint8_t>(texture->GetLayout(mip_start))];
 
                         descriptor_index_start = image_index;
                     }
                     else // array of textures (not a Texture2DArray)
                     {
-                        for (uint32_t mip_index = descriptor.mip; mip_index < descriptor.array_size; mip_index++)
+                        for (uint32_t mip_index = mip_start; mip_index < descriptor.array_size; mip_index++)
                         {
                             image_index++;
 
@@ -179,7 +180,7 @@ namespace Spartan
                 descriptor_sets[index].pNext            = nullptr;
                 descriptor_sets[index].dstSet           = static_cast<VkDescriptorSet>(m_resource);
                 descriptor_sets[index].dstBinding       = descriptor.slot;
-                descriptor_sets[index].dstArrayElement  = 0;
+                descriptor_sets[index].dstArrayElement  = 0; // The starting element in that array
                 descriptor_sets[index].descriptorCount  = array_size;
                 descriptor_sets[index].descriptorType   = vulkan_utility::ToVulkanDescriptorType(descriptor);
                 descriptor_sets[index].pImageInfo       = &info_images[descriptor_index_start];

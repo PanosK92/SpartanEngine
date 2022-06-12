@@ -567,17 +567,4 @@ namespace Spartan
             m_layout[i] = new_layout;
         }
     }
-
-    bool RHI_Texture::DoAllMipsHaveTheSameLayout() const
-    {
-        for (uint32_t mip_index = 1; mip_index < m_mip_count; mip_index++)
-        {
-            if (m_layout[0] != m_layout[mip_index])
-            {
-                return false;
-            }
-        }
-
-        return true;
-    }
 }
