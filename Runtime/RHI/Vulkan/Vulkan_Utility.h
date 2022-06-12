@@ -347,10 +347,6 @@ namespace Spartan::vulkan_utility
                 access_mask = VK_ACCESS_HOST_WRITE_BIT;
                 break;
 
-            case VK_IMAGE_LAYOUT_GENERAL:
-                access_mask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
-                break;
-
             case VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:
                 access_mask = VK_ACCESS_MEMORY_READ_BIT;
                 break;
@@ -387,6 +383,10 @@ namespace Spartan::vulkan_utility
                 break;
 
             // Shader reads
+            case VK_IMAGE_LAYOUT_GENERAL:
+                access_mask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
+                break;
+
             case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:
                 access_mask = VK_ACCESS_SHADER_READ_BIT;
                 break;
@@ -507,38 +507,38 @@ namespace Spartan::vulkan_utility
             image_barrier.subresourceRange.levelCount     = mip_range;
             image_barrier.subresourceRange.baseArrayLayer = 0;
             image_barrier.subresourceRange.layerCount     = array_length;
-            image_barrier.srcAccessMask                   = layout_to_access_mask(image_barrier.oldLayout, false); // stages in which operations occur, that have to be waited on
+            image_barrier.srcAccessMask                   = layout_to_access_mask(image_barrier.oldLayout, false);
             image_barrier.dstAccessMask                   = layout_to_access_mask(image_barrier.newLayout, true);
 
-            VkPipelineStageFlags source_stage = 0;
+            VkPipelineStageFlags source_stage_mask = 0;
             {
                 if (image_barrier.oldLayout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
                 {
-                    source_stage = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+                    source_stage_mask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
                 }
                 else
                 {
-                    source_stage = access_flags_to_pipeline_stage(image_barrier.srcAccessMask);
+                    source_stage_mask = access_flags_to_pipeline_stage(image_barrier.srcAccessMask);
                 }
             }
 
-            VkPipelineStageFlags destination_stage = 0;
+            VkPipelineStageFlags destination_stage_mask = 0;
             {
                 if (image_barrier.newLayout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
                 {
-                    destination_stage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+                    destination_stage_mask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
                 }
                 else
                 {
-                    destination_stage = access_flags_to_pipeline_stage(image_barrier.dstAccessMask);
+                    destination_stage_mask = access_flags_to_pipeline_stage(image_barrier.dstAccessMask);
                 }
             }
 
             vkCmdPipelineBarrier
             (
                 static_cast<VkCommandBuffer>(cmd_buffer), // commandBuffer
-                source_stage,                             // srcStageMask
-                destination_stage,                        // dstStageMask
+                source_stage_mask,                        // srcStageMask
+                destination_stage_mask,                   // dstStageMask
                 0,                                        // dependencyFlags
                 0,                                        // memoryBarrierCount
                 nullptr,                                  // pMemoryBarriers

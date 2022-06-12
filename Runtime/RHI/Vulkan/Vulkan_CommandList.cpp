@@ -778,9 +778,10 @@ namespace Spartan
             texture = m_renderer->GetDefaultTextureTransparent();
         }
 
-        // Acquire the layout of the requested mip
+        // Get some texture info
+        const uint32_t mip_count        = texture->GetMipCount();
         const bool mip_specified        = mip != -1;
-        uint32_t mip_start              = mip_specified ? mip : 0;
+        const uint32_t mip_start        = mip_specified ? mip : 0;
         RHI_Image_Layout current_layout = texture->GetLayout(mip_start);
 
         // If the image has an invalid layout (can happen for a few frames during staging), replace with a default texture
@@ -820,15 +821,38 @@ namespace Spartan
             SP_ASSERT(target_layout != RHI_Image_Layout::Undefined);
 
             // Determine if a layout transition is needed
-            bool layout_mismatch_mip_start = current_layout != target_layout;
-            bool layout_mismatch_mip_all   = !texture->DoAllMipsHaveTheSameLayout() && !mip_specified;
-            bool transition_required       = layout_mismatch_mip_start || layout_mismatch_mip_all;
+            bool transition_required = false;
+            {
+                bool rest_mips_have_same_layout = true;
+                array<RHI_Image_Layout, 12> layouts = texture->GetLayouts();
+                for (uint32_t mip_index = mip_specified; mip_index < mip_count; mip_index++)
+                {
+                    if (target_layout != layouts[mip_index])
+                    {
+                        rest_mips_have_same_layout = false;
+                        break;
+                    }
+                }
+
+                bool layout_mismatch_mip_start = current_layout != target_layout;
+                transition_required            = layout_mismatch_mip_start || !rest_mips_have_same_layout;
+            }
 
             // Transition
             if (transition_required)
             {
                 SP_ASSERT(!m_is_rendering && "Can't transition to a different layout while rendering");
                 texture->SetLayout(target_layout, this, mip, ranged);
+            }
+
+            // Verify that if no mip was specified, all mips have transitioned to the same layout
+            if (!mip_specified && mip_count > 1)
+            {
+                array<RHI_Image_Layout, 12> layouts = texture->GetLayouts();
+                for (uint32_t mip_index = 0; mip_index < mip_count; mip_index++)
+                {
+                   // SP_ASSERT(layouts[mip_index] == target_layout);
+                }
             }
         }
 
