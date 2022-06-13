@@ -207,7 +207,7 @@ namespace ImGui::RHI
         }
 
         // Begin timeblock
-        const char* name = is_child_window ? "pass_imgui_window_child" : "pass_imgui_window_main";
+        const char* name = is_child_window ? "imgui_window_child" : "imgui_window_main";
         // don't profile child windows, the profiler also requires more work in order to not
         // crash when the are brought back into the main viewport and their command pool is destroyed
         bool gpu_timing = !is_child_window;

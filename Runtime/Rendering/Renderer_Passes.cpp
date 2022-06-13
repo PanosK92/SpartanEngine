@@ -184,7 +184,7 @@ namespace Spartan
         // Define pipeline state
         static RHI_PipelineState pso;
 
-        cmd_list->BeginMarker("Pass_UpdateFrameBuffer");
+        cmd_list->BeginMarker("update_frame_buffer");
 
         // Set pipeline state
         cmd_list->SetPipelineState(pso);
@@ -211,7 +211,7 @@ namespace Spartan
         if (entities.empty())
             return;
 
-        cmd_list->BeginTimeblock(is_transparent_pass ? "Pass_ShadowMaps_Color" : "Pass_ShadowMaps_Depth");
+        cmd_list->BeginTimeblock(is_transparent_pass ? "shadow_maps_color" : "shadow_maps_depth");
 
         // Go through all of the lights
         const auto& entities_light = m_entities[ObjectType::Light];
@@ -373,7 +373,7 @@ namespace Spartan
         if (lights.empty())
             return;
 
-        cmd_list->BeginTimeblock("Pass_ReflectionProbes");
+        cmd_list->BeginTimeblock("reflection_probes");
 
         // For each reflection probe
         for (uint32_t probe_index = 0; probe_index < static_cast<uint32_t>(probes.size()); probe_index++)
@@ -491,7 +491,7 @@ namespace Spartan
         if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
             return;
 
-        cmd_list->BeginTimeblock("Pass_Depth_Prepass");
+        cmd_list->BeginTimeblock("depth_prepass");
 
         RHI_Texture* tex_depth = RENDER_TARGET(RenderTarget::Gbuffer_Depth).get();
         const auto& entities = m_entities[ObjectType::GeometryOpaque];
@@ -580,7 +580,7 @@ namespace Spartan
         if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
             return;
 
-        cmd_list->BeginTimeblock(is_transparent_pass ? "GBuffer_Transparent" : "GBuffer_Opaque");
+        cmd_list->BeginTimeblock(is_transparent_pass ? "gbuffer_transparent" : "gbuffer_opaque");
 
         // Acquire render targets
         RHI_Texture* tex_albedo   = RENDER_TARGET(RenderTarget::Gbuffer_Albedo).get();
@@ -747,7 +747,7 @@ namespace Spartan
         RHI_Texture* tex_ssao    = RENDER_TARGET(RenderTarget::Ssao).get();
         RHI_Texture* tex_ssao_gi = RENDER_TARGET(RenderTarget::Ssao_Gi).get();
 
-        cmd_list->BeginTimeblock("Pass_Ssao");
+        cmd_list->BeginTimeblock("ssao");
 
         // Define pipeline state
         static RHI_PipelineState pso;
@@ -794,7 +794,7 @@ namespace Spartan
         // Acquire render targets
         RHI_Texture* tex_ssr = RENDER_TARGET(RenderTarget::Ssr).get();
 
-        cmd_list->BeginTimeblock("Pass_Ssr");
+        cmd_list->BeginTimeblock("ssr");
 
         // Define pipeline state
         static RHI_PipelineState pso;
@@ -847,7 +847,7 @@ namespace Spartan
         if (entities.empty())
             return;
 
-        cmd_list->BeginTimeblock(is_transparent_pass ? "Pass_Light_Transparent" : "Pass_Light_Opaque");
+        cmd_list->BeginTimeblock(is_transparent_pass ? "light_transparent" : "light_opaque");
 
         // Acquire render targets
         RHI_Texture* tex_diffuse    = is_transparent_pass ? RENDER_TARGET(RenderTarget::Light_Diffuse_Transparent).get()  : RENDER_TARGET(RenderTarget::Light_Diffuse).get();
@@ -934,7 +934,7 @@ namespace Spartan
         if (!shader_c->IsCompiled())
             return;
 
-        cmd_list->BeginTimeblock(is_transparent_pass ? "Pass_Light_Composition_Transparent" : "Pass_Light_Composition_Opaque");
+        cmd_list->BeginTimeblock(is_transparent_pass ? "light_composition_transparent" : "light_composition_opaque");
 
         // Define pipeline state
         static RHI_PipelineState pso;
@@ -975,7 +975,7 @@ namespace Spartan
         if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
             return;
 
-        cmd_list->BeginTimeblock(is_transparent_pass ? "Pass_Light_ImageBased_Transparent" : "Pass_Light_ImageBased_Opaque");
+        cmd_list->BeginTimeblock(is_transparent_pass ? "light_image_based_transparent" : "light_image_based_opaque");
 
         // Get reflection probe entities
         const vector<Entity*>& probes = m_entities[ObjectType::ReflectionProbe];
@@ -1063,7 +1063,7 @@ namespace Spartan
         const uint32_t thread_group_count_x_ = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(width) / m_thread_group_count));
         const uint32_t thread_group_count_y_ = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(height) / m_thread_group_count));
 
-        cmd_list->BeginMarker("Pass_Blur_Gaussian");
+        cmd_list->BeginMarker("blur_gaussian");
 
         // Horizontal pass
         {
@@ -1139,7 +1139,7 @@ namespace Spartan
         // This allows us to check later if we need to peform a swap between output 1 and 2.
         uint64_t frame_output_in_id = rt_frame_output_1->GetObjectId();
 
-        cmd_list->BeginMarker("Pass_PostProcess");
+        cmd_list->BeginMarker("post_proccess");
 
         // RENDER RESOLUTION
         bool upsampled = false;
@@ -1147,7 +1147,7 @@ namespace Spartan
             // Depth of Field
             if (GetOption(Renderer::Option::DepthOfField))
             {
-                Pass_PostProcess_DepthOfField(cmd_list, rt_frame_render_1, rt_frame_render_2);
+                Pass_DepthOfField(cmd_list, rt_frame_render_1, rt_frame_render_2);
                 rt_frame_render_1.swap(rt_frame_render_2);
             }
 
@@ -1158,12 +1158,12 @@ namespace Spartan
             {
                 if (GetOption(Renderer::Option::Upsample_TAA) && resolution_output_larger)
                 {
-                    Pass_PostProcess_TAA(cmd_list, rt_frame_render_1, rt_frame_output_1);
+                    Pass_Taa(cmd_list, rt_frame_render_1, rt_frame_output_1);
                     upsampled = true; // TAA writes directly in the high res buffer
                 }
                 else
                 {
-                    Pass_PostProcess_TAA(cmd_list, rt_frame_render_1, rt_frame_render_2);
+                    Pass_Taa(cmd_list, rt_frame_render_1, rt_frame_render_2);
                     rt_frame_render_1.swap(rt_frame_render_2);
                 }
             }
@@ -1191,14 +1191,14 @@ namespace Spartan
             // Motion Blur
             if (GetOption(Renderer::Option::MotionBlur))
             {
-                Pass_PostProcess_MotionBlur(cmd_list, rt_frame_output_1, rt_frame_output_2);
+                Pass_MotionBlur(cmd_list, rt_frame_output_1, rt_frame_output_2);
                 rt_frame_output_1.swap(rt_frame_output_2);
             }
 
             // Bloom
             if (GetOption(Renderer::Option::Bloom))
             {
-                Pass_PostProcess_Bloom(cmd_list, rt_frame_output_1, rt_frame_output_2);
+                Pass_Bloom(cmd_list, rt_frame_output_1, rt_frame_output_2);
                 rt_frame_output_1.swap(rt_frame_output_2);
             }
 
@@ -1211,34 +1211,34 @@ namespace Spartan
 
             // Tone-Mapping
             // Run even when tone-mapping is disabled since this is where gamma correction is also done.
-            Pass_PostProcess_ToneMapping(cmd_list, rt_frame_output_1, rt_frame_output_2);
+            Pass_ToneMapping(cmd_list, rt_frame_output_1, rt_frame_output_2);
             rt_frame_output_1.swap(rt_frame_output_2);
 
             // Debanding
             if (GetOption(Renderer::Option::Debanding))
             {
-                Pass_PostProcess_Debanding(cmd_list, rt_frame_output_1, rt_frame_output_2);
+                Pass_Debanding(cmd_list, rt_frame_output_1, rt_frame_output_2);
                 rt_frame_output_1.swap(rt_frame_output_2);
             }
 
             // FXAA
             if (GetOption(Renderer::Option::AntiAliasing_Fxaa))
             {
-                Pass_PostProcess_Fxaa(cmd_list, rt_frame_output_1, rt_frame_output_2);
+                Pass_Fxaa(cmd_list, rt_frame_output_1, rt_frame_output_2);
                 rt_frame_output_1.swap(rt_frame_output_2);
             }
 
             // Chromatic aberration
             if (GetOption(Renderer::Option::ChromaticAberration))
             {
-                Pass_PostProcess_ChromaticAberration(cmd_list, rt_frame_output_1, rt_frame_output_2);
+                Pass_ChromaticAberration(cmd_list, rt_frame_output_1, rt_frame_output_2);
                 rt_frame_output_1.swap(rt_frame_output_2);
             }
 
             // Film grain
             if (GetOption(Renderer::Option::FilmGrain))
             {
-                Pass_PostProcess_FilmGrain(cmd_list, rt_frame_output_1, rt_frame_output_2);
+                Pass_FilmGrain(cmd_list, rt_frame_output_1, rt_frame_output_2);
                 rt_frame_output_1.swap(rt_frame_output_2);
             }
 
@@ -1252,14 +1252,14 @@ namespace Spartan
         cmd_list->EndMarker();
     }
 
-    void Renderer::Pass_PostProcess_TAA(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
+    void Renderer::Pass_Taa(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
     {
         // Acquire shaders
         RHI_Shader* shader_c = m_shaders[Renderer::Shader::Taa_C].get();
         if (!shader_c->IsCompiled())
             return;
 
-        cmd_list->BeginTimeblock("Pass_PostProcess_TAA");
+        cmd_list->BeginTimeblock("taa");
 
         // Acquire history texture
         RHI_Texture* tex_history = RENDER_TARGET(RenderTarget::Taa_History).get();
@@ -1292,7 +1292,7 @@ namespace Spartan
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::Pass_PostProcess_Bloom(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
+    void Renderer::Pass_Bloom(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
     {
         // Acquire shaders
         RHI_Shader* shader_luminance        = m_shaders[Renderer::Shader::BloomLuminance_C].get();
@@ -1302,13 +1302,13 @@ namespace Spartan
         if (!shader_luminance->IsCompiled() || !shader_upsampleBlendMip->IsCompiled() || !shader_blendFrame->IsCompiled())
             return;
 
-        cmd_list->BeginTimeblock("Pass_Bloom");
+        cmd_list->BeginTimeblock("bloom");
 
         // Acquire render target
         RHI_Texture* tex_bloom = RENDER_TARGET(RenderTarget::Bloom).get();
 
         // Luminance
-        cmd_list->BeginMarker("Pass_PostProcess_BloomLuminance");
+        cmd_list->BeginMarker("luminance");
         {
             // Define pipeline state
             static RHI_PipelineState pso;
@@ -1335,7 +1335,7 @@ namespace Spartan
         Pass_AMD_FidelityFX_SinglePassDownsampler(cmd_list, tex_bloom, luminance_antiflicker);
 
         // Starting from the lowest mip, upsample and blend with the higher one
-        cmd_list->BeginMarker("Pass_PostProcess_BloomUpsampleBlendMip");
+        cmd_list->BeginMarker("upsample_and_blend_with_higher_mip");
         {
             // Define pipeline state
             static RHI_PipelineState pso;
@@ -1369,7 +1369,7 @@ namespace Spartan
         cmd_list->EndMarker();
 
         // Blend with the frame
-        cmd_list->BeginMarker("Pass_PostProcess_BloomBlendFrame");
+        cmd_list->BeginMarker("blend_with_frame");
         {
             // Define pipeline state
             static RHI_PipelineState pso;
@@ -1395,14 +1395,14 @@ namespace Spartan
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::Pass_PostProcess_ToneMapping(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
+    void Renderer::Pass_ToneMapping(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
     {
         // Acquire shaders
         RHI_Shader* shader_c = m_shaders[Renderer::Shader::ToneMapping_C].get();
         if (!shader_c->IsCompiled())
             return;
 
-        cmd_list->BeginTimeblock("Pass_PostProcess_ToneMapping");
+        cmd_list->BeginTimeblock("tonemapping");
 
         // Define pipeline state
         static RHI_PipelineState pso;
@@ -1425,14 +1425,14 @@ namespace Spartan
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::Pass_PostProcess_Fxaa(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
+    void Renderer::Pass_Fxaa(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
     {
         // Acquire shaders
         RHI_Shader* shader_c = m_shaders[Renderer::Shader::Fxaa_C].get();
         if (!shader_c->IsCompiled())
             return;
 
-        cmd_list->BeginTimeblock("Pass_PostProcess_FXAA");
+        cmd_list->BeginTimeblock("fxaa");
 
         // Define pipeline state
         static RHI_PipelineState pso;
@@ -1455,14 +1455,14 @@ namespace Spartan
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::Pass_PostProcess_ChromaticAberration(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
+    void Renderer::Pass_ChromaticAberration(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
     {
         // Acquire shaders
         RHI_Shader* shader_c = m_shaders[Renderer::Shader::ChromaticAberration_C].get();
         if (!shader_c->IsCompiled())
             return;
 
-        cmd_list->BeginTimeblock("Pass_PostProcess_ChromaticAberration");
+        cmd_list->BeginTimeblock("chromatic_aberration");
 
         // Define pipeline state
         static RHI_PipelineState pso;
@@ -1485,14 +1485,14 @@ namespace Spartan
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::Pass_PostProcess_MotionBlur(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
+    void Renderer::Pass_MotionBlur(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
     {
         // Acquire shaders
         RHI_Shader* shader_c = m_shaders[Renderer::Shader::MotionBlur_C].get();
         if (!shader_c->IsCompiled())
             return;
 
-        cmd_list->BeginTimeblock("Pass_PostProcess_MotionBlur");
+        cmd_list->BeginTimeblock("motion_blur");
 
         // Define pipeline state
         static RHI_PipelineState pso;
@@ -1517,7 +1517,7 @@ namespace Spartan
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::Pass_PostProcess_DepthOfField(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
+    void Renderer::Pass_DepthOfField(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
     {
         // Acquire shaders
         RHI_Shader* shader_downsampleCoc = m_shaders[Renderer::Shader::Dof_DownsampleCoc_C].get();
@@ -1527,7 +1527,7 @@ namespace Spartan
         if (!shader_downsampleCoc->IsCompiled() || !shader_bokeh->IsCompiled() || !shader_tent->IsCompiled() || !shader_upsampleBlend->IsCompiled())
             return;
 
-        cmd_list->BeginTimeblock("Pass_PostProcess_DepthOfField");
+        cmd_list->BeginTimeblock("depth_of_field");
 
         // Acquire render targets
         RHI_Texture* tex_bokeh_half   = RENDER_TARGET(RenderTarget::Dof_Half).get();
@@ -1535,7 +1535,7 @@ namespace Spartan
         RHI_Texture* tex_depth        = RENDER_TARGET(RenderTarget::Gbuffer_Depth).get();
 
         // Downsample and compute circle of confusion
-        cmd_list->BeginMarker("Pass_PostProcess_Dof_DownsampleCoc");
+        cmd_list->BeginMarker("circle_of_confusion");
         {
             // Define pipeline state
             static RHI_PipelineState pso;
@@ -1559,7 +1559,7 @@ namespace Spartan
         cmd_list->EndMarker();
 
         // Bokeh
-        cmd_list->BeginMarker("Pass_PostProcess_Dof_Bokeh");
+        cmd_list->BeginMarker("bokeh");
         {
             // Define pipeline state
             static RHI_PipelineState pso;
@@ -1582,7 +1582,7 @@ namespace Spartan
         cmd_list->EndMarker();
 
         // Blur the bokeh using a tent filter
-        cmd_list->BeginMarker("Pass_PostProcess_Dof_Tent");
+        cmd_list->BeginMarker("tent");
         {
             // Define pipeline state
             static RHI_PipelineState pso;
@@ -1605,7 +1605,7 @@ namespace Spartan
         cmd_list->EndMarker();
 
         // Upscale & Blend
-        cmd_list->BeginMarker("Pass_PostProcess_Dof_UpscaleBlend");
+        cmd_list->BeginMarker("upsample_and_blend_with_frame");
         {
             // Define pipeline state
             static RHI_PipelineState pso;
@@ -1632,14 +1632,14 @@ namespace Spartan
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::Pass_PostProcess_Debanding(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
+    void Renderer::Pass_Debanding(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
     {
         // Acquire shaders
         RHI_Shader* shader = m_shaders[Renderer::Shader::Debanding_C].get();
         if (!shader->IsCompiled())
             return;
 
-        cmd_list->BeginTimeblock("Pass_PostProcess_Debanding");
+        cmd_list->BeginTimeblock("debanding");
 
         // Define pipeline state
         static RHI_PipelineState pso;
@@ -1662,14 +1662,14 @@ namespace Spartan
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::Pass_PostProcess_FilmGrain(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
+    void Renderer::Pass_FilmGrain(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
     {
         // Acquire shaders
         RHI_Shader* shader_c = m_shaders[Renderer::Shader::FilmGrain_C].get();
         if (!shader_c->IsCompiled())
             return;
 
-        cmd_list->BeginTimeblock("Pass_PostProcess_FilmGrain");
+        cmd_list->BeginTimeblock("film_grain");
 
         // Define pipeline state
         static RHI_PipelineState pso;
@@ -1700,7 +1700,7 @@ namespace Spartan
         if (!shader_c->IsCompiled())
             return;
 
-        cmd_list->BeginTimeblock("Pass_AMD_FidelityFX_ContrastAdaptiveSharpening");
+        cmd_list->BeginTimeblock("amd_fidelityfx_contrast_adaptive_sharpening");
 
         // Define pipeline state
         static RHI_PipelineState pso;
@@ -1744,7 +1744,7 @@ namespace Spartan
         if (!shader->IsCompiled())
             return;
 
-        cmd_list->BeginMarker("Pass_AMD_FidelityFX_SinglePassDowsnampler");
+        cmd_list->BeginMarker("amd_fidelityfx_single_pass_downsampler");
 
         // Define render state
         static RHI_PipelineState pso;
@@ -1784,10 +1784,10 @@ namespace Spartan
         if (!shader_upsample_c->IsCompiled() || !shader_sharpen_c->IsCompiled())
             return;
 
-        cmd_list->BeginTimeblock("Pass_AMD_FidelityFX_SuperResolution");
+        cmd_list->BeginTimeblock("amd_fidelityfx_super_resolution_1_0");
 
         // Upsample
-        cmd_list->BeginMarker("Pass_AMD_FidelityFX_SuperResolution_Upsample");
+        cmd_list->BeginMarker("upsample");
         {
             // Define render state
             static RHI_PipelineState pso;
@@ -1809,7 +1809,7 @@ namespace Spartan
         cmd_list->EndMarker();
 
         // Sharpen
-        cmd_list->BeginMarker("Pass_AMD_FidelityFX_SuperResolution_Sharpen");
+        cmd_list->BeginMarker("sharpen");
         {
             // Define pipeline state
             static RHI_PipelineState pso;
@@ -1847,12 +1847,12 @@ namespace Spartan
         if (!shader_color_v->IsCompiled() || !shader_color_p->IsCompiled())
             return;
 
-        cmd_list->BeginTimeblock("Pass_Lines");
+        cmd_list->BeginTimeblock("lines");
 
         // Grid
         if (draw_grid)
         {
-            cmd_list->BeginMarker("Pass_Lines_Grid");
+            cmd_list->BeginMarker("grid");
 
             // Define pipeline state
             static RHI_PipelineState pso;
@@ -1918,7 +1918,7 @@ namespace Spartan
                 // Depth off
                 if (draw_lines_depth_off)
                 {
-                    cmd_list->BeginMarker("Pass_Lines_Depth_Off");
+                    cmd_list->BeginMarker("depth_off");
 
                     // Define pipeline state
                     pso.blend_state         = m_blend_disabled.get();
@@ -1941,7 +1941,7 @@ namespace Spartan
                 // Depth on
                 if (m_lines_index_depth_on > (vertex_count / 2) - 1)
                 {
-                    cmd_list->BeginMarker("Pass_Lines_Depth_On");
+                    cmd_list->BeginMarker("depth_on");
 
                     // Define pipeline state
                     pso.blend_state                 = m_blend_alpha.get();
@@ -1983,7 +1983,7 @@ namespace Spartan
         if (lights.empty() || !m_camera)
             return;
 
-        cmd_list->BeginTimeblock("Pass_Icons");
+        cmd_list->BeginTimeblock("icons");
 
         // Define pipeline state
         static RHI_PipelineState pso;
@@ -2075,7 +2075,7 @@ namespace Spartan
         if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
             return;
 
-        cmd_list->BeginTimeblock("Pass_TransformHandle");
+        cmd_list->BeginTimeblock("transform_handle");
 
         // Get transform handle (can be null during engine startup)
         shared_ptr<TransformHandle> transform_handle = m_context->GetSubsystem<World>()->GetTransformHandle();
@@ -2179,7 +2179,7 @@ namespace Spartan
         if (probes.empty())
             return;
 
-        cmd_list->BeginTimeblock("Pass_DebugMeshes");
+        cmd_list->BeginTimeblock("debug_meshes");
 
         // Define pipeline state
         static RHI_PipelineState pso;
@@ -2229,7 +2229,7 @@ namespace Spartan
         if (!GetOption(Renderer::Option::Debug_SelectionOutline))
             return;
 
-        cmd_list->BeginTimeblock("Pass_Outline");
+        cmd_list->BeginTimeblock("outline");
 
         if (const Entity* entity = m_context->GetSubsystem<World>()->GetTransformHandle()->GetSelectedEntity())
         {
@@ -2315,8 +2315,8 @@ namespace Spartan
             m_profiler->SetEnabled(true);
         }
 
-        cmd_list->BeginMarker("Pass_PeformanceMetrics");
-        cmd_list->BeginTimeblock("Pass_PeformanceMetrics_Outline");
+        cmd_list->BeginMarker("performance_metrics");
+        cmd_list->BeginTimeblock("outline");
 
         // Define pipeline state
         static RHI_PipelineState pso;
@@ -2355,7 +2355,7 @@ namespace Spartan
         }
 
         cmd_list->EndTimeblock();
-        cmd_list->BeginTimeblock("Pass_PeformanceMetrics_Inline");
+        cmd_list->BeginTimeblock("inline");
 
         // Draw
         cmd_list->SetPipelineState(pso);
@@ -2387,7 +2387,7 @@ namespace Spartan
         if (!shader->IsCompiled())
             return;
 
-        cmd_list->BeginTimeblock("Pass_BrdfSpecularLut");
+        cmd_list->BeginTimeblock("brdf_specular_lut");
 
         // Acquire render target
         RHI_Texture* tex_brdf_specular_lut = RENDER_TARGET(RenderTarget::Brdf_Specular_Lut).get();
@@ -2421,7 +2421,7 @@ namespace Spartan
         if (!shader_c->IsCompiled())
             return;
 
-        cmd_list->BeginMarker(bilinear ? "Pass_Copy_Bilinear" : "Pass_Copy_Point");
+        cmd_list->BeginMarker(bilinear ? "copy_bilinear" : "copy_point");
 
         // Define render state
         static RHI_PipelineState pso;
@@ -2451,7 +2451,7 @@ namespace Spartan
         if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
             return;
 
-        m_cmd_current->BeginMarker("Pass_CopyToBackBuffer");
+        m_cmd_current->BeginMarker("copy_to_back_buffer");
 
         // Transition swap chain image
         m_swap_chain->SetLayout(RHI_Image_Layout::Color_Attachment_Optimal, m_cmd_current);
