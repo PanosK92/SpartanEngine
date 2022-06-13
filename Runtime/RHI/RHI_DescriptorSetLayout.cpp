@@ -47,7 +47,7 @@ namespace Spartan
 
         for (const RHI_Descriptor& descriptor : m_descriptors)
         {
-            Utility::Hash::hash_combine(m_hash, descriptor.ComputeHash(false));
+            Utility::Hash::hash_combine(m_hash, descriptor.ComputeHash());
         }
     }
 
@@ -58,13 +58,13 @@ namespace Spartan
             if ((descriptor.type == RHI_Descriptor_Type::ConstantBuffer) && descriptor.slot == slot + rhi_shader_shift_register_b)
             {
                 // Determine if the descriptor set needs to bind (affects vkUpdateDescriptorSets)
-                m_needs_to_bind = descriptor.data   != constant_buffer              ? true : m_needs_to_bind;
-                m_needs_to_bind = descriptor.offset != constant_buffer->GetOffset() ? true : m_needs_to_bind;
-                m_needs_to_bind = descriptor.range  != constant_buffer->GetStride() ? true : m_needs_to_bind;
+                m_needs_to_bind = descriptor.data           != constant_buffer              ? true : m_needs_to_bind;
+                m_needs_to_bind = descriptor.dynamic_offset != constant_buffer->GetOffset() ? true : m_needs_to_bind;
+                m_needs_to_bind = descriptor.range          != constant_buffer->GetStride() ? true : m_needs_to_bind;
 
-                descriptor.data   = static_cast<void*>(constant_buffer);
-                descriptor.offset = constant_buffer->GetOffset();
-                descriptor.range  = constant_buffer->GetStride();
+                descriptor.data           = static_cast<void*>(constant_buffer);
+                descriptor.dynamic_offset = constant_buffer->GetOffset();
+                descriptor.range          = constant_buffer->GetStride();
 
                 return;
             }
@@ -136,9 +136,8 @@ namespace Spartan
                 m_needs_to_bind = descriptor.range != structured_buffer->GetObjectSizeGpu() ? true : m_needs_to_bind;
 
                 // Update
-                descriptor.data   = static_cast<void*>(structured_buffer);
-                descriptor.offset = 0;
-                descriptor.range  = structured_buffer->GetObjectSizeGpu();
+                descriptor.data  = static_cast<void*>(structured_buffer);
+                descriptor.range = structured_buffer->GetObjectSizeGpu();
 
                 return;
             }
@@ -164,6 +163,7 @@ namespace Spartan
         {
             Utility::Hash::hash_combine(hash, descriptor.data);
             Utility::Hash::hash_combine(hash, descriptor.mip);
+            Utility::Hash::hash_combine(hash, descriptor.range);
         }
 
         // If we don't have a descriptor set to match that state, create one
@@ -196,7 +196,7 @@ namespace Spartan
         {
             if (descriptor.type == RHI_Descriptor_Type::ConstantBuffer)
             {
-                m_dynamic_offsets[i++] = static_cast<uint32_t>(descriptor.offset);
+                m_dynamic_offsets[i++] = static_cast<uint32_t>(descriptor.dynamic_offset);
             }
         }
 

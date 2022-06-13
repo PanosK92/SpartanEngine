@@ -108,7 +108,7 @@ namespace Spartan
         bool IsPersistentBuffer() const { return m_persistent_mapping; }
         void* GetResource()       const { return m_resource; }
         uint64_t GetStride()      const { return m_stride; }
-        uint64_t GetOffset()      const { return m_offset; }
+        uint32_t GetOffset()      const { return m_offset; }
         uint32_t GetStrideCount() const { return m_element_count; }
 
     private:

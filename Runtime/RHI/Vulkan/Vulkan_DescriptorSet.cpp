@@ -161,7 +161,7 @@ namespace Spartan
                 else if (descriptor.type == RHI_Descriptor_Type::ConstantBuffer)
                 {
                     info_buffers[index].buffer = static_cast<VkBuffer>(resource);
-                    info_buffers[index].offset = 0; // we use an offset, but it's dynamic and it's passed with vkCmdBindDescriptorSets
+                    info_buffers[index].offset = 0;
                     info_buffers[index].range  = descriptor.range;
 
                     descriptor_index_start = index;
@@ -169,7 +169,7 @@ namespace Spartan
                 else if (descriptor.type == RHI_Descriptor_Type::StructuredBuffer)
                 {
                     info_buffers[index].buffer = static_cast<VkBuffer>(resource);
-                    info_buffers[index].offset = descriptor.offset;
+                    info_buffers[index].offset = 0;
                     info_buffers[index].range  = descriptor.range;
 
                     descriptor_index_start = index;

@@ -750,21 +750,7 @@ namespace Spartan
 
     void RHI_CommandList::SetTexture(const uint32_t slot, RHI_Texture* texture, const int mip /*= -1*/, bool ranged /*= false*/, const bool uav /*= false*/)
     {
-        // Validate command list state
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
-
-        // Validate texture
-        if (texture)
-        {
-            if (uav)
-            {
-                SP_ASSERT(texture->IsUav());
-            }
-            else
-            {
-                SP_ASSERT(texture->IsSrv());
-            }
-        }
 
         if (!m_descriptor_layout_current)
         {
@@ -798,12 +784,16 @@ namespace Spartan
 
             if (uav)
             {
+                SP_ASSERT(texture->IsUav());
+
                 // According to section 13.1 of the Vulkan spec, storage textures have to be in a general layout.
                 // https://www.khronos.org/registry/vulkan/specs/1.1-extensions/html/vkspec.html#descriptorsets-storageimage
                 target_layout = RHI_Image_Layout::General;
             }
             else
             {
+                SP_ASSERT(texture->IsSrv());
+
                 // Color
                 if (texture->IsColorFormat())
                 {
@@ -825,9 +815,9 @@ namespace Spartan
             {
                 bool rest_mips_have_same_layout = true;
                 array<RHI_Image_Layout, 12> layouts = texture->GetLayouts();
-                for (uint32_t mip_index = mip_specified; mip_index < mip_count; mip_index++)
+                for (uint32_t i = mip_start; i < mip_start + mip_count; i++)
                 {
-                    if (target_layout != layouts[mip_index])
+                    if (target_layout != layouts[i])
                     {
                         rest_mips_have_same_layout = false;
                         break;
@@ -843,16 +833,6 @@ namespace Spartan
             {
                 SP_ASSERT(!m_is_rendering && "Can't transition to a different layout while rendering");
                 texture->SetLayout(target_layout, this, mip, ranged);
-            }
-
-            // Verify that if no mip was specified, all mips have transitioned to the same layout
-            if (!mip_specified && mip_count > 1)
-            {
-                array<RHI_Image_Layout, 12> layouts = texture->GetLayouts();
-                for (uint32_t mip_index = 0; mip_index < mip_count; mip_index++)
-                {
-                   // SP_ASSERT(layouts[mip_index] == target_layout);
-                }
             }
         }
 
@@ -1068,7 +1048,7 @@ namespace Spartan
         uint32_t hash = 0;
         for (const RHI_Descriptor& descriptor : descriptors)
         {
-            Utility::Hash::hash_combine(hash, descriptor.ComputeHash(false));
+            Utility::Hash::hash_combine(hash, descriptor.ComputeHash());
         }
 
         // Search for a descriptor set layout which matches this hash
