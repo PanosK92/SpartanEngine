@@ -53,40 +53,35 @@ namespace Spartan
             this->array_size = array_size;
         }
 
-        uint32_t ComputeHash(bool include_data) const
+        uint32_t ComputeHash() const
         {
             uint32_t hash = 0;
 
             Utility::Hash::hash_combine(hash, slot);
             Utility::Hash::hash_combine(hash, stage);
-            Utility::Hash::hash_combine(hash, range);
+            Utility::Hash::hash_combine(hash, array_size);
             Utility::Hash::hash_combine(hash, static_cast<uint32_t>(type));
             Utility::Hash::hash_combine(hash, static_cast<uint32_t>(layout));
-
-            if (include_data)
-            {
-                Utility::Hash::hash_combine(hash, data);
-                Utility::Hash::hash_combine(hash, mip);
-            }
 
             return hash;
         }
 
         bool IsStorage() const { return type == RHI_Descriptor_Type::TextureStorage; }
 
-        uint32_t slot            = 0;
-        uint32_t stage           = 0;
-        uint64_t offset          = 0;
-        uint64_t range           = 0;
-        uint32_t array_size      = 0;
+        // Properties that affect the hash. They are reflected from the shader
+        uint32_t slot            = 0; // the binding slot in the shader
+        uint32_t stage           = 0; // the pipeline stages from which which the descriptor resources is accessed from
+        uint32_t array_size      = 0; // the size of the array in the shader
         RHI_Descriptor_Type type = RHI_Descriptor_Type::Undefined;
         RHI_Image_Layout layout  = RHI_Image_Layout::Undefined;
 
-        // Data
-        int mip    = -1;
-        void* data = nullptr;
+        // Properties that don't affect the hash. Data that simply needs to be passed around
+        uint32_t dynamic_offset = 0; // the offset used for dynamic constant buffers
+        uint64_t range          = 0; // the size in bytes that is used for a descriptor update
+        int mip                 = -1;
+        void* data              = nullptr;
 
-        // Misc
+        // Reflected shader resource name, it doesn't affect the hash. Kept here for debugging purposes.
         std::string name;
     };
 }
