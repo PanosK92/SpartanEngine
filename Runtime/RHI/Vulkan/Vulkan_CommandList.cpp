@@ -621,8 +621,8 @@ namespace Spartan
         }
         else
         {
-            source->SetLayout(layouts_initial_source[0], this, -1);
-            destination->SetLayout(layouts_initial_destination[0], this, -1);
+            source->SetLayout(layouts_initial_source[0], this);
+            destination->SetLayout(layouts_initial_destination[0], this);
         }
     }
 
@@ -748,7 +748,7 @@ namespace Spartan
         m_descriptor_layout_current->SetSampler(slot, sampler);
     }
 
-    void RHI_CommandList::SetTexture(const uint32_t slot, RHI_Texture* texture, const int mip /*= -1*/, bool ranged /*= false*/, const bool uav /*= false*/)
+    void RHI_CommandList::SetTexture(const uint32_t slot, RHI_Texture* texture, const uint32_t mip /*= all_mips*/, bool ranged /*= false*/, const bool uav /*= false*/)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
@@ -766,7 +766,7 @@ namespace Spartan
 
         // Get some texture info
         const uint32_t mip_count        = texture->GetMipCount();
-        const bool mip_specified        = mip != -1;
+        const bool mip_specified        = mip != all_mips;
         const uint32_t mip_start        = mip_specified ? mip : 0;
         RHI_Image_Layout current_layout = texture->GetLayout(mip_start);
 

@@ -297,6 +297,9 @@ namespace Spartan
         Submitted
     };
 
+    
+    static const uint32_t all_mips = std::numeric_limits<uint32_t>::max();
+
     // Shader register slot shifts (required to produce spirv from hlsl)
     static const uint32_t rhi_shader_shift_register_u = 000;
     static const uint32_t rhi_shader_shift_register_b = 100;
@@ -306,7 +309,7 @@ namespace Spartan
     // Descriptor set limits
     static const uint16_t rhi_descriptor_max_textures                 = 8192;
     static const uint16_t rhi_descriptor_max_storage_textures         = 8192;
-    static const uint16_t rhi_descriptor_max_storage_buffers          = 0;
+    static const uint16_t rhi_descriptor_max_storage_buffers          = 1;
     static const uint16_t rhi_descriptor_max_constant_buffers_dynamic = 8;
     static const uint16_t rhi_descriptor_max_samplers                 = 8;
 

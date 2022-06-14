@@ -77,7 +77,7 @@ namespace Spartan
         // Properties that don't affect the hash. Data that simply needs to be passed around
         uint32_t dynamic_offset = 0; // the offset used for dynamic constant buffers
         uint64_t range          = 0; // the size in bytes that is used for a descriptor update
-        int mip                 = -1;
+        uint32_t mip            = 0;
         uint32_t mip_count      = 0;
         void* data              = nullptr;
         RHI_Image_Layout layout = RHI_Image_Layout::Undefined;

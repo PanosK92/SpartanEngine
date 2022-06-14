@@ -149,8 +149,8 @@ namespace Spartan
                 // Blur the smaller mips to reduce blockiness/flickering
                 for (uint32_t i = 1; i < rt2->GetMipCount(); i++)
                 {
-                    const bool depth_aware = false;
-                    const float sigma = 2.0f;
+                    const bool depth_aware   = false;
+                    const float sigma        = 2.0f;
                     const float pixel_stride = 1.0;
                     Pass_Blur_Gaussian(cmd_list, rt2, depth_aware, sigma, pixel_stride, i);
                 }
@@ -1032,14 +1032,14 @@ namespace Spartan
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::Pass_Blur_Gaussian(RHI_CommandList* cmd_list, RHI_Texture* tex_in, const bool depth_aware, const float sigma, const float pixel_stride, const int mip /*= -1*/)
+    void Renderer::Pass_Blur_Gaussian(RHI_CommandList* cmd_list, RHI_Texture* tex_in, const bool depth_aware, const float sigma, const float pixel_stride, const uint32_t mip /*= all_mips*/)
     {
         // Acquire shaders
         RHI_Shader* shader_c = m_shaders[depth_aware ? Renderer::Shader::BlurGaussianBilateral_C : Renderer::Shader::BlurGaussian_C].get();
         if (!shader_c->IsCompiled())
             return;
 
-        const bool mip_requested = mip != -1;
+        const bool mip_requested = mip != all_mips;
 
         // If we need to blur a specific mip, ensure that the texture has per mip views
         if (mip_requested)

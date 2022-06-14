@@ -380,11 +380,14 @@ namespace Spartan
         SP_ASSERT(m_rhi_device != nullptr);
 
         // Destruction can happen during engine shutdown, in which case, the renderer might not exist, so, if statement.
-        if (Renderer* renderer = m_rhi_device->GetContext()->GetSubsystem<Renderer>())
+        if (Context* context = m_rhi_device->GetContext())
         {
-            if (RHI_CommandList* cmd_list = renderer->GetCmdList())
+            if (Renderer* renderer = context->GetSubsystem<Renderer>())
             {
-                cmd_list->Discard();
+                if (RHI_CommandList* cmd_list = renderer->GetCmdList())
+                {
+                    cmd_list->Discard();
+                }
             }
         }
 
