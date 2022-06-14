@@ -47,7 +47,7 @@ namespace Spartan
         else if (descriptor.type == RHI_Descriptor_Type::Texture || descriptor.type == RHI_Descriptor_Type::TextureStorage)
         {
             RHI_Texture* texture = static_cast<RHI_Texture*>(descriptor.data);
-            bool set_individual_mip = descriptor.mip != all_mips;
+            bool set_individual_mip = descriptor.mip != rhi_all_mips;
             return set_individual_mip ? texture->GetResource_Views_Srv(descriptor.mip) : texture->GetResource_View_Srv();
         }
         else if (descriptor.type == RHI_Descriptor_Type::ConstantBuffer)
@@ -109,7 +109,7 @@ namespace Spartan
             // Ignore null resources (this is legal, as a render pass can choose to not use one or more resources)
             if (void* resource = resource_from_descriptor(descriptor))
             {
-                const bool mip_specified        = descriptor.mip != all_mips;
+                const bool mip_specified        = descriptor.mip != rhi_all_mips;
                 uint32_t mip_start              = mip_specified ? descriptor.mip : 0;
                 uint32_t descriptor_index_start = 0;
                 uint32_t descriptor_count       = 1;

@@ -748,9 +748,14 @@ namespace Spartan
         m_descriptor_layout_current->SetSampler(slot, sampler);
     }
 
-    void RHI_CommandList::SetTexture(const uint32_t slot, RHI_Texture* texture, const uint32_t mip /*= all_mips*/, bool ranged /*= false*/, const bool uav /*= false*/)
+    void RHI_CommandList::SetTexture(const uint32_t slot, RHI_Texture* texture, const uint32_t mip_index /*= all_mips*/, uint32_t mip_range /*= 0*/, const bool uav /*= false*/)
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
+
+        if (mip_index != rhi_all_mips)
+        {
+            SP_ASSERT(mip_range != 0 && "If a mip was specified, then mip_range can't be 0");
+        }
 
         if (!m_descriptor_layout_current)
         {
@@ -765,9 +770,10 @@ namespace Spartan
         }
 
         // Get some texture info
+        const bool ranged               = mip_index != rhi_all_mips && mip_range != 0;
         const uint32_t mip_count        = texture->GetMipCount();
-        const bool mip_specified        = mip != all_mips;
-        const uint32_t mip_start        = mip_specified ? mip : 0;
+        const bool mip_specified        = mip_index != rhi_all_mips;
+        const uint32_t mip_start        = mip_specified ? mip_index : 0;
         RHI_Image_Layout current_layout = texture->GetLayout(mip_start);
 
         // If the image has an invalid layout (can happen for a few frames during staging), replace with a default texture
@@ -811,7 +817,7 @@ namespace Spartan
             SP_ASSERT(target_layout != RHI_Image_Layout::Undefined);
 
             // Determine if a layout transition is needed
-            bool transition_required = false;
+            bool transition_required = current_layout != target_layout;
             {
                 bool rest_mips_have_same_layout = true;
                 array<RHI_Image_Layout, 12> layouts = texture->GetLayouts();
@@ -824,20 +830,19 @@ namespace Spartan
                     }
                 }
 
-                bool layout_mismatch_mip_start = current_layout != target_layout;
-                transition_required            = layout_mismatch_mip_start || !rest_mips_have_same_layout;
+                transition_required = !rest_mips_have_same_layout ? true : transition_required;
             }
 
             // Transition
             if (transition_required)
             {
                 SP_ASSERT(!m_is_rendering && "Can't transition to a different layout while rendering");
-                texture->SetLayout(target_layout, this, mip, ranged);
+                texture->SetLayout(target_layout, this, mip_index, ranged);
             }
         }
 
         // Set (will only happen if it's not already set)
-        m_descriptor_layout_current->SetTexture(slot, texture, mip, ranged);
+        m_descriptor_layout_current->SetTexture(slot, texture, mip_index, ranged);
     }
 
     void RHI_CommandList::SetStructuredBuffer(const uint32_t slot, RHI_StructuredBuffer* structured_buffer) const
