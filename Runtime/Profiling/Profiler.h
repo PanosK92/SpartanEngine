@@ -113,7 +113,8 @@ namespace Spartan
         float m_time_gpu_last   = 0.0f;
 
         // Memory
-        uint32_t m_descriptor_pool_capacity = 0;
+        uint32_t m_descriptor_set_count    = 0;
+        uint32_t m_descriptor_set_capacity = 0;
 
     private:
         // Event handlers

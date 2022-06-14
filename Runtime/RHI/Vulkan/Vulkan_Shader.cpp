@@ -176,12 +176,12 @@ namespace Spartan
         {
             m_descriptors.emplace_back
             (
-                resource.name,                                                                                                   // name
-                RHI_Descriptor_Type::TextureStorage,                                                                             // type
-                RHI_Image_Layout::General,                                                                                       // layout
-                compiler.get_decoration(resource.id, spv::DecorationBinding),                                                    // slot
-                Math::Helper::Clamp<uint32_t>(compiler.get_type(resource.type_id).array[0], 1, numeric_limits<uint32_t>::max()), // array size
-                shader_type                                                                                                      // stage
+                resource.name,                                                // name
+                RHI_Descriptor_Type::TextureStorage,                          // type
+                RHI_Image_Layout::General,                                    // layout
+                compiler.get_decoration(resource.id, spv::DecorationBinding), // slot
+                compiler.get_type(resource.type_id).array[0],                 // array size
+                shader_type                                                   // stage
             );
         }
 
@@ -190,12 +190,12 @@ namespace Spartan
         {
             m_descriptors.emplace_back
             (
-                resource.name,                                                                                                   // name
-                RHI_Descriptor_Type::StructuredBuffer,                                                                           // type
-                RHI_Image_Layout::Undefined,                                                                                     // layout
-                compiler.get_decoration(resource.id, spv::DecorationBinding),                                                    // slot
-                Math::Helper::Clamp<uint32_t>(compiler.get_type(resource.type_id).array[0], 1, numeric_limits<uint32_t>::max()), // array size
-                shader_type                                                                                                      // stage
+                resource.name,                                                // name
+                RHI_Descriptor_Type::StructuredBuffer,                        // type
+                RHI_Image_Layout::Undefined,                                  // layout
+                compiler.get_decoration(resource.id, spv::DecorationBinding), // slot
+                compiler.get_type(resource.type_id).array[0],                 // array size
+                shader_type                                                   // stage
             );
         }
 
@@ -204,12 +204,12 @@ namespace Spartan
         {
             m_descriptors.emplace_back
             (
-                resource.name,                                                                                                   // name
-                RHI_Descriptor_Type::ConstantBuffer,                                                                             // type
-                RHI_Image_Layout::Undefined,                                                                                     // layout
-                compiler.get_decoration(resource.id, spv::DecorationBinding),                                                    // slot
-                Math::Helper::Clamp<uint32_t>(compiler.get_type(resource.type_id).array[0], 1, numeric_limits<uint32_t>::max()), // array size
-                shader_type                                                                                                      // stage
+                resource.name,                                                // name
+                RHI_Descriptor_Type::ConstantBuffer,                          // type
+                RHI_Image_Layout::Undefined,                                  // layout
+                compiler.get_decoration(resource.id, spv::DecorationBinding), // slot
+                compiler.get_type(resource.type_id).array[0],                 // array size
+                shader_type                                                   // stage
             );
         }
 
@@ -218,12 +218,12 @@ namespace Spartan
         {
             m_descriptors.emplace_back
             (
-                resource.name,                                                                                                   // name
-                RHI_Descriptor_Type::Texture,                                                                                    // type
-                RHI_Image_Layout::Shader_Read_Only_Optimal,                                                                      // layout
-                compiler.get_decoration(resource.id, spv::DecorationBinding),                                                    // slot
-                Math::Helper::Clamp<uint32_t>(compiler.get_type(resource.type_id).array[0], 1, numeric_limits<uint32_t>::max()), // array size
-                shader_type                                                                                                      // stage
+                resource.name,                                                // name
+                RHI_Descriptor_Type::Texture,                                 // type
+                RHI_Image_Layout::Shader_Read_Only_Optimal,                   // layout
+                compiler.get_decoration(resource.id, spv::DecorationBinding), // slot
+                compiler.get_type(resource.type_id).array[0],                 // array size
+                shader_type                                                   // stage
             );
         }
 
@@ -232,12 +232,12 @@ namespace Spartan
         {
             m_descriptors.emplace_back
             (
-                resource.name,                                                                                                   // name
-                RHI_Descriptor_Type::Sampler,                                                                                    // type
-                RHI_Image_Layout::Undefined,                                                                                     // layout
-                compiler.get_decoration(resource.id, spv::DecorationBinding),                                                    // slot
-                Math::Helper::Clamp<uint32_t>(compiler.get_type(resource.type_id).array[1], 1, numeric_limits<uint32_t>::max()), // array size
-                shader_type                                                                                                      // stage
+                resource.name,                                                // name
+                RHI_Descriptor_Type::Sampler,                                 // type
+                RHI_Image_Layout::Undefined,                                  // layout
+                compiler.get_decoration(resource.id, spv::DecorationBinding), // slot
+                compiler.get_type(resource.type_id).array[0],                 // array size
+                shader_type                                                   // stage
             );
         }
     }

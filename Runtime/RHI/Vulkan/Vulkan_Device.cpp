@@ -761,7 +761,8 @@ namespace Spartan
 
         if (Profiler* profiler = m_context->GetSubsystem<Profiler>())
         {
-            profiler->m_descriptor_pool_capacity = m_descriptor_set_capacity;
+            profiler->m_descriptor_set_count    = 0;
+            profiler->m_descriptor_set_capacity = m_descriptor_set_capacity;
         }
     }
 }

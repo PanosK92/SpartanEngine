@@ -304,12 +304,12 @@ namespace Spartan
     static const uint32_t rhi_shader_shift_register_s = 300;
 
     // Descriptor set limits
-    static const uint16_t rhi_descriptor_max_storage_textures         = 4096;
-    static const uint16_t rhi_descriptor_max_storage_buffers          = 1;
-    static const uint16_t rhi_descriptor_max_constant_buffers_dynamic = 4;
-    static const uint16_t rhi_descriptor_max_samplers                 = 6;
     static const uint16_t rhi_descriptor_max_textures                 = 8192;
-    
+    static const uint16_t rhi_descriptor_max_storage_textures         = 8192;
+    static const uint16_t rhi_descriptor_max_storage_buffers          = 0;
+    static const uint16_t rhi_descriptor_max_constant_buffers_dynamic = 8;
+    static const uint16_t rhi_descriptor_max_samplers                 = 8;
+
     static const Math::Vector4  rhi_color_dont_care           = Math::Vector4(-std::numeric_limits<float>::infinity(), 0.0f, 0.0f, 0.0f);
     static const Math::Vector4  rhi_color_load                = Math::Vector4(std::numeric_limits<float>::infinity(), 0.0f, 0.0f, 0.0f);
     #define                     rhi_depth_stencil_dont_care   3.402823466e+38F
