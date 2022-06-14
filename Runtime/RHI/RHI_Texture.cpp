@@ -499,9 +499,9 @@ namespace Spartan
         }
     }
 
-    void RHI_Texture::SetLayout(const RHI_Image_Layout new_layout, RHI_CommandList* cmd_list, const int mip /*= -1*/, const bool ranged /*= true*/)
+    void RHI_Texture::SetLayout(const RHI_Image_Layout new_layout, RHI_CommandList* cmd_list, const uint32_t mip /*= all_mips*/, const bool ranged /*= true*/)
     {
-        const bool mip_specified = mip != -1;
+        const bool mip_specified = mip != all_mips;
         uint32_t mip_start       = mip_specified ? mip : 0;
         uint32_t mip_remaining   = m_mip_count - mip_start;
         uint32_t mip_range       = ranged ? (mip_specified ? mip_remaining : m_mip_count) : 1;

@@ -136,7 +136,7 @@ namespace Spartan
         bool IsColorFormat()        const { return !IsDepthStencilFormat(); }
 
         // Layout
-        void SetLayout(const RHI_Image_Layout layout, RHI_CommandList* cmd_list, const int mip = -1, const bool ranged = true);
+        void SetLayout(const RHI_Image_Layout layout, RHI_CommandList* cmd_list, const uint32_t mip = all_mips, const bool ranged = true);
         RHI_Image_Layout GetLayout(const uint32_t mip) const { return m_layout[mip]; }
         std::array<RHI_Image_Layout, 12> GetLayouts()  const { return m_layout; }
 
