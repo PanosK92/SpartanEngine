@@ -88,11 +88,10 @@ namespace Spartan
         }
     }
 
-    void RHI_DescriptorSetLayout::SetTexture(const uint32_t slot, RHI_Texture* texture, const uint32_t mip, const bool ranged)
+    void RHI_DescriptorSetLayout::SetTexture(const uint32_t slot, RHI_Texture* texture, const uint32_t mip_index, const uint32_t mip_range)
     {
-        bool set_individual_mip = mip != rhi_all_mips;
-        RHI_Image_Layout layout = texture->GetLayout(set_individual_mip ? mip : 0);
-        uint32_t mip_count      = ranged ? texture->GetMipCount() : 1; // will be bound as an array of textures if larger than 1
+        bool set_individual_mip = mip_index != rhi_all_mips;
+        RHI_Image_Layout layout = texture->GetLayout(set_individual_mip ? mip_index : 0);
 
          // Validate layout
         SP_ASSERT(layout == RHI_Image_Layout::General || layout == RHI_Image_Layout::Shader_Read_Only_Optimal || layout == RHI_Image_Layout::Depth_Stencil_Read_Only_Optimal);
@@ -112,14 +111,14 @@ namespace Spartan
                 // Determine if the descriptor set needs to bind (affects vkUpdateDescriptorSets)
                 m_needs_to_bind = descriptor.data      != texture   ? true : m_needs_to_bind;
                 m_needs_to_bind = descriptor.layout    != layout    ? true : m_needs_to_bind;
-                m_needs_to_bind = descriptor.mip       != mip       ? true : m_needs_to_bind;
-                m_needs_to_bind = descriptor.mip_count != mip_count ? true : m_needs_to_bind;
+                m_needs_to_bind = descriptor.mip       != mip_index ? true : m_needs_to_bind;
+                m_needs_to_bind = descriptor.mip_range != mip_range ? true : m_needs_to_bind;
 
                 // Update
                 descriptor.data      = static_cast<void*>(texture);
                 descriptor.layout    = layout;
-                descriptor.mip       = mip;
-                descriptor.mip_count = mip_count;
+                descriptor.mip       = mip_index;
+                descriptor.mip_range = mip_range;
 
                 return;
             }
@@ -164,7 +163,7 @@ namespace Spartan
         {
             Utility::Hash::hash_combine(hash, descriptor.data);
             Utility::Hash::hash_combine(hash, descriptor.mip);
-            Utility::Hash::hash_combine(hash, descriptor.mip_count);
+            Utility::Hash::hash_combine(hash, descriptor.mip_range);
             Utility::Hash::hash_combine(hash, descriptor.range);
         }
 

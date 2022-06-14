@@ -49,7 +49,7 @@ namespace Spartan
         // Set
         void SetConstantBuffer(const uint32_t slot, RHI_ConstantBuffer* constant_buffer);
         void SetSampler(const uint32_t slot, RHI_Sampler* sampler);
-        void SetTexture(const uint32_t slot, RHI_Texture* texture, const uint32_t mip, const bool ranged);
+        void SetTexture(const uint32_t slot, RHI_Texture* texture, const uint32_t mip_index, const uint32_t mip_range);
         void SetStructuredBuffer(const uint32_t slot, RHI_StructuredBuffer* structured_buffer);
 
         // Misc
