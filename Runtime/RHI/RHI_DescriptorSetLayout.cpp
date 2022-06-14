@@ -90,7 +90,7 @@ namespace Spartan
 
     void RHI_DescriptorSetLayout::SetTexture(const uint32_t slot, RHI_Texture* texture, const uint32_t mip, const bool ranged)
     {
-        bool set_individual_mip = mip != all_mips;
+        bool set_individual_mip = mip != rhi_all_mips;
         RHI_Image_Layout layout = texture->GetLayout(set_individual_mip ? mip : 0);
         uint32_t mip_count      = ranged ? texture->GetMipCount() : 1; // will be bound as an array of textures if larger than 1
 

@@ -298,7 +298,7 @@ namespace Spartan
     };
 
     
-    static const uint32_t all_mips = std::numeric_limits<uint32_t>::max();
+    static const uint32_t rhi_all_mips = std::numeric_limits<uint32_t>::max();
 
     // Shader register slot shifts (required to produce spirv from hlsl)
     static const uint32_t rhi_shader_shift_register_u = 000;

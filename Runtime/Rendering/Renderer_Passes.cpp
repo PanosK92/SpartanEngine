@@ -1039,7 +1039,8 @@ namespace Spartan
         if (!shader_c->IsCompiled())
             return;
 
-        const bool mip_requested = mip != all_mips;
+        const bool mip_requested = mip != rhi_all_mips;
+        const uint32_t mip_range = mip_requested ? 1 : 0;
 
         // If we need to blur a specific mip, ensure that the texture has per mip views
         if (mip_requested)
@@ -1083,7 +1084,7 @@ namespace Spartan
 
             // Set textures
             cmd_list->SetTexture(Renderer::Bindings_Uav::rgba, tex_blur);
-            cmd_list->SetTexture(Renderer::Bindings_Srv::tex, tex_in, mip);
+            cmd_list->SetTexture(Renderer::Bindings_Srv::tex, tex_in, mip, mip_range);
             if (depth_aware)
             {
                 cmd_list->SetTexture(Renderer::Bindings_Srv::gbuffer_depth, tex_depth);
@@ -1109,7 +1110,7 @@ namespace Spartan
             Update_Cb_Uber(cmd_list);
 
             // Set textures
-            cmd_list->SetTexture(Renderer::Bindings_Uav::rgba, tex_in, mip);
+            cmd_list->SetTexture(Renderer::Bindings_Uav::rgba, tex_in, mip, mip_range);
             cmd_list->SetTexture(Renderer::Bindings_Srv::tex, tex_blur);
             if (depth_aware)
             {
@@ -1357,8 +1358,8 @@ namespace Spartan
                 Update_Cb_Uber(cmd_list);
 
                 // Set textures
-                cmd_list->SetTexture(Renderer::Bindings_Srv::tex, tex_bloom, mip_index_small);
-                cmd_list->SetTexture(Renderer::Bindings_Uav::rgb, tex_bloom, mip_index_big);
+                cmd_list->SetTexture(Renderer::Bindings_Srv::tex, tex_bloom, mip_index_small, 1);
+                cmd_list->SetTexture(Renderer::Bindings_Uav::rgb, tex_bloom, mip_index_big, 1);
 
                 // Render
                 uint32_t thread_group_count_x_ = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(mip_width_large) / m_thread_group_count));
@@ -1385,7 +1386,7 @@ namespace Spartan
             // Set textures
             cmd_list->SetTexture(Renderer::Bindings_Uav::rgb, tex_out.get());
             cmd_list->SetTexture(Renderer::Bindings_Srv::tex, tex_in);
-            cmd_list->SetTexture(Renderer::Bindings_Srv::tex2, tex_bloom, 0);
+            cmd_list->SetTexture(Renderer::Bindings_Srv::tex2, tex_bloom, 0, 1);
 
             // Render
             cmd_list->Dispatch(thread_group_count_x(tex_out), thread_group_count_y(tex_out));
@@ -1767,8 +1768,8 @@ namespace Spartan
         cmd_list->SetStructuredBuffer(Renderer::Bindings_Sb::counter, m_sb_counter);
 
         // Set textures
-        cmd_list->SetTexture(Renderer::Bindings_Srv::tex, tex, 0); // top mip
-        cmd_list->SetTexture(Renderer::Bindings_Uav::rgba_mips, tex, 1, true); // rest of the mips
+        cmd_list->SetTexture(Renderer::Bindings_Srv::tex, tex, 0, 1);                            // top mip
+        cmd_list->SetTexture(Renderer::Bindings_Uav::rgba_mips, tex, 1, tex->GetMipCount() - 1); // rest of the mips
 
         // Render
         cmd_list->Dispatch(thread_group_count_x_, thread_group_count_y_);
