@@ -164,6 +164,7 @@ namespace Spartan
             Utility::Hash::hash_combine(hash, descriptor.data);
             Utility::Hash::hash_combine(hash, descriptor.mip);
             Utility::Hash::hash_combine(hash, descriptor.range);
+            Utility::Hash::hash_combine(hash, descriptor.layout);
         }
 
         // If we don't have a descriptor set to match that state, create one
