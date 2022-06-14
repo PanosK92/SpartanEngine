@@ -78,7 +78,7 @@ namespace Spartan
         uint32_t dynamic_offset = 0; // the offset used for dynamic constant buffers
         uint64_t range          = 0; // the size in bytes that is used for a descriptor update
         uint32_t mip            = 0;
-        uint32_t mip_count      = 0;
+        uint32_t mip_range      = 0;
         void* data              = nullptr;
         RHI_Image_Layout layout = RHI_Image_Layout::Undefined;
 

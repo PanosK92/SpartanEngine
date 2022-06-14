@@ -842,7 +842,7 @@ namespace Spartan
         }
 
         // Set (will only happen if it's not already set)
-        m_descriptor_layout_current->SetTexture(slot, texture, mip_index, ranged);
+        m_descriptor_layout_current->SetTexture(slot, texture, mip_index, mip_range);
     }
 
     void RHI_CommandList::SetStructuredBuffer(const uint32_t slot, RHI_StructuredBuffer* structured_buffer) const
