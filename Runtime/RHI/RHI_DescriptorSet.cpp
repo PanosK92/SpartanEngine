@@ -1,5 +1,3 @@
-#pragma once
-
 /*
 Copyright(c) 2016-2022 Panos Karabelas
 
@@ -21,29 +19,29 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-#pragma once
-
 //= INCLUDES =====================
-#include "../Core/SpartanObject.h"
-#include "RHI_Descriptor.h"
+#include "Spartan.h"
+#include "RHI_DescriptorSet.h"
+#include "RHI_Device.h"
+#include "../Profiling/Profiler.h"
 //================================
 
 namespace Spartan
 {
-    class SPARTAN_CLASS RHI_DescriptorSet : public SpartanObject
+    Spartan::RHI_DescriptorSet::RHI_DescriptorSet(RHI_Device* rhi_device, const std::vector<RHI_Descriptor>& descriptors, RHI_DescriptorSetLayout* descriptor_set_layout, const char* name)
     {
-    public:
-        RHI_DescriptorSet() = default;
-        RHI_DescriptorSet(RHI_Device* rhi_device, const std::vector<RHI_Descriptor>& descriptors, RHI_DescriptorSetLayout* descriptor_set_layout, const char* name);
-        ~RHI_DescriptorSet() = default;
+        m_rhi_device = rhi_device;
+        if (name)
+        {
+            m_object_name = name;
+        }
 
-        void* GetResource() { return m_resource; }
+        Create(descriptor_set_layout);
+        Update(descriptors);
 
-    private:
-        void Create(RHI_DescriptorSetLayout* descriptor_set_layout);
-        void Update(const std::vector<RHI_Descriptor>& descriptors);
-
-        void* m_resource         = nullptr;
-        RHI_Device* m_rhi_device = nullptr;
-    };
+        if (Profiler* profiler = rhi_device->GetContext()->GetSubsystem<Profiler>())
+        {
+            profiler->m_descriptor_set_count++;
+        }
+    }
 }

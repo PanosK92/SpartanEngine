@@ -110,15 +110,16 @@ namespace Spartan
             if (match_type && match_slot)
             {
                 // Determine if the descriptor set needs to bind (affects vkUpdateDescriptorSets)
-                m_needs_to_bind = descriptor.data   != texture ? true : m_needs_to_bind;
-                m_needs_to_bind = descriptor.layout != layout  ? true : m_needs_to_bind;
-                m_needs_to_bind = descriptor.mip    != mip     ? true : m_needs_to_bind;
+                m_needs_to_bind = descriptor.data      != texture   ? true : m_needs_to_bind;
+                m_needs_to_bind = descriptor.layout    != layout    ? true : m_needs_to_bind;
+                m_needs_to_bind = descriptor.mip       != mip       ? true : m_needs_to_bind;
+                m_needs_to_bind = descriptor.mip_count != mip_count ? true : m_needs_to_bind;
 
                 // Update
-                descriptor.data       = static_cast<void*>(texture);
-                descriptor.layout     = layout;
-                descriptor.mip        = mip;
-                descriptor.array_size = mip_count;
+                descriptor.data      = static_cast<void*>(texture);
+                descriptor.layout    = layout;
+                descriptor.mip       = mip;
+                descriptor.mip_count = mip_count;
 
                 return;
             }
@@ -163,8 +164,8 @@ namespace Spartan
         {
             Utility::Hash::hash_combine(hash, descriptor.data);
             Utility::Hash::hash_combine(hash, descriptor.mip);
+            Utility::Hash::hash_combine(hash, descriptor.mip_count);
             Utility::Hash::hash_combine(hash, descriptor.range);
-            Utility::Hash::hash_combine(hash, descriptor.layout);
         }
 
         // If we don't have a descriptor set to match that state, create one

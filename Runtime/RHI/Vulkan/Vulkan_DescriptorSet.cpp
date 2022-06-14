@@ -111,9 +111,8 @@ namespace Spartan
             {
                 const bool mip_specified        = descriptor.mip != -1;
                 uint32_t mip_start              = mip_specified ? descriptor.mip : 0;
-                bool is_array_of_textures       = descriptor.array_size > 1;
                 uint32_t descriptor_index_start = 0;
-                uint32_t array_size             = 1;
+                uint32_t descriptor_count       = 1;
 
                 if (descriptor.type == RHI_Descriptor_Type::Sampler)
                 {
@@ -129,7 +128,7 @@ namespace Spartan
                 {
                     RHI_Texture* texture = static_cast<RHI_Texture*>(descriptor.data);
 
-                    if (!is_array_of_textures)
+                    if (!descriptor.IsArray())
                     {
                         image_index++;
 
@@ -141,7 +140,7 @@ namespace Spartan
                     }
                     else // array of textures (not a Texture2DArray)
                     {
-                        for (uint32_t mip_index = mip_start; mip_index < descriptor.array_size; mip_index++)
+                        for (uint32_t mip_index = mip_start; mip_index < descriptor.mip_count; mip_index++)
                         {
                             image_index++;
 
@@ -155,7 +154,7 @@ namespace Spartan
                             }
                         }
 
-                        array_size = descriptor.array_size - descriptor.mip;
+                        descriptor_count = descriptor.mip_count - descriptor.mip;
                     }
                 }
                 else if (descriptor.type == RHI_Descriptor_Type::ConstantBuffer)
@@ -181,7 +180,7 @@ namespace Spartan
                 descriptor_sets[index].dstSet           = static_cast<VkDescriptorSet>(m_resource);
                 descriptor_sets[index].dstBinding       = descriptor.slot;
                 descriptor_sets[index].dstArrayElement  = 0; // The starting element in that array
-                descriptor_sets[index].descriptorCount  = array_size;
+                descriptor_sets[index].descriptorCount  = descriptor_count;
                 descriptor_sets[index].descriptorType   = vulkan_utility::ToVulkanDescriptorType(descriptor);
                 descriptor_sets[index].pImageInfo       = &info_images[descriptor_index_start];
                 descriptor_sets[index].pBufferInfo      = &info_buffers[descriptor_index_start];

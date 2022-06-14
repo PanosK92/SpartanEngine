@@ -368,7 +368,7 @@ namespace Spartan
             "Pipeline:\t\t\t\t\t%d\n"
             "Descriptor set:\t\t\t%d\n"
             "Pipeline barrier:\t\t\t%d\n"
-            "Descriptor pool capacity:\t%d";
+            "Descriptor set capacity:\t%d/%d";
 
         static char buffer[2048];
         sprintf_s
@@ -414,7 +414,8 @@ namespace Spartan
             m_rhi_bindings_pipeline,
             m_rhi_bindings_descriptor_set,
             m_rhi_pipeline_barriers,
-            m_descriptor_pool_capacity
+            m_descriptor_set_count,
+            m_descriptor_set_capacity
         );
 
         m_metrics = string(buffer);
