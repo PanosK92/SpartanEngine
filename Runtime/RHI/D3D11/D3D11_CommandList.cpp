@@ -695,7 +695,7 @@ namespace Spartan
         }
     }
 
-    void RHI_CommandList::SetTexture(const uint32_t slot, RHI_Texture* texture, const int mip /*= -1*/, const bool ranged /*= false*/, const bool uav /*= false*/)
+    void RHI_CommandList::SetTexture(const uint32_t slot, RHI_Texture* texture, const uint32_t mip_index /*= rhi_all_mips*/, uint32_t mip_range /*= 0*/, const bool uav /*= false*/)
     {
         // Validate texture
         if (texture)
@@ -710,8 +710,9 @@ namespace Spartan
             }
         }
 
-        bool mip_requested                  = mip != -1;
-        const UINT range                    = ranged ? (texture->GetMipCount() - (mip_requested ? mip : 0)): 1;
+        bool mip_requested                  = mip_index != rhi_all_mips;
+        const bool ranged                   = mip_index != rhi_all_mips && mip_range != 0;
+        const UINT range                    = ranged ? (texture->GetMipCount() - (mip_requested ? mip_index : 0)): 1;
         ID3D11DeviceContext* device_context = m_rhi_device->GetContextRhi()->device_context;
 
         // Build resource array
@@ -723,18 +724,18 @@ namespace Spartan
             {
                 if (uav)
                 {
-                    resources[0] = mip_requested ? texture->GetResource_Views_Uav(mip) : texture->GetResource_View_Uav();
+                    resources[0] = mip_requested ? texture->GetResource_Views_Uav(mip_index) : texture->GetResource_View_Uav();
                 }
                 else
                 {
-                    resources[0] = mip_requested ? texture->GetResource_Views_Srv(mip) : texture->GetResource_View_Srv();
+                    resources[0] = mip_requested ? texture->GetResource_Views_Srv(mip_index) : texture->GetResource_View_Srv();
                 }
             }
             else
             {
                 for (uint32_t i = 0; i < range; i++)
                 {
-                    uint32_t mip_offset = mip + i;
+                    uint32_t mip_offset = mip_index + i;
                     resources[i] = uav ? texture->GetResource_Views_Uav(mip_offset) : texture->GetResource_Views_Srv(mip_offset);
                 }
             }
@@ -760,7 +761,7 @@ namespace Spartan
                 // Keep track of output textures
                 m_output_textures[m_output_textures_index].texture = texture;
                 m_output_textures[m_output_textures_index].slot    = slot;
-                m_output_textures[m_output_textures_index].mip     = mip;
+                m_output_textures[m_output_textures_index].mip     = mip_index;
                 m_output_textures[m_output_textures_index].ranged  = ranged;
                 m_output_textures_index++;
             }
@@ -957,7 +958,7 @@ namespace Spartan
         {
             if (texture.texture)
             {
-                bool mip_requested = texture.mip != -1;
+                bool mip_requested = texture.mip != rhi_all_mips;
                 const UINT range   = texture.ranged ? (texture.texture->GetMipCount() - (mip_requested ? texture.mip : 0)) : 1;
 
                 device_context->CSSetUnorderedAccessViews(texture.slot, range, reinterpret_cast<ID3D11UnorderedAccessView* const*>(resources.data()), nullptr);
