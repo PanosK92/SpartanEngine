@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ShaderEditor.h"
 #include "RenderOptions.h"
 #include "TextureViewer.h"
+#include "CameraBookmarkViewer.h"
 #include "Core/Engine.h"
 #include "Rendering/Model.h"
 #include "../ImGuiExtension.h"
@@ -56,6 +57,7 @@ Toolbar::Toolbar(Editor* editor) : Widget(editor)
     m_widgets[IconType::Component_Script]       = m_editor->GetWidget<ShaderEditor>();
     m_widgets[IconType::Component_Options]      = m_editor->GetWidget<RenderOptions>();
     m_widgets[IconType::Directory_File_Texture] = m_editor->GetWidget<TextureViewer>();
+    m_widgets[IconType::Button_BookMarkViewer]  = m_editor->GetWidget<CameraBookmarkViewer>();
 
     m_context->m_engine->EngineMode_Disable(Spartan::Engine_Mode::Engine_Game);
 }

@@ -71,6 +71,7 @@ void IconProvider::Initialize(Context* context)
     LoadFromFile(data_dir + "Icons/button_play.png",                      IconType::Button_Play);
     LoadFromFile(data_dir + "Icons/profiler.png",                         IconType::Button_Profiler);
     LoadFromFile(data_dir + "Icons/resource_cache.png",                   IconType::Button_ResourceCache);
+    LoadFromFile(data_dir + "Icons/bookmark.png",                         IconType::Button_BookMarkViewer);
     LoadFromFile(data_dir + "Icons/file.png",                             IconType::Directory_File_Default);
     LoadFromFile(data_dir + "Icons/folder.png",                           IconType::Directory_Folder);
     LoadFromFile(data_dir + "Icons/audio.png",                            IconType::Directory_File_Audio);

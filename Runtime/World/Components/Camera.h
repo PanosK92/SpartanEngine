@@ -47,6 +47,12 @@ namespace Spartan
         Projection_Orthographic,
     };
 
+    struct camera_bookmark
+    {
+        Math::Vector3 position = Math::Vector3::Zero;
+        Math::Vector3 rotation = Math::Vector3::Zero;
+    };
+
     class SPARTAN_CLASS Camera : public IComponent
     {
     public:
@@ -117,6 +123,11 @@ namespace Spartan
         bool IsInViewFrustum(const Math::Vector3& center, const Math::Vector3& extents) const;
         //====================================================================================
 
+        //= BOOKMARKS ==========================================================================================
+        void AddBookmark(camera_bookmark bookmark)               { m_camera_bookmarks.emplace_back(bookmark); };
+        const std::vector<camera_bookmark>& GetBookmarks() const { return m_camera_bookmarks; };
+        //======================================================================================================
+
         //= MISC ================================================================================
         const Math::Vector4& GetClearColor() const           { return m_clear_color; }
         void SetClearColor(const Math::Vector4& color)       { m_clear_color = color; }
@@ -165,13 +176,14 @@ namespace Spartan
         float m_mouse_smoothing                 = 0.5f;
         bool m_lerp_to_target                   = false;
         bool m_lerpt_to_bookmark                = false;
-        int m_targetBookmark_index              = -1;
+        int m_target_bookmark_index             = -1;
         float m_lerp_to_target_alpha            = 0.0f;
         float m_lerp_to_target_speed            = 0.0f;
         Math::Vector3 m_lerp_to_target_position = Math::Vector3::Zero;
         RHI_Viewport m_last_known_viewport;
         Math::Ray m_ray;
         Math::Frustum m_frustum;
+        std::vector<camera_bookmark> m_camera_bookmarks;
 
         // Dependencies
         Renderer* m_renderer = nullptr;
