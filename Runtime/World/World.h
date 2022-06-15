@@ -40,12 +40,6 @@ namespace Spartan
     class TransformHandle;
     //====================
 
-    struct CameraBookmark
-    {
-        Spartan::Math::Vector3 position = Spartan::Math::Vector3::Zero;
-        Spartan::Math::Vector3 rotation = Spartan::Math::Vector3::Zero;
-    };
-
     class SPARTAN_CLASS World : public Subsystem
     {
     public:
@@ -76,11 +70,6 @@ namespace Spartan
         const auto& EntityGetAll() const { return m_entities; }
         //======================================================================
 
-        //= CAMERA BOOKMARKS ============================
-        inline void AddCameraBookmark(CameraBookmark bookmark) { m_cameraBookmarks.emplace_back(bookmark); };
-        inline const std::vector<CameraBookmark>& GetCameraBookmarks() const { return m_cameraBookmarks; };
-        //===============================================
-
         // Transform handle
         std::shared_ptr<TransformHandle> GetTransformHandle() { return m_transform_handle; }
         float m_gizmo_transform_size  = 0.015f;
@@ -105,6 +94,5 @@ namespace Spartan
 
         std::shared_ptr<TransformHandle> m_transform_handle;
         std::vector<std::shared_ptr<Entity>> m_entities;
-        std::vector<CameraBookmark> m_cameraBookmarks;
     };
 }
