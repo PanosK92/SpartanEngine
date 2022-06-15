@@ -36,10 +36,9 @@ using namespace std;
 
 namespace Spartan
 {
-
     void RHI_CommandList::Wait()
     {
-        SP_ASSERT(m_state == RHI_CommandListState::Submitted && "The command list hasn't been submitted, can't wait for it.");
+        SP_ASSERT_MSG(m_state == RHI_CommandListState::Submitted, "The command list hasn't been submitted, can't wait for it.");
 
         bool executing = !m_proccessed_fence->IsSignaled() && !m_discard;
         if (executing)
@@ -93,7 +92,7 @@ namespace Spartan
 
         if (pipeline_state.IsCompute())
         {
-            SP_ASSERT(pipeline_state.shader_compute->GetCompilationState() == Shader_Compilation_State::Succeeded && "Shader hasn't compiled");
+            SP_ASSERT_MSG(pipeline_state.shader_compute->GetCompilationState() == Shader_Compilation_State::Succeeded, "Shader hasn't compiled");
 
             // Get compute shader descriptors
             descriptors = pipeline_state.shader_compute->GetDescriptors();
@@ -101,7 +100,7 @@ namespace Spartan
         }
         else if (pipeline_state.IsGraphics())
         {
-            SP_ASSERT(pipeline_state.shader_vertex->GetCompilationState() == Shader_Compilation_State::Succeeded && "Shader hasn't compiled");
+            SP_ASSERT_MSG(pipeline_state.shader_vertex->GetCompilationState() == Shader_Compilation_State::Succeeded, "Shader hasn't compiled");
 
             // Get vertex shader descriptors
             descriptors = pipeline_state.shader_vertex->GetDescriptors();
@@ -110,7 +109,7 @@ namespace Spartan
             // If there is a pixel shader, merge it's resources into our map as well
             if (pipeline_state.shader_pixel)
             {
-                SP_ASSERT(pipeline_state.shader_pixel->GetCompilationState() == Shader_Compilation_State::Succeeded && "Shader hasn't compiled");
+                SP_ASSERT_MSG(pipeline_state.shader_pixel->GetCompilationState() == Shader_Compilation_State::Succeeded, "Shader hasn't compiled");
 
                 for (const RHI_Descriptor& descriptor_reflected : pipeline_state.shader_pixel->GetDescriptors())
                 {
