@@ -78,7 +78,7 @@ namespace Spartan
         m_options |= Renderer::Option::Sharpening_AMD_FidelityFX_ContrastAdaptiveSharpening;
         m_options |= Renderer::Option::DepthOfField;
         m_options |= Renderer::Option::Debanding;
-        //m_options |= Render_DepthPrepass; // todo: fix for vulkan
+        //m_options |= Render_DepthPrepass;
 
         // Option values.
         m_option_values[Renderer::OptionValue::Anisotropy]       = 16.0f;
