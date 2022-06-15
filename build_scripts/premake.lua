@@ -49,7 +49,7 @@ elseif API_GRAPHICS == "vulkan" then
 	IGNORE_FILES[0]             = RUNTIME_DIR .. "/RHI/D3D11/**"
 	IGNORE_FILES[1]             = RUNTIME_DIR .. "/RHI/D3D12/**"
 	ADDITIONAL_INCLUDES[0]      = "../third_party/SPIRV-Cross-03-06-2022";
-	ADDITIONAL_INCLUDES[1]      = "../third_party/Vulkan_1.3.211.0";
+	ADDITIONAL_INCLUDES[1]      = "../third_party/Vulkan_1.3.216.0";
 end
 
 -- Solution

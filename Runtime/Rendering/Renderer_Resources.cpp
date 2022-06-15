@@ -261,7 +261,7 @@ namespace Spartan
 
         // Depth prepass
         {
-            m_shaders[Renderer::Shader::Depth_Prepass_V] = make_shared<RHI_Shader>(m_context, RHI_Vertex_Type::PosTex);
+            m_shaders[Renderer::Shader::Depth_Prepass_V] = make_shared<RHI_Shader>(m_context, RHI_Vertex_Type::PosTexNorTan);
             m_shaders[Renderer::Shader::Depth_Prepass_V]->Compile(RHI_Shader_Vertex, dir_shaders + "depth_prepass.hlsl", async);
 
             m_shaders[Renderer::Shader::Depth_Prepass_P] = make_shared<RHI_Shader>(m_context);
@@ -270,7 +270,7 @@ namespace Spartan
 
         // Depth light
         {
-            m_shaders[Renderer::Shader::Depth_Light_V] = make_shared<RHI_Shader>(m_context, RHI_Vertex_Type::PosTex);
+            m_shaders[Renderer::Shader::Depth_Light_V] = make_shared<RHI_Shader>(m_context, RHI_Vertex_Type::PosTexNorTan);
             m_shaders[Renderer::Shader::Depth_Light_V]->Compile(RHI_Shader_Vertex, dir_shaders + "depth_light.hlsl", async);
 
             m_shaders[Renderer::Shader::Depth_Light_P] = make_shared<RHI_Shader>(m_context);
