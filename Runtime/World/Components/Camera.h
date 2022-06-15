@@ -129,6 +129,8 @@ namespace Spartan
         Math::Matrix ComputeViewMatrix() const;
         Math::Matrix ComputeProjection(const bool reverse_z, const float near_plane = 0.0f, const float far_plane = 0.0f);
 
+        void GoToCameraBookmark(int bookmarkIndex);
+
     private:
         void ProcessInput(double delta_time);
         void ProcessInputFpsControl(double delta_time);
@@ -162,6 +164,8 @@ namespace Spartan
         float m_mouse_sensitivity               = 0.2f;
         float m_mouse_smoothing                 = 0.5f;
         bool m_lerp_to_target                   = false;
+        bool m_lerpt_to_bookmark                = false;
+        int m_targetBookmark_index              = -1;
         float m_lerp_to_target_alpha            = 0.0f;
         float m_lerp_to_target_speed            = 0.0f;
         Math::Vector3 m_lerp_to_target_position = Math::Vector3::Zero;
