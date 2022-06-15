@@ -754,7 +754,7 @@ namespace Spartan
 
         if (mip_index != rhi_all_mips)
         {
-            SP_ASSERT(mip_range != 0 && "If a mip was specified, then mip_range can't be 0");
+            SP_ASSERT_MSG(mip_range != 0, "If a mip was specified, then mip_range can't be 0");
         }
 
         if (!m_descriptor_layout_current)

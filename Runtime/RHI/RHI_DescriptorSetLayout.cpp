@@ -90,8 +90,8 @@ namespace Spartan
 
     void RHI_DescriptorSetLayout::SetTexture(const uint32_t slot, RHI_Texture* texture, const uint32_t mip_index, const uint32_t mip_range)
     {
-        bool set_individual_mip = mip_index != rhi_all_mips;
-        RHI_Image_Layout layout = texture->GetLayout(set_individual_mip ? mip_index : 0);
+        bool mip_specified = mip_index != rhi_all_mips;
+        RHI_Image_Layout layout = texture->GetLayout(mip_specified ? mip_index : 0);
 
          // Validate layout
         SP_ASSERT(layout == RHI_Image_Layout::General || layout == RHI_Image_Layout::Shader_Read_Only_Optimal || layout == RHI_Image_Layout::Depth_Stencil_Read_Only_Optimal);
