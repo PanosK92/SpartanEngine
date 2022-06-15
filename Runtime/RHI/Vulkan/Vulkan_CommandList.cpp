@@ -615,8 +615,8 @@ namespace Spartan
         {
             for (uint32_t i = 0; i < source->GetMipCount(); i++)
             {
-                source->SetLayout(layouts_initial_source[i], this, i);
-                destination->SetLayout(layouts_initial_destination[i], this, i);
+                source->SetLayout(layouts_initial_source[i], this, i, 1);
+                destination->SetLayout(layouts_initial_destination[i], this, i, 1);
             }
         }
         else
@@ -770,7 +770,6 @@ namespace Spartan
         }
 
         // Get some texture info
-        const bool ranged               = mip_index != rhi_all_mips && mip_range != 0;
         const uint32_t mip_count        = texture->GetMipCount();
         const bool mip_specified        = mip_index != rhi_all_mips;
         const uint32_t mip_start        = mip_specified ? mip_index : 0;
@@ -837,7 +836,7 @@ namespace Spartan
             if (transition_required)
             {
                 SP_ASSERT(!m_is_rendering && "Can't transition to a different layout while rendering");
-                texture->SetLayout(target_layout, this, mip_index, ranged);
+                texture->SetLayout(target_layout, this, mip_index, mip_range);
             }
         }
 

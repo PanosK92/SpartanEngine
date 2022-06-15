@@ -499,23 +499,19 @@ namespace Spartan
         }
     }
 
-    void RHI_Texture::SetLayout(const RHI_Image_Layout new_layout, RHI_CommandList* cmd_list, const uint32_t mip /*= all_mips*/, const bool ranged /*= true*/)
+    void RHI_Texture::SetLayout(const RHI_Image_Layout new_layout, RHI_CommandList* cmd_list, const uint32_t mip_index /*= all_mips*/, uint32_t mip_range /*= 0*/)
     {
-        const bool mip_specified = mip != rhi_all_mips;
-        uint32_t mip_start       = mip_specified ? mip : 0;
+        const bool mip_specified = mip_index != rhi_all_mips;
+        const bool ranged        = mip_specified && mip_range != 0;
+        uint32_t mip_start       = mip_specified ? mip_index : 0;
         uint32_t mip_remaining   = m_mip_count - mip_start;
-        uint32_t mip_range       = ranged ? (mip_specified ? mip_remaining : m_mip_count) : 1;
+        mip_range                = ranged ? (mip_specified ? mip_remaining : m_mip_count) : 1;
 
-        // Assert on some requirements
+        // Asserts
+        if (mip_specified)
         {
-            // Verify the texture has per mip views (if a specific mip was requested)
-            if (mip_specified)
-            {
-                SP_ASSERT(HasPerMipViews());
-            }
-
-            // Verify that we didn't do anything wrong in the above calculations
-            SP_ASSERT(mip_remaining <= m_mip_count);
+            SP_ASSERT(HasPerMipViews() && "A mip is specified but the texture has no per mip views");
+            SP_ASSERT(mip_range != 0 && "When a mip is specified, the mip_range can't be zero");
         }
 
         // Check if already set
