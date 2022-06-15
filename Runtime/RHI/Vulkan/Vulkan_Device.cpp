@@ -209,9 +209,8 @@ namespace Spartan
 
         // Find a physical device
         {
-            SP_ASSERT(DetectPhysicalDevices() && "Failed to detect any devices");
-
-            SP_ASSERT(SelectPrimaryPhysicalDevice() && "Failed to find a suitable device");
+            SP_ASSERT_MSG(DetectPhysicalDevices(), "Failed to detect any devices");
+            SP_ASSERT_MSG(SelectPrimaryPhysicalDevice(), "Failed to find a suitable device");
         }
 
         // Device
@@ -374,7 +373,7 @@ namespace Spartan
             }
 
             // Create
-            SP_ASSERT(vulkan_utility::error::check(vkCreateDevice(m_rhi_context->device_physical, &create_info, nullptr, &m_rhi_context->device)) && "Failed to create device");
+            SP_ASSERT_MSG(vulkan_utility::error::check(vkCreateDevice(m_rhi_context->device_physical, &create_info, nullptr, &m_rhi_context->device)), "Failed to create device");
         }
 
         // Get a graphics, compute and a copy queue.
@@ -392,7 +391,7 @@ namespace Spartan
             allocator_info.instance               = m_rhi_context->instance;
             allocator_info.vulkanApiVersion       = app_info.apiVersion;
 
-            SP_ASSERT(vulkan_utility::error::check(vmaCreateAllocator(&allocator_info, &m_rhi_context->allocator)) && "Failed to create memory allocator");
+            SP_ASSERT_MSG(vulkan_utility::error::check(vmaCreateAllocator(&allocator_info, &m_rhi_context->allocator)), "Failed to create memory allocator");
         }
 
         // Set the descriptor set capacity to an initial value
@@ -624,7 +623,7 @@ namespace Spartan
         uint32_t semaphore_count = static_cast<uint32_t>(wait_semaphores.size());
         for (uint32_t i = 0; i < semaphore_count; i++)
         {
-            SP_ASSERT(wait_semaphores[i]->GetState() == RHI_Semaphore_State::Signaled && "The wait semaphore hasn't been signaled");
+            SP_ASSERT_MSG(wait_semaphores[i]->GetState() == RHI_Semaphore_State::Signaled, "The wait semaphore hasn't been signaled");
             vk_wait_semaphores[i] = static_cast<VkSemaphore>(wait_semaphores[i]->GetResource());
         }
 
@@ -651,11 +650,11 @@ namespace Spartan
 
     bool RHI_Device::QueueSubmit(const RHI_Queue_Type type, const uint32_t wait_flags, void* cmd_buffer, RHI_Semaphore* wait_semaphore /*= nullptr*/, RHI_Semaphore* signal_semaphore /*= nullptr*/, RHI_Fence* signal_fence /*= nullptr*/) const
     {
-        SP_ASSERT(cmd_buffer != nullptr && "Invalid command buffer");
+        SP_ASSERT_MSG(cmd_buffer != nullptr, "Invalid command buffer");
 
         // Validate semaphore states
-        if (wait_semaphore)   SP_ASSERT(wait_semaphore->GetState() != RHI_Semaphore_State::Idle && "Wait semaphore is in an idle state and will never be signaled");
-        if (signal_semaphore) SP_ASSERT(signal_semaphore->GetState() != RHI_Semaphore_State::Signaled && "Signal semaphore is already in a signaled state, it can't be re-signaled.");
+        if (wait_semaphore)   SP_ASSERT_MSG(wait_semaphore->GetState() != RHI_Semaphore_State::Idle, "Wait semaphore is in an idle state and will never be signaled");
+        if (signal_semaphore) SP_ASSERT_MSG(signal_semaphore->GetState() != RHI_Semaphore_State::Signaled, "Signal semaphore is already in a signaled state, it can't be re-signaled.");
 
         // Get semaphore Vulkan resources
         void* vk_wait_semaphore   = wait_semaphore   ? wait_semaphore->GetResource()   : nullptr;
@@ -753,7 +752,7 @@ namespace Spartan
 
             // Create
             bool created = vulkan_utility::error::check(vkCreateDescriptorPool(m_rhi_context->device, &pool_create_info, nullptr, reinterpret_cast<VkDescriptorPool*>(&m_descriptor_pool)));
-            SP_ASSERT(created && "Failed to create descriptor pool.");
+            SP_ASSERT_MSG(created, "Failed to create descriptor pool.");
         }
 
         LOG_INFO("Capacity has been set to %d elements", descriptor_set_capacity);

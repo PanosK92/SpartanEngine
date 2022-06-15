@@ -24,7 +24,9 @@
 // Debug break
 #define SP_DEBUG_BREAK() __debugbreak()
 
-// Assert
+//= Assert ==========================================================================
+// On debug mode, the assert will have the default behaviour.
+// On release mode, the assert will write the error to a file and then break.
 #ifdef DEBUG
 #define SP_ASSERT(expression) assert(expression)
 #else
@@ -36,6 +38,10 @@ if (!(##expression))                    \
     SP_DEBUG_BREAK();                   \
 }
 #endif
+
+// An assert which will can print a text message
+#define SP_ASSERT_MSG(expression, text_message) SP_ASSERT(expression && text_message)
+//===================================================================================
 
 // Delete
 #define SP_DELETE(x) \

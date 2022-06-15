@@ -94,7 +94,7 @@ namespace Spartan
 
     void RHI_CommandPool::Reset()
     {
-        SP_ASSERT(m_resources[0] && "Can't reset an uninitialised command list pool");
+        SP_ASSERT_MSG(m_resources[0], "Can't reset an uninitialised command list pool");
 
         // Advance pool index
         m_pool_index = (m_pool_index + 1) % 2;
@@ -112,6 +112,6 @@ namespace Spartan
         // Reset the command pool
         VkDevice device    = m_rhi_device->GetContextRhi()->device;
         VkCommandPool pool = static_cast<VkCommandPool>(m_resources[m_pool_index]);
-        SP_ASSERT(vulkan_utility::error::check(vkResetCommandPool(device, pool, 0)) && "Failed to reset command pool");
+        SP_ASSERT_MSG(vulkan_utility::error::check(vkResetCommandPool(device, pool, 0)), "Failed to reset command pool");
     }
 }
