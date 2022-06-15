@@ -480,8 +480,22 @@ namespace Spartan
             }
         }
 
+        bool lerpToCameraBookmark = false;
+        if (const std::vector<CameraBookmark>& cameraBookmarks = m_context->GetSubsystem<World>()->GetCameraBookmarks();
+            lerpToCameraBookmark = m_lerpt_to_bookmark && m_targetBookmark_index >= 0 && m_targetBookmark_index < cameraBookmarks.size())
+        {
+            m_lerp_to_target_position = cameraBookmarks[m_targetBookmark_index].position;
+
+            // Compute lerp speed based on how far the entity is from the camera.
+            m_lerp_to_target_speed    = Vector3::Distance(m_lerp_to_target_position, m_transform->GetPosition()) * 0.1f;
+            m_lerp_to_target          = true;
+
+            m_targetBookmark_index     = -1;
+            m_lerpt_to_bookmark        = false;
+        }
+
         // Lerp
-        if (m_lerp_to_target)
+        if (m_lerp_to_target || lerpToCameraBookmark)
         {
             // Alpha
             m_lerp_to_target_alpha += m_lerp_to_target_speed * static_cast<float>(delta_time);
@@ -540,5 +554,14 @@ namespace Spartan
         }
 
         return Matrix::Identity;
+    }
+
+    void Spartan::Camera::GoToCameraBookmark(int bookmarkIndex)
+    {
+        if (bookmarkIndex >= 0)
+        {
+            m_targetBookmark_index = bookmarkIndex;
+            m_lerpt_to_bookmark    = true;
+        }
     }
 }
