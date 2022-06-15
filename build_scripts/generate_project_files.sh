@@ -25,16 +25,16 @@ cp -r Data binaries
 # Copy engine DLLs to the binary directory
 echo
 echo "3. Copying required DLLs to the binary directory..."
-cp third_party/libraries/dxcompiler.dll Binaries/
-cp third_party/libraries/fmod64.dll Binaries/
-cp third_party/libraries/fmodL64.dll Binaries/
+cp third_party/libraries/dxcompiler.dll binaries/
+cp third_party/libraries/fmod64.dll binaries/
+cp third_party/libraries/fmodL64.dll binaries/
 
 # Generate project files
 echo
 if [ "$is_windows" = false ]; then
 	echo "4. Generating MakeFiles..."
+	premake5 --file=build_scripts/premake.lua $@
 else
 	echo "4. Generating Visual Studio solution..."
+	build_scripts/premake5 --file=build_scripts/premake.lua $@
 fi
-echo
-build_scripts/premake5 --file=build_scripts/premake.lua $@
