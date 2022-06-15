@@ -499,13 +499,12 @@ namespace Spartan
         }
     }
 
-    void RHI_Texture::SetLayout(const RHI_Image_Layout new_layout, RHI_CommandList* cmd_list, const uint32_t mip_index /*= all_mips*/, uint32_t mip_range /*= 0*/)
+    void RHI_Texture::SetLayout(const RHI_Image_Layout new_layout, RHI_CommandList* cmd_list, uint32_t mip_index /*= all_mips*/, uint32_t mip_range /*= 0*/)
     {
         const bool mip_specified = mip_index != rhi_all_mips;
         const bool ranged        = mip_specified && mip_range != 0;
-        uint32_t mip_start       = mip_specified ? mip_index : 0;
-        uint32_t mip_remaining   = m_mip_count - mip_start;
-        mip_range                = ranged ? (mip_specified ? mip_remaining : m_mip_count) : 1;
+        mip_index                = mip_specified ? mip_index : 0;
+        mip_range                = ranged ? (mip_specified ? m_mip_count - mip_index : m_mip_count) : m_mip_count - mip_index;
 
         // Asserts
         if (mip_specified)
@@ -514,33 +513,22 @@ namespace Spartan
             SP_ASSERT_MSG(mip_range != 0, "When a mip is specified, the mip_range can't be zero");
         }
 
-        // Check if already set
+        // Check if the layouts are indeed different from the new layout.
+        // If they are different, then find at which mip the difference starts.
+        bool transition_required = false;
+        for (uint32_t i = mip_index; i < mip_index + mip_range; i++)
         {
-            if (mip_specified && !ranged)
+            if (m_layout[i] != new_layout)
             {
-                if (m_layout[mip_start] == new_layout)
-                    return;
-            }
-            else
-            {
-                bool all_set = true;
-
-                for (uint32_t mip_index = mip_start; mip_index < mip_range; mip_index++)
-                {
-                    if (m_layout[mip_index] != new_layout)
-                    {
-                        mip_start     = mip_index;
-                        mip_remaining = m_mip_count - mip_start;
-                        mip_range     = ranged ? (mip_specified ? mip_remaining : m_mip_count) : mip_remaining;
-                        all_set       = false;
-                        break;
-                    }
-                }
-
-                if (all_set)
-                    return;
+                mip_index           = i;
+                mip_range           = ranged ? (mip_specified ? m_mip_count - mip_index : m_mip_count) : m_mip_count - mip_index;
+                transition_required = true;
+                break;
             }
         }
+
+        if (!transition_required)
+            return;
 
         // Insert memory barrier
         if (cmd_list != nullptr)
@@ -553,12 +541,12 @@ namespace Spartan
             }
 
             // Transition
-            RHI_SetLayout(new_layout, cmd_list, mip_start, mip_range);
+            RHI_SetLayout(new_layout, cmd_list, mip_index, mip_range);
             m_context->GetSubsystem<Profiler>()->m_rhi_pipeline_barriers++;
         }
 
         // Update layout
-        for (uint32_t i = mip_start; i < mip_start + mip_range; i++)
+        for (uint32_t i = mip_index; i < mip_index + mip_range; i++)
         {
             m_layout[i] = new_layout;
         }

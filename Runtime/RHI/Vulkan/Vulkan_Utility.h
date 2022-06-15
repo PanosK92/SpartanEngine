@@ -489,7 +489,7 @@ namespace Spartan::vulkan_utility
             return stages;
         }
 
-        inline void set_layout(void* cmd_buffer, void* image, const VkImageAspectFlags aspect_mask, const uint32_t mip_start, const uint32_t mip_range, const uint32_t array_length, const RHI_Image_Layout layout_old, const RHI_Image_Layout layout_new)
+        inline void set_layout(void* cmd_buffer, void* image, const VkImageAspectFlags aspect_mask, const uint32_t mip_index, const uint32_t mip_range, const uint32_t array_length, const RHI_Image_Layout layout_old, const RHI_Image_Layout layout_new)
         {
             SP_ASSERT(cmd_buffer != nullptr);
             SP_ASSERT(image != nullptr);
@@ -503,7 +503,7 @@ namespace Spartan::vulkan_utility
             image_barrier.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
             image_barrier.image                           = static_cast<VkImage>(image);
             image_barrier.subresourceRange.aspectMask     = aspect_mask;
-            image_barrier.subresourceRange.baseMipLevel   = mip_start;
+            image_barrier.subresourceRange.baseMipLevel   = mip_index;
             image_barrier.subresourceRange.levelCount     = mip_range;
             image_barrier.subresourceRange.baseArrayLayer = 0;
             image_barrier.subresourceRange.layerCount     = array_length;

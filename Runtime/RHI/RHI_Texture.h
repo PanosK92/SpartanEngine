@@ -136,7 +136,7 @@ namespace Spartan
         bool IsColorFormat()        const { return !IsDepthStencilFormat(); }
 
         // Layout
-        void SetLayout(const RHI_Image_Layout layout, RHI_CommandList* cmd_list, const uint32_t mip_index = rhi_all_mips,  uint32_t mip_range = 0);
+        void SetLayout(const RHI_Image_Layout layout, RHI_CommandList* cmd_list, uint32_t mip_index = rhi_all_mips,  uint32_t mip_range = 0);
         RHI_Image_Layout GetLayout(const uint32_t mip) const { return m_layout[mip]; }
         std::array<RHI_Image_Layout, 12> GetLayouts()  const { return m_layout; }
 
@@ -157,7 +157,7 @@ namespace Spartan
     protected:
         bool Compress(const RHI_Format format);
         bool RHI_CreateResource();
-        void RHI_SetLayout(const RHI_Image_Layout new_layout, RHI_CommandList* cmd_list, const int mip_start, const int mip_range);
+        void RHI_SetLayout(const RHI_Image_Layout new_layout, RHI_CommandList* cmd_list, const uint32_t mip_index, const uint32_t mip_range);
 
         uint32_t m_bits_per_channel = 0;
         uint32_t m_width            = 0;

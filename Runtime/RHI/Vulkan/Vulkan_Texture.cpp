@@ -292,7 +292,7 @@ namespace Spartan
         return target_layout;
     }
 
-    void RHI_Texture::RHI_SetLayout(const RHI_Image_Layout new_layout, RHI_CommandList* cmd_list, const int mip_start, const int mip_range)
+    void RHI_Texture::RHI_SetLayout(const RHI_Image_Layout new_layout, RHI_CommandList* cmd_list, const uint32_t mip_start, const uint32_t mip_range)
     {
         vulkan_utility::image::set_layout(static_cast<VkCommandBuffer>(cmd_list->GetResource()), this, mip_start, mip_range, m_array_length, m_layout[mip_start], new_layout);
     }
