@@ -82,12 +82,12 @@ Feature     					 	| Completion | Notes
 SDL integration 					| 100%		 | Use SDL for window creation and input (this also enables PlayStation controller support).
 Screen space global illumination 	| 100%		 | One bounce of indirect diffuse and specular light.
 Depth-of-field					 	| 100%        | Controlled by camera aperture.
-Temporal upsampling					| 50%		 | Reconstruct a high resolution output from a low resolution input (fix some remaining bugs).
+Temporal upsampling					| 50%		 | Wait for FSR 2.0 and stop developing my own. It's vastly superiory to any TAA upsampler out there.
 DirectX 12						 	| 10%		 | RHI has already matured thanks to adding Vulkan, this should be easy.
 C# scripting (Replace AngelScript) 	| 50%		 | Using Mono (low priority since the engine is not ready for scripting games).
 Vulkan polishing 	 				| -		  	 | Optimise to outperform D3D11 in all cases and improve stability, things which will also make the engine API better.
-Ray traced shadows				 	| -          | Will start work on it once I get an RTX GPU and deprecate D3D11 in favour of D3D12.
-Ray traced reflections			 	| -          | Will start work on it once I get an RTX GPU and deprecate D3D11 in favour of D3D12.
+Ray traced shadows				 	| -          | Got a ray-tracing GPU, only need to get Vulkan to a stable state now.
+Ray traced reflections			 	| -          | Got a ray-tracing GPU, only need to get Vulkan to a stable state now.
 Eye Adaptation 					 	| -          | Low priority.
 Subsurface Scattering 			 	| -          | Low priority.
 Linux support			 	        | -          | Vulkan and SDL is there, working on a linux port is now possible.
