@@ -557,12 +557,12 @@ namespace Spartan
         return Matrix::Identity;
     }
 
-    void Spartan::Camera::GoToCameraBookmark(int bookmarkIndex)
+    void Camera::GoToCameraBookmark(int bookmark_index)
     {
-        if (bookmarkIndex >= 0)
+        if (bookmark_index >= 0)
         {
-            m_target_bookmark_index = bookmarkIndex;
-            m_lerpt_to_bookmark    = true;
+            m_target_bookmark_index = bookmark_index;
+            m_lerpt_to_bookmark     = true;
         }
     }
 }
