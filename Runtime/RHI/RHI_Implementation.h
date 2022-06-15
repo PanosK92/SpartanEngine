@@ -491,10 +491,12 @@ namespace Spartan
                 Identify specific Vulkan objects using a name or tag to improve tracking.
                 Identify specific sections within a VkQueue or VkCommandBuffer using labels to aid organization and offline analysis in external tools.
 
+                Note: Would like to enable VK_KHR_synchronization2, but only 17.3% of the devices out there support it.
+
                 */
                 std::vector<const char*> validation_layers                      = { "VK_LAYER_KHRONOS_validation" };
                 std::vector<VkValidationFeatureEnableEXT> validation_extensions = { VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT, VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT };
-                std::vector<const char*> extensions_instance                    = { "VK_KHR_surface", "VK_KHR_win32_surface", "VK_EXT_debug_report", "VK_EXT_debug_utils", "VK_KHR_synchronization2"};
+                std::vector<const char*> extensions_instance                    = { "VK_KHR_surface", "VK_KHR_win32_surface", "VK_EXT_debug_report", "VK_EXT_debug_utils"};
             #else
                 std::vector<const char*> validation_layers                      = { };
                 std::vector<VkValidationFeatureEnableEXT> validation_extensions = { };
