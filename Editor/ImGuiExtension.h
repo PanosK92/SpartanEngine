@@ -469,4 +469,47 @@ namespace ImGuiEx
 
         return selection_made;
     }
+
+    inline void DisplayVector3(const char* label, Spartan::Math::Vector3& vector)
+    {
+        const float label_indetation = 15.0f;
+
+        const auto show_float = [](Spartan::Math::Vector3 axis, float* value)
+        {
+            const float label_float_spacing = 15.0f;
+            const float step                = 0.01f;
+            const std::string format        = "%.4f";
+
+            // Label
+            ImGui::TextUnformatted(axis.x == 1.0f ? "x" : axis.y == 1.0f ? "y" : "z");
+            ImGui::SameLine(label_float_spacing);
+            Spartan::Math::Vector2 pos_post_label = ImGui::GetCursorScreenPos();
+
+            // Float
+            ImGui::PushItemWidth(128.0f);
+            ImGui::PushID(static_cast<int>(ImGui::GetCursorPosX() + ImGui::GetCursorPosY()));
+            ImGuiEx::DragFloatWrap("##no_label", value, step, std::numeric_limits<float>::lowest(), std::numeric_limits<float>::max(), format.c_str());
+            ImGui::PopID();
+            ImGui::PopItemWidth();
+
+            // Axis color
+            static const ImU32 color_x                 = IM_COL32(168, 46, 2, 255);
+            static const ImU32 color_y                 = IM_COL32(112, 162, 22, 255);
+            static const ImU32 color_z                 = IM_COL32(51, 122, 210, 255);
+            static const Spartan::Math::Vector2 size   = Spartan::Math::Vector2(4.0f, 19.0f);
+            static const Spartan::Math::Vector2 offset = Spartan::Math::Vector2(5.0f, 4.0);
+            pos_post_label += offset;
+            ImRect axis_color_rect = ImRect(pos_post_label.x, pos_post_label.y, pos_post_label.x + size.x, pos_post_label.y + size.y);
+            ImGui::GetWindowDrawList()->AddRectFilled(axis_color_rect.Min, axis_color_rect.Max, axis.x == 1.0f ? color_x : axis.y == 1.0f ? color_y : color_z);
+        };
+
+        ImGui::BeginGroup();
+        ImGui::Indent(label_indetation);
+        ImGui::TextUnformatted(label);
+        ImGui::Unindent(label_indetation);
+        show_float(Spartan::Math::Vector3(1.0f, 0.0f, 0.0f), &vector.x);
+        show_float(Spartan::Math::Vector3(0.0f, 1.0f, 0.0f), &vector.y);
+        show_float(Spartan::Math::Vector3(0.0f, 0.0f, 1.0f), &vector.z);
+        ImGui::EndGroup();
+    };
 }

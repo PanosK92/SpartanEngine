@@ -39,7 +39,6 @@ public:
     void TickVisible() override;
 
 private:
-    void ShowBookmarks();
     void ShowAddBookmarkButton();
     void AddCameraBookmark(Spartan::camera_bookmark bookmark);
 

@@ -455,7 +455,7 @@ namespace Spartan
 
     void Camera::ProcessInputLerpToEntity(double delta_time)
     {
-        // Trigger
+        // Set focused entity as a lerp target
         if (m_input->GetKeyDown(KeyCode::F))
         {
             if (Entity* entity = m_context->GetSubsystem<World>()->GetTransformHandle()->GetSelectedEntity())
@@ -480,12 +480,11 @@ namespace Spartan
             }
         }
 
-        // Bookmark lerping
+        // Set bookmark as a lerp target
         bool lerp_to_bookmark = false;
-        if (const vector<camera_bookmark>& cameraBookmarks = m_camera_bookmarks;
-            lerp_to_bookmark = m_lerpt_to_bookmark && m_target_bookmark_index >= 0 && m_target_bookmark_index < cameraBookmarks.size())
+        if (lerp_to_bookmark = m_lerpt_to_bookmark && m_target_bookmark_index >= 0 && m_target_bookmark_index < m_bookmarks.size())
         {
-            m_lerp_to_target_position = cameraBookmarks[m_target_bookmark_index].position;
+            m_lerp_to_target_position = m_bookmarks[m_target_bookmark_index].position;
 
             // Compute lerp speed based on how far the entity is from the camera.
             m_lerp_to_target_speed = Vector3::Distance(m_lerp_to_target_position, m_transform->GetPosition()) * 0.1f;
@@ -495,7 +494,7 @@ namespace Spartan
             m_lerpt_to_bookmark     = false;
         }
 
-        // Target lerping
+        // Lerp
         if (m_lerp_to_target || lerp_to_bookmark)
         {
             // Alpha
