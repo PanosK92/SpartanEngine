@@ -373,7 +373,7 @@ namespace Spartan
                 // Create
                 vulkan_utility::error::check(vkCreateGraphicsPipelines(m_rhi_device->GetContextRhi()->device, nullptr, 1, &pipeline_info, nullptr, pipeline));
 
-                SP_ASSERT(*pipeline != nullptr && "Failed to create graphics pipeline");
+                SP_ASSERT_MSG(*pipeline != nullptr, "Failed to create graphics pipeline");
                 //vulkan_utility::debug::set_name(*pipeline, m_state.pass_name);
             }
             else if (pipeline_state.IsCompute())
@@ -387,7 +387,7 @@ namespace Spartan
                 // Create
                 vulkan_utility::error::check(vkCreateComputePipelines(m_rhi_device->GetContextRhi()->device, nullptr, 1, &pipeline_info, nullptr, pipeline));
 
-                SP_ASSERT(*pipeline != nullptr && "Failed to create compute pipeline");
+                SP_ASSERT_MSG(*pipeline != nullptr, "Failed to create compute pipeline");
                 //vulkan_utility::debug::set_name(*pipeline, m_state.pass_name);
             }
         }

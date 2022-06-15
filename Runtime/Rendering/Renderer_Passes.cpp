@@ -2496,13 +2496,9 @@ namespace Spartan
     {
         for (shared_ptr<RHI_Texture> texture : m_textures_mip_generation)
         {
-            SP_ASSERT(texture != nullptr);
-
-            // Ensure the texture has mips.
-            SP_ASSERT(texture->HasMips());
-
-            // Ensure the texture has per mip views, which is required for the downsampler.
-            SP_ASSERT(texture->HasPerMipViews());
+            SP_ASSERT(texture != nullptr);        // Ensure the texture is valid.
+            SP_ASSERT(texture->HasMips());        // Ensure the texture has mips.
+            SP_ASSERT(texture->HasPerMipViews()); // Ensure the texture has per mip views, which is required for the downsampler.
 
             // Downsample
             const bool luminance_antiflicker = false;

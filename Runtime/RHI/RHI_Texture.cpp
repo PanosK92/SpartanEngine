@@ -510,8 +510,8 @@ namespace Spartan
         // Asserts
         if (mip_specified)
         {
-            SP_ASSERT(HasPerMipViews() && "A mip is specified but the texture has no per mip views");
-            SP_ASSERT(mip_range != 0 && "When a mip is specified, the mip_range can't be zero");
+            SP_ASSERT_MSG(HasPerMipViews(), "A mip is specified but the texture has no per mip views");
+            SP_ASSERT_MSG(mip_range != 0, "When a mip is specified, the mip_range can't be zero");
         }
 
         // Check if already set
