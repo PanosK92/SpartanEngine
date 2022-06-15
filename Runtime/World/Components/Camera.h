@@ -123,10 +123,10 @@ namespace Spartan
         bool IsInViewFrustum(const Math::Vector3& center, const Math::Vector3& extents) const;
         //====================================================================================
 
-        //= BOOKMARKS ==========================================================================================
-        void AddBookmark(camera_bookmark bookmark)               { m_camera_bookmarks.emplace_back(bookmark); };
-        const std::vector<camera_bookmark>& GetBookmarks() const { return m_camera_bookmarks; };
-        //======================================================================================================
+        //= BOOKMARKS ===================================================================================
+        void AddBookmark(camera_bookmark bookmark)               { m_bookmarks.emplace_back(bookmark); };
+        const std::vector<camera_bookmark>& GetBookmarks() const { return m_bookmarks; };
+        //===============================================================================================
 
         //= MISC ================================================================================
         const Math::Vector4& GetClearColor() const           { return m_clear_color; }
@@ -183,7 +183,7 @@ namespace Spartan
         RHI_Viewport m_last_known_viewport;
         Math::Ray m_ray;
         Math::Frustum m_frustum;
-        std::vector<camera_bookmark> m_camera_bookmarks;
+        std::vector<camera_bookmark> m_bookmarks;
 
         // Dependencies
         Renderer* m_renderer = nullptr;
