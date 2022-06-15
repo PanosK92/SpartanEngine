@@ -140,7 +140,7 @@ namespace Spartan
         Math::Matrix ComputeViewMatrix() const;
         Math::Matrix ComputeProjection(const bool reverse_z, const float near_plane = 0.0f, const float far_plane = 0.0f);
 
-        void GoToCameraBookmark(int bookmarkIndex);
+        void GoToCameraBookmark(int bookmark_index);
 
     private:
         void ProcessInput(double delta_time);

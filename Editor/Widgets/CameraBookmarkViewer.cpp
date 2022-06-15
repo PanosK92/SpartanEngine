@@ -38,7 +38,7 @@ using namespace Math;
 
 CameraBookmarkViewer::CameraBookmarkViewer(Editor* editor) : Widget(editor)
 {
-    m_title        = "Camera Bookmark Viewer";
+    m_title        = "Camera bookmark viewer";
     m_size_initial = 500;
     m_visible      = false;
 }
@@ -50,12 +50,6 @@ void CameraBookmarkViewer::TickVisible()
 
 void CameraBookmarkViewer::ShowBookmarks()
 {
-    const bool is_playing = m_context->m_engine->EngineMode_IsSet(Engine_Game);
-    if (is_playing)
-    {
-        return;
-    }
-
     enum class Axis
     {
         x,
@@ -108,7 +102,7 @@ void CameraBookmarkViewer::ShowBookmarks()
 
     if (shared_ptr<Camera> camera = m_context->GetSubsystem<Renderer>()->GetCamera())
     {
-        const std::vector<camera_bookmark>& camera_bookmarks = camera->GetBookmarks();
+        const vector<camera_bookmark>& camera_bookmarks = camera->GetBookmarks();
         for (int i = 0; i < camera_bookmarks.size(); ++i)
         {
             Vector3 position = camera_bookmarks[i].position;
@@ -129,6 +123,7 @@ void CameraBookmarkViewer::ShowAddBookmarkButton()
 {
     ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 5);
     ImGui::SetCursorPosX(ImGui::GetWindowWidth() * 0.5f - 50);
+
     if (ImGuiEx::Button("Add Bookmark"))
     {
         if (shared_ptr<Camera> camera = m_context->GetSubsystem<Renderer>()->GetCamera())
