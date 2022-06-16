@@ -2505,7 +2505,7 @@ namespace Spartan
             Pass_AMD_FidelityFX_SinglePassDownsampler(m_cmd_current, texture.get(), luminance_antiflicker);
 
             // Set all generated mips to read only optimal
-            texture->SetLayout(RHI_Image_Layout::Shader_Read_Only_Optimal, cmd_list, 1, texture->GetMipCount() - 1);
+            texture->SetLayout(RHI_Image_Layout::Shader_Read_Only_Optimal, cmd_list, 0, texture->GetMipCount());
         }
     }
 }
