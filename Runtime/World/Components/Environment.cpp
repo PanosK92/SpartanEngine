@@ -66,7 +66,16 @@ namespace Spartan
         {
             m_context->GetSubsystem<Threading>()->AddTask([this]()
             {
-                SetFromTextureSphere(m_file_paths.front());
+                if (m_environment_type == EnvironmentType::Cubemap)
+                {
+                    SetFromTextureArray(m_file_paths);
+                
+                }
+                else if (m_environment_type == EnvironmentType::Sphere)
+                {
+                
+                    SetFromTextureSphere(m_file_paths.front());
+                }
             });
             
             m_is_dirty = false;
@@ -84,19 +93,7 @@ namespace Spartan
         m_environment_type = static_cast<EnvironmentType>(stream->ReadAs<uint8_t>());
         stream->Read(&m_file_paths);
 
-        m_context->GetSubsystem<Threading>()->AddTask([this]
-        {
-            if (m_environment_type == EnvironmentType::Cubemap)
-            {
-                SetFromTextureArray(m_file_paths);
-                
-            }
-            else if (m_environment_type == EnvironmentType::Sphere)
-            {
-                
-                SetFromTextureSphere(m_file_paths.front());
-            }
-        });
+        m_is_dirty = true;
     }
 
     const shared_ptr<Spartan::RHI_Texture> Environment::GetTexture() const
@@ -128,7 +125,7 @@ namespace Spartan
         // Set resource file path
         texture->SetResourceFilePath(resource_cache->GetProjectDirectory() + "environment" + EXTENSION_TEXTURE);
 
-        // Save file path for serialization/deserialization
+        // Save file path for serialization/deserialisation
         m_file_paths = { texture->GetResourceFilePath() };
 
         // Pass the texture to the renderer.
@@ -149,12 +146,12 @@ namespace Spartan
             LOG_ERROR("Sky sphere creation failed");
         }
 
-        // Save file path for serialization/deserialization
+        // Save file path for serialization/deserialisation
         m_file_paths = { texture->GetResourceFilePath() };
         
         // Pass the texture to the renderer.
         SetTexture(texture);
-        
+
         LOG_INFO("Sky sphere has been created successfully");
     }
 }

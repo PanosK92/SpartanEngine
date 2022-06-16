@@ -136,18 +136,18 @@ namespace Spartan
         ShadowMap m_shadow_map;
 
         // Bias
-        float m_bias        = 0.0f;
-        float m_normal_bias = 3.0f;
+        float m_bias        = -8.0f;
+        float m_normal_bias = 10.0f;
 
         // Misc
-        LightType m_light_type      = LightType::Directional;
-        Math::Vector4 m_color_rgb   = Math::Vector4(1.0f, 0.76f, 0.57f, 1.0f);
-        bool m_volumetric_enabled   = true;
-        float m_range               = 10.0f;
-        float m_intensity           = 128000.0f; // sun lux
-        float m_angle_rad           = 0.5f;      // about 30 degrees
-        float m_time_of_day         = 1.0f;
-        bool m_initialized          = false;
+        LightType m_light_type    = LightType::Directional;
+        Math::Vector4 m_color_rgb = Math::Vector4(1.0f, 0.76f, 0.57f, 1.0f);
+        bool m_volumetric_enabled = true;
+        float m_range             = 10.0f;
+        float m_intensity         = 128000.0f; // sun lux
+        float m_angle_rad         = 0.5f;      // about 30 degrees
+        float m_time_of_day       = 1.0f;
+        bool m_initialized        = false;
         std::array<Math::Matrix, 6> m_matrix_view;
         std::array<Math::Matrix, 6> m_matrix_projection;
 
@@ -157,6 +157,6 @@ namespace Spartan
         bool m_previous_reverse_z           = false;
 
         // Dependencies
-        Renderer* m_renderer;
+        Renderer* m_renderer = nullptr;
     };
 }
