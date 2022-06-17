@@ -22,8 +22,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ======================
 #include "Runtime/Core/Spartan.h"
 #include "TimeBlock.h"
-#include "../RHI/RHI_Device.h"
-#include "../RHI/RHI_CommandList.h"
+#include "Runtime/Core/RHI/RHI_Device.h"
+#include "Runtime/Core/RHI/RHI_CommandList.h"
 //=================================
 
 //= NAMESPACES =====
