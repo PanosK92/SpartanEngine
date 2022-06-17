@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =================
 #include "IconProvider.h"
-#include "Rendering\Model.h"
+#include "Rendering/Model.h"
 #include "../ImGuiExtension.h"
 //============================
 
