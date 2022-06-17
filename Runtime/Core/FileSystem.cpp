@@ -23,8 +23,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Spartan.h"
 #include <filesystem>
 #include <regex>
+#include <locale>
+#include <codecvt>
+#include <string>
+#if defined (_WIN32)
 #include <windows.h>
 #include <shellapi.h>
+#endif
 //===================
 
 //= NAMESPACES =====
@@ -155,18 +160,19 @@ namespace Spartan
 
     wstring FileSystem::StringToWstring(const string& str)
     {
-        const auto slength = static_cast<int>(str.length()) + 1;
-        const auto len = MultiByteToWideChar(CP_ACP, 0, str.c_str(), slength, nullptr, 0);
-        const auto buf = new wchar_t[len];
-        MultiByteToWideChar(CP_ACP, 0, str.c_str(), slength, buf, len);
-        std::wstring result(buf);
-        delete[] buf;
-        return result;
+        SP_WARNINGS_OFF
+        wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+        return converter.from_bytes(str);
+        SP_WARNINGS_ON
     }
 
     void FileSystem::OpenDirectoryWindow(const string& directory)
     {
+#if defined (_WIN32)
         ShellExecute(nullptr, nullptr, StringToWstring(directory).c_str(), nullptr, nullptr, SW_SHOW);
+#else
+        SP_ASSERT_MSG(0, "Function not implemented!");
+#endif
     }
 
     bool FileSystem::CreateDirectory_(const string& path)
