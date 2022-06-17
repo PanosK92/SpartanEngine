@@ -27,12 +27,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <atomic>
 #include "Renderer_ConstantBuffers.h"
 #include "Material.h"
-#include "../Core/Subsystem.h"
-#include "../RHI/RHI_Definition.h"
-#include "../RHI/RHI_Viewport.h"
-#include "../RHI/RHI_Vertex.h"
-#include "../Math/Rectangle.h"
-#include "../Math/Plane.h"
+#include "Runtime/Core/Subsystem.h"
+#include "Runtime/RHI/RHI_Definition.h"
+#include "Runtime/RHI/RHI_Viewport.h"
+#include "Runtime/RHI/RHI_Vertex.h"
+#include "Runtime/Math/Rectangle.h"
+#include "Runtime/Math/Plane.h"
 //===================================
 
 namespace Spartan
