@@ -104,7 +104,7 @@ project (RUNTIME_NAME)
     files "./CORE/**"
 
 	-- Procompiled headers
-	pchheader "Spartan.h"
+	pchheader "../Runtime/Core/Spartan.h"
 	pchsource "../Runtime/Core/Spartan.cpp"
 
 	-- Source
