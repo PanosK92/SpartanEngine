@@ -101,7 +101,7 @@ project (RUNTIME_NAME)
         conformancemode "On"
      end
 	defines{ "SPARTAN_RUNTIME", API_GRAPHICS }
-    files "./CORE/**"
+    files "./Core/**"
 
 	-- Procompiled headers
 	pchheader "../Runtime/Core/Spartan.h"
