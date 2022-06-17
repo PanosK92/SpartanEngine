@@ -19,6 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
+#ifndef __linux__
 //= INCLUDES =============================
 #include "Runtime/Core/Spartan.h"
 #include "Audio.h"
@@ -174,3 +175,5 @@ namespace Spartan
         LOG_ERROR("%s", FMOD_ErrorString(static_cast<FMOD_RESULT>(error)));
     }
 }
+
+#endif // __linux__
