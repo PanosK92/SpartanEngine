@@ -29,7 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI_InputLayout.h"
 #include "RHI_RasterizerState.h"
 #include "RHI_DepthStencilState.h"
-#include "..\Utilities\Hash.h"
+#include "../Utilities/Hash.h"
 //================================
 
 //= NAMESPACES =====

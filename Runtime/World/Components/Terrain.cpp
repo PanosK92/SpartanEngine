@@ -23,14 +23,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Spartan.h"
 #include "Terrain.h"
 #include "Renderable.h"
-#include "..\Entity.h"
-#include "..\..\RHI\RHI_Texture2D.h"
-#include "..\..\RHI\RHI_Vertex.h"
-#include "..\..\Rendering\Model.h"
-#include "..\..\IO\FileStream.h"
-#include "..\..\Resource\ResourceCache.h"
-#include "..\..\Rendering\Mesh.h"
-#include "..\..\Threading\Threading.h"
+#include "../Entity.h"
+#include "../../RHI/RHI_Texture2D.h"
+#include "../../RHI/RHI_Vertex.h"
+#include "../../Rendering/Model.h"
+#include "../../IO/FileStream.h"
+#include "../../Resource/ResourceCache.h"
+#include "../../Rendering/Mesh.h"
+#include "../../Threading/Threading.h"
 //=======================================
 
 //= NAMESPACES ===============
