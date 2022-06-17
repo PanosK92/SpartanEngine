@@ -51,19 +51,19 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Stopwatch.h"
 
 // Logging
-#include "../Logging/Log.h"
+#include "Runtime/Logging/Log.h"
 
 // Math
-#include "../Math/Vector2.h"
-#include "../Math/Vector3.h"
-#include "../Math/Vector4.h"
-#include "../Math/Ray.h"
-#include "../Math/RayHit.h"
-#include "../Math/Rectangle.h"
-#include "../Math/BoundingBox.h"
-#include "../Math/Sphere.h"
-#include "../Math/Matrix.h"
-#include "../Math/Frustum.h"
-#include "../Math/Plane.h"
-#include "../Math/MathHelper.h"
+#include "Runtime/Math/Vector2.h"
+#include "Runtime/Math/Vector3.h"
+#include "Runtime/Math/Vector4.h"
+#include "Runtime/Math/Ray.h"
+#include "Runtime/Math/RayHit.h"
+#include "Runtime/Math/Rectangle.h"
+#include "Runtime/Math/BoundingBox.h"
+#include "Runtime/Math/Sphere.h"
+#include "Runtime/Math/Matrix.h"
+#include "Runtime/Math/Frustum.h"
+#include "Runtime/Math/Plane.h"
+#include "Runtime/Math/MathHelper.h"
 //==============================
