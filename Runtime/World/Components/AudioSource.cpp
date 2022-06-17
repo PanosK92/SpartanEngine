@@ -22,9 +22,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ============================
 #include "Runtime/Core/Spartan.h"
 #include "AudioSource.h"
-#include "../../Audio/AudioClip.h"
-#include "../../IO/FileStream.h"
-#include "../../Resource/ResourceCache.h"
+#include "Runtime/Audio/AudioClip.h"
+#include "Runtime/IO/FileStream.h"
+#include "Runtime/Resource/ResourceCache.h"
 //=======================================
 
 //= NAMESPACES ===============
