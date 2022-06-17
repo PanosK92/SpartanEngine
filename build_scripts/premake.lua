@@ -120,6 +120,7 @@ project (RUNTIME_NAME)
 	removefiles { IGNORE_FILES[0], IGNORE_FILES[1] }
 
 	-- Includes
+	includedirs { "../" }
 	includedirs { "../third_party/DirectXShaderCompiler-03-06-2022" }
 	includedirs { "../third_party/Assimp_5.2.2" }
 	includedirs { "../third_party/Bullet_3.21" }
