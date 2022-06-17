@@ -20,7 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES ========================================
-#include "Spartan.h"
+#include "Runtime/Core/Spartan.h"
 #include "Renderer.h"
 #include "../World/Components/Camera.h"
 #include "../World/Components/Transform.h"

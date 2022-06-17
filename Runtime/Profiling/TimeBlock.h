@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =====================
 #include <chrono>
 #include <memory>
-#include "..\RHI\RHI_Definition.h"
+#include "Runtime/RHI/RHI_Definition.h"
 //================================
 
 namespace Spartan

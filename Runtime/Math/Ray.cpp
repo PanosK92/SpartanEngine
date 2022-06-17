@@ -20,7 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES =======
-#include "Spartan.h"
+#include "Runtime/Core/Spartan.h"
 //==================
 
 //= NAMESPACES =====
@@ -155,7 +155,7 @@ namespace Spartan::Math
 
     float Ray::HitDistance(const Vector3& v1, const Vector3& v2, const Vector3& v3, Vector3* out_normal /*= nullptr*/, Vector3* out_bary /*= nullptr*/) const
     {
-        // Based on Fast, Minimum Storage Ray/Triangle Intersection by Möller & Trumbore
+        // Based on Fast, Minimum Storage Ray/Triangle Intersection by Mï¿½ller & Trumbore
         // http://www.graphics.cornell.edu/pubs/1997/MT97.pdf
         // Calculate edge vectors
         Vector3 edge1(v2 - v1);
