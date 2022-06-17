@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Window.h"
 #include "SDL.h"
 #include "SDL_syswm.h"
-#include "../Input/Input.h"
+#include ".Runtime/Input/Input.h"
 //====================
 
 //= LINKING ============================

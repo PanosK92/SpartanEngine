@@ -22,11 +22,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ==================
-#include "../Math/Vector2.h"
-#include "../Math/Vector3.h"
-#include "../Math/Vector4.h"
-#include "../Math/Quaternion.h"
-#include "../Math/Matrix.h"
+#include "Runtime/Math/Vector2.h"
+#include "Runtime/Math/Vector3.h"
+#include "Runtime/Math/Vector4.h"
+#include "Runtime/Math/Quaternion.h"
+#include "Runtime/Math/Matrix.h"
 #include <variant>
 #include "SpartanDefinitions.h"
 //=============================

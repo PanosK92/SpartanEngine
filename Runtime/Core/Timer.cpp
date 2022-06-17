@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==================
 #include "Runtime/Core/Spartan.h"
-#include "../Display/Display.h"
+#include "Runtime/Display/Display.h"
 //=============================
 
 //= NAMESPACES =====

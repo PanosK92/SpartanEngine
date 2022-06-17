@@ -22,15 +22,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =========================
 #include "Runtime/Core/Spartan.h"
 #include "Window.h"
-#include "../Audio/Audio.h"
-#include "../Input/Input.h"
-#include "../Physics/Physics.h"
-#include "../Profiling/Profiler.h"
-#include "../Rendering/Renderer.h"
-#include "../Resource/ResourceCache.h"
-#include "../Scripting/Scripting.h"
-#include "../Threading/Threading.h"
-#include "../World/World.h"
+#include "Runtime/Audio/Audio.h"
+#include "Runtime/Input/Input.h"
+#include "Runtime/Physics/Physics.h"
+#include "Runtime/Profiling/Profiler.h"
+#include "Runtime/Rendering/Renderer.h"
+#include "Runtime/Resource/ResourceCache.h"
+#include "Runtime/Scripting/Scripting.h"
+#include "Runtime/Threading/Threading.h"
+#include "Runtime/World/World.h"
 //====================================
 
 //= NAMESPACES ===============
