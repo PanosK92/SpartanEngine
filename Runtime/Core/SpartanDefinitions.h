@@ -6,6 +6,9 @@
 #define sp_version "v0.33"
 
 #if defined(__GNUC__)
+
+    #include <signal.h>
+
     // Class
     #define SPARTAN_CLASS
     #if SPARTAN_RUNTIME_SHARED == 1
@@ -26,7 +29,7 @@
     #define SP_WARNINGS_ON _Pragma("GCC diagnostic pop")
 
     // Debug break
-    #define SP_DEBUG_BREAK() abort()
+    #define SP_DEBUG_BREAK() raise(SIGTRAP)
 #elif defined(_MSC_VER)
     // Class
     #define SPARTAN_CLASS
