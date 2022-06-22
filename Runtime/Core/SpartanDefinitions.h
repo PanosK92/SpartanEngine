@@ -87,6 +87,7 @@ if (x)               \
 #define NOMINMAX
 #endif
 
+#ifdef _MSC_VER
 //= DISABLED WARNINGS ==============================================================================================================================
 // identifier' : class 'type' needs to have dll-interface to be used by clients of class 'type2'
 #pragma warning(disable: 4251) // https://docs.microsoft.com/en-us/cpp/error-messages/compiler-warnings/compiler-warning-level-2-c4275?view=vs-2019
@@ -95,3 +96,4 @@ if (x)               \
 // no definition for inline function 'function'
 #pragma warning(disable: 4506) // https://docs.microsoft.com/en-us/cpp/error-messages/compiler-warnings/compiler-warning-level-1-c4506?view=vs-2017
 //==================================================================================================================================================
+#endif
