@@ -1,6 +1,6 @@
 #pragma once
 
-// TODO: see a way to add #pragma GCC diagnostic push/pop with macros (maybe something like _Pragma)
+// TODO: detect clang and add clang specific directives
 
 // Version
 #define sp_version "v0.33"
