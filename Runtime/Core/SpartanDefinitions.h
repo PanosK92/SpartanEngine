@@ -17,12 +17,13 @@
     #endif
 
     // Optimisation
-    #define SP_OPTIMISE_OFF
-    #define SP_OPTIMISE_ON
+    #define SP_OPTIMISE_OFF _Pragma("GCC optimize(\"O2\"")
+    #define SP_OPTIMISE_ON _Pragma("GCC optimize(\"O0\"")
 
     // Warnings
-    #define SP_WARNINGS_OFF
-    #define SP_WARNINGS_ON
+    #define SP_WARNINGS_OFF _Pragma("GCC diagnostic push") \
+                            _Pragma("GCC diagnostic ignored \"-Wall -Wpedantic\"")
+    #define SP_WARNINGS_ON _Pragma("GCC diagnostic pop")
 
     // Debug break
     #define SP_DEBUG_BREAK() abort()
