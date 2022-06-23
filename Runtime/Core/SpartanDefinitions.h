@@ -92,7 +92,7 @@ if (!(##expression))                    \
 }
 #endif
 
-// An assert which will can print a text message
+// An assert which can print a text message
 #define SP_ASSERT_MSG(expression, text_message) SP_ASSERT(expression && text_message)
 //===================================================================================
 
