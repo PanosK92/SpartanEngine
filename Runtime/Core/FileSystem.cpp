@@ -168,7 +168,7 @@ namespace Spartan
 
     void FileSystem::OpenDirectoryWindow(const string& directory)
     {
-#if defined (_WIN32)
+#if defined (_MSC_VER)
         ShellExecute(nullptr, nullptr, StringToWstring(directory).c_str(), nullptr, nullptr, SW_SHOW);
 #else
         SP_ASSERT_MSG(0, "Function not implemented!");

@@ -200,35 +200,37 @@ namespace Spartan
         }
 
         // Resize swapchain buffers
-        const UINT d3d11_flags = d3d11_utility::swap_chain::get_flags(d3d11_utility::swap_chain::validate_flags(m_flags));
-        auto result = swap_chain->ResizeBuffers(m_buffer_count, static_cast<UINT>(width), static_cast<UINT>(height), d3d11_format[m_format], d3d11_flags);
-        if (FAILED(result))
         {
-            LOG_ERROR("Failed to resize swapchain buffers, %s.", d3d11_utility::dxgi_error_to_string(result));
-            return false;
-        }
-
-        // Get swapchain back-buffer
-        ID3D11Texture2D* backbuffer = nullptr;
-        result = swap_chain->GetBuffer(0, IID_PPV_ARGS(&backbuffer));
-        if (FAILED(result))
-        {
-            LOG_ERROR("Failed to get swapchain buffer, %s.", d3d11_utility::dxgi_error_to_string(result));
-            return false;
-        }
-
-        // Create render target view
-        {
+            // Release the previous render target view (to avoid IDXGISwapChain::ResizeBuffers: Swapchain cannot be resized unless all outstanding buffer references have been released)
             ID3D11RenderTargetView* render_target_view = static_cast<ID3D11RenderTargetView*>(m_resource_view);
-
-            // Release previous one.
             if (render_target_view)
             {
                 render_target_view->Release();
                 render_target_view = nullptr;
             }
 
-            // Create new one.
+            const UINT d3d11_flags = d3d11_utility::swap_chain::get_flags(d3d11_utility::swap_chain::validate_flags(m_flags));
+            auto result = swap_chain->ResizeBuffers(m_buffer_count, static_cast<UINT>(width), static_cast<UINT>(height), d3d11_format[m_format], d3d11_flags);
+            if (FAILED(result))
+            {
+                LOG_ERROR("Failed to resize swapchain buffers, %s.", d3d11_utility::dxgi_error_to_string(result));
+                return false;
+            }
+        }
+
+        // Create render target view
+        {
+            // Get swapchain back-buffer
+            ID3D11Texture2D* backbuffer = nullptr;
+            auto result = swap_chain->GetBuffer(0, IID_PPV_ARGS(&backbuffer));
+            if (FAILED(result))
+            {
+                LOG_ERROR("Failed to get swapchain buffer, %s.", d3d11_utility::dxgi_error_to_string(result));
+                return false;
+            }
+
+            // Create new one
+            ID3D11RenderTargetView* render_target_view = static_cast<ID3D11RenderTargetView*>(m_resource_view);
             result = m_rhi_device->GetContextRhi()->device->CreateRenderTargetView(backbuffer, nullptr, &render_target_view);
             backbuffer->Release();
             backbuffer = nullptr;
