@@ -50,6 +50,18 @@ namespace Spartan
 
     Profiler::~Profiler()
     {
+       
+    }
+
+    void Profiler::OnInitialize()
+    {
+        m_resource_manager = m_context->GetSubsystem<ResourceCache>();
+        m_renderer         = m_context->GetSubsystem<Renderer>();
+        m_timer            = m_context->GetSubsystem<Timer>();
+    }
+
+    void Profiler::OnShutdown()
+    {
         if (m_poll)
         {
             SwapBuffers();
@@ -58,13 +70,6 @@ namespace Spartan
         m_renderer->GetRhiDevice()->QueryRelease(m_query_disjoint);
 
         ClearRhiMetrics();
-    }
-
-    void Profiler::OnInitialize()
-    {
-        m_resource_manager = m_context->GetSubsystem<ResourceCache>();
-        m_renderer         = m_context->GetSubsystem<Renderer>();
-        m_timer            = m_context->GetSubsystem<Timer>();
     }
 
     void Profiler::OnPreTick()
