@@ -43,6 +43,9 @@ namespace Spartan
         // Runs after the subsystems have initialized. Useful, if a particular subsystem needs to use another, initialized subsystem.
         virtual void OnPostInitialize() {}
 
+        // Runs when the subsystems need to shutdown.
+        virtual void OnShutdown() {}
+
         // Runs once evry frame and before OnTick().
         virtual void OnPreTick() {}
 
@@ -51,9 +54,6 @@ namespace Spartan
 
         // Runs every frame and after OnTick().
         virtual void OnPostTick() {}
-
-        // Runs when the subsystems need to shutdown.
-        virtual void OnShutdown() {}
 
         template <typename T>
         std::shared_ptr<T> GetPtrShared() { return std::dynamic_pointer_cast<T>(shared_from_this()); }

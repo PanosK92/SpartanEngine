@@ -51,6 +51,7 @@ namespace Spartan
 
         //= Subsystem ===============
         void OnInitialize() override;
+        void OnShutdown() override;
         void OnPreTick() override;
         void OnPostTick() override;
         //===========================
