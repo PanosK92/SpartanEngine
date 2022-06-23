@@ -19,12 +19,13 @@
     #endif
 
     // Optimisation
-    #define SP_OPTIMISE_OFF
-    #define SP_OPTIMISE_ON 
+    #define SP_OPTIMISE_OFF _Pragma("clang optimize off")
+    #define SP_OPTIMISE_ON _Pragma("clang optimize on")
 
     // Warnings
-    #define SP_WARNINGS_OFF 
-    #define SP_WARNINGS_ON
+    #define SP_WARNINGS_OFF _Pragma("clang diagnostic push") \
+                            _Pragma("clang diagnostic ignored \"-Wall -Wpedantic\"")
+    #define SP_WARNINGS_ON _Pragma("clang diagnostic pop")
 #elif defined(__GNUC__) || defined(__GNUG__)
 
     #include <signal.h>
