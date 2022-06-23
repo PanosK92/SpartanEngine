@@ -96,25 +96,21 @@ if (!(##expression))                    \
 #define SP_ASSERT_MSG(expression, text_message) SP_ASSERT(expression && text_message)
 //===================================================================================
 
-// Delete
-#define SP_DELETE(x) \
-if (x)               \
-{                    \
-    delete x;        \
-    x = nullptr;     \
+// Safe pointer delete
+template<typename T>
+constexpr void sp_delete(T* ptr)
+{
+    if (ptr)
+    {
+        delete ptr;
+        ptr = nullptr;
+    }
 }
 
-// Windows
+// Windows - Avoid conflicts with numeric limit min/max
 #if defined(_MSC_VER)
-// No min max
-#undef min
-#undef max
 #ifndef NOMINMAX
 #define NOMINMAX
-#endif
-// Lean and mean
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN
 #endif
 #endif
 
