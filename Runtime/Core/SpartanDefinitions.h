@@ -51,12 +51,18 @@ if (x)               \
     x = nullptr;     \
 }
 
-// Fix windows macros
+// Windows
+#if defined(_MSC_VER)
+// No min max
+#undef min
+#undef max
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+// Lean and mean
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
-#ifndef NOMINMAX
-#define NOMINMAX
 #endif
 
 //= DISABLED WARNINGS ==============================================================================================================================
