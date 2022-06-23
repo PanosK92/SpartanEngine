@@ -5,7 +5,27 @@
 // Version
 #define sp_version "v0.33"
 
-#if defined(__GNUC__)
+#if defined(__clang__)
+    #pragma warn "SP_OPTIMISE and SP_WARNINGS are not implemented for clang"
+    
+    // Class
+    #define SPARTAN_CLASS
+    #if SPARTAN_RUNTIME_SHARED == 1
+        #ifdef SPARTAN_RUNTIME
+            #define SPARTAN_CLASS __attribute__((visibility("default")))
+        #else
+            #define SPARTAN_CLASS 
+        #endif
+    #endif
+
+    // Optimisation
+    #define SP_OPTIMISE_OFF
+    #define SP_OPTIMISE_ON 
+
+    // Warnings
+    #define SP_WARNINGS_OFF 
+    #define SP_WARNINGS_ON
+#elif defined(__GNUC__) || defined(__GNUG__)
 
     #include <signal.h>
 
