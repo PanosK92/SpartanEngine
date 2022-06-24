@@ -2076,90 +2076,91 @@ namespace Spartan
         if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
             return;
 
-        cmd_list->BeginTimeblock("transform_handle");
-
         // Get transform handle (can be null during engine startup)
         shared_ptr<TransformHandle> transform_handle = m_context->GetSubsystem<World>()->GetTransformHandle();
         if (!transform_handle)
             return;
 
-        if (transform_handle->GetSelectedEntity() != nullptr)
-        {
-            // The rotation transform draws line primitives, it doesn't have a model that needs to be rendered here.
-            bool needs_to_render = transform_handle->GetVertexBuffer() != nullptr;
-            if (!needs_to_render)
-                return;
+        // If no entity is selected, don't render it.
+        if (transform_handle->GetSelectedEntity() == nullptr)
+            return;
 
-            // Set render state
-            static RHI_PipelineState pso;
-            pso.shader_vertex                   = shader_v;
-            pso.shader_pixel                    = shader_p;
-            pso.rasterizer_state                = m_rasterizer_cull_back_solid.get();
-            pso.blend_state                     = m_blend_alpha.get();
-            pso.depth_stencil_state             = m_depth_stencil_off_off.get();
-            pso.render_target_color_textures[0] = tex_out;
-            pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
-            pso.viewport                        = tex_out->GetViewport();
+        // The rotation transform, draws line primitives, it doesn't have a model that needs to be rendered here.
+        bool needs_to_render = transform_handle->GetVertexBuffer() != nullptr;
+        if (!needs_to_render)
+            return;
 
-            // Axis - X
-            cmd_list->SetPipelineState(pso);
-            cmd_list->BeginRenderPass();
-            {
-                m_cb_uber_cpu.transform = transform_handle->GetHandle()->GetTransform(Vector3::Right);
-                m_cb_uber_cpu.float3    = transform_handle->GetHandle()->GetColor(Vector3::Right);
-                Update_Cb_Uber(cmd_list);
-            
-                cmd_list->SetBufferIndex(transform_handle->GetIndexBuffer());
-                cmd_list->SetBufferVertex(transform_handle->GetVertexBuffer());
-                cmd_list->DrawIndexed(transform_handle->GetIndexCount());
-                cmd_list->EndRenderPass();
-            }
-            
-            // Axis - Y
-            cmd_list->SetPipelineState(pso);
-            cmd_list->BeginRenderPass();
-            {
-                m_cb_uber_cpu.transform = transform_handle->GetHandle()->GetTransform(Vector3::Up);
-                m_cb_uber_cpu.float3    = transform_handle->GetHandle()->GetColor(Vector3::Up);
-                Update_Cb_Uber(cmd_list);
+        cmd_list->BeginTimeblock("transform_handle");
 
-                cmd_list->SetBufferIndex(transform_handle->GetIndexBuffer());
-                cmd_list->SetBufferVertex(transform_handle->GetVertexBuffer());
-                cmd_list->DrawIndexed(transform_handle->GetIndexCount());
-                cmd_list->EndRenderPass();
-            }
-            
-            // Axis - Z
-            cmd_list->SetPipelineState(pso);
-            cmd_list->BeginRenderPass();
-            {
-                m_cb_uber_cpu.transform = transform_handle->GetHandle()->GetTransform(Vector3::Forward);
-                m_cb_uber_cpu.float3    = transform_handle->GetHandle()->GetColor(Vector3::Forward);
-                Update_Cb_Uber(cmd_list);
+       // Set render state
+       static RHI_PipelineState pso;
+       pso.shader_vertex                   = shader_v;
+       pso.shader_pixel                    = shader_p;
+       pso.rasterizer_state                = m_rasterizer_cull_back_solid.get();
+       pso.blend_state                     = m_blend_alpha.get();
+       pso.depth_stencil_state             = m_depth_stencil_off_off.get();
+       pso.render_target_color_textures[0] = tex_out;
+       pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
+       pso.viewport                        = tex_out->GetViewport();
 
-                cmd_list->SetBufferIndex(transform_handle->GetIndexBuffer());
-                cmd_list->SetBufferVertex(transform_handle->GetVertexBuffer());
-                cmd_list->DrawIndexed(transform_handle->GetIndexCount());
-                cmd_list->EndRenderPass();
-            }
-            
-            // Axes - XYZ
-            if (transform_handle->DrawXYZ())
-            {
-                cmd_list->SetPipelineState(pso);
-                cmd_list->BeginRenderPass();
-                {
-                    m_cb_uber_cpu.transform = transform_handle->GetHandle()->GetTransform(Vector3::One);
-                    m_cb_uber_cpu.float3    = transform_handle->GetHandle()->GetColor(Vector3::One);
-                    Update_Cb_Uber(cmd_list);
+       // Axis - X
+       cmd_list->SetPipelineState(pso);
+       cmd_list->BeginRenderPass();
+       {
+           m_cb_uber_cpu.transform = transform_handle->GetHandle()->GetTransform(Vector3::Right);
+           m_cb_uber_cpu.float3    = transform_handle->GetHandle()->GetColor(Vector3::Right);
+           Update_Cb_Uber(cmd_list);
+       
+           cmd_list->SetBufferIndex(transform_handle->GetIndexBuffer());
+           cmd_list->SetBufferVertex(transform_handle->GetVertexBuffer());
+           cmd_list->DrawIndexed(transform_handle->GetIndexCount());
+           cmd_list->EndRenderPass();
+       }
+       
+       // Axis - Y
+       cmd_list->SetPipelineState(pso);
+       cmd_list->BeginRenderPass();
+       {
+           m_cb_uber_cpu.transform = transform_handle->GetHandle()->GetTransform(Vector3::Up);
+           m_cb_uber_cpu.float3    = transform_handle->GetHandle()->GetColor(Vector3::Up);
+           Update_Cb_Uber(cmd_list);
 
-                    cmd_list->SetBufferIndex(transform_handle->GetIndexBuffer());
-                    cmd_list->SetBufferVertex(transform_handle->GetVertexBuffer());
-                    cmd_list->DrawIndexed(transform_handle->GetIndexCount());
-                    cmd_list->EndRenderPass();
-                }
-            }
-        }
+           cmd_list->SetBufferIndex(transform_handle->GetIndexBuffer());
+           cmd_list->SetBufferVertex(transform_handle->GetVertexBuffer());
+           cmd_list->DrawIndexed(transform_handle->GetIndexCount());
+           cmd_list->EndRenderPass();
+       }
+       
+       // Axis - Z
+       cmd_list->SetPipelineState(pso);
+       cmd_list->BeginRenderPass();
+       {
+           m_cb_uber_cpu.transform = transform_handle->GetHandle()->GetTransform(Vector3::Forward);
+           m_cb_uber_cpu.float3    = transform_handle->GetHandle()->GetColor(Vector3::Forward);
+           Update_Cb_Uber(cmd_list);
+
+           cmd_list->SetBufferIndex(transform_handle->GetIndexBuffer());
+           cmd_list->SetBufferVertex(transform_handle->GetVertexBuffer());
+           cmd_list->DrawIndexed(transform_handle->GetIndexCount());
+           cmd_list->EndRenderPass();
+       }
+       
+       // Axes - XYZ
+       if (transform_handle->DrawXYZ())
+       {
+           cmd_list->SetPipelineState(pso);
+           cmd_list->BeginRenderPass();
+           {
+               m_cb_uber_cpu.transform = transform_handle->GetHandle()->GetTransform(Vector3::One);
+               m_cb_uber_cpu.float3    = transform_handle->GetHandle()->GetColor(Vector3::One);
+               Update_Cb_Uber(cmd_list);
+
+               cmd_list->SetBufferIndex(transform_handle->GetIndexBuffer());
+               cmd_list->SetBufferVertex(transform_handle->GetVertexBuffer());
+               cmd_list->DrawIndexed(transform_handle->GetIndexCount());
+               cmd_list->EndRenderPass();
+           }
+       }
 
         cmd_list->EndTimeblock();
     }

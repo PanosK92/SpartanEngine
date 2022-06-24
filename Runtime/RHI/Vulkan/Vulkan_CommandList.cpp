@@ -938,9 +938,11 @@ namespace Spartan
         return duration_ms;
     }
 
+    static string test = "nothing";
+
     void RHI_CommandList::BeginTimeblock(const char* name, const bool gpu_marker, const bool gpu_timing)
     {
-        SP_ASSERT(!m_timeblock_is_active && "The previous time block is still active");
+        SP_ASSERT_MSG(!m_timeblock_is_active, "The previous time block is still active");
         SP_ASSERT(name != nullptr);
 
         // Allowed profiler ?
@@ -956,12 +958,13 @@ namespace Spartan
             vulkan_utility::debug::marker_begin(static_cast<VkCommandBuffer>(m_resource), name, Vector4::Zero);
         }
 
+        test = name;
         m_timeblock_is_active = true;
     }
 
     void RHI_CommandList::EndTimeblock()
     {
-        SP_ASSERT(m_timeblock_is_active && "A time block wasn't started");
+        SP_ASSERT_MSG(m_timeblock_is_active, "A time block wasn't started");
 
         // Allowed markers ?
         if (m_rhi_device->GetContextRhi()->gpu_markers)
@@ -976,6 +979,7 @@ namespace Spartan
             m_profiler->TimeBlockEnd(); // gpu
         }
 
+        test = "";
         m_timeblock_is_active = false;
     }
 
