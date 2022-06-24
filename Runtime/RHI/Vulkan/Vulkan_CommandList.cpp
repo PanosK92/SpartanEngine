@@ -938,8 +938,6 @@ namespace Spartan
         return duration_ms;
     }
 
-    static string test = "nothing";
-
     void RHI_CommandList::BeginTimeblock(const char* name, const bool gpu_marker, const bool gpu_timing)
     {
         SP_ASSERT_MSG(!m_timeblock_is_active, "The previous time block is still active");
@@ -958,7 +956,6 @@ namespace Spartan
             vulkan_utility::debug::marker_begin(static_cast<VkCommandBuffer>(m_resource), name, Vector4::Zero);
         }
 
-        test = name;
         m_timeblock_is_active = true;
     }
 
@@ -979,7 +976,6 @@ namespace Spartan
             m_profiler->TimeBlockEnd(); // gpu
         }
 
-        test = "";
         m_timeblock_is_active = false;
     }
 
