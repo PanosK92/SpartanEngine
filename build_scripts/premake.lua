@@ -121,7 +121,7 @@ project (RUNTIME_NAME)
 
 	-- Includes
 	includedirs { "../third_party/DirectXShaderCompiler-03-06-2022" }
-	includedirs { "../third_party/Assimp_5.2.2" }
+	includedirs { "../third_party/Assimp_5.2.4" }
 	includedirs { "../third_party/Bullet_3.21" }
 	includedirs { "../third_party/FMOD_1.10.10" }
 	includedirs { "../third_party/FreeImage_3.18.0" }
