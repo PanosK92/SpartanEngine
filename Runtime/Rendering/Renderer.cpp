@@ -75,7 +75,7 @@ namespace Spartan
         m_options |= Renderer::Option::ScreenSpaceShadows;
         m_options |= Renderer::Option::ScreenSpaceReflections;
         m_options |= Renderer::Option::AntiAliasing_Taa;
-        m_options |= Renderer::Option::Sharpening_AMD_FidelityFX_ContrastAdaptiveSharpening;
+        m_options |= Renderer::Option::Sharpening_AMD_FidelityFX_CAS;
         m_options |= Renderer::Option::DepthOfField;
         m_options |= Renderer::Option::Debanding;
         //m_options |= Render_DepthPrepass;
@@ -721,7 +721,7 @@ namespace Spartan
         if (!toggled)
             return;
 
-        if (option == Renderer::Option::Upsample_TAA || option == Renderer::Option::Upsample_AMD_FidelityFX_SuperResolution)
+        if (option == Renderer::Option::Upsample_TAA || option == Renderer::Option::Upsample_AMD_FidelityFX_FSR_1_0)
         {
             CreateRenderTextures(false, false, false, true);
         }
