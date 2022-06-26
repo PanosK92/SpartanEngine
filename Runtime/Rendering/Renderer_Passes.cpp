@@ -593,7 +593,7 @@ namespace Spartan
         bool wireframe     = GetOption(Renderer::Option::Debug_Wireframe);
 
         // We consider (in the shaders) that the sky is opaque, that's why the clear value has an alpha of 1.0f.
-        static Vector4 clear_color_sky = Vector4(0.0f, 0.0f, 0.0f, 1.0f);
+        static Vector4 clear_color = Vector4(0.0f, 0.0f, 0.0f, 1.0f);
 
         // Define pipeline state
         RHI_PipelineState pso;
@@ -603,13 +603,13 @@ namespace Spartan
         pso.rasterizer_state                = wireframe ? m_rasterizer_cull_back_wireframe.get() : m_rasterizer_cull_back_solid.get();
         pso.depth_stencil_state             = is_transparent_pass ? m_depth_stencil_rw_w.get() : (depth_prepass ? m_depth_stencil_r_off.get() : m_depth_stencil_rw_off.get());
         pso.render_target_color_textures[0] = tex_albedo;
-        pso.clear_color[0]                  = !is_transparent_pass ? clear_color_sky : rhi_color_load;
+        pso.clear_color[0]                  = !is_transparent_pass ? clear_color : rhi_color_load;
         pso.render_target_color_textures[1] = tex_normal;
-        pso.clear_color[1]                  = !is_transparent_pass ? clear_color_sky : rhi_color_load;
+        pso.clear_color[1]                  = pso.clear_color[0];
         pso.render_target_color_textures[2] = tex_material;
-        pso.clear_color[2]                  = !is_transparent_pass ? clear_color_sky : rhi_color_load;
+        pso.clear_color[2]                  = pso.clear_color[0];
         pso.render_target_color_textures[3] = tex_velocity;
-        pso.clear_color[3]                  = !is_transparent_pass ? clear_color_sky : rhi_color_load;
+        pso.clear_color[3]                  = pso.clear_color[0];
         pso.render_target_depth_texture     = tex_depth;
         pso.clear_depth                     = (is_transparent_pass || depth_prepass) ? rhi_depth_stencil_load : GetClearDepth();
         pso.clear_stencil                   = rhi_depth_stencil_dont_care;

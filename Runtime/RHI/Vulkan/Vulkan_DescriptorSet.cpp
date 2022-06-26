@@ -52,7 +52,7 @@ namespace Spartan
 
         // Allocate
         bool allocated = vulkan_utility::error::check(vkAllocateDescriptorSets(m_rhi_device->GetContextRhi()->device, &allocate_info, reinterpret_cast<VkDescriptorSet*>(&m_resource)));
-        SP_ASSERT(allocated && "Failed to allocate descriptor set.");
+        SP_ASSERT_MSG(allocated, "Failed to allocate descriptor set.");
 
         // Name
         vulkan_utility::debug::set_name(*reinterpret_cast<VkDescriptorSet*>(&m_resource), m_object_name.c_str());

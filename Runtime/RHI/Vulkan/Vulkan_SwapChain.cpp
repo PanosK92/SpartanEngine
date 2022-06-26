@@ -39,21 +39,91 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    static void swapchain_create
+    static VkSurfaceCapabilitiesKHR get_surface_capabilities(const VkSurfaceKHR surface)
+    {
+        VkSurfaceCapabilitiesKHR surface_capabilities;
+        vkGetPhysicalDeviceSurfaceCapabilitiesKHR(vulkan_utility::globals::rhi_context->device_physical, surface, &surface_capabilities);
+        return surface_capabilities;
+    }
+
+    static vector<VkPresentModeKHR> get_supported_present_modes(const VkSurfaceKHR surface)
+    {
+        uint32_t present_mode_count;
+        vkGetPhysicalDeviceSurfacePresentModesKHR(vulkan_utility::globals::rhi_context->device_physical, surface, &present_mode_count, nullptr);
+
+        vector<VkPresentModeKHR> surface_present_modes(present_mode_count);
+        vkGetPhysicalDeviceSurfacePresentModesKHR(vulkan_utility::globals::rhi_context->device_physical, surface, &present_mode_count, &surface_present_modes[0]);
+        return surface_present_modes;
+    }
+
+    static VkPresentModeKHR get_present_mode(const VkSurfaceKHR surface, const uint32_t flags)
+    {
+        // Get preferred present mode
+        VkPresentModeKHR present_mode_preferred = VK_PRESENT_MODE_FIFO_KHR;
+        present_mode_preferred                  = flags & RHI_Present_Immediate                ? VK_PRESENT_MODE_IMMEDIATE_KHR                 : present_mode_preferred;
+        present_mode_preferred                  = flags & RHI_Present_Fifo                     ? VK_PRESENT_MODE_MAILBOX_KHR                   : present_mode_preferred;
+        present_mode_preferred                  = flags & RHI_Present_FifoRelaxed              ? VK_PRESENT_MODE_FIFO_RELAXED_KHR              : present_mode_preferred;
+        present_mode_preferred                  = flags & RHI_Present_SharedDemandRefresh      ? VK_PRESENT_MODE_SHARED_DEMAND_REFRESH_KHR     : present_mode_preferred;
+        present_mode_preferred                  = flags & RHI_Present_SharedDContinuousRefresh ? VK_PRESENT_MODE_SHARED_CONTINUOUS_REFRESH_KHR : present_mode_preferred;
+
+        // Check if the preferred mode is supported
+        VkPresentModeKHR present_mode = VK_PRESENT_MODE_FIFO_KHR; // as per spec, we can rely on VK_PRESENT_MODE_FIFO_KHR to always be present.
+        vector<VkPresentModeKHR> surface_present_modes = get_supported_present_modes(surface);
+        for (const auto& supported_present_mode : surface_present_modes)
+        {
+            if (present_mode_preferred == supported_present_mode)
+            {
+                present_mode = present_mode_preferred;
+                break;
+            }
+        }
+
+        return present_mode;
+    }
+
+    static inline vector<VkSurfaceFormatKHR> get_supported_surface_formats(const VkSurfaceKHR surface)
+    {
+        uint32_t format_count;
+        vkGetPhysicalDeviceSurfaceFormatsKHR(vulkan_utility::globals::rhi_context->device_physical, surface, &format_count, nullptr);
+
+        vector<VkSurfaceFormatKHR> surface_formats(format_count);
+        vulkan_utility::error::check(vkGetPhysicalDeviceSurfaceFormatsKHR(vulkan_utility::globals::rhi_context->device_physical, surface, &format_count, &surface_formats[0]));
+
+        return surface_formats;
+
+    }
+
+    static bool is_format_supported(const VkSurfaceKHR surface, const VkFormat format, VkColorSpaceKHR& color_space)
+    {
+        vector<VkSurfaceFormatKHR> supported_formats = get_supported_surface_formats(surface);
+
+        for (const VkSurfaceFormatKHR& supported_format : supported_formats)
+        {
+            if (supported_format.format == format)
+            {
+                color_space = supported_format.colorSpace;
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    static void create
     (
         RHI_Device* rhi_device,
         uint32_t* width,
         uint32_t* height,
         uint32_t buffer_count,
-        RHI_Format format,
+        RHI_Format rhi_format,
         array<RHI_Image_Layout, 4> layouts,
         uint32_t flags,
         void* window_handle,
-        void*& surface,
-        void*& swap_chain,
+        void*& void_ptr_surface,
+        void*& void_ptr_swap_chain,
         array<void*, 3>& backbuffer_textures,
         array<void*, 3>& backbuffer_texture_views,
-        array<std::shared_ptr<RHI_Semaphore>, 3>& image_acquired_semaphore
+        array<shared_ptr<RHI_Semaphore>, 3>& image_acquired_semaphore
     )
         {
             RHI_Context* rhi_context = rhi_device->GetContextRhi();
@@ -64,54 +134,56 @@ namespace Spartan
             SP_ASSERT(IsWindow(hwnd));
 
             // Create surface
-            VkSurfaceKHR _surface = nullptr;
+            VkSurfaceKHR surface = nullptr;
             {
                 VkWin32SurfaceCreateInfoKHR create_info = {};
                 create_info.sType                       = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
                 create_info.hwnd                        = hwnd;
                 create_info.hinstance                   = GetModuleHandle(nullptr);
 
-                SP_ASSERT(vulkan_utility::error::check(
+                SP_ASSERT_MSG(vulkan_utility::error::check(
                     vkCreateWin32SurfaceKHR(
                         rhi_device->GetContextRhi()->instance,
                         &create_info,
                         nullptr,
-                        &_surface
-                    )) && "Failed to created Win32 surface");
+                        &surface
+                    )), "Failed to created Win32 surface");
 
                 VkBool32 present_support = false;
 
-                SP_ASSERT(
+                SP_ASSERT_MSG(
                     vulkan_utility::error::check(vkGetPhysicalDeviceSurfaceSupportKHR(
                         rhi_context->device_physical,
                             rhi_device->GetQueueIndex(RHI_Queue_Type::Graphics),
-                            _surface,
+                            surface,
                             &present_support
-                    )) && "Failed to get physical device surface support");
+                    )), "Failed to get physical device surface support");
 
-                SP_ASSERT(present_support && "The device does not support this kind of surface");
+                SP_ASSERT_MSG(present_support, "The device does not support this kind of surface");
             }
 
             // Get surface capabilities
-            VkSurfaceCapabilitiesKHR capabilities = vulkan_utility::surface::capabilities(_surface);
+            VkSurfaceCapabilitiesKHR capabilities = get_surface_capabilities(surface);
 
             // Compute extent
             *width            = Math::Helper::Clamp(*width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
             *height           = Math::Helper::Clamp(*height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
             VkExtent2D extent = { *width, *height };
 
-            // Detect surface format and color space
-            vulkan_utility::surface::detect_format_and_color_space(_surface, &rhi_context->surface_format, &rhi_context->surface_color_space);
+            // Ensure that the surface supports the requested format, and if so, get the color space.
+            VkFormat format             = vulkan_format[rhi_format];
+            VkColorSpaceKHR color_space = VK_COLOR_SPACE_MAX_ENUM_KHR;
+            SP_ASSERT_MSG(is_format_supported(surface, format, color_space), "The surface doesn't support the requested format");
 
             // Swap chain
-            VkSwapchainKHR _swap_chain;
+            VkSwapchainKHR swap_chain;
             {
                 VkSwapchainCreateInfoKHR create_info = {};
                 create_info.sType                    = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-                create_info.surface                  = _surface;
+                create_info.surface                  = surface;
                 create_info.minImageCount            = buffer_count;
-                create_info.imageFormat              = rhi_context->surface_format;
-                create_info.imageColorSpace          = rhi_context->surface_color_space;
+                create_info.imageFormat              = format;
+                create_info.imageColorSpace          = color_space;
                 create_info.imageExtent              = extent;
                 create_info.imageArrayLayers         = 1;
                 create_info.imageUsage               = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
@@ -132,11 +204,11 @@ namespace Spartan
 
                 create_info.preTransform   = capabilities.currentTransform;
                 create_info.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-                create_info.presentMode    = vulkan_utility::surface::set_present_mode(_surface, flags);
+                create_info.presentMode    = get_present_mode(surface, flags);
                 create_info.clipped        = VK_TRUE;
                 create_info.oldSwapchain   = nullptr;
 
-                SP_ASSERT(vulkan_utility::error::check(vkCreateSwapchainKHR(rhi_context->device, &create_info, nullptr, &_swap_chain)) && "Failed to create swapchain");
+                SP_ASSERT_MSG(vulkan_utility::error::check(vkCreateSwapchainKHR(rhi_context->device, &create_info, nullptr, &swap_chain)), "Failed to create swapchain");
             }
 
             // Images
@@ -144,9 +216,9 @@ namespace Spartan
             vector<VkImage> images;
             {
                 // Get
-                vkGetSwapchainImagesKHR(rhi_context->device, _swap_chain, &image_count, nullptr);
+                vkGetSwapchainImagesKHR(rhi_context->device, swap_chain, &image_count, nullptr);
                 images.resize(image_count);
-                vkGetSwapchainImagesKHR(rhi_context->device, _swap_chain, &image_count, images.data());
+                vkGetSwapchainImagesKHR(rhi_context->device, swap_chain, &image_count, images.data());
 
                 // Transition layouts to VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
                 if (VkCommandBuffer cmd_buffer = vulkan_utility::command_buffer_immediate::begin(RHI_Queue_Type::Graphics))
@@ -171,29 +243,30 @@ namespace Spartan
                     // Name the image
                     vulkan_utility::debug::set_name(images[i], string(string("swapchain_image_") + to_string(i)).c_str());
 
-                    SP_ASSERT(
+                    SP_ASSERT_MSG(
                         vulkan_utility::image::view::create(
                             static_cast<void*>(images[i]),
                             backbuffer_texture_views[i],
                             VK_IMAGE_VIEW_TYPE_2D,
-                            rhi_context->surface_format,
+                            format,
                             VK_IMAGE_ASPECT_COLOR_BIT,
                             0, 1, 0, 1
-                        ) && "Failed to create image view");
+                        ), "Failed to create image view");
                 }
             }
 
-            surface    = static_cast<void*>(_surface);
-            swap_chain = static_cast<void*>(_swap_chain);
+            void_ptr_surface    = static_cast<void*>(surface);
+            void_ptr_swap_chain = static_cast<void*>(swap_chain);
 
             // Semaphores
             for (uint32_t i = 0; i < buffer_count; i++)
             {
-                image_acquired_semaphore[i] = make_shared<RHI_Semaphore>(rhi_device, false, (string("swapchain_image_acquired_semaphore_") + to_string(i)).c_str());
+                string name = (string("swapchain_image_acquired_semaphore_") + to_string(i));
+                image_acquired_semaphore[i] = make_shared<RHI_Semaphore>(rhi_device, false, name.c_str());
             }
         }
     
-    static void swapchain_destroy(
+    static void destroy(
         RHI_Device* rhi_device,
         uint8_t buffer_count,
         void*& surface,
@@ -257,7 +330,7 @@ namespace Spartan
         m_flags         = flags;
         m_object_name   = name;
 
-        swapchain_create
+        create
         (
             m_rhi_device,
             &m_width,
@@ -279,11 +352,10 @@ namespace Spartan
 
     RHI_SwapChain::~RHI_SwapChain()
     {
-        // Wait in case any command buffer is still in use
+        // Wait until the GPU is idle
         m_rhi_device->QueueWaitAll();
 
-        // Resources
-        swapchain_destroy
+        destroy
         (
             m_rhi_device,
             m_buffer_count,
@@ -313,7 +385,7 @@ namespace Spartan
                 return false;
         }
 
-        // Wait in case any command buffer is still in use
+        // Wait until the GPU is idle
         m_rhi_device->QueueWaitAll();
 
         // Save new dimensions
@@ -321,7 +393,7 @@ namespace Spartan
         m_height = height;
 
         // Destroy previous swap chain
-        swapchain_destroy
+        destroy
         (
             m_rhi_device,
             m_buffer_count,
@@ -332,7 +404,7 @@ namespace Spartan
         );
 
         // Create the swap chain with the new dimensions
-        swapchain_create
+        create
         (
             m_rhi_device,
             &m_width,
@@ -349,9 +421,11 @@ namespace Spartan
             m_semaphore_image_acquired
         );
 
-        // The pipeline state used by the pipeline will now be invalid since it's referring to a destroyed swap chain view.
-        // By generating a new ID, the pipeline cache will automatically generate a new pipeline for this swap chain.
-        m_object_id = GenerateObjectId();
+        // Reset image index
+        m_image_index          = numeric_limits<uint32_t>::max();
+        m_image_index_previous = m_image_index;
+
+        AcquireNextImage();
 
         return true;
     }
@@ -361,46 +435,27 @@ namespace Spartan
         SP_ASSERT(m_present_enabled && "No need to acquire next image when presenting is disabled");
 
         // Return if the swapchain has a single buffer and it has already been acquired
-        if (m_buffer_count == 1 && m_index_image_acquired != numeric_limits<uint32_t>::max())
+        if (m_buffer_count == 1 && m_image_index != numeric_limits<uint32_t>::max())
             return;
 
         // Get signal semaphore
         m_semaphore_index = (m_semaphore_index + 1) % m_buffer_count;
         RHI_Semaphore* signal_semaphore = m_semaphore_image_acquired[m_semaphore_index].get();
 
-        // Reset semaphore if it wasn't waited for
-        if (signal_semaphore->GetState() != RHI_Semaphore_State::Idle)
-        {
-            LOG_INFO("Reseting signal semaphore...");
-            signal_semaphore->Reset();
-        }
+        // Ensure semaphore state
+        SP_ASSERT_MSG(signal_semaphore->GetState() != RHI_Semaphore_State::Signaled, "The semaphore is already signaled");
+
+        m_image_index_previous = m_image_index;
 
         // Acquire next image
-        VkResult result = vkAcquireNextImageKHR(
+        SP_ASSERT_MSG(vulkan_utility::error::check(vkAcquireNextImageKHR(
             m_rhi_device->GetContextRhi()->device,                     // device
             static_cast<VkSwapchainKHR>(m_resource),                   // swapchain
             numeric_limits<uint64_t>::max(),                           // timeout
             static_cast<VkSemaphore>(signal_semaphore->GetResource()), // signal semaphore
             nullptr,                                                   // signal fence
-            &m_index_image_acquired                                             // pImageIndex
-        );
-
-        // Recreate swapchain with different size (if needed)
-        if ((result == VK_ERROR_OUT_OF_DATE_KHR) || (result == VK_SUBOPTIMAL_KHR))
-        {
-            LOG_INFO("Outdated swapchain, recreating...");
-
-            if (!Resize(m_width, m_height, true))
-            {
-                LOG_ERROR("Failed to resize swapchain");
-                return;
-            }
-
-            AcquireNextImage();
-            return;
-        }
-
-        SP_ASSERT(result == VK_SUCCESS && "Failed to acquire next image");
+            &m_image_index                                             // pImageIndex
+        )), "Failed to acquire next image");
 
         // Update semaphore state
         signal_semaphore->SetState(RHI_Semaphore_State::Signaled);
@@ -408,8 +463,9 @@ namespace Spartan
 
     void RHI_SwapChain::Present()
     {
-        SP_ASSERT(m_resource != nullptr && "Can't present, the swapchain has not been initialised");
-        SP_ASSERT(m_present_enabled && "Can't present, presenting has been disabled");
+        SP_ASSERT_MSG(m_resource != nullptr,                   "The swapchain has not been initialised");
+        SP_ASSERT_MSG(m_present_enabled,                       "Presenting is disabled");
+        SP_ASSERT_MSG(m_image_index != m_image_index_previous, "No image was acquired");
 
         // Get the semaphores that present should wait for
         static vector<RHI_Semaphore*> wait_semaphores;
@@ -423,7 +479,8 @@ namespace Spartan
             const vector<shared_ptr<RHI_CommandPool>>& cmd_pools = m_rhi_device->GetCommandPools();
             for (shared_ptr<RHI_CommandPool> cmd_pool : cmd_pools)
             {
-                // Is this command pool presenting to this swap chain ? If so, wait on those semaphores
+                // The editor supports multiple windows, so we can be dealing with multiple swapchains.
+                // Therefore we only want to wait on the command list semaphores, which will be presenting their work to this swapchain.
                 if (m_object_id == cmd_pool->GetSwapchainId())
                 {
                     RHI_Semaphore* semaphore = cmd_pool->GetCurrentCommandList()->GetSemaphoreProccessed();
@@ -439,11 +496,7 @@ namespace Spartan
         }
 
         // Present
-        if (!m_rhi_device->QueuePresent(m_resource, &m_index_image_acquired, wait_semaphores))
-        {
-            LOG_ERROR("Failed to present");
-            return;
-        }
+        m_rhi_device->QueuePresent(m_resource, &m_image_index, wait_semaphores);
 
         // Acquire next image
         AcquireNextImage();
@@ -451,17 +504,17 @@ namespace Spartan
 
     void RHI_SwapChain::SetLayout(const RHI_Image_Layout& layout, RHI_CommandList* cmd_list)
     {
-        if (m_layouts[m_index_image_acquired] == layout)
+        if (m_layouts[m_image_index] == layout)
             return;
 
         vulkan_utility::image::set_layout(
             reinterpret_cast<void*>(cmd_list->GetResource()),
-            reinterpret_cast<void*>(m_backbuffer_resource[m_index_image_acquired]),
+            reinterpret_cast<void*>(m_backbuffer_resource[m_image_index]),
             VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 1,
-            m_layouts[m_index_image_acquired],
+            m_layouts[m_image_index],
             layout
         );
 
-        m_layouts[m_index_image_acquired] = layout;
+        m_layouts[m_image_index] = layout;
     }
 }

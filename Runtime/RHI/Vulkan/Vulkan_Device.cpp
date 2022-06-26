@@ -615,9 +615,9 @@ namespace Spartan
         return true;
     }
 
-    bool RHI_Device::QueuePresent(void* swapchain_view, uint32_t* image_index, std::vector<RHI_Semaphore*>& wait_semaphores) const
+    void RHI_Device::QueuePresent(void* swapchain, uint32_t* image_index, vector<RHI_Semaphore*>& wait_semaphores) const
     {
-        static array<VkSemaphore, 3> vk_wait_semaphores;
+        static array<VkSemaphore, 3> vk_wait_semaphores = {};
 
         // Get semaphore Vulkan resource
         uint32_t semaphore_count = static_cast<uint32_t>(wait_semaphores.size());
@@ -632,20 +632,16 @@ namespace Spartan
         present_info.waitSemaphoreCount = semaphore_count;
         present_info.pWaitSemaphores    = vk_wait_semaphores.data();
         present_info.swapchainCount     = 1;
-        present_info.pSwapchains        = reinterpret_cast<VkSwapchainKHR*>(&swapchain_view);
+        present_info.pSwapchains        = reinterpret_cast<VkSwapchainKHR*>(&swapchain);
         present_info.pImageIndices      = image_index;
 
-        lock_guard<mutex> lock(m_queue_mutex);
-        if (!vulkan_utility::error::check(vkQueuePresentKHR(static_cast<VkQueue>(m_queue_graphics), &present_info)))
-            return false;
+        SP_ASSERT_MSG(vulkan_utility::error::check(vkQueuePresentKHR(static_cast<VkQueue>(m_queue_graphics), &present_info)), "Failed to present");
 
         // Update semaphore state
         for (uint32_t i = 0; i < semaphore_count; i++)
         {
             wait_semaphores[i]->SetState(RHI_Semaphore_State::Idle);
         }
-
-        return true;
     }
 
     bool RHI_Device::QueueSubmit(const RHI_Queue_Type type, const uint32_t wait_flags, void* cmd_buffer, RHI_Semaphore* wait_semaphore /*= nullptr*/, RHI_Semaphore* signal_semaphore /*= nullptr*/, RHI_Fence* signal_fence /*= nullptr*/) const
@@ -653,8 +649,8 @@ namespace Spartan
         SP_ASSERT_MSG(cmd_buffer != nullptr, "Invalid command buffer");
 
         // Validate semaphore states
-        if (wait_semaphore)   SP_ASSERT_MSG(wait_semaphore->GetState() != RHI_Semaphore_State::Idle, "Wait semaphore is in an idle state and will never be signaled");
-        if (signal_semaphore) SP_ASSERT_MSG(signal_semaphore->GetState() != RHI_Semaphore_State::Signaled, "Signal semaphore is already in a signaled state, it can't be re-signaled.");
+        if (wait_semaphore)   SP_ASSERT_MSG(wait_semaphore->GetState()   != RHI_Semaphore_State::Idle,     "Wait semaphore is in an idle state and will never be signaled");
+        if (signal_semaphore) SP_ASSERT_MSG(signal_semaphore->GetState() != RHI_Semaphore_State::Signaled, "Signal semaphore is already in a signaled state.");
 
         // Get semaphore Vulkan resources
         void* vk_wait_semaphore   = wait_semaphore   ? wait_semaphore->GetResource()   : nullptr;

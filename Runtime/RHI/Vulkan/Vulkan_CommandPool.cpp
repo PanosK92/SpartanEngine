@@ -48,8 +48,8 @@ namespace Spartan
         // Create pool 
         for (uint32_t i = 0; i < static_cast<uint32_t>(m_resources.size()); i++)
         {
-            SP_ASSERT(vulkan_utility::error::check(
-                vkCreateCommandPool(m_rhi_device->GetContextRhi()->device, &cmd_pool_info, nullptr, reinterpret_cast<VkCommandPool*>(&m_resources[i]))) &&
+            SP_ASSERT_MSG(vulkan_utility::error::check(
+                vkCreateCommandPool(m_rhi_device->GetContextRhi()->device, &cmd_pool_info, nullptr, reinterpret_cast<VkCommandPool*>(&m_resources[i]))),
                 "Failed to create command pool"
             );
         }

@@ -469,10 +469,10 @@ namespace Spartan
             VkInstance instance                 = nullptr;
             VkPhysicalDevice device_physical    = nullptr;
             VkDevice device                     = nullptr;
-            VkFormat surface_format             = VK_FORMAT_UNDEFINED;
-            VkColorSpaceKHR surface_color_space = VK_COLOR_SPACE_MAX_ENUM_KHR;
             VmaAllocator allocator              = nullptr;
             std::unordered_map<uint64_t, VmaAllocation> allocations;
+
+            // Hardware capability viewer: https://vulkan.gpuinfo.org/
 
             // Extensions
             #ifdef DEBUG
