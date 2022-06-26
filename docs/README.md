@@ -83,7 +83,6 @@ SDL integration      | 100%   | Use SDL for window creation and input (this also
 Screen space global illumination  | 100%   | One bounce of indirect diffuse and specular light.
 Depth-of-field       | 100%        | Controlled by camera aperture.
 Temporal upsampling     | 50%   | Wait for FSR 2.0 and stop developing my own. It's vastly superior to any TAA upsampler out there.
-
 C# scripting (Replace AngelScript)  | 50%   | Using Mono (low priority since the engine is not ready for scripting games).
 Vulkan polishing       | 90%      | Outperform D3D11 in all cases and improve stability.
 DirectX 12        | 10%   | The rendering API has matured thanks to Vulkan, finishing with DX12 should be easy.
@@ -111,7 +110,7 @@ Linux support             | -          | Vulkan and SDL is there, working on a l
 
 - [DirectX End-User Runtimes](https://www.microsoft.com/en-us/download/details.aspx?id=8109) - For the DirectX build.
 - [Microsoft Visual C++ Redistributable for Visual Studio 2022](https://aka.ms/vs/17/release/vc_redist.x64.exe).
-- Windows 10/11 and a modern/dedicated GPU. The target is high-end machines, old setups or mobile devices are not officially supported.
+- Windows 10/11 and a modern/dedicated GPU. The engine targets high-end machines.
 
 # License
 
