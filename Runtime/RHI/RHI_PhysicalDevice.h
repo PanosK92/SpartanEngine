@@ -67,30 +67,30 @@ namespace Spartan
     private:
         std::string get_vendor_name()
         {
+            std::string name = "Unknown";
+
             if (IsNvidia())
             {
-                return "Nvidia";
+                name = "Nvidia";
+            }
+            else if (IsAmd())
+            {
+                name = "AMD";
+            }
+            else if (IsIntel())
+            {
+                name = "Intel";
+            }
+            else if (IsArm())
+            {
+                name = "Arm";
+            }
+            else if (IsQualcomm())
+            {
+                name = "Qualcomm";
             }
 
-            if (IsAmd())
-            {
-                return "AMD";
-            }
-
-            if (IsIntel())
-            {
-                return "Intel";
-            }
-
-            if (IsArm())
-            {
-                return "Arm";
-            }
-
-            if (IsQualcomm())
-            {
-                return "Qualcomm";
-            }
+            return name;
         }
 
         std::string decode_driver_version(const uint32_t version)

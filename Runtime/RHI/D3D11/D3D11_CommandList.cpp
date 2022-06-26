@@ -975,7 +975,7 @@ namespace Spartan
         m_output_textures_index = 0;
     }
 
-    void RHI_CommandList::Descriptors_GetLayoutFromPipelineState(RHI_PipelineState& m_pso)
+    void RHI_CommandList::GetDescriptorSetLayoutFromPipelineState(RHI_PipelineState& m_pso)
     {
         
     }
