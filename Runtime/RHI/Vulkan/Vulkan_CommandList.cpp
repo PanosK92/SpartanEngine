@@ -241,7 +241,7 @@ namespace Spartan
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
         // Update the descriptor cache with the pipeline state
-        Descriptors_GetLayoutFromPipelineState(pso);
+        GetDescriptorSetLayoutFromPipelineState(pso);
 
         // If no pipeline exists for this state, create one
         uint32_t hash_previous = m_pso.ComputeHash();
@@ -1042,11 +1042,11 @@ namespace Spartan
 
     }
 
-    void RHI_CommandList::Descriptors_GetLayoutFromPipelineState(RHI_PipelineState& pipeline_state)
+    void RHI_CommandList::GetDescriptorSetLayoutFromPipelineState(RHI_PipelineState& pipeline_state)
     {
         // Get pipeline
         vector<RHI_Descriptor> descriptors;
-        Descriptors_GetDescriptorsFromPipelineState(pipeline_state, descriptors);
+        GetDescriptorsFromPipelineState(pipeline_state, descriptors);
 
         // Compute a hash for the descriptors
         uint32_t hash = 0;

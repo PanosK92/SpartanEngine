@@ -147,8 +147,8 @@ namespace Spartan
         void UnbindOutputTextures();
 
         // Descriptors
-        void Descriptors_GetLayoutFromPipelineState(RHI_PipelineState& pipeline_state);
-        void Descriptors_GetDescriptorsFromPipelineState(RHI_PipelineState& pipeline_state, std::vector<RHI_Descriptor>& descriptors);
+        void GetDescriptorSetLayoutFromPipelineState(RHI_PipelineState& pipeline_state);
+        void GetDescriptorsFromPipelineState(RHI_PipelineState& pipeline_state, std::vector<RHI_Descriptor>& descriptors);
 
         RHI_Pipeline* m_pipeline                         = nullptr;
         Renderer* m_renderer                             = nullptr;
