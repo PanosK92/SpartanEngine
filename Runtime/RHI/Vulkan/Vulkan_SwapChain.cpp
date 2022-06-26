@@ -116,7 +116,7 @@ namespace Spartan
         uint32_t* height,
         uint32_t buffer_count,
         RHI_Format rhi_format,
-        array<RHI_Image_Layout, 4> layouts,
+        array<RHI_Image_Layout, 2> layouts,
         uint32_t flags,
         void* window_handle,
         void*& void_ptr_surface,
@@ -225,7 +225,16 @@ namespace Spartan
                 {
                     for (uint32_t i = 0; i < static_cast<uint32_t>(images.size()); i++)
                     {
-                        vulkan_utility::image::set_layout(reinterpret_cast<void*>(cmd_buffer), reinterpret_cast<void*>(images[i]), VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 1, layouts[i], RHI_Image_Layout::Color_Attachment_Optimal);
+                        vulkan_utility::image::set_layout(
+                            reinterpret_cast<void*>(cmd_buffer),
+                            reinterpret_cast<void*>(images[i]),
+                            VK_IMAGE_ASPECT_COLOR_BIT,
+                            0,
+                            1,
+                            1,
+                            RHI_Image_Layout::Undefined,
+                            RHI_Image_Layout::Color_Attachment_Optimal
+                        );
                         layouts[i] = RHI_Image_Layout::Color_Attachment_Optimal;
                     }
 
@@ -319,6 +328,7 @@ namespace Spartan
         m_semaphore_image_acquired.fill(nullptr);
         m_backbuffer_resource.fill(nullptr);
         m_backbuffer_resource_view.fill(nullptr);
+        m_layouts.fill(RHI_Image_Layout::Undefined);
 
         // Copy parameters
         m_format        = format;
