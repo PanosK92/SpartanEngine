@@ -144,7 +144,7 @@ namespace Spartan
 
                 // Generate frame mips so that the reflections can simulate roughness
                 const bool luminance_antiflicker = true;
-                Pass_AMD_FidelityFX_SinglePassDownsampler(cmd_list, rt2, luminance_antiflicker);
+                Pass_AMD_FidelityFX_SPD(cmd_list, rt2, luminance_antiflicker);
 
                 // Blur the smaller mips to reduce blockiness/flickering
                 for (uint32_t i = 1; i < rt2->GetMipCount(); i++)
@@ -821,7 +821,7 @@ namespace Spartan
 
         // Generate frame mips so that we can simulate roughness
         const bool luminance_antiflicker = false;
-        Pass_AMD_FidelityFX_SinglePassDownsampler(cmd_list, tex_ssr, luminance_antiflicker);
+        Pass_AMD_FidelityFX_SPD(cmd_list, tex_ssr, luminance_antiflicker);
 
         // Blur the smaller mips to reduce blockiness/flickering
         for (uint32_t i = 1; i < tex_ssr->GetMipCount(); i++)
@@ -1170,9 +1170,9 @@ namespace Spartan
             }
 
             // Upsample - AMD FidelityFX SuperResolution - TODO: This needs to be in perceptual space and normalised to 0, 1 range.
-            if (GetOption(Renderer::Option::Upsample_AMD_FidelityFX_SuperResolution) && resolution_output_larger)
+            if (GetOption(Renderer::Option::Upsample_AMD_FidelityFX_FSR_1_0) && resolution_output_larger)
             {
-                Pass_AMD_FidelityFX_SuperResolution(cmd_list, rt_frame_render_1.get(), rt_frame_output_1.get(), rt_frame_output_2.get());
+                Pass_AMD_FidelityFX_FSR_1_0(cmd_list, rt_frame_render_1.get(), rt_frame_output_1.get(), rt_frame_output_2.get());
                 upsampled = true;
             }
         }
@@ -1204,9 +1204,9 @@ namespace Spartan
             }
 
             // Sharpening
-            if (GetOption(Renderer::Option::Sharpening_AMD_FidelityFX_ContrastAdaptiveSharpening))
+            if (GetOption(Renderer::Option::Sharpening_AMD_FidelityFX_CAS))
             {
-                Pass_AMD_FidelityFX_ContrastAdaptiveSharpening(cmd_list, rt_frame_output_1, rt_frame_output_2);
+                Pass_AMD_FidelityFX_CAS(cmd_list, rt_frame_output_1, rt_frame_output_2);
                 rt_frame_output_1.swap(rt_frame_output_2);
             }
 
@@ -1243,7 +1243,7 @@ namespace Spartan
                 rt_frame_output_1.swap(rt_frame_output_2);
             }
 
-            // If the pointer doesn't point to the texture it used, swap back to it so that it does.
+            // If the pointer doesn't point to the texture it used to, swap back to it so that it does.
             if (frame_output_in_id != rt_frame_output_1->GetObjectId())
             {
                 rt_frame_output_1.swap(rt_frame_output_2);
@@ -1333,7 +1333,7 @@ namespace Spartan
 
         // Generate mips
         const bool luminance_antiflicker = true;
-        Pass_AMD_FidelityFX_SinglePassDownsampler(cmd_list, tex_bloom, luminance_antiflicker);
+        Pass_AMD_FidelityFX_SPD(cmd_list, tex_bloom, luminance_antiflicker);
 
         // Starting from the lowest mip, upsample and blend with the higher one
         cmd_list->BeginMarker("upsample_and_blend_with_higher_mip");
@@ -1694,14 +1694,14 @@ namespace Spartan
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::Pass_AMD_FidelityFX_ContrastAdaptiveSharpening(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
+    void Renderer::Pass_AMD_FidelityFX_CAS(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
     {
         // Acquire shaders
         RHI_Shader* shader_c = m_shaders[Renderer::Shader::AMD_FidelityFX_CAS_C].get();
         if (!shader_c->IsCompiled())
             return;
 
-        cmd_list->BeginTimeblock("amd_fidelityfx_contrast_adaptive_sharpening");
+        cmd_list->BeginTimeblock("amd_fidelityfx_cas");
 
         // Define pipeline state
         static RHI_PipelineState pso;
@@ -1724,7 +1724,7 @@ namespace Spartan
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::Pass_AMD_FidelityFX_SinglePassDownsampler(RHI_CommandList* cmd_list, RHI_Texture* tex, const bool luminance_antiflicker)
+    void Renderer::Pass_AMD_FidelityFX_SPD(RHI_CommandList* cmd_list, RHI_Texture* tex, const bool luminance_antiflicker)
     {
         // AMD FidelityFX Single Pass Downsampler.
         // Provides an RDNA™-optimized solution for generating up to 12 MIP levels of a texture.
@@ -1745,7 +1745,7 @@ namespace Spartan
         if (!shader->IsCompiled())
             return;
 
-        cmd_list->BeginMarker("amd_fidelityfx_single_pass_downsampler");
+        cmd_list->BeginMarker("amd_fidelityfx_spd");
 
         // Define render state
         static RHI_PipelineState pso;
@@ -1777,15 +1777,15 @@ namespace Spartan
         cmd_list->EndMarker();
     }
 
-    void Renderer::Pass_AMD_FidelityFX_SuperResolution(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out, RHI_Texture* tex_out_scratch)
+    void Renderer::Pass_AMD_FidelityFX_FSR_1_0(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out, RHI_Texture* tex_out_scratch)
     {
         // Acquire shaders
-        RHI_Shader* shader_upsample_c = m_shaders[Renderer::Shader::AMD_FidelityFX_FSR_Upsample_C].get();
-        RHI_Shader* shader_sharpen_c  = m_shaders[Renderer::Shader::AMD_FidelityFX_FSR_Sharpen_C].get();
+        RHI_Shader* shader_upsample_c = m_shaders[Renderer::Shader::AMD_FidelityFX_FSR_1_0_Upsample_C].get();
+        RHI_Shader* shader_sharpen_c  = m_shaders[Renderer::Shader::AMD_FidelityFX_FSR_1_0_Sharpen_C].get();
         if (!shader_upsample_c->IsCompiled() || !shader_sharpen_c->IsCompiled())
             return;
 
-        cmd_list->BeginTimeblock("amd_fidelityfx_super_resolution_1_0");
+        cmd_list->BeginTimeblock("amd_fidelityfx_fsr_1_0");
 
         // Upsample
         cmd_list->BeginMarker("upsample");
@@ -2503,7 +2503,7 @@ namespace Spartan
 
             // Downsample
             const bool luminance_antiflicker = false;
-            Pass_AMD_FidelityFX_SinglePassDownsampler(m_cmd_current, texture.get(), luminance_antiflicker);
+            Pass_AMD_FidelityFX_SPD(m_cmd_current, texture.get(), luminance_antiflicker);
 
             // Set all generated mips to read only optimal
             texture->SetLayout(RHI_Image_Layout::Shader_Read_Only_Optimal, cmd_list, 0, texture->GetMipCount());

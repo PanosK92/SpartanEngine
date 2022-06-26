@@ -191,8 +191,8 @@ namespace Spartan
             AMD_FidelityFX_CAS_C,
             AMD_FidelityFX_SPD_C,
             AMD_FidelityFX_SPD_LuminanceAntiflicker_C,
-            AMD_FidelityFX_FSR_Upsample_C,
-            AMD_FidelityFX_FSR_Sharpen_C
+            AMD_FidelityFX_FSR_1_0_Upsample_C,
+            AMD_FidelityFX_FSR_1_0_Sharpen_C
         };
 
         // Render targets
@@ -248,13 +248,13 @@ namespace Spartan
             MotionBlur                                           = 1 << 18,
             DepthOfField                                         = 1 << 19,
             FilmGrain                                            = 1 << 20,
-            Sharpening_AMD_FidelityFX_ContrastAdaptiveSharpening = 1 << 21,
+            Sharpening_AMD_FidelityFX_CAS = 1 << 21,
             ChromaticAberration                                  = 1 << 22,
             Debanding                                            = 1 << 23,
             ReverseZ                                             = 1 << 24,
             DepthPrepass                                         = 1 << 25,
             Upsample_TAA                                         = 1 << 26,
-            Upsample_AMD_FidelityFX_SuperResolution              = 1 << 27
+            Upsample_AMD_FidelityFX_FSR_1_0                      = 1 << 27
         };
 
         // Renderer/graphics options values
@@ -413,9 +413,9 @@ namespace Spartan
         void Pass_Debanding(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
         void Pass_Bloom(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
         void Pass_Blur_Gaussian(RHI_CommandList* cmd_list, RHI_Texture* tex_in, const bool depth_aware, const float sigma, const float pixel_stride, const uint32_t mip = rhi_all_mips);
-        void Pass_AMD_FidelityFX_ContrastAdaptiveSharpening(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
-        void Pass_AMD_FidelityFX_SinglePassDownsampler(RHI_CommandList* cmd_list, RHI_Texture* tex, const bool luminance_antiflicker);
-        void Pass_AMD_FidelityFX_SuperResolution(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out, RHI_Texture* tex_out_scratch);
+        void Pass_AMD_FidelityFX_CAS(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
+        void Pass_AMD_FidelityFX_SPD(RHI_CommandList* cmd_list, RHI_Texture* tex, const bool luminance_antiflicker);
+        void Pass_AMD_FidelityFX_FSR_1_0(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out, RHI_Texture* tex_out_scratch);
         void Pass_Lines(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
         void Pass_DebugMeshes(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
         void Pass_Outline(RHI_CommandList* cmd_list, RHI_Texture* tex_out);

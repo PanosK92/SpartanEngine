@@ -80,7 +80,6 @@ namespace Spartan
         uint32_t m_height                         = 0;
         uint32_t m_flags                          = 0;
         RHI_Format m_format                       = RHI_Format_R8G8B8A8_Unorm;
-        std::array<RHI_Image_Layout, 2> m_layouts;
 
         // API
         void* m_resource           = nullptr;
@@ -90,7 +89,8 @@ namespace Spartan
         uint32_t m_semaphore_index = std::numeric_limits<uint32_t>::max();
         RHI_Device* m_rhi_device   = nullptr;
 
-        // Sync objects
+        // Misc
+        std::array<RHI_Image_Layout, 3> m_layouts;
         std::array<std::shared_ptr<RHI_Semaphore>, 3> m_semaphore_image_acquired;
         uint32_t m_image_index          = std::numeric_limits<uint32_t>::max();
         uint32_t m_image_index_previous = m_image_index;

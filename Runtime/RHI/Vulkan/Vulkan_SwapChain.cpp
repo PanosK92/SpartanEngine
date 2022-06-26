@@ -116,7 +116,7 @@ namespace Spartan
         uint32_t* height,
         uint32_t buffer_count,
         RHI_Format rhi_format,
-        array<RHI_Image_Layout, 2> layouts,
+        array<RHI_Image_Layout, 3> layouts,
         uint32_t flags,
         void* window_handle,
         void*& void_ptr_surface,

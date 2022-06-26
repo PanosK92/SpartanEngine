@@ -436,24 +436,24 @@ namespace Spartan
 
         // AMD FidelityFX
         {
-            // Sharpening
+            // CAS - Contrast Adaptive Sharpening
             m_shaders[Renderer::Shader::AMD_FidelityFX_CAS_C] = make_shared<RHI_Shader>(m_context);
-            m_shaders[Renderer::Shader::AMD_FidelityFX_CAS_C]->Compile(RHI_Shader_Compute, dir_shaders + "amd_fidelityfx_cas.hlsl", async);
+            m_shaders[Renderer::Shader::AMD_FidelityFX_CAS_C]->Compile(RHI_Shader_Compute, dir_shaders + "amd_fidelity_fx/cas.hlsl", async);
 
-            // Mip generation
+            // SPD - Single Pass Downsampler
             m_shaders[Renderer::Shader::AMD_FidelityFX_SPD_C] = make_shared<RHI_Shader>(m_context);
-            m_shaders[Renderer::Shader::AMD_FidelityFX_SPD_C]->Compile(RHI_Shader_Compute, dir_shaders + "amd_fidelityfx_spd.hlsl", async);
+            m_shaders[Renderer::Shader::AMD_FidelityFX_SPD_C]->Compile(RHI_Shader_Compute, dir_shaders + "amd_fidelity_fx/spd.hlsl", async);
             m_shaders[Renderer::Shader::AMD_FidelityFX_SPD_LuminanceAntiflicker_C] = make_shared<RHI_Shader>(m_context);
             m_shaders[Renderer::Shader::AMD_FidelityFX_SPD_LuminanceAntiflicker_C]->AddDefine("LUMINANCE_ANTIFLICKER");
-            m_shaders[Renderer::Shader::AMD_FidelityFX_SPD_LuminanceAntiflicker_C]->Compile(RHI_Shader_Compute, dir_shaders + "amd_fidelityfx_spd.hlsl", async);
+            m_shaders[Renderer::Shader::AMD_FidelityFX_SPD_LuminanceAntiflicker_C]->Compile(RHI_Shader_Compute, dir_shaders + "amd_fidelity_fx/spd.hlsl", async);
 
-            // Upsampling
-            m_shaders[Renderer::Shader::AMD_FidelityFX_FSR_Upsample_C] = make_shared<RHI_Shader>(m_context);
-            m_shaders[Renderer::Shader::AMD_FidelityFX_FSR_Upsample_C]->AddDefine("UPSAMPLE");
-            m_shaders[Renderer::Shader::AMD_FidelityFX_FSR_Upsample_C]->Compile(RHI_Shader_Compute, dir_shaders + "amd_fidelityfx_fsr.hlsl", async);
-            m_shaders[Renderer::Shader::AMD_FidelityFX_FSR_Sharpen_C] = make_shared<RHI_Shader>(m_context);
-            m_shaders[Renderer::Shader::AMD_FidelityFX_FSR_Sharpen_C]->AddDefine("SHARPEN");
-            m_shaders[Renderer::Shader::AMD_FidelityFX_FSR_Sharpen_C]->Compile(RHI_Shader_Compute, dir_shaders + "amd_fidelityfx_fsr.hlsl", async);
+            // FSR 1.0
+            m_shaders[Renderer::Shader::AMD_FidelityFX_FSR_1_0_Upsample_C] = make_shared<RHI_Shader>(m_context);
+            m_shaders[Renderer::Shader::AMD_FidelityFX_FSR_1_0_Upsample_C]->AddDefine("UPSAMPLE");
+            m_shaders[Renderer::Shader::AMD_FidelityFX_FSR_1_0_Upsample_C]->Compile(RHI_Shader_Compute, dir_shaders + "amd_fidelity_fx/fsr_1_0.hlsl", async);
+            m_shaders[Renderer::Shader::AMD_FidelityFX_FSR_1_0_Sharpen_C] = make_shared<RHI_Shader>(m_context);
+            m_shaders[Renderer::Shader::AMD_FidelityFX_FSR_1_0_Sharpen_C]->AddDefine("SHARPEN");
+            m_shaders[Renderer::Shader::AMD_FidelityFX_FSR_1_0_Sharpen_C]->Compile(RHI_Shader_Compute, dir_shaders + "amd_fidelity_fx/fsr_1_0.hlsl", async);
         }
 
         // Debug
