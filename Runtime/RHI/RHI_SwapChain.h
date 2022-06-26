@@ -80,7 +80,7 @@ namespace Spartan
         uint32_t m_height                         = 0;
         uint32_t m_flags                          = 0;
         RHI_Format m_format                       = RHI_Format_R8G8B8A8_Unorm;
-        std::array<RHI_Image_Layout, 4> m_layouts = { RHI_Image_Layout::Undefined, RHI_Image_Layout::Undefined, RHI_Image_Layout::Undefined, RHI_Image_Layout::Undefined };
+        std::array<RHI_Image_Layout, 2> m_layouts;
 
         // API
         void* m_resource           = nullptr;
