@@ -145,7 +145,11 @@ namespace Spartan
         Utility::Hash::hash_combine(hash, primitive_topology);
         Utility::Hash::hash_combine(hash, render_target_color_texture_array_index);
         Utility::Hash::hash_combine(hash, render_target_depth_stencil_texture_array_index);
-        Utility::Hash::hash_combine(hash, render_target_swapchain ? render_target_swapchain->GetObjectId() : 0);
+
+        if (render_target_swapchain)
+        {
+            Utility::Hash::hash_combine(hash, static_cast<uint32_t>(render_target_swapchain->GetFormat()));
+        }
 
         if (!dynamic_scissor)
         {

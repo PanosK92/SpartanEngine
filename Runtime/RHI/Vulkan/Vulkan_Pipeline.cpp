@@ -326,7 +326,7 @@ namespace Spartan
                     // Swapchain buffer as a render target
                     if (m_state.render_target_swapchain)
                     {
-                        attachment_formats_color.push_back(m_rhi_device->GetContextRhi()->surface_format);
+                        attachment_formats_color.push_back(vulkan_format[m_state.render_target_swapchain->GetFormat()]);
                     }
                     else // Regular render target(s)
                     {

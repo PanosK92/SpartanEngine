@@ -184,12 +184,6 @@ namespace ImGui::RHI
         // Validate draw data
         SP_ASSERT(draw_data != nullptr);
 
-        // Avoid rendering when minimized, scale coordinates for retina displays (screen coordinates != framebuffer coordinates)
-        const int fb_width  = static_cast<int>(draw_data->DisplaySize.x * draw_data->FramebufferScale.x);
-        const int fb_height = static_cast<int>(draw_data->DisplaySize.y * draw_data->FramebufferScale.y);
-        if (fb_width <= 0 || fb_height <= 0 || draw_data->TotalVtxCount == 0)
-            return;
-
         // Get swap chain and cmd list
         bool is_child_window           = window_data != nullptr;
         RHI_SwapChain* swap_chain      = is_child_window ? window_data->swapchain : g_renderer->GetSwapChain();

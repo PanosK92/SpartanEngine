@@ -169,7 +169,7 @@ namespace Spartan
         VkCommandBufferBeginInfo begin_info = {};
         begin_info.sType                    = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
         begin_info.flags                    = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-        SP_ASSERT(vulkan_utility::error::check(vkBeginCommandBuffer(static_cast<VkCommandBuffer>(m_resource), &begin_info)) && "Failed to begin command buffer");
+        SP_ASSERT_MSG(vulkan_utility::error::check(vkBeginCommandBuffer(static_cast<VkCommandBuffer>(m_resource), &begin_info)), "Failed to begin command buffer");
 
         // Reset query pool - Has to be done after vkBeginCommandBuffer or a VK_DEVICE_LOST will occur
         vkCmdResetQueryPool(static_cast<VkCommandBuffer>(m_resource), static_cast<VkQueryPool>(m_query_pool), 0, m_max_timestamps);
@@ -274,7 +274,7 @@ namespace Spartan
     void RHI_CommandList::BeginRenderPass()
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
-        SP_ASSERT(!m_is_rendering && "The command list is already rendering");
+        SP_ASSERT_MSG(!m_is_rendering, "The command list is already rendering");
 
         if (!m_pso.IsGraphics())
             return;
@@ -858,7 +858,7 @@ namespace Spartan
         m_descriptor_layout_current->SetStructuredBuffer(slot, structured_buffer);
     }
 
-    uint32_t RHI_CommandList::Gpu_GetMemoryUsed(RHI_Device* rhi_device)
+    uint32_t RHI_CommandList::GetGpuMemoryUsed(RHI_Device* rhi_device)
     {
         if (!rhi_device || !rhi_device->GetContextRhi() || !vulkan_utility::functions::get_physical_device_memory_properties_2)
             return 0;
@@ -1018,7 +1018,7 @@ namespace Spartan
                 vkCmdBindDescriptorSets
                 (
                     static_cast<VkCommandBuffer>(m_resource),                                // commandBuffer
-                    m_pso.IsCompute() ?                                           // pipelineBindPoint
+                    m_pso.IsCompute() ?                                                      // pipelineBindPoint
                     VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_COMPUTE :                    
                     VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS,                    
                     static_cast<VkPipelineLayout>(m_pipeline->GetResource_PipelineLayout()), // layout

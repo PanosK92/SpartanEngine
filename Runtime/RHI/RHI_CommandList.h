@@ -51,7 +51,7 @@ namespace Spartan
         bool End();
         bool Submit();
         bool Reset();
-        // Waits for the command list to finish being processed. Returns false if no waiting took place.
+        // Waits for the command list to finish being processed.
         void Wait();
         // Causes the command list to ignore one submission call (useful when the command list refers to resources which have been destroyed).
         void Discard();
@@ -129,8 +129,8 @@ namespace Spartan
         void EndTimeblock();
 
         // GPU
-        static uint32_t Gpu_GetMemory(RHI_Device* rhi_device);
-        static uint32_t Gpu_GetMemoryUsed(RHI_Device* rhi_device);
+        static uint32_t GetGpuMemory(RHI_Device* rhi_device);
+        static uint32_t GetGpuMemoryUsed(RHI_Device* rhi_device);
 
         // State
         const RHI_CommandListState GetState() const { return m_state; }
@@ -150,16 +150,16 @@ namespace Spartan
         void Descriptors_GetLayoutFromPipelineState(RHI_PipelineState& pipeline_state);
         void Descriptors_GetDescriptorsFromPipelineState(RHI_PipelineState& pipeline_state, std::vector<RHI_Descriptor>& descriptors);
 
-        RHI_Pipeline* m_pipeline                          = nullptr;
-        Renderer* m_renderer                              = nullptr;
-        RHI_Device* m_rhi_device                          = nullptr;
-        Profiler* m_profiler                              = nullptr;
-        void* m_resource                                  = nullptr;
-        std::atomic<bool> m_discard                       = false;
-        bool m_is_rendering                               = false;
-        bool m_pipeline_dirty                             = false;
-        std::atomic<RHI_CommandListState> m_state         = RHI_CommandListState::Idle;
-        static const uint8_t m_resource_array_length_max  = 16;
+        RHI_Pipeline* m_pipeline                         = nullptr;
+        Renderer* m_renderer                             = nullptr;
+        RHI_Device* m_rhi_device                         = nullptr;
+        Profiler* m_profiler                             = nullptr;
+        void* m_resource                                 = nullptr;
+        std::atomic<bool> m_discard                      = false;
+        bool m_is_rendering                              = false;
+        bool m_pipeline_dirty                            = false;
+        std::atomic<RHI_CommandListState> m_state        = RHI_CommandListState::Idle;
+        static const uint8_t m_resource_array_length_max = 16;
         static bool m_memory_query_support;
         std::mutex m_mutex_reset;
 

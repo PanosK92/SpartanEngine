@@ -860,7 +860,7 @@ namespace Spartan
         return static_cast<float>(duration_ms);
     }
 
-    uint32_t RHI_CommandList::Gpu_GetMemoryUsed(RHI_Device* rhi_device)
+    uint32_t RHI_CommandList::GetGpuMemoryUsed(RHI_Device* rhi_device)
     {
         if (!m_memory_query_support)
             return 0;

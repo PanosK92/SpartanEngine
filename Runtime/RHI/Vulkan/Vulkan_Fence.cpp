@@ -72,6 +72,6 @@ namespace Spartan
 
     bool RHI_Fence::Reset()
     {
-        return IsSignaled() ? vulkan_utility::error::check(vkResetFences(m_rhi_device->GetContextRhi()->device, 1, reinterpret_cast<VkFence*>(&m_resource))) : true;
+        return vulkan_utility::error::check(vkResetFences(m_rhi_device->GetContextRhi()->device, 1, reinterpret_cast<VkFence*>(&m_resource)));
     }
 }

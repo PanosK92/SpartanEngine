@@ -40,7 +40,8 @@ namespace Spartan
     {
         SP_ASSERT_MSG(m_state == RHI_CommandListState::Submitted, "The command list hasn't been submitted, can't wait for it.");
 
-        bool executing = !m_proccessed_fence->IsSignaled() && !m_discard;
+        bool is_signaled = m_proccessed_fence->IsSignaled();
+        bool executing   = !is_signaled && !m_discard;
         if (executing)
         {
             // Uncomment this warning log to observe the frequency of command list fence waits
@@ -52,7 +53,11 @@ namespace Spartan
             }
         }
 
-        m_proccessed_fence->Reset();
+        if (is_signaled)
+        {
+            m_proccessed_fence->Reset();
+        }
+
         m_state = RHI_CommandListState::Idle;
 
     }
@@ -62,7 +67,7 @@ namespace Spartan
         m_discard = true;
     }
     
-    uint32_t RHI_CommandList::Gpu_GetMemory(RHI_Device* rhi_device)
+    uint32_t RHI_CommandList::GetGpuMemory(RHI_Device* rhi_device)
     {
         if (const PhysicalDevice* physical_device = rhi_device->GetPrimaryPhysicalDevice())
         {
