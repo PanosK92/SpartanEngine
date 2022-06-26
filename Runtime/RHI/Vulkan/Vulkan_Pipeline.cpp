@@ -374,6 +374,8 @@ namespace Spartan
                 vulkan_utility::error::check(vkCreateGraphicsPipelines(m_rhi_device->GetContextRhi()->device, nullptr, 1, &pipeline_info, nullptr, pipeline));
 
                 SP_ASSERT_MSG(*pipeline != nullptr, "Failed to create graphics pipeline");
+
+                // Disable naming until I can come up with a more meaningful name
                 //vulkan_utility::debug::set_name(*pipeline, m_state.pass_name);
             }
             else if (pipeline_state.IsCompute())

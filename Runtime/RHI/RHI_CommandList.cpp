@@ -82,7 +82,7 @@ namespace Spartan
         return m_state == RHI_CommandListState::Submitted && !m_proccessed_fence->IsSignaled();
     }
 
-    void RHI_CommandList::Descriptors_GetDescriptorsFromPipelineState(RHI_PipelineState& pipeline_state, vector<RHI_Descriptor>& descriptors)
+    void RHI_CommandList::GetDescriptorsFromPipelineState(RHI_PipelineState& pipeline_state, vector<RHI_Descriptor>& descriptors)
     {
         if (!pipeline_state.IsValid())
         {
