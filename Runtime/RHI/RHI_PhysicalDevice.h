@@ -33,6 +33,7 @@ namespace Spartan
         PhysicalDevice(const uint32_t api_version, const uint32_t driver_version, const uint32_t vendor_id, const RHI_PhysicalDevice_Type type, const char* name, const uint64_t memory, void* data)
         {
             this->vendor_id         = vendor_id;
+            this->vendor_name       = get_vendor_name();
             this->type              = type;
             this->name              = name;
             this->memory            = static_cast<uint32_t>(memory / 1024 / 1024); // mb
@@ -56,13 +57,42 @@ namespace Spartan
         bool IsArm()        const { return vendor_id == 0x13B5 || name.find("Arm,") != std::string::npos; }
         bool IsQualcomm()   const { return vendor_id == 0x5143 || name.find("Qualcomm") != std::string::npos; }
 
-        const std::string& GetName()            const { return name; }
-        const std::string& GetDriverVersion()   const { return driver_version; }
-        const std::string& GetApiVersion()      const { return api_version; }
-        uint32_t GetMemory()                    const { return memory; }
-        void* GetData()                         const { return data; }
+        const std::string& GetName()          const { return name; }
+        const std::string& GetDriverVersion() const { return driver_version; }
+        const std::string& GetApiVersion()    const { return api_version; }
+        const std::string& GetVendorName()    const { return vendor_name; }
+        uint32_t GetMemory()                  const { return memory; }
+        void* GetData()                       const { return data; }
 
     private:
+        std::string get_vendor_name()
+        {
+            if (IsNvidia())
+            {
+                return "Nvidia";
+            }
+
+            if (IsAmd())
+            {
+                return "AMD";
+            }
+
+            if (IsIntel())
+            {
+                return "Intel";
+            }
+
+            if (IsArm())
+            {
+                return "Arm";
+            }
+
+            if (IsQualcomm())
+            {
+                return "Qualcomm";
+            }
+        }
+
         std::string decode_driver_version(const uint32_t version)
         {
             char buffer[256];
@@ -108,6 +138,7 @@ namespace Spartan
         std::string api_version         = "Unknown"; // version of api supported by the device
         std::string driver_version      = "Unknown"; // vendor-specified version of the driver.
         uint32_t vendor_id              = 0; // unique identifier of the vendor
+        std::string vendor_name         = "Unknown";
         RHI_PhysicalDevice_Type type    = RHI_PhysicalDevice_Type::Unknown;
         std::string name                = "Unknown";
         uint32_t memory                 = 0;

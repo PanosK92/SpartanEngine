@@ -329,50 +329,61 @@ namespace Spartan
         const uint32_t texture_count  = m_resource_manager->GetResourceCount(ResourceType::Texture) + m_resource_manager->GetResourceCount(ResourceType::Texture2d) + m_resource_manager->GetResourceCount(ResourceType::TextureCube);
         const uint32_t material_count = m_resource_manager->GetResourceCount(ResourceType::Material);
 
+        // Get the graphics driver vendor
+        string api_vendor_name = "AMD";
+        if (m_renderer->GetRhiDevice()->GetPrimaryPhysicalDevice()->IsNvidia())
+        {
+
+        }
+
         static const char* text =
-            // Times
+            // Overview
             "FPS:\t\t%.2f\n"
-            "Frame:\t%d\n"
             "Time:\t%.2f ms\n"
-            "\n"
+            "Frame:\t%d\n"
             // Detailed times
+            "\n"
             "\t\tavg\t\tmin\t\tmax\t\tlast\n"
             "Total:\t%06.2f\t%06.2f\t%06.2f\t%06.2f ms\n"
             "CPU:\t%06.2f\t%06.2f\t%06.2f\t%06.2f ms\n"
             "GPU:\t%06.2f\t%06.2f\t%06.2f\t%06.2f ms\n"
-            "\n"
             // GPU
-            "GPU:\t%s\n"
-            "VRAM:\t%d/%d MB\n"
-            "API:\t\t%s\n"
-            "Driver:\t%s\n"
             "\n"
+            "GPU\n"
+            "Name:\t\t%s\n"
+            "Memory:\t%d/%d MB\n"
+            "API:\t\t\t%s\t%s\n"
+            "Driver:\t\t%s\t%s\n"
             // Resolution
-            "Output resolution:\t\t%dx%d\n"
-            "Render resolution:\t%dx%d\n"
-            "Viewport resolution:\t%dx%d\n"
             "\n"
-            // Renderer
-            "Meshes rendered:\t%d\n"
-            "Textures:\t\t%d\n"
-            "Materials:\t\t%d\n"
+            "Resolution\n"
+            "Output:\t\t%dx%d\n"
+            "Render:\t\t%dx%d\n"
+            "Viewport:\t%dx%d\n"
+            // API Calls
             "\n"
-            // RHI
+            "API calls\n"
             "Draw:\t\t\t\t\t%d\n"
             "Dispatch:\t\t\t\t%d\n"
-            "Index buffer:\t\t\t\t%d\n"
-            "Vertex buffer:\t\t\t%d\n"
-            "Constant buffer:\t\t\t%d\n"
-            "Sampler:\t\t\t\t\t%d\n"
-            "Texture sampled:\t\t\t%d\n"
-            "Texture storage:\t\t\t%d\n"
-            "Shader vertex:\t\t\t%d\n"
-            "Shader pixel:\t\t\t\t%d\n"
-            "Shader compute:\t\t\t%d\n"
-            "Render target:\t\t\t%d\n"
-            "Pipeline:\t\t\t\t\t%d\n"
-            "Descriptor set:\t\t\t%d\n"
-            "Pipeline barrier:\t\t\t%d\n"
+            "Index buffer bindings:\t\t%d\n"
+            "Vertex buffer bindings:\t%d\n"
+            "Constant buffer bindings:\t%d\n"
+            "Sampler bindings:\t\t\t%d\n"
+            "SRV bindings:\t\t\t\t%d\n"
+            "UAV bindings:\t\t\t%d\n"
+            "Vertex shader bindings:\t%d\n"
+            "Pixel shader bindings:\t\t%d\n"
+            "Compute shader bindings:\t%d\n"
+            "Render target bindings:\t%d\n"
+            "Descriptor set bindings:\t%d\n"
+            "Pipeline bindings:\t\t\t%d\n"
+            "Pipeline barriers:\t\t\t%d\n"
+            // Resources
+            "\n"
+            "Resources\n"
+            "Meshes rendered:\t\t\t%d\n"
+            "Textures:\t\t\t\t%d\n"
+            "Materials:\t\t\t\t%d\n"
             "Descriptor set capacity:\t%d/%d";
 
         static char buffer[2048];
@@ -380,30 +391,28 @@ namespace Spartan
         (
             buffer, text,
 
-            // Performance
+            // Overview
             m_fps,
-            m_renderer->GetFrameNum(),
             m_time_frame_last,
+            m_renderer->GetFrameNum(),
+
+            // Detailed times
             m_time_frame_avg,   m_time_frame_min,   m_time_frame_max,   m_time_frame_last,
             m_time_cpu_avg,     m_time_cpu_min,     m_time_cpu_max,     m_time_cpu_last,
             m_time_gpu_avg,     m_time_gpu_min,     m_time_gpu_max,     m_time_gpu_last,
 
+            // GPU
             m_gpu_name.c_str(),
             m_gpu_memory_used, m_gpu_memory_available,
-            m_gpu_api.c_str(),
-            m_gpu_driver.c_str(),
+            m_renderer->GetRhiDevice()->GetContextRhi()->api_type_str.c_str(), m_gpu_api.c_str(),
+            m_renderer->GetRhiDevice()->GetPrimaryPhysicalDevice()->GetVendorName().c_str(), m_gpu_driver.c_str(),
 
             // Resolution
             static_cast<int>(m_renderer->GetResolutionOutput().x), static_cast<int>(m_renderer->GetResolutionOutput().y),
             static_cast<int>(m_renderer->GetResolutionRender().x), static_cast<int>(m_renderer->GetResolutionRender().y),
             static_cast<int>(m_renderer->GetViewport().width), static_cast<int>(m_renderer->GetViewport().height),
 
-            // Renderer
-            m_renderer_meshes_rendered,
-            texture_count,
-            material_count,
-
-            // RHI
+            // API Calls
             m_rhi_draw,
             m_rhi_dispatch,
             m_rhi_bindings_buffer_index,
@@ -416,9 +425,14 @@ namespace Spartan
             m_rhi_bindings_shader_pixel,
             m_rhi_bindings_shader_compute,
             m_rhi_bindings_render_target,
-            m_rhi_bindings_pipeline,
             m_rhi_bindings_descriptor_set,
+            m_rhi_bindings_pipeline,
             m_rhi_pipeline_barriers,
+
+            // Resources
+            m_renderer_meshes_rendered,
+            texture_count,
+            material_count,
             m_descriptor_set_count,
             m_descriptor_set_capacity
         );
