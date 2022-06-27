@@ -83,6 +83,8 @@ static const DXGI_FORMAT d3d11_format[] =
     // Compressed
     DXGI_FORMAT_BC7_UNORM,
     DXGI_FORMAT_UNKNOWN,
+    // Surface
+    DXGI_FORMAT_B8G8R8A8_UNORM,
 
     DXGI_FORMAT_UNKNOWN
 };
@@ -212,6 +214,8 @@ static const DXGI_FORMAT d3d12_format[] =
     // Compressed
     DXGI_FORMAT_BC7_UNORM,
     DXGI_FORMAT_UNKNOWN,
+    // Surface
+    DXGI_FORMAT_B8G8R8A8_UNORM,
 
     DXGI_FORMAT_UNKNOWN
 };
@@ -341,6 +345,8 @@ static const VkFormat vulkan_format[] =
     // Compressed
     VK_FORMAT_BC7_UNORM_BLOCK,
     VK_FORMAT_ASTC_4x4_UNORM_BLOCK,
+    //Surface
+    VK_FORMAT_B8G8R8A8_UNORM,
 
     VK_FORMAT_MAX_ENUM
 };

@@ -208,6 +208,8 @@ namespace Spartan
         // Compressed
         RHI_Format_BC7,
         RHI_Format_ASTC,
+        // Surface
+        RHI_Format_B8R8G8A8_Unorm,
 
         RHI_Format_Undefined
     };

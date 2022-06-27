@@ -73,13 +73,13 @@ namespace Spartan
         void AcquireNextImage();
 
         // Properties
-        bool m_windowed                           = false;
-        bool m_present_enabled                    = true;
-        uint32_t m_buffer_count                   = 0;
-        uint32_t m_width                          = 0;
-        uint32_t m_height                         = 0;
-        uint32_t m_flags                          = 0;
-        RHI_Format m_format                       = RHI_Format_R8G8B8A8_Unorm;
+        bool m_windowed         = false;
+        bool m_present_enabled  = true;
+        uint32_t m_buffer_count = 0;
+        uint32_t m_width        = 0;
+        uint32_t m_height       = 0;
+        uint32_t m_flags        = 0;
+        RHI_Format m_format     = RHI_Format_R8G8B8A8_Unorm;
 
         // API
         void* m_resource           = nullptr;
