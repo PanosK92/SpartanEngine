@@ -185,6 +185,9 @@ namespace Spartan
             RENDER_TARGET(RenderTarget::Ssao)    = make_unique<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R16G16B16A16_Snorm, RHI_Texture_Uav | RHI_Texture_Srv, "rt_ssao");
             RENDER_TARGET(RenderTarget::Ssao_Gi) = make_unique<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R16G16B16A16_Snorm, RHI_Texture_Uav | RHI_Texture_Srv, "rt_ssao_gi");
 
+            // TAA History
+            RENDER_TARGET(RenderTarget::Taa_History) = make_unique<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R11G11B10_Float, RHI_Texture_Uav | RHI_Texture_Srv, "rt_taa_history");
+
             // Dof
             RENDER_TARGET(RenderTarget::Dof_Half)   = make_unique<RHI_Texture2D>(m_context, width_render / 2, height_render / 2, 1, RHI_Format_R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv, "rt_dof_half");
             RENDER_TARGET(RenderTarget::Dof_Half_2) = make_unique<RHI_Texture2D>(m_context, width_render / 2, height_render / 2, 1, RHI_Format_R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv, "rt_dof_half_2");
@@ -216,20 +219,6 @@ namespace Spartan
             uint32_t width        = is_output_larger ? width_output : width_render;
             uint32_t height       = is_output_larger ? height_output : height_render;
             RENDER_TARGET(RenderTarget::Blur) = make_unique<RHI_Texture2D>(m_context, width, height, 1, RHI_Format_R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv, "rt_blur");
-
-            // TAA History
-            {
-                RHI_Texture* rt_taa_history = RENDER_TARGET(RenderTarget::Taa_History).get();
-                bool upsampling_enabled     = GetOption(Renderer::Option::Upsample_TAA);
-                width                       = upsampling_enabled ? width_output  : width_render;
-                height                      = upsampling_enabled ? height_output : height_render;
-
-                if (!rt_taa_history || (rt_taa_history->GetWidth() != width || rt_taa_history->GetHeight() != height))
-                {
-                    RENDER_TARGET(RenderTarget::Taa_History) = make_unique<RHI_Texture2D>(m_context, width, height, 1, RHI_Format_R11G11B10_Float, RHI_Texture_Uav | RHI_Texture_Srv, "rt_taa_history");
-                    LOG_INFO("Taa history resolution has been set to %dx%d", width, height);
-                }
-            }
         }
     }
 
