@@ -22,6 +22,7 @@ namespace Spartan
 
         //= ISubsystem =========================
         void OnTick(double delta_time) override;
+        void OnInitialize() override;
         //======================================
 
         void Show();

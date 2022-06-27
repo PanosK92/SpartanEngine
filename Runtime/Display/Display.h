@@ -30,21 +30,15 @@ namespace Spartan
     class SPARTAN_CLASS Display
     {
     public:
-        Display() = default;
-
         // Display modes
         static void RegisterDisplayMode(const DisplayMode& display_mode, const bool update_fps_limit_to_highest_hz, Context* context);
-        static void SetActiveDisplayMode(const DisplayMode& display_mode)   { m_display_mode_active = display_mode; }
-        static const DisplayMode& GetActiveDisplayMode()                    { return m_display_mode_active; }
-        static const std::vector<DisplayMode>& GetDisplayModes()            { return m_display_modes; }
+        static void SetActiveDisplayMode(const DisplayMode& display_mode) { m_display_mode_active = display_mode; }
+        static const DisplayMode& GetActiveDisplayMode()                  { return m_display_mode_active; }
+        static const std::vector<DisplayMode>& GetDisplayModes()          { return m_display_modes; }
 
         // Display dimensions
         static uint32_t GetWidth();
         static uint32_t GetHeight();
-
-        // Virtual display dimensions (multiple displays)
-        static uint32_t GetWidthVirtual();
-        static uint32_t GetHeightVirtual();
 
     private:
         static std::vector<DisplayMode> m_display_modes;

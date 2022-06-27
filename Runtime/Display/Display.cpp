@@ -25,9 +25,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "SDL.h"
 //==================
 
+//= NAMESPACES =====
+using namespace std;
+//==================
+
 namespace Spartan
 {
-    std::vector<DisplayMode> Display::m_display_modes;
+    vector<DisplayMode> Display::m_display_modes;
     DisplayMode Display::m_display_mode_active;
 
     void Display::RegisterDisplayMode(const DisplayMode& display_mode, const bool update_fps_limit_to_highest_hz, Context* context)
@@ -56,11 +60,11 @@ namespace Spartan
                 // But not lower hz
                 if (display_mode.hz >= m_display_mode_active.hz)
                 { 
-                    m_display_mode_active.width         = display_mode.width;
-                    m_display_mode_active.height        = display_mode.height;
-                    m_display_mode_active.hz            = display_mode.hz;
-                    m_display_mode_active.numerator     = display_mode.numerator;
-                    m_display_mode_active.denominator   = display_mode.denominator;
+                    m_display_mode_active.width       = display_mode.width;
+                    m_display_mode_active.height      = display_mode.height;
+                    m_display_mode_active.hz          = display_mode.hz;
+                    m_display_mode_active.numerator   = display_mode.numerator;
+                    m_display_mode_active.denominator = display_mode.denominator;
                 }
             }
         }
@@ -79,17 +83,6 @@ namespace Spartan
 
     uint32_t Display::GetWidth()
     {
-        // Initialise video subsystem (if needed)
-        if (SDL_WasInit(SDL_INIT_VIDEO) != 1)
-        {
-            if (SDL_InitSubSystem(SDL_INIT_VIDEO) != 0)
-            {
-                LOG_ERROR("Failed to initialise SDL video subsystem: %s.", SDL_GetError());
-                return 0;
-            }
-        }
-        
-        // FIXME: SDL aparently only shows virtual metrics.
         SDL_DisplayMode dm;
         SP_ASSERT(SDL_GetCurrentDisplayMode(0, &dm) == 0);
 
@@ -98,52 +91,6 @@ namespace Spartan
 
     uint32_t Display::GetHeight()
     {
-        // Initialise video subsystem (if needed)
-        if (SDL_WasInit(SDL_INIT_VIDEO) != 1)
-        {
-            if (SDL_InitSubSystem(SDL_INIT_VIDEO) != 0)
-            {
-                LOG_ERROR("Failed to initialise SDL video subsystem: %s.", SDL_GetError());
-                return 0;
-            }
-        }
-        
-        // FIXME: SDL aparently only shows virtual metrics.
-        SDL_DisplayMode dm;
-        SP_ASSERT(SDL_GetCurrentDisplayMode(0, &dm) == 0);
-
-        return dm.h;
-    }
-
-    uint32_t Display::GetWidthVirtual()
-    {
-        // Initialise video subsystem (if needed)
-        if (SDL_WasInit(SDL_INIT_VIDEO) != 1)
-        {
-            if (SDL_InitSubSystem(SDL_INIT_VIDEO) != 0)
-            {
-                LOG_ERROR("Failed to initialise SDL video subsystem: %s.", SDL_GetError());
-                return 0;
-            }
-        }
-        SDL_DisplayMode dm;
-        SP_ASSERT(SDL_GetCurrentDisplayMode(0, &dm) == 0);
-
-        return dm.w;
-    }
-
-    uint32_t Display::GetHeightVirtual()
-    {
-        // Initialise video subsystem (if needed)
-        if (SDL_WasInit(SDL_INIT_VIDEO) != 1)
-        {
-            if (SDL_InitSubSystem(SDL_INIT_VIDEO) != 0)
-            {
-                LOG_ERROR("Failed to initialise SDL video subsystem: %s.", SDL_GetError());
-                return 0;
-            }
-        }
-
         SDL_DisplayMode dm;
         SP_ASSERT(SDL_GetCurrentDisplayMode(0, &dm) == 0);
 
