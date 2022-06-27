@@ -79,34 +79,73 @@ namespace Spartan
 
     uint32_t Display::GetWidth()
     {
+        // Initialise video subsystem (if needed)
+        if (SDL_WasInit(SDL_INIT_VIDEO) != 1)
+        {
+            if (SDL_InitSubSystem(SDL_INIT_VIDEO) != 0)
+            {
+                LOG_ERROR("Failed to initialise SDL video subsystem: %s.", SDL_GetError());
+                return 0;
+            }
+        }
+        
         // FIXME: SDL aparently only shows virtual metrics.
         SDL_DisplayMode dm;
-        SP_ASSERT(SDL_GetDesktopDisplayMode(0, &dm) == 0);
+        SP_ASSERT(SDL_GetCurrentDisplayMode(0, &dm) == 0);
 
         return dm.w;
     }
 
     uint32_t Display::GetHeight()
     {
+        // Initialise video subsystem (if needed)
+        if (SDL_WasInit(SDL_INIT_VIDEO) != 1)
+        {
+            if (SDL_InitSubSystem(SDL_INIT_VIDEO) != 0)
+            {
+                LOG_ERROR("Failed to initialise SDL video subsystem: %s.", SDL_GetError());
+                return 0;
+            }
+        }
+        
         // FIXME: SDL aparently only shows virtual metrics.
         SDL_DisplayMode dm;
-        SP_ASSERT(SDL_GetDesktopDisplayMode(0, &dm) == 0);
+        SP_ASSERT(SDL_GetCurrentDisplayMode(0, &dm) == 0);
 
         return dm.h;
     }
 
     uint32_t Display::GetWidthVirtual()
     {
+        // Initialise video subsystem (if needed)
+        if (SDL_WasInit(SDL_INIT_VIDEO) != 1)
+        {
+            if (SDL_InitSubSystem(SDL_INIT_VIDEO) != 0)
+            {
+                LOG_ERROR("Failed to initialise SDL video subsystem: %s.", SDL_GetError());
+                return 0;
+            }
+        }
         SDL_DisplayMode dm;
-        SP_ASSERT(SDL_GetDesktopDisplayMode(0, &dm) == 0);
+        SP_ASSERT(SDL_GetCurrentDisplayMode(0, &dm) == 0);
 
         return dm.w;
     }
 
     uint32_t Display::GetHeightVirtual()
     {
+        // Initialise video subsystem (if needed)
+        if (SDL_WasInit(SDL_INIT_VIDEO) != 1)
+        {
+            if (SDL_InitSubSystem(SDL_INIT_VIDEO) != 0)
+            {
+                LOG_ERROR("Failed to initialise SDL video subsystem: %s.", SDL_GetError());
+                return 0;
+            }
+        }
+
         SDL_DisplayMode dm;
-        SP_ASSERT(SDL_GetDesktopDisplayMode(0, &dm) == 0);
+        SP_ASSERT(SDL_GetCurrentDisplayMode(0, &dm) == 0);
 
         return dm.h;
     }
