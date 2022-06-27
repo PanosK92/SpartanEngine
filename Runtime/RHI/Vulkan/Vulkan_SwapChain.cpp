@@ -93,13 +93,18 @@ namespace Spartan
 
     }
 
-    static bool is_format_supported(const VkSurfaceKHR surface, const VkFormat format, VkColorSpaceKHR& color_space)
+    static bool is_format_supported(RHI_Device* rhi_device, const VkSurfaceKHR surface, RHI_Format* format, VkColorSpaceKHR& color_space)
     {
-        vector<VkSurfaceFormatKHR> supported_formats = get_supported_surface_formats(surface);
+        // Nvidia supports RHI_Format_B8R8G8A8_Unorm instead of RHI_Format_R8G8B8A8_Unorm.
+        if ((*format) == RHI_Format_R8G8B8A8_Unorm && rhi_device->GetPrimaryPhysicalDevice()->IsNvidia())
+        {
+            (*format) = RHI_Format_B8R8G8A8_Unorm;
+        }
 
+        vector<VkSurfaceFormatKHR> supported_formats = get_supported_surface_formats(surface);
         for (const VkSurfaceFormatKHR& supported_format : supported_formats)
         {
-            if (supported_format.format == format)
+            if (supported_format.format == vulkan_format[(*format)])
             {
                 color_space = supported_format.colorSpace;
                 return true;
@@ -115,7 +120,7 @@ namespace Spartan
         uint32_t* width,
         uint32_t* height,
         uint32_t buffer_count,
-        RHI_Format rhi_format,
+        RHI_Format* rhi_format,
         array<RHI_Image_Layout, 3> layouts,
         uint32_t flags,
         void* window_handle,
@@ -171,9 +176,8 @@ namespace Spartan
             VkExtent2D extent = { *width, *height };
 
             // Ensure that the surface supports the requested format, and if so, get the color space.
-            VkFormat format             = vulkan_format[rhi_format];
             VkColorSpaceKHR color_space = VK_COLOR_SPACE_MAX_ENUM_KHR;
-            SP_ASSERT_MSG(is_format_supported(surface, format, color_space), "The surface doesn't support the requested format");
+            SP_ASSERT_MSG(is_format_supported(rhi_device, surface, rhi_format, color_space), "The surface doesn't support the requested format");
 
             // Swap chain
             VkSwapchainKHR swap_chain;
@@ -182,7 +186,7 @@ namespace Spartan
                 create_info.sType                    = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
                 create_info.surface                  = surface;
                 create_info.minImageCount            = buffer_count;
-                create_info.imageFormat              = format;
+                create_info.imageFormat              = vulkan_format[*rhi_format];
                 create_info.imageColorSpace          = color_space;
                 create_info.imageExtent              = extent;
                 create_info.imageArrayLayers         = 1;
@@ -257,7 +261,7 @@ namespace Spartan
                             static_cast<void*>(images[i]),
                             backbuffer_texture_views[i],
                             VK_IMAGE_VIEW_TYPE_2D,
-                            format,
+                            vulkan_format[*rhi_format],
                             VK_IMAGE_ASPECT_COLOR_BIT,
                             0, 1, 0, 1
                         ), "Failed to create image view");
@@ -346,7 +350,7 @@ namespace Spartan
             &m_width,
             &m_height,
             m_buffer_count,
-            m_format,
+            &m_format,
             m_layouts,
             m_flags,
             m_window_handle,
@@ -420,7 +424,7 @@ namespace Spartan
             &m_width,
             &m_height,
             m_buffer_count,
-            m_format,
+            &m_format,
             m_layouts,
             m_flags,
             m_window_handle,

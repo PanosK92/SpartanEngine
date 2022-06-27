@@ -72,8 +72,8 @@ namespace Spartan
         // Update FPS limit
         if (update_fps_limit_to_highest_hz)
         {
-            double hz       = m_display_modes.front().hz;
-            Timer* timer    = context->GetSubsystem<Timer>();
+            double hz    = m_display_modes.front().hz;
+            Timer* timer = context->GetSubsystem<Timer>();
             if (hz > timer->GetFpsLimit())
             {
                 timer->SetFpsLimit(hz);
