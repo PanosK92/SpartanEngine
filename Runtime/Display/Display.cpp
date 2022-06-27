@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =======
 #include "Spartan.h"
 #include "Display.h"
-#include <windows.h>
+#include "SDL.h"
 //==================
 
 namespace Spartan
@@ -79,21 +79,35 @@ namespace Spartan
 
     uint32_t Display::GetWidth()
     {
-        return static_cast<uint32_t>(GetSystemMetrics(SM_CXSCREEN));
+        // FIXME: SDL aparently only shows virtual metrics.
+        SDL_DisplayMode dm;
+        SP_ASSERT(SDL_GetDesktopDisplayMode(0, &dm) == 0);
+
+        return dm.w;
     }
 
     uint32_t Display::GetHeight()
     {
-        return static_cast<uint32_t>(GetSystemMetrics(SM_CYSCREEN));
+        // FIXME: SDL aparently only shows virtual metrics.
+        SDL_DisplayMode dm;
+        SP_ASSERT(SDL_GetDesktopDisplayMode(0, &dm) == 0);
+
+        return dm.h;
     }
 
     uint32_t Display::GetWidthVirtual()
     {
-        return static_cast<uint32_t>(GetSystemMetrics(SM_CXVIRTUALSCREEN));
+        SDL_DisplayMode dm;
+        SP_ASSERT(SDL_GetDesktopDisplayMode(0, &dm) == 0);
+
+        return dm.w;
     }
 
     uint32_t Display::GetHeightVirtual()
     {
-        return static_cast<uint32_t>(GetSystemMetrics(SM_CYVIRTUALSCREEN));
+        SDL_DisplayMode dm;
+        SP_ASSERT(SDL_GetDesktopDisplayMode(0, &dm) == 0);
+
+        return dm.h;
     }
 }
