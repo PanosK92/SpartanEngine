@@ -52,10 +52,10 @@ namespace Spartan
 
         // Subsystem: Add.
         // Addition order matters as it's also the tick order.
+        m_context->AddSubsystem<Window>();
         m_context->AddSubsystem<Settings>();
         m_context->AddSubsystem<Timer>();
         m_context->AddSubsystem<Threading>();
-        m_context->AddSubsystem<Window>();
         m_context->AddSubsystem<Input>(TickType::Smoothed);
         m_context->AddSubsystem<ResourceCache>();
         m_context->AddSubsystem<Audio>();

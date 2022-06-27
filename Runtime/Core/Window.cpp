@@ -78,10 +78,6 @@ namespace Spartan
             LOG_ERROR("Could not create window: %s.", SDL_GetError());
             return;
         }
-
-        // Register library
-        string version = to_string(SDL_MAJOR_VERSION) + "." + to_string(SDL_MINOR_VERSION) + "." + to_string(SDL_PATCHLEVEL);
-        m_context->GetSubsystem<Settings>()->RegisterThirdPartyLib("SDL", version, "https://github.com/libsdl-org/SDL/releases");
     }
 
     Window::~Window()
@@ -173,6 +169,13 @@ namespace Spartan
                 ToggleFullScreen();
             }
         }
+    }
+
+    void Window::OnInitialize()
+    {
+        // Register library
+        string version = to_string(SDL_MAJOR_VERSION) + "." + to_string(SDL_MINOR_VERSION) + "." + to_string(SDL_PATCHLEVEL);
+        m_context->GetSubsystem<Settings>()->RegisterThirdPartyLib("SDL", version, "https://github.com/libsdl-org/SDL/releases");
     }
 
     void Window::Show()
