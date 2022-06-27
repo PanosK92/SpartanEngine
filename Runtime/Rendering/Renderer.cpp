@@ -345,11 +345,10 @@ namespace Spartan
 
             // These must match what Common_Buffer.hlsl is reading
             m_cb_frame_cpu.set_bit(GetOption(Renderer::Option::ScreenSpaceReflections), 1 << 0);
-            m_cb_frame_cpu.set_bit(GetOption(Renderer::Option::Upsample_TAA),           1 << 1);
-            m_cb_frame_cpu.set_bit(GetOption(Renderer::Option::Ssao),                   1 << 2);
-            m_cb_frame_cpu.set_bit(GetOption(Renderer::Option::VolumetricFog),          1 << 3);
-            m_cb_frame_cpu.set_bit(GetOption(Renderer::Option::ScreenSpaceShadows),     1 << 4);
-            m_cb_frame_cpu.set_bit(GetOption(Renderer::Option::Ssao_Gi),                1 << 5);
+            m_cb_frame_cpu.set_bit(GetOption(Renderer::Option::Ssao),                   1 << 1);
+            m_cb_frame_cpu.set_bit(GetOption(Renderer::Option::VolumetricFog),          1 << 2);
+            m_cb_frame_cpu.set_bit(GetOption(Renderer::Option::ScreenSpaceShadows),     1 << 3);
+            m_cb_frame_cpu.set_bit(GetOption(Renderer::Option::Ssao_Gi),                1 << 4);
         }
 
         Lines_PreMain();
@@ -721,7 +720,7 @@ namespace Spartan
         if (!toggled)
             return;
 
-        if (option == Renderer::Option::Upsample_TAA || option == Renderer::Option::Upsample_AMD_FidelityFX_FSR_1_0)
+        if (option == Renderer::Option::Upsample_AMD_FidelityFX_FSR_1_0)
         {
             CreateRenderTextures(false, false, false, true);
         }

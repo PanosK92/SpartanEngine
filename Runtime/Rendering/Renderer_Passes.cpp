@@ -144,7 +144,7 @@ namespace Spartan
 
                 // Generate frame mips so that the reflections can simulate roughness
                 const bool luminance_antiflicker = true;
-                Pass_AMD_FidelityFX_SPD(cmd_list, rt2, luminance_antiflicker);
+                Pass_Amd_FidelityFx_Spd(cmd_list, rt2, luminance_antiflicker);
 
                 // Blur the smaller mips to reduce blockiness/flickering
                 for (uint32_t i = 1; i < rt2->GetMipCount(); i++)
@@ -821,7 +821,7 @@ namespace Spartan
 
         // Generate frame mips so that we can simulate roughness
         const bool luminance_antiflicker = false;
-        Pass_AMD_FidelityFX_SPD(cmd_list, tex_ssr, luminance_antiflicker);
+        Pass_Amd_FidelityFx_Spd(cmd_list, tex_ssr, luminance_antiflicker);
 
         // Blur the smaller mips to reduce blockiness/flickering
         for (uint32_t i = 1; i < tex_ssr->GetMipCount(); i++)
@@ -1131,60 +1131,49 @@ namespace Spartan
         // OUT: Frame_Output, which is and LDR output resolution render target (with a second texture so passes can alternate between them)
 
         // Acquire render targets
-        shared_ptr<RHI_Texture>& rt_frame_render_1 = RENDER_TARGET(RenderTarget::Frame_Render);   // render res
-        shared_ptr<RHI_Texture>& rt_frame_render_2 = RENDER_TARGET(RenderTarget::Frame_Render_2); // render res
-        shared_ptr<RHI_Texture>& rt_frame_output_1 = RENDER_TARGET(RenderTarget::Frame_Output);   // output res
-        shared_ptr<RHI_Texture>& rt_frame_output_2 = RENDER_TARGET(RenderTarget::Frame_Output_2); // output res
+        shared_ptr<RHI_Texture>& rt_frame_render         = RENDER_TARGET(RenderTarget::Frame_Render);   // render res
+        shared_ptr<RHI_Texture>& rt_frame_render_scratch = RENDER_TARGET(RenderTarget::Frame_Render_2); // render res
+        shared_ptr<RHI_Texture>& rt_frame_output         = RENDER_TARGET(RenderTarget::Frame_Output);   // output res
+        shared_ptr<RHI_Texture>& rt_frame_output_scratch = RENDER_TARGET(RenderTarget::Frame_Output_2); // output res
 
-        // Textures are alternated (swapped) after every pass so we track one of them
-        // This allows us to check later if we need to peform a swap between output 1 and 2.
-        uint64_t frame_output_in_id = rt_frame_output_1->GetObjectId();
+        // Textures are alternated (swapped) after every pass so we store the original id of one of them.
+        // This allows us to check later if we need to perform a swap between texture  1 and 2.
+        uint64_t frame_output_id = rt_frame_output->GetObjectId();
 
         cmd_list->BeginMarker("post_proccess");
 
         // RENDER RESOLUTION
-        bool upsampled = false;
         {
             // Depth of Field
             if (GetOption(Renderer::Option::DepthOfField))
             {
-                Pass_DepthOfField(cmd_list, rt_frame_render_1, rt_frame_render_2);
-                rt_frame_render_1.swap(rt_frame_render_2);
+                Pass_DepthOfField(cmd_list, rt_frame_render, rt_frame_render_scratch);
+                rt_frame_render.swap(rt_frame_render_scratch);
             }
-
-            bool resolution_output_larger = m_resolution_output.x > m_resolution_render.x || m_resolution_output.y > m_resolution_render.y;
 
             // TAA
             if (GetOption(Renderer::Option::AntiAliasing_Taa))
             {
-                if (GetOption(Renderer::Option::Upsample_TAA) && resolution_output_larger)
-                {
-                    Pass_Taa(cmd_list, rt_frame_render_1, rt_frame_output_1);
-                    upsampled = true; // TAA writes directly in the high res buffer
-                }
-                else
-                {
-                    Pass_Taa(cmd_list, rt_frame_render_1, rt_frame_render_2);
-                    rt_frame_render_1.swap(rt_frame_render_2);
-                }
-            }
-
-            // Upsample - AMD FidelityFX SuperResolution - TODO: This needs to be in perceptual space and normalised to 0, 1 range.
-            if (GetOption(Renderer::Option::Upsample_AMD_FidelityFX_FSR_1_0) && resolution_output_larger)
-            {
-                Pass_AMD_FidelityFX_FSR_1_0(cmd_list, rt_frame_render_1.get(), rt_frame_output_1.get(), rt_frame_output_2.get());
-                upsampled = true;
+                Pass_Taa(cmd_list, rt_frame_render, rt_frame_render_scratch);
+                rt_frame_render.swap(rt_frame_render_scratch);
             }
         }
 
         // RENDER RESOLUTION -> OUTPUT RESOLUTION
-        if (!upsampled)
         {
-            bool resolution_output_different = m_resolution_output != m_resolution_render;
-            bool bilinear                    = resolution_output_different;
-
-            // D3D11 baggage, can't blit to a texture with different resolution or mip count
-            Pass_Copy(cmd_list, rt_frame_render_1.get(), rt_frame_output_1.get(), bilinear);
+            // AMD FidelityFX FSR 1.0
+            bool resolution_output_larger = m_resolution_output.x > m_resolution_render.x;
+            if (GetOption(Renderer::Option::Upsample_AMD_FidelityFX_FSR_1_0) && resolution_output_larger)
+            {
+                // TODO: This needs to be in perceptual space and normalised to 0, 1 range.
+                Pass_Amd_FidelityFx_Fsr_1_0(cmd_list, rt_frame_render.get(), rt_frame_output.get(), rt_frame_output_scratch.get());
+            }
+            else
+            {
+                // D3D11 baggage, can't blit to a texture with different resolution or mip count
+                bool bilinear = m_resolution_output != m_resolution_render;
+                Pass_Copy(cmd_list, rt_frame_render.get(), rt_frame_output.get(), bilinear);
+            }
         }
 
         // OUTPUT RESOLUTION
@@ -1192,62 +1181,62 @@ namespace Spartan
             // Motion Blur
             if (GetOption(Renderer::Option::MotionBlur))
             {
-                Pass_MotionBlur(cmd_list, rt_frame_output_1, rt_frame_output_2);
-                rt_frame_output_1.swap(rt_frame_output_2);
+                Pass_MotionBlur(cmd_list, rt_frame_output, rt_frame_output_scratch);
+                rt_frame_output.swap(rt_frame_output_scratch);
             }
 
             // Bloom
             if (GetOption(Renderer::Option::Bloom))
             {
-                Pass_Bloom(cmd_list, rt_frame_output_1, rt_frame_output_2);
-                rt_frame_output_1.swap(rt_frame_output_2);
-            }
-
-            // Sharpening
-            if (GetOption(Renderer::Option::Sharpening_AMD_FidelityFX_CAS))
-            {
-                Pass_AMD_FidelityFX_CAS(cmd_list, rt_frame_output_1, rt_frame_output_2);
-                rt_frame_output_1.swap(rt_frame_output_2);
+                Pass_Bloom(cmd_list, rt_frame_output, rt_frame_output_scratch);
+                rt_frame_output.swap(rt_frame_output_scratch);
             }
 
             // Tone-Mapping
             // Run even when tone-mapping is disabled since this is where gamma correction is also done.
-            Pass_ToneMapping(cmd_list, rt_frame_output_1, rt_frame_output_2);
-            rt_frame_output_1.swap(rt_frame_output_2);
+            Pass_ToneMapping(cmd_list, rt_frame_output, rt_frame_output_scratch);
+            rt_frame_output.swap(rt_frame_output_scratch);
+
+            // Sharpening
+            if (GetOption(Renderer::Option::Sharpening_AMD_FidelityFX_CAS))
+            {
+                Pass_Amd_FidelityFx_Cas(cmd_list, rt_frame_output, rt_frame_output_scratch);
+                rt_frame_output.swap(rt_frame_output_scratch);
+            }
 
             // Debanding
             if (GetOption(Renderer::Option::Debanding))
             {
-                Pass_Debanding(cmd_list, rt_frame_output_1, rt_frame_output_2);
-                rt_frame_output_1.swap(rt_frame_output_2);
+                Pass_Debanding(cmd_list, rt_frame_output, rt_frame_output_scratch);
+                rt_frame_output.swap(rt_frame_output_scratch);
             }
 
             // FXAA
             if (GetOption(Renderer::Option::AntiAliasing_Fxaa))
             {
-                Pass_Fxaa(cmd_list, rt_frame_output_1, rt_frame_output_2);
-                rt_frame_output_1.swap(rt_frame_output_2);
+                Pass_Fxaa(cmd_list, rt_frame_output, rt_frame_output_scratch);
+                rt_frame_output.swap(rt_frame_output_scratch);
             }
 
             // Chromatic aberration
             if (GetOption(Renderer::Option::ChromaticAberration))
             {
-                Pass_ChromaticAberration(cmd_list, rt_frame_output_1, rt_frame_output_2);
-                rt_frame_output_1.swap(rt_frame_output_2);
+                Pass_ChromaticAberration(cmd_list, rt_frame_output, rt_frame_output_scratch);
+                rt_frame_output.swap(rt_frame_output_scratch);
             }
 
             // Film grain
             if (GetOption(Renderer::Option::FilmGrain))
             {
-                Pass_FilmGrain(cmd_list, rt_frame_output_1, rt_frame_output_2);
-                rt_frame_output_1.swap(rt_frame_output_2);
+                Pass_FilmGrain(cmd_list, rt_frame_output, rt_frame_output_scratch);
+                rt_frame_output.swap(rt_frame_output_scratch);
             }
+        }
 
-            // If the pointer doesn't point to the texture it used to, swap back to it so that it does.
-            if (frame_output_in_id != rt_frame_output_1->GetObjectId())
-            {
-                rt_frame_output_1.swap(rt_frame_output_2);
-            }
+        // If the pointer doesn't point to the texture it used to, swap back to it so that it does.
+        if (frame_output_id != rt_frame_output->GetObjectId())
+        {
+            rt_frame_output.swap(rt_frame_output_scratch);
         }
 
         cmd_list->EndMarker();
@@ -1333,7 +1322,7 @@ namespace Spartan
 
         // Generate mips
         const bool luminance_antiflicker = true;
-        Pass_AMD_FidelityFX_SPD(cmd_list, tex_bloom, luminance_antiflicker);
+        Pass_Amd_FidelityFx_Spd(cmd_list, tex_bloom, luminance_antiflicker);
 
         // Starting from the lowest mip, upsample and blend with the higher one
         cmd_list->BeginMarker("upsample_and_blend_with_higher_mip");
@@ -1694,7 +1683,7 @@ namespace Spartan
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::Pass_AMD_FidelityFX_CAS(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
+    void Renderer::Pass_Amd_FidelityFx_Cas(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
     {
         // Acquire shaders
         RHI_Shader* shader_c = m_shaders[Renderer::Shader::AMD_FidelityFX_CAS_C].get();
@@ -1724,7 +1713,7 @@ namespace Spartan
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::Pass_AMD_FidelityFX_SPD(RHI_CommandList* cmd_list, RHI_Texture* tex, const bool luminance_antiflicker)
+    void Renderer::Pass_Amd_FidelityFx_Spd(RHI_CommandList* cmd_list, RHI_Texture* tex, const bool luminance_antiflicker)
     {
         // AMD FidelityFX Single Pass Downsampler.
         // Provides an RDNA™-optimized solution for generating up to 12 MIP levels of a texture.
@@ -1777,7 +1766,7 @@ namespace Spartan
         cmd_list->EndMarker();
     }
 
-    void Renderer::Pass_AMD_FidelityFX_FSR_1_0(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out, RHI_Texture* tex_out_scratch)
+    void Renderer::Pass_Amd_FidelityFx_Fsr_1_0(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out, RHI_Texture* tex_out_scratch)
     {
         // Acquire shaders
         RHI_Shader* shader_upsample_c = m_shaders[Renderer::Shader::AMD_FidelityFX_FSR_1_0_Upsample_C].get();
@@ -2503,7 +2492,7 @@ namespace Spartan
 
             // Downsample
             const bool luminance_antiflicker = false;
-            Pass_AMD_FidelityFX_SPD(m_cmd_current, texture.get(), luminance_antiflicker);
+            Pass_Amd_FidelityFx_Spd(m_cmd_current, texture.get(), luminance_antiflicker);
 
             // Set all generated mips to read only optimal
             texture->SetLayout(RHI_Image_Layout::Shader_Read_Only_Optimal, cmd_list, 0, texture->GetMipCount());
