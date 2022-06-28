@@ -185,11 +185,6 @@ namespace Spartan
            Log::m_log_to_file = false;
         }
 
-        if (m_flush_requested)
-        {
-            Flush();
-        }
-
         // Resize swapchain to window size (if needed)
         {
             // Passing zero dimensions will cause the swapchain to not present at all
@@ -204,6 +199,12 @@ namespace Spartan
                     LOG_INFO("Swapchain resolution has been set to %dx%d", width, height);
                 }
             }
+        }
+
+        // Happens when core resources are created/destroyed
+        if (m_flush_requested)
+        {
+            Flush();
         }
 
         if (!m_swap_chain->PresentEnabled() || !m_is_rendering_allowed)
@@ -266,10 +267,10 @@ namespace Spartan
                         m_textures_mip_generation.insert(m_textures_mip_generation.end(), m_textures_mip_generation_pending.begin(), m_textures_mip_generation_pending.end());
                         m_textures_mip_generation_pending.clear();
                     }
-                }
 
-                // Generate mips for any pending texture requests
-                Pass_Generate_Mips(m_cmd_current);
+                    // Generate mips for any pending texture requests
+                    Pass_Generate_Mips(m_cmd_current);
+                }
             }
             m_reading_requests = false;
         }
