@@ -19,18 +19,15 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =========
+//= INCLUDES ========
 #include "Spartan.h"
 #include <filesystem>
 #include <regex>
 #include <locale>
 #include <codecvt>
 #include <string>
-#if defined (_MSC_VER)
-#include <windows.h>
-#include <shellapi.h>
-#endif
-//====================
+#include "SDL_misc.h"
+//===================
 
 //= NAMESPACES =====
 using namespace std;
@@ -168,11 +165,7 @@ namespace Spartan
 
     void FileSystem::OpenDirectoryWindow(const string& directory)
     {
-#if defined (_MSC_VER)
-        ShellExecute(nullptr, nullptr, StringToWstring(directory).c_str(), nullptr, nullptr, SW_SHOW);
-#else
-        SP_ASSERT_MSG(0, "Function not implemented!");
-#endif
+        SDL_OpenURL(directory.c_str());
     }
 
     bool FileSystem::CreateDirectory_(const string& path)
