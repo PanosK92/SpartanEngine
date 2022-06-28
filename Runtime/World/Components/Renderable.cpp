@@ -257,7 +257,7 @@ namespace Spartan
         m_material_default = true;
         ResourceCache* resource_cache = GetContext()->GetSubsystem<ResourceCache>();
         const auto data_dir = resource_cache->GetResourceDirectory() + "/";
-        FileSystem::CreateDirectory_(data_dir);
+        FileSystem::CreateDirectory(data_dir);
 
         // Create material
         auto material = make_shared<Material>(GetContext());

@@ -47,9 +47,6 @@ namespace Spartan
         static std::wstring StringToWstring(const std::string& str);
 
         // Paths
-        static void OpenDirectoryWindow(const std::string& path);
-        static bool CreateDirectory_(const std::string& path);
-        static bool Delete(const std::string& path);    
         static bool Exists(const std::string& path);
         static bool IsDirectory(const std::string& path);
         static bool IsFile(const std::string& path);
@@ -62,7 +59,7 @@ namespace Spartan
         static std::string GetExtensionFromFilePath(const std::string& path);
         static std::string NativizeFilePath(const std::string& path);
         static std::string GetRelativePath(const std::string& path);
-        static std::string GetWorkingDirectory();    
+        static std::string GetWorkingDirectory();
         static std::string GetRootDirectory(const std::string& path);
         static std::string GetParentDirectory(const std::string& path);
         static std::vector<std::string> GetDirectoriesInDirectory(const std::string& path);
@@ -93,18 +90,29 @@ namespace Spartan
         static std::vector<std::string> GetSupportedModelFilesFromPaths(const std::vector<std::string>& paths);
         static std::vector<std::string> GetSupportedModelFilesInDirectory(const std::string& path);
         static std::vector<std::string> GetSupportedSceneFilesInDirectory(const std::string& path);
+
+        // Utilities
+
+        // Opens a URL in a browser.
+        // If the URL is a website, the default internet browser will be used.
+        // If the URL is a directory path, the file browser will be used.
+        // If the URL is a file path, then the file will be opened.
+        static void OpenUrl(const std::string& url);
+        // Deletes a directory or a file.
+        static bool Delete(const std::string& path);
+        static bool CreateDirectory(const std::string& path);
     };
 
-    static const char* EXTENSION_WORLD      = ".world";
-    static const char* EXTENSION_MATERIAL   = ".material";
-    static const char* EXTENSION_MODEL      = ".model";
-    static const char* EXTENSION_PREFAB     = ".prefab";
-    static const char* EXTENSION_SHADER     = ".shader";
-    static const char* EXTENSION_FONT       = ".font";
-    static const char* EXTENSION_TEXTURE    = ".texture";
-    static const char* EXTENSION_MESH       = ".mesh";
-    static const char* EXTENSION_AUDIO      = ".audio";
-    static const char* EXTENSION_SCRIPT     = ".cs";
+    static const char* EXTENSION_WORLD    = ".world";
+    static const char* EXTENSION_MATERIAL = ".material";
+    static const char* EXTENSION_MODEL    = ".model";
+    static const char* EXTENSION_PREFAB   = ".prefab";
+    static const char* EXTENSION_SHADER   = ".shader";
+    static const char* EXTENSION_FONT     = ".font";
+    static const char* EXTENSION_TEXTURE  = ".texture";
+    static const char* EXTENSION_MESH     = ".mesh";
+    static const char* EXTENSION_AUDIO    = ".audio";
+    static const char* EXTENSION_SCRIPT   = ".cs";
 
     static const std::vector<std::string> supported_formats_image
     {

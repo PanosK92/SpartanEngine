@@ -254,7 +254,7 @@ void MenuBar::DrawAboutWindow() const
 
         if (ImGuiEx::Button("GitHub"))
         {
-            FileSystem::OpenDirectoryWindow("https://github.com/PanosK92/SpartanEngine");
+            FileSystem::OpenUrl("https://github.com/PanosK92/SpartanEngine");
         }
 
         ImGui::Separator();
@@ -299,7 +299,7 @@ void MenuBar::DrawAboutWindow() const
                 ImGui::PushID(lib.url.c_str());
                 if (ImGuiEx::Button(lib.url.c_str()))
                 {
-                    FileSystem::OpenDirectoryWindow(lib.url);
+                    FileSystem::OpenUrl(lib.url);
                 }
                 ImGui::PopID();
             }

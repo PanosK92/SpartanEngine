@@ -163,41 +163,6 @@ namespace Spartan
         SP_WARNINGS_ON
     }
 
-    void FileSystem::OpenDirectoryWindow(const string& directory)
-    {
-        SDL_OpenURL(directory.c_str());
-    }
-
-    bool FileSystem::CreateDirectory_(const string& path)
-    {
-        try
-        {
-            if (filesystem::create_directories(path))
-                return true;
-        }
-        catch (filesystem::filesystem_error& e)
-        {
-            LOG_WARNING("%s, %s", e.what(), path.c_str());
-        }
-
-        return false;
-    }
-
-    bool FileSystem::Delete(const string& path)
-    {
-        try
-        {
-            if (filesystem::exists(path) && filesystem::remove_all(path))
-                return true;
-        }
-        catch (filesystem::filesystem_error& e)
-        {
-            LOG_WARNING("s, %s", e.what(), path.c_str());
-        }
-
-        return false;
-    }
-
     bool FileSystem::Exists(const string& path)
     {
         try
@@ -254,7 +219,7 @@ namespace Spartan
         // In case the destination path doesn't exist, create it
         if (!Exists(GetDirectoryFromFilePath(destination)))
         {
-            CreateDirectory_(GetDirectoryFromFilePath(destination));
+            CreateDirectory(GetDirectoryFromFilePath(destination));
         }
 
         try 
@@ -275,8 +240,8 @@ namespace Spartan
 
     string FileSystem::GetFileNameWithoutExtensionFromFilePath(const string& path)
     {
-        const auto file_name        = GetFileNameFromFilePath(path);
-        const size_t last_index    = file_name.find_last_of('.');
+        const auto file_name    = GetFileNameFromFilePath(path);
+        const size_t last_index = file_name.find_last_of('.');
 
         if (last_index != string::npos)
             return file_name.substr(0, last_index);
@@ -327,11 +292,11 @@ namespace Spartan
     {
         const string file_path_no_ext = GetFilePathWithoutExtension(path);
 
-        if (IsSupportedAudioFile(path))    return file_path_no_ext + EXTENSION_AUDIO;
-        if (IsSupportedImageFile(path))    return file_path_no_ext + EXTENSION_TEXTURE;
-        if (IsSupportedModelFile(path))    return file_path_no_ext + EXTENSION_MODEL;
-        if (IsSupportedFontFile(path))     return file_path_no_ext + EXTENSION_FONT;
-        if (IsSupportedShaderFile(path))   return file_path_no_ext + EXTENSION_SHADER;
+        if (IsSupportedAudioFile(path))  return file_path_no_ext + EXTENSION_AUDIO;
+        if (IsSupportedImageFile(path))  return file_path_no_ext + EXTENSION_TEXTURE;
+        if (IsSupportedModelFile(path))  return file_path_no_ext + EXTENSION_MODEL;
+        if (IsSupportedFontFile(path))   return file_path_no_ext + EXTENSION_FONT;
+        if (IsSupportedShaderFile(path)) return file_path_no_ext + EXTENSION_SHADER;
 
         LOG_WARNING("Failed to nativize file path");
         return path;
@@ -530,10 +495,10 @@ namespace Spartan
 
     vector<string> FileSystem::GetSupportedFilesInDirectory(const string& path)
     {
-        const vector<string> filesInDirectory     = GetFilesInDirectory(path);
-        vector<string> imagesInDirectory    = GetSupportedImageFilesFromPaths(filesInDirectory);    // get all the images
-        vector<string> scriptsInDirectory   = GetSupportedScriptFilesFromPaths(filesInDirectory);   // get all the scripts
-        vector<string> modelsInDirectory    = GetSupportedModelFilesFromPaths(filesInDirectory);    // get all the models
+        const vector<string> filesInDirectory = GetFilesInDirectory(path);
+        vector<string> imagesInDirectory      = GetSupportedImageFilesFromPaths(filesInDirectory);  // get all the images
+        vector<string> scriptsInDirectory     = GetSupportedScriptFilesFromPaths(filesInDirectory); // get all the scripts
+        vector<string> modelsInDirectory      = GetSupportedModelFilesFromPaths(filesInDirectory);  // get all the models
         vector<string> supportedFiles;
 
         // get supported images
@@ -559,58 +524,58 @@ namespace Spartan
 
     vector<string> FileSystem::GetSupportedImageFilesFromPaths(const vector<string>& paths)
     {
-        vector<string> imageFiles;
+        vector<string> files;
         for (const auto& path : paths)
         {
             if (!IsSupportedImageFile(path))
                 continue;
 
-            imageFiles.emplace_back(path);
+            files.emplace_back(path);
         }
 
-        return imageFiles;
+        return files;
     }
 
     vector<string> FileSystem::GetSupportedAudioFilesFromPaths(const vector<string>& paths)
     {
-        vector<string> audioFiles;
+        vector<string> files;
         for (const auto& path : paths)
         {
             if (!IsSupportedAudioFile(path))
                 continue;
 
-            audioFiles.emplace_back(path);
+            files.emplace_back(path);
         }
 
-        return audioFiles;
+        return files;
     }
 
     vector<string> FileSystem::GetSupportedScriptFilesFromPaths(const vector<string>& paths)
     {
-        vector<string> scripts;
+        vector<string> files;
         for (const auto& path : paths)
         {
             if (!IsEngineScriptFile(path))
                 continue;
 
-            scripts.emplace_back(path);
+            files.emplace_back(path);
         }
 
-        return scripts;
+        return files;
     }
 
     vector<string> FileSystem::GetSupportedModelFilesFromPaths(const vector<string>& paths)
     {
-        vector<string> images;
+        vector<string> files;
         for (const auto& path : paths)
         {
             if (!IsSupportedModelFile(path))
                 continue;
 
-            images.emplace_back(path);
+            files.emplace_back(path);
         }
 
-        return images;
+        return files;
     }
 
     vector<string> FileSystem::GetSupportedModelFilesInDirectory(const string& path)
@@ -693,5 +658,40 @@ namespace Spartan
     string FileSystem::GetRootDirectory(const std::string& path)
     {
         return filesystem::path(path).root_directory().generic_string();
+    }
+
+    void FileSystem::OpenUrl(const string& url)
+    {
+        SDL_OpenURL(url.c_str());
+    }
+
+    bool FileSystem::Delete(const string& path)
+    {
+        try
+        {
+            if (filesystem::exists(path) && filesystem::remove_all(path))
+                return true;
+        }
+        catch (filesystem::filesystem_error& e)
+        {
+            LOG_WARNING("s, %s", e.what(), path.c_str());
+        }
+
+        return false;
+    }
+
+    bool FileSystem::CreateDirectory(const string& path)
+    {
+        try
+        {
+            if (filesystem::create_directories(path))
+                return true;
+        }
+        catch (filesystem::filesystem_error& e)
+        {
+            LOG_WARNING("%s, %s", e.what(), path.c_str());
+        }
+
+        return false;
     }
 }

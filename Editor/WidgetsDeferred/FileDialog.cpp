@@ -287,7 +287,7 @@ void FileDialog::ShowMiddle()
                             {
                                 if (!item.IsDirectory())
                                 {
-                                    FileSystem::OpenDirectoryWindow(item.GetPath());
+                                    FileSystem::OpenUrl(item.GetPath());
                                 }
                             }
 
@@ -501,7 +501,7 @@ void FileDialog::ItemContextMenu(FileDialogItem* item)
     ImGui::Separator();
     if (ImGui::MenuItem("Open in file explorer"))
     {
-        FileSystem::OpenDirectoryWindow(item->GetPath());
+        FileSystem::OpenUrl(item->GetPath());
     }
 
     ImGui::EndPopup();
@@ -569,7 +569,7 @@ void FileDialog::EmptyAreaContextMenu()
 
     if (ImGui::MenuItem("Create folder"))
     {
-        FileSystem::CreateDirectory_(m_navigation.m_path_current + "/New folder");
+        FileSystem::CreateDirectory(m_navigation.m_path_current + "/New folder");
         m_is_dirty = true;
     }
 
@@ -616,7 +616,7 @@ void FileDialog::EmptyAreaContextMenu()
 
     if (ImGui::MenuItem("Open directory in explorer"))
     {
-        FileSystem::OpenDirectoryWindow(m_navigation.m_path_current);
+        FileSystem::OpenUrl(m_navigation.m_path_current);
     }
 
     ImGui::EndPopup();
