@@ -135,7 +135,7 @@ void Console::TickVisible()
 
                         if (ImGui::MenuItem("Search"))
                         {
-                            FileSystem::OpenDirectoryWindow("https://www.google.com/search?q=" + log.text);
+                            FileSystem::OpenUrl("https://www.google.com/search?q=" + log.text);
                         }
 
                         ImGui::EndPopup();

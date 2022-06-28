@@ -295,7 +295,7 @@ namespace Spartan
     {
         if (!FileSystem::Exists(directory))
         {
-            FileSystem::CreateDirectory_(directory);
+            FileSystem::CreateDirectory(directory);
         }
 
         m_project_directory = directory;
