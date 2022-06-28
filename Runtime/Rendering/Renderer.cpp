@@ -185,6 +185,12 @@ namespace Spartan
            Log::m_log_to_file = false;
         }
 
+        // Happens when core resources are created/destroyed
+        if (m_flush_requested)
+        {
+            Flush();
+        }
+
         // Resize swapchain to window size (if needed)
         {
             // Passing zero dimensions will cause the swapchain to not present at all
@@ -199,12 +205,6 @@ namespace Spartan
                     LOG_INFO("Swapchain resolution has been set to %dx%d", width, height);
                 }
             }
-        }
-
-        // Happens when core resources are created/destroyed
-        if (m_flush_requested)
-        {
-            Flush();
         }
 
         if (!m_swap_chain->PresentEnabled() || !m_is_rendering_allowed)

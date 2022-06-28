@@ -37,13 +37,13 @@ namespace Spartan
 {
     void FileSystem::CreateTextFile(const string& file_path, const string& text)
     {
-        std::ofstream outfile(file_path);
+        ofstream outfile(file_path);
         outfile << text;
         outfile.flush();
         outfile.close();
     }
 
-    bool FileSystem::IsEmptyOrWhitespace(const std::string& var)
+    bool FileSystem::IsEmptyOrWhitespace(const string& var)
     {
         // Check if it's empty
         if (var.empty())
@@ -52,21 +52,21 @@ namespace Spartan
         // Check if it's made out of whitespace characters
         for (char _char : var)
         {
-            if (!std::isspace(_char))
+            if (!isspace(_char))
                 return false;
         }
 
         return true;
     }
 
-    bool FileSystem::IsAlphanumeric(const std::string& var)
+    bool FileSystem::IsAlphanumeric(const string& var)
     {
         if (IsEmptyOrWhitespace(var))
             return false;
 
         for (char _char : var)
         {
-            if (!std::isalnum(_char))
+            if (!isalnum(_char))
                 return false;
         }
 
@@ -144,7 +144,7 @@ namespace Spartan
         string upper;
         for (const auto& character : lower)
         {
-            upper += std::toupper(character, loc);
+            upper += toupper(character, loc);
         }
 
         return upper;
@@ -158,7 +158,7 @@ namespace Spartan
     wstring FileSystem::StringToWstring(const string& str)
     {
         SP_WARNINGS_OFF
-        wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+        wstring_convert<codecvt_utf8_utf16<wchar_t>> converter;
         return converter.from_bytes(str);
         SP_WARNINGS_ON
     }
@@ -470,7 +470,7 @@ namespace Spartan
         return GetExtensionFromFilePath(path) == EXTENSION_TEXTURE;
     }
 
-    bool FileSystem::IsEngineAudioFile(const std::string& path)
+    bool FileSystem::IsEngineAudioFile(const string& path)
     {
         return GetExtensionFromFilePath(path) == EXTENSION_AUDIO;
     }
@@ -655,7 +655,7 @@ namespace Spartan
         return filesystem::path(path).parent_path().generic_string();
     }
 
-    string FileSystem::GetRootDirectory(const std::string& path)
+    string FileSystem::GetRootDirectory(const string& path)
     {
         return filesystem::path(path).root_directory().generic_string();
     }

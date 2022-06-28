@@ -395,7 +395,7 @@ namespace Spartan
         }
 
         // Set the descriptor set capacity to an initial value
-        SetDescriptorSetCapacity(1024);
+        SetDescriptorSetCapacity(2048);
 
         // Detect and log version
         {
