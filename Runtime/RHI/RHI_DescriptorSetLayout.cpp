@@ -110,7 +110,6 @@ namespace Spartan
             {
                 // Determine if the descriptor set needs to bind (affects vkUpdateDescriptorSets)
                 m_needs_to_bind = descriptor.data      != texture   ? true : m_needs_to_bind;
-                m_needs_to_bind = descriptor.layout    != layout    ? true : m_needs_to_bind;
                 m_needs_to_bind = descriptor.mip       != mip_index ? true : m_needs_to_bind;
                 m_needs_to_bind = descriptor.mip_range != mip_range ? true : m_needs_to_bind;
 
