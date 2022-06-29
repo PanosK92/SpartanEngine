@@ -42,8 +42,8 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     if (any(int2(thread_id.xy) >= g_resolution_rt.xy))
         return;
 
-    float3 color = tex[thread_id.xy].rgb;
+    float4 color = tex[thread_id.xy];
     float rnd    = dither(thread_id.xy * g_resolution_rt.xy).x;
     
-    tex_out_rgb[thread_id.xy] = color + lerp(-g_debanding_offset, g_debanding_offset, rnd);
+    tex_out_rgba[thread_id.xy] = color + lerp(-g_debanding_offset, g_debanding_offset, rnd);
 }

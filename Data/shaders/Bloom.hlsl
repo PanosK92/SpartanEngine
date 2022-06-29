@@ -83,9 +83,9 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     if (any(int2(thread_id.xy) >= g_resolution_rt.xy))
         return;
 
-    float3 color_frame  = tex[thread_id.xy].rgb;
-    float3 color_mip    = tex2[thread_id.xy].rgb;
-    tex_out_rgb[thread_id.xy] = saturate_16(color_frame + color_mip * g_bloom_intensity);
+    float4 color_frame  = tex[thread_id.xy];
+    float4 color_mip    = tex2[thread_id.xy];
+    tex_out_rgba[thread_id.xy] = saturate_16(color_frame + color_mip * g_bloom_intensity);
 }
 
 #endif

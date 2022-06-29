@@ -40,7 +40,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         return;
     
     const float2 uv = (thread_id.xy + 0.5f) / g_resolution_rt;
-    float3 color    = tex[thread_id.xy].rgb;
+    float4 color    = tex[thread_id.xy];
 
     // Film grain
     float t          = g_time * float(g_film_grain_speed);
@@ -55,5 +55,5 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     // Additive blending
     color.rgb += (film_grain + iso_noise) * 0.5f;
 
-    tex_out_rgb[thread_id.xy] = saturate(color);
+    tex_out_rgba[thread_id.xy] = float4(saturate(color.rgb), 1.0f);
 }
