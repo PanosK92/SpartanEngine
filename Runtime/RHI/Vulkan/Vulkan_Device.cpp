@@ -635,7 +635,8 @@ namespace Spartan
         present_info.pSwapchains        = reinterpret_cast<VkSwapchainKHR*>(&swapchain);
         present_info.pImageIndices      = image_index;
 
-        SP_ASSERT_MSG(vulkan_utility::error::check(vkQueuePresentKHR(static_cast<VkQueue>(m_queue_graphics), &present_info)), "Failed to present");
+        // TODO: This can fail when loading a scene, need to figure out
+        vulkan_utility::error::check(vkQueuePresentKHR(static_cast<VkQueue>(m_queue_graphics), &present_info));
 
         // Update semaphore state
         for (uint32_t i = 0; i < semaphore_count; i++)

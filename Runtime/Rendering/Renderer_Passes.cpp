@@ -950,16 +950,16 @@ namespace Spartan
 
         // Set textures
         cmd_list->SetTexture(Renderer::Bindings_Uav::rgba, tex_out);
-        cmd_list->SetTexture(Renderer::Bindings_Srv::gbuffer_albedo,    RENDER_TARGET(RenderTarget::Gbuffer_Albedo));
-        cmd_list->SetTexture(Renderer::Bindings_Srv::gbuffer_material,  RENDER_TARGET(RenderTarget::Gbuffer_Material));
-        cmd_list->SetTexture(Renderer::Bindings_Srv::gbuffer_normal,    RENDER_TARGET(RenderTarget::Gbuffer_Normal));
-        cmd_list->SetTexture(Renderer::Bindings_Srv::gbuffer_depth,     RENDER_TARGET(RenderTarget::Gbuffer_Depth));
-        cmd_list->SetTexture(Renderer::Bindings_Srv::light_diffuse,     is_transparent_pass ? RENDER_TARGET(RenderTarget::Light_Diffuse_Transparent).get() : RENDER_TARGET(RenderTarget::Light_Diffuse).get());
-        cmd_list->SetTexture(Renderer::Bindings_Srv::light_specular,    is_transparent_pass ? RENDER_TARGET(RenderTarget::Light_Specular_Transparent).get() : RENDER_TARGET(RenderTarget::Light_Specular).get());
-        cmd_list->SetTexture(Renderer::Bindings_Srv::light_volumetric,  RENDER_TARGET(RenderTarget::Light_Volumetric));
-        cmd_list->SetTexture(Renderer::Bindings_Srv::frame,             RENDER_TARGET(RenderTarget::Frame_Render_2)); // refraction
-        cmd_list->SetTexture(Renderer::Bindings_Srv::ssao,              RENDER_TARGET(RenderTarget::Ssao));
-        cmd_list->SetTexture(Renderer::Bindings_Srv::environment,       GetEnvironmentTexture());
+        cmd_list->SetTexture(Renderer::Bindings_Srv::gbuffer_albedo,   RENDER_TARGET(RenderTarget::Gbuffer_Albedo));
+        cmd_list->SetTexture(Renderer::Bindings_Srv::gbuffer_material, RENDER_TARGET(RenderTarget::Gbuffer_Material));
+        cmd_list->SetTexture(Renderer::Bindings_Srv::gbuffer_normal,   RENDER_TARGET(RenderTarget::Gbuffer_Normal));
+        cmd_list->SetTexture(Renderer::Bindings_Srv::gbuffer_depth,    RENDER_TARGET(RenderTarget::Gbuffer_Depth));
+        cmd_list->SetTexture(Renderer::Bindings_Srv::light_diffuse,    is_transparent_pass ? RENDER_TARGET(RenderTarget::Light_Diffuse_Transparent).get() : RENDER_TARGET(RenderTarget::Light_Diffuse).get());
+        cmd_list->SetTexture(Renderer::Bindings_Srv::light_specular,   is_transparent_pass ? RENDER_TARGET(RenderTarget::Light_Specular_Transparent).get() : RENDER_TARGET(RenderTarget::Light_Specular).get());
+        cmd_list->SetTexture(Renderer::Bindings_Srv::light_volumetric, RENDER_TARGET(RenderTarget::Light_Volumetric));
+        cmd_list->SetTexture(Renderer::Bindings_Srv::frame,            RENDER_TARGET(RenderTarget::Frame_Render_2)); // refraction
+        cmd_list->SetTexture(Renderer::Bindings_Srv::ssao,             RENDER_TARGET(RenderTarget::Ssao));
+        cmd_list->SetTexture(Renderer::Bindings_Srv::environment,      GetEnvironmentTexture());
 
         // Render
         cmd_list->Dispatch(thread_group_count_x(tex_out), thread_group_count_y(tex_out));
