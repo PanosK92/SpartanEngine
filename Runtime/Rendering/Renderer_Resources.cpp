@@ -38,6 +38,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_VertexBuffer.h"
 #include "../RHI/RHI_IndexBuffer.h"
 #include "../RHI/RHI_TextureCube.h"
+#include "../RHI/RHI_Device.h"
 //=======================================
 
 //= NAMESPACES ===============
@@ -107,6 +108,9 @@ namespace Spartan
 
     void Renderer::CreateSamplers(const bool create_only_anisotropic /*= false*/)
     {
+        // Ensure none of the samplers is being used by the GPU
+        m_rhi_device->QueueWaitAll();
+
         float anisotropy                         = GetOptionValue<float>(Renderer::OptionValue::Anisotropy);
         RHI_Comparison_Function depth_comparison = GetOption(Renderer::Option::ReverseZ) ? RHI_Comparison_Function::Greater : RHI_Comparison_Function::Less;
 
@@ -145,7 +149,7 @@ namespace Spartan
         uint32_t height_output = static_cast<uint32_t>(m_resolution_output.y);
 
         // Ensure none of the textures is being used by the GPU
-        Flush();
+        m_rhi_device->QueueWaitAll();
 
         // Deduce how many mips are required to scale down any dimension close to 16px (or exactly)
         uint32_t mip_count           = 1;

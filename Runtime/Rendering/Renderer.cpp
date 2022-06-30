@@ -721,11 +721,6 @@ namespace Spartan
         if (!toggled)
             return;
 
-        if (option == Renderer::Option::Upsample_AMD_FidelityFX_FSR_1_0)
-        {
-            CreateRenderTextures(false, false, false, true);
-        }
-
         if (option == Renderer::Option::ReverseZ)
         {
             CreateDepthStencilStates();
