@@ -109,7 +109,14 @@ namespace Spartan
     {
         float anisotropy                         = GetOptionValue<float>(Renderer::OptionValue::Anisotropy);
         RHI_Comparison_Function depth_comparison = GetOption(Renderer::Option::ReverseZ) ? RHI_Comparison_Function::Greater : RHI_Comparison_Function::Less;
-        float mip_lod_bias                       = -log2(m_resolution_output.x / m_resolution_render.x); // negative mip bias when upscaling is active (helps bring in some texture detail)
+
+        // Compute mip bias
+        float mip_bias = 0.0f;
+        if (m_resolution_output.x > m_resolution_render.x)
+        {
+            // Progressively negative values when upsampling for increased texture fidelity
+            mip_bias = log2(m_resolution_render.x / m_resolution_output.x) - 1.0f;
+        }
 
         // sampler parameters: minification, magnification, mip, sampler address mode, comparison, anisotropy, comparison enabled, mip lod bias
         if (!create_only_anisotropic)
@@ -122,9 +129,9 @@ namespace Spartan
             m_sampler_trilinear_clamp = make_shared<RHI_Sampler>(m_rhi_device, RHI_Filter::Linear,  RHI_Filter::Linear,  RHI_Sampler_Mipmap_Mode::Linear,  RHI_Sampler_Address_Mode::Clamp, RHI_Comparison_Function::Always);
         }
 
-        m_sampler_anisotropic_wrap = make_shared<RHI_Sampler>(m_rhi_device, RHI_Filter::Linear, RHI_Filter::Linear, RHI_Sampler_Mipmap_Mode::Linear, RHI_Sampler_Address_Mode::Wrap, RHI_Comparison_Function::Always, anisotropy, false, mip_lod_bias);
+        m_sampler_anisotropic_wrap = make_shared<RHI_Sampler>(m_rhi_device, RHI_Filter::Linear, RHI_Filter::Linear, RHI_Sampler_Mipmap_Mode::Linear, RHI_Sampler_Address_Mode::Wrap, RHI_Comparison_Function::Always, anisotropy, false, mip_bias);
 
-        LOG_INFO("Mip load bias set to %f", mip_lod_bias);
+        LOG_INFO("Mip bias set to %f", mip_bias);
     }
 
     void Renderer::CreateRenderTextures(const bool create_render, const bool create_output, const bool create_fixed, const bool create_dynamic)
