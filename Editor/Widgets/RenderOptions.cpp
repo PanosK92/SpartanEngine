@@ -276,7 +276,7 @@ void RenderOptions::TickVisible()
                 {
                     bool upsampling_allowed = resolution_render.x < resolution_output.x || resolution_render.y < resolution_output.y;
 
-                    static vector<string> upsampling_modes = { "Linear", "AMD FidelityFX Super Resolution 1.0" };
+                    static vector<string> upsampling_modes = { "Linear", "FSR 1.0" };
                     uint32_t upsampling_mode_index = do_fsr_1_0 ? 1 : 0;
 
                     ImGui::BeginDisabled(!upsampling_allowed);
