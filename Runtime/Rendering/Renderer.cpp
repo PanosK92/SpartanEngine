@@ -221,6 +221,21 @@ namespace Spartan
         // Reset
         if (command_pool_reset)
         {
+            if (m_resolution_render_dirty || m_resolution_output_dirty)
+            {
+                // Wait for all work to finish
+                m_cmd_pool->Wait();
+
+                // Re-create render textures
+                CreateRenderTextures(m_resolution_render_dirty, m_resolution_output_dirty, false, true);
+
+                // Re-create samplers
+                CreateSamplers(true);
+
+                m_resolution_render_dirty = false;
+                m_resolution_output_dirty = false;
+            }
+
             // Reset dynamic buffer indices
             m_cb_uber_gpu->ResetOffset();
             m_cb_frame_gpu->ResetOffset();
@@ -390,10 +405,6 @@ namespace Spartan
             return;
         }
 
-        // Make sure we are pixel perfect
-        width  -= (width  % 2 != 0) ? 1 : 0;
-        height -= (height % 2 != 0) ? 1 : 0;
-
         // Silently return if resolution is already set
         if (m_resolution_render.x == width && m_resolution_render.y == height)
             return;
@@ -414,11 +425,7 @@ namespace Spartan
 
         if (recreate_resources)
         {
-            // Re-create render textures
-            CreateRenderTextures(true, false, false, true);
-
-            // Re-create samplers
-            CreateSamplers(true);
+            m_resolution_render_dirty = true;
         }
 
         // Log
@@ -434,10 +441,6 @@ namespace Spartan
             return;
         }
 
-        // Make sure we are pixel perfect
-        width  -= (width % 2 != 0) ? 1 : 0;
-        height -= (height % 2 != 0) ? 1 : 0;
-
         // Silently return if resolution is already set
         if (m_resolution_output.x == width && m_resolution_output.y == height)
             return;
@@ -448,11 +451,7 @@ namespace Spartan
 
         if (recreate_resources)
         {
-            // Re-create render textures
-            CreateRenderTextures(false, true, false, true);
-
-            // Re-create samplers
-            CreateSamplers(true);
+            m_resolution_output_dirty = true;
         }
 
         // Log

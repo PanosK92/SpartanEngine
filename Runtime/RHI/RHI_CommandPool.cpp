@@ -67,4 +67,19 @@ namespace Spartan
 
         return false;
     }
+
+	void RHI_CommandPool::Wait()
+    {
+        for (uint32_t i = 0; i < m_cmd_lists.size(); i++)
+        {
+            vector<shared_ptr<RHI_CommandList>>& cmd_lists = m_cmd_lists[i];
+            for (shared_ptr<RHI_CommandList> cmd_list : cmd_lists)
+            {
+                if (cmd_list->GetState() == RHI_CommandListState::Submitted)
+                {
+                    cmd_list->Wait();
+                }
+            }
+        }
+	}
 }

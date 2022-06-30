@@ -563,6 +563,8 @@ namespace Spartan
         std::atomic<bool> m_flush_requested      = false;
         bool m_dirty_orthographic_projection     = true;
         std::atomic<bool> m_reading_requests     = false;
+        bool m_resolution_render_dirty           = false;
+        bool m_resolution_output_dirty           = false;
 
         // RHI Core
         std::shared_ptr<RHI_Device> m_rhi_device;

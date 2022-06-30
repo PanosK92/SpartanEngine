@@ -38,6 +38,7 @@ namespace Spartan
 
         void AllocateCommandLists(const uint32_t command_list_count);
         bool Tick();
+        void Wait();
 
         RHI_CommandList* GetCurrentCommandList()       { return m_cmd_lists[m_pool_index][m_cmd_list_index].get(); }
         uint32_t GetCommandListCount()           const { return static_cast<uint32_t>(m_cmd_lists[0].size()); }
