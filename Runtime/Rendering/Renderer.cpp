@@ -221,21 +221,6 @@ namespace Spartan
         // Reset
         if (command_pool_reset)
         {
-            if (m_resolution_render_dirty || m_resolution_output_dirty)
-            {
-                // Wait for all work to finish
-                m_cmd_pool->Wait();
-
-                // Re-create render textures
-                CreateRenderTextures(m_resolution_render_dirty, m_resolution_output_dirty, false, true);
-
-                // Re-create samplers
-                CreateSamplers(true);
-
-                m_resolution_render_dirty = false;
-                m_resolution_output_dirty = false;
-            }
-
             // Reset dynamic buffer indices
             m_cb_uber_gpu->ResetOffset();
             m_cb_frame_gpu->ResetOffset();
@@ -425,7 +410,11 @@ namespace Spartan
 
         if (recreate_resources)
         {
-            m_resolution_render_dirty = true;
+            // Re-create render textures
+            CreateRenderTextures(true, false, false, true);
+
+            // Re-create samplers
+            CreateSamplers(true);
         }
 
         // Log
@@ -451,7 +440,11 @@ namespace Spartan
 
         if (recreate_resources)
         {
-            m_resolution_output_dirty = true;
+            // Re-create render textures
+            CreateRenderTextures(false, true, false, true);
+
+            // Re-create samplers
+            CreateSamplers(true);
         }
 
         // Log
