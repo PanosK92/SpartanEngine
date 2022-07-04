@@ -24,8 +24,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===============
 #include "../Math/Vector2.h"
 #include "RHI_Definition.h"
-#include "fsr/ffx_fsr2.h"
 //==========================
+
+struct FfxFsr2Context;
+struct FfxFsr2ContextDescription;
+struct FfxFsr2DispatchDescription;
 
 namespace Spartan
 {

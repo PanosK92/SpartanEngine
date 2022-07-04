@@ -1158,10 +1158,10 @@ namespace Spartan
             bool upsample = m_resolution_output.x > m_resolution_render.x;
 
             // FSR 1.0
-            if (upsample && GetOption(Renderer::Option::Ffx_Fsr) && m_rhi_device->GetApiType() == RHI_Api_Type::D3d11)
+            if (m_rhi_device->GetApiType() == RHI_Api_Type::D3d11)
             {
                 // FSR 1.0
-                if (GetOption(Renderer::Option::Ffx_Fsr))
+                if (GetOption(Renderer::Option::Ffx_Fsr) && upsample)
                 {
                     // TODO: This needs to be in perceptual space and normalised to 0, 1 range.
                     Pass_Amd_FidelityFx_Fsr_1_0(cmd_list, rt_frame_render.get(), rt_frame_output.get(), rt_frame_output_scratch.get());
@@ -1175,13 +1175,17 @@ namespace Spartan
                     LOG_WARNING("TAA is not supported for D3D11, switching to FXAA.");
                 }
             }
+
             // FSR 2.0 (TAA/Upsample)
-            else if ((GetOption(Renderer::Option::AntiAliasing_Taa) || (GetOption(Renderer::Option::Ffx_Fsr) && upsample)))
+            bool fsr_2_0 = (GetOption(Renderer::Option::Ffx_Fsr) && upsample);
+            bool taa     = GetOption(Renderer::Option::AntiAliasing_Taa);
+            if (taa || fsr_2_0)
             {
                 Pass_Amd_FidelityFx_Fsr_2_0(cmd_list, rt_frame_render.get(), rt_frame_output.get());
             }
+
             // Linear (Copy/Upscale)
-            else
+            if (m_rhi_device->GetApiType() == RHI_Api_Type::D3d11 || (!fsr_2_0 && !taa))
             {
                 // D3D11 baggage, can't blit to a texture with different resolution or mip count
                 bool bilinear = m_resolution_output != m_resolution_render;
