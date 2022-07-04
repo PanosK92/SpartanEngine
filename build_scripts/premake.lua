@@ -50,6 +50,7 @@ elseif API_GRAPHICS == "vulkan" then
 	IGNORE_FILES[1]             = RUNTIME_DIR .. "/RHI/D3D12/**"
 	ADDITIONAL_INCLUDES[0]      = "../third_party/SPIRV-Cross-03-06-2022";
 	ADDITIONAL_INCLUDES[1]      = "../third_party/Vulkan_1.3.216.0";
+	ADDITIONAL_INCLUDES[2]      = "../third_party/FSR_2.0.1a";
 end
 
 -- Solution
@@ -130,7 +131,7 @@ project (RUNTIME_NAME)
 	includedirs { "../third_party/Mono_6.12.0.86" }
 	includedirs { "../third_party/SDL2_2.0.14" }
     includedirs { "../third_party/Compressonator_4.2.5185" }
-	includedirs { ADDITIONAL_INCLUDES[0], ADDITIONAL_INCLUDES[1] }
+	includedirs { ADDITIONAL_INCLUDES[0], ADDITIONAL_INCLUDES[1], ADDITIONAL_INCLUDES[2] }
 
 	-- Libraries
 	libdirs (LIBRARY_DIR)
@@ -154,6 +155,8 @@ project (RUNTIME_NAME)
 	    links { "spirv-cross-glsl_debug" }
 	    links { "spirv-cross-hlsl_debug" }
 	    links { "spirv-cross-reflect_debug" }
+		links { "ffx_fsr2_api_x64_debug" }
+		links { "ffx_fsr2_api_vk_x64_debug" }
 
 	--	"Release"
 	filter "configurations:Release"
@@ -174,6 +177,8 @@ project (RUNTIME_NAME)
 	    links { "spirv-cross-glsl" }
 	    links { "spirv-cross-hlsl" }
 	    links { "spirv-cross-reflect" }
+		links { "ffx_fsr2_api_x64" }
+		links { "ffx_fsr2_api_vk_x64" }
 
 -- Editor --------------------------------------------------------------------------------------------------
 project (EDITOR_NAME)
@@ -212,7 +217,7 @@ project (EDITOR_NAME)
 		targetdir (TARGET_DIR)
 		debugdir (TARGET_DIR)
 		links { "freetype_debug" }
-		links { "SDL2_debug.lib" }
+		links { "SDL2_debug" }
 
 	-- "Release"
 	filter "configurations:Release"
@@ -220,4 +225,4 @@ project (EDITOR_NAME)
 		targetdir (TARGET_DIR)
 		debugdir (TARGET_DIR)
 		links { "freetype" }
-		links { "SDL2.lib" }
+		links { "SDL2" }

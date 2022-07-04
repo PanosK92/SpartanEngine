@@ -39,6 +39,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_IndexBuffer.h"
 #include "../RHI/RHI_TextureCube.h"
 #include "../RHI/RHI_Device.h"
+#include "../RHI/RHI_FSR.h"
 //=======================================
 
 //= NAMESPACES ===============
@@ -168,13 +169,11 @@ namespace Spartan
             RENDER_TARGET(RenderTarget::Frame_Render_2) = make_unique<RHI_Texture2D>(m_context, width_render, height_render, mip_count, RHI_Format_R16G16B16A16_Float, RHI_Texture_Rt_Color | RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipViews, "rt_frame_render_2");
 
             // G-Buffer
-            // Velocity: Only one velocity buffer is written to. But we alteranate which of the two we write to, every frame, so that we can have a previous velocity buffer. This helps compute dissoclussion in the TAA shader.
-            RENDER_TARGET(RenderTarget::Gbuffer_Albedo)     = make_shared<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R8G8B8A8_Unorm,     RHI_Texture_Rt_Color        | RHI_Texture_Srv,                                       "rt_gbuffer_albedo");
-            RENDER_TARGET(RenderTarget::Gbuffer_Normal)     = make_shared<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R16G16B16A16_Float, RHI_Texture_Rt_Color        | RHI_Texture_Srv,                                       "rt_gbuffer_normal");
-            RENDER_TARGET(RenderTarget::Gbuffer_Material)   = make_shared<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R8G8B8A8_Unorm,     RHI_Texture_Rt_Color        | RHI_Texture_Srv,                                       "rt_gbuffer_material");
-            RENDER_TARGET(RenderTarget::Gbuffer_Velocity)   = make_shared<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R16G16_Float,       RHI_Texture_Rt_Color        | RHI_Texture_Srv,                                       "rt_gbuffer_velocity");
-            RENDER_TARGET(RenderTarget::Gbuffer_Velocity_2) = make_shared<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R16G16_Float,       RHI_Texture_Rt_Color        | RHI_Texture_Srv,                                       "rt_gbuffer_velocity_2");
-            RENDER_TARGET(RenderTarget::Gbuffer_Depth)      = make_shared<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_D32_Float,          RHI_Texture_Rt_DepthStencil | RHI_Texture_Rt_DepthStencilReadOnly | RHI_Texture_Srv, "rt_gbuffer_depth");
+            RENDER_TARGET(RenderTarget::Gbuffer_Albedo)   = make_shared<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R8G8B8A8_Unorm,     RHI_Texture_Rt_Color        | RHI_Texture_Srv,                                       "rt_gbuffer_albedo");
+            RENDER_TARGET(RenderTarget::Gbuffer_Normal)   = make_shared<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R16G16B16A16_Float, RHI_Texture_Rt_Color        | RHI_Texture_Srv,                                       "rt_gbuffer_normal");
+            RENDER_TARGET(RenderTarget::Gbuffer_Material) = make_shared<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R8G8B8A8_Unorm,     RHI_Texture_Rt_Color        | RHI_Texture_Srv,                                       "rt_gbuffer_material");
+            RENDER_TARGET(RenderTarget::Gbuffer_Velocity) = make_shared<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R16G16_Float,       RHI_Texture_Rt_Color        | RHI_Texture_Srv,                                       "rt_gbuffer_velocity");
+            RENDER_TARGET(RenderTarget::Gbuffer_Depth)    = make_shared<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_D32_Float,          RHI_Texture_Rt_DepthStencil | RHI_Texture_Rt_DepthStencilReadOnly | RHI_Texture_Srv, "rt_gbuffer_depth");
 
             // Light
             RENDER_TARGET(RenderTarget::Light_Diffuse)              = make_unique<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R11G11B10_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_CanBeCleared, "rt_light_diffuse");
@@ -189,9 +188,6 @@ namespace Spartan
             // SSAO
             RENDER_TARGET(RenderTarget::Ssao)    = make_unique<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R16G16B16A16_Snorm, RHI_Texture_Uav | RHI_Texture_Srv, "rt_ssao");
             RENDER_TARGET(RenderTarget::Ssao_Gi) = make_unique<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R16G16B16A16_Snorm, RHI_Texture_Uav | RHI_Texture_Srv, "rt_ssao_gi");
-
-            // TAA History
-            RENDER_TARGET(RenderTarget::Taa_History) = make_unique<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R11G11B10_Float, RHI_Texture_Uav | RHI_Texture_Srv, "rt_taa_history");
 
             // Dof
             RENDER_TARGET(RenderTarget::Dof_Half)   = make_unique<RHI_Texture2D>(m_context, width_render / 2, height_render / 2, 1, RHI_Format_R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv, "rt_dof_half");
@@ -225,6 +221,8 @@ namespace Spartan
             uint32_t height       = is_output_larger ? height_output : height_render;
             RENDER_TARGET(RenderTarget::Blur) = make_unique<RHI_Texture2D>(m_context, width, height, 1, RHI_Format_R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv, "rt_blur");
         }
+
+        RHI_FSR::OnResolutionChange(m_rhi_device.get(), m_resolution_render, m_resolution_output);
     }
 
     void Renderer::CreateShaders()
@@ -341,16 +339,9 @@ namespace Spartan
         m_shaders[Renderer::Shader::ToneMapping_C] = make_shared<RHI_Shader>(m_context);
         m_shaders[Renderer::Shader::ToneMapping_C]->Compile(RHI_Shader_Compute, dir_shaders + "tone_mapping.hlsl", async);
 
-        // Anti-aliasing
-        {
-            // TAA
-            m_shaders[Renderer::Shader::Taa_C] = make_shared<RHI_Shader>(m_context);
-            m_shaders[Renderer::Shader::Taa_C]->Compile(RHI_Shader_Compute, dir_shaders + "temporal_antialiasing.hlsl", async);
-
-            // FXAA
-            m_shaders[Renderer::Shader::Fxaa_C] = make_shared<RHI_Shader>(m_context);
-            m_shaders[Renderer::Shader::Fxaa_C]->Compile(RHI_Shader_Compute, dir_shaders + "fxaa.hlsl", async);
-        }
+        // FXAA
+        m_shaders[Renderer::Shader::Fxaa_C] = make_shared<RHI_Shader>(m_context);
+        m_shaders[Renderer::Shader::Fxaa_C]->Compile(RHI_Shader_Compute, dir_shaders + "fxaa.hlsl", async);
 
         // Depth of Field
         {
@@ -431,23 +422,23 @@ namespace Spartan
         // AMD FidelityFX
         {
             // CAS - Contrast Adaptive Sharpening
-            m_shaders[Renderer::Shader::AMD_FidelityFX_CAS_C] = make_shared<RHI_Shader>(m_context);
-            m_shaders[Renderer::Shader::AMD_FidelityFX_CAS_C]->Compile(RHI_Shader_Compute, dir_shaders + "amd_fidelity_fx/cas.hlsl", async);
+            m_shaders[Renderer::Shader::Ffx_Cas_C] = make_shared<RHI_Shader>(m_context);
+            m_shaders[Renderer::Shader::Ffx_Cas_C]->Compile(RHI_Shader_Compute, dir_shaders + "amd_fidelity_fx/cas.hlsl", async);
 
             // SPD - Single Pass Downsampler
-            m_shaders[Renderer::Shader::AMD_FidelityFX_SPD_C] = make_shared<RHI_Shader>(m_context);
-            m_shaders[Renderer::Shader::AMD_FidelityFX_SPD_C]->Compile(RHI_Shader_Compute, dir_shaders + "amd_fidelity_fx/spd.hlsl", async);
-            m_shaders[Renderer::Shader::AMD_FidelityFX_SPD_LuminanceAntiflicker_C] = make_shared<RHI_Shader>(m_context);
-            m_shaders[Renderer::Shader::AMD_FidelityFX_SPD_LuminanceAntiflicker_C]->AddDefine("LUMINANCE_ANTIFLICKER");
-            m_shaders[Renderer::Shader::AMD_FidelityFX_SPD_LuminanceAntiflicker_C]->Compile(RHI_Shader_Compute, dir_shaders + "amd_fidelity_fx/spd.hlsl", async);
+            m_shaders[Renderer::Shader::Ffx_Spd_C] = make_shared<RHI_Shader>(m_context);
+            m_shaders[Renderer::Shader::Ffx_Spd_C]->Compile(RHI_Shader_Compute, dir_shaders + "amd_fidelity_fx/spd.hlsl", async);
+            m_shaders[Renderer::Shader::Ffx_Spd_LuminanceAntiflicker_C] = make_shared<RHI_Shader>(m_context);
+            m_shaders[Renderer::Shader::Ffx_Spd_LuminanceAntiflicker_C]->AddDefine("LUMINANCE_ANTIFLICKER");
+            m_shaders[Renderer::Shader::Ffx_Spd_LuminanceAntiflicker_C]->Compile(RHI_Shader_Compute, dir_shaders + "amd_fidelity_fx/spd.hlsl", async);
 
             // FSR 1.0
-            m_shaders[Renderer::Shader::AMD_FidelityFX_FSR_1_0_Upsample_C] = make_shared<RHI_Shader>(m_context);
-            m_shaders[Renderer::Shader::AMD_FidelityFX_FSR_1_0_Upsample_C]->AddDefine("UPSAMPLE");
-            m_shaders[Renderer::Shader::AMD_FidelityFX_FSR_1_0_Upsample_C]->Compile(RHI_Shader_Compute, dir_shaders + "amd_fidelity_fx/fsr_1_0.hlsl", async);
-            m_shaders[Renderer::Shader::AMD_FidelityFX_FSR_1_0_Sharpen_C] = make_shared<RHI_Shader>(m_context);
-            m_shaders[Renderer::Shader::AMD_FidelityFX_FSR_1_0_Sharpen_C]->AddDefine("SHARPEN");
-            m_shaders[Renderer::Shader::AMD_FidelityFX_FSR_1_0_Sharpen_C]->Compile(RHI_Shader_Compute, dir_shaders + "amd_fidelity_fx/fsr_1_0.hlsl", async);
+            m_shaders[Renderer::Shader::Ffx_Fsr_Upsample_C] = make_shared<RHI_Shader>(m_context);
+            m_shaders[Renderer::Shader::Ffx_Fsr_Upsample_C]->AddDefine("UPSAMPLE");
+            m_shaders[Renderer::Shader::Ffx_Fsr_Upsample_C]->Compile(RHI_Shader_Compute, dir_shaders + "amd_fidelity_fx/fsr_1_0.hlsl", async);
+            m_shaders[Renderer::Shader::Ffx_Fsr_Sharpen_C] = make_shared<RHI_Shader>(m_context);
+            m_shaders[Renderer::Shader::Ffx_Fsr_Sharpen_C]->AddDefine("SHARPEN");
+            m_shaders[Renderer::Shader::Ffx_Fsr_Sharpen_C]->Compile(RHI_Shader_Compute, dir_shaders + "amd_fidelity_fx/fsr_1_0.hlsl", async);
         }
 
         // Debug

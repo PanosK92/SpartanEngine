@@ -53,7 +53,7 @@ namespace Spartan
         const uint64_t GetObjectSizeCpu() const { return m_object_size_cpu; }
         const uint64_t GetObjectSizeGpu() const { return m_object_size_gpu; }
 
-        // Execution context.
+        // Engine context.
         Context* GetContext() const { return m_context; }
 
     protected:
@@ -62,7 +62,7 @@ namespace Spartan
         uint64_t m_object_size_cpu = 0;
         uint64_t m_object_size_gpu = 0;
 
-        // Execution context
+        // Engine context
         Context* m_context = nullptr;
     };
 }

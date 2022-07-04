@@ -156,7 +156,6 @@ namespace Spartan
             Copy_Bilinear_P,
             Fxaa_C,
             FilmGrain_C,
-            Taa_C,
             MotionBlur_C,
             Dof_DownsampleCoc_C,
             Dof_Bokeh_C,
@@ -188,11 +187,11 @@ namespace Spartan
             Entity_Outline_P,
             Reflection_Probe_V,
             Reflection_Probe_P,
-            AMD_FidelityFX_CAS_C,
-            AMD_FidelityFX_SPD_C,
-            AMD_FidelityFX_SPD_LuminanceAntiflicker_C,
-            AMD_FidelityFX_FSR_1_0_Upsample_C,
-            AMD_FidelityFX_FSR_1_0_Sharpen_C
+            Ffx_Cas_C,
+            Ffx_Spd_C,
+            Ffx_Spd_LuminanceAntiflicker_C,
+            Ffx_Fsr_Upsample_C,
+            Ffx_Fsr_Sharpen_C
         };
 
         // Render targets
@@ -203,7 +202,6 @@ namespace Spartan
             Gbuffer_Normal,
             Gbuffer_Material,
             Gbuffer_Velocity,
-            Gbuffer_Velocity_2,
             Gbuffer_Depth,
             Brdf_Specular_Lut,
             Light_Diffuse,
@@ -220,7 +218,6 @@ namespace Spartan
             Ssao,
             Ssao_Gi,
             Ssr,
-            Taa_History,
             Bloom,
             Blur
         };
@@ -252,8 +249,8 @@ namespace Spartan
             Debanding                = 1 << 22,
             ReverseZ                 = 1 << 23,
             DepthPrepass             = 1 << 24,
-            AMD_FidelityFX_CAS       = 1 << 25,
-            AMD_FidelityFX_FSR_1_0   = 1 << 26
+            Ffx_Cas                  = 1 << 25,
+            Ffx_Fsr                  = 1 << 26
         };
 
         // Renderer/graphics options values
@@ -402,7 +399,6 @@ namespace Spartan
         void Pass_Light_Composition(RHI_CommandList* cmd_list, RHI_Texture* tex_out, const bool is_transparent_pass);
         void Pass_Light_ImageBased(RHI_CommandList* cmd_list, RHI_Texture* tex_out, const bool is_transparent_pass);
         void Pass_PostProcess(RHI_CommandList* cmd_list);
-        void Pass_Taa(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
         void Pass_ToneMapping(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
         void Pass_Fxaa(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
         void Pass_FilmGrain(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out); 
@@ -415,6 +411,7 @@ namespace Spartan
         void Pass_Amd_FidelityFx_Cas(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
         void Pass_Amd_FidelityFx_Spd(RHI_CommandList* cmd_list, RHI_Texture* tex, const bool luminance_antiflicker);
         void Pass_Amd_FidelityFx_Fsr_1_0(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out, RHI_Texture* tex_out_scratch);
+        void Pass_Amd_FidelityFx_Fsr_2_0(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
         void Pass_Lines(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
         void Pass_DebugMeshes(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
         void Pass_Outline(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
@@ -542,7 +539,6 @@ namespace Spartan
         bool m_is_odd_frame               = false;
         bool m_brdf_specular_lut_rendered = false;
         std::thread::id m_render_thread_id;
-
 
         // Constants
         const uint32_t m_resolution_shadow_min = 128;

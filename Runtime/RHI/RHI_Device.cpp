@@ -75,6 +75,11 @@ namespace Spartan
                height > 4 && height <= m_max_texture_2d_dimension;
     }
 
+    RHI_Api_Type RHI_Device::GetApiType() const
+    {
+        return m_rhi_context->api_type;
+    }
+    
     bool RHI_Device::QueueWaitAll() const
     {
         return QueueWait(RHI_Queue_Type::Graphics) && QueueWait(RHI_Queue_Type::Copy) && QueueWait(RHI_Queue_Type::Compute);

@@ -42,6 +42,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World/Components/ReflectionProbe.h"
 #include "../World/World.h"
 #include "../World/TransformHandle/TransformHandle.h"
+#include "../RHI/RHI_FSR.h"
 //===================================================
 
 //= NAMESPACES ===============
@@ -586,7 +587,7 @@ namespace Spartan
         RHI_Texture* tex_albedo   = RENDER_TARGET(RenderTarget::Gbuffer_Albedo).get();
         RHI_Texture* tex_normal   = RENDER_TARGET(RenderTarget::Gbuffer_Normal).get();
         RHI_Texture* tex_material = RENDER_TARGET(RenderTarget::Gbuffer_Material).get();
-        RHI_Texture* tex_velocity = RENDER_TARGET(!m_is_odd_frame ? RenderTarget::Gbuffer_Velocity : RenderTarget::Gbuffer_Velocity_2).get();
+        RHI_Texture* tex_velocity = RENDER_TARGET(RenderTarget::Gbuffer_Velocity).get();
         RHI_Texture* tex_depth    = RENDER_TARGET(RenderTarget::Gbuffer_Depth).get();
 
         bool depth_prepass = GetOption(Renderer::Option::DepthPrepass);
@@ -1150,24 +1151,36 @@ namespace Spartan
                 Pass_DepthOfField(cmd_list, rt_frame_render, rt_frame_render_scratch);
                 rt_frame_render.swap(rt_frame_render_scratch);
             }
-
-            // TAA
-            if (GetOption(Renderer::Option::AntiAliasing_Taa))
-            {
-                Pass_Taa(cmd_list, rt_frame_render, rt_frame_render_scratch);
-                rt_frame_render.swap(rt_frame_render_scratch);
-            }
         }
 
         // RENDER RESOLUTION -> OUTPUT RESOLUTION
         {
-            // AMD FidelityFX FSR 1.0
-            bool resolution_output_larger = m_resolution_output.x > m_resolution_render.x;
-            if (GetOption(Renderer::Option::AMD_FidelityFX_FSR_1_0) && resolution_output_larger)
+            bool upsample = m_resolution_output.x > m_resolution_render.x;
+
+            // FSR 1.0
+            if (upsample && GetOption(Renderer::Option::Ffx_Fsr) && m_rhi_device->GetApiType() == RHI_Api_Type::D3d11)
             {
-                // TODO: This needs to be in perceptual space and normalised to 0, 1 range.
-                Pass_Amd_FidelityFx_Fsr_1_0(cmd_list, rt_frame_render.get(), rt_frame_output.get(), rt_frame_output_scratch.get());
+                // FSR 1.0
+                if (GetOption(Renderer::Option::Ffx_Fsr))
+                {
+                    // TODO: This needs to be in perceptual space and normalised to 0, 1 range.
+                    Pass_Amd_FidelityFx_Fsr_1_0(cmd_list, rt_frame_render.get(), rt_frame_output.get(), rt_frame_output_scratch.get());
+                }
+
+                // We lo longer maintain a custom TAA pass as FSR 2.0's TAA is superior, so fall back to FXAA.
+                if (GetOption(Renderer::Option::AntiAliasing_Taa))
+                {
+                    SetOption(Renderer::Option::AntiAliasing_Fxaa, true);
+                    SetOption(Renderer::Option::AntiAliasing_Taa, false);
+                    LOG_WARNING("TAA is not supported for D3D11, switching to FXAA.");
+                }
             }
+            // FSR 2.0 (TAA/Upsample)
+            else if ((GetOption(Renderer::Option::AntiAliasing_Taa) || (GetOption(Renderer::Option::Ffx_Fsr) && upsample)))
+            {
+                Pass_Amd_FidelityFx_Fsr_2_0(cmd_list, rt_frame_render.get(), rt_frame_output.get());
+            }
+            // Linear (Copy/Upscale)
             else
             {
                 // D3D11 baggage, can't blit to a texture with different resolution or mip count
@@ -1198,7 +1211,7 @@ namespace Spartan
             rt_frame_output.swap(rt_frame_output_scratch);
 
             // Sharpening
-            if (GetOption(Renderer::Option::AMD_FidelityFX_CAS))
+            if (GetOption(Renderer::Option::Ffx_Cas))
             {
                 Pass_Amd_FidelityFx_Cas(cmd_list, rt_frame_output, rt_frame_output_scratch);
                 rt_frame_output.swap(rt_frame_output_scratch);
@@ -1240,46 +1253,6 @@ namespace Spartan
         }
 
         cmd_list->EndMarker();
-    }
-
-    void Renderer::Pass_Taa(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
-    {
-        // Acquire shaders
-        RHI_Shader* shader_c = m_shaders[Renderer::Shader::Taa_C].get();
-        if (!shader_c->IsCompiled())
-            return;
-
-        cmd_list->BeginTimeblock("taa");
-
-        // Acquire history texture
-        RHI_Texture* tex_history = RENDER_TARGET(RenderTarget::Taa_History).get();
-
-        // Define pipeline state
-        static RHI_PipelineState pso;
-        pso.shader_compute = shader_c;
-
-        // Set pipeline state
-        cmd_list->SetPipelineState(pso);
-
-        // Set uber buffer
-        m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
-        Update_Cb_Uber(cmd_list);
-
-        cmd_list->SetTexture(Renderer::Bindings_Uav::rgb,                       tex_out);
-        cmd_list->SetTexture(Renderer::Bindings_Srv::tex,                       tex_history);
-        cmd_list->SetTexture(Renderer::Bindings_Srv::tex2,                      tex_in);
-        cmd_list->SetTexture(Renderer::Bindings_Srv::gbuffer_velocity,          RENDER_TARGET(!m_is_odd_frame ? RenderTarget::Gbuffer_Velocity : RenderTarget::Gbuffer_Velocity_2));
-        cmd_list->SetTexture(Renderer::Bindings_Srv::gbuffer_velocity_previous, RENDER_TARGET(m_is_odd_frame ? RenderTarget::Gbuffer_Velocity : RenderTarget::Gbuffer_Velocity_2));
-        cmd_list->SetTexture(Renderer::Bindings_Srv::gbuffer_depth,             RENDER_TARGET(RenderTarget::Gbuffer_Depth));
-
-        // Render
-        cmd_list->Dispatch(thread_group_count_x(tex_out), thread_group_count_y(tex_out));
-
-        // D3D11 baggage, can't blit to a texture with a different mip count
-        bool bilinear = false;
-        Pass_Copy(cmd_list, tex_out.get(), tex_history, bilinear);
-
-        cmd_list->EndTimeblock();
     }
 
     void Renderer::Pass_Bloom(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
@@ -1686,7 +1659,7 @@ namespace Spartan
     void Renderer::Pass_Amd_FidelityFx_Cas(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
     {
         // Acquire shaders
-        RHI_Shader* shader_c = m_shaders[Renderer::Shader::AMD_FidelityFX_CAS_C].get();
+        RHI_Shader* shader_c = m_shaders[Renderer::Shader::Ffx_Cas_C].get();
         if (!shader_c->IsCompiled())
             return;
 
@@ -1729,7 +1702,7 @@ namespace Spartan
         SP_ASSERT(output_mip_count <= 12); // As per documentation (page 22)
 
         // Acquire shader
-        RHI_Shader* shader = m_shaders[luminance_antiflicker ? Renderer::Shader::AMD_FidelityFX_SPD_LuminanceAntiflicker_C : Renderer::Shader::AMD_FidelityFX_SPD_C].get();
+        RHI_Shader* shader = m_shaders[luminance_antiflicker ? Renderer::Shader::Ffx_Spd_LuminanceAntiflicker_C : Renderer::Shader::Ffx_Spd_C].get();
 
         if (!shader->IsCompiled())
             return;
@@ -1769,8 +1742,8 @@ namespace Spartan
     void Renderer::Pass_Amd_FidelityFx_Fsr_1_0(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out, RHI_Texture* tex_out_scratch)
     {
         // Acquire shaders
-        RHI_Shader* shader_upsample_c = m_shaders[Renderer::Shader::AMD_FidelityFX_FSR_1_0_Upsample_C].get();
-        RHI_Shader* shader_sharpen_c  = m_shaders[Renderer::Shader::AMD_FidelityFX_FSR_1_0_Sharpen_C].get();
+        RHI_Shader* shader_upsample_c = m_shaders[Renderer::Shader::Ffx_Fsr_Upsample_C].get();
+        RHI_Shader* shader_sharpen_c  = m_shaders[Renderer::Shader::Ffx_Fsr_Sharpen_C].get();
         if (!shader_upsample_c->IsCompiled() || !shader_sharpen_c->IsCompiled())
             return;
 
@@ -1819,6 +1792,23 @@ namespace Spartan
             cmd_list->Dispatch(thread_group_count_x(tex_out), thread_group_count_y(tex_out));
         }
         cmd_list->EndMarker();
+
+        cmd_list->EndTimeblock();
+    }
+
+    void Renderer::Pass_Amd_FidelityFx_Fsr_2_0(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
+    {
+        cmd_list->BeginTimeblock("amd_fidelityfx_fsr_2_0");
+
+        RHI_FSR::Dispatch(
+            cmd_list,
+            tex_in,
+            RENDER_TARGET(RenderTarget::Gbuffer_Depth).get(),
+            RENDER_TARGET(RenderTarget::Gbuffer_Velocity).get(),
+            tex_out,
+            m_camera.get(),
+            m_cb_frame_cpu.delta_time
+        );
 
         cmd_list->EndTimeblock();
     }

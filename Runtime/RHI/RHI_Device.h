@@ -79,6 +79,7 @@ namespace Spartan
         // Misc
         bool IsValidResolution(const uint32_t width, const uint32_t height);
         RHI_Context* GetContextRhi()        const { return m_rhi_context.get(); }
+        RHI_Api_Type GetApiType()           const;
         Context* GetContext()               const { return m_context; }
         uint32_t GetEnabledGraphicsStages() const { return m_enabled_graphics_shader_stages; }
 
