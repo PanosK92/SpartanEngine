@@ -1163,7 +1163,7 @@ namespace Spartan
         {
             // AMD FidelityFX FSR 1.0
             bool resolution_output_larger = m_resolution_output.x > m_resolution_render.x;
-            if (GetOption(Renderer::Option::Upsample_AMD_FidelityFX_FSR_1_0) && resolution_output_larger)
+            if (GetOption(Renderer::Option::AMD_FidelityFX_FSR_1_0) && resolution_output_larger)
             {
                 // TODO: This needs to be in perceptual space and normalised to 0, 1 range.
                 Pass_Amd_FidelityFx_Fsr_1_0(cmd_list, rt_frame_render.get(), rt_frame_output.get(), rt_frame_output_scratch.get());
@@ -1198,7 +1198,7 @@ namespace Spartan
             rt_frame_output.swap(rt_frame_output_scratch);
 
             // Sharpening
-            if (GetOption(Renderer::Option::Sharpening_AMD_FidelityFX_CAS))
+            if (GetOption(Renderer::Option::AMD_FidelityFX_CAS))
             {
                 Pass_Amd_FidelityFx_Cas(cmd_list, rt_frame_output, rt_frame_output_scratch);
                 rt_frame_output.swap(rt_frame_output_scratch);
