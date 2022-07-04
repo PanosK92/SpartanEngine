@@ -29,12 +29,18 @@ cp third_party/libraries/dxcompiler.dll binaries/
 cp third_party/libraries/fmod64.dll binaries/
 cp third_party/libraries/fmodL64.dll binaries/
 
+# Copy some 3D models into the project folder
+echo
+echo "4. Creating project directory and copying some assets..."
+mkdir -p binaries/project
+cp -r assets/models binaries/project
+
 # Generate project files
 echo
 if [ "$is_windows" = false ]; then
-	echo "4. Generating MakeFiles..."
+	echo "5. Generating MakeFiles..."
 	premake5 --file=build_scripts/premake.lua $@
 else
-	echo "4. Generating Visual Studio solution..."
+	echo "5. Generating Visual Studio solution..."
 	build_scripts/premake5 --file=build_scripts/premake.lua $@
 fi
