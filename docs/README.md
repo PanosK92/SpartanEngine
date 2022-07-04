@@ -18,7 +18,13 @@
 
 Build status | Notes
 :-           | :-
-![build_status](https://github.com/PanosK92/SpartanEngine/actions/workflows/workflow.yml/badge.svg) | To download the latest development build, go to "Releases", on your right.
+![build_status](https://github.com/PanosK92/SpartanEngine/actions/workflows/workflow.yml/badge.svg) | • D3D11 is stable. <br /> • Vulkan is not always stable but it has FSR 2.0 and TAA.<br /> • D3D12 is a work in progress. Dont use it yet.
+
+# Livestreams
+
+If there is something interesting to talk about, I tend to do livestreams over at discord.
+
+[![](https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/docs/readme_1.4.jpg)](https://www.youtube.com/watch?v=QhyMal6RY7M)
 
 ## Media
 
@@ -26,12 +32,6 @@ Build status | Notes
 <img align="center" width src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/docs/readme_1.0.jpg"/>
 <img align="center" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/docs/readme_1.1.jpg"/>
 <img align="center" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/docs/readme_1.2.jpg"/>
-
-# Livestreams
-
-If there is something interesting to talk about, I tend to do livestreams over at discord.
-
-[![](https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/docs/readme_1.4.jpg)](https://www.youtube.com/watch?v=QhyMal6RY7M)
 
 ## Features (v0.31)
 
