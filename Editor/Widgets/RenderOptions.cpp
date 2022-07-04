@@ -184,7 +184,7 @@ void RenderOptions::TickVisible()
     bool do_fxaa                   = m_renderer->GetOption(Renderer::Option::AntiAliasing_Fxaa);
     bool do_motion_blur            = m_renderer->GetOption(Renderer::Option::MotionBlur);
     bool do_film_grain             = m_renderer->GetOption(Renderer::Option::FilmGrain);
-    bool do_sharperning            = m_renderer->GetOption(Renderer::Option::Sharpening_AMD_FidelityFX_CAS);
+    bool do_sharperning            = m_renderer->GetOption(Renderer::Option::AMD_FidelityFX_CAS);
     bool do_chromatic_aberration   = m_renderer->GetOption(Renderer::Option::ChromaticAberration);
     bool do_debanding              = m_renderer->GetOption(Renderer::Option::Debanding);
     bool debug_physics             = m_renderer->GetOption(Renderer::Option::Debug_Physics);
@@ -199,7 +199,7 @@ void RenderOptions::TickVisible()
     bool debug_wireframe           = m_renderer->GetOption(Renderer::Option::Debug_Wireframe);
     bool do_depth_prepass          = m_renderer->GetOption(Renderer::Option::DepthPrepass);
     bool do_reverse_z              = m_renderer->GetOption(Renderer::Option::ReverseZ);
-    bool do_fsr_1_0                = m_renderer->GetOption(Renderer::Option::Upsample_AMD_FidelityFX_FSR_1_0);
+    bool do_fsr_1_0                = m_renderer->GetOption(Renderer::Option::AMD_FidelityFX_FSR_1_0);
     int resolution_shadow          = m_renderer->GetOptionValue<int>(Renderer::OptionValue::ShadowResolution);
 
     // Present options (with a table)
@@ -453,7 +453,7 @@ void RenderOptions::TickVisible()
     m_renderer->SetOption(Renderer::Option::AntiAliasing_Fxaa,               do_fxaa);
     m_renderer->SetOption(Renderer::Option::MotionBlur,                      do_motion_blur);
     m_renderer->SetOption(Renderer::Option::FilmGrain,                       do_film_grain);
-    m_renderer->SetOption(Renderer::Option::Sharpening_AMD_FidelityFX_CAS,   do_sharperning);
+    m_renderer->SetOption(Renderer::Option::AMD_FidelityFX_CAS,              do_sharperning);
     m_renderer->SetOption(Renderer::Option::ChromaticAberration,             do_chromatic_aberration);
     m_renderer->SetOption(Renderer::Option::Debanding,                       do_debanding);
     m_renderer->SetOption(Renderer::Option::Transform_Handle,                debug_transform);
@@ -468,6 +468,6 @@ void RenderOptions::TickVisible()
     m_renderer->SetOption(Renderer::Option::Debug_Wireframe,                 debug_wireframe);
     m_renderer->SetOption(Renderer::Option::DepthPrepass,                    do_depth_prepass);
     m_renderer->SetOption(Renderer::Option::ReverseZ,                        do_reverse_z);
-    m_renderer->SetOption(Renderer::Option::Upsample_AMD_FidelityFX_FSR_1_0, do_fsr_1_0);
+    m_renderer->SetOption(Renderer::Option::AMD_FidelityFX_FSR_1_0,          do_fsr_1_0);
     m_renderer->SetOptionValue(Renderer::OptionValue::ShadowResolution,      static_cast<float>(resolution_shadow));
 }

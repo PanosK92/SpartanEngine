@@ -75,10 +75,10 @@ namespace Spartan
         m_options |= Renderer::Option::ScreenSpaceShadows;
         m_options |= Renderer::Option::ScreenSpaceReflections;
         m_options |= Renderer::Option::AntiAliasing_Taa;
-        m_options |= Renderer::Option::Sharpening_AMD_FidelityFX_CAS;
-        m_options |= Renderer::Option::DepthOfField;
+        m_options |= Renderer::Option::AMD_FidelityFX_CAS;
         m_options |= Renderer::Option::Debanding;
-        //m_options |= Render_DepthPrepass;
+        //m_options |= Renderer::Option::DepthOfField;        // This is depth of field from ALDI, so until I improve it, it should be disabled by default.
+        //m_options |= Renderer::Option::Render_DepthPrepass; // Depth-pre-pass is not always faster, so by default, it's disabled.
 
         // Option values.
         m_option_values[Renderer::OptionValue::Anisotropy]       = 16.0f;
