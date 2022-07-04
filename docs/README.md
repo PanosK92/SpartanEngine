@@ -1,6 +1,6 @@
 # Spartan Engine [![Discord](https://img.shields.io/discord/677302405263785986?label=Discord)](https://discord.gg/TG5r2BS)
 
-<img align="left" width="128" padding="2" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/Data/logo256.png"/>
+<img align="left" width="128" padding="2" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/docs/logo256.png"/>
 
 <p>An engine which is the result of my never-ending quest to understand how things work and has become my go-to place for research. It's designed around the philosophy of favoring fast real-time solutions over baked/static ones, a spartan approach offering a truly dynamic experience.</p>
 
@@ -23,16 +23,15 @@ Build status | Notes
 ## Media
 
 [![](https://i.imgur.com/j6zIEI9.jpg)](https://www.youtube.com/watch?v=RIae1ma_DSo)
-<img align="center" width src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/Data/readme_1.0.jpg"/>
-<img align="center" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/Data/readme_1.1.jpg"/>
-<img align="center" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/Data/readme_1.2.jpg"/>
+<img align="center" width src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/docs/readme_1.0.jpg"/>
+<img align="center" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/docs/readme_1.1.jpg"/>
+<img align="center" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/docs/readme_1.2.jpg"/>
 
 # Livestreams
 
-A first livestream has taken place, it's an introduction to the engine and myself, as requested by the Discord community.
-I'll explore various things, more technical as well, as we go forward.
+If there is something interesting to talk about, I tend to do livestreams over at discord.
 
-[![](https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/Data/readme_1.3.jpg)](https://www.youtube.com/watch?v=QcytU6AKwqk)
+[![](https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/docs/readme_1.4.jpg)](https://www.youtube.com/watch?v=QhyMal6RY7M)
 
 ## Features (v0.31)
 
