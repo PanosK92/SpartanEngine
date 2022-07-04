@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016-2022 Panos Karabelas
+Copyright(c) 2016-2021 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -18,29 +18,30 @@ COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
 IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
+//= INCLUDES ==========
+#include "Spartan.h"
+#include "../RHI_FSR.h"
+//=====================
 
-#pragma once
-
-//= INCLUDES =====================
-#include "../Math/Vector2.h"
-//================================
-
-namespace Spartan::Utility::Sampling
+namespace Spartan
 {
-    inline float Halton(uint64_t index, uint64_t base)
+    void RHI_FSR::GenerateJitterSample(float* x, float* y)
     {
-        float f = 1; float r = 0;
-        while (index > 0)
-        {
-            f = f / static_cast<float>(base);
-            r = r + f * (index % base);
-            index = index / base;
-        }
-        return r;
+
     }
 
-    inline Math::Vector2 Halton2D(uint64_t index, uint64_t baseA, uint64_t baseB)
+    void RHI_FSR::OnResolutionChange(RHI_Device* rhi_device, const Math::Vector2& resolution_render, const Math::Vector2& resolution_output)
     {
-        return Math::Vector2(Halton(index, baseA), Halton(index, baseB));
+
+    }
+
+    void RHI_FSR::Dispatch(RHI_CommandList* cmd_list, RHI_Texture* tex_input, RHI_Texture* tex_depth, RHI_Texture* tex_velocity, RHI_Texture* tex_output, Camera* camera, float delta_time)
+    {
+
+    }
+
+    void RHI_FSR::Destroy()
+    {
+        
     }
 }

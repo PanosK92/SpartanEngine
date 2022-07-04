@@ -25,7 +25,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Model.h"                              
 #include "Grid.h"                               
 #include "Font/Font.h"                          
-#include "../Utilities/Sampling.h"              
 #include "../Profiling/Profiler.h"              
 #include "../Resource/ResourceCache.h"          
 #include "../World/Entity.h"                    
@@ -47,6 +46,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Window.h"                     
 #include "../Input/Input.h"                     
 #include "../World/Components/Environment.h"    
+#include "../RHI/RHI_FSR.h"
 //==============================================
 
 //= NAMESPACES ===============
@@ -75,7 +75,7 @@ namespace Spartan
         m_options |= Renderer::Option::ScreenSpaceShadows;
         m_options |= Renderer::Option::ScreenSpaceReflections;
         m_options |= Renderer::Option::AntiAliasing_Taa;
-        m_options |= Renderer::Option::AMD_FidelityFX_CAS;
+        m_options |= Renderer::Option::Ffx_Cas;
         m_options |= Renderer::Option::Debanding;
         //m_options |= Renderer::Option::DepthOfField;        // This is depth of field from ALDI, so until I improve it, it should be disabled by default.
         //m_options |= Renderer::Option::Render_DepthPrepass; // Depth-pre-pass is not always faster, so by default, it's disabled.
@@ -103,6 +103,8 @@ namespace Spartan
 
     Renderer::~Renderer()
     {
+        RHI_FSR::Destroy();
+
         // Unsubscribe from events
         SP_UNSUBSCRIBE_FROM_EVENT(EventType::WorldResolved,             SP_EVENT_HANDLER_VARIANT(OnRenderablesAcquire));
         SP_UNSUBSCRIBE_FROM_EVENT(EventType::WorldPreClear,             SP_EVENT_HANDLER(OnClear));
@@ -297,12 +299,12 @@ namespace Spartan
                 m_cb_frame_cpu.projection_inverted = Matrix::Invert(m_cb_frame_cpu.projection);
             }
 
-            // TAA - Generate jitter
-            if (GetOption(Renderer::Option::AntiAliasing_Taa))
+            // Generate jitter sample in case FSR (which also does TAA) is enabled. D3D11 only receives FXAA so it's ignored at this point.
+            bool upsampling = m_resolution_output.x > m_resolution_render.x;
+            if (GetOption(Renderer::Option::AntiAliasing_Taa) || (GetOption(Renderer::Option::Ffx_Fsr) && upsampling) && m_rhi_device->GetApiType() != RHI_Api_Type::D3d11)
             {
-                const uint8_t samples     = 16;
-                const uint8_t index       = m_frame_num % samples;
-                m_taa_jitter              = Utility::Sampling::Halton2D(index, 2, 3) * 2.0f - 1.0f;
+                RHI_FSR::GenerateJitterSample(&m_taa_jitter.x, &m_taa_jitter.y);
+
                 m_taa_jitter.x            = (m_taa_jitter.x / m_resolution_render.x);
                 m_taa_jitter.y            = (m_taa_jitter.y / m_resolution_render.y);
                 m_cb_frame_cpu.projection *= Matrix::CreateTranslation(Vector3(m_taa_jitter.x, m_taa_jitter.y, 0.0f));
