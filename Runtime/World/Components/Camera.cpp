@@ -50,7 +50,7 @@ namespace Spartan
     void Camera::OnInitialize()
     {
         m_view            = ComputeViewMatrix();
-        m_projection      = ComputeProjection(m_renderer->GetOption(Renderer::Option::ReverseZ));
+        m_projection      = ComputeProjection(m_renderer->GetOption<bool>(RendererOption::ReverseZ));
         m_view_projection = m_view * m_projection;
     }
 
@@ -76,12 +76,12 @@ namespace Spartan
         if (!m_is_dirty)
             return;
 
-        m_view            = ComputeViewMatrix();
-        m_projection      = ComputeProjection(m_renderer->GetOption(Renderer::Option::ReverseZ));
-        m_view_projection = m_view * m_projection;
-        m_frustum         = Frustum(GetViewMatrix(), GetProjectionMatrix(), m_renderer->GetOption(Renderer::Option::ReverseZ) ? GetNearPlane() : GetFarPlane());
-
-        m_is_dirty = false;
+        bool reverse_z_enabled = m_renderer->GetOption<bool>(RendererOption::ReverseZ);
+        m_view                 = ComputeViewMatrix();
+        m_projection           = ComputeProjection(reverse_z_enabled);
+        m_view_projection      = m_view * m_projection;
+        m_frustum              = Frustum(GetViewMatrix(), GetProjectionMatrix(), reverse_z_enabled ? GetNearPlane() : GetFarPlane());
+        m_is_dirty             = false;
     }
 
     void Camera::Serialize(FileStream* stream)
@@ -108,7 +108,7 @@ namespace Spartan
         stream->Read(&m_far_plane);
 
         m_view            = ComputeViewMatrix();
-        m_projection      = ComputeProjection(m_renderer->GetOption(Renderer::Option::ReverseZ));
+        m_projection      = ComputeProjection(m_renderer->GetOption<bool>(RendererOption::ReverseZ));
         m_view_projection = m_view * m_projection;
     }
 
@@ -267,7 +267,7 @@ namespace Spartan
         const RHI_Viewport& viewport = GetViewport();
 
         // A non reverse-z projection matrix is need, if it we don't have it, we create it
-        const Matrix projection = m_renderer->GetOption(Renderer::Option::ReverseZ) ? Matrix::CreatePerspectiveFieldOfViewLH(GetFovVerticalRad(), viewport.GetAspectRatio(), m_near_plane, m_far_plane) : m_projection;
+        const Matrix projection = m_renderer->GetOption<bool>(RendererOption::ReverseZ) ? Matrix::CreatePerspectiveFieldOfViewLH(GetFovVerticalRad(), viewport.GetAspectRatio(), m_near_plane, m_far_plane) : m_projection;
 
         // Convert world space position to clip space position
         const Vector3 position_clip = position_world * m_view * projection;
@@ -309,7 +309,7 @@ namespace Spartan
         const RHI_Viewport& viewport = GetViewport();
 
         // A non reverse-z projection matrix is need, if it we don't have it, we create it
-        const Matrix projection = m_renderer->GetOption(Renderer::Option::ReverseZ) ? Matrix::CreatePerspectiveFieldOfViewLH(GetFovVerticalRad(), viewport.GetAspectRatio(), m_near_plane, m_far_plane) : m_projection;
+        const Matrix projection = m_renderer->GetOption<bool>(RendererOption::ReverseZ) ? Matrix::CreatePerspectiveFieldOfViewLH(GetFovVerticalRad(), viewport.GetAspectRatio(), m_near_plane, m_far_plane) : m_projection;
 
         // Convert screen space position to clip space position
         Vector3 position_clip;

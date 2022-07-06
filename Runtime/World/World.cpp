@@ -88,7 +88,7 @@ namespace Spartan
 
         if (Renderer* renderer = m_context->GetSubsystem<Renderer>())
         {
-            if (renderer->GetOption(Renderer::Option::Transform_Handle))
+            if (renderer->GetOption<bool>(RendererOption::Transform_Handle))
             {
                 m_transform_handle->Tick(renderer->GetCamera().get(), m_gizmo_transform_size);
             }

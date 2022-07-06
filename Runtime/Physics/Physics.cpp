@@ -124,7 +124,7 @@ namespace Spartan
             return;
         
         // Debug draw
-        if (m_renderer->GetOptions() & Renderer::Option::Debug_Physics)
+        if (m_renderer->GetOption<bool>(RendererOption::Debug_Physics))
         {
             m_world->debugDrawWorld();
         }

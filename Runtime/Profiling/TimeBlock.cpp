@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "TimeBlock.h"
 #include "../RHI/RHI_Device.h"
 #include "../RHI/RHI_CommandList.h"
+#include "../Rendering/Renderer.h"
 //=================================
 
 //= NAMESPACES =====

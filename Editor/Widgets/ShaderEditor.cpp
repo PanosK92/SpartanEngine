@@ -19,13 +19,14 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =====================
+//= INCLUDES ==============================
 #include "ShaderEditor.h"
 #include "Rendering/Renderer.h"
 #include "../ImGuiExtension.h"
 #include <fstream>
 #include "RHI/RHI_Shader.h"
-//================================
+#include "Rendering/Renderer_Definitions.h"
+//=========================================
 
 //= NAMESPACES =========
 using namespace std;
@@ -200,7 +201,7 @@ void ShaderEditor::ShowControls()
 
 void ShaderEditor::GetShaderInstances()
 {
-    unordered_map<Renderer::Shader, shared_ptr<RHI_Shader>> shaders = m_renderer->GetShaders();
+    unordered_map<RendererShader, shared_ptr<RHI_Shader>> shaders = m_renderer->GetShaders();
     m_shaders.clear();
 
     for (const auto& it : shaders)

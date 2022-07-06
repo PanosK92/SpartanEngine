@@ -329,7 +329,7 @@ namespace ImGui::RHI
                         // Set texture
                         if (RHI_Texture* texture = static_cast<RHI_Texture*>(pcmd->TextureId))
                         {
-                            cmd_list->SetTexture(Renderer::Bindings_Srv::tex, texture);
+                            cmd_list->SetTexture(RendererBindingsSrv::tex, texture);
 
                             // Make sure single channel texture appear white instead of red.
                             if (texture->GetChannelCount() == 1)
@@ -346,7 +346,7 @@ namespace ImGui::RHI
                             m_cb_imgui_gpu->AutoUpdate<Cb_ImGui>(m_cb_imgui_cpu, m_cb_imgui_cpu_mapped);
 
                             // Bind because the offset just changed
-                            cmd_list->SetConstantBuffer(Renderer::Bindings_Cb::imgui, RHI_Shader_Vertex | RHI_Shader_Pixel, m_cb_imgui_gpu);
+                            cmd_list->SetConstantBuffer(RendererBindingsCb::imgui, RHI_Shader_Vertex | RHI_Shader_Pixel, m_cb_imgui_gpu);
                         }
 
                         // Draw
