@@ -35,9 +35,9 @@ namespace Spartan
     {
         ThirdPartyLib(const std::string& name, const std::string& version, const std::string& url)
         {
-            this->name      = name;
-            this->version   = version;
-            this->url       = url;
+            this->name    = name;
+            this->version = version;
+            this->url     = url;
         }
 
         std::string name;
@@ -61,12 +61,12 @@ namespace Spartan
         const auto& GetThirdPartyLibs() const { return m_third_party_libs; }
         //======================================================================================================
 
-        //= Properties =========================================================================
-        bool GetIsFullScreen()                      const { return m_is_fullscreen; }
-        bool GetIsMouseVisible()                    const { return m_is_mouse_visible; }
-        bool HasLoadedUserSettings()                const { return m_has_loaded_user_settings; }
-        const Math::Vector2& GetResolutionOutput()  const { return m_resolution_output; }
-        //======================================================================================
+        //= Properties ========================================================================
+        bool GetIsFullScreen()                     const { return m_is_fullscreen; }
+        bool GetIsMouseVisible()                   const { return m_is_mouse_visible; }
+        bool HasLoadedUserSettings()               const { return m_has_loaded_user_settings; }
+        const Math::Vector2& GetResolutionOutput() const { return m_resolution_output; }
+        //=====================================================================================
 
     private:
         void Save() const;
@@ -75,18 +75,15 @@ namespace Spartan
         void Map() const;
         void Reflect();
 
-        bool m_is_fullscreen                = false;
-        bool m_is_mouse_visible             = true;
-        uint32_t m_shadow_map_resolution    = 0;
-        uint64_t m_renderer_flags           = 0;
-        Math::Vector2 m_resolution_output   = Math::Vector2::Zero;
-        Math::Vector2 m_resolution_render   = Math::Vector2::Zero;
-        uint32_t m_anisotropy               = 0;
-        uint32_t m_tonemapping              = 0;
-        uint32_t m_max_thread_count         = 0;
-        double m_fps_limit                  = 0;
-        bool m_has_loaded_user_settings     = false;
-        Context* m_context                  = nullptr;
+        bool m_is_fullscreen              = false;
+        bool m_is_mouse_visible           = true;
+        Math::Vector2 m_resolution_output = Math::Vector2::Zero;
+        Math::Vector2 m_resolution_render = Math::Vector2::Zero;
+        uint32_t m_max_thread_count       = 0;
+        double m_fps_limit                = 0;
+        bool m_has_loaded_user_settings   = false;
+        Context* m_context                = nullptr;
+        std::unordered_map<uint64_t, float> m_render_options;
         std::vector<ThirdPartyLib> m_third_party_libs;
     };
 }

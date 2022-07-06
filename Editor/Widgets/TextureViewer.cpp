@@ -64,7 +64,7 @@ void TextureViewer::TickVisible()
     ImGuiEx::ComboBox("##render_target", render_target_options, &m_texture_index);
 
     // Display the selected texture
-    if (shared_ptr<RHI_Texture> texture = m_renderer->GetRenderTarget(static_cast<Renderer::RenderTarget>(m_texture_index)))
+    if (shared_ptr<RHI_Texture> texture = m_renderer->GetRenderTarget(static_cast<RendererTexture>(m_texture_index)))
     {
         texture->SetFlag(RHI_Texture_Flags::RHI_Texture_Visualise);
 

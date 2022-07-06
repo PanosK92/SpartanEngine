@@ -177,7 +177,7 @@ namespace Spartan
             AcquireGpuData();
 
             // Create a string version of the RHI metrics
-            if (m_renderer->GetOptions() & Renderer::Option::Debug_PerformanceMetrics)
+            if (m_renderer->GetOption<bool>(RendererOption::Debug_PerformanceMetrics))
             {
                 UpdateRhiMetricsString();
             }

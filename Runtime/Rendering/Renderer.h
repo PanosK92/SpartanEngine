@@ -33,6 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_Vertex.h"
 #include "../Math/Rectangle.h"
 #include "../Math/Plane.h"
+#include "Renderer_Definitions.h"
 //===================================
 
 namespace Spartan
@@ -56,243 +57,7 @@ namespace Spartan
 
     class SPARTAN_CLASS Renderer : public Subsystem
     {
-        // Enums
     public:
-        enum class Bindings_Cb
-        {
-            frame    = 0,
-            uber     = 1,
-            light    = 2,
-            material = 3,
-            imgui    = 4
-        };
-
-        // SRV bindings
-        enum class Bindings_Srv
-        {
-            // Material
-            material_albedo    = 0,
-            material_roughness = 1,
-            material_metallic  = 2,
-            material_normal    = 3,
-            material_height    = 4,
-            material_occlusion = 5,
-            material_emission  = 6,
-            material_mask      = 7,
-
-            // G-buffer
-            gbuffer_albedo            = 8,
-            gbuffer_normal            = 9,
-            gbuffer_material          = 10,
-            gbuffer_velocity          = 11,
-            gbuffer_velocity_previous = 12,
-            gbuffer_depth             = 13,
-
-            // Lighting
-            light_diffuse              = 14,
-            light_diffuse_transparent  = 15,
-            light_specular             = 16,
-            light_specular_transparent = 17,
-            light_volumetric           = 19,
-
-            // Light depth/color maps
-            light_directional_depth = 19,
-            light_directional_color = 20,
-            light_point_depth       = 21,
-            light_point_color       = 22,
-            light_spot_depth        = 23,
-            light_spot_color        = 24,
-
-            // Noise
-            noise_normal = 25,
-            noise_blue   = 26,
-
-            // Misc
-            lutIbl           = 27,
-            environment      = 28,
-            ssao             = 29,
-            ssao_gi          = 30,
-            ssr              = 31,
-            frame            = 32,
-            tex              = 33,
-            tex2             = 34,
-            font_atlas       = 35,
-            reflection_probe = 36
-        };
-
-        // UAV Bindings
-        enum class Bindings_Uav
-        {
-            r         = 0,
-            rg        = 1,
-            rgb       = 2,
-            rgb2      = 3,
-            rgb3      = 4,
-            rgba      = 5,
-            rgba2     = 6,
-            rgba_mips = 7
-        };
-
-        // Structured buffer bindings
-        enum class Bindings_Sb
-        {
-            counter = 19
-        };
-
-        // Shaders
-        enum class Shader : uint8_t
-        {
-            Gbuffer_V,
-            Gbuffer_P,
-            Depth_Prepass_V,
-            Depth_Prepass_P,
-            Depth_Light_V,
-            Depth_Light_P,
-            FullscreenTriangle_V,
-            Quad_V,
-            Copy_Point_C,
-            Copy_Bilinear_C,
-            Copy_Point_P,
-            Copy_Bilinear_P,
-            Fxaa_C,
-            FilmGrain_C,
-            MotionBlur_C,
-            Dof_DownsampleCoc_C,
-            Dof_Bokeh_C,
-            Dof_Tent_C,
-            Dof_UpscaleBlend_C,
-            ChromaticAberration_C,
-            BloomLuminance_C,
-            BloomDownsample_C,
-            BloomBlendFrame_C,
-            BloomUpsampleBlendMip_C,
-            ToneMapping_C,
-            Debanding_C,
-            Debug_ReflectionProbe_V,
-            Debug_ReflectionProbe_P,
-            BrdfSpecularLut_C,
-            Light_C,
-            Light_Composition_C,
-            Light_ImageBased_P,
-            Color_V,
-            Color_P,
-            Font_V,
-            Font_P,
-            Ssao_C,
-            Ssr_C,
-            Entity_V,
-            Entity_Transform_P,
-            BlurGaussian_C,
-            BlurGaussianBilateral_C,
-            Entity_Outline_P,
-            Reflection_Probe_V,
-            Reflection_Probe_P,
-            Ffx_Cas_C,
-            Ffx_Spd_C,
-            Ffx_Spd_LuminanceAntiflicker_C,
-            Ffx_Fsr_Upsample_C,
-            Ffx_Fsr_Sharpen_C
-        };
-
-        // Render targets
-        enum class RenderTarget : uint8_t
-        {
-            Undefined,
-            Gbuffer_Albedo,
-            Gbuffer_Normal,
-            Gbuffer_Material,
-            Gbuffer_Velocity,
-            Gbuffer_Depth,
-            Brdf_Specular_Lut,
-            Light_Diffuse,
-            Light_Diffuse_Transparent,
-            Light_Specular,
-            Light_Specular_Transparent,
-            Light_Volumetric,
-            Frame_Render,
-            Frame_Render_2,
-            Frame_Output,
-            Frame_Output_2,
-            Dof_Half,
-            Dof_Half_2,
-            Ssao,
-            Ssao_Gi,
-            Ssr,
-            Bloom,
-            Blur
-        };
-
-        // Render/graphics options
-        enum Option : uint64_t
-        {
-            Debug_Aabb               = 1 << 0,
-            Debug_PickingRay         = 1 << 1,
-            Debug_Grid               = 1 << 2,
-            Debug_ReflectionProbes   = 1 << 3,
-            Transform_Handle         = 1 << 4,
-            Debug_SelectionOutline   = 1 << 5,
-            Debug_Lights             = 1 << 6,
-            Debug_PerformanceMetrics = 1 << 7,
-            Debug_Physics            = 1 << 8,
-            Debug_Wireframe          = 1 << 9,
-            Bloom                    = 1 << 10,
-            VolumetricFog            = 1 << 11,
-            AntiAliasing_Taa         = 1 << 12,
-            AntiAliasing_Fxaa        = 1 << 13,
-            Ssao                     = 1 << 14,
-            Ssao_Gi                  = 1 << 15,
-            ScreenSpaceShadows       = 1 << 16,
-            ScreenSpaceReflections   = 1 << 17,
-            MotionBlur               = 1 << 18,
-            DepthOfField             = 1 << 19,
-            FilmGrain                = 1 << 20,
-            ChromaticAberration      = 1 << 21,
-            Debanding                = 1 << 22,
-            ReverseZ                 = 1 << 23,
-            DepthPrepass             = 1 << 24,
-            Ffx_Cas                  = 1 << 25,
-        };
-
-        // Renderer/graphics options values
-        enum class OptionValue
-        {
-            Anisotropy,
-            ShadowResolution,
-            Tonemapping,
-            UpsamplingMode,
-            Gamma,
-            Bloom_Intensity,
-            Sharpen_Strength,
-            Fog
-        };
-
-        enum class Tonemapping
-        {
-            Renderer_ToneMapping_Off,
-            Renderer_ToneMapping_ACES,
-            Renderer_ToneMapping_Reinhard,
-            Renderer_ToneMapping_Uncharted2
-        };
-
-        enum class UpsamplingMode
-        {
-            Linear,
-            FSR
-        };
-
-        // Renderable object types
-        enum class ObjectType
-        {
-            GeometryOpaque,
-            GeometryTransparent,
-            Light,
-            Camera,
-            ReflectionProbe
-        };
-
-        // Defines
-        #define DEBUG_COLOR Math::Vector4(0.41f, 0.86f, 1.0f, 1.0f)
-
         Renderer(Context* context);
         ~Renderer();
 
@@ -324,26 +89,22 @@ namespace Spartan
         void SetResolutionOutput (uint32_t width, uint32_t height, bool recreate_resources = true);
 
         // Render targets
-        std::shared_ptr<RHI_Texture> GetRenderTarget(const RenderTarget rt_enum) { return m_render_targets[static_cast<uint8_t>(rt_enum)]; }
-        const auto& GetRenderTargets()                                           { return m_render_targets; }
+        std::shared_ptr<RHI_Texture> GetRenderTarget(const RendererTexture rt_enum) { return m_render_targets[static_cast<uint8_t>(rt_enum)]; }
+        const auto& GetRenderTargets()                                              { return m_render_targets; }
 
-        // Depth
-        float GetClearDepth() { return GetOption(Renderer::Option::ReverseZ) ? m_viewport.depth_min : m_viewport.depth_max; }
+        // Clear depth value
+        float GetClearDepth() { return GetOption<bool>(RendererOption::ReverseZ) ? m_viewport.depth_min : m_viewport.depth_max; }
 
-        // Environment
+        // Environment texture
         const std::shared_ptr<RHI_Texture> GetEnvironmentTexture();
         void SetEnvironmentTexture(std::shared_ptr<RHI_Texture> texture);
 
         // Options
-        uint64_t GetOptions()                        const { return m_options; }
-        void SetOptions(const uint64_t options)            { m_options = options; }
-        bool GetOption(const Renderer::Option option) const { return m_options & option; }
-        void SetOption(Renderer::Option option, bool enable);
-        
-        // Options values
         template<typename T>
-        T GetOptionValue(const Renderer::OptionValue option) { return static_cast<T>(m_option_values[option]); }
-        void SetOptionValue(Renderer::OptionValue option, float value);
+        T GetOption(const RendererOption option) { return static_cast<T>(m_options[static_cast<uint64_t>(option)]); }
+        void SetOption(RendererOption option, float value);
+        std::unordered_map<uint64_t, float> GetOptions() const { return m_options; }
+        void SetOptions(std::unordered_map<uint64_t, float> options) { m_options = options; }
 
         // Swapchain
         RHI_SwapChain* GetSwapChain() const { return m_swap_chain.get(); }
@@ -357,17 +118,19 @@ namespace Spartan
         RHI_Texture* GetDefaultTextureBlack()       const { return m_tex_default_black.get(); }
         RHI_Texture* GetDefaultTextureTransparent() const { return m_tex_default_transparent.get(); }
 
+        // Command lists
+        RHI_CommandList* GetCmdList() const { return m_cmd_current; }
+        uint32_t GetCmdIndex() const;
+
         // Misc
         RHI_Api_Type GetApiType() const;
         void SetGlobalShaderResources(RHI_CommandList* cmd_list) const;
-        uint32_t GetCmdIndex() const;
         void RequestTextureMipGeneration(std::shared_ptr<RHI_Texture> texture);
         const std::shared_ptr<RHI_Device>& GetRhiDevice() const { return m_rhi_device; }
-        RHI_Texture* GetFrameTexture()                          { return GetRenderTarget(Renderer::RenderTarget::Frame_Output).get(); }
+        RHI_Texture* GetFrameTexture()                          { return GetRenderTarget(RendererTexture::Frame_Output).get(); }
         auto GetFrameNum()                                const { return m_frame_num; }
         std::shared_ptr<Camera> GetCamera()               const { return m_camera; }
         auto GetShaders()                                 const { return m_shaders; }
-        RHI_CommandList* GetCmdList()                     const { return m_cmd_current; }
 
         // Passes
         void Pass_CopyToBackbuffer();
@@ -401,9 +164,6 @@ namespace Spartan
         void Pass_GBuffer(RHI_CommandList* cmd_list, const bool is_transparent_pass);
         void Pass_Ssao(RHI_CommandList* cmd_list);
         void Pass_Ssr(RHI_CommandList* cmd_list, RHI_Texture* tex_in);
-        void Pass_Light(RHI_CommandList* cmd_list, const bool is_transparent_pass);
-        void Pass_Light_Composition(RHI_CommandList* cmd_list, RHI_Texture* tex_out, const bool is_transparent_pass);
-        void Pass_Light_ImageBased(RHI_CommandList* cmd_list, RHI_Texture* tex_out, const bool is_transparent_pass);
         void Pass_PostProcess(RHI_CommandList* cmd_list);
         void Pass_ToneMapping(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
         void Pass_Fxaa(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
@@ -414,10 +174,6 @@ namespace Spartan
         void Pass_Debanding(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
         void Pass_Bloom(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
         void Pass_Blur_Gaussian(RHI_CommandList* cmd_list, RHI_Texture* tex_in, const bool depth_aware, const float sigma, const float pixel_stride, const uint32_t mip = rhi_all_mips);
-        void Pass_Amd_FidelityFx_Cas(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
-        void Pass_Amd_FidelityFx_Spd(RHI_CommandList* cmd_list, RHI_Texture* tex, const bool luminance_antiflicker);
-        void Pass_Amd_FidelityFx_Fsr_1_0(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out, RHI_Texture* tex_out_scratch);
-        void Pass_Amd_FidelityFx_Fsr_2_0(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
         void Pass_Lines(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
         void Pass_DebugMeshes(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
         void Pass_Outline(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
@@ -427,6 +183,15 @@ namespace Spartan
         void Pass_BrdfSpecularLut(RHI_CommandList* cmd_list);
         void Pass_Copy(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out, const bool bilinear);
         void Pass_Generate_Mips(RHI_CommandList* cmd_list);
+        // Lighting
+        void Pass_Light(RHI_CommandList* cmd_list, const bool is_transparent_pass);
+        void Pass_Light_Composition(RHI_CommandList* cmd_list, RHI_Texture* tex_out, const bool is_transparent_pass);
+        void Pass_Light_ImageBased(RHI_CommandList* cmd_list, RHI_Texture* tex_out, const bool is_transparent_pass);
+        // AMD FidelityFX
+        void Pass_Ffx_Cas(RHI_CommandList* cmd_list, std::shared_ptr<RHI_Texture>& tex_in, std::shared_ptr<RHI_Texture>& tex_out);
+        void Pass_Ffx_Spd(RHI_CommandList* cmd_list, RHI_Texture* tex, const bool luminance_antiflicker);
+        void Pass_Ffx_Fsr_1_0(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out, RHI_Texture* tex_out_scratch);
+        void Pass_Ffx_Fsr_2_0(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
 
         // Event handlers
         void OnRenderablesAcquire(const Variant& renderables);
@@ -446,7 +211,7 @@ namespace Spartan
         std::array<std::shared_ptr<RHI_Texture>, 25> m_render_targets;
 
         // Shaders
-        std::unordered_map<Renderer::Shader, std::shared_ptr<RHI_Shader>> m_shaders;
+        std::unordered_map<RendererShader, std::shared_ptr<RHI_Shader>> m_shaders;
 
         // Standard textures
         std::shared_ptr<RHI_Texture> m_tex_default_noise_normal;
@@ -533,8 +298,7 @@ namespace Spartan
         std::mutex m_environment_texture_mutex;
 
         // Options
-        uint64_t m_options = 0;
-        std::unordered_map<Renderer::OptionValue, float> m_option_values;
+        std::unordered_map<uint64_t, float> m_options;
 
         // Misc
         std::unique_ptr<Font> m_font;
@@ -576,7 +340,7 @@ namespace Spartan
         std::shared_ptr<RHI_SwapChain> m_swap_chain;
 
         // Entity references
-        std::unordered_map<ObjectType, std::vector<Entity*>> m_entities;
+        std::unordered_map<RendererEntityType, std::vector<Entity*>> m_entities;
         std::array<Material*, m_max_material_instances> m_material_instances;
         std::shared_ptr<Camera> m_camera;
 

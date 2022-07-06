@@ -81,7 +81,7 @@ namespace Spartan
         // Dirty checks
         {
             // Position, rotation and reverse-z
-            const bool reverse_z = m_renderer ? m_renderer->GetOption(Renderer::Option::ReverseZ) : false;
+            const bool reverse_z = m_renderer ? m_renderer->GetOption<bool>(RendererOption::ReverseZ) : false;
             if (m_transform->HasPositionChangedThisFrame() || m_transform->HasRotationChangedThisFrame() || m_previous_reverse_z != reverse_z)
             {
                 m_previous_reverse_z = reverse_z;
@@ -269,7 +269,7 @@ namespace Spartan
         SP_ASSERT(index < m_shadow_map.texture_depth->GetArrayLength());
 
         ShadowSlice& shadow_slice = m_shadow_map.slices[index];
-        const bool reverse_z      = m_renderer ? m_renderer->GetOption(Renderer::Option::ReverseZ) : false;
+        const bool reverse_z      = m_renderer ? m_renderer->GetOption<bool>(RendererOption::ReverseZ) : false;
 
         if (m_light_type == LightType::Directional)
         {
@@ -418,7 +418,7 @@ namespace Spartan
     void Light::CreateShadowMap()
     {
         // Early exit if there is no change in shadow map resolution
-        const uint32_t resolution     = m_renderer->GetOptionValue<uint32_t>(Renderer::OptionValue::ShadowResolution);
+        const uint32_t resolution     = m_renderer->GetOption<uint32_t>(RendererOption::ShadowResolution);
         const bool resolution_changed = m_shadow_map.texture_depth ? (resolution != m_shadow_map.texture_depth->GetWidth()) : false;
         if ((!m_is_dirty && !resolution_changed))
             return;
