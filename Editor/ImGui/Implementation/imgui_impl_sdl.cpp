@@ -385,12 +385,12 @@ bool ImGui_ImplSDL2_Init(Spartan::Context* context)
 
     // Initialise some ImGui stuff
     bd->Window = static_cast<SDL_Window*>(context->GetSubsystem<Spartan::Window>()->GetHandleSDL());
-    bd->UseVulkan = context->GetSubsystem<Spartan::Renderer>()->GetApiType() == Spartan::RHI_Api_Type::Vulkan;
+    bd->UseVulkan = Spartan::Renderer::GetApiType() == Spartan::RHI_Api_Type::Vulkan;
     bd->engine_context = context;
 
     io.SetClipboardTextFn = ImGui_ImplSDL2_SetClipboardText;
     io.GetClipboardTextFn = ImGui_ImplSDL2_GetClipboardText;
-    io.ClipboardUserData = NULL;
+    io.ClipboardUserData = nullptr;
 
     // Load mouse cursors
     bd->MouseCursors[ImGuiMouseCursor_Arrow] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW);

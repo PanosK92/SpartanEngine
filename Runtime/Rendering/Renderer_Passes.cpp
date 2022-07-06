@@ -1164,7 +1164,7 @@ namespace Spartan
             UpsamplingMode upsampling_mode = GetOption<UpsamplingMode>(RendererOption::Upsampling);
 
             // FSR 1.0
-            if (upsampling_mode == UpsamplingMode::FSR && m_rhi_device->GetApiType() == RHI_Api_Type::D3d11)
+            if (upsampling_mode == UpsamplingMode::FSR && RHI_Device::GetApiType() == RHI_Api_Type::D3d11)
             {
                 // TODO: This needs to be in perceptual space and normalised to 0, 1 range.
                 Pass_Ffx_Fsr_1_0(cmd_list, rt_frame_render.get(), rt_frame_output.get(), rt_frame_output_scratch.get());

@@ -101,10 +101,10 @@ namespace Spartan
 
         // Options
         template<typename T>
-        T GetOption(const RendererOption option) { return static_cast<T>(m_options[static_cast<uint64_t>(option)]); }
+        T GetOption(const RendererOption option) { return static_cast<T>(m_options[static_cast<uint32_t>(option)]); }
         void SetOption(RendererOption option, float value);
-        std::unordered_map<uint64_t, float> GetOptions() const { return m_options; }
-        void SetOptions(std::unordered_map<uint64_t, float> options) { m_options = options; }
+        std::array<float, 32> GetOptions() const { return m_options; }
+        void SetOptions(std::array<float, 32> options) { m_options = options; }
 
         // Swapchain
         RHI_SwapChain* GetSwapChain() const { return m_swap_chain.get(); }
@@ -122,8 +122,10 @@ namespace Spartan
         RHI_CommandList* GetCmdList() const { return m_cmd_current; }
         uint32_t GetCmdIndex() const;
 
+        // Static
+        static RHI_Api_Type GetApiType();
+
         // Misc
-        RHI_Api_Type GetApiType() const;
         void SetGlobalShaderResources(RHI_CommandList* cmd_list) const;
         void RequestTextureMipGeneration(std::shared_ptr<RHI_Texture> texture);
         const std::shared_ptr<RHI_Device>& GetRhiDevice() const { return m_rhi_device; }
@@ -298,7 +300,7 @@ namespace Spartan
         std::mutex m_environment_texture_mutex;
 
         // Options
-        std::unordered_map<uint64_t, float> m_options;
+        std::array<float, 32> m_options;
 
         // Misc
         std::unique_ptr<Font> m_font;

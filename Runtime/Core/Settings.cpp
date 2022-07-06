@@ -131,10 +131,9 @@ namespace Spartan
         _Settings::write_setting(_Settings::fout, "fFPSLimit",               m_fps_limit);
         _Settings::write_setting(_Settings::fout, "iMaxThreadCount",         m_max_thread_count);
 
-        uint32_t index = 0;
-        for (auto& it : m_render_options)
+        for (uint32_t i = 0; i < static_cast<uint32_t>(m_render_options.size()); i++)
         {
-            _Settings::write_setting(_Settings::fout, "render_option_" + to_string(index++), it.second);
+            _Settings::write_setting(_Settings::fout, "render_option_" + to_string(i), m_render_options[i]);
         }
 
         // Close the file.
@@ -156,10 +155,9 @@ namespace Spartan
         _Settings::read_setting(_Settings::fin, "fFPSLimit",               m_fps_limit);
         _Settings::read_setting(_Settings::fin, "iMaxThreadCount",         m_max_thread_count);
 
-        uint32_t index = 0;
-        for (auto& it : m_render_options)
+        for (uint32_t i = 0; i < static_cast<uint32_t>(m_render_options.size()); i++)
         {
-            _Settings::read_setting(_Settings::fin, "render_option_" + to_string(index++), it.second);
+            _Settings::read_setting(_Settings::fin, "render_option_" + to_string(i), m_render_options[i]);
         }
 
         // Close the file.
