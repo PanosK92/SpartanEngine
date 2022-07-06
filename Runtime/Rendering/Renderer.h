@@ -222,6 +222,7 @@ namespace Spartan
             Blur
         };
 
+        // Render/graphics options
         enum Option : uint64_t
         {
             Debug_Aabb               = 1 << 0,
@@ -250,7 +251,6 @@ namespace Spartan
             ReverseZ                 = 1 << 23,
             DepthPrepass             = 1 << 24,
             Ffx_Cas                  = 1 << 25,
-            Ffx_Fsr                  = 1 << 26
         };
 
         // Renderer/graphics options values
@@ -259,19 +259,25 @@ namespace Spartan
             Anisotropy,
             ShadowResolution,
             Tonemapping,
+            UpsamplingMode,
             Gamma,
             Bloom_Intensity,
             Sharpen_Strength,
             Fog
         };
 
-        // Tonemapping
         enum class Tonemapping
         {
             Renderer_ToneMapping_Off,
             Renderer_ToneMapping_ACES,
             Renderer_ToneMapping_Reinhard,
             Renderer_ToneMapping_Uncharted2
+        };
+
+        enum class UpsamplingMode
+        {
+            Linear,
+            FSR
         };
 
         // Renderable object types

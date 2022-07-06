@@ -300,8 +300,8 @@ namespace Spartan
             }
 
             // Generate jitter sample in case FSR (which also does TAA) is enabled. D3D11 only receives FXAA so it's ignored at this point.
-            bool upsampling = m_resolution_output.x > m_resolution_render.x;
-            if (GetOption(Renderer::Option::AntiAliasing_Taa) || (GetOption(Renderer::Option::Ffx_Fsr) && upsampling) && m_rhi_device->GetApiType() != RHI_Api_Type::D3d11)
+            UpsamplingMode upsampling_mode = GetOptionValue<UpsamplingMode>(Renderer::OptionValue::UpsamplingMode);
+            if ((upsampling_mode == UpsamplingMode::FSR || GetOption(Renderer::Option::AntiAliasing_Taa)) && m_rhi_device->GetApiType() != RHI_Api_Type::D3d11)
             {
                 RHI_FSR::GenerateJitterSample(&m_taa_jitter.x, &m_taa_jitter.y);
 
@@ -715,13 +715,44 @@ namespace Spartan
         if (!toggled)
             return;
 
-        if (option == Renderer::Option::ReverseZ)
+        // Handle cascading changes for any options that require it
         {
-            CreateDepthStencilStates();
-
-            if (m_camera)
+            // Reverse-z
+            if (option == Renderer::Option::ReverseZ)
             {
-                m_camera->MakeDirty();
+                CreateDepthStencilStates();
+
+                if (m_camera)
+                {
+                    m_camera->MakeDirty();
+                }
+            }
+            // TAA
+            else if (option == Renderer::Option::AntiAliasing_Taa)
+            {
+                if (enable)
+                {
+                    // We lo longer maintain a custom TAA pass as FSR 2.0's TAA is superior, so fall back to FXAA.
+                    if (m_rhi_device->GetApiType() == RHI_Api_Type::D3d11)
+                    {
+                        SetOption(Renderer::Option::AntiAliasing_Fxaa, true);
+                        SetOption(Renderer::Option::AntiAliasing_Taa, false);
+                        LOG_WARNING("TAA is not supported for D3D11, switching to FXAA.");
+                    }
+                    else if (GetOptionValue<Renderer::UpsamplingMode>(Renderer::OptionValue::UpsamplingMode) != Renderer::UpsamplingMode::FSR)
+                    {
+                        SetOptionValue(Renderer::OptionValue::UpsamplingMode, static_cast<float>(Renderer::UpsamplingMode::FSR));
+                        LOG_INFO("Enabled FSR 2.0 since it's used for TAA.");
+                    }
+                }
+                else
+                {
+                    if (GetOptionValue<UpsamplingMode>(OptionValue::UpsamplingMode) == Renderer::UpsamplingMode::FSR)
+                    {
+                        SetOptionValue(OptionValue::UpsamplingMode, static_cast<float>(Renderer::UpsamplingMode::Linear));
+                        LOG_INFO("Disabed FSR 2.0 since it's used for TAA.");
+                    }
+                }
             }
         }
     }
@@ -731,13 +762,18 @@ namespace Spartan
         if (!m_rhi_device || !m_rhi_device->GetContextRhi())
             return;
 
-        if (option == Renderer::OptionValue::Anisotropy)
+        // Clamp values
         {
-            value = Helper::Clamp(value, 0.0f, 16.0f);
-        }
-        else if (option == Renderer::OptionValue::ShadowResolution)
-        {
-            value = Helper::Clamp(value, static_cast<float>(m_resolution_shadow_min), static_cast<float>(m_rhi_device->GetMaxTexture2dDimension()));
+            // Anisotropy
+            if (option == Renderer::OptionValue::Anisotropy)
+            {
+                value = Helper::Clamp(value, 0.0f, 16.0f);
+            }
+            // Shadow resolution
+            else if (option == Renderer::OptionValue::ShadowResolution)
+            {
+                value = Helper::Clamp(value, static_cast<float>(m_resolution_shadow_min), static_cast<float>(m_rhi_device->GetMaxTexture2dDimension()));
+            }
         }
 
         if (m_option_values[option] == value)
@@ -745,16 +781,27 @@ namespace Spartan
 
         m_option_values[option] = value;
 
-        // Shadow resolution handling
-        if (option == Renderer::OptionValue::ShadowResolution)
+        // Handle cascading changes for any options that require it
         {
-            const auto& light_entities = m_entities[ObjectType::Light];
-            for (const auto& light_entity : light_entities)
+            // Shadow resolution
+            if (option == Renderer::OptionValue::ShadowResolution)
             {
-                auto light = light_entity->GetComponent<Light>();
-                if (light->GetShadowsEnabled())
+                const auto& light_entities = m_entities[ObjectType::Light];
+                for (const auto& light_entity : light_entities)
                 {
-                    light->CreateShadowMap();
+                    auto light = light_entity->GetComponent<Light>();
+                    if (light->GetShadowsEnabled())
+                    {
+                        light->CreateShadowMap();
+                    }
+                }
+            }
+            else if (option == Renderer::OptionValue::UpsamplingMode && value == static_cast<float>(Renderer::UpsamplingMode::Linear))
+            {
+                if (GetOption(Option::AntiAliasing_Taa))
+                {
+                    SetOption(Option::AntiAliasing_Taa, false);
+                    LOG_INFO("Disabled TAA since it's done by FSR 2.0");
                 }
             }
         }
