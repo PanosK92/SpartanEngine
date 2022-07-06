@@ -60,7 +60,8 @@ namespace Spartan
 {
     Renderer::Renderer(Context* context) : Subsystem(context)
     {
-        // Options
+        // Default options
+        m_options.fill(0.0f);
         SetOption(RendererOption::ReverseZ, 1.0f);
         SetOption(RendererOption::Transform_Handle, 1.0f);
         SetOption(RendererOption::Debug_Grid, 1.0f);
@@ -85,11 +86,11 @@ namespace Spartan
         SetOption(RendererOption::Fog, 0.08f);
         //m_options |= Renderer::Option::DepthOfField;        // This is depth of field from ALDI, so until I improve it, it should be disabled by default.
         //m_options |= Renderer::Option::Render_DepthPrepass; // Depth-pre-pass is not always faster, so by default, it's disabled.
-
+        // 
         // Subscribe to events.
-        SP_SUBSCRIBE_TO_EVENT(EventType::WorldResolved,             SP_EVENT_HANDLER_VARIANT(OnRenderablesAcquire));
-        SP_SUBSCRIBE_TO_EVENT(EventType::WorldPreClear,             SP_EVENT_HANDLER(OnClear));
-        SP_SUBSCRIBE_TO_EVENT(EventType::WorldLoadEnd,              SP_EVENT_HANDLER(OnWorldLoaded));
+        SP_SUBSCRIBE_TO_EVENT(EventType::WorldResolved, SP_EVENT_HANDLER_VARIANT(OnRenderablesAcquire));
+        SP_SUBSCRIBE_TO_EVENT(EventType::WorldPreClear, SP_EVENT_HANDLER(OnClear));
+        SP_SUBSCRIBE_TO_EVENT(EventType::WorldLoadEnd, SP_EVENT_HANDLER(OnWorldLoaded));
         SP_SUBSCRIBE_TO_EVENT(EventType::WindowOnFullScreenToggled, SP_EVENT_HANDLER(OnFullScreenToggled));
 
         // Get thread id.
@@ -298,7 +299,7 @@ namespace Spartan
 
             // Generate jitter sample in case FSR (which also does TAA) is enabled. D3D11 only receives FXAA so it's ignored at this point.
             UpsamplingMode upsampling_mode = GetOption<UpsamplingMode>(RendererOption::Upsampling);
-            if ((upsampling_mode == UpsamplingMode::FSR || GetOption<AntialiasingMode>(RendererOption::Antialiasing) == AntialiasingMode::Taa) && m_rhi_device->GetApiType() != RHI_Api_Type::D3d11)
+            if ((upsampling_mode == UpsamplingMode::FSR || GetOption<AntialiasingMode>(RendererOption::Antialiasing) == AntialiasingMode::Taa) && RHI_Device::GetApiType() != RHI_Api_Type::D3d11)
             {
                 RHI_FSR::GenerateJitterSample(&m_taa_jitter.x, &m_taa_jitter.y);
 
@@ -711,11 +712,11 @@ namespace Spartan
         }
 
         // Early exit if the value is already set
-        if (m_options[static_cast<uint64_t>(option)] == value)
+        if (m_options[static_cast<uint32_t>(option)] == value)
             return;
 
         // Set new value
-        m_options[static_cast<uint64_t>(option)] = value;
+        m_options[static_cast<uint32_t>(option)] = value;
 
         // Handle cascading changes for any options that require it
         {
@@ -730,12 +731,12 @@ namespace Spartan
                 }
             }
             // TAA
-            else if (option == RendererOption::Antialiasing && value == static_cast<float>(AntialiasingMode::Taa))
+            else if (option == RendererOption::Antialiasing)
             {
-                if (value == 1.0f)
+                if (value == static_cast<float>(AntialiasingMode::Taa) || value == static_cast<float>(AntialiasingMode::TaaFxaa))
                 {
                     // We lo longer maintain a custom TAA pass as FSR 2.0's TAA is superior, so fall back to FXAA.
-                    if (m_rhi_device->GetApiType() == RHI_Api_Type::D3d11)
+                    if (RHI_Device::GetApiType() == RHI_Api_Type::D3d11)
                     {
                         SetOption(RendererOption::Antialiasing, static_cast<float>(AntialiasingMode::Fxaa));
                         LOG_WARNING("TAA is not supported for D3D11, switching to FXAA.");
@@ -828,9 +829,9 @@ namespace Spartan
         m_flush_requested = false;
     }
 
-    RHI_Api_Type Renderer::GetApiType() const
+    RHI_Api_Type Renderer::GetApiType()
     {
-        return m_rhi_device->GetContextRhi()->api_type;
+        return RHI_Context::api_type;
     }
 
     void Renderer::RequestTextureMipGeneration(shared_ptr<RHI_Texture> texture)

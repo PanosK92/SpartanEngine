@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Subsystem.h"
 #include "../Math/Vector2.h"
 #include <vector>
+#include <array>
 //==========================
 
 namespace Spartan
@@ -83,7 +84,7 @@ namespace Spartan
         double m_fps_limit                = 0;
         bool m_has_loaded_user_settings   = false;
         Context* m_context                = nullptr;
-        std::unordered_map<uint64_t, float> m_render_options;
+        std::array<float, 32> m_render_options;
         std::vector<ThirdPartyLib> m_third_party_libs;
     };
 }

@@ -29,7 +29,7 @@ namespace Spartan
 {
     #define DEBUG_COLOR Math::Vector4(0.41f, 0.86f, 1.0f, 1.0f)
 
-    enum class RendererOption : uint64_t
+    enum class RendererOption : uint32_t
     {
         Debug_Aabb,
         Debug_PickingRay,

@@ -273,7 +273,7 @@ void RenderOptions::TickVisible()
                     static vector<string> upsampling_modes =
                     {
                         "Linear",
-                        m_renderer->GetRhiDevice()->GetApiType() == RHI_Api_Type::D3d11 ? "FSR 1.0" : "FSR 2.0"
+                        RHI_Device::GetApiType() == RHI_Api_Type::D3d11 ? "FSR 1.0" : "FSR 2.0"
                     };
 
                     bool upsampling_allowed = resolution_render.x < resolution_output.x || resolution_render.y < resolution_output.y;
@@ -423,7 +423,7 @@ void RenderOptions::TickVisible()
                 helper::CheckBox("Depth Reverse-Z", do_reverse_z);
 
                 // Performance metrics
-                if (helper::CheckBox("Performance Metrics", debug_performance_metrics) && !m_renderer->GetOption<bool>(RendererOption::Debug_PerformanceMetrics))
+                if (helper::CheckBox("Performance Metrics", debug_performance_metrics))
                 {
                     // Reset metrics on activation
                     m_profiler->ResetMetrics();

@@ -459,7 +459,7 @@ namespace Spartan
         std::string api_version_str;
 
         #if defined(API_GRAPHICS_D3D11)
-            RHI_Api_Type api_type                 = RHI_Api_Type::D3d11;
+            static const RHI_Api_Type api_type    = RHI_Api_Type::D3d11;
             std::string api_type_str              = "D3D11";
             ID3D11Device5* device                 = nullptr;
             ID3D11DeviceContext4* device_context  = nullptr;
@@ -467,18 +467,18 @@ namespace Spartan
         #endif
 
         #if defined(API_GRAPHICS_D3D12)
-            RHI_Api_Type api_type    = RHI_Api_Type::D3d12;
-            std::string api_type_str = "D3D12";
-            ID3D12Device* device      = nullptr;
+            static const RHI_Api_Type api_type = RHI_Api_Type::D3d12;
+            std::string api_type_str           = "D3D12";
+            ID3D12Device* device               = nullptr;
         #endif
 
         #if defined(API_GRAPHICS_VULKAN)
-            RHI_Api_Type api_type               = RHI_Api_Type::Vulkan;
-            std::string api_type_str            = "Vulkan";
-            VkInstance instance                 = nullptr;
-            VkPhysicalDevice device_physical    = nullptr;
-            VkDevice device                     = nullptr;
-            VmaAllocator allocator              = nullptr;
+            static const RHI_Api_Type api_type = RHI_Api_Type::Vulkan;
+            std::string api_type_str           = "Vulkan";
+            VkInstance instance                = nullptr;
+            VkPhysicalDevice device_physical   = nullptr;
+            VkDevice device                    = nullptr;
+            VmaAllocator allocator             = nullptr;
             std::unordered_map<uint64_t, VmaAllocation> allocations;
 
             // Hardware capability viewer: https://vulkan.gpuinfo.org/
