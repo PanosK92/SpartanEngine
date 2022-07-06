@@ -173,34 +173,32 @@ RenderOptions::RenderOptions(Editor* editor) : Widget(editor)
 void RenderOptions::TickVisible()
 {
     // Reflect options from engine
-    bool do_bloom                  = m_renderer->GetOption(Renderer::Option::Bloom);
-    bool do_dof                    = m_renderer->GetOption(Renderer::Option::DepthOfField);
-    bool do_volumetric_fog         = m_renderer->GetOption(Renderer::Option::VolumetricFog);
-    bool do_ssao                   = m_renderer->GetOption(Renderer::Option::Ssao);
-    bool do_ssao_gi                = m_renderer->GetOption(Renderer::Option::Ssao_Gi);
-    bool do_sss                    = m_renderer->GetOption(Renderer::Option::ScreenSpaceShadows);
-    bool do_ssr                    = m_renderer->GetOption(Renderer::Option::ScreenSpaceReflections);
-    bool do_taa                    = m_renderer->GetOption(Renderer::Option::AntiAliasing_Taa);
-    bool do_fxaa                   = m_renderer->GetOption(Renderer::Option::AntiAliasing_Fxaa);
-    bool do_motion_blur            = m_renderer->GetOption(Renderer::Option::MotionBlur);
-    bool do_film_grain             = m_renderer->GetOption(Renderer::Option::FilmGrain);
-    bool do_sharperning            = m_renderer->GetOption(Renderer::Option::Ffx_Cas);
-    bool do_chromatic_aberration   = m_renderer->GetOption(Renderer::Option::ChromaticAberration);
-    bool do_debanding              = m_renderer->GetOption(Renderer::Option::Debanding);
-    bool debug_physics             = m_renderer->GetOption(Renderer::Option::Debug_Physics);
-    bool debug_aabb                = m_renderer->GetOption(Renderer::Option::Debug_Aabb);
-    bool debug_light               = m_renderer->GetOption(Renderer::Option::Debug_Lights);
-    bool debug_transform           = m_renderer->GetOption(Renderer::Option::Transform_Handle);
-    bool debug_selection_outline   = m_renderer->GetOption(Renderer::Option::Debug_SelectionOutline);
-    bool debug_picking_ray         = m_renderer->GetOption(Renderer::Option::Debug_PickingRay);
-    bool debug_grid                = m_renderer->GetOption(Renderer::Option::Debug_Grid);
-    bool debug_reflection_probes   = m_renderer->GetOption(Renderer::Option::Debug_ReflectionProbes);
-    bool debug_performance_metrics = m_renderer->GetOption(Renderer::Option::Debug_PerformanceMetrics);
-    bool debug_wireframe           = m_renderer->GetOption(Renderer::Option::Debug_Wireframe);
-    bool do_depth_prepass          = m_renderer->GetOption(Renderer::Option::DepthPrepass);
-    bool do_reverse_z              = m_renderer->GetOption(Renderer::Option::ReverseZ);
-    bool do_fsr                    = m_renderer->GetOption(Renderer::Option::Ffx_Fsr);
-    int resolution_shadow          = m_renderer->GetOptionValue<int>(Renderer::OptionValue::ShadowResolution);
+    bool do_bloom                   = m_renderer->GetOption(Renderer::Option::Bloom);
+    bool do_dof                     = m_renderer->GetOption(Renderer::Option::DepthOfField);
+    bool do_volumetric_fog          = m_renderer->GetOption(Renderer::Option::VolumetricFog);
+    bool do_ssao                    = m_renderer->GetOption(Renderer::Option::Ssao);
+    bool do_ssao_gi                 = m_renderer->GetOption(Renderer::Option::Ssao_Gi);
+    bool do_sss                     = m_renderer->GetOption(Renderer::Option::ScreenSpaceShadows);
+    bool do_ssr                     = m_renderer->GetOption(Renderer::Option::ScreenSpaceReflections);
+    bool do_fxaa                    = m_renderer->GetOption(Renderer::Option::AntiAliasing_Fxaa);
+    bool do_motion_blur             = m_renderer->GetOption(Renderer::Option::MotionBlur);
+    bool do_film_grain              = m_renderer->GetOption(Renderer::Option::FilmGrain);
+    bool do_sharperning             = m_renderer->GetOption(Renderer::Option::Ffx_Cas);
+    bool do_chromatic_aberration    = m_renderer->GetOption(Renderer::Option::ChromaticAberration);
+    bool do_debanding               = m_renderer->GetOption(Renderer::Option::Debanding);
+    bool debug_physics              = m_renderer->GetOption(Renderer::Option::Debug_Physics);
+    bool debug_aabb                 = m_renderer->GetOption(Renderer::Option::Debug_Aabb);
+    bool debug_light                = m_renderer->GetOption(Renderer::Option::Debug_Lights);
+    bool debug_transform            = m_renderer->GetOption(Renderer::Option::Transform_Handle);
+    bool debug_selection_outline    = m_renderer->GetOption(Renderer::Option::Debug_SelectionOutline);
+    bool debug_picking_ray          = m_renderer->GetOption(Renderer::Option::Debug_PickingRay);
+    bool debug_grid                 = m_renderer->GetOption(Renderer::Option::Debug_Grid);
+    bool debug_reflection_probes    = m_renderer->GetOption(Renderer::Option::Debug_ReflectionProbes);
+    bool debug_performance_metrics  = m_renderer->GetOption(Renderer::Option::Debug_PerformanceMetrics);
+    bool debug_wireframe            = m_renderer->GetOption(Renderer::Option::Debug_Wireframe);
+    bool do_depth_prepass           = m_renderer->GetOption(Renderer::Option::DepthPrepass);
+    bool do_reverse_z               = m_renderer->GetOption(Renderer::Option::ReverseZ);
+    int resolution_shadow           = m_renderer->GetOptionValue<int>(Renderer::OptionValue::ShadowResolution);
 
     // Present options (with a table)
     {
@@ -274,15 +272,19 @@ void RenderOptions::TickVisible()
 
                 // Upsampling
                 {
-                    bool upsampling_allowed = resolution_render.x < resolution_output.x || resolution_render.y < resolution_output.y;
-                    static vector<string> upsampling_modes = { "Linear", m_renderer->GetRhiDevice()->GetApiType() == RHI_Api_Type::D3d11 ? "FSR 1.0" : "FSR 2.0"};
-                    uint32_t upsampling_mode_index = do_fsr ? 1 : 0;
+                    static vector<string> upsampling_modes =
+                    {
+                        "Linear",
+                        m_renderer->GetRhiDevice()->GetApiType() == RHI_Api_Type::D3d11 ? "FSR 1.0" : "FSR 2.0"
+                    };
 
+                    bool upsampling_allowed = resolution_render.x < resolution_output.x || resolution_render.y < resolution_output.y;
                     ImGui::BeginDisabled(!upsampling_allowed);
 
-                    if (helper::ComboBox("Upsampling", upsampling_modes, upsampling_mode_index))
+                    uint32_t upsampling_mode = m_renderer->GetOptionValue<uint32_t>(Renderer::OptionValue::UpsamplingMode);
+                    if (helper::ComboBox("Upsampling", upsampling_modes, upsampling_mode))
                     {
-                        do_fsr = upsampling_mode_index == 1;
+                        m_renderer->SetOptionValue(Renderer::OptionValue::UpsamplingMode, static_cast<float>(upsampling_mode));
                     }
 
                     ImGui::EndDisabled();
@@ -308,7 +310,9 @@ void RenderOptions::TickVisible()
             if (helper::Option("Anti-Aliasing"))
             {
                 // TAA
-                helper::CheckBox("TAA - Temporal anti-aliasing", do_taa, "Used to improve many stochastic effects, you want this to always be enabled.");
+                bool taa_enabled = m_renderer->GetOption(Renderer::Option::AntiAliasing_Taa);
+                helper::CheckBox("TAA - Temporal anti-aliasing", taa_enabled, "Used to improve many stochastic effects, you want this to always be enabled.");
+                m_renderer->SetOption(Renderer::Option::AntiAliasing_Taa, taa_enabled);
 
                 // FXAA
                 helper::CheckBox("FXAA - Fast approximate anti-aliasing", do_fxaa);
@@ -441,6 +445,7 @@ void RenderOptions::TickVisible()
     }
 
     // Map options to engine
+    m_renderer->SetOptionValue(Renderer::OptionValue::ShadowResolution, static_cast<float>(resolution_shadow));
     m_renderer->SetOption(Renderer::Option::Bloom,                      do_bloom);
     m_renderer->SetOption(Renderer::Option::DepthOfField,               do_dof);
     m_renderer->SetOption(Renderer::Option::VolumetricFog,              do_volumetric_fog);
@@ -448,11 +453,10 @@ void RenderOptions::TickVisible()
     m_renderer->SetOption(Renderer::Option::Ssao_Gi,                    do_ssao_gi);
     m_renderer->SetOption(Renderer::Option::ScreenSpaceShadows,         do_sss);
     m_renderer->SetOption(Renderer::Option::ScreenSpaceReflections,     do_ssr);
-    m_renderer->SetOption(Renderer::Option::AntiAliasing_Taa,           do_taa);
     m_renderer->SetOption(Renderer::Option::AntiAliasing_Fxaa,          do_fxaa);
     m_renderer->SetOption(Renderer::Option::MotionBlur,                 do_motion_blur);
     m_renderer->SetOption(Renderer::Option::FilmGrain,                  do_film_grain);
-    m_renderer->SetOption(Renderer::Option::Ffx_Cas,         do_sharperning);
+    m_renderer->SetOption(Renderer::Option::Ffx_Cas,                    do_sharperning);
     m_renderer->SetOption(Renderer::Option::ChromaticAberration,        do_chromatic_aberration);
     m_renderer->SetOption(Renderer::Option::Debanding,                  do_debanding);
     m_renderer->SetOption(Renderer::Option::Transform_Handle,           debug_transform);
@@ -467,6 +471,4 @@ void RenderOptions::TickVisible()
     m_renderer->SetOption(Renderer::Option::Debug_Wireframe,            debug_wireframe);
     m_renderer->SetOption(Renderer::Option::DepthPrepass,               do_depth_prepass);
     m_renderer->SetOption(Renderer::Option::ReverseZ,                   do_reverse_z);
-    m_renderer->SetOption(Renderer::Option::Ffx_Fsr,         do_fsr);
-    m_renderer->SetOptionValue(Renderer::OptionValue::ShadowResolution, static_cast<float>(resolution_shadow));
 }
