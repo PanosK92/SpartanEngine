@@ -772,12 +772,21 @@ namespace Spartan
                     }
                 }
             }
-            else if (option == RendererOption::Upsampling && value == static_cast<float>(UpsamplingMode::Linear))
+            // Upsampling
+            else if (option == RendererOption::Upsampling)
             {
-                if (GetOption<AntialiasingMode>(RendererOption::Antialiasing) == AntialiasingMode::Taa)
+                if (value == static_cast<float>(UpsamplingMode::Linear))
                 {
-                    SetOption(RendererOption::Antialiasing, static_cast<float>(AntialiasingMode::Disabled));
-                    LOG_INFO("Disabled TAA since it's done by FSR 2.0");
+                    if (GetOption<AntialiasingMode>(RendererOption::Antialiasing) == AntialiasingMode::Taa)
+                    {
+                        SetOption(RendererOption::Antialiasing, static_cast<float>(AntialiasingMode::Disabled));
+                        LOG_INFO("Disabled TAA since it's done by FSR 2.0");
+                    }
+                }
+                else if (value == static_cast<float>(UpsamplingMode::FSR) && RHI_Device::GetApiType() != RHI_Api_Type::D3d11)
+                {
+                    SetOption(RendererOption::Antialiasing, static_cast<float>(AntialiasingMode::Taa));
+                    LOG_INFO("Enabled TAA since FSR 2.0 does it.");
                 }
             }
         }
