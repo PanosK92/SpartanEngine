@@ -202,18 +202,15 @@ namespace Spartan
             return true;
         }
 
-        if (!m_rhi_device->QueueSubmit(
+        m_rhi_device->QueueSubmit(
             RHI_Queue_Type::Graphics,                      // queue
             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, // wait flags
             static_cast<VkCommandBuffer>(m_resource),      // cmd buffer
             nullptr,                                       // wait semaphore
             m_proccessed_semaphore.get(),                  // signal semaphore
             m_proccessed_fence.get()                       // signal fence
-            ))
-        {
-            LOG_ERROR("Failed to submit the command list.");
-            return false;
-        }
+        );
+
 
         m_state = RHI_CommandListState::Submitted;
 

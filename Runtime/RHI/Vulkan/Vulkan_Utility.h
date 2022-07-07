@@ -242,7 +242,7 @@ namespace Spartan::vulkan_utility
                 SP_ASSERT(initialised && "Can't submit as the command buffer failed to initialise");
                 SP_ASSERT(recording && "Can't submit as the command buffer didn't record anything");
                 SP_ASSERT(error::check(vkEndCommandBuffer(static_cast<VkCommandBuffer>(cmd_buffer))) && "Failed to end command buffer");
-                SP_ASSERT(globals::rhi_device->QueueSubmit(queue_type, wait_flags, cmd_buffer) && "Failed to submit to queue");
+                globals::rhi_device->QueueSubmit(queue_type, wait_flags, cmd_buffer);
                 SP_ASSERT(globals::rhi_device->QueueWait(queue_type) && "Failed to wait for queue");
 
                 recording = false;
