@@ -723,7 +723,10 @@ namespace Spartan
             // Reverse-z
             if (option == RendererOption::ReverseZ)
             {
-                CreateDepthStencilStates();
+                if (m_rhi_device)
+                {
+                    CreateDepthStencilStates();
+                }
 
                 if (m_camera)
                 {

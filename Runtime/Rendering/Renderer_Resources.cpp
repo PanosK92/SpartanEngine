@@ -53,6 +53,8 @@ namespace Spartan
 {
     void Renderer::CreateConstantBuffers()
     {
+        SP_ASSERT(m_rhi_device != nullptr);
+
         const uint32_t offset_count = 1024; // buffers can dynamically re-allocate anyway, no need to go big.
 
         m_cb_frame_gpu = make_shared<RHI_ConstantBuffer>(m_rhi_device, "frame");
@@ -77,6 +79,8 @@ namespace Spartan
 
     void Renderer::CreateDepthStencilStates()
     {
+        SP_ASSERT(m_rhi_device != nullptr);
+
         RHI_Comparison_Function reverse_z_aware_comp_func = GetOption<bool>(RendererOption::ReverseZ) ? RHI_Comparison_Function::GreaterEqual : RHI_Comparison_Function::LessEqual;
 
         // arguments: depth_test, depth_write, depth_function, stencil_test, stencil_write, stencil_function
@@ -89,6 +93,8 @@ namespace Spartan
 
     void Renderer::CreateRasterizerStates()
     {
+        SP_ASSERT(m_rhi_device != nullptr);
+
         float depth_bias              = GetOption<bool>(RendererOption::ReverseZ) ? -m_depth_bias : m_depth_bias;
         float depth_bias_slope_scaled = GetOption<bool>(RendererOption::ReverseZ) ? -m_depth_bias_slope_scaled : m_depth_bias_slope_scaled;
 
@@ -101,6 +107,8 @@ namespace Spartan
 
     void Renderer::CreateBlendStates()
     {
+        SP_ASSERT(m_rhi_device != nullptr);
+
         // blend_enabled, source_blend, dest_blend, blend_op, source_blend_alpha, dest_blend_alpha, blend_op_alpha, blend_factor
         m_blend_disabled = make_shared<RHI_BlendState>(m_rhi_device, false);
         m_blend_alpha    = make_shared<RHI_BlendState>(m_rhi_device, true, RHI_Blend::Src_Alpha, RHI_Blend::Inv_Src_Alpha, RHI_Blend_Operation::Add, RHI_Blend::One, RHI_Blend::One, RHI_Blend_Operation::Add, 0.0f);
@@ -109,6 +117,8 @@ namespace Spartan
 
     void Renderer::CreateSamplers(const bool create_only_anisotropic /*= false*/)
     {
+        SP_ASSERT(m_rhi_device != nullptr);
+
         float anisotropy                         = GetOption<float>(RendererOption::Anisotropy);
         RHI_Comparison_Function depth_comparison = GetOption<bool>(RendererOption::ReverseZ) ? RHI_Comparison_Function::Greater : RHI_Comparison_Function::Less;
 
