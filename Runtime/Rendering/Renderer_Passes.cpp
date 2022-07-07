@@ -1155,8 +1155,8 @@ namespace Spartan
 
         // Determine antialiasing modes
         AntialiasingMode antialiasing = GetOption<AntialiasingMode>(RendererOption::Antialiasing);
-        bool taa_enabled          = antialiasing == AntialiasingMode::Taa || antialiasing == AntialiasingMode::TaaFxaa;
-        bool fxaa_enabled         = antialiasing == AntialiasingMode::Fxaa || antialiasing == AntialiasingMode::TaaFxaa;
+        bool taa_enabled              = antialiasing == AntialiasingMode::Taa || antialiasing == AntialiasingMode::TaaFxaa;
+        bool fxaa_enabled             = antialiasing == AntialiasingMode::Fxaa || antialiasing == AntialiasingMode::TaaFxaa;
 
         // RENDER RESOLUTION -> OUTPUT RESOLUTION
         {
