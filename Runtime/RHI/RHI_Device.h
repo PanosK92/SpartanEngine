@@ -74,6 +74,7 @@ namespace Spartan
 
         // Command pools
         RHI_CommandPool* AllocateCommandPool(const char* name, const uint64_t swap_chain_id);
+        void DestroyCommandPool(RHI_CommandPool* cmd_pool);
         const std::vector<std::shared_ptr<RHI_CommandPool>>& GetCommandPools() { return m_cmd_pools; }
 
         // Static

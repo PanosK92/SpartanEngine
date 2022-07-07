@@ -69,6 +69,20 @@ namespace Spartan
         return m_cmd_pools.emplace_back(make_shared<RHI_CommandPool>(this, name, swap_chain_id)).get();
     }
     
+    void RHI_Device::DestroyCommandPool(RHI_CommandPool* cmd_pool)
+    {
+        vector<std::shared_ptr<RHI_CommandPool>>::iterator it;
+        for (it = m_cmd_pools.begin(); it != m_cmd_pools.end();)
+        {
+            if (cmd_pool->GetObjectId() == (*it)->GetObjectId())
+            {
+                it = m_cmd_pools.erase(it);
+                return;
+            }
+            it++;
+        }
+    }
+    
     bool RHI_Device::IsValidResolution(const uint32_t width, const uint32_t height)
     {
         return width  > 4 && width  <= m_max_texture_2d_dimension &&
