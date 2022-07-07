@@ -82,7 +82,6 @@ namespace Spartan
 
         // Blit
         void Blit(RHI_Texture* source, RHI_Texture* destination);
-        void Blit(const std::shared_ptr<RHI_Texture>& source, const std::shared_ptr<RHI_Texture>& destination) { Blit(source.get(), destination.get()); }
 
         // Viewport
         void SetViewport(const RHI_Viewport& viewport) const;
