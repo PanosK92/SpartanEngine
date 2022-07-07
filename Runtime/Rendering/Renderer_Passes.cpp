@@ -1131,16 +1131,20 @@ namespace Spartan
         // IN:  Frame_Render, which is and HDR render resolution render target (with a second texture so passes can alternate between them)
         // OUT: Frame_Output, which is and LDR output resolution render target (with a second texture so passes can alternate between them)
 
-        // Acquire render targets
-        shared_ptr<RHI_Texture> rt_frame_render         = render_target(RendererTexture::Frame_Render);   // render res
-        shared_ptr<RHI_Texture> rt_frame_render_scratch = render_target(RendererTexture::Frame_Render_2); // render res
-        shared_ptr<RHI_Texture> rt_frame_output         = render_target(RendererTexture::Frame_Output);   // output res
-        shared_ptr<RHI_Texture> rt_frame_output_scratch = render_target(RendererTexture::Frame_Output_2); // output res
+        // Acquire render targets (as references so that swapping the pointers around works)
+        RHI_Texture* rt_frame_render         = render_target(RendererTexture::Frame_Render).get();   // render res
+        RHI_Texture* rt_frame_render_scratch = render_target(RendererTexture::Frame_Render_2).get(); // render res
+        RHI_Texture* rt_frame_output         = render_target(RendererTexture::Frame_Output).get();   // output res
+        RHI_Texture* rt_frame_output_scratch = render_target(RendererTexture::Frame_Output_2).get(); // output res
 
-        // Textures are alternated (swapped) after every pass so we store the original id of one of them.
-        // This allows us to check later if we need to perform a swap between texture  1 and 2.
-        uint64_t frame_output_id = rt_frame_output->GetObjectId();
-
+        // A bunch of macros which allows us to keep track of which texture is an input/output for each pass.
+        bool swap_render = true;
+        #define get_render_in  swap_render ? rt_frame_render_scratch : rt_frame_render
+        #define get_render_out swap_render ? rt_frame_render : rt_frame_render_scratch
+        bool swap_output = true;
+        #define get_output_in  swap_output ? rt_frame_output_scratch : rt_frame_output
+        #define get_output_out swap_output ? rt_frame_output : rt_frame_output_scratch
+ 
         cmd_list->BeginMarker("post_proccess");
 
         // RENDER RESOLUTION
@@ -1148,14 +1152,14 @@ namespace Spartan
             // Depth of Field
             if (GetOption<bool>(RendererOption::DepthOfField))
             {
-                Pass_DepthOfField(cmd_list, rt_frame_render, rt_frame_render_scratch);
-                rt_frame_render.swap(rt_frame_render_scratch);
+                swap_render = !swap_render;
+                Pass_DepthOfField(cmd_list, get_render_in, get_render_out);
             }
         }
 
         // Determine antialiasing modes
         AntialiasingMode antialiasing = GetOption<AntialiasingMode>(RendererOption::Antialiasing);
-        bool taa_enabled              = antialiasing == AntialiasingMode::Taa || antialiasing == AntialiasingMode::TaaFxaa;
+        bool taa_enabled              = antialiasing == AntialiasingMode::Taa  || antialiasing == AntialiasingMode::TaaFxaa;
         bool fxaa_enabled             = antialiasing == AntialiasingMode::Fxaa || antialiasing == AntialiasingMode::TaaFxaa;
 
         // RENDER RESOLUTION -> OUTPUT RESOLUTION
@@ -1167,19 +1171,22 @@ namespace Spartan
             if (upsampling_mode == UpsamplingMode::FSR && RHI_Device::GetApiType() == RHI_Api_Type::D3d11)
             {
                 // TODO: This needs to be in perceptual space and normalised to 0, 1 range.
-                Pass_Ffx_Fsr_1_0(cmd_list, rt_frame_render.get(), rt_frame_output.get(), rt_frame_output_scratch.get());
+                swap_render = !swap_render;
+                Pass_Ffx_Fsr_1_0(cmd_list, get_render_in, rt_frame_output, rt_frame_output_scratch);
             }
             // FSR 2.0 (It can be used both for upsampling and just TAA)
             else if (upsampling_mode == UpsamplingMode::FSR || taa_enabled)
             {
-                Pass_Ffx_Fsr_2_0(cmd_list, rt_frame_render.get(), rt_frame_output.get());
+                swap_render = !swap_render;
+                Pass_Ffx_Fsr_2_0(cmd_list, get_render_in, rt_frame_output);
             }
             // Linear
             else if (upsampling_mode == UpsamplingMode::Linear)
             {
-                // D3D11 baggage, can't blit to a texture with different resolution or mip count
+                // D3D11 baggage, can't blit to a texture with a different resolution or mip count
+                swap_render = !swap_render;
                 bool bilinear = m_resolution_output != m_resolution_render;
-                Pass_Copy(cmd_list, rt_frame_render.get(), rt_frame_output.get(), bilinear);
+                Pass_Copy(cmd_list, get_render_in, rt_frame_output, bilinear);
             }
         }
 
@@ -1188,68 +1195,69 @@ namespace Spartan
             // Motion Blur
             if (GetOption<bool>(RendererOption::MotionBlur))
             {
-                Pass_MotionBlur(cmd_list, rt_frame_output, rt_frame_output_scratch);
-                rt_frame_output.swap(rt_frame_output_scratch);
+                swap_output = !swap_output;
+                Pass_MotionBlur(cmd_list, get_output_in, get_output_out);
             }
 
             // Bloom
             if (GetOption<bool>(RendererOption::Bloom))
             {
-                Pass_Bloom(cmd_list, rt_frame_output, rt_frame_output_scratch);
-                rt_frame_output.swap(rt_frame_output_scratch);
+                swap_output = !swap_output;
+                Pass_Bloom(cmd_list, get_output_in, get_output_out);
             }
 
-            // Tone-Mapping
-            // Run even when tone-mapping is disabled since this is where gamma correction is also done.
-            Pass_ToneMapping(cmd_list, rt_frame_output, rt_frame_output_scratch);
-            rt_frame_output.swap(rt_frame_output_scratch);
+            // Tone-Mapping & Gamma Correction
+            swap_output = !swap_output;
+            Pass_ToneMappingGammaCorrection(cmd_list, get_output_in, get_output_out);
 
             // Sharpening
             if (GetOption<bool>(RendererOption::Ffx_Cas))
             {
-                Pass_Ffx_Cas(cmd_list, rt_frame_output, rt_frame_output_scratch);
-                rt_frame_output.swap(rt_frame_output_scratch);
+                swap_output = !swap_output;
+                Pass_Ffx_Cas(cmd_list, get_output_in, get_output_out);
             }
 
             // Debanding
             if (GetOption<bool>(RendererOption::Debanding))
             {
-                Pass_Debanding(cmd_list, rt_frame_output, rt_frame_output_scratch);
-                rt_frame_output.swap(rt_frame_output_scratch);
+                swap_output = !swap_output;
+                Pass_Debanding(cmd_list, get_output_in, get_output_out);
             }
 
             // FXAA
             if (fxaa_enabled)
             {
-                Pass_Fxaa(cmd_list, rt_frame_output, rt_frame_output_scratch);
-                rt_frame_output.swap(rt_frame_output_scratch);
+                swap_output = !swap_output;
+                Pass_Fxaa(cmd_list, get_output_in, get_output_out);
             }
 
             // Chromatic aberration
             if (GetOption<bool>(RendererOption::ChromaticAberration))
             {
-                Pass_ChromaticAberration(cmd_list, rt_frame_output, rt_frame_output_scratch);
-                rt_frame_output.swap(rt_frame_output_scratch);
+                swap_output = !swap_output;
+                Pass_ChromaticAberration(cmd_list, get_output_in, get_output_out);
             }
 
             // Film grain
             if (GetOption<bool>(RendererOption::FilmGrain))
             {
-                Pass_FilmGrain(cmd_list, rt_frame_output, rt_frame_output_scratch);
-                rt_frame_output.swap(rt_frame_output_scratch);
+                swap_output = !swap_output;
+                Pass_FilmGrain(cmd_list, get_output_in, get_output_out);
             }
         }
 
-        // If the pointer doesn't point to the texture it used to, swap back to it so that it does.
-        if (frame_output_id != rt_frame_output->GetObjectId())
+        // If the last written texture is not the output one, then make sure it is.
+        if (!swap_output)
         {
-            rt_frame_output.swap(rt_frame_output_scratch);
+            // D3D11 baggage, can't blit to a texture with a different resolution or mip count
+            bool bilinear = false;
+            Pass_Copy(cmd_list, rt_frame_output_scratch, rt_frame_output, bilinear);
         }
 
         cmd_list->EndMarker();
     }
 
-    void Renderer::Pass_Bloom(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
+    void Renderer::Pass_Bloom(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
     {
         // Acquire shaders
         RHI_Shader* shader_luminance        = m_shaders[RendererShader::BloomLuminance_C].get();
@@ -1340,7 +1348,7 @@ namespace Spartan
             Update_Cb_Uber(cmd_list);
 
             // Set textures
-            cmd_list->SetTexture(RendererBindingsUav::rgba, tex_out.get());
+            cmd_list->SetTexture(RendererBindingsUav::rgba, tex_out);
             cmd_list->SetTexture(RendererBindingsSrv::tex, tex_in);
             cmd_list->SetTexture(RendererBindingsSrv::tex2, tex_bloom, 0, 1);
 
@@ -1352,14 +1360,14 @@ namespace Spartan
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::Pass_ToneMapping(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
+    void Renderer::Pass_ToneMappingGammaCorrection(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
     {
         // Acquire shaders
-        RHI_Shader* shader_c = m_shaders[RendererShader::ToneMapping_C].get();
+        RHI_Shader* shader_c = m_shaders[RendererShader::ToneMappingGammaCorrection_C].get();
         if (!shader_c->IsCompiled())
             return;
 
-        cmd_list->BeginTimeblock("tonemapping");
+        cmd_list->BeginTimeblock("tonemapping_gamma_correction");
 
         // Define pipeline state
         static RHI_PipelineState pso;
@@ -1382,7 +1390,7 @@ namespace Spartan
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::Pass_Fxaa(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
+    void Renderer::Pass_Fxaa(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
     {
         // Acquire shaders
         RHI_Shader* shader_c = m_shaders[RendererShader::Fxaa_C].get();
@@ -1412,7 +1420,7 @@ namespace Spartan
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::Pass_ChromaticAberration(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
+    void Renderer::Pass_ChromaticAberration(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
     {
         // Acquire shaders
         RHI_Shader* shader_c = m_shaders[RendererShader::ChromaticAberration_C].get();
@@ -1442,7 +1450,7 @@ namespace Spartan
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::Pass_MotionBlur(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
+    void Renderer::Pass_MotionBlur(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
     {
         // Acquire shaders
         RHI_Shader* shader_c = m_shaders[RendererShader::MotionBlur_C].get();
@@ -1474,7 +1482,7 @@ namespace Spartan
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::Pass_DepthOfField(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
+    void Renderer::Pass_DepthOfField(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
     {
         // Acquire shaders
         RHI_Shader* shader_downsampleCoc = m_shaders[RendererShader::Dof_DownsampleCoc_C].get();
@@ -1589,7 +1597,7 @@ namespace Spartan
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::Pass_Debanding(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
+    void Renderer::Pass_Debanding(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
     {
         // Acquire shaders
         RHI_Shader* shader = m_shaders[RendererShader::Debanding_C].get();
@@ -1619,7 +1627,7 @@ namespace Spartan
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::Pass_FilmGrain(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
+    void Renderer::Pass_FilmGrain(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
     {
         // Acquire shaders
         RHI_Shader* shader_c = m_shaders[RendererShader::FilmGrain_C].get();
@@ -1650,7 +1658,7 @@ namespace Spartan
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::Pass_Ffx_Cas(RHI_CommandList* cmd_list, shared_ptr<RHI_Texture>& tex_in, shared_ptr<RHI_Texture>& tex_out)
+    void Renderer::Pass_Ffx_Cas(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
     {
         // Acquire shaders
         RHI_Shader* shader_c = m_shaders[RendererShader::Ffx_Cas_C].get();
