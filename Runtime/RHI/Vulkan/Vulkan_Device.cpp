@@ -645,7 +645,7 @@ namespace Spartan
         }
     }
 
-    bool RHI_Device::QueueSubmit(const RHI_Queue_Type type, const uint32_t wait_flags, void* cmd_buffer, RHI_Semaphore* wait_semaphore /*= nullptr*/, RHI_Semaphore* signal_semaphore /*= nullptr*/, RHI_Fence* signal_fence /*= nullptr*/) const
+    void RHI_Device::QueueSubmit(const RHI_Queue_Type type, const uint32_t wait_flags, void* cmd_buffer, RHI_Semaphore* wait_semaphore /*= nullptr*/, RHI_Semaphore* signal_semaphore /*= nullptr*/, RHI_Fence* signal_fence /*= nullptr*/) const
     {
         SP_ASSERT_MSG(cmd_buffer != nullptr, "Invalid command buffer");
 
@@ -672,15 +672,13 @@ namespace Spartan
         // Get signal fence
         void* vk_signal_fence = signal_fence ? signal_fence->GetResource() : nullptr;
 
+        // The actual submit
         lock_guard<mutex> lock(m_queue_mutex);
-        if (!vulkan_utility::error::check(vkQueueSubmit(static_cast<VkQueue>(GetQueue(type)), 1, &submit_info, static_cast<VkFence>(vk_signal_fence))))
-            return false;
+        SP_ASSERT(vkQueueSubmit(static_cast<VkQueue>(GetQueue(type)), 1, &submit_info, static_cast<VkFence>(vk_signal_fence)) == VK_SUCCESS);
 
         // Update semaphore states
         if (wait_semaphore)   wait_semaphore->SetState(RHI_Semaphore_State::Idle);
         if (signal_semaphore) signal_semaphore->SetState(RHI_Semaphore_State::Signaled);
-
-        return true;
     }
 
     bool RHI_Device::QueueWait(const RHI_Queue_Type type) const
