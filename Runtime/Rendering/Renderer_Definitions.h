@@ -191,7 +191,7 @@ namespace Spartan
         BloomDownsample_C,
         BloomBlendFrame_C,
         BloomUpsampleBlendMip_C,
-        ToneMapping_C,
+        ToneMappingGammaCorrection_C,
         Debanding_C,
         Debug_ReflectionProbe_V,
         Debug_ReflectionProbe_P,

@@ -345,9 +345,9 @@ namespace Spartan
         m_shaders[RendererShader::ChromaticAberration_C]->AddDefine("PASS_CHROMATIC_ABERRATION");
         m_shaders[RendererShader::ChromaticAberration_C]->Compile(RHI_Shader_Compute, dir_shaders + "chromatic_aberration.hlsl", async);
 
-        // Tone-mapping
-        m_shaders[RendererShader::ToneMapping_C] = make_shared<RHI_Shader>(m_context);
-        m_shaders[RendererShader::ToneMapping_C]->Compile(RHI_Shader_Compute, dir_shaders + "tone_mapping.hlsl", async);
+        // Tone-mapping & gamma correction
+        m_shaders[RendererShader::ToneMappingGammaCorrection_C] = make_shared<RHI_Shader>(m_context);
+        m_shaders[RendererShader::ToneMappingGammaCorrection_C]->Compile(RHI_Shader_Compute, dir_shaders + "tone_mapping_gamma_correction.hlsl", async);
 
         // FXAA
         m_shaders[RendererShader::Fxaa_C] = make_shared<RHI_Shader>(m_context);
