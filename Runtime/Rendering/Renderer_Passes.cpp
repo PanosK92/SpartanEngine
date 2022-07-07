@@ -1249,9 +1249,7 @@ namespace Spartan
         // If the last written texture is not the output one, then make sure it is.
         if (!swap_output)
         {
-            // D3D11 baggage, can't blit to a texture with a different resolution or mip count
-            bool bilinear = false;
-            Pass_Copy(cmd_list, rt_frame_output_scratch, rt_frame_output, bilinear);
+            cmd_list->Blit(rt_frame_output_scratch, rt_frame_output);
         }
 
         cmd_list->EndMarker();
