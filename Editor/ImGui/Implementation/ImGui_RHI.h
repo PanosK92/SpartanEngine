@@ -78,7 +78,7 @@ namespace ImGui::RHI
     struct WindowData
     {
         uint32_t buffer_count = 2;
-        RHI_SwapChain* swapchain;
+        shared_ptr<RHI_SwapChain> swapchain;
         RHI_CommandPool* cmd_pool;
         bool image_acquired = false;
     };
@@ -186,7 +186,7 @@ namespace ImGui::RHI
 
         // Get swap chain and cmd list
         bool is_child_window           = window_data != nullptr;
-        RHI_SwapChain* swap_chain      = is_child_window ? window_data->swapchain : g_renderer->GetSwapChain();
+        RHI_SwapChain* swap_chain      = is_child_window ? window_data->swapchain.get() : g_renderer->GetSwapChain();
         RHI_CommandPool* cmd_list_pool = is_child_window ? window_data->cmd_pool : g_cmd_pool;
 
         // Begin the command list
@@ -388,7 +388,7 @@ namespace ImGui::RHI
 
         WindowData* window = new WindowData();
 
-        window->swapchain = new RHI_SwapChain
+        window->swapchain = make_shared<RHI_SwapChain>
         (
             viewport->PlatformHandleRaw, // PlatformHandle is SDL_Window, PlatformHandleRaw is HWND
             g_rhi_device,
@@ -414,8 +414,7 @@ namespace ImGui::RHI
 
         if (WindowData* window = RHI_GetWindowData(viewport))
         {
-            delete window->swapchain;
-            delete window->cmd_pool;
+            g_rhi_device->DestroyCommandPool(window->cmd_pool);
             delete window;
         }
 
