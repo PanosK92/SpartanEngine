@@ -60,10 +60,19 @@ namespace Spartan
         m_timestamps.fill(0);
 
         // Created command list
-        ID3D12CommandAllocator* allocator = static_cast<ID3D12CommandAllocator*>(cmd_pool);
-        d3d12_utility::error::check(m_rhi_device->GetContextRhi()->device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, allocator, nullptr, IID_PPV_ARGS(reinterpret_cast<ID3D12GraphicsCommandList**>(&m_resource))));
+        SP_ASSERT_MSG(
+            d3d12_utility::error::check(
+                m_rhi_device->GetContextRhi()->device->CreateCommandList(
+                    0,
+                    D3D12_COMMAND_LIST_TYPE_DIRECT,
+                    static_cast<ID3D12CommandAllocator*>(cmd_pool),
+                    nullptr,
+                    IID_PPV_ARGS(reinterpret_cast<ID3D12GraphicsCommandList**>(&m_resource))
+                )
+            ), "Failed to create command list"
+        );
     }
-    
+
     RHI_CommandList::~RHI_CommandList()
     {
         // Wait in case it's still in use by the GPU

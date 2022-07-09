@@ -33,8 +33,16 @@ namespace Spartan
 {
     RHI_CommandPool::RHI_CommandPool(RHI_Device* rhi_device, const char* name, const uint64_t swap_chain_id) : SpartanObject(rhi_device->GetContext())
     {
-        m_rhi_device  = rhi_device;
-        m_object_name = name;
+        m_rhi_device    = rhi_device;
+        m_object_name   = name;
+        m_swap_chain_id = swap_chain_id;
+        m_resources.fill(nullptr);
+
+        // Create command pool 
+        for (uint32_t i = 0; i < static_cast<uint32_t>(m_resources.size()); i++)
+        {
+            SP_ASSERT_MSG(false, "Function not implmented");
+        }
     }
 
     RHI_CommandPool::~RHI_CommandPool()
