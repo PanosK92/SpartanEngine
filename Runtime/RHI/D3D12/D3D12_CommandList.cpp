@@ -50,14 +50,18 @@ namespace Spartan
 {
     RHI_CommandList::RHI_CommandList(Context* context, void* cmd_pool, const char* name)
     {
-        m_renderer    = context->GetSubsystem<Renderer>();
-        m_profiler    = context->GetSubsystem<Profiler>();
-        m_rhi_device  = m_renderer->GetRhiDevice().get();
-        m_object_name = name;
+        SP_ASSERT(cmd_pool != nullptr);
+
+        m_renderer          = context->GetSubsystem<Renderer>();
+        m_profiler          = context->GetSubsystem<Profiler>();
+        m_rhi_device        = m_renderer->GetRhiDevice().get();
+        m_object_name       = name;
+        m_cmd_pool_resource = cmd_pool;
         m_timestamps.fill(0);
 
-        //ID3D12CommandAllocator* allocator = static_cast<ID3D12CommandAllocator*>(m_rhi_device->GetCommandPoolGraphics());
-        //d3d12_utility::error::check(m_rhi_device->GetContextRhi()->device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, allocator, nullptr, IID_PPV_ARGS(reinterpret_cast<ID3D12GraphicsCommandList**>(&m_resource))));
+        // Created command list
+        ID3D12CommandAllocator* allocator = static_cast<ID3D12CommandAllocator*>(cmd_pool);
+        d3d12_utility::error::check(m_rhi_device->GetContextRhi()->device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, allocator, nullptr, IID_PPV_ARGS(reinterpret_cast<ID3D12GraphicsCommandList**>(&m_resource))));
     }
     
     RHI_CommandList::~RHI_CommandList()
@@ -83,7 +87,9 @@ namespace Spartan
         SP_ASSERT(m_state == RHI_CommandListState::Idle);
 
         // Unlike Vulkan, D3D12 wraps both begin and reset under Reset().
-        //SP_ASSERT(d3d12_utility::error::check(static_cast<ID3D12GraphicsCommandList*>(m_resource)->Reset(static_cast<ID3D12CommandAllocator*>(m_rhi_device->GetCommandPoolGraphics()), nullptr)) && "Failed to reset command list");
+        SP_ASSERT_MSG(d3d12_utility::error::check(static_cast<ID3D12GraphicsCommandList*>(m_resource)->Reset(
+            static_cast<ID3D12CommandAllocator*>(m_cmd_pool_resource), nullptr)),
+            "Failed to reset command list");
 
         m_state = RHI_CommandListState::Recording;
     }
@@ -106,41 +112,27 @@ namespace Spartan
         return true;
     }
 
-    bool RHI_CommandList::Reset()
-    {
-        // Verify a few things
-        SP_ASSERT(m_resource != nullptr);
-        SP_ASSERT(m_rhi_device != nullptr);
-        SP_ASSERT(m_state == RHI_CommandListState::Recording);
-
-        lock_guard<mutex> guard(m_mutex_reset);
-
-       // if (!d3d12_utility::error::check(static_cast<ID3D12GraphicsCommandList*>(m_resource)->Reset(static_cast<ID3D12CommandAllocator*>(m_rhi_device->GetCommandPoolGraphics()), nullptr)))
-            //return false;
-
-        m_state = RHI_CommandListState::Idle;
-        return true;
-    }
-
     void RHI_CommandList::SetPipelineState(RHI_PipelineState& pso)
     {
         SP_ASSERT(pso.IsValid() && "Pipeline state is invalid");
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
+
+        SP_ASSERT_MSG(false, "Function is not implemented");
     }
 
     void RHI_CommandList::BeginRenderPass()
     {
-
+        SP_ASSERT_MSG(false, "Function is not implemented");
     }
     
     void RHI_CommandList::EndRenderPass()
     {
-
+        SP_ASSERT_MSG(false, "Function is not implemented");
     }
 
     void RHI_CommandList::ClearPipelineStateRenderTargets(RHI_PipelineState& pipeline_state)
     {
-
+        SP_ASSERT_MSG(false, "Function is not implemented");
     }
 
     void RHI_CommandList::ClearRenderTarget(RHI_Texture* texture,
@@ -152,7 +144,7 @@ namespace Spartan
         const float clear_stencil          /*= rhi_stencil_load*/
     )
     {
-
+        SP_ASSERT_MSG(false, "Function is not implemented");
     }
 
     void RHI_CommandList::Draw(const uint32_t vertex_count, uint32_t vertex_start_index /*= 0*/)
@@ -213,7 +205,7 @@ namespace Spartan
 
     void RHI_CommandList::Blit(RHI_Texture* source, RHI_Texture* destination)
     {
-
+        SP_ASSERT_MSG(false, "Function is not implemented");
     }
 
     void RHI_CommandList::SetViewport(const RHI_Viewport& viewport) const
@@ -248,44 +240,88 @@ namespace Spartan
         static_cast<ID3D12GraphicsCommandList*>(m_resource)->RSSetScissorRects(1, &d3d12_rectangle);
     }
     
-    void RHI_CommandList::SetBufferVertex(const RHI_VertexBuffer* buffer, const uint64_t offset /*= 0*/)
+    void RHI_CommandList::SetBufferVertex(const RHI_VertexBuffer* buffer)
     {
-    
+        // Validate command list state
+        SP_ASSERT(m_state == RHI_CommandListState::Recording);
+
+        // Skip if already set
+        if (m_vertex_buffer_id == buffer->GetObjectId())
+            return;
+
+        D3D12_VERTEX_BUFFER_VIEW vertex_buffer_view = {};
+        vertex_buffer_view.BufferLocation           = 0;
+        vertex_buffer_view.StrideInBytes            = buffer->GetStride();
+        vertex_buffer_view.SizeInBytes              = buffer->GetObjectSizeGpu();
+
+        static_cast<ID3D12GraphicsCommandList*>(m_resource)->IASetVertexBuffers(
+            0,                  // StartSlot
+            1,                  // NumViews
+            &vertex_buffer_view // pViews
+        );
+
+        m_vertex_buffer_id = buffer->GetObjectId();
+
+        if (m_profiler)
+        {
+            m_profiler->m_rhi_bindings_buffer_vertex++;
+        }
     }
     
-    void RHI_CommandList::SetBufferIndex(const RHI_IndexBuffer* buffer, const uint64_t offset /*= 0*/)
+    void RHI_CommandList::SetBufferIndex(const RHI_IndexBuffer* buffer)
     {
-    
+        // Validate command list state
+        SP_ASSERT(m_state == RHI_CommandListState::Recording);
+
+        // Skip if already set
+        if (m_index_buffer_id == buffer->GetObjectId())
+            return;
+
+        D3D12_INDEX_BUFFER_VIEW index_buffer_view = {};
+        index_buffer_view.BufferLocation          = 0;
+        index_buffer_view.SizeInBytes             = buffer->GetObjectSizeGpu();
+        index_buffer_view.Format                  = buffer->Is16Bit() ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT;
+
+        static_cast<ID3D12GraphicsCommandList*>(m_resource)->IASetIndexBuffer(
+            &index_buffer_view // pView
+        );
+
+        m_index_buffer_id = buffer->GetObjectId();
+
+        if (m_profiler)
+        {
+            m_profiler->m_rhi_bindings_buffer_index++;
+        }
     }
     
     void RHI_CommandList::SetConstantBuffer(const uint32_t slot, const uint8_t scope, RHI_ConstantBuffer* constant_buffer) const
     {
-
+        SP_ASSERT_MSG(false, "Function is not implemented");
     }
 
     void RHI_CommandList::SetStructuredBuffer(const uint32_t slot, RHI_StructuredBuffer* structured_buffer) const
     {
-
+        SP_ASSERT_MSG(false, "Function is not implemented");
     }
     
     void RHI_CommandList::SetSampler(const uint32_t slot, RHI_Sampler* sampler) const
     {
-
+        SP_ASSERT_MSG(false, "Function is not implemented");
     }
 
     void RHI_CommandList::SetTexture(const uint32_t slot, RHI_Texture* texture, const uint32_t mip_index /*= rhi_all_mips*/, uint32_t mip_range /*= 0*/, const bool uav /*= false*/)
     {
-
+        SP_ASSERT_MSG(false, "Function is not implemented");
     }
 
     void RHI_CommandList::BeginTimestamp(void* query)
     {
-
+        SP_ASSERT_MSG(false, "Function is not implemented");
     }
 
     void RHI_CommandList::EndTimestamp(void* query)
     {
-
+        SP_ASSERT_MSG(false, "Function is not implemented");
     }
 
     float RHI_CommandList::GetTimestampDuration(void* query_start, void* query_end, const uint32_t pass_index)
@@ -300,36 +336,36 @@ namespace Spartan
 
     void RHI_CommandList::BeginTimeblock(const char* name, const bool gpu_marker, const bool gpu_timing)
     {
-
+        SP_ASSERT_MSG(false, "Function is not implemented");
     }
 
     void RHI_CommandList::EndTimeblock()
     {
-
+        SP_ASSERT_MSG(false, "Function is not implemented");
     }
 
     void RHI_CommandList::BeginMarker(const char* name)
     {
-
+        SP_ASSERT_MSG(false, "Function is not implemented");
     }
 
     void RHI_CommandList::EndMarker()
     {
-
+        SP_ASSERT_MSG(false, "Function is not implemented");
     }
 
     void RHI_CommandList::OnDraw()
     {
-
+        SP_ASSERT_MSG(false, "Function is not implemented");
     }
 
     void RHI_CommandList::UnbindOutputTextures()
     {
-
+        SP_ASSERT_MSG(false, "Function is not implemented");
     }
 
     void RHI_CommandList::GetDescriptorSetLayoutFromPipelineState(RHI_PipelineState& pipeline_state)
     {
-
+        SP_ASSERT_MSG(false, "Function is not implemented");
     }
 }

@@ -78,12 +78,6 @@ namespace Spartan
         return true;
     }
 
-    bool RHI_CommandList::Reset()
-    {
-        m_state = RHI_CommandListState::Idle;
-        return true;
-    }
-
     void RHI_CommandList::SetPipelineState(RHI_PipelineState& pso)
     {
         SP_ASSERT(pso.IsValid() && "Pipeline state is invalid");
@@ -543,14 +537,14 @@ namespace Spartan
         m_rhi_device->GetContextRhi()->device_context->RSSetScissorRects(1, &d3d11_rectangle);
     }
 
-    void RHI_CommandList::SetBufferVertex(const RHI_VertexBuffer* buffer, const uint64_t offset /*= 0*/)
+    void RHI_CommandList::SetBufferVertex(const RHI_VertexBuffer* buffer)
     {
         SP_ASSERT(buffer != nullptr);
         SP_ASSERT(buffer->GetResource() != nullptr);
 
         ID3D11Buffer* vertex_buffer         = static_cast<ID3D11Buffer*>(buffer->GetResource());
         UINT stride                         = buffer->GetStride();
-        UINT offsets[]                      = { static_cast<UINT>(offset) };
+        UINT offsets[]                      = { 0 };
         ID3D11DeviceContext* device_context = m_rhi_device->GetContextRhi()->device_context;
 
         // Get currently set buffer
@@ -560,7 +554,7 @@ namespace Spartan
         device_context->IAGetVertexBuffers(0, 1, &set_buffer, &set_stride, &set_offset);
 
         // Skip if already set
-        if (set_buffer == vertex_buffer && set_offset == offset)
+        if (set_buffer == vertex_buffer)
             return;
 
         // Set
@@ -572,7 +566,7 @@ namespace Spartan
         }
     }
 
-    void RHI_CommandList::SetBufferIndex(const RHI_IndexBuffer* buffer, const uint64_t offset /*= 0*/)
+    void RHI_CommandList::SetBufferIndex(const RHI_IndexBuffer* buffer)
     {
         SP_ASSERT(buffer != nullptr);
         SP_ASSERT(buffer->GetResource() != nullptr);
@@ -588,11 +582,11 @@ namespace Spartan
         device_context->IAGetIndexBuffer(&set_buffer, &set_format, &set_offset);
 
         // Skip if already set
-        if (set_buffer == index_buffer && set_offset == offset)
+        if (set_buffer == index_buffer)
             return;
 
         // Set
-        device_context->IASetIndexBuffer(index_buffer, format, static_cast<UINT>(offset));
+        device_context->IASetIndexBuffer(index_buffer, format, 0);
 
         if (m_profiler)
         {
