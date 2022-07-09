@@ -70,7 +70,7 @@ namespace Spartan
         return VK_ATTACHMENT_LOAD_OP_CLEAR;
     };
 
-    RHI_CommandList::RHI_CommandList(Context* context, void* cmd_pool_resource, const char* name) : SpartanObject(context)
+    RHI_CommandList::RHI_CommandList(Context* context, void* cmd_pool, const char* name) : SpartanObject(context)
     {
         m_renderer    = context->GetSubsystem<Renderer>();
         m_profiler    = context->GetSubsystem<Profiler>();
@@ -83,7 +83,7 @@ namespace Spartan
         {
             VkCommandBufferAllocateInfo allocate_info = {};
             allocate_info.sType                       = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-            allocate_info.commandPool                 = static_cast<VkCommandPool>(cmd_pool_resource);
+            allocate_info.commandPool                 = static_cast<VkCommandPool>(cmd_pool);
             allocate_info.level                       = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
             allocate_info.commandBufferCount          = 1;
 
@@ -213,21 +213,6 @@ namespace Spartan
 
 
         m_state = RHI_CommandListState::Submitted;
-
-        return true;
-    }
-
-    bool RHI_CommandList::Reset()
-    {
-        // Validate command list state
-        SP_ASSERT(m_state == RHI_CommandListState::Submitted);
-
-        lock_guard<mutex> guard(m_mutex_reset);
-
-        if (!vulkan_utility::error::check(vkResetCommandBuffer(static_cast<VkCommandBuffer>(m_resource), VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT)))
-            return false;
-
-        m_state = RHI_CommandListState::Idle;
 
         return true;
     }
@@ -663,16 +648,17 @@ namespace Spartan
         );
     }
 
-    void RHI_CommandList::SetBufferVertex(const RHI_VertexBuffer* buffer, const uint64_t offset /*= 0*/)
+    void RHI_CommandList::SetBufferVertex(const RHI_VertexBuffer* buffer)
     {
         // Validate command list state
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
-        if (m_vertex_buffer_id == buffer->GetObjectId() && m_vertex_buffer_offset == offset)
+        // Skip if already set
+        if (m_vertex_buffer_id == buffer->GetObjectId())
             return;
 
         VkBuffer vertex_buffers[] = { static_cast<VkBuffer>(buffer->GetResource()) };
-        VkDeviceSize offsets[]    = { offset };
+        VkDeviceSize offsets[]    = { 0 };
 
         vkCmdBindVertexBuffers(
             static_cast<VkCommandBuffer>(m_resource), // commandBuffer
@@ -682,8 +668,7 @@ namespace Spartan
             offsets                                   // pOffsets
         );
 
-        m_vertex_buffer_id     = buffer->GetObjectId();
-        m_vertex_buffer_offset = offset;
+        m_vertex_buffer_id = buffer->GetObjectId();
 
         if (m_profiler)
         {
@@ -691,23 +676,22 @@ namespace Spartan
         }
     }
 
-    void RHI_CommandList::SetBufferIndex(const RHI_IndexBuffer* buffer, const uint64_t offset /*= 0*/)
+    void RHI_CommandList::SetBufferIndex(const RHI_IndexBuffer* buffer)
     {
         // Validate command list state
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
-        if (m_index_buffer_id == buffer->GetObjectId() && m_index_buffer_offset == offset)
+        if (m_index_buffer_id == buffer->GetObjectId())
             return;
 
         vkCmdBindIndexBuffer(
             static_cast<VkCommandBuffer>(m_resource),                       // commandBuffer
             static_cast<VkBuffer>(buffer->GetResource()),                   // buffer
-            offset,                                                         // offset
+            0,                                                              // offset
             buffer->Is16Bit() ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32 // indexType
         );
 
-        m_index_buffer_id     = buffer->GetObjectId();
-        m_index_buffer_offset = offset;
+        m_index_buffer_id = buffer->GetObjectId();
 
         if (m_profiler)
         {

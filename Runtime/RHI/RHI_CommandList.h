@@ -50,7 +50,6 @@ namespace Spartan
         void Begin();
         bool End();
         bool Submit();
-        bool Reset();
         // Waits for the command list to finish being processed.
         void Wait();
         // Causes the command list to ignore one submission call (useful when the command list refers to resources which have been destroyed).
@@ -90,10 +89,10 @@ namespace Spartan
         void SetScissorRectangle(const Math::Rectangle& scissor_rectangle) const;
         
         // Vertex buffer
-        void SetBufferVertex(const RHI_VertexBuffer* buffer, const uint64_t offset = 0);
+        void SetBufferVertex(const RHI_VertexBuffer* buffer);
         
         // Index buffer
-        void SetBufferIndex(const RHI_IndexBuffer* buffer, const uint64_t offset = 0);
+        void SetBufferIndex(const RHI_IndexBuffer* buffer);
 
         // Constant buffer
         void SetConstantBuffer(const uint32_t slot, const uint8_t scope, RHI_ConstantBuffer* constant_buffer) const;
@@ -154,6 +153,7 @@ namespace Spartan
         RHI_Device* m_rhi_device                         = nullptr;
         Profiler* m_profiler                             = nullptr;
         void* m_resource                                 = nullptr;
+        void* m_cmd_pool_resource                        = nullptr;
         std::atomic<bool> m_discard                      = false;
         bool m_is_rendering                              = false;
         bool m_pipeline_dirty                            = false;
@@ -195,9 +195,7 @@ namespace Spartan
         std::array<uint64_t, m_max_timestamps> m_timestamps;
 
         // Variables to minimise state changes
-        uint64_t m_vertex_buffer_id     = 0;
-        uint64_t m_vertex_buffer_offset = 0;
-        uint64_t m_index_buffer_id      = 0;
-        uint64_t m_index_buffer_offset  = 0;
+        uint64_t m_vertex_buffer_id = 0;
+        uint64_t m_index_buffer_id  = 0;
     };
 }
