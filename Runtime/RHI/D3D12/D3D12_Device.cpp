@@ -53,17 +53,8 @@ namespace Spartan
 
         // Find a physical device
         {
-            if (!DetectPhysicalDevices())
-            {
-                LOG_ERROR("Failed to detect any devices");
-                return;
-            }
-
-            if (!SelectPrimaryPhysicalDevice())
-            {
-                LOG_ERROR("Failed to detect any devices");
-                return;
-            }
+            SP_ASSERT_MSG(DetectPhysicalDevices(), "Failed to detect any devices");
+            SP_ASSERT_MSG(SelectPrimaryPhysicalDevice(), "Failed to find a suitable device");
         }
 
         // Debug layer
@@ -81,15 +72,10 @@ namespace Spartan
 
         // Factory
         Microsoft::WRL::ComPtr<IDXGIFactory6> factory;
-        if (!d3d12_utility::error::check(CreateDXGIFactory2(dxgi_factory_flags, IID_PPV_ARGS(&factory))))
-        {
-            LOG_ERROR("Failed to created dxgi factory");
-            return;
-        }
-
-        D3D_FEATURE_LEVEL minimum_feature_level = D3D_FEATURE_LEVEL_12_0;
+        SP_ASSERT_MSG(d3d12_utility::error::check(CreateDXGIFactory2(dxgi_factory_flags, IID_PPV_ARGS(&factory))), "Failed to created dxgi factory");
 
         // Adapter
+        D3D_FEATURE_LEVEL minimum_feature_level = D3D_FEATURE_LEVEL_12_0;
         Microsoft::WRL::ComPtr<IDXGIAdapter1> adapter;
         {
             for (UINT adapterIndex = 0; DXGI_ERROR_NOT_FOUND != factory->EnumAdapters1(adapterIndex, &adapter); ++adapterIndex)
@@ -102,18 +88,23 @@ namespace Spartan
                     continue;
 
                 // Check to see if the adapter supports Direct3D 12, but don't create the actual device yet.
-                if (!d3d12_utility::error::check(D3D12CreateDevice(adapter.Get(), minimum_feature_level, _uuidof(ID3D12Device), nullptr)))
-                    break;
+                SP_ASSERT_MSG(d3d12_utility::error::check(D3D12CreateDevice
+                (
+                    adapter.Get(),
+                    minimum_feature_level,
+                    _uuidof(ID3D12Device),
+                    nullptr
+                )), "Failed to create device");
             }
-
         }
 
         // Device
-        if (!d3d12_utility::error::check(D3D12CreateDevice(adapter.Get(), minimum_feature_level, IID_PPV_ARGS(&m_rhi_context->device))))
-        {
-            LOG_ERROR("Failed to created device");
-            return;
-        }
+        SP_ASSERT_MSG(d3d12_utility::error::check(D3D12CreateDevice
+        (
+            adapter.Get(),
+            minimum_feature_level,
+            IID_PPV_ARGS(&m_rhi_context->device)
+        )), "Failed to create device");
 
         // Create a graphics, compute and a copy queue.
         {
@@ -131,7 +122,18 @@ namespace Spartan
         }
 
         // Create command list allocator
-        //d3d12_utility::error::check(m_rhi_context->device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(reinterpret_cast<ID3D12CommandAllocator**>(&m_cmd_pool_graphics))));
+        SP_ASSERT_MSG
+        (
+            /*d3d12_utility::error::check
+            (
+                m_rhi_context->device->CreateCommandAllocator
+                (
+                    D3D12_COMMAND_LIST_TYPE_DIRECT,
+                    IID_PPV_ARGS(reinterpret_cast<ID3D12CommandAllocator**>(&m_cmd_pools))
+                )
+            )*/false,
+            "Failed to create command allocator"
+         );
 
         // Log feature level
         if (Settings* settings = m_context->GetSubsystem<Settings>())

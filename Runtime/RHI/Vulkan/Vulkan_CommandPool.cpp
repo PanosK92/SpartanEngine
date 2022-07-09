@@ -44,7 +44,6 @@ namespace Spartan
         cmd_pool_info.queueFamilyIndex        = rhi_device->GetQueueIndex(RHI_Queue_Type::Graphics);
         cmd_pool_info.flags                   = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT; // specifies that command buffers allocated from the pool will be short-lived
 
-
         // Create pool 
         for (uint32_t i = 0; i < static_cast<uint32_t>(m_resources.size()); i++)
         {
