@@ -94,6 +94,7 @@ namespace Spartan
                 continue;
             }
 
+            // Register display mode (duplicates are discarded)
             bool update_fps_limit_to_highest_hz = true;
             RegisterDisplayMode(DisplayMode(display_mode.w, display_mode.h, display_mode.refresh_rate, 1), update_fps_limit_to_highest_hz, context);
         }

@@ -37,10 +37,16 @@ namespace Spartan
     {
         m_physical_devices.emplace_back(physical_device);
 
-        // Keep devices sorted, based on memory, in a descending order.
+        // Some devices by time, discrete come first.
         sort(m_physical_devices.begin(), m_physical_devices.end(), [](const PhysicalDevice& adapter1, const PhysicalDevice& adapter2)
         {
-            return adapter1.GetMemory() > adapter2.GetMemory();
+            return adapter1.GetType() == RHI_PhysicalDevice_Type::Discrete;
+        });
+
+        // Sort devices by memory, in a descending, but maintain the type ordering.
+        sort(m_physical_devices.begin(), m_physical_devices.end(), [](const PhysicalDevice& adapter1, const PhysicalDevice& adapter2)
+        {
+            return adapter1.GetMemory() > adapter2.GetMemory() && adapter1.GetType() == adapter2.GetType();
         });
 
         LOG_INFO("%s (%d MB)", physical_device.GetName().c_str(), physical_device.GetMemory());
