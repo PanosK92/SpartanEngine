@@ -45,7 +45,7 @@ namespace Spartan
 
         DisplayMode& mode = m_display_modes.emplace_back(display_mode);
 
-        // Keep display modes sorted, based on refresh rate (from highest to lowest)
+        // Keep display modes sorted, based on refresh rate, in a descending order.
         sort(m_display_modes.begin(), m_display_modes.end(), [](const DisplayMode& display_mode_a, const DisplayMode& display_mode_b)
         {
             return display_mode_a.hz > display_mode_b.hz;
@@ -81,19 +81,45 @@ namespace Spartan
         }
     }
 
+    void Display::DetectDisplayModes(Context* context)
+    {
+        // Get display modes of all displays
+        for (uint32_t display_index = 0; display_index < SDL_GetNumVideoDisplays(); ++display_index) {
+
+            // Get display mode
+            SDL_DisplayMode display_mode;
+            if (SDL_GetCurrentDisplayMode(display_index, &display_mode) != 0)
+            {
+                LOG_ERROR("Failed to get display mode for display index %d", display_index);
+                continue;
+            }
+
+            bool update_fps_limit_to_highest_hz = true;
+            RegisterDisplayMode(DisplayMode(display_mode.w, display_mode.h, display_mode.refresh_rate, 1), update_fps_limit_to_highest_hz, context);
+        }
+    }
+
     uint32_t Display::GetWidth()
     {
-        SDL_DisplayMode dm;
-        SP_ASSERT(SDL_GetCurrentDisplayMode(0, &dm) == 0);
+        SDL_DisplayMode display_mode;
+        SP_ASSERT(SDL_GetCurrentDisplayMode(0, &display_mode) == 0);
 
-        return dm.w;
+        return display_mode.w;
     }
 
     uint32_t Display::GetHeight()
     {
-        SDL_DisplayMode dm;
-        SP_ASSERT(SDL_GetCurrentDisplayMode(0, &dm) == 0);
+        SDL_DisplayMode display_mode;
+        SP_ASSERT(SDL_GetCurrentDisplayMode(0, &display_mode) == 0);
 
-        return dm.h;
+        return display_mode.h;
+    }
+
+    uint32_t Display::GetRefreshRate()
+    {
+        SDL_DisplayMode display_mode;
+        SP_ASSERT(SDL_GetCurrentDisplayMode(0, &display_mode) == 0);
+
+        return display_mode.refresh_rate;
     }
 }
