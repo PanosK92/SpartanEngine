@@ -102,12 +102,6 @@ jobs:
           name: build_d3d11
           path: build_d3d11.7z
       
-      - name: Download D3D12 build
-        uses: actions/download-artifact@master
-        with:
-          name: build_d3d12
-          path: build_d3d12.7z
-     
       - name: Download Vulkan build
         uses: actions/download-artifact@master
         with:
