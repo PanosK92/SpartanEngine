@@ -56,7 +56,6 @@ namespace Spartan
         bool IsIntel()    const { return vendor_id == 0x8086 || vendor_id == 0x163C || vendor_id == 0x8087 || name.find("Intel") != std::string::npos;}
         bool IsArm()      const { return vendor_id == 0x13B5 || name.find("Arm,") != std::string::npos; }
         bool IsQualcomm() const { return vendor_id == 0x5143 || name.find("Qualcomm") != std::string::npos; }
-        bool IsDiscrete() const { return type == RHI_PhysicalDevice_Type::Discrete; }
 
         const std::string& GetName()          const { return name; }
         const std::string& GetDriverVersion() const { return driver_version; }
@@ -64,6 +63,7 @@ namespace Spartan
         const std::string& GetVendorName()    const { return vendor_name; }
         uint32_t GetMemory()                  const { return memory; }
         void* GetData()                       const { return data; }
+        RHI_PhysicalDevice_Type GetType()     const { return RHI_PhysicalDevice_Type::Discrete; }
 
     private:
         std::string get_vendor_name()
