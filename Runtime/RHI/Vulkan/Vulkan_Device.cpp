@@ -326,10 +326,6 @@ namespace Spartan
                 SP_ASSERT(device_features_1_2_supported.timelineSemaphore == VK_TRUE);
                 device_features_1_2.timelineSemaphore = VK_TRUE;
 
-                // Synchronization 2
-                SP_ASSERT(device_features_1_3_supported.synchronization2 == VK_TRUE);
-                device_features_1_3.synchronization2 = VK_TRUE;
-
                 // Rendering without render passes and frame buffer objects
                 SP_ASSERT(device_features_1_3_supported.dynamicRendering == VK_TRUE);
                 device_features_1_3.dynamicRendering = VK_TRUE;
