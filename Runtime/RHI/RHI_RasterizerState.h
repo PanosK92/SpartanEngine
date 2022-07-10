@@ -47,35 +47,35 @@ namespace Spartan
         );
         ~RHI_RasterizerState();
 
-        RHI_CullMode GetCullMode()     const { return m_cull_mode; }
-        RHI_PolygonMode GetPolygonMode()  const { return m_polygon_mode; }
-        bool GetDepthClipEnabled()      const { return m_depth_clip_enabled; }
-        bool GetScissorEnabled()        const { return m_scissor_enabled; }
-        bool GetAntialisedLineEnabled() const { return m_antialised_line_enabled; }
-        bool IsInitialized()            const { return m_initialized; }
-        void* GetResource()             const { return m_resource; }
-        float GetLineWidth()            const { return m_line_width; }
-        float GetDepthBias()            const { return m_depth_bias; }
-        float GetDepthBiasClamp()       const { return m_depth_bias_clamp; }
-        float GetDepthBiasSlopeScaled() const { return m_depth_bias_slope_scaled; }
+        RHI_CullMode GetCullMode()       const { return m_cull_mode; }
+        RHI_PolygonMode GetPolygonMode() const { return m_polygon_mode; }
+        bool GetDepthClipEnabled()       const { return m_depth_clip_enabled; }
+        bool GetScissorEnabled()         const { return m_scissor_enabled; }
+        bool GetAntialisedLineEnabled()  const { return m_antialised_line_enabled; }
+        bool IsInitialized()             const { return m_initialized; }
+        void* GetResource()              const { return m_resource; }
+        float GetLineWidth()             const { return m_line_width; }
+        float GetDepthBias()             const { return m_depth_bias; }
+        float GetDepthBiasClamp()        const { return m_depth_bias_clamp; }
+        float GetDepthBiasSlopeScaled()  const { return m_depth_bias_slope_scaled; }
 
         bool operator==(const RHI_RasterizerState& rhs) const
         {
             return
-                m_cull_mode                 == rhs.GetCullMode()                &&
-                m_polygon_mode                 == rhs.GetPolygonMode()                &&
-                m_depth_clip_enabled        == rhs.GetDepthClipEnabled()        &&
-                m_scissor_enabled           == rhs.GetScissorEnabled()          &&
-                m_antialised_line_enabled   == rhs.GetAntialisedLineEnabled()   &&
-                m_depth_bias                == rhs.GetDepthBias()               &&
-                m_depth_bias_slope_scaled   == rhs.GetDepthBiasSlopeScaled()    &&
-                m_line_width                == rhs.GetLineWidth();
+                m_cull_mode               == rhs.GetCullMode()              &&
+                m_polygon_mode            == rhs.GetPolygonMode()           &&
+                m_depth_clip_enabled      == rhs.GetDepthClipEnabled()      &&
+                m_scissor_enabled         == rhs.GetScissorEnabled()        &&
+                m_antialised_line_enabled == rhs.GetAntialisedLineEnabled() &&
+                m_depth_bias              == rhs.GetDepthBias()             &&
+                m_depth_bias_slope_scaled == rhs.GetDepthBiasSlopeScaled()  &&
+                m_line_width              == rhs.GetLineWidth();
         }
 
     private:
         // Properties
-        RHI_CullMode m_cull_mode       = RHI_CullMode::Undefined;
-        RHI_PolygonMode m_polygon_mode       = RHI_PolygonMode::Undefined;
+        RHI_CullMode m_cull_mode        = RHI_CullMode::Undefined;
+        RHI_PolygonMode m_polygon_mode  = RHI_PolygonMode::Undefined;
         bool m_depth_clip_enabled       = false;
         bool m_scissor_enabled          = false;
         bool m_antialised_line_enabled  = false;

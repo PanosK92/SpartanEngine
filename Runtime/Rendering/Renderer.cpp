@@ -302,7 +302,6 @@ namespace Spartan
             if ((upsampling_mode == UpsamplingMode::FSR || GetOption<AntialiasingMode>(RendererOption::Antialiasing) == AntialiasingMode::Taa) && RHI_Device::GetApiType() != RHI_Api_Type::D3d11)
             {
                 RHI_FSR::GenerateJitterSample(&m_taa_jitter.x, &m_taa_jitter.y);
-
                 m_taa_jitter.x            = (m_taa_jitter.x / m_resolution_render.x);
                 m_taa_jitter.y            = (m_taa_jitter.y / m_resolution_render.y);
                 m_cb_frame_cpu.projection *= Matrix::CreateTranslation(Vector3(m_taa_jitter.x, m_taa_jitter.y, 0.0f));
