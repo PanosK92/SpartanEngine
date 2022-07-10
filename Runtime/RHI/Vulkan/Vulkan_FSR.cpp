@@ -74,15 +74,15 @@ namespace Spartan
         m_ffx_fsr2_context_description.maxRenderSize.height = static_cast<uint32_t>(resolution_render.y);
         m_ffx_fsr2_context_description.displaySize.width    = static_cast<uint32_t>(resolution_output.x);
         m_ffx_fsr2_context_description.displaySize.height   = static_cast<uint32_t>(resolution_output.y);
-        m_ffx_fsr2_context_description.flags                = FFX_FSR2_ENABLE_DEPTH_INVERTED | FFX_FSR2_ENABLE_AUTO_EXPOSURE | FFX_FSR2_ENABLE_HIGH_DYNAMIC_RANGE;
+        m_ffx_fsr2_context_description.flags                = FFX_FSR2_ENABLE_DEPTH_INVERTED     |
+                                                              FFX_FSR2_ENABLE_AUTO_EXPOSURE      |
+                                                              FFX_FSR2_ENABLE_HIGH_DYNAMIC_RANGE;
 
         ffxFsr2ContextCreate(&m_ffx_fsr2_context, &m_ffx_fsr2_context_description);
     }
 
     void RHI_FSR::Dispatch(RHI_CommandList* cmd_list, RHI_Texture* tex_input, RHI_Texture* tex_depth, RHI_Texture* tex_velocity, RHI_Texture* tex_output, Camera* camera, float delta_time)
     {
-        FfxFsr2DispatchDescription dispatch_description = {};
-
         // Get render and output resolution from the context description (safe to do as we are not using dynamic resolution)
         uint32_t resolution_render_x = static_cast<uint32_t>(m_ffx_fsr2_context_description.maxRenderSize.width);
         uint32_t resolution_render_y = static_cast<uint32_t>(m_ffx_fsr2_context_description.maxRenderSize.height);
@@ -96,13 +96,13 @@ namespace Spartan
         wchar_t name_exposure[] = L"FSR2_Exposure";
         wchar_t name_output[]   = L"FSR2_Output";
 
-        // Transition to appropriate texture layouts
+        // Transition to the appropriate texture layouts
         tex_input->SetLayout(RHI_Image_Layout::Shader_Read_Only_Optimal,        cmd_list);
         tex_depth->SetLayout(RHI_Image_Layout::Depth_Stencil_Read_Only_Optimal, cmd_list);
         tex_velocity->SetLayout(RHI_Image_Layout::Shader_Read_Only_Optimal,     cmd_list);
         tex_output->SetLayout(RHI_Image_Layout::General,                        cmd_list);
 
-        // Fill in the rest of the dispatch description
+        // Fill in the dispatch description
         m_ffx_fsr2_dispatch_description.commandList            = ffxGetCommandListVK(static_cast<VkCommandBuffer>(cmd_list->GetResource()));
         m_ffx_fsr2_dispatch_description.color                  = ffxGetTextureResourceVK(&m_ffx_fsr2_context, static_cast<VkImage>(tex_input->GetResource()),    static_cast<VkImageView>(tex_input->GetResource_View_Srv()),    resolution_render_x, resolution_render_y, vulkan_format[tex_input->GetFormat()],    name_input);
         m_ffx_fsr2_dispatch_description.depth                  = ffxGetTextureResourceVK(&m_ffx_fsr2_context, static_cast<VkImage>(tex_depth->GetResource()),    static_cast<VkImageView>(tex_depth->GetResource_View_Srv()),    resolution_render_x, resolution_render_y, vulkan_format[tex_depth->GetFormat()],    name_depth);
@@ -111,15 +111,15 @@ namespace Spartan
         m_ffx_fsr2_dispatch_description.output                 = ffxGetTextureResourceVK(&m_ffx_fsr2_context, static_cast<VkImage>(tex_output->GetResource()),   static_cast<VkImageView>(tex_output->GetResource_View_Srv()),   resolution_output_x, resolution_output_y, vulkan_format[tex_output->GetFormat()],   name_output, FFX_RESOURCE_STATE_UNORDERED_ACCESS);
         m_ffx_fsr2_dispatch_description.motionVectorScale.x    = -static_cast<float>(resolution_render_x);
         m_ffx_fsr2_dispatch_description.motionVectorScale.y    = -static_cast<float>(resolution_render_y);
-        m_ffx_fsr2_dispatch_description.reset                  = false;
+        m_ffx_fsr2_dispatch_description.reset                  = false;                  // A boolean value which when set to true, indicates the camera has moved discontinuously.
         m_ffx_fsr2_dispatch_description.enableSharpening       = false;
         m_ffx_fsr2_dispatch_description.sharpness              = 1.0f;
-        m_ffx_fsr2_dispatch_description.frameTimeDelta         = delta_time * 1000.0f; // seconds to milliseconds
-        m_ffx_fsr2_dispatch_description.preExposure            = 1.0f;
+        m_ffx_fsr2_dispatch_description.frameTimeDelta         = delta_time * 1000.0f;   // Seconds to milliseconds.
+        m_ffx_fsr2_dispatch_description.preExposure            = 1.0f;                   // The exposure value if not using FFX_FSR2_ENABLE_AUTO_EXPOSURE.
         m_ffx_fsr2_dispatch_description.renderSize.width       = resolution_render_x;
         m_ffx_fsr2_dispatch_description.renderSize.height      = resolution_render_y;
-        m_ffx_fsr2_dispatch_description.cameraFar              = camera->GetFarPlane();
         m_ffx_fsr2_dispatch_description.cameraNear             = camera->GetNearPlane();
+        m_ffx_fsr2_dispatch_description.cameraFar              = camera->GetFarPlane();
         m_ffx_fsr2_dispatch_description.cameraFovAngleVertical = camera->GetFovVerticalRad();
 
         SP_ASSERT(ffxFsr2ContextDispatch(&m_ffx_fsr2_context, &m_ffx_fsr2_dispatch_description) == FFX_OK);

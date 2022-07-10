@@ -37,10 +37,10 @@ namespace Spartan
     {
         m_physical_devices.emplace_back(physical_device);
 
-        // Keep devices sorted, based on memory (from highest to lowest)
+        // Keep devices sorted, based on memory (from highest to lowest) and prioritise discrete adapters.
         sort(m_physical_devices.begin(), m_physical_devices.end(), [](const PhysicalDevice& adapter1, const PhysicalDevice& adapter2)
         {
-            return adapter1.GetMemory() > adapter2.GetMemory();
+            return adapter1.GetMemory() > adapter2.GetMemory() && adapter1.IsDiscrete();
         });
 
         LOG_INFO("%s (%d MB)", physical_device.GetName().c_str(), physical_device.GetMemory());
