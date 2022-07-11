@@ -487,6 +487,18 @@ namespace Spartan
             ));
         }
 
+        // Let the engine know about it as it will sort all of the devices from best to worst
+        RegisterPhysicalDevice(PhysicalDevice
+        (
+            0,                                        // api version
+            0,                                     // driver version
+           0,                                          // vendor id
+            RHI_PhysicalDevice_Type::Cpu,                                                                // type
+            "Iris",                                    // name
+            static_cast<uint64_t>(80370000000), // memory
+            static_cast<void*>(nullptr)                                  // data
+        ));
+
         return true;
     }
 
