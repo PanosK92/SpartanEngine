@@ -131,6 +131,7 @@ project (RUNTIME_NAME)
 	includedirs { "../third_party/Mono_6.12.0.86" }
 	includedirs { "../third_party/SDL2_2.0.14" }
     includedirs { "../third_party/Compressonator_4.2.5185" }
+    includedirs { "../Runtime/Core" }
 	includedirs { ADDITIONAL_INCLUDES[0], ADDITIONAL_INCLUDES[1], ADDITIONAL_INCLUDES[2] }
 
 	-- Libraries
