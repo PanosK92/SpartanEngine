@@ -35,6 +35,23 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
+    static bool is_present_instance_layer(const char* layer_name)
+    {
+        uint32_t layer_count;
+        vkEnumerateInstanceLayerProperties(&layer_count, nullptr);
+
+        vector<VkLayerProperties> layers(layer_count);
+        vkEnumerateInstanceLayerProperties(&layer_count, layers.data());
+
+        for (const auto& layer : layers)
+        {
+            if (strcmp(layer_name, layer.layerName) == 0)
+                return true;
+        }
+
+        return false;
+    }
+
     static bool is_present_device_extension(const char* extension_name, VkPhysicalDevice device_physical)
     {
         uint32_t extension_count = 0;
@@ -182,7 +199,7 @@ namespace Spartan
             if (m_rhi_context->debug)
             {
                 // Enable validation layer
-                if (vulkan_utility::layer::is_present(m_rhi_context->validation_layers.front()))
+                if (is_present_instance_layer(m_rhi_context->validation_layers.front()))
                 {
                     // Validation layers
                     create_info.enabledLayerCount   = static_cast<uint32_t>(m_rhi_context->validation_layers.size());

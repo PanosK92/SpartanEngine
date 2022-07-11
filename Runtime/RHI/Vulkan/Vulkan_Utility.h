@@ -516,6 +516,10 @@ namespace Spartan::vulkan_utility
                 {
                     source_stage_mask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
                 }
+                else if (image_barrier.oldLayout == VK_IMAGE_LAYOUT_UNDEFINED)
+                {
+                    source_stage_mask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+                }
                 else
                 {
                     source_stage_mask = access_flags_to_pipeline_stage(image_barrier.srcAccessMask);
@@ -639,45 +643,6 @@ namespace Spartan::vulkan_utility
                 }
                 image_views.fill(nullptr);
             }
-        }
-    }
-
-    namespace layer
-    {
-        inline bool is_present(const char* layer_name)
-        {
-            uint32_t layer_count;
-            vkEnumerateInstanceLayerProperties(&layer_count, nullptr);
-
-            std::vector<VkLayerProperties> layers(layer_count);
-            vkEnumerateInstanceLayerProperties(&layer_count, layers.data());
-
-            for (const auto& layer : layers)
-            {
-                if (strcmp(layer_name, layer.layerName) == 0)
-                    return true;
-            }
-
-            return false;
-        }
-
-        inline std::vector<const char*> get_supported(const std::vector<const char*>& layers)
-        {
-            std::vector<const char*> layers_supported;
-
-            for (const auto& layer : layers)
-            {
-                if (is_present(layer))
-                {
-                    layers_supported.emplace_back(layer);
-                }
-                else
-                {
-                    LOG_ERROR("Layer \"%s\" is not supported", layer);
-                }
-            }
-
-            return layers_supported;
         }
     }
 
