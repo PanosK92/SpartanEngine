@@ -157,13 +157,18 @@ namespace Spartan
         }
 
         // Shader - Compute
+        VkPipelineShaderStageRequiredSubgroupSizeCreateInfo required_subgroup_size_info = {};
+        required_subgroup_size_info.requiredSubgroupSize = 64;
         if (m_state.shader_compute)
         {
+
+
             VkPipelineShaderStageCreateInfo shader_stage_info = {};
             shader_stage_info.sType                           = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
             shader_stage_info.stage                           = VK_SHADER_STAGE_COMPUTE_BIT;
             shader_stage_info.module                          = static_cast<VkShaderModule>(m_state.shader_compute->GetResource());
             shader_stage_info.pName                           = m_state.shader_compute->GetEntryPoint();
+            shader_stage_info.pNext = &required_subgroup_size_info;
 
             // Validate shader stage
             SP_ASSERT(shader_stage_info.module != nullptr);
