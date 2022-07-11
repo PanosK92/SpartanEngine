@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <thread>
 #include <mutex>
 #include <deque>
+#include <condition_variable>
 #include <unordered_map>
 #include <functional>
 #include "../Logging/Log.h"
