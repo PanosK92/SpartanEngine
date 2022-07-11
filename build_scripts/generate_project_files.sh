@@ -1,16 +1,16 @@
 #!/bin/bash
 
 # Deduce OS we are running on
-is_windows=false
+is_windows=true
 if [ "$1" != "gmake2" ]; then
-    is_windows=true
+    is_windows=false
 fi
 
 # Extract third-party libraries (that the project will link to)
 echo
 echo "= 1. Extracting third-party dependencies... ==========================================="
 if [ "$is_windows" = false ]; then
-	 7za e third_party/libraries/libraries.7z -othird_party/libraries/ -aoa
+	 build_scripts/7z.exe e third_party/libraries/libraries.7z -othird_party/libraries/ -aoa
 else 
 	 build_scripts/7z.exe e third_party/libraries/libraries.7z -othird_party/libraries/ -aoa
 fi
@@ -39,7 +39,7 @@ cp -r assets/models binaries/project
 echo
 if [ "$is_windows" = false ]; then
 	echo "5. Generating MakeFiles..."
-	premake5 --file=build_scripts/premake.lua $@
+	build_scripts/premake5 --file=build_scripts/premake.lua $@
 else
 	echo "5. Generating Visual Studio solution..."
 	build_scripts/premake5 --file=build_scripts/premake.lua $@

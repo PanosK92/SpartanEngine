@@ -59,7 +59,12 @@ solution (SOLUTION_NAME)
 	systemversion "latest"
 	cppdialect "C++20"
 	language "C++"
-	platforms { "Windows", "Linux" }
+	if os.target() == "windows" then
+	platforms { "Windows" }
+	end
+	if os.target() == "linux" then
+	platforms { "Linux" }
+	end
 	configurations { "Debug", "Release" }
 
 	-- Defines
@@ -69,13 +74,17 @@ solution (SOLUTION_NAME)
 		"SPARTAN_RUNTIME_SHARED=0"
 	}
 
+	if os.target() == "windows" then
 	filter { "platforms:Windows" }
 		system "Windows"
 		architecture "x64"
-
+	end
+	
+	if os.target() == "linux" then
     filter { "platforms:Linux" }
 		system "Linux"
 		architecture "x86_64"
+	end
 
 	--	"Debug"
 	filter "configurations:Debug"
@@ -100,7 +109,7 @@ project (RUNTIME_NAME)
 	staticruntime "On"
     if os.target() == "windows" then
         conformancemode "On"
-     end
+    end
 	defines{ "SPARTAN_RUNTIME", API_GRAPHICS }
     files "./CORE/**"
 

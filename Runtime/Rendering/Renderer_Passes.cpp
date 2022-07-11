@@ -2298,6 +2298,10 @@ namespace Spartan
             m_profiler->SetEnabled(true);
         }
 
+        // Update text
+        const Vector2 text_pos = Vector2(-m_viewport.width * 0.5f + 5.0f, m_viewport.height * 0.5f - m_font->GetSize() - 2.0f);
+        m_font->SetText(m_profiler->GetMetrics(), text_pos);
+
         cmd_list->BeginMarker("performance_metrics");
         cmd_list->BeginTimeblock("outline");
 
@@ -2312,16 +2316,10 @@ namespace Spartan
         pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
         pso.viewport                        = tex_out->GetViewport();
 
-        // Set pipeline state
-        cmd_list->SetPipelineState(pso);
-
-        // Update text
-        const Vector2 text_pos = Vector2(-m_viewport.width * 0.5f + 5.0f, m_viewport.height * 0.5f - m_font->GetSize() - 2.0f);
-        m_font->SetText(m_profiler->GetMetrics(), text_pos);
-
         // Draw outline
         if (m_font->GetOutline() != Font_Outline_None && m_font->GetOutlineSize() != 0)
-        { 
+        {
+            cmd_list->SetPipelineState(pso);
             cmd_list->BeginRenderPass();
             {
                 // Set uber buffer
