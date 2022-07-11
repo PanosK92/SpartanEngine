@@ -178,9 +178,9 @@ namespace Spartan
 
     void Renderer::OnTick(double delta_time)
     {
-        // If a frame has already been rendered, then it's probably safe to stop logging
-        // to a file and start logging on-screen. Meaning, the logs will render in the console widget.
-        if (m_frame_num == 1 && Log::m_log_to_file)
+        // After the first 100 frames, stop logging to a file.
+        // In other words if this function is still running, it means that the renderer/imgui can log on screen.
+        if (m_frame_num == 100 && Log::m_log_to_file)
         {
            Log::m_log_to_file = false;
         }
