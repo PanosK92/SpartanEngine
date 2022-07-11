@@ -32,9 +32,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-    #define LOG_INFO(text, ...)    { Spartan::Log::WriteFInfo(std::string(__FUNCTION__)    + ": " + std::string(text), __VA_ARGS__); }
-    #define LOG_WARNING(text, ...) { Spartan::Log::WriteFWarning(std::string(__FUNCTION__) + ": " + std::string(text), __VA_ARGS__); }
-    #define LOG_ERROR(text, ...)   { Spartan::Log::WriteFError(std::string(__FUNCTION__)   + ": " + std::string(text), __VA_ARGS__); }
+    #define LOG_INFO(text, ...)    { Spartan::Log::WriteFInfo(std::string(__FUNCTION__)    + ": " + std::string(text), ## __VA_ARGS__); }
+    #define LOG_WARNING(text, ...) { Spartan::Log::WriteFWarning(std::string(__FUNCTION__) + ": " + std::string(text), ## __VA_ARGS__); }
+    #define LOG_ERROR(text, ...)   { Spartan::Log::WriteFError(std::string(__FUNCTION__)   + ": " + std::string(text), ## __VA_ARGS__); }
 
     // Forward declarations
     class Entity;
