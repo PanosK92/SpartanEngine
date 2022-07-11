@@ -36,14 +36,14 @@ namespace Spartan
         m_is_open    = false;
         m_flags        = flags;
 
-        int ios_flags    = ios::binary;
-        ios_flags        |= (flags & FileStream_Read)    ? ios::in    : 0;
-        ios_flags        |= (flags & FileStream_Write)    ? ios::out    : 0;
-        ios_flags        |= (flags & FileStream_Append)    ? ios::app    : 0;
+        auto ios_flags    = ios::binary;
+        if(flags & FileStream_Read)   ios_flags |= ios::in;
+        if(flags & FileStream_Write)  ios_flags |= ios::out;
+        if(flags & FileStream_Append) ios_flags |= ios::app;
 
         if (m_flags & FileStream_Write)
         {
-            out.open(path, ios_flags);
+            out.open(path, reinterpret_cast<std::ios_base::openmode>(ios_flags));
             if (out.fail())
             {
                 LOG_ERROR("Failed to open \"%s\" for writing", path.c_str());
