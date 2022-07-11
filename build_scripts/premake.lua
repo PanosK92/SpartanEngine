@@ -96,6 +96,7 @@ solution (SOLUTION_NAME)
 project (RUNTIME_NAME)
 	location (RUNTIME_DIR)
 	objdir (OBJ_DIR)
+	cppdialect "C++20"
 	kind "StaticLib"
 	staticruntime "On"
     if os.target() == "windows" then
