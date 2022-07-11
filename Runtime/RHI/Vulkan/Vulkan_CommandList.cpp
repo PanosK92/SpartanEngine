@@ -334,6 +334,7 @@ namespace Spartan
         {
             RHI_Texture* rt = m_pso.render_target_depth_texture;
 
+            SP_ASSERT_MSG(rt->GetWidth() == rendering_info.renderArea.extent.width, "The depth buffer doesn't match the output resolution");
             SP_ASSERT(rt->IsRenderTargetDepthStencil());
 
             // Transition to the appropriate layout
