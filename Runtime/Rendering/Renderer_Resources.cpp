@@ -418,10 +418,10 @@ namespace Spartan
         m_shaders[RendererShader::Font_P]->Compile(RHI_Shader_Pixel, dir_shaders + "font.hlsl", async);
 
         // Color
-        m_shaders[RendererShader::Color_V] = make_shared<RHI_Shader>(m_context, RHI_Vertex_Type::PosCol);
-        m_shaders[RendererShader::Color_V]->Compile(RHI_Shader_Vertex, dir_shaders + "color.hlsl", async);
-        m_shaders[RendererShader::Color_P] = make_shared<RHI_Shader>(m_context);
-        m_shaders[RendererShader::Color_P]->Compile(RHI_Shader_Pixel, dir_shaders + "color.hlsl", async);
+        m_shaders[RendererShader::Lines_V] = make_shared<RHI_Shader>(m_context, RHI_Vertex_Type::PosCol);
+        m_shaders[RendererShader::Lines_V]->Compile(RHI_Shader_Vertex, dir_shaders + "lines.hlsl", async);
+        m_shaders[RendererShader::Lines_P] = make_shared<RHI_Shader>(m_context);
+        m_shaders[RendererShader::Lines_P]->Compile(RHI_Shader_Pixel, dir_shaders + "lines.hlsl", async);
 
         // Reflection probe
         m_shaders[RendererShader::Reflection_Probe_V] = make_shared<RHI_Shader>(m_context, RHI_Vertex_Type::PosTexNorTan);

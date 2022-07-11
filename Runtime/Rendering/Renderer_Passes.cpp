@@ -170,7 +170,6 @@ namespace Spartan
         // Editor related stuff - Passes that render on top of each other
         Pass_DebugMeshes(cmd_list, rt_output);
         Pass_Outline(cmd_list, rt_output);
-        Pass_Lines(cmd_list, rt_output);
         Pass_TransformHandle(cmd_list, rt_output);
         Pass_Icons(cmd_list, rt_output);
         Pass_PeformanceMetrics(cmd_list, rt_output);
@@ -734,6 +733,140 @@ namespace Spartan
         cmd_list->EndTimeblock();
     }
 
+    void Renderer::Pass_Lines(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
+    {
+        const bool draw_grid            = GetOption<bool>(RendererOption::Debug_Grid);
+        const bool draw_lines_depth_off = m_lines_index_depth_off != numeric_limits<uint32_t>::max();
+        const bool draw_lines_depth_on  = m_lines_index_depth_on > ((m_line_vertices.size() / 2) - 1);
+        if (!draw_grid && !draw_lines_depth_off && !draw_lines_depth_on)
+            return;
+
+        // Acquire shaders.
+        RHI_Shader* shader_v = m_shaders[RendererShader::Lines_V].get();
+        RHI_Shader* shader_p = m_shaders[RendererShader::Lines_P].get();
+        if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
+            return;
+
+        cmd_list->BeginTimeblock("lines");
+
+        // Grid
+        if (draw_grid)
+        {
+            cmd_list->BeginMarker("grid");
+
+            // Define pipeline state
+            static RHI_PipelineState pso;
+            pso.shader_vertex                   = shader_v;
+            pso.shader_pixel                    = shader_p;
+            pso.rasterizer_state                = m_rasterizer_cull_back_wireframe.get();
+            pso.blend_state                     = m_blend_alpha.get();
+            pso.depth_stencil_state             = m_depth_stencil_r_off.get();
+            pso.render_target_color_textures[0] = tex_out;
+            pso.render_target_depth_texture     = render_target(RendererTexture::Gbuffer_Depth).get();
+            pso.viewport                        = tex_out->GetViewport();
+            pso.primitive_topology              = RHI_PrimitiveTopology_Mode::LineList;
+
+            // Set pipeline state
+            cmd_list->SetPipelineState(pso);
+
+            // Render
+            cmd_list->BeginRenderPass();
+            {
+                // Set uber buffer
+                m_cb_uber_cpu.resolution_rt = m_resolution_render;
+                if (m_camera)
+                {
+                    m_cb_uber_cpu.transform = m_gizmo_grid->ComputeWorldMatrix(m_camera->GetTransform()) * m_cb_frame_cpu.view_projection_unjittered;
+                }
+                Update_Cb_Uber(cmd_list);
+
+                cmd_list->SetBufferVertex(m_gizmo_grid->GetVertexBuffer().get());
+                cmd_list->Draw(m_gizmo_grid->GetVertexCount());
+                cmd_list->EndRenderPass();
+            }
+
+            cmd_list->EndMarker();
+        }
+
+        // Draw lines
+        if (draw_lines_depth_off || draw_lines_depth_on)
+        {
+            // Grow vertex buffer (if needed)
+            uint32_t vertex_count = static_cast<uint32_t>(m_line_vertices.size());
+            if (vertex_count > m_vertex_buffer_lines->GetVertexCount())
+            {
+                m_vertex_buffer_lines->CreateDynamic<RHI_Vertex_PosCol>(vertex_count);
+            }
+
+            // If the vertex count is 0, the vertex buffer will be uninitialised.
+            if (vertex_count != 0)
+            { 
+                // Update vertex buffer
+                RHI_Vertex_PosCol* buffer = static_cast<RHI_Vertex_PosCol*>(m_vertex_buffer_lines->Map());
+                std::copy(m_line_vertices.begin(), m_line_vertices.end(), buffer);
+                m_vertex_buffer_lines->Unmap();
+
+                // Define pipeline state
+                static RHI_PipelineState pso;
+                pso.shader_vertex                   = shader_v;
+                pso.shader_pixel                    = shader_p;
+                pso.rasterizer_state                = m_rasterizer_cull_back_wireframe.get();
+                pso.render_target_color_textures[0] = tex_out;
+                pso.viewport                        = tex_out->GetViewport();
+                pso.primitive_topology              = RHI_PrimitiveTopology_Mode::LineList;
+
+                // Depth off
+                if (draw_lines_depth_off)
+                {
+                    cmd_list->BeginMarker("depth_off");
+
+                    // Define pipeline state
+                    pso.blend_state         = m_blend_disabled.get();
+                    pso.depth_stencil_state = m_depth_stencil_off_off.get();
+
+                    // Set pipeline state
+                    cmd_list->SetPipelineState(pso);
+
+                    // Render
+                    cmd_list->BeginRenderPass();
+                    {
+                        cmd_list->SetBufferVertex(m_vertex_buffer_lines.get());
+                        cmd_list->Draw(m_lines_index_depth_off + 1);
+                        cmd_list->EndRenderPass();
+                    }
+
+                    cmd_list->EndMarker();
+                }
+
+                // Depth on
+                if (m_lines_index_depth_on > (vertex_count / 2) - 1)
+                {
+                    cmd_list->BeginMarker("depth_on");
+
+                    // Define pipeline state
+                    pso.blend_state                 = m_blend_alpha.get();
+                    pso.depth_stencil_state         = m_depth_stencil_r_off.get();
+                    pso.render_target_depth_texture = render_target(RendererTexture::Gbuffer_Depth).get();
+
+                    // Set pipeline state
+                    cmd_list->SetPipelineState(pso);
+
+                    // Render
+                    cmd_list->BeginRenderPass();
+                    {
+                        cmd_list->SetBufferVertex(m_vertex_buffer_lines.get());
+                        cmd_list->Draw((m_lines_index_depth_on - (vertex_count / 2)) + 1, vertex_count / 2);
+                        cmd_list->EndRenderPass();
+                    }
+
+                    cmd_list->EndMarker();
+                }
+            }
+        }
+
+        cmd_list->EndTimeblock();
+    }
+
     void Renderer::Pass_Ssao(RHI_CommandList* cmd_list)
     {
         if (!GetOption<bool>(RendererOption::Ssao))
@@ -1155,6 +1288,9 @@ namespace Spartan
                 swap_render = !swap_render;
                 Pass_DepthOfField(cmd_list, get_render_in, get_render_out);
             }
+
+            // Line rendering (world grid, vectors, debugging etc)
+            Pass_Lines(cmd_list, get_render_out);
         }
 
         // Determine antialiasing modes
@@ -1809,140 +1945,6 @@ namespace Spartan
             m_camera.get(),
             m_cb_frame_cpu.delta_time
         );
-
-        cmd_list->EndTimeblock();
-    }
-
-    void Renderer::Pass_Lines(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
-    {
-        const bool draw_grid            = GetOption<bool>(RendererOption::Debug_Grid);
-        const bool draw_lines_depth_off = m_lines_index_depth_off != numeric_limits<uint32_t>::max();
-        const bool draw_lines_depth_on  = m_lines_index_depth_on > ((m_line_vertices.size() / 2) - 1);
-        if (!draw_grid && !draw_lines_depth_off && !draw_lines_depth_on)
-            return;
-
-        // Acquire color shaders.
-        RHI_Shader* shader_color_v = m_shaders[RendererShader::Color_V].get();
-        RHI_Shader* shader_color_p = m_shaders[RendererShader::Color_P].get();
-        if (!shader_color_v->IsCompiled() || !shader_color_p->IsCompiled())
-            return;
-
-        cmd_list->BeginTimeblock("lines");
-
-        // Grid
-        if (draw_grid)
-        {
-            cmd_list->BeginMarker("grid");
-
-            // Define pipeline state
-            static RHI_PipelineState pso;
-            pso.shader_vertex                   = shader_color_v;
-            pso.shader_pixel                    = shader_color_p;
-            pso.rasterizer_state                = m_rasterizer_cull_back_wireframe.get();
-            pso.blend_state                     = m_blend_alpha.get();
-            pso.depth_stencil_state             = m_depth_stencil_r_off.get();
-            pso.render_target_color_textures[0] = tex_out;
-            pso.render_target_depth_texture     = render_target(RendererTexture::Gbuffer_Depth).get();
-            pso.viewport                        = tex_out->GetViewport();
-            pso.primitive_topology              = RHI_PrimitiveTopology_Mode::LineList;
-
-            // Set pipeline state
-            cmd_list->SetPipelineState(pso);
-
-            // Render
-            cmd_list->BeginRenderPass();
-            {
-                // Set uber buffer
-                m_cb_uber_cpu.resolution_rt = m_resolution_render;
-                if (m_camera)
-                {
-                    m_cb_uber_cpu.transform = m_gizmo_grid->ComputeWorldMatrix(m_camera->GetTransform()) * m_cb_frame_cpu.view_projection_unjittered;
-                }
-                Update_Cb_Uber(cmd_list);
-
-                cmd_list->SetBufferVertex(m_gizmo_grid->GetVertexBuffer().get());
-                cmd_list->Draw(m_gizmo_grid->GetVertexCount());
-                cmd_list->EndRenderPass();
-            }
-
-            cmd_list->EndMarker();
-        }
-
-        // Draw lines
-        if (draw_lines_depth_off || draw_lines_depth_on)
-        {
-            // Grow vertex buffer (if needed)
-            uint32_t vertex_count = static_cast<uint32_t>(m_line_vertices.size());
-            if (vertex_count > m_vertex_buffer_lines->GetVertexCount())
-            {
-                m_vertex_buffer_lines->CreateDynamic<RHI_Vertex_PosCol>(vertex_count);
-            }
-
-            // If the vertex count is 0, the vertex buffer will be uninitialised.
-            if (vertex_count != 0)
-            { 
-                // Update vertex buffer
-                RHI_Vertex_PosCol* buffer = static_cast<RHI_Vertex_PosCol*>(m_vertex_buffer_lines->Map());
-                std::copy(m_line_vertices.begin(), m_line_vertices.end(), buffer);
-                m_vertex_buffer_lines->Unmap();
-
-                // Define pipeline state
-                static RHI_PipelineState pso;
-                pso.shader_vertex                   = shader_color_v;
-                pso.shader_pixel                    = shader_color_p;
-                pso.rasterizer_state                = m_rasterizer_cull_back_wireframe.get();
-                pso.render_target_color_textures[0] = tex_out;
-                pso.viewport                        = tex_out->GetViewport();
-                pso.primitive_topology              = RHI_PrimitiveTopology_Mode::LineList;
-
-                // Depth off
-                if (draw_lines_depth_off)
-                {
-                    cmd_list->BeginMarker("depth_off");
-
-                    // Define pipeline state
-                    pso.blend_state         = m_blend_disabled.get();
-                    pso.depth_stencil_state = m_depth_stencil_off_off.get();
-
-                    // Set pipeline state
-                    cmd_list->SetPipelineState(pso);
-
-                    // Render
-                    cmd_list->BeginRenderPass();
-                    {
-                        cmd_list->SetBufferVertex(m_vertex_buffer_lines.get());
-                        cmd_list->Draw(m_lines_index_depth_off + 1);
-                        cmd_list->EndRenderPass();
-                    }
-
-                    cmd_list->EndMarker();
-                }
-
-                // Depth on
-                if (m_lines_index_depth_on > (vertex_count / 2) - 1)
-                {
-                    cmd_list->BeginMarker("depth_on");
-
-                    // Define pipeline state
-                    pso.blend_state                 = m_blend_alpha.get();
-                    pso.depth_stencil_state         = m_depth_stencil_r_off.get();
-                    pso.render_target_depth_texture = render_target(RendererTexture::Gbuffer_Depth).get();
-
-                    // Set pipeline state
-                    cmd_list->SetPipelineState(pso);
-
-                    // Render
-                    cmd_list->BeginRenderPass();
-                    {
-                        cmd_list->SetBufferVertex(m_vertex_buffer_lines.get());
-                        cmd_list->Draw((m_lines_index_depth_on - (vertex_count / 2)) + 1, vertex_count / 2);
-                        cmd_list->EndRenderPass();
-                    }
-
-                    cmd_list->EndMarker();
-                }
-            }
-        }
 
         cmd_list->EndTimeblock();
     }
