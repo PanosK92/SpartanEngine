@@ -473,7 +473,7 @@ namespace Spartan
             if (device_properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)   type = RHI_PhysicalDevice_Type::Discrete;
             if (device_properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU)    type = RHI_PhysicalDevice_Type::Virtual;
             if (device_properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_CPU)            type = RHI_PhysicalDevice_Type::Cpu;
-        
+
             // Let the engine know about it as it will sort all of the devices from best to worst
             RegisterPhysicalDevice(PhysicalDevice
             (
@@ -486,18 +486,6 @@ namespace Spartan
                 static_cast<void*>(device_physical)                                  // data
             ));
         }
-
-        // Let the engine know about it as it will sort all of the devices from best to worst
-        RegisterPhysicalDevice(PhysicalDevice
-        (
-            0,                                        // api version
-            0,                                     // driver version
-           0,                                          // vendor id
-            RHI_PhysicalDevice_Type::Cpu,                                                                // type
-            "Iris",                                    // name
-            static_cast<uint64_t>(80370000000), // memory
-            static_cast<void*>(nullptr)                                  // data
-        ));
 
         return true;
     }
