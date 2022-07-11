@@ -65,6 +65,7 @@ namespace Spartan
         uint32_t GetMaxTextureArrayLayers()            const { return m_max_texture_array_layers; }
         uint64_t GetMinUniformBufferOffsetAllignment() const { return m_min_uniform_buffer_offset_alignment; }
         float GetTimestampPeriod()                     const { return m_timestamp_period; }
+        uint32_t GetMaxSubgroupSize()                  const { return m_max_subgroup_size; }
 
         // Descriptors
         void* GetDescriptorPool()                                            { return m_descriptor_pool; }
@@ -119,6 +120,7 @@ namespace Spartan
         uint32_t m_max_texture_cube_dimension          = 0;
         uint32_t m_max_texture_array_layers            = 0;
         uint64_t m_min_uniform_buffer_offset_alignment = 0;
+        uint32_t m_max_subgroup_size                   = 0;
         float m_timestamp_period                       = 0;
         bool m_wide_lines                              = false;
         uint32_t m_max_bound_descriptor_sets           = 4; // worst case scenario

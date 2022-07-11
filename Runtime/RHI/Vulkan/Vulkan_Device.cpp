@@ -254,25 +254,35 @@ namespace Spartan
                 }
             }
 
-            // Get device properties
-            VkPhysicalDeviceProperties device_properties = {};
-            vkGetPhysicalDeviceProperties(static_cast<VkPhysicalDevice>(m_rhi_context->device_physical), &device_properties);
-
-            // Save some properties
-            m_max_texture_1d_dimension            = device_properties.limits.maxImageDimension1D;
-            m_max_texture_2d_dimension            = device_properties.limits.maxImageDimension2D;
-            m_max_texture_3d_dimension            = device_properties.limits.maxImageDimension3D;
-            m_max_texture_cube_dimension          = device_properties.limits.maxImageDimensionCube;
-            m_max_texture_array_layers            = device_properties.limits.maxImageArrayLayers;
-            m_min_uniform_buffer_offset_alignment = device_properties.limits.minUniformBufferOffsetAlignment;
-            m_timestamp_period                    = device_properties.limits.timestampPeriod;
-            m_max_bound_descriptor_sets           = device_properties.limits.maxBoundDescriptorSets;
-
-            // Disable profiler if timestamps are not supported
-            if (m_rhi_context->gpu_profiling && !device_properties.limits.timestampComputeAndGraphics)
+            // Detect device properties
             {
-                LOG_ERROR("Device doesn't support timestamps, disabling profiling...");
-                m_rhi_context->gpu_profiling = false;
+                VkPhysicalDeviceVulkan13Properties properties_1_3 = {};
+                properties_1_3.sType                              = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_PROPERTIES;
+                properties_1_3.pNext                              = nullptr;
+
+                VkPhysicalDeviceProperties2 properties_device = {};
+                properties_device.sType                       = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+                properties_device.pNext                       = &properties_1_3;
+
+                vkGetPhysicalDeviceProperties2(static_cast<VkPhysicalDevice>(m_rhi_context->device_physical), &properties_device);
+
+                // Save some properties
+                m_max_texture_1d_dimension            = properties_device.properties.limits.maxImageDimension1D;
+                m_max_texture_2d_dimension            = properties_device.properties.limits.maxImageDimension2D;
+                m_max_texture_3d_dimension            = properties_device.properties.limits.maxImageDimension3D;
+                m_max_texture_cube_dimension          = properties_device.properties.limits.maxImageDimensionCube;
+                m_max_texture_array_layers            = properties_device.properties.limits.maxImageArrayLayers;
+                m_min_uniform_buffer_offset_alignment = properties_device.properties.limits.minUniformBufferOffsetAlignment;
+                m_timestamp_period                    = properties_device.properties.limits.timestampPeriod;
+                m_max_bound_descriptor_sets           = properties_device.properties.limits.maxBoundDescriptorSets;
+                m_max_subgroup_size                   = properties_1_3.maxSubgroupSize;
+
+                // Disable profiler if timestamps are not supported
+                if (m_rhi_context->gpu_profiling && !properties_device.properties.limits.timestampComputeAndGraphics)
+                {
+                    LOG_ERROR("Device doesn't support timestamps, disabling profiling...");
+                    m_rhi_context->gpu_profiling = false;
+                }
             }
 
             // Enable certain features
@@ -322,13 +332,21 @@ namespace Spartan
                     SP_ASSERT(features_supported_1_2.timelineSemaphore == VK_TRUE);
                     device_features_to_enable_1_2.timelineSemaphore = VK_TRUE;
 
-                    // Timeline semaphores
+                    // Float16
                     SP_ASSERT(features_supported_1_2.shaderFloat16 == VK_TRUE);
                     device_features_to_enable_1_2.shaderFloat16 = VK_TRUE;
+
+                    // Int16
+                    SP_ASSERT(features_supported.features.shaderInt16 == VK_TRUE);
+                    device_features_to_enable.features.shaderInt16 = VK_TRUE;
 
                     // Rendering without render passes and frame buffer objects
                     SP_ASSERT(features_supported_1_3.dynamicRendering == VK_TRUE);
                     device_features_to_enable_1_3.dynamicRendering = VK_TRUE;
+
+                    // Ability to specify the required subgroup size of a newly created pipeline shader stage
+                    SP_ASSERT(features_supported_1_3.subgroupSizeControl == VK_TRUE);
+                    device_features_to_enable_1_3.subgroupSizeControl = VK_TRUE;
                 }
             }
 
