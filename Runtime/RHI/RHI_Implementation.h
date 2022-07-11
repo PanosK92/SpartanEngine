@@ -512,12 +512,12 @@ namespace Spartan
                 std::vector<const char*> extensions_instance                    = { "VK_KHR_surface", "VK_KHR_win32_surface" };
             #endif
                 std::vector<const char*> extensions_device = {
-                    "VK_KHR_swapchain",            // windows swapchain
-                    "VK_EXT_memory_budget",        // memory budget
-                    "VK_EXT_depth_clip_enable",    // depth clip
-                    "VK_KHR_timeline_semaphore",   // timeline semaphores
-                    "VK_KHR_dynamic_rendering"     // gets rid of render passes and frame buffer objects
-                    "VK_EXT_subgroup_size_control" // enables an implementation to control the subgroup size by allowing a varying subgroup size and also specifying a required subgroup size
+                    "VK_KHR_swapchain",          // windows swapchain
+                    "VK_EXT_memory_budget",      // memory budget
+                    "VK_EXT_depth_clip_enable",  // depth clip
+                    "VK_KHR_timeline_semaphore", // timeline semaphores
+                    "VK_KHR_dynamic_rendering"   // gets rid of render passes and frame buffer objects
+                    "VK_KHR_shader_float16_int8" // used by FSR 2.0
                 };
 
                 bool InitialiseAllocator();
