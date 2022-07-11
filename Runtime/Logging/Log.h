@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <mutex>
 #include <vector>
 #include "../Core/SpartanDefinitions.h"
+#include "ILogger.h"
 //=====================================
 
 namespace Spartan
