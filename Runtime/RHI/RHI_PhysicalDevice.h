@@ -63,7 +63,7 @@ namespace Spartan
         const std::string& GetVendorName()    const { return vendor_name; }
         uint32_t GetMemory()                  const { return memory; }
         void* GetData()                       const { return data; }
-        RHI_PhysicalDevice_Type GetType()     const { return RHI_PhysicalDevice_Type::Discrete; }
+        RHI_PhysicalDevice_Type GetType()     const { return type; }
 
     private:
         std::string get_vendor_name()
