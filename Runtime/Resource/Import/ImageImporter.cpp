@@ -69,7 +69,7 @@ namespace Spartan
                     if (static_cast<uint32_t>(tag_ofs + tag_size) > icc_profile->size)
                         return false; // invalid ICC file
 
-                    strncpy_s(tag_data, (char*)(icc + tag_ofs + 12), min(255, tag_size - 12));
+                    strncpy(tag_data, (char*)(icc + tag_ofs + 12), min(255, tag_size - 12));
                     if (strcmp(tag_data, "sRGB IEC61966-2.1") == 0 || strcmp(tag_data, "sRGB IEC61966-2-1") == 0 || strcmp(tag_data, "sRGB IEC61966") == 0 || strcmp(tag_data, "* wsRGB") == 0)
                         return true;
 
