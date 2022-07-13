@@ -10,7 +10,7 @@ fi
 echo
 echo "= 1. Extracting third-party dependencies... ==========================================="
 if [ "$is_windows" = false ]; then
-	 build_scripts/7z.exe e third_party/libraries/libraries.7z -othird_party/libraries/ -aoa
+	 7za e third_party/libraries/libraries.7z -othird_party/libraries/ -aoa
 else 
 	 build_scripts/7z.exe e third_party/libraries/libraries.7z -othird_party/libraries/ -aoa
 fi
