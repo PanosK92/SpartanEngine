@@ -2,7 +2,7 @@
 
 # Deduce OS we are running on
 is_windows=true
-if [ "$1" != "gmake2" ]; then
+if [ "$1" = "gmake2" ]; then
     is_windows=false
 fi
 
