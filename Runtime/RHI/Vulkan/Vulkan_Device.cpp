@@ -256,13 +256,13 @@ namespace Spartan
 
             // Detect device properties
             {
-                VkPhysicalDeviceVulkan13Properties properties_1_3 = {};
-                properties_1_3.sType                              = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_PROPERTIES;
-                properties_1_3.pNext                              = nullptr;
+                VkPhysicalDeviceVulkan13Properties device_properties_1_3 = {};
+                device_properties_1_3.sType                              = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_PROPERTIES;
+                device_properties_1_3.pNext                              = nullptr;
 
                 VkPhysicalDeviceProperties2 properties_device = {};
                 properties_device.sType                       = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
-                properties_device.pNext                       = &properties_1_3;
+                properties_device.pNext                       = &device_properties_1_3;
 
                 vkGetPhysicalDeviceProperties2(static_cast<VkPhysicalDevice>(m_rhi_context->device_physical), &properties_device);
 
@@ -275,7 +275,7 @@ namespace Spartan
                 m_min_uniform_buffer_offset_alignment = properties_device.properties.limits.minUniformBufferOffsetAlignment;
                 m_timestamp_period                    = properties_device.properties.limits.timestampPeriod;
                 m_max_bound_descriptor_sets           = properties_device.properties.limits.maxBoundDescriptorSets;
-                m_max_subgroup_size                   = properties_1_3.maxSubgroupSize;
+                m_max_subgroup_size                   = device_properties_1_3.maxSubgroupSize;
 
                 // Disable profiler if timestamps are not supported
                 if (m_rhi_context->gpu_profiling && !properties_device.properties.limits.timestampComputeAndGraphics)
@@ -332,13 +332,17 @@ namespace Spartan
                     SP_ASSERT(features_supported_1_2.timelineSemaphore == VK_TRUE);
                     device_features_to_enable_1_2.timelineSemaphore = VK_TRUE;
 
-                    // Float16
-                    SP_ASSERT(features_supported_1_2.shaderFloat16 == VK_TRUE);
-                    device_features_to_enable_1_2.shaderFloat16 = VK_TRUE;
+                    // Float16 - FSR 2.0 will opt for it (for performance), but it's not a requirement, so don't assert on this one.
+                    if (features_supported_1_2.shaderFloat16 == VK_TRUE)
+                    {
+                        device_features_to_enable_1_2.shaderFloat16 = VK_TRUE;
+                    }
 
-                    // Int16
-                    SP_ASSERT(features_supported.features.shaderInt16 == VK_TRUE);
-                    device_features_to_enable.features.shaderInt16 = VK_TRUE;
+                    // Int16 - FSR 2.0 will opt for it (for performance), but it's not a requirement, so don't assert on this one.
+                    if (features_supported.features.shaderInt16 == VK_TRUE)
+                    {
+                        device_features_to_enable.features.shaderInt16 = VK_TRUE;
+                    }
 
                     // Rendering without render passes and frame buffer objects
                     SP_ASSERT(features_supported_1_3.dynamicRendering == VK_TRUE);
@@ -380,10 +384,6 @@ namespace Spartan
                 {
                     create_info.enabledLayerCount   = static_cast<uint32_t>(m_rhi_context->validation_layers.size());
                     create_info.ppEnabledLayerNames = m_rhi_context->validation_layers.data();
-                }
-                else
-                {
-                    create_info.enabledLayerCount = 0;
                 }
             }
 

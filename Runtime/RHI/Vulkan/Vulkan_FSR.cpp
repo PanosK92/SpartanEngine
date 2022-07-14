@@ -111,11 +111,11 @@ namespace Spartan
         m_ffx_fsr2_dispatch_description.output                 = ffxGetTextureResourceVK(&m_ffx_fsr2_context, static_cast<VkImage>(tex_output->GetResource()),   static_cast<VkImageView>(tex_output->GetResource_View_Srv()),   resolution_output_x, resolution_output_y, vulkan_format[tex_output->GetFormat()],   name_output, FFX_RESOURCE_STATE_UNORDERED_ACCESS);
         m_ffx_fsr2_dispatch_description.motionVectorScale.x    = -static_cast<float>(resolution_render_x);
         m_ffx_fsr2_dispatch_description.motionVectorScale.y    = -static_cast<float>(resolution_render_y);
-        m_ffx_fsr2_dispatch_description.reset                  = false;                  // A boolean value which when set to true, indicates the camera has moved discontinuously.
-        m_ffx_fsr2_dispatch_description.enableSharpening       = false;
-        m_ffx_fsr2_dispatch_description.sharpness              = 1.0f;
-        m_ffx_fsr2_dispatch_description.frameTimeDelta         = delta_time * 1000.0f;   // Seconds to milliseconds.
-        m_ffx_fsr2_dispatch_description.preExposure            = 1.0f;                   // The exposure value if not using FFX_FSR2_ENABLE_AUTO_EXPOSURE.
+        m_ffx_fsr2_dispatch_description.reset                  = false;                // A boolean value which when set to true, indicates the camera has moved discontinuously.
+        m_ffx_fsr2_dispatch_description.enableSharpening       = false;                
+        m_ffx_fsr2_dispatch_description.sharpness              = 1.0f;                 
+        m_ffx_fsr2_dispatch_description.frameTimeDelta         = delta_time * 1000.0f; // Seconds to milliseconds.
+        m_ffx_fsr2_dispatch_description.preExposure            = 1.0f;                 // The exposure value if not using FFX_FSR2_ENABLE_AUTO_EXPOSURE.
         m_ffx_fsr2_dispatch_description.renderSize.width       = resolution_render_x;
         m_ffx_fsr2_dispatch_description.renderSize.height      = resolution_render_y;
         m_ffx_fsr2_dispatch_description.cameraNear             = camera->GetNearPlane();
