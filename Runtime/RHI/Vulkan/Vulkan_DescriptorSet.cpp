@@ -106,7 +106,7 @@ namespace Spartan
                 {
                     image_index++;
 
-                    void* resource = mip_specified ? texture->GetResource_Views_Srv(descriptor.mip) : texture->GetResource_View_Srv();
+                    void* resource = mip_specified ? texture->GetRhiSrvMip(descriptor.mip) : texture->GetRhiSrv();
 
                     info_images[image_index].sampler     = nullptr;
                     info_images[image_index].imageView   = static_cast<VkImageView>(resource);
@@ -121,7 +121,7 @@ namespace Spartan
                         image_index++;
 
                         info_images[image_index].sampler     = nullptr;
-                        info_images[image_index].imageView   = static_cast<VkImageView>(texture->GetResource_Views_Srv(mip_index));
+                        info_images[image_index].imageView   = static_cast<VkImageView>(texture->GetRhiSrvMip(mip_index));
                         info_images[image_index].imageLayout = vulkan_image_layout[static_cast<uint8_t>(texture->GetLayout(mip_index))];
 
                         if (mip_index == descriptor.mip)
@@ -135,7 +135,7 @@ namespace Spartan
             }
             else if (descriptor.type == RHI_Descriptor_Type::ConstantBuffer)
             {
-                info_buffers[index].buffer = static_cast<VkBuffer>(static_cast<RHI_ConstantBuffer*>(descriptor.data)->GetResource());
+                info_buffers[index].buffer = static_cast<VkBuffer>(static_cast<RHI_ConstantBuffer*>(descriptor.data)->GetRhiResource());
                 info_buffers[index].offset = 0;
                 info_buffers[index].range  = descriptor.range;
 
@@ -143,7 +143,7 @@ namespace Spartan
             }
             else if (descriptor.type == RHI_Descriptor_Type::StructuredBuffer)
             {
-                info_buffers[index].buffer = static_cast<VkBuffer>(static_cast<RHI_StructuredBuffer*>(descriptor.data)->GetResource());
+                info_buffers[index].buffer = static_cast<VkBuffer>(static_cast<RHI_StructuredBuffer*>(descriptor.data)->GetRhiResource());
                 info_buffers[index].offset = 0;
                 info_buffers[index].range  = descriptor.range;
 

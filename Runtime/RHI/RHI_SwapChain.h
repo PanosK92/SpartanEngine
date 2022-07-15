@@ -64,28 +64,21 @@ namespace Spartan
         bool PresentEnabled()     const { return m_present_enabled; }
         RHI_Format GetFormat()    const { return m_format; }
 
-        // GPU Resources
-        void* Get_Resource()                   const { return m_backbuffer_resource[0]; }
-        void* Get_Resource_View()              const { return m_backbuffer_resource_view[m_image_index]; }
-        void* Get_Resource_View_RenderTarget() const { return m_resource_view; }
+        // RHI Resources
+        void* GetRhiResource() const { return m_rhi_backbuffer_resource[0]; }
+        void* GetRhiSrv()      const { return m_rhi_backbuffer_srv[m_image_index]; }
+        void* GetRhiRtv()      const { return m_rhi_srv; }
 
     private:
         void AcquireNextImage();
 
-        // Properties
-        bool m_windowed         = false;
-        bool m_present_enabled  = true;
-        uint32_t m_buffer_count = 0;
-        uint32_t m_width        = 0;
-        uint32_t m_height       = 0;
-        uint32_t m_flags        = 0;
-        RHI_Format m_format     = RHI_Format_R8G8B8A8_Unorm;
-
-        // API
-        void* m_resource           = nullptr;
-        void* m_resource_view      = nullptr;
-        void* m_surface            = nullptr;
-        void* m_window_handle      = nullptr;
+        bool m_windowed            = false;
+        bool m_present_enabled     = true;
+        uint32_t m_buffer_count    = 0;
+        uint32_t m_width           = 0;
+        uint32_t m_height          = 0;
+        uint32_t m_flags           = 0;
+        RHI_Format m_format        = RHI_Format_R8G8B8A8_Unorm;
         uint32_t m_semaphore_index = std::numeric_limits<uint32_t>::max();
         RHI_Device* m_rhi_device   = nullptr;
 
@@ -95,8 +88,12 @@ namespace Spartan
         uint32_t m_image_index          = std::numeric_limits<uint32_t>::max();
         uint32_t m_image_index_previous = m_image_index;
 
-        // Resources
-        std::array<void*, 3> m_backbuffer_resource;
-        std::array<void*, 3> m_backbuffer_resource_view;
+        // RHI Resources
+        void* m_surface       = nullptr;
+        void* m_window_handle = nullptr;
+        void* m_rhi_resource  = nullptr;
+        void* m_rhi_srv       = nullptr;
+        std::array<void*, 3> m_rhi_backbuffer_resource;
+        std::array<void*, 3> m_rhi_backbuffer_srv;
     };
 }

@@ -117,11 +117,11 @@ namespace Spartan
 
             if (!async)
             {
-                CompileShader(m_compilation_state, m_shader_type, m_defines, m_object_name, m_resource, std::bind(&RHI_Shader::Compile2, this));
+                CompileShader(m_compilation_state, m_shader_type, m_defines, m_object_name, m_rhi_resource, std::bind(&RHI_Shader::Compile2, this));
             }
             else
             {
-                m_context->GetSubsystem<Threading>()->AddTask([this]() { CompileShader(m_compilation_state, m_shader_type, m_defines, m_object_name, m_resource, std::bind(&RHI_Shader::Compile2, this)); });
+                m_context->GetSubsystem<Threading>()->AddTask([this]() { CompileShader(m_compilation_state, m_shader_type, m_defines, m_object_name, m_rhi_resource, std::bind(&RHI_Shader::Compile2, this)); });
             }
         }
     }

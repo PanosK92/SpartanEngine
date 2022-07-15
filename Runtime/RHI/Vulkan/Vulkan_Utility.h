@@ -558,7 +558,7 @@ namespace Spartan::vulkan_utility
             SP_ASSERT(cmd_buffer != nullptr);
             SP_ASSERT(texture != nullptr);
 
-            set_layout(cmd_buffer, texture->GetResource(), get_aspect_mask(texture), mip_start, mip_range, array_length, layout_old, layout_new);
+            set_layout(cmd_buffer, texture->GetRhiResource(), get_aspect_mask(texture), mip_start, mip_range, array_length, layout_old, layout_new);
         }
 
         namespace view

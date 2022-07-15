@@ -48,7 +48,7 @@ namespace Spartan
             D3D11_SUBRESOURCE_DATA subresource_data = {};
             subresource_data.pSysMem                = data;
 
-            if (!d3d11_utility::error_check(m_rhi_device->GetContextRhi()->device->CreateBuffer(&desc, data ? &subresource_data : nullptr, reinterpret_cast<ID3D11Buffer**>(&m_resource))))
+            if (!d3d11_utility::error_check(m_rhi_device->GetContextRhi()->device->CreateBuffer(&desc, data ? &subresource_data : nullptr, reinterpret_cast<ID3D11Buffer**>(&m_rhi_resource))))
                 return;
         }
 
@@ -60,24 +60,24 @@ namespace Spartan
             desc.Buffer.FirstElement              = 0;
             desc.Buffer.NumElements               = element_count;
 
-            d3d11_utility::error_check(rhi_device->GetContextRhi()->device->CreateUnorderedAccessView(static_cast<ID3D11Resource*>(m_resource), &desc, reinterpret_cast<ID3D11UnorderedAccessView**>(&m_resource_uav)));
+            d3d11_utility::error_check(rhi_device->GetContextRhi()->device->CreateUnorderedAccessView(static_cast<ID3D11Resource*>(m_rhi_resource), &desc, reinterpret_cast<ID3D11UnorderedAccessView**>(&m_rhi_uav)));
         }
     }
 
     RHI_StructuredBuffer::~RHI_StructuredBuffer()
     {
-        d3d11_utility::release<ID3D11Buffer>(m_resource);
-        d3d11_utility::release<ID3D11UnorderedAccessView>(m_resource_uav);
+        d3d11_utility::release<ID3D11Buffer>(m_rhi_resource);
+        d3d11_utility::release<ID3D11UnorderedAccessView>(m_rhi_uav);
     }
 
     void* RHI_StructuredBuffer::Map()
     {
         SP_ASSERT(m_rhi_device != nullptr);
         SP_ASSERT(m_rhi_device->GetContextRhi()->device_context != nullptr);
-        SP_ASSERT(m_resource != nullptr);
+        SP_ASSERT(m_rhi_resource != nullptr);
 
         D3D11_MAPPED_SUBRESOURCE mapped_resource;
-        if (!d3d11_utility::error_check(m_rhi_device->GetContextRhi()->device_context->Map(static_cast<ID3D11Resource*>(m_resource), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped_resource)))
+        if (!d3d11_utility::error_check(m_rhi_device->GetContextRhi()->device_context->Map(static_cast<ID3D11Resource*>(m_rhi_resource), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped_resource)))
         {
             LOG_ERROR("Failed to map structured buffer.");
             return nullptr;
@@ -90,8 +90,8 @@ namespace Spartan
     {
         SP_ASSERT(m_rhi_device != nullptr);
         SP_ASSERT(m_rhi_device->GetContextRhi()->device_context != nullptr);
-        SP_ASSERT(m_resource != nullptr);
+        SP_ASSERT(m_rhi_resource != nullptr);
 
-        m_rhi_device->GetContextRhi()->device_context->Unmap(static_cast<ID3D11Buffer*>(m_resource), 0);
+        m_rhi_device->GetContextRhi()->device_context->Unmap(static_cast<ID3D11Buffer*>(m_rhi_resource), 0);
     }
 }

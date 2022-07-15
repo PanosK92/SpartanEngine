@@ -295,7 +295,7 @@ namespace Spartan
     
         // Image views
         vulkan_utility::image::view::destroy(image_views);
-    
+
         // Swap chain view
         if (swap_chain)
         {
@@ -330,8 +330,8 @@ namespace Spartan
         }
 
         m_semaphore_image_acquired.fill(nullptr);
-        m_backbuffer_resource.fill(nullptr);
-        m_backbuffer_resource_view.fill(nullptr);
+        m_rhi_backbuffer_resource.fill(nullptr);
+        m_rhi_backbuffer_srv.fill(nullptr);
         m_layouts.fill(RHI_Image_Layout::Undefined);
 
         // Copy parameters
@@ -355,9 +355,9 @@ namespace Spartan
             m_flags,
             m_window_handle,
             m_surface,
-            m_resource,
-            m_backbuffer_resource,
-            m_backbuffer_resource_view,
+            m_rhi_resource,
+            m_rhi_backbuffer_resource,
+            m_rhi_backbuffer_srv,
             m_semaphore_image_acquired
         );
 
@@ -374,8 +374,8 @@ namespace Spartan
             m_rhi_device,
             m_buffer_count,
             m_surface,
-            m_resource,
-            m_backbuffer_resource_view,
+            m_rhi_resource,
+            m_rhi_backbuffer_srv,
             m_semaphore_image_acquired
         );
     }
@@ -412,8 +412,8 @@ namespace Spartan
             m_rhi_device,
             m_buffer_count,
             m_surface,
-            m_resource,
-            m_backbuffer_resource_view,
+            m_rhi_resource,
+            m_rhi_backbuffer_srv,
             m_semaphore_image_acquired
         );
 
@@ -429,9 +429,9 @@ namespace Spartan
             m_flags,
             m_window_handle,
             m_surface,
-            m_resource,
-            m_backbuffer_resource,
-            m_backbuffer_resource_view,
+            m_rhi_resource,
+            m_rhi_backbuffer_resource,
+            m_rhi_backbuffer_srv,
             m_semaphore_image_acquired
         );
 
@@ -464,7 +464,7 @@ namespace Spartan
         // Acquire next image
         SP_ASSERT_MSG(vulkan_utility::error::check(vkAcquireNextImageKHR(
             m_rhi_device->GetContextRhi()->device,                     // device
-            static_cast<VkSwapchainKHR>(m_resource),                   // swapchain
+            static_cast<VkSwapchainKHR>(m_rhi_resource),               // swapchain
             numeric_limits<uint64_t>::max(),                           // timeout
             static_cast<VkSemaphore>(signal_semaphore->GetResource()), // signal semaphore
             nullptr,                                                   // signal fence
@@ -477,7 +477,7 @@ namespace Spartan
 
     void RHI_SwapChain::Present()
     {
-        SP_ASSERT_MSG(m_resource != nullptr,                   "The swapchain has not been initialised");
+        SP_ASSERT_MSG(m_rhi_resource != nullptr,               "The swapchain has not been initialised");
         SP_ASSERT_MSG(m_present_enabled,                       "Presenting is disabled");
         SP_ASSERT_MSG(m_image_index != m_image_index_previous, "No image was acquired");
 
@@ -510,7 +510,7 @@ namespace Spartan
         }
 
         // Present
-        m_rhi_device->QueuePresent(m_resource, &m_image_index, wait_semaphores);
+        m_rhi_device->QueuePresent(m_rhi_resource, &m_image_index, wait_semaphores);
 
         // Acquire next image
         AcquireNextImage();
@@ -523,7 +523,7 @@ namespace Spartan
 
         vulkan_utility::image::set_layout(
             reinterpret_cast<void*>(cmd_list->GetResource()),
-            reinterpret_cast<void*>(m_backbuffer_resource[m_image_index]),
+            reinterpret_cast<void*>(m_rhi_backbuffer_resource[m_image_index]),
             VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 1,
             m_layouts[m_image_index],
             layout

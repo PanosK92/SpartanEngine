@@ -858,7 +858,7 @@ namespace Spartan
 
         // Validate
         SP_ASSERT(texture != nullptr);
-        SP_ASSERT(texture->GetResource_View_Srv() != nullptr);
+        SP_ASSERT(texture->GetRhiSrv() != nullptr);
         SP_ASSERT(texture->HasMips());        // Ensure the texture requires mips
         SP_ASSERT(texture->HasPerMipViews()); // Ensure that the texture has per mip views since they are required for GPU downsampling.
 

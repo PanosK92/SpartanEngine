@@ -130,7 +130,7 @@ namespace Spartan
             VkPipelineShaderStageCreateInfo shader_stage_info = {};
             shader_stage_info.sType                           = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
             shader_stage_info.stage                           = VK_SHADER_STAGE_VERTEX_BIT;
-            shader_stage_info.module                          = static_cast<VkShaderModule>(m_state.shader_vertex->GetResource());
+            shader_stage_info.module                          = static_cast<VkShaderModule>(m_state.shader_vertex->GetRhiResource());
             shader_stage_info.pName                           = m_state.shader_vertex->GetEntryPoint();
 
             // Validate shader stage
@@ -146,7 +146,7 @@ namespace Spartan
             VkPipelineShaderStageCreateInfo shader_stage_info = {};
             shader_stage_info.sType                           = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
             shader_stage_info.stage                           = VK_SHADER_STAGE_FRAGMENT_BIT;
-            shader_stage_info.module                          = static_cast<VkShaderModule>(m_state.shader_pixel->GetResource());
+            shader_stage_info.module                          = static_cast<VkShaderModule>(m_state.shader_pixel->GetRhiResource());
             shader_stage_info.pName                           = m_state.shader_pixel->GetEntryPoint();
 
             // Validate shader stage
@@ -165,7 +165,7 @@ namespace Spartan
             VkPipelineShaderStageCreateInfo shader_stage_info = {};
             shader_stage_info.sType                           = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
             shader_stage_info.stage                           = VK_SHADER_STAGE_COMPUTE_BIT;
-            shader_stage_info.module                          = static_cast<VkShaderModule>(m_state.shader_compute->GetResource());
+            shader_stage_info.module                          = static_cast<VkShaderModule>(m_state.shader_compute->GetRhiResource());
             shader_stage_info.pName                           = m_state.shader_compute->GetEntryPoint();
             shader_stage_info.pNext                           = &required_subgroup_size_info;
 
