@@ -75,6 +75,11 @@ namespace Spartan
         SP_ASSERT(m_rhi_device->GetContextRhi()->device != nullptr);
 
         m_layout.fill(RHI_Image_Layout::Undefined);
+        m_resource_views_srv.fill(nullptr);
+        m_resource_views_uav.fill(nullptr);
+        m_resource_view_renderTarget.fill(nullptr);
+        m_resource_view_depthStencil.fill(nullptr);
+        m_resource_view_depthStencilReadOnly.fill(nullptr);
     }
 
     RHI_Texture::~RHI_Texture()
