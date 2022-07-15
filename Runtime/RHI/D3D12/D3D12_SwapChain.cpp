@@ -107,13 +107,13 @@ namespace Spartan
             &swap_chain
         ));
 
-        m_resource    = static_cast<void*>(swap_chain);
-        m_image_index = static_cast<IDXGISwapChain3*>(m_resource)->GetCurrentBackBufferIndex();
+        m_rhi_resource    = static_cast<void*>(swap_chain);
+        m_image_index = static_cast<IDXGISwapChain3*>(m_rhi_resource)->GetCurrentBackBufferIndex();
     }
     
     RHI_SwapChain::~RHI_SwapChain()
     {
-        d3d12_utility::release<IDXGISwapChain3>(m_resource);
+        d3d12_utility::release<IDXGISwapChain3>(m_rhi_resource);
     }
     
     bool RHI_SwapChain::Resize(const uint32_t width, const uint32_t height, const bool force /*= false*/)
@@ -123,12 +123,12 @@ namespace Spartan
     
     void RHI_SwapChain::AcquireNextImage()
     {
-        m_image_index = static_cast<IDXGISwapChain3*>(m_resource)->GetCurrentBackBufferIndex();
+        m_image_index = static_cast<IDXGISwapChain3*>(m_rhi_resource)->GetCurrentBackBufferIndex();
     }
     
     void RHI_SwapChain::Present()
     {
-        SP_ASSERT(m_resource != nullptr && "Can't present, the swapchain has not been initialised");
+        SP_ASSERT(m_rhi_resource != nullptr && "Can't present, the swapchain has not been initialised");
         SP_ASSERT(m_present_enabled && "Can't present, presenting has been disabled");
 
         // Present parameters
@@ -137,7 +137,7 @@ namespace Spartan
         const UINT flags           = (tearing_allowed && m_windowed) ? DXGI_PRESENT_ALLOW_TEARING : 0;
 
         // Present
-        SP_ASSERT(d3d12_utility::error::check(static_cast<IDXGISwapChain3*>(m_resource)->Present(sync_interval, flags))
+        SP_ASSERT(d3d12_utility::error::check(static_cast<IDXGISwapChain3*>(m_rhi_resource)->Present(sync_interval, flags))
             && "Failed to present");
 
         AcquireNextImage();

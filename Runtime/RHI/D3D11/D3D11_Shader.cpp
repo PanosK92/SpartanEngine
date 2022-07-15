@@ -35,12 +35,12 @@ namespace Spartan
 {
     RHI_Shader::~RHI_Shader()
     {
-        d3d11_utility::release<ID3D11VertexShader>(m_resource);
+        d3d11_utility::release<ID3D11VertexShader>(m_rhi_resource);
     }
 
-    void* RHI_Shader::GetResource() const
+    void* RHI_Shader::GetRhiResource() const
     {
-        return m_resource;
+        return m_rhi_resource;
     }
 
     void* RHI_Shader::Compile2()

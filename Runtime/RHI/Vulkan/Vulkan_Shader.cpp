@@ -40,19 +40,19 @@ namespace Spartan
 {
     RHI_Shader::~RHI_Shader()
     {
-        if (m_resource)
+        if (m_rhi_resource)
         {
             // Wait in case it's still in use by the GPU
             m_rhi_device->QueueWaitAll();
 
-            vkDestroyShaderModule(m_rhi_device->GetContextRhi()->device, static_cast<VkShaderModule>(m_resource), nullptr);
-            m_resource = nullptr;
+            vkDestroyShaderModule(m_rhi_device->GetContextRhi()->device, static_cast<VkShaderModule>(m_rhi_resource), nullptr);
+            m_rhi_resource = nullptr;
         }
     }
 
-    void* RHI_Shader::GetResource() const
+    void* RHI_Shader::GetRhiResource() const
     {
-        return m_resource;
+        return m_rhi_resource;
     }
 
     void* RHI_Shader::Compile2()

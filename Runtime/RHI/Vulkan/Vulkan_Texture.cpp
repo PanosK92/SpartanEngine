@@ -120,7 +120,7 @@ namespace Spartan
         create_info.sharingMode       = VK_SHARING_MODE_EXCLUSIVE;
 
         // Create image
-        void*& resource = texture->GetResource();
+        void*& resource = texture->GetRhiResource();
         vulkan_utility::vma_allocator::create_texture(create_info, resource);
     }
 
@@ -147,18 +147,18 @@ namespace Spartan
             }
         }
 
-        vulkan_utility::debug::set_name(static_cast<VkImage>(texture->GetResource()), name.c_str());
+        vulkan_utility::debug::set_name(static_cast<VkImage>(texture->GetRhiResource()), name.c_str());
 
         if (texture->IsSrv())
         {
-            vulkan_utility::debug::set_name(static_cast<VkImageView>(texture->GetResource_View_Srv()), name.c_str());
+            vulkan_utility::debug::set_name(static_cast<VkImageView>(texture->GetRhiSrv()), name.c_str());
         }
 
         if (texture->HasPerMipViews())
         {
             for (uint32_t i = 0; i < texture->GetMipCount(); i++)
             {
-                vulkan_utility::debug::set_name(static_cast<VkImageView>(texture->GetResource_Views_Srv(i)), name.c_str());
+                vulkan_utility::debug::set_name(static_cast<VkImageView>(texture->GetRhiSrvMip(i)), name.c_str());
             }
         }
     }
@@ -251,7 +251,7 @@ namespace Spartan
             vkCmdCopyBufferToImage(
                 cmd_buffer,
                 static_cast<VkBuffer>(staging_buffer),
-                static_cast<VkImage>(texture->GetResource()),
+                static_cast<VkImage>(texture->GetRhiResource()),
                 vulkan_image_layout[static_cast<uint8_t>(layout)],
                 static_cast<uint32_t>(regions.size()),
                 regions.data()
@@ -337,14 +337,14 @@ namespace Spartan
             // Shader resource views
             if (IsSrv())
             {
-                if (!vulkan_utility::image::view::create(m_resource, m_resource_view_srv, this, 0, m_array_length, 0, m_mip_count, IsDepthFormat(), false))
+                if (!vulkan_utility::image::view::create(m_rhi_resource, m_rhi_srv, this, 0, m_array_length, 0, m_mip_count, IsDepthFormat(), false))
                     return false;
 
                 if (HasPerMipViews())
                 {
                     for (uint32_t i = 0; i < m_mip_count; i++)
                     {
-                        if (!vulkan_utility::image::view::create(m_resource, m_resource_views_srv[i], this, 0, m_array_length, i, 1, IsDepthFormat(), false))
+                        if (!vulkan_utility::image::view::create(m_rhi_resource, m_rhi_srv_mips[i], this, 0, m_array_length, i, 1, IsDepthFormat(), false))
                             return false;
                     }
                 }
@@ -357,13 +357,13 @@ namespace Spartan
             {
                 if (IsRenderTargetColor())
                 {
-                    if (!vulkan_utility::image::view::create(m_resource, m_resource_view_renderTarget[i], this, i, 1, 0, 1, false, false))
+                    if (!vulkan_utility::image::view::create(m_rhi_resource, m_rhi_rtv[i], this, i, 1, 0, 1, false, false))
                         return false;
                 }
 
                 if (IsRenderTargetDepthStencil())
                 {
-                    if (!vulkan_utility::image::view::create(m_resource, m_resource_view_depthStencil[i], this, i, 1, 0, 1, true, false))
+                    if (!vulkan_utility::image::view::create(m_rhi_resource, m_rhi_dsv[i], this, i, 1, 0, 1, true, false))
                         return false;
                 }
             }
@@ -397,12 +397,12 @@ namespace Spartan
         // De-allocate everything
         if (destroy_main)
         {
-            vulkan_utility::image::view::destroy(m_resource_view_srv);
+            vulkan_utility::image::view::destroy(m_rhi_srv);
 
             for (uint32_t i = 0; i < rhi_max_render_target_count; i++)
             {
-                vulkan_utility::image::view::destroy(m_resource_view_depthStencil[i]);
-                vulkan_utility::image::view::destroy(m_resource_view_renderTarget[i]);
+                vulkan_utility::image::view::destroy(m_rhi_dsv[i]);
+                vulkan_utility::image::view::destroy(m_rhi_rtv[i]);
             }
         }
 
@@ -410,13 +410,13 @@ namespace Spartan
         {
             for (uint32_t i = 0; i < m_mip_count; i++)
             {
-                vulkan_utility::image::view::destroy(m_resource_views_srv[i]);
+                vulkan_utility::image::view::destroy(m_rhi_srv_mips[i]);
             }
         }
 
         if (destroy_main)
         {
-            vulkan_utility::vma_allocator::destroy_texture(m_resource);
+            vulkan_utility::vma_allocator::destroy_texture(m_rhi_resource);
         }
     }
 }

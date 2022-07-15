@@ -319,7 +319,7 @@ namespace Spartan
         {
             result_srv = create_shader_resource_view(
                 resource,
-                m_resource_view_srv,
+                m_rhi_srv,
                 m_resource_type,
                 format_srv,
                 m_array_length,
@@ -334,7 +334,7 @@ namespace Spartan
                 {
                     bool result = create_shader_resource_view(
                         resource,
-                        m_resource_views_srv[i],
+                        m_rhi_srv_mips[i],
                         m_resource_type,
                         format_srv,
                         m_array_length,
@@ -353,7 +353,7 @@ namespace Spartan
         {
             result_uav = create_unordered_access_view(
                 resource,
-                m_resource_view_uav,
+                m_rhi_uav,
                 m_resource_type,
                 format,
                 m_array_length,
@@ -367,7 +367,7 @@ namespace Spartan
                 {
                     bool result = create_unordered_access_view(
                         resource,
-                        m_resource_views_uav[i],
+                        m_rhi_uav_mips[i],
                         m_resource_type,
                         format,
                         1,
@@ -386,7 +386,7 @@ namespace Spartan
             result_ds = create_depth_stencil_view
             (
                 resource,
-                m_resource_view_depthStencil,
+                m_rhi_dsv,
                 m_resource_type,
                 format_dsv,
                 m_array_length,
@@ -400,7 +400,7 @@ namespace Spartan
                 result_ds = create_depth_stencil_view
                 (
                     resource,
-                    m_resource_view_depthStencilReadOnly,
+                    m_rhi_dsv_read_only,
                     m_resource_type,
                     format_dsv,
                     m_array_length,
@@ -417,7 +417,7 @@ namespace Spartan
             result_rt = create_render_target_view
             (
                 resource,
-                m_resource_view_renderTarget,
+                m_rhi_rtv,
                 m_resource_type,
                 format,
                 m_array_length,
@@ -425,7 +425,7 @@ namespace Spartan
             );
         }
 
-        m_resource = static_cast<void*>(resource);
+        m_rhi_resource = static_cast<void*>(resource);
 
         return result_tex && result_srv && result_uav && result_rt && result_ds;
     }
@@ -434,21 +434,21 @@ namespace Spartan
     {
         if (destroy_main)
         {
-            d3d11_utility::release<ID3D11Texture2D>(m_resource);
-            d3d11_utility::release<ID3D11ShaderResourceView>(m_resource_view_srv);
-            d3d11_utility::release<ID3D11UnorderedAccessView>(m_resource_view_uav);
+            d3d11_utility::release<ID3D11Texture2D>(m_rhi_resource);
+            d3d11_utility::release<ID3D11ShaderResourceView>(m_rhi_srv);
+            d3d11_utility::release<ID3D11UnorderedAccessView>(m_rhi_uav);
 
-            for (void*& resource : m_resource_view_renderTarget)
+            for (void*& resource : m_rhi_rtv)
             {
                 d3d11_utility::release<ID3D11RenderTargetView>(resource);
             }
 
-            for (void*& resource : m_resource_view_depthStencil)
+            for (void*& resource : m_rhi_dsv)
             {
                 d3d11_utility::release<ID3D11DepthStencilView>(resource);
             }
 
-            for (void*& resource : m_resource_view_depthStencilReadOnly)
+            for (void*& resource : m_rhi_dsv_read_only)
             {
                 d3d11_utility::release<ID3D11DepthStencilView>(resource);
             }
@@ -458,8 +458,8 @@ namespace Spartan
         {
             for (uint32_t i = 0; i < m_mip_count; i++)
             {
-                d3d11_utility::release<ID3D11ShaderResourceView>(m_resource_views_srv[i]);
-                d3d11_utility::release<ID3D11UnorderedAccessView>(m_resource_views_uav[i]);
+                d3d11_utility::release<ID3D11ShaderResourceView>(m_rhi_srv_mips[i]);
+                d3d11_utility::release<ID3D11UnorderedAccessView>(m_rhi_uav_mips[i]);
             }
         }
     }

@@ -48,10 +48,6 @@ namespace Spartan
         Shader_Compilation_State GetCompilationState() const { return m_compilation_state; }
         bool IsCompiled()                              const { return m_compilation_state == Shader_Compilation_State::Succeeded; }
 
-        // Resource
-        void* GetResource() const;
-        bool HasResource()  const { return m_resource != nullptr; }
-
         // Source
         void LoadSource(const std::string& file_path);
         const std::vector<std::string>& GetNames()     const { return m_names; }
@@ -71,6 +67,9 @@ namespace Spartan
         RHI_Shader_Type GetShaderStage()                         const { return m_shader_type; }
         const char* GetEntryPoint()                              const;
         const char* GetTargetProfile()                           const;
+
+        // Resource
+        void* GetRhiResource() const;
 
     protected:
         std::shared_ptr<RHI_Device> m_rhi_device;
@@ -92,6 +91,8 @@ namespace Spartan
         std::atomic<Shader_Compilation_State> m_compilation_state = Shader_Compilation_State::Idle;
         RHI_Shader_Type m_shader_type                             = RHI_Shader_Unknown;
         RHI_Vertex_Type m_vertex_type                             = RHI_Vertex_Type::Undefined;
-        void* m_resource                                          = nullptr;
+
+        // RHI Resource
+        void* m_rhi_resource = nullptr;
     };
 }

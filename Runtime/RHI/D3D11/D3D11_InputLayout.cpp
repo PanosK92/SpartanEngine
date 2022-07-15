@@ -34,7 +34,7 @@ namespace Spartan
 {
     RHI_InputLayout::~RHI_InputLayout()
     {
-        d3d11_utility::release<ID3D11InputLayout>(m_resource);
+        d3d11_utility::release<ID3D11InputLayout>(m_rhi_resource);
     }
 
     bool RHI_InputLayout::_CreateResource(void* vertex_shader_blob)
@@ -65,7 +65,7 @@ namespace Spartan
             static_cast<UINT>(vertex_attributes.size()),
             d3d_blob->GetBufferPointer(),
             d3d_blob->GetBufferSize(),
-            reinterpret_cast<ID3D11InputLayout**>(&m_resource)
+            reinterpret_cast<ID3D11InputLayout**>(&m_rhi_resource)
         );
 
         if (FAILED(result))

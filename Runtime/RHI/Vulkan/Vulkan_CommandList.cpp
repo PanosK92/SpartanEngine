@@ -89,12 +89,12 @@ namespace Spartan
 
             // Allocate
             SP_ASSERT(vulkan_utility::error::check(
-                vkAllocateCommandBuffers(m_rhi_device->GetContextRhi()->device, &allocate_info, reinterpret_cast<VkCommandBuffer*>(&m_resource))) &&
+                vkAllocateCommandBuffers(m_rhi_device->GetContextRhi()->device, &allocate_info, reinterpret_cast<VkCommandBuffer*>(&m_rhi_resource))) &&
                 "Failed to allocate command buffer"
             );
 
             // Name
-            vulkan_utility::debug::set_name(static_cast<VkCommandBuffer>(m_resource), name);
+            vulkan_utility::debug::set_name(static_cast<VkCommandBuffer>(m_rhi_resource), name);
         }
 
         // Query pool
@@ -169,10 +169,10 @@ namespace Spartan
         VkCommandBufferBeginInfo begin_info = {};
         begin_info.sType                    = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
         begin_info.flags                    = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-        SP_ASSERT_MSG(vulkan_utility::error::check(vkBeginCommandBuffer(static_cast<VkCommandBuffer>(m_resource), &begin_info)), "Failed to begin command buffer");
+        SP_ASSERT_MSG(vulkan_utility::error::check(vkBeginCommandBuffer(static_cast<VkCommandBuffer>(m_rhi_resource), &begin_info)), "Failed to begin command buffer");
 
         // Reset query pool - Has to be done after vkBeginCommandBuffer or a VK_DEVICE_LOST will occur
-        vkCmdResetQueryPool(static_cast<VkCommandBuffer>(m_resource), static_cast<VkQueryPool>(m_query_pool), 0, m_max_timestamps);
+        vkCmdResetQueryPool(static_cast<VkCommandBuffer>(m_rhi_resource), static_cast<VkQueryPool>(m_query_pool), 0, m_max_timestamps);
 
         // Update states
         m_state          = RHI_CommandListState::Recording;
@@ -184,7 +184,7 @@ namespace Spartan
         // Validate command list state
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
-        if (!vulkan_utility::error::check(vkEndCommandBuffer(static_cast<VkCommandBuffer>(m_resource))))
+        if (!vulkan_utility::error::check(vkEndCommandBuffer(static_cast<VkCommandBuffer>(m_rhi_resource))))
             return false;
 
         m_state = RHI_CommandListState::Ended;
@@ -205,7 +205,7 @@ namespace Spartan
         m_rhi_device->QueueSubmit(
             RHI_Queue_Type::Graphics,                      // queue
             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, // wait flags
-            static_cast<VkCommandBuffer>(m_resource),      // cmd buffer
+            static_cast<VkCommandBuffer>(m_rhi_resource),  // cmd buffer
             nullptr,                                       // wait semaphore
             m_proccessed_semaphore.get(),                  // signal semaphore
             m_proccessed_fence.get()                       // signal fence
@@ -285,7 +285,7 @@ namespace Spartan
 
                 VkRenderingAttachmentInfo color_attachment = {};
                 color_attachment.sType                     = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
-                color_attachment.imageView                 = static_cast<VkImageView>(swapchain->Get_Resource_View());
+                color_attachment.imageView                 = static_cast<VkImageView>(swapchain->GetRhiSrv());
                 color_attachment.imageLayout               = vulkan_image_layout[static_cast<uint8_t>(swapchain->GetLayout())];
                 color_attachment.loadOp                    = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
                 color_attachment.storeOp                   = VK_ATTACHMENT_STORE_OP_STORE;
@@ -313,7 +313,7 @@ namespace Spartan
 
                     VkRenderingAttachmentInfo color_attachment = {};
                     color_attachment.sType                     = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
-                    color_attachment.imageView                 = static_cast<VkImageView>(rt->GetResource_View_RenderTarget(m_pso.render_target_color_texture_array_index));
+                    color_attachment.imageView                 = static_cast<VkImageView>(rt->GetRhiRtv(m_pso.render_target_color_texture_array_index));
                     color_attachment.imageLayout               = vulkan_image_layout[static_cast<uint8_t>(rt->GetLayout(0))];
                     color_attachment.loadOp                    = get_color_load_op(m_pso.clear_color[i]);
                     color_attachment.storeOp                   = VK_ATTACHMENT_STORE_OP_STORE;
@@ -346,7 +346,7 @@ namespace Spartan
             rt->SetLayout(layout, this);
 
             attachment_depth_stencil.sType                           = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
-            attachment_depth_stencil.imageView                       = static_cast<VkImageView>(rt->GetResource_View_DepthStencil(m_pso.render_target_depth_stencil_texture_array_index));
+            attachment_depth_stencil.imageView                       = static_cast<VkImageView>(rt->GetRhiDsv(m_pso.render_target_depth_stencil_texture_array_index));
             attachment_depth_stencil.imageLayout                     = vulkan_image_layout[static_cast<uint8_t>(rt->GetLayout(0))];
             attachment_depth_stencil.loadOp                          = get_depth_load_op(m_pso.clear_depth);
             attachment_depth_stencil.storeOp                         = VK_ATTACHMENT_STORE_OP_STORE;
@@ -364,7 +364,7 @@ namespace Spartan
         }
 
         // Begin dynamic render pass instance
-        vkCmdBeginRendering(static_cast<VkCommandBuffer>(m_resource), &rendering_info);
+        vkCmdBeginRendering(static_cast<VkCommandBuffer>(m_rhi_resource), &rendering_info);
 
         m_is_rendering = true;
     }
@@ -373,7 +373,7 @@ namespace Spartan
     {
         if (m_is_rendering)
         {
-            vkCmdEndRendering(static_cast<VkCommandBuffer>(m_resource));
+            vkCmdEndRendering(static_cast<VkCommandBuffer>(m_rhi_resource));
             m_is_rendering = false;
         }   
     }
@@ -433,7 +433,7 @@ namespace Spartan
         if (attachment_count == 0)
             return;
 
-        vkCmdClearAttachments(static_cast<VkCommandBuffer>(m_resource), attachment_count, attachments.data(), 1, &clear_rect);
+        vkCmdClearAttachments(static_cast<VkCommandBuffer>(m_rhi_resource), attachment_count, attachments.data(), 1, &clear_rect);
     }
 
     void RHI_CommandList::ClearRenderTarget(RHI_Texture* texture,
@@ -448,7 +448,7 @@ namespace Spartan
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
         SP_ASSERT(texture->CanBeCleared());
 
-        if (!texture || !texture->GetResource_View_Srv())
+        if (!texture || !texture->GetRhiSrv())
         {
             LOG_ERROR("Texture is null.");
             return;
@@ -469,7 +469,7 @@ namespace Spartan
 
             image_subresource_range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 
-            vkCmdClearColorImage(static_cast<VkCommandBuffer>(m_resource), static_cast<VkImage>(texture->GetResource()), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &_clear_color, 1, &image_subresource_range);
+            vkCmdClearColorImage(static_cast<VkCommandBuffer>(m_rhi_resource), static_cast<VkImage>(texture->GetRhiResource()), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &_clear_color, 1, &image_subresource_range);
         }
         else if (texture->IsDepthStencilFormat())
         {
@@ -485,7 +485,7 @@ namespace Spartan
                 image_subresource_range.aspectMask |= VK_IMAGE_ASPECT_DEPTH_BIT;
             }
 
-            vkCmdClearDepthStencilImage(static_cast<VkCommandBuffer>(m_resource), static_cast<VkImage>(texture->GetResource()), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clear_depth_stencil, 1, &image_subresource_range);
+            vkCmdClearDepthStencilImage(static_cast<VkCommandBuffer>(m_rhi_resource), static_cast<VkImage>(texture->GetRhiResource()), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clear_depth_stencil, 1, &image_subresource_range);
         }
     }
 
@@ -498,11 +498,11 @@ namespace Spartan
 
         // Draw
         vkCmdDraw(
-            static_cast<VkCommandBuffer>(m_resource), // commandBuffer
-            vertex_count,                             // vertexCount
-            1,                                        // instanceCount
-            vertex_start_index,                       // firstVertex
-            0                                         // firstInstance
+            static_cast<VkCommandBuffer>(m_rhi_resource), // commandBuffer
+            vertex_count,                                 // vertexCount
+            1,                                            // instanceCount
+            vertex_start_index,                           // firstVertex
+            0                                             // firstInstance
         );
 
         if (m_profiler)
@@ -520,12 +520,12 @@ namespace Spartan
 
         // Draw
         vkCmdDrawIndexed(
-            static_cast<VkCommandBuffer>(m_resource), // commandBuffer
-            index_count,                              // indexCount
-            1,                                        // instanceCount
-            index_offset,                             // firstIndex
-            vertex_offset,                            // vertexOffset
-            0                                         // firstInstance
+            static_cast<VkCommandBuffer>(m_rhi_resource), // commandBuffer
+            index_count,                                  // indexCount
+            1,                                            // instanceCount
+            index_offset,                                 // firstIndex
+            vertex_offset,                                // vertexOffset
+            0                                             // firstInstance
         );
 
         // Profile
@@ -540,7 +540,7 @@ namespace Spartan
         OnDraw();
 
         // Dispatch
-        vkCmdDispatch(static_cast<VkCommandBuffer>(m_resource), x, y, z);
+        vkCmdDispatch(static_cast<VkCommandBuffer>(m_rhi_resource), x, y, z);
 
         if (m_profiler)
         {
@@ -553,8 +553,8 @@ namespace Spartan
         // D3D11 baggage: https://docs.microsoft.com/en-us/windows/win32/api/d3d11/nf-d3d11-id3d11devicecontext-copyresource
         SP_ASSERT(source != nullptr);
         SP_ASSERT(destination != nullptr);
-        SP_ASSERT(source->GetResource() != nullptr);
-        SP_ASSERT(destination->GetResource() != nullptr);
+        SP_ASSERT(source->GetRhiResource() != nullptr);
+        SP_ASSERT(destination->GetRhiResource() != nullptr);
         SP_ASSERT(source->GetObjectId() != destination->GetObjectId());
         SP_ASSERT(source->GetFormat() == destination->GetFormat());
         SP_ASSERT(source->GetWidth() == destination->GetWidth());
@@ -576,8 +576,8 @@ namespace Spartan
         blit_region.dstOffsets[1]             = blit_size;
 
         // Save the initial layouts
-        std::array<RHI_Image_Layout, 12> layouts_initial_source      = source->GetLayouts();
-        std::array<RHI_Image_Layout, 12> layouts_initial_destination = destination->GetLayouts();
+        std::array<RHI_Image_Layout, rhi_max_mip_count> layouts_initial_source      = source->GetLayouts();
+        std::array<RHI_Image_Layout, rhi_max_mip_count> layouts_initial_destination = destination->GetLayouts();
 
         // Transition to blit appropriate layouts
         source->SetLayout(RHI_Image_Layout::Transfer_Src_Optimal, this);
@@ -585,9 +585,9 @@ namespace Spartan
 
         // Blit
         vkCmdBlitImage(
-            static_cast<VkCommandBuffer>(m_resource),
-            static_cast<VkImage>(source->GetResource()),      VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-            static_cast<VkImage>(destination->GetResource()), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            static_cast<VkCommandBuffer>(m_rhi_resource),
+            static_cast<VkImage>(source->GetRhiResource()),      VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+            static_cast<VkImage>(destination->GetRhiResource()), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
             1,
             &blit_region,
             VK_FILTER_NEAREST
@@ -623,10 +623,10 @@ namespace Spartan
         vk_viewport.maxDepth   = viewport.depth_max;
 
         vkCmdSetViewport(
-            static_cast<VkCommandBuffer>(m_resource), // commandBuffer
-            0,                                          // firstViewport
-            1,                                          // viewportCount
-            &vk_viewport                                // pViewports
+            static_cast<VkCommandBuffer>(m_rhi_resource), // commandBuffer
+            0,                                            // firstViewport
+            1,                                            // viewportCount
+            &vk_viewport                                  // pViewports
         );
     }
 
@@ -642,7 +642,7 @@ namespace Spartan
         vk_scissor.extent.height = static_cast<uint32_t>(scissor_rectangle.Height());
 
         vkCmdSetScissor(
-            static_cast<VkCommandBuffer>(m_resource), // commandBuffer
+            static_cast<VkCommandBuffer>(m_rhi_resource), // commandBuffer
             0,          // firstScissor
             1,          // scissorCount
             &vk_scissor // pScissors
@@ -658,15 +658,15 @@ namespace Spartan
         if (m_vertex_buffer_id == buffer->GetObjectId())
             return;
 
-        VkBuffer vertex_buffers[] = { static_cast<VkBuffer>(buffer->GetResource()) };
+        VkBuffer vertex_buffers[] = { static_cast<VkBuffer>(buffer->GetRhiResource()) };
         VkDeviceSize offsets[]    = { 0 };
 
         vkCmdBindVertexBuffers(
-            static_cast<VkCommandBuffer>(m_resource), // commandBuffer
-            0,                                        // firstBinding
-            1,                                        // bindingCount
-            vertex_buffers,                           // pBuffers
-            offsets                                   // pOffsets
+            static_cast<VkCommandBuffer>(m_rhi_resource), // commandBuffer
+            0,                                            // firstBinding
+            1,                                            // bindingCount
+            vertex_buffers,                               // pBuffers
+            offsets                                       // pOffsets
         );
 
         m_vertex_buffer_id = buffer->GetObjectId();
@@ -686,8 +686,8 @@ namespace Spartan
             return;
 
         vkCmdBindIndexBuffer(
-            static_cast<VkCommandBuffer>(m_resource),                       // commandBuffer
-            static_cast<VkBuffer>(buffer->GetResource()),                   // buffer
+            static_cast<VkCommandBuffer>(m_rhi_resource),                   // commandBuffer
+            static_cast<VkBuffer>(buffer->GetRhiResource()),                // buffer
             0,                                                              // offset
             buffer->Is16Bit() ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32 // indexType
         );
@@ -746,7 +746,7 @@ namespace Spartan
         }
 
         // Null textures are allowed, and we replace them with a transparent texture.
-        if (!texture || !texture->GetResource_View_Srv())
+        if (!texture || !texture->GetRhiSrv())
         {
             texture = m_renderer->GetDefaultTextureTransparent();
         }
@@ -801,7 +801,7 @@ namespace Spartan
             bool transition_required = current_layout != target_layout;
             {
                 bool rest_mips_have_same_layout = true;
-                array<RHI_Image_Layout, 12> layouts = texture->GetLayouts();
+                array<RHI_Image_Layout, rhi_max_mip_count> layouts = texture->GetLayouts();
                 for (uint32_t i = mip_start; i < mip_start + mip_count; i++)
                 {
                     if (target_layout != layouts[i])
@@ -862,7 +862,7 @@ namespace Spartan
     {
         if (m_rhi_device->GetContextRhi()->gpu_markers)
         {
-            vulkan_utility::debug::marker_begin(static_cast<VkCommandBuffer>(m_resource), name, Vector4::Zero);
+            vulkan_utility::debug::marker_begin(static_cast<VkCommandBuffer>(m_rhi_resource), name, Vector4::Zero);
         }
     }
 
@@ -870,7 +870,7 @@ namespace Spartan
     {
         if (m_rhi_device->GetContextRhi()->gpu_markers)
         {
-            vulkan_utility::debug::marker_end(static_cast<VkCommandBuffer>(m_resource));
+            vulkan_utility::debug::marker_end(static_cast<VkCommandBuffer>(m_rhi_resource));
         }
     }
 
@@ -885,7 +885,7 @@ namespace Spartan
         if (!m_query_pool)
             return;
 
-        vkCmdWriteTimestamp(static_cast<VkCommandBuffer>(m_resource), VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, static_cast<VkQueryPool>(m_query_pool), m_timestamp_index++);
+        vkCmdWriteTimestamp(static_cast<VkCommandBuffer>(m_rhi_resource), VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, static_cast<VkQueryPool>(m_query_pool), m_timestamp_index++);
     }
 
     void RHI_CommandList::EndTimestamp(void* query)
@@ -896,7 +896,7 @@ namespace Spartan
         if (!m_rhi_device->GetContextRhi()->gpu_profiling)
             return;
 
-        vkCmdWriteTimestamp(static_cast<VkCommandBuffer>(m_resource), VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, static_cast<VkQueryPool>(m_query_pool), m_timestamp_index++);
+        vkCmdWriteTimestamp(static_cast<VkCommandBuffer>(m_rhi_resource), VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, static_cast<VkQueryPool>(m_query_pool), m_timestamp_index++);
     }
 
     float RHI_CommandList::GetTimestampDuration(void* query_start, void* query_end, const uint32_t pass_index)
@@ -935,7 +935,7 @@ namespace Spartan
         // Allowed to markers ?
         if (m_rhi_device->GetContextRhi()->gpu_markers && gpu_marker)
         {
-            vulkan_utility::debug::marker_begin(static_cast<VkCommandBuffer>(m_resource), name, Vector4::Zero);
+            vulkan_utility::debug::marker_begin(static_cast<VkCommandBuffer>(m_rhi_resource), name, Vector4::Zero);
         }
 
         m_timeblock_is_active = true;
@@ -948,7 +948,7 @@ namespace Spartan
         // Allowed markers ?
         if (m_rhi_device->GetContextRhi()->gpu_markers)
         {
-            vulkan_utility::debug::marker_end(static_cast<VkCommandBuffer>(m_resource));
+            vulkan_utility::debug::marker_end(static_cast<VkCommandBuffer>(m_rhi_resource));
         }
 
         // Allowed profiler ?
@@ -975,7 +975,7 @@ namespace Spartan
 
             // Bind
             VkPipelineBindPoint pipeline_bind_point = m_pso.IsCompute() ? VK_PIPELINE_BIND_POINT_COMPUTE : VK_PIPELINE_BIND_POINT_GRAPHICS;
-            vkCmdBindPipeline(static_cast<VkCommandBuffer>(m_resource), pipeline_bind_point, vk_pipeline);
+            vkCmdBindPipeline(static_cast<VkCommandBuffer>(m_rhi_resource), pipeline_bind_point, vk_pipeline);
 
             // Profile
             if (m_profiler)
@@ -999,7 +999,7 @@ namespace Spartan
                 // Bind descriptor set
                 vkCmdBindDescriptorSets
                 (
-                    static_cast<VkCommandBuffer>(m_resource),                                // commandBuffer
+                    static_cast<VkCommandBuffer>(m_rhi_resource),                            // commandBuffer
                     m_pso.IsCompute() ?                                                      // pipelineBindPoint
                     VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_COMPUTE :                    
                     VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS,                    

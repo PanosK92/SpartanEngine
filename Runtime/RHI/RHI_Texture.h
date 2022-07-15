@@ -78,8 +78,6 @@ namespace Spartan
         uint32_t GetMipCount() { return static_cast<uint32_t>(mips.size()); }
     };
 
-    static const uint8_t max_mip_count = 13;
-
     class SPARTAN_CLASS RHI_Texture : public IResource, public std::enable_shared_from_this<RHI_Texture>
     {
     public:
@@ -140,20 +138,20 @@ namespace Spartan
         // Layout
         void SetLayout(const RHI_Image_Layout layout, RHI_CommandList* cmd_list, uint32_t mip_index = rhi_all_mips,  uint32_t mip_range = 0);
         RHI_Image_Layout GetLayout(const uint32_t mip) const { return m_layout[mip]; }
-        std::array<RHI_Image_Layout, max_mip_count> GetLayouts()  const { return m_layout; }
+        std::array<RHI_Image_Layout, rhi_max_mip_count> GetLayouts()  const { return m_layout; }
 
         // Viewport
         const auto& GetViewport() const { return m_viewport; }
 
         // GPU resources
-        void*& GetResource()                                                    { return m_resource; }
-        void* GetResource_View_Srv()                                      const { return m_resource_view_srv; }
-        void* GetResource_View_Uav()                                      const { return m_resource_view_uav; }
-        void* GetResource_Views_Srv(const uint32_t i)                     const { return m_resource_views_srv[i]; }
-        void* GetResource_Views_Uav(const uint32_t i)                     const { return m_resource_views_uav[i]; }
-        void* GetResource_View_DepthStencil(const uint32_t i = 0)         const { return i < m_resource_view_depthStencil.size()         ? m_resource_view_depthStencil[i]         : nullptr; }
-        void* GetResource_View_DepthStencilReadOnly(const uint32_t i = 0) const { return i < m_resource_view_depthStencilReadOnly.size() ? m_resource_view_depthStencilReadOnly[i] : nullptr; }
-        void* GetResource_View_RenderTarget(const uint32_t i = 0)         const { return i < m_resource_view_renderTarget.size()         ? m_resource_view_renderTarget[i]         : nullptr; }
+        void*& GetRhiResource()                       { return m_rhi_resource; }
+        void* GetRhiSrv()                             const { return m_rhi_srv; }
+        void* GetRhiUav()                             const { return m_rhi_uav; }
+        void* GetRhiSrvMip(const uint32_t i)          const { return m_rhi_srv_mips[i]; }
+        void* GetRhiUavMip(const uint32_t i)          const { return m_rhi_uav_mips[i]; }
+        void* GetRhiDsv(const uint32_t i = 0)         const { return i < m_rhi_dsv.size()           ? m_rhi_dsv[i]           : nullptr; }
+        void* GetRhiDsvReadOnly(const uint32_t i = 0) const { return i < m_rhi_dsv_read_only.size() ? m_rhi_dsv_read_only[i] : nullptr; }
+        void* GetRhiRtv(const uint32_t i = 0)         const { return i < m_rhi_rtv.size()           ? m_rhi_rtv[i]           : nullptr; }
         void RHI_DestroyResource(const bool destroy_main, const bool destroy_per_view);
 
     protected:
@@ -172,17 +170,17 @@ namespace Spartan
         RHI_Viewport m_viewport;
         std::vector<RHI_Texture_Slice> m_data;
         std::shared_ptr<RHI_Device> m_rhi_device;
+        std::array<RHI_Image_Layout, rhi_max_mip_count> m_layout;
 
         // API resources
-        void* m_resource          = nullptr;
-        void* m_resource_view_srv = nullptr;
-        void* m_resource_view_uav = nullptr;
-        std::array<RHI_Image_Layout, max_mip_count> m_layout;
-        std::array<void*, max_mip_count> m_resource_views_srv;
-        std::array<void*, max_mip_count> m_resource_views_uav;
-        std::array<void*, rhi_max_render_target_count> m_resource_view_renderTarget;
-        std::array<void*, rhi_max_render_target_count> m_resource_view_depthStencil;
-        std::array<void*, rhi_max_render_target_count> m_resource_view_depthStencilReadOnly;
+        void* m_rhi_resource  = nullptr;
+        void* m_rhi_srv       = nullptr;
+        void* m_rhi_uav       = nullptr;
+        std::array<void*, rhi_max_mip_count> m_rhi_srv_mips;
+        std::array<void*, rhi_max_mip_count> m_rhi_uav_mips;
+        std::array<void*, rhi_max_render_target_count> m_rhi_rtv;
+        std::array<void*, rhi_max_render_target_count> m_rhi_dsv;
+        std::array<void*, rhi_max_render_target_count> m_rhi_dsv_read_only;
 
     private:
         void ComputeMemoryUsage();

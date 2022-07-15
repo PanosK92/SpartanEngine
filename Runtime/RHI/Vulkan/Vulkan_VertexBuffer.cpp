@@ -40,7 +40,7 @@ namespace Spartan
         m_rhi_device->QueueWaitAll();
 
         // Destroy
-        vulkan_utility::vma_allocator::destroy_buffer(m_resource);
+        vulkan_utility::vma_allocator::destroy_buffer(m_rhi_resource);
     }
 
     bool RHI_VertexBuffer::_create(const void* vertices)
@@ -56,10 +56,10 @@ namespace Spartan
             VkMemoryPropertyFlags flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT; // mappable
 
             // Created
-            vulkan_utility::vma_allocator::create_buffer(m_resource, m_object_size_gpu, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, flags);
+            vulkan_utility::vma_allocator::create_buffer(m_rhi_resource, m_object_size_gpu, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, flags);
 
             // Get mapped data pointer
-            m_mapped_data = vulkan_utility::vma_allocator::get_mapped_data_from_buffer(m_resource);
+            m_mapped_data = vulkan_utility::vma_allocator::get_mapped_data_from_buffer(m_rhi_resource);
         }
         else // The reason we use staging is because memory with VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, the buffer is not not mappable but it's fast, we want that.
         {
@@ -68,14 +68,14 @@ namespace Spartan
             vulkan_utility::vma_allocator::create_buffer(staging_buffer, m_object_size_gpu, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, vertices);
 
             // Create destination buffer
-            vulkan_utility::vma_allocator::create_buffer(m_resource, m_object_size_gpu, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+            vulkan_utility::vma_allocator::create_buffer(m_rhi_resource, m_object_size_gpu, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
             // Copy staging buffer to destination buffer
             {
                 // Create command buffer
                 VkCommandBuffer cmd_buffer = vulkan_utility::command_buffer_immediate::begin(RHI_Queue_Type::Copy);
 
-                VkBuffer* buffer_vk         = reinterpret_cast<VkBuffer*>(&m_resource);
+                VkBuffer* buffer_vk         = reinterpret_cast<VkBuffer*>(&m_rhi_resource);
                 VkBuffer* buffer_staging_vk = reinterpret_cast<VkBuffer*>(&staging_buffer);
 
                 // Copy
@@ -92,7 +92,7 @@ namespace Spartan
         }
 
         // Set debug name
-        vulkan_utility::debug::set_name(static_cast<VkBuffer>(m_resource), m_object_name.c_str());
+        vulkan_utility::debug::set_name(static_cast<VkBuffer>(m_rhi_resource), m_object_name.c_str());
 
         return true;
     }

@@ -138,7 +138,7 @@ namespace Spartan
         RHI_Semaphore* GetSemaphoreProccessed() { return m_proccessed_semaphore.get(); }
 
         // Misc
-        void* GetResource() const { return m_resource; }
+        void* GetResource() const { return m_rhi_resource; }
 
     private:
         void OnDraw();
@@ -152,8 +152,6 @@ namespace Spartan
         Renderer* m_renderer                             = nullptr;
         RHI_Device* m_rhi_device                         = nullptr;
         Profiler* m_profiler                             = nullptr;
-        void* m_resource                                 = nullptr;
-        void* m_cmd_pool_resource                        = nullptr;
         std::atomic<bool> m_discard                      = false;
         bool m_is_rendering                              = false;
         bool m_pipeline_dirty                            = false;
@@ -197,5 +195,9 @@ namespace Spartan
         // Variables to minimise state changes
         uint64_t m_vertex_buffer_id = 0;
         uint64_t m_index_buffer_id  = 0;
+
+        // RHI Resources
+        void* m_rhi_resource          = nullptr;
+        void* m_rhi_cmd_pool_resource = nullptr;
     };
 }
