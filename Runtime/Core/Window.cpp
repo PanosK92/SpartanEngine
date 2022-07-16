@@ -19,13 +19,13 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =========
+//= INCLUDES ==============
 #include "Spartan.h"
 #include "Window.h"
 #include "SDL.h"
 #include "SDL_syswm.h"
 #include "../Input/Input.h"
-//====================
+//=========================
 
 //= LINKING ============================
 // Statically linking SDL2 requires that
@@ -61,6 +61,8 @@ namespace Spartan
                 return;
             }
         }
+
+        m_title = "Spartan " + to_string(sp_version_major) + "." + to_string(sp_version_minor) + "." + to_string(sp_version_revision);
 
         // Create window
         uint32_t flags = SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_MAXIMIZED;

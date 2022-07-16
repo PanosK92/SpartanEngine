@@ -246,7 +246,7 @@ void MenuBar::DrawAboutWindow() const
     ImGui::SetNextWindowFocus();
     ImGui::Begin("About", &_Widget_MenuBar::g_showAboutWindow, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoDocking);
     {
-        ImGui::Text("Spartan %s", sp_version);
+        ImGui::Text("Spartan %s", (to_string(sp_version_major) + "." + to_string(sp_version_minor) + "." + to_string(sp_version_revision)).c_str());
         ImGui::Text("Author: Panos Karabelas");
         ImGui::SameLine(ImGuiEx::GetWindowContentRegionWidth());
         ImGui::SetCursorPosX(ImGui::GetCursorPosX() - 55);

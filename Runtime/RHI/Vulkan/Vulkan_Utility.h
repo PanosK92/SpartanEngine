@@ -306,12 +306,6 @@ namespace Spartan::vulkan_utility
         {
             VkImageAspectFlags aspect_mask = 0;
 
-            if (texture->IsColorFormat() && texture->IsDepthStencilFormat())
-            {
-                LOG_ERROR("Texture can't be both color and depth-stencil");
-                return aspect_mask;
-            }
-
             if (texture->IsColorFormat())
             {
                 aspect_mask |= VK_IMAGE_ASPECT_COLOR_BIT;
