@@ -766,7 +766,7 @@ void Properties::ShowMaterial(Material* material) const
                 show_property("Sheen tint",           "Mix between white and using base color for sheen reflection",                       Material_Sheen_Tint,           false, true);
                 show_property("Color",                "Diffuse or metal surface color",                                                    Material_Color,                true, true);
                 show_property("Roughness",            "Specifies microfacet roughness of the surface for diffuse and specular reflection", Material_Roughness,            true, true);
-                show_property("Metallic",             "Blends between a non-metallic and metallic material model",                         Material_Metallic,             true, true);
+                show_property("Metallness",           "Blends between a non-metallic and metallic material model",                         Material_Metallness,           true, true);
                 show_property("Normal",               "Controls the normals of the base layers",                                           Material_Normal,               true, true);
                 show_property("Height",               "Perceived depth for parallax mapping",                                              Material_Height,               true, true);
                 show_property("Occlusion",            "Amount of light loss, can be complementary to SSAO",                                Material_Occlusion,            true, false);

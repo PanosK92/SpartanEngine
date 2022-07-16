@@ -451,15 +451,15 @@ namespace Spartan
 
                                 // Bind material textures
                                 cmd_list->SetTexture(RendererBindingsSrv::material_albedo,    material->GetTexture_Ptr(Material_Color));
-                                cmd_list->SetTexture(RendererBindingsSrv::material_roughness, material->GetTexture_Ptr(Material_Metallic));
-                                cmd_list->SetTexture(RendererBindingsSrv::material_metallic,  material->GetTexture_Ptr(Material_Metallic));
+                                cmd_list->SetTexture(RendererBindingsSrv::material_roughness, material->GetTexture_Ptr(Material_Metallness));
+                                cmd_list->SetTexture(RendererBindingsSrv::material_metallic,  material->GetTexture_Ptr(Material_Metallness));
 
                                 // Set uber buffer with material properties
                                 m_cb_uber_cpu.mat_color    = material->GetColorAlbedo();
                                 m_cb_uber_cpu.mat_textures = 0;
                                 m_cb_uber_cpu.mat_textures |= material->HasTexture(Material_Color)     ? (1U << 2) : 0;
                                 m_cb_uber_cpu.mat_textures |= material->HasTexture(Material_Roughness) ? (1U << 3) : 0;
-                                m_cb_uber_cpu.mat_textures |= material->HasTexture(Material_Metallic)  ? (1U << 4) : 0;
+                                m_cb_uber_cpu.mat_textures |= material->HasTexture(Material_Metallness)  ? (1U << 4) : 0;
 
                                 // Set uber buffer with cascade transform
                                 m_cb_uber_cpu.transform = entity->GetTransform()->GetMatrix() * view_projection;
@@ -678,7 +678,7 @@ namespace Spartan
                     // Bind material textures
                     cmd_list->SetTexture(RendererBindingsSrv::material_albedo, material->GetTexture_Ptr(Material_Color));
                     cmd_list->SetTexture(RendererBindingsSrv::material_roughness, material->GetTexture_Ptr(Material_Roughness));
-                    cmd_list->SetTexture(RendererBindingsSrv::material_metallic, material->GetTexture_Ptr(Material_Metallic));
+                    cmd_list->SetTexture(RendererBindingsSrv::material_metallic, material->GetTexture_Ptr(Material_Metallness));
                     cmd_list->SetTexture(RendererBindingsSrv::material_normal, material->GetTexture_Ptr(Material_Normal));
                     cmd_list->SetTexture(RendererBindingsSrv::material_height, material->GetTexture_Ptr(Material_Height));
                     cmd_list->SetTexture(RendererBindingsSrv::material_occlusion, material->GetTexture_Ptr(Material_Occlusion));
@@ -691,7 +691,7 @@ namespace Spartan
                     m_cb_uber_cpu.mat_tiling_uv     = material->GetTiling();
                     m_cb_uber_cpu.mat_offset_uv     = material->GetOffset();
                     m_cb_uber_cpu.mat_roughness_mul = material->GetProperty(Material_Roughness);
-                    m_cb_uber_cpu.mat_metallic_mul  = material->GetProperty(Material_Metallic);
+                    m_cb_uber_cpu.mat_metallic_mul  = material->GetProperty(Material_Metallness);
                     m_cb_uber_cpu.mat_normal_mul    = material->GetProperty(Material_Normal);
                     m_cb_uber_cpu.mat_height_mul    = material->GetProperty(Material_Height);
                     m_cb_uber_cpu.mat_textures      = 0;
@@ -699,7 +699,7 @@ namespace Spartan
                     m_cb_uber_cpu.mat_textures     |= material->HasTexture(Material_Normal) ? (1U << 1) : 0;
                     m_cb_uber_cpu.mat_textures     |= material->HasTexture(Material_Color) ? (1U << 2) : 0;
                     m_cb_uber_cpu.mat_textures     |= material->HasTexture(Material_Roughness) ? (1U << 3) : 0;
-                    m_cb_uber_cpu.mat_textures     |= material->HasTexture(Material_Metallic) ? (1U << 4) : 0;
+                    m_cb_uber_cpu.mat_textures     |= material->HasTexture(Material_Metallness) ? (1U << 4) : 0;
                     m_cb_uber_cpu.mat_textures     |= material->HasTexture(Material_AlphaMask) ? (1U << 5) : 0;
                     m_cb_uber_cpu.mat_textures     |= material->HasTexture(Material_Emission) ? (1U << 6) : 0;
                     m_cb_uber_cpu.mat_textures     |= material->HasTexture(Material_Occlusion) ? (1U << 7) : 0;

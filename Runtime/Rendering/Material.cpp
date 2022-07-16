@@ -43,7 +43,7 @@ namespace Spartan
 
         // Initialize properties
         SetProperty(Material_Roughness,             0.9f);
-        SetProperty(Material_Metallic,              0.0f);
+        SetProperty(Material_Metallness,              0.0f);
         SetProperty(Material_Normal,                0.0f);
         SetProperty(Material_Height,                0.0f);
         SetProperty(Material_Clearcoat,             0.0f);
@@ -64,7 +64,7 @@ namespace Spartan
 
         xml->GetAttribute("Material", "Color",                          &m_color_albedo);
         xml->GetAttribute("Material", "Roughness_Multiplier",           &GetProperty(Material_Roughness));
-        xml->GetAttribute("Material", "Metallic_Multiplier",            &GetProperty(Material_Metallic));
+        xml->GetAttribute("Material", "Metallic_Multiplier",            &GetProperty(Material_Metallness));
         xml->GetAttribute("Material", "Normal_Multiplier",              &GetProperty(Material_Normal));
         xml->GetAttribute("Material", "Height_Multiplier",              &GetProperty(Material_Height));
         xml->GetAttribute("Material", "Clearcoat_Multiplier",           &GetProperty(Material_Clearcoat));
@@ -108,7 +108,7 @@ namespace Spartan
         xml->AddNode("Material");
         xml->AddAttribute("Material", "Color",                          m_color_albedo);
         xml->AddAttribute("Material", "Roughness_Multiplier",           GetProperty(Material_Roughness));
-        xml->AddAttribute("Material", "Metallic_Multiplier",            GetProperty(Material_Metallic));
+        xml->AddAttribute("Material", "Metallic_Multiplier",            GetProperty(Material_Metallness));
         xml->AddAttribute("Material", "Normal_Multiplier",              GetProperty(Material_Normal));
         xml->AddAttribute("Material", "Height_Multiplier",              GetProperty(Material_Height));
         xml->AddAttribute("Material", "Clearcoat_Multiplier",           GetProperty(Material_Clearcoat));
