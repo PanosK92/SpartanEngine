@@ -35,20 +35,20 @@ namespace Spartan
     enum Material_Property : uint32_t
     {
         Material_Unknown              = 0U << 0,
-        Material_Clearcoat            = 1U << 0,   // Extra white specular layer on top of others
-        Material_Clearcoat_Roughness  = 1U << 1,   // Roughness of clearcoat specular
-        Material_Anisotropic          = 1U << 2,   // Amount of anisotropy for specular reflection
-        Material_Anisotropic_Rotation = 1U << 3,   // Rotates the direction of anisotropy, with 1.0 going full circle
-        Material_Sheen                = 1U << 4,   // Amount of soft velvet like reflection near edges
-        Material_Sheen_Tint           = 1U << 5,   // Mix between white and using base color for sheen reflection
-        Material_Color                = 1U << 6,   // Diffuse or metal surface color
-        Material_Roughness            = 1U << 7,   // Specifies microfacet roughness of the surface for diffuse and specular reflection
-        Material_Metallic             = 1U << 8,   // Blends between a non-metallic and metallic material model
-        Material_Normal               = 1U << 9,   // Controls the normals of the base layers
-        Material_Height               = 1U << 10,  // Perceived depth for parallax mapping
-        Material_Occlusion            = 1U << 11,  // Amount of light loss, can be complementary to SSAO
-        Material_Emission             = 1U << 12,  // Light emission from the surface, works nice with bloom
-        Material_AlphaMask            = 1U << 13   // Discards pixels
+        Material_Clearcoat            = 1U << 0,  // Extra white specular layer on top of others
+        Material_Clearcoat_Roughness  = 1U << 1,  // Roughness of clearcoat specular
+        Material_Anisotropic          = 1U << 2,  // Amount of anisotropy for specular reflection
+        Material_Anisotropic_Rotation = 1U << 3,  // Rotates the direction of anisotropy, with 1.0 going full circle
+        Material_Sheen                = 1U << 4,  // Amount of soft velvet like reflection near edges
+        Material_Sheen_Tint           = 1U << 5,  // Mix between white and using base color for sheen reflection
+        Material_Color                = 1U << 6,  // Diffuse or metal surface color
+        Material_Roughness            = 1U << 7,  // Specifies microfacet roughness of the surface for diffuse and specular reflection
+        Material_Metallness           = 1U << 8,  // Blends between a non-metallic and metallic material model
+        Material_Normal               = 1U << 9,  // Controls the normals of the base layers
+        Material_Height               = 1U << 10, // Perceived depth for parallax mapping
+        Material_Occlusion            = 1U << 11, // Amount of light loss, can be complementary to SSAO
+        Material_Emission             = 1U << 12, // Light emission from the surface, works nice with bloom
+        Material_AlphaMask            = 1U << 13  // Discards pixels
     };
 
     class SPARTAN_CLASS Material : public IResource
