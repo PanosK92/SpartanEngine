@@ -77,16 +77,16 @@ namespace Spartan
         SetOption(RendererOption::ScreenSpaceReflections, 1.0f);
         SetOption(RendererOption::Antialiasing, static_cast<float>(AntialiasingMode::Taa));
         SetOption(RendererOption::Ffx_Cas, 1.0f);
-        SetOption(RendererOption::Debanding, 1.0f);
         SetOption(RendererOption::Anisotropy, 16.0f);
         SetOption(RendererOption::ShadowResolution, 2048.0f);
         SetOption(RendererOption::Tonemapping, static_cast<float>(TonemappingMode::Disabled));
         SetOption(RendererOption::Gamma, 1.5f);
         SetOption(RendererOption::Sharpen_Strength, 1.0f);
         SetOption(RendererOption::Fog, 0.08f);
-        //m_options |= Renderer::Option::DepthOfField;        // This is depth of field from ALDI, so until I improve it, it should be disabled by default.
-        //m_options |= Renderer::Option::Render_DepthPrepass; // Depth-pre-pass is not always faster, so by default, it's disabled.
-        // 
+        //SetOption(RendererOption::DepthOfField, 1.0f);        // This is depth of field from ALDI, so until I improve it, it should be disabled by default.
+        //SetOption(RendererOption::Render_DepthPrepass, 1.0f); // Depth-pre-pass is not always faster, so by default, it's disabled.
+        //SetOption(RendererOption::Debanding, 1.0f);           // Disable debanding as we shouldn't be seeing debanding to begin with.
+
         // Subscribe to events.
         SP_SUBSCRIBE_TO_EVENT(EventType::WorldResolved, SP_EVENT_HANDLER_VARIANT(OnRenderablesAcquire));
         SP_SUBSCRIBE_TO_EVENT(EventType::WorldPreClear, SP_EVENT_HANDLER(OnClear));
