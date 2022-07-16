@@ -44,7 +44,7 @@ namespace Spartan
         bool IsFullScreen()  const { return m_fullscreen; }
 
     private:
-        std::string m_title      = "Spartan " + std::string(sp_version);
+        std::string m_title;
         Math::Vector2 m_position = Math::Vector2::Zero;
         uint32_t m_width         = 640;
         uint32_t m_height        = 480;

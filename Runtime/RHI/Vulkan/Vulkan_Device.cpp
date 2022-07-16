@@ -86,7 +86,7 @@ namespace Spartan
         return false;
     }
 
-    static vector<const char*> get_extension_supporting_physical_device(const vector<const char*>& extensions, VkPhysicalDevice device_physical)
+    static vector<const char*> get_physical_device_supported_extensions(const vector<const char*>& extensions, VkPhysicalDevice device_physical)
     {
         vector<const char*> extensions_supported;
 
@@ -137,10 +137,10 @@ namespace Spartan
         VkApplicationInfo app_info  = {};
         {
             app_info.sType              = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-            app_info.pApplicationName   = sp_version;
-            app_info.pEngineName        = sp_version;
-            app_info.engineVersion      = VK_MAKE_VERSION(1, 0, 0);
-            app_info.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
+            app_info.pApplicationName   = sp_name;
+            app_info.pEngineName        = app_info.pApplicationName;
+            app_info.engineVersion      = VK_MAKE_VERSION(sp_version_major, sp_version_minor, sp_version_revision);
+            app_info.applicationVersion = app_info.engineVersion;
 
             // Deduce API version to use
             {
@@ -275,12 +275,11 @@ namespace Spartan
                 m_min_uniform_buffer_offset_alignment = properties_device.properties.limits.minUniformBufferOffsetAlignment;
                 m_timestamp_period                    = properties_device.properties.limits.timestampPeriod;
                 m_max_bound_descriptor_sets           = properties_device.properties.limits.maxBoundDescriptorSets;
-                m_max_subgroup_size                   = device_properties_1_3.maxSubgroupSize;
 
                 // Disable profiler if timestamps are not supported
                 if (m_rhi_context->gpu_profiling && !properties_device.properties.limits.timestampComputeAndGraphics)
                 {
-                    LOG_ERROR("Device doesn't support timestamps, disabling profiling...");
+                    LOG_ERROR("Device doesn't support timestamps, disabling gpu profiling...");
                     m_rhi_context->gpu_profiling = false;
                 }
             }
@@ -332,6 +331,10 @@ namespace Spartan
                     SP_ASSERT(features_supported_1_2.timelineSemaphore == VK_TRUE);
                     device_features_to_enable_1_2.timelineSemaphore = VK_TRUE;
 
+                    // Rendering without render passes and frame buffer objects
+                    SP_ASSERT(features_supported_1_3.dynamicRendering == VK_TRUE);
+                    device_features_to_enable_1_3.dynamicRendering = VK_TRUE;
+
                     // Float16 - FSR 2.0 will opt for it (for performance), but it's not a requirement, so don't assert on this one.
                     if (features_supported_1_2.shaderFloat16 == VK_TRUE)
                     {
@@ -344,13 +347,11 @@ namespace Spartan
                         device_features_to_enable.features.shaderInt16 = VK_TRUE;
                     }
 
-                    // Rendering without render passes and frame buffer objects
-                    SP_ASSERT(features_supported_1_3.dynamicRendering == VK_TRUE);
-                    device_features_to_enable_1_3.dynamicRendering = VK_TRUE;
-
-                    // Ability to specify the required subgroup size of a newly created pipeline shader stage
-                    SP_ASSERT(features_supported_1_3.subgroupSizeControl == VK_TRUE);
-                    device_features_to_enable_1_3.subgroupSizeControl = VK_TRUE;
+                    // Wave64 - FSR 2.0 will opt for it (for performance), but it's not a requirement, so don't assert on this one.
+                    if (features_supported_1_3.subgroupSizeControl == VK_TRUE)
+                    {
+                        device_features_to_enable_1_3.subgroupSizeControl = VK_TRUE;
+                    }
                 }
             }
 
@@ -368,7 +369,7 @@ namespace Spartan
             }
 
             // Get the supported extensions out of the requested extensions
-            vector<const char*> extensions_supported = get_extension_supporting_physical_device(m_rhi_context->extensions_device, m_rhi_context->device_physical);
+            vector<const char*> extensions_supported = get_physical_device_supported_extensions(m_rhi_context->extensions_device, m_rhi_context->device_physical);
 
             // Device create info
             VkDeviceCreateInfo create_info = {};

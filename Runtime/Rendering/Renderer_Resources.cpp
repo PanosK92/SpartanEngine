@@ -170,6 +170,7 @@ namespace Spartan
 
         // Notes.
         // Gbuffer_Normal: Any format with or below 8 bits per channel, will produce banding.
+        // Gbuffer_Depth:  If dynamic rendering is enabled, the depth buffer has to have a stencil aspect.
 
         // Render resolution
         if (create_render)
@@ -178,7 +179,7 @@ namespace Spartan
             render_target(RendererTexture::Frame_Render)   = make_unique<RHI_Texture2D>(m_context, width_render, height_render, mip_count, RHI_Format_R16G16B16A16_Float, RHI_Texture_Rt_Color | RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipViews, "rt_frame_render");
             render_target(RendererTexture::Frame_Render_2) = make_unique<RHI_Texture2D>(m_context, width_render, height_render, mip_count, RHI_Format_R16G16B16A16_Float, RHI_Texture_Rt_Color | RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipViews, "rt_frame_render_2");
 
-            // G-Buffer (if dynamic rendering is enabled, the depth buffer has to have a stencil aspect).
+            // G-Buffer
             render_target(RendererTexture::Gbuffer_Albedo)   = make_shared<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R8G8B8A8_Unorm,       RHI_Texture_Rt_Color        | RHI_Texture_Srv,                                       "rt_gbuffer_albedo");
             render_target(RendererTexture::Gbuffer_Normal)   = make_shared<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R16G16B16A16_Float,   RHI_Texture_Rt_Color        | RHI_Texture_Srv,                                       "rt_gbuffer_normal");
             render_target(RendererTexture::Gbuffer_Material) = make_shared<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R8G8B8A8_Unorm,       RHI_Texture_Rt_Color        | RHI_Texture_Srv,                                       "rt_gbuffer_material");

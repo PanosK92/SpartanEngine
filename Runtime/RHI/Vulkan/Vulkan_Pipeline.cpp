@@ -157,9 +157,6 @@ namespace Spartan
         }
 
         // Shader - Compute
-        VkPipelineShaderStageRequiredSubgroupSizeCreateInfo required_subgroup_size_info = {};
-        required_subgroup_size_info.sType                                               = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_REQUIRED_SUBGROUP_SIZE_CREATE_INFO;
-        required_subgroup_size_info.requiredSubgroupSize                                = m_rhi_device->GetMaxSubgroupSize();
         if (m_state.shader_compute)
         {
             VkPipelineShaderStageCreateInfo shader_stage_info = {};
@@ -167,7 +164,6 @@ namespace Spartan
             shader_stage_info.stage                           = VK_SHADER_STAGE_COMPUTE_BIT;
             shader_stage_info.module                          = static_cast<VkShaderModule>(m_state.shader_compute->GetRhiResource());
             shader_stage_info.pName                           = m_state.shader_compute->GetEntryPoint();
-            shader_stage_info.pNext                           = &required_subgroup_size_info;
 
             // Validate shader stage
             SP_ASSERT(shader_stage_info.module != nullptr);
