@@ -42,6 +42,9 @@ namespace Spartan
         m_rhi_device = context->GetSubsystem<Renderer>()->GetRhiDevice();
         m_textures.fill(nullptr);
         m_properties.fill(1.0f);
+
+        SetProperty(MaterialProperty::UvOffsetX, 0.0f);
+        SetProperty(MaterialProperty::UvOffsetY, 0.0f);
     }
 
     bool Material::LoadFromFile(const string& file_path)
@@ -52,28 +55,33 @@ namespace Spartan
 
         SetResourceFilePath(file_path);
 
-        xml->GetAttribute("Material", "Color",                           &m_color_albedo);
-        xml->GetAttribute("Material", "Roughness_Multiplier",            &GetProperty(MaterialProperty::RoughnessMultiplier));
-        xml->GetAttribute("Material", "Metallic_Multiplier",             &GetProperty(MaterialProperty::MetallnessMultiplier));
-        xml->GetAttribute("Material", "Normal_Multiplier",               &GetProperty(MaterialProperty::NormalMultiplier));
-        xml->GetAttribute("Material", "Height_Multiplier",               &GetProperty(MaterialProperty::HeightMultiplier));
-        xml->GetAttribute("Material", "Clearcoat_Multiplier",            &GetProperty(MaterialProperty::Clearcoat));
-        xml->GetAttribute("Material", "Clearcoat_Roughness_Multiplier",  &GetProperty(MaterialProperty::Clearcoat_Roughness));
-        xml->GetAttribute("Material", "Anisotropi_Multiplier",           &GetProperty(MaterialProperty::Anisotropic));
-        xml->GetAttribute("Material", "Anisotropic_Rotation_Multiplier", &GetProperty(MaterialProperty::AnisotropicRotation));
-        xml->GetAttribute("Material", "Sheen_Multiplier",                &GetProperty(MaterialProperty::Sheen));
-        xml->GetAttribute("Material", "Sheen_Tint_Multiplier",           &GetProperty(MaterialProperty::SheenTint));
-        xml->GetAttribute("Material", "IsEditable",                      &m_is_editable);
-        xml->GetAttribute("Material", "UV_Tiling",                       &m_uv_tiling);
-        xml->GetAttribute("Material", "UV_Offset",                       &m_uv_offset);
+        xml->GetAttribute("Material", "color_r",                         &m_properties[static_cast<uint32_t>(MaterialProperty::ColorR)]);
+        xml->GetAttribute("Material", "color_g",                         &m_properties[static_cast<uint32_t>(MaterialProperty::ColorG)]);
+        xml->GetAttribute("Material", "color_b",                         &m_properties[static_cast<uint32_t>(MaterialProperty::ColorB)]);
+        xml->GetAttribute("Material", "color_a",                         &m_properties[static_cast<uint32_t>(MaterialProperty::ColorA)]);
+        xml->GetAttribute("Material", "roughness_multiplier",            &m_properties[static_cast<uint32_t>(MaterialProperty::RoughnessMultiplier)]);
+        xml->GetAttribute("Material", "metallic_multiplier",             &m_properties[static_cast<uint32_t>(MaterialProperty::MetallnessMultiplier)]);
+        xml->GetAttribute("Material", "normal_multiplier",               &m_properties[static_cast<uint32_t>(MaterialProperty::NormalMultiplier)]);
+        xml->GetAttribute("Material", "height_multiplier",               &m_properties[static_cast<uint32_t>(MaterialProperty::HeightMultiplier)]);
+        xml->GetAttribute("Material", "clearcoat_multiplier",            &m_properties[static_cast<uint32_t>(MaterialProperty::Clearcoat)]);
+        xml->GetAttribute("Material", "clearcoat_roughness_multiplier",  &m_properties[static_cast<uint32_t>(MaterialProperty::Clearcoat_Roughness)]);
+        xml->GetAttribute("Material", "anisotropic_multiplier",          &m_properties[static_cast<uint32_t>(MaterialProperty::Anisotropic)]);
+        xml->GetAttribute("Material", "anisotropic_rotation_multiplier", &m_properties[static_cast<uint32_t>(MaterialProperty::AnisotropicRotation)]);
+        xml->GetAttribute("Material", "sheen_multiplier",                &m_properties[static_cast<uint32_t>(MaterialProperty::Sheen)]);
+        xml->GetAttribute("Material", "sheen_tint_Multiplier",           &m_properties[static_cast<uint32_t>(MaterialProperty::SheenTint)]);
+        xml->GetAttribute("Material", "uv_tiling_x",                     &m_properties[static_cast<uint32_t>(MaterialProperty::UvTilingX)]);
+        xml->GetAttribute("Material", "uv_tiling_y",                     &m_properties[static_cast<uint32_t>(MaterialProperty::UvTilingY)]);
+        xml->GetAttribute("Material", "uv_offset_x",                     &m_properties[static_cast<uint32_t>(MaterialProperty::UvOffsetX)]);
+        xml->GetAttribute("Material", "uv_offset_y",                     &m_properties[static_cast<uint32_t>(MaterialProperty::UvOffsetY)]);
+        xml->GetAttribute("Material", "is_editable",                     &m_is_editable);
 
-        const uint32_t texture_count = xml->GetAttributeAs<uint32_t>("Textures", "Count");
+        const uint32_t texture_count = xml->GetAttributeAs<uint32_t>("textures", "count");
         for (uint32_t i = 0; i < texture_count; i++)
         {
-            auto node_name                 = "Texture_" + to_string(i);
-            const MaterialTexture tex_type = static_cast<MaterialTexture>(xml->GetAttributeAs<uint32_t>(node_name, "Texture_Type"));
-            auto tex_name                  = xml->GetAttributeAs<string>(node_name, "Texture_Name");
-            auto tex_path                  = xml->GetAttributeAs<string>(node_name, "Texture_Path");
+            auto node_name                 = "texture_" + to_string(i);
+            const MaterialTexture tex_type = static_cast<MaterialTexture>(xml->GetAttributeAs<uint32_t>(node_name, "texture_type"));
+            auto tex_name                  = xml->GetAttributeAs<string>(node_name, "texture_name");
+            auto tex_path                  = xml->GetAttributeAs<string>(node_name, "texture_path");
 
             // If the texture happens to be loaded, get a reference to it
             auto texture = m_context->GetSubsystem<ResourceCache>()->GetByName<RHI_Texture2D>(tex_name);
@@ -97,31 +105,36 @@ namespace Spartan
 
         auto xml = make_unique<XmlDocument>();
         xml->AddNode("Material");
-        xml->AddAttribute("Material", "Color",                           m_color_albedo);
-        xml->AddAttribute("Material", "Roughness_Multiplier",            GetProperty(MaterialProperty::RoughnessMultiplier));
-        xml->AddAttribute("Material", "Metallic_Multiplier",             GetProperty(MaterialProperty::MetallnessMultiplier));
-        xml->AddAttribute("Material", "Normal_Multiplier",               GetProperty(MaterialProperty::NormalMultiplier));
-        xml->AddAttribute("Material", "Height_Multiplier",               GetProperty(MaterialProperty::HeightMultiplier));
-        xml->AddAttribute("Material", "Clearcoat_Multiplier",            GetProperty(MaterialProperty::Clearcoat));
-        xml->AddAttribute("Material", "Clearcoat_Roughness_Multiplier",  GetProperty(MaterialProperty::Clearcoat_Roughness));
-        xml->AddAttribute("Material", "Anisotropi_Multiplier",           GetProperty(MaterialProperty::Anisotropic));
-        xml->AddAttribute("Material", "Anisotropic_Rotation_Multiplier", GetProperty(MaterialProperty::AnisotropicRotation));
-        xml->AddAttribute("Material", "Sheen_Multiplier",                GetProperty(MaterialProperty::Sheen));
-        xml->AddAttribute("Material", "Sheen_Tint_Multiplier",           GetProperty(MaterialProperty::SheenTint));
-        xml->AddAttribute("Material", "UV_Tiling",                       m_uv_tiling);
-        xml->AddAttribute("Material", "UV_Offset",                       m_uv_offset);
-        xml->AddAttribute("Material", "IsEditable",                      m_is_editable);
+        xml->AddAttribute("Material", "color_r",                         GetProperty(MaterialProperty::ColorR));
+        xml->AddAttribute("Material", "color_g",                         GetProperty(MaterialProperty::ColorG));
+        xml->AddAttribute("Material", "color_b",                         GetProperty(MaterialProperty::ColorB));
+        xml->AddAttribute("Material", "color_a",                         GetProperty(MaterialProperty::ColorA));
+        xml->AddAttribute("Material", "roughness_multiplier",            GetProperty(MaterialProperty::RoughnessMultiplier));
+        xml->AddAttribute("Material", "metallic_multiplier",             GetProperty(MaterialProperty::MetallnessMultiplier));
+        xml->AddAttribute("Material", "normal_multiplier",               GetProperty(MaterialProperty::NormalMultiplier));
+        xml->AddAttribute("Material", "height_multiplier",               GetProperty(MaterialProperty::HeightMultiplier));
+        xml->AddAttribute("Material", "clearcoat_multiplier",            GetProperty(MaterialProperty::Clearcoat));
+        xml->AddAttribute("Material", "clearcoat_roughness_multiplier",  GetProperty(MaterialProperty::Clearcoat_Roughness));
+        xml->AddAttribute("Material", "anisotropi_multiplier",           GetProperty(MaterialProperty::Anisotropic));
+        xml->AddAttribute("Material", "anisotropic_rotation_multiplier", GetProperty(MaterialProperty::AnisotropicRotation));
+        xml->AddAttribute("Material", "sheen_multiplier",                GetProperty(MaterialProperty::Sheen));
+        xml->AddAttribute("Material", "sheen_tint_multiplier",           GetProperty(MaterialProperty::SheenTint));
+        xml->AddAttribute("Material", "uv_tiling_x",                     GetProperty(MaterialProperty::UvTilingX));
+        xml->AddAttribute("Material", "uv_tiling_y",                     GetProperty(MaterialProperty::UvTilingY));
+        xml->AddAttribute("Material", "uv_offset_x",                     GetProperty(MaterialProperty::UvOffsetX));
+        xml->AddAttribute("Material", "uv_offset_y",                     GetProperty(MaterialProperty::UvOffsetY));
+        xml->AddAttribute("Material", "is_editable",                     m_is_editable);
 
-        xml->AddChildNode("Material", "Textures");
-        xml->AddAttribute("Textures", "Count", static_cast<uint32_t>(m_textures.size()));
+        xml->AddChildNode("Material", "textures");
+        xml->AddAttribute("textures", "count", static_cast<uint32_t>(m_textures.size()));
         uint32_t i = 0;
         for (const auto& texture : m_textures)
         {
-            auto tex_node = "Texture_" + to_string(i);
-            xml->AddChildNode("Textures", tex_node);
-            xml->AddAttribute(tex_node, "Texture_Type", i++);
-            xml->AddAttribute(tex_node, "Texture_Name", texture ? texture->GetResourceName() : "");
-            xml->AddAttribute(tex_node, "Texture_Path", texture ? texture->GetResourceFilePathNative() : "");
+            auto tex_node = "texture_" + to_string(i);
+            xml->AddChildNode("textures", tex_node);
+            xml->AddAttribute(tex_node, "texture_type", i++);
+            xml->AddAttribute(tex_node, "texture_name", texture ? texture->GetResourceName() : "");
+            xml->AddAttribute(tex_node, "texture_path", texture ? texture->GetResourceFilePathNative() : "");
         }
 
         return xml->Save(GetResourceFilePathNative());
@@ -204,15 +217,19 @@ namespace Spartan
         return HasTexture(texture_type) ? m_textures[static_cast<uint32_t>(texture_type)] : texture_empty;
     }
 
-    void Material::SetColorAlbedo(const Math::Vector4& color)
+    void Material::SetProperty(const MaterialProperty property_type, const float value)
     {
-        // If an object switches from opaque to transparent or vice versa, make the world update so that the renderer
-        // goes through the entities and makes the ones that use this material, render in the correct mode.
-        if ((m_color_albedo.w != 1.0f && color.w == 1.0f) || (m_color_albedo.w == 1.0f && color.w != 1.0f))
+        if (property_type == MaterialProperty::ColorA)
         {
-            m_context->GetSubsystem<World>()->Resolve();
+            // If an object switches from opaque to transparent or vice versa, make the world update so that the renderer
+            // goes through the entities and makes the ones that use this material, render in the correct mode.
+            float current_alpha = m_properties[static_cast<uint32_t>(property_type)];
+            if ((current_alpha != 1.0f && value == 1.0f) || (current_alpha == 1.0f && value != 1.0f))
+            {
+                m_context->GetSubsystem<World>()->Resolve();
+            }
         }
 
-        m_color_albedo = color;
+        m_properties[static_cast<uint32_t>(property_type)] = value;
     }
 }

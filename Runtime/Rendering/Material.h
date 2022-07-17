@@ -56,10 +56,18 @@ namespace Spartan
         Sheen ,              // Amount of soft velvet like reflection near edges
         SheenTint,           // Mix between white and using base color for sheen reflection
         ColorTint,           // Diffuse or metal surface color
+        ColorR,
+        ColorG,
+        ColorB,
+        ColorA,
         RoughnessMultiplier,
         MetallnessMultiplier,
         NormalMultiplier,
-        HeightMultiplier
+        HeightMultiplier,
+        UvTilingX,
+        UvTilingY,
+        UvOffsetX,
+        UvOffsetY
     };
 
     class SPARTAN_CLASS Material : public IResource
@@ -85,35 +93,23 @@ namespace Spartan
         std::shared_ptr<RHI_Texture>& GetTexture_PtrShared(const MaterialTexture texturtexture_type);
         //===================================================================================================
         
-        //= PROPERTIES ==========================================================================================================================
-        const Math::Vector4& GetColorAlbedo()                                     const { return m_color_albedo; }
-        void SetColorAlbedo(const Math::Vector4& color);                          
-                                                                                  
-        const Math::Vector2& GetTiling()                                          const { return m_uv_tiling; }
-        void SetTiling(const Math::Vector2& tiling)                               { m_uv_tiling = tiling; }
-                                                                                  
-        const Math::Vector2& GetOffset()                                          const { return m_uv_offset; }
-        void SetOffset(const Math::Vector2& offset)                               { m_uv_offset = offset; }
-                                                                                  
-        auto IsEditable()                                                         const { return m_is_editable; }
-        void SetIsEditable(const bool is_editable)                                { m_is_editable = is_editable; }
+        //= PROPERTIES =============================================================================================================
+        auto IsEditable()                          const { return m_is_editable; }
+        void SetIsEditable(const bool is_editable) { m_is_editable = is_editable; }
 
-        auto& GetProperty(const MaterialProperty property_type)                   { return m_properties[static_cast<uint32_t>(property_type)]; }
-        void SetProperty(const MaterialProperty property_type, const float value) { m_properties[static_cast<uint32_t>(property_type)] = value; }
-        //=======================================================================================================================================
-
+        float GetProperty(const MaterialProperty property_type) const { return m_properties[static_cast<uint32_t>(property_type)]; }
+        void SetProperty(const MaterialProperty property_type, const float value);
+        //==========================================================================================================================
+ 
     private:
         // Textures
         std::array<std::shared_ptr<RHI_Texture>, 9> m_textures;
 
         // Properties
-        std::array<float, 12> m_properties;
+        std::array<float, 20> m_properties;
 
         // Misc
-        Math::Vector4 m_color_albedo = Math::Vector4(1.0f, 1.0f, 1.0f, 1.0f);
-        Math::Vector2 m_uv_tiling    = Math::Vector2(1.0f, 1.0f);
-        Math::Vector2 m_uv_offset    = Math::Vector2(0.0f, 0.0f);
-        bool m_is_editable           = true;
+        bool m_is_editable = true;
         std::shared_ptr<RHI_Device> m_rhi_device;
     };
 }

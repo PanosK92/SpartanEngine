@@ -243,7 +243,10 @@ namespace Spartan
         // FIX: materials that have a diffuse texture should not be tinted black/gray
         if (type_assimp == aiTextureType_BASE_COLOR || type_assimp == aiTextureType_DIFFUSE)
         {
-            material->SetColorAlbedo(Vector4::One);
+            material->SetProperty(MaterialProperty::ColorR, 1.0f);
+            material->SetProperty(MaterialProperty::ColorG, 1.0f);
+            material->SetProperty(MaterialProperty::ColorB, 1.0f);
+            material->SetProperty(MaterialProperty::ColorA, 1.0f);
         }
 
         // FIX: Some models pass a normal map as a height map and vice versa, we correct that.
@@ -288,7 +291,10 @@ namespace Spartan
         aiGetMaterialColor(material_assimp, AI_MATKEY_OPACITY, &opacity);
 
         // Set color and opacity
-        material->SetColorAlbedo(Vector4(color_diffuse.r, color_diffuse.g, color_diffuse.b, opacity.r));
+        material->SetProperty(MaterialProperty::ColorR, color_diffuse.r);
+        material->SetProperty(MaterialProperty::ColorG, color_diffuse.g);
+        material->SetProperty(MaterialProperty::ColorB, color_diffuse.b);
+        material->SetProperty(MaterialProperty::ColorA, opacity.r);
 
         //                                                       Texture type,       Texture type Assimp (PBR),       Texture type Assimp (Legacy/fallback)
         load_material_texture(params, material, material_assimp, MaterialTexture::Color,      aiTextureType_BASE_COLOR,        aiTextureType_DIFFUSE);
