@@ -1,0 +1,31 @@
+Sponza 2022 Scene created by Frank Meinl.
+
+Additional credit for reference photos
+Katica Putica
+Princino.photo
+Dubrovnik, Croatia
+www.princinophoto.com
+ 
+
+For personal use and educational use. Limited commercial use for marketing and print in educational, science papers, etc.
+Feel free to provide feedback and report any issues to [sponza _dot_ feedback AT intel _dot_ com].
+
+
+Please note that if these scenes are used in a publication, please include a citation using the following BibTeX template:
+
+@misc{sponza22,
+Author = {Frank Meinl and Katica Putica and Cristiano Siqueria and Timothy Heath and Justin Prazen and Sebastian Herholz and Bruce Cherniak and Anton Kaplanyan},
+Year = {2022},
+Note = {https://www.intel.com/content/www/us/en/developer/topic-technology/graphics-processing-research/samples.html},
+Title = {Intel Sample Library}
+} 
+
+
+Thanks to the Sponza and Addon Package Crew:
+Frank Meinl
+Katica Putica
+Cristiano Siqueria
+Timothy Heath
+Justin Prazen
+Sebastian Herholz
+Bruce Cherniak
