@@ -45,19 +45,18 @@ namespace Spartan
 {
     ResourceCache::ResourceCache(Context* context) : Subsystem(context)
     {
-        const string data_dir = "Data\\";
+        // Create project directory
+        SetProjectDirectory("project\\");
 
         // Add engine standard resource directories
-        AddResourceDirectory(ResourceDirectory::Cubemaps,       data_dir + "environment");
-        AddResourceDirectory(ResourceDirectory::Fonts,          data_dir + "fonts");
-        AddResourceDirectory(ResourceDirectory::Icons,          data_dir + "icons");
-        AddResourceDirectory(ResourceDirectory::Scripts,        data_dir + "scripts");
-        AddResourceDirectory(ResourceDirectory::ShaderCompiler, data_dir + "shader_compiler");
-        AddResourceDirectory(ResourceDirectory::Shaders,        data_dir + "shaders");
-        AddResourceDirectory(ResourceDirectory::Textures,       data_dir + "textures");
-
-        // Create project directory
-        SetProjectDirectory("Project/");
+        const string data_dir = "data\\";
+        AddResourceDirectory(ResourceDirectory::Environment,    m_project_directory + "environment");
+        AddResourceDirectory(ResourceDirectory::Fonts,          data_dir            + "fonts");
+        AddResourceDirectory(ResourceDirectory::Icons,          data_dir            + "icons");
+        AddResourceDirectory(ResourceDirectory::Scripts,        data_dir            + "scripts");
+        AddResourceDirectory(ResourceDirectory::ShaderCompiler, data_dir            + "shader_compiler");
+        AddResourceDirectory(ResourceDirectory::Shaders,        data_dir            + "shaders");
+        AddResourceDirectory(ResourceDirectory::Textures,       data_dir            + "textures");
 
         // Subscribe to events
         SP_SUBSCRIBE_TO_EVENT(EventType::WorldSaveStart, SP_EVENT_HANDLER(SaveResourcesToFiles));
