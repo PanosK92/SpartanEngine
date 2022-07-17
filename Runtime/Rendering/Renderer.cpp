@@ -582,8 +582,8 @@ namespace Spartan
 
                 if (const Material* material = renderable->GetMaterial())
                 {
-                    is_transparent = material->GetColorAlbedo().w < 1.0f;
-                    is_visible     = material->GetColorAlbedo().w != 0.0f;
+                    is_transparent = material->GetProperty(MaterialProperty::ColorA) < 1.0f;
+                    is_visible     = material->GetProperty(MaterialProperty::ColorA) != 0.0f;
                 }
 
                 if (is_visible)

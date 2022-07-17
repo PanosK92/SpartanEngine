@@ -698,11 +698,24 @@ void Properties::ShowMaterial(Material* material) const
     {
         const float offset_from_pos_x = 160;
 
-        //= REFLECT ==================================================
-        Math::Vector2 tiling = material->GetTiling();
-        Math::Vector2 offset = material->GetOffset();
-        m_material_color_picker->SetColor(material->GetColorAlbedo());
-        //============================================================
+        //= REFLECT ===========================================
+        Math::Vector2 tiling = Vector2(
+            material->GetProperty(MaterialProperty::UvTilingX),
+            material->GetProperty(MaterialProperty::UvTilingY)
+        );
+
+        Math::Vector2 offset = Vector2(
+            material->GetProperty(MaterialProperty::UvOffsetX),
+            material->GetProperty(MaterialProperty::UvOffsetY)
+        );
+
+        m_material_color_picker->SetColor(Vector4(
+            material->GetProperty(MaterialProperty::ColorR),
+            material->GetProperty(MaterialProperty::ColorG),
+            material->GetProperty(MaterialProperty::ColorB),
+            material->GetProperty(MaterialProperty::ColorA)
+        ));
+        //=====================================================
 
         // Name
         ImGui::Text("Name");
@@ -755,7 +768,9 @@ void Properties::ShowMaterial(Material* material) const
                         else
                         {
                             ImGui::PushID(static_cast<int>(ImGui::GetCursorPosX() + ImGui::GetCursorPosY()));
-                            ImGuiEx::DragFloatWrap("", &material->GetProperty(mat_property), 0.004f, 0.0f, 1.0f);
+                            float value = material->GetProperty(mat_property);
+                            ImGuiEx::DragFloatWrap("", &value, 0.004f, 0.0f, 1.0f);
+                            material->SetProperty(mat_property, value);
                             ImGui::PopID();
                         }
                     }
@@ -802,10 +817,15 @@ void Properties::ShowMaterial(Material* material) const
         }
 
         //= MAP =============================================================================================================================
-        if (tiling != material->GetTiling())                                  material->SetTiling(tiling);
-        if (offset != material->GetOffset())                                  material->SetOffset(offset);
-        if (m_material_color_picker->GetColor() != material->GetColorAlbedo()) material->SetColorAlbedo(m_material_color_picker->GetColor());
-        //===================================================================================================================================
+        material->SetProperty(MaterialProperty::UvTilingX, tiling.x);
+        material->SetProperty(MaterialProperty::UvTilingY, tiling.y);
+        material->SetProperty(MaterialProperty::UvOffsetX, offset.x);
+        material->SetProperty(MaterialProperty::UvOffsetY, offset.y);
+        material->SetProperty(MaterialProperty::ColorR, m_material_color_picker->GetColor().x);
+        material->SetProperty(MaterialProperty::ColorG, m_material_color_picker->GetColor().y);
+        material->SetProperty(MaterialProperty::ColorB, m_material_color_picker->GetColor().z);
+        material->SetProperty(MaterialProperty::ColorA, m_material_color_picker->GetColor().w);
+        //=====================================================================================
     }
 
     helper::ComponentEnd();

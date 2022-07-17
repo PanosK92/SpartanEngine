@@ -322,9 +322,22 @@ namespace Spartan
                         cmd_list->SetTexture(RendererBindingsSrv::tex, tex_albedo ? tex_albedo : m_tex_default_white.get());
 
                         // Set uber buffer with material properties
-                        m_cb_uber_cpu.mat_color     = material->GetColorAlbedo();
-                        m_cb_uber_cpu.mat_tiling_uv = material->GetTiling();
-                        m_cb_uber_cpu.mat_offset_uv = material->GetOffset();
+                        m_cb_uber_cpu.mat_color = Vector4(
+                            material->GetProperty(MaterialProperty::ColorR),
+                            material->GetProperty(MaterialProperty::ColorG),
+                            material->GetProperty(MaterialProperty::ColorB),
+                            material->GetProperty(MaterialProperty::ColorA)
+                        );
+
+                        m_cb_uber_cpu.mat_tiling_uv = Vector2(
+                            material->GetProperty(MaterialProperty::UvTilingX),
+                            material->GetProperty(MaterialProperty::UvTilingY)
+                        );
+
+                        m_cb_uber_cpu.mat_offset_uv = Vector2(
+                            material->GetProperty(MaterialProperty::UvOffsetX),
+                            material->GetProperty(MaterialProperty::UvOffsetY)
+                        );
 
                         m_set_material_id = material->GetObjectId();
                     }
@@ -455,7 +468,12 @@ namespace Spartan
                                 cmd_list->SetTexture(RendererBindingsSrv::material_metallic,  material->GetTexture(MaterialTexture::Metallness));
 
                                 // Set uber buffer with material properties
-                                m_cb_uber_cpu.mat_color    = material->GetColorAlbedo();
+                                m_cb_uber_cpu.mat_color = Vector4(
+                                    material->GetProperty(MaterialProperty::ColorR),
+                                    material->GetProperty(MaterialProperty::ColorG),
+                                    material->GetProperty(MaterialProperty::ColorB),
+                                    material->GetProperty(MaterialProperty::ColorA)
+                                );
                                 m_cb_uber_cpu.mat_textures = 0;
                                 m_cb_uber_cpu.mat_textures |= material->HasTexture(MaterialTexture::Color)      ? (1U << 2) : 0;
                                 m_cb_uber_cpu.mat_textures |= material->HasTexture(MaterialTexture::Roughness)  ? (1U << 3) : 0;
@@ -687,9 +705,14 @@ namespace Spartan
 
                     // Set uber buffer with material properties
                     m_cb_uber_cpu.mat_id            = material_index;
-                    m_cb_uber_cpu.mat_color         = material->GetColorAlbedo();
-                    m_cb_uber_cpu.mat_tiling_uv     = material->GetTiling();
-                    m_cb_uber_cpu.mat_offset_uv     = material->GetOffset();
+                    m_cb_uber_cpu.mat_color.x       = material->GetProperty(MaterialProperty::ColorR);
+                    m_cb_uber_cpu.mat_color.y       = material->GetProperty(MaterialProperty::ColorG);
+                    m_cb_uber_cpu.mat_color.z       = material->GetProperty(MaterialProperty::ColorB);
+                    m_cb_uber_cpu.mat_color.w       = material->GetProperty(MaterialProperty::ColorA);
+                    m_cb_uber_cpu.mat_tiling_uv.x   = material->GetProperty(MaterialProperty::UvTilingX);
+                    m_cb_uber_cpu.mat_tiling_uv.y   = material->GetProperty(MaterialProperty::UvTilingY);
+                    m_cb_uber_cpu.mat_offset_uv.x   = material->GetProperty(MaterialProperty::UvOffsetX);
+                    m_cb_uber_cpu.mat_offset_uv.y   = material->GetProperty(MaterialProperty::UvOffsetY);
                     m_cb_uber_cpu.mat_roughness_mul = material->GetProperty(MaterialProperty::RoughnessMultiplier);
                     m_cb_uber_cpu.mat_metallic_mul  = material->GetProperty(MaterialProperty::MetallnessMultiplier);
                     m_cb_uber_cpu.mat_normal_mul    = material->GetProperty(MaterialProperty::NormalMultiplier);
