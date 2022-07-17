@@ -20,14 +20,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 // Material
-Texture2D tex_material_albedo    : register (t0);
-Texture2D tex_material_roughness : register (t1);
-Texture2D tex_material_metallic  : register (t2);
-Texture2D tex_material_normal    : register (t3);
-Texture2D tex_material_height    : register (t4);
-Texture2D tex_material_occlusion : register (t5);
-Texture2D tex_material_emission  : register (t6);
-Texture2D tex_material_mask      : register (t7);
+Texture2D tex_material_albedo     : register (t0);
+Texture2D tex_material_roughness  : register (t1);
+Texture2D tex_material_metallness : register (t2);
+Texture2D tex_material_normal     : register (t3);
+Texture2D tex_material_height     : register (t4);
+Texture2D tex_material_occlusion  : register (t5);
+Texture2D tex_material_emission   : register (t6);
+Texture2D tex_material_mask       : register (t7);
 
 // G-buffer
 Texture2D tex_albedo            : register(t8);

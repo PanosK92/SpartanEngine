@@ -78,7 +78,6 @@ PixelOutputType mainPS(PixelInputType input)
     uv                         = float2(uv.x * g_mat_tiling.x + g_mat_offset.x, uv.y * g_mat_tiling.y + g_mat_offset.y); // Apply material tiling and offset.
 
     // Parallax mapping
-    
     if (has_texture_height())
     {
         float height_scale     = g_mat_height * 0.04f;
@@ -118,11 +117,11 @@ PixelOutputType mainPS(PixelInputType input)
         roughness *= tex_material_roughness.Sample(sampler_anisotropic_wrap, uv).r;
     }
 
-    // Metallic
-    float metallic = g_mat_metallic;
-    if (has_texture_metallic())
+    // Metallness
+    float metalness = g_mat_metallness;
+    if (has_texture_metalness())
     {
-        metallic *= tex_material_metallic.Sample(sampler_anisotropic_wrap, uv).r;
+        metalness *= tex_material_metallness.Sample(sampler_anisotropic_wrap, uv).r;
     }
 
     // Normal
@@ -167,7 +166,7 @@ PixelOutputType mainPS(PixelInputType input)
     PixelOutputType g_buffer;
     g_buffer.albedo   = albedo;
     g_buffer.normal   = float4(normal, pack_uint32_to_float16(g_mat_id));
-    g_buffer.material = float4(roughness, metallic, emission, occlusion);
+    g_buffer.material = float4(roughness, metalness, emission, occlusion);
     g_buffer.velocity = velocity_uv;
 
     return g_buffer;

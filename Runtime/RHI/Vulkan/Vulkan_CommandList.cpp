@@ -375,7 +375,7 @@ namespace Spartan
         {
             vkCmdEndRendering(static_cast<VkCommandBuffer>(m_rhi_resource));
             m_is_rendering = false;
-        }   
+        }
     }
 
     void RHI_CommandList::ClearPipelineStateRenderTargets(RHI_PipelineState& pipeline_state)

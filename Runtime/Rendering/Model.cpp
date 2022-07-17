@@ -181,7 +181,7 @@ namespace Spartan
         entity->AddComponent<Renderable>()->SetMaterial(material);
     }
 
-    void Model::AddTexture(shared_ptr<Material>& material, const Material_Property texture_type, const string& file_path)
+    void Model::AddTexture(shared_ptr<Material>& material, const MaterialTexture texture_type, const string& file_path)
     {
         SP_ASSERT(material != nullptr);
         SP_ASSERT(!file_path.empty());
@@ -192,7 +192,7 @@ namespace Spartan
 
         if (texture)
         {
-            material->SetTextureSlot(texture_type, texture);
+            material->SetTexture(texture_type, texture);
         }
         else // If we didn't get a texture, it's not cached, hence we have to load it and cache it now
         {
@@ -201,7 +201,7 @@ namespace Spartan
             texture->LoadFromFile(file_path);
 
             // Set the texture to the provided material
-            material->SetTextureSlot(texture_type, texture);
+            material->SetTexture(texture_type, texture);
         }
     }
 

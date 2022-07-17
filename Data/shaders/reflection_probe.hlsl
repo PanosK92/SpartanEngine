@@ -76,9 +76,9 @@ float4 mainPS(Pixel_Input input) : SV_TARGET
 
     // Metallic
     float metallic = 0.0f;
-    if (has_texture_metallic())
+    if (has_texture_metalness())
     {
-        metallic = tex_material_metallic.Sample(sampler_anisotropic_wrap, input.uv).r;
+        metallic = tex_material_metallness.Sample(sampler_anisotropic_wrap, input.uv).r;
     }
 
     float3 F0                = lerp(0.04f, albedo.rgb, metallic);

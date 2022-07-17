@@ -90,7 +90,7 @@ cbuffer BufferUber : register(b1)
     float2 g_mat_offset;
 
     float g_mat_roughness;
-    float g_mat_metallic;
+    float g_mat_metallness;
     float g_mat_normal;
     float g_mat_height;
 
@@ -140,7 +140,7 @@ bool has_texture_height()     { return g_mat_textures & uint(1U << 0);}
 bool has_texture_normal()     { return g_mat_textures & uint(1U << 1);}
 bool has_texture_albedo()     { return g_mat_textures & uint(1U << 2);}
 bool has_texture_roughness()  { return g_mat_textures & uint(1U << 3);}
-bool has_texture_metallic()   { return g_mat_textures & uint(1U << 4);}
+bool has_texture_metalness()  { return g_mat_textures & uint(1U << 4);}
 bool has_texture_alpha_mask() { return g_mat_textures & uint(1U << 5);}
 bool has_texture_emissive()   { return g_mat_textures & uint(1U << 6);}
 bool has_texture_occlusion()  { return g_mat_textures & uint(1U << 7);}

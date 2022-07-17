@@ -542,12 +542,12 @@ namespace Spartan
             if (!material)
                 continue;
 
-            m_cb_material_cpu.mat_clearcoat_clearcoatRough_anis_anisRot[i].x = material->GetProperty(Material_Clearcoat);
-            m_cb_material_cpu.mat_clearcoat_clearcoatRough_anis_anisRot[i].y = material->GetProperty(Material_Clearcoat_Roughness);
-            m_cb_material_cpu.mat_clearcoat_clearcoatRough_anis_anisRot[i].z = material->GetProperty(Material_Anisotropic);
-            m_cb_material_cpu.mat_clearcoat_clearcoatRough_anis_anisRot[i].w = material->GetProperty(Material_Anisotropic_Rotation);
-            m_cb_material_cpu.mat_sheen_sheenTint_pad[i].x = material->GetProperty(Material_Sheen);
-            m_cb_material_cpu.mat_sheen_sheenTint_pad[i].y = material->GetProperty(Material_Sheen_Tint);
+            m_cb_material_cpu.mat_clearcoat_clearcoatRough_anis_anisRot[i].x = material->GetProperty(MaterialProperty::Clearcoat);
+            m_cb_material_cpu.mat_clearcoat_clearcoatRough_anis_anisRot[i].y = material->GetProperty(MaterialProperty::Clearcoat_Roughness);
+            m_cb_material_cpu.mat_clearcoat_clearcoatRough_anis_anisRot[i].z = material->GetProperty(MaterialProperty::Anisotropic);
+            m_cb_material_cpu.mat_clearcoat_clearcoatRough_anis_anisRot[i].w = material->GetProperty(MaterialProperty::AnisotropicRotation);
+            m_cb_material_cpu.mat_sheen_sheenTint_pad[i].x                   = material->GetProperty(MaterialProperty::Sheen);
+            m_cb_material_cpu.mat_sheen_sheenTint_pad[i].y                   = material->GetProperty(MaterialProperty::SheenTint);
         }
 
         bool reallocated = m_cb_material_gpu->AutoUpdate<Cb_Material>(m_cb_material_cpu, m_cb_material_cpu_mapped);
