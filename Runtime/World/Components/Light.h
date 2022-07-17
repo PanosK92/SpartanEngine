@@ -136,7 +136,7 @@ namespace Spartan
         ShadowMap m_shadow_map;
 
         // Bias
-        float m_bias        = -8.0f;
+        float m_bias        = 0.0f;
         float m_normal_bias = 10.0f;
 
         // Misc
