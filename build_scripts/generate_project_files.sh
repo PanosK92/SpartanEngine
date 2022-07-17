@@ -34,6 +34,7 @@ echo
 echo "4. Creating project directory and copying some assets..."
 mkdir -p binaries/project
 cp -r assets/models binaries/project
+cp -r assets/environment binaries/project
 
 # Generate project files
 echo

@@ -37,7 +37,7 @@ namespace Spartan
 
     enum class ResourceDirectory
     {
-        Cubemaps,
+        Environment,
         Fonts,
         Icons,
         Scripts,
