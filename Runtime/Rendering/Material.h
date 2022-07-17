@@ -67,7 +67,8 @@ namespace Spartan
         UvTilingX,
         UvTilingY,
         UvOffsetX,
-        UvOffsetY
+        UvOffsetY,
+        SingleTextureRoughnessMetalness
     };
 
     class SPARTAN_CLASS Material : public IResource
@@ -106,7 +107,7 @@ namespace Spartan
         std::array<std::shared_ptr<RHI_Texture>, 9> m_textures;
 
         // Properties
-        std::array<float, 20> m_properties;
+        std::array<float, 21> m_properties;
 
         // Misc
         bool m_is_editable = true;

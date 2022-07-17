@@ -81,7 +81,7 @@ cbuffer BufferUber : register(b1)
     float2 g_resolution_rt;
 
     float2 g_resolution_in;
-    float g_padding2;
+    bool single_texture_roughness_metalness;
     float g_radius;
 
     float4 g_mat_color;
@@ -103,7 +103,7 @@ cbuffer BufferUber : register(b1)
     uint g_work_group_count;
 
     uint g_reflection_probe_available;
-    float3 g_padding3;
+    float3 g_padding2;
 };
 
 // High frequency - Updates per light
@@ -135,32 +135,33 @@ cbuffer ImGuiBuffer : register(b4)
     float3 g_padding4;
 }
 
-// Options g-buffer textures
-bool has_texture_height()     { return g_mat_textures & uint(1U << 0);}
-bool has_texture_normal()     { return g_mat_textures & uint(1U << 1);}
-bool has_texture_albedo()     { return g_mat_textures & uint(1U << 2);}
-bool has_texture_roughness()  { return g_mat_textures & uint(1U << 3);}
-bool has_texture_metalness()  { return g_mat_textures & uint(1U << 4);}
-bool has_texture_alpha_mask() { return g_mat_textures & uint(1U << 5);}
-bool has_texture_emissive()   { return g_mat_textures & uint(1U << 6);}
-bool has_texture_occlusion()  { return g_mat_textures & uint(1U << 7);}
+// Options g-buffer textures                  
+bool has_texture_height()                     { return g_mat_textures & uint(1U << 0); }
+bool has_texture_normal()                     { return g_mat_textures & uint(1U << 1); }
+bool has_texture_albedo()                     { return g_mat_textures & uint(1U << 2); }
+bool has_texture_roughness()                  { return g_mat_textures & uint(1U << 3); }
+bool has_texture_metalness()                  { return g_mat_textures & uint(1U << 4); }
+bool has_texture_alpha_mask()                 { return g_mat_textures & uint(1U << 5); }
+bool has_texture_emissive()                   { return g_mat_textures & uint(1U << 6); }
+bool has_texture_occlusion()                  { return g_mat_textures & uint(1U << 7); }
+bool has_single_texture_roughness_metalness() { return single_texture_roughness_metalness; }
 
 // Options lighting
-bool light_is_directional()           { return cb_options & uint(1U << 0);}
-bool light_is_point()                 { return cb_options & uint(1U << 1);}
-bool light_is_spot()                  { return cb_options & uint(1U << 2);}
-bool light_has_shadows()              { return cb_options & uint(1U << 3);}
-bool light_has_shadows_transparent()  { return cb_options & uint(1U << 4);}
-bool light_has_shadows_screen_space() { return cb_options & uint(1U << 5);}
-bool light_is_volumetric()            { return cb_options & uint(1U << 6);}
+bool light_is_directional()           { return cb_options & uint(1U << 0); }
+bool light_is_point()                 { return cb_options & uint(1U << 1); }
+bool light_is_spot()                  { return cb_options & uint(1U << 2); }
+bool light_has_shadows()              { return cb_options & uint(1U << 3); }
+bool light_has_shadows_transparent()  { return cb_options & uint(1U << 4); }
+bool light_has_shadows_screen_space() { return cb_options & uint(1U << 5); }
+bool light_is_volumetric()            { return cb_options & uint(1U << 6); }
 
 // Options passes
 bool is_taa_enabled()                  { return any(g_taa_jitter_current); }
-bool is_ssr_enabled()                  { return g_options & uint(1U << 0);}
-bool is_ssao_enabled()                 { return g_options & uint(1U << 1);}
-bool is_volumetric_fog_enabled()       { return g_options & uint(1U << 2);}
-bool is_screen_space_shadows_enabled() { return g_options & uint(1U << 3);}
-bool is_ssao_gi_enabled()              { return g_options & uint(1U << 4);}
+bool is_ssr_enabled()                  { return g_options & uint(1U << 0); }
+bool is_ssao_enabled()                 { return g_options & uint(1U << 1); }
+bool is_volumetric_fog_enabled()       { return g_options & uint(1U << 2); }
+bool is_screen_space_shadows_enabled() { return g_options & uint(1U << 3); }
+bool is_ssao_gi_enabled()              { return g_options & uint(1U << 4); }
 
 // Options texture visualisation
 bool texture_visualise()        { return imgui_texture_flags & uint(1U << 12); }
