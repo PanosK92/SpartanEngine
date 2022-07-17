@@ -318,7 +318,7 @@ namespace Spartan
                     if (is_transparent_pass && m_set_material_id != material->GetObjectId())
                     {
                         // Bind material textures
-                        RHI_Texture* tex_albedo = material->GetTexture_Ptr(Material_Color);
+                        RHI_Texture* tex_albedo = material->GetTexture(MaterialTexture::Color);
                         cmd_list->SetTexture(RendererBindingsSrv::tex, tex_albedo ? tex_albedo : m_tex_default_white.get());
 
                         // Set uber buffer with material properties
@@ -450,16 +450,16 @@ namespace Spartan
                                 cmd_list->SetBufferVertex(model->GetVertexBuffer());
 
                                 // Bind material textures
-                                cmd_list->SetTexture(RendererBindingsSrv::material_albedo,    material->GetTexture_Ptr(Material_Color));
-                                cmd_list->SetTexture(RendererBindingsSrv::material_roughness, material->GetTexture_Ptr(Material_Metallness));
-                                cmd_list->SetTexture(RendererBindingsSrv::material_metallic,  material->GetTexture_Ptr(Material_Metallness));
+                                cmd_list->SetTexture(RendererBindingsSrv::material_albedo,    material->GetTexture(MaterialTexture::Color));
+                                cmd_list->SetTexture(RendererBindingsSrv::material_roughness, material->GetTexture(MaterialTexture::Metallness));
+                                cmd_list->SetTexture(RendererBindingsSrv::material_metallic,  material->GetTexture(MaterialTexture::Metallness));
 
                                 // Set uber buffer with material properties
                                 m_cb_uber_cpu.mat_color    = material->GetColorAlbedo();
                                 m_cb_uber_cpu.mat_textures = 0;
-                                m_cb_uber_cpu.mat_textures |= material->HasTexture(Material_Color)     ? (1U << 2) : 0;
-                                m_cb_uber_cpu.mat_textures |= material->HasTexture(Material_Roughness) ? (1U << 3) : 0;
-                                m_cb_uber_cpu.mat_textures |= material->HasTexture(Material_Metallness)  ? (1U << 4) : 0;
+                                m_cb_uber_cpu.mat_textures |= material->HasTexture(MaterialTexture::Color)      ? (1U << 2) : 0;
+                                m_cb_uber_cpu.mat_textures |= material->HasTexture(MaterialTexture::Roughness)  ? (1U << 3) : 0;
+                                m_cb_uber_cpu.mat_textures |= material->HasTexture(MaterialTexture::Metallness) ? (1U << 4) : 0;
 
                                 // Set uber buffer with cascade transform
                                 m_cb_uber_cpu.transform = entity->GetTransform()->GetMatrix() * view_projection;
@@ -553,13 +553,13 @@ namespace Spartan
                 }
 
                 // Bind alpha testing textures
-                cmd_list->SetTexture(RendererBindingsSrv::material_albedo,  material->GetTexture_Ptr(Material_Color));
-                cmd_list->SetTexture(RendererBindingsSrv::material_mask,    material->GetTexture_Ptr(Material_AlphaMask));
+                cmd_list->SetTexture(RendererBindingsSrv::material_albedo,  material->GetTexture(MaterialTexture::Color));
+                cmd_list->SetTexture(RendererBindingsSrv::material_mask,    material->GetTexture(MaterialTexture::AlphaMask));
 
                 // Set uber buffer
                 m_cb_uber_cpu.transform           = transform->GetMatrix();
-                m_cb_uber_cpu.mat_color.w         = material->HasTexture(Material_Color) ? 1.0f : 0.0f;
-                m_cb_uber_cpu.is_transparent_pass = material->HasTexture(Material_AlphaMask);
+                m_cb_uber_cpu.mat_color.w         = material->HasTexture(MaterialTexture::Color) ? 1.0f : 0.0f;
+                m_cb_uber_cpu.is_transparent_pass = material->HasTexture(MaterialTexture::AlphaMask);
                 Update_Cb_Uber(cmd_list);
             
                 // Draw
@@ -676,33 +676,33 @@ namespace Spartan
                     }
 
                     // Bind material textures
-                    cmd_list->SetTexture(RendererBindingsSrv::material_albedo, material->GetTexture_Ptr(Material_Color));
-                    cmd_list->SetTexture(RendererBindingsSrv::material_roughness, material->GetTexture_Ptr(Material_Roughness));
-                    cmd_list->SetTexture(RendererBindingsSrv::material_metallic, material->GetTexture_Ptr(Material_Metallness));
-                    cmd_list->SetTexture(RendererBindingsSrv::material_normal, material->GetTexture_Ptr(Material_Normal));
-                    cmd_list->SetTexture(RendererBindingsSrv::material_height, material->GetTexture_Ptr(Material_Height));
-                    cmd_list->SetTexture(RendererBindingsSrv::material_occlusion, material->GetTexture_Ptr(Material_Occlusion));
-                    cmd_list->SetTexture(RendererBindingsSrv::material_emission, material->GetTexture_Ptr(Material_Emission));
-                    cmd_list->SetTexture(RendererBindingsSrv::material_mask, material->GetTexture_Ptr(Material_AlphaMask));
+                    cmd_list->SetTexture(RendererBindingsSrv::material_albedo,    material->GetTexture(MaterialTexture::Color));
+                    cmd_list->SetTexture(RendererBindingsSrv::material_roughness, material->GetTexture(MaterialTexture::Roughness));
+                    cmd_list->SetTexture(RendererBindingsSrv::material_metallic,  material->GetTexture(MaterialTexture::Metallness));
+                    cmd_list->SetTexture(RendererBindingsSrv::material_normal,    material->GetTexture(MaterialTexture::Normal));
+                    cmd_list->SetTexture(RendererBindingsSrv::material_height,    material->GetTexture(MaterialTexture::Height));
+                    cmd_list->SetTexture(RendererBindingsSrv::material_occlusion, material->GetTexture(MaterialTexture::Occlusion));
+                    cmd_list->SetTexture(RendererBindingsSrv::material_emission,  material->GetTexture(MaterialTexture::Emission));
+                    cmd_list->SetTexture(RendererBindingsSrv::material_mask,      material->GetTexture(MaterialTexture::AlphaMask));
 
                     // Set uber buffer with material properties
                     m_cb_uber_cpu.mat_id            = material_index;
                     m_cb_uber_cpu.mat_color         = material->GetColorAlbedo();
                     m_cb_uber_cpu.mat_tiling_uv     = material->GetTiling();
                     m_cb_uber_cpu.mat_offset_uv     = material->GetOffset();
-                    m_cb_uber_cpu.mat_roughness_mul = material->GetProperty(Material_Roughness);
-                    m_cb_uber_cpu.mat_metallic_mul  = material->GetProperty(Material_Metallness);
-                    m_cb_uber_cpu.mat_normal_mul    = material->GetProperty(Material_Normal);
-                    m_cb_uber_cpu.mat_height_mul    = material->GetProperty(Material_Height);
+                    m_cb_uber_cpu.mat_roughness_mul = material->GetProperty(MaterialProperty::RoughnessMultiplier);
+                    m_cb_uber_cpu.mat_metallic_mul  = material->GetProperty(MaterialProperty::MetallnessMultiplier);
+                    m_cb_uber_cpu.mat_normal_mul    = material->GetProperty(MaterialProperty::NormalMultiplier);
+                    m_cb_uber_cpu.mat_height_mul    = material->GetProperty(MaterialProperty::HeightMultiplier);
                     m_cb_uber_cpu.mat_textures      = 0;
-                    m_cb_uber_cpu.mat_textures     |= material->HasTexture(Material_Height) ? (1U << 0) : 0;
-                    m_cb_uber_cpu.mat_textures     |= material->HasTexture(Material_Normal) ? (1U << 1) : 0;
-                    m_cb_uber_cpu.mat_textures     |= material->HasTexture(Material_Color) ? (1U << 2) : 0;
-                    m_cb_uber_cpu.mat_textures     |= material->HasTexture(Material_Roughness) ? (1U << 3) : 0;
-                    m_cb_uber_cpu.mat_textures     |= material->HasTexture(Material_Metallness) ? (1U << 4) : 0;
-                    m_cb_uber_cpu.mat_textures     |= material->HasTexture(Material_AlphaMask) ? (1U << 5) : 0;
-                    m_cb_uber_cpu.mat_textures     |= material->HasTexture(Material_Emission) ? (1U << 6) : 0;
-                    m_cb_uber_cpu.mat_textures     |= material->HasTexture(Material_Occlusion) ? (1U << 7) : 0;
+                    m_cb_uber_cpu.mat_textures     |= material->HasTexture(MaterialTexture::Height)     ? (1U << 0) : 0;
+                    m_cb_uber_cpu.mat_textures     |= material->HasTexture(MaterialTexture::Normal)     ? (1U << 1) : 0;
+                    m_cb_uber_cpu.mat_textures     |= material->HasTexture(MaterialTexture::Color)      ? (1U << 2) : 0;
+                    m_cb_uber_cpu.mat_textures     |= material->HasTexture(MaterialTexture::Roughness)  ? (1U << 3) : 0;
+                    m_cb_uber_cpu.mat_textures     |= material->HasTexture(MaterialTexture::Metallness) ? (1U << 4) : 0;
+                    m_cb_uber_cpu.mat_textures     |= material->HasTexture(MaterialTexture::AlphaMask)  ? (1U << 5) : 0;
+                    m_cb_uber_cpu.mat_textures     |= material->HasTexture(MaterialTexture::Emission)   ? (1U << 6) : 0;
+                    m_cb_uber_cpu.mat_textures     |= material->HasTexture(MaterialTexture::Occlusion)  ? (1U << 7) : 0;
                 }
 
                 // Set uber buffer with entity transform
