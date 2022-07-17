@@ -62,27 +62,27 @@ namespace Spartan
     {
         // Default options
         m_options.fill(0.0f);
-        SetOption(RendererOption::ReverseZ, 1.0f);
-        SetOption(RendererOption::Transform_Handle, 1.0f);
-        SetOption(RendererOption::Debug_Grid, 1.0f);
+        SetOption(RendererOption::ReverseZ,               1.0f);
+        SetOption(RendererOption::Transform_Handle,       1.0f);
+        SetOption(RendererOption::Debug_Grid,             1.0f);
         SetOption(RendererOption::Debug_ReflectionProbes, 1.0f);
-        SetOption(RendererOption::Debug_Lights, 1.0f);
-        SetOption(RendererOption::Debug_Physics, 1.0f);
-        SetOption(RendererOption::Bloom, 0.2f); // Non-zero values activate it and define the blend factor.
-        SetOption(RendererOption::VolumetricFog, 1.0f);
-        SetOption(RendererOption::MotionBlur, 1.0f);
-        SetOption(RendererOption::Ssao, 1.0f);
-        SetOption(RendererOption::Ssao_Gi, 1.0f);
-        SetOption(RendererOption::ScreenSpaceShadows, 1.0f);
+        SetOption(RendererOption::Debug_Lights,           1.0f);
+        SetOption(RendererOption::Debug_Physics,          1.0f);
+        SetOption(RendererOption::Bloom,                  0.2f); // Non-zero values activate it and define the blend factor.
+        SetOption(RendererOption::VolumetricFog,          1.0f);
+        SetOption(RendererOption::MotionBlur,             1.0f);
+        SetOption(RendererOption::Ssao,                   1.0f);
+        SetOption(RendererOption::Ssao_Gi,                1.0f);
+        SetOption(RendererOption::ScreenSpaceShadows,     1.0f);
         SetOption(RendererOption::ScreenSpaceReflections, 1.0f);
-        SetOption(RendererOption::Antialiasing, static_cast<float>(AntialiasingMode::Taa));
-        SetOption(RendererOption::Ffx_Cas, 1.0f);
-        SetOption(RendererOption::Anisotropy, 16.0f);
-        SetOption(RendererOption::ShadowResolution, 2048.0f);
-        SetOption(RendererOption::Tonemapping, static_cast<float>(TonemappingMode::Disabled));
-        SetOption(RendererOption::Gamma, 1.5f);
-        SetOption(RendererOption::Sharpen_Strength, 1.0f);
-        SetOption(RendererOption::Fog, 0.08f);
+        SetOption(RendererOption::Antialiasing,           static_cast<float>(AntialiasingMode::Taa));
+        SetOption(RendererOption::Ffx_Cas,                1.0f);
+        SetOption(RendererOption::Anisotropy,             16.0f);
+        SetOption(RendererOption::ShadowResolution,       2048.0f);
+        SetOption(RendererOption::Tonemapping,            static_cast<float>(TonemappingMode::Disabled));
+        SetOption(RendererOption::Gamma,                  1.5f);
+        SetOption(RendererOption::Sharpen_Strength,       1.0f);
+        SetOption(RendererOption::Fog,                    0.08f);
         //SetOption(RendererOption::DepthOfField, 1.0f);        // This is depth of field from ALDI, so until I improve it, it should be disabled by default.
         //SetOption(RendererOption::Render_DepthPrepass, 1.0f); // Depth-pre-pass is not always faster, so by default, it's disabled.
         //SetOption(RendererOption::Debanding, 1.0f);           // Disable debanding as we shouldn't be seeing debanding to begin with.
@@ -219,7 +219,7 @@ namespace Spartan
         m_cmd_current->Begin();
 
         // Reset
-        if (command_pool_reset)
+        if (command_pool_reset || m_rhi_device->GetApiType() == RHI_Api_Type::D3d11)
         {
             // Reset dynamic buffer indices
             m_cb_uber_gpu->ResetOffset();
@@ -227,51 +227,9 @@ namespace Spartan
             m_cb_light_gpu->ResetOffset();
             m_cb_material_gpu->ResetOffset();
 
-            // Handle requests (they can come from different threads)
+            // Handle requests
             m_reading_requests = true;
-            {
-                // Handle environment texture assignment requests
-                if (m_environment_texture_temp)
-                {
-                    m_environment_texture      = m_environment_texture_temp;
-                    m_environment_texture_temp = nullptr;
-                }
-
-                // Handle texture mip generation requests
-                {
-                    // Clear any previously processed textures
-                    if (!m_textures_mip_generation.empty())
-                    {
-                        for (shared_ptr<RHI_Texture> texture : m_textures_mip_generation)
-                        {
-                            // Remove unnecessary flags from texture (were only needed for the downsampling)
-                            uint32_t flags = texture->GetFlags();
-                            flags &= ~RHI_Texture_PerMipViews;
-                            flags &= ~RHI_Texture_Uav;
-                            texture->SetFlags(flags);
-
-                            // Destroy the resources associated with those flags
-                            {
-                                const bool destroy_main = false;
-                                const bool destroy_per_view = true;
-                                texture->RHI_DestroyResource(destroy_main, destroy_per_view);
-                            }
-                        }
-
-                        m_textures_mip_generation.clear();
-                    }
-
-                    // Add any newly requested textures
-                    if (!m_textures_mip_generation_pending.empty())
-                    {
-                        m_textures_mip_generation.insert(m_textures_mip_generation.end(), m_textures_mip_generation_pending.begin(), m_textures_mip_generation_pending.end());
-                        m_textures_mip_generation_pending.clear();
-                    }
-
-                    // Generate mips for any pending texture requests
-                    Pass_Generate_Mips(m_cmd_current);
-                }
-            }
+            OnResourceSafe();
             m_reading_requests = false;
         }
 
@@ -674,6 +632,52 @@ namespace Spartan
         return m_render_thread_id != this_thread::get_id();
     }
 
+    void Renderer::OnResourceSafe()
+    {
+        // Handle environment texture assignment requests
+        if (m_environment_texture_dirty)
+        {
+            m_environment_texture       = m_environment_texture_temp;
+            m_environment_texture_temp  = nullptr;
+            m_environment_texture_dirty = false;
+        }
+
+        // Handle texture mip generation requests
+        {
+            // Clear any previously processed textures
+            if (!m_textures_mip_generation.empty())
+            {
+                for (shared_ptr<RHI_Texture> texture : m_textures_mip_generation)
+                {
+                    // Remove unnecessary flags from texture (were only needed for the downsampling)
+                    uint32_t flags = texture->GetFlags();
+                    flags &= ~RHI_Texture_PerMipViews;
+                    flags &= ~RHI_Texture_Uav;
+                    texture->SetFlags(flags);
+
+                    // Destroy the resources associated with those flags
+                    {
+                        const bool destroy_main = false;
+                        const bool destroy_per_view = true;
+                        texture->RHI_DestroyResource(destroy_main, destroy_per_view);
+                    }
+                }
+
+                m_textures_mip_generation.clear();
+            }
+
+            // Add any newly requested textures
+            if (!m_textures_mip_generation_pending.empty())
+            {
+                m_textures_mip_generation.insert(m_textures_mip_generation.end(), m_textures_mip_generation_pending.begin(), m_textures_mip_generation_pending.end());
+                m_textures_mip_generation_pending.clear();
+            }
+
+            // Generate mips for any pending texture requests
+            Pass_Generate_Mips(m_cmd_current);
+        }
+    }
+
     const shared_ptr<RHI_Texture> Renderer::GetEnvironmentTexture()
     {
         return m_environment_texture ? m_environment_texture : m_tex_default_black;
@@ -691,7 +695,8 @@ namespace Spartan
         }
 
         lock_guard<mutex> guard(m_environment_texture_mutex);
-        m_environment_texture_temp = texture;
+        m_environment_texture_temp  = texture;
+        m_environment_texture_dirty = true;
     }
 
     void Renderer::SetOption(RendererOption option, float value)

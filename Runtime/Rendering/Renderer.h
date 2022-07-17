@@ -204,6 +204,7 @@ namespace Spartan
         // Misc
         void SortRenderables(std::vector<Entity*>* renderables);
         bool IsCallingFromOtherThread();
+        void OnResourceSafe();
 
         // Lines
         void Lines_PreMain();
@@ -298,6 +299,7 @@ namespace Spartan
         std::shared_ptr<RHI_Texture> m_environment_texture;
         std::shared_ptr<RHI_Texture> m_environment_texture_temp;
         std::mutex m_environment_texture_mutex;
+        bool m_environment_texture_dirty = false;
 
         // Options
         std::array<float, 32> m_options;
