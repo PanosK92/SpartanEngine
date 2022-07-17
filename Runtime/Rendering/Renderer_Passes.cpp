@@ -704,28 +704,29 @@ namespace Spartan
                     cmd_list->SetTexture(RendererBindingsSrv::material_mask,      material->GetTexture(MaterialTexture::AlphaMask));
 
                     // Set uber buffer with material properties
-                    m_cb_uber_cpu.mat_id            = material_index;
-                    m_cb_uber_cpu.mat_color.x       = material->GetProperty(MaterialProperty::ColorR);
-                    m_cb_uber_cpu.mat_color.y       = material->GetProperty(MaterialProperty::ColorG);
-                    m_cb_uber_cpu.mat_color.z       = material->GetProperty(MaterialProperty::ColorB);
-                    m_cb_uber_cpu.mat_color.w       = material->GetProperty(MaterialProperty::ColorA);
-                    m_cb_uber_cpu.mat_tiling_uv.x   = material->GetProperty(MaterialProperty::UvTilingX);
-                    m_cb_uber_cpu.mat_tiling_uv.y   = material->GetProperty(MaterialProperty::UvTilingY);
-                    m_cb_uber_cpu.mat_offset_uv.x   = material->GetProperty(MaterialProperty::UvOffsetX);
-                    m_cb_uber_cpu.mat_offset_uv.y   = material->GetProperty(MaterialProperty::UvOffsetY);
-                    m_cb_uber_cpu.mat_roughness_mul = material->GetProperty(MaterialProperty::RoughnessMultiplier);
-                    m_cb_uber_cpu.mat_metallic_mul  = material->GetProperty(MaterialProperty::MetallnessMultiplier);
-                    m_cb_uber_cpu.mat_normal_mul    = material->GetProperty(MaterialProperty::NormalMultiplier);
-                    m_cb_uber_cpu.mat_height_mul    = material->GetProperty(MaterialProperty::HeightMultiplier);
-                    m_cb_uber_cpu.mat_textures      = 0;
-                    m_cb_uber_cpu.mat_textures     |= material->HasTexture(MaterialTexture::Height)     ? (1U << 0) : 0;
-                    m_cb_uber_cpu.mat_textures     |= material->HasTexture(MaterialTexture::Normal)     ? (1U << 1) : 0;
-                    m_cb_uber_cpu.mat_textures     |= material->HasTexture(MaterialTexture::Color)      ? (1U << 2) : 0;
-                    m_cb_uber_cpu.mat_textures     |= material->HasTexture(MaterialTexture::Roughness)  ? (1U << 3) : 0;
-                    m_cb_uber_cpu.mat_textures     |= material->HasTexture(MaterialTexture::Metallness) ? (1U << 4) : 0;
-                    m_cb_uber_cpu.mat_textures     |= material->HasTexture(MaterialTexture::AlphaMask)  ? (1U << 5) : 0;
-                    m_cb_uber_cpu.mat_textures     |= material->HasTexture(MaterialTexture::Emission)   ? (1U << 6) : 0;
-                    m_cb_uber_cpu.mat_textures     |= material->HasTexture(MaterialTexture::Occlusion)  ? (1U << 7) : 0;
+                    m_cb_uber_cpu.mat_id                                 = material_index;
+                    m_cb_uber_cpu.mat_color.x                            = material->GetProperty(MaterialProperty::ColorR);
+                    m_cb_uber_cpu.mat_color.y                            = material->GetProperty(MaterialProperty::ColorG);
+                    m_cb_uber_cpu.mat_color.z                            = material->GetProperty(MaterialProperty::ColorB);
+                    m_cb_uber_cpu.mat_color.w                            = material->GetProperty(MaterialProperty::ColorA);
+                    m_cb_uber_cpu.mat_tiling_uv.x                        = material->GetProperty(MaterialProperty::UvTilingX);
+                    m_cb_uber_cpu.mat_tiling_uv.y                        = material->GetProperty(MaterialProperty::UvTilingY);
+                    m_cb_uber_cpu.mat_offset_uv.x                        = material->GetProperty(MaterialProperty::UvOffsetX);
+                    m_cb_uber_cpu.mat_offset_uv.y                        = material->GetProperty(MaterialProperty::UvOffsetY);
+                    m_cb_uber_cpu.mat_roughness_mul                      = material->GetProperty(MaterialProperty::RoughnessMultiplier);
+                    m_cb_uber_cpu.mat_metallic_mul                       = material->GetProperty(MaterialProperty::MetallnessMultiplier);
+                    m_cb_uber_cpu.mat_normal_mul                         = material->GetProperty(MaterialProperty::NormalMultiplier);
+                    m_cb_uber_cpu.mat_height_mul                         = material->GetProperty(MaterialProperty::HeightMultiplier);
+                    m_cb_uber_cpu.mat_single_texture_rougness_metalness  = material->GetProperty(MaterialProperty::SingleTextureRoughnessMetalness);
+                    m_cb_uber_cpu.mat_textures                           = 0;
+                    m_cb_uber_cpu.mat_textures                          |= material->HasTexture(MaterialTexture::Height)     ? (1U << 0) : 0;
+                    m_cb_uber_cpu.mat_textures                          |= material->HasTexture(MaterialTexture::Normal)     ? (1U << 1) : 0;
+                    m_cb_uber_cpu.mat_textures                          |= material->HasTexture(MaterialTexture::Color)      ? (1U << 2) : 0;
+                    m_cb_uber_cpu.mat_textures                          |= material->HasTexture(MaterialTexture::Roughness)  ? (1U << 3) : 0;
+                    m_cb_uber_cpu.mat_textures                          |= material->HasTexture(MaterialTexture::Metallness) ? (1U << 4) : 0;
+                    m_cb_uber_cpu.mat_textures                          |= material->HasTexture(MaterialTexture::AlphaMask)  ? (1U << 5) : 0;
+                    m_cb_uber_cpu.mat_textures                          |= material->HasTexture(MaterialTexture::Emission)   ? (1U << 6) : 0;
+                    m_cb_uber_cpu.mat_textures                          |= material->HasTexture(MaterialTexture::Occlusion)  ? (1U << 7) : 0;
                 }
 
                 // Set uber buffer with entity transform

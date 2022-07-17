@@ -181,7 +181,7 @@ namespace Spartan
         entity->AddComponent<Renderable>()->SetMaterial(material);
     }
 
-    void Model::AddTexture(shared_ptr<Material>& material, const MaterialTexture texture_type, const string& file_path)
+    void Model::AddTexture(shared_ptr<Material>& material, const MaterialTexture texture_type, const string& file_path, bool is_gltf)
     {
         SP_ASSERT(material != nullptr);
         SP_ASSERT(!file_path.empty());

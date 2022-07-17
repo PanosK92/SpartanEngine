@@ -110,20 +110,36 @@ PixelOutputType mainPS(PixelInputType input)
     if (alpha_mask <= ALPHA_THRESHOLD)
         discard;
 
-    // Roughness
+    // Roughness + Metalness
     float roughness = g_mat_roughness;
-    if (has_texture_roughness())
-    {
-        roughness *= tex_material_roughness.Sample(sampler_anisotropic_wrap, uv).r;
-    }
-
-    // Metallness
     float metalness = g_mat_metallness;
-    if (has_texture_metalness())
     {
-        metalness *= tex_material_metallness.Sample(sampler_anisotropic_wrap, uv).r;
-    }
+        if (!has_single_texture_roughness_metalness())
+        {
+            if (has_texture_roughness())
+            {
+                roughness *= tex_material_roughness.Sample(sampler_anisotropic_wrap, uv).r;
+            }
 
+            if (has_texture_metalness())
+            {
+                metalness *= tex_material_metallness.Sample(sampler_anisotropic_wrap, uv).r;
+            }
+        }
+        else
+        {
+            if (has_texture_roughness())
+            {
+                roughness *= tex_material_roughness.Sample(sampler_anisotropic_wrap, uv).g;
+            }
+
+            if (has_texture_metalness())
+            {
+                metalness *= tex_material_metallness.Sample(sampler_anisotropic_wrap, uv).b;
+            }
+        }
+    }
+    
     // Normal
     float3 normal = input.normal.xyz;
     if (has_texture_normal())

@@ -216,7 +216,14 @@ namespace Spartan
         return "";
     }
 
-    static bool load_material_texture(const ModelParams& params, shared_ptr<Material> material, const aiMaterial* material_assimp, const MaterialTexture texture_type, const aiTextureType texture_type_assimp_pbr, const aiTextureType texture_type_assimp_legacy)
+    static bool load_material_texture(
+        const ModelParams& params,
+        shared_ptr<Material> material,
+        const aiMaterial* material_assimp,
+        const MaterialTexture texture_type,
+        const aiTextureType texture_type_assimp_pbr,
+        const aiTextureType texture_type_assimp_legacy
+    )
     {
         // Determine if this is a pbr material or not
         aiTextureType type_assimp = aiTextureType_NONE;
@@ -238,7 +245,7 @@ namespace Spartan
             return false;
 
         // Add the texture to the model
-        params.model->AddTexture(material, texture_type, texture_validate_path(texture_path.data, params.file_path));
+        params.model->AddTexture(material, texture_type, texture_validate_path(texture_path.data, params.file_path), params.is_gltf);
 
         // FIX: materials that have a diffuse texture should not be tinted black/gray
         if (type_assimp == aiTextureType_BASE_COLOR || type_assimp == aiTextureType_DIFFUSE)
@@ -296,7 +303,7 @@ namespace Spartan
         material->SetProperty(MaterialProperty::ColorB, color_diffuse.b);
         material->SetProperty(MaterialProperty::ColorA, opacity.r);
 
-        //                                                       Texture type,       Texture type Assimp (PBR),       Texture type Assimp (Legacy/fallback)
+        //                                                       Texture type,                Texture type Assimp (PBR),       Texture type Assimp (Legacy/fallback)
         load_material_texture(params, material, material_assimp, MaterialTexture::Color,      aiTextureType_BASE_COLOR,        aiTextureType_DIFFUSE);
         load_material_texture(params, material, material_assimp, MaterialTexture::Roughness,  aiTextureType_DIFFUSE_ROUGHNESS, aiTextureType_SHININESS); // Use specular as fallback
         load_material_texture(params, material, material_assimp, MaterialTexture::Metallness, aiTextureType_METALNESS,         aiTextureType_AMBIENT);   // Use ambient as fallback
@@ -305,6 +312,8 @@ namespace Spartan
         load_material_texture(params, material, material_assimp, MaterialTexture::Emission,   aiTextureType_EMISSION_COLOR,    aiTextureType_EMISSIVE);
         load_material_texture(params, material, material_assimp, MaterialTexture::Height,     aiTextureType_HEIGHT,            aiTextureType_NONE);
         load_material_texture(params, material, material_assimp, MaterialTexture::AlphaMask,  aiTextureType_OPACITY,           aiTextureType_NONE);
+
+        material->SetProperty(MaterialProperty::SingleTextureRoughnessMetalness, static_cast<float>(params.is_gltf));
 
         return material;
     }
@@ -340,6 +349,7 @@ namespace Spartan
         params.file_path                   = file_path;
         params.name                        = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path);
         params.model                       = model;
+        params.is_gltf                     = FileSystem::GetExtensionFromFilePath(file_path) == ".gltf";
 
         // Set up an Assimp importer
         Importer importer;
