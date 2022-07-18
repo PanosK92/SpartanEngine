@@ -61,6 +61,7 @@ namespace Spartan
         flags |= (texture->GetFlags() & RHI_Texture_Uav)             ? VK_IMAGE_USAGE_STORAGE_BIT                  : 0;
         flags |= (texture->GetFlags() & RHI_Texture_Rt_DepthStencil) ? VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT : 0;
         flags |= (texture->GetFlags() & RHI_Texture_Rt_Color)        ? VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT         : 0;
+        flags |= (texture->GetFlags() & RHI_Texture_Transfer_Source) ? VK_IMAGE_USAGE_TRANSFER_SRC_BIT             : 0;
 
         // If the texture has data, it will be staged.
         if (texture->HasData())
