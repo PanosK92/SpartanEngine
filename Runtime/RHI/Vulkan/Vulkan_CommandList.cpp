@@ -446,7 +446,7 @@ namespace Spartan
     )
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
-        SP_ASSERT(texture->CanBeCleared());
+        SP_ASSERT_MSG((texture->GetFlags() & RHI_Texture_ClearOrBlit) != 0, "The texture needs the RHI_Texture_ClearOrBlit flag");
 
         if (!texture || !texture->GetRhiSrv())
         {
@@ -562,8 +562,9 @@ namespace Spartan
         SP_ASSERT(source->GetArrayLength() == destination->GetArrayLength());
         SP_ASSERT(source->GetMipCount() == destination->GetMipCount());
 
-        SP_ASSERT_MSG((source->GetFlags() & RHI_Texture_Transfer_Source) != 0,
-            "Texture needs to be created with the RHI_Texture_Transfer_Source flag");
+        // Validate transfer bits
+        SP_ASSERT_MSG((source->GetFlags() & RHI_Texture_ClearOrBlit) != 0, "The texture needs the RHI_Texture_ClearOrBlit flag");
+        SP_ASSERT_MSG((destination->GetFlags() & RHI_Texture_ClearOrBlit) != 0, "The texture needs the RHI_Texture_ClearOrBlit flag");
 
         VkOffset3D blit_size = {};
         blit_size.x          = source->GetWidth();
