@@ -61,19 +61,13 @@ namespace Spartan
         flags |= (texture->GetFlags() & RHI_Texture_Uav)             ? VK_IMAGE_USAGE_STORAGE_BIT                  : 0;
         flags |= (texture->GetFlags() & RHI_Texture_Rt_DepthStencil) ? VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT : 0;
         flags |= (texture->GetFlags() & RHI_Texture_Rt_Color)        ? VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT         : 0;
-        flags |= (texture->GetFlags() & RHI_Texture_Transfer_Source) ? VK_IMAGE_USAGE_TRANSFER_SRC_BIT             : 0;
 
-        // If the texture has data, it will be staged.
-        if (texture->HasData())
+        // If the texture has data, it will be staged, so it needs transfer bits.
+        // If the texture participates in clear or blit operations, it needs transfer bits.
+        if (texture->HasData() || (texture->GetFlags() & RHI_Texture_ClearOrBlit) != 0)
         {
             flags |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT; // source of a transfer command.
             flags |= VK_IMAGE_USAGE_TRANSFER_DST_BIT; // destination of a transfer command
-        }
-
-        // If the texture is a render target, it can be blitted.
-        if (texture->CanBeCleared())
-        {
-            flags |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
         }
 
         return flags;
