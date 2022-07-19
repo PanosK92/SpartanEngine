@@ -130,7 +130,7 @@ project (RUNTIME_NAME)
 	removefiles { IGNORE_FILES[0], IGNORE_FILES[1] }
 
 	-- Includes
-	includedirs { "../third_party/DirectXShaderCompiler-03-06-2022" }
+	includedirs { "../third_party/DirectXShaderCompiler_1.7.2207" }
 	includedirs { "../third_party/Assimp_5.2.4" }
 	includedirs { "../third_party/Bullet_3.21" }
 	includedirs { "../third_party/FMOD_1.10.10" }
