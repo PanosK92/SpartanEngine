@@ -140,7 +140,7 @@ namespace Spartan
         LOG_INFO("Loading sky sphere...");
 
         // Create texture
-        shared_ptr<RHI_Texture> texture = make_shared<RHI_Texture2D>(GetContext(), RHI_Texture_Srv | RHI_Texture_Mips);
+        shared_ptr<RHI_Texture> texture = make_shared<RHI_Texture2D>(GetContext(), RHI_Texture_Srv);
 
         if (!texture->LoadFromFile(file_path))
         {
@@ -149,7 +149,7 @@ namespace Spartan
 
         // Save file path for serialization/deserialisation
         m_file_paths = { texture->GetResourceFilePath() };
-        
+
         // Pass the texture to the renderer.
         SetTexture(texture);
 
