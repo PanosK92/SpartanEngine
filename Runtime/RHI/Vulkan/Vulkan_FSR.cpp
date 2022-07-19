@@ -97,23 +97,23 @@ namespace Spartan
         wchar_t name_output[]   = L"FSR2_Output";
 
         // Transition to the appropriate texture layouts
-        tex_input->SetLayout(RHI_Image_Layout::Shader_Read_Only_Optimal,        cmd_list);
-        tex_depth->SetLayout(RHI_Image_Layout::Depth_Stencil_Read_Only_Optimal, cmd_list);
-        tex_velocity->SetLayout(RHI_Image_Layout::Shader_Read_Only_Optimal,     cmd_list);
-        tex_output->SetLayout(RHI_Image_Layout::General,                        cmd_list);
+        tex_input->SetLayout(RHI_Image_Layout::Shader_Read_Only_Optimal,    cmd_list);
+        tex_depth->SetLayout(RHI_Image_Layout::Shader_Read_Only_Optimal,    cmd_list);
+        tex_velocity->SetLayout(RHI_Image_Layout::Shader_Read_Only_Optimal, cmd_list);
+        tex_output->SetLayout(RHI_Image_Layout::General,                    cmd_list);
 
         // Fill in the dispatch description
         m_ffx_fsr2_dispatch_description.commandList            = ffxGetCommandListVK(static_cast<VkCommandBuffer>(cmd_list->GetResource()));
-        m_ffx_fsr2_dispatch_description.color                  = ffxGetTextureResourceVK(&m_ffx_fsr2_context, static_cast<VkImage>(tex_input->GetRhiResource()),    static_cast<VkImageView>(tex_input->GetRhiSrv()),    resolution_render_x, resolution_render_y, vulkan_format[tex_input->GetFormat()],    name_input);
-        m_ffx_fsr2_dispatch_description.depth                  = ffxGetTextureResourceVK(&m_ffx_fsr2_context, static_cast<VkImage>(tex_depth->GetRhiResource()),    static_cast<VkImageView>(tex_depth->GetRhiSrv()),    resolution_render_x, resolution_render_y, vulkan_format[tex_depth->GetFormat()],    name_depth);
-        m_ffx_fsr2_dispatch_description.motionVectors          = ffxGetTextureResourceVK(&m_ffx_fsr2_context, static_cast<VkImage>(tex_velocity->GetRhiResource()), static_cast<VkImageView>(tex_velocity->GetRhiSrv()), resolution_render_x, resolution_render_y, vulkan_format[tex_velocity->GetFormat()], name_velocity);
+        m_ffx_fsr2_dispatch_description.color                  = ffxGetTextureResourceVK(&m_ffx_fsr2_context, static_cast<VkImage>(tex_input->GetRhiResource()),    static_cast<VkImageView>(tex_input->GetRhiSrv()),    resolution_render_x, resolution_render_y, vulkan_format[tex_input->GetFormat()],    name_input, FFX_RESOURCE_STATE_COMPUTE_READ);
+        m_ffx_fsr2_dispatch_description.depth                  = ffxGetTextureResourceVK(&m_ffx_fsr2_context, static_cast<VkImage>(tex_depth->GetRhiResource()),    static_cast<VkImageView>(tex_depth->GetRhiSrv()),    resolution_render_x, resolution_render_y, vulkan_format[tex_depth->GetFormat()],    name_depth, FFX_RESOURCE_STATE_COMPUTE_READ);
+        m_ffx_fsr2_dispatch_description.motionVectors          = ffxGetTextureResourceVK(&m_ffx_fsr2_context, static_cast<VkImage>(tex_velocity->GetRhiResource()), static_cast<VkImageView>(tex_velocity->GetRhiSrv()), resolution_render_x, resolution_render_y, vulkan_format[tex_velocity->GetFormat()], name_velocity, FFX_RESOURCE_STATE_COMPUTE_READ);
         m_ffx_fsr2_dispatch_description.exposure               = ffxGetTextureResourceVK(&m_ffx_fsr2_context, nullptr,                                              nullptr,                                             1,                   1,                   VK_FORMAT_UNDEFINED,                      name_exposure);
         m_ffx_fsr2_dispatch_description.output                 = ffxGetTextureResourceVK(&m_ffx_fsr2_context, static_cast<VkImage>(tex_output->GetRhiResource()),   static_cast<VkImageView>(tex_output->GetRhiSrv()),   resolution_output_x, resolution_output_y, vulkan_format[tex_output->GetFormat()],   name_output, FFX_RESOURCE_STATE_UNORDERED_ACCESS);
         m_ffx_fsr2_dispatch_description.motionVectorScale.x    = -static_cast<float>(resolution_render_x);
         m_ffx_fsr2_dispatch_description.motionVectorScale.y    = -static_cast<float>(resolution_render_y);
         m_ffx_fsr2_dispatch_description.reset                  = false;                // A boolean value which when set to true, indicates the camera has moved discontinuously.
-        m_ffx_fsr2_dispatch_description.enableSharpening       = false;                
-        m_ffx_fsr2_dispatch_description.sharpness              = 1.0f;                 
+        m_ffx_fsr2_dispatch_description.enableSharpening       = false;
+        m_ffx_fsr2_dispatch_description.sharpness              = 1.0f;
         m_ffx_fsr2_dispatch_description.frameTimeDelta         = delta_time * 1000.0f; // Seconds to milliseconds.
         m_ffx_fsr2_dispatch_description.preExposure            = 1.0f;                 // The exposure value if not using FFX_FSR2_ENABLE_AUTO_EXPOSURE.
         m_ffx_fsr2_dispatch_description.renderSize.width       = resolution_render_x;
