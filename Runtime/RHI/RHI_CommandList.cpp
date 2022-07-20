@@ -60,7 +60,6 @@ namespace Spartan
         }
 
         m_state = RHI_CommandListState::Idle;
-
     }
 
     void RHI_CommandList::Discard()

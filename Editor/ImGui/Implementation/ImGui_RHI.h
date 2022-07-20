@@ -218,8 +218,7 @@ namespace ImGui::RHI
             const uint64_t swapchain_id        = swap_chain->GetObjectId();
             const uint32_t swapchain_cmd_index = g_renderer->GetCmdIndex();
 
-            const uint32_t gap =  Math::Helper::Clamp<uint32_t>((swapchain_cmd_index + 1) - static_cast<uint32_t>(g_vertex_buffers[swapchain_id].size()), 0, 10);
-            for (uint32_t i = 0; i < gap; i++)
+            if (g_vertex_buffers[swapchain_id].size() == swapchain_cmd_index)
             {
                 bool is_mappable = true;
                 g_vertex_buffers[swapchain_id].emplace_back(make_unique<RHI_VertexBuffer>(g_rhi_device, is_mappable, "imgui"));

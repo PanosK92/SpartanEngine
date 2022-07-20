@@ -172,9 +172,9 @@ namespace Spartan
         std::array<RHI_Image_Layout, rhi_max_mip_count> m_layout;
 
         // API resources
-        void* m_rhi_resource  = nullptr;
-        void* m_rhi_srv       = nullptr;
-        void* m_rhi_uav       = nullptr;
+        void* m_rhi_resource = nullptr;
+        void* m_rhi_srv      = nullptr;
+        void* m_rhi_uav      = nullptr;
         std::array<void*, rhi_max_mip_count> m_rhi_srv_mips;
         std::array<void*, rhi_max_mip_count> m_rhi_uav_mips;
         std::array<void*, rhi_max_render_target_count> m_rhi_rtv;

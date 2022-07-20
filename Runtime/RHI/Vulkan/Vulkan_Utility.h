@@ -82,16 +82,12 @@ namespace Spartan::vulkan_utility
 
         inline bool check(VkResult result)
         {
-            if (result == VK_SUCCESS)
-                return true;
+            if (result != VK_SUCCESS)
+            {
+                LOG_ERROR("%s", to_string(result));
+            }
 
-            LOG_ERROR("%s", to_string(result));
-            return false;
-        }
-
-        inline void _assert(VkResult result)
-        {
-            SP_ASSERT(result == VK_SUCCESS);
+            return result == VK_SUCCESS;
         }
     }
 
