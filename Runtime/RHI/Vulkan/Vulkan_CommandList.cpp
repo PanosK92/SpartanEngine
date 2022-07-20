@@ -211,7 +211,6 @@ namespace Spartan
             m_proccessed_fence.get()                       // signal fence
         );
 
-
         m_state = RHI_CommandListState::Submitted;
 
         return true;

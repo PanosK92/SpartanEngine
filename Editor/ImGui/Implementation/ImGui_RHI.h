@@ -184,6 +184,10 @@ namespace ImGui::RHI
         // Validate draw data
         SP_ASSERT(draw_data != nullptr);
 
+        // Don't render when minimised
+        if (draw_data->DisplaySize.x == 0 || draw_data->DisplaySize.y == 0)
+            return;
+
         // Get swap chain and cmd list
         bool is_child_window           = window_data != nullptr;
         RHI_SwapChain* swap_chain      = is_child_window ? window_data->swapchain.get() : g_renderer->GetSwapChain();
