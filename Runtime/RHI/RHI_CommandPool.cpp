@@ -32,13 +32,13 @@ namespace Spartan
 {
     void RHI_CommandPool::AllocateCommandLists(const uint32_t command_list_count)
     {
-        for (uint32_t index_pool = 0; index_pool < static_cast<uint32_t>(m_resources.size()); index_pool++)
+        for (uint32_t index_pool = 0; index_pool < static_cast<uint32_t>(m_rhi_resources.size()); index_pool++)
         {
             for (uint32_t i = 0; i < command_list_count; i++)
             {
                 vector<shared_ptr<RHI_CommandList>>& cmd_lists = m_cmd_lists[index_pool];
                 string cmd_list_name                           = m_object_name + "_cmd_pool_" + to_string(index_pool) + "_cmd_list_" + to_string(cmd_lists.size());
-                shared_ptr<RHI_CommandList> cmd_list           = make_shared<RHI_CommandList>(m_context, m_resources[index_pool], cmd_list_name.c_str());
+                shared_ptr<RHI_CommandList> cmd_list           = make_shared<RHI_CommandList>(m_context, m_rhi_resources[index_pool], cmd_list_name.c_str());
 
                 cmd_lists.emplace_back(cmd_list);
             }
@@ -47,11 +47,9 @@ namespace Spartan
 
     bool RHI_CommandPool::Tick()
     {
-        if (m_pool_index == -1)
+        if (m_is_first_tick)
         {
-            m_pool_index     = 0;
-            m_cmd_list_index = 0;
-
+            m_is_first_tick = false;
             return false;
         }
 
@@ -59,27 +57,12 @@ namespace Spartan
         m_cmd_list_index = (m_cmd_list_index + 1) % GetCommandListCount();
 
         // Reset the command pool
-        if (m_cmd_list_index == 0)
+        bool reset_pool = m_cmd_list_index == 0;
+        if (reset_pool)
         {
             Reset();
-            return true;
         }
 
-        return false;
+        return reset_pool;
     }
-
-	void RHI_CommandPool::Wait()
-    {
-        for (uint32_t i = 0; i < m_cmd_lists.size(); i++)
-        {
-            vector<shared_ptr<RHI_CommandList>>& cmd_lists = m_cmd_lists[i];
-            for (shared_ptr<RHI_CommandList> cmd_list : cmd_lists)
-            {
-                if (cmd_list->GetState() == RHI_CommandListState::Submitted)
-                {
-                    cmd_list->Wait();
-                }
-            }
-        }
-	}
 }
