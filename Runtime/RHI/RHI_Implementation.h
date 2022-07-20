@@ -518,7 +518,7 @@ namespace Spartan
                     "VK_KHR_timeline_semaphore",    // timeline semaphores
                     "VK_KHR_dynamic_rendering",     // gets rid of render passes and frame buffer objects
                     "VK_EXT_subgroup_size_control", // used by FSR 2.0
-                    "VK_KHR_shader_float16_int8",   // used by FSR 2.0
+                    "VK_KHR_shader_float16_int8"    // used by FSR 2.0
                 };
 
                 bool InitialiseAllocator();
