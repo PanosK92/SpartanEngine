@@ -520,9 +520,6 @@ namespace Spartan
                     "VK_EXT_subgroup_size_control", // used by FSR 2.0
                     "VK_KHR_shader_float16_int8"    // used by FSR 2.0
                 };
-
-                bool InitialiseAllocator();
-                void DestroyAllocator();
         #endif
 
         // Debugging

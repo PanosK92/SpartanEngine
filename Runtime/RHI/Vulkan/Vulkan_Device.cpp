@@ -347,10 +347,6 @@ namespace Spartan
                         device_features_to_enable.features.shaderInt16 = VK_TRUE;
                     }
 
-                    // Separate depth stencil layouts - FSR 2.0 will need this if we are providing a depth buffer with a stencil aspect to it.
-                    SP_ASSERT(features_supported_1_2.separateDepthStencilLayouts == VK_TRUE);
-                    device_features_to_enable_1_2.separateDepthStencilLayouts = VK_TRUE;
-
                     // Wave64 - FSR 2.0 will opt for it (for performance), but it's not a requirement, so don't assert on this one.
                     if (features_supported_1_3.subgroupSizeControl == VK_TRUE)
                     {
