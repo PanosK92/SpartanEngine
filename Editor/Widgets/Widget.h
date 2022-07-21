@@ -44,15 +44,15 @@ public:
 
     void Tick();
 
-    virtual void TickAlways();      // Called always
-    virtual void TickVisible();     // Called only when the widget is visible
-    virtual void OnShow();          // Called when the window becomes visible
-    virtual void OnHide();          // Called when the window becomes invisible
-    virtual void OnPushStyleVar();  // Called just before ImGui::Begin()
+    virtual void TickAlways() {};     // Called always
+    virtual void TickVisible() {};    // Called only when the widget is visible
+    virtual void OnShow() {};         // Called when the window becomes visible
+    virtual void OnHide() {};         // Called when the window becomes invisible
+    virtual void OnPushStyleVar() {}; // Called just before ImGui::Begin()
 
     // Use this to push style variables. They will be automatically popped.
     template<typename T>
-    void PushStyleVar(ImGuiStyleVar idx, T val) { ImGui::PushStyleVar(idx, val); m_var_pushes++; }
+    void PushStyleVar(ImGuiStyleVar idx, T val) { ImGui::PushStyleVar(idx, val); m_var_push_count++; }
 
     // Properties
     float GetHeight()           const { return m_height; }
@@ -62,6 +62,7 @@ public:
     void SetVisible(bool is_visible)  { m_visible = is_visible; }
 
 protected:
+    // Properties
     bool m_is_window                      = true;
     bool m_visible                        = true;
     int m_flags                           = ImGuiWindowFlags_NoCollapse;
@@ -72,12 +73,16 @@ protected:
     Spartan::Math::Vector2 m_size_min     = k_widget_default_propery;
     Spartan::Math::Vector2 m_size_max     = FLT_MAX;
     Spartan::Math::Vector2 m_padding      = k_widget_default_propery;
-    Editor* m_editor                      = nullptr;
-    Spartan::Context* m_context           = nullptr;
-    Spartan::Profiler* m_profiler         = nullptr;
-    ImGuiWindow* m_window                 = nullptr;
     std::string m_title                   = "Title";
 
+    // The ImGui window this widget corresponds to
+    ImGuiWindow* m_window = nullptr;
+
+    // Dependencies
+    Editor* m_editor              = nullptr;
+    Spartan::Context* m_context   = nullptr;
+    Spartan::Profiler* m_profiler = nullptr;
+
 private:
-    uint8_t m_var_pushes = 0;
+    uint8_t m_var_push_count = 0;
 };

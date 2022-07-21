@@ -36,44 +36,15 @@ Widget::Widget(Editor* editor)
     m_window   = nullptr;
 }
 
-void Widget::TickAlways()
-{
-
-}
-
-void Widget::TickVisible()
-{
-
-}
-
-void Widget::OnShow()
-{
-
-}
-
-void Widget::OnHide()
-{
-
-}
-
-void Widget::OnPushStyleVar()
-{
-
-}
-
 void Widget::Tick()
 {
     TickAlways();
 
-    if (!m_is_window)
+    if (!m_is_window || !m_visible)
         return;
 
-    // ImGui::Begin()
-    bool begun = false;
+    // Begin
     {
-        if (!m_visible)
-            return;
-
         TIME_BLOCK_START_NAMED(m_profiler, m_title.c_str());
 
         // Size initial
@@ -92,14 +63,14 @@ void Widget::Tick()
         if (m_padding != k_widget_default_propery)
         {
             ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, m_padding);
-            m_var_pushes++;
+            m_var_push_count++;
         }
 
         // Alpha
         if (m_alpha != k_widget_default_propery)
         {
             ImGui::PushStyleVar(ImGuiStyleVar_Alpha, m_alpha);
-            m_var_pushes++;
+            m_var_push_count++;
         }
 
         // Position
@@ -123,15 +94,6 @@ void Widget::Tick()
         {
             m_window = ImGui::GetCurrentWindow();
             m_height = ImGui::GetWindowHeight();
-            begun = true;
-        }
-        else if (m_window && m_window->Hidden)
-        {
-            // Enters here if the window is hidden as part of an unselected tab.
-            // ImGui::Begin() makes the window but returns false, then ImGui still expects ImGui::End() to be called.
-            // So we make sure that when Widget::End() is called, ImGui::End() get's called as well.
-            // Note: ImGui's docking is in beta, so maybe it's at fault here ?
-            begun = true;
         }
 
         // Callbacks
@@ -145,21 +107,18 @@ void Widget::Tick()
         }
     }
 
-    if (begun)
+    TickVisible();
+
+    // End
     {
-        TickVisible();
+        // End
+        ImGui::End();
 
-        // ImGui::End()
-        {
-            // End
-            ImGui::End();
+        // Pop style variables
+        ImGui::PopStyleVar(m_var_push_count);
+        m_var_push_count = 0;
 
-            // Pop style variables
-            ImGui::PopStyleVar(m_var_pushes);
-            m_var_pushes = 0;
-
-            // End profiling
-            TIME_BLOCK_END(m_profiler);
-        }
+        // End profiling
+        TIME_BLOCK_END(m_profiler);
     }
 }
