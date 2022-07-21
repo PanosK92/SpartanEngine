@@ -120,7 +120,6 @@ namespace Spartan
 
         // Command lists
         RHI_CommandList* GetCmdList() const { return m_cmd_current; }
-        uint32_t GetCmdIndex() const;
 
         // Static
         static RHI_Api_Type GetApiType();

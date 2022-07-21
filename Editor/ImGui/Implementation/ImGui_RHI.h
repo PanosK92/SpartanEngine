@@ -67,7 +67,7 @@ namespace ImGui::RHI
         }
 
         // Index and vertex buffers
-        vector<unique_ptr<RHI_IndexBuffer>>  index_buffers;
+        vector<unique_ptr<RHI_IndexBuffer>> index_buffers;
         vector<unique_ptr<RHI_VertexBuffer>> vertex_buffers;
 
         // Constant buffer
@@ -228,17 +228,17 @@ namespace ImGui::RHI
         RHI_VertexBuffer* vertex_buffer = nullptr;
         RHI_IndexBuffer* index_buffer   = nullptr;
         {
-            const uint32_t swapchain_cmd_index = g_renderer->GetCmdIndex();
+            const uint32_t cmd_index = resources->cmd_pool->GetCommandListIndex();
 
-            while (resources->vertex_buffers.size() <= swapchain_cmd_index)
+            while (resources->vertex_buffers.size() <= cmd_index)
             {
                 bool is_mappable = true;
                 resources->vertex_buffers.emplace_back(make_unique<RHI_VertexBuffer>(g_rhi_device, is_mappable, "imgui"));
                 resources->index_buffers.emplace_back(make_unique<RHI_IndexBuffer>(g_rhi_device, is_mappable, "imgui"));
             }
 
-            vertex_buffer = resources->vertex_buffers[swapchain_cmd_index].get();
-            index_buffer  = resources->index_buffers[swapchain_cmd_index].get();
+            vertex_buffer = resources->vertex_buffers[cmd_index].get();
+            index_buffer  = resources->index_buffers[cmd_index].get();
 
             // Grow vertex buffer as needed
             if (vertex_buffer->GetVertexCount() < static_cast<unsigned int>(draw_data->TotalVtxCount))

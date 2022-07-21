@@ -36,6 +36,8 @@ namespace Spartan
 {
     void RHI_VertexBuffer::_destroy()
     {
+        SP_ASSERT(m_rhi_resource != nullptr);
+
         // Wait
         m_rhi_device->QueueWaitAll();
 
@@ -46,8 +48,11 @@ namespace Spartan
     bool RHI_VertexBuffer::_create(const void* vertices)
     {
         // Destroy previous buffer
-        _destroy();
-    
+        if (m_rhi_resource)
+        {
+            _destroy();
+        }
+
         m_is_mappable = vertices == nullptr;
 
         if (m_is_mappable)
