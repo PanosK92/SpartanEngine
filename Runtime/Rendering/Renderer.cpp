@@ -870,9 +870,4 @@ namespace Spartan
         lock_guard<mutex> guard(m_texture_mip_generation_mutex);
         m_textures_mip_generation_pending.push_back(texture);
     }
-
-    uint32_t Renderer::GetCmdIndex() const
-    {
-        return m_cmd_pool->GetCommandListIndex();
-    }
 }
