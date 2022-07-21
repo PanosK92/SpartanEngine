@@ -57,16 +57,16 @@ namespace Spartan
 
         const uint32_t offset_count = 4096; // buffers can dynamically re-allocate anyway, no need to go big.
 
-        m_cb_frame_gpu = make_shared<RHI_ConstantBuffer>(m_rhi_device, "frame");
+        m_cb_frame_gpu = make_shared<RHI_ConstantBuffer>(m_rhi_device.get(), "frame");
         m_cb_frame_gpu->Create<Cb_Frame>(offset_count);
 
-        m_cb_uber_gpu = make_shared<RHI_ConstantBuffer>(m_rhi_device, "uber");
+        m_cb_uber_gpu = make_shared<RHI_ConstantBuffer>(m_rhi_device.get(), "uber");
         m_cb_uber_gpu->Create<Cb_Uber>(offset_count);
 
-        m_cb_light_gpu = make_shared<RHI_ConstantBuffer>(m_rhi_device, "light");
+        m_cb_light_gpu = make_shared<RHI_ConstantBuffer>(m_rhi_device.get(), "light");
         m_cb_light_gpu->Create<Cb_Light>(offset_count);
 
-        m_cb_material_gpu = make_shared<RHI_ConstantBuffer>(m_rhi_device, "material");
+        m_cb_material_gpu = make_shared<RHI_ConstantBuffer>(m_rhi_device.get(), "material");
         m_cb_material_gpu->Create<Cb_Material>(offset_count);
     }
 

@@ -298,7 +298,7 @@ namespace Spartan::vulkan_utility
 
     namespace image
     {
-        inline VkImageAspectFlags get_aspect_mask(const RHI_Texture* texture, const bool only_depth = false, const bool only_stencil = false)
+        static VkImageAspectFlags get_aspect_mask(const RHI_Texture* texture, const bool only_depth = false, const bool only_stencil = false)
         {
             VkImageAspectFlags aspect_mask = 0;
 
@@ -322,7 +322,7 @@ namespace Spartan::vulkan_utility
             return aspect_mask;
         }
 
-        inline VkPipelineStageFlags layout_to_access_mask(const VkImageLayout layout, const bool is_destination_mask)
+        static VkPipelineStageFlags layout_to_access_mask(const VkImageLayout layout, const bool is_destination_mask)
         {
             VkPipelineStageFlags access_mask = 0;
 
@@ -397,7 +397,7 @@ namespace Spartan::vulkan_utility
             return access_mask;
         }
 
-        inline VkPipelineStageFlags access_flags_to_pipeline_stage(VkAccessFlags access_flags)
+        static VkPipelineStageFlags access_flags_to_pipeline_stage(VkAccessFlags access_flags)
         {
             VkPipelineStageFlags stages = 0;
             uint32_t enabled_graphics_stages = globals::rhi_device->GetEnabledGraphicsStages();
@@ -479,7 +479,7 @@ namespace Spartan::vulkan_utility
             return stages;
         }
 
-        inline void set_layout(void* cmd_buffer, void* image, const VkImageAspectFlags aspect_mask, const uint32_t mip_index, const uint32_t mip_range, const uint32_t array_length, const RHI_Image_Layout layout_old, const RHI_Image_Layout layout_new)
+        static void set_layout(void* cmd_buffer, void* image, const VkImageAspectFlags aspect_mask, const uint32_t mip_index, const uint32_t mip_range, const uint32_t array_length, const RHI_Image_Layout layout_old, const RHI_Image_Layout layout_new)
         {
             SP_ASSERT(cmd_buffer != nullptr);
             SP_ASSERT(image != nullptr);
@@ -543,7 +543,7 @@ namespace Spartan::vulkan_utility
             );
         }
 
-        inline void set_layout(void* cmd_buffer, RHI_Texture* texture, const uint32_t mip_start, const uint32_t mip_range, const uint32_t array_length, const RHI_Image_Layout layout_old, const RHI_Image_Layout layout_new)
+        static void set_layout(void* cmd_buffer, RHI_Texture* texture, const uint32_t mip_start, const uint32_t mip_range, const uint32_t array_length, const RHI_Image_Layout layout_old, const RHI_Image_Layout layout_new)
         {
             SP_ASSERT(cmd_buffer != nullptr);
             SP_ASSERT(texture != nullptr);

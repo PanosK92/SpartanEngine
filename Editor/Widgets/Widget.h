@@ -47,7 +47,7 @@ public:
     virtual void TickAlways();      // Called always
     virtual void TickVisible();     // Called only when the widget is visible
     virtual void OnShow();          // Called when the window becomes visible
-    virtual void OnHide();          // called when the window becomes invisible
+    virtual void OnHide();          // Called when the window becomes invisible
     virtual void OnPushStyleVar();  // Called just before ImGui::Begin()
 
     // Use this to push style variables. They will be automatically popped.
