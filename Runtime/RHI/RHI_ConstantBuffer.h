@@ -31,7 +31,7 @@ namespace Spartan
     class SPARTAN_CLASS RHI_ConstantBuffer : public SpartanObject
     {
     public:
-        RHI_ConstantBuffer(const std::shared_ptr<RHI_Device>& rhi_device, const std::string& name);
+        RHI_ConstantBuffer(const RHI_Device* rhi_device, const std::string& name);
         ~RHI_ConstantBuffer() { _destroy(); }
 
         template<typename T>
@@ -115,13 +115,13 @@ namespace Spartan
         bool _create();
         void _destroy();
 
-        bool m_persistent_mapping = false;
-        void* m_mapped_data       = nullptr;
-        uint64_t m_stride         = 0;
-        uint32_t m_element_count  = 0;
-        uint32_t m_offset         = 0;
-        bool m_reset_offset       = true;
-        std::shared_ptr<RHI_Device> m_rhi_device;
+        bool m_persistent_mapping      = false;
+        void* m_mapped_data            = nullptr;
+        uint64_t m_stride              = 0;
+        uint32_t m_element_count       = 0;
+        uint32_t m_offset              = 0;
+        bool m_reset_offset            = true;
+        const RHI_Device* m_rhi_device = nullptr;
 
         // RHI Resource
         void* m_rhi_resource = nullptr;

@@ -121,14 +121,14 @@ namespace Spartan
         uint32_t* height,
         uint32_t buffer_count,
         RHI_Format* rhi_format,
-        array<RHI_Image_Layout, 3> layouts,
+        array<RHI_Image_Layout, max_buffer_count> layouts,
         uint32_t flags,
         void* window_handle,
         void*& void_ptr_surface,
         void*& void_ptr_swap_chain,
-        array<void*, 3>& backbuffer_textures,
-        array<void*, 3>& backbuffer_texture_views,
-        array<shared_ptr<RHI_Semaphore>, 3>& image_acquired_semaphore
+        array<void*, max_buffer_count>& backbuffer_textures,
+        array<void*, max_buffer_count>& backbuffer_texture_views,
+        array<shared_ptr<RHI_Semaphore>, max_buffer_count>& image_acquired_semaphore
     )
         {
             RHI_Context* rhi_context = rhi_device->GetContextRhi();
@@ -212,7 +212,10 @@ namespace Spartan
                 create_info.clipped        = VK_TRUE;
                 create_info.oldSwapchain   = nullptr;
 
-                SP_ASSERT_MSG(vulkan_utility::error::check(vkCreateSwapchainKHR(rhi_context->device, &create_info, nullptr, &swap_chain)), "Failed to create swapchain");
+                SP_ASSERT_MSG(
+                    vulkan_utility::error::check(vkCreateSwapchainKHR(rhi_context->device, &create_info, nullptr, &swap_chain)),
+                    "Failed to create swapchain"
+                );
             }
 
             // Images
@@ -285,7 +288,7 @@ namespace Spartan
         void*& surface,
         void*& swap_chain,
         array<void*, 3>& image_views,
-        array<std::shared_ptr<RHI_Semaphore>, 3>& image_acquired_semaphore
+        array<std::shared_ptr<RHI_Semaphore>, max_buffer_count>& image_acquired_semaphore
     )
     {
         RHI_Context* rhi_context = rhi_device->GetContextRhi();

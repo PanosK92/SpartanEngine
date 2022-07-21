@@ -43,7 +43,7 @@ namespace Spartan
         vulkan_utility::vma_allocator::destroy_buffer(m_rhi_resource);
     }
 
-    RHI_ConstantBuffer::RHI_ConstantBuffer(const std::shared_ptr<RHI_Device>& rhi_device, const string& name)
+    RHI_ConstantBuffer::RHI_ConstantBuffer(const RHI_Device* rhi_device, const string& name)
     {
         m_rhi_device         = rhi_device;
         m_object_name        = name;

@@ -39,7 +39,7 @@ namespace Spartan
     vector<LogCmd> Log::m_log_buffer;
     vector<string> Log::m_error_logs;
     string Log::m_log_file_name = "log.txt";
-    bool Log::m_log_to_file     = true; // start logging to file (this will eventually become false, e.g. Renderer initialization was successful, so logging can happen on screen)
+    bool Log::m_log_to_file     = true; // will become false after a few frames, when the Renderer can render logs on-screen.
     bool Log::m_first_log       = true;
 #ifdef DEBUG
     bool Log::m_only_unique_logs = true;
