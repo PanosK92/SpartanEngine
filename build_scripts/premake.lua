@@ -57,7 +57,6 @@ end
 solution (SOLUTION_NAME)
 	location ".."
 	systemversion "latest"
-	cppdialect "C++20"
 	language "C++"
 	platforms { "Windows", "Linux" }
 	configurations { "Debug", "Release" }
@@ -188,6 +187,7 @@ project (EDITOR_NAME)
 	links { RUNTIME_NAME }
 	dependson { RUNTIME_NAME }
 	objdir (OBJ_DIR)
+    cppdialect "C++20"
 	kind "WindowedApp"
 	staticruntime "On"
     if os.target() == "windows" then
