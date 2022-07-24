@@ -117,7 +117,7 @@ namespace Spartan
 
             if (!async)
             {
-                CompileShader(m_compilation_state, m_shader_type, m_defines, m_object_name, m_rhi_resource, std::bind(&RHI_Shader::Compile2, this));
+                CompileShader(m_compilation_state, m_shader_type, m_defines, m_object_name, m_rhi_resource, bind(&RHI_Shader::Compile2, this));
             }
             else
             {
@@ -181,7 +181,7 @@ namespace Spartan
     {
         // Get name and file path
         m_object_name = FileSystem::GetFileNameFromFilePath(file_path);
-        m_file_path = file_path;
+        m_file_path   = file_path;
 
         // Parse source
         m_source.clear();

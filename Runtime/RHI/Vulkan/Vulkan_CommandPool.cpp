@@ -56,7 +56,7 @@ namespace Spartan
         // Name
         for (uint32_t i = 0; i < static_cast<uint32_t>(m_rhi_resources.size()); i++)
         {
-            vulkan_utility::debug::set_name(static_cast<VkCommandPool>(m_rhi_resources[i]), (m_object_name + string("_") + to_string(i)).c_str());
+            vulkan_utility::debug::set_object_name(static_cast<VkCommandPool>(m_rhi_resources[i]), (m_object_name + string("_") + to_string(i)).c_str());
         }
     }
 

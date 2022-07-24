@@ -44,7 +44,7 @@ namespace Spartan
         if (name)
         {
             m_object_name = name;
-            vulkan_utility::debug::set_name(static_cast<VkFence>(m_resource), m_object_name.c_str());
+            vulkan_utility::debug::set_object_name(static_cast<VkFence>(m_resource), m_object_name.c_str());
         }
     }
 

@@ -142,18 +142,18 @@ namespace Spartan
             }
         }
 
-        vulkan_utility::debug::set_name(static_cast<VkImage>(texture->GetRhiResource()), name.c_str());
+        vulkan_utility::debug::set_object_name(static_cast<VkImage>(texture->GetRhiResource()), name.c_str());
 
         if (texture->IsSrv())
         {
-            vulkan_utility::debug::set_name(static_cast<VkImageView>(texture->GetRhiSrv()), name.c_str());
+            vulkan_utility::debug::set_object_name(static_cast<VkImageView>(texture->GetRhiSrv()), name.c_str());
         }
 
         if (texture->HasPerMipViews())
         {
             for (uint32_t i = 0; i < texture->GetMipCount(); i++)
             {
-                vulkan_utility::debug::set_name(static_cast<VkImageView>(texture->GetRhiSrvMip(i)), name.c_str());
+                vulkan_utility::debug::set_object_name(static_cast<VkImageView>(texture->GetRhiSrvMip(i)), name.c_str());
             }
         }
     }

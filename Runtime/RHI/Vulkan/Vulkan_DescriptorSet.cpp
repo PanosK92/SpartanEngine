@@ -55,7 +55,7 @@ namespace Spartan
         SP_ASSERT_MSG(allocated, "Failed to allocate descriptor set.");
 
         // Name
-        vulkan_utility::debug::set_name(*reinterpret_cast<VkDescriptorSet*>(&m_resource), m_object_name.c_str());
+        vulkan_utility::debug::set_object_name(*reinterpret_cast<VkDescriptorSet*>(&m_resource), m_object_name.c_str());
     }
 
     void RHI_DescriptorSet::Update(const vector<RHI_Descriptor>& descriptors)
