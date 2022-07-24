@@ -94,7 +94,7 @@ namespace Spartan
             );
 
             // Name
-            vulkan_utility::debug::set_name(static_cast<VkCommandBuffer>(m_rhi_resource), name);
+            vulkan_utility::debug::set_object_name(static_cast<VkCommandBuffer>(m_rhi_resource), name);
         }
 
         // Query pool

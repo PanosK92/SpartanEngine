@@ -124,6 +124,9 @@ namespace Spartan
                 shader_module = nullptr;
             }
 
+            // Name the shader module (useful for GPU-based validation)
+            vulkan_utility::debug::set_object_name(shader_module, m_object_name.c_str());
+
             // Reflect shader resources (so that descriptor sets can be created later)
             Reflect
             (

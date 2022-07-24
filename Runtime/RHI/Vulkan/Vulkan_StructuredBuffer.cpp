@@ -43,7 +43,7 @@ namespace Spartan
         vulkan_utility::vma_allocator::create_buffer(m_rhi_resource, m_object_size_gpu, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, flags, data);
 
         // Set debug name
-        vulkan_utility::debug::set_name(static_cast<VkBuffer>(m_rhi_resource), "structured_buffer");
+        vulkan_utility::debug::set_object_name(static_cast<VkBuffer>(m_rhi_resource), "structured_buffer");
     }
 
     RHI_StructuredBuffer::~RHI_StructuredBuffer()

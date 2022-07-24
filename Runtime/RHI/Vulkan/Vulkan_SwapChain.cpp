@@ -257,7 +257,7 @@ namespace Spartan
                     backbuffer_textures[i] = static_cast<void*>(images[i]);
 
                     // Name the image
-                    vulkan_utility::debug::set_name(images[i], string(string("swapchain_image_") + to_string(i)).c_str());
+                    vulkan_utility::debug::set_object_name(images[i], string(string("swapchain_image_") + to_string(i)).c_str());
 
                     SP_ASSERT_MSG(
                         vulkan_utility::image::view::create(

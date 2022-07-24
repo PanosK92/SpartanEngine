@@ -73,7 +73,7 @@ namespace Spartan
         m_mapped_data = vulkan_utility::vma_allocator::get_mapped_data_from_buffer(m_rhi_resource);
 
         // Set debug name
-        vulkan_utility::debug::set_name(static_cast<VkBuffer>(m_rhi_resource), (m_object_name + string("_size_") + to_string(m_object_size_gpu)).c_str());
+        vulkan_utility::debug::set_object_name(static_cast<VkBuffer>(m_rhi_resource), (m_object_name + string("_size_") + to_string(m_object_size_gpu)).c_str());
 
         return true;
     }

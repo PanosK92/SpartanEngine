@@ -92,6 +92,6 @@ namespace Spartan
         SP_ASSERT(allocated && "Failed to allocate descriptor set layout.");
 
         // Name
-        vulkan_utility::debug::set_name(static_cast<VkDescriptorSetLayout>(m_resource), m_object_name.c_str());
+        vulkan_utility::debug::set_object_name(static_cast<VkDescriptorSetLayout>(m_resource), m_object_name.c_str());
     }
 }
