@@ -33,17 +33,17 @@ namespace Spartan
 {
     FileStream::FileStream(const string& path, uint32_t flags)
     {
-        m_is_open    = false;
-        m_flags        = flags;
+        m_is_open = false;
+        m_flags   = flags;
 
-        auto ios_flags    = ios::binary;
+        ios_base::openmode ios_flags = ios::binary;
         if(flags & FileStream_Read)   ios_flags |= ios::in;
         if(flags & FileStream_Write)  ios_flags |= ios::out;
         if(flags & FileStream_Append) ios_flags |= ios::app;
 
         if (m_flags & FileStream_Write)
         {
-            out.open(path, reinterpret_cast<std::ios_base::openmode>(ios_flags));
+            out.open(path, ios_flags);
             if (out.fail())
             {
                 LOG_ERROR("Failed to open \"%s\" for writing", path.c_str());
