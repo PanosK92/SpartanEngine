@@ -42,12 +42,12 @@ AF4 SpdLoadSourceImage(ASU2 p, AU1 slice)
 // Load from mip 5
 AF4 SpdLoad(ASU2 pos, AU1 slice)
 {
-    return tex_out_rgba_mips[5][pos];
+    return tex_uav_mips[5][pos];
 }
 
 void SpdStore(ASU2 pos, AF4 value, AU1 index, AU1 slice)
 {
-    tex_out_rgba_mips[index][pos] = value;
+    tex_uav_mips[index][pos] = value;
 }
 
 AF4 SpdLoadIntermediate(AU1 x, AU1 y)
