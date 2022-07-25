@@ -670,22 +670,22 @@ namespace Spartan
     {
         SP_ASSERT_MSG(cmd_buffer != nullptr, "Invalid command buffer");
 
-        // Validate semaphore states
+        // Validate semaphores
         if (wait_semaphore)   SP_ASSERT_MSG(wait_semaphore->GetState()   != RHI_Semaphore_State::Idle,     "Wait semaphore is in an idle state and will never be signaled");
         if (signal_semaphore) SP_ASSERT_MSG(signal_semaphore->GetState() != RHI_Semaphore_State::Signaled, "Signal semaphore is already in a signaled state.");
 
-        // Get semaphore Vulkan resources
-        void* vk_wait_semaphore   = wait_semaphore   ? wait_semaphore->GetResource()   : nullptr;
-        void* vk_signal_semaphore = signal_semaphore ? signal_semaphore->GetResource() : nullptr;
+        // Get semaphores
+       VkSemaphore vk_wait_semaphore[1]   = { wait_semaphore   ? static_cast<VkSemaphore>(wait_semaphore->GetResource())   : nullptr};
+       VkSemaphore vk_signal_semaphore[1] = { signal_semaphore ? static_cast<VkSemaphore>(signal_semaphore->GetResource()) : nullptr };
 
         // Submit info
         VkSubmitInfo submit_info         = {};
         submit_info.sType                = VK_STRUCTURE_TYPE_SUBMIT_INFO;
         submit_info.pNext                = nullptr;
         submit_info.waitSemaphoreCount   = wait_semaphore ? 1 : 0;
-        submit_info.pWaitSemaphores      = wait_semaphore ? reinterpret_cast<VkSemaphore*>(&vk_wait_semaphore) : nullptr;
+        submit_info.pWaitSemaphores      = wait_semaphore ? vk_wait_semaphore : nullptr;
         submit_info.signalSemaphoreCount = signal_semaphore ? 1 : 0;
-        submit_info.pSignalSemaphores    = signal_semaphore ? reinterpret_cast<VkSemaphore*>(&vk_signal_semaphore) : nullptr;
+        submit_info.pSignalSemaphores    = signal_semaphore ? vk_signal_semaphore : nullptr;
         submit_info.pWaitDstStageMask    = &wait_flags;
         submit_info.commandBufferCount   = 1;
         submit_info.pCommandBuffers      = reinterpret_cast<VkCommandBuffer*>(&cmd_buffer);

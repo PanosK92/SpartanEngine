@@ -512,6 +512,8 @@ namespace Spartan
             }
         }
 
+        SP_ASSERT_MSG(!wait_semaphores.empty(), "Present() should wait on at least one semaphore");
+
         // Present
         m_rhi_device->QueuePresent(m_rhi_resource, &m_image_index, wait_semaphores);
 

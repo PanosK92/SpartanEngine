@@ -150,16 +150,13 @@ namespace Spartan
 
     enum class RendererBindingsUav
     {
-        r         = 0,
-        rg        = 1,
-        rgb       = 2,
-        rgb2      = 3,
-        rgb3      = 4,
-        rgba      = 5,
-        rgba2     = 6,
-        rgba_mips = 7
+        tex            = 0,
+        tex2           = 1,
+        tex3           = 2,
+        atomic_counter = 3,
+        tex_array      = 4
     };
-    
+
     enum class RendererBindingsSb
     {
         counter = 19

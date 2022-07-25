@@ -115,5 +115,5 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     color = depth_aware_gaussian_blur(thread_id.xy);
 #endif
     
-    tex_out_rgba[thread_id.xy] = color;
+    tex_uav[thread_id.xy] = color;
 }

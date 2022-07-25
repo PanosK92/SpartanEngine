@@ -25,7 +25,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 static const uint g_motion_blur_samples = 16;
 
-
 // Returns max velocity (3x3 neighborhood)
 float2 get_velocity_max_3x3(float2 uv)
 {
@@ -77,7 +76,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     
     // Early exit
     if (abs(velocity.x) + abs(velocity.y) < FLT_MIN)
-        tex_out_rgba[thread_id.xy] = color;
+        tex_uav[thread_id.xy] = color;
     
     [unroll]
     for (uint i = 1; i < g_motion_blur_samples; ++i)
@@ -86,5 +85,5 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         color.rgb += tex.SampleLevel(sampler_bilinear_clamp, uv + offset, 0).rgb;
     }
 
-    tex_out_rgba[thread_id.xy] = float4(color.rgb / float(g_motion_blur_samples), 1.0f);
+    tex_uav[thread_id.xy] = float4(color.rgb / float(g_motion_blur_samples), 1.0f);
 }

@@ -919,8 +919,8 @@ namespace Spartan
         Update_Cb_Uber(cmd_list);
 
         // Set textures
-        cmd_list->SetTexture(RendererBindingsUav::rgba,           tex_ssao);
-        cmd_list->SetTexture(RendererBindingsUav::rgba2,          tex_ssao_gi);
+        cmd_list->SetTexture(RendererBindingsUav::tex,           tex_ssao);
+        cmd_list->SetTexture(RendererBindingsUav::tex2,          tex_ssao_gi);
         cmd_list->SetTexture(RendererBindingsSrv::gbuffer_albedo, render_target(RendererTexture::Gbuffer_Albedo));
         cmd_list->SetTexture(RendererBindingsSrv::gbuffer_normal, render_target(RendererTexture::Gbuffer_Normal));
         cmd_list->SetTexture(RendererBindingsSrv::gbuffer_depth,  render_target(RendererTexture::Gbuffer_Depth));
@@ -966,7 +966,7 @@ namespace Spartan
         Update_Cb_Uber(cmd_list);
 
         // Set textures
-        cmd_list->SetTexture(RendererBindingsUav::rgba, tex_ssr);   // write to that
+        cmd_list->SetTexture(RendererBindingsUav::tex, tex_ssr);   // write to that
         cmd_list->SetTexture(RendererBindingsSrv::tex, tex_in);     // reflect from that
         cmd_list->SetTexture(RendererBindingsSrv::gbuffer_albedo,   render_target(RendererTexture::Gbuffer_Albedo));
         cmd_list->SetTexture(RendererBindingsSrv::gbuffer_normal,   render_target(RendererTexture::Gbuffer_Normal));
@@ -1031,15 +1031,15 @@ namespace Spartan
             {
                 if (light->GetIntensity() != 0)
                 {
-                    cmd_list->SetTexture(RendererBindingsUav::rgb,               tex_diffuse);
-                    cmd_list->SetTexture(RendererBindingsUav::rgb2,              tex_specular);
-                    cmd_list->SetTexture(RendererBindingsUav::rgb3,              tex_volumetric);
-                    cmd_list->SetTexture(RendererBindingsSrv::gbuffer_albedo,    render_target(RendererTexture::Gbuffer_Albedo));
-                    cmd_list->SetTexture(RendererBindingsSrv::gbuffer_normal,    render_target(RendererTexture::Gbuffer_Normal));
-                    cmd_list->SetTexture(RendererBindingsSrv::gbuffer_material,  render_target(RendererTexture::Gbuffer_Material));
-                    cmd_list->SetTexture(RendererBindingsSrv::gbuffer_depth,     render_target(RendererTexture::Gbuffer_Depth));
-                    cmd_list->SetTexture(RendererBindingsSrv::ssao,              render_target(RendererTexture::Ssao));
-                    cmd_list->SetTexture(RendererBindingsSrv::ssao_gi,           render_target(RendererTexture::Ssao_Gi));
+                    cmd_list->SetTexture(RendererBindingsUav::tex,              tex_diffuse);
+                    cmd_list->SetTexture(RendererBindingsUav::tex2,             tex_specular);
+                    cmd_list->SetTexture(RendererBindingsUav::tex3,             tex_volumetric);
+                    cmd_list->SetTexture(RendererBindingsSrv::gbuffer_albedo,   render_target(RendererTexture::Gbuffer_Albedo));
+                    cmd_list->SetTexture(RendererBindingsSrv::gbuffer_normal,   render_target(RendererTexture::Gbuffer_Normal));
+                    cmd_list->SetTexture(RendererBindingsSrv::gbuffer_material, render_target(RendererTexture::Gbuffer_Material));
+                    cmd_list->SetTexture(RendererBindingsSrv::gbuffer_depth,    render_target(RendererTexture::Gbuffer_Depth));
+                    cmd_list->SetTexture(RendererBindingsSrv::ssao,             render_target(RendererTexture::Ssao));
+                    cmd_list->SetTexture(RendererBindingsSrv::ssao_gi,          render_target(RendererTexture::Ssao_Gi));
                     
                     // Set shadow maps
                     {
@@ -1107,7 +1107,7 @@ namespace Spartan
         Update_Cb_Uber(cmd_list);
 
         // Set textures
-        cmd_list->SetTexture(RendererBindingsUav::rgba, tex_out);
+        cmd_list->SetTexture(RendererBindingsUav::tex, tex_out);
         cmd_list->SetTexture(RendererBindingsSrv::gbuffer_albedo,   render_target(RendererTexture::Gbuffer_Albedo));
         cmd_list->SetTexture(RendererBindingsSrv::gbuffer_material, render_target(RendererTexture::Gbuffer_Material));
         cmd_list->SetTexture(RendererBindingsSrv::gbuffer_normal,   render_target(RendererTexture::Gbuffer_Normal));
@@ -1241,7 +1241,7 @@ namespace Spartan
             Update_Cb_Uber(cmd_list);
 
             // Set textures
-            cmd_list->SetTexture(RendererBindingsUav::rgba, tex_blur);
+            cmd_list->SetTexture(RendererBindingsUav::tex, tex_blur);
             cmd_list->SetTexture(RendererBindingsSrv::tex, tex_in, mip, mip_range);
             if (depth_aware)
             {
@@ -1268,7 +1268,7 @@ namespace Spartan
             Update_Cb_Uber(cmd_list);
 
             // Set textures
-            cmd_list->SetTexture(RendererBindingsUav::rgba, tex_in, mip, mip_range);
+            cmd_list->SetTexture(RendererBindingsUav::tex, tex_in, mip, mip_range);
             cmd_list->SetTexture(RendererBindingsSrv::tex, tex_blur);
             if (depth_aware)
             {
@@ -1445,7 +1445,7 @@ namespace Spartan
             Update_Cb_Uber(cmd_list);
 
             // Set textures
-            cmd_list->SetTexture(RendererBindingsUav::rgb, tex_bloom);
+            cmd_list->SetTexture(RendererBindingsUav::tex, tex_bloom);
             cmd_list->SetTexture(RendererBindingsSrv::tex, tex_in);
 
             // Render
@@ -1481,7 +1481,7 @@ namespace Spartan
 
                 // Set textures
                 cmd_list->SetTexture(RendererBindingsSrv::tex, tex_bloom, mip_index_small, 1);
-                cmd_list->SetTexture(RendererBindingsUav::rgb, tex_bloom, mip_index_big, 1);
+                cmd_list->SetTexture(RendererBindingsUav::tex, tex_bloom, mip_index_big, 1);
 
                 // Render
                 uint32_t thread_group_count_x_ = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(mip_width_large) / m_thread_group_count));
@@ -1506,7 +1506,7 @@ namespace Spartan
             Update_Cb_Uber(cmd_list);
 
             // Set textures
-            cmd_list->SetTexture(RendererBindingsUav::rgba, tex_out);
+            cmd_list->SetTexture(RendererBindingsUav::tex, tex_out);
             cmd_list->SetTexture(RendererBindingsSrv::tex, tex_in);
             cmd_list->SetTexture(RendererBindingsSrv::tex2, tex_bloom, 0, 1);
 
@@ -1539,7 +1539,7 @@ namespace Spartan
         Update_Cb_Uber(cmd_list);
 
         // Set textures
-        cmd_list->SetTexture(RendererBindingsUav::rgba, tex_out);
+        cmd_list->SetTexture(RendererBindingsUav::tex, tex_out);
         cmd_list->SetTexture(RendererBindingsSrv::tex, tex_in);
 
         // Render
@@ -1570,7 +1570,7 @@ namespace Spartan
 
         // Set textures
         cmd_list->SetTexture(RendererBindingsSrv::tex, tex_in);
-        cmd_list->SetTexture(RendererBindingsUav::rgba, tex_out);
+        cmd_list->SetTexture(RendererBindingsUav::tex, tex_out);
         
         // Render
         cmd_list->Dispatch(thread_group_count_x(tex_out), thread_group_count_y(tex_out));
@@ -1599,7 +1599,7 @@ namespace Spartan
         Update_Cb_Uber(cmd_list);
 
         // Set textures
-        cmd_list->SetTexture(RendererBindingsUav::rgba, tex_out);
+        cmd_list->SetTexture(RendererBindingsUav::tex, tex_out);
         cmd_list->SetTexture(RendererBindingsSrv::tex, tex_in);
 
         // Render
@@ -1629,7 +1629,7 @@ namespace Spartan
         Update_Cb_Uber(cmd_list);
 
         // Set textures
-        cmd_list->SetTexture(RendererBindingsUav::rgba, tex_out);
+        cmd_list->SetTexture(RendererBindingsUav::tex, tex_out);
         cmd_list->SetTexture(RendererBindingsSrv::tex, tex_in);
         cmd_list->SetTexture(RendererBindingsSrv::gbuffer_velocity, render_target(RendererTexture::Gbuffer_Velocity));
         cmd_list->SetTexture(RendererBindingsSrv::gbuffer_depth, render_target(RendererTexture::Gbuffer_Depth));
@@ -1672,7 +1672,7 @@ namespace Spartan
             Update_Cb_Uber(cmd_list);
 
             // Set textures
-            cmd_list->SetTexture(RendererBindingsUav::rgba, tex_bokeh_half);
+            cmd_list->SetTexture(RendererBindingsUav::tex, tex_bokeh_half);
             cmd_list->SetTexture(RendererBindingsSrv::gbuffer_depth, tex_depth);
             cmd_list->SetTexture(RendererBindingsSrv::tex, tex_in);
 
@@ -1696,7 +1696,7 @@ namespace Spartan
             Update_Cb_Uber(cmd_list);
 
             // Set textures
-            cmd_list->SetTexture(RendererBindingsUav::rgba, tex_bokeh_half_2);
+            cmd_list->SetTexture(RendererBindingsUav::tex, tex_bokeh_half_2);
             cmd_list->SetTexture(RendererBindingsSrv::tex, tex_bokeh_half);
 
             // Render
@@ -1719,7 +1719,7 @@ namespace Spartan
             Update_Cb_Uber(cmd_list);
 
             // Set textures
-            cmd_list->SetTexture(RendererBindingsUav::rgba, tex_bokeh_half);
+            cmd_list->SetTexture(RendererBindingsUav::tex, tex_bokeh_half);
             cmd_list->SetTexture(RendererBindingsSrv::tex, tex_bokeh_half_2);
 
             // Render
@@ -1742,7 +1742,7 @@ namespace Spartan
             Update_Cb_Uber(cmd_list);
 
             // Set textures
-            cmd_list->SetTexture(RendererBindingsUav::rgba, tex_out);
+            cmd_list->SetTexture(RendererBindingsUav::tex, tex_out);
             cmd_list->SetTexture(RendererBindingsSrv::gbuffer_depth, tex_depth);
             cmd_list->SetTexture(RendererBindingsSrv::tex, tex_in);
             cmd_list->SetTexture(RendererBindingsSrv::tex2, tex_bokeh_half);
@@ -1776,7 +1776,7 @@ namespace Spartan
         Update_Cb_Uber(cmd_list);
 
         // Set textures
-        cmd_list->SetTexture(RendererBindingsUav::rgba, tex_out);
+        cmd_list->SetTexture(RendererBindingsUav::tex, tex_out);
         cmd_list->SetTexture(RendererBindingsSrv::tex, tex_in);
 
         // Render
@@ -1807,7 +1807,7 @@ namespace Spartan
         Update_Cb_Uber(cmd_list);
 
         // Set textures
-        cmd_list->SetTexture(RendererBindingsUav::rgba, tex_out);
+        cmd_list->SetTexture(RendererBindingsUav::tex, tex_out);
         cmd_list->SetTexture(RendererBindingsSrv::tex, tex_in);
 
         // Render
@@ -1837,7 +1837,7 @@ namespace Spartan
         Update_Cb_Uber(cmd_list);
 
         // Set textures
-        cmd_list->SetTexture(RendererBindingsUav::rgba, tex_out);
+        cmd_list->SetTexture(RendererBindingsUav::tex, tex_out);
         cmd_list->SetTexture(RendererBindingsSrv::tex, tex_in);
 
         // Render
@@ -1891,7 +1891,7 @@ namespace Spartan
 
         // Set textures
         cmd_list->SetTexture(RendererBindingsSrv::tex, tex, 0, 1);                            // top mip
-        cmd_list->SetTexture(RendererBindingsUav::rgba_mips, tex, 1, tex->GetMipCount() - 1); // rest of the mips
+        cmd_list->SetTexture(RendererBindingsUav::tex_array, tex, 1, tex->GetMipCount() - 1); // rest of the mips
 
         // Render
         cmd_list->Dispatch(thread_group_count_x_, thread_group_count_y_);
@@ -1920,7 +1920,7 @@ namespace Spartan
             cmd_list->SetPipelineState(pso);
 
             // Set textures
-            cmd_list->SetTexture(RendererBindingsUav::rgb, tex_out_scratch);
+            cmd_list->SetTexture(RendererBindingsUav::tex, tex_out_scratch);
             cmd_list->SetTexture(RendererBindingsSrv::tex, tex_in);
 
             // Render
@@ -1942,7 +1942,7 @@ namespace Spartan
             cmd_list->SetPipelineState(pso);
 
             // Set textures
-            cmd_list->SetTexture(RendererBindingsUav::rgb, tex_out);
+            cmd_list->SetTexture(RendererBindingsUav::tex, tex_out);
             cmd_list->SetTexture(RendererBindingsSrv::tex, tex_out_scratch);
 
             // Render
@@ -2409,7 +2409,7 @@ namespace Spartan
         Update_Cb_Uber(cmd_list);
 
         // Set texture
-        cmd_list->SetTexture(RendererBindingsUav::rg, tex_brdf_specular_lut);
+        cmd_list->SetTexture(RendererBindingsUav::tex, tex_brdf_specular_lut);
 
         // Render
         cmd_list->Dispatch(thread_group_count_x(tex_brdf_specular_lut), thread_group_count_y(tex_brdf_specular_lut));
@@ -2439,7 +2439,7 @@ namespace Spartan
         m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
         Update_Cb_Uber(cmd_list);
 
-        cmd_list->SetTexture(RendererBindingsUav::rgba, tex_out);
+        cmd_list->SetTexture(RendererBindingsUav::tex, tex_out);
         cmd_list->SetTexture(RendererBindingsSrv::tex, tex_in);
 
         // Render
