@@ -33,13 +33,13 @@ namespace Spartan
 {
     FileStream::FileStream(const string& path, uint32_t flags)
     {
-        m_is_open    = false;
-        m_flags        = flags;
+        m_is_open = false;
+        m_flags   = flags;
 
-        int ios_flags    = ios::binary;
-        ios_flags        |= (flags & FileStream_Read)    ? ios::in    : 0;
-        ios_flags        |= (flags & FileStream_Write)    ? ios::out    : 0;
-        ios_flags        |= (flags & FileStream_Append)    ? ios::app    : 0;
+        ios_base::openmode ios_flags = ios::binary;
+        if(flags & FileStream_Read)   ios_flags |= ios::in;
+        if(flags & FileStream_Write)  ios_flags |= ios::out;
+        if(flags & FileStream_Append) ios_flags |= ios::app;
 
         if (m_flags & FileStream_Write)
         {
