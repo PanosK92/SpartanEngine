@@ -36,28 +36,28 @@ namespace Spartan
         // When editing this, make sure that the bit shifts
         // in common_buffer.hlsl are also updated.
 
-        RHI_Texture_Srv                     = 1U << 0,
-        RHI_Texture_Uav                     = 1U << 1,
-        RHI_Texture_Rt_Color                = 1U << 2,
-        RHI_Texture_Rt_DepthStencil         = 1U << 3,
-        RHI_Texture_Rt_DepthStencilReadOnly = 1U << 4,
-        RHI_Texture_PerMipViews             = 1U << 5,
-        RHI_Texture_Greyscale               = 1U << 6,
-        RHI_Texture_Transparent             = 1U << 7,
-        RHI_Texture_Srgb                    = 1U << 8,
-        RHI_Texture_CanBeCleared            = 1U << 9,
-        RHI_Texture_Mips                    = 1U << 10,
-        RHI_Texture_Compressed              = 1U << 11,
-        RHI_Texture_Visualise               = 1U << 12,
-        RHI_Texture_Visualise_Pack          = 1U << 13,
-        RHI_Texture_Visualise_GammaCorrect  = 1U << 14,
-        RHI_Texture_Visualise_Boost         = 1U << 15,
-        RHI_Texture_Visualise_Abs           = 1U << 16,
-        RHI_Texture_Visualise_Channel_R     = 1U << 17,
-        RHI_Texture_Visualise_Channel_G     = 1U << 18,
-        RHI_Texture_Visualise_Channel_B     = 1U << 19,
-        RHI_Texture_Visualise_Channel_A     = 1U << 20,
-        RHI_Texture_Visualise_Sample_Point  = 1U << 21
+        RHI_Texture_Srv                              = 1U << 0,
+        RHI_Texture_Uav                              = 1U << 1,
+        RHI_Texture_Rt_Color                         = 1U << 2,
+        RHI_Texture_Rt_DepthStencil                  = 1U << 3,
+        RHI_Texture_Rt_DepthStencilReadOnly          = 1U << 4,
+        RHI_Texture_ClearOrBlit                      = 1U << 5,
+        RHI_Texture_PerMipViews                      = 1U << 6,
+        RHI_Texture_Greyscale                        = 1U << 7,
+        RHI_Texture_Transparent                      = 1U << 8,
+        RHI_Texture_Srgb                             = 1U << 9,
+        RHI_Texture_Mips                             = 1U << 10,
+        RHI_Texture_Compressed                       = 1U << 11,
+        RHI_Texture_Visualise                        = 1U << 12,
+        RHI_Texture_Visualise_Pack                   = 1U << 13,
+        RHI_Texture_Visualise_GammaCorrect           = 1U << 14,
+        RHI_Texture_Visualise_Boost                  = 1U << 15,
+        RHI_Texture_Visualise_Abs                    = 1U << 16,
+        RHI_Texture_Visualise_Channel_R              = 1U << 17,
+        RHI_Texture_Visualise_Channel_G              = 1U << 18,
+        RHI_Texture_Visualise_Channel_B              = 1U << 19,
+        RHI_Texture_Visualise_Channel_A              = 1U << 20,
+        RHI_Texture_Visualise_Sample_Point           = 1U << 21
     };
 
     enum RHI_Shader_View_Type : uint8_t
@@ -125,7 +125,6 @@ namespace Spartan
         bool IsRenderTargetColor()          const { return m_flags & RHI_Texture_Rt_Color; }
         bool HasPerMipViews()               const { return m_flags & RHI_Texture_PerMipViews; }
         bool HasMips()                      const { return m_flags & RHI_Texture_Mips; }
-        bool CanBeCleared()                 const { return m_flags & RHI_Texture_CanBeCleared || IsRenderTargetDepthStencil() || IsRenderTargetColor(); }
         bool IsGrayscale()                  const { return m_flags & RHI_Texture_Greyscale; }
         bool IsTransparent()                const { return m_flags & RHI_Texture_Transparent; }
 
@@ -138,20 +137,20 @@ namespace Spartan
         // Layout
         void SetLayout(const RHI_Image_Layout layout, RHI_CommandList* cmd_list, uint32_t mip_index = rhi_all_mips,  uint32_t mip_range = 0);
         RHI_Image_Layout GetLayout(const uint32_t mip) const { return m_layout[mip]; }
-        std::array<RHI_Image_Layout, 12> GetLayouts()  const { return m_layout; }
+        std::array<RHI_Image_Layout, rhi_max_mip_count> GetLayouts()  const { return m_layout; }
 
         // Viewport
         const auto& GetViewport() const { return m_viewport; }
 
         // GPU resources
-        void*& GetResource()                                                    { return m_resource; }
-        void* GetResource_View_Srv()                                      const { return m_resource_view_srv; }
-        void* GetResource_View_Uav()                                      const { return m_resource_view_uav; }
-        void* GetResource_Views_Srv(const uint32_t i)                     const { return m_resource_views_srv[i]; }
-        void* GetResource_Views_Uav(const uint32_t i)                     const { return m_resource_views_uav[i]; }
-        void* GetResource_View_DepthStencil(const uint32_t i = 0)         const { return i < m_resource_view_depthStencil.size()         ? m_resource_view_depthStencil[i]         : nullptr; }
-        void* GetResource_View_DepthStencilReadOnly(const uint32_t i = 0) const { return i < m_resource_view_depthStencilReadOnly.size() ? m_resource_view_depthStencilReadOnly[i] : nullptr; }
-        void* GetResource_View_RenderTarget(const uint32_t i = 0)         const { return i < m_resource_view_renderTarget.size()         ? m_resource_view_renderTarget[i]         : nullptr; }
+        void*& GetRhiResource()                       { return m_rhi_resource; }
+        void* GetRhiSrv()                             const { return m_rhi_srv; }
+        void* GetRhiUav()                             const { return m_rhi_uav; }
+        void* GetRhiSrvMip(const uint32_t i)          const { return m_rhi_srv_mips[i]; }
+        void* GetRhiUavMip(const uint32_t i)          const { return m_rhi_uav_mips[i]; }
+        void* GetRhiDsv(const uint32_t i = 0)         const { return i < m_rhi_dsv.size()           ? m_rhi_dsv[i]           : nullptr; }
+        void* GetRhiDsvReadOnly(const uint32_t i = 0) const { return i < m_rhi_dsv_read_only.size() ? m_rhi_dsv_read_only[i] : nullptr; }
+        void* GetRhiRtv(const uint32_t i = 0)         const { return i < m_rhi_rtv.size()           ? m_rhi_rtv[i]           : nullptr; }
         void RHI_DestroyResource(const bool destroy_main, const bool destroy_per_view);
 
     protected:
@@ -167,20 +166,20 @@ namespace Spartan
         uint32_t m_mip_count        = 1;
         RHI_Format m_format         = RHI_Format_Undefined;
         uint32_t m_flags            = 0;
-        std::array<RHI_Image_Layout, 12> m_layout;
         RHI_Viewport m_viewport;
         std::vector<RHI_Texture_Slice> m_data;
         std::shared_ptr<RHI_Device> m_rhi_device;
+        std::array<RHI_Image_Layout, rhi_max_mip_count> m_layout;
 
-        // API
-        void* m_resource               = nullptr;
-        void* m_resource_view_srv      = nullptr;
-        void* m_resource_view_uav      = nullptr;
-        void* m_resource_views_srv[12] = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
-        void* m_resource_views_uav[12] = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
-        std::array<void*, rhi_max_render_target_count> m_resource_view_renderTarget         = { nullptr };
-        std::array<void*, rhi_max_render_target_count> m_resource_view_depthStencil         = { nullptr };
-        std::array<void*, rhi_max_render_target_count> m_resource_view_depthStencilReadOnly = { nullptr };
+        // API resources
+        void* m_rhi_resource = nullptr;
+        void* m_rhi_srv      = nullptr;
+        void* m_rhi_uav      = nullptr;
+        std::array<void*, rhi_max_mip_count> m_rhi_srv_mips;
+        std::array<void*, rhi_max_mip_count> m_rhi_uav_mips;
+        std::array<void*, rhi_max_render_target_count> m_rhi_rtv;
+        std::array<void*, rhi_max_render_target_count> m_rhi_dsv;
+        std::array<void*, rhi_max_render_target_count> m_rhi_dsv_read_only;
 
     private:
         void ComputeMemoryUsage();

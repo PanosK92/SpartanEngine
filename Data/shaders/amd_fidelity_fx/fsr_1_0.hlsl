@@ -44,7 +44,7 @@ void filter_easu(int2 pos, AU4 const0, AU4 const1, AU4 const2, AU4 const3)
 {
     AF3 color = AF3(0, 0, 0);
     FsrEasuF(color, pos, const0, const1, const2, const3);
-    tex_out_rgb[pos] = color;
+    tex_uav[pos] = float4(color, tex_uav[pos].a);
 }
 
 // ROBUST CONTRAST ADAPTIVE SHARPENING
@@ -52,7 +52,7 @@ void filter_rcas(int2 pos, AU4 const0)
 {
     AF3 color;
     FsrRcasF(color.r, color.g, color.b, pos, const0);
-    tex_out_rgb[pos] = color;
+    tex_uav[pos] = float4(color, tex_uav[pos].a);
 }
 
 void setup(inout AU4 const0, inout AU4 const1, inout AU4 const2, inout AU4 const3)

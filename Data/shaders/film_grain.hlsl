@@ -55,5 +55,5 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     // Additive blending
     color.rgb += (film_grain + iso_noise) * 0.5f;
 
-    tex_out_rgba[thread_id.xy] = float4(saturate(color.rgb), 1.0f);
+    tex_uav[thread_id.xy] = float4(saturate(color.rgb), 1.0f);
 }

@@ -49,6 +49,7 @@ namespace Spartan
         std::string file_path;
         std::string name;
         bool has_animation;
+        bool is_gltf;
         Model* model            = nullptr;
         const aiScene* scene    = nullptr;
     };

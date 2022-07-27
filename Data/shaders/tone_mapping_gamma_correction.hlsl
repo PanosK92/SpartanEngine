@@ -127,5 +127,5 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 
     // Tone map and gamma correct
     float4 color = tex[thread_id.xy];
-    tex_out_rgba[thread_id.xy] = float4(gamma(tone_map(color.rgb)), color.a);
+    tex_uav[thread_id.xy] = float4(gamma(tone_map(color.rgb)), color.a);
 }

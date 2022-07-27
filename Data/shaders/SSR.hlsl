@@ -194,7 +194,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     
     if (surface.is_sky())
     {
-        tex_out_rgba[thread_id.xy] = float4(color, alpha);
+        tex_uav[thread_id.xy] = float4(color, alpha);
         return;
     }
 
@@ -223,6 +223,6 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     bool valid_alpha = alpha != 0.0f;
     color            = (valid_uv && valid_alpha) ? tex.SampleLevel(sampler_bilinear_clamp, hit_uv, 0).rgb : 0.0f;
 
-    tex_out_rgba[thread_id.xy] = float4(color, alpha);
+    tex_uav[thread_id.xy] = float4(color, alpha);
 }
 

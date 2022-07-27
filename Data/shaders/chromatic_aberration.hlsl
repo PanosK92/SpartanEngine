@@ -47,5 +47,5 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     color.g      = tex[thread_id.xy].g;
     color.b      = tex.SampleLevel(sampler_bilinear_clamp, uv - (g_texel_size * shift), 0).b;
 
-    tex_out_rgba[thread_id.xy] = float4(color, tex[thread_id.xy].a);
+    tex_uav[thread_id.xy] = float4(color, tex[thread_id.xy].a);
 }

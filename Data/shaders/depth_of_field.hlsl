@@ -104,7 +104,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     // Color
     float3 color = tex.SampleLevel(sampler_bilinear_clamp, uv, 0).rgb;
 
-    tex_out_rgba[thread_id.xy] = float4(color, coc);
+    tex_uav[thread_id.xy] = float4(color, coc);
 }
 #endif
 
@@ -136,7 +136,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     }
     color /= weight;
 
-    tex_out_rgba[thread_id.xy] = float4(color, tex[thread_id.xy].a);
+    tex_uav[thread_id.xy] = float4(color, tex[thread_id.xy].a);
 }
 #endif
 
@@ -158,7 +158,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 
     float coc = tex[thread_id.xy].a;
 
-    tex_out_rgba[thread_id.xy] = float4((s1 + s2 + s3 + s4) * 0.25f, coc);
+    tex_uav[thread_id.xy] = float4((s1 + s2 + s3 + s4) * 0.25f, coc);
 }
 #endif
 
@@ -187,6 +187,6 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     // Compute final color
     float4 base = tex[thread_id.xy];
     float blend = smoothstep(0.0f, 1.0f, abs(coc));
-    tex_out_rgba[thread_id.xy] = lerp(base, float4(dof, base.a), blend);
+    tex_uav[thread_id.xy] = lerp(base, float4(dof, base.a), blend);
 }
 #endif

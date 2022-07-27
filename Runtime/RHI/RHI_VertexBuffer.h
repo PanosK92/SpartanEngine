@@ -31,6 +31,7 @@ namespace Spartan
     class RHI_VertexBuffer : public SpartanObject
     {
     public:
+        RHI_VertexBuffer() = default;
         RHI_VertexBuffer(const std::shared_ptr<RHI_Device>& rhi_device, bool is_mappable, const char* name)
         {
             m_rhi_device  = rhi_device;
@@ -40,7 +41,10 @@ namespace Spartan
 
         ~RHI_VertexBuffer()
         {
-            _destroy();
+            if (m_rhi_resource)
+            {
+                _destroy();
+            }
         }
 
         template<typename T>
@@ -73,7 +77,7 @@ namespace Spartan
         void* Map();
         void Unmap();
 
-        void* GetResource()       const { return m_resource; }
+        void* GetRhiResource()       const { return m_rhi_resource; }
         uint32_t GetStride()      const { return m_stride; }
         uint32_t GetVertexCount() const { return m_vertex_count; }
 
@@ -82,12 +86,12 @@ namespace Spartan
         void _destroy();
 
         void* m_mapped_data     = nullptr;
+        bool m_is_mappable      = false;
         uint32_t m_stride       = 0;
         uint32_t m_vertex_count = 0;
-
-        // API
         std::shared_ptr<RHI_Device> m_rhi_device;
-        void* m_resource   = nullptr;
-        bool m_is_mappable = false;
+
+        // RHI Resources
+        void* m_rhi_resource = nullptr;
     };
 }

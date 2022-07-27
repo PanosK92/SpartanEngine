@@ -105,7 +105,7 @@ namespace Spartan
             desc.SwapEffect           = d3d11_utility::swap_chain::get_swap_effect(m_flags);
             desc.Flags                = d3d11_utility::swap_chain::get_flags(m_flags);
 
-            if (!d3d11_utility::error_check(dxgi_factory->CreateSwapChain(m_rhi_device->GetContextRhi()->device, &desc, reinterpret_cast<IDXGISwapChain**>(&m_resource))))
+            if (!d3d11_utility::error_check(dxgi_factory->CreateSwapChain(m_rhi_device->GetContextRhi()->device, &desc, reinterpret_cast<IDXGISwapChain**>(&m_rhi_resource))))
             {
                 LOG_ERROR("Failed to create swapchain");
                 return;
@@ -113,7 +113,7 @@ namespace Spartan
         }
 
         // Create the render target
-        if (IDXGISwapChain* swap_chain = static_cast<IDXGISwapChain*>(m_resource))
+        if (IDXGISwapChain* swap_chain = static_cast<IDXGISwapChain*>(m_rhi_resource))
         {
             ID3D11Texture2D* backbuffer = nullptr;
             auto result = swap_chain->GetBuffer(0, IID_PPV_ARGS(&backbuffer));
@@ -123,7 +123,7 @@ namespace Spartan
                 return;
             }
 
-            result = rhi_device->GetContextRhi()->device->CreateRenderTargetView(backbuffer, nullptr, reinterpret_cast<ID3D11RenderTargetView**>(&m_resource_view));
+            result = rhi_device->GetContextRhi()->device->CreateRenderTargetView(backbuffer, nullptr, reinterpret_cast<ID3D11RenderTargetView**>(&m_rhi_srv));
             backbuffer->Release();
             if (FAILED(result))
             {
@@ -137,7 +137,7 @@ namespace Spartan
 
     RHI_SwapChain::~RHI_SwapChain()
     {
-        IDXGISwapChain* swap_chain = static_cast<IDXGISwapChain*>(m_resource);
+        IDXGISwapChain* swap_chain = static_cast<IDXGISwapChain*>(m_rhi_resource);
 
         // Before shutting down set to windowed mode to avoid swap chain exception
         if (swap_chain && !m_windowed)
@@ -148,12 +148,12 @@ namespace Spartan
         swap_chain->Release();
         swap_chain = nullptr;
 
-        d3d11_utility::release<ID3D11RenderTargetView>(m_resource_view);
+        d3d11_utility::release<ID3D11RenderTargetView>(m_rhi_srv);
     }
 
     bool RHI_SwapChain::Resize(const uint32_t width, const uint32_t height, const bool force /*= false*/)
     {
-        SP_ASSERT(m_resource != nullptr);
+        SP_ASSERT(m_rhi_resource != nullptr);
 
         // Validate resolution
         m_present_enabled = m_rhi_device->IsValidResolution(width, height);
@@ -172,7 +172,7 @@ namespace Spartan
         m_width  = width;
         m_height = height;
 
-        IDXGISwapChain* swap_chain = static_cast<IDXGISwapChain*>(m_resource);
+        IDXGISwapChain* swap_chain = static_cast<IDXGISwapChain*>(m_rhi_resource);
 
         // Set this flag to enable an application to switch modes by calling IDXGISwapChain::ResizeTarget.
         // When switching from windowed to full-screen mode, the display mode (or monitor resolution)
@@ -202,7 +202,7 @@ namespace Spartan
         // Resize swapchain buffers
         {
             // Release the previous render target view (to avoid IDXGISwapChain::ResizeBuffers: Swapchain cannot be resized unless all outstanding buffer references have been released)
-            ID3D11RenderTargetView* render_target_view = static_cast<ID3D11RenderTargetView*>(m_resource_view);
+            ID3D11RenderTargetView* render_target_view = static_cast<ID3D11RenderTargetView*>(m_rhi_srv);
             if (render_target_view)
             {
                 render_target_view->Release();
@@ -230,7 +230,7 @@ namespace Spartan
             }
 
             // Create new one
-            ID3D11RenderTargetView* render_target_view = static_cast<ID3D11RenderTargetView*>(m_resource_view);
+            ID3D11RenderTargetView* render_target_view = static_cast<ID3D11RenderTargetView*>(m_rhi_srv);
             result = m_rhi_device->GetContextRhi()->device->CreateRenderTargetView(backbuffer, nullptr, &render_target_view);
             backbuffer->Release();
             backbuffer = nullptr;
@@ -240,7 +240,7 @@ namespace Spartan
                 return false;
             }
 
-            m_resource_view = static_cast<void*>(render_target_view);
+            m_rhi_srv = static_cast<void*>(render_target_view);
         }
         return true;
     }
@@ -252,7 +252,7 @@ namespace Spartan
 
     void RHI_SwapChain::Present()
     {
-        SP_ASSERT(m_resource != nullptr && "Can't present, the swapchain has not been initialised");
+        SP_ASSERT(m_rhi_resource != nullptr && "Can't present, the swapchain has not been initialised");
         SP_ASSERT(m_present_enabled && "Can't present, presenting has been disabled");
 
         // Present parameters
@@ -261,7 +261,7 @@ namespace Spartan
         const UINT flags           = (tearing_allowed && m_windowed) ? DXGI_PRESENT_ALLOW_TEARING : 0;
 
         // Present
-        SP_ASSERT(d3d11_utility::error_check(static_cast<IDXGISwapChain*>(m_resource)->Present(sync_interval, flags)) && "Failed to present");
+        SP_ASSERT(d3d11_utility::error_check(static_cast<IDXGISwapChain*>(m_rhi_resource)->Present(sync_interval, flags)) && "Failed to present");
     }
 
     void RHI_SwapChain::SetLayout(const RHI_Image_Layout& layout, RHI_CommandList* cmd_list)

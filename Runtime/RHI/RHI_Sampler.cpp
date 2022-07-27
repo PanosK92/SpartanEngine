@@ -43,7 +43,7 @@ namespace Spartan
         SP_ASSERT(rhi_device != nullptr);
         SP_ASSERT(rhi_device->GetContextRhi()->device != nullptr);
 
-        m_resource             = nullptr;
+        m_rhi_resource             = nullptr;
         m_rhi_device           = rhi_device;
         m_filter_min           = filter_min;
         m_filter_mag           = filter_mag;

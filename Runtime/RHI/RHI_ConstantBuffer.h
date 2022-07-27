@@ -31,7 +31,7 @@ namespace Spartan
     class SPARTAN_CLASS RHI_ConstantBuffer : public SpartanObject
     {
     public:
-        RHI_ConstantBuffer(const std::shared_ptr<RHI_Device>& rhi_device, const std::string& name);
+        RHI_ConstantBuffer(const RHI_Device* rhi_device, const std::string& name);
         ~RHI_ConstantBuffer() { _destroy(); }
 
         template<typename T>
@@ -106,7 +106,7 @@ namespace Spartan
         void ResetOffset()              { m_reset_offset = true; }
         bool GetResetOffset()     const { return m_reset_offset; }
         bool IsPersistentBuffer() const { return m_persistent_mapping; }
-        void* GetResource()       const { return m_resource; }
+        void* GetRhiResource()    const { return m_rhi_resource; }
         uint64_t GetStride()      const { return m_stride; }
         uint32_t GetOffset()      const { return m_offset; }
         uint32_t GetStrideCount() const { return m_element_count; }
@@ -115,17 +115,15 @@ namespace Spartan
         bool _create();
         void _destroy();
 
-        bool m_persistent_mapping = false;
-        void* m_mapped_data       = nullptr;
-        uint64_t m_stride         = 0;
-        uint32_t m_element_count  = 0;
-        uint32_t m_offset         = 0;
-        bool m_reset_offset       = true;
+        bool m_persistent_mapping      = false;
+        void* m_mapped_data            = nullptr;
+        uint64_t m_stride              = 0;
+        uint32_t m_element_count       = 0;
+        uint32_t m_offset              = 0;
+        bool m_reset_offset            = true;
+        const RHI_Device* m_rhi_device = nullptr;
 
-        // API
-        void* m_resource = nullptr;
-
-        // Dependencies
-        std::shared_ptr<RHI_Device> m_rhi_device;
+        // RHI Resource
+        void* m_rhi_resource = nullptr;
     };
 }

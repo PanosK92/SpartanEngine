@@ -57,5 +57,5 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     CasFilter(color.r, color.g, color.b, thread_id.xy, const0, const1, true);
 
     const float a = tex[thread_id.xy].a;
-    tex_out_rgba[thread_id.xy] = float4(color, a);
+    tex_uav[thread_id.xy] = float4(color, a);
 }

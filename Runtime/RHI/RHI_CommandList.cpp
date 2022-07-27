@@ -40,6 +40,7 @@ namespace Spartan
     {
         SP_ASSERT_MSG(m_state == RHI_CommandListState::Submitted, "The command list hasn't been submitted, can't wait for it.");
 
+        // If the command list is executing, wait for it.
         bool is_signaled = m_proccessed_fence->IsSignaled();
         bool executing   = !is_signaled && !m_discard;
         if (executing)
@@ -59,7 +60,6 @@ namespace Spartan
         }
 
         m_state = RHI_CommandListState::Idle;
-
     }
 
     void RHI_CommandList::Discard()

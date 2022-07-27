@@ -40,24 +40,25 @@ namespace Spartan
 {
     Environment::Environment(Context* context, Entity* entity, uint64_t id /*= 0*/) : IComponent(context, entity, id)
     {
+        const string environment_texture_directory = GetContext()->GetSubsystem<ResourceCache>()->GetResourceDirectory(ResourceDirectory::Environment) + "\\";
+
         // Default texture paths
-        const string dir_cubemaps = GetContext()->GetSubsystem<ResourceCache>()->GetResourceDirectory(ResourceDirectory::Cubemaps) + "/";
         if (m_environment_type == EnvironmentType::Cubemap)
         {
             m_file_paths =
             {
-                dir_cubemaps + "array/X+.tga", // right
-                dir_cubemaps + "array/X-.tga", // left
-                dir_cubemaps + "array/Y+.tga", // up
-                dir_cubemaps + "array/Y-.tga", // down
-                dir_cubemaps + "array/Z-.tga", // back
-                dir_cubemaps + "array/Z+.tga"  // front
+                environment_texture_directory + "array\\X+.tga", // right
+                environment_texture_directory + "array\\X-.tga", // left
+                environment_texture_directory + "array\\Y+.tga", // up
+                environment_texture_directory + "array\\Y-.tga", // down
+                environment_texture_directory + "array\\Z-.tga", // back
+                environment_texture_directory + "array\\Z+.tga"  // front
             };
         }
         else if (m_environment_type == EnvironmentType::Sphere)
         {
-            m_file_paths = { dir_cubemaps + "syferfontein_0d_clear_4k.hdr" };
-        }     
+            m_file_paths = { environment_texture_directory + "syferfontein_0d_clear_4k.hdr" };
+        }
     }
 
     void Environment::OnTick(double delta_time)
@@ -139,7 +140,7 @@ namespace Spartan
         LOG_INFO("Loading sky sphere...");
 
         // Create texture
-        shared_ptr<RHI_Texture> texture = make_shared<RHI_Texture2D>(GetContext(), RHI_Texture_Srv | RHI_Texture_Mips);
+        shared_ptr<RHI_Texture> texture = make_shared<RHI_Texture2D>(GetContext(), RHI_Texture_Srv);
 
         if (!texture->LoadFromFile(file_path))
         {
@@ -148,7 +149,7 @@ namespace Spartan
 
         // Save file path for serialization/deserialisation
         m_file_paths = { texture->GetResourceFilePath() };
-        
+
         // Pass the texture to the renderer.
         SetTexture(texture);
 

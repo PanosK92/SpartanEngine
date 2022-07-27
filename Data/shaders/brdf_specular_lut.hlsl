@@ -20,7 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES =========
-#include "Common.hlsl"
+#include "common.hlsl"
 //====================
 
 // http://holger.dammertz.org/stuff/notes_HammersleyOnHemisphere.html
@@ -134,5 +134,5 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         return;
 
     const float2 uv = (thread_id.xy + 0.5f) / g_resolution_rt;
-    tex_out_rg[thread_id.xy] = IntegrateBRDF(uv.x, uv.y);
+    tex_uav[thread_id.xy] = float4(IntegrateBRDF(uv.x, uv.y), 1.0f, 1.0f);
 }

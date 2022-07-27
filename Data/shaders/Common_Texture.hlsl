@@ -20,14 +20,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 // Material
-Texture2D tex_material_albedo    : register (t0);
-Texture2D tex_material_roughness : register (t1);
-Texture2D tex_material_metallic  : register (t2);
-Texture2D tex_material_normal    : register (t3);
-Texture2D tex_material_height    : register (t4);
-Texture2D tex_material_occlusion : register (t5);
-Texture2D tex_material_emission  : register (t6);
-Texture2D tex_material_mask      : register (t7);
+Texture2D tex_material_albedo     : register (t0);
+Texture2D tex_material_roughness  : register (t1);
+Texture2D tex_material_metallness : register (t2);
+Texture2D tex_material_normal     : register (t3);
+Texture2D tex_material_height     : register (t4);
+Texture2D tex_material_occlusion  : register (t5);
+Texture2D tex_material_emission   : register (t6);
+Texture2D tex_material_mask       : register (t7);
 
 // G-buffer
 Texture2D tex_albedo            : register(t8);
@@ -68,14 +68,8 @@ Texture2D tex_font_atlas         : register(t35);
 TextureCube tex_reflection_probe : register(t36);
 
 // RWTexture2D
-RWTexture2D<float> tex_out_r                               : register(u0);
-RWTexture2D<float2> tex_out_rg                             : register(u1);
-RWTexture2D<float3> tex_out_rgb                            : register(u2);
-RWTexture2D<float3> tex_out_rgb2                           : register(u3);
-RWTexture2D<float3> tex_out_rgb3                           : register(u4);
-RWTexture2D<float4> tex_out_rgba                           : register(u5);
-RWTexture2D<float4> tex_out_rgba2                          : register(u6);
-globallycoherent RWTexture2D<float4> tex_out_rgba_mips[12] : register(u7);
-
-// Atomic counter
-globallycoherent RWStructuredBuffer<uint> g_atomic_counter : register(u19); // u7 + 12 mips = u19
+RWTexture2D<float4> tex_uav                                : register(u0);
+RWTexture2D<float4> tex_uav2                               : register(u1);
+RWTexture2D<float4> tex_uav3                               : register(u2);
+globallycoherent RWStructuredBuffer<uint> g_atomic_counter : register(u3);
+globallycoherent RWTexture2D<float4> tex_uav_mips[12]      : register(u4);

@@ -216,7 +216,14 @@ namespace Spartan
         return "";
     }
 
-    static bool load_material_texture(const ModelParams& params, shared_ptr<Material> material, const aiMaterial* material_assimp, const Material_Property texture_type, const aiTextureType texture_type_assimp_pbr, const aiTextureType texture_type_assimp_legacy)
+    static bool load_material_texture(
+        const ModelParams& params,
+        shared_ptr<Material> material,
+        const aiMaterial* material_assimp,
+        const MaterialTexture texture_type,
+        const aiTextureType texture_type_assimp_pbr,
+        const aiTextureType texture_type_assimp_legacy
+    )
     {
         // Determine if this is a pbr material or not
         aiTextureType type_assimp = aiTextureType_NONE;
@@ -238,27 +245,30 @@ namespace Spartan
             return false;
 
         // Add the texture to the model
-        params.model->AddTexture(material, texture_type, texture_validate_path(texture_path.data, params.file_path));
+        params.model->AddTexture(material, texture_type, texture_validate_path(texture_path.data, params.file_path), params.is_gltf);
 
         // FIX: materials that have a diffuse texture should not be tinted black/gray
         if (type_assimp == aiTextureType_BASE_COLOR || type_assimp == aiTextureType_DIFFUSE)
         {
-            material->SetColorAlbedo(Vector4::One);
+            material->SetProperty(MaterialProperty::ColorR, 1.0f);
+            material->SetProperty(MaterialProperty::ColorG, 1.0f);
+            material->SetProperty(MaterialProperty::ColorB, 1.0f);
+            material->SetProperty(MaterialProperty::ColorA, 1.0f);
         }
 
         // FIX: Some models pass a normal map as a height map and vice versa, we correct that.
-        if (texture_type == Material_Normal || texture_type == Material_Height)
+        if (texture_type == MaterialTexture::Normal || texture_type == MaterialTexture::Height)
         {
             if (shared_ptr<RHI_Texture> texture = material->GetTexture_PtrShared(texture_type))
             {
-                Material_Property proper_type = texture_type;
-                proper_type = (proper_type == Material_Normal && texture->IsGrayscale()) ? Material_Height : proper_type;
-                proper_type = (proper_type == Material_Height && !texture->IsGrayscale()) ? Material_Normal : proper_type;
+                MaterialTexture proper_type = texture_type;
+                proper_type = (proper_type == MaterialTexture::Normal && texture->IsGrayscale()) ? MaterialTexture::Height : proper_type;
+                proper_type = (proper_type == MaterialTexture::Height && !texture->IsGrayscale()) ? MaterialTexture::Normal : proper_type;
 
                 if (proper_type != texture_type)
                 {
-                    material->SetTextureSlot(texture_type, shared_ptr<RHI_Texture>(nullptr));
-                    material->SetTextureSlot(proper_type, texture);
+                    material->SetTexture(texture_type, shared_ptr<RHI_Texture>(nullptr));
+                    material->SetTexture(proper_type, texture);
                 }
             }
         }
@@ -288,17 +298,22 @@ namespace Spartan
         aiGetMaterialColor(material_assimp, AI_MATKEY_OPACITY, &opacity);
 
         // Set color and opacity
-        material->SetColorAlbedo(Vector4(color_diffuse.r, color_diffuse.g, color_diffuse.b, opacity.r));
+        material->SetProperty(MaterialProperty::ColorR, color_diffuse.r);
+        material->SetProperty(MaterialProperty::ColorG, color_diffuse.g);
+        material->SetProperty(MaterialProperty::ColorB, color_diffuse.b);
+        material->SetProperty(MaterialProperty::ColorA, opacity.r);
 
-        //                                                       Texture type,       Texture type Assimp (PBR),       Texture type Assimp (Legacy/fallback)
-        load_material_texture(params, material, material_assimp, Material_Color,     aiTextureType_BASE_COLOR,        aiTextureType_DIFFUSE);
-        load_material_texture(params, material, material_assimp, Material_Roughness, aiTextureType_DIFFUSE_ROUGHNESS, aiTextureType_SHININESS); // Use specular as fallback
-        load_material_texture(params, material, material_assimp, Material_Metallic,  aiTextureType_METALNESS,         aiTextureType_AMBIENT);   // Use ambient as fallback
-        load_material_texture(params, material, material_assimp, Material_Normal,    aiTextureType_NORMAL_CAMERA,     aiTextureType_NORMALS);
-        load_material_texture(params, material, material_assimp, Material_Occlusion, aiTextureType_AMBIENT_OCCLUSION, aiTextureType_LIGHTMAP);
-        load_material_texture(params, material, material_assimp, Material_Emission,  aiTextureType_EMISSION_COLOR,    aiTextureType_EMISSIVE);
-        load_material_texture(params, material, material_assimp, Material_Height,    aiTextureType_HEIGHT,            aiTextureType_NONE);
-        load_material_texture(params, material, material_assimp, Material_AlphaMask, aiTextureType_OPACITY,           aiTextureType_NONE);
+        //                                                       Texture type,                Texture type Assimp (PBR),       Texture type Assimp (Legacy/fallback)
+        load_material_texture(params, material, material_assimp, MaterialTexture::Color,      aiTextureType_BASE_COLOR,        aiTextureType_DIFFUSE);
+        load_material_texture(params, material, material_assimp, MaterialTexture::Roughness,  aiTextureType_DIFFUSE_ROUGHNESS, aiTextureType_SHININESS); // Use specular as fallback
+        load_material_texture(params, material, material_assimp, MaterialTexture::Metallness, aiTextureType_METALNESS,         aiTextureType_AMBIENT);   // Use ambient as fallback
+        load_material_texture(params, material, material_assimp, MaterialTexture::Normal,     aiTextureType_NORMAL_CAMERA,     aiTextureType_NORMALS);
+        load_material_texture(params, material, material_assimp, MaterialTexture::Occlusion,  aiTextureType_AMBIENT_OCCLUSION, aiTextureType_LIGHTMAP);
+        load_material_texture(params, material, material_assimp, MaterialTexture::Emission,   aiTextureType_EMISSION_COLOR,    aiTextureType_EMISSIVE);
+        load_material_texture(params, material, material_assimp, MaterialTexture::Height,     aiTextureType_HEIGHT,            aiTextureType_NONE);
+        load_material_texture(params, material, material_assimp, MaterialTexture::AlphaMask,  aiTextureType_OPACITY,           aiTextureType_NONE);
+
+        material->SetProperty(MaterialProperty::SingleTextureRoughnessMetalness, static_cast<float>(params.is_gltf));
 
         return material;
     }
@@ -334,6 +349,7 @@ namespace Spartan
         params.file_path                   = file_path;
         params.name                        = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path);
         params.model                       = model;
+        params.is_gltf                     = FileSystem::GetExtensionFromFilePath(file_path) == ".gltf";
 
         // Set up an Assimp importer
         Importer importer;
