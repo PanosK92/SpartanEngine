@@ -62,9 +62,9 @@ namespace Spartan
         ScriptingHelper::resource_cache = m_context->GetSubsystem<ResourceCache>();
 
         // Get file paths
-        const string dir_scripts    = ScriptingHelper::resource_cache->GetResourceDirectory(ResourceDirectory::Scripts) + "\\";
-        const string dir_mono_lib   = dir_scripts + string("mono\\lib");
-        const string dir_mono_etc   = dir_scripts + string("mono\\etc");
+        const string dir_scripts  = ScriptingHelper::resource_cache->GetResourceDirectory(ResourceDirectory::Scripts) + "\\";
+        const string dir_mono_lib = dir_scripts + string("mono\\lib");
+        const string dir_mono_etc = dir_scripts + string("mono\\etc");
 
         // Point mono to the libs and configuration files
         mono_set_dirs(dir_mono_lib.c_str(), dir_mono_etc.c_str());

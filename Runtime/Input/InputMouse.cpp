@@ -47,9 +47,9 @@ namespace Spartan
         m_mouse_position = position;
 
         // Get keys
-        m_keys[start_index_mouse]       = (keys_states & SDL_BUTTON(SDL_BUTTON_LEFT)) != 0;    // Left button pressed
-        m_keys[start_index_mouse + 1]   = (keys_states & SDL_BUTTON(SDL_BUTTON_MIDDLE)) != 0;  // Middle button pressed
-        m_keys[start_index_mouse + 2]   = (keys_states & SDL_BUTTON(SDL_BUTTON_RIGHT)) != 0;   // Right button pressed
+        m_keys[start_index_mouse]     = (keys_states & SDL_BUTTON(SDL_BUTTON_LEFT)) != 0;    // Left button pressed
+        m_keys[start_index_mouse + 1] = (keys_states & SDL_BUTTON(SDL_BUTTON_MIDDLE)) != 0;  // Middle button pressed
+        m_keys[start_index_mouse + 2] = (keys_states & SDL_BUTTON(SDL_BUTTON_RIGHT)) != 0;   // Right button pressed
     }
 
     void Input::OnEventMouse(void* event_mouse)
@@ -96,7 +96,7 @@ namespace Spartan
         m_mouse_position = position;
     }
 
-    const Spartan::Math::Vector2 Input::GetMousePositionRelativeToWindow() const
+    const Vector2 Input::GetMousePositionRelativeToWindow() const
     {
         SDL_Window* window = static_cast<SDL_Window*>(m_context->GetSubsystem<Window>()->GetHandleSDL());
         int window_x, window_y;
@@ -104,7 +104,7 @@ namespace Spartan
         return Vector2(static_cast<float>(m_mouse_position.x - window_x), static_cast<float>(m_mouse_position.y - window_y));
     }
 
-    const Spartan::Math::Vector2 Input::GetMousePositionRelativeToEditorViewport() const
+    const Vector2 Input::GetMousePositionRelativeToEditorViewport() const
     {
         return GetMousePositionRelativeToWindow() - m_editor_viewport_offset;
     }

@@ -97,8 +97,14 @@ namespace Spartan
         return true;
     }
 
-    weak_ptr<Spartan::Entity> TransformHandle::SetSelectedEntity(const shared_ptr<Entity>& entity)
+    weak_ptr<Entity> TransformHandle::SetSelectedEntity(const shared_ptr<Entity>& entity)
     {
+        // If this a camera entity don't select it
+        if (entity->GetComponent<Camera>())
+        {
+            return m_entity_selected;
+        }
+
         // Set a new entity only if another is not being edited
         if (!m_is_editing)
         {
