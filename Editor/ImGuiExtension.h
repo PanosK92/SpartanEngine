@@ -410,8 +410,8 @@ namespace ImGuiEx
         // Wrap
         if (ImGui::IsItemEdited() && ImGui::IsMouseDown(0))
         {
-            Spartan::Math::Vector2 pos  = EditorHelper::Get().g_input->GetMousePosition();
-            uint32_t edge_padding       = 5;
+            Spartan::Math::Vector2 pos = EditorHelper::Get().g_input->GetMousePosition();
+            uint32_t edge_padding      = 10;
 
             bool wrapped = false;
             if (pos.x >= Spartan::Display::GetWidth() - edge_padding)
@@ -421,16 +421,16 @@ namespace ImGuiEx
             }
             else if (pos.x <= edge_padding)
             {
-                pos.x = static_cast<float>(Spartan::Display::GetWidth() - edge_padding - 1);
+                pos.x   = static_cast<float>(Spartan::Display::GetWidth() - edge_padding - 1);
                 wrapped = true;
             }
 
             if (wrapped)
             {
-                ImGuiIO& imgui_io           = ImGui::GetIO();
-                imgui_io.MousePos           = pos;
-                imgui_io.MousePosPrev       = pos; // set previous position as well so that we eliminate a huge mouse delta, which we don't want for the drag float
-                imgui_io.WantSetMousePos    = true;
+                ImGuiIO& imgui_io        = ImGui::GetIO();
+                imgui_io.MousePos        = pos;
+                imgui_io.MousePosPrev    = imgui_io.MousePos;// same previous position to enliminate a huge mouse delta
+                imgui_io.WantSetMousePos = true;
             }
         }
     }
