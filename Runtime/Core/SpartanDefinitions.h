@@ -125,5 +125,7 @@ constexpr void sp_delete(T* ptr)
 #pragma warning(disable: 4275) // https://docs.microsoft.com/en-us/cpp/error-messages/compiler-warnings/compiler-warning-level-2-c4275?view=vs-2019
 // no definition for inline function 'function'
 #pragma warning(disable: 4506) // https://docs.microsoft.com/en-us/cpp/error-messages/compiler-warnings/compiler-warning-level-1-c4506?view=vs-2017
+// C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS.
+#define _CRT_SECURE_NO_WARNINGS // sprintf_s is not a standard function, so we opt for sprintf.
 //==================================================================================================================================================
 #endif

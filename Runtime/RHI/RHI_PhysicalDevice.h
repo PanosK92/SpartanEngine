@@ -100,7 +100,7 @@ namespace Spartan
             
             if (IsNvidia())
             {
-                sprintf_s
+                sprintf
                 (
                     buffer,
                     "%d.%d.%d.%d",
@@ -113,7 +113,7 @@ namespace Spartan
             }
             else if(IsIntel())
             {
-                sprintf_s
+                sprintf
                 (
                     buffer,
                     "%d.%d",
@@ -123,7 +123,7 @@ namespace Spartan
             }
             else // Use Vulkan version conventions if vendor mapping is not available
             {
-                sprintf_s
+                sprintf
                 (
                     buffer,
                     "%d.%d.%d",

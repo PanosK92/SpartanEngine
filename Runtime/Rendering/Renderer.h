@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <unordered_map>
 #include <array>
 #include <atomic>
+#include <thread>
 #include "Renderer_ConstantBuffers.h"
 #include "Material.h"
 #include "../Core/Subsystem.h"

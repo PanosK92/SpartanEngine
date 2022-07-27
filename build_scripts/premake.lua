@@ -57,7 +57,6 @@ end
 solution (SOLUTION_NAME)
 	location ".."
 	systemversion "latest"
-	cppdialect "C++20"
 	language "C++"
 	if os.target() == "windows" then
 	platforms { "Windows" }
@@ -105,6 +104,7 @@ solution (SOLUTION_NAME)
 project (RUNTIME_NAME)
 	location (RUNTIME_DIR)
 	objdir (OBJ_DIR)
+	cppdialect "C++20"
 	kind "StaticLib"
 	staticruntime "On"
     if os.target() == "windows" then
@@ -140,6 +140,7 @@ project (RUNTIME_NAME)
 	includedirs { "../third_party/Mono_6.12.0.86" }
 	includedirs { "../third_party/SDL2_2.0.14" }
     includedirs { "../third_party/Compressonator_4.2.5185" }
+    includedirs { "../Runtime/Core" } -- Linux needs the directory of the pre-compiled header (Spartan.h)
 	includedirs { ADDITIONAL_INCLUDES[0], ADDITIONAL_INCLUDES[1], ADDITIONAL_INCLUDES[2] }
 
 	-- Libraries
@@ -195,6 +196,7 @@ project (EDITOR_NAME)
 	links { RUNTIME_NAME }
 	dependson { RUNTIME_NAME }
 	objdir (OBJ_DIR)
+    cppdialect "C++20"
 	kind "WindowedApp"
 	staticruntime "On"
     if os.target() == "windows" then

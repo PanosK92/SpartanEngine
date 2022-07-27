@@ -387,7 +387,7 @@ namespace Spartan
             "Descriptor set capacity:\t%d/%d";
 
         static char buffer[2048];
-        sprintf_s
+        sprintf
         (
             buffer, text,
 
