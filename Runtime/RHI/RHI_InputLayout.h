@@ -133,18 +133,19 @@ namespace Spartan
         const uint32_t GetVertexSize()                                 const { return m_vertex_size; }
         const std::vector<VertexAttribute>& GetAttributeDescriptions() const { return m_vertex_attributes; }
         uint32_t GetAttributeCount()                                   const { return static_cast<uint32_t>(m_vertex_attributes.size()); }
-        void* GetResource()                                            const { return m_resource; }
 
         bool operator==(const RHI_InputLayout& rhs) const { return m_vertex_type == rhs.GetVertexType(); }
+
+        void* GetRhiResource() const { return m_rhi_resource; }
 
     private:
         RHI_Vertex_Type m_vertex_type;
         uint32_t m_vertex_size;
-
-        // API
         bool _CreateResource(void* vertex_shader_blob);
         std::shared_ptr<RHI_Device> m_rhi_device;
-        void* m_resource = nullptr;
         std::vector<VertexAttribute> m_vertex_attributes;
+
+        // RHI Resource
+        void* m_rhi_resource = nullptr;
     };
 }

@@ -78,7 +78,6 @@ PixelOutputType mainPS(PixelInputType input)
     uv                         = float2(uv.x * g_mat_tiling.x + g_mat_offset.x, uv.y * g_mat_tiling.y + g_mat_offset.y); // Apply material tiling and offset.
 
     // Parallax mapping
-    
     if (has_texture_height())
     {
         float height_scale     = g_mat_height * 0.04f;
@@ -111,20 +110,36 @@ PixelOutputType mainPS(PixelInputType input)
     if (alpha_mask <= ALPHA_THRESHOLD)
         discard;
 
-    // Roughness
+    // Roughness + Metalness
     float roughness = g_mat_roughness;
-    if (has_texture_roughness())
+    float metalness = g_mat_metallness;
     {
-        roughness *= tex_material_roughness.Sample(sampler_anisotropic_wrap, uv).r;
-    }
+        if (!has_single_texture_roughness_metalness())
+        {
+            if (has_texture_roughness())
+            {
+                roughness *= tex_material_roughness.Sample(sampler_anisotropic_wrap, uv).r;
+            }
 
-    // Metallic
-    float metallic = g_mat_metallic;
-    if (has_texture_metallic())
-    {
-        metallic *= tex_material_metallic.Sample(sampler_anisotropic_wrap, uv).r;
-    }
+            if (has_texture_metalness())
+            {
+                metalness *= tex_material_metallness.Sample(sampler_anisotropic_wrap, uv).r;
+            }
+        }
+        else
+        {
+            if (has_texture_roughness())
+            {
+                roughness *= tex_material_roughness.Sample(sampler_anisotropic_wrap, uv).g;
+            }
 
+            if (has_texture_metalness())
+            {
+                metalness *= tex_material_metallness.Sample(sampler_anisotropic_wrap, uv).b;
+            }
+        }
+    }
+    
     // Normal
     float3 normal = input.normal.xyz;
     if (has_texture_normal())
@@ -167,7 +182,7 @@ PixelOutputType mainPS(PixelInputType input)
     PixelOutputType g_buffer;
     g_buffer.albedo   = albedo;
     g_buffer.normal   = float4(normal, pack_uint32_to_float16(g_mat_id));
-    g_buffer.material = float4(roughness, metallic, emission, occlusion);
+    g_buffer.material = float4(roughness, metalness, emission, occlusion);
     g_buffer.velocity = velocity_uv;
 
     return g_buffer;

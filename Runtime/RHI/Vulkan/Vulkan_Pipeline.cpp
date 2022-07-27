@@ -130,7 +130,7 @@ namespace Spartan
             VkPipelineShaderStageCreateInfo shader_stage_info = {};
             shader_stage_info.sType                           = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
             shader_stage_info.stage                           = VK_SHADER_STAGE_VERTEX_BIT;
-            shader_stage_info.module                          = static_cast<VkShaderModule>(m_state.shader_vertex->GetResource());
+            shader_stage_info.module                          = static_cast<VkShaderModule>(m_state.shader_vertex->GetRhiResource());
             shader_stage_info.pName                           = m_state.shader_vertex->GetEntryPoint();
 
             // Validate shader stage
@@ -146,7 +146,7 @@ namespace Spartan
             VkPipelineShaderStageCreateInfo shader_stage_info = {};
             shader_stage_info.sType                           = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
             shader_stage_info.stage                           = VK_SHADER_STAGE_FRAGMENT_BIT;
-            shader_stage_info.module                          = static_cast<VkShaderModule>(m_state.shader_pixel->GetResource());
+            shader_stage_info.module                          = static_cast<VkShaderModule>(m_state.shader_pixel->GetRhiResource());
             shader_stage_info.pName                           = m_state.shader_pixel->GetEntryPoint();
 
             // Validate shader stage
@@ -162,7 +162,7 @@ namespace Spartan
             VkPipelineShaderStageCreateInfo shader_stage_info = {};
             shader_stage_info.sType                           = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
             shader_stage_info.stage                           = VK_SHADER_STAGE_COMPUTE_BIT;
-            shader_stage_info.module                          = static_cast<VkShaderModule>(m_state.shader_compute->GetResource());
+            shader_stage_info.module                          = static_cast<VkShaderModule>(m_state.shader_compute->GetRhiResource());
             shader_stage_info.pName                           = m_state.shader_compute->GetEntryPoint();
 
             // Validate shader stage
@@ -321,7 +321,8 @@ namespace Spartan
                 // This means no render passes and no frame buffer objects.
                 VkPipelineRenderingCreateInfoKHR pipeline_rendering_create_info = {};
                 vector<VkFormat> attachment_formats_color;
-                VkFormat attachment_format_depth_stencil = VK_FORMAT_UNDEFINED;
+                VkFormat attachment_format_depth   = VK_FORMAT_UNDEFINED;
+                VkFormat attachment_format_stencil = VK_FORMAT_UNDEFINED;
                 {
                     // Swapchain buffer as a render target
                     if (m_state.render_target_swapchain)
@@ -343,14 +344,16 @@ namespace Spartan
                     // Depth
                     if (m_state.render_target_depth_texture)
                     {
-                        attachment_format_depth_stencil = vulkan_format[m_state.render_target_depth_texture->GetFormat()];
+                        RHI_Texture* tex_depth    = m_state.render_target_depth_texture;
+                        attachment_format_depth   = vulkan_format[tex_depth->GetFormat()];
+                        attachment_format_stencil = tex_depth->IsStencilFormat() ? attachment_format_depth : VK_FORMAT_UNDEFINED;
                     }
 
                     pipeline_rendering_create_info.sType                   = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR;
                     pipeline_rendering_create_info.colorAttachmentCount    = static_cast<uint32_t>(attachment_formats_color.size());
                     pipeline_rendering_create_info.pColorAttachmentFormats = attachment_formats_color.data();
-                    pipeline_rendering_create_info.depthAttachmentFormat   = attachment_format_depth_stencil;
-                    pipeline_rendering_create_info.stencilAttachmentFormat = attachment_format_depth_stencil;
+                    pipeline_rendering_create_info.depthAttachmentFormat   = attachment_format_depth;
+                    pipeline_rendering_create_info.stencilAttachmentFormat = attachment_format_stencil;
                 }
 
                 // Describe
@@ -391,8 +394,19 @@ namespace Spartan
 
                 SP_ASSERT_MSG(*pipeline != nullptr, "Failed to create compute pipeline");
 
-                // Disable naming until I can come up with a more meaningful name
-                //vulkan_utility::debug::set_name(*pipeline, m_state.pass_name);
+                // Name the pipeline object
+                if (m_state.shader_vertex)
+                {
+                    vulkan_utility::debug::set_object_name(*pipeline, m_state.shader_vertex->GetObjectName().c_str());
+                }
+                else if (m_state.shader_pixel)
+                {
+                    vulkan_utility::debug::set_object_name(*pipeline, m_state.shader_pixel->GetObjectName().c_str());
+                }
+                else if (m_state.shader_compute)
+                {
+                    vulkan_utility::debug::set_object_name(*pipeline, m_state.shader_compute->GetObjectName().c_str());
+                }
             }
         }
     }

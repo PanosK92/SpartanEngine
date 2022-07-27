@@ -36,14 +36,15 @@ namespace Spartan
         void* Map();
         void Unmap();
 
-        void* GetResource()    { return m_resource; }
-        void* GetResourceUav() { return m_resource_uav; }
+        void* GetRhiResource() { return m_rhi_resource; }
+        void* GetRhiUav()      { return m_rhi_uav; }
 
     private:
-        std::shared_ptr<RHI_Device> m_rhi_device;
-        void* m_resource            = nullptr;
-        void* m_resource_uav        = nullptr;
         uint32_t m_stride           = 0; // size of an individual element (in bytes)
         uint32_t m_element_count    = 0; // number of elements
+        std::shared_ptr<RHI_Device> m_rhi_device;
+
+        void* m_rhi_resource = nullptr;
+        void* m_rhi_uav      = nullptr;
     };
 }

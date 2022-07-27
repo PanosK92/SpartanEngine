@@ -20,7 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES =========
-#include "Common.hlsl"
+#include "common.hlsl"
 //====================
 
 #if COMPUTE
@@ -34,9 +34,9 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 
 #if BILINEAR
     const float2 uv = (thread_id.xy + 0.5f) / g_resolution_rt;
-    tex_out_rgba[thread_id.xy] = tex.SampleLevel(sampler_bilinear_clamp, uv, 0);
+    tex_uav[thread_id.xy] = tex.SampleLevel(sampler_bilinear_clamp, uv, 0);
 #else
-    tex_out_rgba[thread_id.xy] = tex[thread_id.xy];
+    tex_uav[thread_id.xy] = tex[thread_id.xy];
 #endif
 }
 

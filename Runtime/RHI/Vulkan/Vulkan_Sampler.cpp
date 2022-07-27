@@ -49,7 +49,7 @@ namespace Spartan
         sampler_info.minLod              = 0.0f;
         sampler_info.maxLod              = FLT_MAX;
     
-        if (vkCreateSampler(m_rhi_device->GetContextRhi()->device, &sampler_info, nullptr, reinterpret_cast<VkSampler*>(&m_resource)) != VK_SUCCESS)
+        if (vkCreateSampler(m_rhi_device->GetContextRhi()->device, &sampler_info, nullptr, reinterpret_cast<VkSampler*>(&m_rhi_resource)) != VK_SUCCESS)
         {
             LOG_ERROR("Failed to create sampler");
         }
@@ -70,6 +70,6 @@ namespace Spartan
         m_rhi_device->QueueWaitAll();
 
         // Destroy
-        vkDestroySampler(m_rhi_device->GetContextRhi()->device, reinterpret_cast<VkSampler>(m_resource), nullptr);
+        vkDestroySampler(m_rhi_device->GetContextRhi()->device, reinterpret_cast<VkSampler>(m_rhi_resource), nullptr);
     }
 }

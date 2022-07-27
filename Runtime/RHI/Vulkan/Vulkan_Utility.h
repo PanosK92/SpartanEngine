@@ -82,16 +82,12 @@ namespace Spartan::vulkan_utility
 
         inline bool check(VkResult result)
         {
-            if (result == VK_SUCCESS)
-                return true;
+            if (result != VK_SUCCESS)
+            {
+                LOG_ERROR("%s", to_string(result));
+            }
 
-            LOG_ERROR("%s", to_string(result));
-            return false;
-        }
-
-        inline void _assert(VkResult result)
-        {
-            SP_ASSERT(result == VK_SUCCESS);
+            return result == VK_SUCCESS;
         }
     }
 
@@ -302,15 +298,9 @@ namespace Spartan::vulkan_utility
 
     namespace image
     {
-        inline VkImageAspectFlags get_aspect_mask(const RHI_Texture* texture, const bool only_depth = false, const bool only_stencil = false)
+        static VkImageAspectFlags get_aspect_mask(const RHI_Texture* texture, const bool only_depth = false, const bool only_stencil = false)
         {
             VkImageAspectFlags aspect_mask = 0;
-
-            if (texture->IsColorFormat() && texture->IsDepthStencilFormat())
-            {
-                LOG_ERROR("Texture can't be both color and depth-stencil");
-                return aspect_mask;
-            }
 
             if (texture->IsColorFormat())
             {
@@ -332,7 +322,7 @@ namespace Spartan::vulkan_utility
             return aspect_mask;
         }
 
-        inline VkPipelineStageFlags layout_to_access_mask(const VkImageLayout layout, const bool is_destination_mask)
+        static VkPipelineStageFlags layout_to_access_mask(const VkImageLayout layout, const bool is_destination_mask)
         {
             VkPipelineStageFlags access_mask = 0;
 
@@ -407,7 +397,7 @@ namespace Spartan::vulkan_utility
             return access_mask;
         }
 
-        inline VkPipelineStageFlags access_flags_to_pipeline_stage(VkAccessFlags access_flags)
+        static VkPipelineStageFlags access_flags_to_pipeline_stage(VkAccessFlags access_flags)
         {
             VkPipelineStageFlags stages = 0;
             uint32_t enabled_graphics_stages = globals::rhi_device->GetEnabledGraphicsStages();
@@ -489,7 +479,7 @@ namespace Spartan::vulkan_utility
             return stages;
         }
 
-        inline void set_layout(void* cmd_buffer, void* image, const VkImageAspectFlags aspect_mask, const uint32_t mip_index, const uint32_t mip_range, const uint32_t array_length, const RHI_Image_Layout layout_old, const RHI_Image_Layout layout_new)
+        static void set_layout(void* cmd_buffer, void* image, const VkImageAspectFlags aspect_mask, const uint32_t mip_index, const uint32_t mip_range, const uint32_t array_length, const RHI_Image_Layout layout_old, const RHI_Image_Layout layout_new)
         {
             SP_ASSERT(cmd_buffer != nullptr);
             SP_ASSERT(image != nullptr);
@@ -515,6 +505,10 @@ namespace Spartan::vulkan_utility
                 if (image_barrier.oldLayout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
                 {
                     source_stage_mask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+                }
+                else if (image_barrier.oldLayout == VK_IMAGE_LAYOUT_UNDEFINED)
+                {
+                    source_stage_mask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
                 }
                 else
                 {
@@ -549,12 +543,12 @@ namespace Spartan::vulkan_utility
             );
         }
 
-        inline void set_layout(void* cmd_buffer, RHI_Texture* texture, const uint32_t mip_start, const uint32_t mip_range, const uint32_t array_length, const RHI_Image_Layout layout_old, const RHI_Image_Layout layout_new)
+        static void set_layout(void* cmd_buffer, RHI_Texture* texture, const uint32_t mip_start, const uint32_t mip_range, const uint32_t array_length, const RHI_Image_Layout layout_old, const RHI_Image_Layout layout_new)
         {
             SP_ASSERT(cmd_buffer != nullptr);
             SP_ASSERT(texture != nullptr);
 
-            set_layout(cmd_buffer, texture->GetResource(), get_aspect_mask(texture), mip_start, mip_range, array_length, layout_old, layout_new);
+            set_layout(cmd_buffer, texture->GetRhiResource(), get_aspect_mask(texture), mip_start, mip_range, array_length, layout_old, layout_new);
         }
 
         namespace view
@@ -639,45 +633,6 @@ namespace Spartan::vulkan_utility
                 }
                 image_views.fill(nullptr);
             }
-        }
-    }
-
-    namespace layer
-    {
-        inline bool is_present(const char* layer_name)
-        {
-            uint32_t layer_count;
-            vkEnumerateInstanceLayerProperties(&layer_count, nullptr);
-
-            std::vector<VkLayerProperties> layers(layer_count);
-            vkEnumerateInstanceLayerProperties(&layer_count, layers.data());
-
-            for (const auto& layer : layers)
-            {
-                if (strcmp(layer_name, layer.layerName) == 0)
-                    return true;
-            }
-
-            return false;
-        }
-
-        inline std::vector<const char*> get_supported(const std::vector<const char*>& layers)
-        {
-            std::vector<const char*> layers_supported;
-
-            for (const auto& layer : layers)
-            {
-                if (is_present(layer))
-                {
-                    layers_supported.emplace_back(layer);
-                }
-                else
-                {
-                    LOG_ERROR("Layer \"%s\" is not supported", layer);
-                }
-            }
-
-            return layers_supported;
         }
     }
 
@@ -771,7 +726,7 @@ namespace Spartan::vulkan_utility
             functions::destroy_messenger(instance, functions::messenger, nullptr);
         }
 
-        static void set_object_name(uint64_t object, VkObjectType object_type, const char* name)
+        static void set_object_name_internal(uint64_t object, VkObjectType object_type, const char* name)
         {
             if (!functions::set_object_name)
                 return;
@@ -828,104 +783,104 @@ namespace Spartan::vulkan_utility
             functions::marker_end(cmd_buffer);
         }
 
-        static void set_name(VkCommandPool cmd_pool, const char* name)
+        static void set_object_name(VkCommandPool object, const char* name)
         {
-            set_object_name((uint64_t)cmd_pool, VK_OBJECT_TYPE_COMMAND_POOL, name);
+            set_object_name_internal((uint64_t)object, VK_OBJECT_TYPE_COMMAND_POOL, name);
         }
 
-        static void set_name(VkCommandBuffer cmd_buffer, const char* name)
+        static void set_object_name(VkCommandBuffer object, const char* name)
         {
-            set_object_name((uint64_t)cmd_buffer, VK_OBJECT_TYPE_COMMAND_BUFFER, name);
+            set_object_name_internal((uint64_t)object, VK_OBJECT_TYPE_COMMAND_BUFFER, name);
         }
 
-        static void set_name(VkQueue queue, const char* name)
+        static void set_object_name(VkQueue object, const char* name)
         {
-            set_object_name((uint64_t)queue, VK_OBJECT_TYPE_QUEUE, name);
+            set_object_name_internal((uint64_t)object, VK_OBJECT_TYPE_QUEUE, name);
         }
 
-        static void set_name(VkImage image, const char* name)
+        static void set_object_name(VkImage object, const char* name)
         {
-            set_object_name((uint64_t)image, VK_OBJECT_TYPE_IMAGE, name);
+            set_object_name_internal((uint64_t)object, VK_OBJECT_TYPE_IMAGE, name);
         }
 
-        static void set_name(VkImageView image_view, const char* name)
+        static void set_object_name(VkImageView object, const char* name)
         {
-            set_object_name((uint64_t)image_view, VK_OBJECT_TYPE_IMAGE_VIEW, name);
+            set_object_name_internal((uint64_t)object, VK_OBJECT_TYPE_IMAGE_VIEW, name);
         }
 
-        static void set_name(VkSampler sampler, const char* name)
+        static void set_object_name(VkSampler object, const char* name)
         {
-            set_object_name((uint64_t)sampler, VK_OBJECT_TYPE_SAMPLER, name);
+            set_object_name_internal((uint64_t)object, VK_OBJECT_TYPE_SAMPLER, name);
         }
 
-        static void set_name(VkBuffer buffer, const char* name)
+        static void set_object_name(VkBuffer object, const char* name)
         {
-            set_object_name((uint64_t)buffer, VK_OBJECT_TYPE_BUFFER, name);
+            set_object_name_internal((uint64_t)object, VK_OBJECT_TYPE_BUFFER, name);
         }
 
-        static void set_name(VkBufferView bufferView, const char* name)
+        static void set_object_name(VkBufferView object, const char* name)
         {
-            set_object_name((uint64_t)bufferView, VK_OBJECT_TYPE_BUFFER_VIEW, name);
+            set_object_name_internal((uint64_t)object, VK_OBJECT_TYPE_BUFFER_VIEW, name);
         }
 
-        static void set_name(VkDeviceMemory memory, const char* name)
+        static void set_object_name(VkDeviceMemory object, const char* name)
         {
-            set_object_name((uint64_t)memory, VK_OBJECT_TYPE_DEVICE_MEMORY, name);
+            set_object_name_internal((uint64_t)object, VK_OBJECT_TYPE_DEVICE_MEMORY, name);
         }
 
-        static void set_name(VkShaderModule shaderModule, const char* name)
+        static void set_object_name(VkShaderModule object, const char* name)
         {
-            set_object_name((uint64_t)shaderModule, VK_OBJECT_TYPE_SHADER_MODULE, name);
+            set_object_name_internal((uint64_t)object, VK_OBJECT_TYPE_SHADER_MODULE, name);
         }
 
-        static void set_name(VkPipeline pipeline, const char* name)
+        static void set_object_name(VkPipeline object, const char* name)
         {
-            set_object_name((uint64_t)pipeline, VK_OBJECT_TYPE_PIPELINE, name);
+            set_object_name_internal((uint64_t)object, VK_OBJECT_TYPE_PIPELINE, name);
         }
 
-        static void set_name(VkPipelineLayout pipelineLayout, const char* name)
+        static void set_object_name(VkPipelineLayout object, const char* name)
         {
-            set_object_name((uint64_t)pipelineLayout, VK_OBJECT_TYPE_PIPELINE_LAYOUT, name);
+            set_object_name_internal((uint64_t)object, VK_OBJECT_TYPE_PIPELINE_LAYOUT, name);
         }
 
-        static void set_name(VkRenderPass renderPass, const char* name)
+        static void set_object_name(VkRenderPass object, const char* name)
         {
-            set_object_name((uint64_t)renderPass, VK_OBJECT_TYPE_RENDER_PASS, name);
+            set_object_name_internal((uint64_t)object, VK_OBJECT_TYPE_RENDER_PASS, name);
         }
 
-        static void set_name(VkFramebuffer framebuffer, const char* name)
+        static void set_object_name(VkFramebuffer object, const char* name)
         {
-            set_object_name((uint64_t)framebuffer, VK_OBJECT_TYPE_FRAMEBUFFER, name);
+            set_object_name_internal((uint64_t)object, VK_OBJECT_TYPE_FRAMEBUFFER, name);
         }
 
-        static void set_name(VkDescriptorSetLayout descriptorSetLayout, const char* name)
+        static void set_object_name(VkDescriptorSetLayout object, const char* name)
         {
-            set_object_name((uint64_t)descriptorSetLayout, VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT, name);
+            set_object_name_internal((uint64_t)object, VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT, name);
         }
 
-        static void set_name(VkDescriptorSet descriptorSet, const char* name)
+        static void set_object_name(VkDescriptorSet object, const char* name)
         {
-            set_object_name((uint64_t)descriptorSet, VK_OBJECT_TYPE_DESCRIPTOR_SET, name);
+            set_object_name_internal((uint64_t)object, VK_OBJECT_TYPE_DESCRIPTOR_SET, name);
         }
 
-        static void set_name(VkDescriptorPool descriptorPool, const char* name)
+        static void set_object_name(VkDescriptorPool object, const char* name)
         {
-            set_object_name((uint64_t)descriptorPool, VK_OBJECT_TYPE_DESCRIPTOR_POOL, name);
+            set_object_name_internal((uint64_t)object, VK_OBJECT_TYPE_DESCRIPTOR_POOL, name);
         }
 
-        static void set_name(VkSemaphore semaphore, const char* name)
+        static void set_object_name(VkSemaphore object, const char* name)
         {
-            set_object_name((uint64_t)semaphore, VK_OBJECT_TYPE_SEMAPHORE, name);
+            set_object_name_internal((uint64_t)object, VK_OBJECT_TYPE_SEMAPHORE, name);
         }
 
-        static void set_name(VkFence fence, const char* name)
+        static void set_object_name(VkFence object, const char* name)
         {
-            set_object_name((uint64_t)fence, VK_OBJECT_TYPE_FENCE, name);
+            set_object_name_internal((uint64_t)object, VK_OBJECT_TYPE_FENCE, name);
         }
 
-        static void set_name(VkEvent _event, const char* name)
+        static void set_object_name(VkEvent object, const char* name)
         {
-            set_object_name((uint64_t)_event, VK_OBJECT_TYPE_EVENT, name);
+            set_object_name_internal((uint64_t)object, VK_OBJECT_TYPE_EVENT, name);
         }
     };
 

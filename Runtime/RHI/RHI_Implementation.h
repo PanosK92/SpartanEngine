@@ -504,7 +504,13 @@ namespace Spartan
 
                 */
                 std::vector<const char*> validation_layers                      = { "VK_LAYER_KHRONOS_validation" };
-                std::vector<VkValidationFeatureEnableEXT> validation_extensions = { VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT, VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT };
+                std::vector<VkValidationFeatureEnableEXT> validation_extensions =
+                {
+                    VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT,
+                    VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT
+                    //VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_EXT,
+                    //VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_RESERVE_BINDING_SLOT_EXT
+                };
                 std::vector<const char*> extensions_instance                    = { "VK_KHR_surface", "VK_KHR_win32_surface", "VK_EXT_debug_report", "VK_EXT_debug_utils"};
             #else
                 std::vector<const char*> validation_layers                      = { };
@@ -512,15 +518,14 @@ namespace Spartan
                 std::vector<const char*> extensions_instance                    = { "VK_KHR_surface", "VK_KHR_win32_surface" };
             #endif
                 std::vector<const char*> extensions_device = {
-                    "VK_KHR_swapchain",          // windows swapchain
-                    "VK_EXT_memory_budget",      // memory budget
-                    "VK_EXT_depth_clip_enable",  // depth clip
-                    "VK_KHR_timeline_semaphore", // timeline semaphores
-                    "VK_KHR_dynamic_rendering"   // gets rid of render passes and frame buffer objects
+                    "VK_KHR_swapchain",             // windows swapchain
+                    "VK_EXT_memory_budget",         // memory budget
+                    "VK_EXT_depth_clip_enable",     // depth clip
+                    "VK_KHR_timeline_semaphore",    // timeline semaphores
+                    "VK_KHR_dynamic_rendering",     // gets rid of render passes and frame buffer objects
+                    "VK_EXT_subgroup_size_control", // used by FSR 2.0
+                    "VK_KHR_shader_float16_int8"    // used by FSR 2.0
                 };
-
-                bool InitialiseAllocator();
-                void DestroyAllocator();
         #endif
 
         // Debugging

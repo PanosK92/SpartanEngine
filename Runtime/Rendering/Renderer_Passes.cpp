@@ -170,7 +170,6 @@ namespace Spartan
         // Editor related stuff - Passes that render on top of each other
         Pass_DebugMeshes(cmd_list, rt_output);
         Pass_Outline(cmd_list, rt_output);
-        Pass_Lines(cmd_list, rt_output);
         Pass_TransformHandle(cmd_list, rt_output);
         Pass_Icons(cmd_list, rt_output);
         Pass_PeformanceMetrics(cmd_list, rt_output);
@@ -319,13 +318,26 @@ namespace Spartan
                     if (is_transparent_pass && m_set_material_id != material->GetObjectId())
                     {
                         // Bind material textures
-                        RHI_Texture* tex_albedo = material->GetTexture_Ptr(Material_Color);
+                        RHI_Texture* tex_albedo = material->GetTexture(MaterialTexture::Color);
                         cmd_list->SetTexture(RendererBindingsSrv::tex, tex_albedo ? tex_albedo : m_tex_default_white.get());
 
                         // Set uber buffer with material properties
-                        m_cb_uber_cpu.mat_color     = material->GetColorAlbedo();
-                        m_cb_uber_cpu.mat_tiling_uv = material->GetTiling();
-                        m_cb_uber_cpu.mat_offset_uv = material->GetOffset();
+                        m_cb_uber_cpu.mat_color = Vector4(
+                            material->GetProperty(MaterialProperty::ColorR),
+                            material->GetProperty(MaterialProperty::ColorG),
+                            material->GetProperty(MaterialProperty::ColorB),
+                            material->GetProperty(MaterialProperty::ColorA)
+                        );
+
+                        m_cb_uber_cpu.mat_tiling_uv = Vector2(
+                            material->GetProperty(MaterialProperty::UvTilingX),
+                            material->GetProperty(MaterialProperty::UvTilingY)
+                        );
+
+                        m_cb_uber_cpu.mat_offset_uv = Vector2(
+                            material->GetProperty(MaterialProperty::UvOffsetX),
+                            material->GetProperty(MaterialProperty::UvOffsetY)
+                        );
 
                         m_set_material_id = material->GetObjectId();
                     }
@@ -451,16 +463,21 @@ namespace Spartan
                                 cmd_list->SetBufferVertex(model->GetVertexBuffer());
 
                                 // Bind material textures
-                                cmd_list->SetTexture(RendererBindingsSrv::material_albedo,    material->GetTexture_Ptr(Material_Color));
-                                cmd_list->SetTexture(RendererBindingsSrv::material_roughness, material->GetTexture_Ptr(Material_Metallic));
-                                cmd_list->SetTexture(RendererBindingsSrv::material_metallic,  material->GetTexture_Ptr(Material_Metallic));
+                                cmd_list->SetTexture(RendererBindingsSrv::material_albedo,    material->GetTexture(MaterialTexture::Color));
+                                cmd_list->SetTexture(RendererBindingsSrv::material_roughness, material->GetTexture(MaterialTexture::Metallness));
+                                cmd_list->SetTexture(RendererBindingsSrv::material_metallic,  material->GetTexture(MaterialTexture::Metallness));
 
                                 // Set uber buffer with material properties
-                                m_cb_uber_cpu.mat_color    = material->GetColorAlbedo();
+                                m_cb_uber_cpu.mat_color = Vector4(
+                                    material->GetProperty(MaterialProperty::ColorR),
+                                    material->GetProperty(MaterialProperty::ColorG),
+                                    material->GetProperty(MaterialProperty::ColorB),
+                                    material->GetProperty(MaterialProperty::ColorA)
+                                );
                                 m_cb_uber_cpu.mat_textures = 0;
-                                m_cb_uber_cpu.mat_textures |= material->HasTexture(Material_Color)     ? (1U << 2) : 0;
-                                m_cb_uber_cpu.mat_textures |= material->HasTexture(Material_Roughness) ? (1U << 3) : 0;
-                                m_cb_uber_cpu.mat_textures |= material->HasTexture(Material_Metallic)  ? (1U << 4) : 0;
+                                m_cb_uber_cpu.mat_textures |= material->HasTexture(MaterialTexture::Color)      ? (1U << 2) : 0;
+                                m_cb_uber_cpu.mat_textures |= material->HasTexture(MaterialTexture::Roughness)  ? (1U << 3) : 0;
+                                m_cb_uber_cpu.mat_textures |= material->HasTexture(MaterialTexture::Metallness) ? (1U << 4) : 0;
 
                                 // Set uber buffer with cascade transform
                                 m_cb_uber_cpu.transform = entity->GetTransform()->GetMatrix() * view_projection;
@@ -554,13 +571,13 @@ namespace Spartan
                 }
 
                 // Bind alpha testing textures
-                cmd_list->SetTexture(RendererBindingsSrv::material_albedo,  material->GetTexture_Ptr(Material_Color));
-                cmd_list->SetTexture(RendererBindingsSrv::material_mask,    material->GetTexture_Ptr(Material_AlphaMask));
+                cmd_list->SetTexture(RendererBindingsSrv::material_albedo,  material->GetTexture(MaterialTexture::Color));
+                cmd_list->SetTexture(RendererBindingsSrv::material_mask,    material->GetTexture(MaterialTexture::AlphaMask));
 
                 // Set uber buffer
                 m_cb_uber_cpu.transform           = transform->GetMatrix();
-                m_cb_uber_cpu.mat_color.w         = material->HasTexture(Material_Color) ? 1.0f : 0.0f;
-                m_cb_uber_cpu.is_transparent_pass = material->HasTexture(Material_AlphaMask);
+                m_cb_uber_cpu.mat_color.w         = material->HasTexture(MaterialTexture::Color) ? 1.0f : 0.0f;
+                m_cb_uber_cpu.is_transparent_pass = material->HasTexture(MaterialTexture::AlphaMask);
                 Update_Cb_Uber(cmd_list);
             
                 // Draw
@@ -677,33 +694,39 @@ namespace Spartan
                     }
 
                     // Bind material textures
-                    cmd_list->SetTexture(RendererBindingsSrv::material_albedo, material->GetTexture_Ptr(Material_Color));
-                    cmd_list->SetTexture(RendererBindingsSrv::material_roughness, material->GetTexture_Ptr(Material_Roughness));
-                    cmd_list->SetTexture(RendererBindingsSrv::material_metallic, material->GetTexture_Ptr(Material_Metallic));
-                    cmd_list->SetTexture(RendererBindingsSrv::material_normal, material->GetTexture_Ptr(Material_Normal));
-                    cmd_list->SetTexture(RendererBindingsSrv::material_height, material->GetTexture_Ptr(Material_Height));
-                    cmd_list->SetTexture(RendererBindingsSrv::material_occlusion, material->GetTexture_Ptr(Material_Occlusion));
-                    cmd_list->SetTexture(RendererBindingsSrv::material_emission, material->GetTexture_Ptr(Material_Emission));
-                    cmd_list->SetTexture(RendererBindingsSrv::material_mask, material->GetTexture_Ptr(Material_AlphaMask));
+                    cmd_list->SetTexture(RendererBindingsSrv::material_albedo,    material->GetTexture(MaterialTexture::Color));
+                    cmd_list->SetTexture(RendererBindingsSrv::material_roughness, material->GetTexture(MaterialTexture::Roughness));
+                    cmd_list->SetTexture(RendererBindingsSrv::material_metallic,  material->GetTexture(MaterialTexture::Metallness));
+                    cmd_list->SetTexture(RendererBindingsSrv::material_normal,    material->GetTexture(MaterialTexture::Normal));
+                    cmd_list->SetTexture(RendererBindingsSrv::material_height,    material->GetTexture(MaterialTexture::Height));
+                    cmd_list->SetTexture(RendererBindingsSrv::material_occlusion, material->GetTexture(MaterialTexture::Occlusion));
+                    cmd_list->SetTexture(RendererBindingsSrv::material_emission,  material->GetTexture(MaterialTexture::Emission));
+                    cmd_list->SetTexture(RendererBindingsSrv::material_mask,      material->GetTexture(MaterialTexture::AlphaMask));
 
                     // Set uber buffer with material properties
-                    m_cb_uber_cpu.mat_id            = material_index;
-                    m_cb_uber_cpu.mat_color         = material->GetColorAlbedo();
-                    m_cb_uber_cpu.mat_tiling_uv     = material->GetTiling();
-                    m_cb_uber_cpu.mat_offset_uv     = material->GetOffset();
-                    m_cb_uber_cpu.mat_roughness_mul = material->GetProperty(Material_Roughness);
-                    m_cb_uber_cpu.mat_metallic_mul  = material->GetProperty(Material_Metallic);
-                    m_cb_uber_cpu.mat_normal_mul    = material->GetProperty(Material_Normal);
-                    m_cb_uber_cpu.mat_height_mul    = material->GetProperty(Material_Height);
-                    m_cb_uber_cpu.mat_textures      = 0;
-                    m_cb_uber_cpu.mat_textures     |= material->HasTexture(Material_Height) ? (1U << 0) : 0;
-                    m_cb_uber_cpu.mat_textures     |= material->HasTexture(Material_Normal) ? (1U << 1) : 0;
-                    m_cb_uber_cpu.mat_textures     |= material->HasTexture(Material_Color) ? (1U << 2) : 0;
-                    m_cb_uber_cpu.mat_textures     |= material->HasTexture(Material_Roughness) ? (1U << 3) : 0;
-                    m_cb_uber_cpu.mat_textures     |= material->HasTexture(Material_Metallic) ? (1U << 4) : 0;
-                    m_cb_uber_cpu.mat_textures     |= material->HasTexture(Material_AlphaMask) ? (1U << 5) : 0;
-                    m_cb_uber_cpu.mat_textures     |= material->HasTexture(Material_Emission) ? (1U << 6) : 0;
-                    m_cb_uber_cpu.mat_textures     |= material->HasTexture(Material_Occlusion) ? (1U << 7) : 0;
+                    m_cb_uber_cpu.mat_id                                 = material_index;
+                    m_cb_uber_cpu.mat_color.x                            = material->GetProperty(MaterialProperty::ColorR);
+                    m_cb_uber_cpu.mat_color.y                            = material->GetProperty(MaterialProperty::ColorG);
+                    m_cb_uber_cpu.mat_color.z                            = material->GetProperty(MaterialProperty::ColorB);
+                    m_cb_uber_cpu.mat_color.w                            = material->GetProperty(MaterialProperty::ColorA);
+                    m_cb_uber_cpu.mat_tiling_uv.x                        = material->GetProperty(MaterialProperty::UvTilingX);
+                    m_cb_uber_cpu.mat_tiling_uv.y                        = material->GetProperty(MaterialProperty::UvTilingY);
+                    m_cb_uber_cpu.mat_offset_uv.x                        = material->GetProperty(MaterialProperty::UvOffsetX);
+                    m_cb_uber_cpu.mat_offset_uv.y                        = material->GetProperty(MaterialProperty::UvOffsetY);
+                    m_cb_uber_cpu.mat_roughness_mul                      = material->GetProperty(MaterialProperty::RoughnessMultiplier);
+                    m_cb_uber_cpu.mat_metallic_mul                       = material->GetProperty(MaterialProperty::MetallnessMultiplier);
+                    m_cb_uber_cpu.mat_normal_mul                         = material->GetProperty(MaterialProperty::NormalMultiplier);
+                    m_cb_uber_cpu.mat_height_mul                         = material->GetProperty(MaterialProperty::HeightMultiplier);
+                    m_cb_uber_cpu.mat_single_texture_rougness_metalness  = material->GetProperty(MaterialProperty::SingleTextureRoughnessMetalness);
+                    m_cb_uber_cpu.mat_textures                           = 0;
+                    m_cb_uber_cpu.mat_textures                          |= material->HasTexture(MaterialTexture::Height)     ? (1U << 0) : 0;
+                    m_cb_uber_cpu.mat_textures                          |= material->HasTexture(MaterialTexture::Normal)     ? (1U << 1) : 0;
+                    m_cb_uber_cpu.mat_textures                          |= material->HasTexture(MaterialTexture::Color)      ? (1U << 2) : 0;
+                    m_cb_uber_cpu.mat_textures                          |= material->HasTexture(MaterialTexture::Roughness)  ? (1U << 3) : 0;
+                    m_cb_uber_cpu.mat_textures                          |= material->HasTexture(MaterialTexture::Metallness) ? (1U << 4) : 0;
+                    m_cb_uber_cpu.mat_textures                          |= material->HasTexture(MaterialTexture::AlphaMask)  ? (1U << 5) : 0;
+                    m_cb_uber_cpu.mat_textures                          |= material->HasTexture(MaterialTexture::Emission)   ? (1U << 6) : 0;
+                    m_cb_uber_cpu.mat_textures                          |= material->HasTexture(MaterialTexture::Occlusion)  ? (1U << 7) : 0;
                 }
 
                 // Set uber buffer with entity transform
@@ -729,6 +752,140 @@ namespace Spartan
             }
 
             cmd_list->EndRenderPass();
+        }
+
+        cmd_list->EndTimeblock();
+    }
+
+    void Renderer::Pass_Lines(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
+    {
+        const bool draw_grid            = GetOption<bool>(RendererOption::Debug_Grid);
+        const bool draw_lines_depth_off = m_lines_index_depth_off != numeric_limits<uint32_t>::max();
+        const bool draw_lines_depth_on  = m_lines_index_depth_on > ((m_line_vertices.size() / 2) - 1);
+        if (!draw_grid && !draw_lines_depth_off && !draw_lines_depth_on)
+            return;
+
+        // Acquire shaders.
+        RHI_Shader* shader_v = m_shaders[RendererShader::Lines_V].get();
+        RHI_Shader* shader_p = m_shaders[RendererShader::Lines_P].get();
+        if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
+            return;
+
+        cmd_list->BeginTimeblock("lines");
+
+        // Grid
+        if (draw_grid)
+        {
+            cmd_list->BeginMarker("grid");
+
+            // Define pipeline state
+            static RHI_PipelineState pso;
+            pso.shader_vertex                   = shader_v;
+            pso.shader_pixel                    = shader_p;
+            pso.rasterizer_state                = m_rasterizer_cull_back_wireframe.get();
+            pso.blend_state                     = m_blend_alpha.get();
+            pso.depth_stencil_state             = m_depth_stencil_r_off.get();
+            pso.render_target_color_textures[0] = tex_out;
+            pso.render_target_depth_texture     = render_target(RendererTexture::Gbuffer_Depth).get();
+            pso.viewport                        = tex_out->GetViewport();
+            pso.primitive_topology              = RHI_PrimitiveTopology_Mode::LineList;
+
+            // Set pipeline state
+            cmd_list->SetPipelineState(pso);
+
+            // Render
+            cmd_list->BeginRenderPass();
+            {
+                // Set uber buffer
+                m_cb_uber_cpu.resolution_rt = m_resolution_render;
+                if (m_camera)
+                {
+                    m_cb_uber_cpu.transform = m_gizmo_grid->ComputeWorldMatrix(m_camera->GetTransform()) * m_cb_frame_cpu.view_projection_unjittered;
+                }
+                Update_Cb_Uber(cmd_list);
+
+                cmd_list->SetBufferVertex(m_gizmo_grid->GetVertexBuffer().get());
+                cmd_list->Draw(m_gizmo_grid->GetVertexCount());
+                cmd_list->EndRenderPass();
+            }
+
+            cmd_list->EndMarker();
+        }
+
+        // Draw lines
+        if (draw_lines_depth_off || draw_lines_depth_on)
+        {
+            // Grow vertex buffer (if needed)
+            uint32_t vertex_count = static_cast<uint32_t>(m_line_vertices.size());
+            if (vertex_count > m_vertex_buffer_lines->GetVertexCount())
+            {
+                m_vertex_buffer_lines->CreateDynamic<RHI_Vertex_PosCol>(vertex_count);
+            }
+
+            // If the vertex count is 0, the vertex buffer will be uninitialised.
+            if (vertex_count != 0)
+            { 
+                // Update vertex buffer
+                RHI_Vertex_PosCol* buffer = static_cast<RHI_Vertex_PosCol*>(m_vertex_buffer_lines->Map());
+                std::copy(m_line_vertices.begin(), m_line_vertices.end(), buffer);
+                m_vertex_buffer_lines->Unmap();
+
+                // Define pipeline state
+                static RHI_PipelineState pso;
+                pso.shader_vertex                   = shader_v;
+                pso.shader_pixel                    = shader_p;
+                pso.rasterizer_state                = m_rasterizer_cull_back_wireframe.get();
+                pso.render_target_color_textures[0] = tex_out;
+                pso.viewport                        = tex_out->GetViewport();
+                pso.primitive_topology              = RHI_PrimitiveTopology_Mode::LineList;
+
+                // Depth off
+                if (draw_lines_depth_off)
+                {
+                    cmd_list->BeginMarker("depth_off");
+
+                    // Define pipeline state
+                    pso.blend_state         = m_blend_disabled.get();
+                    pso.depth_stencil_state = m_depth_stencil_off_off.get();
+
+                    // Set pipeline state
+                    cmd_list->SetPipelineState(pso);
+
+                    // Render
+                    cmd_list->BeginRenderPass();
+                    {
+                        cmd_list->SetBufferVertex(m_vertex_buffer_lines.get());
+                        cmd_list->Draw(m_lines_index_depth_off + 1);
+                        cmd_list->EndRenderPass();
+                    }
+
+                    cmd_list->EndMarker();
+                }
+
+                // Depth on
+                if (m_lines_index_depth_on > (vertex_count / 2) - 1)
+                {
+                    cmd_list->BeginMarker("depth_on");
+
+                    // Define pipeline state
+                    pso.blend_state                 = m_blend_alpha.get();
+                    pso.depth_stencil_state         = m_depth_stencil_r_off.get();
+                    pso.render_target_depth_texture = render_target(RendererTexture::Gbuffer_Depth).get();
+
+                    // Set pipeline state
+                    cmd_list->SetPipelineState(pso);
+
+                    // Render
+                    cmd_list->BeginRenderPass();
+                    {
+                        cmd_list->SetBufferVertex(m_vertex_buffer_lines.get());
+                        cmd_list->Draw((m_lines_index_depth_on - (vertex_count / 2)) + 1, vertex_count / 2);
+                        cmd_list->EndRenderPass();
+                    }
+
+                    cmd_list->EndMarker();
+                }
+            }
         }
 
         cmd_list->EndTimeblock();
@@ -762,8 +919,8 @@ namespace Spartan
         Update_Cb_Uber(cmd_list);
 
         // Set textures
-        cmd_list->SetTexture(RendererBindingsUav::rgba,           tex_ssao);
-        cmd_list->SetTexture(RendererBindingsUav::rgba2,          tex_ssao_gi);
+        cmd_list->SetTexture(RendererBindingsUav::tex,           tex_ssao);
+        cmd_list->SetTexture(RendererBindingsUav::tex2,          tex_ssao_gi);
         cmd_list->SetTexture(RendererBindingsSrv::gbuffer_albedo, render_target(RendererTexture::Gbuffer_Albedo));
         cmd_list->SetTexture(RendererBindingsSrv::gbuffer_normal, render_target(RendererTexture::Gbuffer_Normal));
         cmd_list->SetTexture(RendererBindingsSrv::gbuffer_depth,  render_target(RendererTexture::Gbuffer_Depth));
@@ -809,7 +966,7 @@ namespace Spartan
         Update_Cb_Uber(cmd_list);
 
         // Set textures
-        cmd_list->SetTexture(RendererBindingsUav::rgba, tex_ssr);   // write to that
+        cmd_list->SetTexture(RendererBindingsUav::tex, tex_ssr);   // write to that
         cmd_list->SetTexture(RendererBindingsSrv::tex, tex_in);     // reflect from that
         cmd_list->SetTexture(RendererBindingsSrv::gbuffer_albedo,   render_target(RendererTexture::Gbuffer_Albedo));
         cmd_list->SetTexture(RendererBindingsSrv::gbuffer_normal,   render_target(RendererTexture::Gbuffer_Normal));
@@ -874,20 +1031,20 @@ namespace Spartan
             {
                 if (light->GetIntensity() != 0)
                 {
-                    cmd_list->SetTexture(RendererBindingsUav::rgb,               tex_diffuse);
-                    cmd_list->SetTexture(RendererBindingsUav::rgb2,              tex_specular);
-                    cmd_list->SetTexture(RendererBindingsUav::rgb3,              tex_volumetric);
-                    cmd_list->SetTexture(RendererBindingsSrv::gbuffer_albedo,    render_target(RendererTexture::Gbuffer_Albedo));
-                    cmd_list->SetTexture(RendererBindingsSrv::gbuffer_normal,    render_target(RendererTexture::Gbuffer_Normal));
-                    cmd_list->SetTexture(RendererBindingsSrv::gbuffer_material,  render_target(RendererTexture::Gbuffer_Material));
-                    cmd_list->SetTexture(RendererBindingsSrv::gbuffer_depth,     render_target(RendererTexture::Gbuffer_Depth));
-                    cmd_list->SetTexture(RendererBindingsSrv::ssao,              render_target(RendererTexture::Ssao));
-                    cmd_list->SetTexture(RendererBindingsSrv::ssao_gi,           render_target(RendererTexture::Ssao_Gi));
+                    cmd_list->SetTexture(RendererBindingsUav::tex,              tex_diffuse);
+                    cmd_list->SetTexture(RendererBindingsUav::tex2,             tex_specular);
+                    cmd_list->SetTexture(RendererBindingsUav::tex3,             tex_volumetric);
+                    cmd_list->SetTexture(RendererBindingsSrv::gbuffer_albedo,   render_target(RendererTexture::Gbuffer_Albedo));
+                    cmd_list->SetTexture(RendererBindingsSrv::gbuffer_normal,   render_target(RendererTexture::Gbuffer_Normal));
+                    cmd_list->SetTexture(RendererBindingsSrv::gbuffer_material, render_target(RendererTexture::Gbuffer_Material));
+                    cmd_list->SetTexture(RendererBindingsSrv::gbuffer_depth,    render_target(RendererTexture::Gbuffer_Depth));
+                    cmd_list->SetTexture(RendererBindingsSrv::ssao,             render_target(RendererTexture::Ssao));
+                    cmd_list->SetTexture(RendererBindingsSrv::ssao_gi,          render_target(RendererTexture::Ssao_Gi));
                     
                     // Set shadow maps
                     {
                         // We always bind all the shadow maps, regardless of the light type or if shadows are enabled.
-                            // This is because we are using an uber shader and APIs like Vulkan, expect all texture slots to be bound with something.
+                        // This is because we are using an uber shader and APIs like Vulkan, expect all texture slots to be bound with something.
 
                         RHI_Texture* tex_depth = light->GetDepthTexture();
                         RHI_Texture* tex_color = light->GetShadowsTransparentEnabled() ? light->GetColorTexture() : m_tex_default_white.get();
@@ -935,7 +1092,7 @@ namespace Spartan
         if (!shader_c->IsCompiled())
             return;
 
-        cmd_list->BeginTimeblock(is_transparent_pass ? "light_composition_transparent" : "light_composition_opaque");
+        cmd_list->BeginTimeblock(is_transparent_pass ? "light_composition_transparent" : "light_composition");
 
         // Define pipeline state
         static RHI_PipelineState pso;
@@ -950,7 +1107,7 @@ namespace Spartan
         Update_Cb_Uber(cmd_list);
 
         // Set textures
-        cmd_list->SetTexture(RendererBindingsUav::rgba, tex_out);
+        cmd_list->SetTexture(RendererBindingsUav::tex,              tex_out);
         cmd_list->SetTexture(RendererBindingsSrv::gbuffer_albedo,   render_target(RendererTexture::Gbuffer_Albedo));
         cmd_list->SetTexture(RendererBindingsSrv::gbuffer_material, render_target(RendererTexture::Gbuffer_Material));
         cmd_list->SetTexture(RendererBindingsSrv::gbuffer_normal,   render_target(RendererTexture::Gbuffer_Normal));
@@ -976,7 +1133,7 @@ namespace Spartan
         if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
             return;
 
-        cmd_list->BeginTimeblock(is_transparent_pass ? "light_image_based_transparent" : "light_image_based_opaque");
+        cmd_list->BeginTimeblock(is_transparent_pass ? "light_image_based_transparent" : "light_image_based");
 
         // Get reflection probe entities
         const vector<Entity*>& probes = m_entities[RendererEntityType::ReflectionProbe];
@@ -1084,7 +1241,7 @@ namespace Spartan
             Update_Cb_Uber(cmd_list);
 
             // Set textures
-            cmd_list->SetTexture(RendererBindingsUav::rgba, tex_blur);
+            cmd_list->SetTexture(RendererBindingsUav::tex, tex_blur);
             cmd_list->SetTexture(RendererBindingsSrv::tex, tex_in, mip, mip_range);
             if (depth_aware)
             {
@@ -1111,7 +1268,7 @@ namespace Spartan
             Update_Cb_Uber(cmd_list);
 
             // Set textures
-            cmd_list->SetTexture(RendererBindingsUav::rgba, tex_in, mip, mip_range);
+            cmd_list->SetTexture(RendererBindingsUav::tex, tex_in, mip, mip_range);
             cmd_list->SetTexture(RendererBindingsSrv::tex, tex_blur);
             if (depth_aware)
             {
@@ -1155,6 +1312,9 @@ namespace Spartan
                 swap_render = !swap_render;
                 Pass_DepthOfField(cmd_list, get_render_in, get_render_out);
             }
+
+            // Line rendering (world grid, vectors, debugging etc)
+            Pass_Lines(cmd_list, get_render_out);
         }
 
         // Determine antialiasing modes
@@ -1285,7 +1445,7 @@ namespace Spartan
             Update_Cb_Uber(cmd_list);
 
             // Set textures
-            cmd_list->SetTexture(RendererBindingsUav::rgb, tex_bloom);
+            cmd_list->SetTexture(RendererBindingsUav::tex, tex_bloom);
             cmd_list->SetTexture(RendererBindingsSrv::tex, tex_in);
 
             // Render
@@ -1321,7 +1481,7 @@ namespace Spartan
 
                 // Set textures
                 cmd_list->SetTexture(RendererBindingsSrv::tex, tex_bloom, mip_index_small, 1);
-                cmd_list->SetTexture(RendererBindingsUav::rgb, tex_bloom, mip_index_big, 1);
+                cmd_list->SetTexture(RendererBindingsUav::tex, tex_bloom, mip_index_big, 1);
 
                 // Render
                 uint32_t thread_group_count_x_ = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(mip_width_large) / m_thread_group_count));
@@ -1346,7 +1506,7 @@ namespace Spartan
             Update_Cb_Uber(cmd_list);
 
             // Set textures
-            cmd_list->SetTexture(RendererBindingsUav::rgba, tex_out);
+            cmd_list->SetTexture(RendererBindingsUav::tex, tex_out);
             cmd_list->SetTexture(RendererBindingsSrv::tex, tex_in);
             cmd_list->SetTexture(RendererBindingsSrv::tex2, tex_bloom, 0, 1);
 
@@ -1379,7 +1539,7 @@ namespace Spartan
         Update_Cb_Uber(cmd_list);
 
         // Set textures
-        cmd_list->SetTexture(RendererBindingsUav::rgba, tex_out);
+        cmd_list->SetTexture(RendererBindingsUav::tex, tex_out);
         cmd_list->SetTexture(RendererBindingsSrv::tex, tex_in);
 
         // Render
@@ -1410,7 +1570,7 @@ namespace Spartan
 
         // Set textures
         cmd_list->SetTexture(RendererBindingsSrv::tex, tex_in);
-        cmd_list->SetTexture(RendererBindingsUav::rgba, tex_out);
+        cmd_list->SetTexture(RendererBindingsUav::tex, tex_out);
         
         // Render
         cmd_list->Dispatch(thread_group_count_x(tex_out), thread_group_count_y(tex_out));
@@ -1439,7 +1599,7 @@ namespace Spartan
         Update_Cb_Uber(cmd_list);
 
         // Set textures
-        cmd_list->SetTexture(RendererBindingsUav::rgba, tex_out);
+        cmd_list->SetTexture(RendererBindingsUav::tex, tex_out);
         cmd_list->SetTexture(RendererBindingsSrv::tex, tex_in);
 
         // Render
@@ -1469,7 +1629,7 @@ namespace Spartan
         Update_Cb_Uber(cmd_list);
 
         // Set textures
-        cmd_list->SetTexture(RendererBindingsUav::rgba, tex_out);
+        cmd_list->SetTexture(RendererBindingsUav::tex, tex_out);
         cmd_list->SetTexture(RendererBindingsSrv::tex, tex_in);
         cmd_list->SetTexture(RendererBindingsSrv::gbuffer_velocity, render_target(RendererTexture::Gbuffer_Velocity));
         cmd_list->SetTexture(RendererBindingsSrv::gbuffer_depth, render_target(RendererTexture::Gbuffer_Depth));
@@ -1512,7 +1672,7 @@ namespace Spartan
             Update_Cb_Uber(cmd_list);
 
             // Set textures
-            cmd_list->SetTexture(RendererBindingsUav::rgba, tex_bokeh_half);
+            cmd_list->SetTexture(RendererBindingsUav::tex, tex_bokeh_half);
             cmd_list->SetTexture(RendererBindingsSrv::gbuffer_depth, tex_depth);
             cmd_list->SetTexture(RendererBindingsSrv::tex, tex_in);
 
@@ -1536,7 +1696,7 @@ namespace Spartan
             Update_Cb_Uber(cmd_list);
 
             // Set textures
-            cmd_list->SetTexture(RendererBindingsUav::rgba, tex_bokeh_half_2);
+            cmd_list->SetTexture(RendererBindingsUav::tex, tex_bokeh_half_2);
             cmd_list->SetTexture(RendererBindingsSrv::tex, tex_bokeh_half);
 
             // Render
@@ -1559,7 +1719,7 @@ namespace Spartan
             Update_Cb_Uber(cmd_list);
 
             // Set textures
-            cmd_list->SetTexture(RendererBindingsUav::rgba, tex_bokeh_half);
+            cmd_list->SetTexture(RendererBindingsUav::tex, tex_bokeh_half);
             cmd_list->SetTexture(RendererBindingsSrv::tex, tex_bokeh_half_2);
 
             // Render
@@ -1582,7 +1742,7 @@ namespace Spartan
             Update_Cb_Uber(cmd_list);
 
             // Set textures
-            cmd_list->SetTexture(RendererBindingsUav::rgba, tex_out);
+            cmd_list->SetTexture(RendererBindingsUav::tex, tex_out);
             cmd_list->SetTexture(RendererBindingsSrv::gbuffer_depth, tex_depth);
             cmd_list->SetTexture(RendererBindingsSrv::tex, tex_in);
             cmd_list->SetTexture(RendererBindingsSrv::tex2, tex_bokeh_half);
@@ -1616,7 +1776,7 @@ namespace Spartan
         Update_Cb_Uber(cmd_list);
 
         // Set textures
-        cmd_list->SetTexture(RendererBindingsUav::rgba, tex_out);
+        cmd_list->SetTexture(RendererBindingsUav::tex, tex_out);
         cmd_list->SetTexture(RendererBindingsSrv::tex, tex_in);
 
         // Render
@@ -1647,7 +1807,7 @@ namespace Spartan
         Update_Cb_Uber(cmd_list);
 
         // Set textures
-        cmd_list->SetTexture(RendererBindingsUav::rgba, tex_out);
+        cmd_list->SetTexture(RendererBindingsUav::tex, tex_out);
         cmd_list->SetTexture(RendererBindingsSrv::tex, tex_in);
 
         // Render
@@ -1677,7 +1837,7 @@ namespace Spartan
         Update_Cb_Uber(cmd_list);
 
         // Set textures
-        cmd_list->SetTexture(RendererBindingsUav::rgba, tex_out);
+        cmd_list->SetTexture(RendererBindingsUav::tex, tex_out);
         cmd_list->SetTexture(RendererBindingsSrv::tex, tex_in);
 
         // Render
@@ -1731,7 +1891,7 @@ namespace Spartan
 
         // Set textures
         cmd_list->SetTexture(RendererBindingsSrv::tex, tex, 0, 1);                            // top mip
-        cmd_list->SetTexture(RendererBindingsUav::rgba_mips, tex, 1, tex->GetMipCount() - 1); // rest of the mips
+        cmd_list->SetTexture(RendererBindingsUav::tex_array, tex, 1, tex->GetMipCount() - 1); // rest of the mips
 
         // Render
         cmd_list->Dispatch(thread_group_count_x_, thread_group_count_y_);
@@ -1760,7 +1920,7 @@ namespace Spartan
             cmd_list->SetPipelineState(pso);
 
             // Set textures
-            cmd_list->SetTexture(RendererBindingsUav::rgb, tex_out_scratch);
+            cmd_list->SetTexture(RendererBindingsUav::tex, tex_out_scratch);
             cmd_list->SetTexture(RendererBindingsSrv::tex, tex_in);
 
             // Render
@@ -1782,7 +1942,7 @@ namespace Spartan
             cmd_list->SetPipelineState(pso);
 
             // Set textures
-            cmd_list->SetTexture(RendererBindingsUav::rgb, tex_out);
+            cmd_list->SetTexture(RendererBindingsUav::tex, tex_out);
             cmd_list->SetTexture(RendererBindingsSrv::tex, tex_out_scratch);
 
             // Render
@@ -1809,140 +1969,6 @@ namespace Spartan
             m_camera.get(),
             m_cb_frame_cpu.delta_time
         );
-
-        cmd_list->EndTimeblock();
-    }
-
-    void Renderer::Pass_Lines(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
-    {
-        const bool draw_grid            = GetOption<bool>(RendererOption::Debug_Grid);
-        const bool draw_lines_depth_off = m_lines_index_depth_off != numeric_limits<uint32_t>::max();
-        const bool draw_lines_depth_on  = m_lines_index_depth_on > ((m_line_vertices.size() / 2) - 1);
-        if (!draw_grid && !draw_lines_depth_off && !draw_lines_depth_on)
-            return;
-
-        // Acquire color shaders.
-        RHI_Shader* shader_color_v = m_shaders[RendererShader::Color_V].get();
-        RHI_Shader* shader_color_p = m_shaders[RendererShader::Color_P].get();
-        if (!shader_color_v->IsCompiled() || !shader_color_p->IsCompiled())
-            return;
-
-        cmd_list->BeginTimeblock("lines");
-
-        // Grid
-        if (draw_grid)
-        {
-            cmd_list->BeginMarker("grid");
-
-            // Define pipeline state
-            static RHI_PipelineState pso;
-            pso.shader_vertex                   = shader_color_v;
-            pso.shader_pixel                    = shader_color_p;
-            pso.rasterizer_state                = m_rasterizer_cull_back_wireframe.get();
-            pso.blend_state                     = m_blend_alpha.get();
-            pso.depth_stencil_state             = m_depth_stencil_r_off.get();
-            pso.render_target_color_textures[0] = tex_out;
-            pso.render_target_depth_texture     = render_target(RendererTexture::Gbuffer_Depth).get();
-            pso.viewport                        = tex_out->GetViewport();
-            pso.primitive_topology              = RHI_PrimitiveTopology_Mode::LineList;
-
-            // Set pipeline state
-            cmd_list->SetPipelineState(pso);
-
-            // Render
-            cmd_list->BeginRenderPass();
-            {
-                // Set uber buffer
-                m_cb_uber_cpu.resolution_rt = m_resolution_render;
-                if (m_camera)
-                {
-                    m_cb_uber_cpu.transform = m_gizmo_grid->ComputeWorldMatrix(m_camera->GetTransform()) * m_cb_frame_cpu.view_projection_unjittered;
-                }
-                Update_Cb_Uber(cmd_list);
-
-                cmd_list->SetBufferVertex(m_gizmo_grid->GetVertexBuffer().get());
-                cmd_list->Draw(m_gizmo_grid->GetVertexCount());
-                cmd_list->EndRenderPass();
-            }
-
-            cmd_list->EndMarker();
-        }
-
-        // Draw lines
-        if (draw_lines_depth_off || draw_lines_depth_on)
-        {
-            // Grow vertex buffer (if needed)
-            uint32_t vertex_count = static_cast<uint32_t>(m_line_vertices.size());
-            if (vertex_count > m_vertex_buffer_lines->GetVertexCount())
-            {
-                m_vertex_buffer_lines->CreateDynamic<RHI_Vertex_PosCol>(vertex_count);
-            }
-
-            // If the vertex count is 0, the vertex buffer will be uninitialised.
-            if (vertex_count != 0)
-            { 
-                // Update vertex buffer
-                RHI_Vertex_PosCol* buffer = static_cast<RHI_Vertex_PosCol*>(m_vertex_buffer_lines->Map());
-                std::copy(m_line_vertices.begin(), m_line_vertices.end(), buffer);
-                m_vertex_buffer_lines->Unmap();
-
-                // Define pipeline state
-                static RHI_PipelineState pso;
-                pso.shader_vertex                   = shader_color_v;
-                pso.shader_pixel                    = shader_color_p;
-                pso.rasterizer_state                = m_rasterizer_cull_back_wireframe.get();
-                pso.render_target_color_textures[0] = tex_out;
-                pso.viewport                        = tex_out->GetViewport();
-                pso.primitive_topology              = RHI_PrimitiveTopology_Mode::LineList;
-
-                // Depth off
-                if (draw_lines_depth_off)
-                {
-                    cmd_list->BeginMarker("depth_off");
-
-                    // Define pipeline state
-                    pso.blend_state         = m_blend_disabled.get();
-                    pso.depth_stencil_state = m_depth_stencil_off_off.get();
-
-                    // Set pipeline state
-                    cmd_list->SetPipelineState(pso);
-
-                    // Render
-                    cmd_list->BeginRenderPass();
-                    {
-                        cmd_list->SetBufferVertex(m_vertex_buffer_lines.get());
-                        cmd_list->Draw(m_lines_index_depth_off + 1);
-                        cmd_list->EndRenderPass();
-                    }
-
-                    cmd_list->EndMarker();
-                }
-
-                // Depth on
-                if (m_lines_index_depth_on > (vertex_count / 2) - 1)
-                {
-                    cmd_list->BeginMarker("depth_on");
-
-                    // Define pipeline state
-                    pso.blend_state                 = m_blend_alpha.get();
-                    pso.depth_stencil_state         = m_depth_stencil_r_off.get();
-                    pso.render_target_depth_texture = render_target(RendererTexture::Gbuffer_Depth).get();
-
-                    // Set pipeline state
-                    cmd_list->SetPipelineState(pso);
-
-                    // Render
-                    cmd_list->BeginRenderPass();
-                    {
-                        cmd_list->SetBufferVertex(m_vertex_buffer_lines.get());
-                        cmd_list->Draw((m_lines_index_depth_on - (vertex_count / 2)) + 1, vertex_count / 2);
-                        cmd_list->EndRenderPass();
-                    }
-
-                    cmd_list->EndMarker();
-                }
-            }
-        }
 
         cmd_list->EndTimeblock();
     }
@@ -2296,6 +2322,10 @@ namespace Spartan
             m_profiler->SetEnabled(true);
         }
 
+        // Update text
+        const Vector2 text_pos = Vector2(-m_viewport.width * 0.5f + 5.0f, m_viewport.height * 0.5f - m_font->GetSize() - 2.0f);
+        m_font->SetText(m_profiler->GetMetrics(), text_pos);
+
         cmd_list->BeginMarker("performance_metrics");
         cmd_list->BeginTimeblock("outline");
 
@@ -2310,16 +2340,10 @@ namespace Spartan
         pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
         pso.viewport                        = tex_out->GetViewport();
 
-        // Set pipeline state
-        cmd_list->SetPipelineState(pso);
-
-        // Update text
-        const Vector2 text_pos = Vector2(-m_viewport.width * 0.5f + 5.0f, m_viewport.height * 0.5f - m_font->GetSize() - 2.0f);
-        m_font->SetText(m_profiler->GetMetrics(), text_pos);
-
         // Draw outline
         if (m_font->GetOutline() != Font_Outline_None && m_font->GetOutlineSize() != 0)
-        { 
+        {
+            cmd_list->SetPipelineState(pso);
             cmd_list->BeginRenderPass();
             {
                 // Set uber buffer
@@ -2385,7 +2409,7 @@ namespace Spartan
         Update_Cb_Uber(cmd_list);
 
         // Set texture
-        cmd_list->SetTexture(RendererBindingsUav::rg, tex_brdf_specular_lut);
+        cmd_list->SetTexture(RendererBindingsUav::tex, tex_brdf_specular_lut);
 
         // Render
         cmd_list->Dispatch(thread_group_count_x(tex_brdf_specular_lut), thread_group_count_y(tex_brdf_specular_lut));
@@ -2415,7 +2439,7 @@ namespace Spartan
         m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
         Update_Cb_Uber(cmd_list);
 
-        cmd_list->SetTexture(RendererBindingsUav::rgba, tex_out);
+        cmd_list->SetTexture(RendererBindingsUav::tex, tex_out);
         cmd_list->SetTexture(RendererBindingsSrv::tex, tex_in);
 
         // Render

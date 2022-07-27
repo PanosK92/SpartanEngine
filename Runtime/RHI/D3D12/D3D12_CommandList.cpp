@@ -52,11 +52,11 @@ namespace Spartan
     {
         SP_ASSERT(cmd_pool != nullptr);
 
-        m_renderer          = context->GetSubsystem<Renderer>();
-        m_profiler          = context->GetSubsystem<Profiler>();
-        m_rhi_device        = m_renderer->GetRhiDevice().get();
-        m_object_name       = name;
-        m_cmd_pool_resource = cmd_pool;
+        m_renderer              = context->GetSubsystem<Renderer>();
+        m_profiler              = context->GetSubsystem<Profiler>();
+        m_rhi_device            = m_renderer->GetRhiDevice().get();
+        m_object_name           = name;
+        m_rhi_cmd_pool_resource = cmd_pool;
         m_timestamps.fill(0);
 
         // Created command list
@@ -67,7 +67,7 @@ namespace Spartan
                     D3D12_COMMAND_LIST_TYPE_DIRECT,
                     static_cast<ID3D12CommandAllocator*>(cmd_pool),
                     nullptr,
-                    IID_PPV_ARGS(reinterpret_cast<ID3D12GraphicsCommandList**>(&m_resource))
+                    IID_PPV_ARGS(reinterpret_cast<ID3D12GraphicsCommandList**>(&m_rhi_resource))
                 )
             ), "Failed to create command list"
         );
@@ -79,7 +79,7 @@ namespace Spartan
         m_rhi_device->QueueWaitAll();
 
         // Command list
-        d3d12_utility::release<ID3D12CommandQueue>(m_resource);
+        d3d12_utility::release<ID3D12CommandQueue>(m_rhi_resource);
     }
 
     void RHI_CommandList::Begin()
@@ -91,13 +91,13 @@ namespace Spartan
         }
 
         // Validate a few things
-        SP_ASSERT(m_resource != nullptr);
+        SP_ASSERT(m_rhi_resource != nullptr);
         SP_ASSERT(m_rhi_device != nullptr);
         SP_ASSERT(m_state == RHI_CommandListState::Idle);
 
         // Unlike Vulkan, D3D12 wraps both begin and reset under Reset().
-        SP_ASSERT_MSG(d3d12_utility::error::check(static_cast<ID3D12GraphicsCommandList*>(m_resource)->Reset(
-            static_cast<ID3D12CommandAllocator*>(m_cmd_pool_resource), nullptr)),
+        SP_ASSERT_MSG(d3d12_utility::error::check(static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource)->Reset(
+            static_cast<ID3D12CommandAllocator*>(m_rhi_cmd_pool_resource), nullptr)),
             "Failed to reset command list");
 
         m_state = RHI_CommandListState::Recording;
@@ -106,10 +106,10 @@ namespace Spartan
     bool RHI_CommandList::End()
     {
         // Verify a few things
-        SP_ASSERT(m_resource != nullptr);
+        SP_ASSERT(m_rhi_resource != nullptr);
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
-        if (!d3d12_utility::error::check(static_cast<ID3D12GraphicsCommandList*>(m_resource)->Close()))
+        if (!d3d12_utility::error::check(static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource)->Close()))
             return false;
 
         m_state = RHI_CommandListState::Ended;
@@ -165,7 +165,7 @@ namespace Spartan
         OnDraw();
 
         // Draw
-        static_cast<ID3D12GraphicsCommandList*>(m_resource)->DrawInstanced(
+        static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource)->DrawInstanced(
             vertex_count,       // VertexCountPerInstance
             1,                  // InstanceCount
             vertex_start_index, // StartVertexLocation
@@ -185,7 +185,7 @@ namespace Spartan
         OnDraw();
 
         // Draw
-        static_cast<ID3D12GraphicsCommandList*>(m_resource)->DrawIndexedInstanced(
+        static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource)->DrawIndexedInstanced(
             index_count,   // IndexCountPerInstance
             1,             // InstanceCount
             index_offset,  // StartIndexLocation
@@ -206,7 +206,7 @@ namespace Spartan
         OnDraw();
 
         // Dispatch
-        static_cast<ID3D12GraphicsCommandList*>(m_resource)->Dispatch(x, y, z);
+        static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource)->Dispatch(x, y, z);
 
         // Profiler
         m_profiler->m_rhi_dispatch++;
@@ -230,7 +230,7 @@ namespace Spartan
         d3d12_viewport.MinDepth       = viewport.depth_min;
         d3d12_viewport.MaxDepth       = viewport.depth_max;
 
-        static_cast<ID3D12GraphicsCommandList*>(m_resource)->RSSetViewports(1, &d3d12_viewport);
+        static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource)->RSSetViewports(1, &d3d12_viewport);
     }
     
     void RHI_CommandList::SetScissorRectangle(const Math::Rectangle& scissor_rectangle) const
@@ -246,7 +246,7 @@ namespace Spartan
             static_cast<LONG>(scissor_rectangle.bottom)
         };
 
-        static_cast<ID3D12GraphicsCommandList*>(m_resource)->RSSetScissorRects(1, &d3d12_rectangle);
+        static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource)->RSSetScissorRects(1, &d3d12_rectangle);
     }
     
     void RHI_CommandList::SetBufferVertex(const RHI_VertexBuffer* buffer)
@@ -263,7 +263,7 @@ namespace Spartan
         vertex_buffer_view.StrideInBytes            = buffer->GetStride();
         vertex_buffer_view.SizeInBytes              = buffer->GetObjectSizeGpu();
 
-        static_cast<ID3D12GraphicsCommandList*>(m_resource)->IASetVertexBuffers(
+        static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource)->IASetVertexBuffers(
             0,                  // StartSlot
             1,                  // NumViews
             &vertex_buffer_view // pViews
@@ -291,7 +291,7 @@ namespace Spartan
         index_buffer_view.SizeInBytes             = buffer->GetObjectSizeGpu();
         index_buffer_view.Format                  = buffer->Is16Bit() ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT;
 
-        static_cast<ID3D12GraphicsCommandList*>(m_resource)->IASetIndexBuffer(
+        static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource)->IASetIndexBuffer(
             &index_buffer_view // pView
         );
 

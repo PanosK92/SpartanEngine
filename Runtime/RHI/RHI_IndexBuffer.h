@@ -31,6 +31,7 @@ namespace Spartan
     class RHI_IndexBuffer : public SpartanObject
     {
     public:
+        RHI_IndexBuffer() = default;
         RHI_IndexBuffer(const std::shared_ptr<RHI_Device>& rhi_device, bool is_mappable, const char* name)
         {
             m_rhi_device  = rhi_device;
@@ -73,7 +74,7 @@ namespace Spartan
         void* Map();
         void Unmap();
 
-        void* GetResource()      const { return m_resource; }
+        void* GetRhiResource()   const { return m_rhi_resource; }
         uint32_t GetIndexCount() const { return m_index_count; }
         bool Is16Bit()           const { return sizeof(uint16_t) == m_stride; }
         bool Is32Bit()           const { return sizeof(uint32_t) == m_stride; }
@@ -83,12 +84,13 @@ namespace Spartan
         void _destroy();
 
         void* m_mapped_data    = nullptr;
+        bool m_is_mappable     = false;
         uint32_t m_stride      = 0;
         uint32_t m_index_count = 0;
         
-        // API
         std::shared_ptr<RHI_Device> m_rhi_device;
-        void* m_resource   = nullptr;
-        bool m_is_mappable = false;
+
+        // RHI Resources
+        void* m_rhi_resource = nullptr;
     };
 }

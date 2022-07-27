@@ -36,18 +36,18 @@ namespace Spartan
 {
     RHI_Shader::~RHI_Shader()
     {
-        if (m_resource)
+        if (m_rhi_resource)
         {
             // Wait in case it's still in use by the GPU
             m_rhi_device->QueueWaitAll();
 
-            d3d12_utility::release<IDxcResult>(m_resource);
+            d3d12_utility::release<IDxcResult>(m_rhi_resource);
         }
     }
 
-    void* RHI_Shader::GetResource() const
+    void* RHI_Shader::GetRhiResource() const
     {
-        IDxcResult* dxc_result = static_cast<IDxcResult*>(m_resource);
+        IDxcResult* dxc_result = static_cast<IDxcResult*>(m_rhi_resource);
 
         // Get compiled shader buffer
         IDxcBlob* shader_buffer = nullptr;

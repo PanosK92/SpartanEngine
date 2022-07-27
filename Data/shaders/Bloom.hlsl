@@ -33,7 +33,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         return;
 
     float3 color = tex[thread_id.xy].rgb;
-    tex_out_rgb[thread_id.xy] = saturate_16(luminance(color) * color);
+    tex_uav[thread_id.xy] = float4(saturate_16(luminance(color) * color), tex_uav[thread_id.xy].a);
 }
 
 #endif
@@ -67,9 +67,9 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     if (any(int2(thread_id.xy) >= g_resolution_rt.xy))
         return;
 
-    const float2 uv           = (thread_id.xy + 0.5f) / g_resolution_rt;
-    float3 upsampled_color    = tent_antiflicker_filter(uv, g_texel_size * 0.5f);
-    tex_out_rgb[thread_id.xy] = saturate_16(tex_out_rgb[thread_id.xy] + upsampled_color * 0.5f);
+    const float2 uv        = (thread_id.xy + 0.5f) / g_resolution_rt;
+    float3 upsampled_color = tent_antiflicker_filter(uv, g_texel_size * 0.5f);
+    tex_uav[thread_id.xy]  = float4(saturate_16(tex_uav[thread_id.xy].rgb + upsampled_color * 0.5f), tex_uav[thread_id.xy].a);
 }
 
 #endif
@@ -83,9 +83,9 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     if (any(int2(thread_id.xy) >= g_resolution_rt.xy))
         return;
 
-    float4 color_frame  = tex[thread_id.xy];
-    float4 color_mip    = tex2[thread_id.xy];
-    tex_out_rgba[thread_id.xy] = saturate_16(color_frame + color_mip * g_bloom_intensity);
+    float4 color_frame    = tex[thread_id.xy];
+    float4 color_mip      = tex2[thread_id.xy];
+    tex_uav[thread_id.xy] = saturate_16(color_frame + color_mip * g_bloom_intensity);
 }
 
 #endif

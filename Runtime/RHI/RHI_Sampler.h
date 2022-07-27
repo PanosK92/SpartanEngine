@@ -52,7 +52,7 @@ namespace Spartan
         RHI_Comparison_Function GetComparisonFunction() const { return m_comparison_function; }
         bool GetAnisotropyEnabled()                     const { return m_anisotropy != 0; }
         bool GetComparisonEnabled()                     const { return m_comparison_enabled; }
-        void* GetResource()                             const { return m_resource; }
+        void* GetResource()                             const { return m_rhi_resource; }
 
     private:
         void CreateResource();
@@ -65,11 +65,9 @@ namespace Spartan
         float m_anisotropy                              = 0;
         bool m_comparison_enabled                       = false;
         float m_mip_lod_bias                            = 0.0f;
-
-        // API
-        void* m_resource = nullptr;
-
-        // Dependencies
         std::shared_ptr<RHI_Device> m_rhi_device;
+
+        // RHI Resource
+        void* m_rhi_resource = nullptr;
     };
 }

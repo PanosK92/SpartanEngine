@@ -34,7 +34,7 @@ namespace Spartan
 {
     void RHI_VertexBuffer::_destroy()
     {
-        d3d11_utility::release<ID3D11Buffer>(m_resource);
+        d3d11_utility::release<ID3D11Buffer>(m_rhi_resource);
     }
 
     bool RHI_VertexBuffer::_create(const void* vertices)
@@ -62,7 +62,7 @@ namespace Spartan
         init_data.SysMemPitch            = 0;
         init_data.SysMemSlicePitch       = 0;
 
-        const auto ptr    = reinterpret_cast<ID3D11Buffer**>(&m_resource);
+        const auto ptr    = reinterpret_cast<ID3D11Buffer**>(&m_rhi_resource);
         const auto result = m_rhi_device->GetContextRhi()->device->CreateBuffer(&buffer_desc, is_dynamic ? nullptr : &init_data, ptr);
         if (FAILED(result))
         {
@@ -75,11 +75,11 @@ namespace Spartan
 
     void* RHI_VertexBuffer::Map()
     {
-        SP_ASSERT(m_resource != nullptr);
+        SP_ASSERT(m_rhi_resource != nullptr);
 
         // Disable GPU access to the vertex buffer data.
         D3D11_MAPPED_SUBRESOURCE mapped_resource;
-        const auto result = m_rhi_device->GetContextRhi()->device_context->Map(static_cast<ID3D11Resource*>(m_resource), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped_resource);
+        const auto result = m_rhi_device->GetContextRhi()->device_context->Map(static_cast<ID3D11Resource*>(m_rhi_resource), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped_resource);
         if (FAILED(result))
         {
             LOG_ERROR("Failed to map vertex buffer");
@@ -91,9 +91,9 @@ namespace Spartan
 
     void RHI_VertexBuffer::Unmap()
     {
-        SP_ASSERT(m_resource != nullptr);
+        SP_ASSERT(m_rhi_resource != nullptr);
 
         // Re-enable GPU access to the vertex buffer data.
-        m_rhi_device->GetContextRhi()->device_context->Unmap(static_cast<ID3D11Resource*>(m_resource), 0);
+        m_rhi_device->GetContextRhi()->device_context->Unmap(static_cast<ID3D11Resource*>(m_rhi_resource), 0);
     }
 }

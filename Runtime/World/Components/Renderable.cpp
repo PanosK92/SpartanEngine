@@ -266,7 +266,7 @@ namespace Spartan
 
         // Se default texture
         const shared_ptr<RHI_Texture2D> texture = resource_cache->Load<RHI_Texture2D>(resource_cache->GetResourceDirectory(ResourceDirectory::Textures) + "/no_texture.png");
-        material->SetTextureSlot(Material_Color, texture);
+        material->SetTexture(MaterialTexture::Color, texture);
 
         // Set material
         SetMaterial(material);

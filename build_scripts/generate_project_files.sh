@@ -1,9 +1,9 @@
 #!/bin/bash
 
 # Deduce OS we are running on
-is_windows=false
-if [ "$1" != "gmake2" ]; then
-    is_windows=true
+is_windows=true
+if [ "$1" = "gmake2" ]; then
+    is_windows=false
 fi
 
 # Extract third-party libraries (that the project will link to)
@@ -34,12 +34,13 @@ echo
 echo "4. Creating project directory and copying some assets..."
 mkdir -p binaries/project
 cp -r assets/models binaries/project
+cp -r assets/environment binaries/project
 
 # Generate project files
 echo
 if [ "$is_windows" = false ]; then
 	echo "5. Generating MakeFiles..."
-	premake5 --file=build_scripts/premake.lua $@
+	build_scripts/premake5 --file=build_scripts/premake.lua $@
 else
 	echo "5. Generating Visual Studio solution..."
 	build_scripts/premake5 --file=build_scripts/premake.lua $@

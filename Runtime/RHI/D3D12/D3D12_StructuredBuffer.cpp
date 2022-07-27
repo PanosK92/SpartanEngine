@@ -44,7 +44,7 @@ namespace Spartan
     void* RHI_StructuredBuffer::Map()
     {
         SP_ASSERT(m_rhi_device != nullptr);
-        SP_ASSERT(m_resource != nullptr);
+        SP_ASSERT(m_rhi_resource != nullptr);
 
         return nullptr;
     }
@@ -52,6 +52,6 @@ namespace Spartan
     void RHI_StructuredBuffer::Unmap()
     {
         SP_ASSERT(m_rhi_device != nullptr);
-        SP_ASSERT(m_resource != nullptr);
+        SP_ASSERT(m_rhi_resource != nullptr);
     }
 }

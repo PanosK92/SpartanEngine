@@ -35,6 +35,23 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
+    static bool is_present_instance_layer(const char* layer_name)
+    {
+        uint32_t layer_count;
+        vkEnumerateInstanceLayerProperties(&layer_count, nullptr);
+
+        vector<VkLayerProperties> layers(layer_count);
+        vkEnumerateInstanceLayerProperties(&layer_count, layers.data());
+
+        for (const auto& layer : layers)
+        {
+            if (strcmp(layer_name, layer.layerName) == 0)
+                return true;
+        }
+
+        return false;
+    }
+
     static bool is_present_device_extension(const char* extension_name, VkPhysicalDevice device_physical)
     {
         uint32_t extension_count = 0;
@@ -69,7 +86,7 @@ namespace Spartan
         return false;
     }
 
-    static vector<const char*> get_extension_supporting_physical_device(const vector<const char*>& extensions, VkPhysicalDevice device_physical)
+    static vector<const char*> get_physical_device_supported_extensions(const vector<const char*>& extensions, VkPhysicalDevice device_physical)
     {
         vector<const char*> extensions_supported;
 
@@ -120,10 +137,10 @@ namespace Spartan
         VkApplicationInfo app_info  = {};
         {
             app_info.sType              = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-            app_info.pApplicationName   = sp_version;
-            app_info.pEngineName        = sp_version;
-            app_info.engineVersion      = VK_MAKE_VERSION(1, 0, 0);
-            app_info.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
+            app_info.pApplicationName   = sp_name;
+            app_info.pEngineName        = app_info.pApplicationName;
+            app_info.engineVersion      = VK_MAKE_VERSION(sp_version_major, sp_version_minor, sp_version_revision);
+            app_info.applicationVersion = app_info.engineVersion;
 
             // Deduce API version to use
             {
@@ -182,7 +199,7 @@ namespace Spartan
             if (m_rhi_context->debug)
             {
                 // Enable validation layer
-                if (vulkan_utility::layer::is_present(m_rhi_context->validation_layers.front()))
+                if (is_present_instance_layer(m_rhi_context->validation_layers.front()))
                 {
                     // Validation layers
                     create_info.enabledLayerCount   = static_cast<uint32_t>(m_rhi_context->validation_layers.size());
@@ -237,115 +254,122 @@ namespace Spartan
                 }
             }
 
-            // Get device properties
-            VkPhysicalDeviceProperties device_properties = {};
-            vkGetPhysicalDeviceProperties(static_cast<VkPhysicalDevice>(m_rhi_context->device_physical), &device_properties);
-
-            // Save some properties
-            m_max_texture_1d_dimension            = device_properties.limits.maxImageDimension1D;
-            m_max_texture_2d_dimension            = device_properties.limits.maxImageDimension2D;
-            m_max_texture_3d_dimension            = device_properties.limits.maxImageDimension3D;
-            m_max_texture_cube_dimension          = device_properties.limits.maxImageDimensionCube;
-            m_max_texture_array_layers            = device_properties.limits.maxImageArrayLayers;
-            m_min_uniform_buffer_offset_alignment = device_properties.limits.minUniformBufferOffsetAlignment;
-            m_timestamp_period                    = device_properties.limits.timestampPeriod;
-            m_max_bound_descriptor_sets           = device_properties.limits.maxBoundDescriptorSets;
-
-            // Disable profiler if timestamps are not supported
-            if (m_rhi_context->gpu_profiling && !device_properties.limits.timestampComputeAndGraphics)
+            // Detect device properties
             {
-                LOG_ERROR("Device doesn't support timestamps, disabling profiling...");
-                m_rhi_context->gpu_profiling = false;
+                VkPhysicalDeviceVulkan13Properties device_properties_1_3 = {};
+                device_properties_1_3.sType                              = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_PROPERTIES;
+                device_properties_1_3.pNext                              = nullptr;
+
+                VkPhysicalDeviceProperties2 properties_device = {};
+                properties_device.sType                       = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+                properties_device.pNext                       = &device_properties_1_3;
+
+                vkGetPhysicalDeviceProperties2(static_cast<VkPhysicalDevice>(m_rhi_context->device_physical), &properties_device);
+
+                // Save some properties
+                m_max_texture_1d_dimension            = properties_device.properties.limits.maxImageDimension1D;
+                m_max_texture_2d_dimension            = properties_device.properties.limits.maxImageDimension2D;
+                m_max_texture_3d_dimension            = properties_device.properties.limits.maxImageDimension3D;
+                m_max_texture_cube_dimension          = properties_device.properties.limits.maxImageDimensionCube;
+                m_max_texture_array_layers            = properties_device.properties.limits.maxImageArrayLayers;
+                m_min_uniform_buffer_offset_alignment = properties_device.properties.limits.minUniformBufferOffsetAlignment;
+                m_timestamp_period                    = properties_device.properties.limits.timestampPeriod;
+                m_max_bound_descriptor_sets           = properties_device.properties.limits.maxBoundDescriptorSets;
+
+                // Disable profiler if timestamps are not supported
+                if (m_rhi_context->gpu_profiling && !properties_device.properties.limits.timestampComputeAndGraphics)
+                {
+                    LOG_ERROR("Device doesn't support timestamps, disabling gpu profiling...");
+                    m_rhi_context->gpu_profiling = false;
+                }
             }
 
-            // Feature: Vulkan 1.3 features
-            VkPhysicalDeviceVulkan13Features device_features_1_3 = {};
-            device_features_1_3.sType                            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
-
-            // Feature: Vulkan 1.2 features
-            VkPhysicalDeviceVulkan12Features device_features_1_2 = {};
-            device_features_1_2.sType                            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
-            device_features_1_2.pNext                            = &device_features_1_3;
-
-            // Feature: Physical device features
-            VkPhysicalDeviceFeatures2 device_features = {};
-            device_features.sType                     = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
-            device_features.pNext                     = &device_features_1_2;
-
-            // Feature: Dynamic rendering
-            VkPhysicalDeviceDynamicRenderingFeaturesKHR dynamic_rendering_features = {};
-            dynamic_rendering_features.sType                                       = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR;
-            dynamic_rendering_features.dynamicRendering                            = VK_TRUE;
-            dynamic_rendering_features.pNext                                       = &device_features;
-
-            // Feature: Partially bound descriptors
-            VkPhysicalDeviceDescriptorIndexingFeatures descriptor_indexing_features = {};
-            descriptor_indexing_features.sType                                      = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;
-            descriptor_indexing_features.descriptorBindingPartiallyBound            = VK_TRUE;
-            descriptor_indexing_features.pNext                                      = &dynamic_rendering_features;
-
             // Enable certain features
+            VkPhysicalDeviceVulkan13Features device_features_to_enable_1_3 = {};
+            device_features_to_enable_1_3.sType                            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+            VkPhysicalDeviceVulkan12Features device_features_to_enable_1_2 = {};
+            device_features_to_enable_1_2.sType                            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+            device_features_to_enable_1_2.pNext                            = &device_features_to_enable_1_3;
+            VkPhysicalDeviceFeatures2 device_features_to_enable            = {};
+            device_features_to_enable.sType                                = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+            device_features_to_enable.pNext                                = &device_features_to_enable_1_2;
             {
-                // Check what's supported
-                VkPhysicalDeviceFeatures2 device_features_supported            = {};
-                VkPhysicalDeviceVulkan12Features device_features_1_2_supported = {};
-                VkPhysicalDeviceVulkan13Features device_features_1_3_supported = {};
+                // Check feature support
+                VkPhysicalDeviceVulkan13Features features_supported_1_3 = {};
+                features_supported_1_3.sType                            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+                VkPhysicalDeviceVulkan12Features features_supported_1_2 = {};
+                features_supported_1_2.sType                            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+                features_supported_1_2.pNext                            = &features_supported_1_3;
+                VkPhysicalDeviceFeatures2 features_supported            = {};
+                features_supported.sType                                = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+                features_supported.pNext                                = &features_supported_1_2;
+                vkGetPhysicalDeviceFeatures2(m_rhi_context->device_physical, &features_supported);
+
+                // Check if certain features are supported and enable them
                 {
-                    device_features_1_3_supported.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+                    // Anisotropic filtering
+                    SP_ASSERT(features_supported.features.samplerAnisotropy == VK_TRUE);
+                    device_features_to_enable.features.samplerAnisotropy = VK_TRUE;
 
-                    device_features_1_2_supported.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
-                    device_features_1_2_supported.pNext = &device_features_1_3_supported;
+                    // Line and point rendering
+                    SP_ASSERT(features_supported.features.fillModeNonSolid == VK_TRUE);
+                    device_features_to_enable.features.fillModeNonSolid = VK_TRUE;
 
-                    device_features_supported.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
-                    device_features_supported.pNext = &device_features_1_2_supported;
+                    // Lines with adjustable thickness
+                    SP_ASSERT(features_supported.features.wideLines == VK_TRUE);
+                    device_features_to_enable.features.wideLines = VK_TRUE;
 
-                    vkGetPhysicalDeviceFeatures2(m_rhi_context->device_physical, &device_features_supported);
+                    // Cubemaps
+                    SP_ASSERT(features_supported.features.imageCubeArray == VK_TRUE);
+                    device_features_to_enable.features.imageCubeArray = VK_TRUE;
+
+                    // Partially bound descriptors
+                    SP_ASSERT(features_supported_1_2.descriptorBindingPartiallyBound == VK_TRUE);
+                    device_features_to_enable_1_2.descriptorBindingPartiallyBound = VK_TRUE;
+
+                    // Timeline semaphores
+                    SP_ASSERT(features_supported_1_2.timelineSemaphore == VK_TRUE);
+                    device_features_to_enable_1_2.timelineSemaphore = VK_TRUE;
+
+                    // Rendering without render passes and frame buffer objects
+                    SP_ASSERT(features_supported_1_3.dynamicRendering == VK_TRUE);
+                    device_features_to_enable_1_3.dynamicRendering = VK_TRUE;
+
+                    // Float16 - FSR 2.0 will opt for it (for performance), but it's not a requirement, so don't assert on this one.
+                    if (features_supported_1_2.shaderFloat16 == VK_TRUE)
+                    {
+                        device_features_to_enable_1_2.shaderFloat16 = VK_TRUE;
+                    }
+
+                    // Int16 - FSR 2.0 will opt for it (for performance), but it's not a requirement, so don't assert on this one.
+                    if (features_supported.features.shaderInt16 == VK_TRUE)
+                    {
+                        device_features_to_enable.features.shaderInt16 = VK_TRUE;
+                    }
+
+                    // Wave64 - FSR 2.0 will opt for it (for performance), but it's not a requirement, so don't assert on this one.
+                    if (features_supported_1_3.subgroupSizeControl == VK_TRUE)
+                    {
+                        device_features_to_enable_1_3.subgroupSizeControl = VK_TRUE;
+                    }
                 }
-
-                // Anisotropic filtering
-                SP_ASSERT(device_features_supported.features.samplerAnisotropy == VK_TRUE);
-                device_features.features.samplerAnisotropy = VK_TRUE;
-
-                // Line and point rendering
-                SP_ASSERT(device_features_supported.features.fillModeNonSolid == VK_TRUE);
-                device_features.features.fillModeNonSolid = VK_TRUE;
-
-                // Lines with adjustable thickness
-                SP_ASSERT(device_features_supported.features.wideLines == VK_TRUE);
-                device_features.features.wideLines = VK_TRUE;
-
-                // Cubemaps
-                SP_ASSERT(device_features_supported.features.imageCubeArray == VK_TRUE);
-                device_features.features.imageCubeArray = VK_TRUE;
-
-                // Partially bound descriptors
-                SP_ASSERT(device_features_1_2_supported.descriptorBindingPartiallyBound == VK_TRUE);
-                device_features_1_2.descriptorBindingPartiallyBound = VK_TRUE;
-
-                // Timeline semaphores
-                SP_ASSERT(device_features_1_2_supported.timelineSemaphore == VK_TRUE);
-                device_features_1_2.timelineSemaphore = VK_TRUE;
-
-                // Rendering without render passes and frame buffer objects
-                SP_ASSERT(device_features_1_3_supported.dynamicRendering == VK_TRUE);
-                device_features_1_3.dynamicRendering = VK_TRUE;
             }
 
             // Enable certain graphics shader stages
             {
                 m_enabled_graphics_shader_stages = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-                if (device_features.features.geometryShader)
+                if (device_features_to_enable.features.geometryShader)
                 {
                     m_enabled_graphics_shader_stages |= VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT;
                 }
-                if (device_features.features.tessellationShader)
+                if (device_features_to_enable.features.tessellationShader)
                 {
                     m_enabled_graphics_shader_stages |= VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT | VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT;
                 }
             }
 
             // Get the supported extensions out of the requested extensions
-            vector<const char*> extensions_supported = get_extension_supporting_physical_device(m_rhi_context->extensions_device, m_rhi_context->device_physical);
+            vector<const char*> extensions_supported = get_physical_device_supported_extensions(m_rhi_context->extensions_device, m_rhi_context->device_physical);
 
             // Device create info
             VkDeviceCreateInfo create_info = {};
@@ -353,7 +377,7 @@ namespace Spartan
                 create_info.sType                   = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
                 create_info.queueCreateInfoCount    = static_cast<uint32_t>(queue_create_infos.size());
                 create_info.pQueueCreateInfos       = queue_create_infos.data();
-                create_info.pNext                   = &device_features;
+                create_info.pNext                   = &device_features_to_enable;
                 create_info.enabledExtensionCount   = static_cast<uint32_t>(extensions_supported.size());
                 create_info.ppEnabledExtensionNames = extensions_supported.data();
 
@@ -361,10 +385,6 @@ namespace Spartan
                 {
                     create_info.enabledLayerCount   = static_cast<uint32_t>(m_rhi_context->validation_layers.size());
                     create_info.ppEnabledLayerNames = m_rhi_context->validation_layers.data();
-                }
-                else
-                {
-                    create_info.enabledLayerCount = 0;
                 }
             }
 
@@ -650,22 +670,22 @@ namespace Spartan
     {
         SP_ASSERT_MSG(cmd_buffer != nullptr, "Invalid command buffer");
 
-        // Validate semaphore states
+        // Validate semaphores
         if (wait_semaphore)   SP_ASSERT_MSG(wait_semaphore->GetState()   != RHI_Semaphore_State::Idle,     "Wait semaphore is in an idle state and will never be signaled");
         if (signal_semaphore) SP_ASSERT_MSG(signal_semaphore->GetState() != RHI_Semaphore_State::Signaled, "Signal semaphore is already in a signaled state.");
 
-        // Get semaphore Vulkan resources
-        void* vk_wait_semaphore   = wait_semaphore   ? wait_semaphore->GetResource()   : nullptr;
-        void* vk_signal_semaphore = signal_semaphore ? signal_semaphore->GetResource() : nullptr;
+        // Get semaphores
+       VkSemaphore vk_wait_semaphore[1]   = { wait_semaphore   ? static_cast<VkSemaphore>(wait_semaphore->GetResource())   : nullptr};
+       VkSemaphore vk_signal_semaphore[1] = { signal_semaphore ? static_cast<VkSemaphore>(signal_semaphore->GetResource()) : nullptr };
 
         // Submit info
         VkSubmitInfo submit_info         = {};
         submit_info.sType                = VK_STRUCTURE_TYPE_SUBMIT_INFO;
         submit_info.pNext                = nullptr;
         submit_info.waitSemaphoreCount   = wait_semaphore ? 1 : 0;
-        submit_info.pWaitSemaphores      = wait_semaphore ? reinterpret_cast<VkSemaphore*>(&vk_wait_semaphore) : nullptr;
+        submit_info.pWaitSemaphores      = wait_semaphore ? vk_wait_semaphore : nullptr;
         submit_info.signalSemaphoreCount = signal_semaphore ? 1 : 0;
-        submit_info.pSignalSemaphores    = signal_semaphore ? reinterpret_cast<VkSemaphore*>(&vk_signal_semaphore) : nullptr;
+        submit_info.pSignalSemaphores    = signal_semaphore ? vk_signal_semaphore : nullptr;
         submit_info.pWaitDstStageMask    = &wait_flags;
         submit_info.commandBufferCount   = 1;
         submit_info.pCommandBuffers      = reinterpret_cast<VkCommandBuffer*>(&cmd_buffer);

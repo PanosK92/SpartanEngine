@@ -84,7 +84,7 @@ namespace Spartan
     void Display::DetectDisplayModes(Context* context)
     {
         // Get display modes of all displays
-        for (uint32_t display_index = 0; display_index < SDL_GetNumVideoDisplays(); ++display_index) {
+        for (uint32_t display_index = 0; display_index < static_cast<uint32_t>(SDL_GetNumVideoDisplays()); ++display_index) {
 
             // Get display mode
             SDL_DisplayMode display_mode;

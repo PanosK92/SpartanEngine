@@ -698,11 +698,24 @@ void Properties::ShowMaterial(Material* material) const
     {
         const float offset_from_pos_x = 160;
 
-        //= REFLECT ==================================================
-        Math::Vector2 tiling = material->GetTiling();
-        Math::Vector2 offset = material->GetOffset();
-        m_material_color_picker->SetColor(material->GetColorAlbedo());
-        //============================================================
+        //= REFLECT ===========================================
+        Math::Vector2 tiling = Vector2(
+            material->GetProperty(MaterialProperty::UvTilingX),
+            material->GetProperty(MaterialProperty::UvTilingY)
+        );
+
+        Math::Vector2 offset = Vector2(
+            material->GetProperty(MaterialProperty::UvOffsetX),
+            material->GetProperty(MaterialProperty::UvOffsetY)
+        );
+
+        m_material_color_picker->SetColor(Vector4(
+            material->GetProperty(MaterialProperty::ColorR),
+            material->GetProperty(MaterialProperty::ColorG),
+            material->GetProperty(MaterialProperty::ColorB),
+            material->GetProperty(MaterialProperty::ColorA)
+        ));
+        //=====================================================
 
         // Name
         ImGui::Text("Name");
@@ -712,8 +725,11 @@ void Properties::ShowMaterial(Material* material) const
         {
             // Texture slots
             {
-                const auto show_property = [this, &offset_from_pos_x, &material](const char* name, const char* tooltip, const Material_Property type, bool show_texture, bool show_modifier)
+                const auto show_property = [this, &offset_from_pos_x, &material](const char* name, const char* tooltip, const MaterialTexture mat_tex, const MaterialProperty mat_property)
                 {
+                    bool show_texture  = mat_tex != MaterialTexture::Undefined;
+                    bool show_modifier = mat_property != MaterialProperty::Undefined;
+
                     // Name
                     if (name)
                     {
@@ -733,8 +749,8 @@ void Properties::ShowMaterial(Material* material) const
                     // Texture
                     if (show_texture)
                     {
-                        auto setter = [&material, &type](const shared_ptr<RHI_Texture>& texture) { material->SetTextureSlot(type, texture); };
-                        ImGuiEx::ImageSlot(material->GetTexture_PtrShared(type), setter);
+                        auto setter = [&material, &mat_tex](const shared_ptr<RHI_Texture>& texture) { material->SetTexture(mat_tex, texture); };
+                        ImGuiEx::ImageSlot(material->GetTexture_PtrShared(mat_tex), setter);
 
                         if (show_modifier)
                         {
@@ -745,34 +761,36 @@ void Properties::ShowMaterial(Material* material) const
                     // Modifier
                     if (show_modifier)
                     {
-                        if (type == Material_Color)
+                        if (mat_property == MaterialProperty::ColorTint)
                         {
                             m_material_color_picker->Update();
                         }
                         else
                         {
                             ImGui::PushID(static_cast<int>(ImGui::GetCursorPosX() + ImGui::GetCursorPosY()));
-                            ImGuiEx::DragFloatWrap("", &material->GetProperty(type), 0.004f, 0.0f, 1.0f);
+                            float value = material->GetProperty(mat_property);
+                            ImGuiEx::DragFloatWrap("", &value, 0.004f, 0.0f, 1.0f);
+                            material->SetProperty(mat_property, value);
                             ImGui::PopID();
                         }
                     }
                 };
 
-                show_property("Clearcoat",            "Extra white specular layer on top of others",                                       Material_Clearcoat,            false, true);
-                show_property("Clearcoat roughness",  "Roughness of clearcoat specular",                                                   Material_Clearcoat_Roughness,  false, true);
-                show_property("Anisotropic",          "Amount of anisotropy for specular reflection",                                      Material_Anisotropic,          false, true);
-                show_property("Anisotropic rotation", "Rotates the direction of anisotropy, with 1.0 going full circle",                   Material_Anisotropic_Rotation, false, true);
-                show_property("Sheen",                "Amount of soft velvet like reflection near edges",                                  Material_Sheen,                false, true);
-                show_property("Sheen tint",           "Mix between white and using base color for sheen reflection",                       Material_Sheen_Tint,           false, true);
-                show_property("Color",                "Diffuse or metal surface color",                                                    Material_Color,                true, true);
-                show_property("Roughness",            "Specifies microfacet roughness of the surface for diffuse and specular reflection", Material_Roughness,            true, true);
-                show_property("Metallic",             "Blends between a non-metallic and metallic material model",                         Material_Metallic,             true, true);
-                show_property("Normal",               "Controls the normals of the base layers",                                           Material_Normal,               true, true);
-                show_property("Height",               "Perceived depth for parallax mapping",                                              Material_Height,               true, true);
-                show_property("Occlusion",            "Amount of light loss, can be complementary to SSAO",                                Material_Occlusion,            true, false);
-                show_property("Emission",             "Light emission from the surface, works nice with bloom",                            Material_Emission,             true, false);
-                show_property("Alpha mask",           "Discards pixels",                                                                   Material_AlphaMask,            true, false);
-            }                                                                                                                                                             
+                show_property("Clearcoat",            "Extra white specular layer on top of others",                                       MaterialTexture::Undefined,  MaterialProperty::Clearcoat);
+                show_property("Clearcoat roughness",  "Roughness of clearcoat specular",                                                   MaterialTexture::Undefined,  MaterialProperty::Clearcoat_Roughness);
+                show_property("Anisotropic",          "Amount of anisotropy for specular reflection",                                      MaterialTexture::Undefined,  MaterialProperty::Anisotropic);
+                show_property("Anisotropic rotation", "Rotates the direction of anisotropy, with 1.0 going full circle",                   MaterialTexture::Undefined,  MaterialProperty::AnisotropicRotation);
+                show_property("Sheen",                "Amount of soft velvet like reflection near edges",                                  MaterialTexture::Undefined,  MaterialProperty::Sheen);
+                show_property("Sheen tint",           "Mix between white and using base color for sheen reflection",                       MaterialTexture::Undefined,  MaterialProperty::SheenTint);
+                show_property("Color",                "Diffuse or metal surface color",                                                    MaterialTexture::Color,      MaterialProperty::ColorTint);
+                show_property("Roughness",            "Specifies microfacet roughness of the surface for diffuse and specular reflection", MaterialTexture::Roughness,  MaterialProperty::RoughnessMultiplier);
+                show_property("Metallness",           "Blends between a non-metallic and metallic material model",                         MaterialTexture::Metallness, MaterialProperty::MetallnessMultiplier);
+                show_property("Normal",               "Controls the normals of the base layers",                                           MaterialTexture::Normal,     MaterialProperty::NormalMultiplier);
+                show_property("Height",               "Perceived depth for parallax mapping",                                              MaterialTexture::Height,     MaterialProperty::HeightMultiplier);
+                show_property("Occlusion",            "Amount of light loss, can be complementary to SSAO",                                MaterialTexture::Occlusion,  MaterialProperty::Undefined);
+                show_property("Emission",             "Light emission from the surface, works nice with bloom",                            MaterialTexture::Emission,   MaterialProperty::Undefined);
+                show_property("Alpha mask",           "Discards pixels",                                                                   MaterialTexture::AlphaMask,  MaterialProperty::Undefined);
+            }
 
             // UV
             {
@@ -799,10 +817,15 @@ void Properties::ShowMaterial(Material* material) const
         }
 
         //= MAP =============================================================================================================================
-        if (tiling != material->GetTiling())                                  material->SetTiling(tiling);
-        if (offset != material->GetOffset())                                  material->SetOffset(offset);
-        if (m_material_color_picker->GetColor() != material->GetColorAlbedo()) material->SetColorAlbedo(m_material_color_picker->GetColor());
-        //===================================================================================================================================
+        material->SetProperty(MaterialProperty::UvTilingX, tiling.x);
+        material->SetProperty(MaterialProperty::UvTilingY, tiling.y);
+        material->SetProperty(MaterialProperty::UvOffsetX, offset.x);
+        material->SetProperty(MaterialProperty::UvOffsetY, offset.y);
+        material->SetProperty(MaterialProperty::ColorR, m_material_color_picker->GetColor().x);
+        material->SetProperty(MaterialProperty::ColorG, m_material_color_picker->GetColor().y);
+        material->SetProperty(MaterialProperty::ColorB, m_material_color_picker->GetColor().z);
+        material->SetProperty(MaterialProperty::ColorA, m_material_color_picker->GetColor().w);
+        //=====================================================================================
     }
 
     helper::ComponentEnd();

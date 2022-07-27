@@ -110,6 +110,6 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     float3 diffuse_bounce = 0.0f;
     compute_uber_ssao(thread_id.xy, bent_normal, occlusion, diffuse_bounce);
 
-    tex_out_rgba[thread_id.xy]  = float4(bent_normal, occlusion);
-    tex_out_rgba2[thread_id.xy] = float4(diffuse_bounce, 1.0f);
+    tex_uav[thread_id.xy]  = float4(bent_normal, occlusion);
+    tex_uav2[thread_id.xy] = float4(diffuse_bounce, 1.0f);
 }

@@ -40,10 +40,10 @@ namespace Spartan
         m_rhi_device->QueueWaitAll();
 
         // Destroy
-        vulkan_utility::vma_allocator::destroy_buffer(m_resource);
+        vulkan_utility::vma_allocator::destroy_buffer(m_rhi_resource);
     }
 
-    RHI_ConstantBuffer::RHI_ConstantBuffer(const std::shared_ptr<RHI_Device>& rhi_device, const string& name)
+    RHI_ConstantBuffer::RHI_ConstantBuffer(const RHI_Device* rhi_device, const string& name)
     {
         m_rhi_device         = rhi_device;
         m_object_name        = name;
@@ -67,13 +67,13 @@ namespace Spartan
         VkMemoryPropertyFlags flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT; // mappable
 
         // Create buffer
-        vulkan_utility::vma_allocator::create_buffer(m_resource, m_object_size_gpu, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, flags);
+        vulkan_utility::vma_allocator::create_buffer(m_rhi_resource, m_object_size_gpu, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, flags);
 
         // Get mapped data pointer
-        m_mapped_data = vulkan_utility::vma_allocator::get_mapped_data_from_buffer(m_resource);
+        m_mapped_data = vulkan_utility::vma_allocator::get_mapped_data_from_buffer(m_rhi_resource);
 
         // Set debug name
-        vulkan_utility::debug::set_name(static_cast<VkBuffer>(m_resource), (m_object_name + string("_size_") + to_string(m_object_size_gpu)).c_str());
+        vulkan_utility::debug::set_object_name(static_cast<VkBuffer>(m_rhi_resource), (m_object_name + string("_size_") + to_string(m_object_size_gpu)).c_str());
 
         return true;
     }
@@ -90,7 +90,7 @@ namespace Spartan
 
     void RHI_ConstantBuffer::Flush(const uint64_t size, const uint64_t offset)
     {
-        vulkan_utility::vma_allocator::flush(m_resource, offset, size);
+        vulkan_utility::vma_allocator::flush(m_rhi_resource, offset, size);
 
         m_offset       = static_cast<uint32_t>(offset);
         m_reset_offset = false;

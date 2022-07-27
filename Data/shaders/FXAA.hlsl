@@ -54,5 +54,5 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         0, 0, 0, 0
     ).rgb;
 
-    tex_out_rgba[thread_id.xy] = float4(color, tex[thread_id.xy].a);
+    tex_uav[thread_id.xy] = float4(color, tex[thread_id.xy].a);
 }

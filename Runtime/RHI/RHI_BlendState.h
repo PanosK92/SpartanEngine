@@ -52,33 +52,34 @@ namespace Spartan
         auto GetSourceBlendAlpha()                    const { return m_source_blend_alpha; }
         auto GetDestBlendAlpha()                      const { return m_dest_blend_alpha; }
         auto GetBlendOpAlpha()                        const { return m_blend_op_alpha; }
-        auto GetResource()                            const { return m_resource; }
         void SetBlendFactor(const float blend_factor)       { m_blend_factor = blend_factor; }
         float GetBlendFactor()                        const { return m_blend_factor; }
 
         bool operator==(const RHI_BlendState& rhs) const
         {
             return
-                m_blend_enabled         == rhs.GetBlendEnabled()        &&
-                m_source_blend          == rhs.GetSourceBlend()         &&
-                m_dest_blend            == rhs.GetDestBlend()           &&
-                m_blend_op              == rhs.GetBlendOp()             &&
-                m_source_blend_alpha    == rhs.GetSourceBlendAlpha()    &&
-                m_dest_blend_alpha      == rhs.GetDestBlendAlpha()      &&
-                m_blend_op_alpha        == rhs.GetBlendOpAlpha();
+                m_blend_enabled      == rhs.GetBlendEnabled()     &&
+                m_source_blend       == rhs.GetSourceBlend()      &&
+                m_dest_blend         == rhs.GetDestBlend()        &&
+                m_blend_op           == rhs.GetBlendOp()          &&
+                m_source_blend_alpha == rhs.GetSourceBlendAlpha() &&
+                m_dest_blend_alpha   == rhs.GetDestBlendAlpha()   &&
+                m_blend_op_alpha     == rhs.GetBlendOpAlpha();
         }
 
+        void* GetRhiResource() const { return m_rhi_resource; }
+
     private:
-        bool m_blend_enabled                    = false;
-        RHI_Blend m_source_blend                = RHI_Blend::Src_Alpha;
-        RHI_Blend m_dest_blend                  = RHI_Blend::Inv_Src_Alpha;
-        RHI_Blend_Operation m_blend_op          = RHI_Blend_Operation::Add;
-        RHI_Blend m_source_blend_alpha          = RHI_Blend::One;
-        RHI_Blend m_dest_blend_alpha            = RHI_Blend::One;
-        RHI_Blend_Operation m_blend_op_alpha    = RHI_Blend_Operation::Add;
-        float m_blend_factor                    = 1.0f;
-    
-        void* m_resource    = nullptr;
-        bool m_initialized  = false;
+        bool m_blend_enabled                 = false;
+        RHI_Blend m_source_blend             = RHI_Blend::Src_Alpha;
+        RHI_Blend m_dest_blend               = RHI_Blend::Inv_Src_Alpha;
+        RHI_Blend_Operation m_blend_op       = RHI_Blend_Operation::Add;
+        RHI_Blend m_source_blend_alpha       = RHI_Blend::One;
+        RHI_Blend m_dest_blend_alpha         = RHI_Blend::One;
+        RHI_Blend_Operation m_blend_op_alpha = RHI_Blend_Operation::Add;
+        float m_blend_factor                 = 1.0f;
+
+        // RHI Resource
+        void* m_rhi_resource = nullptr;
     };
 }

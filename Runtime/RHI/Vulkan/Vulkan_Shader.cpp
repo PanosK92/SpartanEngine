@@ -40,19 +40,19 @@ namespace Spartan
 {
     RHI_Shader::~RHI_Shader()
     {
-        if (m_resource)
+        if (m_rhi_resource)
         {
             // Wait in case it's still in use by the GPU
             m_rhi_device->QueueWaitAll();
 
-            vkDestroyShaderModule(m_rhi_device->GetContextRhi()->device, static_cast<VkShaderModule>(m_resource), nullptr);
-            m_resource = nullptr;
+            vkDestroyShaderModule(m_rhi_device->GetContextRhi()->device, static_cast<VkShaderModule>(m_rhi_resource), nullptr);
+            m_rhi_resource = nullptr;
         }
     }
 
-    void* RHI_Shader::GetResource() const
+    void* RHI_Shader::GetRhiResource() const
     {
-        return m_resource;
+        return m_rhi_resource;
     }
 
     void* RHI_Shader::Compile2()
@@ -69,13 +69,13 @@ namespace Spartan
             arguments.emplace_back("-E"); arguments.emplace_back(GetEntryPoint());
             arguments.emplace_back("-T"); arguments.emplace_back(GetTargetProfile());
             arguments.emplace_back("-spirv");                                                                                                      // Generate SPIR-V code
-            arguments.emplace_back("-fspv-target-env=vulkan1.1");                                                                                  // Specify the target environment: vulkan1.0 (default) or vulkan1.1
+            arguments.emplace_back("-fspv-target-env=vulkan1.3");                                                                                  // Specify the target environment: vulkan1.0 (default), vulkan1.1, vulkan1.1spirv1.4, vulkan1.2, vulkan1.3, or universal1.5
             arguments.emplace_back("-fvk-b-shift"); arguments.emplace_back(to_string(rhi_shader_shift_register_b)); arguments.emplace_back("all"); // Specify Vulkan binding number shift for b-type (buffer) register
             arguments.emplace_back("-fvk-t-shift"); arguments.emplace_back(to_string(rhi_shader_shift_register_t)); arguments.emplace_back("all"); // Specify Vulkan binding number shift for t-type (texture) register
             arguments.emplace_back("-fvk-s-shift"); arguments.emplace_back(to_string(rhi_shader_shift_register_s)); arguments.emplace_back("all"); // Specify Vulkan binding number shift for s-type (sampler) register
             arguments.emplace_back("-fvk-u-shift"); arguments.emplace_back(to_string(rhi_shader_shift_register_u)); arguments.emplace_back("all"); // Specify Vulkan binding number shift for u-type (read/write buffer) register
-            arguments.emplace_back("-fvk-use-dx-position-w");                                                                                      // Reciprocate SV_Position.w after reading from stage input in PS to accommodate the difference between Vulkan and DirectX
             arguments.emplace_back("-fvk-use-dx-layout");                                                                                          // Use DirectX memory layout for Vulkan resources
+            arguments.emplace_back("-fvk-use-dx-position-w");                                                                                      // Reciprocate SV_Position.w after reading from stage input in PS to accommodate the difference between Vulkan and DirectX
             arguments.emplace_back("-flegacy-macro-expansion");                                                                                    // Expand the operands before performing token-pasting operation (fxc behavior)
             #ifdef DEBUG
             arguments.emplace_back("-Od");                                                                                                         // Disable optimizations
@@ -123,6 +123,9 @@ namespace Spartan
                 LOG_ERROR("Failed to create shader module.");
                 shader_module = nullptr;
             }
+
+            // Name the shader module (useful for GPU-based validation)
+            vulkan_utility::debug::set_object_name(shader_module, m_object_name.c_str());
 
             // Reflect shader resources (so that descriptor sets can be created later)
             Reflect

@@ -321,6 +321,7 @@ namespace Spartan
     static const uint8_t        rhi_max_render_target_count   = 8;
     static const uint8_t        rhi_max_constant_buffer_count = 8;
     static const uint32_t       rhi_dynamic_offset_empty      = (std::numeric_limits<uint32_t>::max)();
+    static const uint8_t        rhi_max_mip_count             = 13;
 
     constexpr uint32_t RhiFormatToBitsPerChannel(const RHI_Format format)
     {

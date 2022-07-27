@@ -3,7 +3,10 @@
 // TODO: detect clang and add clang specific directives
 
 // Version
-#define sp_version "v0.33"
+constexpr char sp_name[]          = "Spartan";
+constexpr int sp_version_major    = 0;
+constexpr int sp_version_minor    = 3;
+constexpr int sp_version_revision = 3;
 
 #if defined(__clang__)
     #pragma warn "SP_OPTIMISE and SP_WARNINGS are not implemented for clang"

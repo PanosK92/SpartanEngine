@@ -96,5 +96,5 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     color.rgb += fog; // regular
     color.rgb += tex_light_volumetric[thread_id.xy].rgb; // volumetric
 
-    tex_out_rgba[thread_id.xy] = saturate_16(color);
+    tex_uav[thread_id.xy] = saturate_16(color);
 }
