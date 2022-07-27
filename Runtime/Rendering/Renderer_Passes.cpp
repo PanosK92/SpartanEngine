@@ -1044,7 +1044,7 @@ namespace Spartan
                     // Set shadow maps
                     {
                         // We always bind all the shadow maps, regardless of the light type or if shadows are enabled.
-                            // This is because we are using an uber shader and APIs like Vulkan, expect all texture slots to be bound with something.
+                        // This is because we are using an uber shader and APIs like Vulkan, expect all texture slots to be bound with something.
 
                         RHI_Texture* tex_depth = light->GetDepthTexture();
                         RHI_Texture* tex_color = light->GetShadowsTransparentEnabled() ? light->GetColorTexture() : m_tex_default_white.get();
@@ -1092,7 +1092,7 @@ namespace Spartan
         if (!shader_c->IsCompiled())
             return;
 
-        cmd_list->BeginTimeblock(is_transparent_pass ? "light_composition_transparent" : "light_composition_opaque");
+        cmd_list->BeginTimeblock(is_transparent_pass ? "light_composition_transparent" : "light_composition");
 
         // Define pipeline state
         static RHI_PipelineState pso;
@@ -1107,7 +1107,7 @@ namespace Spartan
         Update_Cb_Uber(cmd_list);
 
         // Set textures
-        cmd_list->SetTexture(RendererBindingsUav::tex, tex_out);
+        cmd_list->SetTexture(RendererBindingsUav::tex,              tex_out);
         cmd_list->SetTexture(RendererBindingsSrv::gbuffer_albedo,   render_target(RendererTexture::Gbuffer_Albedo));
         cmd_list->SetTexture(RendererBindingsSrv::gbuffer_material, render_target(RendererTexture::Gbuffer_Material));
         cmd_list->SetTexture(RendererBindingsSrv::gbuffer_normal,   render_target(RendererTexture::Gbuffer_Normal));
@@ -1133,7 +1133,7 @@ namespace Spartan
         if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
             return;
 
-        cmd_list->BeginTimeblock(is_transparent_pass ? "light_image_based_transparent" : "light_image_based_opaque");
+        cmd_list->BeginTimeblock(is_transparent_pass ? "light_image_based_transparent" : "light_image_based");
 
         // Get reflection probe entities
         const vector<Entity*>& probes = m_entities[RendererEntityType::ReflectionProbe];

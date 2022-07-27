@@ -394,8 +394,19 @@ namespace Spartan
 
                 SP_ASSERT_MSG(*pipeline != nullptr, "Failed to create compute pipeline");
 
-                // Disable naming until I can come up with a more meaningful name
-                //vulkan_utility::debug::set_name(*pipeline, m_state.pass_name);
+                // Name the pipeline object
+                if (m_state.shader_vertex)
+                {
+                    vulkan_utility::debug::set_object_name(*pipeline, m_state.shader_vertex->GetObjectName().c_str());
+                }
+                else if (m_state.shader_pixel)
+                {
+                    vulkan_utility::debug::set_object_name(*pipeline, m_state.shader_pixel->GetObjectName().c_str());
+                }
+                else if (m_state.shader_compute)
+                {
+                    vulkan_utility::debug::set_object_name(*pipeline, m_state.shader_compute->GetObjectName().c_str());
+                }
             }
         }
     }

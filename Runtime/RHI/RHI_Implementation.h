@@ -504,7 +504,13 @@ namespace Spartan
 
                 */
                 std::vector<const char*> validation_layers                      = { "VK_LAYER_KHRONOS_validation" };
-                std::vector<VkValidationFeatureEnableEXT> validation_extensions = { VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT, VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT, VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_EXT };
+                std::vector<VkValidationFeatureEnableEXT> validation_extensions =
+                {
+                    VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT,
+                    VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT
+                    //VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_EXT,
+                    //VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_RESERVE_BINDING_SLOT_EXT
+                };
                 std::vector<const char*> extensions_instance                    = { "VK_KHR_surface", "VK_KHR_win32_surface", "VK_EXT_debug_report", "VK_EXT_debug_utils"};
             #else
                 std::vector<const char*> validation_layers                      = { };

@@ -44,7 +44,7 @@ namespace Spartan
     static void CompileShader(
         atomic<Shader_Compilation_State>& compilation_state,
         RHI_Shader_Type shader_type,
-        const std::unordered_map<std::string, std::string>& defines,
+        const unordered_map<string, string>& defines,
         string& object_name,
         void*& resource,
         function<void*()> compile2
@@ -145,7 +145,7 @@ namespace Spartan
             return;
         }
 
-        string file_source = buffer.str();
+        string file_source    = buffer.str();
         string file_directory = FileSystem::GetDirectoryFromFilePath(file_path);
         
         // Build combined source (go through every line)
@@ -177,10 +177,10 @@ namespace Spartan
         m_sources.emplace_back(file_source);
     }
 
-    void RHI_Shader::LoadSource(const std::string& file_path)
+    void RHI_Shader::LoadSource(const string& file_path)
     {
         // Get name and file path
-        m_object_name = FileSystem::GetFileNameFromFilePath(file_path);
+        m_object_name = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path);
         m_file_path   = file_path;
 
         // Parse source
@@ -193,12 +193,12 @@ namespace Spartan
 
         // Reverse the vectors so they have the main shader before the subsequent include directives.
         // This also helps with the editor's shader editor where you are interested more in the first source.
-        std::reverse(m_names.begin(), m_names.end());
-        std::reverse(m_file_paths.begin(), m_file_paths.end());
-        std::reverse(m_sources.begin(), m_sources.end());
+        reverse(m_names.begin(), m_names.end());
+        reverse(m_file_paths.begin(), m_file_paths.end());
+        reverse(m_sources.begin(), m_sources.end());
     }
 
-    void RHI_Shader::SetSource(const uint32_t index, const std::string& source)
+    void RHI_Shader::SetSource(const uint32_t index, const string& source)
     {
         if (index >= m_sources.size())
         {
