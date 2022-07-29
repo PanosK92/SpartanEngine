@@ -2083,11 +2083,7 @@ namespace Spartan
 
         // Get transform handle (can be null during engine startup)
         shared_ptr<TransformHandle> transform_handle = m_context->GetSubsystem<World>()->GetTransformHandle();
-        if (!transform_handle)
-            return;
-
-        // If no entity is selected, don't render it.
-        if (transform_handle->GetSelectedEntity() == nullptr)
+        if (!transform_handle || !transform_handle->ShouldRender())
             return;
 
         // The rotation transform, draws line primitives, it doesn't have a model that needs to be rendered here.

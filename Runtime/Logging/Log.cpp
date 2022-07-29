@@ -207,7 +207,10 @@ namespace Spartan
     {
         SP_ASSERT(text != nullptr);
 
-        m_logger.lock()->Log(string(text), static_cast<uint32_t>(type));
+        if (shared_ptr<ILogger> logger = m_logger.lock())
+        {
+            logger->Log(string(text), static_cast<uint32_t>(type));
+        }
     }
 
     void Log::LogToFile(const char* text, const LogType type)

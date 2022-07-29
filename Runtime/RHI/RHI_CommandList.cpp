@@ -40,25 +40,19 @@ namespace Spartan
     {
         SP_ASSERT_MSG(m_state == RHI_CommandListState::Submitted, "The command list hasn't been submitted, can't wait for it.");
 
-        // If the command list is executing, wait for it.
-        bool is_signaled = m_proccessed_fence->IsSignaled();
-        bool executing   = !is_signaled && !m_discard;
-        if (executing)
+        // Wait for the command list to finish executing
+        if (IsExecuting())
         {
-            // Uncomment this warning log to observe the frequency of command list fence waits
-            LOG_WARNING("Waiting for command list \"%s\" to be processed by the queue...", m_object_name.c_str());
+            LOG_WARNING("Waiting for command list \"%s\" to finish executing...", m_object_name.c_str());
 
             if (!m_proccessed_fence->Wait())
             {
-                LOG_ERROR("Timed out while waiting for command list \"%s\"", m_object_name.c_str());
+                SP_ASSERT_MSG(false, "Timed out while waiting for the fence");
             }
         }
 
-        if (is_signaled)
-        {
-            m_proccessed_fence->Reset();
-        }
-
+        // Reset and update state
+        m_proccessed_fence->Reset();
         m_state = RHI_CommandListState::Idle;
     }
 
@@ -79,7 +73,10 @@ namespace Spartan
 
     bool RHI_CommandList::IsExecuting()
     {
-        return m_state == RHI_CommandListState::Submitted && !m_proccessed_fence->IsSignaled();
+        return
+            m_state == RHI_CommandListState::Submitted && // Submit() has been called.
+            !m_proccessed_fence->IsSignaled()          && // The processed fence hasn't been signaled yet.
+            !m_discard;                                   // It hasn't been discarded, in which case Submit() early exited.
     }
 
     void RHI_CommandList::GetDescriptorsFromPipelineState(RHI_PipelineState& pipeline_state, vector<RHI_Descriptor>& descriptors)

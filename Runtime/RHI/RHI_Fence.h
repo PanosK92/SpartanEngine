@@ -31,6 +31,7 @@ namespace Spartan
     class RHI_Fence : public SpartanObject
     {
     public:
+        RHI_Fence() = default;
         RHI_Fence(RHI_Device* rhi_device, const char* name = nullptr);
         ~RHI_Fence();
 
