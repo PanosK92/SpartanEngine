@@ -31,6 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "TransformPosition.h"
 #include "TransformScale.h"
 #include "TransformRotation.h"
+#include "../Components/Environment.h"
 //===========================================
 
 //= NAMESPACES ===============
@@ -99,12 +100,6 @@ namespace Spartan
 
     weak_ptr<Entity> TransformHandle::SetSelectedEntity(const shared_ptr<Entity>& entity)
     {
-        // If this a camera entity don't select it
-        if (entity->GetComponent<Camera>())
-        {
-            return m_entity_selected;
-        }
-
         // Set a new entity only if another is not being edited
         if (!m_is_editing)
         {
@@ -138,4 +133,18 @@ namespace Spartan
     {
         return m_transform_operator[m_type].get();
     }
+
+    bool TransformHandle::ShouldRender() const
+    {
+        shared_ptr<Entity> entity = m_entity_selected.lock();
+
+        if (!entity)
+            return false;
+
+        if (entity->GetComponent<Camera>())
+            return false;
+
+        return true;
+    }
+
 }

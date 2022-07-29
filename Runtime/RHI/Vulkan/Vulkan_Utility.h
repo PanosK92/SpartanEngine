@@ -31,6 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Logging/Log.h"
 #include "../../Math/Vector4.h"
 #include "../../Display/Display.h"
+#include "../RHI_Fence.h"
 //===================================
 
 namespace Spartan::vulkan_utility
@@ -162,7 +163,10 @@ namespace Spartan::vulkan_utility
 
         struct cmdbi_object
         {
-            cmdbi_object() = default;
+            cmdbi_object()
+            {
+                m_proccesed_fence = std::make_shared<RHI_Fence>(globals::rhi_device, "cmd_immediate");
+            }
 
             ~cmdbi_object()
             {
@@ -210,8 +214,8 @@ namespace Spartan::vulkan_utility
                         allocate_info.level                       = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
                         allocate_info.commandBufferCount          = 1;
 
-                        SP_ASSERT(error::check(
-                            vkAllocateCommandBuffers(globals::rhi_context->device, &allocate_info, cmd_buffer_vk)) &&
+                        SP_ASSERT_MSG(error::check(
+                            vkAllocateCommandBuffers(globals::rhi_context->device, &allocate_info, cmd_buffer_vk)),
                             "Failed to allocate command buffer"
                         );
                     }
@@ -226,10 +230,13 @@ namespace Spartan::vulkan_utility
                     VkCommandBufferBeginInfo begin_info = {};
                     begin_info.sType                    = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
                     begin_info.flags                    = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-                    if (error::check(vkBeginCommandBuffer(static_cast<VkCommandBuffer>(cmd_buffer), &begin_info)))
-                    {
-                        recording = true;
-                    }
+
+                    SP_ASSERT_MSG(error::check(
+                        vkBeginCommandBuffer(static_cast<VkCommandBuffer>(cmd_buffer), &begin_info)),
+                        "Failed to begin command buffer"
+                    );
+
+                    recording = true;
                 }
             }
 
@@ -237,9 +244,19 @@ namespace Spartan::vulkan_utility
             {
                 SP_ASSERT(initialised && "Can't submit as the command buffer failed to initialise");
                 SP_ASSERT(recording && "Can't submit as the command buffer didn't record anything");
-                SP_ASSERT(error::check(vkEndCommandBuffer(static_cast<VkCommandBuffer>(cmd_buffer))) && "Failed to end command buffer");
-                globals::rhi_device->QueueSubmit(queue_type, wait_flags, cmd_buffer);
-                SP_ASSERT(globals::rhi_device->QueueWait(queue_type) && "Failed to wait for queue");
+
+                SP_ASSERT_MSG(error::check(
+                    vkEndCommandBuffer(static_cast<VkCommandBuffer>(cmd_buffer))),
+                    "Failed to end command buffer"
+                );
+
+                globals::rhi_device->QueueSubmit(queue_type, wait_flags, cmd_buffer, nullptr, nullptr, m_proccesed_fence.get());
+
+                if (!m_proccesed_fence->Wait())
+                {
+                    LOG_ERROR("Timed out while waiting for fence");
+                }
+                m_proccesed_fence->Reset();
 
                 recording = false;
             }
@@ -249,6 +266,7 @@ namespace Spartan::vulkan_utility
             RHI_Queue_Type queue_type     = RHI_Queue_Type::Undefined;
             std::atomic<bool> initialised = false;
             std::atomic<bool> recording   = false;
+            std::shared_ptr<RHI_Fence> m_proccesed_fence;
         };
 
         static VkCommandBuffer begin(const RHI_Queue_Type queue_type)
