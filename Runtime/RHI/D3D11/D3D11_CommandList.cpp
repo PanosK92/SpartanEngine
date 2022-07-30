@@ -72,10 +72,9 @@ namespace Spartan
         return true;
     }
 
-    bool RHI_CommandList::Submit()
+    void RHI_CommandList::Submit()
     {
         m_state = RHI_CommandListState::Submitted;
-        return true;
     }
 
     void RHI_CommandList::SetPipelineState(RHI_PipelineState& pso)

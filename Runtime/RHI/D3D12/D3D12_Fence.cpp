@@ -48,8 +48,8 @@ namespace Spartan
         return true;
     }
 
-    bool RHI_Fence::Reset()
+    void RHI_Fence::Reset()
     {
-        return true;
+
     }
 }
