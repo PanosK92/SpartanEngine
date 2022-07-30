@@ -35,7 +35,7 @@ namespace Spartan
 
     }
 
-    void RHI_FSR::Dispatch(RHI_CommandList* cmd_list, RHI_Texture* tex_input, RHI_Texture* tex_depth, RHI_Texture* tex_velocity, RHI_Texture* tex_output, Camera* camera, float delta_time)
+    void RHI_FSR::Dispatch(RHI_CommandList* cmd_list, RHI_Texture* tex_input, RHI_Texture* tex_depth, RHI_Texture* tex_velocity, RHI_Texture* tex_output, Camera* camera, float delta_time, float sharpness)
     {
 
     }

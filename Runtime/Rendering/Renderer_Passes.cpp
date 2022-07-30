@@ -1967,7 +1967,8 @@ namespace Spartan
             render_target(RendererTexture::Gbuffer_Velocity).get(),
             tex_out,
             m_camera.get(),
-            m_cb_frame_cpu.delta_time
+            m_cb_frame_cpu.delta_time,
+            GetOption<float>(RendererOption::Sharpness)
         );
 
         cmd_list->EndTimeblock();
