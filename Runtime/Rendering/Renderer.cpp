@@ -63,11 +63,6 @@ namespace Spartan
         // Default options
         m_options.fill(0.0f);
         SetOption(RendererOption::ReverseZ,               1.0f);
-        SetOption(RendererOption::Transform_Handle,       1.0f);
-        SetOption(RendererOption::Debug_Grid,             1.0f);
-        SetOption(RendererOption::Debug_ReflectionProbes, 1.0f);
-        SetOption(RendererOption::Debug_Lights,           1.0f);
-        SetOption(RendererOption::Debug_Physics,          1.0f);
         SetOption(RendererOption::Bloom,                  0.2f); // Non-zero values activate it and define the blend factor.
         SetOption(RendererOption::VolumetricFog,          1.0f);
         SetOption(RendererOption::MotionBlur,             1.0f);
@@ -83,6 +78,13 @@ namespace Spartan
         SetOption(RendererOption::Gamma,                  1.5f);
         SetOption(RendererOption::Sharpen_Strength,       1.0f);
         SetOption(RendererOption::Fog,                    0.08f);
+        // Debug
+        SetOption(RendererOption::Debug_TransformHandle,    1.0f);
+        SetOption(RendererOption::Debug_Grid,               1.0f);
+        SetOption(RendererOption::Debug_ReflectionProbes,   1.0f);
+        SetOption(RendererOption::Debug_Lights,             1.0f);
+        SetOption(RendererOption::Debug_Physics,            1.0f);
+        SetOption(RendererOption::Debug_PerformanceMetrics, 1.08f);
         //SetOption(RendererOption::DepthOfField, 1.0f);        // This is depth of field from ALDI, so until I improve it, it should be disabled by default.
         //SetOption(RendererOption::Render_DepthPrepass, 1.0f); // Depth-pre-pass is not always faster, so by default, it's disabled.
         //SetOption(RendererOption::Debanding, 1.0f);           // Disable debanding as we shouldn't be seeing debanding to begin with.

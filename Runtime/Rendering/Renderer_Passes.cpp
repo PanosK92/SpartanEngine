@@ -2072,7 +2072,7 @@ namespace Spartan
 
     void Renderer::Pass_TransformHandle(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
     {
-        if (!GetOption<bool>(RendererOption::Transform_Handle))
+        if (!GetOption<bool>(RendererOption::Debug_TransformHandle))
             return;
 
         // Acquire shaders

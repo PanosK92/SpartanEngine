@@ -999,8 +999,8 @@ namespace Spartan
                 (
                     static_cast<VkCommandBuffer>(m_rhi_resource),                            // commandBuffer
                     m_pso.IsCompute() ?                                                      // pipelineBindPoint
-                    VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_COMPUTE :                    
-                    VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS,                    
+                    VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_COMPUTE :
+                    VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS,
                     static_cast<VkPipelineLayout>(m_pipeline->GetResource_PipelineLayout()), // layout
                     0,                                                                       // firstSet
                     static_cast<uint32_t>(descriptor_sets.size()),                           // descriptorSetCount
