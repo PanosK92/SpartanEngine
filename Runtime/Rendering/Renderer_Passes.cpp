@@ -1005,7 +1005,7 @@ namespace Spartan
         if (entities.empty())
             return;
 
-        cmd_list->BeginTimeblock(is_transparent_pass ? "light_transparent" : "light_opaque");
+        cmd_list->BeginTimeblock(is_transparent_pass ? "light_transparent" : "light");
 
         // Acquire render targets
         RHI_Texture* tex_diffuse    = is_transparent_pass ? render_target(RendererTexture::Light_Diffuse_Transparent).get()  : render_target(RendererTexture::Light_Diffuse).get();
@@ -1029,56 +1029,54 @@ namespace Spartan
         {
             if (Light* light = entity->GetComponent<Light>())
             {
-                if (light->GetIntensity() != 0)
+                // Do the lighting even when intensity is zero, since we can have emissive lighting.
+                cmd_list->SetTexture(RendererBindingsUav::tex,              tex_diffuse);
+                cmd_list->SetTexture(RendererBindingsUav::tex2,             tex_specular);
+                cmd_list->SetTexture(RendererBindingsUav::tex3,             tex_volumetric);
+                cmd_list->SetTexture(RendererBindingsSrv::gbuffer_albedo,   render_target(RendererTexture::Gbuffer_Albedo));
+                cmd_list->SetTexture(RendererBindingsSrv::gbuffer_normal,   render_target(RendererTexture::Gbuffer_Normal));
+                cmd_list->SetTexture(RendererBindingsSrv::gbuffer_material, render_target(RendererTexture::Gbuffer_Material));
+                cmd_list->SetTexture(RendererBindingsSrv::gbuffer_depth,    render_target(RendererTexture::Gbuffer_Depth));
+                cmd_list->SetTexture(RendererBindingsSrv::ssao,             render_target(RendererTexture::Ssao));
+                cmd_list->SetTexture(RendererBindingsSrv::ssao_gi,          render_target(RendererTexture::Ssao_Gi));
+                
+                // Set shadow maps
                 {
-                    cmd_list->SetTexture(RendererBindingsUav::tex,              tex_diffuse);
-                    cmd_list->SetTexture(RendererBindingsUav::tex2,             tex_specular);
-                    cmd_list->SetTexture(RendererBindingsUav::tex3,             tex_volumetric);
-                    cmd_list->SetTexture(RendererBindingsSrv::gbuffer_albedo,   render_target(RendererTexture::Gbuffer_Albedo));
-                    cmd_list->SetTexture(RendererBindingsSrv::gbuffer_normal,   render_target(RendererTexture::Gbuffer_Normal));
-                    cmd_list->SetTexture(RendererBindingsSrv::gbuffer_material, render_target(RendererTexture::Gbuffer_Material));
-                    cmd_list->SetTexture(RendererBindingsSrv::gbuffer_depth,    render_target(RendererTexture::Gbuffer_Depth));
-                    cmd_list->SetTexture(RendererBindingsSrv::ssao,             render_target(RendererTexture::Ssao));
-                    cmd_list->SetTexture(RendererBindingsSrv::ssao_gi,          render_target(RendererTexture::Ssao_Gi));
-                    
-                    // Set shadow maps
-                    {
-                        // We always bind all the shadow maps, regardless of the light type or if shadows are enabled.
+                    // We always bind all the shadow maps, regardless of the light type or if shadows are enabled.
                         // This is because we are using an uber shader and APIs like Vulkan, expect all texture slots to be bound with something.
 
-                        RHI_Texture* tex_depth = light->GetDepthTexture();
-                        RHI_Texture* tex_color = light->GetShadowsTransparentEnabled() ? light->GetColorTexture() : m_tex_default_white.get();
+                    RHI_Texture* tex_depth = light->GetDepthTexture();
+                    RHI_Texture* tex_color = light->GetShadowsTransparentEnabled() ? light->GetColorTexture() : m_tex_default_white.get();
 
-                        if (light->GetLightType() == LightType::Directional)
-                        {
-                            cmd_list->SetTexture(RendererBindingsSrv::light_directional_depth, tex_depth);
-                            cmd_list->SetTexture(RendererBindingsSrv::light_directional_color, tex_color);
-                        }
-                        else if (light->GetLightType() == LightType::Point)
-                        {
-                            cmd_list->SetTexture(RendererBindingsSrv::light_point_depth, tex_depth);
-                            cmd_list->SetTexture(RendererBindingsSrv::light_point_color, tex_color);
-                        }
-                        else if (light->GetLightType() == LightType::Spot)
-                        {
-                            cmd_list->SetTexture(RendererBindingsSrv::light_spot_depth, tex_depth);
-                            cmd_list->SetTexture(RendererBindingsSrv::light_spot_color, tex_color);
-                        }
+                    if (light->GetLightType() == LightType::Directional)
+                    {
+                        cmd_list->SetTexture(RendererBindingsSrv::light_directional_depth, tex_depth);
+                        cmd_list->SetTexture(RendererBindingsSrv::light_directional_color, tex_color);
                     }
-                    
-                    // Update materials structured buffer (light pass will access it using material IDs)
-                    Update_Cb_Material(cmd_list);
-                    
-                    // Update light buffer
-                    Update_Cb_Light(cmd_list, light, RHI_Shader_Compute);
-                    
-                    // Set uber buffer
-                    m_cb_uber_cpu.resolution_rt       = Vector2(static_cast<float>(tex_diffuse->GetWidth()), static_cast<float>(tex_diffuse->GetHeight()));
-                    m_cb_uber_cpu.is_transparent_pass = is_transparent_pass;
-                    Update_Cb_Uber(cmd_list);
-                    
-                    cmd_list->Dispatch(thread_group_count_x(tex_diffuse), thread_group_count_y(tex_diffuse));
+                    else if (light->GetLightType() == LightType::Point)
+                    {
+                        cmd_list->SetTexture(RendererBindingsSrv::light_point_depth, tex_depth);
+                        cmd_list->SetTexture(RendererBindingsSrv::light_point_color, tex_color);
+                    }
+                    else if (light->GetLightType() == LightType::Spot)
+                    {
+                        cmd_list->SetTexture(RendererBindingsSrv::light_spot_depth, tex_depth);
+                        cmd_list->SetTexture(RendererBindingsSrv::light_spot_color, tex_color);
+                    }
                 }
+                
+                // Update materials structured buffer (light pass will access it using material IDs)
+                Update_Cb_Material(cmd_list);
+                
+                // Update light buffer
+                Update_Cb_Light(cmd_list, light, RHI_Shader_Compute);
+                
+                // Set uber buffer
+                m_cb_uber_cpu.resolution_rt       = Vector2(static_cast<float>(tex_diffuse->GetWidth()), static_cast<float>(tex_diffuse->GetHeight()));
+                m_cb_uber_cpu.is_transparent_pass = is_transparent_pass;
+                Update_Cb_Uber(cmd_list);
+                
+                cmd_list->Dispatch(thread_group_count_x(tex_diffuse), thread_group_count_y(tex_diffuse));
             }
         }
 

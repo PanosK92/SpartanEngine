@@ -95,7 +95,7 @@ void compute_uber_ssao(uint2 pos, inout float3 bent_normal, inout float occlusio
 
     bent_normal    *= ao_samples_rcp;
     occlusion      = 1.0f - saturate(occlusion * ao_samples_rcp);
-    diffuse_bounce = saturate(diffuse_bounce);
+    diffuse_bounce = saturate(diffuse_bounce) * 2.0f;
 }
 
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]

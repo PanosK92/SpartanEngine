@@ -189,7 +189,7 @@ namespace Spartan
         // Depth stencil state
         {
             // New state
-            ID3D11DepthStencilState* depth_stencil_state = static_cast<ID3D11DepthStencilState*>(m_pso.depth_stencil_state ? m_pso.depth_stencil_state->GetResource() : nullptr);
+            ID3D11DepthStencilState* depth_stencil_state = static_cast<ID3D11DepthStencilState*>(m_pso.depth_stencil_state ? m_pso.depth_stencil_state->GetRhiResource() : nullptr);
 
             // Current state
             ID3D11DepthStencilState* depth_stencil_state_set = nullptr;
@@ -206,7 +206,7 @@ namespace Spartan
         // Rasterizer state
         {
             // New state
-            ID3D11RasterizerState* rasterizer_state = static_cast<ID3D11RasterizerState*>(m_pso.rasterizer_state ? m_pso.rasterizer_state->GetResource() : nullptr);
+            ID3D11RasterizerState* rasterizer_state = static_cast<ID3D11RasterizerState*>(m_pso.rasterizer_state ? m_pso.rasterizer_state->GetRhiResource() : nullptr);
 
             // Current state
             ID3D11RasterizerState* rasterizer_state_set = nullptr;
