@@ -55,7 +55,7 @@ namespace Spartan
         Math::Vector3 camera_position;
         float bloom_intensity;
 
-        float sharpen_strength;
+        float sharpness;
         Math::Vector3 camera_direction;
 
         float gamma;
@@ -103,7 +103,7 @@ namespace Spartan
                 camera_near                 == rhs.camera_near                 &&
                 camera_far                  == rhs.camera_far                  &&
                 camera_position             == rhs.camera_position             &&
-                sharpen_strength            == rhs.sharpen_strength            &&
+                sharpness                   == rhs.sharpness                   &&
                 camera_direction            == rhs.camera_direction            &&
                 gamma                       == rhs.gamma                       &&
                 tonemapping                 == rhs.tonemapping                 &&

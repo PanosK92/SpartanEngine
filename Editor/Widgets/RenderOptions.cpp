@@ -394,7 +394,7 @@ void RenderOptions::TickVisible()
 
                 // Sharpen strength
                 ImGui::BeginDisabled(!do_sharperning);
-                helper::RenderOptionValue("Sharpening strength", RendererOption::Sharpen_Strength, "", 0.1f, 0.0f, 1.0f);
+                helper::RenderOptionValue("Sharpness", RendererOption::Sharpness, "", 0.1f, 0.0f, 1.0f);
                 ImGui::EndDisabled();
 
                 // FPS Limit

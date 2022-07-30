@@ -412,23 +412,24 @@ namespace Spartan
         // Environment
         {
             shared_ptr<Entity> environment = EntityCreate();
-            environment->SetName("Environment");
+            environment->SetName("environment");
             environment->AddComponent<Environment>();
         }
 
         // Camera
         {
             shared_ptr<Entity> entity = EntityCreate();
-            entity->SetName("Camera");
+            entity->SetName("camera");
             entity->AddComponent<Camera>();
             entity->AddComponent<AudioListener>();
-            entity->GetTransform()->SetPositionLocal(Vector3(0.0f, 1.0f, -5.0f));
+            entity->GetTransform()->SetPositionLocal(Vector3(0.0f, 1.0f, -4.0f));
+            entity->GetTransform()->SetRotation(Quaternion::FromEulerAngles(Vector3(6.0f, 0.0f, 0.0f)));
         }
 
         // Light - Directional
         {
             shared_ptr<Entity> light = EntityCreate();
-            light->SetName("DirectionalLight");
+            light->SetName("directional_light");
             light->GetTransform()->SetRotationLocal(Quaternion::FromEulerAngles(30.0f, 30.0, 0.0f));
             light->GetTransform()->SetPosition(Vector3(0.0f, 10.0f, 0.0f));
 

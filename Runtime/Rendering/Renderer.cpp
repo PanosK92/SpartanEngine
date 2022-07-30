@@ -76,7 +76,7 @@ namespace Spartan
         SetOption(RendererOption::ShadowResolution,       2048.0f);
         SetOption(RendererOption::Tonemapping,            static_cast<float>(TonemappingMode::Disabled));
         SetOption(RendererOption::Gamma,                  1.5f);
-        SetOption(RendererOption::Sharpen_Strength,       1.0f);
+        SetOption(RendererOption::Sharpness,              0.5f);
         SetOption(RendererOption::Fog,                    0.08f);
         // Debug
         SetOption(RendererOption::Debug_TransformHandle,    1.0f);
@@ -294,7 +294,7 @@ namespace Spartan
             m_cb_frame_cpu.delta_time             = static_cast<float>(m_context->GetSubsystem<Timer>()->GetDeltaTimeSmoothedSec());
             m_cb_frame_cpu.time                   = static_cast<float>(m_context->GetSubsystem<Timer>()->GetTimeSec());
             m_cb_frame_cpu.bloom_intensity        = GetOption<float>(RendererOption::Bloom);
-            m_cb_frame_cpu.sharpen_strength       = GetOption<float>(RendererOption::Sharpen_Strength);
+            m_cb_frame_cpu.sharpness              = GetOption<float>(RendererOption::Sharpness);
             m_cb_frame_cpu.fog                    = GetOption<float>(RendererOption::Fog);
             m_cb_frame_cpu.tonemapping            = GetOption<float>(RendererOption::Tonemapping);
             m_cb_frame_cpu.gamma                  = GetOption<float>(RendererOption::Gamma);

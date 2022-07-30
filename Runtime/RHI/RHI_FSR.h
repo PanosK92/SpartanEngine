@@ -48,7 +48,8 @@ namespace Spartan
             RHI_Texture* tex_velocity,
             RHI_Texture* tex_output,
             Camera* camera,
-            float delta_time
+            float delta_time,
+            float sharpness
         );
         static void Destroy();
 
