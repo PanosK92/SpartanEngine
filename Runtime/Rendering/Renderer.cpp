@@ -215,8 +215,14 @@ namespace Spartan
         m_frame_num++;
         m_is_odd_frame = (m_frame_num % 2) == 1;
 
-        // Reset
-        if (m_cmd_pool->Tick() || m_rhi_device->GetApiType() == RHI_Api_Type::D3d11)
+        // Tick command pool
+        bool reset = m_cmd_pool->Tick() || m_rhi_device->GetApiType() == RHI_Api_Type::D3d11;
+
+        // Begin
+        m_cmd_current = m_cmd_pool->GetCurrentCommandList();
+        m_cmd_current->Begin();
+
+        if (reset)
         {
             // Reset dynamic buffer indices
             m_cb_uber_gpu->ResetOffset();
@@ -229,10 +235,6 @@ namespace Spartan
             OnResourceSafe();
             m_reading_requests = false;
         }
-
-        // Beging
-        m_cmd_current = m_cmd_pool->GetCurrentCommandList();
-        m_cmd_current->Begin();
 
         // Update frame buffer
         {
