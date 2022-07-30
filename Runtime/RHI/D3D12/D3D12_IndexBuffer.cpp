@@ -37,7 +37,7 @@ namespace Spartan
         
     }
     
-    bool RHI_IndexBuffer::_create(const void* indices)
+    void RHI_IndexBuffer::_create(const void* indices)
     {
         //ThrowIfFailed(m_device->CreateCommittedResource(
         //    &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
@@ -73,8 +73,6 @@ namespace Spartan
         //m_indexBufferView.SizeInBytes = SampleAssets::IndexDataSize;
 
         //m_numIndices = SampleAssets::IndexDataSize / 4;    // R32_UINT (SampleAssets::StandardIndexFormat) = 4 bytes each.
-
-        return true;
     }
     
     void* RHI_IndexBuffer::Map()

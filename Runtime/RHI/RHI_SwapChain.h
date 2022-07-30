@@ -39,7 +39,7 @@ namespace Spartan
         RHI_SwapChain() = default;
         RHI_SwapChain(
             void* window_handle,
-            const std::shared_ptr<RHI_Device>& rhi_device,
+            RHI_Device* rhi_device,
             uint32_t width,
             uint32_t height,
             RHI_Format format ,

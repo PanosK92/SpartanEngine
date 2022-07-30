@@ -50,7 +50,7 @@ namespace Spartan
         m_persistent_mapping = true;
     }
 
-    bool RHI_ConstantBuffer::_create()
+    void RHI_ConstantBuffer::_create()
     {
         // Destroy previous buffer
         _destroy();
@@ -74,8 +74,6 @@ namespace Spartan
 
         // Set debug name
         vulkan_utility::debug::set_object_name(static_cast<VkBuffer>(m_rhi_resource), (m_object_name + string("_size_") + to_string(m_object_size_gpu)).c_str());
-
-        return true;
     }
 
     void* RHI_ConstantBuffer::Map()

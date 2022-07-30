@@ -34,7 +34,7 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    Grid::Grid(shared_ptr<RHI_Device> rhi_device)
+    Grid::Grid(RHI_Device* rhi_device)
     {
         // Create vertices.
         vector<RHI_Vertex_PosCol> vertices;

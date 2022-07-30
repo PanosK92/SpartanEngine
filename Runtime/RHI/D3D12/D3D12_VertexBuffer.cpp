@@ -37,7 +37,7 @@ namespace Spartan
 
     }
     
-    bool RHI_VertexBuffer::_create(const void* vertices)
+    void RHI_VertexBuffer::_create(const void* vertices)
     {
         //ThrowIfFailed(m_device->CreateCommittedResource(
         //    &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
@@ -71,8 +71,6 @@ namespace Spartan
         //m_vertexBufferView.BufferLocation = m_vertexBuffer->GetGPUVirtualAddress();
         //m_vertexBufferView.StrideInBytes = SampleAssets::StandardVertexStride;
         //m_vertexBufferView.SizeInBytes = SampleAssets::VertexDataSize;
-
-        return true;
     }
     
     void* RHI_VertexBuffer::Map()

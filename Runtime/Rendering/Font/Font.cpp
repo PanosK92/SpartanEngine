@@ -44,7 +44,7 @@ namespace Spartan
 {
     Font::Font(Context* context, const string& file_path, const int font_size, const Vector4& color) : IResource(context, ResourceType::Font)
     {
-        m_rhi_device      = m_context->GetSubsystem<Renderer>()->GetRhiDevice();
+        m_rhi_device      = m_context->GetSubsystem<Renderer>()->GetRhiDevice().get();
         m_vertex_buffer   = make_shared<RHI_VertexBuffer>(m_rhi_device, true, "font");
         m_index_buffer    = make_shared<RHI_IndexBuffer>(m_rhi_device, true, "font");
         m_char_max_width  = 0;

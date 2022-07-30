@@ -32,7 +32,7 @@ using namespace std;
 
 namespace Spartan
 {
-    bool RHI_ConstantBuffer::_create()
+    void RHI_ConstantBuffer::_create()
     {
         SP_ASSERT(m_rhi_device != nullptr);
         SP_ASSERT(m_rhi_device->GetContextRhi()->device != nullptr);
@@ -49,14 +49,7 @@ namespace Spartan
         buffer_desc.MiscFlags           = 0;
         buffer_desc.StructureByteStride = 0;
 
-        const auto result = m_rhi_device->GetContextRhi()->device->CreateBuffer(&buffer_desc, nullptr, reinterpret_cast<ID3D11Buffer**>(&m_rhi_resource));
-        if (FAILED(result))
-        {
-            LOG_ERROR("Failed to create constant buffer");
-            return false;
-        }
-
-        return true;
+        SP_ASSERT(d3d11_utility::error_check(m_rhi_device->GetContextRhi()->device->CreateBuffer(&buffer_desc, nullptr, reinterpret_cast<ID3D11Buffer**>(&m_rhi_resource))));
     }
 
     void RHI_ConstantBuffer::_destroy()

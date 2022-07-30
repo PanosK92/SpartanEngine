@@ -37,7 +37,7 @@ namespace Spartan
         d3d11_utility::release<ID3D11Buffer>(m_rhi_resource);
     }
 
-    bool RHI_IndexBuffer::_create(const void* indices)
+    void RHI_IndexBuffer::_create(const void* indices)
     {
         SP_ASSERT(m_rhi_device != nullptr);
         SP_ASSERT(m_rhi_device->GetContextRhi()->device != nullptr);
@@ -61,13 +61,7 @@ namespace Spartan
         init_data.SysMemPitch               = 0;
         init_data.SysMemSlicePitch          = 0;
 
-        if (!d3d11_utility::error_check(m_rhi_device->GetContextRhi()->device->CreateBuffer(&buffer_desc, is_dynamic ? nullptr : &init_data, reinterpret_cast<ID3D11Buffer**>(&m_rhi_resource))))
-        {
-            LOG_ERROR(" Failed to create index buffer");
-            return false;
-        }
-
-        return true;
+        SP_ASSERT(d3d11_utility::error_check(m_rhi_device->GetContextRhi()->device->CreateBuffer(&buffer_desc, is_dynamic ? nullptr : &init_data, reinterpret_cast<ID3D11Buffer**>(&m_rhi_resource))));
     }
 
     void* RHI_IndexBuffer::Map()

@@ -19,12 +19,10 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =====================
+//= INCLUDES =================
 #include "Spartan.h"
-#include "../RHI_Implementation.h"
 #include "../RHI_BlendState.h"
-#include "../RHI_Device.h"
-//================================
+//============================
 
 //= NAMESPACES =====
 using namespace std;
@@ -34,7 +32,7 @@ namespace Spartan
 {
     RHI_BlendState::RHI_BlendState
     (
-        const std::shared_ptr<RHI_Device>& device,
+        RHI_Device* rhi_device,
         const bool blend_enabled                  /*= false*/,
         const RHI_Blend source_blend              /*= Blend_Src_Alpha*/,
         const RHI_Blend dest_blend                /*= Blend_Inv_Src_Alpha*/,
@@ -45,7 +43,6 @@ namespace Spartan
         const float blend_factor                  /*= 0.0f*/
     )
     {
-        // Save parameters
         m_blend_enabled      = blend_enabled;
         m_source_blend       = source_blend;
         m_dest_blend         = dest_blend;
@@ -58,6 +55,6 @@ namespace Spartan
 
     RHI_BlendState::~RHI_BlendState()
     {
-        
+
     }
 }
