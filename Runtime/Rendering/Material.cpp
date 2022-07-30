@@ -41,10 +41,16 @@ namespace Spartan
     {
         m_rhi_device = context->GetSubsystem<Renderer>()->GetRhiDevice();
         m_textures.fill(nullptr);
-        m_properties.fill(1.0f);
 
-        SetProperty(MaterialProperty::UvOffsetX, 0.0f);
-        SetProperty(MaterialProperty::UvOffsetY, 0.0f);
+        // Initialise properties
+        m_properties.fill(0.0f);
+        SetProperty(MaterialProperty::ColorR,              1.0f);
+        SetProperty(MaterialProperty::ColorG,              1.0f);
+        SetProperty(MaterialProperty::ColorB,              1.0f);
+        SetProperty(MaterialProperty::ColorA,              1.0f);
+        SetProperty(MaterialProperty::RoughnessMultiplier, 1.0f);
+        SetProperty(MaterialProperty::UvTilingX,           1.0f);
+        SetProperty(MaterialProperty::UvTilingY,           1.0f);
     }
 
     bool Material::LoadFromFile(const string& file_path)
@@ -152,6 +158,25 @@ namespace Spartan
         else
         {
             m_textures[type_int] = nullptr;
+        }
+
+        // Set the correct multiplier
+        float multiplier = texture != nullptr;
+        if (texture_type == MaterialTexture::Roughness)
+        {
+            SetProperty(MaterialProperty::RoughnessMultiplier, multiplier);
+        }
+        else if (texture_type == MaterialTexture::Metallness)
+        {
+            SetProperty(MaterialProperty::MetallnessMultiplier, multiplier);
+        }
+        else if (texture_type == MaterialTexture::Normal)
+        {
+            SetProperty(MaterialProperty::NormalMultiplier, multiplier);
+        }
+        else if (texture_type == MaterialTexture::Height)
+        {
+            SetProperty(MaterialProperty::HeightMultiplier, multiplier);
         }
     }
 
