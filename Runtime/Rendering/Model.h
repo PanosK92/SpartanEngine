@@ -68,6 +68,9 @@ namespace Spartan
         const auto& GetAabb() const { return m_aabb; }
         const auto& GetMesh() const { return m_mesh; }
 
+        // Entities
+        Entity* GetRootEntity() { return m_root_entity.lock().get(); }
+
         // Add resources to the model
         void SetRootEntity(const std::shared_ptr<Entity>& entity) { m_root_entity = entity; }
         void AddMaterial(std::shared_ptr<Material>& material, const std::shared_ptr<Entity>& entity) const;

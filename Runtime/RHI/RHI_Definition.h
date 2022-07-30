@@ -65,7 +65,7 @@ namespace Spartan
 
     enum class RHI_PhysicalDevice_Type
     {
-        Unknown,
+        Undefined,
         Integrated,
         Discrete,
         Virtual,

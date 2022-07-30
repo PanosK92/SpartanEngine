@@ -38,7 +38,7 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    inline void build(const Geometry_Type type, Renderable* renderable)
+    inline void build(const DefaultGeometry type, Renderable* renderable)
     {    
         Model* model = new Model(renderable->GetContext());
         vector<RHI_Vertex_PosTexNorTan> vertices;
@@ -47,27 +47,27 @@ namespace Spartan
         const string project_directory = renderable->GetContext()->GetSubsystem<ResourceCache>()->GetProjectDirectory();
 
         // Construct geometry
-        if (type == Geometry_Default_Cube)
+        if (type == DefaultGeometry::Cube)
         {
             Geometry::CreateCube(&vertices, &indices);
             model->SetResourceFilePath(project_directory + "default_cube" + EXTENSION_MODEL);
         }
-        else if (type == Geometry_Default_Quad)
+        else if (type == DefaultGeometry::Quad)
         {
             Geometry::CreateQuad(&vertices, &indices);
             model->SetResourceFilePath(project_directory + "default_quad" + EXTENSION_MODEL);
         }
-        else if (type == Geometry_Default_Sphere)
+        else if (type == DefaultGeometry::Sphere)
         {
             Geometry::CreateSphere(&vertices, &indices);
             model->SetResourceFilePath(project_directory + "default_sphere" + EXTENSION_MODEL);
         }
-        else if (type == Geometry_Default_Cylinder)
+        else if (type == DefaultGeometry::Cylinder)
         {
             Geometry::CreateCylinder(&vertices, &indices);
             model->SetResourceFilePath(project_directory + "default_cylinder" + EXTENSION_MODEL);
         }
-        else if (type == Geometry_Default_Cone)
+        else if (type == DefaultGeometry::Cone)
         {
             Geometry::CreateCone(&vertices, &indices);
             model->SetResourceFilePath(project_directory + "default_cone" + EXTENSION_MODEL);
@@ -92,7 +92,7 @@ namespace Spartan
 
     Renderable::Renderable(Context* context, Entity* entity, uint64_t id /*= 0*/) : IComponent(context, entity, id)
     {
-        m_geometry_type        = Geometry_Custom;
+        m_geometry_type        = DefaultGeometry::Undefined;
         m_geometryIndexOffset  = 0;
         m_geometryIndexCount   = 0;
         m_geometryVertexOffset = 0;
@@ -110,7 +110,7 @@ namespace Spartan
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometryName,          string);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_model,                 Model*);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_bounding_box,          BoundingBox);
-        SP_REGISTER_ATTRIBUTE_GET_SET(Geometry_Type, GeometrySet,  Geometry_Type);
+        SP_REGISTER_ATTRIBUTE_GET_SET(DefaultGeometry, GeometrySet,  DefaultGeometry);
     }
 
     void Renderable::Serialize(FileStream* stream)
@@ -136,7 +136,7 @@ namespace Spartan
     void Renderable::Deserialize(FileStream* stream)
     {
         // Geometry
-        m_geometry_type         = static_cast<Geometry_Type>(stream->ReadAs<uint32_t>());
+        m_geometry_type         = static_cast<DefaultGeometry>(stream->ReadAs<uint32_t>());
         m_geometryIndexOffset   = stream->ReadAs<uint32_t>();
         m_geometryIndexCount    = stream->ReadAs<uint32_t>();
         m_geometryVertexOffset  = stream->ReadAs<uint32_t>();
@@ -147,7 +147,7 @@ namespace Spartan
         m_model = m_context->GetSubsystem<ResourceCache>()->GetByName<Model>(model_name).get();
 
         // If it was a default mesh, we have to reconstruct it
-        if (m_geometry_type != Geometry_Custom) 
+        if (m_geometry_type != DefaultGeometry::Undefined)
         {
             GeometrySet(m_geometry_type);
         }
@@ -157,7 +157,7 @@ namespace Spartan
         stream->Read(&m_material_default);
         if (m_material_default)
         {
-            UseDefaultMaterial();
+            SetDefaultMaterial();
         }
         else
         {
@@ -184,11 +184,11 @@ namespace Spartan
         m_model                = model;
     }
 
-    void Renderable::GeometrySet(const Geometry_Type type)
+    void Renderable::GeometrySet(const DefaultGeometry type)
     {
         m_geometry_type = type;
 
-        if (type != Geometry_Custom)
+        if (type != DefaultGeometry::Undefined)
         {
             build(type, this);
         }
@@ -252,7 +252,7 @@ namespace Spartan
         return SetMaterial(material);
     }
 
-    void Renderable::UseDefaultMaterial()
+    void Renderable::SetDefaultMaterial()
     {
         m_material_default = true;
         ResourceCache* resource_cache = GetContext()->GetSubsystem<ResourceCache>();

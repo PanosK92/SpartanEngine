@@ -39,14 +39,14 @@ namespace Spartan
         class Vector3;
     }
 
-    enum Geometry_Type
+    enum class DefaultGeometry
     {
-        Geometry_Custom,
-        Geometry_Default_Cube,
-        Geometry_Default_Quad,
-        Geometry_Default_Sphere,
-        Geometry_Default_Cylinder,
-        Geometry_Default_Cone
+        Undefined,
+        Cube,
+        Quad,
+        Sphere,
+        Cylinder,
+        Cone
     };
 
     class SPARTAN_CLASS Renderable : public IComponent
@@ -71,13 +71,13 @@ namespace Spartan
             Model* model
         );
         void GeometryClear();
-        void GeometrySet(Geometry_Type type);
+        void GeometrySet(DefaultGeometry type);
         void GeometryGet(std::vector<uint32_t>* indices, std::vector<RHI_Vertex_PosTexNorTan>* vertices) const;
         uint32_t GeometryIndexOffset()              const { return m_geometryIndexOffset; }
         uint32_t GeometryIndexCount()               const { return m_geometryIndexCount; }
         uint32_t GeometryVertexOffset()             const { return m_geometryVertexOffset; }
         uint32_t GeometryVertexCount()              const { return m_geometryVertexCount; }
-        Geometry_Type GeometryType()                const { return m_geometry_type; }
+        DefaultGeometry GeometryType()                const { return m_geometry_type; }
         const std::string& GeometryName()           const { return m_geometryName; }
         Model* GeometryModel()                      const { return m_model; }
         const Math::BoundingBox& GetBoundingBox()   const { return m_bounding_box; }
@@ -91,7 +91,7 @@ namespace Spartan
         // Loads a material and the sets it
         std::shared_ptr<Material> SetMaterial(const std::string& file_path);
 
-        void UseDefaultMaterial();
+        void SetDefaultMaterial();
         std::string GetMaterialName()   const;
         Material* GetMaterial()         const { return m_material; }
         auto HasMaterial()              const { return m_material != nullptr; }
@@ -108,7 +108,7 @@ namespace Spartan
         uint32_t m_geometryIndexCount;
         uint32_t m_geometryVertexOffset;
         uint32_t m_geometryVertexCount;
-        Geometry_Type m_geometry_type;
+        DefaultGeometry m_geometry_type;
         Math::BoundingBox m_bounding_box;
         Math::BoundingBox m_aabb;
         Math::Matrix m_last_transform   = Math::Matrix::Identity;
