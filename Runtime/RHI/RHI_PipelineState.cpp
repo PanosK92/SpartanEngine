@@ -29,7 +29,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI_InputLayout.h"
 #include "RHI_RasterizerState.h"
 #include "RHI_DepthStencilState.h"
-#include "../Utilities/Hash.h"
 //================================
 
 //= NAMESPACES =====
@@ -132,63 +131,63 @@ namespace Spartan
         return false;
     }
     
-    uint32_t RHI_PipelineState::ComputeHash() const
+    uint64_t RHI_PipelineState::ComputeHash() const
     {
-        uint32_t hash = 0;
+        uint64_t hash = 0;
 
-        Utility::Hash::hash_combine(hash, can_use_vertex_index_buffers);
-        Utility::Hash::hash_combine(hash, dynamic_scissor);
-        Utility::Hash::hash_combine(hash, viewport.x);
-        Utility::Hash::hash_combine(hash, viewport.y);
-        Utility::Hash::hash_combine(hash, viewport.width);
-        Utility::Hash::hash_combine(hash, viewport.height);
-        Utility::Hash::hash_combine(hash, primitive_topology);
-        Utility::Hash::hash_combine(hash, render_target_color_texture_array_index);
-        Utility::Hash::hash_combine(hash, render_target_depth_stencil_texture_array_index);
+        hash = rhi_hash_combine(hash, static_cast<uint64_t>(can_use_vertex_index_buffers));
+        hash = rhi_hash_combine(hash, static_cast<uint64_t>(dynamic_scissor));
+        hash = rhi_hash_combine(hash, static_cast<uint64_t>(viewport.x * 100));
+        hash = rhi_hash_combine(hash, static_cast<uint64_t>(viewport.y * 100));
+        hash = rhi_hash_combine(hash, static_cast<uint64_t>(viewport.width * 100));
+        hash = rhi_hash_combine(hash, static_cast<uint64_t>(viewport.height * 100));
+        hash = rhi_hash_combine(hash, static_cast<uint64_t>(primitive_topology));
+        hash = rhi_hash_combine(hash, static_cast<uint64_t>(render_target_color_texture_array_index));
+        hash = rhi_hash_combine(hash, static_cast<uint64_t>(render_target_depth_stencil_texture_array_index));
 
         if (render_target_swapchain)
         {
-            Utility::Hash::hash_combine(hash, static_cast<uint32_t>(render_target_swapchain->GetFormat()));
+            hash = rhi_hash_combine(hash, static_cast<uint64_t>(render_target_swapchain->GetFormat()));
         }
 
         if (!dynamic_scissor)
         {
-            Utility::Hash::hash_combine(hash, scissor.left);
-            Utility::Hash::hash_combine(hash, scissor.top);
-            Utility::Hash::hash_combine(hash, scissor.right);
-            Utility::Hash::hash_combine(hash, scissor.bottom);
+            hash = rhi_hash_combine(hash, static_cast<uint64_t>(scissor.left * 100));
+            hash = rhi_hash_combine(hash, static_cast<uint64_t>(scissor.top * 100));
+            hash = rhi_hash_combine(hash, static_cast<uint64_t>(scissor.right * 100));
+            hash = rhi_hash_combine(hash, static_cast<uint64_t>(scissor.bottom * 100));
         }
 
         if (rasterizer_state)
         {
-            Utility::Hash::hash_combine(hash, rasterizer_state->GetObjectId());
+            hash = rhi_hash_combine(hash, rasterizer_state->GetObjectId());
         }
 
         if (blend_state)
         {
-            Utility::Hash::hash_combine(hash, blend_state->GetObjectId());
+            hash = rhi_hash_combine(hash, blend_state->GetObjectId());
         }
 
         if (depth_stencil_state)
         {
-            Utility::Hash::hash_combine(hash, depth_stencil_state->GetObjectId());
+            hash = rhi_hash_combine(hash, depth_stencil_state->GetObjectId());
         }
 
         // Shaders
         {
             if (shader_compute)
             {
-                Utility::Hash::hash_combine(hash, shader_compute->GetObjectId());
+                hash = rhi_hash_combine(hash, shader_compute->GetObjectId());
             }
 
             if (shader_vertex)
             {
-                Utility::Hash::hash_combine(hash, shader_vertex->GetObjectId());
+                hash = rhi_hash_combine(hash, shader_vertex->GetObjectId());
             }
 
             if (shader_pixel)
             {
-                Utility::Hash::hash_combine(hash, shader_pixel->GetObjectId());
+                hash = rhi_hash_combine(hash, shader_pixel->GetObjectId());
             }
         }
 
@@ -202,10 +201,10 @@ namespace Spartan
             {
                 if (RHI_Texture* texture = render_target_color_textures[i])
                 {
-                    Utility::Hash::hash_combine(hash, texture->GetObjectId());
+                    hash = rhi_hash_combine(hash, texture->GetObjectId());
 
                     load_op = clear_color[i] == rhi_color_dont_care ? 0 : clear_color[i] == rhi_color_load ? 1 : 2;
-                    Utility::Hash::hash_combine(hash, load_op);
+                    hash = rhi_hash_combine(hash, static_cast<uint64_t>(load_op));
 
                     has_rt_color = true;
                 }
@@ -214,13 +213,13 @@ namespace Spartan
             // Depth
             if (render_target_depth_texture)
             {
-                Utility::Hash::hash_combine(hash, render_target_depth_texture->GetObjectId());
+                hash = rhi_hash_combine(hash, render_target_depth_texture->GetObjectId());
 
                 load_op = clear_depth == rhi_depth_stencil_dont_care ? 0 : clear_depth == rhi_depth_stencil_load ? 1 : 2;
-                Utility::Hash::hash_combine(hash, load_op);
+                hash = rhi_hash_combine(hash, static_cast<uint64_t>(load_op));
 
                 load_op = clear_stencil == rhi_depth_stencil_dont_care ? 0 : clear_stencil == rhi_depth_stencil_load ? 1 : 2;
-                Utility::Hash::hash_combine(hash, load_op);
+                hash = rhi_hash_combine(hash, static_cast<uint64_t>(load_op));
             }
         }
 

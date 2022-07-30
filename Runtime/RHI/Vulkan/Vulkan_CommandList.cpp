@@ -46,7 +46,7 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    unordered_map<uint32_t, shared_ptr<RHI_Pipeline>> RHI_CommandList::m_pipelines;
+    unordered_map<uint64_t, shared_ptr<RHI_Pipeline>> RHI_CommandList::m_pipelines;
 
     static VkAttachmentLoadOp get_color_load_op(const Math::Vector4& color)
     {
@@ -220,8 +220,8 @@ namespace Spartan
         GetDescriptorSetLayoutFromPipelineState(pso);
 
         // If no pipeline exists for this state, create one
-        uint32_t hash_previous = m_pso.ComputeHash();
-        uint32_t hash = pso.ComputeHash();
+        uint64_t hash_previous = m_pso.ComputeHash();
+        uint64_t hash = pso.ComputeHash();
         auto it = m_pipelines.find(hash);
         if (it == m_pipelines.end())
         {
@@ -1029,10 +1029,10 @@ namespace Spartan
         GetDescriptorsFromPipelineState(pipeline_state, descriptors);
 
         // Compute a hash for the descriptors
-        uint32_t hash = 0;
+        uint64_t hash = 0;
         for (const RHI_Descriptor& descriptor : descriptors)
         {
-            Utility::Hash::hash_combine(hash, descriptor.ComputeHash());
+            hash = rhi_hash_combine(hash, descriptor.ComputeHash());
         }
 
         // Search for a descriptor set layout which matches this hash

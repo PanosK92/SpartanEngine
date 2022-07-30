@@ -65,7 +65,7 @@ namespace Spartan
 
         // Descriptor set layout
         void* m_resource = nullptr;
-        uint32_t m_hash  = 0;
+        uint64_t m_hash  = 0;
 
         // Descriptors
         std::vector<RHI_Descriptor> m_descriptors;

@@ -22,8 +22,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ============================
 #include "Spartan.h"
 #include "Renderer.h"
+#include "Geometry.h"
 #include "Font/Font.h"
-#include "../Utilities/Geometry.h"
 #include "../Resource/ResourceCache.h"
 #include "../RHI/RHI_Texture2D.h"
 #include "../RHI/RHI_Texture2DArray.h"
@@ -476,7 +476,7 @@ namespace Spartan
         vector<RHI_Vertex_PosTexNorTan> vertices;
         vector<uint32_t> indices;
 
-        Utility::Geometry::CreateSphere(&vertices, &indices, 0.2f, 20, 20);
+        Geometry::CreateSphere(&vertices, &indices, 0.2f, 20, 20);
 
         m_sphere_vertex_buffer = make_shared<RHI_VertexBuffer>(m_rhi_device, false, "sphere");
         m_sphere_vertex_buffer->Create(vertices);

@@ -25,10 +25,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Transform.h"
 #include "../../IO/FileStream.h"
 #include "../../Resource/ResourceCache.h"
-#include "../../Utilities/Geometry.h"
 #include "../../RHI/RHI_Texture2D.h"
 #include "../../Rendering/Model.h"
 #include "../../RHI/RHI_Vertex.h"
+#include "../Rendering/Geometry.h"
 //=======================================
 
 //= NAMESPACES ===============
@@ -49,27 +49,27 @@ namespace Spartan
         // Construct geometry
         if (type == Geometry_Default_Cube)
         {
-            Utility::Geometry::CreateCube(&vertices, &indices);
+            Geometry::CreateCube(&vertices, &indices);
             model->SetResourceFilePath(project_directory + "default_cube" + EXTENSION_MODEL);
         }
         else if (type == Geometry_Default_Quad)
         {
-            Utility::Geometry::CreateQuad(&vertices, &indices);
+            Geometry::CreateQuad(&vertices, &indices);
             model->SetResourceFilePath(project_directory + "default_quad" + EXTENSION_MODEL);
         }
         else if (type == Geometry_Default_Sphere)
         {
-            Utility::Geometry::CreateSphere(&vertices, &indices);
+            Geometry::CreateSphere(&vertices, &indices);
             model->SetResourceFilePath(project_directory + "default_sphere" + EXTENSION_MODEL);
         }
         else if (type == Geometry_Default_Cylinder)
         {
-            Utility::Geometry::CreateCylinder(&vertices, &indices);
+            Geometry::CreateCylinder(&vertices, &indices);
             model->SetResourceFilePath(project_directory + "default_cylinder" + EXTENSION_MODEL);
         }
         else if (type == Geometry_Default_Cone)
         {
-            Utility::Geometry::CreateCone(&vertices, &indices);
+            Geometry::CreateCone(&vertices, &indices);
             model->SetResourceFilePath(project_directory + "default_cone" + EXTENSION_MODEL);
         }
 

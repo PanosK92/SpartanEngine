@@ -206,16 +206,15 @@ namespace ImGui::RHI
         RHI_SwapChain* swap_chain    = is_child_window ? window_data->swapchain.get() : g_renderer->GetSwapChain();
         ViewportResources* resources = is_child_window ? window_data->viewport_data.get() : &g_viewport_data;
 
-        // Begin the command list
-        bool command_pool_reset   = resources->cmd_pool->Tick();
-        RHI_CommandList* cmd_list = resources->cmd_pool->GetCurrentCommandList();
-        cmd_list->Begin();
-
-        // Reset
-        if (command_pool_reset)
+        // Tick the command pool
+        if (resources->cmd_pool->Tick())
         {
             resources->cb_gpu->ResetOffset();
         }
+
+        // Get current command list
+        RHI_CommandList* cmd_list = resources->cmd_pool->GetCurrentCommandList();
+        cmd_list->Begin();
 
         // Begin timeblock
         const char* name = is_child_window ? "imgui_window_child" : "imgui_window_main";

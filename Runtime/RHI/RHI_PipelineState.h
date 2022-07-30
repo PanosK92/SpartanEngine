@@ -40,7 +40,7 @@ namespace Spartan
         bool IsValid();
         uint32_t GetWidth() const;
         uint32_t GetHeight() const;
-        uint32_t ComputeHash() const;
+        uint64_t ComputeHash() const;
         bool HasClearValues();
         bool IsGraphics() const { return (shader_vertex != nullptr || shader_pixel != nullptr) && !shader_compute; }
         bool IsCompute()  const { return shader_compute != nullptr && !IsGraphics(); }

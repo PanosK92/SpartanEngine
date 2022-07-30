@@ -22,7 +22,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ========================
 #include "Spartan.h"
 #include "TransformRotation.h"
-#include "../../Utilities/Geometry.h"
 #include "../../Input/Input.h"
 #include "../Components/Transform.h"
 //===================================

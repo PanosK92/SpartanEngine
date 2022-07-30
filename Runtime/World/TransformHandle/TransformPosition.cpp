@@ -19,14 +19,14 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ========================
+//= INCLUDES =======================
 #include "Spartan.h"
 #include "TransformPosition.h"
-#include "../../Utilities/Geometry.h"
 #include "../../Rendering/Model.h"
 #include "../Components/Camera.h"
 #include "../Components/Transform.h"
-//===================================
+#include "../Rendering/Geometry.h"
+//==================================
 
 //= NAMESPACES ===============
 using namespace std;
@@ -41,7 +41,7 @@ namespace Spartan
         vector<RHI_Vertex_PosTexNorTan> vertices;
         vector<uint32_t> indices;
 
-        Utility::Geometry::CreateCone(&vertices, &indices);
+        Geometry::CreateCone(&vertices, &indices);
 
         m_axis_model = make_unique<Model>(m_context);
         m_axis_model->AppendGeometry(indices, vertices);

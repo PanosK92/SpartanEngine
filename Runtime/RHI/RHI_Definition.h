@@ -323,6 +323,13 @@ namespace Spartan
     static const uint32_t       rhi_dynamic_offset_empty      = (std::numeric_limits<uint32_t>::max)();
     static const uint8_t        rhi_max_mip_count             = 13;
 
+    static uint64_t rhi_hash_combine(uint64_t seed, uint64_t x)
+    {
+        static std::hash<uint64_t> hasher;
+        seed ^= hasher(x) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+        return seed;
+    }
+
     constexpr uint32_t RhiFormatToBitsPerChannel(const RHI_Format format)
     {
         uint32_t bits = 0;
