@@ -35,7 +35,7 @@ namespace Spartan
         Debug_PickingRay,
         Debug_Grid,
         Debug_ReflectionProbes,
-        Transform_Handle,
+        Debug_TransformHandle,
         Debug_SelectionOutline,
         Debug_Lights,
         Debug_PerformanceMetrics,

@@ -187,7 +187,7 @@ void RenderOptions::TickVisible()
     bool debug_physics             = m_renderer->GetOption<bool>(RendererOption::Debug_Physics);
     bool debug_aabb                = m_renderer->GetOption<bool>(RendererOption::Debug_Aabb);
     bool debug_light               = m_renderer->GetOption<bool>(RendererOption::Debug_Lights);
-    bool debug_transform           = m_renderer->GetOption<bool>(RendererOption::Transform_Handle);
+    bool debug_transform           = m_renderer->GetOption<bool>(RendererOption::Debug_TransformHandle);
     bool debug_selection_outline   = m_renderer->GetOption<bool>(RendererOption::Debug_SelectionOutline);
     bool debug_picking_ray         = m_renderer->GetOption<bool>(RendererOption::Debug_PickingRay);
     bool debug_grid                = m_renderer->GetOption<bool>(RendererOption::Debug_Grid);
@@ -471,7 +471,7 @@ void RenderOptions::TickVisible()
     m_renderer->SetOption(RendererOption::Ffx_Cas,                  do_sharperning);
     m_renderer->SetOption(RendererOption::ChromaticAberration,      do_chromatic_aberration);
     m_renderer->SetOption(RendererOption::Debanding,                do_debanding);
-    m_renderer->SetOption(RendererOption::Transform_Handle,         debug_transform);
+    m_renderer->SetOption(RendererOption::Debug_TransformHandle,    debug_transform);
     m_renderer->SetOption(RendererOption::Debug_SelectionOutline,   debug_selection_outline);
     m_renderer->SetOption(RendererOption::Debug_Physics,            debug_physics);
     m_renderer->SetOption(RendererOption::Debug_Aabb,               debug_aabb);

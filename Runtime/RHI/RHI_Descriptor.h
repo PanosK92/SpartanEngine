@@ -81,7 +81,6 @@ namespace Spartan
         void* data              = nullptr;
         RHI_Image_Layout layout = RHI_Image_Layout::Undefined;
 
-
         // Reflected shader resource name, it doesn't affect the hash. Kept here for debugging purposes.
         std::string name;
     };

@@ -31,9 +31,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI_DepthStencilState.h"
 //================================
 
-//= NAMESPACES =====
+//= NAMESPACES ===============
 using namespace std;
-//==================
+using namespace Spartan::Math;
+//============================
 
 namespace Spartan
 {
@@ -122,7 +123,7 @@ namespace Spartan
         if (clear_stencil != rhi_depth_stencil_load && clear_stencil != rhi_depth_stencil_dont_care)
             return true;
 
-        for (const Math::Vector4& color : clear_color)
+        for (const Vector4& color : clear_color)
         {
             if (color != rhi_color_load && color != rhi_color_dont_care)
                 return true;
