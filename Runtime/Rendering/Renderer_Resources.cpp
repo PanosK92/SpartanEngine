@@ -245,9 +245,9 @@ namespace Spartan
 
         // G-Buffer
         m_shaders[RendererShader::Gbuffer_V] = make_shared<RHI_Shader>(m_context, RHI_Vertex_Type::PosTexNorTan);
-        m_shaders[RendererShader::Gbuffer_V]->Compile(RHI_Shader_Vertex, dir_shaders + "gbuffer.hlsl", async);
+        m_shaders[RendererShader::Gbuffer_V]->Compile(RHI_Shader_Vertex, dir_shaders + "g_buffer.hlsl", async);
         m_shaders[RendererShader::Gbuffer_P] = make_shared<RHI_Shader>(m_context);
-        m_shaders[RendererShader::Gbuffer_P]->Compile(RHI_Shader_Pixel, dir_shaders + "gbuffer.hlsl", async);
+        m_shaders[RendererShader::Gbuffer_P]->Compile(RHI_Shader_Pixel, dir_shaders + "g_buffer.hlsl", async);
 
         // Light
         m_shaders[RendererShader::Light_C] = make_shared<RHI_Shader>(m_context);

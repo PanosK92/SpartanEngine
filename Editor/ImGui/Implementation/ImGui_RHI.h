@@ -93,14 +93,14 @@ namespace ImGui::RHI
     Renderer* g_renderer = nullptr;
 
     // Resources
-    static RHI_Device*                g_rhi_device;
-    static shared_ptr<RHI_Texture>    g_font_atlas;
-    static RHI_DepthStencilState      g_depth_stencil_state;
-    static RHI_RasterizerState        g_rasterizer_state;
-    static shared_ptr<RHI_BlendState> g_blend_state;
-    static shared_ptr<RHI_Shader>     g_shader_vertex;
-    static shared_ptr<RHI_Shader>     g_shader_pixel;
-    ViewportResources                 g_viewport_data; // per swapchain resources
+    static RHI_Device*                       g_rhi_device;
+    static shared_ptr<RHI_Texture>           g_font_atlas;
+    static shared_ptr<RHI_DepthStencilState> g_depth_stencil_state;
+    static shared_ptr<RHI_RasterizerState>   g_rasterizer_state;
+    static shared_ptr<RHI_BlendState>        g_blend_state;
+    static shared_ptr<RHI_Shader>            g_shader_vertex;
+    static shared_ptr<RHI_Shader>            g_shader_pixel;
+    ViewportResources                        g_viewport_data; // per swapchain resources
 
     inline bool Initialize(Context* context)
     {
@@ -115,9 +115,9 @@ namespace ImGui::RHI
         {
             g_viewport_data = ViewportResources("imgui", g_rhi_device, g_renderer->GetSwapChain());
 
-            g_depth_stencil_state = RHI_DepthStencilState(g_rhi_device, false, false, RHI_Comparison_Function::Always);
+            g_depth_stencil_state = make_shared<RHI_DepthStencilState>(g_rhi_device, false, false, RHI_Comparison_Function::Always);
 
-            g_rasterizer_state = RHI_RasterizerState
+            g_rasterizer_state = make_shared<RHI_RasterizerState>
             (
                 g_rhi_device,
                 RHI_CullMode::None,
@@ -278,9 +278,9 @@ namespace ImGui::RHI
         static RHI_PipelineState pso = {};
         pso.shader_vertex            = g_shader_vertex.get();
         pso.shader_pixel             = g_shader_pixel.get();
-        pso.rasterizer_state         = &g_rasterizer_state;
+        pso.rasterizer_state         = g_rasterizer_state.get();
         pso.blend_state              = g_blend_state.get();
-        pso.depth_stencil_state      = &g_depth_stencil_state;
+        pso.depth_stencil_state      = g_depth_stencil_state.get();
         pso.render_target_swapchain  = swap_chain;
         pso.clear_color[0]           = clear ? Vector4(0.0f, 0.0f, 0.0f, 1.0f) : rhi_color_dont_care;
         pso.viewport.width           = draw_data->DisplaySize.x;

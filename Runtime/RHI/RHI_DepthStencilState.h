@@ -58,7 +58,7 @@ namespace Spartan
         RHI_Stencil_Operation GetStencilPassOperation()        const { return m_stencil_pass_op; }
         uint8_t GetStencilReadMask()                           const { return m_stencil_read_mask; }
         uint8_t GetStencilWriteMask()                          const { return m_stencil_write_mask; }
-        void* GetResource()                                    const { return m_resource; }
+        void* GetRhiResource()                                 const { return m_rhi_resource; }
 
     private:
         bool m_depth_test_enabled                             = false;
@@ -72,7 +72,6 @@ namespace Spartan
         RHI_Stencil_Operation m_stencil_pass_op               = RHI_Stencil_Operation::Replace;
         uint8_t m_stencil_read_mask                           = 1;
         uint8_t m_stencil_write_mask                          = 1;
-        bool m_initialized                                    = false;
-        void* m_resource                                      = nullptr;
+        void* m_rhi_resource                                  = nullptr;
     };
 }
