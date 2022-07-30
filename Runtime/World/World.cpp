@@ -422,7 +422,7 @@ namespace Spartan
             entity->SetName("camera");
             entity->AddComponent<Camera>();
             entity->AddComponent<AudioListener>();
-            entity->GetTransform()->SetPositionLocal(Vector3(0.0f, 1.0f, -4.0f));
+            entity->GetTransform()->SetPosition(Vector3(0.0f, 1.0f, -4.0f));
             entity->GetTransform()->SetRotation(Quaternion::FromEulerAngles(Vector3(6.0f, 0.0f, 0.0f)));
         }
 
@@ -430,7 +430,7 @@ namespace Spartan
         {
             shared_ptr<Entity> light = EntityCreate();
             light->SetName("directional_light");
-            light->GetTransform()->SetRotationLocal(Quaternion::FromEulerAngles(30.0f, 30.0, 0.0f));
+            light->GetTransform()->SetRotation(Quaternion::FromEulerAngles(30.0f, 30.0, 0.0f));
             light->GetTransform()->SetPosition(Vector3(0.0f, 10.0f, 0.0f));
 
             auto light_comp = light->AddComponent<Light>();
@@ -451,6 +451,7 @@ namespace Spartan
         {
             shared_ptr<Entity> model = EntityCreate();
             model->SetName("floor");
+            model->GetTransform()->SetPosition(Vector3(0.0f, 0.01f, 0.0f));
             model->GetTransform()->SetScale(Vector3(5.0f, 0.0f, 5.0f));
 
             Renderable* renderable = model->AddComponent<Renderable>();
