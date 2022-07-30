@@ -410,7 +410,7 @@ namespace Spartan
                 model.get()
             );
 
-            renderable->UseDefaultMaterial();
+            renderable->SetDefaultMaterial();
         }
     }
 

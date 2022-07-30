@@ -33,6 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Spartan
 {
     //= FWD DECLARATIONS =
+    class Model;
     class Entity;
     class Light;
     class Input;
@@ -77,13 +78,7 @@ namespace Spartan
     private:
         void Clear();
         void _EntityRemove(const std::shared_ptr<Entity>& entity);
-
-        //= COMMON ENTITY CREATION ======================
         void CreateDefaultWorldEntities();
-        std::shared_ptr<Entity> CreateEnvironment();
-        std::shared_ptr<Entity> CreateCamera();
-        std::shared_ptr<Entity> CreateDirectionalLight();
-        //===============================================
 
         std::string m_name;
         std::string m_file_path;
@@ -91,6 +86,10 @@ namespace Spartan
         bool m_resolve            = true;
         Input* m_input            = nullptr;
         Profiler* m_profiler      = nullptr;
+
+        // Default world
+        bool m_default_world_created = false;
+        std::unique_ptr<Model> m_default_world_model;
 
         std::shared_ptr<TransformHandle> m_transform_handle;
         std::vector<std::shared_ptr<Entity>> m_entities;

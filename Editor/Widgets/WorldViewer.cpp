@@ -545,8 +545,8 @@ void WorldViewer::ActionEntityCreateCube()
 {
     auto entity = ActionEntityCreateEmpty();
     auto renderable = entity->AddComponent<Renderable>();
-    renderable->GeometrySet(Geometry_Default_Cube);
-    renderable->UseDefaultMaterial();
+    renderable->GeometrySet(DefaultGeometry::Cube);
+    renderable->SetDefaultMaterial();
     entity->SetName("Cube");
 }
 
@@ -554,8 +554,8 @@ void WorldViewer::ActionEntityCreateQuad()
 {
     auto entity = ActionEntityCreateEmpty();
     auto renderable = entity->AddComponent<Renderable>();
-    renderable->GeometrySet(Geometry_Default_Quad);
-    renderable->UseDefaultMaterial();
+    renderable->GeometrySet(DefaultGeometry::Quad);
+    renderable->SetDefaultMaterial();
     entity->SetName("Quad");
 }
 
@@ -563,8 +563,8 @@ void WorldViewer::ActionEntityCreateSphere()
 {
     auto entity = ActionEntityCreateEmpty();
     auto renderable = entity->AddComponent<Renderable>();
-    renderable->GeometrySet(Geometry_Default_Sphere);
-    renderable->UseDefaultMaterial();
+    renderable->GeometrySet(DefaultGeometry::Sphere);
+    renderable->SetDefaultMaterial();
     entity->SetName("Sphere");
 }
 
@@ -572,8 +572,8 @@ void WorldViewer::ActionEntityCreateCylinder()
 {
     auto entity = ActionEntityCreateEmpty();
     auto renderable = entity->AddComponent<Renderable>();
-    renderable->GeometrySet(Geometry_Default_Cylinder);
-    renderable->UseDefaultMaterial();
+    renderable->GeometrySet(DefaultGeometry::Cylinder);
+    renderable->SetDefaultMaterial();
     entity->SetName("Cylinder");
 }
 
@@ -581,8 +581,8 @@ void WorldViewer::ActionEntityCreateCone()
 {
     auto entity = ActionEntityCreateEmpty();
     auto renderable = entity->AddComponent<Renderable>();
-    renderable->GeometrySet(Geometry_Default_Cone);
-    renderable->UseDefaultMaterial();
+    renderable->GeometrySet(DefaultGeometry::Cone);
+    renderable->SetDefaultMaterial();
     entity->SetName("Cone");
 }
 

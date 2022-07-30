@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Components/Light.h"
 #include "Components/Environment.h"
 #include "Components/AudioListener.h"
+#include "Components/Renderable.h"
 #include "TransformHandle/TransformHandle.h"
 #include "../Resource/ResourceCache.h"
 #include "../Resource/ProgressTracker.h"
@@ -61,12 +62,16 @@ namespace Spartan
     {
         m_input    = m_context->GetSubsystem<Input>();
         m_profiler = m_context->GetSubsystem<Profiler>();
-
-        CreateDefaultWorldEntities();
     }
 
     void World::OnPreTick()
     {
+        if (!m_default_world_created)
+        {
+            CreateDefaultWorldEntities();
+            m_default_world_created = true;
+        }
+
         for (shared_ptr<Entity>& entity : m_entities)
         {
             entity->OnPreTick();
@@ -314,7 +319,7 @@ namespace Spartan
     vector<shared_ptr<Entity>> World::EntityGetRoots()
     {
         vector<shared_ptr<Entity>> root_entities;
-        for (const shared_ptr<Entity> entity : m_entities)
+        for (const shared_ptr<Entity>& entity : m_entities)
         {
             if (entity->GetTransform()->IsRoot())
             {
@@ -400,44 +405,56 @@ namespace Spartan
 
     void World::CreateDefaultWorldEntities()
     {
-        CreateCamera();
-        CreateEnvironment();
-        CreateDirectionalLight();
-    }
-
-    shared_ptr<Entity> World::CreateEnvironment()
-    {
-        shared_ptr<Entity> environment = EntityCreate();
-        environment->SetName("Environment");
-        environment->AddComponent<Environment>();
-
-        return environment;
-    }
-
-    shared_ptr<Entity> World::CreateCamera()
-    {
+        // Asset directories
         ResourceCache* resource_cache = m_context->GetSubsystem<ResourceCache>();
-        const string dir_scripts      = resource_cache->GetResourceDirectory(ResourceDirectory::Scripts) + "/";
+        const string dir_models = resource_cache->GetResourceDirectory(ResourceDirectory::Scripts) + "/";
 
-        shared_ptr<Entity> entity = EntityCreate();
-        entity->SetName("Camera");
-        entity->AddComponent<Camera>();
-        entity->AddComponent<AudioListener>();
-        entity->GetTransform()->SetPositionLocal(Vector3(0.0f, 1.0f, -5.0f));
+        // Environment
+        {
+            shared_ptr<Entity> environment = EntityCreate();
+            environment->SetName("Environment");
+            environment->AddComponent<Environment>();
+        }
 
-        return entity;
-    }
+        // Camera
+        {
+            shared_ptr<Entity> entity = EntityCreate();
+            entity->SetName("Camera");
+            entity->AddComponent<Camera>();
+            entity->AddComponent<AudioListener>();
+            entity->GetTransform()->SetPositionLocal(Vector3(0.0f, 1.0f, -5.0f));
+        }
 
-    shared_ptr<Entity> World::CreateDirectionalLight()
-    {
-        shared_ptr<Entity> light = EntityCreate();
-        light->SetName("DirectionalLight");
-        light->GetTransform()->SetRotationLocal(Quaternion::FromEulerAngles(30.0f, 30.0, 0.0f));
-        light->GetTransform()->SetPosition(Vector3(0.0f, 10.0f, 0.0f));
+        // Light - Directional
+        {
+            shared_ptr<Entity> light = EntityCreate();
+            light->SetName("DirectionalLight");
+            light->GetTransform()->SetRotationLocal(Quaternion::FromEulerAngles(30.0f, 30.0, 0.0f));
+            light->GetTransform()->SetPosition(Vector3(0.0f, 10.0f, 0.0f));
 
-        auto light_comp = light->AddComponent<Light>();
-        light_comp->SetLightType(LightType::Directional);
+            auto light_comp = light->AddComponent<Light>();
+            light_comp->SetLightType(LightType::Directional);
+        }
 
-        return light;
+        // 3D model - asset
+        {
+            m_default_world_model = make_unique<Model>(m_context);
+            m_default_world_model->LoadFromFile("project\\models\\damaged_helmet\\DamagedHelmet.gltf");
+
+            Entity* entity = m_default_world_model->GetRootEntity();
+            entity->SetName("model");
+            entity->GetTransform()->SetPosition(Vector3(0.0f, 0.52f, 0.0f));
+        }
+
+        // 3D model - floor
+        {
+            shared_ptr<Entity> model = EntityCreate();
+            model->SetName("floor");
+            model->GetTransform()->SetScale(Vector3(5.0f, 0.0f, 5.0f));
+
+            Renderable* renderable = model->AddComponent<Renderable>();
+            renderable->GeometrySet(DefaultGeometry::Quad);
+            renderable->SetDefaultMaterial();
+        }
     }
 }
