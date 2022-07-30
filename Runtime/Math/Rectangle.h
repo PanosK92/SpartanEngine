@@ -99,7 +99,7 @@ namespace Spartan
                 bottom = Math::Helper::Max(bottom, point.y);
             }
 
-            bool CreateBuffers(Renderer* renderer);
+            void CreateBuffers(Renderer* renderer);
 
             static int GetIndexCount()                { return 6; }
             RHI_IndexBuffer* GetIndexBuffer()   const { return m_index_buffer.get(); }

@@ -93,8 +93,8 @@ namespace Spartan
         Font_Hinting_Type GetHinting()                                  const { return m_hinting; }
         auto GetForceAutohint()                                         const { return m_force_autohint; }
             
-    private:    
-        bool UpdateBuffers(std::vector<RHI_Vertex_PosTex>& vertices, std::vector<uint32_t>& indices) const;
+    private:
+        void UpdateBuffers(std::vector<RHI_Vertex_PosTex>& vertices, std::vector<uint32_t>& indices) const;
 
         uint32_t m_font_size            = 14;
         uint32_t m_outline_size         = 2;

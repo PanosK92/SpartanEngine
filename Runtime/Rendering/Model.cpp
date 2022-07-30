@@ -205,45 +205,19 @@ namespace Spartan
         }
     }
 
-    bool Model::GeometryCreateBuffers()
+    void Model::GeometryCreateBuffers()
     {
-        auto success = true;
-
         // Get geometry
-        const auto indices  = m_mesh->Indices_Get();
-        const auto vertices = m_mesh->Vertices_Get();
+        const vector<uint32_t>& indices                 = m_mesh->Indices_Get();
+        const vector<RHI_Vertex_PosTexNorTan>& vertices = m_mesh->Vertices_Get();
 
-        if (!indices.empty())
-        {
-            m_index_buffer = make_shared<RHI_IndexBuffer>(m_rhi_device, false, "model");
-            if (!m_index_buffer->Create(indices))
-            {
-                LOG_ERROR("Failed to create index buffer for \"%s\".", GetResourceName().c_str());
-                success = false;
-            }
-        }
-        else
-        {
-            LOG_ERROR("Failed to create index buffer for \"%s\". Provided indices are empty", GetResourceName().c_str());
-            success = false;
-        }
+        SP_ASSERT_MSG(!indices.empty(), "There are no indices");
+        m_index_buffer = make_shared<RHI_IndexBuffer>(m_rhi_device, false, "model");
+        m_index_buffer->Create(indices);
 
-        if (!vertices.empty())
-        {
-            m_vertex_buffer = make_shared<RHI_VertexBuffer>(m_rhi_device, false, "model");
-            if (!m_vertex_buffer->Create(vertices))
-            {
-                LOG_ERROR("Failed to create vertex buffer for \"%s\".", GetResourceName().c_str());
-                success = false;
-            }
-        }
-        else
-        {
-            LOG_ERROR("Failed to create vertex buffer for \"%s\". Provided vertices are empty", GetResourceName().c_str());
-            success = false;
-        }
-
-        return success;
+        SP_ASSERT_MSG(!vertices.empty(), "There are no vertices");
+        m_vertex_buffer = make_shared<RHI_VertexBuffer>(m_rhi_device, false, "model");
+        m_vertex_buffer->Create(vertices);
     }
 
     float Model::GeometryComputeNormalizedScale() const
