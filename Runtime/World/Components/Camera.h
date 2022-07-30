@@ -151,7 +151,7 @@ namespace Spartan
         float m_shutter_speed                   = 1.0f / 60.0f; // Length of time for which the camera shutter is open (sec). Also controls the amount of motion blur.
         float m_iso                             = 500.0f;       // Sensitivity to light.
         float m_fov_horizontal_rad              = Math::Helper::DegreesToRadians(90.0f);
-        float m_near_plane                      = 0.3f;
+        float m_near_plane                      = 0.1f;
         float m_far_plane                       = 1000.0f;
         ProjectionType m_projection_type        = Projection_Perspective;
         Math::Vector4 m_clear_color             = Math::Vector4(0.396f, 0.611f, 0.937f, 1.0f); // A nice cornflower blue 

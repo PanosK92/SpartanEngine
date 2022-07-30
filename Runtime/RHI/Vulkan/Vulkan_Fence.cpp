@@ -70,8 +70,13 @@ namespace Spartan
         return vulkan_utility::error::check(vkWaitForFences(m_rhi_device->GetContextRhi()->device, 1, reinterpret_cast<VkFence*>(&m_resource), true, timeout_nanoseconds));
     }
 
-    bool RHI_Fence::Reset()
+    void RHI_Fence::Reset()
     {
-        return vulkan_utility::error::check(vkResetFences(m_rhi_device->GetContextRhi()->device, 1, reinterpret_cast<VkFence*>(&m_resource)));
+        SP_ASSERT_MSG(
+            vulkan_utility::error::check(vkResetFences(m_rhi_device->GetContextRhi()->device, 1, reinterpret_cast<VkFence*>(&m_resource))),
+            "Failed to reset fence"
+            );
+
+        m_cpu_state = RHI_Sync_State::Idle;
     }
 }

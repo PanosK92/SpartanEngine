@@ -277,7 +277,7 @@ namespace Spartan
             // Semaphores
             for (uint32_t i = 0; i < buffer_count; i++)
             {
-                string name = (string("swapchain_image_acquired_semaphore_") + to_string(i));
+                string name = (string("swapchain_image_acquired_") + to_string(i));
                 image_acquired_semaphore[i] = make_shared<RHI_Semaphore>(rhi_device, false, name.c_str());
             }
         }
@@ -293,7 +293,7 @@ namespace Spartan
     {
         RHI_Context* rhi_context = rhi_device->GetContextRhi();
 
-        // Semaphores
+        // Sync objects
         image_acquired_semaphore.fill(nullptr);
     
         // Image views
@@ -332,7 +332,7 @@ namespace Spartan
             return;
         }
 
-        m_semaphore_image_acquired.fill(nullptr);
+        m_acquire_semaphore.fill(nullptr);
         m_rhi_backbuffer_resource.fill(nullptr);
         m_rhi_backbuffer_srv.fill(nullptr);
         m_layouts.fill(RHI_Image_Layout::Undefined);
@@ -361,7 +361,7 @@ namespace Spartan
             m_rhi_resource,
             m_rhi_backbuffer_resource,
             m_rhi_backbuffer_srv,
-            m_semaphore_image_acquired
+            m_acquire_semaphore
         );
 
         AcquireNextImage();
@@ -379,7 +379,7 @@ namespace Spartan
             m_surface,
             m_rhi_resource,
             m_rhi_backbuffer_srv,
-            m_semaphore_image_acquired
+            m_acquire_semaphore
         );
     }
 
@@ -417,7 +417,7 @@ namespace Spartan
             m_surface,
             m_rhi_resource,
             m_rhi_backbuffer_srv,
-            m_semaphore_image_acquired
+            m_acquire_semaphore
         );
 
         // Create the swap chain with the new dimensions
@@ -435,7 +435,7 @@ namespace Spartan
             m_rhi_resource,
             m_rhi_backbuffer_resource,
             m_rhi_backbuffer_srv,
-            m_semaphore_image_acquired
+            m_acquire_semaphore
         );
 
         // Reset image index
@@ -456,11 +456,11 @@ namespace Spartan
             return;
 
         // Get signal semaphore
-        m_semaphore_index = (m_semaphore_index + 1) % m_buffer_count;
-        RHI_Semaphore* signal_semaphore = m_semaphore_image_acquired[m_semaphore_index].get();
+        m_sync_index = (m_sync_index + 1) % m_buffer_count;
+        RHI_Semaphore* signal_semaphore = m_acquire_semaphore[m_sync_index].get();
 
         // Ensure semaphore state
-        SP_ASSERT_MSG(signal_semaphore->GetState() != RHI_Semaphore_State::Signaled, "The semaphore is already signaled");
+        SP_ASSERT_MSG(signal_semaphore->GetCpuState() != RHI_Sync_State::Submitted, "The semaphore is already signaled");
 
         m_image_index_previous = m_image_index;
 
@@ -475,7 +475,7 @@ namespace Spartan
         )), "Failed to acquire next image");
 
         // Update semaphore state
-        signal_semaphore->SetState(RHI_Semaphore_State::Signaled);
+        signal_semaphore->SetCpuState(RHI_Sync_State::Submitted);
     }
 
     void RHI_SwapChain::Present()
@@ -490,11 +490,11 @@ namespace Spartan
             wait_semaphores.clear();
 
             // The first is simply the image acquired semaphore
-            wait_semaphores.emplace_back(m_semaphore_image_acquired[m_semaphore_index].get());
+            wait_semaphores.emplace_back(m_acquire_semaphore[m_sync_index].get());
 
             // The others are all the command lists
             const vector<shared_ptr<RHI_CommandPool>>& cmd_pools = m_rhi_device->GetCommandPools();
-            for (shared_ptr<RHI_CommandPool> cmd_pool : cmd_pools)
+            for (const shared_ptr<RHI_CommandPool>& cmd_pool : cmd_pools)
             {
                 // The editor supports multiple windows, so we can be dealing with multiple swapchains.
                 // Therefore we only want to wait on the command list semaphores, which will be presenting their work to this swapchain.
@@ -504,7 +504,7 @@ namespace Spartan
 
                     // Command lists can be discarded (when they reference destroyed memory).
                     // In cases like that, the command lists are not submitted and as a result, the semaphore won't be signaled.
-                    if (semaphore->GetState() == RHI_Semaphore_State::Signaled)
+                    if (semaphore->GetCpuState() == RHI_Sync_State::Submitted)
                     {
                         wait_semaphores.emplace_back(semaphore);
                     }
