@@ -47,7 +47,7 @@ namespace Spartan
 
         for (const RHI_Descriptor& descriptor : m_descriptors)
         {
-            Utility::Hash::hash_combine(m_hash, descriptor.ComputeHash());
+            m_hash = rhi_hash_combine(m_hash, descriptor.ComputeHash());
         }
     }
 
@@ -157,17 +157,17 @@ namespace Spartan
         RHI_DescriptorSet* descriptor_set = nullptr;
 
         // Integrate descriptor data into the hash
-        uint32_t hash = m_hash;
+        uint64_t hash = m_hash;
         for (const RHI_Descriptor& descriptor : m_descriptors)
         {
-            Utility::Hash::hash_combine(hash, descriptor.data);
-            Utility::Hash::hash_combine(hash, descriptor.mip);
-            Utility::Hash::hash_combine(hash, descriptor.mip_range);
-            Utility::Hash::hash_combine(hash, descriptor.range);
+            hash = rhi_hash_combine(hash, reinterpret_cast<uint64_t>(descriptor.data));
+            hash = rhi_hash_combine(hash, static_cast<uint64_t>(descriptor.mip));
+            hash = rhi_hash_combine(hash, static_cast<uint64_t>(descriptor.mip_range));
+            hash = rhi_hash_combine(hash, static_cast<uint64_t>(descriptor.range));
         }
 
         // If we don't have a descriptor set to match that state, create one
-        unordered_map<uint32_t, RHI_DescriptorSet>& descriptor_sets = m_rhi_device->GetDescriptorSets();
+        unordered_map<uint64_t, RHI_DescriptorSet>& descriptor_sets = m_rhi_device->GetDescriptorSets();
         const auto it = descriptor_sets.find(hash);
         if (it == descriptor_sets.end())
         {

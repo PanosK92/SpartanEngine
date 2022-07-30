@@ -68,7 +68,7 @@ namespace Spartan
 
         // Descriptors
         void* GetDescriptorPool()                                            { return m_descriptor_pool; }
-        std::unordered_map<uint32_t, RHI_DescriptorSet>& GetDescriptorSets() { return m_descriptor_sets; }
+        std::unordered_map<uint64_t, RHI_DescriptorSet>& GetDescriptorSets() { return m_descriptor_sets; }
         bool HasDescriptorSetCapacity();
         void SetDescriptorSetCapacity(uint32_t descriptor_set_capacity);
 
@@ -105,7 +105,7 @@ namespace Spartan
         uint32_t m_queue_copy_index     = 0;
 
         // Descriptors
-        std::unordered_map<uint32_t, RHI_DescriptorSet> m_descriptor_sets;
+        std::unordered_map<uint64_t, RHI_DescriptorSet> m_descriptor_sets;
         void* m_descriptor_pool            = nullptr;
         uint32_t m_descriptor_set_capacity = 0;
 

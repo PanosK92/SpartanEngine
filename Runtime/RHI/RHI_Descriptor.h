@@ -21,10 +21,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =================
+//= INCLUDES ==============
 #include "RHI_Definition.h"
-#include "../Utilities/Hash.h"
-//============================
+//=========================
 
 namespace Spartan
 {
@@ -53,14 +52,14 @@ namespace Spartan
             this->array_size = array_size;
         }
 
-        uint32_t ComputeHash() const
+        uint64_t ComputeHash() const
         {
-            uint32_t hash = 0;
+            uint64_t hash = 0;
 
-            Utility::Hash::hash_combine(hash, static_cast<uint32_t>(type));
-            Utility::Hash::hash_combine(hash, slot);
-            Utility::Hash::hash_combine(hash, stage);
-            Utility::Hash::hash_combine(hash, array_size);
+            hash = rhi_hash_combine(hash, static_cast<uint64_t>(type));
+            hash = rhi_hash_combine(hash, static_cast<uint64_t>(slot));
+            hash = rhi_hash_combine(hash, static_cast<uint64_t>(stage));
+            hash = rhi_hash_combine(hash, static_cast<uint64_t>(array_size));
             
             return hash;
         }

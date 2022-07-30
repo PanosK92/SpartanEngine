@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_Vertex.h"
 //================================
 
-namespace Spartan::Utility::Geometry
+namespace Spartan::Geometry
 {
     static void CreateCube(std::vector<RHI_Vertex_PosTexNorTan>* vertices, std::vector<uint32_t>* indices)
     {
