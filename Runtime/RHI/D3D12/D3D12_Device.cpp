@@ -219,7 +219,7 @@ namespace Spartan
                 11 << 22,                                                 // api version
                 0,                                                        // driver version
                 adapter_desc.VendorId,                                    // vendor id
-                RHI_PhysicalDevice_Type::Unknown,                         // type
+                RHI_PhysicalDevice_Type::Undefined,                       // type
                 &name[0],                                                 // name
                 static_cast<uint64_t>(adapter_desc.DedicatedVideoMemory), // memory
                 static_cast<void*>(display_adapter))                      // data
