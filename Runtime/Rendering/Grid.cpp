@@ -43,10 +43,7 @@ namespace Spartan
 
         // Create vertex buffer.
         m_vertex_buffer = make_shared<RHI_VertexBuffer>(rhi_device, false, "grid");
-        if (!m_vertex_buffer->Create(vertices))
-        {
-            LOG_ERROR("Failed to create vertex buffer.");
-        }
+        m_vertex_buffer->Create(vertices);
     }
 
     const Matrix& Grid::ComputeWorldMatrix(Transform* camera)

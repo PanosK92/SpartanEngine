@@ -82,7 +82,7 @@ namespace Spartan
 
     private:
         // Geometry
-        bool GeometryCreateBuffers();
+        void GeometryCreateBuffers();
         float GeometryComputeNormalizedScale() const;
 
         // Misc

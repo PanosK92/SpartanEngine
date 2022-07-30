@@ -153,7 +153,7 @@ namespace Spartan
         m_font_size = Helper::Clamp<uint32_t>(size, 8, 50);
     }
 
-    bool Font::UpdateBuffers(vector<RHI_Vertex_PosTex>& vertices, vector<uint32_t>& indices) const
+    void Font::UpdateBuffers(vector<RHI_Vertex_PosTex>& vertices, vector<uint32_t>& indices) const
     {
         SP_ASSERT(m_context != nullptr);
         SP_ASSERT(m_vertex_buffer != nullptr);
@@ -162,19 +162,8 @@ namespace Spartan
         // Grow buffers (if needed)
         if (vertices.size() > m_vertex_buffer->GetVertexCount())
         {
-            // Vertex buffer
-            if (!m_vertex_buffer->CreateDynamic<RHI_Vertex_PosTex>(static_cast<uint32_t>(vertices.size())))
-            {
-                LOG_ERROR("Failed to update vertex buffer.");
-                return false;
-            }
-
-            // Index buffer
-            if (!m_index_buffer->CreateDynamic<uint32_t>(static_cast<uint32_t>(indices.size())))
-            {
-                LOG_ERROR("Failed to update index buffer.");
-                return false;
-            }
+            m_vertex_buffer->CreateDynamic<RHI_Vertex_PosTex>(static_cast<uint32_t>(vertices.size()));
+            m_index_buffer->CreateDynamic<uint32_t>(static_cast<uint32_t>(indices.size()));
         }
 
         if (const auto vertex_buffer = static_cast<RHI_Vertex_PosTex*>(m_vertex_buffer->Map()))
@@ -188,7 +177,5 @@ namespace Spartan
             copy(indices.begin(), indices.end(), index_buffer);
             m_index_buffer->Unmap();
         }
-
-        return true;
     }
 }

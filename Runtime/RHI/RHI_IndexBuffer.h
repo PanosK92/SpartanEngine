@@ -45,30 +45,33 @@ namespace Spartan
         }
 
         template<typename T>
-        bool Create(const std::vector<T>& indices)
+        void Create(const std::vector<T>& indices)
         {
             m_stride          = sizeof(T);
             m_index_count     = static_cast<uint32_t>(indices.size());
             m_object_size_gpu = static_cast<uint64_t>(m_stride * m_index_count);
-            return _create(static_cast<const void*>(indices.data()));
+
+            _create(static_cast<const void*>(indices.data()));
         }
 
         template<typename T>
-        bool Create(const T* indices, const uint32_t index_count)
+        void Create(const T* indices, const uint32_t index_count)
         {
             m_stride          = sizeof(T);
             m_index_count     = index_count;
             m_object_size_gpu = static_cast<uint64_t>(m_stride * m_index_count);
-            return _create(static_cast<const void*>(indices));
+
+            _create(static_cast<const void*>(indices));
         }
 
         template<typename T>
-        bool CreateDynamic(const uint32_t index_count)
+        void CreateDynamic(const uint32_t index_count)
         {
             m_stride          = sizeof(T);
             m_index_count     = index_count;
             m_object_size_gpu = static_cast<uint64_t>(m_stride * m_index_count);
-            return _create(nullptr);
+
+            _create(nullptr);
         }
 
         void* Map();
@@ -80,7 +83,7 @@ namespace Spartan
         bool Is32Bit()           const { return sizeof(uint32_t) == m_stride; }
 
     private:
-        bool _create(const void* indices);
+        void _create(const void* indices);
         void _destroy();
 
         void* m_mapped_data    = nullptr;

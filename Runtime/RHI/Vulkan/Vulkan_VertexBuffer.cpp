@@ -45,7 +45,7 @@ namespace Spartan
         vulkan_utility::vma_allocator::destroy_buffer(m_rhi_resource);
     }
 
-    bool RHI_VertexBuffer::_create(const void* vertices)
+    void RHI_VertexBuffer::_create(const void* vertices)
     {
         // Destroy previous buffer
         if (m_rhi_resource)
@@ -98,8 +98,6 @@ namespace Spartan
 
         // Set debug name
         vulkan_utility::debug::set_object_name(static_cast<VkBuffer>(m_rhi_resource), m_object_name.c_str());
-
-        return true;
     }
 
     void* RHI_VertexBuffer::Map()

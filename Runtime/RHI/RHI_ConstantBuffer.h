@@ -86,7 +86,6 @@ namespace Spartan
                     {
                         Unmap();
                     }
-
                 }
 
                 // CPU

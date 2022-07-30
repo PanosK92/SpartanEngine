@@ -243,16 +243,16 @@ namespace ImGui::RHI
             if (vertex_buffer->GetVertexCount() < static_cast<unsigned int>(draw_data->TotalVtxCount))
             {
                 const unsigned int new_size = draw_data->TotalVtxCount + 5000;
-                if (!vertex_buffer->CreateDynamic<ImDrawVert>(new_size))
-                    return;
+                vertex_buffer->CreateDynamic<ImDrawVert>(new_size);
+                LOG_INFO("vertex buffer has been re-allocated to fit at least %d vertices", draw_data->TotalVtxCount);
             }
 
             // Grow index buffer as needed
             if (index_buffer->GetIndexCount() < static_cast<unsigned int>(draw_data->TotalIdxCount))
             {
                 const unsigned int new_size = draw_data->TotalIdxCount + 10000;
-                if (!index_buffer->CreateDynamic<ImDrawIdx>(new_size))
-                    return;
+                index_buffer->CreateDynamic<ImDrawIdx>(new_size);
+                LOG_INFO("Index buffer has been re-allocated to fit at least %d indices", draw_data->TotalIdxCount);
             }
 
             // Copy and convert all vertices into a single contiguous buffer
