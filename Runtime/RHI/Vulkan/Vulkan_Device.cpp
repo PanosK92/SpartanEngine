@@ -644,7 +644,7 @@ namespace Spartan
         uint32_t semaphore_count = static_cast<uint32_t>(wait_semaphores.size());
         for (uint32_t i = 0; i < semaphore_count; i++)
         {
-            SP_ASSERT_MSG(wait_semaphores[i]->GetState() == RHI_Semaphore_State::Signaled, "The wait semaphore hasn't been signaled");
+            SP_ASSERT_MSG(wait_semaphores[i]->GetCpuState() == RHI_Sync_State::Submitted, "The wait semaphore hasn't been signaled");
             vk_wait_semaphores[i] = static_cast<VkSemaphore>(wait_semaphores[i]->GetResource());
         }
 
@@ -662,7 +662,7 @@ namespace Spartan
         // Update semaphore state
         for (uint32_t i = 0; i < semaphore_count; i++)
         {
-            wait_semaphores[i]->SetState(RHI_Semaphore_State::Idle);
+            wait_semaphores[i]->SetCpuState(RHI_Sync_State::Idle);
         }
     }
 
@@ -671,12 +671,13 @@ namespace Spartan
         SP_ASSERT_MSG(cmd_buffer != nullptr, "Invalid command buffer");
 
         // Validate semaphores
-        if (wait_semaphore)   SP_ASSERT_MSG(wait_semaphore->GetState()   != RHI_Semaphore_State::Idle,     "Wait semaphore is in an idle state and will never be signaled");
-        if (signal_semaphore) SP_ASSERT_MSG(signal_semaphore->GetState() != RHI_Semaphore_State::Signaled, "Signal semaphore is already in a signaled state.");
+        if (wait_semaphore)   SP_ASSERT_MSG(wait_semaphore->GetCpuState()   != RHI_Sync_State::Idle,      "Wait semaphore is in an idle state and will never be signaled");
+        if (signal_semaphore) SP_ASSERT_MSG(signal_semaphore->GetCpuState() != RHI_Sync_State::Submitted, "Signal semaphore is already in a signaled state.");
+        if (signal_fence)     SP_ASSERT_MSG(signal_fence->GetCpuState()     != RHI_Sync_State::Submitted, "Signal fence is already in a signaled state.");
 
         // Get semaphores
-       VkSemaphore vk_wait_semaphore[1]   = { wait_semaphore   ? static_cast<VkSemaphore>(wait_semaphore->GetResource())   : nullptr};
-       VkSemaphore vk_signal_semaphore[1] = { signal_semaphore ? static_cast<VkSemaphore>(signal_semaphore->GetResource()) : nullptr };
+        VkSemaphore vk_wait_semaphore[1]   = { wait_semaphore   ? static_cast<VkSemaphore>(wait_semaphore->GetResource())   : nullptr};
+        VkSemaphore vk_signal_semaphore[1] = { signal_semaphore ? static_cast<VkSemaphore>(signal_semaphore->GetResource()) : nullptr };
 
         // Submit info
         VkSubmitInfo submit_info         = {};
@@ -698,8 +699,9 @@ namespace Spartan
         SP_ASSERT(vkQueueSubmit(static_cast<VkQueue>(GetQueue(type)), 1, &submit_info, static_cast<VkFence>(vk_signal_fence)) == VK_SUCCESS);
 
         // Update semaphore states
-        if (wait_semaphore)   wait_semaphore->SetState(RHI_Semaphore_State::Idle);
-        if (signal_semaphore) signal_semaphore->SetState(RHI_Semaphore_State::Signaled);
+        if (wait_semaphore)   wait_semaphore->SetCpuState(RHI_Sync_State::Idle);
+        if (signal_semaphore) signal_semaphore->SetCpuState(RHI_Sync_State::Submitted);
+        if (signal_fence)     signal_fence->SetCpuState(RHI_Sync_State::Submitted);
     }
 
     bool RHI_Device::QueueWait(const RHI_Queue_Type type) const

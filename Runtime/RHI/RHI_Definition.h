@@ -269,10 +269,10 @@ namespace Spartan
         Present_Src
     };
 
-    enum class RHI_Semaphore_State
+    enum class RHI_Sync_State
     {
         Idle,
-        Signaled
+        Submitted
     };
 
     enum RHI_Shader_Type : uint8_t

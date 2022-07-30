@@ -191,29 +191,24 @@ namespace Spartan
         return true;
     }
 
-    bool RHI_CommandList::Submit()
+    void RHI_CommandList::Submit()
     {
         // Validate command list state
         SP_ASSERT(m_state == RHI_CommandListState::Ended);
 
-        if (m_discard)
+        if (!m_discard)
         {
-            m_state = RHI_CommandListState::Submitted;
-            return true;
+            m_rhi_device->QueueSubmit(
+                RHI_Queue_Type::Graphics,                      // queue
+                VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, // wait flags
+                static_cast<VkCommandBuffer>(m_rhi_resource),  // cmd buffer
+                nullptr,                                       // wait semaphore
+                m_proccessed_semaphore.get(),                  // signal semaphore
+                m_proccessed_fence.get()                       // signal fence
+            );
         }
 
-        m_rhi_device->QueueSubmit(
-            RHI_Queue_Type::Graphics,                      // queue
-            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, // wait flags
-            static_cast<VkCommandBuffer>(m_rhi_resource),  // cmd buffer
-            nullptr,                                       // wait semaphore
-            m_proccessed_semaphore.get(),                  // signal semaphore
-            m_proccessed_fence.get()                       // signal fence
-        );
-
         m_state = RHI_CommandListState::Submitted;
-
-        return true;
     }
 
     void RHI_CommandList::SetPipelineState(RHI_PipelineState& pso)

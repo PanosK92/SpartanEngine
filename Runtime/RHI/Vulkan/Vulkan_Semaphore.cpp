@@ -88,7 +88,7 @@ namespace Spartan
 
         destroy_semaphore(m_rhi_device->GetContextRhi()->device, m_resource);
         create_semaphore(m_rhi_device->GetContextRhi()->device, m_is_timeline, m_resource);
-        m_state = RHI_Semaphore_State::Idle;
+        m_cpu_state = RHI_Sync_State::Idle;
     }
 
     bool RHI_Semaphore::Wait(const uint64_t value, uint64_t timeout /*= std::numeric_limits<uint64_t>::max()*/)

@@ -51,8 +51,12 @@ namespace Spartan
             }
         }
 
-        // Reset and update state
-        m_proccessed_fence->Reset();
+        // Reset fence
+        if (m_proccessed_fence->GetCpuState() == RHI_Sync_State::Submitted)
+        {
+            m_proccessed_fence->Reset();
+        }
+
         m_state = RHI_CommandListState::Idle;
     }
 

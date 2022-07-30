@@ -42,12 +42,18 @@ namespace Spartan
         bool Wait(uint64_t timeout_nanoseconds = 1000000000 /* one second */);
 
         // Resets the fence
-        bool Reset();
+        void Reset();
 
         void* GetResource() { return m_resource; }
 
+        // Cpu state
+        RHI_Sync_State GetCpuState()                 const { return m_cpu_state; }
+        void SetCpuState(const RHI_Sync_State state)       { m_cpu_state = state; }
+
     private:
         void* m_resource = nullptr;
+        RHI_Sync_State m_cpu_state = RHI_Sync_State::Idle;
+
         RHI_Device* m_rhi_device = nullptr;
     };
 }

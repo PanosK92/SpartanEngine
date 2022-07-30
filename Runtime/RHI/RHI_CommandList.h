@@ -49,7 +49,7 @@ namespace Spartan
 
         void Begin();
         bool End();
-        bool Submit();
+        void Submit();
         // Waits for the command list to finish being processed.
         void Wait();
         // Causes the command list to ignore one submission call (useful when the command list refers to resources which have been destroyed).

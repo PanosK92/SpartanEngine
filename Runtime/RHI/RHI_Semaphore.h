@@ -41,15 +41,15 @@ namespace Spartan
         bool Wait(const uint64_t value, const uint64_t timeout = std::numeric_limits<uint64_t>::max());
         bool Signal(const uint64_t value);
         uint64_t GetValue();
+        void* GetResource() { return m_resource; }
 
-        RHI_Semaphore_State GetState()                  const { return m_state; }
-        void SetState(const RHI_Semaphore_State state)        { m_state = state; }
-        void* GetResource()                                   { return m_resource; }
+        RHI_Sync_State GetCpuState()                 const { return m_cpu_state; }
+        void SetCpuState(const RHI_Sync_State state)       { m_cpu_state = state; }
 
     private:
-        void* m_resource            = nullptr;
-        bool m_is_timeline          = false;
-        RHI_Semaphore_State m_state = RHI_Semaphore_State::Idle;
+        void* m_resource           = nullptr;
+        bool m_is_timeline         = false;
+        RHI_Sync_State m_cpu_state = RHI_Sync_State::Idle;
 
         // Misc
         RHI_Device* m_rhi_device = nullptr;

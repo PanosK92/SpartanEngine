@@ -73,19 +73,19 @@ namespace Spartan
     private:
         void AcquireNextImage();
 
-        bool m_windowed            = false;
-        bool m_present_enabled     = true;
-        uint32_t m_buffer_count    = 0;
-        uint32_t m_width           = 0;
-        uint32_t m_height          = 0;
-        uint32_t m_flags           = 0;
-        RHI_Format m_format        = RHI_Format_R8G8B8A8_Unorm;
-        uint32_t m_semaphore_index = std::numeric_limits<uint32_t>::max();
-        RHI_Device* m_rhi_device   = nullptr;
+        bool m_windowed          = false;
+        bool m_present_enabled   = true;
+        uint32_t m_buffer_count  = 0;
+        uint32_t m_width         = 0;
+        uint32_t m_height        = 0;
+        uint32_t m_flags         = 0;
+        RHI_Format m_format      = RHI_Format_R8G8B8A8_Unorm;
+        uint32_t m_sync_index    = std::numeric_limits<uint32_t>::max();
+        RHI_Device* m_rhi_device = nullptr;
 
         // Misc
         std::array<RHI_Image_Layout, max_buffer_count> m_layouts;
-        std::array<std::shared_ptr<RHI_Semaphore>, max_buffer_count> m_semaphore_image_acquired;
+        std::array<std::shared_ptr<RHI_Semaphore>, max_buffer_count> m_acquire_semaphore;
         uint32_t m_image_index          = std::numeric_limits<uint32_t>::max();
         uint32_t m_image_index_previous = m_image_index;
 
