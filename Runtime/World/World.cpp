@@ -422,8 +422,8 @@ namespace Spartan
             entity->SetName("camera");
             entity->AddComponent<Camera>();
             entity->AddComponent<AudioListener>();
-            entity->GetTransform()->SetPosition(Vector3(0.0f, 1.0f, -4.0f));
-            entity->GetTransform()->SetRotation(Quaternion::FromEulerAngles(Vector3(6.0f, 0.0f, 0.0f)));
+            entity->GetTransform()->SetPosition(Vector3(1.0f, 0.7760f, -1.5f));
+            entity->GetTransform()->SetRotation(Quaternion::FromEulerAngles(Vector3(8.5996f, -33.5988f, 0.0f)));
         }
 
         // Light - Directional
