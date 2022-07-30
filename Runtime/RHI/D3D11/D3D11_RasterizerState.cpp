@@ -34,7 +34,7 @@ namespace Spartan
 {
     RHI_RasterizerState::RHI_RasterizerState
     (
-        const shared_ptr<RHI_Device>& rhi_device,
+        RHI_Device* rhi_device,
         const RHI_CullMode cull_mode,
         const RHI_PolygonMode polygon_mode,
         const bool depth_clip_enabled,
@@ -73,12 +73,12 @@ namespace Spartan
         desc.ScissorEnable          = scissor_enabled;
 
         // Create rasterizer state
-        auto rasterizer_state    = static_cast<ID3D11RasterizerState*>(m_resource);
-        m_initialized = d3d11_utility::error_check(rhi_device->GetContextRhi()->device->CreateRasterizerState(&desc, reinterpret_cast<ID3D11RasterizerState**>(&m_resource)));
+        auto ptr = static_cast<ID3D11RasterizerState*>(m_rhi_resource);
+        SP_ASSERT(d3d11_utility::error_check(rhi_device->GetContextRhi()->device->CreateRasterizerState(&desc, reinterpret_cast<ID3D11RasterizerState**>(&ptr))));
     }
 
     RHI_RasterizerState::~RHI_RasterizerState()
     {
-        d3d11_utility::release<ID3D11RasterizerState>(m_resource);
+        d3d11_utility::release<ID3D11RasterizerState>(m_rhi_resource);
     }
 }

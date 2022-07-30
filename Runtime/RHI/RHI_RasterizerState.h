@@ -34,7 +34,7 @@ namespace Spartan
     public:
         RHI_RasterizerState() = default;
         RHI_RasterizerState(
-            const std::shared_ptr<RHI_Device>& rhi_device,
+            RHI_Device* rhi_device,
             const RHI_CullMode cull_mode,
             const RHI_PolygonMode fill_mode,
             const bool depth_clip_enabled,
@@ -52,8 +52,7 @@ namespace Spartan
         bool GetDepthClipEnabled()       const { return m_depth_clip_enabled; }
         bool GetScissorEnabled()         const { return m_scissor_enabled; }
         bool GetAntialisedLineEnabled()  const { return m_antialised_line_enabled; }
-        bool IsInitialized()             const { return m_initialized; }
-        void* GetResource()              const { return m_resource; }
+        void* GetResource()              const { return m_rhi_resource; }
         float GetLineWidth()             const { return m_line_width; }
         float GetDepthBias()             const { return m_depth_bias; }
         float GetDepthBiasClamp()        const { return m_depth_bias_clamp; }
@@ -73,7 +72,6 @@ namespace Spartan
         }
 
     private:
-        // Properties
         RHI_CullMode m_cull_mode        = RHI_CullMode::Undefined;
         RHI_PolygonMode m_polygon_mode  = RHI_PolygonMode::Undefined;
         bool m_depth_clip_enabled       = false;
@@ -84,10 +82,6 @@ namespace Spartan
         float m_depth_bias_slope_scaled = 0.0f;
         float m_line_width              = 1.0f;
         
-        // Initialized
-        bool m_initialized = false;
-        
-        // Rasterizer state view
-        void* m_resource = nullptr;
+        void* m_rhi_resource = nullptr;
     };
 }

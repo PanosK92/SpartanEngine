@@ -21,9 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ======================
 #include "Spartan.h"
-#include "../RHI_Implementation.h"
 #include "../RHI_RasterizerState.h"
-#include "../RHI_Device.h"
 //=================================
 
 //= NAMESPACES =====
@@ -34,7 +32,7 @@ namespace Spartan
 {
     RHI_RasterizerState::RHI_RasterizerState
     (
-        const shared_ptr<RHI_Device>& rhi_device,
+        RHI_Device* rhi_device,
         const RHI_CullMode cull_mode,
         const RHI_PolygonMode polygon_mode,
         const bool depth_clip_enabled,
@@ -45,7 +43,6 @@ namespace Spartan
         const float depth_bias_slope_scaled /*= 0.0f */,
         const float line_width              /*= 1.0f */)
     {
-        // Save properties
         m_cull_mode               = cull_mode;
         m_polygon_mode            = polygon_mode;
         m_depth_clip_enabled      = depth_clip_enabled;

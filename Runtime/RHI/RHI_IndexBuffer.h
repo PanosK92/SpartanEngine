@@ -32,7 +32,7 @@ namespace Spartan
     {
     public:
         RHI_IndexBuffer() = default;
-        RHI_IndexBuffer(const std::shared_ptr<RHI_Device>& rhi_device, bool is_mappable, const char* name)
+        RHI_IndexBuffer(RHI_Device* rhi_device, bool is_mappable, const char* name)
         {
             m_rhi_device  = rhi_device;
             m_is_mappable = is_mappable;
@@ -86,12 +86,11 @@ namespace Spartan
         void _create(const void* indices);
         void _destroy();
 
-        void* m_mapped_data    = nullptr;
-        bool m_is_mappable     = false;
-        uint32_t m_stride      = 0;
-        uint32_t m_index_count = 0;
-        
-        std::shared_ptr<RHI_Device> m_rhi_device;
+        void* m_mapped_data      = nullptr;
+        bool m_is_mappable       = false;
+        uint32_t m_stride        = 0;
+        uint32_t m_index_count   = 0;
+        RHI_Device* m_rhi_device = nullptr;
 
         // RHI Resources
         void* m_rhi_resource = nullptr;

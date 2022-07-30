@@ -132,10 +132,10 @@ namespace Spartan
         m_rhi_device = make_shared<RHI_Device>(m_context);
 
         // Line buffer
-        m_vertex_buffer_lines = make_shared<RHI_VertexBuffer>(m_rhi_device, true, "renderer_lines");
+        m_vertex_buffer_lines = make_shared<RHI_VertexBuffer>(m_rhi_device.get(), true, "renderer_lines");
 
         // World grid
-        m_gizmo_grid = make_unique<Grid>(m_rhi_device);
+        m_gizmo_grid = make_unique<Grid>(m_rhi_device.get());
 
         // Get window size
         uint32_t window_width  = window->GetWidth();
@@ -145,7 +145,7 @@ namespace Spartan
         m_swap_chain = make_shared<RHI_SwapChain>
         (
             window->GetHandle(),
-            m_rhi_device,
+            m_rhi_device.get(),
             window_width,
             window_height,
             RHI_Format_R8G8B8A8_Unorm,
@@ -215,13 +215,8 @@ namespace Spartan
         m_frame_num++;
         m_is_odd_frame = (m_frame_num % 2) == 1;
 
-        // Begin
-        bool command_pool_reset = m_cmd_pool->Tick();
-        m_cmd_current = m_cmd_pool->GetCurrentCommandList();
-        m_cmd_current->Begin();
-
         // Reset
-        if (command_pool_reset || m_rhi_device->GetApiType() == RHI_Api_Type::D3d11)
+        if (m_cmd_pool->Tick() || m_rhi_device->GetApiType() == RHI_Api_Type::D3d11)
         {
             // Reset dynamic buffer indices
             m_cb_uber_gpu->ResetOffset();
@@ -234,6 +229,10 @@ namespace Spartan
             OnResourceSafe();
             m_reading_requests = false;
         }
+
+        // Beging
+        m_cmd_current = m_cmd_pool->GetCurrentCommandList();
+        m_cmd_current->Begin();
 
         // Update frame buffer
         {

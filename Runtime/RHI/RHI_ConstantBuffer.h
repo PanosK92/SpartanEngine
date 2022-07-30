@@ -31,17 +31,18 @@ namespace Spartan
     class SPARTAN_CLASS RHI_ConstantBuffer : public SpartanObject
     {
     public:
+        RHI_ConstantBuffer() = default;
         RHI_ConstantBuffer(const RHI_Device* rhi_device, const std::string& name);
         ~RHI_ConstantBuffer() { _destroy(); }
 
         template<typename T>
-        bool Create(const uint32_t element_count = 1)
+        void Create(const uint32_t element_count = 1)
         {
             m_element_count   = element_count;
             m_stride          = static_cast<uint64_t>(sizeof(T));
             m_object_size_gpu = static_cast<uint64_t>(m_stride * m_element_count);
 
-            return _create();
+            _create();
         }
 
         // This function will handle updating the buffer. This involves:
@@ -111,7 +112,7 @@ namespace Spartan
         uint32_t GetStrideCount() const { return m_element_count; }
 
     private:
-        bool _create();
+        void _create();
         void _destroy();
 
         bool m_persistent_mapping      = false;

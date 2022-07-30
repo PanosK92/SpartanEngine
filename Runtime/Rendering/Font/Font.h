@@ -112,7 +112,7 @@ namespace Spartan
         std::shared_ptr<RHI_VertexBuffer> m_vertex_buffer;
         std::shared_ptr<RHI_IndexBuffer> m_index_buffer;
         std::vector<RHI_Vertex_PosTex> m_vertices;
-        std::vector<uint32_t> m_indices;    
-        std::shared_ptr<RHI_Device> m_rhi_device;
+        std::vector<uint32_t> m_indices;
+        RHI_Device* m_rhi_device = nullptr;
     };
 }

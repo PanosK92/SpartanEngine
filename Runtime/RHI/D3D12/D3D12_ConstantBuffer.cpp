@@ -32,9 +32,9 @@ using namespace std;
 
 namespace Spartan
 {
-    bool RHI_ConstantBuffer::_create()
+    void RHI_ConstantBuffer::_create()
     {
-        return true;
+
     }
 
     void RHI_ConstantBuffer::_destroy()

@@ -212,11 +212,11 @@ namespace Spartan
         const vector<RHI_Vertex_PosTexNorTan>& vertices = m_mesh->Vertices_Get();
 
         SP_ASSERT_MSG(!indices.empty(), "There are no indices");
-        m_index_buffer = make_shared<RHI_IndexBuffer>(m_rhi_device, false, "model");
+        m_index_buffer = make_shared<RHI_IndexBuffer>(m_rhi_device.get(), false, "model");
         m_index_buffer->Create(indices);
 
         SP_ASSERT_MSG(!vertices.empty(), "There are no vertices");
-        m_vertex_buffer = make_shared<RHI_VertexBuffer>(m_rhi_device, false, "model");
+        m_vertex_buffer = make_shared<RHI_VertexBuffer>(m_rhi_device.get(), false, "model");
         m_vertex_buffer->Create(vertices);
     }
 

@@ -93,31 +93,31 @@ namespace ImGui::RHI
     Renderer* g_renderer = nullptr;
 
     // Resources
-    static shared_ptr<RHI_Device>            g_rhi_device;
-    static unique_ptr<RHI_Texture>           g_texture;
-    static shared_ptr<RHI_DepthStencilState> g_depth_stencil_state;
-    static shared_ptr<RHI_RasterizerState>   g_rasterizer_state;
-    static shared_ptr<RHI_BlendState>        g_blend_state;
-    static unique_ptr<RHI_Shader>            g_shader_vertex;
-    static unique_ptr<RHI_Shader>            g_shader_pixel;
-    ViewportResources                        g_viewport_data; // per swapchain resources
+    static RHI_Device*                g_rhi_device;
+    static shared_ptr<RHI_Texture>    g_font_atlas;
+    static RHI_DepthStencilState      g_depth_stencil_state;
+    static RHI_RasterizerState        g_rasterizer_state;
+    static shared_ptr<RHI_BlendState> g_blend_state;
+    static shared_ptr<RHI_Shader>     g_shader_vertex;
+    static shared_ptr<RHI_Shader>     g_shader_pixel;
+    ViewportResources                 g_viewport_data; // per swapchain resources
 
     inline bool Initialize(Context* context)
     {
         g_context    = context;
         g_renderer   = context->GetSubsystem<Renderer>();
-        g_rhi_device = g_renderer->GetRhiDevice();
+        g_rhi_device = g_renderer->GetRhiDevice().get();
 
         SP_ASSERT(g_context != nullptr);
         SP_ASSERT(g_rhi_device != nullptr);
 
         // Create required RHI objects
         {
-            g_viewport_data = ViewportResources("imgui", g_rhi_device.get(), g_renderer->GetSwapChain());
+            g_viewport_data = ViewportResources("imgui", g_rhi_device, g_renderer->GetSwapChain());
 
-            g_depth_stencil_state = make_shared<RHI_DepthStencilState>(g_rhi_device, false, false, RHI_Comparison_Function::Always);
+            g_depth_stencil_state = RHI_DepthStencilState(g_rhi_device, false, false, RHI_Comparison_Function::Always);
 
-            g_rasterizer_state = make_shared<RHI_RasterizerState>
+            g_rasterizer_state = RHI_RasterizerState
             (
                 g_rhi_device,
                 RHI_CullMode::None,
@@ -142,14 +142,14 @@ namespace ImGui::RHI
 
             // Compile shaders
             {
-                const std::string shader_path = g_context->GetSubsystem<ResourceCache>()->GetResourceDirectory(ResourceDirectory::Shaders) + "\\ImGui.hlsl";
+                const string shader_path = g_context->GetSubsystem<ResourceCache>()->GetResourceDirectory(ResourceDirectory::Shaders) + "\\ImGui.hlsl";
 
                 bool async = false;
 
-                g_shader_vertex = make_unique<RHI_Shader>(g_context, RHI_Vertex_Type::Pos2dTexCol8);
+                g_shader_vertex = make_shared<RHI_Shader>(g_context, RHI_Vertex_Type::Pos2dTexCol8);
                 g_shader_vertex->Compile(RHI_Shader_Vertex, shader_path, async);
 
-                g_shader_pixel = make_unique<RHI_Shader>(g_context);
+                g_shader_pixel = make_shared<RHI_Shader>(g_context);
                 g_shader_pixel->Compile(RHI_Shader_Pixel, shader_path, async);
             }
         }
@@ -170,8 +170,8 @@ namespace ImGui::RHI
             memcpy(&mip[0], reinterpret_cast<std::byte*>(pixels), size);
 
             // Upload texture to graphics system
-            g_texture = make_unique<RHI_Texture2D>(g_context, atlas_width, atlas_height, RHI_Format_R8G8B8A8_Unorm, RHI_Texture_Srv, texture_data, "imgui_font_atlas");
-            io.Fonts->TexID = static_cast<ImTextureID>(g_texture.get());
+            g_font_atlas = make_shared<RHI_Texture2D>(g_context, atlas_width, atlas_height, RHI_Format_R8G8B8A8_Unorm, RHI_Texture_Srv, texture_data, "imgui_font_atlas");
+            io.Fonts->TexID = static_cast<ImTextureID>(g_font_atlas.get());
         }
 
         // Setup back-end capabilities flags
@@ -278,9 +278,9 @@ namespace ImGui::RHI
         static RHI_PipelineState pso = {};
         pso.shader_vertex            = g_shader_vertex.get();
         pso.shader_pixel             = g_shader_pixel.get();
-        pso.rasterizer_state         = g_rasterizer_state.get();
+        pso.rasterizer_state         = &g_rasterizer_state;
         pso.blend_state              = g_blend_state.get();
-        pso.depth_stencil_state      = g_depth_stencil_state.get();
+        pso.depth_stencil_state      = &g_depth_stencil_state;
         pso.render_target_swapchain  = swap_chain;
         pso.clear_color[0]           = clear ? Vector4(0.0f, 0.0f, 0.0f, 1.0f) : rhi_color_dont_care;
         pso.viewport.width           = draw_data->DisplaySize.x;
@@ -406,7 +406,7 @@ namespace ImGui::RHI
             (string("swapchain_child_") + string(to_string(viewport->ID))).c_str()
         );
 
-        window->viewport_data = make_shared<ViewportResources>("imgui_child_window", g_rhi_device.get(), window->swapchain.get());
+        window->viewport_data = make_shared<ViewportResources>("imgui_child_window", g_rhi_device, window->swapchain.get());
         viewport->RendererUserData = window;
     }
 

@@ -38,7 +38,7 @@ namespace Spartan
 {
     RHI_SwapChain::RHI_SwapChain(
         void* window_handle,
-        const shared_ptr<RHI_Device>& rhi_device,
+        RHI_Device* rhi_device,
         const uint32_t width,
         const uint32_t height,
         const RHI_Format format     /*= Format_R8G8B8A8_UNORM*/,
@@ -82,7 +82,7 @@ namespace Spartan
 
         // Save parameters
         m_format       = format;
-        m_rhi_device   = rhi_device.get();
+        m_rhi_device   = rhi_device;
         m_buffer_count = buffer_count;
         m_windowed     = true;
         m_width        = width;

@@ -21,9 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ========================
 #include "Spartan.h"
-#include "../RHI_Implementation.h"
 #include "../RHI_DepthStencilState.h"
-#include "../RHI_Device.h"
 //===================================
 
 //= NAMESPACES =====
@@ -33,7 +31,7 @@ using namespace std;
 namespace Spartan
 {
     RHI_DepthStencilState::RHI_DepthStencilState(
-        const shared_ptr<RHI_Device>& rhi_device,
+        RHI_Device* rhi_device,
         const bool depth_test                                     /*= true*/,
         const bool depth_write                                    /*= true*/,
         const RHI_Comparison_Function depth_comparison_function   /*= Comparison_LessEqual*/,
@@ -45,7 +43,6 @@ namespace Spartan
         const RHI_Stencil_Operation stencil_pass_op               /*= RHI_Stencil_Replace */
     )
     {
-        // Save properties
         m_depth_test_enabled          = depth_test;
         m_depth_write_enabled         = depth_write;
         m_depth_comparison_function   = depth_comparison_function;

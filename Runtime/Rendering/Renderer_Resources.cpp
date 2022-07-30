@@ -84,11 +84,11 @@ namespace Spartan
         RHI_Comparison_Function reverse_z_aware_comp_func = GetOption<bool>(RendererOption::ReverseZ) ? RHI_Comparison_Function::GreaterEqual : RHI_Comparison_Function::LessEqual;
 
         // arguments: depth_test, depth_write, depth_function, stencil_test, stencil_write, stencil_function
-        m_depth_stencil_off_off = make_shared<RHI_DepthStencilState>(m_rhi_device, false, false, RHI_Comparison_Function::Never, false, false, RHI_Comparison_Function::Never);  // no depth or stencil
-        m_depth_stencil_rw_off  = make_shared<RHI_DepthStencilState>(m_rhi_device, true,  true,  reverse_z_aware_comp_func,      false, false, RHI_Comparison_Function::Never);  // depth
-        m_depth_stencil_r_off   = make_shared<RHI_DepthStencilState>(m_rhi_device, true,  false, reverse_z_aware_comp_func,      false, false, RHI_Comparison_Function::Never);  // depth
-        m_depth_stencil_off_r   = make_shared<RHI_DepthStencilState>(m_rhi_device, false, false, RHI_Comparison_Function::Never, true,  false, RHI_Comparison_Function::Equal);  // depth + stencil
-        m_depth_stencil_rw_w    = make_shared<RHI_DepthStencilState>(m_rhi_device, true,  true,  reverse_z_aware_comp_func,      false, true,  RHI_Comparison_Function::Always); // depth + stencil
+        m_depth_stencil_off_off = make_shared<RHI_DepthStencilState>(m_rhi_device.get(), false, false, RHI_Comparison_Function::Never, false, false, RHI_Comparison_Function::Never);  // no depth or stencil
+        m_depth_stencil_rw_off  = make_shared<RHI_DepthStencilState>(m_rhi_device.get(), true,  true,  reverse_z_aware_comp_func,      false, false, RHI_Comparison_Function::Never);  // depth
+        m_depth_stencil_r_off   = make_shared<RHI_DepthStencilState>(m_rhi_device.get(), true,  false, reverse_z_aware_comp_func,      false, false, RHI_Comparison_Function::Never);  // depth
+        m_depth_stencil_off_r   = make_shared<RHI_DepthStencilState>(m_rhi_device.get(), false, false, RHI_Comparison_Function::Never, true,  false, RHI_Comparison_Function::Equal);  // depth + stencil
+        m_depth_stencil_rw_w    = make_shared<RHI_DepthStencilState>(m_rhi_device.get(), true,  true,  reverse_z_aware_comp_func,      false, true,  RHI_Comparison_Function::Always); // depth + stencil
     }
 
     void Renderer::CreateRasterizerStates()
@@ -98,11 +98,11 @@ namespace Spartan
         float depth_bias              = GetOption<bool>(RendererOption::ReverseZ) ? -m_depth_bias : m_depth_bias;
         float depth_bias_slope_scaled = GetOption<bool>(RendererOption::ReverseZ) ? -m_depth_bias_slope_scaled : m_depth_bias_slope_scaled;
 
-        m_rasterizer_cull_back_solid     = make_shared<RHI_RasterizerState>(m_rhi_device, RHI_CullMode::Back, RHI_PolygonMode::Solid,     true,  false, false);
-        m_rasterizer_cull_back_wireframe = make_shared<RHI_RasterizerState>(m_rhi_device, RHI_CullMode::Back, RHI_PolygonMode::Wireframe, true,  false, true);
-        m_rasterizer_cull_none_solid     = make_shared<RHI_RasterizerState>(m_rhi_device, RHI_CullMode::Back, RHI_PolygonMode::Solid,     true, false, false);
-        m_rasterizer_light_point_spot    = make_shared<RHI_RasterizerState>(m_rhi_device, RHI_CullMode::Back, RHI_PolygonMode::Solid,     true,  false, false, depth_bias,        m_depth_bias_clamp, depth_bias_slope_scaled);
-        m_rasterizer_light_directional   = make_shared<RHI_RasterizerState>(m_rhi_device, RHI_CullMode::Back, RHI_PolygonMode::Solid,     false, false, false, depth_bias * 0.1f, m_depth_bias_clamp, depth_bias_slope_scaled);
+        m_rasterizer_cull_back_solid     = make_shared<RHI_RasterizerState>(m_rhi_device.get(), RHI_CullMode::Back, RHI_PolygonMode::Solid,     true,  false, false);
+        m_rasterizer_cull_back_wireframe = make_shared<RHI_RasterizerState>(m_rhi_device.get(), RHI_CullMode::Back, RHI_PolygonMode::Wireframe, true,  false, true);
+        m_rasterizer_cull_none_solid     = make_shared<RHI_RasterizerState>(m_rhi_device.get(), RHI_CullMode::Back, RHI_PolygonMode::Solid,     true, false, false);
+        m_rasterizer_light_point_spot    = make_shared<RHI_RasterizerState>(m_rhi_device.get(), RHI_CullMode::Back, RHI_PolygonMode::Solid,     true,  false, false, depth_bias,        m_depth_bias_clamp, depth_bias_slope_scaled);
+        m_rasterizer_light_directional   = make_shared<RHI_RasterizerState>(m_rhi_device.get(), RHI_CullMode::Back, RHI_PolygonMode::Solid,     false, false, false, depth_bias * 0.1f, m_depth_bias_clamp, depth_bias_slope_scaled);
     }
 
     void Renderer::CreateBlendStates()
@@ -110,9 +110,9 @@ namespace Spartan
         SP_ASSERT(m_rhi_device != nullptr);
 
         // blend_enabled, source_blend, dest_blend, blend_op, source_blend_alpha, dest_blend_alpha, blend_op_alpha, blend_factor
-        m_blend_disabled = make_shared<RHI_BlendState>(m_rhi_device, false);
-        m_blend_alpha    = make_shared<RHI_BlendState>(m_rhi_device, true, RHI_Blend::Src_Alpha, RHI_Blend::Inv_Src_Alpha, RHI_Blend_Operation::Add, RHI_Blend::One, RHI_Blend::One, RHI_Blend_Operation::Add, 0.0f);
-        m_blend_additive = make_shared<RHI_BlendState>(m_rhi_device, true, RHI_Blend::One,       RHI_Blend::One,           RHI_Blend_Operation::Add, RHI_Blend::One, RHI_Blend::One, RHI_Blend_Operation::Add, 1.0f);
+        m_blend_disabled = make_shared<RHI_BlendState>(m_rhi_device.get(), false);
+        m_blend_alpha    = make_shared<RHI_BlendState>(m_rhi_device.get(), true, RHI_Blend::Src_Alpha, RHI_Blend::Inv_Src_Alpha, RHI_Blend_Operation::Add, RHI_Blend::One, RHI_Blend::One, RHI_Blend_Operation::Add, 0.0f);
+        m_blend_additive = make_shared<RHI_BlendState>(m_rhi_device.get(), true, RHI_Blend::One,       RHI_Blend::One,           RHI_Blend_Operation::Add, RHI_Blend::One, RHI_Blend::One, RHI_Blend_Operation::Add, 1.0f);
     }
 
     void Renderer::CreateSamplers(const bool create_only_anisotropic /*= false*/)
@@ -478,10 +478,10 @@ namespace Spartan
 
         Geometry::CreateSphere(&vertices, &indices, 0.2f, 20, 20);
 
-        m_sphere_vertex_buffer = make_shared<RHI_VertexBuffer>(m_rhi_device, false, "sphere");
+        m_sphere_vertex_buffer = make_shared<RHI_VertexBuffer>(m_rhi_device.get(), false, "sphere");
         m_sphere_vertex_buffer->Create(vertices);
 
-        m_sphere_index_buffer = make_shared<RHI_IndexBuffer>(m_rhi_device, false, "sphere");
+        m_sphere_index_buffer = make_shared<RHI_IndexBuffer>(m_rhi_device.get(), false, "sphere");
         m_sphere_index_buffer->Create(indices);
     }
 
