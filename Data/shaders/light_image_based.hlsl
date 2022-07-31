@@ -163,7 +163,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     {
         //float3 pixel_to_light = surface.normal;
         //bent_dot_l            = saturate(dot(surface.bent_normal, world_to_view(pixel_to_light, false)));
-        ibl *= pow(surface.occlusion, 4.0f);
+        ibl *= surface.occlusion;
     }
 
     // Perfection achieved
