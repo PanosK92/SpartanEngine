@@ -28,7 +28,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Profiling/Profiler.h"
 #include "../Rendering/Renderer.h"
 #include "../Resource/ResourceCache.h"
-#include "../Scripting/Scripting.h"
 #include "../Threading/Threading.h"
 #include "../World/World.h"
 //====================================
@@ -60,7 +59,6 @@ namespace Spartan
         m_context->AddSubsystem<ResourceCache>();
         m_context->AddSubsystem<Audio>();
         m_context->AddSubsystem<Physics>();
-        m_context->AddSubsystem<Scripting>(TickType::Smoothed);
         m_context->AddSubsystem<World>(TickType::Smoothed);
         m_context->AddSubsystem<Profiler>();
         m_context->AddSubsystem<Renderer>();

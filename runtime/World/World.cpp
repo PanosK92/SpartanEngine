@@ -407,7 +407,6 @@ namespace Spartan
     {
         // Asset directories
         ResourceCache* resource_cache = m_context->GetSubsystem<ResourceCache>();
-        const string dir_models = resource_cache->GetResourceDirectory(ResourceDirectory::Scripts) + "/";
 
         // Environment
         {

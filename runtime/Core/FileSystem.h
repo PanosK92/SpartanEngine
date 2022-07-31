@@ -112,7 +112,6 @@ namespace Spartan
     static const char* EXTENSION_TEXTURE  = ".texture";
     static const char* EXTENSION_MESH     = ".mesh";
     static const char* EXTENSION_AUDIO    = ".audio";
-    static const char* EXTENSION_SCRIPT   = ".cs";
 
     static const std::vector<std::string> supported_formats_image
     {

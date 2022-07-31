@@ -77,11 +77,9 @@ private:
     void ShowAudioSource(Spartan::AudioSource* audio_source) const;
     void ShowAudioListener(Spartan::AudioListener* audio_listener) const;
     void ShowReflectionProbe(Spartan::ReflectionProbe* reflection_probe) const;
-    void ShowScript(Spartan::Script* script) const;
 
     void ShowAddComponentButton() const;
     void ComponentContextMenu_Add() const;
-    void Drop_AutoAddComponents() const;
 
     // Color pickers
     std::unique_ptr<ButtonColorPicker> m_material_color_picker;

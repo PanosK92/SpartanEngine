@@ -53,7 +53,6 @@ namespace Spartan
         AddResourceDirectory(ResourceDirectory::Environment,    m_project_directory + "environment");
         AddResourceDirectory(ResourceDirectory::Fonts,          data_dir            + "fonts");
         AddResourceDirectory(ResourceDirectory::Icons,          data_dir            + "icons");
-        AddResourceDirectory(ResourceDirectory::Scripts,        data_dir            + "scripts");
         AddResourceDirectory(ResourceDirectory::ShaderCompiler, data_dir            + "shader_compiler");
         AddResourceDirectory(ResourceDirectory::Shaders,        data_dir            + "shaders");
         AddResourceDirectory(ResourceDirectory::Textures,       data_dir            + "textures");

@@ -30,6 +30,12 @@ using namespace std;
 using namespace Spartan::Math;
 //============================
 
+// These need to be included on Windows or SDL will throw a bunch of linking errors.
+#ifdef _MSC_VER
+#pragma comment(lib, "winmm.lib")
+#pragma comment(lib, "version.lib")
+#endif
+
 namespace Spartan
 {
     Input::Input(Context* context) : Subsystem(context)

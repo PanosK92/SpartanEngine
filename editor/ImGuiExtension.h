@@ -294,7 +294,6 @@ namespace ImGuiEx
         DragPayload_Entity,
         DragPayload_Model,
         DragPayload_Audio,
-        DragPayload_Script,
         DragPayload_Material
     };
 
