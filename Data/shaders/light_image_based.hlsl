@@ -155,14 +155,17 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     // Modulate outcoming energy
     ibl_specular *= specular_energy;
 
+    float3 ibl = ibl_diffuse + ibl_specular;
+    
     // SSAO
     //float bent_dot_l = 1.0f;
-    //if (is_ssao_enabled() && use_ssao)
-    //{
-    //    float3 pixel_to_light = surface.normal;
-    //    bent_dot_l            = saturate(dot(surface.bent_normal, world_to_view(pixel_to_light, false)));
-    //}
+    if (is_ssao_enabled() && use_ssao)
+    {
+        //float3 pixel_to_light = surface.normal;
+        //bent_dot_l            = saturate(dot(surface.bent_normal, world_to_view(pixel_to_light, false)));
+        ibl *= pow(surface.occlusion, 4.0f);
+    }
 
     // Perfection achieved
-    return float4(saturate_11(ibl_diffuse + ibl_specular), 0.0f);
+    return float4(saturate_11(ibl), 0.0f);
 }

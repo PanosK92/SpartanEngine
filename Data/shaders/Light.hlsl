@@ -137,8 +137,10 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         light_diffuse *= diffuse_energy;
     }
 
+	float3 emissive = surface.emissive * surface.albedo;
+	
     // Diffuse and specular
-    tex_uav[thread_id.xy] += float4(saturate_16(light_diffuse * light.radiance + surface.gi + (surface.emissive * surface.albedo)), 1.0f);
+    tex_uav[thread_id.xy]  += float4(saturate_16(light_diffuse * light.radiance + surface.gi + emissive), 1.0f);
     tex_uav2[thread_id.xy] += float4(saturate_16(light_specular * light.radiance), 1.0f);
 
     // Volumetric
@@ -148,4 +150,3 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         tex_uav3[thread_id.xy] += float4(saturate_16(light_volumetric), 1.0f);
     }
 }
-

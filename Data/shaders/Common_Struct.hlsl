@@ -207,7 +207,7 @@ struct Light
         return direction;
     }
 
-    void Build(float3 surface_position, float3 surface_normal, float3 surface_bent_normal)
+    void Build(float3 surface_position, float3 surface_normal, float3 surface_bent_normal, float3 occlusion)
     {
         color             = cb_light_color.rgb;
         position          = cb_light_position.xyz;
@@ -227,16 +227,21 @@ struct Light
         // Apply SSAO
         if (is_ssao_enabled())
         {
-            float bent_dot_l = 1.0f - saturate(dot(surface_bent_normal, world_to_view(-to_pixel, false)));
-            n_dot_l          = min(n_dot_l, bent_dot_l);
-        }
+            // this doesn't really work, fix it
+            //float bent_dot_l = 1.0f - saturate(dot(surface_bent_normal, world_to_view(-to_pixel, false)));
+            //n_dot_l          = min(n_dot_l, bent_dot_l);
 
-        radiance = color * intensity * attenuation * n_dot_l;
+            radiance = color * intensity * attenuation * n_dot_l * pow(occlusion, 4.0f);
+        }
+        else
+        {
+            radiance = color * intensity * attenuation * n_dot_l;
+        }
     }
 
     void Build(Surface surface)
     {
-        Build(surface.position, surface.normal, surface.bent_normal);
+        Build(surface.position, surface.normal, surface.bent_normal, surface.occlusion);
     }
 };
 
