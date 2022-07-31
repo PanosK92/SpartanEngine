@@ -16,9 +16,9 @@
   
 - <img align="left" width="32" height="32" src="https://opensource.org/sites/default/files/public/osi_keyhole_300X300_90ppi_0.png">Embracing the open source ethos and respecting the <a href="https://en.wikipedia.org/wiki/MIT_License">MIT license</a> is greatly appreciated. This means that you can copy all the code you want as long as you include a copy of the original license.
 
-Build status | Notes
-:-           | :-
-![build_status](https://github.com/PanosK92/SpartanEngine/actions/workflows/workflow.yml/badge.svg) | • D3D11 is stable. <br /> • Vulkan is not always stable but it has FSR 2.0 and TAA.<br /> • D3D12 is a work in progress. Dont use it yet.
+Build status |
+:-           |
+![build_status](https://github.com/PanosK92/SpartanEngine/actions/workflows/workflow.yml/badge.svg)
 
 # Livestreams
 
@@ -82,7 +82,6 @@ SDL integration      | 100%   | Use SDL for window creation and input (this also
 Screen space global illumination  | 100%   | One bounce of indirect diffuse and specular light.
 Depth-of-field       | 100%        | Controlled by camera aperture.
 Temporal upsampling     | 50%   | Wait for FSR 2.0 and stop developing my own. It's vastly superior to any TAA upsampler out there.
-C# scripting (Replace AngelScript)  | 50%   | Using Mono (low priority since the engine is not ready for scripting games).
 Vulkan polishing       | 90%      | Outperform D3D11 in all cases and improve stability.
 DirectX 12        | 10%   | The rendering API has matured thanks to Vulkan, finishing with DX12 should be easy.
 Ray traced shadows      | -          | Got a ray-tracing GPU, only need to get Vulkan to a stable state now.
@@ -99,3 +98,4 @@ Linux support             | -          | Vulkan and SDL is there, working on a l
 - Export on Windows.
 - UI components.
 - Make editor more stylish.
+- Scripting.
