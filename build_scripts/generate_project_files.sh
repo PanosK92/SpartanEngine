@@ -20,7 +20,7 @@ echo "==========================================================================
 echo
 echo "2. Copying required data to the binary directory..."
 mkdir -p binaries/
-cp -r Data binaries
+cp -r data binaries
 
 # Copy engine DLLs to the binary directory
 echo
