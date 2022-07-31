@@ -32,7 +32,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Components/RigidBody.h"
 #include "Components/SoftBody.h"
 #include "Components/Environment.h"
-#include "Components/Script.h"
 #include "Components/AudioSource.h"
 #include "Components/AudioListener.h"
 #include "Components/Terrain.h"
@@ -290,7 +289,6 @@ namespace Spartan
             case ComponentType::Renderable:      component = static_cast<IComponent*>(AddComponent<Renderable>(id));      break;
             case ComponentType::RigidBody:       component = static_cast<IComponent*>(AddComponent<RigidBody>(id));       break;
             case ComponentType::SoftBody:        component = static_cast<IComponent*>(AddComponent<SoftBody>(id));        break;
-            case ComponentType::Script:          component = static_cast<IComponent*>(AddComponent<Script>(id));          break;
             case ComponentType::Environment:     component = static_cast<IComponent*>(AddComponent<Environment>(id));     break;
             case ComponentType::Transform:       component = static_cast<IComponent*>(AddComponent<Transform>(id));       break;
             case ComponentType::Terrain:         component = static_cast<IComponent*>(AddComponent<Terrain>(id));         break;

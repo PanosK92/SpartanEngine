@@ -137,7 +137,6 @@ project (RUNTIME_NAME)
 	includedirs { "../third_party/FreeImage_3.18.0" }
 	includedirs { "../third_party/FreeType_2.11.0" }
 	includedirs { "../third_party/pugixml_1.11.4" }
-	includedirs { "../third_party/Mono_6.12.0.86" }
 	includedirs { "../third_party/SDL2_2.0.14" }
     includedirs { "../third_party/Compressonator_4.2.5185" }
     includedirs { "../Runtime/Core" } -- Linux needs the directory of the pre-compiled header (Spartan.h)
@@ -156,7 +155,6 @@ project (RUNTIME_NAME)
 		links { "FreeImageLib_debug" }
 		links { "freetype_debug" }
 		links { "BulletCollision_debug", "BulletDynamics_debug", "BulletSoftBody_debug", "LinearMath_debug" }
-		links { "libmono-static-sgen_debug.lib" }
 		links { "SDL2_debug.lib" }
 		links { "Compressonator_MT_debug.lib" }
 	    links { "spirv-cross-c_debug" }
@@ -178,7 +176,6 @@ project (RUNTIME_NAME)
 		links { "FreeImageLib" }
 		links { "freetype" }
 		links { "BulletCollision", "BulletDynamics", "BulletSoftBody", "LinearMath" }
-		links { "libmono-static-sgen.lib" }
 		links { "SDL2.lib" }
 		links { "Compressonator_MT.lib" }
 	    links { "spirv-cross-c" }

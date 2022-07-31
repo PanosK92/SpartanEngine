@@ -24,7 +24,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "IComponent.h"
 #include "Light.h"
 #include "Environment.h"
-#include "Script.h"
 #include "RigidBody.h"
 #include "SoftBody.h"
 #include "Collider.h"
@@ -65,7 +64,7 @@ namespace Spartan
     inline constexpr ComponentType IComponent::TypeToEnum() { return ComponentType::Unknown; }
 
     template<typename T>
-    inline constexpr void validate_component_type() { static_assert(std::is_base_of<IComponent, T>::value, "Provided type does not implement IComponent"); }
+    inline constexpr void validate_component_type() { static_assert(is_base_of<IComponent, T>::value, "Provided type does not implement IComponent"); }
 
     // Explicit template instantiation
     #define REGISTER_COMPONENT(T, enumT) template<> SPARTAN_CLASS ComponentType IComponent::TypeToEnum<T>() { validate_component_type<T>(); return enumT; }
@@ -80,7 +79,6 @@ namespace Spartan
     REGISTER_COMPONENT(Renderable,      ComponentType::Renderable)
     REGISTER_COMPONENT(RigidBody,       ComponentType::RigidBody)
     REGISTER_COMPONENT(SoftBody,        ComponentType::SoftBody)
-    REGISTER_COMPONENT(Script,          ComponentType::Script)
     REGISTER_COMPONENT(Environment,     ComponentType::Environment)
     REGISTER_COMPONENT(Terrain,         ComponentType::Terrain)
     REGISTER_COMPONENT(Transform,       ComponentType::Transform)

@@ -453,7 +453,6 @@ void FileDialog::ItemDrag(FileDialogItem* item) const
         if (FileSystem::IsSupportedModelFile(item->GetPath())) { set_payload(ImGuiEx::DragPayloadType::DragPayload_Model,    item->GetPath()); }
         if (FileSystem::IsSupportedImageFile(item->GetPath())) { set_payload(ImGuiEx::DragPayloadType::DragPayload_Texture,  item->GetPath()); }
         if (FileSystem::IsSupportedAudioFile(item->GetPath())) { set_payload(ImGuiEx::DragPayloadType::DragPayload_Audio,    item->GetPath()); }
-        if (FileSystem::IsEngineScriptFile(item->GetPath()))   { set_payload(ImGuiEx::DragPayloadType::DragPayload_Script,   item->GetPath()); }
         if (FileSystem::IsEngineMaterialFile(item->GetPath())) { set_payload(ImGuiEx::DragPayloadType::DragPayload_Material, item->GetPath()); }
 
         // Preview
@@ -570,38 +569,6 @@ void FileDialog::EmptyAreaContextMenu()
     if (ImGui::MenuItem("Create folder"))
     {
         FileSystem::CreateDirectory(m_navigation.m_path_current + "/New folder");
-        m_is_dirty = true;
-    }
-
-    if (ImGui::MenuItem("Create script"))
-    {
-        const string file_path = m_navigation.m_path_current + "/NewScript" + EXTENSION_SCRIPT;
-        const string text =
-            "using System;\n"
-            "using Spartan;\n"
-            "\n"
-            "public class NewScript\n"
-            "{\n"
-            "\tpublic NewScript()\n"
-            "\t{\n"
-            "\n"
-            "\t}\n"
-            "\n"
-            "\t// Start is called before the first frame update\n"
-            "\tpublic void Start()\n"
-            "\t{\n"
-            "\n"
-            "\t}\n"
-            "\n"
-            "\t// Update is called once per frame\n"
-            "\tpublic void Update(float delta_time)\n"
-            "\t{\n"
-            "\n"
-            "\t}\n"
-            "}\n";
-
-        FileSystem::CreateTextFile(file_path, text);
-
         m_is_dirty = true;
     }
 

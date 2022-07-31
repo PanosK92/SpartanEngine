@@ -40,7 +40,6 @@ namespace Spartan
         Environment,
         Fonts,
         Icons,
-        Scripts,
         ShaderCompiler,
         Shaders,
         Textures

@@ -37,7 +37,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Components/Light.h"
 #include "World/Components/AudioSource.h"
 #include "World/Components/AudioListener.h"
-#include "World/Components/Script.h"
 #include "World/Components/Environment.h"
 #include "World/Components/Terrain.h"
 #include "World/Components/ReflectionProbe.h"
@@ -179,13 +178,8 @@ void Properties::TickVisible()
         ShowSoftBody(entity_ptr->GetComponent<SoftBody>());
         ShowCollider(entity_ptr->GetComponent<Collider>());
         ShowConstraint(entity_ptr->GetComponent<Constraint>());
-        for (auto& script : entity_ptr->GetComponents<Script>())
-        {
-            ShowScript(script);
-        }
         
         ShowAddComponentButton();
-        Drop_AutoAddComponents();
     }
     else if (!m_inspected_material.expired())
     {
@@ -1122,28 +1116,6 @@ void Properties::ShowReflectionProbe(Spartan::ReflectionProbe* reflection_probe)
     helper::ComponentEnd();
 }
 
-void Properties::ShowScript(Script* script) const
-{
-    if (!script)
-        return;
-
-    if (helper::ComponentBegin(script->GetObjectName(), IconType::Component_Script, script))
-    {
-        //= REFLECT =========================
-        auto script_name = script->GetObjectName();
-        //===================================
-
-        ImGui::Text("Script");
-        ImGui::SameLine();
-        ImGui::PushID("##ScriptNameTemp");
-        ImGui::PushItemWidth(200.0f);
-        ImGui::InputText("", &script_name, ImGuiInputTextFlags_ReadOnly);
-        ImGui::PopItemWidth();
-        ImGui::PopID();
-    }
-    helper::ComponentEnd();
-}
-
 void Properties::ShowAddComponentButton() const
 {
     ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 5);
@@ -1254,16 +1226,5 @@ void Properties::ComponentContextMenu_Add() const
         }
 
         ImGui::EndPopup();
-    }
-}
-
-void Properties::Drop_AutoAddComponents() const
-{
-    if (auto payload = ImGuiEx::ReceiveDragPayload(ImGuiEx::DragPayloadType::DragPayload_Script))
-    {
-        if (auto script_component = m_inspected_entity.lock()->AddComponent<Script>())
-        {
-            script_component->SetScript(get<const char*>(payload->data));
-        }
     }
 }
