@@ -74,7 +74,7 @@ If there is something interesting to talk about, I tend to do livestreams over a
 
 # Roadmap
 
-## v0.32-35 (WIP)
+## Currently
 
 Feature            | Completion | Notes
 :-                 | :-         | :-
@@ -99,18 +99,3 @@ Linux support             | -          | Vulkan and SDL is there, working on a l
 - Export on Windows.
 - UI components.
 - Make editor more stylish.
-
-# Documentation
-
-- [Compiling](https://github.com/PanosK92/SpartanEngine/blob/master/docs/compiling_from_source/compiling_from_source.md) - A guide on how to compile from source.
-- [Contributing](https://github.com/PanosK92/SpartanEngine/blob/master/docs/CONTRIBUTING.md) - Guidelines on how to contribute.
-
-# Dependencies
-
-- [DirectX End-User Runtimes](https://www.microsoft.com/en-us/download/details.aspx?id=8109) - For the DirectX build.
-- [Microsoft Visual C++ Redistributable for Visual Studio 2022](https://aka.ms/vs/17/release/vc_redist.x64.exe).
-- Windows 10/11 and a modern/dedicated GPU. The engine targets high-end machines.
-
-# License
-
-- Licensed under the MIT license, see [LICENSE.txt](https://github.com/PanosK92/SpartanEngine/blob/master/docs/LICENSE.txt) for details.
