@@ -16,9 +16,11 @@ jobs:
           python-version: 3.10.5
 
       - name: Generate project files
-        shell: cmd
-        run: '"%pythonLocation%\python.exe" generate_vs2022_d3d11.py'
-               
+        shell: python
+        run: |
+          import os
+          os.system('python generate_vs2022_d3d11.py')
+          
       - name: Build
         shell: cmd
         run: '"%msbuild_path%\MSBuild.exe" /p:Platform=Windows /p:Configuration=Release /m spartan.sln'
