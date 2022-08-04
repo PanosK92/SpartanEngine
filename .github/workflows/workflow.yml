@@ -12,19 +12,21 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4.2.0
+        with:
+          python-version: '3.10' 
 
-      - name: Generate project files
+      - name: Generating project files...
         run: 'generate_vs2022_d3d11.py'
       
-      - name: Build
+      - name: Bulding...
         shell: cmd
         run: '"%MSBUILD_PATH%\MSBuild.exe" /p:Platform=Windows /p:Configuration=Release /m spartan.sln'
         
-      - name: Create artifact
+      - name: Creating artifact...
         shell: cmd
         run: 'build_scripts\package_artifact.bat d3d11'
       
-      - name: Upload artifact
+      - name: Uploading artifact...
         uses: actions/upload-artifact@master
         with:
           name: build_d3d11
@@ -38,12 +40,13 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4.2.0
+        with:
+            python-version: '3.10' 
 
-      - name: Generate project files
-        shell: python
+      - name: Generating project files...
         run: 'generate_vs2022_d3d12.py'
       
-      - name: Build
+      - name: Building...
         shell: cmd
         run: '"%MSBUILD_PATH%\MSBuild.exe" /p:Platform=Windows /p:Configuration=Release /m spartan.sln'
         
@@ -55,20 +58,22 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4.2.0
-
-      - name: Generate project files
+        with:
+          python-version: '3.10'
+          
+      - name: Generating project files...
         shell: python
         run: 'generate_vs2022_vulkan.py'
       
-      - name: Build
+      - name: Building...
         shell: cmd
         run: '"%MSBUILD_PATH%\MSBuild.exe" /p:Platform=Windows /p:Configuration=Release /m spartan.sln'
         
-      - name: Create artifact
+      - name: Creating artifact...
         shell: cmd
         run: 'build_scripts\package_artifact.bat vulkan'
       
-      - name: Upload artifact
+      - name: Uploading artifact...
         uses: actions/upload-artifact@master
         with:
           name: build_vulkan
