@@ -17,6 +17,9 @@ jobs:
 
       - name: Generating project files...
         run: python generate_vs2022_d3d11.py
+        
+      - name: DEBUG
+        run: python -c "import os; print(os.getcwd())"
       
       - name: Bulding...
         shell: cmd
