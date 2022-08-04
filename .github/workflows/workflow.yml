@@ -13,21 +13,21 @@ jobs:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4.2.0
         with:
-          python-version: '3.10' 
+          python-version: 3.10.5
 
-      - name: Generating project files...
+      - name: Generate project files
         shell: cmd
-        run: '"%pythonLocation%\python3.exe" generate_vs2022_d3d11.py'
+        run: '"%pythonLocation%\python.exe" generate_vs2022_d3d11.py'
                
-      - name: Bulding...
+      - name: Build
         shell: cmd
         run: '"%msbuild_path%\MSBuild.exe" /p:Platform=Windows /p:Configuration=Release /m spartan.sln'
         
-      - name: Creating artifact...
+      - name: Create artifact
         shell: cmd
         run: 'build_scripts\package_artifact.bat d3d11'
       
-      - name: Uploading artifact...
+      - name: Upload artifact
         uses: actions/upload-artifact@master
         with:
           name: build_d3d11
@@ -42,13 +42,13 @@ jobs:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4.2.0
         with:
-            python-version: '3.10' 
+            python-version: 3.10.5
 
-      - name: Generating project files...
+      - name: Generate project files
         shell: cmd
-        run: '"%pythonLocation%\python3.exe" generate_vs2022_d3d12.py'
+        run: '"%pythonLocation%\python.exe" generate_vs2022_d3d12.py'
       
-      - name: Building...
+      - name: Build
         shell: cmd
         run: '"%msbuild_path%\MSBuild.exe" /p:Platform=Windows /p:Configuration=Release /m spartan.sln'
         
@@ -61,21 +61,21 @@ jobs:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4.2.0
         with:
-          python-version: '3.10'
+          python-version: 3.10.5
           
-      - name: Generating project files...
+      - name: Generate project files
         shell: cmd
-        run: '"%pythonLocation%\python3.exe" generate_vs2022_vulkan.py'
+        run: '"%pythonLocation%\python.exe" generate_vs2022_vulkan.py'
       
-      - name: Building...
+      - name: Build
         shell: cmd
         run: '"%msbuild_path%\MSBuild.exe" /p:Platform=Windows /p:Configuration=Release /m spartan.sln'
         
-      - name: Creating artifact...
+      - name: Create artifact
         shell: cmd
         run: 'build_scripts\package_artifact.bat vulkan'
       
-      - name: Uploading artifact...
+      - name: Upload artifact
         uses: actions/upload-artifact@master
         with:
           name: build_vulkan
