@@ -16,7 +16,8 @@ jobs:
           python-version: '3.10' 
 
       - name: Generating project files...
-        run: python generate_vs2022_d3d11.py
+        shell: cmd
+        run: 'python generate_vs2022_d3d11.py'
                
       - name: Bulding...
         shell: cmd
@@ -44,7 +45,8 @@ jobs:
             python-version: '3.10' 
 
       - name: Generating project files...
-        run: python generate_vs2022_d3d12.py
+        shell: cmd
+        run: 'python generate_vs2022_d3d12.py'
       
       - name: Building...
         shell: cmd
@@ -62,7 +64,8 @@ jobs:
           python-version: '3.10'
           
       - name: Generating project files...
-        run: python generate_vs2022_vulkan.py
+        shell: cmd
+        run: 'python generate_vs2022_vulkan.py'
       
       - name: Building...
         shell: cmd
