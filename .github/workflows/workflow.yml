@@ -19,7 +19,6 @@ jobs:
         run: python generate_vs2022_d3d11.py
         
       - name: Print errors
-        if: steps.script.outputs.error == 'true'
         run: |
           printenv "SCRIPT_STDOUT"
           printenv "SCRIPT_STDERR"
