@@ -18,9 +18,9 @@ jobs:
       - name: Generate project files
         shell: python
         run: |
-          import os
-          print("Hello World")
+          import subprocess
           os.system("generate_vs2022_d3d11.py")
+          subprocess.Popen("generate_vs2022_d3d11.py", shell=True).communicate()
           
       - name: Build
         shell: cmd
