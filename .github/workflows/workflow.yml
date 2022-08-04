@@ -17,7 +17,7 @@ jobs:
 
       - name: Generating project files...
         shell: cmd
-        run: '"%pythonLocation%\python.exe" python generate_vs2022_d3d11.py'
+        run: '"%pythonLocation%\python.exe" generate_vs2022_d3d11.py'
                
       - name: Bulding...
         shell: cmd
@@ -46,7 +46,7 @@ jobs:
 
       - name: Generating project files...
         shell: cmd
-        run: '"%pythonLocation%\python.exe" python generate_vs2022_d3d12.py'
+        run: '"%pythonLocation%\python.exe" generate_vs2022_d3d12.py'
       
       - name: Building...
         shell: cmd
@@ -65,7 +65,7 @@ jobs:
           
       - name: Generating project files...
         shell: cmd
-        run: 'python generate_vs2022_vulkan.py'
+        run: '"%pythonLocation%\python.exe" generate_vs2022_vulkan.py'
       
       - name: Building...
         shell: cmd
@@ -73,7 +73,7 @@ jobs:
         
       - name: Creating artifact...
         shell: cmd
-        run: '"%pythonLocation%\python.exe" build_scripts\package_artifact.bat vulkan'
+        run: 'build_scripts\package_artifact.bat vulkan'
       
       - name: Uploading artifact...
         uses: actions/upload-artifact@master
