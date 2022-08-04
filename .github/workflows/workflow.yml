@@ -16,16 +16,8 @@ jobs:
           python-version: '3.10' 
 
       - name: Generating project files...
-        run: python generate_vs2022_d3d11.py
-        
-      - name: Print errors
-        run: |
-          printenv "SCRIPT_STDOUT"
-          printenv "SCRIPT_STDERR"
-        env:
-          SCRIPT_STDOUT: ${{ steps.script.outputs.stdout }}
-          SCRIPT_STDERR: ${{ steps.script.outputs.stderr }} 
-          
+        run: 'python generate_vs2022_d3d11.py'
+               
       - name: Bulding...
         shell: cmd
         run: '"%msbuild_path%\MSBuild.exe" /p:Platform=Windows /p:Configuration=Release /m spartan.sln'
