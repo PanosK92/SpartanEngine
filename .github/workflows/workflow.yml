@@ -17,7 +17,6 @@ jobs:
         run: |
           import subprocess
           subprocess.Popen("python generate_vs2022_d3d11.py").communicate()
-          sys.exit(0)
           
       - name: Build
         shell: cmd
@@ -46,7 +45,6 @@ jobs:
         run: |
           import subprocess
           subprocess.Popen("python generate_vs2022_d3d12.py").communicate()
-          sys.exit(0)
       
       - name: Build
         shell: cmd
@@ -65,7 +63,6 @@ jobs:
         run: |
           import subprocess
           subprocess.Popen("python generate_vs2022_vulkan.py").communicate()
-          sys.exit(0)
       
       - name: Build
         shell: cmd
