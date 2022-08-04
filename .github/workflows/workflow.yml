@@ -19,7 +19,7 @@ jobs:
         shell: python
         run: |
           import subprocess
-          subprocess.Popen("generate_vs2022_d3d11.py", shell=True).communicate()
+          subprocess.Popen("python generate_vs2022_d3d11.py").communicate()
           
       - name: Build
         shell: cmd
