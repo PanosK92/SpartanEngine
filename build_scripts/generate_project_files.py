@@ -1,6 +1,7 @@
 import os
 import shutil
 import sys
+import subprocess
 
 # Define a function to check if a path represents a directory, even if it doesn't exist.
 def is_directory(path):
@@ -48,4 +49,7 @@ copy("assets\\environment", "binaries\\project\\environment")
 
 # 5. Generate project files
 print("\n5. Generating project files...")
-os.system("build_scripts\\premake5.exe --file=build_scripts\\premake.lua" + " " + sys.argv[1] + " " + sys.argv[2])
+subprocess.Popen("build_scripts\\premake5.exe --file=build_scripts\\premake.lua " + sys.argv[1] + " " + sys.argv[2], shell=True).communicate()
+
+# Exit
+sys.exit(0)
