@@ -17,6 +17,7 @@ jobs:
         run: |
           import subprocess
           subprocess.Popen("python generate_vs2022_d3d11.py").communicate()
+          sys.exit(0)
           
       - name: Build
         shell: cmd
@@ -39,15 +40,13 @@ jobs:
       msbuild_path: C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4.2.0
-        with:
-            python-version: 3.10.5
 
       - name: Generate project files
         shell: python
         run: |
           import subprocess
           subprocess.Popen("python generate_vs2022_d3d12.py").communicate()
+          sys.exit(0)
       
       - name: Build
         shell: cmd
@@ -60,15 +59,13 @@ jobs:
       msbuild_path: C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4.2.0
-        with:
-          python-version: 3.10.5
           
       - name: Generate project files
         shell: python
         run: |
           import subprocess
           subprocess.Popen("python generate_vs2022_vulkan.py").communicate()
+          sys.exit(0)
       
       - name: Build
         shell: cmd
