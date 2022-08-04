@@ -439,11 +439,12 @@ namespace Spartan
         // 3D model - asset
         {
             m_default_world_model = make_unique<Model>(m_context);
-            m_default_world_model->LoadFromFile("project\\models\\damaged_helmet\\DamagedHelmet.gltf");
-
-            Entity* entity = m_default_world_model->GetRootEntity();
-            entity->SetName("model");
-            entity->GetTransform()->SetPosition(Vector3(0.0f, 0.52f, 0.0f));
+            if (m_default_world_model->LoadFromFile("project\\models\\damaged_helmet\\DamagedHelmet.gltf"))
+            {
+                Entity* entity = m_default_world_model->GetRootEntity();
+                entity->SetName("model");
+                entity->GetTransform()->SetPosition(Vector3(0.0f, 0.52f, 0.0f));
+            }
         }
 
         // 3D model - floor
