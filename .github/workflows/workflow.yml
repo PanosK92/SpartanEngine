@@ -19,7 +19,8 @@ jobs:
         shell: python
         run: |
           import os
-          os.system('python generate_vs2022_d3d11.py')
+          print("Hello World")
+          os.system("generate_vs2022_d3d11.py")
           
       - name: Build
         shell: cmd
