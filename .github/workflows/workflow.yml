@@ -8,7 +8,7 @@ jobs:
   build_d3d11:
     runs-on: "windows-2022"
     env:
-      MSBUILD_PATH: C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\
+      msbuild_path: C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4.2.0
@@ -20,7 +20,7 @@ jobs:
       
       - name: Bulding...
         shell: cmd
-        run: '"%MSBUILD_PATH%\MSBuild.exe" /p:Platform=Windows /p:Configuration=Release /m spartan.sln'
+        run: '"%msbuild_path%\MSBuild.exe" /p:Platform=Windows /p:Configuration=Release /m spartan.sln'
         
       - name: Creating artifact...
         shell: cmd
@@ -36,7 +36,7 @@ jobs:
   build_d3d12:
     runs-on: "windows-2022"
     env:
-      MSBUILD_PATH: C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\
+      msbuild_path: C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4.2.0
@@ -48,13 +48,13 @@ jobs:
       
       - name: Building...
         shell: cmd
-        run: '"%MSBUILD_PATH%\MSBuild.exe" /p:Platform=Windows /p:Configuration=Release /m spartan.sln'
+        run: '"%msbuild_path%\MSBuild.exe" /p:Platform=Windows /p:Configuration=Release /m spartan.sln'
         
 #= Build Vulkan =======================================================================================
   build_vulkan:
     runs-on: "windows-2022"
     env:
-      MSBUILD_PATH: C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\
+      msbuild_path: C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4.2.0
@@ -67,7 +67,7 @@ jobs:
       
       - name: Building...
         shell: cmd
-        run: '"%MSBUILD_PATH%\MSBuild.exe" /p:Platform=Windows /p:Configuration=Release /m spartan.sln'
+        run: '"%msbuild_path%\MSBuild.exe" /p:Platform=Windows /p:Configuration=Release /m spartan.sln'
         
       - name: Creating artifact...
         shell: cmd
