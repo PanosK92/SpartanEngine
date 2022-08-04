@@ -17,9 +17,9 @@
 -- IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 -- CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-SOLUTION_NAME            = "Spartan"
-EDITOR_NAME              = "Editor"
-RUNTIME_NAME             = "Runtime"
+SOLUTION_NAME            = "spartan"
+EDITOR_NAME              = "editor"
+RUNTIME_NAME             = "runtime"
 TARGET_NAME              = "spartan" -- Name of executable
 EDITOR_DIR               = "../" .. EDITOR_NAME
 RUNTIME_DIR              = "../" .. RUNTIME_NAME
