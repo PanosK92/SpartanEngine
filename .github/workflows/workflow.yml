@@ -11,10 +11,7 @@ jobs:
       msbuild_path: C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4.2.0
-        with:
-          python-version: 3.10.5
-
+      
       - name: Generate project files
         shell: python
         run: |
@@ -47,8 +44,10 @@ jobs:
             python-version: 3.10.5
 
       - name: Generate project files
-        shell: cmd
-        run: '"%pythonLocation%\python.exe" generate_vs2022_d3d12.py'
+        shell: python
+        run: |
+          import subprocess
+          subprocess.Popen("python generate_vs2022_d3d12.py").communicate()
       
       - name: Build
         shell: cmd
@@ -66,8 +65,10 @@ jobs:
           python-version: 3.10.5
           
       - name: Generate project files
-        shell: cmd
-        run: '"%pythonLocation%\python.exe" generate_vs2022_vulkan.py'
+        shell: python
+        run: |
+          import subprocess
+          subprocess.Popen("python generate_vs2022_vulkan.py").communicate()
       
       - name: Build
         shell: cmd
