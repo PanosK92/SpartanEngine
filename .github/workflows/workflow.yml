@@ -11,9 +11,9 @@ jobs:
       MSBUILD_PATH: C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\
     steps:
       - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4 
 
       - name: Generate project files
-        uses: actions/setup-python@v4 
         run: generate_vs2022_d3d11.py
       
       - name: Build
