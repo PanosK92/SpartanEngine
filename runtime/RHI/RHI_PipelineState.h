@@ -45,7 +45,7 @@ namespace Spartan
         bool IsGraphics() const { return (shader_vertex != nullptr || shader_pixel != nullptr) && !shader_compute; }
         bool IsCompute()  const { return shader_compute != nullptr && !IsGraphics(); }
 
-        //= Static, modification can potentially generate a new pipeline ===================
+        //= Static, modification can potentially generate a new pipeline =====================
         RHI_Shader* shader_vertex                     = nullptr;
         RHI_Shader* shader_pixel                      = nullptr;
         RHI_Shader* shader_compute                    = nullptr;
@@ -64,16 +64,16 @@ namespace Spartan
         std::array<RHI_Texture*, rhi_max_render_target_count> render_target_color_textures;
 
         // RT indices (affect render pass)
-        uint32_t render_target_color_texture_array_index         = 0;
+        uint32_t render_target_color_texture_array_index = 0;
         uint32_t render_target_depth_stencil_texture_array_index = 0;
 
         // Clear values
-        float clear_depth   = rhi_depth_stencil_load;
-        float clear_stencil = rhi_depth_stencil_load;
+        float clear_depth      = rhi_depth_load;
+        uint32_t clear_stencil = rhi_stencil_load;
         std::array<Math::Vector4, rhi_max_render_target_count> clear_color;
-        //==================================================================================
+        //====================================================================================
 
-        //= Dynamic, modification wont' createda new pipeline =
+        //= Dynamic, modification wont' create a new pipeline =
         bool render_target_depth_texture_read_only = false;
         //=====================================================
 

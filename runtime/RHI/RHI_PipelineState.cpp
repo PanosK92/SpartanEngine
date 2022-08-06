@@ -117,10 +117,10 @@ namespace Spartan
 
     bool RHI_PipelineState::HasClearValues()
     {
-        if (clear_depth != rhi_depth_stencil_load && clear_depth != rhi_depth_stencil_dont_care)
+        if (clear_depth != rhi_depth_load && clear_depth != rhi_depth_dont_care)
             return true;
 
-        if (clear_stencil != rhi_depth_stencil_load && clear_stencil != rhi_depth_stencil_dont_care)
+        if (clear_stencil != rhi_stencil_load && clear_stencil != rhi_stencil_dont_care)
             return true;
 
         for (const Vector4& color : clear_color)
@@ -178,17 +178,17 @@ namespace Spartan
         {
             if (shader_compute)
             {
-                hash = rhi_hash_combine(hash, shader_compute->GetObjectId());
+                hash = rhi_hash_combine(hash, shader_compute->GetHash());
             }
 
             if (shader_vertex)
             {
-                hash = rhi_hash_combine(hash, shader_vertex->GetObjectId());
+                hash = rhi_hash_combine(hash, shader_vertex->GetHash());
             }
 
             if (shader_pixel)
             {
-                hash = rhi_hash_combine(hash, shader_pixel->GetObjectId());
+                hash = rhi_hash_combine(hash, shader_pixel->GetHash());
             }
         }
 
@@ -216,10 +216,10 @@ namespace Spartan
             {
                 hash = rhi_hash_combine(hash, render_target_depth_texture->GetObjectId());
 
-                load_op = clear_depth == rhi_depth_stencil_dont_care ? 0 : clear_depth == rhi_depth_stencil_load ? 1 : 2;
+                load_op = clear_depth == rhi_depth_dont_care ? 0 : clear_depth == rhi_depth_load ? 1 : 2;
                 hash = rhi_hash_combine(hash, static_cast<uint64_t>(load_op));
 
-                load_op = clear_stencil == rhi_depth_stencil_dont_care ? 0 : clear_stencil == rhi_depth_stencil_load ? 1 : 2;
+                load_op = clear_stencil == rhi_stencil_dont_care ? 0 : clear_stencil == rhi_stencil_load ? 1 : 2;
                 hash = rhi_hash_combine(hash, static_cast<uint64_t>(load_op));
             }
         }

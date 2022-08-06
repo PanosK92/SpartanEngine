@@ -315,14 +315,16 @@ namespace Spartan
     static const uint16_t rhi_descriptor_max_constant_buffers_dynamic = 32;
     static const uint16_t rhi_descriptor_max_samplers                 = 32;
 
-    static const Math::Vector4  rhi_color_dont_care           = Math::Vector4(-std::numeric_limits<float>::infinity(), 0.0f, 0.0f, 0.0f);
-    static const Math::Vector4  rhi_color_load                = Math::Vector4(std::numeric_limits<float>::infinity(), 0.0f, 0.0f, 0.0f);
-    #define                     rhi_depth_stencil_dont_care   3.402823466e+38F
-    #define                     rhi_depth_stencil_load        (3.402823466e+38F - 1.0f)
-    static const uint8_t        rhi_max_render_target_count   = 8;
-    static const uint8_t        rhi_max_constant_buffer_count = 8;
-    static const uint32_t       rhi_dynamic_offset_empty      = (std::numeric_limits<uint32_t>::max)();
-    static const uint8_t        rhi_max_mip_count             = 13;
+    static const Math::Vector4 rhi_color_dont_care           = Math::Vector4(std::numeric_limits<float>::max(), 0.0f, 0.0f, 0.0f);
+    static const Math::Vector4 rhi_color_load                = Math::Vector4(std::numeric_limits<float>::infinity(), 0.0f, 0.0f, 0.0f);
+    static const float         rhi_depth_dont_care           = std::numeric_limits<float>::max();
+    static const float         rhi_depth_load                = std::numeric_limits<float>::infinity();
+    static const uint32_t      rhi_stencil_dont_care         = std::numeric_limits<uint32_t>::max();
+    static const uint32_t      rhi_stencil_load              = std::numeric_limits<uint32_t>::infinity();
+    static const uint8_t       rhi_max_render_target_count   = 8;
+    static const uint8_t       rhi_max_constant_buffer_count = 8;
+    static const uint32_t      rhi_dynamic_offset_empty      = std::numeric_limits<uint32_t>::max();
+    static const uint8_t       rhi_max_mip_count             = 13;
 
     static uint64_t rhi_hash_combine(uint64_t seed, uint64_t x)
     {
