@@ -33,17 +33,6 @@ using namespace std;
 
 namespace Spartan
 {
-    uint64_t string_to_uint64(std::string str)
-    {
-        uint64_t r = 0;
-        for (auto const& j : str)
-        {
-            r <<= 8;
-            r |= j;
-        }
-        return r;
-    }
-
     RHI_Shader::RHI_Shader(Context* context, const RHI_Vertex_Type vertex_type) : SpartanObject(context)
     {
         m_rhi_device   = context->GetSubsystem<Renderer>()->GetRhiDevice();
@@ -137,14 +126,9 @@ namespace Spartan
         }
     }
 
-    void RHI_Shader::ParseSource(const string& file_path)
+    void RHI_Shader::PreprocessIncludeDirectives(const string& file_path)
     {
         static string include_directive_prefix = "#include \"";
-
-        // Read the file
-        ifstream in(file_path);
-        stringstream buffer;
-        buffer << in.rdbuf();
 
         // Skip already parsed include directives (avoid recursive include directives)
         if (find(m_file_paths_multiple.begin(), m_file_paths_multiple.end(), file_path) == m_file_paths_multiple.end())
@@ -156,53 +140,70 @@ namespace Spartan
             return;
         }
 
-        string file_source    = buffer.str();
-        string file_directory = FileSystem::GetDirectoryFromFilePath(file_path);
+        // Load source
+        ifstream in(file_path);
+        stringstream buffer;
+        buffer << in.rdbuf();
+        string source = buffer.str();
         
-        // Build combined source (go through every line)
-        istringstream stream(file_source);
+        // Go through every line
+        istringstream stream(source);
         string source_line;
         while (getline(stream, source_line))
         {
+            // Add the line to the preprocessed source
             bool is_include_directive = source_line.find(include_directive_prefix) != string::npos;
-
             if (!is_include_directive)
             {
-                m_source += source_line + "\n";
-                m_hash = rhi_hash_combine(m_hash, string_to_uint64(source_line));
+                m_preprocessed_source += source_line + "\n";
             }
+            // If the line is an include directive, process it recursively
             else
             {
-                string file_name = FileSystem::GetStringBetweenExpressions(source_line, include_directive_prefix, "\"");
-                string include_file_path = file_directory + file_name;
-                ParseSource(include_file_path);
+                // Construct include file
+                string file_name         = FileSystem::GetStringBetweenExpressions(source_line, include_directive_prefix, "\"");
+                string include_file_path = FileSystem::GetDirectoryFromFilePath(file_path) + file_name;
+
+                // Process
+                PreprocessIncludeDirectives(include_file_path);
             }
         }
 
-        // Get name
+        // Save name
         m_names.emplace_back(FileSystem::GetFileNameFromFilePath(file_path));
 
-        // Get file path
+        // Save file path
         m_file_paths.emplace_back(file_path);
 
-        // Get source
-        m_sources.emplace_back(file_source);
+        // Save source
+        m_sources.emplace_back(source);
     }
 
     void RHI_Shader::LoadSource(const string& file_path)
     {
-        // Get name and file path
+        // Initialise a couple of things
         m_object_name = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path);
         m_file_path   = file_path;
-
-        // Parse source
-        m_hash = 0;
-        m_source.clear();
+        m_preprocessed_source.clear();
         m_names.clear();
         m_file_paths.clear();
         m_sources.clear();
         m_file_paths_multiple.clear();
-        ParseSource(file_path);
+
+        // Construct the source by recursively processing all include directives, starting from the actual file path.
+        PreprocessIncludeDirectives(file_path);
+
+        // Update hash
+        {
+            hash<string> hasher;
+            m_hash = 0;
+            m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(hasher(m_preprocessed_source)));
+            for (const auto& it : m_defines)
+            {
+                m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(hasher(it.first)));
+                m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(hasher(it.second)));
+            }
+        }
 
         // Reverse the vectors so they have the main shader before the subsequent include directives.
         // This also helps with the editor's shader editor where you are interested more in the first source.

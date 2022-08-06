@@ -94,7 +94,7 @@ namespace Spartan
         const auto& GetRenderTargets()                                              { return m_render_targets; }
 
         // Clear depth value
-        float GetClearDepth() { return GetOption<bool>(RendererOption::ReverseZ) ? m_viewport.depth_min : m_viewport.depth_max; }
+        float GetClearDepth() { return GetOption<bool>(RendererOption::ReverseZ) ? 0.0f : 1.0f; }
 
         // Environment texture
         const std::shared_ptr<RHI_Texture> GetEnvironmentTexture();
