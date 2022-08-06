@@ -92,7 +92,7 @@ namespace Spartan
         // Warn if the the image is using a non-optimal format
         if (image_tiling != VK_IMAGE_TILING_OPTIMAL)
         {
-            LOG_WARNING("Format %s does not support optimal tiling, considering switching to a more efficient format.", RhiFormatToString(format));
+            LOG_WARNING("Format %s does not support optimal tiling, considering switching to a more efficient format.", rhi_format_to_string(format));
         }
 
         // Set layout to pre-initialised (required by Vulkan)
