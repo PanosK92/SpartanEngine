@@ -54,15 +54,14 @@ namespace Spartan
         Debanding,
         ReverseZ,
         DepthPrepass,
-        Ffx_Cas,
         Anisotropy,
         ShadowResolution,
         Gamma,
-        Sharpness,
         Fog,
         Antialiasing,
         Tonemapping,
-        Upsampling
+        Upsampling,
+        Sharpness,
     };
 
     enum class AntialiasingMode : uint32_t
@@ -211,9 +210,7 @@ namespace Spartan
         Reflection_Probe_P,
         Ffx_Cas_C,
         Ffx_Spd_C,
-        Ffx_Spd_LuminanceAntiflicker_C,
-        Ffx_Fsr_Upsample_C,
-        Ffx_Fsr_Sharpen_C
+        Ffx_Spd_LuminanceAntiflicker_C
     };
     
     enum class RendererTexture : uint8_t

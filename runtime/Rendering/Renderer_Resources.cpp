@@ -441,14 +441,6 @@ namespace Spartan
             m_shaders[RendererShader::Ffx_Spd_LuminanceAntiflicker_C] = make_shared<RHI_Shader>(m_context);
             m_shaders[RendererShader::Ffx_Spd_LuminanceAntiflicker_C]->AddDefine("LUMINANCE_ANTIFLICKER");
             m_shaders[RendererShader::Ffx_Spd_LuminanceAntiflicker_C]->Compile(RHI_Shader_Compute, dir_shaders + "amd_fidelity_fx/spd.hlsl", async);
-
-            // FSR 1.0
-            m_shaders[RendererShader::Ffx_Fsr_Upsample_C] = make_shared<RHI_Shader>(m_context);
-            m_shaders[RendererShader::Ffx_Fsr_Upsample_C]->AddDefine("UPSAMPLE");
-            m_shaders[RendererShader::Ffx_Fsr_Upsample_C]->Compile(RHI_Shader_Compute, dir_shaders + "amd_fidelity_fx/fsr_1_0.hlsl", async);
-            m_shaders[RendererShader::Ffx_Fsr_Sharpen_C] = make_shared<RHI_Shader>(m_context);
-            m_shaders[RendererShader::Ffx_Fsr_Sharpen_C]->AddDefine("SHARPEN");
-            m_shaders[RendererShader::Ffx_Fsr_Sharpen_C]->Compile(RHI_Shader_Compute, dir_shaders + "amd_fidelity_fx/fsr_1_0.hlsl", async);
         }
 
         // Debug

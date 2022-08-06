@@ -1320,20 +1320,13 @@ namespace Spartan
         bool taa_enabled              = antialiasing == AntialiasingMode::Taa  || antialiasing == AntialiasingMode::TaaFxaa;
         bool fxaa_enabled             = antialiasing == AntialiasingMode::Fxaa || antialiasing == AntialiasingMode::TaaFxaa;
 
+        // Get upsampling mode
+        UpsamplingMode upsampling_mode = GetOption<UpsamplingMode>(RendererOption::Upsampling);
+
         // RENDER RESOLUTION -> OUTPUT RESOLUTION
         {
-            // Get upsampling mode
-            UpsamplingMode upsampling_mode = GetOption<UpsamplingMode>(RendererOption::Upsampling);
-
-            // FSR 1.0
-            if (upsampling_mode == UpsamplingMode::FSR && RHI_Device::GetApiType() == RHI_Api_Type::D3d11)
-            {
-                // TODO: This needs to be in perceptual space and normalised to 0, 1 range.
-                swap_render = !swap_render;
-                Pass_Ffx_Fsr_1_0(cmd_list, get_render_in, rt_frame_output, rt_frame_output_scratch);
-            }
             // FSR 2.0 (It can be used both for upsampling and just TAA)
-            else if (upsampling_mode == UpsamplingMode::FSR || taa_enabled)
+            if (upsampling_mode == UpsamplingMode::FSR || taa_enabled)
             {
                 swap_render = !swap_render;
                 Pass_Ffx_Fsr_2_0(cmd_list, get_render_in, rt_frame_output);
@@ -1369,10 +1362,14 @@ namespace Spartan
             Pass_ToneMappingGammaCorrection(cmd_list, get_output_in, get_output_out);
 
             // Sharpening
-            if (GetOption<bool>(RendererOption::Ffx_Cas))
+            if (GetOption<bool>(RendererOption::Sharpness))
             {
-                swap_output = !swap_output;
-                Pass_Ffx_Cas(cmd_list, get_output_in, get_output_out);
+                // FidelityFX FSR 2.0 sharpening overrides FidelityFX CAS
+                if (upsampling_mode != UpsamplingMode::FSR)
+                {
+                    swap_output = !swap_output;
+                    Pass_Ffx_Cas(cmd_list, get_output_in, get_output_out);
+                }
             }
 
             // Debanding
@@ -1897,66 +1894,12 @@ namespace Spartan
         cmd_list->EndMarker();
     }
 
-    void Renderer::Pass_Ffx_Fsr_1_0(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out, RHI_Texture* tex_out_scratch)
-    {
-        // Acquire shaders
-        RHI_Shader* shader_upsample_c = m_shaders[RendererShader::Ffx_Fsr_Upsample_C].get();
-        RHI_Shader* shader_sharpen_c  = m_shaders[RendererShader::Ffx_Fsr_Sharpen_C].get();
-        if (!shader_upsample_c->IsCompiled() || !shader_sharpen_c->IsCompiled())
-            return;
-
-        cmd_list->BeginTimeblock("amd_ffx_fsr_1_0");
-
-        // Upsample
-        cmd_list->BeginMarker("upsample");
-        {
-            // Define render state
-            static RHI_PipelineState pso;
-            pso.shader_compute = shader_upsample_c;
-
-            // Set pipeline state
-            cmd_list->SetPipelineState(pso);
-
-            // Set textures
-            cmd_list->SetTexture(RendererBindingsUav::tex, tex_out_scratch);
-            cmd_list->SetTexture(RendererBindingsSrv::tex, tex_in);
-
-            // Render
-            static const int thread_group_work_region_dim = 16;
-            const uint32_t thread_group_count_x_          = (tex_out->GetWidth() + (thread_group_work_region_dim - 1)) / thread_group_work_region_dim;
-            const uint32_t thread_group_count_y_          = (tex_out->GetHeight() + (thread_group_work_region_dim - 1)) / thread_group_work_region_dim;
-            cmd_list->Dispatch(thread_group_count_x_, thread_group_count_y_);
-        }
-        cmd_list->EndMarker();
-
-        // Sharpen
-        cmd_list->BeginMarker("sharpen");
-        {
-            // Define pipeline state
-            static RHI_PipelineState pso;
-            pso.shader_compute  = shader_sharpen_c;
-
-            // Set pipeline state
-            cmd_list->SetPipelineState(pso);
-
-            // Set textures
-            cmd_list->SetTexture(RendererBindingsUav::tex, tex_out);
-            cmd_list->SetTexture(RendererBindingsSrv::tex, tex_out_scratch);
-
-            // Render
-            static const int thread_group_work_region_dim = 16;
-            const uint32_t thread_group_count_x_          = (tex_out->GetWidth() + (thread_group_work_region_dim - 1)) / thread_group_work_region_dim;
-            const uint32_t thread_group_count_y_          = (tex_out->GetHeight() + (thread_group_work_region_dim - 1)) / thread_group_work_region_dim;
-            cmd_list->Dispatch(thread_group_count_x(tex_out), thread_group_count_y(tex_out));
-        }
-        cmd_list->EndMarker();
-
-        cmd_list->EndTimeblock();
-    }
-
     void Renderer::Pass_Ffx_Fsr_2_0(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
     {
         cmd_list->BeginTimeblock("amd_ffx_fsr_2_0");
+
+        // Get sharpness value
+        float sharpness = GetOption<float>(RendererOption::Sharpness);
 
         RHI_FSR::Dispatch(
             cmd_list,

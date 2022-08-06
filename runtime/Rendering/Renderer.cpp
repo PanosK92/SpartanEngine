@@ -64,14 +64,12 @@ namespace Spartan
         m_options.fill(0.0f);
         SetOption(RendererOption::ReverseZ,               1.0f);
         SetOption(RendererOption::Bloom,                  0.2f); // Non-zero values activate it and define the blend factor.
-        SetOption(RendererOption::VolumetricFog,          1.0f);
         SetOption(RendererOption::MotionBlur,             1.0f);
         SetOption(RendererOption::Ssao,                   1.0f);
         SetOption(RendererOption::Ssao_Gi,                1.0f);
         SetOption(RendererOption::ScreenSpaceShadows,     1.0f);
         SetOption(RendererOption::ScreenSpaceReflections, 1.0f);
         SetOption(RendererOption::Antialiasing,           static_cast<float>(AntialiasingMode::Taa));
-        SetOption(RendererOption::Ffx_Cas,                1.0f);
         SetOption(RendererOption::Anisotropy,             16.0f);
         SetOption(RendererOption::ShadowResolution,       2048.0f);
         SetOption(RendererOption::Tonemapping,            static_cast<float>(TonemappingMode::Disabled));
@@ -85,9 +83,10 @@ namespace Spartan
         SetOption(RendererOption::Debug_Lights,             1.0f);
         SetOption(RendererOption::Debug_Physics,            1.0f);
         SetOption(RendererOption::Debug_PerformanceMetrics, 1.08f);
-        //SetOption(RendererOption::DepthOfField, 1.0f);        // This is depth of field from ALDI, so until I improve it, it should be disabled by default.
+        //SetOption(RendererOption::DepthOfField,        1.0f); // This is depth of field from ALDI, so until I improve it, it should be disabled by default.
         //SetOption(RendererOption::Render_DepthPrepass, 1.0f); // Depth-pre-pass is not always faster, so by default, it's disabled.
-        //SetOption(RendererOption::Debanding, 1.0f);           // Disable debanding as we shouldn't be seeing debanding to begin with.
+        //SetOption(RendererOption::Debanding,           1.0f); // Disable debanding as we shouldn't be seeing debanding to begin with.
+        //SetOption(RendererOption::VolumetricFog,       1.0f); // Disable by default because it's not that great, I need to do it with a voxelised approach
 
         // Subscribe to events.
         SP_SUBSCRIBE_TO_EVENT(EventType::WorldResolved, SP_EVENT_HANDLER_VARIANT(OnRenderablesAcquire));
@@ -722,10 +721,27 @@ namespace Spartan
         if (m_options[static_cast<uint32_t>(option)] == value)
             return;
 
+        // Reject changes (if needed)
+        {
+            bool is_d3d11 = RHI_Device::GetApiType() == RHI_Api_Type::D3d11;
+
+            if (is_d3d11 && option == RendererOption::Antialiasing && (value == static_cast<float>(AntialiasingMode::Taa) || value == static_cast<float>(AntialiasingMode::TaaFxaa)))
+            {
+                LOG_WARNING("TAA is not supported on D3D11");
+                return;
+            }
+
+            if (is_d3d11 && option == RendererOption::Upsampling && value == static_cast<float>(UpsamplingMode::FSR))
+            {
+                LOG_WARNING("FSR 2.0 is not supported on D3D11");
+                return;
+            }
+        }
+
         // Set new value
         m_options[static_cast<uint32_t>(option)] = value;
 
-        // Handle cascading changes for any options that require it
+        // Handle cascading changes
         {
             // Reverse-z
             if (option == RendererOption::ReverseZ)
@@ -740,29 +756,52 @@ namespace Spartan
                     m_camera->MakeDirty();
                 }
             }
-            // TAA
+            // Antialiasing
             else if (option == RendererOption::Antialiasing)
             {
-                if (value == static_cast<float>(AntialiasingMode::Taa) || value == static_cast<float>(AntialiasingMode::TaaFxaa))
+                bool taa_enabled = value == static_cast<float>(AntialiasingMode::Taa) || value == static_cast<float>(AntialiasingMode::TaaFxaa);
+                bool fsr_enabled = GetOption<UpsamplingMode>(RendererOption::Upsampling) == UpsamplingMode::FSR;
+
+                if (taa_enabled)
                 {
-                    // We lo longer maintain a custom TAA pass as FSR 2.0's TAA is superior, so fall back to FXAA.
-                    if (RHI_Device::GetApiType() == RHI_Api_Type::D3d11)
+                    // Implicitly enable FSR since it's doing TAA.
+                    if (!fsr_enabled)
                     {
-                        SetOption(RendererOption::Antialiasing, static_cast<float>(AntialiasingMode::Fxaa));
-                        LOG_WARNING("TAA is not supported for D3D11, switching to FXAA.");
-                    }
-                    else if (GetOption<UpsamplingMode>(RendererOption::Upsampling) != UpsamplingMode::FSR)
-                    {
-                        SetOption(RendererOption::Upsampling, static_cast<float>(UpsamplingMode::FSR));
+                        m_options[static_cast<uint32_t>(RendererOption::Upsampling)] = static_cast<float>(UpsamplingMode::FSR);
                         LOG_INFO("Enabled FSR 2.0 since it's used for TAA.");
                     }
                 }
                 else
                 {
-                    if (GetOption<UpsamplingMode>(RendererOption::Upsampling) == UpsamplingMode::FSR)
+                    // Implicitly disable FSR since it's doing TAA
+                    if (fsr_enabled)
                     {
-                        SetOption(RendererOption::Upsampling, static_cast<float>(UpsamplingMode::Linear));
+                        m_options[static_cast<uint32_t>(RendererOption::Upsampling)] = static_cast<float>(UpsamplingMode::Linear);
                         LOG_INFO("Disabed FSR 2.0 since it's used for TAA.");
+                    }
+                }
+            }
+            // Upsampling
+            else if (option == RendererOption::Upsampling)
+            {
+                bool taa_enabled = GetOption<AntialiasingMode>(RendererOption::Antialiasing) == AntialiasingMode::Taa;
+
+                if (value == static_cast<float>(UpsamplingMode::Linear))
+                {
+                    // Implicitly disable TAA since FSR 2.0 is doing it
+                    if (taa_enabled)
+                    {
+                        m_options[static_cast<uint32_t>(RendererOption::Antialiasing)] = static_cast<float>(AntialiasingMode::Disabled);
+                        LOG_INFO("Disabled TAA since it's done by FSR 2.0.");
+                    }
+                }
+                else if (value == static_cast<float>(UpsamplingMode::FSR))
+                {
+                    // Implicitly enable TAA since FSR 2.0 is doing it
+                    if (!taa_enabled)
+                    {
+                        m_options[static_cast<uint32_t>(RendererOption::Antialiasing)] = static_cast<float>(AntialiasingMode::Taa);
+                        LOG_INFO("Enabled TAA since FSR 2.0 does it.");
                     }
                 }
             }
@@ -777,23 +816,6 @@ namespace Spartan
                     {
                         light->CreateShadowMap();
                     }
-                }
-            }
-            // Upsampling
-            else if (option == RendererOption::Upsampling)
-            {
-                if (value == static_cast<float>(UpsamplingMode::Linear))
-                {
-                    if (GetOption<AntialiasingMode>(RendererOption::Antialiasing) == AntialiasingMode::Taa)
-                    {
-                        SetOption(RendererOption::Antialiasing, static_cast<float>(AntialiasingMode::Disabled));
-                        LOG_INFO("Disabled TAA since it's done by FSR 2.0");
-                    }
-                }
-                else if (value == static_cast<float>(UpsamplingMode::FSR) && RHI_Device::GetApiType() != RHI_Api_Type::D3d11)
-                {
-                    SetOption(RendererOption::Antialiasing, static_cast<float>(AntialiasingMode::Taa));
-                    LOG_INFO("Enabled TAA since FSR 2.0 does it.");
                 }
             }
         }
