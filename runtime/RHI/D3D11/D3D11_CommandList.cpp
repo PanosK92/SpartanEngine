@@ -390,7 +390,7 @@ namespace Spartan
         const bool storage                  /*= false*/,
         const Math::Vector4& clear_color    /*= rhi_color_load*/,
         const float clear_depth             /*= rhi_depth_load*/,
-        const float clear_stencil           /*= rhi_stencil_load*/
+        const uint32_t clear_stencil        /*= rhi_stencil_load*/
     )
     {
         if (storage)

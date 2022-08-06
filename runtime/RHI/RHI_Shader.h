@@ -60,11 +60,12 @@ namespace Spartan
         auto& GetDefines() const                                                  { return m_defines; }
 
         // Misc
-        const uint32_t GetVertexSize() const;
+        uint32_t GetVertexSize() const;
         const std::vector<RHI_Descriptor>& GetDescriptors()      const { return m_descriptors; }
-        const std::shared_ptr<RHI_InputLayout>& GetInputLayout() const { return m_input_layout; } // only valid for vertex shader
+        const std::shared_ptr<RHI_InputLayout>& GetInputLayout() const { return m_input_layout; } // only valid for a vertex shader
         const auto& GetFilePath()                                const { return m_file_path; }
         RHI_Shader_Type GetShaderStage()                         const { return m_shader_type; }
+        uint64_t GetHash()                                       const { return m_hash; }
         const char* GetEntryPoint()                              const;
         const char* GetTargetProfile()                           const;
 
@@ -91,6 +92,7 @@ namespace Spartan
         std::atomic<Shader_Compilation_State> m_compilation_state = Shader_Compilation_State::Idle;
         RHI_Shader_Type m_shader_type                             = RHI_Shader_Unknown;
         RHI_Vertex_Type m_vertex_type                             = RHI_Vertex_Type::Undefined;
+        uint64_t m_hash                                           = 0;
 
         // RHI Resource
         void* m_rhi_resource = nullptr;

@@ -33,6 +33,17 @@ using namespace std;
 
 namespace Spartan
 {
+    uint64_t string_to_uint64(std::string str)
+    {
+        uint64_t r = 0;
+        for (auto const& j : str)
+        {
+            r <<= 8;
+            r |= j;
+        }
+        return r;
+    }
+
     RHI_Shader::RHI_Shader(Context* context, const RHI_Vertex_Type vertex_type) : SpartanObject(context)
     {
         m_rhi_device   = context->GetSubsystem<Renderer>()->GetRhiDevice();
@@ -158,6 +169,7 @@ namespace Spartan
             if (!is_include_directive)
             {
                 m_source += source_line + "\n";
+                m_hash = rhi_hash_combine(m_hash, string_to_uint64(source_line));
             }
             else
             {
@@ -184,6 +196,7 @@ namespace Spartan
         m_file_path   = file_path;
 
         // Parse source
+        m_hash = 0;
         m_source.clear();
         m_names.clear();
         m_file_paths.clear();
@@ -209,7 +222,7 @@ namespace Spartan
         m_sources[index] = source;
     }
 
-    const uint32_t RHI_Shader::GetVertexSize() const
+    uint32_t RHI_Shader::GetVertexSize() const
     {
         return m_input_layout->GetVertexSize();
     }
