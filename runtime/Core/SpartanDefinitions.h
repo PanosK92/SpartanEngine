@@ -83,6 +83,7 @@ constexpr int sp_version_revision = 3;
 //= Assert ==========================================================================
 // On debug mode, the assert will have the default behaviour.
 // On release mode, the assert will write the error to a file and then break.
+#include <cassert>
 #ifdef DEBUG
 #define SP_ASSERT(expression) assert(expression)
 #else

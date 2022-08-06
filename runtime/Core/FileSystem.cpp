@@ -211,28 +211,6 @@ namespace Spartan
         return false;
     }
 
-    bool FileSystem::CopyFileFromTo(const string& source, const string& destination)
-    {
-        if (source == destination)
-            return true;
-
-        // In case the destination path doesn't exist, create it
-        if (!Exists(GetDirectoryFromFilePath(destination)))
-        {
-            CreateDirectory(GetDirectoryFromFilePath(destination));
-        }
-
-        try 
-        {
-            return filesystem::copy_file(source, destination, filesystem::copy_options::overwrite_existing);
-        }
-        catch (filesystem::filesystem_error& e)
-        {
-            LOG_WARNING("%s", e.what());
-            return true;
-        }
-    }
-
     string FileSystem::GetFileNameFromFilePath(const string& path)
     {
         return filesystem::path(path).filename().generic_string();
@@ -674,7 +652,7 @@ namespace Spartan
         }
         catch (filesystem::filesystem_error& e)
         {
-            LOG_WARNING("s, %s", e.what(), path.c_str());
+            LOG_ERROR("s, %s", e.what(), path.c_str());
         }
 
         return false;
@@ -689,9 +667,32 @@ namespace Spartan
         }
         catch (filesystem::filesystem_error& e)
         {
-            LOG_WARNING("%s, %s", e.what(), path.c_str());
+            LOG_ERROR("%s, %s", e.what(), path.c_str());
         }
 
         return false;
     }
+
+    bool FileSystem::CopyFileFromTo(const string& source, const string& destination)
+    {
+        if (source == destination)
+            return true;
+
+        // In case the destination path doesn't exist, create it
+        if (!Exists(GetDirectoryFromFilePath(destination)))
+        {
+            CreateDirectory(GetDirectoryFromFilePath(destination));
+        }
+
+        try
+        {
+            return filesystem::copy_file(source, destination, filesystem::copy_options::overwrite_existing);
+        }
+        catch (filesystem::filesystem_error& e)
+        {
+            LOG_ERROR("%s", e.what());
+            return true;
+        }
+    }
+
 }
