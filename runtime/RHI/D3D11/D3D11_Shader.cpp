@@ -75,8 +75,8 @@ namespace Spartan
         ID3DBlob* shader_blob = nullptr;
         HRESULT result = D3DCompile
         (
-            m_source.c_str(),
-            static_cast<SIZE_T>(m_source.size()),
+            m_preprocessed_source.c_str(),
+            static_cast<SIZE_T>(m_preprocessed_source.size()),
             nullptr,
             defines.data(),
             nullptr,

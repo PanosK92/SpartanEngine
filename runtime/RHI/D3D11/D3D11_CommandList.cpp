@@ -369,8 +369,8 @@ namespace Spartan
         if (m_pso.render_target_depth_texture)
         {
             UINT clear_flags = 0;
-            clear_flags |= (m_pso.clear_depth   != rhi_depth_stencil_load && m_pso.clear_depth   != rhi_depth_stencil_dont_care) ? D3D11_CLEAR_DEPTH   : 0;
-            clear_flags |= (m_pso.clear_stencil != rhi_depth_stencil_load && m_pso.clear_stencil != rhi_depth_stencil_dont_care) ? D3D11_CLEAR_STENCIL : 0;
+            clear_flags |= (m_pso.clear_depth   != rhi_depth_load   && m_pso.clear_depth   != rhi_depth_dont_care)   ? D3D11_CLEAR_DEPTH   : 0;
+            clear_flags |= (m_pso.clear_stencil != rhi_stencil_load && m_pso.clear_stencil != rhi_stencil_dont_care) ? D3D11_CLEAR_STENCIL : 0;
             if (clear_flags != 0)
             {
                 m_rhi_device->GetContextRhi()->device_context->ClearDepthStencilView
@@ -426,12 +426,9 @@ namespace Spartan
             }
             else if (texture->IsRenderTargetDepthStencil())
             {
-                if ((clear_depth == rhi_depth_stencil_load || clear_depth == rhi_depth_stencil_dont_care) && (clear_stencil == rhi_depth_stencil_load || clear_stencil == rhi_depth_stencil_dont_care))
-                    return;
-
                 UINT clear_flags = 0;
-                clear_flags |= (clear_depth   != rhi_depth_stencil_load && clear_depth   != rhi_depth_stencil_dont_care) ? D3D11_CLEAR_DEPTH : 0;
-                clear_flags |= (clear_stencil != rhi_depth_stencil_load && clear_stencil != rhi_depth_stencil_dont_care) ? D3D11_CLEAR_STENCIL : 0;
+                clear_flags |= (clear_depth   != rhi_depth_load   && clear_depth   != rhi_depth_dont_care)   ? D3D11_CLEAR_DEPTH   : 0;
+                clear_flags |= (clear_stencil != rhi_stencil_load && clear_stencil != rhi_stencil_dont_care) ? D3D11_CLEAR_STENCIL : 0;
                 if (clear_flags != 0)
                 {
                     m_rhi_device->GetContextRhi()->device_context->ClearDepthStencilView
