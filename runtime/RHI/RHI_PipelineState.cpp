@@ -193,21 +193,13 @@ namespace Spartan
         }
 
         // RTs
-        bool has_rt_color = false;
         {
-            uint8_t load_op = 0;
-
             // Color
             for (uint32_t i = 0; i < rhi_max_render_target_count; i++)
             {
                 if (RHI_Texture* texture = render_target_color_textures[i])
                 {
                     hash = rhi_hash_combine(hash, texture->GetObjectId());
-
-                    load_op = clear_color[i] == rhi_color_dont_care ? 0 : clear_color[i] == rhi_color_load ? 1 : 2;
-                    hash = rhi_hash_combine(hash, static_cast<uint64_t>(load_op));
-
-                    has_rt_color = true;
                 }
             }
 
@@ -215,12 +207,6 @@ namespace Spartan
             if (render_target_depth_texture)
             {
                 hash = rhi_hash_combine(hash, render_target_depth_texture->GetObjectId());
-
-                load_op = clear_depth == rhi_depth_dont_care ? 0 : clear_depth == rhi_depth_load ? 1 : 2;
-                hash = rhi_hash_combine(hash, static_cast<uint64_t>(load_op));
-
-                load_op = clear_stencil == rhi_stencil_dont_care ? 0 : clear_stencil == rhi_stencil_load ? 1 : 2;
-                hash = rhi_hash_combine(hash, static_cast<uint64_t>(load_op));
             }
         }
 
