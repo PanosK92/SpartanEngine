@@ -20,7 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES ============================
-#include "Spartan.h"
+#include "pch.h"
 #include "Renderable.h"
 #include "Transform.h"
 #include "../../IO/FileStream.h"
@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../RHI/RHI_Texture2D.h"
 #include "../../Rendering/Model.h"
 #include "../../RHI/RHI_Vertex.h"
-#include "../Rendering/Geometry.h"
+#include "../../Rendering/Geometry.h"
 //=======================================
 
 //= NAMESPACES ===============

@@ -19,14 +19,14 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =======================
-#include "Spartan.h"
+//= INCLUDES ========================
+#include "pch.h"
 #include "TransformPosition.h"
-#include "../../Rendering/Model.h"
 #include "../Components/Camera.h"
 #include "../Components/Transform.h"
-#include "../Rendering/Geometry.h"
-//==================================
+#include "../../Rendering/Model.h"
+#include "../../Rendering/Geometry.h"
+//===================================
 
 //= NAMESPACES ===============
 using namespace std;
