@@ -181,7 +181,6 @@ void RenderOptions::TickVisible()
     bool do_ssr                    = m_renderer->GetOption<bool>(RendererOption::ScreenSpaceReflections);
     bool do_motion_blur            = m_renderer->GetOption<bool>(RendererOption::MotionBlur);
     bool do_film_grain             = m_renderer->GetOption<bool>(RendererOption::FilmGrain);
-    bool do_sharperning            = m_renderer->GetOption<bool>(RendererOption::Ffx_Cas);
     bool do_chromatic_aberration   = m_renderer->GetOption<bool>(RendererOption::ChromaticAberration);
     bool do_debanding              = m_renderer->GetOption<bool>(RendererOption::Debanding);
     bool debug_physics             = m_renderer->GetOption<bool>(RendererOption::Debug_Physics);
@@ -273,7 +272,7 @@ void RenderOptions::TickVisible()
                     static vector<string> upsampling_modes =
                     {
                         "Linear",
-                        RHI_Device::GetApiType() == RHI_Api_Type::D3d11 ? "FSR 1.0" : "FSR 2.0"
+                        "FSR 2.0"
                     };
 
                     bool upsampling_allowed = resolution_render.x < resolution_output.x || resolution_render.y < resolution_output.y;
@@ -286,6 +285,15 @@ void RenderOptions::TickVisible()
                     }
 
                     ImGui::EndDisabled();
+                }
+
+                // Sharpening
+                {
+                    // FidelityFX FSR 2.0 sharpening overrides FidelityFX CAS
+                    bool fsr_enabled = m_renderer->GetOption<UpsamplingMode>(RendererOption::Upsampling) == UpsamplingMode::FSR;
+                    string label = fsr_enabled ? "Sharpness (FSR 2.0)" : "Sharpness (AMD FidelityFX CAS)";
+
+                    helper::RenderOptionValue(label.c_str(), RendererOption::Sharpness, "", 0.1f, 0.0f, 1.0f);
                 }
             }
 
@@ -389,14 +397,6 @@ void RenderOptions::TickVisible()
                 // Dithering
                 helper::CheckBox("Debanding", do_debanding, "Reduces color banding");
 
-                // Sharpen
-                helper::CheckBox("Sharpening (AMD FidelityFX CAS)", do_sharperning, "Contrast adaptive sharpening. Areas of the image that are already sharp are sharpened less, while areas that lack detail are sharpened more.");
-
-                // Sharpen strength
-                ImGui::BeginDisabled(!do_sharperning);
-                helper::RenderOptionValue("Sharpness", RendererOption::Sharpness, "", 0.1f, 0.0f, 1.0f);
-                ImGui::EndDisabled();
-
                 // FPS Limit
                 {
                     Timer* timer = m_context->GetSubsystem<Timer>();
@@ -430,7 +430,7 @@ void RenderOptions::TickVisible()
                 }
             }
 
-            if (helper::Option("Editor", false))
+            if (helper::Option("Gizmos", false))
             {
                 helper::CheckBox("Transform", debug_transform);
                 {
@@ -468,7 +468,6 @@ void RenderOptions::TickVisible()
     m_renderer->SetOption(RendererOption::ScreenSpaceReflections,   do_ssr);
     m_renderer->SetOption(RendererOption::MotionBlur,               do_motion_blur);
     m_renderer->SetOption(RendererOption::FilmGrain,                do_film_grain);
-    m_renderer->SetOption(RendererOption::Ffx_Cas,                  do_sharperning);
     m_renderer->SetOption(RendererOption::ChromaticAberration,      do_chromatic_aberration);
     m_renderer->SetOption(RendererOption::Debanding,                do_debanding);
     m_renderer->SetOption(RendererOption::Debug_TransformHandle,    debug_transform);
