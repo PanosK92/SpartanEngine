@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===============
 #include <cstdint>
+#include <cassert>
 #include "../Math/Vector4.h"
 //==========================
 
@@ -330,7 +331,7 @@ namespace Spartan
         return seed;
     }
 
-    constexpr uint32_t RhiFormatToBitsPerChannel(const RHI_Format format)
+    constexpr uint32_t rhi_format_to_bits_per_channel(const RHI_Format format)
     {
         uint32_t bits = 0;
 
@@ -352,6 +353,7 @@ namespace Spartan
             case RHI_Format_R16G16B16A16_Snorm: bits = 16; break;
             case RHI_Format_R16G16B16A16_Float: bits = 16; break;
             case RHI_Format_R32G32B32A32_Float: bits = 32; break;
+            default: assert(false && "Unsupported format");
         }
 
         return bits;

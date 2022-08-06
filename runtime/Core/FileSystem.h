@@ -46,25 +46,6 @@ namespace Spartan
         static std::string ReplaceExpression(const std::string& str, const std::string& from, const std::string& to);
         static std::wstring StringToWstring(const std::string& str);
 
-        // Paths
-        static bool Exists(const std::string& path);
-        static bool IsDirectory(const std::string& path);
-        static bool IsFile(const std::string& path);
-        static bool CopyFileFromTo(const std::string& source, const std::string& destination);
-        static std::string GetFileNameFromFilePath(const std::string& path);
-        static std::string GetFileNameWithoutExtensionFromFilePath(const std::string& path);
-        static std::string GetDirectoryFromFilePath(const std::string& path);
-        static std::string GetFilePathWithoutExtension(const std::string& path);
-        static std::string ReplaceExtension(const std::string& path, const std::string& extension);
-        static std::string GetExtensionFromFilePath(const std::string& path);
-        static std::string NativizeFilePath(const std::string& path);
-        static std::string GetRelativePath(const std::string& path);
-        static std::string GetWorkingDirectory();
-        static std::string GetRootDirectory(const std::string& path);
-        static std::string GetParentDirectory(const std::string& path);
-        static std::vector<std::string> GetDirectoriesInDirectory(const std::string& path);
-        static std::vector<std::string> GetFilesInDirectory(const std::string& path);
-
         // Supported files
         static bool IsSupportedAudioFile(const std::string& path);
         static bool IsSupportedImageFile(const std::string& path);
@@ -91,16 +72,27 @@ namespace Spartan
         static std::vector<std::string> GetSupportedModelFilesInDirectory(const std::string& path);
         static std::vector<std::string> GetSupportedSceneFilesInDirectory(const std::string& path);
 
-        // Utilities
-
-        // Opens a URL in a browser.
-        // If the URL is a website, the default internet browser will be used.
-        // If the URL is a directory path, the file browser will be used.
-        // If the URL is a file path, then the file will be opened.
+        // Directories & files
+        static std::string GetFileNameFromFilePath(const std::string& path);
+        static std::string GetFileNameWithoutExtensionFromFilePath(const std::string& path);
+        static std::string GetDirectoryFromFilePath(const std::string& path);
+        static std::string GetFilePathWithoutExtension(const std::string& path);
+        static std::string ReplaceExtension(const std::string& path, const std::string& extension);
+        static std::string GetExtensionFromFilePath(const std::string& path);
+        static std::string NativizeFilePath(const std::string& path);
+        static std::string GetRelativePath(const std::string& path);
+        static std::string GetWorkingDirectory();
+        static std::string GetRootDirectory(const std::string& path);
+        static std::string GetParentDirectory(const std::string& path);
+        static std::vector<std::string> GetDirectoriesInDirectory(const std::string& path);
+        static std::vector<std::string> GetFilesInDirectory(const std::string& path);
+        static bool Exists(const std::string& path);
+        static bool IsDirectory(const std::string& path);
+        static bool IsFile(const std::string& path);
         static void OpenUrl(const std::string& url);
-        // Deletes a directory or a file.
         static bool Delete(const std::string& path);
         static bool CreateDirectory(const std::string& path);
+        static bool CopyFileFromTo(const std::string& source, const std::string& destination);
     };
 
     static const char* EXTENSION_WORLD    = ".world";

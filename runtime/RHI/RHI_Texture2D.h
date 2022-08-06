@@ -55,7 +55,7 @@ namespace Spartan
             m_mip_count        = GetSlice(0).GetMipCount();
             m_flags            = flags;
             m_channel_count    = RhiFormatToChannelCount(m_format);
-            m_bits_per_channel = RhiFormatToBitsPerChannel(m_format);
+            m_bits_per_channel = rhi_format_to_bits_per_channel(m_format);
 
             if (name != nullptr)
             {
