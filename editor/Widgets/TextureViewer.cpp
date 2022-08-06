@@ -116,7 +116,7 @@ void TextureViewer::TickVisible()
             ImGui::Text(("Name: " + texture->GetObjectName()).c_str());
             ImGui::Text(("Dimensions: " + to_string(texture->GetWidth()) + "x" + to_string(texture->GetHeight())).c_str());
             ImGui::Text(("Channels: " + to_string(texture->GetChannelCount())).c_str());
-            ImGui::Text(("Format: " + RhiFormatToString(texture->GetFormat())).c_str());
+            ImGui::Text(("Format: " + rhi_format_to_string(texture->GetFormat())).c_str());
             ImGui::EndGroup();
 
             // Channels

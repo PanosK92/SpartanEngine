@@ -333,91 +333,88 @@ namespace Spartan
 
     constexpr uint32_t rhi_format_to_bits_per_channel(const RHI_Format format)
     {
-        uint32_t bits = 0;
-
         switch (format)
         {
-            case RHI_Format_R8_Unorm:           bits = 8;  break;
-            case RHI_Format_R8_Uint:            bits = 8;  break;
-            case RHI_Format_R16_Unorm:          bits = 16; break;
-            case RHI_Format_R16_Uint:           bits = 16; break;
-            case RHI_Format_R16_Float:          bits = 16; break;
-            case RHI_Format_R32_Uint:           bits = 32; break;
-            case RHI_Format_R32_Float:          bits = 32; break;
-            case RHI_Format_R8G8_Unorm:         bits = 8;  break;
-            case RHI_Format_R16G16_Float:       bits = 16; break;
-            case RHI_Format_R32G32_Float:       bits = 32; break;
-            case RHI_Format_R32G32B32_Float:    bits = 32; break;
-            case RHI_Format_R8G8B8A8_Unorm:     bits = 8;  break;
-            case RHI_Format_R16G16B16A16_Unorm: bits = 16; break;
-            case RHI_Format_R16G16B16A16_Snorm: bits = 16; break;
-            case RHI_Format_R16G16B16A16_Float: bits = 16; break;
-            case RHI_Format_R32G32B32A32_Float: bits = 32; break;
-            default: assert(false && "Unsupported format");
+            case RHI_Format_R8_Unorm:           return 8;
+            case RHI_Format_R8_Uint:            return 8;
+            case RHI_Format_R16_Unorm:          return 16;
+            case RHI_Format_R16_Uint:           return 16;
+            case RHI_Format_R16_Float:          return 16;
+            case RHI_Format_R32_Uint:           return 32;
+            case RHI_Format_R32_Float:          return 32;
+            case RHI_Format_R8G8_Unorm:         return 8;
+            case RHI_Format_R16G16_Float:       return 16;
+            case RHI_Format_R32G32_Float:       return 32;
+            case RHI_Format_R32G32B32_Float:    return 32;
+            case RHI_Format_R8G8B8A8_Unorm:     return 8;
+            case RHI_Format_R16G16B16A16_Unorm: return 16;
+            case RHI_Format_R16G16B16A16_Snorm: return 16;
+            case RHI_Format_R16G16B16A16_Float: return 16;
+            case RHI_Format_R32G32B32A32_Float: return 32;
         }
 
-        return bits;
+        assert(false && "Unsupported format");
+        return 0;
     }
 
-    constexpr uint32_t RhiFormatToChannelCount(const RHI_Format format)
+    constexpr uint32_t rhi_to_format_channel_count(const RHI_Format format)
     {
-        uint32_t channel_count = 0;
-
         switch (format)
         {
-            case RHI_Format_R8_Unorm:           channel_count = 1; break;
-            case RHI_Format_R8_Uint:            channel_count = 1; break;
-            case RHI_Format_R16_Unorm:          channel_count = 1; break;
-            case RHI_Format_R16_Uint:           channel_count = 1; break;
-            case RHI_Format_R16_Float:          channel_count = 1; break;
-            case RHI_Format_R32_Uint:           channel_count = 1; break;
-            case RHI_Format_R32_Float:          channel_count = 1; break;
-            case RHI_Format_R8G8_Unorm:         channel_count = 2; break;
-            case RHI_Format_R16G16_Float:       channel_count = 2; break;
-            case RHI_Format_R32G32_Float:       channel_count = 2; break;
-            case RHI_Format_R11G11B10_Float:    channel_count = 3; break;
-            case RHI_Format_R32G32B32_Float:    channel_count = 3; break;
-            case RHI_Format_R8G8B8A8_Unorm:     channel_count = 4; break;
-            case RHI_Format_R10G10B10A2_Unorm:  channel_count = 4; break;
-            case RHI_Format_R16G16B16A16_Unorm: channel_count = 4; break;
-            case RHI_Format_R16G16B16A16_Snorm: channel_count = 4; break;
-            case RHI_Format_R16G16B16A16_Float: channel_count = 4; break;
-            case RHI_Format_R32G32B32A32_Float: channel_count = 4; break;
+            case RHI_Format_R8_Unorm:           return 1;
+            case RHI_Format_R8_Uint:            return 1;
+            case RHI_Format_R16_Unorm:          return 1;
+            case RHI_Format_R16_Uint:           return 1;
+            case RHI_Format_R16_Float:          return 1;
+            case RHI_Format_R32_Uint:           return 1;
+            case RHI_Format_R32_Float:          return 1;
+            case RHI_Format_R8G8_Unorm:         return 2;
+            case RHI_Format_R16G16_Float:       return 2;
+            case RHI_Format_R32G32_Float:       return 2;
+            case RHI_Format_R11G11B10_Float:    return 3;
+            case RHI_Format_R32G32B32_Float:    return 3;
+            case RHI_Format_R8G8B8A8_Unorm:     return 4;
+            case RHI_Format_R10G10B10A2_Unorm:  return 4;
+            case RHI_Format_R16G16B16A16_Unorm: return 4;
+            case RHI_Format_R16G16B16A16_Snorm: return 4;
+            case RHI_Format_R16G16B16A16_Float: return 4;
+            case RHI_Format_R32G32B32A32_Float: return 4;
+            case RHI_Format_D32_Float:          return 1;
         }
 
-        return channel_count;
+        assert(false && "Unsupported format");
+        return 0;
     }
 
-    constexpr std::string RhiFormatToString(const RHI_Format result)
+    constexpr std::string rhi_format_to_string(const RHI_Format result)
     {
-        std::string format;
-
         switch (result)
         {
-            case RHI_Format_R8_Unorm:             format = "RHI_Format_R8_Unorm";             break;
-            case RHI_Format_R8_Uint:              format = "RHI_Format_R8_Uint";              break;
-            case RHI_Format_R16_Unorm:            format = "RHI_Format_R16_Unorm";            break;
-            case RHI_Format_R16_Uint:             format = "RHI_Format_R16_Uint";             break;
-            case RHI_Format_R16_Float:            format = "RHI_Format_R16_Float";            break;
-            case RHI_Format_R32_Uint:             format = "RHI_Format_R32_Uint";             break;
-            case RHI_Format_R32_Float:            format = "RHI_Format_R32_Float";            break;
-            case RHI_Format_R8G8_Unorm:           format = "RHI_Format_R8G8_Unorm";           break;
-            case RHI_Format_R16G16_Float:         format = "RHI_Format_R16G16_Float";         break;
-            case RHI_Format_R32G32_Float:         format = "RHI_Format_R32G32_Float";         break;
-            case RHI_Format_R11G11B10_Float:      format = "RHI_Format_R11G11B10_Float";      break;
-            case RHI_Format_R32G32B32_Float:      format = "RHI_Format_R32G32B32_Float";      break;
-            case RHI_Format_R8G8B8A8_Unorm:       format = "RHI_Format_R8G8B8A8_Unorm";       break;
-            case RHI_Format_R10G10B10A2_Unorm:    format = "RHI_Format_R10G10B10A2_Unorm";    break;
-            case RHI_Format_R16G16B16A16_Unorm:   format = "RHI_Format_R16G16B16A16_Unorm";   break;
-            case RHI_Format_R16G16B16A16_Snorm:   format = "RHI_Format_R16G16B16A16_Snorm";   break;
-            case RHI_Format_R16G16B16A16_Float:   format = "RHI_Format_R16G16B16A16_Float";   break;
-            case RHI_Format_R32G32B32A32_Float:   format = "RHI_Format_R32G32B32A32_Float";   break;
-            case RHI_Format_D32_Float:            format = "RHI_Format_D32_Float";            break;
-            case RHI_Format_D32_Float_S8X24_Uint: format = "RHI_Format_D32_Float_S8X24_Uint"; break;
-            case RHI_Format_BC7:                  format = "RHI_Format_BC7";                  break;
-            case RHI_Format_Undefined:            format = "RHI_Format_Undefined";            break;
+            case RHI_Format_R8_Unorm:             return "RHI_Format_R8_Unorm";
+            case RHI_Format_R8_Uint:              return "RHI_Format_R8_Uint";
+            case RHI_Format_R16_Unorm:            return "RHI_Format_R16_Unorm";
+            case RHI_Format_R16_Uint:             return "RHI_Format_R16_Uint";
+            case RHI_Format_R16_Float:            return "RHI_Format_R16_Float";
+            case RHI_Format_R32_Uint:             return "RHI_Format_R32_Uint";
+            case RHI_Format_R32_Float:            return "RHI_Format_R32_Float";
+            case RHI_Format_R8G8_Unorm:           return "RHI_Format_R8G8_Unorm";
+            case RHI_Format_R16G16_Float:         return "RHI_Format_R16G16_Float";
+            case RHI_Format_R32G32_Float:         return "RHI_Format_R32G32_Float";
+            case RHI_Format_R11G11B10_Float:      return "RHI_Format_R11G11B10_Float";
+            case RHI_Format_R32G32B32_Float:      return "RHI_Format_R32G32B32_Float";
+            case RHI_Format_R8G8B8A8_Unorm:       return "RHI_Format_R8G8B8A8_Unorm";
+            case RHI_Format_R10G10B10A2_Unorm:    return "RHI_Format_R10G10B10A2_Unorm";
+            case RHI_Format_R16G16B16A16_Unorm:   return "RHI_Format_R16G16B16A16_Unorm";
+            case RHI_Format_R16G16B16A16_Snorm:   return "RHI_Format_R16G16B16A16_Snorm";
+            case RHI_Format_R16G16B16A16_Float:   return "RHI_Format_R16G16B16A16_Float";
+            case RHI_Format_R32G32B32A32_Float:   return "RHI_Format_R32G32B32A32_Float";
+            case RHI_Format_D32_Float:            return "RHI_Format_D32_Float";
+            case RHI_Format_D32_Float_S8X24_Uint: return "RHI_Format_D32_Float_S8X24_Uint";
+            case RHI_Format_BC7:                  return "RHI_Format_BC7";
+            case RHI_Format_Undefined:            return "RHI_Format_Undefined";
         }
 
-        return format;
+        assert(false && "Unsupported format");
+        return "";
     }
 }
