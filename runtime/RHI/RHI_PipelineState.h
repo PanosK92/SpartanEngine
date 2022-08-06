@@ -67,15 +67,16 @@ namespace Spartan
         uint32_t render_target_color_texture_array_index = 0;
         uint32_t render_target_depth_stencil_texture_array_index = 0;
 
-        // Clear values
+
+        //====================================================================================
+
+        //= Dynamic, modification wont' create a new pipeline =============
         float clear_depth      = rhi_depth_load;
         uint32_t clear_stencil = rhi_stencil_load;
         std::array<Math::Vector4, rhi_max_render_target_count> clear_color;
-        //====================================================================================
 
-        //= Dynamic, modification wont' create a new pipeline =
         bool render_target_depth_texture_read_only = false;
-        //=====================================================
+        //=================================================================
 
     private:
         const RHI_Device* m_rhi_device = nullptr;

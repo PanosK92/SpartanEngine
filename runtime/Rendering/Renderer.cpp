@@ -333,7 +333,7 @@ namespace Spartan
 
         if (m_viewport.width != width || m_viewport.height != height)
         {
-            m_viewport.width = width;
+            m_viewport.width  = width;
             m_viewport.height = height;
 
             m_dirty_orthographic_projection = true;

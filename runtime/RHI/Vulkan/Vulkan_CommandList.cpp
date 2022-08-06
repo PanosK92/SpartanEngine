@@ -59,12 +59,12 @@ namespace Spartan
         return VK_ATTACHMENT_LOAD_OP_CLEAR;
     };
 
-    static VkAttachmentLoadOp get_depth_stencil_load_op(const float depth, const uint32_t stencil)
+    static VkAttachmentLoadOp get_depth_load_op(const float depth)
     {
-        if (depth == rhi_depth_dont_care || stencil == rhi_stencil_dont_care)
+        if (depth == rhi_depth_dont_care)
             return VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 
-        if (depth == rhi_depth_load || stencil == rhi_stencil_load)
+        if (depth == rhi_depth_load)
             return VK_ATTACHMENT_LOAD_OP_LOAD;
 
         return VK_ATTACHMENT_LOAD_OP_CLEAR;
@@ -342,7 +342,7 @@ namespace Spartan
             attachment_depth_stencil.sType                           = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
             attachment_depth_stencil.imageView                       = static_cast<VkImageView>(rt->GetRhiDsv(m_pso.render_target_depth_stencil_texture_array_index));
             attachment_depth_stencil.imageLayout                     = vulkan_image_layout[static_cast<uint8_t>(rt->GetLayout(0))];
-            attachment_depth_stencil.loadOp                          = get_depth_stencil_load_op(m_pso.clear_depth, m_pso.clear_stencil);
+            attachment_depth_stencil.loadOp                          = get_depth_load_op(m_pso.clear_depth);
             attachment_depth_stencil.storeOp                         = VK_ATTACHMENT_STORE_OP_STORE;
             attachment_depth_stencil.clearValue.depthStencil.depth   = m_pso.clear_depth;
             attachment_depth_stencil.clearValue.depthStencil.stencil = m_pso.clear_stencil;

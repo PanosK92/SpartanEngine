@@ -598,7 +598,7 @@ namespace Spartan
         if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
             return;
 
-        cmd_list->BeginTimeblock(is_transparent_pass ? "gbuffer_transparent" : "gbuffer_opaque");
+        cmd_list->BeginTimeblock(is_transparent_pass ? "g_buffer_transparent" : "g_buffer");
 
         // Acquire render targets
         RHI_Texture* tex_albedo   = render_target(RendererTexture::Gbuffer_Albedo).get();

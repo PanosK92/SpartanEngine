@@ -76,12 +76,12 @@ namespace Spartan
         std::shared_ptr<RHI_Device> m_rhi_device;
 
     private:
-        void ParseSource(const std::string& file_path);
+        void PreprocessIncludeDirectives(const std::string& file_path);
         void* Compile2();
         void Reflect(const RHI_Shader_Type shader_type, const uint32_t* ptr, uint32_t size);
 
         std::string m_file_path;
-        std::string m_source;
+        std::string m_preprocessed_source;
         std::vector<std::string> m_names;               // The names of the files from the include directives in the shader
         std::vector<std::string> m_file_paths;          // The file paths of the files from the include directives in the shader
         std::vector<std::string> m_sources;             // The source of the files from the include directives in the shader
