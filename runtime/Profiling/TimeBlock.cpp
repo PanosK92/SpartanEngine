@@ -20,7 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES ======================
-#include "Spartan.h"
+#include "pch.h"
 #include "TimeBlock.h"
 #include "../RHI/RHI_Device.h"
 #include "../RHI/RHI_CommandList.h"

@@ -20,12 +20,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES ========================
-#include "Spartan.h"
+#include "pch.h"
 #include "TransformScale.h"
-#include "../../Rendering/Model.h"
 #include "../Components/Camera.h"
 #include "../Components/Transform.h"
-#include "../Rendering/Geometry.h"
+#include "../../Rendering/Model.h"
+#include "../../Rendering/Geometry.h"
 //===================================
 
 //= NAMESPACES ===============

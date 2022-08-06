@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 //= INCLUDES =============================
-#include "Spartan.h"
+#include "pch.h"
 #include "../RHI_FSR.h"
 #include "fsr/ffx_fsr2.h"
 #include "fsr/vk/ffx_fsr2_vk.h"
