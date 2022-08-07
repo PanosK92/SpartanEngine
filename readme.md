@@ -14,8 +14,7 @@
   
 - <img align="left" width="32" height="32" src="https://opensource.org/sites/default/files/public/osi_keyhole_300X300_90ppi_0.png">Embracing the open source ethos and respecting the <a href="https://en.wikipedia.org/wiki/MIT_License">MIT license</a> is greatly appreciated. This means that you can copy all the code you want as long as you include a copy of the original license.
 
-Build status |
-:-           |
+### Build status
 ![build_status](https://github.com/PanosK92/SpartanEngine/actions/workflows/workflow.yml/badge.svg)
 
 # Livestreams
