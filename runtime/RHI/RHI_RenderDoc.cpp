@@ -51,20 +51,20 @@ namespace Spartan
 #if defined(_MSC_VER) // Windows
 
             // If RenderDoc is already injected into the engine, use the existing module
-            rdc_module = GetModuleHandleA("renderdoc.dll");
+            rdc_module = ::GetModuleHandleA("renderdoc.dll");
 
             // If RenderDoc is not injected, load the module now
             if (rdc_module == nullptr)
             {
                 // todo: get module path from system registry
                 string module_path = "C:\\Program Files\\RenderDoc\\renderdoc.dll"; 
-                rdc_module = LoadLibraryA(module_path.c_str());
+                rdc_module = ::LoadLibraryA(module_path.c_str());
             }
 
             SP_ASSERT_MSG(rdc_module != nullptr, "Failed to get RenderDoc module");
 
-            // Get the adress of RENDERDOC_GetAPI
-            rdc_get_api = (pRENDERDOC_GetAPI)GetProcAddress(static_cast<HMODULE>(rdc_module), "RENDERDOC_GetAPI");
+            // Get the address of RENDERDOC_GetAPI
+            rdc_get_api = (pRENDERDOC_GetAPI)::GetProcAddress(static_cast<HMODULE>(rdc_module), "RENDERDOC_GetAPI");
 
 #else // Linux
             SP_ASSERT_MSG(false, "Not implemented");
