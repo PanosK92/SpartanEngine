@@ -124,14 +124,14 @@ namespace Spartan
         return extensions_supported;
     }
 
-    RHI_Device::RHI_Device(Context* context, RHI_Context* rhi_context)
+    RHI_Device::RHI_Device(Context* context, shared_ptr<RHI_Context> rhi_context)
     {
         m_context     = context;
         m_rhi_context = rhi_context;
 
         // Pass pointer to the widely used utility namespace
         vulkan_utility::globals::rhi_device  = this;
-        vulkan_utility::globals::rhi_context = rhi_context;
+        vulkan_utility::globals::rhi_context = rhi_context.get();
         
         // Create instance
         VkApplicationInfo app_info  = {};

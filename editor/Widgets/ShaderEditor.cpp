@@ -201,14 +201,14 @@ void ShaderEditor::ShowControls()
 
 void ShaderEditor::GetShaderInstances()
 {
-    unordered_map<RendererShader, shared_ptr<RHI_Shader>> shaders = m_renderer->GetShaders();
+    array<shared_ptr<RHI_Shader>, 48> shaders = m_renderer->GetShaders();
     m_shaders.clear();
 
-    for (const auto& it : shaders)
+    for (const shared_ptr<RHI_Shader>& shader : shaders)
     {
-        if (it.second->IsCompiled())
+        if (shader->IsCompiled())
         {
-            m_shaders.emplace_back(it.second.get());
+            m_shaders.emplace_back(shader.get());
         }
     }
 

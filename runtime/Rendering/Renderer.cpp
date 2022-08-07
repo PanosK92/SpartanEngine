@@ -90,9 +90,9 @@ namespace Spartan
         //SetOption(RendererOption::VolumetricFog,       1.0f); // Disable by default because it's not that great, I need to do it with a voxelised approach
 
         // Subscribe to events.
-        SP_SUBSCRIBE_TO_EVENT(EventType::WorldResolved, SP_EVENT_HANDLER_VARIANT(OnRenderablesAcquire));
-        SP_SUBSCRIBE_TO_EVENT(EventType::WorldPreClear, SP_EVENT_HANDLER(OnClear));
-        SP_SUBSCRIBE_TO_EVENT(EventType::WorldLoadEnd, SP_EVENT_HANDLER(OnWorldLoaded));
+        SP_SUBSCRIBE_TO_EVENT(EventType::WorldResolved,             SP_EVENT_HANDLER_VARIANT(OnRenderablesAcquire));
+        SP_SUBSCRIBE_TO_EVENT(EventType::WorldPreClear,             SP_EVENT_HANDLER(OnClear));
+        SP_SUBSCRIBE_TO_EVENT(EventType::WorldLoadEnd,              SP_EVENT_HANDLER(OnWorldLoaded));
         SP_SUBSCRIBE_TO_EVENT(EventType::WindowOnFullScreenToggled, SP_EVENT_HANDLER(OnFullScreenToggled));
 
         // Get thread id.
@@ -103,9 +103,6 @@ namespace Spartan
 
     Renderer::~Renderer()
     {
-        RHI_RenderDoc::Shutdown();
-        RHI_FSR::Destroy();
-
         // Unsubscribe from events
         SP_UNSUBSCRIBE_FROM_EVENT(EventType::WorldResolved,             SP_EVENT_HANDLER_VARIANT(OnRenderablesAcquire));
         SP_UNSUBSCRIBE_FROM_EVENT(EventType::WorldPreClear,             SP_EVENT_HANDLER(OnClear));
@@ -114,6 +111,9 @@ namespace Spartan
 
         // Log to file as the renderer is no more
         Log::m_log_to_file = true;
+
+        RHI_RenderDoc::Shutdown();
+        RHI_FSR::Destroy();
     }
 
     void Renderer::OnInitialize()
@@ -139,7 +139,7 @@ namespace Spartan
         }
 
         // Create device
-        m_rhi_device = make_shared<RHI_Device>(m_context, m_rhi_context.get());
+        m_rhi_device = make_shared<RHI_Device>(m_context, m_rhi_context);
 
         // Line buffer
         m_vertex_buffer_lines = make_shared<RHI_VertexBuffer>(m_rhi_device.get(), true, "renderer_lines");
@@ -223,7 +223,7 @@ namespace Spartan
             return;
 
         // Fire render start event
-        SP_FIRE_EVENT(EventType::RenderStart);
+        SP_FIRE_EVENT(EventType::RendererStart);
 
         m_frame_num++;
         m_is_odd_frame = (m_frame_num % 2) == 1;
@@ -841,7 +841,7 @@ namespace Spartan
             return;
 
         m_swap_chain->Present();
-        SP_FIRE_EVENT(EventType::PostPresent);
+        SP_FIRE_EVENT(EventType::RendererPostPresent);
     }
 
     void Renderer::Flush()

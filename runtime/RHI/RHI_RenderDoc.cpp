@@ -63,7 +63,7 @@ namespace Spartan
 
             SP_ASSERT_MSG(rdc_module != nullptr, "Failed to get RenderDoc module");
 
-            // Get the function address RENDERDOC_GetAPI
+            // Get the adress of RENDERDOC_GetAPI
             rdc_get_api = (pRENDERDOC_GetAPI)GetProcAddress(static_cast<HMODULE>(rdc_module), "RENDERDOC_GetAPI");
 
 #else // Linux

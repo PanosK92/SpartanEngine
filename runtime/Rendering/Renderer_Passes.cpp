@@ -50,8 +50,9 @@ using namespace std;
 using namespace Spartan::Math;
 //============================
 
-// A helper macro to work around the verboseness of some C++ concepts.
+// Macro to work around the verboseness of some C++ concepts.
 #define render_target(rt_enum)    m_render_targets[static_cast<uint8_t>(rt_enum)]
+#define shader(shader_enum)       m_shaders[static_cast<uint8_t>(shader_enum)]
 #define thread_group_count_x(tex) static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex->GetWidth()) / m_thread_group_count))
 #define thread_group_count_y(tex) static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex->GetHeight()) / m_thread_group_count))
 
@@ -201,8 +202,8 @@ namespace Spartan
         // Transparent objects read the opaque depth but don't write their own, instead, they write their color information using a pixel shader.
 
         // Acquire shaders
-        RHI_Shader* shader_v = m_shaders[RendererShader::Depth_Light_V].get();
-        RHI_Shader* shader_p = m_shaders[RendererShader::Depth_Light_P].get();
+        RHI_Shader* shader_v = shader(RendererShader::Depth_Light_V).get();
+        RHI_Shader* shader_p = shader(RendererShader::Depth_Light_P).get();
         if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
             return;
 
@@ -366,8 +367,8 @@ namespace Spartan
     void Renderer::Pass_ReflectionProbes(RHI_CommandList* cmd_list)
     {
         // Acquire shaders
-        RHI_Shader* shader_v = m_shaders[RendererShader::Reflection_Probe_V].get();
-        RHI_Shader* shader_p = m_shaders[RendererShader::Reflection_Probe_P].get();
+        RHI_Shader* shader_v = shader(RendererShader::Reflection_Probe_V).get();
+        RHI_Shader* shader_p = shader(RendererShader::Reflection_Probe_P).get();
         if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
             return;
 
@@ -504,8 +505,8 @@ namespace Spartan
             return;
 
         // Acquire shaders
-        RHI_Shader* shader_v = m_shaders[RendererShader::Depth_Prepass_V].get();
-        RHI_Shader* shader_p = m_shaders[RendererShader::Depth_Prepass_P].get();
+        RHI_Shader* shader_v = shader(RendererShader::Depth_Prepass_V).get();
+        RHI_Shader* shader_p = shader(RendererShader::Depth_Prepass_P).get();
         if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
             return;
 
@@ -593,8 +594,8 @@ namespace Spartan
     void Renderer::Pass_GBuffer(RHI_CommandList* cmd_list, const bool is_transparent_pass)
     {
         // Acquire shaders
-        RHI_Shader* shader_v = m_shaders[RendererShader::Gbuffer_V].get();
-        RHI_Shader* shader_p = m_shaders[RendererShader::Gbuffer_P].get();
+        RHI_Shader* shader_v = shader(RendererShader::Gbuffer_V).get();
+        RHI_Shader* shader_p = shader(RendererShader::Gbuffer_P).get();
         if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
             return;
 
@@ -765,8 +766,8 @@ namespace Spartan
             return;
 
         // Acquire shaders.
-        RHI_Shader* shader_v = m_shaders[RendererShader::Lines_V].get();
-        RHI_Shader* shader_p = m_shaders[RendererShader::Lines_P].get();
+        RHI_Shader* shader_v = shader(RendererShader::Lines_V).get();
+        RHI_Shader* shader_p = shader(RendererShader::Lines_P).get();
         if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
             return;
 
@@ -896,7 +897,7 @@ namespace Spartan
             return;
 
         // Acquire shaders
-        RHI_Shader* shader_c = m_shaders[RendererShader::Ssao_C].get();
+        RHI_Shader* shader_c = shader(RendererShader::Ssao_C).get();
         if (!shader_c->IsCompiled())
             return;
 
@@ -944,7 +945,7 @@ namespace Spartan
             return;
 
         // Acquire shaders
-        RHI_Shader* shader_c = m_shaders[RendererShader::Ssr_C].get();
+        RHI_Shader* shader_c = shader(RendererShader::Ssr_C).get();
         if (!shader_c->IsCompiled())
             return;
 
@@ -995,7 +996,7 @@ namespace Spartan
     void Renderer::Pass_Light(RHI_CommandList* cmd_list, const bool is_transparent_pass)
     {
         // Acquire shaders
-        RHI_Shader* shader_c = m_shaders[RendererShader::Light_C].get();
+        RHI_Shader* shader_c = shader(RendererShader::Light_C).get();
         if (!shader_c->IsCompiled())
             return;
 
@@ -1085,7 +1086,7 @@ namespace Spartan
     void Renderer::Pass_Light_Composition(RHI_CommandList* cmd_list, RHI_Texture* tex_out, const bool is_transparent_pass)
     {
         // Acquire shaders
-        RHI_Shader* shader_c = m_shaders[RendererShader::Light_Composition_C].get();
+        RHI_Shader* shader_c = shader(RendererShader::Light_Composition_C).get();
         if (!shader_c->IsCompiled())
             return;
 
@@ -1125,8 +1126,8 @@ namespace Spartan
     void Renderer::Pass_Light_ImageBased(RHI_CommandList* cmd_list, RHI_Texture* tex_out, const bool is_transparent_pass)
     {
         // Acquire shaders
-        RHI_Shader* shader_v = m_shaders[RendererShader::FullscreenTriangle_V].get();
-        RHI_Shader* shader_p = m_shaders[RendererShader::Light_ImageBased_P].get();
+        RHI_Shader* shader_v = shader(RendererShader::FullscreenTriangle_V).get();
+        RHI_Shader* shader_p = shader(RendererShader::Light_ImageBased_P).get();
         if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
             return;
 
@@ -1190,7 +1191,7 @@ namespace Spartan
     void Renderer::Pass_Blur_Gaussian(RHI_CommandList* cmd_list, RHI_Texture* tex_in, const bool depth_aware, const float sigma, const float pixel_stride, const uint32_t mip /*= all_mips*/)
     {
         // Acquire shaders
-        RHI_Shader* shader_c = m_shaders[depth_aware ? RendererShader::BlurGaussianBilateral_C : RendererShader::BlurGaussian_C].get();
+        RHI_Shader* shader_c = shader(depth_aware ? RendererShader::BlurGaussianBilateral_C : RendererShader::BlurGaussian_C).get();
         if (!shader_c->IsCompiled())
             return;
 
@@ -1412,9 +1413,9 @@ namespace Spartan
     void Renderer::Pass_Bloom(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
     {
         // Acquire shaders
-        RHI_Shader* shader_luminance        = m_shaders[RendererShader::BloomLuminance_C].get();
-        RHI_Shader* shader_upsampleBlendMip = m_shaders[RendererShader::BloomUpsampleBlendMip_C].get();
-        RHI_Shader* shader_blendFrame       = m_shaders[RendererShader::BloomBlendFrame_C].get();
+        RHI_Shader* shader_luminance        = shader(RendererShader::BloomLuminance_C).get();
+        RHI_Shader* shader_upsampleBlendMip = shader(RendererShader::BloomUpsampleBlendMip_C).get();
+        RHI_Shader* shader_blendFrame       = shader(RendererShader::BloomBlendFrame_C).get();
 
         if (!shader_luminance->IsCompiled() || !shader_upsampleBlendMip->IsCompiled() || !shader_blendFrame->IsCompiled())
             return;
@@ -1515,7 +1516,7 @@ namespace Spartan
     void Renderer::Pass_ToneMappingGammaCorrection(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
     {
         // Acquire shaders
-        RHI_Shader* shader_c = m_shaders[RendererShader::ToneMappingGammaCorrection_C].get();
+        RHI_Shader* shader_c = shader(RendererShader::ToneMappingGammaCorrection_C).get();
         if (!shader_c->IsCompiled())
             return;
 
@@ -1545,7 +1546,7 @@ namespace Spartan
     void Renderer::Pass_Fxaa(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
     {
         // Acquire shaders
-        RHI_Shader* shader_c = m_shaders[RendererShader::Fxaa_C].get();
+        RHI_Shader* shader_c = shader(RendererShader::Fxaa_C).get();
         if (!shader_c->IsCompiled())
             return;
 
@@ -1575,7 +1576,7 @@ namespace Spartan
     void Renderer::Pass_ChromaticAberration(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
     {
         // Acquire shaders
-        RHI_Shader* shader_c = m_shaders[RendererShader::ChromaticAberration_C].get();
+        RHI_Shader* shader_c = shader(RendererShader::ChromaticAberration_C).get();
         if (!shader_c->IsCompiled())
             return;
 
@@ -1605,7 +1606,7 @@ namespace Spartan
     void Renderer::Pass_MotionBlur(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
     {
         // Acquire shaders
-        RHI_Shader* shader_c = m_shaders[RendererShader::MotionBlur_C].get();
+        RHI_Shader* shader_c = shader(RendererShader::MotionBlur_C).get();
         if (!shader_c->IsCompiled())
             return;
 
@@ -1637,10 +1638,10 @@ namespace Spartan
     void Renderer::Pass_DepthOfField(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
     {
         // Acquire shaders
-        RHI_Shader* shader_downsampleCoc = m_shaders[RendererShader::Dof_DownsampleCoc_C].get();
-        RHI_Shader* shader_bokeh         = m_shaders[RendererShader::Dof_Bokeh_C].get();
-        RHI_Shader* shader_tent          = m_shaders[RendererShader::Dof_Tent_C].get();
-        RHI_Shader* shader_upsampleBlend = m_shaders[RendererShader::Dof_UpscaleBlend_C].get();
+        RHI_Shader* shader_downsampleCoc = shader(RendererShader::Dof_DownsampleCoc_C).get();
+        RHI_Shader* shader_bokeh         = shader(RendererShader::Dof_Bokeh_C).get();
+        RHI_Shader* shader_tent          = shader(RendererShader::Dof_Tent_C).get();
+        RHI_Shader* shader_upsampleBlend = shader(RendererShader::Dof_UpscaleBlend_C).get();
         if (!shader_downsampleCoc->IsCompiled() || !shader_bokeh->IsCompiled() || !shader_tent->IsCompiled() || !shader_upsampleBlend->IsCompiled())
             return;
 
@@ -1752,7 +1753,7 @@ namespace Spartan
     void Renderer::Pass_Debanding(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
     {
         // Acquire shaders
-        RHI_Shader* shader = m_shaders[RendererShader::Debanding_C].get();
+        RHI_Shader* shader = shader(RendererShader::Debanding_C).get();
         if (!shader->IsCompiled())
             return;
 
@@ -1782,7 +1783,7 @@ namespace Spartan
     void Renderer::Pass_FilmGrain(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
     {
         // Acquire shaders
-        RHI_Shader* shader_c = m_shaders[RendererShader::FilmGrain_C].get();
+        RHI_Shader* shader_c = shader(RendererShader::FilmGrain_C).get();
         if (!shader_c->IsCompiled())
             return;
 
@@ -1813,7 +1814,7 @@ namespace Spartan
     void Renderer::Pass_Ffx_Cas(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
     {
         // Acquire shaders
-        RHI_Shader* shader_c = m_shaders[RendererShader::Ffx_Cas_C].get();
+        RHI_Shader* shader_c = shader(RendererShader::Ffx_Cas_C).get();
         if (!shader_c->IsCompiled())
             return;
 
@@ -1856,7 +1857,7 @@ namespace Spartan
         SP_ASSERT(output_mip_count <= 12); // As per documentation (page 22)
 
         // Acquire shader
-        RHI_Shader* shader = m_shaders[luminance_antiflicker ? RendererShader::Ffx_Spd_LuminanceAntiflicker_C : RendererShader::Ffx_Spd_C].get();
+        RHI_Shader* shader = shader(luminance_antiflicker ? RendererShader::Ffx_Spd_LuminanceAntiflicker_C : RendererShader::Ffx_Spd_C).get();
 
         if (!shader->IsCompiled())
             return;
@@ -1920,8 +1921,8 @@ namespace Spartan
             return;
 
         // Acquire shaders
-        RHI_Shader* shader_v = m_shaders[RendererShader::Quad_V].get();
-        RHI_Shader* shader_p = m_shaders[RendererShader::Copy_Bilinear_P].get();
+        RHI_Shader* shader_v = shader(RendererShader::Quad_V).get();
+        RHI_Shader* shader_p = shader(RendererShader::Copy_Bilinear_P).get();
         if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
             return;
 
@@ -2017,8 +2018,8 @@ namespace Spartan
             return;
 
         // Acquire shaders
-        RHI_Shader* shader_v = m_shaders[RendererShader::Entity_V].get();
-        RHI_Shader* shader_p = m_shaders[RendererShader::Entity_Transform_P].get();
+        RHI_Shader* shader_v = shader(RendererShader::Entity_V).get();
+        RHI_Shader* shader_p = shader(RendererShader::Entity_Transform_P).get();
         if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
             return;
 
@@ -2113,8 +2114,8 @@ namespace Spartan
             return;
 
         // Acquire color shaders.
-        RHI_Shader* shader_v = m_shaders[RendererShader::Debug_ReflectionProbe_V].get();
-        RHI_Shader* shader_p = m_shaders[RendererShader::Debug_ReflectionProbe_P].get();
+        RHI_Shader* shader_v = shader(RendererShader::Debug_ReflectionProbe_V).get();
+        RHI_Shader* shader_p = shader(RendererShader::Debug_ReflectionProbe_P).get();
         if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
             return;
 
@@ -2193,8 +2194,8 @@ namespace Spartan
                 return;
 
             // Acquire shaders
-            const auto& shader_v = m_shaders[RendererShader::Entity_V];
-            const auto& shader_p = m_shaders[RendererShader::Entity_Outline_P];
+            const auto& shader_v = shader(RendererShader::Entity_V);
+            const auto& shader_p = shader(RendererShader::Entity_Outline_P);
             if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
                 return;
 
@@ -2248,8 +2249,8 @@ namespace Spartan
         // Early exit cases
         const bool draw      = GetOption<bool>(RendererOption::Debug_PerformanceMetrics);
         const bool empty     = m_profiler->GetMetrics().empty();
-        const auto& shader_v = m_shaders[RendererShader::Font_V];
-        const auto& shader_p = m_shaders[RendererShader::Font_P];
+        const auto& shader_v = shader(RendererShader::Font_V);
+        const auto& shader_p = shader(RendererShader::Font_P);
         if (!draw || empty || !shader_v->IsCompiled() || !shader_p->IsCompiled())
             return;
 
@@ -2325,7 +2326,7 @@ namespace Spartan
             return;
 
         // Acquire shaders
-        RHI_Shader* shader = m_shaders[RendererShader::BrdfSpecularLut_C].get();
+        RHI_Shader* shader = shader(RendererShader::BrdfSpecularLut_C).get();
         if (!shader->IsCompiled())
             return;
 
@@ -2359,7 +2360,7 @@ namespace Spartan
     void Renderer::Pass_Copy(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out, const bool bilinear)
     {
         // Acquire shaders
-        RHI_Shader* shader_c = m_shaders[bilinear ? RendererShader::Copy_Bilinear_C : RendererShader::Copy_Point_C].get();
+        RHI_Shader* shader_c = shader(bilinear ? RendererShader::Copy_Bilinear_C : RendererShader::Copy_Point_C).get();
         if (!shader_c->IsCompiled())
             return;
 
@@ -2388,8 +2389,8 @@ namespace Spartan
     void Renderer::Pass_CopyToBackbuffer()
     {
         // Acquire shaders
-        RHI_Shader* shader_v = m_shaders[RendererShader::FullscreenTriangle_V].get();
-        RHI_Shader* shader_p = m_shaders[RendererShader::Copy_Point_P].get();
+        RHI_Shader* shader_v = shader(RendererShader::FullscreenTriangle_V).get();
+        RHI_Shader* shader_p = shader(RendererShader::Copy_Point_P).get();
         if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
             return;
 

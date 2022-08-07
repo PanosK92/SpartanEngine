@@ -37,7 +37,7 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    RHI_Device::RHI_Device(Context* context, RHI_Context* rhi_context)
+    RHI_Device::RHI_Device(Context* context, shared_ptr<RHI_Context> rhi_context)
     {
         // Detect device limits
         m_max_texture_1d_dimension   = D3D12_REQ_TEXTURE1D_U_DIMENSION;
@@ -48,7 +48,7 @@ namespace Spartan
 
         m_context                           = context;
         m_rhi_context                       = rhi_context;
-        d3d12_utility::globals::rhi_context = rhi_context;
+        d3d12_utility::globals::rhi_context = rhi_context.get();
         d3d12_utility::globals::rhi_device  = this;
 
         // Find a physical device
