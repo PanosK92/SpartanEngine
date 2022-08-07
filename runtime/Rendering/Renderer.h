@@ -130,10 +130,10 @@ namespace Spartan
         void SetGlobalShaderResources(RHI_CommandList* cmd_list) const;
         void RequestTextureMipGeneration(std::shared_ptr<RHI_Texture> texture);
 
-        RHI_Texture* GetFrameTexture()                          { return GetRenderTarget(RendererTexture::Frame_Output).get(); }
-        auto GetFrameNum()                                const { return m_frame_num; }
-        std::shared_ptr<Camera> GetCamera()               const { return m_camera; }
-        auto GetShaders()                                 const { return m_shaders; }
+        RHI_Texture* GetFrameTexture()                                 { return GetRenderTarget(RendererTexture::Frame_Output).get(); }
+        auto GetFrameNum()                                       const { return m_frame_num; }
+        std::shared_ptr<Camera> GetCamera()                      const { return m_camera; }
+        std::array<std::shared_ptr<RHI_Shader>, 48> GetShaders() const { return m_shaders; }
 
         // Passes
         void Pass_CopyToBackbuffer();
@@ -214,7 +214,7 @@ namespace Spartan
         std::array<std::shared_ptr<RHI_Texture>, 25> m_render_targets;
 
         // Shaders
-        std::unordered_map<RendererShader, std::shared_ptr<RHI_Shader>> m_shaders;
+        std::array<std::shared_ptr<RHI_Shader>, 48> m_shaders;
 
         // Standard textures
         std::shared_ptr<RHI_Texture> m_tex_default_noise_normal;
@@ -337,7 +337,7 @@ namespace Spartan
         // RHI Core
         std::shared_ptr<RHI_Context> m_rhi_context;
         std::shared_ptr<RHI_Device> m_rhi_device;
-        RHI_CommandPool* m_cmd_pool = nullptr;
+        RHI_CommandPool* m_cmd_pool    = nullptr;
         RHI_CommandList* m_cmd_current = nullptr;
 
         // Swapchain

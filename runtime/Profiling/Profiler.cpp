@@ -45,7 +45,7 @@ namespace Spartan
         m_time_blocks_write.reserve(initial_capacity);
         m_time_blocks_write.resize(initial_capacity);
 
-        SP_SUBSCRIBE_TO_EVENT(EventType::PostPresent, SP_EVENT_HANDLER(OnPostPresent));
+        SP_SUBSCRIBE_TO_EVENT(EventType::RendererPostPresent, SP_EVENT_HANDLER(OnPostPresent));
     }
 
     Profiler::~Profiler()

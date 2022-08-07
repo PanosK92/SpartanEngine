@@ -712,11 +712,11 @@ namespace Spartan::vulkan_utility
             }
             else if (msg_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
             {
-                //Log::Write(msg.c_str(), LogType::Warning);
+                Log::Write(msg.c_str(), LogType::Warning);
             }
             else if (msg_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
             {
-                //Log::Write(msg.c_str(), LogType::Error);
+                Log::Write(msg.c_str(), LogType::Error);
             }
 
             return VK_FALSE;
