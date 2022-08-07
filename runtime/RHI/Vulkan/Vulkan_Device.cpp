@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016-2021 Panos Karabelas
+Copyright(c) 2016-2022 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -676,17 +676,17 @@ namespace Spartan
         if (signal_fence)     SP_ASSERT_MSG(signal_fence->GetCpuState()     != RHI_Sync_State::Submitted, "Signal fence is already in a signaled state.");
 
         // Get semaphores
-        VkSemaphore vk_wait_semaphore[1]   = { wait_semaphore   ? static_cast<VkSemaphore>(wait_semaphore->GetResource())   : nullptr};
-        VkSemaphore vk_signal_semaphore[1] = { signal_semaphore ? static_cast<VkSemaphore>(signal_semaphore->GetResource()) : nullptr };
+        array<VkSemaphore, 1> vk_wait_semaphore   = { wait_semaphore   ? static_cast<VkSemaphore>(wait_semaphore->GetResource())   : nullptr };
+        array<VkSemaphore, 1> vk_signal_semaphore = { signal_semaphore ? static_cast<VkSemaphore>(signal_semaphore->GetResource()) : nullptr };
 
         // Submit info
         VkSubmitInfo submit_info         = {};
         submit_info.sType                = VK_STRUCTURE_TYPE_SUBMIT_INFO;
         submit_info.pNext                = nullptr;
-        submit_info.waitSemaphoreCount   = wait_semaphore ? 1 : 0;
-        submit_info.pWaitSemaphores      = wait_semaphore ? vk_wait_semaphore : nullptr;
-        submit_info.signalSemaphoreCount = signal_semaphore ? 1 : 0;
-        submit_info.pSignalSemaphores    = signal_semaphore ? vk_signal_semaphore : nullptr;
+        submit_info.waitSemaphoreCount   = wait_semaphore   != nullptr ? 1 : 0;
+        submit_info.pWaitSemaphores      = wait_semaphore   != nullptr ? vk_wait_semaphore.data() : nullptr;
+        submit_info.signalSemaphoreCount = signal_semaphore != nullptr ? 1 : 0;
+        submit_info.pSignalSemaphores    = signal_semaphore != nullptr ? vk_signal_semaphore.data() : nullptr;
         submit_info.pWaitDstStageMask    = &wait_flags;
         submit_info.commandBufferCount   = 1;
         submit_info.pCommandBuffers      = reinterpret_cast<VkCommandBuffer*>(&cmd_buffer);
