@@ -123,12 +123,13 @@ namespace Spartan
         RHI_CommandList* GetCmdList() const { return m_cmd_current; }
 
         // Static
-        static RHI_Api_Type GetApiType();
+        static RHI_Api_Type GetRhiApiType();
+        const std::shared_ptr<RHI_Device>& GetRhiDevice() const { return m_rhi_device; }
 
         // Misc
         void SetGlobalShaderResources(RHI_CommandList* cmd_list) const;
         void RequestTextureMipGeneration(std::shared_ptr<RHI_Texture> texture);
-        const std::shared_ptr<RHI_Device>& GetRhiDevice() const { return m_rhi_device; }
+
         RHI_Texture* GetFrameTexture()                          { return GetRenderTarget(RendererTexture::Frame_Output).get(); }
         auto GetFrameNum()                                const { return m_frame_num; }
         std::shared_ptr<Camera> GetCamera()               const { return m_camera; }
@@ -334,6 +335,7 @@ namespace Spartan
         std::atomic<bool> m_reading_requests     = false;
 
         // RHI Core
+        std::shared_ptr<RHI_Context> m_rhi_context;
         std::shared_ptr<RHI_Device> m_rhi_device;
         RHI_CommandPool* m_cmd_pool = nullptr;
         RHI_CommandList* m_cmd_current = nullptr;

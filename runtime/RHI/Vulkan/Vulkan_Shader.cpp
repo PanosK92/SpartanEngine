@@ -45,7 +45,7 @@ namespace Spartan
             // Wait in case it's still in use by the GPU
             m_rhi_device->QueueWaitAll();
 
-            vkDestroyShaderModule(m_rhi_device->GetContextRhi()->device, static_cast<VkShaderModule>(m_rhi_resource), nullptr);
+            vkDestroyShaderModule(m_rhi_device->GetRhiContext()->device, static_cast<VkShaderModule>(m_rhi_resource), nullptr);
             m_rhi_resource = nullptr;
         }
     }
@@ -118,7 +118,7 @@ namespace Spartan
             create_info.codeSize                 = static_cast<size_t>(shader_buffer->GetBufferSize());
             create_info.pCode                    = reinterpret_cast<const uint32_t*>(shader_buffer->GetBufferPointer());
 
-            if (!vulkan_utility::error::check(vkCreateShaderModule(m_rhi_device->GetContextRhi()->device, &create_info, nullptr, &shader_module)))
+            if (!vulkan_utility::error::check(vkCreateShaderModule(m_rhi_device->GetRhiContext()->device, &create_info, nullptr, &shader_module)))
             {
                 LOG_ERROR("Failed to create shader module.");
                 shader_module = nullptr;

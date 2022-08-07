@@ -21,27 +21,20 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ======
-#include "Widget.h"
-//=================
+//= INCLUDES =====================
+#include "../Core/SpartanObject.h"
+//================================
 
 namespace Spartan
 {
-    struct camera_bookmark;
+    class SPARTAN_CLASS RHI_RenderDoc : public SpartanObject
+    {
+    public:
+        RHI_RenderDoc() = default;
+        ~RHI_RenderDoc() = default;
+
+        static void OnPreDeviceCreation();
+        static void Shutdown();
+        static void FrameCapture();
+    };
 }
-
-class SPARTAN_CLASS CameraBookmarkViewer : public Widget
-{
-public:
-    CameraBookmarkViewer(Editor* editor);
-    ~CameraBookmarkViewer() = default;
-
-    void TickVisible() override;
-
-private:
-    void ShowAddBookmarkButton();
-    void AddCameraBookmark(Spartan::camera_bookmark bookmark);
-
-    void ShowGoToBookmarkButton(const int bookmark_index);
-    void GoToBookmark(const int bookmark_index);
-};

@@ -48,7 +48,7 @@ namespace Spartan
         for (uint32_t i = 0; i < static_cast<uint32_t>(m_rhi_resources.size()); i++)
         {
             SP_ASSERT_MSG(vulkan_utility::error::check(
-                vkCreateCommandPool(m_rhi_device->GetContextRhi()->device, &cmd_pool_info, nullptr, reinterpret_cast<VkCommandPool*>(&m_rhi_resources[i]))),
+                vkCreateCommandPool(m_rhi_device->GetRhiContext()->device, &cmd_pool_info, nullptr, reinterpret_cast<VkCommandPool*>(&m_rhi_resources[i]))),
                 "Failed to create command pool"
             );
         }
@@ -68,7 +68,7 @@ namespace Spartan
         // Wait for GPU
         m_rhi_device->QueueWaitAll();
 
-        VkDevice device = m_rhi_device->GetContextRhi()->device;
+        VkDevice device = m_rhi_device->GetRhiContext()->device;
 
         // Free command buffers
         for (uint32_t index_pool = 0; index_pool < static_cast<uint32_t>(m_rhi_resources.size()); index_pool++)
@@ -109,7 +109,7 @@ namespace Spartan
         }
 
         // Reset the command pool
-        VkDevice device    = m_rhi_device->GetContextRhi()->device;
+        VkDevice device    = m_rhi_device->GetRhiContext()->device;
         VkCommandPool pool = static_cast<VkCommandPool>(m_rhi_resources[m_pool_index]);
         SP_ASSERT_MSG(vulkan_utility::error::check(vkResetCommandPool(device, pool, 0)), "Failed to reset command pool");
     }

@@ -668,7 +668,7 @@ namespace Spartan::vulkan_utility
 
             get_func(get_physical_device_memory_properties_2, vkGetPhysicalDeviceMemoryProperties2);
 
-            if (globals::rhi_context->debug)
+            if (globals::rhi_context->validation)
             { 
                 /* VK_EXT_debug_utils */
                 get_func(create_messenger,  vkCreateDebugUtilsMessengerEXT);

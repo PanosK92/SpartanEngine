@@ -46,7 +46,7 @@ namespace Spartan
     )
     {
         SP_ASSERT(rhi_device != nullptr);
-        SP_ASSERT(rhi_device->GetContextRhi()->device != nullptr);
+        SP_ASSERT(rhi_device->GetRhiContext()->device != nullptr);
 
         // Save properties
         m_depth_test_enabled          = depth_test;
@@ -80,7 +80,7 @@ namespace Spartan
         }
 
         // Create depth-stencil state
-        SP_ASSERT(d3d11_utility::error_check(rhi_device->GetContextRhi()->device->CreateDepthStencilState(&desc, reinterpret_cast<ID3D11DepthStencilState**>(&m_rhi_resource))));
+        SP_ASSERT(d3d11_utility::error_check(rhi_device->GetRhiContext()->device->CreateDepthStencilState(&desc, reinterpret_cast<ID3D11DepthStencilState**>(&m_rhi_resource))));
     }
 
     RHI_DepthStencilState::~RHI_DepthStencilState()

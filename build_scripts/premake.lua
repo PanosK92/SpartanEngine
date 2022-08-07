@@ -151,6 +151,7 @@ project (RUNTIME_PROJECT_NAME)
 	includedirs { "../third_party/pugixml" }
 	includedirs { "../third_party/sdl2" }
     includedirs { "../third_party/compressonator" }
+	includedirs { "../third_party/renderdoc" }
     includedirs { "Core" } -- Linux needs the directory of the pre-compiled header
 	includedirs { ADDITIONAL_INCLUDES[0], ADDITIONAL_INCLUDES[1], ADDITIONAL_INCLUDES[2] }
 

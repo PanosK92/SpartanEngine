@@ -60,7 +60,7 @@ namespace Spartan
         m_is_timeline = is_timeline;
         m_rhi_device  = rhi_device;
 
-        create_semaphore(m_rhi_device->GetContextRhi()->device, m_is_timeline, m_resource);
+        create_semaphore(m_rhi_device->GetRhiContext()->device, m_is_timeline, m_resource);
 
         // Name
         if (name)
@@ -78,7 +78,7 @@ namespace Spartan
         // Wait in case it's still in use by the GPU
         m_rhi_device->QueueWaitAll();
 
-        destroy_semaphore(m_rhi_device->GetContextRhi()->device, m_resource);
+        destroy_semaphore(m_rhi_device->GetRhiContext()->device, m_resource);
     }
 
     void RHI_Semaphore::Reset()
@@ -86,8 +86,8 @@ namespace Spartan
         // Wait in case it's still in use by the GPU
         m_rhi_device->QueueWaitAll();
 
-        destroy_semaphore(m_rhi_device->GetContextRhi()->device, m_resource);
-        create_semaphore(m_rhi_device->GetContextRhi()->device, m_is_timeline, m_resource);
+        destroy_semaphore(m_rhi_device->GetRhiContext()->device, m_resource);
+        create_semaphore(m_rhi_device->GetRhiContext()->device, m_is_timeline, m_resource);
         m_cpu_state = RHI_Sync_State::Idle;
     }
 
@@ -103,7 +103,7 @@ namespace Spartan
         semaphore_wait_info.pSemaphores         = reinterpret_cast<VkSemaphore*>(&m_resource);
         semaphore_wait_info.pValues             = &value;
 
-        return vulkan_utility::error::check(vkWaitSemaphores(m_rhi_device->GetContextRhi()->device, &semaphore_wait_info, timeout));
+        return vulkan_utility::error::check(vkWaitSemaphores(m_rhi_device->GetRhiContext()->device, &semaphore_wait_info, timeout));
     }
 
     bool RHI_Semaphore::Signal(const uint64_t value)
@@ -116,7 +116,7 @@ namespace Spartan
         semaphore_signal_info.semaphore             = static_cast<VkSemaphore>(m_resource);
         semaphore_signal_info.value                 = value;
 
-        return vulkan_utility::error::check(vkSignalSemaphore(m_rhi_device->GetContextRhi()->device, &semaphore_signal_info));
+        return vulkan_utility::error::check(vkSignalSemaphore(m_rhi_device->GetRhiContext()->device, &semaphore_signal_info));
     }
 
     uint64_t RHI_Semaphore::GetValue()
@@ -124,7 +124,7 @@ namespace Spartan
         SP_ASSERT(m_is_timeline);
 
         uint64_t value = 0;
-        vulkan_utility::error::check(vkGetSemaphoreCounterValue(m_rhi_device->GetContextRhi()->device, static_cast<VkSemaphore>(m_resource), &value));
+        vulkan_utility::error::check(vkGetSemaphoreCounterValue(m_rhi_device->GetRhiContext()->device, static_cast<VkSemaphore>(m_resource), &value));
         return value;
     }
 }

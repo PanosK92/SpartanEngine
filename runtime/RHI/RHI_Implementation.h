@@ -528,15 +528,17 @@ namespace Spartan
                 };
         #endif
 
-        // Debugging
+        // Validation\profiling\markers and so on
         #ifdef DEBUG
-            bool debug         = true;
+            bool validation    = true;
             bool gpu_markers   = true;
             bool gpu_profiling = true;
+            bool renderdoc     = true;
         #else
-            bool debug         = false;
+            bool validation    = false;
             bool gpu_markers   = false;
             bool gpu_profiling = true;
+            bool renderdoc     = false;
         #endif
     };
 }

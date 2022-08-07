@@ -45,7 +45,7 @@ namespace Spartan
         sampler_desc.MinLOD             = 0;
         sampler_desc.MaxLOD             = FLT_MAX;
     
-        d3d11_utility::error_check(m_rhi_device->GetContextRhi()->device->CreateSamplerState(&sampler_desc, reinterpret_cast<ID3D11SamplerState**>(&m_rhi_resource)));
+        d3d11_utility::error_check(m_rhi_device->GetRhiContext()->device->CreateSamplerState(&sampler_desc, reinterpret_cast<ID3D11SamplerState**>(&m_rhi_resource)));
     }
 
     RHI_Sampler::~RHI_Sampler()

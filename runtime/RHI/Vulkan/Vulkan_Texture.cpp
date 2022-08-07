@@ -295,7 +295,7 @@ namespace Spartan
     bool RHI_Texture::RHI_CreateResource()
     {
         SP_ASSERT(m_rhi_device != nullptr);
-        SP_ASSERT(m_rhi_device->GetContextRhi()->device != nullptr);
+        SP_ASSERT(m_rhi_device->GetRhiContext()->device != nullptr);
 
         create_image(this);
 

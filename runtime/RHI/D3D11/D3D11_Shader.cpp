@@ -46,7 +46,7 @@ namespace Spartan
     void* RHI_Shader::Compile2()
     {
         SP_ASSERT(m_rhi_device != nullptr);
-        ID3D11Device5* d3d11_device = m_rhi_device->GetContextRhi()->device;
+        ID3D11Device5* d3d11_device = m_rhi_device->GetRhiContext()->device;
         SP_ASSERT(d3d11_device != nullptr);
 
         // Compile flags

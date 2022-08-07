@@ -62,7 +62,7 @@ namespace Spartan
         // Created command list
         SP_ASSERT_MSG(
             d3d12_utility::error::check(
-                m_rhi_device->GetContextRhi()->device->CreateCommandList(
+                m_rhi_device->GetRhiContext()->device->CreateCommandList(
                     0,
                     D3D12_COMMAND_LIST_TYPE_DIRECT,
                     static_cast<ID3D12CommandAllocator*>(cmd_pool),

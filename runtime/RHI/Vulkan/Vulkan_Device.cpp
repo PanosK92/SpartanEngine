@@ -124,14 +124,14 @@ namespace Spartan
         return extensions_supported;
     }
 
-    RHI_Device::RHI_Device(Context* context)
+    RHI_Device::RHI_Device(Context* context, RHI_Context* rhi_context)
     {
         m_context     = context;
-        m_rhi_context = make_shared<RHI_Context>();
+        m_rhi_context = rhi_context;
 
         // Pass pointer to the widely used utility namespace
         vulkan_utility::globals::rhi_device  = this;
-        vulkan_utility::globals::rhi_context = m_rhi_context.get();
+        vulkan_utility::globals::rhi_context = rhi_context;
         
         // Create instance
         VkApplicationInfo app_info  = {};
@@ -196,7 +196,7 @@ namespace Spartan
             validation_features.enabledValidationFeatureCount = static_cast<uint32_t>(m_rhi_context->validation_extensions.size());
             validation_features.pEnabledValidationFeatures    = m_rhi_context->validation_extensions.data();
 
-            if (m_rhi_context->debug)
+            if (m_rhi_context->validation)
             {
                 // Enable validation layer
                 if (is_present_instance_layer(m_rhi_context->validation_layers.front()))
@@ -219,7 +219,7 @@ namespace Spartan
         vulkan_utility::functions::initialize();
 
         // Debug
-        if (m_rhi_context->debug)
+        if (m_rhi_context->validation)
         {
             vulkan_utility::debug::initialize(m_rhi_context->instance);
         }
@@ -381,7 +381,7 @@ namespace Spartan
                 create_info.enabledExtensionCount   = static_cast<uint32_t>(extensions_supported.size());
                 create_info.ppEnabledExtensionNames = extensions_supported.data();
 
-                if (m_rhi_context->debug)
+                if (m_rhi_context->validation)
                 {
                     create_info.enabledLayerCount   = static_cast<uint32_t>(m_rhi_context->validation_layers.size());
                     create_info.ppEnabledLayerNames = m_rhi_context->validation_layers.data();
@@ -451,7 +451,7 @@ namespace Spartan
             }
 
             // Debug messenger
-            if (m_rhi_context->debug)
+            if (m_rhi_context->validation)
             {
                 vulkan_utility::debug::shutdown(m_rhi_context->instance);
             }

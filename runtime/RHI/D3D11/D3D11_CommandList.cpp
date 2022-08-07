@@ -84,7 +84,7 @@ namespace Spartan
 
         UnbindOutputTextures();
 
-        ID3D11DeviceContext* device_context = m_rhi_device->GetContextRhi()->device_context;
+        ID3D11DeviceContext* device_context = m_rhi_device->GetRhiContext()->device_context;
 
         // Input layout
         {
@@ -348,7 +348,7 @@ namespace Spartan
             {
                 if (m_pso.render_target_swapchain)
                 {
-                    m_rhi_device->GetContextRhi()->device_context->ClearRenderTargetView
+                    m_rhi_device->GetRhiContext()->device_context->ClearRenderTargetView
                     (
                         static_cast<ID3D11RenderTargetView*>(const_cast<void*>(m_pso.render_target_swapchain->GetRhiRtv())),
                         m_pso.clear_color[i].Data()
@@ -356,7 +356,7 @@ namespace Spartan
                 }
                 else if (m_pso.render_target_color_textures[i])
                 {
-                    m_rhi_device->GetContextRhi()->device_context->ClearRenderTargetView
+                    m_rhi_device->GetRhiContext()->device_context->ClearRenderTargetView
                     (
                         static_cast<ID3D11RenderTargetView*>(const_cast<void*>(m_pso.render_target_color_textures[i]->GetRhiRtv(m_pso.render_target_color_texture_array_index))),
                         m_pso.clear_color[i].Data()
@@ -373,7 +373,7 @@ namespace Spartan
             clear_flags |= (m_pso.clear_stencil != rhi_stencil_load && m_pso.clear_stencil != rhi_stencil_dont_care) ? D3D11_CLEAR_STENCIL : 0;
             if (clear_flags != 0)
             {
-                m_rhi_device->GetContextRhi()->device_context->ClearDepthStencilView
+                m_rhi_device->GetRhiContext()->device_context->ClearDepthStencilView
                 (
                     static_cast<ID3D11DepthStencilView*>(m_pso.render_target_depth_texture->GetRhiDsv(m_pso.render_target_depth_stencil_texture_array_index)),
                     clear_flags,
@@ -401,13 +401,13 @@ namespace Spartan
                 return;
 
             // TODO: Assuming the UAV is a float, which almost always is, but I should fix it anyway
-            m_rhi_device->GetContextRhi()->device_context->ClearUnorderedAccessViewFloat(static_cast<ID3D11UnorderedAccessView*>(texture->GetRhiUav()), clear_color.Data());
+            m_rhi_device->GetRhiContext()->device_context->ClearUnorderedAccessViewFloat(static_cast<ID3D11UnorderedAccessView*>(texture->GetRhiUav()), clear_color.Data());
 
             if (texture->HasPerMipViews())
             {
                 for (uint32_t i = 0; i < texture->GetMipCount(); i++)
                 {
-                    m_rhi_device->GetContextRhi()->device_context->ClearUnorderedAccessViewFloat(static_cast<ID3D11UnorderedAccessView*>(texture->GetRhiUavMip(i)), clear_color.Data());
+                    m_rhi_device->GetRhiContext()->device_context->ClearUnorderedAccessViewFloat(static_cast<ID3D11UnorderedAccessView*>(texture->GetRhiUavMip(i)), clear_color.Data());
                 }
             }
         }
@@ -418,7 +418,7 @@ namespace Spartan
                 if (clear_color == rhi_color_load || clear_color == rhi_color_dont_care)
                     return;
 
-                m_rhi_device->GetContextRhi()->device_context->ClearRenderTargetView
+                m_rhi_device->GetRhiContext()->device_context->ClearRenderTargetView
                 (
                     static_cast<ID3D11RenderTargetView*>(const_cast<void*>(texture->GetRhiRtv(color_index))),
                     clear_color.Data()
@@ -431,7 +431,7 @@ namespace Spartan
                 clear_flags |= (clear_stencil != rhi_stencil_load && clear_stencil != rhi_stencil_dont_care) ? D3D11_CLEAR_STENCIL : 0;
                 if (clear_flags != 0)
                 {
-                    m_rhi_device->GetContextRhi()->device_context->ClearDepthStencilView
+                    m_rhi_device->GetRhiContext()->device_context->ClearDepthStencilView
                     (
                         static_cast<ID3D11DepthStencilView*>(texture->GetRhiDsv(depth_stencil_index)),
                         clear_flags,
@@ -445,7 +445,7 @@ namespace Spartan
 
     void RHI_CommandList::Draw(const uint32_t vertex_count, uint32_t vertex_start_index /*= 0*/)
     {
-        m_rhi_device->GetContextRhi()->device_context->Draw(static_cast<UINT>(vertex_count), static_cast<UINT>(vertex_start_index));
+        m_rhi_device->GetRhiContext()->device_context->Draw(static_cast<UINT>(vertex_count), static_cast<UINT>(vertex_start_index));
 
         if (m_profiler)
         {
@@ -455,7 +455,7 @@ namespace Spartan
 
     void RHI_CommandList::DrawIndexed(const uint32_t index_count, const uint32_t index_offset, const uint32_t vertex_offset)
     {
-        m_rhi_device->GetContextRhi()->device_context->DrawIndexed
+        m_rhi_device->GetRhiContext()->device_context->DrawIndexed
         (
             static_cast<UINT>(index_count),
             static_cast<UINT>(index_offset),
@@ -470,8 +470,8 @@ namespace Spartan
 
     void RHI_CommandList::Dispatch(uint32_t x, uint32_t y, uint32_t z, bool async /*= false*/)
     {
-        ID3D11Device5* device = m_rhi_device->GetContextRhi()->device;
-        ID3D11DeviceContext4* device_context = m_rhi_device->GetContextRhi()->device_context;
+        ID3D11Device5* device = m_rhi_device->GetRhiContext()->device;
+        ID3D11DeviceContext4* device_context = m_rhi_device->GetRhiContext()->device_context;
 
         device_context->Dispatch(x, y, z);
 
@@ -499,7 +499,7 @@ namespace Spartan
         SP_ASSERT(source->GetArrayLength() == destination->GetArrayLength());
         SP_ASSERT(source->GetMipCount() == destination->GetMipCount());
 
-        m_rhi_device->GetContextRhi()->device_context->CopyResource(static_cast<ID3D11Resource*>(destination->GetRhiResource()), static_cast<ID3D11Resource*>(source->GetRhiResource()));
+        m_rhi_device->GetRhiContext()->device_context->CopyResource(static_cast<ID3D11Resource*>(destination->GetRhiResource()), static_cast<ID3D11Resource*>(source->GetRhiResource()));
     }
 
     void RHI_CommandList::SetViewport(const RHI_Viewport& viewport) const
@@ -515,7 +515,7 @@ namespace Spartan
         d3d11_viewport.MinDepth       = viewport.depth_min;
         d3d11_viewport.MaxDepth       = viewport.depth_max;
 
-        m_rhi_device->GetContextRhi()->device_context->RSSetViewports(1, &d3d11_viewport);
+        m_rhi_device->GetRhiContext()->device_context->RSSetViewports(1, &d3d11_viewport);
     }
 
     void RHI_CommandList::SetScissorRectangle(const Math::Rectangle& scissor_rectangle) const
@@ -528,7 +528,7 @@ namespace Spartan
             static_cast<LONG>(scissor_rectangle.bottom)
         };
 
-        m_rhi_device->GetContextRhi()->device_context->RSSetScissorRects(1, &d3d11_rectangle);
+        m_rhi_device->GetRhiContext()->device_context->RSSetScissorRects(1, &d3d11_rectangle);
     }
 
     void RHI_CommandList::SetBufferVertex(const RHI_VertexBuffer* buffer)
@@ -539,7 +539,7 @@ namespace Spartan
         ID3D11Buffer* vertex_buffer         = static_cast<ID3D11Buffer*>(buffer->GetRhiResource());
         UINT stride                         = buffer->GetStride();
         UINT offsets[]                      = { 0 };
-        ID3D11DeviceContext* device_context = m_rhi_device->GetContextRhi()->device_context;
+        ID3D11DeviceContext* device_context = m_rhi_device->GetRhiContext()->device_context;
 
         // Get currently set buffer
         ID3D11Buffer* set_buffer    = nullptr;
@@ -567,7 +567,7 @@ namespace Spartan
 
         ID3D11Buffer* index_buffer          = static_cast<ID3D11Buffer*>(buffer->GetRhiResource());
         const DXGI_FORMAT format            = buffer->Is16Bit() ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT;
-        ID3D11DeviceContext* device_context = m_rhi_device->GetContextRhi()->device_context;
+        ID3D11DeviceContext* device_context = m_rhi_device->GetRhiContext()->device_context;
 
         // Get currently set buffer
         ID3D11Buffer* set_buffer = nullptr;
@@ -593,7 +593,7 @@ namespace Spartan
         void* buffer                        = static_cast<ID3D11Buffer*>(constant_buffer ? constant_buffer->GetRhiResource() : nullptr);
         const void* buffer_array[1]         = { buffer };
         const UINT range                    = 1;
-        ID3D11DeviceContext* device_context = m_rhi_device->GetContextRhi()->device_context;
+        ID3D11DeviceContext* device_context = m_rhi_device->GetRhiContext()->device_context;
 
         if (scope & RHI_Shader_Vertex)
         {
@@ -649,7 +649,7 @@ namespace Spartan
         const UINT start_slot               = slot;
         const UINT range                    = 1;
         const void* sampler_array[1]        = { sampler ? sampler->GetResource() : nullptr };
-        ID3D11DeviceContext* device_context = m_rhi_device->GetContextRhi()->device_context;
+        ID3D11DeviceContext* device_context = m_rhi_device->GetRhiContext()->device_context;
 
         if (m_pso.IsCompute())
         {
@@ -701,7 +701,7 @@ namespace Spartan
         bool mip_requested                  = mip_index != rhi_all_mips;
         const bool ranged                   = mip_index != rhi_all_mips && mip_range != 0;
         const UINT range                    = ranged ? (texture->GetMipCount() - (mip_requested ? mip_index : 0)): 1;
-        ID3D11DeviceContext* device_context = m_rhi_device->GetContextRhi()->device_context;
+        ID3D11DeviceContext* device_context = m_rhi_device->GetRhiContext()->device_context;
 
         // Build resource array
         array<void*, m_resource_array_length_max> resources;
@@ -797,7 +797,7 @@ namespace Spartan
     {
         array<void*, 1> view_array          = { structured_buffer ? structured_buffer->GetRhiUav() : nullptr };
         const UINT range                    = 1;
-        ID3D11DeviceContext* device_context = m_rhi_device->GetContextRhi()->device_context;
+        ID3D11DeviceContext* device_context = m_rhi_device->GetRhiContext()->device_context;
 
         // Set only if not set
         ID3D11UnorderedAccessView* set_uav = nullptr;
@@ -831,7 +831,7 @@ namespace Spartan
         SP_ASSERT(query_end != nullptr);
         SP_ASSERT(m_rhi_device != nullptr);
 
-        RHI_Context* rhi_context = m_rhi_device->GetContextRhi();
+        RHI_Context* rhi_context = m_rhi_device->GetRhiContext();
 
         // Get start time
         uint64_t start_time = 0; 
@@ -881,7 +881,7 @@ namespace Spartan
     {
         SP_ASSERT(name != nullptr);
 
-        RHI_Context* rhi_context = m_rhi_device->GetContextRhi();
+        RHI_Context* rhi_context = m_rhi_device->GetRhiContext();
 
         // Allowed to profile ?
         if (rhi_context->gpu_profiling && gpu_timing && m_profiler)
@@ -893,14 +893,14 @@ namespace Spartan
         // Allowed to mark ?
         if (rhi_context->gpu_markers && gpu_marker)
         {
-            m_rhi_device->GetContextRhi()->annotation->BeginEvent(FileSystem::StringToWstring(name).c_str());
+            m_rhi_device->GetRhiContext()->annotation->BeginEvent(FileSystem::StringToWstring(name).c_str());
         }
     }
 
     void RHI_CommandList::EndTimeblock()
     {
         // Allowed to mark ?
-        RHI_Context* rhi_context = m_rhi_device->GetContextRhi();
+        RHI_Context* rhi_context = m_rhi_device->GetRhiContext();
         if (rhi_context->gpu_markers)
         {
             rhi_context->annotation->EndEvent();
@@ -916,17 +916,17 @@ namespace Spartan
 
     void RHI_CommandList::BeginMarker(const char* name)
     {
-        if (m_rhi_device->GetContextRhi()->gpu_markers)
+        if (m_rhi_device->GetRhiContext()->gpu_markers)
         {
-            m_rhi_device->GetContextRhi()->annotation->BeginEvent(FileSystem::StringToWstring(name).c_str());
+            m_rhi_device->GetRhiContext()->annotation->BeginEvent(FileSystem::StringToWstring(name).c_str());
         }
     }
 
     void RHI_CommandList::EndMarker()
     {
-        if (m_rhi_device->GetContextRhi()->gpu_markers)
+        if (m_rhi_device->GetRhiContext()->gpu_markers)
         {
-            m_rhi_device->GetContextRhi()->annotation->EndEvent();
+            m_rhi_device->GetRhiContext()->annotation->EndEvent();
         }
     }
 
@@ -937,7 +937,7 @@ namespace Spartan
 
     void RHI_CommandList::UnbindOutputTextures()
     {
-        ID3D11DeviceContext* device_context = m_rhi_device->GetContextRhi()->device_context;
+        ID3D11DeviceContext* device_context = m_rhi_device->GetRhiContext()->device_context;
 
         array<void*, m_resource_array_length_max> resources;
         resources.fill(nullptr);

@@ -35,7 +35,7 @@ namespace Spartan
     void RHI_ConstantBuffer::_create()
     {
         SP_ASSERT(m_rhi_device != nullptr);
-        SP_ASSERT(m_rhi_device->GetContextRhi()->device != nullptr);
+        SP_ASSERT(m_rhi_device->GetRhiContext()->device != nullptr);
 
         // Destroy previous buffer
         _destroy();
@@ -49,7 +49,7 @@ namespace Spartan
         buffer_desc.MiscFlags           = 0;
         buffer_desc.StructureByteStride = 0;
 
-        SP_ASSERT(d3d11_utility::error_check(m_rhi_device->GetContextRhi()->device->CreateBuffer(&buffer_desc, nullptr, reinterpret_cast<ID3D11Buffer**>(&m_rhi_resource))));
+        SP_ASSERT(d3d11_utility::error_check(m_rhi_device->GetRhiContext()->device->CreateBuffer(&buffer_desc, nullptr, reinterpret_cast<ID3D11Buffer**>(&m_rhi_resource))));
     }
 
     void RHI_ConstantBuffer::_destroy()
@@ -66,11 +66,11 @@ namespace Spartan
     void* RHI_ConstantBuffer::Map()
     {
         SP_ASSERT(m_rhi_device != nullptr);
-        SP_ASSERT(m_rhi_device->GetContextRhi()->device_context != nullptr);
+        SP_ASSERT(m_rhi_device->GetRhiContext()->device_context != nullptr);
         SP_ASSERT(m_rhi_resource != nullptr);
 
         D3D11_MAPPED_SUBRESOURCE mapped_resource;
-        const auto result = m_rhi_device->GetContextRhi()->device_context->Map(static_cast<ID3D11Buffer*>(m_rhi_resource), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped_resource);
+        const auto result = m_rhi_device->GetRhiContext()->device_context->Map(static_cast<ID3D11Buffer*>(m_rhi_resource), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped_resource);
         if (FAILED(result))
         {
             LOG_ERROR("Failed to map constant buffer.");
@@ -83,7 +83,7 @@ namespace Spartan
     void RHI_ConstantBuffer::Unmap()
     {
         SP_ASSERT(m_rhi_resource != nullptr);
-        m_rhi_device->GetContextRhi()->device_context->Unmap(static_cast<ID3D11Buffer*>(m_rhi_resource), 0);
+        m_rhi_device->GetRhiContext()->device_context->Unmap(static_cast<ID3D11Buffer*>(m_rhi_resource), 0);
     }
 
     void RHI_ConstantBuffer::Flush(const uint64_t size, const uint64_t offset)

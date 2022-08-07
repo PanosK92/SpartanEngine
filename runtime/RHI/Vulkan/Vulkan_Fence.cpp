@@ -37,7 +37,7 @@ namespace Spartan
         fence_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 
         // Create
-        if (!vulkan_utility::error::check(vkCreateFence(m_rhi_device->GetContextRhi()->device, &fence_info, nullptr, reinterpret_cast<VkFence*>(&m_resource))))
+        if (!vulkan_utility::error::check(vkCreateFence(m_rhi_device->GetRhiContext()->device, &fence_info, nullptr, reinterpret_cast<VkFence*>(&m_resource))))
             return;
 
         // Name
@@ -56,24 +56,24 @@ namespace Spartan
         // Wait in case it's still in use by the GPU
         m_rhi_device->QueueWaitAll();
 
-        vkDestroyFence(m_rhi_device->GetContextRhi()->device, static_cast<VkFence>(m_resource), nullptr);
+        vkDestroyFence(m_rhi_device->GetRhiContext()->device, static_cast<VkFence>(m_resource), nullptr);
         m_resource = nullptr;
     }
 
     bool RHI_Fence::IsSignaled()
     {
-        return vkGetFenceStatus(m_rhi_device->GetContextRhi()->device, reinterpret_cast<VkFence>(m_resource)) == VK_SUCCESS;
+        return vkGetFenceStatus(m_rhi_device->GetRhiContext()->device, reinterpret_cast<VkFence>(m_resource)) == VK_SUCCESS;
     }
 
     bool RHI_Fence::Wait(uint64_t timeout_nanoseconds /*= 1000000000*/)
     {
-        return vulkan_utility::error::check(vkWaitForFences(m_rhi_device->GetContextRhi()->device, 1, reinterpret_cast<VkFence*>(&m_resource), true, timeout_nanoseconds));
+        return vulkan_utility::error::check(vkWaitForFences(m_rhi_device->GetRhiContext()->device, 1, reinterpret_cast<VkFence*>(&m_resource), true, timeout_nanoseconds));
     }
 
     void RHI_Fence::Reset()
     {
         SP_ASSERT_MSG(
-            vulkan_utility::error::check(vkResetFences(m_rhi_device->GetContextRhi()->device, 1, reinterpret_cast<VkFence*>(&m_resource))),
+            vulkan_utility::error::check(vkResetFences(m_rhi_device->GetRhiContext()->device, 1, reinterpret_cast<VkFence*>(&m_resource))),
             "Failed to reset fence"
             );
 

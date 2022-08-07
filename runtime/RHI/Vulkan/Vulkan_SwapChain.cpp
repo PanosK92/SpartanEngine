@@ -131,7 +131,7 @@ namespace Spartan
         array<shared_ptr<RHI_Semaphore>, max_buffer_count>& image_acquired_semaphore
     )
         {
-            RHI_Context* rhi_context = rhi_device->GetContextRhi();
+            RHI_Context* rhi_context = rhi_device->GetRhiContext();
 
             // Verify window handle
             const HWND hwnd = static_cast<HWND>(window_handle);
@@ -148,7 +148,7 @@ namespace Spartan
 
                 SP_ASSERT_MSG(vulkan_utility::error::check(
                     vkCreateWin32SurfaceKHR(
-                        rhi_device->GetContextRhi()->instance,
+                        rhi_device->GetRhiContext()->instance,
                         &create_info,
                         nullptr,
                         &surface
@@ -291,7 +291,7 @@ namespace Spartan
         array<std::shared_ptr<RHI_Semaphore>, max_buffer_count>& image_acquired_semaphore
     )
     {
-        RHI_Context* rhi_context = rhi_device->GetContextRhi();
+        RHI_Context* rhi_context = rhi_device->GetRhiContext();
 
         // Sync objects
         image_acquired_semaphore.fill(nullptr);
@@ -466,7 +466,7 @@ namespace Spartan
 
         // Acquire next image
         SP_ASSERT_MSG(vulkan_utility::error::check(vkAcquireNextImageKHR(
-            m_rhi_device->GetContextRhi()->device,                     // device
+            m_rhi_device->GetRhiContext()->device,                     // device
             static_cast<VkSwapchainKHR>(m_rhi_resource),               // swapchain
             numeric_limits<uint64_t>::max(),                           // timeout
             static_cast<VkSemaphore>(signal_semaphore->GetResource()), // signal semaphore
