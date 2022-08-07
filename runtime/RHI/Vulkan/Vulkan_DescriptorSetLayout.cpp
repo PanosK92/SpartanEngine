@@ -39,7 +39,7 @@ namespace Spartan
             // Wait in case it's still in use by the GPU
             m_rhi_device->QueueWaitAll();
 
-            vkDestroyDescriptorSetLayout(m_rhi_device->GetContextRhi()->device, static_cast<VkDescriptorSetLayout>(m_resource), nullptr);
+            vkDestroyDescriptorSetLayout(m_rhi_device->GetRhiContext()->device, static_cast<VkDescriptorSetLayout>(m_resource), nullptr);
             m_resource = nullptr;
         }
     }
@@ -88,7 +88,7 @@ namespace Spartan
         create_info.pBindings                       = layout_bindings.data();
 
         // Descriptor set layout
-        bool allocated = vulkan_utility::error::check(vkCreateDescriptorSetLayout(m_rhi_device->GetContextRhi()->device, &create_info, nullptr, reinterpret_cast<VkDescriptorSetLayout*>(&m_resource)));
+        bool allocated = vulkan_utility::error::check(vkCreateDescriptorSetLayout(m_rhi_device->GetRhiContext()->device, &create_info, nullptr, reinterpret_cast<VkDescriptorSetLayout*>(&m_resource)));
         SP_ASSERT(allocated && "Failed to allocate descriptor set layout.");
 
         // Name

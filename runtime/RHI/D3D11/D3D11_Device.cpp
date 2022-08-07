@@ -36,7 +36,7 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    RHI_Device::RHI_Device(Context* context)
+    RHI_Device::RHI_Device(Context* context, RHI_Context* rhi_context)
     {
         // Detect device limits
         m_max_texture_1d_dimension   = D3D11_REQ_TEXTURE1D_U_DIMENSION;
@@ -46,8 +46,8 @@ namespace Spartan
         m_max_texture_array_layers   = D3D11_REQ_TEXTURE2D_ARRAY_AXIS_DIMENSION;
 
         m_context                           = context;
-        m_rhi_context                       = make_shared<RHI_Context>();
-        d3d11_utility::globals::rhi_context = m_rhi_context.get();
+        m_rhi_context                       = rhi_context;
+        d3d11_utility::globals::rhi_context = m_rhi_context;
         d3d11_utility::globals::rhi_device  = this;
         const bool multithread_protection   = true;
 
@@ -73,7 +73,7 @@ namespace Spartan
             // Flags
             UINT device_flags = 0;
             // Enable debug layer
-            if (m_rhi_context->debug)
+            if (m_rhi_context->validation)
             {
                 device_flags |= D3D11_CREATE_DEVICE_DEBUG;
             }
@@ -171,7 +171,7 @@ namespace Spartan
         }
 
         // Annotations
-        if (m_rhi_context->debug)
+        if (m_rhi_context->validation)
         {
             const auto result = m_rhi_context->device_context->QueryInterface(IID_PPV_ARGS(&m_rhi_context->annotation));
             if (FAILED(result))

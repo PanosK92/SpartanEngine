@@ -56,6 +56,7 @@ Note: This is a blocking event system
 
 enum class EventType
 {
+    RenderStart,
     PostPresent,
     WorldSaveStart,            // The world is about to be saved to a file
     WorldSavedEnd,             // The world finished saving to file

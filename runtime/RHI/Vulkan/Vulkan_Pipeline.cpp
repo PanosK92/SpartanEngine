@@ -59,7 +59,7 @@ namespace Spartan
             pipeline_layout_info.pSetLayouts                = reinterpret_cast<VkDescriptorSetLayout*>(layouts.data());
 
             // Create
-            if (!vulkan_utility::error::check(vkCreatePipelineLayout(m_rhi_device->GetContextRhi()->device, &pipeline_layout_info, nullptr, reinterpret_cast<VkPipelineLayout*>(&m_resource_pipeline_layout))))
+            if (!vulkan_utility::error::check(vkCreatePipelineLayout(m_rhi_device->GetRhiContext()->device, &pipeline_layout_info, nullptr, reinterpret_cast<VkPipelineLayout*>(&m_resource_pipeline_layout))))
                 return;
 
             // Name
@@ -374,7 +374,7 @@ namespace Spartan
                 pipeline_info.renderPass                   = nullptr;
         
                 // Create
-                vulkan_utility::error::check(vkCreateGraphicsPipelines(m_rhi_device->GetContextRhi()->device, nullptr, 1, &pipeline_info, nullptr, pipeline));
+                vulkan_utility::error::check(vkCreateGraphicsPipelines(m_rhi_device->GetRhiContext()->device, nullptr, 1, &pipeline_info, nullptr, pipeline));
 
                 SP_ASSERT_MSG(*pipeline != nullptr, "Failed to create graphics pipeline");
 
@@ -390,7 +390,7 @@ namespace Spartan
                 pipeline_info.stage                       = shader_stages[0];
 
                 // Create
-                vulkan_utility::error::check(vkCreateComputePipelines(m_rhi_device->GetContextRhi()->device, nullptr, 1, &pipeline_info, nullptr, pipeline));
+                vulkan_utility::error::check(vkCreateComputePipelines(m_rhi_device->GetRhiContext()->device, nullptr, 1, &pipeline_info, nullptr, pipeline));
 
                 SP_ASSERT_MSG(*pipeline != nullptr, "Failed to create compute pipeline");
 
@@ -416,10 +416,10 @@ namespace Spartan
         // Wait in case it's still in use by the GPU
         m_rhi_device->QueueWaitAll();
     
-        vkDestroyPipeline(m_rhi_device->GetContextRhi()->device, static_cast<VkPipeline>(m_resource_pipeline), nullptr);
+        vkDestroyPipeline(m_rhi_device->GetRhiContext()->device, static_cast<VkPipeline>(m_resource_pipeline), nullptr);
         m_resource_pipeline = nullptr;
         
-        vkDestroyPipelineLayout(m_rhi_device->GetContextRhi()->device, static_cast<VkPipelineLayout>(m_resource_pipeline_layout), nullptr);
+        vkDestroyPipelineLayout(m_rhi_device->GetRhiContext()->device, static_cast<VkPipelineLayout>(m_resource_pipeline_layout), nullptr);
         m_resource_pipeline_layout = nullptr;
     }
 }

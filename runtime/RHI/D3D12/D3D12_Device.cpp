@@ -37,7 +37,7 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    RHI_Device::RHI_Device(Context* context)
+    RHI_Device::RHI_Device(Context* context, RHI_Context* rhi_context)
     {
         // Detect device limits
         m_max_texture_1d_dimension   = D3D12_REQ_TEXTURE1D_U_DIMENSION;
@@ -47,8 +47,8 @@ namespace Spartan
         m_max_texture_array_layers   = D3D12_REQ_TEXTURE2D_ARRAY_AXIS_DIMENSION;
 
         m_context                           = context;
-        m_rhi_context                       = make_shared<RHI_Context>();
-        d3d12_utility::globals::rhi_context = m_rhi_context.get();
+        m_rhi_context                       = rhi_context;
+        d3d12_utility::globals::rhi_context = rhi_context;
         d3d12_utility::globals::rhi_device  = this;
 
         // Find a physical device
@@ -59,7 +59,7 @@ namespace Spartan
 
         // Debug layer
         UINT dxgi_factory_flags = 0;
-        if (m_rhi_context->debug)
+        if (m_rhi_context->validation)
         {
             Microsoft::WRL::ComPtr<ID3D12Debug1> debug_interface;
             if (d3d12_utility::error::check(D3D12GetDebugInterface(IID_PPV_ARGS(&debug_interface))))

@@ -48,9 +48,7 @@ namespace Spartan
         const char* name            /*= nullptr */
     )
     {
-        // Verify device
         SP_ASSERT(rhi_device != nullptr);
-        SP_ASSERT(rhi_device->GetContextRhi()->device != nullptr);
 
         // Verify window handle
         const HWND hwnd = static_cast<HWND>(window_handle);
@@ -68,7 +66,7 @@ namespace Spartan
         Microsoft::WRL::ComPtr<IDXGIFactory4> factory;
         {
             INT dxgiFactoryFlags = 0;
-            if (!rhi_device->GetContextRhi()->debug)
+            if (!rhi_device->GetRhiContext()->validation)
             {
                 dxgiFactoryFlags |= DXGI_CREATE_FACTORY_DEBUG;
             }

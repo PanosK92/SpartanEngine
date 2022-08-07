@@ -35,7 +35,7 @@ namespace Spartan
     class SPARTAN_CLASS RHI_Device : public SpartanObject
     {
     public:
-        RHI_Device(Context* context);
+        RHI_Device(Context* context, RHI_Context* rhi_context);
         ~RHI_Device();
 
         // Physical device
@@ -77,12 +77,12 @@ namespace Spartan
         void DestroyCommandPool(RHI_CommandPool* cmd_pool);
         const std::vector<std::shared_ptr<RHI_CommandPool>>& GetCommandPools() { return m_cmd_pools; }
 
-        // Static
-        static RHI_Api_Type GetApiType();
+        // RHI
+        static RHI_Api_Type GetRhiApiType();
+        RHI_Context* GetRhiContext() const { return m_rhi_context; }
 
         // Misc
         bool IsValidResolution(const uint32_t width, const uint32_t height);
-        RHI_Context* GetContextRhi()        const { return m_rhi_context.get(); }
         Context* GetContext()               const { return m_context; }
         uint32_t GetEnabledGraphicsStages() const { return m_enabled_graphics_shader_stages; }
 
@@ -128,6 +128,6 @@ namespace Spartan
         uint32_t m_enabled_graphics_shader_stages = 0;
         mutable std::mutex m_queue_mutex;
         std::vector<PhysicalDevice> m_physical_devices;
-        std::shared_ptr<RHI_Context> m_rhi_context;
+        RHI_Context* m_rhi_context = nullptr;
     };
 }

@@ -72,7 +72,7 @@ namespace Spartan
 
         m_rhi_device = renderer->GetRhiDevice();
         SP_ASSERT(m_rhi_device != nullptr);
-        SP_ASSERT(m_rhi_device->GetContextRhi()->device != nullptr);
+        SP_ASSERT(m_rhi_device->GetRhiContext()->device != nullptr);
 
         m_layout.fill(RHI_Image_Layout::Undefined);
         m_rhi_srv_mips.fill(nullptr);

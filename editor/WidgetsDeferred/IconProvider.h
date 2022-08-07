@@ -55,7 +55,7 @@ enum class IconType
     Button_Play,
     Button_Profiler,
     Button_ResourceCache,
-    Button_BookMarkViewer,
+    Button_RenderDoc,
     Directory_Folder,
     Directory_File_Audio,
     Directory_File_World,

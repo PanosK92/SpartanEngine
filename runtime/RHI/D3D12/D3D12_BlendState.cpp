@@ -45,9 +45,6 @@ namespace Spartan
         const float blend_factor                  /*= 0.0f*/
     )
     {
-        SP_ASSERT(rhi_device != nullptr);
-        SP_ASSERT(rhi_device->GetContextRhi()->device != nullptr);
-
         // Save parameters
         m_blend_enabled      = blend_enabled;
         m_source_blend       = source_blend;

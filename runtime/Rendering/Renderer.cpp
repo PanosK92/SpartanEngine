@@ -47,6 +47,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Input/Input.h"                     
 #include "../World/Components/Environment.h"    
 #include "../RHI/RHI_FSR.h"
+#include "../RHI/RHI_RenderDoc.h"
 //==============================================
 
 //= NAMESPACES ===============
@@ -102,6 +103,7 @@ namespace Spartan
 
     Renderer::~Renderer()
     {
+        RHI_RenderDoc::Shutdown();
         RHI_FSR::Destroy();
 
         // Unsubscribe from events
@@ -127,8 +129,17 @@ namespace Spartan
         // Get profiler subsystem (used to profile things but not required)
         m_profiler = m_context->GetSubsystem<Profiler>();
 
+        // Create RHI context
+        m_rhi_context = make_shared<RHI_Context>();
+
+        // Initialise RenderDoc
+        if (m_rhi_context->renderdoc)
+        {
+            RHI_RenderDoc::OnPreDeviceCreation();
+        }
+
         // Create device
-        m_rhi_device = make_shared<RHI_Device>(m_context);
+        m_rhi_device = make_shared<RHI_Device>(m_context, m_rhi_context.get());
 
         // Line buffer
         m_vertex_buffer_lines = make_shared<RHI_VertexBuffer>(m_rhi_device.get(), true, "renderer_lines");
@@ -211,11 +222,14 @@ namespace Spartan
         if (!m_swap_chain->PresentEnabled() || !m_is_rendering_allowed)
             return;
 
+        // Fire render start event
+        SP_FIRE_EVENT(EventType::RenderStart);
+
         m_frame_num++;
         m_is_odd_frame = (m_frame_num % 2) == 1;
 
         // Tick command pool
-        bool reset = m_cmd_pool->Tick() || m_rhi_device->GetApiType() == RHI_Api_Type::D3d11;
+        bool reset = m_cmd_pool->Tick() || m_rhi_device->GetRhiApiType() == RHI_Api_Type::D3d11;
 
         // Begin
         m_cmd_current = m_cmd_pool->GetCurrentCommandList();
@@ -259,7 +273,7 @@ namespace Spartan
 
             // Generate jitter sample in case FSR (which also does TAA) is enabled. D3D11 only receives FXAA so it's ignored at this point.
             UpsamplingMode upsampling_mode = GetOption<UpsamplingMode>(RendererOption::Upsampling);
-            if ((upsampling_mode == UpsamplingMode::FSR || GetOption<AntialiasingMode>(RendererOption::Antialiasing) == AntialiasingMode::Taa) && RHI_Device::GetApiType() != RHI_Api_Type::D3d11)
+            if ((upsampling_mode == UpsamplingMode::FSR || GetOption<AntialiasingMode>(RendererOption::Antialiasing) == AntialiasingMode::Taa) && RHI_Device::GetRhiApiType() != RHI_Api_Type::D3d11)
             {
                 RHI_FSR::GenerateJitterSample(&m_taa_jitter.x, &m_taa_jitter.y);
                 m_taa_jitter.x            = (m_taa_jitter.x / m_resolution_render.x);
@@ -659,7 +673,7 @@ namespace Spartan
 
                     // Destroy the resources associated with those flags
                     {
-                        const bool destroy_main = false;
+                        const bool destroy_main     = false;
                         const bool destroy_per_view = true;
                         texture->RHI_DestroyResource(destroy_main, destroy_per_view);
                     }
@@ -723,7 +737,7 @@ namespace Spartan
 
         // Reject changes (if needed)
         {
-            bool is_d3d11 = RHI_Device::GetApiType() == RHI_Api_Type::D3d11;
+            bool is_d3d11 = RHI_Device::GetRhiApiType() == RHI_Api_Type::D3d11;
 
             if (is_d3d11 && option == RendererOption::Antialiasing && (value == static_cast<float>(AntialiasingMode::Taa) || value == static_cast<float>(AntialiasingMode::TaaFxaa)))
             {
@@ -827,8 +841,6 @@ namespace Spartan
             return;
 
         m_swap_chain->Present();
-
-        // Notify subsystems that need to calculate things after presenting, like the profiler.
         SP_FIRE_EVENT(EventType::PostPresent);
     }
 
@@ -870,7 +882,7 @@ namespace Spartan
         m_flush_requested = false;
     }
 
-    RHI_Api_Type Renderer::GetApiType()
+    RHI_Api_Type Renderer::GetRhiApiType()
     {
         return RHI_Context::api_type;
     }

@@ -46,7 +46,7 @@ namespace Spartan
         const float line_width              /*= 1.0f */)
     {
         SP_ASSERT(rhi_device != nullptr);
-        SP_ASSERT(rhi_device->GetContextRhi()->device != nullptr);
+        SP_ASSERT(rhi_device->GetRhiContext()->device != nullptr);
 
         // Save properties
         m_cull_mode               = cull_mode;
@@ -73,7 +73,7 @@ namespace Spartan
         desc.ScissorEnable          = scissor_enabled;
 
         // Create rasterizer state
-        SP_ASSERT(d3d11_utility::error_check(rhi_device->GetContextRhi()->device->CreateRasterizerState(&desc, reinterpret_cast<ID3D11RasterizerState**>(&m_rhi_resource))));
+        SP_ASSERT(d3d11_utility::error_check(rhi_device->GetRhiContext()->device->CreateRasterizerState(&desc, reinterpret_cast<ID3D11RasterizerState**>(&m_rhi_resource))));
     }
 
     RHI_RasterizerState::~RHI_RasterizerState()

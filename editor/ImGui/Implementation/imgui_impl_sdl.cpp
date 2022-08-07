@@ -385,7 +385,7 @@ bool ImGui_ImplSDL2_Init(Spartan::Context* context)
 
     // Initialise some ImGui stuff
     bd->Window = static_cast<SDL_Window*>(context->GetSubsystem<Spartan::Window>()->GetHandleSDL());
-    bd->UseVulkan = Spartan::Renderer::GetApiType() == Spartan::RHI_Api_Type::Vulkan;
+    bd->UseVulkan = Spartan::Renderer::GetRhiApiType() == Spartan::RHI_Api_Type::Vulkan;
     bd->engine_context = context;
 
     io.SetClipboardTextFn = ImGui_ImplSDL2_SetClipboardText;

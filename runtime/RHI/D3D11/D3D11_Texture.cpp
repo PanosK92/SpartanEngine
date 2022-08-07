@@ -148,7 +148,7 @@ namespace Spartan
         }
 
         // Create
-        return d3d11_utility::error_check(rhi_device->GetContextRhi()->device->CreateTexture2D(&texture_desc, texture_data.data(), &texture));
+        return d3d11_utility::error_check(rhi_device->GetRhiContext()->device->CreateTexture2D(&texture_desc, texture_data.data(), &texture));
     }
 
     static bool create_render_target_view(void* texture, array<void*, rhi_max_render_target_count>& views, const ResourceType resource_type, const DXGI_FORMAT format, const uint32_t array_size, const shared_ptr<RHI_Device>& rhi_device)
@@ -167,7 +167,7 @@ namespace Spartan
         {
             desc.Texture2DArray.FirstArraySlice = i;
 
-            if (!d3d11_utility::error_check(rhi_device->GetContextRhi()->device->CreateRenderTargetView(static_cast<ID3D11Resource*>(texture), &desc, reinterpret_cast<ID3D11RenderTargetView**>(&views[i]))))
+            if (!d3d11_utility::error_check(rhi_device->GetRhiContext()->device->CreateRenderTargetView(static_cast<ID3D11Resource*>(texture), &desc, reinterpret_cast<ID3D11RenderTargetView**>(&views[i]))))
                 return false;
         }
 
@@ -201,7 +201,7 @@ namespace Spartan
         {
             desc.Texture2DArray.FirstArraySlice = i;
 
-            if(!d3d11_utility::error_check(rhi_device->GetContextRhi()->device->CreateDepthStencilView(static_cast<ID3D11Resource*>(texture), &desc, reinterpret_cast<ID3D11DepthStencilView**>(&views[i]))))
+            if(!d3d11_utility::error_check(rhi_device->GetRhiContext()->device->CreateDepthStencilView(static_cast<ID3D11Resource*>(texture), &desc, reinterpret_cast<ID3D11DepthStencilView**>(&views[i]))))
                 return false;
         }
 
@@ -240,7 +240,7 @@ namespace Spartan
         }
 
         // Create
-        return d3d11_utility::error_check(rhi_device->GetContextRhi()->device->CreateShaderResourceView(static_cast<ID3D11Resource*>(texture), &desc, reinterpret_cast<ID3D11ShaderResourceView**>(&view)));
+        return d3d11_utility::error_check(rhi_device->GetRhiContext()->device->CreateShaderResourceView(static_cast<ID3D11Resource*>(texture), &desc, reinterpret_cast<ID3D11ShaderResourceView**>(&view)));
     }
 
     static bool create_unordered_access_view(void* texture, void*& view, const ResourceType resource_type, const DXGI_FORMAT format, const uint32_t array_size, const uint32_t mip, const shared_ptr<RHI_Device>& rhi_device)
@@ -265,7 +265,7 @@ namespace Spartan
         }
 
         // Create
-        return d3d11_utility::error_check(rhi_device->GetContextRhi()->device->CreateUnorderedAccessView(static_cast<ID3D11Resource*>(texture), &desc, reinterpret_cast<ID3D11UnorderedAccessView**>(&view)));
+        return d3d11_utility::error_check(rhi_device->GetRhiContext()->device->CreateUnorderedAccessView(static_cast<ID3D11Resource*>(texture), &desc, reinterpret_cast<ID3D11UnorderedAccessView**>(&view)));
     }
 
     void RHI_Texture::RHI_SetLayout(const RHI_Image_Layout new_layout, RHI_CommandList* cmd_list, const uint32_t mip_index, const uint32_t mip_range)
@@ -277,7 +277,7 @@ namespace Spartan
     {
         // Validate
         SP_ASSERT(m_rhi_device != nullptr);
-        SP_ASSERT(m_rhi_device->GetContextRhi()->device != nullptr);
+        SP_ASSERT(m_rhi_device->GetRhiContext()->device != nullptr);
     
         bool result_tex = true;
         bool result_srv = true;
