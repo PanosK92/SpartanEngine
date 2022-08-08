@@ -481,7 +481,7 @@ namespace Spartan
     void Renderer::CreateTextures()
     {
         // Get standard texture directory
-        const string dir_texture = m_resource_cache->GetResourceDirectory(ResourceDirectory::Textures) + "/";
+        const string dir_texture = m_resource_cache->GetResourceDirectory(ResourceDirectory::Textures) + "\\";
 
         // Noise textures
         {

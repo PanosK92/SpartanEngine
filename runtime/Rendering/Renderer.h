@@ -63,7 +63,7 @@ namespace Spartan
         ~Renderer();
 
         //= ISubsystem =========================
-        void OnInitialize() override;
+        void OnInitialise() override;
         void OnTick(double delta_time) override;
         //======================================
 

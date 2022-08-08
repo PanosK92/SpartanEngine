@@ -19,13 +19,14 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==============
+//= INCLUDES ==================
 #include "pch.h"
 #include "Window.h"
 #include "SDL.h"
 #include "SDL_syswm.h"
 #include "../Input/Input.h"
-//=========================
+#include "../Display/Display.h"
+//=============================
 
 //= LINKING ============================
 // Statically linking SDL2 requires that
@@ -62,11 +63,13 @@ namespace Spartan
             }
         }
 
-        m_title = "Spartan " + to_string(sp_version_major) + "." + to_string(sp_version_minor) + "." + to_string(sp_version_revision);
+        // Show a splash screen
+        CreateAndShowSplashScreen();
 
         // Create window
-        uint32_t flags = SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_MAXIMIZED;
-        m_window = SDL_CreateWindow(
+        m_title        = "Spartan " + to_string(sp_version_major) + "." + to_string(sp_version_minor) + "." + to_string(sp_version_revision);
+        uint32_t flags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_MAXIMIZED;
+        m_window       = SDL_CreateWindow(
             m_title.c_str(),         // window title
             SDL_WINDOWPOS_UNDEFINED, // initial x position
             SDL_WINDOWPOS_UNDEFINED, // initial y position
@@ -80,6 +83,12 @@ namespace Spartan
             LOG_ERROR("Could not create window: %s.", SDL_GetError());
             return;
         }
+
+        // Hide the window until the engine is able to present
+        Hide();
+
+        // Show the window and destroy the splash screen, after the first frame has been renderered successfully
+        SP_SUBSCRIBE_TO_EVENT(EventType::RendererOnFirstFrameCompleted, SP_EVENT_HANDLER(OnFirstFrameCompleted));
     }
 
     Window::~Window()
@@ -173,7 +182,7 @@ namespace Spartan
         }
     }
 
-    void Window::OnInitialize()
+    void Window::OnInitialise()
     {
         // Register library
         string version = to_string(SDL_MAJOR_VERSION) + "." + to_string(SDL_MINOR_VERSION) + "." + to_string(SDL_PATCHLEVEL);
@@ -291,5 +300,52 @@ namespace Spartan
         SDL_VERSION(&sys_info.version);
         SDL_GetWindowWMInfo(m_window, &sys_info);
         return static_cast<void*>(sys_info.info.win.window);
+    }
+
+    void Window::CreateAndShowSplashScreen()
+    {
+        // Load banner image - todo: remove hardcoded path
+        SDL_Surface* image = SDL_LoadBMP("data\\textures\\banner.bmp");
+        SP_ASSERT_MSG(image != nullptr, "Failed to load splash screen image");
+
+        // Compute window position
+        uint32_t width  = image->w;
+        uint32_t height = image->h;
+        uint32_t pos_x  = (Display::GetWidth() / 2)  - (width / 2);
+        uint32_t pos_y  = (Display::GetHeight() / 2) - (height / 2);
+
+
+
+        // Create splash screen
+        m_splash_sceen_window = SDL_CreateWindow(
+            "splash_screen",                         // window title
+            pos_x,                                   // initial x position
+            pos_y,                                   // initial y position
+            width,                                   // width in pixels
+            height,                                  // height in pixels
+            SDL_WINDOW_SHOWN | SDL_WINDOW_BORDERLESS // flags
+        );
+
+        // Create a renderer
+        m_splash_screen_renderer = SDL_CreateRenderer(m_splash_sceen_window, -1, 0);
+
+        // Create texture (GPU) and free image (CPU)
+        m_splash_screen_texture = SDL_CreateTextureFromSurface(m_splash_screen_renderer, image);
+        SDL_FreeSurface(image);
+
+        // Draw/copy and present
+        SDL_RenderCopy(m_splash_screen_renderer, m_splash_screen_texture, nullptr, nullptr);
+        SDL_RenderPresent(m_splash_screen_renderer);
+    }
+
+    void Window::OnFirstFrameCompleted()
+    {
+        // Show engine window
+        Show();
+
+        // Hide and destroy splash screen window
+        SDL_DestroyTexture(m_splash_screen_texture);
+        SDL_DestroyRenderer(m_splash_screen_renderer);
+        SDL_DestroyWindow(m_splash_sceen_window);
     }
 }

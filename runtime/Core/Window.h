@@ -9,6 +9,8 @@
 
 //= FORWARD DECLARATIONS =========
 struct SDL_Window;
+struct SDL_Renderer;
+struct SDL_Texture;
 typedef union SDL_Event SDL_Event;
 //================================
 
@@ -22,7 +24,7 @@ namespace Spartan
 
         //= ISubsystem =========================
         void OnTick(double delta_time) override;
-        void OnInitialize() override;
+        void OnInitialise() override;
         //======================================
 
         void Show();
@@ -44,15 +46,23 @@ namespace Spartan
         bool IsFullScreen()  const { return m_fullscreen; }
 
     private:
+        void CreateAndShowSplashScreen();
+        void OnFirstFrameCompleted();
+
         std::string m_title;
-        Math::Vector2 m_position = Math::Vector2::Zero;
-        uint32_t m_width         = 640;
-        uint32_t m_height        = 480;
-        bool m_shown             = false;
-        bool m_minimised         = false;
-        bool m_maximised         = false;
-        bool m_close             = false;
-        bool m_fullscreen        = false;
-        SDL_Window* m_window     = nullptr;
+        Math::Vector2 m_position    = Math::Vector2::Zero;
+        uint32_t m_width            = 640;
+        uint32_t m_height           = 480;
+        bool m_shown                = false;
+        bool m_minimised            = false;
+        bool m_maximised            = false;
+        bool m_close                = false;
+        bool m_fullscreen           = false;
+        SDL_Window* m_window        = nullptr;
+
+        // splash-screen
+        SDL_Window* m_splash_sceen_window      = nullptr;
+        SDL_Renderer* m_splash_screen_renderer = nullptr;
+        SDL_Texture* m_splash_screen_texture   = nullptr;
     };
 }

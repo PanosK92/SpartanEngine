@@ -44,7 +44,7 @@ namespace Spartan
         ~Audio();
 
         //= ISubsystem =========================
-        void OnInitialize() override;
+        void OnInitialise() override;
         void OnTick(double delta_time) override;
         //======================================
         

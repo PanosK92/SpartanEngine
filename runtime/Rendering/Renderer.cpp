@@ -116,7 +116,7 @@ namespace Spartan
         RHI_FSR::Destroy();
     }
 
-    void Renderer::OnInitialize()
+    void Renderer::OnInitialise()
     {
         // Get window subsystem (required in order to know a windows size and also create a swapchain for it).
         Window* window = m_context->GetSubsystem<Window>();
@@ -190,11 +190,12 @@ namespace Spartan
 
     void Renderer::OnTick(double delta_time)
     {
-        // After the first 100 frames, stop logging to a file.
-        // In other words if this function is still running, it means that the renderer/imgui can log on screen.
-        if (m_frame_num == 100 && Log::m_log_to_file)
+        // After the first frame has completed, we can be sure that the renderer is working.
+        // This allows various systems to rely on it.
+        if (m_frame_num == 1 && Log::m_log_to_file)
         {
            Log::m_log_to_file = false;
+           SP_FIRE_EVENT(EventType::RendererOnFirstFrameCompleted);
         }
 
         // Happens when core resources are created/destroyed
@@ -222,11 +223,10 @@ namespace Spartan
         if (!m_swap_chain->PresentEnabled() || !m_is_rendering_allowed)
             return;
 
-        // Fire render start event
-        SP_FIRE_EVENT(EventType::RendererStart);
-
         m_frame_num++;
         m_is_odd_frame = (m_frame_num % 2) == 1;
+
+        SP_FIRE_EVENT(EventType::RendererStart);
 
         // Tick command pool
         bool reset = m_cmd_pool->Tick() || m_rhi_device->GetRhiApiType() == RHI_Api_Type::D3d11;

@@ -52,7 +52,7 @@ namespace Spartan
         ~ResourceCache();
 
         //= ISubsystem ==============
-        void OnInitialize() override;
+        void OnInitialise() override;
         //===========================
 
         // Get by name

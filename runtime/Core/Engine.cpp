@@ -49,8 +49,8 @@ namespace Spartan
         m_context = make_shared<Context>();
         m_context->m_engine = this;
 
-        // Subsystem: Add.
-        // Addition order matters as it's also the tick order.
+        // Subsystem: Add (this is also the ticking order)
+        Stopwatch timer_add;
         m_context->AddSubsystem<Window>();
         m_context->AddSubsystem<Settings>();
         m_context->AddSubsystem<Timer>();
@@ -62,12 +62,17 @@ namespace Spartan
         m_context->AddSubsystem<World>(TickType::Smoothed);
         m_context->AddSubsystem<Profiler>();
         m_context->AddSubsystem<Renderer>();
+        LOG_INFO("Subsystem addition took %.1f ms", timer_add.GetElapsedTimeMs());
 
-        // Subsystem: Initialize.
-        m_context->OnInitialize();
+        // Subsystem: Initialise.
+        Stopwatch timer_initialise;
+        m_context->OnInitialise();
+        LOG_INFO("Subsystem initialisation took %.1f ms", timer_initialise.GetElapsedTimeMs());
 
-        // Subsystem: Post-initialize.
-        m_context->OnPostInitialize();
+        // Subsystem: Post-initialise.
+        Stopwatch timer_post_initialise;
+        m_context->OnPostInitialise();
+        LOG_INFO("Subsystem post-initialisation took %.1f ms", timer_post_initialise.GetElapsedTimeMs());
     }
 
     Engine::~Engine()
