@@ -27,11 +27,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RenderOptions.h"
 #include "TextureViewer.h"
 #include "Core/Engine.h"
+#include "RHI/RHI_RenderDoc.h"
+#include "Rendering/Renderer.h"
 #include "Rendering/Model.h"
 #include "../ImGuiExtension.h"
 #include "../ImGui/Source/imgui_internal.h"
 #include "../Editor.h"
-#include "RHI/RHI_RenderDoc.h"
 //=========================================
 
 //= NAMESPACES ===============
@@ -92,6 +93,7 @@ void Toolbar::TickAlways()
     );
 
     // RenderDoc button
+    if (m_context->GetSubsystem<Spartan::Renderer>()->IsRenderDocEnabled())
     {
         ImGui::SameLine();
         ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyle().Colors[ImGuiCol_Button]);

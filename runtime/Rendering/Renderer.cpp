@@ -887,6 +887,11 @@ namespace Spartan
         return RHI_Context::api_type;
     }
 
+    bool Renderer::IsRenderDocEnabled()
+    {
+        return m_rhi_context->renderdoc;
+    }
+    
     void Renderer::RequestTextureMipGeneration(shared_ptr<RHI_Texture> texture)
     {
         if (IsCallingFromOtherThread())
