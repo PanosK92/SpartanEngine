@@ -42,6 +42,126 @@ namespace Spartan
     static RENDERDOC_API_1_5_0* rdc_api = nullptr;
     static void* rdc_module             = nullptr;
 
+#if defined(_MSC_VER) // Windows
+    static std::vector<std::wstring> GetInstalledRenderDocDLLPaths()
+    {
+        std::vector<std::wstring> paths;
+
+        // query registry for all the render doc paths
+        static const wchar_t* pszInstallerFolders = TEXT("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Installer\\Folders");
+
+        HKEY hkey;
+        LSTATUS status = RegOpenKeyEx(HKEY_LOCAL_MACHINE, pszInstallerFolders, 0, KEY_READ, &hkey);
+        if (status != ERROR_SUCCESS) // ensure installer folders key is successfully opened
+        {
+            return {};
+        }
+
+#define MAX_KEY_LENGTH 255
+#define MAX_VALUE_NAME 8192
+        TCHAR    achClass[MAX_PATH] = TEXT(""); // buffer for class name 
+        DWORD    cchClassName = MAX_PATH;       // size of class string 
+        DWORD    cSubKeys = 0;                  // number of subkeys 
+        DWORD    cbMaxSubKey;                   // longest subkey size 
+        DWORD    cchMaxClass;                   // longest class string 
+        DWORD    cValues;                       // number of values for keyPath 
+        DWORD    cchMaxValue;                   // longest value name 
+        DWORD    cbMaxValueData;                // longest value data 
+        DWORD    cbSecurityDescriptor;          // size of security descriptor 
+        FILETIME ftLastWriteTime;               // last write time 
+
+        wchar_t    cbEnumValue[MAX_VALUE_NAME] = TEXT("");
+
+        DWORD i, retCode;
+
+        TCHAR  achValue[MAX_VALUE_NAME];
+        DWORD cchValue = MAX_VALUE_NAME;
+
+        // Get the class name and the value count. 
+        retCode = RegQueryInfoKey(
+            hkey,                    // keyPath handle 
+            achClass,                // buffer for class name 
+            &cchClassName,           // size of class string 
+            NULL,                    // reserved 
+            &cSubKeys,               // number of subkeys 
+            &cbMaxSubKey,            // longest subkey size 
+            &cchMaxClass,            // longest class string 
+            &cValues,                // number of values for this keyPath 
+            &cchMaxValue,            // longest value name 
+            &cbMaxValueData,         // longest value data 
+            &cbSecurityDescriptor,   // security descriptor 
+            &ftLastWriteTime);       // last write time 
+
+        if (cValues)
+        {
+            //printf("\nNumber of values: %d\n", cValues);
+            for (i = 0, retCode = ERROR_SUCCESS; i < cValues; i++)
+            {
+                cchValue = MAX_VALUE_NAME;
+                achValue[0] = '\0';
+                DWORD type = REG_SZ;
+                DWORD size;
+                memset(cbEnumValue, '\0', MAX_VALUE_NAME);
+
+                // MSDN:  https://docs.microsoft.com/en-us/windows/win32/api/winreg/nf-winreg-regenumvaluea
+                // If the data has the REG_SZ, REG_MULTI_SZ or REG_EXPAND_SZ type, the string may not have been stored with 
+                // the proper null-terminating characters. Therefore, even if the function returns ERROR_SUCCESS, the application 
+                // should ensure that the string is properly terminated before using it; otherwise, it may overwrite a buffer.
+                retCode = RegEnumValue(hkey, i,
+                    achValue,
+                    &cchValue,
+                    NULL,
+                    &type,
+                    NULL,
+                    &size);
+
+
+                if (type != REG_SZ || retCode != ERROR_SUCCESS)
+                {
+                    continue;
+                }
+
+                retCode = RegQueryInfoKey(
+                    hkey,                    // keyPath handle 
+                    achClass,                // buffer for class name 
+                    &cchClassName,           // size of class string 
+                    NULL,                    // reserved 
+                    &cSubKeys,               // number of subkeys 
+                    &cbMaxSubKey,            // longest subkey size 
+                    &cchMaxClass,            // longest class string 
+                    &cValues,                // number of values for this keyPath 
+                    &cchMaxValue,            // longest value name 
+                    &cbMaxValueData,         // longest value data 
+                    &cbSecurityDescriptor,   // security descriptor 
+                    &ftLastWriteTime);       // last write time 
+
+                std::wstring path(achValue);
+                if (path.find(L"RenderDoc") != std::wstring::npos)
+                {
+                    // many paths qualify:
+                    // 
+                    // "C:\\Program Files\\RenderDoc\\plugins\\amd\\counters\\"
+                    // "C:\\Program Files\\RenderDoc\\"
+                    // "C:\\ProgramData\\Microsoft\\Windows\\Start Menu\\Programs\\RenderDoc\\"
+                    //
+                    // Only consider the ones the contain the dll we want
+                    const std::wstring RDocDLLPath = path += TEXT("renderdoc.dll");
+                    WIN32_FIND_DATA FindFileData = { 0 };
+                    HANDLE hFind = FindFirstFile(RDocDLLPath.c_str(), &FindFileData);
+                    if (hFind != INVALID_HANDLE_VALUE)
+                    {
+                        paths.push_back(path);
+                    }
+                }
+            }
+        }
+
+        RegCloseKey(hkey);
+
+        return paths;
+    }
+#endif
+
     void RHI_RenderDoc::OnPreDeviceCreation()
     {
          // Load RenderDoc module and get a pointer to it's API
@@ -49,23 +169,22 @@ namespace Spartan
         {
             pRENDERDOC_GetAPI rdc_get_api = nullptr;
 #if defined(_MSC_VER) // Windows
-
             // If RenderDoc is already injected into the engine, use the existing module
             rdc_module = ::GetModuleHandleA("renderdoc.dll");
 
             // If RenderDoc is not injected, load the module now
             if (rdc_module == nullptr)
             {
-                // todo: get module path from system registry
-                string module_path = "C:\\Program Files\\RenderDoc\\renderdoc.dll"; 
-                rdc_module = ::LoadLibraryA(module_path.c_str());
+                vector<wstring> RDocDllPaths = GetInstalledRenderDocDLLPaths();
+                SP_ASSERT_MSG(!RDocDllPaths.empty(), "Could not find any install locations for renderdoc.dll");
+                wstring module_path = RDocDllPaths[0]; // assuming x64 is reported first
+                rdc_module = ::LoadLibraryW(module_path.c_str());
             }
 
             SP_ASSERT_MSG(rdc_module != nullptr, "Failed to get RenderDoc module");
 
             // Get the address of RENDERDOC_GetAPI
             rdc_get_api = (pRENDERDOC_GetAPI)::GetProcAddress(static_cast<HMODULE>(rdc_module), "RENDERDOC_GetAPI");
-
 #else // Linux
             SP_ASSERT_MSG(false, "Not implemented");
 #endif
