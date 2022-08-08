@@ -42,6 +42,7 @@ namespace Spartan
     static RENDERDOC_API_1_5_0* rdc_api = nullptr;
     static void* rdc_module             = nullptr;
 
+#if defined(_MSC_VER) // Windows
     static std::vector<std::wstring> GetInstalledRenderDocDLLPaths()
     {
         std::vector<std::wstring> paths;
@@ -58,16 +59,16 @@ namespace Spartan
 
 #define MAX_KEY_LENGTH 255
 #define MAX_VALUE_NAME 8192
-        TCHAR    achClass[MAX_PATH] = TEXT("");  // buffer for class name 
-        DWORD    cchClassName = MAX_PATH;  // size of class string 
-        DWORD    cSubKeys = 0;               // number of subkeys 
-        DWORD    cbMaxSubKey;              // longest subkey size 
-        DWORD    cchMaxClass;              // longest class string 
-        DWORD    cValues;              // number of values for keyPath 
-        DWORD    cchMaxValue;          // longest value name 
-        DWORD    cbMaxValueData;       // longest value data 
-        DWORD    cbSecurityDescriptor; // size of security descriptor 
-        FILETIME ftLastWriteTime;      // last write time 
+        TCHAR    achClass[MAX_PATH] = TEXT(""); // buffer for class name 
+        DWORD    cchClassName = MAX_PATH;       // size of class string 
+        DWORD    cSubKeys = 0;                  // number of subkeys 
+        DWORD    cbMaxSubKey;                   // longest subkey size 
+        DWORD    cchMaxClass;                   // longest class string 
+        DWORD    cValues;                       // number of values for keyPath 
+        DWORD    cchMaxValue;                   // longest value name 
+        DWORD    cbMaxValueData;                // longest value data 
+        DWORD    cbSecurityDescriptor;          // size of security descriptor 
+        FILETIME ftLastWriteTime;               // last write time 
 
         wchar_t    cbEnumValue[MAX_VALUE_NAME] = TEXT("");
 
@@ -159,6 +160,7 @@ namespace Spartan
 
         return paths;
     }
+#endif
 
     void RHI_RenderDoc::OnPreDeviceCreation()
     {
@@ -167,7 +169,6 @@ namespace Spartan
         {
             pRENDERDOC_GetAPI rdc_get_api = nullptr;
 #if defined(_MSC_VER) // Windows
-
             // If RenderDoc is already injected into the engine, use the existing module
             rdc_module = ::GetModuleHandleA("renderdoc.dll");
 
@@ -184,7 +185,6 @@ namespace Spartan
 
             // Get the address of RENDERDOC_GetAPI
             rdc_get_api = (pRENDERDOC_GetAPI)::GetProcAddress(static_cast<HMODULE>(rdc_module), "RENDERDOC_GetAPI");
-
 #else // Linux
             SP_ASSERT_MSG(false, "Not implemented");
 #endif
