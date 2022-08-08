@@ -26,8 +26,10 @@ If there is something interesting to talk about, I tend to do livestreams over a
 ## Media
 [![](https://i.imgur.com/j6zIEI9.jpg)](https://www.youtube.com/watch?v=RIae1ma_DSo)
 <img align="center" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/assets/github/readme_1.5.jpg"/>
-<img align="left" width="480" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/assets/github//readme_1.1.jpg"/>
-<img align="right" width="480" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/assets/github/readme_1.2.jpg"/>
+
+
+<img align="center" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/assets/github//readme_1.1.jpg"/>|<img align="center" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/assets/github/readme_1.2.jpg"/>
+:- | :-
 
 ## Features (v0.31)
 - 10+ font file formats support (FreeType)
