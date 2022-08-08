@@ -43,8 +43,8 @@ namespace Spartan::vulkan_utility
     mutex                                                                 command_buffer_immediate::m_mutex_begin;
     mutex                                                                 command_buffer_immediate::m_mutex_end;
     unordered_map<RHI_Queue_Type, command_buffer_immediate::cmdbi_object> command_buffer_immediate::m_objects;
-    static mutex mutex_vma_allocation_buffer;
-    static mutex mutex_vma_allocation_texture;
+    static mutex mutex_vma_buffer;
+    static mutex mutex_vma_texture;
 
     uint64_t get_allocation_id_from_resource(void* resource)
     {
@@ -134,7 +134,7 @@ namespace Spartan::vulkan_utility
         }
 
         // Allocations can come both from the main as well as worker threads (loading), so lock this context.
-        lock_guard<mutex> lock(mutex_vma_allocation_buffer);
+        lock_guard<mutex> lock(mutex_vma_buffer);
 
         // Keep allocation reference
         globals::rhi_context->allocations[reinterpret_cast<uint64_t>(resource)] = allocation;
@@ -146,7 +146,7 @@ namespace Spartan::vulkan_utility
             return;
 
         // Deallocations can come both from the main as well as worker threads, so lock this context.
-        lock_guard<mutex> lock(mutex_vma_allocation_buffer);
+        lock_guard<mutex> lock(mutex_vma_buffer);
 
         if (VmaAllocation allocation = get_allocation_from_resource(resource))
         {
@@ -185,7 +185,7 @@ namespace Spartan::vulkan_utility
         && "Failed to allocate texture");
 
         // Allocations can come both from the main as well as worker threads (loading), so lock this context.
-        lock_guard<mutex> lock(mutex_vma_allocation_texture);
+        lock_guard<mutex> lock(mutex_vma_texture);
 
         // Keep allocation reference
         globals::rhi_context->allocations[reinterpret_cast<uint64_t>(resource)] = allocation;
@@ -197,7 +197,7 @@ namespace Spartan::vulkan_utility
             return;
 
         // Deallocations can come both from the main as well as worker threads, so lock this context.
-        lock_guard<mutex> lock(mutex_vma_allocation_buffer);
+        lock_guard<mutex> lock(mutex_vma_texture);
 
         if (VmaAllocation allocation = get_allocation_from_resource(resource))
         {
