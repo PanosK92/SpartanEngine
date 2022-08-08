@@ -1,4 +1,4 @@
-<img align="center" padding="2" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/assets/github/banner.png"/>
+<img align="center" padding="2" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/data/textures/banner.bmp"/>
 
 <p>An engine which is the result of my never-ending quest to understand how things work and has become my go-to place for research. It's designed around the philosophy of favoring fast real-time solutions over baked/static ones, a spartan approach offering a truly dynamic experience.</p>
 
