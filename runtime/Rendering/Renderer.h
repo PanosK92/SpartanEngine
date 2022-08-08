@@ -122,9 +122,11 @@ namespace Spartan
         // Command lists
         RHI_CommandList* GetCmdList() const { return m_cmd_current; }
 
-        // Static
+        // Rhi
         static RHI_Api_Type GetRhiApiType();
-        const std::shared_ptr<RHI_Device>& GetRhiDevice() const { return m_rhi_device; }
+        const std::shared_ptr<RHI_Device>& GetRhiDevice()  const { return m_rhi_device; }
+        const RHI_Context* GetRhiContext()                 const { return m_rhi_context.get(); }
+        bool IsRenderDocEnabled();
 
         // Misc
         void SetGlobalShaderResources(RHI_CommandList* cmd_list) const;
