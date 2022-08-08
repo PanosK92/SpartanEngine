@@ -19,14 +19,12 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =======
 #include "Editor.h"
-#include <Windows.h>
-//==================
 
-#ifdef _MSC_VER
+#ifdef _MSC_VER // Windows
+#include <Windows.h>
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
-#else
+#else // Linux
 int main(int argc, char** argv)
 #endif
 {

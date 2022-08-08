@@ -91,19 +91,19 @@ namespace Spartan
             return nullptr;
         }
 
-        void OnInitialize()
+        void OnInitialise()
         {
             for (const _subystem& subsystem : m_subsystems)
             {
-                subsystem.ptr->OnInitialize();
+                subsystem.ptr->OnInitialise();
             }
         }
 
-        void OnPostInitialize()
+        void OnPostInitialise()
         {
             for (const _subystem& subsystem : m_subsystems)
             {
-                subsystem.ptr->OnPostInitialize();
+                subsystem.ptr->OnPostInitialise();
             }
         }
 

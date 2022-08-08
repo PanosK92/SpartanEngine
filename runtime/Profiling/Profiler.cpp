@@ -53,7 +53,7 @@ namespace Spartan
        
     }
 
-    void Profiler::OnInitialize()
+    void Profiler::OnInitialise()
     {
         m_resource_manager = m_context->GetSubsystem<ResourceCache>();
         m_renderer         = m_context->GetSubsystem<Renderer>();

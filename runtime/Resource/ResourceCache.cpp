@@ -71,7 +71,7 @@ namespace Spartan
         SP_UNSUBSCRIBE_FROM_EVENT(EventType::WorldClear,     SP_EVENT_HANDLER(Clear));
     }
 
-    void ResourceCache::OnInitialize()
+    void ResourceCache::OnInitialise()
     {
         // Importers
         m_importer_image = make_shared<ImageImporter>(m_context);

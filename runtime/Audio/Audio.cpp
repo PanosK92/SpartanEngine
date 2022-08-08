@@ -66,7 +66,7 @@ namespace Spartan
         }
     }
 
-    void Audio::OnInitialize()
+    void Audio::OnInitialise()
     {
         // Create FMOD instance
         m_result_fmod = System_Create(&m_system_fmod);

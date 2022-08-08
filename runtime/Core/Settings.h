@@ -53,7 +53,7 @@ namespace Spartan
         ~Settings();
 
         //= Subsystem ===================
-        void OnPostInitialize() override;
+        void OnPostInitialise() override;
         void OnShutdown() override;
         //===============================
 

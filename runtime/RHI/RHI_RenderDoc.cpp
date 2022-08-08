@@ -76,7 +76,7 @@ namespace Spartan
         SP_ASSERT_MSG(rdc_api != nullptr, "RenderDoc API has not been initialised");
 
         // Disable muting of validation/debug layer messages
-        rdc_api->SetCaptureOptionU32(eRENDERDOC_Option_DebugOutputMute, 0);
+        //rdc_api->SetCaptureOptionU32(eRENDERDOC_Option_DebugOutputMute, 0);
 
         // Disable overlay
         rdc_api->MaskOverlayBits(eRENDERDOC_Overlay_None, eRENDERDOC_Overlay_None);

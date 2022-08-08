@@ -57,7 +57,7 @@ namespace Spartan
         m_profiler = nullptr;
     }
 
-    void World::OnInitialize()
+    void World::OnInitialise()
     {
         m_input    = m_context->GetSubsystem<Input>();
         m_profiler = m_context->GetSubsystem<Profiler>();
