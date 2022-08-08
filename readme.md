@@ -26,12 +26,10 @@ If there is something interesting to talk about, I tend to do livestreams over a
 ## Media
 [![](https://i.imgur.com/j6zIEI9.jpg)](https://www.youtube.com/watch?v=RIae1ma_DSo)
 <img align="center" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/assets/github/readme_1.5.jpg"/>
+<img align="left" width="486" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/assets/github//readme_1.1.jpg"/>
+<img align="right" width="486" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/assets/github/readme_1.2.jpg"/>
 
 ## Features (v0.31)
-
-<img align="right" width="512" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/assets/github//readme_1.1.jpg"/>
-<img align="right" width="512" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/assets/github/readme_1.2.jpg"/>
-
 - 10+ font file formats support (FreeType)
 - 20+ audio file formats support (FMOD)
 - 30+ image file formats support (FreeImage)
@@ -51,7 +49,7 @@ If there is something interesting to talk about, I tend to do livestreams over a
 - Depth of field (controlled by the aperture of the camera)
 - Motion blur (controlled by the shutter speed of the camera)
 - Real-time shader editor
-- Custom mip chain generation (Higher texture fidelity using Lanczos3 scaling)
+- On the fly mip generation on the GPU, using a single dispatch.
 - Font rendering
 - Frustum culling
 - Physics (Rigid bodies, Constraints, Colliders)
@@ -62,11 +60,11 @@ If there is something interesting to talk about, I tend to do livestreams over a
 - Thread pool
 - Engine rendered platform agnostic editor
 - Profiling (CPU & GPU)
-- XML files
+- Support for XML files
 - Easy to build (Single click project generation which includes editor and runtime)
 - AMD FidelityFX Contrast Adaptive Sharpening
 - AMD FidelityFX Single Pass Downsampler
-- AMD FidelityFX Super Resolution
+- AMD FidelityFX Super Resolution 2.0
 - AMD Compressonator for texture compression
 
 # Roadmap
