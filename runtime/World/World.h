@@ -49,6 +49,7 @@ namespace Spartan
 
         //= ISubsystem =========================
         void OnInitialise() override;
+        void OnPostInitialise() override;
         void OnPreTick() override;
         void OnTick(double delta_time) override;
         //======================================
@@ -84,14 +85,10 @@ namespace Spartan
         std::string m_file_path;
         bool m_was_in_editor_mode = false;
         bool m_resolve            = true;
-        Input* m_input            = nullptr;
-        Profiler* m_profiler      = nullptr;
-
-        // Default world
-        bool m_default_world_created = false;
         std::unique_ptr<Model> m_default_world_model;
-
         std::shared_ptr<TransformHandle> m_transform_handle;
         std::vector<std::shared_ptr<Entity>> m_entities;
+        Input* m_input       = nullptr;
+        Profiler* m_profiler = nullptr;
     };
 }

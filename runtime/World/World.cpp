@@ -37,6 +37,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Input/Input.h"
 #include "../RHI/RHI_Device.h"
 #include "../Rendering/Renderer.h"
+#include "../Threading/Threading.h"
 //==========================================
 
 //= NAMESPACES ================
@@ -63,14 +64,13 @@ namespace Spartan
         m_profiler = m_context->GetSubsystem<Profiler>();
     }
 
+    void World::OnPostInitialise()
+    {
+        CreateDefaultWorldEntities();
+    }
+
     void World::OnPreTick()
     {
-        if (!m_default_world_created)
-        {
-            CreateDefaultWorldEntities();
-            m_default_world_created = true;
-        }
-
         for (shared_ptr<Entity>& entity : m_entities)
         {
             entity->OnPreTick();
