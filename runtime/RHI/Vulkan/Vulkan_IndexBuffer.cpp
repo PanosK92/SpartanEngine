@@ -39,7 +39,7 @@ namespace Spartan
         m_rhi_device->QueueWaitAll();
 
         // Destroy
-        vulkan_utility::vma_allocator::destroy_buffer(m_rhi_resource);
+        m_rhi_device->DestroyBuffer(m_rhi_resource);
     }
 
     void RHI_IndexBuffer::_create(const void* indices)
@@ -55,19 +55,19 @@ namespace Spartan
             VkMemoryPropertyFlags flags  = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT; // mappable
 
             // Create
-            vulkan_utility::vma_allocator::create_buffer(m_rhi_resource, m_object_size_gpu, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, flags, nullptr);
+            m_rhi_device->CreateBuffer(m_rhi_resource, m_object_size_gpu, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, flags, nullptr);
 
             // Get mapped data pointer
-            m_mapped_data = vulkan_utility::vma_allocator::get_mapped_data_from_buffer(m_rhi_resource);
+            m_mapped_data = m_rhi_device->get_mapped_data_from_buffer(m_rhi_resource);
         }
         else // The reason we use staging is because memory with VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT is not mappable but it's fast, we want that.
         {
             // Create staging/source buffer and copy the indices to it
             void* staging_buffer = nullptr;
-            vulkan_utility::vma_allocator::create_buffer(staging_buffer, m_object_size_gpu, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, indices);
+            m_rhi_device->CreateBuffer(staging_buffer, m_object_size_gpu, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, indices);
 
             // Create destination buffer
-            vulkan_utility::vma_allocator::create_buffer(m_rhi_resource, m_object_size_gpu, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, nullptr);
+            m_rhi_device->CreateBuffer(m_rhi_resource, m_object_size_gpu, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, nullptr);
 
             // Copy staging buffer to destination buffer
             {
@@ -86,7 +86,7 @@ namespace Spartan
                 vulkan_utility::command_buffer_immediate::end(RHI_Queue_Type::Copy);
 
                 // Destroy staging buffer
-                vulkan_utility::vma_allocator::destroy_buffer(staging_buffer);
+                m_rhi_device->DestroyBuffer(staging_buffer);
             }
         }
 

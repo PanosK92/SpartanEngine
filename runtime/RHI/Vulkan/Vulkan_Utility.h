@@ -302,18 +302,6 @@ namespace Spartan::vulkan_utility
         static std::unordered_map<RHI_Queue_Type, cmdbi_object> m_objects;
     };
 
-    namespace vma_allocator
-    {
-        void create_buffer(void*& resource, const uint64_t size, VkBufferUsageFlags usage, VkMemoryPropertyFlags memory_property_flags, const void* data_initial = nullptr);
-        void destroy_buffer(void*& resource);
-        void* get_mapped_data_from_buffer(void* buffer);
-        void create_texture(const VkImageCreateInfo& create_info, void*& resource);
-        void destroy_texture(void*& resource);
-        void map(void* resource, void*& mapped_data);
-        void unmap(void* resource, void*& mapped_data);
-        void flush(void* resource, uint64_t offset, uint64_t size);
-    }
-
     namespace image
     {
         static VkImageAspectFlags get_aspect_mask(const RHI_Texture* texture, const bool only_depth = false, const bool only_stencil = false)

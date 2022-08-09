@@ -477,8 +477,6 @@ namespace Spartan
             VkInstance instance                = nullptr;
             VkPhysicalDevice device_physical   = nullptr;
             VkDevice device                    = nullptr;
-            void* allocator                    = nullptr;
-            std::unordered_map<uint64_t, void*> allocations;
 
             // Hardware capability viewer: https://vulkan.gpuinfo.org/
 

@@ -32,7 +32,7 @@ namespace Spartan
     {
     public:
         RHI_ConstantBuffer() = default;
-        RHI_ConstantBuffer(const RHI_Device* rhi_device, const std::string& name);
+        RHI_ConstantBuffer(RHI_Device* rhi_device, const std::string& name);
         ~RHI_ConstantBuffer() { _destroy(); }
 
         template<typename T>
@@ -42,7 +42,7 @@ namespace Spartan
             m_stride          = static_cast<uint64_t>(sizeof(T));
             m_object_size_gpu = static_cast<uint64_t>(m_stride * m_element_count);
 
-            _create();
+            _create(m_rhi_device);
         }
 
         // This function will handle updating the buffer. This involves:
@@ -112,16 +112,16 @@ namespace Spartan
         uint32_t GetStrideCount() const { return m_element_count; }
 
     private:
-        void _create();
+        void _create(RHI_Device* rhi_device);
         void _destroy();
 
-        bool m_persistent_mapping      = false;
-        void* m_mapped_data            = nullptr;
-        uint64_t m_stride              = 0;
-        uint32_t m_element_count       = 0;
-        uint32_t m_offset              = 0;
-        bool m_reset_offset            = true;
-        const RHI_Device* m_rhi_device = nullptr;
+        bool m_persistent_mapping = false;
+        void* m_mapped_data       = nullptr;
+        uint64_t m_stride         = 0;
+        uint32_t m_element_count  = 0;
+        uint32_t m_offset         = 0;
+        bool m_reset_offset       = true;
+        RHI_Device* m_rhi_device  = nullptr;
 
         // RHI Resource
         void* m_rhi_resource = nullptr;

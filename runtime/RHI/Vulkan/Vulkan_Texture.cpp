@@ -73,7 +73,7 @@ namespace Spartan
         return flags;
     }
 
-    static void create_image(RHI_Texture* texture)
+    static void create_image(RHI_Device* rhi_device, RHI_Texture* texture)
     {
         // Deduce format flags
         bool is_render_target_depth_stencil = texture->IsRenderTargetDepthStencil();
@@ -116,7 +116,7 @@ namespace Spartan
 
         // Create image
         void*& resource = texture->GetRhiResource();
-        vulkan_utility::vma_allocator::create_texture(create_info, resource);
+        rhi_device->CreateTexture(static_cast<void*>(&create_info), resource);
     }
 
     static void set_debug_name(RHI_Texture* texture)
@@ -158,7 +158,7 @@ namespace Spartan
         }
     }
 
-    inline bool copy_to_staging_buffer(RHI_Texture* texture, std::vector<VkBufferImageCopy>& regions, void*& staging_buffer)
+    inline bool copy_to_staging_buffer(RHI_Device* rhi_device, RHI_Texture* texture, vector<VkBufferImageCopy>& regions, void*& staging_buffer)
     {
         if (!texture->HasData())
         {
@@ -202,12 +202,12 @@ namespace Spartan
         }
 
         // Create staging buffer
-        vulkan_utility::vma_allocator::create_buffer(staging_buffer, buffer_offset, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+        rhi_device->CreateBuffer(staging_buffer, buffer_offset, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
         // Copy array and mip level data to the staging buffer
         void* mapped_data = nullptr;
         buffer_offset = 0;
-        vulkan_utility::vma_allocator::map(staging_buffer, mapped_data);
+        rhi_device->Map(staging_buffer, mapped_data);
         {
             for (uint32_t array_index = 0; array_index < array_length; array_index++)
             {
@@ -219,18 +219,18 @@ namespace Spartan
                 }
             }
 
-            vulkan_utility::vma_allocator::unmap(staging_buffer, mapped_data);
+            rhi_device->Unmap(staging_buffer, mapped_data);
         }
 
         return true;
     }
 
-    inline bool stage(RHI_Texture* texture)
+    inline bool stage(RHI_Device* rhi_device, RHI_Texture* texture)
     {
         // Copy the texture's data to a staging buffer
         void* staging_buffer = nullptr;
         vector<VkBufferImageCopy> regions;
-        if (!copy_to_staging_buffer(texture, regions, staging_buffer))
+        if (!copy_to_staging_buffer(rhi_device, texture, regions, staging_buffer))
             return false;
 
         // Copy the staging buffer into the image
@@ -256,7 +256,7 @@ namespace Spartan
             vulkan_utility::command_buffer_immediate::end(RHI_Queue_Type::Graphics);
 
             // Free staging buffer
-            vulkan_utility::vma_allocator::destroy_buffer(staging_buffer);
+            rhi_device->DestroyBuffer(staging_buffer);
 
             // Update texture layout
             texture->SetLayout(layout, nullptr);
@@ -297,12 +297,12 @@ namespace Spartan
         SP_ASSERT(m_rhi_device != nullptr);
         SP_ASSERT(m_rhi_device->GetRhiContext()->device != nullptr);
 
-        create_image(this);
+        create_image(m_rhi_device.get(), this);
 
         // If the texture has any data, stage it
         if (HasData())
         {
-            if (!stage(this))
+            if (!stage(m_rhi_device.get(), this))
             {
                 LOG_ERROR("Failed to stage");
                 return false;
@@ -411,7 +411,7 @@ namespace Spartan
 
         if (destroy_main)
         {
-            vulkan_utility::vma_allocator::destroy_texture(m_rhi_resource);
+            m_rhi_device->DestroyTexture(m_rhi_resource);
         }
     }
 }
