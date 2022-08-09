@@ -47,7 +47,7 @@ namespace Spartan
     {
         vector<wstring> paths;
 
-        // query registry for all the render doc paths
+        // Query registry for all the render doc paths
         static const wchar_t* pszInstallerFolders = TEXT("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Installer\\Folders");
 
         HKEY hkey;
@@ -68,7 +68,7 @@ namespace Spartan
         DWORD    cbSecurityDescriptor;          // size of security descriptor
         FILETIME ftLastWriteTime;               // last write time
 
-        wchar_t    cbEnumValue[MAX_VALUE_NAME] = TEXT("");
+        wchar_t cbEnumValue[MAX_VALUE_NAME] = TEXT("");
 
         DWORD i, retCode;
 
@@ -77,18 +77,18 @@ namespace Spartan
 
         // Get the class name and the value count.
         retCode = RegQueryInfoKey(
-            hkey,                    // keyPath handle
-            achClass,                // buffer for class name
-            &cchClassName,           // size of class string
-            nullptr,                 // reserved
-            &cSubKeys,               // number of subkeys
-            &cbMaxSubKey,            // longest subkey size
-            &cchMaxClass,            // longest class string
-            &cValues,                // number of values for this keyPath
-            &cchMaxValue,            // longest value name
-            &cbMaxValueData,         // longest value data
-            &cbSecurityDescriptor,   // security descriptor
-            &ftLastWriteTime);       // last write time
+            hkey,                  // keyPath handle
+            achClass,              // buffer for class name
+            &cchClassName,         // size of class string
+            nullptr,               // reserved
+            &cSubKeys,             // number of subkeys
+            &cbMaxSubKey,          // longest subkey size
+            &cchMaxClass,          // longest class string
+            &cValues,              // number of values for this keyPath
+            &cchMaxValue,          // longest value name
+            &cbMaxValueData,       // longest value data
+            &cbSecurityDescriptor, // security descriptor
+            &ftLastWriteTime);     // last write time
 
         if (cValues)
         {
@@ -163,7 +163,7 @@ namespace Spartan
         if (rdc_api == nullptr)
         {
             pRENDERDOC_GetAPI rdc_get_api = nullptr;
-#if defined(_MSC_VER) // Windows
+    #if defined(_MSC_VER) // Windows
             // If RenderDoc is already injected into the engine, use the existing module
             rdc_module = ::GetModuleHandleA("renderdoc.dll");
 
