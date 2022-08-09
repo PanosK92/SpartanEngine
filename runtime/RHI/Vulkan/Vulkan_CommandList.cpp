@@ -88,8 +88,8 @@ namespace Spartan
             allocate_info.commandBufferCount          = 1;
 
             // Allocate
-            SP_ASSERT(vulkan_utility::error::check(
-                vkAllocateCommandBuffers(m_rhi_device->GetRhiContext()->device, &allocate_info, reinterpret_cast<VkCommandBuffer*>(&m_rhi_resource))) &&
+            SP_ASSERT_MSG(
+                vkAllocateCommandBuffers(m_rhi_device->GetRhiContext()->device, &allocate_info, reinterpret_cast<VkCommandBuffer*>(&m_rhi_resource)) == VK_SUCCESS,
                 "Failed to allocate command buffer"
             );
 
@@ -106,7 +106,7 @@ namespace Spartan
             query_pool_create_info.queryCount            = m_max_timestamps;
 
             auto query_pool = reinterpret_cast<VkQueryPool*>(&m_query_pool);
-            vulkan_utility::error::check(vkCreateQueryPool(rhi_context->device, &query_pool_create_info, nullptr, query_pool));
+            SP_ASSERT_MSG(vkCreateQueryPool(rhi_context->device, &query_pool_create_info, nullptr, query_pool) == VK_SUCCESS, "Failed to created qury pool");
 
             m_timestamps.fill(0);
         }
@@ -169,7 +169,7 @@ namespace Spartan
         VkCommandBufferBeginInfo begin_info = {};
         begin_info.sType                    = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
         begin_info.flags                    = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-        SP_ASSERT_MSG(vulkan_utility::error::check(vkBeginCommandBuffer(static_cast<VkCommandBuffer>(m_rhi_resource), &begin_info)), "Failed to begin command buffer");
+        SP_ASSERT_MSG(vkBeginCommandBuffer(static_cast<VkCommandBuffer>(m_rhi_resource), &begin_info) == VK_SUCCESS, "Failed to begin command buffer");
 
         // Reset query pool - Has to be done after vkBeginCommandBuffer or a VK_DEVICE_LOST will occur
         vkCmdResetQueryPool(static_cast<VkCommandBuffer>(m_rhi_resource), static_cast<VkQueryPool>(m_query_pool), 0, m_max_timestamps);
@@ -179,21 +179,20 @@ namespace Spartan
         m_pipeline_dirty = true;
     }
 
-    bool RHI_CommandList::End()
+    void RHI_CommandList::End()
     {
-        // Validate command list state
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
-        if (!vulkan_utility::error::check(vkEndCommandBuffer(static_cast<VkCommandBuffer>(m_rhi_resource))))
-            return false;
+        SP_ASSERT_MSG(
+            vkEndCommandBuffer(static_cast<VkCommandBuffer>(m_rhi_resource)) == VK_SUCCESS,
+            "Failed to end command buffer"
+        );
 
         m_state = RHI_CommandListState::Ended;
-        return true;
     }
 
     void RHI_CommandList::Submit()
     {
-        // Validate command list state
         SP_ASSERT(m_state == RHI_CommandListState::Ended);
 
         if (!m_discard)

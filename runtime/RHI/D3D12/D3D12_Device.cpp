@@ -296,9 +296,9 @@ namespace Spartan
 
     }
 
-    bool RHI_Device::QueueWait(const RHI_Queue_Type type) const
+    void RHI_Device::QueueWait(const RHI_Queue_Type type)
     {
-        return true;
+
     }
 
     void RHI_Device::QueryCreate(void** query, const RHI_Query_Type type)

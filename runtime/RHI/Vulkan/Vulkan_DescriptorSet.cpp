@@ -51,8 +51,10 @@ namespace Spartan
         allocate_info.pSetLayouts                 = reinterpret_cast<VkDescriptorSetLayout*>(descriptor_set_layouts.data());
 
         // Allocate
-        bool allocated = vulkan_utility::error::check(vkAllocateDescriptorSets(m_rhi_device->GetRhiContext()->device, &allocate_info, reinterpret_cast<VkDescriptorSet*>(&m_resource)));
-        SP_ASSERT_MSG(allocated, "Failed to allocate descriptor set.");
+        SP_ASSERT_MSG(
+            vkAllocateDescriptorSets(m_rhi_device->GetRhiContext()->device, &allocate_info, reinterpret_cast<VkDescriptorSet*>(&m_resource)) == VK_SUCCESS,
+            "Failed to allocate descriptor set."
+        );
 
         // Name
         vulkan_utility::debug::set_object_name(*reinterpret_cast<VkDescriptorSet*>(&m_resource), m_object_name.c_str());

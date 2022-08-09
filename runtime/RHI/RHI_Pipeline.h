@@ -32,7 +32,7 @@ namespace Spartan
     {
     public:
         RHI_Pipeline() = default;
-        RHI_Pipeline(const RHI_Device* rhi_device, RHI_PipelineState& pipeline_state, RHI_DescriptorSetLayout* descriptor_set_layout);
+        RHI_Pipeline(RHI_Device* rhi_device, RHI_PipelineState& pipeline_state, RHI_DescriptorSetLayout* descriptor_set_layout);
         ~RHI_Pipeline();
 
         void* GetResource_Pipeline()          const { return m_resource_pipeline; }
@@ -47,6 +47,6 @@ namespace Spartan
         void* m_resource_pipeline_layout = nullptr;
 
         // Dependencies
-        const RHI_Device* m_rhi_device;
+        RHI_Device* m_rhi_device;
     };
 }

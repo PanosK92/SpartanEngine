@@ -37,8 +37,7 @@ namespace Spartan
         fence_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 
         // Create
-        if (!vulkan_utility::error::check(vkCreateFence(m_rhi_device->GetRhiContext()->device, &fence_info, nullptr, reinterpret_cast<VkFence*>(&m_resource))))
-            return;
+        SP_ASSERT_MSG(vkCreateFence(m_rhi_device->GetRhiContext()->device, &fence_info, nullptr, reinterpret_cast<VkFence*>(&m_resource)) == VK_SUCCESS, "Failed to create fence");
 
         // Name
         if (name)
@@ -67,16 +66,12 @@ namespace Spartan
 
     bool RHI_Fence::Wait(uint64_t timeout_nanoseconds /*= 1000000000*/)
     {
-        return vulkan_utility::error::check(vkWaitForFences(m_rhi_device->GetRhiContext()->device, 1, reinterpret_cast<VkFence*>(&m_resource), true, timeout_nanoseconds));
+        return vkWaitForFences(m_rhi_device->GetRhiContext()->device, 1, reinterpret_cast<VkFence*>(&m_resource), true, timeout_nanoseconds) == VK_SUCCESS;
     }
 
     void RHI_Fence::Reset()
     {
-        SP_ASSERT_MSG(
-            vulkan_utility::error::check(vkResetFences(m_rhi_device->GetRhiContext()->device, 1, reinterpret_cast<VkFence*>(&m_resource))),
-            "Failed to reset fence"
-            );
-
+        SP_ASSERT_MSG(vkResetFences(m_rhi_device->GetRhiContext()->device, 1, reinterpret_cast<VkFence*>(&m_resource)) == VK_SUCCESS, "Failed to reset fence");
         m_cpu_state = RHI_Sync_State::Idle;
     }
 }

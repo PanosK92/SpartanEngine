@@ -36,7 +36,7 @@ using namespace std;
 
 namespace Spartan
 {
-    RHI_Pipeline::RHI_Pipeline(const RHI_Device* rhi_device, RHI_PipelineState& pipeline_state, RHI_DescriptorSetLayout* descriptor_set_layout)
+    RHI_Pipeline::RHI_Pipeline(RHI_Device* rhi_device, RHI_PipelineState& pipeline_state, RHI_DescriptorSetLayout* descriptor_set_layout)
     {
         m_rhi_device = rhi_device;
         m_state      = pipeline_state;
@@ -59,8 +59,10 @@ namespace Spartan
             pipeline_layout_info.pSetLayouts                = reinterpret_cast<VkDescriptorSetLayout*>(layouts.data());
 
             // Create
-            if (!vulkan_utility::error::check(vkCreatePipelineLayout(m_rhi_device->GetRhiContext()->device, &pipeline_layout_info, nullptr, reinterpret_cast<VkPipelineLayout*>(&m_resource_pipeline_layout))))
-                return;
+            SP_ASSERT_MSG(
+                vkCreatePipelineLayout(m_rhi_device->GetRhiContext()->device, &pipeline_layout_info, nullptr, reinterpret_cast<VkPipelineLayout*>(&m_resource_pipeline_layout)) == VK_SUCCESS,
+                "Failed to create pipeline layout"
+                );
 
             // Name
             //vulkan_utility::debug::set_name(static_cast<VkPipelineLayout>(m_resource_pipeline_layout), m_state.pass_name);
@@ -368,9 +370,7 @@ namespace Spartan
                 pipeline_info.renderPass                   = nullptr;
         
                 // Create
-                vulkan_utility::error::check(vkCreateGraphicsPipelines(m_rhi_device->GetRhiContext()->device, nullptr, 1, &pipeline_info, nullptr, pipeline));
-
-                SP_ASSERT_MSG(*pipeline != nullptr, "Failed to create graphics pipeline");
+                SP_ASSERT_MSG(vkCreateGraphicsPipelines(m_rhi_device->GetRhiContext()->device, nullptr, 1, &pipeline_info, nullptr, pipeline) == VK_SUCCESS, "Failed to create graphics pipeline");
 
                 // Disable naming until I can come up with a more meaningful name
                 //vulkan_utility::debug::set_name(*pipeline, m_state.pass_name);
@@ -384,9 +384,7 @@ namespace Spartan
                 pipeline_info.stage                       = shader_stages[0];
 
                 // Create
-                vulkan_utility::error::check(vkCreateComputePipelines(m_rhi_device->GetRhiContext()->device, nullptr, 1, &pipeline_info, nullptr, pipeline));
-
-                SP_ASSERT_MSG(*pipeline != nullptr, "Failed to create compute pipeline");
+                SP_ASSERT_MSG(vkCreateComputePipelines(m_rhi_device->GetRhiContext()->device, nullptr, 1, &pipeline_info, nullptr, pipeline) == VK_SUCCESS, "Failed to create compute pipeline");
 
                 // Name the pipeline object
                 if (m_state.shader_vertex)

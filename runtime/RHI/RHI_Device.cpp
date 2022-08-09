@@ -100,9 +100,11 @@ namespace Spartan
         return RHI_Context::api_type;
     }
     
-    bool RHI_Device::QueueWaitAll() const
+    void RHI_Device::QueueWaitAll()
     {
-        return QueueWait(RHI_Queue_Type::Graphics) && QueueWait(RHI_Queue_Type::Copy) && QueueWait(RHI_Queue_Type::Compute);
+        QueueWait(RHI_Queue_Type::Graphics);
+        QueueWait(RHI_Queue_Type::Copy);
+        QueueWait(RHI_Queue_Type::Compute);
     }
 
     void* RHI_Device::GetQueue(const RHI_Queue_Type type) const

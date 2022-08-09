@@ -48,7 +48,7 @@ namespace Spartan
         ~RHI_CommandList();
 
         void Begin();
-        bool End();
+        void End();
         void Submit();
         // Waits for the command list to finish being processed.
         void Wait();

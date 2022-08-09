@@ -88,8 +88,10 @@ namespace Spartan
         create_info.pBindings                       = layout_bindings.data();
 
         // Descriptor set layout
-        bool allocated = vulkan_utility::error::check(vkCreateDescriptorSetLayout(m_rhi_device->GetRhiContext()->device, &create_info, nullptr, reinterpret_cast<VkDescriptorSetLayout*>(&m_resource)));
-        SP_ASSERT(allocated && "Failed to allocate descriptor set layout.");
+        SP_ASSERT_MSG(
+            vkCreateDescriptorSetLayout(m_rhi_device->GetRhiContext()->device, &create_info, nullptr, reinterpret_cast<VkDescriptorSetLayout*>(&m_resource)) == VK_SUCCESS,
+            "Failed to allocate descriptor set layout"
+        );
 
         // Name
         vulkan_utility::debug::set_object_name(static_cast<VkDescriptorSetLayout>(m_resource), m_object_name.c_str());

@@ -332,15 +332,13 @@ namespace Spartan
             // Shader resource views
             if (IsSrv())
             {
-                if (!vulkan_utility::image::view::create(m_rhi_resource, m_rhi_srv, this, 0, m_array_length, 0, m_mip_count, IsDepthFormat(), false))
-                    return false;
+                vulkan_utility::image::view::create(m_rhi_resource, m_rhi_srv, this, 0, m_array_length, 0, m_mip_count, IsDepthFormat(), false);
 
                 if (HasPerMipViews())
                 {
                     for (uint32_t i = 0; i < m_mip_count; i++)
                     {
-                        if (!vulkan_utility::image::view::create(m_rhi_resource, m_rhi_srv_mips[i], this, 0, m_array_length, i, 1, IsDepthFormat(), false))
-                            return false;
+                        vulkan_utility::image::view::create(m_rhi_resource, m_rhi_srv_mips[i], this, 0, m_array_length, i, 1, IsDepthFormat(), false);
                     }
                 }
 
@@ -352,14 +350,12 @@ namespace Spartan
             {
                 if (IsRenderTargetColor())
                 {
-                    if (!vulkan_utility::image::view::create(m_rhi_resource, m_rhi_rtv[i], this, i, 1, 0, 1, false, false))
-                        return false;
+                    vulkan_utility::image::view::create(m_rhi_resource, m_rhi_rtv[i], this, i, 1, 0, 1, false, false);
                 }
 
                 if (IsRenderTargetDepthStencil())
                 {
-                    if (!vulkan_utility::image::view::create(m_rhi_resource, m_rhi_dsv[i], this, i, 1, 0, 1, true, false))
-                        return false;
+                    vulkan_utility::image::view::create(m_rhi_resource, m_rhi_dsv[i], this, i, 1, 0, 1, true, false);
                 }
             }
 

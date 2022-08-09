@@ -84,10 +84,16 @@ namespace Spartan
     static inline vector<VkSurfaceFormatKHR> get_supported_surface_formats(const VkSurfaceKHR surface)
     {
         uint32_t format_count;
-        vkGetPhysicalDeviceSurfaceFormatsKHR(vulkan_utility::globals::rhi_context->device_physical, surface, &format_count, nullptr);
+        SP_ASSERT_MSG(vkGetPhysicalDeviceSurfaceFormatsKHR(
+            vulkan_utility::globals::rhi_context->device_physical, surface, &format_count, nullptr) == VK_SUCCESS,
+            "Failed to get physical device surface format count"
+        );
 
         vector<VkSurfaceFormatKHR> surface_formats(format_count);
-        vulkan_utility::error::check(vkGetPhysicalDeviceSurfaceFormatsKHR(vulkan_utility::globals::rhi_context->device_physical, surface, &format_count, &surface_formats[0]));
+        SP_ASSERT_MSG(
+            vkGetPhysicalDeviceSurfaceFormatsKHR(vulkan_utility::globals::rhi_context->device_physical, surface, &format_count, &surface_formats[0]) == VK_SUCCESS,
+            "Failed to get physical device surfaces"
+        );
 
         return surface_formats;
 
@@ -146,23 +152,22 @@ namespace Spartan
                 create_info.hwnd                        = hwnd;
                 create_info.hinstance                   = GetModuleHandle(nullptr);
 
-                SP_ASSERT_MSG(vulkan_utility::error::check(
-                    vkCreateWin32SurfaceKHR(
+                SP_ASSERT_MSG(vkCreateWin32SurfaceKHR(
                         rhi_device->GetRhiContext()->instance,
                         &create_info,
                         nullptr,
-                        &surface
-                    )), "Failed to created Win32 surface");
+                        &surface) == VK_SUCCESS,
+                    "Failed to created Win32 surface");
 
                 VkBool32 present_support = false;
 
-                SP_ASSERT_MSG(
-                    vulkan_utility::error::check(vkGetPhysicalDeviceSurfaceSupportKHR(
+                SP_ASSERT_MSG(vkGetPhysicalDeviceSurfaceSupportKHR(
                         rhi_context->device_physical,
-                            rhi_device->GetQueueIndex(RHI_Queue_Type::Graphics),
-                            surface,
-                            &present_support
-                    )), "Failed to get physical device surface support");
+                        rhi_device->GetQueueIndex(RHI_Queue_Type::Graphics),
+                        surface,
+                        &present_support) == VK_SUCCESS,
+                    "Failed to get physical device surface support"
+                );
 
                 SP_ASSERT_MSG(present_support, "The device does not support this kind of surface");
             }
@@ -213,7 +218,7 @@ namespace Spartan
                 create_info.oldSwapchain   = nullptr;
 
                 SP_ASSERT_MSG(
-                    vulkan_utility::error::check(vkCreateSwapchainKHR(rhi_context->device, &create_info, nullptr, &swap_chain)),
+                    vkCreateSwapchainKHR(rhi_context->device, &create_info, nullptr, &swap_chain) == VK_SUCCESS,
                     "Failed to create swapchain"
                 );
             }
@@ -259,15 +264,15 @@ namespace Spartan
                     // Name the image
                     vulkan_utility::debug::set_object_name(images[i], string(string("swapchain_image_") + to_string(i)).c_str());
 
-                    SP_ASSERT_MSG(
-                        vulkan_utility::image::view::create(
-                            static_cast<void*>(images[i]),
-                            backbuffer_texture_views[i],
-                            VK_IMAGE_VIEW_TYPE_2D,
-                            vulkan_format[*rhi_format],
-                            VK_IMAGE_ASPECT_COLOR_BIT,
-                            0, 1, 0, 1
-                        ), "Failed to create image view");
+                    vulkan_utility::image::view::create
+                    (
+                        static_cast<void*>(images[i]),
+                        backbuffer_texture_views[i],
+                        VK_IMAGE_VIEW_TYPE_2D,
+                        vulkan_format[*rhi_format],
+                        VK_IMAGE_ASPECT_COLOR_BIT,
+                        0, 1, 0, 1
+                    );
                 }
             }
 
@@ -465,14 +470,14 @@ namespace Spartan
         m_image_index_previous = m_image_index;
 
         // Acquire next image
-        SP_ASSERT_MSG(vulkan_utility::error::check(vkAcquireNextImageKHR(
+        SP_ASSERT_MSG(vkAcquireNextImageKHR(
             m_rhi_device->GetRhiContext()->device,                     // device
             static_cast<VkSwapchainKHR>(m_rhi_resource),               // swapchain
             numeric_limits<uint64_t>::max(),                           // timeout
             static_cast<VkSemaphore>(signal_semaphore->GetResource()), // signal semaphore
             nullptr,                                                   // signal fence
             &m_image_index                                             // pImageIndex
-        )), "Failed to acquire next image");
+        ) == VK_SUCCESS, "Failed to acquire next image");
 
         // Update semaphore state
         signal_semaphore->SetCpuState(RHI_Sync_State::Submitted);
