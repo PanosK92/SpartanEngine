@@ -355,12 +355,13 @@ namespace ImGuiEx
             }
 
             // Image
+            ImColor background_color = (image != nullptr) ? ImColor(255, 255, 255, 255) : ImColor(0, 0, 0, 0);
             ImGui::SetCursorPos(pos_image);
             ImGuiEx::Image
             (
                 texture,
                 slot_size,
-                ImColor(255, 255, 255, 255),
+                ImColor(255, 255, 255, image != nullptr ? 255 : 0),
                 ImColor(255, 255, 255, 128)
             );
 

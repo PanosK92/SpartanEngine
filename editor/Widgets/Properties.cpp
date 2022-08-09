@@ -721,7 +721,7 @@ void Properties::ShowMaterial(Material* material) const
             {
                 const auto show_property = [this, &offset_from_pos_x, &material](const char* name, const char* tooltip, const MaterialTexture mat_tex, const MaterialProperty mat_property)
                 {
-                    bool show_texture  = mat_tex != MaterialTexture::Undefined;
+                    bool show_texture  = mat_tex      != MaterialTexture::Undefined;
                     bool show_modifier = mat_property != MaterialProperty::Undefined;
 
                     // Name
@@ -810,7 +810,7 @@ void Properties::ShowMaterial(Material* material) const
             }
         }
 
-        //= MAP =============================================================================================================================
+        //= MAP ===============================================================================
         material->SetProperty(MaterialProperty::UvTilingX, tiling.x);
         material->SetProperty(MaterialProperty::UvTilingY, tiling.y);
         material->SetProperty(MaterialProperty::UvOffsetX, offset.x);
