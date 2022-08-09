@@ -83,7 +83,7 @@ namespace Spartan
         return Quaternion(ai_quaternion.x, ai_quaternion.y, ai_quaternion.z, ai_quaternion.w);
     }
 
-    constexpr void set_entity_transform(const aiNode* node, Entity* entity)
+    static void set_entity_transform(const aiNode* node, Entity* entity)
     {
         if (!entity)
             return;

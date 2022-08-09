@@ -21,9 +21,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =====================
 #include "pch.h"
-#define VMA_IMPLEMENTATION
 #include "../RHI_Implementation.h"
 #include "Vulkan_Utility.h"
+SP_WARNINGS_OFF
+#define VMA_IMPLEMENTATION
+#include "Vulkan/vk_mem_alloc.h"
+SP_WARNINGS_ON
 //================================
 
 //= NAMESPACES =====

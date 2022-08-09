@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Fence.h"
 #include "../../Core/Window.h"
 #include "../../Profiling/Profiler.h"
+#include "vk_mem_alloc.h"
 //===================================
 
 //= NAMESPACES ===============

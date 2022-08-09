@@ -225,7 +225,7 @@ namespace Spartan
     void Collider::Shape_Release()
     {
         RigidBody_SetShape(nullptr);
-        sp_delete(m_shape);
+        delete m_shape;
     }
 
     void Collider::RigidBody_SetShape(btCollisionShape* shape) const

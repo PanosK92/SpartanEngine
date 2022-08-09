@@ -138,7 +138,7 @@ project (RUNTIME_PROJECT_NAME)
 	removefiles { IGNORE_FILES[0], IGNORE_FILES[1] }
 
 	-- Procompiled header
-	pchheader "pch.h" 		 -- Specifies the #include form of the precompiled header file name, not the actual file path (https://premake.github.io/docs/pchheader/)
+	pchheader "pch.h" 		 			-- Specifies the #include form of the precompiled header file name, not the actual file path (https://premake.github.io/docs/pchheader/)
 	pchsource "../runtime/Core/pch.cpp" -- Actual file path of the source file.
 
 	-- Includes
@@ -152,7 +152,7 @@ project (RUNTIME_PROJECT_NAME)
 	includedirs { "../third_party/sdl2" }
     includedirs { "../third_party/compressonator" }
 	includedirs { "../third_party/renderdoc" }
-    includedirs { "Core" } -- Linux needs the directory of the pre-compiled header
+    includedirs { "../runtime/Core" } -- This is here because clang needs the full pre-compiled header path
 	includedirs { ADDITIONAL_INCLUDES[0], ADDITIONAL_INCLUDES[1], ADDITIONAL_INCLUDES[2] }
 
 	-- Libraries

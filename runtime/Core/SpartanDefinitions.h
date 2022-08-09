@@ -10,7 +10,7 @@ constexpr int sp_version_revision = 3;
 
 #if defined(__clang__)
     #pragma warn "SP_OPTIMISE and SP_WARNINGS are not implemented for clang"
-    
+
     // Class
     #define SPARTAN_CLASS
     #if SPARTAN_RUNTIME_SHARED == 1
@@ -100,25 +100,7 @@ if (!(##expression))                    \
 #define SP_ASSERT_MSG(expression, text_message) SP_ASSERT(expression && text_message)
 //===================================================================================
 
-// Safe pointer delete
-template<typename T>
-constexpr void sp_delete(T* ptr)
-{
-    if (ptr)
-    {
-        delete ptr;
-        ptr = nullptr;
-    }
-}
-
-// Windows - Avoid conflicts with numeric limit min/max
 #if defined(_MSC_VER)
-#ifndef NOMINMAX
-#define NOMINMAX
-#endif
-#endif
-
-#ifdef _MSC_VER
 //= DISABLED WARNINGS ==============================================================================================================================
 // identifier' : class 'type' needs to have dll-interface to be used by clients of class 'type2'
 #pragma warning(disable: 4251) // https://docs.microsoft.com/en-us/cpp/error-messages/compiler-warnings/compiler-warning-level-2-c4275?view=vs-2019
@@ -131,4 +113,11 @@ constexpr void sp_delete(T* ptr)
 #define _CRT_SECURE_NO_WARNINGS // sprintf_s is not a standard function, so we opt for sprintf.
 #endif
 //==================================================================================================================================================
+#endif
+
+// Windows - Avoid conflicts with numeric limit min/max
+#if defined(_MSC_VER)
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
 #endif
