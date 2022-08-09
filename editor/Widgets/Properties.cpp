@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ====================================
 #include "Properties.h"
-#include "../ImGuiExtension.h"
+#include "../ImGui/ImGuiExtension.h"
 #include "../ImGui/Source/imgui_stdlib.h"
 #include "../ImGui/Source/imgui_internal.h"
 #include "../WidgetsDeferred/ButtonColorPicker.h"

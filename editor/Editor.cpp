@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "SDL.h"
 #include "Rendering/Model.h"
 #include "Profiling/Profiler.h"
-#include "ImGuiExtension.h"
+#include "ImGui/ImGuiExtension.h"
 #include "ImGui/Implementation/ImGui_RHI.h"
 #include "ImGui/Implementation/imgui_impl_sdl.h"
 #include "Widgets/AssetViewer.h"

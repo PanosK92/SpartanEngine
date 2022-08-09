@@ -33,7 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <regex>
 #include "../ImGui/Source/imgui.h"
 
-class Widget_TextEditor
+class TextEditor
 {
 public:
     enum class PaletteIndex
@@ -205,8 +205,8 @@ public:
         static const LanguageDefinition& Lua();
     };
 
-    Widget_TextEditor();
-    ~Widget_TextEditor() = default;
+    TextEditor();
+    ~TextEditor() = default;
 
     void SetLanguageDefinition(const LanguageDefinition& aLanguageDef);
     const LanguageDefinition& GetLanguageDefinition() const { return mLanguageDefinition; }
@@ -307,18 +307,18 @@ private:
 
         UndoRecord(
             const std::string& aAdded,
-            const Widget_TextEditor::Coordinates aAddedStart,
-            const Widget_TextEditor::Coordinates aAddedEnd,
+            const TextEditor::Coordinates aAddedStart,
+            const TextEditor::Coordinates aAddedEnd,
 
             const std::string& aRemoved,
-            const Widget_TextEditor::Coordinates aRemovedStart,
-            const Widget_TextEditor::Coordinates aRemovedEnd,
+            const TextEditor::Coordinates aRemovedStart,
+            const TextEditor::Coordinates aRemovedEnd,
 
-            Widget_TextEditor::EditorState& aBefore,
-            Widget_TextEditor::EditorState& aAfter);
+            TextEditor::EditorState& aBefore,
+            TextEditor::EditorState& aAfter);
 
-        void Undo(Widget_TextEditor* aEditor);
-        void Redo(Widget_TextEditor* aEditor);
+        void Undo(TextEditor* aEditor);
+        void Redo(TextEditor* aEditor);
 
         std::string mAdded;
         Coordinates mAddedStart;

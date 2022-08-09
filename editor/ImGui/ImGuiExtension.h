@@ -25,9 +25,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <string>
 #include <variant>
 #include <chrono>
-#include "WidgetsDeferred/IconProvider.h"
-#include "ImGui/Source/imgui.h"
-#include "ImGui/Source/imgui_internal.h"
 #include "RHI/RHI_Texture.h"
 #include "RHI/RHI_Texture2D.h"
 #include "Rendering/Renderer.h"
@@ -38,6 +35,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Components/Camera.h"
 #include "World/TransformHandle/TransformHandle.h"
 #include "Display/Display.h"
+#include "../WidgetsDeferred/IconProvider.h"
+#include "Source/imgui_internal.h"
 //================================================
 
 class EditorHelper
@@ -361,7 +360,7 @@ namespace ImGuiEx
             (
                 texture,
                 slot_size,
-                ImColor(255, 255, 255, image != nullptr ? 255 : 0),
+                background_color,
                 ImColor(255, 255, 255, 128)
             );
 

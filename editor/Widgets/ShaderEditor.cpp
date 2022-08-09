@@ -22,10 +22,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==============================
 #include "ShaderEditor.h"
 #include "Rendering/Renderer.h"
-#include "../ImGuiExtension.h"
 #include <fstream>
 #include "RHI/RHI_Shader.h"
 #include "Rendering/Renderer_Definitions.h"
+#include "../ImGui/ImGuiExtension.h"
 //=========================================
 
 //= NAMESPACES =========
@@ -42,7 +42,7 @@ ShaderEditor::ShaderEditor(Editor* editor) : Widget(editor)
     m_flags        |= ImGuiWindowFlags_NoScrollbar;
     m_visible      = false;
     m_size_initial = ImVec2(1366, 1000);
-    m_text_editor  = make_unique<Widget_TextEditor>();
+    m_text_editor  = make_unique<TextEditor>();
     m_renderer     = m_context->GetSubsystem<Renderer>();
     m_position     = k_widget_position_screen_center;
     m_alpha        = 1.0f;
