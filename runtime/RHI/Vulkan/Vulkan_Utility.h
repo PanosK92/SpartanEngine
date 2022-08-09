@@ -36,60 +36,47 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan::vulkan_utility
 {
-    namespace error
+    static const char* vkresult_to_string(const VkResult result)
     {
-        inline const char* to_string(const VkResult result)
+        switch (result)
         {
-            switch (result)
-            {
-                case VK_SUCCESS:                                            return "VK_SUCCESS";
-                case VK_NOT_READY:                                          return "VK_NOT_READY";
-                case VK_TIMEOUT:                                            return "VK_TIMEOUT";
-                case VK_EVENT_SET:                                          return "VK_EVENT_SET";
-                case VK_EVENT_RESET:                                        return "VK_EVENT_RESET";
-                case VK_INCOMPLETE:                                         return "VK_INCOMPLETE";
-                case VK_ERROR_OUT_OF_HOST_MEMORY:                           return "VK_ERROR_OUT_OF_HOST_MEMORY";
-                case VK_ERROR_OUT_OF_DEVICE_MEMORY:                         return "VK_ERROR_OUT_OF_DEVICE_MEMORY";
-                case VK_ERROR_INITIALIZATION_FAILED:                        return "VK_ERROR_INITIALIZATION_FAILED";
-                case VK_ERROR_DEVICE_LOST:                                  return "VK_ERROR_DEVICE_LOST";
-                case VK_ERROR_MEMORY_MAP_FAILED:                            return "VK_ERROR_MEMORY_MAP_FAILED";
-                case VK_ERROR_LAYER_NOT_PRESENT:                            return "VK_ERROR_LAYER_NOT_PRESENT";
-                case VK_ERROR_EXTENSION_NOT_PRESENT:                        return "VK_ERROR_EXTENSION_NOT_PRESENT";
-                case VK_ERROR_FEATURE_NOT_PRESENT:                          return "VK_ERROR_FEATURE_NOT_PRESENT";
-                case VK_ERROR_INCOMPATIBLE_DRIVER:                          return "VK_ERROR_INCOMPATIBLE_DRIVER";
-                case VK_ERROR_TOO_MANY_OBJECTS:                             return "VK_ERROR_TOO_MANY_OBJECTS";
-                case VK_ERROR_FORMAT_NOT_SUPPORTED:                         return "VK_ERROR_FORMAT_NOT_SUPPORTED";
-                case VK_ERROR_FRAGMENTED_POOL:                              return "VK_ERROR_FRAGMENTED_POOL";
-                case VK_ERROR_OUT_OF_POOL_MEMORY:                           return "VK_ERROR_OUT_OF_POOL_MEMORY";
-                case VK_ERROR_INVALID_EXTERNAL_HANDLE:                      return "VK_ERROR_INVALID_EXTERNAL_HANDLE";
-                case VK_ERROR_SURFACE_LOST_KHR:                             return "VK_ERROR_SURFACE_LOST_KHR";
-                case VK_ERROR_NATIVE_WINDOW_IN_USE_KHR:                     return "VK_ERROR_NATIVE_WINDOW_IN_USE_KHR";
-                case VK_SUBOPTIMAL_KHR:                                     return "VK_SUBOPTIMAL_KHR";
-                case VK_ERROR_OUT_OF_DATE_KHR:                              return "VK_ERROR_OUT_OF_DATE_KHR";
-                case VK_ERROR_INCOMPATIBLE_DISPLAY_KHR:                     return "VK_ERROR_INCOMPATIBLE_DISPLAY_KHR";
-                case VK_ERROR_VALIDATION_FAILED_EXT:                        return "VK_ERROR_VALIDATION_FAILED_EXT";
-                case VK_ERROR_INVALID_SHADER_NV:                            return "VK_ERROR_INVALID_SHADER_NV";
-                case VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT: return "VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT";
-                case VK_ERROR_FRAGMENTATION_EXT:                            return "VK_ERROR_FRAGMENTATION_EXT";
-                case VK_ERROR_NOT_PERMITTED_EXT:                            return "VK_ERROR_NOT_PERMITTED_EXT";
-                case VK_ERROR_INVALID_DEVICE_ADDRESS_EXT:                   return "VK_ERROR_INVALID_DEVICE_ADDRESS_EXT";
-                case VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT:          return "VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT";
-                case VK_ERROR_UNKNOWN:                                      return "VK_ERROR_UNKNOWN";
-                case VK_RESULT_MAX_ENUM:                                    return "VK_RESULT_MAX_ENUM";
-            }
-
-            return "Unknown error code";
+            case VK_SUCCESS:                                            return "VK_SUCCESS";
+            case VK_NOT_READY:                                          return "VK_NOT_READY";
+            case VK_TIMEOUT:                                            return "VK_TIMEOUT";
+            case VK_EVENT_SET:                                          return "VK_EVENT_SET";
+            case VK_EVENT_RESET:                                        return "VK_EVENT_RESET";
+            case VK_INCOMPLETE:                                         return "VK_INCOMPLETE";
+            case VK_ERROR_OUT_OF_HOST_MEMORY:                           return "VK_ERROR_OUT_OF_HOST_MEMORY";
+            case VK_ERROR_OUT_OF_DEVICE_MEMORY:                         return "VK_ERROR_OUT_OF_DEVICE_MEMORY";
+            case VK_ERROR_INITIALIZATION_FAILED:                        return "VK_ERROR_INITIALIZATION_FAILED";
+            case VK_ERROR_DEVICE_LOST:                                  return "VK_ERROR_DEVICE_LOST";
+            case VK_ERROR_MEMORY_MAP_FAILED:                            return "VK_ERROR_MEMORY_MAP_FAILED";
+            case VK_ERROR_LAYER_NOT_PRESENT:                            return "VK_ERROR_LAYER_NOT_PRESENT";
+            case VK_ERROR_EXTENSION_NOT_PRESENT:                        return "VK_ERROR_EXTENSION_NOT_PRESENT";
+            case VK_ERROR_FEATURE_NOT_PRESENT:                          return "VK_ERROR_FEATURE_NOT_PRESENT";
+            case VK_ERROR_INCOMPATIBLE_DRIVER:                          return "VK_ERROR_INCOMPATIBLE_DRIVER";
+            case VK_ERROR_TOO_MANY_OBJECTS:                             return "VK_ERROR_TOO_MANY_OBJECTS";
+            case VK_ERROR_FORMAT_NOT_SUPPORTED:                         return "VK_ERROR_FORMAT_NOT_SUPPORTED";
+            case VK_ERROR_FRAGMENTED_POOL:                              return "VK_ERROR_FRAGMENTED_POOL";
+            case VK_ERROR_OUT_OF_POOL_MEMORY:                           return "VK_ERROR_OUT_OF_POOL_MEMORY";
+            case VK_ERROR_INVALID_EXTERNAL_HANDLE:                      return "VK_ERROR_INVALID_EXTERNAL_HANDLE";
+            case VK_ERROR_SURFACE_LOST_KHR:                             return "VK_ERROR_SURFACE_LOST_KHR";
+            case VK_ERROR_NATIVE_WINDOW_IN_USE_KHR:                     return "VK_ERROR_NATIVE_WINDOW_IN_USE_KHR";
+            case VK_SUBOPTIMAL_KHR:                                     return "VK_SUBOPTIMAL_KHR";
+            case VK_ERROR_OUT_OF_DATE_KHR:                              return "VK_ERROR_OUT_OF_DATE_KHR";
+            case VK_ERROR_INCOMPATIBLE_DISPLAY_KHR:                     return "VK_ERROR_INCOMPATIBLE_DISPLAY_KHR";
+            case VK_ERROR_VALIDATION_FAILED_EXT:                        return "VK_ERROR_VALIDATION_FAILED_EXT";
+            case VK_ERROR_INVALID_SHADER_NV:                            return "VK_ERROR_INVALID_SHADER_NV";
+            case VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT: return "VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT";
+            case VK_ERROR_FRAGMENTATION_EXT:                            return "VK_ERROR_FRAGMENTATION_EXT";
+            case VK_ERROR_NOT_PERMITTED_EXT:                            return "VK_ERROR_NOT_PERMITTED_EXT";
+            case VK_ERROR_INVALID_DEVICE_ADDRESS_EXT:                   return "VK_ERROR_INVALID_DEVICE_ADDRESS_EXT";
+            case VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT:          return "VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT";
+            case VK_ERROR_UNKNOWN:                                      return "VK_ERROR_UNKNOWN";
+            case VK_RESULT_MAX_ENUM:                                    return "VK_RESULT_MAX_ENUM";
         }
 
-        inline bool check(VkResult result)
-        {
-            if (result != VK_SUCCESS)
-            {
-                LOG_ERROR("%s", to_string(result));
-            }
-
-            return result == VK_SUCCESS;
-        }
+        return "Unknown error code";
     }
 
     struct globals
@@ -100,7 +87,7 @@ namespace Spartan::vulkan_utility
 
     namespace timeline_semaphore
     {
-        inline bool create(void*& semaphore, const uint64_t intial_value = 0)
+        inline void create(void*& semaphore, const uint64_t intial_value = 0)
         {
             VkSemaphoreTypeCreateInfo timeline_info = {};
             timeline_info.sType         = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO;
@@ -114,9 +101,9 @@ namespace Spartan::vulkan_utility
             semaphore_info.flags = 0;
         
             VkSemaphore* semaphore_vk = reinterpret_cast<VkSemaphore*>(&semaphore);
-            return error::check(vkCreateSemaphore(globals::rhi_context->device, &semaphore_info, nullptr, semaphore_vk));
+            SP_ASSERT_MSG(vkCreateSemaphore(globals::rhi_context->device, &semaphore_info, nullptr, semaphore_vk) == VK_SUCCESS, "Failed to create semaphore");
         }
-        
+
         inline void destroy(void*& semaphore)
         {
             if (!semaphore)
@@ -127,10 +114,9 @@ namespace Spartan::vulkan_utility
             semaphore = nullptr;
         }
 
-        inline bool wait(void*& semaphore, const uint64_t wait_value, uint64_t timeout = std::numeric_limits<uint64_t>::max())
+        inline void wait(void*& semaphore, const uint64_t wait_value, uint64_t timeout = std::numeric_limits<uint64_t>::max())
         {
-            if (!semaphore)
-                return false;
+            SP_ASSERT_MSG(semaphore != nullptr, "Invalid semaphore");
 
             VkSemaphoreWaitInfo wait_info = {};
             wait_info.sType          = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO;
@@ -140,7 +126,7 @@ namespace Spartan::vulkan_utility
             wait_info.pSemaphores    = reinterpret_cast<VkSemaphore*>(&semaphore);
             wait_info.pValues        = &wait_value;
 
-            return error::check(vkWaitSemaphores(globals::rhi_context->device, &wait_info, timeout));
+            SP_ASSERT_MSG(vkWaitSemaphores(globals::rhi_context->device, &wait_info, timeout) == VK_SUCCESS, "Failed to wait for semaphore");
         }
 
         inline uint64_t get_counter_value(void*& semaphore)
@@ -197,10 +183,9 @@ namespace Spartan::vulkan_utility
                         cmd_pool_info.queueFamilyIndex        = globals::rhi_device->GetQueueIndex(queue_type);
                         cmd_pool_info.flags                   = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 
-                        SP_ASSERT(error::check(
-                            vkCreateCommandPool(globals::rhi_context->device, &cmd_pool_info, nullptr, reinterpret_cast<VkCommandPool*>(&cmd_pool))) &&
-                            "Failed to created command pool"
-                        );
+                        SP_ASSERT_MSG(
+                            vkCreateCommandPool(globals::rhi_context->device, &cmd_pool_info, nullptr, reinterpret_cast<VkCommandPool*>(&cmd_pool)) == VK_SUCCESS,
+                            "Failed to created command pool");
                     }
 
                     // Create command buffer
@@ -214,8 +199,8 @@ namespace Spartan::vulkan_utility
                         allocate_info.level                       = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
                         allocate_info.commandBufferCount          = 1;
 
-                        SP_ASSERT_MSG(error::check(
-                            vkAllocateCommandBuffers(globals::rhi_context->device, &allocate_info, cmd_buffer_vk)),
+                        SP_ASSERT_MSG(
+                            vkAllocateCommandBuffers(globals::rhi_context->device, &allocate_info, cmd_buffer_vk) == VK_SUCCESS,
                             "Failed to allocate command buffer"
                         );
                     }
@@ -231,10 +216,7 @@ namespace Spartan::vulkan_utility
                     begin_info.sType                    = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
                     begin_info.flags                    = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
-                    SP_ASSERT_MSG(error::check(
-                        vkBeginCommandBuffer(static_cast<VkCommandBuffer>(cmd_buffer), &begin_info)),
-                        "Failed to begin command buffer"
-                    );
+                    SP_ASSERT_MSG(vkBeginCommandBuffer(static_cast<VkCommandBuffer>(cmd_buffer), &begin_info) == VK_SUCCESS, "Failed to begin command buffer");
 
                     recording = true;
                 }
@@ -244,11 +226,7 @@ namespace Spartan::vulkan_utility
             {
                 SP_ASSERT(initialised && "Can't submit as the command buffer failed to initialise");
                 SP_ASSERT(recording && "Can't submit as the command buffer didn't record anything");
-
-                SP_ASSERT_MSG(error::check(
-                    vkEndCommandBuffer(static_cast<VkCommandBuffer>(cmd_buffer))),
-                    "Failed to end command buffer"
-                );
+                SP_ASSERT_MSG(vkEndCommandBuffer(static_cast<VkCommandBuffer>(cmd_buffer)) == VK_SUCCESS, "Failed to end command buffer");
 
                 globals::rhi_device->QueueSubmit(queue_type, wait_flags, cmd_buffer, nullptr, nullptr, m_proccesed_fence.get());
 
@@ -559,7 +537,7 @@ namespace Spartan::vulkan_utility
 
         namespace view
         {
-            inline bool create(
+            inline void create(
                 void* image,
                 void*& image_view,
                 VkImageViewType type,
@@ -586,10 +564,10 @@ namespace Spartan::vulkan_utility
                 create_info.components.b                    = VK_COMPONENT_SWIZZLE_IDENTITY;
                 create_info.components.a                    = VK_COMPONENT_SWIZZLE_IDENTITY;
 
-                return error::check(vkCreateImageView(globals::rhi_context->device, &create_info, nullptr, reinterpret_cast<VkImageView*>(&image_view)));
+                SP_ASSERT_MSG(vkCreateImageView(globals::rhi_context->device, &create_info, nullptr, reinterpret_cast<VkImageView*>(&image_view)) == VK_SUCCESS, "Failed to create image view");
             }
 
-            inline bool create(
+            inline void create(
                 void* image,
                 void*& image_view,
                 const RHI_Texture* texture,
@@ -616,7 +594,7 @@ namespace Spartan::vulkan_utility
                     type = VK_IMAGE_VIEW_TYPE_CUBE;
                 }
 
-                return create(image, image_view, type, vulkan_format[texture->GetFormat()], get_aspect_mask(texture, only_depth, only_stencil), array_index, array_length, mip_index, mip_count);
+                create(image, image_view, type, vulkan_format[texture->GetFormat()], get_aspect_mask(texture, only_depth, only_stencil), array_index, array_length, mip_index, mip_count);
             }
 
             inline void destroy(void*& image_view)

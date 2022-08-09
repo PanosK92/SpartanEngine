@@ -42,10 +42,10 @@ namespace Spartan
         const PhysicalDevice* GetPrimaryPhysicalDevice();
 
         // Queue
-        void QueuePresent(void* swapchain_view, uint32_t* image_index, std::vector<RHI_Semaphore*>& wait_semaphores) const;
-        void QueueSubmit(const RHI_Queue_Type type, const uint32_t wait_flags, void* cmd_buffer, RHI_Semaphore* wait_semaphore = nullptr, RHI_Semaphore* signal_semaphore = nullptr, RHI_Fence* signal_fence = nullptr) const;
-        bool QueueWait(const RHI_Queue_Type type) const;
-        bool QueueWaitAll() const;
+        void QueuePresent(void* swapchain_view, uint32_t* image_index, std::vector<RHI_Semaphore*>& wait_semaphores);
+        void QueueSubmit(const RHI_Queue_Type type, const uint32_t wait_flags, void* cmd_buffer, RHI_Semaphore* wait_semaphore = nullptr, RHI_Semaphore* signal_semaphore = nullptr, RHI_Fence* signal_fence = nullptr);
+        void QueueWait(const RHI_Queue_Type type);
+        void QueueWaitAll();
         void* GetQueue(const RHI_Queue_Type type) const;
         uint32_t GetQueueIndex(const RHI_Queue_Type type) const;
         void SetQueueIndex(const RHI_Queue_Type type, const uint32_t index);
@@ -134,16 +134,18 @@ namespace Spartan
         bool m_wide_lines                              = false;
         uint32_t m_max_bound_descriptor_sets           = 4; // worst case scenario
 
+        // Mutexes
+        std::mutex m_queue_mutex;
+        std::mutex m_mutex_vma_buffer;
+        std::mutex m_mutex_vma_texture;
+
         // Misc
         uint32_t m_physical_device_index          = 0;
         uint32_t m_enabled_graphics_shader_stages = 0;
-        mutable std::mutex m_queue_mutex;
         std::vector<PhysicalDevice> m_physical_devices;
         std::shared_ptr<RHI_Context> m_rhi_context = nullptr;
 
         // Vulkan memory allocator
-        std::mutex m_mutex_vma_buffer;
-        std::mutex m_mutex_vma_texture;
         void* m_allocator = nullptr;
         std::unordered_map<uint64_t, void*> m_allocations;
     };

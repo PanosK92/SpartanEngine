@@ -45,10 +45,10 @@ namespace Spartan
         cmd_pool_info.flags                   = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT; // specifies that command buffers allocated from the pool will be short-lived
 
         // Create pools
-        for (uint32_t i = 0; i < static_cast<uint32_t>(m_rhi_resources.size()); i++)
+        for (auto& rhi_resource : m_rhi_resources)
         {
-            SP_ASSERT_MSG(vulkan_utility::error::check(
-                vkCreateCommandPool(m_rhi_device->GetRhiContext()->device, &cmd_pool_info, nullptr, reinterpret_cast<VkCommandPool*>(&m_rhi_resources[i]))),
+            SP_ASSERT_MSG(
+                vkCreateCommandPool(m_rhi_device->GetRhiContext()->device, &cmd_pool_info, nullptr, reinterpret_cast<VkCommandPool*>(&rhi_resource)) == VK_SUCCESS,
                 "Failed to create command pool"
             );
         }
@@ -111,6 +111,6 @@ namespace Spartan
         // Reset the command pool
         VkDevice device    = m_rhi_device->GetRhiContext()->device;
         VkCommandPool pool = static_cast<VkCommandPool>(m_rhi_resources[m_pool_index]);
-        SP_ASSERT_MSG(vulkan_utility::error::check(vkResetCommandPool(device, pool, 0)), "Failed to reset command pool");
+        SP_ASSERT_MSG(vkResetCommandPool(device, pool, 0) == VK_SUCCESS, "Failed to reset command pool");
     }
 }

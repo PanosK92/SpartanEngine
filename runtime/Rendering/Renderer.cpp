@@ -866,11 +866,7 @@ namespace Spartan
             if (!m_is_rendering_allowed)
             {
                 LOG_INFO("Renderer thread is flushing...");
-
-                if (!m_rhi_device->QueueWaitAll())
-                {
-                    LOG_ERROR("Failed to flush GPU");
-                }
+                m_rhi_device->QueueWaitAll();
             }
 
             if (m_cmd_current)

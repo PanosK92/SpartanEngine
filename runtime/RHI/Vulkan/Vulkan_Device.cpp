@@ -216,7 +216,7 @@ namespace Spartan
                 }
             }
 
-            SP_ASSERT(vulkan_utility::error::check(vkCreateInstance(&create_info, nullptr, &m_rhi_context->instance)) && "Failed to create instance");
+            SP_ASSERT_MSG(vkCreateInstance(&create_info, nullptr, &m_rhi_context->instance) == VK_SUCCESS, "Failed to create instance");
         }
 
         // Get function pointers (from extensions)
@@ -393,7 +393,7 @@ namespace Spartan
             }
 
             // Create
-            SP_ASSERT_MSG(vulkan_utility::error::check(vkCreateDevice(m_rhi_context->device_physical, &create_info, nullptr, &m_rhi_context->device)), "Failed to create device");
+            SP_ASSERT_MSG(vkCreateDevice(m_rhi_context->device_physical, &create_info, nullptr, &m_rhi_context->device) == VK_SUCCESS, "Failed to create device");
         }
 
         // Get a graphics, compute and a copy queue.
@@ -438,49 +438,47 @@ namespace Spartan
         SP_ASSERT(m_rhi_context != nullptr);
         SP_ASSERT(m_queue_graphics != nullptr);
 
-        // Wait for all queues
-        if (QueueWaitAll())
+        QueueWaitAll();
+
+        m_cmd_pools.clear();
+        
+        // Descriptor pool
+        vkDestroyDescriptorPool(m_rhi_context->device, static_cast<VkDescriptorPool>(m_descriptor_pool), nullptr);
+        m_descriptor_pool = nullptr;
+        
+        // Allocator
+        if (m_allocator != nullptr)
         {
-            m_cmd_pools.clear();
-
-            // Descriptor pool
-            vkDestroyDescriptorPool(m_rhi_context->device, static_cast<VkDescriptorPool>(m_descriptor_pool), nullptr);
-            m_descriptor_pool = nullptr;
-
-            // Allocator
-            if (m_allocator != nullptr)
-            {
-                vmaDestroyAllocator(static_cast<VmaAllocator>(m_allocator));
-                m_allocator = nullptr;
-            }
-
-            // Debug messenger
-            if (m_rhi_context->validation)
-            {
-                vulkan_utility::debug::shutdown(m_rhi_context->instance);
-            }
-
-            // Device and instance
-            vkDestroyDevice(m_rhi_context->device, nullptr);
-            vkDestroyInstance(m_rhi_context->instance, nullptr);
+            vmaDestroyAllocator(static_cast<VmaAllocator>(m_allocator));
+            m_allocator = nullptr;
         }
+        
+        // Debug messenger
+        if (m_rhi_context->validation)
+        {
+            vulkan_utility::debug::shutdown(m_rhi_context->instance);
+        }
+        
+        // Device and instance
+        vkDestroyDevice(m_rhi_context->device, nullptr);
+        vkDestroyInstance(m_rhi_context->instance, nullptr);
     }
 
     bool RHI_Device::DetectPhysicalDevices()
     {
         uint32_t device_count = 0;
-        if (!vulkan_utility::error::check(vkEnumeratePhysicalDevices(m_rhi_context->instance, &device_count, nullptr)))
-            return false;
-        
-        if (device_count == 0)
-        {
-            LOG_ERROR("There are no available physical devices.");
-            return false;
-        }
+        SP_ASSERT_MSG(
+            vkEnumeratePhysicalDevices(m_rhi_context->instance, &device_count, nullptr) == VK_SUCCESS,
+            "Failed to geet physical device count"
+        );
+
+        SP_ASSERT_MSG(device_count != 0, "There are no available physical devices");
         
         vector<VkPhysicalDevice> physical_devices(device_count);
-        if (!vulkan_utility::error::check(vkEnumeratePhysicalDevices(m_rhi_context->instance, &device_count, physical_devices.data())))
-            return false;
+        SP_ASSERT_MSG(
+            vkEnumeratePhysicalDevices(m_rhi_context->instance, &device_count, physical_devices.data()) == VK_SUCCESS,
+            "Failed to enumarate physical devices"
+        );
         
         // Go through all the devices
         for (const VkPhysicalDevice& device_physical : physical_devices)
@@ -640,7 +638,7 @@ namespace Spartan
         return true;
     }
 
-    void RHI_Device::QueuePresent(void* swapchain, uint32_t* image_index, vector<RHI_Semaphore*>& wait_semaphores) const
+    void RHI_Device::QueuePresent(void* swapchain, uint32_t* image_index, vector<RHI_Semaphore*>& wait_semaphores)
     {
         static array<VkSemaphore, 3> vk_wait_semaphores = {};
 
@@ -660,8 +658,7 @@ namespace Spartan
         present_info.pSwapchains        = reinterpret_cast<VkSwapchainKHR*>(&swapchain);
         present_info.pImageIndices      = image_index;
 
-        // TODO: This can fail when loading a scene, need to figure out
-        vulkan_utility::error::check(vkQueuePresentKHR(static_cast<VkQueue>(m_queue_graphics), &present_info));
+        SP_ASSERT_MSG(vkQueuePresentKHR(static_cast<VkQueue>(m_queue_graphics), &present_info) == VK_SUCCESS, "Failed to present");
 
         // Update semaphore state
         for (uint32_t i = 0; i < semaphore_count; i++)
@@ -670,7 +667,7 @@ namespace Spartan
         }
     }
 
-    void RHI_Device::QueueSubmit(const RHI_Queue_Type type, const uint32_t wait_flags, void* cmd_buffer, RHI_Semaphore* wait_semaphore /*= nullptr*/, RHI_Semaphore* signal_semaphore /*= nullptr*/, RHI_Fence* signal_fence /*= nullptr*/) const
+    void RHI_Device::QueueSubmit(const RHI_Queue_Type type, const uint32_t wait_flags, void* cmd_buffer, RHI_Semaphore* wait_semaphore /*= nullptr*/, RHI_Semaphore* signal_semaphore /*= nullptr*/, RHI_Fence* signal_fence /*= nullptr*/)
     {
         SP_ASSERT_MSG(cmd_buffer != nullptr, "Invalid command buffer");
 
@@ -708,10 +705,10 @@ namespace Spartan
         if (signal_fence)     signal_fence->SetCpuState(RHI_Sync_State::Submitted);
     }
 
-    bool RHI_Device::QueueWait(const RHI_Queue_Type type) const
+    void RHI_Device::QueueWait(const RHI_Queue_Type type)
     {
         lock_guard<mutex> lock(m_queue_mutex);
-        return vulkan_utility::error::check(vkQueueWaitIdle(static_cast<VkQueue>(GetQueue(type))));
+        SP_ASSERT_MSG(vkQueueWaitIdle(static_cast<VkQueue>(GetQueue(type))) == VK_SUCCESS, "Failed to wait for queue");
     }
 
     void RHI_Device::QueryCreate(void** query, const RHI_Query_Type type)
@@ -772,9 +769,7 @@ namespace Spartan
             pool_create_info.pPoolSizes                 = pool_sizes.data();
             pool_create_info.maxSets                    = descriptor_set_capacity;
 
-            // Create
-            bool created = vulkan_utility::error::check(vkCreateDescriptorPool(m_rhi_context->device, &pool_create_info, nullptr, reinterpret_cast<VkDescriptorPool*>(&m_descriptor_pool)));
-            SP_ASSERT_MSG(created, "Failed to create descriptor pool.");
+            SP_ASSERT_MSG(vkCreateDescriptorPool(m_rhi_context->device, &pool_create_info, nullptr, reinterpret_cast<VkDescriptorPool*>(&m_descriptor_pool)) == VK_SUCCESS, "Failed to create descriptor pool.");
         }
 
         LOG_INFO("Capacity has been set to %d elements", descriptor_set_capacity);
@@ -949,7 +944,7 @@ namespace Spartan
     {
         if (VmaAllocation allocation = static_cast<VmaAllocation>(get_allocation_from_resource(resource)))
         {
-            SP_ASSERT_MSG(vulkan_utility::error::check(vmaMapMemory(static_cast<VmaAllocator>(m_allocator), allocation, reinterpret_cast<void**>(&mapped_data))), "Failed to map memory");
+            SP_ASSERT_MSG(vmaMapMemory(static_cast<VmaAllocator>(m_allocator), allocation, reinterpret_cast<void**>(&mapped_data)) == VK_SUCCESS, "Failed to map memory");
         }
     }
 
@@ -968,7 +963,7 @@ namespace Spartan
     {
         if (VmaAllocation allocation = static_cast<VmaAllocation>(get_allocation_from_resource(resource)))
         {
-            SP_ASSERT_MSG(vulkan_utility::error::check(vmaFlushAllocation(static_cast<VmaAllocator>(m_allocator), allocation, offset, size)), "Failed to flush");
+            SP_ASSERT_MSG(vmaFlushAllocation(static_cast<VmaAllocator>(m_allocator), allocation, offset, size) == VK_SUCCESS, "Failed to flush");
         }
     }
 }
