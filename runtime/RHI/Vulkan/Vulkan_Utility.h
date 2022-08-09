@@ -282,7 +282,7 @@ namespace Spartan::vulkan_utility
 
         static void end(const RHI_Queue_Type queue_type)
         {
-            uint32_t wait_flags;
+            uint32_t wait_flags = 0;
             if (queue_type == RHI_Queue_Type::Graphics)
             {
                 wait_flags = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;

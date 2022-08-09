@@ -446,7 +446,6 @@ static const VkImageLayout vulkan_image_layout[] =
 // RHI_Context header dependencies
 #include "RHI_Definition.h"
 #if defined (API_GRAPHICS_VULKAN)
-    #include "Vulkan/vk_mem_alloc.h"
     #include <vector>
     #include <unordered_map>
 #endif
@@ -478,8 +477,8 @@ namespace Spartan
             VkInstance instance                = nullptr;
             VkPhysicalDevice device_physical   = nullptr;
             VkDevice device                    = nullptr;
-            VmaAllocator allocator             = nullptr;
-            std::unordered_map<uint64_t, VmaAllocation> allocations;
+            void* allocator                    = nullptr;
+            std::unordered_map<uint64_t, void*> allocations;
 
             // Hardware capability viewer: https://vulkan.gpuinfo.org/
 
