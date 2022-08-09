@@ -39,7 +39,7 @@ PS_INPUT mainVS(Vertex_Pos2dUvColor input)
     return output;
 }
 
-float4 visualise_texture(float4 color_in)
+float4 postprocess_visualisation_options(float4 color_in)
 {
     float4 color = float4(0.0f, 0.0f, 0.0f, 1.0f);
 
@@ -91,12 +91,11 @@ float4 visualise_texture(float4 color_in)
 
 float4 mainPS(PS_INPUT input) : SV_Target
 {
-    float4 color_vertex  = input.color;
+    float4 color_vertex = input.color;
+    if (imgui_texture_flags == 0)
+        return color_vertex;
+    
     float4 color_texture = tex.Sample(sampler_bilinear_wrap, input.uv);
-
-    // If not texture flags are used, don't use the texture color.
-    // This is because it can contain last used texture
-    color_texture.a *= step(1, imgui_texture_flags);
 
     // Render targets can be visualised in various ways.
     if (texture_visualise())
@@ -106,8 +105,9 @@ float4 mainPS(PS_INPUT input) : SV_Target
             color_texture = tex.Sample(sampler_point_wrap, input.uv);
         }
 
-        color_texture = visualise_texture(color_texture);
+        color_texture = postprocess_visualisation_options(color_texture);
     }
 
     return color_vertex * color_texture;
+
 }
