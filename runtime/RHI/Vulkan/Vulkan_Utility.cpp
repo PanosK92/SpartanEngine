@@ -102,6 +102,9 @@ namespace Spartan::vulkan_utility
             allocation_create_info.flags |= is_buffer_constant ? VK_MEMORY_PROPERTY_HOST_CACHED_BIT : 0;
         }
 
+        // Allocations can come both from the main as well as worker threads (loading), so lock this context.
+        lock_guard<mutex> lock(mutex_vma_buffer);
+
         // Create the buffer
         VmaAllocator allocator   = globals::rhi_context->allocator;
         VmaAllocation allocation = nullptr;
@@ -132,9 +135,6 @@ namespace Spartan::vulkan_utility
             SP_ASSERT(error::check(vmaFlushAllocation(allocator, allocation, 0, size)) && "Failed to flush allocation");
             vmaUnmapMemory(allocator, allocation);
         }
-
-        // Allocations can come both from the main as well as worker threads (loading), so lock this context.
-        lock_guard<mutex> lock(mutex_vma_buffer);
 
         // Keep allocation reference
         globals::rhi_context->allocations[reinterpret_cast<uint64_t>(resource)] = allocation;

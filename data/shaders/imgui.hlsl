@@ -94,6 +94,10 @@ float4 mainPS(PS_INPUT input) : SV_Target
     float4 color_vertex  = input.color;
     float4 color_texture = tex.Sample(sampler_bilinear_wrap, input.uv);
 
+    // If not texture flags are used, don't use the texture color.
+    // This is because it can contain last used texture
+    color_texture.a *= step(1, imgui_texture_flags);
+
     // Render targets can be visualised in various ways.
     if (texture_visualise())
     {
