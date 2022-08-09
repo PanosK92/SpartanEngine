@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==============================
 #include "Console.h"
 #include "Rendering/Model.h"
-#include "../ImGuiExtension.h"
+#include "../ImGui/ImGuiExtension.h"
 #include "../ImGui/Source/imgui_internal.h"
 //=========================================
 

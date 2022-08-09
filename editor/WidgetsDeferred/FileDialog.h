@@ -21,11 +21,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =================
+//= INCLUDES =======================
 #include "IconProvider.h"
 #include "Core/FileSystem.h"
-#include "../ImGuiExtension.h"
-//============================
+#include "../ImGui/ImGuiExtension.h"
+//==================================
 
 enum FileDialog_Type
 {

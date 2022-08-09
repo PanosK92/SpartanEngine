@@ -21,11 +21,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ====================================
+//= INCLUDES =============================
 #include "Widget.h"
 #include <vector>
-#include "../WidgetsDeferred/Widget_TextEditor.h"
-//===============================================
+#include "../WidgetsDeferred/TextEditor.h"
+//========================================
 
 namespace Spartan
 {
@@ -51,6 +51,6 @@ private:
     Spartan::Renderer* m_renderer = nullptr;
     int32_t m_index_displayed     = -1;
     bool m_first_run              = true;
-    std::unique_ptr<Widget_TextEditor> m_text_editor;
+    std::unique_ptr<TextEditor> m_text_editor;
     std::vector<Spartan::RHI_Shader*> m_shaders;
 };

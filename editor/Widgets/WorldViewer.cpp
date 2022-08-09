@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Properties.h"
 #include "MenuBar.h"
 #include "../Editor.h"
-#include "../ImGuiExtension.h"
+#include "../ImGui/ImGuiExtension.h"
 #include "../ImGui/Source/imgui_stdlib.h"
 #include "Rendering/Model.h"
 #include "World/Entity.h"
