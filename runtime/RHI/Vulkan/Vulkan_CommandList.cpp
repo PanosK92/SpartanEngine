@@ -744,10 +744,10 @@ namespace Spartan
         }
 
         // Null textures are allowed, and we replace them with a transparent texture.
-        if (!texture || !texture->GetRhiSrv())
-        {
-            texture = m_renderer->GetDefaultTextureTransparent();
-        }
+        if (!texture)
+            return;
+
+        SP_ASSERT_MSG(texture->GetRhiSrv() != nullptr, "The texture has not srv");
 
         // Get some texture info
         const uint32_t mip_count        = texture->GetMipCount();
