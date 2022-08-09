@@ -26,7 +26,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Fence.h"
 #include "../../Core/Window.h"
 #include "../../Profiling/Profiler.h"
+SP_WARNINGS_OFF
+#define VMA_IMPLEMENTATION
 #include "vk_mem_alloc.h"
+SP_WARNINGS_ON
 //===================================
 
 //= NAMESPACES ===============
@@ -408,7 +411,7 @@ namespace Spartan
             allocator_info.instance               = m_rhi_context->instance;
             allocator_info.vulkanApiVersion       = app_info.apiVersion;
 
-            SP_ASSERT_MSG(vulkan_utility::error::check(vmaCreateAllocator(&allocator_info, &m_rhi_context->allocator)), "Failed to create memory allocator");
+            SP_ASSERT_MSG(vmaCreateAllocator(&allocator_info, reinterpret_cast<VmaAllocator*>(&m_allocator)) == VK_SUCCESS, "Failed to create memory allocator");
         }
 
         // Set the descriptor set capacity to an initial value
@@ -445,10 +448,10 @@ namespace Spartan
             m_descriptor_pool = nullptr;
 
             // Allocator
-            if (m_rhi_context->allocator != nullptr)
+            if (m_allocator != nullptr)
             {
-                vmaDestroyAllocator(m_rhi_context->allocator);
-                m_rhi_context->allocator = nullptr;
+                vmaDestroyAllocator(static_cast<VmaAllocator>(m_allocator));
+                m_allocator = nullptr;
             }
 
             // Debug messenger
@@ -781,6 +784,191 @@ namespace Spartan
         {
             profiler->m_descriptor_set_count    = 0;
             profiler->m_descriptor_set_capacity = m_descriptor_set_capacity;
+        }
+    }
+
+    uint64_t get_allocation_id_from_resource(void* resource)
+    {
+        return reinterpret_cast<uint64_t>(resource);
+    }
+
+    void* RHI_Device::get_allocation_from_resource(void* resource)
+    {
+        return m_allocations.find(get_allocation_id_from_resource(resource))->second;
+    }
+
+    void* RHI_Device::get_mapped_data_from_buffer(void* resource)
+    {
+        if (VmaAllocation allocation = static_cast<VmaAllocation>(get_allocation_from_resource(resource)))
+        {
+            return allocation->GetMappedData();
+        }
+
+        return nullptr;
+    }
+
+    void RHI_Device::CreateBuffer(void*& resource, const uint64_t size, uint32_t usage, uint32_t memory_property_flags, const void* data_initial /* = nullptr */)
+    {
+        // Deduce some memory properties
+        bool is_buffer_constant      = (usage & VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT) != 0;
+        bool is_buffer_index         = (usage & VK_BUFFER_USAGE_INDEX_BUFFER_BIT) != 0;
+        bool is_buffer_vertex        = (usage & VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) != 0;
+        bool is_buffer_staging       = (usage & VK_BUFFER_USAGE_TRANSFER_SRC_BIT) != 0;
+        bool is_mappable             = (memory_property_flags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) != 0;
+        bool is_transfer_source      = (usage & VK_BUFFER_USAGE_TRANSFER_SRC_BIT) != 0;
+        bool is_transfer_destination = (usage & VK_BUFFER_USAGE_TRANSFER_DST_BIT) != 0;
+        bool is_transfer_buffer      = is_transfer_source || is_transfer_destination;
+        bool map_on_creation         = is_buffer_constant || is_buffer_index || is_buffer_vertex;
+
+        // Buffer info
+        VkBufferCreateInfo buffer_create_info = {};
+        buffer_create_info.sType              = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+        buffer_create_info.size               = size;
+        buffer_create_info.usage              = usage;
+        buffer_create_info.sharingMode        = VK_SHARING_MODE_EXCLUSIVE;
+
+        // Allocation info
+        VmaAllocationCreateInfo allocation_create_info = {};
+        allocation_create_info.usage                   = VMA_MEMORY_USAGE_AUTO;
+        allocation_create_info.requiredFlags           = memory_property_flags;
+        allocation_create_info.flags                   = 0;
+
+        if (is_buffer_staging)
+        {
+            allocation_create_info.flags |= VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
+        }
+        else
+        {
+            // Can it be mapped ? Buffers that use Map()/Unmap() need this, persistent buffers also need this.
+            allocation_create_info.flags |= is_mappable ? VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT : 0;
+
+            // Can it be mapped upon creation ? This is what a persistent buffer would use.
+            allocation_create_info.flags |= (map_on_creation && !is_transfer_buffer) ? VMA_ALLOCATION_CREATE_MAPPED_BIT : 0;
+
+            // Allocate dedicated memory ? Our constant buffers can re-allocate to accommodate more dynamic offsets, dedicated memory can reduce fragmentation.
+            bool big_enough = size >= 1048576; // go dedicated above this threshold
+            allocation_create_info.flags |= (is_buffer_constant && big_enough) ? VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT : 0;
+
+            // Cached on the CPU ? Our constant buffers are using dynamic offsets and do a lot of updates, so we need fast access.
+            allocation_create_info.flags |= is_buffer_constant ? VK_MEMORY_PROPERTY_HOST_CACHED_BIT : 0;
+        }
+
+        // Allocations can come both from the main as well as worker threads (loading), so lock this context.
+        lock_guard<mutex> lock(m_mutex_vma_buffer);
+
+        // Create the buffer
+        VmaAllocation allocation = nullptr;
+        VmaAllocationInfo allocation_info;
+        SP_ASSERT_MSG(vmaCreateBuffer(
+                static_cast<VmaAllocator>(m_allocator),
+                &buffer_create_info,
+                &allocation_create_info,
+                reinterpret_cast<VkBuffer*>(&resource),
+                &allocation,
+                &allocation_info) == VK_SUCCESS,
+            "Failed to created buffer");
+
+        // If a pointer to the buffer data has been passed, map the buffer and copy over the data
+        if (data_initial != nullptr)
+        {
+            SP_ASSERT(is_mappable && "Can't map, you need to create a buffer, with a VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT memory flag.");
+
+            // Memory in Vulkan doesn't need to be unmapped before using it on GPU, but unless a
+            // memory type has VK_MEMORY_PROPERTY_HOST_COHERENT_BIT flag set, you need to manually
+            // invalidate the cache before reading a mapped pointer and flush cache after writing to
+            // it. Map/unmap operations don't do that automatically.
+
+            void* mapped_data = nullptr;
+            SP_ASSERT_MSG(vmaMapMemory(static_cast<VmaAllocator>(m_allocator), allocation, &mapped_data) == VK_SUCCESS, "Failed to map allocation");
+            memcpy(mapped_data, data_initial, size);
+            SP_ASSERT_MSG(vmaFlushAllocation(static_cast<VmaAllocator>(m_allocator), allocation, 0, size) == VK_SUCCESS, "Failed to flush allocation");
+            vmaUnmapMemory(static_cast<VmaAllocator>(m_allocator), allocation);
+        }
+
+        // Keep allocation reference
+        m_allocations[reinterpret_cast<uint64_t>(resource)] = allocation;
+    }
+
+    void RHI_Device::DestroyBuffer(void*& resource)
+    {
+        if (!resource)
+            return;
+
+        // Deallocations can come both from the main as well as worker threads, so lock this context.
+        lock_guard<mutex> lock(m_mutex_vma_buffer);
+
+        if (VmaAllocation allocation = static_cast<VmaAllocation>(get_allocation_from_resource(resource)))
+        {
+            vmaDestroyBuffer(static_cast<VmaAllocator>(m_allocator), static_cast<VkBuffer>(resource), allocation);
+
+            m_allocations.erase(get_allocation_id_from_resource(resource));
+            resource = nullptr;
+        }
+    }
+
+    void RHI_Device::CreateTexture(void* vk_image_creat_info, void*& resource)
+    {
+        VmaAllocationCreateInfo allocation_info = {};
+        allocation_info.usage = VMA_MEMORY_USAGE_AUTO;
+
+        // Create image
+        VmaAllocation allocation;
+        SP_ASSERT_MSG(vmaCreateImage(
+                    static_cast<VmaAllocator>(m_allocator),
+                    static_cast<VkImageCreateInfo*>(vk_image_creat_info), &allocation_info,
+                    reinterpret_cast<VkImage*>(&resource),
+                    &allocation,
+                    nullptr) == VK_SUCCESS,
+            "Failed to allocate texture");
+
+        // Allocations can come both from the main as well as worker threads (loading), so lock this context.
+        lock_guard<mutex> lock(m_mutex_vma_texture);
+
+        // Keep allocation reference
+        m_allocations[reinterpret_cast<uint64_t>(resource)] = allocation;
+    }
+
+    void RHI_Device::DestroyTexture(void*& resource)
+    {
+        if (!resource)
+            return;
+
+        // Deallocations can come both from the main as well as worker threads, so lock this context.
+        lock_guard<mutex> lock(m_mutex_vma_texture);
+
+        if (VmaAllocation allocation = static_cast<VmaAllocation>(get_allocation_from_resource(resource)))
+        {
+            vmaDestroyImage(static_cast<VmaAllocator>(m_allocator), static_cast<VkImage>(resource), allocation);
+
+            m_allocations.erase(get_allocation_id_from_resource(resource));
+            resource = nullptr;
+        }
+    }
+
+    void RHI_Device::Map(void* resource, void*& mapped_data)
+    {
+        if (VmaAllocation allocation = static_cast<VmaAllocation>(get_allocation_from_resource(resource)))
+        {
+            SP_ASSERT_MSG(vulkan_utility::error::check(vmaMapMemory(static_cast<VmaAllocator>(m_allocator), allocation, reinterpret_cast<void**>(&mapped_data))), "Failed to map memory");
+        }
+    }
+
+    void RHI_Device::Unmap(void* resource, void*& mapped_data)
+    {
+        SP_ASSERT_MSG(mapped_data, "Memory is already unmapped");
+
+        if (VmaAllocation allocation = static_cast<VmaAllocation>(get_allocation_from_resource(resource)))
+        {
+            vmaUnmapMemory(static_cast<VmaAllocator>(m_allocator), static_cast<VmaAllocation>(allocation));
+            mapped_data = nullptr;
+        }
+    }
+
+    void RHI_Device::Flush(void* resource, uint64_t offset, uint64_t size)
+    {
+        if (VmaAllocation allocation = static_cast<VmaAllocation>(get_allocation_from_resource(resource)))
+        {
+            SP_ASSERT_MSG(vulkan_utility::error::check(vmaFlushAllocation(static_cast<VmaAllocator>(m_allocator), allocation, offset, size)), "Failed to flush");
         }
     }
 }

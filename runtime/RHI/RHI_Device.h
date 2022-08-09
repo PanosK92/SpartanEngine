@@ -86,6 +86,17 @@ namespace Spartan
         Context* GetContext()               const { return m_context; }
         uint32_t GetEnabledGraphicsStages() const { return m_enabled_graphics_shader_stages; }
 
+        // Vulkan memory allocator
+        void* get_allocation_from_resource(void* resource);
+        void* get_mapped_data_from_buffer(void* resource);
+        void CreateBuffer(void*& resource, const uint64_t size, uint32_t usage, uint32_t memory_property_flags, const void* data_initial = nullptr);
+        void DestroyBuffer(void*& resource);
+        void CreateTexture(void* vk_image_creat_info, void*& resource);
+        void DestroyTexture(void*& resource);
+        void Map(void* resource, void*& mapped_data);
+        void Unmap(void* resource, void*& mapped_data);
+        void Flush(void* resource, uint64_t offset, uint64_t size);
+
     private:
         // Physical device
         bool DetectPhysicalDevices();
@@ -129,5 +140,11 @@ namespace Spartan
         mutable std::mutex m_queue_mutex;
         std::vector<PhysicalDevice> m_physical_devices;
         std::shared_ptr<RHI_Context> m_rhi_context = nullptr;
+
+        // Vulkan memory allocator
+        std::mutex m_mutex_vma_buffer;
+        std::mutex m_mutex_vma_texture;
+        void* m_allocator = nullptr;
+        std::unordered_map<uint64_t, void*> m_allocations;
     };
 }
