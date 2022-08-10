@@ -157,11 +157,10 @@ namespace Spartan
         // Command allocator
         //d3d12_utility::release<ID3D12CommandAllocator>(m_cmd_pool_graphics);
 
-        if (QueueWaitAll())
-        {
-            m_rhi_context->device->Release();
-            m_rhi_context->device = nullptr;
-        }
+        QueueWaitAll();
+
+        m_rhi_context->device->Release();
+        m_rhi_context->device = nullptr;
     }
 
     bool RHI_Device::DetectPhysicalDevices()
@@ -291,7 +290,7 @@ namespace Spartan
         return result;
     }
 
-    void RHI_Device::QueueSubmit(const RHI_Queue_Type type, const uint32_t wait_flags, void* cmd_buffer, RHI_Semaphore* wait_semaphore /*= nullptr*/, RHI_Semaphore* signal_semaphore /*= nullptr*/, RHI_Fence* signal_fence /*= nullptr*/) const
+    void RHI_Device::QueueSubmit(const RHI_Queue_Type type, const uint32_t wait_flags, void* cmd_buffer, RHI_Semaphore* wait_semaphore /*= nullptr*/, RHI_Semaphore* signal_semaphore /*= nullptr*/, RHI_Fence* signal_fence /*= nullptr*/)
     {
 
     }
