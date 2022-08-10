@@ -66,10 +66,9 @@ namespace Spartan
         m_state = RHI_CommandListState::Recording;
     }
 
-    bool RHI_CommandList::End()
+    void RHI_CommandList::End()
     {
         m_state = RHI_CommandListState::Ended;
-        return true;
     }
 
     void RHI_CommandList::Submit()

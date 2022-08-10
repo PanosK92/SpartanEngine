@@ -42,7 +42,7 @@ namespace Spartan
             m_stride          = static_cast<uint64_t>(sizeof(T));
             m_object_size_gpu = static_cast<uint64_t>(m_stride * m_element_count);
 
-            _create(m_rhi_device);
+            _create();
         }
 
         // This function will handle updating the buffer. This involves:
@@ -112,7 +112,7 @@ namespace Spartan
         uint32_t GetStrideCount() const { return m_element_count; }
 
     private:
-        void _create(RHI_Device* rhi_device);
+        void _create();
         void _destroy();
 
         bool m_persistent_mapping = false;

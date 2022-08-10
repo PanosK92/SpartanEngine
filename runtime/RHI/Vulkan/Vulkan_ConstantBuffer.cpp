@@ -50,7 +50,7 @@ namespace Spartan
         m_persistent_mapping = true;
     }
 
-    void RHI_ConstantBuffer::_create(RHI_Device* rhi_device)
+    void RHI_ConstantBuffer::_create()
     {
         // Destroy previous buffer
         _destroy();
@@ -67,10 +67,10 @@ namespace Spartan
         VkMemoryPropertyFlags flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT; // mappable
 
         // Create buffer
-        rhi_device->CreateBuffer(m_rhi_resource, m_object_size_gpu, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, flags);
+        m_rhi_device->CreateBuffer(m_rhi_resource, m_object_size_gpu, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, flags);
 
         // Get mapped data pointer
-        m_mapped_data = rhi_device->get_mapped_data_from_buffer(m_rhi_resource);
+        m_mapped_data = m_rhi_device->get_mapped_data_from_buffer(m_rhi_resource);
 
         // Set debug name
         vulkan_utility::debug::set_object_name(static_cast<VkBuffer>(m_rhi_resource), (m_object_name + string("_size_") + to_string(m_object_size_gpu)).c_str());

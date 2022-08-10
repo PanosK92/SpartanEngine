@@ -103,17 +103,15 @@ namespace Spartan
         m_state = RHI_CommandListState::Recording;
     }
 
-    bool RHI_CommandList::End()
+    void RHI_CommandList::End()
     {
         // Verify a few things
         SP_ASSERT(m_rhi_resource != nullptr);
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
-        if (!d3d12_utility::error::check(static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource)->Close()))
-            return false;
+        SP_ASSERT_MSG(SUCCEEDED(static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource)->Close()), "Failed to end command list");
 
         m_state = RHI_CommandListState::Ended;
-        return true;
     }
 
     void RHI_CommandList::Submit()

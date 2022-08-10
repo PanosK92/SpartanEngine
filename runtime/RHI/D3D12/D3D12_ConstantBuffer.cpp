@@ -42,7 +42,7 @@ namespace Spartan
  
     }
 
-    RHI_ConstantBuffer::RHI_ConstantBuffer(const RHI_Device* rhi_device, const string& name)
+    RHI_ConstantBuffer::RHI_ConstantBuffer(RHI_Device* rhi_device, const string& name)
     {
     
     }
