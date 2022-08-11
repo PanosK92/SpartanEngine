@@ -64,7 +64,10 @@ namespace Spartan
             std::vector<uint32_t>* indices,
             std::vector<RHI_Vertex_PosTexNorTan>* vertices
         ) const;
+
         void UpdateGeometry();
+        void OptimizeGeometry();
+
         const auto& GetAabb() const { return m_aabb; }
         const auto& GetMesh() const { return m_mesh; }
 

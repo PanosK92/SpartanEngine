@@ -342,25 +342,13 @@ namespace Spartan
 
         // Model params
         ModelParams params;
-        params.triangle_limit              = 1000000;
-        params.vertex_limit                = 1000000;
-        params.max_normal_smoothing_angle  = 80.0f; // Normals exceeding this limit are not smoothed.
-        params.max_tangent_smoothing_angle = 80.0f; // Tangents exceeding this limit are not smoothed. Default is 45, max is 175
-        params.file_path                   = file_path;
-        params.name                        = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path);
-        params.model                       = model;
-        params.is_gltf                     = FileSystem::GetExtensionFromFilePath(file_path) == ".gltf";
+        params.file_path  = file_path;
+        params.name       = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path);
+        params.model      = model;
+        params.is_gltf    = FileSystem::GetExtensionFromFilePath(file_path) == ".gltf";
 
-        // Set up an Assimp importer
+        // Set up the importer
         Importer importer;
-        // Set normal smoothing angle
-        importer.SetPropertyFloat(AI_CONFIG_PP_GSN_MAX_SMOOTHING_ANGLE, params.max_normal_smoothing_angle);
-        // Set tangent smoothing angle
-        importer.SetPropertyFloat(AI_CONFIG_PP_CT_MAX_SMOOTHING_ANGLE, params.max_tangent_smoothing_angle);
-        // Maximum number of triangles in a mesh (before splitting)
-        importer.SetPropertyInteger(AI_CONFIG_PP_SLM_TRIANGLE_LIMIT, params.triangle_limit);
-        // Maximum number of vertices in a mesh (before splitting)
-        importer.SetPropertyInteger(AI_CONFIG_PP_SLM_VERTEX_LIMIT, params.vertex_limit);
         // Remove points and lines.
         importer.SetPropertyInteger(AI_CONFIG_PP_SBP_REMOVE, aiPrimitiveType_LINE | aiPrimitiveType_POINT);
         // Remove cameras and lights
@@ -370,28 +358,26 @@ namespace Spartan
         importer.SetProgressHandler(new AssimpProgress(file_path));
       
         const auto importer_flags =
-            aiProcess_MakeLeftHanded |           // directx style.
-            aiProcess_FlipUVs |                  // directx style.
-            aiProcess_FlipWindingOrder |         // directx style.
+            aiProcess_MakeLeftHanded |        // directx style.
+            aiProcess_FlipUVs |               // directx style.
+            aiProcess_FlipWindingOrder |      // directx style.
             aiProcess_CalcTangentSpace |
             aiProcess_GenSmoothNormals |
             aiProcess_GenUVCoords |
-            aiProcess_JoinIdenticalVertices |
-            aiProcess_ImproveCacheLocality |     // re-order triangles for better vertex cache locality.
             aiProcess_LimitBoneWeights |
             aiProcess_Triangulate |
-            aiProcess_SortByPType |              // splits meshes with more than one primitive type in homogeneous sub-meshes.
-            aiProcess_FindDegenerates |          // convert degenerate primitives to proper lines or points.
+            aiProcess_SortByPType |           // splits meshes with more than one primitive type in homogeneous sub-meshes.
+            aiProcess_FindDegenerates |       // convert degenerate primitives to proper lines or points.
             aiProcess_FindInvalidData |
             aiProcess_FindInstances |
-            aiProcess_ValidateDataStructure;
+            aiProcess_ValidateDataStructure |
+            // Optimizations
+            aiProcess_JoinIdenticalVertices |
+            aiProcess_ImproveCacheLocality;
             //aiProcess_Debone|
             //aiProcess_SplitLargeMeshes |
             //aiProcess_OptimizeMeshes |           // reduce the number of meshes
             //aiProcess_RemoveRedundantMaterials | // remove redundant/unreferenced materials.
-
-        // aiProcess_FixInfacingNormals - is not reliable and fails often.
-        // aiProcess_OptimizeGraph      - works but because it merges as nodes as possible, you can't really click and select anything other than the entire thing.
 
         // Read the 3D model file from disc
         if (const aiScene* scene = importer.ReadFile(file_path, importer_flags))
@@ -416,6 +402,7 @@ namespace Spartan
             ParseAnimations(params);
             // Update model geometry
             model->UpdateGeometry();
+            model->OptimizeGeometry();
         }
         else
         {

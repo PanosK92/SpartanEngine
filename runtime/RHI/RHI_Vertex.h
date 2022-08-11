@@ -43,7 +43,7 @@ namespace Spartan
             this->pos[2] = position.z;
         }
 
-        float pos[3] = { 0 };
+        float pos[3] = { 0, 0, 0 };
     };
 
     struct RHI_Vertex_PosTex
@@ -68,8 +68,8 @@ namespace Spartan
             this->tex[1] = tex.y;
         }
 
-        float pos[3] = { 0 };
-        float tex[2] = { 0 };
+        float pos[3] = { 0, 0, 0 };
+        float tex[2] = { 0, 0 };
     };
 
     struct RHI_Vertex_PosCol
@@ -88,16 +88,16 @@ namespace Spartan
             this->col[3] = col.w;
         }
 
-        float pos[3] = {0};
-        float col[4] = {0};
+        float pos[3] = { 0, 0, 0 };
+        float col[4] = { 0, 0, 0, 0};
     };
 
     struct RHI_Vertex_Pos2dTexCol8
     {
         RHI_Vertex_Pos2dTexCol8() = default;
 
-        float pos[2] = { 0 };
-        float tex[2] = { 0 };
+        float pos[2] = { 0, 0 };
+        float tex[2] = { 0, 0 };
         uint32_t col = 0;
     };
 
@@ -126,10 +126,10 @@ namespace Spartan
             this->tan[2] = tan.z;
         }
 
-        float pos[3] = { 0 };
-        float tex[2] = { 0 };
-        float nor[3] = { 0 };
-        float tan[3] = { 0 };
+        float pos[3] = { 0, 0, 0 };
+        float tex[2] = { 0, 0 };
+        float nor[3] = { 0, 0, 0 };
+        float tan[3] = { 0, 0, 0 };
     };
 
     static_assert(std::is_trivially_copyable<RHI_Vertex_Pos>::value,          "RHI_Vertex_Pos is not trivially copyable");
@@ -137,14 +137,4 @@ namespace Spartan
     static_assert(std::is_trivially_copyable<RHI_Vertex_PosCol>::value,       "RHI_Vertex_PosCol is not trivially copyable");
     static_assert(std::is_trivially_copyable<RHI_Vertex_Pos2dTexCol8>::value, "RHI_Vertex_Pos2dTexCol8 is not trivially copyable");
     static_assert(std::is_trivially_copyable<RHI_Vertex_PosTexNorTan>::value, "RHI_Vertex_PosTexNorTan is not trivially copyable");
-
-    enum class RHI_Vertex_Type
-    {
-        Undefined,
-        Pos,
-        PosCol,
-        PosTex,
-        PosTexNorTan,
-        Pos2dTexCol8
-    };
 }

@@ -215,6 +215,16 @@ namespace Spartan
         RHI_Format_Undefined
     };
 
+    enum class RHI_Vertex_Type
+    {
+        Undefined,
+        Pos,
+        PosCol,
+        PosTex,
+        PosTexNorTan,
+        Pos2dTexCol8
+    };
+
     enum class RHI_Blend
     {
         Zero,
