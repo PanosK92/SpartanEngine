@@ -29,7 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Rendering/Model.h"
 #include "../../IO/FileStream.h"
 #include "../../Resource/ResourceCache.h"
-#include "../../Rendering/Mesh.h"
+#include "../../Rendering/Mesh/Mesh.h"
 #include "../../Threading/Threading.h"
 //=======================================
 
@@ -403,9 +403,9 @@ namespace Spartan
             renderable->GeometrySet(
                 "Terrain",
                 0,                                  // index offset
-                model->GetMesh()->Indices_Count(),  // index count
+                model->GetMesh()->GetIndexCount(),  // index count
                 0,                                  // vertex offset
-                model->GetMesh()->Vertices_Count(), // vertex count
+                model->GetMesh()->GetVertexCount(), // vertex count
                 model->GetAabb(),
                 model.get()
             );

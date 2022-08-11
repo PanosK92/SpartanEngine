@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ================================
 #include "pch.h"
 #include "Model.h"
-#include "Mesh.h"
+#include "Mesh/Mesh.h"
 #include "Renderer.h"
 #include "../IO/FileStream.h"
 #include "../Core/Stopwatch.h"
@@ -87,8 +87,8 @@ namespace Spartan
 
             SetResourceFilePath(file->ReadAs<string>());
             file->Read(&m_normalized_scale);
-            file->Read(&m_mesh->Indices_Get());
-            file->Read(&m_mesh->Vertices_Get());
+            file->Read(&m_mesh->GetIndices());
+            file->Read(&m_mesh->GetVertices());
 
             UpdateGeometry();
         }
@@ -135,8 +135,8 @@ namespace Spartan
 
         file->Write(GetResourceFilePath());
         file->Write(m_normalized_scale);
-        file->Write(m_mesh->Indices_Get());
-        file->Write(m_mesh->Vertices_Get());
+        file->Write(m_mesh->GetIndices());
+        file->Write(m_mesh->GetVertices());
 
         file->Close();
 
@@ -149,8 +149,8 @@ namespace Spartan
         SP_ASSERT(!vertices.empty());
 
         // Append indices and vertices to the main mesh
-        m_mesh->Indices_Append(indices, index_offset);
-        m_mesh->Vertices_Append(vertices, vertex_offset);
+        m_mesh->AddIndices(indices, index_offset);
+        m_mesh->AddVertices(vertices, vertex_offset);
     }
 
     void Model::GetGeometry(const uint32_t index_offset, const uint32_t index_count, const uint32_t vertex_offset, const uint32_t vertex_count, vector<uint32_t>* indices, vector<RHI_Vertex_PosTexNorTan>* vertices) const
@@ -160,12 +160,17 @@ namespace Spartan
 
     void Model::UpdateGeometry()
     {
-        SP_ASSERT(m_mesh->Indices_Count() != 0);
-        SP_ASSERT(m_mesh->Vertices_Count() != 0);
+        SP_ASSERT(m_mesh->GetIndexCount() != 0);
+        SP_ASSERT(m_mesh->GetVertexCount() != 0);
 
         GeometryCreateBuffers();
         m_normalized_scale = GeometryComputeNormalizedScale();
-        m_aabb             = BoundingBox(m_mesh->Vertices_Get().data(), static_cast<uint32_t>(m_mesh->Vertices_Get().size()));
+        m_aabb             = BoundingBox(m_mesh->GetVertices().data(), static_cast<uint32_t>(m_mesh->GetVertices().size()));
+    }
+
+    void Model::OptimizeGeometry()
+    {
+        m_mesh->Optimize();
     }
 
     void Model::AddMaterial(shared_ptr<Material>& material, const shared_ptr<Entity>& entity) const
@@ -208,8 +213,8 @@ namespace Spartan
     void Model::GeometryCreateBuffers()
     {
         // Get geometry
-        const vector<uint32_t>& indices                 = m_mesh->Indices_Get();
-        const vector<RHI_Vertex_PosTexNorTan>& vertices = m_mesh->Vertices_Get();
+        const vector<uint32_t>& indices                 = m_mesh->GetIndices();
+        const vector<RHI_Vertex_PosTexNorTan>& vertices = m_mesh->GetVertices();
 
         SP_ASSERT_MSG(!indices.empty(), "There are no indices");
         m_index_buffer = make_shared<RHI_IndexBuffer>(m_rhi_device.get(), false, "model");

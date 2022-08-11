@@ -42,10 +42,6 @@ namespace Spartan
 
     struct ModelParams
     {
-        uint32_t triangle_limit;
-        uint32_t vertex_limit;
-        float max_normal_smoothing_angle;
-        float max_tangent_smoothing_angle;
         std::string file_path;
         std::string name;
         bool has_animation;
