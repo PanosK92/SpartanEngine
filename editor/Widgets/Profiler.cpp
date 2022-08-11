@@ -59,7 +59,7 @@ static void ShowTimeBlock(const Spartan::TimeBlock& time_block, float total_time
     const char* name        = time_block.GetName();
     const float duration    = time_block.GetDuration();
     const float fraction    = duration / total_time;
-    const float width       = fraction * ImGuiEx::GetWindowContentRegionWidth();
+    const float width       = fraction * imgui_extension::GetWindowContentRegionWidth();
     const auto& color       = ImGui::GetStyle().Colors[ImGuiCol_CheckMark];
     const ImVec2 pos_screen = ImGui::GetCursorScreenPos();
     const ImVec2 pos        = ImGui::GetCursorPos();
@@ -124,7 +124,7 @@ void Profiler::TickVisible()
 
         // Cur, Avg, Min, Max
         {
-            if (ImGuiEx::Button("Clear")) { m_timings.Clear(); }
+            if (imgui_extension::button("Clear")) { m_timings.Clear(); }
             ImGui::SameLine();
             ImGui::Text("Cur:%.2f, Avg:%.2f, Min:%.2f, Max:%.2f", time_last, m_timings.m_avg, m_timings.m_min, m_timings.m_max);
             bool is_stuttering = type == Spartan::TimeBlockType::Cpu ? m_profiler->IsCpuStuttering() : m_profiler->IsGpuStuttering();
@@ -142,7 +142,7 @@ void Profiler::TickVisible()
         m_plot[m_plot.size() - 1] = time_last;
 
         // Show
-        ImGui::PlotLines("", m_plot.data(), static_cast<int>(m_plot.size()), 0, "", m_timings.m_min, m_timings.m_max, ImVec2(ImGuiEx::GetWindowContentRegionWidth(), 80));
+        ImGui::PlotLines("", m_plot.data(), static_cast<int>(m_plot.size()), 0, "", m_timings.m_min, m_timings.m_max, ImVec2(imgui_extension::GetWindowContentRegionWidth(), 80));
     }
 
     // VRAM

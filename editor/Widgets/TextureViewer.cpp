@@ -61,7 +61,7 @@ void TextureViewer::TickVisible()
     // Display them in a combo box.
     ImGui::Text("Render target");
     ImGui::SameLine();
-    ImGuiEx::ComboBox("##render_target", render_target_options, &m_texture_index);
+    imgui_extension::combo_box("##render_target", render_target_options, &m_texture_index);
 
     // Display the selected texture
     if (shared_ptr<RHI_Texture> texture = m_renderer->GetRenderTarget(static_cast<RendererTexture>(m_texture_index)))
@@ -78,7 +78,7 @@ void TextureViewer::TickVisible()
         float width  = static_cast<float>(texture->GetWidth()) * texture_shrink_percentage;
         float height = static_cast<float>(texture->GetHeight()) * texture_shrink_percentage;
         bool border  = true;
-        ImGuiEx::Image(texture.get(), Vector2(width, height), border);
+        imgui_extension::image(texture.get(), Vector2(width, height), border);
 
         // Magnifying glass
         if (m_magnifying_glass && ImGui::IsItemHovered())

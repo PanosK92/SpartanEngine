@@ -130,14 +130,14 @@ void FileDialog::ShowTop(bool* is_visible)
     // Directory navigation buttons
     {
         // Backwards
-        if (ImGuiEx::Button("<"))
+        if (imgui_extension::button("<"))
         {
             m_is_dirty = m_navigation.Backward();
         }
 
         // Forwards
         ImGui::SameLine();
-        if (ImGuiEx::Button(">"))
+        if (imgui_extension::button(">"))
         {
             m_is_dirty = m_navigation.Forward();
         }
@@ -146,7 +146,7 @@ void FileDialog::ShowTop(bool* is_visible)
         for (uint32_t i = 0; i < m_navigation.m_path_hierarchy.size(); i++)
         {
             ImGui::SameLine();
-            if (ImGuiEx::Button(m_navigation.m_path_hierarchy_labels[i].c_str()))
+            if (imgui_extension::button(m_navigation.m_path_hierarchy_labels[i].c_str()))
             {
                 m_is_dirty = m_navigation.Navigate(m_navigation.m_path_hierarchy[i]);
             }
@@ -155,7 +155,7 @@ void FileDialog::ShowTop(bool* is_visible)
 
     // Size slider
     const float slider_width = 200.0f;
-    ImGui::SameLine(ImGuiEx::GetWindowContentRegionWidth() - slider_width);
+    ImGui::SameLine(imgui_extension::GetWindowContentRegionWidth() - slider_width);
     ImGui::PushItemWidth(slider_width);
     const float previous_width = m_item_size.x;
     ImGui::SliderFloat("##FileDialogSlider", &m_item_size.x, m_item_size_min, m_item_size_max);
@@ -264,7 +264,7 @@ void FileDialog::ShowMiddle()
                     ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0, 0, 0, 0));
                     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1.0f, 1.0f, 1.0f, 0.25f));
 
-                    if (ImGuiEx::Button("##dummy", m_item_size))
+                    if (imgui_extension::button("##dummy", m_item_size))
                     {
                         // Determine type of click
                         item.Clicked();
@@ -342,7 +342,7 @@ void FileDialog::ShowMiddle()
                         }
 
                         ImGui::SetCursorScreenPos(ImVec2(rect_button.Min.x + style.FramePadding.x + image_size_delta.x * 0.5f, rect_button.Min.y + style.FramePadding.y + image_size_delta.y * 0.5f));
-                        ImGuiEx::Image(item.GetTexture(), image_size);
+                        imgui_extension::image(item.GetTexture(), image_size);
                     }
 
                     ImGui::PopStyleColor(2);
@@ -422,13 +422,13 @@ void FileDialog::ShowBottom(bool* is_visible)
         ImGui::Text(FILTER_NAME);
 
         ImGui::SameLine();
-        if (ImGuiEx::Button(OPERATION_NAME))
+        if (imgui_extension::button(OPERATION_NAME))
         {
             m_selection_made = true;
         }
 
         ImGui::SameLine();
-        if (ImGuiEx::Button("Cancel"))
+        if (imgui_extension::button("Cancel"))
         {
             m_selection_made = false;
             (*is_visible) = false;
@@ -443,20 +443,20 @@ void FileDialog::ItemDrag(FileDialogItem* item) const
 
     if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID))
     {
-        const auto set_payload = [this](const ImGuiEx::DragPayloadType type, const string& path)
+        const auto set_payload = [this](const imgui_extension::DragPayloadType type, const string& path)
         {
             m_drag_drop_payload.type = type;
             m_drag_drop_payload.data = path.c_str();
-            ImGuiEx::CreateDragPayload(m_drag_drop_payload);
+            imgui_extension::create_drag_drop_paylod(m_drag_drop_payload);
         };
 
-        if (FileSystem::IsSupportedModelFile(item->GetPath())) { set_payload(ImGuiEx::DragPayloadType::DragPayload_Model,    item->GetPath()); }
-        if (FileSystem::IsSupportedImageFile(item->GetPath())) { set_payload(ImGuiEx::DragPayloadType::DragPayload_Texture,  item->GetPath()); }
-        if (FileSystem::IsSupportedAudioFile(item->GetPath())) { set_payload(ImGuiEx::DragPayloadType::DragPayload_Audio,    item->GetPath()); }
-        if (FileSystem::IsEngineMaterialFile(item->GetPath())) { set_payload(ImGuiEx::DragPayloadType::DragPayload_Material, item->GetPath()); }
+        if (FileSystem::IsSupportedModelFile(item->GetPath())) { set_payload(imgui_extension::DragPayloadType::DragPayload_Model,    item->GetPath()); }
+        if (FileSystem::IsSupportedImageFile(item->GetPath())) { set_payload(imgui_extension::DragPayloadType::DragPayload_Texture,  item->GetPath()); }
+        if (FileSystem::IsSupportedAudioFile(item->GetPath())) { set_payload(imgui_extension::DragPayloadType::DragPayload_Audio,    item->GetPath()); }
+        if (FileSystem::IsEngineMaterialFile(item->GetPath())) { set_payload(imgui_extension::DragPayloadType::DragPayload_Material, item->GetPath()); }
 
         // Preview
-        ImGuiEx::Image(item->GetTexture(), 50);
+        imgui_extension::image(item->GetTexture(), 50);
 
         ImGui::EndDragDropSource();
     }

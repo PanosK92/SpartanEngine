@@ -47,14 +47,14 @@ Console::Console(Editor* editor) : Widget(editor)
 void Console::TickVisible()
 {
     // Clear Button
-    if (ImGuiEx::Button("Clear")) { Clear();} ImGui::SameLine();
+    if (imgui_extension::button("Clear")) { Clear();} ImGui::SameLine();
 
     // Lambda for info, warning, error filter buttons
     const auto button_log_type_visibility_toggle = [this](const IconType icon, uint32_t index)
     {
         bool& visibility = m_log_type_visibility[index];
         ImGui::PushStyleColor(ImGuiCol_Button, visibility ? ImGui::GetStyle().Colors[ImGuiCol_Button] : ImGui::GetStyle().Colors[ImGuiCol_FrameBg]);
-        if (ImGuiEx::ImageButton(icon, 15.0f))
+        if (imgui_extension::image_button(0, nullptr, icon, 15.0f, false))
         {
             visibility = !visibility;
         }

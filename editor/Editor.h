@@ -63,7 +63,6 @@ public:
     }
 
 private:
-    void Initialise();
     void BeginWindow();
 
     bool m_editor_begun = false;

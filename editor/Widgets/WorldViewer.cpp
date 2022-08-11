@@ -52,7 +52,7 @@ namespace _Widget_World
     static Spartan::World* g_world  = nullptr;
     static Input* g_input           = nullptr;
     static bool g_popupRenameentity = false;
-    static ImGuiEx::DragDropPayload g_payload;
+    static imgui_extension::DragDropPayload g_payload;
     // entities in relation to mouse events
     static Entity* g_entity_copied  = nullptr;
     static Entity* g_entity_hovered = nullptr;
@@ -98,7 +98,7 @@ void WorldViewer::TreeShow()
     if (ImGui::TreeNodeEx("Root", ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanFullWidth))
     {
         // Dropping on the scene node should unparent the entity
-        if (auto payload = ImGuiEx::ReceiveDragPayload(ImGuiEx::DragPayloadType::DragPayload_Entity))
+        if (auto payload = imgui_extension::receive_drag_drop_payload(imgui_extension::DragPayloadType::DragPayload_Entity))
         {
             const uint64_t entity_id = get<uint64_t>(payload->data);
             if (const shared_ptr<Entity>& dropped_entity = _Widget_World::g_world->EntityGetById(entity_id))
@@ -264,12 +264,12 @@ void WorldViewer::EntityHandleDragDrop(Entity* entity_ptr) const
     if (ImGui::BeginDragDropSource())
     {
         _Widget_World::g_payload.data = entity_ptr->GetObjectId();
-        _Widget_World::g_payload.type = ImGuiEx::DragPayloadType::DragPayload_Entity;
-        ImGuiEx::CreateDragPayload(_Widget_World::g_payload);
+        _Widget_World::g_payload.type = imgui_extension::DragPayloadType::DragPayload_Entity;
+        imgui_extension::create_drag_drop_paylod(_Widget_World::g_payload);
         ImGui::EndDragDropSource();
     }
     // Drop
-    if (auto payload = ImGuiEx::ReceiveDragPayload(ImGuiEx::DragPayloadType::DragPayload_Entity))
+    if (auto payload = imgui_extension::receive_drag_drop_payload(imgui_extension::DragPayloadType::DragPayload_Entity))
     {
         const uint64_t entity_id = get<uint64_t>(payload->data);
         if (const shared_ptr<Entity>& dropped_entity = _Widget_World::g_world->EntityGetById(entity_id))
@@ -484,7 +484,7 @@ void WorldViewer::PopupEntityRename() const
         ImGui::InputText("##edit", &name);
         selectedentity->SetName(string(name));
 
-        if (ImGuiEx::Button("Ok"))
+        if (imgui_extension::button("Ok"))
         { 
             ImGui::CloseCurrentPopup();
             ImGui::EndPopup();
