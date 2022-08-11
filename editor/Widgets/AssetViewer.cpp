@@ -51,7 +51,7 @@ AssetViewer::AssetViewer(Editor* editor) : Widget(editor)
 
 void AssetViewer::TickVisible()
 {    
-    if (ImGuiEx::Button("Import"))
+    if (imgui_extension::button("Import"))
     {
         Widget_Assets_Statics::g_show_file_dialog_load = true;
     }

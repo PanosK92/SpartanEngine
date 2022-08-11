@@ -133,17 +133,17 @@ public:
     std::function<void()>          g_on_entity_selected = nullptr;
 };
 
-namespace ImGuiEx
+namespace imgui_extension
 {
-    static const ImVec4 default_tint(255, 255, 255, 255);
+    static const ImVec4 default_tint(1, 1, 1, 1);
 
-    inline float GetWindowContentRegionWidth()
+    static float GetWindowContentRegionWidth()
     {
         return ImGui::GetWindowContentRegionMax().x - ImGui::GetWindowContentRegionMin().x;
     }
 
     // Collapsing header
-    inline bool CollapsingHeader(const char* label, ImGuiTreeNodeFlags flags = 0)
+    static bool collapsing_header(const char* label, ImGuiTreeNodeFlags flags = 0)
     {
         ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
         bool result = ImGui::CollapsingHeader(label, flags);
@@ -152,7 +152,7 @@ namespace ImGuiEx
     }
 
     // Button
-    inline bool Button(const char* label, const Spartan::Math::Vector2& size = Spartan::Math::Vector2(0, 0))
+    static bool button(const char* label, const ImVec2& size = ImVec2(0, 0))
     {
         ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
         bool result = ImGui::Button(label, size);
@@ -160,36 +160,32 @@ namespace ImGuiEx
         return result;
     }
 
-    // Images & Image buttons
-    inline bool ImageButton(Spartan::RHI_Texture* texture, const ImVec2& size)
-    {
-        return ImGui::ImageButton
-        (
-            static_cast<ImTextureID>(texture),
-            size,
-            ImVec2(0, 0),        // uv0
-            ImVec2(1, 1),        // uv1
-            -1,                  // frame padding
-            ImColor(0, 0, 0, 0), // background
-            default_tint         // tint
-        );
-    }
-
-    inline bool ImageButton(const IconType icon, const float size, bool border = false)
+    static bool image_button(uint64_t id, Spartan::RHI_Texture* texture, const IconType icon, const Spartan::Math::Vector2& size, bool border)
     {
         if (!border)
         {
             ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
         }
 
-        bool result = ImGui::ImageButton(
-            static_cast<ImTextureID>(IconProvider::Get().GetTextureByType(icon)),
-            ImVec2(size, size),
-            ImVec2(0, 0),           // uv0
-            ImVec2(1, 1),           // uv1
-            -1,                     // frame padding
-            ImColor(0, 0, 0, 0),    // background
-            default_tint            // tint
+        // Get texture from icon enum (if provided)
+        if (!texture && icon != IconType::NotAssigned)
+        {
+            texture = IconProvider::Get().GetTextureByType(icon);
+        }
+
+        // Compute ID
+        id += static_cast<uint64_t>(icon);
+        id += texture ? reinterpret_cast<uint64_t>(&texture) : 0;
+
+        bool result = ImGui::ImageButton
+        (
+            std::to_string(id).c_str(),        // str_id
+            static_cast<ImTextureID>(texture), // user_texture_id
+            size,                              // size
+            ImVec2(0, 0),                      // uv0
+            ImVec2(1, 1),                      // uv1
+            ImColor(0, 0, 0, 0),               // bg_col
+            default_tint                       // tint_col
         );
 
         if (!border)
@@ -200,34 +196,7 @@ namespace ImGuiEx
         return result;
     }
 
-    inline bool ImageButton(const char* id, const IconType icon, const float size, bool border = false)
-    {
-        if (!border)
-        {
-            ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
-        }
-
-        ImGui::PushID(id);
-        const auto pressed = ImGui::ImageButton(
-            static_cast<ImTextureID>(IconProvider::Get().GetTextureByType(icon)),
-            ImVec2(size, size),
-            ImVec2(0, 0),           // uv0
-            ImVec2(1, 1),           // uv1
-            -1,                     // frame padding
-            ImColor(0, 0, 0, 0),    // background
-            default_tint            // tint
-        );
-        ImGui::PopID();
-
-        if (!border)
-        {
-            ImGui::PopStyleVar();
-        }
-
-        return pressed;
-    }
-
-    inline void Image(const Thumbnail& thumbnail, const float size)
+    static void image(const Thumbnail& thumbnail, const float size)
     {
         ImGui::Image(
             static_cast<ImTextureID>(IconProvider::Get().GetTextureByThumbnail(thumbnail)),
@@ -239,7 +208,7 @@ namespace ImGuiEx
         );
     }
 
-    inline void Image(Spartan::RHI_Texture* texture, const Spartan::Math::Vector2& size, bool border = false)
+    static void image(Spartan::RHI_Texture* texture, const Spartan::Math::Vector2& size, bool border = false)
     {
         if (!border)
         {
@@ -261,7 +230,7 @@ namespace ImGuiEx
         }
     }
 
-    inline void Image(Spartan::RHI_Texture* texture, const ImVec2& size, const ImColor& tint = default_tint, const ImColor& border = ImColor(0, 0, 0, 0))
+    static void image(Spartan::RHI_Texture* texture, const ImVec2& size, const ImVec4& tint = default_tint, const ImColor& border = ImColor(0, 0, 0, 0))
     {
         ImGui::Image(
             static_cast<ImTextureID>(texture),
@@ -273,7 +242,7 @@ namespace ImGuiEx
         );
     }
 
-    inline void Image(const IconType icon, const float size)
+    static void image(const IconType icon, const float size)
     {
         ImGui::Image(
             static_cast<void*>(IconProvider::Get().GetTextureByType(icon)),
@@ -298,22 +267,22 @@ namespace ImGuiEx
 
     struct DragDropPayload
     {
-        typedef std::variant<const char*, uint64_t> dataVariant;
-        DragDropPayload(const DragPayloadType type = DragPayloadType::DragPayload_Unknown, const dataVariant data = nullptr)
+        typedef std::variant<const char*, uint64_t> DataVariant;
+        DragDropPayload(const DragPayloadType type = DragPayloadType::DragPayload_Unknown, const DataVariant data = nullptr)
         {
             this->type = type;
             this->data = data;
         }
         DragPayloadType type;
-        dataVariant data;
+        DataVariant data;
     };
 
-    inline void CreateDragPayload(const DragDropPayload& payload)
+    static void create_drag_drop_paylod(const DragDropPayload& payload)
     {
         ImGui::SetDragDropPayload(reinterpret_cast<const char*>(&payload.type), reinterpret_cast<const void*>(&payload), sizeof(payload), ImGuiCond_Once);
     }
 
-    inline DragDropPayload* ReceiveDragPayload(DragPayloadType type)
+    static DragDropPayload* receive_drag_drop_payload(DragPayloadType type)
     {
         if (ImGui::BeginDragDropTarget())
         {
@@ -328,7 +297,7 @@ namespace ImGuiEx
     }
 
     // Image slot
-    inline void ImageSlot(const std::shared_ptr<Spartan::RHI_Texture>& image, const std::function<void(const std::shared_ptr<Spartan::RHI_Texture>&)>& setter)
+    static void image_slot(const std::shared_ptr<Spartan::RHI_Texture>& texture_in, const std::function<void(const std::shared_ptr<Spartan::RHI_Texture>&)>& setter)
     {
         const ImVec2 slot_size  = ImVec2(80, 80);
         const float button_size = 15.0f;
@@ -336,45 +305,40 @@ namespace ImGuiEx
         // Image
         ImGui::BeginGroup();
         {
-            Spartan::RHI_Texture* texture = image.get();
+            Spartan::RHI_Texture* texture = texture_in.get();
             const ImVec2 pos_image        = ImGui::GetCursorPos();
             const ImVec2 pos_button       = ImVec2(ImGui::GetCursorPosX() + slot_size.x - button_size * 2.0f + 6.0f, ImGui::GetCursorPosY() + 1.0f);
 
+            uint32_t id = static_cast<uint32_t>(pos_button.x + pos_button.y);
+
             // Remove button
-            if (image != nullptr)
+            if (texture != nullptr)
             {
                 ImGui::SetCursorPos(pos_button);
-                ImGui::PushID(static_cast<int>(pos_button.x + pos_button.y));
-                if (ImGuiEx::ImageButton("", IconType::Component_Material_RemoveTexture, button_size, true))
+                if (image_button(id, nullptr, IconType::Component_Material_RemoveTexture, button_size, true))
                 {
                     texture = nullptr;
                     setter(nullptr);
                 }
-                ImGui::PopID();
             }
 
             // Image
-            ImColor background_color = (image != nullptr) ? ImColor(255, 255, 255, 255) : ImColor(0, 0, 0, 0);
+            ImVec4 colro_tint   = (texture != nullptr) ? ImVec4(1, 1, 1, 1) : ImVec4(0, 0, 0, 0);
+            ImVec4 color_border = ImVec4(1, 1, 1, 0.5f);
             ImGui::SetCursorPos(pos_image);
-            ImGuiEx::Image
-            (
-                texture,
-                slot_size,
-                background_color,
-                ImColor(255, 255, 255, 128)
-            );
+            image(texture, slot_size, colro_tint, color_border);
 
             // Remove button - Does nothing, drawn again just to be visible
             if (texture != nullptr)
             {
                 ImGui::SetCursorPos(pos_button);
-                ImGuiEx::ImageButton("", IconType::Component_Material_RemoveTexture, button_size, true);
+                image_button(id, nullptr, IconType::Component_Material_RemoveTexture, button_size, true);
             }
         }
         ImGui::EndGroup();
 
         // Drop target
-        if (auto payload = ImGuiEx::ReceiveDragPayload(ImGuiEx::DragPayloadType::DragPayload_Texture))
+        if (auto payload = receive_drag_drop_payload(DragPayloadType::DragPayload_Texture))
         {
             try
             {
@@ -387,7 +351,7 @@ namespace ImGuiEx
         }
     }
 
-    inline void Tooltip(const char* text)
+    static void tooltip(const char* text)
     {
         if (!text)
             return;
@@ -401,7 +365,7 @@ namespace ImGuiEx
     }
 
     // A drag float which will wrap the mouse cursor around the edges of the screen
-    inline void DragFloatWrap(const char* label, float* v, float v_speed = 1.0f, float v_min = 0.0f, float v_max = 0.0f, const char* format = "%.3f", const ImGuiSliderFlags flags = 0)
+    static void draw_float_wrap(const char* label, float* v, float v_speed = 1.0f, float v_min = 0.0f, float v_max = 0.0f, const char* format = "%.3f", const ImGuiSliderFlags flags = 0)
     {
         // Drag
         ImGui::DragFloat(label, v, v_speed, v_min, v_max, format, flags);
@@ -434,7 +398,7 @@ namespace ImGuiEx
         }
     }
 
-    inline bool ComboBox(const char* label, const std::vector<std::string>& options, uint32_t* selection_index)
+    static bool combo_box(const char* label, const std::vector<std::string>& options, uint32_t* selection_index)
     {
         // Clamp the selection index in case it's larger than the actual option count.
         const uint32_t option_count = static_cast<uint32_t>(options.size());
@@ -469,7 +433,7 @@ namespace ImGuiEx
         return selection_made;
     }
 
-    inline void DisplayVector3(const char* label, Spartan::Math::Vector3& vector)
+    static void vector3(const char* label, Spartan::Math::Vector3& vector)
     {
         const float label_indetation = 15.0f;
 
@@ -487,7 +451,7 @@ namespace ImGuiEx
             // Float
             ImGui::PushItemWidth(128.0f);
             ImGui::PushID(static_cast<int>(ImGui::GetCursorPosX() + ImGui::GetCursorPosY()));
-            ImGuiEx::DragFloatWrap("##no_label", value, step, std::numeric_limits<float>::lowest(), std::numeric_limits<float>::max(), format.c_str());
+            imgui_extension::draw_float_wrap("##no_label", value, step, std::numeric_limits<float>::lowest(), std::numeric_limits<float>::max(), format.c_str());
             ImGui::PopID();
             ImGui::PopItemWidth();
 

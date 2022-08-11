@@ -85,7 +85,7 @@ void Viewport::TickVisible()
     m_frames_count++;
 
     // Draw the image after a potential resolution change call has been made
-    ImGuiEx::Image(m_renderer->GetFrameTexture(), ImVec2(static_cast<float>(m_width), static_cast<float>(m_height)));
+    imgui_extension::image(m_renderer->GetFrameTexture(), ImVec2(static_cast<float>(m_width), static_cast<float>(m_height)));
 
     // Let the input system know if the mouse is within the viewport
     m_input->SetMouseIsInViewport(ImGui::IsItemHovered());
@@ -97,7 +97,7 @@ void Viewport::TickVisible()
     }
 
     // Handle model drop
-    if (auto payload = ImGuiEx::ReceiveDragPayload(ImGuiEx::DragPayloadType::DragPayload_Model))
+    if (auto payload = imgui_extension::receive_drag_drop_payload(imgui_extension::DragPayloadType::DragPayload_Model))
     {
         EditorHelper::Get().LoadModel(get<const char*>(payload->data));
     }

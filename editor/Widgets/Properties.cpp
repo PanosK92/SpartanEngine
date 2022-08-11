@@ -100,7 +100,7 @@ namespace helper
     inline bool ComponentBegin(const string& name, const IconType icon_enum, IComponent* component_instance, bool options = true, const bool removable = true)
     {
         // Collapsible contents
-        const bool collapsed = ImGuiEx::CollapsingHeader(name.c_str(), ImGuiTreeNodeFlags_AllowItemOverlap | ImGuiTreeNodeFlags_DefaultOpen);
+        const bool collapsed = imgui_extension::collapsing_header(name.c_str(), ImGuiTreeNodeFlags_AllowItemOverlap | ImGuiTreeNodeFlags_DefaultOpen);
 
         // Component Icon - Top left
         ImGui::SameLine();
@@ -114,9 +114,10 @@ namespace helper
             const auto original_pen_y = ImGui::GetCursorPosY();
 
             ImGui::SetCursorPosY(original_pen_y + 5.0f);
-            ImGuiEx::Image(icon_enum, 15);
-            ImGui::SameLine(ImGuiEx::GetWindowContentRegionWidth() - icon_width + 1.0f); ImGui::SetCursorPosY(original_pen_y);
-            if (ImGuiEx::ImageButton(name.c_str(), IconType::Component_Options, icon_width))
+            imgui_extension::image(icon_enum, 15);
+            ImGui::SameLine(imgui_extension::GetWindowContentRegionWidth() - icon_width + 1.0f); ImGui::SetCursorPosY(original_pen_y);
+            uint32_t id = static_cast<uint32_t>(ImGui::GetCursorPosX() + ImGui::GetCursorPosY());
+            if (imgui_extension::image_button(id, nullptr, IconType::Component_Options, icon_width, false))
             {
                 g_contex_menu_id = name;
                 ImGui::OpenPopup(g_contex_menu_id.c_str());
@@ -228,11 +229,11 @@ void Properties::ShowTransform(Transform* transform) const
         Vector3 scale    = transform->GetScaleLocal();
         //=====================================================================================================
 
-        ImGuiEx::DisplayVector3("Position", position);
+        imgui_extension::vector3("Position", position);
         ImGui::SameLine();
-        ImGuiEx::DisplayVector3("Rotation", rotation);
+        imgui_extension::vector3("Rotation", rotation);
         ImGui::SameLine();
-        ImGuiEx::DisplayVector3("Scale", scale);
+        imgui_extension::vector3("Scale", scale);
         
         //= MAP ===================================================================
         if (!is_playing)
@@ -280,7 +281,7 @@ void Properties::ShowLight(Light* light) const
         ImGui::PushItemWidth(110.0f);
         ImGui::SameLine(helper::g_column);
         uint32_t selection_index = static_cast<uint32_t>(light->GetLightType());
-        if (ImGuiEx::ComboBox("##LightType", types, &selection_index))
+        if (imgui_extension::combo_box("##LightType", types, &selection_index))
         {
             light->SetLightType(static_cast<LightType>(selection_index));
         }
@@ -303,7 +304,7 @@ void Properties::ShowLight(Light* light) const
         ImGui::SameLine(helper::g_column);
         float v_speed   = is_directional ? 20.0f : 5.0f;
         float v_max     = is_directional ? 128000.0f : 100000.0f;
-        ImGui::PushItemWidth(300); ImGuiEx::DragFloatWrap("##lightIntensity", &intensity, v_speed, 0.0f, v_max); ImGui::PopItemWidth();
+        ImGui::PushItemWidth(300); imgui_extension::draw_float_wrap("##lightIntensity", &intensity, v_speed, 0.0f, v_max); ImGui::PopItemWidth();
 
         // Shadows
         ImGui::Text("Shadows");
@@ -315,12 +316,12 @@ void Properties::ShowLight(Light* light) const
             // Transparent shadows
             ImGui::Text("Transparent Shadows");
             ImGui::SameLine(helper::g_column); ImGui::Checkbox("##light_shadows_transparent", &shadows_transparent);
-            ImGuiEx::Tooltip("Allows transparent objects to cast colored translucent shadows");
+            imgui_extension::tooltip("Allows transparent objects to cast colored translucent shadows");
 
             // Volumetric
             ImGui::Text("Volumetric");
             ImGui::SameLine(helper::g_column); ImGui::Checkbox("##light_volumetric", &volumetric);
-            ImGuiEx::Tooltip("The shadow map is used to determine which parts of the \"air\" should be lit");
+            imgui_extension::tooltip("The shadow map is used to determine which parts of the \"air\" should be lit");
 
         }
         ImGui::EndDisabled();
@@ -328,7 +329,7 @@ void Properties::ShowLight(Light* light) const
         // Screen space shadows
         ImGui::Text("Screen Space Shadows");
         ImGui::SameLine(helper::g_column); ImGui::Checkbox("##light_shadows_screen_space", &shadows_screen_space);
-        ImGuiEx::Tooltip("Small scale shadows which add detail were surfaces meet, also known as contact shadows");
+        imgui_extension::tooltip("Small scale shadows which add detail were surfaces meet, also known as contact shadows");
 
         // Bias
         ImGui::Text("Bias");
@@ -345,7 +346,7 @@ void Properties::ShowLight(Light* light) const
         {
             ImGui::Text("Range");
             ImGui::SameLine(helper::g_column);
-            ImGui::PushItemWidth(300); ImGuiEx::DragFloatWrap("##lightRange", &range, 0.01f, 0.0f, 1000.0f); ImGui::PopItemWidth();
+            ImGui::PushItemWidth(300); imgui_extension::draw_float_wrap("##lightRange", &range, 0.01f, 0.0f, 1000.0f); ImGui::PopItemWidth();
         }
 
         // Angle
@@ -353,7 +354,7 @@ void Properties::ShowLight(Light* light) const
         {
             ImGui::Text("Angle");
             ImGui::SameLine(helper::g_column);
-            ImGui::PushItemWidth(300); ImGuiEx::DragFloatWrap("##lightAngle", &angle, 0.01f, 1.0f, 179.0f); ImGui::PopItemWidth();
+            ImGui::PushItemWidth(300); imgui_extension::draw_float_wrap("##lightAngle", &angle, 0.01f, 1.0f, 179.0f); ImGui::PopItemWidth();
         }
 
         //= MAP =====================================================================================================================
@@ -396,7 +397,7 @@ void Properties::ShowRenderable(Renderable* renderable) const
         ImGui::PushID("##material_name");
         ImGui::PushItemWidth(200.0f);
         ImGui::InputText("", &material_name, ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_ReadOnly);
-        if (auto payload = ImGuiEx::ReceiveDragPayload(ImGuiEx::DragPayloadType::DragPayload_Material))
+        if (auto payload = imgui_extension::receive_drag_drop_payload(imgui_extension::DragPayloadType::DragPayload_Material))
         {
             renderable->SetMaterial(std::get<const char*>(payload->data));
         }
@@ -550,7 +551,7 @@ void Properties::ShowCollider(Collider* collider) const
         ImGui::PushItemWidth(110);
         ImGui::SameLine(helper::g_column);
         uint32_t selection_index = static_cast<uint32_t>(collider->GetShapeType());
-        if (ImGuiEx::ComboBox("##colliderType", shape_types, &selection_index))
+        if (imgui_extension::combo_box("##colliderType", shape_types, &selection_index))
         {
             collider->SetShapeType(static_cast<ColliderShape>(selection_index));
         }
@@ -615,7 +616,7 @@ void Properties::ShowConstraint(Constraint* constraint) const
         ImGui::Text("Type");
         ImGui::SameLine(helper::g_column);
         uint32_t selection_index = static_cast<uint32_t>(constraint->GetConstraintType());
-        if (ImGuiEx::ComboBox("##constraintType", constraint_types, &selection_index))
+        if (imgui_extension::combo_box("##constraintType", constraint_types, &selection_index))
         {
             constraint->SetConstraintType(static_cast<ConstraintType>(selection_index));
         }
@@ -625,7 +626,7 @@ void Properties::ShowConstraint(Constraint* constraint) const
         ImGui::PushID("##OtherBodyName");
         ImGui::PushItemWidth(200.0f);
         ImGui::InputText("", &other_body_name, ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_ReadOnly);
-        if (auto payload = ImGuiEx::ReceiveDragPayload(ImGuiEx::DragPayloadType::DragPayload_Entity))
+        if (auto payload = imgui_extension::receive_drag_drop_payload(imgui_extension::DragPayloadType::DragPayload_Entity))
         {
             const uint64_t entity_id = get<uint64_t>(payload->data);
             other_body               = helper::world->EntityGetById(entity_id);
@@ -731,7 +732,7 @@ void Properties::ShowMaterial(Material* material) const
                         
                         if (tooltip)
                         {
-                            ImGuiEx::Tooltip(tooltip);
+                            imgui_extension::tooltip(tooltip);
                         }
 
                         if (show_texture || show_modifier)
@@ -744,7 +745,7 @@ void Properties::ShowMaterial(Material* material) const
                     if (show_texture)
                     {
                         auto setter = [&material, &mat_tex](const shared_ptr<RHI_Texture>& texture) { material->SetTexture(mat_tex, texture); };
-                        ImGuiEx::ImageSlot(material->GetTexture_PtrShared(mat_tex), setter);
+                        imgui_extension::image_slot(material->GetTexture_PtrShared(mat_tex), setter);
 
                         if (show_modifier)
                         {
@@ -763,7 +764,7 @@ void Properties::ShowMaterial(Material* material) const
                         {
                             ImGui::PushID(static_cast<int>(ImGui::GetCursorPosX() + ImGui::GetCursorPosY()));
                             float value = material->GetProperty(mat_property);
-                            ImGuiEx::DragFloatWrap("", &value, 0.004f, 0.0f, 1.0f);
+                            imgui_extension::draw_float_wrap("", &value, 0.004f, 0.0f, 1.0f);
                             material->SetProperty(mat_property, value);
                             ImGui::PopID();
                         }
@@ -855,7 +856,7 @@ void Properties::ShowCamera(Camera* camera) const
         ImGui::SameLine(helper::g_column);
         ImGui::PushItemWidth(115.0f);
         uint32_t selection_index = static_cast<uint32_t>(camera->GetProjectionType());
-        if (ImGuiEx::ComboBox("##cameraProjection", projection_types, &selection_index))
+        if (imgui_extension::combo_box("##cameraProjection", projection_types, &selection_index))
         {
             camera->SetProjection(static_cast<ProjectionType>(selection_index));
         }
@@ -863,22 +864,22 @@ void Properties::ShowCamera(Camera* camera) const
 
         // Aperture
         ImGui::SetCursorPosX(helper::g_column);
-        ImGuiEx::DragFloatWrap("Aperture (mm)", &aperture, 0.01f, 0.01f, 150.0f);
-        ImGuiEx::Tooltip("Size of the lens diaphragm. Controls depth of field and chromatic aberration.");
+        imgui_extension::draw_float_wrap("Aperture (mm)", &aperture, 0.01f, 0.01f, 150.0f);
+        imgui_extension::tooltip("Size of the lens diaphragm. Controls depth of field and chromatic aberration.");
 
         // Shutter speed
         ImGui::SetCursorPosX(helper::g_column);
-        ImGuiEx::DragFloatWrap("Shutter Speed (sec)", &shutter_speed, 0.0001f, 0.0f, 1.0f, "%.4f");
-        ImGuiEx::Tooltip("Length of time for which the camera shutter is open. Controls the amount of motion blur.");
+        imgui_extension::draw_float_wrap("Shutter Speed (sec)", &shutter_speed, 0.0001f, 0.0f, 1.0f, "%.4f");
+        imgui_extension::tooltip("Length of time for which the camera shutter is open. Controls the amount of motion blur.");
 
         // ISO
         ImGui::SetCursorPosX(helper::g_column);
-        ImGuiEx::DragFloatWrap("ISO", &iso, 0.1f, 0.0f, 2000.0f);
-        ImGuiEx::Tooltip("Sensitivity to light. Controls camera noise.");
+        imgui_extension::draw_float_wrap("ISO", &iso, 0.1f, 0.0f, 2000.0f);
+        imgui_extension::tooltip("Sensitivity to light. Controls camera noise.");
 
         // Field of View
         ImGui::SetCursorPosX(helper::g_column);
-        ImGuiEx::DragFloatWrap("Field of View", &fov, 0.1f, 1.0f, 179.0f);
+        imgui_extension::draw_float_wrap("Field of View", &fov, 0.1f, 1.0f, 179.0f);
 
         // Clipping Planes
         ImGui::Text("Clipping Planes");
@@ -888,7 +889,7 @@ void Properties::ShowCamera(Camera* camera) const
         // FPS Control
         ImGui::Text("FPS Control");
         ImGui::SameLine(helper::g_column); ImGui::Checkbox("##camera_fps_control", &fps_control_enabled);
-        ImGuiEx::Tooltip("Enables FPS control while holding down the right mouse button");
+        imgui_extension::tooltip("Enables FPS control while holding down the right mouse button");
 
         //= MAP =================================================================================================================
         if (aperture != camera->GetAperture())                           camera->SetAperture(aperture);
@@ -913,7 +914,7 @@ void Properties::ShowEnvironment(Environment* environment) const
     {
         ImGui::Text("Sphere Map");
 
-        ImGuiEx::ImageSlot(environment->GetTexture(), [&environment](const shared_ptr<RHI_Texture>& texture) { environment->SetTexture(texture); } );
+        imgui_extension::image_slot(environment->GetTexture(), [&environment](const shared_ptr<RHI_Texture>& texture) { environment->SetTexture(texture); } );
     }
     helper::ComponentEnd();
 }
@@ -937,9 +938,9 @@ void Properties::ShowTerrain(Terrain* terrain) const
         {
             ImGui::Text("Height Map");
 
-            ImGuiEx::ImageSlot(terrain->GetHeightMap(), [&terrain](const shared_ptr<RHI_Texture>& texture) { terrain->SetHeightMap(static_pointer_cast<RHI_Texture2D>(texture)); });
+            imgui_extension::image_slot(terrain->GetHeightMap(), [&terrain](const shared_ptr<RHI_Texture>& texture) { terrain->SetHeightMap(static_pointer_cast<RHI_Texture2D>(texture)); });
 
-            if (ImGuiEx::Button("Generate", ImVec2(82, 0)))
+            if (imgui_extension::button("Generate", ImVec2(82, 0)))
             {
                 terrain->GenerateAsync();
             }
@@ -993,7 +994,7 @@ void Properties::ShowAudioSource(AudioSource* audio_source) const
         ImGui::SameLine(helper::g_column); ImGui::PushItemWidth(250.0f);
         ImGui::InputText("##audioSourceAudioClip", &audio_clip_name, ImGuiInputTextFlags_ReadOnly);
         ImGui::PopItemWidth();
-        if (auto payload = ImGuiEx::ReceiveDragPayload(ImGuiEx::DragPayloadType::DragPayload_Audio))
+        if (auto payload = imgui_extension::receive_drag_drop_payload(imgui_extension::DragPayloadType::DragPayload_Audio))
         {
             audio_source->SetAudioClip(std::get<const char*>(payload->data));
         }
@@ -1120,7 +1121,7 @@ void Properties::ShowAddComponentButton() const
 {
     ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 5);
     ImGui::SetCursorPosX(ImGui::GetWindowWidth() * 0.5f - 50);
-    if (ImGuiEx::Button("Add Component"))
+    if (imgui_extension::button("Add Component"))
     {
         ImGui::OpenPopup("##ComponentContextMenu_Add");
     }

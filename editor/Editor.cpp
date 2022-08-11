@@ -79,48 +79,10 @@ namespace _editor
     shared_ptr<Spartan::RHI_Device> rhi_device;
 }
 
-static void ImGui_Initialise(Spartan::Context* context)
-{
-    // Version validation
-    IMGUI_CHECKVERSION();
-    context->GetSubsystem<Spartan::Settings>()->RegisterThirdPartyLib("Dear ImGui", IMGUI_VERSION, "https://github.com/ocornut/imgui");
-
-    // Context creation
-    ImGui::CreateContext();
-
-    // Configuration
-    ImGuiIO& io = ImGui::GetIO();
-    io.ConfigFlags                  |= ImGuiConfigFlags_NavEnableKeyboard;
-    io.ConfigFlags                  |= ImGuiConfigFlags_DockingEnable;
-    io.ConfigFlags                  |= ImGuiConfigFlags_ViewportsEnable;
-    io.ConfigWindowsResizeFromEdges = true;
-    io.ConfigViewportsNoTaskBarIcon = true;
-    io.IniFilename                  = "editor.ini";
-
-    // Font
-    const string dir_fonts = context->GetSubsystem<Spartan::ResourceCache>()->GetResourceDirectory(Spartan::ResourceDirectory::Fonts) + "/";
-    io.Fonts->AddFontFromFileTTF((dir_fonts + "Calibri.ttf").c_str(), k_font_size);
-    io.FontGlobalScale = k_font_scale;
-
-    // Initialise SDL (windows, input) and RHI (rendering)
-    ImGui_ImplSDL2_Init(context);
-    ImGui::RHI::Initialize(context);
-}
-
 static void ImGui_ProcessEvent(const Spartan::Variant& event_variant)
 {
     SDL_Event* event_sdl = event_variant.Get<SDL_Event*>();
     ImGui_ImplSDL2_ProcessEvent(event_sdl);
-}
-
-static void ImGui_Shutdown()
-{
-    if (ImGui::GetCurrentContext())
-    {
-        ImGui::RHI::Shutdown();
-        ImGui_ImplSDL2_Shutdown();
-        ImGui::DestroyContext();
-    }
 }
 
 static void ImGui_ApplyColors()
@@ -214,7 +176,54 @@ Editor::Editor()
     _editor::swapchain  = _editor::renderer->GetSwapChain();
     
     // Initialise Editor/ImGui
-    Initialise();
+    {
+        SP_ASSERT_MSG(IMGUI_CHECKVERSION(), "Version mismatch between source and caller");
+        m_context->GetSubsystem<Spartan::Settings>()->RegisterThirdPartyLib("Dear ImGui", IMGUI_VERSION, "https://github.com/ocornut/imgui");
+
+        // Create context
+        ImGui::CreateContext();
+
+        // Configuration
+        ImGuiIO& io = ImGui::GetIO();
+        io.ConfigFlags                  |= ImGuiConfigFlags_NavEnableKeyboard;
+        io.ConfigFlags                  |= ImGuiConfigFlags_DockingEnable;
+        io.ConfigFlags                  |= ImGuiConfigFlags_ViewportsEnable;
+        io.ConfigWindowsResizeFromEdges = true;
+        io.ConfigViewportsNoTaskBarIcon = true;
+        io.ConfigViewportsNoDecoration  = true; // aka borderless but with ImGui min, max and close buttons
+        io.IniFilename                  = "editor.ini";
+
+        // Load font
+        string dir_fonts = m_context->GetSubsystem<Spartan::ResourceCache>()->GetResourceDirectory(Spartan::ResourceDirectory::Fonts) + "/";
+        io.Fonts->AddFontFromFileTTF((dir_fonts + "Calibri.ttf").c_str(), k_font_size);
+        io.FontGlobalScale = k_font_scale;
+
+        // Initialise ImGui backends
+        ImGui_ImplSDL2_Init(m_context);
+        ImGui::RHI::Initialize(m_context);
+
+        // Apply colors and style
+        ImGui_ApplyColors();
+        ImGui_ApplyStyle();
+
+        // Initialization of misc custom systems
+        IconProvider::Get().Initialize(m_context);
+        EditorHelper::Get().Initialize(m_context);
+
+        // Create all ImGui widgets
+        m_widgets.emplace_back(make_shared<Console>(this));
+        m_widgets.emplace_back(make_shared<Profiler>(this));
+        m_widgets.emplace_back(make_shared<ResourceViewer>(this));
+        m_widgets.emplace_back(make_shared<ShaderEditor>(this));
+        m_widgets.emplace_back(make_shared<RenderOptions>(this));
+        m_widgets.emplace_back(make_shared<TextureViewer>(this));
+        m_widgets.emplace_back(make_shared<MenuBar>(this)); _editor::widget_menu_bar = static_cast<MenuBar*>(m_widgets.back().get());
+        m_widgets.emplace_back(make_shared<Viewport>(this));
+        m_widgets.emplace_back(make_shared<AssetViewer>(this));
+        m_widgets.emplace_back(make_shared<Properties>(this));
+        m_widgets.emplace_back(make_shared<WorldViewer>(this)); _editor::widget_world = m_widgets.back().get();
+        m_widgets.emplace_back(make_shared<ProgressDialog>(this));
+    }
 
     // Allow ImGui get event's from the engine's event processing loop
     SP_SUBSCRIBE_TO_EVENT(EventType::EventSDL, SP_EVENT_HANDLER_VARIANT_STATIC(ImGui_ProcessEvent));
@@ -222,7 +231,12 @@ Editor::Editor()
 
 Editor::~Editor()
 {
-    ImGui_Shutdown();
+    if (ImGui::GetCurrentContext())
+    {
+        ImGui::RHI::Shutdown();
+        ImGui_ImplSDL2_Shutdown();
+        ImGui::DestroyContext();
+    }
 }
 
 void Editor::Tick()
@@ -274,34 +288,8 @@ void Editor::Tick()
     }
 }
 
-void Editor::Initialise()
-{
-    ImGui_Initialise(m_context);
-    ImGui_ApplyColors();
-    ImGui_ApplyStyle();
-
-    // Initialization of misc custom systems
-    IconProvider::Get().Initialize(m_context);
-    EditorHelper::Get().Initialize(m_context);
-
-    // Create all ImGui widgets
-    m_widgets.emplace_back(make_shared<Console>(this));
-    m_widgets.emplace_back(make_shared<Profiler>(this));
-    m_widgets.emplace_back(make_shared<ResourceViewer>(this));
-    m_widgets.emplace_back(make_shared<ShaderEditor>(this));
-    m_widgets.emplace_back(make_shared<RenderOptions>(this));
-    m_widgets.emplace_back(make_shared<TextureViewer>(this));
-    m_widgets.emplace_back(make_shared<MenuBar>(this)); _editor::widget_menu_bar = static_cast<MenuBar*>(m_widgets.back().get());
-    m_widgets.emplace_back(make_shared<Viewport>(this));
-    m_widgets.emplace_back(make_shared<AssetViewer>(this));
-    m_widgets.emplace_back(make_shared<Properties>(this));
-    m_widgets.emplace_back(make_shared<WorldViewer>(this)); _editor::widget_world = m_widgets.back().get();
-    m_widgets.emplace_back(make_shared<ProgressDialog>(this));
-}
-
 void Editor::BeginWindow()
 {
-    // Set window flags
     const auto window_flags =
         ImGuiWindowFlags_MenuBar               |
         ImGuiWindowFlags_NoDocking             |
@@ -344,11 +332,11 @@ void Editor::BeginWindow()
             ImGui::DockBuilderSetNodeSize(window_id, ImGui::GetMainViewport()->Size);
 
             // DockBuilderSplitNode(ImGuiID node_id, ImGuiDir split_dir, float size_ratio_for_node_at_dir, ImGuiID* out_id_dir, ImGuiID* out_id_other);
-            ImGuiID dock_main_id             = window_id;
-            ImGuiID dock_right_id            = ImGui::DockBuilderSplitNode(dock_main_id,  ImGuiDir_Right, 0.2f,  nullptr, &dock_main_id);
-            const ImGuiID dock_right_down_id = ImGui::DockBuilderSplitNode(dock_right_id, ImGuiDir_Down,  0.6f,  nullptr, &dock_right_id);
-            ImGuiID dock_down_id             = ImGui::DockBuilderSplitNode(dock_main_id,  ImGuiDir_Down,  0.25f, nullptr, &dock_main_id);
-            const ImGuiID dock_down_right_id = ImGui::DockBuilderSplitNode(dock_down_id,  ImGuiDir_Right, 0.6f,  nullptr, &dock_down_id);
+            ImGuiID dock_main_id       = window_id;
+            ImGuiID dock_right_id      = ImGui::DockBuilderSplitNode(dock_main_id,  ImGuiDir_Right, 0.2f,  nullptr, &dock_main_id);
+            ImGuiID dock_right_down_id = ImGui::DockBuilderSplitNode(dock_right_id, ImGuiDir_Down,  0.6f,  nullptr, &dock_right_id);
+            ImGuiID dock_down_id       = ImGui::DockBuilderSplitNode(dock_main_id,  ImGuiDir_Down,  0.25f, nullptr, &dock_main_id);
+            ImGuiID dock_down_right_id = ImGui::DockBuilderSplitNode(dock_down_id,  ImGuiDir_Right, 0.6f,  nullptr, &dock_down_id);
 
             // Dock windows
             ImGui::DockBuilderDockWindow("World",      dock_right_id);
