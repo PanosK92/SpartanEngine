@@ -52,6 +52,27 @@ using namespace Assimp;
 
 namespace Spartan
 {
+    static const uint32_t importer_flags =
+        // Switch to engine conventions
+        aiProcess_MakeLeftHanded           | // DirectX style.
+        aiProcess_FlipUVs                  | // DirectX style.
+        aiProcess_FlipWindingOrder         | // DirectX style.
+        // Validate and clean up
+        aiProcess_ValidateDataStructure    | // Validates the imported scene data structure. This makes sure that all indices are valid, all animations and bones are linked correctly, all material references are correct
+        aiProcess_FindDegenerates          | // Convert degenerate primitives to proper lines or points.
+        aiProcess_FindInvalidData          | // This step searches all meshes for invalid data, such as zeroed normal vectors or invalid UV coords and removes / fixes them
+        aiProcess_RemoveRedundantMaterials | // Searches for redundant/unreferenced materials and removes them
+        aiProcess_Triangulate              | // Triangulates all faces of all meshes
+        aiProcess_JoinIdenticalVertices    | // Triangulates all faces of all meshes
+        aiProcess_SortByPType              | // Splits meshes with more than one primitive type in homogeneous sub-meshes.
+        aiProcess_FindInstances            | // This step searches for duplicate meshes and replaces them with references to the first mesh
+        // Generate missing normals or UVs
+        aiProcess_CalcTangentSpace         | // Calculates the tangents and bitangents for the imported meshes
+        aiProcess_GenSmoothNormals         | // Ignored if the mesh alrady has normals
+        aiProcess_GenUVCoords;               // Converts non-UV mappings (such as spherical or cylindrical mapping) to proper texture coordinate channels
+
+        // Any vertex/index optimization flags are not needed since Mesh is using meshoptimizer
+
     static Matrix convert_matrix(const aiMatrix4x4& transform)
     {
         return Matrix
@@ -97,7 +118,7 @@ namespace Spartan
         entity->GetTransform()->SetScaleLocal(matrix_engine.GetScale());
     }
 
-    constexpr void compute_node_count(const aiNode* node, int* count)
+    constexpr void compute_node_count(const aiNode* node, uint32_t* count)
     {
         if (!node)
             return;
@@ -357,33 +378,11 @@ namespace Spartan
         importer.SetPropertyBool(AI_CONFIG_GLOB_MEASURE_TIME, true);
         importer.SetProgressHandler(new AssimpProgress(file_path));
       
-        const auto importer_flags =
-            aiProcess_MakeLeftHanded |        // directx style.
-            aiProcess_FlipUVs |               // directx style.
-            aiProcess_FlipWindingOrder |      // directx style.
-            aiProcess_CalcTangentSpace |
-            aiProcess_GenSmoothNormals |
-            aiProcess_GenUVCoords |
-            aiProcess_LimitBoneWeights |
-            aiProcess_Triangulate |
-            aiProcess_SortByPType |           // splits meshes with more than one primitive type in homogeneous sub-meshes.
-            aiProcess_FindDegenerates |       // convert degenerate primitives to proper lines or points.
-            aiProcess_FindInvalidData |
-            aiProcess_FindInstances |
-            aiProcess_ValidateDataStructure |
-            // Optimizations
-            aiProcess_JoinIdenticalVertices |
-            aiProcess_ImproveCacheLocality;
-            //aiProcess_Debone|
-            //aiProcess_SplitLargeMeshes |
-            //aiProcess_OptimizeMeshes |           // reduce the number of meshes
-            //aiProcess_RemoveRedundantMaterials | // remove redundant/unreferenced materials.
-
         // Read the 3D model file from disc
         if (const aiScene* scene = importer.ReadFile(file_path, importer_flags))
         {
             // Update progress tracking
-            int job_count = 0;
+            uint32_t job_count = 0;
             compute_node_count(scene->mRootNode, &job_count);
             ProgressTracker::Get().SetJobCount(ProgressType::ModelImporter, job_count);
 
@@ -398,8 +397,10 @@ namespace Spartan
 
             // Parse all nodes, starting from the root node and continuing recursively
             ParseNode(scene->mRootNode, params, nullptr, new_entity.get());
+
             // Parse animations
             ParseAnimations(params);
+
             // Update model geometry
             model->UpdateGeometry();
             model->OptimizeGeometry();
@@ -445,28 +446,38 @@ namespace Spartan
         ProgressTracker::Get().IncrementJobsDone(ProgressType::ModelImporter);
     }
 
-    void ModelImporter::ParseNodeMeshes(const aiNode* assimp_node, Entity* new_entity, const ModelParams& params)
+    void ModelImporter::ParseNodeMeshes(const aiNode* assimp_node, Entity* node_entity, const ModelParams& params)
     {
+        // If the node has one mesh, then we simply call LoadMesh() and load the mesh into node_entity (via a Renderable component).
+        // If the node has more than one mesh, then we create one entity for each mesh, all which will be the children of node_entity (and node_entity holds no meshes)
+
         for (uint32_t i = 0; i < assimp_node->mNumMeshes; i++)
         {
-            auto entity = new_entity; // set the current entity
-            const auto assimp_mesh = params.scene->mMeshes[assimp_node->mMeshes[i]]; // get mesh
-            string _name = assimp_node->mName.C_Str(); // get name
+            Entity* entity    = node_entity;
+            aiMesh* node_mesh = params.scene->mMeshes[assimp_node->mMeshes[0]];
+            string node_name  = assimp_node->mName.C_Str();
 
             // if this node has many meshes, then assign a new entity for each one of them
             if (assimp_node->mNumMeshes > 1)
             {
-                const bool is_active = false;
-                entity = m_world->EntityCreate(is_active).get(); // create
-                entity->GetTransform()->SetParent(new_entity->GetTransform()); // set parent
-                _name += "_" + to_string(i + 1); // set name
+                // Create entity
+                bool is_active = false;
+                entity         = m_world->EntityCreate(is_active).get();
+
+                // Set parent
+                entity->GetTransform()->SetParent(node_entity->GetTransform());
+
+                // Set name
+                node_name += "_" + to_string(i + 1); // set name
             }
 
             // Set entity name
-            entity->SetName(_name);
+            entity->SetName(node_name);
+            
+            // Load the mesh onto the entity (via a Renderable component)
+            LoadMesh(node_mesh, entity, params);
 
-            // Process mesh
-            LoadMesh(assimp_mesh, entity, params);
+            // Mark the entity as active since it's now safe to be used (by say, other threads)
             entity->SetActive(true);
         }
     }

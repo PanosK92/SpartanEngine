@@ -122,11 +122,16 @@ namespace Spartan
         out.write(reinterpret_cast<const char*>(&value[0]), sizeof(unsigned char) * size);
     }
 
-    void FileStream::Write(const vector<std::byte>& value)
+    void FileStream::Write(const vector<byte>& value)
     {
         const auto size = static_cast<uint32_t>(value.size());
         Write(size);
         out.write(reinterpret_cast<const char*>(&value[0]), sizeof(std::byte) * size);
+    }
+
+    void FileStream::Write(const atomic<bool>& value)
+    {
+        out.write(reinterpret_cast<const char*>(&value), sizeof(bool));
     }
 
     void FileStream::Skip(uint64_t n)
@@ -227,5 +232,10 @@ namespace Spartan
         vec->resize(length);
 
         in.read(reinterpret_cast<char*>(vec->data()), sizeof(std::byte) * length);
+    }
+
+    void FileStream::Read(std::atomic<bool>* value)
+    {
+        in.read(reinterpret_cast<char*>(value), sizeof(bool));
     }
 }
