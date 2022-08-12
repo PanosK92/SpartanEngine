@@ -187,12 +187,12 @@ namespace Spartan
     private:
         constexpr uint32_t GetComponentMask(ComponentType type) { return static_cast<uint32_t>(1) << static_cast<uint32_t>(type); }
 
-        std::string m_object_name   = "Entity";
-        bool m_is_active            = true;
-        bool m_hierarchy_visibility = true;
-        Transform* m_transform      = nullptr;
-        Renderable* m_renderable    = nullptr;
-        bool m_destruction_pending  = false;
+        std::string m_object_name     = "Entity";
+        std::atomic<bool> m_is_active = true;
+        bool m_hierarchy_visibility   = true;
+        Transform* m_transform        = nullptr;
+        Renderable* m_renderable      = nullptr;
+        bool m_destruction_pending    = false;
         
         // Components
         std::vector<std::shared_ptr<IComponent>> m_components;

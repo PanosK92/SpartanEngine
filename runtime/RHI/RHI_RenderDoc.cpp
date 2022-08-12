@@ -222,14 +222,15 @@ namespace Spartan
         {
             LOG_INFO("Bringing RenderDoc to foreground...");
             rdc_api->ShowReplayUI();
-            return;
         }
-
         // If the RenderDoc UI is not running, launch it and connect.
-        LOG_INFO("Launching RenderDoc...");
-        if (rdc_api->LaunchReplayUI(true, "") == 0)
+        else
         {
-            LOG_ERROR("Failed to launch RenderDoc");
+            LOG_INFO("Launching RenderDoc...");
+            if (rdc_api->LaunchReplayUI(true, "") == 0)
+            {
+                LOG_ERROR("Failed to launch RenderDoc");
+            }
         }
     }
 }

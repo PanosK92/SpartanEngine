@@ -37,9 +37,9 @@ namespace Spartan
 
     enum FileStream_Mode : uint32_t
     {
-        FileStream_Read     = 1 << 0,
-        FileStream_Write    = 1 << 1,
-        FileStream_Append   = 1 << 2,
+        FileStream_Read   = 1 << 0,
+        FileStream_Write  = 1 << 1,
+        FileStream_Append = 1 << 2,
     };
 
     class SPARTAN_CLASS FileStream
@@ -85,6 +85,7 @@ namespace Spartan
         void Write(const std::vector<uint32_t>& value);
         void Write(const std::vector<unsigned char>& value);
         void Write(const std::vector<std::byte>& value);
+        void Write(const std::atomic<bool>& value);
         void Skip(uint64_t n);
         //===========================================================
         
@@ -122,6 +123,7 @@ namespace Spartan
         void Read(std::vector<uint32_t>* vec);
         void Read(std::vector<unsigned char>* vec);
         void Read(std::vector<std::byte>* vec);
+        void Read(std::atomic<bool>* value);
 
         // Reading with explicit type definition
         template <class T, class = typename std::enable_if
