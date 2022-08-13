@@ -433,7 +433,10 @@ namespace Spartan
         set_entity_transform(assimp_node, new_entity);
 
         // Process all the node's meshes
-        ParseNodeMeshes(assimp_node, new_entity, params);
+        if (assimp_node->mNumMeshes > 0)
+        {
+            ParseNodeMeshes(assimp_node, new_entity, params);
+        }
 
         // Process children
         for (uint32_t i = 0; i < assimp_node->mNumChildren; i++)
@@ -451,13 +454,15 @@ namespace Spartan
         // If the node has one mesh, then we simply call LoadMesh() and load the mesh into node_entity (via a Renderable component).
         // If the node has more than one mesh, then we create one entity for each mesh, all which will be the children of node_entity (and node_entity holds no meshes)
 
+        SP_ASSERT_MSG(assimp_node->mNumMeshes != 0, "No meshes to process");
+
         for (uint32_t i = 0; i < assimp_node->mNumMeshes; i++)
         {
             Entity* entity    = node_entity;
-            aiMesh* node_mesh = params.scene->mMeshes[assimp_node->mMeshes[0]];
+            aiMesh* node_mesh = params.scene->mMeshes[assimp_node->mMeshes[i]];
             string node_name  = assimp_node->mName.C_Str();
 
-            // if this node has many meshes, then assign a new entity for each one of them
+            // if this node has more than one meshes, create an entity for each mesh, then make that entity a child of node_entity
             if (assimp_node->mNumMeshes > 1)
             {
                 // Create entity

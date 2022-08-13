@@ -925,8 +925,7 @@ namespace Spartan
 
     void RHI_Device::DestroyTexture(void*& resource)
     {
-        if (!resource)
-            return;
+        SP_ASSERT_MSG(resource != nullptr, "Resource is null");
 
         // Deallocations can come both from the main as well as worker threads, so lock this context.
         lock_guard<mutex> lock(m_mutex_vma_texture);
