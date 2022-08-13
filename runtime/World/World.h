@@ -88,6 +88,7 @@ namespace Spartan
         std::unique_ptr<Model> m_default_world_model;
         std::shared_ptr<TransformHandle> m_transform_handle;
         std::vector<std::shared_ptr<Entity>> m_entities;
+        std::mutex m_mutex_create_entity;
         Input* m_input       = nullptr;
         Profiler* m_profiler = nullptr;
     };

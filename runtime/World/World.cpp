@@ -291,6 +291,8 @@ namespace Spartan
 
     shared_ptr<Entity> World::EntityCreate(bool is_active /*= true*/)
     {
+        lock_guard lock(m_mutex_create_entity);
+
         shared_ptr<Entity> entity = m_entities.emplace_back(make_shared<Entity>(m_context));
         entity->SetActive(is_active);
         return entity;
@@ -454,7 +456,7 @@ namespace Spartan
             model->GetTransform()->SetScale(Vector3(5.0f, 0.0f, 5.0f));
 
             Renderable* renderable = model->AddComponent<Renderable>();
-            renderable->GeometrySet(DefaultGeometry::Quad);
+            renderable->SetGeometry(DefaultGeometry::Quad);
             renderable->SetDefaultMaterial();
         }
     }

@@ -189,7 +189,7 @@ namespace Spartan
             // Get geometry
             vector<uint32_t> indices;
             vector<RHI_Vertex_PosTexNorTan> vertices;
-            renderable->GeometryGet(&indices, &vertices);
+            renderable->GetGeometry(&indices, &vertices);
 
             if (vertices.empty())
             {

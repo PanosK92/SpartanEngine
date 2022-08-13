@@ -79,7 +79,7 @@ namespace Spartan
         model->AppendGeometry(indices, vertices, nullptr, nullptr);
         model->UpdateGeometry();
 
-        renderable->GeometrySet(
+        renderable->SetGeometry(
             "Default_Geometry",
             0,
             static_cast<uint32_t>(indices.size()),
@@ -110,7 +110,7 @@ namespace Spartan
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometryName,          string);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_model,                 Model*);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_bounding_box,          BoundingBox);
-        SP_REGISTER_ATTRIBUTE_GET_SET(DefaultGeometry, GeometrySet,  DefaultGeometry);
+        SP_REGISTER_ATTRIBUTE_GET_SET(DefaultGeometry, SetGeometry,  DefaultGeometry);
     }
 
     void Renderable::Serialize(FileStream* stream)
@@ -149,7 +149,7 @@ namespace Spartan
         // If it was a default mesh, we have to reconstruct it
         if (m_geometry_type != DefaultGeometry::Undefined)
         {
-            GeometrySet(m_geometry_type);
+            SetGeometry(m_geometry_type);
         }
 
         // Material
@@ -167,7 +167,7 @@ namespace Spartan
         }
     }
 
-    void Renderable::GeometrySet(const string& name, const uint32_t index_offset, const uint32_t index_count, const uint32_t vertex_offset, const uint32_t vertex_count, const BoundingBox& bounding_box, Model* model)
+    void Renderable::SetGeometry(const string& name, const uint32_t index_offset, const uint32_t index_count, const uint32_t vertex_offset, const uint32_t vertex_count, const BoundingBox& bounding_box, Model* model)
     {
         // Terrible way to delete previous geometry in case it's a default one
         if (m_geometryName == "Default_Geometry")
@@ -184,7 +184,7 @@ namespace Spartan
         m_model                = model;
     }
 
-    void Renderable::GeometrySet(const DefaultGeometry type)
+    void Renderable::SetGeometry(const DefaultGeometry type)
     {
         m_geometry_type = type;
 
@@ -196,10 +196,10 @@ namespace Spartan
 
     void Renderable::GeometryClear()
     {
-        GeometrySet("Cleared", 0, 0, 0, 0, BoundingBox(), nullptr);
+        SetGeometry("Cleared", 0, 0, 0, 0, BoundingBox(), nullptr);
     }
 
-    void Renderable::GeometryGet(vector<uint32_t>* indices, vector<RHI_Vertex_PosTexNorTan>* vertices) const
+    void Renderable::GetGeometry(vector<uint32_t>* indices, vector<RHI_Vertex_PosTexNorTan>* vertices) const
     {
         if (!m_model)
         {
