@@ -22,9 +22,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ==========================
-
 #include "../Core/SpartanDefinitions.h"
 #include <array>
+#include <mutex>
 //=====================================
 
 namespace Spartan
@@ -36,44 +36,35 @@ namespace Spartan
         ResourceCache
     };
 
-    struct Progress
+    class Progress
     {
-        void Clear()
-        {
-            status.clear();
-            jods_done  = 0;
-            job_count  = 0;
-            is_loading = false;
-        }
+    public:
+        void Start(const uint32_t job_count, const std::string& text);
+        float GetFraction();
+        bool IsLoading();
+        void JobDone();
+        const std::string& GetText();
+        void SetText(const std::string& text);
 
-        std::string status;
-        int jods_done   = 0;
-        int job_count   = 0;
-        bool is_loading = false;
+    private:
+        std::atomic<uint32_t> m_jobs_done = 0;
+        std::atomic<uint32_t> m_job_count = 0;
+        std::string m_text;
     };
 
     class SPARTAN_CLASS ProgressTracker
     {
     public:
-        static ProgressTracker& Get()
+        static Progress& GetProgress(const ProgressType progress_type)
         {
             static ProgressTracker instance;
-            return instance;
+            return instance.GetProgressInternal(progress_type);
         }
 
-        ProgressTracker() = default;
-
-        void Reset(ProgressType progress_type);
-        const std::string& GetStatus(ProgressType progress_type);
-        void SetStatus(ProgressType progress_type, const std::string& status);
-        void SetJobCount(ProgressType progress_type, int jobCount);
-        void IncrementJobsDone(ProgressType progress_type);
-        void SetJobsDone(ProgressType progress_type, int jobsDone);
-        float GetPercentage(ProgressType progress_type);
-        bool GetIsLoading(ProgressType progress_type);
-        void SetIsLoading(ProgressType progress_type, bool isLoading);
+        static Progress& GetProgressInternal(const ProgressType progress_type);
 
     private:
-        std::array<Progress, 3> m_reports;
+        static std::array<Progress, 3> m_progresses;
+        static std::mutex m_mutex_progress_access;
     };
 }

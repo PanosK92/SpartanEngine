@@ -160,12 +160,6 @@ namespace Spartan
 
     bool World::SaveToFile(const string& filePathIn)
     {
-        // Start progress report and timer
-        ProgressTracker::Get().Reset(ProgressType::World);
-        ProgressTracker::Get().SetIsLoading(ProgressType::World, true);
-        ProgressTracker::Get().SetStatus(ProgressType::World, "Saving world...");
-        const Stopwatch timer;
-    
         // Add scene file extension to the filepath if it's missing
         auto file_path = filePathIn;
         if (FileSystem::GetExtensionFromFilePath(file_path) != EXTENSION_WORLD)
@@ -191,7 +185,9 @@ namespace Spartan
         vector<shared_ptr<Entity>> root_actors = EntityGetRoots();
         const uint32_t root_entity_count = static_cast<uint32_t>(root_actors.size());
 
-        ProgressTracker::Get().SetJobCount(ProgressType::World, root_entity_count);
+        // Start progress tracking and timing
+        const Stopwatch timer;
+        ProgressTracker::GetProgress(ProgressType::World).Start(root_entity_count, "Saving world...");
 
         // Save root entity count
         file->Write(root_entity_count);
@@ -206,11 +202,10 @@ namespace Spartan
         for (shared_ptr<Entity>& root : root_actors)
         {
             root->Serialize(file.get());
-            ProgressTracker::Get().IncrementJobsDone(ProgressType::World);
+            ProgressTracker::GetProgress(ProgressType::World).JobDone();
         }
 
-        // Finish with progress report and timer
-        ProgressTracker::Get().SetIsLoading(ProgressType::World, false);
+        // Report time
         LOG_INFO("World \"%s\" has been saved. Duration %.2f ms", m_file_path.c_str(), timer.GetElapsedTimeMs());
 
         // Notify subsystems waiting for us to finish
@@ -235,14 +230,6 @@ namespace Spartan
             return false;
         }
 
-        ProgressTracker& progress_tracker = ProgressTracker::Get();
-
-        // Start progress report and timing
-        progress_tracker.Reset(ProgressType::World);
-        progress_tracker.SetIsLoading(ProgressType::World, true);
-        progress_tracker.SetStatus(ProgressType::World, "Loading world...");
-        const Stopwatch timer;
-
         // Clear current entities
         Clear();
 
@@ -255,7 +242,9 @@ namespace Spartan
         // Load root entity count
         const uint32_t root_entity_count = file->ReadAs<uint32_t>();
 
-        progress_tracker.SetJobCount(ProgressType::World, root_entity_count);
+        // Start progress tracking and timing
+        ProgressTracker::GetProgress(ProgressType::World).Start(root_entity_count, "Loading world...");
+        const Stopwatch timer;
 
         // Load root entity IDs
         for (uint32_t i = 0; i < root_entity_count; i++)
@@ -268,10 +257,10 @@ namespace Spartan
         for (uint32_t i = 0; i < root_entity_count; i++)
         {
             m_entities[i]->Deserialize(file.get(), nullptr);
-            progress_tracker.IncrementJobsDone(ProgressType::World);
+            ProgressTracker::GetProgress(ProgressType::World).JobDone();
         }
 
-        progress_tracker.SetIsLoading(ProgressType::World, false);
+        // Report time
         LOG_INFO("World \"%s\" has been loaded. Duration %.2f ms", m_file_path.c_str(), timer.GetElapsedTimeMs());
 
         SP_FIRE_EVENT(EventType::WorldLoadEnd);
@@ -281,11 +270,8 @@ namespace Spartan
 
     bool World::IsLoading()
     {
-        auto& progress_report = ProgressTracker::Get();
-
-        const bool is_loading_model = progress_report.GetIsLoading(ProgressType::ModelImporter);
-        const bool is_loading_scene = progress_report.GetIsLoading(ProgressType::World);
-
+        const bool is_loading_model = ProgressTracker::GetProgress(ProgressType::ModelImporter).IsLoading();
+        const bool is_loading_scene = ProgressTracker::GetProgress(ProgressType::World).IsLoading();
         return is_loading_model || is_loading_scene;
     }
 

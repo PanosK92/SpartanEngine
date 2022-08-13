@@ -171,11 +171,6 @@ namespace Spartan
 
     void ResourceCache::SaveResourcesToFiles()
     {
-        // Start progress report
-        ProgressTracker::Get().Reset(ProgressType::ResourceCache);
-        ProgressTracker::Get().SetIsLoading(ProgressType::ResourceCache, true);
-        ProgressTracker::Get().SetStatus(ProgressType::ResourceCache, "Loading resources...");
-
         // Create resource list file
         string file_path = GetProjectDirectoryAbsolute() + m_context->GetSubsystem<World>()->GetName() + "_resources.dat";
         auto file = make_unique<FileStream>(file_path, FileStream_Write);
@@ -185,8 +180,10 @@ namespace Spartan
             return;
         }
 
-        const auto resource_count = GetResourceCount();
-        ProgressTracker::Get().SetJobCount(ProgressType::ResourceCache, resource_count);
+        const uint32_t resource_count = GetResourceCount();
+
+        // Start progress report
+        ProgressTracker::GetProgress(ProgressType::ResourceCache).Start(resource_count, "Loading resources...");
 
         // Save resource count
         file->Write(resource_count);
@@ -205,11 +202,8 @@ namespace Spartan
             resource->SaveToFile(resource->GetResourceFilePathNative());
 
             // Update progress
-            ProgressTracker::Get().IncrementJobsDone(ProgressType::ResourceCache);
+            ProgressTracker::GetProgress(ProgressType::ResourceCache).JobDone();
         }
-
-        // Finish with progress report
-        ProgressTracker::Get().SetIsLoading(ProgressType::ResourceCache, false);
     }
 
     void ResourceCache::LoadResourcesFromFiles()
