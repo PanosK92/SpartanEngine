@@ -48,8 +48,8 @@ namespace Spartan
         uint32_t GetMemoryUsage() const;
 
         // Add geometry
-        void AddVertices(const std::vector<RHI_Vertex_PosTexNorTan>& vertices, uint32_t* vertexOffset);
-        void AddIndices(const std::vector<uint32_t>& indices, uint32_t* indexOffset);
+        void AddVertices(const std::vector<RHI_Vertex_PosTexNorTan>& vertices, uint32_t* vertex_offset_out);
+        void AddIndices(const std::vector<uint32_t>& indices, uint32_t* index_offset_out);
         // Get geometry
         std::vector<RHI_Vertex_PosTexNorTan>& GetVertices() { return m_vertices; }
         std::vector<uint32_t>& GetIndices()                 { return m_indices; }
@@ -62,5 +62,7 @@ namespace Spartan
     private:
         std::vector<RHI_Vertex_PosTexNorTan> m_vertices;
         std::vector<uint32_t> m_indices;
+        std::mutex m_mutex_add_indices;
+        std::mutex m_mutex_add_verices;
     };
 }

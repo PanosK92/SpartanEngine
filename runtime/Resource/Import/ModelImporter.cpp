@@ -41,6 +41,7 @@ SP_WARNINGS_OFF
 #include "assimp/version.h"
 #include "assimp/Importer.hpp"
 #include "assimp/postprocess.h"
+#include "../Threading/Threading.h"
 SP_WARNINGS_ON
 //============================================
 
@@ -385,12 +386,19 @@ namespace Spartan
             uint32_t job_count = 0;
             compute_node_count(scene->mRootNode, &job_count);
             ProgressTracker::Get().SetJobCount(ProgressType::ModelImporter, job_count);
+            ProgressTracker::Get().SetJobsDone(ProgressType::ModelImporter, 0);
 
             m_scene         = scene;
             m_has_animation = scene->mNumAnimations != 0;
 
-            // Parse all nodes, starting from the root node and continuing recursively
+            // Recursively parse nodes (multi-threaded as well)
             ParseNode(scene->mRootNode);
+
+            // Wait for all threads to finish their work
+            while (ProgressTracker::Get().GetPercentage(ProgressType::ModelImporter) != 1.0f)
+            {
+                std::this_thread::sleep_for(std::chrono::milliseconds(16));
+            }
 
             // Update model geometry
             model->UpdateGeometry();
@@ -414,16 +422,20 @@ namespace Spartan
         bool is_root_node = parent_entity == nullptr;
         if (is_root_node)
         {
+            // Root entity needs to be inactive (thread safety)
             const bool is_active = false;
             entity = m_world->EntityCreate(is_active);
+
             m_model->SetRootEntity(entity);
         }
         else
         {
-            // Since the root entity is inactive, it will also override this child entity.
+            // Since the root entity is inactive, this doesn't have to.
             const bool is_active = true;
             entity = m_world->EntityCreate(is_active);
         }
+
+        SP_ASSERT(entity != nullptr);
 
         // Name the entity
         string node_name = is_root_node ? m_name : node->mName.C_Str();
@@ -448,7 +460,10 @@ namespace Spartan
         // Process children
         for (uint32_t i = 0; i < node->mNumChildren; i++)
         {
-            ParseNode(node->mChildren[i], entity);
+            //m_context->GetSubsystem<Threading>()->AddTask([this, i, node, entity]()
+            //{
+                ParseNode(node->mChildren[i], entity);
+            //});
         }
 
         // Update progress tracking
@@ -570,7 +585,7 @@ namespace Spartan
         Renderable* renderable = entity_parent->AddComponent<Renderable>();
 
         // Set the geometry
-        renderable->GeometrySet(
+        renderable->SetGeometry(
             entity_parent->GetObjectName(),
             index_offset,
             static_cast<uint32_t>(indices.size()),

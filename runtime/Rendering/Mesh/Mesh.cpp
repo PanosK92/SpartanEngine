@@ -76,21 +76,25 @@ namespace Spartan
         }
     }
 
-    void Mesh::AddVertices(const vector<RHI_Vertex_PosTexNorTan>& vertices, uint32_t* vertexOffset)
+    void Mesh::AddVertices(const vector<RHI_Vertex_PosTexNorTan>& vertices, uint32_t* vertex_offset_out)
     {
-        if (vertexOffset)
+        lock_guard lock(m_mutex_add_verices);
+
+        if (vertex_offset_out)
         {
-            *vertexOffset = static_cast<uint32_t>(m_vertices.size());
+            *vertex_offset_out = static_cast<uint32_t>(m_vertices.size());
         }
 
         m_vertices.insert(m_vertices.end(), vertices.begin(), vertices.end());
     }
 
-    void Mesh::AddIndices(const vector<uint32_t>& indices, uint32_t* indexOffset)
+    void Mesh::AddIndices(const vector<uint32_t>& indices, uint32_t* index_offset_out)
     {
-        if (indexOffset)
+        lock_guard lock(m_mutex_add_verices);
+
+        if (index_offset_out)
         {
-            *indexOffset = static_cast<uint32_t>(m_indices.size());
+            *index_offset_out = static_cast<uint32_t>(m_indices.size());
         }
 
         m_indices.insert(m_indices.end(), indices.begin(), indices.end());
@@ -108,6 +112,8 @@ namespace Spartan
 
     void Mesh::Optimize()
     {
+        SP_ASSERT_MSG(!m_indices.empty() && !m_vertices.empty(), "Invalid data");
+
         uint32_t index_count                     = static_cast<uint32_t>(m_indices.size());
         uint32_t vertex_count                    = static_cast<uint32_t>(m_vertices.size());
         size_t vertex_size                       = sizeof(RHI_Vertex_PosTexNorTan);

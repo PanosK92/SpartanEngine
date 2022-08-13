@@ -400,7 +400,7 @@ namespace Spartan
 
         if (Renderable* renderable = m_entity->AddComponent<Renderable>())
         {
-            renderable->GeometrySet(
+            renderable->SetGeometry(
                 "Terrain",
                 0,                                  // index offset
                 model->GetMesh()->GetIndexCount(),  // index count

@@ -232,7 +232,7 @@ namespace Spartan
             Renderable* renderable = hit.m_entity->GetRenderable();
             vector<uint32_t> indicies;
             vector<RHI_Vertex_PosTexNorTan> vertices;
-            renderable->GeometryGet(&indicies, &vertices);
+            renderable->GetGeometry(&indicies, &vertices);
             if (indicies.empty()|| vertices.empty())
             {
                 LOG_ERROR("Failed to get geometry of entity %s, skipping intersection test.");

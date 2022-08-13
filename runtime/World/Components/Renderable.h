@@ -55,13 +55,12 @@ namespace Spartan
         Renderable(Context* context, Entity* entity, uint64_t id = 0);
         ~Renderable() = default;
 
-        //= ICOMPONENT ===============================
+        // IComponent
         void Serialize(FileStream* stream) override;
         void Deserialize(FileStream* stream) override;
-        //============================================
 
         //= GEOMETRY ==========================================================================================
-        void GeometrySet(
+        void SetGeometry(
             const std::string& name,
             uint32_t index_offset,
             uint32_t index_count,
@@ -70,18 +69,18 @@ namespace Spartan
             const Math::BoundingBox& aabb, 
             Model* model
         );
-        void GeometryClear();
-        void GeometrySet(DefaultGeometry type);
-        void GeometryGet(std::vector<uint32_t>* indices, std::vector<RHI_Vertex_PosTexNorTan>* vertices) const;
+        void SetGeometry(DefaultGeometry type);
+        void GetGeometry(std::vector<uint32_t>* indices, std::vector<RHI_Vertex_PosTexNorTan>* vertices) const;
         uint32_t GeometryIndexOffset()              const { return m_geometryIndexOffset; }
         uint32_t GeometryIndexCount()               const { return m_geometryIndexCount; }
         uint32_t GeometryVertexOffset()             const { return m_geometryVertexOffset; }
         uint32_t GeometryVertexCount()              const { return m_geometryVertexCount; }
-        DefaultGeometry GeometryType()                const { return m_geometry_type; }
+        DefaultGeometry GeometryType()              const { return m_geometry_type; }
         const std::string& GeometryName()           const { return m_geometryName; }
         Model* GeometryModel()                      const { return m_model; }
         const Math::BoundingBox& GetBoundingBox()   const { return m_bounding_box; }
         const Math::BoundingBox& GetAabb();
+        void GeometryClear();
         //=====================================================================================================
 
         //= MATERIAL ====================================================================
