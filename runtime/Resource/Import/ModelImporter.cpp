@@ -140,34 +140,27 @@ namespace Spartan
         {
             m_file_path = file_path;
             m_file_name = FileSystem::GetFileNameFromFilePath(file_path);
-
-            // Start progress tracking
-            auto& progress = ProgressTracker::Get();
-            progress.Reset(ProgressType::ModelImporter);
-            progress.SetIsLoading(ProgressType::ModelImporter, true);
         }
-
-        ~AssimpProgress()
-        {
-            ProgressTracker::Get().SetIsLoading(ProgressType::ModelImporter, false);
-        }
+        ~AssimpProgress() = default;
 
         bool Update(float percentage) override { return true; }
 
         void UpdateFileRead(int current_step, int number_of_steps) override
         {
-            auto& progress = ProgressTracker::Get();
-            progress.SetStatus(ProgressType::ModelImporter, "Loading \"" + m_file_name + "\" from disk...");
-            progress.SetJobsDone(ProgressType::ModelImporter, current_step);
-            progress.SetJobCount(ProgressType::ModelImporter, number_of_steps);
+            // Reading from drive file progress is ignored because it's not called in a consistent manner.
+            // At least two calls are needed (start, end), but this can be called only once.
         }
 
         void UpdatePostProcess(int current_step, int number_of_steps) override
         {
-            auto& progress = ProgressTracker::Get();
-            progress.SetStatus(ProgressType::ModelImporter, "Post-Processing \"" + m_file_name + "\"");
-            progress.SetJobsDone(ProgressType::ModelImporter, current_step);
-            progress.SetJobCount(ProgressType::ModelImporter, number_of_steps);
+            if (current_step == 0)
+            {
+                ProgressTracker::GetProgress(ProgressType::ModelImporter).Start(number_of_steps, "Post-processing \"" + m_file_name + "\" from disk...");
+            }
+            else
+            {
+                ProgressTracker::GetProgress(ProgressType::ModelImporter).JobDone();
+            }
         }
 
     private:
@@ -385,8 +378,7 @@ namespace Spartan
             // Update progress tracking
             uint32_t job_count = 0;
             compute_node_count(scene->mRootNode, &job_count);
-            ProgressTracker::Get().SetJobCount(ProgressType::ModelImporter, job_count);
-            ProgressTracker::Get().SetJobsDone(ProgressType::ModelImporter, 0);
+            ProgressTracker::GetProgress(ProgressType::ModelImporter).Start(job_count, "Parsing model...");
 
             m_scene         = scene;
             m_has_animation = scene->mNumAnimations != 0;
@@ -395,7 +387,7 @@ namespace Spartan
             ParseNode(scene->mRootNode);
 
             // Wait for all threads to finish their work
-            while (ProgressTracker::Get().GetPercentage(ProgressType::ModelImporter) != 1.0f)
+            while (ProgressTracker::GetProgress(ProgressType::ModelImporter).GetFraction() != 1.0f)
             {
                 std::this_thread::sleep_for(std::chrono::milliseconds(16));
             }
@@ -442,7 +434,7 @@ namespace Spartan
         entity->SetName(m_name); // Set custom name, which is more descriptive than "RootNode"
 
         // Update progress tracking
-        ProgressTracker::Get().SetStatus(ProgressType::ModelImporter, "Creating entity for " + entity->GetObjectName());
+        ProgressTracker::GetProgress(ProgressType::ModelImporter).SetText("Creating entity for " + entity->GetObjectName());
 
         // Set the transform of parent_node as the parent of the new_entity's transform
         Transform* parent_trans = parent_entity ? parent_entity->GetTransform() : nullptr;
@@ -467,7 +459,7 @@ namespace Spartan
         }
 
         // Update progress tracking
-        ProgressTracker::Get().IncrementJobsDone(ProgressType::ModelImporter);
+        ProgressTracker::GetProgress(ProgressType::ModelImporter).JobDone();
     }
 
     void ModelImporter::PashMeshes(const aiNode* assimp_node, Entity* node_entity)

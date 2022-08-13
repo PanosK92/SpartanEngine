@@ -31,53 +31,51 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    void ProgressTracker::Reset(ProgressType progress_type)
+    void Progress::Start(const uint32_t job_count, const std::string& text)
     {
-        m_reports[static_cast<uint32_t>(progress_type)].Clear();
+        SP_ASSERT_MSG(GetFraction() == 1.0f, "The previous one hasn't finished");
+
+        m_job_count = job_count;
+        m_jobs_done = 0;
+        m_text      = text;
     }
 
-    const string& ProgressTracker::GetStatus(ProgressType progress_type)
+    float Progress::GetFraction()
     {
-        return m_reports[static_cast<uint32_t>(progress_type)].status;
+        if (m_job_count == 0)
+            return 1.0f;
+
+        return static_cast<float>(m_jobs_done) / static_cast<float>(m_job_count);
     }
 
-    void ProgressTracker::SetStatus(ProgressType progress_type, const std::string& status)
+    bool Progress::IsLoading()
     {
-        m_reports[static_cast<uint32_t>(progress_type)].status = status;
+        return GetFraction() != 1.0f;
     }
 
-    void ProgressTracker::SetJobCount(ProgressType progress_type, int jobCount)
+    void Progress::JobDone()
     {
-        m_reports[static_cast<uint32_t>(progress_type)].job_count = jobCount;
+        SP_ASSERT_MSG(m_jobs_done + 1 <= m_job_count, "Job count exceeded");
+
+        m_jobs_done++;
     }
 
-    void ProgressTracker::IncrementJobsDone(ProgressType progress_type)
+    const string& Progress::GetText()
     {
-        m_reports[static_cast<uint32_t>(progress_type)].jods_done++;
+        return m_text;
     }
 
-    void ProgressTracker::SetJobsDone(ProgressType progress_type, int jobsDone)
+    void Progress::SetText(const string& text)
     {
-        m_reports[static_cast<uint32_t>(progress_type)].jods_done = jobsDone;
+        m_text = text;
     }
 
-    float ProgressTracker::GetPercentage(ProgressType progress_type)
+    std::array<Progress, 3> ProgressTracker::m_progresses;
+    std::mutex ProgressTracker::m_mutex_progress_access;
+
+    Progress& ProgressTracker::GetProgressInternal(const ProgressType progress_type)
     {
-        Progress& progress = m_reports[static_cast<uint32_t>(progress_type)];
-
-        if (progress.job_count == 0)
-            return 0.0f;
-
-        return static_cast<float>(progress.jods_done) / static_cast<float>(progress.job_count);
-    }
-
-    bool ProgressTracker::GetIsLoading(ProgressType progress_type)
-    {
-        return m_reports[static_cast<uint32_t>(progress_type)].is_loading;
-    }
-
-    void ProgressTracker::SetIsLoading(ProgressType progress_type, bool isLoading)
-    {
-        m_reports[static_cast<uint32_t>(progress_type)].is_loading = isLoading;
+        lock_guard lock(m_mutex_progress_access);
+        return  m_progresses[static_cast<uint32_t>(progress_type)];
     }
 }
