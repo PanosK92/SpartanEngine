@@ -22,9 +22,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ==========================
-#include <string>
-#include <unordered_map>
+
 #include "../Core/SpartanDefinitions.h"
+#include <array>
 //=====================================
 
 namespace Spartan
@@ -38,20 +38,18 @@ namespace Spartan
 
     struct Progress
     {
-        Progress(){ Clear(); }
-
         void Clear()
         {
             status.clear();
-            jods_done   = 0;
-            job_count   = 0;
-            is_loading  = false;
+            jods_done  = 0;
+            job_count  = 0;
+            is_loading = false;
         }
 
         std::string status;
-        int jods_done;
-        int job_count;
-        bool is_loading;
+        int jods_done   = 0;
+        int job_count   = 0;
+        bool is_loading = false;
     };
 
     class SPARTAN_CLASS ProgressTracker
@@ -65,21 +63,17 @@ namespace Spartan
 
         ProgressTracker() = default;
 
-        void Reset(ProgressType progress_type)
-        {
-            m_reports[progress_type].Clear();
-        }
-
-        const std::string& GetStatus(ProgressType progress_type)                { return m_reports[progress_type].status; }
-        void SetStatus(ProgressType progress_type, const std::string& status)   { m_reports[progress_type].status = status; }
-        void SetJobCount(ProgressType progress_type, int jobCount)              { m_reports[progress_type].job_count = jobCount;}
-        void IncrementJobsDone(ProgressType progress_type)                      { m_reports[progress_type].jods_done++; }
-        void SetJobsDone(ProgressType progress_type, int jobsDone)              { m_reports[progress_type].jods_done = jobsDone; }
-        float GetPercentage(ProgressType progress_type)                         { return m_reports[progress_type].job_count == 0 ? 0 : (static_cast<float>(m_reports[progress_type].jods_done) / static_cast<float>(m_reports[progress_type].job_count)); }
-        bool GetIsLoading(ProgressType progress_type)                           { return m_reports[progress_type].is_loading; }
-        void SetIsLoading(ProgressType progress_type, bool isLoading)           { m_reports[progress_type].is_loading = isLoading; }
+        void Reset(ProgressType progress_type);
+        const std::string& GetStatus(ProgressType progress_type);
+        void SetStatus(ProgressType progress_type, const std::string& status);
+        void SetJobCount(ProgressType progress_type, int jobCount);
+        void IncrementJobsDone(ProgressType progress_type);
+        void SetJobsDone(ProgressType progress_type, int jobsDone);
+        float GetPercentage(ProgressType progress_type);
+        bool GetIsLoading(ProgressType progress_type);
+        void SetIsLoading(ProgressType progress_type, bool isLoading);
 
     private:
-        std::unordered_map<ProgressType, Progress> m_reports;
+        std::array<Progress, 3> m_reports;
     };
 }
