@@ -35,20 +35,9 @@ struct aiMesh;
 namespace Spartan
 {
     class Context;
-    class Material;
     class Entity;
     class Model;
     class World;
-
-    struct ModelParams
-    {
-        std::string file_path;
-        std::string name;
-        bool has_animation;
-        bool is_gltf;
-        Model* model            = nullptr;
-        const aiScene* scene    = nullptr;
-    };
 
     class SPARTAN_CLASS ModelImporter
     {
@@ -60,13 +49,21 @@ namespace Spartan
 
     private:
         // Parsing
-        void ParseNode(const aiNode* assimp_node, const ModelParams& params, Entity* parent_node = nullptr, Entity* new_entity = nullptr);
-        void ParseNodeMeshes(const aiNode* assimp_node, Entity* new_entity, const ModelParams& params);
-        void ParseAnimations(const ModelParams& params);
+        void ParseNode(const aiNode* node, std::shared_ptr<Entity> parent_entity = nullptr);
+        void PashMeshes(const aiNode* node, Entity* new_entity);
+        void ParseAnimations();
 
         // Loading
-        void LoadMesh(aiMesh* assimp_mesh, Entity* entity_parent, const ModelParams& params);
-        void LoadBones(const aiMesh* assimp_mesh, const ModelParams& params);
+        void ParseMesh(aiMesh* mesh, Entity* entity_parent);
+        void LoadBones(const aiMesh* mesh);
+
+        // Model
+        std::string m_file_path;
+        std::string m_name;
+        bool m_has_animation   = false;
+        bool m_is_gltf         = false;
+        Model* m_model         = nullptr;
+        const aiScene* m_scene = nullptr;
 
         // Dependencies
         Context* m_context;

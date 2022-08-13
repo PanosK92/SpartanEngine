@@ -68,7 +68,7 @@ namespace Spartan
         aiProcess_FindInstances            | // This step searches for duplicate meshes and replaces them with references to the first mesh
         // Generate missing normals or UVs
         aiProcess_CalcTangentSpace         | // Calculates the tangents and bitangents for the imported meshes
-        aiProcess_GenSmoothNormals         | // Ignored if the mesh alrady has normals
+        aiProcess_GenSmoothNormals         | // Ignored if the mesh already has normals
         aiProcess_GenUVCoords;               // Converts non-UV mappings (such as spherical or cylindrical mapping) to proper texture coordinate channels
 
         // Any vertex/index optimization flags are not needed since Mesh is using meshoptimizer
@@ -106,8 +106,7 @@ namespace Spartan
 
     static void set_entity_transform(const aiNode* node, Entity* entity)
     {
-        if (!entity)
-            return;
+        SP_ASSERT_MSG(node != nullptr && entity != nullptr, "Invalid parameter(s)");
 
         // Convert to engine matrix
         const Matrix matrix_engine = convert_matrix(node->mTransformation);
@@ -200,13 +199,13 @@ namespace Spartan
         return file_path;
     }
 
-    static string texture_validate_path(string original_texture_path, const string& model_path)
+    static string texture_validate_path(string original_texture_path, const string& file_path)
     {
         replace(original_texture_path.begin(), original_texture_path.end(), '\\', '/');
 
         // Models usually return a texture path which is relative to the model's directory.
         // However, to load anything, we'll need an absolute path, so we construct it here.
-        const string model_dir = FileSystem::GetDirectoryFromFilePath(model_path);
+        const string model_dir = FileSystem::GetDirectoryFromFilePath(file_path);
         string full_texture_path = model_dir + original_texture_path;
 
         // 1. Check if the texture path is valid
@@ -238,7 +237,9 @@ namespace Spartan
     }
 
     static bool load_material_texture(
-        const ModelParams& params,
+        Model* model,
+        const string& file_path,
+        const bool is_gltf,
         shared_ptr<Material> material,
         const aiMaterial* material_assimp,
         const MaterialTexture texture_type,
@@ -261,12 +262,12 @@ namespace Spartan
             return false;
 
         // See if the texture type is supported by the engine
-        const string deduced_path = texture_validate_path(texture_path.data, params.file_path);
+        const string deduced_path = texture_validate_path(texture_path.data, file_path);
         if (!FileSystem::IsSupportedImageFile(deduced_path))
             return false;
 
         // Add the texture to the model
-        params.model->AddTexture(material, texture_type, texture_validate_path(texture_path.data, params.file_path), params.is_gltf);
+        model->AddTexture(material, texture_type, texture_validate_path(texture_path.data, file_path), is_gltf);
 
         // FIX: materials that have a diffuse texture should not be tinted black/gray
         if (type_assimp == aiTextureType_BASE_COLOR || type_assimp == aiTextureType_DIFFUSE)
@@ -297,7 +298,7 @@ namespace Spartan
         return true;
     }
 
-    static shared_ptr<Material> load_material(Context* context, const aiMaterial* material_assimp, const ModelParams& params)
+    static shared_ptr<Material> load_material(Context* context, Model* model, const string& file_path, const bool is_gltf, const aiMaterial* material_assimp)
     {
         SP_ASSERT(material_assimp != nullptr);
 
@@ -308,7 +309,7 @@ namespace Spartan
         aiGetMaterialString(material_assimp, AI_MATKEY_NAME, &name);
 
         // Set a resource file path so it can be used by the resource cache
-        material->SetResourceFilePath(FileSystem::RemoveIllegalCharacters(FileSystem::GetDirectoryFromFilePath(params.file_path) + string(name.C_Str()) + EXTENSION_MATERIAL));
+        material->SetResourceFilePath(FileSystem::RemoveIllegalCharacters(FileSystem::GetDirectoryFromFilePath(file_path) + string(name.C_Str()) + EXTENSION_MATERIAL));
 
         // COLOR
         aiColor4D color_diffuse(1.0f, 1.0f, 1.0f, 1.0f);
@@ -324,17 +325,17 @@ namespace Spartan
         material->SetProperty(MaterialProperty::ColorB, color_diffuse.b);
         material->SetProperty(MaterialProperty::ColorA, opacity.r);
 
-        //                                                       Texture type,                Texture type Assimp (PBR),       Texture type Assimp (Legacy/fallback)
-        load_material_texture(params, material, material_assimp, MaterialTexture::Color,      aiTextureType_BASE_COLOR,        aiTextureType_DIFFUSE);
-        load_material_texture(params, material, material_assimp, MaterialTexture::Roughness,  aiTextureType_DIFFUSE_ROUGHNESS, aiTextureType_SHININESS); // Use specular as fallback
-        load_material_texture(params, material, material_assimp, MaterialTexture::Metallness, aiTextureType_METALNESS,         aiTextureType_AMBIENT);   // Use ambient as fallback
-        load_material_texture(params, material, material_assimp, MaterialTexture::Normal,     aiTextureType_NORMAL_CAMERA,     aiTextureType_NORMALS);
-        load_material_texture(params, material, material_assimp, MaterialTexture::Occlusion,  aiTextureType_AMBIENT_OCCLUSION, aiTextureType_LIGHTMAP);
-        load_material_texture(params, material, material_assimp, MaterialTexture::Emission,   aiTextureType_EMISSION_COLOR,    aiTextureType_EMISSIVE);
-        load_material_texture(params, material, material_assimp, MaterialTexture::Height,     aiTextureType_HEIGHT,            aiTextureType_NONE);
-        load_material_texture(params, material, material_assimp, MaterialTexture::AlphaMask,  aiTextureType_OPACITY,           aiTextureType_NONE);
+        //                                                                 Texture type,                Texture type Assimp (PBR),       Texture type Assimp (Legacy/fallback)
+        load_material_texture(model, file_path, is_gltf, material, material_assimp, MaterialTexture::Color,      aiTextureType_BASE_COLOR,        aiTextureType_DIFFUSE);
+        load_material_texture(model, file_path, is_gltf, material, material_assimp, MaterialTexture::Roughness,  aiTextureType_DIFFUSE_ROUGHNESS, aiTextureType_SHININESS); // Use specular as fallback
+        load_material_texture(model, file_path, is_gltf, material, material_assimp, MaterialTexture::Metallness, aiTextureType_METALNESS,         aiTextureType_AMBIENT);   // Use ambient as fallback
+        load_material_texture(model, file_path, is_gltf, material, material_assimp, MaterialTexture::Normal,     aiTextureType_NORMAL_CAMERA,     aiTextureType_NORMALS);
+        load_material_texture(model, file_path, is_gltf, material, material_assimp, MaterialTexture::Occlusion,  aiTextureType_AMBIENT_OCCLUSION, aiTextureType_LIGHTMAP);
+        load_material_texture(model, file_path, is_gltf, material, material_assimp, MaterialTexture::Emission,   aiTextureType_EMISSION_COLOR,    aiTextureType_EMISSIVE);
+        load_material_texture(model, file_path, is_gltf, material, material_assimp, MaterialTexture::Height,     aiTextureType_HEIGHT,            aiTextureType_NONE);
+        load_material_texture(model, file_path, is_gltf, material, material_assimp, MaterialTexture::AlphaMask,  aiTextureType_OPACITY,           aiTextureType_NONE);
 
-        material->SetProperty(MaterialProperty::SingleTextureRoughnessMetalness, static_cast<float>(params.is_gltf));
+        material->SetProperty(MaterialProperty::SingleTextureRoughnessMetalness, static_cast<float>(is_gltf));
 
         return material;
     }
@@ -353,7 +354,7 @@ namespace Spartan
 
     bool ModelImporter::Load(Model* model, const string& file_path)
     {
-        SP_ASSERT(model != nullptr);
+        SP_ASSERT_MSG(model != nullptr, "Invalid parameter");
 
         if (!FileSystem::IsFile(file_path))
         {
@@ -362,11 +363,10 @@ namespace Spartan
         }
 
         // Model params
-        ModelParams params;
-        params.file_path  = file_path;
-        params.name       = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path);
-        params.model      = model;
-        params.is_gltf    = FileSystem::GetExtensionFromFilePath(file_path) == ".gltf";
+        m_file_path = file_path;
+        m_name      = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path);
+        m_model     = model;
+        m_is_gltf   = FileSystem::GetExtensionFromFilePath(file_path) == ".gltf";
 
         // Set up the importer
         Importer importer;
@@ -386,20 +386,11 @@ namespace Spartan
             compute_node_count(scene->mRootNode, &job_count);
             ProgressTracker::Get().SetJobCount(ProgressType::ModelImporter, job_count);
 
-            params.scene         = scene;
-            params.has_animation = scene->mNumAnimations != 0;
-
-            // Create root entity to match Assimp's root node
-            const bool is_active = false;
-            shared_ptr<Entity> new_entity = m_world->EntityCreate(is_active);
-            new_entity->SetName(params.name); // Set custom name, which is more descriptive than "RootNode"
-            params.model->SetRootEntity(new_entity);
+            m_scene         = scene;
+            m_has_animation = scene->mNumAnimations != 0;
 
             // Parse all nodes, starting from the root node and continuing recursively
-            ParseNode(scene->mRootNode, params, nullptr, new_entity.get());
-
-            // Parse animations
-            ParseAnimations(params);
+            ParseNode(scene->mRootNode);
 
             // Update model geometry
             model->UpdateGeometry();
@@ -412,54 +403,69 @@ namespace Spartan
 
         importer.FreeScene();
 
-        return params.scene != nullptr;
+        return m_scene != nullptr;
     }
 
-    void ModelImporter::ParseNode(const aiNode* assimp_node, const ModelParams& params, Entity* parent_node, Entity* new_entity)
+    void ModelImporter::ParseNode(const aiNode* node, shared_ptr<Entity> parent_entity)
     {
-        if (parent_node) // parent node is already set
+        // The entity that will match the node
+        shared_ptr<Entity> entity = nullptr;
+
+        bool is_root_node = parent_entity == nullptr;
+        if (is_root_node)
         {
-            new_entity->SetName(assimp_node->mName.C_Str());
+            const bool is_active = false;
+            entity = m_world->EntityCreate(is_active);
+            m_model->SetRootEntity(entity);
+        }
+        else
+        {
+            // Since the root entity is inactive, it will also override this child entity.
+            const bool is_active = true;
+            entity = m_world->EntityCreate(is_active);
         }
 
+        // Name the entity
+        string node_name = is_root_node ? m_name : node->mName.C_Str();
+        entity->SetName(m_name); // Set custom name, which is more descriptive than "RootNode"
+
         // Update progress tracking
-        ProgressTracker::Get().SetStatus(ProgressType::ModelImporter, "Creating entity for " + new_entity->GetObjectName());
+        ProgressTracker::Get().SetStatus(ProgressType::ModelImporter, "Creating entity for " + entity->GetObjectName());
 
         // Set the transform of parent_node as the parent of the new_entity's transform
-        Transform* parent_trans = parent_node ? parent_node->GetTransform() : nullptr;
-        new_entity->GetTransform()->SetParent(parent_trans);
+        Transform* parent_trans = parent_entity ? parent_entity->GetTransform() : nullptr;
+        entity->GetTransform()->SetParent(parent_trans);
 
-        // Set the transformation matrix of the Assimp node to the new node
-        set_entity_transform(assimp_node, new_entity);
+        // Apply node transformation
+        set_entity_transform(node, entity.get());
 
         // Process all the node's meshes
-        if (assimp_node->mNumMeshes > 0)
+        if (node->mNumMeshes > 0)
         {
-            ParseNodeMeshes(assimp_node, new_entity, params);
+            PashMeshes(node, entity.get());
         }
 
         // Process children
-        for (uint32_t i = 0; i < assimp_node->mNumChildren; i++)
+        for (uint32_t i = 0; i < node->mNumChildren; i++)
         {
-            auto child = m_world->EntityCreate();
-            ParseNode(assimp_node->mChildren[i], params, new_entity, child.get());
+            ParseNode(node->mChildren[i], entity);
         }
 
         // Update progress tracking
         ProgressTracker::Get().IncrementJobsDone(ProgressType::ModelImporter);
     }
 
-    void ModelImporter::ParseNodeMeshes(const aiNode* assimp_node, Entity* node_entity, const ModelParams& params)
+    void ModelImporter::PashMeshes(const aiNode* assimp_node, Entity* node_entity)
     {
-        // If the node has one mesh, then we simply call LoadMesh() and load the mesh into node_entity (via a Renderable component).
-        // If the node has more than one mesh, then we create one entity for each mesh, all which will be the children of node_entity (and node_entity holds no meshes)
+        // An aiNode can have any number of meshes (albeit typically, it's one).
+        // If it has more than one meshes, then we create children entities to store them.
 
         SP_ASSERT_MSG(assimp_node->mNumMeshes != 0, "No meshes to process");
 
         for (uint32_t i = 0; i < assimp_node->mNumMeshes; i++)
         {
             Entity* entity    = node_entity;
-            aiMesh* node_mesh = params.scene->mMeshes[assimp_node->mMeshes[i]];
+            aiMesh* node_mesh = m_scene->mMeshes[assimp_node->mMeshes[i]];
             string node_name  = assimp_node->mName.C_Str();
 
             // if this node has more than one meshes, create an entity for each mesh, then make that entity a child of node_entity
@@ -480,64 +486,14 @@ namespace Spartan
             entity->SetName(node_name);
             
             // Load the mesh onto the entity (via a Renderable component)
-            LoadMesh(node_mesh, entity, params);
+            ParseMesh(node_mesh, entity);
 
             // Mark the entity as active since it's now safe to be used (by say, other threads)
             entity->SetActive(true);
         }
     }
 
-    void ModelImporter::ParseAnimations(const ModelParams& params)
-    {
-        for (uint32_t i = 0; i < params.scene->mNumAnimations; i++)
-        {
-            const auto assimp_animation = params.scene->mAnimations[i];
-            auto animation = make_shared<Animation>(m_context);
-
-            // Basic properties
-            animation->SetName(assimp_animation->mName.C_Str());
-            animation->SetDuration(assimp_animation->mDuration);
-            animation->SetTicksPerSec(assimp_animation->mTicksPerSecond != 0.0f ? assimp_animation->mTicksPerSecond : 25.0f);
-
-            // Animation channels
-            for (uint32_t j = 0; j < static_cast<uint32_t>(assimp_animation->mNumChannels); j++)
-            {
-                const auto assimp_node_anim = assimp_animation->mChannels[j];
-                AnimationNode animation_node;
-
-                animation_node.name = assimp_node_anim->mNodeName.C_Str();
-
-                // Position keys
-                for (uint32_t k = 0; k < static_cast<uint32_t>(assimp_node_anim->mNumPositionKeys); k++)
-                {
-                    const auto time = assimp_node_anim->mPositionKeys[k].mTime;
-                    const auto value = convert_vector3(assimp_node_anim->mPositionKeys[k].mValue);
-
-                    animation_node.positionFrames.emplace_back(KeyVector{ time, value });
-                }
-
-                // Rotation keys
-                for (uint32_t k = 0; k < static_cast<uint32_t>(assimp_node_anim->mNumRotationKeys); k++)
-                {
-                    const auto time = assimp_node_anim->mPositionKeys[k].mTime;
-                    const auto value = convert_quaternion(assimp_node_anim->mRotationKeys[k].mValue);
-
-                    animation_node.rotationFrames.emplace_back(KeyQuaternion{ time, value });
-                }
-
-                // Scaling keys
-                for (uint32_t k = 0; k < static_cast<uint32_t>(assimp_node_anim->mNumScalingKeys); k++)
-                {
-                    const auto time = assimp_node_anim->mPositionKeys[k].mTime;
-                    const auto value = convert_vector3(assimp_node_anim->mScalingKeys[k].mValue);
-
-                    animation_node.scaleFrames.emplace_back(KeyVector{ time, value });
-                }
-            }
-        }
-    }
-
-    void ModelImporter::LoadMesh(aiMesh* assimp_mesh, Entity* entity_parent, const ModelParams& params)
+    void ModelImporter::ParseMesh(aiMesh* assimp_mesh, Entity* entity_parent)
     {
         SP_ASSERT(assimp_mesh != nullptr);
         SP_ASSERT(entity_parent != nullptr);
@@ -608,7 +564,7 @@ namespace Spartan
         // Add the mesh to the model
         uint32_t index_offset;
         uint32_t vertex_offset;
-        params.model->AppendGeometry(move(indices), move(vertices), &index_offset, &vertex_offset);
+        m_model->AppendGeometry(indices, vertices, &index_offset, &vertex_offset);
 
         // Add a renderable component to this entity
         Renderable* renderable = entity_parent->AddComponent<Renderable>();
@@ -621,24 +577,76 @@ namespace Spartan
             vertex_offset,
             static_cast<uint32_t>(vertices.size()),
             aabb,
-            params.model
+            m_model
         );
 
         // Material
-        if (params.scene->HasMaterials())
+        if (m_scene->HasMaterials())
         {
             // Get aiMaterial
-            const aiMaterial* assimp_material = params.scene->mMaterials[assimp_mesh->mMaterialIndex];
+            const aiMaterial* assimp_material = m_scene->mMaterials[assimp_mesh->mMaterialIndex];
+
             // Convert it and add it to the model
-            shared_ptr<Material> material = load_material(m_context, assimp_material, params);
-            params.model->AddMaterial(material, entity_parent->GetPtrShared());
+            shared_ptr<Material> material = load_material(m_context, m_model, m_file_path, m_is_gltf, assimp_material);
+
+            m_model->AddMaterial(material, entity_parent->GetPtrShared());
         }
 
         // Bones
-        LoadBones(assimp_mesh, params);
+        LoadBones(assimp_mesh);
     }
 
-    void ModelImporter::LoadBones(const aiMesh* assimp_mesh, const ModelParams& params)
+    void ModelImporter::ParseAnimations()
+    {
+        for (uint32_t i = 0; i < m_scene->mNumAnimations; i++)
+        {
+            const auto assimp_animation = m_scene->mAnimations[i];
+            auto animation = make_shared<Animation>(m_context);
+
+            // Basic properties
+            animation->SetName(assimp_animation->mName.C_Str());
+            animation->SetDuration(assimp_animation->mDuration);
+            animation->SetTicksPerSec(assimp_animation->mTicksPerSecond != 0.0f ? assimp_animation->mTicksPerSecond : 25.0f);
+
+            // Animation channels
+            for (uint32_t j = 0; j < static_cast<uint32_t>(assimp_animation->mNumChannels); j++)
+            {
+                const auto assimp_node_anim = assimp_animation->mChannels[j];
+                AnimationNode animation_node;
+
+                animation_node.name = assimp_node_anim->mNodeName.C_Str();
+
+                // Position keys
+                for (uint32_t k = 0; k < static_cast<uint32_t>(assimp_node_anim->mNumPositionKeys); k++)
+                {
+                    const auto time = assimp_node_anim->mPositionKeys[k].mTime;
+                    const auto value = convert_vector3(assimp_node_anim->mPositionKeys[k].mValue);
+
+                    animation_node.positionFrames.emplace_back(KeyVector{ time, value });
+                }
+
+                // Rotation keys
+                for (uint32_t k = 0; k < static_cast<uint32_t>(assimp_node_anim->mNumRotationKeys); k++)
+                {
+                    const auto time = assimp_node_anim->mPositionKeys[k].mTime;
+                    const auto value = convert_quaternion(assimp_node_anim->mRotationKeys[k].mValue);
+
+                    animation_node.rotationFrames.emplace_back(KeyQuaternion{ time, value });
+                }
+
+                // Scaling keys
+                for (uint32_t k = 0; k < static_cast<uint32_t>(assimp_node_anim->mNumScalingKeys); k++)
+                {
+                    const auto time = assimp_node_anim->mPositionKeys[k].mTime;
+                    const auto value = convert_vector3(assimp_node_anim->mScalingKeys[k].mValue);
+
+                    animation_node.scaleFrames.emplace_back(KeyVector{ time, value });
+                }
+            }
+        }
+    }
+
+    void ModelImporter::LoadBones(const aiMesh* assimp_mesh)
     {
         // Maximum number of bones per mesh
         // Must not be higher than same const in skinning shader
