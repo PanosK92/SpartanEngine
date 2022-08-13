@@ -56,7 +56,6 @@ Note: This is a blocking event system
 
 enum class EventType
 {
-    RendererStart,
     RendererOnFirstFrameCompleted,
     RendererPostPresent,
     WorldSaveStart,            // The world is about to be saved to a file

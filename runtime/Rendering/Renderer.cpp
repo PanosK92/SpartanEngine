@@ -191,8 +191,7 @@ namespace Spartan
     void Renderer::OnTick(double delta_time)
     {
         // After the first frame has completed, we can be sure that the renderer is working.
-        // This allows various systems to rely on it.
-        if (m_frame_num == 1 && Log::m_log_to_file)
+        if (m_frame_num == 1)
         {
            Log::m_log_to_file = false;
            SP_FIRE_EVENT(EventType::RendererOnFirstFrameCompleted);
@@ -223,13 +222,8 @@ namespace Spartan
         if (!m_swap_chain->PresentEnabled() || !m_is_rendering_allowed)
             return;
 
-        m_frame_num++;
-        m_is_odd_frame = (m_frame_num % 2) == 1;
-
-        SP_FIRE_EVENT(EventType::RendererStart);
-
         // Tick command pool
-        bool reset = m_cmd_pool->Tick() || m_rhi_device->GetRhiApiType() == RHI_Api_Type::D3d11;
+        bool reset = m_cmd_pool->Tick() || (m_rhi_device->GetRhiApiType() == RHI_Api_Type::D3d11);
 
         // Begin
         m_cmd_current = m_cmd_pool->GetCurrentCommandList();
@@ -332,6 +326,10 @@ namespace Spartan
         // Submit
         m_cmd_current->End();
         m_cmd_current->Submit();
+
+        // Update frame tracking
+        m_frame_num++;
+        m_is_odd_frame = (m_frame_num % 2) == 1;
     }
     
     void Renderer::SetViewport(float width, float height)

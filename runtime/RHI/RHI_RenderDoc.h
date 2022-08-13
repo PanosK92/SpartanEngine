@@ -36,5 +36,8 @@ namespace Spartan
         static void OnPreDeviceCreation();
         static void Shutdown();
         static void FrameCapture();
+        static void StartCapture();
+        static void EndCapture();
+        static void LaunchRenderDoc();
     };
 }

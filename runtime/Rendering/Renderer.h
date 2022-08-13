@@ -311,7 +311,7 @@ namespace Spartan
         Math::Vector2 m_taa_jitter        = Math::Vector2::Zero;
         float m_near_plane                = 0.0f;
         float m_far_plane                 = 0.0f;
-        uint64_t m_frame_num              = std::numeric_limits<uint64_t>::max();
+        uint64_t m_frame_num              = 0;
         bool m_is_odd_frame               = false;
         bool m_brdf_specular_lut_rendered = false;
         std::thread::id m_render_thread_id;

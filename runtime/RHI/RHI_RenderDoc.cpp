@@ -214,9 +214,27 @@ namespace Spartan
         if (rdc_api == nullptr)
             return;
 
-        // Trigger
+        // Trigger capture, which will capture the next frame.
+        // This is the default behaviour if you don't explicitly start/end a capture.
         rdc_api->TriggerCapture();
 
+        LaunchRenderDoc();
+    }
+
+    void RHI_RenderDoc::StartCapture()
+    {
+        rdc_api->StartFrameCapture(nullptr, nullptr);
+    }
+
+    void RHI_RenderDoc::EndCapture()
+    {
+        rdc_api->EndFrameCapture(nullptr, nullptr);
+
+        LaunchRenderDoc();
+    }
+
+    void RHI_RenderDoc::LaunchRenderDoc()
+    {
         // If the RenderDoc UI is already running, make sure it's visible.
         if (rdc_api->IsTargetControlConnected())
         {
@@ -233,4 +251,5 @@ namespace Spartan
             }
         }
     }
+
 }
