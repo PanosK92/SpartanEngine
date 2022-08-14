@@ -255,12 +255,12 @@ namespace Spartan
             const Vector3 position = m_transform->GetPosition();
 
             // Compute view for each side of the cube map
-            m_matrix_view[0] = Matrix::CreateLookAtLH(position, position + Vector3::Right,      Vector3::Up);       // x+
-            m_matrix_view[1] = Matrix::CreateLookAtLH(position, position + Vector3::Left,       Vector3::Up);       // x-
-            m_matrix_view[2] = Matrix::CreateLookAtLH(position, position + Vector3::Up,         Vector3::Backward); // y+
-            m_matrix_view[3] = Matrix::CreateLookAtLH(position, position + Vector3::Down,       Vector3::Forward);  // y-
-            m_matrix_view[4] = Matrix::CreateLookAtLH(position, position + Vector3::Forward,    Vector3::Up);       // z+
-            m_matrix_view[5] = Matrix::CreateLookAtLH(position, position + Vector3::Backward,   Vector3::Up);       // z-
+            m_matrix_view[0] = Matrix::CreateLookAtLH(position, position + Vector3::Right,    Vector3::Up);       // x+
+            m_matrix_view[1] = Matrix::CreateLookAtLH(position, position + Vector3::Left,     Vector3::Up);       // x-
+            m_matrix_view[2] = Matrix::CreateLookAtLH(position, position + Vector3::Up,       Vector3::Backward); // y+
+            m_matrix_view[3] = Matrix::CreateLookAtLH(position, position + Vector3::Down,     Vector3::Forward);  // y-
+            m_matrix_view[4] = Matrix::CreateLookAtLH(position, position + Vector3::Forward,  Vector3::Up);       // z+
+            m_matrix_view[5] = Matrix::CreateLookAtLH(position, position + Vector3::Backward, Vector3::Up);       // z-
         }
     }
 
@@ -319,25 +319,25 @@ namespace Spartan
 
         Camera* camera                        = m_renderer->GetCamera().get();
         const float clip_near                 = camera->GetNearPlane();
-        const float clip_far                  = camera->GetFarPlane();
+        const float clip_far                  = camera->GetFarPlane() * 0.5f;
         const Matrix view_projection_inverted = Matrix::Invert(camera->GetViewMatrix() * camera->ComputeProjection(false, clip_near, clip_far));
 
         // Calculate split depths based on view camera frustum
         // Based on method presented in https://developer.nvidia.com/gpugems/GPUGems3/gpugems3_ch10.html
-        const float split_lambda  = 0.98f;
-        const float clip_range    = clip_far - clip_near;
-        const float min_z         = clip_near;
-        const float max_z         = clip_near + clip_range;
-        const float range         = max_z - min_z;
-        const float ratio         = max_z / min_z;
+        const float split_lambda = 0.99f;
+        const float clip_range   = clip_far - clip_near;
+        const float min_z        = clip_near;
+        const float max_z        = clip_near + clip_range;
+        const float range        = max_z - min_z;
+        const float ratio        = max_z / min_z;
         vector<float> splits(m_cascade_count);
         for (uint32_t i = 0; i < m_cascade_count; i++)
         {
-            const float p           = (i + 1) / static_cast<float>(m_cascade_count);
-            const float log         = min_z * Math::Helper::Pow(ratio, p);
-            const float uniform     = min_z + range * p;
-            const float d           = split_lambda * (log - uniform) + uniform;
-            splits[i]               = (d - clip_near) / clip_range;
+            const float p       = (i + 1) / static_cast<float>(m_cascade_count);
+            const float log     = min_z * Math::Helper::Pow(ratio, p);
+            const float uniform = min_z + range * p;
+            const float d       = split_lambda * (log - uniform) + uniform;
+            splits[i]           = (d - clip_near) / clip_range;
         }
 
         for (uint32_t i = 0; i < m_cascade_count; i++)
@@ -371,9 +371,9 @@ namespace Spartan
                 const float split_distance = splits[i];
                 for (uint32_t i = 0; i < 4; i++)
                 {
-                    Vector3 distance        = frustum_corners[i + 4] - frustum_corners[i];
-                    frustum_corners[i + 4]  = frustum_corners[i] + (distance * split_distance);
-                    frustum_corners[i]      = frustum_corners[i] + (distance * split_distance_previous);
+                    Vector3 distance       = frustum_corners[i + 4] - frustum_corners[i];
+                    frustum_corners[i + 4] = frustum_corners[i] + (distance * split_distance);
+                    frustum_corners[i]     = frustum_corners[i] + (distance * split_distance_previous);
                 }
                 split_distance_previous = splits[i];
             }

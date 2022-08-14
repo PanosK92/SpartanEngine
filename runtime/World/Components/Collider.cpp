@@ -137,18 +137,15 @@ namespace Spartan
     void Collider::Shape_Update()
     {
         Shape_Release();
-        const Vector3 worldScale = GetTransform()->GetScale();
 
         switch (m_shapeType)
         {
         case ColliderShape::Box:
             m_shape = new btBoxShape(ToBtVector3(m_size * 0.5f));
-            m_shape->setLocalScaling(ToBtVector3(worldScale));
             break;
 
         case ColliderShape::Sphere:
             m_shape = new btSphereShape(m_size.x * 0.5f);
-            m_shape->setLocalScaling(ToBtVector3(worldScale));
             break;
 
         case ColliderShape::StaticPlane:
@@ -157,17 +154,14 @@ namespace Spartan
 
         case ColliderShape::Cylinder:
             m_shape = new btCylinderShape(btVector3(m_size.x * 0.5f, m_size.y * 0.5f, m_size.x * 0.5f));
-            m_shape->setLocalScaling(ToBtVector3(worldScale));
             break;
 
         case ColliderShape::Capsule:
             m_shape = new btCapsuleShape(m_size.x * 0.5f, Helper::Max(m_size.y - m_size.x, 0.0f));
-            m_shape->setLocalScaling(ToBtVector3(worldScale));
             break;
 
         case ColliderShape::Cone:
             m_shape = new btConeShape(m_size.x * 0.5f, m_size.y);
-            m_shape->setLocalScaling(ToBtVector3(worldScale));
             break;
 
         case ColliderShape::Mesh:
@@ -202,9 +196,6 @@ namespace Spartan
                 (btScalar*)&vertices[0],                                 // points
                 renderable->GetVertexCount(),                       // point count
                 static_cast<uint32_t>(sizeof(RHI_Vertex_PosTexNorTan))); // stride
-
-            // Scaling has to be done before (potential) optimization
-            m_shape->setLocalScaling(ToBtVector3(worldScale));
 
             // Optimize if requested
             if (m_optimize)

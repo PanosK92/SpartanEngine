@@ -456,6 +456,20 @@ namespace Spartan
         }
     }
 
+    Entity* Transform::GetDescendantByName(const std::string& name)
+    {
+        vector<Transform*> descendants;
+        GetDescendants(&descendants);
+
+        for (Transform* transform : descendants)
+        {
+            if (transform->GetEntity()->GetName() == name)
+                return transform->GetEntity();
+        }
+
+        return nullptr;
+    }
+
     Matrix Transform::GetParentTransformMatrix() const
     {
         return HasParent() ? GetParent()->GetMatrix() : Matrix::Identity;
