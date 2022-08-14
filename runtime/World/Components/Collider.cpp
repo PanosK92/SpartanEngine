@@ -49,7 +49,7 @@ namespace Spartan
 {
     Collider::Collider(Context* context, Entity* entity, uint64_t id /*= 0*/) : IComponent(context, entity, id)
     {
-        m_shapeType = ColliderShape_Box;
+        m_shapeType = ColliderShape::Box;
         m_center    = Vector3::Zero;
         m_size      = Vector3::One;
         m_shape     = nullptr;
@@ -141,36 +141,36 @@ namespace Spartan
 
         switch (m_shapeType)
         {
-        case ColliderShape_Box:
+        case ColliderShape::Box:
             m_shape = new btBoxShape(ToBtVector3(m_size * 0.5f));
             m_shape->setLocalScaling(ToBtVector3(worldScale));
             break;
 
-        case ColliderShape_Sphere:
+        case ColliderShape::Sphere:
             m_shape = new btSphereShape(m_size.x * 0.5f);
             m_shape->setLocalScaling(ToBtVector3(worldScale));
             break;
 
-        case ColliderShape_StaticPlane:
+        case ColliderShape::StaticPlane:
             m_shape = new btStaticPlaneShape(btVector3(0.0f, 1.0f, 0.0f), 0.0f);
             break;
 
-        case ColliderShape_Cylinder:
+        case ColliderShape::Cylinder:
             m_shape = new btCylinderShape(btVector3(m_size.x * 0.5f, m_size.y * 0.5f, m_size.x * 0.5f));
             m_shape->setLocalScaling(ToBtVector3(worldScale));
             break;
 
-        case ColliderShape_Capsule:
+        case ColliderShape::Capsule:
             m_shape = new btCapsuleShape(m_size.x * 0.5f, Helper::Max(m_size.y - m_size.x, 0.0f));
             m_shape->setLocalScaling(ToBtVector3(worldScale));
             break;
 
-        case ColliderShape_Cone:
+        case ColliderShape::Cone:
             m_shape = new btConeShape(m_size.x * 0.5f, m_size.y);
             m_shape->setLocalScaling(ToBtVector3(worldScale));
             break;
 
-        case ColliderShape_Mesh:
+        case ColliderShape::Mesh:
             // Get Renderable
             Renderable* renderable = GetEntity()->GetComponent<Renderable>();
             if (!renderable)
@@ -180,7 +180,7 @@ namespace Spartan
             }
 
             // Validate vertex count
-            if (renderable->GeometryVertexCount() >= m_vertexLimit)
+            if (renderable->GetVertexCount() >= m_vertexLimit)
             {
                 LOG_WARNING("No user defined collider with more than %d vertices is allowed.", m_vertexLimit);
                 return;
@@ -200,7 +200,7 @@ namespace Spartan
             // Construct hull approximation
             m_shape = new btConvexHullShape(
                 (btScalar*)&vertices[0],                                 // points
-                renderable->GeometryVertexCount(),                       // point count
+                renderable->GetVertexCount(),                       // point count
                 static_cast<uint32_t>(sizeof(RHI_Vertex_PosTexNorTan))); // stride
 
             // Scaling has to be done before (potential) optimization

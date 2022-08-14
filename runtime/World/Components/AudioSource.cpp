@@ -74,11 +74,6 @@ namespace Spartan
         if (!m_audio_clip)
             return;
 
-        if (m_play_in_editor && !m_audio_clip->IsPlaying())
-        {
-            Play();
-        }
-    
         m_audio_clip->Update();
     }
     
@@ -86,7 +81,6 @@ namespace Spartan
     {
         stream->Write(m_mute);
         stream->Write(m_play_on_start);
-        stream->Write(m_play_in_editor);
         stream->Write(m_loop);
         stream->Write(m_priority);
         stream->Write(m_volume);
@@ -105,7 +99,6 @@ namespace Spartan
     {
         stream->Read(&m_mute);
         stream->Read(&m_play_on_start);
-        stream->Read(&m_play_in_editor);
         stream->Read(&m_loop);
         stream->Read(&m_priority);
         stream->Read(&m_volume);

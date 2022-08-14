@@ -32,15 +32,15 @@ namespace Spartan
 {
     class Mesh;
 
-    enum ColliderShape
+    enum class ColliderShape
     {
-        ColliderShape_Box,
-        ColliderShape_Sphere,
-        ColliderShape_StaticPlane,
-        ColliderShape_Cylinder,
-        ColliderShape_Capsule,
-        ColliderShape_Cone,
-        ColliderShape_Mesh,
+        Box,
+        Sphere,
+        StaticPlane,
+        Cylinder,
+        Capsule,
+        Cone,
+        Mesh,
     };
 
     class SPARTAN_CLASS Collider : public IComponent

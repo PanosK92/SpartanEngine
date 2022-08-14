@@ -39,6 +39,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Rendering/Renderer.h"
 #include "../Threading/Threading.h"
 #include "Components/AudioSource.h"
+#include "Components/RigidBody.h"
+#include "Components/Collider.h"
 //==========================================
 
 //= NAMESPACES ================
@@ -69,7 +71,7 @@ namespace Spartan
     {
         m_transform_handle = make_shared<TransformHandle>(m_context);
 
-        CreateDefaultWorldEntities();
+        CreateDefaultWorld();
     }
 
     void World::OnPreTick()
@@ -149,17 +151,13 @@ namespace Spartan
             m_resolve = false;
         }
 
-        // If a default model exists, slowly rotate it
-        if (m_default_world_model)
-        {
-            m_default_world_model->GetRootEntity()->GetTransform()->Rotate(Quaternion::FromEulerAngles(0.0f, 0.0f, -5.0f * static_cast<float>(delta_time)));
-        }
+        UpdateDefaultWorld(delta_time);
     }
 
     void World::New()
     {
         Clear();
-        CreateDefaultWorldEntities();
+        CreateDefaultWorld();
     }
 
     bool World::SaveToFile(const string& filePathIn)
@@ -394,7 +392,7 @@ namespace Spartan
         }
     }
 
-    void World::CreateDefaultWorldEntities()
+    void World::CreateDefaultWorld()
     {
         // Asset directories
         ResourceCache* resource_cache = m_context->GetSubsystem<ResourceCache>();
@@ -410,54 +408,104 @@ namespace Spartan
         {
             shared_ptr<Entity> entity = EntityCreate();
             entity->SetName("camera");
+
             entity->AddComponent<Camera>();
             entity->AddComponent<AudioListener>();
             entity->GetTransform()->SetPosition(Vector3(1.0f, 0.7760f, -1.5f));
-            entity->GetTransform()->SetRotation(Quaternion::FromEulerAngles(Vector3(8.5996f, -33.5988f, 0.0f)));
+            entity->GetTransform()->SetRotation(Quaternion::FromEulerAngles(Vector3(8.3995f, -37.5985f, 0.0f)));
         }
 
         // Light - Directional
         {
-            shared_ptr<Entity> light = EntityCreate();
-            light->SetName("directional_light");
-            light->GetTransform()->SetRotation(Quaternion::FromEulerAngles(30.0f, 30.0, 0.0f));
-            light->GetTransform()->SetPosition(Vector3(0.0f, 10.0f, 0.0f));
+            shared_ptr<Entity> entity = EntityCreate();
+            entity->SetName("directional_light");
 
-            auto light_comp = light->AddComponent<Light>();
-            light_comp->SetLightType(LightType::Directional);
+            entity->GetTransform()->SetRotation(Quaternion::FromEulerAngles(30.0f, 30.0, 0.0f));
+            entity->GetTransform()->SetPosition(Vector3(0.0f, 10.0f, 0.0f));
+
+            Light* light = entity->AddComponent<Light>();
+            light->SetLightType(LightType::Directional);
         }
 
-        // 3D model - asset
+        // 3D model - Helmet
         {
             m_default_world_model = make_unique<Model>(m_context);
             if (m_default_world_model->LoadFromFile("project\\models\\damaged_helmet\\DamagedHelmet.gltf"))
             {
                 Entity* entity = m_default_world_model->GetRootEntity();
-                entity->SetName("model");
-                entity->GetTransform()->SetPosition(Vector3(0.0f, 0.52f, 0.0f));
+                entity->SetName("helmet");
+
+                entity->GetTransform()->SetPosition(Vector3(0.0f, 0.6f, 0.0f));
             }
+        }
+
+        // 3d model - Cube
+        {
+            shared_ptr<Entity> entity = EntityCreate();
+            entity->SetName("Cube");
+
+            entity->GetTransform()->SetPosition(Vector3(0.0, 2.0f, 4.0f));
+
+            // Add a default material and a default cube geometry
+            Renderable* renderable = entity->AddComponent<Renderable>();
+            renderable->SetGeometry(DefaultGeometry::Cube);
+            renderable->SetDefaultMaterial();
+
+            // Physics - Box
+            entity->AddComponent<RigidBody>()->SetMass(1.0f);
+            entity->AddComponent<Collider>()->SetShapeType(ColliderShape::Box);
         }
 
         // 3D model - floor
         {
-            shared_ptr<Entity> model = EntityCreate();
-            model->SetName("floor");
-            model->GetTransform()->SetPosition(Vector3(0.0f, 0.01f, 0.0f));
-            model->GetTransform()->SetScale(Vector3(5.0f, 0.0f, 5.0f));
+            shared_ptr<Entity> entity = EntityCreate();
+            entity->SetName("floor");
 
-            Renderable* renderable = model->AddComponent<Renderable>();
+            // Position at a high of 0.01 to avoid z-fighting with the world grid
+            entity->GetTransform()->SetPosition(Vector3(0.0f, 0.01f, 0.0f));
+            entity->GetTransform()->SetScale(Vector3(20.0f, 0.0f, 20.0f));
+
+            Renderable* renderable = entity->AddComponent<Renderable>();
             renderable->SetGeometry(DefaultGeometry::Quad);
             renderable->SetDefaultMaterial();
+
+            // Physics - Static plane
+            entity->AddComponent<RigidBody>();
+            entity->AddComponent<Collider>()->SetShapeType(ColliderShape::StaticPlane);
         }
 
         // Music
         {
             shared_ptr<Entity> entity = EntityCreate();
             entity->SetName("audio_source");
+
             AudioSource* audio_source = entity->AddComponent<AudioSource>();
             audio_source->SetAudioClip("project\\music\\kenny_ibizarre_epic_you.mp3");
-            audio_source->SetPlayInEditor(true);
             audio_source->SetLoop(true);
+        }
+    }
+
+    void World::UpdateDefaultWorld(double delta_time)
+    {
+        if (!m_default_world_model || !m_default_world_model->GetRootEntity())
+            return;
+
+        Entity* entity = m_default_world_model->GetRootEntity();
+
+        // If a default model exists, slowly rotate it
+        entity->GetTransform()->Rotate(Quaternion::FromEulerAngles(0.0f, 0.0f, -5.0f * static_cast<float>(delta_time)));
+
+        // Play!
+        if (!m_default_world_started)
+        {
+            m_context->m_engine->EngineMode_Toggle(Spartan::Engine_Mode::Engine_Game);
+            m_default_world_started = true;
+        }
+
+        // Slowly rotate the model
+        if (m_context->m_engine->EngineMode_IsSet(Engine_Game))
+        {
+            entity->GetTransform()->Rotate(Quaternion::FromEulerAngles(0.0f, 0.0f, -5.0f * static_cast<float>(delta_time)));
         }
     }
 }

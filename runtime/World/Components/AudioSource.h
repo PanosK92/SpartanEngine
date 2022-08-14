@@ -53,8 +53,6 @@ namespace Spartan
         bool Play() const;
         bool Stop() const;
 
-        void SetPlayInEditor(const bool play_in_editor) { m_play_in_editor = play_in_editor; }
-
         bool GetMute() const { return m_mute; }
         void SetMute(bool mute);
 
@@ -87,6 +85,5 @@ namespace Spartan
         float m_pitch            = 1.0f;
         float m_pan              = 0.0f;
         bool m_audio_clip_loaded = false;
-        bool m_play_in_editor    = false;
     };
 }

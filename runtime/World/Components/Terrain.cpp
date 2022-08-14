@@ -93,7 +93,7 @@ namespace Spartan
             m_model.reset();
             if (Renderable* renderable = m_entity->AddComponent<Renderable>())
             {
-                renderable->GeometryClear();
+                renderable->Clear();
             }
             
             return;
