@@ -344,16 +344,20 @@ namespace ImGui::RHI
                         resources->cb_cpu.options_texture_visualisation = 0;
                         if (RHI_Texture* texture = static_cast<RHI_Texture*>(pcmd->TextureId))
                         {
-                            cmd_list->SetTexture(RendererBindingsSrv::tex, texture);
-
-                            // Make sure single channel texture appear white instead of red.
-                            if (texture->GetChannelCount() == 1)
+                            // During engine initialization, some editor icons might still be loading on a different thread
+                            if (!texture->IsLoading())
                             {
-                                texture->SetFlag(RHI_Texture_Flags::RHI_Texture_Visualise);
-                                texture->SetFlag(RHI_Texture_Flags::RHI_Texture_Visualise_Channel_R);
-                            }
+                                cmd_list->SetTexture(RendererBindingsSrv::tex, texture);
 
-                            resources->cb_cpu.options_texture_visualisation = texture->GetFlags();
+                                // Make sure single channel texture appear white instead of red.
+                                if (texture->GetChannelCount() == 1)
+                                {
+                                    texture->SetFlag(RHI_Texture_Flags::RHI_Texture_Visualise);
+                                    texture->SetFlag(RHI_Texture_Flags::RHI_Texture_Visualise_Channel_R);
+                                }
+
+                                resources->cb_cpu.options_texture_visualisation = texture->GetFlags();
+                            }
                         }
 
                         // Update and bind the uber constant buffer (will only happen if the data changes)
