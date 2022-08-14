@@ -188,7 +188,7 @@ namespace Spartan
             for (const auto& entity : entities)
             {
                 // Make sure there entity has a renderable
-                if (!entity->HasComponent<Renderable>())
+                if (!entity->GetComponent<Renderable>())
                     continue;
 
                 // Get object oriented bounding box

@@ -56,7 +56,6 @@ namespace Spartan
         if (!m_soundFMOD)
             return;
 
-        SP_ASSERT_MSG(m_channelFMOD->stop() == FMOD_OK,  "Failed to stop channel");
         SP_ASSERT_MSG(m_soundFMOD->release() == FMOD_OK, "Failed to release sound");
     }
 
@@ -172,8 +171,6 @@ namespace Spartan
             LogErrorFmod(m_result);
             return false;
         }
-
-        m_channelFMOD = nullptr;
 
         return true;
     }
