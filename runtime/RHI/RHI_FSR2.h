@@ -32,9 +32,7 @@ struct FfxFsr2DispatchDescription;
 
 namespace Spartan
 {
-    //= FORWARD DECLARATIONS
     class Camera;
-    //======================
 
     class RHI_FSR2
     {

@@ -33,8 +33,8 @@ namespace Spartan
 {
     RHI_CommandPool::RHI_CommandPool(RHI_Device* rhi_device, const char* name, const uint64_t swap_chain_id) : SpartanObject(rhi_device->GetContext())
     {
-        m_rhi_device  = rhi_device;
-        m_object_name = name;
+        m_rhi_device = rhi_device;
+        m_name       = name;
     }
 
     RHI_CommandPool::~RHI_CommandPool()

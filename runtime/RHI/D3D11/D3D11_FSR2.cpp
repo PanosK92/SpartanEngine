@@ -25,22 +25,22 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-    void RHI_FSR::GenerateJitterSample(float* x, float* y)
+    void RHI_FSR2::GenerateJitterSample(float* x, float* y)
     {
 
     }
 
-    void RHI_FSR::OnResolutionChange(RHI_Device* rhi_device, const Math::Vector2& resolution_render, const Math::Vector2& resolution_output)
+    void RHI_FSR2::OnResolutionChange(RHI_Device* rhi_device, const Math::Vector2& resolution_render, const Math::Vector2& resolution_output)
     {
 
     }
 
-    void RHI_FSR::Dispatch(RHI_CommandList* cmd_list, RHI_Texture* tex_input, RHI_Texture* tex_depth, RHI_Texture* tex_velocity, RHI_Texture* tex_output, Camera* camera, float delta_time, float sharpness, bool reset)
+    void RHI_FSR2::Dispatch(RHI_CommandList* cmd_list, RHI_Texture* tex_input, RHI_Texture* tex_depth, RHI_Texture* tex_velocity, RHI_Texture* tex_output, Camera* camera, float delta_time, float sharpness, bool reset)
     {
 
     }
 
-    void RHI_FSR::Destroy()
+    void RHI_FSR2::Destroy()
     {
 
     }

@@ -83,7 +83,7 @@ namespace Spartan
         m_height        = height;
         m_window_handle = window_handle;
         m_flags         = flags;
-        m_object_name   = name;
+        m_name          = name;
 
         // Describe and create the swap chain.
         DXGI_SWAP_CHAIN_DESC1 swap_chain_desc = {};

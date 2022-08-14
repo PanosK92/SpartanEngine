@@ -88,7 +88,7 @@ namespace Spartan
         m_width        = width;
         m_height       = height;
         m_flags        = d3d11_utility::swap_chain::validate_flags(flags);
-        m_object_name  = name;
+        m_name         = name;
 
         // Create swap chain
         {

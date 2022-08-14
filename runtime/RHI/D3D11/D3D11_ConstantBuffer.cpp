@@ -59,8 +59,8 @@ namespace Spartan
 
     RHI_ConstantBuffer::RHI_ConstantBuffer(RHI_Device* rhi_device, const string& name)
     {
-        m_rhi_device  = rhi_device;
-        m_object_name = name;
+        m_rhi_device = rhi_device;
+        m_name       = name;
     }
 
     void* RHI_ConstantBuffer::Map()
