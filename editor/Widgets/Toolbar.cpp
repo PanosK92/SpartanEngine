@@ -58,7 +58,7 @@ Toolbar::Toolbar(Editor* editor) : Widget(editor)
     m_widgets[IconType::Component_Options]      = m_editor->GetWidget<RenderOptions>();
     m_widgets[IconType::Directory_File_Texture] = m_editor->GetWidget<TextureViewer>();
 
-    m_context->m_engine->EngineMode_Disable(Spartan::Engine_Mode::Engine_Game);
+    m_context->m_engine->RemoveFlag(Spartan::EngineMode::Game);
 }
 
 void Toolbar::TickAlways()
@@ -87,8 +87,8 @@ void Toolbar::TickAlways()
     // Play button
     widget_button(
         IconType::Button_Play,
-        [this]() { return m_context->m_engine->EngineMode_IsSet(Spartan::Engine_Mode::Engine_Game); },
-        [this]() { m_context->m_engine->EngineMode_Toggle(Spartan::Engine_Mode::Engine_Game); }
+        [this]() { return m_context->m_engine->IsFlagSet(Spartan::EngineMode::Game); },
+        [this]() { m_context->m_engine->ToggleFlag(Spartan::EngineMode::Game); }
     );
 
     // RenderDoc button

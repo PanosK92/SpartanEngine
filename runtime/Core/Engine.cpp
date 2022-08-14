@@ -42,8 +42,8 @@ namespace Spartan
     Engine::Engine()
     {
         // Flags
-        m_flags |= Engine_Physics;
-        m_flags |= Engine_Game;
+        SetFlag(EngineMode::Physics);
+        SetFlag(EngineMode::Game);
 
         // Create context
         m_context = make_shared<Context>();
