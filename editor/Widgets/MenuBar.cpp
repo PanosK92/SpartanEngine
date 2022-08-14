@@ -25,12 +25,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Core/Settings.h"
 #include "Rendering/Model.h"
 #include "../WidgetsDeferred/FileDialog.h"
+#include "Profiler.h"
+#include "../Editor.h"
+#include "ShaderEditor.h"
+#include "RenderOptions.h"
+#include "TextureViewer.h"
+#include "ResourceViewer.h"
 //========================================
 
-//= NAMESPACES ==========
+//= NAMESPACES =====
 using namespace std;
-using namespace Spartan;
-//=======================
+//==================
 
 namespace _Widget_MenuBar
 {
@@ -40,8 +45,8 @@ namespace _Widget_MenuBar
     static bool imgui_metrics         = false;
     static bool imgui_style           = false;
     static bool imgui_demo            = false;
-    static Input* g_input             = nullptr;
-    static World* g_world             = nullptr;
+    static Spartan::Input* g_input    = nullptr;
+    static Spartan::World* g_world    = nullptr;
     static string g_fileDialogSelection;
 }
 
@@ -51,8 +56,22 @@ MenuBar::MenuBar(Editor *editor) : Widget(editor)
     m_is_window              = false;
     m_tool_bar               = make_unique<Toolbar>(editor);
     m_file_dialog            = make_unique<FileDialog>(m_context, true, FileDialog_Type_FileSelection, FileDialog_Op_Open, FileDialog_Filter_World);
-    _Widget_MenuBar::g_input = m_context->GetSubsystem<Input>();
-    _Widget_MenuBar::g_world = m_context->GetSubsystem<World>();
+    _Widget_MenuBar::g_input = m_context->GetSubsystem<Spartan::Input>();
+    _Widget_MenuBar::g_world = m_context->GetSubsystem<Spartan::World>();
+    m_editor                 = editor;
+}
+
+template <class T>
+static void widget_menu_item(Editor* editor)
+{
+    T* widget = editor->GetWidget<T>();
+
+    // Menu item with checkmark based on widget->GetVisible()
+    if (ImGui::MenuItem(widget->GetTitle().c_str(), nullptr, widget->GetVisible()))
+    {
+        // Toggle visibility
+        widget->SetVisible(!widget->GetVisible());
+    }
 }
 
 void MenuBar::TickAlways()
@@ -66,7 +85,7 @@ void MenuBar::TickAlways()
         {
             if (ImGui::MenuItem("New"))
             {
-                m_context->GetSubsystem<World>()->New();
+                m_context->GetSubsystem<Spartan::World>()->New();
             }
 
             ImGui::Separator();
@@ -93,9 +112,20 @@ void MenuBar::TickAlways()
 
         if (ImGui::BeginMenu("View"))
         {
-            ImGui::MenuItem("ImGui Metrics", nullptr, &_Widget_MenuBar::imgui_metrics);
-            ImGui::MenuItem("ImGui Style",   nullptr, &_Widget_MenuBar::imgui_style);
-            ImGui::MenuItem("ImGui Demo",    nullptr, &_Widget_MenuBar::imgui_demo);
+            widget_menu_item<Profiler>(m_editor);
+            widget_menu_item<ShaderEditor>(m_editor);
+            widget_menu_item<RenderOptions>(m_editor);
+            widget_menu_item<TextureViewer>(m_editor);
+            widget_menu_item<ResourceViewer>(m_editor);
+
+            if (ImGui::BeginMenu("ImGui"))
+            {
+                ImGui::MenuItem("Metrics", nullptr, &_Widget_MenuBar::imgui_metrics);
+                ImGui::MenuItem("Style",   nullptr, &_Widget_MenuBar::imgui_style);
+                ImGui::MenuItem("Demo",    nullptr, &_Widget_MenuBar::imgui_demo);
+                ImGui::EndMenu();
+            }
+
             ImGui::EndMenu();
         }
 
@@ -140,7 +170,7 @@ void MenuBar::TickAlways()
 
 void MenuBar::HandleKeyShortcuts() const
 {
-    if (_Widget_MenuBar::g_input->GetKey(KeyCode::Ctrl_Left) && _Widget_MenuBar::g_input->GetKeyDown(KeyCode::P))
+    if (_Widget_MenuBar::g_input->GetKey(Spartan::KeyCode::Ctrl_Left) && _Widget_MenuBar::g_input->GetKeyDown(Spartan::KeyCode::P))
     {
         _Widget_MenuBar::g_showShortcutsWindow = !_Widget_MenuBar::g_showShortcutsWindow;
     }
@@ -171,7 +201,7 @@ void MenuBar::DrawFileDialog() const
         if (m_file_dialog->GetOperation() == FileDialog_Op_Open || m_file_dialog->GetOperation() == FileDialog_Op_Load)
         {
             // Scene
-            if (FileSystem::IsEngineSceneFile(_Widget_MenuBar::g_fileDialogSelection))
+            if (Spartan::FileSystem::IsEngineSceneFile(_Widget_MenuBar::g_fileDialogSelection))
             {
                 EditorHelper::Get().LoadWorld(_Widget_MenuBar::g_fileDialogSelection);
                 _Widget_MenuBar::g_fileDialogVisible = false;
@@ -254,7 +284,7 @@ void MenuBar::DrawAboutWindow() const
 
         if (imgui_extension::button("GitHub"))
         {
-            FileSystem::OpenUrl("https://github.com/PanosK92/SpartanEngine");
+            Spartan::FileSystem::OpenUrl("https://github.com/PanosK92/SpartanEngine");
         }
 
         ImGui::Separator();
@@ -290,7 +320,7 @@ void MenuBar::DrawAboutWindow() const
             ImGui::SameLine(col_b);
             ImGui::Text("URL");
 
-            for (const ThirdPartyLib &lib : m_context->GetSubsystem<Settings>()->GetThirdPartyLibs())
+            for (const Spartan::ThirdPartyLib &lib : m_context->GetSubsystem<Spartan::Settings>()->GetThirdPartyLibs())
             {
                 ImGui::BulletText(lib.name.c_str());
                 ImGui::SameLine(col_a);
@@ -299,7 +329,7 @@ void MenuBar::DrawAboutWindow() const
                 ImGui::PushID(lib.url.c_str());
                 if (imgui_extension::button(lib.url.c_str()))
                 {
-                    FileSystem::OpenUrl(lib.url);
+                    Spartan::FileSystem::OpenUrl(lib.url);
                 }
                 ImGui::PopID();
             }

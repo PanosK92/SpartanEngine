@@ -49,4 +49,5 @@ private:
 
     std::unique_ptr<Toolbar> m_tool_bar;
     std::unique_ptr<FileDialog> m_file_dialog;
+    Editor* m_editor = nullptr;
 };
