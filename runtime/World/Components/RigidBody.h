@@ -129,8 +129,9 @@ namespace Spartan
         void ClearForces() const;
         void Activate() const;
         void Deactivate() const;
-        btRigidBody* GetBtRigidBody() const { return m_rigidBody; }
+        btRigidBody* GetBtRigidBody() const { return m_rigid_body; }
         bool IsInWorld() const { return m_in_world; }
+        bool IsActive() const;
         //===================================================
 
         // Communication with other physics components
@@ -158,7 +159,7 @@ namespace Spartan
         Math::Vector3 m_rotation_lock   = Math::Vector3::Zero;
         Math::Vector3 m_center_of_mass  = Math::Vector3::Zero;
 
-        btRigidBody* m_rigidBody            = nullptr;
+        btRigidBody* m_rigid_body            = nullptr;
         btCollisionShape* m_collision_shape = nullptr;
         bool m_in_world                     = false;
         Physics* m_physics                  = nullptr;

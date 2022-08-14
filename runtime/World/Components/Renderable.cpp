@@ -92,24 +92,16 @@ namespace Spartan
 
     Renderable::Renderable(Context* context, Entity* entity, uint64_t id /*= 0*/) : IComponent(context, entity, id)
     {
-        m_geometry_type        = DefaultGeometry::Undefined;
-        m_geometryIndexOffset  = 0;
-        m_geometryIndexCount   = 0;
-        m_geometryVertexOffset = 0;
-        m_geometryVertexCount  = 0;
-        m_material_default     = false;
-        m_cast_shadows         = true;
-
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_material_default,      bool);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_material,              Material*);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_cast_shadows,          bool);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometryIndexOffset,   uint32_t);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometryIndexCount,    uint32_t);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometryVertexOffset,  uint32_t);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometryVertexCount,   uint32_t);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometryName,          string);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_model,                 Model*);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_bounding_box,          BoundingBox);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_material_default,        bool);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_material,                Material*);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_cast_shadows,            bool);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometryIndexOffset,     uint32_t);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometryIndexCount,      uint32_t);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometryVertexOffset,    uint32_t);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometryVertexCount,     uint32_t);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometry_name,           string);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_model,                   Model*);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_bounding_box,            BoundingBox);
         SP_REGISTER_ATTRIBUTE_GET_SET(DefaultGeometry, SetGeometry,  DefaultGeometry);
     }
 
@@ -170,12 +162,12 @@ namespace Spartan
     void Renderable::SetGeometry(const string& name, const uint32_t index_offset, const uint32_t index_count, const uint32_t vertex_offset, const uint32_t vertex_count, const BoundingBox& bounding_box, Model* model)
     {
         // Terrible way to delete previous geometry in case it's a default one
-        if (m_geometryName == "Default_Geometry")
+        if (m_geometry_name == "Default_Geometry")
         {
             delete m_model;
         }
 
-        m_geometryName         = name;
+        m_geometry_name         = name;
         m_geometryIndexOffset  = index_offset;
         m_geometryIndexCount   = index_count;
         m_geometryVertexOffset = vertex_offset;
@@ -194,7 +186,7 @@ namespace Spartan
         }
     }
 
-    void Renderable::GeometryClear()
+    void Renderable::Clear()
     {
         SetGeometry("Cleared", 0, 0, 0, 0, BoundingBox(), nullptr);
     }
@@ -256,13 +248,15 @@ namespace Spartan
     {
         m_material_default = true;
         ResourceCache* resource_cache = GetContext()->GetSubsystem<ResourceCache>();
-        const auto data_dir = resource_cache->GetResourceDirectory() + "/";
+        const string data_dir = resource_cache->GetResourceDirectory() + "/";
         FileSystem::CreateDirectory(data_dir);
 
         // Create material
-        auto material = make_shared<Material>(GetContext());
+        shared_ptr<Material> material = make_shared<Material>(GetContext());
         material->SetResourceFilePath(resource_cache->GetProjectDirectory() + "standard" + EXTENSION_MATERIAL); // Set resource file path so it can be used by the resource cache
         material->SetIsEditable(false);
+        material->SetProperty(MaterialProperty::UvTilingX, 10.0f);
+        material->SetProperty(MaterialProperty::UvTilingY, 10.0f);
 
         // Se default texture
         const shared_ptr<RHI_Texture2D> texture = resource_cache->Load<RHI_Texture2D>(resource_cache->GetResourceDirectory(ResourceDirectory::Textures) + "/no_texture.png");

@@ -382,7 +382,7 @@ void Properties::ShowRenderable(Renderable* renderable) const
     if (helper::ComponentBegin("Renderable", IconType::Component_Renderable, renderable))
     {
         //= REFLECT =============================================================
-        const string& mesh_name = renderable->GeometryName();
+        const string& mesh_name = renderable->GetGeometryName();
         Material* material      = renderable->GetMaterial();
         string material_name    = material ? material->GetResourceName() : "N/A";
         bool cast_shadows       = renderable->GetCastShadows();
@@ -574,7 +574,7 @@ void Properties::ShowCollider(Collider* collider) const
         ImGui::PopItemWidth();
 
         // Optimize
-        if (collider->GetShapeType() == ColliderShape_Mesh)
+        if (collider->GetShapeType() == ColliderShape::Mesh)
         {
             ImGui::Text("Optimize");
             ImGui::SameLine(helper::g_column); ImGui::Checkbox("##colliderOptimize", &optimize);

@@ -296,7 +296,7 @@ namespace Spartan
                         continue;
 
                     // Acquire geometry
-                    Model* model = renderable->GeometryModel();
+                    Model* model = renderable->GetModel();
                     if (!model || !model->GetVertexBuffer() || !model->GetIndexBuffer())
                         continue;
 
@@ -351,7 +351,7 @@ namespace Spartan
                     m_cb_uber_cpu.transform = entity->GetTransform()->GetMatrix() * view_projection;
                     Update_Cb_Uber(cmd_list);
 
-                    cmd_list->DrawIndexed(renderable->GeometryIndexCount(), renderable->GeometryIndexOffset(), renderable->GeometryVertexOffset());
+                    cmd_list->DrawIndexed(renderable->GetIndexCount(), renderable->GetIndexOffset(), renderable->GetVertexOffset());
                 }
 
                 if (render_pass_active)
@@ -451,7 +451,7 @@ namespace Spartan
                                     continue;
 
                                 // Get geometry
-                                Model* model = renderable->GeometryModel();
+                                Model* model = renderable->GetModel();
                                 if (!model || !model->GetVertexBuffer() || !model->GetIndexBuffer())
                                     continue;
 
@@ -487,7 +487,7 @@ namespace Spartan
                                 // Update light buffer
                                 Update_Cb_Light(cmd_list, light, RHI_Shader_Pixel);
 
-                                cmd_list->DrawIndexed(renderable->GeometryIndexCount(), renderable->GeometryIndexOffset(), renderable->GeometryVertexOffset());
+                                cmd_list->DrawIndexed(renderable->GetIndexCount(), renderable->GetIndexOffset(), renderable->GetVertexOffset());
                             }
                         }
                     }
@@ -550,7 +550,7 @@ namespace Spartan
                     continue;
 
                 // Get geometry
-                Model* model = renderable->GeometryModel();
+                Model* model = renderable->GetModel();
                 if (!model || !model->GetVertexBuffer() || !model->GetIndexBuffer())
                     continue;
 
@@ -582,7 +582,7 @@ namespace Spartan
                 Update_Cb_Uber(cmd_list);
             
                 // Draw
-                cmd_list->DrawIndexed(renderable->GeometryIndexCount(), renderable->GeometryIndexOffset(), renderable->GeometryVertexOffset());
+                cmd_list->DrawIndexed(renderable->GetIndexCount(), renderable->GetIndexOffset(), renderable->GetVertexOffset());
             }
 
             cmd_list->EndRenderPass();
@@ -660,7 +660,7 @@ namespace Spartan
                     continue;
 
                 // Get geometry
-                Model* model = renderable->GeometryModel();
+                Model* model = renderable->GetModel();
                 if (!model || !model->GetVertexBuffer() || !model->GetIndexBuffer())
                     continue;
 
@@ -743,7 +743,7 @@ namespace Spartan
                 }
 
                 // Render
-                cmd_list->DrawIndexed(renderable->GeometryIndexCount(), renderable->GeometryIndexOffset(), renderable->GeometryVertexOffset());
+                cmd_list->DrawIndexed(renderable->GetIndexCount(), renderable->GetIndexOffset(), renderable->GetVertexOffset());
 
                 if (m_profiler)
                 {
@@ -2189,7 +2189,7 @@ namespace Spartan
                 return;
 
             // Get geometry
-            const Model* model = renderable->GeometryModel();
+            const Model* model = renderable->GetModel();
             if (!model || !model->GetVertexBuffer() || !model->GetIndexBuffer())
                 return;
 
@@ -2233,7 +2233,7 @@ namespace Spartan
                 cmd_list->SetTexture(RendererBindingsSrv::gbuffer_normal, tex_normal);
                 cmd_list->SetBufferVertex(model->GetVertexBuffer());
                 cmd_list->SetBufferIndex(model->GetIndexBuffer());
-                cmd_list->DrawIndexed(renderable->GeometryIndexCount(), renderable->GeometryIndexOffset(), renderable->GeometryVertexOffset());
+                cmd_list->DrawIndexed(renderable->GetIndexCount(), renderable->GetIndexOffset(), renderable->GetVertexOffset());
                 cmd_list->EndRenderPass();
             }
         }

@@ -79,12 +79,15 @@ namespace Spartan
     private:
         void Clear();
         void _EntityRemove(const std::shared_ptr<Entity>& entity);
-        void CreateDefaultWorldEntities();
+
+        void CreateDefaultWorld();
+        void UpdateDefaultWorld(double delta_ti);
 
         std::string m_name;
         std::string m_file_path;
-        bool m_was_in_editor_mode = false;
-        bool m_resolve            = true;
+        bool m_was_in_editor_mode    = false;
+        bool m_resolve               = true;
+        bool m_default_world_started = false;
         std::unique_ptr<Model> m_default_world_model;
         std::shared_ptr<TransformHandle> m_transform_handle;
         std::vector<std::shared_ptr<Entity>> m_entities;
