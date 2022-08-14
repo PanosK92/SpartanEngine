@@ -221,7 +221,7 @@ void Properties::ShowTransform(Transform* transform) const
 {
     if (helper::ComponentBegin("Transform", IconType::Component_Transform, transform, true, false))
     {
-        const bool is_playing = m_context->m_engine->EngineMode_IsSet(Engine_Game);
+        const bool is_playing = m_context->m_engine->IsFlagSet(EngineMode::Game);
 
         //= REFLECT ===========================================================================================
         Vector3 position = transform->GetPositionLocal();

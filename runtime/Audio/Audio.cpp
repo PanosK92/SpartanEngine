@@ -128,7 +128,7 @@ namespace Spartan
     void Audio::OnTick(double delta_time)
     {
         // Don't play audio if the engine is not in game mode
-        if (!m_context->m_engine->EngineMode_IsSet(Engine_Game))
+        if (!m_context->m_engine->IsFlagSet(EngineMode::Game))
             return;
 
         SCOPED_TIME_BLOCK(m_profiler);

@@ -29,12 +29,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Spartan
 {
     class Context;
-    class Timer;
 
-    enum Engine_Mode : uint32_t
+    enum class EngineMode : uint32_t
     {
-        Engine_Physics  = 1 << 0, // Should the physics tick ?
-        Engine_Game     = 1 << 1, // Is the engine running in game or editor mode ?
+        Physics,
+        Game
     };
 
     class SPARTAN_CLASS Engine
@@ -47,12 +46,10 @@ namespace Spartan
         void Tick() const;
 
         //  Flags
-        auto EngineMode_GetAll()                        const { return m_flags; }
-        void EngineMode_SetAll(const uint32_t flags)          { m_flags = flags; }
-        void EngineMode_Enable(const Engine_Mode flag)        { m_flags |= flag; }
-        void EngineMode_Disable(const Engine_Mode flag)       { m_flags &= ~flag; }
-        void EngineMode_Toggle(const Engine_Mode flag)        { m_flags = !EngineMode_IsSet(flag) ? m_flags | flag : m_flags & ~flag;}
-        bool EngineMode_IsSet(const Engine_Mode flag)   const { return m_flags & flag; }
+        void SetFlag(const EngineMode flag)          { m_flags |= (1U << static_cast<uint32_t>(flag)); }
+        void RemoveFlag(const EngineMode flag)       { m_flags &= ~(1U << static_cast<uint32_t>(flag)); }
+        bool IsFlagSet(const EngineMode flag)  const { return m_flags & (1U << static_cast<uint32_t>(flag)); }
+        void ToggleFlag(const EngineMode flag)       { IsFlagSet(flag) ? RemoveFlag(flag) : SetFlag(flag); }
 
         auto GetContext() const { return m_context.get(); }
 

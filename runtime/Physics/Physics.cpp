@@ -130,7 +130,7 @@ namespace Spartan
         }
 
         // Don't simulate physics if they are turned off or the we are in editor mode
-        if (!m_context->m_engine->EngineMode_IsSet(Engine_Physics) || !m_context->m_engine->EngineMode_IsSet(Engine_Game))
+        if (!m_context->m_engine->IsFlagSet(EngineMode::Physics) || !m_context->m_engine->IsFlagSet(EngineMode::Game))
             return;
 
         SCOPED_TIME_BLOCK(m_profiler);

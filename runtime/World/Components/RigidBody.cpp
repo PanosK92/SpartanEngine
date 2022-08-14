@@ -130,7 +130,7 @@ namespace Spartan
     void RigidBody::OnTick(double delta_time)
     {
         // When the rigid body is inactive or we are in editor mode, allow the user to move/rotate it
-        if (!IsActivated() || !m_context->m_engine->EngineMode_IsSet(Engine_Game))
+        if (!IsActivated() || !m_context->m_engine->IsFlagSet(EngineMode::Game))
         {
             if (GetPosition() != GetTransform()->GetPosition())
             {

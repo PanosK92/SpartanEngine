@@ -70,7 +70,7 @@ namespace Spartan
     void SoftBody::OnTick(double delta_time)
     {
         // When in editor mode, set engine transform to bullet (so the user can move the body around)
-        if (!m_context->m_engine->EngineMode_IsSet(Engine_Game))
+        if (!m_context->m_engine->IsFlagSet(EngineMode::Game))
         {
             if (GetPosition() != GetTransform()->GetPosition())
             {

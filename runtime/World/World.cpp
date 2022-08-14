@@ -101,9 +101,9 @@ namespace Spartan
         // Tick entities
         {
             // Detect game toggling
-            const bool started   = m_context->m_engine->EngineMode_IsSet(Engine_Game)  && m_was_in_editor_mode;
-            const bool stopped   = !m_context->m_engine->EngineMode_IsSet(Engine_Game) && !m_was_in_editor_mode;
-            m_was_in_editor_mode = !m_context->m_engine->EngineMode_IsSet(Engine_Game);
+            const bool started   = m_context->m_engine->IsFlagSet(EngineMode::Game)  && m_was_in_editor_mode;
+            const bool stopped   = !m_context->m_engine->IsFlagSet(EngineMode::Game) && !m_was_in_editor_mode;
+            m_was_in_editor_mode = !m_context->m_engine->IsFlagSet(EngineMode::Game);
 
             // Start
             if (started)
@@ -483,8 +483,39 @@ namespace Spartan
                 entity->GetTransform()->GetDescendantByName("CarBody_Trim1_0")->GetRenderable()->GetMaterial()->SetProperty(MaterialProperty::RoughnessMultiplier, 0.0f);
 
                 // lights
-                entity->GetTransform()->GetDescendantByName("CarBody_LampCovers_0")->GetRenderable()->GetMaterial()->SetProperty(MaterialProperty::RoughnessMultiplier, 0.0f);
+                entity->GetTransform()->GetDescendantByName("CarBody_LampCovers_0")->GetRenderable()->GetMaterial()->SetProperty(MaterialProperty::RoughnessMultiplier, 0.5f);
+                entity->GetTransform()->GetDescendantByName("CarBody_LampCovers_0")->GetRenderable()->GetMaterial()->SetProperty(MaterialProperty::ColorR, 0.8f);
+                entity->GetTransform()->GetDescendantByName("CarBody_LampCovers_0")->GetRenderable()->GetMaterial()->SetProperty(MaterialProperty::ColorG, 0.8f);
+                entity->GetTransform()->GetDescendantByName("CarBody_LampCovers_0")->GetRenderable()->GetMaterial()->SetProperty(MaterialProperty::ColorB, 0.8f);
                 entity->GetTransform()->GetDescendantByName("CarBody_LampCovers_0")->GetRenderable()->GetMaterial()->SetProperty(MaterialProperty::ColorA, 0.3f);
+
+                // brake disc
+                entity->GetTransform()->GetDescendantByName("FL_Wheel_TireMaterial_0")->GetRenderable()->GetMaterial()->SetProperty(MaterialProperty::Anisotropic, 1.0f);
+                entity->GetTransform()->GetDescendantByName("FL_Wheel_TireMaterial_0")->GetRenderable()->GetMaterial()->SetProperty(MaterialProperty::AnisotropicRotation, 0.5f);
+
+                // tires
+                {
+                    entity->GetTransform()->GetDescendantByName("FL_Wheel_TireMaterial_0")->GetRenderable()->GetMaterial()->SetProperty(MaterialProperty::RoughnessMultiplier, 0.5f);
+
+                    // That's probably a bug, the tires shouldn't have metalness
+                    entity->GetTransform()->GetDescendantByName("FL_Wheel_TireMaterial_0")->GetRenderable()->GetMaterial()->SetProperty(MaterialProperty::MetallnessMultiplier, 0.0f);
+                }
+
+                // rims
+                entity->GetTransform()->GetDescendantByName("FR_Wheel_RimMaterial_0")->GetRenderable()->GetMaterial()->SetProperty(MaterialProperty::Anisotropic, 1.0f);
+                entity->GetTransform()->GetDescendantByName("FR_Wheel_RimMaterial_0")->GetRenderable()->GetMaterial()->SetProperty(MaterialProperty::AnisotropicRotation, 0.5f);
+
+                // interior
+                {
+                    entity->GetTransform()->GetDescendantByName("Interior_InteriorPlastic_0")->GetRenderable()->GetMaterial()->SetProperty(MaterialProperty::RoughnessMultiplier, 0.7f);
+                    entity->GetTransform()->GetDescendantByName("Interior_InteriorPlastic2_0")->GetRenderable()->GetMaterial()->SetProperty(MaterialProperty::RoughnessMultiplier, 0.7f);
+                    entity->GetTransform()->GetDescendantByName("Interior_Interior_0")->GetRenderable()->GetMaterial()->SetProperty(MaterialProperty::Sheen, 0.5f);
+                    entity->GetTransform()->GetDescendantByName("Interior_Interior_0")->GetRenderable()->GetMaterial()->SetProperty(MaterialProperty::SheenTint, 0.5f);
+
+                    // That's probably a bug, the plastic parts of the interior shouldn't have metalness
+                    entity->GetTransform()->GetDescendantByName("Interior_InteriorPlastic_0")->GetRenderable()->GetMaterial()->SetProperty(MaterialProperty::MetallnessMultiplier, 0.0f);
+                    entity->GetTransform()->GetDescendantByName("Interior_InteriorPlastic2_0")->GetRenderable()->GetMaterial()->SetProperty(MaterialProperty::MetallnessMultiplier, 0.0f);
+                }
             }
         }
 
@@ -560,18 +591,15 @@ namespace Spartan
 
         Entity* entity = m_default_world_model->GetRootEntity();
 
-        // If a default model exists, slowly rotate it
-        entity->GetTransform()->Rotate(Quaternion::FromEulerAngles(0.0f, 0.0f, -5.0f * static_cast<float>(delta_time)));
-
         // Play!
         if (!m_default_world_started)
         {
-            m_context->m_engine->EngineMode_Toggle(Spartan::Engine_Mode::Engine_Game);
+            m_context->m_engine->ToggleFlag(EngineMode::Game);
             m_default_world_started = true;
         }
 
         // Slowly rotate the model
-        if (m_context->m_engine->EngineMode_IsSet(Engine_Game))
+        if (m_context->m_engine->IsFlagSet(EngineMode::Game))
         {
             entity->GetTransform()->Rotate(Quaternion::FromEulerAngles(0.0f, 0.0f, -3.5f * static_cast<float>(delta_time)));
         }
