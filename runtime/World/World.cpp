@@ -411,8 +411,8 @@ namespace Spartan
 
             entity->AddComponent<Camera>();
             entity->AddComponent<AudioListener>();
-            entity->GetTransform()->SetPosition(Vector3(1.0f, 0.7760f, -1.5f));
-            entity->GetTransform()->SetRotation(Quaternion::FromEulerAngles(Vector3(8.3995f, -37.5985f, 0.0f)));
+            entity->GetTransform()->SetPosition(Vector3(2.2802f, 0.9715f, -2.2110f));
+            entity->GetTransform()->SetRotation(Quaternion::FromEulerAngles(Vector3(5.3994f, -38.9946f, 0.0f)));
         }
 
         // Light - Directional
@@ -427,24 +427,40 @@ namespace Spartan
             light->SetLightType(LightType::Directional);
         }
 
-        // 3D model - Helmet
+        // 3D model - Car
         {
             m_default_world_model = make_unique<Model>(m_context);
-            if (m_default_world_model->LoadFromFile("project\\models\\damaged_helmet\\DamagedHelmet.gltf"))
+            if (m_default_world_model->LoadFromFile("project\\models\\toyota_ae86_sprinter_trueno_zenki\\scene.gltf"))
             {
                 Entity* entity = m_default_world_model->GetRootEntity();
-                entity->SetName("helmet");
+                entity->SetName("car");
 
-                entity->GetTransform()->SetPosition(Vector3(0.0f, 0.6f, 0.0f));
+                entity->GetTransform()->SetPosition(Vector3(0.0f, 0.0f, 0.0f));
+                entity->GetTransform()->SetScale(Vector3(0.007f, 0.007f, 0.007f));
+
+                // Break calipers have a wrong rotation, probably a bug with sketchfab auto converting to gltf
+                entity->GetTransform()->GetDescendantByName("FR_Caliper_BrakeCaliper_0")->GetTransform()->SetRotationLocal(Quaternion::FromEulerAngles(0.0f, 75.0f, 0.0f));
+                entity->GetTransform()->GetDescendantByName("RR_Caliper_BrakeCaliper_0")->GetTransform()->SetRotationLocal(Quaternion::FromEulerAngles(0.0f, 75.0f, 0.0f));
+
+                // body
+                entity->GetTransform()->GetDescendantByName("CarBody_Primary_0")->GetRenderable()->GetMaterial()->SetProperty(MaterialProperty::RoughnessMultiplier, 0.0f);
+
+                // black plastic parts
+                entity->GetTransform()->GetDescendantByName("CarBody_Secondary_0")->GetRenderable()->GetMaterial()->SetProperty(MaterialProperty::RoughnessMultiplier, 0.0f);
+                entity->GetTransform()->GetDescendantByName("CarBody_Trim1_0")->GetRenderable()->GetMaterial()->SetProperty(MaterialProperty::RoughnessMultiplier, 0.0f);
+
+                // lights
+                entity->GetTransform()->GetDescendantByName("CarBody_LampCovers_0")->GetRenderable()->GetMaterial()->SetProperty(MaterialProperty::RoughnessMultiplier, 0.0f);
+                entity->GetTransform()->GetDescendantByName("CarBody_LampCovers_0")->GetRenderable()->GetMaterial()->SetProperty(MaterialProperty::ColorA, 0.3f);
             }
         }
 
-        // 3d model - Cube
+        // 3d model - Dynamic physics cube
         {
             shared_ptr<Entity> entity = EntityCreate();
-            entity->SetName("cube");
+            entity->SetName("cube_physics_dynamic");
 
-            entity->GetTransform()->SetPosition(Vector3(0.0, 2.0f, 4.0f));
+            entity->GetTransform()->SetPosition(Vector3(-3.3f, 4.0f, 4.0f));
 
             // Add a default material and a default cube geometry
             Renderable* renderable = entity->AddComponent<Renderable>();
@@ -453,6 +469,25 @@ namespace Spartan
 
             // Physics - Box
             entity->AddComponent<RigidBody>()->SetMass(1.0f);
+            entity->AddComponent<Collider>()->SetShapeType(ColliderShape::Box);
+        }
+
+        // 3d model - Static physics cube
+        {
+            shared_ptr<Entity> entity = EntityCreate();
+            entity->SetName("cube_physics_static");
+
+            entity->GetTransform()->SetPosition(Vector3(-5.0f, 1.51f, 4.0f));
+            entity->GetTransform()->SetScale(Vector3(3.0f, 3.0f, 3.0f));
+
+            // Add a default material and a default cube geometry
+            Renderable* renderable = entity->AddComponent<Renderable>();
+            renderable->SetGeometry(DefaultGeometry::Cube);
+            renderable->SetDefaultMaterial();
+
+            // Physics - Box
+            entity->AddComponent<RigidBody>()->SetMass(0.0f);
+            entity->AddComponent<RigidBody>()->SetRestitution(0.5f);
             entity->AddComponent<Collider>()->SetShapeType(ColliderShape::Box);
         }
 
@@ -505,7 +540,7 @@ namespace Spartan
         // Slowly rotate the model
         if (m_context->m_engine->EngineMode_IsSet(Engine_Game))
         {
-            entity->GetTransform()->Rotate(Quaternion::FromEulerAngles(0.0f, 0.0f, -5.0f * static_cast<float>(delta_time)));
+            entity->GetTransform()->Rotate(Quaternion::FromEulerAngles(0.0f, 0.0f, -3.5f * static_cast<float>(delta_time)));
         }
     }
 }

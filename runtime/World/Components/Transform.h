@@ -97,6 +97,7 @@ namespace Spartan
         void AddChild(Transform* child);
         bool IsDescendantOf(Transform* transform) const;
         void GetDescendants(std::vector<Transform*>* descendants);
+        Entity* GetDescendantByName(const std::string& name);
         bool IsRoot()                          const { return m_parent == nullptr; }
         bool HasParent()                       const { return m_parent != nullptr; }
         bool HasChildren()                     const { return GetChildrenCount() > 0 ? true : false; }

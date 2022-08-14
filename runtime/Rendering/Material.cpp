@@ -244,6 +244,9 @@ namespace Spartan
 
     void Material::SetProperty(const MaterialProperty property_type, const float value)
     {
+        if (m_properties[static_cast<uint32_t>(property_type)] == value)
+            return;
+
         if (property_type == MaterialProperty::ColorA)
         {
             // If an object switches from opaque to transparent or vice versa, make the world update so that the renderer
@@ -253,6 +256,9 @@ namespace Spartan
             {
                 m_context->GetSubsystem<World>()->Resolve();
             }
+
+            // Transparent objects are typically see-through (low roughness) so use the alpha as the roughness multiplier.
+            m_properties[static_cast<uint32_t>(MaterialProperty::RoughnessMultiplier)] = value * 0.5f;
         }
 
         m_properties[static_cast<uint32_t>(property_type)] = value;
