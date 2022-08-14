@@ -480,7 +480,7 @@ namespace Spartan
             entity->SetName("audio_source");
 
             AudioSource* audio_source = entity->AddComponent<AudioSource>();
-            audio_source->SetAudioClip("project\\music\\kenny_ibizarre_epic_you.mp3");
+            audio_source->SetAudioClip("project\\music\\forza_motorsport_4_ev.mp3");
             audio_source->SetLoop(true);
         }
     }
