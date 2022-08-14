@@ -46,8 +46,6 @@ public:
 private:
     Spartan::Math::Vector2 m_offset = Spartan::Math::Vector2::Zero;
     float m_window_padding          = 4.0f;
-    bool m_has_resolution_been_set  = false;
-    uint8_t m_frames_count          = 0;
     float m_width                   = 0.0f;
     float m_height                  = 0.0f;
     Spartan::Renderer* m_renderer   = nullptr;

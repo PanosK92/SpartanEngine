@@ -170,10 +170,14 @@ namespace Spartan
         // Create command lists
         m_cmd_pool->AllocateCommandLists(m_swap_chain_buffer_count);
 
-        // Set render, output and viewport resolution/size to whatever the window is (initially)
-        SetResolutionRender(window_width, window_height, false);
-        SetResolutionOutput(window_width, window_height, false);
+
+        // Set the output and viewport resolution to the display resolution.
+        // If the editor is running, it will set the viewport resolution to whatever the viewport.
+        SetResolutionOutput(Display::GetWidth(), Display::GetHeight(), false);
         SetViewport(static_cast<float>(window_width), static_cast<float>(window_height));
+
+        // Set the render resolution to 80% of the display resolution
+        SetResolutionRender(static_cast<uint32_t>(Display::GetWidth() * 0.8f), static_cast<uint32_t>(Display::GetHeight() * 0.8f), false);
 
         CreateConstantBuffers();
         CreateShaders();
