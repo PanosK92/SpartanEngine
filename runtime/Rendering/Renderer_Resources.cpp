@@ -39,7 +39,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_IndexBuffer.h"
 #include "../RHI/RHI_TextureCube.h"
 #include "../RHI/RHI_Device.h"
-#include "../RHI/RHI_FSR.h"
+#include "../RHI/RHI_FSR2.h"
 //=======================================
 
 //= NAMESPACES ===============
@@ -233,7 +233,7 @@ namespace Spartan
             render_target(RendererTexture::Blur) = make_unique<RHI_Texture2D>(m_context, width, height, 1, RHI_Format_R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv, "rt_blur");
         }
 
-        RHI_FSR::OnResolutionChange(m_rhi_device.get(), m_resolution_render, m_resolution_output);
+        RHI_FSR2::OnResolutionChange(m_rhi_device.get(), m_resolution_render, m_resolution_output);
     }
 
     void Renderer::CreateShaders()

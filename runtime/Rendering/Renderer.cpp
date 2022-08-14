@@ -46,7 +46,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Window.h"                     
 #include "../Input/Input.h"                     
 #include "../World/Components/Environment.h"    
-#include "../RHI/RHI_FSR.h"
+#include "../RHI/RHI_FSR2.h"
 #include "../RHI/RHI_RenderDoc.h"
 //==============================================
 
@@ -113,7 +113,7 @@ namespace Spartan
         Log::m_log_to_file = true;
 
         RHI_RenderDoc::Shutdown();
-        RHI_FSR::Destroy();
+        RHI_FSR2::Destroy();
     }
 
     void Renderer::OnInitialise()
@@ -267,9 +267,9 @@ namespace Spartan
 
             // Generate jitter sample in case FSR (which also does TAA) is enabled. D3D11 only receives FXAA so it's ignored at this point.
             UpsamplingMode upsampling_mode = GetOption<UpsamplingMode>(RendererOption::Upsampling);
-            if ((upsampling_mode == UpsamplingMode::FSR || GetOption<AntialiasingMode>(RendererOption::Antialiasing) == AntialiasingMode::Taa) && RHI_Device::GetRhiApiType() != RHI_Api_Type::D3d11)
+            if ((upsampling_mode == UpsamplingMode::FSR2 || GetOption<AntialiasingMode>(RendererOption::Antialiasing) == AntialiasingMode::Taa) && RHI_Device::GetRhiApiType() != RHI_Api_Type::D3d11)
             {
-                RHI_FSR::GenerateJitterSample(&m_taa_jitter.x, &m_taa_jitter.y);
+                RHI_FSR2::GenerateJitterSample(&m_taa_jitter.x, &m_taa_jitter.y);
                 m_taa_jitter.x            = (m_taa_jitter.x / m_resolution_render.x);
                 m_taa_jitter.y            = (m_taa_jitter.y / m_resolution_render.y);
                 m_cb_frame_cpu.projection *= Matrix::CreateTranslation(Vector3(m_taa_jitter.x, m_taa_jitter.y, 0.0f));
@@ -743,7 +743,7 @@ namespace Spartan
                 return;
             }
 
-            if (is_d3d11 && option == RendererOption::Upsampling && value == static_cast<float>(UpsamplingMode::FSR))
+            if (is_d3d11 && option == RendererOption::Upsampling && value == static_cast<float>(UpsamplingMode::FSR2))
             {
                 LOG_WARNING("FSR 2.0 is not supported on D3D11");
                 return;
@@ -772,14 +772,15 @@ namespace Spartan
             else if (option == RendererOption::Antialiasing)
             {
                 bool taa_enabled = value == static_cast<float>(AntialiasingMode::Taa) || value == static_cast<float>(AntialiasingMode::TaaFxaa);
-                bool fsr_enabled = GetOption<UpsamplingMode>(RendererOption::Upsampling) == UpsamplingMode::FSR;
+                bool fsr_enabled = GetOption<UpsamplingMode>(RendererOption::Upsampling) == UpsamplingMode::FSR2;
 
                 if (taa_enabled)
                 {
                     // Implicitly enable FSR since it's doing TAA.
                     if (!fsr_enabled)
                     {
-                        m_options[static_cast<uint32_t>(RendererOption::Upsampling)] = static_cast<float>(UpsamplingMode::FSR);
+                        m_options[static_cast<uint32_t>(RendererOption::Upsampling)] = static_cast<float>(UpsamplingMode::FSR2);
+                        m_ffx_fsr2_reset = true;
                         LOG_INFO("Enabled FSR 2.0 since it's used for TAA.");
                     }
                 }
@@ -807,7 +808,7 @@ namespace Spartan
                         LOG_INFO("Disabled TAA since it's done by FSR 2.0.");
                     }
                 }
-                else if (value == static_cast<float>(UpsamplingMode::FSR))
+                else if (value == static_cast<float>(UpsamplingMode::FSR2))
                 {
                     // Implicitly enable TAA since FSR 2.0 is doing it
                     if (!taa_enabled)
