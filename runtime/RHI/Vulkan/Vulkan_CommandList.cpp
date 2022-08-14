@@ -743,7 +743,7 @@ namespace Spartan
         }
 
         // Null textures are allowed, and we replace them with a transparent texture.
-        if (!texture)
+        if (!texture || !texture->IsLoading())
             return;
 
         SP_ASSERT_MSG(texture->GetRhiSrv() != nullptr, "The texture has no srv");
