@@ -742,11 +742,9 @@ namespace Spartan
             return;
         }
 
-        // Null textures are allowed, and we replace them with a transparent texture.
+        // If the texture is null or it's still loading, ignore it.
         if (!texture || texture->IsLoading())
             return;
-
-        SP_ASSERT_MSG(texture->GetRhiSrv() != nullptr, "The texture has no srv");
 
         // Get some texture info
         const uint32_t mip_count        = texture->GetMipCount();
@@ -754,13 +752,8 @@ namespace Spartan
         const uint32_t mip_start        = mip_specified ? mip_index : 0;
         RHI_Image_Layout current_layout = texture->GetLayout(mip_start);
 
-        // If the image has an invalid layout (can happen for a few frames during staging), replace with a default texture
-        if (current_layout == RHI_Image_Layout::Undefined || current_layout == RHI_Image_Layout::Preinitialized)
-        {
-            LOG_ERROR("Can't set texture without a layout, replacing with a default texture");
-            texture = m_renderer->GetDefaultTextureTransparent();
-            current_layout = texture->GetLayout(0);
-        }
+        SP_ASSERT_MSG(texture->GetRhiSrv() != nullptr, "The texture has no srv"); // Vulkan only has SRVs
+        SP_ASSERT_MSG(current_layout != RHI_Image_Layout::Undefined && current_layout != RHI_Image_Layout::Preinitialized, "Invalid layout");
 
         // Transition to appropriate layout (if needed)
         {
@@ -769,7 +762,7 @@ namespace Spartan
             if (uav)
             {
                 SP_ASSERT(texture->IsUav());
-
+                
                 // According to section 13.1 of the Vulkan spec, storage textures have to be in a general layout.
                 // https://www.khronos.org/registry/vulkan/specs/1.1-extensions/html/vkspec.html#descriptorsets-storageimage
                 target_layout = RHI_Image_Layout::General;
