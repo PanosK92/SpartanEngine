@@ -42,7 +42,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World/Components/ReflectionProbe.h"
 #include "../World/World.h"
 #include "../World/TransformHandle/TransformHandle.h"
-#include "../RHI/RHI_FSR.h"
+#include "../RHI/RHI_FSR2.h"
 //===================================================
 
 //= NAMESPACES ===============
@@ -1326,10 +1326,10 @@ namespace Spartan
         // RENDER RESOLUTION -> OUTPUT RESOLUTION
         {
             // FSR 2.0 (It can be used both for upsampling and just TAA)
-            if (upsampling_mode == UpsamplingMode::FSR || taa_enabled)
+            if (upsampling_mode == UpsamplingMode::FSR2 || taa_enabled)
             {
                 swap_render = !swap_render;
-                Pass_Ffx_Fsr_2_0(cmd_list, get_render_in, rt_frame_output);
+                Pass_Ffx_Fsr2(cmd_list, get_render_in, rt_frame_output);
             }
             // Linear
             else if (upsampling_mode == UpsamplingMode::Linear)
@@ -1365,7 +1365,7 @@ namespace Spartan
             if (GetOption<bool>(RendererOption::Sharpness))
             {
                 // FidelityFX FSR 2.0 sharpening overrides FidelityFX CAS
-                if (upsampling_mode != UpsamplingMode::FSR)
+                if (upsampling_mode != UpsamplingMode::FSR2)
                 {
                     swap_output = !swap_output;
                     Pass_Ffx_Cas(cmd_list, get_output_in, get_output_out);
@@ -1894,14 +1894,14 @@ namespace Spartan
         cmd_list->EndMarker();
     }
 
-    void Renderer::Pass_Ffx_Fsr_2_0(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
+    void Renderer::Pass_Ffx_Fsr2(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
     {
-        cmd_list->BeginTimeblock("amd_ffx_fsr_2_0");
+        cmd_list->BeginTimeblock("amd_ffx_fsr2");
 
         // Get sharpness value
         float sharpness = GetOption<float>(RendererOption::Sharpness);
 
-        RHI_FSR::Dispatch(
+        RHI_FSR2::Dispatch(
             cmd_list,
             tex_in,
             render_target(RendererTexture::Gbuffer_Depth).get(),
@@ -1909,8 +1909,11 @@ namespace Spartan
             tex_out,
             m_camera.get(),
             m_cb_frame_cpu.delta_time,
-            GetOption<float>(RendererOption::Sharpness)
+            GetOption<float>(RendererOption::Sharpness),
+            m_ffx_fsr2_reset
         );
+
+        m_ffx_fsr2_reset = false;
 
         cmd_list->EndTimeblock();
     }

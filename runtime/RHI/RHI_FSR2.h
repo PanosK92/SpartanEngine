@@ -36,7 +36,7 @@ namespace Spartan
     class Camera;
     //======================
 
-    class RHI_FSR
+    class RHI_FSR2
     {
     public:
         static void OnResolutionChange(RHI_Device* rhi_device, const Math::Vector2& resolution_render, const Math::Vector2& resolution_output);
@@ -49,7 +49,8 @@ namespace Spartan
             RHI_Texture* tex_output,
             Camera* camera,
             float delta_time,
-            float sharpness
+            float sharpness,
+            bool reset
         );
         static void Destroy();
 

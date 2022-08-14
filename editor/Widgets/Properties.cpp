@@ -978,16 +978,16 @@ void Properties::ShowAudioSource(AudioSource* audio_source) const
 
     if (helper::ComponentBegin("Audio Source", IconType::Component_AudioSource, audio_source))
     {
-        //= REFLECT ===============================================
-        string audio_clip_name  = audio_source->GetAudioClipName();
-        bool mute               = audio_source->GetMute();
-        bool play_on_start      = audio_source->GetPlayOnStart();
-        bool loop               = audio_source->GetLoop();
-        int priority            = audio_source->GetPriority();
-        float volume            = audio_source->GetVolume();
-        float pitch             = audio_source->GetPitch();
-        float pan               = audio_source->GetPan();
-        //=========================================================
+        //= REFLECT ==============================================
+        string audio_clip_name = audio_source->GetAudioClipName();
+        bool mute              = audio_source->GetMute();
+        bool play_on_start     = audio_source->GetPlayOnStart();
+        bool loop              = audio_source->GetLoop();
+        int priority           = audio_source->GetPriority();
+        float volume           = audio_source->GetVolume();
+        float pitch            = audio_source->GetPitch();
+        float pan              = audio_source->GetPan();
+        //========================================================
 
         // Audio clip
         ImGui::Text("Audio Clip");
@@ -1027,15 +1027,15 @@ void Properties::ShowAudioSource(AudioSource* audio_source) const
         ImGui::Text("Pan");
         ImGui::SameLine(helper::g_column); ImGui::SliderFloat("##audioSourcePan", &pan, -1.0f, 1.0f);
 
-        //= MAP ============================================================================================
-        if (mute != audio_source->GetMute())                    audio_source->SetMute(mute);
-        if (play_on_start != audio_source->GetPlayOnStart())    audio_source->SetPlayOnStart(play_on_start);
-        if (loop != audio_source->GetLoop())                    audio_source->SetLoop(loop);
-        if (priority != audio_source->GetPriority())            audio_source->SetPriority(priority);
-        if (volume != audio_source->GetVolume())                audio_source->SetVolume(volume);
-        if (pitch != audio_source->GetPitch())                  audio_source->SetPitch(pitch);
-        if (pan != audio_source->GetPan())                      audio_source->SetPan(pan);
-        //==================================================================================================
+        //= MAP =========================================================================================
+        if (mute != audio_source->GetMute())                 audio_source->SetMute(mute);
+        if (play_on_start != audio_source->GetPlayOnStart()) audio_source->SetPlayOnStart(play_on_start);
+        if (loop != audio_source->GetLoop())                 audio_source->SetLoop(loop);
+        if (priority != audio_source->GetPriority())         audio_source->SetPriority(priority);
+        if (volume != audio_source->GetVolume())             audio_source->SetVolume(volume);
+        if (pitch != audio_source->GetPitch())               audio_source->SetPitch(pitch);
+        if (pan != audio_source->GetPan())                   audio_source->SetPan(pan);
+        //===============================================================================================
     }
     helper::ComponentEnd();
 }

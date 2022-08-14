@@ -289,7 +289,7 @@ void RenderOptions::TickVisible()
                 // Sharpening
                 {
                     // FidelityFX FSR 2.0 sharpening overrides FidelityFX CAS
-                    bool fsr_enabled = m_renderer->GetOption<UpsamplingMode>(RendererOption::Upsampling) == UpsamplingMode::FSR;
+                    bool fsr_enabled = m_renderer->GetOption<UpsamplingMode>(RendererOption::Upsampling) == UpsamplingMode::FSR2;
                     string label = fsr_enabled ? "Sharpness (AMD FidelityFX FSR 2.0)" : "Sharpness (AMD FidelityFX CAS)";
 
                     helper::RenderOptionValue(label.c_str(), RendererOption::Sharpness, "", 0.1f, 0.0f, 1.0f);

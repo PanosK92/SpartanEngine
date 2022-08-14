@@ -20,7 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 //= INCLUDES ==========
 #include "pch.h"
-#include "../RHI_FSR.h"
+#include "../RHI_FSR2.h"
 //=====================
 
 namespace Spartan
@@ -35,13 +35,13 @@ namespace Spartan
 
     }
 
-    void RHI_FSR::Dispatch(RHI_CommandList* cmd_list, RHI_Texture* tex_input, RHI_Texture* tex_depth, RHI_Texture* tex_velocity, RHI_Texture* tex_output, Camera* camera, float delta_time, float sharpness)
+    void RHI_FSR::Dispatch(RHI_CommandList* cmd_list, RHI_Texture* tex_input, RHI_Texture* tex_depth, RHI_Texture* tex_velocity, RHI_Texture* tex_output, Camera* camera, float delta_time, float sharpness, bool reset)
     {
 
     }
 
     void RHI_FSR::Destroy()
     {
-        
+
     }
 }
