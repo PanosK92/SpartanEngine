@@ -264,9 +264,9 @@ namespace Spartan
         }
 
         // Assign texture name to the object name since Vulkan is using this for it's validation layer.
-        if (m_object_name.empty())
+        if (m_name.empty())
         {
-            m_object_name = GetResourceName();
+            m_name = GetResourceName();
         }
 
         // Verify that loading was successful.
@@ -541,7 +541,7 @@ namespace Spartan
             // Wait in case this texture loading in another thread.
             while (IsLoading())
             {
-                LOG_INFO("Waiting for texture \"%s\" to finish loading...", m_object_name.c_str());
+                LOG_INFO("Waiting for texture \"%s\" to finish loading...", m_name.c_str());
                 this_thread::sleep_for(chrono::milliseconds(16));
             }
 

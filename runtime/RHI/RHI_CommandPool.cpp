@@ -37,7 +37,7 @@ namespace Spartan
             for (uint32_t i = 0; i < command_list_count; i++)
             {
                 vector<shared_ptr<RHI_CommandList>>& cmd_lists = m_cmd_lists[index_pool];
-                string cmd_list_name                           = m_object_name + "_cmd_pool_" + to_string(index_pool) + "_cmd_list_" + to_string(cmd_lists.size());
+                string cmd_list_name                           = m_name + "_cmd_pool_" + to_string(index_pool) + "_cmd_list_" + to_string(cmd_lists.size());
                 shared_ptr<RHI_CommandList> cmd_list           = make_shared<RHI_CommandList>(m_context, m_rhi_resources[index_pool], cmd_list_name.c_str());
 
                 cmd_lists.emplace_back(cmd_list);

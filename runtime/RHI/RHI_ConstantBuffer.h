@@ -63,7 +63,7 @@ namespace Spartan
             if (reallocate)
             {
                 Create<T>(m_element_count * 2);
-                LOG_INFO("Buffer \"%s\" has been re-allocated with a size of %d bytes", m_object_name.c_str(), m_object_size_gpu);
+                LOG_INFO("Buffer \"%s\" has been re-allocated with a size of %d bytes", m_name.c_str(), m_object_size_gpu);
             }
 
             // Update

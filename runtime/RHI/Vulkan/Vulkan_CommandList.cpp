@@ -75,7 +75,7 @@ namespace Spartan
         m_renderer    = context->GetSubsystem<Renderer>();
         m_profiler    = context->GetSubsystem<Profiler>();
         m_rhi_device  = m_renderer->GetRhiDevice().get();
-        m_object_name = name;
+        m_name = name;
 
         RHI_Context* rhi_context = m_rhi_device->GetRhiContext();
 
@@ -704,7 +704,7 @@ namespace Spartan
 
         if (!m_descriptor_layout_current)
         {
-            LOG_WARNING("Descriptor layout not set, try setting constant buffer \"%s\" within a render pass", constant_buffer->GetObjectName().c_str());
+            LOG_WARNING("Descriptor layout not set, try setting constant buffer \"%s\" within a render pass", constant_buffer->GetName().c_str());
             return;
         }
 
@@ -719,7 +719,7 @@ namespace Spartan
 
         if (!m_descriptor_layout_current)
         {
-            LOG_WARNING("Descriptor layout not set, try setting sampler \"%s\" within a render pass", sampler->GetObjectName().c_str());
+            LOG_WARNING("Descriptor layout not set, try setting sampler \"%s\" within a render pass", sampler->GetName().c_str());
             return;
         }
 
@@ -738,7 +738,7 @@ namespace Spartan
 
         if (!m_descriptor_layout_current)
         {
-            LOG_WARNING("Descriptor layout not set, try setting texture \"%s\" within a render pass", texture->GetObjectName().c_str());
+            LOG_WARNING("Descriptor layout not set, try setting texture \"%s\" within a render pass", texture->GetName().c_str());
             return;
         }
 
@@ -830,7 +830,7 @@ namespace Spartan
 
         if (!m_descriptor_layout_current)
         {
-            LOG_WARNING("Descriptor layout not set, try setting structured buffer \"%s\" within a render pass", structured_buffer->GetObjectName().c_str());
+            LOG_WARNING("Descriptor layout not set, try setting structured buffer \"%s\" within a render pass", structured_buffer->GetName().c_str());
             return;
         }
 
@@ -1042,9 +1042,9 @@ namespace Spartan
         if (!cached)
         {
             // Create a name for the descriptor set layout, very useful for Vulkan debugging
-            string name  = "CS:" + (pipeline_state.shader_compute ? pipeline_state.shader_compute->GetObjectName() : "null");
-            name        += "-VS:" + (pipeline_state.shader_vertex ? pipeline_state.shader_vertex->GetObjectName()  : "null");
-            name        += "-PS:" + (pipeline_state.shader_pixel  ? pipeline_state.shader_pixel->GetObjectName()   : "null");
+            string name  = "CS:" + (pipeline_state.shader_compute ? pipeline_state.shader_compute->GetName() : "null");
+            name        += "-VS:" + (pipeline_state.shader_vertex ? pipeline_state.shader_vertex->GetName()  : "null");
+            name        += "-PS:" + (pipeline_state.shader_pixel  ? pipeline_state.shader_pixel->GetName()   : "null");
 
             // Emplace a new descriptor set layout
             it = m_descriptor_set_layouts.emplace(make_pair(hash, make_shared<RHI_DescriptorSetLayout>(m_rhi_device, descriptors, name.c_str()))).first;

@@ -321,9 +321,9 @@ namespace Spartan
 
     const shared_ptr<Entity>& World::EntityGetByName(const string& name)
     {
-        for (const auto& entity : m_entities)
+        for (shared_ptr<Entity>& entity : m_entities)
         {
-            if (entity->GetObjectName() == name)
+            if (entity->GetName() == name)
                 return entity;
         }
 

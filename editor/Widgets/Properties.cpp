@@ -604,7 +604,7 @@ void Properties::ShowConstraint(Constraint* constraint) const
         Vector3 rotation                = constraint->GetRotation().ToEulerAngles();
         Vector2 high_limit              = constraint->GetHighLimit();
         Vector2 low_limit               = constraint->GetLowLimit();
-        string other_body_name          = other_body.expired() ? "N/A" : other_body.lock()->GetObjectName();
+        string other_body_name          = other_body.expired() ? "N/A" : other_body.lock()->GetName();
         //==================================================================================================
 
         const auto inputTextFlags   = ImGuiInputTextFlags_CharsDecimal;

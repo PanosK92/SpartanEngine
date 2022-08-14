@@ -40,7 +40,7 @@ namespace Spartan
     {
         m_rhi_device  = rhi_device;
         m_descriptors = descriptors;
-        m_object_name = name;
+        m_name        = name;
         m_dynamic_offsets.fill(0);
 
         CreateResource(m_descriptors);
@@ -175,7 +175,7 @@ namespace Spartan
             SP_ASSERT(m_rhi_device->HasDescriptorSetCapacity() && "Descriptor pool has no more memory to allocate another descriptor set");
 
             // Create descriptor set
-            descriptor_sets[hash] = RHI_DescriptorSet(m_rhi_device, m_descriptors, this, m_object_name.c_str());
+            descriptor_sets[hash] = RHI_DescriptorSet(m_rhi_device, m_descriptors, this, m_name.c_str());
 
             // Out
             descriptor_set = &descriptor_sets[hash];

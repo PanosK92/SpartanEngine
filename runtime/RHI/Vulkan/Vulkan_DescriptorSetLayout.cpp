@@ -94,6 +94,6 @@ namespace Spartan
         );
 
         // Name
-        vulkan_utility::debug::set_object_name(static_cast<VkDescriptorSetLayout>(m_resource), m_object_name.c_str());
+        vulkan_utility::debug::set_object_name(static_cast<VkDescriptorSetLayout>(m_resource), m_name.c_str());
     }
 }

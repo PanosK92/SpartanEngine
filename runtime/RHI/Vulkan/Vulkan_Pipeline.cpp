@@ -389,15 +389,15 @@ namespace Spartan
                 // Name the pipeline object
                 if (m_state.shader_vertex)
                 {
-                    vulkan_utility::debug::set_object_name(*pipeline, m_state.shader_vertex->GetObjectName().c_str());
+                    vulkan_utility::debug::set_object_name(*pipeline, m_state.shader_vertex->GetName().c_str());
                 }
                 else if (m_state.shader_pixel)
                 {
-                    vulkan_utility::debug::set_object_name(*pipeline, m_state.shader_pixel->GetObjectName().c_str());
+                    vulkan_utility::debug::set_object_name(*pipeline, m_state.shader_pixel->GetName().c_str());
                 }
                 else if (m_state.shader_compute)
                 {
-                    vulkan_utility::debug::set_object_name(*pipeline, m_state.shader_compute->GetObjectName().c_str());
+                    vulkan_utility::debug::set_object_name(*pipeline, m_state.shader_compute->GetName().c_str());
                 }
             }
         }

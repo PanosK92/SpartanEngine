@@ -60,14 +60,14 @@ namespace Spartan::Math
         };
 
         m_vertex_buffer = make_shared<RHI_VertexBuffer>(renderer->GetRhiDevice().get(), false, "rectangle");
-        m_vertex_buffer->SetObjectName("vertex_buffer_rectangle");
+        m_vertex_buffer->SetName("vertex_buffer_rectangle");
         m_vertex_buffer->Create(vertices, 6);
 
         // Create index buffer
         const uint32_t indices[6] = { 0, 1, 2, 3, 4, 5 };
 
         m_index_buffer = make_shared<RHI_IndexBuffer>(renderer->GetRhiDevice().get(), false, "rectangle");
-        m_index_buffer->SetObjectName("index_buffer_rectangle");
+        m_index_buffer->SetName("index_buffer_rectangle");
         m_index_buffer->Create(indices, 6);
     }
 }

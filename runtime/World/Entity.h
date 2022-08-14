@@ -56,10 +56,6 @@ namespace Spartan
         void Serialize(FileStream* stream);
         void Deserialize(FileStream* stream, Transform* parent);
 
-        // Name
-        const std::string& GetObjectName() const { return m_object_name; }
-        void SetName(const std::string& name)    { m_object_name = name; }
-
         // Active
         bool IsActive() const             { return m_is_active; }
         void SetActive(const bool active) { m_is_active = active; }
@@ -133,7 +129,6 @@ namespace Spartan
         std::shared_ptr<Entity> GetPtrShared() { return shared_from_this(); }
 
     private:
-        std::string m_object_name     = "Entity";
         std::atomic<bool> m_is_active = true;
         bool m_hierarchy_visibility   = true;
         Transform* m_transform        = nullptr;

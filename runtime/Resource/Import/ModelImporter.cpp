@@ -434,7 +434,7 @@ namespace Spartan
         entity->SetName(m_name); // Set custom name, which is more descriptive than "RootNode"
 
         // Update progress tracking
-        ProgressTracker::GetProgress(ProgressType::ModelImporter).SetText("Creating entity for " + entity->GetObjectName());
+        ProgressTracker::GetProgress(ProgressType::ModelImporter).SetText("Creating entity for " + entity->GetName());
 
         // Set the transform of parent_node as the parent of the new_entity's transform
         Transform* parent_trans = parent_entity ? parent_entity->GetTransform() : nullptr;
@@ -578,7 +578,7 @@ namespace Spartan
 
         // Set the geometry
         renderable->SetGeometry(
-            entity_parent->GetObjectName(),
+            entity_parent->GetName(),
             index_offset,
             static_cast<uint32_t>(indices.size()),
             vertex_offset,

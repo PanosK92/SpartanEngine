@@ -157,12 +157,12 @@ namespace Spartan
 
     void Log::Write(const weak_ptr<Entity>& entity, const LogType type)
     {
-        entity.expired() ? Write("Null", type) : Write(entity.lock()->GetObjectName(), type);
+        entity.expired() ? Write("Null", type) : Write(entity.lock()->GetName(), type);
     }
 
     void Log::Write(const std::shared_ptr<Entity>& entity, const LogType type)
     {
-        entity ? Write(entity->GetObjectName(), type) : Write("Null", type);
+        entity ? Write(entity->GetName(), type) : Write("Null", type);
     }
 
     void Log::Write(const Vector2& value, const LogType type)
