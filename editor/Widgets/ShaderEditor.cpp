@@ -206,7 +206,7 @@ void ShaderEditor::GetShaderInstances()
 
     for (const shared_ptr<RHI_Shader>& shader : shaders)
     {
-        if (shader->IsCompiled())
+        if (shader && shader->IsCompiled())
         {
             m_shaders.emplace_back(shader.get());
         }
