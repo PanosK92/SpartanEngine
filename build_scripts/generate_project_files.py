@@ -39,8 +39,8 @@ copy("data", "binaries\\data")
 # 3. Copy engine DLLs to the binary directory
 print("\n3. Copying required DLLs to the binary directory...")
 copy("third_party\\libraries\\dxcompiler.dll", "binaries")
-copy("third_party\\libraries\\fmod64.dll", "binaries")
-copy("third_party\\libraries\\fmodL64.dll", "binaries")
+copy("third_party\\libraries\\fmod.dll", "binaries")
+copy("third_party\\libraries\\fmodL.dll", "binaries")
 
 # 4. Copy some assets to the project directory
 print("\n4. Copying some assets to the project directory...")

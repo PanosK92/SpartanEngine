@@ -164,7 +164,7 @@ project (RUNTIME_PROJECT_NAME)
 		targetdir (TARGET_DIR) -- The working directory for the integrated debugger
 		links { "dxcompiler" }
 		links { "assimp" }
-		links { "fmod64_vc" }
+		links { "fmod_vc" }
 		links { "FreeImageLib" }
 		links { "freetype" }
 		links { "BulletCollision", "BulletDynamics", "BulletSoftBody", "LinearMath" }
@@ -178,7 +178,7 @@ project (RUNTIME_PROJECT_NAME)
 		targetdir (TARGET_DIR)
 		links { "dxcompiler" }
 		links { "assimp_debug" }
-		links { "fmodL64_vc" }
+		links { "fmodL_vc" }
 		links { "FreeImageLib_debug" }
 		links { "freetype_debug" }
 		links { "BulletCollision_debug", "BulletDynamics_debug", "BulletSoftBody_debug", "LinearMath_debug" }
