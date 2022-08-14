@@ -317,8 +317,6 @@ namespace Spartan
         uint32_t pos_x  = (Display::GetWidth() / 2)  - (width / 2);
         uint32_t pos_y  = (Display::GetHeight() / 2) - (height / 2);
 
-
-
         // Create splash screen
         m_splash_sceen_window = SDL_CreateWindow(
             "splash_screen",                                                    // window title

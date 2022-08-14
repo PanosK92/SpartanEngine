@@ -82,7 +82,7 @@ namespace Spartan
         SetOption(RendererOption::Debug_Grid,               1.0f);
         SetOption(RendererOption::Debug_ReflectionProbes,   1.0f);
         SetOption(RendererOption::Debug_Lights,             1.0f);
-        SetOption(RendererOption::Debug_Physics,            1.0f);
+        SetOption(RendererOption::Debug_Physics,            0.0f);
         SetOption(RendererOption::Debug_PerformanceMetrics, 1.0f);
         //SetOption(RendererOption::DepthOfField,        1.0f); // This is depth of field from ALDI, so until I improve it, it should be disabled by default.
         //SetOption(RendererOption::Render_DepthPrepass, 1.0f); // Depth-pre-pass is not always faster, so by default, it's disabled.

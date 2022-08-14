@@ -411,20 +411,52 @@ namespace Spartan
 
             entity->AddComponent<Camera>();
             entity->AddComponent<AudioListener>();
-            entity->GetTransform()->SetPosition(Vector3(2.2802f, 0.9715f, -2.2110f));
-            entity->GetTransform()->SetRotation(Quaternion::FromEulerAngles(Vector3(5.3994f, -38.9946f, 0.0f)));
+            entity->GetTransform()->SetPosition(Vector3(2.3239f, 1.1778f, -3.4932f));
+            entity->GetTransform()->SetRotation(Quaternion::FromEulerAngles(Vector3(4.9986f, -23.5962f, 0.0f)));
         }
 
         // Light - Directional
         {
             shared_ptr<Entity> entity = EntityCreate();
-            entity->SetName("directional_light");
+            entity->SetName("light_directional");
 
-            entity->GetTransform()->SetRotation(Quaternion::FromEulerAngles(30.0f, 30.0, 0.0f));
             entity->GetTransform()->SetPosition(Vector3(0.0f, 10.0f, 0.0f));
+            entity->GetTransform()->SetRotation(Quaternion::FromEulerAngles(30.0f, 30.0, 0.0f));
 
             Light* light = entity->AddComponent<Light>();
             light->SetLightType(LightType::Directional);
+            light->SetShadowsEnabled(false);
+            light->SetIntensity(13480.0f);
+        }
+
+        // Light - Point blue
+        {
+            shared_ptr<Entity> entity = EntityCreate();
+            entity->SetName("light_point_blue");
+
+            entity->GetTransform()->SetPosition(Vector3(-4.0000f, 2.0f, -2.5f));
+            
+            Light* light = entity->AddComponent<Light>();
+            light->SetLightType(LightType::Point);
+            light->SetColor(Vector4(0.0f, 125.0f / 255.0f, 1.0f, 1.0f));
+            light->SetIntensity(20000.0f);
+            light->SetRange(18.0f);
+            light->SetShadowsTransparentEnabled(false);
+        }
+
+        // Light - Point red
+        {
+            shared_ptr<Entity> entity = EntityCreate();
+            entity->SetName("light_point_red");
+
+            entity->GetTransform()->SetPosition(Vector3(4.0000f, 2.0f, -2.5f));
+
+            Light* light = entity->AddComponent<Light>();
+            light->SetLightType(LightType::Point);
+            light->SetColor(Vector4(1.0f, 81.0f / 255.0f, 81.0f / 255.0f, 1.0f));
+            light->SetIntensity(20000.0f);
+            light->SetRange(18.0f);
+            light->SetShadowsTransparentEnabled(false);
         }
 
         // 3D model - Car
@@ -436,6 +468,7 @@ namespace Spartan
                 entity->SetName("car");
 
                 entity->GetTransform()->SetPosition(Vector3(0.0f, 0.0f, 0.0f));
+                entity->GetTransform()->SetRotation(Quaternion::FromEulerAngles(90.0f, 90.0f, -120.0f));
                 entity->GetTransform()->SetScale(Vector3(0.007f, 0.007f, 0.007f));
 
                 // Break calipers have a wrong rotation, probably a bug with sketchfab auto converting to gltf
@@ -460,7 +493,7 @@ namespace Spartan
             shared_ptr<Entity> entity = EntityCreate();
             entity->SetName("cube_physics_dynamic");
 
-            entity->GetTransform()->SetPosition(Vector3(-3.3f, 4.0f, 4.0f));
+            entity->GetTransform()->SetPosition(Vector3(-0.9799f, 3.6249f, 8.8727f));
 
             // Add a default material and a default cube geometry
             Renderable* renderable = entity->AddComponent<Renderable>();
@@ -469,6 +502,7 @@ namespace Spartan
 
             // Physics - Box
             entity->AddComponent<RigidBody>()->SetMass(1.0f);
+            entity->AddComponent<RigidBody>()->SetRestitution(1.0f);
             entity->AddComponent<Collider>()->SetShapeType(ColliderShape::Box);
         }
 
@@ -477,8 +511,8 @@ namespace Spartan
             shared_ptr<Entity> entity = EntityCreate();
             entity->SetName("cube_physics_static");
 
-            entity->GetTransform()->SetPosition(Vector3(-5.0f, 1.51f, 4.0f));
-            entity->GetTransform()->SetScale(Vector3(3.0f, 3.0f, 3.0f));
+            entity->GetTransform()->SetPosition(Vector3(0.0f, 1.5f, 9.5f));
+            entity->GetTransform()->SetScale(Vector3(9.0f, 3.0f, 1.0f));
 
             // Add a default material and a default cube geometry
             Renderable* renderable = entity->AddComponent<Renderable>();
@@ -487,7 +521,6 @@ namespace Spartan
 
             // Physics - Box
             entity->AddComponent<RigidBody>()->SetMass(0.0f);
-            entity->AddComponent<RigidBody>()->SetRestitution(0.5f);
             entity->AddComponent<Collider>()->SetShapeType(ColliderShape::Box);
         }
 
@@ -505,7 +538,7 @@ namespace Spartan
             renderable->SetDefaultMaterial();
 
             // Physics - Static plane
-            entity->AddComponent<RigidBody>();
+            entity->AddComponent<RigidBody>()->SetRestitution(0.5f);
             entity->AddComponent<Collider>()->SetShapeType(ColliderShape::StaticPlane);
         }
 
