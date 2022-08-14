@@ -162,20 +162,12 @@ namespace Spartan
 
     bool RHI_Texture::LoadFromFile(const string& file_path)
     {
-        // Validate file path
-        if (!FileSystem::IsFile(file_path))
-        {
-            LOG_ERROR("\"%s\" is not a valid file path.", file_path.c_str());
-            return false;
-        }
-
         m_is_loading = true;
 
         m_data.clear();
         m_data.shrink_to_fit();
 
         // Load from drive
-        bool loaded            = false;
         bool is_native_format  = FileSystem::IsEngineTextureFile(file_path);
         bool is_foreign_format = FileSystem::IsSupportedImageFile(file_path);
         {
@@ -185,6 +177,7 @@ namespace Spartan
                 if (!file->IsOpen())
                 {
                     m_is_loading = false;
+                    LOG_ERROR("Failed to load \"%s\".", file_path.c_str());
                     return false;
                 }
 
@@ -216,8 +209,6 @@ namespace Spartan
                 file->Read(&m_flags);
                 SetObjectId(file->ReadAs<uint64_t>());
                 SetResourceFilePath(file->ReadAs<string>());
-
-                loaded = true;
             }
             else if (is_foreign_format) // foreign format (most known image formats)
             {
@@ -246,6 +237,7 @@ namespace Spartan
                     if (!image_importer->Load(file_paths[slice_index], slice_index, this))
                     {
                         m_is_loading = false;
+                        LOG_ERROR("Failed to load \"%s\".", file_path.c_str());
                         return false;
                     }
                 }
@@ -258,8 +250,6 @@ namespace Spartan
                 {
                     //Compress(RHI_Format::RHI_Format_BC7);
                 }
-
-                loaded = true;
             }
         }
 
@@ -267,14 +257,6 @@ namespace Spartan
         if (m_name.empty())
         {
             m_name = GetResourceName();
-        }
-
-        // Verify that loading was successful.
-        if (!loaded)
-        {
-            LOG_ERROR("Failed to load \"%s\".", file_path.c_str());
-            m_is_loading = false;
-            return false;
         }
 
         // Prepare for mip generation (if needed).
@@ -302,13 +284,7 @@ namespace Spartan
         }
 
         // Create GPU resource
-        if (!RHI_CreateResource())
-        {
-            string path = is_native_format ? GetResourceFilePathNative() : GetResourceFilePath();
-            LOG_ERROR("Failed to create shader resource for \"%s\".", path.c_str());
-            m_is_loading = false;
-            return false;
-        }
+        SP_ASSERT_MSG(RHI_CreateResource(), "Failed to create GPU resource");
 
         // If this was a native texture (means the data is already saved) and the GPU resource
         // has been created, then clear the data as we don't need them anymore.
