@@ -477,17 +477,21 @@ namespace Spartan
 
                 // body
                 entity->GetTransform()->GetDescendantByName("CarBody_Primary_0")->GetRenderable()->GetMaterial()->SetProperty(MaterialProperty::RoughnessMultiplier, 0.0f);
+                entity->GetTransform()->GetDescendantByName("CarBody_Primary_0")->GetRenderable()->GetMaterial()->SetProperty(MaterialProperty::MetallnessMultiplier, 0.2f);
 
                 // black plastic parts
                 entity->GetTransform()->GetDescendantByName("CarBody_Secondary_0")->GetRenderable()->GetMaterial()->SetProperty(MaterialProperty::RoughnessMultiplier, 0.0f);
                 entity->GetTransform()->GetDescendantByName("CarBody_Trim1_0")->GetRenderable()->GetMaterial()->SetProperty(MaterialProperty::RoughnessMultiplier, 0.0f);
 
                 // lights
-                entity->GetTransform()->GetDescendantByName("CarBody_LampCovers_0")->GetRenderable()->GetMaterial()->SetProperty(MaterialProperty::RoughnessMultiplier, 0.5f);
-                entity->GetTransform()->GetDescendantByName("CarBody_LampCovers_0")->GetRenderable()->GetMaterial()->SetProperty(MaterialProperty::ColorR, 0.8f);
-                entity->GetTransform()->GetDescendantByName("CarBody_LampCovers_0")->GetRenderable()->GetMaterial()->SetProperty(MaterialProperty::ColorG, 0.8f);
-                entity->GetTransform()->GetDescendantByName("CarBody_LampCovers_0")->GetRenderable()->GetMaterial()->SetProperty(MaterialProperty::ColorB, 0.8f);
-                entity->GetTransform()->GetDescendantByName("CarBody_LampCovers_0")->GetRenderable()->GetMaterial()->SetProperty(MaterialProperty::ColorA, 0.3f);
+                {
+                    entity->GetTransform()->GetDescendantByName("Headlights_Trim2_0")->GetRenderable()->GetMaterial()->SetProperty(MaterialProperty::RoughnessMultiplier, 0.0f);
+                    entity->GetTransform()->GetDescendantByName("CarBody_LampCovers_0")->GetRenderable()->GetMaterial()->SetProperty(MaterialProperty::RoughnessMultiplier, 0.5f);
+                    entity->GetTransform()->GetDescendantByName("CarBody_LampCovers_0")->GetRenderable()->GetMaterial()->SetProperty(MaterialProperty::ColorR, 0.8f);
+                    entity->GetTransform()->GetDescendantByName("CarBody_LampCovers_0")->GetRenderable()->GetMaterial()->SetProperty(MaterialProperty::ColorG, 0.8f);
+                    entity->GetTransform()->GetDescendantByName("CarBody_LampCovers_0")->GetRenderable()->GetMaterial()->SetProperty(MaterialProperty::ColorB, 0.8f);
+                    entity->GetTransform()->GetDescendantByName("CarBody_LampCovers_0")->GetRenderable()->GetMaterial()->SetProperty(MaterialProperty::ColorA, 0.3f);
+                }
 
                 // brake disc
                 entity->GetTransform()->GetDescendantByName("FL_Wheel_TireMaterial_0")->GetRenderable()->GetMaterial()->SetProperty(MaterialProperty::Anisotropic, 1.0f);
@@ -495,7 +499,7 @@ namespace Spartan
 
                 // tires
                 {
-                    entity->GetTransform()->GetDescendantByName("FL_Wheel_TireMaterial_0")->GetRenderable()->GetMaterial()->SetProperty(MaterialProperty::RoughnessMultiplier, 0.5f);
+                    entity->GetTransform()->GetDescendantByName("FL_Wheel_TireMaterial_0")->GetRenderable()->GetMaterial()->SetProperty(MaterialProperty::RoughnessMultiplier, 1.0f);
 
                     // That's probably a bug, the tires shouldn't have metalness
                     entity->GetTransform()->GetDescendantByName("FL_Wheel_TireMaterial_0")->GetRenderable()->GetMaterial()->SetProperty(MaterialProperty::MetallnessMultiplier, 0.0f);
