@@ -74,16 +74,17 @@ namespace Spartan
         {
             const ComponentType type = IComponent::TypeToEnum<T>();
 
-            // Return component in case it already exists while ignoring Script components (they can exist multiple times)
-            if (HasComponent(type) && type != ComponentType::Script)
-                return GetComponent<T>();
+            // If the component exists, return the existing one
+            if (T* component = GetComponent<T>())
+            {
+                return component;
+            }
 
             // Create a new component
             std::shared_ptr<T> component = std::make_shared<T>(m_context, this, id);
 
             // Save new component
-            m_components.emplace_back(std::static_pointer_cast<IComponent>(component));
-            m_component_mask |= GetComponentMask(type);
+            m_components[static_cast<uint32_t>(type)] = std::static_pointer_cast<IComponent>(component);
 
             // Caching of rendering performance critical components
             if constexpr (std::is_same<T, Transform>::value)  { m_transform  = static_cast<Transform*>(component.get()); }
@@ -106,70 +107,17 @@ namespace Spartan
         template <class T>
         T* GetComponent()
         {
-            const ComponentType type = IComponent::TypeToEnum<T>();
-
-            if (!HasComponent(type))
-                return nullptr;
-
-            for (std::shared_ptr<IComponent>& component : m_components)
-            {
-                if (component->GetType() == type)
-                    return static_cast<T*>(component.get());
-            }
-
-            return nullptr;
+            const ComponentType component_type = IComponent::TypeToEnum<T>();
+            return static_cast<T*>(m_components[static_cast<uint32_t>(component_type)].get());
         }
-
-        // Returns any components of type T (if they exist)
-        template <class T>
-        std::vector<T*> GetComponents()
-        {
-            std::vector<T*> components;
-            const ComponentType type = IComponent::TypeToEnum<T>();
-
-            if (!HasComponent(type))
-                return components;
-        
-            for (std::shared_ptr<IComponent>& component : m_components)
-            {
-                if (component->GetType() != type)
-                    continue;
-
-                components.emplace_back(static_cast<T*>(component.get()));
-            }
-
-            return components;
-        }
-        
-        // Checks if a component exists
-        constexpr bool HasComponent(const ComponentType type) { return m_component_mask & GetComponentMask(type); }
-
-        // Checks if a component exists
-        template <class T>
-        bool HasComponent() { return HasComponent(IComponent::TypeToEnum<T>()); }
 
         // Removes a component (if it exists)
         template <class T>
         void RemoveComponent()
         {
-            const ComponentType type = IComponent::TypeToEnum<T>();
+            const ComponentType component_type = IComponent::TypeToEnum<T>();
+            m_components[static_cast<uint32_t>(component_type)] = nullptr;
 
-            for (auto it = m_components.begin(); it != m_components.end();)
-            {
-                auto component = *it;
-                if (component->GetType() == type)
-                {
-                    component->OnRemove();
-                    it = m_components.erase(it);
-                    m_component_mask &= ~GetComponentMask(type);
-                }
-                else
-                {
-                    ++it;
-                }
-            }
-
-            // Make the world resolve
             SP_FIRE_EVENT(EventType::WorldResolve);
         }
 
@@ -185,17 +133,12 @@ namespace Spartan
         std::shared_ptr<Entity> GetPtrShared() { return shared_from_this(); }
 
     private:
-        constexpr uint32_t GetComponentMask(ComponentType type) { return static_cast<uint32_t>(1) << static_cast<uint32_t>(type); }
-
         std::string m_object_name     = "Entity";
         std::atomic<bool> m_is_active = true;
         bool m_hierarchy_visibility   = true;
         Transform* m_transform        = nullptr;
         Renderable* m_renderable      = nullptr;
         bool m_destruction_pending    = false;
-        
-        // Components
-        std::vector<std::shared_ptr<IComponent>> m_components;
-        uint32_t m_component_mask = 0;
+        std::array<std::shared_ptr<IComponent>, 14> m_components;
     };
 }

@@ -51,17 +51,14 @@ namespace Spartan
         m_object_name           = "Entity";
         m_is_active             = true;
         m_hierarchy_visibility  = true;
+        m_components.fill(nullptr);
+
         AddComponent<Transform>(transform_id);
     }
 
     Entity::~Entity()
     {
-        for (auto it = m_components.begin(); it != m_components.end();)
-        {
-            (*it)->OnRemove();
-            (*it).reset();
-            it = m_components.erase(it);
-        }
+        m_components.fill(nullptr);
     }
 
     void Entity::Clone()
@@ -115,19 +112,23 @@ namespace Spartan
 
     void Entity::OnStart()
     {
-        // call component Start()
-        for (auto const& component : m_components)
+        for (shared_ptr<IComponent> component : m_components)
         {
-            component->OnStart();
+            if (component)
+            {
+                component->OnStart();
+            }
         }
     }
 
     void Entity::OnStop()
     {
-        // call component Stop()
-        for (auto const& component : m_components)
+        for (shared_ptr<IComponent> component : m_components)
         {
-            component->OnStop();
+            if (component)
+            {
+                component->OnStop();
+            }
         }
     }
 
@@ -141,10 +142,12 @@ namespace Spartan
         if (!m_is_active)
             return;
 
-        // call component Update()
-        for (shared_ptr<IComponent>& component : m_components)
+        for (shared_ptr<IComponent> component : m_components)
         {
-            component->OnTick(delta_time);
+            if (component)
+            {
+                component->OnTick(delta_time);
+            }
         }
     }
 
@@ -304,35 +307,17 @@ namespace Spartan
 
     void Entity::RemoveComponentById(const uint64_t id)
     {
-        ComponentType component_type = ComponentType::Unknown;
-
-        for (auto it = m_components.begin(); it != m_components.end(); ) 
+        for (shared_ptr<IComponent>& component : m_components)
         {
-            auto component = *it;
-            if (id == component->GetObjectId())
+            if (component)
             {
-                component_type = component->GetType();
-                component->OnRemove();
-                it = m_components.erase(it);
-                break;
+                if (id == component->GetObjectId())
+                {
+                    component->OnRemove();
+                    component = nullptr;
+                    break;
+                }
             }
-            else
-            {
-                ++it;
-            }
-        }
-
-        // The script component can have multiple instance, so only remove
-        // it's flag if there are no more components of that type left
-        bool others_of_same_type_exist = false;
-        for (auto it = m_components.begin(); it != m_components.end(); ++it)
-        {
-            others_of_same_type_exist = ((*it)->GetType() == component_type) ? true : others_of_same_type_exist;
-        }
-
-        if (!others_of_same_type_exist)
-        {
-            m_component_mask &= ~GetComponentMask(component_type);
         }
 
         // Make the scene resolve

@@ -48,7 +48,6 @@ namespace Spartan
         Renderable,
         RigidBody,
         SoftBody,
-        Script,
         Environment,
         Transform,
         Terrain,

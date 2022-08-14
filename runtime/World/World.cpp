@@ -442,7 +442,7 @@ namespace Spartan
         // 3d model - Cube
         {
             shared_ptr<Entity> entity = EntityCreate();
-            entity->SetName("Cube");
+            entity->SetName("cube");
 
             entity->GetTransform()->SetPosition(Vector3(0.0, 2.0f, 4.0f));
 
