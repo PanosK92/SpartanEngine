@@ -25,7 +25,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Core/Settings.h"
 #include "Core/Window.h"
 #include "Core/EventSystem.h"
-#include "SDL.h"
 #include "Rendering/Model.h"
 #include "Profiling/Profiler.h"
 #include "ImGui/ImGuiExtension.h"
