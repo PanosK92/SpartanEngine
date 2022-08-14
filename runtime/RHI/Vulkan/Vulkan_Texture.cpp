@@ -121,7 +121,7 @@ namespace Spartan
 
     static void set_debug_name(RHI_Texture* texture)
     {
-        string name = texture->GetObjectName();
+        string name = texture->GetName();
 
         // If a name hasn't been defined, try to make a reasonable one.
         if (name.empty())

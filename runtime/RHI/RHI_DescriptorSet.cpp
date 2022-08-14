@@ -33,7 +33,7 @@ namespace Spartan
         m_rhi_device = rhi_device;
         if (name)
         {
-            m_object_name = name;
+            m_name = name;
         }
 
         Create(descriptor_set_layout);

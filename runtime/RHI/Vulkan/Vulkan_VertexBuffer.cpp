@@ -97,7 +97,7 @@ namespace Spartan
         }
 
         // Set debug name
-        vulkan_utility::debug::set_object_name(static_cast<VkBuffer>(m_rhi_resource), m_object_name.c_str());
+        vulkan_utility::debug::set_object_name(static_cast<VkBuffer>(m_rhi_resource), m_name.c_str());
     }
 
     void* RHI_VertexBuffer::Map()

@@ -43,7 +43,7 @@ namespace Spartan
         // Wait for the command list to finish executing
         if (IsExecuting())
         {
-            LOG_WARNING("Waiting for command list \"%s\" to finish executing...", m_object_name.c_str());
+            LOG_WARNING("Waiting for command list \"%s\" to finish executing...", m_name.c_str());
 
             if (!m_proccessed_fence->Wait())
             {

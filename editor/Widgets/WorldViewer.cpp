@@ -188,7 +188,7 @@ void WorldViewer::TreeAddEntity(Entity* entity)
 
     // Add node
     const void* node_id     = reinterpret_cast<void*>(static_cast<uint64_t>(entity->GetObjectId()));
-    string node_name        = entity->GetObjectName();
+    string node_name        = entity->GetName();
     const bool is_node_open = ImGui::TreeNodeEx(node_id, node_flags, node_name.c_str());
 
     // Keep a copy of the selected item's rect so that we can scroll to bring it into view
@@ -478,7 +478,7 @@ void WorldViewer::PopupEntityRename() const
             return;
         }
 
-        auto name = selectedentity->GetObjectName();
+        auto name = selectedentity->GetName();
 
         ImGui::Text("Name:");
         ImGui::InputText("##edit", &name);

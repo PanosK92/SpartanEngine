@@ -121,7 +121,7 @@ namespace Spartan
             SP_ASSERT_MSG(vkCreateShaderModule(m_rhi_device->GetRhiContext()->device, &create_info, nullptr, &shader_module) == VK_SUCCESS, "Failed to create shader module");
 
             // Name the shader module (useful for GPU-based validation)
-            vulkan_utility::debug::set_object_name(shader_module, m_object_name.c_str());
+            vulkan_utility::debug::set_object_name(shader_module, m_name.c_str());
 
             // Reflect shader resources (so that descriptor sets can be created later)
             Reflect
@@ -134,7 +134,7 @@ namespace Spartan
             // Create input layout
             if (!m_input_layout->Create(m_vertex_type, nullptr))
             {
-                LOG_ERROR("Failed to create input layout for %s", m_object_name.c_str());
+                LOG_ERROR("Failed to create input layout for %s", m_name.c_str());
                 return nullptr;
             }
 

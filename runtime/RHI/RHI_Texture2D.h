@@ -39,7 +39,7 @@ namespace Spartan
 
             if (name != nullptr)
             {
-                m_object_name = name;
+                m_name = name;
             }
         }
 
@@ -59,7 +59,7 @@ namespace Spartan
 
             if (name != nullptr)
             {
-                m_object_name = name;
+                m_name = name;
             }
 
             RHI_Texture2D::RHI_CreateResource();
@@ -79,7 +79,7 @@ namespace Spartan
 
             if (name != nullptr)
             {
-                m_object_name = name;
+                m_name = name;
             }
 
             RHI_Texture2D::RHI_CreateResource();

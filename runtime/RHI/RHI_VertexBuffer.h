@@ -36,7 +36,7 @@ namespace Spartan
         {
             m_rhi_device  = rhi_device;
             m_is_mappable = is_mappable;
-            m_object_name = name;
+            m_name = name;
         }
 
         ~RHI_VertexBuffer()

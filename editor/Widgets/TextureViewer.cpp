@@ -53,7 +53,7 @@ void TextureViewer::TickVisible()
         {
             if (render_target)
             {
-                render_target_options.emplace_back(render_target->GetObjectName());
+                render_target_options.emplace_back(render_target->GetName());
             }
         }
     }
@@ -113,7 +113,7 @@ void TextureViewer::TickVisible()
         {
             // Information
             ImGui::BeginGroup();
-            ImGui::Text(("Name: " + texture->GetObjectName()).c_str());
+            ImGui::Text(("Name: " + texture->GetName()).c_str());
             ImGui::Text(("Dimensions: " + to_string(texture->GetWidth()) + "x" + to_string(texture->GetHeight())).c_str());
             ImGui::Text(("Channels: " + to_string(texture->GetChannelCount())).c_str());
             ImGui::Text(("Format: " + rhi_format_to_string(texture->GetFormat())).c_str());

@@ -350,7 +350,7 @@ namespace Spartan
         m_height        = height;
         m_window_handle = window_handle;
         m_flags         = flags;
-        m_object_name   = name;
+        m_name   = name;
 
         create
         (

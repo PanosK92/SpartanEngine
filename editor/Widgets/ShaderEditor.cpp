@@ -119,7 +119,7 @@ void ShaderEditor::ShowShaderList()
         for (RHI_Shader* shader : m_shaders)
         {
             // Get name
-            string name = shader->GetObjectName();
+            string name = shader->GetName();
     
             // Append stage
             if (shader->GetShaderStage() == RHI_Shader_Vertex)
@@ -213,5 +213,5 @@ void ShaderEditor::GetShaderInstances()
     }
 
     // Order them alphabetically
-    sort(m_shaders.begin(), m_shaders.end(), [](RHI_Shader* a, RHI_Shader* b) { return a->GetObjectName() < b->GetObjectName(); });
+    sort(m_shaders.begin(), m_shaders.end(), [](RHI_Shader* a, RHI_Shader* b) { return a->GetName() < b->GetName(); });
 }

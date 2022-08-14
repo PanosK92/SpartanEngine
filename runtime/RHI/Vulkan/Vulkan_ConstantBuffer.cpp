@@ -46,7 +46,7 @@ namespace Spartan
     RHI_ConstantBuffer::RHI_ConstantBuffer(RHI_Device* rhi_device, const string& name)
     {
         m_rhi_device         = rhi_device;
-        m_object_name        = name;
+        m_name        = name;
         m_persistent_mapping = true;
     }
 
@@ -73,7 +73,7 @@ namespace Spartan
         m_mapped_data = m_rhi_device->get_mapped_data_from_buffer(m_rhi_resource);
 
         // Set debug name
-        vulkan_utility::debug::set_object_name(static_cast<VkBuffer>(m_rhi_resource), (m_object_name + string("_size_") + to_string(m_object_size_gpu)).c_str());
+        vulkan_utility::debug::set_object_name(static_cast<VkBuffer>(m_rhi_resource), (m_name + string("_size_") + to_string(m_object_size_gpu)).c_str());
     }
 
     void* RHI_ConstantBuffer::Map()
