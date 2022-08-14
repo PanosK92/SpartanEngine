@@ -56,11 +56,8 @@ namespace Spartan
         if (!m_soundFMOD)
             return;
 
-        m_result = m_soundFMOD->release();
-        if (m_result != FMOD_OK)
-        {
-            LogErrorFmod(m_result);
-        }
+        SP_ASSERT_MSG(m_channelFMOD->stop() == FMOD_OK,  "Failed to stop channel");
+        SP_ASSERT_MSG(m_soundFMOD->release() == FMOD_OK, "Failed to release sound");
     }
 
     bool AudioClip::LoadFromFile(const string& file_path)
@@ -164,7 +161,6 @@ namespace Spartan
         if (!IsChannelValid())
             return true;
 
-        // If it's already stopped, don't bother
         if (!IsPlaying())
             return true;
 
@@ -173,7 +169,7 @@ namespace Spartan
         if (m_result != FMOD_OK)
         {
             m_channelFMOD = nullptr;
-            LogErrorFmod(m_result); // spams a lot
+            LogErrorFmod(m_result);
             return false;
         }
 
