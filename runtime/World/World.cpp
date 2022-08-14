@@ -148,6 +148,12 @@ namespace Spartan
             SP_FIRE_EVENT_DATA(EventType::WorldResolved, m_entities);
             m_resolve = false;
         }
+
+        // If a default model exists, slowly rotate it
+        if (m_default_world_model)
+        {
+            m_default_world_model->GetRootEntity()->GetTransform()->Rotate(Quaternion::FromEulerAngles(0.0f, 0.0f, -5.0f * static_cast<float>(delta_time)));
+        }
     }
 
     void World::New()
@@ -450,7 +456,6 @@ namespace Spartan
             entity->SetName("audio_source");
             AudioSource* audio_source = entity->AddComponent<AudioSource>();
             audio_source->SetAudioClip("project\\music\\kenny_ibizarre_epic_you.mp3");
-            audio_source->Play();
             audio_source->SetPlayInEditor(true);
             audio_source->SetLoop(true);
         }

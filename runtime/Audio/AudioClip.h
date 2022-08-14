@@ -108,7 +108,7 @@ namespace Spartan
         Transform* m_transform;
         FMOD::System* m_systemFMOD;
         FMOD::Sound* m_soundFMOD;
-        FMOD::Channel* m_channelFMOD;    
+        FMOD::Channel* m_channelFMOD;
         PlayMode m_playMode;
         int m_modeLoop;
         float m_minDistance;
