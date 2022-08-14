@@ -55,7 +55,7 @@ namespace Spartan
         m_renderer              = context->GetSubsystem<Renderer>();
         m_profiler              = context->GetSubsystem<Profiler>();
         m_rhi_device            = m_renderer->GetRhiDevice().get();
-        m_object_name           = name;
+        m_name                  = name;
         m_rhi_cmd_pool_resource = cmd_pool;
         m_timestamps.fill(0);
 

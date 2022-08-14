@@ -52,10 +52,11 @@ namespace Spartan
 
     RHI_CommandList::RHI_CommandList(Context* context, void* cmd_pool, const char* name) : SpartanObject(context)
     {
-        m_renderer    = context->GetSubsystem<Renderer>();
-        m_profiler    = context->GetSubsystem<Profiler>();
-        m_rhi_device  = m_renderer->GetRhiDevice().get();
-        m_object_name = name;
+        m_renderer   = context->GetSubsystem<Renderer>();
+        m_profiler   = context->GetSubsystem<Profiler>();
+        m_rhi_device = m_renderer->GetRhiDevice().get();
+        m_name       = name;
+
         m_timestamps.fill(0);
     }
 
