@@ -38,6 +38,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_Device.h"
 #include "../Rendering/Renderer.h"
 #include "../Threading/Threading.h"
+#include "Components/AudioSource.h"
 //==========================================
 
 //= NAMESPACES ================
@@ -66,6 +67,8 @@ namespace Spartan
 
     void World::OnPostInitialise()
     {
+        m_transform_handle = make_shared<TransformHandle>(m_context);
+
         CreateDefaultWorldEntities();
     }
 
@@ -79,11 +82,6 @@ namespace Spartan
 
     void World::OnTick(double delta_time)
     {
-        if (!m_transform_handle)
-        {
-            m_transform_handle = make_shared<TransformHandle>(m_context);
-        }
-
         // If something is being loaded, don't tick as entities are probably being added
         if (IsLoading())
             return;
@@ -135,7 +133,7 @@ namespace Spartan
             // Update dirty entities
             {
                 // Make a copy so we can iterate while removing entities
-                auto entities_copy = m_entities;
+                vector<shared_ptr<Entity>> entities_copy = m_entities;
 
                 for (shared_ptr<Entity>& entity : entities_copy)
                 {
@@ -359,7 +357,7 @@ namespace Spartan
     }
 
     // Removes an entity and all of it's children
-    void World::_EntityRemove(const std::shared_ptr<Entity>& entity)
+    void World::_EntityRemove(const shared_ptr<Entity>& entity)
     {
         // Remove any descendants
         auto children = entity->GetTransform()->GetChildren();
@@ -444,6 +442,17 @@ namespace Spartan
             Renderable* renderable = model->AddComponent<Renderable>();
             renderable->SetGeometry(DefaultGeometry::Quad);
             renderable->SetDefaultMaterial();
+        }
+
+        // Music
+        {
+            shared_ptr<Entity> entity = EntityCreate();
+            entity->SetName("audio_source");
+            AudioSource* audio_source = entity->AddComponent<AudioSource>();
+            audio_source->SetAudioClip("project\\music\\kenny_ibizarre_epic_you.mp3");
+            audio_source->Play();
+            audio_source->SetPlayInEditor(true);
+            audio_source->SetLoop(true);
         }
     }
 }

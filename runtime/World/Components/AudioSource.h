@@ -37,7 +37,7 @@ namespace Spartan
         AudioSource(Context* context, Entity* entity, uint64_t id = 0);
         ~AudioSource() = default;
 
-        //= INTERFACE ================================
+        // IComponent
         void OnInitialize() override;
         void OnStart() override;
         void OnStop() override;
@@ -45,7 +45,6 @@ namespace Spartan
         void OnTick(double delta_time) override;
         void Serialize(FileStream* stream) override;
         void Deserialize(FileStream* stream) override;
-        //============================================
 
         //= PROPERTIES ===================================================================
         void SetAudioClip(const std::string& file_path);
@@ -54,14 +53,16 @@ namespace Spartan
         bool Play() const;
         bool Stop() const;
 
+        void SetPlayInEditor(const bool play_in_editor) { m_play_in_editor = play_in_editor; }
+
         bool GetMute() const { return m_mute; }
         void SetMute(bool mute);
 
-        bool GetPlayOnStart() const                        { return m_play_on_start; }
-        void SetPlayOnStart(const bool play_on_start)    { m_play_on_start = play_on_start; }
+        bool GetPlayOnStart() const                   { return m_play_on_start; }
+        void SetPlayOnStart(const bool play_on_start) { m_play_on_start = play_on_start; }
 
-        bool GetLoop() const            { return m_loop; }
-        void SetLoop(const bool loop)    { m_loop = loop; }
+        bool GetLoop() const          { return m_loop; }
+        void SetLoop(const bool loop) { m_loop = loop; }
 
         int GetPriority() const { return m_priority; }
         void SetPriority(int priority);
@@ -78,13 +79,14 @@ namespace Spartan
 
     private:
         std::shared_ptr<AudioClip> m_audio_clip;
-        bool m_mute;
-        bool m_play_on_start;
-        bool m_loop;
-        int m_priority;
-        float m_volume;
-        float m_pitch;
-        float m_pan;
-        bool m_audio_clip_loaded;
+        bool m_mute              = false;
+        bool m_play_on_start     = true;
+        bool m_loop              = false;
+        int m_priority           = 128;
+        float m_volume           = 1.0f;
+        float m_pitch            = 1.0f;
+        float m_pan              = 0.0f;
+        bool m_audio_clip_loaded = false;
+        bool m_play_in_editor    = false;
     };
 }
