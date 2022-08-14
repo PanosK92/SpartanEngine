@@ -52,7 +52,7 @@ elseif API_GRAPHICS == "vulkan" then
 
 	ADDITIONAL_INCLUDES[0] = "../third_party/spirv_cross";
 	ADDITIONAL_INCLUDES[1] = "../third_party/vulkan";
-	ADDITIONAL_INCLUDES[2] = "../third_party/fsr_2";
+	ADDITIONAL_INCLUDES[2] = "../third_party/fsr2";
 
 	ADDITIONAL_LIBRARIES[0] = "spirv-cross-c";
 	ADDITIONAL_LIBRARIES[1] = "spirv-cross-core";
@@ -148,7 +148,7 @@ project (RUNTIME_PROJECT_NAME)
 	includedirs { "../third_party/fmod" }
 	includedirs { "../third_party/free_image" }
 	includedirs { "../third_party/free_type" }
-	includedirs { "../third_party/sdl2" }
+	includedirs { "../third_party/sdl" }
     includedirs { "../third_party/compressonator" }
 	includedirs { "../third_party/renderdoc" }
 	includedirs { "../third_party/pugixml" }
@@ -213,7 +213,7 @@ project (EDITOR_PROJECT_NAME)
 	-- Includes
 	includedirs { RUNTIME_DIR }
 	includedirs { "../third_party/free_type" } -- Used to rasterise the ImGui font atlas
-	includedirs { "../third_party/sdl2" }      -- Used by ImGui to create windows
+	includedirs { "../third_party/sdl" }      -- Used by ImGui to create windows
 
 	-- Libraries
 	libdirs (LIBRARY_DIR)

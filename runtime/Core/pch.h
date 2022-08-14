@@ -39,6 +39,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <map>
 #include <unordered_map>
 #include <stdio.h>
+#include <filesystem>
+#include <regex>
+#include <locale>
+#include <codecvt>
 //======================
 
 //= RUNTIME ====================
