@@ -112,6 +112,10 @@ namespace Spartan
 
     void Mesh::Optimize()
     {
+        // Running this causes object picking to crash for some meshes.
+        // I need to fix that then enable this.
+        return;
+
         SP_ASSERT_MSG(!m_indices.empty() && !m_vertices.empty(), "Invalid data");
 
         uint32_t index_count                     = static_cast<uint32_t>(m_indices.size());

@@ -746,7 +746,7 @@ namespace Spartan
         if (!texture)
             return;
 
-        SP_ASSERT_MSG(texture->GetRhiSrv() != nullptr, "The texture has not srv");
+        SP_ASSERT_MSG(texture->GetRhiSrv() != nullptr, "The texture has no srv");
 
         // Get some texture info
         const uint32_t mip_count        = texture->GetMipCount();

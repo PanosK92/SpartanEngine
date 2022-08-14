@@ -55,8 +55,9 @@ namespace Spartan
         if (status != ERROR_SUCCESS) // ensure installer folders key is successfully opened
             return paths;
 
-#define MAX_KEY_LENGTH 255
-#define MAX_VALUE_NAME 8192
+        constexpr uint32_t MAX_KEY_LENGTH = 255;
+        constexpr uint32_t MAX_VALUE_NAME = 8192;
+
         TCHAR    achClass[MAX_PATH] = TEXT(""); // buffer for class name
         DWORD    cchClassName = MAX_PATH;       // size of class string
         DWORD    cSubKeys = 0;                  // number of subkeys
@@ -210,30 +211,31 @@ namespace Spartan
 
     void RHI_RenderDoc::FrameCapture()
     {
-        // Ignore the call if RenderDoc is not initialised/disabled
-        if (rdc_api == nullptr)
-            return;
+        SP_ASSERT_MSG(rdc_api != nullptr, "RenderDoc is not initialized, ensure that RenderDoc is set to true in RHI_Context");
 
-        // Trigger capture, which will capture the next frame.
-        // This is the default behaviour if you don't explicitly start/end a capture.
+        // Trigger a capture, this will make RenderDoc capture the entire next frame
         rdc_api->TriggerCapture();
 
-        LaunchRenderDoc();
+        LaunchRenderDocUi();
     }
 
     void RHI_RenderDoc::StartCapture()
     {
+        SP_ASSERT_MSG(rdc_api != nullptr, "RenderDoc is not initialized, ensure that RenderDoc is set to true in RHI_Context");
+
         rdc_api->StartFrameCapture(nullptr, nullptr);
     }
 
     void RHI_RenderDoc::EndCapture()
     {
+        SP_ASSERT_MSG(rdc_api != nullptr, "RenderDoc is not initialized, ensure that RenderDoc is set to true in RHI_Context");
+
         rdc_api->EndFrameCapture(nullptr, nullptr);
 
-        LaunchRenderDoc();
+        LaunchRenderDocUi();
     }
 
-    void RHI_RenderDoc::LaunchRenderDoc()
+    void RHI_RenderDoc::LaunchRenderDocUi()
     {
         // If the RenderDoc UI is already running, make sure it's visible.
         if (rdc_api->IsTargetControlConnected())

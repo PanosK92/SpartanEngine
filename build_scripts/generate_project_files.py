@@ -46,6 +46,7 @@ copy("third_party\\libraries\\fmodL64.dll", "binaries")
 print("\n4. Copying some assets to the project directory...")
 copy("assets\\models", "binaries\\project\\models")
 copy("assets\\environment", "binaries\\project\\environment")
+copy("assets\\music", "binaries\\project\\music")
 
 # 5. Generate project files
 print("\n5. Generating project files...")

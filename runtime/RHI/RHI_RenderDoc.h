@@ -38,6 +38,6 @@ namespace Spartan
         static void FrameCapture();
         static void StartCapture();
         static void EndCapture();
-        static void LaunchRenderDoc();
+        static void LaunchRenderDocUi();
     };
 }

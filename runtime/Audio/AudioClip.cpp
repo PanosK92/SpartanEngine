@@ -39,17 +39,16 @@ namespace Spartan
 {
     AudioClip::AudioClip(Context* context) : IResource(context, ResourceType::Audio)
     {
-        // AudioClip
-        m_transform        = nullptr;
-        m_systemFMOD    = static_cast<System*>(context->GetSubsystem<Audio>()->GetSystemFMOD());
-        m_result        = FMOD_OK;
-        m_soundFMOD        = nullptr;
-        m_channelFMOD    = nullptr;
-        m_playMode        = Play_Memory;
-        m_minDistance    = 1.0f;
-        m_maxDistance    = 10000.0f;
-        m_modeRolloff    = FMOD_3D_LINEARROLLOFF;
-        m_modeLoop        = FMOD_LOOP_OFF;
+        m_transform   = nullptr;
+        m_systemFMOD  = static_cast<System*>(context->GetSubsystem<Audio>()->GetSystemFMOD());
+        m_result      = FMOD_OK;
+        m_soundFMOD   = nullptr;
+        m_channelFMOD = nullptr;
+        m_playMode    = Play_Memory;
+        m_minDistance = 1.0f;
+        m_maxDistance = 10000.0f;
+        m_modeRolloff = FMOD_3D_LINEARROLLOFF;
+        m_modeLoop    = FMOD_LOOP_OFF;
     }
 
     AudioClip::~AudioClip()
@@ -66,8 +65,8 @@ namespace Spartan
 
     bool AudioClip::LoadFromFile(const string& file_path)
     {
-        m_soundFMOD     = nullptr;
-        m_channelFMOD   = nullptr;
+        m_soundFMOD   = nullptr;
+        m_channelFMOD = nullptr;
 
         // Native
         if (FileSystem::GetExtensionFromFilePath(file_path) == EXTENSION_AUDIO)
