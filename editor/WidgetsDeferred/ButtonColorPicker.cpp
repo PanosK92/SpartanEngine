@@ -30,40 +30,20 @@ using namespace std;
 using namespace Spartan::Math;
 //=============================
 
-namespace ButtonColorPicker_Settings
+ButtonColorPicker::ButtonColorPicker(const string& window_title)
 {
-    static string g_buttonLabel;
-    static string g_colorPickerLabel;
-    static bool showWheel = false;
-    static bool showPreview = true;
-
-    static bool hdr                = false;
-    static bool alpha_preview      = true;
-    static bool alpha_half_preview = false;
-    static bool options_menu       = true;
-    static bool showRGB            = true;
-    static bool showHSV            = false;
-    static bool showHex            = true;
-}
-
-ButtonColorPicker::ButtonColorPicker(const string& windowTitle)
-{
-    m_windowTitle = windowTitle;
-    ButtonColorPicker_Settings::g_buttonLabel = "##" + windowTitle + "1";
-    ButtonColorPicker_Settings::g_colorPickerLabel = "##" + windowTitle + "1";
-
-    m_isVisible = false;
-    m_color = Vector4(0, 0, 0, 1);
+    m_window_title       = window_title;
+    m_color_picker_label = "##" + window_title + "1";
 }
 
 void ButtonColorPicker::Update()
 {
-    if (ImGui::ColorButton(ButtonColorPicker_Settings::g_buttonLabel.c_str(), m_color))
+    if (ImGui::ColorButton("##color_button", m_color))
     {
-        m_isVisible = true;
+        m_is_visible = true;
     }
 
-    if (m_isVisible)
+    if (m_is_visible)
     {
         ShowColorPicker();
     }
@@ -72,25 +52,21 @@ void ButtonColorPicker::Update()
 void ButtonColorPicker::ShowColorPicker()
 {
     ImGui::SetNextWindowSize(ImVec2(400, 400), ImGuiCond_FirstUseEver);
-    ImGui::Begin(m_windowTitle.c_str(), &m_isVisible, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDocking);
+    ImGui::Begin(m_window_title.c_str(), &m_is_visible, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDocking);
     ImGui::SetWindowFocus();
 
-    const int misc_flags = 
-        (ButtonColorPicker_Settings::hdr ? ImGuiColorEditFlags_HDR : 0) | 
-        (ButtonColorPicker_Settings::alpha_half_preview ? ImGuiColorEditFlags_AlphaPreviewHalf :
-        (ButtonColorPicker_Settings::alpha_preview ? ImGuiColorEditFlags_AlphaPreview : 0)) | 
-        (ButtonColorPicker_Settings::options_menu ? 0 : ImGuiColorEditFlags_NoOptions);
+    ImGuiColorEditFlags       flags = ImGuiColorEditFlags_AlphaBar;
+                              flags |= m_show_wheel ? ImGuiColorEditFlags_PickerHueWheel : ImGuiColorEditFlags_PickerHueBar;
+    if (!m_show_preview)      flags |= ImGuiColorEditFlags_NoSidePreview;
+    if (m_show_rgb)           flags |= ImGuiColorEditFlags_DisplayRGB;
+    if (m_show_hsv)           flags |= ImGuiColorEditFlags_DisplayHSV;
+    if (m_show_hex)           flags |= ImGuiColorEditFlags_DisplayHex;
+    if (m_hdr)                flags |= ImGuiColorEditFlags_HDR;
+    if (m_alpha_half_preview) flags |= ImGuiColorEditFlags_AlphaPreviewHalf;
+    if (m_alpha_preview)      flags |= ImGuiColorEditFlags_AlphaPreview;
+    if (!m_options_menu)      flags |= ImGuiColorEditFlags_NoOptions;
 
-    ImGuiColorEditFlags                                flags = misc_flags;
-                                                    flags |= ImGuiColorEditFlags_AlphaBar;
-    if (!ButtonColorPicker_Settings::showPreview)    flags |= ImGuiColorEditFlags_NoSidePreview;
-                                                    flags |= ImGuiColorEditFlags_PickerHueBar;
-    if (ButtonColorPicker_Settings::showWheel)        flags |= ImGuiColorEditFlags_PickerHueWheel;
-    if (ButtonColorPicker_Settings::showRGB)        flags |= ImGuiColorEditFlags_DisplayRGB;
-    if (ButtonColorPicker_Settings::showHSV)        flags |= ImGuiColorEditFlags_DisplayHSV;
-    if (ButtonColorPicker_Settings::showHex)        flags |= ImGuiColorEditFlags_DisplayHex;
-
-    ImGui::ColorPicker4(ButtonColorPicker_Settings::g_colorPickerLabel.c_str(), (float*)&m_color, flags);
+    ImGui::ColorPicker4(m_color_picker_label.c_str(), (float*)&m_color, flags);
 
     ImGui::Separator();
 
@@ -98,19 +74,19 @@ void ButtonColorPicker::ShowColorPicker()
 
     // WHEEL
     ImGui::Text("Wheel");
-    ImGui::SameLine(); ImGui::Checkbox("##ButtonColorPickerWheel", &ButtonColorPicker_Settings::showWheel);
+    ImGui::SameLine(); ImGui::Checkbox("##ButtonColorPickerWheel", &m_show_wheel);
 
     // RGB
     ImGui::SameLine(); ImGui::Text("RGB");
-    ImGui::SameLine(); ImGui::Checkbox("##ButtonColorPickerRGB", &ButtonColorPicker_Settings::showRGB);
+    ImGui::SameLine(); ImGui::Checkbox("##ButtonColorPickerRGB", &m_show_rgb);
 
     // HSV
     ImGui::SameLine(); ImGui::Text("HSV");
-    ImGui::SameLine(); ImGui::Checkbox("##ButtonColorPickerHSV", &ButtonColorPicker_Settings::showHSV);
+    ImGui::SameLine(); ImGui::Checkbox("##ButtonColorPickerHSV", &m_show_hsv);
 
     // HEX
     ImGui::SameLine(); ImGui::Text("HEX");
-    ImGui::SameLine(); ImGui::Checkbox("##ButtonColorPickerHEX", &ButtonColorPicker_Settings::showHex);
+    ImGui::SameLine(); ImGui::Checkbox("##ButtonColorPickerHEX", &m_show_hex);
 
     ImGui::End();
 }
