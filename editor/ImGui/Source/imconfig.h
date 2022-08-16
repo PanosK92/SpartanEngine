@@ -84,13 +84,13 @@
 #include "Math/Vector2.h"
 #include "Math/Vector4.h"
 
-#define IM_VEC2_CLASS_EXTRA                                                                 \
-        ImVec2(const Spartan::Math::Vector2& f) { x = f.x; y = f.y; }                       \
+#define IM_VEC2_CLASS_EXTRA                                                             \
+        ImVec2(const Spartan::Math::Vector2& f) { x = f.x; y = f.y; }                   \
         operator Spartan::Math::Vector2() const { return Spartan::Math::Vector2(x,y); }
 
-#define IM_VEC4_CLASS_EXTRA                                                                 \
-        ImVec4(const Spartan::Math::Vector4& f) { x = f.x; y = f.y; z = f.z; w = f.w; }     \
-        operator Spartan::Math::Vector4() const { return Spartan::Math::Vector4(x,y,z,w); }
+#define IM_VEC4_CLASS_EXTRA                                                                   \
+        ImVec4(const Spartan::Math::Vector4& f) { x = f.x; y = f.y; z = f.z; w = f.w; }       \
+        operator Spartan::Math::Vector4() const { return Spartan::Math::Vector4(x, y, z, w); }
 
 //---- Use 32-bit vertex indices (default is 16-bit) is one way to allow large meshes with more than 64K vertices.
 // Your renderer backend will need to support it (most example renderer backends support both 16/32-bit indices).

@@ -48,7 +48,7 @@ namespace Spartan
 {
     unordered_map<uint64_t, shared_ptr<RHI_Pipeline>> RHI_CommandList::m_pipelines;
 
-    static VkAttachmentLoadOp get_color_load_op(const Math::Vector4& color)
+    static VkAttachmentLoadOp get_color_load_op(const Color& color)
     {
         if (color == rhi_color_dont_care)
             return VK_ATTACHMENT_LOAD_OP_DONT_CARE;
@@ -310,7 +310,7 @@ namespace Spartan
                     color_attachment.imageLayout               = vulkan_image_layout[static_cast<uint8_t>(rt->GetLayout(0))];
                     color_attachment.loadOp                    = get_color_load_op(m_pso.clear_color[i]);
                     color_attachment.storeOp                   = VK_ATTACHMENT_STORE_OP_STORE;
-                    color_attachment.clearValue.color          = { m_pso.clear_color[i].x, m_pso.clear_color[i].y, m_pso.clear_color[i].z, m_pso.clear_color[i].w };
+                    color_attachment.clearValue.color          = { m_pso.clear_color[i].r, m_pso.clear_color[i].g, m_pso.clear_color[i].b, m_pso.clear_color[i].a };
 
                     SP_ASSERT(color_attachment.imageView != nullptr);
 
@@ -387,10 +387,10 @@ namespace Spartan
 
                 attachment.aspectMask                   = VK_IMAGE_ASPECT_COLOR_BIT;
                 attachment.colorAttachment              = 0;
-                attachment.clearValue.color.float32[0]  = pipeline_state.clear_color[i].x;
-                attachment.clearValue.color.float32[1]  = pipeline_state.clear_color[i].y;
-                attachment.clearValue.color.float32[2]  = pipeline_state.clear_color[i].z;
-                attachment.clearValue.color.float32[3]  = pipeline_state.clear_color[i].w;
+                attachment.clearValue.color.float32[0]  = pipeline_state.clear_color[i].r;
+                attachment.clearValue.color.float32[1]  = pipeline_state.clear_color[i].g;
+                attachment.clearValue.color.float32[2]  = pipeline_state.clear_color[i].b;
+                attachment.clearValue.color.float32[3]  = pipeline_state.clear_color[i].a;
             }
         }
 
@@ -433,7 +433,7 @@ namespace Spartan
         const uint32_t color_index          /*= 0*/,
         const uint32_t depth_stencil_index  /*= 0*/,
         const bool storage                  /*= false*/,
-        const Math::Vector4& clear_color    /*= rhi_color_load*/,
+        const Color& clear_color            /*= rhi_color_load*/,
         const float clear_depth             /*= rhi_depth_load*/,
         const uint32_t clear_stencil        /*= rhi_stencil_load*/
     )
@@ -458,7 +458,7 @@ namespace Spartan
 
         if (texture->IsColorFormat())
         {
-            VkClearColorValue _clear_color = { clear_color.x, clear_color.y, clear_color.z, clear_color.w };
+            VkClearColorValue _clear_color = { clear_color.r, clear_color.g, clear_color.b, clear_color.a };
 
             image_subresource_range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 

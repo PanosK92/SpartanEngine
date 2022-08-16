@@ -29,6 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Math/Vector4.h"
 #include "../Math/Quaternion.h"
 #include "../Math/BoundingBox.h"
+#include "../Rendering/Color.h"
 //==============================
 
 namespace Spartan
@@ -71,6 +72,7 @@ namespace Spartan
             std::is_same<T, Math::Vector2>::value       ||
             std::is_same<T, Math::Vector3>::value       ||
             std::is_same<T, Math::Vector4>::value       ||
+            std::is_same<T, Color>::value               ||
             std::is_same<T, Math::Quaternion>::value    ||
             std::is_same<T, Math::BoundingBox>::value
         >::type>
@@ -110,6 +112,7 @@ namespace Spartan
             std::is_same<T, Math::Vector2>::value       ||
             std::is_same<T, Math::Vector3>::value       ||
             std::is_same<T, Math::Vector4>::value       ||
+            std::is_same<T, Color>::value               ||
             std::is_same<T, Math::Quaternion>::value    ||
             std::is_same<T, Math::BoundingBox>::value
         >::type>

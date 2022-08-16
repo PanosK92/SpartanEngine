@@ -30,6 +30,14 @@ using namespace std;
 
 namespace Spartan
 {
+    Color::Color(const Color& color)
+    {
+        r = color.r;
+        g = color.g;
+        b = color.b;
+        a = color.a;
+    }
+
     Color::Color(const float r, const float g, const float b, const float a /*= 1.0f*/)
     {
         this->r = r;
@@ -38,6 +46,12 @@ namespace Spartan
         this->a = a;
     }
 
+    // Standard
+    const Color Color::black           = Color(0.0f, 0.0f, 0.0f, 1.0f);
+    const Color Color::white           = Color(1.0f, 1.0f, 1.0f, 1.0f);
+    const Color Color::cornflower_blue = Color(0.396f, 0.611f, 0.937f, 1.0f);
+
+    // Materials
     const Color Color::aluminum        = Color(0.912f, 0.914f, 0.920f);
     const Color Color::blood           = Color(0.644f, 0.003f, 0.005f);
     const Color Color::bone            = Color(0.793f, 0.793f, 0.664f);
