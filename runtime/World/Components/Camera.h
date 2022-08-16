@@ -155,7 +155,7 @@ namespace Spartan
         float m_near_plane                      = 0.1f;
         float m_far_plane                       = 1000.0f;
         ProjectionType m_projection_type        = Projection_Perspective;
-        Color m_clear_color                     = Color::cornflower_blue;
+        Color m_clear_color                     = Color::standard_cornflower_blue;
         Math::Matrix m_view                     = Math::Matrix::Identity;
         Math::Matrix m_projection               = Math::Matrix::Identity;
         Math::Matrix m_view_projection          = Math::Matrix::Identity;
