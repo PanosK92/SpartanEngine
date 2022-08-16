@@ -430,16 +430,31 @@ namespace Spartan
             light->SetShadowsEnabled(false);
         }
 
-        // Light - Point
+        // Light - Point Blue
         {
             shared_ptr<Entity> entity = EntityCreate();
-            entity->SetName("light_point");
+            entity->SetName("light_point_blue");
 
-            entity->GetTransform()->SetPosition(Vector3(2.1312f, 1.3053f, -2.0200f));
+            entity->GetTransform()->SetPosition(Vector3(-4.0000f, 2.0000f, -2.5000f));
             
             Light* light = entity->AddComponent<Light>();
             light->SetLightType(LightType::Point);
-            light->SetColor(Color::light_photo_flash);
+            light->SetColor(Color(0.0f, 125.0f / 255.0f, 1.0f));
+            light->SetIntensity(LightIntensity::bulb_150_watt);
+            light->SetRange(20.0f);
+            light->SetShadowsTransparentEnabled(false);
+        }
+
+        // Light - Point Red
+        {
+            shared_ptr<Entity> entity = EntityCreate();
+            entity->SetName("light_point_red");
+
+            entity->GetTransform()->SetPosition(Vector3(4.0000f, 2.0000f, -2.5000f));
+
+            Light* light = entity->AddComponent<Light>();
+            light->SetLightType(LightType::Point);
+            light->SetColor(Color(1.0f, 81.0f / 255.0f, 81.0f / 255.0f));
             light->SetIntensity(LightIntensity::bulb_150_watt);
             light->SetRange(20.0f);
             light->SetShadowsTransparentEnabled(false);
@@ -467,7 +482,7 @@ namespace Spartan
                     if (Material* material = entity->GetTransform()->GetDescendantByName("CarBody_Primary_0")->GetRenderable()->GetMaterial())
                     {
                         material->SetColor(Color::material_aluminum);
-                        material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.3f);
+                        material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.4f);
                         material->SetProperty(MaterialProperty::MetallnessMultiplier, 1.0f);
                     }
 
