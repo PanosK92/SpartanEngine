@@ -51,15 +51,15 @@ namespace Spartan
     const Color Color::white           = Color(1.0f, 1.0f, 1.0f, 1.0f);
     const Color Color::cornflower_blue = Color(0.396f, 0.611f, 0.937f, 1.0f);
 
-    // Materials
-    const Color Color::aluminum        = Color(0.912f, 0.914f, 0.920f);
+    // Materials (https://physicallybased.info/)
+    const Color Color::aluminum        = Color(0.912f, 0.914f, 0.920f); // Metallic: 1.0
     const Color Color::blood           = Color(0.644f, 0.003f, 0.005f);
     const Color Color::bone            = Color(0.793f, 0.793f, 0.664f);
     const Color Color::brass           = Color(0.887f, 0.789f, 0.434f);
     const Color Color::brick           = Color(0.262f, 0.095f, 0.061f);
     const Color Color::charcoal        = Color(0.020f, 0.020f, 0.020f);
     const Color Color::chocolate       = Color(0.162f, 0.091f, 0.060f);
-    const Color Color::chromium        = Color(0.550f, 0.556f, 0.554f);
+    const Color Color::chromium        = Color(0.550f, 0.556f, 0.554f); // Metallic: 1.0
     const Color Color::cobalt          = Color(0.662f, 0.655f, 0.634f);
     const Color Color::concrete        = Color(0.510f, 0.510f, 0.510f);
     const Color Color::cooking_oil     = Color(0.738f, 0.687f, 0.091f);
@@ -74,18 +74,18 @@ namespace Spartan
     const Color Color::gray_card       = Color(0.180f, 0.180f, 0.180f);
     const Color Color::honey           = Color(0.831f, 0.397f, 0.038f);
     const Color Color::ice             = Color(1.000f, 1.000f, 1.000f);
-    const Color Color::iron            = Color(0.531f, 0.512f, 0.496f);
+    const Color Color::iron            = Color(0.531f, 0.512f, 0.496f); // Metallic: 1.0
     const Color Color::ketchup         = Color(0.164f, 0.006f, 0.002f);
     const Color Color::lead            = Color(0.632f, 0.626f, 0.641f);
     const Color Color::mercury         = Color(0.781f, 0.779f, 0.779f);
     const Color Color::milk            = Color(0.604f, 0.584f, 0.497f);
     const Color Color::nickel          = Color(0.649f, 0.610f, 0.541f);
     const Color Color::office_paper    = Color(0.738f, 0.768f, 1.000f);
-    const Color Color::plastic_pc      = Color(1.000f, 1.000f, 1.000f);
-    const Color Color::plastic_pet     = Color(1.000f, 1.000f, 1.000f);
-    const Color Color::plastic_acrylic = Color(1.000f, 1.000f, 1.000f);
-    const Color Color::plastic_pp      = Color(1.000f, 1.000f, 1.000f);
-    const Color Color::plastic_pvc     = Color(1.000f, 1.000f, 1.000f);
+    const Color Color::plastic_pc      = Color(1.000f, 1.000f, 1.000f); // Specular: 0.640
+    const Color Color::plastic_pet     = Color(1.000f, 1.000f, 1.000f); // Specular: 0.623
+    const Color Color::plastic_acrylic = Color(1.000f, 1.000f, 1.000f); // Specular: 0.462
+    const Color Color::plastic_pp      = Color(1.000f, 1.000f, 1.000f); // Specular: 0.487
+    const Color Color::plastic_pvc     = Color(1.000f, 1.000f, 1.000f); // Specular: 0.550
     const Color Color::platinum        = Color(0.679f, 0.642f, 0.588f);
     const Color Color::salt            = Color(0.800f, 0.800f, 0.800f);
     const Color Color::sand            = Color(0.440f, 0.386f, 0.231f);
@@ -98,7 +98,7 @@ namespace Spartan
     const Color Color::skin_5          = Color(0.360f, 0.160f, 0.080f);
     const Color Color::skin_6          = Color(0.090f, 0.050f, 0.020f);
     const Color Color::snow            = Color(0.810f, 0.810f, 0.810f);
-    const Color Color::tire            = Color(0.023f, 0.023f, 0.023f);
+    const Color Color::tire            = Color(0.023f, 0.023f, 0.023f); // Metallic: 0.0, Specular 0.5
     const Color Color::titanium        = Color(0.616f, 0.582f, 0.544f);
     const Color Color::tungsten        = Color(0.925f, 0.835f, 0.757f);
     const Color Color::vanadium        = Color(0.945f, 0.894f, 0.780f);

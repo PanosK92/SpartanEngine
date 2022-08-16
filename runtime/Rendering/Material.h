@@ -100,6 +100,8 @@ namespace Spartan
 
         float GetProperty(const MaterialProperty property_type) const { return m_properties[static_cast<uint32_t>(property_type)]; }
         void SetProperty(const MaterialProperty property_type, const float value);
+
+        void SetColor(const Color& color);
         //==========================================================================================================================
  
     private:
