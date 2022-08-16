@@ -21,11 +21,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===============
+//= INCLUDES ==================
 #include <cstdint>
 #include <cassert>
-#include "../Math/Vector4.h"
-//==========================
+#include <string>
+#include "../Rendering/Color.h"
+//=============================
 
 // Declarations
 namespace Spartan
@@ -325,8 +326,8 @@ namespace Spartan
     static const uint16_t rhi_descriptor_max_constant_buffers_dynamic = 32;
     static const uint16_t rhi_descriptor_max_samplers                 = 32;
 
-    static const Math::Vector4 rhi_color_dont_care           = Math::Vector4(std::numeric_limits<float>::max(), 0.0f, 0.0f, 0.0f);
-    static const Math::Vector4 rhi_color_load                = Math::Vector4(std::numeric_limits<float>::infinity(), 0.0f, 0.0f, 0.0f);
+    static const Color         rhi_color_dont_care           = Color(std::numeric_limits<float>::max(), 0.0f, 0.0f, 0.0f);
+    static const Color         rhi_color_load                = Color(std::numeric_limits<float>::infinity(), 0.0f, 0.0f, 0.0f);
     static const float         rhi_depth_dont_care           = std::numeric_limits<float>::max();
     static const float         rhi_depth_load                = std::numeric_limits<float>::infinity();
     static const uint32_t      rhi_stencil_dont_care         = std::numeric_limits<uint32_t>::max();

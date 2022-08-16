@@ -111,12 +111,12 @@ cbuffer LightBuffer : register(b2)
 {
     matrix cb_light_view_projection[6];
     float4 cb_light_intensity_range_angle_bias;
-    float3 cb_light_color;
-    float cb_light_normal_bias;
+    float4 cb_light_color;
     float4 cb_light_position;
     float4 cb_light_direction;
+    float cb_light_normal_bias;
     uint cb_options;
-    uint3 cb_padding;
+    float2 cb_padding;
 };
 
 // Low frequency - Updates once per frame

@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Math/Vector2.h"
 #include "../Math/Vector3.h"
 #include "../Math/Matrix.h"
+#include "Color.h"
 //==========================
 
 namespace Spartan
@@ -162,28 +163,28 @@ namespace Spartan
         bool operator==(const Cb_Uber& rhs) const
         {
             return
-                transform                          == rhs.transform                   &&
-                transform_previous                 == rhs.transform_previous          &&
-                mat_id                             == rhs.mat_id                      &&
-                mat_color                          == rhs.mat_color                   &&
-                mat_tiling_uv                      == rhs.mat_tiling_uv               &&
-                mat_offset_uv                      == rhs.mat_offset_uv               &&
-                mat_roughness_mul                  == rhs.mat_roughness_mul           &&
-                mat_metallic_mul                   == rhs.mat_metallic_mul            &&
-                mat_normal_mul                     == rhs.mat_normal_mul              &&
-                mat_height_mul                     == rhs.mat_height_mul              &&
-                float3                             == rhs.float3                      &&
-                blur_sigma                         == rhs.blur_sigma                  &&
-                blur_direction                     == rhs.blur_direction              &&
-                is_transparent_pass                == rhs.is_transparent_pass         &&
-                resolution_rt                      == rhs.resolution_rt               &&
-                resolution_in                      == rhs.resolution_in               &&
-                mip_count                          == rhs.mip_count                   &&
-                work_group_count                   == rhs.work_group_count            &&
-                reflection_proble_available        == rhs.reflection_proble_available &&
-                radius                             == rhs.radius                      &&
-                extents                            == rhs.extents                     &&
-                mat_textures                       == rhs.mat_textures                &&
+                transform                             == rhs.transform                   &&
+                transform_previous                    == rhs.transform_previous          &&
+                mat_id                                == rhs.mat_id                      &&
+                mat_color                             == rhs.mat_color                   &&
+                mat_tiling_uv                         == rhs.mat_tiling_uv               &&
+                mat_offset_uv                         == rhs.mat_offset_uv               &&
+                mat_roughness_mul                     == rhs.mat_roughness_mul           &&
+                mat_metallic_mul                      == rhs.mat_metallic_mul            &&
+                mat_normal_mul                        == rhs.mat_normal_mul              &&
+                mat_height_mul                        == rhs.mat_height_mul              &&
+                float3                                == rhs.float3                      &&
+                blur_sigma                            == rhs.blur_sigma                  &&
+                blur_direction                        == rhs.blur_direction              &&
+                is_transparent_pass                   == rhs.is_transparent_pass         &&
+                resolution_rt                         == rhs.resolution_rt               &&
+                resolution_in                         == rhs.resolution_in               &&
+                mip_count                             == rhs.mip_count                   &&
+                work_group_count                      == rhs.work_group_count            &&
+                reflection_proble_available           == rhs.reflection_proble_available &&
+                radius                                == rhs.radius                      &&
+                extents                               == rhs.extents                     &&
+                mat_textures                          == rhs.mat_textures                &&
                 mat_single_texture_rougness_metalness == rhs.mat_single_texture_rougness_metalness;
         }
 
@@ -195,12 +196,12 @@ namespace Spartan
     {
         Math::Matrix view_projection[6];
         Math::Vector4 intensity_range_angle_bias;
-        Math::Vector3 color;
-        float normal_bias;
+        Color color;
         Math::Vector4 position;
         Math::Vector4 direction;
+        float normal_bias;
         uint32_t options;
-        Math::Vector3 padding;
+        Math::Vector2 padding;
     
         bool operator==(const Cb_Light& rhs)
         {

@@ -48,7 +48,7 @@ namespace Spartan
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_range, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_intensity, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_angle_rad, float);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_color_rgb, Vector4);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_color_rgb, Color);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_bias, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_normal_bias, float);
         SP_REGISTER_ATTRIBUTE_GET_SET(GetLightType, SetLightType, LightType);

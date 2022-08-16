@@ -123,7 +123,7 @@ namespace Spartan
         if (clear_stencil != rhi_stencil_load && clear_stencil != rhi_stencil_dont_care)
             return true;
 
-        for (const Vector4& color : clear_color)
+        for (const Color& color : clear_color)
         {
             if (color != rhi_color_load && color != rhi_color_dont_care)
                 return true;

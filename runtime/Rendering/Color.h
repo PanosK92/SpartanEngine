@@ -21,9 +21,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==================
-#include "SpartanDefinitions.h"
-//=============================
+
+//= INCLUDES ==========================
+#include "../Core/SpartanDefinitions.h"
+//=====================================
 
 namespace Spartan
 {
@@ -31,17 +32,33 @@ namespace Spartan
     {
     public:
         Color() = default;
+        Color(const Color& color);
         Color(const float r, const float g, const float b, const float a = 1.0f);
         ~Color() = default;
+
+        bool operator==(const Color& rhs) const
+        {
+            return r == rhs.r && g == rhs.g && b == rhs.b && a == rhs.a;
+        }
+
+        bool operator!=(const Color& rhs) const
+        {
+            return !(*this == rhs);
+        }
 
         float r = 0.0f;
         float g = 0.0f;
         float b = 0.0f;
         float a = 0.0f;
 
-        // Physically based values: https://physicallybased.info/
+        [[nodiscard]] const float* Data() const { return &r; }
 
-        // Materials
+        // Standard
+        static const Color black;
+        static const Color white;
+        static const Color cornflower_blue;
+
+        // Materials: https://physicallybased.info/
         static const Color aluminum;
         static const Color blood;
         static const Color bone;

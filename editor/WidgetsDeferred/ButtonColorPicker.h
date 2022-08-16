@@ -21,32 +21,34 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ============
-#include "Math/Vector4.h"
-//=======================
+//= INCLUDES ===============
+#include "Rendering/Color.h"
+#include <string>
+//==========================
 
 class ButtonColorPicker
 {
 public:
-    ButtonColorPicker(const std::string& windowTitle);
+    ButtonColorPicker(const std::string& window_title);
+    ButtonColorPicker() = default;
+
     void Update();
-    void SetColor(const Spartan::Math::Vector4& color) { m_color = color; }
-    const Spartan::Math::Vector4& GetColor() const { return m_color; }
+
+    void SetColor(const Spartan::Color& color) { m_color = color; }
+    const Spartan::Color& GetColor()     const { return m_color; }
 
 private:
-    void ShowColorPicker();
-
-    bool m_is_visible              = false;
-    Spartan::Math::Vector4 m_color = Spartan::Math::Vector4(0, 0, 0, 1);
-    bool m_hdr                     = false;
-    bool m_alpha_preview           = true;
-    bool m_alpha_half_preview      = false;
-    bool m_options_menu            = true;
-    bool m_show_wheel              = false;
-    bool m_show_preview            = false;
-    bool m_show_rgb                = true;
-    bool m_show_hsv                = false;
-    bool m_show_hex                = true;
+    bool m_is_visible         = false;
+    bool m_hdr                = false;
+    bool m_alpha_preview      = true;
+    bool m_alpha_half_preview = false;
+    bool m_options_menu       = true;
+    bool m_show_wheel         = false;
+    bool m_show_preview       = false;
+    bool m_show_rgb           = true;
+    bool m_show_hsv           = false;
+    bool m_show_hex           = true;
+    Spartan::Color m_color    = Spartan::Color(0, 0, 0, 1);
     std::string m_window_title;
     std::string m_color_picker_label;
 };

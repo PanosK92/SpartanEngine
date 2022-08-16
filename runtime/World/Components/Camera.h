@@ -31,6 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Math/Frustum.h"
 #include "../../Math/Vector2.h"
 #include "../../Math/Rectangle.h"
+#include "../../Rendering/Color.h"
 //===================================
 
 namespace Spartan
@@ -129,8 +130,8 @@ namespace Spartan
         //===============================================================================================
 
         //= MISC ================================================================================
-        const Math::Vector4& GetClearColor() const           { return m_clear_color; }
-        void SetClearColor(const Math::Vector4& color)       { m_clear_color = color; }
+        const Color& GetClearColor()                   const { return m_clear_color; }
+        void SetClearColor(const Color& color)               { m_clear_color = color; }
         bool GetFpsControlEnabled()                    const { return m_fps_control_enabled; }
         void SetFpsControlEnabled(const bool enabled)        { m_fps_control_enabled = enabled; }
         bool IsFpsControlled()                         const { return m_fps_control_assumed; }
@@ -154,7 +155,7 @@ namespace Spartan
         float m_near_plane                      = 0.1f;
         float m_far_plane                       = 1000.0f;
         ProjectionType m_projection_type        = Projection_Perspective;
-        Math::Vector4 m_clear_color             = Math::Vector4(0.396f, 0.611f, 0.937f, 1.0f); // A nice cornflower blue 
+        Color m_clear_color                     = Color::cornflower_blue;
         Math::Matrix m_view                     = Math::Matrix::Identity;
         Math::Matrix m_projection               = Math::Matrix::Identity;
         Math::Matrix m_view_projection          = Math::Matrix::Identity;

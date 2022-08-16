@@ -96,7 +96,7 @@ namespace Spartan
         // If there is no camera, clear to black
         if (!m_camera)
         {
-            m_cmd_current->ClearRenderTarget(rt_output, 0, 0, false, Vector4(0.0f, 0.0f, 0.0f, 1.0f));
+            m_cmd_current->ClearRenderTarget(rt_output, 0, 0, false, Color::black);
         }
         // If there are no entities, clear to the camera's color
         else if (m_entities[RendererEntityType::GeometryOpaque].empty() && m_entities[RendererEntityType::GeometryTransparent].empty() && m_entities[RendererEntityType::Light].empty())
@@ -257,7 +257,7 @@ namespace Spartan
                 pso.render_target_depth_stencil_texture_array_index = array_index;
 
                 // Set clear values
-                pso.clear_color[0] = Vector4::One;
+                pso.clear_color[0] = Color::white;
                 pso.clear_depth    = is_transparent_pass ? rhi_depth_load : GetClearDepth();
 
                 const Matrix& view_projection = light->GetViewMatrix(array_index) * light->GetProjectionMatrix(array_index);
@@ -405,7 +405,7 @@ namespace Spartan
             pso.depth_stencil_state             = m_depth_stencil_rw_off.get();
             pso.render_target_color_textures[0] = probe->GetColorTexture();
             pso.render_target_depth_texture     = probe->GetDepthTexture();
-            pso.clear_color[0]                  = Vector4::Zero;
+            pso.clear_color[0]                  = Color::black;
             pso.clear_depth                     = GetClearDepth();
             pso.clear_stencil                   = rhi_stencil_dont_care;
             pso.viewport                        = probe->GetColorTexture()->GetViewport();
@@ -612,7 +612,7 @@ namespace Spartan
         bool wireframe     = GetOption<bool>(RendererOption::Debug_Wireframe);
 
         // We consider (in the shaders) that the sky is opaque, that's why the clear value has an alpha of 1.0f.
-        static Vector4 clear_color = Vector4(0.0f, 0.0f, 0.0f, 1.0f);
+        static Color clear_color = Color(0.0f, 0.0f, 0.0f, 1.0f);
 
         // Define pipeline state
         RHI_PipelineState pso;
@@ -1013,9 +1013,9 @@ namespace Spartan
         RHI_Texture* tex_volumetric = render_target(RendererTexture::Light_Volumetric).get();
 
         // Clear render targets
-        cmd_list->ClearRenderTarget(tex_diffuse,    0, 0, true, Vector4::Zero);
-        cmd_list->ClearRenderTarget(tex_specular,   0, 0, true, Vector4::Zero);
-        cmd_list->ClearRenderTarget(tex_volumetric, 0, 0, true, Vector4::Zero);
+        cmd_list->ClearRenderTarget(tex_diffuse,    0, 0, true, Color::black);
+        cmd_list->ClearRenderTarget(tex_specular,   0, 0, true, Color::black);
+        cmd_list->ClearRenderTarget(tex_volumetric, 0, 0, true, Color::black);
 
         // Define pipeline state
         static RHI_PipelineState pso;

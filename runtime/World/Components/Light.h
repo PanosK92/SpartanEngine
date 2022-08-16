@@ -30,6 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Math/Matrix.h"
 #include "../../RHI/RHI_Definition.h"
 #include "../../Math/Frustum.h"
+#include "../../Rendering/Color.h"
 //===================================
 
 namespace Spartan
@@ -80,8 +81,8 @@ namespace Spartan
         void SetLightType(LightType type);
 
         void SetColor(const float temperature);
-        void SetColor(const Math::Vector4& rgb) { m_color_rgb = rgb; }
-        const auto& GetColor() const            { return m_color_rgb; }
+        void SetColor(const Color& rgb) { m_color_rgb = rgb; }
+        const Color& GetColor() const   { return m_color_rgb; }
 
         void SetIntensity(float value)  { m_intensity = value; }
         auto GetIntensity()    const    { return m_intensity; }
@@ -141,7 +142,7 @@ namespace Spartan
 
         // Misc
         LightType m_light_type    = LightType::Directional;
-        Math::Vector4 m_color_rgb = Math::Vector4(1.0f, 0.76f, 0.57f, 1.0f);
+        Color m_color_rgb         = Color(1.0f, 0.76f, 0.57f, 1.0f);
         bool m_volumetric_enabled = true;
         float m_range             = 10.0f;
         float m_intensity         = 128000.0f; // sun lux

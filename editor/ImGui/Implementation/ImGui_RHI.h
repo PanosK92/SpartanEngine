@@ -282,7 +282,7 @@ namespace ImGui::RHI
         pso.blend_state              = g_blend_state.get();
         pso.depth_stencil_state      = g_depth_stencil_state.get();
         pso.render_target_swapchain  = swap_chain;
-        pso.clear_color[0]           = clear ? Vector4(0.0f, 0.0f, 0.0f, 1.0f) : rhi_color_dont_care;
+        pso.clear_color[0]           = clear ? Color::black : rhi_color_dont_care;
         pso.viewport.width           = draw_data->DisplaySize.x;
         pso.viewport.height          = draw_data->DisplaySize.y;
         pso.dynamic_scissor          = true;

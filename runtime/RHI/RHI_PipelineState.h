@@ -70,13 +70,13 @@ namespace Spartan
 
         //====================================================================================
 
-        //= Dynamic, modification wont' create a new pipeline =============
+        //= Dynamic, modification wont' create a new pipeline =====
         float clear_depth      = rhi_depth_load;
         uint32_t clear_stencil = rhi_stencil_load;
-        std::array<Math::Vector4, rhi_max_render_target_count> clear_color;
+        std::array<Color, rhi_max_render_target_count> clear_color;
 
         bool render_target_depth_texture_read_only = false;
-        //=================================================================
+        //=========================================================
 
     private:
         const RHI_Device* m_rhi_device = nullptr;

@@ -704,7 +704,7 @@ void Properties::ShowMaterial(Material* material) const
             material->GetProperty(MaterialProperty::UvOffsetY)
         );
 
-        m_material_color_picker->SetColor(Vector4(
+        m_material_color_picker->SetColor(Color(
             material->GetProperty(MaterialProperty::ColorR),
             material->GetProperty(MaterialProperty::ColorG),
             material->GetProperty(MaterialProperty::ColorB),
@@ -816,10 +816,10 @@ void Properties::ShowMaterial(Material* material) const
         material->SetProperty(MaterialProperty::UvTilingY, tiling.y);
         material->SetProperty(MaterialProperty::UvOffsetX, offset.x);
         material->SetProperty(MaterialProperty::UvOffsetY, offset.y);
-        material->SetProperty(MaterialProperty::ColorR, m_material_color_picker->GetColor().x);
-        material->SetProperty(MaterialProperty::ColorG, m_material_color_picker->GetColor().y);
-        material->SetProperty(MaterialProperty::ColorB, m_material_color_picker->GetColor().z);
-        material->SetProperty(MaterialProperty::ColorA, m_material_color_picker->GetColor().w);
+        material->SetProperty(MaterialProperty::ColorR, m_material_color_picker->GetColor().r);
+        material->SetProperty(MaterialProperty::ColorG, m_material_color_picker->GetColor().g);
+        material->SetProperty(MaterialProperty::ColorB, m_material_color_picker->GetColor().b);
+        material->SetProperty(MaterialProperty::ColorA, m_material_color_picker->GetColor().a);
         //=====================================================================================
     }
 
