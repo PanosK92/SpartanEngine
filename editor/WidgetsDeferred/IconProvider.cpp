@@ -105,7 +105,7 @@ RHI_Texture* IconProvider::GetTextureByThumbnail(const Thumbnail& thumbnail)
 {
     for (const auto& thumbnailTemp : m_thumbnails)
     {
-        if (thumbnailTemp.texture->IsLoading())
+        if (!thumbnailTemp.texture->IsReadyForUse())
             continue;
 
         if (thumbnailTemp.texture->GetObjectId() == thumbnail.texture->GetObjectId())
@@ -167,18 +167,19 @@ const Thumbnail& IconProvider::LoadFromFile(const string& file_path, IconType ty
     // Texture
     if (FileSystem::IsSupportedImageFile(file_path) || FileSystem::IsEngineTextureFile(file_path))
     {
-        // Created a texture
-        auto texture = make_shared<RHI_Texture2D>(m_context, RHI_Texture_Flags::RHI_Texture_Srv);
-        texture->SetWidth(size);
-        texture->SetHeight(size);
+        // Create a texture
+        shared_ptr<RHI_Texture2D> texture = make_shared<RHI_Texture2D>(m_context, RHI_Texture_Flags::RHI_Texture_Srv);
+
+        // Add it to the thumbnails
+        m_thumbnails.emplace_back(type, texture, file_path);
 
         // Load it asynchronously
-        m_context->GetSubsystem<Threading>()->AddTask([texture, file_path]()
+        RHI_Texture* tex_ptr = m_thumbnails.back().texture.get();
+        m_context->GetSubsystem<Threading>()->AddTask([tex_ptr, file_path]()
         {
-            texture->LoadFromFile(file_path);
+            tex_ptr->LoadFromFile(file_path);
         });
 
-        m_thumbnails.emplace_back(type, texture, file_path);
         return m_thumbnails.back();
     }
 

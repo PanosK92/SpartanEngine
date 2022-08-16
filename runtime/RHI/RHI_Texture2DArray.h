@@ -55,6 +55,7 @@ namespace Spartan
             m_flags         = flags;
 
             RHI_CreateResource();
+            m_is_ready_for_use = true;
         }
 
         ~RHI_Texture2DArray() = default;

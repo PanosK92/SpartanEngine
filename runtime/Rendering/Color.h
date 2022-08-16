@@ -52,14 +52,17 @@ namespace Spartan
         float b = 0.0f;
         float a = 0.0f;
 
-        [[nodiscard]] const float* Data() const { return &r; }
+        const float* Data() const { return &r; }
 
         // Standard
         static const Color standard_black;
         static const Color standard_white;
+        static const Color standard_red;
+        static const Color standard_green;
+        static const Color standard_blue;
         static const Color standard_cornflower_blue;
 
-        // Materials: https://physicallybased.info/
+        // Materials
         static const Color material_aluminum;
         static const Color material_blood;
         static const Color material_bone;
@@ -113,7 +116,7 @@ namespace Spartan
         static const Color material_water;
         static const Color material_zinc;
 
-        // Lights: https://physicallybased.info/
+        // Lights
         static const Color light_candle_flame;
         static const Color light_clear_sky;
         static const Color light_daylight_overcast;

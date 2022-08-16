@@ -614,7 +614,7 @@ void WorldViewer::ActionEntityCreateLightPoint()
 
     Light* light = entity->AddComponent<Light>();
     light->SetLightType(LightType::Point);
-    light->SetIntensity(2600.0f); // your typical 150 watt light bulb
+    light->SetIntensity(LightIntensity::bulb_150_watt);
 }
 
 void WorldViewer::ActionEntityCreateLightSpot()
@@ -624,7 +624,7 @@ void WorldViewer::ActionEntityCreateLightSpot()
 
     Light* light = entity->AddComponent<Light>();
     light->SetLightType(LightType::Spot);
-    light->SetIntensity(2600.0f); // your typical 150 watt light bulb
+    light->SetIntensity(LightIntensity::bulb_150_watt);
 }
 
 void WorldViewer::ActionEntityCreateRigidBody()

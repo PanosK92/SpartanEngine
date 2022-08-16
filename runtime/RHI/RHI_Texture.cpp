@@ -162,8 +162,6 @@ namespace Spartan
 
     bool RHI_Texture::LoadFromFile(const string& file_path)
     {
-        m_is_loading = true;
-
         m_data.clear();
         m_data.shrink_to_fit();
 
@@ -176,7 +174,6 @@ namespace Spartan
                 auto file = make_unique<FileStream>(file_path, FileStream_Read);
                 if (!file->IsOpen())
                 {
-                    m_is_loading = false;
                     LOG_ERROR("Failed to load \"%s\".", file_path.c_str());
                     return false;
                 }
@@ -236,7 +233,6 @@ namespace Spartan
                 {
                     if (!image_importer->Load(file_paths[slice_index], slice_index, this))
                     {
-                        m_is_loading = false;
                         LOG_ERROR("Failed to load \"%s\".", file_path.c_str());
                         return false;
                     }
@@ -302,7 +298,7 @@ namespace Spartan
             m_context->GetSubsystem<Renderer>()->RequestTextureMipGeneration(shared_from_this());
         }
 
-        m_is_loading = false;
+        m_is_ready_for_use = true;
         return true;
     }
 
@@ -515,7 +511,7 @@ namespace Spartan
         if (cmd_list != nullptr)
         {
             // Wait in case this texture loading in another thread.
-            while (IsLoading())
+            while (!IsReadyForUse())
             {
                 LOG_INFO("Waiting for texture \"%s\" to finish loading...", m_name.c_str());
                 this_thread::sleep_for(chrono::milliseconds(16));

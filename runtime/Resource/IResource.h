@@ -96,7 +96,7 @@ namespace Spartan
         const std::string& GetResourceDirectory()      const { return m_resource_directory; }
 
         // Misc
-        bool IsLoading() const { return m_is_loading; }
+        bool IsReadyForUse() const { return m_is_ready_for_use; }
 
         // IO
         virtual bool SaveToFile(const std::string& file_path) { return true; }
@@ -107,8 +107,8 @@ namespace Spartan
         static constexpr ResourceType TypeToEnum();
 
     protected:
-        ResourceType m_resource_type   = ResourceType::Unknown;
-        std::atomic<bool> m_is_loading = false;
+        ResourceType m_resource_type         = ResourceType::Unknown;
+        std::atomic<bool> m_is_ready_for_use = false;
 
     private:
         std::string m_resource_name;

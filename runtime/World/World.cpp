@@ -425,38 +425,23 @@ namespace Spartan
 
             Light* light = entity->AddComponent<Light>();
             light->SetLightType(LightType::Directional);
-            light->SetColor(Color::light_clear_sky);
+            light->SetColor(Color::light_moonlight);
+            light->SetIntensity(40000.0f);
             light->SetShadowsEnabled(false);
-            light->SetIntensity(50000.0f);
         }
 
-        // Light - 1
+        // Light - Point
         {
             shared_ptr<Entity> entity = EntityCreate();
-            entity->SetName("light_point_left");
+            entity->SetName("light_point");
 
-            entity->GetTransform()->SetPosition(Vector3(-4.0000f, 2.0f, -2.5f));
+            entity->GetTransform()->SetPosition(Vector3(2.1312f, 1.3053f, -2.0200f));
             
             Light* light = entity->AddComponent<Light>();
             light->SetLightType(LightType::Point);
-            light->SetColor(Color::light_fluorescent_tube_light);
-            light->SetIntensity(8000.0f);
-            light->SetRange(18.0f);
-            light->SetShadowsTransparentEnabled(false);
-        }
-
-        // Light - 2
-        {
-            shared_ptr<Entity> entity = EntityCreate();
-            entity->SetName("light_point_right");
-
-            entity->GetTransform()->SetPosition(Vector3(4.0000f, 2.0f, -2.5f));
-
-            Light* light = entity->AddComponent<Light>();
-            light->SetLightType(LightType::Point);
-            light->SetColor(Color::light_fluorescent_tube_light);
-            light->SetIntensity(8000.0f);
-            light->SetRange(18.0f);
+            light->SetColor(Color::light_photo_flash);
+            light->SetIntensity(LightIntensity::bulb_150_watt);
+            light->SetRange(20.0f);
             light->SetShadowsTransparentEnabled(false);
         }
 
@@ -482,7 +467,7 @@ namespace Spartan
                     if (Material* material = entity->GetTransform()->GetDescendantByName("CarBody_Primary_0")->GetRenderable()->GetMaterial())
                     {
                         material->SetColor(Color::material_aluminum);
-                        material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.5f);
+                        material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.3f);
                         material->SetProperty(MaterialProperty::MetallnessMultiplier, 1.0f);
                     }
 

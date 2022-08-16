@@ -270,7 +270,6 @@ void Properties::ShowLight(Light* light) const
         float bias                  = light->GetBias();
         float normal_bias           = light->GetNormalBias();
         float range                 = light->GetRange();
-        float time_of_day           = light->GetTimeOfDay();
         m_colorPicker_light->SetColor(light->GetColor());
 
         bool is_directional = light->GetLightType() == LightType::Directional;
@@ -300,10 +299,10 @@ void Properties::ShowLight(Light* light) const
         ImGui::SameLine(helper::g_column); m_colorPicker_light->Update();
 
         // Intensity
-        ImGui::Text(is_directional ? "Intensity (Lux)" : "Intensity (Lumens)");
+        ImGui::Text(is_directional ? "Intensity" : "Intensity (Lumens)");
         ImGui::SameLine(helper::g_column);
-        float v_speed   = is_directional ? 20.0f : 5.0f;
-        float v_max     = is_directional ? 128000.0f : 100000.0f;
+        float v_speed   = 5.0f;
+        float v_max     = 100000.0f;
         ImGui::PushItemWidth(300); imgui_extension::draw_float_wrap("##lightIntensity", &intensity, v_speed, 0.0f, v_max); ImGui::PopItemWidth();
 
         // Shadows
@@ -367,7 +366,6 @@ void Properties::ShowLight(Light* light) const
         if (normal_bias != light->GetNormalBias())                         light->SetNormalBias(normal_bias);
         if (angle != light->GetAngle() * Math::Helper::RAD_TO_DEG * 0.5f)  light->SetAngle(angle * Math::Helper::DEG_TO_RAD * 0.5f);
         if (range != light->GetRange())                                    light->SetRange(range);
-        if (time_of_day != light->GetTimeOfDay())                          light->SetTimeOfDay(time_of_day);
         if (m_colorPicker_light->GetColor() != light->GetColor())          light->SetColor(m_colorPicker_light->GetColor());
         //===========================================================================================================================
     }

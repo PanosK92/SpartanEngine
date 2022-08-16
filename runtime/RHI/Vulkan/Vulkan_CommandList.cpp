@@ -743,7 +743,7 @@ namespace Spartan
         }
 
         // If the texture is null or it's still loading, ignore it.
-        if (!texture || texture->IsLoading())
+        if (!texture || !texture->IsReadyForUse())
             return;
 
         // Get some texture info

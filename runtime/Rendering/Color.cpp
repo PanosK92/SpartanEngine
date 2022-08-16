@@ -30,6 +30,8 @@ using namespace std;
 
 namespace Spartan
 {
+    // Most of the color/temperature values are derived from: https://physicallybased.info/
+  
     // Might get inaccurate over 40000 K
     static void temperature_to_color(const float temperature_kelvin, float& r, float& g, float& b)
     {
@@ -94,9 +96,12 @@ namespace Spartan
     // Standard
     const Color Color::standard_black           = Color(0.0f, 0.0f, 0.0f, 1.0f);
     const Color Color::standard_white           = Color(1.0f, 1.0f, 1.0f, 1.0f);
+    const Color Color::standard_red             = Color(1.0f, 0.0f, 0.0f, 1.0f);
+    const Color Color::standard_green           = Color(0.0f, 1.0f, 0.0f, 1.0f);
+    const Color Color::standard_blue            = Color(0.0f, 0.0f, 1.0f, 1.0f);
     const Color Color::standard_cornflower_blue = Color(0.396f, 0.611f, 0.937f, 1.0f);
 
-    // Materials (https://physicallybased.info/)
+    // Materials
     const Color Color::material_aluminum        = Color(0.912f, 0.914f, 0.920f); // Metallic: 1.0
     const Color Color::material_blood           = Color(0.644f, 0.003f, 0.005f);
     const Color Color::material_bone            = Color(0.793f, 0.793f, 0.664f);
@@ -151,14 +156,14 @@ namespace Spartan
     const Color Color::material_zinc            = Color(0.875f, 0.867f, 0.855f);
 
     // Lights
-    const Color Color::light_candle_flame           = Color(1850);
-    const Color Color::light_clear_sky              = Color(15000);
-    const Color Color::light_daylight_overcast      = Color(6500);
-    const Color Color::light_digital_display        = Color(6500);
-    const Color Color::light_direct_sunlight        = Color(5778);
-    const Color Color::light_fluorescent_tube_light = Color(5000);
-    const Color Color::light_kerosene_lamp          = Color(1850);
-    const Color Color::light_light_bulb             = Color(2700);
-    const Color Color::light_moonlight              = Color(4000);
-    const Color Color::light_photo_flash            = Color(5500);
+    const Color Color::light_candle_flame           = Color(1850);  // Intensity: 13     lm
+    const Color Color::light_clear_sky              = Color(15000); // Intensity: 20000  lx
+    const Color Color::light_daylight_overcast      = Color(6500);  // Intensity: 2000   lx
+    const Color Color::light_direct_sunlight        = Color(5778);  // Intensity: 120000 lx
+    const Color Color::light_digital_display        = Color(6500);  // Intensity: 200    cd/m2
+    const Color Color::light_fluorescent_tube_light = Color(5000);  // Intensity: 1000   lm 
+    const Color Color::light_kerosene_lamp          = Color(1850);  // Intensity: 50     lm
+    const Color Color::light_light_bulb             = Color(2700);  // Intensity: 800    lm
+    const Color Color::light_moonlight              = Color(4000);  // Intensity: 0.1    lx
+    const Color Color::light_photo_flash            = Color(5500);  // Intensity: 20000  lm
 }
