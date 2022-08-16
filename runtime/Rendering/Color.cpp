@@ -30,6 +30,46 @@ using namespace std;
 
 namespace Spartan
 {
+    // Might get inaccurate over 40000 K
+    static void temperature_to_color(const float temperature_kelvin, float& r, float& g, float& b)
+    {
+        float magic = temperature_kelvin / 100.0f;
+
+        r = 0.0f;
+        g = 0.0f;
+        b = 0.0f;
+
+        if (magic <= 66)
+        {     
+            r = 255;
+            g = magic;
+            g = 99.4708025861f * Math::Helper::Log(g) - 161.1195681661f;
+
+            if (magic <= 19)
+            {
+                b = 0;
+            }
+            else
+            {
+                b = magic - 10.0f;
+                b = 138.5177312231f * Math::Helper::Log(b) - 305.0447927307f;
+            }
+        }
+        else
+        {
+            r = magic - 60.0f;
+            r = 329.698727446f * Math::Helper::Pow(r, -0.1332047592f);
+            g = magic - 60.0f;
+            g = 288.1221695283f * Math::Helper::Pow(g, -0.0755148492f);
+            b = 255;
+        
+        }
+
+        r /= 255.0f;
+        g /= 255.0f;
+        b /= 255.0f;
+    }
+
     Color::Color(const Color& color)
     {
         r = color.r;
@@ -46,62 +86,79 @@ namespace Spartan
         this->a = a;
     }
 
+    Color::Color(const float temperature_kelvin)
+    {
+        temperature_to_color(temperature_kelvin, r, g, b);
+    }
+
     // Standard
-    const Color Color::black           = Color(0.0f, 0.0f, 0.0f, 1.0f);
-    const Color Color::white           = Color(1.0f, 1.0f, 1.0f, 1.0f);
-    const Color Color::cornflower_blue = Color(0.396f, 0.611f, 0.937f, 1.0f);
+    const Color Color::standard_black           = Color(0.0f, 0.0f, 0.0f, 1.0f);
+    const Color Color::standard_white           = Color(1.0f, 1.0f, 1.0f, 1.0f);
+    const Color Color::standard_cornflower_blue = Color(0.396f, 0.611f, 0.937f, 1.0f);
 
     // Materials (https://physicallybased.info/)
-    const Color Color::aluminum        = Color(0.912f, 0.914f, 0.920f); // Metallic: 1.0
-    const Color Color::blood           = Color(0.644f, 0.003f, 0.005f);
-    const Color Color::bone            = Color(0.793f, 0.793f, 0.664f);
-    const Color Color::brass           = Color(0.887f, 0.789f, 0.434f);
-    const Color Color::brick           = Color(0.262f, 0.095f, 0.061f);
-    const Color Color::charcoal        = Color(0.020f, 0.020f, 0.020f);
-    const Color Color::chocolate       = Color(0.162f, 0.091f, 0.060f);
-    const Color Color::chromium        = Color(0.550f, 0.556f, 0.554f); // Metallic: 1.0
-    const Color Color::cobalt          = Color(0.662f, 0.655f, 0.634f);
-    const Color Color::concrete        = Color(0.510f, 0.510f, 0.510f);
-    const Color Color::cooking_oil     = Color(0.738f, 0.687f, 0.091f);
-    const Color Color::copper          = Color(0.926f, 0.721f, 0.504f);
-    const Color Color::diamond         = Color(1.000f, 1.000f, 1.000f);
-    const Color Color::egg_shell       = Color(0.610f, 0.624f, 0.631f);
-    const Color Color::eye_cornea      = Color(1.000f, 1.000f, 1.000f);
-    const Color Color::eye_lens        = Color(1.000f, 1.000f, 1.000f);
-    const Color Color::eye_sclera      = Color(0.680f, 0.490f, 0.370f);
-    const Color Color::glass           = Color(1.000f, 1.000f, 1.000f);
-    const Color Color::gold            = Color(0.944f, 0.776f, 0.373f);
-    const Color Color::gray_card       = Color(0.180f, 0.180f, 0.180f);
-    const Color Color::honey           = Color(0.831f, 0.397f, 0.038f);
-    const Color Color::ice             = Color(1.000f, 1.000f, 1.000f);
-    const Color Color::iron            = Color(0.531f, 0.512f, 0.496f); // Metallic: 1.0
-    const Color Color::ketchup         = Color(0.164f, 0.006f, 0.002f);
-    const Color Color::lead            = Color(0.632f, 0.626f, 0.641f);
-    const Color Color::mercury         = Color(0.781f, 0.779f, 0.779f);
-    const Color Color::milk            = Color(0.604f, 0.584f, 0.497f);
-    const Color Color::nickel          = Color(0.649f, 0.610f, 0.541f);
-    const Color Color::office_paper    = Color(0.738f, 0.768f, 1.000f);
-    const Color Color::plastic_pc      = Color(1.000f, 1.000f, 1.000f); // Specular: 0.640
-    const Color Color::plastic_pet     = Color(1.000f, 1.000f, 1.000f); // Specular: 0.623
-    const Color Color::plastic_acrylic = Color(1.000f, 1.000f, 1.000f); // Specular: 0.462
-    const Color Color::plastic_pp      = Color(1.000f, 1.000f, 1.000f); // Specular: 0.487
-    const Color Color::plastic_pvc     = Color(1.000f, 1.000f, 1.000f); // Specular: 0.550
-    const Color Color::platinum        = Color(0.679f, 0.642f, 0.588f);
-    const Color Color::salt            = Color(0.800f, 0.800f, 0.800f);
-    const Color Color::sand            = Color(0.440f, 0.386f, 0.231f);
-    const Color Color::sapphire        = Color(0.670f, 0.764f, 0.855f);
-    const Color Color::silver          = Color(0.962f, 0.949f, 0.922f);
-    const Color Color::skin_1          = Color(0.847f, 0.638f, 0.552f);
-    const Color Color::skin_2          = Color(0.799f, 0.485f, 0.347f);
-    const Color Color::skin_3          = Color(0.600f, 0.310f, 0.220f);
-    const Color Color::skin_4          = Color(0.430f, 0.200f, 0.130f);
-    const Color Color::skin_5          = Color(0.360f, 0.160f, 0.080f);
-    const Color Color::skin_6          = Color(0.090f, 0.050f, 0.020f);
-    const Color Color::snow            = Color(0.810f, 0.810f, 0.810f);
-    const Color Color::tire            = Color(0.023f, 0.023f, 0.023f); // Metallic: 0.0, Specular 0.5
-    const Color Color::titanium        = Color(0.616f, 0.582f, 0.544f);
-    const Color Color::tungsten        = Color(0.925f, 0.835f, 0.757f);
-    const Color Color::vanadium        = Color(0.945f, 0.894f, 0.780f);
-    const Color Color::water           = Color(1.000f, 1.000f, 1.000f);
-    const Color Color::zinc            = Color(0.875f, 0.867f, 0.855f);
+    const Color Color::material_aluminum        = Color(0.912f, 0.914f, 0.920f); // Metallic: 1.0
+    const Color Color::material_blood           = Color(0.644f, 0.003f, 0.005f);
+    const Color Color::material_bone            = Color(0.793f, 0.793f, 0.664f);
+    const Color Color::material_brass           = Color(0.887f, 0.789f, 0.434f);
+    const Color Color::material_brick           = Color(0.262f, 0.095f, 0.061f);
+    const Color Color::material_charcoal        = Color(0.020f, 0.020f, 0.020f);
+    const Color Color::material_chocolate       = Color(0.162f, 0.091f, 0.060f);
+    const Color Color::material_chromium        = Color(0.550f, 0.556f, 0.554f); // Metallic: 1.0
+    const Color Color::material_cobalt          = Color(0.662f, 0.655f, 0.634f);
+    const Color Color::material_concrete        = Color(0.510f, 0.510f, 0.510f);
+    const Color Color::material_cooking_oil     = Color(0.738f, 0.687f, 0.091f);
+    const Color Color::material_copper          = Color(0.926f, 0.721f, 0.504f);
+    const Color Color::material_diamond         = Color(1.000f, 1.000f, 1.000f);
+    const Color Color::material_egg_shell       = Color(0.610f, 0.624f, 0.631f);
+    const Color Color::material_eye_cornea      = Color(1.000f, 1.000f, 1.000f);
+    const Color Color::material_eye_lens        = Color(1.000f, 1.000f, 1.000f);
+    const Color Color::material_eye_sclera      = Color(0.680f, 0.490f, 0.370f);
+    const Color Color::material_glass           = Color(1.000f, 1.000f, 1.000f);
+    const Color Color::material_gold            = Color(0.944f, 0.776f, 0.373f);
+    const Color Color::material_gray_card       = Color(0.180f, 0.180f, 0.180f);
+    const Color Color::material_honey           = Color(0.831f, 0.397f, 0.038f);
+    const Color Color::material_ice             = Color(1.000f, 1.000f, 1.000f);
+    const Color Color::material_iron            = Color(0.531f, 0.512f, 0.496f); // Metallic: 1.0
+    const Color Color::material_ketchup         = Color(0.164f, 0.006f, 0.002f);
+    const Color Color::material_lead            = Color(0.632f, 0.626f, 0.641f);
+    const Color Color::material_mercury         = Color(0.781f, 0.779f, 0.779f);
+    const Color Color::material_milk            = Color(0.604f, 0.584f, 0.497f);
+    const Color Color::material_nickel          = Color(0.649f, 0.610f, 0.541f);
+    const Color Color::material_office_paper    = Color(0.738f, 0.768f, 1.000f);
+    const Color Color::material_plastic_pc      = Color(1.000f, 1.000f, 1.000f); // Specular: 0.640
+    const Color Color::material_plastic_pet     = Color(1.000f, 1.000f, 1.000f); // Specular: 0.623
+    const Color Color::material_plastic_acrylic = Color(1.000f, 1.000f, 1.000f); // Specular: 0.462
+    const Color Color::material_plastic_pp      = Color(1.000f, 1.000f, 1.000f); // Specular: 0.487
+    const Color Color::material_plastic_pvc     = Color(1.000f, 1.000f, 1.000f); // Specular: 0.550
+    const Color Color::material_platinum        = Color(0.679f, 0.642f, 0.588f);
+    const Color Color::material_salt            = Color(0.800f, 0.800f, 0.800f);
+    const Color Color::material_sand            = Color(0.440f, 0.386f, 0.231f);
+    const Color Color::material_sapphire        = Color(0.670f, 0.764f, 0.855f);
+    const Color Color::material_silver          = Color(0.962f, 0.949f, 0.922f);
+    const Color Color::material_skin_1          = Color(0.847f, 0.638f, 0.552f);
+    const Color Color::material_skin_2          = Color(0.799f, 0.485f, 0.347f);
+    const Color Color::material_skin_3          = Color(0.600f, 0.310f, 0.220f);
+    const Color Color::material_skin_4          = Color(0.430f, 0.200f, 0.130f);
+    const Color Color::material_skin_5          = Color(0.360f, 0.160f, 0.080f);
+    const Color Color::material_skin_6          = Color(0.090f, 0.050f, 0.020f);
+    const Color Color::material_snow            = Color(0.810f, 0.810f, 0.810f);
+    const Color Color::material_tire            = Color(0.023f, 0.023f, 0.023f); // Metallic: 0.0, Specular 0.5
+    const Color Color::material_titanium        = Color(0.616f, 0.582f, 0.544f);
+    const Color Color::material_tungsten        = Color(0.925f, 0.835f, 0.757f);
+    const Color Color::material_vanadium        = Color(0.945f, 0.894f, 0.780f);
+    const Color Color::material_water           = Color(1.000f, 1.000f, 1.000f);
+    const Color Color::material_zinc            = Color(0.875f, 0.867f, 0.855f);
+
+    // Lights
+    const Color Color::light_candle_flame           = Color(1850);
+    const Color Color::light_clear_sky              = Color(15000);
+    const Color Color::light_daylight_overcast      = Color(6500);
+    const Color Color::light_digital_display        = Color(6500);
+    const Color Color::light_direct_sunlight        = Color(5778);
+    const Color Color::light_fluorescent_tube_light = Color(5000);
+    const Color Color::light_kerosene_lamp          = Color(1850);
+    const Color Color::light_light_bulb             = Color(2700);
+    const Color Color::light_moonlight              = Color(4000);
+    const Color Color::light_photo_flash            = Color(5500);
 }

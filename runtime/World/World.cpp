@@ -425,36 +425,37 @@ namespace Spartan
 
             Light* light = entity->AddComponent<Light>();
             light->SetLightType(LightType::Directional);
+            light->SetColor(Color::light_clear_sky);
             light->SetShadowsEnabled(false);
-            light->SetIntensity(13480.0f);
+            light->SetIntensity(50000.0f);
         }
 
-        // Light - Point blue
+        // Light - 1
         {
             shared_ptr<Entity> entity = EntityCreate();
-            entity->SetName("light_point_blue");
+            entity->SetName("light_point_left");
 
             entity->GetTransform()->SetPosition(Vector3(-4.0000f, 2.0f, -2.5f));
             
             Light* light = entity->AddComponent<Light>();
             light->SetLightType(LightType::Point);
-            light->SetColor(Color(0.0f, 125.0f / 255.0f, 1.0f, 1.0f));
-            light->SetIntensity(20000.0f);
+            light->SetColor(Color::light_fluorescent_tube_light);
+            light->SetIntensity(8000.0f);
             light->SetRange(18.0f);
             light->SetShadowsTransparentEnabled(false);
         }
 
-        // Light - Point red
+        // Light - 2
         {
             shared_ptr<Entity> entity = EntityCreate();
-            entity->SetName("light_point_red");
+            entity->SetName("light_point_right");
 
             entity->GetTransform()->SetPosition(Vector3(4.0000f, 2.0f, -2.5f));
 
             Light* light = entity->AddComponent<Light>();
             light->SetLightType(LightType::Point);
-            light->SetColor(Color(1.0f, 81.0f / 255.0f, 81.0f / 255.0f, 1.0f));
-            light->SetIntensity(20000.0f);
+            light->SetColor(Color::light_fluorescent_tube_light);
+            light->SetIntensity(8000.0f);
             light->SetRange(18.0f);
             light->SetShadowsTransparentEnabled(false);
         }
@@ -480,51 +481,98 @@ namespace Spartan
                     // metal - make it aluminum
                     if (Material* material = entity->GetTransform()->GetDescendantByName("CarBody_Primary_0")->GetRenderable()->GetMaterial())
                     {
-                        material->SetColor(Color::aluminum);
+                        material->SetColor(Color::material_aluminum);
                         material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.5f);
                         material->SetProperty(MaterialProperty::MetallnessMultiplier, 1.0f);
                     }
 
                     // plastic
-                    entity->GetTransform()->GetDescendantByName("CarBody_Secondary_0")->GetRenderable()->GetMaterial()->SetProperty(MaterialProperty::RoughnessMultiplier, 0.0f);
-                    entity->GetTransform()->GetDescendantByName("CarBody_Trim1_0")->GetRenderable()->GetMaterial()->SetProperty(MaterialProperty::RoughnessMultiplier, 0.0f);
+                    {
+                        if (Material* material = entity->GetTransform()->GetDescendantByName("CarBody_Secondary_0")->GetRenderable()->GetMaterial())
+                        {
+                            material->SetColor(Color::material_tire);
+                            material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.35f);
+                        }
+
+                        if (Material* material = entity->GetTransform()->GetDescendantByName("CarBody_Trim1_0")->GetRenderable()->GetMaterial())
+                        {
+                            material->SetColor(Color::material_tire);
+                            material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.35f);
+                        }
+                    }
+                }
+
+                // interior
+                {
+                    if (Material* material = entity->GetTransform()->GetDescendantByName("Interior_InteriorPlastic_0")->GetRenderable()->GetMaterial())
+                    {
+                        material->SetColor(Color::material_tire);
+                        material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.7f);
+                        material->SetProperty(MaterialProperty::MetallnessMultiplier, 0.0f);
+                    }
+
+                    if (Material* material = entity->GetTransform()->GetDescendantByName("Interior_InteriorPlastic2_0")->GetRenderable()->GetMaterial())
+                    {
+                        material->SetColor(Color::material_tire);
+                        material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.7f);
+                        material->SetProperty(MaterialProperty::MetallnessMultiplier, 0.0f);
+                    }
+
+                    // fabric
+                    if (Material* material = entity->GetTransform()->GetDescendantByName("Interior_Interior_0")->GetRenderable()->GetMaterial())
+                    {
+                        material->SetProperty(MaterialProperty::Sheen, 0.5f);
+                        material->SetProperty(MaterialProperty::SheenTint, 0.5f);
+                    }
                 }
 
                 // lights
                 {
-                    entity->GetTransform()->GetDescendantByName("Headlights_Trim2_0")->GetRenderable()->GetMaterial()->SetProperty(MaterialProperty::RoughnessMultiplier, 0.0f);
-                    entity->GetTransform()->GetDescendantByName("CarBody_LampCovers_0")->GetRenderable()->GetMaterial()->SetProperty(MaterialProperty::RoughnessMultiplier, 0.5f);
-                    entity->GetTransform()->GetDescendantByName("CarBody_LampCovers_0")->GetRenderable()->GetMaterial()->SetProperty(MaterialProperty::ColorR, 0.8f);
-                    entity->GetTransform()->GetDescendantByName("CarBody_LampCovers_0")->GetRenderable()->GetMaterial()->SetProperty(MaterialProperty::ColorG, 0.8f);
-                    entity->GetTransform()->GetDescendantByName("CarBody_LampCovers_0")->GetRenderable()->GetMaterial()->SetProperty(MaterialProperty::ColorB, 0.8f);
-                    entity->GetTransform()->GetDescendantByName("CarBody_LampCovers_0")->GetRenderable()->GetMaterial()->SetProperty(MaterialProperty::ColorA, 0.3f);
+                    if (Material* material = entity->GetTransform()->GetDescendantByName("CarBody_LampCovers_0")->GetRenderable()->GetMaterial())
+                    {
+                        material->SetColor(Color::material_glass);
+                        material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.2f);
+                        material->SetTexture(MaterialTexture::Emission, material->GetTexture_PtrShared(MaterialTexture::Color));
+                    }
+
+                    // plastic covers
+                    if (Material* material = entity->GetTransform()->GetDescendantByName("Headlights_Trim2_0")->GetRenderable()->GetMaterial())
+                    {
+                        material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.35f);
+                        material->SetColor(Color::material_tire);
+                    }
                 }
 
-                // brake disc
-                entity->GetTransform()->GetDescendantByName("FL_Wheel_TireMaterial_0")->GetRenderable()->GetMaterial()->SetProperty(MaterialProperty::Anisotropic, 1.0f);
-                entity->GetTransform()->GetDescendantByName("FL_Wheel_TireMaterial_0")->GetRenderable()->GetMaterial()->SetProperty(MaterialProperty::AnisotropicRotation, 0.5f);
-
-                // tires
-                if (Material* material = entity->GetTransform()->GetDescendantByName("FL_Wheel_TireMaterial_0")->GetRenderable()->GetMaterial())
+                // wheels
                 {
-                    material->SetColor(Color::tire);
-                    material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.5f);
-                    material->SetProperty(MaterialProperty::MetallnessMultiplier, 0.0f);
+                    // brake caliper
+                    if (Material* material = entity->GetTransform()->GetDescendantByName("FR_Caliper_BrakeCaliper_0")->GetRenderable()->GetMaterial())
+                    {
+                        material->SetColor(Color::material_aluminum);
+                        material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.5f);
+                        material->SetProperty(MaterialProperty::MetallnessMultiplier, 1.0f);
+                        material->SetProperty(MaterialProperty::Anisotropic, 1.0f);
+                        material->SetProperty(MaterialProperty::AnisotropicRotation, 0.5f);
+                    }
+
+                    // tires
+                    if (Material* material = entity->GetTransform()->GetDescendantByName("FL_Wheel_TireMaterial_0")->GetRenderable()->GetMaterial())
+                    {
+                        material->SetColor(Color::material_tire);
+                        material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.5f);
+                        material->SetProperty(MaterialProperty::MetallnessMultiplier, 0.0f);
+                    }
+
+                    // rims
+                    if (Material* material = entity->GetTransform()->GetDescendantByName("FR_Wheel_RimMaterial_0")->GetRenderable()->GetMaterial())
+                    {
+                        material->SetColor(Color::material_aluminum);
+                        material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.5f);
+                        material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.5f);
+                        material->SetProperty(MaterialProperty::MetallnessMultiplier, 1.0f);
+                    }
                 }
 
-                // rims
-                entity->GetTransform()->GetDescendantByName("FR_Wheel_RimMaterial_0")->GetRenderable()->GetMaterial()->SetProperty(MaterialProperty::Anisotropic, 1.0f);
-                entity->GetTransform()->GetDescendantByName("FR_Wheel_RimMaterial_0")->GetRenderable()->GetMaterial()->SetProperty(MaterialProperty::AnisotropicRotation, 0.5f);
-
-                // interior
-                {
-                    entity->GetTransform()->GetDescendantByName("Interior_InteriorPlastic_0")->GetRenderable()->GetMaterial()->SetProperty(MaterialProperty::RoughnessMultiplier, 0.7f);
-                    entity->GetTransform()->GetDescendantByName("Interior_InteriorPlastic2_0")->GetRenderable()->GetMaterial()->SetProperty(MaterialProperty::RoughnessMultiplier, 0.7f);
-                    entity->GetTransform()->GetDescendantByName("Interior_Interior_0")->GetRenderable()->GetMaterial()->SetProperty(MaterialProperty::Sheen, 0.5f);
-                    entity->GetTransform()->GetDescendantByName("Interior_Interior_0")->GetRenderable()->GetMaterial()->SetProperty(MaterialProperty::SheenTint, 0.5f);
-                    entity->GetTransform()->GetDescendantByName("Interior_InteriorPlastic_0")->GetRenderable()->GetMaterial()->SetProperty(MaterialProperty::MetallnessMultiplier, 0.0f);
-                    entity->GetTransform()->GetDescendantByName("Interior_InteriorPlastic2_0")->GetRenderable()->GetMaterial()->SetProperty(MaterialProperty::MetallnessMultiplier, 0.0f);
-                }
             }
         }
 
