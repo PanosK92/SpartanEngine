@@ -476,12 +476,19 @@ namespace Spartan
                 entity->GetTransform()->GetDescendantByName("RR_Caliper_BrakeCaliper_0")->GetTransform()->SetRotationLocal(Quaternion::FromEulerAngles(0.0f, 75.0f, 0.0f));
 
                 // body
-                entity->GetTransform()->GetDescendantByName("CarBody_Primary_0")->GetRenderable()->GetMaterial()->SetProperty(MaterialProperty::RoughnessMultiplier, 0.0f);
-                entity->GetTransform()->GetDescendantByName("CarBody_Primary_0")->GetRenderable()->GetMaterial()->SetProperty(MaterialProperty::MetallnessMultiplier, 0.2f);
+                {
+                    // metal - make it aluminum
+                    if (Material* material = entity->GetTransform()->GetDescendantByName("CarBody_Primary_0")->GetRenderable()->GetMaterial())
+                    {
+                        material->SetColor(Color::aluminum);
+                        material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.5f);
+                        material->SetProperty(MaterialProperty::MetallnessMultiplier, 1.0f);
+                    }
 
-                // black plastic parts
-                entity->GetTransform()->GetDescendantByName("CarBody_Secondary_0")->GetRenderable()->GetMaterial()->SetProperty(MaterialProperty::RoughnessMultiplier, 0.0f);
-                entity->GetTransform()->GetDescendantByName("CarBody_Trim1_0")->GetRenderable()->GetMaterial()->SetProperty(MaterialProperty::RoughnessMultiplier, 0.0f);
+                    // plastic
+                    entity->GetTransform()->GetDescendantByName("CarBody_Secondary_0")->GetRenderable()->GetMaterial()->SetProperty(MaterialProperty::RoughnessMultiplier, 0.0f);
+                    entity->GetTransform()->GetDescendantByName("CarBody_Trim1_0")->GetRenderable()->GetMaterial()->SetProperty(MaterialProperty::RoughnessMultiplier, 0.0f);
+                }
 
                 // lights
                 {
@@ -498,11 +505,11 @@ namespace Spartan
                 entity->GetTransform()->GetDescendantByName("FL_Wheel_TireMaterial_0")->GetRenderable()->GetMaterial()->SetProperty(MaterialProperty::AnisotropicRotation, 0.5f);
 
                 // tires
+                if (Material* material = entity->GetTransform()->GetDescendantByName("FL_Wheel_TireMaterial_0")->GetRenderable()->GetMaterial())
                 {
-                    entity->GetTransform()->GetDescendantByName("FL_Wheel_TireMaterial_0")->GetRenderable()->GetMaterial()->SetProperty(MaterialProperty::RoughnessMultiplier, 1.0f);
-
-                    // That's probably a bug, the tires shouldn't have metalness
-                    entity->GetTransform()->GetDescendantByName("FL_Wheel_TireMaterial_0")->GetRenderable()->GetMaterial()->SetProperty(MaterialProperty::MetallnessMultiplier, 0.0f);
+                    material->SetColor(Color::tire);
+                    material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.5f);
+                    material->SetProperty(MaterialProperty::MetallnessMultiplier, 0.0f);
                 }
 
                 // rims
@@ -515,8 +522,6 @@ namespace Spartan
                     entity->GetTransform()->GetDescendantByName("Interior_InteriorPlastic2_0")->GetRenderable()->GetMaterial()->SetProperty(MaterialProperty::RoughnessMultiplier, 0.7f);
                     entity->GetTransform()->GetDescendantByName("Interior_Interior_0")->GetRenderable()->GetMaterial()->SetProperty(MaterialProperty::Sheen, 0.5f);
                     entity->GetTransform()->GetDescendantByName("Interior_Interior_0")->GetRenderable()->GetMaterial()->SetProperty(MaterialProperty::SheenTint, 0.5f);
-
-                    // That's probably a bug, the plastic parts of the interior shouldn't have metalness
                     entity->GetTransform()->GetDescendantByName("Interior_InteriorPlastic_0")->GetRenderable()->GetMaterial()->SetProperty(MaterialProperty::MetallnessMultiplier, 0.0f);
                     entity->GetTransform()->GetDescendantByName("Interior_InteriorPlastic2_0")->GetRenderable()->GetMaterial()->SetProperty(MaterialProperty::MetallnessMultiplier, 0.0f);
                 }

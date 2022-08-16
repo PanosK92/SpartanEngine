@@ -38,17 +38,18 @@ public:
     const Spartan::Color& GetColor()     const { return m_color; }
 
 private:
-    bool m_is_visible         = false;
-    bool m_hdr                = false;
-    bool m_alpha_preview      = true;
-    bool m_alpha_half_preview = false;
-    bool m_options_menu       = true;
-    bool m_show_wheel         = false;
-    bool m_show_preview       = false;
-    bool m_show_rgb           = true;
-    bool m_show_hsv           = false;
-    bool m_show_hex           = true;
-    Spartan::Color m_color    = Spartan::Color(0, 0, 0, 1);
+    bool m_is_visible          = false;
+    bool m_hdr                 = false;
+    bool m_alpha_preview       = true;
+    bool m_alpha_half_preview  = false;
+    bool m_options_menu        = true;
+    bool m_show_wheel          = false;
+    bool m_show_preview        = false;
+    bool m_show_rgb            = true;
+    bool m_show_hsv            = false;
+    bool m_show_hex            = true;
+    Spartan::Color m_color     = Spartan::Color(0, 0, 0, 1);
+    uint32_t m_combo_box_index = 0;
     std::string m_window_title;
     std::string m_color_picker_label;
 };

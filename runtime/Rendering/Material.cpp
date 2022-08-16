@@ -263,4 +263,12 @@ namespace Spartan
 
         m_properties[static_cast<uint32_t>(property_type)] = value;
     }
+
+    void Material::SetColor(const Color& color)
+    {
+        SetProperty(MaterialProperty::ColorR, color.r);
+        SetProperty(MaterialProperty::ColorG, color.g);
+        SetProperty(MaterialProperty::ColorB, color.b);
+        SetProperty(MaterialProperty::ColorA, color.a);
+    }
 }
