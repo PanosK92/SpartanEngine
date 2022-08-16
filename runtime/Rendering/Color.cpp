@@ -1,0 +1,93 @@
+/*
+Copyright(c) 2016-2022 Panos Karabelas
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and / or sell
+copies of the Software, and to permit persons to whom the Software is furnished
+to do so, subject to the following conditions :
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.IN NO EVENT SHALL THE AUTHORS OR
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+*/
+
+//= INCLUDES =====
+#include "pch.h"
+#include "Color.h"
+//================
+
+//= NAMESPACES =====
+using namespace std;
+//==================
+
+namespace Spartan
+{
+    Color::Color(const float r, const float g, const float b, const float a /*= 1.0f*/)
+    {
+        this->r = r;
+        this->g = g;
+        this->b = b;
+        this->a = a;
+    }
+
+    const Color Color::aluminum        = Color(0.912f, 0.914f, 0.920f);
+    const Color Color::blood           = Color(0.644f, 0.003f, 0.005f);
+    const Color Color::bone            = Color(0.793f, 0.793f, 0.664f);
+    const Color Color::brass           = Color(0.887f, 0.789f, 0.434f);
+    const Color Color::brick           = Color(0.262f, 0.095f, 0.061f);
+    const Color Color::charcoal        = Color(0.020f, 0.020f, 0.020f);
+    const Color Color::chocolate       = Color(0.162f, 0.091f, 0.060f);
+    const Color Color::chromium        = Color(0.550f, 0.556f, 0.554f);
+    const Color Color::cobalt          = Color(0.662f, 0.655f, 0.634f);
+    const Color Color::concrete        = Color(0.510f, 0.510f, 0.510f);
+    const Color Color::cooking_oil     = Color(0.738f, 0.687f, 0.091f);
+    const Color Color::copper          = Color(0.926f, 0.721f, 0.504f);
+    const Color Color::diamond         = Color(1.000f, 1.000f, 1.000f);
+    const Color Color::egg_shell       = Color(0.610f, 0.624f, 0.631f);
+    const Color Color::eye_cornea      = Color(1.000f, 1.000f, 1.000f);
+    const Color Color::eye_lens        = Color(1.000f, 1.000f, 1.000f);
+    const Color Color::eye_sclera      = Color(0.680f, 0.490f, 0.370f);
+    const Color Color::glass           = Color(1.000f, 1.000f, 1.000f);
+    const Color Color::gold            = Color(0.944f, 0.776f, 0.373f);
+    const Color Color::gray_card       = Color(0.180f, 0.180f, 0.180f);
+    const Color Color::honey           = Color(0.831f, 0.397f, 0.038f);
+    const Color Color::ice             = Color(1.000f, 1.000f, 1.000f);
+    const Color Color::iron            = Color(0.531f, 0.512f, 0.496f);
+    const Color Color::ketchup         = Color(0.164f, 0.006f, 0.002f);
+    const Color Color::lead            = Color(0.632f, 0.626f, 0.641f);
+    const Color Color::mercury         = Color(0.781f, 0.779f, 0.779f);
+    const Color Color::milk            = Color(0.604f, 0.584f, 0.497f);
+    const Color Color::nickel          = Color(0.649f, 0.610f, 0.541f);
+    const Color Color::office_paper    = Color(0.738f, 0.768f, 1.000f);
+    const Color Color::plastic_pc      = Color(1.000f, 1.000f, 1.000f);
+    const Color Color::plastic_pet     = Color(1.000f, 1.000f, 1.000f);
+    const Color Color::plastic_acrylic = Color(1.000f, 1.000f, 1.000f);
+    const Color Color::plastic_pp      = Color(1.000f, 1.000f, 1.000f);
+    const Color Color::plastic_pvc     = Color(1.000f, 1.000f, 1.000f);
+    const Color Color::platinum        = Color(0.679f, 0.642f, 0.588f);
+    const Color Color::salt            = Color(0.800f, 0.800f, 0.800f);
+    const Color Color::sand            = Color(0.440f, 0.386f, 0.231f);
+    const Color Color::sapphire        = Color(0.670f, 0.764f, 0.855f);
+    const Color Color::silver          = Color(0.962f, 0.949f, 0.922f);
+    const Color Color::skin_1          = Color(0.847f, 0.638f, 0.552f);
+    const Color Color::skin_2          = Color(0.799f, 0.485f, 0.347f);
+    const Color Color::skin_3          = Color(0.600f, 0.310f, 0.220f);
+    const Color Color::skin_4          = Color(0.430f, 0.200f, 0.130f);
+    const Color Color::skin_5          = Color(0.360f, 0.160f, 0.080f);
+    const Color Color::skin_6          = Color(0.090f, 0.050f, 0.020f);
+    const Color Color::snow            = Color(0.810f, 0.810f, 0.810f);
+    const Color Color::tire            = Color(0.023f, 0.023f, 0.023f);
+    const Color Color::titanium        = Color(0.616f, 0.582f, 0.544f);
+    const Color Color::tungsten        = Color(0.925f, 0.835f, 0.757f);
+    const Color Color::vanadium        = Color(0.945f, 0.894f, 0.780f);
+    const Color Color::water           = Color(1.000f, 1.000f, 1.000f);
+    const Color Color::zinc            = Color(0.875f, 0.867f, 0.855f);
+}
