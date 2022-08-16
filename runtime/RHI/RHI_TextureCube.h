@@ -48,6 +48,7 @@ namespace Spartan
             m_bits_per_channel = rhi_format_to_bits_per_channel(m_format);
 
             RHI_TextureCube::RHI_CreateResource();
+            m_is_ready_for_use = true;
         }
 
         // Creates a texture without data (intended for use as a render target)
@@ -63,6 +64,7 @@ namespace Spartan
             m_flags         = flags;
 
             RHI_TextureCube::RHI_CreateResource();
+            m_is_ready_for_use = true;
         }
 
         ~RHI_TextureCube() = default;

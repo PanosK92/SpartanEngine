@@ -46,12 +46,25 @@ namespace Spartan
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_shadows_screen_space_enabled, bool);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_shadows_transparent_enabled, bool);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_range, float);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_intensity, float);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_intensity_lumens, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_angle_rad, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_color_rgb, Color);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_bias, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_normal_bias, float);
         SP_REGISTER_ATTRIBUTE_GET_SET(GetLightType, SetLightType, LightType);
+
+        if (m_light_type == LightType::Directional)
+        {
+            SetIntensity(LightIntensity::direct_sunglight);
+        }
+        else if (m_light_type == LightType::Point)
+        {
+            SetIntensity(LightIntensity::bulb_150_watt);
+        }
+        else if (m_light_type == LightType::Spot)
+        {
+            SetIntensity(LightIntensity::average_flashlight);
+        }
 
         m_renderer = m_context->GetSubsystem<Renderer>();
     }
@@ -144,7 +157,7 @@ namespace Spartan
         stream->Write(m_volumetric_enabled);
         stream->Write(m_color_rgb);
         stream->Write(m_range);
-        stream->Write(m_intensity);
+        stream->Write(m_intensity_lumens);
         stream->Write(m_angle_rad);
         stream->Write(m_bias);
         stream->Write(m_normal_bias);
@@ -159,7 +172,7 @@ namespace Spartan
         stream->Read(&m_volumetric_enabled);
         stream->Read(&m_color_rgb);
         stream->Read(&m_range);
-        stream->Read(&m_intensity);
+        stream->Read(&m_intensity_lumens);
         stream->Read(&m_angle_rad);
         stream->Read(&m_bias);
         stream->Read(&m_normal_bias);
@@ -184,6 +197,40 @@ namespace Spartan
     void Light::SetColor(const float temperature)
     {
 
+    }
+
+    void Light::SetIntensity(const LightIntensity lumens)
+    {
+        if (lumens == LightIntensity::direct_sunglight)
+        {
+            // The directional light is using an arbitrary value
+            m_intensity_lumens = 100000.0f;
+        }
+        else if (lumens == LightIntensity::bulb_150_watt)
+        {
+            m_intensity_lumens = 2600.0f;
+        }
+        else if (lumens == LightIntensity::average_flashlight)
+        {
+            m_intensity_lumens = 100.0f;
+        }
+    }
+
+    float Light::GetIntensityForShader(Camera* camera) const
+    {
+        SP_ASSERT(camera != nullptr);
+
+        float magic_value            = 30.76f; // based on personal observations
+        float correct_looking_lumens = m_intensity_lumens * magic_value;
+        float luminous_intensity     = correct_looking_lumens * camera->GetExposure();
+
+        // The directional light is using an arbitrary value
+        if (m_light_type == LightType::Directional)
+        {
+            return luminous_intensity * 0.1f;
+        }
+
+        return luminous_intensity;
     }
 
     void Light::SetShadowsEnabled(bool cast_shadows)
@@ -218,11 +265,6 @@ namespace Spartan
     {
         m_angle_rad = Helper::Clamp(angle, 0.0f, Math::Helper::PI_2);
         m_is_dirty  = true;
-    }
-
-    void Light::SetTimeOfDay(float time_of_day)
-    {
-        m_time_of_day = Helper::Clamp(time_of_day, 0.0f, 24.0f);
     }
 
     void Light::ComputeViewMatrix()

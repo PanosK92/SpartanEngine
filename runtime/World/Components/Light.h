@@ -48,6 +48,13 @@ namespace Spartan
         Spot
     };
 
+    enum class LightIntensity
+    {
+        direct_sunglight,
+        bulb_150_watt,
+        average_flashlight
+    };
+
     struct ShadowSlice
     {
         Math::Vector3 min    = Math::Vector3::Zero;
@@ -82,22 +89,24 @@ namespace Spartan
 
         void SetColor(const float temperature);
         void SetColor(const Color& rgb) { m_color_rgb = rgb; }
-        const Color& GetColor() const   { return m_color_rgb; }
+        const Color& GetColor()   const { return m_color_rgb; }
 
-        void SetIntensity(float value)  { m_intensity = value; }
-        auto GetIntensity()    const    { return m_intensity; }
+        void SetIntensity(const LightIntensity lumens);
+        void SetIntensity(const float lumens) { m_intensity_lumens = lumens; }
+        float GetIntensity()            const { return m_intensity_lumens; }
+        float GetIntensityForShader(Camera* camera) const;
 
         bool GetShadowsEnabled() const { return m_shadows_enabled; }
         void SetShadowsEnabled(bool cast_shadows);
 
-        bool GetShadowsScreenSpaceEnabled() const                      { return m_shadows_screen_space_enabled; }
-        void SetShadowsScreenSpaceEnabled(bool cast_contact_shadows)   { m_shadows_screen_space_enabled = cast_contact_shadows; }
+        bool GetShadowsScreenSpaceEnabled() const                    { return m_shadows_screen_space_enabled; }
+        void SetShadowsScreenSpaceEnabled(bool cast_contact_shadows) { m_shadows_screen_space_enabled = cast_contact_shadows; }
 
         bool GetShadowsTransparentEnabled() const { return m_shadows_transparent_enabled; }
         void SetShadowsTransparentEnabled(bool cast_transparent_shadows);
 
-        bool GetVolumetricEnabled() const               { return m_volumetric_enabled; }
-        void SetVolumetricEnabled(bool is_volumetric)   { m_volumetric_enabled = is_volumetric; }
+        bool GetVolumetricEnabled() const             { return m_volumetric_enabled; }
+        void SetVolumetricEnabled(bool is_volumetric) { m_volumetric_enabled = is_volumetric; }
 
         void SetRange(float range);
         auto GetRange() const { return m_range; }
@@ -105,11 +114,8 @@ namespace Spartan
         void SetAngle(float angle);
         auto GetAngle() const { return m_angle_rad; }
 
-        void SetTimeOfDay(float time_of_day);
-        auto GetTimeOfDay() const { return m_time_of_day; }
-
-        void SetBias(float value)   { m_bias = value; }
-        float GetBias() const       { return m_bias; }
+        void SetBias(float value) { m_bias = value; }
+        float GetBias() const     { return m_bias; }
 
         void SetNormalBias(float value) { m_normal_bias = value; }
         auto GetNormalBias() const { return m_normal_bias; }
@@ -145,9 +151,8 @@ namespace Spartan
         Color m_color_rgb         = Color(1.0f, 0.76f, 0.57f, 1.0f);
         bool m_volumetric_enabled = true;
         float m_range             = 10.0f;
-        float m_intensity         = 128000.0f; // sun lux
-        float m_angle_rad         = 0.5f;      // about 30 degrees
-        float m_time_of_day       = 1.0f;
+        float m_intensity_lumens  = 0.0f;
+        float m_angle_rad         = 0.5f; // about 30 degrees
         bool m_initialized        = false;
         std::array<Math::Matrix, 6> m_matrix_view;
         std::array<Math::Matrix, 6> m_matrix_projection;

@@ -63,6 +63,7 @@ namespace Spartan
             }
 
             RHI_Texture2D::RHI_CreateResource();
+            m_is_ready_for_use = true;
         }
 
         // Creates a texture without any data (intended for usage as a render target)
@@ -83,6 +84,7 @@ namespace Spartan
             }
 
             RHI_Texture2D::RHI_CreateResource();
+            m_is_ready_for_use = true;
         }
 
         ~RHI_Texture2D() = default;

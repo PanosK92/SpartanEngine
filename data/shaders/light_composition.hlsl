@@ -47,7 +47,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     float3 fog = get_fog_factor(surface.position.y, surface.camera_to_pixel_length);
 
     // Modulate fog with ambient light
-    float ambient_light = saturate(g_directional_light_intensity / 128000.0f);
+    float ambient_light = saturate(g_directional_light_intensity);
     fog *= ambient_light * 0.25f;
 
     float4 color = float4(0.0f, 0.0f, 0.0f, 1.0f);

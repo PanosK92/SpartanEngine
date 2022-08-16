@@ -225,7 +225,7 @@ namespace Spartan
                 continue;
 
             // Skip lights which don't cast shadows or have an intensity of zero
-            if (!light->GetShadowsEnabled() || light->GetIntensity() == 0.0f)
+            if (!light->GetShadowsEnabled() || light->GetIntensityForShader(m_camera.get()) == 0.0f)
                 continue;
 
             // Skip lights that don't cast transparent shadows (if this is a transparent pass)
@@ -438,7 +438,7 @@ namespace Spartan
                     {
                         if (Light* light = lights[index_light]->GetComponent<Light>())
                         {
-                            if (light->GetIntensity() != 0)
+                            if (light->GetIntensityForShader(m_camera.get()) != 0)
                             {
                                 // Get renderable
                                 Renderable* renderable = entity->GetRenderable();

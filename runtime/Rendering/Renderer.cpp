@@ -76,7 +76,7 @@ namespace Spartan
         SetOption(RendererOption::Tonemapping,            static_cast<float>(TonemappingMode::Disabled));
         SetOption(RendererOption::Gamma,                  1.5f);
         SetOption(RendererOption::Sharpness,              0.5f);
-        SetOption(RendererOption::Fog,                    0.08f);
+        SetOption(RendererOption::Fog,                    0.0f);
         // Debug
         SetOption(RendererOption::Debug_TransformHandle,    1.0f);
         SetOption(RendererOption::Debug_Grid,               1.0f);
@@ -435,7 +435,7 @@ namespace Spartan
             {
                 if (light->GetLightType() == LightType::Directional)
                 {
-                    m_cb_frame_cpu.directional_light_intensity = light->GetIntensity();
+                    m_cb_frame_cpu.directional_light_intensity = light->GetIntensityForShader(m_camera.get());
                 }
             }
         }
@@ -471,20 +471,13 @@ namespace Spartan
             m_cb_light_cpu.view_projection[i] = light->GetViewMatrix(i) * light->GetProjectionMatrix(i);
         }
 
-        // Convert luminous power to luminous intensity
-        float luminous_intensity = light->GetIntensity() * m_camera->GetExposure();
-        if (light->GetLightType() == LightType::Point)
-        {
-            luminous_intensity /= Math::Helper::PI_4; // lumens to candelas
-            luminous_intensity *= 255.0f; // this is a hack, must fix whats my color units
-        }
-        else if (light->GetLightType() == LightType::Spot)
-        {
-            luminous_intensity /= Math::Helper::PI; // lumens to candelas
-            luminous_intensity *= 255.0f; // this is a hack, must fix whats my color units
-        }
+        m_cb_light_cpu.intensity_range_angle_bias = Vector4
+        (
+            light->GetIntensityForShader(m_camera.get()),
+            light->GetRange(), light->GetAngle(),
+            GetOption<bool>(RendererOption::ReverseZ) ? light->GetBias() : -light->GetBias()
+        );
 
-        m_cb_light_cpu.intensity_range_angle_bias = Vector4(luminous_intensity, light->GetRange(), light->GetAngle(), GetOption<bool>(RendererOption::ReverseZ) ? light->GetBias() : -light->GetBias());
         m_cb_light_cpu.color                      = light->GetColor();
         m_cb_light_cpu.normal_bias                = light->GetNormalBias();
         m_cb_light_cpu.position                   = light->GetTransform()->GetPosition();
