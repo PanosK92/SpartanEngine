@@ -541,7 +541,7 @@ namespace Spartan
         }
     }
 
-    void RHI_CommandList::Blit(RHI_Texture* source, RHI_Texture* destination)
+    void RHI_CommandList::Blit(RHI_Texture* source, RHI_Texture* destination, const bool blit_mips)
     {
         // D3D11 baggage: https://docs.microsoft.com/en-us/windows/win32/api/d3d11/nf-d3d11-id3d11devicecontext-copyresource
         SP_ASSERT(source != nullptr);
@@ -559,29 +559,36 @@ namespace Spartan
         SP_ASSERT_MSG((source->GetFlags() & RHI_Texture_ClearOrBlit) != 0, "The texture needs the RHI_Texture_ClearOrBlit flag");
         SP_ASSERT_MSG((destination->GetFlags() & RHI_Texture_ClearOrBlit) != 0, "The texture needs the RHI_Texture_ClearOrBlit flag");
 
-        VkOffset3D blit_size = {};
-        blit_size.x          = source->GetWidth();
-        blit_size.y          = source->GetHeight();
-        blit_size.z          = 1;
+        // Compute a blit region for each mip
+        array<VkOffset3D,  rhi_max_mip_count> blit_region_sizes = {};
+        array<VkImageBlit, rhi_max_mip_count> blit_regions      = {};
+        uint32_t blit_region_count                              = source->GetMipCount();
+        for (uint32_t mip_index = 0; mip_index < blit_region_count; mip_index++)
+        {
+            VkOffset3D& blit_size = blit_region_sizes[mip_index];
+            blit_size.x           = source->GetWidth() >> mip_index;
+            blit_size.y           = source->GetHeight() >> mip_index;
+            blit_size.z           = 1;
 
-        VkImageBlit blit_region                   = {};
-        blit_region.srcSubresource.mipLevel       = 0;
-        blit_region.srcSubresource.baseArrayLayer = 0;
-        blit_region.srcSubresource.layerCount     = 1;
-        blit_region.srcSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
-        blit_region.srcOffsets[1]                 = blit_size;
-        blit_region.dstSubresource.mipLevel        = 0;
-        blit_region.dstSubresource.baseArrayLayer = 0;
-        blit_region.dstSubresource.layerCount     = 1;
-        blit_region.dstSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
-        blit_region.dstOffsets[1]                 = blit_size;
+            VkImageBlit& blit_region                  = blit_regions[mip_index];
+            blit_region.srcSubresource.mipLevel       = mip_index;
+            blit_region.srcSubresource.baseArrayLayer = 0;
+            blit_region.srcSubresource.layerCount     = 1;
+            blit_region.srcSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+            blit_region.srcOffsets[1]                 = blit_size;
+            blit_region.dstSubresource.mipLevel       = mip_index;
+            blit_region.dstSubresource.baseArrayLayer = 0;
+            blit_region.dstSubresource.layerCount     = 1;
+            blit_region.dstSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+            blit_region.dstOffsets[1]                 = blit_size;
+        }
 
         // Save the initial layouts
-        std::array<RHI_Image_Layout, rhi_max_mip_count> layouts_initial_source      = source->GetLayouts();
-        std::array<RHI_Image_Layout, rhi_max_mip_count> layouts_initial_destination = destination->GetLayouts();
+        array<RHI_Image_Layout, rhi_max_mip_count> layouts_initial_source      = source->GetLayouts();
+        array<RHI_Image_Layout, rhi_max_mip_count> layouts_initial_destination = destination->GetLayouts();
 
         // Transition to blit appropriate layouts
-        source->SetLayout(RHI_Image_Layout::Transfer_Src_Optimal, this);
+        source->SetLayout(RHI_Image_Layout::Transfer_Src_Optimal,      this);
         destination->SetLayout(RHI_Image_Layout::Transfer_Dst_Optimal, this);
 
         // Blit
@@ -589,8 +596,8 @@ namespace Spartan
             static_cast<VkCommandBuffer>(m_rhi_resource),
             static_cast<VkImage>(source->GetRhiResource()),      VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
             static_cast<VkImage>(destination->GetRhiResource()), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-            1,
-            &blit_region,
+            blit_region_count,
+            &blit_regions[0],
             VK_FILTER_NEAREST
         );
 
