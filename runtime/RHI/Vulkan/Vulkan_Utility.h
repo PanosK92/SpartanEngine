@@ -571,6 +571,7 @@ namespace Spartan::vulkan_utility
                 void* image,
                 void*& image_view,
                 const RHI_Texture* texture,
+                const ResourceType resource_type,
                 const uint32_t array_index,
                 const uint32_t array_length,
                 const uint32_t mip_index,
@@ -581,15 +582,15 @@ namespace Spartan::vulkan_utility
             {
                 VkImageViewType type = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
 
-                if (texture->GetResourceType() == ResourceType::Texture2d)
+                if (resource_type == ResourceType::Texture2d)
                 {
                     type = VK_IMAGE_VIEW_TYPE_2D;
                 }
-                else if (texture->GetResourceType() == ResourceType::Texture2dArray)
+                else if (resource_type == ResourceType::Texture2dArray)
                 {
                     type = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
                 }
-                else if (texture->GetResourceType() == ResourceType::TextureCube)
+                else if (resource_type == ResourceType::TextureCube)
                 {
                     type = VK_IMAGE_VIEW_TYPE_CUBE;
                 }

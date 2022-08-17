@@ -54,7 +54,7 @@ namespace Spartan
         // Creates a texture without data (intended for use as a render target)
         RHI_TextureCube(Context* context, const uint32_t width, const uint32_t height, const RHI_Format format, const uint32_t flags, std::string name = "") : RHI_Texture(context)
         {
-            m_name   = name;
+            m_name          = name;
             m_resource_type = ResourceType::TextureCube;
             m_width         = width;
             m_height        = height;

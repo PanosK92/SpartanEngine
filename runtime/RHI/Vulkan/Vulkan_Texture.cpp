@@ -332,13 +332,13 @@ namespace Spartan
             // Shader resource views
             if (IsSrv())
             {
-                vulkan_utility::image::view::create(m_rhi_resource, m_rhi_srv, this, 0, m_array_length, 0, m_mip_count, IsDepthFormat(), false);
+                vulkan_utility::image::view::create(m_rhi_resource, m_rhi_srv, this, m_resource_type, 0, m_array_length, 0, m_mip_count, IsDepthFormat(), false);
 
                 if (HasPerMipViews())
                 {
                     for (uint32_t i = 0; i < m_mip_count; i++)
                     {
-                        vulkan_utility::image::view::create(m_rhi_resource, m_rhi_srv_mips[i], this, 0, m_array_length, i, 1, IsDepthFormat(), false);
+                        vulkan_utility::image::view::create(m_rhi_resource, m_rhi_srv_mips[i], this, m_resource_type, 0, m_array_length, i, 1, IsDepthFormat(), false);
                     }
                 }
 
@@ -348,14 +348,17 @@ namespace Spartan
             // Render target views
             for (uint32_t i = 0; i < m_array_length; i++)
             {
+                // Both cube map slices/faces and array length is encoded into m_array_length.
+                // They are rendered on individually, hence why the resource type is ResourceType::Texture2d
+
                 if (IsRenderTargetColor())
                 {
-                    vulkan_utility::image::view::create(m_rhi_resource, m_rhi_rtv[i], this, i, 1, 0, 1, false, false);
+                    vulkan_utility::image::view::create(m_rhi_resource, m_rhi_rtv[i], this, ResourceType::Texture2d, i, 1, 0, 1, false, false);
                 }
 
                 if (IsRenderTargetDepthStencil())
                 {
-                    vulkan_utility::image::view::create(m_rhi_resource, m_rhi_dsv[i], this, i, 1, 0, 1, true, false);
+                    vulkan_utility::image::view::create(m_rhi_resource, m_rhi_dsv[i], this, ResourceType::Texture2d, i, 1, 0, 1, true, false);
                 }
             }
 
