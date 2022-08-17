@@ -210,7 +210,7 @@ namespace Spartan
         m_profiler->m_rhi_dispatch++;
     }
 
-    void RHI_CommandList::Blit(RHI_Texture* source, RHI_Texture* destination)
+    void RHI_CommandList::Blit(RHI_Texture* source, RHI_Texture* destination, const bool blit_mips)
     {
         SP_ASSERT_MSG(false, "Function is not implemented");
     }
