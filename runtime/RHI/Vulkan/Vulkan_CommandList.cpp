@@ -546,9 +546,7 @@ namespace Spartan
         // D3D11 baggage: https://docs.microsoft.com/en-us/windows/win32/api/d3d11/nf-d3d11-id3d11devicecontext-copyresource
         SP_ASSERT(source != nullptr);
         SP_ASSERT(destination != nullptr);
-        SP_ASSERT(source->GetRhiResource() != nullptr);
-        SP_ASSERT(destination->GetRhiResource() != nullptr);
-        SP_ASSERT(source->GetObjectId() != destination->GetObjectId());
+        SP_ASSERT(source->GetRhiResource() != destination->GetRhiResource());
         SP_ASSERT(source->GetFormat() == destination->GetFormat());
         SP_ASSERT(source->GetWidth() == destination->GetWidth());
         SP_ASSERT(source->GetHeight() == destination->GetHeight());

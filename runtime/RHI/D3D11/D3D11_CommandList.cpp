@@ -485,7 +485,7 @@ namespace Spartan
         device_context->CSSetUnorderedAccessViews(0, 8, reinterpret_cast<ID3D11UnorderedAccessView* const*>(&resource_array), nullptr);
     }
 
-    void RHI_CommandList::Blit(RHI_Texture* source, RHI_Texture* destination)
+    void RHI_CommandList::Blit(RHI_Texture* source, RHI_Texture* destination, const bool blit_mips)
     {
         // Ensure restrictions based on: https://docs.microsoft.com/en-us/windows/win32/api/d3d11/nf-d3d11-id3d11devicecontext-copyresource
         SP_ASSERT(source != nullptr);
