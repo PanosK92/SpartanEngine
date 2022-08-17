@@ -440,7 +440,7 @@ namespace Spartan
             Light* light = entity->AddComponent<Light>();
             light->SetLightType(LightType::Point);
             light->SetColor(Color(0.0f, 125.0f / 255.0f, 1.0f));
-            light->SetIntensity(LightIntensity::bulb_150_watt);
+            light->SetIntensity(20000.0f);
             light->SetRange(20.0f);
             light->SetShadowsTransparentEnabled(false);
         }
@@ -455,7 +455,7 @@ namespace Spartan
             Light* light = entity->AddComponent<Light>();
             light->SetLightType(LightType::Point);
             light->SetColor(Color(1.0f, 81.0f / 255.0f, 81.0f / 255.0f));
-            light->SetIntensity(LightIntensity::bulb_150_watt);
+            light->SetIntensity(20000.0f);
             light->SetRange(20.0f);
             light->SetShadowsTransparentEnabled(false);
         }
