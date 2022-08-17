@@ -23,7 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "Environment.h"
 #include "../../IO/FileStream.h"
-#include "../../Threading/Threading.h"
 #include "../../RHI/RHI_Texture2D.h"
 #include "../../RHI/RHI_TextureCube.h"
 #include "../../Resource/ResourceCache.h"
@@ -65,19 +64,16 @@ namespace Spartan
     {
         if (m_is_dirty)
         {
-            m_context->GetSubsystem<Threading>()->AddTask([this]()
+            if (m_environment_type == EnvironmentType::Cubemap)
             {
-                if (m_environment_type == EnvironmentType::Cubemap)
-                {
-                    SetFromTextureArray(m_file_paths);
-                
-                }
-                else if (m_environment_type == EnvironmentType::Sphere)
-                {
-                
-                    SetFromTextureSphere(m_file_paths.front());
-                }
-            });
+                SetFromTextureArray(m_file_paths);
+
+            }
+            else if (m_environment_type == EnvironmentType::Sphere)
+            {
+
+                SetFromTextureSphere(m_file_paths.front());
+            }
             
             m_is_dirty = false;
         }

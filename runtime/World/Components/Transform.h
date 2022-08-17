@@ -142,5 +142,8 @@ namespace Spartan
         bool m_position_changed_this_frame = false;
         bool m_rotation_changed_this_frame = false;
         bool m_scale_changed_this_frame    = false;
+
+        // thread safety
+        std::mutex m_child_add_remove_mutex;
     };
 }
