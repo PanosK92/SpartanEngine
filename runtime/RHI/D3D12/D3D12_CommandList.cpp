@@ -146,7 +146,7 @@ namespace Spartan
         const uint32_t color_index         /*= 0*/,
         const uint32_t depth_stencil_index /*= 0*/,
         const bool storage                 /*= false*/,
-        const Math::Color& clear_color     /*= rhi_color_load*/,
+        const Color& clear_color           /*= rhi_color_load*/,
         const float clear_depth            /*= rhi_depth_load*/,
         const uint32_t clear_stencil       /*= rhi_stencil_load*/
     )
