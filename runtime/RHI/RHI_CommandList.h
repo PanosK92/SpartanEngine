@@ -80,7 +80,7 @@ namespace Spartan
         void Dispatch(uint32_t x, uint32_t y, uint32_t z = 1, bool async = false);
 
         // Blit
-        void Blit(RHI_Texture* source, RHI_Texture* destination);
+        void Blit(RHI_Texture* source, RHI_Texture* destination, const bool blit_mips);
 
         // Viewport
         void SetViewport(const RHI_Viewport& viewport) const;

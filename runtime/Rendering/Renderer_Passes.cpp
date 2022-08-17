@@ -142,7 +142,7 @@ namespace Spartan
             if (do_transparent_pass)
             {
                 // Blit the frame so that refraction can sample from it
-                cmd_list->Blit(rt1, rt2);
+                cmd_list->Blit(rt1, rt2, true);
 
                 // Generate frame mips so that the reflections can simulate roughness
                 const bool luminance_antiflicker = true;
@@ -1404,7 +1404,7 @@ namespace Spartan
         // If the last written texture is not the output one, then make sure it is.
         if (!swap_output)
         {
-            cmd_list->Blit(rt_frame_output_scratch, rt_frame_output);
+            cmd_list->Blit(rt_frame_output_scratch, rt_frame_output, false);
         }
 
         cmd_list->EndMarker();
