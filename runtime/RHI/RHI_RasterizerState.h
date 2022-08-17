@@ -66,9 +66,10 @@ namespace Spartan
                 m_depth_clip_enabled      == rhs.GetDepthClipEnabled()      &&
                 m_scissor_enabled         == rhs.GetScissorEnabled()        &&
                 m_antialised_line_enabled == rhs.GetAntialisedLineEnabled() &&
+                m_line_width              == rhs.GetLineWidth()             &&
                 m_depth_bias              == rhs.GetDepthBias()             &&
-                m_depth_bias_slope_scaled == rhs.GetDepthBiasSlopeScaled()  &&
-                m_line_width              == rhs.GetLineWidth();
+                m_depth_bias_clamp        == rhs.GetDepthBiasClamp()        &&
+                m_depth_bias_slope_scaled == rhs.GetDepthBiasSlopeScaled();
         }
 
     private:
