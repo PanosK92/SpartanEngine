@@ -564,13 +564,17 @@ namespace Spartan
         blit_size.y          = source->GetHeight();
         blit_size.z          = 1;
 
-        VkImageBlit blit_region               = {};
-        blit_region.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        blit_region.srcSubresource.layerCount = source->GetMipCount();
-        blit_region.srcOffsets[1]             = blit_size;
-        blit_region.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        blit_region.dstSubresource.layerCount = destination->GetMipCount();
-        blit_region.dstOffsets[1]             = blit_size;
+        VkImageBlit blit_region                   = {};
+        blit_region.srcSubresource.mipLevel       = 0;
+        blit_region.srcSubresource.baseArrayLayer = 0;
+        blit_region.srcSubresource.layerCount     = 1;
+        blit_region.srcSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+        blit_region.srcOffsets[1]                 = blit_size;
+        blit_region.dstSubresource.mipLevel        = 0;
+        blit_region.dstSubresource.baseArrayLayer = 0;
+        blit_region.dstSubresource.layerCount     = 1;
+        blit_region.dstSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+        blit_region.dstOffsets[1]                 = blit_size;
 
         // Save the initial layouts
         std::array<RHI_Image_Layout, rhi_max_mip_count> layouts_initial_source      = source->GetLayouts();

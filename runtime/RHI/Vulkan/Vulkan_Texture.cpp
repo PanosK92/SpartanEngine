@@ -83,17 +83,8 @@ namespace Spartan
         RHI_Format format           = texture->GetFormat();
         VkImageTiling image_tiling  = get_format_tiling(format, format_flags);
         
-        // Ensure the format is supported by the GPU
-        if (image_tiling == VK_IMAGE_TILING_MAX_ENUM)
-        {
-            SP_ASSERT(0 && "The GPU doesn't support this format");
-        }
-        
-        // Warn if the the image is using a non-optimal format
-        if (image_tiling != VK_IMAGE_TILING_OPTIMAL)
-        {
-            LOG_WARNING("Format %s does not support optimal tiling, considering switching to a more efficient format.", rhi_format_to_string(format).c_str());
-        }
+        SP_ASSERT_MSG(image_tiling != VK_IMAGE_TILING_MAX_ENUM, "The GPU doesn't support this format");
+        SP_ASSERT_MSG(image_tiling == VK_IMAGE_TILING_OPTIMAL,  "This format doesn't support optimal tiling, switch to a more efficient format");
 
         // Set layout to pre-initialised (required by Vulkan)
         texture->SetLayout(RHI_Image_Layout::Preinitialized, nullptr);
@@ -101,7 +92,15 @@ namespace Spartan
         VkImageCreateInfo create_info = {};
         create_info.sType             = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
         create_info.imageType         = VK_IMAGE_TYPE_2D;
-        create_info.flags             = (texture->GetResourceType() == ResourceType::TextureCube) ? VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT : 0;
+        create_info.flags             = 0;
+        if (texture->GetResourceType() == ResourceType::Texture2dArray)
+        {
+            create_info.flags = VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT;
+        }
+        else if (texture->GetResourceType() == ResourceType::TextureCube)
+        {
+            create_info.flags = VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
+        }
         create_info.usage             = get_usage_flags(texture);
         create_info.extent.width      = texture->GetWidth();
         create_info.extent.height     = texture->GetHeight();
