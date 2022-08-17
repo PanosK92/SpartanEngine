@@ -373,6 +373,8 @@ namespace Spartan
         if (child->GetObjectId() == GetObjectId())
             return;
 
+        lock_guard lock(m_child_add_remove_mutex);
+
         // If this is not already a child, add it.
         if (!(find(m_children.begin(), m_children.end(), child) != m_children.end()))
         {
@@ -387,6 +389,8 @@ namespace Spartan
         // Ensure the transform is not itself
         if (child->GetObjectId() == GetObjectId())
             return;
+
+        lock_guard lock(m_child_add_remove_mutex);
 
         // Remove the child
         m_children.erase(remove_if(m_children.begin(), m_children.end(), [child](Transform* vec_transform) { return vec_transform->GetObjectId() == child->GetObjectId(); }), m_children.end());

@@ -452,10 +452,10 @@ namespace Spartan
         // Process children
         for (uint32_t i = 0; i < node->mNumChildren; i++)
         {
-            m_context->GetSubsystem<Threading>()->AddTask([this, i, node, entity]()
-            {
+            //m_context->GetSubsystem<Threading>()->AddTask([this, i, node, entity]()
+            //{
                 ParseNode(node->mChildren[i], entity);
-            });
+            //});
         }
 
         // Update progress tracking

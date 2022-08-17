@@ -394,76 +394,86 @@ namespace Spartan
 
     void World::CreateDefaultWorld()
     {
-        // Asset directories
-        ResourceCache* resource_cache = m_context->GetSubsystem<ResourceCache>();
-
-        // Environment
+        //m_context->GetSubsystem<Threading>()->AddTask([this]()
         {
-            shared_ptr<Entity> environment = EntityCreate();
-            environment->SetName("environment");
-            environment->AddComponent<Environment>();
-        }
+            // Asset directories
+            ResourceCache* resource_cache = m_context->GetSubsystem<ResourceCache>();
 
-        // Camera
-        {
-            shared_ptr<Entity> entity = EntityCreate();
-            entity->SetName("camera");
+            // Environment
+            {
+                shared_ptr<Entity> environment = EntityCreate();
+                environment->SetName("environment");
+                environment->AddComponent<Environment>();
+            }
 
-            entity->AddComponent<Camera>();
-            entity->AddComponent<AudioListener>();
-            entity->GetTransform()->SetPosition(Vector3(2.3239f, 1.1778f, -3.4932f));
-            entity->GetTransform()->SetRotation(Quaternion::FromEulerAngles(Vector3(4.9986f, -23.5962f, 0.0f)));
-        }
+            // Camera
+            {
+                shared_ptr<Entity> entity = EntityCreate();
+                entity->SetName("camera");
 
-        // Light - Directional
-        {
-            shared_ptr<Entity> entity = EntityCreate();
-            entity->SetName("light_directional");
+                entity->AddComponent<Camera>();
+                entity->AddComponent<AudioListener>();
+                entity->GetTransform()->SetPosition(Vector3(2.3239f, 1.1778f, -3.4932f));
+                entity->GetTransform()->SetRotation(Quaternion::FromEulerAngles(Vector3(4.9986f, -23.5962f, 0.0f)));
+            }
 
-            entity->GetTransform()->SetPosition(Vector3(0.0f, 10.0f, 0.0f));
-            entity->GetTransform()->SetRotation(Quaternion::FromEulerAngles(30.0f, 30.0, 0.0f));
+            // Light - Directional
+            {
+                shared_ptr<Entity> entity = EntityCreate();
+                entity->SetName("light_directional");
 
-            Light* light = entity->AddComponent<Light>();
-            light->SetLightType(LightType::Directional);
-            light->SetColor(Color::light_moonlight);
-            light->SetIntensity(40000.0f);
-            light->SetShadowsEnabled(false);
-        }
+                entity->GetTransform()->SetPosition(Vector3(0.0f, 10.0f, 0.0f));
+                entity->GetTransform()->SetRotation(Quaternion::FromEulerAngles(30.0f, 30.0, 0.0f));
 
-        // Light - Point Blue
-        {
-            shared_ptr<Entity> entity = EntityCreate();
-            entity->SetName("light_point_blue");
+                Light* light = entity->AddComponent<Light>();
+                light->SetLightType(LightType::Directional);
+                light->SetColor(Color::light_moonlight);
+                light->SetIntensity(40000.0f);
+                light->SetShadowsEnabled(false);
+            }
 
-            entity->GetTransform()->SetPosition(Vector3(-4.0000f, 2.0000f, -2.5000f));
-            
-            Light* light = entity->AddComponent<Light>();
-            light->SetLightType(LightType::Point);
-            light->SetColor(Color(0.0f, 125.0f / 255.0f, 1.0f));
-            light->SetIntensity(20000.0f);
-            light->SetRange(20.0f);
-            light->SetShadowsTransparentEnabled(false);
-        }
+            // Light - Point Blue
+            {
+                shared_ptr<Entity> entity = EntityCreate();
+                entity->SetName("light_point_blue");
 
-        // Light - Point Red
-        {
-            shared_ptr<Entity> entity = EntityCreate();
-            entity->SetName("light_point_red");
+                entity->GetTransform()->SetPosition(Vector3(-4.0000f, 2.0000f, -2.5000f));
 
-            entity->GetTransform()->SetPosition(Vector3(4.0000f, 2.0000f, -2.5000f));
+                Light* light = entity->AddComponent<Light>();
+                light->SetLightType(LightType::Point);
+                light->SetColor(Color(0.0f, 125.0f / 255.0f, 1.0f));
+                light->SetIntensity(20000.0f);
+                light->SetRange(20.0f);
+                light->SetShadowsTransparentEnabled(false);
+            }
 
-            Light* light = entity->AddComponent<Light>();
-            light->SetLightType(LightType::Point);
-            light->SetColor(Color(1.0f, 81.0f / 255.0f, 81.0f / 255.0f));
-            light->SetIntensity(20000.0f);
-            light->SetRange(20.0f);
-            light->SetShadowsTransparentEnabled(false);
-        }
+            // Light - Point Red
+            {
+                shared_ptr<Entity> entity = EntityCreate();
+                entity->SetName("light_point_red");
 
-        // 3D model - Car
-        {
-            m_default_world_model = make_unique<Model>(m_context);
-            if (m_default_world_model->LoadFromFile("project\\models\\toyota_ae86_sprinter_trueno_zenki\\scene.gltf"))
+                entity->GetTransform()->SetPosition(Vector3(4.0000f, 2.0000f, -2.5000f));
+
+                Light* light = entity->AddComponent<Light>();
+                light->SetLightType(LightType::Point);
+                light->SetColor(Color(1.0f, 81.0f / 255.0f, 81.0f / 255.0f));
+                light->SetIntensity(20000.0f);
+                light->SetRange(20.0f);
+                light->SetShadowsTransparentEnabled(false);
+            }
+
+            // Music
+            {
+                shared_ptr<Entity> entity = EntityCreate();
+                entity->SetName("audio_source");
+
+                AudioSource* audio_source = entity->AddComponent<AudioSource>();
+                audio_source->SetAudioClip("project\\music\\forza_motorsport_4_ev.mp3");
+                audio_source->SetLoop(true);
+            }
+
+            // 3D model - Car
+            if (m_default_world_model = resource_cache->Load<Model>("project\\models\\toyota_ae86_sprinter_trueno_zenki\\scene.gltf"))
             {
                 Entity* entity = m_default_world_model->GetRootEntity();
                 entity->SetName("car");
@@ -572,73 +582,62 @@ namespace Spartan
                         material->SetProperty(MaterialProperty::MetallnessMultiplier, 1.0f);
                     }
                 }
-
             }
-        }
 
-        // 3d model - Dynamic physics cube
-        {
-            shared_ptr<Entity> entity = EntityCreate();
-            entity->SetName("cube_physics_dynamic");
+            // 3d model - Dynamic physics cube
+            {
+                shared_ptr<Entity> entity = EntityCreate();
+                entity->SetName("cube_physics_dynamic");
 
-            entity->GetTransform()->SetPosition(Vector3(-0.9799f, 3.6249f, 8.8727f));
+                entity->GetTransform()->SetPosition(Vector3(-0.9799f, 3.6249f, 8.8727f));
 
-            // Add a default material and a default cube geometry
-            Renderable* renderable = entity->AddComponent<Renderable>();
-            renderable->SetGeometry(DefaultGeometry::Cube);
-            renderable->SetDefaultMaterial();
+                // Add a default material and a default cube geometry
+                Renderable* renderable = entity->AddComponent<Renderable>();
+                renderable->SetGeometry(DefaultGeometry::Cube);
+                renderable->SetDefaultMaterial();
 
-            // Physics - Box
-            entity->AddComponent<RigidBody>()->SetMass(1.0f);
-            entity->AddComponent<RigidBody>()->SetRestitution(1.0f);
-            entity->AddComponent<Collider>()->SetShapeType(ColliderShape::Box);
-        }
+                // Physics - Box
+                entity->AddComponent<RigidBody>()->SetMass(1.0f);
+                entity->AddComponent<RigidBody>()->SetRestitution(1.0f);
+                entity->AddComponent<Collider>()->SetShapeType(ColliderShape::Box);
+            }
 
-        // 3d model - Static physics cube
-        {
-            shared_ptr<Entity> entity = EntityCreate();
-            entity->SetName("cube_physics_static");
+            // 3d model - Static physics cube
+            {
+                shared_ptr<Entity> entity = EntityCreate();
+                entity->SetName("cube_physics_static");
 
-            entity->GetTransform()->SetPosition(Vector3(0.0f, 1.5f, 9.5f));
-            entity->GetTransform()->SetScale(Vector3(9.0f, 3.0f, 1.0f));
+                entity->GetTransform()->SetPosition(Vector3(0.0f, 1.5f, 9.5f));
+                entity->GetTransform()->SetScale(Vector3(9.0f, 3.0f, 1.0f));
 
-            // Add a default material and a default cube geometry
-            Renderable* renderable = entity->AddComponent<Renderable>();
-            renderable->SetGeometry(DefaultGeometry::Cube);
-            renderable->SetDefaultMaterial();
+                // Add a default material and a default cube geometry
+                Renderable* renderable = entity->AddComponent<Renderable>();
+                renderable->SetGeometry(DefaultGeometry::Cube);
+                renderable->SetDefaultMaterial();
 
-            // Physics - Box
-            entity->AddComponent<RigidBody>()->SetMass(0.0f);
-            entity->AddComponent<Collider>()->SetShapeType(ColliderShape::Box);
-        }
+                // Physics - Box
+                entity->AddComponent<RigidBody>()->SetMass(0.0f);
+                entity->AddComponent<Collider>()->SetShapeType(ColliderShape::Box);
+            }
 
-        // 3D model - floor
-        {
-            shared_ptr<Entity> entity = EntityCreate();
-            entity->SetName("floor");
+            // 3D model - floor
+            {
+                shared_ptr<Entity> entity = EntityCreate();
+                entity->SetName("floor");
 
-            // Position at a high of 0.01 to avoid z-fighting with the world grid
-            entity->GetTransform()->SetPosition(Vector3(0.0f, 0.01f, 0.0f));
-            entity->GetTransform()->SetScale(Vector3(20.0f, 0.0f, 20.0f));
+                // Position at a high of 0.01 to avoid z-fighting with the world grid
+                entity->GetTransform()->SetPosition(Vector3(0.0f, 0.01f, 0.0f));
+                entity->GetTransform()->SetScale(Vector3(20.0f, 0.0f, 20.0f));
 
-            Renderable* renderable = entity->AddComponent<Renderable>();
-            renderable->SetGeometry(DefaultGeometry::Quad);
-            renderable->SetDefaultMaterial();
+                Renderable* renderable = entity->AddComponent<Renderable>();
+                renderable->SetGeometry(DefaultGeometry::Quad);
+                renderable->SetDefaultMaterial();
 
-            // Physics - Static plane
-            entity->AddComponent<RigidBody>()->SetRestitution(0.5f);
-            entity->AddComponent<Collider>()->SetShapeType(ColliderShape::StaticPlane);
-        }
-
-        // Music
-        {
-            shared_ptr<Entity> entity = EntityCreate();
-            entity->SetName("audio_source");
-
-            AudioSource* audio_source = entity->AddComponent<AudioSource>();
-            audio_source->SetAudioClip("project\\music\\forza_motorsport_4_ev.mp3");
-            audio_source->SetLoop(true);
-        }
+                // Physics - Static plane
+                entity->AddComponent<RigidBody>()->SetRestitution(0.5f);
+                entity->AddComponent<Collider>()->SetShapeType(ColliderShape::StaticPlane);
+            }
+        }//});
     }
 
     void World::UpdateDefaultWorld(double delta_time)
