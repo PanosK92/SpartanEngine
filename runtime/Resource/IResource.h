@@ -33,7 +33,6 @@ namespace Spartan
 {
     enum class ResourceType
     {
-        Unknown,
         Texture,
         Texture2d,
         Texture2dArray,
@@ -45,7 +44,8 @@ namespace Spartan
         Cubemap,
         Animation,
         Font,
-        Shader
+        Shader,
+        Unknown,
     };
 
     class SPARTAN_CLASS IResource : public SpartanObject
