@@ -90,7 +90,7 @@ namespace Spartan
         RHI_Present_SharedDemandRefresh      = 1 << 4,
         RHI_Present_SharedDContinuousRefresh = 1 << 5,
 
-        // D3D11 only flags as match to Vulkan is possible
+        // D3D11 only flags
         RHI_Swap_Discard                = 1 << 6,
         RHI_Swap_Sequential             = 1 << 7,
         RHI_Swap_Flip_Sequential        = 1 << 8,

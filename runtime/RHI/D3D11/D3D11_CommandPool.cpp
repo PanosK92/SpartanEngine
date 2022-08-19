@@ -35,6 +35,8 @@ namespace Spartan
     {
         m_rhi_device = rhi_device;
         m_name       = name;
+
+        AllocateCommandLists(m_command_lists_count);
     }
 
     RHI_CommandPool::~RHI_CommandPool()
@@ -42,7 +44,7 @@ namespace Spartan
 
     }
 
-    void RHI_CommandPool::Reset()
+    void RHI_CommandPool::Reset(const uint32_t pool_index)
     {
 
     }

@@ -302,7 +302,7 @@ void Properties::ShowLight(Light* light) const
         ImGui::Text(is_directional ? "Intensity" : "Intensity (Lumens)");
         ImGui::SameLine(helper::g_column);
         float v_speed   = 5.0f;
-        float v_max     = 100000.0f;
+        float v_max     = 120000.0f;
         ImGui::PushItemWidth(300); imgui_extension::draw_float_wrap("##lightIntensity", &intensity, v_speed, 0.0f, v_max); ImGui::PopItemWidth();
 
         // Shadows

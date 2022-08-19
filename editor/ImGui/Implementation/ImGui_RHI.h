@@ -58,9 +58,6 @@ namespace ImGui::RHI
             // Allocate command pool
             cmd_pool = rhi_device->AllocateCommandPool("imgui", swapchain->GetObjectId());
 
-            // Allocate command lists
-            cmd_pool->AllocateCommandLists(swapchain->GetBufferCount());
-
             // Allocate constant buffer
             cb_gpu = make_shared<RHI_ConstantBuffer>(rhi_device, name);
             cb_gpu->Create<Cb_ImGui>(256);
