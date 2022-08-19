@@ -99,22 +99,12 @@ namespace Spartan
                 bottom = Math::Helper::Max(bottom, point.y);
             }
 
-            void CreateBuffers(Renderer* renderer);
-
-            static int GetIndexCount()                { return 6; }
-            RHI_IndexBuffer* GetIndexBuffer()   const { return m_index_buffer.get(); }
-            RHI_VertexBuffer* GetVertexBuffer() const { return m_vertex_buffer.get(); }
-
             float left   = 0.0f;
             float top    = 0.0f;
             float right  = 0.0f;
             float bottom = 0.0f;
 
             static const Rectangle Zero;
-
-        private:
-            std::shared_ptr<RHI_VertexBuffer> m_vertex_buffer;
-            std::shared_ptr<RHI_IndexBuffer> m_index_buffer;
         };
     }
 }

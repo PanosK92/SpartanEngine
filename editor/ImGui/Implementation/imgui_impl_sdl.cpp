@@ -384,8 +384,8 @@ bool ImGui_ImplSDL2_Init(Spartan::Context* context)
     bd->MouseCanUseGlobalState = mouse_can_use_global_state;
 
     // Initialise some ImGui stuff
-    bd->Window = static_cast<SDL_Window*>(context->GetSubsystem<Spartan::Window>()->GetHandleSDL());
-    bd->UseVulkan = Spartan::Renderer::GetRhiApiType() == Spartan::RHI_Api_Type::Vulkan;
+    bd->Window         = static_cast<SDL_Window*>(context->GetSubsystem<Spartan::Window>()->GetHandleSDL());
+    bd->UseVulkan      = false; // settings this to true can cause SDL_CreateWindow to return null, complaining that Vulkan is not setup.
     bd->engine_context = context;
 
     io.SetClipboardTextFn = ImGui_ImplSDL2_SetClipboardText;
@@ -393,14 +393,14 @@ bool ImGui_ImplSDL2_Init(Spartan::Context* context)
     io.ClipboardUserData = nullptr;
 
     // Load mouse cursors
-    bd->MouseCursors[ImGuiMouseCursor_Arrow] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW);
-    bd->MouseCursors[ImGuiMouseCursor_TextInput] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_IBEAM);
-    bd->MouseCursors[ImGuiMouseCursor_ResizeAll] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZEALL);
-    bd->MouseCursors[ImGuiMouseCursor_ResizeNS] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZENS);
-    bd->MouseCursors[ImGuiMouseCursor_ResizeEW] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZEWE);
+    bd->MouseCursors[ImGuiMouseCursor_Arrow]      = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW);
+    bd->MouseCursors[ImGuiMouseCursor_TextInput]  = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_IBEAM);
+    bd->MouseCursors[ImGuiMouseCursor_ResizeAll]  = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZEALL);
+    bd->MouseCursors[ImGuiMouseCursor_ResizeNS]   = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZENS);
+    bd->MouseCursors[ImGuiMouseCursor_ResizeEW]   = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZEWE);
     bd->MouseCursors[ImGuiMouseCursor_ResizeNESW] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZENESW);
     bd->MouseCursors[ImGuiMouseCursor_ResizeNWSE] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZENWSE);
-    bd->MouseCursors[ImGuiMouseCursor_Hand] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_HAND);
+    bd->MouseCursors[ImGuiMouseCursor_Hand]       = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_HAND);
     bd->MouseCursors[ImGuiMouseCursor_NotAllowed] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_NO);
 
     // Set platform dependent data in viewport
@@ -704,6 +704,13 @@ static void ImGui_ImplSDL2_CreateWindow(ImGuiViewport* viewport)
     sdl_flags |= (viewport->Flags & ImGuiViewportFlags_TopMost) ? SDL_WINDOW_ALWAYS_ON_TOP : 0;
 #endif
     vd->Window = SDL_CreateWindow("No Title Yet", (int)viewport->Pos.x, (int)viewport->Pos.y, (int)viewport->Size.x, (int)viewport->Size.y, sdl_flags);
+    if (vd->Window == nullptr)
+    {
+        // Vulkan support is either not configured in SDL or not available in current SDL video driver (windows) or platform
+        const char* error = SDL_GetError();
+        LOG_INFO("");
+    }
+
     vd->WindowOwned = true;
     if (use_opengl)
     {
@@ -857,37 +864,37 @@ static int ImGui_ImplSDL2_CreateVkSurface(ImGuiViewport* viewport, ImU64 vk_inst
 static void ImGui_ImplSDL2_InitPlatformInterface(SDL_Window* window)
 {
     // Register platform interface (will be coupled with a renderer interface)
-    ImGuiPlatformIO& platform_io = ImGui::GetPlatformIO();
-    platform_io.Platform_CreateWindow = ImGui_ImplSDL2_CreateWindow;
-    platform_io.Platform_DestroyWindow = ImGui_ImplSDL2_DestroyWindow;
-    platform_io.Platform_ShowWindow = ImGui_ImplSDL2_ShowWindow;
-    platform_io.Platform_SetWindowPos = ImGui_ImplSDL2_SetWindowPos;
-    platform_io.Platform_GetWindowPos = ImGui_ImplSDL2_GetWindowPos;
-    platform_io.Platform_SetWindowSize = ImGui_ImplSDL2_SetWindowSize;
-    platform_io.Platform_GetWindowSize = ImGui_ImplSDL2_GetWindowSize;
-    platform_io.Platform_SetWindowFocus = ImGui_ImplSDL2_SetWindowFocus;
-    platform_io.Platform_GetWindowFocus = ImGui_ImplSDL2_GetWindowFocus;
+    ImGuiPlatformIO& platform_io            = ImGui::GetPlatformIO();
+    platform_io.Platform_CreateWindow       = ImGui_ImplSDL2_CreateWindow;
+    platform_io.Platform_DestroyWindow      = ImGui_ImplSDL2_DestroyWindow;
+    platform_io.Platform_ShowWindow         = ImGui_ImplSDL2_ShowWindow;
+    platform_io.Platform_SetWindowPos       = ImGui_ImplSDL2_SetWindowPos;
+    platform_io.Platform_GetWindowPos       = ImGui_ImplSDL2_GetWindowPos;
+    platform_io.Platform_SetWindowSize      = ImGui_ImplSDL2_SetWindowSize;
+    platform_io.Platform_GetWindowSize      = ImGui_ImplSDL2_GetWindowSize;
+    platform_io.Platform_SetWindowFocus     = ImGui_ImplSDL2_SetWindowFocus;
+    platform_io.Platform_GetWindowFocus     = ImGui_ImplSDL2_GetWindowFocus;
     platform_io.Platform_GetWindowMinimized = ImGui_ImplSDL2_GetWindowMinimized;
-    platform_io.Platform_SetWindowTitle = ImGui_ImplSDL2_SetWindowTitle;
-    platform_io.Platform_RenderWindow = ImGui_ImplSDL2_RenderWindow;
-    platform_io.Platform_SwapBuffers = ImGui_ImplSDL2_SwapBuffers;
+    platform_io.Platform_SetWindowTitle     = ImGui_ImplSDL2_SetWindowTitle;
+    platform_io.Platform_RenderWindow       = ImGui_ImplSDL2_RenderWindow;
+    platform_io.Platform_SwapBuffers        = ImGui_ImplSDL2_SwapBuffers;
 #if SDL_HAS_WINDOW_ALPHA
-    platform_io.Platform_SetWindowAlpha = ImGui_ImplSDL2_SetWindowAlpha;
+    platform_io.Platform_SetWindowAlpha     = ImGui_ImplSDL2_SetWindowAlpha;
 #endif
 #if SDL_HAS_VULKAN
-    platform_io.Platform_CreateVkSurface = ImGui_ImplSDL2_CreateVkSurface;
+    platform_io.Platform_CreateVkSurface    = ImGui_ImplSDL2_CreateVkSurface;
 #endif
 
     // Register main window handle (which is owned by the main application, not by us)
     // This is mostly for simplicity and consistency, so that our code (e.g. mouse handling etc.) can use same logic for main and secondary viewports.
-    ImGuiViewport* main_viewport = ImGui::GetMainViewport();
+    ImGuiViewport* main_viewport    = ImGui::GetMainViewport();
     ImGui_ImplSDL2_ViewportData* vd = IM_NEW(ImGui_ImplSDL2_ViewportData)();
-    vd->Window = window;
-    vd->WindowID = SDL_GetWindowID(window);
-    vd->WindowOwned = false;
-    vd->GLContext = nullptr;
+    vd->Window                      = window;
+    vd->WindowID                    = SDL_GetWindowID(window);
+    vd->WindowOwned                 = false;
+    vd->GLContext                   = nullptr;
     main_viewport->PlatformUserData = vd;
-    main_viewport->PlatformHandle = vd->Window;
+    main_viewport->PlatformHandle   = vd->Window;
 }
 
 static void ImGui_ImplSDL2_ShutdownPlatformInterface()

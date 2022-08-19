@@ -240,24 +240,34 @@ namespace ImGui::RHI
             index_buffer  = resources->index_buffers[cmd_index].get();
 
             // Grow vertex buffer as needed
-            if (vertex_buffer->GetVertexCount() < static_cast<unsigned int>(draw_data->TotalVtxCount))
+            if (vertex_buffer->GetVertexCount() < static_cast<uint32_t>(draw_data->TotalVtxCount))
             {
-                const unsigned int new_size = draw_data->TotalVtxCount + 5000;
-                vertex_buffer->CreateDynamic<ImDrawVert>(new_size);
-                LOG_INFO("vertex buffer has been re-allocated to fit at least %d vertices", draw_data->TotalVtxCount);
+                const uint32_t vertex_count     = vertex_buffer->GetVertexCount();
+                const uint32_t vertex_count_new = draw_data->TotalVtxCount + 7000;
+                vertex_buffer->CreateDynamic<ImDrawVert>(vertex_count_new);
+
+                if (vertex_count != 0)
+                {
+                    LOG_INFO("Vertex buffer has been re-allocated to fit %d vertices", vertex_count_new);
+                }
             }
 
             // Grow index buffer as needed
-            if (index_buffer->GetIndexCount() < static_cast<unsigned int>(draw_data->TotalIdxCount))
+            if (index_buffer->GetIndexCount() < static_cast<uint32_t>(draw_data->TotalIdxCount))
             {
-                const unsigned int new_size = draw_data->TotalIdxCount + 10000;
-                index_buffer->CreateDynamic<ImDrawIdx>(new_size);
-                LOG_INFO("Index buffer has been re-allocated to fit at least %d indices", draw_data->TotalIdxCount);
+                const uint32_t index_count     = index_buffer->GetIndexCount();
+                const uint32_t index_count_new = draw_data->TotalIdxCount + 14000;
+                index_buffer->CreateDynamic<ImDrawIdx>(index_count_new);
+
+                if (index_count != 0)
+                {
+                    LOG_INFO("Index buffer has been re-allocated to fit %d indices", index_count_new);
+                }
             }
 
             // Copy and convert all vertices into a single contiguous buffer
             ImDrawVert* vtx_dst = static_cast<ImDrawVert*>(vertex_buffer->Map());
-            ImDrawIdx* idx_dst  = static_cast<ImDrawIdx*>(index_buffer->Map());
+            ImDrawIdx*  idx_dst = static_cast<ImDrawIdx*>(index_buffer->Map());
             if (vtx_dst && idx_dst)
             {
                 for (auto i = 0; i < draw_data->CmdListsCount; i++)
@@ -397,11 +407,14 @@ namespace ImGui::RHI
 
     static void RHI_Window_Create(ImGuiViewport* viewport)
     {
-        WindowData* window = new WindowData();
+        // PlatformHandle is SDL_Window, PlatformHandleRaw is HWND
+        void* platform_handle = viewport->PlatformHandleRaw;
+        SP_ASSERT_MSG(platform_handle != nullptr, "Platform handle is invalid");
 
+        WindowData* window = new WindowData();
         window->swapchain = make_shared<RHI_SwapChain>
         (
-            viewport->PlatformHandleRaw, // PlatformHandle is SDL_Window, PlatformHandleRaw is HWND
+            platform_handle,
             g_rhi_device,
             static_cast<uint32_t>(viewport->Size.x),
             static_cast<uint32_t>(viewport->Size.y),

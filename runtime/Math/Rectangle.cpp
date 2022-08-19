@@ -19,13 +19,9 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =======================
+//= INCLUDES ===
 #include "pch.h"
-#include "../Rendering/Renderer.h"
-#include "../RHI/RHI_VertexBuffer.h"
-#include "../RHI/RHI_IndexBuffer.h"
-#include "../RHI/RHI_Vertex.h"
-//==================================
+//==============
 
 //= NAMESPACES =====
 using namespace std;
@@ -34,40 +30,4 @@ using namespace std;
 namespace Spartan::Math
 {
     const Rectangle Rectangle::Zero(0.0f, 0.0f, 0.0f, 0.0f);
-
-    void Rectangle::CreateBuffers(Renderer* renderer)
-    {
-        SP_ASSERT(renderer != nullptr);
-
-        // Compute screen coordinates
-        const RHI_Viewport& viewport = renderer->GetViewport();
-        const float sc_left          = -(viewport.width * 0.5f) + left;
-        const float sc_right         = sc_left + Width();
-        const float sc_top           = (viewport.height * 0.5f) - top;
-        const float sc_bottom        = sc_top - Height();
-
-        // Create vertex buffer
-        const RHI_Vertex_PosTex vertices[6] = 
-        {
-            // First triangle
-            RHI_Vertex_PosTex(Vector3(sc_left,  sc_top,    0.0f), Vector2(0.0f, 0.0f)), // Top left
-            RHI_Vertex_PosTex(Vector3(sc_right, sc_bottom, 0.0f), Vector2(1.0f, 1.0f)), // Bottom right
-            RHI_Vertex_PosTex(Vector3(sc_left,  sc_bottom, 0.0f), Vector2(0.0f, 1.0f)), // Bottom left
-            // Second triangle
-            RHI_Vertex_PosTex(Vector3(sc_left,  sc_top,    0.0f), Vector2(0.0f, 0.0f)), // Top left
-            RHI_Vertex_PosTex(Vector3(sc_right, sc_top,    0.0f), Vector2(1.0f, 0.0f)), // Top right
-            RHI_Vertex_PosTex(Vector3(sc_right, sc_bottom, 0.0f), Vector2(1.0f, 1.0f))  // Bottom right
-        };
-
-        m_vertex_buffer = make_shared<RHI_VertexBuffer>(renderer->GetRhiDevice().get(), false, "rectangle");
-        m_vertex_buffer->SetName("vertex_buffer_rectangle");
-        m_vertex_buffer->Create(vertices, 6);
-
-        // Create index buffer
-        const uint32_t indices[6] = { 0, 1, 2, 3, 4, 5 };
-
-        m_index_buffer = make_shared<RHI_IndexBuffer>(renderer->GetRhiDevice().get(), false, "rectangle");
-        m_index_buffer->SetName("index_buffer_rectangle");
-        m_index_buffer->Create(indices, 6);
-    }
 }

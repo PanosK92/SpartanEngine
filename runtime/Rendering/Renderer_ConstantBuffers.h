@@ -135,9 +135,9 @@ namespace Spartan
         Math::Vector2 blur_direction = Math::Vector2::Zero;
         Math::Vector2 resolution_rt  = Math::Vector2::Zero;
 
-        Math::Vector2 resolution_in             = Math::Vector2::Zero;
+        Math::Vector2 resolution_in                = Math::Vector2::Zero;
         bool mat_single_texture_rougness_metalness = false;
-        float radius                            = 0.0f;
+        float radius                               = 0.0f;
 
         Math::Vector4 mat_color = Math::Vector4::Zero;
 

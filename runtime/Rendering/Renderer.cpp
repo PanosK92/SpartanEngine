@@ -141,12 +141,6 @@ namespace Spartan
         // Create device
         m_rhi_device = make_shared<RHI_Device>(m_context, m_rhi_context);
 
-        // Line buffer
-        m_vertex_buffer_lines = make_shared<RHI_VertexBuffer>(m_rhi_device.get(), true, "renderer_lines");
-
-        // World grid
-        m_gizmo_grid = make_unique<Grid>(m_rhi_device.get());
-
         // Get window size
         uint32_t window_width  = window->GetWidth();
         uint32_t window_height = window->GetHeight();
@@ -169,7 +163,6 @@ namespace Spartan
 
         // Create command lists
         m_cmd_pool->AllocateCommandLists(m_swap_chain_buffer_count);
-
 
         // Set the output and viewport resolution to the display resolution.
         // If the editor is running, it will set the viewport resolution to whatever the viewport.
