@@ -428,7 +428,7 @@ namespace Spartan
                 Light* light = entity->AddComponent<Light>();
                 light->SetLightType(LightType::Directional);
                 light->SetColor(Color::light_moonlight);
-                light->SetIntensity(180000.0f);
+                light->SetIntensity(120000.0f);
                 light->SetShadowsEnabled(false);
             }
 

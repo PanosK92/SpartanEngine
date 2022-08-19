@@ -32,7 +32,7 @@ namespace Spartan
 {
     void RHI_CommandPool::AllocateCommandLists(const uint32_t command_list_count)
     {
-        for (uint32_t index_pool = 0; index_pool < static_cast<uint32_t>(m_rhi_resources.size()); index_pool++)
+        for (uint32_t index_pool = 0; index_pool < m_command_pool_count; index_pool++)
         {
             for (uint32_t i = 0; i < command_list_count; i++)
             {
@@ -54,15 +54,26 @@ namespace Spartan
         }
 
         // Calculate command list index
-        m_cmd_list_index = (m_cmd_list_index + 1) % GetCommandListCount();
+        m_cmd_list_index = (m_cmd_list_index + 1) % m_command_lists_count;
 
-        // Reset the command pool
-        bool reset_pool = m_cmd_list_index == 0;
-        if (reset_pool)
+        // Compute pool index
+        m_pool_index = (m_cmd_list_index = 0) ? (m_pool_index + 1) % m_command_pool_count : m_pool_index;
+
+        // Wait for any command lists to finish executing
+        if (m_pool_index == 0)
         {
-            Reset();
+            for (const shared_ptr<RHI_CommandList>& cmd_list : m_cmd_lists[m_pool_index])
+            {
+                if (cmd_list->GetState() == RHI_CommandListState::Submitted)
+                {
+                    cmd_list->Wait();
+                }
+            }
+
+            Reset(m_pool_index);
+            return true;
         }
 
-        return reset_pool;
+        return false;
     }
 }

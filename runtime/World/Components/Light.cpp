@@ -204,7 +204,7 @@ namespace Spartan
         if (lumens == LightIntensity::direct_sunglight)
         {
             // The directional light is using an arbitrary value
-            m_intensity_lumens = 200000.0f;
+            m_intensity_lumens = 120000.0f;
         }
         else if (lumens == LightIntensity::bulb_150_watt)
         {
