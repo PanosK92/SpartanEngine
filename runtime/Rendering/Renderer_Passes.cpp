@@ -1950,66 +1950,65 @@ namespace Spartan
         // Set pipeline state
         cmd_list->SetPipelineState(pso);
 
+        bool render_pass_started = false;
+
         // For each light
-        for (const auto& entity : lights)
+        for (Entity* entity : lights)
         {
-            // Render
-            cmd_list->BeginRenderPass();
+            // Light can be null if it just got removed and our buffer doesn't update till the next frame
+            if (Light* light = entity->GetComponent<Light>())
             {
-                // Light can be null if it just got removed and our buffer doesn't update till the next frame
-                if (Light* light = entity->GetComponent<Light>())
+                const Vector3 pos_world        = entity->GetTransform()->GetPosition();
+                const Vector3 pos_world_camera = m_camera->GetTransform()->GetPosition();
+                const Vector3 camera_to_light  = (pos_world - pos_world_camera).Normalized();
+                const float v_dot_l            = Vector3::Dot(m_camera->GetTransform()->GetForward(), camera_to_light);
+
+                // Only draw if it's inside our view
+                if (v_dot_l > 0.5f)
                 {
-                    Vector3 position_light_world      = entity->GetTransform()->GetPosition();
-                    Vector3 position_camera_world     = m_camera->GetTransform()->GetPosition();
-                    Vector3 direction_camera_to_light = (position_light_world - position_camera_world).Normalized();
-                    const float v_dot_l               = Vector3::Dot(m_camera->GetTransform()->GetForward(), direction_camera_to_light);
-
-                    // Only draw if it's inside our view
-                    if (v_dot_l > 0.5f)
+                    if (!render_pass_started)
                     {
-                        // Compute light screen space position and scale (based on distance from the camera)
-                        const Vector2 position_light_screen = m_camera->WorldToScreenCoordinates(position_light_world);
-                        const float distance                = (position_camera_world - position_light_world).Length() + Helper::EPSILON;
-                        float scale                         = m_gizmo_size_max / distance;
-                        scale                               = Helper::Clamp(scale, m_gizmo_size_min, m_gizmo_size_max);
-
-                        // Choose texture based on light type
-                        shared_ptr<RHI_Texture> light_tex = nullptr;
-                        const LightType type = light->GetLightType();
-                        if (type == LightType::Directional) light_tex = m_tex_gizmo_light_directional;
-                        else if (type == LightType::Point)  light_tex = m_tex_gizmo_light_point;
-                        else if (type == LightType::Spot)   light_tex = m_tex_gizmo_light_spot;
-
-                        // Construct appropriate rectangle
-                        const float tex_width = light_tex->GetWidth() * scale;
-                        const float tex_height = light_tex->GetHeight() * scale;
-                        Math::Rectangle rectangle = Math::Rectangle
-                        (
-                            position_light_screen.x - tex_width * 0.5f,
-                            position_light_screen.y - tex_height * 0.5f,
-                            position_light_screen.x + tex_width,
-                            position_light_screen.y + tex_height
-                        );
-
-                        if (rectangle != m_gizmo_light_rect)
-                        {
-                            m_gizmo_light_rect = rectangle;
-                            m_gizmo_light_rect.CreateBuffers(this);
-                        }
-
-                        // Set uber buffer
-                        m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(tex_width), static_cast<float>(tex_width));
-                        m_cb_uber_cpu.transform     = m_cb_frame_cpu.view_projection_ortho;
-                        Update_Cb_Uber(cmd_list);
-
-                        cmd_list->SetTexture(RendererBindingsSrv::tex, light_tex);
-                        cmd_list->SetBufferIndex(m_gizmo_light_rect.GetIndexBuffer());
-                        cmd_list->SetBufferVertex(m_gizmo_light_rect.GetVertexBuffer());
-                        cmd_list->DrawIndexed(Rectangle::GetIndexCount());
+                        cmd_list->BeginRenderPass();
+                        render_pass_started = true;
                     }
+
+                    // Get the texture
+                    RHI_Texture* texture = nullptr;
+                    if (light->GetLightType() == LightType::Directional) texture = m_tex_gizmo_light_directional.get();
+                    else if (light->GetLightType() == LightType::Point)  texture = m_tex_gizmo_light_point.get();
+                    else if (light->GetLightType() == LightType::Spot)   texture = m_tex_gizmo_light_spot.get();
+
+                    // Compute transform
+                    {
+                        // Use the distance from the camera to scale the icon, this will
+                        // cancel out perspective scaling, hence keep the icon scale constant.
+                        const float distance = (pos_world_camera - pos_world).Length();
+                        const float scale    = distance * 0.04f;
+
+                        // 1st rotation: The quad's normal is parallel to the world's Y axis, so we rotate to make it camera facing.
+                        Quaternion rotation_reorient_quad = Quaternion::FromEulerAngles(-90.0f, 0.0f, 0.0f);
+                        // 2nd rotation: Rotate the camera facing quad with the camera, so that it remains a camera facing quad.
+                        Quaternion rotation_camera_billboard = Quaternion::FromLookRotation(pos_world - pos_world_camera).Conjugate();
+
+                        Matrix transform = Matrix(pos_world, rotation_camera_billboard * rotation_reorient_quad, scale);
+
+                        // Update transform
+                        m_cb_uber_cpu.transform = transform * m_cb_frame_cpu.view_projection;
+                        Update_Cb_Uber(cmd_list);
+                    }
+
+                    // Draw rectangle
+                    cmd_list->SetTexture(RendererBindingsSrv::tex, texture);
+                    cmd_list->SetBufferIndex(m_quad_index_buffer.get());
+                    cmd_list->SetBufferVertex(m_quad_vertex_buffer.get());
+                    cmd_list->DrawIndexed(6);
                 }
-                cmd_list->EndRenderPass();
             }
+        }
+
+        if (render_pass_started)
+        {
+            cmd_list->EndRenderPass();
         }
 
         cmd_list->EndTimeblock();

@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "Renderer.h"
 #include "Geometry.h"
+#include "Grid.h"
 #include "Font/Font.h"
 #include "../Resource/ResourceCache.h"
 #include "../RHI/RHI_Texture2D.h"
@@ -254,13 +255,14 @@ namespace Spartan
         shader(RendererShader::Light_C) = make_shared<RHI_Shader>(m_context);
         shader(RendererShader::Light_C)->Compile(RHI_Shader_Compute, dir_shaders + "light.hlsl", async);
 
-        // Fullscreen triangle
-        shader(RendererShader::FullscreenTriangle_V) = make_shared<RHI_Shader>(m_context, RHI_Vertex_Type::Undefined);
-        shader(RendererShader::FullscreenTriangle_V)->Compile(RHI_Shader_Vertex, dir_shaders + "fullscreen_triangle.hlsl", async);
+        // Triangle & Quad
+        {
+            shader(RendererShader::FullscreenTriangle_V) = make_shared<RHI_Shader>(m_context, RHI_Vertex_Type::Undefined);
+            shader(RendererShader::FullscreenTriangle_V)->Compile(RHI_Shader_Vertex, dir_shaders + "fullscreen_triangle.hlsl", async);
 
-        // Quad
-        shader(RendererShader::Quad_V) = make_shared<RHI_Shader>(m_context, RHI_Vertex_Type::PosTex);
-        shader(RendererShader::Quad_V)->Compile(RHI_Shader_Vertex, dir_shaders + "quad.hlsl", async);
+            shader(RendererShader::Quad_V) = make_shared<RHI_Shader>(m_context, RHI_Vertex_Type::PosTexNorTan);
+            shader(RendererShader::Quad_V)->Compile(RHI_Shader_Vertex, dir_shaders + "quad.hlsl", async);
+        }
 
         // Depth prepass
         {
@@ -464,18 +466,37 @@ namespace Spartan
 
     void Renderer::CreateMeshes()
     {
-        // Create a sphere
+        // Sphere
+        {
+            vector<RHI_Vertex_PosTexNorTan> vertices;
+            vector<uint32_t> indices;
+            Geometry::CreateSphere(&vertices, &indices, 0.2f, 20, 20);
 
-        vector<RHI_Vertex_PosTexNorTan> vertices;
-        vector<uint32_t> indices;
+            m_sphere_vertex_buffer = make_shared<RHI_VertexBuffer>(m_rhi_device.get(), false, "sphere");
+            m_sphere_vertex_buffer->Create(vertices);
 
-        Geometry::CreateSphere(&vertices, &indices, 0.2f, 20, 20);
+            m_sphere_index_buffer = make_shared<RHI_IndexBuffer>(m_rhi_device.get(), false, "sphere");
+            m_sphere_index_buffer->Create(indices);
+        }
 
-        m_sphere_vertex_buffer = make_shared<RHI_VertexBuffer>(m_rhi_device.get(), false, "sphere");
-        m_sphere_vertex_buffer->Create(vertices);
+        // Quad
+        {
+            vector<RHI_Vertex_PosTexNorTan> vertices;
+            vector<uint32_t> indices;
+            Geometry::CreateQuad(&vertices, &indices);
 
-        m_sphere_index_buffer = make_shared<RHI_IndexBuffer>(m_rhi_device.get(), false, "sphere");
-        m_sphere_index_buffer->Create(indices);
+            m_quad_vertex_buffer = make_shared<RHI_VertexBuffer>(m_rhi_device.get(), false, "rectangle");
+            m_quad_vertex_buffer->Create(vertices);
+
+            m_quad_index_buffer = make_shared<RHI_IndexBuffer>(m_rhi_device.get(), false, "rectangle");
+            m_quad_index_buffer->Create(indices);
+        }
+
+        // Buffer where all the lines are kept
+        m_vertex_buffer_lines = make_shared<RHI_VertexBuffer>(m_rhi_device.get(), true, "lines");
+
+        // World grid
+        m_gizmo_grid = make_unique<Grid>(m_rhi_device.get());
     }
 
     void Renderer::CreateTextures()

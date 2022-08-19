@@ -286,7 +286,8 @@ namespace Spartan
 
         // Gizmos
         std::unique_ptr<Grid> m_gizmo_grid;
-        Math::Rectangle m_gizmo_light_rect;
+        std::shared_ptr<RHI_VertexBuffer> m_quad_vertex_buffer;
+        std::shared_ptr<RHI_IndexBuffer> m_quad_index_buffer;
         std::shared_ptr<RHI_VertexBuffer> m_sphere_vertex_buffer;
         std::shared_ptr<RHI_IndexBuffer> m_sphere_index_buffer;
 
@@ -319,8 +320,6 @@ namespace Spartan
 
         // Constants
         const uint32_t m_resolution_shadow_min = 128;
-        const float m_gizmo_size_max           = 2.0f;
-        const float m_gizmo_size_min           = 0.1f;
         const float m_thread_group_count       = 8.0f;
         const float m_depth_bias               = 0.004f; // bias that's applied directly into the depth buffer
         const float m_depth_bias_clamp         = 0.0f;
