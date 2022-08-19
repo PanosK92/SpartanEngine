@@ -165,6 +165,9 @@ namespace Spartan
                 case SDL_WINDOWEVENT_HIT_TEST:
                     //Window had a hit test that wasn't SDL_HITTEST_NORMAL.
                     break;
+                case SDL_WINDOWEVENT_ICCPROF_CHANGED:
+                    LOG_INFO("The ICC profile of the window's display has changed");
+                    break;
                 default:
                     LOG_ERROR("Unhandled window event");
                     break;
@@ -177,7 +180,7 @@ namespace Spartan
         // Handle shortcuts
         if (Input* input = m_context->GetSubsystem<Input>())
         {
-            // Toggle fullscreen
+            // Toggle full screen
             if (input->GetKey(KeyCode::Alt_Right) && input->GetKeyDown(KeyCode::Enter))
             {
                 ToggleFullScreen();
