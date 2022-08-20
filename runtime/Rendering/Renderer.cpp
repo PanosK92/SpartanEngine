@@ -160,6 +160,7 @@ namespace Spartan
 
         // Create command pool
         m_cmd_pool = m_rhi_device->AllocateCommandPool("renderer", m_swap_chain->GetObjectId());
+        m_cmd_pool->AllocateCommandLists(RHI_Queue_Type::Graphics, 2, 2);
 
         // Set the output and viewport resolution to the display resolution.
         // If the editor is running, it will set the viewport resolution to whatever the viewport.

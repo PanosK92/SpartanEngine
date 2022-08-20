@@ -458,16 +458,6 @@ namespace Spartan
             // Asset directories
             ResourceCache* resource_cache = m_context->GetSubsystem<ResourceCache>();
 
-
-            // 3D model - Sponza
-            if (m_default_world_model = resource_cache->Load<Model>("project\\models\\sponza\\main\\NewSponza_Main_Blender_glTF.gltf"))
-            {
-                Entity* entity = m_default_world_model->GetRootEntity();
-                entity->SetName("sponza");
-                entity->GetTransform()->SetPosition(Vector3(0.0f, 0.06f, 0.0f));
-                entity->GetTransform()->SetScale(Vector3::One);
-            }
-
             // 3D model - Car
             if (m_default_world_model2 = resource_cache->Load<Model>("project\\models\\toyota_ae86_sprinter_trueno_zenki\\scene.gltf"))
                 {
@@ -579,6 +569,17 @@ namespace Spartan
                         }
                     }
                 }
+
+            return;
+
+            // 3D model - Sponza
+            if (m_default_world_model = resource_cache->Load<Model>("project\\models\\sponza\\main\\NewSponza_Main_Blender_glTF.gltf"))
+            {
+                Entity* entity = m_default_world_model->GetRootEntity();
+                entity->SetName("sponza");
+                entity->GetTransform()->SetPosition(Vector3(0.0f, 0.06f, 0.0f));
+                entity->GetTransform()->SetScale(Vector3::One);
+            }
         });
     }
 

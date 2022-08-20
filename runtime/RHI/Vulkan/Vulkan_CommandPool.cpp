@@ -37,29 +37,6 @@ namespace Spartan
         m_rhi_device    = rhi_device;
         m_name          = name;
         m_swap_chain_id = swap_chain_id;
-        m_rhi_resources.fill(nullptr);
-
-        VkCommandPoolCreateInfo cmd_pool_info = {};
-        cmd_pool_info.sType                   = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-        cmd_pool_info.queueFamilyIndex        = rhi_device->GetQueueIndex(RHI_Queue_Type::Graphics);
-        cmd_pool_info.flags                   = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT; // specifies that command buffers allocated from the pool will be short-lived
-
-        // Create pools
-        for (auto& rhi_resource : m_rhi_resources)
-        {
-            SP_ASSERT_MSG(
-                vkCreateCommandPool(m_rhi_device->GetRhiContext()->device, &cmd_pool_info, nullptr, reinterpret_cast<VkCommandPool*>(&rhi_resource)) == VK_SUCCESS,
-                "Failed to create command pool"
-            );
-        }
-
-        // Name
-        for (uint32_t i = 0; i < static_cast<uint32_t>(m_rhi_resources.size()); i++)
-        {
-            vulkan_utility::debug::set_object_name(static_cast<VkCommandPool>(m_rhi_resources[i]), (m_name + string("_") + to_string(i)).c_str());
-        }
-
-        AllocateCommandLists(m_command_lists_count);
     }
 
     RHI_CommandPool::~RHI_CommandPool()
@@ -73,24 +50,42 @@ namespace Spartan
         VkDevice device = m_rhi_device->GetRhiContext()->device;
 
         // Free command buffers
-        for (uint32_t index_pool = 0; index_pool < m_command_pool_count; index_pool++)
+        for (uint32_t index_pool = 0; index_pool < m_cmd_pool_count; index_pool++)
         {
-            for (uint32_t index_cmd_list = 0; index_cmd_list < m_command_lists_count; index_cmd_list++)
+            for (uint32_t index_cmd_list = 0; index_cmd_list < m_cmd_list_count; index_cmd_list++)
             {
-                VkCommandPool cmd_pool                         = static_cast<VkCommandPool>(m_rhi_resources[index_pool]);
-                vector<shared_ptr<RHI_CommandList>>& cmd_lists = m_cmd_lists[index_pool];
-                VkCommandBuffer cmd_buffer                     = reinterpret_cast<VkCommandBuffer>(cmd_lists[index_cmd_list]->GetResource());
+                VkCommandPool cmd_pool     = static_cast<VkCommandPool>(m_rhi_resources[index_pool]);
+                VkCommandBuffer cmd_buffer = reinterpret_cast<VkCommandBuffer>(m_cmd_lists[index_pool + index_cmd_list]->GetResource());
 
                 vkFreeCommandBuffers(device, cmd_pool, 1, &cmd_buffer);
             }
         }
 
         // Destroy pools
-        for (uint32_t i = 0; i < m_command_pool_count; i++)
+        for (uint32_t i = 0; i < m_cmd_pool_count; i++)
         {
             vkDestroyCommandPool(device, static_cast<VkCommandPool>(m_rhi_resources[i]), nullptr);
             m_rhi_resources[i] = nullptr;
         }
+    }
+
+    void RHI_CommandPool::CreateCommandPool(const RHI_Queue_Type queue_type)
+    {
+        VkCommandPoolCreateInfo cmd_pool_info = {};
+        cmd_pool_info.sType                    = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+        cmd_pool_info.queueFamilyIndex         = m_rhi_device->GetQueueIndex(queue_type);
+        cmd_pool_info.flags                    = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT; // specifies that command buffers allocated from the pool will be short-lived
+
+        // Create
+        m_rhi_resources.emplace_back(nullptr);
+        SP_ASSERT_MSG(
+            vkCreateCommandPool(m_rhi_device->GetRhiContext()->device, &cmd_pool_info, nullptr, reinterpret_cast<VkCommandPool*>(&m_rhi_resources.back())) == VK_SUCCESS,
+            "Failed to create command pool"
+        );
+
+        // Name
+        uint32_t cmd_pool_count = static_cast<uint32_t>(m_rhi_resources.size());
+        vulkan_utility::debug::set_object_name(static_cast<VkCommandPool>(m_rhi_resources.back()), (m_name + string("_") + to_string(cmd_pool_count)).c_str());
     }
 
     void RHI_CommandPool::Reset(const uint32_t pool_index)

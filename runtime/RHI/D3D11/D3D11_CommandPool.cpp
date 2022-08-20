@@ -35,11 +35,14 @@ namespace Spartan
     {
         m_rhi_device = rhi_device;
         m_name       = name;
-
-        AllocateCommandLists(m_command_lists_count);
     }
 
     RHI_CommandPool::~RHI_CommandPool()
+    {
+
+    }
+
+    void RHI_CommandPool::CreateCommandPool(const RHI_Queue_Type queue_type)
     {
 
     }
