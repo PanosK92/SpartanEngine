@@ -107,14 +107,14 @@ RHI_Texture* IconProvider::GetTextureByFilePath(const string& filePath)
 
 RHI_Texture* IconProvider::GetTextureByThumbnail(const Thumbnail& thumbnail)
 {
-    for (const auto& thumbnailTemp : m_thumbnails)
+    for (const auto& thumbnail : m_thumbnails)
     {
-        if (!thumbnailTemp.texture->IsReadyForUse())
+        if (!thumbnail.texture || !thumbnail.texture->IsReadyForUse())
             continue;
 
-        if (thumbnailTemp.texture->GetObjectId() == thumbnail.texture->GetObjectId())
+        if (thumbnail.texture->GetObjectId() == thumbnail.texture->GetObjectId())
         {
-            return thumbnailTemp.texture.get();
+            return thumbnail.texture.get();
         }
     }
 
