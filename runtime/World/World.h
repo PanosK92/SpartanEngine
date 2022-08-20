@@ -88,8 +88,9 @@ namespace Spartan
         bool m_was_in_editor_mode    = false;
         bool m_resolve               = true;
         bool m_default_world_started = false;
-        std::shared_ptr<Model> m_default_world_model;
-        std::shared_ptr<Model> m_default_world_model2;
+        std::shared_ptr<Model> m_default_model_sponza;
+        std::shared_ptr<Model> m_default_model_sponza_curtains;
+        std::shared_ptr<Model> m_default_model_car;
         std::shared_ptr<TransformHandle> m_transform_handle;
         std::vector<std::shared_ptr<Entity>> m_entities;
         std::mutex m_mutex_create_entity;

@@ -408,8 +408,8 @@ namespace Spartan
 
             entity->AddComponent<Camera>();
             entity->AddComponent<AudioListener>();
-            entity->GetTransform()->SetPosition(Vector3(14.5327f, 1.4739f, -0.6384f));
-            entity->GetTransform()->SetRotation(Quaternion::FromEulerAngles(Vector3(1.7986f, -91.5946f, 0.0f)));
+            entity->GetTransform()->SetPosition(Vector3(-2.6660f, 1.9089f, 1.9960f));
+            entity->GetTransform()->SetRotation(Quaternion::FromEulerAngles(Vector3(-0.0015f, 105.8024f, 0.0f)));
         }
 
         // Light - Directional
@@ -418,7 +418,7 @@ namespace Spartan
             entity->SetName("light_directional");
 
             entity->GetTransform()->SetPosition(Vector3(0.0f, 10.0f, 0.0f));
-            entity->GetTransform()->SetRotation(Quaternion::FromEulerAngles(67.3400f, -72.0900f, 0.0f));
+            entity->GetTransform()->SetRotation(Quaternion::FromEulerAngles(112.3700f, -60.9100f, 0.0f));
 
             Light* light = entity->AddComponent<Light>();
             light->SetLightType(LightType::Directional);
@@ -426,12 +426,12 @@ namespace Spartan
             light->SetIntensity(120000.0f);
         }
 
-        // Light - Point Blue
+        // Light - Point
         {
             shared_ptr<Entity> entity = EntityCreate();
             entity->SetName("light_point");
 
-            entity->GetTransform()->SetPosition(Vector3(4.3592f, 2.5952f, -0.1728f));
+            entity->GetTransform()->SetPosition(Vector3(15.7592f, 3.1752f, 0.9272f));
 
             Light* light = entity->AddComponent<Light>();
             light->SetLightType(LightType::Point);
@@ -453,15 +453,15 @@ namespace Spartan
 
         // Asset directories
         ResourceCache* resource_cache = m_context->GetSubsystem<ResourceCache>();
-        
+
         // 3D model - Car
-        if (m_default_world_model2 = resource_cache->Load<Model>("project\\models\\toyota_ae86_sprinter_trueno_zenki\\scene.gltf"))
+        if (m_default_model_car = resource_cache->Load<Model>("project\\models\\toyota_ae86_sprinter_trueno_zenki\\scene.gltf"))
         {
-            Entity* entity = m_default_world_model2->GetRootEntity();
+            Entity* entity = m_default_model_car->GetRootEntity();
             entity->SetName("car");
         
-            entity->GetTransform()->SetPosition(Vector3(0.0f, 0.0f, 0.0f));
-            entity->GetTransform()->SetRotation(Quaternion::FromEulerAngles(90.0f, 0.0f, 90.0f));
+            entity->GetTransform()->SetPosition(Vector3(15.5200f, -0.6100f, 0.0300f));
+            entity->GetTransform()->SetRotation(Quaternion::FromEulerAngles(90.0f, -4.8800f, -95.0582f));
             entity->GetTransform()->SetScale(Vector3(0.0125f, 0.0125f, 0.0125f));
         
             // Break calipers have a wrong rotation, probably a bug with sketchfab auto converting to gltf
@@ -559,33 +559,45 @@ namespace Spartan
                 }
             }
         }
-        
+
         // 3D model - Sponza
-        if (m_default_world_model = resource_cache->Load<Model>("project\\models\\sponza\\main\\NewSponza_Main_Blender_glTF.gltf"))
+        if (m_default_model_sponza = resource_cache->Load<Model>("project\\models\\sponza\\main\\NewSponza_Main_Blender_glTF.gltf"))
         {
-            Entity* entity = m_default_world_model->GetRootEntity();
+            Entity* entity = m_default_model_sponza->GetRootEntity();
             entity->SetName("sponza");
             entity->GetTransform()->SetPosition(Vector3(0.0f, 0.06f, 0.0f));
             entity->GetTransform()->SetScale(Vector3::One);
+
+            // Make the lamp frame not cast shadows, so we can place a light within it
+            if (Renderable* renderable = entity->GetTransform()->GetDescendantByName("lamp_1stfloor_entrance_1")->GetRenderable())
+            {
+                renderable->SetCastShadows(false);
+            }
+
+            // Make the dirt decal fully rough
+            if (Material* material = entity->GetTransform()->GetDescendantByName("decals_1st_floor")->GetRenderable()->GetMaterial())
+            {
+                material->SetProperty(MaterialProperty::RoughnessMultiplier, 1.0f);
+            }
+
+            // 3D model - Sponza curtains
+            if (m_default_model_sponza_curtains = resource_cache->Load<Model>("project\\models\\sponza\\curtains\\NewSponza_Curtains_glTF.gltf"))
+            {
+                Entity* entity = m_default_model_sponza_curtains->GetRootEntity();
+                entity->SetName("sponza_curtains");
+                entity->GetTransform()->SetPosition(Vector3(0.0f, 0.06f, 0.0f));
+                entity->GetTransform()->SetScale(Vector3::One);
+            }
         }
     }
 
     void World::UpdateDefaultWorld(double delta_time)
     {
-        if (!m_default_world_model2 || !m_default_world_model2->GetRootEntity())
-            return;
-
         // Play!
         if (!m_default_world_started)
         {
             m_context->m_engine->ToggleFlag(EngineMode::Game);
             m_default_world_started = true;
-        }
-
-        // Slowly rotate the model
-        if (m_context->m_engine->IsFlagSet(EngineMode::Game))
-        {
-            m_default_world_model2->GetRootEntity()->GetTransform()->Rotate(Quaternion::FromEulerAngles(0.0f, 0.0f, -3.5f * static_cast<float>(delta_time)));
         }
     }
 }
