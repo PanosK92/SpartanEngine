@@ -70,7 +70,7 @@ namespace Spartan
         SetOption(RendererOption::Ssao_Gi,                1.0f);
         SetOption(RendererOption::ScreenSpaceShadows,     1.0f);
         SetOption(RendererOption::ScreenSpaceReflections, 1.0f);
-        SetOption(RendererOption::Antialiasing,           static_cast<float>(AntialiasingMode::Taa));
+        SetOption(RendererOption::Antialiasing,           static_cast<float>(AntialiasingMode::TaaFxaa));
         SetOption(RendererOption::Anisotropy,             16.0f);
         SetOption(RendererOption::ShadowResolution,       2048.0f);
         SetOption(RendererOption::Tonemapping,            static_cast<float>(TonemappingMode::Disabled));
@@ -79,7 +79,7 @@ namespace Spartan
         SetOption(RendererOption::Fog,                    0.0f);
         // Debug
         SetOption(RendererOption::Debug_TransformHandle,    1.0f);
-        SetOption(RendererOption::Debug_Grid,               1.0f);
+        //SetOption(RendererOption::Debug_Grid,               1.0f);
         SetOption(RendererOption::Debug_ReflectionProbes,   1.0f);
         SetOption(RendererOption::Debug_Lights,             1.0f);
         SetOption(RendererOption::Debug_Physics,            0.0f);
