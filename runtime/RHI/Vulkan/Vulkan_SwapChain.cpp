@@ -233,12 +233,12 @@ namespace Spartan
                 vkGetSwapchainImagesKHR(rhi_context->device, swap_chain, &image_count, images.data());
 
                 // Transition layouts to VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
-                if (VkCommandBuffer cmd_buffer = vulkan_utility::command_buffer_immediate::begin(RHI_Queue_Type::Graphics))
+                if (RHI_CommandList* cmd_list = rhi_device->ImmediateBegin(RHI_Queue_Type::Graphics))
                 {
                     for (uint32_t i = 0; i < static_cast<uint32_t>(images.size()); i++)
                     {
                         vulkan_utility::image::set_layout(
-                            reinterpret_cast<void*>(cmd_buffer),
+                            cmd_list->GetRhiResource(),
                             reinterpret_cast<void*>(images[i]),
                             VK_IMAGE_ASPECT_COLOR_BIT,
                             0,
@@ -251,7 +251,7 @@ namespace Spartan
                     }
 
                     // End/flush
-                    vulkan_utility::command_buffer_immediate::end(RHI_Queue_Type::Graphics);
+                    rhi_device->ImmediateSubmit(cmd_list);
                 }
             }
 
@@ -532,7 +532,7 @@ namespace Spartan
             return;
 
         vulkan_utility::image::set_layout(
-            reinterpret_cast<void*>(cmd_list->GetResource()),
+            reinterpret_cast<void*>(cmd_list->GetRhiResource()),
             reinterpret_cast<void*>(m_rhi_backbuffer_resource[m_image_index]),
             VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 1,
             m_layouts[m_image_index],

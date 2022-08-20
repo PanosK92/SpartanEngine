@@ -93,11 +93,7 @@ namespace Spartan
         create_info.sType             = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
         create_info.imageType         = VK_IMAGE_TYPE_2D;
         create_info.flags             = 0;
-        if (texture->GetResourceType() == ResourceType::Texture2dArray)
-        {
-            create_info.flags = VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT;
-        }
-        else if (texture->GetResourceType() == ResourceType::TextureCube)
+        if (texture->GetResourceType() == ResourceType::TextureCube)
         {
             create_info.flags = VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
         }
@@ -233,17 +229,17 @@ namespace Spartan
             return false;
 
         // Copy the staging buffer into the image
-        if (VkCommandBuffer cmd_buffer = vulkan_utility::command_buffer_immediate::begin(RHI_Queue_Type::Graphics))
+        if (RHI_CommandList* cmd_list = rhi_device->ImmediateBegin(RHI_Queue_Type::Graphics))
         {
             // Optimal layout for images which are the destination of a transfer format
             RHI_Image_Layout layout = RHI_Image_Layout::Transfer_Dst_Optimal;
 
             // Insert memory barrier
-            vulkan_utility::image::set_layout(cmd_buffer, texture, 0, texture->GetMipCount(), texture->GetArrayLength(), texture->GetLayout(0), layout);
+            vulkan_utility::image::set_layout(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()), texture, 0, texture->GetMipCount(), texture->GetArrayLength(), texture->GetLayout(0), layout);
 
             // Copy the staging buffer to the image
             vkCmdCopyBufferToImage(
-                cmd_buffer,
+                static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()),
                 static_cast<VkBuffer>(staging_buffer),
                 static_cast<VkImage>(texture->GetRhiResource()),
                 vulkan_image_layout[static_cast<uint8_t>(layout)],
@@ -252,7 +248,7 @@ namespace Spartan
             );
 
             // End/flush
-            vulkan_utility::command_buffer_immediate::end(RHI_Queue_Type::Graphics);
+            rhi_device->ImmediateSubmit(cmd_list);
 
             // Free staging buffer
             rhi_device->DestroyBuffer(staging_buffer);
@@ -288,7 +284,7 @@ namespace Spartan
 
     void RHI_Texture::RHI_SetLayout(const RHI_Image_Layout new_layout, RHI_CommandList* cmd_list, const uint32_t mip_start, const uint32_t mip_range)
     {
-        vulkan_utility::image::set_layout(static_cast<VkCommandBuffer>(cmd_list->GetResource()), this, mip_start, mip_range, m_array_length, m_layout[mip_start], new_layout);
+        vulkan_utility::image::set_layout(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()), this, mip_start, mip_range, m_array_length, m_layout[mip_start], new_layout);
     }
 
     bool RHI_Texture::RHI_CreateResource()
@@ -309,15 +305,15 @@ namespace Spartan
         }
 
         // Transition to target layout
-        if (VkCommandBuffer cmd_buffer = vulkan_utility::command_buffer_immediate::begin(RHI_Queue_Type::Graphics))
+        if (RHI_CommandList* cmd_list = m_rhi_device->ImmediateBegin(RHI_Queue_Type::Graphics))
         {
             RHI_Image_Layout target_layout = GetAppropriateLayout(this);
 
             // Transition to the final layout
-            vulkan_utility::image::set_layout(cmd_buffer, this, 0, m_mip_count, m_array_length, m_layout[0], target_layout);
+            vulkan_utility::image::set_layout(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()), this, 0, m_mip_count, m_array_length, m_layout[0], target_layout);
         
             // Flush
-            vulkan_utility::command_buffer_immediate::end(RHI_Queue_Type::Graphics);
+            m_rhi_device->ImmediateSubmit(cmd_list);
 
             // Update this texture with the new layout
             for (uint32_t i = 0; i < m_mip_count; i++)

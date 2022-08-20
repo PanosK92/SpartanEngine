@@ -55,7 +55,7 @@ namespace Spartan
             for (uint32_t index_cmd_list = 0; index_cmd_list < m_cmd_list_count; index_cmd_list++)
             {
                 VkCommandPool cmd_pool     = static_cast<VkCommandPool>(m_rhi_resources[index_pool]);
-                VkCommandBuffer cmd_buffer = reinterpret_cast<VkCommandBuffer>(m_cmd_lists[index_pool + index_cmd_list]->GetResource());
+                VkCommandBuffer cmd_buffer = reinterpret_cast<VkCommandBuffer>(m_cmd_lists[index_pool + index_cmd_list]->GetRhiResource());
 
                 vkFreeCommandBuffers(device, cmd_pool, 1, &cmd_buffer);
             }
@@ -72,9 +72,9 @@ namespace Spartan
     void RHI_CommandPool::CreateCommandPool(const RHI_Queue_Type queue_type)
     {
         VkCommandPoolCreateInfo cmd_pool_info = {};
-        cmd_pool_info.sType                    = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-        cmd_pool_info.queueFamilyIndex         = m_rhi_device->GetQueueIndex(queue_type);
-        cmd_pool_info.flags                    = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT; // specifies that command buffers allocated from the pool will be short-lived
+        cmd_pool_info.sType                   = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+        cmd_pool_info.queueFamilyIndex        = m_rhi_device->GetQueueIndex(queue_type);
+        cmd_pool_info.flags                   = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT; // specifies that command buffers allocated from the pool will be short-lived
 
         // Create
         m_rhi_resources.emplace_back(nullptr);

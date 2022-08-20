@@ -78,7 +78,7 @@ namespace Spartan
             // Copy staging buffer to destination buffer
             {
                 // Create command buffer
-                VkCommandBuffer cmd_buffer = vulkan_utility::command_buffer_immediate::begin(RHI_Queue_Type::Copy);
+                RHI_CommandList* cmd_list = m_rhi_device->ImmediateBegin(RHI_Queue_Type::Copy);
 
                 VkBuffer* buffer_vk         = reinterpret_cast<VkBuffer*>(&m_rhi_resource);
                 VkBuffer* buffer_staging_vk = reinterpret_cast<VkBuffer*>(&staging_buffer);
@@ -86,10 +86,10 @@ namespace Spartan
                 // Copy
                 VkBufferCopy copy_region = {};
                 copy_region.size         = m_object_size_gpu;
-                vkCmdCopyBuffer(cmd_buffer, *buffer_staging_vk, *buffer_vk, 1, &copy_region);
+                vkCmdCopyBuffer(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()), *buffer_staging_vk, *buffer_vk, 1, &copy_region);
 
                 // Flush and free command buffer
-                vulkan_utility::command_buffer_immediate::end(RHI_Queue_Type::Copy);
+                m_rhi_device->ImmediateSubmit(cmd_list);
 
                 // Destroy staging resources
                 m_rhi_device->DestroyBuffer(staging_buffer);

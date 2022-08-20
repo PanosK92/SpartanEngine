@@ -36,7 +36,6 @@ namespace Spartan
         m_rhi_device    = rhi_device;
         m_name          = name;
         m_swap_chain_id = swap_chain_id;
-        m_rhi_resources.fill(nullptr);
 
         // Create command pool 
         for (uint32_t i = 0; i < static_cast<uint32_t>(m_rhi_resources.size()); i++)

@@ -50,8 +50,9 @@ namespace Spartan
 {
     bool RHI_CommandList::m_memory_query_support = true;
 
-    RHI_CommandList::RHI_CommandList(Context* context, void* cmd_pool, const char* name) : SpartanObject(context)
+    RHI_CommandList::RHI_CommandList(Context* context, const RHI_Queue_Type queue_type, void* cmd_pool, const char* name) : SpartanObject(context)
     {
+        m_queue_type = queue_type;
         m_renderer   = context->GetSubsystem<Renderer>();
         m_profiler   = context->GetSubsystem<Profiler>();
         m_rhi_device = m_renderer->GetRhiDevice().get();

@@ -87,9 +87,12 @@ namespace Spartan
         m_data.clear();
         m_data.shrink_to_fit();
 
-        bool destroy_main     = true;
-        bool destroy_per_view = true;
-        RHI_DestroyResource(destroy_main, destroy_per_view);
+        if (m_rhi_resource != nullptr)
+        { 
+            bool destroy_main     = true;
+            bool destroy_per_view = true;
+            RHI_DestroyResource(destroy_main, destroy_per_view);
+        }
     }
 
     bool RHI_Texture::SaveToFile(const string& file_path)

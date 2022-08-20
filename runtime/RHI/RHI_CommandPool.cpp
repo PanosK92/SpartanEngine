@@ -41,16 +41,16 @@ namespace Spartan
             {
                 CreateCommandPool(queue_type);
                 string cmd_list_name = m_name + "_cmd_pool_" + to_string(index_cmd_pool) + "_cmd_list_" + to_string(index_cmd_list);
-                m_cmd_lists.push_back(make_shared<RHI_CommandList>(m_context, m_rhi_resources[index_cmd_pool], cmd_list_name.c_str()));
+                m_cmd_lists.push_back(make_shared<RHI_CommandList>(m_context, queue_type, m_rhi_resources[index_cmd_pool], cmd_list_name.c_str()));
             }
         }
     }
 
-    bool RHI_CommandPool::Tick()
+    bool RHI_CommandPool::Step()
     {
-        if (m_is_first_tick)
+        if (m_first_step)
         {
-            m_is_first_tick = false;
+            m_first_step = false;
             return false;
         }
 

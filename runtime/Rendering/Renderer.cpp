@@ -218,7 +218,7 @@ namespace Spartan
             return;
 
         // Tick command pool
-        bool reset = m_cmd_pool->Tick() || (m_rhi_device->GetRhiApiType() == RHI_Api_Type::D3d11);
+        bool reset = m_cmd_pool->Step() || (m_rhi_device->GetRhiApiType() == RHI_Api_Type::D3d11);
 
         // Begin
         m_cmd_current = m_cmd_pool->GetCurrentCommandList();
