@@ -414,7 +414,6 @@ namespace Spartan
 
         // Light - Directional
         {
-            // todo: vulkan dir light is bugged
             shared_ptr<Entity> entity = EntityCreate();
             entity->SetName("light_directional");
 
@@ -423,9 +422,8 @@ namespace Spartan
 
             Light* light = entity->AddComponent<Light>();
             light->SetLightType(LightType::Directional);
-            light->SetColor(Color::light_moonlight);
-            light->SetIntensity(0.0f);
-            light->SetShadowsEnabled(false);
+            light->SetColor(Color::light_clear_sky);
+            light->SetIntensity(120000.0f);
         }
 
         // Light - Point Blue
