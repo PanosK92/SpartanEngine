@@ -23,8 +23,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Common.hlsl"
 //====================
 
-static const uint g_ao_directions      = 2;
-static const uint g_ao_steps           = 2;
+static const uint g_ao_directions      = 3;
+static const uint g_ao_steps           = 3;
 static const float g_ao_radius         = 5.0f;
 static const float g_ao_occlusion_bias = 0.0f;
 static const float g_ao_intensity      = 5.0f;
@@ -59,7 +59,7 @@ void compute_uber_ssao(uint2 pos, inout float3 bent_normal, inout float occlusio
     const float pixel_offset = max((g_ao_radius * g_resolution_rt.x * 0.5f) / origin_position.z, (float)g_ao_steps);
     const float step_offset  = pixel_offset / float(g_ao_steps + 1.0f); // divide by steps + 1 so that the farthest samples are not fully attenuated
 
-    // Comute rotation step
+    // Compute rotation step
     const float step_direction = PI2 / (float)g_ao_directions;
 
     // Offsets (noise over space and time)
@@ -96,7 +96,7 @@ void compute_uber_ssao(uint2 pos, inout float3 bent_normal, inout float occlusio
 
     bent_normal    *= ao_samples_rcp;
     occlusion      = pow((1.0f - saturate(occlusion * ao_samples_rcp)), g_ao_intensity);
-    diffuse_bounce = saturate(diffuse_bounce);
+    diffuse_bounce /= float(g_ao_directions * g_ao_steps);
 }
 
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]

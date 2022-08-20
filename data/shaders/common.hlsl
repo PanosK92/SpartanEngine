@@ -483,7 +483,7 @@ float get_offset()
 }
 
 // Based on Activision GTAO paper: https://www.activision.com/cdn/research/s2016_pbs_activision_occlusion.pptx
-// Rotationsa are 60.0f, 300.0f, 180.0f, 240.0f, 120.0f, 0.0f, devided by 360.0f.
+// Rotations are 60.0f, 300.0f, 180.0f, 240.0f, 120.0f, 0.0f, devided by 360.0f.
 static const float rotations[] = { 0.1666f, 0.8333, 0.5f, 0.6666, 0.3333, 0.0f };
 float get_direction()
 {
