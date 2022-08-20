@@ -44,7 +44,7 @@ namespace Spartan
     class SPARTAN_CLASS RHI_CommandList : public SpartanObject
     {
     public:
-        RHI_CommandList(Context* context, void* cmd_pool_resource, const char* name);
+        RHI_CommandList(Context* context, const RHI_Queue_Type queue_type, void* cmd_pool_resource, const char* name);
         ~RHI_CommandList();
 
         void Begin();
@@ -138,7 +138,7 @@ namespace Spartan
         RHI_Semaphore* GetSemaphoreProccessed() { return m_proccessed_semaphore.get(); }
 
         // Misc
-        void* GetResource() const { return m_rhi_resource; }
+        void* GetRhiResource() const { return m_rhi_resource; }
 
     private:
         void OnDraw();
@@ -199,5 +199,7 @@ namespace Spartan
         // RHI Resources
         void* m_rhi_resource          = nullptr;
         void* m_rhi_cmd_pool_resource = nullptr;
+
+        RHI_Queue_Type m_queue_type = RHI_Queue_Type::Undefined;
     };
 }

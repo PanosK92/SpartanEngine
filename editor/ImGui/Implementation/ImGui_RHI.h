@@ -205,7 +205,7 @@ namespace ImGui::RHI
         ViewportResources* resources = is_child_window ? window_data->viewport_data.get() : &g_viewport_data;
 
         // Tick the command pool
-        if (resources->cmd_pool->Tick())
+        if (resources->cmd_pool->Step())
         {
             resources->cb_gpu->ResetOffset();
         }

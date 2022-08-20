@@ -97,6 +97,10 @@ namespace Spartan
         void Unmap(void* resource, void*& mapped_data);
         void Flush(void* resource, uint64_t offset, uint64_t size);
 
+        // Immediate
+        RHI_CommandList* ImmediateBegin(const RHI_Queue_Type queue_type);
+        void ImmediateSubmit(RHI_CommandList* cmd_list);
+
     private:
         // Physical device
         bool DetectPhysicalDevices();
@@ -138,6 +142,11 @@ namespace Spartan
         std::mutex m_queue_mutex;
         std::mutex m_mutex_vma_buffer;
         std::mutex m_mutex_vma_texture;
+
+        // Immediate context
+        std::shared_ptr<RHI_CommandPool> m_immediate_cmd_pool_graphics;
+        std::shared_ptr<RHI_CommandPool> m_immediate_cmd_pool_copy;
+        std::mutex m_immediate_mutex;
 
         // Misc
         uint32_t m_physical_device_index          = 0;

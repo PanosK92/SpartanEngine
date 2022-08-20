@@ -70,8 +70,9 @@ namespace Spartan
         return VK_ATTACHMENT_LOAD_OP_CLEAR;
     };
 
-    RHI_CommandList::RHI_CommandList(Context* context, void* cmd_pool, const char* name) : SpartanObject(context)
+    RHI_CommandList::RHI_CommandList(Context* context, const RHI_Queue_Type queue_type, void* cmd_pool, const char* name) : SpartanObject(context)
     {
+        m_queue_type  = queue_type;
         m_renderer    = context->GetSubsystem<Renderer>();
         m_profiler    = context->GetSubsystem<Profiler>();
         m_rhi_device  = m_renderer->GetRhiDevice().get();
@@ -137,6 +138,7 @@ namespace Spartan
         SP_ASSERT(m_state == RHI_CommandListState::Idle);
 
         // Get queries
+        if (m_queue_type != RHI_Queue_Type::Copy)
         {
             if (m_rhi_device->GetRhiContext()->gpu_profiling)
             {
@@ -172,7 +174,10 @@ namespace Spartan
         SP_ASSERT_MSG(vkBeginCommandBuffer(static_cast<VkCommandBuffer>(m_rhi_resource), &begin_info) == VK_SUCCESS, "Failed to begin command buffer");
 
         // Reset query pool - Has to be done after vkBeginCommandBuffer or a VK_DEVICE_LOST will occur
-        vkCmdResetQueryPool(static_cast<VkCommandBuffer>(m_rhi_resource), static_cast<VkQueryPool>(m_query_pool), 0, m_max_timestamps);
+        if (m_queue_type != RHI_Queue_Type::Copy)
+        {
+            vkCmdResetQueryPool(static_cast<VkCommandBuffer>(m_rhi_resource), static_cast<VkQueryPool>(m_query_pool), 0, m_max_timestamps);
+        }
 
         // Update states
         m_state          = RHI_CommandListState::Recording;
@@ -198,7 +203,7 @@ namespace Spartan
         if (!m_discard)
         {
             m_rhi_device->QueueSubmit(
-                RHI_Queue_Type::Graphics,                      // queue
+                m_queue_type,                                  // queue
                 VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, // wait flags
                 static_cast<VkCommandBuffer>(m_rhi_resource),  // cmd buffer
                 nullptr,                                       // wait semaphore

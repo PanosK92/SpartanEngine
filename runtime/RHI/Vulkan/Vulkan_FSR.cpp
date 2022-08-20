@@ -104,7 +104,7 @@ namespace Spartan
 
         // Fill in the dispatch description
         m_ffx_fsr2_dispatch_description                        = {};
-        m_ffx_fsr2_dispatch_description.commandList            = ffxGetCommandListVK(static_cast<VkCommandBuffer>(cmd_list->GetResource()));
+        m_ffx_fsr2_dispatch_description.commandList            = ffxGetCommandListVK(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()));
         m_ffx_fsr2_dispatch_description.color                  = ffxGetTextureResourceVK(&m_ffx_fsr2_context, static_cast<VkImage>(tex_input->GetRhiResource()),    static_cast<VkImageView>(tex_input->GetRhiSrv()),    resolution_render_x, resolution_render_y, vulkan_format[tex_input->GetFormat()],    name_input, FFX_RESOURCE_STATE_COMPUTE_READ);
         m_ffx_fsr2_dispatch_description.depth                  = ffxGetTextureResourceVK(&m_ffx_fsr2_context, static_cast<VkImage>(tex_depth->GetRhiResource()),    static_cast<VkImageView>(tex_depth->GetRhiSrv()),    resolution_render_x, resolution_render_y, vulkan_format[tex_depth->GetFormat()],    name_depth, FFX_RESOURCE_STATE_COMPUTE_READ);
         m_ffx_fsr2_dispatch_description.motionVectors          = ffxGetTextureResourceVK(&m_ffx_fsr2_context, static_cast<VkImage>(tex_velocity->GetRhiResource()), static_cast<VkImageView>(tex_velocity->GetRhiSrv()), resolution_render_x, resolution_render_y, vulkan_format[tex_velocity->GetFormat()], name_velocity, FFX_RESOURCE_STATE_COMPUTE_READ);

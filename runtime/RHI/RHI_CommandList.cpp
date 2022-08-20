@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI_DescriptorSetLayout.h"
 #include "RHI_Shader.h"
 #include "RHI_Pipeline.h"
+#include "RHI_CommandPool.h"
 //==================================
 
 //= NAMESPACES =====

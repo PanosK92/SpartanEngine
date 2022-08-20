@@ -37,7 +37,7 @@ namespace Spartan
         ~RHI_CommandPool();
 
         void AllocateCommandLists(const RHI_Queue_Type queue_type, const uint32_t cmd_list_count = 2, const uint32_t cmd_pool_count = 2);
-        bool Tick();
+        bool Step();
 
         RHI_CommandList* GetCurrentCommandList()       { return m_cmd_lists[m_cmd_pool_index + m_cmd_list_index].get(); }
         uint32_t GetCommandListIndex()           const { return m_cmd_list_index; }
@@ -62,7 +62,7 @@ namespace Spartan
         uint64_t m_swap_chain_id = 0;
 
         // Misc
-        bool m_is_first_tick     = true;
+        bool m_first_step     = true;
         RHI_Device* m_rhi_device = nullptr;
     };
 }
