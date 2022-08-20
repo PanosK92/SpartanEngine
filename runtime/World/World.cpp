@@ -29,6 +29,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Components/Environment.h"
 #include "Components/AudioListener.h"
 #include "Components/Renderable.h"
+#include "Components/AudioSource.h"
+#include "Components/RigidBody.h"
+#include "Components/Collider.h"
 #include "TransformHandle/TransformHandle.h"
 #include "../Resource/ResourceCache.h"
 #include "../Resource/ProgressTracker.h"
@@ -38,9 +41,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_Device.h"
 #include "../Rendering/Renderer.h"
 #include "../Threading/Threading.h"
-#include "Components/AudioSource.h"
-#include "Components/RigidBody.h"
-#include "Components/Collider.h"
 //==========================================
 
 //= NAMESPACES ================
@@ -394,258 +394,198 @@ namespace Spartan
 
     void World::CreateDefaultWorld()
     {
-        //m_context->GetSubsystem<Threading>()->AddTask([this]()
+        // Environment
+        {
+            shared_ptr<Entity> environment = EntityCreate();
+            environment->SetName("environment");
+            environment->AddComponent<Environment>();
+        }
+
+        // Camera
+        {
+            shared_ptr<Entity> entity = EntityCreate();
+            entity->SetName("camera");
+
+            entity->AddComponent<Camera>();
+            entity->AddComponent<AudioListener>();
+            entity->GetTransform()->SetPosition(Vector3(14.5327f, 1.4739f, -0.6384f));
+            entity->GetTransform()->SetRotation(Quaternion::FromEulerAngles(Vector3(1.7986f, -91.5946f, 0.0f)));
+        }
+
+        // Light - Directional
+        {
+            // todo: vulkan dir light is bugged
+            shared_ptr<Entity> entity = EntityCreate();
+            entity->SetName("light_directional");
+
+            entity->GetTransform()->SetPosition(Vector3(0.0f, 10.0f, 0.0f));
+            entity->GetTransform()->SetRotation(Quaternion::FromEulerAngles(82.6600f, -72.0900f, 0.0f));
+
+            Light* light = entity->AddComponent<Light>();
+            light->SetLightType(LightType::Directional);
+            light->SetColor(Color::light_moonlight);
+            light->SetIntensity(0.0f);
+            light->SetShadowsEnabled(false);
+        }
+
+        // Light - Point Blue
+        {
+            shared_ptr<Entity> entity = EntityCreate();
+            entity->SetName("light_point_blue");
+
+            entity->GetTransform()->SetPosition(Vector3(4.3592f, 2.5952f, -0.1728f));
+
+            Light* light = entity->AddComponent<Light>();
+            light->SetLightType(LightType::Point);
+            light->SetColor(Color(0.0f, 125.0f / 255.0f, 1.0f));
+            light->SetIntensity(8500.0f);
+            light->SetRange(25.0f);
+            light->SetShadowsTransparentEnabled(false);
+        }
+
+        // Music
+        {
+            shared_ptr<Entity> entity = EntityCreate();
+            entity->SetName("audio_source");
+
+            AudioSource* audio_source = entity->AddComponent<AudioSource>();
+            audio_source->SetAudioClip("project\\music\\forza_motorsport_4_ev.mp3");
+            audio_source->SetLoop(true);
+        }
+
+        m_context->GetSubsystem<Threading>()->AddTask([this]()
         {
             // Asset directories
             ResourceCache* resource_cache = m_context->GetSubsystem<ResourceCache>();
 
-            // Environment
+
+            // 3D model - Sponza
+            if (m_default_world_model = resource_cache->Load<Model>("project\\models\\sponza\\main\\NewSponza_Main_Blender_glTF.gltf"))
             {
-                shared_ptr<Entity> environment = EntityCreate();
-                environment->SetName("environment");
-                environment->AddComponent<Environment>();
-            }
-
-            // Camera
-            {
-                shared_ptr<Entity> entity = EntityCreate();
-                entity->SetName("camera");
-
-                entity->AddComponent<Camera>();
-                entity->AddComponent<AudioListener>();
-                entity->GetTransform()->SetPosition(Vector3(2.3239f, 1.1778f, -3.4932f));
-                entity->GetTransform()->SetRotation(Quaternion::FromEulerAngles(Vector3(4.9986f, -23.5962f, 0.0f)));
-            }
-
-            // Light - Directional
-            {
-                shared_ptr<Entity> entity = EntityCreate();
-                entity->SetName("light_directional");
-
-                entity->GetTransform()->SetPosition(Vector3(0.0f, 10.0f, 0.0f));
-                entity->GetTransform()->SetRotation(Quaternion::FromEulerAngles(30.0f, 30.0, 0.0f));
-
-                Light* light = entity->AddComponent<Light>();
-                light->SetLightType(LightType::Directional);
-                light->SetColor(Color::light_moonlight);
-                light->SetIntensity(120000.0f);
-                light->SetShadowsEnabled(false);
-            }
-
-            // Light - Point Blue
-            {
-                shared_ptr<Entity> entity = EntityCreate();
-                entity->SetName("light_point_blue");
-
-                entity->GetTransform()->SetPosition(Vector3(-4.0000f, 2.0000f, -2.5000f));
-
-                Light* light = entity->AddComponent<Light>();
-                light->SetLightType(LightType::Point);
-                light->SetColor(Color(0.0f, 125.0f / 255.0f, 1.0f));
-                light->SetIntensity(10000.0f);
-                light->SetRange(20.0f);
-                light->SetShadowsTransparentEnabled(false);
-            }
-
-            // Light - Point Red
-            {
-                shared_ptr<Entity> entity = EntityCreate();
-                entity->SetName("light_point_red");
-
-                entity->GetTransform()->SetPosition(Vector3(4.0000f, 2.0000f, -2.5000f));
-
-                Light* light = entity->AddComponent<Light>();
-                light->SetLightType(LightType::Point);
-                light->SetColor(Color(1.0f, 81.0f / 255.0f, 81.0f / 255.0f));
-                light->SetIntensity(10000.0f);
-                light->SetRange(20.0f);
-                light->SetShadowsTransparentEnabled(false);
-            }
-
-            // Music
-            {
-                shared_ptr<Entity> entity = EntityCreate();
-                entity->SetName("audio_source");
-
-                AudioSource* audio_source = entity->AddComponent<AudioSource>();
-                audio_source->SetAudioClip("project\\music\\forza_motorsport_4_ev.mp3");
-                audio_source->SetLoop(true);
+                Entity* entity = m_default_world_model->GetRootEntity();
+                entity->SetName("sponza");
+                entity->GetTransform()->SetPosition(Vector3(0.0f, 0.06f, 0.0f));
+                entity->GetTransform()->SetScale(Vector3::One);
             }
 
             // 3D model - Car
-            if (m_default_world_model = resource_cache->Load<Model>("project\\models\\toyota_ae86_sprinter_trueno_zenki\\scene.gltf"))
-            {
-                Entity* entity = m_default_world_model->GetRootEntity();
-                entity->SetName("car");
-
-                entity->GetTransform()->SetPosition(Vector3(0.0f, 0.0f, 0.0f));
-                entity->GetTransform()->SetRotation(Quaternion::FromEulerAngles(90.0f, 90.0f, -120.0f));
-                entity->GetTransform()->SetScale(Vector3(0.007f, 0.007f, 0.007f));
-
-                // Break calipers have a wrong rotation, probably a bug with sketchfab auto converting to gltf
-                entity->GetTransform()->GetDescendantByName("FR_Caliper_BrakeCaliper_0")->GetTransform()->SetRotationLocal(Quaternion::FromEulerAngles(0.0f, 75.0f, 0.0f));
-                entity->GetTransform()->GetDescendantByName("RR_Caliper_BrakeCaliper_0")->GetTransform()->SetRotationLocal(Quaternion::FromEulerAngles(0.0f, 75.0f, 0.0f));
-
-                // body
+            if (m_default_world_model2 = resource_cache->Load<Model>("project\\models\\toyota_ae86_sprinter_trueno_zenki\\scene.gltf"))
                 {
-                    // metal - make it aluminum
-                    if (Material* material = entity->GetTransform()->GetDescendantByName("CarBody_Primary_0")->GetRenderable()->GetMaterial())
-                    {
-                        material->SetColor(Color::material_aluminum);
-                        material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.4f);
-                        material->SetProperty(MaterialProperty::MetallnessMultiplier, 1.0f);
-                    }
+                    Entity* entity = m_default_world_model2->GetRootEntity();
+                    entity->SetName("car");
 
-                    // plastic
+                    entity->GetTransform()->SetPosition(Vector3(0.0f, 0.0f, 0.0f));
+                    entity->GetTransform()->SetRotation(Quaternion::FromEulerAngles(90.0f, 0.0f, 90.0f));
+                    entity->GetTransform()->SetScale(Vector3(0.0125f, 0.0125f, 0.0125f));
+
+                    // Break calipers have a wrong rotation, probably a bug with sketchfab auto converting to gltf
+                    entity->GetTransform()->GetDescendantByName("FR_Caliper_BrakeCaliper_0")->GetTransform()->SetRotationLocal(Quaternion::FromEulerAngles(0.0f, 75.0f, 0.0f));
+                    entity->GetTransform()->GetDescendantByName("RR_Caliper_BrakeCaliper_0")->GetTransform()->SetRotationLocal(Quaternion::FromEulerAngles(0.0f, 75.0f, 0.0f));
+
+                    // body
                     {
-                        if (Material* material = entity->GetTransform()->GetDescendantByName("CarBody_Secondary_0")->GetRenderable()->GetMaterial())
+                        // metal - make it aluminum
+                        if (Material* material = entity->GetTransform()->GetDescendantByName("CarBody_Primary_0")->GetRenderable()->GetMaterial())
                         {
-                            material->SetColor(Color::material_tire);
-                            material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.35f);
+                            material->SetColor(Color::material_aluminum);
+                            material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.1f);
+                            material->SetProperty(MaterialProperty::MetallnessMultiplier, 0.15f);
                         }
 
-                        if (Material* material = entity->GetTransform()->GetDescendantByName("CarBody_Trim1_0")->GetRenderable()->GetMaterial())
+                        // plastic
+                        {
+                            if (Material* material = entity->GetTransform()->GetDescendantByName("CarBody_Secondary_0")->GetRenderable()->GetMaterial())
+                            {
+                                material->SetColor(Color::material_tire);
+                                material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.35f);
+                            }
+
+                            if (Material* material = entity->GetTransform()->GetDescendantByName("CarBody_Trim1_0")->GetRenderable()->GetMaterial())
+                            {
+                                material->SetColor(Color::material_tire);
+                                material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.35f);
+                            }
+                        }
+                    }
+
+                    // interior
+                    {
+                        if (Material* material = entity->GetTransform()->GetDescendantByName("Interior_InteriorPlastic_0")->GetRenderable()->GetMaterial())
                         {
                             material->SetColor(Color::material_tire);
+                            material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.7f);
+                            material->SetProperty(MaterialProperty::MetallnessMultiplier, 0.0f);
+                        }
+
+                        if (Material* material = entity->GetTransform()->GetDescendantByName("Interior_InteriorPlastic2_0")->GetRenderable()->GetMaterial())
+                        {
+                            material->SetColor(Color::material_tire);
+                            material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.7f);
+                            material->SetProperty(MaterialProperty::MetallnessMultiplier, 0.0f);
+                        }
+
+                        // fabric
+                        if (Material* material = entity->GetTransform()->GetDescendantByName("Interior_Interior_0")->GetRenderable()->GetMaterial())
+                        {
+                            material->SetProperty(MaterialProperty::Sheen, 0.5f);
+                            material->SetProperty(MaterialProperty::SheenTint, 0.5f);
+                        }
+                    }
+
+                    // lights
+                    {
+                        if (Material* material = entity->GetTransform()->GetDescendantByName("CarBody_LampCovers_0")->GetRenderable()->GetMaterial())
+                        {
+                            material->SetColor(Color::material_glass);
+                            material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.2f);
+                            material->SetTexture(MaterialTexture::Emission, material->GetTexture_PtrShared(MaterialTexture::Color));
+                        }
+
+                        // plastic covers
+                        if (Material* material = entity->GetTransform()->GetDescendantByName("Headlights_Trim2_0")->GetRenderable()->GetMaterial())
+                        {
                             material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.35f);
+                            material->SetColor(Color::material_tire);
+                        }
+                    }
+
+                    // wheels
+                    {
+                        // brake caliper
+                        if (Material* material = entity->GetTransform()->GetDescendantByName("FR_Caliper_BrakeCaliper_0")->GetRenderable()->GetMaterial())
+                        {
+                            material->SetColor(Color::material_aluminum);
+                            material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.5f);
+                            material->SetProperty(MaterialProperty::MetallnessMultiplier, 1.0f);
+                            material->SetProperty(MaterialProperty::Anisotropic, 1.0f);
+                            material->SetProperty(MaterialProperty::AnisotropicRotation, 0.5f);
+                        }
+
+                        // tires
+                        if (Material* material = entity->GetTransform()->GetDescendantByName("FL_Wheel_TireMaterial_0")->GetRenderable()->GetMaterial())
+                        {
+                            material->SetColor(Color::material_tire);
+                            material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.5f);
+                            material->SetProperty(MaterialProperty::MetallnessMultiplier, 0.0f);
+                        }
+
+                        // rims
+                        if (Material* material = entity->GetTransform()->GetDescendantByName("FR_Wheel_RimMaterial_0")->GetRenderable()->GetMaterial())
+                        {
+                            material->SetColor(Color::material_aluminum);
+                            material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.5f);
+                            material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.5f);
+                            material->SetProperty(MaterialProperty::MetallnessMultiplier, 1.0f);
                         }
                     }
                 }
-
-                // interior
-                {
-                    if (Material* material = entity->GetTransform()->GetDescendantByName("Interior_InteriorPlastic_0")->GetRenderable()->GetMaterial())
-                    {
-                        material->SetColor(Color::material_tire);
-                        material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.7f);
-                        material->SetProperty(MaterialProperty::MetallnessMultiplier, 0.0f);
-                    }
-
-                    if (Material* material = entity->GetTransform()->GetDescendantByName("Interior_InteriorPlastic2_0")->GetRenderable()->GetMaterial())
-                    {
-                        material->SetColor(Color::material_tire);
-                        material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.7f);
-                        material->SetProperty(MaterialProperty::MetallnessMultiplier, 0.0f);
-                    }
-
-                    // fabric
-                    if (Material* material = entity->GetTransform()->GetDescendantByName("Interior_Interior_0")->GetRenderable()->GetMaterial())
-                    {
-                        material->SetProperty(MaterialProperty::Sheen, 0.5f);
-                        material->SetProperty(MaterialProperty::SheenTint, 0.5f);
-                    }
-                }
-
-                // lights
-                {
-                    if (Material* material = entity->GetTransform()->GetDescendantByName("CarBody_LampCovers_0")->GetRenderable()->GetMaterial())
-                    {
-                        material->SetColor(Color::material_glass);
-                        material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.2f);
-                        material->SetTexture(MaterialTexture::Emission, material->GetTexture_PtrShared(MaterialTexture::Color));
-                    }
-
-                    // plastic covers
-                    if (Material* material = entity->GetTransform()->GetDescendantByName("Headlights_Trim2_0")->GetRenderable()->GetMaterial())
-                    {
-                        material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.35f);
-                        material->SetColor(Color::material_tire);
-                    }
-                }
-
-                // wheels
-                {
-                    // brake caliper
-                    if (Material* material = entity->GetTransform()->GetDescendantByName("FR_Caliper_BrakeCaliper_0")->GetRenderable()->GetMaterial())
-                    {
-                        material->SetColor(Color::material_aluminum);
-                        material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.5f);
-                        material->SetProperty(MaterialProperty::MetallnessMultiplier, 1.0f);
-                        material->SetProperty(MaterialProperty::Anisotropic, 1.0f);
-                        material->SetProperty(MaterialProperty::AnisotropicRotation, 0.5f);
-                    }
-
-                    // tires
-                    if (Material* material = entity->GetTransform()->GetDescendantByName("FL_Wheel_TireMaterial_0")->GetRenderable()->GetMaterial())
-                    {
-                        material->SetColor(Color::material_tire);
-                        material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.5f);
-                        material->SetProperty(MaterialProperty::MetallnessMultiplier, 0.0f);
-                    }
-
-                    // rims
-                    if (Material* material = entity->GetTransform()->GetDescendantByName("FR_Wheel_RimMaterial_0")->GetRenderable()->GetMaterial())
-                    {
-                        material->SetColor(Color::material_aluminum);
-                        material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.5f);
-                        material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.5f);
-                        material->SetProperty(MaterialProperty::MetallnessMultiplier, 1.0f);
-                    }
-                }
-            }
-
-            // 3d model - Dynamic physics cube
-            {
-                shared_ptr<Entity> entity = EntityCreate();
-                entity->SetName("cube_physics_dynamic");
-
-                entity->GetTransform()->SetPosition(Vector3(-0.9799f, 3.6249f, 8.8727f));
-
-                // Add a default material and a default cube geometry
-                Renderable* renderable = entity->AddComponent<Renderable>();
-                renderable->SetGeometry(DefaultGeometry::Cube);
-                renderable->SetDefaultMaterial();
-
-                // Physics - Box
-                entity->AddComponent<RigidBody>()->SetMass(1.0f);
-                entity->AddComponent<RigidBody>()->SetRestitution(1.0f);
-                entity->AddComponent<Collider>()->SetShapeType(ColliderShape::Box);
-            }
-
-            // 3d model - Static physics cube
-            {
-                shared_ptr<Entity> entity = EntityCreate();
-                entity->SetName("cube_physics_static");
-
-                entity->GetTransform()->SetPosition(Vector3(0.0f, 1.5f, 9.5f));
-                entity->GetTransform()->SetScale(Vector3(9.0f, 3.0f, 1.0f));
-
-                // Add a default material and a default cube geometry
-                Renderable* renderable = entity->AddComponent<Renderable>();
-                renderable->SetGeometry(DefaultGeometry::Cube);
-                renderable->SetDefaultMaterial();
-
-                // Physics - Box
-                entity->AddComponent<RigidBody>()->SetMass(0.0f);
-                entity->AddComponent<Collider>()->SetShapeType(ColliderShape::Box);
-            }
-
-            // 3D model - floor
-            {
-                shared_ptr<Entity> entity = EntityCreate();
-                entity->SetName("floor");
-
-                // Position at a high of 0.01 to avoid z-fighting with the world grid
-                entity->GetTransform()->SetPosition(Vector3(0.0f, 0.01f, 0.0f));
-                entity->GetTransform()->SetScale(Vector3(20.0f, 0.0f, 20.0f));
-
-                Renderable* renderable = entity->AddComponent<Renderable>();
-                renderable->SetGeometry(DefaultGeometry::Quad);
-                renderable->SetDefaultMaterial();
-
-                // Physics - Static plane
-                entity->AddComponent<RigidBody>()->SetRestitution(0.5f);
-                entity->AddComponent<Collider>()->SetShapeType(ColliderShape::StaticPlane);
-            }
-        }//});
+        });
     }
 
     void World::UpdateDefaultWorld(double delta_time)
     {
-        if (!m_default_world_model || !m_default_world_model->GetRootEntity())
+        if (!m_default_world_model2 || !m_default_world_model2->GetRootEntity())
             return;
-
-        Entity* entity = m_default_world_model->GetRootEntity();
 
         // Play!
         if (!m_default_world_started)
@@ -657,7 +597,7 @@ namespace Spartan
         // Slowly rotate the model
         if (m_context->m_engine->IsFlagSet(EngineMode::Game))
         {
-            entity->GetTransform()->Rotate(Quaternion::FromEulerAngles(0.0f, 0.0f, -3.5f * static_cast<float>(delta_time)));
+            m_default_world_model2->GetRootEntity()->GetTransform()->Rotate(Quaternion::FromEulerAngles(0.0f, 0.0f, -3.5f * static_cast<float>(delta_time)));
         }
     }
 }

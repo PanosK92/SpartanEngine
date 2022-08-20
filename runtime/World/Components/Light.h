@@ -111,7 +111,7 @@ namespace Spartan
         void SetRange(float range);
         auto GetRange() const { return m_range; }
 
-        void SetAngle(float angle);
+        void SetAngle(float angle_rad);
         auto GetAngle() const { return m_angle_rad; }
 
         void SetBias(float value) { m_bias = value; }
