@@ -25,9 +25,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 static const uint g_ao_directions      = 2;
 static const uint g_ao_steps           = 2;
-static const float g_ao_radius         = 2.0f;
+static const float g_ao_radius         = 5.0f;
 static const float g_ao_occlusion_bias = 0.0f;
-static const float g_ao_intensity      = 4.0f;
+static const float g_ao_intensity      = 5.0f;
 
 static const float ao_samples       = (float)(g_ao_directions * g_ao_steps);
 static const float ao_samples_rcp   = 1.0f / ao_samples;
