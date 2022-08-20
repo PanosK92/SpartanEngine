@@ -30,17 +30,18 @@ using namespace std;
 
 namespace Spartan
 {
-    void RHI_CommandPool::AllocateCommandLists(const uint32_t command_list_count)
+    void RHI_CommandPool::AllocateCommandLists(const RHI_Queue_Type queue_type, const uint32_t cmd_list_count /*= 2*/, const uint32_t cmd_pool_count /*= 2*/)
     {
-        for (uint32_t index_pool = 0; index_pool < m_command_pool_count; index_pool++)
-        {
-            for (uint32_t i = 0; i < command_list_count; i++)
-            {
-                vector<shared_ptr<RHI_CommandList>>& cmd_lists = m_cmd_lists[index_pool];
-                string cmd_list_name                           = m_name + "_cmd_pool_" + to_string(index_pool) + "_cmd_list_" + to_string(cmd_lists.size());
-                shared_ptr<RHI_CommandList> cmd_list           = make_shared<RHI_CommandList>(m_context, m_rhi_resources[index_pool], cmd_list_name.c_str());
+        m_cmd_list_count = cmd_list_count;
+        m_cmd_pool_count = cmd_pool_count;
 
-                cmd_lists.emplace_back(cmd_list);
+        for (uint32_t index_cmd_pool = 0; index_cmd_pool < cmd_pool_count; index_cmd_pool++)
+        {
+            for (uint32_t index_cmd_list = 0; index_cmd_list < cmd_list_count; index_cmd_list++)
+            {
+                CreateCommandPool(queue_type);
+                string cmd_list_name = m_name + "_cmd_pool_" + to_string(index_cmd_pool) + "_cmd_list_" + to_string(index_cmd_list);
+                m_cmd_lists.push_back(make_shared<RHI_CommandList>(m_context, m_rhi_resources[index_cmd_pool], cmd_list_name.c_str()));
             }
         }
     }
@@ -54,23 +55,23 @@ namespace Spartan
         }
 
         // Calculate command list index
-        m_cmd_list_index = (m_cmd_list_index + 1) % m_command_lists_count;
+        m_cmd_list_index = (m_cmd_list_index + 1) % m_cmd_list_count;
 
         // Compute pool index
-        m_pool_index = (m_cmd_list_index = 0) ? (m_pool_index + 1) % m_command_pool_count : m_pool_index;
+        m_cmd_pool_index = (m_cmd_list_index = 0) ? (m_cmd_pool_index + 1) % m_cmd_pool_count : m_cmd_pool_index;
 
         // Wait for any command lists to finish executing
-        if (m_pool_index == 0)
+        if (m_cmd_list_index == 0 && m_cmd_pool_index == 0)
         {
-            for (const shared_ptr<RHI_CommandList>& cmd_list : m_cmd_lists[m_pool_index])
+            for (uint32_t i = 0; i < m_cmd_list_count; i++)
             {
-                if (cmd_list->GetState() == RHI_CommandListState::Submitted)
+                if (m_cmd_lists[i]->GetState() == RHI_CommandListState::Submitted)
                 {
-                    cmd_list->Wait();
+                    m_cmd_lists[i]->Wait();
                 }
             }
 
-            Reset(m_pool_index);
+            Reset(m_cmd_pool_index);
             return true;
         }
 

@@ -43,11 +43,14 @@ namespace Spartan
         {
             SP_ASSERT_MSG(false, "Function not implmented");
         }
-
-        AllocateCommandLists(m_command_lists_count);
     }
 
     RHI_CommandPool::~RHI_CommandPool()
+    {
+
+    }
+
+    void RHI_CommandPool::CreateCommandPool(const RHI_Queue_Type queue_type)
     {
 
     }
