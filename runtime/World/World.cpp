@@ -418,24 +418,24 @@ namespace Spartan
             entity->SetName("light_directional");
 
             entity->GetTransform()->SetPosition(Vector3(0.0f, 10.0f, 0.0f));
-            entity->GetTransform()->SetRotation(Quaternion::FromEulerAngles(82.6600f, -72.0900f, 0.0f));
+            entity->GetTransform()->SetRotation(Quaternion::FromEulerAngles(67.3400f, -72.0900f, 0.0f));
 
             Light* light = entity->AddComponent<Light>();
             light->SetLightType(LightType::Directional);
-            light->SetColor(Color::light_clear_sky);
+            light->SetColor(Color::light_sky_sunrise);
             light->SetIntensity(120000.0f);
         }
 
         // Light - Point Blue
         {
             shared_ptr<Entity> entity = EntityCreate();
-            entity->SetName("light_point_blue");
+            entity->SetName("light_point");
 
             entity->GetTransform()->SetPosition(Vector3(4.3592f, 2.5952f, -0.1728f));
 
             Light* light = entity->AddComponent<Light>();
             light->SetLightType(LightType::Point);
-            light->SetColor(Color(0.0f, 125.0f / 255.0f, 1.0f));
+            light->SetColor(Color::material_skin_1); // weird, I know
             light->SetIntensity(8500.0f);
             light->SetRange(25.0f);
             light->SetShadowsTransparentEnabled(false);
@@ -509,13 +509,7 @@ namespace Spartan
                     material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.7f);
                     material->SetProperty(MaterialProperty::MetallnessMultiplier, 0.0f);
                 }
-        
-                // fabric
-                if (Material* material = entity->GetTransform()->GetDescendantByName("Interior_Interior_0")->GetRenderable()->GetMaterial())
-                {
-                    material->SetProperty(MaterialProperty::Sheen, 0.5f);
-                    material->SetProperty(MaterialProperty::SheenTint, 0.5f);
-                }
+       
             }
         
             // lights

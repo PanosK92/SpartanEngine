@@ -117,15 +117,16 @@ namespace Spartan
         static const Color material_zinc;
 
         // Lights
+        static const Color light_sky_clear;
+        static const Color light_sky_daylight_overcast;
+        static const Color light_sky_moonlight;
+        static const Color light_sky_sunrise;
         static const Color light_candle_flame;
-        static const Color light_clear_sky;
-        static const Color light_daylight_overcast;
         static const Color light_digital_display;
         static const Color light_direct_sunlight;
         static const Color light_fluorescent_tube_light;
         static const Color light_kerosene_lamp;
         static const Color light_light_bulb;
-        static const Color light_moonlight;
         static const Color light_photo_flash;
     };
 }
