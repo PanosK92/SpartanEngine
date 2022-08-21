@@ -297,11 +297,7 @@ namespace Spartan
         // If the texture has any data, stage it
         if (HasData())
         {
-            if (!stage(m_rhi_device.get(), this))
-            {
-                LOG_ERROR("Failed to stage");
-                return false;
-            }
+            SP_ASSERT_MSG(stage(m_rhi_device.get(), this), "Failed to stage");
         }
 
         // Transition to target layout
