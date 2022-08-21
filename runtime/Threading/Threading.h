@@ -41,11 +41,9 @@ namespace Spartan
         typedef std::function<void()> function_type;
 
         Task(function_type&& function) { m_function = std::forward<function_type>(function); }
-        void Execute()                 { m_is_executing = true; m_function(); m_is_executing = false; }
-        bool IsExecuting()       const { return m_is_executing; }
+        void Execute()                 { m_function(); }
 
     private:
-        bool m_is_executing = false;
         function_type m_function;
     };
 
@@ -61,7 +59,7 @@ namespace Spartan
         {
             if (m_threads.empty())
             {
-                LOG_WARNING("No available threads, function will execute in the same thread");
+                LOG_WARNING("No available threads, function will execute in the calling thread");
                 function();
                 return;
             }
@@ -71,6 +69,7 @@ namespace Spartan
 
             // Save the task
             m_tasks.push_back(std::make_shared<Task>(std::bind(std::forward<Function>(function))));
+            m_working_thread_count++;
 
             // Unlock the mutex
             lock.unlock();
@@ -120,9 +119,9 @@ namespace Spartan
         // Get the maximum number of threads the hardware supports
         uint32_t GetSupportedThreadCount() const { return m_thread_count_support; }
         // Get the number of threads which are doing work
-        uint32_t GetWorkingThreadCount()   const;
+        uint32_t GetWorkingThreadCount()   const { return m_working_thread_count; }
         // Get the number of threads which are not doing any work
-        uint32_t GetIdleThreadCount()      const;
+        uint32_t GetIdleThreadCount()      const { return m_thread_count - m_working_thread_count; }
         // Returns true if at least one task is running
         bool AreTasksRunning()             const;
         // Waits for all executing (and queued if requested) tasks to finish
@@ -134,6 +133,7 @@ namespace Spartan
 
         uint32_t m_thread_count         = 0;
         uint32_t m_thread_count_support = 0;
+        uint32_t m_working_thread_count = 0;
         std::vector<std::thread> m_threads;
         std::deque<std::shared_ptr<Task>> m_tasks;
         std::mutex m_mutex_tasks;

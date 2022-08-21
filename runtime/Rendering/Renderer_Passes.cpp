@@ -919,8 +919,8 @@ namespace Spartan
         Update_Cb_Uber(cmd_list);
 
         // Set textures
-        cmd_list->SetTexture(RendererBindingsUav::tex,           tex_ssao);
-        cmd_list->SetTexture(RendererBindingsUav::tex2,          tex_ssao_gi);
+        cmd_list->SetTexture(RendererBindingsUav::tex,            tex_ssao);
+        cmd_list->SetTexture(RendererBindingsUav::tex2,           tex_ssao_gi);
         cmd_list->SetTexture(RendererBindingsSrv::gbuffer_albedo, render_target(RendererTexture::Gbuffer_Albedo));
         cmd_list->SetTexture(RendererBindingsSrv::gbuffer_normal, render_target(RendererTexture::Gbuffer_Normal));
         cmd_list->SetTexture(RendererBindingsSrv::gbuffer_depth,  render_target(RendererTexture::Gbuffer_Depth));
