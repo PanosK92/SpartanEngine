@@ -101,18 +101,23 @@ if (!(##expression))                    \
 //===================================================================================
 
 #if defined(_MSC_VER)
-//= DISABLED WARNINGS ==============================================================================================================================
+//= DISABLE CERTAIN WARNINGS ======================================================================================================================
+#pragma warning(disable: 4251) 
 // identifier' : class 'type' needs to have dll-interface to be used by clients of class 'type2'
-#pragma warning(disable: 4251) // https://docs.microsoft.com/en-us/cpp/error-messages/compiler-warnings/compiler-warning-level-2-c4275?view=vs-2019
+// https://docs.microsoft.com/en-us/cpp/error-messages/compiler-warnings/compiler-warning-level-2-c4275?view=vs-2019
+
+#pragma warning(disable: 4275) 
 // non � DLL-interface classkey 'identifier' used as base for DLL-interface classkey 'identifier'
-#pragma warning(disable: 4275) // https://docs.microsoft.com/en-us/cpp/error-messages/compiler-warnings/compiler-warning-level-2-c4275?view=vs-2019
-// no definition for inline function 'function'
-#pragma warning(disable: 4506) // https://docs.microsoft.com/en-us/cpp/error-messages/compiler-warnings/compiler-warning-level-1-c4506?view=vs-2017
-// C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS.
-#ifndef _CRT_SECURE_NO_WARNINGS 
-#define _CRT_SECURE_NO_WARNINGS // sprintf_s is not a standard function, so we opt for sprintf.
-#endif
-//==================================================================================================================================================
+// https://docs.microsoft.com/en-us/cpp/error-messages/compiler-warnings/compiler-warning-level-2-c4275?view=vs-2019
+
+#pragma warning(disable: 4996) 
+// C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS
+// https://docs.microsoft.com/en-us/cpp/error-messages/compiler-warnings/compiler-warning-level-1-c4506?view=vs-2017
+
+#pragma warning(disable: 26110) 
+// Caller failing to hold lock <lock> before calling function <func>
+// https://docs.microsoft.com/en-us/cpp/code-quality/c26110?view=msvc-170
+//=================================================================================================================================================
 #endif
 
 // Windows - Avoid conflicts with numeric limit min/max
