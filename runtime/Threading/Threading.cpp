@@ -72,23 +72,6 @@ namespace Spartan
         m_threads.clear();
     }
 
-    uint32_t Threading::GetWorkingThreadCount() const
-    {
-        return m_thread_count - GetIdleThreadCount();
-    }
-
-    uint32_t Threading::GetIdleThreadCount() const
-    {
-        uint32_t available_threads = m_thread_count;
-
-        for (const auto& task : m_tasks)
-        {
-            available_threads -= task->IsExecuting() ? 1 : 0;
-        }
-
-        return available_threads;
-    }
-
     bool Threading::AreTasksRunning() const
     {
         return GetIdleThreadCount() != GetThreadCount();
@@ -135,6 +118,7 @@ namespace Spartan
 
             // Execute the task.
             task->Execute();
+            m_working_thread_count--;
         }
     }
 }
