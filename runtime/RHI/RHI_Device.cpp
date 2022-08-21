@@ -167,7 +167,7 @@ namespace Spartan
 
     RHI_CommandList* RHI_Device::ImmediateBegin(const RHI_Queue_Type queue_type)
     {
-        lock_guard lock(m_immediate_mutex);
+        m_immediate_mutex.lock();
 
         if (!m_immediate_cmd_pool_graphics)
         {
@@ -202,5 +202,7 @@ namespace Spartan
         cmd_list->End();
         cmd_list->Submit();
         cmd_list->Wait();
+
+        m_immediate_mutex.unlock();
     }
 }
