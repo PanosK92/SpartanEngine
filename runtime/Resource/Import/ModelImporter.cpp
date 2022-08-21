@@ -389,12 +389,6 @@ namespace Spartan
             // Recursively parse nodes (multi-threaded as well)
             ParseNode(scene->mRootNode);
 
-            // Wait for all threads to finish their work
-            while (ProgressTracker::GetProgress(ProgressType::ModelImporter).GetFraction() != 1.0f)
-            {
-                std::this_thread::sleep_for(std::chrono::milliseconds(16));
-            }
-
             // Update model geometry
             model->UpdateGeometry();
             model->OptimizeGeometry();
@@ -456,7 +450,7 @@ namespace Spartan
         // Process children
         for (uint32_t i = 0; i < node->mNumChildren; i++)
         {
-            //// Any subsequent nodes are processed in another thread
+            // Any subsequent nodes are processed in another thread
             //m_context->GetSubsystem<Threading>()->AddTask([this, i, node, entity]()
             //{
                 ParseNode(node->mChildren[i], entity);
