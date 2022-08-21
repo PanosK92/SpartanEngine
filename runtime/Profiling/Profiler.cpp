@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_CommandList.h"
 #include "../RHI/RHI_Implementation.h"
 #include "../Core/EventSystem.h"
+#include "../Threading/Threading.h"
 //====================================
 
 //= NAMESPACES =====
@@ -328,9 +329,10 @@ namespace Spartan
     {
         const uint32_t texture_count  = m_resource_manager->GetResourceCount(ResourceType::Texture) + m_resource_manager->GetResourceCount(ResourceType::Texture2d) + m_resource_manager->GetResourceCount(ResourceType::TextureCube);
         const uint32_t material_count = m_resource_manager->GetResourceCount(ResourceType::Material);
+        Threading* threading = m_context->GetSubsystem<Threading>();
 
         // Get the graphics driver vendor
-        string api_vendor_name = "AMD"
+        string api_vendor_name = "AMD";
         if (m_renderer->GetRhiDevice()->GetPrimaryPhysicalDevice()->IsNvidia())
         {
             api_vendor_name = "NVIDIA";
@@ -354,6 +356,10 @@ namespace Spartan
             "Memory:\t%d/%d MB\n"
             "API:\t\t\t%s\t%s\n"
             "Driver:\t\t%s\t%s\n"
+            // CPU
+            "\n"
+            "CPU\n"
+            "Worker threads: %d/%d\n"
             // Resolution
             "\n"
             "Resolution\n"
@@ -398,6 +404,10 @@ namespace Spartan
             m_gpu_memory_used, m_gpu_memory_available,
             m_renderer->GetRhiDevice()->GetRhiContext()->api_type_str.c_str(), m_gpu_api.c_str(),
             m_renderer->GetRhiDevice()->GetPrimaryPhysicalDevice()->GetVendorName().c_str(), m_gpu_driver.c_str(),
+
+            // CPU
+            threading->GetWorkingThreadCount(),
+            threading->GetIdleThreadCount(),
 
             // Resolution
             static_cast<int>(m_renderer->GetResolutionOutput().x), static_cast<int>(m_renderer->GetResolutionOutput().y),
