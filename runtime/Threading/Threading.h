@@ -83,7 +83,7 @@ namespace Spartan
         template <typename Function>
         void AddTaskLoop(Function&& function, uint32_t range)
         {
-            uint32_t available_threads   = GetThreadsAvailable();
+            uint32_t available_threads   = GetIdleThreadCount();
             std::vector<bool> tasks_done = std::vector<bool>(available_threads, false);
             const uint32_t task_count    = available_threads + 1; // plus one for the current thread
 
@@ -116,13 +116,15 @@ namespace Spartan
         }
 
         // Get the number of threads used
-        uint32_t GetThreadCount()        const { return m_thread_count; }
+        uint32_t GetThreadCount()          const { return m_thread_count; }
         // Get the maximum number of threads the hardware supports
-        uint32_t GetThreadCountSupport() const { return m_thread_count_support; }
+        uint32_t GetSupportedThreadCount() const { return m_thread_count_support; }
+        // Get the number of threads which are doing work
+        uint32_t GetWorkingThreadCount()   const;
         // Get the number of threads which are not doing any work
-        uint32_t GetThreadsAvailable()   const;
+        uint32_t GetIdleThreadCount()      const;
         // Returns true if at least one task is running
-        bool AreTasksRunning()           const { return GetThreadsAvailable() != GetThreadCount(); }
+        bool AreTasksRunning()             const;
         // Waits for all executing (and queued if requested) tasks to finish
         void Flush(bool remove_queued = false);
 
