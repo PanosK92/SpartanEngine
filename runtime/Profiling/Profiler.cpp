@@ -330,10 +330,10 @@ namespace Spartan
         const uint32_t material_count = m_resource_manager->GetResourceCount(ResourceType::Material);
 
         // Get the graphics driver vendor
-        string api_vendor_name = "AMD";
+        string api_vendor_name = "AMD"
         if (m_renderer->GetRhiDevice()->GetPrimaryPhysicalDevice()->IsNvidia())
         {
-
+            api_vendor_name = "NVIDIA";
         }
 
         static const char* text =
@@ -367,14 +367,6 @@ namespace Spartan
             "Dispatch:\t\t\t\t%d\n"
             "Index buffer bindings:\t\t%d\n"
             "Vertex buffer bindings:\t%d\n"
-            "Constant buffer bindings:\t%d\n"
-            "Sampler bindings:\t\t\t%d\n"
-            "SRV bindings:\t\t\t\t%d\n"
-            "UAV bindings:\t\t\t%d\n"
-            "Vertex shader bindings:\t%d\n"
-            "Pixel shader bindings:\t\t%d\n"
-            "Compute shader bindings:\t%d\n"
-            "Render target bindings:\t%d\n"
             "Descriptor set bindings:\t%d\n"
             "Pipeline bindings:\t\t\t%d\n"
             "Pipeline barriers:\t\t\t%d\n"
@@ -417,14 +409,6 @@ namespace Spartan
             m_rhi_dispatch,
             m_rhi_bindings_buffer_index,
             m_rhi_bindings_buffer_vertex,
-            m_rhi_bindings_buffer_constant,
-            m_rhi_bindings_sampler,
-            m_rhi_bindings_texture_sampled,
-            m_rhi_bindings_texture_storage,
-            m_rhi_bindings_shader_vertex,
-            m_rhi_bindings_shader_pixel,
-            m_rhi_bindings_shader_compute,
-            m_rhi_bindings_render_target,
             m_rhi_bindings_descriptor_set,
             m_rhi_bindings_pipeline,
             m_rhi_pipeline_barriers,
