@@ -72,11 +72,6 @@ namespace Spartan
         m_threads.clear();
     }
 
-    bool Threading::AreTasksRunning() const
-    {
-        return GetIdleThreadCount() != GetThreadCount();
-    }
-
     void Threading::Flush(bool remove_queued /*= false*/)
     {
         // Clear any queued tasks
@@ -95,6 +90,7 @@ namespace Spartan
     void Threading::ThreadLoop()
     {
         shared_ptr<Task> task;
+
         while (true)
         {
             // Lock tasks mutex
@@ -117,6 +113,7 @@ namespace Spartan
             lock.unlock();
 
             // Execute the task.
+            m_working_thread_count++;
             task->Execute();
             m_working_thread_count--;
         }

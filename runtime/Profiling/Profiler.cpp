@@ -407,7 +407,7 @@ namespace Spartan
 
             // CPU
             threading->GetWorkingThreadCount(),
-            threading->GetIdleThreadCount(),
+            threading->GetThreadCount(),
 
             // Resolution
             static_cast<int>(m_renderer->GetResolutionOutput().x), static_cast<int>(m_renderer->GetResolutionOutput().y),

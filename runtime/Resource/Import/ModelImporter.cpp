@@ -155,7 +155,8 @@ namespace Spartan
         {
             if (current_step == 0)
             {
-                ProgressTracker::GetProgress(ProgressType::ModelImporter).Start(number_of_steps, "Post-processing \"" + m_file_name + "\" from disk...");
+                ProgressTracker::GetProgress(ProgressType::ModelImporter).JobDone(); // "Loading model from drive..."
+                ProgressTracker::GetProgress(ProgressType::ModelImporter).Start(number_of_steps, "Post-processing model...");
             }
             else
             {
@@ -319,7 +320,7 @@ namespace Spartan
         material->SetProperty(MaterialProperty::ColorB, color_diffuse.b);
         material->SetProperty(MaterialProperty::ColorA, opacity.r);
 
-        //                                                                 Texture type,                Texture type Assimp (PBR),       Texture type Assimp (Legacy/fallback)
+        //                                                                          Texture type,                Texture type Assimp (PBR),       Texture type Assimp (Legacy/fallback)
         load_material_texture(model, file_path, is_gltf, material, material_assimp, MaterialTexture::Color,      aiTextureType_BASE_COLOR,        aiTextureType_DIFFUSE);
         load_material_texture(model, file_path, is_gltf, material, material_assimp, MaterialTexture::Roughness,  aiTextureType_DIFFUSE_ROUGHNESS, aiTextureType_SHININESS); // Use specular as fallback
         load_material_texture(model, file_path, is_gltf, material, material_assimp, MaterialTexture::Metallness, aiTextureType_METALNESS,         aiTextureType_AMBIENT);   // Use ambient as fallback
@@ -371,7 +372,9 @@ namespace Spartan
         // Enable progress tracking
         importer.SetPropertyBool(AI_CONFIG_GLOB_MEASURE_TIME, true);
         importer.SetProgressHandler(new AssimpProgress(file_path));
-      
+
+        ProgressTracker::GetProgress(ProgressType::ModelImporter).Start(1, "Loading model from drive...");
+
         // Read the 3D model file from disc
         if (const aiScene* scene = importer.ReadFile(file_path, importer_flags))
         {
@@ -398,6 +401,7 @@ namespace Spartan
         }
         else
         {
+            ProgressTracker::GetProgress(ProgressType::ModelImporter).JobDone();
             LOG_ERROR("%s", importer.GetErrorString());
         }
 
@@ -452,6 +456,7 @@ namespace Spartan
         // Process children
         for (uint32_t i = 0; i < node->mNumChildren; i++)
         {
+            //// Any subsequent nodes are processed in another thread
             //m_context->GetSubsystem<Threading>()->AddTask([this, i, node, entity]()
             //{
                 ParseNode(node->mChildren[i], entity);
