@@ -56,6 +56,14 @@ namespace Spartan
         (
             m_resolve = true;
         ));
+
+        SP_SUBSCRIBE_TO_EVENT(EventType::RendererOnFirstFrameCompleted, SP_EVENT_HANDLER_EXPRESSION
+        (
+            m_context->GetSubsystem<Threading>()->AddTask([this]()
+            {
+                CreateDefaultWorld();
+            });
+        ));
     }
 
     World::~World()
@@ -73,8 +81,6 @@ namespace Spartan
     void World::OnPostInitialise()
     {
         m_transform_handle = make_shared<TransformHandle>(m_context);
-
-        CreateDefaultWorld();
     }
 
     void World::OnPreTick()
@@ -87,9 +93,7 @@ namespace Spartan
 
     void World::OnTick(double delta_time)
     {
-        // Early exit if entities are being modified (potentially from anothet thread)
-        if (ProgressTracker::GetProgress(ProgressType::model_importing).IsLoading() || ProgressTracker::GetProgress(ProgressType::world_io).IsLoading())
-            return;
+        lock_guard lock(m_entity_access_mutex);
 
         SCOPED_TIME_BLOCK(m_profiler);
 
@@ -104,7 +108,7 @@ namespace Spartan
         // Tick entities
         {
             // Detect game toggling
-            const bool started   = m_context->m_engine->IsFlagSet(EngineMode::Game)  && m_was_in_editor_mode;
+            const bool started   =  m_context->m_engine->IsFlagSet(EngineMode::Game) && m_was_in_editor_mode;
             const bool stopped   = !m_context->m_engine->IsFlagSet(EngineMode::Game) && !m_was_in_editor_mode;
             m_was_in_editor_mode = !m_context->m_engine->IsFlagSet(EngineMode::Game);
 
@@ -153,8 +157,6 @@ namespace Spartan
             SP_FIRE_EVENT_DATA(EventType::WorldResolved, m_entities);
             m_resolve = false;
         }
-
-        UpdateDefaultWorld(delta_time);
     }
 
     void World::New()
@@ -552,7 +554,7 @@ namespace Spartan
                 }
             }
         }
-        return;
+
         // 3D model - Sponza
         if (m_default_model_sponza = resource_cache->Load<Model>("project\\models\\sponza\\main\\NewSponza_Main_Blender_glTF.gltf"))
         {
@@ -582,15 +584,7 @@ namespace Spartan
                 entity->GetTransform()->SetScale(Vector3::One);
             }
         }
-    }
 
-    void World::UpdateDefaultWorld(double delta_time)
-    {
-        // Play!
-        if (!m_default_world_started)
-        {
-            m_context->m_engine->ToggleFlag(EngineMode::Game);
-            m_default_world_started = true;
-        }
+        m_context->m_engine->ToggleFlag(EngineMode::Game);
     }
 }
