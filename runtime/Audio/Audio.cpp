@@ -122,7 +122,10 @@ namespace Spartan
         m_profiler = m_context->GetSubsystem<Profiler>();
 
         // Subscribe to events
-        SP_SUBSCRIBE_TO_EVENT(EventType::WorldClear, [this](Variant) { m_listener = nullptr; });
+        SP_SUBSCRIBE_TO_EVENT(EventType::WorldClear, SP_EVENT_HANDLER_EXPRESSION
+        (
+            m_listener = nullptr;
+        ));
     }
 
     void Audio::OnTick(double delta_time)

@@ -58,7 +58,6 @@ namespace Spartan
         bool SaveToFile(const std::string& filePath);
         bool LoadFromFile(const std::string& file_path);
         void Resolve() { m_resolve = true; }
-        bool IsLoading();
         const std::string GetName()      const { return m_name; }
         const std::string& GetFilePath() const { return m_file_path; }
 
@@ -93,8 +92,10 @@ namespace Spartan
         std::shared_ptr<Model> m_default_model_car;
         std::shared_ptr<TransformHandle> m_transform_handle;
         std::vector<std::shared_ptr<Entity>> m_entities;
-        std::mutex m_mutex_create_entity;
         Input* m_input       = nullptr;
         Profiler* m_profiler = nullptr;
+
+        // Sync primitives
+        std::mutex m_entity_access_mutex;
     };
 }

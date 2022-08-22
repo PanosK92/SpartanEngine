@@ -183,7 +183,7 @@ namespace Spartan
         const uint32_t resource_count = GetResourceCount();
 
         // Start progress report
-        ProgressTracker::GetProgress(ProgressType::ResourceCache).Start(resource_count, "Loading resources...");
+        ProgressTracker::GetProgress(ProgressType::resource_cache_io).Start(resource_count, "Loading resources...");
 
         // Save resource count
         file->Write(resource_count);
@@ -202,7 +202,7 @@ namespace Spartan
             resource->SaveToFile(resource->GetResourceFilePathNative());
 
             // Update progress
-            ProgressTracker::GetProgress(ProgressType::ResourceCache).JobDone();
+            ProgressTracker::GetProgress(ProgressType::resource_cache_io).JobDone();
         }
     }
 

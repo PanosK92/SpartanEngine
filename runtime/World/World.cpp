@@ -52,7 +52,10 @@ namespace Spartan
 {
     World::World(Context* context) : Subsystem(context)
     {
-        SP_SUBSCRIBE_TO_EVENT(EventType::WorldResolve, [this](Variant) { m_resolve = true; });
+        SP_SUBSCRIBE_TO_EVENT(EventType::WorldResolve, SP_EVENT_HANDLER_EXPRESSION
+        (
+            m_resolve = true;
+        ));
     }
 
     World::~World()
@@ -84,8 +87,8 @@ namespace Spartan
 
     void World::OnTick(double delta_time)
     {
-        // If something is being loaded, don't tick as entities are probably being added
-        if (IsLoading())
+        // Early exit if entities are being modified (potentially from another thread)
+        if (ProgressTracker::GetProgress(ProgressType::model_importing).IsLoading() || ProgressTracker::GetProgress(ProgressType::world_io).IsLoading())
             return;
 
         SCOPED_TIME_BLOCK(m_profiler);
@@ -189,7 +192,7 @@ namespace Spartan
 
         // Start progress tracking and timing
         const Stopwatch timer;
-        ProgressTracker::GetProgress(ProgressType::World).Start(root_entity_count, "Saving world...");
+        ProgressTracker::GetProgress(ProgressType::world_io).Start(root_entity_count, "Saving world...");
 
         // Save root entity count
         file->Write(root_entity_count);
@@ -204,7 +207,7 @@ namespace Spartan
         for (shared_ptr<Entity>& root : root_actors)
         {
             root->Serialize(file.get());
-            ProgressTracker::GetProgress(ProgressType::World).JobDone();
+            ProgressTracker::GetProgress(ProgressType::world_io).JobDone();
         }
 
         // Report time
@@ -245,7 +248,7 @@ namespace Spartan
         const uint32_t root_entity_count = file->ReadAs<uint32_t>();
 
         // Start progress tracking and timing
-        ProgressTracker::GetProgress(ProgressType::World).Start(root_entity_count, "Loading world...");
+        ProgressTracker::GetProgress(ProgressType::world_io).Start(root_entity_count, "Loading world...");
         const Stopwatch timer;
 
         // Load root entity IDs
@@ -259,7 +262,7 @@ namespace Spartan
         for (uint32_t i = 0; i < root_entity_count; i++)
         {
             m_entities[i]->Deserialize(file.get(), nullptr);
-            ProgressTracker::GetProgress(ProgressType::World).JobDone();
+            ProgressTracker::GetProgress(ProgressType::world_io).JobDone();
         }
 
         // Report time
@@ -270,16 +273,9 @@ namespace Spartan
         return true;
     }
 
-    bool World::IsLoading()
-    {
-        const bool is_loading_model = ProgressTracker::GetProgress(ProgressType::ModelImporter).IsLoading();
-        const bool is_loading_scene = ProgressTracker::GetProgress(ProgressType::World).IsLoading();
-        return is_loading_model || is_loading_scene;
-    }
-
     shared_ptr<Entity> World::EntityCreate(bool is_active /*= true*/)
     {
-        lock_guard lock(m_mutex_create_entity);
+        lock_guard lock(m_entity_access_mutex);
 
         shared_ptr<Entity> entity = m_entities.emplace_back(make_shared<Entity>(m_context));
         entity->SetActive(is_active);
@@ -556,7 +552,7 @@ namespace Spartan
                 }
             }
         }
-
+        return;
         // 3D model - Sponza
         if (m_default_model_sponza = resource_cache->Load<Model>("project\\models\\sponza\\main\\NewSponza_Main_Blender_glTF.gltf"))
         {

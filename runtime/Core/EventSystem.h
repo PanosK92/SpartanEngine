@@ -41,6 +41,8 @@ Note: This is a blocking event system
 */
 
 //= MACROS =====================================================================================================
+#define SP_EVENT_HANDLER_EXPRESSION(expression)      [this](const Spartan::Variant& var)    { expression }
+
 #define SP_EVENT_HANDLER(function)                   [this](const Spartan::Variant& var)    { function(); }
 #define SP_EVENT_HANDLER_STATIC(function)            [](const Spartan::Variant& var)        { function(); }
                                                      

@@ -155,12 +155,12 @@ namespace Spartan
         {
             if (current_step == 0)
             {
-                ProgressTracker::GetProgress(ProgressType::ModelImporter).JobDone(); // "Loading model from drive..."
-                ProgressTracker::GetProgress(ProgressType::ModelImporter).Start(number_of_steps, "Post-processing model...");
+                ProgressTracker::GetProgress(ProgressType::model_importing).JobDone(); // "Loading model from drive..."
+                ProgressTracker::GetProgress(ProgressType::model_importing).Start(number_of_steps, "Post-processing model...");
             }
             else
             {
-                ProgressTracker::GetProgress(ProgressType::ModelImporter).JobDone();
+                ProgressTracker::GetProgress(ProgressType::model_importing).JobDone();
             }
         }
 
@@ -373,7 +373,7 @@ namespace Spartan
         importer.SetPropertyBool(AI_CONFIG_GLOB_MEASURE_TIME, true);
         importer.SetProgressHandler(new AssimpProgress(file_path));
 
-        ProgressTracker::GetProgress(ProgressType::ModelImporter).Start(1, "Loading model from drive...");
+        ProgressTracker::GetProgress(ProgressType::model_importing).Start(1, "Loading model from drive...");
 
         // Read the 3D model file from disc
         if (const aiScene* scene = importer.ReadFile(file_path, importer_flags))
@@ -381,7 +381,7 @@ namespace Spartan
             // Update progress tracking
             uint32_t job_count = 0;
             compute_node_count(scene->mRootNode, &job_count);
-            ProgressTracker::GetProgress(ProgressType::ModelImporter).Start(job_count, "Parsing model...");
+            ProgressTracker::GetProgress(ProgressType::model_importing).Start(job_count, "Parsing model...");
 
             m_scene         = scene;
             m_has_animation = scene->mNumAnimations != 0;
@@ -395,7 +395,7 @@ namespace Spartan
         }
         else
         {
-            ProgressTracker::GetProgress(ProgressType::ModelImporter).JobDone();
+            ProgressTracker::GetProgress(ProgressType::model_importing).JobDone();
             LOG_ERROR("%s", importer.GetErrorString());
         }
 
@@ -432,7 +432,7 @@ namespace Spartan
         entity->SetName(m_name); // Set custom name, which is more descriptive than "RootNode"
 
         // Update progress tracking
-        ProgressTracker::GetProgress(ProgressType::ModelImporter).SetText("Creating entity for " + entity->GetName());
+        ProgressTracker::GetProgress(ProgressType::model_importing).SetText("Creating entity for " + entity->GetName());
 
         // Set the transform of parent_node as the parent of the new_entity's transform
         Transform* parent_trans = parent_entity ? parent_entity->GetTransform() : nullptr;
@@ -458,7 +458,7 @@ namespace Spartan
         }
 
         // Update progress tracking
-        ProgressTracker::GetProgress(ProgressType::ModelImporter).JobDone();
+        ProgressTracker::GetProgress(ProgressType::model_importing).JobDone();
     }
 
     void ModelImporter::PashMeshes(const aiNode* assimp_node, Entity* node_entity)
