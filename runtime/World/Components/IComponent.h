@@ -52,7 +52,7 @@ namespace Spartan
         Transform,
         Terrain,
         ReflectionProbe,
-        Unknown
+        Undefined
     };
 
     struct Attribute
@@ -139,7 +139,7 @@ namespace Spartan
         }
 
         // The type of the component
-        ComponentType m_type   = ComponentType::Unknown;
+        ComponentType m_type   = ComponentType::Undefined;
         // The state of the component
         bool m_enabled         = false;
         // The owner of the component

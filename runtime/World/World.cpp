@@ -87,7 +87,7 @@ namespace Spartan
 
     void World::OnTick(double delta_time)
     {
-        // Early exit if entities are being modified (potentially from another thread)
+        // Early exit if entities are being modified (potentially from anothet thread)
         if (ProgressTracker::GetProgress(ProgressType::model_importing).IsLoading() || ProgressTracker::GetProgress(ProgressType::world_io).IsLoading())
             return;
 
