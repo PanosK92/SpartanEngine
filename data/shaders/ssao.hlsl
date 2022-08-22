@@ -81,7 +81,7 @@ void compute_uber_ssao(uint2 pos, inout float3 bent_normal, inout float occlusio
             uint2 sample_pos        = (origin_uv + uv_offset) * g_resolution_rt;
             float3 sample_position  = get_position_view_space(sample_pos);
             float3 origin_to_sample = sample_position - origin_position;
-            float visibility        = compute_visibility(origin_normal, origin_to_sample) * screen_fade(origin_uv);
+            float visibility        = compute_visibility(origin_normal, origin_to_sample);
 
             occlusion   += visibility;
             bent_normal += normalize(origin_to_sample) * visibility;

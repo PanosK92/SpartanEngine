@@ -379,15 +379,15 @@ void Properties::ShowRenderable(Renderable* renderable) const
 
     if (helper::ComponentBegin("Renderable", IconType::Component_Renderable, renderable))
     {
-        //= REFLECT =============================================================
-        const string& mesh_name = renderable->GetGeometryName();
-        Material* material      = renderable->GetMaterial();
-        string material_name    = material ? material->GetResourceName() : "N/A";
-        bool cast_shadows       = renderable->GetCastShadows();
-        //=======================================================================
+        //= REFLECT =================================================================
+        const string& geometry_name = renderable->GetGeometryName();
+        Material* material          = renderable->GetMaterial();
+        string material_name        = material ? material->GetResourceName() : "N/A";
+        bool cast_shadows           = renderable->GetCastShadows();
+        //===========================================================================
 
-        ImGui::Text("Mesh");
-        ImGui::SameLine(helper::g_column); ImGui::Text(mesh_name.c_str());
+        ImGui::Text("Geometry");
+        ImGui::SameLine(helper::g_column); ImGui::Text(geometry_name.c_str());
 
         // Material
         ImGui::Text("Material");
