@@ -345,18 +345,15 @@ namespace Spartan
 
     void World::Clear()
     {
-        // Notify subsystems that need to flush (like the Renderer)
-        SP_FIRE_EVENT(EventType::WorldPreClear);
-
-        // Notify any systems that need to clear (like the ResourceCache)
+        // Fire event
         SP_FIRE_EVENT(EventType::WorldClear);
 
-        // Clear the entities
+        // Clear
         m_entities.clear();
-
         m_name.clear();
         m_file_path.clear();
 
+        // Mark for resolve
         m_resolve = true;
     }
 
