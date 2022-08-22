@@ -61,7 +61,7 @@ namespace Spartan
     }
 
     template <typename T>
-    inline constexpr ComponentType IComponent::TypeToEnum() { return ComponentType::Unknown; }
+    inline constexpr ComponentType IComponent::TypeToEnum() { return ComponentType::Undefined; }
 
     template<typename T>
     inline constexpr void validate_component_type() { static_assert(is_base_of<IComponent, T>::value, "Provided type does not implement IComponent"); }

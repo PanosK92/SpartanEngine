@@ -163,17 +163,25 @@ namespace Spartan
 
         // COMPONENTS
         {
-            stream->Write(static_cast<uint32_t>(m_components.size()));
-
             for (shared_ptr<IComponent>& component : m_components)
             {
-                stream->Write(static_cast<uint32_t>(component->GetType()));
-                stream->Write(component->GetObjectId());
+                if (component)
+                {
+                    stream->Write(static_cast<uint32_t>(component->GetType()));
+                    stream->Write(component->GetObjectId());
+                }
+                else
+                {
+                    stream->Write(static_cast<uint32_t>(ComponentType::Undefined));
+                }
             }
 
             for (shared_ptr<IComponent>& component : m_components)
             {
-                component->Serialize(stream);
+                if (component)
+                {
+                    component->Serialize(stream);
+                }
             }
         }
 
@@ -213,17 +221,20 @@ namespace Spartan
 
         // COMPONENTS
         {
-            const uint32_t component_count = stream->ReadAs<uint32_t>();
-
-            for (uint32_t i = 0; i < component_count; i++)
+            for (uint32_t i = 0; i < static_cast<uint32_t>(m_components.size()); i++)
             {
-                uint32_t component_type = static_cast<uint32_t>(ComponentType::Unknown);
-                uint64_t component_id   = 0;
+                // Type
+                uint32_t component_type = static_cast<uint32_t>(ComponentType::Undefined);
+                stream->Read(&component_type);
 
-                stream->Read(&component_type); // load component's type
-                stream->Read(&component_id);   // load component's id
+                if (component_type == static_cast<uint32_t>(ComponentType::Undefined))
+                {
+                    // Id
+                    uint64_t component_id = 0;
+                    stream->Read(&component_id);
 
-                AddComponent(static_cast<ComponentType>(component_type), component_id);
+                    AddComponent(static_cast<ComponentType>(component_type), component_id);
+                }
             }
 
             // Sometimes there are component dependencies, e.g. a collider that needs
@@ -231,7 +242,10 @@ namespace Spartan
             // the components (like above) and then deserialize them (like here).
             for (shared_ptr<IComponent>& component : m_components)
             {
-                component->Deserialize(stream);
+                if (component)
+                {
+                    component->Deserialize(stream);
+                }
             }
 
             // Set the transform's parent
@@ -296,7 +310,7 @@ namespace Spartan
             case ComponentType::Transform:       component = static_cast<IComponent*>(AddComponent<Transform>(id));       break;
             case ComponentType::Terrain:         component = static_cast<IComponent*>(AddComponent<Terrain>(id));         break;
             case ComponentType::ReflectionProbe: component = static_cast<IComponent*>(AddComponent<ReflectionProbe>(id)); break;
-            case ComponentType::Unknown:         component = nullptr;                                                     break;
+            case ComponentType::Undefined:         component = nullptr;                                                     break;
             default:                             component = nullptr;                                                     break;
         }
 
