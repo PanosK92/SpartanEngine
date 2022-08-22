@@ -33,8 +33,8 @@ using namespace Spartan::Math;
 
 static const Vector2 k_size = Vector2(640, 480);
 
-#define OPERATION_NAME  (m_operation == FileDialog_Op_Open)    ? "Open"         : (m_operation == FileDialog_Op_Load)   ? "Load"        : (m_operation == FileDialog_Op_Save) ? "Save" : "View"
-#define FILTER_NAME     (m_filter == FileDialog_Filter_All)    ? "All (*.*)"    : (m_filter == FileDialog_Filter_Model) ? "Model(*.*)"  : "World (*.world)"
+#define OPERATION_NAME (m_operation == FileDialog_Op_Open) ? "Open"      : (m_operation == FileDialog_Op_Load)   ? "Load"       : (m_operation == FileDialog_Op_Save) ? "Save" : "View"
+#define FILTER_NAME    (m_filter == FileDialog_Filter_All) ? "All (*.*)" : (m_filter == FileDialog_Filter_Model) ? "Model(*.*)" : "World (*.world)"
 
 FileDialog::FileDialog(Context* context, const bool standalone_window, const FileDialog_Type type, const FileDialog_Operation operation, const FileDialog_Filter filter)
 {
@@ -71,9 +71,9 @@ bool FileDialog::Show(bool* is_visible, string* directory /*= nullptr*/, string*
         return false;
     }
 
-    m_selection_made        = false;
-    m_is_hovering_item      = false;
-    m_is_hovering_window    = false;
+    m_selection_made     = false;
+    m_is_hovering_item   = false;
+    m_is_hovering_window = false;
     
     ShowTop(is_visible);    // Top menu
     ShowMiddle();           // Contents of the current directory
@@ -204,8 +204,8 @@ void FileDialog::ShowMiddle()
 
         // Set starting position
         {
-            float offset    = ImGui::GetStyle().ItemSpacing.x;
-            pen_x_min       = ImGui::GetCursorPosX() + offset;
+            float offset = ImGui::GetStyle().ItemSpacing.x;
+            pen_x_min    = ImGui::GetCursorPosX() + offset;
             ImGui::SetCursorPosX(pen_x_min);
         }
 
@@ -324,9 +324,9 @@ void FileDialog::ShowMiddle()
                             // Clamp width
                             if (image_size.x != image_size_max.x)
                             {
-                                float scale     = image_size_max.x / image_size.x;
-                                image_size.x    = image_size_max.x;
-                                image_size.y    = image_size.y * scale;
+                                float scale  = image_size_max.x / image_size.x;
+                                image_size.x = image_size_max.x;
+                                image_size.y = image_size.y * scale;
                             }
                             // Clamp height
                             if (image_size.y != image_size_max.y)
@@ -531,7 +531,7 @@ bool FileDialog::DialogUpdateFromDirectory(const string& file_path)
         {
             if (!FileSystem::IsEngineTextureFile(anything) && !FileSystem::IsEngineModelFile(anything))
             {
-                m_items.emplace_back(anything, IconProvider::Get().LoadFromFile(anything, IconType::NotAssigned, static_cast<uint32_t>(m_item_size.x)));
+                m_items.emplace_back(anything, IconProvider::Get().LoadFromFile(anything, IconType::Undefined, static_cast<uint32_t>(m_item_size.x)));
             }
         }
     }

@@ -104,14 +104,14 @@ RHI_Texture* IconProvider::GetTextureByFilePath(const string& filePath)
     return LoadFromFile(filePath).texture.get();
 }
 
-RHI_Texture* IconProvider::GetTextureByThumbnail(const Thumbnail& thumbnail)
+RHI_Texture* IconProvider::GetTextureByThumbnail(const Thumbnail& thumbnail_in)
 {
-    for (const auto& thumbnail : m_thumbnails)
+    for (const Thumbnail& thumbnail : m_thumbnails)
     {
-        if (!thumbnail.texture || !thumbnail.texture->IsReadyForUse())
+        if (!thumbnail_in.texture || !thumbnail_in.texture->IsReadyForUse())
             continue;
 
-        if (thumbnail.texture->GetObjectId() == thumbnail.texture->GetObjectId())
+        if (thumbnail.texture->GetObjectId() == thumbnail_in.texture->GetObjectId())
         {
             return thumbnail.texture.get();
         }
@@ -120,10 +120,10 @@ RHI_Texture* IconProvider::GetTextureByThumbnail(const Thumbnail& thumbnail)
     return nullptr;
 }
 
-const Thumbnail& IconProvider::LoadFromFile(const string& file_path, IconType type /*NotAssigned*/, const uint32_t size /*100*/)
+const Thumbnail& IconProvider::LoadFromFile(const string& file_path, IconType type /*Undefined*/, const uint32_t size /*100*/)
 {
     // Check if we already have this thumbnail
-    bool search_by_type = type != IconType::NotAssigned;
+    bool search_by_type = type != IconType::Undefined;
     for (Thumbnail& thumbnail : m_thumbnails)
     {
         if (search_by_type)
@@ -171,14 +171,17 @@ const Thumbnail& IconProvider::LoadFromFile(const string& file_path, IconType ty
     if (FileSystem::IsSupportedImageFile(file_path) || FileSystem::IsEngineTextureFile(file_path))
     {
         // Create a texture
-        shared_ptr<RHI_Texture2D> texture = make_shared<RHI_Texture2D>(m_context, RHI_Texture_Flags::RHI_Texture_Srv);
+        shared_ptr<RHI_Texture2D> texture = make_shared<RHI_Texture2D>(m_context, RHI_Texture_Srv, FileSystem::GetFileNameFromFilePath(file_path).c_str());
 
         // Add it to the thumbnails
         m_thumbnails.emplace_back(type, texture, file_path);
 
         // Load it
-        RHI_Texture* tex_ptr = m_thumbnails.back().texture.get();
-        tex_ptr->LoadFromFile(file_path);
+        m_context->GetSubsystem<Threading>()->AddTask([this, file_path]()
+        {
+            RHI_Texture* tex_ptr = m_thumbnails.back().texture.get();
+            tex_ptr->LoadFromFile(file_path);
+        });
 
         return m_thumbnails.back();
     }

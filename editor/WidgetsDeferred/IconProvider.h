@@ -31,7 +31,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 enum class IconType
 {
-    NotAssigned,
     Component_Options,
     Component_AudioListener,
     Component_AudioSource,
@@ -70,7 +69,8 @@ enum class IconType
     Directory_File_Exe,
     Directory_File_Script,
     Directory_File_Font,
-    Directory_File_Texture
+    Directory_File_Texture,
+    Undefined
 };
 
 namespace Spartan { class Context; }
@@ -80,12 +80,12 @@ struct Thumbnail
     Thumbnail() = default;
     Thumbnail(IconType type, std::shared_ptr<Spartan::RHI_Texture> texture, const std::string& filePath)
     {
-        this->type     = type;
-        this->texture  = std::move(texture);
+        this->type      = type;
+        this->texture   = std::move(texture);
         this->file_path = filePath;
     }
 
-    IconType type = IconType::NotAssigned;
+    IconType type = IconType::Undefined;
     std::shared_ptr<Spartan::RHI_Texture> texture;
     std::string file_path;
 };
@@ -107,7 +107,7 @@ public:
     Spartan::RHI_Texture* GetTextureByType(IconType type);
     Spartan::RHI_Texture* GetTextureByFilePath(const std::string& file_path);
     Spartan::RHI_Texture* GetTextureByThumbnail(const Thumbnail& thumbnail);
-    const Thumbnail& LoadFromFile(const std::string& filePath, IconType type = IconType::NotAssigned, const uint32_t size = 100);
+    const Thumbnail& LoadFromFile(const std::string& filePath, IconType type = IconType::Undefined, const uint32_t size = 100);
 
 private:
     const Thumbnail& GetThumbnailByType(IconType type);

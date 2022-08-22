@@ -449,6 +449,7 @@ namespace Spartan
         // Asset directories
         ResourceCache* resource_cache = m_context->GetSubsystem<ResourceCache>();
 
+        return;
         // 3D model - Car
         if (m_default_model_car = resource_cache->Load<Mesh>("project\\models\\toyota_ae86_sprinter_trueno_zenki\\scene.gltf"))
         {

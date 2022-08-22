@@ -168,7 +168,7 @@ namespace imgui_extension
         }
 
         // Get texture from icon enum (if provided)
-        if (!texture && icon != IconType::NotAssigned)
+        if (!texture && icon != IconType::Undefined)
         {
             texture = IconProvider::Get().GetTextureByType(icon);
         }
