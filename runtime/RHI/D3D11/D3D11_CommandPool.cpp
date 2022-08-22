@@ -44,7 +44,7 @@ namespace Spartan
 
     void RHI_CommandPool::CreateCommandPool(const RHI_Queue_Type queue_type)
     {
-
+        m_rhi_resources.emplace_back(nullptr);
     }
 
     void RHI_CommandPool::Reset(const uint32_t pool_index)
