@@ -78,22 +78,19 @@ namespace Spartan
     private:
         void Clear();
         void _EntityRemove(const std::shared_ptr<Entity>& entity);
-
         void CreateDefaultWorld();
-        void UpdateDefaultWorld(double delta_ti);
 
+        std::vector<std::shared_ptr<Entity>> m_entities;
         std::string m_name;
         std::string m_file_path;
-        bool m_was_in_editor_mode    = false;
-        bool m_resolve               = true;
-        bool m_default_world_started = false;
-        std::shared_ptr<Model> m_default_model_sponza;
-        std::shared_ptr<Model> m_default_model_sponza_curtains;
-        std::shared_ptr<Model> m_default_model_car;
-        std::shared_ptr<TransformHandle> m_transform_handle;
-        std::vector<std::shared_ptr<Entity>> m_entities;
-        Input* m_input       = nullptr;
-        Profiler* m_profiler = nullptr;
+        bool m_was_in_editor_mode                              = false;
+        bool m_resolve                                         = true;
+        std::shared_ptr<Model> m_default_model_sponza          = nullptr;
+        std::shared_ptr<Model> m_default_model_sponza_curtains = nullptr;
+        std::shared_ptr<Model> m_default_model_car             = nullptr;
+        std::shared_ptr<TransformHandle> m_transform_handle    = nullptr;
+        Input* m_input                                         = nullptr;
+        Profiler* m_profiler                                   = nullptr;
 
         // Sync primitives
         std::mutex m_entity_access_mutex;
