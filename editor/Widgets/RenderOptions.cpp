@@ -25,7 +25,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Core/Context.h"
 #include "Core/Timer.h"
 #include "Math/MathHelper.h"
-#include "Rendering/Model.h"
 #include "RHI/RHI_Device.h"
 #include "Profiling/Profiler.h"
 #include "../ImGui/ImGuiExtension.h"

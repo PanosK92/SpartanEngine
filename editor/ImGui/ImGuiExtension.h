@@ -59,14 +59,14 @@ public:
         g_input          = context->GetSubsystem<Spartan::Input>();
     }
 
-    void LoadModel(const std::string& file_path) const
+    void LoadMesh(const std::string& file_path) const
     {
         auto resource_cache = g_resource_cache;
 
         // Load the model asynchronously
         g_threading->AddTask([resource_cache, file_path]()
         {
-            resource_cache->Load<Spartan::Model>(file_path);
+            resource_cache->Load<Spartan::Mesh>(file_path);
         });
     }
 

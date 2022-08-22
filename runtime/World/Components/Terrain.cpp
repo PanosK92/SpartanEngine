@@ -26,10 +26,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Entity.h"
 #include "../../RHI/RHI_Texture2D.h"
 #include "../../RHI/RHI_Vertex.h"
-#include "../../Rendering/Model.h"
 #include "../../IO/FileStream.h"
 #include "../../Resource/ResourceCache.h"
-#include "../../Rendering/Mesh/Mesh.h"
+#include "../../Rendering/Mesh.h"
 #include "../../Threading/Threading.h"
 //=======================================
 
@@ -55,7 +54,7 @@ namespace Spartan
         const string no_path;
 
         stream->Write(m_height_map ? m_height_map->GetResourceFilePathNative() : no_path);
-        stream->Write(m_model ? m_model->GetResourceName() : no_path);
+        stream->Write(m_mesh ? m_mesh->GetResourceName() : no_path);
         stream->Write(m_min_y);
         stream->Write(m_max_y);
     }
@@ -64,11 +63,11 @@ namespace Spartan
     {
         ResourceCache* resource_cache = m_context->GetSubsystem<ResourceCache>();
         m_height_map    = resource_cache->GetByPath<RHI_Texture2D>(stream->ReadAs<string>());
-        m_model         = resource_cache->GetByName<Model>(stream->ReadAs<string>());
+        m_mesh          = resource_cache->GetByName<Mesh>(stream->ReadAs<string>());
         stream->Read(&m_min_y);
         stream->Read(&m_max_y);
 
-        UpdateFromModel(m_model);
+        UpdateFromMesh(m_mesh);
     }
 
     void Terrain::SetHeightMap(const shared_ptr<RHI_Texture2D>& height_map)
@@ -89,8 +88,8 @@ namespace Spartan
         {
             LOG_WARNING("You need to assign a height map before trying to generate a terrain.");
 
-            m_context->GetSubsystem<ResourceCache>()->Remove(m_model);
-            m_model.reset();
+            m_context->GetSubsystem<ResourceCache>()->Remove(m_mesh);
+            m_mesh = nullptr;
             if (Renderable* renderable = m_entity->AddComponent<Renderable>())
             {
                 renderable->Clear();
@@ -394,20 +393,18 @@ namespace Spartan
         return true;
     }
 
-    void Terrain::UpdateFromModel(const shared_ptr<Model>& model) const
+    void Terrain::UpdateFromMesh(const shared_ptr<Mesh>& mesh) const
     {
-        SP_ASSERT(model != nullptr);
-
         if (Renderable* renderable = m_entity->AddComponent<Renderable>())
         {
             renderable->SetGeometry(
                 "Terrain",
-                0,                                  // index offset
-                model->GetMesh()->GetIndexCount(),  // index count
-                0,                                  // vertex offset
-                model->GetMesh()->GetVertexCount(), // vertex count
-                model->GetAabb(),
-                model.get()
+                0,                      // index offset
+                mesh->GetIndexCount(),  // index count
+                0,                      // vertex offset
+                mesh->GetVertexCount(), // vertex count
+                mesh->GetAabb(),
+                mesh.get()
             );
 
             renderable->SetDefaultMaterial();
@@ -417,28 +414,34 @@ namespace Spartan
     void Terrain::UpdateFromVertices(const vector<uint32_t>& indices, vector<RHI_Vertex_PosTexNorTan>& vertices)
     {
         // Add vertices and indices into a model struct (and cache that)
-        if (!m_model)
+        if (!m_mesh)
         {
             // Create new model
-            m_model = make_shared<Model>(m_context);
+            m_mesh = make_shared<Mesh>(m_context);
 
             // Set geometry
-            m_model->AppendGeometry(indices, vertices);
-            m_model->UpdateGeometry();
+            m_mesh->AddIndices(indices);
+            m_mesh->AddVertices(vertices);
+            m_mesh->CreateGpuBuffers();
+            m_mesh->ComputeNormalizedScale();
+            m_mesh->ComputeAabb();
 
             // Set a file path so the model can be used by the resource cache
             ResourceCache* resource_cache = m_context->GetSubsystem<ResourceCache>();
-            m_model->SetResourceFilePath(resource_cache->GetProjectDirectory() + m_entity->GetName() + "_terrain_" + to_string(m_object_id) + string(EXTENSION_MODEL));
-            m_model = resource_cache->Cache(m_model);
+            m_mesh->SetResourceFilePath(resource_cache->GetProjectDirectory() + m_entity->GetName() + "_terrain_" + to_string(m_object_id) + string(EXTENSION_MODEL));
+            m_mesh = resource_cache->Cache(m_mesh);
         }
         else
         {
             // Update with new geometry
-            m_model->Clear();
-            m_model->AppendGeometry(indices, vertices);
-            m_model->UpdateGeometry();
+            m_mesh->Clear();
+            m_mesh->AddIndices(indices);
+            m_mesh->AddVertices(vertices);
+            m_mesh->CreateGpuBuffers();
+            m_mesh->ComputeNormalizedScale();
+            m_mesh->ComputeAabb();
         }
 
-        UpdateFromModel(m_model);
+        UpdateFromMesh(m_mesh);
     }
 }

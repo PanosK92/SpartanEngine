@@ -37,7 +37,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Spartan
 {
     class Entity;
-    class Model;
+    class Mesh;
     class Renderable;
     class Input;
     class Renderer;

@@ -33,7 +33,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_Texture2DArray.h"
 #include "../RHI/RHI_TextureCube.h"
 #include "../Audio/AudioClip.h"
-#include "../Rendering/Model.h"
 //====================================
 
 //= NAMESPACES ================
@@ -227,8 +226,8 @@ namespace Spartan
 
             switch (type)
             {
-            case ResourceType::Model:
-                Load<Model>(file_path);
+            case ResourceType::Mesh:
+                Load<Mesh>(file_path);
                 break;
             case ResourceType::Material:
                 Load<Material>(file_path);

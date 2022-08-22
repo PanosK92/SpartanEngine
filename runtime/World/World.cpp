@@ -450,7 +450,7 @@ namespace Spartan
         ResourceCache* resource_cache = m_context->GetSubsystem<ResourceCache>();
 
         // 3D model - Car
-        if (m_default_model_car = resource_cache->Load<Model>("project\\models\\toyota_ae86_sprinter_trueno_zenki\\scene.gltf"))
+        if (m_default_model_car = resource_cache->Load<Mesh>("project\\models\\toyota_ae86_sprinter_trueno_zenki\\scene.gltf"))
         {
             Entity* entity = m_default_model_car->GetRootEntity();
             entity->SetName("car");
@@ -556,7 +556,7 @@ namespace Spartan
         }
 
         // 3D model - Sponza
-        if (m_default_model_sponza = resource_cache->Load<Model>("project\\models\\sponza\\main\\NewSponza_Main_Blender_glTF.gltf"))
+        if (m_default_model_sponza = resource_cache->Load<Mesh>("project\\models\\sponza\\main\\NewSponza_Main_Blender_glTF.gltf"))
         {
             Entity* entity = m_default_model_sponza->GetRootEntity();
             entity->SetName("sponza");
@@ -576,7 +576,7 @@ namespace Spartan
             }
 
             // 3D model - Sponza curtains
-            if (m_default_model_sponza_curtains = resource_cache->Load<Model>("project\\models\\sponza\\curtains\\NewSponza_Curtains_glTF.gltf"))
+            if (m_default_model_sponza_curtains = resource_cache->Load<Mesh>("project\\models\\sponza\\curtains\\NewSponza_Curtains_glTF.gltf"))
             {
                 Entity* entity = m_default_model_sponza_curtains->GetRootEntity();
                 entity->SetName("sponza_curtains");

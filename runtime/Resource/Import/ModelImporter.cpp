@@ -25,8 +25,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../ProgressTracker.h"
 #include "../../RHI/RHI_Vertex.h"
 #include "../../RHI/RHI_Texture.h"
-#include "../../Rendering/Model.h"
 #include "../../Rendering/Animation.h"
+#include "../../Rendering/Material.h"
+#include "../../Rendering/Mesh.h"
+#include "../../Threading/Threading.h"
 #include "../../World/World.h"
 #include "../../World/Entity.h"
 #include "../../World/Components/Renderable.h"
@@ -41,15 +43,14 @@ SP_WARNINGS_OFF
 #include "assimp/version.h"
 #include "assimp/Importer.hpp"
 #include "assimp/postprocess.h"
-#include "../Threading/Threading.h"
 SP_WARNINGS_ON
 //============================================
 
-//= NAMESPACES ================
+//= NAMESPACES ===============
 using namespace std;
 using namespace Spartan::Math;
 using namespace Assimp;
-//=============================
+//============================
 
 namespace Spartan
 {
@@ -232,7 +233,7 @@ namespace Spartan
     }
 
     static bool load_material_texture(
-        Model* model,
+        Mesh* mesh,
         const string& file_path,
         const bool is_gltf,
         shared_ptr<Material> material,
@@ -262,7 +263,7 @@ namespace Spartan
             return false;
 
         // Add the texture to the model
-        model->AddTexture(material, texture_type, texture_validate_path(texture_path.data, file_path), is_gltf);
+        mesh->AddTexture(material, texture_type, texture_validate_path(texture_path.data, file_path), is_gltf);
 
         // FIX: materials that have a diffuse texture should not be tinted black/gray
         if (type_assimp == aiTextureType_BASE_COLOR || type_assimp == aiTextureType_DIFFUSE)
@@ -293,7 +294,7 @@ namespace Spartan
         return true;
     }
 
-    static shared_ptr<Material> load_material(Context* context, Model* model, const string& file_path, const bool is_gltf, const aiMaterial* material_assimp)
+    static shared_ptr<Material> load_material(Context* context, Mesh* mesh, const string& file_path, const bool is_gltf, const aiMaterial* material_assimp)
     {
         SP_ASSERT(material_assimp != nullptr);
 
@@ -321,14 +322,14 @@ namespace Spartan
         material->SetProperty(MaterialProperty::ColorA, opacity.r);
 
         //                                                                          Texture type,                Texture type Assimp (PBR),       Texture type Assimp (Legacy/fallback)
-        load_material_texture(model, file_path, is_gltf, material, material_assimp, MaterialTexture::Color,      aiTextureType_BASE_COLOR,        aiTextureType_DIFFUSE);
-        load_material_texture(model, file_path, is_gltf, material, material_assimp, MaterialTexture::Roughness,  aiTextureType_DIFFUSE_ROUGHNESS, aiTextureType_SHININESS); // Use specular as fallback
-        load_material_texture(model, file_path, is_gltf, material, material_assimp, MaterialTexture::Metallness, aiTextureType_METALNESS,         aiTextureType_AMBIENT);   // Use ambient as fallback
-        load_material_texture(model, file_path, is_gltf, material, material_assimp, MaterialTexture::Normal,     aiTextureType_NORMAL_CAMERA,     aiTextureType_NORMALS);
-        load_material_texture(model, file_path, is_gltf, material, material_assimp, MaterialTexture::Occlusion,  aiTextureType_AMBIENT_OCCLUSION, aiTextureType_LIGHTMAP);
-        load_material_texture(model, file_path, is_gltf, material, material_assimp, MaterialTexture::Emission,   aiTextureType_EMISSION_COLOR,    aiTextureType_EMISSIVE);
-        load_material_texture(model, file_path, is_gltf, material, material_assimp, MaterialTexture::Height,     aiTextureType_HEIGHT,            aiTextureType_NONE);
-        load_material_texture(model, file_path, is_gltf, material, material_assimp, MaterialTexture::AlphaMask,  aiTextureType_OPACITY,           aiTextureType_NONE);
+        load_material_texture(mesh, file_path, is_gltf, material, material_assimp, MaterialTexture::Color,      aiTextureType_BASE_COLOR,        aiTextureType_DIFFUSE);
+        load_material_texture(mesh, file_path, is_gltf, material, material_assimp, MaterialTexture::Roughness,  aiTextureType_DIFFUSE_ROUGHNESS, aiTextureType_SHININESS); // Use specular as fallback
+        load_material_texture(mesh, file_path, is_gltf, material, material_assimp, MaterialTexture::Metallness, aiTextureType_METALNESS,         aiTextureType_AMBIENT);   // Use ambient as fallback
+        load_material_texture(mesh, file_path, is_gltf, material, material_assimp, MaterialTexture::Normal,     aiTextureType_NORMAL_CAMERA,     aiTextureType_NORMALS);
+        load_material_texture(mesh, file_path, is_gltf, material, material_assimp, MaterialTexture::Occlusion,  aiTextureType_AMBIENT_OCCLUSION, aiTextureType_LIGHTMAP);
+        load_material_texture(mesh, file_path, is_gltf, material, material_assimp, MaterialTexture::Emission,   aiTextureType_EMISSION_COLOR,    aiTextureType_EMISSIVE);
+        load_material_texture(mesh, file_path, is_gltf, material, material_assimp, MaterialTexture::Height,     aiTextureType_HEIGHT,            aiTextureType_NONE);
+        load_material_texture(mesh, file_path, is_gltf, material, material_assimp, MaterialTexture::AlphaMask,  aiTextureType_OPACITY,           aiTextureType_NONE);
 
         material->SetProperty(MaterialProperty::SingleTextureRoughnessMetalness, static_cast<float>(is_gltf));
 
@@ -347,9 +348,9 @@ namespace Spartan
         m_context->GetSubsystem<Settings>()->RegisterThirdPartyLib("Assimp", to_string(major) + "." + to_string(minor) + "." + to_string(rev), "https://github.com/assimp/assimp");
     }
 
-    bool ModelImporter::Load(Model* model, const string& file_path)
+    bool ModelImporter::Load(Mesh* mesh, const string& file_path)
     {
-        SP_ASSERT_MSG(model != nullptr, "Invalid parameter");
+        SP_ASSERT_MSG(mesh != nullptr, "Invalid parameter");
 
         if (!FileSystem::IsFile(file_path))
         {
@@ -360,7 +361,7 @@ namespace Spartan
         // Model params
         m_file_path = file_path;
         m_name      = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path);
-        m_model     = model;
+        m_mesh      = mesh;
         m_is_gltf   = FileSystem::GetExtensionFromFilePath(file_path) == ".gltf";
 
         // Set up the importer
@@ -390,8 +391,10 @@ namespace Spartan
             ParseNode(scene->mRootNode);
 
             // Update model geometry
-            model->UpdateGeometry();
-            model->OptimizeGeometry();
+            //mesh->Optimize();
+            mesh->ComputeAabb();
+            mesh->ComputeNormalizedScale();
+            mesh->CreateGpuBuffers();
         }
         else
         {
@@ -416,12 +419,11 @@ namespace Spartan
             const bool is_active = false;
             entity = m_world->EntityCreate(is_active);
 
-            m_model->SetRootEntity(entity);
+            m_mesh->SetRootEntity(entity);
         }
         else
         {
-            // Since the root entity is inactive, this doesn't have to.
-            const bool is_active = true;
+            const bool is_active = false;
             entity = m_world->EntityCreate(is_active);
         }
 
@@ -445,6 +447,11 @@ namespace Spartan
         if (node->mNumMeshes > 0)
         {
             PashMeshes(node, entity.get());
+        }
+
+        if (!is_root_node)
+        {
+            entity->SetActive(true);
         }
 
         // Process children
@@ -568,9 +575,10 @@ namespace Spartan
         const BoundingBox aabb = BoundingBox(vertices.data(), static_cast<uint32_t>(vertices.size()));
 
         // Add the mesh to the model
-        uint32_t index_offset;
-        uint32_t vertex_offset;
-        m_model->AppendGeometry(indices, vertices, &index_offset, &vertex_offset);
+        uint32_t index_offset  = 0;
+        uint32_t vertex_offset = 0;
+        m_mesh->AddIndices(indices, &index_offset);
+        m_mesh->AddVertices(vertices, &vertex_offset);
 
         // Add a renderable component to this entity
         Renderable* renderable = entity_parent->AddComponent<Renderable>();
@@ -583,7 +591,7 @@ namespace Spartan
             vertex_offset,
             static_cast<uint32_t>(vertices.size()),
             aabb,
-            m_model
+            m_mesh
         );
 
         // Material
@@ -593,9 +601,9 @@ namespace Spartan
             const aiMaterial* assimp_material = m_scene->mMaterials[assimp_mesh->mMaterialIndex];
 
             // Convert it and add it to the model
-            shared_ptr<Material> material = load_material(m_context, m_model, m_file_path, m_is_gltf, assimp_material);
+            shared_ptr<Material> material = load_material(m_context, m_mesh, m_file_path, m_is_gltf, assimp_material);
 
-            m_model->AddMaterial(material, entity_parent->GetPtrShared());
+            m_mesh->AddMaterial(material, entity_parent->GetPtrShared());
         }
 
         // Bones

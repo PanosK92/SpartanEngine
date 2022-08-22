@@ -23,7 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "MenuBar.h"
 #include "Toolbar.h"
 #include "Core/Settings.h"
-#include "Rendering/Model.h"
 #include "../WidgetsDeferred/FileDialog.h"
 #include "Profiler.h"
 #include "../Editor.h"

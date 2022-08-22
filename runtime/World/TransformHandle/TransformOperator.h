@@ -21,12 +21,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===========================
+//= INCLUDES =====================
 #include "TransformEnums.h"
 #include "TransformOperatorAxis.h"
 #include <memory>
-#include "../../Rendering/Model.h"
-//======================================
+#include "../../Rendering/Mesh.h"
+//================================
 
 namespace Spartan
 {
@@ -38,7 +38,6 @@ namespace Spartan
     class Entity;
     class Input;
     class Camera;
-    class Model;
     //=====================
 
     class SPARTAN_CLASS TransformOperator
@@ -52,7 +51,7 @@ namespace Spartan
         const Math::Vector3& GetColor(const Math::Vector3& axis) const;
         const RHI_VertexBuffer* GetVertexBuffer();
         const RHI_IndexBuffer* GetIndexBuffer();
-        bool HasModel() const { return m_axis_model != nullptr; }
+        bool MashMesh() const { return m_axis_mesh != nullptr; }
         bool IsEditing() const;
         bool IsHovered() const;
 
@@ -84,6 +83,6 @@ namespace Spartan
         Context* m_context                    = nullptr;
         Renderer* m_renderer                  = nullptr;
         Input* m_input                        = nullptr;
-        std::unique_ptr<Model> m_axis_model;
+        std::unique_ptr<Mesh> m_axis_mesh;
     };
 }

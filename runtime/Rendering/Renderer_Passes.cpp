@@ -22,7 +22,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ========================================
 #include "pch.h"
 #include "Renderer.h"
-#include "Model.h"
 #include "Grid.h"
 #include "Font/Font.h"
 #include "../Profiling/Profiler.h"
@@ -296,8 +295,8 @@ namespace Spartan
                         continue;
 
                     // Acquire geometry
-                    Model* model = renderable->GetModel();
-                    if (!model || !model->GetVertexBuffer() || !model->GetIndexBuffer())
+                    Mesh* mesh = renderable->GetMesh();
+                    if (!mesh || !mesh->GetVertexBuffer() || !mesh->GetIndexBuffer())
                         continue;
 
                     // Acquire material
@@ -344,8 +343,8 @@ namespace Spartan
                     }
 
                     // Bind geometry
-                    cmd_list->SetBufferIndex(model->GetIndexBuffer());
-                    cmd_list->SetBufferVertex(model->GetVertexBuffer());
+                    cmd_list->SetBufferIndex(mesh->GetIndexBuffer());
+                    cmd_list->SetBufferVertex(mesh->GetVertexBuffer());
 
                     // Set uber buffer with cascade transform
                     m_cb_uber_cpu.transform = entity->GetTransform()->GetMatrix() * view_projection;
@@ -451,8 +450,8 @@ namespace Spartan
                                     continue;
 
                                 // Get geometry
-                                Model* model = renderable->GetModel();
-                                if (!model || !model->GetVertexBuffer() || !model->GetIndexBuffer())
+                                Mesh* mesh = renderable->GetMesh();
+                                if (!mesh || !mesh->GetVertexBuffer() || !mesh->GetIndexBuffer())
                                     continue;
 
                                 // Skip objects outside of the view frustum
@@ -460,8 +459,8 @@ namespace Spartan
                                     continue;
 
                                 // Set geometry (will only happen if not already set)
-                                cmd_list->SetBufferIndex(model->GetIndexBuffer());
-                                cmd_list->SetBufferVertex(model->GetVertexBuffer());
+                                cmd_list->SetBufferIndex(mesh->GetIndexBuffer());
+                                cmd_list->SetBufferVertex(mesh->GetVertexBuffer());
 
                                 // Bind material textures
                                 cmd_list->SetTexture(RendererBindingsSrv::material_albedo,    material->GetTexture(MaterialTexture::Color));
@@ -513,7 +512,7 @@ namespace Spartan
         cmd_list->BeginTimeblock("depth_prepass");
 
         RHI_Texture* tex_depth = render_target(RendererTexture::Gbuffer_Depth).get();
-        const auto& entities = m_entities[RendererEntityType::GeometryOpaque];
+        const vector<Entity*> entities = m_entities[RendererEntityType::GeometryOpaque];
 
         // Define pipeline state
         static RHI_PipelineState pso;
@@ -537,7 +536,7 @@ namespace Spartan
             uint64_t currently_bound_geometry = 0;
             
             // Draw opaque
-            for (const auto& entity : entities)
+            for (const Entity* entity : entities)
             {
                 // Get renderable
                 Renderable* renderable = entity->GetRenderable();
@@ -550,8 +549,8 @@ namespace Spartan
                     continue;
 
                 // Get geometry
-                Model* model = renderable->GetModel();
-                if (!model || !model->GetVertexBuffer() || !model->GetIndexBuffer())
+                Mesh* mesh = renderable->GetMesh();
+                if (!mesh || !mesh->GetVertexBuffer() || !mesh->GetIndexBuffer())
                     continue;
 
                 // Get transform
@@ -564,11 +563,11 @@ namespace Spartan
                     continue;
             
                 // Bind geometry
-                if (currently_bound_geometry != model->GetObjectId())
+                if (currently_bound_geometry != mesh->GetObjectId())
                 {
-                    cmd_list->SetBufferIndex(model->GetIndexBuffer());
-                    cmd_list->SetBufferVertex(model->GetVertexBuffer());
-                    currently_bound_geometry = model->GetObjectId();
+                    cmd_list->SetBufferIndex(mesh->GetIndexBuffer());
+                    cmd_list->SetBufferVertex(mesh->GetVertexBuffer());
+                    currently_bound_geometry = mesh->GetObjectId();
                 }
 
                 // Bind alpha testing textures
@@ -645,10 +644,8 @@ namespace Spartan
         // Render
         cmd_list->BeginRenderPass();
         {
-            for (uint32_t i = 0; i < static_cast<uint32_t>(entities.size()); i++)
+            for (Entity* entity : entities)
             {
-                Entity* entity = entities[i];
-
                 // Get renderable
                 Renderable* renderable = entity->GetRenderable();
                 if (!renderable)
@@ -660,8 +657,8 @@ namespace Spartan
                     continue;
 
                 // Get geometry
-                Model* model = renderable->GetModel();
-                if (!model || !model->GetVertexBuffer() || !model->GetIndexBuffer())
+                Mesh* mesh = renderable->GetMesh();
+                if (!mesh || !mesh->GetVertexBuffer() || !mesh->GetIndexBuffer())
                     continue;
 
                 // Skip objects outside of the view frustum
@@ -669,8 +666,8 @@ namespace Spartan
                     continue;
 
                 // Set geometry (will only happen if not already set)
-                cmd_list->SetBufferIndex(model->GetIndexBuffer());
-                cmd_list->SetBufferVertex(model->GetVertexBuffer());
+                cmd_list->SetBufferIndex(mesh->GetIndexBuffer());
+                cmd_list->SetBufferVertex(mesh->GetVertexBuffer());
 
                 // Bind material
                 const bool firs_run = material_index == 0;
@@ -2191,8 +2188,8 @@ namespace Spartan
                 return;
 
             // Get geometry
-            const Model* model = renderable->GetModel();
-            if (!model || !model->GetVertexBuffer() || !model->GetIndexBuffer())
+            Mesh* mesh = renderable->GetMesh();
+            if (!mesh || !mesh->GetVertexBuffer() || !mesh->GetIndexBuffer())
                 return;
 
             // Acquire shaders
@@ -2233,8 +2230,8 @@ namespace Spartan
 
                 cmd_list->SetTexture(RendererBindingsSrv::gbuffer_depth, tex_depth);
                 cmd_list->SetTexture(RendererBindingsSrv::gbuffer_normal, tex_normal);
-                cmd_list->SetBufferVertex(model->GetVertexBuffer());
-                cmd_list->SetBufferIndex(model->GetIndexBuffer());
+                cmd_list->SetBufferVertex(mesh->GetVertexBuffer());
+                cmd_list->SetBufferIndex(mesh->GetIndexBuffer());
                 cmd_list->DrawIndexed(renderable->GetIndexCount(), renderable->GetIndexOffset(), renderable->GetVertexOffset());
                 cmd_list->EndRenderPass();
             }

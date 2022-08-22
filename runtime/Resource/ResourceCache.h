@@ -21,12 +21,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==================
+//= INCLUDES =================
 #include <unordered_map>
 #include "IResource.h"
 #include "../Core/Subsystem.h"
-#include "../Rendering/Model.h"
-//=============================
+//============================
 
 namespace Spartan
 {

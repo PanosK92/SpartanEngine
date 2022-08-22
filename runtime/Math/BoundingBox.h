@@ -28,7 +28,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-    class Mesh;
     struct RHI_Vertex_PosTexNorTan;
 
     namespace Math

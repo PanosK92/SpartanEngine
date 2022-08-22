@@ -28,12 +28,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Subsystem.h"
 #include "../Core/SpartanDefinitions.h"
 #include "../Math/Vector3.h"
+#include "../Rendering/Mesh.h"
 //=====================================
 
 namespace Spartan
 {
     //= FWD DECLARATIONS =
-    class Model;
     class Entity;
     class Light;
     class Input;
@@ -83,14 +83,14 @@ namespace Spartan
         std::vector<std::shared_ptr<Entity>> m_entities;
         std::string m_name;
         std::string m_file_path;
-        bool m_was_in_editor_mode                              = false;
-        bool m_resolve                                         = true;
-        std::shared_ptr<Model> m_default_model_sponza          = nullptr;
-        std::shared_ptr<Model> m_default_model_sponza_curtains = nullptr;
-        std::shared_ptr<Model> m_default_model_car             = nullptr;
-        std::shared_ptr<TransformHandle> m_transform_handle    = nullptr;
-        Input* m_input                                         = nullptr;
-        Profiler* m_profiler                                   = nullptr;
+        bool m_was_in_editor_mode                             = false;
+        bool m_resolve                                        = true;
+        std::shared_ptr<Mesh> m_default_model_sponza          = nullptr;
+        std::shared_ptr<Mesh> m_default_model_sponza_curtains = nullptr;
+        std::shared_ptr<Mesh> m_default_model_car             = nullptr;
+        std::shared_ptr<TransformHandle> m_transform_handle   = nullptr;
+        Input* m_input                                        = nullptr;
+        Profiler* m_profiler                                  = nullptr;
 
         // Sync primitives
         std::mutex m_entity_access_mutex;
