@@ -31,9 +31,9 @@ namespace Spartan
 {
     enum class ProgressType
     {
-        ModelImporter,
-        World,
-        ResourceCache
+        model_importing,
+        world_io,
+        resource_cache_io
     };
 
     class Progress

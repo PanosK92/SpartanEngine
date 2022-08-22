@@ -43,20 +43,20 @@ ProgressDialog::ProgressDialog(Editor* editor) : Widget(editor)
 void ProgressDialog::TickAlways()
 {
     // Determine if an operation is in progress
-    const bool is_loading_model = ProgressTracker::GetProgress(ProgressType::ModelImporter).IsLoading();
-    const bool is_loading_scene = ProgressTracker::GetProgress(ProgressType::World).IsLoading();
+    const bool is_loading_model = ProgressTracker::GetProgress(ProgressType::model_importing).IsLoading();
+    const bool is_loading_scene = ProgressTracker::GetProgress(ProgressType::world_io).IsLoading();
     const bool in_progress      = is_loading_model || is_loading_scene;
 
     // Acquire progress
     if (is_loading_model)
     {
-        m_progress       = ProgressTracker::GetProgress(ProgressType::ModelImporter).GetFraction();
-        m_progressStatus = ProgressTracker::GetProgress(ProgressType::ModelImporter).GetText();
+        m_progress       = ProgressTracker::GetProgress(ProgressType::model_importing).GetFraction();
+        m_progressStatus = ProgressTracker::GetProgress(ProgressType::model_importing).GetText();
     }
     else if (is_loading_scene)
     {
-        m_progress       = ProgressTracker::GetProgress(ProgressType::World).GetFraction();
-        m_progressStatus = ProgressTracker::GetProgress(ProgressType::World).GetText();
+        m_progress       = ProgressTracker::GetProgress(ProgressType::world_io).GetFraction();
+        m_progressStatus = ProgressTracker::GetProgress(ProgressType::world_io).GetText();
     }
 
     // Show only if an operation is in progress
