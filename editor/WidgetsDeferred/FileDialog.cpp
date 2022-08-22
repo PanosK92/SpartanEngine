@@ -315,8 +315,9 @@ void FileDialog::ShowMiddle()
                     // Image
                     {
                         // Compute thumbnail size
+                        RHI_Texture* texture    = item.GetTexture();
                         ImVec2 image_size_max   = ImVec2(rect_button.Max.x - rect_button.Min.x - style.FramePadding.x * 2.0f, rect_button.Max.y - rect_button.Min.y - style.FramePadding.y - label_height - 5.0f);
-                        ImVec2 image_size       = item.GetTexture() ? ImVec2(static_cast<float>(item.GetTexture()->GetWidth()), static_cast<float>(item.GetTexture()->GetHeight())) : image_size_max;
+                        ImVec2 image_size       = item.GetTexture() ? ImVec2(static_cast<float>(texture->GetWidth()), static_cast<float>(texture->GetHeight())) : image_size_max;
                         ImVec2 image_size_delta = ImVec2(0.0f, 0.0f);
 
                         // Scale the image size to fit the max available size while respecting it's aspect ratio
@@ -340,7 +341,10 @@ void FileDialog::ShowMiddle()
                             image_size_delta.y = image_size_max.y - image_size.y;
                         }
 
+                        // Position the image within the square border
                         ImGui::SetCursorScreenPos(ImVec2(rect_button.Min.x + style.FramePadding.x + image_size_delta.x * 0.5f, rect_button.Min.y + style.FramePadding.y + image_size_delta.y * 0.5f));
+
+                        // Draw the image
                         imgui_extension::image(item.GetTexture(), image_size);
                     }
 
