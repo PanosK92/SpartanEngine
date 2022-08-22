@@ -26,7 +26,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../ImGui/Source/imgui_internal.h"
 #include "../WidgetsDeferred/ButtonColorPicker.h"
 #include "Core/Engine.h"
-#include "Rendering/Model.h"
 #include "World/Entity.h"
 #include "World/Components/Transform.h"
 #include "World/Components/Renderable.h"

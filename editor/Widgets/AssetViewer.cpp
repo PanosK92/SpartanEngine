@@ -22,7 +22,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =============================
 #include "AssetViewer.h"
 #include "Properties.h"
-#include "Rendering/Model.h"
 #include "../WidgetsDeferred/FileDialog.h"
 //========================================
 
@@ -67,7 +66,7 @@ void AssetViewer::TickVisible()
         // Model
         if (FileSystem::IsSupportedModelFile(Widget_Assets_Statics::g_double_clicked_path_import_dialog))
         {
-            EditorHelper::Get().LoadModel(Widget_Assets_Statics::g_double_clicked_path_import_dialog);
+            EditorHelper::Get().LoadMesh(Widget_Assets_Statics::g_double_clicked_path_import_dialog);
             Widget_Assets_Statics::g_show_file_dialog_load = false;
         }
     }

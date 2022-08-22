@@ -21,7 +21,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ======================
 #include "IconProvider.h"
-#include "Rendering/Model.h"
 #include "Resource/ResourceCache.h"
 #include "RHI/RHI_Texture2D.h"
 #include "Threading/Threading.h"

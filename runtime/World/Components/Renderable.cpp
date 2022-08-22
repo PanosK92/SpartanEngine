@@ -26,9 +26,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../IO/FileStream.h"
 #include "../../Resource/ResourceCache.h"
 #include "../../RHI/RHI_Texture2D.h"
-#include "../../Rendering/Model.h"
 #include "../../RHI/RHI_Vertex.h"
-#include "../../Rendering/Geometry.h"
+#include "../Rendering/Geometry.h"
+#include "../Rendering/Mesh.h"
 //=======================================
 
 //= NAMESPACES ===============
@@ -40,7 +40,7 @@ namespace Spartan
 {
     inline void build(const DefaultGeometry type, Renderable* renderable)
     {    
-        Model* model = new Model(renderable->GetContext());
+        Mesh* mesh = new Mesh(renderable->GetContext());
         vector<RHI_Vertex_PosTexNorTan> vertices;
         vector<uint32_t> indices;
 
@@ -50,34 +50,37 @@ namespace Spartan
         if (type == DefaultGeometry::Cube)
         {
             Geometry::CreateCube(&vertices, &indices);
-            model->SetResourceFilePath(project_directory + "default_cube" + EXTENSION_MODEL);
+            mesh->SetResourceFilePath(project_directory + "default_cube" + EXTENSION_MODEL);
         }
         else if (type == DefaultGeometry::Quad)
         {
             Geometry::CreateQuad(&vertices, &indices);
-            model->SetResourceFilePath(project_directory + "default_quad" + EXTENSION_MODEL);
+            mesh->SetResourceFilePath(project_directory + "default_quad" + EXTENSION_MODEL);
         }
         else if (type == DefaultGeometry::Sphere)
         {
             Geometry::CreateSphere(&vertices, &indices);
-            model->SetResourceFilePath(project_directory + "default_sphere" + EXTENSION_MODEL);
+            mesh->SetResourceFilePath(project_directory + "default_sphere" + EXTENSION_MODEL);
         }
         else if (type == DefaultGeometry::Cylinder)
         {
             Geometry::CreateCylinder(&vertices, &indices);
-            model->SetResourceFilePath(project_directory + "default_cylinder" + EXTENSION_MODEL);
+            mesh->SetResourceFilePath(project_directory + "default_cylinder" + EXTENSION_MODEL);
         }
         else if (type == DefaultGeometry::Cone)
         {
             Geometry::CreateCone(&vertices, &indices);
-            model->SetResourceFilePath(project_directory + "default_cone" + EXTENSION_MODEL);
+            mesh->SetResourceFilePath(project_directory + "default_cone" + EXTENSION_MODEL);
         }
 
         if (vertices.empty() || indices.empty())
             return;
 
-        model->AppendGeometry(indices, vertices, nullptr, nullptr);
-        model->UpdateGeometry();
+        mesh->AddIndices(indices);
+        mesh->AddVertices(vertices);
+        mesh->ComputeAabb();
+        mesh->ComputeNormalizedScale();
+        mesh->CreateGpuBuffers();
 
         renderable->SetGeometry(
             "Default_Geometry",
@@ -86,7 +89,7 @@ namespace Spartan
             0,
             static_cast<uint32_t>(vertices.size()),
             BoundingBox(vertices.data(), static_cast<uint32_t>(vertices.size())),
-            model
+            mesh
         );
     }
 
@@ -95,12 +98,12 @@ namespace Spartan
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_material_default,        bool);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_material,                Material*);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_cast_shadows,            bool);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometryIndexOffset,     uint32_t);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometryIndexCount,      uint32_t);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometryVertexOffset,    uint32_t);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometryVertexCount,     uint32_t);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometry_index_offset,     uint32_t);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometry_index_count,      uint32_t);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometry_vertex_offset,    uint32_t);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometry_vertex_count,     uint32_t);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometry_name,           string);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_model,                   Model*);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_mesh,                    Mesh*);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_bounding_box,            BoundingBox);
         SP_REGISTER_ATTRIBUTE_GET_SET(DefaultGeometry, SetGeometry,  DefaultGeometry);
     }
@@ -109,12 +112,12 @@ namespace Spartan
     {
         // Mesh
         stream->Write(static_cast<uint32_t>(m_geometry_type));
-        stream->Write(m_geometryIndexOffset);
-        stream->Write(m_geometryIndexCount);
-        stream->Write(m_geometryVertexOffset);
-        stream->Write(m_geometryVertexCount);
+        stream->Write(m_geometry_index_offset);
+        stream->Write(m_geometry_index_count);
+        stream->Write(m_geometry_vertex_offset);
+        stream->Write(m_geometry_vertex_count);
         stream->Write(m_bounding_box);
-        stream->Write(m_model ? m_model->GetResourceName() : "");
+        stream->Write(m_mesh ? m_mesh->GetResourceName() : "");
 
         // Material
         stream->Write(m_cast_shadows);
@@ -129,14 +132,14 @@ namespace Spartan
     {
         // Geometry
         m_geometry_type         = static_cast<DefaultGeometry>(stream->ReadAs<uint32_t>());
-        m_geometryIndexOffset   = stream->ReadAs<uint32_t>();
-        m_geometryIndexCount    = stream->ReadAs<uint32_t>();
-        m_geometryVertexOffset  = stream->ReadAs<uint32_t>();
-        m_geometryVertexCount   = stream->ReadAs<uint32_t>();
+        m_geometry_index_offset   = stream->ReadAs<uint32_t>();
+        m_geometry_index_count    = stream->ReadAs<uint32_t>();
+        m_geometry_vertex_offset  = stream->ReadAs<uint32_t>();
+        m_geometry_vertex_count   = stream->ReadAs<uint32_t>();
         stream->Read(&m_bounding_box);
         string model_name;
         stream->Read(&model_name);
-        m_model = m_context->GetSubsystem<ResourceCache>()->GetByName<Model>(model_name).get();
+        m_mesh = m_context->GetSubsystem<ResourceCache>()->GetByName<Mesh>(model_name).get();
 
         // If it was a default mesh, we have to reconstruct it
         if (m_geometry_type != DefaultGeometry::Undefined)
@@ -159,21 +162,21 @@ namespace Spartan
         }
     }
 
-    void Renderable::SetGeometry(const string& name, const uint32_t index_offset, const uint32_t index_count, const uint32_t vertex_offset, const uint32_t vertex_count, const BoundingBox& bounding_box, Model* model)
+    void Renderable::SetGeometry(const string& name, const uint32_t index_offset, const uint32_t index_count, const uint32_t vertex_offset, const uint32_t vertex_count, const BoundingBox& bounding_box, Mesh* mesh)
     {
         // Terrible way to delete previous geometry in case it's a default one
         if (m_geometry_name == "Default_Geometry")
         {
-            delete m_model;
+            delete m_mesh;
         }
 
-        m_geometry_name         = name;
-        m_geometryIndexOffset  = index_offset;
-        m_geometryIndexCount   = index_count;
-        m_geometryVertexOffset = vertex_offset;
-        m_geometryVertexCount  = vertex_count;
+        m_geometry_name        = name;
+        m_geometry_index_offset  = index_offset;
+        m_geometry_index_count   = index_count;
+        m_geometry_vertex_offset = vertex_offset;
+        m_geometry_vertex_count  = vertex_count;
         m_bounding_box         = bounding_box;
-        m_model                = model;
+        m_mesh                 = mesh;
     }
 
     void Renderable::SetGeometry(const DefaultGeometry type)
@@ -193,13 +196,8 @@ namespace Spartan
 
     void Renderable::GetGeometry(vector<uint32_t>* indices, vector<RHI_Vertex_PosTexNorTan>* vertices) const
     {
-        if (!m_model)
-        {
-            LOG_ERROR("Invalid model");
-            return;
-        }
-
-        m_model->GetGeometry(m_geometryIndexOffset, m_geometryIndexCount, m_geometryVertexOffset, m_geometryVertexCount, indices, vertices);
+        SP_ASSERT_MSG(m_mesh != nullptr, "Invalid mesh");
+        m_mesh->GetGeometry(m_geometry_index_offset, m_geometry_index_count, m_geometry_vertex_offset, m_geometry_vertex_count, indices, vertices);
     }
 
     const BoundingBox& Renderable::GetAabb()

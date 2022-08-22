@@ -22,86 +22,86 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES =====================
-#include <memory>
 #include <vector>
 #include "Material.h"
-#include "../RHI/RHI_Definition.h"
 #include "../Resource/IResource.h"
 #include "../Math/BoundingBox.h"
+#include "../RHI/RHI_Vertex.h"
 //================================
 
 namespace Spartan
 {
-    class ResourceCache;
-    class Entity;
-    class Mesh;
-
-    class SPARTAN_CLASS Model : public IResource, public std::enable_shared_from_this<Model>
+    class Mesh : public IResource
     {
     public:
-        Model(Context* context);
-        ~Model();
+        Mesh(Context* context);
+        ~Mesh() = default;
 
-        void Clear();
-
-        //= IResource ===========================================
+        // IResource
         bool LoadFromFile(const std::string& file_path) override;
         bool SaveToFile(const std::string& file_path) override;
-        //=======================================================
 
         // Geometry
-        void AppendGeometry(
-            const std::vector<uint32_t>& indices,
-            const std::vector<RHI_Vertex_PosTexNorTan>& vertices,
-            uint32_t* index_offset  = nullptr,
-            uint32_t* vertex_offset = nullptr
-        ) const;
+        void Clear();
         void GetGeometry(
-            uint32_t index_offset,
-            uint32_t index_count,
-            uint32_t vertex_offset,
-            uint32_t vertex_count,
+            uint32_t indexOffset,
+            uint32_t indexCount,
+            uint32_t vertexOffset,
+            uint32_t vertexCount,
             std::vector<uint32_t>* indices,
             std::vector<RHI_Vertex_PosTexNorTan>* vertices
-        ) const;
+        );
+        uint32_t GetMemoryUsage() const;
 
-        void UpdateGeometry();
-        void OptimizeGeometry();
+        // Add geometry
+        void AddVertices(const std::vector<RHI_Vertex_PosTexNorTan>& vertices, uint32_t* vertex_offset_out = nullptr);
+        void AddIndices(const std::vector<uint32_t>& indices, uint32_t* index_offset_out = nullptr);
 
-        const auto& GetAabb() const { return m_aabb; }
-        const auto& GetMesh() const { return m_mesh; }
+        // Get geometry
+        std::vector<RHI_Vertex_PosTexNorTan>& GetVertices() { return m_vertices; }
+        std::vector<uint32_t>& GetIndices()                 { return m_indices; }
 
-        // Entities
+        // Get counts
+        uint32_t GetVertexCount() const;
+        uint32_t GetIndexCount() const;
+
+        // AABB
+        const Math::BoundingBox& GetAabb() const { return m_aabb; }
+        void ComputeAabb();
+
+        // GPU buffers
+        void CreateGpuBuffers();
+        RHI_IndexBuffer* GetIndexBuffer()   { return m_index_buffer.get(); }
+        RHI_VertexBuffer* GetVertexBuffer() { return m_vertex_buffer.get(); }
+
+        // Root entity
         Entity* GetRootEntity() { return m_root_entity.lock().get(); }
+        void SetRootEntity(std::shared_ptr<Entity>& entity) { m_root_entity = entity; }
 
-        // Add resources to the model
-        void SetRootEntity(const std::shared_ptr<Entity>& entity) { m_root_entity = entity; }
+        // Misc
+        float ComputeNormalizedScale();
+        void Optimize();
         void AddMaterial(std::shared_ptr<Material>& material, const std::shared_ptr<Entity>& entity) const;
         void AddTexture(std::shared_ptr<Material>& material, MaterialTexture texture_type, const std::string& file_path, bool is_gltf);
 
-        // Misc
-        bool IsAnimated()                         const { return m_is_animated; }
-        void SetAnimated(const bool is_animated)        { m_is_animated = is_animated; }
-        const RHI_IndexBuffer* GetIndexBuffer()   const { return m_index_buffer.get(); }
-        const RHI_VertexBuffer* GetVertexBuffer() const { return m_vertex_buffer.get(); }
-        auto GetSharedPtr()                             { return shared_from_this(); }
-
     private:
         // Geometry
-        void GeometryCreateBuffers();
-        float GeometryComputeNormalizedScale() const;
+        std::vector<RHI_Vertex_PosTexNorTan> m_vertices;
+        std::vector<uint32_t> m_indices;
+
+        // GPU buffers
+        std::shared_ptr<RHI_VertexBuffer> m_vertex_buffer;
+        std::shared_ptr<RHI_IndexBuffer> m_index_buffer;
+
+        // AABB
+        Math::BoundingBox m_aabb;
+
+        // Sync primitives
+        std::mutex m_mutex_add_indices;
+        std::mutex m_mutex_add_verices;
 
         // Misc
         std::weak_ptr<Entity> m_root_entity;
-        std::shared_ptr<RHI_VertexBuffer> m_vertex_buffer;
-        std::shared_ptr<RHI_IndexBuffer> m_index_buffer;
-        std::shared_ptr<Mesh> m_mesh;
-        Math::BoundingBox m_aabb;
-        float m_normalized_scale = 1.0f;
-        bool m_is_animated       = false;
-
-        // Dependencies
-        ResourceCache* m_resource_manager;
-        std::shared_ptr<RHI_Device> m_rhi_device;
+        float m_normalized_scale = 0.0f;
     };
 }

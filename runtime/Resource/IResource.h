@@ -40,7 +40,6 @@ namespace Spartan
         Audio,
         Material,
         Mesh,
-        Model,
         Cubemap,
         Animation,
         Font,

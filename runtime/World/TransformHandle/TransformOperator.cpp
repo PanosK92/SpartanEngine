@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../World/Components/Camera.h"
 #include "../../World/Components/Transform.h"
 #include "../../World/Components/Renderable.h"
-#include "../../Rendering/Model.h"
+#include "../../Rendering/Mesh.h"
 #include "../../Rendering/Renderer.h"
 //============================================
 
@@ -202,12 +202,12 @@ namespace Spartan
 
     const RHI_VertexBuffer* TransformOperator::GetVertexBuffer()
     {
-        return m_axis_model ? m_axis_model->GetVertexBuffer() : nullptr;
+        return m_axis_mesh? m_axis_mesh->GetVertexBuffer() : nullptr;
     }
 
     const RHI_IndexBuffer* TransformOperator::GetIndexBuffer()
     {
-        return m_axis_model ? m_axis_model->GetIndexBuffer() : nullptr;
+        return m_axis_mesh ? m_axis_mesh->GetIndexBuffer() : nullptr;
     }
 
     bool TransformOperator::IsEditing() const

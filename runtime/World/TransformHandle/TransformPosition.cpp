@@ -19,14 +19,14 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ========================
+//= INCLUDES =======================
 #include "pch.h"
 #include "TransformPosition.h"
 #include "../Components/Camera.h"
 #include "../Components/Transform.h"
-#include "../../Rendering/Model.h"
-#include "../../Rendering/Geometry.h"
-//===================================
+#include "../Rendering/Geometry.h"
+#include "../Rendering/Mesh.h"
+//==================================
 
 //= NAMESPACES ===============
 using namespace std;
@@ -43,9 +43,11 @@ namespace Spartan
 
         Geometry::CreateCone(&vertices, &indices);
 
-        m_axis_model = make_unique<Model>(m_context);
-        m_axis_model->AppendGeometry(indices, vertices);
-        m_axis_model->UpdateGeometry();
+        m_axis_mesh = make_unique<Mesh>(m_context);
+        m_axis_mesh->AddIndices(indices);
+        m_axis_mesh->AddVertices(vertices);
+        m_axis_mesh->CreateGpuBuffers();
+        m_axis_mesh->ComputeAabb();
 
         // Create an axis for each axis of control and fourth axis which control all of them
         m_handle_x = TransformOperatorAxis(m_type, Vector3::Right, m_context);

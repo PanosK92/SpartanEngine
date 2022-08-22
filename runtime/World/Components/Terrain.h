@@ -29,7 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-    class Model;
+    class Mesh;
     namespace Math
     {
         class Vector3;
@@ -65,21 +65,21 @@ namespace Spartan
         bool GeneratePositions(std::vector<Math::Vector3>& positions, const std::vector<std::byte>& height_map);
         bool GenerateVerticesIndices(const std::vector<Math::Vector3>& positions, std::vector<uint32_t>& indices, std::vector<RHI_Vertex_PosTexNorTan>& vertices);
         bool GenerateNormalTangents(const std::vector<uint32_t>& indices, std::vector<RHI_Vertex_PosTexNorTan>& vertices);
-        void UpdateFromModel(const std::shared_ptr<Model>& model) const;
+        void UpdateFromMesh(const std::shared_ptr<Mesh>& mesh) const;
         void UpdateFromVertices(const std::vector<uint32_t>& indices, std::vector<RHI_Vertex_PosTexNorTan>& vertices);
 
-        uint32_t m_width                            = 0;
-        uint32_t m_height                           = 0;
-        float m_min_y                               = 0.0f;
-        float m_max_y                               = 30.0f;
-        float m_vertex_density                      = 1.0f;
-        std::atomic<bool> m_is_generating           = false;
-        uint64_t m_vertex_count                     = 0;
-        uint64_t m_face_count                       = 0;
-        std::atomic<uint64_t> m_progress_jobs_done  = 0;
-        uint64_t m_progress_job_count               = 1; // avoid devision by zero in GetProgress()
+        uint32_t m_width                           = 0;
+        uint32_t m_height                          = 0;
+        float m_min_y                              = 0.0f;
+        float m_max_y                              = 30.0f;
+        float m_vertex_density                     = 1.0f;
+        std::atomic<bool> m_is_generating          = false;
+        uint64_t m_vertex_count                    = 0;
+        uint64_t m_face_count                      = 0;
+        std::atomic<uint64_t> m_progress_jobs_done = 0;
+        uint64_t m_progress_job_count              = 1; // avoid devision by zero in GetProgress()
         std::string m_progress_desc;
         std::shared_ptr<RHI_Texture2D> m_height_map;
-        std::shared_ptr<Model> m_model;
+        std::shared_ptr<Mesh> m_mesh;
     };
 }

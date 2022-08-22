@@ -29,7 +29,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Core/Engine.h"
 #include "RHI/RHI_RenderDoc.h"
 #include "Rendering/Renderer.h"
-#include "Rendering/Model.h"
 #include "../Editor.h"
 #include "../ImGui/ImGuiExtension.h"
 //==================================

@@ -26,7 +26,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Editor.h"
 #include "../ImGui/ImGuiExtension.h"
 #include "../ImGui/Source/imgui_stdlib.h"
-#include "Rendering/Model.h"
 #include "World/Entity.h"
 #include "World/Components/Transform.h"
 #include "World/Components/Light.h"

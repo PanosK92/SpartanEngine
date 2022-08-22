@@ -30,7 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-    class Model;
+    class Mesh;
     class Mesh;
     class Light;
     class Material;
@@ -59,7 +59,7 @@ namespace Spartan
         void Serialize(FileStream* stream) override;
         void Deserialize(FileStream* stream) override;
 
-        //= GEOMETRY ==========================================================================================
+        // Set geometry
         void SetGeometry(
             const std::string& name,
             uint32_t index_offset,
@@ -67,21 +67,24 @@ namespace Spartan
             uint32_t vertex_offset,
             uint32_t vertex_count,
             const Math::BoundingBox& aabb, 
-            Model* model
+            Mesh* mesh
         );
         void SetGeometry(DefaultGeometry type);
+
+        // Get geometry
         void GetGeometry(std::vector<uint32_t>* indices, std::vector<RHI_Vertex_PosTexNorTan>* vertices) const;
-        uint32_t GetIndexOffset()                 const { return m_geometryIndexOffset; }
-        uint32_t GetIndexCount()                  const { return m_geometryIndexCount; }
-        uint32_t GetVertexOffset()                const { return m_geometryVertexOffset; }
-        uint32_t GetVertexCount()                 const { return m_geometryVertexCount; }
+
+        // Properties
+        uint32_t GetIndexOffset()                 const { return m_geometry_index_offset; }
+        uint32_t GetIndexCount()                  const { return m_geometry_index_count; }
+        uint32_t GetVertexOffset()                const { return m_geometry_vertex_offset; }
+        uint32_t GetVertexCount()                 const { return m_geometry_vertex_count; }
         DefaultGeometry GetGeometryType()         const { return m_geometry_type; }
         const std::string& GetGeometryName()      const { return m_geometry_name; }
-        Model* GetModel()                         const { return m_model; }
+        Mesh* GetMesh()                           const { return m_mesh; }
         const Math::BoundingBox& GetBoundingBox() const { return m_bounding_box; }
         const Math::BoundingBox& GetAabb();
         void Clear();
-        //=====================================================================================================
 
         //= MATERIAL ====================================================================
         // Sets a material from memory (adds it to the resource cache by default)
@@ -96,21 +99,21 @@ namespace Spartan
         auto HasMaterial()            const { return m_material != nullptr; }
         //===============================================================================
 
-        // Can cast shadows ?
+        // Shadows
         void SetCastShadows(const bool cast_shadows) { m_cast_shadows = cast_shadows; }
         auto GetCastShadows() const                  { return m_cast_shadows; }
 
     private:
-        uint32_t m_geometryIndexOffset  = 0;
-        uint32_t m_geometryIndexCount   = 0;
-        uint32_t m_geometryVertexOffset = 0;
-        uint32_t m_geometryVertexCount  = 0;
-        DefaultGeometry m_geometry_type = DefaultGeometry::Undefined;
-        Math::Matrix m_last_transform   = Math::Matrix::Identity;
-        bool m_cast_shadows             = true;
-        bool m_material_default         = false;
-        Model* m_model                  = nullptr;
-        Material* m_material            = nullptr;
+        uint32_t m_geometry_index_offset  = 0;
+        uint32_t m_geometry_index_count   = 0;
+        uint32_t m_geometry_vertex_offset = 0;
+        uint32_t m_geometry_vertex_count  = 0;
+        DefaultGeometry m_geometry_type   = DefaultGeometry::Undefined;
+        Math::Matrix m_last_transform     = Math::Matrix::Identity;
+        bool m_cast_shadows               = true;
+        bool m_material_default           = false;
+        Mesh* m_mesh                      = nullptr;
+        Material* m_material              = nullptr;
         Math::BoundingBox m_bounding_box;
         Math::BoundingBox m_aabb;
         std::string m_geometry_name;

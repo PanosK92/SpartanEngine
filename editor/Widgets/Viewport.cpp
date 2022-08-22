@@ -23,7 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Viewport.h"
 #include "Core/Timer.h"
 #include "Core/Settings.h"
-#include "Rendering/Model.h"
 #include "Rendering/Renderer.h"
 #include "../ImGui/ImGuiExtension.h"
 //==================================
@@ -89,6 +88,6 @@ void Viewport::TickVisible()
     // Handle model drop
     if (auto payload = imgui_extension::receive_drag_drop_payload(imgui_extension::DragPayloadType::DragPayload_Model))
     {
-        EditorHelper::Get().LoadModel(get<const char*>(payload->data));
+        EditorHelper::Get().LoadMesh(get<const char*>(payload->data));
     }
 }

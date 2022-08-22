@@ -19,17 +19,18 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ============================
+//= INCLUDES =========================
 #include "pch.h"
 #include "IResource.h"
 #include "../Audio/AudioClip.h"
-#include "../Rendering/Model.h"
-#include "../Rendering/Font/Font.h"
-#include "../Rendering/Animation.h"
 #include "../RHI/RHI_Texture2D.h"
 #include "../RHI/RHI_Texture2DArray.h"
 #include "../RHI/RHI_TextureCube.h"
-//=======================================
+#include "../Rendering/Material.h"
+#include "../Rendering/Font/Font.h"
+#include "../Rendering/Animation.h"
+#include "../Rendering/Mesh.h"
+//====================================
 
 //= NAMESPACES ==========
 using namespace std;
@@ -58,6 +59,6 @@ INSTANTIATE_TO_RESOURCE_TYPE(RHI_Texture2DArray,    ResourceType::Texture2dArray
 INSTANTIATE_TO_RESOURCE_TYPE(RHI_TextureCube,       ResourceType::TextureCube)
 INSTANTIATE_TO_RESOURCE_TYPE(AudioClip,             ResourceType::Audio)
 INSTANTIATE_TO_RESOURCE_TYPE(Material,              ResourceType::Material)
-INSTANTIATE_TO_RESOURCE_TYPE(Model,                 ResourceType::Model)
 INSTANTIATE_TO_RESOURCE_TYPE(Animation,             ResourceType::Animation)
 INSTANTIATE_TO_RESOURCE_TYPE(Font,                  ResourceType::Font)
+INSTANTIATE_TO_RESOURCE_TYPE(Mesh,                  ResourceType::Mesh)
