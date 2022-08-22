@@ -23,6 +23,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 //====================
 
+//==========================================================================================
+// REINHARD
+//==========================================================================================
 float3 uncharted_2(float3 x)
 {
     float A = 0.15;
@@ -35,12 +38,19 @@ float3 uncharted_2(float3 x)
     return ((x * (A * x + C * B) + D * E) / (x * (A * x + B) + D * F)) - E / F;
 }
 
-//== ACESFitted ===========================
+//==========================================================================================
+// REINHARD
+//==========================================================================================
+float3 reinhard(float3 hdr, float k = 1.0f) { return hdr / (hdr + k); }
+
+//==========================================================================================
+// ACES
+//==========================================================================================
+
 //  Baking Lab
 //  by MJP and David Neubelt
 //  http://mynameismjp.wordpress.com/
 //  All code licensed under the MIT license
-//=========================================
 
 // sRGB => XYZ => D65_2_D60 => AP1 => RRT_SAT
 static const float3x3 aces_mat_input =
@@ -65,7 +75,7 @@ float3 RRTAndODTFit(float3 v)
     return a / b;
 }
 
-float3 aces_fitted(float3 color)
+float3 aces(float3 color)
 {
     color = mul(aces_mat_input, color);
 
@@ -80,6 +90,10 @@ float3 aces_fitted(float3 color)
     return color;
 }
 
+//==========================================================================================
+// MATRIX
+//==========================================================================================
+
 float3 matrix_movie(float3 keannu)
 {
     static const float pow_a = 3.0f / 2.0f;
@@ -88,34 +102,82 @@ float3 matrix_movie(float3 keannu)
     return float3(pow(abs(keannu.r), pow_a), pow(abs(keannu.g), pow_b), pow(abs(keannu.b), pow_a));
 }
 
-float3 tone_map(float3 color)
-{
-    if (g_toneMapping == 0) // OFF
-    {
-        // Do nothing
-    }
-    else if (g_toneMapping == 1) // ACES
-    {
-        // attempting to match contrast levels
-        color = pow(abs(color),  0.75f);
-        color *= 1.07f;
+//==========================================================================================
+// AMD
+//==========================================================================================
 
-        color = aces_fitted(color);
-    }
-    else if (g_toneMapping == 2) // REINHARD
-    {
-        color = reinhard(color);
-    }
-    else if (g_toneMapping == 3) // UNCHARTED 2
-    {
-        color = uncharted_2(color);
-    }
-    else if (g_toneMapping == 4) // MATRIX
-    {
-        color = matrix_movie(color);
-    }
-    
+// General tonemapping operator, build 'b' term.
+float ColToneB(float hdrMax, float contrast, float shoulder, float midIn, float midOut)
+{
+    return
+        -((-pow(midIn, contrast) + (midOut * (pow(hdrMax, contrast * shoulder) * pow(midIn, contrast) -
+            pow(hdrMax, contrast) * pow(midIn, contrast * shoulder) * midOut)) /
+            (pow(hdrMax, contrast * shoulder) * midOut - pow(midIn, contrast * shoulder) * midOut)) /
+            (pow(midIn, contrast * shoulder) * midOut));
+}
+
+// General tonemapping operator, build 'c' term.
+float ColToneC(float hdrMax, float contrast, float shoulder, float midIn, float midOut)
+{
+    return (pow(hdrMax, contrast * shoulder) * pow(midIn, contrast) - pow(hdrMax, contrast) * pow(midIn, contrast * shoulder) * midOut) /
+        (pow(hdrMax, contrast * shoulder) * midOut - pow(midIn, contrast * shoulder) * midOut);
+}
+
+// General tonemapping operator, p := {contrast,shoulder,b,c}.
+float ColTone(float x, float4 p)
+{
+    float z = pow(x, p.r);
+    return z / (pow(z, p.g) * p.b + p.a);
+}
+
+float3 amd(float3 color)
+{
+    const float hdrMax   = 16.0; // How much HDR range before clipping. HDR modes likely need this pushed up to say 25.0.
+    const float contrast = 2.0;  // Use as a baseline to tune the amount of contrast the tonemapper has.
+    const float shoulder = 1.0;  // Likely don’t need to mess with this factor, unless matching existing tonemapper is not working well..
+    const float midIn    = 0.18; // most games will have a {0.0 to 1.0} range for LDR so midIn should be 0.18.
+    const float midOut   = 0.18; // Use for LDR. For HDR10 10:10:10:2 use maybe 0.18/25.0 to start. For scRGB, I forget what a good starting point is, need to re-calculate.
+
+    float b = ColToneB(hdrMax, contrast, shoulder, midIn, midOut);
+    float c = ColToneC(hdrMax, contrast, shoulder, midIn, midOut);
+
+    float peak = max(color.r, max(color.g, color.b));
+    peak = max(FLT_MIN, peak);
+
+    float3 ratio = color / peak;
+    peak = ColTone(peak, float4(contrast, shoulder, b, c));
+    // then process ratio
+
+    // probably want send these pre-computed (so send over saturation/crossSaturation as a constant)
+    float crosstalk       = 4.0; // controls amount of channel crosstalk
+    float saturation      = contrast; // full tonal range saturation control
+    float crossSaturation = contrast * 16.0; // crosstalk saturation
+
+    float white = 1.0;
+
+    // wrap crosstalk in transform
+    float ratio_temp = saturation / crossSaturation;
+    float pow_temp   = pow(peak, crosstalk);
+    ratio            = pow(abs(ratio), float3(ratio_temp, ratio_temp, ratio_temp));
+    ratio            = lerp(ratio, float3(white, white, white), float3(pow_temp, pow_temp, pow_temp));
+    ratio            = pow(abs(ratio), float3(crossSaturation, crossSaturation, crossSaturation));
+
+    // then apply ratio to peak
+    color = peak * ratio;
     return color;
+}
+
+float3 tonemap(float3 color)
+{
+    switch (g_toneMapping)
+    {
+        case 0: return amd(color);
+        case 1: return aces(color);
+        case 2: return reinhard(color);
+        case 3: return uncharted_2(color);
+        case 4: return matrix_movie(color);
+        default: return color;
+    }
 }
 
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
@@ -127,5 +189,5 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 
     // Tone map and gamma correct
     float4 color = tex[thread_id.xy];
-    tex_uav[thread_id.xy] = float4(gamma(tone_map(color.rgb)), color.a);
+    tex_uav[thread_id.xy] = float4(gamma(tonemap(color.rgb)), color.a);
 }

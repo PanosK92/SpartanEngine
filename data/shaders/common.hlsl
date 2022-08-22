@@ -583,12 +583,6 @@ float draw_circle_view_space(float3 origin, float radius, float2 uv)
 }
 
 /*------------------------------------------------------------------------------
-                                  TONEMAPPING
-------------------------------------------------------------------------------*/
-float3 reinhard(float3 hdr, float k = 1.0f) { return hdr / (hdr + k); }
-float3 reinhard_inverse(float3 sdr, float k = 1.0) { return k * sdr / (k - sdr); }
-
-/*------------------------------------------------------------------------------
     MISC
 ------------------------------------------------------------------------------*/
 float3 compute_diffuse_energy(float3 F, float metallic)
