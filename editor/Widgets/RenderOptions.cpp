@@ -347,7 +347,7 @@ void RenderOptions::TickVisible()
             if (helper::Option("Camera"))
             {
                 // Tonemapping
-                static vector<string> tonemapping_options = { "Off", "ACES", "Reinhard", "Uncharted 2", "Matrix"};
+                static vector<string> tonemapping_options = { "AMD", "ACES", "Reinhard", "Uncharted 2", "Matrix", "Off" };
                 uint32_t selection_index = m_renderer->GetOption<uint32_t>(RendererOption::Tonemapping);
                 if (helper::ComboBox("Tonemapping", tonemapping_options, selection_index))
                 {

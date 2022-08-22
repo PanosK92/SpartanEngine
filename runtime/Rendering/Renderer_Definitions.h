@@ -74,10 +74,12 @@ namespace Spartan
 
     enum class TonemappingMode : uint32_t
     {
-        Disabled,
+        Amd,
         Aces,
         Reinhard,
-        Uncharted2
+        Uncharted2,
+        Matrix,
+        Disabled,
     };
 
     enum class UpsamplingMode : uint32_t
