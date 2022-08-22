@@ -144,8 +144,7 @@ namespace Spartan
         std::mutex m_mutex_vma_texture;
 
         // Immediate context
-        std::shared_ptr<RHI_CommandPool> m_immediate_cmd_pool_graphics;
-        std::shared_ptr<RHI_CommandPool> m_immediate_cmd_pool_copy;
+        std::array<std::shared_ptr<RHI_CommandPool>, 3> m_immediate_cmd_pools;
         std::mutex m_immediate_mutex;
 
         // Misc

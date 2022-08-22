@@ -44,14 +44,14 @@ namespace Spartan
     class SPARTAN_CLASS RHI_CommandList : public SpartanObject
     {
     public:
-        RHI_CommandList(Context* context, const RHI_Queue_Type queue_type, void* cmd_pool_resource, const char* name);
+        RHI_CommandList(Context* context, const RHI_Queue_Type queue_type, const uint32_t index, void* cmd_pool_resource, const char* name);
         ~RHI_CommandList();
 
         void Begin();
         void End();
         void Submit();
         // Waits for the command list to finish being processed.
-        void Wait();
+        void Wait(const bool log_on_wait = true);
         // Causes the command list to ignore one submission call (useful when the command list refers to resources which have been destroyed).
         void Discard();
 
@@ -139,6 +139,7 @@ namespace Spartan
 
         // Misc
         void* GetRhiResource() const { return m_rhi_resource; }
+        uint32_t GetIndex()    const { return m_index; }
 
     private:
         void OnDraw();
@@ -159,6 +160,7 @@ namespace Spartan
         static const uint8_t m_resource_array_length_max = 16;
         static bool m_memory_query_support;
         std::mutex m_mutex_reset;
+        uint32_t m_index = 0;
 
         // Sync
         std::shared_ptr<RHI_Fence> m_proccessed_fence;

@@ -169,28 +169,16 @@ namespace Spartan
     {
         m_immediate_mutex.lock();
 
-        if (!m_immediate_cmd_pool_graphics)
+        // Create command pool for the given queue type, if needed.
+        uint32_t queue_index = static_cast<uint32_t>(queue_type);
+        if (!m_immediate_cmd_pools[queue_index])
         {
-            m_immediate_cmd_pool_graphics = make_shared<RHI_CommandPool>(this, "immediate_graphics", 0);
-            m_immediate_cmd_pool_graphics->AllocateCommandLists(RHI_Queue_Type::Graphics, 1, 1);
-
-            m_immediate_cmd_pool_copy = make_shared<RHI_CommandPool>(this, "immediate_copy", 0);
-            m_immediate_cmd_pool_copy->AllocateCommandLists(RHI_Queue_Type::Copy, 1, 1);
+            m_immediate_cmd_pools[queue_index] = make_shared<RHI_CommandPool>(this, "immediate", 0);
+            m_immediate_cmd_pools[queue_index]->AllocateCommandLists(queue_type, 1, 1);
         }
 
-        RHI_CommandPool* cmd_pool = nullptr;
-        if (queue_type == RHI_Queue_Type::Graphics)
-        {
-            cmd_pool = m_immediate_cmd_pool_graphics.get();
-        }
-        else if (queue_type == RHI_Queue_Type::Copy)
-        {
-            cmd_pool = m_immediate_cmd_pool_copy.get();
-        }
-        else if (queue_type == RHI_Queue_Type::Compute)
-        {
-            SP_ASSERT_MSG(false, "Not implemented");
-        }
+        //  Get command pool
+        RHI_CommandPool* cmd_pool = m_immediate_cmd_pools[queue_index].get();
 
         cmd_pool->Step();
         cmd_pool->GetCurrentCommandList()->Begin();
@@ -201,7 +189,10 @@ namespace Spartan
     {
         cmd_list->End();
         cmd_list->Submit();
-        cmd_list->Wait();
+
+        // Don't log if it waits, since it's always expected to wait.
+        bool log_on_wait = false;
+        cmd_list->Wait(log_on_wait);
 
         m_immediate_mutex.unlock();
     }
