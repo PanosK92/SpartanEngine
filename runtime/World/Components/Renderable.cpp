@@ -98,10 +98,10 @@ namespace Spartan
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_material_default,        bool);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_material,                Material*);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_cast_shadows,            bool);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometry_index_offset,     uint32_t);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometry_index_count,      uint32_t);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometry_vertex_offset,    uint32_t);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometry_vertex_count,     uint32_t);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometry_index_offset,   uint32_t);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometry_index_count,    uint32_t);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometry_vertex_offset,  uint32_t);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometry_vertex_count,   uint32_t);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometry_name,           string);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_mesh,                    Mesh*);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_bounding_box,            BoundingBox);
@@ -131,11 +131,11 @@ namespace Spartan
     void Renderable::Deserialize(FileStream* stream)
     {
         // Geometry
-        m_geometry_type         = static_cast<DefaultGeometry>(stream->ReadAs<uint32_t>());
-        m_geometry_index_offset   = stream->ReadAs<uint32_t>();
-        m_geometry_index_count    = stream->ReadAs<uint32_t>();
-        m_geometry_vertex_offset  = stream->ReadAs<uint32_t>();
-        m_geometry_vertex_count   = stream->ReadAs<uint32_t>();
+        m_geometry_type          = static_cast<DefaultGeometry>(stream->ReadAs<uint32_t>());
+        m_geometry_index_offset  = stream->ReadAs<uint32_t>();
+        m_geometry_index_count   = stream->ReadAs<uint32_t>();
+        m_geometry_vertex_offset = stream->ReadAs<uint32_t>();
+        m_geometry_vertex_count  = stream->ReadAs<uint32_t>();
         stream->Read(&m_bounding_box);
         string model_name;
         stream->Read(&model_name);
@@ -170,13 +170,13 @@ namespace Spartan
             delete m_mesh;
         }
 
-        m_geometry_name        = name;
+        m_geometry_name          = name;
         m_geometry_index_offset  = index_offset;
         m_geometry_index_count   = index_count;
         m_geometry_vertex_offset = vertex_offset;
         m_geometry_vertex_count  = vertex_count;
-        m_bounding_box         = bounding_box;
-        m_mesh                 = mesh;
+        m_bounding_box           = bounding_box;
+        m_mesh                   = mesh;
     }
 
     void Renderable::SetGeometry(const DefaultGeometry type)
