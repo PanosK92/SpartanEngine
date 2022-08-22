@@ -37,14 +37,18 @@ using namespace std;
 
 namespace Spartan
 {
-    void RHI_CommandList::Wait()
+    void RHI_CommandList::Wait(const bool log_on_wait /*= true*/)
     {
         SP_ASSERT_MSG(m_state == RHI_CommandListState::Submitted, "The command list hasn't been submitted, can't wait for it.");
 
         // Wait for the command list to finish executing
         if (IsExecuting())
         {
-            LOG_WARNING("Waiting for command list \"%s\" to finish executing...", m_name.c_str());
+            if (log_on_wait)
+            {
+                LOG_WARNING("Waiting for command list \"%s\" to finish executing...", m_name.c_str());
+            }
+
             SP_ASSERT_MSG(m_proccessed_fence->Wait(), "Timed out while waiting for the fence");
         }
 
