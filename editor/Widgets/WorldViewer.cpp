@@ -39,7 +39,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Components/Environment.h"
 #include "World/Components/Terrain.h"
 #include "World/Components/ReflectionProbe.h"
-#include "Resource/ProgressTracker.h"
 //===========================================
 
 //= NAMESPACES ==========
@@ -73,10 +72,6 @@ WorldViewer::WorldViewer(Editor* editor) : Widget(editor)
 
 void WorldViewer::TickVisible()
 {
-    // Early exit if entities are being modified (potentially from another thread)
-    if (ProgressTracker::GetProgress(ProgressType::model_importing).IsLoading() || ProgressTracker::GetProgress(ProgressType::world_io).IsLoading())
-        return;
-    
     TreeShow();
 
     // On left click, select entity but only on release
