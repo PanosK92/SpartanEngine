@@ -102,12 +102,6 @@ namespace Spartan
 
     Renderer::~Renderer()
     {
-        // Unsubscribe from events
-        SP_UNSUBSCRIBE_FROM_EVENT(EventType::WorldResolved,             SP_EVENT_HANDLER_VARIANT(OnRenderablesAcquire));
-        SP_UNSUBSCRIBE_FROM_EVENT(EventType::WorldClear,                SP_EVENT_HANDLER(OnClear));
-        SP_UNSUBSCRIBE_FROM_EVENT(EventType::WorldLoadEnd,              SP_EVENT_HANDLER(OnWorldLoaded));
-        SP_UNSUBSCRIBE_FROM_EVENT(EventType::WindowOnFullScreenToggled, SP_EVENT_HANDLER(OnFullScreenToggled));
-
         // Log to file as the renderer is no more
         Log::m_log_to_file = true;
 

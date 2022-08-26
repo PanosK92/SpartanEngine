@@ -44,9 +44,6 @@ namespace Spartan
 
     Audio::~Audio()
     {
-        // Unsubscribe from events
-        SP_UNSUBSCRIBE_FROM_EVENT(EventType::WorldClear, [this](Variant) { m_listener = nullptr; });
-
         if (!m_system_fmod)
             return;
 

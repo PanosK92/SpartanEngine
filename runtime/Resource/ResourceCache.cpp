@@ -62,14 +62,6 @@ namespace Spartan
         SP_SUBSCRIBE_TO_EVENT(EventType::WorldClear,     SP_EVENT_HANDLER(Clear));
     }
 
-    ResourceCache::~ResourceCache()
-    {
-        // Unsubscribe from events
-        SP_UNSUBSCRIBE_FROM_EVENT(EventType::WorldSaveStart, SP_EVENT_HANDLER(SaveResourcesToFiles));
-        SP_UNSUBSCRIBE_FROM_EVENT(EventType::WorldLoadStart, SP_EVENT_HANDLER(LoadResourcesFromFiles));
-        SP_UNSUBSCRIBE_FROM_EVENT(EventType::WorldClear,     SP_EVENT_HANDLER(Clear));
-    }
-
     void ResourceCache::OnInitialise()
     {
         // Importers

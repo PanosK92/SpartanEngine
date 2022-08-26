@@ -40,7 +40,7 @@ Note: This is a blocking event system
 ====================================================================================
 */
 
-//= MACROS =====================================================================================================
+//= MACROS ===================================================================================================
 #define SP_EVENT_HANDLER_EXPRESSION(expression)      [this](const Spartan::Variant& var)    { expression }
 
 #define SP_EVENT_HANDLER(function)                   [this](const Spartan::Variant& var)    { function(); }
@@ -53,8 +53,7 @@ Note: This is a blocking event system
 #define SP_FIRE_EVENT_DATA(eventID, data)            Spartan::EventSystem::Get().Fire(eventID, data)
                                                      
 #define SP_SUBSCRIBE_TO_EVENT(eventID, function)     Spartan::EventSystem::Get().Subscribe(eventID, function);
-#define SP_UNSUBSCRIBE_FROM_EVENT(eventID, function) Spartan::EventSystem::Get().Unsubscribe(eventID, function);
-//==============================================================================================================
+//============================================================================================================
 
 enum class EventType
 {
@@ -87,22 +86,6 @@ namespace Spartan
         void Subscribe(const EventType event_id, subscriber&& function)
         {
             m_subscribers[event_id].push_back(std::forward<subscriber>(function));
-        }
-
-        void Unsubscribe(const EventType event_id, subscriber&& function)
-        {
-            const size_t function_adress = *reinterpret_cast<long*>(reinterpret_cast<char*>(&function));
-            auto& subscribers            = m_subscribers[event_id];
-
-            for (auto it = subscribers.begin(); it != subscribers.end();)
-            {
-                const size_t subscriber_adress = *reinterpret_cast<long*>(reinterpret_cast<char*>(&(*it)));
-                if (subscriber_adress == function_adress)
-                {
-                    it = subscribers.erase(it);
-                    return;
-                }
-            }
         }
 
         void Fire(const EventType event_id, const Variant& data = 0)

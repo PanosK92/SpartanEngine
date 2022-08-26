@@ -48,7 +48,7 @@ namespace Spartan
     {
     public:
         ResourceCache(Context* context);
-        ~ResourceCache();
+        ~ResourceCache() = default;
 
         //= ISubsystem ==============
         void OnInitialise() override;
