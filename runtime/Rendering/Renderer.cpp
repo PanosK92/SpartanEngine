@@ -89,7 +89,7 @@ namespace Spartan
         //SetOption(RendererOption::VolumetricFog,       1.0f); // Disable by default because it's not that great, I need to do it with a voxelised approach
 
         // Subscribe to events.
-        SP_SUBSCRIBE_TO_EVENT(EventType::WorldResolved,             SP_EVENT_HANDLER_VARIANT(OnRenderablesAcquire));
+        SP_SUBSCRIBE_TO_EVENT(EventType::WorldResolved,             SP_EVENT_HANDLER_VARIANT(OnAddRenderables));
         SP_SUBSCRIBE_TO_EVENT(EventType::WorldClear,                SP_EVENT_HANDLER(OnClear));
         SP_SUBSCRIBE_TO_EVENT(EventType::WorldLoadEnd,              SP_EVENT_HANDLER(OnWorldLoaded));
         SP_SUBSCRIBE_TO_EVENT(EventType::WindowOnFullScreenToggled, SP_EVENT_HANDLER(OnFullScreenToggled));
@@ -514,56 +514,17 @@ namespace Spartan
         cmd_list->SetConstantBuffer(RendererBindingsCb::material, RHI_Shader_Pixel, m_cb_material_gpu);
     }
 
-    void Renderer::OnRenderablesAcquire(const Variant& entities_variant)
+    void Renderer::OnAddRenderables(const Variant& renderables)
     {
-        SCOPED_TIME_BLOCK(m_profiler);
-
-        // Clear previous state
-        m_entities.clear();
-        m_camera = nullptr;
-
-        vector<shared_ptr<Entity>> entities = entities_variant.Get<vector<shared_ptr<Entity>>>();
-        for (const auto& entity : entities)
+        vector<shared_ptr<Entity>> entities = renderables.Get<vector<shared_ptr<Entity>>>();
+        for (const shared_ptr<Entity>& entity : entities)
         {
-            if (!entity || !entity->IsActive())
-                continue;
+            SP_ASSERT_MSG(entity != nullptr, "Entity is null");
+            SP_ASSERT_MSG(entity->IsActive(), "Entity is inactive");
 
-            if (Renderable* renderable = entity->GetComponent<Renderable>())
-            {
-                bool is_transparent = false;
-                bool is_visible     = true;
-
-                if (const Material* material = renderable->GetMaterial())
-                {
-                    is_transparent = material->GetProperty(MaterialProperty::ColorA) < 1.0f;
-                    is_visible     = material->GetProperty(MaterialProperty::ColorA) != 0.0f;
-                }
-
-                if (is_visible)
-                {
-                    m_entities[is_transparent ? RendererEntityType::GeometryTransparent : RendererEntityType::GeometryOpaque].emplace_back(entity.get());
-                }
-            }
-
-            if (Light* light = entity->GetComponent<Light>())
-            {
-                m_entities[RendererEntityType::Light].emplace_back(entity.get());
-            }
-
-            if (Camera* camera = entity->GetComponent<Camera>())
-            {
-                m_entities[RendererEntityType::Camera].emplace_back(entity.get());
-                m_camera = camera->GetPtrShared<Camera>();
-            }
-
-            if (ReflectionProbe* reflection_probe = entity->GetComponent<ReflectionProbe>())
-            {
-                m_entities[RendererEntityType::ReflectionProbe].emplace_back(entity.get());
-            }
+            m_entities_to_add.emplace_back(entity.get());
         }
-
-        SortRenderables(&m_entities[RendererEntityType::GeometryOpaque]);
-        SortRenderables(&m_entities[RendererEntityType::GeometryTransparent]);
+        m_add_new_entities = true;
     }
 
     void Renderer::OnClear()
@@ -601,34 +562,58 @@ namespace Spartan
         input->SetMouseCursorVisible(!is_full_screen);
     }
 
-    void Renderer::SortRenderables(vector<Entity*>* renderables)
-    {
-        if (!m_camera || renderables->size() <= 2)
-            return;
-
-        auto comparison_op = [this](Entity* entity)
-        {
-            auto renderable = entity->GetRenderable();
-            if (!renderable)
-                return 0.0f;
-
-            return (renderable->GetAabb().GetCenter() - m_camera->GetTransform()->GetPosition()).LengthSquared();
-        };
-
-        // Sort by depth (front to back)
-        sort(renderables->begin(), renderables->end(), [&comparison_op](Entity* a, Entity* b)
-        {
-            return comparison_op(a) < comparison_op(b);
-        });
-    }
-
-    bool Renderer::IsCallingFromOtherThread()
-    {
-        return m_render_thread_id != this_thread::get_id();
-    }
-
     void Renderer::OnResourceSafe()
     {
+        // Acquire renderables
+        if (m_add_new_entities)
+        {
+            // Clear previous state
+            m_entities.clear();
+            m_camera = nullptr;
+
+            for (Entity* entity : m_entities_to_add)
+            {
+                if (Renderable* renderable = entity->GetComponent<Renderable>())
+                {
+                    bool is_transparent = false;
+                    bool is_visible     = true;
+
+                    if (const Material* material = renderable->GetMaterial())
+                    {
+                        is_transparent = material->GetProperty(MaterialProperty::ColorA) < 1.0f;
+                        is_visible     = material->GetProperty(MaterialProperty::ColorA) != 0.0f;
+                    }
+
+                    if (is_visible)
+                    {
+                        m_entities[is_transparent ? RendererEntityType::GeometryTransparent : RendererEntityType::GeometryOpaque].emplace_back(entity);
+                    }
+                }
+
+                if (Light* light = entity->GetComponent<Light>())
+                {
+                    m_entities[RendererEntityType::Light].emplace_back(entity);
+                }
+
+                if (Camera* camera = entity->GetComponent<Camera>())
+                {
+                    m_entities[RendererEntityType::Camera].emplace_back(entity);
+                    m_camera = camera->GetPtrShared<Camera>();
+                }
+
+                if (ReflectionProbe* reflection_probe = entity->GetComponent<ReflectionProbe>())
+                {
+                    m_entities[RendererEntityType::ReflectionProbe].emplace_back(entity);
+                }
+            }
+            
+            SortRenderables(&m_entities[RendererEntityType::GeometryOpaque]);
+            SortRenderables(&m_entities[RendererEntityType::GeometryTransparent]);
+
+            m_entities_to_add.clear();
+            m_add_new_entities = false;
+        }
+
         // Handle environment texture assignment requests
         if (m_environment_texture_dirty)
         {
@@ -642,7 +627,7 @@ namespace Spartan
             // Clear any previously processed textures
             if (!m_textures_mip_generation.empty())
             {
-                for (shared_ptr<RHI_Texture> texture : m_textures_mip_generation)
+                for (const shared_ptr<RHI_Texture>& texture : m_textures_mip_generation)
                 {
                     // Remove unnecessary flags from texture (were only needed for the downsampling)
                     uint32_t flags = texture->GetFlags();
@@ -671,6 +656,32 @@ namespace Spartan
             // Generate mips for any pending texture requests
             Pass_Generate_Mips(m_cmd_current);
         }
+    }
+
+    void Renderer::SortRenderables(vector<Entity*>* renderables)
+    {
+        if (!m_camera || renderables->size() <= 2)
+            return;
+
+        auto comparison_op = [this](Entity* entity)
+        {
+            auto renderable = entity->GetRenderable();
+            if (!renderable)
+                return 0.0f;
+
+            return (renderable->GetAabb().GetCenter() - m_camera->GetTransform()->GetPosition()).LengthSquared();
+        };
+
+        // Sort by depth (front to back)
+        sort(renderables->begin(), renderables->end(), [&comparison_op](Entity* a, Entity* b)
+            {
+                return comparison_op(a) < comparison_op(b);
+            });
+    }
+
+    bool Renderer::IsCallingFromOtherThread()
+    {
+        return m_render_thread_id != this_thread::get_id();
     }
 
     const shared_ptr<RHI_Texture> Renderer::GetEnvironmentTexture()

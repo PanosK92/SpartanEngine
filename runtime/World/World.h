@@ -80,6 +80,7 @@ namespace Spartan
         void _EntityRemove(const std::shared_ptr<Entity>& entity);
         void CreateDefaultWorld();
 
+        std::vector<std::shared_ptr<Entity>> m_entities_to_add;
         std::vector<std::shared_ptr<Entity>> m_entities;
         std::string m_name;
         std::string m_file_path;

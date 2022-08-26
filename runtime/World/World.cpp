@@ -108,7 +108,7 @@ namespace Spartan
         // Tick entities
         {
             // Detect game toggling
-            const bool started   =  m_context->m_engine->IsFlagSet(EngineMode::Game) && m_was_in_editor_mode;
+            const bool started   = m_context->m_engine->IsFlagSet(EngineMode::Game) && m_was_in_editor_mode;
             const bool stopped   = !m_context->m_engine->IsFlagSet(EngineMode::Game) && !m_was_in_editor_mode;
             m_was_in_editor_mode = !m_context->m_engine->IsFlagSet(EngineMode::Game);
 
@@ -137,19 +137,30 @@ namespace Spartan
             }
         }
 
-        if (m_resolve)
+        if (m_resolve || !m_entities_to_add.empty())
         {
-            // Update dirty entities
+            // Remove entities
+            vector<shared_ptr<Entity>> entities_copy = m_entities;
+            for (shared_ptr<Entity>& entity : entities_copy)
             {
-                // Make a copy so we can iterate while removing entities
-                vector<shared_ptr<Entity>> entities_copy = m_entities;
-
-                for (shared_ptr<Entity>& entity : entities_copy)
+                if (entity->IsPendingDestruction())
                 {
-                    if (entity->IsPendingDestruction())
-                    {
-                        _EntityRemove(entity);
-                    }
+                    _EntityRemove(entity);
+                }
+            }
+
+            // Add entities
+            auto it = m_entities_to_add.begin();
+            while (it != m_entities_to_add.end())
+            {
+                if ((*it)->IsActive())
+                {
+                    m_entities.emplace_back(*it);
+                    it = m_entities_to_add.erase(it);
+                }
+                else
+                {
+                    ++it;
                 }
             }
 
@@ -279,8 +290,9 @@ namespace Spartan
     {
         lock_guard lock(m_entity_access_mutex);
 
-        shared_ptr<Entity> entity = m_entities.emplace_back(make_shared<Entity>(m_context));
+        shared_ptr<Entity> entity = m_entities_to_add.emplace_back(make_shared<Entity>(m_context));
         entity->SetActive(is_active);
+
         return entity;
     }
 

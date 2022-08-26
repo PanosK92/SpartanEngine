@@ -198,7 +198,7 @@ namespace Spartan
         void Pass_Ffx_Fsr2(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
 
         // Event handlers
-        void OnRenderablesAcquire(const Variant& renderables);
+        void OnAddRenderables(const Variant& renderables);
         void OnClear();
         void OnWorldLoaded();
         void OnFullScreenToggled();
@@ -347,6 +347,8 @@ namespace Spartan
         std::shared_ptr<RHI_SwapChain> m_swap_chain;
 
         // Entity references
+        std::vector<Entity*> m_entities_to_add;
+        bool m_add_new_entities = false;
         std::unordered_map<RendererEntityType, std::vector<Entity*>> m_entities;
         std::array<Material*, m_max_material_instances> m_material_instances;
         std::shared_ptr<Camera> m_camera;
