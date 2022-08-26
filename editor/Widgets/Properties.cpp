@@ -39,7 +39,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Components/Environment.h"
 #include "World/Components/Terrain.h"
 #include "World/Components/ReflectionProbe.h"
-#include "Resource/ProgressTracker.h"
 //===============================================
 
 //= NAMESPACES =========
@@ -153,10 +152,6 @@ Properties::Properties(Editor* editor) : Widget(editor)
 
 void Properties::TickVisible()
 {
-    // Early exit if entities are being modified (potentially from another thread)
-    if (ProgressTracker::GetProgress(ProgressType::model_importing).IsLoading() || ProgressTracker::GetProgress(ProgressType::world_io).IsLoading())
-        return;
-
     ImGui::PushItemWidth(helper::g_max_width);
 
     if (!m_inspected_entity.expired())
