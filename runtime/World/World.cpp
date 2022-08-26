@@ -353,6 +353,16 @@ namespace Spartan
         return empty;
     }
 
+    void World::ActivateNewEntities()
+    {
+        lock_guard lock(m_entity_access_mutex);
+
+        for (shared_ptr<Entity> entity : m_entities_to_add)
+        {
+            entity->SetActive(true);
+        }
+    }
+    
     void World::Clear()
     {
         // Fire event

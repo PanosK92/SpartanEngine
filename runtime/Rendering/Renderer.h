@@ -300,8 +300,7 @@ namespace Spartan
 
         // Environment texture
         std::shared_ptr<RHI_Texture> m_environment_texture;
-        std::shared_ptr<RHI_Texture> m_environment_texture_temp;
-        std::mutex m_environment_texture_mutex;
+        std::atomic<std::shared_ptr<RHI_Texture>> m_environment_texture_temp;
         bool m_environment_texture_dirty = false;
 
         // Options
@@ -352,6 +351,9 @@ namespace Spartan
         std::unordered_map<RendererEntityType, std::vector<Entity*>> m_entities;
         std::array<Material*, m_max_material_instances> m_material_instances;
         std::shared_ptr<Camera> m_camera;
+
+        // Sync objects
+        std::mutex m_mutex_entity_addition;
 
         // Dependencies
         Profiler* m_profiler            = nullptr;
