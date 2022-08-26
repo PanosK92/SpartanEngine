@@ -69,6 +69,7 @@ namespace Spartan
         const std::shared_ptr<Entity>& EntityGetByName(const std::string& name);
         const std::shared_ptr<Entity>& EntityGetById(uint64_t id);
         const auto& EntityGetAll() const { return m_entities; }
+        void ActivateNewEntities();
         //======================================================================
 
         // Transform handle

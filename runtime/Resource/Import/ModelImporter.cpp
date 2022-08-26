@@ -387,7 +387,7 @@ namespace Spartan
             m_scene         = scene;
             m_has_animation = scene->mNumAnimations != 0;
 
-            // Recursively parse nodes (multi-threaded as well)
+            // Recursively parse nodes
             ParseNode(scene->mRootNode);
 
             // Update model geometry
@@ -395,6 +395,9 @@ namespace Spartan
             mesh->ComputeAabb();
             mesh->ComputeNormalizedScale();
             mesh->CreateGpuBuffers();
+
+            // Activate all the newly added entities (they are now thread-safe)
+            m_world->ActivateNewEntities();
         }
         else
         {
@@ -409,22 +412,17 @@ namespace Spartan
 
     void ModelImporter::ParseNode(const aiNode* node, shared_ptr<Entity> parent_entity)
     {
-        // The entity that will match the node
-        shared_ptr<Entity> entity = nullptr;
+        // Create an entity that will match this node.
+        // The entity is created as inactive for thread-safety.
+        const bool is_active      = false;
+        shared_ptr<Entity> entity = m_world->EntityCreate(is_active);
 
+        // Set root entity to mesh
         bool is_root_node = parent_entity == nullptr;
         if (is_root_node)
         {
-            // Root entity needs to be inactive (thread safety)
-            const bool is_active = false;
-            entity = m_world->EntityCreate(is_active);
-
+            
             m_mesh->SetRootEntity(entity);
-        }
-        else
-        {
-            const bool is_active = false;
-            entity = m_world->EntityCreate(is_active);
         }
 
         SP_ASSERT(entity != nullptr);
@@ -447,11 +445,6 @@ namespace Spartan
         if (node->mNumMeshes > 0)
         {
             PashMeshes(node, entity.get());
-        }
-
-        if (!is_root_node)
-        {
-            entity->SetActive(true);
         }
 
         // Process children
@@ -500,9 +493,6 @@ namespace Spartan
             
             // Load the mesh onto the entity (via a Renderable component)
             ParseMesh(node_mesh, entity);
-
-            // Mark the entity as active since it's now safe to be used (by say, other threads)
-            entity->SetActive(true);
         }
     }
 

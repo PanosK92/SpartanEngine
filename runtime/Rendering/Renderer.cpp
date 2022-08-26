@@ -516,6 +516,8 @@ namespace Spartan
 
     void Renderer::OnAddRenderables(const Variant& renderables)
     {
+        lock_guard lock(m_mutex_entity_addition);
+
         vector<shared_ptr<Entity>> entities = renderables.Get<vector<shared_ptr<Entity>>>();
         for (const shared_ptr<Entity>& entity : entities)
         {
@@ -524,6 +526,7 @@ namespace Spartan
 
             m_entities_to_add.emplace_back(entity.get());
         }
+
         m_add_new_entities = true;
     }
 
@@ -617,8 +620,8 @@ namespace Spartan
         // Handle environment texture assignment requests
         if (m_environment_texture_dirty)
         {
-            m_environment_texture       = m_environment_texture_temp;
-            m_environment_texture_temp  = nullptr;
+            m_environment_texture = m_environment_texture_temp.load();
+            m_environment_texture_temp.store(nullptr);
             m_environment_texture_dirty = false;
         }
 
@@ -700,7 +703,6 @@ namespace Spartan
             }
         }
 
-        lock_guard<mutex> guard(m_environment_texture_mutex);
         m_environment_texture_temp  = texture;
         m_environment_texture_dirty = true;
     }

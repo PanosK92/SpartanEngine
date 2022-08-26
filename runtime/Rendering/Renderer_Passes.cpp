@@ -1022,7 +1022,7 @@ namespace Spartan
         cmd_list->SetPipelineState(pso);
 
         // Iterate through all the light entities
-        for (const auto& entity : entities)
+        for (Entity* entity : entities)
         {
             if (Light* light = entity->GetComponent<Light>())
             {
