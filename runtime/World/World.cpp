@@ -577,8 +577,6 @@ namespace Spartan
             }
         }
 
-        return;
-
         // 3D model - Sponza
         if (m_default_model_sponza = resource_cache->Load<Mesh>("project\\models\\sponza\\main\\NewSponza_Main_Blender_glTF.gltf"))
         {
