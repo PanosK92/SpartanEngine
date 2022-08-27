@@ -41,36 +41,50 @@ namespace Spartan
 
     RHI_CommandPool::~RHI_CommandPool()
     {
-        if (!m_rhi_resources[0])
+        if (m_cmd_pool_count == 0)
             return;
 
         // Wait for GPU
-        m_rhi_device->QueueWaitAll();
-
-        VkDevice device = m_rhi_device->GetRhiContext()->device;
+        m_rhi_device->QueueWait(m_queue_type);
 
         // Free command buffers
         for (uint32_t index_pool = 0; index_pool < m_cmd_pool_count; index_pool++)
         {
             for (uint32_t index_cmd_list = 0; index_cmd_list < m_cmd_list_count; index_cmd_list++)
             {
-                VkCommandPool cmd_pool     = static_cast<VkCommandPool>(m_rhi_resources[index_pool]);
-                VkCommandBuffer cmd_buffer = reinterpret_cast<VkCommandBuffer>(m_cmd_lists[index_pool + index_cmd_list]->GetRhiResource());
+                if (shared_ptr<RHI_CommandList>& cmd_list = m_cmd_lists[index_pool + index_cmd_list])
+                {
+                    uint32_t cmd_index = index_pool * m_cmd_list_count + index_cmd_list;
 
-                vkFreeCommandBuffers(device, cmd_pool, 1, &cmd_buffer);
+                    SP_ASSERT(m_rhi_resources[index_pool] != nullptr);
+                    SP_ASSERT(m_cmd_lists[cmd_index] != nullptr);
+
+                    VkCommandBuffer vk_cmd_buffer = reinterpret_cast<VkCommandBuffer>(cmd_list->GetRhiResource());
+
+                    vkFreeCommandBuffers(
+                        m_rhi_device->GetRhiContext()->device,
+                        static_cast<VkCommandPool>(m_rhi_resources[index_pool]),
+                        1,
+                        &vk_cmd_buffer
+                    );
+
+                    m_cmd_lists[cmd_index] = nullptr;
+                }
             }
         }
 
         // Destroy pools
         for (uint32_t i = 0; i < m_cmd_pool_count; i++)
         {
-            vkDestroyCommandPool(device, static_cast<VkCommandPool>(m_rhi_resources[i]), nullptr);
+            vkDestroyCommandPool(m_rhi_device->GetRhiContext()->device, static_cast<VkCommandPool>(m_rhi_resources[i]), nullptr);
             m_rhi_resources[i] = nullptr;
         }
     }
 
     void RHI_CommandPool::CreateCommandPool(const RHI_Queue_Type queue_type)
     {
+        m_queue_type = queue_type;
+
         VkCommandPoolCreateInfo cmd_pool_info = {};
         cmd_pool_info.sType                   = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
         cmd_pool_info.queueFamilyIndex        = m_rhi_device->GetQueueIndex(queue_type);

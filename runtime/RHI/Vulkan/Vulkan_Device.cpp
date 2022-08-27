@@ -440,6 +440,7 @@ namespace Spartan
 
         QueueWaitAll();
 
+        // Destroy command pools
         m_cmd_pools.clear();
         
         // Descriptor pool

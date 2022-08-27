@@ -57,16 +57,21 @@ Note: This is a blocking event system
 
 enum class EventType
 {
+    // Renderer
     RendererOnFirstFrameCompleted,
     RendererPostPresent,
-    WorldSaveStart,               // The world is about to be saved to a file
-    WorldSavedEnd,                // The world finished saving to file
-    WorldLoadStart,               // The world is about to be loaded from a file
-    WorldLoadEnd,                 // The world finished loading from file
-    WorldClear,                   // The world is about to clear everything
-    WorldResolve,                 // The world is resolving
-    WorldResolved,                // The world has finished resolving
-    EventSDL,                     // An SDL event
+    RendererOnShutdown,
+    // World
+    WorldSaveStart, // The world is about to be saved to a file
+    WorldSavedEnd,  // The world finished saving to file
+    WorldLoadStart, // The world is about to be loaded from a file
+    WorldLoadEnd,   // The world finished loading from file
+    WorldClear,     // The world is about to clear everything
+    WorldResolve,   // The world is resolving
+    WorldResolved,  // The world has finished resolving
+    // SDL
+    EventSDL, // An SDL event
+    // Window
     WindowOnFullScreenToggled
 };
 

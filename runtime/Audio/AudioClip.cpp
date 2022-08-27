@@ -56,7 +56,8 @@ namespace Spartan
         if (!m_soundFMOD)
             return;
 
-        SP_ASSERT_MSG(m_soundFMOD->release() == FMOD_OK, "Failed to release sound");
+        FMOD_RESULT result = m_soundFMOD->release();
+        SP_ASSERT_MSG(result == FMOD_OK, "Failed to release sound");
     }
 
     bool AudioClip::LoadFromFile(const string& file_path)

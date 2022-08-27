@@ -62,7 +62,8 @@ namespace Spartan
         uint64_t m_swap_chain_id = 0;
 
         // Misc
-        bool m_first_step     = true;
-        RHI_Device* m_rhi_device = nullptr;
+        bool m_first_step           = true;
+        RHI_Device* m_rhi_device    = nullptr;
+        RHI_Queue_Type m_queue_type = RHI_Queue_Type::Undefined;
     };
 }

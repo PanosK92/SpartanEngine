@@ -77,7 +77,7 @@ namespace Spartan
     
     void RHI_Device::DestroyCommandPool(RHI_CommandPool* cmd_pool)
     {
-        vector<std::shared_ptr<RHI_CommandPool>>::iterator it;
+        vector<shared_ptr<RHI_CommandPool>>::iterator it;
         for (it = m_cmd_pools.begin(); it != m_cmd_pools.end();)
         {
             if (cmd_pool->GetObjectId() == (*it)->GetObjectId())
