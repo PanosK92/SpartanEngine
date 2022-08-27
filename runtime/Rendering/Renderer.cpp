@@ -622,8 +622,9 @@ namespace Spartan
         // Handle environment texture assignment requests
         if (m_environment_texture_dirty)
         {
-            m_environment_texture = m_environment_texture_temp.load();
-            m_environment_texture_temp.store(nullptr);
+            lock_guard lock(m_mutex_environment_texture);
+            m_environment_texture       = m_environment_texture_temp;
+            m_environment_texture_temp  = nullptr;
             m_environment_texture_dirty = false;
         }
 
@@ -695,14 +696,7 @@ namespace Spartan
 
     void Renderer::SetEnvironmentTexture(shared_ptr<RHI_Texture> texture)
     {
-        if (IsCallingFromOtherThread())
-        {
-            while (m_reading_requests)
-            {
-                LOG_INFO("External thread is waiting for the renderer thread...");
-                this_thread::sleep_for(chrono::milliseconds(16));
-            }
-        }
+        lock_guard lock(m_mutex_environment_texture);
 
         m_environment_texture_temp  = texture;
         m_environment_texture_dirty = true;

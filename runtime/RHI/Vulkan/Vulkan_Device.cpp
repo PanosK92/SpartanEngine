@@ -850,9 +850,6 @@ namespace Spartan
             allocation_create_info.flags |= is_buffer_constant ? VK_MEMORY_PROPERTY_HOST_CACHED_BIT : 0;
         }
 
-        // Allocations can come both from the main as well as worker threads (loading), so lock this context.
-        lock_guard<mutex> lock(m_mutex_vma_buffer);
-
         // Create the buffer
         VmaAllocation allocation = nullptr;
         VmaAllocationInfo allocation_info;
@@ -883,6 +880,7 @@ namespace Spartan
         }
 
         // Keep allocation reference
+        lock_guard<mutex> lock(m_mutex_allocation);
         m_allocations[reinterpret_cast<uint64_t>(resource)] = allocation;
     }
 
@@ -891,8 +889,7 @@ namespace Spartan
         if (!resource)
             return;
 
-        // Deallocations can come both from the main as well as worker threads, so lock this context.
-        lock_guard<mutex> lock(m_mutex_vma_buffer);
+        lock_guard<mutex> lock(m_mutex_allocation);
 
         if (VmaAllocation allocation = static_cast<VmaAllocation>(get_allocation_from_resource(resource)))
         {
@@ -918,10 +915,8 @@ namespace Spartan
                     nullptr) == VK_SUCCESS,
             "Failed to allocate texture");
 
-        // Allocations can come both from the main as well as worker threads (loading), so lock this context.
-        lock_guard<mutex> lock(m_mutex_vma_texture);
-
         // Keep allocation reference
+        lock_guard<mutex> lock(m_mutex_allocation);
         m_allocations[reinterpret_cast<uint64_t>(resource)] = allocation;
     }
 
@@ -929,8 +924,7 @@ namespace Spartan
     {
         SP_ASSERT_MSG(resource != nullptr, "Resource is null");
 
-        // Deallocations can come both from the main as well as worker threads, so lock this context.
-        lock_guard<mutex> lock(m_mutex_vma_texture);
+        lock_guard<mutex> lock(m_mutex_allocation);
 
         if (VmaAllocation allocation = static_cast<VmaAllocation>(get_allocation_from_resource(resource)))
         {

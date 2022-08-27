@@ -2435,7 +2435,7 @@ namespace Spartan
 
     void Renderer::Pass_Generate_Mips(RHI_CommandList* cmd_list)
     {
-        for (shared_ptr<RHI_Texture> texture : m_textures_mip_generation)
+        for (shared_ptr<RHI_Texture>& texture : m_textures_mip_generation)
         {
             SP_ASSERT(texture != nullptr);        // Ensure the texture is valid.
             SP_ASSERT(texture->HasMips());        // Ensure the texture has mips.

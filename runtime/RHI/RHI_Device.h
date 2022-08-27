@@ -141,8 +141,7 @@ namespace Spartan
 
         // Sync object
         std::mutex m_mutex_queue;
-        std::mutex m_mutex_vma_buffer;
-        std::mutex m_mutex_vma_texture;
+        std::mutex m_mutex_allocation;
         std::mutex m_mutex_immediate;
 
         // Misc

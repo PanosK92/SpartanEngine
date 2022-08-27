@@ -300,7 +300,7 @@ namespace Spartan
 
         // Environment texture
         std::shared_ptr<RHI_Texture> m_environment_texture;
-        std::atomic<std::shared_ptr<RHI_Texture>> m_environment_texture_temp;
+        std::shared_ptr<RHI_Texture> m_environment_texture_temp;
         bool m_environment_texture_dirty = false;
 
         // Options
@@ -354,6 +354,7 @@ namespace Spartan
         // Sync objects
         std::mutex m_mutex_entity_addition;
         std::mutex m_mutex_mip_generation;
+        std::mutex m_mutex_environment_texture;
 
         // Dependencies
         Profiler* m_profiler            = nullptr;
