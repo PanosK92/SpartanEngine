@@ -241,7 +241,7 @@ namespace ImGui::RHI
             if (vertex_buffer->GetVertexCount() < static_cast<uint32_t>(draw_data->TotalVtxCount))
             {
                 const uint32_t vertex_count     = vertex_buffer->GetVertexCount();
-                const uint32_t vertex_count_new = draw_data->TotalVtxCount + 7000;
+                const uint32_t vertex_count_new = draw_data->TotalVtxCount + 15000;
                 vertex_buffer->CreateDynamic<ImDrawVert>(vertex_count_new);
 
                 if (vertex_count != 0)
@@ -254,7 +254,7 @@ namespace ImGui::RHI
             if (index_buffer->GetIndexCount() < static_cast<uint32_t>(draw_data->TotalIdxCount))
             {
                 const uint32_t index_count     = index_buffer->GetIndexCount();
-                const uint32_t index_count_new = draw_data->TotalIdxCount + 14000;
+                const uint32_t index_count_new = draw_data->TotalIdxCount + 30000;
                 index_buffer->CreateDynamic<ImDrawIdx>(index_count_new);
 
                 if (index_count != 0)

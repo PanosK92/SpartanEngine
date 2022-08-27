@@ -1040,7 +1040,7 @@ namespace Spartan
                 // Set shadow maps
                 {
                     // We always bind all the shadow maps, regardless of the light type or if shadows are enabled.
-                        // This is because we are using an uber shader and APIs like Vulkan, expect all texture slots to be bound with something.
+                    // This is because we are using an uber shader and APIs like Vulkan, expect all texture slots to be bound with something.
 
                     RHI_Texture* tex_depth = light->GetDepthTexture();
                     RHI_Texture* tex_color = light->GetShadowsTransparentEnabled() ? light->GetColorTexture() : m_tex_default_white.get();
