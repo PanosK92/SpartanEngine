@@ -442,6 +442,7 @@ namespace Spartan
 
         // Destroy command pools
         m_cmd_pools.clear();
+        m_immediate_cmd_pools.fill(nullptr);
         
         // Descriptor pool
         vkDestroyDescriptorPool(m_rhi_context->device, static_cast<VkDescriptorPool>(m_descriptor_pool), nullptr);
