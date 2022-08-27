@@ -33,7 +33,7 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    weak_ptr<ILogger> Log::m_logger;
+    ILogger* Log::m_logger = nullptr;
     ofstream Log::m_fout;
     mutex Log::m_mutex_log;
     vector<LogCmd> Log::m_log_buffer;
@@ -67,17 +67,15 @@ namespace Spartan
             }
         }
 
-        bool logger_enabled = !m_logger.expired();
-
         // Always log in-engine
-        if (logger_enabled)
+        if (m_logger)
         {
             FlushBuffer();
             LogString(text, type);
         }
 
         // Log to file if requested or if an in-engine logger is not available.
-        if (m_log_to_file || !logger_enabled)
+        if (m_log_to_file || !m_logger)
         {
             m_log_buffer.emplace_back(text, type);
             LogToFile(text, type);
@@ -192,7 +190,7 @@ namespace Spartan
 
     void Log::FlushBuffer()
     {
-        if (m_logger.expired() || m_log_buffer.empty())
+        if (m_logger || m_log_buffer.empty())
             return;
 
          // Log everything from memory to the logger implementation
@@ -205,12 +203,10 @@ namespace Spartan
 
     void Log::LogString(const char* text, const LogType type)
     {
-        SP_ASSERT(text != nullptr);
+        SP_ASSERT_MSG(text != nullptr, "Text is null");
+        SP_ASSERT_MSG(m_logger != nullptr, "Logger is null");
 
-        if (shared_ptr<ILogger> logger = m_logger.lock())
-        {
-            logger->Log(string(text), static_cast<uint32_t>(type));
-        }
+        m_logger->Log(string(text), static_cast<uint32_t>(type));
     }
 
     void Log::LogToFile(const char* text, const LogType type)

@@ -73,7 +73,7 @@ namespace Spartan
         Log() = default;
 
         // Set a logger to be used (if not set, logging will done in a text file.
-        static void SetLogger(const std::weak_ptr<ILogger>& logger) { m_logger = logger; }
+        static void SetLogger(ILogger* logger) { m_logger = logger; }
 
         // Alpha
         static void Write(const char* text, const LogType type);
@@ -124,7 +124,7 @@ namespace Spartan
         static void LogToFile(const char* text, LogType type);
 
         static std::mutex m_mutex_log;
-        static std::weak_ptr<ILogger> m_logger;
+        static ILogger* m_logger;
         static std::ofstream m_fout;
         static std::string m_log_file_name;
         static bool m_first_log;

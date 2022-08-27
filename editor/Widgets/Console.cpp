@@ -45,7 +45,12 @@ Console::Console(Editor* editor) : Widget(editor)
     m_logger->SetCallback([this](const LogPackage& package) { AddLogPackage(package); });
 
     // Set the logger implementation for the engine to use
-    Log::SetLogger(m_logger);
+    Log::SetLogger(m_logger.get());
+}
+
+Console::~Console()
+{
+    Log::SetLogger(nullptr);
 }
 
 void Console::TickVisible()
