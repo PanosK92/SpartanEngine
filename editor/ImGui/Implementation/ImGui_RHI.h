@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <vector>
 #include "ImGui_RHI.h"
 #include "../Source/imgui.h"
+#include "Core/EventSystem.h"
 #include "Rendering/Renderer.h"
 #include "RHI/RHI_Device.h"
 #include "RHI/RHI_Shader.h"
@@ -40,7 +41,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI/RHI_Semaphore.h"
 #include "RHI/RHI_CommandPool.h"
 #include "RHI/RHI_ConstantBuffer.h"
-#include "Core/EventSystem.h"
 //====================================
 
 namespace ImGui::RHI
@@ -66,7 +66,7 @@ namespace ImGui::RHI
         }
 
         // Index and vertex buffers
-        vector<unique_ptr<RHI_IndexBuffer>> index_buffers;
+        vector<unique_ptr<RHI_IndexBuffer>>  index_buffers;
         vector<unique_ptr<RHI_VertexBuffer>> vertex_buffers;
 
         // Constant buffer
@@ -81,7 +81,7 @@ namespace ImGui::RHI
     struct WindowData
     {
         shared_ptr<ViewportResources> viewport_data;
-        shared_ptr<RHI_SwapChain> swapchain;
+        shared_ptr<RHI_SwapChain>     swapchain;
     };
 
     // Forward Declarations

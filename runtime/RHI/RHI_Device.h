@@ -124,9 +124,6 @@ namespace Spartan
         void* m_descriptor_pool            = nullptr;
         uint32_t m_descriptor_set_capacity = 0;
 
-        // Command pools
-        std::vector<std::shared_ptr<RHI_CommandPool>> m_cmd_pools;
-
         // Device properties
         uint32_t m_max_texture_1d_dimension            = 0;
         uint32_t m_max_texture_2d_dimension            = 0;
@@ -138,14 +135,15 @@ namespace Spartan
         bool m_wide_lines                              = false;
         uint32_t m_max_bound_descriptor_sets           = 4; // worst case scenario
 
-        // Mutexes
-        std::mutex m_queue_mutex;
+        // Command pools
+        std::vector<std::shared_ptr<RHI_CommandPool>> m_cmd_pools;
+        std::array<std::shared_ptr<RHI_CommandPool>, 3> m_cmd_pools_immediate;
+
+        // Sync object
+        std::mutex m_mutex_queue;
         std::mutex m_mutex_vma_buffer;
         std::mutex m_mutex_vma_texture;
-
-        // Immediate context
-        std::array<std::shared_ptr<RHI_CommandPool>, 3> m_immediate_cmd_pools;
-        std::mutex m_immediate_mutex;
+        std::mutex m_mutex_immediate;
 
         // Misc
         uint32_t m_physical_device_index          = 0;

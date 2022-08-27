@@ -167,18 +167,18 @@ namespace Spartan
 
     RHI_CommandList* RHI_Device::ImmediateBegin(const RHI_Queue_Type queue_type)
     {
-        m_immediate_mutex.lock();
+        m_mutex_immediate.lock();
 
         // Create command pool for the given queue type, if needed.
         uint32_t queue_index = static_cast<uint32_t>(queue_type);
-        if (!m_immediate_cmd_pools[queue_index])
+        if (!m_cmd_pools_immediate[queue_index])
         {
-            m_immediate_cmd_pools[queue_index] = make_shared<RHI_CommandPool>(this, "immediate", 0);
-            m_immediate_cmd_pools[queue_index]->AllocateCommandLists(queue_type, 1, 1);
+            m_cmd_pools_immediate[queue_index] = make_shared<RHI_CommandPool>(this, "immediate", 0);
+            m_cmd_pools_immediate[queue_index]->AllocateCommandLists(queue_type, 1, 1);
         }
 
         //  Get command pool
-        RHI_CommandPool* cmd_pool = m_immediate_cmd_pools[queue_index].get();
+        RHI_CommandPool* cmd_pool = m_cmd_pools_immediate[queue_index].get();
 
         cmd_pool->Step();
         cmd_pool->GetCurrentCommandList()->Begin();
@@ -194,6 +194,6 @@ namespace Spartan
         bool log_on_wait = false;
         cmd_list->Wait(log_on_wait);
 
-        m_immediate_mutex.unlock();
+        m_mutex_immediate.unlock();
     }
 }
