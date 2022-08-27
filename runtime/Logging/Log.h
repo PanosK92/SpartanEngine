@@ -72,7 +72,7 @@ namespace Spartan
     public:
         Log() = default;
 
-        // Set a logger to be used (if not set, logging will done in a text file.
+        // Set a logger to be used (if not set, logging will done in a text file)
         static void SetLogger(ILogger* logger) { m_logger = logger; }
 
         // Alpha
@@ -123,13 +123,6 @@ namespace Spartan
         static void LogString(const char* text, LogType type);
         static void LogToFile(const char* text, LogType type);
 
-        static std::mutex m_mutex_log;
         static ILogger* m_logger;
-        static std::ofstream m_fout;
-        static std::string m_log_file_name;
-        static bool m_first_log;
-        static std::vector<LogCmd> m_log_buffer;
-        static bool m_only_unique_logs;
-        static std::vector<std::string> m_error_logs;
     };
 }

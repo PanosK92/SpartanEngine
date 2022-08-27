@@ -102,6 +102,8 @@ namespace Spartan
 
     Renderer::~Renderer()
     {
+        SP_FIRE_EVENT(EventType::RendererOnShutdown);
+
         // Log to file as the renderer is no more
         Log::m_log_to_file = true;
 

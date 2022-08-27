@@ -33,33 +33,33 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    ILogger* Log::m_logger = nullptr;
-    ofstream Log::m_fout;
-    mutex Log::m_mutex_log;
-    vector<LogCmd> Log::m_log_buffer;
-    vector<string> Log::m_error_logs;
-    string Log::m_log_file_name = "log.txt";
-    bool Log::m_log_to_file     = true; // will become false after a few frames, when the Renderer can render logs on-screen.
-    bool Log::m_first_log       = true;
+    static string log_file_name = "log.txt";
+    static std::vector<LogCmd> logs;
 #ifdef DEBUG
-    bool Log::m_only_unique_logs = true;
+    static bool unique_logs  = true;
 #else
-    bool Log::m_only_unique_logs = false;
+    static bool unique_logs  = false;
 #endif
+
+    ILogger* Log::m_logger  = nullptr;
+    bool Log::m_log_to_file = true;
 
     // All functions resolve to this one
     void Log::Write(const char* text, const LogType type)
     {
         SP_ASSERT(text != nullptr);
 
-        lock_guard<mutex> guard(m_mutex_log);
+        // Lock mutex
+        static std::mutex log_mutex;
+        lock_guard<mutex> guard(log_mutex);
 
         // Only log unique text. Enabled only in debug configuration.
-        if (m_only_unique_logs && type == LogType::Error)
+        static std::vector<std::string> logs_error_strings;
+        if (unique_logs && type == LogType::Error)
         {
-            if (find(m_error_logs.begin(), m_error_logs.end(), text) == m_error_logs.end())
+            if (find(logs_error_strings.begin(), logs_error_strings.end(), text) == logs_error_strings.end())
             {
-                m_error_logs.emplace_back(text);
+                logs_error_strings.emplace_back(text);
             }
             else
             {
@@ -77,7 +77,7 @@ namespace Spartan
         // Log to file if requested or if an in-engine logger is not available.
         if (m_log_to_file || !m_logger)
         {
-            m_log_buffer.emplace_back(text, type);
+            logs.emplace_back(text, type);
             LogToFile(text, type);
         }
     }
@@ -190,15 +190,15 @@ namespace Spartan
 
     void Log::FlushBuffer()
     {
-        if (m_logger || m_log_buffer.empty())
+        if (m_logger || logs.empty())
             return;
 
          // Log everything from memory to the logger implementation
-        for (const auto& log : m_log_buffer)
+        for (const LogCmd& log : logs)
         {
             LogString(log.text.c_str(), log.type);
         }
-        m_log_buffer.clear();
+        logs.clear();
     }
 
     void Log::LogString(const char* text, const LogType type)
@@ -211,28 +211,30 @@ namespace Spartan
 
     void Log::LogToFile(const char* text, const LogType type)
     {
-        SP_ASSERT(text != nullptr);
+        SP_ASSERT_MSG(text != nullptr, "Text is null");
 
-        const string prefix   = (type == LogType::Info) ? "Info:" : (type == LogType::Warning) ? "Warning:" : "Error:";
-        const auto final_text = prefix + " " + text;
+        static const string prefix = (type == LogType::Info) ? "Info:" : (type == LogType::Warning) ? "Warning:" : "Error:";
+        const string final_text    = prefix + " " + text;
 
         // Delete the previous log file (if it exists)
-        if (m_first_log)
+        static bool is_first_log = true;
+        if (is_first_log)
         {
-            FileSystem::Delete(m_log_file_name);
-            m_first_log = false;
+            FileSystem::Delete(log_file_name);
+            is_first_log = false;
         }
 
-        // Open/Create a log file to write the error message to
-        m_fout.open(m_log_file_name, ofstream::out | ofstream::app);
+        // Open/Create a log file to write the log into
+        static std::ofstream fout;
+        fout.open(log_file_name, ofstream::out | ofstream::app);
 
-        if (m_fout.is_open())
+        if (fout.is_open())
         {
             // Write out the error message
-            m_fout << final_text << endl;
+            fout << final_text << endl;
 
             // Close the file
-            m_fout.close();
+            fout.close();
         }
     }
 }

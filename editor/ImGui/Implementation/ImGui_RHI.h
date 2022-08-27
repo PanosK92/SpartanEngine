@@ -40,6 +40,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI/RHI_Semaphore.h"
 #include "RHI/RHI_CommandPool.h"
 #include "RHI/RHI_ConstantBuffer.h"
+#include "Core/EventSystem.h"
 //====================================
 
 namespace ImGui::RHI
@@ -99,6 +100,16 @@ namespace ImGui::RHI
     static shared_ptr<RHI_Shader>            g_shader_vertex;
     static shared_ptr<RHI_Shader>            g_shader_pixel;
     ViewportResources                        g_viewport_data; // per swapchain resources
+
+    static void destroy_rhi_resources()
+    {
+        g_font_atlas          = nullptr;
+        g_depth_stencil_state = nullptr;
+        g_rasterizer_state    = nullptr;
+        g_blend_state         = nullptr;
+        g_shader_vertex       = nullptr;
+        g_shader_pixel        = nullptr;
+    }
 
     inline bool Initialize(Context* context)
     {
@@ -181,6 +192,8 @@ namespace ImGui::RHI
         {
             InitialisePlatformInterface();
         }
+
+        SP_SUBSCRIBE_TO_EVENT(EventType::RendererOnShutdown, SP_EVENT_HANDLER_STATIC(destroy_rhi_resources));
 
         return true;
     }
