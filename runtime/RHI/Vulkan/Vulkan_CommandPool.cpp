@@ -48,14 +48,13 @@ namespace Spartan
         m_rhi_device->QueueWait(m_queue_type);
 
         // Free command buffers
+        uint32_t cmd_index = 0;
         for (uint32_t index_pool = 0; index_pool < m_cmd_pool_count; index_pool++)
         {
             for (uint32_t index_cmd_list = 0; index_cmd_list < m_cmd_list_count; index_cmd_list++)
             {
                 if (shared_ptr<RHI_CommandList>& cmd_list = m_cmd_lists[index_pool + index_cmd_list])
                 {
-                    uint32_t cmd_index = index_pool * m_cmd_list_count + index_cmd_list;
-
                     SP_ASSERT(m_rhi_resources[index_pool] != nullptr);
                     SP_ASSERT(m_cmd_lists[cmd_index] != nullptr);
 
@@ -69,6 +68,8 @@ namespace Spartan
                     );
 
                     m_cmd_lists[cmd_index] = nullptr;
+
+                    cmd_index++;
                 }
             }
         }

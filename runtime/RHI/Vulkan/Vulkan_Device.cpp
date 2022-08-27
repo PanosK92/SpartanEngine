@@ -442,7 +442,7 @@ namespace Spartan
 
         // Destroy command pools
         m_cmd_pools.clear();
-        m_immediate_cmd_pools.fill(nullptr);
+        m_cmd_pools_immediate.fill(nullptr);
         
         // Descriptor pool
         vkDestroyDescriptorPool(m_rhi_context->device, static_cast<VkDescriptorPool>(m_descriptor_pool), nullptr);
@@ -698,7 +698,7 @@ namespace Spartan
         void* vk_signal_fence = signal_fence ? signal_fence->GetResource() : nullptr;
 
         // The actual submit
-        lock_guard<mutex> lock(m_queue_mutex);
+        lock_guard<mutex> lock(m_mutex_queue);
         SP_ASSERT(vkQueueSubmit(static_cast<VkQueue>(GetQueue(type)), 1, &submit_info, static_cast<VkFence>(vk_signal_fence)) == VK_SUCCESS);
 
         // Update semaphore states
@@ -709,7 +709,7 @@ namespace Spartan
 
     void RHI_Device::QueueWait(const RHI_Queue_Type type)
     {
-        lock_guard<mutex> lock(m_queue_mutex);
+        lock_guard<mutex> lock(m_mutex_queue);
         SP_ASSERT_MSG(vkQueueWaitIdle(static_cast<VkQueue>(GetQueue(type))) == VK_SUCCESS, "Failed to wait for queue");
     }
 
