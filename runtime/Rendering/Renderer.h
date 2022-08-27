@@ -326,8 +326,7 @@ namespace Spartan
 
         // Requests for mip generation
         std::vector<std::shared_ptr<RHI_Texture>> m_textures_mip_generation;
-        std::vector<std::shared_ptr<RHI_Texture>> m_textures_mip_generation_pending;
-        std::mutex m_texture_mip_generation_mutex;
+        std::vector<std::shared_ptr<RHI_Texture>> m_textures_mip_generation_delete_per_mip;
 
         // States
         std::atomic<bool> m_is_rendering_allowed = true;
@@ -354,6 +353,7 @@ namespace Spartan
 
         // Sync objects
         std::mutex m_mutex_entity_addition;
+        std::mutex m_mutex_mip_generation;
 
         // Dependencies
         Profiler* m_profiler            = nullptr;

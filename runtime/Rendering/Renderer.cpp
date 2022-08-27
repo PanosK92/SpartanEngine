@@ -627,10 +627,12 @@ namespace Spartan
 
         // Handle texture mip generation requests
         {
+            lock_guard<mutex> guard(m_mutex_mip_generation);
+
             // Clear any previously processed textures
-            if (!m_textures_mip_generation.empty())
+            if (!m_textures_mip_generation_delete_per_mip.empty())
             {
-                for (const shared_ptr<RHI_Texture>& texture : m_textures_mip_generation)
+                for (shared_ptr<RHI_Texture>& texture : m_textures_mip_generation_delete_per_mip)
                 {
                     // Remove unnecessary flags from texture (were only needed for the downsampling)
                     uint32_t flags = texture->GetFlags();
@@ -646,18 +648,15 @@ namespace Spartan
                     }
                 }
 
-                m_textures_mip_generation.clear();
-            }
-
-            // Add any newly requested textures
-            if (!m_textures_mip_generation_pending.empty())
-            {
-                m_textures_mip_generation.insert(m_textures_mip_generation.end(), m_textures_mip_generation_pending.begin(), m_textures_mip_generation_pending.end());
-                m_textures_mip_generation_pending.clear();
+                m_textures_mip_generation_delete_per_mip.clear();
             }
 
             // Generate mips for any pending texture requests
             Pass_Generate_Mips(m_cmd_current);
+
+            // Keep textures around until next time, at which point, it would be safe to delete per mip resources
+            m_textures_mip_generation_delete_per_mip.insert(m_textures_mip_generation_delete_per_mip.end(), m_textures_mip_generation.begin(), m_textures_mip_generation.end());
+            m_textures_mip_generation.clear();
         }
     }
 
@@ -883,22 +882,12 @@ namespace Spartan
     
     void Renderer::RequestTextureMipGeneration(shared_ptr<RHI_Texture> texture)
     {
-        if (IsCallingFromOtherThread())
-        {
-            while (m_reading_requests)
-            {
-                LOG_INFO("External thread is waiting for the renderer thread...");
-                this_thread::sleep_for(chrono::milliseconds(16));
-            }
-        }
-
-        // Validate
         SP_ASSERT(texture != nullptr);
         SP_ASSERT(texture->GetRhiSrv() != nullptr);
         SP_ASSERT(texture->HasMips());        // Ensure the texture requires mips
         SP_ASSERT(texture->HasPerMipViews()); // Ensure that the texture has per mip views since they are required for GPU downsampling.
 
-        lock_guard<mutex> guard(m_texture_mip_generation_mutex);
-        m_textures_mip_generation_pending.push_back(texture);
+        lock_guard<mutex> guard(m_mutex_mip_generation);
+        m_textures_mip_generation.push_back(texture);
     }
 }

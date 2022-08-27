@@ -391,10 +391,18 @@ namespace Spartan
             ParseNode(scene->mRootNode);
 
             // Update model geometry
-            //mesh->Optimize();
-            mesh->ComputeAabb();
-            mesh->ComputeNormalizedScale();
-            mesh->CreateGpuBuffers();
+            {
+                while (ProgressTracker::GetProgress(ProgressType::model_importing).GetFraction() != 1.0f)
+                {
+                    LOG_INFO("Waiting for node processing threads to finish before creating GPU buffers...");
+                    this_thread::sleep_for(std::chrono::milliseconds(16));
+                }
+
+                //mesh->Optimize();
+                mesh->ComputeAabb();
+                mesh->ComputeNormalizedScale();
+                mesh->CreateGpuBuffers();
+            }
 
             // Activate all the newly added entities (they are now thread-safe)
             m_world->ActivateNewEntities();
@@ -421,7 +429,6 @@ namespace Spartan
         bool is_root_node = parent_entity == nullptr;
         if (is_root_node)
         {
-            
             m_mesh->SetRootEntity(entity);
         }
 
