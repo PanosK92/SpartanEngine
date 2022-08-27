@@ -32,6 +32,6 @@ namespace Spartan
     {
     public:
         virtual ~ILogger() = default;
-        virtual void Log(const std::string& log, uint32_t type) = 0;
+        virtual void Log(const std::string& log, const uint32_t type) = 0;
     };
 }

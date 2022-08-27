@@ -27,7 +27,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <functional>
 #include <deque>
 #include <atomic>
+#include <mutex>
 #include "Logging/ILogger.h"
+#include "Rendering/Color.h"
 //==========================
 
 struct LogPackage
@@ -46,11 +48,12 @@ public:
         m_log_func = std::forward<log_func>(func);
     }
 
-    void Log(const std::string& text, const unsigned int error_level) override
+    void Log(const std::string& text, const uint32_t error_level) override
     {
-        LogPackage package;
-        package.text = text;
+        LogPackage package  = {};
+        package.text        = text;
         package.error_level = error_level;
+
         m_log_func(package);
     }
 
@@ -68,18 +71,20 @@ public:
     void Clear();
 
 private:
-    bool m_scroll_to_bottom         = false;
-    uint32_t m_log_max_count        = 1000;
-    bool m_log_type_visibility[3]   = { true, true, true };
-    uint32_t m_log_type_count[3]    = { 0, 0, 0 };
-    const std::vector<Spartan::Math::Vector4> m_log_type_color =
+    bool m_scroll_to_bottom       = false;
+    uint32_t m_log_max_count      = 1000;
+    bool m_log_type_visibility[3] = { true, true, true };
+    uint32_t m_log_type_count[3]  = { 0, 0, 0 };
+
+    const std::vector<Spartan::Color> m_log_type_color =
     {
-        Spartan::Math::Vector4(0.76f, 0.77f, 0.8f, 1.0f),    // Info
-        Spartan::Math::Vector4(0.7f, 0.75f, 0.0f, 1.0f),    // Warning
-        Spartan::Math::Vector4(0.7f, 0.3f, 0.3f, 1.0f)        // Error
+        Spartan::Color(0.76f, 0.77f, 0.8f, 1.0f), // Info
+        Spartan::Color(0.7f, 0.75f, 0.0f, 1.0f),  // Warning
+        Spartan::Color(0.7f, 0.3f, 0.3f, 1.0f)    // Error
     };
-    std::atomic<bool> m_is_reading = false;
+
     std::shared_ptr<EngineLogger> m_logger;
     std::deque<LogPackage> m_logs;
+    std::mutex m_mutex;
     ImGuiTextFilter m_log_filter;
 };

@@ -31,6 +31,11 @@ using namespace Spartan;
 using namespace Math;
 //======================
 
+static ImVec4 color_to_imvec4(const Color& color)
+{
+    return { color.r, color.g, color.b, color.a };
+}
+
 Console::Console(Editor* editor) : Widget(editor)
 {
     m_title = "Console";
@@ -75,17 +80,15 @@ void Console::TickVisible()
     ImGui::PopStyleVar();
     ImGui::Separator();
 
-    // Wait for reading to finish
-    while (m_is_reading) { this_thread::sleep_for(std::chrono::milliseconds(16)); }
-
-    m_is_reading = true;
+    lock_guard lock(m_mutex);
 
     // Content properties
     static const ImGuiTableFlags table_flags =
-        ImGuiTableFlags_RowBg           |
-        ImGuiTableFlags_BordersOuter    |
-        ImGuiTableFlags_ScrollX         |
+        ImGuiTableFlags_RowBg        |
+        ImGuiTableFlags_BordersOuter |
+        ImGuiTableFlags_ScrollX      |
         ImGuiTableFlags_ScrollY;
+
     static const ImVec2 size = ImVec2(-1.0f);
 
     // Content
@@ -106,19 +109,9 @@ void Console::TickVisible()
                 // Log
                 ImGui::PushID(row);
                 {
-                    //ImVec2 itemSize = ImGui::GetTextLineHeight();
-
-                    // Text (only add if visible as it's quite expensive)
-                    //if (ImGui::IsRectVisible(itemSize))
-                    {
-                        ImGui::PushStyleColor(ImGuiCol_Text, m_log_type_color[log.error_level]);
-                        ImGui::TextUnformatted(log.text.c_str());
-                        ImGui::PopStyleColor(1);
-                    }
-                    //else
-                    {
-                        //ImGui::Dummy(itemSize);
-                    }
+                    ImGui::PushStyleColor(ImGuiCol_Text, color_to_imvec4(m_log_type_color[log.error_level]));
+                    ImGui::TextUnformatted(log.text.c_str());
+                    ImGui::PopStyleColor(1);
 
                     // Context menu
                     if (ImGui::BeginPopupContextItem("##widget_console_contextMenu"))
@@ -153,14 +146,11 @@ void Console::TickVisible()
 
         ImGui::EndTable();
     }
-    
-    m_is_reading = false;
 }
 
 void Console::AddLogPackage(const LogPackage& package)
 {
-    // Wait for reading to finish
-    while (m_is_reading) { this_thread::sleep_for(std::chrono::milliseconds(16)); }
+    lock_guard lock(m_mutex);
 
     // Save to deque
     m_logs.push_back(package);
