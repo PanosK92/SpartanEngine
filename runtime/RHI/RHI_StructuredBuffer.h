@@ -33,12 +33,11 @@ namespace Spartan
         RHI_StructuredBuffer(const std::shared_ptr<RHI_Device>& rhi_device, const uint32_t stride, const uint32_t element_count, const char* name);
         ~RHI_StructuredBuffer();
 
-        // This function will handle updating the buffer. This involves:
-        // - Offset tracking, meaning that on every update, the offset will be shifted and used in the next update.
-        // - Deciding between flushing (vulkan) or unmapping (d3d11).
+        // Advance offset, copy memory and flush/unmap
         template<typename T>
-        void AutoUpdate(T& data_cpu)
+        void Update(T& data_cpu)
         {
+            // Advance offset
             m_offset = m_reset_offset ? 0 : (m_offset + m_stride);
 
             // Map (Vulkan uses persistent mapping so it will simply return the already mapped pointer)
