@@ -258,19 +258,15 @@ namespace Spartan
 
         //= CONSTANT BUFFERS =================================
         Cb_Frame m_cb_frame_cpu;
-        Cb_Frame m_cb_frame_cpu_mapped;
         std::shared_ptr<RHI_ConstantBuffer> m_cb_frame_gpu;
 
         Cb_Uber m_cb_uber_cpu;
-        Cb_Uber m_cb_uber_cpu_mapped;
         std::shared_ptr<RHI_ConstantBuffer> m_cb_uber_gpu;
 
         Cb_Light m_cb_light_cpu;
-        Cb_Light m_cb_light_cpu_mapped;
         std::shared_ptr<RHI_ConstantBuffer> m_cb_light_gpu;
 
         Cb_Material m_cb_material_cpu;
-        Cb_Material m_cb_material_cpu_mapped;
         std::shared_ptr<RHI_ConstantBuffer> m_cb_material_gpu;
         //====================================================
 
