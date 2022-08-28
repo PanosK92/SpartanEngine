@@ -43,41 +43,29 @@ namespace Spartan
     static void* rdc_module             = nullptr;
 
 #if defined(_MSC_VER) // Windows
-    static vector<wstring> GetInstalledRenderDocDLLPaths()
+    static vector<wstring> get_renderdoc_dll_paths()
     {
-        vector<wstring> paths;
+        vector<wstring> dll_paths;
+        static const wchar_t* installer_folders_path = TEXT("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Installer\\Folders");
 
-        // Query registry for all the render doc paths
-        static const wchar_t* pszInstallerFolders = TEXT("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Installer\\Folders");
-
+        // Open installer folders key
         HKEY hkey;
-        LSTATUS status = RegOpenKeyEx(HKEY_LOCAL_MACHINE, pszInstallerFolders, 0, KEY_READ, &hkey);
-        if (status != ERROR_SUCCESS) // ensure installer folders key is successfully opened
-            return paths;
-
-        constexpr uint32_t MAX_KEY_LENGTH = 255;
-        constexpr uint32_t MAX_VALUE_NAME = 8192;
+        if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, installer_folders_path, 0, KEY_READ, &hkey) != ERROR_SUCCESS) 
+            return dll_paths;
 
         TCHAR    achClass[MAX_PATH] = TEXT(""); // buffer for class name
         DWORD    cchClassName = MAX_PATH;       // size of class string
         DWORD    cSubKeys = 0;                  // number of subkeys
         DWORD    cbMaxSubKey;                   // longest subkey size
         DWORD    cchMaxClass;                   // longest class string
-        DWORD    cValues;                       // number of values for keyPath
+        DWORD    c_values;                      // number of values for keyPath
         DWORD    cchMaxValue;                   // longest value name
         DWORD    cbMaxValueData;                // longest value data
         DWORD    cbSecurityDescriptor;          // size of security descriptor
         FILETIME ftLastWriteTime;               // last write time
 
-        wchar_t cbEnumValue[MAX_VALUE_NAME] = TEXT("");
-
-        DWORD i, retCode;
-
-        TCHAR achValue[MAX_VALUE_NAME];
-        DWORD cchValue = MAX_VALUE_NAME;
-
         // Get the class name and the value count.
-        retCode = RegQueryInfoKey(
+        DWORD query_result = RegQueryInfoKey(
             hkey,                  // keyPath handle
             achClass,              // buffer for class name
             &cchClassName,         // size of class string
@@ -85,29 +73,33 @@ namespace Spartan
             &cSubKeys,             // number of subkeys
             &cbMaxSubKey,          // longest subkey size
             &cchMaxClass,          // longest class string
-            &cValues,              // number of values for this keyPath
+            &c_values,             // number of values for this keyPath
             &cchMaxValue,          // longest value name
             &cbMaxValueData,       // longest value data
             &cbSecurityDescriptor, // security descriptor
             &ftLastWriteTime);     // last write time
 
-        if (cValues)
+        constexpr uint32_t MAX_VALUE_NAME = 8192;
+        TCHAR ach_value[MAX_VALUE_NAME];
+        wchar_t enum_value[MAX_VALUE_NAME] = TEXT("");
+
+        if (c_values)
         {
             //printf("\nNumber of values: %d\n", cValues);
-            for (i = 0, retCode = ERROR_SUCCESS; i < cValues; i++)
+            for (DWORD i = 0, retCode = ERROR_SUCCESS; i < c_values; i++)
             {
-                cchValue = MAX_VALUE_NAME;
-                achValue[0] = '\0';
+                DWORD cchValue = MAX_VALUE_NAME;
+                ach_value[0] = '\0';
                 DWORD type = REG_SZ;
                 DWORD size;
-                memset(cbEnumValue, '\0', MAX_VALUE_NAME);
+                memset(enum_value, '\0', MAX_VALUE_NAME);
 
                 // MSDN:  https://docs.microsoft.com/en-us/windows/win32/api/winreg/nf-winreg-regenumvaluea
                 // If the data has the REG_SZ, REG_MULTI_SZ or REG_EXPAND_SZ type, the string may not have been stored with 
                 // the proper null-terminating characters. Therefore, even if the function returns ERROR_SUCCESS, the application 
                 // should ensure that the string is properly terminated before using it; otherwise, it may overwrite a buffer.
                 retCode = RegEnumValue(hkey, i,
-                    achValue,
+                    ach_value,
                     &cchValue,
                     nullptr,
                     &type,
@@ -125,13 +117,13 @@ namespace Spartan
                     &cSubKeys,             // number of subkeys 
                     &cbMaxSubKey,          // longest subkey size 
                     &cchMaxClass,          // longest class string 
-                    &cValues,              // number of values for this keyPath 
+                    &c_values,              // number of values for this keyPath 
                     &cchMaxValue,          // longest value name 
                     &cbMaxValueData,       // longest value data 
                     &cbSecurityDescriptor, // security descriptor 
                     &ftLastWriteTime);     // last write time 
 
-                wstring path(achValue);
+                wstring path(ach_value);
                 if (path.find(L"RenderDoc") != wstring::npos)
                 {
                     // many paths qualify:
@@ -146,7 +138,7 @@ namespace Spartan
                     HANDLE file_handle = FindFirstFile(rdc_dll_path.c_str(), &find_file_data);
                     if (file_handle != INVALID_HANDLE_VALUE)
                     {
-                        paths.push_back(path);
+                        dll_paths.push_back(path);
                     }
                 }
             }
@@ -154,7 +146,7 @@ namespace Spartan
 
         RegCloseKey(hkey);
 
-        return paths;
+        return dll_paths;
     }
 #endif
 
@@ -164,14 +156,14 @@ namespace Spartan
         if (rdc_api == nullptr)
         {
             pRENDERDOC_GetAPI rdc_get_api = nullptr;
-    #if defined(_MSC_VER) // Windows
+#if defined(_MSC_VER) // Windows
             // If RenderDoc is already injected into the engine, use the existing module
             rdc_module = ::GetModuleHandleA("renderdoc.dll");
 
             // If RenderDoc is not injected, load the module now
             if (rdc_module == nullptr)
             {
-                vector<wstring> RDocDllPaths = GetInstalledRenderDocDLLPaths();
+                vector<wstring> RDocDllPaths = get_renderdoc_dll_paths();
                 SP_ASSERT_MSG(!RDocDllPaths.empty(), "Could not find any install locations for renderdoc.dll");
                 wstring module_path = RDocDllPaths[0]; // assuming x64 is reported first
                 rdc_module = ::LoadLibraryW(module_path.c_str());

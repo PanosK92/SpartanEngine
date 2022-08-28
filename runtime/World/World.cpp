@@ -108,7 +108,7 @@ namespace Spartan
         // Tick entities
         {
             // Detect game toggling
-            const bool started   = m_context->m_engine->IsFlagSet(EngineMode::Game) && m_was_in_editor_mode;
+            const bool started   =  m_context->m_engine->IsFlagSet(EngineMode::Game) &&  m_was_in_editor_mode;
             const bool stopped   = !m_context->m_engine->IsFlagSet(EngineMode::Game) && !m_was_in_editor_mode;
             m_was_in_editor_mode = !m_context->m_engine->IsFlagSet(EngineMode::Game);
 
