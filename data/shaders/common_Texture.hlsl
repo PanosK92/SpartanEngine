@@ -67,7 +67,7 @@ Texture2D tex2                   : register(t34);
 Texture2D tex_font_atlas         : register(t35);
 TextureCube tex_reflection_probe : register(t36);
 
-// RWTexture2D
+// Storage
 RWTexture2D<float4> tex_uav                                : register(u0);
 RWTexture2D<float4> tex_uav2                               : register(u1);
 RWTexture2D<float4> tex_uav3                               : register(u2);

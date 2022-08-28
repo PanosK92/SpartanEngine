@@ -225,6 +225,7 @@ namespace Spartan
             m_cb_frame_gpu->ResetOffset();
             m_cb_light_gpu->ResetOffset();
             m_cb_material_gpu->ResetOffset();
+            m_sb_spd_counter->ResetOffset();
 
             // Perform operations which might modify, create or destroy resources
             OnResourceSafe(m_cmd_current);
@@ -415,7 +416,6 @@ namespace Spartan
         }
 
         bool reallocated = m_cb_frame_gpu->AutoUpdate<Cb_Frame>( m_cb_frame_cpu, m_cb_frame_cpu_mapped);
-
         if (reallocated)
         {
             cmd_list->Discard();
@@ -428,7 +428,6 @@ namespace Spartan
     void Renderer::Update_Cb_Uber(RHI_CommandList* cmd_list)
     {
         bool reallocated = m_cb_uber_gpu->AutoUpdate<Cb_Uber>(m_cb_uber_cpu, m_cb_uber_cpu_mapped);
-
         if (reallocated)
         {
             cmd_list->Discard();
@@ -466,7 +465,6 @@ namespace Spartan
         m_cb_light_cpu.options                    |= light->GetVolumetricEnabled()                   ? (1 << 6) : 0;
 
         bool reallocated = m_cb_light_gpu->AutoUpdate<Cb_Light>(m_cb_light_cpu, m_cb_light_cpu_mapped);
-
         if (reallocated)
         {
             cmd_list->Discard();
@@ -494,7 +492,6 @@ namespace Spartan
         }
 
         bool reallocated = m_cb_material_gpu->AutoUpdate<Cb_Material>(m_cb_material_cpu, m_cb_material_cpu_mapped);
-
         if (reallocated)
         {
             cmd_list->Discard();
@@ -636,21 +633,15 @@ namespace Spartan
                 m_textures_mip_generation_delete_per_mip.clear();
             }
 
-            if (!m_textures_mip_generation.empty())
-            {
-                RHI_RenderDoc::StartCapture();
-
             // Generate mips for any pending texture requests
             for (RHI_Texture* texture : m_textures_mip_generation)
             {
                 // Downsample
                 const bool luminance_antiflicker = false;
-                Pass_Ffx_Spd(nullptr, texture, luminance_antiflicker);
+                Pass_Ffx_Spd(m_cmd_current, texture, luminance_antiflicker);
 
                 // Set all generated mips to read only optimal
                 texture->SetLayout(RHI_Image_Layout::Shader_Read_Only_Optimal, cmd_list, 0, texture->GetMipCount());
-            }
-            RHI_RenderDoc::EndCapture();
             }
 
             // Keep textures around until next time, at which point, it would be safe to delete per mip resources
