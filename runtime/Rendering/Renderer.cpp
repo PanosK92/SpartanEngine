@@ -91,7 +91,6 @@ namespace Spartan
         // Subscribe to events.
         SP_SUBSCRIBE_TO_EVENT(EventType::WorldResolved,             SP_EVENT_HANDLER_VARIANT(OnAddRenderables));
         SP_SUBSCRIBE_TO_EVENT(EventType::WorldClear,                SP_EVENT_HANDLER(OnClear));
-        SP_SUBSCRIBE_TO_EVENT(EventType::WorldLoadEnd,              SP_EVENT_HANDLER(OnWorldLoaded));
         SP_SUBSCRIBE_TO_EVENT(EventType::WindowOnFullScreenToggled, SP_EVENT_HANDLER(OnFullScreenToggled));
 
         // Get thread id.
@@ -227,10 +226,8 @@ namespace Spartan
             m_cb_light_gpu->ResetOffset();
             m_cb_material_gpu->ResetOffset();
 
-            // Handle requests
-            m_reading_requests = true;
-            OnResourceSafe();
-            m_reading_requests = false;
+            // Perform operations which might modify, create or destroy resources
+            OnResourceSafe(m_cmd_current);
         }
 
         // Update frame buffer
@@ -324,15 +321,6 @@ namespace Spartan
     
     void Renderer::SetViewport(float width, float height)
     {
-        if (IsCallingFromOtherThread())
-        {
-            while (m_reading_requests)
-            {
-                LOG_INFO("External thread is waiting for the renderer thread...");
-                this_thread::sleep_for(chrono::milliseconds(16));
-            }
-        }
-
         if (m_viewport.width != width || m_viewport.height != height)
         {
             m_viewport.width  = width;
@@ -539,11 +527,6 @@ namespace Spartan
         m_entities.clear();
     }
 
-    void Renderer::OnWorldLoaded()
-    {
-        m_is_rendering_allowed = true;
-    }
-
     void Renderer::OnFullScreenToggled()
     {
         Window* window            = m_context->GetSubsystem<Window>();
@@ -567,7 +550,7 @@ namespace Spartan
         input->SetMouseCursorVisible(!is_full_screen);
     }
 
-    void Renderer::OnResourceSafe()
+    void Renderer::OnResourceSafe(RHI_CommandList* cmd_list)
     {
         // Acquire renderables
         if (m_add_new_entities)
@@ -623,8 +606,7 @@ namespace Spartan
         if (m_environment_texture_dirty)
         {
             lock_guard lock(m_mutex_environment_texture);
-            m_environment_texture       = m_environment_texture_temp;
-            m_environment_texture_temp  = nullptr;
+            m_environment_texture       = m_environment->GetTexture();
             m_environment_texture_dirty = false;
         }
 
@@ -635,7 +617,7 @@ namespace Spartan
             // Clear any previously processed textures
             if (!m_textures_mip_generation_delete_per_mip.empty())
             {
-                for (shared_ptr<RHI_Texture>& texture : m_textures_mip_generation_delete_per_mip)
+                for (RHI_Texture* texture : m_textures_mip_generation_delete_per_mip)
                 {
                     // Remove unnecessary flags from texture (were only needed for the downsampling)
                     uint32_t flags = texture->GetFlags();
@@ -654,8 +636,22 @@ namespace Spartan
                 m_textures_mip_generation_delete_per_mip.clear();
             }
 
+            if (!m_textures_mip_generation.empty())
+            {
+                RHI_RenderDoc::StartCapture();
+
             // Generate mips for any pending texture requests
-            Pass_Generate_Mips(m_cmd_current);
+            for (RHI_Texture* texture : m_textures_mip_generation)
+            {
+                // Downsample
+                const bool luminance_antiflicker = false;
+                Pass_Ffx_Spd(nullptr, texture, luminance_antiflicker);
+
+                // Set all generated mips to read only optimal
+                texture->SetLayout(RHI_Image_Layout::Shader_Read_Only_Optimal, cmd_list, 0, texture->GetMipCount());
+            }
+            RHI_RenderDoc::EndCapture();
+            }
 
             // Keep textures around until next time, at which point, it would be safe to delete per mip resources
             m_textures_mip_generation_delete_per_mip.insert(m_textures_mip_generation_delete_per_mip.end(), m_textures_mip_generation.begin(), m_textures_mip_generation.end());
@@ -694,11 +690,11 @@ namespace Spartan
         return m_environment_texture ? m_environment_texture : m_tex_default_black;
     }
 
-    void Renderer::SetEnvironmentTexture(shared_ptr<RHI_Texture> texture)
+    void Renderer::SetEnvironment(Environment* environment)
     {
         lock_guard lock(m_mutex_environment_texture);
 
-        m_environment_texture_temp  = texture;
+        m_environment = environment;
         m_environment_texture_dirty = true;
     }
 
@@ -876,12 +872,13 @@ namespace Spartan
         return m_rhi_context->renderdoc;
     }
     
-    void Renderer::RequestTextureMipGeneration(shared_ptr<RHI_Texture> texture)
+    void Renderer::RequestTextureMipGeneration(RHI_Texture* texture)
     {
         SP_ASSERT(texture != nullptr);
         SP_ASSERT(texture->GetRhiSrv() != nullptr);
         SP_ASSERT(texture->HasMips());        // Ensure the texture requires mips
         SP_ASSERT(texture->HasPerMipViews()); // Ensure that the texture has per mip views since they are required for GPU downsampling.
+        SP_ASSERT(texture->IsReadyForUse());  // Ensure that any loading and resource creation has finished
 
         lock_guard<mutex> guard(m_mutex_mip_generation);
         m_textures_mip_generation.push_back(texture);

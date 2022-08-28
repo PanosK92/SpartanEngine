@@ -439,8 +439,9 @@ namespace Spartan
             shader(RendererShader::Ffx_Cas_C)->Compile(RHI_Shader_Compute, dir_shaders + "amd_fidelity_fx/cas.hlsl", async);
 
             // SPD - Single Pass Downsampler
+            // Don't compile this one async, this is because it's used for mip generation during the very first frames.
             shader(RendererShader::Ffx_Spd_C) = make_shared<RHI_Shader>(m_context);
-            shader(RendererShader::Ffx_Spd_C)->Compile(RHI_Shader_Compute, dir_shaders + "amd_fidelity_fx/spd.hlsl", async);
+            shader(RendererShader::Ffx_Spd_C)->Compile(RHI_Shader_Compute, dir_shaders + "amd_fidelity_fx/spd.hlsl", false);
             shader(RendererShader::Ffx_Spd_LuminanceAntiflicker_C) = make_shared<RHI_Shader>(m_context);
             shader(RendererShader::Ffx_Spd_LuminanceAntiflicker_C)->AddDefine("LUMINANCE_ANTIFLICKER");
             shader(RendererShader::Ffx_Spd_LuminanceAntiflicker_C)->Compile(RHI_Shader_Compute, dir_shaders + "amd_fidelity_fx/spd.hlsl", async);

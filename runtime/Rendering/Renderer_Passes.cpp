@@ -1854,16 +1854,21 @@ namespace Spartan
         SP_ASSERT(output_mip_count <= 12); // As per documentation (page 22)
 
         // Acquire shader
-        RHI_Shader* shader = shader(luminance_antiflicker ? RendererShader::Ffx_Spd_LuminanceAntiflicker_C : RendererShader::Ffx_Spd_C).get();
-
-        if (!shader->IsCompiled())
+        RHI_Shader* shader_c = shader(luminance_antiflicker ? RendererShader::Ffx_Spd_LuminanceAntiflicker_C : RendererShader::Ffx_Spd_C).get();
+        if (!shader_c->IsCompiled())
             return;
+
+        // If the provided command list is null, this means that we have to use an immediate command list.
+        // This is done to avoid cases in which the command list is discarded (never submitted), which can happen if it contains invalid resources.
+        // This scenario is most common during any kind of loading, where we can have resources being destroyed/created.
+        bool use_immediate_cmd_list = cmd_list == nullptr;
+        cmd_list = use_immediate_cmd_list ? m_rhi_device->ImmediateBegin(RHI_Queue_Type::Compute) : cmd_list;
 
         cmd_list->BeginMarker("ffx_spd");
 
         // Define render state
         static RHI_PipelineState pso;
-        pso.shader_compute = shader;
+        pso.shader_compute = shader_c;
 
         // Set pipeline state
         cmd_list->SetPipelineState(pso);
@@ -1889,6 +1894,11 @@ namespace Spartan
         cmd_list->Dispatch(thread_group_count_x_, thread_group_count_y_);
 
         cmd_list->EndMarker();
+
+        if (use_immediate_cmd_list)
+        {
+            m_rhi_device->ImmediateSubmit(cmd_list);
+        }
     }
 
     void Renderer::Pass_Ffx_Fsr2(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
@@ -2431,22 +2441,5 @@ namespace Spartan
         m_swap_chain->SetLayout(RHI_Image_Layout::Present_Src, m_cmd_current);
 
         m_cmd_current->EndMarker();
-    }
-
-    void Renderer::Pass_Generate_Mips(RHI_CommandList* cmd_list)
-    {
-        for (shared_ptr<RHI_Texture>& texture : m_textures_mip_generation)
-        {
-            SP_ASSERT(texture != nullptr);        // Ensure the texture is valid.
-            SP_ASSERT(texture->HasMips());        // Ensure the texture has mips.
-            SP_ASSERT(texture->HasPerMipViews()); // Ensure the texture has per mip views, which is required for the downsampler.
-
-            // Downsample
-            const bool luminance_antiflicker = false;
-            Pass_Ffx_Spd(m_cmd_current, texture.get(), luminance_antiflicker);
-
-            // Set all generated mips to read only optimal
-            texture->SetLayout(RHI_Image_Layout::Shader_Read_Only_Optimal, cmd_list, 0, texture->GetMipCount());
-        }
     }
 }

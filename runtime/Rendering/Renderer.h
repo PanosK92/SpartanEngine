@@ -48,6 +48,7 @@ namespace Spartan
     class Variant;
     class Grid;
     class Profiler;
+    class Environment;
     //====================
 
     namespace Math
@@ -98,7 +99,7 @@ namespace Spartan
 
         // Environment texture
         const std::shared_ptr<RHI_Texture> GetEnvironmentTexture();
-        void SetEnvironmentTexture(std::shared_ptr<RHI_Texture> texture);
+        void SetEnvironment(Environment* environment);
 
         // Options
         template<typename T>
@@ -130,7 +131,7 @@ namespace Spartan
 
         // Misc
         void SetGlobalShaderResources(RHI_CommandList* cmd_list) const;
-        void RequestTextureMipGeneration(std::shared_ptr<RHI_Texture> texture);
+        void RequestTextureMipGeneration(RHI_Texture* texture);
 
         RHI_Texture* GetFrameTexture()                                 { return GetRenderTarget(RendererTexture::Frame_Output).get(); }
         auto GetFrameNum()                                       const { return m_frame_num; }
@@ -187,7 +188,6 @@ namespace Spartan
         void Pass_PeformanceMetrics(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
         void Pass_BrdfSpecularLut(RHI_CommandList* cmd_list);
         void Pass_Copy(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out, const bool bilinear);
-        void Pass_Generate_Mips(RHI_CommandList* cmd_list);
         // Lighting
         void Pass_Light(RHI_CommandList* cmd_list, const bool is_transparent_pass);
         void Pass_Light_Composition(RHI_CommandList* cmd_list, RHI_Texture* tex_out, const bool is_transparent_pass);
@@ -206,7 +206,7 @@ namespace Spartan
         // Misc
         void SortRenderables(std::vector<Entity*>* renderables);
         bool IsCallingFromOtherThread();
-        void OnResourceSafe();
+        void OnResourceSafe(RHI_CommandList* cmd_list);
 
         // Lines
         void Lines_PreMain();
@@ -300,7 +300,6 @@ namespace Spartan
 
         // Environment texture
         std::shared_ptr<RHI_Texture> m_environment_texture;
-        std::shared_ptr<RHI_Texture> m_environment_texture_temp;
         bool m_environment_texture_dirty = false;
 
         // Options
@@ -314,7 +313,7 @@ namespace Spartan
         uint64_t m_frame_num              = 0;
         bool m_is_odd_frame               = false;
         bool m_brdf_specular_lut_rendered = false;
-        bool m_ffx_fsr2_reset            = false;
+        bool m_ffx_fsr2_reset             = false;
         std::thread::id m_render_thread_id;
 
         // Constants
@@ -325,14 +324,13 @@ namespace Spartan
         const float m_depth_bias_slope_scaled  = 2.0f;
 
         // Requests for mip generation
-        std::vector<std::shared_ptr<RHI_Texture>> m_textures_mip_generation;
-        std::vector<std::shared_ptr<RHI_Texture>> m_textures_mip_generation_delete_per_mip;
+        std::vector<RHI_Texture*> m_textures_mip_generation;
+        std::vector<RHI_Texture*> m_textures_mip_generation_delete_per_mip;
 
         // States
         std::atomic<bool> m_is_rendering_allowed = true;
         std::atomic<bool> m_flush_requested      = false;
         bool m_dirty_orthographic_projection     = true;
-        std::atomic<bool> m_reading_requests     = false;
 
         // RHI Core
         std::shared_ptr<RHI_Context> m_rhi_context;
@@ -350,6 +348,7 @@ namespace Spartan
         std::unordered_map<RendererEntityType, std::vector<Entity*>> m_entities;
         std::array<Material*, m_max_material_instances> m_material_instances;
         std::shared_ptr<Camera> m_camera;
+        Environment* m_environment = nullptr;
 
         // Sync objects
         std::mutex m_mutex_entity_addition;

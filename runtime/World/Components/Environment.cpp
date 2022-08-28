@@ -93,14 +93,15 @@ namespace Spartan
         m_is_dirty = true;
     }
 
-    const shared_ptr<Spartan::RHI_Texture> Environment::GetTexture() const
+    const shared_ptr<RHI_Texture> Environment::GetTexture() const
     {
-        return m_context->GetSubsystem<Renderer>()->GetEnvironmentTexture();
+        return m_texture;
     }
 
-    void Environment::SetTexture(const shared_ptr<RHI_Texture>& texture)
+    void Environment::SetTexture(const shared_ptr<RHI_Texture> texture)
     {
-        m_context->GetSubsystem<Renderer>()->SetEnvironmentTexture(texture);
+        m_texture = texture;
+        m_context->GetSubsystem<Renderer>()->SetEnvironment(this);
     }
 
     void Environment::SetFromTextureArray(const vector<string>& file_paths)
@@ -136,7 +137,7 @@ namespace Spartan
         LOG_INFO("Loading sky sphere...");
 
         // Create texture
-        shared_ptr<RHI_Texture> texture = make_shared<RHI_Texture2D>(GetContext(), RHI_Texture_Srv);
+        shared_ptr<RHI_Texture> texture = make_shared<RHI_Texture2D>(GetContext(), RHI_Texture_Srv | RHI_Texture_Mips);
 
         if (!texture->LoadFromFile(file_path))
         {

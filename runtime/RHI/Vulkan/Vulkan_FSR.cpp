@@ -97,10 +97,10 @@ namespace Spartan
         wchar_t name_output[]   = L"FSR2_Output";
 
         // Transition to the appropriate texture layouts (will only happen if needed)
-        tex_input->SetLayout(RHI_Image_Layout::Shader_Read_Only_Optimal,    cmd_list);
-        tex_depth->SetLayout(RHI_Image_Layout::Shader_Read_Only_Optimal,    cmd_list);
-        tex_velocity->SetLayout(RHI_Image_Layout::Shader_Read_Only_Optimal, cmd_list);
-        tex_output->SetLayout(RHI_Image_Layout::General,                    cmd_list);
+        tex_input->SetLayout(RHI_Image_Layout::Shader_Read_Only_Optimal,        cmd_list);
+        tex_depth->SetLayout(RHI_Image_Layout::Depth_Stencil_Read_Only_Optimal, cmd_list);
+        tex_velocity->SetLayout(RHI_Image_Layout::Shader_Read_Only_Optimal,     cmd_list);
+        tex_output->SetLayout(RHI_Image_Layout::General,                        cmd_list);
 
         // Fill in the dispatch description
         m_ffx_fsr2_dispatch_description                        = {};
