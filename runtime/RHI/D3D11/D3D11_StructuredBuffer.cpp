@@ -31,7 +31,7 @@ using namespace std;
 
 namespace Spartan
 {
-    RHI_StructuredBuffer::RHI_StructuredBuffer(const shared_ptr<RHI_Device>& rhi_device, const uint32_t stride, const uint32_t element_count, const void* data /*= nullptr*/)
+    RHI_StructuredBuffer::RHI_StructuredBuffer(const shared_ptr<RHI_Device>& rhi_device, const uint32_t stride, const uint32_t element_count, const char* name)
     {
         m_rhi_device = rhi_device;
 
@@ -45,6 +45,7 @@ namespace Spartan
             desc.StructureByteStride = stride;
 
             // Initial data
+            void* data                              = nullptr;
             D3D11_SUBRESOURCE_DATA subresource_data = {};
             subresource_data.pSysMem                = data;
 
@@ -93,5 +94,10 @@ namespace Spartan
         SP_ASSERT(m_rhi_resource != nullptr);
 
         m_rhi_device->GetRhiContext()->device_context->Unmap(static_cast<ID3D11Buffer*>(m_rhi_resource), 0);
+    }
+
+    void RHI_StructuredBuffer::Flush(const uint64_t size, const uint64_t offset)
+    {
+
     }
 }
