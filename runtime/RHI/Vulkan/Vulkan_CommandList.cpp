@@ -1001,6 +1001,10 @@ namespace Spartan
                 // Get descriptor sets
                 array<void*, 1> descriptor_sets = { descriptor_set->GetResource() };
 
+                // Get dynamic offsets
+                static vector<uint32_t> dynamic_offsets;
+                m_descriptor_layout_current->GetDynamicOffsets(&dynamic_offsets);
+
                 // Bind descriptor set
                 vkCmdBindDescriptorSets
                 (
@@ -1012,8 +1016,8 @@ namespace Spartan
                     0,                                                                       // firstSet
                     static_cast<uint32_t>(descriptor_sets.size()),                           // descriptorSetCount
                     reinterpret_cast<VkDescriptorSet*>(descriptor_sets.data()),              // pDescriptorSets
-                    m_descriptor_layout_current->GetConstantBufferCount(),                   // dynamicOffsetCount
-                    m_descriptor_layout_current->GetDynamicOffsets()                         // pDynamicOffsets
+                    static_cast<uint32_t>(dynamic_offsets.size()),                           // dynamicOffsetCount
+                    dynamic_offsets.data()                                                   // pDynamicOffsets
                 );
 
                 if (m_profiler)

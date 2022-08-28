@@ -729,7 +729,7 @@ namespace Spartan::vulkan_utility
         }
     };
 
-    static VkDescriptorType ToVulkanDescriptorType(const RHI_Descriptor& descriptor)
+    static VkDescriptorType to_vulkan_desscriptor_type(const RHI_Descriptor& descriptor)
     {
         if (descriptor.type == RHI_Descriptor_Type::Sampler)
             return VkDescriptorType::VK_DESCRIPTOR_TYPE_SAMPLER;
@@ -741,12 +741,12 @@ namespace Spartan::vulkan_utility
             return VkDescriptorType::VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
 
         if (descriptor.type == RHI_Descriptor_Type::StructuredBuffer)
-            return VkDescriptorType::VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+            return VkDescriptorType::VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
 
         if (descriptor.type == RHI_Descriptor_Type::ConstantBuffer)
             return VkDescriptorType::VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
 
-        LOG_ERROR("Invalid descriptor type");
+        SP_ASSERT_MSG(false, "Unhandled descriptor type");
         return VkDescriptorType::VK_DESCRIPTOR_TYPE_MAX_ENUM;
     }
 }

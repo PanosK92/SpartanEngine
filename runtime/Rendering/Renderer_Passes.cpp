@@ -25,14 +25,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Grid.h"
 #include "Font/Font.h"
 #include "../Profiling/Profiler.h"
-#include "../RHI/RHI_CommandList.h"
-#include "../RHI/RHI_Implementation.h"
-#include "../RHI/RHI_VertexBuffer.h"
-#include "../RHI/RHI_IndexBuffer.h"
-#include "../RHI/RHI_PipelineState.h"
-#include "../RHI/RHI_Texture.h"
-#include "../RHI/RHI_SwapChain.h"
-#include "../RHI/RHI_Shader.h"
 #include "../World/Entity.h"
 #include "../World/Components/Camera.h"
 #include "../World/Components/Light.h"
@@ -41,7 +33,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World/Components/ReflectionProbe.h"
 #include "../World/World.h"
 #include "../World/TransformHandle/TransformHandle.h"
+#include "../RHI/RHI_CommandList.h"
+#include "../RHI/RHI_Implementation.h"
+#include "../RHI/RHI_VertexBuffer.h"
+#include "../RHI/RHI_IndexBuffer.h"
+#include "../RHI/RHI_PipelineState.h"
+#include "../RHI/RHI_Texture.h"
+#include "../RHI/RHI_SwapChain.h"
+#include "../RHI/RHI_Shader.h"
 #include "../RHI/RHI_FSR2.h"
+#include "../RHI/RHI_StructuredBuffer.h"
 //===================================================
 
 //= NAMESPACES ===============
@@ -1858,12 +1859,6 @@ namespace Spartan
         if (!shader_c->IsCompiled())
             return;
 
-        // If the provided command list is null, this means that we have to use an immediate command list.
-        // This is done to avoid cases in which the command list is discarded (never submitted), which can happen if it contains invalid resources.
-        // This scenario is most common during any kind of loading, where we can have resources being destroyed/created.
-        bool use_immediate_cmd_list = cmd_list == nullptr;
-        cmd_list = use_immediate_cmd_list ? m_rhi_device->ImmediateBegin(RHI_Queue_Type::Compute) : cmd_list;
-
         cmd_list->BeginMarker("ffx_spd");
 
         // Define render state
@@ -1883,8 +1878,10 @@ namespace Spartan
         m_cb_uber_cpu.work_group_count = thread_group_count_x_ * thread_group_count_y_;
         Update_Cb_Uber(cmd_list);
 
-        // Set structured buffer
-        cmd_list->SetStructuredBuffer(RendererBindingsSb::counter, m_sb_counter);
+        // Update counter
+        uint32_t counter_value = 0;
+        m_sb_spd_counter->AutoUpdate<uint32_t>(counter_value);
+        cmd_list->SetStructuredBuffer(RendererBindingsSb::counter, m_sb_spd_counter);
 
         // Set textures
         cmd_list->SetTexture(RendererBindingsSrv::tex, tex, 0, 1);                            // top mip
@@ -1894,11 +1891,6 @@ namespace Spartan
         cmd_list->Dispatch(thread_group_count_x_, thread_group_count_y_);
 
         cmd_list->EndMarker();
-
-        if (use_immediate_cmd_list)
-        {
-            m_rhi_device->ImmediateSubmit(cmd_list);
-        }
     }
 
     void Renderer::Pass_Ffx_Fsr2(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)

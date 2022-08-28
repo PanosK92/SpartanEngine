@@ -260,7 +260,7 @@ namespace Spartan
         IDxcResult* Compile(const std::string& source, std::vector<std::string>& arguments)
         {
             // Get shader source
-            DxcBuffer dxc_buffer;
+            DxcBuffer dxc_buffer = {};
             CComPtr<IDxcBlobEncoding> blob_encoding = nullptr;
             {
                 if (FAILED(m_utils->CreateBlobFromPinned(source.c_str(), static_cast<uint32_t>(source.size()), CP_UTF8, &blob_encoding)))

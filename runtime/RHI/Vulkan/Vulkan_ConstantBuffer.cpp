@@ -46,7 +46,7 @@ namespace Spartan
     RHI_ConstantBuffer::RHI_ConstantBuffer(RHI_Device* rhi_device, const string& name)
     {
         m_rhi_device         = rhi_device;
-        m_name        = name;
+        m_name               = name;
         m_persistent_mapping = true;
     }
 
@@ -56,10 +56,10 @@ namespace Spartan
         _destroy();
 
         // Calculate required alignment based on minimum device offset alignment
-        size_t min_ubo_alignment = m_rhi_device->GetMinUniformBufferOffsetAllignment();
-        if (min_ubo_alignment > 0)
+        size_t min_alignment = m_rhi_device->GetMinUniformBufferOffsetAllignment();
+        if (min_alignment > 0)
         {
-            m_stride = static_cast<uint64_t>((m_stride + min_ubo_alignment - 1) & ~(min_ubo_alignment - 1));
+            m_stride = static_cast<uint64_t>((m_stride + min_alignment - 1) & ~(min_alignment - 1));
         }
         m_object_size_gpu = m_stride * m_element_count;
 
@@ -83,12 +83,12 @@ namespace Spartan
 
     void RHI_ConstantBuffer::Unmap()
     {
-        // buffer is mapped on creation and unmapped during destruction
+        SP_ASSERT_MSG(false, "Vulkan is using persistent mapping");
     }
 
     void RHI_ConstantBuffer::Flush(const uint64_t size, const uint64_t offset)
     {
-        m_rhi_device->Flush(m_rhi_resource, offset, size);
+        m_rhi_device->FlushAllocation(m_rhi_resource, offset, size);
 
         m_offset       = static_cast<uint32_t>(offset);
         m_reset_offset = false;

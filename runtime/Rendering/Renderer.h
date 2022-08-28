@@ -275,7 +275,7 @@ namespace Spartan
         //====================================================
 
         // Structured buffers
-        std::shared_ptr<RHI_StructuredBuffer> m_sb_counter;
+        std::shared_ptr<RHI_StructuredBuffer> m_sb_spd_counter;
 
         // Line rendering
         std::shared_ptr<RHI_VertexBuffer> m_vertex_buffer_lines;

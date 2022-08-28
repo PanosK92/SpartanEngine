@@ -41,7 +41,6 @@ namespace Spartan
         m_rhi_device  = rhi_device;
         m_descriptors = descriptors;
         m_name        = name;
-        m_dynamic_offsets.fill(0);
 
         CreateResource(m_descriptors);
 
@@ -65,6 +64,26 @@ namespace Spartan
                 descriptor.data           = static_cast<void*>(constant_buffer);
                 descriptor.dynamic_offset = constant_buffer->GetOffset();
                 descriptor.range          = constant_buffer->GetStride();
+
+                return;
+            }
+        }
+    }
+
+    void RHI_DescriptorSetLayout::SetStructuredBuffer(const uint32_t slot, RHI_StructuredBuffer* structured_buffer)
+    {
+        for (RHI_Descriptor& descriptor : m_descriptors)
+        {
+            if ((descriptor.type == RHI_Descriptor_Type::StructuredBuffer) && descriptor.slot == slot + rhi_shader_shift_register_u)
+            {
+                // Determine if the descriptor set needs to bind (affects vkUpdateDescriptorSets)
+                m_needs_to_bind = descriptor.data           != structured_buffer              ? true : m_needs_to_bind;
+                m_needs_to_bind = descriptor.dynamic_offset != structured_buffer->GetOffset() ? true : m_needs_to_bind;
+                m_needs_to_bind = descriptor.range          != structured_buffer->GetStride() ? true : m_needs_to_bind;
+
+                descriptor.data           = static_cast<void*>(structured_buffer);
+                descriptor.dynamic_offset = structured_buffer->GetOffset();
+                descriptor.range          = structured_buffer->GetStride();
 
                 return;
             }
@@ -124,25 +143,6 @@ namespace Spartan
         }
     }
 
-    void RHI_DescriptorSetLayout::SetStructuredBuffer(const uint32_t slot, RHI_StructuredBuffer* structured_buffer)
-    {
-        for (RHI_Descriptor& descriptor : m_descriptors)
-        {
-            if ((descriptor.type == RHI_Descriptor_Type::StructuredBuffer) && descriptor.slot == slot + rhi_shader_shift_register_u)
-            {
-                // Determine if the descriptor set needs to bind (affects vkUpdateDescriptorSets)
-                m_needs_to_bind = descriptor.data  != structured_buffer                     ? true : m_needs_to_bind;
-                m_needs_to_bind = descriptor.range != structured_buffer->GetObjectSizeGpu() ? true : m_needs_to_bind;
-
-                // Update
-                descriptor.data  = static_cast<void*>(structured_buffer);
-                descriptor.range = structured_buffer->GetObjectSizeGpu();
-
-                return;
-            }
-        }
-    }
-
     void RHI_DescriptorSetLayout::ClearDescriptorData()
     {
         for (RHI_Descriptor& descriptor : m_descriptors)
@@ -189,32 +189,18 @@ namespace Spartan
         return descriptor_set;
     }
 
-    const uint32_t* RHI_DescriptorSetLayout::GetDynamicOffsets()
+    void RHI_DescriptorSetLayout::GetDynamicOffsets(vector<uint32_t>* offsets)
     {
-        uint32_t i = 0;
-        for (RHI_Descriptor& descriptor : m_descriptors)
-        {
-            if (descriptor.type == RHI_Descriptor_Type::ConstantBuffer)
-            {
-                m_dynamic_offsets[i++] = static_cast<uint32_t>(descriptor.dynamic_offset);
-            }
-        }
+        // Offsets should be ordered by the binding numbers in the descriptor set layouts
 
-        return m_dynamic_offsets.data();
-    }
-
-    uint32_t RHI_DescriptorSetLayout::GetConstantBufferCount()
-    {
-        uint32_t constant_buffer_count = 0;
+        (*offsets).clear();
 
         for (RHI_Descriptor& descriptor : m_descriptors)
         {
-            if (descriptor.type == RHI_Descriptor_Type::ConstantBuffer)
+            if (descriptor.type == RHI_Descriptor_Type::StructuredBuffer || descriptor.type == RHI_Descriptor_Type::ConstantBuffer)
             {
-                constant_buffer_count++;
+                (*offsets).emplace_back(descriptor.dynamic_offset);
             }
         }
-
-        return constant_buffer_count;
     }
 }

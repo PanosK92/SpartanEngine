@@ -57,7 +57,8 @@ namespace Spartan
     {
         SP_ASSERT(m_rhi_device != nullptr);
 
-        const uint32_t offset_count = 4096; // buffers can dynamically re-allocate anyway, no need to go big.
+        // buffers can dynamically re-allocate anyway, no need to go bigger.
+        const uint32_t offset_count = 4096; 
 
         m_cb_frame_gpu = make_shared<RHI_ConstantBuffer>(m_rhi_device.get(), "frame");
         m_cb_frame_gpu->Create<Cb_Frame>(offset_count);
@@ -74,9 +75,8 @@ namespace Spartan
 
     void Renderer::CreateStructuredBuffers()
     {
-        static uint32_t counter       = 0;
-        const uint32_t element_count  = 1;
-        m_sb_counter = make_shared<RHI_StructuredBuffer>(m_rhi_device, static_cast<uint32_t>(sizeof(uint32_t)), element_count, static_cast<void*>(&counter));
+        const uint32_t offset_count = 32;
+        m_sb_spd_counter = make_shared<RHI_StructuredBuffer>(m_rhi_device, static_cast<uint32_t>(sizeof(uint32_t)), offset_count, "spd_counter");
     }
 
     void Renderer::CreateDepthStencilStates()

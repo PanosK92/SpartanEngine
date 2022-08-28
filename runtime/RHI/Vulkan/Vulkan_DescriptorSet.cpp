@@ -65,7 +65,8 @@ namespace Spartan
         // Validate descriptor set
         SP_ASSERT(m_resource != nullptr);
 
-        const uint32_t descriptor_count = 256;
+        static const uint32_t descriptor_count = 256;
+        static array<VkWriteDescriptorSet, descriptor_count> descriptor_sets;
 
         vector<VkDescriptorImageInfo> info_images;
         info_images.resize(descriptor_count);
@@ -76,9 +77,8 @@ namespace Spartan
         info_buffers.resize(descriptor_count);
         info_buffers.reserve(descriptor_count);
 
-        array<VkWriteDescriptorSet, descriptor_count> descriptor_sets;
         uint32_t index = 0;
-
+        descriptor_sets = {};
         for (const RHI_Descriptor& descriptor : descriptors)
         {
             // Ignore null resources (this is legal, as a render pass can choose to not use one or more resources)
@@ -151,6 +151,10 @@ namespace Spartan
 
                 descriptor_index_start = index;
             }
+            else
+            {
+                SP_ASSERT_MSG(false, "Unhandled descriptor type");
+            }
 
             // Write descriptor set
             descriptor_sets[index].sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -159,7 +163,7 @@ namespace Spartan
             descriptor_sets[index].dstBinding       = descriptor.slot;
             descriptor_sets[index].dstArrayElement  = 0; // The starting element in that array
             descriptor_sets[index].descriptorCount  = descriptor_count;
-            descriptor_sets[index].descriptorType   = vulkan_utility::ToVulkanDescriptorType(descriptor);
+            descriptor_sets[index].descriptorType   = vulkan_utility::to_vulkan_desscriptor_type(descriptor);
             descriptor_sets[index].pImageInfo       = &info_images[descriptor_index_start];
             descriptor_sets[index].pBufferInfo      = &info_buffers[descriptor_index_start];
             descriptor_sets[index].pTexelBufferView = nullptr;

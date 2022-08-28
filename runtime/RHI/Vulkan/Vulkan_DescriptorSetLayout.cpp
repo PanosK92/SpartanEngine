@@ -50,8 +50,8 @@ namespace Spartan
 
         // Layout bindings
         static const uint8_t descriptors_max = 255;
-        array<VkDescriptorSetLayoutBinding, descriptors_max> layout_bindings;
-        array<VkDescriptorBindingFlags, descriptors_max> layout_binding_flags;
+        static array<VkDescriptorSetLayoutBinding, descriptors_max> layout_bindings;
+        static array<VkDescriptorBindingFlags, descriptors_max> layout_binding_flags;
 
         for (uint32_t i = 0; i < static_cast<uint32_t>(descriptors.size()); i++)
         {
@@ -63,7 +63,7 @@ namespace Spartan
             stage_flags |= (descriptor.stage & RHI_Shader_Pixel)   ? VK_SHADER_STAGE_FRAGMENT_BIT : 0;
             stage_flags |= (descriptor.stage & RHI_Shader_Compute) ? VK_SHADER_STAGE_COMPUTE_BIT  : 0;
 
-            layout_bindings[i].descriptorType     = vulkan_utility::ToVulkanDescriptorType(descriptor);
+            layout_bindings[i].descriptorType     = vulkan_utility::to_vulkan_desscriptor_type(descriptor);
             layout_bindings[i].binding            = descriptor.slot;
             layout_bindings[i].descriptorCount    = descriptor.IsArray() ? descriptor.array_size : 1;
             layout_bindings[i].stageFlags         = stage_flags;

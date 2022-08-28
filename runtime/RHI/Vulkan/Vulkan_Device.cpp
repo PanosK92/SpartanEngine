@@ -277,6 +277,7 @@ namespace Spartan
                 m_max_texture_cube_dimension          = properties_device.properties.limits.maxImageDimensionCube;
                 m_max_texture_array_layers            = properties_device.properties.limits.maxImageArrayLayers;
                 m_min_uniform_buffer_offset_alignment = properties_device.properties.limits.minUniformBufferOffsetAlignment;
+                m_min_storage_buffer_offset_alignment = properties_device.properties.limits.minStorageBufferOffsetAlignment;
                 m_timestamp_period                    = properties_device.properties.limits.timestampPeriod;
                 m_max_bound_descriptor_sets           = properties_device.properties.limits.maxBoundDescriptorSets;
 
@@ -759,7 +760,7 @@ namespace Spartan
                 VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_SAMPLER,                rhi_descriptor_max_samplers },
                 VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,          rhi_descriptor_max_textures },
                 VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,          rhi_descriptor_max_storage_textures },
-                VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,         rhi_descriptor_max_storage_buffers },
+                VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, rhi_descriptor_max_storage_buffers }, // aka structured buffer
                 VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, rhi_descriptor_max_constant_buffers_dynamic }
             };
 
@@ -807,6 +808,7 @@ namespace Spartan
     void RHI_Device::CreateBuffer(void*& resource, const uint64_t size, uint32_t usage, uint32_t memory_property_flags, const void* data_initial /* = nullptr */)
     {
         // Deduce some memory properties
+        bool is_buffer_storage       = (usage & VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) != 0; // aka structured buffer
         bool is_buffer_constant      = (usage & VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT) != 0;
         bool is_buffer_index         = (usage & VK_BUFFER_USAGE_INDEX_BUFFER_BIT) != 0;
         bool is_buffer_vertex        = (usage & VK_BUFFER_USAGE_VERTEX_BUFFER_BIT) != 0;
@@ -815,7 +817,7 @@ namespace Spartan
         bool is_transfer_source      = (usage & VK_BUFFER_USAGE_TRANSFER_SRC_BIT) != 0;
         bool is_transfer_destination = (usage & VK_BUFFER_USAGE_TRANSFER_DST_BIT) != 0;
         bool is_transfer_buffer      = is_transfer_source || is_transfer_destination;
-        bool map_on_creation         = is_buffer_constant || is_buffer_index || is_buffer_vertex;
+        bool map_on_creation         = is_buffer_storage || is_buffer_constant || is_buffer_index || is_buffer_vertex;
 
         // Buffer info
         VkBufferCreateInfo buffer_create_info = {};
@@ -842,12 +844,8 @@ namespace Spartan
             // Can it be mapped upon creation ? This is what a persistent buffer would use.
             allocation_create_info.flags |= (map_on_creation && !is_transfer_buffer) ? VMA_ALLOCATION_CREATE_MAPPED_BIT : 0;
 
-            // Allocate dedicated memory ? Our constant buffers can re-allocate to accommodate more dynamic offsets, dedicated memory can reduce fragmentation.
-            bool big_enough = size >= 1048576; // go dedicated above this threshold
-            allocation_create_info.flags |= (is_buffer_constant && big_enough) ? VMA_ALLOCATION_CREATE_DEDICATED_MEMORY_BIT : 0;
-
             // Cached on the CPU ? Our constant buffers are using dynamic offsets and do a lot of updates, so we need fast access.
-            allocation_create_info.flags |= is_buffer_constant ? VK_MEMORY_PROPERTY_HOST_CACHED_BIT : 0;
+            allocation_create_info.flags |= (is_buffer_constant || is_buffer_storage) ? VK_MEMORY_PROPERTY_HOST_CACHED_BIT : 0;
         }
 
         // Create the buffer
@@ -935,7 +933,7 @@ namespace Spartan
         }
     }
 
-    void RHI_Device::Map(void* resource, void*& mapped_data)
+    void RHI_Device::MapMemory(void* resource, void*& mapped_data)
     {
         if (VmaAllocation allocation = static_cast<VmaAllocation>(get_allocation_from_resource(resource)))
         {
@@ -943,7 +941,7 @@ namespace Spartan
         }
     }
 
-    void RHI_Device::Unmap(void* resource, void*& mapped_data)
+    void RHI_Device::UnmapMemory(void* resource, void*& mapped_data)
     {
         SP_ASSERT_MSG(mapped_data, "Memory is already unmapped");
 
@@ -954,7 +952,7 @@ namespace Spartan
         }
     }
 
-    void RHI_Device::Flush(void* resource, uint64_t offset, uint64_t size)
+    void RHI_Device::FlushAllocation(void* resource, uint64_t offset, uint64_t size)
     {
         if (VmaAllocation allocation = static_cast<VmaAllocation>(get_allocation_from_resource(resource)))
         {

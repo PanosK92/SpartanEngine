@@ -30,21 +30,55 @@ namespace Spartan
     class RHI_StructuredBuffer : public SpartanObject
     {
     public:
-        RHI_StructuredBuffer(const std::shared_ptr<RHI_Device>& rhi_device, const uint32_t stride, const uint32_t element_count, const void* data = nullptr);
+        RHI_StructuredBuffer(const std::shared_ptr<RHI_Device>& rhi_device, const uint32_t stride, const uint32_t element_count, const char* name);
         ~RHI_StructuredBuffer();
+
+        // This function will handle updating the buffer. This involves:
+        // - Offset tracking, meaning that on every update, the offset will be shifted and used in the next update.
+        // - Deciding between flushing (vulkan) or unmapping (d3d11).
+        template<typename T>
+        void AutoUpdate(T& data_cpu)
+        {
+            m_offset = m_reset_offset ? 0 : (m_offset + m_stride);
+
+            // Map (Vulkan uses persistent mapping so it will simply return the already mapped pointer)
+            T* data_gpu = static_cast<T*>(Map());
+
+            // Copy
+            memcpy(reinterpret_cast<std::byte*>(data_gpu) + m_offset, reinterpret_cast<std::byte*>(&data_cpu), m_stride);
+
+            // Flush/Unmap
+            if (m_persistent_mapping) // Vulkan
+            {
+                Flush(m_stride, m_offset);
+            }
+            else // D3D11
+            {
+                Unmap();
+            }
+        }
 
         void* Map();
         void Unmap();
+        void Flush(const uint64_t size, const uint64_t offset);
+        void ResetOffset() { m_reset_offset = true; }
+
+        uint32_t GetStride() const { return m_stride; }
+        uint32_t GetOffset() const { return m_offset; }
 
         void* GetRhiResource() { return m_rhi_resource; }
         void* GetRhiUav()      { return m_rhi_uav; }
 
     private:
-        uint32_t m_stride           = 0; // size of an individual element (in bytes)
-        uint32_t m_element_count    = 0; // number of elements
-        std::shared_ptr<RHI_Device> m_rhi_device;
+        uint32_t m_stride         = 0;
+        uint32_t m_offset         = 0;
+        uint32_t m_element_count  = 0;
+        bool m_reset_offset       = false;
+        bool m_persistent_mapping = false;
+        void* m_mapped_data       = nullptr;
+        void* m_rhi_resource      = nullptr;
+        void* m_rhi_uav           = nullptr;
 
-        void* m_rhi_resource = nullptr;
-        void* m_rhi_uav      = nullptr;
+        std::shared_ptr<RHI_Device> m_rhi_device;
     };
 }

@@ -48,15 +48,16 @@ namespace Spartan
 
         // Set
         void SetConstantBuffer(const uint32_t slot, RHI_ConstantBuffer* constant_buffer);
+        void SetStructuredBuffer(const uint32_t slot, RHI_StructuredBuffer* structured_buffer);
         void SetSampler(const uint32_t slot, RHI_Sampler* sampler);
         void SetTexture(const uint32_t slot, RHI_Texture* texture, const uint32_t mip_index, const uint32_t mip_range);
-        void SetStructuredBuffer(const uint32_t slot, RHI_StructuredBuffer* structured_buffer);
+
+        // Dynamic offsets
+        void GetDynamicOffsets(std::vector<uint32_t>* offsets);
 
         // Misc
         void ClearDescriptorData();
         RHI_DescriptorSet* GetDescriptorSet();
-        const uint32_t* GetDynamicOffsets();
-        uint32_t GetConstantBufferCount();
         void NeedsToBind()        { m_needs_to_bind = true; }
         void* GetResource() const { return m_resource; }
 
@@ -71,7 +72,6 @@ namespace Spartan
         std::vector<RHI_Descriptor> m_descriptors;
 
         // Misc
-        std::array<uint32_t, Spartan::rhi_max_constant_buffer_count> m_dynamic_offsets;
         bool m_needs_to_bind     = false;
         RHI_Device* m_rhi_device = nullptr;
     };

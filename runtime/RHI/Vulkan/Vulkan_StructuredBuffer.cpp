@@ -31,19 +31,33 @@ using namespace std;
 
 namespace Spartan
 {
-    RHI_StructuredBuffer::RHI_StructuredBuffer(const shared_ptr<RHI_Device>& rhi_device, const uint32_t stride, const uint32_t element_count, const void* data /*= nullptr*/)
+    RHI_StructuredBuffer::RHI_StructuredBuffer(const shared_ptr<RHI_Device>& rhi_device, const uint32_t stride, const uint32_t element_count, const char* name)
     {
-        m_rhi_device      = rhi_device;
-        m_stride          = stride;
-        m_element_count   = element_count;
-        m_object_size_gpu = stride * element_count;
+        m_rhi_device         = rhi_device;
+        m_stride             = stride;
+        m_element_count      = element_count;
+        m_object_size_gpu    = stride * element_count;
+        m_persistent_mapping = true;
+
+        // Calculate required alignment based on minimum device offset alignment
+        size_t min_alignment = m_rhi_device->GetMinStorageBufferOffsetAllignment();
+        if (min_alignment > 0)
+        {
+            m_stride = static_cast<uint64_t>((m_stride + min_alignment - 1) & ~(min_alignment - 1));
+        }
+        m_object_size_gpu = m_stride * m_element_count;
+
+        // Define memory properties
+        VkMemoryPropertyFlags flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT; // mappable
 
         // Create buffer
-        VkMemoryPropertyFlags flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
-        rhi_device->CreateBuffer(m_rhi_resource, m_object_size_gpu, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, flags, data);
+        rhi_device->CreateBuffer(m_rhi_resource, m_object_size_gpu, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, flags);
+
+        // Get mapped data pointer
+        m_mapped_data = m_rhi_device->get_mapped_data_from_buffer(m_rhi_resource);
 
         // Set debug name
-        vulkan_utility::debug::set_object_name(static_cast<VkBuffer>(m_rhi_resource), "structured_buffer");
+        vulkan_utility::debug::set_object_name(static_cast<VkBuffer>(m_rhi_resource), name);
     }
 
     RHI_StructuredBuffer::~RHI_StructuredBuffer()
@@ -57,12 +71,19 @@ namespace Spartan
 
     void* RHI_StructuredBuffer::Map()
     {
-        SP_ASSERT(0 && "Not implemented");
-        return nullptr;
+        return m_mapped_data;
     }
 
     void RHI_StructuredBuffer::Unmap()
     {
-        SP_ASSERT(0 && "Not implemented");
+        SP_ASSERT_MSG(false, "Vulkan is using persistent mapping");
+    }
+
+    void RHI_StructuredBuffer::Flush(const uint64_t size, const uint64_t offset)
+    {
+        m_rhi_device->FlushAllocation(m_rhi_resource, offset, size);
+
+        m_offset       = static_cast<uint32_t>(offset);
+        m_reset_offset = false;
     }
 }

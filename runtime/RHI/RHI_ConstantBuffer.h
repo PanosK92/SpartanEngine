@@ -39,7 +39,7 @@ namespace Spartan
         void Create(const uint32_t element_count = 1)
         {
             m_element_count   = element_count;
-            m_stride          = static_cast<uint64_t>(sizeof(T));
+            m_stride          = static_cast<uint32_t>(sizeof(T));
             m_object_size_gpu = static_cast<uint64_t>(m_stride * m_element_count);
 
             _create();
@@ -49,7 +49,7 @@ namespace Spartan
         // - State tracking, meaning that updates will take place only if needed.
         // - Offset tracking, meaning that on every update, the offset will be shifted and used in the next update.
         // - Re-allocating with a bigger size, in case additional offsets are required. On re-allocation, true is returned.
-        // - Deciding between flushing (vulkan) or unamapping (d3d11).
+        // - Deciding between flushing (vulkan) or unmapping (d3d11).
         template<typename T>
         bool AutoUpdate(T& buffer_cpu, T& buffer_cpu_mapped)
         {
@@ -70,18 +70,18 @@ namespace Spartan
             {
                 // GPU
                 {
-                    uint64_t offset = m_reset_offset ? 0 : (m_offset + m_stride);
+                    m_offset = m_reset_offset ? 0 : (m_offset + m_stride);
 
                     // Map (Vulkan uses persistent mapping so it will simply return the already mapped pointer)
                     T* buffer_gpu = static_cast<T*>(Map());
 
                     // Copy
-                    memcpy(reinterpret_cast<std::byte*>(buffer_gpu) + offset, reinterpret_cast<std::byte*>(&buffer_cpu), m_stride);
+                    memcpy(reinterpret_cast<std::byte*>(buffer_gpu) + m_offset, reinterpret_cast<std::byte*>(&buffer_cpu), m_stride);
 
                     // Flush/Unmap
                     if (m_persistent_mapping) // Vulkan
                     {
-                        Flush(m_stride, offset);
+                        Flush(m_stride, m_offset);
                     }
                     else // D3D11
                     {
@@ -104,10 +104,9 @@ namespace Spartan
         void Flush(const uint64_t size, const uint64_t offset);
 
         void ResetOffset()              { m_reset_offset = true; }
-        bool GetResetOffset()     const { return m_reset_offset; }
         bool IsPersistentBuffer() const { return m_persistent_mapping; }
         void* GetRhiResource()    const { return m_rhi_resource; }
-        uint64_t GetStride()      const { return m_stride; }
+        uint32_t GetStride()      const { return m_stride; }
         uint32_t GetOffset()      const { return m_offset; }
         uint32_t GetStrideCount() const { return m_element_count; }
 
@@ -115,15 +114,13 @@ namespace Spartan
         void _create();
         void _destroy();
 
+        uint32_t m_stride         = 0;
+        uint32_t m_offset         = 0;
+        uint32_t m_element_count  = 0;
+        bool m_reset_offset       = true;
         bool m_persistent_mapping = false;
         void* m_mapped_data       = nullptr;
-        uint64_t m_stride         = 0;
-        uint32_t m_element_count  = 0;
-        uint32_t m_offset         = 0;
-        bool m_reset_offset       = true;
+        void* m_rhi_resource      = nullptr;
         RHI_Device* m_rhi_device  = nullptr;
-
-        // RHI Resource
-        void* m_rhi_resource = nullptr;
     };
 }

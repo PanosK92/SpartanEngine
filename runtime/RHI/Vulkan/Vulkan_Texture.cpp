@@ -202,7 +202,7 @@ namespace Spartan
         // Copy array and mip level data to the staging buffer
         void* mapped_data = nullptr;
         buffer_offset = 0;
-        rhi_device->Map(staging_buffer, mapped_data);
+        rhi_device->MapMemory(staging_buffer, mapped_data);
         {
             for (uint32_t array_index = 0; array_index < array_length; array_index++)
             {
@@ -214,7 +214,7 @@ namespace Spartan
                 }
             }
 
-            rhi_device->Unmap(staging_buffer, mapped_data);
+            rhi_device->UnmapMemory(staging_buffer, mapped_data);
         }
 
         return true;
