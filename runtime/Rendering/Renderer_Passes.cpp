@@ -1841,7 +1841,6 @@ namespace Spartan
 
     void Renderer::Pass_Ffx_Spd(RHI_CommandList* cmd_list, RHI_Texture* tex, const bool luminance_antiflicker)
     {
-        return;
         // AMD FidelityFX Single Pass Downsampler.
         // Provides an RDNA™-optimized solution for generating up to 12 MIP levels of a texture.
         // GitHub:        https://github.com/GPUOpen-Effects/FidelityFX-SPD
@@ -1881,8 +1880,8 @@ namespace Spartan
 
         // Update counter
         uint32_t counter_value = 0;
-        m_sb_spd_counter->AutoUpdate<uint32_t>(counter_value);
-        cmd_list->SetStructuredBuffer(RendererBindingsSb::counter, m_sb_spd_counter);
+        m_sb_spd_counter->Update<uint32_t>(counter_value);
+        cmd_list->SetStructuredBuffer(RendererBindingsUav::atomic_counter, m_sb_spd_counter);
 
         // Set textures
         cmd_list->SetTexture(RendererBindingsSrv::tex, tex, 0, 1);                            // top mip

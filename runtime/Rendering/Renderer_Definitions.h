@@ -158,11 +158,6 @@ namespace Spartan
         tex_array      = 4
     };
 
-    enum class RendererBindingsSb
-    {
-        counter = 19
-    };
-
     enum class RendererShader : uint8_t
     {
         Gbuffer_V,

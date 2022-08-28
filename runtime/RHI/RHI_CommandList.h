@@ -111,7 +111,7 @@ namespace Spartan
 
         // Structured buffer
         void SetStructuredBuffer(const uint32_t slot, RHI_StructuredBuffer* structured_buffer) const;
-        inline void SetStructuredBuffer(const RendererBindingsSb slot, const std::shared_ptr<RHI_StructuredBuffer>& structured_buffer) const { SetStructuredBuffer(static_cast<uint32_t>(slot), structured_buffer.get()); }
+        inline void SetStructuredBuffer(const RendererBindingsUav slot, const std::shared_ptr<RHI_StructuredBuffer>& structured_buffer) const { SetStructuredBuffer(static_cast<uint32_t>(slot), structured_buffer.get()); }
 
         // Markers
         void BeginMarker(const char* name);
