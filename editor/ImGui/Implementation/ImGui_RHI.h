@@ -72,7 +72,6 @@ namespace ImGui::RHI
         // Constant buffer
         shared_ptr<RHI_ConstantBuffer> cb_gpu;
         Cb_ImGui cb_cpu;
-        Cb_ImGui cb_cpu_mapped;
 
         // Command pool
         RHI_CommandPool* cmd_pool = nullptr;
@@ -383,7 +382,7 @@ namespace ImGui::RHI
 
                         // Update and bind the uber constant buffer (will only happen if the data changes)
                         {
-                            resources->cb_gpu->AutoUpdate<Cb_ImGui>(resources->cb_cpu, resources->cb_cpu_mapped);
+                            resources->cb_gpu->AutoUpdate<Cb_ImGui>(resources->cb_cpu);
 
                             // Bind because the offset just changed
                             cmd_list->SetConstantBuffer(RendererBindingsCb::imgui, RHI_Shader_Vertex | RHI_Shader_Pixel, resources->cb_gpu);

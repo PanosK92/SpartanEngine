@@ -45,55 +45,30 @@ namespace Spartan
             _create();
         }
 
-        // This function will handle updating the buffer. This involves:
-        // - State tracking, meaning that updates will take place only if needed.
-        // - Offset tracking, meaning that on every update, the offset will be shifted and used in the next update.
-        // - Re-allocating with a bigger size, in case additional offsets are required. On re-allocation, true is returned.
-        // - Deciding between flushing (vulkan) or unmapping (d3d11).
+        // Advance offset, copy memory and flush/unmap
         template<typename T>
-        bool AutoUpdate(T& buffer_cpu, T& buffer_cpu_mapped)
+        void Update(T& data_cpu)
         {
-            bool reallocate = m_offset + m_stride >= m_object_size_gpu;
+            SP_ASSERT_MSG(m_offset + m_stride <= m_object_size_gpu, "Out of memory");
 
-            // Only update if needed
-            if (buffer_cpu == buffer_cpu_mapped)
-                return reallocate;
+            // Advance offset
+            m_offset = m_reset_offset ? 0 : (m_offset + m_stride);
 
-            // If the buffer's memory won't fit another update, the re-allocate double the memory
-            if (reallocate)
+            // Map (Vulkan uses persistent mapping so it will simply return the already mapped pointer)
+            T* data_gpu = static_cast<T*>(Map());
+
+            // Copy
+            memcpy(reinterpret_cast<std::byte*>(data_gpu) + m_offset, reinterpret_cast<std::byte*>(&data_cpu), m_stride);
+
+            // Flush/Unmap
+            if (m_persistent_mapping) // Vulkan
             {
-                Create<T>(m_element_count * 2);
-                LOG_INFO("Buffer \"%s\" has been re-allocated with a size of %d bytes", m_name.c_str(), m_object_size_gpu);
+                Flush(m_stride, m_offset);
             }
-
-            // Update
+            else // D3D11
             {
-                // GPU
-                {
-                    m_offset = m_reset_offset ? 0 : (m_offset + m_stride);
-
-                    // Map (Vulkan uses persistent mapping so it will simply return the already mapped pointer)
-                    T* buffer_gpu = static_cast<T*>(Map());
-
-                    // Copy
-                    memcpy(reinterpret_cast<std::byte*>(buffer_gpu) + m_offset, reinterpret_cast<std::byte*>(&buffer_cpu), m_stride);
-
-                    // Flush/Unmap
-                    if (m_persistent_mapping) // Vulkan
-                    {
-                        Flush(m_stride, m_offset);
-                    }
-                    else // D3D11
-                    {
-                        Unmap();
-                    }
-                }
-
-                // CPU
-                buffer_cpu_mapped = buffer_cpu;
+                Unmap();
             }
-
-            return reallocate;
         }
 
         // Maps memory (if not already mapped) and returns a pointer to it.
