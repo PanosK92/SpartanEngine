@@ -62,17 +62,13 @@ void SpdStoreIntermediate(AU1 x, AU1 y, AF4 value)
 
 AF4 SpdReduce4(AF4 s1, AF4 s2, AF4 s3, AF4 s4)
 {
-#if LUMINANCE_ANTIFLICKER
-    // Karis's luma weighted average
+    // luminance weighted average
     float s1w = 1 / (luminance(s1) + 1);
     float s2w = 1 / (luminance(s2) + 1);
     float s3w = 1 / (luminance(s3) + 1);
     float s4w = 1 / (luminance(s4) + 1);
     float one_div_wsum = 1.0 / (s1w + s2w + s3w + s4w);
     return (s1 * s1w + s2 * s2w + s3 * s3w + s4 * s4w) * one_div_wsum;
-#else
-    return (s1 + s2 + s3 + s4) * 0.25;
-#endif
 }
 
 void SpdIncreaseAtomicCounter(AU1 slice)

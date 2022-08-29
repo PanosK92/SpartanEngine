@@ -621,8 +621,7 @@ namespace Spartan
             for (RHI_Texture* texture : m_textures_mip_generation)
             {
                 // Downsample
-                const bool luminance_antiflicker = false;
-                Pass_Ffx_Spd(m_cmd_current, texture, luminance_antiflicker);
+                Pass_Ffx_Spd(m_cmd_current, texture);
 
                 // Set all generated mips to read only optimal
                 texture->SetLayout(RHI_Image_Layout::Shader_Read_Only_Optimal, cmd_list, 0, texture->GetMipCount());

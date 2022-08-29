@@ -529,7 +529,7 @@ namespace Spartan
             bool validation    = true;
             bool gpu_markers   = true;
             bool gpu_profiling = true;
-            bool renderdoc     = false;
+            bool renderdoc     = true;
         #else
             bool validation    = false;
             bool gpu_markers   = false;

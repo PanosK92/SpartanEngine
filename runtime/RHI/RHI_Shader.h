@@ -40,11 +40,11 @@ namespace Spartan
     {
     public:
         RHI_Shader() = default;
-        RHI_Shader(Context* context, const RHI_Vertex_Type vertex_type = RHI_Vertex_Type::Undefined);
+        RHI_Shader(Context* context);
         ~RHI_Shader();
 
         // Compilation
-        void Compile(const RHI_Shader_Type type, const std::string& file_path, bool async);
+        void Compile(const RHI_Shader_Type type, const std::string& file_path, bool async, const RHI_Vertex_Type vertex_type = RHI_Vertex_Type::Undefined);
         Shader_Compilation_State GetCompilationState() const { return m_compilation_state; }
         bool IsCompiled()                              const { return m_compilation_state == Shader_Compilation_State::Succeeded; }
 

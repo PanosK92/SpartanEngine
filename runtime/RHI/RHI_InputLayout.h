@@ -60,13 +60,13 @@ namespace Spartan
 
         ~RHI_InputLayout();
 
-        bool Create(const RHI_Vertex_Type vertex_type, void* vertex_shader_blob = nullptr)
+        void Create(const RHI_Vertex_Type vertex_type, void* vertex_shader_blob = nullptr)
         {
             const uint32_t binding = 0;
 
             if (vertex_type == RHI_Vertex_Type::Undefined)
             {
-                m_vertex_size = sizeof(RHI_Vertex_Undefined);
+                m_vertex_size = 0;
             }
             else if (vertex_type == RHI_Vertex_Type::Pos)
             {
@@ -121,12 +121,11 @@ namespace Spartan
                 m_vertex_size = sizeof(RHI_Vertex_PosTexNorTan);
             }
 
+            // This only applies to D3D11
             if (vertex_shader_blob && !m_vertex_attributes.empty())
             {
-                return _CreateResource(vertex_shader_blob);
+                SP_ASSERT_MSG(_CreateResource(vertex_shader_blob), "Failed to create input layout");
             }
-
-            return true;
         }
 
         RHI_Vertex_Type GetVertexType()                                const { return m_vertex_type; }

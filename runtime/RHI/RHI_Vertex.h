@@ -29,11 +29,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-    struct RHI_Vertex_Undefined
-    {
-
-    };
-
     struct RHI_Vertex_Pos
     {
         RHI_Vertex_Pos(const Math::Vector3& position)

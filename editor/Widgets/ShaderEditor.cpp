@@ -201,7 +201,7 @@ void ShaderEditor::ShowControls()
 
 void ShaderEditor::GetShaderInstances()
 {
-    array<shared_ptr<RHI_Shader>, 48> shaders = m_renderer->GetShaders();
+    array<shared_ptr<RHI_Shader>, 47> shaders = m_renderer->GetShaders();
     m_shaders.clear();
 
     for (const shared_ptr<RHI_Shader>& shader : shaders)
