@@ -128,10 +128,7 @@ namespace Spartan
                 }
 
                 // Create input layout
-                if (!m_input_layout->Create(m_vertex_type, shader_blob))
-                {
-                    LOG_ERROR("Failed to create input layout for %s", FileSystem::GetFileNameFromFilePath(m_name).c_str());
-                }
+                m_input_layout->Create(m_vertex_type, shader_blob);
             }
             else if (m_shader_type == RHI_Shader_Pixel)
             {
