@@ -102,13 +102,9 @@ namespace Spartan
             );
 
             // Create input layout
-            if (m_vertex_type != RHI_Vertex_Type::Undefined)
+            if (m_shader_type == RHI_Shader_Vertex)
             {
-                if (!m_input_layout->Create(m_vertex_type, nullptr))
-                {
-                    LOG_ERROR("Failed to create input layout for %s", m_name.c_str());
-                    return nullptr;
-                }
+                m_input_layout->Create(m_vertex_type, nullptr);
             }
 
             m_object_size_cpu = shader_buffer->GetBufferSize();
