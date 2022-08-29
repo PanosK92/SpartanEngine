@@ -157,7 +157,18 @@ float3 BRDF_Diffuse(Surface surface, float n_dot_v, float n_dot_l, float v_dot_h
     Specular
 ------------------------------------------------------------------------------*/
 
-float3 BRDF_Specular_Isotropic(float roughness, float metallic, float3 F0, float n_dot_v, float n_dot_l, float n_dot_h, float v_dot_h, float l_dot_h, inout float3 diffuse_energy, inout float3 specular_energy)
+float3 BRDF_Specular_Isotropic(
+    float roughness,
+    float metallic,
+    float3 F0,
+    float n_dot_v,
+    float n_dot_l,
+    float n_dot_h,
+    float v_dot_h,
+    float l_dot_h,
+    inout float3 diffuse_energy,
+    inout float3 specular_energy
+ )
 {
     float a  = pow2(roughness);
     float a2 = pow4(roughness);
@@ -172,9 +183,29 @@ float3 BRDF_Specular_Isotropic(float roughness, float metallic, float3 F0, float
     return D * V * F;
 }
 
-float3 BRDF_Specular_Isotropic(Surface surface, float n_dot_v, float n_dot_l, float n_dot_h, float v_dot_h, float l_dot_h, inout float3 diffuse_energy, inout float3 specular_energy)
+float3 BRDF_Specular_Isotropic(
+    Surface surface,
+    float n_dot_v,
+    float n_dot_l,
+    float n_dot_h,
+    float v_dot_h,
+    float l_dot_h,
+    inout float3 diffuse_energy,
+    inout float3 specular_energy
+)
 {
-    return BRDF_Specular_Isotropic(surface.roughness, surface.metallic, surface.F0, n_dot_v, n_dot_l, n_dot_h, v_dot_h, l_dot_h, diffuse_energy, specular_energy);
+    return BRDF_Specular_Isotropic(
+        surface.roughness,
+        surface.metallic,
+        surface.F0,
+        n_dot_v,
+        n_dot_l,
+        n_dot_h,
+        v_dot_h,
+        l_dot_h,
+        diffuse_energy,
+        specular_energy
+     );
 }
 
 inline float3 BRDF_Specular_Anisotropic(Surface surface, float3 v, float3 l, float3 h, float n_dot_v, float n_dot_l, float n_dot_h, float l_dot_h, inout float3 diffuse_energy, inout float3 specular_energy)
@@ -238,5 +269,3 @@ inline float3 BRDF_Specular_Sheen(Surface surface, float n_dot_v, float n_dot_l,
 
     return D * V * F;
 }
-
-

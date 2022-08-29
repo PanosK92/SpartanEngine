@@ -282,10 +282,8 @@ namespace Spartan
                 bool render_pass_active    = false;
                 uint64_t m_set_material_id = 0;
 
-                for (uint32_t entity_index = 0; entity_index < static_cast<uint32_t>(entities.size()); entity_index++)
+                for (Entity * entity : entities)
                 {
-                    Entity* entity = entities[entity_index];
-
                     // Acquire renderable component
                     Renderable* renderable = entity->GetRenderable();
                     if (!renderable)
@@ -611,8 +609,8 @@ namespace Spartan
         bool depth_prepass = GetOption<bool>(RendererOption::DepthPrepass);
         bool wireframe     = GetOption<bool>(RendererOption::Debug_Wireframe);
 
-        // We consider (in the shaders) that the sky is opaque, that's why the clear value has an alpha of 1.0f.
-        static Color clear_color = Color(0.0f, 0.0f, 0.0f, 1.0f);
+        // Clearing to zero, this will draw the sky
+        static Color clear_color = Color(0.0f, 0.0f, 0.0f, 0.0f);
 
         // Define pipeline state
         RHI_PipelineState pso;
@@ -622,7 +620,7 @@ namespace Spartan
         pso.rasterizer_state                = wireframe ? m_rasterizer_cull_back_wireframe.get() : m_rasterizer_cull_back_solid.get();
         pso.depth_stencil_state             = is_transparent_pass ? m_depth_stencil_rw_w.get() : (depth_prepass ? m_depth_stencil_r_off.get() : m_depth_stencil_rw_off.get());
         pso.render_target_color_textures[0] = tex_albedo;
-        pso.clear_color[0]                  = !is_transparent_pass ? clear_color : rhi_color_load;
+        pso.clear_color[0]                  = is_transparent_pass ? rhi_color_load : Color::standard_transparent;
         pso.render_target_color_textures[1] = tex_normal;
         pso.clear_color[1]                  = pso.clear_color[0];
         pso.render_target_color_textures[2] = tex_material;

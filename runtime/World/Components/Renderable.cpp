@@ -246,7 +246,7 @@ namespace Spartan
     {
         m_material_default = true;
         ResourceCache* resource_cache = GetContext()->GetSubsystem<ResourceCache>();
-        const string data_dir = resource_cache->GetResourceDirectory() + "/";
+        const string data_dir = resource_cache->GetResourceDirectory() + "\\";
         FileSystem::CreateDirectory(data_dir);
 
         // Create material
@@ -255,9 +255,13 @@ namespace Spartan
         material->SetIsEditable(false);
         material->SetProperty(MaterialProperty::UvTilingX, 10.0f);
         material->SetProperty(MaterialProperty::UvTilingY, 10.0f);
+        material->SetProperty(MaterialProperty::ColorR, 1.0f);
+        material->SetProperty(MaterialProperty::ColorG, 1.0f);
+        material->SetProperty(MaterialProperty::ColorB, 1.0f);
+        material->SetProperty(MaterialProperty::ColorA, 1.0f);
 
         // Se default texture
-        const shared_ptr<RHI_Texture2D> texture = resource_cache->Load<RHI_Texture2D>(resource_cache->GetResourceDirectory(ResourceDirectory::Textures) + "/no_texture.png");
+        const shared_ptr<RHI_Texture2D> texture = resource_cache->Load<RHI_Texture2D>(resource_cache->GetResourceDirectory(ResourceDirectory::Textures) + "\\no_texture.png");
         material->SetTexture(MaterialTexture::Color, texture);
 
         // Set material

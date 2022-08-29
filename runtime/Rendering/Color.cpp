@@ -96,6 +96,7 @@ namespace Spartan
     // Standard
     const Color Color::standard_black           = Color(0.0f, 0.0f, 0.0f, 1.0f);
     const Color Color::standard_white           = Color(1.0f, 1.0f, 1.0f, 1.0f);
+    const Color Color::standard_transparent     = Color(0.0f, 0.0f, 0.0f, 0.0f);
     const Color Color::standard_red             = Color(1.0f, 0.0f, 0.0f, 1.0f);
     const Color Color::standard_green           = Color(0.0f, 1.0f, 0.0f, 1.0f);
     const Color Color::standard_blue            = Color(0.0f, 0.0f, 1.0f, 1.0f);

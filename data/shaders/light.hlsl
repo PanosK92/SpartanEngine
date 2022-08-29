@@ -32,15 +32,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
+    // Out of bounds check.
+    if (any(int2(thread_id.xy) >= g_resolution_rt.xy))
+        return;
+
     // Create surface
     Surface surface;
     surface.Build(thread_id.xy, true, true, true);
 
     // Early exit cases
-    bool early_exit_out_of_bounds = any(int2(thread_id.xy) >= g_resolution_rt.xy);
-    bool early_exit_1             = !g_is_transparent_pass && surface.is_transparent() && !surface.is_sky(); // do shade sky pixels during the opaque pass (volumetric lighting)
-    bool early_exit_2             = g_is_transparent_pass && surface.is_opaque();
-    if (early_exit_out_of_bounds || early_exit_1 || early_exit_2)
+    bool early_exit_1 = is_opaque_pass() && surface.is_transparent() && !surface.is_sky(); // do shade sky pixels during the opaque pass (volumetric lighting)
+    bool early_exit_2 = is_transparent_pass() && surface.is_opaque();
+    if (early_exit_1 || early_exit_2)
         return;
 
     // Create light
@@ -116,30 +119,13 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         // Diffuse
         light_diffuse += BRDF_Diffuse(surface, n_dot_v, light.n_dot_l, v_dot_h);
 
-        // Subsurface scattering from LIDL
-        {
-            //const float thickness_edge = 0.1f;
-            //const float thickness_face = 1.0f;
-            //const float distortion     = 0.65f;
-            //const float ambient        = 1.0f - surface.alpha;
-            //const float scale          = 1.0f;
-            //const float power          = 0.8f;
-            
-            //float thickness = lerp(thickness_edge, thickness_face, n_dot_v);
-            //float3 h        = normalize(l + surface.normal * distortion);
-            //float v_dot_h   = pow(saturate(dot(v, -h)), power) * scale;
-            //float intensity = (v_dot_h + ambient) * thickness;
-            
-            //light_diffuse += surface.albedo.rgb * light.color * intensity;
-        }
-
         // Tone down diffuse such as that only non metals have it
         light_diffuse *= diffuse_energy;
     }
 
-	float3 emissive = surface.emissive * surface.albedo;
-	
-    // Diffuse and specular
+    float3 emissive = surface.emissive * surface.albedo;
+    
+     // Diffuse and specular
     tex_uav[thread_id.xy]  += float4(saturate_16(light_diffuse * light.radiance + surface.gi + emissive), 1.0f);
     tex_uav2[thread_id.xy] += float4(saturate_16(light_specular * light.radiance), 1.0f);
 

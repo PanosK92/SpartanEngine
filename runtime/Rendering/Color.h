@@ -57,6 +57,7 @@ namespace Spartan
         // Standard
         static const Color standard_black;
         static const Color standard_white;
+        static const Color standard_transparent;
         static const Color standard_red;
         static const Color standard_green;
         static const Color standard_blue;

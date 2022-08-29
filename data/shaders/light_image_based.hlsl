@@ -85,10 +85,9 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     bool use_ssao = is_opaque_pass(); // we don't do ssao for transparents.
     surface.Build(pos, true, use_ssao, false);
 
-     // If this is a transparent pass, ignore all opaque pixels, and vice versa.
-    bool early_exit_1 = is_opaque_pass()      && surface.is_transparent();
-    bool early_exit_2 = is_transparent_pass() && surface.is_opaque();
-    bool early_exit_3 = surface.is_sky(); // we don't want to do IBL on the sky itself.
+    bool early_exit_1 = is_opaque_pass() && surface.is_transparent(); // If this is an opaque pass, ignore all transparent pixels.
+    bool early_exit_2 = is_transparent_pass() && surface.is_opaque(); // If this is an transparent pass, ignore all opaque pixels.
+    bool early_exit_3 = surface.is_sky();                             // We don't want to do IBL on the sky itself.
     if (early_exit_1 || early_exit_2 || early_exit_3)
         discard;
 
