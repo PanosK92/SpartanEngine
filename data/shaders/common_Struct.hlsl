@@ -117,9 +117,9 @@ struct Surface
         camera_to_pixel        = normalize(camera_to_pixel);
     }
 
-    bool is_sky()         { return id == 0; }
-    bool is_transparent() { return alpha != 1.0f; }
+    bool is_sky()         { return alpha == 0.0f; }
     bool is_opaque()      { return alpha == 1.0f; }
+    bool is_transparent() { return alpha > 0.0f && alpha < 1.0f; }
 };
 
 struct Light

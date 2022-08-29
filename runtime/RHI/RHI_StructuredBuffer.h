@@ -37,8 +37,15 @@ namespace Spartan
         template<typename T>
         void Update(T& data_cpu)
         {
+            SP_ASSERT_MSG(m_offset + m_stride <= m_object_size_gpu, "Out of memory");
+
             // Advance offset
-            m_offset = m_reset_offset ? 0 : (m_offset + m_stride);
+            m_offset += m_stride;
+            if (m_reset_offset)
+            {
+                m_offset = 0;
+                m_reset_offset = false;
+            }
 
             // Map (Vulkan uses persistent mapping so it will simply return the already mapped pointer)
             T* data_gpu = static_cast<T*>(Map());

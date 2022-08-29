@@ -90,7 +90,6 @@ namespace Spartan
     {
         m_rhi_device->FlushAllocation(m_rhi_resource, offset, size);
 
-        m_offset       = static_cast<uint32_t>(offset);
-        m_reset_offset = false;
+        m_offset = static_cast<uint32_t>(offset);
     }
 }

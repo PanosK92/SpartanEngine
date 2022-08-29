@@ -243,7 +243,7 @@ namespace Spartan
         bool async = true;
 
         // Get standard shader directory
-        const auto dir_shaders = m_resource_cache->GetResourceDirectory(ResourceDirectory::Shaders) + "\\";
+        const string dir_shaders = m_resource_cache->GetResourceDirectory(ResourceDirectory::Shaders) + "\\";
 
         // G-Buffer
         shader(RendererShader::Gbuffer_V) = make_shared<RHI_Shader>(m_context, RHI_Vertex_Type::PosTexNorTan);
