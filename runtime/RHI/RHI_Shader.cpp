@@ -33,11 +33,9 @@ using namespace std;
 
 namespace Spartan
 {
-    RHI_Shader::RHI_Shader(Context* context, const RHI_Vertex_Type vertex_type) : SpartanObject(context)
+    RHI_Shader::RHI_Shader(Context* context) : SpartanObject(context)
     {
-        m_rhi_device   = context->GetSubsystem<Renderer>()->GetRhiDevice();
-        m_input_layout = make_shared<RHI_InputLayout>(m_rhi_device);
-        m_vertex_type  = vertex_type;
+        m_rhi_device = context->GetSubsystem<Renderer>()->GetRhiDevice();
     }
 
     // Actual API specific compilation
@@ -59,6 +57,8 @@ namespace Spartan
 
         // Log compilation result
         {
+            string prefix_str = (compilation_state == Shader_Compilation_State::Succeeded) ? "Successfully compiled" : "Failed to compile";
+
             string type_str = "unknown";
             type_str = shader_type == RHI_Shader_Vertex  ? "vertex"  : type_str;
             type_str = shader_type == RHI_Shader_Pixel   ? "pixel"   : type_str;
@@ -73,34 +73,26 @@ namespace Spartan
                 defines_str += define.first + " = " + define.second;
             }
 
-            if (compilation_state == Shader_Compilation_State::Succeeded)
+            if (defines_str.empty())
             {
-                if (defines_str.empty())
-                {
-                    LOG_INFO("Successfully compiled %s shader \"%s\" in %.2f ms.", type_str.c_str(), object_name.c_str(), timer.GetElapsedTimeMs());
-                }
-                else
-                {
-                    LOG_INFO("Successfully compiled %s shader \"%s\" with definitions \"%s\" in %.2f ms.", type_str.c_str(), object_name.c_str(), defines_str.c_str(), timer.GetElapsedTimeMs());
-                }
+                LOG_INFO("%s %s shader \"%s\" in %.2f ms.", prefix_str.c_str(), type_str.c_str(), object_name.c_str(), timer.GetElapsedTimeMs());
             }
-            else if (compilation_state == Shader_Compilation_State::Failed)
+            else
             {
-                if (defines_str.empty())
-                {
-                    LOG_ERROR("Failed to compile %s shader \"%s\".", type_str.c_str(), object_name.c_str());
-                }
-                else
-                {
-                    LOG_ERROR("Failed to compile %s shader \"%s\" with definitions \"%s\".", type_str.c_str(), object_name.c_str(), defines_str.c_str());
-                }
+                LOG_INFO("%s %s shader \"%s\" with definitions \"%s\" in %.2f ms.", prefix_str.c_str(), type_str.c_str(), object_name.c_str(), defines_str.c_str(), timer.GetElapsedTimeMs());
             }
         }
 
     };
-    void RHI_Shader::Compile(const RHI_Shader_Type type, const string& file_path, bool async)
+
+    void RHI_Shader::Compile(const RHI_Shader_Type type, const string& file_path, bool async, const RHI_Vertex_Type vertex_type)
     {
         m_shader_type = type;
+        m_vertex_type = vertex_type;
+        if (m_shader_type == RHI_Shader_Vertex)
+        {
+            m_input_layout = make_shared<RHI_InputLayout>(m_rhi_device);
+        }
 
         if (!FileSystem::IsFile(file_path))
         {
@@ -185,8 +177,8 @@ namespace Spartan
     void RHI_Shader::LoadSource(const string& file_path)
     {
         // Initialise a couple of things
-        m_name = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path);
-        m_file_path   = file_path;
+        m_name      = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path);
+        m_file_path = file_path;
         m_preprocessed_source.clear();
         m_names.clear();
         m_file_paths.clear();

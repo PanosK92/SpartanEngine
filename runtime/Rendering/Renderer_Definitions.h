@@ -206,8 +206,7 @@ namespace Spartan
         Reflection_Probe_V,
         Reflection_Probe_P,
         Ffx_Cas_C,
-        Ffx_Spd_C,
-        Ffx_Spd_LuminanceAntiflicker_C
+        Ffx_Spd_C
     };
     
     enum class RendererTexture : uint8_t

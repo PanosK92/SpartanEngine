@@ -23,7 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 //====================
 
-
 Pixel_PosUv mainVS(uint vertexID : SV_VertexID)
 {
     Pixel_PosUv output;

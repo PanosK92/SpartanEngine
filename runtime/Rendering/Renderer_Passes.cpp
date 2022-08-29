@@ -149,8 +149,7 @@ namespace Spartan
                 cmd_list->Blit(rt1, rt2, true);
 
                 // Generate frame mips so that the reflections can simulate roughness
-                const bool luminance_antiflicker = true;
-                Pass_Ffx_Spd(cmd_list, rt2, luminance_antiflicker);
+                Pass_Ffx_Spd(cmd_list, rt2);
 
                 // Blur the smaller mips to reduce blockiness/flickering
                 for (uint32_t i = 1; i < rt2->GetMipCount(); i++)
@@ -978,8 +977,7 @@ namespace Spartan
         cmd_list->Dispatch(thread_group_count_x(tex_ssr), thread_group_count_y(tex_ssr));
 
         // Generate frame mips so that we can simulate roughness
-        const bool luminance_antiflicker = false;
-        Pass_Ffx_Spd(cmd_list, tex_ssr, luminance_antiflicker);
+        Pass_Ffx_Spd(cmd_list, tex_ssr);
 
         // Blur the smaller mips to reduce blockiness/flickering
         for (uint32_t i = 1; i < tex_ssr->GetMipCount(); i++)
@@ -1449,8 +1447,7 @@ namespace Spartan
         cmd_list->EndMarker();
 
         // Generate mips
-        const bool luminance_antiflicker = true;
-        Pass_Ffx_Spd(cmd_list, tex_bloom, luminance_antiflicker);
+        Pass_Ffx_Spd(cmd_list, tex_bloom);
 
         // Starting from the lowest mip, upsample and blend with the higher one
         cmd_list->BeginMarker("upsample_and_blend_with_higher_mip");
@@ -1841,7 +1838,7 @@ namespace Spartan
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::Pass_Ffx_Spd(RHI_CommandList* cmd_list, RHI_Texture* tex, const bool luminance_antiflicker)
+    void Renderer::Pass_Ffx_Spd(RHI_CommandList* cmd_list, RHI_Texture* tex)
     {
         // AMD FidelityFX Single Pass Downsampler.
         // Provides an RDNA™-optimized solution for generating up to 12 MIP levels of a texture.
@@ -1857,7 +1854,7 @@ namespace Spartan
         SP_ASSERT(output_mip_count <= 12); // As per documentation (page 22)
 
         // Acquire shader
-        RHI_Shader* shader_c = shader(luminance_antiflicker ? RendererShader::Ffx_Spd_LuminanceAntiflicker_C : RendererShader::Ffx_Spd_C).get();
+        RHI_Shader* shader_c = shader(RendererShader::Ffx_Spd_C).get();
         if (!shader_c->IsCompiled())
             return;
 

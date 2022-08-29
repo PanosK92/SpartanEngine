@@ -136,7 +136,7 @@ namespace Spartan
         RHI_Texture* GetFrameTexture()                                 { return GetRenderTarget(RendererTexture::Frame_Output).get(); }
         auto GetFrameNum()                                       const { return m_frame_num; }
         std::shared_ptr<Camera> GetCamera()                      const { return m_camera; }
-        std::array<std::shared_ptr<RHI_Shader>, 48> GetShaders() const { return m_shaders; }
+        std::array<std::shared_ptr<RHI_Shader>, 47> GetShaders() const { return m_shaders; }
 
         // Passes
         void Pass_CopyToBackbuffer();
@@ -194,7 +194,7 @@ namespace Spartan
         void Pass_Light_ImageBased(RHI_CommandList* cmd_list, RHI_Texture* tex_out, const bool is_transparent_pass);
         // AMD FidelityFX
         void Pass_Ffx_Cas(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
-        void Pass_Ffx_Spd(RHI_CommandList* cmd_list, RHI_Texture* tex, const bool luminance_antiflicker);
+        void Pass_Ffx_Spd(RHI_CommandList* cmd_list, RHI_Texture* tex);
         void Pass_Ffx_Fsr2(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
 
         // Event handlers
@@ -216,7 +216,7 @@ namespace Spartan
         std::array<std::shared_ptr<RHI_Texture>, 25> m_render_targets;
 
         // Shaders
-        std::array<std::shared_ptr<RHI_Shader>, 48> m_shaders;
+        std::array<std::shared_ptr<RHI_Shader>, 47> m_shaders;
 
         // Standard textures
         std::shared_ptr<RHI_Texture> m_tex_default_noise_normal;
