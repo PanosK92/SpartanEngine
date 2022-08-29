@@ -1878,7 +1878,7 @@ namespace Spartan
 
         // Update counter
         uint32_t counter_value = 0;
-        m_sb_spd_counter->Update<uint32_t>(counter_value);
+        m_sb_spd_counter->Update(&counter_value);
         cmd_list->SetStructuredBuffer(RendererBindingsUav::atomic_counter, m_sb_spd_counter);
 
         // Set textures

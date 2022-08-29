@@ -31,13 +31,12 @@ using namespace std;
 
 namespace Spartan
 {
-    RHI_StructuredBuffer::RHI_StructuredBuffer(const shared_ptr<RHI_Device>& rhi_device, const uint32_t stride, const uint32_t element_count, const char* name)
+    RHI_StructuredBuffer::RHI_StructuredBuffer(RHI_Device* rhi_device, const uint32_t stride, const uint32_t element_count, const char* name)
     {
-        m_rhi_device         = rhi_device;
-        m_stride             = stride;
-        m_element_count      = element_count;
-        m_object_size_gpu    = stride * element_count;
-        m_persistent_mapping = true;
+        m_rhi_device      = rhi_device;
+        m_stride          = stride;
+        m_element_count   = element_count;
+        m_object_size_gpu = stride * element_count;
 
         // Calculate required alignment based on minimum device offset alignment
         size_t min_alignment = m_rhi_device->GetMinStorageBufferOffsetAllignment();
@@ -69,21 +68,22 @@ namespace Spartan
         m_rhi_device->DestroyBuffer(m_rhi_resource);
     }
 
-    void* RHI_StructuredBuffer::Map()
+    void RHI_StructuredBuffer::Update(void* data_cpu)
     {
-        return m_mapped_data;
-    }
+        SP_ASSERT_MSG(data_cpu != nullptr,                      "Invalid update data");
+        SP_ASSERT_MSG(m_mapped_data != nullptr,                 "Invalid mapped data");
+        SP_ASSERT_MSG(m_offset + m_stride <= m_object_size_gpu, "Out of memory");
 
-    void RHI_StructuredBuffer::Unmap()
-    {
-        SP_ASSERT_MSG(false, "Vulkan is using persistent mapping");
-    }
+        // Advance offset
+        m_offset += m_stride;
+        if (m_reset_offset)
+        {
+            m_offset       = 0;
+            m_reset_offset = false;
+        }
 
-    void RHI_StructuredBuffer::Flush(const uint64_t size, const uint64_t offset)
-    {
-        m_rhi_device->FlushAllocation(m_rhi_resource, offset, size);
-
-        m_offset       = static_cast<uint32_t>(offset);
-        m_reset_offset = false;
+        // Vulkan is using persistent mapping, so we only need to copy and flush
+        memcpy(reinterpret_cast<std::byte*>(m_mapped_data) + m_offset, reinterpret_cast<std::byte*>(data_cpu), m_stride);
+        m_rhi_device->FlushAllocation(m_rhi_resource, m_offset, m_stride);
     }
 }

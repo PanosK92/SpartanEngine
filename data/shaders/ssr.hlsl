@@ -154,7 +154,7 @@ float2 trace_ray(uint2 screen_pos, float3 ray_start_vs, float3 ray_dir_vs)
                 if (abs(depth_delta) <= g_ssr_thickness)
                     return ray_pos;
 
-                // Half direction and flip (if necessery)
+                // Half direction and flip (if necessary)
                 if (sign(depth_delta) != depth_delta_previous_sign)
                 {
                     ray_step *= -0.5f;
@@ -187,12 +187,14 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 
     // Construct surface
     Surface surface;
-    surface.Build(thread_id.xy, false, false, false);
+    surface.Build(thread_id.xy, true, false, false);
 
-    float alpha  = 0.0f;
+    float alpha = 0.0f;
     float3 color = 0.0f;
-    
-    if (surface.is_sky())
+
+    bool early_exit_1 = !surface.is_opaque();
+    bool early_exit_2 = surface.roughness >= 0.8f;
+    if (early_exit_1 || early_exit_2)
     {
         tex_uav[thread_id.xy] = float4(color, alpha);
         return;
@@ -200,21 +202,19 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 
     // Skip pixels which are fully rough
     float2 hit_uv = -1.0f;
-    if (surface.roughness < 0.8f) // save some performance by skipping pixels that won't really show reflections
-    {
-        // Compute reflection direction in view space
-        float3 normal          = get_normal_view_space(thread_id.xy);
-        float3 position        = get_position_view_space(thread_id.xy);
-        float3 camera_to_pixel = normalize(position);
-        float3 reflection      = normalize(reflect(camera_to_pixel, normal));
-        float v_dot_r          = dot(-camera_to_pixel, reflection);
 
-        // Don't trace rays which facing the camera
-        if (v_dot_r < 0.0f)
-        { 
-            hit_uv = trace_ray(thread_id.xy, position, reflection);
-            alpha  = compute_alpha(thread_id.xy, hit_uv, v_dot_r);
-        }
+    // Compute reflection direction in view space
+    float3 normal          = get_normal_view_space(thread_id.xy);
+    float3 position        = get_position_view_space(thread_id.xy);
+    float3 camera_to_pixel = normalize(position);
+    float3 reflection      = normalize(reflect(camera_to_pixel, normal));
+    float v_dot_r          = dot(-camera_to_pixel, reflection);
+
+    // Don't trace rays which facing the camera
+    if (v_dot_r < 0.0f)
+    { 
+        hit_uv = trace_ray(thread_id.xy, position, reflection);
+        alpha  = compute_alpha(thread_id.xy, hit_uv, v_dot_r);
     }
 
     // Sample scene color

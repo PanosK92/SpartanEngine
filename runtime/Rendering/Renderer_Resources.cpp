@@ -76,7 +76,7 @@ namespace Spartan
     void Renderer::CreateStructuredBuffers()
     {
         const uint32_t offset_count = 32;
-        m_sb_spd_counter = make_shared<RHI_StructuredBuffer>(m_rhi_device, static_cast<uint32_t>(sizeof(uint32_t)), offset_count, "spd_counter");
+        m_sb_spd_counter = make_shared<RHI_StructuredBuffer>(m_rhi_device.get(), static_cast<uint32_t>(sizeof(uint32_t)), offset_count, "spd_counter");
     }
 
     void Renderer::CreateDepthStencilStates()
@@ -282,6 +282,28 @@ namespace Spartan
             shader(RendererShader::Depth_Light_P)->Compile(RHI_Shader_Pixel, dir_shaders + "depth_light.hlsl", async);
         }
 
+        // Entity
+        shader(RendererShader::Entity_V) = make_shared<RHI_Shader>(m_context, RHI_Vertex_Type::PosTexNorTan);
+        shader(RendererShader::Entity_V)->Compile(RHI_Shader_Vertex, dir_shaders + "entity.hlsl", async);
+
+        // Font
+        shader(RendererShader::Font_V) = make_shared<RHI_Shader>(m_context, RHI_Vertex_Type::PosTex);
+        shader(RendererShader::Font_V)->Compile(RHI_Shader_Vertex, dir_shaders + "font.hlsl", async);
+        shader(RendererShader::Font_P) = make_shared<RHI_Shader>(m_context);
+        shader(RendererShader::Font_P)->Compile(RHI_Shader_Pixel, dir_shaders + "font.hlsl", async);
+
+        // Color
+        shader(RendererShader::Lines_V) = make_shared<RHI_Shader>(m_context, RHI_Vertex_Type::PosCol);
+        shader(RendererShader::Lines_V)->Compile(RHI_Shader_Vertex, dir_shaders + "lines.hlsl", async);
+        shader(RendererShader::Lines_P) = make_shared<RHI_Shader>(m_context);
+        shader(RendererShader::Lines_P)->Compile(RHI_Shader_Pixel, dir_shaders + "lines.hlsl", async);
+
+        // Reflection probe
+        shader(RendererShader::Reflection_Probe_V) = make_shared<RHI_Shader>(m_context, RHI_Vertex_Type::PosTexNorTan);
+        shader(RendererShader::Reflection_Probe_V)->Compile(RHI_Shader_Vertex, dir_shaders + "reflection_probe.hlsl", async);
+        shader(RendererShader::Reflection_Probe_P) = make_shared<RHI_Shader>(m_context);
+        shader(RendererShader::Reflection_Probe_P)->Compile(RHI_Shader_Pixel, dir_shaders + "reflection_probe.hlsl", async);
+
         // BRDF - Specular Lut
         shader(RendererShader::BrdfSpecularLut_C) = make_shared<RHI_Shader>(m_context);
         shader(RendererShader::BrdfSpecularLut_C)->Compile(RHI_Shader_Compute, dir_shaders + "brdf_specular_lut.hlsl", async);
@@ -400,10 +422,6 @@ namespace Spartan
         shader(RendererShader::Ssr_C) = make_shared<RHI_Shader>(m_context);
         shader(RendererShader::Ssr_C)->Compile(RHI_Shader_Compute, dir_shaders + "ssr.hlsl", async);
 
-        // Entity
-        shader(RendererShader::Entity_V) = make_shared<RHI_Shader>(m_context, RHI_Vertex_Type::PosTexNorTan);
-        shader(RendererShader::Entity_V)->Compile(RHI_Shader_Vertex, dir_shaders + "entity.hlsl", async);
-
         // Entity - Transform
         shader(RendererShader::Entity_Transform_P) = make_shared<RHI_Shader>(m_context);
         shader(RendererShader::Entity_Transform_P)->AddDefine("TRANSFORM");
@@ -413,24 +431,6 @@ namespace Spartan
         shader(RendererShader::Entity_Outline_P) = make_shared<RHI_Shader>(m_context);
         shader(RendererShader::Entity_Outline_P)->AddDefine("OUTLINE");
         shader(RendererShader::Entity_Outline_P)->Compile(RHI_Shader_Pixel, dir_shaders + "entity.hlsl", async);
-
-        // Font
-        shader(RendererShader::Font_V) = make_shared<RHI_Shader>(m_context, RHI_Vertex_Type::PosTex);
-        shader(RendererShader::Font_V)->Compile(RHI_Shader_Vertex, dir_shaders + "font.hlsl", async);
-        shader(RendererShader::Font_P) = make_shared<RHI_Shader>(m_context);
-        shader(RendererShader::Font_P)->Compile(RHI_Shader_Pixel, dir_shaders + "font.hlsl", async);
-
-        // Color
-        shader(RendererShader::Lines_V) = make_shared<RHI_Shader>(m_context, RHI_Vertex_Type::PosCol);
-        shader(RendererShader::Lines_V)->Compile(RHI_Shader_Vertex, dir_shaders + "lines.hlsl", async);
-        shader(RendererShader::Lines_P) = make_shared<RHI_Shader>(m_context);
-        shader(RendererShader::Lines_P)->Compile(RHI_Shader_Pixel, dir_shaders + "lines.hlsl", async);
-
-        // Reflection probe
-        shader(RendererShader::Reflection_Probe_V) = make_shared<RHI_Shader>(m_context, RHI_Vertex_Type::PosTexNorTan);
-        shader(RendererShader::Reflection_Probe_V)->Compile(RHI_Shader_Vertex, dir_shaders + "reflection_probe.hlsl", async);
-        shader(RendererShader::Reflection_Probe_P) = make_shared<RHI_Shader>(m_context);
-        shader(RendererShader::Reflection_Probe_P)->Compile(RHI_Shader_Pixel, dir_shaders + "reflection_probe.hlsl", async);
 
         // AMD FidelityFX
         {

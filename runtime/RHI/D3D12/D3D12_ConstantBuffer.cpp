@@ -47,18 +47,8 @@ namespace Spartan
     
     }
 
-    void* RHI_ConstantBuffer::Map()
+    void RHI_ConstantBuffer::Update(void* data_cpu)
     {
-        return nullptr;
-    }
-
-    void RHI_ConstantBuffer::Unmap()
-    {
-
-    }
-
-    void RHI_ConstantBuffer::Flush(const uint64_t size, const uint64_t offset)
-    {
-
+        SP_ASSERT_MSG(false, "Not implemented");
     }
 }

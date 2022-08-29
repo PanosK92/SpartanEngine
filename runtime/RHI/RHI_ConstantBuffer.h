@@ -45,62 +45,24 @@ namespace Spartan
             _create();
         }
 
-        // Advance offset, copy memory and flush/unmap
-        template<typename T>
-        void Update(T& data_cpu)
-        {
-            SP_ASSERT_MSG(m_offset + m_stride <= m_object_size_gpu, "Out of memory");
-
-            // Advance offset
-            m_offset += m_stride;
-            if (m_reset_offset)
-            {
-                m_offset = 0;
-                m_reset_offset = false;
-            }
-
-            // Map (Vulkan uses persistent mapping so it will simply return the already mapped pointer)
-            T* data_gpu = static_cast<T*>(Map());
-
-            // Copy
-            memcpy(reinterpret_cast<std::byte*>(data_gpu) + m_offset, reinterpret_cast<std::byte*>(&data_cpu), m_stride);
-
-            // Flush/Unmap
-            if (m_persistent_mapping) // Vulkan
-            {
-                Flush(m_stride, m_offset);
-            }
-            else // D3D11
-            {
-                Unmap();
-            }
-        }
-
-        // Maps memory (if not already mapped) and returns a pointer to it.
-        void* Map();
-        // Unmaps mapped memory
-        void Unmap();
-        // Flushes mapped memory range
-        void Flush(const uint64_t size, const uint64_t offset);
-
-        void ResetOffset()              { m_reset_offset = true; }
-        bool IsPersistentBuffer() const { return m_persistent_mapping; }
-        void* GetRhiResource()    const { return m_rhi_resource; }
+        void Update(void* data);
+        void ResetOffset() { m_reset_offset = true; }
+        
         uint32_t GetStride()      const { return m_stride; }
         uint32_t GetOffset()      const { return m_offset; }
         uint32_t GetStrideCount() const { return m_element_count; }
+        void* GetRhiResource()    const { return m_rhi_resource; }
 
     private:
         void _create();
         void _destroy();
 
-        uint32_t m_stride         = 0;
-        uint32_t m_offset         = 0;
-        uint32_t m_element_count  = 0;
-        bool m_reset_offset       = true;
-        bool m_persistent_mapping = false;
-        void* m_mapped_data       = nullptr;
-        void* m_rhi_resource      = nullptr;
-        RHI_Device* m_rhi_device  = nullptr;
+        uint32_t m_stride        = 0;
+        uint32_t m_offset        = 0;
+        uint32_t m_element_count = 0;
+        bool m_reset_offset      = true;
+        void* m_mapped_data      = nullptr;
+        void* m_rhi_resource     = nullptr;
+        RHI_Device* m_rhi_device = nullptr;
     };
 }

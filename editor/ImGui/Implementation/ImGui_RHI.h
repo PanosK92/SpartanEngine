@@ -382,7 +382,7 @@ namespace ImGui::RHI
 
                         // Update and bind the uber constant buffer (will only happen if the data changes)
                         {
-                            resources->cb_gpu->Update<Cb_ImGui>(resources->cb_cpu);
+                            resources->cb_gpu->Update(&resources->cb_cpu);
 
                             // Bind because the offset just changed
                             cmd_list->SetConstantBuffer(RendererBindingsCb::imgui, RHI_Shader_Vertex | RHI_Shader_Pixel, resources->cb_gpu);
