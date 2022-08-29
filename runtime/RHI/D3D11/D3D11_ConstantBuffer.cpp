@@ -63,31 +63,19 @@ namespace Spartan
         m_name       = name;
     }
 
-    void* RHI_ConstantBuffer::Map()
+    void RHI_ConstantBuffer::Update(void* data_cpu)
     {
-        SP_ASSERT(m_rhi_device != nullptr);
-        SP_ASSERT(m_rhi_device->GetRhiContext()->device_context != nullptr);
-        SP_ASSERT(m_rhi_resource != nullptr);
-
+        // Map
         D3D11_MAPPED_SUBRESOURCE mapped_resource;
-        const auto result = m_rhi_device->GetRhiContext()->device_context->Map(static_cast<ID3D11Buffer*>(m_rhi_resource), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped_resource);
-        if (FAILED(result))
-        {
-            LOG_ERROR("Failed to map constant buffer.");
-            return nullptr;
-        }
+        SP_ASSERT_MSG(
+            SUCCEEDED(m_rhi_device->GetRhiContext()->device_context->Map(static_cast<ID3D11Buffer*>(m_rhi_resource), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped_resource)),
+            "Failed to map constant buffer");
 
-        return mapped_resource.pData;
-    }
+        // Copy
+        memcpy(reinterpret_cast<std::byte*>(mapped_resource.pData), reinterpret_cast<std::byte*>(data_cpu), m_stride);
 
-    void RHI_ConstantBuffer::Unmap()
-    {
+        // Unmap
         SP_ASSERT(m_rhi_resource != nullptr);
         m_rhi_device->GetRhiContext()->device_context->Unmap(static_cast<ID3D11Buffer*>(m_rhi_resource), 0);
-    }
-
-    void RHI_ConstantBuffer::Flush(const uint64_t size, const uint64_t offset)
-    {
-
     }
 }

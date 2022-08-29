@@ -227,10 +227,6 @@ struct Light
         // Apply SSAO
         if (is_ssao_enabled())
         {
-            // this doesn't really work, fix it
-            //float bent_dot_l = 1.0f - saturate(dot(surface_bent_normal, world_to_view(-to_pixel, false)));
-            //n_dot_l          = min(n_dot_l, bent_dot_l);
-
             radiance = color * intensity * attenuation * n_dot_l * occlusion;
         }
         else

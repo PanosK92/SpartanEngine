@@ -113,7 +113,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     
     // Get ssr color
     mip_level               = lerp(0, g_ssr_mip_count, surface.roughness);
-    const float4 ssr_sample = (is_ssr_enabled() && !g_is_transparent_pass) ? tex_ssr.SampleLevel(sampler_trilinear_clamp, surface.uv, mip_level) : 0.0f;
+    const float4 ssr_sample = (is_ssr_enabled() && is_opaque_pass() && surface.is_opaque()) ? tex_ssr.SampleLevel(sampler_trilinear_clamp, surface.uv, mip_level) : 0.0f;
     const float3 color_ssr  = ssr_sample.rgb;
     float ssr_alpha         = ssr_sample.a;
 
@@ -142,7 +142,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
         }
     }
 
-    // Specular from SSR.
+    // Assume specular from SSR
     float3 ibl_specular = color_ssr;
 
     // If there are no SSR data, fallback to to the reflection probe.
@@ -157,11 +157,8 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     float3 ibl = ibl_diffuse + ibl_specular;
     
     // SSAO
-    //float bent_dot_l = 1.0f;
     if (is_ssao_enabled() && use_ssao)
     {
-        //float3 pixel_to_light = surface.normal;
-        //bent_dot_l            = saturate(dot(surface.bent_normal, world_to_view(pixel_to_light, false)));
         ibl *= surface.occlusion;
     }
 

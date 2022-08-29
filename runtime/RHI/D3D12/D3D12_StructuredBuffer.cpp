@@ -31,7 +31,7 @@ using namespace std;
 
 namespace Spartan
 {
-    RHI_StructuredBuffer::RHI_StructuredBuffer(const shared_ptr<RHI_Device>& rhi_device, const uint32_t stride, const uint32_t element_count, const char* name)
+    RHI_StructuredBuffer::RHI_StructuredBuffer(RHI_Device* rhi_device, const uint32_t stride, const uint32_t element_count, const char* name)
     {
 
     }
@@ -41,21 +41,7 @@ namespace Spartan
 
     }
 
-    void* RHI_StructuredBuffer::Map()
-    {
-        SP_ASSERT(m_rhi_device != nullptr);
-        SP_ASSERT(m_rhi_resource != nullptr);
-
-        return nullptr;
-    }
-
-    void RHI_StructuredBuffer::Unmap()
-    {
-        SP_ASSERT(m_rhi_device != nullptr);
-        SP_ASSERT(m_rhi_resource != nullptr);
-    }
-
-    void RHI_StructuredBuffer::Flush(const uint64_t size, const uint64_t offset)
+    void RHI_StructuredBuffer::Update(void* data_cpu)
     {
         SP_ASSERT_MSG(false, "Not implemented");
     }
