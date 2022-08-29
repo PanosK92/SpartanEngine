@@ -54,13 +54,13 @@ static const uint THREAD_GROUP_COUNT   = 64;
 /*------------------------------------------------------------------------------
     MACROS
 ------------------------------------------------------------------------------*/
-#define g_texel_size             float2(1.0f / g_resolution_rt.x, 1.0f / g_resolution_rt.y)
-#define g_shadow_texel_size      (1.0f / g_shadow_resolution)
-#define degamma(color)           pow(abs(color), g_gamma)
-#define gamma(color)             pow(abs(color), 1.0f / g_gamma)
-#define g_tex_noise_normal_scale float2(g_resolution_render.x / 256.0f, g_resolution_render.y / 256.0f)
-#define g_tex_noise_blue_scale   float2(g_resolution_render.x / 470.0f, g_resolution_render.y / 470.0f)
-
+#define g_texel_size              float2(1.0f / g_resolution_rt.x, 1.0f / g_resolution_rt.y)
+#define g_shadow_texel_size       (1.0f / g_shadow_resolution)
+#define degamma(color)            pow(abs(color), g_gamma)
+#define gamma(color)              pow(abs(color), 1.0f / g_gamma)
+#define g_tex_noise_normal_scale  float2(g_resolution_render.x / 256.0f, g_resolution_render.y / 256.0f)
+#define g_tex_noise_blue_scale    float2(g_resolution_render.x / 470.0f, g_resolution_render.y / 470.0f)
+#define g_ssr_roughness_threshold 0.8f
 /*------------------------------------------------------------------------------
     MATH
 ------------------------------------------------------------------------------*/

@@ -193,7 +193,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     float3 color = 0.0f;
 
     bool early_exit_1 = !surface.is_opaque();
-    bool early_exit_2 = surface.roughness >= 0.8f;
+    bool early_exit_2 = surface.roughness >= g_ssr_roughness_threshold;
     if (early_exit_1 || early_exit_2)
     {
         tex_uav[thread_id.xy] = float4(color, alpha);

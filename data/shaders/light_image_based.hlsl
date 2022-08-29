@@ -23,8 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "brdf.hlsl"
 //==================
 
-static const float g_ssr_fallback_threshold_roughness = 0.7f; // value above which blending with the environment texture, is forced.
-
 // From Sebastien Lagarde Moving Frostbite to PBR page 69
 float3 get_dominant_specular_direction(float3 normal, float3 reflection, float roughness)
 {
@@ -118,9 +116,9 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     float ssr_alpha         = ssr_sample.a;
 
     // Remap alpha above a certain roughness threshold in order to hide blocky reflections (from very small mips)
-    if (surface.roughness > g_ssr_fallback_threshold_roughness)
+    if (surface.roughness > g_ssr_roughness_threshold)
     {
-        ssr_alpha = lerp(ssr_alpha, 0.0f, (surface.roughness - g_ssr_fallback_threshold_roughness) / (1.0f - g_ssr_fallback_threshold_roughness));
+        ssr_alpha = lerp(ssr_alpha, 0.0f, (surface.roughness - g_ssr_roughness_threshold) / (1.0f - g_ssr_roughness_threshold));
     }
 
     // Sample reflection probe
@@ -163,5 +161,6 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     }
 
     // Perfection achieved
-    return float4(saturate_11(ibl), 0.0f);
+    return float4(ibl, 0.0f);
 }
+

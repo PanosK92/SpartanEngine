@@ -108,8 +108,12 @@ namespace Spartan
             // Update frame constant buffer
             Pass_UpdateFrameBuffer(cmd_list);
 
-            // Generate brdf specular lut (only runs once)
-            Pass_BrdfSpecularLut(cmd_list);
+            // Generate brdf specular lut
+            if (!m_brdf_specular_lut_rendered)
+            {
+                Pass_BrdfSpecularLut(cmd_list);
+                m_brdf_specular_lut_rendered = true;
+            }
 
             // Determine if a transparent pass is required
             const bool do_transparent_pass = !m_entities[RendererEntityType::GeometryTransparent].empty();
@@ -2321,22 +2325,19 @@ namespace Spartan
 
     void Renderer::Pass_BrdfSpecularLut(RHI_CommandList* cmd_list)
     {
-        if (m_brdf_specular_lut_rendered)
+        // Acquire shader
+        RHI_Shader* shader_c = shader(RendererShader::BrdfSpecularLut_C).get();
+        if (!shader_c->IsCompiled())
             return;
-
-        // Acquire shaders
-        RHI_Shader* shader = shader(RendererShader::BrdfSpecularLut_C).get();
-        if (!shader->IsCompiled())
-            return;
-
-        cmd_list->BeginTimeblock("brdf_specular_lut");
 
         // Acquire render target
         RHI_Texture* tex_brdf_specular_lut = render_target(RendererTexture::Brdf_Specular_Lut).get();
 
         // Define render state
         static RHI_PipelineState pso;
-        pso.shader_compute = shader;
+        pso.shader_compute = shader_c;
+
+        cmd_list->BeginTimeblock("brdf_specular_lut");
 
         // Set pipeline state
         cmd_list->SetPipelineState(pso);
@@ -2352,8 +2353,6 @@ namespace Spartan
         cmd_list->Dispatch(thread_group_count_x(tex_brdf_specular_lut), thread_group_count_y(tex_brdf_specular_lut));
 
         cmd_list->EndTimeblock();
-
-        m_brdf_specular_lut_rendered = true;
     }
 
     void Renderer::Pass_Copy(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out, const bool bilinear)
