@@ -304,9 +304,13 @@ namespace Spartan
         shader(RendererShader::Reflection_Probe_P) = make_shared<RHI_Shader>(m_context);
         shader(RendererShader::Reflection_Probe_P)->Compile(RHI_Shader_Pixel, dir_shaders + "reflection_probe.hlsl", async);
 
-        // BRDF - Specular Lut
-        shader(RendererShader::BrdfSpecularLut_C) = make_shared<RHI_Shader>(m_context);
-        shader(RendererShader::BrdfSpecularLut_C)->Compile(RHI_Shader_Compute, dir_shaders + "brdf_specular_lut.hlsl", async);
+        // Debug
+        {
+            shader(RendererShader::Debug_ReflectionProbe_V) = make_shared<RHI_Shader>(m_context, RHI_Vertex_Type::PosTexNorTan);
+            shader(RendererShader::Debug_ReflectionProbe_V)->Compile(RHI_Shader_Vertex, dir_shaders + "debug_reflection_probe.hlsl", async);
+            shader(RendererShader::Debug_ReflectionProbe_P) = make_shared<RHI_Shader>(m_context);
+            shader(RendererShader::Debug_ReflectionProbe_P)->Compile(RHI_Shader_Pixel, dir_shaders + "debug_reflection_probe.hlsl", async);
+        }
 
         // Copy
         {
@@ -439,21 +443,20 @@ namespace Spartan
             shader(RendererShader::Ffx_Cas_C)->Compile(RHI_Shader_Compute, dir_shaders + "amd_fidelity_fx/cas.hlsl", async);
 
             // SPD - Single Pass Downsampler
-            // Don't compile this one async, this is because it's used for mip generation during the very first frames.
-            shader(RendererShader::Ffx_Spd_C) = make_shared<RHI_Shader>(m_context);
-            shader(RendererShader::Ffx_Spd_C)->Compile(RHI_Shader_Compute, dir_shaders + "amd_fidelity_fx/spd.hlsl", false);
             shader(RendererShader::Ffx_Spd_LuminanceAntiflicker_C) = make_shared<RHI_Shader>(m_context);
             shader(RendererShader::Ffx_Spd_LuminanceAntiflicker_C)->AddDefine("LUMINANCE_ANTIFLICKER");
             shader(RendererShader::Ffx_Spd_LuminanceAntiflicker_C)->Compile(RHI_Shader_Compute, dir_shaders + "amd_fidelity_fx/spd.hlsl", async);
         }
 
-        // Debug
+        // Compiled immediately, they are needed the moment the engine starts.
         {
-            shader(RendererShader::Debug_ReflectionProbe_V) = make_shared<RHI_Shader>(m_context, RHI_Vertex_Type::PosTexNorTan);
-            shader(RendererShader::Debug_ReflectionProbe_V)->Compile(RHI_Shader_Vertex, dir_shaders + "debug_reflection_probe.hlsl", async);
-            shader(RendererShader::Debug_ReflectionProbe_P) = make_shared<RHI_Shader>(m_context);
-            shader(RendererShader::Debug_ReflectionProbe_P)->Compile(RHI_Shader_Pixel, dir_shaders + "debug_reflection_probe.hlsl", async);
-        }
+            // Don't compile this one async, this is because it's used for mip generation during the very first frames.
+            shader(RendererShader::Ffx_Spd_C) = make_shared<RHI_Shader>(m_context);
+            shader(RendererShader::Ffx_Spd_C)->Compile(RHI_Shader_Compute, dir_shaders + "amd_fidelity_fx/spd.hlsl", false);
+
+            // BRDF - Specular Lut
+            shader(RendererShader::BrdfSpecularLut_C) = make_shared<RHI_Shader>(m_context);
+            shader(RendererShader::BrdfSpecularLut_C)->Compile(RHI_Shader_Compute, dir_shaders + "brdf_specular_lut.hlsl", false); }
     }
 
     void Renderer::CreateFonts()
