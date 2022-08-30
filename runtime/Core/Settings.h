@@ -21,12 +21,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===============
-#include "ISystem.h"
-#include "../Math/Vector2.h"
-#include <vector>
-#include <array>
-//==========================
+//= INCLUDES ===========
+#include "Definitions.h"
+//======================
 
 namespace Spartan
 {
@@ -46,23 +43,17 @@ namespace Spartan
         std::string url;
     };
 
-    // This system is responsible for saving/loading engine settings into an .ini file
+    // This system is responsible for saving/loading engine settings to a file
     class SP_CLASS Settings
     {
     public:
-        static void Initialize(Context* context);
-        static void PostInitialize();
+        static void PostInitialize(Context* context);
         static void Shutdown();
 
-        // Third party libraries registration
+        // Register a third-party library
         static void RegisterThirdPartyLib(const std::string& name, const std::string& version, const std::string& url);
+
+        // Get all the registered third-party libraries
         static const std::vector<third_party_lib>& GetThirdPartyLibs();
-
-    private:
-        static void Save();
-        static void Load();
-
-        static void Map();
-        static void Reflect();
     };
 }
