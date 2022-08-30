@@ -393,9 +393,9 @@ namespace Spartan
             m_renderer->GetFrameNum(),
 
             // Detailed times
-            m_time_frame_avg,   m_time_frame_min,   m_time_frame_max,   m_time_frame_last,
-            m_time_cpu_avg,     m_time_cpu_min,     m_time_cpu_max,     m_time_cpu_last,
-            m_time_gpu_avg,     m_time_gpu_min,     m_time_gpu_max,     m_time_gpu_last,
+            m_time_frame_avg, m_time_frame_min, m_time_frame_max, m_time_frame_last,
+            m_time_cpu_avg,   m_time_cpu_min,   m_time_cpu_max,   m_time_cpu_last,
+            m_time_gpu_avg,   m_time_gpu_min,   m_time_gpu_max,   m_time_gpu_last,
 
             // GPU
             m_gpu_name.c_str(),
@@ -410,7 +410,7 @@ namespace Spartan
             // Resolution
             static_cast<int>(m_renderer->GetResolutionOutput().x), static_cast<int>(m_renderer->GetResolutionOutput().y),
             static_cast<int>(m_renderer->GetResolutionRender().x), static_cast<int>(m_renderer->GetResolutionRender().y),
-            static_cast<int>(m_renderer->GetViewport().width), static_cast<int>(m_renderer->GetViewport().height),
+            static_cast<int>(m_renderer->GetViewport().width),     static_cast<int>(m_renderer->GetViewport().height),
 
             // API Calls
             m_rhi_draw,

@@ -38,7 +38,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <atomic>
 #include <map>
 #include <unordered_map>
-#include <stdio.h>
+#include <cstdio>
 #include <filesystem>
 #include <regex>
 #include <locale>
