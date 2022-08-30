@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "IconProvider.h"
 #include "Resource/ResourceCache.h"
 #include "RHI/RHI_Texture2D.h"
-#include "Core/Threading.h"
+#include "Core/ThreadPool.h"
 //=================================
 
 //= NAMESPACES ==========
@@ -48,7 +48,7 @@ void IconProvider::Initialize(Context* context)
     m_context = context;
 
     // Load standard icons
-    Threading::AddTask([this]()
+    ThreadPool::AddTask([this]()
     {
         const string data_dir = m_context->GetSystem<ResourceCache>()->GetResourceDirectory() + "/";
 
@@ -151,8 +151,6 @@ const Thumbnail& IconProvider::LoadFromFile(const string& file_path, IconType ty
     if (FileSystem::IsSupportedShaderFile(file_path))              return GetThumbnailByType(IconType::Directory_File_Shader);
     // Scene                                                       
     if (FileSystem::IsEngineSceneFile(file_path))                  return GetThumbnailByType(IconType::Directory_File_World);
-    // Script                                                      
-    if (FileSystem::IsEngineScriptFile(file_path))                 return GetThumbnailByType(IconType::Directory_File_Script);
     // Font                                                        
     if (FileSystem::IsSupportedFontFile(file_path))                return GetThumbnailByType(IconType::Directory_File_Font);
                                                                    
@@ -177,7 +175,7 @@ const Thumbnail& IconProvider::LoadFromFile(const string& file_path, IconType ty
         m_thumbnails.emplace_back(type, texture, file_path);
 
         // Load it
-        Threading::AddTask([this, file_path]()
+        ThreadPool::AddTask([this, file_path]()
         {
             RHI_Texture* tex_ptr = m_thumbnails.back().texture.get();
             tex_ptr->LoadFromFile(file_path);

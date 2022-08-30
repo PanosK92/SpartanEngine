@@ -46,7 +46,7 @@ namespace Spartan
         function_type m_function;
     };
 
-    class SP_CLASS Threading
+    class SP_CLASS ThreadPool
     {
     public:
         static void Initialize();

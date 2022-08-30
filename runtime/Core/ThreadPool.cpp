@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =========
 #include "pch.h"
-#include "Threading.h"
+#include "ThreadPool.h"
 //====================
 
 //= NAMESPACES =====
@@ -30,17 +30,17 @@ using namespace std;
 
 namespace Spartan
 {
-    uint32_t Threading::m_thread_count                      = 0;
-    uint32_t Threading::m_thread_count_support              = 0;
-    std::atomic<uint32_t> Threading::m_working_thread_count = 0;
-    std::vector<std::thread> Threading::m_threads;
-    std::deque<std::shared_ptr<Task>> Threading::m_tasks;
-    std::mutex Threading::m_mutex_tasks;
-    std::condition_variable Threading::m_condition_var;
-    std::unordered_map<std::thread::id, std::string> Threading::m_thread_names;
-    bool Threading::m_stopping;
+    uint32_t ThreadPool::m_thread_count                      = 0;
+    uint32_t ThreadPool::m_thread_count_support              = 0;
+    std::atomic<uint32_t> ThreadPool::m_working_thread_count = 0;
+    std::vector<std::thread> ThreadPool::m_threads;
+    std::deque<std::shared_ptr<Task>> ThreadPool::m_tasks;
+    std::mutex ThreadPool::m_mutex_tasks;
+    std::condition_variable ThreadPool::m_condition_var;
+    std::unordered_map<std::thread::id, std::string> ThreadPool::m_thread_names;
+    bool ThreadPool::m_stopping;
 
-    void Threading::Initialize()
+    void ThreadPool::Initialize()
     {
         m_stopping                            = false;
         m_thread_count_support                = thread::hardware_concurrency();
@@ -49,14 +49,14 @@ namespace Spartan
 
         for (uint32_t i = 0; i < m_thread_count; i++)
         {
-            m_threads.emplace_back(thread(&Threading::ThreadLoop));
+            m_threads.emplace_back(thread(&ThreadPool::ThreadLoop));
             m_thread_names[m_threads.back().get_id()] = "worker_" + to_string(i);
         }
 
         SP_LOG_INFO("%d threads have been created", m_thread_count);
     }
 
-    void Threading::Shutdown()
+    void ThreadPool::Shutdown()
     {
         Flush(true);
 
@@ -82,7 +82,7 @@ namespace Spartan
         m_threads.clear();
     }
 
-    void Threading::Flush(bool remove_queued /*= false*/)
+    void ThreadPool::Flush(bool remove_queued /*= false*/)
     {
         // Clear any queued tasks
         if (remove_queued)
@@ -97,7 +97,7 @@ namespace Spartan
         }
     }
 
-    void Threading::ThreadLoop()
+    void ThreadPool::ThreadLoop()
     {
         shared_ptr<Task> task;
 

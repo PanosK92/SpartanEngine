@@ -67,7 +67,6 @@ enum class IconType
     Directory_File_Txt,
     Directory_File_Ini,
     Directory_File_Exe,
-    Directory_File_Script,
     Directory_File_Font,
     Directory_File_Texture,
     Undefined

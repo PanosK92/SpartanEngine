@@ -88,7 +88,7 @@ static void load_default_world_startup_window(World* world)
             if (ImGui::Button("Yes"))
             {
                 is_visible = false;
-                Threading::AddTask([world]()
+                ThreadPool::AddTask([world]()
                 {
                     world->CreateDefaultWorld();
                 });

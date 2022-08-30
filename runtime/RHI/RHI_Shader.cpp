@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "RHI_Shader.h"
 #include "RHI_InputLayout.h"
-#include "../Core/Threading.h"
+#include "../Core/ThreadPool.h"
 #include "../Rendering/Renderer.h"
 //================================
 
@@ -113,7 +113,7 @@ namespace Spartan
             }
             else
             {
-                Threading::AddTask([this]()
+                ThreadPool::AddTask([this]()
                 {
                     CompileShader(m_compilation_state, m_shader_type, m_defines, m_name, m_rhi_resource, std::bind(&RHI_Shader::Compile2, this));
                 });

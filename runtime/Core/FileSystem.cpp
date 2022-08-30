@@ -30,6 +30,124 @@ using namespace std;
 
 namespace Spartan
 {
+    static const std::vector<std::string> supported_formats_image
+    {
+            ".jpg",
+            ".png",
+            ".bmp",
+            ".tga",
+            ".dds",
+            ".exr",
+            ".raw",
+            ".gif",
+            ".hdr",
+            ".ico",
+            ".iff",
+            ".jng",
+            ".jpeg",
+            ".koala",
+            ".kodak",
+            ".mng",
+            ".pcx",
+            ".pbm",
+            ".pgm",
+            ".ppm",
+            ".pfm",
+            ".pict",
+            ".psd",
+            ".raw",
+            ".sgi",
+            ".targa",
+            ".tiff",
+            ".tif", // tiff can also be tif
+            ".wbmp",
+            ".webp",
+            ".xbm",
+            ".xpm"
+    };
+
+    static const std::vector<std::string> supported_formats_audio
+    {
+        ".aiff",
+        ".asf",
+        ".asx",
+        ".dls",
+        ".flac",
+        ".fsb",
+        ".it",
+        ".m3u",
+        ".midi",
+        ".mod",
+        ".mp2",
+        ".mp3",
+        ".ogg",
+        ".pls",
+        ".s3m",
+        ".vag", // PS2/PSP
+        ".wav",
+        ".wax",
+        ".wma",
+        ".xm",
+        ".xma" // XBOX 360
+    };
+
+    static const std::vector<std::string> supported_formats_model
+    {
+        ".3ds",
+        ".obj",
+        ".fbx",
+        ".blend",
+        ".dae",
+        ".gltf",
+        ".lwo",
+        ".c4d",
+        ".ase",
+        ".dxf",
+        ".hmp",
+        ".md2",
+        ".md3",
+        ".md5",
+        ".mdc",
+        ".mdl",
+        ".nff",
+        ".ply",
+        ".stl",
+        ".x",
+        ".smd",
+        ".lxo",
+        ".lws",
+        ".ter",
+        ".ac3d",
+        ".ms3d",
+        ".cob",
+        ".q3bsp",
+        ".xgl",
+        ".csm",
+        ".bvh",
+        ".b3d",
+        ".ndo"
+    };
+
+    static const std::vector<std::string> supported_formats_shader
+    {
+        ".hlsl"
+    };
+
+    static const std::vector<std::string> supported_formats_font
+    {
+        ".ttf",
+        ".ttc",
+        ".cff",
+        ".woff",
+        ".otf",
+        ".otc",
+        ".pfa",
+        ".pfb",
+        ".fnt",
+        ".bdf",
+        ".pfr"
+    };
+
     void FileSystem::CreateTextFile(const string& file_path, const string& text)
     {
         ofstream outfile(file_path);
@@ -392,19 +510,6 @@ namespace Spartan
         const string extension = GetExtensionFromFilePath(path);
 
         for (const auto& format : supported_formats_font)
-        {
-            if (extension == format || extension == ConvertToUppercase(format))
-                return true;
-        }
-
-        return false;
-    }
-
-    bool FileSystem::IsEngineScriptFile(const string& path)
-    {
-        const string extension = GetExtensionFromFilePath(path);
-
-        for (const auto& format : supported_formats_script)
         {
             if (extension == format || extension == ConvertToUppercase(format))
                 return true;
