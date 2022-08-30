@@ -32,9 +32,9 @@ namespace Spartan
 {
     class Context;
 
-    struct ThirdPartyLib
+    struct third_party_lib
     {
-        ThirdPartyLib(const std::string& name, const std::string& version, const std::string& url)
+        third_party_lib(const std::string& name, const std::string& version, const std::string& url)
         {
             this->name    = name;
             this->version = version;
@@ -46,45 +46,23 @@ namespace Spartan
         std::string url;
     };
 
-    class SP_CLASS Settings : public ISystem
+    // This system is responsible for saving/loading engine settings into an .ini file
+    class SP_CLASS Settings
     {
     public:
-        Settings(Context* context);
-        ~Settings();
+        static void Initialize(Context* context);
+        static void PostInitialize();
+        static void Shutdown();
 
-        //= Subsystem ===================
-        void OnPostInitialise() override;
-        void OnShutdown() override;
-        //===============================
-
-        //= Third party libraries registration =================================================================
-        void RegisterThirdPartyLib(const std::string& name, const std::string& version, const std::string& url);
-        const auto& GetThirdPartyLibs() const { return m_third_party_libs; }
-        //======================================================================================================
-
-        //= Properties ========================================================================
-        bool GetIsFullScreen()                     const { return m_is_fullscreen; }
-        bool GetIsMouseVisible()                   const { return m_is_mouse_visible; }
-        bool HasLoadedUserSettings()               const { return m_has_loaded_user_settings; }
-        const Math::Vector2& GetResolutionOutput() const { return m_resolution_output; }
-        //=====================================================================================
+        // Third party libraries registration
+        static void RegisterThirdPartyLib(const std::string& name, const std::string& version, const std::string& url);
+        static const std::vector<third_party_lib>& GetThirdPartyLibs();
 
     private:
-        void Save() const;
-        void Load();
+        static void Save();
+        static void Load();
 
-        void Map() const;
-        void Reflect();
-
-        bool m_is_fullscreen              = false;
-        bool m_is_mouse_visible           = true;
-        Math::Vector2 m_resolution_output = Math::Vector2::Zero;
-        Math::Vector2 m_resolution_render = Math::Vector2::Zero;
-        uint32_t m_max_thread_count       = 0;
-        double m_fps_limit                = 0;
-        bool m_has_loaded_user_settings   = false;
-        Context* m_context                = nullptr;
-        std::array<float, 32> m_render_options;
-        std::vector<ThirdPartyLib> m_third_party_libs;
+        static void Map();
+        static void Reflect();
     };
 }

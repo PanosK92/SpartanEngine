@@ -22,7 +22,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =======================
 #include "Viewport.h"
 #include "Core/Timer.h"
-#include "Core/Settings.h"
 #include "Rendering/Renderer.h"
 #include "../ImGui/ImGuiExtension.h"
 //==================================
@@ -41,7 +40,6 @@ Viewport::Viewport(Editor* editor) : Widget(editor)
     m_padding      = Vector2(2.0f);
     m_world        = m_context->GetSystem<World>();
     m_renderer     = m_context->GetSystem<Renderer>();
-    m_settings     = m_context->GetSystem<Settings>();
     m_input        = m_context->GetSystem<Input>();
 }
 

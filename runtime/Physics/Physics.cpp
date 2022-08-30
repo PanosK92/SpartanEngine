@@ -105,7 +105,7 @@ namespace Spartan
         // Get version
         const auto major = to_string(btGetVersion() / 100);
         const auto minor = to_string(btGetVersion()).erase(0, 1);
-        m_context->GetSystem<Settings>()->RegisterThirdPartyLib("Bullet", major + "." + minor, "https://github.com/bulletphysics/bullet3");
+        Settings::RegisterThirdPartyLib("Bullet", major + "." + minor, "https://github.com/bulletphysics/bullet3");
 
         // Enabled debug drawing
         {

@@ -323,7 +323,7 @@ namespace Spartan
         FreeImage_SetOutputMessage(free_image_error_handler);
 
         // Get version
-        m_context->GetSystem<Settings>()->RegisterThirdPartyLib("FreeImage", FreeImage_GetVersion(), "https://freeimage.sourceforge.io/");
+        Settings::RegisterThirdPartyLib("FreeImage", FreeImage_GetVersion(), "https://freeimage.sourceforge.io/");
     }
 
     ImageImporter::~ImageImporter()

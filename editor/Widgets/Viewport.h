@@ -49,7 +49,6 @@ private:
     float m_width                   = 0.0f;
     float m_height                  = 0.0f;
     Spartan::Renderer* m_renderer   = nullptr;
-    Spartan::Settings* m_settings   = nullptr;
     Spartan::World* m_world         = nullptr;
     Spartan::Input* m_input         = nullptr;
 };
