@@ -30,23 +30,33 @@ using namespace std;
 
 namespace Spartan
 {
-    Threading::Threading(Context* context) : Subsystem(context)
+    uint32_t Threading::m_thread_count                      = 0;
+    uint32_t Threading::m_thread_count_support              = 0;
+    std::atomic<uint32_t> Threading::m_working_thread_count = 0;
+    std::vector<std::thread> Threading::m_threads;
+    std::deque<std::shared_ptr<Task>> Threading::m_tasks;
+    std::mutex Threading::m_mutex_tasks;
+    std::condition_variable Threading::m_condition_var;
+    std::unordered_map<std::thread::id, std::string> Threading::m_thread_names;
+    bool Threading::m_stopping;
+
+    void Threading::Initialize()
     {
-        m_stopping                               = false;
-        m_thread_count_support                  = thread::hardware_concurrency();
-        m_thread_count                          = m_thread_count_support - 1; // exclude the main (this) thread
-        m_thread_names[this_thread::get_id()]   = "main";
+        m_stopping                            = false;
+        m_thread_count_support                = thread::hardware_concurrency();
+        m_thread_count                        = m_thread_count_support - 1; // exclude the main (this) thread
+        m_thread_names[this_thread::get_id()] = "main";
 
         for (uint32_t i = 0; i < m_thread_count; i++)
         {
-            m_threads.emplace_back(thread(&Threading::ThreadLoop, this));
+            m_threads.emplace_back(thread(&Threading::ThreadLoop));
             m_thread_names[m_threads.back().get_id()] = "worker_" + to_string(i);
         }
 
         LOG_INFO("%d threads have been created", m_thread_count);
     }
 
-    Threading::~Threading()
+    void Threading::Shutdown()
     {
         Flush(true);
 
@@ -97,7 +107,7 @@ namespace Spartan
             unique_lock<mutex> lock(m_mutex_tasks);
 
             // Check condition on notification
-            m_condition_var.wait(lock, [this] { return !m_tasks.empty() || m_stopping; });
+            m_condition_var.wait(lock, []{ return !m_tasks.empty() || m_stopping; });
 
             // If m_stopping is true, it's time to shut everything down
             if (m_stopping && m_tasks.empty())

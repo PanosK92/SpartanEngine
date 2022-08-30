@@ -48,7 +48,7 @@ void IconProvider::Initialize(Context* context)
     m_context = context;
 
     // Load standard icons
-    m_context->GetSubsystem<Threading>()->AddTask([this]()
+    Threading::AddTask([this]()
     {
         const string data_dir = m_context->GetSubsystem<ResourceCache>()->GetResourceDirectory() + "/";
 
@@ -177,7 +177,7 @@ const Thumbnail& IconProvider::LoadFromFile(const string& file_path, IconType ty
         m_thumbnails.emplace_back(type, texture, file_path);
 
         // Load it
-        m_context->GetSubsystem<Threading>()->AddTask([this, file_path]()
+        Threading::AddTask([this, file_path]()
         {
             RHI_Texture* tex_ptr = m_thumbnails.back().texture.get();
             tex_ptr->LoadFromFile(file_path);

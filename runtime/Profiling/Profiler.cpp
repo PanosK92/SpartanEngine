@@ -329,7 +329,6 @@ namespace Spartan
     {
         const uint32_t texture_count  = m_resource_manager->GetResourceCount(ResourceType::Texture) + m_resource_manager->GetResourceCount(ResourceType::Texture2d) + m_resource_manager->GetResourceCount(ResourceType::TextureCube);
         const uint32_t material_count = m_resource_manager->GetResourceCount(ResourceType::Material);
-        Threading* threading = m_context->GetSubsystem<Threading>();
 
         // Get the graphics driver vendor
         string api_vendor_name = "AMD";
@@ -406,8 +405,8 @@ namespace Spartan
             m_renderer->GetRhiDevice()->GetPrimaryPhysicalDevice()->GetVendorName().c_str(), m_gpu_driver.c_str(),
 
             // CPU
-            threading->GetWorkingThreadCount(),
-            threading->GetThreadCount(),
+            Threading::GetWorkingThreadCount(),
+            Threading::GetThreadCount(),
 
             // Resolution
             static_cast<int>(m_renderer->GetResolutionOutput().x), static_cast<int>(m_renderer->GetResolutionOutput().y),

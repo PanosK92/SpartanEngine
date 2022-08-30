@@ -98,7 +98,7 @@ namespace Spartan
             return;
         }
 
-        m_context->GetSubsystem<Threading>()->AddTask([this]()
+        Threading::AddTask([this]()
         {
             m_is_generating = true;
 
@@ -388,7 +388,7 @@ namespace Spartan
             }
         };
 
-        m_context->GetSubsystem<Threading>()->AddTaskLoop(compute_vertex_normals_tangents, vertex_count);
+        Threading::AddTaskLoop(compute_vertex_normals_tangents, vertex_count);
 
         return true;
     }

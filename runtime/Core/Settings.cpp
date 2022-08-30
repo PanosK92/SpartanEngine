@@ -199,7 +199,7 @@ namespace Spartan
         Renderer* renderer = m_context->GetSubsystem<Renderer>();
 
         m_fps_limit         = m_context->GetSubsystem<Timer>()->GetFpsLimit();
-        m_max_thread_count  = m_context->GetSubsystem<Threading>()->GetSupportedThreadCount();
+        m_max_thread_count  = Threading::GetSupportedThreadCount();
         m_is_fullscreen     = m_context->GetSubsystem<Window>()->IsFullScreen();
         m_is_mouse_visible  = m_context->GetSubsystem<Input>()->GetMouseCursorVisible();
         m_resolution_output = renderer->GetResolutionOutput();

@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==================
+//= INCLUDES ================
 #include <vector>
 #include <thread>
 #include <mutex>
@@ -30,15 +30,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <unordered_map>
 #include <functional>
 #include "../Logging/Log.h"
-#include "../Core/Subsystem.h"
-//=============================
+//===========================
 
 namespace Spartan
 {
     class Task
     {
     public:
-        typedef std::function<void()> function_type;
+        using function_type = std::function<void()>;
 
         Task(function_type&& function) { m_function = std::forward<function_type>(function); }
         void Execute()                 { m_function(); }
@@ -47,15 +46,15 @@ namespace Spartan
         function_type m_function;
     };
 
-    class Threading : public Subsystem
+    class SPARTAN_CLASS Threading
     {
     public:
-        Threading(Context* context);
-        ~Threading();
+        static void Initialize();
+        static void Shutdown();
 
         // Add a task
         template <typename Function>
-        void AddTask(Function&& function)
+        static void AddTask(Function&& function)
         {
             if (GetIdleThreadCount() == 0)
             {
@@ -79,7 +78,7 @@ namespace Spartan
 
         // Adds a task which is a loop and executes chunks of it in parallel
         template <typename Function>
-        void AddTaskLoop(Function&& function, uint32_t range)
+        static void AddTaskLoop(Function&& function, uint32_t range)
         {
             uint32_t available_threads   = GetIdleThreadCount();
             std::vector<bool> tasks_done = std::vector<bool>(available_threads, false);
@@ -113,26 +112,26 @@ namespace Spartan
             }
         }
 
-        void Flush(bool remove_queued = false);
+        static void Flush(bool remove_queued = false);
 
-        uint32_t GetThreadCount()          const { return m_thread_count; }
-        uint32_t GetSupportedThreadCount() const { return m_thread_count_support; }
-        uint32_t GetWorkingThreadCount()   const { return m_working_thread_count; }
-        uint32_t GetIdleThreadCount()      const { return m_thread_count - m_working_thread_count; }
-        bool AreTasksRunning()             const { return GetIdleThreadCount() != GetThreadCount(); }
+        static uint32_t GetThreadCount()          { return m_thread_count; }
+        static uint32_t GetSupportedThreadCount() { return m_thread_count_support; }
+        static uint32_t GetWorkingThreadCount()   { return m_working_thread_count; }
+        static uint32_t GetIdleThreadCount()      { return m_thread_count - m_working_thread_count; }
+        static bool AreTasksRunning()             { return GetIdleThreadCount() != GetThreadCount(); }
        
     private:
         // This function is invoked by the threads
-        void ThreadLoop();
+        static void ThreadLoop();
 
-        uint32_t m_thread_count                      = 0;
-        uint32_t m_thread_count_support              = 0;
-        std::atomic<uint32_t> m_working_thread_count = 0;
-        std::vector<std::thread> m_threads;
-        std::deque<std::shared_ptr<Task>> m_tasks;
-        std::mutex m_mutex_tasks;
-        std::condition_variable m_condition_var;
-        std::unordered_map<std::thread::id, std::string> m_thread_names;
-        bool m_stopping;
+        static uint32_t m_thread_count;
+        static uint32_t m_thread_count_support;
+        static std::atomic<uint32_t> m_working_thread_count;
+        static std::vector<std::thread> m_threads;
+        static std::deque<std::shared_ptr<Task>> m_tasks;
+        static std::mutex m_mutex_tasks;
+        static std::condition_variable m_condition_var;
+        static std::unordered_map<std::thread::id, std::string> m_thread_names;
+        static bool m_stopping;
     };
 }

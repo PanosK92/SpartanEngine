@@ -49,12 +49,14 @@ namespace Spartan
         m_context = make_shared<Context>();
         m_context->m_engine = this;
 
-        // Subsystem: Add (this is also the ticking order)
+        // Initialise systems which are static
+        Threading::Initialize();
+
+        // Initialize systems which need to tick (this is also the tick order)
         Stopwatch timer_add;
         m_context->AddSubsystem<Window>();
         m_context->AddSubsystem<Settings>();
         m_context->AddSubsystem<Timer>();
-        m_context->AddSubsystem<Threading>();
         m_context->AddSubsystem<Input>(TickType::Smoothed);
         m_context->AddSubsystem<ResourceCache>();
         m_context->AddSubsystem<Audio>();
@@ -80,8 +82,8 @@ namespace Spartan
         // Subsystem: Shutdown.
         m_context->OnShutdown();
 
-        // Does this need to become a subsystem ?
         EventSystem::Get().Clear();
+        Threading::Shutdown();
     }
 
     void Engine::Tick() const
