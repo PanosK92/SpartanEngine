@@ -131,7 +131,7 @@ namespace Spartan
 
         // Misc
         void SetGlobalShaderResources(RHI_CommandList* cmd_list) const;
-        void RequestTextureMipGeneration(RHI_Texture* texture);
+        void RequestTextureMipGeneration(std::shared_ptr<RHI_Texture> texture);
 
         RHI_Texture* GetFrameTexture()                                 { return GetRenderTarget(RendererTexture::Frame_Output).get(); }
         auto GetFrameNum()                                       const { return m_frame_num; }
@@ -200,7 +200,6 @@ namespace Spartan
         // Event handlers
         void OnAddRenderables(const Variant& renderables);
         void OnClear();
-        void OnWorldLoaded();
         void OnFullScreenToggled();
 
         // Misc
@@ -320,8 +319,8 @@ namespace Spartan
         const float m_depth_bias_slope_scaled  = 2.0f;
 
         // Requests for mip generation
-        std::vector<RHI_Texture*> m_textures_mip_generation;
-        std::vector<RHI_Texture*> m_textures_mip_generation_delete_per_mip;
+        std::vector<std::weak_ptr<RHI_Texture>> m_textures_mip_generation;
+        std::vector<std::weak_ptr<RHI_Texture>> m_textures_mip_generation_delete_per_mip;
 
         // States
         std::atomic<bool> m_is_rendering_allowed = true;

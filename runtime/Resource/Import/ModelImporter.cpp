@@ -197,8 +197,6 @@ namespace Spartan
 
     static string texture_validate_path(string original_texture_path, const string& file_path)
     {
-        replace(original_texture_path.begin(), original_texture_path.end(), '\\', '/');
-
         // Models usually return a texture path which is relative to the model's directory.
         // However, to load anything, we'll need an absolute path, so we construct it here.
         const string model_dir = FileSystem::GetDirectoryFromFilePath(file_path);
@@ -458,10 +456,10 @@ namespace Spartan
         for (uint32_t i = 0; i < node->mNumChildren; i++)
         {
             // Any subsequent nodes are processed in another thread
-            ThreadPool::AddTask([this, i, node, entity]()
-            {
+            //ThreadPool::AddTask([this, i, node, entity]()
+            //{
                 ParseNode(node->mChildren[i], entity);
-            });
+            //});
         }
 
         // Update progress tracking

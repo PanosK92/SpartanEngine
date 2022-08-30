@@ -34,7 +34,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <limits>
 #include <cassert>
 #include <cstdint>
-#include <array>
 #include <atomic>
 #include <map>
 #include <unordered_map>
@@ -43,6 +42,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <regex>
 #include <locale>
 #include <codecvt>
+#include <array>
+#include <deque>
+#include <vector>
 //======================
 
 //= RUNTIME ====================

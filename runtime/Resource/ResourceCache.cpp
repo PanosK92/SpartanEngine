@@ -84,7 +84,7 @@ namespace Spartan
     {
         SP_ASSERT(!resource_name.empty());
 
-        std::lock_guard<std::mutex> guard(m_mutex);
+        lock_guard<mutex> guard(m_mutex);
 
         for (shared_ptr<IResource>& resource : m_resources)
         {
@@ -100,7 +100,7 @@ namespace Spartan
 
     bool ResourceCache::IsCached(const uint64_t resource_id)
     {
-        std::lock_guard<std::mutex> guard(m_mutex);
+        lock_guard<mutex> guard(m_mutex);
 
         for (shared_ptr<IResource>& resource : m_resources)
         {
@@ -113,7 +113,7 @@ namespace Spartan
     
 	shared_ptr<IResource>& ResourceCache::GetByName(const string& name, const ResourceType type)
     {
-        std::lock_guard<std::mutex> guard(m_mutex);
+        lock_guard<mutex> guard(m_mutex);
 
         for (shared_ptr<IResource>& resource : m_resources)
         {
@@ -127,7 +127,7 @@ namespace Spartan
 
     vector<shared_ptr<IResource>> ResourceCache::GetByType(const ResourceType type /*= ResourceType::Unknown*/)
     {
-        std::lock_guard<std::mutex> guard(m_mutex);
+        lock_guard<mutex> guard(m_mutex);
 
         vector<shared_ptr<IResource>> resources;
         for (shared_ptr<IResource>& resource : m_resources)
@@ -143,7 +143,7 @@ namespace Spartan
 
     uint64_t ResourceCache::GetMemoryUsageCpu(ResourceType type /*= Resource_Unknown*/)
     {
-        std::lock_guard<std::mutex> guard(m_mutex);
+        lock_guard<mutex> guard(m_mutex);
 
         uint64_t size = 0;
         for (shared_ptr<IResource>& resource : m_resources)
@@ -162,7 +162,7 @@ namespace Spartan
 
     uint64_t ResourceCache::GetMemoryUsageGpu(ResourceType type /*= Resource_Unknown*/)
     {
-        std::lock_guard<std::mutex> guard(m_mutex);
+        lock_guard<mutex> guard(m_mutex);
 
         uint64_t size = 0;
         for (shared_ptr<IResource>& resource : m_resources)
