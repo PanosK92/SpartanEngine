@@ -55,16 +55,6 @@ namespace Spartan
     class SP_CLASS ProgressTracker
     {
     public:
-        static Progress& GetProgress(const ProgressType progress_type)
-        {
-            static ProgressTracker instance;
-            return instance.GetProgressInternal(progress_type);
-        }
-
-        static Progress& GetProgressInternal(const ProgressType progress_type);
-
-    private:
-        static std::array<Progress, 3> m_progresses;
-        static std::mutex m_mutex_progress_access;
+        static Progress& GetProgress(const ProgressType progress_type);
     };
 }
