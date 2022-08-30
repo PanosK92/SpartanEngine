@@ -183,7 +183,7 @@ namespace Spartan
         // Traces ray against all AABBs in the world
         vector<RayHit> hits;
         {
-            const auto& entities = m_context->GetSystem<World>()->EntityGetAll();
+            const auto& entities = m_context->GetSystem<World>()->GetAllEntities();
             for (const auto& entity : entities)
             {
                 // Make sure there entity has a renderable

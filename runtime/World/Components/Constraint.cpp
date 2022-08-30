@@ -119,7 +119,7 @@ namespace Spartan
         stream->Read(&m_lowLimit);
 
         const auto body_other_id = stream->ReadAs<uint32_t>();
-        m_bodyOther = GetContext()->GetSystem<World>()->EntityGetById(body_other_id);
+        m_bodyOther = GetContext()->GetSystem<World>()->GetEntityById(body_other_id);
 
         Construct();
     }

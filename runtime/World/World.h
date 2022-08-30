@@ -63,13 +63,13 @@ namespace Spartan
         const std::string& GetFilePath() const { return m_file_path; }
 
         //= Entities ===========================================================
-        std::shared_ptr<Entity> EntityCreate(bool is_active = true);
-        bool EntityExists(const std::shared_ptr<Entity>& entity);
-        void EntityRemove(const std::shared_ptr<Entity>& entity);
-        std::vector<std::shared_ptr<Entity>> EntityGetRoots();
-        const std::shared_ptr<Entity>& EntityGetByName(const std::string& name);
-        const std::shared_ptr<Entity>& EntityGetById(uint64_t id);
-        const auto& EntityGetAll() const { return m_entities; }
+        std::shared_ptr<Entity> CreateEntity(bool is_active = true);
+        bool EntityExists(Entity* entity);
+        void RemoveEntity(Entity* entity);
+        std::vector<std::shared_ptr<Entity>> GetRootEntities();
+        const std::shared_ptr<Entity>& GetEntityByName(const std::string& name);
+        const std::shared_ptr<Entity>& GetEntityById(uint64_t id);
+        const auto& GetAllEntities() const { return m_entities; }
         void ActivateNewEntities();
         //======================================================================
 
