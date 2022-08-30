@@ -24,14 +24,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =====================
 #include "RHI_Definition.h"
 #include "RHI_Viewport.h"
-#include "../Core/SP_Object.h"
+#include "../Core/Object.h"
 #include "../Math/Rectangle.h"
 #include <array>
 //================================
 
 namespace Spartan
 {
-    class SP_CLASS RHI_PipelineState : public SP_Object
+    class SP_CLASS RHI_PipelineState : public Object
     {
     public:
         RHI_PipelineState();

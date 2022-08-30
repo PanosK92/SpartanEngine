@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include "../Core/SP_Object.h"
+#include "../Core/Object.h"
 #include "RHI_Vertex.h"
 #include "RHI_Descriptor.h"
 //================================
@@ -36,7 +36,7 @@ namespace Spartan
     // Forward declarations
     class Context;
 
-    class SP_CLASS RHI_Shader : public SP_Object
+    class SP_CLASS RHI_Shader : public Object
     {
     public:
         RHI_Shader() = default;

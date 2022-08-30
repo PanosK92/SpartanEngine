@@ -21,14 +21,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =====================
-#include "../Core/SP_Object.h"
-#include "RHI_Definition.h"
-//================================
+//= INCLUDES ==============
+#include "../Core/Object.h"
+//=========================
 
 namespace Spartan
 {
-    class RHI_Fence : public SP_Object
+    class SP_CLASS RHI_Fence : public Object
     {
     public:
         RHI_Fence() = default;

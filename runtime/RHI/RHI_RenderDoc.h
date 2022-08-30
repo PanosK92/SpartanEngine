@@ -21,9 +21,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =================
-#include "../Core/SP_Object.h"
-//============================
+//= INCLUDES ===========
+#include "Definitions.h"
+//======================
 
 namespace Spartan
 {

@@ -162,7 +162,7 @@ public:
     {
         m_path        = path;
         m_thumbnail   = thumbnail;
-        m_id          = Spartan::SP_Object::GenerateObjectId();
+        m_id          = Spartan::Object::GenerateObjectId();
         m_isDirectory = Spartan::FileSystem::IsDirectory(path);
         m_label       = Spartan::FileSystem::GetFileNameFromFilePath(path);
     }

@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI_Definition.h"
 #include "RHI_PipelineState.h"
 #include "RHI_Descriptor.h"
-#include "../Core/SP_Object.h"
+#include "../Core/Object.h"
 #include "../Rendering/Renderer_Definitions.h"
 //============================================
 
@@ -41,7 +41,7 @@ namespace Spartan
         class Rectangle;
     }
 
-    class SP_CLASS RHI_CommandList : public SP_Object
+    class SP_CLASS RHI_CommandList : public Object
     {
     public:
         RHI_CommandList(Context* context, const RHI_Queue_Type queue_type, const uint32_t index, void* cmd_pool_resource, const char* name);

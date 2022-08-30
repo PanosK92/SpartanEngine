@@ -23,12 +23,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =====================
 #include "RHI_Definition.h"
-#include "../Core/SP_Object.h"
+#include "../Core/Object.h"
 //================================
 
 namespace Spartan
 {
-    class SP_CLASS RHI_BlendState : public SP_Object
+    class SP_CLASS RHI_BlendState : public Object
     {
     public:
         RHI_BlendState() = default;

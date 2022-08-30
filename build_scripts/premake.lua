@@ -212,8 +212,9 @@ project (EDITOR_PROJECT_NAME)
 
 	-- Includes
 	includedirs { RUNTIME_DIR }
+	includedirs { RUNTIME_DIR .. "/Core" }     -- This is here because the runtime uses it
 	includedirs { "../third_party/free_type" } -- Used to rasterise the ImGui font atlas
-	includedirs { "../third_party/sdl" }      -- Used by ImGui to create windows
+	includedirs { "../third_party/sdl" }       -- Used by ImGui to create windows
 
 	-- Libraries
 	libdirs (LIBRARY_DIR)
