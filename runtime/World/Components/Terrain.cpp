@@ -387,7 +387,7 @@ namespace Spartan
             }
         };
 
-        ThreadPool::AddTaskLoop(compute_vertex_normals_tangents, vertex_count);
+        ThreadPool::AddRangedFunction(compute_vertex_normals_tangents, vertex_count);
 
         return true;
     }

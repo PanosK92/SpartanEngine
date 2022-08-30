@@ -594,19 +594,22 @@ namespace Spartan
             // Clear any previously processed textures
             if (!m_textures_mip_generation_delete_per_mip.empty())
             {
-                for (RHI_Texture* texture : m_textures_mip_generation_delete_per_mip)
+                for (weak_ptr<RHI_Texture> tex : m_textures_mip_generation_delete_per_mip)
                 {
-                    // Remove unnecessary flags from texture (were only needed for the downsampling)
-                    uint32_t flags = texture->GetFlags();
-                    flags &= ~RHI_Texture_PerMipViews;
-                    flags &= ~RHI_Texture_Uav;
-                    texture->SetFlags(flags);
-
-                    // Destroy the resources associated with those flags
+                    if (shared_ptr<RHI_Texture> texture = tex.lock())
                     {
-                        const bool destroy_main     = false;
-                        const bool destroy_per_view = true;
-                        texture->RHI_DestroyResource(destroy_main, destroy_per_view);
+                        // Remove unnecessary flags from texture (were only needed for the downsampling)
+                        uint32_t flags = texture->GetFlags();
+                        flags &= ~RHI_Texture_PerMipViews;
+                        flags &= ~RHI_Texture_Uav;
+                        texture->SetFlags(flags);
+
+                        // Destroy the resources associated with those flags
+                        {
+                            const bool destroy_main     = false;
+                            const bool destroy_per_view = true;
+                            texture->RHI_DestroyResource(destroy_main, destroy_per_view);
+                        }
                     }
                 }
 
@@ -614,13 +617,16 @@ namespace Spartan
             }
 
             // Generate mips for any pending texture requests
-            for (RHI_Texture* texture : m_textures_mip_generation)
+            for (weak_ptr<RHI_Texture> tex : m_textures_mip_generation)
             {
-                // Downsample
-                Pass_Ffx_Spd(m_cmd_current, texture);
+                if (shared_ptr<RHI_Texture> texture = tex.lock())
+                {
+                    // Downsample
+                    Pass_Ffx_Spd(m_cmd_current, texture.get());
 
-                // Set all generated mips to read only optimal
-                texture->SetLayout(RHI_Image_Layout::Shader_Read_Only_Optimal, cmd_list, 0, texture->GetMipCount());
+                    // Set all generated mips to read only optimal
+                    texture->SetLayout(RHI_Image_Layout::Shader_Read_Only_Optimal, cmd_list, 0, texture->GetMipCount());
+                }
             }
 
             // Keep textures around until next time, at which point, it would be safe to delete per mip resources
@@ -842,7 +848,7 @@ namespace Spartan
         return m_rhi_context->renderdoc;
     }
     
-    void Renderer::RequestTextureMipGeneration(RHI_Texture* texture)
+    void Renderer::RequestTextureMipGeneration(shared_ptr<RHI_Texture> texture)
     {
         SP_ASSERT(texture != nullptr);
         SP_ASSERT(texture->GetRhiSrv() != nullptr);
