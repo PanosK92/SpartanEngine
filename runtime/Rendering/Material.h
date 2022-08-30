@@ -82,17 +82,17 @@ namespace Spartan
         bool SaveToFile(const std::string& file_path) override;
         //=======================================================
 
-        //= TEXTURES  =======================================================================================
-        void SetTexture(const MaterialTexture texture_type, const std::shared_ptr<RHI_Texture>& texture);
-        void SetTexture(const MaterialTexture texture_type, const std::shared_ptr<RHI_Texture2D>& texture);
-        void SetTexture(const MaterialTexture texture_type, const std::shared_ptr<RHI_TextureCube>& texture);
+        //= TEXTURES  ======================================================================================
+        void SetTexture(const MaterialTexture texture_type, const std::shared_ptr<RHI_Texture> texture);
+        void SetTexture(const MaterialTexture texture_type, const std::shared_ptr<RHI_Texture2D> texture);
+        void SetTexture(const MaterialTexture texture_type, const std::shared_ptr<RHI_TextureCube> texture);
         bool HasTexture(const std::string& path) const;
         bool HasTexture(const MaterialTexture texture_type) const;
         std::string GetTexturePathByType(const MaterialTexture texture_type);
         std::vector<std::string> GetTexturePaths();
         RHI_Texture* GetTexture(const MaterialTexture texture_type);
         std::shared_ptr<RHI_Texture>& GetTexture_PtrShared(const MaterialTexture texturtexture_type);
-        //===================================================================================================
+        //==================================================================================================
         
         //= PROPERTIES =============================================================================================================
         auto IsEditable()                          const { return m_is_editable; }

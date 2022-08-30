@@ -94,6 +94,21 @@ namespace Spartan
         const std::string& GetResourceFileName()       const { return m_resource_name; }
         const std::string& GetResourceDirectory()      const { return m_resource_directory; }
 
+        // Flags
+        void SetFlag(const uint32_t flag, bool enabled = true)
+        {
+            if (enabled)
+            {
+                m_flags |= flag;
+            }
+            else
+            {
+                m_flags &= ~flag;
+            }
+        }
+        uint32_t GetFlags()           const { return m_flags; }
+        void SetFlags(const uint32_t flags) { m_flags = flags; }
+
         // Misc
         bool IsReadyForUse() const { return m_is_ready_for_use; }
 
@@ -108,6 +123,7 @@ namespace Spartan
     protected:
         ResourceType m_resource_type         = ResourceType::Unknown;
         std::atomic<bool> m_is_ready_for_use = false;
+        uint32_t m_flags                     = 0;
 
     private:
         std::string m_resource_name;

@@ -36,28 +36,28 @@ namespace Spartan
         // When editing this, make sure that the bit shifts
         // in common_buffer.hlsl are also updated.
 
-        RHI_Texture_Srv                              = 1U << 0,
-        RHI_Texture_Uav                              = 1U << 1,
-        RHI_Texture_Rt_Color                         = 1U << 2,
-        RHI_Texture_Rt_DepthStencil                  = 1U << 3,
-        RHI_Texture_Rt_DepthStencilReadOnly          = 1U << 4,
-        RHI_Texture_ClearOrBlit                      = 1U << 5,
-        RHI_Texture_PerMipViews                      = 1U << 6,
-        RHI_Texture_Greyscale                        = 1U << 7,
-        RHI_Texture_Transparent                      = 1U << 8,
-        RHI_Texture_Srgb                             = 1U << 9,
-        RHI_Texture_Mips                             = 1U << 10,
-        RHI_Texture_Compressed                       = 1U << 11,
-        RHI_Texture_Visualise                        = 1U << 12,
-        RHI_Texture_Visualise_Pack                   = 1U << 13,
-        RHI_Texture_Visualise_GammaCorrect           = 1U << 14,
-        RHI_Texture_Visualise_Boost                  = 1U << 15,
-        RHI_Texture_Visualise_Abs                    = 1U << 16,
-        RHI_Texture_Visualise_Channel_R              = 1U << 17,
-        RHI_Texture_Visualise_Channel_G              = 1U << 18,
-        RHI_Texture_Visualise_Channel_B              = 1U << 19,
-        RHI_Texture_Visualise_Channel_A              = 1U << 20,
-        RHI_Texture_Visualise_Sample_Point           = 1U << 21
+        RHI_Texture_Srv                     = 1U << 0,
+        RHI_Texture_Uav                     = 1U << 1,
+        RHI_Texture_Rt_Color                = 1U << 2,
+        RHI_Texture_Rt_DepthStencil         = 1U << 3,
+        RHI_Texture_Rt_DepthStencilReadOnly = 1U << 4,
+        RHI_Texture_ClearOrBlit             = 1U << 5,
+        RHI_Texture_PerMipViews             = 1U << 6,
+        RHI_Texture_Greyscale               = 1U << 7,
+        RHI_Texture_Transparent             = 1U << 8,
+        RHI_Texture_Srgb                    = 1U << 9,
+        RHI_Texture_Mips                    = 1U << 10,
+        RHI_Texture_Compressed              = 1U << 11,
+        RHI_Texture_Visualise               = 1U << 12,
+        RHI_Texture_Visualise_Pack          = 1U << 13,
+        RHI_Texture_Visualise_GammaCorrect  = 1U << 14,
+        RHI_Texture_Visualise_Boost         = 1U << 15,
+        RHI_Texture_Visualise_Abs           = 1U << 16,
+        RHI_Texture_Visualise_Channel_R     = 1U << 17,
+        RHI_Texture_Visualise_Channel_G     = 1U << 18,
+        RHI_Texture_Visualise_Channel_B     = 1U << 19,
+        RHI_Texture_Visualise_Channel_A     = 1U << 20,
+        RHI_Texture_Visualise_Sample_Point  = 1U << 21
     };
 
     enum RHI_Shader_View_Type : uint8_t
@@ -116,9 +116,6 @@ namespace Spartan
         RHI_Texture_Slice& GetSlice(const uint32_t array_index);
 
         // Flags
-        void SetFlag(const uint32_t flag, bool enabled = true);
-        uint32_t GetFlags()                 const { return m_flags; }
-        void SetFlags(const uint32_t flags)       { m_flags = flags; }
         bool IsSrv()                        const { return m_flags & RHI_Texture_Srv; }
         bool IsUav()                        const { return m_flags & RHI_Texture_Uav; }
         bool IsRenderTargetDepthStencil()   const { return m_flags & RHI_Texture_Rt_DepthStencil; }
@@ -165,7 +162,6 @@ namespace Spartan
         uint32_t m_array_length     = 1;
         uint32_t m_mip_count        = 1;
         RHI_Format m_format         = RHI_Format_Undefined;
-        uint32_t m_flags            = 0;
         RHI_Viewport m_viewport;
         std::vector<RHI_Texture_Slice> m_data;
         std::shared_ptr<RHI_Device> m_rhi_device;

@@ -146,7 +146,7 @@ namespace Spartan
         return xml->Save(GetResourceFilePathNative());
     }
 
-    void Material::SetTexture(const MaterialTexture texture_type, const shared_ptr<RHI_Texture>& texture)
+    void Material::SetTexture(const MaterialTexture texture_type, const shared_ptr<RHI_Texture> texture)
     {
         uint32_t type_int = static_cast<uint32_t>(texture_type);
 
@@ -180,12 +180,12 @@ namespace Spartan
         }
     }
 
-    void Material::SetTexture(const MaterialTexture type, const std::shared_ptr<RHI_Texture2D>& texture)
+    void Material::SetTexture(const MaterialTexture type, const std::shared_ptr<RHI_Texture2D> texture)
     {
         SetTexture(type, static_pointer_cast<RHI_Texture>(texture));
     }
 
-    void Material::SetTexture(const MaterialTexture type, const std::shared_ptr<RHI_TextureCube>& texture)
+    void Material::SetTexture(const MaterialTexture type, const std::shared_ptr<RHI_TextureCube> texture)
     {
         SetTexture(type, static_pointer_cast<RHI_Texture>(texture));
     }
