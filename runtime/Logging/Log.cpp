@@ -33,16 +33,62 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
+    static vector<LogCmd> logs;
     static string log_file_name = "log.txt";
-    static std::vector<LogCmd> logs;
+    static ILogger* m_logger    = nullptr;
+    static bool m_log_to_file   = true;
 #ifdef DEBUG
-    static bool unique_logs  = true;
+    static bool unique_logs     = true;
 #else
-    static bool unique_logs  = false;
+    static bool unique_logs     = false;
 #endif
 
-    ILogger* m_logger       = nullptr;
-    bool Log::m_log_to_file = true;
+    static void log_to_file(const char* text, const LogType type)
+    {
+        SP_ASSERT_MSG(text != nullptr, "Text is null");
+
+        static const string prefix = (type == LogType::Info) ? "Info:" : (type == LogType::Warning) ? "Warning:" : "Error:";
+        const string final_text    = prefix + " " + text;
+
+        // Delete the previous log file (if it exists)
+        static bool is_first_log = true;
+        if (is_first_log)
+        {
+            FileSystem::Delete(log_file_name);
+            is_first_log = false;
+        }
+
+        // Open/Create a log file to write the log into
+        static ofstream fout;
+        fout.open(log_file_name, ofstream::out | ofstream::app);
+
+        if (fout.is_open())
+        {
+            // Write out the error message
+            fout << final_text << endl;
+
+            // Close the file
+            fout.close();
+        }
+    }
+
+    static void log_to_logger(const char* text, const LogType type)
+    {
+        SP_ASSERT_MSG(text != nullptr, "Text is null");
+        SP_ASSERT_MSG(m_logger != nullptr, "Logger is null");
+
+        m_logger->Log(string(text), static_cast<uint32_t>(type));
+    }
+
+    static void flush_log_buffer()
+    {
+        for (const LogCmd& log : logs)
+        {
+            log_to_logger(log.text.c_str(), log.type);
+        }
+
+        logs.clear();
+    }
 
     void Log::SetLogger(ILogger* logger)
     {
@@ -55,11 +101,11 @@ namespace Spartan
         SP_ASSERT(text != nullptr);
 
         // Lock mutex
-        static std::mutex log_mutex;
+        static mutex log_mutex;
         lock_guard<mutex> guard(log_mutex);
 
         // Only log unique text. Enabled only in debug configuration.
-        static std::vector<std::string> logs_error_strings;
+        static vector<string> logs_error_strings;
         if (unique_logs && type == LogType::Error)
         {
             if (find(logs_error_strings.begin(), logs_error_strings.end(), text) == logs_error_strings.end())
@@ -76,7 +122,7 @@ namespace Spartan
         if (m_log_to_file || !m_logger)
         {
             logs.emplace_back(text, type);
-            LogToFile(text, type);
+            log_to_file(text, type);
         }
 
         // Always log in-engine
@@ -84,11 +130,16 @@ namespace Spartan
         {
             if (!logs.empty())
             {
-                FlushBuffer();
+                flush_log_buffer();
             }
 
-            LogString(text, type);
+            log_to_logger(text, type);
         }
+    }
+
+    void Log::SetLogToFile(const bool log_to_file)
+    {
+        m_log_to_file = log_to_file;
     }
 
     void Log::WriteFInfo(const char* text, ...)
@@ -167,7 +218,7 @@ namespace Spartan
         entity.expired() ? Write("Null", type) : Write(entity.lock()->GetName(), type);
     }
 
-    void Log::Write(const std::shared_ptr<Entity>& entity, const LogType type)
+    void Log::Write(const shared_ptr<Entity>& entity, const LogType type)
     {
         entity ? Write(entity->GetName(), type) : Write("Null", type);
     }
@@ -195,52 +246,5 @@ namespace Spartan
     void Log::Write(const Matrix& value, const LogType type)
     {
         Write(value.ToString(), type);
-    }
-
-    void Log::FlushBuffer()
-    {
-        for (const LogCmd& log : logs)
-        {
-            LogString(log.text.c_str(), log.type);
-        }
-
-        logs.clear();
-    }
-
-    void Log::LogString(const char* text, const LogType type)
-    {
-        SP_ASSERT_MSG(text != nullptr, "Text is null");
-        SP_ASSERT_MSG(m_logger != nullptr, "Logger is null");
-
-        m_logger->Log(string(text), static_cast<uint32_t>(type));
-    }
-
-    void Log::LogToFile(const char* text, const LogType type)
-    {
-        SP_ASSERT_MSG(text != nullptr, "Text is null");
-
-        static const string prefix = (type == LogType::Info) ? "Info:" : (type == LogType::Warning) ? "Warning:" : "Error:";
-        const string final_text    = prefix + " " + text;
-
-        // Delete the previous log file (if it exists)
-        static bool is_first_log = true;
-        if (is_first_log)
-        {
-            FileSystem::Delete(log_file_name);
-            is_first_log = false;
-        }
-
-        // Open/Create a log file to write the log into
-        static std::ofstream fout;
-        fout.open(log_file_name, ofstream::out | ofstream::app);
-
-        if (fout.is_open())
-        {
-            // Write out the error message
-            fout << final_text << endl;
-
-            // Close the file
-            fout.close();
-        }
     }
 }
