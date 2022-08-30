@@ -70,6 +70,42 @@ WorldViewer::WorldViewer(Editor* editor) : Widget(editor)
     EditorHelper::Get().g_on_entity_selected = [this](){ SetSelectedEntity(EditorHelper::Get().g_selected_entity.lock(), false); };
 }
 
+static void load_default_world_startup_window(Context* context)
+{
+    static bool is_visible = true;
+    if (is_visible)
+    {
+        // Set position
+        ImVec2 position     = ImVec2(Spartan::Display::GetWidth() * 0.5f, Spartan::Display::GetHeight() * 0.5f);
+        ImVec2 pivot_center = ImVec2(0.5f, 0.5f);
+        ImGui::SetNextWindowPos(position, ImGuiCond_Always, pivot_center);
+
+        // Begin
+        if (ImGui::Begin("##load_default_world", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_AlwaysAutoResize))
+        {
+            ImGui::Text("Would you like to load a default world?");
+
+            if (ImGui::Button("Yes"))
+            {
+                is_visible = false;
+                context->GetSubsystem<Threading>()->AddTask([context]()
+                    {
+                        context->GetSubsystem<World>()->CreateDefaultWorld();
+                    });
+            }
+
+            ImGui::SameLine();
+
+            if (ImGui::Button("No"))
+            {
+                is_visible = false;
+            }
+        }
+
+        ImGui::End();
+    }
+}
+
 void WorldViewer::TickVisible()
 {
     TreeShow();
@@ -84,6 +120,8 @@ void WorldViewer::TickVisible()
         }
         _Widget_World::g_entity_clicked = nullptr;
     }
+
+    load_default_world_startup_window(m_context);
 }
 
 void WorldViewer::TreeShow()

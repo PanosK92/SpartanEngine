@@ -56,14 +56,6 @@ namespace Spartan
         (
             m_resolve = true;
         ));
-
-        SP_SUBSCRIBE_TO_EVENT(EventType::RendererOnFirstFrameCompleted, SP_EVENT_HANDLER_EXPRESSION
-        (
-            m_context->GetSubsystem<Threading>()->AddTask([this]()
-            {
-                CreateDefaultWorld();
-            });
-        ));
     }
 
     World::~World()
