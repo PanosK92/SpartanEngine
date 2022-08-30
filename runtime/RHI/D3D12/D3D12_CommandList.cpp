@@ -53,8 +53,8 @@ namespace Spartan
         SP_ASSERT(cmd_pool != nullptr);
 
         m_queue_type            = queue_type;
-        m_renderer              = context->GetSubsystem<Renderer>();
-        m_profiler              = context->GetSubsystem<Profiler>();
+        m_renderer              = context->GetSystem<Renderer>();
+        m_profiler              = context->GetSystem<Profiler>();
         m_rhi_device            = m_renderer->GetRhiDevice().get();
         m_name                  = name;
         m_rhi_cmd_pool_resource = cmd_pool;

@@ -50,11 +50,11 @@ namespace Spartan
 {
     bool RHI_CommandList::m_memory_query_support = true;
 
-    RHI_CommandList::RHI_CommandList(Context* context, const RHI_Queue_Type queue_type, const uint32_t index, void* cmd_pool, const char* name) : SpartanObject(context)
+    RHI_CommandList::RHI_CommandList(Context* context, const RHI_Queue_Type queue_type, const uint32_t index, void* cmd_pool, const char* name) : SP_Object(context)
     {
         m_queue_type = queue_type;
-        m_renderer   = context->GetSubsystem<Renderer>();
-        m_profiler   = context->GetSubsystem<Profiler>();
+        m_renderer   = context->GetSystem<Renderer>();
+        m_profiler   = context->GetSystem<Profiler>();
         m_rhi_device = m_renderer->GetRhiDevice().get();
         m_name       = name;
 
@@ -867,7 +867,7 @@ namespace Spartan
                 else
                 {
                     // Some integrated or older dedicated GPUs might not support video memory queries, log the error once and don't query again.
-                    LOG_ERROR("Failed to get adapter memory info, %s", d3d11_utility::dxgi_error_to_string(result));
+                    SP_LOG_ERROR("Failed to get adapter memory info, %s", d3d11_utility::dxgi_error_to_string(result));
                     m_memory_query_support = false;
                 }
             }

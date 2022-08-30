@@ -81,7 +81,7 @@ namespace Spartan
         D3D11_MAPPED_SUBRESOURCE mapped_resource;
         if (FAILED(m_rhi_device->GetRhiContext()->device_context->Map(static_cast<ID3D11Buffer*>(m_rhi_resource), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped_resource)))
         {
-            LOG_ERROR("Failed to map structured buffer");
+            SP_LOG_ERROR("Failed to map structured buffer");
         }
 
         // Copy

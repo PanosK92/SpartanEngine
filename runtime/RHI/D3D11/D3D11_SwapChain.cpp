@@ -59,7 +59,7 @@ namespace Spartan
         // Verify resolution
         if (!rhi_device->IsValidResolution(width, height))
         {
-            LOG_WARNING("%dx%d is an invalid resolution", width, height);
+            SP_LOG_WARNING("%dx%d is an invalid resolution", width, height);
             return;
         }
 
@@ -70,13 +70,13 @@ namespace Spartan
             auto dxgi_adapter = static_cast<IDXGIAdapter*>(adapter->GetData());
             if (dxgi_adapter->GetParent(IID_PPV_ARGS(&dxgi_factory)) != S_OK)
             {
-                LOG_ERROR("Failed to get adapter's factory");
+                SP_LOG_ERROR("Failed to get adapter's factory");
                 return;
             }
         }
         else
         {
-            LOG_ERROR("Invalid primary adapter");
+            SP_LOG_ERROR("Invalid primary adapter");
             return;
         }
 
@@ -107,7 +107,7 @@ namespace Spartan
 
             if (!d3d11_utility::error_check(dxgi_factory->CreateSwapChain(m_rhi_device->GetRhiContext()->device, &desc, reinterpret_cast<IDXGISwapChain**>(&m_rhi_resource))))
             {
-                LOG_ERROR("Failed to create swapchain");
+                SP_LOG_ERROR("Failed to create swapchain");
                 return;
             }
         }
@@ -119,7 +119,7 @@ namespace Spartan
             auto result = swap_chain->GetBuffer(0, IID_PPV_ARGS(&backbuffer));
             if (FAILED(result))
             {
-                LOG_ERROR("%s", d3d11_utility::dxgi_error_to_string(result));
+                SP_LOG_ERROR("%s", d3d11_utility::dxgi_error_to_string(result));
                 return;
             }
 
@@ -127,7 +127,7 @@ namespace Spartan
             backbuffer->Release();
             if (FAILED(result))
             {
-                LOG_ERROR("%s", d3d11_utility::dxgi_error_to_string(result));
+                SP_LOG_ERROR("%s", d3d11_utility::dxgi_error_to_string(result));
                 return;
             }
         }
@@ -194,7 +194,7 @@ namespace Spartan
             const auto result = swap_chain->ResizeTarget(&dxgi_mode_desc);
             if (FAILED(result))
             {
-                LOG_ERROR("Failed to resize swapchain target, %s.", d3d11_utility::dxgi_error_to_string(result));
+                SP_LOG_ERROR("Failed to resize swapchain target, %s.", d3d11_utility::dxgi_error_to_string(result));
                 return false;
             }
         }
@@ -213,7 +213,7 @@ namespace Spartan
             auto result = swap_chain->ResizeBuffers(m_buffer_count, static_cast<UINT>(width), static_cast<UINT>(height), d3d11_format[m_format], d3d11_flags);
             if (FAILED(result))
             {
-                LOG_ERROR("Failed to resize swapchain buffers, %s.", d3d11_utility::dxgi_error_to_string(result));
+                SP_LOG_ERROR("Failed to resize swapchain buffers, %s.", d3d11_utility::dxgi_error_to_string(result));
                 return false;
             }
         }
@@ -225,7 +225,7 @@ namespace Spartan
             auto result = swap_chain->GetBuffer(0, IID_PPV_ARGS(&backbuffer));
             if (FAILED(result))
             {
-                LOG_ERROR("Failed to get swapchain buffer, %s.", d3d11_utility::dxgi_error_to_string(result));
+                SP_LOG_ERROR("Failed to get swapchain buffer, %s.", d3d11_utility::dxgi_error_to_string(result));
                 return false;
             }
 
@@ -236,7 +236,7 @@ namespace Spartan
             backbuffer = nullptr;
             if (FAILED(result))
             {
-                LOG_ERROR("Failed to create render target view, %s.", d3d11_utility::dxgi_error_to_string(result));
+                SP_LOG_ERROR("Failed to create render target view, %s.", d3d11_utility::dxgi_error_to_string(result));
                 return false;
             }
 
