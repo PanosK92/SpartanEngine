@@ -41,8 +41,13 @@ namespace Spartan
     static bool unique_logs  = false;
 #endif
 
-    ILogger* Log::m_logger  = nullptr;
+    ILogger* m_logger       = nullptr;
     bool Log::m_log_to_file = true;
+
+    void Log::SetLogger(ILogger* logger)
+    {
+        m_logger = logger;
+    }
 
     // All functions resolve to this one
     void Log::Write(const char* text, const LogType type)
@@ -67,18 +72,22 @@ namespace Spartan
             }
         }
 
-        // Always log in-engine
-        if (m_logger)
-        {
-            FlushBuffer();
-            LogString(text, type);
-        }
-
         // Log to file if requested or if an in-engine logger is not available.
         if (m_log_to_file || !m_logger)
         {
             logs.emplace_back(text, type);
             LogToFile(text, type);
+        }
+
+        // Always log in-engine
+        if (m_logger)
+        {
+            if (!logs.empty())
+            {
+                FlushBuffer();
+            }
+
+            LogString(text, type);
         }
     }
 
@@ -190,14 +199,11 @@ namespace Spartan
 
     void Log::FlushBuffer()
     {
-        if (m_logger || logs.empty())
-            return;
-
-         // Log everything from memory to the logger implementation
         for (const LogCmd& log : logs)
         {
             LogString(log.text.c_str(), log.type);
         }
+
         logs.clear();
     }
 

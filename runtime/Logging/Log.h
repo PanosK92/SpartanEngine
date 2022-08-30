@@ -72,8 +72,8 @@ namespace Spartan
     public:
         Log() = default;
 
-        // Set a logger to be used (if not set, logging will done in a text file)
-        static void SetLogger(ILogger* logger) { m_logger = logger; }
+        // Set an ILogger object to handle writting logs
+        static void SetLogger(ILogger* logger);
 
         // Alpha
         static void Write(const char* text, const LogType type);
@@ -122,7 +122,5 @@ namespace Spartan
         static void FlushBuffer();
         static void LogString(const char* text, LogType type);
         static void LogToFile(const char* text, LogType type);
-
-        static ILogger* m_logger;
     };
 }
