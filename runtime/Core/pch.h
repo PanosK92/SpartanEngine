@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 // Engine macros
-#include "SpartanDefinitions.h"
+#include "Definitions.h"
 
 //= STD ================
 #include <string>
@@ -48,7 +48,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= RUNTIME ====================
 // Core
 #include "Engine.h"
-#include "Events.h"
+#include "Event.h"
 #include "Settings.h"
 #include "Context.h"
 #include "Timer.h"

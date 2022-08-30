@@ -86,7 +86,7 @@ namespace Spartan
         SP_ASSERT(cmd_list != nullptr);
         SP_ASSERT(cmd_list->GetState() == RHI_CommandListState::Recording);
 
-        SCOPED_TIME_BLOCK(m_profiler);
+        SP_SCOPED_TIME_BLOCK(m_profiler);
 
         // Acquire render targets
         RHI_Texture* rt1       = render_target(RendererTexture::Frame_Render).get();

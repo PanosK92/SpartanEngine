@@ -21,10 +21,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =============================
+//= INCLUDES ======================
 #include <string>
-#include "../../Core/SpartanDefinitions.h"
-//========================================
+#include "../../Core/Definitions.h"
+//=================================
 
 //= FORWARD DECLARATIONS =
 struct FT_LibraryRec_;

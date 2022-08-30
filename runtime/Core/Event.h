@@ -49,10 +49,10 @@ Note: This is a blocking event system
 #define SP_EVENT_HANDLER_VARIANT(function)           [this](const Spartan::Variant& var)    { function(var); }
 #define SP_EVENT_HANDLER_VARIANT_STATIC(function)    [](const Spartan::Variant& var)        { function(var); }
                                                      
-#define SP_FIRE_EVENT(eventID)                       Spartan::Events::Fire(eventID)
-#define SP_FIRE_EVENT_DATA(eventID, data)            Spartan::Events::Fire(eventID, data)
+#define SP_FIRE_EVENT(eventID)                       Spartan::Event::Fire(eventID)
+#define SP_FIRE_EVENT_DATA(eventID, data)            Spartan::Event::Fire(eventID, data)
                                                      
-#define SP_SUBSCRIBE_TO_EVENT(eventID, function)     Spartan::Events::Subscribe(eventID, function);
+#define SP_SUBSCRIBE_TO_EVENT(eventID, function)     Spartan::Event::Subscribe(eventID, function);
 //============================================================================================================
 
 enum class EventType
@@ -79,7 +79,7 @@ namespace Spartan
 {
     using subscriber = std::function<void(const Variant&)>;
 
-    class SP_CLASS Events
+    class SP_CLASS Event
     {
     public:
         static void Shutdown();

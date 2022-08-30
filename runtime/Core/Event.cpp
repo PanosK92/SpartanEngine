@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ======
 #include "pch.h"
-#include "Events.h"
+#include "Event.h"
 //=================
 
 //= NAMESPACES =====
@@ -30,9 +30,9 @@ using namespace std;
 
 namespace Spartan
 {
-    array<vector<subscriber>, 12> Events::m_event_subscribers;
+    array<vector<subscriber>, 12> Event::m_event_subscribers;
 
-    void Events::Shutdown()
+    void Event::Shutdown()
     {
         for (vector<subscriber>& subscribers : m_event_subscribers)
         {
@@ -40,12 +40,12 @@ namespace Spartan
         }
     }
 
-    void Events::Subscribe(const EventType event_id, subscriber&& function)
+    void Event::Subscribe(const EventType event_id, subscriber&& function)
     {
         m_event_subscribers[static_cast<uint32_t>(event_id)].push_back(forward<subscriber>(function));
     }
 
-    void Events::Fire(const EventType event_id, const Variant& data /*= 0*/)
+    void Event::Fire(const EventType event_id, const Variant& data /*= 0*/)
     {
         for (const auto& subscriber : m_event_subscribers[static_cast<uint32_t>(event_id)])
         {

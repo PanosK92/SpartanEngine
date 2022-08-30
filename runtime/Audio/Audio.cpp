@@ -131,7 +131,7 @@ namespace Spartan
         if (!m_context->m_engine->IsFlagSet(EngineMode::Game))
             return;
 
-        SCOPED_TIME_BLOCK(m_profiler);
+        SP_SCOPED_TIME_BLOCK(m_profiler);
 
         // Update FMOD
         m_result_fmod = m_system_fmod->update();

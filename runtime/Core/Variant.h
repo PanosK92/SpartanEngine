@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Math/Quaternion.h"
 #include "../Math/Matrix.h"
 #include <variant>
-#include "SpartanDefinitions.h"
+#include "Definitions.h"
 //=============================
 
 //= FORWARD DECLARATIONS =========

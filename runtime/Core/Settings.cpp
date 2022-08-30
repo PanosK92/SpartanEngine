@@ -23,8 +23,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "Window.h"
 #include "../Core/FileSystem.h"
+#include "../Core/Threading.h"
 #include "../Rendering/Renderer.h"
-#include "../Threading/Threading.h"
 #include "../Display/Display.h"
 #include "../Input/Input.h"
 //=================================

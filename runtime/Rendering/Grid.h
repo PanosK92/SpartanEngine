@@ -21,13 +21,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==========================
+//= INCLUDES =====================
 #include <vector>
 #include <memory>
 #include "../RHI/RHI_Definition.h"
 #include "../Math/Matrix.h"
-#include "../Core/SpartanDefinitions.h"
-//=====================================
+#include "../Core/Definitions.h"
+//================================
 
 namespace Spartan
 {

@@ -29,7 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../IO/FileStream.h"
 #include "../../Resource/ResourceCache.h"
 #include "../../Rendering/Mesh.h"
-#include "../../Threading/Threading.h"
+#include "../../Core/Threading.h"
 //=======================================
 
 //= NAMESPACES ===============

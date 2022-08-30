@@ -133,7 +133,7 @@ namespace Spartan
         if (!m_context->m_engine->IsFlagSet(EngineMode::Physics) || !m_context->m_engine->IsFlagSet(EngineMode::Game))
             return;
 
-        SCOPED_TIME_BLOCK(m_profiler);
+        SP_SCOPED_TIME_BLOCK(m_profiler);
 
         // This equation must be met: timeStep < maxSubSteps * fixedTimeStep
         auto internal_time_step = 1.0f / m_internal_fps;

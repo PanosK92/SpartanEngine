@@ -27,8 +27,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_Device.h"
 #include "../RHI/RHI_CommandList.h"
 #include "../RHI/RHI_Implementation.h"
-#include "../Core/Events.h"
-#include "../Threading/Threading.h"
+#include "../Core/Event.h"
+#include "../Core/Threading.h"
 //====================================
 
 //= NAMESPACES =====

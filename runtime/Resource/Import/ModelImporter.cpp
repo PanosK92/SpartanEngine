@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Rendering/Animation.h"
 #include "../../Rendering/Material.h"
 #include "../../Rendering/Mesh.h"
-#include "../../Threading/Threading.h"
+#include "../../Core/Threading.h"
 #include "../../World/World.h"
 #include "../../World/Entity.h"
 #include "../../World/Components/Renderable.h"
