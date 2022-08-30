@@ -91,7 +91,7 @@ constexpr int sp_version_revision = 3;
 if (!(##expression))                    \
 {                                       \
     Spartan::Log::m_log_to_file = true; \
-    LOG_ERROR(#expression);             \
+    SP_LOG_ERROR(#expression);          \
     SP_DEBUG_BREAK();                   \
 }
 #endif
