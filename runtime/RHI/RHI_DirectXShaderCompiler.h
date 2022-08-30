@@ -219,21 +219,21 @@ namespace Spartan
             {
                 if (line.find("error") != std::string::npos)
                 {
-                    LOG_ERROR(line);
+                    SP_LOG_ERROR(line);
                 }
                 else if (line.find("warning") != std::string::npos)
                 {
-                    LOG_WARNING(line);
+                    SP_LOG_WARNING(line);
                 }
                 else if (!FileSystem::IsEmptyOrWhitespace(line))
                 {
-                    LOG_INFO(line);
+                    SP_LOG_INFO(line);
                 }
             }
         }
         else
         {
-            LOG_ERROR("Failed to get error buffer");
+            SP_LOG_ERROR("Failed to get error buffer");
         }
 
         // Release error buffer
@@ -265,7 +265,7 @@ namespace Spartan
             {
                 if (FAILED(m_utils->CreateBlobFromPinned(source.c_str(), static_cast<uint32_t>(source.size()), CP_UTF8, &blob_encoding)))
                 {
-                    LOG_ERROR("Failed to load shader source.");
+                    SP_LOG_ERROR("Failed to load shader source.");
                     return nullptr;
                 }
 
@@ -304,7 +304,7 @@ namespace Spartan
             // Check for errors
             if (!error_check(dxc_result))
             {
-                LOG_ERROR("Failed to compile");
+                SP_LOG_ERROR("Failed to compile");
 
                 if (dxc_result)
                 {

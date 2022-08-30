@@ -52,7 +52,7 @@ namespace Spartan
         std::string m_text;
     };
 
-    class SPARTAN_CLASS ProgressTracker
+    class SP_CLASS ProgressTracker
     {
     public:
         static Progress& GetProgress(const ProgressType progress_type)

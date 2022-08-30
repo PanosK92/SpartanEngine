@@ -52,6 +52,6 @@ namespace Spartan
 
     void PhysicsDebugDraw::reportErrorWarning(const char* error_warning)
     {
-        LOG_WARNING("%s", error_warning);
+        SP_LOG_WARNING("%s", error_warning);
     }
 }

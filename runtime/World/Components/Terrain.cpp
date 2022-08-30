@@ -61,7 +61,7 @@ namespace Spartan
 
     void Terrain::Deserialize(FileStream* stream)
     {
-        ResourceCache* resource_cache = m_context->GetSubsystem<ResourceCache>();
+        ResourceCache* resource_cache = m_context->GetSystem<ResourceCache>();
         m_height_map    = resource_cache->GetByPath<RHI_Texture2D>(stream->ReadAs<string>());
         m_mesh          = resource_cache->GetByName<Mesh>(stream->ReadAs<string>());
         stream->Read(&m_min_y);
@@ -73,22 +73,22 @@ namespace Spartan
     void Terrain::SetHeightMap(const shared_ptr<RHI_Texture2D>& height_map)
     {
         // In order for the component to guarantee serialization/deserialization, we cache the height_map
-        m_height_map = m_context->GetSubsystem<ResourceCache>()->Cache<RHI_Texture2D>(height_map);
+        m_height_map = m_context->GetSystem<ResourceCache>()->Cache<RHI_Texture2D>(height_map);
     }
 
     void Terrain::GenerateAsync()
     {
         if (m_is_generating)
         {
-            LOG_WARNING("Terrain is already being generated, please wait...");
+            SP_LOG_WARNING("Terrain is already being generated, please wait...");
             return;
         }
 
         if (!m_height_map)
         {
-            LOG_WARNING("You need to assign a height map before trying to generate a terrain.");
+            SP_LOG_WARNING("You need to assign a height map before trying to generate a terrain.");
 
-            m_context->GetSubsystem<ResourceCache>()->Remove(m_mesh);
+            m_context->GetSystem<ResourceCache>()->Remove(m_mesh);
             m_mesh = nullptr;
             if (Renderable* renderable = m_entity->AddComponent<Renderable>())
             {
@@ -116,7 +116,7 @@ namespace Spartan
 
                         if (height_data.empty())
                         {
-                            LOG_ERROR("Failed to load height map");
+                            SP_LOG_ERROR("Failed to load height map");
                             return;
                         }
                     }
@@ -170,7 +170,7 @@ namespace Spartan
     {
         if (height_map.empty())
         {
-            LOG_ERROR("Height map is empty");
+            SP_LOG_ERROR("Height map is empty");
             return false;
         }
 
@@ -204,7 +204,7 @@ namespace Spartan
     {
         if (positions.empty())
         {
-            LOG_ERROR("Positions are empty");
+            SP_LOG_ERROR("Positions are empty");
             return false;
         }
 
@@ -270,13 +270,13 @@ namespace Spartan
     {
         if (indices.empty())
         {
-            LOG_ERROR("Indices are empty");
+            SP_LOG_ERROR("Indices are empty");
             return false;
         }
 
         if (vertices.empty())
         {
-            LOG_ERROR("Vertices are empty");
+            SP_LOG_ERROR("Vertices are empty");
             return false;
         }
 
@@ -427,7 +427,7 @@ namespace Spartan
             m_mesh->ComputeAabb();
 
             // Set a file path so the model can be used by the resource cache
-            ResourceCache* resource_cache = m_context->GetSubsystem<ResourceCache>();
+            ResourceCache* resource_cache = m_context->GetSystem<ResourceCache>();
             m_mesh->SetResourceFilePath(resource_cache->GetProjectDirectory() + m_entity->GetName() + "_terrain_" + to_string(m_object_id) + string(EXTENSION_MODEL));
             m_mesh = resource_cache->Cache(m_mesh);
         }

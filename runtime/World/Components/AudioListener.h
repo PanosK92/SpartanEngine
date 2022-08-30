@@ -29,7 +29,7 @@ namespace Spartan
 {
     class Audio;
 
-    class SPARTAN_CLASS AudioListener : public IComponent
+    class SP_CLASS AudioListener : public IComponent
     {
     public:
         AudioListener(Context* context, Entity* entity, uint64_t id = 0);

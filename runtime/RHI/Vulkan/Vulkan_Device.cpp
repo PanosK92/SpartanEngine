@@ -102,7 +102,7 @@ namespace Spartan
             }
             else
             {
-                LOG_ERROR("Device extension \"%s\" is not supported", extension);
+                SP_LOG_ERROR("Device extension \"%s\" is not supported", extension);
             }
         }
 
@@ -121,7 +121,7 @@ namespace Spartan
             }
             else
             {
-                LOG_ERROR("Instance extension \"%s\" is not supported", extension);
+                SP_LOG_ERROR("Instance extension \"%s\" is not supported", extension);
             }
         }
 
@@ -177,7 +177,7 @@ namespace Spartan
                     // Detect and log version
                     string driver_version_str = to_string(VK_API_VERSION_MAJOR(driver_version)) + "." + to_string(VK_API_VERSION_MINOR(driver_version)) + "." + to_string(VK_API_VERSION_PATCH(driver_version));
                     string sdk_version_str    = to_string(VK_API_VERSION_MAJOR(sdk_version)) + "." + to_string(VK_API_VERSION_MINOR(sdk_version)) + "." + to_string(VK_API_VERSION_PATCH(sdk_version));
-                    LOG_WARNING("Falling back to Vulkan %s. Please update your graphics drivers to support Vulkan %s.", driver_version_str.c_str(), sdk_version_str.c_str());
+                    SP_LOG_WARNING("Falling back to Vulkan %s. Please update your graphics drivers to support Vulkan %s.", driver_version_str.c_str(), sdk_version_str.c_str());
                 }
 
                 //  Save API version
@@ -212,7 +212,7 @@ namespace Spartan
                 }
                 else
                 {
-                    LOG_ERROR("Validation layer was requested, but not available.");
+                    SP_LOG_ERROR("Validation layer was requested, but not available.");
                 }
             }
 
@@ -284,7 +284,7 @@ namespace Spartan
                 // Disable profiler if timestamps are not supported
                 if (m_rhi_context->gpu_profiling && !properties_device.properties.limits.timestampComputeAndGraphics)
                 {
-                    LOG_ERROR("Device doesn't support timestamps, disabling gpu profiling...");
+                    SP_LOG_ERROR("Device doesn't support timestamps, disabling gpu profiling...");
                     m_rhi_context->gpu_profiling = false;
                 }
             }
@@ -425,9 +425,9 @@ namespace Spartan
             string version_patch = to_string(VK_VERSION_PATCH(app_info.apiVersion));
             string version       = version_major + "." + version_minor + "." + version_patch;
 
-            LOG_INFO("Vulkan %s", version.c_str());
+            SP_LOG_INFO("Vulkan %s", version.c_str());
 
-            if (Settings* settings = m_context->GetSubsystem<Settings>())
+            if (Settings* settings = m_context->GetSystem<Settings>())
             {
                 settings->RegisterThirdPartyLib("Vulkan", version_major + "." + version_minor + "." + version_patch, "https://vulkan.lunarg.com/");
             }
@@ -576,7 +576,7 @@ namespace Spartan
             }
             else
             {
-                LOG_ERROR("Graphics queue not suported.");
+                SP_LOG_ERROR("Graphics queue not suported.");
                 return false;
             }
 
@@ -587,7 +587,7 @@ namespace Spartan
             }
             else
             {
-                LOG_ERROR("Compute queue not suported.");
+                SP_LOG_ERROR("Compute queue not suported.");
                 return false;
             }
 
@@ -598,7 +598,7 @@ namespace Spartan
             }
             else
             {
-                LOG_ERROR("Copy queue not suported.");
+                SP_LOG_ERROR("Copy queue not suported.");
                 return false;
             }
 
@@ -749,7 +749,7 @@ namespace Spartan
 
         if (m_descriptor_set_capacity == descriptor_set_capacity)
         {
-            LOG_WARNING("Capacity is already %d, is this reset needed ?");
+            SP_LOG_WARNING("Capacity is already %d, is this reset needed ?");
         }
 
         // Create pool
@@ -775,10 +775,10 @@ namespace Spartan
             SP_ASSERT_MSG(vkCreateDescriptorPool(m_rhi_context->device, &pool_create_info, nullptr, reinterpret_cast<VkDescriptorPool*>(&m_descriptor_pool)) == VK_SUCCESS, "Failed to create descriptor pool.");
         }
 
-        LOG_INFO("Capacity has been set to %d elements", descriptor_set_capacity);
+        SP_LOG_INFO("Capacity has been set to %d elements", descriptor_set_capacity);
         m_descriptor_set_capacity = descriptor_set_capacity;
 
-        if (Profiler* profiler = m_context->GetSubsystem<Profiler>())
+        if (Profiler* profiler = m_context->GetSystem<Profiler>())
         {
             profiler->m_descriptor_set_count    = 0;
             profiler->m_descriptor_set_capacity = m_descriptor_set_capacity;

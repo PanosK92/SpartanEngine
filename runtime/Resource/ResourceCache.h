@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =================
 #include <unordered_map>
 #include "IResource.h"
-#include "../Core/Subsystem.h"
+#include "../Core/ISystem.h"
 //============================
 
 namespace Spartan
@@ -44,7 +44,7 @@ namespace Spartan
         Textures
     };
 
-    class SPARTAN_CLASS ResourceCache : public Subsystem
+    class SP_CLASS ResourceCache : public ISystem
     {
     public:
         ResourceCache(Context* context);
@@ -89,14 +89,14 @@ namespace Spartan
             // Validate resource file path
             if (!resource->HasFilePathNative() && !FileSystem::IsDirectory(resource->GetResourceFilePathNative()))
             {
-                LOG_ERROR("A resource must have a valid file path in order to be cached");
+                SP_LOG_ERROR("A resource must have a valid file path in order to be cached");
                 return nullptr;
             }
 
             // Validate resource file path
             if (!FileSystem::IsEngineFile(resource->GetResourceFilePathNative()))
             {
-                LOG_ERROR("A resource must have a native file format in order to be cached, provide format was %s", FileSystem::GetExtensionFromFilePath(resource->GetResourceFilePathNative()).c_str());
+                SP_LOG_ERROR("A resource must have a native file format in order to be cached, provide format was %s", FileSystem::GetExtensionFromFilePath(resource->GetResourceFilePathNative()).c_str());
                 return nullptr;
             }
 
@@ -120,7 +120,7 @@ namespace Spartan
         {
             if (!FileSystem::Exists(file_path))
             {
-                LOG_ERROR("\"%s\" doesn't exist.", file_path.c_str());
+                SP_LOG_ERROR("\"%s\" doesn't exist.", file_path.c_str());
                 return nullptr;
             }
 
@@ -138,7 +138,7 @@ namespace Spartan
             // Load
             if (!typed || !typed->LoadFromFile(file_path))
             {
-                LOG_ERROR("Failed to load \"%s\".", file_path.c_str());
+                SP_LOG_ERROR("Failed to load \"%s\".", file_path.c_str());
                 return nullptr;
             }
 

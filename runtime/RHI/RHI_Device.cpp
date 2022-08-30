@@ -49,7 +49,7 @@ namespace Spartan
                 return adapter1.GetMemory() > adapter2.GetMemory() && adapter1.GetType() == adapter2.GetType();
         });
 
-        LOG_INFO("%s (%d MB)", physical_device.GetName().c_str(), physical_device.GetMemory());
+        SP_LOG_INFO("%s (%d MB)", physical_device.GetName().c_str(), physical_device.GetMemory());
     }
 
     const PhysicalDevice* RHI_Device::GetPrimaryPhysicalDevice()
@@ -66,7 +66,7 @@ namespace Spartan
 
         if (const PhysicalDevice* physical_device = GetPrimaryPhysicalDevice())
         {
-            LOG_INFO("%s (%d MB)", physical_device->GetName().c_str(), physical_device->GetMemory());
+            SP_LOG_INFO("%s (%d MB)", physical_device->GetName().c_str(), physical_device->GetMemory());
         }
     }
 

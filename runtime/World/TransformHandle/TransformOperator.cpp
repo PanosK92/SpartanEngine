@@ -42,8 +42,8 @@ namespace Spartan
     {
         m_context  = context;
         m_type     = transform_handle_type;
-        m_renderer = context->GetSubsystem<Renderer>();
-        m_input    = context->GetSubsystem<Input>();
+        m_renderer = context->GetSystem<Renderer>();
+        m_input    = context->GetSystem<Input>();
     }
 
     void TransformOperator::Tick(const TransformHandleSpace space, Entity* entity, Camera* camera, const float handle_size)

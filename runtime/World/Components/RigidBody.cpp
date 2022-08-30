@@ -79,7 +79,7 @@ namespace Spartan
 
     RigidBody::RigidBody(Context* context, Entity* entity, uint64_t id /*= 0*/) : IComponent(context, entity, id)
     {
-        m_physics = GetContext()->GetSubsystem<Physics>();
+        m_physics = GetContext()->GetSystem<Physics>();
 
         m_in_world         = false;
         m_mass             = DEFAULT_MASS;

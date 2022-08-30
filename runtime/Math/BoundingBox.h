@@ -34,7 +34,7 @@ namespace Spartan
     {
         class Matrix;
 
-        class SPARTAN_CLASS BoundingBox
+        class SP_CLASS BoundingBox
         {
         public:
             // Construct with zero size.

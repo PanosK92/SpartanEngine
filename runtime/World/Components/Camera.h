@@ -54,7 +54,7 @@ namespace Spartan
         Math::Vector3 rotation = Math::Vector3::Zero;
     };
 
-    class SPARTAN_CLASS Camera : public IComponent
+    class SP_CLASS Camera : public IComponent
     {
     public:
         Camera(Context* context, Entity* entity, uint64_t id = 0);

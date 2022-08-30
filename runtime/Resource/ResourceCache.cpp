@@ -42,7 +42,7 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    ResourceCache::ResourceCache(Context* context) : Subsystem(context)
+    ResourceCache::ResourceCache(Context* context) : ISystem(context)
     {
         // Create project directory
         SetProjectDirectory("project\\");
@@ -163,11 +163,11 @@ namespace Spartan
     void ResourceCache::SaveResourcesToFiles()
     {
         // Create resource list file
-        string file_path = GetProjectDirectoryAbsolute() + m_context->GetSubsystem<World>()->GetName() + "_resources.dat";
+        string file_path = GetProjectDirectoryAbsolute() + m_context->GetSystem<World>()->GetName() + "_resources.dat";
         auto file = make_unique<FileStream>(file_path, FileStream_Write);
         if (!file->IsOpen())
         {
-            LOG_ERROR("Failed to open file.");
+            SP_LOG_ERROR("Failed to open file.");
             return;
         }
 
@@ -200,7 +200,7 @@ namespace Spartan
     void ResourceCache::LoadResourcesFromFiles()
     {
         // Open resource list file
-        string file_path = GetProjectDirectoryAbsolute() + m_context->GetSubsystem<World>()->GetName() + "_resources.dat";
+        string file_path = GetProjectDirectoryAbsolute() + m_context->GetSystem<World>()->GetName() + "_resources.dat";
         unique_ptr<FileStream> file = make_unique<FileStream>(file_path, FileStream_Read);
         if (!file->IsOpen())
             return;
@@ -250,7 +250,7 @@ namespace Spartan
 
         m_resources.clear();
 
-        LOG_INFO("%d resources have been cleared", resource_count);
+        SP_LOG_INFO("%d resources have been cleared", resource_count);
     }
 
     uint32_t ResourceCache::GetResourceCount(const ResourceType type)

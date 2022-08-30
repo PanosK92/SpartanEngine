@@ -43,7 +43,7 @@ namespace Spartan
         Mesh,
     };
 
-    class SPARTAN_CLASS Collider : public IComponent
+    class SP_CLASS Collider : public IComponent
     {
     public:
         Collider(Context* context, Entity* entity, uint64_t id = 0);

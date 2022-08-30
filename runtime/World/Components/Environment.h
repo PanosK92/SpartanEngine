@@ -34,7 +34,7 @@ namespace Spartan
         Sphere
     };
 
-    class SPARTAN_CLASS Environment : public IComponent
+    class SP_CLASS Environment : public IComponent
     {
     public:
         Environment(Context* context, Entity* entity, uint64_t id = 0);

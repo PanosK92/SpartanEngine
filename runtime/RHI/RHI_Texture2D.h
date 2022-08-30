@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-    class SPARTAN_CLASS RHI_Texture2D : public RHI_Texture
+    class SP_CLASS RHI_Texture2D : public RHI_Texture
     {
     public:
         // Creates a texture without data (intended for manual loading)

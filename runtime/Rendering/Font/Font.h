@@ -53,7 +53,7 @@ namespace Spartan
         Font_Outline_Negative
     };
 
-    class SPARTAN_CLASS Font : public IResource
+    class SP_CLASS Font : public IResource
     {
     public:
         Font(Context* context, const std::string& file_path, int font_size, const Math::Vector4& color);

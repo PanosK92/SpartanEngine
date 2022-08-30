@@ -59,7 +59,7 @@ inline void print_memory(uint64_t memory)
 
 void ResourceViewer::TickVisible()
 {
-    auto resource_cache             = m_context->GetSubsystem<ResourceCache>();
+    auto resource_cache             = m_context->GetSystem<ResourceCache>();
     auto resources                  = resource_cache->GetByType();
     const float memory_usage_cpu    = resource_cache->GetMemoryUsageCpu() / 1000.0f / 1000.0f;
     const float memory_usage_gpu    = resource_cache->GetMemoryUsageGpu() / 1000.0f / 1000.0f;

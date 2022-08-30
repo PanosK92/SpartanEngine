@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-    class SPARTAN_CLASS RHI_ConstantBuffer : public SpartanObject
+    class SP_CLASS RHI_ConstantBuffer : public SpartanObject
     {
     public:
         RHI_ConstantBuffer() = default;

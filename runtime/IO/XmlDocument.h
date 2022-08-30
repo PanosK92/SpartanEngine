@@ -48,7 +48,7 @@ namespace Spartan
     }
     //========================
 
-    class SPARTAN_CLASS XmlDocument
+    class SP_CLASS XmlDocument
     {
     public:
         XmlDocument();

@@ -39,7 +39,7 @@ namespace Spartan
 {
     Environment::Environment(Context* context, Entity* entity, uint64_t id /*= 0*/) : IComponent(context, entity, id)
     {
-        const string environment_texture_directory = GetContext()->GetSubsystem<ResourceCache>()->GetResourceDirectory(ResourceDirectory::Environment) + "\\";
+        const string environment_texture_directory = GetContext()->GetSystem<ResourceCache>()->GetResourceDirectory(ResourceDirectory::Environment) + "\\";
 
         // Default texture paths
         if (m_environment_type == EnvironmentType::Cubemap)
@@ -101,7 +101,7 @@ namespace Spartan
     void Environment::SetTexture(const shared_ptr<RHI_Texture> texture)
     {
         m_texture = texture;
-        m_context->GetSubsystem<Renderer>()->SetEnvironment(this);
+        m_context->GetSystem<Renderer>()->SetEnvironment(this);
     }
 
     void Environment::SetFromTextureArray(const vector<string>& file_paths)
@@ -109,9 +109,9 @@ namespace Spartan
         if (file_paths.empty())
             return;
 
-        LOG_INFO("Loading sky box...");
+        SP_LOG_INFO("Loading sky box...");
 
-        ResourceCache* resource_cache = m_context->GetSubsystem<ResourceCache>();
+        ResourceCache* resource_cache = m_context->GetSystem<ResourceCache>();
 
         // Load all textures (sides)
         shared_ptr<RHI_Texture> texture = make_shared<RHI_TextureCube>(GetContext());
@@ -129,19 +129,19 @@ namespace Spartan
         // Pass the texture to the renderer.
         SetTexture(texture);
 
-        LOG_INFO("Sky box has been created successfully");
+        SP_LOG_INFO("Sky box has been created successfully");
     }
 
     void Environment::SetFromTextureSphere(const string& file_path)
     {
-        LOG_INFO("Loading sky sphere...");
+        SP_LOG_INFO("Loading sky sphere...");
 
         // Create texture
         shared_ptr<RHI_Texture> texture = make_shared<RHI_Texture2D>(GetContext(), RHI_Texture_Srv | RHI_Texture_Mips);
 
         if (!texture->LoadFromFile(file_path))
         {
-            LOG_ERROR("Sky sphere creation failed");
+            SP_LOG_ERROR("Sky sphere creation failed");
         }
 
         // Save file path for serialization/deserialisation
@@ -150,6 +150,6 @@ namespace Spartan
         // Pass the texture to the renderer.
         SetTexture(texture);
 
-        LOG_INFO("Sky sphere has been created successfully");
+        SP_LOG_INFO("Sky sphere has been created successfully");
     }
 }

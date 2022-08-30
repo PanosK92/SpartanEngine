@@ -61,7 +61,7 @@ namespace Spartan
         std::function<void(std::any)> setter;
     };
 
-    class SPARTAN_CLASS IComponent : public SpartanObject, public std::enable_shared_from_this<IComponent>
+    class SP_CLASS IComponent : public SpartanObject, public std::enable_shared_from_this<IComponent>
     {
     public:
         IComponent(Context* context, Entity* entity, uint64_t id = 0, Transform* transform = nullptr);

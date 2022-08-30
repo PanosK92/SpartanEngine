@@ -35,7 +35,7 @@ namespace Spartan
     // Globals
     extern uint64_t g_id;
 
-    class SPARTAN_CLASS SpartanObject
+    class SP_CLASS SpartanObject
     {
     public:
         SpartanObject(Context* context = nullptr);

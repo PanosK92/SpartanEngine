@@ -44,7 +44,7 @@ namespace Spartan
         vector<RHI_Vertex_PosTexNorTan> vertices;
         vector<uint32_t> indices;
 
-        const string project_directory = renderable->GetContext()->GetSubsystem<ResourceCache>()->GetProjectDirectory();
+        const string project_directory = renderable->GetContext()->GetSystem<ResourceCache>()->GetProjectDirectory();
 
         // Construct geometry
         if (type == DefaultGeometry::Cube)
@@ -139,7 +139,7 @@ namespace Spartan
         stream->Read(&m_bounding_box);
         string model_name;
         stream->Read(&model_name);
-        m_mesh = m_context->GetSubsystem<ResourceCache>()->GetByName<Mesh>(model_name).get();
+        m_mesh = m_context->GetSystem<ResourceCache>()->GetByName<Mesh>(model_name).get();
 
         // If it was a default mesh, we have to reconstruct it
         if (m_geometry_type != DefaultGeometry::Undefined)
@@ -158,7 +158,7 @@ namespace Spartan
         {
             string material_name;
             stream->Read(&material_name);
-            m_material = m_context->GetSubsystem<ResourceCache>()->GetByName<Material>(material_name).get();
+            m_material = m_context->GetSystem<ResourceCache>()->GetByName<Material>(material_name).get();
         }
     }
 
@@ -218,7 +218,7 @@ namespace Spartan
         SP_ASSERT(material != nullptr);
 
         // In order for the component to guarantee serialization/deserialization, we cache the material
-        shared_ptr<Material> _material = m_context->GetSubsystem<ResourceCache>()->Cache(material);
+        shared_ptr<Material> _material = m_context->GetSystem<ResourceCache>()->Cache(material);
 
         m_material = _material.get();
 
@@ -234,7 +234,7 @@ namespace Spartan
         auto material = make_shared<Material>(GetContext());
         if (!material->LoadFromFile(file_path))
         {
-            LOG_WARNING("Failed to load material from \"%s\"", file_path.c_str());
+            SP_LOG_WARNING("Failed to load material from \"%s\"", file_path.c_str());
             return nullptr;
         }
 
@@ -245,7 +245,7 @@ namespace Spartan
     void Renderable::SetDefaultMaterial()
     {
         m_material_default = true;
-        ResourceCache* resource_cache = GetContext()->GetSubsystem<ResourceCache>();
+        ResourceCache* resource_cache = GetContext()->GetSystem<ResourceCache>();
         const string data_dir = resource_cache->GetResourceDirectory() + "\\";
         FileSystem::CreateDirectory(data_dir);
 

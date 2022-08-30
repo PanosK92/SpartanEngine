@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ==================
-#include "../Core/Subsystem.h"
+#include "../Core/ISystem.h"
 #include "../Math/Vector3.h"
 //=============================
 
@@ -46,7 +46,7 @@ namespace Spartan
     class Profiler;
     namespace Math { class Vector3; }    
 
-    class Physics : public Subsystem
+    class Physics : public ISystem
     {
     public:
         Physics(Context* context);

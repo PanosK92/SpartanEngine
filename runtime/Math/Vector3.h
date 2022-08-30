@@ -31,7 +31,7 @@ namespace Spartan::Math
 {
     class Vector4;
 
-    class SPARTAN_CLASS Vector3
+    class SP_CLASS Vector3
     {
     public:
         // Constructor
@@ -298,5 +298,5 @@ namespace Spartan::Math
     };
 
     // Reverse order operators
-    inline SPARTAN_CLASS Vector3 operator*(float lhs, const Vector3& rhs) { return rhs * lhs; }
+    inline SP_CLASS Vector3 operator*(float lhs, const Vector3& rhs) { return rhs * lhs; }
 }

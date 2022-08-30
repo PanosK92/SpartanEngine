@@ -44,8 +44,8 @@ namespace Spartan
     TransformHandle::TransformHandle(Context* context)
     {
         m_context    = context;
-        m_input      = context->GetSubsystem<Input>();
-        m_world      = context->GetSubsystem<World>();
+        m_input      = context->GetSystem<Input>();
+        m_world      = context->GetSystem<World>();
         m_type       = TransformHandleType::Position;
         m_space      = TransformHandleSpace::World;
         m_is_editing = false;

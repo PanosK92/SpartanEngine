@@ -52,7 +52,7 @@ namespace Spartan
         m_errorReduction          = 0.0f;
         m_constraintForceMixing   = 0.0f;
         m_constraintType          = ConstraintType_Point;
-        m_physics                 = GetContext()->GetSubsystem<Physics>();
+        m_physics                 = GetContext()->GetSystem<Physics>();
 
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_errorReduction, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_constraintForceMixing, float);
@@ -119,7 +119,7 @@ namespace Spartan
         stream->Read(&m_lowLimit);
 
         const auto body_other_id = stream->ReadAs<uint32_t>();
-        m_bodyOther = GetContext()->GetSubsystem<World>()->EntityGetById(body_other_id);
+        m_bodyOther = GetContext()->GetSystem<World>()->EntityGetById(body_other_id);
 
         Construct();
     }
@@ -176,7 +176,7 @@ namespace Spartan
 
         if (!body_other.expired() && body_other.lock()->GetObjectId() == m_entity->GetObjectId())
         {
-            LOG_WARNING("You can't connect a body to itself.");
+            SP_LOG_WARNING("You can't connect a body to itself.");
             return;
         }
 
@@ -284,13 +284,13 @@ namespace Spartan
         RigidBody* rigid_body_other    = !m_bodyOther.expired() ? m_bodyOther.lock()->GetComponent<RigidBody>() : nullptr;
         if (!rigid_body_own || !rigid_body_other)
         {
-            LOG_INFO("A RigidBody component is still initializing, deferring construction...");
+            SP_LOG_INFO("A RigidBody component is still initializing, deferring construction...");
             m_deferredConstruction = true;
             return;
         }
         else if (m_deferredConstruction)
         {
-            LOG_INFO("Deferred construction has succeeded");
+            SP_LOG_INFO("Deferred construction has succeeded");
             m_deferredConstruction = false;
         }
 

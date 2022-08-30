@@ -52,10 +52,10 @@ public:
     void Initialize(Spartan::Context* context)
     {
         g_context        = context;
-        g_resource_cache = context->GetSubsystem<Spartan::ResourceCache>();
-        g_world          = context->GetSubsystem<Spartan::World>();
-        g_renderer       = context->GetSubsystem<Spartan::Renderer>();
-        g_input          = context->GetSubsystem<Spartan::Input>();
+        g_resource_cache = context->GetSystem<Spartan::ResourceCache>();
+        g_world          = context->GetSystem<Spartan::World>();
+        g_renderer       = context->GetSystem<Spartan::Renderer>();
+        g_input          = context->GetSystem<Spartan::Input>();
     }
 
     void LoadMesh(const std::string& file_path) const
@@ -345,7 +345,7 @@ namespace imgui_extension
                     setter(tex);
                 }
             }
-            catch (const std::bad_variant_access& e) { LOG_ERROR("%s", e.what()); }
+            catch (const std::bad_variant_access& e) { SP_LOG_ERROR("%s", e.what()); }
         }
     }
 

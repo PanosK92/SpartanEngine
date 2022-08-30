@@ -39,7 +39,7 @@ namespace Spartan
 {
     static const int initial_capacity = 256;
 
-    Profiler::Profiler(Context* context) : Subsystem(context)
+    Profiler::Profiler(Context* context) : ISystem(context)
     {
         m_time_blocks_read.reserve(initial_capacity);
         m_time_blocks_read.resize(initial_capacity);
@@ -56,9 +56,9 @@ namespace Spartan
 
     void Profiler::OnInitialise()
     {
-        m_resource_manager = m_context->GetSubsystem<ResourceCache>();
-        m_renderer         = m_context->GetSubsystem<Renderer>();
-        m_timer            = m_context->GetSubsystem<Timer>();
+        m_resource_manager = m_context->GetSystem<ResourceCache>();
+        m_renderer         = m_context->GetSystem<Renderer>();
+        m_timer            = m_context->GetSystem<Timer>();
     }
 
     void Profiler::OnShutdown()
@@ -101,7 +101,7 @@ namespace Spartan
             m_increase_capacity = false;
             m_poll              = true;
 
-            LOG_WARNING("Time block list has grown to %d. Consider making the default capacity as large by default, to avoid re-allocating.", size_new);
+            SP_LOG_WARNING("Time block list has grown to %d. Consider making the default capacity as large by default, to avoid re-allocating.", size_new);
         }
 
         ClearRhiMetrics();
@@ -223,7 +223,7 @@ namespace Spartan
                 }
                 else if (time_block.GetType() != TimeBlockType::Undefined) // If undefined, then it wasn't used this frame, nothing wrong with that.
                 {
-                    LOG_WARNING("TimeBlockEnd() was not called for time block \"%s\"", time_block.GetName());
+                    SP_LOG_WARNING("TimeBlockEnd() was not called for time block \"%s\"", time_block.GetName());
                 }
 
                 // Copy over

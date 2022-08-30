@@ -54,7 +54,7 @@ namespace Spartan
                     }
                     else
                     {
-                        LOG_ERROR("Failed to get controller: %s.", SDL_GetError());
+                        SP_LOG_ERROR("Failed to get controller: %s.", SDL_GetError());
                     }
                 }
             }
@@ -82,11 +82,11 @@ namespace Spartan
 
             if (m_controller_connected)
             {
-                LOG_INFO("Controller connected.");
+                SP_LOG_INFO("Controller connected.");
             }
             else
             {
-                LOG_ERROR("Failed to get controller: %s.", SDL_GetError());
+                SP_LOG_ERROR("Failed to get controller: %s.", SDL_GetError());
             }
         }
 
@@ -95,7 +95,7 @@ namespace Spartan
         {
             m_controller = nullptr;
             m_controller_connected = false;
-            LOG_INFO("Controller disconnected.");
+            SP_LOG_INFO("Controller disconnected.");
         }
 
         // Keys
@@ -173,7 +173,7 @@ namespace Spartan
 
         if (SDL_GameControllerRumble(static_cast<SDL_GameController*>(m_controller), low_frequency_rumble, high_frequency_rumble, duration_ms) == -1)
         {
-            LOG_ERROR("Failed to vibrate controller");
+            SP_LOG_ERROR("Failed to vibrate controller");
             return false;
         }
 

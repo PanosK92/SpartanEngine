@@ -169,14 +169,14 @@ namespace Spartan
             Renderable* renderable = GetEntity()->GetComponent<Renderable>();
             if (!renderable)
             {
-                LOG_WARNING("Can't construct mesh shape, there is no Renderable component attached.");
+                SP_LOG_WARNING("Can't construct mesh shape, there is no Renderable component attached.");
                 return;
             }
 
             // Validate vertex count
             if (renderable->GetVertexCount() >= m_vertexLimit)
             {
-                LOG_WARNING("No user defined collider with more than %d vertices is allowed.", m_vertexLimit);
+                SP_LOG_WARNING("No user defined collider with more than %d vertices is allowed.", m_vertexLimit);
                 return;
             }
 
@@ -187,7 +187,7 @@ namespace Spartan
 
             if (vertices.empty())
             {
-                LOG_WARNING("No vertices.");
+                SP_LOG_WARNING("No vertices.");
                 return;
             }
 

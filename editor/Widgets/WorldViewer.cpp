@@ -63,8 +63,8 @@ WorldViewer::WorldViewer(Editor* editor) : Widget(editor)
     m_title = "World";
     m_flags |= ImGuiWindowFlags_HorizontalScrollbar;
 
-    _Widget_World::g_world = m_context->GetSubsystem<Spartan::World>();
-    _Widget_World::g_input = m_context->GetSubsystem<Input>();
+    _Widget_World::g_world = m_context->GetSystem<Spartan::World>();
+    _Widget_World::g_input = m_context->GetSystem<Input>();
 
     // Subscribe to entity clicked engine event
     EditorHelper::Get().g_on_entity_selected = [this](){ SetSelectedEntity(EditorHelper::Get().g_selected_entity.lock(), false); };

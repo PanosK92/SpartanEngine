@@ -63,7 +63,7 @@ namespace Spartan
 
     void Entity::Clone()
     {
-        auto scene = m_context->GetSubsystem<World>();
+        auto scene = m_context->GetSystem<World>();
         vector<Entity*> clones;
 
         // Creation of new entity and copying of a few properties
@@ -261,7 +261,7 @@ namespace Spartan
             const uint32_t children_count = stream->ReadAs<uint32_t>();
 
             // Children IDs
-            World* world = m_context->GetSubsystem<World>();
+            World* world = m_context->GetSystem<World>();
             vector<weak_ptr<Entity>> children;
             for (uint32_t i = 0; i < children_count; i++)
             {

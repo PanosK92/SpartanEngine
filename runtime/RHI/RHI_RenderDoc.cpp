@@ -232,16 +232,16 @@ namespace Spartan
         // If the RenderDoc UI is already running, make sure it's visible.
         if (rdc_api->IsTargetControlConnected())
         {
-            LOG_INFO("Bringing RenderDoc to foreground...");
+            SP_LOG_INFO("Bringing RenderDoc to foreground...");
             rdc_api->ShowReplayUI();
         }
         // If the RenderDoc UI is not running, launch it and connect.
         else
         {
-            LOG_INFO("Launching RenderDoc...");
+            SP_LOG_INFO("Launching RenderDoc...");
             if (rdc_api->LaunchReplayUI(true, "") == 0)
             {
-                LOG_ERROR("Failed to launch RenderDoc");
+                SP_LOG_ERROR("Failed to launch RenderDoc");
             }
         }
     }

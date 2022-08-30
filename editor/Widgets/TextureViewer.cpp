@@ -42,7 +42,7 @@ TextureViewer::TextureViewer(Editor* editor) : Widget(editor)
 
 void TextureViewer::TickVisible()
 {
-    m_renderer = m_context->GetSubsystem<Renderer>();
+    m_renderer = m_context->GetSystem<Renderer>();
 
     // Get render targets
     static vector<string> render_target_options;

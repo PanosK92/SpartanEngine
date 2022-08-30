@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-    class SPARTAN_CLASS RHI_Texture2DArray : public RHI_Texture
+    class SP_CLASS RHI_Texture2DArray : public RHI_Texture
     {
     public:
         RHI_Texture2DArray(Context* context, const uint32_t flags = RHI_Texture_Srv, const char* name = nullptr) : RHI_Texture(context)

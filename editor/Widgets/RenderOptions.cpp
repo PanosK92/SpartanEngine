@@ -162,7 +162,7 @@ RenderOptions::RenderOptions(Editor* editor) : Widget(editor)
     m_title        = "Renderer Options";
     m_flags        |= ImGuiWindowFlags_AlwaysAutoResize;
     m_visible      = false;
-    m_renderer     = m_context->GetSubsystem<Renderer>();
+    m_renderer     = m_context->GetSystem<Renderer>();
     m_alpha        = 1.0f;
     m_position     = k_widget_position_screen_center;
     m_size_initial = Vector2(600.0f, 1000.0f);
@@ -397,7 +397,7 @@ void RenderOptions::TickVisible()
 
                 // FPS Limit
                 {
-                    Timer* timer = m_context->GetSubsystem<Timer>();
+                    Timer* timer = m_context->GetSystem<Timer>();
                     
                     helper::FirstColumn();
                     const FpsLimitType fps_limit_type = timer->GetFpsLimitType();
@@ -433,7 +433,7 @@ void RenderOptions::TickVisible()
                 helper::CheckBox("Transform", debug_transform);
                 {
                     ImGui::BeginDisabled(!debug_transform);
-                    helper::Float("Transform size",  m_context->GetSubsystem<World>()->m_gizmo_transform_size, 0.0025f);
+                    helper::Float("Transform size",  m_context->GetSystem<World>()->m_gizmo_transform_size, 0.0025f);
                     ImGui::EndDisabled();
                 }
 

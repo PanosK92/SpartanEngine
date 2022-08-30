@@ -34,7 +34,7 @@ namespace Spartan
 {
     class Context;
 
-    class SPARTAN_CLASS ImageImporter
+    class SP_CLASS ImageImporter
     {
     public:
         ImageImporter(Context* context);

@@ -65,7 +65,7 @@ typedef std::variant<_VARIANT_TYPES, VARIANT_TYPES> StdVariant;
 
 namespace Spartan
 {
-    class SPARTAN_CLASS Variant
+    class SP_CLASS Variant
     {
     public:
         // Default

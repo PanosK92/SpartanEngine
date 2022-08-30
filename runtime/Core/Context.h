@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ==================
-#include "Subsystem.h"
+#include "ISystem.h"
 #include "../Logging/Log.h"
 #include "SpartanDefinitions.h"
 //=============================
@@ -37,20 +37,20 @@ namespace Spartan
         Smoothed
     };
 
-    struct _subystem
+    struct system_wrapper
     {
-        _subystem(const std::shared_ptr<Subsystem>& subsystem, TickType tick_group)
+        system_wrapper(const std::shared_ptr<ISystem>& subsystem, TickType tick_group)
         {
             ptr = subsystem;
             this->tick_group = tick_group;
         }
 
-        std::shared_ptr<Subsystem> ptr;
+        std::shared_ptr<ISystem> ptr;
         TickType tick_group;
     };
 
     // Contains all subsystems
-    class SPARTAN_CLASS Context
+    class SP_CLASS Context
     {
     public:
         Context() = default;
@@ -58,29 +58,29 @@ namespace Spartan
         ~Context()
         {
             // Loop in reverse registration order to avoid dependency conflicts
-            for (size_t i = m_subsystems.size() - 1; i > 0; i--)
+            for (size_t i = m_systems.size() - 1; i > 0; i--)
             {
-                m_subsystems[i].ptr.reset();
+                m_systems[i].ptr.reset();
             }
 
-            m_subsystems.clear();
+            m_systems.clear();
         }
 
         template <class T>
-        void AddSubsystem(TickType tick_group = TickType::Variable)
+        void AddSystem(TickType tick_group = TickType::Variable)
         {
             validate_subsystem_type<T>();
 
-            m_subsystems.emplace_back(std::make_shared<T>(this), tick_group);
+            m_systems.emplace_back(std::make_shared<T>(this), tick_group);
         }
 
         // Get a subsystem
         template <class T>
-        T* GetSubsystem() const
+        T* GetSystem() const
         {
             validate_subsystem_type<T>();
 
-            for (const auto& subsystem : m_subsystems)
+            for (const auto& subsystem : m_systems)
             {
                 if (subsystem.ptr)
                 {
@@ -94,7 +94,7 @@ namespace Spartan
 
         void OnInitialise()
         {
-            for (const _subystem& subsystem : m_subsystems)
+            for (const system_wrapper& subsystem : m_systems)
             {
                 subsystem.ptr->OnInitialise();
             }
@@ -102,7 +102,7 @@ namespace Spartan
 
         void OnPostInitialise()
         {
-            for (const _subystem& subsystem : m_subsystems)
+            for (const system_wrapper& subsystem : m_systems)
             {
                 subsystem.ptr->OnPostInitialise();
             }
@@ -110,7 +110,7 @@ namespace Spartan
 
         void OnPreTick()
         {
-            for (const _subystem& subsystem : m_subsystems)
+            for (const system_wrapper& subsystem : m_systems)
             {
                 subsystem.ptr->OnPreTick();
             }
@@ -118,7 +118,7 @@ namespace Spartan
 
         void OnTick(TickType tick_group, double delta_time)
         {
-            for (const _subystem& subsystem : m_subsystems)
+            for (const system_wrapper& subsystem : m_systems)
             {
                 if (subsystem.tick_group != tick_group)
                     continue;
@@ -129,7 +129,7 @@ namespace Spartan
 
         void OnPostTick()
         {
-            for (const _subystem& subsystem : m_subsystems)
+            for (const system_wrapper& subsystem : m_systems)
             {
                 subsystem.ptr->OnPostTick();
             }
@@ -137,7 +137,7 @@ namespace Spartan
 
         void OnShutdown()
         {
-            for (const _subystem& subsystem : m_subsystems)
+            for (const system_wrapper& subsystem : m_systems)
             {
                 subsystem.ptr->OnShutdown();
             }
@@ -146,6 +146,6 @@ namespace Spartan
         Engine* m_engine = nullptr;
 
     private:
-        std::vector<_subystem> m_subsystems;
+        std::vector<system_wrapper> m_systems;
     };
 }

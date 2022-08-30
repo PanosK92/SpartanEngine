@@ -146,8 +146,8 @@ Properties::Properties(Editor* editor) : Widget(editor)
     m_material_color_picker = make_unique<ButtonColorPicker>("Material Color Picker");
     m_colorPicker_camera    = make_unique<ButtonColorPicker>("Camera Color Picker");
 
-    helper::resource_cache  = m_context->GetSubsystem<ResourceCache>();
-    helper::world           = m_context->GetSubsystem<World>();
+    helper::resource_cache  = m_context->GetSystem<ResourceCache>();
+    helper::world           = m_context->GetSystem<World>();
 }
 
 void Properties::TickVisible()

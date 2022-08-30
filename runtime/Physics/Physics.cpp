@@ -45,7 +45,7 @@ namespace Spartan
 {
     static const bool m_soft_body_support = true;
 
-    Physics::Physics(Context* context) : Subsystem(context)
+    Physics::Physics(Context* context) : ISystem(context)
     {
         m_broadphase        = new btDbvtBroadphase();
         m_constraint_solver = new btSequentialImpulseConstraintSolver();
@@ -99,13 +99,13 @@ namespace Spartan
     void Physics::OnInitialise()
     {
         // Get dependencies
-        m_renderer = m_context->GetSubsystem<Renderer>();
-        m_profiler = m_context->GetSubsystem<Profiler>();
+        m_renderer = m_context->GetSystem<Renderer>();
+        m_profiler = m_context->GetSystem<Profiler>();
 
         // Get version
         const auto major = to_string(btGetVersion() / 100);
         const auto minor = to_string(btGetVersion()).erase(0, 1);
-        m_context->GetSubsystem<Settings>()->RegisterThirdPartyLib("Bullet", major + "." + minor, "https://github.com/bulletphysics/bullet3");
+        m_context->GetSystem<Settings>()->RegisterThirdPartyLib("Bullet", major + "." + minor, "https://github.com/bulletphysics/bullet3");
 
         // Enabled debug drawing
         {
@@ -214,7 +214,7 @@ namespace Spartan
         auto gravity = m_world->getGravity();
         if (!gravity)
         {
-            LOG_ERROR("Unable to get gravity, ensure physics are properly initialized.");
+            SP_LOG_ERROR("Unable to get gravity, ensure physics are properly initialized.");
             return Vector3::Zero;
         }
         return gravity ? ToVector3(gravity) : Vector3::Zero;

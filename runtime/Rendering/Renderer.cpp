@@ -58,7 +58,7 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    Renderer::Renderer(Context* context) : Subsystem(context)
+    Renderer::Renderer(Context* context) : ISystem(context)
     {
         // Default options
         m_options.fill(0.0f);
@@ -113,15 +113,15 @@ namespace Spartan
     void Renderer::OnInitialise()
     {
         // Get window subsystem (required in order to know a windows size and also create a swapchain for it).
-        Window* window = m_context->GetSubsystem<Window>();
+        Window* window = m_context->GetSystem<Window>();
         SP_ASSERT_MSG(window, "The Renderer subsystem requires a Window subsystem.");
 
         // Get resource cache subsystem (required in order to know from which paths to load shaders, textures and fonts).
-        m_resource_cache = m_context->GetSubsystem<ResourceCache>();
+        m_resource_cache = m_context->GetSystem<ResourceCache>();
         SP_ASSERT_MSG(window, "The Renderer subsystem requires a ResourceCache subsystem.");
 
         // Get profiler subsystem (used to profile things but not required)
-        m_profiler = m_context->GetSubsystem<Profiler>();
+        m_profiler = m_context->GetSystem<Profiler>();
 
         // Create RHI context
         m_rhi_context = make_shared<RHI_Context>();
@@ -195,7 +195,7 @@ namespace Spartan
         // Resize swapchain to window size (if needed)
         {
             // Passing zero dimensions will cause the swapchain to not present at all
-            Window* window  = m_context->GetSubsystem<Window>();
+            Window* window  = m_context->GetSystem<Window>();
             uint32_t width  = static_cast<uint32_t>(window->IsMinimised() ? 0 : window->GetWidth());
             uint32_t height = static_cast<uint32_t>(window->IsMinimised() ? 0 : window->GetHeight());
 
@@ -203,7 +203,7 @@ namespace Spartan
             {
                 if (m_swap_chain->Resize(width, height))
                 {
-                    LOG_INFO("Swapchain resolution has been set to %dx%d", width, height);
+                    SP_LOG_INFO("Swapchain resolution has been set to %dx%d", width, height);
                 }
             }
         }
@@ -286,8 +286,8 @@ namespace Spartan
             m_cb_frame_cpu.resolution_render      = m_resolution_render;
             m_cb_frame_cpu.taa_jitter_previous    = m_cb_frame_cpu.taa_jitter_current;
             m_cb_frame_cpu.taa_jitter_current     = m_taa_jitter;
-            m_cb_frame_cpu.delta_time             = static_cast<float>(m_context->GetSubsystem<Timer>()->GetDeltaTimeSmoothedSec());
-            m_cb_frame_cpu.time                   = static_cast<float>(m_context->GetSubsystem<Timer>()->GetTimeSec());
+            m_cb_frame_cpu.delta_time             = static_cast<float>(m_context->GetSystem<Timer>()->GetDeltaTimeSmoothedSec());
+            m_cb_frame_cpu.time                   = static_cast<float>(m_context->GetSystem<Timer>()->GetTimeSec());
             m_cb_frame_cpu.bloom_intensity        = GetOption<float>(RendererOption::Bloom);
             m_cb_frame_cpu.sharpness              = GetOption<float>(RendererOption::Sharpness);
             m_cb_frame_cpu.fog                    = GetOption<float>(RendererOption::Fog);
@@ -336,7 +336,7 @@ namespace Spartan
         // Return if resolution is invalid
         if (!m_rhi_device->IsValidResolution(width, height))
         {
-            LOG_WARNING("%dx%d is an invalid resolution", width, height);
+            SP_LOG_WARNING("%dx%d is an invalid resolution", width, height);
             return;
         }
 
@@ -368,7 +368,7 @@ namespace Spartan
         }
 
         // Log
-        LOG_INFO("Render resolution has been set to %dx%d", width, height);
+        SP_LOG_INFO("Render resolution has been set to %dx%d", width, height);
     }
 
     void Renderer::SetResolutionOutput(uint32_t width, uint32_t height, bool recreate_resources /*= true*/)
@@ -376,7 +376,7 @@ namespace Spartan
         // Return if resolution is invalid
         if (!m_rhi_device->IsValidResolution(width, height))
         {
-            LOG_WARNING("%dx%d is an invalid resolution", width, height);
+            SP_LOG_WARNING("%dx%d is an invalid resolution", width, height);
             return;
         }
 
@@ -398,7 +398,7 @@ namespace Spartan
         }
 
         // Log
-        LOG_INFO("Output resolution output has been set to %dx%d", width, height);
+        SP_LOG_INFO("Output resolution output has been set to %dx%d", width, height);
     }
 
     void Renderer::Update_Cb_Frame(RHI_CommandList* cmd_list)
@@ -510,8 +510,8 @@ namespace Spartan
 
     void Renderer::OnFullScreenToggled()
     {
-        Window* window            = m_context->GetSubsystem<Window>();
-        Input* input              = m_context->GetSubsystem<Input>();
+        Window* window            = m_context->GetSystem<Window>();
+        Input* input              = m_context->GetSystem<Input>();
         const bool is_full_screen = window->IsFullScreen();
 
         if (is_full_screen)
@@ -698,13 +698,13 @@ namespace Spartan
 
             if (is_d3d11 && option == RendererOption::Antialiasing && (value == static_cast<float>(AntialiasingMode::Taa) || value == static_cast<float>(AntialiasingMode::TaaFxaa)))
             {
-                LOG_WARNING("TAA is not supported on D3D11");
+                SP_LOG_WARNING("TAA is not supported on D3D11");
                 return;
             }
 
             if (is_d3d11 && option == RendererOption::Upsampling && value == static_cast<float>(UpsamplingMode::FSR2))
             {
-                LOG_WARNING("FSR 2.0 is not supported on D3D11");
+                SP_LOG_WARNING("FSR 2.0 is not supported on D3D11");
                 return;
             }
         }
@@ -740,7 +740,7 @@ namespace Spartan
                     {
                         m_options[static_cast<uint32_t>(RendererOption::Upsampling)] = static_cast<float>(UpsamplingMode::FSR2);
                         m_ffx_fsr2_reset = true;
-                        LOG_INFO("Enabled FSR 2.0 since it's used for TAA.");
+                        SP_LOG_INFO("Enabled FSR 2.0 since it's used for TAA.");
                     }
                 }
                 else
@@ -749,7 +749,7 @@ namespace Spartan
                     if (fsr_enabled)
                     {
                         m_options[static_cast<uint32_t>(RendererOption::Upsampling)] = static_cast<float>(UpsamplingMode::Linear);
-                        LOG_INFO("Disabed FSR 2.0 since it's used for TAA.");
+                        SP_LOG_INFO("Disabed FSR 2.0 since it's used for TAA.");
                     }
                 }
             }
@@ -764,7 +764,7 @@ namespace Spartan
                     if (taa_enabled)
                     {
                         m_options[static_cast<uint32_t>(RendererOption::Antialiasing)] = static_cast<float>(AntialiasingMode::Disabled);
-                        LOG_INFO("Disabled TAA since it's done by FSR 2.0.");
+                        SP_LOG_INFO("Disabled TAA since it's done by FSR 2.0.");
                     }
                 }
                 else if (value == static_cast<float>(UpsamplingMode::FSR2))
@@ -773,7 +773,7 @@ namespace Spartan
                     if (!taa_enabled)
                     {
                         m_options[static_cast<uint32_t>(RendererOption::Antialiasing)] = static_cast<float>(AntialiasingMode::Taa);
-                        LOG_INFO("Enabled TAA since FSR 2.0 does it.");
+                        SP_LOG_INFO("Enabled TAA since FSR 2.0 does it.");
                     }
                 }
             }
@@ -812,7 +812,7 @@ namespace Spartan
 
             while (m_flush_requested)
             {
-                LOG_INFO("External thread is waiting for the renderer thread to flush...");
+                SP_LOG_INFO("External thread is waiting for the renderer thread to flush...");
                 this_thread::sleep_for(chrono::milliseconds(16));
             }
 
@@ -823,7 +823,7 @@ namespace Spartan
         {
             if (!m_is_rendering_allowed)
             {
-                LOG_INFO("Renderer thread is flushing...");
+                SP_LOG_INFO("Renderer thread is flushing...");
                 m_rhi_device->QueueWaitAll();
             }
 

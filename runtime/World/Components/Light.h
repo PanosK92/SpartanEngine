@@ -70,7 +70,7 @@ namespace Spartan
         std::vector<ShadowSlice> slices;
     };
 
-    class SPARTAN_CLASS Light : public IComponent
+    class SP_CLASS Light : public IComponent
     {
     public:
         Light(Context* context, Entity* entity, uint64_t id = 0);

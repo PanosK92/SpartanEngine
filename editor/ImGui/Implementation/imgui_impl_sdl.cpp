@@ -384,7 +384,7 @@ bool ImGui_ImplSDL2_Init(Spartan::Context* context)
     bd->MouseCanUseGlobalState = mouse_can_use_global_state;
 
     // Initialise some ImGui stuff
-    bd->Window         = static_cast<SDL_Window*>(context->GetSubsystem<Spartan::Window>()->GetHandleSDL());
+    bd->Window         = static_cast<SDL_Window*>(context->GetSystem<Spartan::Window>()->GetHandleSDL());
     bd->UseVulkan      = false; // settings this to true can cause SDL_CreateWindow to return null, complaining that Vulkan is not setup.
     bd->engine_context = context;
 
@@ -524,7 +524,7 @@ static void ImGui_ImplSDL2_UpdateMouseCursor()
 
     ImGui_ImplSDL2_Data* bd = ImGui_ImplSDL2_GetBackendData();
     ImGuiMouseCursor imgui_cursor = ImGui::GetMouseCursor();
-    Spartan::Input* input = bd->engine_context->GetSubsystem<Spartan::Input>();
+    Spartan::Input* input = bd->engine_context->GetSystem<Spartan::Input>();
 
     // State tracking to prevent ImGui from setting the cursor every frame
     // and interfering with the engine wanting to control the state.
@@ -708,7 +708,7 @@ static void ImGui_ImplSDL2_CreateWindow(ImGuiViewport* viewport)
     {
         // Vulkan support is either not configured in SDL or not available in current SDL video driver (windows) or platform
         const char* error = SDL_GetError();
-        LOG_INFO("");
+        SP_LOG_INFO("");
     }
 
     vd->WindowOwned = true;

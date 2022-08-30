@@ -55,8 +55,8 @@ MenuBar::MenuBar(Editor *editor) : Widget(editor)
     m_is_window              = false;
     m_tool_bar               = make_unique<Toolbar>(editor);
     m_file_dialog            = make_unique<FileDialog>(m_context, true, FileDialog_Type_FileSelection, FileDialog_Op_Open, FileDialog_Filter_World);
-    _Widget_MenuBar::g_input = m_context->GetSubsystem<Spartan::Input>();
-    _Widget_MenuBar::g_world = m_context->GetSubsystem<Spartan::World>();
+    _Widget_MenuBar::g_input = m_context->GetSystem<Spartan::Input>();
+    _Widget_MenuBar::g_world = m_context->GetSystem<Spartan::World>();
     m_editor                 = editor;
 }
 
@@ -84,7 +84,7 @@ void MenuBar::TickAlways()
         {
             if (ImGui::MenuItem("New"))
             {
-                m_context->GetSubsystem<Spartan::World>()->New();
+                m_context->GetSystem<Spartan::World>()->New();
             }
 
             ImGui::Separator();
@@ -319,7 +319,7 @@ void MenuBar::DrawAboutWindow() const
             ImGui::SameLine(col_b);
             ImGui::Text("URL");
 
-            for (const Spartan::ThirdPartyLib &lib : m_context->GetSubsystem<Spartan::Settings>()->GetThirdPartyLibs())
+            for (const Spartan::ThirdPartyLib &lib : m_context->GetSystem<Spartan::Settings>()->GetThirdPartyLibs())
             {
                 ImGui::BulletText(lib.name.c_str());
                 ImGui::SameLine(col_a);

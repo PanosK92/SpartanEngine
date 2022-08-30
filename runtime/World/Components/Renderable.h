@@ -49,7 +49,7 @@ namespace Spartan
         Cone
     };
 
-    class SPARTAN_CLASS Renderable : public IComponent
+    class SP_CLASS Renderable : public IComponent
     {
     public:
         Renderable(Context* context, Entity* entity, uint64_t id = 0);

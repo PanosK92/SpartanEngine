@@ -333,7 +333,7 @@ namespace Spartan
         // Verify resolution
         if (!rhi_device->IsValidResolution(width, height))
         {
-            LOG_WARNING("%dx%d is an invalid resolution", width, height);
+            SP_LOG_WARNING("%dx%d is an invalid resolution", width, height);
             return;
         }
 

@@ -29,7 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan::Math
 {
-    class SPARTAN_CLASS Vector2
+    class SP_CLASS Vector2
     {
     public:
         Vector2()

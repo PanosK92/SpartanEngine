@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <thread>
 #include "Renderer_ConstantBuffers.h"
 #include "Material.h"
-#include "../Core/Subsystem.h"
+#include "../Core/ISystem.h"
 #include "../RHI/RHI_Definition.h"
 #include "../RHI/RHI_Viewport.h"
 #include "../RHI/RHI_Vertex.h"
@@ -57,7 +57,7 @@ namespace Spartan
         class Frustum;
     }
 
-    class SPARTAN_CLASS Renderer : public Subsystem
+    class SP_CLASS Renderer : public ISystem
     {
     public:
         Renderer(Context* context);

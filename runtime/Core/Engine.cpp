@@ -54,27 +54,27 @@ namespace Spartan
 
         // Initialize systems which need to tick (this is also the tick order)
         Stopwatch timer_add;
-        m_context->AddSubsystem<Window>();
-        m_context->AddSubsystem<Settings>();
-        m_context->AddSubsystem<Timer>();
-        m_context->AddSubsystem<Input>(TickType::Smoothed);
-        m_context->AddSubsystem<ResourceCache>();
-        m_context->AddSubsystem<Audio>();
-        m_context->AddSubsystem<Physics>();
-        m_context->AddSubsystem<World>(TickType::Smoothed);
-        m_context->AddSubsystem<Profiler>();
-        m_context->AddSubsystem<Renderer>();
-        LOG_INFO("Subsystem addition took %.1f ms", timer_add.GetElapsedTimeMs());
+        m_context->AddSystem<Window>();
+        m_context->AddSystem<Settings>();
+        m_context->AddSystem<Timer>();
+        m_context->AddSystem<Input>(TickType::Smoothed);
+        m_context->AddSystem<ResourceCache>();
+        m_context->AddSystem<Audio>();
+        m_context->AddSystem<Physics>();
+        m_context->AddSystem<World>(TickType::Smoothed);
+        m_context->AddSystem<Profiler>();
+        m_context->AddSystem<Renderer>();
+        SP_LOG_INFO("Subsystem addition took %.1f ms", timer_add.GetElapsedTimeMs());
 
         // Subsystem: Initialise.
         Stopwatch timer_initialise;
         m_context->OnInitialise();
-        LOG_INFO("Subsystem initialisation took %.1f ms", timer_initialise.GetElapsedTimeMs());
+        SP_LOG_INFO("Subsystem initialisation took %.1f ms", timer_initialise.GetElapsedTimeMs());
 
         // Subsystem: Post-initialise.
         Stopwatch timer_post_initialise;
         m_context->OnPostInitialise();
-        LOG_INFO("Subsystem post-initialisation took %.1f ms", timer_post_initialise.GetElapsedTimeMs());
+        SP_LOG_INFO("Subsystem post-initialisation took %.1f ms", timer_post_initialise.GetElapsedTimeMs());
     }
 
     Engine::~Engine()
@@ -92,8 +92,8 @@ namespace Spartan
         m_context->OnPreTick();
 
         // Subsystem: Tick.
-        m_context->OnTick(TickType::Variable, m_context->GetSubsystem<Timer>()->GetDeltaTimeSec());
-        m_context->OnTick(TickType::Smoothed, m_context->GetSubsystem<Timer>()->GetDeltaTimeSmoothedSec());
+        m_context->OnTick(TickType::Variable, m_context->GetSystem<Timer>()->GetDeltaTimeSec());
+        m_context->OnTick(TickType::Smoothed, m_context->GetSystem<Timer>()->GetDeltaTimeSmoothedSec());
 
         // Subsystem: Post-tick.
         m_context->OnPostTick();

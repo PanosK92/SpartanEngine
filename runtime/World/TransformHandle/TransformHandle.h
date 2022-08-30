@@ -38,7 +38,7 @@ namespace Spartan
     class RHI_IndexBuffer;
     class RHI_VertexBuffer;
 
-    class SPARTAN_CLASS TransformHandle
+    class SP_CLASS TransformHandle
     {
     public:
         TransformHandle(Context* context);

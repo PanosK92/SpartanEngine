@@ -68,7 +68,7 @@ namespace Spartan
         auto parentNode = GetNodeByName(parentNodeName);
         if (!parentNode)
         {
-            LOG_WARNING("Can't add child node \"%s\", parent node \"%s\" doesn't exist.", childNodeName.c_str(), parentNodeName.c_str());
+            SP_LOG_WARNING("Can't add child node \"%s\", parent node \"%s\" doesn't exist.", childNodeName.c_str(), parentNodeName.c_str());
             return false;
         }
 
@@ -84,7 +84,7 @@ namespace Spartan
         auto node = GetNodeByName(nodeName);
         if (!node)
         {
-            LOG_WARNING("Can't add attribute \"%s\", node \"%s\" doesn't exist.", attributeName.c_str(), nodeName.c_str());
+            SP_LOG_WARNING("Can't add attribute \"%s\", node \"%s\" doesn't exist.", attributeName.c_str(), nodeName.c_str());
             return false;
         }
 
@@ -261,11 +261,11 @@ namespace Spartan
         {
             if (result.status == status_file_not_found)
             {
-                LOG_ERROR("File \"%s\" was not found.", filePath.c_str());
+                SP_LOG_ERROR("File \"%s\" was not found.", filePath.c_str());
             }
             else
             {
-                LOG_ERROR("%s", result.description());
+                SP_LOG_ERROR("%s", result.description());
             }
 
             m_document.release();
@@ -299,7 +299,7 @@ namespace Spartan
         const auto node = GetNodeByName(nodeName);
         if (!node)
         {
-            LOG_WARNING("Can't get attribute \"%s\", node \"%s\" doesn't exist.", attributeName.c_str(), nodeName.c_str());
+            SP_LOG_WARNING("Can't get attribute \"%s\", node \"%s\" doesn't exist.", attributeName.c_str(), nodeName.c_str());
             return attribute;
         }
 
@@ -307,7 +307,7 @@ namespace Spartan
         attribute = node->attribute(attributeName.c_str());
         if (!attribute)
         {
-            LOG_WARNING("Can't get attribute, attribute \"%s\" doesn't exist.", attributeName.c_str());
+            SP_LOG_WARNING("Can't get attribute, attribute \"%s\" doesn't exist.", attributeName.c_str());
         }
 
         return attribute;

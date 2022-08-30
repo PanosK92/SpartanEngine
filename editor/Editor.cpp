@@ -167,16 +167,16 @@ Editor::Editor()
 
     // Acquire useful engine subsystems
     m_context           = m_engine->GetContext();
-    _editor::profiler   = m_context->GetSubsystem<Spartan::Profiler>();
-    _editor::renderer   = m_context->GetSubsystem<Spartan::Renderer>();
-    _editor::window     = m_context->GetSubsystem<Spartan::Window>();
+    _editor::profiler   = m_context->GetSystem<Spartan::Profiler>();
+    _editor::renderer   = m_context->GetSystem<Spartan::Renderer>();
+    _editor::window     = m_context->GetSystem<Spartan::Window>();
     _editor::rhi_device = _editor::renderer->GetRhiDevice();
     _editor::swapchain  = _editor::renderer->GetSwapChain();
     
     // Initialise Editor/ImGui
     {
         SP_ASSERT_MSG(IMGUI_CHECKVERSION(), "Version mismatch between source and caller");
-        m_context->GetSubsystem<Spartan::Settings>()->RegisterThirdPartyLib("Dear ImGui", IMGUI_VERSION, "https://github.com/ocornut/imgui");
+        m_context->GetSystem<Spartan::Settings>()->RegisterThirdPartyLib("Dear ImGui", IMGUI_VERSION, "https://github.com/ocornut/imgui");
 
         // Create context
         ImGui::CreateContext();
@@ -192,7 +192,7 @@ Editor::Editor()
         io.IniFilename                  = "editor.ini";
 
         // Load font
-        string dir_fonts = m_context->GetSubsystem<Spartan::ResourceCache>()->GetResourceDirectory(Spartan::ResourceDirectory::Fonts) + "/";
+        string dir_fonts = m_context->GetSystem<Spartan::ResourceCache>()->GetResourceDirectory(Spartan::ResourceDirectory::Fonts) + "/";
         io.Fonts->AddFontFromFileTTF((dir_fonts + "Calibri.ttf").c_str(), k_font_size);
         io.FontGlobalScale = k_font_scale;
 

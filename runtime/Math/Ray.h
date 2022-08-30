@@ -35,7 +35,7 @@ namespace Spartan
         class Plane;
         class Sphere;
 
-        class SPARTAN_CLASS Ray
+        class SP_CLASS Ray
         {
         public:
             Ray() = default;
