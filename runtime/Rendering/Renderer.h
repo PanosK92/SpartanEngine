@@ -352,7 +352,6 @@ namespace Spartan
         std::mutex m_mutex_environment_texture;
 
         // Dependencies
-        Profiler* m_profiler            = nullptr;
-        ResourceCache* m_resource_cache = nullptr;
+        Profiler* m_profiler = nullptr;
     };
 }

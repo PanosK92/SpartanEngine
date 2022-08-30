@@ -90,11 +90,11 @@ namespace Spartan
             auto tex_path                  = xml->GetAttributeAs<string>(node_name, "texture_path");
 
             // If the texture happens to be loaded, get a reference to it
-            auto texture = m_context->GetSystem<ResourceCache>()->GetByName<RHI_Texture2D>(tex_name);
+            auto texture = ResourceCache::GetByName<RHI_Texture2D>(tex_name);
             // If there is not texture (it's not loaded yet), load it
             if (!texture)
             {
-                texture = m_context->GetSystem<ResourceCache>()->Load<RHI_Texture2D>(tex_path);
+                texture = ResourceCache::Load<RHI_Texture2D>(tex_path);
             }
 
             SetTexture(tex_type, texture);
@@ -153,7 +153,7 @@ namespace Spartan
         if (texture)
         {
             // Cache the texture to ensure scene serialization/deserialization
-            m_textures[type_int] = m_context->GetSystem<ResourceCache>()->Cache(texture);
+            m_textures[type_int] = ResourceCache::Cache(texture);
         }
         else
         {

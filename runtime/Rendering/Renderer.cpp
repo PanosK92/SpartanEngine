@@ -116,10 +116,6 @@ namespace Spartan
         Window* window = m_context->GetSystem<Window>();
         SP_ASSERT_MSG(window, "The Renderer subsystem requires a Window subsystem.");
 
-        // Get resource cache subsystem (required in order to know from which paths to load shaders, textures and fonts).
-        m_resource_cache = m_context->GetSystem<ResourceCache>();
-        SP_ASSERT_MSG(window, "The Renderer subsystem requires a ResourceCache subsystem.");
-
         // Get profiler subsystem (used to profile things but not required)
         m_profiler = m_context->GetSystem<Profiler>();
 

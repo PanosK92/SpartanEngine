@@ -240,7 +240,7 @@ namespace Spartan
     void Renderer::CreateShaders()
     {
         const bool async        = true;
-        const string shader_dir = m_resource_cache->GetResourceDirectory(ResourceDirectory::Shaders) + "\\";
+        const string shader_dir = ResourceCache::GetResourceDirectory(ResourceDirectory::Shaders) + "\\";
 
         // G-Buffer
         shader(RendererShader::Gbuffer_V) = make_shared<RHI_Shader>(m_context);
@@ -451,7 +451,7 @@ namespace Spartan
     void Renderer::CreateFonts()
     {
         // Get standard font directory
-        const string dir_font = m_resource_cache->GetResourceDirectory(ResourceDirectory::Fonts) + "/";
+        const string dir_font = ResourceCache::GetResourceDirectory(ResourceDirectory::Fonts) + "\\";
 
         // Load a font (used for performance metrics)
         m_font = make_unique<Font>(m_context, dir_font + "CalibriBold.ttf", 16, Vector4(0.8f, 0.8f, 0.8f, 1.0f));
@@ -495,7 +495,7 @@ namespace Spartan
     void Renderer::CreateTextures()
     {
         // Get standard texture directory
-        const string dir_texture = m_resource_cache->GetResourceDirectory(ResourceDirectory::Textures) + "\\";
+        const string dir_texture = ResourceCache::GetResourceDirectory(ResourceDirectory::Textures) + "\\";
 
         // Noise textures
         {

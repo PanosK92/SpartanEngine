@@ -56,9 +56,8 @@ namespace Spartan
 
     void Profiler::OnInitialise()
     {
-        m_resource_manager = m_context->GetSystem<ResourceCache>();
-        m_renderer         = m_context->GetSystem<Renderer>();
-        m_timer            = m_context->GetSystem<Timer>();
+        m_renderer = m_context->GetSystem<Renderer>();
+        m_timer    = m_context->GetSystem<Timer>();
     }
 
     void Profiler::OnShutdown()
@@ -327,8 +326,8 @@ namespace Spartan
 
     void Profiler::UpdateRhiMetricsString()
     {
-        const uint32_t texture_count  = m_resource_manager->GetResourceCount(ResourceType::Texture) + m_resource_manager->GetResourceCount(ResourceType::Texture2d) + m_resource_manager->GetResourceCount(ResourceType::TextureCube);
-        const uint32_t material_count = m_resource_manager->GetResourceCount(ResourceType::Material);
+        const uint32_t texture_count  = ResourceCache::GetResourceCount(ResourceType::Texture) + ResourceCache::GetResourceCount(ResourceType::Texture2d) + ResourceCache::GetResourceCount(ResourceType::TextureCube);
+        const uint32_t material_count = ResourceCache::GetResourceCount(ResourceType::Material);
 
         // Get the graphics driver vendor
         string api_vendor_name = "AMD";

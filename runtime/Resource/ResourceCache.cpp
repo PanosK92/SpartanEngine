@@ -42,28 +42,38 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    ResourceCache::ResourceCache(Context* context) : ISystem(context)
+    // Directories
+    static std::array<std::string, 6> m_standard_resource_directories;
+    static std::string m_project_directory;
+
+    std::vector<std::shared_ptr<IResource>> ResourceCache::m_resources;
+    std::mutex ResourceCache::m_mutex;
+    std::shared_ptr<ModelImporter> ResourceCache::m_importer_model;
+    std::shared_ptr<ImageImporter> ResourceCache::m_importer_image;
+    std::shared_ptr<FontImporter> ResourceCache::m_importer_font;
+    Context* ResourceCache::m_context;
+
+    void ResourceCache::Initialize(Context* context)
     {
+        m_context = context;
+
         // Create project directory
         SetProjectDirectory("project\\");
 
         // Add engine standard resource directories
         const string data_dir = "data\\";
         AddResourceDirectory(ResourceDirectory::Environment,    m_project_directory + "environment");
-        AddResourceDirectory(ResourceDirectory::Fonts,          data_dir            + "fonts");
-        AddResourceDirectory(ResourceDirectory::Icons,          data_dir            + "icons");
-        AddResourceDirectory(ResourceDirectory::ShaderCompiler, data_dir            + "shader_compiler");
-        AddResourceDirectory(ResourceDirectory::Shaders,        data_dir            + "shaders");
-        AddResourceDirectory(ResourceDirectory::Textures,       data_dir            + "textures");
+        AddResourceDirectory(ResourceDirectory::Fonts,          data_dir + "fonts");
+        AddResourceDirectory(ResourceDirectory::Icons,          data_dir + "icons");
+        AddResourceDirectory(ResourceDirectory::ShaderCompiler, data_dir + "shader_compiler");
+        AddResourceDirectory(ResourceDirectory::Shaders,        data_dir + "shaders");
+        AddResourceDirectory(ResourceDirectory::Textures,       data_dir + "textures");
 
         // Subscribe to events
-        SP_SUBSCRIBE_TO_EVENT(EventType::WorldSaveStart, SP_EVENT_HANDLER(SaveResourcesToFiles));
-        SP_SUBSCRIBE_TO_EVENT(EventType::WorldLoadStart, SP_EVENT_HANDLER(LoadResourcesFromFiles));
-        SP_SUBSCRIBE_TO_EVENT(EventType::WorldClear,     SP_EVENT_HANDLER(Clear));
-    }
+        SP_SUBSCRIBE_TO_EVENT(EventType::WorldSaveStart, SP_EVENT_HANDLER_STATIC(SaveResourcesToFiles));
+        SP_SUBSCRIBE_TO_EVENT(EventType::WorldLoadStart, SP_EVENT_HANDLER_STATIC(LoadResourcesFromFiles));
+        SP_SUBSCRIBE_TO_EVENT(EventType::WorldClear,     SP_EVENT_HANDLER_STATIC(Clear));
 
-    void ResourceCache::OnInitialise()
-    {
         // Importers
         m_importer_image = make_shared<ImageImporter>(m_context);
         m_importer_model = make_shared<ModelImporter>(m_context);
@@ -260,18 +270,12 @@ namespace Spartan
 
     void ResourceCache::AddResourceDirectory(const ResourceDirectory type, const string& directory)
     {
-        m_standard_resource_directories[type] = directory;
+        m_standard_resource_directories[static_cast<uint32_t>(type)] = directory;
     }
 
     string ResourceCache::GetResourceDirectory(const ResourceDirectory type)
     {
-        for (auto& directory : m_standard_resource_directories)
-        {
-            if (directory.first == type)
-                return directory.second;
-        }
-
-        return "";
+        return m_standard_resource_directories[static_cast<uint32_t>(type)];
     }
 
     void ResourceCache::SetProjectDirectory(const string& directory)
@@ -284,8 +288,19 @@ namespace Spartan
         m_project_directory = directory;
     }
 
-    string ResourceCache::GetProjectDirectoryAbsolute() const
+    string ResourceCache::GetProjectDirectoryAbsolute()
     {
         return FileSystem::GetWorkingDirectory() + "/" + m_project_directory;
     }
+
+    const string& ResourceCache::GetProjectDirectory()
+    {
+        return m_project_directory;
+    }
+
+    string ResourceCache::GetDataDirectory()
+    {
+        return "Data";
+    }
+
 }

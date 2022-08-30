@@ -192,7 +192,7 @@ Editor::Editor()
         io.IniFilename                  = "editor.ini";
 
         // Load font
-        string dir_fonts = m_context->GetSystem<Spartan::ResourceCache>()->GetResourceDirectory(Spartan::ResourceDirectory::Fonts) + "/";
+        string dir_fonts = Spartan::ResourceCache::GetResourceDirectory(Spartan::ResourceDirectory::Fonts) + "/";
         io.Fonts->AddFontFromFileTTF((dir_fonts + "Calibri.ttf").c_str(), k_font_size);
         io.FontGlobalScale = k_font_scale;
 

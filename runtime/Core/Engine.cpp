@@ -54,7 +54,6 @@ namespace Spartan
         m_context->AddSystem<Window>();
         m_context->AddSystem<Timer>();
         m_context->AddSystem<Input>(TickType::Smoothed);
-        m_context->AddSystem<ResourceCache>();
         m_context->AddSystem<Audio>();
         m_context->AddSystem<Physics>();
         m_context->AddSystem<World>(TickType::Smoothed);
@@ -68,6 +67,7 @@ namespace Spartan
             // Static
             ThreadPool::Initialize();
             Settings::Initialize(m_context.get());
+            ResourceCache::Initialize(m_context.get());
 
             // Context
             m_context->OnInitialize();

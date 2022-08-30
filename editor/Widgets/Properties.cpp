@@ -52,7 +52,6 @@ weak_ptr<Material> Properties::m_inspected_material;
 
 namespace helper
 {
-    static ResourceCache* resource_cache;
     static World* world;
     static Vector3 rotation_hint;
 
@@ -139,15 +138,14 @@ namespace helper
 
 Properties::Properties(Editor* editor) : Widget(editor)
 {
-    m_title  = "Properties";
+    m_title        = "Properties";
     m_size_initial.x = 500; // min width
 
     m_colorPicker_light     = make_unique<ButtonColorPicker>("Light Color Picker");
     m_material_color_picker = make_unique<ButtonColorPicker>("Material Color Picker");
     m_colorPicker_camera    = make_unique<ButtonColorPicker>("Camera Color Picker");
 
-    helper::resource_cache  = m_context->GetSystem<ResourceCache>();
-    helper::world           = m_context->GetSystem<World>();
+    helper::world = m_context->GetSystem<World>();
 }
 
 void Properties::TickVisible()

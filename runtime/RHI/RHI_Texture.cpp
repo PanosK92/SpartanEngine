@@ -233,7 +233,7 @@ namespace Spartan
                 }
 
                 // Load texture
-                ImageImporter* image_importer = m_context->GetSystem<ResourceCache>()->GetImageImporter();
+                ImageImporter* image_importer = ResourceCache::GetImageImporter();
                 for (uint32_t slice_index = 0; slice_index < static_cast<uint32_t>(file_paths.size()); slice_index++)
                 {
                     if (!image_importer->Load(file_paths[slice_index], slice_index, this))

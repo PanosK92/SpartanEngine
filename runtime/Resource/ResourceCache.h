@@ -21,11 +21,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =================
-#include <unordered_map>
+//= INCLUDES =========
 #include "IResource.h"
-#include "../Core/ISystem.h"
-//============================
+//====================
 
 namespace Spartan
 {
@@ -44,30 +42,25 @@ namespace Spartan
         Textures
     };
 
-    class SP_CLASS ResourceCache : public ISystem
+    class SP_CLASS ResourceCache
     {
     public:
-        ResourceCache(Context* context);
-        ~ResourceCache() = default;
-
-        //= ISubsystem ==============
-        void OnInitialise() override;
-        //===========================
+        static void Initialize(Context* context);
 
         // Get by name
-        std::shared_ptr<IResource>& GetByName(const std::string& name, ResourceType type);
+        static std::shared_ptr<IResource>& GetByName(const std::string& name, ResourceType type);
         template <class T> 
-        constexpr std::shared_ptr<T> GetByName(const std::string& name) 
+        static std::shared_ptr<T> GetByName(const std::string& name) 
         { 
             return std::static_pointer_cast<T>(GetByName(name, IResource::TypeToEnum<T>()));
         }
 
         // Get by type
-        std::vector<std::shared_ptr<IResource>> GetByType(ResourceType type = ResourceType::Unknown);
+        static std::vector<std::shared_ptr<IResource>> GetByType(ResourceType type = ResourceType::Unknown);
 
         // Get by path
         template <class T>
-        std::shared_ptr<T> GetByPath(const std::string& path)
+        static std::shared_ptr<T> GetByPath(const std::string& path)
         {
             for (std::shared_ptr<IResource>& resource : m_resources)
             {
@@ -80,7 +73,7 @@ namespace Spartan
 
         // Caches resource, or replaces with existing cached resource
         template <class T>
-        [[nodiscard]] std::shared_ptr<T> Cache(const std::shared_ptr<T>& resource)
+        static std::shared_ptr<T> Cache(const std::shared_ptr<T>& resource)
         {
             // Validate resource
             if (!resource)
@@ -116,7 +109,7 @@ namespace Spartan
 
         // Loads a resource and adds it to the resource cache
         template <class T>
-        std::shared_ptr<T> Load(const std::string& file_path)
+        static std::shared_ptr<T> Load(const std::string& file_path)
         {
             if (!FileSystem::Exists(file_path))
             {
@@ -147,7 +140,7 @@ namespace Spartan
         }
 
         template <class T>
-        void Remove(std::shared_ptr<T>& resource)
+        static void Remove(std::shared_ptr<T>& resource)
         {
             if (!resource)
                 return;
@@ -168,43 +161,41 @@ namespace Spartan
         }
 
         // Memory
-        uint64_t GetMemoryUsageCpu(ResourceType type = ResourceType::Unknown);
-        uint64_t GetMemoryUsageGpu(ResourceType type = ResourceType::Unknown);
-        uint32_t GetResourceCount(ResourceType type = ResourceType::Unknown);
-        void Clear();
+        static uint64_t GetMemoryUsageCpu(ResourceType type = ResourceType::Unknown);
+        static uint64_t GetMemoryUsageGpu(ResourceType type = ResourceType::Unknown);
+        static uint32_t GetResourceCount(ResourceType type = ResourceType::Unknown);
+        static void Clear();
 
         // Directories
-        void AddResourceDirectory(ResourceDirectory type, const std::string& directory);
-        std::string GetResourceDirectory(ResourceDirectory type);
-        void SetProjectDirectory(const std::string& directory);
-        std::string GetProjectDirectoryAbsolute() const;
-        const auto& GetProjectDirectory()  const { return m_project_directory; }
-        std::string GetResourceDirectory() const { return "Data"; }
+        static void AddResourceDirectory(ResourceDirectory type, const std::string& directory);
+        static std::string GetResourceDirectory(ResourceDirectory type);
+        static void SetProjectDirectory(const std::string& directory);
+        static std::string GetProjectDirectoryAbsolute();
+        static const std::string& GetProjectDirectory();
+        static std::string GetDataDirectory();
 
         // Importers
-        ModelImporter* GetModelImporter() const { return m_importer_model.get(); }
-        ImageImporter* GetImageImporter() const { return m_importer_image.get(); }
-        FontImporter* GetFontImporter()   const { return m_importer_font.get(); }
+        static ModelImporter* GetModelImporter() { return m_importer_model.get(); }
+        static ImageImporter* GetImageImporter() { return m_importer_image.get(); }
+        static FontImporter* GetFontImporter()   { return m_importer_font.get(); }
 
     private:
-        bool IsCached(const uint64_t resource_id);
-        bool IsCached(const std::string& resource_name, const ResourceType resource_type);
+        static bool IsCached(const uint64_t resource_id);
+        static bool IsCached(const std::string& resource_name, const ResourceType resource_type);
 
         // Event handlers
-        void SaveResourcesToFiles();
-        void LoadResourcesFromFiles();
+        static void SaveResourcesToFiles();
+        static void LoadResourcesFromFiles();
 
         // Cache
-        std::vector<std::shared_ptr<IResource>> m_resources;
-        std::mutex m_mutex;
-
-        // Directories
-        std::unordered_map<ResourceDirectory, std::string> m_standard_resource_directories;
-        std::string m_project_directory;
+        static std::vector<std::shared_ptr<IResource>> m_resources;
+        static std::mutex m_mutex;
 
         // Importers
-        std::shared_ptr<ModelImporter> m_importer_model;
-        std::shared_ptr<ImageImporter> m_importer_image;
-        std::shared_ptr<FontImporter> m_importer_font;
+        static std::shared_ptr<ModelImporter> m_importer_model;
+        static std::shared_ptr<ImageImporter> m_importer_image;
+        static std::shared_ptr<FontImporter> m_importer_font;
+
+        static Context* m_context;
     };
 }

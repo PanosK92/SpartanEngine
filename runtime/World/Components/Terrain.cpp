@@ -61,9 +61,8 @@ namespace Spartan
 
     void Terrain::Deserialize(FileStream* stream)
     {
-        ResourceCache* resource_cache = m_context->GetSystem<ResourceCache>();
-        m_height_map    = resource_cache->GetByPath<RHI_Texture2D>(stream->ReadAs<string>());
-        m_mesh          = resource_cache->GetByName<Mesh>(stream->ReadAs<string>());
+        m_height_map    = ResourceCache::GetByPath<RHI_Texture2D>(stream->ReadAs<string>());
+        m_mesh          = ResourceCache::GetByName<Mesh>(stream->ReadAs<string>());
         stream->Read(&m_min_y);
         stream->Read(&m_max_y);
 
@@ -73,7 +72,7 @@ namespace Spartan
     void Terrain::SetHeightMap(const shared_ptr<RHI_Texture2D>& height_map)
     {
         // In order for the component to guarantee serialization/deserialization, we cache the height_map
-        m_height_map = m_context->GetSystem<ResourceCache>()->Cache<RHI_Texture2D>(height_map);
+        m_height_map = ResourceCache::Cache<RHI_Texture2D>(height_map);
     }
 
     void Terrain::GenerateAsync()
@@ -88,7 +87,7 @@ namespace Spartan
         {
             SP_LOG_WARNING("You need to assign a height map before trying to generate a terrain.");
 
-            m_context->GetSystem<ResourceCache>()->Remove(m_mesh);
+            ResourceCache::Remove(m_mesh);
             m_mesh = nullptr;
             if (Renderable* renderable = m_entity->AddComponent<Renderable>())
             {
@@ -427,9 +426,8 @@ namespace Spartan
             m_mesh->ComputeAabb();
 
             // Set a file path so the model can be used by the resource cache
-            ResourceCache* resource_cache = m_context->GetSystem<ResourceCache>();
-            m_mesh->SetResourceFilePath(resource_cache->GetProjectDirectory() + m_entity->GetName() + "_terrain_" + to_string(m_object_id) + string(EXTENSION_MODEL));
-            m_mesh = resource_cache->Cache(m_mesh);
+            m_mesh->SetResourceFilePath(ResourceCache::GetProjectDirectory() + m_entity->GetName() + "_terrain_" + to_string(m_object_id) + string(EXTENSION_MODEL));
+            m_mesh = ResourceCache::Cache(m_mesh);
         }
         else
         {

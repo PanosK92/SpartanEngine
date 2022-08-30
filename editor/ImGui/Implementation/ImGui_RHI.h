@@ -150,7 +150,7 @@ namespace ImGui::RHI
 
             // Compile shaders
             {
-                const string shader_path = g_context->GetSystem<ResourceCache>()->GetResourceDirectory(ResourceDirectory::Shaders) + "\\ImGui.hlsl";
+                const string shader_path = ResourceCache::GetResourceDirectory(ResourceDirectory::Shaders) + "\\ImGui.hlsl";
 
                 bool async = false;
 
