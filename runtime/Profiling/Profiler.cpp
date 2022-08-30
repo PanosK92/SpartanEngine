@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_CommandList.h"
 #include "../RHI/RHI_Implementation.h"
 #include "../Core/Event.h"
-#include "../Core/Threading.h"
+#include "../Core/ThreadPool.h"
 //====================================
 
 //= NAMESPACES =====
@@ -405,8 +405,8 @@ namespace Spartan
             m_renderer->GetRhiDevice()->GetPrimaryPhysicalDevice()->GetVendorName().c_str(), m_gpu_driver.c_str(),
 
             // CPU
-            Threading::GetWorkingThreadCount(),
-            Threading::GetThreadCount(),
+            ThreadPool::GetWorkingThreadCount(),
+            ThreadPool::GetThreadCount(),
 
             // Resolution
             static_cast<int>(m_renderer->GetResolutionOutput().x), static_cast<int>(m_renderer->GetResolutionOutput().y),

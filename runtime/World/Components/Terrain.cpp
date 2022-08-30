@@ -29,7 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../IO/FileStream.h"
 #include "../../Resource/ResourceCache.h"
 #include "../../Rendering/Mesh.h"
-#include "../../Core/Threading.h"
+#include "../../Core/ThreadPool.h"
 //=======================================
 
 //= NAMESPACES ===============
@@ -98,7 +98,7 @@ namespace Spartan
             return;
         }
 
-        Threading::AddTask([this]()
+        ThreadPool::AddTask([this]()
         {
             m_is_generating = true;
 
@@ -388,7 +388,7 @@ namespace Spartan
             }
         };
 
-        Threading::AddTaskLoop(compute_vertex_normals_tangents, vertex_count);
+        ThreadPool::AddTaskLoop(compute_vertex_normals_tangents, vertex_count);
 
         return true;
     }

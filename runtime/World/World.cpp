@@ -40,7 +40,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Input/Input.h"
 #include "../RHI/RHI_Device.h"
 #include "../Rendering/Renderer.h"
-#include "../Core/Threading.h"
+#include "../Core/ThreadPool.h"
 //==========================================
 
 //= NAMESPACES ================

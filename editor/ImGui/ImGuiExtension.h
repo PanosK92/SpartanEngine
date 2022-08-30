@@ -29,7 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI/RHI_Texture2D.h"
 #include "Rendering/Renderer.h"
 #include "Resource/ResourceCache.h"
-#include "Core/Threading.h"
+#include "Core/ThreadPool.h"
 #include "Input/Input.h"
 #include "World/World.h"
 #include "World/Components/Camera.h"
@@ -63,7 +63,7 @@ public:
         auto resource_cache = g_resource_cache;
 
         // Load the model asynchronously
-        Spartan::Threading::AddTask([resource_cache, file_path]()
+        Spartan::ThreadPool::AddTask([resource_cache, file_path]()
         {
             resource_cache->Load<Spartan::Mesh>(file_path);
         });
@@ -74,10 +74,10 @@ public:
         auto world = g_world;
 
         // Loading a world resets everything so it's important to ensure that no tasks are running
-        Spartan::Threading::Flush(true);
+        Spartan::ThreadPool::Flush(true);
 
         // Load the scene asynchronously
-        Spartan::Threading::AddTask([world, file_path]()
+        Spartan::ThreadPool::AddTask([world, file_path]()
         {
             world->LoadFromFile(file_path);
         });
@@ -88,7 +88,7 @@ public:
         auto world = g_world;
 
         // Save the scene asynchronously
-        Spartan::Threading::AddTask([world, file_path]()
+        Spartan::ThreadPool::AddTask([world, file_path]()
         {
             world->SaveToFile(file_path);
         });

@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =========================
 #include "pch.h"
 #include "Window.h"
-#include "Threading.h"
+#include "ThreadPool.h"
 #include "../Audio/Audio.h"
 #include "../Input/Input.h"
 #include "../Physics/Physics.h"
@@ -66,7 +66,7 @@ namespace Spartan
         Stopwatch timer_initialize;
         {
             // Static
-            Threading::Initialize();
+            ThreadPool::Initialize();
             Settings::Initialize(m_context.get());
 
             // Context
@@ -95,7 +95,7 @@ namespace Spartan
             m_context->OnShutdown();
 
             // Static
-            Threading::Shutdown();
+            ThreadPool::Shutdown();
             Event::Shutdown();
         }
     }

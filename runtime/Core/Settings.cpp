@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "Window.h"
 #include "../Core/FileSystem.h"
-#include "../Core/Threading.h"
+#include "../Core/ThreadPool.h"
 #include "../Rendering/Renderer.h"
 #include "../Display/Display.h"
 #include "../Input/Input.h"
@@ -210,7 +210,7 @@ namespace Spartan
         Renderer* renderer = m_context->GetSystem<Renderer>();
 
         m_fps_limit         = m_context->GetSystem<Timer>()->GetFpsLimit();
-        m_max_thread_count  = Threading::GetSupportedThreadCount();
+        m_max_thread_count  = ThreadPool::GetSupportedThreadCount();
         m_is_fullscreen     = m_context->GetSystem<Window>()->IsFullScreen();
         m_is_mouse_visible  = m_context->GetSystem<Input>()->GetMouseCursorVisible();
         m_resolution_output = renderer->GetResolutionOutput();
