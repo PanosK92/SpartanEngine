@@ -185,9 +185,8 @@ namespace Spartan
         void* m_query_disjoint      = nullptr;
     
         // Dependencies
-        ResourceCache* m_resource_manager = nullptr;
-        Renderer* m_renderer              = nullptr;
-        Timer* m_timer                    = nullptr;
+        Renderer* m_renderer = nullptr;
+        Timer* m_timer       = nullptr;
     };
 
     class ScopedTimeBlock

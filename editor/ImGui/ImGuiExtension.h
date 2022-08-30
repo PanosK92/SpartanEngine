@@ -51,21 +51,18 @@ public:
 
     void Initialize(Spartan::Context* context)
     {
-        g_context        = context;
-        g_resource_cache = context->GetSystem<Spartan::ResourceCache>();
-        g_world          = context->GetSystem<Spartan::World>();
-        g_renderer       = context->GetSystem<Spartan::Renderer>();
-        g_input          = context->GetSystem<Spartan::Input>();
+        g_context  = context;
+        g_world    = context->GetSystem<Spartan::World>();
+        g_renderer = context->GetSystem<Spartan::Renderer>();
+        g_input    = context->GetSystem<Spartan::Input>();
     }
 
     void LoadMesh(const std::string& file_path) const
     {
-        auto resource_cache = g_resource_cache;
-
         // Load the model asynchronously
-        Spartan::ThreadPool::AddTask([resource_cache, file_path]()
+        Spartan::ThreadPool::AddTask([file_path]()
         {
-            resource_cache->Load<Spartan::Mesh>(file_path);
+            Spartan::ResourceCache::Load<Spartan::Mesh>(file_path);
         });
     }
 
@@ -123,7 +120,6 @@ public:
     }
 
     Spartan::Context*              g_context            = nullptr;
-    Spartan::ResourceCache*        g_resource_cache     = nullptr;
     Spartan::World*                g_world              = nullptr;
     Spartan::Renderer*             g_renderer           = nullptr;
     Spartan::Input*                g_input              = nullptr;
@@ -356,7 +352,7 @@ namespace imgui_extension
         {
             try
             {
-                if (const auto tex = EditorHelper::Get().g_resource_cache->Load<Spartan::RHI_Texture2D>(std::get<const char*>(payload->data)))
+                if (const auto tex = Spartan::ResourceCache::Load<Spartan::RHI_Texture2D>(std::get<const char*>(payload->data)))
                 {
                     setter(tex);
                 }

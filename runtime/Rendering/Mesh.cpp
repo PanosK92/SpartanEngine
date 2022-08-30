@@ -95,7 +95,7 @@ namespace Spartan
         {
             SetResourceFilePath(file_path);
 
-            if (m_context->GetSystem<ResourceCache>()->GetModelImporter()->Load(this, file_path))
+            if (ResourceCache::GetModelImporter()->Load(this, file_path))
             {
                 // Set the normalized scale to the root entity's transform
                 m_normalized_scale = ComputeNormalizedScale();
@@ -285,7 +285,7 @@ namespace Spartan
 
         // Try to get the texture
         const auto tex_name = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path);
-        shared_ptr<RHI_Texture> texture = m_context->GetSystem<ResourceCache>()->GetByName<RHI_Texture2D>(tex_name);
+        shared_ptr<RHI_Texture> texture = ResourceCache::GetByName<RHI_Texture2D>(tex_name);
 
         if (texture)
         {

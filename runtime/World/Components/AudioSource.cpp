@@ -107,7 +107,7 @@ namespace Spartan
 
         if (stream->ReadAs<bool>())
         {
-            m_audio_clip = m_context->GetSystem<ResourceCache>()->GetByName<AudioClip>(stream->ReadAs<string>());
+            m_audio_clip = ResourceCache::GetByName<AudioClip>(stream->ReadAs<string>());
         }
     }
 
@@ -118,7 +118,7 @@ namespace Spartan
         if (audio_clip->LoadFromFile(file_path))
         {
             // In order for the component to guarantee serialization/deserialization, we cache the audio clip
-            m_audio_clip = m_context->GetSystem<ResourceCache>()->Cache(audio_clip);
+            m_audio_clip = ResourceCache::Cache(audio_clip);
         }
     }
 

@@ -44,7 +44,7 @@ namespace Spartan
         vector<RHI_Vertex_PosTexNorTan> vertices;
         vector<uint32_t> indices;
 
-        const string project_directory = renderable->GetContext()->GetSystem<ResourceCache>()->GetProjectDirectory();
+        const string project_directory = ResourceCache::GetProjectDirectory();
 
         // Construct geometry
         if (type == DefaultGeometry::Cube)
@@ -139,7 +139,7 @@ namespace Spartan
         stream->Read(&m_bounding_box);
         string model_name;
         stream->Read(&model_name);
-        m_mesh = m_context->GetSystem<ResourceCache>()->GetByName<Mesh>(model_name).get();
+        m_mesh = ResourceCache::GetByName<Mesh>(model_name).get();
 
         // If it was a default mesh, we have to reconstruct it
         if (m_geometry_type != DefaultGeometry::Undefined)
@@ -158,7 +158,7 @@ namespace Spartan
         {
             string material_name;
             stream->Read(&material_name);
-            m_material = m_context->GetSystem<ResourceCache>()->GetByName<Material>(material_name).get();
+            m_material = ResourceCache::GetByName<Material>(material_name).get();
         }
     }
 
@@ -218,7 +218,7 @@ namespace Spartan
         SP_ASSERT(material != nullptr);
 
         // In order for the component to guarantee serialization/deserialization, we cache the material
-        shared_ptr<Material> _material = m_context->GetSystem<ResourceCache>()->Cache(material);
+        shared_ptr<Material> _material = ResourceCache::Cache(material);
 
         m_material = _material.get();
 
@@ -245,13 +245,12 @@ namespace Spartan
     void Renderable::SetDefaultMaterial()
     {
         m_material_default = true;
-        ResourceCache* resource_cache = GetContext()->GetSystem<ResourceCache>();
-        const string data_dir = resource_cache->GetResourceDirectory() + "\\";
+        const string data_dir = ResourceCache::GetDataDirectory() + "\\";
         FileSystem::CreateDirectory(data_dir);
 
         // Create material
         shared_ptr<Material> material = make_shared<Material>(GetContext());
-        material->SetResourceFilePath(resource_cache->GetProjectDirectory() + "standard" + EXTENSION_MATERIAL); // Set resource file path so it can be used by the resource cache
+        material->SetResourceFilePath(ResourceCache::GetProjectDirectory() + "standard" + EXTENSION_MATERIAL); // Set resource file path so it can be used by the resource cache
         material->SetIsEditable(false);
         material->SetProperty(MaterialProperty::UvTilingX, 10.0f);
         material->SetProperty(MaterialProperty::UvTilingY, 10.0f);
@@ -261,7 +260,7 @@ namespace Spartan
         material->SetProperty(MaterialProperty::ColorA, 1.0f);
 
         // Se default texture
-        const shared_ptr<RHI_Texture2D> texture = resource_cache->Load<RHI_Texture2D>(resource_cache->GetResourceDirectory(ResourceDirectory::Textures) + "\\no_texture.png");
+        const shared_ptr<RHI_Texture2D> texture = ResourceCache::Load<RHI_Texture2D>(ResourceCache::GetResourceDirectory(ResourceDirectory::Textures) + "\\no_texture.png");
         material->SetTexture(MaterialTexture::Color, texture);
 
         // Set material

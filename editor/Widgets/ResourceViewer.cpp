@@ -58,11 +58,10 @@ inline void print_memory(uint64_t memory)
 }
 
 void ResourceViewer::TickVisible()
-{
-    auto resource_cache             = m_context->GetSystem<ResourceCache>();
-    auto resources                  = resource_cache->GetByType();
-    const float memory_usage_cpu    = resource_cache->GetMemoryUsageCpu() / 1000.0f / 1000.0f;
-    const float memory_usage_gpu    = resource_cache->GetMemoryUsageGpu() / 1000.0f / 1000.0f;
+{ 
+    auto resources               = ResourceCache::GetByType();
+    const float memory_usage_cpu = ResourceCache::GetMemoryUsageCpu() / 1000.0f / 1000.0f;
+    const float memory_usage_gpu = ResourceCache::GetMemoryUsageGpu() / 1000.0f / 1000.0f;
 
     ImGui::Text("Resource count: %d, Memory usage cpu: %d Mb, Memory usage gpu: %d Mb", static_cast<uint32_t>(resources.size()), static_cast<uint32_t>(memory_usage_cpu), static_cast<uint32_t>(memory_usage_gpu));
     ImGui::Separator();

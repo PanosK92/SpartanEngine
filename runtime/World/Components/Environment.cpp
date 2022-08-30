@@ -39,7 +39,7 @@ namespace Spartan
 {
     Environment::Environment(Context* context, Entity* entity, uint64_t id /*= 0*/) : IComponent(context, entity, id)
     {
-        const string environment_texture_directory = GetContext()->GetSystem<ResourceCache>()->GetResourceDirectory(ResourceDirectory::Environment) + "\\";
+        const string environment_texture_directory = ResourceCache::GetResourceDirectory(ResourceDirectory::Environment) + "\\";
 
         // Default texture paths
         if (m_environment_type == EnvironmentType::Cubemap)
@@ -111,17 +111,15 @@ namespace Spartan
 
         SP_LOG_INFO("Loading sky box...");
 
-        ResourceCache* resource_cache = m_context->GetSystem<ResourceCache>();
-
         // Load all textures (sides)
         shared_ptr<RHI_Texture> texture = make_shared<RHI_TextureCube>(GetContext());
         for (uint32_t slice_index = 0; static_cast<uint32_t>(file_paths.size()); slice_index++)
         {
-            resource_cache->GetImageImporter()->Load(file_paths[slice_index], slice_index, static_cast<RHI_Texture*>(texture.get()));
+            ResourceCache::GetImageImporter()->Load(file_paths[slice_index], slice_index, static_cast<RHI_Texture*>(texture.get()));
         }
 
         // Set resource file path
-        texture->SetResourceFilePath(resource_cache->GetProjectDirectory() + "environment" + EXTENSION_TEXTURE);
+        texture->SetResourceFilePath(ResourceCache::GetProjectDirectory() + "environment" + EXTENSION_TEXTURE);
 
         // Save file path for serialization/deserialisation
         m_file_paths = { texture->GetResourceFilePath() };

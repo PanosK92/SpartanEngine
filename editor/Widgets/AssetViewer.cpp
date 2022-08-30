@@ -79,7 +79,7 @@ void AssetViewer::OnPathClicked(const std::string& path) const
 
     if (FileSystem::IsEngineMaterialFile(path))
     {
-        const auto material = m_context->GetSystem<ResourceCache>()->Load<Material>(path);
+        const auto material = ResourceCache::Load<Material>(path);
         Properties::Inspect(material);
     }
 }
