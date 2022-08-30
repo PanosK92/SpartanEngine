@@ -88,7 +88,6 @@ void IconProvider::Initialize(Context* context)
         LoadFromFile(data_dir + "Icons/txt.png",                              IconType::Directory_File_Txt);
         LoadFromFile(data_dir + "Icons/ini.png",                              IconType::Directory_File_Ini);
         LoadFromFile(data_dir + "Icons/exe.png",                              IconType::Directory_File_Exe);
-        LoadFromFile(data_dir + "Icons/script.png",                           IconType::Directory_File_Script);
         LoadFromFile(data_dir + "Icons/font.png",                             IconType::Directory_File_Font);
         LoadFromFile(data_dir + "Icons/texture.png",                          IconType::Directory_File_Texture);
     });

@@ -33,7 +33,7 @@ using namespace std;
 
 namespace Spartan
 {
-    RHI_Shader::RHI_Shader(Context* context) : SpartanObject(context)
+    RHI_Shader::RHI_Shader(Context* context) : SP_Object(context)
     {
         m_rhi_device = context->GetSystem<Renderer>()->GetRhiDevice();
     }

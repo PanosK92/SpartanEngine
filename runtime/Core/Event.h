@@ -62,15 +62,15 @@ enum class EventType
     RendererPostPresent,
     RendererOnShutdown,
     // World
-    WorldSaveStart, // The world is about to be saved to a file
-    WorldSavedEnd,  // The world finished saving to file
-    WorldLoadStart, // The world is about to be loaded from a file
-    WorldLoadEnd,   // The world finished loading from file
-    WorldClear,     // The world is about to clear everything
-    WorldResolve,   // The world is resolving
-    WorldResolved,  // The world has finished resolving
-    // SDL
-    EventSDL, // An SDL event
+    WorldSaveStart,               // The world is about to be saved to a file
+    WorldSavedEnd,                // The world finished saving to file
+    WorldLoadStart,               // The world is about to be loaded from a file
+    WorldLoadEnd,                 // The world finished loading from file
+    WorldClear,                   // The world is about to clear everything
+    WorldResolve,                 // The world is resolving
+    WorldResolved,                // The world has finished resolving
+    // SDL                        
+    EventSDL,                     // An SDL event
     // Window
     WindowOnFullScreenToggled
 };
@@ -85,8 +85,5 @@ namespace Spartan
         static void Shutdown();
         static void Subscribe(const EventType event_id, subscriber&& function);
         static void Fire(const EventType event_id, const Variant& data = 0);
-
-    private:
-        static std::array<std::vector<subscriber>, 12> m_event_subscribers;
     };
 }
