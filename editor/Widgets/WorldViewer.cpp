@@ -78,14 +78,14 @@ static void load_default_world_startup_window(World* world)
         // Set position
         ImVec2 position     = ImVec2(Spartan::Display::GetWidth() * 0.5f, Spartan::Display::GetHeight() * 0.5f);
         ImVec2 pivot_center = ImVec2(0.5f, 0.5f);
-        ImGui::SetNextWindowPos(position, ImGuiCond_Always, pivot_center);
+        ImGui::SetNextWindowPos(position, ImGuiCond_Appearing, pivot_center);
 
         // Begin
-        if (ImGui::Begin("##load_default_world", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_AlwaysAutoResize))
+        if (ImGui::Begin("Default World", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse))
         {
             ImGui::Text("Would you like to load a default world?");
 
-            if (ImGui::Button("Yes"))
+            if (imgui_extension::button_centered_on_line("Yes", 0.4f))
             {
                 is_visible = false;
                 ThreadPool::AddTask([world]()

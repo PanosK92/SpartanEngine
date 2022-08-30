@@ -31,6 +31,9 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
+    static std::array<Progress, 3> m_progresses;
+    static std::mutex m_mutex_progress_access;
+
     void Progress::Start(const uint32_t job_count, const std::string& text)
     {
         SP_ASSERT_MSG(GetFraction() == 1.0f, "The previous one hasn't finished");
@@ -70,12 +73,9 @@ namespace Spartan
         m_text = text;
     }
 
-    std::array<Progress, 3> ProgressTracker::m_progresses;
-    std::mutex ProgressTracker::m_mutex_progress_access;
-
-    Progress& ProgressTracker::GetProgressInternal(const ProgressType progress_type)
+    Progress& ProgressTracker::GetProgress(const ProgressType progress_type)
     {
         lock_guard lock(m_mutex_progress_access);
-        return  m_progresses[static_cast<uint32_t>(progress_type)];
+        return m_progresses[static_cast<uint32_t>(progress_type)];
     }
 }

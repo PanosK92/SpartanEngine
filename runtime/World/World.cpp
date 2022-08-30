@@ -34,13 +34,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Components/Collider.h"
 #include "TransformHandle/TransformHandle.h"
 #include "../Resource/ResourceCache.h"
-#include "../Resource/ProgressTracker.h"
+#include "../Core/ProgressTracker.h"
+#include "../Core/ThreadPool.h"
 #include "../IO/FileStream.h"
 #include "../Profiling/Profiler.h"
 #include "../Input/Input.h"
 #include "../RHI/RHI_Device.h"
 #include "../Rendering/Renderer.h"
-#include "../Core/ThreadPool.h"
 //==========================================
 
 //= NAMESPACES ================
