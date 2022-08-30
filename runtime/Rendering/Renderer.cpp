@@ -104,7 +104,7 @@ namespace Spartan
         SP_FIRE_EVENT(EventType::RendererOnShutdown);
 
         // Log to file as the renderer is no more
-        Log::m_log_to_file = true;
+        Log::SetLogToFile(true);
 
         RHI_RenderDoc::Shutdown();
         RHI_FSR2::Destroy();
@@ -178,7 +178,7 @@ namespace Spartan
         // After the first frame has completed, we can be sure that the renderer is working.
         if (m_frame_num == 1)
         {
-           Log::m_log_to_file = false;
+            Log::SetLogToFile(false);
            SP_FIRE_EVENT(EventType::RendererOnFirstFrameCompleted);
         }
 

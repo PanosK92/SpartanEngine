@@ -72,7 +72,7 @@ namespace Spartan
     public:
         Log() = default;
 
-        // Set an ILogger object to handle writting logs
+        // Set an ILogger object to handle writing logs
         static void SetLogger(ILogger* logger);
 
         // Alpha
@@ -116,11 +116,7 @@ namespace Spartan
         static void Write(const std::weak_ptr<Entity>& entity, LogType type);
         static void Write(const std::shared_ptr<Entity>& entity, LogType type);
 
-        static bool m_log_to_file;
-
-    private:
-        static void FlushBuffer();
-        static void LogString(const char* text, LogType type);
-        static void LogToFile(const char* text, LogType type);
+        // Misc
+        static void SetLogToFile(const bool log_to_file);
     };
 }
