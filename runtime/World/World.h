@@ -58,6 +58,7 @@ namespace Spartan
         bool SaveToFile(const std::string& filePath);
         bool LoadFromFile(const std::string& file_path);
         void Resolve() { m_resolve = true; }
+        void CreateDefaultWorld();
         const std::string GetName()      const { return m_name; }
         const std::string& GetFilePath() const { return m_file_path; }
 
@@ -79,7 +80,6 @@ namespace Spartan
     private:
         void Clear();
         void _EntityRemove(const std::shared_ptr<Entity>& entity);
-        void CreateDefaultWorld();
 
         std::vector<std::shared_ptr<Entity>> m_entities_to_add;
         std::vector<std::shared_ptr<Entity>> m_entities;

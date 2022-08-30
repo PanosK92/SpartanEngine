@@ -31,8 +31,9 @@ namespace Spartan
 {
     class Context;
 
+    // A subsystem is is any core engine system that ticks (Renderer, Physics, Input etc.)
     class SPARTAN_CLASS Subsystem : public std::enable_shared_from_this<Subsystem>
-    {        
+    {
     public:
         Subsystem(Context* context) { m_context = context; }
         virtual ~Subsystem() = default;
