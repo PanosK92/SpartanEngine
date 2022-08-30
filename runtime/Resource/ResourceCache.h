@@ -97,7 +97,6 @@ namespace Spartan
             if (IsCached(resource->GetResourceName(), resource->GetResourceType()))
                 return GetByName<T>(resource->GetResourceName());
 
-            // Prevent threads from colliding in critical section
             std::lock_guard<std::mutex> guard(m_mutex);
 
             // In order to guarantee deserialization, we save it now
@@ -109,7 +108,7 @@ namespace Spartan
 
         // Loads a resource and adds it to the resource cache
         template <class T>
-        static std::shared_ptr<T> Load(const std::string& file_path)
+        static std::shared_ptr<T> Load(const std::string& file_path, uint32_t flags = 0)
         {
             if (!FileSystem::Exists(file_path))
             {
@@ -123,20 +122,25 @@ namespace Spartan
                 return GetByName<T>(name);
 
             // Create new resource
-            auto typed = std::make_shared<T>(m_context);
+            std::shared_ptr<T> resource = std::make_shared<T>(m_context);
+
+            if (flags != 0)
+            {
+                resource->SetFlags(flags);
+            }
 
             // Set a default file path in case it's not overridden by LoadFromFile()
-            typed->SetResourceFilePath(file_path);
+            resource->SetResourceFilePath(file_path);
 
             // Load
-            if (!typed || !typed->LoadFromFile(file_path))
+            if (!resource || !resource->LoadFromFile(file_path))
             {
                 SP_LOG_ERROR("Failed to load \"%s\".", file_path.c_str());
                 return nullptr;
             }
 
             // Returned cached reference which is guaranteed to be around after deserialization
-            return Cache<T>(typed);
+            return Cache<T>(resource);
         }
 
         template <class T>

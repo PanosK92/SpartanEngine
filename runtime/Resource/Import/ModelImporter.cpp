@@ -458,10 +458,10 @@ namespace Spartan
         for (uint32_t i = 0; i < node->mNumChildren; i++)
         {
             // Any subsequent nodes are processed in another thread
-            //m_context->GetSubsystem<Threading>()->AddTask([this, i, node, entity]()
-            //{
+            ThreadPool::AddTask([this, i, node, entity]()
+            {
                 ParseNode(node->mChildren[i], entity);
-            //});
+            });
         }
 
         // Update progress tracking
