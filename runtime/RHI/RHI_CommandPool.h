@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES =====================
-#include "../Core/SP_Object.h"
+#include "../Core/Object.h"
 #include "RHI_Definition.h"
 #include "RHI_CommandList.h"
 #include <vector>
@@ -30,7 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-    class RHI_CommandPool : public SP_Object
+    class RHI_CommandPool : public Object
     {
     public:
         RHI_CommandPool(RHI_Device* rhi_device, const char* name, const uint64_t swap_chain_id);

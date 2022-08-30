@@ -35,11 +35,11 @@ namespace Spartan
     // Globals
     extern uint64_t g_id;
 
-    class SP_CLASS SP_Object
+    class SP_CLASS Object
     {
     public:
-        SP_Object(Context* context = nullptr);
-
+        Object(Context* context = nullptr);
+        
         // Name
         const std::string& GetName()    const { return m_name; }
         void SetName(const std::string& name) { m_name = name; }

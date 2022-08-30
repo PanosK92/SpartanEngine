@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <any>
 #include <vector>
 #include <functional>
-#include "../../Core/SP_Object.h"
+#include "../../Core/Object.h"
 //===================================
 
 namespace Spartan
@@ -61,7 +61,7 @@ namespace Spartan
         std::function<void(std::any)> setter;
     };
 
-    class SP_CLASS IComponent : public SP_Object, public std::enable_shared_from_this<IComponent>
+    class SP_CLASS IComponent : public Object, public std::enable_shared_from_this<IComponent>
     {
     public:
         IComponent(Context* context, Entity* entity, uint64_t id = 0, Transform* transform = nullptr);

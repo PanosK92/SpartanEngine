@@ -24,12 +24,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =====================
 #include <memory>
 #include "RHI_Definition.h"
-#include "../Core/SP_Object.h"
+#include "../Core/Object.h"
 //================================
 
 namespace Spartan
 {
-    class SP_CLASS RHI_DepthStencilState : public SP_Object
+    class SP_CLASS RHI_DepthStencilState : public Object
     {
     public:
         RHI_DepthStencilState() = default;

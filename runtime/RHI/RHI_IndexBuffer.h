@@ -23,12 +23,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =====================
 #include <vector>
-#include "../Core/SP_Object.h"
+#include "../Core/Object.h"
 //================================
 
 namespace Spartan
 {
-    class RHI_IndexBuffer : public SP_Object
+    class RHI_IndexBuffer : public Object
     {
     public:
         RHI_IndexBuffer() = default;

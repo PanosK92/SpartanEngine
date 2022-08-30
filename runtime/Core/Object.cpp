@@ -19,16 +19,16 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =============
+//= INCLUDES ======
 #include "pch.h"
-#include "SP_Object.h"
-//========================
+#include "Object.h"
+//=================
 
 namespace Spartan
 {
     uint64_t g_id = 0;
 
-    SP_Object::SP_Object(Context* context /*= nullptr*/)
+    Object::Object(Context* context /*= nullptr*/)
     {
         m_context   = context;
         m_object_id = GenerateObjectId();
