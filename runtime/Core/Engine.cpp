@@ -66,7 +66,6 @@ namespace Spartan
         {
             // Static
             ThreadPool::Initialize();
-            Settings::Initialize(m_context.get());
             ResourceCache::Initialize(m_context.get());
 
             // Context
@@ -82,7 +81,7 @@ namespace Spartan
             m_context->OnPostInitialize();
 
             // Static
-            Settings::PostInitialize();
+            Settings::PostInitialize(m_context.get());
         }
         SP_LOG_INFO("System post-initialization took %.1f ms", timer_post_initialize.GetElapsedTimeMs());
     }

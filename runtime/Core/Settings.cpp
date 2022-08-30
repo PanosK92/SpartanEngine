@@ -36,35 +36,6 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    namespace io_helper
-    {
-        ofstream fout;
-        ifstream fin;
-        string file_name = "spartan.ini";
-    
-        template <class T>
-        void write_setting(ofstream& fout, const string& name, T value)
-        {
-            fout << name << "=" << value << endl;
-        }
-    
-        template <class T>
-        void read_setting(ifstream& fin, const string& name, T& value)
-        {
-            for (string line; getline(fin, line); )
-            {
-                const auto first_index = line.find_first_of('=');
-                if (name == line.substr(0, first_index))
-                {
-                    const auto lastindex = line.find_last_of('=');
-                    const auto read_value = line.substr(lastindex + 1, line.length());
-                    value = static_cast<T>(stof(read_value));
-                    return;
-                }
-            }
-        }
-    }
-    
     static bool m_is_fullscreen            = false;
     static bool m_is_mouse_visible         = true;
     static Vector2 m_resolution_output     = Vector2::Zero;
@@ -73,111 +44,85 @@ namespace Spartan
     static double m_fps_limit              = 0;
     static bool m_has_loaded_user_settings = false;
     static Context* m_context              = nullptr;
+    string file_path                       = "spartan.ini";
+    ofstream fout;
+    ifstream fin;
     static std::array<float, 32> m_render_options;
     static std::vector<third_party_lib> m_third_party_libs;
 
-    void Settings::Initialize(Context* context)
+    template <class T>
+    void write_setting(const string& name, T value)
     {
-        m_context = context;
-
-        // In case no Spartan.ini file exists, set the resolution to whatever the display is using.
-        m_resolution_output.x = static_cast<float>(Display::GetWidth());
-        m_resolution_output.y = static_cast<float>(Display::GetHeight());
-        m_resolution_render = m_resolution_output;
-
-        // Register third party libs which don't register on their own as they are not part of some other initialization procedure
-        RegisterThirdPartyLib("pugixml", "1.11.4",                   "https://github.com/zeux/pugixml");
-        RegisterThirdPartyLib("SPIRV-Cross", "03-06-2022",           "https://github.com/KhronosGroup/SPIRV-Cross");
-        RegisterThirdPartyLib("DirectXShaderCompiler", "1.7.2207.3", "https://github.com/microsoft/DirectXShaderCompiler");
+        fout << name << "=" << value << endl;
     }
 
-    void Settings::PostInitialize()
+    template <class T>
+    void read_setting(const string& name, T& value)
     {
-        // We are in initialising during OnPreTick() as
-        // we need all the subsystems to be initialized
-        Reflect();
-
-        if (FileSystem::Exists(io_helper::file_name))
+        for (string line; getline(fin, line); )
         {
-            Load();
-            Map();
+            const auto first_index = line.find_first_of('=');
+            if (name == line.substr(0, first_index))
+            {
+                const auto lastindex = line.find_last_of('=');
+                const auto read_value = line.substr(lastindex + 1, line.length());
+                value = static_cast<T>(stof(read_value));
+                return;
+            }
         }
-        else
-        {
-            Save();
-        }
-
-        SP_LOG_INFO("FPS Limit: %f.", m_fps_limit);
-        SP_LOG_INFO("Max threads: %d.", m_max_thread_count);
-    }
-    
-    void Settings::Shutdown()
-    {
-        Reflect();
-        Save();
     }
 
-    void Settings::RegisterThirdPartyLib(const std::string& name, const std::string& version, const std::string& url)
-    {
-        m_third_party_libs.emplace_back(name, version, url);
-    }
-
-    const vector<third_party_lib>& Settings::GetThirdPartyLibs()
-    {
-        return m_third_party_libs;
-    }
-
-    void Settings::Save()
+    static void save()
     {
         // Create a settings file
-        io_helper::fout.open(io_helper::file_name, ofstream::out);
+        fout.open(file_path, ofstream::out);
 
         // Write the settings
-        io_helper::write_setting(io_helper::fout, "bFullScreen",             m_is_fullscreen);
-        io_helper::write_setting(io_helper::fout, "bIsMouseVisible",         m_is_mouse_visible);
-        io_helper::write_setting(io_helper::fout, "iResolutionOutputWidth",  m_resolution_output.x);
-        io_helper::write_setting(io_helper::fout, "iResolutionOutputHeight", m_resolution_output.y);
-        io_helper::write_setting(io_helper::fout, "iResolutionRenderWidth",  m_resolution_render.x);
-        io_helper::write_setting(io_helper::fout, "iResolutionRenderHeight", m_resolution_render.y);
-        io_helper::write_setting(io_helper::fout, "fFPSLimit",               m_fps_limit);
-        io_helper::write_setting(io_helper::fout, "iMaxThreadCount",         m_max_thread_count);
+        write_setting("bFullScreen",             m_is_fullscreen);
+        write_setting("bIsMouseVisible",         m_is_mouse_visible);
+        write_setting("iResolutionOutputWidth",  m_resolution_output.x);
+        write_setting("iResolutionOutputHeight", m_resolution_output.y);
+        write_setting("iResolutionRenderWidth",  m_resolution_render.x);
+        write_setting("iResolutionRenderHeight", m_resolution_render.y);
+        write_setting("fFPSLimit",               m_fps_limit);
+        write_setting("iMaxThreadCount",         m_max_thread_count);
 
         for (uint32_t i = 0; i < static_cast<uint32_t>(m_render_options.size()); i++)
         {
-            io_helper::write_setting(io_helper::fout, "render_option_" + to_string(i), m_render_options[i]);
+            write_setting("render_option_" + to_string(i), m_render_options[i]);
         }
 
         // Close the file.
-        io_helper::fout.close();
+        fout.close();
     }
 
-    void Settings::Load()
+    static void load()
     {
         // Create a settings file
-        io_helper::fin.open(io_helper::file_name, ifstream::in);
+        fin.open(file_path, ifstream::in);
 
         // Read the settings
-        io_helper::read_setting(io_helper::fin, "bFullScreen",             m_is_fullscreen);
-        io_helper::read_setting(io_helper::fin, "bIsMouseVisible",         m_is_mouse_visible);
-        io_helper::read_setting(io_helper::fin, "iResolutionOutputWidth",  m_resolution_output.x);
-        io_helper::read_setting(io_helper::fin, "iResolutionOutputHeight", m_resolution_output.y);
-        io_helper::read_setting(io_helper::fin, "iResolutionRenderWidth",  m_resolution_render.x);
-        io_helper::read_setting(io_helper::fin, "iResolutionRenderHeight", m_resolution_render.y);
-        io_helper::read_setting(io_helper::fin, "fFPSLimit",               m_fps_limit);
-        io_helper::read_setting(io_helper::fin, "iMaxThreadCount",         m_max_thread_count);
+        read_setting("bFullScreen",             m_is_fullscreen);
+        read_setting("bIsMouseVisible",         m_is_mouse_visible);
+        read_setting("iResolutionOutputWidth",  m_resolution_output.x);
+        read_setting("iResolutionOutputHeight", m_resolution_output.y);
+        read_setting("iResolutionRenderWidth",  m_resolution_render.x);
+        read_setting("iResolutionRenderHeight", m_resolution_render.y);
+        read_setting("fFPSLimit",               m_fps_limit);
+        read_setting("iMaxThreadCount",         m_max_thread_count);
 
         for (uint32_t i = 0; i < static_cast<uint32_t>(m_render_options.size()); i++)
         {
-            io_helper::read_setting(io_helper::fin, "render_option_" + to_string(i), m_render_options[i]);
+            read_setting("render_option_" + to_string(i), m_render_options[i]);
         }
 
         // Close the file.
-        io_helper::fin.close();
+        fin.close();
 
         m_has_loaded_user_settings = true;
     }
 
-    void Settings::Map()
+    static void map()
     {
         if (Timer* timer = m_context->GetSystem<Timer>())
         {
@@ -205,7 +150,7 @@ namespace Spartan
         }
     }
 
-    void Settings::Reflect()
+    static void Reflect()
     {
         Renderer* renderer = m_context->GetSystem<Renderer>();
 
@@ -216,5 +161,48 @@ namespace Spartan
         m_resolution_output = renderer->GetResolutionOutput();
         m_resolution_render = renderer->GetResolutionRender();
         m_render_options    = renderer->GetOptions();
+    }
+
+    void Settings::PostInitialize(Context* context)
+    {
+        m_context = context;
+
+        // Register third party libs which don't register on their own as they are not part of some other initialization procedure
+        RegisterThirdPartyLib("pugixml", "1.11.4", "https://github.com/zeux/pugixml");
+        RegisterThirdPartyLib("SPIRV-Cross", "03-06-2022", "https://github.com/KhronosGroup/SPIRV-Cross");
+        RegisterThirdPartyLib("DirectXShaderCompiler", "1.7.2207.3", "https://github.com/microsoft/DirectXShaderCompiler");
+
+        // We are in initialising during OnPreTick() as
+        // we need all the subsystems to be initialized
+        Reflect();
+
+        if (FileSystem::Exists(file_path))
+        {
+            load();
+            map();
+        }
+        else
+        {
+            save();
+        }
+
+        SP_LOG_INFO("FPS Limit: %f.", m_fps_limit);
+        SP_LOG_INFO("Max threads: %d.", m_max_thread_count);
+    }
+    
+    void Settings::Shutdown()
+    {
+        Reflect();
+        save();
+    }
+
+    void Settings::RegisterThirdPartyLib(const std::string& name, const std::string& version, const std::string& url)
+    {
+        m_third_party_libs.emplace_back(name, version, url);
+    }
+
+    const vector<third_party_lib>& Settings::GetThirdPartyLibs()
+    {
+        return m_third_party_libs;
     }
 }
