@@ -79,7 +79,7 @@ namespace Spartan
 
     private:
         void Clear();
-        void _EntityRemove(const std::shared_ptr<Entity>& entity);
+        void _EntityRemove(Entity* entity);
 
         std::vector<std::shared_ptr<Entity>> m_entities_to_add;
         std::vector<std::shared_ptr<Entity>> m_entities;
