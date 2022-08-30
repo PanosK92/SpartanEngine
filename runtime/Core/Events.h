@@ -22,8 +22,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ===============
-#include <unordered_map>
 #include <vector>
+#include <array>
 #include <functional>
 #include "../Core/Variant.h"
 //==========================
@@ -49,10 +49,10 @@ Note: This is a blocking event system
 #define SP_EVENT_HANDLER_VARIANT(function)           [this](const Spartan::Variant& var)    { function(var); }
 #define SP_EVENT_HANDLER_VARIANT_STATIC(function)    [](const Spartan::Variant& var)        { function(var); }
                                                      
-#define SP_FIRE_EVENT(eventID)                       Spartan::EventSystem::Get().Fire(eventID)
-#define SP_FIRE_EVENT_DATA(eventID, data)            Spartan::EventSystem::Get().Fire(eventID, data)
+#define SP_FIRE_EVENT(eventID)                       Spartan::Events::Fire(eventID)
+#define SP_FIRE_EVENT_DATA(eventID, data)            Spartan::Events::Fire(eventID, data)
                                                      
-#define SP_SUBSCRIBE_TO_EVENT(eventID, function)     Spartan::EventSystem::Get().Subscribe(eventID, function);
+#define SP_SUBSCRIBE_TO_EVENT(eventID, function)     Spartan::Events::Subscribe(eventID, function);
 //============================================================================================================
 
 enum class EventType
@@ -79,37 +79,14 @@ namespace Spartan
 {
     using subscriber = std::function<void(const Variant&)>;
 
-    class SP_CLASS EventSystem
+    class SP_CLASS Events
     {
     public:
-        static EventSystem& Get()
-        {
-            static EventSystem instance;
-            return instance;
-        }
-
-        void Subscribe(const EventType event_id, subscriber&& function)
-        {
-            m_subscribers[event_id].push_back(std::forward<subscriber>(function));
-        }
-
-        void Fire(const EventType event_id, const Variant& data = 0)
-        {
-            if (m_subscribers.find(event_id) == m_subscribers.end())
-                return;
-
-            for (const auto& subscriber : m_subscribers[event_id])
-            {
-                subscriber(data);
-            }
-        }
-
-        void Clear()
-        {
-            m_subscribers.clear();
-        }
+        static void Shutdown();
+        static void Subscribe(const EventType event_id, subscriber&& function);
+        static void Fire(const EventType event_id, const Variant& data = 0);
 
     private:
-        std::unordered_map<EventType, std::vector<subscriber>> m_subscribers;
+        static std::array<std::vector<subscriber>, 12> m_event_subscribers;
     };
 }

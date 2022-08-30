@@ -79,11 +79,12 @@ namespace Spartan
 
     Engine::~Engine()
     {
-        // Subsystem: Shutdown.
+        // Shutdown systems
         m_context->OnShutdown();
 
-        EventSystem::Get().Clear();
+        // Shutdown static systems
         Threading::Shutdown();
+        Events::Shutdown();
     }
 
     void Engine::Tick() const

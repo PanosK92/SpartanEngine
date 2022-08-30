@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <vector>
 #include "ImGui_RHI.h"
 #include "../Source/imgui.h"
-#include "Core/EventSystem.h"
+#include "Core/Events.h"
 #include "Rendering/Renderer.h"
 #include "RHI/RHI_Device.h"
 #include "RHI/RHI_Shader.h"
