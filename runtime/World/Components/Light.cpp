@@ -66,7 +66,7 @@ namespace Spartan
             SetIntensity(LightIntensity::average_flashlight);
         }
 
-        m_renderer = m_context->GetSubsystem<Renderer>();
+        m_renderer = m_context->GetSystem<Renderer>();
     }
 
     void Light::OnInitialize()
@@ -191,7 +191,7 @@ namespace Spartan
             CreateShadowMap();
         }
 
-        m_context->GetSubsystem<World>()->Resolve();
+        m_context->GetSystem<World>()->Resolve();
     }
 
     void Light::SetColor(const float temperature)

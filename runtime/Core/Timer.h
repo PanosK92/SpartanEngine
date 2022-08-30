@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ==========
-#include "Subsystem.h"
+#include "ISystem.h"
 #include <chrono>
 //=====================
 
@@ -37,7 +37,7 @@ namespace Spartan
         FixedToMonitor
     };
 
-    class SPARTAN_CLASS Timer : public Subsystem
+    class SP_CLASS Timer : public ISystem
     {
     public:
         Timer(Context* context);

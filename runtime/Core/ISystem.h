@@ -31,12 +31,12 @@ namespace Spartan
 {
     class Context;
 
-    // A subsystem is is any core engine system that ticks (Renderer, Physics, Input etc.)
-    class SPARTAN_CLASS Subsystem : public std::enable_shared_from_this<Subsystem>
+    // Any system that needs to tick can be derived from the system class
+    class SP_CLASS ISystem : public std::enable_shared_from_this<ISystem>
     {
     public:
-        Subsystem(Context* context) { m_context = context; }
-        virtual ~Subsystem() = default;
+        ISystem(Context* context) { m_context = context; }
+        virtual ~ISystem() = default;
 
         // Runs when the subsystems need to initialize.
         virtual void OnInitialise() {}
@@ -64,5 +64,5 @@ namespace Spartan
     };
 
     template<typename T>
-    constexpr void validate_subsystem_type() { static_assert(std::is_base_of<Subsystem, T>::value, "Provided type does not implement ISubystem"); }
+    constexpr void validate_subsystem_type() { static_assert(std::is_base_of<ISystem, T>::value, "Provided type does not implement ISubystem"); }
 }

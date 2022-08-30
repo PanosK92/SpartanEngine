@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <vector>
 #include <memory>
 #include <string>
-#include "../Core/Subsystem.h"
+#include "../Core/ISystem.h"
 #include "../Core/SpartanDefinitions.h"
 #include "../Math/Vector3.h"
 #include "../Rendering/Mesh.h"
@@ -41,7 +41,7 @@ namespace Spartan
     class TransformHandle;
     //====================
 
-    class SPARTAN_CLASS World : public Subsystem
+    class SP_CLASS World : public ISystem
     {
     public:
         World(Context* context);

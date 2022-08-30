@@ -51,14 +51,14 @@ namespace Spartan
     
         if (vkCreateSampler(m_rhi_device->GetRhiContext()->device, &sampler_info, nullptr, reinterpret_cast<VkSampler*>(&m_rhi_resource)) != VK_SUCCESS)
         {
-            LOG_ERROR("Failed to create sampler");
+            SP_LOG_ERROR("Failed to create sampler");
         }
     }
 
     RHI_Sampler::~RHI_Sampler()
     {
         // Discard the current command list in case it's referencing the sampler.
-        if (Renderer* renderer = m_rhi_device->GetContext()->GetSubsystem<Renderer>())
+        if (Renderer* renderer = m_rhi_device->GetContext()->GetSystem<Renderer>())
         {
             if (RHI_CommandList* cmd_list = renderer->GetCmdList())
             {

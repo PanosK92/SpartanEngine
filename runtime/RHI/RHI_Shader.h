@@ -36,7 +36,7 @@ namespace Spartan
     // Forward declarations
     class Context;
 
-    class SPARTAN_CLASS RHI_Shader : public SpartanObject
+    class SP_CLASS RHI_Shader : public SpartanObject
     {
     public:
         RHI_Shader() = default;

@@ -32,7 +32,7 @@ Widget::Widget(Editor* editor)
 {
     m_editor   = editor;
     m_context  = editor->GetContext();
-    m_profiler = m_context->GetSubsystem<Spartan::Profiler>();
+    m_profiler = m_context->GetSystem<Spartan::Profiler>();
     m_window   = nullptr;
 }
 

@@ -32,7 +32,7 @@ namespace Spartan
     class Renderable;
     //====================
 
-    class SPARTAN_CLASS ReflectionProbe : public IComponent
+    class SP_CLASS ReflectionProbe : public IComponent
     {
     public:
         ReflectionProbe(Context* context, Entity* entity, uint64_t id = 0);

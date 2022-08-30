@@ -34,7 +34,7 @@ namespace Spartan
     class Context;
     class Transform;
 
-    class SPARTAN_CLASS Grid
+    class SP_CLASS Grid
     {
     public:
         Grid(RHI_Device* rhi_device);

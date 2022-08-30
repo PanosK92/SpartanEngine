@@ -44,14 +44,14 @@ using namespace std;
 
 namespace Spartan
 {
-    Window::Window(Context* context) : Subsystem(context)
+    Window::Window(Context* context) : ISystem(context)
     {
         // Initialise video subsystem (if needed)
         if (SDL_WasInit(SDL_INIT_VIDEO) != 1)
         {
             if (SDL_InitSubSystem(SDL_INIT_VIDEO) != 0)
             {
-                LOG_ERROR("Failed to initialise SDL video subsystem: %s.", SDL_GetError());
+                SP_LOG_ERROR("Failed to initialise SDL video subsystem: %s.", SDL_GetError());
                 return;
             }
         }
@@ -61,7 +61,7 @@ namespace Spartan
         {
             if (SDL_InitSubSystem(SDL_INIT_EVENTS) != 0)
             {
-                LOG_ERROR("Failed to initialise SDL events subsystem: %s.", SDL_GetError());
+                SP_LOG_ERROR("Failed to initialise SDL events subsystem: %s.", SDL_GetError());
                 return;
             }
         }
@@ -83,7 +83,7 @@ namespace Spartan
 
         if (!m_window)
         {
-            LOG_ERROR("Could not create window: %s.", SDL_GetError());
+            SP_LOG_ERROR("Could not create window: %s.", SDL_GetError());
             return;
         }
 
@@ -166,10 +166,10 @@ namespace Spartan
                     //Window had a hit test that wasn't SDL_HITTEST_NORMAL.
                     break;
                 case SDL_WINDOWEVENT_ICCPROF_CHANGED:
-                    LOG_INFO("The ICC profile of the window's display has changed");
+                    SP_LOG_INFO("The ICC profile of the window's display has changed");
                     break;
                 default:
-                    LOG_ERROR("Unhandled window event");
+                    SP_LOG_ERROR("Unhandled window event");
                     break;
                 }
             }
@@ -178,7 +178,7 @@ namespace Spartan
         }
 
         // Handle shortcuts
-        if (Input* input = m_context->GetSubsystem<Input>())
+        if (Input* input = m_context->GetSystem<Input>())
         {
             // Toggle full screen
             if (input->GetKey(KeyCode::Alt_Right) && input->GetKeyDown(KeyCode::Enter))
@@ -192,7 +192,7 @@ namespace Spartan
     {
         // Register library
         string version = to_string(SDL_MAJOR_VERSION) + "." + to_string(SDL_MINOR_VERSION) + "." + to_string(SDL_PATCHLEVEL);
-        m_context->GetSubsystem<Settings>()->RegisterThirdPartyLib("SDL", version, "https://www.libsdl.org/");
+        m_context->GetSystem<Settings>()->RegisterThirdPartyLib("SDL", version, "https://www.libsdl.org/");
     }
 
     void Window::Show()
@@ -220,7 +220,7 @@ namespace Spartan
     {
         SP_ASSERT(m_window != nullptr);
 
-        LOG_INFO("Entering full screen mode...");
+        SP_LOG_INFO("Entering full screen mode...");
 
         SDL_SetWindowFullscreen(m_window, SDL_WINDOW_FULLSCREEN);
         m_fullscreen = true;
@@ -230,7 +230,7 @@ namespace Spartan
     {
         SP_ASSERT(m_window != nullptr);
 
-        LOG_INFO("Entering windowed mode...");
+        SP_LOG_INFO("Entering windowed mode...");
 
         SDL_SetWindowFullscreen(m_window, 0);
         m_fullscreen = false;

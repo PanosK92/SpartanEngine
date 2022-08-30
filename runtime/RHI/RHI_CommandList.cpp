@@ -46,7 +46,7 @@ namespace Spartan
         {
             if (log_on_wait)
             {
-                LOG_WARNING("Waiting for command list \"%s\" to finish executing...", m_name.c_str());
+                SP_LOG_WARNING("Waiting for command list \"%s\" to finish executing...", m_name.c_str());
             }
 
             SP_ASSERT_MSG(m_proccessed_fence->Wait(), "Timed out while waiting for the fence");
@@ -92,7 +92,7 @@ namespace Spartan
     {
         if (!pipeline_state.IsValid())
         {
-            LOG_ERROR("Invalid pipeline state");
+            SP_LOG_ERROR("Invalid pipeline state");
             descriptors.clear();
             return;
         }

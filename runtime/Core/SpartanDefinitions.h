@@ -12,12 +12,12 @@ constexpr int sp_version_revision = 3;
     #pragma warn "SP_OPTIMISE and SP_WARNINGS are not implemented for clang"
 
     // Class
-    #define SPARTAN_CLASS
+    #define SP_CLASS
     #if SPARTAN_RUNTIME_SHARED == 1
         #ifdef SPARTAN_RUNTIME
-            #define SPARTAN_CLASS __attribute__((visibility("default")))
+            #define SP_CLASS __attribute__((visibility("default")))
         #else
-            #define SPARTAN_CLASS 
+            #define SP_CLASS 
         #endif
     #endif
 
@@ -34,12 +34,12 @@ constexpr int sp_version_revision = 3;
     #include <signal.h>
 
     // Class
-    #define SPARTAN_CLASS
+    #define SP_CLASS
     #if SPARTAN_RUNTIME_SHARED == 1
         #ifdef SPARTAN_RUNTIME
-            #define SPARTAN_CLASS __attribute__((visibility("default")))
+            #define SP_CLASS __attribute__((visibility("default")))
         #else
-            #define SPARTAN_CLASS 
+            #define SP_CLASS 
         #endif
     #endif
 
@@ -56,12 +56,12 @@ constexpr int sp_version_revision = 3;
     #define SP_DEBUG_BREAK() raise(SIGTRAP)
 #elif defined(_MSC_VER)
     // Class
-    #define SPARTAN_CLASS
+    #define SP_CLASS
     #if SPARTAN_RUNTIME_SHARED == 1
         #ifdef SPARTAN_RUNTIME
-            #define SPARTAN_CLASS __declspec(dllexport)
+            #define SP_CLASS __declspec(dllexport)
         #else
-            #define SPARTAN_CLASS __declspec(dllimport)
+            #define SP_CLASS __declspec(dllimport)
         #endif
     #endif
 

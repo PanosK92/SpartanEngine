@@ -34,7 +34,7 @@ namespace Spartan
     class RHI_Device;
     class RHI_ConstantBuffer;
 
-    class SPARTAN_CLASS Transform : public IComponent
+    class SP_CLASS Transform : public IComponent
     {
     public:
         Transform(Context* context, Entity* entity, uint64_t id = 0);

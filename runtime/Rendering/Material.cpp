@@ -39,7 +39,7 @@ namespace Spartan
 {
     Material::Material(Context* context) : IResource(context, ResourceType::Material)
     {
-        m_rhi_device = context->GetSubsystem<Renderer>()->GetRhiDevice();
+        m_rhi_device = context->GetSystem<Renderer>()->GetRhiDevice();
         m_textures.fill(nullptr);
 
         // Initialise properties
@@ -90,11 +90,11 @@ namespace Spartan
             auto tex_path                  = xml->GetAttributeAs<string>(node_name, "texture_path");
 
             // If the texture happens to be loaded, get a reference to it
-            auto texture = m_context->GetSubsystem<ResourceCache>()->GetByName<RHI_Texture2D>(tex_name);
+            auto texture = m_context->GetSystem<ResourceCache>()->GetByName<RHI_Texture2D>(tex_name);
             // If there is not texture (it's not loaded yet), load it
             if (!texture)
             {
-                texture = m_context->GetSubsystem<ResourceCache>()->Load<RHI_Texture2D>(tex_path);
+                texture = m_context->GetSystem<ResourceCache>()->Load<RHI_Texture2D>(tex_path);
             }
 
             SetTexture(tex_type, texture);
@@ -153,7 +153,7 @@ namespace Spartan
         if (texture)
         {
             // Cache the texture to ensure scene serialization/deserialization
-            m_textures[type_int] = m_context->GetSubsystem<ResourceCache>()->Cache(texture);
+            m_textures[type_int] = m_context->GetSystem<ResourceCache>()->Cache(texture);
         }
         else
         {
@@ -254,7 +254,7 @@ namespace Spartan
             float current_alpha = m_properties[static_cast<uint32_t>(property_type)];
             if ((current_alpha != 1.0f && value == 1.0f) || (current_alpha == 1.0f && value != 1.0f))
             {
-                m_context->GetSubsystem<World>()->Resolve();
+                m_context->GetSystem<World>()->Resolve();
             }
 
             // Transparent objects are typically see-through (low roughness) so use the alpha as the roughness multiplier.

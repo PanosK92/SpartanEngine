@@ -35,7 +35,7 @@ namespace Spartan
 {
     RHI_Shader::RHI_Shader(Context* context) : SpartanObject(context)
     {
-        m_rhi_device = context->GetSubsystem<Renderer>()->GetRhiDevice();
+        m_rhi_device = context->GetSystem<Renderer>()->GetRhiDevice();
     }
 
     // Actual API specific compilation
@@ -75,11 +75,11 @@ namespace Spartan
 
             if (defines_str.empty())
             {
-                LOG_INFO("%s %s shader \"%s\" in %.2f ms.", prefix_str.c_str(), type_str.c_str(), object_name.c_str(), timer.GetElapsedTimeMs());
+                SP_LOG_INFO("%s %s shader \"%s\" in %.2f ms.", prefix_str.c_str(), type_str.c_str(), object_name.c_str(), timer.GetElapsedTimeMs());
             }
             else
             {
-                LOG_INFO("%s %s shader \"%s\" with definitions \"%s\" in %.2f ms.", prefix_str.c_str(), type_str.c_str(), object_name.c_str(), defines_str.c_str(), timer.GetElapsedTimeMs());
+                SP_LOG_INFO("%s %s shader \"%s\" with definitions \"%s\" in %.2f ms.", prefix_str.c_str(), type_str.c_str(), object_name.c_str(), defines_str.c_str(), timer.GetElapsedTimeMs());
             }
         }
 
@@ -96,7 +96,7 @@ namespace Spartan
 
         if (!FileSystem::IsFile(file_path))
         {
-            LOG_ERROR("\"%s\" doesn't exist.", file_path.c_str());
+            SP_LOG_ERROR("\"%s\" doesn't exist.", file_path.c_str());
             return;
         }
 
@@ -211,7 +211,7 @@ namespace Spartan
     {
         if (index >= m_sources.size())
         {
-            LOG_ERROR("No source with index %d exists.", index);
+            SP_LOG_ERROR("No source with index %d exists.", index);
             return;
         }
 

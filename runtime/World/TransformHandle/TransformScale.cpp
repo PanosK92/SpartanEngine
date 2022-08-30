@@ -117,7 +117,7 @@ namespace Spartan
             mouse_point_on_axis.z = mouse_point_on_axis.x;
 
             sign = static_cast<float>(Math::Helper::Sign(Vector3::Dot(mouse_ray.GetDirection(), Vector3::Right)));
-            LOG_INFO("%f", sign);
+            SP_LOG_INFO("%f", sign);
         }
 
         bool is_first_editing_run      = m_handle_x.m_is_first_editing_run || m_handle_y.m_is_first_editing_run || m_handle_z.m_is_first_editing_run || m_handle_xyz.m_is_first_editing_run;

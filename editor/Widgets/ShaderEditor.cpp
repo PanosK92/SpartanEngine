@@ -43,7 +43,7 @@ ShaderEditor::ShaderEditor(Editor* editor) : Widget(editor)
     m_visible      = false;
     m_size_initial = ImVec2(1366, 1000);
     m_text_editor  = make_unique<TextEditor>();
-    m_renderer     = m_context->GetSubsystem<Renderer>();
+    m_renderer     = m_context->GetSystem<Renderer>();
     m_position     = k_widget_position_screen_center;
     m_alpha        = 1.0f;
 }

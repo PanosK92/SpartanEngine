@@ -67,7 +67,7 @@ namespace Spartan
     {
         SP_ASSERT(context != nullptr);
 
-        Renderer* renderer = context->GetSubsystem<Renderer>();
+        Renderer* renderer = context->GetSystem<Renderer>();
         SP_ASSERT(renderer != nullptr);
 
         m_rhi_device = renderer->GetRhiDevice();
@@ -179,7 +179,7 @@ namespace Spartan
                 auto file = make_unique<FileStream>(file_path, FileStream_Read);
                 if (!file->IsOpen())
                 {
-                    LOG_ERROR("Failed to load \"%s\".", file_path.c_str());
+                    SP_LOG_ERROR("Failed to load \"%s\".", file_path.c_str());
                     return false;
                 }
 
@@ -233,12 +233,12 @@ namespace Spartan
                 }
 
                 // Load texture
-                ImageImporter* image_importer = m_context->GetSubsystem<ResourceCache>()->GetImageImporter();
+                ImageImporter* image_importer = m_context->GetSystem<ResourceCache>()->GetImageImporter();
                 for (uint32_t slice_index = 0; slice_index < static_cast<uint32_t>(file_paths.size()); slice_index++)
                 {
                     if (!image_importer->Load(file_paths[slice_index], slice_index, this))
                     {
-                        LOG_ERROR("Failed to load \"%s\".", file_path.c_str());
+                        SP_LOG_ERROR("Failed to load \"%s\".", file_path.c_str());
                         return false;
                     }
                 }
@@ -302,7 +302,7 @@ namespace Spartan
         // Request GPU based mip generation (if needed)
         if (m_flags & RHI_Texture_Mips)
         {
-            m_context->GetSubsystem<Renderer>()->RequestTextureMipGeneration(this);
+            m_context->GetSystem<Renderer>()->RequestTextureMipGeneration(this);
         }
 
         return true;
@@ -447,7 +447,7 @@ namespace Spartan
                 }
                 else
                 {
-                    LOG_ERROR("Failed to compress slice %d, mip %d.", index_array, index_mip);
+                    SP_LOG_ERROR("Failed to compress slice %d, mip %d.", index_array, index_mip);
                     success = false;
                     continue;
 
@@ -519,13 +519,13 @@ namespace Spartan
             // Wait in case this texture loading in another thread.
             while (!IsReadyForUse())
             {
-                LOG_INFO("Waiting for texture \"%s\" to finish loading...", m_name.c_str());
+                SP_LOG_INFO("Waiting for texture \"%s\" to finish loading...", m_name.c_str());
                 this_thread::sleep_for(chrono::milliseconds(16));
             }
 
             // Transition
             RHI_SetLayout(new_layout, cmd_list, mip_index, mip_range);
-            m_context->GetSubsystem<Profiler>()->m_rhi_pipeline_barriers++;
+            m_context->GetSystem<Profiler>()->m_rhi_pipeline_barriers++;
         }
 
         // Update layout

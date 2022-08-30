@@ -33,7 +33,7 @@ namespace Spartan
 {
     static const uint8_t max_buffer_count = 3;
 
-    class SPARTAN_CLASS RHI_SwapChain : public SpartanObject
+    class SP_CLASS RHI_SwapChain : public SpartanObject
     {
     public:
         RHI_SwapChain() = default;

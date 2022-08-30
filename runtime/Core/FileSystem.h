@@ -29,7 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-    class SPARTAN_CLASS FileSystem
+    class SP_CLASS FileSystem
     {
     public:
         // File creation

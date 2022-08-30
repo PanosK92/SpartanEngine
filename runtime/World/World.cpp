@@ -50,7 +50,7 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    World::World(Context* context) : Subsystem(context)
+    World::World(Context* context) : ISystem(context)
     {
         SP_SUBSCRIBE_TO_EVENT(EventType::WorldResolve, SP_EVENT_HANDLER_EXPRESSION
         (
@@ -66,8 +66,8 @@ namespace Spartan
 
     void World::OnInitialise()
     {
-        m_input    = m_context->GetSubsystem<Input>();
-        m_profiler = m_context->GetSubsystem<Profiler>();
+        m_input    = m_context->GetSystem<Input>();
+        m_profiler = m_context->GetSystem<Profiler>();
     }
 
     void World::OnPostInitialise()
@@ -89,7 +89,7 @@ namespace Spartan
 
         SCOPED_TIME_BLOCK(m_profiler);
 
-        if (Renderer* renderer = m_context->GetSubsystem<Renderer>())
+        if (Renderer* renderer = m_context->GetSystem<Renderer>())
         {
             if (renderer->GetOption<bool>(RendererOption::Debug_TransformHandle))
             {
@@ -187,7 +187,7 @@ namespace Spartan
         auto file = make_unique<FileStream>(file_path, FileStream_Write);
         if (!file->IsOpen())
         {
-            LOG_ERROR("Failed to open file.");
+            SP_LOG_ERROR("Failed to open file.");
             return false;
         }
 
@@ -216,7 +216,7 @@ namespace Spartan
         }
 
         // Report time
-        LOG_INFO("World \"%s\" has been saved. Duration %.2f ms", m_file_path.c_str(), timer.GetElapsedTimeMs());
+        SP_LOG_INFO("World \"%s\" has been saved. Duration %.2f ms", m_file_path.c_str(), timer.GetElapsedTimeMs());
 
         // Notify subsystems waiting for us to finish
         SP_FIRE_EVENT(EventType::WorldSavedEnd);
@@ -228,7 +228,7 @@ namespace Spartan
     {
         if (!FileSystem::Exists(file_path))
         {
-            LOG_ERROR("\"%s\" was not found.", file_path.c_str());
+            SP_LOG_ERROR("\"%s\" was not found.", file_path.c_str());
             return false;
         }
 
@@ -236,7 +236,7 @@ namespace Spartan
         unique_ptr<FileStream> file = make_unique<FileStream>(file_path, FileStream_Read);
         if (!file->IsOpen())
         {
-            LOG_ERROR("Failed to open \"%s\"", file_path.c_str());
+            SP_LOG_ERROR("Failed to open \"%s\"", file_path.c_str());
             return false;
         }
 
@@ -271,7 +271,7 @@ namespace Spartan
         }
 
         // Report time
-        LOG_INFO("World \"%s\" has been loaded. Duration %.2f ms", m_file_path.c_str(), timer.GetElapsedTimeMs());
+        SP_LOG_INFO("World \"%s\" has been loaded. Duration %.2f ms", m_file_path.c_str(), timer.GetElapsedTimeMs());
 
         SP_FIRE_EVENT(EventType::WorldLoadEnd);
 
@@ -461,7 +461,7 @@ namespace Spartan
         }
 
         // Asset directories
-        ResourceCache* resource_cache = m_context->GetSubsystem<ResourceCache>();
+        ResourceCache* resource_cache = m_context->GetSystem<ResourceCache>();
 
         // 3D model - Car
         if (m_default_model_car = resource_cache->Load<Mesh>("project\\models\\toyota_ae86_sprinter_trueno_zenki\\scene.gltf"))

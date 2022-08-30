@@ -79,7 +79,7 @@ namespace Spartan
 {
     using subscriber = std::function<void(const Variant&)>;
 
-    class SPARTAN_CLASS EventSystem
+    class SP_CLASS EventSystem
     {
     public:
         static EventSystem& Get()

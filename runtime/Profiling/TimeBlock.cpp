@@ -51,7 +51,7 @@ namespace Spartan
         if (cmd_list)
         {
             m_cmd_list   = cmd_list;
-            m_rhi_device = cmd_list->GetContext()->GetSubsystem<Renderer>()->GetRhiDevice().get();
+            m_rhi_device = cmd_list->GetContext()->GetSystem<Renderer>()->GetRhiDevice().get();
         }
 
         if (type == TimeBlockType::Cpu)

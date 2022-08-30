@@ -51,7 +51,7 @@ namespace Spartan
         Custom
     };
 
-    class SPARTAN_CLASS AudioClip : public IResource
+    class SP_CLASS AudioClip : public IResource
     {
     public:
         AudioClip(Context* context);

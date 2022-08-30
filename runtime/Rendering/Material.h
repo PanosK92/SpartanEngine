@@ -71,7 +71,7 @@ namespace Spartan
         SingleTextureRoughnessMetalness
     };
 
-    class SPARTAN_CLASS Material : public IResource
+    class SP_CLASS Material : public IResource
     {
     public:
         Material(Context* context);

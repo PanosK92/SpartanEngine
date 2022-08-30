@@ -81,7 +81,7 @@ namespace Spartan
 
         if (static_cast<bool>(SDL_ShowCursor(static_cast<int>(visible))) == visible)
         {
-            LOG_ERROR("Failed to change cursor visibility");
+            SP_LOG_ERROR("Failed to change cursor visibility");
         }
     }
 
@@ -89,7 +89,7 @@ namespace Spartan
     {
         if (SDL_WarpMouseGlobal(static_cast<int>(position.x), static_cast<int>(position.y)) != 0)
         {
-            LOG_ERROR("Failed to set mouse position.");
+            SP_LOG_ERROR("Failed to set mouse position.");
             return;
         }
 
@@ -98,7 +98,7 @@ namespace Spartan
 
     const Vector2 Input::GetMousePositionRelativeToWindow() const
     {
-        SDL_Window* window = static_cast<SDL_Window*>(m_context->GetSubsystem<Window>()->GetHandleSDL());
+        SDL_Window* window = static_cast<SDL_Window*>(m_context->GetSystem<Window>()->GetHandleSDL());
         int window_x, window_y;
         SDL_GetWindowPosition(window, &window_x, &window_y);
         return Vector2(static_cast<float>(m_mouse_position.x - window_x), static_cast<float>(m_mouse_position.y - window_y));

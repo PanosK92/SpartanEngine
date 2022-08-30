@@ -31,7 +31,7 @@ namespace Spartan
 {
     class AudioClip;
 
-    class SPARTAN_CLASS AudioSource : public IComponent
+    class SP_CLASS AudioSource : public IComponent
     {
     public:
         AudioSource(Context* context, Entity* entity, uint64_t id = 0);

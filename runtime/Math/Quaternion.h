@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan::Math
 {
-    class SPARTAN_CLASS Quaternion
+    class SP_CLASS Quaternion
     {
     public:
         // Constructs an identity quaternion
@@ -332,6 +332,6 @@ namespace Spartan::Math
     };
 
     // Reverse order operators
-    inline SPARTAN_CLASS Vector3 operator*(const Vector3& lhs, const Quaternion& rhs) { return rhs * lhs; }
-    inline SPARTAN_CLASS Quaternion operator*(float lhs, const Quaternion& rhs)       { return rhs * lhs; }
+    inline SP_CLASS Vector3 operator*(const Vector3& lhs, const Quaternion& rhs) { return rhs * lhs; }
+    inline SP_CLASS Quaternion operator*(float lhs, const Quaternion& rhs)       { return rhs * lhs; }
 }

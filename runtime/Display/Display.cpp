@@ -73,7 +73,7 @@ namespace Spartan
         if (update_fps_limit_to_highest_hz)
         {
             double hz    = m_display_modes.front().hz;
-            Timer* timer = context->GetSubsystem<Timer>();
+            Timer* timer = context->GetSystem<Timer>();
             if (hz > timer->GetFpsLimit())
             {
                 timer->SetFpsLimit(hz);
@@ -90,7 +90,7 @@ namespace Spartan
             SDL_DisplayMode display_mode;
             if (SDL_GetCurrentDisplayMode(display_index, &display_mode) != 0)
             {
-                LOG_ERROR("Failed to get display mode for display index %d", display_index);
+                SP_LOG_ERROR("Failed to get display mode for display index %d", display_index);
                 continue;
             }
 

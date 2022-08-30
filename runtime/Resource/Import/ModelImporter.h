@@ -39,7 +39,7 @@ namespace Spartan
     class Mesh;
     class World;
 
-    class SPARTAN_CLASS ModelImporter
+    class SP_CLASS ModelImporter
     {
     public:
         ModelImporter(Context* context);

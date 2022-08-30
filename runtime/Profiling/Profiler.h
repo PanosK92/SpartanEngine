@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <string>
 #include <vector>
 #include "TimeBlock.h"
-#include "../Core/Subsystem.h"
+#include "../Core/ISystem.h"
 #include "../Core/Stopwatch.h"
 #include "../Core/SpartanDefinitions.h"
 //=====================================
@@ -43,7 +43,7 @@ namespace Spartan
     class Variant;
     class Timer;
 
-    class SPARTAN_CLASS Profiler : public Subsystem
+    class SP_CLASS Profiler : public ISystem
     {
     public:
         Profiler(Context* context);

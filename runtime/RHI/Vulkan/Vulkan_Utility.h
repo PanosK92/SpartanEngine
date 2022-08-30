@@ -234,7 +234,7 @@ namespace Spartan::vulkan_utility
                 break;
 
             default:
-                LOG_ERROR("Unexpected image layout");
+                SP_LOG_ERROR("Unexpected image layout");
                 break;
             }
 
@@ -491,7 +491,7 @@ namespace Spartan::vulkan_utility
         {
             #define get_func(var, def)\
             var = reinterpret_cast<PFN_##def>(vkGetInstanceProcAddr(static_cast<VkInstance>(globals::rhi_context->instance), #def));\
-            if (!var) LOG_ERROR("Failed to get function pointer for %s", #def);\
+            if (!var) SP_LOG_ERROR("Failed to get function pointer for %s", #def);\
 
             get_func(get_physical_device_memory_properties_2, vkGetPhysicalDeviceMemoryProperties2);
 

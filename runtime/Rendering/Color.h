@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-    class SPARTAN_CLASS Color
+    class SP_CLASS Color
     {
     public:
         Color() = default;

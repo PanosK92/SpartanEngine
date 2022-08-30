@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ===============
-#include "Subsystem.h"
+#include "ISystem.h"
 #include "../Math/Vector2.h"
 #include <vector>
 #include <array>
@@ -46,7 +46,7 @@ namespace Spartan
         std::string url;
     };
 
-    class SPARTAN_CLASS Settings : public Subsystem
+    class SP_CLASS Settings : public ISystem
     {
     public:
         Settings(Context* context);

@@ -30,7 +30,7 @@ using namespace std;
 
 namespace Spartan
 {
-    Timer::Timer(Context* context) : Subsystem(context)
+    Timer::Timer(Context* context) : ISystem(context)
     {
         m_time_start     = chrono::high_resolution_clock::now();
         m_time_sleep_end = chrono::high_resolution_clock::now();
@@ -81,7 +81,7 @@ namespace Spartan
 
         m_user_selected_fps_target = true;
         m_fps_limit = fps_in;
-        LOG_INFO("Set to %.2f FPS", m_fps_limit);
+        SP_LOG_INFO("Set to %.2f FPS", m_fps_limit);
     }
 
     FpsLimitType Timer::GetFpsLimitType()

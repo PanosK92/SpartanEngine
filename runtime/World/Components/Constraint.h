@@ -44,7 +44,7 @@ namespace Spartan
         ConstraintType_ConeTwist
     };
 
-    class SPARTAN_CLASS Constraint : public IComponent
+    class SP_CLASS Constraint : public IComponent
     {
     public:
         Constraint(Context* context, Entity* entity, uint64_t id = 0);

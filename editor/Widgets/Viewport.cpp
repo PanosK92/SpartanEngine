@@ -39,10 +39,10 @@ Viewport::Viewport(Editor* editor) : Widget(editor)
     m_size_initial = Vector2(400, 250);
     m_flags        |= ImGuiWindowFlags_NoScrollbar;
     m_padding      = Vector2(2.0f);
-    m_world        = m_context->GetSubsystem<World>();
-    m_renderer     = m_context->GetSubsystem<Renderer>();
-    m_settings     = m_context->GetSubsystem<Settings>();
-    m_input        = m_context->GetSubsystem<Input>();
+    m_world        = m_context->GetSystem<World>();
+    m_renderer     = m_context->GetSystem<Renderer>();
+    m_settings     = m_context->GetSystem<Settings>();
+    m_input        = m_context->GetSystem<Input>();
 }
 
 void Viewport::TickVisible()

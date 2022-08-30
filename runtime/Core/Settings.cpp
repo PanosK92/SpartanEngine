@@ -65,7 +65,7 @@ namespace _Settings
 
 namespace Spartan
 {
-    Settings::Settings(Context* context) : Subsystem(context)
+    Settings::Settings(Context* context) : ISystem(context)
     {
         m_context = context;
 
@@ -101,8 +101,8 @@ namespace Spartan
             Save();
         }
 
-        LOG_INFO("FPS Limit: %f.", m_fps_limit);
-        LOG_INFO("Max threads: %d.", m_max_thread_count);
+        SP_LOG_INFO("FPS Limit: %f.", m_fps_limit);
+        SP_LOG_INFO("Max threads: %d.", m_max_thread_count);
     }
     
     void Settings::OnShutdown()
@@ -168,24 +168,24 @@ namespace Spartan
 
     void Settings::Map() const
     {
-        if (Timer* timer = m_context->GetSubsystem<Timer>())
+        if (Timer* timer = m_context->GetSystem<Timer>())
         {
             timer->SetFpsLimit(m_fps_limit);
         }
 
-        if (Input* input = m_context->GetSubsystem<Input>())
+        if (Input* input = m_context->GetSystem<Input>())
         {
             input->SetMouseCursorVisible(m_is_mouse_visible);
         }
 
-        if (Renderer* renderer = m_context->GetSubsystem<Renderer>())
+        if (Renderer* renderer = m_context->GetSystem<Renderer>())
         {
             renderer->SetResolutionOutput(static_cast<uint32_t>(m_resolution_output.x), static_cast<uint32_t>(m_resolution_output.y));
             renderer->SetResolutionRender(static_cast<uint32_t>(m_resolution_render.x), static_cast<uint32_t>(m_resolution_render.y));
             renderer->SetOptions(m_render_options);
         }
 
-        if (Window* window = m_context->GetSubsystem<Window>())
+        if (Window* window = m_context->GetSystem<Window>())
         {
             if (m_is_fullscreen)
             {
@@ -196,12 +196,12 @@ namespace Spartan
 
     void Settings::Reflect()
     {
-        Renderer* renderer = m_context->GetSubsystem<Renderer>();
+        Renderer* renderer = m_context->GetSystem<Renderer>();
 
-        m_fps_limit         = m_context->GetSubsystem<Timer>()->GetFpsLimit();
+        m_fps_limit         = m_context->GetSystem<Timer>()->GetFpsLimit();
         m_max_thread_count  = Threading::GetSupportedThreadCount();
-        m_is_fullscreen     = m_context->GetSubsystem<Window>()->IsFullScreen();
-        m_is_mouse_visible  = m_context->GetSubsystem<Input>()->GetMouseCursorVisible();
+        m_is_fullscreen     = m_context->GetSystem<Window>()->IsFullScreen();
+        m_is_mouse_visible  = m_context->GetSystem<Input>()->GetMouseCursorVisible();
         m_resolution_output = renderer->GetResolutionOutput();
         m_resolution_render = renderer->GetResolutionRender();
         m_render_options    = renderer->GetOptions();

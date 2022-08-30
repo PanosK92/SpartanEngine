@@ -53,7 +53,7 @@ namespace Spartan
             m_thread_names[m_threads.back().get_id()] = "worker_" + to_string(i);
         }
 
-        LOG_INFO("%d threads have been created", m_thread_count);
+        SP_LOG_INFO("%d threads have been created", m_thread_count);
     }
 
     void Threading::Shutdown()

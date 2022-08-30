@@ -52,7 +52,7 @@ namespace Spartan
             // If this is not the first allocation, inform the user.
             if (vertex_count != 0)
             {
-                LOG_INFO("Line buffer can hold %d vertices but %d are needed, resizing the buffer to fit %d vertices.", vertex_count, index + 2, new_vertex_count);
+                SP_LOG_INFO("Line buffer can hold %d vertices but %d are needed, resizing the buffer to fit %d vertices.", vertex_count, index + 2, new_vertex_count);
             }
 
             m_lines_index_depth_off = numeric_limits<uint32_t>::max(); // max because it's incremented below.
@@ -289,7 +289,7 @@ namespace Spartan
             auto& lights = m_entities[RendererEntityType::Light];
             for (const auto& entity : lights)
             {
-                const Entity* entity_selected = m_context->GetSubsystem<World>()->GetTransformHandle()->GetSelectedEntity();
+                const Entity* entity_selected = m_context->GetSystem<World>()->GetTransformHandle()->GetSelectedEntity();
                 if (entity_selected && entity_selected->GetObjectId() == entity->GetObjectId())
                 { 
                     Light* light = entity->GetComponent<Light>();

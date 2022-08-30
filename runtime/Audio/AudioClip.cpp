@@ -32,7 +32,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= NAMESPACES ================
 using namespace std;
 using namespace Spartan::Math;
-using namespace FMOD;
 //=============================
 
 namespace Spartan
@@ -40,7 +39,7 @@ namespace Spartan
     AudioClip::AudioClip(Context* context) : IResource(context, ResourceType::Audio)
     {
         m_transform   = nullptr;
-        m_systemFMOD  = static_cast<System*>(context->GetSubsystem<Audio>()->GetSystemFMOD());
+        m_systemFMOD  = static_cast<FMOD::System*>(context->GetSystem<Audio>()->GetSystemFMOD());
         m_result      = FMOD_OK;
         m_soundFMOD   = nullptr;
         m_channelFMOD = nullptr;
@@ -404,7 +403,7 @@ namespace Spartan
 
     void AudioClip::LogErrorFmod(int error) const
     {
-        LOG_ERROR("%s", FMOD_ErrorString(static_cast<FMOD_RESULT>(error)));
+        SP_LOG_ERROR("%s", FMOD_ErrorString(static_cast<FMOD_RESULT>(error)));
     }
 
     bool AudioClip::IsChannelValid() const

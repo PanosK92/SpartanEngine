@@ -36,7 +36,7 @@ namespace Spartan
         Game
     };
 
-    class SPARTAN_CLASS Engine
+    class SP_CLASS Engine
     {
     public:
         Engine();

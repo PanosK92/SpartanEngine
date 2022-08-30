@@ -50,7 +50,7 @@ FileDialog::FileDialog(Context* context, const bool standalone_window, const Fil
     m_selection_made                    = false;
     m_callback_on_item_clicked          = nullptr;
     m_callback_on_item_double_clicked   = nullptr;
-    m_navigation.Navigate(m_context->GetSubsystem<ResourceCache>()->GetProjectDirectory());
+    m_navigation.Navigate(m_context->GetSystem<ResourceCache>()->GetProjectDirectory());
 
     // Default to the center of the screen
     m_position.x = Spartan::Display::GetWidth() * 0.5f;
@@ -513,7 +513,7 @@ bool FileDialog::DialogUpdateFromDirectory(const string& file_path)
 {
     if (!FileSystem::IsDirectory(file_path))
     {
-        LOG_ERROR("Provided path doesn't point to a directory.");
+        SP_LOG_ERROR("Provided path doesn't point to a directory.");
         return false;
     }
 

@@ -113,7 +113,7 @@ namespace ImGui::RHI
     inline bool Initialize(Context* context)
     {
         g_context    = context;
-        g_renderer   = context->GetSubsystem<Renderer>();
+        g_renderer   = context->GetSystem<Renderer>();
         g_rhi_device = g_renderer->GetRhiDevice().get();
 
         SP_ASSERT(g_context != nullptr);
@@ -150,7 +150,7 @@ namespace ImGui::RHI
 
             // Compile shaders
             {
-                const string shader_path = g_context->GetSubsystem<ResourceCache>()->GetResourceDirectory(ResourceDirectory::Shaders) + "\\ImGui.hlsl";
+                const string shader_path = g_context->GetSystem<ResourceCache>()->GetResourceDirectory(ResourceDirectory::Shaders) + "\\ImGui.hlsl";
 
                 bool async = false;
 
@@ -258,7 +258,7 @@ namespace ImGui::RHI
 
                 if (vertex_count != 0)
                 {
-                    LOG_INFO("Vertex buffer has been re-allocated to fit %d vertices", vertex_count_new);
+                    SP_LOG_INFO("Vertex buffer has been re-allocated to fit %d vertices", vertex_count_new);
                 }
             }
 
@@ -271,7 +271,7 @@ namespace ImGui::RHI
 
                 if (index_count != 0)
                 {
-                    LOG_INFO("Index buffer has been re-allocated to fit %d indices", index_count_new);
+                    SP_LOG_INFO("Index buffer has been re-allocated to fit %d indices", index_count_new);
                 }
             }
 

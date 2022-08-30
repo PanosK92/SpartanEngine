@@ -46,7 +46,7 @@ namespace Spartan
         function_type m_function;
     };
 
-    class SPARTAN_CLASS Threading
+    class SP_CLASS Threading
     {
     public:
         static void Initialize();
@@ -58,7 +58,7 @@ namespace Spartan
         {
             if (GetIdleThreadCount() == 0)
             {
-                LOG_WARNING("No available threads, function will execute in the calling thread");
+                SP_LOG_WARNING("No available threads, function will execute in the calling thread");
                 function();
                 return;
             }

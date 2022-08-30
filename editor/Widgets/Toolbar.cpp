@@ -95,13 +95,13 @@ void Toolbar::TickAlways()
     ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyle().Colors[ImGuiCol_Button]);
     if (imgui_extension::image_button(0, nullptr, IconType::Button_RenderDoc, m_button_size, false))
     {
-        if (m_context->GetSubsystem<Spartan::Renderer>()->IsRenderDocEnabled())
+        if (m_context->GetSystem<Spartan::Renderer>()->IsRenderDocEnabled())
         {
             Spartan::RHI_RenderDoc::FrameCapture();
         }
         else
         {
-            LOG_WARNING("RenderDoc integration is disabled. To enable, go to \"RHI_Implemenation.h\", and set \"renderdoc\" to \"true\"");
+            SP_LOG_WARNING("RenderDoc integration is disabled. To enable, go to \"RHI_Implemenation.h\", and set \"renderdoc\" to \"true\"");
         }
     }
     imgui_extension::tooltip("Captures the next frame and then launches RenderDoc");

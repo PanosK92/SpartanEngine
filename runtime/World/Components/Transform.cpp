@@ -96,7 +96,7 @@ namespace Spartan
         stream->Read(&parent_entity_id);
         if (parent_entity_id != 0)
         {
-            if (const shared_ptr<Entity>& parent = m_context->GetSubsystem<World>()->EntityGetById(parent_entity_id))
+            if (const shared_ptr<Entity>& parent = m_context->GetSystem<World>()->EntityGetById(parent_entity_id))
             {
                 parent->GetTransform()->AddChild(this);
             }
@@ -248,14 +248,14 @@ namespace Spartan
     {
         if (!HasChildren())
         {
-            LOG_WARNING("%s has no children.", GetEntityName().c_str());
+            SP_LOG_WARNING("%s has no children.", GetEntityName().c_str());
             return nullptr;
         }
 
         // prevent an out of vector bounds error
         if (index >= GetChildrenCount())
         {
-            LOG_WARNING("There is no child with an index of \"%d\".", index);
+            SP_LOG_WARNING("There is no child with an index of \"%d\".", index);
             return nullptr;
         }
 
@@ -403,7 +403,7 @@ namespace Spartan
         m_children.clear();
         m_children.shrink_to_fit();
 
-        auto entities = GetContext()->GetSubsystem<World>()->EntityGetAll();
+        auto entities = GetContext()->GetSystem<World>()->EntityGetAll();
         for (const auto& entity : entities)
         {
             if (!entity)

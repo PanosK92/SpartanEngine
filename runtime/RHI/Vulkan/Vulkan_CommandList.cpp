@@ -73,8 +73,8 @@ namespace Spartan
     RHI_CommandList::RHI_CommandList(Context* context, const RHI_Queue_Type queue_type, const uint32_t index, void* cmd_pool, const char* name) : SpartanObject(context)
     {
         m_queue_type = queue_type;
-        m_renderer   = context->GetSubsystem<Renderer>();
-        m_profiler   = context->GetSubsystem<Profiler>();
+        m_renderer   = context->GetSystem<Renderer>();
+        m_profiler   = context->GetSystem<Profiler>();
         m_rhi_device = m_renderer->GetRhiDevice().get();
         m_name       = name;
         m_index      = index;
@@ -232,7 +232,7 @@ namespace Spartan
         {
             // Create a new pipeline
             it = m_pipelines.emplace(make_pair(hash, move(make_shared<RHI_Pipeline>(m_rhi_device, pso, m_descriptor_layout_current)))).first;
-            LOG_INFO("A new pipeline has been created.");
+            SP_LOG_INFO("A new pipeline has been created.");
         }
 
         m_pipeline = it->second.get();
@@ -449,7 +449,7 @@ namespace Spartan
 
         if (!texture || !texture->GetRhiSrv())
         {
-            LOG_ERROR("Texture is null.");
+            SP_LOG_ERROR("Texture is null.");
             return;
         }
 
@@ -719,7 +719,7 @@ namespace Spartan
 
         if (!m_descriptor_layout_current)
         {
-            LOG_WARNING("Descriptor layout not set, try setting constant buffer \"%s\" within a render pass", constant_buffer->GetName().c_str());
+            SP_LOG_WARNING("Descriptor layout not set, try setting constant buffer \"%s\" within a render pass", constant_buffer->GetName().c_str());
             return;
         }
 
@@ -734,7 +734,7 @@ namespace Spartan
 
         if (!m_descriptor_layout_current)
         {
-            LOG_WARNING("Descriptor layout not set, try setting sampler \"%s\" within a render pass", sampler->GetName().c_str());
+            SP_LOG_WARNING("Descriptor layout not set, try setting sampler \"%s\" within a render pass", sampler->GetName().c_str());
             return;
         }
 
@@ -753,7 +753,7 @@ namespace Spartan
 
         if (!m_descriptor_layout_current)
         {
-            LOG_WARNING("Descriptor layout not set, try setting texture \"%s\" within a render pass", texture->GetName().c_str());
+            SP_LOG_WARNING("Descriptor layout not set, try setting texture \"%s\" within a render pass", texture->GetName().c_str());
             return;
         }
 
@@ -838,7 +838,7 @@ namespace Spartan
 
         if (!m_descriptor_layout_current)
         {
-            LOG_WARNING("Descriptor layout not set, try setting structured buffer \"%s\" within a render pass", structured_buffer->GetName().c_str());
+            SP_LOG_WARNING("Descriptor layout not set, try setting structured buffer \"%s\" within a render pass", structured_buffer->GetName().c_str());
             return;
         }
 
@@ -908,7 +908,7 @@ namespace Spartan
     {
         if (pass_index + 1 >= m_timestamps.size())
         {
-            LOG_ERROR("Pass index out of timestamp array range");
+            SP_LOG_ERROR("Pass index out of timestamp array range");
             return 0.0f;
         }
 

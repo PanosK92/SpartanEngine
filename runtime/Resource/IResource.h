@@ -47,7 +47,7 @@ namespace Spartan
         Unknown,
     };
 
-    class SPARTAN_CLASS IResource : public SpartanObject
+    class SP_CLASS IResource : public SpartanObject
     {
     public:
         IResource(Context* context, ResourceType type);
@@ -62,7 +62,7 @@ namespace Spartan
             {
                 if (!FileSystem::IsFile(path))
                 {
-                    LOG_ERROR("\"%s\" is not a valid file path", path.c_str());
+                    SP_LOG_ERROR("\"%s\" is not a valid file path", path.c_str());
                     return;
                 }
             }

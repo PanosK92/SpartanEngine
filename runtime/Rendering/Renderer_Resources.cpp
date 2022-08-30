@@ -145,7 +145,7 @@ namespace Spartan
 
         m_sampler_anisotropic_wrap = make_shared<RHI_Sampler>(m_rhi_device, RHI_Filter::Linear, RHI_Filter::Linear, RHI_Sampler_Mipmap_Mode::Linear, RHI_Sampler_Address_Mode::Wrap, RHI_Comparison_Function::Always, anisotropy, false, mip_bias);
 
-        LOG_INFO("Mip bias set to %f", mip_bias);
+        SP_LOG_INFO("Mip bias set to %f", mip_bias);
     }
 
     void Renderer::CreateRenderTextures(const bool create_render, const bool create_output, const bool create_fixed, const bool create_dynamic)

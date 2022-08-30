@@ -43,7 +43,7 @@ namespace Spartan
         Impulse
     };
 
-    class SPARTAN_CLASS RigidBody : public IComponent
+    class SP_CLASS RigidBody : public IComponent
     {
     public:
         RigidBody(Context* context, Entity* entity, uint64_t id = 0);

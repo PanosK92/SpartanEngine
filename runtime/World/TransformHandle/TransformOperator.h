@@ -40,7 +40,7 @@ namespace Spartan
     class Camera;
     //=====================
 
-    class SPARTAN_CLASS TransformOperator
+    class SP_CLASS TransformOperator
     {
     public:
         TransformOperator(Context* context, const TransformHandleType transform_handle_type);

@@ -39,8 +39,8 @@ namespace Spartan
         m_axis     = axis;
         m_type     = type;
         m_context  = context;
-        m_renderer = context->GetSubsystem<Renderer>();
-        m_input    = context->GetSubsystem<Input>();
+        m_renderer = context->GetSystem<Renderer>();
+        m_input    = context->GetSystem<Input>();
     }
 
     void TransformOperatorAxis::UpdateTransform()

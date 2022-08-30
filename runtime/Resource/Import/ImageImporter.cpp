@@ -214,7 +214,7 @@ namespace Spartan
 
         if (!bitmap)
         {
-            LOG_ERROR("Failed");
+            SP_LOG_ERROR("Failed");
             return previous_bitmap;
         }
 
@@ -272,7 +272,7 @@ namespace Spartan
             {
                 if (!SwapRedBlue32(bitmap))
                 {
-                    LOG_ERROR("Failed to swap red with blue channel");
+                    SP_LOG_ERROR("Failed to swap red with blue channel");
                 }
             }
         }
@@ -318,12 +318,12 @@ namespace Spartan
             const auto text     = (message != nullptr) ? message : "Unknown error";
             const auto format   = (fif != FIF_UNKNOWN) ? FreeImage_GetFormatFromFIF(fif) : "Unknown";
             
-            LOG_ERROR("%s, Format: %s", text, format);
+            SP_LOG_ERROR("%s, Format: %s", text, format);
         };
         FreeImage_SetOutputMessage(free_image_error_handler);
 
         // Get version
-        m_context->GetSubsystem<Settings>()->RegisterThirdPartyLib("FreeImage", FreeImage_GetVersion(), "https://freeimage.sourceforge.io/");
+        m_context->GetSystem<Settings>()->RegisterThirdPartyLib("FreeImage", FreeImage_GetVersion(), "https://freeimage.sourceforge.io/");
     }
 
     ImageImporter::~ImageImporter()
@@ -337,7 +337,7 @@ namespace Spartan
 
         if (!FileSystem::Exists(file_path))
         {
-            LOG_ERROR("Path \"%s\" is invalid.", file_path.c_str());
+            SP_LOG_ERROR("Path \"%s\" is invalid.", file_path.c_str());
             return false;
         }
 
@@ -355,7 +355,7 @@ namespace Spartan
             // If the format is still unknown, give up
             if (!FreeImage_FIFSupportsReading(format)) 
             {
-                LOG_ERROR("Unsupported format");
+                SP_LOG_ERROR("Unsupported format");
                 return false;
             }
         }
@@ -364,7 +364,7 @@ namespace Spartan
         FIBITMAP* bitmap = FreeImage_Load(format, file_path.c_str());
         if (!bitmap)
         {
-            LOG_ERROR("Failed to load \"%s\"", file_path.c_str());
+            SP_LOG_ERROR("Failed to load \"%s\"", file_path.c_str());
             return false;
         }
 
@@ -377,7 +377,7 @@ namespace Spartan
         bitmap = apply_bitmap_corrections(bitmap);
         if (!bitmap)
         {
-            LOG_ERROR("Failed to apply bitmap corrections");
+            SP_LOG_ERROR("Failed to apply bitmap corrections");
             return false;
         }
 

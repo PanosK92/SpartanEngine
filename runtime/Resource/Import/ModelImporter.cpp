@@ -339,13 +339,13 @@ namespace Spartan
     ModelImporter::ModelImporter(Context* context)
     {
         m_context = context;
-        m_world   = context->GetSubsystem<World>();
+        m_world   = context->GetSystem<World>();
 
         // Get version
         const int major = aiGetVersionMajor();
         const int minor = aiGetVersionMinor();
         const int rev   = aiGetVersionRevision();
-        m_context->GetSubsystem<Settings>()->RegisterThirdPartyLib("Assimp", to_string(major) + "." + to_string(minor) + "." + to_string(rev), "https://github.com/assimp/assimp");
+        m_context->GetSystem<Settings>()->RegisterThirdPartyLib("Assimp", to_string(major) + "." + to_string(minor) + "." + to_string(rev), "https://github.com/assimp/assimp");
     }
 
     bool ModelImporter::Load(Mesh* mesh, const string& file_path)
@@ -354,7 +354,7 @@ namespace Spartan
 
         if (!FileSystem::IsFile(file_path))
         {
-            LOG_ERROR("Provided file path doesn't point to an existing file");
+            SP_LOG_ERROR("Provided file path doesn't point to an existing file");
             return false;
         }
 
@@ -394,7 +394,7 @@ namespace Spartan
             {
                 while (ProgressTracker::GetProgress(ProgressType::model_importing).GetFraction() != 1.0f)
                 {
-                    LOG_INFO("Waiting for node processing threads to finish before creating GPU buffers...");
+                    SP_LOG_INFO("Waiting for node processing threads to finish before creating GPU buffers...");
                     this_thread::sleep_for(std::chrono::milliseconds(16));
                 }
 
@@ -410,7 +410,7 @@ namespace Spartan
         else
         {
             ProgressTracker::GetProgress(ProgressType::model_importing).JobDone();
-            LOG_ERROR("%s", importer.GetErrorString());
+            SP_LOG_ERROR("%s", importer.GetErrorString());
         }
 
         importer.FreeScene();

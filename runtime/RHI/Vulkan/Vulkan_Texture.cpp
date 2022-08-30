@@ -157,7 +157,7 @@ namespace Spartan
     {
         if (!texture->HasData())
         {
-            LOG_WARNING("No data to stage");
+            SP_LOG_WARNING("No data to stage");
             return true;
         }
 
@@ -367,7 +367,7 @@ namespace Spartan
         // Destruction can happen during engine shutdown, in which case, the renderer might not exist, so, if statement.
         if (Context* context = m_rhi_device->GetContext())
         {
-            if (Renderer* renderer = context->GetSubsystem<Renderer>())
+            if (Renderer* renderer = context->GetSystem<Renderer>())
             {
                 if (RHI_CommandList* cmd_list = renderer->GetCmdList())
                 {

@@ -68,7 +68,7 @@ namespace Spartan
 
         if (file_path.empty() || FileSystem::IsDirectory(file_path))
         {
-            LOG_WARNING("Invalid file path");
+            SP_LOG_WARNING("Invalid file path");
             return false;
         }
 
@@ -95,7 +95,7 @@ namespace Spartan
         {
             SetResourceFilePath(file_path);
 
-            if (m_context->GetSubsystem<ResourceCache>()->GetModelImporter()->Load(this, file_path))
+            if (m_context->GetSystem<ResourceCache>()->GetModelImporter()->Load(this, file_path))
             {
                 // Set the normalized scale to the root entity's transform
                 m_normalized_scale = ComputeNormalizedScale();
@@ -120,7 +120,7 @@ namespace Spartan
             }
         }
 
-        LOG_INFO("Loading \"%s\" took %d ms", FileSystem::GetFileNameFromFilePath(file_path).c_str(), static_cast<int>(timer.GetElapsedTimeMs()));
+        SP_LOG_INFO("Loading \"%s\" took %d ms", FileSystem::GetFileNameFromFilePath(file_path).c_str(), static_cast<int>(timer.GetElapsedTimeMs()));
 
         return true;
     }
@@ -240,21 +240,21 @@ namespace Spartan
         // The optimization order is important
 
         // Vertex cache optimization - reordering triangles to maximize cache locality
-        LOG_INFO("Optimizing vertex cache...");
+        SP_LOG_INFO("Optimizing vertex cache...");
         meshopt_optimizeVertexCache(&indices[0], &m_indices[0], index_count, vertex_count);
 
         // Overdraw optimizations - reorders triangles to minimize overdraw from all directions
-        LOG_INFO("Optimizing overdraw...");
+        SP_LOG_INFO("Optimizing overdraw...");
         meshopt_optimizeOverdraw(&m_indices[0], &indices[0], index_count, &m_vertices[0].pos[0], vertex_count, vertex_size, 1.05f);
 
         // Vertex fetch optimization - reorders triangles to maximize memory access locality
-        LOG_INFO("Optimizing vertex fetch...");
+        SP_LOG_INFO("Optimizing vertex fetch...");
         meshopt_optimizeVertexFetch(&m_vertices[0], &m_indices[0], index_count, &vertices[0], vertex_count, vertex_size);
     }
 
     void Mesh::CreateGpuBuffers()
     {
-        RHI_Device* rhi_device = m_context->GetSubsystem<Renderer>()->GetRhiDevice().get();
+        RHI_Device* rhi_device = m_context->GetSystem<Renderer>()->GetRhiDevice().get();
 
         SP_ASSERT_MSG(!m_indices.empty(), "There are no indices");
         m_index_buffer = make_shared<RHI_IndexBuffer>(rhi_device, false, "mesh");
@@ -285,7 +285,7 @@ namespace Spartan
 
         // Try to get the texture
         const auto tex_name = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path);
-        shared_ptr<RHI_Texture> texture = m_context->GetSubsystem<ResourceCache>()->GetByName<RHI_Texture2D>(tex_name);
+        shared_ptr<RHI_Texture> texture = m_context->GetSystem<ResourceCache>()->GetByName<RHI_Texture2D>(tex_name);
 
         if (texture)
         {

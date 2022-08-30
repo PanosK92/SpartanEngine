@@ -42,8 +42,8 @@ namespace Spartan
 {
     Camera::Camera(Context* context, Entity* entity, uint64_t id /*= 0*/) : IComponent(context, entity, id)
     {   
-        m_renderer = m_context->GetSubsystem<Renderer>();
-        m_input    = m_context->GetSubsystem<Input>();
+        m_renderer = m_context->GetSystem<Renderer>();
+        m_input    = m_context->GetSystem<Input>();
     }
 
     void Camera::OnInitialize()
@@ -183,7 +183,7 @@ namespace Spartan
         // Traces ray against all AABBs in the world
         vector<RayHit> hits;
         {
-            const auto& entities = m_context->GetSubsystem<World>()->EntityGetAll();
+            const auto& entities = m_context->GetSystem<World>()->EntityGetAll();
             for (const auto& entity : entities)
             {
                 // Make sure there entity has a renderable
@@ -234,7 +234,7 @@ namespace Spartan
             renderable->GetGeometry(&indicies, &vertices);
             if (indicies.empty()|| vertices.empty())
             {
-                LOG_ERROR("Failed to get geometry of entity %s, skipping intersection test.");
+                SP_LOG_ERROR("Failed to get geometry of entity %s, skipping intersection test.");
                 continue;
             }
 
@@ -457,9 +457,9 @@ namespace Spartan
         // Set focused entity as a lerp target
         if (m_input->GetKeyDown(KeyCode::F))
         {
-            if (Entity* entity = m_context->GetSubsystem<World>()->GetTransformHandle()->GetSelectedEntity())
+            if (Entity* entity = m_context->GetSystem<World>()->GetTransformHandle()->GetSelectedEntity())
             {
-                LOG_INFO("Focusing on entity \"%s\"...", entity->GetTransform()->GetEntityName().c_str());
+                SP_LOG_INFO("Focusing on entity \"%s\"...", entity->GetTransform()->GetEntityName().c_str());
 
                 // Get lerp target position.
                 m_lerp_to_target_position = entity->GetTransform()->GetPosition();

@@ -41,7 +41,7 @@ namespace Spartan
         class Rectangle;
     }
 
-    class SPARTAN_CLASS RHI_CommandList : public SpartanObject
+    class SP_CLASS RHI_CommandList : public SpartanObject
     {
     public:
         RHI_CommandList(Context* context, const RHI_Queue_Type queue_type, const uint32_t index, void* cmd_pool_resource, const char* name);

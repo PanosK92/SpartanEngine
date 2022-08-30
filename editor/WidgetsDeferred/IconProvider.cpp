@@ -50,7 +50,7 @@ void IconProvider::Initialize(Context* context)
     // Load standard icons
     Threading::AddTask([this]()
     {
-        const string data_dir = m_context->GetSubsystem<ResourceCache>()->GetResourceDirectory() + "/";
+        const string data_dir = m_context->GetSystem<ResourceCache>()->GetResourceDirectory() + "/";
 
         LoadFromFile(data_dir + "Icons/component_componentOptions.png",       IconType::Component_Options);
         LoadFromFile(data_dir + "Icons/component_audioListener.png",          IconType::Component_AudioListener);

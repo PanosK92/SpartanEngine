@@ -38,14 +38,14 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    Input::Input(Context* context) : Subsystem(context)
+    Input::Input(Context* context) : ISystem(context)
     {
         // Initialise events subsystem (if needed)
         if (SDL_WasInit(SDL_INIT_EVENTS) != 1)
         {
             if (SDL_InitSubSystem(SDL_INIT_EVENTS) != 0)
             {
-                LOG_ERROR("Failed to initialise SDL events subsystem: %s.", SDL_GetError());
+                SP_LOG_ERROR("Failed to initialise SDL events subsystem: %s.", SDL_GetError());
                 return;
             }
         }
@@ -55,7 +55,7 @@ namespace Spartan
         {
             if (SDL_InitSubSystem(SDL_INIT_GAMECONTROLLER) != 0)
             {
-                LOG_ERROR("Failed to initialise SDL events subsystem: %s.", SDL_GetError());
+                SP_LOG_ERROR("Failed to initialise SDL events subsystem: %s.", SDL_GetError());
                 return;
             }
         }

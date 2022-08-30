@@ -28,7 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-    class SPARTAN_CLASS Stopwatch
+    class SP_CLASS Stopwatch
     {
     public:
         Stopwatch() { Start(); }

@@ -167,7 +167,7 @@ namespace Spartan
         }
         catch (filesystem::filesystem_error& e)
         {
-            LOG_WARNING("%s, %s", e.what(), path.c_str());
+            SP_LOG_WARNING("%s, %s", e.what(), path.c_str());
         }
 
         return false;
@@ -182,7 +182,7 @@ namespace Spartan
         }
         catch (filesystem::filesystem_error& e)
         {
-            LOG_WARNING("%s, %s", e.what(), path.c_str());
+            SP_LOG_WARNING("%s, %s", e.what(), path.c_str());
         }
 
         return false;
@@ -200,7 +200,7 @@ namespace Spartan
         }
         catch (filesystem::filesystem_error& e)
         {
-            LOG_WARNING("%s, %s", e.what(), path.c_str());
+            SP_LOG_WARNING("%s, %s", e.what(), path.c_str());
         }
 
         return false;
@@ -254,7 +254,7 @@ namespace Spartan
         }
         catch (system_error & e)
         {
-            LOG_WARNING("Failed. %s", e.what());
+            SP_LOG_WARNING("Failed. %s", e.what());
             
         }
 
@@ -271,7 +271,7 @@ namespace Spartan
         if (IsSupportedFontFile(path))   return file_path_no_ext + EXTENSION_FONT;
         if (IsSupportedShaderFile(path)) return file_path_no_ext + EXTENSION_SHADER;
 
-        LOG_WARNING("Failed to nativize file path");
+        SP_LOG_WARNING("Failed to nativize file path");
         return path;
     }
 
@@ -294,7 +294,7 @@ namespace Spartan
             }
             catch (system_error& e)
             {
-                LOG_WARNING("Failed to read a directory path. %s", e.what());
+                SP_LOG_WARNING("Failed to read a directory path. %s", e.what());
             }
 
             if (!path.empty())
@@ -325,7 +325,7 @@ namespace Spartan
             }
             catch (system_error& e)
             {
-                LOG_WARNING("Failed to read a file path. %s", e.what());
+                SP_LOG_WARNING("Failed to read a file path. %s", e.what());
             }
         }
 
@@ -647,7 +647,7 @@ namespace Spartan
         }
         catch (filesystem::filesystem_error& e)
         {
-            LOG_ERROR("s, %s", e.what(), path.c_str());
+            SP_LOG_ERROR("s, %s", e.what(), path.c_str());
         }
 
         return false;
@@ -662,7 +662,7 @@ namespace Spartan
         }
         catch (filesystem::filesystem_error& e)
         {
-            LOG_ERROR("%s, %s", e.what(), path.c_str());
+            SP_LOG_ERROR("%s, %s", e.what(), path.c_str());
         }
 
         return false;
@@ -685,7 +685,7 @@ namespace Spartan
         }
         catch (filesystem::filesystem_error& e)
         {
-            LOG_ERROR("%s", e.what());
+            SP_LOG_ERROR("%s", e.what());
             return true;
         }
     }

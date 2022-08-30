@@ -35,7 +35,7 @@ namespace Spartan
         class Vector3;
     }
 
-    class SPARTAN_CLASS Terrain : public IComponent
+    class SP_CLASS Terrain : public IComponent
     {
     public:
         Terrain(Context* context, Entity* entity, uint64_t id = 0);

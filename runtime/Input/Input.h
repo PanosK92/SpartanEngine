@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==================
 #include <array>
 #include "../Math/Vector2.h"
-#include "../Core/Subsystem.h"
+#include "../Core/ISystem.h"
 #include "../Core/Variant.h"
 //=============================
 
@@ -84,7 +84,7 @@ namespace Spartan
         Touchpad, // PS4/PS5 touchpad button
     };
 
-    class SPARTAN_CLASS Input : public Subsystem
+    class SP_CLASS Input : public ISystem
     {
     public:
         Input(Context* context);

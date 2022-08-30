@@ -37,7 +37,7 @@ namespace Spartan
     class Physics;
     //=========================
 
-    class SPARTAN_CLASS SoftBody : public IComponent
+    class SP_CLASS SoftBody : public IComponent
     {
     public:
         SoftBody(Context* context, Entity* entity, uint64_t id = 0);

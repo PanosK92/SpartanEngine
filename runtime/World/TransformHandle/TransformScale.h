@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-    class SPARTAN_CLASS TransformScale : public TransformOperator
+    class SP_CLASS TransformScale : public TransformOperator
     {
     public:
         TransformScale(Context* context = nullptr);

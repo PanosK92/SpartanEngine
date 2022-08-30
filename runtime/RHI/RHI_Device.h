@@ -32,7 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-    class SPARTAN_CLASS RHI_Device : public SpartanObject
+    class SP_CLASS RHI_Device : public SpartanObject
     {
     public:
         RHI_Device(Context* context, std::shared_ptr<RHI_Context> rhi_context);

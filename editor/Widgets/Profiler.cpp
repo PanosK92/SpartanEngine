@@ -37,7 +37,7 @@ Profiler::Profiler(Editor* editor) : Widget(editor)
     m_flags        |= ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoScrollbar;
     m_title        = "Profiler";
     m_visible      = false;
-    m_profiler     = m_context->GetSubsystem<Spartan::Profiler>();
+    m_profiler     = m_context->GetSystem<Spartan::Profiler>();
     m_size_initial = Vector2(1000, 715);
     m_position     = k_widget_position_screen_center;
 }

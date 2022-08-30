@@ -36,7 +36,7 @@ namespace Spartan
     class Context;
     class Font;
 
-    class SPARTAN_CLASS FontImporter
+    class SP_CLASS FontImporter
     {
     public:
         FontImporter(Context* context);

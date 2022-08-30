@@ -37,7 +37,7 @@ using namespace FMOD;
 
 namespace Spartan
 {
-    Audio::Audio(Context* context) : Subsystem(context)
+    Audio::Audio(Context* context) : ISystem(context)
     {
 
     }
@@ -113,10 +113,10 @@ namespace Spartan
         const auto major = ss.str().erase(1, 4);
         const auto minor = ss.str().erase(0, 1).erase(2, 2);
         const auto rev = ss.str().erase(0, 3);
-        m_context->GetSubsystem<Settings>()->RegisterThirdPartyLib("FMOD", major + "." + minor + "." + rev, "https://www.fmod.com/");
+        m_context->GetSystem<Settings>()->RegisterThirdPartyLib("FMOD", major + "." + minor + "." + rev, "https://www.fmod.com/");
 
         // Get dependencies
-        m_profiler = m_context->GetSubsystem<Profiler>();
+        m_profiler = m_context->GetSystem<Profiler>();
 
         // Subscribe to events
         SP_SUBSCRIBE_TO_EVENT(EventType::WorldClear, SP_EVENT_HANDLER_EXPRESSION
@@ -171,6 +171,6 @@ namespace Spartan
 
     void Audio::LogErrorFmod(int error) const
     {
-        LOG_ERROR("%s", FMOD_ErrorString(static_cast<FMOD_RESULT>(error)));
+        SP_LOG_ERROR("%s", FMOD_ErrorString(static_cast<FMOD_RESULT>(error)));
     }
 }

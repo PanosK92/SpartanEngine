@@ -689,7 +689,7 @@ namespace Spartan
                     }
                     else
                     {
-                        LOG_ERROR("Material instance array has reached it's maximum capacity of %d elements. Consider increasing the size.", m_max_material_instances);
+                        SP_LOG_ERROR("Material instance array has reached it's maximum capacity of %d elements. Consider increasing the size.", m_max_material_instances);
                     }
 
                     // Bind material textures
@@ -2024,7 +2024,7 @@ namespace Spartan
             return;
 
         // Get transform handle (can be null during engine startup)
-        shared_ptr<TransformHandle> transform_handle = m_context->GetSubsystem<World>()->GetTransformHandle();
+        shared_ptr<TransformHandle> transform_handle = m_context->GetSystem<World>()->GetTransformHandle();
         if (!transform_handle || !transform_handle->ShouldRender())
             return;
 
@@ -2176,7 +2176,7 @@ namespace Spartan
 
         cmd_list->BeginTimeblock("outline");
 
-        if (const Entity* entity = m_context->GetSubsystem<World>()->GetTransformHandle()->GetSelectedEntity())
+        if (const Entity* entity = m_context->GetSystem<World>()->GetTransformHandle()->GetSelectedEntity())
         {
             // Get renderable
             const Renderable* renderable = entity->GetRenderable();
