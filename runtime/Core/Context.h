@@ -49,6 +49,7 @@ namespace Spartan
         TickType tick_group;
     };
 
+    // Contains all subsystems
     class SPARTAN_CLASS Context
     {
     public:

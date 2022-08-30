@@ -70,7 +70,7 @@ WorldViewer::WorldViewer(Editor* editor) : Widget(editor)
     EditorHelper::Get().g_on_entity_selected = [this](){ SetSelectedEntity(EditorHelper::Get().g_selected_entity.lock(), false); };
 }
 
-static void load_default_world_startup_window(Context* context)
+static void load_default_world_startup_window(World* world)
 {
     static bool is_visible = true;
     if (is_visible)
@@ -88,10 +88,10 @@ static void load_default_world_startup_window(Context* context)
             if (ImGui::Button("Yes"))
             {
                 is_visible = false;
-                context->GetSubsystem<Threading>()->AddTask([context]()
-                    {
-                        context->GetSubsystem<World>()->CreateDefaultWorld();
-                    });
+                Threading::AddTask([world]()
+                {
+                    world->CreateDefaultWorld();
+                });
             }
 
             ImGui::SameLine();
@@ -121,7 +121,7 @@ void WorldViewer::TickVisible()
         _Widget_World::g_entity_clicked = nullptr;
     }
 
-    load_default_world_startup_window(m_context);
+    load_default_world_startup_window(_Widget_World::g_world);
 }
 
 void WorldViewer::TreeShow()

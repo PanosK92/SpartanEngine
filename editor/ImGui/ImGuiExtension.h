@@ -54,7 +54,6 @@ public:
         g_context        = context;
         g_resource_cache = context->GetSubsystem<Spartan::ResourceCache>();
         g_world          = context->GetSubsystem<Spartan::World>();
-        g_threading      = context->GetSubsystem<Spartan::Threading>();
         g_renderer       = context->GetSubsystem<Spartan::Renderer>();
         g_input          = context->GetSubsystem<Spartan::Input>();
     }
@@ -64,7 +63,7 @@ public:
         auto resource_cache = g_resource_cache;
 
         // Load the model asynchronously
-        g_threading->AddTask([resource_cache, file_path]()
+        Spartan::Threading::AddTask([resource_cache, file_path]()
         {
             resource_cache->Load<Spartan::Mesh>(file_path);
         });
@@ -75,10 +74,10 @@ public:
         auto world = g_world;
 
         // Loading a world resets everything so it's important to ensure that no tasks are running
-        g_threading->Flush(true);
+        Spartan::Threading::Flush(true);
 
         // Load the scene asynchronously
-        g_threading->AddTask([world, file_path]()
+        Spartan::Threading::AddTask([world, file_path]()
         {
             world->LoadFromFile(file_path);
         });
@@ -89,7 +88,7 @@ public:
         auto world = g_world;
 
         // Save the scene asynchronously
-        g_threading->AddTask([world, file_path]()
+        Spartan::Threading::AddTask([world, file_path]()
         {
             world->SaveToFile(file_path);
         });
@@ -126,7 +125,6 @@ public:
     Spartan::Context*              g_context            = nullptr;
     Spartan::ResourceCache*        g_resource_cache     = nullptr;
     Spartan::World*                g_world              = nullptr;
-    Spartan::Threading*            g_threading          = nullptr;
     Spartan::Renderer*             g_renderer           = nullptr;
     Spartan::Input*                g_input              = nullptr;
     std::weak_ptr<Spartan::Entity> g_selected_entity;   
