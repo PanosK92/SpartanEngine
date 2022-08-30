@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <memory>
 #include "../Core/Context.h"
 #include "../Core/FileSystem.h"
-#include "../Core/SpartanObject.h"
+#include "../Core/SP_Object.h"
 #include "../Logging/Log.h"
 //================================
 
@@ -47,7 +47,7 @@ namespace Spartan
         Unknown,
     };
 
-    class SP_CLASS IResource : public SpartanObject
+    class SP_CLASS IResource : public SP_Object
     {
     public:
         IResource(Context* context, ResourceType type);

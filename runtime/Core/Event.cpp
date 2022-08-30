@@ -30,11 +30,11 @@ using namespace std;
 
 namespace Spartan
 {
-    array<vector<subscriber>, 12> Event::m_event_subscribers;
+    static std::array<std::vector<subscriber>, 12> event_subscribers;
 
     void Event::Shutdown()
     {
-        for (vector<subscriber>& subscribers : m_event_subscribers)
+        for (vector<subscriber>& subscribers : event_subscribers)
         {
             subscribers.clear();
         }
@@ -42,12 +42,12 @@ namespace Spartan
 
     void Event::Subscribe(const EventType event_id, subscriber&& function)
     {
-        m_event_subscribers[static_cast<uint32_t>(event_id)].push_back(forward<subscriber>(function));
+        event_subscribers[static_cast<uint32_t>(event_id)].push_back(forward<subscriber>(function));
     }
 
     void Event::Fire(const EventType event_id, const Variant& data /*= 0*/)
     {
-        for (const auto& subscriber : m_event_subscribers[static_cast<uint32_t>(event_id)])
+        for (const auto& subscriber : event_subscribers[static_cast<uint32_t>(event_id)])
         {
             subscriber(data);
         }

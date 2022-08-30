@@ -21,14 +21,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =============
 #include "pch.h"
-#include "SpartanObject.h"
+#include "SP_Object.h"
 //========================
 
 namespace Spartan
 {
     uint64_t g_id = 0;
 
-    SpartanObject::SpartanObject(Context* context /*= nullptr*/)
+    SP_Object::SP_Object(Context* context /*= nullptr*/)
     {
         m_context   = context;
         m_object_id = GenerateObjectId();

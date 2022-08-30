@@ -31,14 +31,14 @@ namespace Spartan
     //= FORWARD DECLARATIONS =
     class Context;
     //========================
-
+    
     // Globals
     extern uint64_t g_id;
 
-    class SP_CLASS SpartanObject
+    class SP_CLASS SP_Object
     {
     public:
-        SpartanObject(Context* context = nullptr);
+        SP_Object(Context* context = nullptr);
 
         // Name
         const std::string& GetName()    const { return m_name; }

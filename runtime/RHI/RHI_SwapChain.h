@@ -26,14 +26,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <vector>
 #include <array>
 #include "RHI_Definition.h"
-#include "../Core/SpartanObject.h"
+#include "../Core/SP_Object.h"
 //================================
 
 namespace Spartan
 {
     static const uint8_t max_buffer_count = 3;
 
-    class SP_CLASS RHI_SwapChain : public SpartanObject
+    class SP_CLASS RHI_SwapChain : public SP_Object
     {
     public:
         RHI_SwapChain() = default;

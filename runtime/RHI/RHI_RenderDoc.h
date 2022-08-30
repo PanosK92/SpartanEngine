@@ -21,18 +21,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =====================
-#include "../Core/SpartanObject.h"
-//================================
+//= INCLUDES =================
+#include "../Core/SP_Object.h"
+//============================
 
 namespace Spartan
 {
-    class SP_CLASS RHI_RenderDoc : public SpartanObject
+    class SP_CLASS RHI_RenderDoc
     {
     public:
-        RHI_RenderDoc() = default;
-        ~RHI_RenderDoc() = default;
-
         static void OnPreDeviceCreation();
         static void Shutdown();
         static void FrameCapture();

@@ -30,124 +30,6 @@ using namespace std;
 
 namespace Spartan
 {
-    static const std::vector<std::string> supported_formats_image
-    {
-            ".jpg",
-            ".png",
-            ".bmp",
-            ".tga",
-            ".dds",
-            ".exr",
-            ".raw",
-            ".gif",
-            ".hdr",
-            ".ico",
-            ".iff",
-            ".jng",
-            ".jpeg",
-            ".koala",
-            ".kodak",
-            ".mng",
-            ".pcx",
-            ".pbm",
-            ".pgm",
-            ".ppm",
-            ".pfm",
-            ".pict",
-            ".psd",
-            ".raw",
-            ".sgi",
-            ".targa",
-            ".tiff",
-            ".tif", // tiff can also be tif
-            ".wbmp",
-            ".webp",
-            ".xbm",
-            ".xpm"
-    };
-
-    static const std::vector<std::string> supported_formats_audio
-    {
-        ".aiff",
-        ".asf",
-        ".asx",
-        ".dls",
-        ".flac",
-        ".fsb",
-        ".it",
-        ".m3u",
-        ".midi",
-        ".mod",
-        ".mp2",
-        ".mp3",
-        ".ogg",
-        ".pls",
-        ".s3m",
-        ".vag", // PS2/PSP
-        ".wav",
-        ".wax",
-        ".wma",
-        ".xm",
-        ".xma" // XBOX 360
-    };
-
-    static const std::vector<std::string> supported_formats_model
-    {
-        ".3ds",
-        ".obj",
-        ".fbx",
-        ".blend",
-        ".dae",
-        ".gltf",
-        ".lwo",
-        ".c4d",
-        ".ase",
-        ".dxf",
-        ".hmp",
-        ".md2",
-        ".md3",
-        ".md5",
-        ".mdc",
-        ".mdl",
-        ".nff",
-        ".ply",
-        ".stl",
-        ".x",
-        ".smd",
-        ".lxo",
-        ".lws",
-        ".ter",
-        ".ac3d",
-        ".ms3d",
-        ".cob",
-        ".q3bsp",
-        ".xgl",
-        ".csm",
-        ".bvh",
-        ".b3d",
-        ".ndo"
-    };
-
-    static const std::vector<std::string> supported_formats_shader
-    {
-        ".hlsl"
-    };
-
-    static const std::vector<std::string> supported_formats_font
-    {
-        ".ttf",
-        ".ttc",
-        ".cff",
-        ".woff",
-        ".otf",
-        ".otc",
-        ".pfa",
-        ".pfb",
-        ".fnt",
-        ".bdf",
-        ".pfr"
-    };
-
     void FileSystem::CreateTextFile(const string& file_path, const string& text)
     {
         ofstream outfile(file_path);
@@ -560,7 +442,7 @@ namespace Spartan
 
     bool FileSystem::IsEngineFile(const string& path)
     {
-        return  IsEngineScriptFile(path)   ||
+        return
                 IsEnginePrefabFile(path)   ||
                 IsEngineModelFile(path)    ||
                 IsEngineMaterialFile(path) ||
@@ -575,7 +457,6 @@ namespace Spartan
     {
         const vector<string> filesInDirectory = GetFilesInDirectory(path);
         vector<string> imagesInDirectory      = GetSupportedImageFilesFromPaths(filesInDirectory);  // get all the images
-        vector<string> scriptsInDirectory     = GetSupportedScriptFilesFromPaths(filesInDirectory); // get all the scripts
         vector<string> modelsInDirectory      = GetSupportedModelFilesFromPaths(filesInDirectory);  // get all the models
         vector<string> supportedFiles;
 
@@ -583,12 +464,6 @@ namespace Spartan
         for (const auto& imageInDirectory : imagesInDirectory)
         {
             supportedFiles.emplace_back(imageInDirectory);
-        }
-
-        // get supported scripts
-        for (const auto& scriptInDirectory : scriptsInDirectory)
-        {
-            supportedFiles.emplace_back(scriptInDirectory);
         }
 
         // get supported models
@@ -620,20 +495,6 @@ namespace Spartan
         for (const auto& path : paths)
         {
             if (!IsSupportedAudioFile(path))
-                continue;
-
-            files.emplace_back(path);
-        }
-
-        return files;
-    }
-
-    vector<string> FileSystem::GetSupportedScriptFilesFromPaths(const vector<string>& paths)
-    {
-        vector<string> files;
-        for (const auto& path : paths)
-        {
-            if (!IsEngineScriptFile(path))
                 continue;
 
             files.emplace_back(path);
