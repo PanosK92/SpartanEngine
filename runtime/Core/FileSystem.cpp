@@ -30,14 +30,6 @@ using namespace std;
 
 namespace Spartan
 {
-    void FileSystem::CreateTextFile(const string& file_path, const string& text)
-    {
-        ofstream outfile(file_path);
-        outfile << text;
-        outfile.flush();
-        outfile.close();
-    }
-
     bool FileSystem::IsEmptyOrWhitespace(const string& var)
     {
         // Check if it's empty

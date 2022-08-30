@@ -22,8 +22,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ===========
-#include <vector>
-#include <string>
 #include "Definitions.h"
 //======================
 
@@ -32,9 +30,6 @@ namespace Spartan
     class SP_CLASS FileSystem
     {
     public:
-        // File creation
-        static void CreateTextFile(const std::string& file_path, const std::string& text);
-
         // Strings
         static bool IsEmptyOrWhitespace(const std::string& var);
         static bool IsAlphanumeric(const std::string& var);

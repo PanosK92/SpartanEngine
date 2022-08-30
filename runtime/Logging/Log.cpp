@@ -22,7 +22,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===============
 #include "pch.h"
 #include "ILogger.h"
-#include <cstdarg>
 #include "../World/Entity.h"
 //==========================
 
@@ -43,12 +42,10 @@ namespace Spartan
     static bool unique_logs     = false;
 #endif
 
-    static void log_to_file(const char* text, const LogType type)
+    static void log_to_file(string text, const LogType type)
     {
-        SP_ASSERT_MSG(text != nullptr, "Text is null");
-
-        static const string prefix = (type == LogType::Info) ? "Info:" : (type == LogType::Warning) ? "Warning:" : "Error:";
-        const string final_text    = prefix + " " + text;
+        const string prefix = (type == LogType::Info) ? "Info:" : (type == LogType::Warning) ? "Warning:" : "Error:";
+        text                = prefix + " " + text;
 
         // Delete the previous log file (if it exists)
         static bool is_first_log = true;
@@ -65,29 +62,11 @@ namespace Spartan
         if (fout.is_open())
         {
             // Write out the error message
-            fout << final_text << endl;
+            fout << text << endl;
 
             // Close the file
             fout.close();
         }
-    }
-
-    static void log_to_logger(const char* text, const LogType type)
-    {
-        SP_ASSERT_MSG(text != nullptr, "Text is null");
-        SP_ASSERT_MSG(m_logger != nullptr, "Logger is null");
-
-        m_logger->Log(string(text), static_cast<uint32_t>(type));
-    }
-
-    static void flush_log_buffer()
-    {
-        for (const LogCmd& log : logs)
-        {
-            log_to_logger(log.text.c_str(), log.type);
-        }
-
-        logs.clear();
     }
 
     void Log::SetLogger(ILogger* logger)
@@ -98,13 +77,13 @@ namespace Spartan
     // All functions resolve to this one
     void Log::Write(const char* text, const LogType type)
     {
-        SP_ASSERT(text != nullptr);
+        SP_ASSERT_MSG(text != nullptr, "Text is null");
 
         // Lock mutex
         static mutex log_mutex;
         lock_guard<mutex> guard(log_mutex);
 
-        // Only log unique text. Enabled only in debug configuration.
+        // Only output unique text, if requested.
         static vector<string> logs_error_strings;
         if (unique_logs && type == LogType::Error)
         {
@@ -118,22 +97,34 @@ namespace Spartan
             }
         }
 
+        // Add time to the text
+        auto t  = time(nullptr);
+        auto tm = *localtime(&t);
+        ostringstream oss;
+        oss << std::put_time(&tm, "[%H:%M:%S]");
+        const string final_text    = oss.str() + "::" + string(text);
+
         // Log to file if requested or if an in-engine logger is not available.
         if (m_log_to_file || !m_logger)
         {
-            logs.emplace_back(text, type);
-            log_to_file(text, type);
+            logs.emplace_back(final_text, type);
+            log_to_file(final_text, type);
         }
 
-        // Always log in-engine
+        // Log with the logger, if present.
         if (m_logger)
         {
+            // Flush the log buffer, if needed.
             if (!logs.empty())
             {
-                flush_log_buffer();
+                for (const LogCmd& log : logs)
+                {
+                    m_logger->Log(log.text, static_cast<uint32_t>(type));
+                }
+                logs.clear();
             }
 
-            log_to_logger(text, type);
+            m_logger->Log(final_text, static_cast<uint32_t>(type));
         }
     }
 

@@ -45,6 +45,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <array>
 #include <deque>
 #include <vector>
+#include <iostream>
+#include <cstdarg>
 //======================
 
 //= RUNTIME ====================
