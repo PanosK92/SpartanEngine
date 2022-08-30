@@ -113,7 +113,7 @@ namespace Spartan
         const auto major = ss.str().erase(1, 4);
         const auto minor = ss.str().erase(0, 1).erase(2, 2);
         const auto rev = ss.str().erase(0, 3);
-        m_context->GetSystem<Settings>()->RegisterThirdPartyLib("FMOD", major + "." + minor + "." + rev, "https://www.fmod.com/");
+        Settings::RegisterThirdPartyLib("FMOD", major + "." + minor + "." + rev, "https://www.fmod.com/");
 
         // Get dependencies
         m_profiler = m_context->GetSystem<Profiler>();

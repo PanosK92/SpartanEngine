@@ -41,21 +41,17 @@ namespace Spartan
 {
     Engine::Engine()
     {
-        // Flags
+        // Set flags
         SetFlag(EngineMode::Physics);
         SetFlag(EngineMode::Game);
 
-        // Create context
+        // Create a context
         m_context = make_shared<Context>();
         m_context->m_engine = this;
 
-        // Initialise systems which are static
-        Threading::Initialize();
-
-        // Initialize systems which need to tick (this is also the tick order)
+        // Add (addition order is tick order)
         Stopwatch timer_add;
         m_context->AddSystem<Window>();
-        m_context->AddSystem<Settings>();
         m_context->AddSystem<Timer>();
         m_context->AddSystem<Input>(TickType::Smoothed);
         m_context->AddSystem<ResourceCache>();
@@ -64,39 +60,56 @@ namespace Spartan
         m_context->AddSystem<World>(TickType::Smoothed);
         m_context->AddSystem<Profiler>();
         m_context->AddSystem<Renderer>();
-        SP_LOG_INFO("Subsystem addition took %.1f ms", timer_add.GetElapsedTimeMs());
+        SP_LOG_INFO("System addition took %.1f ms", timer_add.GetElapsedTimeMs());
 
-        // Subsystem: Initialise.
-        Stopwatch timer_initialise;
-        m_context->OnInitialise();
-        SP_LOG_INFO("Subsystem initialisation took %.1f ms", timer_initialise.GetElapsedTimeMs());
+        // Initialise
+        Stopwatch timer_initialize;
+        {
+            // Static
+            Threading::Initialize();
+            Settings::Initialize(m_context.get());
 
-        // Subsystem: Post-initialise.
-        Stopwatch timer_post_initialise;
-        m_context->OnPostInitialise();
-        SP_LOG_INFO("Subsystem post-initialisation took %.1f ms", timer_post_initialise.GetElapsedTimeMs());
+            // Context
+            m_context->OnInitialize();
+            
+        }
+        SP_LOG_INFO("System initialization took %.1f ms", timer_initialize.GetElapsedTimeMs());
+
+        // Post initialize
+        Stopwatch timer_post_initialize;
+        {
+            // Context
+            m_context->OnPostInitialize();
+
+            // Static
+            Settings::PostInitialize();
+        }
+        SP_LOG_INFO("System post-initialization took %.1f ms", timer_post_initialize.GetElapsedTimeMs());
     }
 
     Engine::~Engine()
     {
-        // Shutdown systems
-        m_context->OnShutdown();
+        // Shutdown
+        {
+            // Context
+            m_context->OnShutdown();
 
-        // Shutdown static systems
-        Threading::Shutdown();
-        Events::Shutdown();
+            // Static
+            Threading::Shutdown();
+            Events::Shutdown();
+        }
     }
 
     void Engine::Tick() const
     {
-        // Subsystem: Pre-tick.
+        // Pre-tick
         m_context->OnPreTick();
 
-        // Subsystem: Tick.
+        // Tick
         m_context->OnTick(TickType::Variable, m_context->GetSystem<Timer>()->GetDeltaTimeSec());
         m_context->OnTick(TickType::Smoothed, m_context->GetSystem<Timer>()->GetDeltaTimeSmoothedSec());
 
-        // Subsystem: Post-tick.
+        // Post-tick
         m_context->OnPostTick();
     }
 }

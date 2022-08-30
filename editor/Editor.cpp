@@ -176,7 +176,7 @@ Editor::Editor()
     // Initialise Editor/ImGui
     {
         SP_ASSERT_MSG(IMGUI_CHECKVERSION(), "Version mismatch between source and caller");
-        m_context->GetSystem<Spartan::Settings>()->RegisterThirdPartyLib("Dear ImGui", IMGUI_VERSION, "https://github.com/ocornut/imgui");
+        Spartan::Settings::RegisterThirdPartyLib("Dear ImGui", IMGUI_VERSION, "https://github.com/ocornut/imgui");
 
         // Create context
         ImGui::CreateContext();

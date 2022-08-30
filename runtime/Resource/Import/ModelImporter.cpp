@@ -345,7 +345,7 @@ namespace Spartan
         const int major = aiGetVersionMajor();
         const int minor = aiGetVersionMinor();
         const int rev   = aiGetVersionRevision();
-        m_context->GetSystem<Settings>()->RegisterThirdPartyLib("Assimp", to_string(major) + "." + to_string(minor) + "." + to_string(rev), "https://github.com/assimp/assimp");
+        Settings::RegisterThirdPartyLib("Assimp", to_string(major) + "." + to_string(minor) + "." + to_string(rev), "https://github.com/assimp/assimp");
     }
 
     bool ModelImporter::Load(Mesh* mesh, const string& file_path)

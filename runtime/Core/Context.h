@@ -92,7 +92,7 @@ namespace Spartan
             return nullptr;
         }
 
-        void OnInitialise()
+        void OnInitialize()
         {
             for (const system_wrapper& subsystem : m_systems)
             {
@@ -100,7 +100,7 @@ namespace Spartan
             }
         }
 
-        void OnPostInitialise()
+        void OnPostInitialize()
         {
             for (const system_wrapper& subsystem : m_systems)
             {

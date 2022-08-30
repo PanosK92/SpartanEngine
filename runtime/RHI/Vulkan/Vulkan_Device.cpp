@@ -427,10 +427,7 @@ namespace Spartan
 
             SP_LOG_INFO("Vulkan %s", version.c_str());
 
-            if (Settings* settings = m_context->GetSystem<Settings>())
-            {
-                settings->RegisterThirdPartyLib("Vulkan", version_major + "." + version_minor + "." + version_patch, "https://vulkan.lunarg.com/");
-            }
+            Settings::RegisterThirdPartyLib("Vulkan", version_major + "." + version_minor + "." + version_patch, "https://vulkan.lunarg.com/");
         }
     }
 

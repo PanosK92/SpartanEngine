@@ -34,64 +34,70 @@ using namespace std;
 using namespace Spartan::Math;
 //=============================
 
-namespace _Settings
+namespace Spartan
 {
-    ofstream fout;
-    ifstream fin;
-    string file_name = "spartan.ini";
-
-    template <class T>
-    void write_setting(ofstream& fout, const string& name, T value)
+    namespace io_helper
     {
-        fout << name << "=" << value << endl;
-    }
-
-    template <class T>
-    void read_setting(ifstream& fin, const string& name, T& value)
-    {
-        for (string line; getline(fin, line); )
+        ofstream fout;
+        ifstream fin;
+        string file_name = "spartan.ini";
+    
+        template <class T>
+        void write_setting(ofstream& fout, const string& name, T value)
         {
-            const auto first_index = line.find_first_of('=');
-            if (name == line.substr(0, first_index))
+            fout << name << "=" << value << endl;
+        }
+    
+        template <class T>
+        void read_setting(ifstream& fin, const string& name, T& value)
+        {
+            for (string line; getline(fin, line); )
             {
-                const auto lastindex = line.find_last_of('=');
-                const auto read_value = line.substr(lastindex + 1, line.length());
-                value = static_cast<T>(stof(read_value));
-                return;
+                const auto first_index = line.find_first_of('=');
+                if (name == line.substr(0, first_index))
+                {
+                    const auto lastindex = line.find_last_of('=');
+                    const auto read_value = line.substr(lastindex + 1, line.length());
+                    value = static_cast<T>(stof(read_value));
+                    return;
+                }
             }
         }
     }
-}
+    
+    static bool m_is_fullscreen            = false;
+    static bool m_is_mouse_visible         = true;
+    static Vector2 m_resolution_output     = Vector2::Zero;
+    static Vector2 m_resolution_render     = Vector2::Zero;
+    static uint32_t m_max_thread_count     = 0;
+    static double m_fps_limit              = 0;
+    static bool m_has_loaded_user_settings = false;
+    static Context* m_context              = nullptr;
+    static std::array<float, 32> m_render_options;
+    static std::vector<third_party_lib> m_third_party_libs;
 
-namespace Spartan
-{
-    Settings::Settings(Context* context) : ISystem(context)
+    void Settings::Initialize(Context* context)
     {
         m_context = context;
 
         // In case no Spartan.ini file exists, set the resolution to whatever the display is using.
         m_resolution_output.x = static_cast<float>(Display::GetWidth());
         m_resolution_output.y = static_cast<float>(Display::GetHeight());
-        m_resolution_render   = m_resolution_output;
+        m_resolution_render = m_resolution_output;
 
-        // Register third party libs which don't register on their own as they are not part of some other initiliasation procedure
-        RegisterThirdPartyLib("pugixml", "1.11.4", "https://github.com/zeux/pugixml");
-        RegisterThirdPartyLib("SPIRV-Cross", "03-06-2022", "https://github.com/KhronosGroup/SPIRV-Cross");
+        // Register third party libs which don't register on their own as they are not part of some other initialization procedure
+        RegisterThirdPartyLib("pugixml", "1.11.4",                   "https://github.com/zeux/pugixml");
+        RegisterThirdPartyLib("SPIRV-Cross", "03-06-2022",           "https://github.com/KhronosGroup/SPIRV-Cross");
         RegisterThirdPartyLib("DirectXShaderCompiler", "1.7.2207.3", "https://github.com/microsoft/DirectXShaderCompiler");
     }
 
-    Settings::~Settings()
-    {
-
-    }
-
-    void Settings::OnPostInitialise()
+    void Settings::PostInitialize()
     {
         // We are in initialising during OnPreTick() as
-        // we need all the subsystems to be initialised
+        // we need all the subsystems to be initialized
         Reflect();
 
-        if (FileSystem::Exists(_Settings::file_name))
+        if (FileSystem::Exists(io_helper::file_name))
         {
             Load();
             Map();
@@ -105,7 +111,7 @@ namespace Spartan
         SP_LOG_INFO("Max threads: %d.", m_max_thread_count);
     }
     
-    void Settings::OnShutdown()
+    void Settings::Shutdown()
     {
         Reflect();
         Save();
@@ -116,57 +122,62 @@ namespace Spartan
         m_third_party_libs.emplace_back(name, version, url);
     }
 
-    void Settings::Save() const
+    const vector<third_party_lib>& Settings::GetThirdPartyLibs()
+    {
+        return m_third_party_libs;
+    }
+
+    void Settings::Save()
     {
         // Create a settings file
-        _Settings::fout.open(_Settings::file_name, ofstream::out);
+        io_helper::fout.open(io_helper::file_name, ofstream::out);
 
         // Write the settings
-        _Settings::write_setting(_Settings::fout, "bFullScreen",             m_is_fullscreen);
-        _Settings::write_setting(_Settings::fout, "bIsMouseVisible",         m_is_mouse_visible);
-        _Settings::write_setting(_Settings::fout, "iResolutionOutputWidth",  m_resolution_output.x);
-        _Settings::write_setting(_Settings::fout, "iResolutionOutputHeight", m_resolution_output.y);
-        _Settings::write_setting(_Settings::fout, "iResolutionRenderWidth",  m_resolution_render.x);
-        _Settings::write_setting(_Settings::fout, "iResolutionRenderHeight", m_resolution_render.y);
-        _Settings::write_setting(_Settings::fout, "fFPSLimit",               m_fps_limit);
-        _Settings::write_setting(_Settings::fout, "iMaxThreadCount",         m_max_thread_count);
+        io_helper::write_setting(io_helper::fout, "bFullScreen",             m_is_fullscreen);
+        io_helper::write_setting(io_helper::fout, "bIsMouseVisible",         m_is_mouse_visible);
+        io_helper::write_setting(io_helper::fout, "iResolutionOutputWidth",  m_resolution_output.x);
+        io_helper::write_setting(io_helper::fout, "iResolutionOutputHeight", m_resolution_output.y);
+        io_helper::write_setting(io_helper::fout, "iResolutionRenderWidth",  m_resolution_render.x);
+        io_helper::write_setting(io_helper::fout, "iResolutionRenderHeight", m_resolution_render.y);
+        io_helper::write_setting(io_helper::fout, "fFPSLimit",               m_fps_limit);
+        io_helper::write_setting(io_helper::fout, "iMaxThreadCount",         m_max_thread_count);
 
         for (uint32_t i = 0; i < static_cast<uint32_t>(m_render_options.size()); i++)
         {
-            _Settings::write_setting(_Settings::fout, "render_option_" + to_string(i), m_render_options[i]);
+            io_helper::write_setting(io_helper::fout, "render_option_" + to_string(i), m_render_options[i]);
         }
 
         // Close the file.
-        _Settings::fout.close();
+        io_helper::fout.close();
     }
 
     void Settings::Load()
     {
         // Create a settings file
-        _Settings::fin.open(_Settings::file_name, ifstream::in);
+        io_helper::fin.open(io_helper::file_name, ifstream::in);
 
         // Read the settings
-        _Settings::read_setting(_Settings::fin, "bFullScreen",             m_is_fullscreen);
-        _Settings::read_setting(_Settings::fin, "bIsMouseVisible",         m_is_mouse_visible);
-        _Settings::read_setting(_Settings::fin, "iResolutionOutputWidth",  m_resolution_output.x);
-        _Settings::read_setting(_Settings::fin, "iResolutionOutputHeight", m_resolution_output.y);
-        _Settings::read_setting(_Settings::fin, "iResolutionRenderWidth",  m_resolution_render.x);
-        _Settings::read_setting(_Settings::fin, "iResolutionRenderHeight", m_resolution_render.y);
-        _Settings::read_setting(_Settings::fin, "fFPSLimit",               m_fps_limit);
-        _Settings::read_setting(_Settings::fin, "iMaxThreadCount",         m_max_thread_count);
+        io_helper::read_setting(io_helper::fin, "bFullScreen",             m_is_fullscreen);
+        io_helper::read_setting(io_helper::fin, "bIsMouseVisible",         m_is_mouse_visible);
+        io_helper::read_setting(io_helper::fin, "iResolutionOutputWidth",  m_resolution_output.x);
+        io_helper::read_setting(io_helper::fin, "iResolutionOutputHeight", m_resolution_output.y);
+        io_helper::read_setting(io_helper::fin, "iResolutionRenderWidth",  m_resolution_render.x);
+        io_helper::read_setting(io_helper::fin, "iResolutionRenderHeight", m_resolution_render.y);
+        io_helper::read_setting(io_helper::fin, "fFPSLimit",               m_fps_limit);
+        io_helper::read_setting(io_helper::fin, "iMaxThreadCount",         m_max_thread_count);
 
         for (uint32_t i = 0; i < static_cast<uint32_t>(m_render_options.size()); i++)
         {
-            _Settings::read_setting(_Settings::fin, "render_option_" + to_string(i), m_render_options[i]);
+            io_helper::read_setting(io_helper::fin, "render_option_" + to_string(i), m_render_options[i]);
         }
 
         // Close the file.
-        _Settings::fin.close();
+        io_helper::fin.close();
 
         m_has_loaded_user_settings = true;
     }
 
-    void Settings::Map() const
+    void Settings::Map()
     {
         if (Timer* timer = m_context->GetSystem<Timer>())
         {

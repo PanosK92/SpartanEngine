@@ -319,7 +319,7 @@ void MenuBar::DrawAboutWindow() const
             ImGui::SameLine(col_b);
             ImGui::Text("URL");
 
-            for (const Spartan::ThirdPartyLib &lib : m_context->GetSystem<Spartan::Settings>()->GetThirdPartyLibs())
+            for (const Spartan::third_party_lib& lib : Spartan::Settings::GetThirdPartyLibs())
             {
                 ImGui::BulletText(lib.name.c_str());
                 ImGui::SameLine(col_a);
