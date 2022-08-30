@@ -96,7 +96,7 @@ namespace Spartan
         stream->Read(&parent_entity_id);
         if (parent_entity_id != 0)
         {
-            if (const shared_ptr<Entity>& parent = m_context->GetSystem<World>()->EntityGetById(parent_entity_id))
+            if (const shared_ptr<Entity>& parent = m_context->GetSystem<World>()->GetEntityById(parent_entity_id))
             {
                 parent->GetTransform()->AddChild(this);
             }
@@ -403,7 +403,7 @@ namespace Spartan
         m_children.clear();
         m_children.shrink_to_fit();
 
-        auto entities = GetContext()->GetSystem<World>()->EntityGetAll();
+        auto entities = GetContext()->GetSystem<World>()->GetAllEntities();
         for (const auto& entity : entities)
         {
             if (!entity)

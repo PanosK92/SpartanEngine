@@ -70,7 +70,7 @@ namespace Spartan
         auto clone_entity = [&scene, &clones](Entity* entity)
         {
             // Clone the name and the ID
-            auto clone = scene->EntityCreate().get();
+            auto clone = scene->CreateEntity().get();
             clone->SetObjectId(GenerateObjectId());
             clone->SetName(entity->GetName());
             clone->SetActive(entity->IsActive());
@@ -265,7 +265,7 @@ namespace Spartan
             vector<weak_ptr<Entity>> children;
             for (uint32_t i = 0; i < children_count; i++)
             {
-                shared_ptr<Entity> child = world->EntityCreate();
+                shared_ptr<Entity> child = world->CreateEntity();
 
                 child->SetObjectId(stream->ReadAs<uint64_t>());
 

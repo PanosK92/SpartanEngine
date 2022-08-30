@@ -192,7 +192,7 @@ namespace Spartan
         }
 
         // Only save root entities as they will also save their descendants
-        vector<shared_ptr<Entity>> root_actors = EntityGetRoots();
+        vector<shared_ptr<Entity>> root_actors = GetRootEntities();
         const uint32_t root_entity_count = static_cast<uint32_t>(root_actors.size());
 
         // Start progress tracking and timing
@@ -259,7 +259,7 @@ namespace Spartan
         // Load root entity IDs
         for (uint32_t i = 0; i < root_entity_count; i++)
         {
-            shared_ptr<Entity> entity = EntityCreate();
+            shared_ptr<Entity> entity = CreateEntity();
             entity->SetObjectId(file->ReadAs<uint64_t>());
         }
 
@@ -278,7 +278,7 @@ namespace Spartan
         return true;
     }
 
-    shared_ptr<Entity> World::EntityCreate(bool is_active /*= true*/)
+    shared_ptr<Entity> World::CreateEntity(bool is_active /*= true*/)
     {
         lock_guard lock(m_entity_access_mutex);
 
@@ -288,26 +288,20 @@ namespace Spartan
         return entity;
     }
 
-    bool World::EntityExists(const shared_ptr<Entity>& entity)
+    bool World::EntityExists(Entity* entity)
     {
-        if (!entity)
-            return false;
-
-        return EntityGetById(entity->GetObjectId()) != nullptr;
+        SP_ASSERT_MSG(entity != nullptr, "Entity is null");
+        return GetEntityById(entity->GetObjectId()) != nullptr;
     }
 
-    void World::EntityRemove(const shared_ptr<Entity>& entity)
+    void World::RemoveEntity(Entity* entity)
     {
-        if (!entity)
-            return;
-
-        // Mark for destruction but don't delete now
-        // as the Renderer might still be using it.
-        entity->MarkForDestruction();
+        SP_ASSERT_MSG(entity != nullptr, "Entity is null");
+        entity->MarkForDestruction(); // delayed destruction in case the Renderer is using it
         m_resolve = true;
     }
 
-    vector<shared_ptr<Entity>> World::EntityGetRoots()
+    vector<shared_ptr<Entity>> World::GetRootEntities()
     {
         vector<shared_ptr<Entity>> root_entities;
         for (const shared_ptr<Entity>& entity : m_entities)
@@ -321,7 +315,7 @@ namespace Spartan
         return root_entities;
     }
 
-    const shared_ptr<Entity>& World::EntityGetByName(const string& name)
+    const shared_ptr<Entity>& World::GetEntityByName(const string& name)
     {
         for (shared_ptr<Entity>& entity : m_entities)
         {
@@ -333,7 +327,7 @@ namespace Spartan
         return empty;
     }
 
-    const shared_ptr<Entity>& World::EntityGetById(const uint64_t id)
+    const shared_ptr<Entity>& World::GetEntityById(const uint64_t id)
     {
         for (const auto& entity : m_entities)
         {
@@ -376,7 +370,7 @@ namespace Spartan
         auto children = entity->GetTransform()->GetChildren();
         for (const auto& child : children)
         {
-            EntityRemove(child->GetEntity()->GetPtrShared());
+            RemoveEntity(child->GetEntity());
         }
 
         // Keep a reference to it's parent (in case it has one)
@@ -405,14 +399,14 @@ namespace Spartan
     {
         // Environment
         {
-            shared_ptr<Entity> environment = EntityCreate();
+            shared_ptr<Entity> environment = CreateEntity();
             environment->SetName("environment");
             environment->AddComponent<Environment>();
         }
 
         // Camera
         {
-            shared_ptr<Entity> entity = EntityCreate();
+            shared_ptr<Entity> entity = CreateEntity();
             entity->SetName("camera");
 
             entity->AddComponent<Camera>();
@@ -423,7 +417,7 @@ namespace Spartan
 
         // Light - Directional
         {
-            shared_ptr<Entity> entity = EntityCreate();
+            shared_ptr<Entity> entity = CreateEntity();
             entity->SetName("light_directional");
 
             entity->GetTransform()->SetPosition(Vector3(0.0f, 10.0f, 0.0f));
@@ -437,7 +431,7 @@ namespace Spartan
 
         // Light - Point
         {
-            shared_ptr<Entity> entity = EntityCreate();
+            shared_ptr<Entity> entity = CreateEntity();
             entity->SetName("light_point");
 
             entity->GetTransform()->SetPosition(Vector3(15.7592f, 3.1752f, 0.9272f));
@@ -452,7 +446,7 @@ namespace Spartan
 
         // Music
         {
-            shared_ptr<Entity> entity = EntityCreate();
+            shared_ptr<Entity> entity = CreateEntity();
             entity->SetName("audio_source");
 
             AudioSource* audio_source = entity->AddComponent<AudioSource>();
@@ -582,9 +576,9 @@ namespace Spartan
 
             // Delete dirt decals since they look bad.
             // They are hovering over the surfaces, to avoid z-fighting, and they also cast shadows underneath them.
-            _EntityRemove(entity->GetTransform()->GetDescendantByName("decals_1st_floor"));
-            _EntityRemove(entity->GetTransform()->GetDescendantByName("decals_2nd_floor"));
-            _EntityRemove(entity->GetTransform()->GetDescendantByName("decals_3rd_floor"));
+            RemoveEntity(entity->GetTransform()->GetDescendantByName("decals_1st_floor"));
+            RemoveEntity(entity->GetTransform()->GetDescendantByName("decals_2nd_floor"));
+            RemoveEntity(entity->GetTransform()->GetDescendantByName("decals_3rd_floor"));
 
             // 3D model - Sponza curtains
             if (m_default_model_sponza_curtains = ResourceCache::Load<Mesh>("project\\models\\sponza\\curtains\\NewSponza_Curtains_glTF.gltf"))

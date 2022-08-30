@@ -620,7 +620,7 @@ void Properties::ShowConstraint(Constraint* constraint) const
         if (auto payload = imgui_extension::receive_drag_drop_payload(imgui_extension::DragPayloadType::DragPayload_Entity))
         {
             const uint64_t entity_id = get<uint64_t>(payload->data);
-            other_body               = helper::world->EntityGetById(entity_id);
+            other_body               = helper::world->GetEntityById(entity_id);
             other_body_dirty         = true;
         }
         ImGui::PopItemWidth();

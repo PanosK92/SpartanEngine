@@ -421,7 +421,7 @@ namespace Spartan
         // Create an entity that will match this node.
         // The entity is created as inactive for thread-safety.
         const bool is_active      = false;
-        shared_ptr<Entity> entity = m_world->EntityCreate(is_active);
+        shared_ptr<Entity> entity = m_world->CreateEntity(is_active);
 
         // Set root entity to mesh
         bool is_root_node = parent_entity == nullptr;
@@ -484,7 +484,7 @@ namespace Spartan
             {
                 // Create entity
                 bool is_active = false;
-                entity         = m_world->EntityCreate(is_active).get();
+                entity         = m_world->CreateEntity(is_active).get();
 
                 // Set parent
                 entity->GetTransform()->SetParent(node_entity->GetTransform());

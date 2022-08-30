@@ -134,13 +134,13 @@ void WorldViewer::TreeShow()
         if (auto payload = imgui_extension::receive_drag_drop_payload(imgui_extension::DragPayloadType::DragPayload_Entity))
         {
             const uint64_t entity_id = get<uint64_t>(payload->data);
-            if (const shared_ptr<Entity>& dropped_entity = _Widget_World::g_world->EntityGetById(entity_id))
+            if (const shared_ptr<Entity>& dropped_entity = _Widget_World::g_world->GetEntityById(entity_id))
             {
                 dropped_entity->GetTransform()->SetParent(nullptr);
             }
         }
 
-        vector<shared_ptr<Entity>> root_entities = _Widget_World::g_world->EntityGetRoots();
+        vector<shared_ptr<Entity>> root_entities = _Widget_World::g_world->GetRootEntities();
         for (const shared_ptr<Entity>& entity : root_entities)
         {
             TreeAddEntity(entity.get());
@@ -305,7 +305,7 @@ void WorldViewer::EntityHandleDragDrop(Entity* entity_ptr) const
     if (auto payload = imgui_extension::receive_drag_drop_payload(imgui_extension::DragPayloadType::DragPayload_Entity))
     {
         const uint64_t entity_id = get<uint64_t>(payload->data);
-        if (const shared_ptr<Entity>& dropped_entity = _Widget_World::g_world->EntityGetById(entity_id))
+        if (const shared_ptr<Entity>& dropped_entity = _Widget_World::g_world->GetEntityById(entity_id))
         {
             if (dropped_entity->GetObjectId() != entity_ptr->GetObjectId())
             {
@@ -560,12 +560,12 @@ void WorldViewer::HandleKeyShortcuts()
 
 void WorldViewer::ActionEntityDelete(const shared_ptr<Entity>& entity)
 {
-    _Widget_World::g_world->EntityRemove(entity);
+    _Widget_World::g_world->RemoveEntity(entity.get());
 }
 
 Entity* WorldViewer::ActionEntityCreateEmpty()
 {
-    shared_ptr<Entity> entity = _Widget_World::g_world->EntityCreate();
+    shared_ptr<Entity> entity = _Widget_World::g_world->CreateEntity();
     if (const shared_ptr<Entity> selected_entity = EditorHelper::Get().g_selected_entity.lock())
     {
         entity->GetTransform()->SetParent(selected_entity->GetTransform());
