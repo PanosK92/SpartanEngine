@@ -87,12 +87,12 @@ constexpr int sp_version_revision = 3;
 #ifdef DEBUG
 #define SP_ASSERT(expression) assert(expression)
 #else
-#define SP_ASSERT(expression)           \
-if (!(##expression))                    \
-{                                       \
-    Spartan::Log::m_log_to_file = true; \
-    SP_LOG_ERROR(#expression);          \
-    SP_DEBUG_BREAK();                   \
+#define SP_ASSERT(expression)         \
+if (!(##expression))                  \
+{                                     \
+    Spartan::Log::SetLogToFile(true); \
+    SP_LOG_ERROR(#expression);        \
+    SP_DEBUG_BREAK();                 \
 }
 #endif
 

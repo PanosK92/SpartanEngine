@@ -34,15 +34,15 @@ namespace Spartan
 {
     static vector<LogCmd> logs;
     static string log_file_name = "log.txt";
-    static ILogger* m_logger    = nullptr;
-    static bool m_log_to_file   = true;
+    static ILogger* logger      = nullptr;
+    static bool log_to_file     = true;
 #ifdef DEBUG
     static bool unique_logs     = true;
 #else
     static bool unique_logs     = false;
 #endif
 
-    static void log_to_file(string text, const LogType type)
+    static void write_to_file(string text, const LogType type)
     {
         const string prefix = (type == LogType::Info) ? "Info:" : (type == LogType::Warning) ? "Warning:" : "Error:";
         text                = prefix + " " + text;
@@ -69,9 +69,9 @@ namespace Spartan
         }
     }
 
-    void Log::SetLogger(ILogger* logger)
+    void Log::SetLogger(ILogger* logger_in)
     {
-        m_logger = logger;
+        logger = logger_in;
     }
 
     // All functions resolve to this one
@@ -105,32 +105,32 @@ namespace Spartan
         const string final_text    = oss.str() + "::" + string(text);
 
         // Log to file if requested or if an in-engine logger is not available.
-        if (m_log_to_file || !m_logger)
+        if (log_to_file || !logger)
         {
             logs.emplace_back(final_text, type);
-            log_to_file(final_text, type);
+            write_to_file(final_text, type);
         }
 
         // Log with the logger, if present.
-        if (m_logger)
+        if (logger)
         {
             // Flush the log buffer, if needed.
             if (!logs.empty())
             {
                 for (const LogCmd& log : logs)
                 {
-                    m_logger->Log(log.text, static_cast<uint32_t>(type));
+                    logger->Log(log.text, static_cast<uint32_t>(type));
                 }
                 logs.clear();
             }
 
-            m_logger->Log(final_text, static_cast<uint32_t>(type));
+            logger->Log(final_text, static_cast<uint32_t>(type));
         }
     }
 
-    void Log::SetLogToFile(const bool log_to_file)
+    void Log::SetLogToFile(const bool log_to_file_in)
     {
-        m_log_to_file = log_to_file;
+        log_to_file = log_to_file_in;
     }
 
     void Log::WriteFInfo(const char* text, ...)

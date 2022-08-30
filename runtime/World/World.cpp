@@ -137,7 +137,7 @@ namespace Spartan
             {
                 if (entity->IsPendingDestruction())
                 {
-                    _EntityRemove(entity);
+                    _EntityRemove(entity.get());
                 }
             }
 
@@ -370,7 +370,7 @@ namespace Spartan
     }
 
     // Removes an entity and all of it's children
-    void World::_EntityRemove(const shared_ptr<Entity>& entity)
+    void World::_EntityRemove(Entity* entity)
     {
         // Remove any descendants
         auto children = entity->GetTransform()->GetChildren();
@@ -580,11 +580,11 @@ namespace Spartan
                 renderable->SetCastShadows(false);
             }
 
-            // Make the dirt decal fully rough
-            if (Material* material = entity->GetTransform()->GetDescendantByName("decals_1st_floor")->GetRenderable()->GetMaterial())
-            {
-                material->SetProperty(MaterialProperty::RoughnessMultiplier, 1.0f);
-            }
+            // Delete dirt decals since they look bad.
+            // They are hovering over the surfaces, to avoid z-fighting, and they also cast shadows underneath them.
+            _EntityRemove(entity->GetTransform()->GetDescendantByName("decals_1st_floor"));
+            _EntityRemove(entity->GetTransform()->GetDescendantByName("decals_2nd_floor"));
+            _EntityRemove(entity->GetTransform()->GetDescendantByName("decals_3rd_floor"));
 
             // 3D model - Sponza curtains
             if (m_default_model_sponza_curtains = ResourceCache::Load<Mesh>("project\\models\\sponza\\curtains\\NewSponza_Curtains_glTF.gltf"))
