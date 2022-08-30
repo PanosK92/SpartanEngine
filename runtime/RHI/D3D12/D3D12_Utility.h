@@ -78,7 +78,7 @@ namespace Spartan::d3d12_utility
         {
             if (FAILED(result))
             {
-                LOG_ERROR("%s", dxgi_error_to_string(result));
+                SP_LOG_ERROR("%s", dxgi_error_to_string(result));
                 return false;
             }
 
@@ -101,7 +101,7 @@ namespace Spartan::d3d12_utility
 
             if (flags & RHI_Swap_Flip_Discard && globals::rhi_device->GetPrimaryPhysicalDevice()->IsIntel())
             {
-                LOG_WARNING("Swap_Flip_Discard was requested but it's not supported by Intel adapters, using Swap_Discard instead.");
+                SP_LOG_WARNING("Swap_Flip_Discard was requested but it's not supported by Intel adapters, using Swap_Discard instead.");
                 flags &= ~RHI_Swap_Flip_Discard;
                 flags |= RHI_Swap_Discard;
             }
@@ -111,7 +111,7 @@ namespace Spartan::d3d12_utility
             if (flags & RHI_Swap_Flip_Discard)    return DXGI_SWAP_EFFECT_FLIP_DISCARD;
             if (flags & RHI_Swap_Flip_Sequential) return DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL;
 
-            LOG_ERROR("Unable to determine the requested swap effect, opting for DXGI_SWAP_EFFECT_DISCARD");
+            SP_LOG_ERROR("Unable to determine the requested swap effect, opting for DXGI_SWAP_EFFECT_DISCARD");
             return DXGI_SWAP_EFFECT_DISCARD;
         }
     }

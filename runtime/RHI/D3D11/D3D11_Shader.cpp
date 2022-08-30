@@ -98,11 +98,11 @@ namespace Spartan
                 const auto is_error = line.find("error") != string::npos;
                 if (is_error)
                 {
-                    LOG_ERROR(m_name + "(" + FileSystem::GetStringAfterExpression(line, "("));
+                    SP_LOG_ERROR(m_name + "(" + FileSystem::GetStringAfterExpression(line, "("));
                 }
                 else
                 {
-                    LOG_WARNING(m_name + "(" + FileSystem::GetStringAfterExpression(line, "("));
+                    SP_LOG_WARNING(m_name + "(" + FileSystem::GetStringAfterExpression(line, "("));
                 }
             }
 
@@ -113,7 +113,7 @@ namespace Spartan
         // Log compilation failure
         if (FAILED(result) || !shader_blob)
         {
-            LOG_ERROR("An error occurred when trying to load and compile \"%s\"", m_name.c_str());
+            SP_LOG_ERROR("An error occurred when trying to load and compile \"%s\"", m_name.c_str());
         }
 
         // Create shader
@@ -124,7 +124,7 @@ namespace Spartan
             {
                 if (!d3d11_utility::error_check(d3d11_device->CreateVertexShader(shader_blob->GetBufferPointer(), shader_blob->GetBufferSize(), nullptr, reinterpret_cast<ID3D11VertexShader**>(&shader_view))))
                 {
-                    LOG_ERROR("Failed to create vertex shader");
+                    SP_LOG_ERROR("Failed to create vertex shader");
                 }
 
                 // Create input layout
@@ -134,14 +134,14 @@ namespace Spartan
             {
                 if (!d3d11_utility::error_check(d3d11_device->CreatePixelShader(shader_blob->GetBufferPointer(), shader_blob->GetBufferSize(), nullptr, reinterpret_cast<ID3D11PixelShader**>(&shader_view))))
                 {
-                    LOG_ERROR("Failed to create pixel shader");
+                    SP_LOG_ERROR("Failed to create pixel shader");
                 }
             }
             else if (m_shader_type == RHI_Shader_Compute)
             {
                 if (!d3d11_utility::error_check(d3d11_device->CreateComputeShader(shader_blob->GetBufferPointer(), shader_blob->GetBufferSize(), nullptr, reinterpret_cast<ID3D11ComputeShader**>(&shader_view))))
                 {
-                    LOG_ERROR("Failed to create compute shader");
+                    SP_LOG_ERROR("Failed to create compute shader");
                 }
             }
 

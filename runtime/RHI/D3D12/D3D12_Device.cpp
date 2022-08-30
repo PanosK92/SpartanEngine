@@ -136,12 +136,9 @@ namespace Spartan
          );
 
         // Log feature level
-        if (Settings* settings = m_context->GetSubsystem<Settings>())
-        {
-            std::string level = "12.0";
-            settings->RegisterThirdPartyLib("DirectX", level, "https://en.wikipedia.org/wiki/DirectX");
-            LOG_INFO("DirectX %s", level.c_str());
-        }
+        std::string level = "12.0";
+        Settings::RegisterThirdPartyLib("DirectX", level, "https://en.wikipedia.org/wiki/DirectX");
+        SP_LOG_INFO("DirectX %s", level.c_str());
     }
 
     RHI_Device::~RHI_Device()
@@ -170,7 +167,7 @@ namespace Spartan
         const auto result = CreateDXGIFactory1(IID_PPV_ARGS(&factory));
         if (FAILED(result))
         {
-            LOG_ERROR("Failed to create a DirectX graphics interface factory, %s.", d3d12_utility::error::dxgi_error_to_string(result));
+            SP_LOG_ERROR("Failed to create a DirectX graphics interface factory, %s.", d3d12_utility::error::dxgi_error_to_string(result));
             return false;
         }
 
@@ -194,7 +191,7 @@ namespace Spartan
         factory = nullptr;
         if (adapters.empty())
         {
-            LOG_ERROR("Couldn't find any adapters");
+            SP_LOG_ERROR("Couldn't find any adapters");
             return false;
         }
 
@@ -204,7 +201,7 @@ namespace Spartan
         {
             if (FAILED(display_adapter->GetDesc(&adapter_desc)))
             {
-                LOG_ERROR("Failed to get adapter description");
+                SP_LOG_ERROR("Failed to get adapter description");
                 continue;
             }
 
@@ -240,14 +237,14 @@ namespace Spartan
             }
             else
             {
-                LOG_ERROR("Failed to get display modes for \"%s\".", m_physical_devices[device_index].GetName().c_str());
+                SP_LOG_ERROR("Failed to get display modes for \"%s\".", m_physical_devices[device_index].GetName().c_str());
             }
         }
 
         // If we failed to detect any display modes but we have at least one adapter, use it.
         if (m_physical_devices.size() != 0)
         {
-            LOG_ERROR("Failed to detect display modes for all physical devices, falling back to first available.");
+            SP_LOG_ERROR("Failed to detect display modes for all physical devices, falling back to first available.");
             SetPrimaryPhysicalDevice(0);
             return true;
         }

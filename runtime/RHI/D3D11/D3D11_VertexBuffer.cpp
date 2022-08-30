@@ -75,7 +75,7 @@ namespace Spartan
         const auto result = m_rhi_device->GetRhiContext()->device_context->Map(static_cast<ID3D11Resource*>(m_rhi_resource), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped_resource);
         if (FAILED(result))
         {
-            LOG_ERROR("Failed to map vertex buffer");
+            SP_LOG_ERROR("Failed to map vertex buffer");
             return nullptr;
         }
 

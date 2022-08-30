@@ -55,13 +55,13 @@ namespace Spartan
         {
             if (!DetectPhysicalDevices())
             {
-                LOG_ERROR("Failed to detect any devices");
+                SP_LOG_ERROR("Failed to detect any devices");
                 return;
             }
 
             if (!SelectPrimaryPhysicalDevice())
             {
-                LOG_ERROR("Failed to detect any devices");
+                SP_LOG_ERROR("Failed to detect any devices");
                 return;
             }
         }
@@ -136,24 +136,21 @@ namespace Spartan
             // Using the D3D11_CREATE_DEVICE_DEBUG flag, requires the SDK to be installed, so try again without it
             if (result == DXGI_ERROR_SDK_COMPONENT_MISSING)
             {
-                LOG_WARNING("Failed to create device with D3D11_CREATE_DEVICE_DEBUG flags as it requires the DirectX SDK to be installed. Attempting to create a device without it.");
+                SP_LOG_WARNING("Failed to create device with D3D11_CREATE_DEVICE_DEBUG flags as it requires the DirectX SDK to be installed. Attempting to create a device without it.");
                 device_flags &= ~D3D11_CREATE_DEVICE_DEBUG;
                 result = create_device();
             }
 
             if (FAILED(result))
             {
-                LOG_ERROR("Failed to create device, %s.", d3d11_utility::dxgi_error_to_string(result));
+                SP_LOG_ERROR("Failed to create device, %s.", d3d11_utility::dxgi_error_to_string(result));
                 return;
             }
         }
 
         // Log feature level
-        if (Settings* settings = m_context->GetSubsystem<Settings>())
-        {
-            settings->RegisterThirdPartyLib("DirectX", "11.1", "https://www.microsoft.com/en-us/download/details.aspx?id=17431");
-            LOG_INFO("DirectX 11.1");
-        }
+        Settings::RegisterThirdPartyLib("DirectX", "11.1", "https://www.microsoft.com/en-us/download/details.aspx?id=17431");
+        SP_LOG_INFO("DirectX 11.1");
 
         // Multi-thread protection
         if (multithread_protection)
@@ -166,7 +163,7 @@ namespace Spartan
             }
             else 
             {
-                LOG_ERROR("Failed to enable multi-threaded protection");
+                SP_LOG_ERROR("Failed to enable multi-threaded protection");
             }
         }
 
@@ -176,7 +173,7 @@ namespace Spartan
             const auto result = m_rhi_context->device_context->QueryInterface(IID_PPV_ARGS(&m_rhi_context->annotation));
             if (FAILED(result))
             {
-                LOG_ERROR("Failed to create ID3DUserDefinedAnnotation for event reporting, %s.", d3d11_utility::dxgi_error_to_string(result));
+                SP_LOG_ERROR("Failed to create ID3DUserDefinedAnnotation for event reporting, %s.", d3d11_utility::dxgi_error_to_string(result));
                 return;
             }
         }
@@ -201,7 +198,7 @@ namespace Spartan
         const auto result = CreateDXGIFactory1(IID_PPV_ARGS(&factory));
         if (FAILED(result))
         {
-            LOG_ERROR("Failed to create a DirectX graphics interface factory, %s.", d3d11_utility::dxgi_error_to_string(result));
+            SP_LOG_ERROR("Failed to create a DirectX graphics interface factory, %s.", d3d11_utility::dxgi_error_to_string(result));
             return false;
         }
 
@@ -225,7 +222,7 @@ namespace Spartan
         factory = nullptr;
         if (adapters.empty())
         {
-            LOG_ERROR("Couldn't find any adapters");
+            SP_LOG_ERROR("Couldn't find any adapters");
             return false;
         }
 
@@ -235,7 +232,7 @@ namespace Spartan
         {
             if (FAILED(display_adapter->GetDesc(&adapter_desc)))
             {
-                LOG_ERROR("Failed to get adapter description");
+                SP_LOG_ERROR("Failed to get adapter description");
                 continue;
             }
 
@@ -271,14 +268,14 @@ namespace Spartan
             }
             else
             {
-                LOG_ERROR("Failed to get display modes for \"%s\".", m_physical_devices[device_index].GetName().c_str());
+                SP_LOG_ERROR("Failed to get display modes for \"%s\".", m_physical_devices[device_index].GetName().c_str());
             }
         }
 
         // If we failed to detect any display modes but we have at least one adapter, use it.
         if (m_physical_devices.size() != 0)
         {
-            LOG_ERROR("Failed to detect display modes for all physical devices, falling back to first available.");
+            SP_LOG_ERROR("Failed to detect display modes for all physical devices, falling back to first available.");
             SetPrimaryPhysicalDevice(0);
             return true;
         }

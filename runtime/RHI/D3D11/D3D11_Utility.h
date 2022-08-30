@@ -81,7 +81,7 @@ namespace Spartan::d3d11_utility
     {
         if (FAILED(result))
         {
-            LOG_ERROR("%s", dxgi_error_to_string(result));
+            SP_LOG_ERROR("%s", dxgi_error_to_string(result));
             return false;
         }
 
@@ -117,8 +117,8 @@ namespace Spartan::d3d11_utility
             }
         }
 
-        const bool fullscreen_borderless_support    = SUCCEEDED(resut) && allowTearing;
-        const bool vendor_support                    = !globals::rhi_device->GetPrimaryPhysicalDevice()->IsIntel(); // Intel, bad
+        const bool fullscreen_borderless_support = SUCCEEDED(resut) && allowTearing;
+        const bool vendor_support                = !globals::rhi_device->GetPrimaryPhysicalDevice()->IsIntel(); // Intel, bad
 
         return fullscreen_borderless_support && vendor_support;
     }
@@ -134,7 +134,7 @@ namespace Spartan::d3d11_utility
                 if (!CheckTearingSupport())
                 {
                     flags &= ~RHI_Present_Immediate;
-                    LOG_WARNING("Present_Immediate was requested but it's not supported by the adapter.");
+                    SP_LOG_WARNING("Present_Immediate was requested but it's not supported by the adapter.");
                 }
             }
 
@@ -164,7 +164,7 @@ namespace Spartan::d3d11_utility
 
             if (flags & RHI_Swap_Flip_Discard && globals::rhi_device->GetPrimaryPhysicalDevice()->IsIntel())
             {
-                LOG_WARNING("Swap_Flip_Discard was requested but it's not supported by Intel adapters, using Swap_Discard instead.");
+                SP_LOG_WARNING("Swap_Flip_Discard was requested but it's not supported by Intel adapters, using Swap_Discard instead.");
                 flags &= ~RHI_Swap_Flip_Discard;
                 flags |= RHI_Swap_Discard;
             }
@@ -174,7 +174,7 @@ namespace Spartan::d3d11_utility
             if (flags & RHI_Swap_Flip_Discard)      return DXGI_SWAP_EFFECT_FLIP_DISCARD;
             if (flags & RHI_Swap_Flip_Sequential)   return DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL;
 
-            LOG_ERROR("Unable to determine the requested swap effect, opting for DXGI_SWAP_EFFECT_DISCARD");
+            SP_LOG_ERROR("Unable to determine the requested swap effect, opting for DXGI_SWAP_EFFECT_DISCARD");
             return DXGI_SWAP_EFFECT_DISCARD;
         }
     }
@@ -195,7 +195,7 @@ namespace Spartan::d3d11_utility
             if ((filter_min == RHI_Filter::Linear)  && (filter_mag == RHI_Filter::Linear)   && (filter_mipmap == RHI_Sampler_Mipmap_Mode::Nearest)) return !comparison_enabled ? D3D11_FILTER_MIN_MAG_LINEAR_MIP_POINT        : D3D11_FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT;
             if ((filter_min == RHI_Filter::Linear)  && (filter_mag == RHI_Filter::Linear)   && (filter_mipmap == RHI_Sampler_Mipmap_Mode::Linear))  return !comparison_enabled ? D3D11_FILTER_MIN_MAG_MIP_LINEAR              : D3D11_FILTER_COMPARISON_MIN_MAG_MIP_LINEAR;
 
-            SP_ASSERT(false && "D3D11_Sampler filter not supported.");
+            SP_ASSERT_MSG(false, "D3D11_Sampler filter not supported.");
             return D3D11_FILTER_MIN_MAG_MIP_POINT;
         }
     }
