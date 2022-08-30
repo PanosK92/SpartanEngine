@@ -21,15 +21,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =============================
+//= INCLUDES ========================
 #include <memory>
 #include <unordered_map>
 #include "Glyph.h"
 #include "../../RHI/RHI_Definition.h"
 #include "../../Resource/IResource.h"
 #include "../../Math/Vector4.h"
-#include "../../Core/SpartanDefinitions.h"
-//========================================
+#include "../../Core/Definitions.h"
+//===================================
 
 namespace Spartan
 {

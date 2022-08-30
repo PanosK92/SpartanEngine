@@ -19,13 +19,13 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ======================
+//= INCLUDES =====================
 #include "pch.h"
 #include "RHI_Shader.h"
 #include "RHI_InputLayout.h"
-#include "../Threading/Threading.h"
+#include "../Core/Threading.h"
 #include "../Rendering/Renderer.h"
-//=================================
+//================================
 
 //= NAMESPACES =====
 using namespace std;

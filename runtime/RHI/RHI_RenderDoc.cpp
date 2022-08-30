@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI_RenderDoc.h"
 #include "RHI_Implementation.h"
 #include "../Core/Window.h"
-#include "../Core/SpartanDefinitions.h"
+#include "../Core/Definitions.h"
 #include "../Rendering/Renderer.h"
 #include "../Logging/Log.h"
 #include "renderdoc/app/renderdoc_app.h"

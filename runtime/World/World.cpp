@@ -40,7 +40,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Input/Input.h"
 #include "../RHI/RHI_Device.h"
 #include "../Rendering/Renderer.h"
-#include "../Threading/Threading.h"
+#include "../Core/Threading.h"
 //==========================================
 
 //= NAMESPACES ================
@@ -87,7 +87,7 @@ namespace Spartan
     {
         lock_guard lock(m_entity_access_mutex);
 
-        SCOPED_TIME_BLOCK(m_profiler);
+        SP_SCOPED_TIME_BLOCK(m_profiler);
 
         if (Renderer* renderer = m_context->GetSystem<Renderer>())
         {

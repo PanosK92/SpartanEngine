@@ -22,13 +22,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =========================
 #include "pch.h"
 #include "Window.h"
+#include "Threading.h"
 #include "../Audio/Audio.h"
 #include "../Input/Input.h"
 #include "../Physics/Physics.h"
 #include "../Profiling/Profiler.h"
 #include "../Rendering/Renderer.h"
 #include "../Resource/ResourceCache.h"
-#include "../Threading/Threading.h"
 #include "../World/World.h"
 //====================================
 
@@ -96,7 +96,7 @@ namespace Spartan
 
             // Static
             Threading::Shutdown();
-            Events::Shutdown();
+            Event::Shutdown();
         }
     }
 

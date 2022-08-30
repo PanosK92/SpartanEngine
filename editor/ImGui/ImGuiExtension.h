@@ -29,7 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI/RHI_Texture2D.h"
 #include "Rendering/Renderer.h"
 #include "Resource/ResourceCache.h"
-#include "Threading/Threading.h"
+#include "Core/Threading.h"
 #include "Input/Input.h"
 #include "World/World.h"
 #include "World/Components/Camera.h"

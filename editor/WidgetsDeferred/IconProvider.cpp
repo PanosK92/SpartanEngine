@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "IconProvider.h"
 #include "Resource/ResourceCache.h"
 #include "RHI/RHI_Texture2D.h"
-#include "Threading/Threading.h"
+#include "Core/Threading.h"
 //=================================
 
 //= NAMESPACES ==========

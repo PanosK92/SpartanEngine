@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Core/Engine.h"
 #include "Core/Settings.h"
 #include "Core/Window.h"
-#include "Core/Events.h"
+#include "Core/Event.h"
 #include "Profiling/Profiler.h"
 #include "ImGui/ImGuiExtension.h"
 #include "ImGui/Implementation/ImGui_RHI.h"

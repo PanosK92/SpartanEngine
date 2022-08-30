@@ -21,11 +21,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =============================
+//= INCLUDES ======================
 #include <memory>
 #include <string>
-#include "../../Core/SpartanDefinitions.h"
-//========================================
+#include "../../Core/Definitions.h"
+//=================================
 
 struct aiNode;
 struct aiScene;

@@ -21,18 +21,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==========================
+//= INCLUDES ===================
 #include <string>
 #include <vector>
 #include "TimeBlock.h"
 #include "../Core/ISystem.h"
 #include "../Core/Stopwatch.h"
-#include "../Core/SpartanDefinitions.h"
-//=====================================
+#include "../Core/Definitions.h"
+//==============================
 
-#define TIME_BLOCK_START_NAMED(profiler, name) profiler->TimeBlockStart(name, Spartan::TimeBlockType::Cpu, nullptr);
-#define TIME_BLOCK_END(profiler)               profiler->TimeBlockEnd();
-#define SCOPED_TIME_BLOCK(profiler)            if (profiler) { ScopedTimeBlock time_block = ScopedTimeBlock(profiler, __FUNCTION__); }
+#define SP_TIME_BLOCK_START_NAMED(profiler, name) profiler->TimeBlockStart(name, Spartan::TimeBlockType::Cpu, nullptr);
+#define SP_TIME_BLOCK_END(profiler)               profiler->TimeBlockEnd();
+#define SP_SCOPED_TIME_BLOCK(profiler)            if (profiler) { ScopedTimeBlock time_block = ScopedTimeBlock(profiler, __FUNCTION__); }
 
 namespace Spartan
 {

@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =====================
 #include <vector>
-#include "../Core/Events.h"
+#include "../Core/Event.h"
 #include "Components/IComponent.h"
 //================================
 

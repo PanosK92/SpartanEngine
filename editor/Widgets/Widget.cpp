@@ -45,7 +45,7 @@ void Widget::Tick()
 
     // Begin
     {
-        TIME_BLOCK_START_NAMED(m_profiler, m_title.c_str());
+        SP_TIME_BLOCK_START_NAMED(m_profiler, m_title.c_str());
 
         // Size initial
         if (m_size_initial != k_widget_default_propery)
@@ -119,6 +119,6 @@ void Widget::Tick()
         m_var_push_count = 0;
 
         // End profiling
-        TIME_BLOCK_END(m_profiler);
+        SP_TIME_BLOCK_END(m_profiler);
     }
 }
