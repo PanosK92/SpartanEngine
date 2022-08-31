@@ -109,13 +109,14 @@ namespace Spartan
                 // If not the data is not there, load it
                 if (height_data.empty())
                 {
-                    if (m_height_map->LoadFromFile(m_height_map->GetResourceFilePathNative()))
+                    if (m_height_map->LoadFromFile(m_height_map->GetResourceFilePath()))
                     {
                         height_data = m_height_map->GetMip(0, 0).bytes;
 
                         if (height_data.empty())
                         {
                             SP_LOG_ERROR("Failed to load height map");
+                            m_is_generating = false;
                             return;
                         }
                     }
@@ -123,12 +124,12 @@ namespace Spartan
             }
 
             // Deduce some stuff
-            m_height                = m_height_map->GetHeight();
-            m_width                 = m_height_map->GetWidth();
-            m_vertex_count          = m_height * m_width;
-            m_face_count            = (m_height - 1) * (m_width - 1) * 2;
-            m_progress_jobs_done    = 0;
-            m_progress_job_count    = m_vertex_count * 2 + m_face_count + m_vertex_count * m_face_count;
+            m_height             = m_height_map->GetHeight();
+            m_width              = m_height_map->GetWidth();
+            m_vertex_count       = m_height * m_width;
+            m_face_count         = (m_height - 1) * (m_width - 1) * 2;
+            m_progress_jobs_done = 0;
+            m_progress_job_count = m_vertex_count * 2 + m_face_count + m_vertex_count * m_face_count;
 
             // Pre-allocate memory for the calculations that follow
             vector<Vector3> positions                 = vector<Vector3>(m_height * m_width);
@@ -184,10 +185,10 @@ namespace Spartan
                 const float height = (static_cast<float>(height_map[k]) / 255.0f);
 
                 // Construct position
-                const uint32_t index  = y * m_width + x;
-                positions[index].x    = static_cast<float>(x) - m_width * 0.5f;     // center on the X axis
-                positions[index].z    = static_cast<float>(y) - m_height * 0.5f;    // center on the Z axis
-                positions[index].y    = Helper::Lerp(m_min_y, m_max_y, height);
+                const uint32_t index = y * m_width + x;
+                positions[index].x   = static_cast<float>(x) - m_width * 0.5f;     // center on the X axis
+                positions[index].z   = static_cast<float>(y) - m_height * 0.5f;    // center on the Z axis
+                positions[index].y   = Helper::Lerp(m_min_y, m_max_y, height);
 
                 k += 4;
 
