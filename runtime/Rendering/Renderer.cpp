@@ -571,7 +571,8 @@ namespace Spartan
                     m_entities[RendererEntityType::ReflectionProbe].emplace_back(entity);
                 }
             }
-            
+
+            // Sort them by distance
             SortRenderables(&m_entities[RendererEntityType::GeometryOpaque]);
             SortRenderables(&m_entities[RendererEntityType::GeometryTransparent]);
 
