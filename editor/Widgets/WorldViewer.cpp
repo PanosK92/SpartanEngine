@@ -533,7 +533,10 @@ void WorldViewer::HandleKeyShortcuts()
     // Delete
     if (_Widget_World::g_input->GetKey(KeyCode::Delete))
     {
-        ActionEntityDelete(EditorHelper::Get().g_selected_entity.lock());
+        if (shared_ptr<Entity> entity = EditorHelper::Get().g_selected_entity.lock())
+        {
+            ActionEntityDelete(EditorHelper::Get().g_selected_entity.lock());
+        }
     }
 
     // Save: Ctrl + S
@@ -560,6 +563,7 @@ void WorldViewer::HandleKeyShortcuts()
 
 void WorldViewer::ActionEntityDelete(const shared_ptr<Entity>& entity)
 {
+    SP_ASSERT_MSG(entity != nullptr, "Entity is null");
     _Widget_World::g_world->RemoveEntity(entity.get());
 }
 

@@ -255,6 +255,7 @@ namespace Spartan
     void RHI_CommandList::BeginRenderPass()
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
+        SP_ASSERT_MSG(m_pso.IsGraphics(), "You can't use a render pass with a compute pipeline");
         SP_ASSERT_MSG(!m_is_rendering, "The command list is already rendering");
 
         if (!m_pso.IsGraphics())
