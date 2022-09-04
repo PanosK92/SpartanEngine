@@ -231,9 +231,9 @@ void RenderOptions::TickVisible()
             return index;
         };
 
-        static ImVec2 size              = ImVec2(0.0f);
-        static int column_count         = 2;
-        static ImGuiTableFlags flags    =
+        static ImVec2 size           = ImVec2(0.0f);
+        static int column_count      = 2;
+        static ImGuiTableFlags flags =
             ImGuiTableFlags_NoHostExtendX   |   // Make outer width auto-fit to columns, overriding outer_size.x value. Only available when ScrollX/ScrollY are disabled and Stretch columns are not used.
             ImGuiTableFlags_BordersInnerV   |   // Draw vertical borders between columns.
             ImGuiTableFlags_SizingFixedFit;     // Columns default to _WidthFixed or _WidthAuto (if resizable or not resizable), matching contents width.
@@ -270,7 +270,7 @@ void RenderOptions::TickVisible()
                     static vector<string> upsampling_modes =
                     {
                         "Linear",
-                        "FSR 2.0"
+                        "FSR 2"
                     };
 
                     bool upsampling_allowed = resolution_render.x < resolution_output.x || resolution_render.y < resolution_output.y;

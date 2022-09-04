@@ -174,14 +174,14 @@ namespace Spartan
         }
 
         // Compute vertex normals and tangents (normals averaging) - This is very expensive show we split it into multiple threads below
-        const auto compute_vertex_normals_tangents = [&vertices, &indices, &face_normals , &face_tangents, triangle_count](uint32_t i_start, uint32_t i_end)
+        const auto compute_vertex_normals_tangents = [&vertices, &indices, &face_normals , &face_tangents, triangle_count](uint32_t start_index, uint32_t range)
         {
             uint32_t product = 0;
             uint32_t index_0 = 0;
             uint32_t index_1 = 0;
             uint32_t index_2 = 0;
 
-            for (uint32_t i = i_start; i < i_end; i++)
+            for (uint32_t i = start_index; i < range; i++)
             {
                 Vector3 normal_average  = Vector3::Zero;
                 Vector3 tangent_average = Vector3::Zero;
