@@ -123,8 +123,8 @@ public:
     Spartan::World*                g_world              = nullptr;
     Spartan::Renderer*             g_renderer           = nullptr;
     Spartan::Input*                g_input              = nullptr;
-    std::weak_ptr<Spartan::Entity> g_selected_entity;   
     std::function<void()>          g_on_entity_selected = nullptr;
+    std::weak_ptr<Spartan::Entity> g_selected_entity;
 };
 
 namespace imgui_extension
@@ -363,8 +363,7 @@ namespace imgui_extension
 
     static void tooltip(const char* text)
     {
-        if (!text)
-            return;
+        SP_ASSERT_MSG(text != nullptr, "Text is null");
 
         if (ImGui::IsItemHovered())
         {
@@ -377,35 +376,43 @@ namespace imgui_extension
     // A drag float which will wrap the mouse cursor around the edges of the screen
     static void draw_float_wrap(const char* label, float* v, float v_speed = 1.0f, float v_min = 0.0f, float v_max = 0.0f, const char* format = "%.3f", const ImGuiSliderFlags flags = 0)
     {
-        // Drag
-        ImGui::DragFloat(label, v, v_speed, v_min, v_max, format, flags);
+        static const uint32_t screen_edge_padding = 10;
+        static bool needs_to_wrap                 = false;
 
         // Wrap
-        if (ImGui::IsItemEdited() && ImGui::IsMouseDown(0))
+        if (ImGui::IsMouseDragging(ImGuiMouseButton_Left))
         {
-            Spartan::Math::Vector2 pos = EditorHelper::Get().g_input->GetMousePosition();
-            uint32_t edge_padding      = 10;
+            Spartan::Math::Vector2 position_cursor = EditorHelper::Get().g_input->GetMousePosition();
+            float position_left                    = static_cast<float>(screen_edge_padding);
+            float position_right                   = static_cast<float>(Spartan::Display::GetWidth() - screen_edge_padding);
+            bool is_on_right_screen_edge           = position_cursor.x >= position_right;
+            bool is_on_left_screen_edge            = position_cursor.x <= position_left;
 
-            bool wrapped = false;
-            if (pos.x >= Spartan::Display::GetWidth() - edge_padding)
+            if (is_on_right_screen_edge)
             {
-                pos.x = static_cast<float>(edge_padding + 1);
-                wrapped = true;
+                position_cursor.x = position_left + 1;
+                needs_to_wrap     = true;
             }
-            else if (pos.x <= edge_padding)
+            else if (is_on_left_screen_edge)
             {
-                pos.x   = static_cast<float>(Spartan::Display::GetWidth() - edge_padding - 1);
-                wrapped = true;
+                position_cursor.x = position_right - 1;
+                needs_to_wrap     = true;
             }
 
-            if (wrapped)
+            if (needs_to_wrap)
             {
+                // Update mouse position
                 ImGuiIO& imgui_io        = ImGui::GetIO();
-                imgui_io.MousePos        = pos;
-                imgui_io.MousePosPrev    = imgui_io.MousePos;// same previous position to enliminate a huge mouse delta
+                imgui_io.MousePos        = position_cursor;
+                // Set an invalid previous position to eliminate big screen wrap delta (see ImGui::UpdateMouseInputs())
+                imgui_io.MousePosPrev    = ImVec2(-FLT_MAX, -FLT_MAX); 
                 imgui_io.WantSetMousePos = true;
+
+                needs_to_wrap = false;
             }
         }
+
+        ImGui::DragFloat(label, v, v_speed, v_min, v_max, format, flags);
     }
 
     static bool combo_box(const char* label, const std::vector<std::string>& options, uint32_t* selection_index)
