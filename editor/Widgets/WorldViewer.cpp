@@ -467,7 +467,11 @@ void WorldViewer::PopupContextMenu() const
     {
         if (ImGui::MenuItem("Environment"))
         {
-            ActionEntityCreateSkybox();
+            ActionEntityCreateEnvironment();
+        }
+        else if (ImGui::MenuItem("Reflection Probe"))
+        {
+            ActionEntityCreateReflectionProbe();
         }
 
         ImGui::EndMenu();
@@ -477,17 +481,6 @@ void WorldViewer::PopupContextMenu() const
     if (ImGui::MenuItem("Terrain"))
     {
         ActionEntityCreateTerrain();
-    }
-
-    // PROBE
-    if (ImGui::BeginMenu("Probe"))
-    {
-        if (ImGui::MenuItem("Reflection Probe"))
-        {
-            ActionEntityCreateReflectionProbe();
-        }
-
-        ImGui::EndMenu();
     }
 
     ImGui::EndPopup();
@@ -706,7 +699,7 @@ void WorldViewer::ActionEntityCreateAudioListener()
     entity->SetName("AudioListener");
 }
 
-void WorldViewer::ActionEntityCreateSkybox()
+void WorldViewer::ActionEntityCreateEnvironment()
 {
     auto entity = ActionEntityCreateEmpty();
     entity->AddComponent<Environment>();
