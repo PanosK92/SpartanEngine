@@ -138,7 +138,7 @@ namespace helper
 
 Properties::Properties(Editor* editor) : Widget(editor)
 {
-    m_title        = "Properties";
+    m_title          = "Properties";
     m_size_initial.x = 500; // min width
 
     m_colorPicker_light     = make_unique<ButtonColorPicker>("Light Color Picker");
@@ -917,11 +917,10 @@ void Properties::ShowTerrain(Terrain* terrain) const
 
     if (helper::ComponentBegin("Terrain", IconType::Component_Terrain, terrain))
     {
-        //= REFLECT =====================================
-        float min_y             = terrain->GetMinY();
-        float max_y             = terrain->GetMaxY();
-        const float progress    = terrain->GetProgress();
-        //===============================================
+        //= REFLECT =====================
+        float min_y = terrain->GetMinY();
+        float max_y = terrain->GetMaxY();
+        //===============================
 
         const float cursor_y = ImGui::GetCursorPosY();
 
@@ -929,7 +928,10 @@ void Properties::ShowTerrain(Terrain* terrain) const
         {
             ImGui::Text("Height Map");
 
-            imgui_extension::image_slot(terrain->GetHeightMap(), [&terrain](const shared_ptr<RHI_Texture>& texture) { terrain->SetHeightMap(static_pointer_cast<RHI_Texture2D>(texture)); });
+            imgui_extension::image_slot(terrain->GetHeightMap(), [&terrain](const shared_ptr<RHI_Texture>& texture)
+            {
+                terrain->SetHeightMap(static_pointer_cast<RHI_Texture2D>(texture));
+            });
 
             if (imgui_extension::button("Generate", ImVec2(82, 0)))
             {
@@ -938,19 +940,22 @@ void Properties::ShowTerrain(Terrain* terrain) const
         }
         ImGui::EndGroup();
 
+        // Min, max
         ImGui::SameLine();
         ImGui::SetCursorPosY(cursor_y);
         ImGui::BeginGroup();
         {
             ImGui::InputFloat("Min Y", &min_y);
             ImGui::InputFloat("Max Y", &max_y);
+        }
+        ImGui::EndGroup();
 
-            if (progress > 0.0f && progress < 1.0f)
-            {
-                ImGui::ProgressBar(progress, ImVec2(0.0f, 0.0f));
-                ImGui::SameLine();
-                ImGui::Text(terrain->GetProgressDescription().c_str());
-            }
+        // Stats
+        ImGui::BeginGroup();
+        {
+            ImGui::Text("Height samples: %d", terrain->GetHeightsamples());
+            ImGui::Text("Vertices: %d",  terrain->GetVertexCount());
+            ImGui::Text("Indices:  %d ", terrain->GetIndexCount());
         }
         ImGui::EndGroup();
 

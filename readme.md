@@ -66,7 +66,7 @@ If there is something interesting to talk about, I tend to do livestreams over a
 - Easy to build (Single click project generation which includes editor and runtime)
 - AMD FidelityFX Contrast Adaptive Sharpening
 - AMD FidelityFX Single Pass Downsampler
-- AMD FidelityFX Super Resolution 2.0
+- AMD FidelityFX Super Resolution 2
 - AMD Compressonator for texture compression
 
 # Roadmap

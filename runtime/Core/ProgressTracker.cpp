@@ -31,12 +31,15 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    static std::array<Progress, 3> m_progresses;
+    static std::array<Progress, 4> m_progresses;
     static std::mutex m_mutex_progress_access;
+    static std::mutex m_mutex_jobs;
 
     void Progress::Start(const uint32_t job_count, const std::string& text)
     {
-        SP_ASSERT_MSG(GetFraction() == 1.0f, "The previous one hasn't finished");
+        SP_ASSERT_MSG(GetFraction() == 1.0f, "The previous progress tracking hasn't finished");
+
+        lock_guard lock(m_mutex_jobs);
 
         m_job_count = job_count;
         m_jobs_done = 0;
@@ -45,25 +48,28 @@ namespace Spartan
 
     float Progress::GetFraction()
     {
+        lock_guard lock(m_mutex_jobs);
+
         if (m_job_count == 0)
             return 1.0f;
 
         return static_cast<float>(m_jobs_done) / static_cast<float>(m_job_count);
     }
 
-    bool Progress::IsLoading()
+    bool Progress::IsProgressing()
     {
         return GetFraction() != 1.0f;
     }
 
     void Progress::JobDone()
     {
-        SP_ASSERT_MSG(m_jobs_done + 1 <= m_job_count, "Job count exceeded");
+        lock_guard lock(m_mutex_jobs);
 
+        SP_ASSERT_MSG(m_jobs_done + 1 <= m_job_count, "Job count exceeded");
         m_jobs_done++;
     }
 
-    const string& Progress::GetText()
+	const string& Progress::GetText()
     {
         return m_text;
     }

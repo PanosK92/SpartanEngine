@@ -34,8 +34,4 @@ public:
 
     void TickAlways() override;
     void TickVisible() override;
-
-private:
-    float m_progress;
-    std::string m_progressStatus;
 };

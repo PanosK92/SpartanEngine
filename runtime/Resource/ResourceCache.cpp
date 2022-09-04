@@ -22,7 +22,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =========================
 #include "pch.h"
 #include "ResourceCache.h"
-#include "ProgressTracker.h"
 #include "Import/ImageImporter.h"
 #include "Import/ModelImporter.h"
 #include "Import/FontImporter.h"
@@ -193,7 +192,7 @@ namespace Spartan
         const uint32_t resource_count = GetResourceCount();
 
         // Start progress report
-        ProgressTracker::GetProgress(ProgressType::resource_cache_io).Start(resource_count, "Loading resources...");
+        ProgressTracker::GetProgress(ProgressType::Resource).Start(resource_count, "Loading resources...");
 
         // Save resource count
         file->Write(resource_count);
@@ -202,17 +201,17 @@ namespace Spartan
         for (shared_ptr<IResource>& resource : m_resources)
         {
             if (!resource->HasFilePathNative())
-                continue;
-
-            // Save file path
-            file->Write(resource->GetResourceFilePathNative());
-            // Save type
-            file->Write(static_cast<uint32_t>(resource->GetResourceType()));
-            // Save resource (to a dedicated file)
-            resource->SaveToFile(resource->GetResourceFilePathNative());
+            {
+                // Save file path
+                file->Write(resource->GetResourceFilePathNative());
+                // Save type
+                file->Write(static_cast<uint32_t>(resource->GetResourceType()));
+                // Save resource (to a dedicated file)
+                resource->SaveToFile(resource->GetResourceFilePathNative());
+            }
 
             // Update progress
-            ProgressTracker::GetProgress(ProgressType::resource_cache_io).JobDone();
+            ProgressTracker::GetProgress(ProgressType::Resource).JobDone();
         }
     }
 

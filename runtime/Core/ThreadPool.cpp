@@ -41,7 +41,6 @@ namespace Spartan
 
     // Threads
     static vector<thread> threads;
-    static unordered_map<thread::id, string> thread_names;
 
     // Tasks
     static deque<Task> tasks;
@@ -81,15 +80,13 @@ namespace Spartan
 
     void ThreadPool::Initialize()
     {
-        is_stopping                         = false;
-        thread_count_support                = thread::hardware_concurrency();
-        thread_count                        = thread_count_support - 1; // exclude the main (this) thread
-        thread_names[this_thread::get_id()] = "main";
+        is_stopping          = false;
+        thread_count_support = thread::hardware_concurrency();
+        thread_count         = thread_count_support - 1; // exclude the calling thread
 
         for (uint32_t i = 0; i < thread_count; i++)
         {
             threads.emplace_back(thread(&thread_loop));
-            thread_names[threads.back().get_id()] = "worker_" + to_string(i);
         }
 
         SP_LOG_INFO("%d threads have been created", thread_count);
@@ -143,38 +140,47 @@ namespace Spartan
         condition_var.notify_one();
     }
 
-    void ThreadPool::AddRangedFunction(function<void(uint32_t work_index_start, uint32_t work_index_end)>&& function, uint32_t work_count)
+    void ThreadPool::ParallelLoop(function<void(uint32_t work_index_start, uint32_t work_index_end)>&& function, uint32_t loop_range)
     {
+        SP_ASSERT_MSG(loop_range > 1, "A parallel loop can't have a range of 1 or smaller");
+
         uint32_t available_threads = GetIdleThreadCount();
-        vector<bool> tasks_done    = vector<bool>(available_threads, false);
-        const uint32_t task_count  = available_threads + 1; // plus one for the current thread
+        uint32_t work_total        = loop_range;
+        uint32_t work_per_thread   = work_total / available_threads;
+        uint32_t work_remainder    = work_total % available_threads;
+        uint32_t work_index        = 0;
+        atomic<uint32_t> work_done = 0;
 
-        uint32_t start = 0;
-        uint32_t end   = 0;
-        for (uint32_t i = 0; i < available_threads; i++)
+        // Split work into multiple tasks
+        while(work_index < work_total)
         {
-            start = (work_count / task_count) * i;
-            end   = start + (work_count / task_count);
+            uint32_t work_to_do = work_per_thread;
 
-            // Kick off task
-            AddTask([&function, &tasks_done, i, start, end] { function(start, end); tasks_done[i] = true; });
-        }
-
-        // Do last task in the current thread
-        function(end, work_count);
-
-        // Wait till the threads are done
-        uint32_t tasks = 0;
-        while (tasks != tasks_done.size())
-        {
-            tasks = 0;
-            for (const bool job_done : tasks_done)
+            // If the work doesn't divide evenly across threads, add the remainder work to the first thread.
+            if (work_remainder != 0)
             {
-                tasks += job_done ? 1 : 0;
+                work_to_do     += work_remainder;
+                work_remainder = 0;
             }
 
-            this_thread::sleep_for(chrono::milliseconds(16));
+            AddTask([&function, &work_done, work_index, work_to_do]()
+            {
+                function(work_index, work_index + work_to_do);
+                work_done += work_to_do;
+            });
+
+            work_index += work_to_do;
         }
+
+        SP_ASSERT_MSG(work_index == work_total, "Some work wasn't assigned to any thread");
+
+        // Wait for threads to finish work
+        while (work_done != work_total)
+        {
+            this_thread::sleep_for(chrono::microseconds(16));
+        }
+
+        SP_ASSERT_MSG(work_done == work_total, "One or more threads, didn't finish their work");
     }
 
     void ThreadPool::Flush(bool remove_queued /*= false*/)

@@ -47,7 +47,7 @@ print("\n4. Copying some assets to the project directory...")
 copy("assets\\models", "binaries\\project\\models")
 copy("assets\\environment", "binaries\\project\\environment")
 copy("assets\\music", "binaries\\project\\music")
-copy("assets\\heightmaps", "binaries\\project\\heightmaps")
+copy("assets\\height_maps", "binaries\\project\\height_maps")
 
 # 5. Generate project files
 print("\n5. Generating project files...")
