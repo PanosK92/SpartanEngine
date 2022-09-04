@@ -40,7 +40,7 @@ namespace Spartan
         static void AddTask(Task&& task);
 
         // Adds multiple tasks to spread execution of a given function across all available threads.
-        static void AddRangedFunction(std::function<void(uint32_t work_index_start, uint32_t work_index_end)>&& function, uint32_t work_count);
+        static void ParallelLoop(std::function<void(uint32_t work_index_start, uint32_t work_index_end)>&& function, uint32_t work_count);
 
         // Wait for all threads to finish work
         static void Flush(bool remove_queued = false);

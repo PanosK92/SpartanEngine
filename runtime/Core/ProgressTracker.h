@@ -29,20 +29,25 @@ namespace Spartan
 {
     enum class ProgressType
     {
-        model_importing,
-        world_io,
-        resource_cache_io
+        ModelImporter,
+        World,
+        Resource,
+        Terrain,
+        undefined
     };
 
-    class Progress
+    class SP_CLASS Progress
     {
     public:
         void Start(const uint32_t job_count, const std::string& text);
+
         float GetFraction();
-        bool IsLoading();
         void JobDone();
+
         const std::string& GetText();
         void SetText(const std::string& text);
+
+        bool IsProgressing();
 
     private:
         std::atomic<uint32_t> m_jobs_done = 0;

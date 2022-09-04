@@ -22,6 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ====================
 #include "ProgressDialog.h"
 #include "Core/ProgressTracker.h"
+#include <array>
 //===============================
 
 //= NAMESPACES ===============
@@ -30,33 +31,35 @@ using namespace Spartan;
 using namespace Spartan::Math;
 //============================
 
+static array<Progress*, 5> progresses;
+
 ProgressDialog::ProgressDialog(Editor* editor) : Widget(editor)
 {
     m_title        = "Hold on...";
     m_visible      = false;
-    m_progress     = 0.0f;
     m_size_initial = Vector2(500.0f, 83.0f);
-    m_flags        |= ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoDocking;
+    m_flags        |= ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_AlwaysAutoResize;
     m_position     = k_widget_position_screen_center;
 }
 
 void ProgressDialog::TickAlways()
 {
-    // Determine if an operation is in progress
-    const bool is_loading_model = ProgressTracker::GetProgress(ProgressType::model_importing).IsLoading();
-    const bool is_loading_scene = ProgressTracker::GetProgress(ProgressType::world_io).IsLoading();
-    const bool in_progress      = is_loading_model || is_loading_scene;
+    progresses[static_cast<uint32_t>(ProgressType::ModelImporter)] = &ProgressTracker::GetProgress(ProgressType::ModelImporter);
+    progresses[static_cast<uint32_t>(ProgressType::World)]         = &ProgressTracker::GetProgress(ProgressType::World);
+    progresses[static_cast<uint32_t>(ProgressType::Resource)]      = &ProgressTracker::GetProgress(ProgressType::Resource);
+    progresses[static_cast<uint32_t>(ProgressType::Terrain)]       = &ProgressTracker::GetProgress(ProgressType::Terrain);
 
-    // Acquire progress
-    if (is_loading_model)
+    bool in_progress = false;
+    for (Progress* progress : progresses)
     {
-        m_progress       = ProgressTracker::GetProgress(ProgressType::model_importing).GetFraction();
-        m_progressStatus = ProgressTracker::GetProgress(ProgressType::model_importing).GetText();
-    }
-    else if (is_loading_scene)
-    {
-        m_progress       = ProgressTracker::GetProgress(ProgressType::world_io).GetFraction();
-        m_progressStatus = ProgressTracker::GetProgress(ProgressType::world_io).GetText();
+        if (progress)
+        {
+            if (progress->IsProgressing())
+            {
+                in_progress = true;
+                break;
+            }
+        }
     }
 
     // Show only if an operation is in progress
@@ -66,8 +69,22 @@ void ProgressDialog::TickAlways()
 void ProgressDialog::TickVisible()
 {
     ImGui::SetWindowFocus();
-    ImGui::PushItemWidth(m_size_initial.x - ImGui::GetStyle().WindowPadding.x * 2.0f);
-    ImGui::ProgressBar(m_progress, ImVec2(0.0f, 0.0f));
-    ImGui::Text(m_progressStatus.c_str());
-    ImGui::PopItemWidth();
+
+    bool first = true;
+    for (Progress* progress : progresses)
+    {
+        if (progress && progress->IsProgressing())
+        {
+            if (!first)
+            {
+                ImGui::Separator();
+            }
+
+            ImGui::BeginGroup();
+            ImGui::ProgressBar(progress->GetFraction(), ImVec2(0.0f, 0.0f));
+            ImGui::Text(progress->GetText().c_str());
+            ImGui::EndGroup();
+            first = false;
+        }
+    }
 }

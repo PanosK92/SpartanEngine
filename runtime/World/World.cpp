@@ -32,15 +32,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Components/AudioSource.h"
 #include "Components/RigidBody.h"
 #include "Components/Collider.h"
+#include "Components/Terrain.h"
 #include "TransformHandle/TransformHandle.h"
 #include "../Resource/ResourceCache.h"
-#include "../Core/ProgressTracker.h"
-#include "../Core/ThreadPool.h"
 #include "../IO/FileStream.h"
 #include "../Profiling/Profiler.h"
 #include "../Input/Input.h"
-#include "../RHI/RHI_Device.h"
+#include "../Core/ProgressTracker.h"
+#include "../Core/ThreadPool.h"
 #include "../Rendering/Renderer.h"
+#include "../RHI/RHI_Device.h"
+#include "../RHI/RHI_Texture2D.h"
 //==========================================
 
 //= NAMESPACES ================
@@ -197,7 +199,7 @@ namespace Spartan
 
         // Start progress tracking and timing
         const Stopwatch timer;
-        ProgressTracker::GetProgress(ProgressType::world_io).Start(root_entity_count, "Saving world...");
+        ProgressTracker::GetProgress(ProgressType::World).Start(root_entity_count, "Saving world...");
 
         // Save root entity count
         file->Write(root_entity_count);
@@ -212,7 +214,7 @@ namespace Spartan
         for (shared_ptr<Entity>& root : root_actors)
         {
             root->Serialize(file.get());
-            ProgressTracker::GetProgress(ProgressType::world_io).JobDone();
+            ProgressTracker::GetProgress(ProgressType::World).JobDone();
         }
 
         // Report time
@@ -253,7 +255,7 @@ namespace Spartan
         const uint32_t root_entity_count = file->ReadAs<uint32_t>();
 
         // Start progress tracking and timing
-        ProgressTracker::GetProgress(ProgressType::world_io).Start(root_entity_count, "Loading world...");
+        ProgressTracker::GetProgress(ProgressType::World).Start(root_entity_count, "Loading world...");
         const Stopwatch timer;
 
         // Load root entity IDs
@@ -267,7 +269,7 @@ namespace Spartan
         for (uint32_t i = 0; i < root_entity_count; i++)
         {
             m_entities[i]->Deserialize(file.get(), nullptr);
-            ProgressTracker::GetProgress(ProgressType::world_io).JobDone();
+            ProgressTracker::GetProgress(ProgressType::World).JobDone();
         }
 
         // Report time
@@ -580,6 +582,9 @@ namespace Spartan
             RemoveEntity(entity->GetTransform()->GetDescendantByName("decals_2nd_floor"));
             RemoveEntity(entity->GetTransform()->GetDescendantByName("decals_3rd_floor"));
 
+            // Delete wooden door so that they user can see outside (the terrain)
+            //RemoveEntity(entity->GetTransform()->GetDescendantByName("wood_door_1"));
+
             // 3D model - Sponza curtains
             if (m_default_model_sponza_curtains = ResourceCache::Load<Mesh>("project\\models\\sponza\\curtains\\NewSponza_Curtains_glTF.gltf"))
             {
@@ -588,6 +593,21 @@ namespace Spartan
                 entity->GetTransform()->SetPosition(Vector3(0.0f, 0.06f, 0.0f));
                 entity->GetTransform()->SetScale(Vector3::One);
             }
+        }
+
+        // Terrain
+        {
+            //shared_ptr<Entity> entity = CreateEntity();
+            //entity->SetName("terrain");
+
+            ////entity->GetTransform()->SetScale(Vector3(15.7592f, 3.1752f, 0.9272f));
+
+            //shared_ptr<RHI_Texture2D> height_map = make_shared<RHI_Texture2D>(m_context, RHI_Texture_Srv, "height_map");
+            //height_map->LoadFromFile("project\\height_maps\\a.png");
+
+            //Terrain* terrain = entity->AddComponent<Terrain>();
+            //terrain->SetHeightMap(height_map);
+            //terrain->GenerateAsync();
         }
 
         m_context->m_engine->ToggleFlag(EngineMode::Game);
