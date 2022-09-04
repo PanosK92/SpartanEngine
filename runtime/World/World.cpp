@@ -583,7 +583,7 @@ namespace Spartan
             RemoveEntity(entity->GetTransform()->GetDescendantByName("decals_3rd_floor"));
 
             // Delete wooden door so that they user can see outside (the terrain)
-            //RemoveEntity(entity->GetTransform()->GetDescendantByName("wood_door_1"));
+            RemoveEntity(entity->GetTransform()->GetDescendantByName("wood_door_1"));
 
             // 3D model - Sponza curtains
             if (m_default_model_sponza_curtains = ResourceCache::Load<Mesh>("project\\models\\sponza\\curtains\\NewSponza_Curtains_glTF.gltf"))
@@ -597,17 +597,19 @@ namespace Spartan
 
         // Terrain
         {
-            //shared_ptr<Entity> entity = CreateEntity();
-            //entity->SetName("terrain");
+            shared_ptr<Entity> entity = CreateEntity();
+            entity->SetName("terrain");
 
-            ////entity->GetTransform()->SetScale(Vector3(15.7592f, 3.1752f, 0.9272f));
+            entity->GetTransform()->SetPosition(Vector3(110.0f, -3.6118f, -100.0f));
 
-            //shared_ptr<RHI_Texture2D> height_map = make_shared<RHI_Texture2D>(m_context, RHI_Texture_Srv, "height_map");
-            //height_map->LoadFromFile("project\\height_maps\\a.png");
+            shared_ptr<RHI_Texture2D> height_map = make_shared<RHI_Texture2D>(m_context, RHI_Texture_Srv, "height_map");
+            height_map->LoadFromFile("project\\height_maps\\a.png");
 
-            //Terrain* terrain = entity->AddComponent<Terrain>();
-            //terrain->SetHeightMap(height_map);
-            //terrain->GenerateAsync();
+            Terrain* terrain = entity->AddComponent<Terrain>();
+            terrain->SetMinY(0.0f);
+            terrain->SetMaxY(2.0f);
+            terrain->SetHeightMap(height_map);
+            terrain->GenerateAsync();
         }
 
         m_context->m_engine->ToggleFlag(EngineMode::Game);
