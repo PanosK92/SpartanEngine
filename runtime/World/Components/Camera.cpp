@@ -328,7 +328,7 @@ namespace Spartan
         // FPS camera controls.
         // X-axis movement: W, A, S, D.
         // Y-axis movement: Q, E.
-        if (m_fps_control_enabled)
+        if (m_first_person_control_enabled)
         {
             ProcessInputFpsControl(delta_time);
         }
@@ -347,23 +347,23 @@ namespace Spartan
             // Initiate control only when the mouse is within the viewport
             if (m_input->GetKeyDown(KeyCode::Click_Right) && m_input->GetMouseIsInViewport())
             {
-                m_fps_control_assumed = true;
+                m_is_controlled_by_keyboard_mouse = true;
             }
 
             // Maintain control as long as the right click is pressed and initial control has been given
-            m_fps_control_assumed = m_input->GetKey(KeyCode::Click_Right) && m_fps_control_assumed;
+            m_is_controlled_by_keyboard_mouse = m_input->GetKey(KeyCode::Click_Right) && m_is_controlled_by_keyboard_mouse;
         }
 
         // Cursor visibility and position
         {
             // Toggle mouse cursor and adjust mouse position
-            if (m_fps_control_assumed && !m_fps_control_cursor_hidden)
+            if (m_is_controlled_by_keyboard_mouse && !m_fps_control_cursor_hidden)
             {
                 m_mouse_last_position = m_input->GetMousePosition();
                 m_input->SetMouseCursorVisible(false);
                 m_fps_control_cursor_hidden = true;
             }
-            else if (!m_fps_control_assumed && m_fps_control_cursor_hidden)
+            else if (!m_is_controlled_by_keyboard_mouse && m_fps_control_cursor_hidden)
             {
                 m_input->SetMousePosition(m_mouse_last_position);
                 m_input->SetMouseCursorVisible(true);
@@ -371,15 +371,14 @@ namespace Spartan
             }
         }
 
-        // Input
-        if (m_fps_control_assumed)
+        if (m_is_controlled_by_keyboard_mouse)
         {
-            // Mouse look.
+            // Mouse look
             {
-                // Wrap around left and right screen edges (to allow for infinite scrolling).
+                // Wrap around left and right screen edges (to allow for infinite scrolling)
                 {
-                    uint32_t edge_padding = 5;
-                    Math::Vector2 mouse_position = m_input->GetMousePosition();
+                    uint32_t edge_padding  = 5;
+                    Vector2 mouse_position = m_input->GetMousePosition();
                     if (mouse_position.x >= Display::GetWidth() - edge_padding)
                     {
                         mouse_position.x = static_cast<float>(edge_padding + 1);
@@ -393,8 +392,8 @@ namespace Spartan
                 }
 
                 // Get camera rotation.
-                m_mouse_rotation.x = m_transform->GetRotation().Yaw();
-                m_mouse_rotation.y = m_transform->GetRotation().Pitch();
+                m_first_person_rotation.x = m_transform->GetRotation().Yaw();
+                m_first_person_rotation.y = m_transform->GetRotation().Pitch();
 
                 // Get mouse delta.
                 const Vector2 mouse_delta = m_input->GetMouseDelta() * m_mouse_sensitivity;
@@ -403,27 +402,27 @@ namespace Spartan
                 m_mouse_smoothed = Helper::Lerp(m_mouse_smoothed, mouse_delta, Helper::Saturate(1.0f - m_mouse_smoothing));
 
                 // Accumulate rotation.
-                m_mouse_rotation += m_mouse_smoothed;
+                m_first_person_rotation += m_mouse_smoothed;
 
                 // Clamp rotation along the x-axis (but not exactly at 90 degrees, this is to avoid a gimbal lock).
-                m_mouse_rotation.y = Helper::Clamp(m_mouse_rotation.y, -80.0f, 80.0f);
+                m_first_person_rotation.y = Helper::Clamp(m_first_person_rotation.y, -80.0f, 80.0f);
 
                 // Compute rotation.
-                const Quaternion xQuaternion = Quaternion::FromAngleAxis(m_mouse_rotation.x * Helper::DEG_TO_RAD, Vector3::Up);
-                const Quaternion yQuaternion = Quaternion::FromAngleAxis(m_mouse_rotation.y * Helper::DEG_TO_RAD, Vector3::Right);
+                const Quaternion xQuaternion = Quaternion::FromAngleAxis(m_first_person_rotation.x * Helper::DEG_TO_RAD, Vector3::Up);
+                const Quaternion yQuaternion = Quaternion::FromAngleAxis(m_first_person_rotation.y * Helper::DEG_TO_RAD, Vector3::Right);
                 const Quaternion rotation    = xQuaternion * yQuaternion;
 
                 // Rotate
                 m_transform->SetRotationLocal(rotation);
             }
 
-            // Keyboard movement.
+            // Keyboard movement
             {
-                // Compute max speed.
+                // Compute max speed
                 m_movement_speed_max += m_input->GetMouseWheelDelta().y / 2.0f;
                 m_movement_speed_max = Helper::Clamp(m_movement_speed_max, m_movement_speed_min, numeric_limits<float>::max());
 
-                // Compute direction.
+                // Compute direction
                 Vector3 direction = Vector3::Zero;
                 if (m_input->GetKey(KeyCode::W)) direction += m_transform->GetForward();
                 if (m_input->GetKey(KeyCode::S)) direction += m_transform->GetBackward();
@@ -433,18 +432,62 @@ namespace Spartan
                 if (m_input->GetKey(KeyCode::E)) direction += m_transform->GetUp();
                 direction.Normalize();
 
-                // Compute speed.
+                // Compute speed
                 m_movement_speed += m_movement_acceleration * direction * static_cast<float>(delta_time);
                 m_movement_speed.ClampMagnitude(m_movement_speed_max * static_cast<float>(delta_time));
             }
         }
 
+        // Controller movement
+        if (m_input->IsControllerConnected())
+        {
+            // Look
+            {
+                // Get camera rotation
+                m_first_person_rotation.x += m_input->GetControllerThumbStickRight().x;
+                m_first_person_rotation.y += m_input->GetControllerThumbStickRight().y;
+
+                // Get mouse delta.
+                const Vector2 mouse_delta = m_input->GetMouseDelta() * m_mouse_sensitivity;
+
+                // Clamp rotation along the x-axis (but not exactly at 90 degrees, this is to avoid a gimbal lock).
+                m_first_person_rotation.y = Helper::Clamp(m_first_person_rotation.y, -80.0f, 80.0f);
+
+                // Compute rotation.
+                const Quaternion xQuaternion = Quaternion::FromAngleAxis(m_first_person_rotation.x * Helper::DEG_TO_RAD, Vector3::Up);
+                const Quaternion yQuaternion = Quaternion::FromAngleAxis(m_first_person_rotation.y * Helper::DEG_TO_RAD, Vector3::Right);
+                const Quaternion rotation    = xQuaternion * yQuaternion;
+
+                // Rotate
+                m_transform->SetRotationLocal(rotation);
+            }
+
+            // Movement
+            {
+                // Compute max speed
+                m_movement_speed_max += m_input->GetMouseWheelDelta().y / 2.0f;
+                m_movement_speed_max = Helper::Clamp(m_movement_speed_max, m_movement_speed_min, numeric_limits<float>::max());
+
+                // Compute direction
+                Vector3 direction = Vector3::Zero;
+                direction += m_transform->GetForward() * -m_input->GetControllerThumbStickLeft().y;
+                direction += m_transform->GetRight()   * m_input->GetControllerThumbStickLeft().x;
+                direction += m_transform->GetDown()    * m_input->GetControllerTriggerLeft();
+                direction += m_transform->GetUp()      * m_input->GetControllerTriggerRight();
+                direction.Normalize();
+
+                // Compute speed
+                m_movement_speed += m_movement_acceleration * direction * static_cast<float>(delta_time);
+                m_movement_speed.ClampMagnitude(m_movement_speed_max* static_cast<float>(delta_time));
+            }
+        }
+
         // Translation
         {
-            // Apply movement drag.
+            // Apply movement drag
             m_movement_speed *= 1.0f - Helper::Saturate(m_movement_drag * static_cast<float>(delta_time));
 
-            // Translate for as long as there is speed.
+            // Translate for as long as there is speed
             if (m_movement_speed != Vector3::Zero)
             {
                 m_transform->Translate(m_movement_speed);
@@ -509,13 +552,18 @@ namespace Spartan
             //m_transform->SetRotation(interpolated_rotation);
 
             // If the lerp has completed or the user has initiated fps control, stop lerping.
-            if (m_lerp_to_target_alpha >= 1.0f || m_fps_control_assumed)
+            if (m_lerp_to_target_alpha >= 1.0f || m_is_controlled_by_keyboard_mouse)
             {
                 m_lerp_to_target          = false;
                 m_lerp_to_target_alpha    = 0.0f;
                 m_lerp_to_target_position = Vector3::Zero;
             }
         }
+    }
+
+    bool Camera::IsControledInFirstPerson() const
+    {
+        return m_is_controlled_by_keyboard_mouse || m_input->IsControllerConnected();
     }
 
     Matrix Camera::ComputeViewMatrix() const

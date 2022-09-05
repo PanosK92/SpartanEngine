@@ -824,17 +824,17 @@ void Properties::ShowCamera(Camera* camera) const
 
     if (helper::ComponentBegin("Camera", IconType::Component_Camera, camera))
     {
-        //= REFLECT ========================================================
-        vector<string> projection_types = { "Perspective", "Orthographic" };
-        float aperture                  = camera->GetAperture();
-        float shutter_speed             = camera->GetShutterSpeed();
-        float iso                       = camera->GetIso();
-        float fov                       = camera->GetFovHorizontalDeg();
-        float near_plane                = camera->GetNearPlane();
-        float far_plane                 = camera->GetFarPlane();
-        bool fps_control_enabled        = camera->GetFpsControlEnabled();
+        //= REFLECT ====================================================================
+        static vector<string> projection_types = { "Perspective", "Orthographic" };
+        float aperture                         = camera->GetAperture();
+        float shutter_speed                    = camera->GetShutterSpeed();
+        float iso                              = camera->GetIso();
+        float fov                              = camera->GetFovHorizontalDeg();
+        float near_plane                       = camera->GetNearPlane();
+        float far_plane                        = camera->GetFarPlane();
+        bool first_person_control_enabled      = camera->GetFirstPersonControlEnabled();
         m_colorPicker_camera->SetColor(camera->GetClearColor());
-        //==================================================================
+        //==============================================================================
 
         const auto input_text_flags = ImGuiInputTextFlags_CharsDecimal;
 
@@ -878,20 +878,20 @@ void Properties::ShowCamera(Camera* camera) const
         ImGui::SetCursorPosX(helper::g_column); ImGui::PushItemWidth(130); ImGui::InputFloat("Far", &far_plane, 0.01f, 0.01f, "%.2f", input_text_flags); ImGui::PopItemWidth();
 
         // FPS Control
-        ImGui::Text("FPS Control");
-        ImGui::SameLine(helper::g_column); ImGui::Checkbox("##camera_fps_control", &fps_control_enabled);
-        imgui_extension::tooltip("Enables FPS control while holding down the right mouse button");
+        ImGui::Text("First Person Control");
+        ImGui::SameLine(helper::g_column); ImGui::Checkbox("##camera_first_person_control", &first_person_control_enabled);
+        imgui_extension::tooltip("Enables first person control while holding down the right mouse button (or when a controller is connected)");
 
-        //= MAP =================================================================================================================
-        if (aperture != camera->GetAperture())                           camera->SetAperture(aperture);
-        if (shutter_speed != camera->GetShutterSpeed())                  camera->SetShutterSpeed(shutter_speed);
-        if (iso != camera->GetIso())                                     camera->SetIso(iso);
-        if (fov != camera->GetFovHorizontalDeg())                        camera->SetFovHorizontalDeg(fov);
-        if (near_plane != camera->GetNearPlane())                        camera->SetNearPlane(near_plane);
-        if (far_plane != camera->GetFarPlane())                          camera->SetFarPlane(far_plane);
-        if (fps_control_enabled != camera->GetFpsControlEnabled())       camera->SetFpsControlEnabled(fps_control_enabled);
-        if (m_colorPicker_camera->GetColor() != camera->GetClearColor()) camera->SetClearColor(m_colorPicker_camera->GetColor());
-        //=======================================================================================================================
+        //= MAP =======================================================================================================================================
+        if (aperture != camera->GetAperture())                                      camera->SetAperture(aperture);
+        if (shutter_speed != camera->GetShutterSpeed())                             camera->SetShutterSpeed(shutter_speed);
+        if (iso != camera->GetIso())                                                camera->SetIso(iso);
+        if (fov != camera->GetFovHorizontalDeg())                                   camera->SetFovHorizontalDeg(fov);
+        if (near_plane != camera->GetNearPlane())                                   camera->SetNearPlane(near_plane);
+        if (far_plane != camera->GetFarPlane())                                     camera->SetFarPlane(far_plane);
+        if (first_person_control_enabled != camera->GetFirstPersonControlEnabled()) camera->SetFirstPersonControlEnabled(first_person_control_enabled);
+        if (m_colorPicker_camera->GetColor() != camera->GetClearColor())            camera->SetClearColor(m_colorPicker_camera->GetColor());
+        //=============================================================================================================================================
     }
     helper::ComponentEnd();
 }

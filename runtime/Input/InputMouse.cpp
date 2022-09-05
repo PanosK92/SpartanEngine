@@ -38,7 +38,7 @@ namespace Spartan
         // Get state
         int x, y;
         Uint32 keys_states = SDL_GetGlobalMouseState(&x, &y);
-        Vector2 position = Vector2(static_cast<float>(x), static_cast<float>(y));
+        Vector2 position   = Vector2(static_cast<float>(x), static_cast<float>(y));
 
         // Get delta
         m_mouse_delta = position - m_mouse_position;

@@ -55,7 +55,7 @@ namespace Spartan
         SnapToTransform(space, entity, camera, handle_size);
 
         // Allow editing only when the camera is not fps controlled
-        if (!camera->IsFpsControlled())
+        if (!camera->IsControledInFirstPerson())
         {
             // Create ray starting from the camera position and pointing towards where the mouse is pointing
             Vector3 ray_start     = camera->GetTransform()->GetPosition();

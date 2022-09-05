@@ -98,6 +98,7 @@ namespace Spartan
         // Polling driven input
         void PollMouse();
         void PollKeyboard();
+        void PollController();
 
         // Event driven input
         void OnEvent(const Variant& event_variant);
@@ -123,11 +124,11 @@ namespace Spartan
         const Math::Vector2 GetMousePositionRelativeToEditorViewport() const;
 
         // Controller
-        bool ControllerIsConnected()                        const { return m_controller_connected; }
+        bool IsControllerConnected()                        const { return m_is_controller_connected; }
         const Math::Vector2& GetControllerThumbStickLeft()  const { return m_controller_thumb_left; }
         const Math::Vector2& GetControllerThumbStickRight() const { return m_controller_thumb_right; }
         float GetControllerTriggerLeft()                    const { return m_controller_trigger_left; }
-        float GetControllerTriggerRight()                   const { return m_gamepad_trigger_right; }
+        float GetControllerTriggerRight()                   const { return m_controller_trigger_right; }
         // Vibrate the gamepad.
         // Motor speed range is from 0.0 to 1.0f.
         // The left motor is the low-frequency rumble motor.
@@ -151,10 +152,12 @@ namespace Spartan
 
         // Controller
         void* m_controller                      = nullptr;
-        bool m_controller_connected             = false;
+        bool m_is_controller_connected          = false;
+        std::string m_controller_name           = "";
+        uint32_t m_controller_index             = 0;
         Math::Vector2 m_controller_thumb_left   = Math::Vector2::Zero;
         Math::Vector2 m_controller_thumb_right  = Math::Vector2::Zero;
         float m_controller_trigger_left         = 0.0f;
-        float m_gamepad_trigger_right           = 0.0f;
+        float m_controller_trigger_right        = 0.0f;
     };
 }

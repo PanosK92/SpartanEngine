@@ -74,7 +74,7 @@ namespace Spartan
         }
 
         // Switch between position, rotation and scale handles, with W, E and R respectively
-        if (!camera->IsFpsControlled())
+        if (!camera->IsControledInFirstPerson())
         {
             if (m_input->GetKeyDown(KeyCode::W))
             {
