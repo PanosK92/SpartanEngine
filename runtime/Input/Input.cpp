@@ -73,6 +73,7 @@ namespace Spartan
 
         PollMouse();
         PollKeyboard();
+        PollController();
     }
 
     void Input::OnPostTick()

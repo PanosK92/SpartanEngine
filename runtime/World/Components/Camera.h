@@ -129,14 +129,18 @@ namespace Spartan
         const std::vector<camera_bookmark>& GetBookmarks() const { return m_bookmarks; };
         //===============================================================================================
 
-        //= MISC ================================================================================
-        const Color& GetClearColor()                   const { return m_clear_color; }
-        void SetClearColor(const Color& color)               { m_clear_color = color; }
-        bool GetFpsControlEnabled()                    const { return m_fps_control_enabled; }
-        void SetFpsControlEnabled(const bool enabled)        { m_fps_control_enabled = enabled; }
-        bool IsFpsControlled()                         const { return m_fps_control_assumed; }
-        void MakeDirty()                                     { m_is_dirty = true; }
-        //=======================================================================================
+        // Clear color
+        const Color& GetClearColor()                   const  { return m_clear_color; }
+        void SetClearColor(const Color& color)                { m_clear_color = color; }
+
+        // First person control
+        bool GetFirstPersonControlEnabled()            const  { return m_first_person_control_enabled; }
+        void SetFirstPersonControlEnabled(const bool enabled) { m_first_person_control_enabled = enabled; }
+        bool IsControledInFirstPerson() const;
+
+        // Misc
+        void MakeDirty()                                      { m_is_dirty = true; }
+
 
         Math::Matrix ComputeViewMatrix() const;
         Math::Matrix ComputeProjection(const bool reverse_z, const float near_plane = 0.0f, const float far_plane = 0.0f);
@@ -162,8 +166,8 @@ namespace Spartan
         Math::Vector3 m_position                = Math::Vector3::Zero;
         Math::Quaternion m_rotation             = Math::Quaternion::Identity;
         bool m_is_dirty                         = false;
-        bool m_fps_control_enabled              = true;
-        bool m_fps_control_assumed              = false;
+        bool m_first_person_control_enabled     = true;
+        bool m_is_controlled_by_keyboard_mouse  = false;
         Math::Vector2 m_mouse_last_position     = Math::Vector2::Zero;
         bool m_fps_control_cursor_hidden        = false;
         Math::Vector3 m_movement_speed          = Math::Vector3::Zero;
@@ -172,7 +176,7 @@ namespace Spartan
         float m_movement_acceleration           = 1000.0f;
         float m_movement_drag                   = 10.0f;
         Math::Vector2 m_mouse_smoothed          = Math::Vector2::Zero;
-        Math::Vector2 m_mouse_rotation          = Math::Vector2::Zero;
+        Math::Vector2 m_first_person_rotation   = Math::Vector2::Zero;
         float m_mouse_sensitivity               = 0.2f;
         float m_mouse_smoothing                 = 0.5f;
         bool m_lerp_to_target                   = false;

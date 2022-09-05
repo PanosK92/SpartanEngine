@@ -32,6 +32,44 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
+    static float get_normalized_axis_value(SDL_GameController* controller, const SDL_GameControllerAxis axis)
+    {
+        int16_t value = SDL_GameControllerGetAxis(controller, axis);
+
+        // Account for deadzone.
+        static const uint16_t deadzone = 8000; // A good default as per SDL_GameController.h
+        if ((abs(value) - deadzone) < 0)
+        {
+            value = 0;
+        }
+        else
+        {
+            value -= value > 0 ? deadzone : -deadzone;
+        }
+
+        // Compute range
+        static const float range_negative = 32768.0f;
+        static const float range_positive = 32767.0f;
+        float range                       = value < 0 ? range_negative : range_positive;
+
+        // Normalize
+        return static_cast<float>(value) / (range - deadzone);
+    }
+
+    void Input::PollController()
+    {
+        SDL_GameController* controller = static_cast<SDL_GameController*>(m_controller);
+        if (!m_controller)
+            return;
+
+        m_controller_trigger_left  = get_normalized_axis_value(controller, SDL_GameControllerAxis::SDL_CONTROLLER_AXIS_TRIGGERLEFT);  // L2
+        m_controller_trigger_right = get_normalized_axis_value(controller, SDL_GameControllerAxis::SDL_CONTROLLER_AXIS_TRIGGERRIGHT); // R2
+        m_controller_thumb_left.x  = get_normalized_axis_value(controller, SDL_GameControllerAxis::SDL_CONTROLLER_AXIS_LEFTX);        // LEFT THUMBSTICK
+        m_controller_thumb_left.y  = get_normalized_axis_value(controller, SDL_GameControllerAxis::SDL_CONTROLLER_AXIS_LEFTY);        // LEFT THUMBSTICK
+        m_controller_thumb_right.x = get_normalized_axis_value(controller, SDL_GameControllerAxis::SDL_CONTROLLER_AXIS_RIGHTX);       // RIGHT THUMBSTICK
+        m_controller_thumb_right.y = get_normalized_axis_value(controller, SDL_GameControllerAxis::SDL_CONTROLLER_AXIS_RIGHTY);       // RIGHT THUMBSTICK
+    }
+
     void Input::OnEventController(void* event_controller)
     {
         // Validate event
@@ -40,7 +78,7 @@ namespace Spartan
         Uint32 event_type = sdl_event->type;
 
         // Detect controller
-        if (!m_controller_connected)
+        if (!m_is_controller_connected)
         {
             for (int i = 0; i < SDL_NumJoysticks(); i++)
             {
@@ -49,8 +87,9 @@ namespace Spartan
                     SDL_GameController* controller = SDL_GameControllerOpen(i);
                     if (SDL_GameControllerGetAttached(controller) == 1)
                     {
-                        m_controller = controller;
-                        m_controller_connected = true;
+                        m_controller              = controller;
+                        m_controller_index        = i;
+                        m_is_controller_connected = true;
                     }
                     else
                     {
@@ -73,16 +112,17 @@ namespace Spartan
                     SDL_GameController* controller = SDL_GameControllerOpen(i);
                     if (SDL_GameControllerGetAttached(controller) == SDL_TRUE)
                     {
-                        m_controller            = controller;
-                        m_controller_connected  = true;
+                        m_controller              = controller;
+                        m_is_controller_connected = true;
+                        m_controller_name         = SDL_GameControllerNameForIndex(i);
                         break;
                     }
                 }
             }
 
-            if (m_controller_connected)
+            if (m_is_controller_connected)
             {
-                SP_LOG_INFO("Controller connected.");
+                SP_LOG_INFO("Controller connected \"%s\".", m_controller_name.c_str());
             }
             else
             {
@@ -93,8 +133,10 @@ namespace Spartan
         // Disconnected
         if (event_type == SDL_CONTROLLERDEVICEREMOVED)
         {
-            m_controller = nullptr;
-            m_controller_connected = false;
+            m_controller              = nullptr;
+            m_is_controller_connected = false;
+            m_controller_name         = "";
+
             SP_LOG_INFO("Controller disconnected.");
         }
 
@@ -103,27 +145,27 @@ namespace Spartan
         {
             Uint8 button = sdl_event->cbutton.button;
 
-            m_keys[start_index_gamepad]         = button == SDL_CONTROLLER_BUTTON_DPAD_UP;
-            m_keys[start_index_gamepad + 1]     = button == SDL_CONTROLLER_BUTTON_DPAD_DOWN;
-            m_keys[start_index_gamepad + 2]     = button == SDL_CONTROLLER_BUTTON_DPAD_LEFT;
-            m_keys[start_index_gamepad + 3]     = button == SDL_CONTROLLER_BUTTON_DPAD_RIGHT;
-            m_keys[start_index_gamepad + 4]     = button == SDL_CONTROLLER_BUTTON_A;
-            m_keys[start_index_gamepad + 5]     = button == SDL_CONTROLLER_BUTTON_B;
-            m_keys[start_index_gamepad + 6]     = button == SDL_CONTROLLER_BUTTON_X;
-            m_keys[start_index_gamepad + 7]     = button == SDL_CONTROLLER_BUTTON_Y;
-            m_keys[start_index_gamepad + 8]     = button == SDL_CONTROLLER_BUTTON_BACK;
-            m_keys[start_index_gamepad + 9]     = button == SDL_CONTROLLER_BUTTON_GUIDE;
-            m_keys[start_index_gamepad + 10]    = button == SDL_CONTROLLER_BUTTON_START;
-            m_keys[start_index_gamepad + 11]    = button == SDL_CONTROLLER_BUTTON_LEFTSTICK;
-            m_keys[start_index_gamepad + 12]    = button == SDL_CONTROLLER_BUTTON_RIGHTSTICK;
-            m_keys[start_index_gamepad + 13]    = button == SDL_CONTROLLER_BUTTON_LEFTSHOULDER;
-            m_keys[start_index_gamepad + 14]    = button == SDL_CONTROLLER_BUTTON_RIGHTSHOULDER;
-            m_keys[start_index_gamepad + 15]    = button == SDL_CONTROLLER_BUTTON_MISC1;
-            m_keys[start_index_gamepad + 16]    = button == SDL_CONTROLLER_BUTTON_PADDLE1;
-            m_keys[start_index_gamepad + 17]    = button == SDL_CONTROLLER_BUTTON_PADDLE2;
-            m_keys[start_index_gamepad + 18]    = button == SDL_CONTROLLER_BUTTON_PADDLE3;
-            m_keys[start_index_gamepad + 19]    = button == SDL_CONTROLLER_BUTTON_PADDLE4;
-            m_keys[start_index_gamepad + 20]    = button == SDL_CONTROLLER_BUTTON_TOUCHPAD;
+            m_keys[start_index_gamepad]      = button == SDL_CONTROLLER_BUTTON_DPAD_UP;
+            m_keys[start_index_gamepad + 1]  = button == SDL_CONTROLLER_BUTTON_DPAD_DOWN;
+            m_keys[start_index_gamepad + 2]  = button == SDL_CONTROLLER_BUTTON_DPAD_LEFT;
+            m_keys[start_index_gamepad + 3]  = button == SDL_CONTROLLER_BUTTON_DPAD_RIGHT;
+            m_keys[start_index_gamepad + 4]  = button == SDL_CONTROLLER_BUTTON_A;
+            m_keys[start_index_gamepad + 5]  = button == SDL_CONTROLLER_BUTTON_B;
+            m_keys[start_index_gamepad + 6]  = button == SDL_CONTROLLER_BUTTON_X;
+            m_keys[start_index_gamepad + 7]  = button == SDL_CONTROLLER_BUTTON_Y;
+            m_keys[start_index_gamepad + 8]  = button == SDL_CONTROLLER_BUTTON_BACK;
+            m_keys[start_index_gamepad + 9]  = button == SDL_CONTROLLER_BUTTON_GUIDE;
+            m_keys[start_index_gamepad + 10] = button == SDL_CONTROLLER_BUTTON_START;
+            m_keys[start_index_gamepad + 11] = button == SDL_CONTROLLER_BUTTON_LEFTSTICK;
+            m_keys[start_index_gamepad + 12] = button == SDL_CONTROLLER_BUTTON_RIGHTSTICK;
+            m_keys[start_index_gamepad + 13] = button == SDL_CONTROLLER_BUTTON_LEFTSHOULDER;
+            m_keys[start_index_gamepad + 14] = button == SDL_CONTROLLER_BUTTON_RIGHTSHOULDER;
+            m_keys[start_index_gamepad + 15] = button == SDL_CONTROLLER_BUTTON_MISC1;
+            m_keys[start_index_gamepad + 16] = button == SDL_CONTROLLER_BUTTON_PADDLE1;
+            m_keys[start_index_gamepad + 17] = button == SDL_CONTROLLER_BUTTON_PADDLE2;
+            m_keys[start_index_gamepad + 18] = button == SDL_CONTROLLER_BUTTON_PADDLE3;
+            m_keys[start_index_gamepad + 19] = button == SDL_CONTROLLER_BUTTON_PADDLE4;
+            m_keys[start_index_gamepad + 20] = button == SDL_CONTROLLER_BUTTON_TOUCHPAD;
         }
         else
         {
@@ -132,44 +174,16 @@ namespace Spartan
                 m_keys[i] = false;
             }
         }
-
-        // Axes
-        if (event_type == SDL_CONTROLLERAXISMOTION)
-        {
-            SDL_ControllerAxisEvent event_axis = sdl_event->caxis;
-
-            switch (event_axis.axis)
-            {
-            case SDL_CONTROLLER_AXIS_TRIGGERLEFT:
-                m_controller_trigger_left = static_cast<float>(event_axis.value) / 32768.0f;
-                break;
-            case SDL_CONTROLLER_AXIS_TRIGGERRIGHT:
-                m_gamepad_trigger_right = static_cast<float>(event_axis.value) / 32768.0f;
-                break;
-            case SDL_CONTROLLER_AXIS_LEFTX:
-                m_controller_thumb_left.x = static_cast<float>(event_axis.value) / 32768.0f;
-                break;
-            case SDL_CONTROLLER_AXIS_LEFTY:
-                m_controller_thumb_left.y = static_cast<float>(event_axis.value) / 32768.0f;
-                break;
-            case SDL_CONTROLLER_AXIS_RIGHTX:
-                m_controller_thumb_right.x = static_cast<float>(event_axis.value) / 32768.0f;
-                break;
-            case SDL_CONTROLLER_AXIS_RIGHTY:
-                m_controller_thumb_right.y = static_cast<float>(event_axis.value) / 32768.0f;
-                break;
-            }
-        }
     }
 
     bool Input::GamepadVibrate(const float left_motor_speed, const float right_motor_speed) const
     {
-        if (!m_controller_connected)
+        if (!m_is_controller_connected)
             return false;
 
-        Uint16 low_frequency_rumble     = static_cast<uint16_t>(Helper::Clamp(left_motor_speed, 0.0f, 1.0f) * 65535);    // Convert [0, 1] to [0, 65535]
-        Uint16 high_frequency_rumble    = static_cast<uint16_t>(Helper::Clamp(right_motor_speed, 0.0f, 1.0f) * 65535);   // Convert [0, 1] to [0, 65535]
-        Uint32 duration_ms              = 0xFFFFFFFF;
+        Uint16 low_frequency_rumble  = static_cast<uint16_t>(Helper::Clamp(left_motor_speed, 0.0f, 1.0f) * 65535);  // Convert [0, 1] to [0, 65535]
+        Uint16 high_frequency_rumble = static_cast<uint16_t>(Helper::Clamp(right_motor_speed, 0.0f, 1.0f) * 65535); // Convert [0, 1] to [0, 65535]
+        Uint32 duration_ms           = 0xFFFFFFFF;
 
         if (SDL_GameControllerRumble(static_cast<SDL_GameController*>(m_controller), low_frequency_rumble, high_frequency_rumble, duration_ms) == -1)
         {
