@@ -28,30 +28,33 @@ def copy(source, destination):
 # 1. Extract third-party libraries (that the project will link to)
 print("1. Extracting third-party dependencies...")
 if sys.argv[1] == "vs2022": # windows
-	os.system("build_scripts\\7z.exe e third_party\\libraries\\libraries.7z -othird_party\\libraries\\ -aoa")
+	os.system("build_scripts/7z.exe e third_party/libraries/libraries.7z -othird_party/libraries/ -aoa")
 else:                       # linux
-	os.system("7za e third_party\\libraries\\libraries.7z -othird_party\\libraries\\ -aoa")
+	os.system("7za e third_party/libraries/libraries.7z -othird_party/libraries/ -aoa")
 
 # 2. Create binaries folder
 print("\n2. Copying required data to the binaries directory..")
-copy("data", "binaries\\data")
+copy("data", "binaries/data")
 
 # 3. Copy engine DLLs to the binary directory
 print("\n3. Copying required DLLs to the binary directory...")
-copy("third_party\\libraries\\dxcompiler.dll", "binaries")
-copy("third_party\\libraries\\fmod.dll", "binaries")
-copy("third_party\\libraries\\fmodL.dll", "binaries")
+copy("third_party/libraries/dxcompiler.dll", "binaries")
+copy("third_party/libraries/fmod.dll", "binaries")
+copy("third_party/libraries/fmodL.dll", "binaries")
 
 # 4. Copy some assets to the project directory
 print("\n4. Copying some assets to the project directory...")
-copy("assets\\models", "binaries\\project\\models")
-copy("assets\\environment", "binaries\\project\\environment")
-copy("assets\\music", "binaries\\project\\music")
-copy("assets\\height_maps", "binaries\\project\\height_maps")
+copy("assets/models", "binaries/project/models")
+copy("assets/environment", "binaries/project/environment")
+copy("assets/music", "binaries/project/music")
+copy("assets/height_maps", "binaries/project/height_maps")
 
 # 5. Generate project files
 print("\n5. Generating project files...")
-subprocess.Popen("build_scripts\\premake5.exe --file=build_scripts\\premake.lua " + sys.argv[1] + " " + sys.argv[2], shell=True).communicate()
+if sys.argv[1] == "vs2022": # windows
+	subprocess.Popen("build_scripts/premake5.exe --file=build_scripts/premake.lua " + sys.argv[1] + " " + sys.argv[2], shell=True).communicate()
+else: 						# Linux
+	subprocess.Popen("premake5 --file=build_scripts/premake.lua " + sys.argv[1] + " " + sys.argv[2], shell=True).communicate()
 
 # Exit
 sys.exit(0)
