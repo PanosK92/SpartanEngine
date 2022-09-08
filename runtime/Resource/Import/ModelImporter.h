@@ -50,12 +50,11 @@ namespace Spartan
     private:
         // Parsing
         void ParseNode(const aiNode* node, std::shared_ptr<Entity> parent_entity = nullptr);
-        void PashMeshes(const aiNode* node, Entity* new_entity);
+        void ParseNodeMeshes(const aiNode* node, Entity* new_entity);
+        void ParseNodeLight(const aiNode* node, Entity* new_entity);
         void ParseAnimations();
-
-        // Loading
         void ParseMesh(aiMesh* mesh, Entity* entity_parent);
-        void LoadBones(const aiMesh* mesh);
+        void ParseNodes(const aiMesh* mesh);
 
         // Model
         std::string m_file_path;
@@ -66,7 +65,7 @@ namespace Spartan
         const aiScene* m_scene = nullptr;
 
         // Dependencies
-        Context* m_context;
-        World* m_world;
+        Context* m_context = nullptr;
+        World* m_world     = nullptr;
     };
 }

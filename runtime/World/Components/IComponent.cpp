@@ -52,14 +52,6 @@ namespace Spartan
         m_enabled   = true;
     }
 
-    string IComponent::GetEntityName() const
-    {
-        if (!m_entity)
-            return "";
-
-        return m_entity->GetName();
-    }
-
     template <typename T>
     inline constexpr ComponentType IComponent::TypeToEnum() { return ComponentType::Undefined; }
 

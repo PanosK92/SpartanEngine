@@ -50,7 +50,7 @@ namespace Spartan
 
     Mesh::Mesh(Context* context) : IResource(context, ResourceType::Mesh)
     {
-
+        m_flags = GetDefaultFlags();
     }
 
     void Mesh::Clear()
@@ -214,6 +214,13 @@ namespace Spartan
         m_aabb = BoundingBox(m_vertices.data(), static_cast<uint32_t>(m_vertices.size()));
     }
 
+    uint32_t Mesh::GetDefaultFlags()
+    {
+        return
+            (1U << static_cast<uint32_t>(MeshOptions::RemoveRedundantData)) |
+            (1U << static_cast<uint32_t>(MeshOptions::NormalizeScale));
+    }
+    
     float Mesh::ComputeNormalizedScale()
     {
         // Compute scale offset

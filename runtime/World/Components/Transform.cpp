@@ -50,7 +50,6 @@ namespace Spartan
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_scale_local,    Vector3);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_matrix,         Matrix);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_matrix_local,   Matrix);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_look_at,        Vector3);
     }
 
     void Transform::OnInitialize()
@@ -77,7 +76,6 @@ namespace Spartan
         stream->Write(m_position_local);
         stream->Write(m_rotation_local);
         stream->Write(m_scale_local);
-        stream->Write(m_look_at);
 
         // Hierarchy
         stream->Write(m_parent ? m_parent->GetEntity()->GetObjectId() : 0);
@@ -89,7 +87,6 @@ namespace Spartan
         stream->Read(&m_position_local);
         stream->Read(&m_rotation_local);
         stream->Read(&m_scale_local);
-        stream->Read(&m_look_at);
 
         // Hierarchy
         uint64_t parent_entity_id = 0;
@@ -248,7 +245,7 @@ namespace Spartan
     {
         if (!HasChildren())
         {
-            SP_LOG_WARNING("%s has no children.", GetEntityName().c_str());
+            SP_LOG_WARNING("%s has no children.", GetEntity()->GetName().c_str());
             return nullptr;
         }
 
@@ -264,9 +261,9 @@ namespace Spartan
 
     Transform* Transform::GetChildByName(const string& name)
     {
-        for (const auto& child : m_children)
+        for (Transform* child : m_children)
         {
-            if (child->GetEntityName() == name)
+            if (child->GetEntity()->GetName() == name)
                 return child;
         }
 

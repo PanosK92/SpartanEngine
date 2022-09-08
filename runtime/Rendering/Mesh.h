@@ -31,6 +31,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
+    enum class MeshOptions : uint32_t
+    {
+        CombineMeshes,
+        RemoveRedundantData,
+        ImportLights,
+        NormalizeScale
+    };
+
     class Mesh : public IResource
     {
     public:
@@ -79,6 +87,7 @@ namespace Spartan
         void SetRootEntity(std::shared_ptr<Entity>& entity) { m_root_entity = entity; }
 
         // Misc
+        static uint32_t GetDefaultFlags();
         float ComputeNormalizedScale();
         void Optimize();
         void AddMaterial(std::shared_ptr<Material>& material, const std::shared_ptr<Entity>& entity) const;

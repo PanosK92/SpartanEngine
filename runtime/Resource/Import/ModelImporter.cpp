@@ -33,6 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../World/Entity.h"
 #include "../../World/Components/Renderable.h"
 #include "../../World/Components/Transform.h"
+#include "../World/Components/Light.h"
 SP_WARNINGS_OFF
 #include "assimp/color4.h"
 #include "assimp/matrix4x4.h"
@@ -54,27 +55,6 @@ using namespace Assimp;
 
 namespace Spartan
 {
-    static const uint32_t importer_flags =
-        // Switch to engine conventions
-        aiProcess_MakeLeftHanded           | // DirectX style.
-        aiProcess_FlipUVs                  | // DirectX style.
-        aiProcess_FlipWindingOrder         | // DirectX style.
-        // Validate and clean up
-        aiProcess_ValidateDataStructure    | // Validates the imported scene data structure. This makes sure that all indices are valid, all animations and bones are linked correctly, all material references are correct
-        aiProcess_FindDegenerates          | // Convert degenerate primitives to proper lines or points.
-        aiProcess_FindInvalidData          | // This step searches all meshes for invalid data, such as zeroed normal vectors or invalid UV coords and removes / fixes them
-        aiProcess_RemoveRedundantMaterials | // Searches for redundant/unreferenced materials and removes them
-        aiProcess_Triangulate              | // Triangulates all faces of all meshes
-        aiProcess_JoinIdenticalVertices    | // Triangulates all faces of all meshes
-        aiProcess_SortByPType              | // Splits meshes with more than one primitive type in homogeneous sub-meshes.
-        aiProcess_FindInstances            | // This step searches for duplicate meshes and replaces them with references to the first mesh
-        // Generate missing normals or UVs
-        aiProcess_CalcTangentSpace         | // Calculates the tangents and bitangents for the imported meshes
-        aiProcess_GenSmoothNormals         | // Ignored if the mesh already has normals
-        aiProcess_GenUVCoords;               // Converts non-UV mappings (such as spherical or cylindrical mapping) to proper texture coordinate channels
-
-        // Any vertex/index optimization flags are not needed since Mesh is using meshoptimizer
-
     static Matrix convert_matrix(const aiMatrix4x4& transform)
     {
         return Matrix
@@ -86,9 +66,14 @@ namespace Spartan
         );
     }
 
-    static Vector4 convert_vector4(const aiColor4D& ai_color)
+    static Color convert_color(const aiColor4D& ai_color)
     {
-        return Vector4(ai_color.r, ai_color.g, ai_color.b, ai_color.a);
+        return Color(ai_color.r, ai_color.g, ai_color.b, ai_color.a);
+    }
+
+    static Color convert_color(const aiColor3D& ai_color)
+    {
+        return Color(ai_color.r, ai_color.g, ai_color.b, 1.0f);
     }
 
     static Vector3 convert_vector3(const aiVector3D& ai_vector)
@@ -364,18 +349,65 @@ namespace Spartan
 
         // Set up the importer
         Importer importer;
-        // Remove points and lines.
-        importer.SetPropertyInteger(AI_CONFIG_PP_SBP_REMOVE, aiPrimitiveType_LINE | aiPrimitiveType_POINT);
-        // Remove cameras and lights
-        importer.SetPropertyInteger(AI_CONFIG_PP_RVC_FLAGS, aiComponent_CAMERAS | aiComponent_LIGHTS);
-        // Enable progress tracking
-        importer.SetPropertyBool(AI_CONFIG_GLOB_MEASURE_TIME, true);
-        importer.SetProgressHandler(new AssimpProgress(file_path));
+        {
+            // Remove points and lines.
+            importer.SetPropertyInteger(AI_CONFIG_PP_SBP_REMOVE, aiPrimitiveType_LINE | aiPrimitiveType_POINT);
+
+            // Remove cameras and lights
+            {
+                uint32_t component_flags = aiComponent_CAMERAS;
+                if ((mesh->GetFlags() & (1U << static_cast<uint32_t>(MeshOptions::ImportLights))) == 0)
+                {
+                    component_flags |= aiComponent_LIGHTS;
+                }
+                importer.SetPropertyInteger(AI_CONFIG_PP_RVC_FLAGS, component_flags);
+            }
+
+            // Enable progress tracking
+            importer.SetPropertyBool(AI_CONFIG_GLOB_MEASURE_TIME, true);
+            importer.SetProgressHandler(new AssimpProgress(file_path));
+        }
+
+        // Import flags
+        uint32_t import_flags = 0;
+        {
+            import_flags |= aiProcess_ValidateDataStructure; // Validates the imported scene data structure.
+            import_flags |= aiProcess_Triangulate;           // Triangulates all faces of all meshes.
+            import_flags |= aiProcess_SortByPType;           // Splits meshes with more than one primitive type in homogeneous sub-meshes.
+
+            // Switch to engine conventions
+            import_flags |= aiProcess_MakeLeftHanded;   // DirectX style.
+            import_flags |= aiProcess_FlipUVs;          // DirectX style.
+            import_flags |= aiProcess_FlipWindingOrder; // DirectX style.
+
+            // Generate missing normals or UVs
+            import_flags |= aiProcess_CalcTangentSpace; // Calculates  tangents and bitangents
+            import_flags |= aiProcess_GenSmoothNormals; // Ignored if the mesh already has normals
+            import_flags |= aiProcess_GenUVCoords;      // Converts non-UV mappings (such as spherical or cylindrical mapping) to proper texture coordinate channels
+
+            // Combine meshes
+            if ((mesh->GetFlags() & (1U << static_cast<uint32_t>(MeshOptions::CombineMeshes))) != 0)
+            {
+                import_flags |= aiProcess_OptimizeMeshes;
+                import_flags |= aiProcess_OptimizeGraph;
+                import_flags |= aiProcess_PreTransformVertices;
+            }
+
+            // Validate
+            if ((mesh->GetFlags() & (1U << static_cast<uint32_t>(MeshOptions::RemoveRedundantData))) != 0)
+            {
+                import_flags |= aiProcess_RemoveRedundantMaterials; // Searches for redundant/unreferenced materials and removes them
+                import_flags |= aiProcess_JoinIdenticalVertices;    // Identifies and joins identical vertex data sets within all imported meshes     
+                import_flags |= aiProcess_FindDegenerates;          // Convert degenerate primitives to proper lines or points.
+                import_flags |= aiProcess_FindInvalidData;          // This step searches all meshes for invalid data, such as zeroed normal vectors or invalid UV coords and removes / fixes them
+                import_flags |= aiProcess_FindInstances;            // This step searches for duplicate meshes and replaces them with references to the first mesh
+            }
+        }
 
         ProgressTracker::GetProgress(ProgressType::ModelImporter).Start(1, "Loading model from drive...");
 
         // Read the 3D model file from disc
-        if (const aiScene* scene = importer.ReadFile(file_path, importer_flags))
+        if (const aiScene* scene = importer.ReadFile(file_path, import_flags))
         {
             // Update progress tracking
             uint32_t job_count = 0;
@@ -398,7 +430,10 @@ namespace Spartan
 
                 //mesh->Optimize();
                 mesh->ComputeAabb();
-                mesh->ComputeNormalizedScale();
+                if ((mesh->GetFlags() & (1U << static_cast<uint32_t>(MeshOptions::NormalizeScale))) != 0)
+                {
+                    mesh->ComputeNormalizedScale();
+                }
                 mesh->CreateGpuBuffers();
             }
 
@@ -434,7 +469,7 @@ namespace Spartan
 
         // Name the entity
         string node_name = is_root_node ? m_name : node->mName.C_Str();
-        entity->SetName(m_name); // Set custom name, which is more descriptive than "RootNode"
+        entity->SetName(m_name);
 
         // Update progress tracking
         ProgressTracker::GetProgress(ProgressType::ModelImporter).SetText("Creating entity for " + entity->GetName());
@@ -446,27 +481,29 @@ namespace Spartan
         // Apply node transformation
         set_entity_transform(node, entity.get());
 
-        // Process all the node's meshes
+        // Mesh components
         if (node->mNumMeshes > 0)
         {
-            PashMeshes(node, entity.get());
+            ParseNodeMeshes(node, entity.get());
         }
 
-        // Process children
+        // Light component
+        if ((m_mesh->GetFlags() & (1U << static_cast<uint32_t>(MeshOptions::ImportLights))) != 0)
+        {
+            ParseNodeLight(node, entity.get());
+        }
+
+        // Children nodes
         for (uint32_t i = 0; i < node->mNumChildren; i++)
         {
-            // Any subsequent nodes are processed in another thread
-            //ThreadPool::AddTask([this, i, node, entity]()
-            //{
-                ParseNode(node->mChildren[i], entity);
-            //});
+            ParseNode(node->mChildren[i], entity);
         }
 
         // Update progress tracking
         ProgressTracker::GetProgress(ProgressType::ModelImporter).JobDone();
     }
 
-    void ModelImporter::PashMeshes(const aiNode* assimp_node, Entity* node_entity)
+    void ModelImporter::ParseNodeMeshes(const aiNode* assimp_node, Entity* node_entity)
     {
         // An aiNode can have any number of meshes (albeit typically, it's one).
         // If it has more than one meshes, then we create children entities to store them.
@@ -498,6 +535,47 @@ namespace Spartan
             
             // Load the mesh onto the entity (via a Renderable component)
             ParseMesh(node_mesh, entity);
+        }
+    }
+
+    void ModelImporter::ParseNodeLight(const aiNode* node, Entity* new_entity)
+    {
+        for (uint32_t i = 0; i < m_scene->mNumLights; i++)
+        {
+            if (m_scene->mLights[i]->mName == node->mName)
+            {
+                // Get Assimp light
+                const aiLight* light_assimp = m_scene->mLights[i];
+
+                // Add a light component
+                Light* light = new_entity->AddComponent<Light>();
+
+                // Disable shadows (to avoid tanking the framerate)
+                light->SetShadowsEnabled(false);
+                light->SetShadowsTransparentEnabled(false);
+                light->SetShadowsScreenSpaceEnabled(false);
+
+                // Local transform
+                light->GetTransform()->SetPositionLocal(convert_vector3(light_assimp->mPosition));
+                light->GetTransform()->SetRotationLocal(Quaternion::FromLookRotation(convert_vector3(light_assimp->mDirection)));
+
+                // Color
+                light->SetColor(convert_color(light_assimp->mColorDiffuse));
+
+                // Type
+                if (light_assimp->mType == aiLightSource_DIRECTIONAL)
+                {
+                    light->SetLightType(LightType::Directional);
+                }
+                else if (light_assimp->mType == aiLightSource_POINT)
+                {
+                    light->SetLightType(LightType::Point);
+                }
+                else if (light_assimp->mType == aiLightSource_SPOT)
+                {
+                    light->SetLightType(LightType::Spot);
+                }
+            }
         }
     }
 
@@ -602,7 +680,7 @@ namespace Spartan
         }
 
         // Bones
-        LoadBones(assimp_mesh);
+        ParseNodes(assimp_mesh);
     }
 
     void ModelImporter::ParseAnimations()
@@ -620,7 +698,7 @@ namespace Spartan
             // Animation channels
             for (uint32_t j = 0; j < static_cast<uint32_t>(assimp_animation->mNumChannels); j++)
             {
-                const auto assimp_node_anim = assimp_animation->mChannels[j];
+                const aiNodeAnim* assimp_node_anim = assimp_animation->mChannels[j];
                 AnimationNode animation_node;
 
                 animation_node.name = assimp_node_anim->mNodeName.C_Str();
@@ -655,7 +733,7 @@ namespace Spartan
         }
     }
 
-    void ModelImporter::LoadBones(const aiMesh* assimp_mesh)
+    void ModelImporter::ParseNodes(const aiMesh* assimp_mesh)
     {
         // Maximum number of bones per mesh
         // Must not be higher than same const in skinning shader
