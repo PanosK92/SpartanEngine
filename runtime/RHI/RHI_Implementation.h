@@ -288,7 +288,11 @@ static const D3D12_BLEND_OP d3d12_blend_operation[] =
 // Definition - Vulkan
 #if defined(API_GRAPHICS_VULKAN) 
 #pragma comment(lib, "vulkan-1.lib")
-#pragma warning(push, 0) // Hide warnings which belong to Vulkan
+#if defined(_MSC_VER)
+// Include definition of vkCreateWin32SurfaceKHR via vulkan.h
+#define VK_USE_PLATFORM_WIN32_KHR
+#endif
+#pragma warning(push, 0)
 #include <vulkan/vulkan.h>
 #pragma warning(pop)
 
