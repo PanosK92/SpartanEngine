@@ -108,7 +108,6 @@ namespace Spartan
         void MakeDirty()                             { m_is_dirty = true; }
         //==================================================================================================
 
-        void LookAt(const Math::Vector3& v)                      { m_look_at = v; }
         const Math::Matrix& GetMatrix()                    const { return m_matrix; }
         const Math::Matrix& GetLocalMatrix()               const { return m_matrix_local; }
         const Math::Matrix& GetMatrixPrevious()            const { return m_matrix_previous; }
@@ -132,7 +131,6 @@ namespace Spartan
 
         Math::Matrix m_matrix;
         Math::Matrix m_matrix_local;
-        Math::Vector3 m_look_at;
 
         Transform* m_parent; // the parent of this transform
         std::vector<Transform*> m_children; // the children of this transform

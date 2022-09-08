@@ -875,7 +875,7 @@ void Properties::ShowCamera(Camera* camera) const
         // Clipping Planes
         ImGui::Text("Clipping Planes");
         ImGui::SameLine(helper::g_column);      ImGui::PushItemWidth(130); ImGui::InputFloat("Near", &near_plane, 0.01f, 0.01f, "%.2f", input_text_flags); ImGui::PopItemWidth();
-        ImGui::SetCursorPosX(helper::g_column); ImGui::PushItemWidth(130); ImGui::InputFloat("Far", &far_plane, 0.01f, 0.01f, "%.2f", input_text_flags); ImGui::PopItemWidth();
+        ImGui::SetCursorPosX(helper::g_column); ImGui::PushItemWidth(130); ImGui::InputFloat("Far", &far_plane, 0.01f, 0.01f, "%.2f", input_text_flags);   ImGui::PopItemWidth();
 
         // FPS Control
         ImGui::Text("First Person Control");

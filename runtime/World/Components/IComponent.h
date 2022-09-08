@@ -113,7 +113,6 @@ namespace Spartan
 
         // Entity
         Entity* GetEntity() const { return m_entity; }
-        std::string GetEntityName() const;
         //============================================================================================
         
     protected:

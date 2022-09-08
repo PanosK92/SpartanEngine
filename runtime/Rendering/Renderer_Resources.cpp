@@ -58,7 +58,7 @@ namespace Spartan
         SP_ASSERT(m_rhi_device != nullptr);
 
         // buffers can dynamically re-allocate anyway, no need to go bigger.
-        const uint32_t offset_count = 4096; 
+        const uint32_t offset_count = 8192;
 
         m_cb_frame_gpu = make_shared<RHI_ConstantBuffer>(m_rhi_device.get(), "frame");
         m_cb_frame_gpu->Create<Cb_Frame>(offset_count);

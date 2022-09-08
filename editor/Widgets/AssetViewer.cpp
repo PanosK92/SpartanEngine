@@ -30,11 +30,55 @@ using namespace std;
 using namespace Spartan;
 //=======================
 
-namespace Widget_Assets_Statics
+static bool show_file_dialog_view         = true;
+static bool show_file_dialog_load         = false;
+static bool mesh_import_dialog_is_visible = false;
+static uint32_t mesh_import_dialog_flags  = 0;
+static string mesh_import_file_path;
+
+static void mesh_import_dialog_checkbox(const MeshOptions option, const char* label)
 {
-    static bool g_show_file_dialog_view = true;
-    static bool g_show_file_dialog_load = false;
-    static string g_double_clicked_path_import_dialog;
+    bool enabled = (mesh_import_dialog_flags & (1U << static_cast<uint32_t>(option))) != 0;
+    ImGui::Checkbox(label, &enabled);
+
+    if (enabled)
+    {
+        mesh_import_dialog_flags |= (1U << static_cast<uint32_t>(option));
+    }
+    else
+    {
+        mesh_import_dialog_flags &= ~(1U << static_cast<uint32_t>(option));
+    }
+}
+
+static void mesh_import_dialog()
+{
+    if (mesh_import_dialog_is_visible)
+    {
+        // Set window position
+        ImVec2 position     = ImVec2(Spartan::Display::GetWidth() * 0.5f, Spartan::Display::GetHeight() * 0.5f);
+        ImVec2 pivot_center = ImVec2(0.5f, 0.5f);
+        ImGui::SetNextWindowPos(position, ImGuiCond_Appearing, pivot_center);
+
+        // Begin
+        if (ImGui::Begin("Model Import Options", &mesh_import_dialog_is_visible, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse))
+        {
+            // Option check boxes
+            mesh_import_dialog_checkbox(MeshOptions::CombineMeshes,       "Combine meshes");
+            mesh_import_dialog_checkbox(MeshOptions::RemoveRedundantData, "Remove redundant data");
+            mesh_import_dialog_checkbox(MeshOptions::ImportLights,        "Import lights");
+            mesh_import_dialog_checkbox(MeshOptions::NormalizeScale,      "Normalize scale");
+
+            // Ok button
+            if (imgui_extension::button_centered_on_line("Ok", 0.5f))
+            {
+                EditorHelper::Get().LoadMesh(mesh_import_file_path, mesh_import_dialog_flags);
+                mesh_import_dialog_is_visible = false;
+            }
+        }
+
+        ImGui::End();
+    }
 }
 
 AssetViewer::AssetViewer(Editor* editor) : Widget(editor)
@@ -52,23 +96,32 @@ void AssetViewer::TickVisible()
 {    
     if (imgui_extension::button("Import"))
     {
-        Widget_Assets_Statics::g_show_file_dialog_load = true;
+        show_file_dialog_load = true;
     }
 
     ImGui::SameLine();
     
     // View
-    m_fileDialogView->Show(&Widget_Assets_Statics::g_show_file_dialog_view);
+    m_fileDialogView->Show(&show_file_dialog_view);
 
-    // Import
-    if (m_fileDialogLoad->Show(&Widget_Assets_Statics::g_show_file_dialog_load, nullptr, &Widget_Assets_Statics::g_double_clicked_path_import_dialog))
+    // Show load file dialog. True if a selection is made
+    if (m_fileDialogLoad->Show(&show_file_dialog_load, nullptr, &mesh_import_file_path))
     {
-        // Model
-        if (FileSystem::IsSupportedModelFile(Widget_Assets_Statics::g_double_clicked_path_import_dialog))
-        {
-            EditorHelper::Get().LoadMesh(Widget_Assets_Statics::g_double_clicked_path_import_dialog);
-            Widget_Assets_Statics::g_show_file_dialog_load = false;
-        }
+        show_file_dialog_load = false;
+        ShowMeshImportDialog(mesh_import_file_path);
+    }
+
+    mesh_import_dialog();
+}
+
+void AssetViewer::ShowMeshImportDialog(const std::string& file_path)
+{
+    if (FileSystem::IsSupportedModelFile(mesh_import_file_path))
+    {
+
+        mesh_import_dialog_is_visible = true;
+        mesh_import_dialog_flags      = Mesh::GetDefaultFlags();
+        mesh_import_file_path         = file_path;
     }
 }
 

@@ -502,7 +502,7 @@ namespace Spartan
         {
             if (Entity* entity = m_context->GetSystem<World>()->GetTransformHandle()->GetSelectedEntity())
             {
-                SP_LOG_INFO("Focusing on entity \"%s\"...", entity->GetTransform()->GetEntityName().c_str());
+                SP_LOG_INFO("Focusing on entity \"%s\"...", entity->GetTransform()->GetEntity()->GetName().c_str());
 
                 // Get lerp target position.
                 m_lerp_to_target_position = entity->GetTransform()->GetPosition();

@@ -21,9 +21,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =======================
 #include "Viewport.h"
+#include "AssetViewer.h"
 #include "Core/Timer.h"
 #include "Rendering/Renderer.h"
 #include "../ImGui/ImGuiExtension.h"
+#include "../Editor.h"
 //==================================
 
 //= NAMESPACES =========
@@ -86,6 +88,6 @@ void Viewport::TickVisible()
     // Handle model drop
     if (auto payload = imgui_extension::receive_drag_drop_payload(imgui_extension::DragPayloadType::DragPayload_Model))
     {
-        EditorHelper::Get().LoadMesh(get<const char*>(payload->data));
+        m_editor->GetWidget<AssetViewer>()->ShowMeshImportDialog(get<const char*>(payload->data));
     }
 }

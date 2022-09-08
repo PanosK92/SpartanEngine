@@ -34,6 +34,7 @@ public:
     AssetViewer(Editor* editor);
 
     void TickVisible() override;
+    void ShowMeshImportDialog(const std::string& file_path);
 
 private:
     void OnPathClicked(const std::string& path) const;

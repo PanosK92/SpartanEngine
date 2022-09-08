@@ -57,12 +57,12 @@ public:
         g_input    = context->GetSystem<Spartan::Input>();
     }
 
-    void LoadMesh(const std::string& file_path) const
+    void LoadMesh(const std::string& file_path, const uint32_t load_flags) const
     {
         // Load the model asynchronously
-        Spartan::ThreadPool::AddTask([file_path]()
+        Spartan::ThreadPool::AddTask([file_path, load_flags]()
         {
-            Spartan::ResourceCache::Load<Spartan::Mesh>(file_path);
+            Spartan::ResourceCache::Load<Spartan::Mesh>(file_path, load_flags);
         });
     }
 
