@@ -43,6 +43,9 @@
 /// Maximum size of bound constant buffers.
 #define FFX_MAX_CONST_SIZE          64
 
+/// Off by default warnings
+#pragma warning(disable : 4365 4710 4820 5039)
+
 #ifdef __cplusplus
 extern "C" {
 #endif  // #ifdef __cplusplus
@@ -66,6 +69,7 @@ typedef enum FfxSurfaceFormat {
     FFX_SURFACE_FORMAT_R16_UNORM,                   ///< 16 bit per channel, 1 channel unsigned normalized format
     FFX_SURFACE_FORMAT_R16_SNORM,                   ///< 16 bit per channel, 1 channel signed normalized format
     FFX_SURFACE_FORMAT_R8_UNORM,                    ///<  8 bit per channel, 1 channel unsigned normalized format
+    FFX_SURFACE_FORMAT_R8G8_UNORM,                  ///<  8 bit per channel, 2 channel unsigned normalized format
     FFX_SURFACE_FORMAT_R32_FLOAT                    ///< 32 bit per channel, 1 channel float format
 } FfxSurfaceFormat;
 
@@ -146,12 +150,12 @@ typedef enum FfxHeapType {
 } FfxHeapType;
 
 /// An enumberation for different render job types
-typedef enum FfxRenderJobType {
+typedef enum FfxGpuJobType {
 
-    FFX_RENDER_JOB_CLEAR_FLOAT = 0,                 ///< The render job is performing a floating-point clear.
-    FFX_RENDER_JOB_COPY = 1,                        ///< The render job is performing a copy.
-    FFX_RENDER_JOB_COMPUTE = 2,                     ///< The render job is performing a compute dispatch.
-} FfxRenderJobType;
+    FFX_GPU_JOB_CLEAR_FLOAT = 0,                 ///< The GPU job is performing a floating-point clear.
+    FFX_GPU_JOB_COPY = 1,                        ///< The GPU job is performing a copy.
+    FFX_GPU_JOB_COMPUTE = 2,                     ///< The GPU job is performing a compute dispatch.
+} FfxGpuJobType;
 
 /// A typedef representing the graphics device.
 typedef void* FfxDevice;
@@ -211,9 +215,7 @@ typedef struct FfxResourceDescription {
 /// An outward facing structure containing a resource
 typedef struct FfxResource {
     void*                           resource;                               ///< pointer to the resource.
-#ifdef _DEBUG
     wchar_t                         name[64];
-#endif
     FfxResourceDescription          description;
     FfxResourceStates               state;
     bool                            isDepth;
@@ -225,12 +227,13 @@ typedef struct FfxResourceInternal {
     int32_t                         internalIndex;                          ///< The index of the resource.
 } FfxResourceInternal;
 
+
 /// A structure defining a resource bind point
 typedef struct FfxResourceBinding
 {
     uint32_t    slotIndex;
     uint32_t    resourceIdentifier;
-    char        name[64];
+    wchar_t     name[64];
 }FfxResourceBinding;
 
 /// A structure encapsulating a single pass of an algorithm.
@@ -250,7 +253,6 @@ typedef struct FfxPipelineState {
 /// A structure containing the data required to create a resource.
 typedef struct FfxCreateResourceDescription {
     
-    FfxDevice                       device;                                 ///< The <c><i>FfxDevice</i></c>.
     FfxHeapType                     heapType;                               ///< The heap type to hold the resource, typically <c><i>FFX_HEAP_TYPE_DEFAULT</i></c>.
     FfxResourceDescription          resourceDescription;                    ///< A resource description.
     FfxResourceStates               initalState;                            ///< The initial resource state.
@@ -260,6 +262,42 @@ typedef struct FfxCreateResourceDescription {
     FfxResourceUsage                usage;                                  ///< Resource usage flags.
     uint32_t                        id;                                     ///< Internal resource ID.
 } FfxCreateResourceDescription;
+
+/// A structure containing the description used to create a
+/// <c><i>FfxPipeline</i></c> structure.
+///
+/// A pipeline is the name given to a shader and the collection of state that
+/// is required to dispatch it. In the context of FSR2 and its architecture
+/// this means that a <c><i>FfxPipelineDescription</i></c> will map to either a
+/// monolithic object in an explicit API (such as a
+/// <c><i>PipelineStateObject</i></c> in DirectX 12). Or a shader and some
+/// ancillary API objects (in something like DirectX 11).
+///
+/// The <c><i>contextFlags</i></c> field contains a copy of the flags passed
+/// to <c><i>ffxFsr2ContextCreate</i></c> via the <c><i>flags</i></c> field of
+/// the <c><i>FfxFsr2InitializationParams</i></c> structure. These flags are
+/// used to determine which permutation of a pipeline for a specific
+/// <c><i>FfxFsr2Pass</i></c> should be used to implement the features required
+/// by each application, as well as to acheive the best performance on specific
+/// target hardware configurations.
+/// 
+/// When using one of the provided backends for FSR2 (such as DirectX 12 or
+/// Vulkan) the data required to create a pipeline is compiled offline and
+/// included into the backend library that you are using. For cases where the
+/// backend interface is overriden by providing custom callback function
+/// implementations care should be taken to respect the contents of the
+/// <c><i>contextFlags</i></c> field in order to correctly support the options
+/// provided by FSR2, and acheive best performance.
+///
+/// @ingroup FSR2
+typedef struct FfxPipelineDescription {
+
+    uint32_t                            contextFlags;                   ///< A collection of <c><i>FfxFsr2InitializationFlagBits</i></c> which were passed to the context.
+    FfxFilterType*                      samplers;                       ///< Array of static samplers.
+    size_t                              samplerCount;                   ///< The number of samples contained inside <c><i>samplers</i></c>.
+    const uint32_t*                     rootConstantBufferSizes;        ///< Array containing the sizes of the root constant buffers (count of 32 bit elements).
+    uint32_t                            rootConstantBufferCount;        ///< The number of root constants contained within <c><i>rootConstantBufferSizes</i></c>.
+} FfxPipelineDescription;
 
 /// A structure containing a constant buffer.
 typedef struct FfxConstantBuffer {
@@ -281,12 +319,12 @@ typedef struct FfxComputeJobDescription {
     FfxPipelineState                pipeline;                               ///< Compute pipeline for the render job.
     uint32_t                        dimensions[3];                          ///< Dispatch dimensions.
     FfxResourceInternal             srvs[FFX_MAX_NUM_SRVS];                 ///< SRV resources to be bound in the compute job.
-    char                            srvNames[FFX_MAX_NUM_SRVS][64];
+    wchar_t                         srvNames[FFX_MAX_NUM_SRVS][64];
     FfxResourceInternal             uavs[FFX_MAX_NUM_UAVS];                 ///< UAV resources to be bound in the compute job.
     uint32_t                        uavMip[FFX_MAX_NUM_UAVS];               ///< Mip level of UAV resources to be bound in the compute job.
-    char                            uavNames[FFX_MAX_NUM_UAVS][64];
+    wchar_t                         uavNames[FFX_MAX_NUM_UAVS][64];
     FfxConstantBuffer               cbs[FFX_MAX_NUM_CONST_BUFFERS];         ///< Constant buffers to be bound in the compute job.
-    char                            cbNames[FFX_MAX_NUM_CONST_BUFFERS][64];
+    wchar_t                         cbNames[FFX_MAX_NUM_CONST_BUFFERS][64];
 } FfxComputeJobDescription;
 
 /// A structure describing a copy render job.
@@ -297,16 +335,16 @@ typedef struct FfxCopyJobDescription
 } FfxCopyJobDescription;
 
 /// A structure describing a single render job.
-typedef struct FfxRenderJobDescription {
+typedef struct FfxGpuJobDescription{
 
-    FfxRenderJobType                jobType;                                ///< Type of the render job.
+    FfxGpuJobType                jobType;                                    ///< Type of the job.
 
     union {
-        FfxClearFloatJobDescription clearJobDescriptor;                     ///< Render job descriptor. Valid when <c><i>jobType</i></c> is <c><i>FFX_RENDER_JOB_CLEAR_FLOAT</i></c>.
-        FfxCopyJobDescription       copyJobDescriptor;                      ///< Render job descriptor. Valid when <c><i>jobType</i></c> is <c><i>FFX_RENDER_JOB_COPY</i></c>.
-        FfxComputeJobDescription    computeJobDescriptor;                   ///< Render job descriptor. Valid when <c><i>jobType</i></c> is <c><i>FFX_RENDER_JOB_COMPUTE</i></c>.
+        FfxClearFloatJobDescription clearJobDescriptor;                     ///< Clear job descriptor. Valid when <c><i>jobType</i></c> is <c><i>FFX_RENDER_JOB_CLEAR_FLOAT</i></c>.
+        FfxCopyJobDescription       copyJobDescriptor;                      ///< Copy job descriptor. Valid when <c><i>jobType</i></c> is <c><i>FFX_RENDER_JOB_COPY</i></c>.
+        FfxComputeJobDescription    computeJobDescriptor;                   ///< Compute job descriptor. Valid when <c><i>jobType</i></c> is <c><i>FFX_RENDER_JOB_COMPUTE</i></c>.
     };
-} FfxRenderJobDescription;
+} FfxGpuJobDescription;
 
 #ifdef __cplusplus
 }

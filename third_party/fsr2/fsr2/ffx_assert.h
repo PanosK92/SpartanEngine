@@ -65,7 +65,7 @@ typedef void (*FfxAssertCallback)(const char* message);
 /// @param [in] file                    The name of the file as a string.
 /// @param [in] line                    The index of the line in the file.
 /// @param [in] condition               The boolean condition that was tested.
-/// @param [in] message                 The optional message to print.
+/// @param [in] msg                     The optional message to print.
 ///
 /// @returns
 /// Always returns true.
@@ -78,7 +78,7 @@ FFX_API bool ffxAssertReport(const char* file, int32_t line, const char* conditi
 ///
 FFX_API void ffxAssertSetPrintingCallback(FfxAssertCallback callback);
 
-#if _DEBUG
+#ifdef _DEBUG
 /// Standard assert macro.
 #define FFX_ASSERT(condition)                                                      \
     do                                                                             \

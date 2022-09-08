@@ -58,135 +58,160 @@ struct LockState
     FfxBoolean WasLockedPrevFrame; //Set to identify if the pixel was already locked (relock)
 };
 
-FFX_MIN16_F GetNormalizedRemainingLockLifetime(FFX_MIN16_F3 fLockStatus)
+FfxFloat32 GetNormalizedRemainingLockLifetime(FfxFloat32x3 fLockStatus)
 {
     const FfxFloat32 fTrust = fLockStatus[LOCK_TRUST];
 
-    return FFX_MIN16_F(((ffxSaturate(fLockStatus[LOCK_LIFETIME_REMAINING] - LockInitialLifetime()) / LockInitialLifetime())) * fTrust);
+    return ffxSaturate(fLockStatus[LOCK_LIFETIME_REMAINING] - LockInitialLifetime()) / LockInitialLifetime() * fTrust;
 }
 
-LOCK_STATUS_T CreateNewLockSample()
+#if FFX_HALF
+FFX_MIN16_F GetNormalizedRemainingLockLifetime(FFX_MIN16_F3 fLockStatus)
 {
-    LOCK_STATUS_T fLockStatus = LOCK_STATUS_T(0, 0, 0);
+    const FFX_MIN16_F fTrust = fLockStatus[LOCK_TRUST];
+    const FFX_MIN16_F fInitialLockLifetime = FFX_MIN16_F(LockInitialLifetime());
 
-    fLockStatus[LOCK_TRUST] = LOCK_STATUS_F1(1);
+    return ffxSaturate(fLockStatus[LOCK_LIFETIME_REMAINING] - fInitialLockLifetime) / fInitialLockLifetime * fTrust;
+}
+#endif
 
-    return fLockStatus;
+void InitializeNewLockSample(FFX_PARAMETER_OUT FfxFloat32x3 fLockStatus)
+{
+    fLockStatus = FfxFloat32x3(0, 0, 1); // LOCK_TRUST to 1
 }
 
+#if FFX_HALF
+void InitializeNewLockSample(FFX_PARAMETER_OUT FFX_MIN16_F3 fLockStatus)
+{
+    fLockStatus = FFX_MIN16_F3(0, 0, 1); // LOCK_TRUST to 1
+}
+#endif
+
+
+void KillLock(FFX_PARAMETER_INOUT FfxFloat32x3 fLockStatus)
+{
+    fLockStatus[LOCK_LIFETIME_REMAINING] = 0;
+}
+
+#if FFX_HALF
 void KillLock(FFX_PARAMETER_INOUT FFX_MIN16_F3 fLockStatus)
 {
     fLockStatus[LOCK_LIFETIME_REMAINING] = FFX_MIN16_F(0);
 }
-
-#define SPLIT_LEFT 0
-#define SPLIT_RIGHT 1
-#ifndef SPLIT_SHADER
-#define SPLIT_SHADER SPLIT_RIGHT
 #endif
-
-#if FFX_HALF
-
-#define UPSAMPLE_F  FfxFloat16   
-#define UPSAMPLE_F2 FfxFloat16x2   
-#define UPSAMPLE_F3 FfxFloat16x3   
-#define UPSAMPLE_F4 FfxFloat16x4   
-#define UPSAMPLE_I  FfxInt16  
-#define UPSAMPLE_I2 FfxInt16x2  
-#define UPSAMPLE_I3 FfxInt16x3  
-#define UPSAMPLE_I4 FfxInt16x4  
-#define UPSAMPLE_U  FfxUInt16   
-#define UPSAMPLE_U2 FfxUInt16x2   
-#define UPSAMPLE_U3 FfxUInt16x3   
-#define UPSAMPLE_U4 FfxUInt16x4
-#define UPSAMPLE_F2_BROADCAST(X) FFX_BROADCAST_MIN_FLOAT16X2(X)
-#define UPSAMPLE_F3_BROADCAST(X) FFX_BROADCAST_MIN_FLOAT16X3(X)
-#define UPSAMPLE_F4_BROADCAST(X) FFX_BROADCAST_MIN_FLOAT16X4(X)  
-#define UPSAMPLE_I2_BROADCAST(X) FFX_BROADCAST_MIN_INT16X2(X)
-#define UPSAMPLE_I3_BROADCAST(X) FFX_BROADCAST_MIN_INT16X3(X)
-#define UPSAMPLE_I4_BROADCAST(X) FFX_BROADCAST_MIN_INT16X4(X)   
-#define UPSAMPLE_U2_BROADCAST(X) FFX_BROADCAST_MIN_UINT16X2(X)
-#define UPSAMPLE_U3_BROADCAST(X) FFX_BROADCAST_MIN_UINT16X3(X)
-#define UPSAMPLE_U4_BROADCAST(X) FFX_BROADCAST_MIN_UINT16X4(X)   
-
-#else //FFX_HALF
-
-#define UPSAMPLE_F  FfxFloat32    
-#define UPSAMPLE_F2 FfxFloat32x2   
-#define UPSAMPLE_F3 FfxFloat32x3   
-#define UPSAMPLE_F4 FfxFloat32x4   
-#define UPSAMPLE_I  FfxInt32    
-#define UPSAMPLE_I2 FfxInt32x2   
-#define UPSAMPLE_I3 FfxInt32x3   
-#define UPSAMPLE_I4 FfxInt32x4   
-#define UPSAMPLE_U  FfxUInt32    
-#define UPSAMPLE_U2 FfxUInt32x2   
-#define UPSAMPLE_U3 FfxUInt32x3   
-#define UPSAMPLE_U4 FfxUInt32x4   
-#define UPSAMPLE_F2_BROADCAST(X) FFX_BROADCAST_FLOAT32X2(X)
-#define UPSAMPLE_F3_BROADCAST(X) FFX_BROADCAST_FLOAT32X3(X)
-#define UPSAMPLE_F4_BROADCAST(X) FFX_BROADCAST_FLOAT32X4(X)  
-#define UPSAMPLE_I2_BROADCAST(X) FFX_BROADCAST_INT32X2(X)
-#define UPSAMPLE_I3_BROADCAST(X) FFX_BROADCAST_INT32X3(X)
-#define UPSAMPLE_I4_BROADCAST(X) FFX_BROADCAST_INT32X4(X)   
-#define UPSAMPLE_U2_BROADCAST(X) FFX_BROADCAST_UINT32X2(X)
-#define UPSAMPLE_U3_BROADCAST(X) FFX_BROADCAST_UINT32X3(X)
-#define UPSAMPLE_U4_BROADCAST(X) FFX_BROADCAST_UINT32X4(X) 
-
-#endif //FFX_HALF
 
 struct RectificationBoxData
 {
-    UPSAMPLE_F3 boxCenter;
-    UPSAMPLE_F3 boxVec;
-    UPSAMPLE_F3 aabbMin;
-    UPSAMPLE_F3 aabbMax;
+    FfxFloat32x3 boxCenter;
+    FfxFloat32x3 boxVec;
+    FfxFloat32x3 aabbMin;
+    FfxFloat32x3 aabbMax;
 };
+#if FFX_HALF
+struct RectificationBoxDataMin16
+{
+    FFX_MIN16_F3 boxCenter;
+    FFX_MIN16_F3 boxVec;
+    FFX_MIN16_F3 aabbMin;
+    FFX_MIN16_F3 aabbMax;
+};
+#endif
 
 struct RectificationBox
 {
     RectificationBoxData data_;
-    UPSAMPLE_F fBoxCenterWeight;    
+    FfxFloat32 fBoxCenterWeight;
 };
-
-void RectificationBoxReset(FFX_PARAMETER_INOUT RectificationBox rectificationBox, const UPSAMPLE_F3 initialColorSample)
+#if FFX_HALF
+struct RectificationBoxMin16
 {
-    rectificationBox.fBoxCenterWeight = UPSAMPLE_F(0.0);
+    RectificationBoxDataMin16 data_;
+    FFX_MIN16_F fBoxCenterWeight;
+};
+#endif
 
-    rectificationBox.data_.boxCenter = UPSAMPLE_F3_BROADCAST(0);
-    rectificationBox.data_.boxVec = UPSAMPLE_F3_BROADCAST(0);
+void RectificationBoxReset(FFX_PARAMETER_INOUT RectificationBox rectificationBox, const FfxFloat32x3 initialColorSample)
+{
+    rectificationBox.fBoxCenterWeight = FfxFloat32(0);
+
+    rectificationBox.data_.boxCenter = FfxFloat32x3(0, 0, 0);
+    rectificationBox.data_.boxVec = FfxFloat32x3(0, 0, 0);
     rectificationBox.data_.aabbMin = initialColorSample;
     rectificationBox.data_.aabbMax = initialColorSample;
 }
+#if FFX_HALF
+void RectificationBoxReset(FFX_PARAMETER_INOUT RectificationBoxMin16 rectificationBox, const FFX_MIN16_F3 initialColorSample)
+{
+    rectificationBox.fBoxCenterWeight = FFX_MIN16_F(0);
 
-void RectificationBoxAddSample(FFX_PARAMETER_INOUT RectificationBox rectificationBox, const UPSAMPLE_F3 colorSample, const UPSAMPLE_F fSampleWeight)
+    rectificationBox.data_.boxCenter = FFX_MIN16_F3(0, 0, 0);
+    rectificationBox.data_.boxVec = FFX_MIN16_F3(0, 0, 0);
+    rectificationBox.data_.aabbMin = initialColorSample;
+    rectificationBox.data_.aabbMax = initialColorSample;
+}
+#endif
+
+void RectificationBoxAddSample(FFX_PARAMETER_INOUT RectificationBox rectificationBox, const FfxFloat32x3 colorSample, const FfxFloat32 fSampleWeight)
 {
     rectificationBox.data_.aabbMin = ffxMin(rectificationBox.data_.aabbMin, colorSample);
     rectificationBox.data_.aabbMax = ffxMax(rectificationBox.data_.aabbMax, colorSample);
-    UPSAMPLE_F3 weightedSample = colorSample * fSampleWeight;
+    FfxFloat32x3 weightedSample = colorSample * fSampleWeight;
     rectificationBox.data_.boxCenter += weightedSample;
     rectificationBox.data_.boxVec += colorSample * weightedSample;
     rectificationBox.fBoxCenterWeight += fSampleWeight;
 }
+#if FFX_HALF
+void RectificationBoxAddSample(FFX_PARAMETER_INOUT RectificationBoxMin16 rectificationBox, const FFX_MIN16_F3 colorSample, const FFX_MIN16_F fSampleWeight)
+{
+    rectificationBox.data_.aabbMin = ffxMin(rectificationBox.data_.aabbMin, colorSample);
+    rectificationBox.data_.aabbMax = ffxMax(rectificationBox.data_.aabbMax, colorSample);
+    FFX_MIN16_F3 weightedSample = colorSample * fSampleWeight;
+    rectificationBox.data_.boxCenter += weightedSample;
+    rectificationBox.data_.boxVec += colorSample * weightedSample;
+    rectificationBox.fBoxCenterWeight += fSampleWeight;
+}
+#endif
 
 void RectificationBoxComputeVarianceBoxData(FFX_PARAMETER_INOUT RectificationBox rectificationBox)
 {
-    rectificationBox.fBoxCenterWeight = (abs(rectificationBox.fBoxCenterWeight) > UPSAMPLE_F(FSR2_EPSILON) ? rectificationBox.fBoxCenterWeight : UPSAMPLE_F(1.f));
+    rectificationBox.fBoxCenterWeight = (abs(rectificationBox.fBoxCenterWeight) > FfxFloat32(FSR2_EPSILON) ? rectificationBox.fBoxCenterWeight : FfxFloat32(1.f));
     rectificationBox.data_.boxCenter /= rectificationBox.fBoxCenterWeight;
     rectificationBox.data_.boxVec /= rectificationBox.fBoxCenterWeight;
-    UPSAMPLE_F3 stdDev = sqrt(abs(rectificationBox.data_.boxVec - rectificationBox.data_.boxCenter * rectificationBox.data_.boxCenter));
+    FfxFloat32x3 stdDev = sqrt(abs(rectificationBox.data_.boxVec - rectificationBox.data_.boxCenter * rectificationBox.data_.boxCenter));
     rectificationBox.data_.boxVec = stdDev;
 }
+#if FFX_HALF
+void RectificationBoxComputeVarianceBoxData(FFX_PARAMETER_INOUT RectificationBoxMin16 rectificationBox)
+{
+    rectificationBox.fBoxCenterWeight = (abs(rectificationBox.fBoxCenterWeight) > FFX_MIN16_F(FSR2_EPSILON) ? rectificationBox.fBoxCenterWeight : FFX_MIN16_F(1.f));
+    rectificationBox.data_.boxCenter /= rectificationBox.fBoxCenterWeight;
+    rectificationBox.data_.boxVec /= rectificationBox.fBoxCenterWeight;
+    FFX_MIN16_F3 stdDev = sqrt(abs(rectificationBox.data_.boxVec - rectificationBox.data_.boxCenter * rectificationBox.data_.boxCenter));
+    rectificationBox.data_.boxVec = stdDev;
+}
+#endif
 
 RectificationBoxData RectificationBoxGetData(FFX_PARAMETER_INOUT RectificationBox rectificationBox)
 {
     return rectificationBox.data_;
 }
+#if FFX_HALF
+RectificationBoxDataMin16 RectificationBoxGetData(FFX_PARAMETER_INOUT RectificationBoxMin16 rectificationBox)
+{
+    return rectificationBox.data_;
+}
+#endif
 
 FfxFloat32x3 SafeRcp3(FfxFloat32x3 v)
 {
-    return (all(FFX_NOT_EQUAL(v, FFX_BROADCAST_FLOAT32X3(0)))) ? (FFX_BROADCAST_FLOAT32X3(1.0f) / v) : FFX_BROADCAST_FLOAT32X3(0.0f);
+    return (all(FFX_NOT_EQUAL(v, FfxFloat32x3(0, 0, 0)))) ? (FfxFloat32x3(1, 1, 1) / v) : FfxFloat32x3(0, 0, 0);
 }
+#if FFX_HALF
+FFX_MIN16_F3 SafeRcp3(FFX_MIN16_F3 v)
+{
+    return (all(FFX_NOT_EQUAL(v, FFX_MIN16_F3(0, 0, 0)))) ? (FFX_MIN16_F3(1, 1, 1) / v) : FFX_MIN16_F3(0, 0, 0);
+}
+#endif
 
 FfxFloat32 MinDividedByMax(const FfxFloat32 v0, const FfxFloat32 v1)
 {
@@ -202,49 +227,31 @@ FFX_MIN16_F MinDividedByMax(const FFX_MIN16_F v0, const FFX_MIN16_F v1)
 }
 #endif
 
-FfxFloat32 MaxDividedByMin(const FfxFloat32 v0, const FfxFloat32 v1)
-{
-    const FfxFloat32 m = ffxMin(v0, v1);
-    return m != 0 ? ffxMax(v0, v1) / m : 0;
-}
-
-FFX_MIN16_F3 RGBToYCoCg_16(FFX_MIN16_F3 fRgb)
-{
-    FFX_MIN16_F3 fYCoCg;
-    fYCoCg.x = dot(fRgb.rgb, FFX_MIN16_F3(+0.25f, +0.50f, +0.25f));
-    fYCoCg.y = dot(fRgb.rgb, FFX_MIN16_F3(+0.50f, +0.00f, -0.50f));
-    fYCoCg.z = dot(fRgb.rgb, FFX_MIN16_F3(-0.25f, +0.50f, -0.25f));
-    return fYCoCg;
-}
-
-FFX_MIN16_F3 RGBToYCoCg_V2_16(FFX_MIN16_F3 fRgb)
-{
-    FFX_MIN16_F a = fRgb.g * FFX_MIN16_F(0.5f);
-    FFX_MIN16_F b = (fRgb.r + fRgb.b) * FFX_MIN16_F(0.25f);
-    FFX_MIN16_F3 fYCoCg;
-    fYCoCg.x = a + b;
-    fYCoCg.y = (fRgb.r - fRgb.b) * FFX_MIN16_F(0.5f);
-    fYCoCg.z = a - b;
-    return fYCoCg;
-}
-
 FfxFloat32x3 YCoCgToRGB(FfxFloat32x3 fYCoCg)
 {
     FfxFloat32x3 fRgb;
-    FfxFloat32 tmp = fYCoCg.x - fYCoCg.z / 2.0;
-    fRgb.g = fYCoCg.z + tmp;
-    fRgb.b = tmp - fYCoCg.y / 2.0;
-    fRgb.r = fRgb.b + fYCoCg.y;
+
+    fYCoCg.yz -= FfxFloat32x2(0.5f, 0.5f);  // [0,1] -> [-0.5,0.5]
+
+    fRgb = FfxFloat32x3(
+        fYCoCg.x + fYCoCg.y - fYCoCg.z,
+        fYCoCg.x + fYCoCg.z,
+        fYCoCg.x - fYCoCg.y - fYCoCg.z);
+
     return fRgb;
 }
 #if FFX_HALF
 FFX_MIN16_F3 YCoCgToRGB(FFX_MIN16_F3 fYCoCg)
 {
     FFX_MIN16_F3 fRgb;
-    FFX_MIN16_F tmp = fYCoCg.x - fYCoCg.z * FFX_MIN16_F(0.5f);
-    fRgb.g = fYCoCg.z + tmp;
-    fRgb.b = tmp - fYCoCg.y * FFX_MIN16_F(0.5f);
-    fRgb.r = fRgb.b + fYCoCg.y;
+
+    fYCoCg.yz -= FFX_MIN16_F2(0.5f, 0.5f);  // [0,1] -> [-0.5,0.5]
+
+    fRgb = FFX_MIN16_F3(
+        fYCoCg.x + fYCoCg.y - fYCoCg.z,
+        fYCoCg.x + fYCoCg.z,
+        fYCoCg.x - fYCoCg.y - fYCoCg.z);
+
     return fRgb;
 }
 #endif
@@ -252,39 +259,42 @@ FFX_MIN16_F3 YCoCgToRGB(FFX_MIN16_F3 fYCoCg)
 FfxFloat32x3 RGBToYCoCg(FfxFloat32x3 fRgb)
 {
     FfxFloat32x3 fYCoCg;
-    fYCoCg.y = fRgb.r - fRgb.b;
-    FfxFloat32 tmp = fRgb.b + fYCoCg.y / 2.0;
-    fYCoCg.z = fRgb.g - tmp;
-    fYCoCg.x = tmp + fYCoCg.z / 2.0;
+
+    fYCoCg = FfxFloat32x3(
+        0.25f * fRgb.r + 0.5f * fRgb.g + 0.25f * fRgb.b,
+        0.5f * fRgb.r - 0.5f * fRgb.b,
+        -0.25f * fRgb.r + 0.5f * fRgb.g - 0.25f * fRgb.b);
+
+    fYCoCg.yz += FfxFloat32x2(0.5f, 0.5f); // [-0.5,0.5] -> [0,1]
+
     return fYCoCg;
 }
 #if FFX_HALF
 FFX_MIN16_F3 RGBToYCoCg(FFX_MIN16_F3 fRgb)
 {
     FFX_MIN16_F3 fYCoCg;
-    fYCoCg.y = fRgb.r - fRgb.b;
-    FFX_MIN16_F tmp = fRgb.b + fYCoCg.y * FFX_MIN16_F(0.5f);
-    fYCoCg.z = fRgb.g - tmp;
-    fYCoCg.x = tmp + fYCoCg.z * FFX_MIN16_F(0.5f);
+
+    fYCoCg = FFX_MIN16_F3(
+        0.25 * fRgb.r + 0.5 * fRgb.g + 0.25 * fRgb.b,
+        0.5 * fRgb.r - 0.5 * fRgb.b,
+        -0.25 * fRgb.r + 0.5 * fRgb.g - 0.25 * fRgb.b);
+
+    fYCoCg.yz += FFX_MIN16_F2(0.5, 0.5); // [-0.5,0.5] -> [0,1]
+
     return fYCoCg;
 }
 #endif
-
-FfxFloat32x3 RGBToYCoCg_V2(FfxFloat32x3 fRgb)
-{
-    FfxFloat32 a = fRgb.g * 0.5f;
-    FfxFloat32 b = (fRgb.r + fRgb.b) * 0.25f;
-    FfxFloat32x3 fYCoCg;
-    fYCoCg.x = a + b;
-    fYCoCg.y = (fRgb.r - fRgb.b) * 0.5f;
-    fYCoCg.z = a - b;
-    return fYCoCg;
-}
 
 FfxFloat32 RGBToLuma(FfxFloat32x3 fLinearRgb)
 {
     return dot(fLinearRgb, FfxFloat32x3(0.2126f, 0.7152f, 0.0722f));
 }
+#if FFX_HALF
+FFX_MIN16_F RGBToLuma(FFX_MIN16_F3 fLinearRgb)
+{
+    return dot(fLinearRgb, FFX_MIN16_F3(0.2126f, 0.7152f, 0.0722f));
+}
+#endif
 
 FfxFloat32 RGBToPerceivedLuma(FfxFloat32x3 fLinearRgb)
 {
@@ -299,6 +309,22 @@ FfxFloat32 RGBToPerceivedLuma(FfxFloat32x3 fLinearRgb)
 
     return fPercievedLuminance * 0.01f;
 }
+#if FFX_HALF
+FFX_MIN16_F RGBToPerceivedLuma(FFX_MIN16_F3 fLinearRgb)
+{
+    FFX_MIN16_F fLuminance = RGBToLuma(fLinearRgb);
+
+    FFX_MIN16_F fPercievedLuminance = FFX_MIN16_F(0);
+    if (fLuminance <= FFX_MIN16_F(216.0f / 24389.0f)) {
+        fPercievedLuminance = fLuminance * FFX_MIN16_F(24389.0f / 27.0f);
+    }
+    else {
+        fPercievedLuminance = ffxPow(fLuminance, FFX_MIN16_F(1.0f / 3.0f)) * FFX_MIN16_F(116.0f) - FFX_MIN16_F(16.0f);
+    }
+
+    return fPercievedLuminance * FFX_MIN16_F(0.01f);
+}
+#endif
 
 
 FfxFloat32x3 Tonemap(FfxFloat32x3 fRgb)
@@ -321,22 +347,29 @@ FFX_MIN16_F3 InverseTonemap(FFX_MIN16_F3 fRgb)
 {
     return fRgb / ffxMax(FFX_MIN16_F(FSR2_TONEMAP_EPSILON), FFX_MIN16_F(1.f) - ffxMax(fRgb.r, ffxMax(fRgb.g, fRgb.b))).xxx;
 }
-
-FFX_MIN16_I2 ClampLoad(FFX_MIN16_I2 iPxSample, FFX_MIN16_I2 iPxOffset, FFX_MIN16_I2 iTextureSize)
-{
-    return clamp(iPxSample + iPxOffset, FFX_MIN16_I2(0, 0), iTextureSize - FFX_MIN16_I2(1, 1));
-}
 #endif
 
 FfxInt32x2 ClampLoad(FfxInt32x2 iPxSample, FfxInt32x2 iPxOffset, FfxInt32x2 iTextureSize)
 {
     return clamp(iPxSample + iPxOffset, FfxInt32x2(0, 0), iTextureSize - FfxInt32x2(1, 1));
 }
+#if FFX_HALF
+FFX_MIN16_I2 ClampLoad(FFX_MIN16_I2 iPxSample, FFX_MIN16_I2 iPxOffset, FFX_MIN16_I2 iTextureSize)
+{
+    return clamp(iPxSample + iPxOffset, FFX_MIN16_I2(0, 0), iTextureSize - FFX_MIN16_I2(1, 1));
+}
+#endif
 
+FfxBoolean IsOnScreen(FfxInt32x2 pos, FfxInt32x2 size)
+{
+    return all(FFX_GREATER_THAN_EQUAL(pos, FfxInt32x2(0, 0))) && all(FFX_LESS_THAN(pos, size));
+}
+#if FFX_HALF
 FfxBoolean IsOnScreen(FFX_MIN16_I2 pos, FFX_MIN16_I2 size)
 {
-    return all(FFX_GREATER_THAN_EQUAL(pos, FFX_BROADCAST_MIN_FLOAT16X2(0))) && all(FFX_LESS_THAN(pos, size));
+    return all(FFX_GREATER_THAN_EQUAL(pos, FFX_MIN16_I2(0, 0))) && all(FFX_LESS_THAN(pos, size));
 }
+#endif
 
 FfxFloat32 ComputeAutoExposureFromLavg(FfxFloat32 Lavg)
 {
@@ -351,6 +384,39 @@ FfxFloat32 ComputeAutoExposureFromLavg(FfxFloat32 Lavg)
 
     return 1 / Lmax;
 }
+#if FFX_HALF
+FFX_MIN16_F ComputeAutoExposureFromLavg(FFX_MIN16_F Lavg)
+{
+    Lavg = exp(Lavg);
+
+    const FFX_MIN16_F S = FFX_MIN16_F(100.0f); //ISO arithmetic speed
+    const FFX_MIN16_F K = FFX_MIN16_F(12.5f);
+    const FFX_MIN16_F ExposureISO100 = log2((Lavg * S) / K);
+
+    const FFX_MIN16_F q = FFX_MIN16_F(0.65f);
+    const FFX_MIN16_F Lmax = (FFX_MIN16_F(78.0f) / (q * S)) * ffxPow(FFX_MIN16_F(2.0f), ExposureISO100);
+
+    return FFX_MIN16_F(1) / Lmax;
+}
+#endif
+
+FfxInt32x2 ComputeHrPosFromLrPos(FfxInt32x2 iPxLrPos)
+{
+    FfxFloat32x2 fSrcJitteredPos = FfxFloat32x2(iPxLrPos) + 0.5f - Jitter();
+    FfxFloat32x2 fLrPosInHr = (fSrcJitteredPos / RenderSize()) * DisplaySize();
+    FfxFloat32x2 fHrPos = floor(fLrPosInHr) + 0.5f;
+    return FfxInt32x2(fHrPos);
+}
+#if FFX_HALF
+FFX_MIN16_I2 ComputeHrPosFromLrPos(FFX_MIN16_I2 iPxLrPos)
+{
+    FFX_MIN16_F2 fSrcJitteredPos = FFX_MIN16_F2(iPxLrPos) + FFX_MIN16_F(0.5f) - FFX_MIN16_F2(Jitter());
+    FFX_MIN16_F2 fLrPosInHr = (fSrcJitteredPos / FFX_MIN16_F2(RenderSize())) * FFX_MIN16_F2(DisplaySize());
+    FFX_MIN16_F2 fHrPos = floor(fLrPosInHr) + FFX_MIN16_F(0.5);
+    return FFX_MIN16_I2(fHrPos);
+}
+#endif
+
 #endif // #if defined(FFX_GPU)
 
 #endif //!defined(FFX_FSR2_COMMON_H)
