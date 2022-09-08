@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =============================
 #include "pch.h"
 #include "../RHI_FSR2.h"
+#define FFX_GCC
 #include "fsr2/ffx_fsr2.h"
 #include "fsr2/vk/ffx_fsr2_vk.h"
 #include "../RHI_Implementation.h"
