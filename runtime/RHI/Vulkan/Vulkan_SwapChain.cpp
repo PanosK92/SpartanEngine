@@ -137,27 +137,32 @@ namespace Spartan
         array<shared_ptr<RHI_Semaphore>, max_buffer_count>& image_acquired_semaphore
     )
         {
+            SP_ASSERT(window_handle != nullptr);
             RHI_Context* rhi_context = rhi_device->GetRhiContext();
-
-            // Verify window handle
-            const HWND hwnd = static_cast<HWND>(window_handle);
-            SP_ASSERT(hwnd != nullptr);
-            SP_ASSERT(IsWindow(hwnd));
-
+            
             // Create surface
             VkSurfaceKHR surface = nullptr;
             {
+#if defined(_MSC_VER)
                 VkWin32SurfaceCreateInfoKHR create_info = {};
                 create_info.sType                       = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
-                create_info.hwnd                        = hwnd;
+                create_info.pNext                       = nullptr;
+                create_info.flags                       = 0;
                 create_info.hinstance                   = GetModuleHandle(nullptr);
+                create_info.hwnd                        = static_cast<HWND>(window_handle);
 
-                SP_ASSERT_MSG(vkCreateWin32SurfaceKHR(
-                        rhi_device->GetRhiContext()->instance,
-                        &create_info,
-                        nullptr,
-                        &surface) == VK_SUCCESS,
+                SP_ASSERT_MSG(vkCreateWin32SurfaceKHR(rhi_device->GetRhiContext()->instance, &create_info, nullptr, &surface) == VK_SUCCESS,
                     "Failed to created Win32 surface");
+#else
+                VkXcbSurfaceCreateInfoKHR create_info = {};
+                create_info.sType                     = VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR;
+                create_info.pNext                     = nullptr;
+                create_info.flags                     = nullptr;
+                create_info.connection                = nullptr;
+                create_info.window                    = nullptr;
+
+                SP_ASSERT_MSG(false, "Not implemented");
+#endif
 
                 VkBool32 present_support = false;
 
