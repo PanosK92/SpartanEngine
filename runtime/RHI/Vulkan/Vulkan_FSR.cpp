@@ -61,7 +61,7 @@ namespace Spartan
         VkPhysicalDevice device_physical = rhi_device->GetRhiContext()->device_physical;
 
         // Callbacks
-        if (m_ffx_fsr2_context_description.callbacks.fpCreateDevice == nullptr)
+        if (m_ffx_fsr2_context_description.callbacks.fpCreateBackendContext == nullptr)
         {
             const size_t scratch_buffer_size = ffxFsr2GetScratchMemorySizeVK(device_physical);
             void* scratch_buffer             = malloc(scratch_buffer_size);

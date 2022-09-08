@@ -19,6 +19,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+
 // @defgroup FSR2
 
 #pragma once
@@ -34,12 +35,12 @@
 /// FidelityFX Super Resolution 2 minor version.
 ///
 /// @ingroup FSR2
-#define FFX_FSR2_VERSION_MINOR      (0)
+#define FFX_FSR2_VERSION_MINOR      (1)
 
 /// FidelityFX Super Resolution 2 patch version.
 ///
 /// @ingroup FSR2
-#define FFX_FSR2_VERSION_PATCH      (1)
+#define FFX_FSR2_VERSION_PATCH      (0)
 
 /// The size of the context specified in 32bit values.
 ///
@@ -146,6 +147,7 @@ typedef struct FfxFsr2GenerateReactiveDescription {
     FfxDimensions2D             renderSize;                         ///< The resolution that was used for rendering the input resources.
     float                       scale;                              ///< A value to scale the output
     float                       cutoffThreshold;                    ///< A threshold value to generate a binary reactive mask
+    float                       binaryValue;                        ///< A value to set for the binary reactive mask
     uint32_t                    flags;                              ///< Flags to determine how to generate the reactive mask
 } FfxFsr2GenerateReactiveDescription;
 
