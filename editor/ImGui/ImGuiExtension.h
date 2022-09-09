@@ -42,22 +42,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 class EditorHelper
 {
 public:
-
-    static EditorHelper& Get()
+    static void Initialize(Spartan::Context* context)
     {
-        static EditorHelper instance;
-        return instance;
+        context  = context;
+        world    = context->GetSystem<Spartan::World>();
+        renderer = context->GetSystem<Spartan::Renderer>();
     }
 
-    void Initialize(Spartan::Context* context)
-    {
-        g_context  = context;
-        g_world    = context->GetSystem<Spartan::World>();
-        g_renderer = context->GetSystem<Spartan::Renderer>();
-        g_input    = context->GetSystem<Spartan::Input>();
-    }
-
-    void LoadMesh(const std::string& file_path, const uint32_t load_flags) const
+    static void LoadMesh(const std::string& file_path, const uint32_t load_flags)
     {
         // Load the model asynchronously
         Spartan::ThreadPool::AddTask([file_path, load_flags]()
@@ -66,39 +58,35 @@ public:
         });
     }
 
-    void LoadWorld(const std::string& file_path) const
+    static void LoadWorld(const std::string& file_path)
     {
-        auto world = g_world;
-
         // Loading a world resets everything so it's important to ensure that no tasks are running
         Spartan::ThreadPool::Flush(true);
 
         // Load the scene asynchronously
-        Spartan::ThreadPool::AddTask([world, file_path]()
+        Spartan::ThreadPool::AddTask([file_path]()
         {
             world->LoadFromFile(file_path);
         });
     }
 
-    void SaveWorld(const std::string& file_path) const
+    static void SaveWorld(const std::string& file_path)
     {
-        auto world = g_world;
-
         // Save the scene asynchronously
-        Spartan::ThreadPool::AddTask([world, file_path]()
+        Spartan::ThreadPool::AddTask([file_path]()
         {
             world->SaveToFile(file_path);
         });
     }
 
-    void PickEntity()
+    static void PickEntity()
     {
         // If the transform handle hasn't finished editing don't do anything.
-        if (g_world->GetTransformHandle()->IsEditing())
+        if (world->GetTransformHandle()->IsEditing())
             return;
 
         // Get camera
-        const auto& camera = g_renderer->GetCamera();
+        std::shared_ptr<Spartan::Camera> camera = renderer->GetCamera();
         if (!camera)
             return;
 
@@ -110,21 +98,21 @@ public:
         SetSelectedEntity(entity);
 
         // Fire callback
-        g_on_entity_selected();
+        on_entity_selected();
     }
 
-    void SetSelectedEntity(const std::shared_ptr<Spartan::Entity>& entity)
+    static void SetSelectedEntity(const std::shared_ptr<Spartan::Entity>& entity)
     {
         // keep returned entity instead as the transform handle can decide to reject it
-        g_selected_entity = g_world->GetTransformHandle()->SetSelectedEntity(entity);
+        selected_entity = world->GetTransformHandle()->SetSelectedEntity(entity);
     }
 
-    Spartan::Context*              g_context            = nullptr;
-    Spartan::World*                g_world              = nullptr;
-    Spartan::Renderer*             g_renderer           = nullptr;
-    Spartan::Input*                g_input              = nullptr;
-    std::function<void()>          g_on_entity_selected = nullptr;
-    std::weak_ptr<Spartan::Entity> g_selected_entity;
+    static Spartan::Context*              context;
+    static Spartan::World*                world;
+    static Spartan::Renderer*             renderer;
+    static Spartan::Input*                input;
+    static std::function<void()>          on_entity_selected;
+    static std::weak_ptr<Spartan::Entity> selected_entity;
 };
 
 namespace imgui_sp
@@ -388,7 +376,7 @@ namespace imgui_sp
         // Wrap
         if (ImGui::IsMouseDragging(ImGuiMouseButton_Left))
         {
-            Spartan::Math::Vector2 position_cursor = EditorHelper::Get().g_input->GetMousePosition();
+            Spartan::Math::Vector2 position_cursor = EditorHelper::input->GetMousePosition();
             float position_left                    = static_cast<float>(screen_edge_padding);
             float position_right                   = static_cast<float>(Spartan::Display::GetWidth() - screen_edge_padding);
             bool is_on_right_screen_edge           = position_cursor.x >= position_right;

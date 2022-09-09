@@ -62,7 +62,7 @@ void Viewport::TickVisible()
         {
             m_renderer->SetViewport(width, height);
 
-            m_width = width;
+            m_width  = width;
             m_height = height;
         }
     }
@@ -82,7 +82,7 @@ void Viewport::TickVisible()
     // If this widget was released, make the engine pick an entity.
     if (ImGui::IsMouseClicked(0) && ImGui::IsItemHovered())
     {
-        EditorHelper::Get().PickEntity();
+        EditorHelper::PickEntity();
     }
 
     // Handle model drop

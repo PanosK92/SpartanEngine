@@ -63,7 +63,7 @@ WorldViewer::WorldViewer(Editor* editor) : Widget(editor)
     input = m_context->GetSystem<Input>();
 
     // Subscribe to entity clicked engine event
-    EditorHelper::Get().g_on_entity_selected = [this](){ SetSelectedEntity(EditorHelper::Get().g_selected_entity.lock(), false); };
+    EditorHelper::on_entity_selected = [this](){ SetSelectedEntity(EditorHelper::selected_entity.lock(), false); };
 }
 
 void WorldViewer::TickVisible()
@@ -182,7 +182,7 @@ void WorldViewer::TreeAddEntity(Entity* entity)
     node_flags |= has_visible_children ? ImGuiTreeNodeFlags_OpenOnArrow : ImGuiTreeNodeFlags_Leaf; 
 
     // Flag - Is selected?
-    if (const shared_ptr<Entity> selected_entity = EditorHelper::Get().g_selected_entity.lock())
+    if (const shared_ptr<Entity> selected_entity = EditorHelper::selected_entity.lock())
     {
         node_flags |= selected_entity->GetObjectId() == entity->GetObjectId() ? ImGuiTreeNodeFlags_Selected : node_flags;
 
@@ -300,7 +300,7 @@ void WorldViewer::SetSelectedEntity(const shared_ptr<Entity>& entity, const bool
     // If the update comes from this widget, let the engine know about it
     if (from_editor)
     {
-        EditorHelper::Get().SetSelectedEntity(entity);
+        EditorHelper::SetSelectedEntity(entity);
     }
 
     Properties::Inspect(entity);
@@ -317,8 +317,8 @@ void WorldViewer::PopupContextMenu() const
     if (!ImGui::BeginPopup("##HierarchyContextMenu"))
         return;
 
-    const auto selected_entity    = EditorHelper::Get().g_selected_entity.lock();
-    const auto on_entity        = selected_entity != nullptr;
+    const auto selected_entity = EditorHelper::selected_entity.lock();
+    const auto on_entity       = selected_entity != nullptr;
 
     if (on_entity) if (ImGui::MenuItem("Copy"))
     {
@@ -474,7 +474,7 @@ void WorldViewer::PopupEntityRename() const
 
     if (ImGui::BeginPopup("##RenameEntity"))
     {
-        auto selectedentity = EditorHelper::Get().g_selected_entity.lock();
+        auto selectedentity = EditorHelper::selected_entity.lock();
         if (!selectedentity)
         {
             ImGui::CloseCurrentPopup();
@@ -504,9 +504,9 @@ void WorldViewer::HandleKeyShortcuts()
     // Delete
     if (input->GetKey(KeyCode::Delete))
     {
-        if (shared_ptr<Entity> entity = EditorHelper::Get().g_selected_entity.lock())
+        if (shared_ptr<Entity> entity = EditorHelper::selected_entity.lock())
         {
-            ActionEntityDelete(EditorHelper::Get().g_selected_entity.lock());
+            ActionEntityDelete(entity);
         }
     }
 
@@ -521,7 +521,7 @@ void WorldViewer::HandleKeyShortcuts()
         }
         else
         {
-            EditorHelper::Get().SaveWorld(world->GetFilePath());
+            EditorHelper::SaveWorld(world->GetFilePath());
         }
     }
 
@@ -541,7 +541,7 @@ void WorldViewer::ActionEntityDelete(const shared_ptr<Entity>& entity)
 Entity* WorldViewer::ActionEntityCreateEmpty()
 {
     shared_ptr<Entity> entity = world->CreateEntity();
-    if (const shared_ptr<Entity> selected_entity = EditorHelper::Get().g_selected_entity.lock())
+    if (const shared_ptr<Entity> selected_entity = EditorHelper::selected_entity.lock())
     {
         entity->GetTransform()->SetParent(selected_entity->GetTransform());
     }

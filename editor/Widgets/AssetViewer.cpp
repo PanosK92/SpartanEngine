@@ -72,7 +72,7 @@ static void mesh_import_dialog()
             // Ok button
             if (imgui_sp::button_centered_on_line("Ok", 0.5f))
             {
-                EditorHelper::Get().LoadMesh(mesh_import_file_path, mesh_import_dialog_flags);
+                EditorHelper::LoadMesh(mesh_import_file_path, mesh_import_dialog_flags);
                 mesh_import_dialog_is_visible = false;
             }
         }
