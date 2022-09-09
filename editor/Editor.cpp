@@ -206,7 +206,7 @@ Editor::Editor()
 
         // Initialization of misc custom systems
         IconProvider::Get().Initialize(m_context);
-        EditorHelper::Get().Initialize(m_context);
+        EditorHelper::Initialize(m_context);
 
         // Create all ImGui widgets
         m_widgets.emplace_back(make_shared<Console>(this));

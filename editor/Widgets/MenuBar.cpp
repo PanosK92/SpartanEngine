@@ -202,7 +202,7 @@ void MenuBar::DrawFileDialog() const
             // Scene
             if (Spartan::FileSystem::IsEngineSceneFile(_Widget_MenuBar::g_fileDialogSelection))
             {
-                EditorHelper::Get().LoadWorld(_Widget_MenuBar::g_fileDialogSelection);
+                EditorHelper::LoadWorld(_Widget_MenuBar::g_fileDialogSelection);
                 _Widget_MenuBar::g_fileDialogVisible = false;
             }
         }
@@ -212,7 +212,7 @@ void MenuBar::DrawFileDialog() const
             // Scene
             if (m_file_dialog->GetFilter() == FileDialog_Filter_World)
             {
-                EditorHelper::Get().SaveWorld(_Widget_MenuBar::g_fileDialogSelection);
+                EditorHelper::SaveWorld(_Widget_MenuBar::g_fileDialogSelection);
                 _Widget_MenuBar::g_fileDialogVisible = false;
             }
         }
