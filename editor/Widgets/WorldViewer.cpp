@@ -46,64 +46,24 @@ using namespace std;
 using namespace Spartan;
 //=======================
 
-namespace _Widget_World
-{
-    static Spartan::World* g_world  = nullptr;
-    static Input* g_input           = nullptr;
-    static bool g_popupRenameentity = false;
-    static imgui_extension::DragDropPayload g_payload;
-    // entities in relation to mouse events
-    static Entity* g_entity_copied  = nullptr;
-    static Entity* g_entity_hovered = nullptr;
-    static Entity* g_entity_clicked = nullptr;
-}
+static imgui_sp::DragDropPayload g_payload;
+static bool popup_rename_entity = false;
+static World* world             = nullptr;
+static Input* input             = nullptr;
+static Entity* entity_copied    = nullptr;
+static Entity* entity_hovered   = nullptr;
+static Entity* entity_clicked   = nullptr;
 
 WorldViewer::WorldViewer(Editor* editor) : Widget(editor)
 {
     m_title = "World";
     m_flags |= ImGuiWindowFlags_HorizontalScrollbar;
 
-    _Widget_World::g_world = m_context->GetSystem<Spartan::World>();
-    _Widget_World::g_input = m_context->GetSystem<Input>();
+    world = m_context->GetSystem<Spartan::World>();
+    input = m_context->GetSystem<Input>();
 
     // Subscribe to entity clicked engine event
     EditorHelper::Get().g_on_entity_selected = [this](){ SetSelectedEntity(EditorHelper::Get().g_selected_entity.lock(), false); };
-}
-
-static void load_default_world_startup_window(World* world)
-{
-    static bool is_visible = true;
-    if (is_visible)
-    {
-        // Set position
-        ImVec2 position     = ImVec2(Spartan::Display::GetWidth() * 0.5f, Spartan::Display::GetHeight() * 0.5f);
-        ImVec2 pivot_center = ImVec2(0.5f, 0.5f);
-        ImGui::SetNextWindowPos(position, ImGuiCond_Appearing, pivot_center);
-
-        // Begin
-        if (ImGui::Begin("Default World", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse))
-        {
-            ImGui::Text("Would you like to load a default world?");
-
-            if (imgui_extension::button_centered_on_line("Yes", 0.4f))
-            {
-                is_visible = false;
-                ThreadPool::AddTask([world]()
-                {
-                    world->CreateDefaultWorld();
-                });
-            }
-
-            ImGui::SameLine();
-
-            if (ImGui::Button("No"))
-            {
-                is_visible = false;
-            }
-        }
-
-        ImGui::End();
-    }
 }
 
 void WorldViewer::TickVisible()
@@ -111,17 +71,35 @@ void WorldViewer::TickVisible()
     TreeShow();
 
     // On left click, select entity but only on release
-    if (ImGui::IsMouseReleased(0) && _Widget_World::g_entity_clicked)
+    if (ImGui::IsMouseReleased(0) && entity_clicked)
     {
         // Make sure that the mouse was released while on the same entity
-        if (_Widget_World::g_entity_hovered && _Widget_World::g_entity_hovered->GetObjectId() == _Widget_World::g_entity_clicked->GetObjectId())
+        if (entity_hovered && entity_hovered->GetObjectId() == entity_clicked->GetObjectId())
         {
-            SetSelectedEntity(_Widget_World::g_entity_clicked->GetPtrShared());
+            SetSelectedEntity(entity_clicked->GetPtrShared());
         }
-        _Widget_World::g_entity_clicked = nullptr;
+        entity_clicked = nullptr;
     }
 
-    load_default_world_startup_window(_Widget_World::g_world);
+    // Load default world window
+    static bool is_default_world_window_visible = true;
+    if (is_default_world_window_visible)
+    {
+        // Show a yes/no window
+        imgui_sp::ButtonPress button_press = imgui_sp::window_yes_no("Default World", "Would you like to load a default world?");
+
+        // Stay visible for as long a selection hasn't been made
+        is_default_world_window_visible = (button_press == imgui_sp::ButtonPress::Undefined);
+
+        // On yes, load the default world
+        if (button_press == imgui_sp::ButtonPress::Yes)
+        {
+            ThreadPool::AddTask([]()
+            {
+                world->CreateDefaultWorld();
+            });
+        }
+    }
 }
 
 void WorldViewer::TreeShow()
@@ -131,16 +109,16 @@ void WorldViewer::TreeShow()
     if (ImGui::TreeNodeEx("Root", ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanFullWidth))
     {
         // Dropping on the scene node should unparent the entity
-        if (auto payload = imgui_extension::receive_drag_drop_payload(imgui_extension::DragPayloadType::DragPayload_Entity))
+        if (auto payload = imgui_sp::receive_drag_drop_payload(imgui_sp::DragPayloadType::Entity))
         {
             const uint64_t entity_id = get<uint64_t>(payload->data);
-            if (const shared_ptr<Entity>& dropped_entity = _Widget_World::g_world->GetEntityById(entity_id))
+            if (const shared_ptr<Entity>& dropped_entity = world->GetEntityById(entity_id))
             {
                 dropped_entity->GetTransform()->SetParent(nullptr);
             }
         }
 
-        vector<shared_ptr<Entity>> root_entities = _Widget_World::g_world->GetRootEntities();
+        vector<shared_ptr<Entity>> root_entities = world->GetRootEntities();
         for (const shared_ptr<Entity>& entity : root_entities)
         {
             TreeAddEntity(entity.get());
@@ -162,7 +140,7 @@ void WorldViewer::TreeShow()
 
 void WorldViewer::OnTreeBegin()
 {
-    _Widget_World::g_entity_hovered = nullptr;
+    entity_hovered = nullptr;
 }
 
 void WorldViewer::OnTreeEnd()
@@ -233,7 +211,7 @@ void WorldViewer::TreeAddEntity(Entity* entity)
     // Manually detect some useful states
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_RectOnly))
     {
-        _Widget_World::g_entity_hovered = entity;
+        entity_hovered = entity;
     }
 
     EntityHandleDragDrop(entity);
@@ -268,24 +246,24 @@ void WorldViewer::HandleClicking()
         return;    
 
     // Left click on item - Don't select yet
-    if (left_click && _Widget_World::g_entity_hovered)
+    if (left_click && entity_hovered)
     {
-        _Widget_World::g_entity_clicked    = _Widget_World::g_entity_hovered;
+        entity_clicked    = entity_hovered;
     }
 
     // Right click on item - Select and show context menu
     if (ImGui::IsMouseClicked(1))
     {
-        if (_Widget_World::g_entity_hovered)
+        if (entity_hovered)
         {            
-            SetSelectedEntity(_Widget_World::g_entity_hovered->GetPtrShared());
+            SetSelectedEntity(entity_hovered->GetPtrShared());
         }
 
         ImGui::OpenPopup("##HierarchyContextMenu");
     }
 
     // Clicking on empty space - Clear selection
-    if ((left_click || right_click) && !_Widget_World::g_entity_hovered)
+    if ((left_click || right_click) && !entity_hovered)
     {
         SetSelectedEntity(m_entity_empty);
     }
@@ -296,16 +274,16 @@ void WorldViewer::EntityHandleDragDrop(Entity* entity_ptr) const
     // Drag
     if (ImGui::BeginDragDropSource())
     {
-        _Widget_World::g_payload.data = entity_ptr->GetObjectId();
-        _Widget_World::g_payload.type = imgui_extension::DragPayloadType::DragPayload_Entity;
-        imgui_extension::create_drag_drop_paylod(_Widget_World::g_payload);
+        g_payload.data = entity_ptr->GetObjectId();
+        g_payload.type = imgui_sp::DragPayloadType::Entity;
+        imgui_sp::create_drag_drop_paylod(g_payload);
         ImGui::EndDragDropSource();
     }
     // Drop
-    if (auto payload = imgui_extension::receive_drag_drop_payload(imgui_extension::DragPayloadType::DragPayload_Entity))
+    if (auto payload = imgui_sp::receive_drag_drop_payload(imgui_sp::DragPayloadType::Entity))
     {
         const uint64_t entity_id = get<uint64_t>(payload->data);
-        if (const shared_ptr<Entity>& dropped_entity = _Widget_World::g_world->GetEntityById(entity_id))
+        if (const shared_ptr<Entity>& dropped_entity = world->GetEntityById(entity_id))
         {
             if (dropped_entity->GetObjectId() != entity_ptr->GetObjectId())
             {
@@ -344,20 +322,20 @@ void WorldViewer::PopupContextMenu() const
 
     if (on_entity) if (ImGui::MenuItem("Copy"))
     {
-        _Widget_World::g_entity_copied = selected_entity.get();
+        entity_copied = selected_entity.get();
     }
 
     if (ImGui::MenuItem("Paste"))
     {
-        if (_Widget_World::g_entity_copied)
+        if (entity_copied)
         {
-            _Widget_World::g_entity_copied->Clone();
+            entity_copied->Clone();
         }
     }
 
     if (on_entity) if (ImGui::MenuItem("Rename"))
     {
-        _Widget_World::g_popupRenameentity = true;
+        popup_rename_entity = true;
     }
 
     if (on_entity) if (ImGui::MenuItem("Delete", "Delete"))
@@ -488,10 +466,10 @@ void WorldViewer::PopupContextMenu() const
 
 void WorldViewer::PopupEntityRename() const
 {
-    if (_Widget_World::g_popupRenameentity)
+    if (popup_rename_entity)
     {
         ImGui::OpenPopup("##RenameEntity");
-        _Widget_World::g_popupRenameentity = false;
+        popup_rename_entity = false;
     }
 
     if (ImGui::BeginPopup("##RenameEntity"))
@@ -510,7 +488,7 @@ void WorldViewer::PopupEntityRename() const
         ImGui::InputText("##edit", &name);
         selectedentity->SetName(string(name));
 
-        if (imgui_extension::button("Ok"))
+        if (imgui_sp::button("Ok"))
         { 
             ImGui::CloseCurrentPopup();
             ImGui::EndPopup();
@@ -524,7 +502,7 @@ void WorldViewer::PopupEntityRename() const
 void WorldViewer::HandleKeyShortcuts()
 {
     // Delete
-    if (_Widget_World::g_input->GetKey(KeyCode::Delete))
+    if (input->GetKey(KeyCode::Delete))
     {
         if (shared_ptr<Entity> entity = EditorHelper::Get().g_selected_entity.lock())
         {
@@ -533,9 +511,9 @@ void WorldViewer::HandleKeyShortcuts()
     }
 
     // Save: Ctrl + S
-    if (_Widget_World::g_input->GetKey(KeyCode::Ctrl_Left) && _Widget_World::g_input->GetKeyDown(KeyCode::S))
+    if (input->GetKey(KeyCode::Ctrl_Left) && input->GetKeyDown(KeyCode::S))
     {
-        const string& file_path = _Widget_World::g_world->GetFilePath();
+        const string& file_path = world->GetFilePath();
 
         if (file_path.empty())
         {
@@ -543,12 +521,12 @@ void WorldViewer::HandleKeyShortcuts()
         }
         else
         {
-            EditorHelper::Get().SaveWorld(_Widget_World::g_world->GetFilePath());
+            EditorHelper::Get().SaveWorld(world->GetFilePath());
         }
     }
 
     // Load: Ctrl + L
-    if (_Widget_World::g_input->GetKey(KeyCode::Ctrl_Left) && _Widget_World::g_input->GetKeyDown(KeyCode::L))
+    if (input->GetKey(KeyCode::Ctrl_Left) && input->GetKeyDown(KeyCode::L))
     {
         m_editor->GetWidget<MenuBar>()->ShowWorldLoadDialog();
     }
@@ -557,12 +535,12 @@ void WorldViewer::HandleKeyShortcuts()
 void WorldViewer::ActionEntityDelete(const shared_ptr<Entity>& entity)
 {
     SP_ASSERT_MSG(entity != nullptr, "Entity is null");
-    _Widget_World::g_world->RemoveEntity(entity.get());
+    world->RemoveEntity(entity.get());
 }
 
 Entity* WorldViewer::ActionEntityCreateEmpty()
 {
-    shared_ptr<Entity> entity = _Widget_World::g_world->CreateEntity();
+    shared_ptr<Entity> entity = world->CreateEntity();
     if (const shared_ptr<Entity> selected_entity = EditorHelper::Get().g_selected_entity.lock())
     {
         entity->GetTransform()->SetParent(selected_entity->GetTransform());

@@ -70,7 +70,7 @@ static void mesh_import_dialog()
             mesh_import_dialog_checkbox(MeshOptions::NormalizeScale,      "Normalize scale");
 
             // Ok button
-            if (imgui_extension::button_centered_on_line("Ok", 0.5f))
+            if (imgui_sp::button_centered_on_line("Ok", 0.5f))
             {
                 EditorHelper::Get().LoadMesh(mesh_import_file_path, mesh_import_dialog_flags);
                 mesh_import_dialog_is_visible = false;
@@ -94,7 +94,7 @@ AssetViewer::AssetViewer(Editor* editor) : Widget(editor)
 
 void AssetViewer::TickVisible()
 {    
-    if (imgui_extension::button("Import"))
+    if (imgui_sp::button("Import"))
     {
         show_file_dialog_load = true;
     }

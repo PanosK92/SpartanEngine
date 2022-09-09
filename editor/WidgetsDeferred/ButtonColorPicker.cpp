@@ -198,7 +198,7 @@ void ButtonColorPicker::Update()
         {
             ImGui::Text("Physically based colors");
             ImGui::SameLine();
-            if (imgui_extension::combo_box("##physically_based_colors", color_names, &m_combo_box_index))
+            if (imgui_sp::combo_box("##physically_based_colors", color_names, &m_combo_box_index))
             {
                 m_color = color_values[m_combo_box_index];
             }
