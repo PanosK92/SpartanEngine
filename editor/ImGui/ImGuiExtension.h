@@ -127,8 +127,25 @@ public:
     std::weak_ptr<Spartan::Entity> g_selected_entity;
 };
 
-namespace imgui_extension
+namespace imgui_sp
 {
+    enum class DragPayloadType
+    {
+        Texture,
+        Entity,
+        Model,
+        Audio,
+        Material,
+        Undefined
+    };
+
+    enum class ButtonPress
+    {
+        Yes,
+        No,
+        Undefined
+    };
+
     static const ImVec4 default_tint(1, 1, 1, 1);
 
     static float GetWindowContentRegionWidth()
@@ -264,21 +281,10 @@ namespace imgui_extension
         );
     }
 
-    // Drag & Drop
-    enum class DragPayloadType
-    {
-        DragPayload_Unknown,
-        DragPayload_Texture,
-        DragPayload_Entity,
-        DragPayload_Model,
-        DragPayload_Audio,
-        DragPayload_Material
-    };
-
     struct DragDropPayload
     {
-        typedef std::variant<const char*, uint64_t> DataVariant;
-        DragDropPayload(const DragPayloadType type = DragPayloadType::DragPayload_Unknown, const DataVariant data = nullptr)
+        using DataVariant = std::variant<const char*, uint64_t>;
+        DragDropPayload(const DragPayloadType type = DragPayloadType::Undefined, const DataVariant data = nullptr)
         {
             this->type = type;
             this->data = data;
@@ -348,7 +354,7 @@ namespace imgui_extension
         ImGui::EndGroup();
 
         // Drop target
-        if (auto payload = receive_drag_drop_payload(DragPayloadType::DragPayload_Texture))
+        if (auto payload = receive_drag_drop_payload(DragPayloadType::Texture))
         {
             try
             {
@@ -468,7 +474,7 @@ namespace imgui_extension
             // Float
             ImGui::PushItemWidth(128.0f);
             ImGui::PushID(static_cast<int>(ImGui::GetCursorPosX() + ImGui::GetCursorPosY()));
-            imgui_extension::draw_float_wrap("##no_label", value, step, std::numeric_limits<float>::lowest(), std::numeric_limits<float>::max(), format.c_str());
+            imgui_sp::draw_float_wrap("##no_label", value, step, std::numeric_limits<float>::lowest(), std::numeric_limits<float>::max(), format.c_str());
             ImGui::PopID();
             ImGui::PopItemWidth();
 
@@ -492,4 +498,35 @@ namespace imgui_extension
         show_float(Spartan::Math::Vector3(0.0f, 0.0f, 1.0f), &vector.z);
         ImGui::EndGroup();
     };
+
+    static ButtonPress window_yes_no(const char* title, const char* text)
+    {
+        ButtonPress button_press = ButtonPress::Undefined;
+
+        // Set position
+        ImVec2 position     = ImVec2(Spartan::Display::GetWidth() * 0.5f, Spartan::Display::GetHeight() * 0.5f);
+        ImVec2 pivot_center = ImVec2(0.5f, 0.5f);
+        ImGui::SetNextWindowPos(position, ImGuiCond_Appearing, pivot_center);
+
+        // Window
+        if (ImGui::Begin(title, nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse))
+        {
+            ImGui::Text(text);
+
+            if (imgui_sp::button_centered_on_line("Yes", 0.4f))
+            {
+                button_press = ButtonPress::Yes;
+            }
+
+            ImGui::SameLine();
+
+            if (ImGui::Button("No"))
+            {
+                button_press = ButtonPress::No;
+            }
+        }
+        ImGui::End();
+
+        return button_press;
+    }
 }
