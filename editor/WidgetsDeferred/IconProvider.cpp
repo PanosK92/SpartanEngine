@@ -31,24 +31,16 @@ using namespace std;
 using namespace Spartan;
 //=======================
 
+vector<Thumbnail> IconProvider::m_thumbnails;
+static Context* context = nullptr;
 static Thumbnail g_no_thumbnail;
 
-IconProvider::IconProvider()
+void IconProvider::Initialize(Context* context_)
 {
-    m_context = nullptr;
-}
-
-IconProvider::~IconProvider()
-{
-    m_thumbnails.clear();
-}
-
-void IconProvider::Initialize(Context* context)
-{
-    m_context = context;
+    context = context_;
 
     // Load standard icons
-    ThreadPool::AddTask([this]()
+    ThreadPool::AddTask([]()
     {
         const string data_dir = ResourceCache::GetDataDirectory() + "\\";
 
@@ -168,13 +160,13 @@ const Thumbnail& IconProvider::LoadFromFile(const string& file_path, IconType ty
     if (FileSystem::IsSupportedImageFile(file_path) || FileSystem::IsEngineTextureFile(file_path))
     {
         // Create a texture
-        shared_ptr<RHI_Texture2D> texture = make_shared<RHI_Texture2D>(m_context, RHI_Texture_Srv, FileSystem::GetFileNameFromFilePath(file_path).c_str());
+        shared_ptr<RHI_Texture2D> texture = make_shared<RHI_Texture2D>(context, RHI_Texture_Srv, FileSystem::GetFileNameFromFilePath(file_path).c_str());
 
         // Add it to the thumbnails
         m_thumbnails.emplace_back(type, texture, file_path);
 
         // Load it
-        ThreadPool::AddTask([this, file_path]()
+        ThreadPool::AddTask([file_path]()
         {
             RHI_Texture* tex_ptr = m_thumbnails.back().texture.get();
             tex_ptr->LoadFromFile(file_path);

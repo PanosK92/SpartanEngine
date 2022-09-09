@@ -185,7 +185,7 @@ namespace imgui_sp
         // Get texture from icon enum (if provided)
         if (!texture && icon != IconType::Undefined)
         {
-            texture = IconProvider::Get().GetTextureByType(icon);
+            texture = IconProvider::GetTextureByType(icon);
         }
 
         // Compute ID
@@ -214,7 +214,7 @@ namespace imgui_sp
     static void image(const Thumbnail& thumbnail, const float size)
     {
         ImGui::Image(
-            static_cast<ImTextureID>(IconProvider::Get().GetTextureByThumbnail(thumbnail)),
+            static_cast<ImTextureID>(IconProvider::GetTextureByThumbnail(thumbnail)),
             ImVec2(size, size),
             ImVec2(0, 0),
             ImVec2(1, 1),
@@ -260,7 +260,7 @@ namespace imgui_sp
     static void image(const IconType icon, const float size)
     {
         ImGui::Image(
-            static_cast<void*>(IconProvider::Get().GetTextureByType(icon)),
+            static_cast<void*>(IconProvider::GetTextureByType(icon)),
             ImVec2(size, size),
             ImVec2(0, 0),
             ImVec2(1, 1),

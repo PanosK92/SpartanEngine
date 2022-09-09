@@ -170,7 +170,7 @@ public:
     const auto& GetPath()              const { return m_path; }
     const auto& GetLabel()             const { return m_label; }
     auto GetId()                       const { return m_id; }
-    Spartan::RHI_Texture* GetTexture() const { return IconProvider::Get().GetTextureByThumbnail(m_thumbnail); }
+    Spartan::RHI_Texture* GetTexture() const { return IconProvider::GetTextureByThumbnail(m_thumbnail); }
     auto IsDirectory()                 const { return m_isDirectory; }
     auto GetTimeSinceLastClickMs()     const { return static_cast<float>(m_time_since_last_click.count()); }
 

@@ -204,8 +204,8 @@ Editor::Editor()
         ImGui_ApplyColors();
         ImGui_ApplyStyle();
 
-        // Initialization of misc custom systems
-        IconProvider::Get().Initialize(m_context);
+        // Initialization of some helper static classes
+        IconProvider::Initialize(m_context);
         EditorHelper::Initialize(m_context);
 
         // Create all ImGui widgets

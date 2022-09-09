@@ -92,24 +92,14 @@ struct Thumbnail
 class IconProvider
 {
 public:
-    static IconProvider& Get()
-    {
-        static IconProvider instance;
-        return instance;
-    }
+    static void Initialize(Spartan::Context* context);
 
-    IconProvider();
-    ~IconProvider();
-
-    void Initialize(Spartan::Context* context);
-
-    Spartan::RHI_Texture* GetTextureByType(IconType type);
-    Spartan::RHI_Texture* GetTextureByFilePath(const std::string& file_path);
-    Spartan::RHI_Texture* GetTextureByThumbnail(const Thumbnail& thumbnail);
-    const Thumbnail& LoadFromFile(const std::string& filePath, IconType type = IconType::Undefined, const uint32_t size = 100);
+    static Spartan::RHI_Texture* GetTextureByType(IconType type);
+    static Spartan::RHI_Texture* GetTextureByFilePath(const std::string& file_path);
+    static Spartan::RHI_Texture* GetTextureByThumbnail(const Thumbnail& thumbnail);
+    static const Thumbnail& LoadFromFile(const std::string& filePath, IconType type = IconType::Undefined, const uint32_t size = 100);
 
 private:
-    const Thumbnail& GetThumbnailByType(IconType type);
-    std::vector<Thumbnail> m_thumbnails;
-    Spartan::Context* m_context;
+    static const Thumbnail& GetThumbnailByType(IconType type);
+    static std::vector<Thumbnail> m_thumbnails;
 };

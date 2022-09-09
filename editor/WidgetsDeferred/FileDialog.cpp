@@ -524,7 +524,7 @@ bool FileDialog::DialogUpdateFromDirectory(const string& file_path)
     auto directories = FileSystem::GetDirectoriesInDirectory(file_path);
     for (const string& directory : directories)
     {
-        m_items.emplace_back(directory, IconProvider::Get().LoadFromFile(directory, IconType::Directory_Folder, static_cast<uint32_t>(m_item_size.x)));
+        m_items.emplace_back(directory, IconProvider::LoadFromFile(directory, IconType::Directory_Folder, static_cast<uint32_t>(m_item_size.x)));
     }
 
     // Get files (based on filter)
@@ -535,7 +535,7 @@ bool FileDialog::DialogUpdateFromDirectory(const string& file_path)
         {
             if (!FileSystem::IsEngineTextureFile(anything) && !FileSystem::IsEngineModelFile(anything))
             {
-                m_items.emplace_back(anything, IconProvider::Get().LoadFromFile(anything, IconType::Undefined, static_cast<uint32_t>(m_item_size.x)));
+                m_items.emplace_back(anything, IconProvider::LoadFromFile(anything, IconType::Undefined, static_cast<uint32_t>(m_item_size.x)));
             }
         }
     }
@@ -544,7 +544,7 @@ bool FileDialog::DialogUpdateFromDirectory(const string& file_path)
         vector<string> paths_world = FileSystem::GetSupportedSceneFilesInDirectory(file_path);
         for (const string& world : paths_world)
         {
-            m_items.emplace_back(world, IconProvider::Get().LoadFromFile(world, IconType::Directory_File_World, static_cast<uint32_t>(m_item_size.x)));
+            m_items.emplace_back(world, IconProvider::LoadFromFile(world, IconType::Directory_File_World, static_cast<uint32_t>(m_item_size.x)));
         }
     }
     else if (m_filter == FileDialog_Filter_Model)
@@ -552,7 +552,7 @@ bool FileDialog::DialogUpdateFromDirectory(const string& file_path)
         vector<string> paths_models = FileSystem::GetSupportedModelFilesInDirectory(file_path);
         for (const string& model : paths_models)
         {
-            m_items.emplace_back(model, IconProvider::Get().LoadFromFile(model, IconType::Directory_File_Model, static_cast<uint32_t>(m_item_size.x)));
+            m_items.emplace_back(model, IconProvider::LoadFromFile(model, IconType::Directory_File_Model, static_cast<uint32_t>(m_item_size.x)));
         }
     }
 
