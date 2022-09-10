@@ -236,7 +236,7 @@ namespace Spartan
         }
 
         m_pipeline = it->second.get();
-        m_pso = pso;
+        m_pso      = pso;
 
         // Determine if the pipeline is dirty
         if (!m_pipeline_dirty)
@@ -244,11 +244,29 @@ namespace Spartan
             m_pipeline_dirty = hash_previous != hash;
         }
 
-        // If the pipeline changed, resources have to be set again
+        // Bind pipeline
         if (m_pipeline_dirty)
         {
+            // Get vulkan pipeline object
+            SP_ASSERT(m_pipeline);
+            VkPipeline vk_pipeline = static_cast<VkPipeline>(m_pipeline->GetResource_Pipeline());
+            SP_ASSERT(vk_pipeline != nullptr);
+
+            // Bind
+            VkPipelineBindPoint pipeline_bind_point = m_pso.IsCompute() ? VK_PIPELINE_BIND_POINT_COMPUTE : VK_PIPELINE_BIND_POINT_GRAPHICS;
+            vkCmdBindPipeline(static_cast<VkCommandBuffer>(m_rhi_resource), pipeline_bind_point, vk_pipeline);
+
+            // Profile
+            if (m_profiler)
+            {
+                m_profiler->m_rhi_bindings_pipeline++;
+            }
+
+            m_pipeline_dirty = false;
+
+            // Also, If the pipeline changed, resources have to be set again
             m_vertex_buffer_id = 0;
-            m_index_buffer_id = 0;
+            m_index_buffer_id  = 0;
         }
     }
 
@@ -970,27 +988,6 @@ namespace Spartan
     void RHI_CommandList::OnDraw()
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
-        SP_ASSERT(m_pipeline);
-
-        // Bind pipeline
-        if (m_pipeline_dirty)
-        {
-            // Get
-            VkPipeline vk_pipeline = static_cast<VkPipeline>(m_pipeline->GetResource_Pipeline());
-            SP_ASSERT(vk_pipeline != nullptr);
-
-            // Bind
-            VkPipelineBindPoint pipeline_bind_point = m_pso.IsCompute() ? VK_PIPELINE_BIND_POINT_COMPUTE : VK_PIPELINE_BIND_POINT_GRAPHICS;
-            vkCmdBindPipeline(static_cast<VkCommandBuffer>(m_rhi_resource), pipeline_bind_point, vk_pipeline);
-
-            // Profile
-            if (m_profiler)
-            {
-                m_profiler->m_rhi_bindings_pipeline++;
-            }
-
-            m_pipeline_dirty = false;
-        }
 
         // Bind descriptor sets
         {
