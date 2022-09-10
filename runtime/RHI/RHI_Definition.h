@@ -399,7 +399,7 @@ namespace Spartan
         return 0;
     }
 
-    constexpr std::string rhi_format_to_string(const RHI_Format result)
+    constexpr std::string_view rhi_format_to_string(const RHI_Format result)
     {
         switch (result)
         {
