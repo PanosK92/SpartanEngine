@@ -495,18 +495,14 @@ namespace Spartan::vulkan_utility
 
             get_func(get_physical_device_memory_properties_2, vkGetPhysicalDeviceMemoryProperties2);
 
-            if (globals::rhi_context->validation)
-            { 
-                /* VK_EXT_debug_utils */
-                get_func(create_messenger,  vkCreateDebugUtilsMessengerEXT);
-                get_func(destroy_messenger, vkDestroyDebugUtilsMessengerEXT);
-                get_func(marker_begin,      vkCmdBeginDebugUtilsLabelEXT);
-                get_func(marker_end,        vkCmdEndDebugUtilsLabelEXT);
-
-                /* VK_EXT_debug_marker */
-                get_func(set_object_tag,    vkSetDebugUtilsObjectTagEXT);
-                get_func(set_object_name,   vkSetDebugUtilsObjectNameEXT);
-            }
+            /* VK_EXT_debug_utils */
+            get_func(create_messenger,  vkCreateDebugUtilsMessengerEXT);
+            get_func(destroy_messenger, vkDestroyDebugUtilsMessengerEXT);
+            get_func(marker_begin,      vkCmdBeginDebugUtilsLabelEXT);
+            get_func(marker_end,        vkCmdEndDebugUtilsLabelEXT);
+            /* VK_EXT_debug_marker */
+            get_func(set_object_tag,  vkSetDebugUtilsObjectTagEXT);
+            get_func(set_object_name, vkSetDebugUtilsObjectNameEXT);
         }
 
         static PFN_vkCreateDebugUtilsMessengerEXT          create_messenger;

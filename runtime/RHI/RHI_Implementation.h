@@ -481,51 +481,21 @@ namespace Spartan
             VkPhysicalDevice device_physical   = nullptr;
             VkDevice device                    = nullptr;
 
+            std::vector<VkValidationFeatureEnableEXT> validation_extensions = { };
+            std::vector<const char*> extensions_instance                    = { "VK_KHR_surface", "VK_KHR_win32_surface" };
+            const std::vector<const char*> validation_layers                = { "VK_LAYER_KHRONOS_validation" };
+            const std::vector<const char*> extensions_device                = {
+                "VK_KHR_swapchain",                         // windows swapchain
+                "VK_EXT_memory_budget",                     // memory budget
+                "VK_KHR_timeline_semaphore",                // timeline semaphores
+                "VK_KHR_dynamic_rendering",                 // gets rid of render passes and frame buffer objects
+                "VK_EXT_subgroup_size_control",             // used by FSR 2.0
+                "VK_KHR_shader_float16_int8",               // used by FSR 2.0
+                "VK_EXT_shader_demote_to_helper_invocation" // adds support for SPV_EXT_demote_to_helper_invocation
+            };
+
             // Hardware capability viewer: https://vulkan.gpuinfo.org/
-
-            // Extensions
-            #ifdef DEBUG
-                /*
-                https://vulkan.lunarg.com/doc/view/1.2.135.0/mac/validation_layers.html
-
-                VK_LAYER_KHRONOS_validation
-                ===================================
-                The main, comprehensive Khronos validation layer -- this layer encompasses the entire
-                functionality of the layers listed below, and supersedes them. As the other layers
-                are deprecated this layer should be used for all validation going forward.
-
-                VK_EXT_debug_utils
-                ==================
-                Create a debug messenger which will pass along debug messages to an application supplied callback.
-                Identify specific Vulkan objects using a name or tag to improve tracking.
-                Identify specific sections within a VkQueue or VkCommandBuffer using labels to aid organization and offline analysis in external tools.
-
-                Note: Would like to enable VK_KHR_synchronization2, but only 17.3% of the devices out there support it.
-
-                */
-                std::vector<const char*> validation_layers                      = { "VK_LAYER_KHRONOS_validation" };
-                std::vector<VkValidationFeatureEnableEXT> validation_extensions =
-                {
-                    VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT,
-                    VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT
-                    //VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_EXT,
-                    //VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_RESERVE_BINDING_SLOT_EXT
-                };
-                std::vector<const char*> extensions_instance                    = { "VK_KHR_surface", "VK_KHR_win32_surface", "VK_EXT_debug_report", "VK_EXT_debug_utils"};
-            #else
-                std::vector<const char*> validation_layers                      = { };
-                std::vector<VkValidationFeatureEnableEXT> validation_extensions = { };
-                std::vector<const char*> extensions_instance                    = { "VK_KHR_surface", "VK_KHR_win32_surface" };
-            #endif
-                std::vector<const char*> extensions_device = {
-                    "VK_KHR_swapchain",                         // windows swapchain
-                    "VK_EXT_memory_budget",                     // memory budget
-                    "VK_KHR_timeline_semaphore",                // timeline semaphores
-                    "VK_KHR_dynamic_rendering",                 // gets rid of render passes and frame buffer objects
-                    "VK_EXT_subgroup_size_control",             // used by FSR 2.0
-                    "VK_KHR_shader_float16_int8",               // used by FSR 2.0
-                    "VK_EXT_shader_demote_to_helper_invocation" // adds support for SPV_EXT_demote_to_helper_invocation
-                };
+            // Note: Would like to enable VK_KHR_synchronization2, but only 17.3% of the devices out there support it.
         #endif
 
         // Validation\profiling\markers and so on
