@@ -277,11 +277,11 @@ void MenuBar::DrawAboutWindow() const
     {
         ImGui::Text("Spartan %s", (to_string(sp_version_major) + "." + to_string(sp_version_minor) + "." + to_string(sp_version_revision)).c_str());
         ImGui::Text("Author: Panos Karabelas");
-        ImGui::SameLine(imgui_sp::GetWindowContentRegionWidth());
+        ImGui::SameLine(ImGui_SP::GetWindowContentRegionWidth());
         ImGui::SetCursorPosX(ImGui::GetCursorPosX() - 55);
         ImGui::SetCursorPosY(ImGui::GetCursorPosY() - 5);
 
-        if (imgui_sp::button("GitHub"))
+        if (ImGui_SP::button("GitHub"))
         {
             Spartan::FileSystem::OpenUrl("https://github.com/PanosK92/SpartanEngine");
         }
@@ -326,7 +326,7 @@ void MenuBar::DrawAboutWindow() const
                 ImGui::Text(lib.version.c_str());
                 ImGui::SameLine(col_b);
                 ImGui::PushID(lib.url.c_str());
-                if (imgui_sp::button(lib.url.c_str()))
+                if (ImGui_SP::button(lib.url.c_str()))
                 {
                     Spartan::FileSystem::OpenUrl(lib.url);
                 }

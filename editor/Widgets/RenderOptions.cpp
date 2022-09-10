@@ -52,7 +52,7 @@ namespace helper
     {
         ImGui::TableNextRow();
         ImGui::TableSetColumnIndex(0);
-        return imgui_sp::collapsing_header(title, default_open ? ImGuiTreeNodeFlags_DefaultOpen : ImGuiTreeNodeFlags_None);
+        return ImGui_SP::collapsing_header(title, default_open ? ImGuiTreeNodeFlags_DefaultOpen : ImGuiTreeNodeFlags_None);
     }
 
     void FirstColumn()
@@ -72,7 +72,7 @@ namespace helper
         ImGui::Text(label);
         if (tooltip)
         {
-            imgui_sp::tooltip(tooltip);
+            ImGui_SP::tooltip(tooltip);
         }
 
         SecondColumn();
@@ -89,13 +89,13 @@ namespace helper
         ImGui::Text(label);
         if (tooltip)
         {
-            imgui_sp::tooltip(tooltip);
+            ImGui_SP::tooltip(tooltip);
         }
 
         SecondColumn();
         ImGui::PushID(static_cast<int>(ImGui::GetCursorPosY()));
         ImGui::PushItemWidth(k_width_combo_box);
-        bool result = imgui_sp::combo_box("", options, &selection_index);
+        bool result = ImGui_SP::combo_box("", options, &selection_index);
         ImGui::PopItemWidth();
         ImGui::PopID();
         return result;
@@ -107,7 +107,7 @@ namespace helper
         ImGui::Text(label);
         if (tooltip)
         {
-            imgui_sp::tooltip(tooltip);
+            ImGui_SP::tooltip(tooltip);
         }
 
         SecondColumn();

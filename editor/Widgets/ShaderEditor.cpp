@@ -148,7 +148,7 @@ void ShaderEditor::ShowShaderList()
                 }
             }
     
-            if (imgui_sp::button(name.c_str()) || m_first_run)
+            if (ImGui_SP::button(name.c_str()) || m_first_run)
             {
                 m_shader          = shader;
                 m_shader_name     = name;
@@ -168,7 +168,7 @@ void ShaderEditor::ShowControls()
     if (ImGui::BeginChild("##shader_editor_controls", ImVec2(0.0f, 0.0f), true, ImGuiWindowFlags_NoScrollbar))
     {
         // Compile button
-        if (imgui_sp::button("Compile"))
+        if (ImGui_SP::button("Compile"))
         {
             if (m_index_displayed != -1)
             {

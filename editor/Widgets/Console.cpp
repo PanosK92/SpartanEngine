@@ -56,14 +56,14 @@ Console::~Console()
 void Console::TickVisible()
 {
     // Clear Button
-    if (imgui_sp::button("Clear")) { Clear();} ImGui::SameLine();
+    if (ImGui_SP::button("Clear")) { Clear();} ImGui::SameLine();
 
     // Lambda for info, warning, error filter buttons
     const auto button_log_type_visibility_toggle = [this](const IconType icon, uint32_t index)
     {
         bool& visibility = m_log_type_visibility[index];
         ImGui::PushStyleColor(ImGuiCol_Button, visibility ? ImGui::GetStyle().Colors[ImGuiCol_Button] : ImGui::GetStyle().Colors[ImGuiCol_FrameBg]);
-        if (imgui_sp::image_button(0, nullptr, icon, 15.0f, false))
+        if (ImGui_SP::image_button(0, nullptr, icon, 15.0f, false))
         {
             visibility = !visibility;
         }

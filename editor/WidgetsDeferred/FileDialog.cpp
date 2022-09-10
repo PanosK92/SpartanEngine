@@ -129,14 +129,14 @@ void FileDialog::ShowTop(bool* is_visible)
     // Directory navigation buttons
     {
         // Backwards
-        if (imgui_sp::button("<"))
+        if (ImGui_SP::button("<"))
         {
             m_is_dirty = m_navigation.Backward();
         }
 
         // Forwards
         ImGui::SameLine();
-        if (imgui_sp::button(">"))
+        if (ImGui_SP::button(">"))
         {
             m_is_dirty = m_navigation.Forward();
         }
@@ -145,7 +145,7 @@ void FileDialog::ShowTop(bool* is_visible)
         for (uint32_t i = 0; i < m_navigation.m_path_hierarchy.size(); i++)
         {
             ImGui::SameLine();
-            if (imgui_sp::button(m_navigation.m_path_hierarchy_labels[i].c_str()))
+            if (ImGui_SP::button(m_navigation.m_path_hierarchy_labels[i].c_str()))
             {
                 m_is_dirty = m_navigation.Navigate(m_navigation.m_path_hierarchy[i]);
             }
@@ -154,7 +154,7 @@ void FileDialog::ShowTop(bool* is_visible)
 
     // Size slider
     const float slider_width = 200.0f;
-    ImGui::SameLine(imgui_sp::GetWindowContentRegionWidth() - slider_width);
+    ImGui::SameLine(ImGui_SP::GetWindowContentRegionWidth() - slider_width);
     ImGui::PushItemWidth(slider_width);
     const float previous_width = m_item_size.x;
     ImGui::SliderFloat("##FileDialogSlider", &m_item_size.x, m_item_size_min, m_item_size_max);
@@ -263,7 +263,7 @@ void FileDialog::ShowMiddle()
                     ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0, 0, 0, 0));
                     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1.0f, 1.0f, 1.0f, 0.25f));
 
-                    if (imgui_sp::button("##dummy", m_item_size))
+                    if (ImGui_SP::button("##dummy", m_item_size))
                     {
                         // Determine type of click
                         item.Clicked();
@@ -345,7 +345,7 @@ void FileDialog::ShowMiddle()
                         ImGui::SetCursorScreenPos(ImVec2(rect_button.Min.x + style.FramePadding.x + image_size_delta.x * 0.5f, rect_button.Min.y + style.FramePadding.y + image_size_delta.y * 0.5f));
 
                         // Draw the image
-                        imgui_sp::image(item.GetTexture(), image_size);
+                        ImGui_SP::image(item.GetTexture(), image_size);
                     }
 
                     ImGui::PopStyleColor(2);
@@ -425,13 +425,13 @@ void FileDialog::ShowBottom(bool* is_visible)
         ImGui::Text(FILTER_NAME);
 
         ImGui::SameLine();
-        if (imgui_sp::button(OPERATION_NAME))
+        if (ImGui_SP::button(OPERATION_NAME))
         {
             m_selection_made = true;
         }
 
         ImGui::SameLine();
-        if (imgui_sp::button("Cancel"))
+        if (ImGui_SP::button("Cancel"))
         {
             m_selection_made = false;
             (*is_visible) = false;
@@ -446,20 +446,20 @@ void FileDialog::ItemDrag(FileDialogItem* item) const
 
     if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID))
     {
-        const auto set_payload = [this](const imgui_sp::DragPayloadType type, const string& path)
+        const auto set_payload = [this](const ImGui_SP::DragPayloadType type, const string& path)
         {
             m_drag_drop_payload.type = type;
             m_drag_drop_payload.data = path.c_str();
-            imgui_sp::create_drag_drop_paylod(m_drag_drop_payload);
+            ImGui_SP::create_drag_drop_paylod(m_drag_drop_payload);
         };
 
-        if (FileSystem::IsSupportedModelFile(item->GetPath())) { set_payload(imgui_sp::DragPayloadType::Model,    item->GetPath()); }
-        if (FileSystem::IsSupportedImageFile(item->GetPath())) { set_payload(imgui_sp::DragPayloadType::Texture,  item->GetPath()); }
-        if (FileSystem::IsSupportedAudioFile(item->GetPath())) { set_payload(imgui_sp::DragPayloadType::Audio,    item->GetPath()); }
-        if (FileSystem::IsEngineMaterialFile(item->GetPath())) { set_payload(imgui_sp::DragPayloadType::Material, item->GetPath()); }
+        if (FileSystem::IsSupportedModelFile(item->GetPath())) { set_payload(ImGui_SP::DragPayloadType::Model,    item->GetPath()); }
+        if (FileSystem::IsSupportedImageFile(item->GetPath())) { set_payload(ImGui_SP::DragPayloadType::Texture,  item->GetPath()); }
+        if (FileSystem::IsSupportedAudioFile(item->GetPath())) { set_payload(ImGui_SP::DragPayloadType::Audio,    item->GetPath()); }
+        if (FileSystem::IsEngineMaterialFile(item->GetPath())) { set_payload(ImGui_SP::DragPayloadType::Material, item->GetPath()); }
 
         // Preview
-        imgui_sp::image(item->GetTexture(), 50);
+        ImGui_SP::image(item->GetTexture(), 50);
 
         ImGui::EndDragDropSource();
     }

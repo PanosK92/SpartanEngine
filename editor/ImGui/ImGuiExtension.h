@@ -37,14 +37,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Display/Display.h"
 #include "../WidgetsDeferred/IconProvider.h"
 #include "Source/imgui_internal.h"
+#include "../Editor.h"
 //================================================
 
 class EditorHelper
 {
 public:
-    static void Initialize(Spartan::Context* context)
+    static void Initialize(Editor* editor_, Spartan::Context* context_)
     {
-        context  = context;
+        editor   = editor_;
+        context  = context_;
         world    = context->GetSystem<Spartan::World>();
         renderer = context->GetSystem<Spartan::Renderer>();
     }
@@ -107,6 +109,7 @@ public:
         selected_entity = world->GetTransformHandle()->SetSelectedEntity(entity);
     }
 
+    static Editor*                        editor;
     static Spartan::Context*              context;
     static Spartan::World*                world;
     static Spartan::Renderer*             renderer;
@@ -115,7 +118,7 @@ public:
     static std::weak_ptr<Spartan::Entity> selected_entity;
 };
 
-namespace imgui_sp
+namespace ImGui_SP
 {
     enum class DragPayloadType
     {
@@ -462,7 +465,7 @@ namespace imgui_sp
             // Float
             ImGui::PushItemWidth(128.0f);
             ImGui::PushID(static_cast<int>(ImGui::GetCursorPosX() + ImGui::GetCursorPosY()));
-            imgui_sp::draw_float_wrap("##no_label", value, step, std::numeric_limits<float>::lowest(), std::numeric_limits<float>::max(), format.c_str());
+            ImGui_SP::draw_float_wrap("##no_label", value, step, std::numeric_limits<float>::lowest(), std::numeric_limits<float>::max(), format.c_str());
             ImGui::PopID();
             ImGui::PopItemWidth();
 
@@ -487,21 +490,20 @@ namespace imgui_sp
         ImGui::EndGroup();
     };
 
-    static ButtonPress window_yes_no(const char* title, const char* text)
+    inline ButtonPress window_yes_no(const char* title, const char* text)
     {
-        ButtonPress button_press = ButtonPress::Undefined;
-
         // Set position
         ImVec2 position     = ImVec2(Spartan::Display::GetWidth() * 0.5f, Spartan::Display::GetHeight() * 0.5f);
         ImVec2 pivot_center = ImVec2(0.5f, 0.5f);
-        ImGui::SetNextWindowPos(position, ImGuiCond_Appearing, pivot_center);
+        ImGui::SetNextWindowPos(position, ImGuiCond_Always, pivot_center);
 
         // Window
+        ButtonPress button_press = ButtonPress::Undefined;
         if (ImGui::Begin(title, nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse))
         {
             ImGui::Text(text);
 
-            if (imgui_sp::button_centered_on_line("Yes", 0.4f))
+            if (ImGui_SP::button_centered_on_line("Yes", 0.4f))
             {
                 button_press = ButtonPress::Yes;
             }

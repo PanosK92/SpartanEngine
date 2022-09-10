@@ -25,10 +25,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../WidgetsDeferred/FileDialog.h"
 //========================================
 
-//= NAMESPACES ==========
+//= NAMESPACES =========
 using namespace std;
 using namespace Spartan;
-//=======================
+//======================
 
 static bool show_file_dialog_view         = true;
 static bool show_file_dialog_load         = false;
@@ -36,18 +36,25 @@ static bool mesh_import_dialog_is_visible = false;
 static uint32_t mesh_import_dialog_flags  = 0;
 static string mesh_import_file_path;
 
-static void mesh_import_dialog_checkbox(const MeshOptions option, const char* label)
+static void mesh_import_dialog_checkbox(const MeshOptions option, const char* label, const char* tooltip = nullptr)
 {
     bool enabled = (mesh_import_dialog_flags & (1U << static_cast<uint32_t>(option))) != 0;
-    ImGui::Checkbox(label, &enabled);
 
-    if (enabled)
+    if (ImGui::Checkbox(label, &enabled))
     {
-        mesh_import_dialog_flags |= (1U << static_cast<uint32_t>(option));
+        if (enabled)
+        {
+            mesh_import_dialog_flags |= (1U << static_cast<uint32_t>(option));
+        }
+        else
+        {
+            mesh_import_dialog_flags &= ~(1U << static_cast<uint32_t>(option));
+        }
     }
-    else
+
+    if (tooltip != nullptr)
     {
-        mesh_import_dialog_flags &= ~(1U << static_cast<uint32_t>(option));
+        ImGui_SP::tooltip(tooltip);
     }
 }
 
@@ -61,16 +68,25 @@ static void mesh_import_dialog()
         ImGui::SetNextWindowPos(position, ImGuiCond_Appearing, pivot_center);
 
         // Begin
-        if (ImGui::Begin("Model Import Options", &mesh_import_dialog_is_visible, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse))
+        if (ImGui::Begin("Mesh import options", &mesh_import_dialog_is_visible, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse))
         {
-            // Option check boxes
-            mesh_import_dialog_checkbox(MeshOptions::CombineMeshes,       "Combine meshes");
-            mesh_import_dialog_checkbox(MeshOptions::RemoveRedundantData, "Remove redundant data");
-            mesh_import_dialog_checkbox(MeshOptions::ImportLights,        "Import lights");
-            mesh_import_dialog_checkbox(MeshOptions::NormalizeScale,      "Normalize scale");
+            mesh_import_dialog_checkbox(MeshOptions::RemoveRedundantData,
+                "Remove redundant data",
+                "Joins identical vertices, removes redundant materials, duplicate meshes, zeroed normals and invalid UVs.");
+
+            mesh_import_dialog_checkbox(MeshOptions::NormalizeScale,
+                "Normalize scale",
+                "Scales the mesh so that it's not bigger than a cubic unit."
+            );
+
+            mesh_import_dialog_checkbox(MeshOptions::CombineMeshes,
+                "Combine meshes",
+                "Joins some meshes, removes some nodes and pretransforms vertices.");
+
+            mesh_import_dialog_checkbox(MeshOptions::ImportLights, "Import lights");
 
             // Ok button
-            if (imgui_sp::button_centered_on_line("Ok", 0.5f))
+            if (ImGui_SP::button_centered_on_line("Ok", 0.5f))
             {
                 EditorHelper::LoadMesh(mesh_import_file_path, mesh_import_dialog_flags);
                 mesh_import_dialog_is_visible = false;
@@ -94,7 +110,7 @@ AssetViewer::AssetViewer(Editor* editor) : Widget(editor)
 
 void AssetViewer::TickVisible()
 {    
-    if (imgui_sp::button("Import"))
+    if (ImGui_SP::button("Import"))
     {
         show_file_dialog_load = true;
     }
@@ -118,7 +134,6 @@ void AssetViewer::ShowMeshImportDialog(const std::string& file_path)
 {
     if (FileSystem::IsSupportedModelFile(mesh_import_file_path))
     {
-
         mesh_import_dialog_is_visible = true;
         mesh_import_dialog_flags      = Mesh::GetDefaultFlags();
         mesh_import_file_path         = file_path;

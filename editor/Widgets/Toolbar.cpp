@@ -67,7 +67,7 @@ void Toolbar::TickAlways()
     {
         ImGui::SameLine();
         ImGui::PushStyleColor(ImGuiCol_Button, get_visibility() ? ImGui::GetStyle().Colors[ImGuiCol_ButtonActive] : ImGui::GetStyle().Colors[ImGuiCol_Button]);
-        if (imgui_sp::image_button(0, nullptr, icon_type, m_button_size, false))
+        if (ImGui_SP::image_button(0, nullptr, icon_type, m_button_size, false))
         {
             on_press();
         }
@@ -93,7 +93,7 @@ void Toolbar::TickAlways()
     // RenderDoc button
     ImGui::SameLine();
     ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyle().Colors[ImGuiCol_Button]);
-    if (imgui_sp::image_button(0, nullptr, IconType::Button_RenderDoc, m_button_size, false))
+    if (ImGui_SP::image_button(0, nullptr, IconType::Button_RenderDoc, m_button_size, false))
     {
         if (m_context->GetSystem<Spartan::Renderer>()->IsRenderDocEnabled())
         {
@@ -104,6 +104,6 @@ void Toolbar::TickAlways()
             SP_LOG_WARNING("RenderDoc integration is disabled. To enable, go to \"RHI_Implemenation.h\", and set \"renderdoc\" to \"true\"");
         }
     }
-    imgui_sp::tooltip("Captures the next frame and then launches RenderDoc");
+    ImGui_SP::tooltip("Captures the next frame and then launches RenderDoc");
     ImGui::PopStyleColor();
 }
