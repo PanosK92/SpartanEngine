@@ -62,25 +62,32 @@ namespace Spartan
 
         // Arguments
         {
-            // This would be nice but if enabled, it forces you to use extension SPV_GOOGLE_user_type, which I can't seem to enable.
-            // Search for "-fspv-reflect" here: https://github.com/microsoft/DirectXShaderCompiler/blob/main/docs/SPIR-V.rst#hlsl-types
             // arguments.emplace_back("-fspv-reflect"); // Emit additional SPIR-V instructions to aid reflection
+            // Can this be helpful in some way ? It forces the use of "SPV_GOOGLE_user_type" extension.
+            // For more search for "-fspv-reflect" here: https://github.com/microsoft/DirectXShaderCompiler/blob/main/docs/SPIR-V.rst#hlsl-types
 
             arguments.emplace_back("-E"); arguments.emplace_back(GetEntryPoint());
             arguments.emplace_back("-T"); arguments.emplace_back(GetTargetProfile());
-            arguments.emplace_back("-spirv");                                                                                                      // Generate SPIR-V code
-            arguments.emplace_back("-fspv-target-env=vulkan1.3");                                                                                  // Specify the target environment: vulkan1.0 (default), vulkan1.1, vulkan1.1spirv1.4, vulkan1.2, vulkan1.3, or universal1.5
+
+            // SPIR-V
+            arguments.emplace_back("-spirv");                     // Generate SPIR-V code
+            arguments.emplace_back("-fspv-target-env=vulkan1.3"); // Specify the target environment: vulkan1.0 (default), vulkan1.1, vulkan1.1spirv1.4, vulkan1.2, vulkan1.3, or universal1.5
+
+            // Shift registers to avoid conflicts
             arguments.emplace_back("-fvk-u-shift"); arguments.emplace_back(to_string(rhi_shader_shift_register_u)); arguments.emplace_back("all"); // Specify Vulkan binding number shift for u-type (read/write buffer) register
             arguments.emplace_back("-fvk-b-shift"); arguments.emplace_back(to_string(rhi_shader_shift_register_b)); arguments.emplace_back("all"); // Specify Vulkan binding number shift for b-type (buffer) register
             arguments.emplace_back("-fvk-t-shift"); arguments.emplace_back(to_string(rhi_shader_shift_register_t)); arguments.emplace_back("all"); // Specify Vulkan binding number shift for t-type (texture) register
             arguments.emplace_back("-fvk-s-shift"); arguments.emplace_back(to_string(rhi_shader_shift_register_s)); arguments.emplace_back("all"); // Specify Vulkan binding number shift for s-type (sampler) register
-            arguments.emplace_back("-fvk-use-dx-layout");                                                                                          // Use DirectX memory layout for Vulkan resources
-            arguments.emplace_back("-fvk-use-dx-position-w");                                                                                      // Reciprocate SV_Position.w after reading from stage input in PS to accommodate the difference between Vulkan and DirectX
-            arguments.emplace_back("-flegacy-macro-expansion");                                                                                    // Expand the operands before performing token-pasting operation (fxc behavior)
+
+            // Use DirectX conventions
+            arguments.emplace_back("-fvk-use-dx-layout");     // Use DirectX memory layout for Vulkan resources
+            arguments.emplace_back("-fvk-use-dx-position-w"); // Reciprocate SV_Position.w after reading from stage input in PS to accommodate the difference between Vulkan and DirectX
+
+            // Debug: Disable optimizations and embed HLSL source in the shaders
             #ifdef DEBUG
-            arguments.emplace_back("-Od");                                                                                                         // Disable optimizations
-            arguments.emplace_back("-Zi");                                                                                                         // Enable debug information
-            arguments.emplace_back("-Qembed_debug");                                                                                               // Embed PDB in shader container (must be used with /Zi)
+            arguments.emplace_back("-Od");           // Disable optimizations
+            arguments.emplace_back("-Zi");           // Enable debug information
+            arguments.emplace_back("-Qembed_debug"); // Embed PDB in shader container (must be used with /Zi)
             #endif
 
             // Negate SV_Position.y before writing to stage output in VS/DS/GS to accommodate Vulkan's coordinate system
