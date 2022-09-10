@@ -229,10 +229,8 @@ namespace Spartan
         }
 
         // Find a physical device
-        {
-            SP_ASSERT_MSG(DetectPhysicalDevices(), "Failed to detect any devices");
-            SP_ASSERT_MSG(SelectPrimaryPhysicalDevice(), "Failed to find a suitable device");
-        }
+        SP_ASSERT_MSG(DetectPhysicalDevices(),       "Failed to detect any devices");
+        SP_ASSERT_MSG(SelectPrimaryPhysicalDevice(), "Failed to find a suitable device");
 
         // Device
         {
@@ -356,6 +354,12 @@ namespace Spartan
                     if (features_supported_1_3.subgroupSizeControl == VK_TRUE)
                     {
                         device_features_to_enable_1_3.subgroupSizeControl = VK_TRUE;
+                    }
+
+                    // Wave64 - FSR 2.0 will opt for it (for performance), but it's not a requirement, so don't assert on this one.
+                    if (features_supported_1_3.shaderDemoteToHelperInvocation == VK_TRUE)
+                    {
+                        device_features_to_enable_1_3.shaderDemoteToHelperInvocation = VK_TRUE;
                     }
                 }
             }
