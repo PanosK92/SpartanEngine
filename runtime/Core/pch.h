@@ -47,6 +47,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <vector>
 #include <iostream>
 #include <cstdarg>
+#include <thread>
+#include <condition_variable>
 //======================
 
 //= RUNTIME ====================
@@ -76,3 +78,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Math/Plane.h"
 #include "../Math/MathHelper.h"
 //==============================
+
+#if !defined(_MSC_VER)
+    #define FFX_GCC
+#endif
+

@@ -75,8 +75,8 @@ namespace Spartan
         RHI_CommandList* m_cmd_list = nullptr;
 
         // CPU timing
-        std::chrono::steady_clock::time_point m_start;
-        std::chrono::steady_clock::time_point m_end;
+        std::chrono::high_resolution_clock::time_point m_start;
+        std::chrono::high_resolution_clock::time_point m_end;
     
         // GPU timing
         void* m_query_start = nullptr;

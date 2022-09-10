@@ -113,10 +113,10 @@ void TextureViewer::TickVisible()
         {
             // Information
             ImGui::BeginGroup();
-            ImGui::Text(("Name: " + texture->GetName()).c_str());
-            ImGui::Text(("Dimensions: " + to_string(texture->GetWidth()) + "x" + to_string(texture->GetHeight())).c_str());
-            ImGui::Text(("Channels: " + to_string(texture->GetChannelCount())).c_str());
-            ImGui::Text(("Format: " + rhi_format_to_string(texture->GetFormat())).c_str());
+            ImGui::Text("Name: %s",          texture->GetName().c_str());
+            ImGui::Text("Dimensions: %dx%d", texture->GetWidth(), texture->GetHeight());
+            ImGui::Text("Channels: %d",      texture->GetChannelCount());
+            ImGui::Text("Format: %s",        string(rhi_format_to_string(texture->GetFormat())).c_str());
             ImGui::EndGroup();
 
             // Channels
