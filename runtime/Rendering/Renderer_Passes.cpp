@@ -106,7 +106,7 @@ namespace Spartan
         else // Render frame
         {
             // Update frame constant buffer
-            Pass_UpdateFrameBuffer(cmd_list);
+            Update_Cb_Frame(cmd_list);
 
             // Generate brdf specular lut
             if (!m_brdf_specular_lut_rendered)
@@ -181,21 +181,6 @@ namespace Spartan
         // No further rendering is done on this render target, which is the final output.
         // However, ImGui will display it within the viewport, so the appropriate layout has to be set.
         rt_output->SetLayout(RHI_Image_Layout::Shader_Read_Only_Optimal, cmd_list);
-    }
-
-    void Renderer::Pass_UpdateFrameBuffer(RHI_CommandList* cmd_list)
-    {
-        // Define pipeline state
-        static RHI_PipelineState pso;
-
-        cmd_list->BeginMarker("update_frame_buffer");
-
-        // Set pipeline state
-        cmd_list->SetPipelineState(pso);
-
-        Update_Cb_Frame(cmd_list);
-
-        cmd_list->EndMarker();
     }
 
     void Renderer::Pass_ShadowMaps(RHI_CommandList* cmd_list, const bool is_transparent_pass)

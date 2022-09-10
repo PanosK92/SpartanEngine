@@ -163,7 +163,6 @@ namespace Spartan
 
         // Passes
         void Pass_Main(RHI_CommandList* cmd_list);
-        void Pass_UpdateFrameBuffer(RHI_CommandList* cmd_list);
         void Pass_ShadowMaps(RHI_CommandList* cmd_list, const bool is_transparent_pass);
         void Pass_ReflectionProbes(RHI_CommandList* cmd_list);
         void Pass_Depth_Prepass(RHI_CommandList* cmd_list);
