@@ -130,6 +130,15 @@ namespace Spartan
 
     RHI_Device::RHI_Device(Context* context, shared_ptr<RHI_Context> rhi_context)
     {
+#ifdef DEBUG
+        // Add validation related extensions
+        rhi_context->validation_extensions.emplace_back(VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT);
+        rhi_context->validation_extensions.emplace_back(VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT);
+        // Add debugging related extensions
+        rhi_context->extensions_instance.emplace_back("VK_EXT_debug_report");
+        rhi_context->extensions_instance.emplace_back("VK_EXT_debug_utils");
+#endif
+
         m_context     = context;
         m_rhi_context = rhi_context;
 
