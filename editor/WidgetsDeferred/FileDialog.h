@@ -245,7 +245,7 @@ private:
 
     // Internal
     mutable uint64_t m_context_menu_id;
-    mutable imgui_sp::DragDropPayload m_drag_drop_payload;
+    mutable ImGui_SP::DragDropPayload m_drag_drop_payload;
     float m_offset_bottom = 0.0f;
     FileDialog_Type m_type;
     FileDialog_Operation m_operation;

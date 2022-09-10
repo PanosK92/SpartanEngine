@@ -206,7 +206,7 @@ Editor::Editor()
 
         // Initialization of some helper static classes
         IconProvider::Initialize(m_context);
-        EditorHelper::Initialize(m_context);
+        EditorHelper::Initialize(this, m_context);
 
         // Create all ImGui widgets
         m_widgets.emplace_back(make_shared<Console>(this));

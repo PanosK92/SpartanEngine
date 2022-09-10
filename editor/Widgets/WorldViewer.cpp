@@ -46,7 +46,7 @@ using namespace std;
 using namespace Spartan;
 //=======================
 
-static imgui_sp::DragDropPayload g_payload;
+static ImGui_SP::DragDropPayload g_payload;
 static bool popup_rename_entity = false;
 static World* world             = nullptr;
 static Input* input             = nullptr;
@@ -86,13 +86,13 @@ void WorldViewer::TickVisible()
     if (is_default_world_window_visible)
     {
         // Show a yes/no window
-        imgui_sp::ButtonPress button_press = imgui_sp::window_yes_no("Default World", "Would you like to load a default world?");
+        ImGui_SP::ButtonPress button_press = ImGui_SP::window_yes_no("Default World", "Would you like to load a default world?");
 
         // Stay visible for as long a selection hasn't been made
-        is_default_world_window_visible = (button_press == imgui_sp::ButtonPress::Undefined);
+        is_default_world_window_visible = (button_press == ImGui_SP::ButtonPress::Undefined);
 
         // On yes, load the default world
-        if (button_press == imgui_sp::ButtonPress::Yes)
+        if (button_press == ImGui_SP::ButtonPress::Yes)
         {
             ThreadPool::AddTask([]()
             {
@@ -109,7 +109,7 @@ void WorldViewer::TreeShow()
     if (ImGui::TreeNodeEx("Root", ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanFullWidth))
     {
         // Dropping on the scene node should unparent the entity
-        if (auto payload = imgui_sp::receive_drag_drop_payload(imgui_sp::DragPayloadType::Entity))
+        if (auto payload = ImGui_SP::receive_drag_drop_payload(ImGui_SP::DragPayloadType::Entity))
         {
             const uint64_t entity_id = get<uint64_t>(payload->data);
             if (const shared_ptr<Entity>& dropped_entity = world->GetEntityById(entity_id))
@@ -275,12 +275,12 @@ void WorldViewer::EntityHandleDragDrop(Entity* entity_ptr) const
     if (ImGui::BeginDragDropSource())
     {
         g_payload.data = entity_ptr->GetObjectId();
-        g_payload.type = imgui_sp::DragPayloadType::Entity;
-        imgui_sp::create_drag_drop_paylod(g_payload);
+        g_payload.type = ImGui_SP::DragPayloadType::Entity;
+        ImGui_SP::create_drag_drop_paylod(g_payload);
         ImGui::EndDragDropSource();
     }
     // Drop
-    if (auto payload = imgui_sp::receive_drag_drop_payload(imgui_sp::DragPayloadType::Entity))
+    if (auto payload = ImGui_SP::receive_drag_drop_payload(ImGui_SP::DragPayloadType::Entity))
     {
         const uint64_t entity_id = get<uint64_t>(payload->data);
         if (const shared_ptr<Entity>& dropped_entity = world->GetEntityById(entity_id))
@@ -488,7 +488,7 @@ void WorldViewer::PopupEntityRename() const
         ImGui::InputText("##edit", &name);
         selectedentity->SetName(string(name));
 
-        if (imgui_sp::button("Ok"))
+        if (ImGui_SP::button("Ok"))
         { 
             ImGui::CloseCurrentPopup();
             ImGui::EndPopup();

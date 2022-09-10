@@ -217,8 +217,7 @@ namespace Spartan
     uint32_t Mesh::GetDefaultFlags()
     {
         return
-            (1U << static_cast<uint32_t>(MeshOptions::RemoveRedundantData)) |
-            (1U << static_cast<uint32_t>(MeshOptions::NormalizeScale));
+            (1U << static_cast<uint32_t>(MeshOptions::RemoveRedundantData));
     }
     
     float Mesh::ComputeNormalizedScale()

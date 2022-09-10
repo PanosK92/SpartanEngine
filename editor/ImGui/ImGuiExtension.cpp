@@ -21,13 +21,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==============
 #include "ImGuiExtension.h"
+#include "../Editor.h"
 //=========================
 
-//= NAMESPACES ==========
+//= NAMESPACES =========
 using namespace std;
 using namespace Spartan;
-//=======================
+//======================
 
+Editor*           EditorHelper::editor             = nullptr;
 Context*          EditorHelper::context            = nullptr;
 World*            EditorHelper::world              = nullptr;
 Renderer*         EditorHelper::renderer           = nullptr;
