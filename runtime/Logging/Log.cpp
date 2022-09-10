@@ -102,7 +102,7 @@ namespace Spartan
         auto tm = *localtime(&t);
         ostringstream oss;
         oss << std::put_time(&tm, "[%H:%M:%S]");
-        const string final_text    = oss.str() + ": " + string(text);
+        const string final_text = oss.str() + ": " + string(text);
 
         // Log to file if requested or if an in-engine logger is not available.
         if (log_to_file || !logger)
@@ -119,7 +119,7 @@ namespace Spartan
             {
                 for (const LogCmd& log : logs)
                 {
-                    logger->Log(log.text, static_cast<uint32_t>(type));
+                    logger->Log(log.text, static_cast<uint32_t>(log.type));
                 }
                 logs.clear();
             }
