@@ -37,7 +37,6 @@ namespace Spartan
         void SetSize(const uint32_t width, const uint32_t height);
         uint32_t GetWidth();
         uint32_t GetHeight();
-        void* GetHandle();
         void* GetHandleSDL() const { return m_window; }
         bool WantsToClose()  const { return m_close; }
         bool IsMinimised()   const { return m_minimised; }

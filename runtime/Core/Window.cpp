@@ -298,16 +298,6 @@ namespace Spartan
         return static_cast<uint32_t>(height);
     }
 
-    void* Window::GetHandle()
-    {
-        SP_ASSERT(m_window != nullptr);
-
-        SDL_SysWMinfo sys_info;
-        SDL_VERSION(&sys_info.version);
-        SDL_GetWindowWMInfo(m_window, &sys_info);
-        return static_cast<void*>(sys_info.info.win.window);
-    }
-
     void Window::CreateAndShowSplashScreen()
     {
         // Load banner image - todo: remove hardcoded path
