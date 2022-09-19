@@ -23,8 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =======
 SP_WARNINGS_OFF
-#include <atlbase.h>
-#include <dxcapi.h>
+#include <dxc/dxcapi.h>
 SP_WARNINGS_ON
 //==================
 
