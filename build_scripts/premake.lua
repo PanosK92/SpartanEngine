@@ -142,7 +142,7 @@ project (RUNTIME_PROJECT_NAME)
 	pchsource "../runtime/Core/pch.cpp" -- Actual file path of the source file.
 
 	-- Includes
-	includedirs { "../third_party/directx_shader_compiler" }
+	includedirs { "../third_party/" }
 	includedirs { "../third_party/assimp" }
 	includedirs { "../third_party/bullet" }
 	includedirs { "../third_party/fmod" }
