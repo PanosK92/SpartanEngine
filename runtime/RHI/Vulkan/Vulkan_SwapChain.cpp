@@ -30,6 +30,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_CommandPool.h"
 #include "../../Profiling/Profiler.h"
 #include "../../Rendering/Renderer.h"
+
+#include <SDL/SDL.h>
+#include <SDL/SDL_vulkan.h>
 //===================================
 
 //= NAMESPACES ===============
@@ -143,26 +146,9 @@ namespace Spartan
             // Create surface
             VkSurfaceKHR surface = nullptr;
             {
-#if defined(_MSC_VER)
-                VkWin32SurfaceCreateInfoKHR create_info = {};
-                create_info.sType                       = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
-                create_info.pNext                       = nullptr;
-                create_info.flags                       = 0;
-                create_info.hinstance                   = GetModuleHandle(nullptr);
-                create_info.hwnd                        = static_cast<HWND>(window_handle);
-
-                SP_ASSERT_MSG(vkCreateWin32SurfaceKHR(rhi_device->GetRhiContext()->instance, &create_info, nullptr, &surface) == VK_SUCCESS,
-                    "Failed to created Win32 surface");
-#else
-                VkXcbSurfaceCreateInfoKHR create_info = {};
-                create_info.sType                     = VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR;
-                create_info.pNext                     = nullptr;
-                create_info.flags                     = nullptr;
-                create_info.connection                = nullptr;
-                create_info.window                    = nullptr;
-
-                SP_ASSERT_MSG(false, "Not implemented");
-#endif
+                SDL_Window* sdl_window = static_cast<SDL_Window*>(window_handle);
+                auto result = SDL_Vulkan_CreateSurface(sdl_window, rhi_device->GetRhiContext()->instance, &surface) == true;
+                SP_ASSERT_MSG(result, "Failed to created window surface");
 
                 VkBool32 present_support = false;
 
