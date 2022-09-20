@@ -70,7 +70,7 @@ namespace Spartan
         m_cb_light_gpu->Create<Cb_Light>(offset_count);
 
         m_cb_material_gpu = make_shared<RHI_ConstantBuffer>(m_rhi_device.get(), "material");
-        m_cb_material_gpu->Create<Cb_Material>(offset_count);
+        m_cb_material_gpu->Create<Cb_Material>(4096); // Nvidia failed to allocate beyond this point
     }
 
     void Renderer::CreateStructuredBuffers()
