@@ -320,6 +320,7 @@ namespace Spartan
             }
 
             // Crash if I delete this, am I missing something ?
+            // Is DxcBuffer releasing it ?
             //delete blob_encoding;
 
             return dxc_result;

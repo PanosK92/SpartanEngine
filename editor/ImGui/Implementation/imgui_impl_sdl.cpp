@@ -385,7 +385,7 @@ bool ImGui_ImplSDL2_Init(Spartan::Context* context)
 
     // Initialise some ImGui stuff
     bd->Window         = static_cast<SDL_Window*>(context->GetSystem<Spartan::Window>()->GetHandleSDL());
-    bd->UseVulkan      = false; // settings this to true can cause SDL_CreateWindow to return null, complaining that Vulkan is not setup.
+    bd->UseVulkan      = true; // we are using SDL_Vulkan_CreateSurface so the window needs the SDL_WINDOW_VULKAN flag
     bd->engine_context = context;
 
     io.SetClipboardTextFn = ImGui_ImplSDL2_SetClipboardText;
