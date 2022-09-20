@@ -307,8 +307,6 @@ namespace Spartan
                 IID_PPV_ARGS(&dxc_result)                        // IDxcResult: status, buffer, and errors
             );
 
-            delete blob_encoding;
-
             // Check for errors
             if (!error_check(dxc_result))
             {
@@ -320,6 +318,9 @@ namespace Spartan
                     dxc_result = nullptr;
                 }
             }
+
+            // Crash if I delete this, am I missing something ?
+            //delete blob_encoding;
 
             return dxc_result;
         }

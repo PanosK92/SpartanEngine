@@ -30,7 +30,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_CommandPool.h"
 #include "../../Profiling/Profiler.h"
 #include "../../Rendering/Renderer.h"
-
 #include <SDL/SDL.h>
 #include <SDL/SDL_vulkan.h>
 //===================================
@@ -147,11 +146,9 @@ namespace Spartan
             VkSurfaceKHR surface = nullptr;
             {
                 SDL_Window* sdl_window = static_cast<SDL_Window*>(window_handle);
-                auto result = SDL_Vulkan_CreateSurface(sdl_window, rhi_device->GetRhiContext()->instance, &surface) == true;
-                SP_ASSERT_MSG(result, "Failed to created window surface");
+                SP_ASSERT_MSG(SDL_Vulkan_CreateSurface(sdl_window, rhi_device->GetRhiContext()->instance, &surface), "Failed to created window surface");
 
                 VkBool32 present_support = false;
-
                 SP_ASSERT_MSG(vkGetPhysicalDeviceSurfaceSupportKHR(
                         rhi_context->device_physical,
                         rhi_device->GetQueueIndex(RHI_Queue_Type::Graphics),
@@ -341,7 +338,7 @@ namespace Spartan
         m_height        = height;
         m_window_handle = window_handle;
         m_flags         = flags;
-        m_name   = name;
+        m_name          = name;
 
         create
         (

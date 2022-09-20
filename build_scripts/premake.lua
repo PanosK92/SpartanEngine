@@ -148,7 +148,6 @@ project (RUNTIME_PROJECT_NAME)
 	includedirs { "../third_party/fmod" }
 	includedirs { "../third_party/free_image" }
 	includedirs { "../third_party/free_type" }
-	includedirs { "../third_party/sdl" }
     includedirs { "../third_party/compressonator" }
 	includedirs { "../third_party/renderdoc" }
 	includedirs { "../third_party/pugixml" }
@@ -214,7 +213,7 @@ project (EDITOR_PROJECT_NAME)
 	includedirs { RUNTIME_DIR }
 	includedirs { RUNTIME_DIR .. "/Core" }     -- This is here because the runtime uses it
 	includedirs { "../third_party/free_type" } -- Used to rasterise the ImGui font atlas
-	includedirs { "../third_party/sdl" }       -- Used by ImGui to create windows
+	includedirs { "../third_party" }       	   -- SDL, used by ImGui to create windows
 
 	-- Libraries
 	libdirs (LIBRARY_DIR)
