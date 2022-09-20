@@ -23,8 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =======
 SP_WARNINGS_OFF
-#include <atlbase.h>
-#include <dxcapi.h>
+#include <dxc/dxcapi.h>
 SP_WARNINGS_ON
 //==================
 
@@ -206,7 +205,7 @@ namespace Spartan
       -W[no-]<warning> Enable/Disable the specified warning
     */
 
-    inline bool error_check(IDxcResult* dxc_result)
+    static bool error_check(IDxcResult* dxc_result)
     {
         // Get error buffer
         IDxcBlobEncoding* error_buffer = nullptr;
@@ -258,11 +257,17 @@ namespace Spartan
             DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&m_compiler));;
         }
 
+        ~DirecXShaderCompiler()
+        {
+            delete m_utils;
+            delete m_compiler;
+        }
+
         IDxcResult* Compile(const std::string& source, std::vector<std::string>& arguments)
         {
             // Get shader source
             DxcBuffer dxc_buffer = {};
-            CComPtr<IDxcBlobEncoding> blob_encoding = nullptr;
+            IDxcBlobEncoding* blob_encoding = nullptr;
             {
                 if (FAILED(m_utils->CreateBlobFromPinned(source.c_str(), static_cast<uint32_t>(source.size()), CP_UTF8, &blob_encoding)))
                 {
@@ -314,6 +319,10 @@ namespace Spartan
                 }
             }
 
+            // Crash if I delete this, am I missing something ?
+            // Is DxcBuffer releasing it ?
+            //delete blob_encoding;
+
             return dxc_result;
         }
 
@@ -324,7 +333,7 @@ namespace Spartan
         }
 
     private:
-        CComPtr<IDxcUtils> m_utils        = nullptr;
-        CComPtr<IDxcCompiler3> m_compiler = nullptr;
+        IDxcUtils* m_utils        = nullptr;
+        IDxcCompiler3* m_compiler = nullptr;
     };
 }

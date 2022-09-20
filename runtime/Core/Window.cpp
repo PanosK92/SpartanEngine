@@ -69,9 +69,14 @@ namespace Spartan
         // Show a splash screen
         CreateAndShowSplashScreen();
 
+        // Set window flags
+        uint32_t flags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_MAXIMIZED;
+
+        // If the swapchain surface is created using SDL_Vulkan_CreateSurface(), then the window needs this flag.
+        flags |= SDL_WINDOW_VULKAN;
+
         // Create window
         m_title        = "Spartan " + to_string(sp_version_major) + "." + to_string(sp_version_minor) + "." + to_string(sp_version_revision);
-        uint32_t flags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_MAXIMIZED;
         m_window       = SDL_CreateWindow(
             m_title.c_str(),         // window title
             SDL_WINDOWPOS_UNDEFINED, // initial x position
@@ -296,16 +301,6 @@ namespace Spartan
         int height = 0;
         SDL_GetWindowSize(m_window, nullptr, &height);
         return static_cast<uint32_t>(height);
-    }
-
-    void* Window::GetHandle()
-    {
-        SP_ASSERT(m_window != nullptr);
-
-        SDL_SysWMinfo sys_info;
-        SDL_VERSION(&sys_info.version);
-        SDL_GetWindowWMInfo(m_window, &sys_info);
-        return static_cast<void*>(sys_info.info.win.window);
     }
 
     void Window::CreateAndShowSplashScreen()
