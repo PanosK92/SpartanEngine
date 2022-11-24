@@ -40,7 +40,7 @@
 /// FidelityFX Super Resolution 2 patch version.
 ///
 /// @ingroup FSR2
-#define FFX_FSR2_VERSION_PATCH      (0)
+#define FFX_FSR2_VERSION_PATCH      (2)
 
 /// The size of the context specified in 32bit values.
 ///
