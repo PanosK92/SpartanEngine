@@ -1881,9 +1881,6 @@ namespace Spartan
     {
         cmd_list->BeginTimeblock("amd_ffx_fsr2");
 
-        // Get sharpness value
-        float sharpness = GetOption<float>(RendererOption::Sharpness);
-
         RHI_FSR2::Dispatch(
             cmd_list,
             tex_in,

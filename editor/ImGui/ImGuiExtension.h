@@ -49,6 +49,7 @@ public:
         context  = context_;
         world    = context->GetSystem<Spartan::World>();
         renderer = context->GetSystem<Spartan::Renderer>();
+        input    = context->GetSystem<Spartan::Input>();
     }
 
     static void LoadMesh(const std::string& file_path, const uint32_t load_flags)

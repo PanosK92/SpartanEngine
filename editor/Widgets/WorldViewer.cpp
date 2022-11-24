@@ -474,19 +474,18 @@ void WorldViewer::PopupEntityRename() const
 
     if (ImGui::BeginPopup("##RenameEntity"))
     {
-        auto selectedentity = EditorHelper::selected_entity.lock();
-        if (!selectedentity)
+        auto selected_entity = EditorHelper::selected_entity.lock();
+        if (!selected_entity)
         {
             ImGui::CloseCurrentPopup();
             ImGui::EndPopup();
             return;
         }
 
-        auto name = selectedentity->GetName();
-
+        string name = selected_entity->GetName();
         ImGui::Text("Name:");
         ImGui::InputText("##edit", &name);
-        selectedentity->SetName(string(name));
+        selected_entity->SetName(string(name));
 
         if (ImGui_SP::button("Ok"))
         { 
