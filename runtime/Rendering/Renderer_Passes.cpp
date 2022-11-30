@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ========================================
+//= INCLUDES ===================================
 #include "pch.h"
 #include "Renderer.h"
 #include "Grid.h"
@@ -32,7 +32,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World/Components/Renderable.h"
 #include "../World/Components/ReflectionProbe.h"
 #include "../World/World.h"
-#include "../World/TransformHandle/TransformHandle.h"
 #include "../RHI/RHI_CommandList.h"
 #include "../RHI/RHI_Implementation.h"
 #include "../RHI/RHI_VertexBuffer.h"
@@ -43,7 +42,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_Shader.h"
 #include "../RHI/RHI_FSR2.h"
 #include "../RHI/RHI_StructuredBuffer.h"
-//===================================================
+//==============================================
 
 //= NAMESPACES ===============
 using namespace std;
@@ -174,7 +173,6 @@ namespace Spartan
         // Editor related stuff - Passes that render on top of each other
         Pass_DebugMeshes(cmd_list, rt_output);
         Pass_Outline(cmd_list, rt_output);
-        Pass_TransformHandle(cmd_list, rt_output);
         Pass_Icons(cmd_list, rt_output);
         Pass_PeformanceMetrics(cmd_list, rt_output);
 
@@ -1994,102 +1992,6 @@ namespace Spartan
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::Pass_TransformHandle(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
-    {
-        if (!GetOption<bool>(RendererOption::Debug_TransformHandle))
-            return;
-
-        // Acquire shaders
-        RHI_Shader* shader_v = shader(RendererShader::Entity_V).get();
-        RHI_Shader* shader_p = shader(RendererShader::Entity_Transform_P).get();
-        if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
-            return;
-
-        // Get transform handle (can be null during engine startup)
-        shared_ptr<TransformHandle> transform_handle = m_context->GetSystem<World>()->GetTransformHandle();
-        if (!transform_handle || !transform_handle->ShouldRender())
-            return;
-
-        // The rotation transform, draws line primitives, it doesn't have a model that needs to be rendered here.
-        bool needs_to_render = transform_handle->GetVertexBuffer() != nullptr;
-        if (!needs_to_render)
-            return;
-
-        cmd_list->BeginTimeblock("transform_handle");
-
-       // Set render state
-       static RHI_PipelineState pso;
-       pso.shader_vertex                   = shader_v;
-       pso.shader_pixel                    = shader_p;
-       pso.rasterizer_state                = m_rasterizer_cull_back_solid.get();
-       pso.blend_state                     = m_blend_alpha.get();
-       pso.depth_stencil_state             = m_depth_stencil_off_off.get();
-       pso.render_target_color_textures[0] = tex_out;
-       pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
-       pso.viewport                        = tex_out->GetViewport();
-
-       // Axis - X
-       cmd_list->SetPipelineState(pso);
-       cmd_list->BeginRenderPass();
-       {
-           m_cb_uber_cpu.transform = transform_handle->GetHandle()->GetTransform(Vector3::Right);
-           m_cb_uber_cpu.float3    = transform_handle->GetHandle()->GetColor(Vector3::Right);
-           Update_Cb_Uber(cmd_list);
-       
-           cmd_list->SetBufferIndex(transform_handle->GetIndexBuffer());
-           cmd_list->SetBufferVertex(transform_handle->GetVertexBuffer());
-           cmd_list->DrawIndexed(transform_handle->GetIndexCount());
-           cmd_list->EndRenderPass();
-       }
-       
-       // Axis - Y
-       cmd_list->SetPipelineState(pso);
-       cmd_list->BeginRenderPass();
-       {
-           m_cb_uber_cpu.transform = transform_handle->GetHandle()->GetTransform(Vector3::Up);
-           m_cb_uber_cpu.float3    = transform_handle->GetHandle()->GetColor(Vector3::Up);
-           Update_Cb_Uber(cmd_list);
-
-           cmd_list->SetBufferIndex(transform_handle->GetIndexBuffer());
-           cmd_list->SetBufferVertex(transform_handle->GetVertexBuffer());
-           cmd_list->DrawIndexed(transform_handle->GetIndexCount());
-           cmd_list->EndRenderPass();
-       }
-       
-       // Axis - Z
-       cmd_list->SetPipelineState(pso);
-       cmd_list->BeginRenderPass();
-       {
-           m_cb_uber_cpu.transform = transform_handle->GetHandle()->GetTransform(Vector3::Forward);
-           m_cb_uber_cpu.float3    = transform_handle->GetHandle()->GetColor(Vector3::Forward);
-           Update_Cb_Uber(cmd_list);
-
-           cmd_list->SetBufferIndex(transform_handle->GetIndexBuffer());
-           cmd_list->SetBufferVertex(transform_handle->GetVertexBuffer());
-           cmd_list->DrawIndexed(transform_handle->GetIndexCount());
-           cmd_list->EndRenderPass();
-       }
-       
-       // Axes - XYZ
-       if (transform_handle->DrawXYZ())
-       {
-           cmd_list->SetPipelineState(pso);
-           cmd_list->BeginRenderPass();
-           {
-               m_cb_uber_cpu.transform = transform_handle->GetHandle()->GetTransform(Vector3::One);
-               m_cb_uber_cpu.float3    = transform_handle->GetHandle()->GetColor(Vector3::One);
-               Update_Cb_Uber(cmd_list);
-
-               cmd_list->SetBufferIndex(transform_handle->GetIndexBuffer());
-               cmd_list->SetBufferVertex(transform_handle->GetVertexBuffer());
-               cmd_list->DrawIndexed(transform_handle->GetIndexCount());
-               cmd_list->EndRenderPass();
-           }
-       }
-
-        cmd_list->EndTimeblock();
-    }
-
     void Renderer::Pass_DebugMeshes(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
     {
         if (!GetOption<bool>(RendererOption::Debug_ReflectionProbes))
@@ -2158,7 +2060,7 @@ namespace Spartan
 
         cmd_list->BeginTimeblock("outline");
 
-        if (const Entity* entity = m_context->GetSystem<World>()->GetTransformHandle()->GetSelectedEntity())
+        if (shared_ptr<Entity> entity = m_context->GetSystem<Renderer>()->GetCamera()->GetSelectedEntity())
         {
             // Get renderable
             const Renderable* renderable = entity->GetRenderable();

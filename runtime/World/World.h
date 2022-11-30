@@ -49,7 +49,6 @@ namespace Spartan
 
         //= ISubsystem =========================
         void OnInitialise() override;
-        void OnPostInitialise() override;
         void OnPreTick() override;
         void OnTick(double delta_time) override;
         //======================================
@@ -73,10 +72,6 @@ namespace Spartan
         void ActivateNewEntities();
         //======================================================================
 
-        // Transform handle
-        std::shared_ptr<TransformHandle> GetTransformHandle() { return m_transform_handle; }
-        float m_gizmo_transform_size  = 0.015f;
-
     private:
         void Clear();
         void _EntityRemove(Entity* entity);
@@ -90,7 +85,6 @@ namespace Spartan
         std::shared_ptr<Mesh> m_default_model_sponza          = nullptr;
         std::shared_ptr<Mesh> m_default_model_sponza_curtains = nullptr;
         std::shared_ptr<Mesh> m_default_model_car             = nullptr;
-        std::shared_ptr<TransformHandle> m_transform_handle   = nullptr;
         Input* m_input                                        = nullptr;
         Profiler* m_profiler                                  = nullptr;
 

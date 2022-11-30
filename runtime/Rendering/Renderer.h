@@ -183,7 +183,6 @@ namespace Spartan
         void Pass_DebugMeshes(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
         void Pass_Outline(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
         void Pass_Icons(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
-        void Pass_TransformHandle(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
         void Pass_PeformanceMetrics(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
         void Pass_BrdfSpecularLut(RHI_CommandList* cmd_list);
         void Pass_Copy(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out, const bool bilinear);

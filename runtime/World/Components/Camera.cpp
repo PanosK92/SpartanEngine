@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==================================
+//= INCLUDES ========================
 #include "pch.h"
 #include "Camera.h"
 #include "Transform.h"
@@ -30,8 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../IO/FileStream.h"
 #include "../../Rendering/Renderer.h"
 #include "../../Display/Display.h"
-#include "../TransformHandle/TransformHandle.h"
-//=============================================
+//===================================
 
 //= NAMESPACES ===============
 using namespace Spartan::Math;
@@ -169,11 +168,14 @@ namespace Spartan
         return m_frustum.IsVisible(center, extents);
     }
 
-    bool Camera::Pick(shared_ptr<Entity>& picked)
+    void Camera::Pick()
     {
         // Ensure the mouse is inside the viewport
         if (!m_input->GetMouseIsInViewport())
-            return false;
+        {
+            m_selected_entity = nullptr;
+            return;
+        }
 
         // Create mouse ray
         Vector3 ray_start     = GetTransform()->GetPosition();
@@ -214,13 +216,16 @@ namespace Spartan
 
         // Check if there are any hits
         if (hits.empty())
-            return false;
+        {
+            m_selected_entity = nullptr;
+            return;
+        }
 
         // If there is a single hit, return that
         if (hits.size() == 1)
         {
-            picked = hits.front().m_entity;
-            return true;
+            m_selected_entity = hits.front().m_entity;
+            return;
         }
 
         // If there are more hits, perform triangle intersection
@@ -252,13 +257,11 @@ namespace Spartan
                 
                 if (distance < distance_min)
                 {
-                    picked = hit.m_entity;
-                    distance_min = distance;
+                    m_selected_entity = hit.m_entity;
+                    distance_min      = distance;
                 }
             }
         }
-
-        return picked != nullptr;
     }
 
     Vector2 Camera::WorldToScreenCoordinates(const Vector3& position_world) const
@@ -328,6 +331,7 @@ namespace Spartan
         // FPS camera controls.
         // X-axis movement: W, A, S, D.
         // Y-axis movement: Q, E.
+        // Mouse look: Hold right click to enable.
         if (m_first_person_control_enabled)
         {
             ProcessInputFpsControl(delta_time);
@@ -500,7 +504,7 @@ namespace Spartan
         // Set focused entity as a lerp target
         if (m_input->GetKeyDown(KeyCode::F))
         {
-            if (Entity* entity = m_context->GetSystem<World>()->GetTransformHandle()->GetSelectedEntity())
+            if (shared_ptr<Entity> entity = m_context->GetSystem<Renderer>()->GetCamera()->GetSelectedEntity())
             {
                 SP_LOG_INFO("Focusing on entity \"%s\"...", entity->GetTransform()->GetEntity()->GetName().c_str());
 
@@ -563,7 +567,7 @@ namespace Spartan
 
     bool Camera::IsControledInFirstPerson() const
     {
-        return m_is_controlled_by_keyboard_mouse || m_input->IsControllerConnected();
+        return m_is_controlled_by_keyboard_mouse;
     }
 
     Matrix Camera::ComputeViewMatrix() const

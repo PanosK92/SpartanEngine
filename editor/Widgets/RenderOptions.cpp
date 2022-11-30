@@ -430,13 +430,7 @@ void RenderOptions::TickVisible()
 
             if (helper::Option("Gizmos", false))
             {
-                helper::CheckBox("Transform", debug_transform);
-                {
-                    ImGui::BeginDisabled(!debug_transform);
-                    helper::Float("Transform size",  m_context->GetSystem<World>()->m_gizmo_transform_size, 0.0025f);
-                    ImGui::EndDisabled();
-                }
-
+                helper::CheckBox("Transform",                           debug_transform);
                 helper::CheckBox("Selection outline",                   debug_selection_outline);
                 helper::CheckBox("Physics",                             debug_physics);
                 helper::CheckBox("AABBs - Axis-aligned bounding boxes", debug_aabb);
