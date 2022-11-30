@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =====================================
+//= INCLUDES ===============================
 #include <string>
 #include <variant>
 #include <chrono>
@@ -33,12 +33,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Input/Input.h"
 #include "World/World.h"
 #include "World/Components/Camera.h"
-#include "World/TransformHandle/TransformHandle.h"
 #include "Display/Display.h"
 #include "../WidgetsDeferred/IconProvider.h"
 #include "Source/imgui_internal.h"
 #include "../Editor.h"
-//================================================
+//==========================================
 
 class EditorHelper
 {
@@ -82,41 +81,11 @@ public:
         });
     }
 
-    static void PickEntity()
-    {
-        // If the transform handle hasn't finished editing don't do anything.
-        if (world->GetTransformHandle()->IsEditing())
-            return;
-
-        // Get camera
-        std::shared_ptr<Spartan::Camera> camera = renderer->GetCamera();
-        if (!camera)
-            return;
-
-        // Pick the world
-        std::shared_ptr<Spartan::Entity> entity;
-        camera->Pick(entity);
-
-        // Set the transform handle to the selected entity
-        SetSelectedEntity(entity);
-
-        // Fire callback
-        on_entity_selected();
-    }
-
-    static void SetSelectedEntity(const std::shared_ptr<Spartan::Entity>& entity)
-    {
-        // keep returned entity instead as the transform handle can decide to reject it
-        selected_entity = world->GetTransformHandle()->SetSelectedEntity(entity);
-    }
-
-    static Editor*                        editor;
-    static Spartan::Context*              context;
-    static Spartan::World*                world;
-    static Spartan::Renderer*             renderer;
-    static Spartan::Input*                input;
-    static std::function<void()>          on_entity_selected;
-    static std::weak_ptr<Spartan::Entity> selected_entity;
+    static Editor*            editor;
+    static Spartan::Context*  context;
+    static Spartan::World*    world;
+    static Spartan::Renderer* renderer;
+    static Spartan::Input*    input;
 };
 
 namespace ImGui_SP

@@ -78,7 +78,7 @@ namespace Spartan
         const Math::Ray& GetPickingRay() const { return m_ray; }
 
         // Picks the nearest entity under the mouse cursor
-        bool Pick(std::shared_ptr<Entity>& entity);
+        void Pick();
 
         // Converts a world point to a screen point
         Math::Vector2 WorldToScreenCoordinates(const Math::Vector3& position_world) const;
@@ -139,8 +139,9 @@ namespace Spartan
         bool IsControledInFirstPerson() const;
 
         // Misc
-        void MakeDirty()                                      { m_is_dirty = true; }
-
+        void MakeDirty() { m_is_dirty = true; }
+        void SetSelectedEntity(std::shared_ptr<Spartan::Entity> entity) { m_selected_entity = entity; }
+        std::shared_ptr<Spartan::Entity> GetSelectedEntity()            { return m_selected_entity; }
 
         Math::Matrix ComputeViewMatrix() const;
         Math::Matrix ComputeProjection(const bool reverse_z, const float near_plane = 0.0f, const float far_plane = 0.0f);
@@ -189,6 +190,7 @@ namespace Spartan
         Math::Ray m_ray;
         Math::Frustum m_frustum;
         std::vector<camera_bookmark> m_bookmarks;
+        std::shared_ptr<Spartan::Entity> m_selected_entity = nullptr;
 
         // Dependencies
         Renderer* m_renderer = nullptr;

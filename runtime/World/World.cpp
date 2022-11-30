@@ -33,7 +33,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Components/RigidBody.h"
 #include "Components/Collider.h"
 #include "Components/Terrain.h"
-#include "TransformHandle/TransformHandle.h"
 #include "../Resource/ResourceCache.h"
 #include "../IO/FileStream.h"
 #include "../Profiling/Profiler.h"
@@ -72,11 +71,6 @@ namespace Spartan
         m_profiler = m_context->GetSystem<Profiler>();
     }
 
-    void World::OnPostInitialise()
-    {
-        m_transform_handle = make_shared<TransformHandle>(m_context);
-    }
-
     void World::OnPreTick()
     {
         for (shared_ptr<Entity>& entity : m_entities)
@@ -90,14 +84,6 @@ namespace Spartan
         lock_guard lock(m_entity_access_mutex);
 
         SP_SCOPED_TIME_BLOCK(m_profiler);
-
-        if (Renderer* renderer = m_context->GetSystem<Renderer>())
-        {
-            if (renderer->GetOption<bool>(RendererOption::Debug_TransformHandle))
-            {
-                m_transform_handle->Tick(renderer->GetCamera().get(), m_gizmo_transform_size);
-            }
-        }
 
         // Tick entities
         {

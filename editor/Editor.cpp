@@ -41,6 +41,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Widgets/Profiler.h"
 #include "Widgets/RenderOptions.h"
 #include "Widgets/TextureViewer.h"
+#include "Rendering/Renderer_Definitions.h"
 //==============================================
 
 //= NAMESPACES =====

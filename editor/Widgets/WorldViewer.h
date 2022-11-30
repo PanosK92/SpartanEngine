@@ -35,6 +35,7 @@ public:
     WorldViewer(Editor* editor);
 
     void TickVisible() override;
+    void SetSelectedEntity(const std::shared_ptr<Spartan::Entity>& entity);
 
 private:
     // Tree
@@ -44,7 +45,6 @@ private:
     void TreeAddEntity(Spartan::Entity* entity);
     void HandleClicking();
     void EntityHandleDragDrop(Spartan::Entity* entity_ptr) const;
-    void SetSelectedEntity(const std::shared_ptr<Spartan::Entity>& entity, bool from_editor = true);
 
     // Misc
     void Popups();

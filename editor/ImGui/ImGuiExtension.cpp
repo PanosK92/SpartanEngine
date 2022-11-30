@@ -29,10 +29,8 @@ using namespace std;
 using namespace Spartan;
 //======================
 
-Editor*           EditorHelper::editor             = nullptr;
-Context*          EditorHelper::context            = nullptr;
-World*            EditorHelper::world              = nullptr;
-Renderer*         EditorHelper::renderer           = nullptr;
-Input*            EditorHelper::input              = nullptr;
-function<void()>  EditorHelper::on_entity_selected = nullptr;
-weak_ptr<Entity>  EditorHelper::selected_entity;
+Editor*   EditorHelper::editor   = nullptr;
+Context*  EditorHelper::context  = nullptr;
+World*    EditorHelper::world    = nullptr;
+Renderer* EditorHelper::renderer = nullptr;
+Input*    EditorHelper::input    = nullptr;

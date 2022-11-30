@@ -41,14 +41,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Components/ReflectionProbe.h"
 //===========================================
 
-//= NAMESPACES ==========
+//= NAMESPACES =========
 using namespace std;
 using namespace Spartan;
-//=======================
+//======================
 
 static ImGui_SP::DragDropPayload g_payload;
 static bool popup_rename_entity = false;
 static World* world             = nullptr;
+static Renderer* renderer       = nullptr;
 static Input* input             = nullptr;
 static Entity* entity_copied    = nullptr;
 static Entity* entity_hovered   = nullptr;
@@ -59,11 +60,9 @@ WorldViewer::WorldViewer(Editor* editor) : Widget(editor)
     m_title = "World";
     m_flags |= ImGuiWindowFlags_HorizontalScrollbar;
 
-    world = m_context->GetSystem<Spartan::World>();
-    input = m_context->GetSystem<Input>();
-
-    // Subscribe to entity clicked engine event
-    EditorHelper::on_entity_selected = [this](){ SetSelectedEntity(EditorHelper::selected_entity.lock(), false); };
+    world    = m_context->GetSystem<World>();
+    renderer = m_context->GetSystem<Renderer>();
+    input    = m_context->GetSystem<Input>();
 }
 
 void WorldViewer::TickVisible()
@@ -182,17 +181,20 @@ void WorldViewer::TreeAddEntity(Entity* entity)
     node_flags |= has_visible_children ? ImGuiTreeNodeFlags_OpenOnArrow : ImGuiTreeNodeFlags_Leaf; 
 
     // Flag - Is selected?
-    if (const shared_ptr<Entity> selected_entity = EditorHelper::selected_entity.lock())
+    if (shared_ptr<Camera> camera = renderer->GetCamera())
     {
-        node_flags |= selected_entity->GetObjectId() == entity->GetObjectId() ? ImGuiTreeNodeFlags_Selected : node_flags;
-
-        if (m_expand_to_selection)
+        if (shared_ptr<Entity> selected_entity = camera->GetSelectedEntity())
         {
-            // If the selected entity is a descendant of the this entity, start expanding (this can happen if an entity is selected in the viewport)
-            if (selected_entity->GetTransform()->IsDescendantOf(entity->GetTransform()))
+            node_flags |= selected_entity->GetObjectId() == entity->GetObjectId() ? ImGuiTreeNodeFlags_Selected : node_flags;
+
+            if (m_expand_to_selection)
             {
-                ImGui::SetNextItemOpen(true);
-                m_expanded_to_selection = true;
+                // If the selected entity is a descendant of the this entity, start expanding (this can happen if an entity is selected in the viewport)
+                if (selected_entity->GetTransform()->IsDescendantOf(entity->GetTransform()))
+                {
+                    ImGui::SetNextItemOpen(true);
+                    m_expanded_to_selection = true;
+                }
             }
         }
     }
@@ -248,7 +250,7 @@ void WorldViewer::HandleClicking()
     // Left click on item - Don't select yet
     if (left_click && entity_hovered)
     {
-        entity_clicked    = entity_hovered;
+        entity_clicked = entity_hovered;
     }
 
     // Right click on item - Select and show context menu
@@ -293,14 +295,13 @@ void WorldViewer::EntityHandleDragDrop(Entity* entity_ptr) const
     }
 }
 
-void WorldViewer::SetSelectedEntity(const shared_ptr<Entity>& entity, const bool from_editor /*= true*/)
+void WorldViewer::SetSelectedEntity(const shared_ptr<Entity>& entity)
 {
     m_expand_to_selection = true;
 
-    // If the update comes from this widget, let the engine know about it
-    if (from_editor)
+    if (shared_ptr<Camera> camera = renderer->GetCamera())
     {
-        EditorHelper::SetSelectedEntity(entity);
+        camera->SetSelectedEntity(entity);
     }
 
     Properties::Inspect(entity);
@@ -317,8 +318,14 @@ void WorldViewer::PopupContextMenu() const
     if (!ImGui::BeginPopup("##HierarchyContextMenu"))
         return;
 
-    const auto selected_entity = EditorHelper::selected_entity.lock();
-    const auto on_entity       = selected_entity != nullptr;
+    // Get selected entity
+    shared_ptr<Entity> selected_entity = nullptr;
+    if (shared_ptr<Camera> camera = renderer->GetCamera())
+    {
+        selected_entity = camera->GetSelectedEntity();
+    }
+
+    const bool on_entity = selected_entity != nullptr;
 
     if (on_entity) if (ImGui::MenuItem("Copy"))
     {
@@ -474,7 +481,7 @@ void WorldViewer::PopupEntityRename() const
 
     if (ImGui::BeginPopup("##RenameEntity"))
     {
-        auto selected_entity = EditorHelper::selected_entity.lock();
+        shared_ptr<Entity> selected_entity = renderer->GetCamera()->GetSelectedEntity();
         if (!selected_entity)
         {
             ImGui::CloseCurrentPopup();
@@ -503,9 +510,9 @@ void WorldViewer::HandleKeyShortcuts()
     // Delete
     if (input->GetKey(KeyCode::Delete))
     {
-        if (shared_ptr<Entity> entity = EditorHelper::selected_entity.lock())
+        if (shared_ptr<Entity> selected_entity = renderer->GetCamera()->GetSelectedEntity())
         {
-            ActionEntityDelete(entity);
+            ActionEntityDelete(selected_entity);
         }
     }
 
@@ -540,9 +547,13 @@ void WorldViewer::ActionEntityDelete(const shared_ptr<Entity>& entity)
 Entity* WorldViewer::ActionEntityCreateEmpty()
 {
     shared_ptr<Entity> entity = world->CreateEntity();
-    if (const shared_ptr<Entity> selected_entity = EditorHelper::selected_entity.lock())
+    
+    if (shared_ptr<Camera> camera = renderer->GetCamera())
     {
-        entity->GetTransform()->SetParent(selected_entity->GetTransform());
+        if (shared_ptr<Entity> selected_entity = camera->GetSelectedEntity())
+        {
+            entity->GetTransform()->SetParent(selected_entity->GetTransform());
+        }
     }
 
     return entity.get();
