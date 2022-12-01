@@ -74,7 +74,7 @@ namespace Spartan
 
         // Caches resource, or replaces with existing cached resource
         template <class T>
-        static std::shared_ptr<T> Cache(const std::shared_ptr<T>& resource)
+        static std::shared_ptr<T> Cache(const std::shared_ptr<T> resource)
         {
             // Validate resource
             if (!resource)
