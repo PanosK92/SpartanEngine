@@ -251,20 +251,17 @@ namespace Spartan
     class DirecXShaderCompiler
     {
     public:
-        DirecXShaderCompiler()
+        static IDxcResult* Compile(const std::string& source, std::vector<std::string>& arguments)
         {
-            DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&m_utils));
-            DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&m_compiler));;
-        }
+            // Initialise (only happens once)
+            static IDxcUtils* m_utils        = nullptr;
+            static IDxcCompiler3* m_compiler = nullptr;
+            if (!m_compiler)
+            {
+                DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&m_compiler));
+                DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&m_utils));
+            }
 
-        ~DirecXShaderCompiler()
-        {
-            delete m_utils;
-            delete m_compiler;
-        }
-
-        IDxcResult* Compile(const std::string& source, std::vector<std::string>& arguments)
-        {
             // Get shader source
             DxcBuffer dxc_buffer = {};
             IDxcBlobEncoding* blob_encoding = nullptr;
@@ -319,21 +316,15 @@ namespace Spartan
                 }
             }
 
-            // Crash if I delete this, am I missing something ?
-            // Is DxcBuffer releasing it ?
-            //delete blob_encoding;
+            // These are probably handled by something else.
+            // Hence when you try to delete them, you get a dangling pointer crash.
+            // Ideally you just use ComPtr, but that's Windows specific.
+            // Let it be for now.
+            // blob_encoding;
+            // m_utils
+            // m_compiler
 
             return dxc_result;
         }
-
-        static DirecXShaderCompiler& Get()
-        {
-            static DirecXShaderCompiler instance;
-            return instance;
-        }
-
-    private:
-        IDxcUtils* m_utils        = nullptr;
-        IDxcCompiler3* m_compiler = nullptr;
     };
 }

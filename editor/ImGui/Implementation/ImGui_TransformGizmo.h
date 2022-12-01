@@ -95,17 +95,17 @@ namespace ImGui::TransformGizmo
         float translation[3] = { transform->GetPosition().x, transform->GetPosition().y, transform->GetPosition().z };
         float rotation[3]    = { transform->GetRotation().ToEulerAngles().x, transform->GetRotation().ToEulerAngles().y, transform->GetRotation().ToEulerAngles().z };
         float scale[3]       = { transform->GetScale().x, transform->GetScale().y, transform->GetScale().z };
-        ImGuizmo::RecomposeMatrixFromComponents(&translation[0], rotation, scale, &matrix_delta[0]);
+        ImGuizmo::RecomposeMatrixFromComponents(&translation[0], rotation, scale, matrix_delta);
 
         // Set viewport rectangle
         ImGuizmo::SetDrawlist();
         ImGuizmo::SetRect(ImGui::GetWindowPos().x, ImGui::GetWindowPos().y, ImGui::GetWindowWidth(), ImGui::GetWindowHeight());
-        ImGuizmo::Manipulate(&matrix_view.m00, &matrix_projection.m00, transform_operation, transform_space, &matrix_delta[0], 0, 0);
+        ImGuizmo::Manipulate(&matrix_view.m00, &matrix_projection.m00, transform_operation, transform_space, matrix_delta, 0, 0);
 
         // Map ImGuizmo to transform
         if (ImGuizmo::IsUsing())
         {
-            ImGuizmo::DecomposeMatrixToComponents(&matrix_delta[0], translation, rotation, scale);
+            ImGuizmo::DecomposeMatrixToComponents(matrix_delta, translation, rotation, scale);
 
             transform->SetPosition(Spartan::Math::Vector3(translation[0], translation[1], translation[2]));
             transform->SetRotation(Spartan::Math::Quaternion::FromEulerAngles(rotation[0], rotation[1], rotation[2]));
