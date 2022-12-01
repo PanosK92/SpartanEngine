@@ -136,7 +136,6 @@ namespace Spartan
 
         // Create texture
         shared_ptr<RHI_Texture> texture = make_shared<RHI_Texture2D>(GetContext(), RHI_Texture_Srv | RHI_Texture_Mips);
-
         if (!texture->LoadFromFile(file_path))
         {
             SP_LOG_ERROR("Sky sphere creation failed");
@@ -144,6 +143,8 @@ namespace Spartan
 
         // Save file path for serialization/deserialisation
         m_file_paths = { texture->GetResourceFilePath() };
+
+        ResourceCache::Cache(texture);
 
         // Pass the texture to the renderer.
         SetTexture(texture);
