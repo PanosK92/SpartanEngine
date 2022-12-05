@@ -229,7 +229,7 @@ namespace Spartan
         }
 
         // Get function pointers (from extensions)
-        vulkan_utility::functions::initialize();
+        vulkan_utility::functions::initialize(m_rhi_context->validation, m_rhi_context->gpu_markers);
 
         // Debug
         if (m_rhi_context->validation)

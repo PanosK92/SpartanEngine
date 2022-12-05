@@ -487,7 +487,7 @@ namespace Spartan::vulkan_utility
         functions() = default;
         ~functions() = default;
 
-        static void initialize()
+        static void initialize(bool validation_enabled, bool gpu_markers_enabled)
         {
             #define get_func(var, def)\
             var = reinterpret_cast<PFN_##def>(vkGetInstanceProcAddr(static_cast<VkInstance>(globals::rhi_context->instance), #def));\
@@ -496,13 +496,26 @@ namespace Spartan::vulkan_utility
             get_func(get_physical_device_memory_properties_2, vkGetPhysicalDeviceMemoryProperties2);
 
             /* VK_EXT_debug_utils */
-            get_func(create_messenger,  vkCreateDebugUtilsMessengerEXT);
-            get_func(destroy_messenger, vkDestroyDebugUtilsMessengerEXT);
-            get_func(marker_begin,      vkCmdBeginDebugUtilsLabelEXT);
-            get_func(marker_end,        vkCmdEndDebugUtilsLabelEXT);
+            {
+                if (validation_enabled)
+                {
+                    get_func(create_messenger,  vkCreateDebugUtilsMessengerEXT);
+                    get_func(destroy_messenger, vkDestroyDebugUtilsMessengerEXT);
+                }
+
+                if (gpu_markers_enabled)
+                {
+                    get_func(marker_begin, vkCmdBeginDebugUtilsLabelEXT);
+                    get_func(marker_end,   vkCmdEndDebugUtilsLabelEXT);
+                }
+            }
+
             /* VK_EXT_debug_marker */
-            get_func(set_object_tag,  vkSetDebugUtilsObjectTagEXT);
-            get_func(set_object_name, vkSetDebugUtilsObjectNameEXT);
+            if (validation_enabled)
+            {
+                get_func(set_object_tag,  vkSetDebugUtilsObjectTagEXT);
+                get_func(set_object_name, vkSetDebugUtilsObjectNameEXT);
+            }
         }
 
         static PFN_vkCreateDebugUtilsMessengerEXT          create_messenger;
