@@ -153,7 +153,7 @@ namespace Spartan
     void World::New()
     {
         Clear();
-        CreateDefaultWorld();
+        CreateDefaultWorldComplex();
     }
 
     bool World::SaveToFile(const string& filePathIn)
@@ -383,7 +383,57 @@ namespace Spartan
         }
     }
 
-    void World::CreateDefaultWorld()
+    void World::CreateDefaultWorldSimple()
+    {
+        // Environment
+        {
+            shared_ptr<Entity> environment = CreateEntity();
+            environment->SetName("environment");
+            environment->AddComponent<Environment>();
+        }
+
+        // Camera
+        {
+            shared_ptr<Entity> entity = CreateEntity();
+            entity->SetName("camera");
+
+            entity->AddComponent<Camera>();
+            entity->GetTransform()->SetPosition(Vector3(-2.956f, 1.1474f, -2.9395f));
+            entity->GetTransform()->SetRotation(Quaternion::FromEulerAngles(Vector3(15.9976f, 43.5998f, 0.0f)));
+        }
+
+        // Light - Directional
+        {
+            shared_ptr<Entity> entity = CreateEntity();
+            entity->SetName("light_directional");
+
+            entity->GetTransform()->SetPosition(Vector3(0.0f, 10.0f, 0.0f));
+            entity->GetTransform()->SetRotation(Quaternion::FromEulerAngles(112.37f, -60.91f, 0.0f));
+
+            Light* light = entity->AddComponent<Light>();
+            light->SetLightType(LightType::Directional);
+            light->SetColor(Color::light_sky_sunrise);
+            light->SetIntensity(60000.0f);
+        }
+
+        // Quad
+        shared_ptr<Entity> entity = CreateEntity();
+        entity->SetName("quad");
+        entity->GetTransform()->SetScale(Vector3(4.0f, 1.0f, 4.0f));
+        Renderable* renderable = entity->AddComponent<Renderable>();
+        renderable->SetGeometry(DefaultGeometry::Quad);
+        renderable->SetDefaultMaterial();
+
+        // Cube
+        entity = CreateEntity();
+        entity->SetName("cube");
+        entity->GetTransform()->SetPosition(Vector3(0.0f, 0.5f, 0.0f));
+        renderable = entity->AddComponent<Renderable>();
+        renderable->SetGeometry(DefaultGeometry::Cube);
+        renderable->SetDefaultMaterial();
+    }
+
+    void World::CreateDefaultWorldComplex()
     {
         // Environment
         {

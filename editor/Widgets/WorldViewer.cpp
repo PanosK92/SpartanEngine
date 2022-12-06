@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "WorldViewer.h"
 #include "Properties.h"
 #include "MenuBar.h"
+#include "Viewport.h"
 #include "../Editor.h"
 #include "../ImGui/ImGuiExtension.h"
 #include "../ImGui/Source/imgui_stdlib.h"
@@ -55,6 +56,64 @@ static Entity* entity_copied    = nullptr;
 static Entity* entity_hovered   = nullptr;
 static Entity* entity_clicked   = nullptr;
 
+static void load_default_world_prompt(Editor* editor)
+{
+    // Load default world window
+    static bool is_default_world_window_visible = true;
+    if (is_default_world_window_visible)
+    {
+        // Set position and size
+        ImGuiWindow* viewport_window = editor->GetWidget<Viewport>()->GetWindow();
+        ImVec2 viewport_pos          = viewport_window->Pos;
+        ImVec2 viewport_size         = viewport_window->Size;
+        ImVec2 viewport_pos_center   = ImVec2(viewport_pos.x + viewport_size.x * 0.5f, viewport_pos.y + viewport_size.y * 0.5f);
+        ImVec2 pivot_center          = ImVec2(0.5f, 0.5f);
+        ImGui::SetNextWindowPos(viewport_pos_center, ImGuiCond_Always, pivot_center);
+        ImGui::SetNextWindowSize(ImVec2(415, 175));
+
+        if (ImGui::Begin("World selection", nullptr, ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoScrollbar))
+        {
+            ImGui::Text("Select the world you would like to load and click \"Ok\"");
+
+            // list box
+            static const char* items[] =
+            {
+                "1. Empty.",
+                "2. A cube on top of a plane (simple).",
+                "3. Sponza with a car, a terrain and some music (complex)."
+            };
+            static int item_index = 1;
+            static int item_count = IM_ARRAYSIZE(items);
+            ImGui::PushItemWidth(800.0f);
+            ImGui::ListBox("##list_box", &item_index, items, item_count, item_count);
+            ImGui::PopItemWidth();
+
+            // button
+            if (ImGui_SP::button_centered_on_line("Ok"))
+            {
+                if (item_index == 1)
+                {
+                    ThreadPool::AddTask([]()
+                    {
+                        world->CreateDefaultWorldSimple();
+                    });
+                }
+                else if (item_index == 2)
+                {
+                    ThreadPool::AddTask([]()
+                    {
+                        world->CreateDefaultWorldComplex();
+                    });
+
+                }
+
+                is_default_world_window_visible = false;
+            }
+        }
+        ImGui::End();
+    }
+}
+
 WorldViewer::WorldViewer(Editor* editor) : Widget(editor)
 {
     m_title = "World";
@@ -80,25 +139,7 @@ void WorldViewer::TickVisible()
         entity_clicked = nullptr;
     }
 
-    // Load default world window
-    static bool is_default_world_window_visible = true;
-    if (is_default_world_window_visible)
-    {
-        // Show a yes/no window
-        ImGui_SP::ButtonPress button_press = ImGui_SP::window_yes_no("Default World", "Would you like to load a default world?");
-
-        // Stay visible for as long a selection hasn't been made
-        is_default_world_window_visible = (button_press == ImGui_SP::ButtonPress::Undefined);
-
-        // On yes, load the default world
-        if (button_press == ImGui_SP::ButtonPress::Yes)
-        {
-            ThreadPool::AddTask([]()
-            {
-                world->CreateDefaultWorld();
-            });
-        }
-    }
+    load_default_world_prompt(m_editor);
 }
 
 void WorldViewer::TreeShow()
