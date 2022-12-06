@@ -86,7 +86,7 @@ namespace Spartan
         //SetOption(RendererOption::DepthOfField,        1.0f); // This is depth of field from ALDI, so until I improve it, it should be disabled by default.
         //SetOption(RendererOption::Render_DepthPrepass, 1.0f); // Depth-pre-pass is not always faster, so by default, it's disabled.
         //SetOption(RendererOption::Debanding,           1.0f); // Disable debanding as we shouldn't be seeing debanding to begin with.
-        //SetOption(RendererOption::VolumetricFog,       1.0f); // Disable by default because it's not that great, I need to do it with a voxelised approach
+        //SetOption(RendererOption::VolumetricFog,       1.0f); // Disable by default because it's not that great, I need to do it with a voxelised approach.
 
         // Subscribe to events.
         SP_SUBSCRIBE_TO_EVENT(EventType::WorldResolved,             SP_EVENT_HANDLER_VARIANT(OnAddRenderables));
@@ -230,23 +230,28 @@ namespace Spartan
         // Update frame buffer
         {
             // Matrices
-            if (m_camera)
             {
-                if (m_dirty_orthographic_projection || m_near_plane != m_camera->GetNearPlane() || m_far_plane != m_camera->GetFarPlane())
+                if (m_camera)
                 {
-                    m_near_plane = m_camera->GetNearPlane();
-                    m_far_plane  = m_camera->GetFarPlane();
+                    if (m_near_plane != m_camera->GetNearPlane() || m_far_plane != m_camera->GetFarPlane())
+                    {
+                        m_near_plane                    = m_camera->GetNearPlane();
+                        m_far_plane                     = m_camera->GetFarPlane();
+                        m_dirty_orthographic_projection = true;
+                    }
 
+                    m_cb_frame_cpu.view                = m_camera->GetViewMatrix();
+                    m_cb_frame_cpu.projection          = m_camera->GetProjectionMatrix();
+                    m_cb_frame_cpu.projection_inverted = Matrix::Invert(m_cb_frame_cpu.projection);
+                }
+
+                if (m_dirty_orthographic_projection)
+                { 
                     // Near clip does not affect depth accuracy in orthographic projection, so set it to 0 to avoid problems which can result an infinitely small [3,2] after the multiplication below.
                     m_cb_frame_cpu.projection_ortho      = Matrix::CreateOrthographicLH(m_viewport.width, m_viewport.height, 0.0f, m_far_plane);
                     m_cb_frame_cpu.view_projection_ortho = Matrix::CreateLookAtLH(Vector3(0, 0, -m_near_plane), Vector3::Forward, Vector3::Up) * m_cb_frame_cpu.projection_ortho;
-
-                    m_dirty_orthographic_projection = false;
+                    m_dirty_orthographic_projection      = false;
                 }
-
-                m_cb_frame_cpu.view                = m_camera->GetViewMatrix();
-                m_cb_frame_cpu.projection          = m_camera->GetProjectionMatrix();
-                m_cb_frame_cpu.projection_inverted = Matrix::Invert(m_cb_frame_cpu.projection);
             }
 
             // Generate jitter sample in case FSR (which also does TAA) is enabled. D3D11 only receives FXAA so it's ignored at this point.

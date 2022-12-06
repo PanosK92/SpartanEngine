@@ -92,89 +92,93 @@ namespace Spartan
         RHI_Texture* rt2       = render_target(RendererTexture::Frame_Render_2).get();
         RHI_Texture* rt_output = render_target(RendererTexture::Frame_Output).get();
 
-        // If there is no camera, clear to black
-        if (!m_camera)
-        {
-            m_cmd_current->ClearRenderTarget(rt_output, 0, 0, false, Color::standard_black);
-        }
-        // If there are no entities, clear to the camera's color
-        else if (m_entities[RendererEntityType::GeometryOpaque].empty() && m_entities[RendererEntityType::GeometryTransparent].empty() && m_entities[RendererEntityType::Light].empty())
-        {
-            m_cmd_current->ClearRenderTarget(rt_output, 0, 0, false, m_camera->GetClearColor());
-        }
-        else // Render frame
-        {
-            // Update frame constant buffer
-            Update_Cb_Frame(cmd_list);
+        // Update frame constant buffer
+        Update_Cb_Frame(cmd_list);
 
-            // Generate brdf specular lut
-            if (!m_brdf_specular_lut_rendered)
+        if (m_camera)
+        { 
+            // If there are no entities, clear to the camera's color
+            if (m_entities[RendererEntityType::GeometryOpaque].empty() && m_entities[RendererEntityType::GeometryTransparent].empty() && m_entities[RendererEntityType::Light].empty())
             {
-                Pass_BrdfSpecularLut(cmd_list);
-                m_brdf_specular_lut_rendered = true;
+                m_cmd_current->ClearRenderTarget(rt_output, 0, 0, false, m_camera->GetClearColor());
             }
-
-            // Determine if a transparent pass is required
-            const bool do_transparent_pass = !m_entities[RendererEntityType::GeometryTransparent].empty();
-
-            // Shadow maps
+            else // Render frame
             {
-                Pass_ShadowMaps(cmd_list, false);
+                // Generate brdf specular lut
+                if (!m_brdf_specular_lut_rendered)
+                {
+                    Pass_BrdfSpecularLut(cmd_list);
+                    m_brdf_specular_lut_rendered = true;
+                }
+
+                // Determine if a transparent pass is required
+                const bool do_transparent_pass = !m_entities[RendererEntityType::GeometryTransparent].empty();
+
+                // Shadow maps
+                {
+                    Pass_ShadowMaps(cmd_list, false);
+                    if (do_transparent_pass)
+                    {
+                        Pass_ShadowMaps(cmd_list, true);
+                    }
+                }
+
+                Pass_ReflectionProbes(cmd_list);
+
+                // Opaque
+                {
+                    bool is_transparent_pass = false;
+
+                    Pass_Depth_Prepass(cmd_list);
+                    Pass_GBuffer(cmd_list, is_transparent_pass);
+                    Pass_Ssao(cmd_list);
+                    Pass_Ssr(cmd_list, rt1);
+                    Pass_Light(cmd_list, is_transparent_pass); // compute diffuse and specular buffers
+                    Pass_Light_Composition(cmd_list, rt1, is_transparent_pass); // compose diffuse, specular, ssao, volumetric etc.
+                    Pass_Light_ImageBased(cmd_list, rt1, is_transparent_pass); // apply IBL and SSR
+                }
+
+                // Transparent
                 if (do_transparent_pass)
                 {
-                    Pass_ShadowMaps(cmd_list, true);
-                }
-            }
+                    // Blit the frame so that refraction can sample from it
+                    cmd_list->Blit(rt1, rt2, true);
 
-            Pass_ReflectionProbes(cmd_list);
+                    // Generate frame mips so that the reflections can simulate roughness
+                    Pass_Ffx_Spd(cmd_list, rt2);
 
-            // Opaque
-            {
-                bool is_transparent_pass = false;
+                    // Blur the smaller mips to reduce blockiness/flickering
+                    for (uint32_t i = 1; i < rt2->GetMipCount(); i++)
+                    {
+                        const bool depth_aware   = false;
+                        const float sigma        = 2.0f;
+                        const float pixel_stride = 1.0;
+                        Pass_Blur_Gaussian(cmd_list, rt2, depth_aware, sigma, pixel_stride, i);
+                    }
 
-                Pass_Depth_Prepass(cmd_list);
-                Pass_GBuffer(cmd_list, is_transparent_pass);
-                Pass_Ssao(cmd_list);
-                Pass_Ssr(cmd_list, rt1);
-                Pass_Light(cmd_list, is_transparent_pass); // compute diffuse and specular buffers
-                Pass_Light_Composition(cmd_list, rt1, is_transparent_pass); // compose diffuse, specular, ssao, volumetric etc.
-                Pass_Light_ImageBased(cmd_list, rt1, is_transparent_pass); // apply IBL and SSR
-            }
+                    bool is_transparent_pass = true;
 
-            // Transparent
-            if (do_transparent_pass)
-            {
-                // Blit the frame so that refraction can sample from it
-                cmd_list->Blit(rt1, rt2, true);
-
-                // Generate frame mips so that the reflections can simulate roughness
-                Pass_Ffx_Spd(cmd_list, rt2);
-
-                // Blur the smaller mips to reduce blockiness/flickering
-                for (uint32_t i = 1; i < rt2->GetMipCount(); i++)
-                {
-                    const bool depth_aware   = false;
-                    const float sigma        = 2.0f;
-                    const float pixel_stride = 1.0;
-                    Pass_Blur_Gaussian(cmd_list, rt2, depth_aware, sigma, pixel_stride, i);
+                    Pass_GBuffer(cmd_list, is_transparent_pass);
+                    Pass_Light(cmd_list, is_transparent_pass);
+                    Pass_Light_Composition(cmd_list, rt1, is_transparent_pass);
+                    Pass_Light_ImageBased(cmd_list, rt1, is_transparent_pass);
                 }
 
-                bool is_transparent_pass = true;
-
-                Pass_GBuffer(cmd_list, is_transparent_pass);
-                Pass_Light(cmd_list, is_transparent_pass);
-                Pass_Light_Composition(cmd_list, rt1, is_transparent_pass);
-                Pass_Light_ImageBased(cmd_list, rt1, is_transparent_pass);
+                Pass_PostProcess(cmd_list);
             }
 
-            Pass_PostProcess(cmd_list);
+            // Editor related stuff - Passes that render on top of each other
+            Pass_DebugMeshes(cmd_list, rt_output);
+            Pass_Outline(cmd_list, rt_output);
+            Pass_Icons(cmd_list, rt_output);
+            Pass_PeformanceMetrics(cmd_list, rt_output);
         }
-
-        // Editor related stuff - Passes that render on top of each other
-        Pass_DebugMeshes(cmd_list, rt_output);
-        Pass_Outline(cmd_list, rt_output);
-        Pass_Icons(cmd_list, rt_output);
-        Pass_PeformanceMetrics(cmd_list, rt_output);
+        else
+        {
+            // If there is no camera, clear to black and and render the performance metrics
+            m_cmd_current->ClearRenderTarget(rt_output, 0, 0, false, Color::standard_black);
+            Pass_PeformanceMetrics(cmd_list, rt_output);
+        }
 
         // No further rendering is done on this render target, which is the final output.
         // However, ImGui will display it within the viewport, so the appropriate layout has to be set.
