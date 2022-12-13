@@ -57,8 +57,11 @@ namespace Spartan
         bool SaveToFile(const std::string& filePath);
         bool LoadFromFile(const std::string& file_path);
         void Resolve() { m_resolve = true; }
-        void CreateDefaultWorldSimple();
-        void CreateDefaultWorldComplex();
+        void CreateDefaultWorldCameraLightEnvironment();
+        void CreateDefaultWorldCube();
+        void CreateDefaultWorldCar();
+        void CreateDefaultWorldTerrain();
+        void CreateDefaultWorldSponza();
         const std::string GetName()      const { return m_name; }
         const std::string& GetFilePath() const { return m_file_path; }
 

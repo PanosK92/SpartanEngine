@@ -69,7 +69,7 @@ static void load_default_world_prompt(Editor* editor)
         ImVec2 viewport_pos_center   = ImVec2(viewport_pos.x + viewport_size.x * 0.5f, viewport_pos.y + viewport_size.y * 0.5f);
         ImVec2 pivot_center          = ImVec2(0.5f, 0.5f);
         ImGui::SetNextWindowPos(viewport_pos_center, ImGuiCond_Always, pivot_center);
-        ImGui::SetNextWindowSize(ImVec2(415, 175));
+        ImGui::SetNextWindowSize(ImVec2(415, 215));
 
         if (ImGui::Begin("World selection", nullptr, ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoScrollbar))
         {
@@ -79,8 +79,10 @@ static void load_default_world_prompt(Editor* editor)
             static const char* items[] =
             {
                 "1. Empty.",
-                "2. A cube on top of a plane (simple).",
-                "3. Sponza with a car, a terrain and some music (complex)."
+                "2. A cube on top of a quad",
+                "3. A car on top of a quad.",
+                "4. Height map generated terrain.",
+                "5. The famous Sponza building found in Dubrovnik."
             };
             static int item_index = 1;
             static int item_count = IM_ARRAYSIZE(items);
@@ -95,14 +97,30 @@ static void load_default_world_prompt(Editor* editor)
                 {
                     ThreadPool::AddTask([]()
                     {
-                        world->CreateDefaultWorldSimple();
+                        world->CreateDefaultWorldCube();
                     });
                 }
                 else if (item_index == 2)
                 {
                     ThreadPool::AddTask([]()
                     {
-                        world->CreateDefaultWorldComplex();
+                        world->CreateDefaultWorldCar();
+                    });
+
+                }
+                else if (item_index == 3)
+                {
+                    ThreadPool::AddTask([]()
+                    {
+                        world->CreateDefaultWorldTerrain();
+                    });
+
+                }
+                else if (item_index == 4)
+                {
+                    ThreadPool::AddTask([]()
+                    {
+                        world->CreateDefaultWorldSponza();
                     });
 
                 }
