@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // Engine macros
 #include "Definitions.h"
 
-//= STD ================
+//= STD =====================
 #include <string>
 #include <algorithm>
 #include <type_traits>
@@ -49,7 +49,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <cstdarg>
 #include <thread>
 #include <condition_variable>
-//======================
+//===========================
 
 //= RUNTIME ====================
 // Core
@@ -82,4 +82,3 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #if !defined(_MSC_VER)
     #define FFX_GCC
 #endif
-

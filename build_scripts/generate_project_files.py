@@ -11,6 +11,7 @@ path_binaries_models            = pathlib.Path("binaries/project/models")
 path_binaries_environment       = pathlib.Path("binaries/project/environment")
 path_binaries_music             = pathlib.Path("binaries/project/music")
 path_binaries_height_maps       = pathlib.Path("binaries/project/height_maps")
+path_binaries_materials         = pathlib.Path("binaries/project/materials")
 path_third_party_lib_dx         = pathlib.Path("third_party/libraries/dxcompiler.dll")
 path_third_party_lib_fmod       = pathlib.Path("third_party/libraries/fmod.dll")
 path_third_party_lib_fmod_debug = pathlib.Path("third_party/libraries/fmodL.dll")
@@ -18,6 +19,7 @@ path_assets_models              = pathlib.Path("assets/models")
 path_assets_environment         = pathlib.Path("assets/environment")
 path_assets_music               = pathlib.Path("assets/music") 
 path_assets_height_maps         = pathlib.Path("assets/height_maps")
+path_assets_materials           = pathlib.Path("assets/materials")
 
 # Define a function to check if a path represents a directory, even if it doesn't exist.
 def is_directory(path):
@@ -64,6 +66,7 @@ copy(path_assets_models,      path_binaries_models)
 copy(path_assets_environment, path_binaries_environment)
 copy(path_assets_music,       path_binaries_music)
 copy(path_assets_height_maps, path_binaries_height_maps)
+copy(path_assets_materials,   path_binaries_materials)
 
 # 5. Generate project files
 print("\n5. Generating project files...")
