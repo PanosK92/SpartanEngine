@@ -31,7 +31,7 @@ namespace Spartan::Math
 {
     Ray::Ray(const Vector3& start, const Vector3& direction)
     {
-        m_origin     = start;
+        m_origin    = start;
         m_direction = direction.Normalized();
     }
 
