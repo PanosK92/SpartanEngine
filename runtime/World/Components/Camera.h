@@ -74,7 +74,7 @@ namespace Spartan
         //===============================================================================
 
         //= RAYCASTING ====================================================================================================
-        // Returns the ray the camera uses to do picking
+        const Math::Ray ComputePickingRay();
         const Math::Ray& GetPickingRay() const { return m_ray; }
 
         // Picks the nearest entity under the mouse cursor

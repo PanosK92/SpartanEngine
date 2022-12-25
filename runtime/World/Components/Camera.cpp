@@ -168,7 +168,14 @@ namespace Spartan
         return m_frustum.IsVisible(center, extents);
     }
 
-    void Camera::Pick()
+	const Spartan::Math::Ray Camera::ComputePickingRay()
+	{
+        Vector3 ray_start     = GetTransform()->GetPosition();
+        Vector3 ray_direction = ScreenToWorldCoordinates(m_input->GetMousePositionRelativeToEditorViewport(), 1.0f);
+        return Ray(ray_start, ray_direction);
+	}
+
+	void Camera::Pick()
     {
         // Ensure the mouse is inside the viewport
         if (!m_input->GetMouseIsInViewport())
@@ -177,10 +184,7 @@ namespace Spartan
             return;
         }
 
-        // Create mouse ray
-        Vector3 ray_start     = GetTransform()->GetPosition();
-        Vector3 ray_direction = ScreenToWorldCoordinates(m_input->GetMousePositionRelativeToEditorViewport(), 1.0f);
-        m_ray                 = Ray(ray_start, ray_direction);
+        m_ray = ComputePickingRay();
 
         // Traces ray against all AABBs in the world
         vector<RayHit> hits;

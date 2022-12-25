@@ -26,11 +26,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "BulletPhysicsHelper.h"
 #include "../Profiling/Profiler.h"
 #include "../Rendering/Renderer.h"
+#include "../Input/Input.h"
+#include "../World/Components/Transform.h"
+#include "../World/Components/Camera.h"
 SP_WARNINGS_OFF
 #include "BulletCollision/BroadphaseCollision/btDbvtBroadphase.h"
 #include "BulletDynamics/ConstraintSolver/btSequentialImpulseConstraintSolver.h"
 #include "BulletSoftBody/btSoftBodyRigidBodyCollisionConfiguration.h"
 #include "BulletCollision/CollisionDispatch/btCollisionDispatcher.h"
+#include "BulletCollision/NarrowPhaseCollision/btRaycastCallback.h"
 #include "BulletDynamics/Dynamics/btDiscreteDynamicsWorld.h"
 #include "BulletSoftBody/btSoftRigidDynamicsWorld.h"
 #include "BulletDynamics/ConstraintSolver/btPoint2PointConstraint.h"
@@ -44,102 +48,6 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    namespace ObjectPicking
-    {
-        btRigidBody* picked_body             = nullptr;
-        btTypedConstraint* picked_constraint = nullptr;
-        btScalar picking_distance_previous   = 0.0f;
-
-        //static btVector3 get_ray_to(int x, int y)
-        //{
-        //    float top       = 1.f;
-        //    float bottom    = -1.f;
-        //    float nearPlane = 1.f;
-        //    float tanFov    = (top - bottom) * 0.5f / nearPlane;
-        //    float fov       = btScalar(2.0) * btAtan(tanFov);
-
-        //    btVector3 camPos, camTarget;
-
-        //    renderer->getActiveCamera()->getCameraPosition(camPos);
-        //    renderer->getActiveCamera()->getCameraTargetPosition(camTarget);
-
-        //    btVector3 rayFrom = camPos;
-        //    btVector3 rayForward = (camTarget - camPos);
-        //    rayForward.normalize();
-        //    float farPlane = 10000.f;
-        //    rayForward *= farPlane;
-
-        //    btVector3 rightOffset;
-        //    btVector3 cameraUp = btVector3(0, 0, 0);
-        //    cameraUp[m_guiHelper->getAppInterface()->getUpAxis()] = 1;
-
-        //    btVector3 vertical = cameraUp;
-
-        //    btVector3 hor;
-        //    hor = rayForward.cross(vertical);
-        //    hor.safeNormalize();
-        //    vertical = hor.cross(rayForward);
-        //    vertical.safeNormalize();
-
-        //    float tanfov = tanf(0.5f * fov);
-
-        //    hor      *= 2.f * farPlane * tanfov;
-        //    vertical *= 2.f * farPlane * tanfov;
-
-        //    btScalar aspect;
-        //    float width = float(renderer->getScreenWidth());
-        //    float height = float(renderer->getScreenHeight());
-
-        //    aspect = width / height;
-
-        //    hor *= aspect;
-
-        //    btVector3 rayToCenter = rayFrom + rayForward;
-        //    btVector3 dHor        = hor * 1.f / width;
-        //    btVector3 dVert       = vertical * 1.f / height;
-
-        //    btVector3 rayTo = rayToCenter - 0.5f * hor + 0.5f * vertical;
-        //    rayTo += btScalar(x) * dHor;
-        //    rayTo -= btScalar(y) * dVert;
-
-        //    return rayTo;
-        //}
-
-        //static bool move_picked_body(const btVector3 & rayFromWorld, const btVector3 & rayToWorld)
-        //{
-        //    if (picked_body && picked_constraint)
-        //    {
-        //        if (btPoint2PointConstraint* pick_constraint = static_cast<btPoint2PointConstraint*>(picked_constraint))
-        //        {
-        //            // keep it at the same picking distance
-
-        //            btVector3 newPivotB;
-
-        //            btVector3 dir = rayToWorld - rayFromWorld;
-        //            dir.normalize();
-        //            dir *= picking_distance_previous;
-
-        //            newPivotB = rayFromWorld + dir;
-        //            pick_constraint->setPivotB(newPivotB);
-        //            return true;
-        //        }
-        //    }
-
-        //    return false;
-        //}
-
-        //static bool mouseMoveCallback(float x, float y)
-        //{
-        //    btVector3 rayTo = get_ray_to(int(x), int(y));
-        //    btVector3 rayFrom;
-        //    renderer->getActiveCamera()->getCameraPosition(rayFrom);
-        //    move_picked_body(rayFrom, rayTo);
-
-        //    return false;
-        //}
-    }
-
-    // misc
     static const bool m_soft_body_support = true;
 
     Physics::Physics(Context* context) : ISystem(context)
@@ -226,18 +134,32 @@ namespace Spartan
             m_world->debugDrawWorld();
         }
 
-        // Don't simulate physics if they are turned off or the we are in editor mode
+        // Don't simulate physics if they are turned off or we are not in game mode
         if (!m_context->m_engine->IsFlagSet(EngineMode::Physics) || !m_context->m_engine->IsFlagSet(EngineMode::Game))
             return;
 
         SP_SCOPED_TIME_BLOCK(m_profiler);
+
+        // Picking
+        {
+            if (m_context->GetSystem<Input>()->GetKeyDown(KeyCode::Click_Left) && m_context->GetSystem<Input>()->GetMouseIsInViewport())
+            {
+                PickBody();
+            }
+            else if (m_context->GetSystem<Input>()->GetKeyUp(KeyCode::Click_Left))
+            {
+                UnpickBody();
+            }
+
+            MovePickedBody();
+        }
 
         // This equation must be met: timeStep < maxSubSteps * fixedTimeStep
         auto internal_time_step = 1.0f / m_internal_fps;
         auto max_substeps       = static_cast<int>(delta_time_sec * m_internal_fps) + 1;
         if (m_max_sub_steps < 0)
         {
-            internal_time_step    = static_cast<float>(delta_time_sec);
+            internal_time_step  = static_cast<float>(delta_time_sec);
             max_substeps        = 1;
         }
         else if (m_max_sub_steps > 0)
@@ -315,5 +237,90 @@ namespace Spartan
             return Vector3::Zero;
         }
         return gravity ? ToVector3(gravity) : Vector3::Zero;
+    }
+
+    void Physics::PickBody()
+    {
+        if (shared_ptr<Camera> camera = m_renderer->GetCamera())
+        {
+            const Ray& picking_ray = camera->GetPickingRay();
+
+            if (picking_ray.IsDefined())
+            { 
+                // Get camera picking ray
+                Vector3 ray_start     = picking_ray.GetStart();
+                Vector3 ray_direction = picking_ray.GetDirection();
+                Vector3 ray_end       = ray_start + ray_direction * camera->GetFarPlane();
+
+                btVector3 bt_ray_start = ToBtVector3(ray_start);
+                btVector3 bt_ray_end   = ToBtVector3(ray_end);
+                btCollisionWorld::ClosestRayResultCallback rayCallback(bt_ray_start, bt_ray_end);
+
+                rayCallback.m_flags |= btTriangleRaycastCallback::kF_UseGjkConvexCastRaytest;
+                m_world->rayTest(bt_ray_start, bt_ray_end, rayCallback);
+
+                if (rayCallback.hasHit())
+                {
+                    btVector3 pick_position = rayCallback.m_hitPointWorld;
+
+                    if (btRigidBody* body = (btRigidBody*)btRigidBody::upcast(rayCallback.m_collisionObject))
+                    {
+                        if (!(body->isStaticObject() || body->isKinematicObject()))
+                        {
+                            m_picked_body = body;
+                            m_activation_state = m_picked_body->getActivationState();
+                            m_picked_body->setActivationState(DISABLE_DEACTIVATION);
+                            btVector3 localPivot = body->getCenterOfMassTransform().inverse() * pick_position;
+                            btPoint2PointConstraint* p2p = new btPoint2PointConstraint(*body, localPivot);
+                            m_world->addConstraint(p2p, true);
+                            m_picked_constraint = p2p;
+                            btScalar mousePickClamping = 30.f;
+                            p2p->m_setting.m_impulseClamp = mousePickClamping;
+                            p2p->m_setting.m_tau = 0.001f; // very weak constraint for picking
+                        }
+                    }
+
+                    m_picking_position_previous = ray_end;
+                    m_hit_position              = ToVector3(pick_position);
+                    m_picking_distance_previous = (m_hit_position - ray_start).Length();
+
+                    m_renderer->DrawSphere(m_hit_position, 0.1f, 32);
+                }
+            }
+        }
+    }
+
+    void Physics::UnpickBody()
+    {
+        if (m_picked_constraint)
+        {
+            m_picked_body->forceActivationState(m_activation_state);
+            m_picked_body->activate();
+            m_world->removeConstraint(m_picked_constraint);
+            delete m_picked_constraint;
+            m_picked_constraint = nullptr;
+            m_picked_body = nullptr;
+        }
+    }
+
+    void Physics::MovePickedBody()
+    {
+        if (shared_ptr<Camera> camera = m_renderer->GetCamera())
+        {
+            Ray picking_ray       = camera->ComputePickingRay();
+            Vector3 ray_start     = picking_ray.GetStart();
+            Vector3 ray_direction = picking_ray.GetDirection();
+
+            if (m_picked_body && m_picked_constraint)
+            {
+                if (btPoint2PointConstraint* pick_constraint = static_cast<btPoint2PointConstraint*>(m_picked_constraint))
+                {
+                    // keep it at the same picking distance
+                    ray_direction *= m_picking_distance_previous;
+                    Vector3 new_pivot_b = ray_start + ray_direction;
+                    pick_constraint->setPivotB(ToBtVector3(new_pivot_b));
+                }
+            }
+        }
     }
 }

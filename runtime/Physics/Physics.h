@@ -44,6 +44,7 @@ namespace Spartan
     class Renderer;
     class PhysicsDebugDraw;
     class Profiler;
+    class Camera;
     namespace Math { class Vector3; }
 
     class Physics : public ISystem
@@ -76,6 +77,11 @@ namespace Spartan
         bool IsSimulating()         const { return m_simulating; }
 
     private:
+        // Picking
+        void PickBody();
+        void UnpickBody();
+        void MovePickedBody();
+
         btBroadphaseInterface* m_broadphase                         = nullptr;
         btCollisionDispatcher* m_collision_dispatcher               = nullptr;
         btSequentialImpulseConstraintSolver* m_constraint_solver    = nullptr;
@@ -88,12 +94,19 @@ namespace Spartan
         Renderer* m_renderer = nullptr;
         Profiler* m_profiler = nullptr;
 
-        //= PROPERTIES =================================================
-        int m_max_sub_steps         = 1;
-        int m_max_solve_iterations  = 256;
-        float m_internal_fps        = 60.0f;
-        Math::Vector3 m_gravity     = Math::Vector3(0.0f, -9.81f, 0.0f);
-        bool m_simulating           = false;
-        //==============================================================
+        // World properties
+        int m_max_sub_steps        = 1;
+        int m_max_solve_iterations = 256;
+        float m_internal_fps       = 60.0f;
+        Math::Vector3 m_gravity    = Math::Vector3(0.0f, -9.81f, 0.0f);
+        bool m_simulating          = false;
+
+        // Picking
+        btRigidBody* m_picked_body                = nullptr;
+        btTypedConstraint* m_picked_constraint    = nullptr;
+        int m_activation_state                         = 0;
+        Math::Vector3 m_hit_position              = Math::Vector3::Zero;
+        Math::Vector3 m_picking_position_previous = Math::Vector3::Zero;
+        float m_picking_distance_previous         = 0.0f;
     };
 }
