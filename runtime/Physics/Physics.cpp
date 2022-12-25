@@ -33,6 +33,7 @@ SP_WARNINGS_OFF
 #include "BulletCollision/CollisionDispatch/btCollisionDispatcher.h"
 #include "BulletDynamics/Dynamics/btDiscreteDynamicsWorld.h"
 #include "BulletSoftBody/btSoftRigidDynamicsWorld.h"
+#include "BulletDynamics/ConstraintSolver/btPoint2PointConstraint.h"
 SP_WARNINGS_ON
 //==============================================================================
 
@@ -43,6 +44,102 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
+    namespace ObjectPicking
+    {
+        btRigidBody* picked_body             = nullptr;
+        btTypedConstraint* picked_constraint = nullptr;
+        btScalar picking_distance_previous   = 0.0f;
+
+        //static btVector3 get_ray_to(int x, int y)
+        //{
+        //    float top       = 1.f;
+        //    float bottom    = -1.f;
+        //    float nearPlane = 1.f;
+        //    float tanFov    = (top - bottom) * 0.5f / nearPlane;
+        //    float fov       = btScalar(2.0) * btAtan(tanFov);
+
+        //    btVector3 camPos, camTarget;
+
+        //    renderer->getActiveCamera()->getCameraPosition(camPos);
+        //    renderer->getActiveCamera()->getCameraTargetPosition(camTarget);
+
+        //    btVector3 rayFrom = camPos;
+        //    btVector3 rayForward = (camTarget - camPos);
+        //    rayForward.normalize();
+        //    float farPlane = 10000.f;
+        //    rayForward *= farPlane;
+
+        //    btVector3 rightOffset;
+        //    btVector3 cameraUp = btVector3(0, 0, 0);
+        //    cameraUp[m_guiHelper->getAppInterface()->getUpAxis()] = 1;
+
+        //    btVector3 vertical = cameraUp;
+
+        //    btVector3 hor;
+        //    hor = rayForward.cross(vertical);
+        //    hor.safeNormalize();
+        //    vertical = hor.cross(rayForward);
+        //    vertical.safeNormalize();
+
+        //    float tanfov = tanf(0.5f * fov);
+
+        //    hor      *= 2.f * farPlane * tanfov;
+        //    vertical *= 2.f * farPlane * tanfov;
+
+        //    btScalar aspect;
+        //    float width = float(renderer->getScreenWidth());
+        //    float height = float(renderer->getScreenHeight());
+
+        //    aspect = width / height;
+
+        //    hor *= aspect;
+
+        //    btVector3 rayToCenter = rayFrom + rayForward;
+        //    btVector3 dHor        = hor * 1.f / width;
+        //    btVector3 dVert       = vertical * 1.f / height;
+
+        //    btVector3 rayTo = rayToCenter - 0.5f * hor + 0.5f * vertical;
+        //    rayTo += btScalar(x) * dHor;
+        //    rayTo -= btScalar(y) * dVert;
+
+        //    return rayTo;
+        //}
+
+        //static bool move_picked_body(const btVector3 & rayFromWorld, const btVector3 & rayToWorld)
+        //{
+        //    if (picked_body && picked_constraint)
+        //    {
+        //        if (btPoint2PointConstraint* pick_constraint = static_cast<btPoint2PointConstraint*>(picked_constraint))
+        //        {
+        //            // keep it at the same picking distance
+
+        //            btVector3 newPivotB;
+
+        //            btVector3 dir = rayToWorld - rayFromWorld;
+        //            dir.normalize();
+        //            dir *= picking_distance_previous;
+
+        //            newPivotB = rayFromWorld + dir;
+        //            pick_constraint->setPivotB(newPivotB);
+        //            return true;
+        //        }
+        //    }
+
+        //    return false;
+        //}
+
+        //static bool mouseMoveCallback(float x, float y)
+        //{
+        //    btVector3 rayTo = get_ray_to(int(x), int(y));
+        //    btVector3 rayFrom;
+        //    renderer->getActiveCamera()->getCameraPosition(rayFrom);
+        //    move_picked_body(rayFrom, rayTo);
+
+        //    return false;
+        //}
+    }
+
+    // misc
     static const bool m_soft_body_support = true;
 
     Physics::Physics(Context* context) : ISystem(context)

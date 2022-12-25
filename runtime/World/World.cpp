@@ -422,25 +422,64 @@ namespace Spartan
         CreateDefaultWorldCameraLightEnvironment();
 
         // Quad
-        shared_ptr<Entity> entity = CreateEntity();
-        entity->SetName("quad");
-        entity->GetTransform()->SetScale(Vector3(4.0f, 1.0f, 4.0f));
-        Renderable* renderable = entity->AddComponent<Renderable>();
-        renderable->SetGeometry(DefaultGeometry::Quad);
-        renderable->SetDefaultMaterial();
+        {
+            // Create entity
+            shared_ptr<Entity> entity = CreateEntity();
+            entity->SetName("quad");
+            entity->GetTransform()->SetPosition(Vector3(0.0f, 0.005f, 0.0f)); // raise a bit to avoid z-fighting with world grid
+            entity->GetTransform()->SetScale(Vector3(4.0f, 1.0f, 4.0f));
+
+            // Add a renderable component
+            Renderable* renderable = entity->AddComponent<Renderable>();
+            renderable->SetGeometry(DefaultGeometry::Quad);
+            renderable->SetDefaultMaterial();
+
+            // Add physics components
+            RigidBody* rigid_body = entity->AddComponent<RigidBody>();
+            rigid_body->SetMass(0.0f); // make it static/immovable
+            rigid_body->SetFriction(0.5f);
+            rigid_body->SetRestitution(0.2f);
+            Collider* collider = entity->AddComponent<Collider>();
+            collider->SetShapeType(ColliderShape::StaticPlane); // set shape
+        }
 
         // Cube
-        entity = CreateEntity();
-        entity->SetName("cube");
-        entity->GetTransform()->SetPosition(Vector3(0.0f, 0.5f, 0.0f));
-        renderable = entity->AddComponent<Renderable>();
-        renderable->SetGeometry(DefaultGeometry::Cube);
-        renderable->SetDefaultMaterial();
+        {
+            // Create entity
+            shared_ptr<Entity> entity = CreateEntity();
+            entity->SetName("cube");
+            entity->GetTransform()->SetPosition(Vector3(0.0f, 4.0f, 0.0f));
+
+            // Add a renderable component
+            Renderable* renderable = entity->AddComponent<Renderable>();
+            renderable->SetGeometry(DefaultGeometry::Cube);
+            renderable->SetDefaultMaterial();
+
+            // Add physics components
+            RigidBody* rigid_body = entity->AddComponent<RigidBody>();
+            rigid_body->SetMass(1.0f); // give it some mass
+            rigid_body->SetRestitution(1.0f);
+            rigid_body->SetFriction(0.2f);
+            Collider* collider = entity->AddComponent<Collider>();
+            collider->SetShapeType(ColliderShape::Box); // set shape
+        }
+
+        // Start simulating (for the physics to work)
+        m_context->m_engine->SetFlag(EngineMode::Game);
     }
 
     void World::CreateDefaultWorldCar()
     {
         CreateDefaultWorldCameraLightEnvironment();
+
+        // Quad
+        shared_ptr<Entity> entity = CreateEntity();
+        entity->SetName("quad");
+        entity->GetTransform()->SetPosition(Vector3(0.0f, 0.005f, 0.0f)); // raise a bit to avoid z-fighting with world grid
+        entity->GetTransform()->SetScale(Vector3(8.0f, 1.0f, 8.0f));
+        Renderable* renderable = entity->AddComponent<Renderable>();
+        renderable->SetGeometry(DefaultGeometry::Quad);
+        renderable->SetDefaultMaterial();
 
         if (m_default_model_car = ResourceCache::Load<Mesh>("project\\models\\toyota_ae86_sprinter_trueno_zenki\\scene.gltf"))
         {
@@ -546,14 +585,6 @@ namespace Spartan
                 }
             }
         }
-
-        // Quad
-        shared_ptr<Entity> entity = CreateEntity();
-        entity->SetName("quad");
-        entity->GetTransform()->SetScale(Vector3(8.0f, 1.0f, 8.0f));
-        Renderable* renderable = entity->AddComponent<Renderable>();
-        renderable->SetGeometry(DefaultGeometry::Quad);
-        renderable->SetDefaultMaterial();
     }
 
     void World::CreateDefaultWorldTerrain()

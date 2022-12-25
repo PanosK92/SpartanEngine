@@ -44,7 +44,7 @@ namespace Spartan
     class Renderer;
     class PhysicsDebugDraw;
     class Profiler;
-    namespace Math { class Vector3; }    
+    namespace Math { class Vector3; }
 
     class Physics : public ISystem
     {
