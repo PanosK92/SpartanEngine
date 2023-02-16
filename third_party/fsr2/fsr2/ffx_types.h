@@ -1,6 +1,6 @@
 // This file is part of the FidelityFX SDK.
 //
-// Copyright (c) 2022 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (c) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -44,7 +44,17 @@
 #define FFX_MAX_CONST_SIZE          64
 
 /// Off by default warnings
+#if defined(_MSC_VER)
 #pragma warning(disable : 4365 4710 4820 5039)
+#elif defined(__clang__)
+#pragma clang diagnostic ignored "-Wunused-parameter"
+#pragma clang diagnostic ignored "-Wmissing-field-initializers"
+#pragma clang diagnostic ignored "-Wsign-compare"
+#pragma clang diagnostic ignored "-Wunused-function"
+#pragma clang diagnostic ignored "-Wignored-qualifiers"
+#elif defined(__GNUC__)
+#pragma GCC diagnostic ignored "-Wunused-function"
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -70,6 +80,7 @@ typedef enum FfxSurfaceFormat {
     FFX_SURFACE_FORMAT_R16_UNORM,                   ///< 16 bit per channel, 1 channel unsigned normalized format
     FFX_SURFACE_FORMAT_R16_SNORM,                   ///< 16 bit per channel, 1 channel signed normalized format
     FFX_SURFACE_FORMAT_R8_UNORM,                    ///<  8 bit per channel, 1 channel unsigned normalized format
+    FFX_SURFACE_FORMAT_R8_UINT,                     ///<  8 bit per channel, 1 channel unsigned int format
     FFX_SURFACE_FORMAT_R8G8_UNORM,                  ///<  8 bit per channel, 2 channel unsigned normalized format
     FFX_SURFACE_FORMAT_R32_FLOAT                    ///< 32 bit per channel, 1 channel float format
 } FfxSurfaceFormat;
@@ -326,6 +337,7 @@ typedef struct FfxComputeJobDescription {
     wchar_t                         uavNames[FFX_MAX_NUM_UAVS][64];
     FfxConstantBuffer               cbs[FFX_MAX_NUM_CONST_BUFFERS];         ///< Constant buffers to be bound in the compute job.
     wchar_t                         cbNames[FFX_MAX_NUM_CONST_BUFFERS][64];
+    uint32_t                        cbSlotIndex[FFX_MAX_NUM_CONST_BUFFERS]; ///< Slot index in the descriptor table
 } FfxComputeJobDescription;
 
 /// A structure describing a copy render job.

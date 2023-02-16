@@ -39,6 +39,18 @@ namespace Spartan
     FfxFsr2ContextDescription RHI_FSR2::m_ffx_fsr2_context_description;
     FfxFsr2DispatchDescription RHI_FSR2::m_ffx_fsr2_dispatch_description;
 
+    static void on_fsr2_message(FfxFsr2MsgType type, const wchar_t* message)
+    {
+        if (type == FFX_FSR2_MESSAGE_TYPE_ERROR)
+        {
+            SP_LOG_ERROR("FSR 2: %ls", message);
+        }
+        else if (type == FFX_FSR2_MESSAGE_TYPE_WARNING)
+        {
+            SP_LOG_WARNING("FSR 2: %ls", message);
+        }
+    }
+
     void RHI_FSR2::GenerateJitterSample(float* x, float* y)
     {
         // Get render and output resolution from the context description (safe to do as we are not using dynamic resolution)
@@ -61,7 +73,7 @@ namespace Spartan
         VkPhysicalDevice device_physical = rhi_device->GetRhiContext()->device_physical;
 
         // Callbacks
-        if (m_ffx_fsr2_context_description.callbacks.fpCreateBackendContext == nullptr)
+        if (m_ffx_fsr2_context_description.callbacks.scratchBuffer == nullptr)
         {
             const size_t scratch_buffer_size = ffxFsr2GetScratchMemorySizeVK(device_physical);
             void* scratch_buffer             = malloc(scratch_buffer_size);
@@ -77,6 +89,12 @@ namespace Spartan
         m_ffx_fsr2_context_description.flags                = FFX_FSR2_ENABLE_DEPTH_INVERTED     |
                                                               FFX_FSR2_ENABLE_AUTO_EXPOSURE      |
                                                               FFX_FSR2_ENABLE_HIGH_DYNAMIC_RANGE;
+
+        // Debug check
+#ifdef DEBUG
+        m_ffx_fsr2_context_description.flags    |= FFX_FSR2_ENABLE_DEBUG_CHECKING;
+        m_ffx_fsr2_context_description.fpMessage = &on_fsr2_message;
+ #endif
 
         ffxFsr2ContextCreate(&m_ffx_fsr2_context, &m_ffx_fsr2_context_description);
     }
@@ -119,8 +137,8 @@ namespace Spartan
         m_ffx_fsr2_dispatch_description.preExposure            = 1.0f;                 // The exposure value if not using FFX_FSR2_ENABLE_AUTO_EXPOSURE.
         m_ffx_fsr2_dispatch_description.renderSize.width       = resolution_render_x;
         m_ffx_fsr2_dispatch_description.renderSize.height      = resolution_render_y;
-        m_ffx_fsr2_dispatch_description.cameraNear             = camera->GetNearPlane();
-        m_ffx_fsr2_dispatch_description.cameraFar              = camera->GetFarPlane();
+        m_ffx_fsr2_dispatch_description.cameraNear             = camera->GetFarPlane();  // inverted depth
+        m_ffx_fsr2_dispatch_description.cameraFar              = camera->GetNearPlane(); // inverted depth
         m_ffx_fsr2_dispatch_description.cameraFovAngleVertical = camera->GetFovVerticalRad();
 
         SP_ASSERT(ffxFsr2ContextDispatch(&m_ffx_fsr2_context, &m_ffx_fsr2_dispatch_description) == FFX_OK);

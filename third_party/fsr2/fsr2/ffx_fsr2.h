@@ -1,6 +1,6 @@
 // This file is part of the FidelityFX SDK.
 //
-// Copyright (c) 2022 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (c) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -35,12 +35,12 @@
 /// FidelityFX Super Resolution 2 minor version.
 ///
 /// @ingroup FSR2
-#define FFX_FSR2_VERSION_MINOR      (1)
+#define FFX_FSR2_VERSION_MINOR      (2)
 
 /// FidelityFX Super Resolution 2 patch version.
 ///
 /// @ingroup FSR2
-#define FFX_FSR2_VERSION_PATCH      (2)
+#define FFX_FSR2_VERSION_PATCH      (0)
 
 /// The size of the context specified in 32bit values.
 ///
@@ -92,7 +92,8 @@ typedef enum FfxFsr2InitializationFlagBits {
     FFX_FSR2_ENABLE_DEPTH_INFINITE                      = (1<<4),   ///< A bit indicating that the input depth buffer data provided is using an infinite far plane.
     FFX_FSR2_ENABLE_AUTO_EXPOSURE                       = (1<<5),   ///< A bit indicating if automatic exposure should be applied to input color data.
     FFX_FSR2_ENABLE_DYNAMIC_RESOLUTION                  = (1<<6),   ///< A bit indicating that the application uses dynamic resolution scaling.
-    FFX_FSR2_ENABLE_TEXTURE1D_USAGE                     = (1<<7)    ///< A bit indicating that the backend should use 1D textures.
+    FFX_FSR2_ENABLE_TEXTURE1D_USAGE                     = (1<<7),   ///< A bit indicating that the backend should use 1D textures.
+    FFX_FSR2_ENABLE_DEBUG_CHECKING                      = (1<<8),   ///< A bit indicating that the runtime should check some API values and report issues.
 } FfxFsr2InitializationFlagBits;
 
 /// A structure encapsulating the parameters required to initialize FidelityFX
@@ -106,6 +107,8 @@ typedef struct FfxFsr2ContextDescription {
     FfxDimensions2D             displaySize;                        ///< The size of the presentation resolution targeted by the upscaling process.
     FfxFsr2Interface            callbacks;                          ///< A set of pointers to the backend implementation for FSR 2.0.
     FfxDevice                   device;                             ///< The abstracted device which is passed to some callback functions.
+
+    FfxFsr2Message              fpMessage;                          ///< A pointer to a function that can recieve messages from the runtime.
 } FfxFsr2ContextDescription;
 
 /// A structure encapsulating the parameters for dispatching the various passes
@@ -128,11 +131,21 @@ typedef struct FfxFsr2DispatchDescription {
     bool                        enableSharpening;                   ///< Enable an additional sharpening pass.
     float                       sharpness;                          ///< The sharpness value between 0 and 1, where 0 is no additional sharpness and 1 is maximum additional sharpness.
     float                       frameTimeDelta;                     ///< The time elapsed since the last frame (expressed in milliseconds).
-    float                       preExposure;                        ///< The exposure value if not using <c><i>FFX_FSR2_ENABLE_AUTO_EXPOSURE</i></c>.
+    float                       preExposure;                        ///< The pre exposure value (must be > 0.0f)
     bool                        reset;                              ///< A boolean value which when set to true, indicates the camera has moved discontinuously.
     float                       cameraNear;                         ///< The distance to the near plane of the camera.
     float                       cameraFar;                          ///< The distance to the far plane of the camera. This is used only used in case of non infinite depth.
     float                       cameraFovAngleVertical;             ///< The camera angle field of view in the vertical direction (expressed in radians).
+    float                       viewSpaceToMetersFactor;            ///< The scale factor to convert view space units to meters
+
+    // EXPERIMENTAL reactive mask generation parameters
+    bool                        enableAutoReactive;                 ///< A boolean value to indicate internal reactive autogeneration should be used
+    FfxResource                 colorOpaqueOnly;                    ///< A <c><i>FfxResource</i></c> containing the opaque only color buffer for the current frame (at render resolution).
+    float                       autoTcThreshold;                    ///< Cutoff value for TC
+    float                       autoTcScale;                        ///< A value to scale the transparency and composition mask
+    float                       autoReactiveScale;                  ///< A value to scale the reactive mask
+    float                       autoReactiveMax;                    ///< A value to clamp the reactive mask
+
 } FfxFsr2DispatchDescription;
 
 /// A structure encapsulating the parameters for automatic generation of a reactive mask

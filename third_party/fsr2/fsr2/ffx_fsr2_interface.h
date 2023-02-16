@@ -1,6 +1,6 @@
 // This file is part of the FidelityFX SDK.
 //
-// Copyright (c) 2022 Advanced Micro Devices, Inc. All rights reserved.
+// Copyright (c) 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -55,18 +55,24 @@ FFX_FORWARD_DECLARE(FfxFsr2Interface);
 /// @ingroup FSR2
 typedef enum FfxFsr2Pass {
 
-    FFX_FSR2_PASS_PREPARE_INPUT_COLOR = 0,                              ///< A pass which prepares input colors for subsequent use.
-    FFX_FSR2_PASS_DEPTH_CLIP = 1,                                       ///< A pass which performs depth clipping.
-    FFX_FSR2_PASS_RECONSTRUCT_PREVIOUS_DEPTH = 2,                       ///< A pass which performs reconstruction of previous frame's depth.
-    FFX_FSR2_PASS_LOCK = 3,                                             ///< A pass which calculates pixel locks.
-    FFX_FSR2_PASS_ACCUMULATE = 4,                                       ///< A pass which performs upscaling.
-    FFX_FSR2_PASS_ACCUMULATE_SHARPEN = 5,                               ///< A pass which performs upscaling when sharpening is used.
-    FFX_FSR2_PASS_RCAS = 6,                                             ///< A pass which performs sharpening.
-    FFX_FSR2_PASS_COMPUTE_LUMINANCE_PYRAMID = 7,                        ///< A pass which generates the luminance mipmap chain for the current frame.
-    FFX_FSR2_PASS_GENERATE_REACTIVE = 8,                                ///< An optional pass to generate a reactive mask
+    FFX_FSR2_PASS_DEPTH_CLIP = 0,                                       ///< A pass which performs depth clipping.
+    FFX_FSR2_PASS_RECONSTRUCT_PREVIOUS_DEPTH = 1,                       ///< A pass which performs reconstruction of previous frame's depth.
+    FFX_FSR2_PASS_LOCK = 2,                                             ///< A pass which calculates pixel locks.
+    FFX_FSR2_PASS_ACCUMULATE = 3,                                       ///< A pass which performs upscaling.
+    FFX_FSR2_PASS_ACCUMULATE_SHARPEN = 4,                               ///< A pass which performs upscaling when sharpening is used.
+    FFX_FSR2_PASS_RCAS = 5,                                             ///< A pass which performs sharpening.
+    FFX_FSR2_PASS_COMPUTE_LUMINANCE_PYRAMID = 6,                        ///< A pass which generates the luminance mipmap chain for the current frame.
+    FFX_FSR2_PASS_GENERATE_REACTIVE = 7,                                ///< An optional pass to generate a reactive mask
+    FFX_FSR2_PASS_TCR_AUTOGENERATE = 8,                                 ///< An optional pass to generate a texture-and-composition and reactive masks
 
     FFX_FSR2_PASS_COUNT                                                 ///< The number of passes performed by FSR2.
 } FfxFsr2Pass;
+
+typedef enum FfxFsr2MsgType {
+    FFX_FSR2_MESSAGE_TYPE_ERROR = 0,
+    FFX_FSR2_MESSAGE_TYPE_WARNING = 1,
+    FFX_FSR2_MESSAGE_TYPE_COUNT
+} FfxFsr2MsgType;
 
 /// Create and initialize the backend context.
 ///
@@ -312,6 +318,19 @@ typedef FfxErrorCode (*FfxFsr2ScheduleGpuJobFunc)(
 typedef FfxErrorCode (*FfxFsr2ExecuteGpuJobsFunc)(
     FfxFsr2Interface* backendInterface,
     FfxCommandList commandList);
+
+/// Pass a string message
+///
+/// Used for debug messages.
+///
+/// @param [in] type                       The type of message.
+/// @param [in] message                    A string message to pass.
+///
+///
+/// @ingroup FSR2
+typedef void(*FfxFsr2Message)(
+    FfxFsr2MsgType type,
+    const wchar_t* message);
 
 /// A structure encapsulating the interface between the core implentation of
 /// the FSR2 algorithm and any graphics API that it should ultimately call.
