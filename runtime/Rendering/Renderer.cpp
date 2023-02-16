@@ -69,13 +69,14 @@ namespace Spartan
         SetOption(RendererOption::Ssao_Gi,                1.0f);
         SetOption(RendererOption::ScreenSpaceShadows,     1.0f);
         SetOption(RendererOption::ScreenSpaceReflections, 1.0f);
-        SetOption(RendererOption::Antialiasing,           static_cast<float>(AntialiasingMode::Fxaa)); // Only enable FXAA by default, this is because TAA uses FSR 2, and FSR 2 is causing me to get validation errors.
         SetOption(RendererOption::Anisotropy,             16.0f);
         SetOption(RendererOption::ShadowResolution,       2048.0f);
         SetOption(RendererOption::Tonemapping,            static_cast<float>(TonemappingMode::Disabled));
         SetOption(RendererOption::Gamma,                  1.5f);
         SetOption(RendererOption::Sharpness,              0.5f);
         SetOption(RendererOption::Fog,                    0.0f);
+        SetOption(RendererOption::Antialiasing,           static_cast<float>(AntialiasingMode::TaaFxaa)); // This is using FSR 2 for TAA
+        SetOption(RendererOption::Upsampling,             static_cast<float>(UpsamplingMode::FSR2));
         // Debug
         SetOption(RendererOption::Debug_TransformHandle,    1.0f);
         SetOption(RendererOption::Debug_Grid,               1.0f);
