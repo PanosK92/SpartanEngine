@@ -287,13 +287,11 @@ namespace VULKAN_HPP_NAMESPACE
         vkGetPhysicalDeviceSurfacePresentModesKHR =
           PFN_vkGetPhysicalDeviceSurfacePresentModesKHR( vkGetInstanceProcAddr( instance, "vkGetPhysicalDeviceSurfacePresentModesKHR" ) );
 
-#  if defined( VK_ENABLE_BETA_EXTENSIONS )
         //=== VK_KHR_video_queue ===
         vkGetPhysicalDeviceVideoCapabilitiesKHR =
           PFN_vkGetPhysicalDeviceVideoCapabilitiesKHR( vkGetInstanceProcAddr( instance, "vkGetPhysicalDeviceVideoCapabilitiesKHR" ) );
         vkGetPhysicalDeviceVideoFormatPropertiesKHR =
           PFN_vkGetPhysicalDeviceVideoFormatPropertiesKHR( vkGetInstanceProcAddr( instance, "vkGetPhysicalDeviceVideoFormatPropertiesKHR" ) );
-#  endif /*VK_ENABLE_BETA_EXTENSIONS*/
 
 #  if defined( VK_USE_PLATFORM_WAYLAND_KHR )
         //=== VK_KHR_wayland_surface ===
@@ -544,14 +542,9 @@ namespace VULKAN_HPP_NAMESPACE
       PFN_vkGetPhysicalDeviceSurfaceFormatsKHR      vkGetPhysicalDeviceSurfaceFormatsKHR      = 0;
       PFN_vkGetPhysicalDeviceSurfacePresentModesKHR vkGetPhysicalDeviceSurfacePresentModesKHR = 0;
 
-#  if defined( VK_ENABLE_BETA_EXTENSIONS )
       //=== VK_KHR_video_queue ===
       PFN_vkGetPhysicalDeviceVideoCapabilitiesKHR     vkGetPhysicalDeviceVideoCapabilitiesKHR     = 0;
       PFN_vkGetPhysicalDeviceVideoFormatPropertiesKHR vkGetPhysicalDeviceVideoFormatPropertiesKHR = 0;
-#  else
-      PFN_dummy vkGetPhysicalDeviceVideoCapabilitiesKHR_placeholder           = 0;
-      PFN_dummy vkGetPhysicalDeviceVideoFormatPropertiesKHR_placeholder       = 0;
-#  endif /*VK_ENABLE_BETA_EXTENSIONS*/
 
 #  if defined( VK_USE_PLATFORM_WAYLAND_KHR )
       //=== VK_KHR_wayland_surface ===
@@ -1109,6 +1102,9 @@ namespace VULKAN_HPP_NAMESPACE
         vkGetShaderModuleCreateInfoIdentifierEXT =
           PFN_vkGetShaderModuleCreateInfoIdentifierEXT( vkGetDeviceProcAddr( device, "vkGetShaderModuleCreateInfoIdentifierEXT" ) );
 
+        //=== VK_EXT_swapchain_maintenance1 ===
+        vkReleaseSwapchainImagesEXT = PFN_vkReleaseSwapchainImagesEXT( vkGetDeviceProcAddr( device, "vkReleaseSwapchainImagesEXT" ) );
+
         //=== VK_EXT_transform_feedback ===
         vkCmdBindTransformFeedbackBuffersEXT =
           PFN_vkCmdBindTransformFeedbackBuffersEXT( vkGetDeviceProcAddr( device, "vkCmdBindTransformFeedbackBuffersEXT" ) );
@@ -1156,6 +1152,10 @@ namespace VULKAN_HPP_NAMESPACE
         //=== VK_GOOGLE_display_timing ===
         vkGetRefreshCycleDurationGOOGLE   = PFN_vkGetRefreshCycleDurationGOOGLE( vkGetDeviceProcAddr( device, "vkGetRefreshCycleDurationGOOGLE" ) );
         vkGetPastPresentationTimingGOOGLE = PFN_vkGetPastPresentationTimingGOOGLE( vkGetDeviceProcAddr( device, "vkGetPastPresentationTimingGOOGLE" ) );
+
+        //=== VK_HUAWEI_cluster_culling_shader ===
+        vkCmdDrawClusterHUAWEI         = PFN_vkCmdDrawClusterHUAWEI( vkGetDeviceProcAddr( device, "vkCmdDrawClusterHUAWEI" ) );
+        vkCmdDrawClusterIndirectHUAWEI = PFN_vkCmdDrawClusterIndirectHUAWEI( vkGetDeviceProcAddr( device, "vkCmdDrawClusterIndirectHUAWEI" ) );
 
         //=== VK_HUAWEI_invocation_mask ===
         vkCmdBindInvocationMaskHUAWEI = PFN_vkCmdBindInvocationMaskHUAWEI( vkGetDeviceProcAddr( device, "vkCmdBindInvocationMaskHUAWEI" ) );
@@ -1475,17 +1475,14 @@ namespace VULKAN_HPP_NAMESPACE
         if ( !vkSignalSemaphore )
           vkSignalSemaphore = vkSignalSemaphoreKHR;
 
-#  if defined( VK_ENABLE_BETA_EXTENSIONS )
         //=== VK_KHR_video_decode_queue ===
         vkCmdDecodeVideoKHR = PFN_vkCmdDecodeVideoKHR( vkGetDeviceProcAddr( device, "vkCmdDecodeVideoKHR" ) );
-#  endif /*VK_ENABLE_BETA_EXTENSIONS*/
 
 #  if defined( VK_ENABLE_BETA_EXTENSIONS )
         //=== VK_KHR_video_encode_queue ===
         vkCmdEncodeVideoKHR = PFN_vkCmdEncodeVideoKHR( vkGetDeviceProcAddr( device, "vkCmdEncodeVideoKHR" ) );
 #  endif /*VK_ENABLE_BETA_EXTENSIONS*/
 
-#  if defined( VK_ENABLE_BETA_EXTENSIONS )
         //=== VK_KHR_video_queue ===
         vkCreateVideoSessionKHR  = PFN_vkCreateVideoSessionKHR( vkGetDeviceProcAddr( device, "vkCreateVideoSessionKHR" ) );
         vkDestroyVideoSessionKHR = PFN_vkDestroyVideoSessionKHR( vkGetDeviceProcAddr( device, "vkDestroyVideoSessionKHR" ) );
@@ -1498,7 +1495,6 @@ namespace VULKAN_HPP_NAMESPACE
         vkCmdBeginVideoCodingKHR           = PFN_vkCmdBeginVideoCodingKHR( vkGetDeviceProcAddr( device, "vkCmdBeginVideoCodingKHR" ) );
         vkCmdEndVideoCodingKHR             = PFN_vkCmdEndVideoCodingKHR( vkGetDeviceProcAddr( device, "vkCmdEndVideoCodingKHR" ) );
         vkCmdControlVideoCodingKHR         = PFN_vkCmdControlVideoCodingKHR( vkGetDeviceProcAddr( device, "vkCmdControlVideoCodingKHR" ) );
-#  endif /*VK_ENABLE_BETA_EXTENSIONS*/
 
         //=== VK_NVX_binary_import ===
         vkCreateCuModuleNVX    = PFN_vkCreateCuModuleNVX( vkGetDeviceProcAddr( device, "vkCreateCuModuleNVX" ) );
@@ -2002,6 +1998,9 @@ namespace VULKAN_HPP_NAMESPACE
       PFN_vkGetShaderModuleIdentifierEXT           vkGetShaderModuleIdentifierEXT           = 0;
       PFN_vkGetShaderModuleCreateInfoIdentifierEXT vkGetShaderModuleCreateInfoIdentifierEXT = 0;
 
+      //=== VK_EXT_swapchain_maintenance1 ===
+      PFN_vkReleaseSwapchainImagesEXT vkReleaseSwapchainImagesEXT = 0;
+
       //=== VK_EXT_transform_feedback ===
       PFN_vkCmdBindTransformFeedbackBuffersEXT vkCmdBindTransformFeedbackBuffersEXT = 0;
       PFN_vkCmdBeginTransformFeedbackEXT       vkCmdBeginTransformFeedbackEXT       = 0;
@@ -2055,6 +2054,10 @@ namespace VULKAN_HPP_NAMESPACE
       //=== VK_GOOGLE_display_timing ===
       PFN_vkGetRefreshCycleDurationGOOGLE   vkGetRefreshCycleDurationGOOGLE   = 0;
       PFN_vkGetPastPresentationTimingGOOGLE vkGetPastPresentationTimingGOOGLE = 0;
+
+      //=== VK_HUAWEI_cluster_culling_shader ===
+      PFN_vkCmdDrawClusterHUAWEI         vkCmdDrawClusterHUAWEI         = 0;
+      PFN_vkCmdDrawClusterIndirectHUAWEI vkCmdDrawClusterIndirectHUAWEI = 0;
 
       //=== VK_HUAWEI_invocation_mask ===
       PFN_vkCmdBindInvocationMaskHUAWEI vkCmdBindInvocationMaskHUAWEI = 0;
@@ -2261,12 +2264,8 @@ namespace VULKAN_HPP_NAMESPACE
       PFN_vkWaitSemaphoresKHR           vkWaitSemaphoresKHR           = 0;
       PFN_vkSignalSemaphoreKHR          vkSignalSemaphoreKHR          = 0;
 
-#  if defined( VK_ENABLE_BETA_EXTENSIONS )
       //=== VK_KHR_video_decode_queue ===
       PFN_vkCmdDecodeVideoKHR vkCmdDecodeVideoKHR = 0;
-#  else
-      PFN_dummy vkCmdDecodeVideoKHR_placeholder                               = 0;
-#  endif /*VK_ENABLE_BETA_EXTENSIONS*/
 
 #  if defined( VK_ENABLE_BETA_EXTENSIONS )
       //=== VK_KHR_video_encode_queue ===
@@ -2275,7 +2274,6 @@ namespace VULKAN_HPP_NAMESPACE
       PFN_dummy vkCmdEncodeVideoKHR_placeholder                               = 0;
 #  endif /*VK_ENABLE_BETA_EXTENSIONS*/
 
-#  if defined( VK_ENABLE_BETA_EXTENSIONS )
       //=== VK_KHR_video_queue ===
       PFN_vkCreateVideoSessionKHR                vkCreateVideoSessionKHR                = 0;
       PFN_vkDestroyVideoSessionKHR               vkDestroyVideoSessionKHR               = 0;
@@ -2287,18 +2285,6 @@ namespace VULKAN_HPP_NAMESPACE
       PFN_vkCmdBeginVideoCodingKHR               vkCmdBeginVideoCodingKHR               = 0;
       PFN_vkCmdEndVideoCodingKHR                 vkCmdEndVideoCodingKHR                 = 0;
       PFN_vkCmdControlVideoCodingKHR             vkCmdControlVideoCodingKHR             = 0;
-#  else
-      PFN_dummy vkCreateVideoSessionKHR_placeholder                           = 0;
-      PFN_dummy vkDestroyVideoSessionKHR_placeholder                          = 0;
-      PFN_dummy vkGetVideoSessionMemoryRequirementsKHR_placeholder            = 0;
-      PFN_dummy vkBindVideoSessionMemoryKHR_placeholder                       = 0;
-      PFN_dummy vkCreateVideoSessionParametersKHR_placeholder                 = 0;
-      PFN_dummy vkUpdateVideoSessionParametersKHR_placeholder                 = 0;
-      PFN_dummy vkDestroyVideoSessionParametersKHR_placeholder                = 0;
-      PFN_dummy vkCmdBeginVideoCodingKHR_placeholder                          = 0;
-      PFN_dummy vkCmdEndVideoCodingKHR_placeholder                            = 0;
-      PFN_dummy vkCmdControlVideoCodingKHR_placeholder                        = 0;
-#  endif /*VK_ENABLE_BETA_EXTENSIONS*/
 
       //=== VK_NVX_binary_import ===
       PFN_vkCreateCuModuleNVX    vkCreateCuModuleNVX    = 0;
@@ -2440,11 +2426,9 @@ namespace VULKAN_HPP_NAMESPACE
     //=== VK_EXT_debug_report ===
     class DebugReportCallbackEXT;
 
-#  if defined( VK_ENABLE_BETA_EXTENSIONS )
     //=== VK_KHR_video_queue ===
     class VideoSessionKHR;
     class VideoSessionParametersKHR;
-#  endif /*VK_ENABLE_BETA_EXTENSIONS*/
 
     //=== VK_NVX_binary_import ===
     class CuModuleNVX;
@@ -3031,7 +3015,6 @@ namespace VULKAN_HPP_NAMESPACE
       VULKAN_HPP_NODISCARD VULKAN_HPP_NAMESPACE::Bool32 getWin32PresentationSupportKHR( uint32_t queueFamilyIndex ) const VULKAN_HPP_NOEXCEPT;
 #  endif /*VK_USE_PLATFORM_WIN32_KHR*/
 
-#  if defined( VK_ENABLE_BETA_EXTENSIONS )
       //=== VK_KHR_video_queue ===
 
       VULKAN_HPP_NODISCARD VULKAN_HPP_NAMESPACE::VideoCapabilitiesKHR
@@ -3042,7 +3025,6 @@ namespace VULKAN_HPP_NAMESPACE
 
       VULKAN_HPP_NODISCARD std::vector<VULKAN_HPP_NAMESPACE::VideoFormatPropertiesKHR>
                            getVideoFormatPropertiesKHR( const VULKAN_HPP_NAMESPACE::PhysicalDeviceVideoFormatInfoKHR & videoFormatInfo ) const;
-#  endif /*VK_ENABLE_BETA_EXTENSIONS*/
 
       //=== VK_NV_external_memory_capabilities ===
 
@@ -3607,7 +3589,6 @@ namespace VULKAN_HPP_NAMESPACE
 
       void debugMarkerSetObjectNameEXT( const VULKAN_HPP_NAMESPACE::DebugMarkerObjectNameInfoEXT & nameInfo ) const;
 
-#  if defined( VK_ENABLE_BETA_EXTENSIONS )
       //=== VK_KHR_video_queue ===
 
       VULKAN_HPP_NODISCARD VULKAN_HPP_RAII_NAMESPACE::VideoSessionKHR
@@ -3617,7 +3598,6 @@ namespace VULKAN_HPP_NAMESPACE
       VULKAN_HPP_NODISCARD VULKAN_HPP_RAII_NAMESPACE::VideoSessionParametersKHR
                            createVideoSessionParametersKHR( VULKAN_HPP_NAMESPACE::VideoSessionParametersCreateInfoKHR const &               createInfo,
                                                             VULKAN_HPP_NAMESPACE::Optional<const VULKAN_HPP_NAMESPACE::AllocationCallbacks> allocator = nullptr ) const;
-#  endif /*VK_ENABLE_BETA_EXTENSIONS*/
 
       //=== VK_NVX_binary_import ===
 
@@ -3932,6 +3912,10 @@ namespace VULKAN_HPP_NAMESPACE
 
       VULKAN_HPP_NODISCARD std::vector<VULKAN_HPP_NAMESPACE::PipelineExecutableInternalRepresentationKHR>
                            getPipelineExecutableInternalRepresentationsKHR( const VULKAN_HPP_NAMESPACE::PipelineExecutableInfoKHR & executableInfo ) const;
+
+      //=== VK_EXT_swapchain_maintenance1 ===
+
+      void releaseSwapchainImagesEXT( const VULKAN_HPP_NAMESPACE::ReleaseSwapchainImagesInfoEXT & releaseInfo ) const;
 
       //=== VK_NV_device_generated_commands ===
 
@@ -5268,7 +5252,6 @@ namespace VULKAN_HPP_NAMESPACE
 
       void debugMarkerInsertEXT( const VULKAN_HPP_NAMESPACE::DebugMarkerMarkerInfoEXT & markerInfo ) const VULKAN_HPP_NOEXCEPT;
 
-#  if defined( VK_ENABLE_BETA_EXTENSIONS )
       //=== VK_KHR_video_queue ===
 
       void beginVideoCodingKHR( const VULKAN_HPP_NAMESPACE::VideoBeginCodingInfoKHR & beginInfo ) const VULKAN_HPP_NOEXCEPT;
@@ -5276,13 +5259,10 @@ namespace VULKAN_HPP_NAMESPACE
       void endVideoCodingKHR( const VULKAN_HPP_NAMESPACE::VideoEndCodingInfoKHR & endCodingInfo ) const VULKAN_HPP_NOEXCEPT;
 
       void controlVideoCodingKHR( const VULKAN_HPP_NAMESPACE::VideoCodingControlInfoKHR & codingControlInfo ) const VULKAN_HPP_NOEXCEPT;
-#  endif /*VK_ENABLE_BETA_EXTENSIONS*/
 
-#  if defined( VK_ENABLE_BETA_EXTENSIONS )
       //=== VK_KHR_video_decode_queue ===
 
       void decodeVideoKHR( const VULKAN_HPP_NAMESPACE::VideoDecodeInfoKHR & decodeInfo ) const VULKAN_HPP_NOEXCEPT;
-#  endif /*VK_ENABLE_BETA_EXTENSIONS*/
 
       //=== VK_EXT_transform_feedback ===
 
@@ -5740,6 +5720,12 @@ namespace VULKAN_HPP_NAMESPACE
                                         VULKAN_HPP_NAMESPACE::QueryType                                                   queryType,
                                         VULKAN_HPP_NAMESPACE::QueryPool                                                   queryPool,
                                         uint32_t firstQuery ) const VULKAN_HPP_NOEXCEPT;
+
+      //=== VK_HUAWEI_cluster_culling_shader ===
+
+      void drawClusterHUAWEI( uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ ) const VULKAN_HPP_NOEXCEPT;
+
+      void drawClusterIndirectHUAWEI( VULKAN_HPP_NAMESPACE::Buffer buffer, VULKAN_HPP_NAMESPACE::DeviceSize offset ) const VULKAN_HPP_NOEXCEPT;
 
       //=== VK_NV_copy_memory_indirect ===
 
@@ -10974,7 +10960,6 @@ namespace VULKAN_HPP_NAMESPACE
       VULKAN_HPP_NAMESPACE::VULKAN_HPP_RAII_NAMESPACE::DeviceDispatcher const * m_dispatcher      = nullptr;
     };
 
-#  if defined( VK_ENABLE_BETA_EXTENSIONS )
     class VideoSessionKHR
     {
     public:
@@ -11101,9 +11086,7 @@ namespace VULKAN_HPP_NAMESPACE
       const VULKAN_HPP_NAMESPACE::AllocationCallbacks *                         m_allocator    = {};
       VULKAN_HPP_NAMESPACE::VULKAN_HPP_RAII_NAMESPACE::DeviceDispatcher const * m_dispatcher   = nullptr;
     };
-#  endif /*VK_ENABLE_BETA_EXTENSIONS*/
 
-#  if defined( VK_ENABLE_BETA_EXTENSIONS )
     class VideoSessionParametersKHR
     {
     public:
@@ -11228,7 +11211,6 @@ namespace VULKAN_HPP_NAMESPACE
       const VULKAN_HPP_NAMESPACE::AllocationCallbacks *                         m_allocator              = {};
       VULKAN_HPP_NAMESPACE::VULKAN_HPP_RAII_NAMESPACE::DeviceDispatcher const * m_dispatcher             = nullptr;
     };
-#  endif /*VK_ENABLE_BETA_EXTENSIONS*/
 
     //===========================
     //=== COMMAND Definitions ===
@@ -13836,7 +13818,6 @@ namespace VULKAN_HPP_NAMESPACE
                                                   reinterpret_cast<const VkDebugMarkerMarkerInfoEXT *>( &markerInfo ) );
     }
 
-#  if defined( VK_ENABLE_BETA_EXTENSIONS )
     //=== VK_KHR_video_queue ===
 
     VULKAN_HPP_NODISCARD VULKAN_HPP_INLINE VULKAN_HPP_NAMESPACE::VideoCapabilitiesKHR
@@ -13934,7 +13915,7 @@ namespace VULKAN_HPP_NAMESPACE
                                                                      reinterpret_cast<VkVideoSessionMemoryRequirementsKHR *>( memoryRequirements.data() ) );
         }
       } while ( result == VK_INCOMPLETE );
-      resultCheck( static_cast<VULKAN_HPP_NAMESPACE::Result>( result ), VULKAN_HPP_NAMESPACE_STRING "::VideoSessionKHR::getMemoryRequirements" );
+
       VULKAN_HPP_ASSERT( memoryRequirementsCount <= memoryRequirements.size() );
       if ( memoryRequirementsCount < memoryRequirements.size() )
       {
@@ -13999,9 +13980,7 @@ namespace VULKAN_HPP_NAMESPACE
       getDispatcher()->vkCmdControlVideoCodingKHR( static_cast<VkCommandBuffer>( m_commandBuffer ),
                                                    reinterpret_cast<const VkVideoCodingControlInfoKHR *>( &codingControlInfo ) );
     }
-#  endif /*VK_ENABLE_BETA_EXTENSIONS*/
 
-#  if defined( VK_ENABLE_BETA_EXTENSIONS )
     //=== VK_KHR_video_decode_queue ===
 
     VULKAN_HPP_INLINE void CommandBuffer::decodeVideoKHR( const VULKAN_HPP_NAMESPACE::VideoDecodeInfoKHR & decodeInfo ) const VULKAN_HPP_NOEXCEPT
@@ -14010,7 +13989,6 @@ namespace VULKAN_HPP_NAMESPACE
 
       getDispatcher()->vkCmdDecodeVideoKHR( static_cast<VkCommandBuffer>( m_commandBuffer ), reinterpret_cast<const VkVideoDecodeInfoKHR *>( &decodeInfo ) );
     }
-#  endif /*VK_ENABLE_BETA_EXTENSIONS*/
 
     //=== VK_EXT_transform_feedback ===
 
@@ -17364,6 +17342,18 @@ namespace VULKAN_HPP_NAMESPACE
       return internalRepresentations;
     }
 
+    //=== VK_EXT_swapchain_maintenance1 ===
+
+    VULKAN_HPP_INLINE void Device::releaseSwapchainImagesEXT( const VULKAN_HPP_NAMESPACE::ReleaseSwapchainImagesInfoEXT & releaseInfo ) const
+    {
+      VULKAN_HPP_ASSERT( getDispatcher()->vkReleaseSwapchainImagesEXT &&
+                         "Function <vkReleaseSwapchainImagesEXT> needs extension <VK_EXT_swapchain_maintenance1> enabled!" );
+
+      VkResult result = getDispatcher()->vkReleaseSwapchainImagesEXT( static_cast<VkDevice>( m_device ),
+                                                                      reinterpret_cast<const VkReleaseSwapchainImagesInfoEXT *>( &releaseInfo ) );
+      resultCheck( static_cast<VULKAN_HPP_NAMESPACE::Result>( result ), VULKAN_HPP_NAMESPACE_STRING "::Device::releaseSwapchainImagesEXT" );
+    }
+
     //=== VK_NV_device_generated_commands ===
 
     VULKAN_HPP_NODISCARD VULKAN_HPP_INLINE VULKAN_HPP_NAMESPACE::MemoryRequirements2
@@ -18686,6 +18676,26 @@ namespace VULKAN_HPP_NAMESPACE
                                                    reinterpret_cast<VkMicromapBuildSizesInfoEXT *>( &sizeInfo ) );
 
       return sizeInfo;
+    }
+
+    //=== VK_HUAWEI_cluster_culling_shader ===
+
+    VULKAN_HPP_INLINE void CommandBuffer::drawClusterHUAWEI( uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ ) const VULKAN_HPP_NOEXCEPT
+    {
+      VULKAN_HPP_ASSERT( getDispatcher()->vkCmdDrawClusterHUAWEI &&
+                         "Function <vkCmdDrawClusterHUAWEI> needs extension <VK_HUAWEI_cluster_culling_shader> enabled!" );
+
+      getDispatcher()->vkCmdDrawClusterHUAWEI( static_cast<VkCommandBuffer>( m_commandBuffer ), groupCountX, groupCountY, groupCountZ );
+    }
+
+    VULKAN_HPP_INLINE void CommandBuffer::drawClusterIndirectHUAWEI( VULKAN_HPP_NAMESPACE::Buffer     buffer,
+                                                                     VULKAN_HPP_NAMESPACE::DeviceSize offset ) const VULKAN_HPP_NOEXCEPT
+    {
+      VULKAN_HPP_ASSERT( getDispatcher()->vkCmdDrawClusterIndirectHUAWEI &&
+                         "Function <vkCmdDrawClusterIndirectHUAWEI> needs extension <VK_HUAWEI_cluster_culling_shader> enabled!" );
+
+      getDispatcher()->vkCmdDrawClusterIndirectHUAWEI(
+        static_cast<VkCommandBuffer>( m_commandBuffer ), static_cast<VkBuffer>( buffer ), static_cast<VkDeviceSize>( offset ) );
     }
 
     //=== VK_EXT_pageable_device_local_memory ===
