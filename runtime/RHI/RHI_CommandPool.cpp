@@ -48,12 +48,6 @@ namespace Spartan
 
     bool RHI_CommandPool::Step()
     {
-        if (m_first_step)
-        {
-            m_first_step = false;
-            return false;
-        }
-
         m_cmd_list_index = (m_cmd_list_index + 1) % static_cast<uint32_t>(m_cmd_lists.size());
 
         // Ensure that the new m_cmd_list_index refers to a command list that's ready to use
@@ -62,11 +56,20 @@ namespace Spartan
             m_cmd_lists[m_cmd_list_index]->Wait();
         }
 
-        // If we circled back to the beginning, we need to reset the command pool
-        if (m_cmd_list_index == 0)
+        if (!m_first_step)
         {
-            Reset(GetPoolIndex());
-            return true;
+            // Every time the command pool (that the command list comes from) changes, we reset it.
+            if ((m_cmd_list_index % m_cmd_pool_count) == 0)
+            {
+                Reset(GetPoolIndex());
+                return true;
+            }
+        }
+
+        if (m_first_step)
+        {
+            m_first_step = false;
+            return false;
         }
 
         return false;
