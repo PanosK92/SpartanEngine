@@ -180,6 +180,15 @@ namespace Spartan
                 // Choose the version which is supported by both the sdk and the driver
                 app_info.apiVersion = Helper::Min(sdk_version, driver_version);
 
+                // The following extensions have been promoted to 1.2 and 1.3.
+                // VK_KHR_timeline_semaphore                 - 1.2
+                // VK_KHR_dynamic_rendering                  - 1.3
+                // VK_EXT_subgroup_size_control              - 1.3
+                // VK_KHR_shader_float16_int8                - 1.2
+                // VK_EXT_shader_demote_to_helper_invocation - 1.3
+                // We make Vulkan 1.3 the minimum required version and we enable those extensions from the core.
+                SP_ASSERT_MSG(app_info.apiVersion >= VK_API_VERSION_1_3, "Vulkan 1.3 is not supported");
+
                 // In case the SDK is not supported by the driver, prompt the user to update
                 if (sdk_version > driver_version)
                 {
