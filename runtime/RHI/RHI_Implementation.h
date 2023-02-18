@@ -485,13 +485,8 @@ namespace Spartan
             std::vector<const char*> extensions_instance                    = { "VK_KHR_surface", "VK_KHR_win32_surface" };
             const std::vector<const char*> validation_layers                = { "VK_LAYER_KHRONOS_validation" };
             const std::vector<const char*> extensions_device                = {
-                "VK_KHR_swapchain",                         // windows swapchain
-                "VK_EXT_memory_budget",                     // memory budget
-                "VK_KHR_timeline_semaphore",                // timeline semaphores
-                "VK_KHR_dynamic_rendering",                 // gets rid of render passes and frame buffer objects
-                "VK_EXT_subgroup_size_control",             // used by FSR 2.0
-                "VK_KHR_shader_float16_int8",               // used by FSR 2.0
-                "VK_EXT_shader_demote_to_helper_invocation" // adds support for SPV_EXT_demote_to_helper_invocation
+                "VK_KHR_swapchain",    // windows swapchain
+                "VK_EXT_memory_budget" // memory budget
             };
 
             // Hardware capability viewer: https://vulkan.gpuinfo.org/
