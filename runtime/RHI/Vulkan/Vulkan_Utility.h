@@ -182,7 +182,7 @@ namespace Spartan::vulkan_utility
                 break;
 
             case VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:
-                access_mask = VK_ACCESS_MEMORY_READ_BIT;
+                access_mask = VK_ACCESS_2_NONE;
                 break;
 
             // Transfer
