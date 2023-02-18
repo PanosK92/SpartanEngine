@@ -103,7 +103,7 @@ namespace Spartan
         vulkan_utility::debug::set_object_name(static_cast<VkCommandPool>(m_rhi_resources.back()), (m_name + string("_") + to_string(cmd_pool_count)).c_str());
     }
 
-    void RHI_CommandPool::Reset(const uint32_t pool_index)
+    void RHI_CommandPool::ResetCommandList(const uint32_t pool_index)
     {
         SP_ASSERT_MSG(m_rhi_resources[0] != nullptr, "Can't reset an uninitialised command list pool");
 
