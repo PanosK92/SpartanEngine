@@ -173,7 +173,7 @@ namespace Spartan
         uint32_t queue_index = static_cast<uint32_t>(queue_type);
         if (!m_cmd_pools_immediate[queue_index])
         {
-            m_cmd_pools_immediate[queue_index] = make_shared<RHI_CommandPool>(this, "immediate", 0);
+            m_cmd_pools_immediate[queue_index] = make_shared<RHI_CommandPool>(this, "cmd_immediate_execution", 0);
             m_cmd_pools_immediate[queue_index]->AllocateCommandLists(queue_type, 1, 1);
         }
 
