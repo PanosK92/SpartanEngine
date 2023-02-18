@@ -47,7 +47,7 @@ namespace Spartan
     private:
         void CreateCommandPool(const RHI_Queue_Type queue_type);
         void Reset(const uint32_t pool_index);
-        uint32_t GetPoolIndex() { return m_cmd_list_index / static_cast<uint32_t>(m_cmd_lists.size()); }
+        uint32_t GetPoolIndex() { return m_cmd_list_index / m_cmd_pool_count; }
 
         // Command lists
         std::vector<std::shared_ptr<RHI_CommandList>> m_cmd_lists;
