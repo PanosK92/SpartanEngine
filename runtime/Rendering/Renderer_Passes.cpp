@@ -272,7 +272,7 @@ namespace Spartan
                 bool render_pass_active    = false;
                 uint64_t m_set_material_id = 0;
 
-                for (Entity * entity : entities)
+                for (Entity* entity : entities)
                 {
                     // Acquire renderable component
                     Renderable* renderable = entity->GetRenderable();

@@ -484,7 +484,8 @@ namespace Spartan
             std::vector<VkValidationFeatureEnableEXT> validation_extensions = { };
             std::vector<const char*> extensions_instance                    = { "VK_KHR_surface", "VK_KHR_win32_surface" };
             const std::vector<const char*> validation_layers                = { "VK_LAYER_KHRONOS_validation" };
-            const std::vector<const char*> extensions_device                = {
+            const std::vector<const char*> extensions_device                =
+            {
                 "VK_KHR_swapchain",    // windows swapchain
                 "VK_EXT_memory_budget" // memory budget
             };

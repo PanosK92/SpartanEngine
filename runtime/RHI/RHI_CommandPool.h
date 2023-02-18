@@ -39,14 +39,15 @@ namespace Spartan
         void AllocateCommandLists(const RHI_Queue_Type queue_type, const uint32_t cmd_list_count = 2, const uint32_t cmd_pool_count = 2);
         bool Step();
 
-        RHI_CommandList* GetCurrentCommandList()       { return m_cmd_lists[m_cmd_pool_index + m_cmd_list_index].get(); }
+        RHI_CommandList* GetCurrentCommandList()       { return m_cmd_lists[m_cmd_list_index].get(); }
         uint32_t GetCommandListIndex()           const { return m_cmd_list_index; }
-        void*& GetResource()                           { return m_rhi_resources[m_cmd_pool_index]; }
+        void*& GetResource()                           { return m_rhi_resources[GetPoolIndex()]; }
         uint64_t GetSwapchainId()                const { return m_swap_chain_id; }
 
     private:
         void CreateCommandPool(const RHI_Queue_Type queue_type);
-        void Reset(const uint32_t pool_index);
+        void ResetCommandList(const uint32_t pool_index);
+        uint32_t GetPoolIndex() { return m_cmd_list_index / static_cast<uint32_t>(m_cmd_lists.size()); }
 
         // Command lists
         std::vector<std::shared_ptr<RHI_CommandList>> m_cmd_lists;
@@ -55,7 +56,6 @@ namespace Spartan
 
         // Command pools
         std::vector<void*> m_rhi_resources;
-        uint32_t m_cmd_pool_index = 0;
         uint32_t m_cmd_pool_count = 0;
 
         // The swapchain for which this thread pool's command lists will be presenting to.

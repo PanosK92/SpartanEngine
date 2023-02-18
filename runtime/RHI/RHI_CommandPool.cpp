@@ -54,27 +54,17 @@ namespace Spartan
             return false;
         }
 
-        // Calculate command list index
-        m_cmd_list_index = (m_cmd_list_index + 1) % m_cmd_list_count;
+        m_cmd_list_index = (m_cmd_list_index + 1) % static_cast<uint32_t>(m_cmd_lists.size());
 
-        // Compute pool index
-        m_cmd_pool_index = (m_cmd_list_index = 0) ? (m_cmd_pool_index + 1) % m_cmd_pool_count : m_cmd_pool_index;
-
-        // Wait for any command lists to finish executing
-        if (m_cmd_list_index == 0 && m_cmd_pool_index == 0)
+        // m_cmd_list_index refers to a ready to use command list, we need to wait if that's not the case.
+        if (m_cmd_lists[m_cmd_list_index]->GetState() == RHI_CommandListState::Submitted)
         {
-            for (uint32_t i = 0; i < m_cmd_list_count; i++)
-            {
-                if (m_cmd_lists[i]->GetState() == RHI_CommandListState::Submitted)
-                {
-                    m_cmd_lists[i]->Wait();
-                }
-            }
-
-            Reset(m_cmd_pool_index);
-            return true;
+            // Will only wait if needed
+            m_cmd_lists[m_cmd_list_index]->Wait();
+            ResetCommandList(GetPoolIndex());
         }
 
-        return false;
+        bool circled_back_to_the_start = m_cmd_list_index == 0;
+        return circled_back_to_the_start;
     }
 }
