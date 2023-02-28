@@ -321,7 +321,7 @@ namespace Spartan
                     if (rt == nullptr)
                         break;
 
-                    SP_ASSERT_MSG(rt->IsRenderTargetColor(), "The texture is used as a render target but it wasn't created with RHI_Texture_Rt_Color or RHI_Texture_Rt_DepthStencil");
+                    SP_ASSERT_MSG(rt->IsRenderTargetColor(), "The texture wasn't created with the RHI_Texture_RenderTarget flag and/or isn't a color format");
 
                     // Transition to the appropriate layout
                     if (rt->GetLayout(0) != RHI_Image_Layout::Color_Attachment_Optimal)

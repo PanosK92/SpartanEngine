@@ -35,14 +35,14 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    static UINT get_bind_flags(uint32_t flags)
+    static UINT get_bind_flags(RHI_Texture* texture)
     {
         UINT flags_d3d11 = 0;
 
-        flags_d3d11 |= (flags & RHI_Texture_Srv)             ? D3D11_BIND_SHADER_RESOURCE  : 0;
-        flags_d3d11 |= (flags & RHI_Texture_Uav)             ? D3D11_BIND_UNORDERED_ACCESS : 0;
-        flags_d3d11 |= (flags & RHI_Texture_Rt_DepthStencil) ? D3D11_BIND_DEPTH_STENCIL    : 0;
-        flags_d3d11 |= (flags & RHI_Texture_Rt_Color)        ? D3D11_BIND_RENDER_TARGET    : 0;
+        flags_d3d11 |= texture->IsSrv()                      ? D3D11_BIND_SHADER_RESOURCE  : 0;
+        flags_d3d11 |= texture->IsUav()                      ? D3D11_BIND_UNORDERED_ACCESS : 0;
+        flags_d3d11 |= texture->IsRenderTargetDepthStencil() ? D3D11_BIND_DEPTH_STENCIL    : 0;
+        flags_d3d11 |= texture->IsRenderTargetColor()        ? D3D11_BIND_RENDER_TARGET    : 0;
 
         return flags_d3d11;
     }
@@ -286,7 +286,7 @@ namespace Spartan
         bool result_ds  = true;
 
         // Get texture flags
-        const UINT flags = get_bind_flags(m_flags);
+        const UINT flags = get_bind_flags(this);
 
         // Resolve formats
         const DXGI_FORMAT format     = get_depth_format(m_format);
@@ -395,7 +395,7 @@ namespace Spartan
                 m_rhi_device
             );
 
-            if (m_flags & RHI_Texture_Rt_DepthStencilReadOnly)
+            if (m_flags & RHI_Texture_RenderTarget_ReadOnly)
             {
                 result_ds = create_depth_stencil_view
                 (

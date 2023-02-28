@@ -481,33 +481,33 @@ namespace Spartan
 
         if (GetLightType() == LightType::Directional)
         {
-            m_shadow_map.texture_depth = make_unique<RHI_Texture2DArray>(m_context, resolution, resolution, format_depth, m_cascade_count, RHI_Texture_Rt_DepthStencil | RHI_Texture_Srv, "shadow_map_directional");
+            m_shadow_map.texture_depth = make_unique<RHI_Texture2DArray>(m_context, resolution, resolution, format_depth, m_cascade_count, RHI_Texture_RenderTarget | RHI_Texture_Srv, "shadow_map_directional");
 
             if (m_shadows_transparent_enabled)
             {
-                m_shadow_map.texture_color = make_unique<RHI_Texture2DArray>(m_context, resolution, resolution, format_color, m_cascade_count, RHI_Texture_Rt_Color | RHI_Texture_Srv, "shadow_map_directional_color");
+                m_shadow_map.texture_color = make_unique<RHI_Texture2DArray>(m_context, resolution, resolution, format_color, m_cascade_count, RHI_Texture_RenderTarget | RHI_Texture_Srv, "shadow_map_directional_color");
             }
 
             m_shadow_map.slices = vector<ShadowSlice>(m_cascade_count);
         }
         else if (GetLightType() == LightType::Point)
         {
-            m_shadow_map.texture_depth = make_unique<RHI_TextureCube>(m_context, resolution, resolution, format_depth, RHI_Texture_Rt_DepthStencil | RHI_Texture_Srv, "shadow_map_point_color");
+            m_shadow_map.texture_depth = make_unique<RHI_TextureCube>(m_context, resolution, resolution, format_depth, RHI_Texture_RenderTarget | RHI_Texture_Srv, "shadow_map_point_color");
 
             if (m_shadows_transparent_enabled)
             {
-                m_shadow_map.texture_color = make_unique<RHI_TextureCube>(m_context, resolution, resolution, format_color, RHI_Texture_Rt_Color | RHI_Texture_Srv, "shadow_map_point_color");
+                m_shadow_map.texture_color = make_unique<RHI_TextureCube>(m_context, resolution, resolution, format_color, RHI_Texture_RenderTarget | RHI_Texture_Srv, "shadow_map_point_color");
             }
 
             m_shadow_map.slices = vector<ShadowSlice>(6);
         }
         else if (GetLightType() == LightType::Spot)
         {
-            m_shadow_map.texture_depth  = make_unique<RHI_Texture2D>(m_context, resolution, resolution, 1, format_depth, RHI_Texture_Rt_DepthStencil | RHI_Texture_Srv, "shadow_map_spot_color");
+            m_shadow_map.texture_depth  = make_unique<RHI_Texture2D>(m_context, resolution, resolution, 1, format_depth, RHI_Texture_RenderTarget | RHI_Texture_Srv, "shadow_map_spot_color");
 
             if (m_shadows_transparent_enabled)
             {
-                m_shadow_map.texture_color = make_unique<RHI_Texture2D>(m_context, resolution, resolution, 1, format_color, RHI_Texture_Rt_Color | RHI_Texture_Srv, "shadow_map_spot_color");
+                m_shadow_map.texture_color = make_unique<RHI_Texture2D>(m_context, resolution, resolution, 1, format_color, RHI_Texture_RenderTarget | RHI_Texture_Srv, "shadow_map_spot_color");
             }
 
             m_shadow_map.slices = vector<ShadowSlice>(1);

@@ -206,8 +206,8 @@ namespace Spartan
 
     void ReflectionProbe::CreateTextures()
     {
-        m_texture_color = make_unique<RHI_TextureCube>(m_context, m_resolution, m_resolution, RHI_Format_R8G8B8A8_Unorm, RHI_Texture_Rt_Color | RHI_Texture_Srv, "reflection_probe_color");
-        m_texture_depth = make_unique<RHI_Texture2D>(m_context, m_resolution, m_resolution, 1, RHI_Format_D32_Float, RHI_Texture_Rt_DepthStencil | RHI_Texture_Srv, "reflection_probe_depth");
+        m_texture_color = make_unique<RHI_TextureCube>(m_context, m_resolution, m_resolution, RHI_Format_R8G8B8A8_Unorm, RHI_Texture_RenderTarget | RHI_Texture_Srv, "reflection_probe_color");
+        m_texture_depth = make_unique<RHI_Texture2D>(m_context, m_resolution, m_resolution, 1, RHI_Format_D32_Float, RHI_Texture_RenderTarget | RHI_Texture_Srv, "reflection_probe_depth");
     }
 
     void ReflectionProbe::ComputeProjectionMatrix()
