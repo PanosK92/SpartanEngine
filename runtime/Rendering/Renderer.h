@@ -133,7 +133,7 @@ namespace Spartan
         void SetGlobalShaderResources(RHI_CommandList* cmd_list) const;
         void RequestTextureMipGeneration(std::shared_ptr<RHI_Texture> texture);
 
-        RHI_Texture* GetFrameTexture()                                 { return GetRenderTarget(RendererTexture::Frame_Output).get(); }
+        RHI_Texture* GetFrameTexture()                                 { return GetRenderTarget(RendererTexture::frame_output).get(); }
         auto GetFrameNum()                                       const { return m_frame_num; }
         std::shared_ptr<Camera> GetCamera()                      const { return m_camera; }
         std::array<std::shared_ptr<RHI_Shader>, 47> GetShaders() const { return m_shaders; }

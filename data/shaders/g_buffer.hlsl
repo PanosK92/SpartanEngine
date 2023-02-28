@@ -33,10 +33,11 @@ struct PixelInputType
 
 struct PixelOutputType
 {
-    float4 albedo   : SV_Target0;
-    float4 normal   : SV_Target1;
-    float4 material : SV_Target2;
-    float2 velocity : SV_Target3;
+    float4 albedo                : SV_Target0;
+    float4 normal                : SV_Target1;
+    float4 material              : SV_Target2;
+    float2 velocity              : SV_Target3;
+    float fsr2_transparency_mask : SV_Target4;
 };
 
 PixelInputType mainVS(Vertex_PosUvNorTan input)
@@ -183,10 +184,11 @@ PixelOutputType mainPS(PixelInputType input)
 
     // Write to G-Buffer
     PixelOutputType g_buffer;
-    g_buffer.albedo   = albedo;
-    g_buffer.normal   = float4(normal, pack_uint32_to_float16(g_mat_id));
-    g_buffer.material = float4(roughness, metalness, emission, occlusion);
-    g_buffer.velocity = velocity_uv;
+    g_buffer.albedo                 = albedo;
+    g_buffer.normal                 = float4(normal, pack_uint32_to_float16(g_mat_id));
+    g_buffer.material               = float4(roughness, metalness, emission, occlusion);
+    g_buffer.velocity               = velocity_uv;
+    g_buffer.fsr2_transparency_mask = albedo.a;
 
     return g_buffer;
 }

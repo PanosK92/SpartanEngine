@@ -107,7 +107,8 @@ namespace Spartan
         RHI_Texture* tex_input,
         RHI_Texture* tex_depth,
         RHI_Texture* tex_velocity,
-        RHI_Texture* tex_reactive_mask,
+        RHI_Texture* tex_mask_reactive,
+        RHI_Texture* tex_mask_transparency,
         RHI_Texture* tex_output,
         Camera* camera,
         float delta_time,
@@ -122,24 +123,25 @@ namespace Spartan
         uint32_t resolution_output_y = static_cast<uint32_t>(m_ffx_fsr2_context_description.displaySize.height);
 
         // Transition to the appropriate texture layouts (will only happen if needed)
-        tex_input->SetLayout(RHI_Image_Layout::Shader_Read_Only_Optimal,         cmd_list);
-        tex_depth->SetLayout(RHI_Image_Layout::Shader_Read_Only_Optimal,         cmd_list);
-        tex_velocity->SetLayout(RHI_Image_Layout::Shader_Read_Only_Optimal,      cmd_list);
-        tex_reactive_mask->SetLayout(RHI_Image_Layout::Shader_Read_Only_Optimal, cmd_list);
-        tex_output->SetLayout(RHI_Image_Layout::General,                         cmd_list);
+        tex_input->SetLayout(RHI_Image_Layout::Shader_Read_Only_Optimal, cmd_list);
+        tex_depth->SetLayout(RHI_Image_Layout::Shader_Read_Only_Optimal, cmd_list);
+        tex_velocity->SetLayout(RHI_Image_Layout::Shader_Read_Only_Optimal, cmd_list);
+        tex_mask_reactive->SetLayout(RHI_Image_Layout::Shader_Read_Only_Optimal, cmd_list);
+        tex_mask_transparency->SetLayout(RHI_Image_Layout::Shader_Read_Only_Optimal, cmd_list);
+        tex_output->SetLayout(RHI_Image_Layout::General, cmd_list);
 
         // Dispatch description
         m_ffx_fsr2_dispatch_description = {};
         {
             // Resources
             m_ffx_fsr2_dispatch_description.commandList                = ffxGetCommandListVK(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()));
-            m_ffx_fsr2_dispatch_description.color                      = ffxGetTextureResourceVK(&m_ffx_fsr2_context, static_cast<VkImage>(tex_input->GetRhiResource()),         static_cast<VkImageView>(tex_input->GetRhiSrv()),         resolution_render_x, resolution_render_y, vulkan_format[tex_input->GetFormat()],    L"FSR2_Input",                             FFX_RESOURCE_STATE_COMPUTE_READ);
-            m_ffx_fsr2_dispatch_description.depth                      = ffxGetTextureResourceVK(&m_ffx_fsr2_context, static_cast<VkImage>(tex_depth->GetRhiResource()),         static_cast<VkImageView>(tex_depth->GetRhiSrv()),         resolution_render_x, resolution_render_y, vulkan_format[tex_depth->GetFormat()],    L"FSR2_Depth",                             FFX_RESOURCE_STATE_COMPUTE_READ);
-            m_ffx_fsr2_dispatch_description.motionVectors              = ffxGetTextureResourceVK(&m_ffx_fsr2_context, static_cast<VkImage>(tex_velocity->GetRhiResource()),      static_cast<VkImageView>(tex_velocity->GetRhiSrv()),      resolution_render_x, resolution_render_y, vulkan_format[tex_velocity->GetFormat()], L"FSR2_Velocity",                          FFX_RESOURCE_STATE_COMPUTE_READ);
-            m_ffx_fsr2_dispatch_description.exposure                   = ffxGetTextureResourceVK(&m_ffx_fsr2_context, nullptr,                                                   nullptr,                                                  1,                   1,                   VK_FORMAT_UNDEFINED,                      L"FSR2_Exposure");
-            m_ffx_fsr2_dispatch_description.reactive                   = ffxGetTextureResourceVK(&m_ffx_fsr2_context, static_cast<VkImage>(tex_reactive_mask->GetRhiResource()), static_cast<VkImageView>(tex_reactive_mask->GetRhiSrv()), resolution_render_x, resolution_render_y, vulkan_format[tex_velocity->GetFormat()], L"FSR2_Reactive_Mask",                     FFX_RESOURCE_STATE_COMPUTE_READ);
-            m_ffx_fsr2_dispatch_description.transparencyAndComposition = ffxGetTextureResourceVK(&m_ffx_fsr2_context, nullptr,                                                   nullptr,                                                  1,                   1,                   VK_FORMAT_UNDEFINED,                      L"FSR2_TransparencyAndCompositionMask");   // todo
-            m_ffx_fsr2_dispatch_description.output                     = ffxGetTextureResourceVK(&m_ffx_fsr2_context, static_cast<VkImage>(tex_output->GetRhiResource()),        static_cast<VkImageView>(tex_output->GetRhiSrv()),        resolution_output_x, resolution_output_y, vulkan_format[tex_output->GetFormat()],   L"FSR2_Output",                            FFX_RESOURCE_STATE_UNORDERED_ACCESS);
+            m_ffx_fsr2_dispatch_description.color                      = ffxGetTextureResourceVK(&m_ffx_fsr2_context, static_cast<VkImage>(tex_input->GetRhiResource()),             static_cast<VkImageView>(tex_input->GetRhiSrv()),             resolution_render_x, resolution_render_y, vulkan_format[tex_input->GetFormat()],    L"fsr2_color",             FFX_RESOURCE_STATE_COMPUTE_READ);
+            m_ffx_fsr2_dispatch_description.depth                      = ffxGetTextureResourceVK(&m_ffx_fsr2_context, static_cast<VkImage>(tex_depth->GetRhiResource()),             static_cast<VkImageView>(tex_depth->GetRhiSrv()),             resolution_render_x, resolution_render_y, vulkan_format[tex_depth->GetFormat()],    L"fsr2_depth",             FFX_RESOURCE_STATE_COMPUTE_READ);
+            m_ffx_fsr2_dispatch_description.motionVectors              = ffxGetTextureResourceVK(&m_ffx_fsr2_context, static_cast<VkImage>(tex_velocity->GetRhiResource()),          static_cast<VkImageView>(tex_velocity->GetRhiSrv()),          resolution_render_x, resolution_render_y, vulkan_format[tex_velocity->GetFormat()], L"fsr2_velocity",          FFX_RESOURCE_STATE_COMPUTE_READ);
+            m_ffx_fsr2_dispatch_description.reactive                   = ffxGetTextureResourceVK(&m_ffx_fsr2_context, static_cast<VkImage>(tex_mask_reactive->GetRhiResource()),     static_cast<VkImageView>(tex_mask_reactive->GetRhiSrv()),     resolution_render_x, resolution_render_y, vulkan_format[tex_velocity->GetFormat()], L"fsr2_mask_reactive",     FFX_RESOURCE_STATE_COMPUTE_READ);
+            m_ffx_fsr2_dispatch_description.transparencyAndComposition = ffxGetTextureResourceVK(&m_ffx_fsr2_context, static_cast<VkImage>(tex_mask_transparency->GetRhiResource()), static_cast<VkImageView>(tex_mask_transparency->GetRhiSrv()), resolution_render_x, resolution_render_y, vulkan_format[tex_velocity->GetFormat()], L"fsr2_mask_transparency", FFX_RESOURCE_STATE_COMPUTE_READ);
+            m_ffx_fsr2_dispatch_description.exposure                   = ffxGetTextureResourceVK(&m_ffx_fsr2_context, nullptr,                                                       nullptr,                                                      1,                   1,                   VK_FORMAT_UNDEFINED,                      L"fsr2_exposure");
+            m_ffx_fsr2_dispatch_description.output                     = ffxGetTextureResourceVK(&m_ffx_fsr2_context, static_cast<VkImage>(tex_output->GetRhiResource()),            static_cast<VkImageView>(tex_output->GetRhiSrv()),            resolution_output_x, resolution_output_y, vulkan_format[tex_output->GetFormat()],   L"fsr2_output",            FFX_RESOURCE_STATE_UNORDERED_ACCESS);
 
             // Configuration
             m_ffx_fsr2_dispatch_description.motionVectorScale.x    = -static_cast<float>(resolution_render_x);
