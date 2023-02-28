@@ -751,14 +751,15 @@ namespace Spartan
         if (!draw_grid && !draw_lines_depth_off && !draw_lines_depth_on)
             return;
 
-        // Acquire shaders.
+        // Acquire shaders
         RHI_Shader* shader_v = shader(RendererShader::Lines_V).get();
         RHI_Shader* shader_p = shader(RendererShader::Lines_P).get();
         if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
             return;
 
-        cmd_list->BeginTimeblock("lines");
+        RHI_Texture* tex_reactive_mask = render_target(RendererTexture::ReactiveMask).get();
 
+        cmd_list->BeginTimeblock("lines");
         // Grid
         if (draw_grid)
         {
@@ -772,6 +773,7 @@ namespace Spartan
             pso.blend_state                     = m_blend_alpha.get();
             pso.depth_stencil_state             = m_depth_stencil_r_off.get();
             pso.render_target_color_textures[0] = tex_out;
+            pso.render_target_color_textures[1] = tex_reactive_mask;
             pso.render_target_depth_texture     = render_target(RendererTexture::Gbuffer_Depth).get();
             pso.viewport                        = tex_out->GetViewport();
             pso.primitive_topology              = RHI_PrimitiveTopology_Mode::LineList;
@@ -822,6 +824,7 @@ namespace Spartan
                 pso.shader_pixel                    = shader_p;
                 pso.rasterizer_state                = m_rasterizer_cull_back_wireframe.get();
                 pso.render_target_color_textures[0] = tex_out;
+                pso.render_target_color_textures[1] = tex_reactive_mask;
                 pso.viewport                        = tex_out->GetViewport();
                 pso.primitive_topology              = RHI_PrimitiveTopology_Mode::LineList;
 
@@ -1888,6 +1891,7 @@ namespace Spartan
             tex_in,
             render_target(RendererTexture::Gbuffer_Depth).get(),
             render_target(RendererTexture::Gbuffer_Velocity).get(),
+            render_target(RendererTexture::ReactiveMask).get(),
             tex_out,
             m_camera.get(),
             m_cb_frame_cpu.delta_time,

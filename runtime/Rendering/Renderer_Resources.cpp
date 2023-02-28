@@ -159,10 +159,10 @@ namespace Spartan
         uint32_t height_output = static_cast<uint32_t>(m_resolution_output.y);
 
         // Deduce how many mips are required to scale down any dimension close to 16px (or exactly)
-        uint32_t mip_count           = 1;
-        uint32_t width               = width_render;
-        uint32_t height              = height_render;
-        uint32_t smallest_dimension  = 1;
+        uint32_t mip_count          = 1;
+        uint32_t width              = width_render;
+        uint32_t height             = height_render;
+        uint32_t smallest_dimension = 1;
         while (width > smallest_dimension && height > smallest_dimension)
         {
             width /= 2;
@@ -204,6 +204,9 @@ namespace Spartan
             // Dof
             render_target(RendererTexture::Dof_Half)   = make_unique<RHI_Texture2D>(m_context, width_render / 2, height_render / 2, 1, RHI_Format_R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv, "rt_dof_half");
             render_target(RendererTexture::Dof_Half_2) = make_unique<RHI_Texture2D>(m_context, width_render / 2, height_render / 2, 1, RHI_Format_R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv, "rt_dof_half_2");
+
+            // Reactive mask
+            render_target(RendererTexture::ReactiveMask) = make_unique<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R8_Unorm, RHI_Texture_Rt_Color | RHI_Texture_Srv, "rt_reactive_mask");
         }
 
         // Output resolution

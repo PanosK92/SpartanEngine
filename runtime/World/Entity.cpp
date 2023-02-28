@@ -59,6 +59,8 @@ namespace Spartan
     Entity::~Entity()
     {
         m_components.fill(nullptr);
+        m_renderable = nullptr;
+        m_transform  = nullptr;
     }
 
     void Entity::Clone()

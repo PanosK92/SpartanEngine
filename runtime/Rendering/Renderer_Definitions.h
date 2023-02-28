@@ -233,7 +233,8 @@ namespace Spartan
         Ssao_Gi,
         Ssr,
         Bloom,
-        Blur
+        Blur,
+        ReactiveMask
     };
     
     enum class RendererEntityType

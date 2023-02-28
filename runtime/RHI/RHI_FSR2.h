@@ -44,6 +44,7 @@ namespace Spartan
             RHI_Texture* tex_input,
             RHI_Texture* tex_depth,
             RHI_Texture* tex_velocity,
+            RHI_Texture* tex_reactive_mask,
             RHI_Texture* tex_output,
             Camera* camera,
             float delta_time,
