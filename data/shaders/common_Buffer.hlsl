@@ -164,16 +164,16 @@ bool is_screen_space_shadows_enabled() { return g_options & uint(1U << 3); }
 bool is_ssao_gi_enabled()              { return g_options & uint(1U << 4); }
 
 // Options texture visualisation
-bool texture_visualise()        { return imgui_texture_flags & uint(1U << 12); }
-bool texture_pack()             { return imgui_texture_flags & uint(1U << 13); }
-bool texture_gamma_correction() { return imgui_texture_flags & uint(1U << 14); }
-bool texture_boost()            { return imgui_texture_flags & uint(1U << 15); }
-bool texture_abs()              { return imgui_texture_flags & uint(1U << 16); }
-bool texture_channel_r()        { return imgui_texture_flags & uint(1U << 17); }
-bool texture_channel_g()        { return imgui_texture_flags & uint(1U << 18); }
-bool texture_channel_b()        { return imgui_texture_flags & uint(1U << 19); }
-bool texture_channel_a()        { return imgui_texture_flags & uint(1U << 20); }
-bool texture_sample_point()     { return imgui_texture_flags & uint(1U << 21); }
+bool texture_visualise()        { return imgui_texture_flags & uint(1U << 10); }
+bool texture_pack()             { return imgui_texture_flags & uint(1U << 11); }
+bool texture_gamma_correction() { return imgui_texture_flags & uint(1U << 12); }
+bool texture_boost()            { return imgui_texture_flags & uint(1U << 13); }
+bool texture_abs()              { return imgui_texture_flags & uint(1U << 14); }
+bool texture_channel_r()        { return imgui_texture_flags & uint(1U << 15); }
+bool texture_channel_g()        { return imgui_texture_flags & uint(1U << 16); }
+bool texture_channel_b()        { return imgui_texture_flags & uint(1U << 17); }
+bool texture_channel_a()        { return imgui_texture_flags & uint(1U << 18); }
+bool texture_sample_point()     { return imgui_texture_flags & uint(1U << 19); }
 
 // Misc
 bool is_opaque_pass()      { return g_is_transparent_pass == 0; }

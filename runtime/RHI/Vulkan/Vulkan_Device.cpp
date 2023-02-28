@@ -472,7 +472,6 @@ namespace Spartan
         if (m_allocator != nullptr)
         {
             SP_ASSERT_MSG(m_allocations.empty(), "There are still allocations");
-
             vmaDestroyAllocator(static_cast<VmaAllocator>(m_allocator));
             m_allocator = nullptr;
         }

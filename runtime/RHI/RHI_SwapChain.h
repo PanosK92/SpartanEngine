@@ -38,7 +38,7 @@ namespace Spartan
     public:
         RHI_SwapChain() = default;
         RHI_SwapChain(
-            void* window_handle,
+            void* sdl_window,
             RHI_Device* rhi_device,
             uint32_t width,
             uint32_t height,
@@ -90,10 +90,10 @@ namespace Spartan
         uint32_t m_image_index_previous = m_image_index;
 
         // RHI Resources
-        void* m_surface       = nullptr;
-        void* m_window_handle = nullptr;
-        void* m_rhi_resource  = nullptr;
-        void* m_rhi_srv       = nullptr;
+        void* m_surface      = nullptr;
+        void* m_sdl_window   = nullptr;
+        void* m_rhi_resource = nullptr;
+        void* m_rhi_srv      = nullptr;
         std::array<void*, max_buffer_count> m_rhi_backbuffer_resource;
         std::array<void*, max_buffer_count> m_rhi_backbuffer_srv;
     };

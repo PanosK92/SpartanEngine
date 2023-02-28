@@ -131,7 +131,7 @@ namespace Spartan
         RHI_Format* rhi_format,
         array<RHI_Image_Layout, max_buffer_count> layouts,
         uint32_t flags,
-        void* window_handle,
+        void* sdl_window,
         void*& void_ptr_surface,
         void*& void_ptr_swap_chain,
         array<void*, max_buffer_count>& backbuffer_textures,
@@ -139,14 +139,13 @@ namespace Spartan
         array<shared_ptr<RHI_Semaphore>, max_buffer_count>& image_acquired_semaphore
     )
         {
-            SP_ASSERT(window_handle != nullptr);
+            SP_ASSERT(sdl_window != nullptr);
             RHI_Context* rhi_context = rhi_device->GetRhiContext();
             
             // Create surface
             VkSurfaceKHR surface = nullptr;
             {
-                SDL_Window* sdl_window = static_cast<SDL_Window*>(window_handle);
-                SP_ASSERT_MSG(SDL_Vulkan_CreateSurface(sdl_window, rhi_device->GetRhiContext()->instance, &surface), "Failed to created window surface");
+                SP_ASSERT_MSG(SDL_Vulkan_CreateSurface(static_cast<SDL_Window*>(sdl_window), rhi_device->GetRhiContext()->instance, &surface), "Failed to created window surface");
 
                 VkBool32 present_support = false;
                 SP_ASSERT_MSG(vkGetPhysicalDeviceSurfaceSupportKHR(
@@ -308,7 +307,7 @@ namespace Spartan
     }
 
     RHI_SwapChain::RHI_SwapChain(
-        void* window_handle,
+        void* sdl_window,
         RHI_Device* rhi_device,
         const uint32_t width,
         const uint32_t height,
@@ -336,7 +335,7 @@ namespace Spartan
         m_buffer_count  = buffer_count;
         m_width         = width;
         m_height        = height;
-        m_window_handle = window_handle;
+        m_sdl_window    = sdl_window;
         m_flags         = flags;
         m_name          = name;
 
@@ -349,7 +348,7 @@ namespace Spartan
             &m_format,
             m_layouts,
             m_flags,
-            m_window_handle,
+            m_sdl_window,
             m_surface,
             m_rhi_resource,
             m_rhi_backbuffer_resource,
@@ -423,7 +422,7 @@ namespace Spartan
             &m_format,
             m_layouts,
             m_flags,
-            m_window_handle,
+            m_sdl_window,
             m_surface,
             m_rhi_resource,
             m_rhi_backbuffer_resource,

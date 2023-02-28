@@ -57,10 +57,10 @@ namespace Spartan
     {
         VkImageUsageFlags flags = 0;
 
-        flags |= (texture->GetFlags() & RHI_Texture_Srv)             ? VK_IMAGE_USAGE_SAMPLED_BIT                  : 0;
-        flags |= (texture->GetFlags() & RHI_Texture_Uav)             ? VK_IMAGE_USAGE_STORAGE_BIT                  : 0;
-        flags |= (texture->GetFlags() & RHI_Texture_Rt_DepthStencil) ? VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT : 0;
-        flags |= (texture->GetFlags() & RHI_Texture_Rt_Color)        ? VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT         : 0;
+        flags |= texture->IsSrv()                      ? VK_IMAGE_USAGE_SAMPLED_BIT                  : 0;
+        flags |= texture->IsUav()                      ? VK_IMAGE_USAGE_STORAGE_BIT                  : 0;
+        flags |= texture->IsRenderTargetDepthStencil() ? VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT : 0;
+        flags |= texture->IsRenderTargetColor()        ? VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT         : 0;
 
         // If the texture has data, it will be staged, so it needs transfer bits.
         // If the texture participates in clear or blit operations, it needs transfer bits.

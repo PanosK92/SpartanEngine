@@ -27,6 +27,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_CommandList.h"
 #include "../../Rendering/Renderer.h"
 #include "../../Profiling/Profiler.h"
+#include "sdl/SDL_video.h"
+#include "sdl/SDL_syswm.h"
 //===================================
 
 //= NAMESPACES ================
@@ -37,7 +39,7 @@ using namespace Spartan::Math;
 namespace Spartan
 {
     RHI_SwapChain::RHI_SwapChain(
-        void* window_handle,
+        void* sdl_window,
         RHI_Device* rhi_device,
         const uint32_t width,
         const uint32_t height,
@@ -51,8 +53,14 @@ namespace Spartan
         SP_ASSERT(rhi_device != nullptr);
         SP_ASSERT(rhi_device->GetRhiContext()->device != nullptr);
 
+        // Get window handle#
+        SDL_Window* window = static_cast<SDL_Window*>(sdl_window);
+        SDL_SysWMinfo wmInfo;
+        SDL_VERSION(&wmInfo.version);
+        SDL_GetWindowWMInfo(window, &wmInfo);
+        HWND hwnd = wmInfo.info.win.window;
+
         // Verify window handle
-        const HWND hwnd = static_cast<HWND>(window_handle);
         SP_ASSERT(hwnd != nullptr);
         SP_ASSERT(IsWindow(hwnd));
 
