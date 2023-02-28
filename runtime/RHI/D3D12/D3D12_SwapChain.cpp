@@ -38,7 +38,7 @@ using namespace Spartan::Math;
 namespace Spartan
 {
     RHI_SwapChain::RHI_SwapChain(
-        void* window_handle,
+        void* sdl_window,
         RHI_Device* rhi_device,
         const uint32_t width,
         const uint32_t height,
@@ -51,7 +51,7 @@ namespace Spartan
         SP_ASSERT(rhi_device != nullptr);
 
         // Verify window handle
-        const HWND hwnd = static_cast<HWND>(window_handle);
+        const HWND hwnd = static_cast<HWND>(sdl_window);
         SP_ASSERT(hwnd != nullptr);
         SP_ASSERT(IsWindow(hwnd));
 
@@ -81,7 +81,7 @@ namespace Spartan
         m_buffer_count  = buffer_count;
         m_width         = width;
         m_height        = height;
-        m_window_handle = window_handle;
+        m_sdl_window    = sdl_window;
         m_flags         = flags;
         m_name          = name;
 
