@@ -297,8 +297,8 @@ namespace Spartan
             m_cb_frame_cpu.gamma                  = GetOption<float>(RendererOption::Gamma);
             m_cb_frame_cpu.shadow_resolution      = GetOption<float>(RendererOption::ShadowResolution);
             m_cb_frame_cpu.frame                  = static_cast<uint32_t>(m_frame_num);
-            m_cb_frame_cpu.frame_mip_count        = render_target(RendererTexture::Frame_Render)->GetMipCount();
-            m_cb_frame_cpu.ssr_mip_count          = render_target(RendererTexture::Ssr)->GetMipCount();
+            m_cb_frame_cpu.frame_mip_count        = render_target(RendererTexture::frame_render)->GetMipCount();
+            m_cb_frame_cpu.ssr_mip_count          = render_target(RendererTexture::ssr)->GetMipCount();
             m_cb_frame_cpu.resolution_environment = Vector2(GetEnvironmentTexture()->GetWidth(), GetEnvironmentTexture()->GetHeight());
 
             // These must match what Common_Buffer.hlsl is reading
