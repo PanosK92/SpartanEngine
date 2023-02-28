@@ -53,12 +53,11 @@ namespace Spartan
         SP_ASSERT(rhi_device != nullptr);
         SP_ASSERT(rhi_device->GetRhiContext()->device != nullptr);
 
-        // Get window handle#
-        SDL_Window* window = static_cast<SDL_Window*>(sdl_window);
-        SDL_SysWMinfo wmInfo;
-        SDL_VERSION(&wmInfo.version);
-        SDL_GetWindowWMInfo(window, &wmInfo);
-        HWND hwnd = wmInfo.info.win.window;
+        // Get window handle
+        SDL_SysWMinfo win_info;
+        SDL_VERSION(&win_info.version);
+        SDL_GetWindowWMInfo(static_cast<SDL_Window*>(sdl_window), &win_info);
+        HWND hwnd = win_info.info.win.window;
 
         // Verify window handle
         SP_ASSERT(hwnd != nullptr);

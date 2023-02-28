@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016-2021 Panos Karabelas
+Copyright(c) 2016-2023 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -89,8 +89,8 @@ float V_Neubelt(float n_dot_v, float n_dot_l)
 // [Walter et al. 2007, "Microfacet models for refraction through rough surfaces"]
 float D_GGX(float a2, float n_dot_h)
 {
-    float d = (n_dot_h * a2 - n_dot_h) * n_dot_h + 1; // 2 mad
-    return a2 / (PI * d * d); // 4 mul, 1 rcp
+    float f = (n_dot_h * a2 - n_dot_h) * n_dot_h + 1.0f;
+    return a2 / (PI * f * f + FLT_MIN);
 }
 
 float D_GGX_Anisotropic(float cos_theta_m, float alpha_x, float alpha_y, float cos_phi, float sin_phi)
@@ -170,11 +170,11 @@ float3 BRDF_Specular_Isotropic(
     inout float3 specular_energy
  )
 {
-    float a  = pow2(roughness);
-    float a2 = pow4(roughness);
+    float a  = roughness * roughness;
+    float a2 = a * a;
 
-    float V  = V_SmithJointApprox(a, n_dot_v, n_dot_l);
-    float D  = D_GGX(a2, n_dot_h);
+    float  V = V_SmithJointApprox(a, n_dot_v, n_dot_l);
+    float  D = D_GGX(a2, n_dot_h);
     float3 F = F_Schlick(F0, v_dot_h);
 
     diffuse_energy  *= compute_diffuse_energy(F, metallic);
@@ -269,3 +269,4 @@ inline float3 BRDF_Specular_Sheen(Surface surface, float n_dot_v, float n_dot_l,
 
     return D * V * F;
 }
+

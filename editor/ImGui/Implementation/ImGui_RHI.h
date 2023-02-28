@@ -418,7 +418,7 @@ namespace ImGui::RHI
     static void RHI_Window_Create(ImGuiViewport* viewport)
     {
         // PlatformHandle is SDL_Window, PlatformHandleRaw is HWND
-        void* platform_handle = g_rhi_device->GetRhiApiType() == RHI_Api_Type::Vulkan ? viewport->PlatformHandle : viewport->PlatformHandleRaw;
+        void* platform_handle = viewport->PlatformHandle;
         SP_ASSERT_MSG(platform_handle != nullptr, "Platform handle is invalid");
 
         WindowData* window = new WindowData();
