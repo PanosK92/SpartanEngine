@@ -139,7 +139,7 @@ namespace Spartan
         // Create swap chain
         m_swap_chain = make_shared<RHI_SwapChain>
         (
-            window->GetHandleSDL(),
+            window->GetNativeHandle(),
             m_rhi_device.get(),
             window_width,
             window_height,

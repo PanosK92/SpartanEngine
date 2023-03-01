@@ -38,6 +38,7 @@ namespace Spartan
         uint32_t GetWidth();
         uint32_t GetHeight();
         void* GetHandleSDL() const { return m_window; }
+        void* GetNativeHandle() const;
         bool WantsToClose()  const { return m_close; }
         bool IsMinimised()   const { return m_minimised; }
         bool IsFullScreen()  const { return m_fullscreen; }
