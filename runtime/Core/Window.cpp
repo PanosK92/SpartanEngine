@@ -310,7 +310,6 @@ namespace Spartan
         SDL_VERSION(&sys.version);
         SDL_GetWindowWMInfo(m_window, &sys);
         return sys.info.win.window;
-
 #else
         return m_window;
 #endif
