@@ -143,8 +143,10 @@ def fno_associative_math : Flag<["-"], "fno-associative-math">, Group<hlsloptz_G
 //  Flag<["-"], "freciprocal-math">, Group<hlsloptz_Group>, Flags<[CoreOption]>,
 //  HelpText<"Allow division operations to be reassociated">;
 def fno_reciprocal_math : Flag<["-"], "fno-reciprocal-math">, Group<hlsloptz_Group>;
-def ffinite_math_only : Flag<["-"], "ffinite-math-only">, Group<hlsloptz_Group>, Flags<[CoreOption]>;
-def fno_finite_math_only : Flag<["-"], "fno-finite-math-only">, Group<hlsloptz_Group>;
+def ffinite_math_only: Flag<["-"], "ffinite-math-only">, Group<hlsloptz_Group>, Flags<[CoreOption]>,
+  HelpText<"Allow optimizations for floating-point arithmetic that assume that arguments and results are not NaNs or +-Infs.">;
+def fno_finite_math_only: Flag<["-"], "fno-finite-math-only">, Group<hlsloptz_Group>, Flags<[CoreOption]>,
+  HelpText<"Disallow optimizations for floating-point arithmetic that assume that arguments and results are not NaNs or +-Infs.">;
 def fsigned_zeros : Flag<["-"], "fsigned-zeros">, Group<hlsloptz_Group>;
 //def fno_signed_zeros :
 //  Flag<["-"], "fno-signed-zeros">, Group<hlsloptz_Group>, Flags<[CoreOption]>,
@@ -171,6 +173,23 @@ def opt_select : MultiArg<["-", "/"], "opt-select", 2>, MetaVarName<"<opt> <vari
 def fdisable_loc_tracking : Flag<["-"], "fdisable-loc-tracking">,
   Group<hlslcomp_Group>, Flags<[CoreOption]>,
   HelpText<"Disable source location tracking in IR. This will break diagnostic generation for late validation. (Ignored if /Zi is passed)">;
+
+def fnew_inlining_behavior : Flag<["-"], "fnew-inlining-behavior">,
+  Group<hlslcomp_Group>, Flags<[CoreOption]>,
+  HelpText<"Experimental option to use heuristics-driven late inlining and disable alwaysinline annotation for library shaders">;
+
+
+def ftime_report : Flag<["-"], "ftime-report">, Group<hlslcomp_Group>, Flags<[CoreOption]>, HelpText<"Print time report">;
+def ftime_trace : Flag<["-"], "ftime-trace">,
+  Group<hlslcomp_Group>, Flags<[CoreOption]>,
+  HelpText<"Print hierchial time tracing to stdout">;
+def ftime_trace_EQ : Joined<["-"], "ftime-trace=">,
+  Group<hlslcomp_Group>, Flags<[CoreOption]>,
+  HelpText<"Print hierchial time tracing to file">;
+
+def verify : Joined<["-"], "verify">,
+  Group<hlslcomp_Group>, Flags<[CoreOption, DriverOption]>,
+  HelpText<"Verify diagnostic output using comment directives">;
 
 /*
 def fno_caret_diagnostics : Flag<["-"], "fno-caret-diagnostics">, Group<hlslcomp_Group>,
@@ -233,6 +252,8 @@ def _version : Flag<["--"], "version">, Group<hlslcore_Group>, Flags<[DriverOpti
 
 def ast_dump : Flag<["-", "/"], "ast-dump">, Flags<[CoreOption, DriverOption, HelpHidden]>,
   HelpText<"Dumps the parsed Abstract Syntax Tree.">; // should not be core, but handy workaround until explicit API written
+def ast_dump_implicit : Flag<["-", "/"], "ast-dump-implicit">, Flags<[CoreOption, DriverOption, HelpHidden]>,
+  HelpText<"Dumps the parsed Abstract Syntax Tree, including implicit top-level decls.">; 
 def dump_dependencies : Flag<["-", "/"], "M">, Flags<[CoreOption, DriverOption]>,
   HelpText<"Dumps the list of the compilation target dependencies.">;
 def write_dependencies : Flag<["-", "/"], "MD">, Flags<[CoreOption, DriverOption]>,
@@ -302,12 +323,6 @@ def enable_lifetime_markers : Flag<["-", "/"], "enable-lifetime-markers">, Group
   HelpText<"Enable generation of lifetime markers">;
 def disable_lifetime_markers : Flag<["-", "/"], "disable-lifetime-markers">, Group<hlslcomp_Group>, Flags<[CoreOption, HelpHidden]>,
   HelpText<"Disable generation of lifetime markers where they would be otherwise (6.6+)">;
-def enable_templates: Flag<["-", "/"], "enable-templates">, Group<hlslcomp_Group>, Flags<[CoreOption, HelpHidden]>,
-  HelpText<"Enable template support for HLSL.">;
-def enable_operator_overloading: Flag<["-", "/"], "enable-operator-overloading">, Group<hlslcomp_Group>, Flags<[CoreOption, HelpHidden]>,
-  HelpText<"Enable operator overloading support for HLSL.">;
-def strict_udt_casting: Flag<["-", "/"], "strict-udt-casting">, Group<hlslcomp_Group>, Flags<[CoreOption, HelpHidden]>,
-  HelpText<"Require explicit casts between different structure types with compatible layouts.">;
 def enable_payload_qualifiers : Flag<["-", "/"], "enable-payload-qualifiers">, Group<hlslcomp_Group>, Flags<[CoreOption, RewriteOption, DriverOption]>,
   HelpText<"Enables support for payload access qualifiers for raytracing payloads in SM 6.6.">;
 def disable_payload_qualifiers : Flag<["-", "/"], "disable-payload-qualifiers">, Group<hlslcomp_Group>, Flags<[CoreOption, RewriteOption, DriverOption]>,
@@ -354,7 +369,7 @@ def fspv_use_legacy_buffer_matrix_order: Flag<["-"], "fspv-use-legacy-buffer-mat
 def fspv_reflect: Flag<["-"], "fspv-reflect">, Group<spirv_Group>, Flags<[CoreOption, DriverOption]>,
   HelpText<"Emit additional SPIR-V instructions to aid reflection">;
 def fspv_debug_EQ : Joined<["-"], "fspv-debug=">, Group<spirv_Group>, Flags<[CoreOption, DriverOption]>,
-  HelpText<"Specify whitelist of debug info category (file -> source -> line, tool)">;
+  HelpText<"Specify whitelist of debug info category (file -> source -> line, tool, vulkan-with-source)">;
 def fspv_extension_EQ : Joined<["-"], "fspv-extension=">, Group<spirv_Group>, Flags<[CoreOption, DriverOption]>,
   HelpText<"Specify SPIR-V extension permitted to use">;
 def fspv_target_env_EQ : Joined<["-"], "fspv-target-env=">, Group<spirv_Group>, Flags<[CoreOption, DriverOption]>,
@@ -482,12 +497,6 @@ def Qkeep_reflect_in_dxil : Flag<["-", "/"], "Qkeep_reflect_in_dxil">,
 def Qstrip_reflect_from_dxil : Flag<["-", "/"], "Qstrip_reflect_from_dxil">,
   Flags<[CoreOption, HelpHidden]>, Group<hlslutil_Group>,
   HelpText<"Strip reflection data from shader bytecode  (must be used with /Fo <file>)">;
-
-def enable_short_circuit : Flag<["-", "/"], "enable-short-circuit">, Flags<[CoreOption, HelpHidden]>, Group<hlslcomp_Group>,
-  HelpText<"Operators '&&', '||', and '?:' will short circuit, only accepting scalar inputs.  Use and(), or(), and select() intrinsics in place of non-short-circuiting vector operators.">;
-
-def enable_bitfields : Flag<["-", "/"], "enable-bitfields">, Flags<[CoreOption, HelpHidden]>, Group<hlslcomp_Group>,
-  HelpText<"Enables bitfields on struct members">;
 
 /*
 def shtemplate : JoinedOrSeparate<["-", "/"], "shtemplate">, MetaVarName<"<file>">, Group<hlslcomp_Group>,

@@ -57,20 +57,17 @@ namespace Spartan
     {
         SP_ASSERT(m_rhi_device != nullptr);
 
-        // buffers can dynamically re-allocate anyway, no need to go bigger.
-        const uint32_t offset_count = 8192;
-
         m_cb_frame_gpu = make_shared<RHI_ConstantBuffer>(m_rhi_device.get(), "frame");
-        m_cb_frame_gpu->Create<Cb_Frame>(offset_count);
+        m_cb_frame_gpu->Create<Cb_Frame>(8000);
 
         m_cb_uber_gpu = make_shared<RHI_ConstantBuffer>(m_rhi_device.get(), "uber");
-        m_cb_uber_gpu->Create<Cb_Uber>(offset_count);
+        m_cb_uber_gpu->Create<Cb_Uber>(30000);
 
         m_cb_light_gpu = make_shared<RHI_ConstantBuffer>(m_rhi_device.get(), "light");
-        m_cb_light_gpu->Create<Cb_Light>(offset_count);
+        m_cb_light_gpu->Create<Cb_Light>(8000);
 
         m_cb_material_gpu = make_shared<RHI_ConstantBuffer>(m_rhi_device.get(), "material");
-        m_cb_material_gpu->Create<Cb_Material>(4096); // Nvidia failed to allocate beyond this point
+        m_cb_material_gpu->Create<Cb_Material>(4000); // Nvidia failed to allocate beyond this point
     }
 
     void Renderer::CreateStructuredBuffers()

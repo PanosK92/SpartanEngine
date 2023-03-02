@@ -23,7 +23,9 @@
 #define NOATOM 1
 #define NOGDICAPMASKS 1
 #define NOMETAFILE 1
+#ifndef NOMINMAX
 #define NOMINMAX 1
+#endif
 #define NOOPENFILE 1
 #define NORASTEROPS 1
 #define NOSCROLL 1
@@ -59,7 +61,7 @@ template <class T> void swap(CComHeapPtr<T> &a, CComHeapPtr<T> &b) {
 
 #else // _MSC_VER
 
-#include "dxc/Support/WinAdapter.h"
+#include "dxc/WinAdapter.h"
 
 #ifdef __cplusplus
 // Define operator overloads to enable bit operations on enum values that are

@@ -141,6 +141,7 @@ public:
   bool AllResourcesBound = false; // OPT_all_resources_bound
   bool IgnoreOptSemDefs = false; // OPT_ignore_opt_semdefs
   bool AstDump = false; // OPT_ast_dump
+  bool AstDumpImplicit = false; // OPT_ast_dump_implicit
   bool ColorCodeAssembly = false; // OPT_Cc
   bool CodeGenHighLevel = false; // OPT_fcgl
   bool AllowPreserveValues = false; // OPT_preserve_intermediate_values
@@ -206,14 +207,10 @@ public:
   bool ForceZeroStoreLifetimes = false; // OPT_force_zero_store_lifetimes
   bool EnableLifetimeMarkers = false; // OPT_enable_lifetime_markers
   bool ForceDisableLocTracking = false; // OPT_fdisable_loc_tracking
-  bool EnableTemplates = false; // OPT_enable_templates
-  bool EnableOperatorOverloading = false; // OPT_enable_operator_overloading
-  bool StrictUDTCasting = false; // OPT_strict_udt_casting
-
-  // Experimental option to enable short-circuiting operators
-  bool EnableShortCircuit = false; // OPT_enable_short_circuit
-
-  bool EnableBitfields = false; // OPT_enable_bitfields
+  bool NewInlining = false; // OPT_fnew_inlining_behavior
+  bool TimeReport = false; // OPT_ftime_report
+  std::string TimeTrace = ""; // OPT_ftime_trace[EQ]
+  bool VerifyDiagnostics = false; // OPT_verify
 
   // Optimization pass enables, disables and selects
   std::map<std::string, bool> DxcOptimizationToggles; // OPT_opt_enable & OPT_opt_disable
