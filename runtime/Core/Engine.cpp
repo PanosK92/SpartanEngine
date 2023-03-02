@@ -96,6 +96,7 @@ namespace Spartan
             // Static
             ThreadPool::Shutdown();
             Event::Shutdown();
+            Settings::Shutdown();
         }
     }
 
