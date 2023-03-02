@@ -412,8 +412,8 @@ namespace Spartan
 
             Light* light = entity->AddComponent<Light>();
             light->SetLightType(LightType::Directional);
-            light->SetColor(Color::light_sky_sunrise);
-            light->SetIntensity(60000.0f);
+            light->SetColor(Color::light_sky_clear);
+            light->SetIntensity(50000.0f);
         }
     }
 
@@ -639,8 +639,8 @@ namespace Spartan
 
             Light* light = entity->AddComponent<Light>();
             light->SetLightType(LightType::Directional);
-            light->SetColor(Color::light_sky_sunrise);
-            light->SetIntensity(120000.0f);
+            light->SetColor(Color::light_sky_clear);
+            light->SetIntensity(60000.0f);
         }
 
         // Light - Point
