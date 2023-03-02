@@ -402,10 +402,7 @@ namespace ImGui::RHI
 
         cmd_list->EndTimeblock();
 
-        if (!is_child_window)
-        {
-            swap_chain->SetLayout(RHI_Image_Layout::Present_Src, cmd_list);
-        }
+        swap_chain->SetLayout(RHI_Image_Layout::Present_Src, cmd_list);
 
         cmd_list->End();
         cmd_list->Submit();

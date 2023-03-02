@@ -472,9 +472,10 @@ namespace Spartan
 
     void RHI_SwapChain::Present()
     {
-        SP_ASSERT_MSG(m_rhi_resource != nullptr,               "The swapchain has not been initialised");
-        SP_ASSERT_MSG(m_present_enabled,                       "Presenting is disabled");
-        SP_ASSERT_MSG(m_image_index != m_image_index_previous, "No image was acquired");
+        SP_ASSERT_MSG(m_rhi_resource != nullptr,                                 "The swapchain has not been initialised");
+        SP_ASSERT_MSG(m_present_enabled,                                         "Presenting is disabled");
+        SP_ASSERT_MSG(m_image_index != m_image_index_previous,                   "No image was acquired");
+        SP_ASSERT_MSG(m_layouts[m_image_index] == RHI_Image_Layout::Present_Src, "The layout must be Present_Src");
 
         // Get the semaphores that present should wait for
         static vector<RHI_Semaphore*> wait_semaphores;
