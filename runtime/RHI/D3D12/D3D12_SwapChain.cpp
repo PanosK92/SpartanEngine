@@ -76,14 +76,14 @@ namespace Spartan
         }
 
         // Copy parameters
-        m_format        = format;
-        m_rhi_device    = rhi_device;
-        m_buffer_count  = buffer_count;
-        m_width         = width;
-        m_height        = height;
-        m_sdl_window    = sdl_window;
-        m_flags         = flags;
-        m_name          = name;
+        m_format       = format;
+        m_rhi_device   = rhi_device;
+        m_buffer_count = buffer_count;
+        m_width        = width;
+        m_height       = height;
+        m_sdl_window   = sdl_window;
+        m_flags        = flags;
+        m_name         = name;
 
         // Describe and create the swap chain.
         DXGI_SWAP_CHAIN_DESC1 swap_chain_desc = {};
