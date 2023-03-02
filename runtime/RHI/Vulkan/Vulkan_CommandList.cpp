@@ -189,6 +189,12 @@ namespace Spartan
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
+        if (swapchain_to_transition)
+        {
+            swapchain_to_transition->SetLayout(RHI_Image_Layout::Present_Src, this);
+            swapchain_to_transition = nullptr;
+        }
+
         SP_ASSERT_MSG(
             vkEndCommandBuffer(static_cast<VkCommandBuffer>(m_rhi_resource)) == VK_SUCCESS,
             "Failed to end command buffer"
@@ -295,6 +301,8 @@ namespace Spartan
             RHI_SwapChain* swapchain = m_pso.render_target_swapchain;
             if (swapchain)
             {
+                swapchain_to_transition = swapchain;
+
                 // Transition to the appropriate layout
                 if (swapchain->GetLayout() != RHI_Image_Layout::Color_Attachment_Optimal)
                 {

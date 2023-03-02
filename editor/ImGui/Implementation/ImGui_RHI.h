@@ -401,9 +401,6 @@ namespace ImGui::RHI
         }
 
         cmd_list->EndTimeblock();
-
-        swap_chain->SetLayout(RHI_Image_Layout::Present_Src, cmd_list);
-
         cmd_list->End();
         cmd_list->Submit();
     }
