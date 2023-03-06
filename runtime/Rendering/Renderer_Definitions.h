@@ -192,17 +192,17 @@ namespace Spartan
         light_c,
         light_composition_c,
         light_image_based_p,
-        lines_v,
-        lines_p,
+        line_v,
+        line_p,
+        outline_v,
+        outline_p,
+        outline_c,
         font_v,
         font_p,
         ssao_c,
         ssr_c,
-        entity_v,
-        entity_transform_p,
         blur_gaussian_c,
         blur_gaussian_bilaterial_c,
-        entity_outline_p,
         reflection_probe_v,
         reflection_probe_p,
         ffx_cas_c,
@@ -235,7 +235,8 @@ namespace Spartan
         bloom,
         blur,
         fsr2_mask_reactive,
-        fsr2_mask_transparency
+        fsr2_mask_transparency,
+        outline
     };
     
     enum class RendererEntityType

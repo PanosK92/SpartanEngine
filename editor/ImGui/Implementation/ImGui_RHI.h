@@ -155,7 +155,7 @@ namespace ImGui::RHI
                 bool async = false;
 
                 g_shader_vertex = make_shared<RHI_Shader>(g_context);
-                g_shader_vertex->Compile(RHI_Shader_Vertex, shader_path, async, RHI_Vertex_Type::Pos2dTexCol8);
+                g_shader_vertex->Compile(RHI_Shader_Vertex, shader_path, async, RHI_Vertex_Type::Pos2dUvCol8);
 
                 g_shader_pixel = make_shared<RHI_Shader>(g_context);
                 g_shader_pixel->Compile(RHI_Shader_Pixel, shader_path, async);

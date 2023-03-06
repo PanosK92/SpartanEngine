@@ -19,29 +19,35 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =========
+// = INCLUDES ========
 #include "common.hlsl"
 //====================
 
-Pixel_PosUv mainVS(Vertex_PosUv input)
+Pixel_Pos mainVS(Vertex_PosUv input)
 {
-    Pixel_PosUv output;
-
-    // position computation has to be an exact match to gbuffer.hlsl
-    input.position.w    = 1.0f; 
-    output.position     = mul(input.position, g_transform);
-    output.position     = mul(output.position, g_view_projection);
-
-    output.uv = input.uv;
-
+    Pixel_Pos output;
+        
+    input.position.w = 1.0f;
+    output.position  = mul(input.position, g_transform);
+    
     return output;
 }
-
-void mainPS(Pixel_PosUv input)
+ 
+float4 mainPS(Pixel_Pos input) : SV_Target
 {
-    if (g_is_transparent_pass && tex_material_mask.Sample(sampler_anisotropic_wrap, input.uv).r <= ALPHA_THRESHOLD)
-        discard;
+    return float4(0.0f, 0.0f, 1.0f, 1.0f);
+}
 
-    if (g_mat_color.a == 1.0f && tex_material_albedo.Sample(sampler_anisotropic_wrap, input.uv).a <= ALPHA_THRESHOLD)
-        discard;
+[numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
+void mainCS(uint3 thread_id : SV_DispatchThreadID)
+{
+    // Out of bounds check
+    if (any(int2(thread_id.xy) >= g_resolution_rt.xy))
+        return;
+
+    float4 silhouette = tex[thread_id.xy];
+    float3 color      = silhouette.rgb;
+    float alpha       = silhouette.a;
+
+    tex_uav[thread_id.xy].rgb += color * (1.0f - alpha);
 }

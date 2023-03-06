@@ -210,7 +210,7 @@ namespace Spartan
         void Lines_PostMain(const double delta_time);
 
         // Render targets
-        std::array<std::shared_ptr<RHI_Texture>, 25> m_render_targets;
+        std::array<std::shared_ptr<RHI_Texture>, 26> m_render_targets;
 
         // Shaders
         std::array<std::shared_ptr<RHI_Shader>, 47> m_shaders;

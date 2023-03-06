@@ -221,9 +221,9 @@ namespace Spartan
         Undefined,
         Pos,
         PosCol,
-        PosTex,
-        PosTexNorTan,
-        Pos2dTexCol8
+        PosUv,
+        PosUvNorTan,
+        Pos2dUvCol8
     };
 
     enum class RHI_Blend
