@@ -664,7 +664,7 @@ namespace Spartan
             entity->SetName("audio_source");
 
             AudioSource* audio_source = entity->AddComponent<AudioSource>();
-            audio_source->SetAudioClip("project\\music\\vangelis_blade_runner_julien hauspie.mp3");
+            audio_source->SetAudioClip("project\\music\\vangelis_blade_runner_julien_hauspie.mp3");
             audio_source->SetLoop(true);
         }
 
