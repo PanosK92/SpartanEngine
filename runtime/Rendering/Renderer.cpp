@@ -79,6 +79,7 @@ namespace Spartan
         SetOption(RendererOption::Upsampling,             static_cast<float>(UpsamplingMode::FSR2));
         // Debug
         SetOption(RendererOption::Debug_TransformHandle,    1.0f);
+        SetOption(RendererOption::Debug_SelectionOutline,   1.0f);
         SetOption(RendererOption::Debug_Grid,               1.0f);
         SetOption(RendererOption::Debug_ReflectionProbes,   1.0f);
         SetOption(RendererOption::Debug_Lights,             1.0f);
@@ -180,7 +181,7 @@ namespace Spartan
         if (m_frame_num == 1)
         {
             Log::SetLogToFile(false);
-           SP_FIRE_EVENT(EventType::RendererOnFirstFrameCompleted);
+            SP_FIRE_EVENT(EventType::RendererOnFirstFrameCompleted);
         }
 
         // Happens when core resources are created/destroyed

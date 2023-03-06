@@ -77,7 +77,7 @@ namespace Spartan
 
                 m_vertex_size = sizeof(RHI_Vertex_Pos);
             }
-            else if (vertex_type == RHI_Vertex_Type::PosTex)
+            else if (vertex_type == RHI_Vertex_Type::PosUv)
             {
                 m_vertex_attributes =
                 {
@@ -97,7 +97,7 @@ namespace Spartan
 
                 m_vertex_size = sizeof(RHI_Vertex_PosCol);
             }
-            else if (vertex_type == RHI_Vertex_Type::Pos2dTexCol8)
+            else if (vertex_type == RHI_Vertex_Type::Pos2dUvCol8)
             {
                 m_vertex_attributes =
                 {
@@ -108,7 +108,7 @@ namespace Spartan
 
                 m_vertex_size = sizeof(RHI_Vertex_Pos2dTexCol8);
             }
-            else if (vertex_type == RHI_Vertex_Type::PosTexNorTan)
+            else if (vertex_type == RHI_Vertex_Type::PosUvNorTan)
             {
                 m_vertex_attributes =
                 {

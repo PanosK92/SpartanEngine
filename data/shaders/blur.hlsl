@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016-2021 Panos Karabelas
+Copyright(c) 2016-2023 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -35,7 +35,7 @@ float compute_gaussian_weight(int sample_distance)
 
 // Gaussian blur
 // https://github.com/TheRealMJP/MSAAFilter/blob/master/MSAAFilter/PostProcessing.hlsl#L50
-float4 gaussian_blur(const uint2 pos)
+float3 gaussian_blur(const uint2 pos)
 {
     const float2 uv             = (pos.xy + 0.5f) / g_resolution_in;
     const float2 texel_size     = float2(1.0f / g_resolution_in.x, 1.0f / g_resolution_in.y);
@@ -43,7 +43,7 @@ float4 gaussian_blur(const uint2 pos)
     const bool is_vertical_pass = g_blur_direction.y != 0.0f;
 
     float weight_sum = 0.0f;
-    float4 color     = 0;
+    float3 color     = 0.0f;
     [unroll]
     for (int i = -g_blur_radius; i < g_blur_radius; i++)
     {
@@ -54,7 +54,7 @@ float4 gaussian_blur(const uint2 pos)
         sample_uv = lerp(sample_uv, (trunc(sample_uv * g_resolution_in) + 0.5f) / g_resolution_rt, is_vertical_pass);
         
         float weight = compute_gaussian_weight(i);
-        color        += tex.SampleLevel(sampler_bilinear_clamp, sample_uv, 0) * weight;
+        color        += tex.SampleLevel(sampler_bilinear_clamp, sample_uv, 0).rgb * weight;
         weight_sum   += weight;
     }
 
@@ -62,7 +62,7 @@ float4 gaussian_blur(const uint2 pos)
 }
 
 // Depth aware gaussian blur
-float4 depth_aware_gaussian_blur(const uint2 pos)
+float3 depth_aware_gaussian_blur(const uint2 pos)
 {
     const float2 uv             = (pos.xy + 0.5f) / g_resolution_in;
     const float2 texel_size     = float2(1.0f / g_resolution_in.x, 1.0f / g_resolution_in.y);
@@ -73,7 +73,7 @@ float4 depth_aware_gaussian_blur(const uint2 pos)
     const float3 center_normal = get_normal(uv);
 
     float weight_sum = 0.0f;
-    float4 color     = 0.0f;
+    float3 color     = 0.0f;
     [unroll]
     for (int i = -g_blur_radius; i < g_blur_radius; i++)
     {
@@ -86,12 +86,12 @@ float4 depth_aware_gaussian_blur(const uint2 pos)
         float awareness_normal = saturate(dot(center_normal, sample_normal)) + FLT_MIN; // FLT_MIN prevents NaN
         float awareness        = awareness_normal * awareness_depth;
 
-        // During the vertical pass, the input texture is seconday scratch texture which belongs to the blur pass.
-        // It's at least as big as the original input texture (to be blurred), so we have to adapt the smaple uv.
+        // During the vertical pass, the input texture is secondary scratch texture which belongs to the blur pass.
+        // It's at least as big as the original input texture (to be blurred), so we have to adapt the sample uv.
         sample_uv = lerp(sample_uv, (trunc(sample_uv * g_resolution_in) + 0.5f) / g_resolution_rt, is_vertical_pass);
 
         float weight = compute_gaussian_weight(i) * awareness;
-        color        += tex.SampleLevel(sampler_bilinear_clamp, sample_uv, 0) * weight;
+        color        += tex.SampleLevel(sampler_bilinear_clamp, sample_uv, 0).rgb * weight;
         weight_sum   += weight; 
     }
 
@@ -105,7 +105,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     if (any(int2(thread_id.xy) >= g_resolution_rt.xy))
         return;
 
-    float4 color = 0.0f;
+    float3 color = 0.0f;
 
 #if PASS_BLUR_GAUSSIAN
     color = gaussian_blur(thread_id.xy);
@@ -115,5 +115,5 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     color = depth_aware_gaussian_blur(thread_id.xy);
 #endif
     
-    tex_uav[thread_id.xy] = color;
+    tex_uav[thread_id.xy].rgb = color;
 }

@@ -205,6 +205,9 @@ namespace Spartan
             // FSR 2 masks
             render_target(RendererTexture::fsr2_mask_reactive)     = make_unique<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R8_Unorm, RHI_Texture_RenderTarget | RHI_Texture_Srv, "rt_fsr2_reactive_mask");
             render_target(RendererTexture::fsr2_mask_transparency) = make_unique<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R8_Unorm, RHI_Texture_RenderTarget | RHI_Texture_Srv, "rt_fsr2_transparency_mask");
+
+            // Selection outline
+            render_target(RendererTexture::outline) = make_unique<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R8G8B8A8_Unorm, RHI_Texture_RenderTarget | RHI_Texture_Srv | RHI_Texture_Uav, "rt_outline");
         }
 
         // Output resolution
@@ -245,7 +248,7 @@ namespace Spartan
 
         // G-Buffer
         shader(RendererShader::gbuffer_v) = make_shared<RHI_Shader>(m_context);
-        shader(RendererShader::gbuffer_v)->Compile(RHI_Shader_Vertex, shader_dir + "g_buffer.hlsl", async, RHI_Vertex_Type::PosTexNorTan);
+        shader(RendererShader::gbuffer_v)->Compile(RHI_Shader_Vertex, shader_dir + "g_buffer.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
         shader(RendererShader::gbuffer_p) = make_shared<RHI_Shader>(m_context);
         shader(RendererShader::gbuffer_p)->Compile(RHI_Shader_Pixel, shader_dir + "g_buffer.hlsl", async);
 
@@ -259,13 +262,13 @@ namespace Spartan
             shader(RendererShader::fullscreen_triangle_v)->Compile(RHI_Shader_Vertex, shader_dir + "fullscreen_triangle.hlsl", async, RHI_Vertex_Type::Undefined);
 
             shader(RendererShader::quad_v) = make_shared<RHI_Shader>(m_context);
-            shader(RendererShader::quad_v)->Compile(RHI_Shader_Vertex, shader_dir + "quad.hlsl", async, RHI_Vertex_Type::PosTexNorTan);
+            shader(RendererShader::quad_v)->Compile(RHI_Shader_Vertex, shader_dir + "quad.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
         }
 
         // Depth prepass
         {
             shader(RendererShader::depth_prepass_v) = make_shared<RHI_Shader>(m_context);
-            shader(RendererShader::depth_prepass_v)->Compile(RHI_Shader_Vertex, shader_dir + "depth_prepass.hlsl", async, RHI_Vertex_Type::PosTexNorTan);
+            shader(RendererShader::depth_prepass_v)->Compile(RHI_Shader_Vertex, shader_dir + "depth_prepass.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
 
             shader(RendererShader::depth_prepass_p) = make_shared<RHI_Shader>(m_context);
             shader(RendererShader::depth_prepass_p)->Compile(RHI_Shader_Pixel, shader_dir + "depth_prepass.hlsl", async);
@@ -274,38 +277,42 @@ namespace Spartan
         // Depth light
         {
             shader(RendererShader::depth_light_V) = make_shared<RHI_Shader>(m_context);
-            shader(RendererShader::depth_light_V)->Compile(RHI_Shader_Vertex, shader_dir + "depth_light.hlsl", async, RHI_Vertex_Type::PosTexNorTan);
+            shader(RendererShader::depth_light_V)->Compile(RHI_Shader_Vertex, shader_dir + "depth_light.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
 
             shader(RendererShader::depth_light_p) = make_shared<RHI_Shader>(m_context);
             shader(RendererShader::depth_light_p)->Compile(RHI_Shader_Pixel, shader_dir + "depth_light.hlsl", async);
         }
 
-        // Entity
-        shader(RendererShader::entity_v) = make_shared<RHI_Shader>(m_context);
-        shader(RendererShader::entity_v)->Compile(RHI_Shader_Vertex, shader_dir + "entity.hlsl", async, RHI_Vertex_Type::PosTexNorTan);
-
         // Font
         shader(RendererShader::font_v) = make_shared<RHI_Shader>(m_context);
-        shader(RendererShader::font_v)->Compile(RHI_Shader_Vertex, shader_dir + "font.hlsl", async, RHI_Vertex_Type::PosTex);
+        shader(RendererShader::font_v)->Compile(RHI_Shader_Vertex, shader_dir + "font.hlsl", async, RHI_Vertex_Type::PosUv);
         shader(RendererShader::font_p) = make_shared<RHI_Shader>(m_context);
         shader(RendererShader::font_p)->Compile(RHI_Shader_Pixel, shader_dir + "font.hlsl", async);
 
-        // Color
-        shader(RendererShader::lines_v) = make_shared<RHI_Shader>(m_context);
-        shader(RendererShader::lines_v)->Compile(RHI_Shader_Vertex, shader_dir + "lines.hlsl", async, RHI_Vertex_Type::PosCol);
-        shader(RendererShader::lines_p) = make_shared<RHI_Shader>(m_context);
-        shader(RendererShader::lines_p)->Compile(RHI_Shader_Pixel, shader_dir + "lines.hlsl", async);
+        // Line
+        shader(RendererShader::line_v) = make_shared<RHI_Shader>(m_context);
+        shader(RendererShader::line_v)->Compile(RHI_Shader_Vertex, shader_dir + "line.hlsl", async, RHI_Vertex_Type::PosCol);
+        shader(RendererShader::line_p) = make_shared<RHI_Shader>(m_context);
+        shader(RendererShader::line_p)->Compile(RHI_Shader_Pixel, shader_dir + "line.hlsl", async);
+
+        // Outline
+        shader(RendererShader::outline_v) = make_shared<RHI_Shader>(m_context);
+        shader(RendererShader::outline_v)->Compile(RHI_Shader_Vertex, shader_dir + "outline.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
+        shader(RendererShader::outline_p) = make_shared<RHI_Shader>(m_context);
+        shader(RendererShader::outline_p)->Compile(RHI_Shader_Pixel, shader_dir + "outline.hlsl", async);
+        shader(RendererShader::outline_c) = make_shared<RHI_Shader>(m_context);
+        shader(RendererShader::outline_c)->Compile(RHI_Shader_Compute, shader_dir + "outline.hlsl", async);
 
         // Reflection probe
         shader(RendererShader::reflection_probe_v) = make_shared<RHI_Shader>(m_context);
-        shader(RendererShader::reflection_probe_v)->Compile(RHI_Shader_Vertex, shader_dir + "reflection_probe.hlsl", async, RHI_Vertex_Type::PosTexNorTan);
+        shader(RendererShader::reflection_probe_v)->Compile(RHI_Shader_Vertex, shader_dir + "reflection_probe.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
         shader(RendererShader::reflection_probe_p) = make_shared<RHI_Shader>(m_context);
         shader(RendererShader::reflection_probe_p)->Compile(RHI_Shader_Pixel, shader_dir + "reflection_probe.hlsl", async);
 
         // Debug
         {
             shader(RendererShader::debug_reflection_probe_v) = make_shared<RHI_Shader>(m_context);
-            shader(RendererShader::debug_reflection_probe_v)->Compile(RHI_Shader_Vertex, shader_dir + "debug_reflection_probe.hlsl", async, RHI_Vertex_Type::PosTexNorTan);
+            shader(RendererShader::debug_reflection_probe_v)->Compile(RHI_Shader_Vertex, shader_dir + "debug_reflection_probe.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
             shader(RendererShader::debug_reflection_probe_p) = make_shared<RHI_Shader>(m_context);
             shader(RendererShader::debug_reflection_probe_p)->Compile(RHI_Shader_Pixel, shader_dir + "debug_reflection_probe.hlsl", async);
         }
@@ -423,16 +430,6 @@ namespace Spartan
         // SSR
         shader(RendererShader::ssr_c) = make_shared<RHI_Shader>(m_context);
         shader(RendererShader::ssr_c)->Compile(RHI_Shader_Compute, shader_dir + "ssr.hlsl", async);
-
-        // Entity - Transform
-        shader(RendererShader::entity_transform_p) = make_shared<RHI_Shader>(m_context);
-        shader(RendererShader::entity_transform_p)->AddDefine("TRANSFORM");
-        shader(RendererShader::entity_transform_p)->Compile(RHI_Shader_Pixel, shader_dir + "entity.hlsl", async);
-
-        // Entity - Outline
-        shader(RendererShader::entity_outline_p) = make_shared<RHI_Shader>(m_context);
-        shader(RendererShader::entity_outline_p)->AddDefine("OUTLINE");
-        shader(RendererShader::entity_outline_p)->Compile(RHI_Shader_Pixel, shader_dir + "entity.hlsl", async);
 
         // AMD FidelityFX CAS - Contrast Adaptive Sharpening
         shader(RendererShader::ffx_cas_c) = make_shared<RHI_Shader>(m_context);
