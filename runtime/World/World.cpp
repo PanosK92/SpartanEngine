@@ -383,7 +383,7 @@ namespace Spartan
         }
     }
 
-    void World::CreateDefaultWorldCameraLightEnvironment()
+    void World::CreateDefaultWorldCommon()
     {
         // Environment
         {
@@ -398,6 +398,7 @@ namespace Spartan
             entity->SetName("camera");
 
             entity->AddComponent<Camera>();
+            entity->AddComponent<AudioListener>();
             entity->GetTransform()->SetPosition(Vector3(-2.956f, 1.1474f, -2.9395f));
             entity->GetTransform()->SetRotation(Quaternion::FromEulerAngles(Vector3(15.9976f, 43.5998f, 0.0f)));
         }
@@ -415,11 +416,21 @@ namespace Spartan
             light->SetColor(Color::light_sky_clear);
             light->SetIntensity(50000.0f);
         }
+
+        // Music
+        {
+            shared_ptr<Entity> entity = CreateEntity();
+            entity->SetName("audio_source");
+
+            AudioSource* audio_source = entity->AddComponent<AudioSource>();
+            audio_source->SetAudioClip("project\\music\\vangelis_cosmos_theme.mp3");
+            audio_source->SetLoop(true);
+        }
     }
 
     void World::CreateDefaultWorldCube()
     {
-        CreateDefaultWorldCameraLightEnvironment();
+        CreateDefaultWorldCommon();
 
         // Quad
         {
@@ -470,7 +481,7 @@ namespace Spartan
 
     void World::CreateDefaultWorldCar()
     {
-        CreateDefaultWorldCameraLightEnvironment();
+        CreateDefaultWorldCommon();
 
         // Quad
         shared_ptr<Entity> entity = CreateEntity();
@@ -589,7 +600,7 @@ namespace Spartan
 
     void World::CreateDefaultWorldTerrain()
     {
-        CreateDefaultWorldCameraLightEnvironment();
+        CreateDefaultWorldCommon();
 
         // Terrain
         {
@@ -611,62 +622,7 @@ namespace Spartan
 
     void World::CreateDefaultWorldSponza()
     {
-        // Environment
-        {
-            shared_ptr<Entity> environment = CreateEntity();
-            environment->SetName("environment");
-            environment->AddComponent<Environment>();
-        }
-
-        // Camera
-        {
-            shared_ptr<Entity> entity = CreateEntity();
-            entity->SetName("camera");
-
-            entity->AddComponent<Camera>();
-            entity->AddComponent<AudioListener>();
-            entity->GetTransform()->SetPosition(Vector3(-2.6660f, 1.9089f, 1.9960f));
-            entity->GetTransform()->SetRotation(Quaternion::FromEulerAngles(Vector3(-0.0015f, 105.8024f, 0.0f)));
-        }
-
-        // Light - Directional
-        {
-            shared_ptr<Entity> entity = CreateEntity();
-            entity->SetName("light_directional");
-
-            entity->GetTransform()->SetPosition(Vector3(0.0f, 10.0f, 0.0f));
-            entity->GetTransform()->SetRotation(Quaternion::FromEulerAngles(112.3700f, -60.9100f, 0.0f));
-
-            Light* light = entity->AddComponent<Light>();
-            light->SetLightType(LightType::Directional);
-            light->SetColor(Color::light_sky_clear);
-            light->SetIntensity(60000.0f);
-        }
-
-        // Light - Point
-        {
-            shared_ptr<Entity> entity = CreateEntity();
-            entity->SetName("light_point");
-
-            entity->GetTransform()->SetPosition(Vector3(15.7592f, 3.1752f, 0.9272f));
-
-            Light* light = entity->AddComponent<Light>();
-            light->SetLightType(LightType::Point);
-            light->SetColor(Color::material_skin_1); // weird, I know
-            light->SetIntensity(8500.0f);
-            light->SetRange(25.0f);
-            light->SetShadowsTransparentEnabled(false);
-        }
-
-        // Music
-        {
-            shared_ptr<Entity> entity = CreateEntity();
-            entity->SetName("audio_source");
-
-            AudioSource* audio_source = entity->AddComponent<AudioSource>();
-            audio_source->SetAudioClip("project\\music\\vangelis_blade_runner_julien_hauspie.mp3");
-            audio_source->SetLoop(true);
-        }
+        CreateDefaultWorldCommon();
 
         // 3D model - Sponza
         if (m_default_model_sponza = ResourceCache::Load<Mesh>("project\\models\\sponza\\main\\NewSponza_Main_Blender_glTF.gltf"))
