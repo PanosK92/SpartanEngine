@@ -189,7 +189,7 @@ namespace Spartan
         uint32_t m_output_textures_index = 0;
 
         // Profiling
-        bool m_timeblock_is_active             = false;
+        const char* m_timeblock_active         = nullptr;
         void* m_query_pool                     = nullptr;
         uint32_t m_timestamp_index             = 0;
         static const uint32_t m_max_timestamps = 512;

@@ -2084,83 +2084,83 @@ namespace Spartan
         cmd_list->BeginTimeblock("outline");
         {
             RHI_Texture* tex_outline           = render_target(RendererTexture::outline).get();
+            static const Color clear_color     = Color(0.0f, 0.0f, 0.0f, 0.0f);
             shared_ptr<Entity> entity_selected = m_context->GetSystem<Renderer>()->GetCamera()->GetSelectedEntity();
 
             if (entity_selected)
             {
-                // Draw the color silhouette of the selected entity
-                cmd_list->BeginMarker("color_silhouette");
-                {
-                    // Get renderable
-                    const Renderable* renderable = entity_selected->GetRenderable();
-                    if (!renderable)
-                        return;
+                if (const Renderable* renderable = entity_selected->GetRenderable())
+                { 
+                    if (Mesh* mesh = renderable->GetMesh())
+                    { 
+                        if (mesh->GetVertexBuffer() && mesh->GetIndexBuffer())
+                        {
+                            cmd_list->BeginMarker("color_silhouette");
+                            {
+                                // Define render state
+                                static RHI_PipelineState pso;
+                                pso.shader_vertex                   = shader_v;
+                                pso.shader_pixel                    = shader_p;
+                                pso.rasterizer_state                = m_rasterizer_cull_back_solid.get();
+                                pso.blend_state                     = m_blend_disabled.get();
+                                pso.depth_stencil_state             = m_depth_stencil_off_off.get();
+                                pso.render_target_color_textures[0] = tex_outline;
+                                pso.clear_color[0]                  = clear_color;
+                                pso.viewport                        = tex_outline->GetViewport();
+                                pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
 
-                    // Get mesh
-                    Mesh* mesh = renderable->GetMesh();
-                    if (!mesh || !mesh->GetVertexBuffer() || !mesh->GetIndexBuffer())
-                        return;
+                                // Set pipeline state
+                                cmd_list->SetPipelineState(pso);
 
-                    // Define render state
-                    static RHI_PipelineState pso;
-                    pso.shader_vertex                   = shader_v;
-                    pso.shader_pixel                    = shader_p;
-                    pso.rasterizer_state                = m_rasterizer_cull_back_solid.get();
-                    pso.blend_state                     = m_blend_disabled.get();
-                    pso.depth_stencil_state             = m_depth_stencil_off_off.get();
-                    pso.render_target_color_textures[0] = tex_outline;
-                    pso.clear_color[0]                  = Color(0.0f, 0.0f, 0.0f, 0.0f);
-                    pso.viewport                        = tex_outline->GetViewport();
-                    pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
+                                // Render
+                                cmd_list->BeginRenderPass();
+                                {
+                                     // Set uber buffer with entity transform
+                                    m_cb_uber_cpu.transform = entity_selected->GetTransform()->GetMatrix() * m_cb_frame_cpu.view_projection_unjittered;
+                                    m_cb_uber_cpu.mat_color = DEBUG_COLOR;
+                                    Update_Cb_Uber(cmd_list);
 
-                    // Set pipeline state
-                    cmd_list->SetPipelineState(pso);
+                                    cmd_list->SetBufferVertex(mesh->GetVertexBuffer());
+                                    cmd_list->SetBufferIndex(mesh->GetIndexBuffer());
+                                    cmd_list->DrawIndexed(renderable->GetIndexCount(), renderable->GetIndexOffset(), renderable->GetVertexOffset());
+                                    cmd_list->EndRenderPass();
+                                }
+                            }
+                            cmd_list->EndMarker();
 
-                    // Render
-                    cmd_list->BeginRenderPass();
-                    {
-                         // Set uber buffer with entity transform
-                        m_cb_uber_cpu.transform = entity_selected->GetTransform()->GetMatrix() * m_cb_frame_cpu.view_projection_unjittered;
-                        m_cb_uber_cpu.mat_color = DEBUG_COLOR;
-                        Update_Cb_Uber(cmd_list);
+                            // Blur the color silhouette
+                            {
+                                const bool depth_aware   = false;
+                                const float radius       = 30.0f;
+                                const float sigma        = 32.0f;
+                                const float pixel_stride = 1.0f;
+                                Pass_Blur_Gaussian(cmd_list, tex_outline, depth_aware, radius, sigma, pixel_stride);
+                            }
 
-                        cmd_list->SetBufferVertex(mesh->GetVertexBuffer());
-                        cmd_list->SetBufferIndex(mesh->GetIndexBuffer());
-                        cmd_list->DrawIndexed(renderable->GetIndexCount(), renderable->GetIndexOffset(), renderable->GetVertexOffset());
-                        cmd_list->EndRenderPass();
+                            // Combine color silhouette with frame
+                            cmd_list->BeginMarker("composition");
+                            {
+                                static RHI_PipelineState pso;
+                                pso.shader_compute = shader_c;
+
+                                // Set pipeline state
+                                cmd_list->SetPipelineState(pso);
+
+                                // Set uber buffer
+                                m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
+                                Update_Cb_Uber(cmd_list);
+
+                                // Set textures
+                                cmd_list->SetTexture(RendererBindingsUav::tex, tex_out);
+                                cmd_list->SetTexture(RendererBindingsSrv::tex, tex_outline);
+
+                                // Render
+                                cmd_list->Dispatch(thread_group_count_x(tex_out), thread_group_count_y(tex_out));
+                            }
+                            cmd_list->EndMarker();
+                        }
                     }
                 }
-                cmd_list->EndMarker();
-
-                // Blur the color silhouette
-                const bool depth_aware   = false;
-                const float radius       = 30.0f;
-                const float sigma        = 32.0f;
-                const float pixel_stride = 1.0f;
-                Pass_Blur_Gaussian(cmd_list, tex_outline, depth_aware, radius, sigma, pixel_stride);
-            
-
-                // Combine color silhouette with frame
-                cmd_list->BeginMarker("composition");
-                {
-                    static RHI_PipelineState pso;
-                    pso.shader_compute = shader_c;
-
-                    // Set pipeline state
-                    cmd_list->SetPipelineState(pso);
-
-                    // Set uber buffer
-                    m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
-                    Update_Cb_Uber(cmd_list);
-
-                    // Set textures
-                    cmd_list->SetTexture(RendererBindingsUav::tex, tex_out);
-                    cmd_list->SetTexture(RendererBindingsSrv::tex, tex_outline);
-
-                    // Render
-                    cmd_list->Dispatch(thread_group_count_x(tex_out), thread_group_count_y(tex_out));
-                }
-                cmd_list->EndMarker();
             }
         }
         cmd_list->EndTimeblock();
