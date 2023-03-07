@@ -127,7 +127,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     if (g_reflection_probe_available != 0)
     {
         float probe_radius    = g_radius;
-        float3 probe_position = g_float3;
+        float3 probe_position = g_position;
         float3 box_min        = probe_position - g_extents;
         float3 box_max        = probe_position + g_extents;
 

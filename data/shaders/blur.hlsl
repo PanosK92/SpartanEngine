@@ -23,7 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 //====================
 
-static const int g_blur_radius = 5;
 static const float g_threshold = 0.1f;
 
 float compute_gaussian_weight(int sample_distance)
@@ -61,7 +60,7 @@ float3 gaussian_blur(const uint2 pos)
     return color / weight_sum;
 }
 
-// Depth aware gaussian blur
+// Depth aware Gaussian blur
 float3 depth_aware_gaussian_blur(const uint2 pos)
 {
     const float2 uv             = (pos.xy + 0.5f) / g_resolution_in;
