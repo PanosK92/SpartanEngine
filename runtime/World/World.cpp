@@ -383,7 +383,7 @@ namespace Spartan
         }
     }
 
-    void World::CreateDefaultWorldCommon()
+    void World::CreateDefaultWorldCommon(const Math::Vector3& camera_position, const Math::Vector3& camera_rotation)
     {
         // Environment
         {
@@ -399,8 +399,8 @@ namespace Spartan
 
             entity->AddComponent<Camera>();
             entity->AddComponent<AudioListener>();
-            entity->GetTransform()->SetPosition(Vector3(-2.956f, 1.1474f, -2.9395f));
-            entity->GetTransform()->SetRotation(Quaternion::FromEulerAngles(Vector3(15.9976f, 43.5998f, 0.0f)));
+            entity->GetTransform()->SetPosition(camera_position);
+            entity->GetTransform()->SetRotation(Quaternion::FromEulerAngles(camera_rotation));
         }
 
         // Light - Directional
@@ -622,7 +622,9 @@ namespace Spartan
 
     void World::CreateDefaultWorldSponza()
     {
-        CreateDefaultWorldCommon();
+        Vector3 camera_position = Vector3(-10.4144f, 7.3257f, -1.1735f);
+        Vector3 camera_rotation = Vector3(-6.0022f, 88.3969f, 0.0f);
+        CreateDefaultWorldCommon(camera_position, camera_rotation);
 
         // 3D model - Sponza
         if (m_default_model_sponza = ResourceCache::Load<Mesh>("project\\models\\sponza\\main\\NewSponza_Main_Blender_glTF.gltf"))
