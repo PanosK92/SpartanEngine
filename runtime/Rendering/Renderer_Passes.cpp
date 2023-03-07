@@ -151,9 +151,10 @@ namespace Spartan
                     for (uint32_t i = 1; i < rt2->GetMipCount(); i++)
                     {
                         const bool depth_aware   = false;
+                        const float radius       = 5.0f;
                         const float sigma        = 2.0f;
                         const float pixel_stride = 1.0;
-                        Pass_Blur_Gaussian(cmd_list, rt2, depth_aware, sigma, pixel_stride, i);
+                        Pass_Blur_Gaussian(cmd_list, rt2, depth_aware, radius, sigma, pixel_stride, i);
                     }
 
                     bool is_transparent_pass = true;
@@ -923,10 +924,11 @@ namespace Spartan
 
         // Blur
         const bool depth_aware   = true;
+        const float radius       = 5.0f;
         const float sigma        = 4.0f;
         const float pixel_stride = 2.0f;
-        Pass_Blur_Gaussian(cmd_list, tex_ssao, depth_aware, sigma, pixel_stride);
-        Pass_Blur_Gaussian(cmd_list, tex_ssao_gi, depth_aware, sigma, pixel_stride);
+        Pass_Blur_Gaussian(cmd_list, tex_ssao, depth_aware, radius, sigma, pixel_stride);
+        Pass_Blur_Gaussian(cmd_list, tex_ssao_gi, depth_aware, radius, sigma, pixel_stride);
 
         cmd_list->EndTimeblock();
     }
@@ -1159,8 +1161,8 @@ namespace Spartan
             ReflectionProbe* probe = probes[0]->GetComponent<ReflectionProbe>();
 
             cmd_list->SetTexture(RendererBindingsSrv::reflection_probe, probe->GetColorTexture());
-            m_cb_uber_cpu.extents = probe->GetExtents();
-            m_cb_uber_cpu.float3  = probe->GetTransform()->GetPosition();
+            m_cb_uber_cpu.extents  = probe->GetExtents();
+            m_cb_uber_cpu.position = probe->GetTransform()->GetPosition();
         }
 
         // Set uber buffer
@@ -1179,7 +1181,7 @@ namespace Spartan
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::Pass_Blur_Gaussian(RHI_CommandList* cmd_list, RHI_Texture* tex_in, const bool depth_aware, const float sigma, const float pixel_stride, const uint32_t mip /*= all_mips*/)
+    void Renderer::Pass_Blur_Gaussian(RHI_CommandList* cmd_list, RHI_Texture* tex_in, const bool depth_aware, const float radius, const float sigma, const float pixel_stride, const uint32_t mip /*= all_mips*/)
     {
         // Acquire shaders
         RHI_Shader* shader_c = shader(depth_aware ? RendererShader::blur_gaussian_bilaterial_c : RendererShader::blur_gaussian_c).get();
@@ -1225,8 +1227,9 @@ namespace Spartan
             // Set uber buffer
             m_cb_uber_cpu.resolution_rt  = Vector2(static_cast<float>(width), static_cast<float>(height));
             m_cb_uber_cpu.resolution_in  = Vector2(static_cast<float>(width), static_cast<float>(height));
+            m_cb_uber_cpu.blur_radius    = radius;
+            m_cb_uber_cpu.blur_sigma     = sigma;
             m_cb_uber_cpu.blur_direction = Vector2(pixel_stride, 0.0f);
-            m_cb_uber_cpu.blur_sigma = sigma;
             Update_Cb_Uber(cmd_list);
 
             // Set textures
@@ -2131,9 +2134,10 @@ namespace Spartan
 
                 // Blur the color silhouette
                 const bool depth_aware   = false;
+                const float radius       = 30.0f;
                 const float sigma        = 32.0f;
                 const float pixel_stride = 1.0f;
-                Pass_Blur_Gaussian(cmd_list, tex_outline, depth_aware, sigma, pixel_stride);
+                Pass_Blur_Gaussian(cmd_list, tex_outline, depth_aware, radius, sigma, pixel_stride);
             
 
                 // Combine color silhouette with frame

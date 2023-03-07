@@ -129,15 +129,16 @@ namespace Spartan
         Math::Matrix transform          = Math::Matrix::Identity;
         Math::Matrix transform_previous = Math::Matrix::Identity;
 
-        Math::Vector3 float3 = Math::Vector3::Zero;
-        float blur_sigma     = 0.0f;
-
+        float blur_radius            = 5.0f;
+        float blur_sigma             = 0.0f;
         Math::Vector2 blur_direction = Math::Vector2::Zero;
-        Math::Vector2 resolution_rt  = Math::Vector2::Zero;
 
-        Math::Vector2 resolution_in                = Math::Vector2::Zero;
+        Math::Vector2 resolution_rt  = Math::Vector2::Zero;
+        Math::Vector2 resolution_in  = Math::Vector2::Zero;
+
         bool mat_single_texture_rougness_metalness = false;
         float radius                               = 0.0f;
+        Math::Vector2 padding                      = Math::Vector2::Zero;
 
         Math::Vector4 mat_color = Math::Vector4::Zero;
 
@@ -158,34 +159,35 @@ namespace Spartan
         uint32_t work_group_count = 0;
 
         uint32_t reflection_proble_available = 0;
-        Math::Vector3 padding                = Math::Vector3::Zero;
+        Math::Vector3 position               = Math::Vector3::Zero;
 
         bool operator==(const Cb_Uber& rhs) const
         {
             return
-                transform                             == rhs.transform                   &&
-                transform_previous                    == rhs.transform_previous          &&
-                mat_id                                == rhs.mat_id                      &&
-                mat_color                             == rhs.mat_color                   &&
-                mat_tiling_uv                         == rhs.mat_tiling_uv               &&
-                mat_offset_uv                         == rhs.mat_offset_uv               &&
-                mat_roughness_mul                     == rhs.mat_roughness_mul           &&
-                mat_metallic_mul                      == rhs.mat_metallic_mul            &&
-                mat_normal_mul                        == rhs.mat_normal_mul              &&
-                mat_height_mul                        == rhs.mat_height_mul              &&
-                float3                                == rhs.float3                      &&
-                blur_sigma                            == rhs.blur_sigma                  &&
-                blur_direction                        == rhs.blur_direction              &&
-                is_transparent_pass                   == rhs.is_transparent_pass         &&
-                resolution_rt                         == rhs.resolution_rt               &&
-                resolution_in                         == rhs.resolution_in               &&
-                mip_count                             == rhs.mip_count                   &&
-                work_group_count                      == rhs.work_group_count            &&
-                reflection_proble_available           == rhs.reflection_proble_available &&
-                radius                                == rhs.radius                      &&
-                extents                               == rhs.extents                     &&
-                mat_textures                          == rhs.mat_textures                &&
-                mat_single_texture_rougness_metalness == rhs.mat_single_texture_rougness_metalness;
+                transform                             == rhs.transform                             &&
+                transform_previous                    == rhs.transform_previous                    &&
+                mat_id                                == rhs.mat_id                                &&
+                mat_color                             == rhs.mat_color                             &&
+                mat_tiling_uv                         == rhs.mat_tiling_uv                         &&
+                mat_offset_uv                         == rhs.mat_offset_uv                         &&
+                mat_roughness_mul                     == rhs.mat_roughness_mul                     &&
+                mat_metallic_mul                      == rhs.mat_metallic_mul                      &&
+                mat_normal_mul                        == rhs.mat_normal_mul                        &&
+                mat_height_mul                        == rhs.mat_height_mul                        &&
+                blur_radius                           == rhs.blur_radius                           &&
+                blur_sigma                            == rhs.blur_sigma                            &&
+                blur_direction                        == rhs.blur_direction                        &&
+                is_transparent_pass                   == rhs.is_transparent_pass                   &&
+                resolution_rt                         == rhs.resolution_rt                         &&
+                resolution_in                         == rhs.resolution_in                         &&
+                mip_count                             == rhs.mip_count                             &&
+                work_group_count                      == rhs.work_group_count                      &&
+                reflection_proble_available           == rhs.reflection_proble_available           &&
+                radius                                == rhs.radius                                &&
+                extents                               == rhs.extents                               &&
+                mat_textures                          == rhs.mat_textures                          &&
+                mat_single_texture_rougness_metalness == rhs.mat_single_texture_rougness_metalness &&
+                position                              == rhs.position;
         }
 
         bool operator!=(const Cb_Uber& rhs) const { return !(*this == rhs); }
@@ -206,18 +208,18 @@ namespace Spartan
         bool operator==(const Cb_Light& rhs)
         {
             return
-                view_projection[0]          == rhs.view_projection[0]         &&
-                view_projection[1]          == rhs.view_projection[1]         &&
-                view_projection[2]          == rhs.view_projection[2]         &&
-                view_projection[3]          == rhs.view_projection[3]         &&
-                view_projection[4]          == rhs.view_projection[4]         &&
-                view_projection[5]          == rhs.view_projection[5]         &&
-                intensity_range_angle_bias  == rhs.intensity_range_angle_bias &&
-                normal_bias                 == rhs.normal_bias                &&
-                color                       == rhs.color                      &&
-                position                    == rhs.position                   &&
-                direction                   == rhs.direction                  &&
-                options                     == rhs.options;
+                view_projection[0]         == rhs.view_projection[0]         &&
+                view_projection[1]         == rhs.view_projection[1]         &&
+                view_projection[2]         == rhs.view_projection[2]         &&
+                view_projection[3]         == rhs.view_projection[3]         &&
+                view_projection[4]         == rhs.view_projection[4]         &&
+                view_projection[5]         == rhs.view_projection[5]         &&
+                intensity_range_angle_bias == rhs.intensity_range_angle_bias &&
+                normal_bias                == rhs.normal_bias                &&
+                color                      == rhs.color                      &&
+                position                   == rhs.position                   &&
+                direction                  == rhs.direction                  &&
+                options                    == rhs.options;
         }
     };
 

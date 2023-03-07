@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016-2021 Panos Karabelas
+Copyright(c) 2016-2023 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -74,15 +74,16 @@ cbuffer BufferUber : register(b1)
     matrix g_transform;
     matrix g_transform_previous;
 
-    float3 g_float3;
+    float g_blur_radius;
     float g_blur_sigma;
-    
     float2 g_blur_direction;
-    float2 g_resolution_rt;
 
+    float2 g_resolution_rt;
     float2 g_resolution_in;
+
     bool single_texture_roughness_metalness;
     float g_radius;
+    float2 g_padding2;
 
     float4 g_mat_color;
 
@@ -103,7 +104,7 @@ cbuffer BufferUber : register(b1)
     uint g_work_group_count;
 
     uint g_reflection_probe_available;
-    float3 g_padding2;
+    float3 g_position;
 };
 
 // High frequency - Updates per light
