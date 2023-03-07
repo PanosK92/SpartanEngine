@@ -475,7 +475,7 @@ namespace Spartan
             collider->SetShapeType(ColliderShape::Box); // set shape
         }
 
-        // Start simulating (for the physics to work)
+        // Start simulating (for the physics and the music to work)
         m_context->m_engine->SetFlag(EngineMode::Game);
     }
 
@@ -596,6 +596,9 @@ namespace Spartan
                 }
             }
         }
+
+        // Start simulating (for the physics and the music to work)
+        m_context->m_engine->SetFlag(EngineMode::Game);
     }
 
     void World::CreateDefaultWorldTerrain()
@@ -618,6 +621,9 @@ namespace Spartan
             terrain->SetHeightMap(height_map);
             terrain->GenerateAsync();
         }
+
+        // Start simulating (for the physics and the music to work)
+        m_context->m_engine->SetFlag(EngineMode::Game);
     }
 
     void World::CreateDefaultWorldSponza()
@@ -656,6 +662,7 @@ namespace Spartan
             }
         }
 
-        m_context->m_engine->ToggleFlag(EngineMode::Game);
+        // Start simulating (for the physics and the music to work)
+        m_context->m_engine->SetFlag(EngineMode::Game);
     }
 }
