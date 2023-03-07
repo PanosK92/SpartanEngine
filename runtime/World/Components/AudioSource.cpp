@@ -113,8 +113,14 @@ namespace Spartan
 
     void AudioSource::SetAudioClip(const string& file_path)
     {
+        if (!FileSystem::IsFile(file_path))
+        {
+            SP_LOG_ERROR("\"%s\" doesn't point to a file", file_path.c_str());
+            return;
+        }
+
         // Create and load the audio clip
-        auto audio_clip = make_shared<AudioClip>(m_context);
+        shared_ptr<AudioClip> audio_clip = make_shared<AudioClip>(m_context);
         if (audio_clip->LoadFromFile(file_path))
         {
             // In order for the component to guarantee serialization/deserialization, we cache the audio clip
