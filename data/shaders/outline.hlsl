@@ -49,5 +49,5 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     float3 color      = silhouette.rgb;
     float alpha       = silhouette.a;
 
-    tex_uav[thread_id.xy].rgb += color * (1.0f - alpha);
+    tex_uav[thread_id.xy] += float4(color * (1.0f - alpha), 0.0f);
 }

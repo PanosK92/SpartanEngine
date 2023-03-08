@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #define FOG_REGULAR 1
 #define FOG_VOLUMETRIC 1
 
-//= INCLUDES =========
+//= INCLUDES =================
 #include "common.hlsl"
 #include "brdf.hlsl"
 #include "shadow_mapping.hlsl"
@@ -82,45 +82,36 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     // Reflectance equation
     if (!surface.is_sky())
     {
-        // Compute some vectors and dot products
-        float3 l      = -light.to_pixel;
-        float3 v      = -surface.camera_to_pixel;
-        float3 h      = normalize(v + l);
-        float l_dot_h = saturate(dot(l, h));
-        float v_dot_h = saturate(dot(v, h));
-        float n_dot_v = saturate(dot(surface.normal, v));
-        float n_dot_h = saturate(dot(surface.normal, h));
+        AngularInfo angular_info;
+        angular_info.Build(light, surface);
 
-        float3 diffuse_energy    = 1.0f;
-        float3 reflective_energy = 1.0f;
-        
         // Specular
         if (surface.anisotropic == 0.0f)
         {
-            light_specular += BRDF_Specular_Isotropic(surface, n_dot_v, light.n_dot_l, n_dot_h, v_dot_h, l_dot_h, diffuse_energy, reflective_energy);
+            light_specular += BRDF_Specular_Isotropic(surface, angular_info);
         }
         else
         {
-            light_specular += BRDF_Specular_Anisotropic(surface, v, l, h, n_dot_v, light.n_dot_l, n_dot_h, l_dot_h, diffuse_energy, reflective_energy);
+            light_specular += BRDF_Specular_Anisotropic(surface, angular_info);
         }
 
         // Specular clearcoat
         if (surface.clearcoat != 0.0f)
         {
-            light_specular += BRDF_Specular_Clearcoat(surface, n_dot_h, v_dot_h, diffuse_energy, reflective_energy);
+            light_specular += BRDF_Specular_Clearcoat(surface, angular_info);
         }
 
-        // Sheen;
+        // Sheen
         if (surface.sheen != 0.0f)
         {
-            light_specular += BRDF_Specular_Sheen(surface, n_dot_v, light.n_dot_l, n_dot_h, diffuse_energy, reflective_energy);
+            light_specular += BRDF_Specular_Sheen(surface, angular_info);
         }
         
         // Diffuse
-        light_diffuse += BRDF_Diffuse(surface, n_dot_v, light.n_dot_l, v_dot_h);
+        light_diffuse += BRDF_Diffuse(surface, angular_info);
 
         // Tone down diffuse such as that only non metals have it
-        light_diffuse *= diffuse_energy;
+        light_diffuse *= surface.diffuse_energy;
     }
 
     float3 emissive = surface.emissive * surface.albedo;
