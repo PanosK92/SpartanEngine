@@ -203,7 +203,7 @@ namespace Spartan
             render_target(RendererTexture::dof_half_2) = make_unique<RHI_Texture2D>(m_context, width_render / 2, height_render / 2, 1, RHI_Format_R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv, "rt_dof_half_2");
 
             // FSR 2 masks
-            render_target(RendererTexture::fsr2_mask_reactive)     = make_unique<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R8_Unorm, RHI_Texture_RenderTarget | RHI_Texture_Srv, "rt_fsr2_reactive_mask");
+            render_target(RendererTexture::fsr2_mask_reactive)     = make_unique<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R8_Unorm, RHI_Texture_RenderTarget | RHI_Texture_Srv | RHI_Texture_ClearOrBlit, "rt_fsr2_reactive_mask");
             render_target(RendererTexture::fsr2_mask_transparency) = make_unique<RHI_Texture2D>(m_context, width_render, height_render, 1, RHI_Format_R8_Unorm, RHI_Texture_RenderTarget | RHI_Texture_Srv, "rt_fsr2_transparency_mask");
 
             // Selection outline

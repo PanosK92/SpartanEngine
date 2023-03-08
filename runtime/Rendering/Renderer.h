@@ -300,7 +300,7 @@ namespace Spartan
 
         // Misc
         std::unique_ptr<Font> m_font;
-        Math::Vector2 m_taa_jitter        = Math::Vector2::Zero;
+        Math::Vector2 m_jitter_offset     = Math::Vector2::Zero;
         float m_near_plane                = 0.0f;
         float m_far_plane                 = 1.0f;
         uint64_t m_frame_num              = 0;
