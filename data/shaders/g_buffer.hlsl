@@ -188,7 +188,7 @@ PixelOutputType mainPS(PixelInputType input)
     g_buffer.normal                 = float4(normal, pack_uint32_to_float16(g_mat_id));
     g_buffer.material               = float4(roughness, metalness, emission, occlusion);
     g_buffer.velocity               = velocity_uv;
-    g_buffer.fsr2_transparency_mask = albedo.a;
+    g_buffer.fsr2_transparency_mask = albedo.a * g_is_transparent_pass;
 
     return g_buffer;
 }
