@@ -20,7 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES =========
-#include "Common.hlsl"
+#include "common.hlsl"
 //====================
 
 /*------------------------------------------------------------------------------
@@ -87,10 +87,10 @@ float V_Neubelt(float n_dot_v, float n_dot_l)
 
 // GGX / Trowbridge-Reitz
 // [Walter et al. 2007, "Microfacet models for refraction through rough surfaces"]
-float D_GGX(float a2, float n_dot_h)
+float D_GGX(Surface surface, AngularInfo angular_info)
 {
-    float f = (n_dot_h * a2 - n_dot_h) * n_dot_h + 1.0f;
-    return a2 / (PI * f * f + FLT_MIN);
+    float f = (angular_info.n_dot_h * surface.roughness_alpha_squared - angular_info.n_dot_h) * angular_info.n_dot_h + 1.0f;
+    return surface.roughness_alpha_squared / (PI * f * f + FLT_MIN);
 }
 
 float D_GGX_Anisotropic(float cos_theta_m, float alpha_x, float alpha_y, float cos_phi, float sin_phi)
@@ -131,84 +131,39 @@ float3 Diffuse_Burley(float3 diffuse_color, float Roughness, float NoV, float No
 }
 
 // Diffuse - [Gotanda 2012, "Beyond a Simple Physically Based Blinn-Phong Model in Real-Time"]
-float3 Diffuse_OrenNayar(float3 diffuse_color, float Roughness, float NoV, float NoL, float VoH)
+float3 Diffuse_OrenNayar(Surface surface, AngularInfo angular_info)
 {
-    float a     = Roughness * Roughness;
-    float s     = a;                    // ( 1.29 + 0.5 * a );
+    float s     = surface.roughness_alpha; // ( 1.29 + 0.5 * a );
     float s2    = s * s;
-    float VoL   = 2 * VoH * VoH - 1;    // double angle identity
-    float Cosri = VoL - NoV * NoL;
+    float VoL   = 2 * angular_info.v_dot_h * angular_info.v_dot_h - 1;       // double angle identity
+    float Cosri = VoL - angular_info.n_dot_v * angular_info.n_dot_l;
     float C1    = 1 - 0.5 * s2 / (s2 + 0.33);
-    float C2    = 0.45 * s2 / (s2 + 0.09) * Cosri * ( Cosri >= 0 ? rcp( max( NoL, NoV + 0.0001f ) ) : 1 );
-    return diffuse_color / PI * ( C1 + C2 ) * ( 1 + Roughness * 0.5 );
+    float C2    = 0.45 * s2 / (s2 + 0.09) * Cosri * ( Cosri >= 0 ? rcp( max(angular_info.n_dot_l, angular_info.n_dot_v + 0.0001f ) ) : 1 );
+    return surface.albedo / PI * ( C1 + C2 ) * ( 1 + surface.roughness * 0.5 );
 }
 
-float3 BRDF_Diffuse(float3 albedo, float roughhness, float n_dot_v, float n_dot_l, float v_dot_h)
+float3 BRDF_Diffuse(Surface surface, AngularInfo angular_info)
 {
-    return Diffuse_OrenNayar(albedo, roughhness, n_dot_v, n_dot_l, v_dot_h);
-}
-
-float3 BRDF_Diffuse(Surface surface, float n_dot_v, float n_dot_l, float v_dot_h)
-{
-    return BRDF_Diffuse(surface.albedo.rgb, surface.roughness, n_dot_v, n_dot_l, v_dot_h);
+    return Diffuse_OrenNayar(surface, angular_info);
 }
 
 /*------------------------------------------------------------------------------
     Specular
 ------------------------------------------------------------------------------*/
 
-float3 BRDF_Specular_Isotropic(
-    float roughness,
-    float metallic,
-    float3 F0,
-    float n_dot_v,
-    float n_dot_l,
-    float n_dot_h,
-    float v_dot_h,
-    float l_dot_h,
-    inout float3 diffuse_energy,
-    inout float3 specular_energy
- )
+float3 BRDF_Specular_Isotropic(inout Surface surface, AngularInfo angular_info)
 {
-    float a  = roughness * roughness;
-    float a2 = a * a;
+    float  V = V_SmithJointApprox(surface.roughness_alpha, angular_info.n_dot_v, angular_info.n_dot_l);
+    float  D = D_GGX(surface, angular_info);
+    float3 F = F_Schlick(surface.F0, angular_info.v_dot_h);
 
-    float  V = V_SmithJointApprox(a, n_dot_v, n_dot_l);
-    float  D = D_GGX(a2, n_dot_h);
-    float3 F = F_Schlick(F0, v_dot_h);
-
-    diffuse_energy  *= compute_diffuse_energy(F, metallic);
-    specular_energy *= F;
+    surface.diffuse_energy  *= compute_diffuse_energy(F, surface.metallic);
+    surface.specular_energy *= F;
 
     return D * V * F;
 }
 
-float3 BRDF_Specular_Isotropic(
-    Surface surface,
-    float n_dot_v,
-    float n_dot_l,
-    float n_dot_h,
-    float v_dot_h,
-    float l_dot_h,
-    inout float3 diffuse_energy,
-    inout float3 specular_energy
-)
-{
-    return BRDF_Specular_Isotropic(
-        surface.roughness,
-        surface.metallic,
-        surface.F0,
-        n_dot_v,
-        n_dot_l,
-        n_dot_h,
-        v_dot_h,
-        l_dot_h,
-        diffuse_energy,
-        specular_energy
-     );
-}
-
-inline float3 BRDF_Specular_Anisotropic(Surface surface, float3 v, float3 l, float3 h, float n_dot_v, float n_dot_l, float n_dot_h, float l_dot_h, inout float3 diffuse_energy, inout float3 specular_energy)
+float3 BRDF_Specular_Anisotropic(inout Surface surface, AngularInfo angular_info)
 {
     // Construct TBN from the normal
     float3 t, b;
@@ -225,48 +180,45 @@ inline float3 BRDF_Specular_Anisotropic(Surface surface, float3 v, float3 l, flo
     float aspect    = sqrt(1.0 - surface.anisotropic * 0.9);
     float ax        = alpha_ggx / aspect;
     float ay        = alpha_ggx * aspect;
-    float XdotH     = dot(t, h);
-    float YdotH     = dot(b, h);
+    float XdotH     = dot(t, angular_info.h);
+    float YdotH     = dot(b, angular_info.h);
     
     // specular anisotropic BRDF
-    float D   = D_GGX_Anisotropic(n_dot_h, ax, ay, XdotH, YdotH);
-    float V   = V_GGX_anisotropic_2cos(n_dot_v, ax, ay, XdotH, YdotH) * V_GGX_anisotropic_2cos(n_dot_v, ax, ay, XdotH, YdotH);
+    float D   = D_GGX_Anisotropic(angular_info.n_dot_h, ax, ay, XdotH, YdotH);
+    float V   = V_GGX_anisotropic_2cos(angular_info.n_dot_v, ax, ay, XdotH, YdotH) * V_GGX_anisotropic_2cos(angular_info.n_dot_v, ax, ay, XdotH, YdotH);
     float f90 = saturate(dot(surface.F0, 50.0 * 0.33));
-    float3 F  = F_Schlick(surface.F0, f90, l_dot_h);
+    float3 F  = F_Schlick(surface.F0, f90, angular_info.l_dot_h);
 
-    diffuse_energy  *= compute_diffuse_energy(F, surface.metallic);
-    specular_energy *= F;
+    surface.diffuse_energy  *= compute_diffuse_energy(F, surface.metallic);
+    surface.specular_energy *= F;
     
     return D * V * F;
 }
 
-inline float3 BRDF_Specular_Clearcoat(Surface surface, float n_dot_h, float v_dot_h, inout float3 diffuse_energy, inout float3 specular_energy)
+float3 BRDF_Specular_Clearcoat(inout Surface surface, AngularInfo angular_info)
 {
-    float a2 = pow4(surface.roughness);
-    
-    float D  = D_GGX(a2, n_dot_h);
-    float V  = V_Kelemen(v_dot_h);
-    float3 F = F_Schlick(0.04, 1.0, v_dot_h) * surface.clearcoat;
+    float D  = D_GGX(surface, angular_info);
+    float V  = V_Kelemen(angular_info.v_dot_h);
+    float3 F = F_Schlick(0.04, 1.0, angular_info.v_dot_h) * surface.clearcoat;
 
-    diffuse_energy  *= compute_diffuse_energy(F, surface.metallic);
-    specular_energy *= F;
+    surface.diffuse_energy  *= compute_diffuse_energy(F, surface.metallic);
+    surface.specular_energy *= F;
 
     return D * V * F;
 }
 
-inline float3 BRDF_Specular_Sheen(Surface surface, float n_dot_v, float n_dot_l, float n_dot_h, inout float3 diffuse_energy, inout float3 specular_energy)
+float3 BRDF_Specular_Sheen(inout Surface surface, AngularInfo angular_info)
 {
     // Mix between white and using base color for sheen reflection
     float tint = surface.sheen_tint * surface.sheen_tint;
     float3 f0  = lerp(1.0f, surface.F0, tint);
     
-    float D  = D_Charlie(surface.roughness, n_dot_h);
-    float V  = V_Neubelt(n_dot_v, n_dot_l);
+    float D  = D_Charlie(surface.roughness, angular_info.n_dot_h);
+    float V  = V_Neubelt(angular_info.n_dot_v, angular_info.n_dot_l);
     float3 F = f0 * surface.sheen;
 
-    diffuse_energy  *= compute_diffuse_energy(F, surface.metallic);
-    specular_energy *= F;
+    surface.diffuse_energy  *= compute_diffuse_energy(F, surface.metallic);
+    surface.specular_energy *= F;
 
     return D * V * F;
 }
-

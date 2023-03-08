@@ -43,7 +43,6 @@ float3 gaussian_blur(const uint2 pos)
 
     float weight_sum = 0.0f;
     float3 color     = 0.0f;
-    [unroll]
     for (int i = -g_blur_radius; i < g_blur_radius; i++)
     {
         float2 sample_uv = uv + (i * direction);
@@ -73,7 +72,6 @@ float3 depth_aware_gaussian_blur(const uint2 pos)
 
     float weight_sum = 0.0f;
     float3 color     = 0.0f;
-    [unroll]
     for (int i = -g_blur_radius; i < g_blur_radius; i++)
     {
         float2 sample_uv     = uv + (i * direction);
@@ -114,5 +112,5 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     color = depth_aware_gaussian_blur(thread_id.xy);
 #endif
     
-    tex_uav[thread_id.xy].rgb = color;
+    tex_uav[thread_id.xy] = float4(color, tex_uav[thread_id.xy].a);
 }

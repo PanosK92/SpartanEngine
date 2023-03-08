@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016-2021 Panos Karabelas
+Copyright(c) 2016-2023 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -32,6 +32,8 @@ struct Surface
     float3  albedo;
     float   alpha;
     float   roughness;
+    float   roughness_alpha;
+    float   roughness_alpha_squared;
     float   metallic;
     float   clearcoat;
     float   clearcoat_roughness;
@@ -51,6 +53,8 @@ struct Surface
     float3  normal;
     float3  camera_to_pixel;
     float   camera_to_pixel_length;
+    float3  specular_energy;
+    float3  diffuse_energy;
     
     // Activision GTAO paper: https://www.activision.com/cdn/research/s2016_pbs_activision_occlusion.pptx
     float3 multi_bounce_ao(float visibility, float3 albedo)
@@ -88,6 +92,13 @@ struct Surface
         anisotropic_rotation = mat_clearcoat_clearcoatRough_aniso_anisoRot[id].w;
         sheen                = mat_sheen_sheenTint_pad[id].x;
         sheen_tint           = mat_sheen_sheenTint_pad[id].y;
+        specular_energy      = 1.0f;
+        diffuse_energy       = 1.0f;
+
+        // Roughness is authored as perceptual roughness; as is convention,
+        // convert to material roughness by squaring the perceptual roughness.
+        roughness_alpha = roughness * roughness;
+        roughness_alpha_squared = roughness_alpha * roughness_alpha;
 
         // Occlusion + GI
         {
@@ -125,21 +136,21 @@ struct Surface
 struct Light
 {
     // Properties
-    float3 color;
-    float3 position;
-    float  intensity;
-    float3 to_pixel;
-    float3 forward;
-    float  distance_to_pixel;
-    float  angle;
-    float  bias;
-    float  normal_bias;
-    float  near;
-    float  far;
-    float3 radiance;
-    float  n_dot_l;
-    uint   array_size;
-    float  attenuation;
+    float3  color;
+    float3  position;
+    float   intensity;
+    float3  to_pixel;
+    float3  forward;
+    float   distance_to_pixel;
+    float   angle;
+    float   bias;
+    float   normal_bias;
+    float   near;
+    float   far;
+    float3  radiance;
+    float   n_dot_l;
+    uint    array_size;
+    float   attenuation;
 
     // attenuation functions are derived from Frostbite
     // https://media.contentapi.ea.com/content/dam/eacom/frostbite/files/course-notes-moving-frostbite-to-pbr-v2.pdf
@@ -223,7 +234,7 @@ struct Light
         n_dot_l           = saturate(dot(surface_normal, -to_pixel)); // Pre-compute n_dot_l since it's used in many places
         attenuation       = compute_attenuation(surface_position);
         array_size        = light_is_directional() ? 4 : 1;
-        
+
         // Apply SSAO
         if (is_ssao_enabled())
         {
@@ -238,6 +249,33 @@ struct Light
     void Build(Surface surface)
     {
         Build(surface.position, surface.normal, surface.bent_normal, surface.occlusion);
+    }
+};
+
+struct AngularInfo
+{
+    float3 n;
+    float3 l;
+    float3 v;
+    float3 h;
+    float l_dot_h;
+    float v_dot_h;
+    float n_dot_v;
+    float n_dot_h;
+    float n_dot_l;
+
+    void Build(Light light, Surface surface)
+    {
+        n = normalize(surface.normal);           // Outward direction of surface point
+        v = normalize(-surface.camera_to_pixel); // Direction from surface point to view
+        l = normalize(-light.to_pixel);          // Direction from surface point to light
+        h = normalize(l + v);                    // Direction of the vector between l and v
+
+        n_dot_l = saturate(dot(n, l));
+        n_dot_v = saturate(dot(n, v));
+        n_dot_h = saturate(dot(n, h));
+        l_dot_h = saturate(dot(l, h));
+        v_dot_h = saturate(dot(v, h));
     }
 };
 

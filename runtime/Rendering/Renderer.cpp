@@ -72,7 +72,7 @@ namespace Spartan
         SetOption(RendererOption::Anisotropy,             16.0f);
         SetOption(RendererOption::ShadowResolution,       2048.0f);
         SetOption(RendererOption::Tonemapping,            static_cast<float>(TonemappingMode::Disabled));
-        SetOption(RendererOption::Gamma,                  1.5f);
+        SetOption(RendererOption::Gamma,                  2.0f);
         SetOption(RendererOption::Sharpness,              0.5f);
         SetOption(RendererOption::Fog,                    0.0f);
         SetOption(RendererOption::Antialiasing,           static_cast<float>(AntialiasingMode::TaaFxaa)); // This is using FSR 2 for TAA
