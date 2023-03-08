@@ -783,6 +783,7 @@ namespace Spartan
                     if (!taa_enabled)
                     {
                         m_options[static_cast<uint32_t>(RendererOption::Antialiasing)] = static_cast<float>(AntialiasingMode::Taa);
+                        m_ffx_fsr2_reset = true;
                         SP_LOG_INFO("Enabled TAA since FSR 2.0 does it.");
                     }
                 }
