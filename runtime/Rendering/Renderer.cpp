@@ -260,14 +260,14 @@ namespace Spartan
             UpsamplingMode upsampling_mode = GetOption<UpsamplingMode>(RendererOption::Upsampling);
             if ((upsampling_mode == UpsamplingMode::FSR2 || GetOption<AntialiasingMode>(RendererOption::Antialiasing) == AntialiasingMode::Taa) && RHI_Device::GetRhiApiType() != RHI_Api_Type::D3d11)
             {
-                RHI_FSR2::GenerateJitterSample(&m_taa_jitter.x, &m_taa_jitter.y);
-                m_taa_jitter.x            = (m_taa_jitter.x / m_resolution_render.x);
-                m_taa_jitter.y            = (m_taa_jitter.y / m_resolution_render.y);
-                m_cb_frame_cpu.projection *= Matrix::CreateTranslation(Vector3(m_taa_jitter.x, m_taa_jitter.y, 0.0f));
+                RHI_FSR2::GenerateJitterSample(&m_jitter_offset.x, &m_jitter_offset.y);
+                m_jitter_offset.x          = (m_jitter_offset.x / m_resolution_render.x);
+                m_jitter_offset.y          = (m_jitter_offset.y / m_resolution_render.y);
+                m_cb_frame_cpu.projection *= Matrix::CreateTranslation(Vector3(m_jitter_offset.x, m_jitter_offset.y, 0.0f));
             }
             else
             {
-                m_taa_jitter = Vector2::Zero;
+                m_jitter_offset = Vector2::Zero;
             }
             
             // Update the remaining of the frame buffer
@@ -275,7 +275,7 @@ namespace Spartan
             m_cb_frame_cpu.view_projection          = m_cb_frame_cpu.view * m_cb_frame_cpu.projection;
             m_cb_frame_cpu.view_projection_inv      = Matrix::Invert(m_cb_frame_cpu.view_projection);
             if (m_camera)
-            { 
+            {
                 m_cb_frame_cpu.view_projection_unjittered = m_cb_frame_cpu.view * m_camera->GetProjectionMatrix();
                 m_cb_frame_cpu.camera_aperture            = m_camera->GetAperture();
                 m_cb_frame_cpu.camera_shutter_speed       = m_camera->GetShutterSpeed();
@@ -288,7 +288,7 @@ namespace Spartan
             m_cb_frame_cpu.resolution_output      = m_resolution_output;
             m_cb_frame_cpu.resolution_render      = m_resolution_render;
             m_cb_frame_cpu.taa_jitter_previous    = m_cb_frame_cpu.taa_jitter_current;
-            m_cb_frame_cpu.taa_jitter_current     = m_taa_jitter;
+            m_cb_frame_cpu.taa_jitter_current     = m_jitter_offset;
             m_cb_frame_cpu.delta_time             = static_cast<float>(m_context->GetSystem<Timer>()->GetDeltaTimeSmoothedSec());
             m_cb_frame_cpu.time                   = static_cast<float>(m_context->GetSystem<Timer>()->GetTimeSec());
             m_cb_frame_cpu.bloom_intensity        = GetOption<float>(RendererOption::Bloom);

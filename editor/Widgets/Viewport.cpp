@@ -93,8 +93,11 @@ void Viewport::TickVisible()
     // Mouse picking
     if (ImGui::IsMouseClicked(0) && ImGui::IsItemHovered() && ImGui::TransformGizmo::allow_picking())
     {
-        m_renderer->GetCamera()->Pick();
-        m_editor->GetWidget<WorldViewer>()->SetSelectedEntity(m_renderer->GetCamera()->GetSelectedEntity());
+        if (shared_ptr<Camera> camera = m_renderer->GetCamera())
+        {
+            camera->Pick();
+            m_editor->GetWidget<WorldViewer>()->SetSelectedEntity(camera->GetSelectedEntity());
+        }
     }
 
     // Entity transform gizmo (will only show if an entity has been picked)

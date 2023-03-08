@@ -619,7 +619,7 @@ namespace Spartan
         pso.render_target_color_textures[3] = tex_velocity;
         pso.clear_color[3]                  = pso.clear_color[0];
         pso.render_target_color_textures[4] = tex_fsr2_transparency;
-        pso.clear_color[4]                  = Color(1.0f, 1.0f, 1.0f, 1.0f);
+        pso.clear_color[4]                  = Color(0.0f, 0.0f, 0.0f, 0.0f);
         pso.render_target_depth_texture     = tex_depth;
         pso.clear_depth                     = (is_transparent_pass || depth_prepass) ? rhi_depth_load : GetClearDepth();
         pso.viewport                        = tex_albedo->GetViewport();
@@ -748,25 +748,24 @@ namespace Spartan
 
     void Renderer::Pass_Lines(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
     {
-        const bool draw_grid            = GetOption<bool>(RendererOption::Debug_Grid);
-        const bool draw_lines_depth_off = m_lines_index_depth_off != numeric_limits<uint32_t>::max();
-        const bool draw_lines_depth_on  = m_lines_index_depth_on > ((m_line_vertices.size() / 2) - 1);
-        if (!draw_grid && !draw_lines_depth_off && !draw_lines_depth_on)
-            return;
-
         // Acquire shaders
         RHI_Shader* shader_v = shader(RendererShader::line_v).get();
         RHI_Shader* shader_p = shader(RendererShader::line_p).get();
         if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
             return;
 
-        RHI_Texture* tex_reactive_mask = render_target(RendererTexture::fsr2_mask_reactive).get();
+        // reactive mask
+        RHI_Texture* tex_reactive_mask  = render_target(RendererTexture::fsr2_mask_reactive).get();
+        Color clear_color_reactive_mask = Color::standard_black;
+        bool clear_reactive_mask        = true;
 
         cmd_list->BeginTimeblock("lines");
 
         // Grid
-        if (draw_grid)
+        if (GetOption<bool>(RendererOption::Debug_Grid))
         {
+            clear_reactive_mask = false;
+
             cmd_list->BeginMarker("grid");
 
             // Define pipeline state
@@ -778,6 +777,7 @@ namespace Spartan
             pso.depth_stencil_state             = m_depth_stencil_r_off.get();
             pso.render_target_color_textures[0] = tex_out;
             pso.render_target_color_textures[1] = tex_reactive_mask;
+            pso.clear_color[1]                  = clear_color_reactive_mask;
             pso.render_target_depth_texture     = render_target(RendererTexture::gbuffer_depth).get();
             pso.viewport                        = tex_out->GetViewport();
             pso.primitive_topology              = RHI_PrimitiveTopology_Mode::LineList;
@@ -805,6 +805,8 @@ namespace Spartan
         }
 
         // Draw lines
+        const bool draw_lines_depth_off = m_lines_index_depth_off != numeric_limits<uint32_t>::max();
+        const bool draw_lines_depth_on  = m_lines_index_depth_on > ((m_line_vertices.size() / 2) - 1);
         if (draw_lines_depth_off || draw_lines_depth_on)
         {
             // Grow vertex buffer (if needed)
@@ -816,7 +818,9 @@ namespace Spartan
 
             // If the vertex count is 0, the vertex buffer will be uninitialised.
             if (vertex_count != 0)
-            { 
+            {
+                clear_reactive_mask = false;
+
                 // Update vertex buffer
                 RHI_Vertex_PosCol* buffer = static_cast<RHI_Vertex_PosCol*>(m_vertex_buffer_lines->Map());
                 std::copy(m_line_vertices.begin(), m_line_vertices.end(), buffer);
@@ -829,6 +833,7 @@ namespace Spartan
                 pso.rasterizer_state                = m_rasterizer_cull_back_wireframe.get();
                 pso.render_target_color_textures[0] = tex_out;
                 pso.render_target_color_textures[1] = tex_reactive_mask;
+                pso.clear_color[1]                  = clear_color_reactive_mask;
                 pso.viewport                        = tex_out->GetViewport();
                 pso.primitive_topology              = RHI_PrimitiveTopology_Mode::LineList;
 
@@ -879,6 +884,11 @@ namespace Spartan
                     cmd_list->EndMarker();
                 }
             }
+        }
+
+        if (clear_reactive_mask)
+        {
+            cmd_list->ClearRenderTarget(tex_reactive_mask, 0, 0, false, clear_color_reactive_mask);
         }
 
         cmd_list->EndTimeblock();

@@ -51,18 +51,32 @@ namespace Spartan
         }
     }
 
+    static FfxResource to_ffx_resource(FfxFsr2Context& fsr2_context, RHI_Texture* texture, const wchar_t* name)
+    {
+        return ffxGetTextureResourceVK(
+            &fsr2_context,
+            static_cast<VkImage>(texture->GetRhiResource()),
+            static_cast<VkImageView>(texture->GetRhiSrv()),
+            texture->GetWidth(),
+            texture->GetHeight(),
+            vulkan_format[texture->GetFormat()],
+            name,
+            texture->GetLayout(0) == RHI_Image_Layout::Shader_Read_Only_Optimal ? FFX_RESOURCE_STATE_COMPUTE_READ : FFX_RESOURCE_STATE_UNORDERED_ACCESS
+        );
+    }
+
     void RHI_FSR2::GenerateJitterSample(float* x, float* y)
     {
-        // Get render and output resolution from the context description (safe to do as we are not using dynamic resolution)
-        uint32_t resolution_render_x = static_cast<uint32_t>(m_ffx_fsr2_context_description.maxRenderSize.width);
-        uint32_t resolution_output_x = static_cast<uint32_t>(m_ffx_fsr2_context_description.displaySize.width);
+        // Get jitter sample count
+        uint32_t resolution_render_x      = static_cast<uint32_t>(m_ffx_fsr2_context_description.maxRenderSize.width);
+        uint32_t resolution_output_x      = static_cast<uint32_t>(m_ffx_fsr2_context_description.displaySize.width);
+        const int32_t jitter_sample_count = ffxFsr2GetJitterPhaseCount(resolution_render_x, resolution_output_x);
 
         // Generate jitter sample
         static uint32_t index = 0; index++;
-        const int32_t jitter_phase_count = ffxFsr2GetJitterPhaseCount(resolution_render_x, resolution_output_x);
-        ffxFsr2GetJitterOffset(&m_ffx_fsr2_dispatch_description.jitterOffset.x, &m_ffx_fsr2_dispatch_description.jitterOffset.y, index, jitter_phase_count);
+        SP_ASSERT(ffxFsr2GetJitterOffset(&m_ffx_fsr2_dispatch_description.jitterOffset.x, &m_ffx_fsr2_dispatch_description.jitterOffset.y, index, jitter_sample_count) == FFX_OK);
 
-        // Out
+        // Out jitter offset
         *x = m_ffx_fsr2_dispatch_description.jitterOffset.x;
         *y = m_ffx_fsr2_dispatch_description.jitterOffset.y;
     }
@@ -131,17 +145,16 @@ namespace Spartan
         tex_output->SetLayout(RHI_Image_Layout::General, cmd_list);
 
         // Dispatch description
-        m_ffx_fsr2_dispatch_description = {};
         {
             // Resources
+            m_ffx_fsr2_dispatch_description.color                      = to_ffx_resource(m_ffx_fsr2_context, tex_input,             L"fsr2_color");
+            m_ffx_fsr2_dispatch_description.depth                      = to_ffx_resource(m_ffx_fsr2_context, tex_depth,             L"fsr2_depth");
+            m_ffx_fsr2_dispatch_description.motionVectors              = to_ffx_resource(m_ffx_fsr2_context, tex_velocity,          L"fsr2_velocity");
+            m_ffx_fsr2_dispatch_description.reactive                   = to_ffx_resource(m_ffx_fsr2_context, tex_mask_reactive,     L"fsr2_mask_reactive");
+            m_ffx_fsr2_dispatch_description.transparencyAndComposition = to_ffx_resource(m_ffx_fsr2_context, tex_mask_transparency, L"fsr2_mask_transparency_and_composition");
+            m_ffx_fsr2_dispatch_description.output                     = to_ffx_resource(m_ffx_fsr2_context, tex_output,            L"fsr2_output");
+            m_ffx_fsr2_dispatch_description.exposure                   = ffxGetTextureResourceVK(&m_ffx_fsr2_context, nullptr, nullptr, 1, 1, VK_FORMAT_UNDEFINED, L"fsr2_exposure");
             m_ffx_fsr2_dispatch_description.commandList                = ffxGetCommandListVK(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()));
-            m_ffx_fsr2_dispatch_description.color                      = ffxGetTextureResourceVK(&m_ffx_fsr2_context, static_cast<VkImage>(tex_input->GetRhiResource()),             static_cast<VkImageView>(tex_input->GetRhiSrv()),             resolution_render_x, resolution_render_y, vulkan_format[tex_input->GetFormat()],    L"fsr2_color",             FFX_RESOURCE_STATE_COMPUTE_READ);
-            m_ffx_fsr2_dispatch_description.depth                      = ffxGetTextureResourceVK(&m_ffx_fsr2_context, static_cast<VkImage>(tex_depth->GetRhiResource()),             static_cast<VkImageView>(tex_depth->GetRhiSrv()),             resolution_render_x, resolution_render_y, vulkan_format[tex_depth->GetFormat()],    L"fsr2_depth",             FFX_RESOURCE_STATE_COMPUTE_READ);
-            m_ffx_fsr2_dispatch_description.motionVectors              = ffxGetTextureResourceVK(&m_ffx_fsr2_context, static_cast<VkImage>(tex_velocity->GetRhiResource()),          static_cast<VkImageView>(tex_velocity->GetRhiSrv()),          resolution_render_x, resolution_render_y, vulkan_format[tex_velocity->GetFormat()], L"fsr2_velocity",          FFX_RESOURCE_STATE_COMPUTE_READ);
-            m_ffx_fsr2_dispatch_description.reactive                   = ffxGetTextureResourceVK(&m_ffx_fsr2_context, static_cast<VkImage>(tex_mask_reactive->GetRhiResource()),     static_cast<VkImageView>(tex_mask_reactive->GetRhiSrv()),     resolution_render_x, resolution_render_y, vulkan_format[tex_velocity->GetFormat()], L"fsr2_mask_reactive",     FFX_RESOURCE_STATE_COMPUTE_READ);
-            m_ffx_fsr2_dispatch_description.transparencyAndComposition = ffxGetTextureResourceVK(&m_ffx_fsr2_context, static_cast<VkImage>(tex_mask_transparency->GetRhiResource()), static_cast<VkImageView>(tex_mask_transparency->GetRhiSrv()), resolution_render_x, resolution_render_y, vulkan_format[tex_velocity->GetFormat()], L"fsr2_mask_transparency", FFX_RESOURCE_STATE_COMPUTE_READ);
-            m_ffx_fsr2_dispatch_description.exposure                   = ffxGetTextureResourceVK(&m_ffx_fsr2_context, nullptr,                                                       nullptr,                                                      1,                   1,                   VK_FORMAT_UNDEFINED,                      L"fsr2_exposure");
-            m_ffx_fsr2_dispatch_description.output                     = ffxGetTextureResourceVK(&m_ffx_fsr2_context, static_cast<VkImage>(tex_output->GetRhiResource()),            static_cast<VkImageView>(tex_output->GetRhiSrv()),            resolution_output_x, resolution_output_y, vulkan_format[tex_output->GetFormat()],   L"fsr2_output",            FFX_RESOURCE_STATE_UNORDERED_ACCESS);
 
             // Configuration
             m_ffx_fsr2_dispatch_description.motionVectorScale.x    = -static_cast<float>(resolution_render_x);
@@ -153,8 +166,8 @@ namespace Spartan
             m_ffx_fsr2_dispatch_description.preExposure            = 1.0f;                    // The exposure value if not using FFX_FSR2_ENABLE_AUTO_EXPOSURE.
             m_ffx_fsr2_dispatch_description.renderSize.width       = resolution_render_x;
             m_ffx_fsr2_dispatch_description.renderSize.height      = resolution_render_y;
-            m_ffx_fsr2_dispatch_description.cameraNear             = camera->GetFarPlane();  // far for near because we are using reverse-z.
-            m_ffx_fsr2_dispatch_description.cameraFar              = camera->GetNearPlane(); // near for far because we are using reverse-z.
+            m_ffx_fsr2_dispatch_description.cameraNear             = camera->GetFarPlane();   // far for near because we are using reverse-z.
+            m_ffx_fsr2_dispatch_description.cameraFar              = camera->GetNearPlane();  // near for far because we are using reverse-z.
             m_ffx_fsr2_dispatch_description.cameraFovAngleVertical = camera->GetFovVerticalRad();
         }
 
