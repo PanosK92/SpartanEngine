@@ -48,7 +48,7 @@ namespace Spartan
     void Camera::OnInitialize()
     {
         m_view            = ComputeViewMatrix();
-        m_projection      = ComputeProjection(m_renderer->GetOption<bool>(RendererOption::ReverseZ));
+        m_projection      = ComputeProjection(m_far_plane, m_near_plane); // reverse-z
         m_view_projection = m_view * m_projection;
     }
 
@@ -74,12 +74,11 @@ namespace Spartan
         if (!m_is_dirty)
             return;
 
-        bool reverse_z_enabled = m_renderer->GetOption<bool>(RendererOption::ReverseZ);
-        m_view                 = ComputeViewMatrix();
-        m_projection           = ComputeProjection(reverse_z_enabled);
-        m_view_projection      = m_view * m_projection;
-        m_frustum              = Frustum(GetViewMatrix(), GetProjectionMatrix(), reverse_z_enabled ? GetNearPlane() : GetFarPlane());
-        m_is_dirty             = false;
+        m_view            = ComputeViewMatrix();
+        m_projection      = ComputeProjection(m_far_plane, m_near_plane); // reverse-z
+        m_view_projection = m_view * m_projection;
+        m_frustum         = Frustum(GetViewMatrix(), GetProjectionMatrix(), m_near_plane); // reverse-z
+        m_is_dirty        = false;
     }
 
     void Camera::Serialize(FileStream* stream)
@@ -106,7 +105,7 @@ namespace Spartan
         stream->Read(&m_far_plane);
 
         m_view            = ComputeViewMatrix();
-        m_projection      = ComputeProjection(m_renderer->GetOption<bool>(RendererOption::ReverseZ));
+        m_projection      = ComputeProjection(m_far_plane, m_near_plane); // reverse-z
         m_view_projection = m_view * m_projection;
     }
 
@@ -272,8 +271,8 @@ namespace Spartan
     {
         const RHI_Viewport& viewport = GetViewport();
 
-        // A non reverse-z projection matrix is need, if it we don't have it, we create it
-        const Matrix projection = m_renderer->GetOption<bool>(RendererOption::ReverseZ) ? Matrix::CreatePerspectiveFieldOfViewLH(GetFovVerticalRad(), viewport.GetAspectRatio(), m_near_plane, m_far_plane) : m_projection;
+        // A non reverse-z projection matrix is need, we create it
+        const Matrix projection = Matrix::CreatePerspectiveFieldOfViewLH(GetFovVerticalRad(), viewport.GetAspectRatio(), m_near_plane, m_far_plane);
 
         // Convert world space position to clip space position
         const Vector3 position_clip = position_world * m_view * projection;
@@ -314,8 +313,8 @@ namespace Spartan
     {
         const RHI_Viewport& viewport = GetViewport();
 
-        // A non reverse-z projection matrix is need, if it we don't have it, we create it
-        const Matrix projection = m_renderer->GetOption<bool>(RendererOption::ReverseZ) ? Matrix::CreatePerspectiveFieldOfViewLH(GetFovVerticalRad(), viewport.GetAspectRatio(), m_near_plane, m_far_plane) : m_projection;
+        // A non reverse-z projection matrix is need, we create it
+        const Matrix projection = Matrix::CreatePerspectiveFieldOfViewLH(GetFovVerticalRad(), viewport.GetAspectRatio(), m_near_plane, m_far_plane); // reverse-z
 
         // Convert screen space position to clip space position
         Vector3 position_clip;
@@ -587,25 +586,15 @@ namespace Spartan
         return Matrix::CreateLookAtLH(position, look_at, up);
     }
 
-    Matrix Camera::ComputeProjection(const bool reverse_z, const float near_plane /*= 0.0f*/, const float far_plane /*= 0.0f*/)
+    Matrix Camera::ComputeProjection(const float near_plane, const float far_plane)
     {
-        float _near  = near_plane != 0 ? near_plane : m_near_plane;
-        float _far   = far_plane != 0  ? far_plane : m_far_plane;
-
-        if (reverse_z)
-        {
-            const float temp = _near;
-            _near = _far;
-            _far = temp;
-        }
-
         if (m_projection_type == Projection_Perspective)
         {
-            return Matrix::CreatePerspectiveFieldOfViewLH(GetFovVerticalRad(), GetViewport().GetAspectRatio(), _near, _far);
+            return Matrix::CreatePerspectiveFieldOfViewLH(GetFovVerticalRad(), GetViewport().GetAspectRatio(), near_plane, far_plane);
         }
         else if (m_projection_type == Projection_Orthographic)
         {
-            return Matrix::CreateOrthographicLH(GetViewport().width, GetViewport().height, _near, _far);
+            return Matrix::CreateOrthographicLH(GetViewport().width, GetViewport().height, near_plane, far_plane);
         }
 
         return Matrix::Identity;

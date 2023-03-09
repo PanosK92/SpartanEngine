@@ -112,8 +112,5 @@ namespace Spartan
         // Textures
         std::shared_ptr<RHI_Texture> m_texture_color;
         std::shared_ptr<RHI_Texture> m_texture_depth;
-
-        // Dirty checks
-        bool m_previous_reverse_z = false;
     };
 }

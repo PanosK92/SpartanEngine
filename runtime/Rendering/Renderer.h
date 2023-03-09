@@ -94,9 +94,6 @@ namespace Spartan
         std::shared_ptr<RHI_Texture> GetRenderTarget(const RendererTexture rt_enum) { return m_render_targets[static_cast<uint8_t>(rt_enum)]; }
         const auto& GetRenderTargets()                                              { return m_render_targets; }
 
-        // Clear depth value
-        float GetClearDepth() { return GetOption<bool>(RendererOption::ReverseZ) ? 0.0f : 1.0f; }
-
         // Environment texture
         const std::shared_ptr<RHI_Texture> GetEnvironmentTexture();
         void SetEnvironment(Environment* environment);
@@ -312,9 +309,9 @@ namespace Spartan
         // Constants
         const uint32_t m_resolution_shadow_min = 128;
         const float m_thread_group_count       = 8.0f;
-        const float m_depth_bias               = 0.004f; // bias that's applied directly into the depth buffer
+        const float m_depth_bias               = -0.004f; // bias that's applied directly into the depth buffer
         const float m_depth_bias_clamp         = 0.0f;
-        const float m_depth_bias_slope_scaled  = 2.0f;
+        const float m_depth_bias_slope_scaled  = -2.0f;
 
         // Requests for mip generation
         std::vector<std::weak_ptr<RHI_Texture>> m_textures_mip_generation;

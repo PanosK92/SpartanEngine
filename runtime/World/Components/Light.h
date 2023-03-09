@@ -132,7 +132,7 @@ namespace Spartan
 
     private:
         void ComputeViewMatrix();
-        bool ComputeProjectionMatrix(uint32_t index = 0);
+        void ComputeProjectionMatrix(uint32_t index = 0);
         void ComputeCascadeSplits();
 
         // Shadows
@@ -160,7 +160,6 @@ namespace Spartan
         // Dirty checks
         bool m_is_dirty                     = true;
         Math::Matrix m_previous_camera_view = Math::Matrix::Identity;
-        bool m_previous_reverse_z           = false;
 
         // Dependencies
         Renderer* m_renderer = nullptr;
