@@ -80,28 +80,25 @@ namespace Spartan
     {
         SP_ASSERT(m_rhi_device != nullptr);
 
-        RHI_Comparison_Function reverse_z_aware_comp_func = GetOption<bool>(RendererOption::ReverseZ) ? RHI_Comparison_Function::GreaterEqual : RHI_Comparison_Function::LessEqual;
+        RHI_Comparison_Function reverse_z_aware_comp_func = RHI_Comparison_Function::GreaterEqual; // reverse-z
 
-        // arguments: depth_test, depth_write, depth_function, stencil_test, stencil_write, stencil_function
-        m_depth_stencil_off_off = make_shared<RHI_DepthStencilState>(m_rhi_device.get(), false, false, RHI_Comparison_Function::Never, false, false, RHI_Comparison_Function::Never);  // no depth or stencil
-        m_depth_stencil_rw_off  = make_shared<RHI_DepthStencilState>(m_rhi_device.get(), true,  true,  reverse_z_aware_comp_func,      false, false, RHI_Comparison_Function::Never);  // depth
-        m_depth_stencil_r_off   = make_shared<RHI_DepthStencilState>(m_rhi_device.get(), true,  false, reverse_z_aware_comp_func,      false, false, RHI_Comparison_Function::Never);  // depth
-        m_depth_stencil_off_r   = make_shared<RHI_DepthStencilState>(m_rhi_device.get(), false, false, RHI_Comparison_Function::Never, true,  false, RHI_Comparison_Function::Equal);  // depth + stencil
-        m_depth_stencil_rw_w    = make_shared<RHI_DepthStencilState>(m_rhi_device.get(), true,  true,  reverse_z_aware_comp_func,      false, true,  RHI_Comparison_Function::Always); // depth + stencil
+        // arguments:                                                                              depth_test, depth_write, depth_function,                     stencil_test, stencil_write, stencil_function
+        m_depth_stencil_off_off           = make_shared<RHI_DepthStencilState>(m_rhi_device.get(), false,      false,       RHI_Comparison_Function::Never,     false,        false,         RHI_Comparison_Function::Never);  // no depth or stencil
+        m_depth_stencil_rw_off            = make_shared<RHI_DepthStencilState>(m_rhi_device.get(), true,       true,        reverse_z_aware_comp_func,          false,        false,         RHI_Comparison_Function::Never);  // depth
+        m_depth_stencil_r_off             = make_shared<RHI_DepthStencilState>(m_rhi_device.get(), true,       false,       reverse_z_aware_comp_func,          false,        false,         RHI_Comparison_Function::Never);  // depth
+        m_depth_stencil_off_r             = make_shared<RHI_DepthStencilState>(m_rhi_device.get(), false,      false,       RHI_Comparison_Function::Never,     true,         false,         RHI_Comparison_Function::Equal);  // depth + stencil
+        m_depth_stencil_rw_w              = make_shared<RHI_DepthStencilState>(m_rhi_device.get(), true,       true,        reverse_z_aware_comp_func,          false,        true,          RHI_Comparison_Function::Always); // depth + stencil
     }
 
     void Renderer::CreateRasterizerStates()
     {
         SP_ASSERT(m_rhi_device != nullptr);
 
-        float depth_bias              = GetOption<bool>(RendererOption::ReverseZ) ? -m_depth_bias : m_depth_bias;
-        float depth_bias_slope_scaled = GetOption<bool>(RendererOption::ReverseZ) ? -m_depth_bias_slope_scaled : m_depth_bias_slope_scaled;
-
         m_rasterizer_cull_back_solid     = make_shared<RHI_RasterizerState>(m_rhi_device.get(), RHI_CullMode::Back, RHI_PolygonMode::Solid,     true,  false, false);
         m_rasterizer_cull_back_wireframe = make_shared<RHI_RasterizerState>(m_rhi_device.get(), RHI_CullMode::Back, RHI_PolygonMode::Wireframe, true,  false, true);
         m_rasterizer_cull_none_solid     = make_shared<RHI_RasterizerState>(m_rhi_device.get(), RHI_CullMode::Back, RHI_PolygonMode::Solid,     true, false, false);
-        m_rasterizer_light_point_spot    = make_shared<RHI_RasterizerState>(m_rhi_device.get(), RHI_CullMode::Back, RHI_PolygonMode::Solid,     true,  false, false, depth_bias,        m_depth_bias_clamp, depth_bias_slope_scaled);
-        m_rasterizer_light_directional   = make_shared<RHI_RasterizerState>(m_rhi_device.get(), RHI_CullMode::Back, RHI_PolygonMode::Solid,     false, false, false, depth_bias * 0.1f, m_depth_bias_clamp, depth_bias_slope_scaled);
+        m_rasterizer_light_point_spot    = make_shared<RHI_RasterizerState>(m_rhi_device.get(), RHI_CullMode::Back, RHI_PolygonMode::Solid,     true,  false, false, m_depth_bias,        m_depth_bias_clamp, m_depth_bias_slope_scaled);
+        m_rasterizer_light_directional   = make_shared<RHI_RasterizerState>(m_rhi_device.get(), RHI_CullMode::Back, RHI_PolygonMode::Solid,     false, false, false, m_depth_bias * 0.1f, m_depth_bias_clamp, m_depth_bias_slope_scaled);
     }
 
     void Renderer::CreateBlendStates()
@@ -118,8 +115,7 @@ namespace Spartan
     {
         SP_ASSERT(m_rhi_device != nullptr);
 
-        float anisotropy                         = GetOption<float>(RendererOption::Anisotropy);
-        RHI_Comparison_Function depth_comparison = GetOption<bool>(RendererOption::ReverseZ) ? RHI_Comparison_Function::Greater : RHI_Comparison_Function::Less;
+        float anisotropy = GetOption<float>(RendererOption::Anisotropy);
 
         // Compute mip bias
         float mip_bias = 0.0f;
@@ -129,10 +125,10 @@ namespace Spartan
             mip_bias = log2(m_resolution_render.x / m_resolution_output.x) - 1.0f;
         }
 
-        // sampler parameters: minification, magnification, mip, sampler address mode, comparison, anisotropy, comparison enabled, mip lod bias
         if (!create_only_anisotropic)
         {
-            m_sampler_compare_depth   = make_shared<RHI_Sampler>(m_rhi_device, RHI_Filter::Linear,  RHI_Filter::Linear,  RHI_Sampler_Mipmap_Mode::Nearest, RHI_Sampler_Address_Mode::Clamp, depth_comparison, 0.0f, true);
+            // arguments:                                                      minification,        magnification,       mip,                              sampler address mode,            comparison,                       anisotropy, comparison enabled, mip lod bias
+            m_sampler_compare_depth   = make_shared<RHI_Sampler>(m_rhi_device, RHI_Filter::Linear,  RHI_Filter::Linear,  RHI_Sampler_Mipmap_Mode::Nearest, RHI_Sampler_Address_Mode::Clamp, RHI_Comparison_Function::Greater, 0.0f,       true); // reverse-z
             m_sampler_point_clamp     = make_shared<RHI_Sampler>(m_rhi_device, RHI_Filter::Nearest, RHI_Filter::Nearest, RHI_Sampler_Mipmap_Mode::Nearest, RHI_Sampler_Address_Mode::Clamp, RHI_Comparison_Function::Always);
             m_sampler_point_wrap      = make_shared<RHI_Sampler>(m_rhi_device, RHI_Filter::Nearest, RHI_Filter::Nearest, RHI_Sampler_Mipmap_Mode::Nearest, RHI_Sampler_Address_Mode::Wrap,  RHI_Comparison_Function::Always);
             m_sampler_bilinear_clamp  = make_shared<RHI_Sampler>(m_rhi_device, RHI_Filter::Linear,  RHI_Filter::Linear,  RHI_Sampler_Mipmap_Mode::Nearest, RHI_Sampler_Address_Mode::Clamp, RHI_Comparison_Function::Always);

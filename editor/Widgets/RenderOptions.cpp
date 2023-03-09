@@ -192,7 +192,6 @@ void RenderOptions::TickVisible()
     bool debug_performance_metrics = m_renderer->GetOption<bool>(RendererOption::Debug_PerformanceMetrics);
     bool debug_wireframe           = m_renderer->GetOption<bool>(RendererOption::Debug_Wireframe);
     bool do_depth_prepass          = m_renderer->GetOption<bool>(RendererOption::DepthPrepass);
-    bool do_reverse_z              = m_renderer->GetOption<bool>(RendererOption::ReverseZ);
     int resolution_shadow          = m_renderer->GetOption<int>(RendererOption::ShadowResolution);
 
     // Present options (with a table)
@@ -417,9 +416,6 @@ void RenderOptions::TickVisible()
                 // Depth-PrePass
                 helper::CheckBox("Depth PrePass", do_depth_prepass);
 
-                // Reverse-Z
-                helper::CheckBox("Depth Reverse-Z", do_reverse_z);
-
                 // Performance metrics
                 if (helper::CheckBox("Performance Metrics", debug_performance_metrics))
                 {
@@ -473,5 +469,4 @@ void RenderOptions::TickVisible()
     m_renderer->SetOption(RendererOption::Debug_PerformanceMetrics, debug_performance_metrics);
     m_renderer->SetOption(RendererOption::Debug_Wireframe,          debug_wireframe);
     m_renderer->SetOption(RendererOption::DepthPrepass,             do_depth_prepass);
-    m_renderer->SetOption(RendererOption::ReverseZ,                 do_reverse_z);
 }

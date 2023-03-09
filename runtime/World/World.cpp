@@ -437,7 +437,7 @@ namespace Spartan
             // Create entity
             shared_ptr<Entity> entity = CreateEntity();
             entity->SetName("quad");
-            entity->GetTransform()->SetPosition(Vector3(0.0f, 0.005f, 0.0f)); // raise a bit to avoid z-fighting with world grid
+            entity->GetTransform()->SetPosition(Vector3(0.0f, 0.1f, 0.0f)); // raise a bit to avoid z-fighting with world grid
             entity->GetTransform()->SetScale(Vector3(4.0f, 1.0f, 4.0f));
 
             // Add a renderable component
@@ -481,12 +481,14 @@ namespace Spartan
 
     void World::CreateDefaultWorldCar()
     {
-        CreateDefaultWorldCommon();
+        Vector3 camera_position = Vector3(-2.8436f, 1.6070f, -2.6946f);
+        Vector3 camera_rotation = Vector3(18.7975f, 37.3995f, 0.0f);
+        CreateDefaultWorldCommon(camera_position, camera_rotation);
 
         // Quad
         shared_ptr<Entity> entity = CreateEntity();
         entity->SetName("quad");
-        entity->GetTransform()->SetPosition(Vector3(0.0f, 0.005f, 0.0f)); // raise a bit to avoid z-fighting with world grid
+        entity->GetTransform()->SetPosition(Vector3(0.0f, 0.1f, 0.0f)); // raise a bit to avoid z-fighting with world grid
         entity->GetTransform()->SetScale(Vector3(8.0f, 1.0f, 8.0f));
         Renderable* renderable = entity->AddComponent<Renderable>();
         renderable->SetGeometry(DefaultGeometry::Quad);
@@ -497,7 +499,7 @@ namespace Spartan
             Entity* entity = m_default_model_car->GetRootEntity();
             entity->SetName("car");
 
-            entity->GetTransform()->SetPosition(Vector3(0.0f, 0.0f, 0.0f));
+            entity->GetTransform()->SetPosition(Vector3(0.0f, 0.05f, 0.0f));
             entity->GetTransform()->SetRotation(Quaternion::FromEulerAngles(90.0f, -4.8800f, -95.0582f));
             entity->GetTransform()->SetScale(Vector3(0.0125f, 0.0125f, 0.0125f));
 

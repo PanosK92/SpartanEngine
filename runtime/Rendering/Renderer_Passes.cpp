@@ -236,7 +236,6 @@ namespace Spartan
             pso.depth_stencil_state             = is_transparent_pass ? m_depth_stencil_r_off.get() : m_depth_stencil_rw_off.get();
             pso.render_target_color_textures[0] = tex_color; // always bind so we can clear to white (in case there are no transparent objects)
             pso.render_target_depth_texture     = tex_depth;
-            pso.clear_depth                     = rhi_depth_dont_care;
             pso.viewport                        = tex_depth->GetViewport();
             pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
 
@@ -248,7 +247,7 @@ namespace Spartan
 
                 // Set clear values
                 pso.clear_color[0] = Color::standard_white;
-                pso.clear_depth    = is_transparent_pass ? rhi_depth_load : GetClearDepth();
+                pso.clear_depth    = is_transparent_pass ? rhi_depth_load : 0.0f; // reverse-z
 
                 const Matrix& view_projection = light->GetViewMatrix(array_index) * light->GetProjectionMatrix(array_index);
 
@@ -394,7 +393,7 @@ namespace Spartan
             pso.render_target_color_textures[0] = probe->GetColorTexture();
             pso.render_target_depth_texture     = probe->GetDepthTexture();
             pso.clear_color[0]                  = Color::standard_black;
-            pso.clear_depth                     = GetClearDepth();
+            pso.clear_depth                     = 0.0f; // reverse-z
             pso.clear_stencil                   = rhi_stencil_dont_care;
             pso.viewport                        = probe->GetColorTexture()->GetViewport();
             pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
@@ -511,7 +510,7 @@ namespace Spartan
         pso.blend_state                 = m_blend_disabled.get();
         pso.depth_stencil_state         = m_depth_stencil_rw_off.get();
         pso.render_target_depth_texture = tex_depth;
-        pso.clear_depth                 = GetClearDepth();
+        pso.clear_depth                 = 0.0f; // reverse-z
         pso.viewport                    = tex_depth->GetViewport();
         pso.primitive_topology          = RHI_PrimitiveTopology_Mode::TriangleList;
 
@@ -621,7 +620,7 @@ namespace Spartan
         pso.render_target_color_textures[4] = tex_fsr2_transparency;
         pso.clear_color[4]                  = Color(0.0f, 0.0f, 0.0f, 0.0f);
         pso.render_target_depth_texture     = tex_depth;
-        pso.clear_depth                     = (is_transparent_pass || depth_prepass) ? rhi_depth_load : GetClearDepth();
+        pso.clear_depth                     = (is_transparent_pass || depth_prepass) ? rhi_depth_load : 0.0f; // reverse-z
         pso.viewport                        = tex_albedo->GetViewport();
         pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
 

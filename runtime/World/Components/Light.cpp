@@ -93,12 +93,10 @@ namespace Spartan
 
         // Dirty checks
         {
-            // Position, rotation and reverse-z
-            const bool reverse_z = m_renderer ? m_renderer->GetOption<bool>(RendererOption::ReverseZ) : false;
-            if (m_transform->HasPositionChangedThisFrame() || m_transform->HasRotationChangedThisFrame() || m_previous_reverse_z != reverse_z)
+            // Position, rotation
+            if (m_transform->HasPositionChangedThisFrame() || m_transform->HasRotationChangedThisFrame())
             {
-                m_previous_reverse_z = reverse_z;
-                m_is_dirty           = true;
+                m_is_dirty = true;
             }
 
             // Camera (needed for directional light cascade computations)
@@ -272,7 +270,7 @@ namespace Spartan
         if (m_light_type == LightType::Directional)
         {
             if (!m_shadow_map.slices.empty())
-            { 
+            {
                 for (uint32_t i = 0; i < m_cascade_count; i++)
                 {
                     ShadowSlice& shadow_map = m_shadow_map.slices[i];
@@ -306,20 +304,17 @@ namespace Spartan
         }
     }
 
-    bool Light::ComputeProjectionMatrix(uint32_t index /*= 0*/)
+    void Light::ComputeProjectionMatrix(uint32_t index /*= 0*/)
     {
         SP_ASSERT(index < m_shadow_map.texture_depth->GetArrayLength());
 
         ShadowSlice& shadow_slice = m_shadow_map.slices[index];
-        const bool reverse_z      = m_renderer ? m_renderer->GetOption<bool>(RendererOption::ReverseZ) : false;
 
         if (m_light_type == LightType::Directional)
         {
-            const float cascade_depth   = (shadow_slice.max.z - shadow_slice.min.z) * 10.0f;
-            const float min_z           = reverse_z ? cascade_depth : 0.0f;
-            const float max_z           = reverse_z ? 0.0f : cascade_depth;
-            m_matrix_projection[index]  = Matrix::CreateOrthoOffCenterLH(shadow_slice.min.x, shadow_slice.max.x, shadow_slice.min.y, shadow_slice.max.y, min_z, max_z);
-            shadow_slice.frustum        = Frustum(m_matrix_view[index], m_matrix_projection[index], max_z);
+            const float cascade_depth  = (shadow_slice.max.z - shadow_slice.min.z);
+            m_matrix_projection[index] = Matrix::CreateOrthoOffCenterLH(shadow_slice.min.x, shadow_slice.max.x, shadow_slice.min.y, shadow_slice.max.y, cascade_depth, 0.0f); // reverse-z
+            shadow_slice.frustum       = Frustum(m_matrix_view[index], m_matrix_projection[index], cascade_depth);
         }
         else
         {
@@ -327,13 +322,9 @@ namespace Spartan
             const uint32_t height      = m_shadow_map.texture_depth->GetHeight();
             const float aspect_ratio   = static_cast<float>(width) / static_cast<float>(height);
             const float fov            = m_light_type == LightType::Spot ? m_angle_rad * 2.0f : Math::Helper::PI_DIV_2;
-            const float near_plane     = reverse_z ? m_range : 0.3f;
-            const float far_plane      = reverse_z ? 0.3f : m_range;
-            m_matrix_projection[index] = Matrix::CreatePerspectiveFieldOfViewLH(fov, aspect_ratio, near_plane, far_plane);
-            shadow_slice.frustum       = Frustum(m_matrix_view[index], m_matrix_projection[0], far_plane);
+            m_matrix_projection[index] = Matrix::CreatePerspectiveFieldOfViewLH(fov, aspect_ratio, m_range, 0.3f); // reverse-z
+            shadow_slice.frustum       = Frustum(m_matrix_view[index], m_matrix_projection[index], m_range);
         }
-
-        return true;
     }
 
     const Matrix& Light::GetViewMatrix(uint32_t index /*= 0*/) const
@@ -361,11 +352,12 @@ namespace Spartan
 
         Camera* camera                        = m_renderer->GetCamera().get();
         const float clip_near                 = camera->GetNearPlane();
-        const float clip_far                  = camera->GetFarPlane() * 0.5f;
-        const Matrix view_projection_inverted = Matrix::Invert(camera->GetViewMatrix() * camera->ComputeProjection(false, clip_near, clip_far));
+        const float clip_far                  = camera->GetFarPlane();
+        const Matrix projection               = camera->ComputeProjection(clip_near, clip_far); // Non reverse-z matrix
+        const Matrix view_projection_inverted = Matrix::Invert(camera->GetViewMatrix() * projection);
 
         // Calculate split depths based on view camera frustum
-        const float split_lambda = 0.7f;
+        const float split_lambda = 0.98f;
         const float clip_range   = clip_far - clip_near;
         const float min_z        = clip_near;
         const float max_z        = clip_near + clip_range;
@@ -381,6 +373,7 @@ namespace Spartan
             splits[i]           = (d - clip_near) / clip_range;
         }
 
+        float last_split_distance = 0.0f;
         for (uint32_t i = 0; i < m_cascade_count; i++)
         {
             // Define camera frustum corners in clip space
@@ -405,18 +398,14 @@ namespace Spartan
 
             // Compute split distance
             {
-                // Reset split distance every time we restart
-                static float split_distance_previous;
-                if (i == 0) split_distance_previous = 0.0f;
-
                 const float split_distance = splits[i];
                 for (uint32_t i = 0; i < 4; i++)
                 {
                     Vector3 distance       = frustum_corners[i + 4] - frustum_corners[i];
                     frustum_corners[i + 4] = frustum_corners[i] + (distance * split_distance);
-                    frustum_corners[i]     = frustum_corners[i] + (distance * split_distance_previous);
+                    frustum_corners[i]     = frustum_corners[i] + (distance * last_split_distance);
                 }
-                split_distance_previous = splits[i];
+                last_split_distance = splits[i];
             }
 
             // Compute frustum bounds

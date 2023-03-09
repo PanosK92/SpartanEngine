@@ -326,7 +326,7 @@ inline void auto_bias(Surface surface, inout float3 position, Light light, float
     float slope_factor = (1.0f - saturate(light.n_dot_l));
 
     // Apply bias
-    position.z += fixed_factor * slope_factor * light.bias * bias_mul;
+    position.z += fixed_factor * slope_factor * light.bias * (bias_mul + 1.0f);
 }
 
 inline float3 bias_normal_offset(Surface surface, Light light, float3 normal)
@@ -344,39 +344,40 @@ float4 Shadow_Map(Surface surface, Light light)
 
     if (light_is_directional())
     {
-        for (uint cascade = 0; cascade < light.array_size; cascade++)
+        for (uint cascade_index = 0; cascade_index < light.array_size; cascade_index++)
         {
             // Project into light space
-            float3 pos_ndc = world_to_ndc(position_world, cb_light_view_projection[cascade]);
+            float3 pos_ndc = world_to_ndc(position_world, cb_light_view_projection[cascade_index]);
             float2 pos_uv  = ndc_to_uv(pos_ndc);
 
             // Ensure not out of bound
             if (is_saturated(pos_uv))
             {
                 // Sample primary cascade
-                auto_bias(surface, pos_ndc, light, cascade + 1);
-                shadow.a = SampleShadowMap(surface, float3(pos_uv, cascade), pos_ndc.z);
+                auto_bias(surface, pos_ndc, light, cascade_index);
+                shadow.a = SampleShadowMap(surface, float3(pos_uv, cascade_index), pos_ndc.z);
 
                 if (light_has_shadows_transparent())
                 {
                     if (shadow.a > 0.0f && surface.is_opaque())
                     {
-                        shadow.rgb *= Technique_Vogel_Color(surface, float3(pos_uv, cascade));
+                        shadow.rgb *= Technique_Vogel_Color(surface, float3(pos_uv, cascade_index));
                     }
                 }
 
                 // If we are close to the edge a secondary cascade exists, lerp with it.
                 float cascade_fade = (max2(abs(pos_ndc.xy)) - g_shadow_cascade_blend_threshold) * 4.0f;
-                cascade++;
-                if (cascade_fade > 0.0f && cascade < light.array_size - 1)
+                uint cascade_index_next = cascade_index + 1;
+
+                if (cascade_fade > 0.0f && cascade_index_next < light.array_size - 1)
                 {
                     // Project into light space
-                    pos_ndc = world_to_ndc(position_world, cb_light_view_projection[cascade]);
+                    pos_ndc = world_to_ndc(position_world, cb_light_view_projection[cascade_index_next]);
                     pos_uv  = ndc_to_uv(pos_ndc);
 
                     // Sample secondary cascade
-                    auto_bias(surface, pos_ndc, light, cascade + 1);
-                    float shadow_secondary = SampleShadowMap(surface, float3(pos_uv, cascade), pos_ndc.z);
+                    auto_bias(surface, pos_ndc, light, cascade_index_next);
+                    float shadow_secondary = SampleShadowMap(surface, float3(pos_uv, cascade_index_next), pos_ndc.z);
 
                     // Blend cascades
                     shadow.a = lerp(shadow.a, shadow_secondary, cascade_fade);
@@ -385,7 +386,7 @@ float4 Shadow_Map(Surface surface, Light light)
                     {
                         if (shadow.a > 0.0f && surface.is_opaque())
                         {
-                            shadow.rgb = min(shadow.rgb, Technique_Vogel_Color(surface, float3(pos_uv, cascade)));
+                            shadow.rgb = min(shadow.rgb, Technique_Vogel_Color(surface, float3(pos_uv, cascade_index_next)));
                         }
                     }
                 }
@@ -441,3 +442,4 @@ float4 Shadow_Map(Surface surface, Light light)
 
     return shadow;
 }
+

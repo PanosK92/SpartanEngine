@@ -83,19 +83,7 @@ namespace Spartan
         if (!m_needs_to_update)
             return;
 
-        // Reverse z change check
-        bool reverse_z_changed = false;
-        bool reverse_z = m_context->GetSystem<Renderer>()->GetOption<bool>(RendererOption::ReverseZ);
-        if (m_previous_reverse_z != reverse_z)
-        {
-            m_previous_reverse_z = reverse_z;
-            reverse_z_changed    = true;
-        }
-
-        if (reverse_z_changed)
-        {
-            ComputeProjectionMatrix();
-        }
+        ComputeProjectionMatrix();
 
         if (m_transform->HasPositionChangedThisFrame())
         { 
@@ -111,12 +99,12 @@ namespace Spartan
             m_aabb = BoundingBox(position - m_extents, position + m_extents);
         }
 
-        if (reverse_z_changed || m_transform->HasPositionChangedThisFrame())
+        if (m_transform->HasPositionChangedThisFrame())
         {
             // Compute frustum
             for (uint32_t i = 0; i < m_texture_color->GetArrayLength(); i++)
             {
-                const float far_plane = reverse_z ? m_plane_near : m_plane_far;
+                const float far_plane = m_plane_near; // reverse-z
                 m_frustum[i] = Frustum(m_matrix_view[i], m_matrix_projection, far_plane);
             }
         }
@@ -212,9 +200,8 @@ namespace Spartan
 
     void ReflectionProbe::ComputeProjectionMatrix()
     {
-        bool reverse_z           = m_context->GetSystem<Renderer>()->GetOption<bool>(RendererOption::ReverseZ);
-        const float near_plane   = reverse_z ? m_plane_far : m_plane_near;
-        const float far_plane    = reverse_z ? m_plane_near : m_plane_far;
+        const float near_plane   = m_plane_far;  // reverse-z
+        const float far_plane    = m_plane_near; // reverse-z
         const float fov          = Math::Helper::PI_DIV_2; // 90 degrees
         const float aspect_ratio = 1.0f;
         m_matrix_projection      = Matrix::CreatePerspectiveFieldOfViewLH(fov, aspect_ratio, near_plane, far_plane);
@@ -222,11 +209,9 @@ namespace Spartan
 
     void ReflectionProbe::ComputeFrustums()
     {
-        bool reverse_z = m_context->GetSystem<Renderer>()->GetOption<bool>(RendererOption::ReverseZ);
-
         for (uint32_t i = 0; i < m_texture_color->GetArrayLength(); i++)
         {
-            const float far_plane = reverse_z ? m_plane_near : m_plane_far;
+            const float far_plane = m_plane_near; // reverse-z
             m_frustum[i] = Frustum(m_matrix_view[i], m_matrix_projection, far_plane);
         }
     }

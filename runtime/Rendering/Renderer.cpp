@@ -62,7 +62,6 @@ namespace Spartan
     {
         // Default options
         m_options.fill(0.0f);
-        SetOption(RendererOption::ReverseZ,               1.0f);
         SetOption(RendererOption::Bloom,                  0.2f); // Non-zero values activate it and define the blend factor.
         SetOption(RendererOption::MotionBlur,             1.0f);
         SetOption(RendererOption::Ssao,                   1.0f);
@@ -443,7 +442,7 @@ namespace Spartan
         (
             light->GetIntensityForShader(m_camera.get()),
             light->GetRange(), light->GetAngle(),
-            GetOption<bool>(RendererOption::ReverseZ) ? light->GetBias() : -light->GetBias()
+            light->GetBias()
         );
 
         m_cb_light_cpu.color                      = light->GetColor();
@@ -724,21 +723,8 @@ namespace Spartan
 
         // Handle cascading changes
         {
-            // Reverse-z
-            if (option == RendererOption::ReverseZ)
-            {
-                if (m_rhi_device)
-                {
-                    CreateDepthStencilStates();
-                }
-
-                if (m_camera)
-                {
-                    m_camera->MakeDirty();
-                }
-            }
             // Antialiasing
-            else if (option == RendererOption::Antialiasing)
+            if (option == RendererOption::Antialiasing)
             {
                 bool taa_enabled = value == static_cast<float>(AntialiasingMode::Taa) || value == static_cast<float>(AntialiasingMode::TaaFxaa);
                 bool fsr_enabled = GetOption<UpsamplingMode>(RendererOption::Upsampling) == UpsamplingMode::FSR2;

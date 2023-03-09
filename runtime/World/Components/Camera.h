@@ -144,7 +144,7 @@ namespace Spartan
         std::shared_ptr<Spartan::Entity> GetSelectedEntity()            { return m_selected_entity; }
 
         Math::Matrix ComputeViewMatrix() const;
-        Math::Matrix ComputeProjection(const bool reverse_z, const float near_plane = 0.0f, const float far_plane = 0.0f);
+        Math::Matrix ComputeProjection(const float near_plane, const float far_plane);
 
         void GoToCameraBookmark(int bookmark_index);
 
