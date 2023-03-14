@@ -38,20 +38,21 @@ Note: This is a blocking event system
 ====================================================================================
 */
 
-//= MACROS ===================================================================================================
-#define SP_EVENT_HANDLER_EXPRESSION(expression)      [this](const Spartan::Variant& var)    { expression }
-
-#define SP_EVENT_HANDLER(function)                   [this](const Spartan::Variant& var)    { function(); }
-#define SP_EVENT_HANDLER_STATIC(function)            [](const Spartan::Variant& var)        { function(); }
-                                                     
-#define SP_EVENT_HANDLER_VARIANT(function)           [this](const Spartan::Variant& var)    { function(var); }
-#define SP_EVENT_HANDLER_VARIANT_STATIC(function)    [](const Spartan::Variant& var)        { function(var); }
+//= MACROS ==================================================================================================
+#define SP_EVENT_HANDLER_EXPRESSION(expression)        [this](const Spartan::Variant& var) { expression }
+#define SP_EVENT_HANDLER_EXPRESSION_STATIC(expression) [](const Spartan::Variant& var)     { expression }
+                                                                                           
+#define SP_EVENT_HANDLER(function)                   [this](const Spartan::Variant& var)   { function(); }
+#define SP_EVENT_HANDLER_STATIC(function)            [](const Spartan::Variant& var)       { function(); }
+                                                                                           
+#define SP_EVENT_HANDLER_VARIANT(function)           [this](const Spartan::Variant& var)   { function(var); }
+#define SP_EVENT_HANDLER_VARIANT_STATIC(function)    [](const Spartan::Variant& var)       { function(var); }
                                                      
 #define SP_FIRE_EVENT(eventID)                       Spartan::Event::Fire(eventID)
 #define SP_FIRE_EVENT_DATA(eventID, data)            Spartan::Event::Fire(eventID, data)
                                                      
 #define SP_SUBSCRIBE_TO_EVENT(eventID, function)     Spartan::Event::Subscribe(eventID, function);
-//============================================================================================================
+//===========================================================================================================
 
 enum class EventType
 {

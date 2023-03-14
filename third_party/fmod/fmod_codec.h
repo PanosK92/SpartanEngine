@@ -1,6 +1,6 @@
 /* ======================================================================================== */
 /* FMOD Core API - Codec development header file.                                           */
-/* Copyright (c), Firelight Technologies Pty, Ltd. 2004-2022.                               */
+/* Copyright (c), Firelight Technologies Pty, Ltd. 2004-2023.                               */
 /*                                                                                          */
 /* Use this header if you are wanting to develop your own file format plugin to use with    */
 /* FMOD's codec system.  With this header you can make your own fileformat plugin that FMOD */
@@ -8,7 +8,7 @@
 /* plugin.                                                                                  */
 /*                                                                                          */
 /* For more detail visit:                                                                   */
-/* https://fmod.com/resources/documentation-api?version=2.0&page=core-api.html              */
+/* https://fmod.com/docs/2.02/api/core-api.html                                             */
 /* ======================================================================================== */
 #ifndef _FMOD_CODEC_H
 #define _FMOD_CODEC_H

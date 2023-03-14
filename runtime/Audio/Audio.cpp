@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 SP_WARNINGS_OFF
 #include <fmod.hpp>
 #include <fmod_errors.h>
+#include "Event.h"
 SP_WARNINGS_ON
 //========================================
 
@@ -37,75 +38,40 @@ using namespace FMOD;
 
 namespace Spartan
 {
-    Audio::Audio(Context* context) : ISystem(context)
+    static FMOD::System* fmod_system  = nullptr;
+    static uint32_t fmod_result       = 0;
+    static uint32_t fmod_max_channels = 32;
+    static float fmod_distance_entity = 1.0f;
+    static Transform* m_listener      = nullptr;
+    static Profiler* m_profiler       = nullptr;
+    static Context* m_context         = nullptr;
+
+    void Audio::Initialize(Context* context)
     {
+        m_context  = context;
+        m_profiler = context->GetSystem<Profiler>();
 
-    }
-
-    Audio::~Audio()
-    {
-        if (!m_system_fmod)
-            return;
-
-        // Close FMOD
-        m_result_fmod = m_system_fmod->close();
-        if (m_result_fmod != FMOD_OK)
-        {
-            LogErrorFmod(m_result_fmod);
-            return;
-        }
-
-        // Release FMOD
-        m_result_fmod = m_system_fmod->release();
-        if (m_result_fmod != FMOD_OK)
-        {
-            LogErrorFmod(m_result_fmod);
-        }
-    }
-
-    void Audio::OnInitialise()
-    {
         // Create FMOD instance
-        m_result_fmod = System_Create(&m_system_fmod);
-        if (m_result_fmod != FMOD_OK)
-        {
-            LogErrorFmod(m_result_fmod);
-            SP_ASSERT(0 && "Failed to create FMOD instance");
-        }
+        if (!HandleErrorFmod(System_Create(&fmod_system)))
+            return;
 
         // Get FMOD version
         uint32_t version;
-        m_result_fmod = m_system_fmod->getVersion(&version);
-        if (m_result_fmod != FMOD_OK)
-        {
-            LogErrorFmod(m_result_fmod);
-            SP_ASSERT(0 && "Failed to get FMOD version");
-        }
+        if (!HandleErrorFmod(fmod_system->getVersion(&version)))
+            return;
 
         // Make sure there is a sound device on the machine
         int driver_count = 0;
-        m_result_fmod = m_system_fmod->getNumDrivers(&driver_count);
-        if (m_result_fmod != FMOD_OK)
-        {
-            LogErrorFmod(m_result_fmod);
-            SP_ASSERT(0 && "Failed to get a sound device");
-        }
+        if (!HandleErrorFmod(fmod_system->getNumDrivers(&driver_count)))
+            return;
 
         // Initialise FMOD
-        m_result_fmod = m_system_fmod->init(m_max_channels, FMOD_INIT_NORMAL, nullptr);
-        if (m_result_fmod != FMOD_OK)
-        {
-            LogErrorFmod(m_result_fmod);
-            SP_ASSERT(0 && "Failed to initialise FMOD");
-        }
+        if (!HandleErrorFmod(fmod_system->init(fmod_max_channels, FMOD_INIT_NORMAL, nullptr)))
+            return;
 
         // Set 3D settings
-        m_result_fmod = m_system_fmod->set3DSettings(1.0, m_distance_entity, 0.0f);
-        if (m_result_fmod != FMOD_OK)
-        {
-            LogErrorFmod(m_result_fmod);
-            SP_ASSERT(0 && "Failed to set 3D settomgs");
-        }
+        if (!HandleErrorFmod(fmod_system->set3DSettings(1.0, fmod_distance_entity, 0.0f)))
+            return;
 
         // Get version
         stringstream ss;
@@ -115,17 +81,23 @@ namespace Spartan
         const auto rev = ss.str().erase(0, 3);
         Settings::RegisterThirdPartyLib("FMOD", major + "." + minor + "." + rev, "https://www.fmod.com/");
 
-        // Get dependencies
-        m_profiler = m_context->GetSystem<Profiler>();
-
         // Subscribe to events
-        SP_SUBSCRIBE_TO_EVENT(EventType::WorldClear, SP_EVENT_HANDLER_EXPRESSION
+        SP_SUBSCRIBE_TO_EVENT(EventType::WorldClear, SP_EVENT_HANDLER_EXPRESSION_STATIC
         (
             m_listener = nullptr;
         ));
     }
 
-    void Audio::OnTick(double delta_time)
+    void Audio::Shutdown()
+    {
+        if (!fmod_system)
+            return;
+
+        HandleErrorFmod(fmod_system->close());
+        HandleErrorFmod(fmod_system->release());
+    }
+
+    void Audio::Tick()
     {
         // Don't play audio if the engine is not in game mode
         if (!m_context->m_engine->IsFlagSet(EngineMode::Game))
@@ -134,33 +106,23 @@ namespace Spartan
         SP_SCOPED_TIME_BLOCK(m_profiler);
 
         // Update FMOD
-        m_result_fmod = m_system_fmod->update();
-        if (m_result_fmod != FMOD_OK)
-        {
-            LogErrorFmod(m_result_fmod);
+        if (!HandleErrorFmod((fmod_system->update())))
             return;
-        }
 
         if (m_listener)
         {
             auto position = m_listener->GetPosition();
             auto velocity = Math::Vector3::Zero;
-            auto forward = m_listener->GetForward();
-            auto up = m_listener->GetUp();
+            auto forward  = m_listener->GetForward();
+            auto up       = m_listener->GetUp();
 
             // Set 3D attributes
-            m_result_fmod = m_system_fmod->set3DListenerAttributes(
-                0, 
-                reinterpret_cast<FMOD_VECTOR*>(&position), 
-                reinterpret_cast<FMOD_VECTOR*>(&velocity), 
-                reinterpret_cast<FMOD_VECTOR*>(&forward), 
+            HandleErrorFmod(fmod_system->set3DListenerAttributes(0,
+                reinterpret_cast<FMOD_VECTOR*>(&position),
+                reinterpret_cast<FMOD_VECTOR*>(&velocity),
+                reinterpret_cast<FMOD_VECTOR*>(&forward),
                 reinterpret_cast<FMOD_VECTOR*>(&up)
-            );
-            if (m_result_fmod != FMOD_OK)
-            {
-                LogErrorFmod(m_result_fmod);
-                return;
-            }
+            ));
         }
     }
 
@@ -169,8 +131,29 @@ namespace Spartan
         m_listener = transform;
     }
 
-    void Audio::LogErrorFmod(int error) const
+    bool Audio::HandleErrorFmod(int result)
     {
-        SP_LOG_ERROR("%s", FMOD_ErrorString(static_cast<FMOD_RESULT>(error)));
+        if (result != FMOD_OK)
+        {
+            SP_LOG_ERROR("%s", FMOD_ErrorString(static_cast<FMOD_RESULT>(result)));
+            return false;
+        }
+
+        return true;
+    }
+
+    bool Audio::CreateSound(const std::string& file_path, int sound_mode, void*& sound)
+    {
+        return Audio::HandleErrorFmod(fmod_system->createSound(file_path.c_str(), sound_mode, nullptr, reinterpret_cast<FMOD::Sound**>(&sound)));
+    }
+
+    bool Audio::CreateStream(const std::string& file_path, int sound_mode, void*& sound)
+    {
+        return Audio::HandleErrorFmod(fmod_system->createStream(file_path.c_str(), sound_mode, nullptr, reinterpret_cast<FMOD::Sound**>(&sound)));
+    }
+
+    bool Audio::PlaySound(void* sound, void*& channel)
+    {
+        return Audio::HandleErrorFmod(fmod_system->playSound(static_cast<FMOD::Sound*>(sound), nullptr, false, reinterpret_cast<FMOD::Channel**>(&channel)));
     }
 }

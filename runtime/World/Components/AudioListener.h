@@ -27,20 +27,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-    class Audio;
-
     class SP_CLASS AudioListener : public IComponent
     {
     public:
         AudioListener(Context* context, Entity* entity, uint64_t id = 0);
         ~AudioListener() = default;
 
-        //= COMPONENT =========================
-        void OnInitialize() override;
         void OnTick(double delta_time) override;
-        //=====================================
-
-    private:
-        Audio* m_audio;
     };
 }

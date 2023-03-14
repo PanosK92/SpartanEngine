@@ -26,26 +26,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Math/Vector3.h"
 //================================
 
-//= FWD DECLARATIONS =
-namespace FMOD
-{
-    class System;
-    class Sound;
-    class Channel;
-}
-//====================
-
 namespace Spartan
 {
     class Transform;
 
-    enum PlayMode
+    enum class PlayMode
     {
-        Play_Memory,
-        Play_Stream
+        Memory,
+        Stream
     };
 
-    enum Rolloff
+    enum class Rolloff
     {
         Linear,
         Custom
@@ -95,6 +86,7 @@ namespace Spartan
         bool Update();
 
         bool IsPlaying();
+        bool IsPaused();
 
     private:
         //= CREATION ===================================
@@ -102,18 +94,14 @@ namespace Spartan
         bool CreateStream(const std::string& file_path);
         //==============================================
         int GetSoundMode() const;
-        void LogErrorFmod(int error) const;
-        bool IsChannelValid() const;
 
-        Transform* m_transform;
-        FMOD::System* m_systemFMOD;
-        FMOD::Sound* m_soundFMOD;
-        FMOD::Channel* m_channelFMOD;
-        PlayMode m_playMode;
+        Transform* m_transform = nullptr;
+        void* m_fmod_sound     = nullptr;
+        void* m_fmod_channel   = nullptr;
+        PlayMode m_playMode    = PlayMode::Memory;
+        float m_minDistance    = 1.0f;
+        float m_maxDistance    = 1000.0f;
         int m_modeLoop;
-        float m_minDistance;
-        float m_maxDistance;
         int m_modeRolloff;
-        int m_result;
     };
 }

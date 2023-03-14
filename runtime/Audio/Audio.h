@@ -21,44 +21,24 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==================
-#include "../Core/ISystem.h"
-//=============================
-
-//= FORWARD DECLARATIONS =
-namespace FMOD
-{
-    class System;
-}
-//========================
+//= INCLUDES ===========
+#include "Definitions.h"
+//======================
 
 namespace Spartan
 {
     class Transform;
-    class Profiler;
 
-    class Audio : public ISystem
+    class SP_CLASS Audio
     {
     public:
-        Audio(Context* context);
-        ~Audio();
-
-        //= ISubsystem =========================
-        void OnInitialise() override;
-        void OnTick(double delta_time) override;
-        //======================================
-        
-        auto GetSystemFMOD() const { return m_system_fmod; }
-        void SetListenerTransform(Transform* transform);
-
-    private:
-        void LogErrorFmod(int error) const;
-
-        uint32_t m_result_fmod      = 0;
-        uint32_t m_max_channels     = 32;
-        float m_distance_entity     = 1.0f;
-        Transform* m_listener       = nullptr;
-        Profiler* m_profiler        = nullptr;
-        FMOD::System* m_system_fmod = nullptr;
+        static void Initialize(Context* context);
+        static void Tick();
+        static void Shutdown();
+        static void SetListenerTransform(Transform* transform);
+        static bool HandleErrorFmod(int result);
+        static bool CreateSound(const std::string& file_path, int sound_mode, void*& sound);
+        static bool CreateStream(const std::string& file_path, int sound_mode, void*& sound);
+        static bool PlaySound(void* sound, void*& channel);
     };
 }

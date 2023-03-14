@@ -71,6 +71,11 @@ namespace Spartan
         m_profiler = m_context->GetSystem<Profiler>();
     }
 
+    void World::OnShutdown()
+    {
+        m_entities.clear();
+    }
+
     void World::OnPreTick()
     {
         for (shared_ptr<Entity>& entity : m_entities)
