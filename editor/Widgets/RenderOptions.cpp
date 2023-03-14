@@ -189,7 +189,7 @@ void RenderOptions::TickVisible()
     bool debug_picking_ray         = m_renderer->GetOption<bool>(RendererOption::Debug_PickingRay);
     bool debug_grid                = m_renderer->GetOption<bool>(RendererOption::Debug_Grid);
     bool debug_reflection_probes   = m_renderer->GetOption<bool>(RendererOption::Debug_ReflectionProbes);
-    bool debug_performance_metrics = m_renderer->GetOption<bool>(RendererOption::Debug_PerformanceMetrics);
+    bool performance_metrics = m_renderer->GetOption<bool>(RendererOption::Debug_PerformanceMetrics);
     bool debug_wireframe           = m_renderer->GetOption<bool>(RendererOption::Debug_Wireframe);
     bool do_depth_prepass          = m_renderer->GetOption<bool>(RendererOption::DepthPrepass);
     int resolution_shadow          = m_renderer->GetOption<int>(RendererOption::ShadowResolution);
@@ -417,10 +417,15 @@ void RenderOptions::TickVisible()
                 helper::CheckBox("Depth PrePass", do_depth_prepass);
 
                 // Performance metrics
-                if (helper::CheckBox("Performance Metrics", debug_performance_metrics))
                 {
+                    bool performance_metrics_previous = performance_metrics;
+                    helper::CheckBox("Performance Metrics", performance_metrics);
+
                     // Reset metrics on activation
-                    Profiler::ClearMetrics();
+                    if (performance_metrics_previous == false && performance_metrics == true)
+                    {
+                        Profiler::ClearMetrics();
+                    }
                 }
             }
 
@@ -466,7 +471,7 @@ void RenderOptions::TickVisible()
     m_renderer->SetOption(RendererOption::Debug_PickingRay,         debug_picking_ray);
     m_renderer->SetOption(RendererOption::Debug_Grid,               debug_grid);
     m_renderer->SetOption(RendererOption::Debug_ReflectionProbes,   debug_reflection_probes);
-    m_renderer->SetOption(RendererOption::Debug_PerformanceMetrics, debug_performance_metrics);
+    m_renderer->SetOption(RendererOption::Debug_PerformanceMetrics, performance_metrics);
     m_renderer->SetOption(RendererOption::Debug_Wireframe,          debug_wireframe);
     m_renderer->SetOption(RendererOption::DepthPrepass,             do_depth_prepass);
 }
