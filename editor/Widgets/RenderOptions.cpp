@@ -420,7 +420,7 @@ void RenderOptions::TickVisible()
                 if (helper::CheckBox("Performance Metrics", debug_performance_metrics))
                 {
                     // Reset metrics on activation
-                    m_profiler->ResetMetrics();
+                    Profiler::ClearMetrics();
                 }
             }
 

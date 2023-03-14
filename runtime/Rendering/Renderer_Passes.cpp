@@ -85,7 +85,7 @@ namespace Spartan
         SP_ASSERT(cmd_list != nullptr);
         SP_ASSERT(cmd_list->GetState() == RHI_CommandListState::Recording);
 
-        SP_SCOPED_TIME_BLOCK(m_profiler);
+        SP_PROFILE_FUNCTION();
 
         // Acquire render targets
         RHI_Texture* rt1       = render_target(RendererTexture::frame_render).get();
@@ -733,10 +733,7 @@ namespace Spartan
                 // Render
                 cmd_list->DrawIndexed(renderable->GetIndexCount(), renderable->GetIndexOffset(), renderable->GetVertexOffset());
 
-                if (m_profiler)
-                {
-                    m_profiler->m_renderer_meshes_rendered++;
-                }
+                Profiler::m_renderer_meshes_rendered++;
             }
 
             cmd_list->EndRenderPass();
@@ -2177,26 +2174,23 @@ namespace Spartan
 
     void Renderer::Pass_PeformanceMetrics(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
     {
-        if (!m_profiler)
-            return;
-
         // Early exit cases
         const bool draw      = GetOption<bool>(RendererOption::Debug_PerformanceMetrics);
-        const bool empty     = m_profiler->GetMetrics().empty();
+        const bool empty     = Profiler::GetMetrics().empty();
         const auto& shader_v = shader(RendererShader::font_v);
         const auto& shader_p = shader(RendererShader::font_p);
         if (!draw || empty || !shader_v->IsCompiled() || !shader_p->IsCompiled())
             return;
 
         // If the performance metrics are being drawn, the profiler has to be enabled.
-        if (!m_profiler->GetEnabled())
+        if (!Profiler::GetEnabled())
         {
-            m_profiler->SetEnabled(true);
+            Profiler::SetEnabled(true);
         }
 
         // Update text
         const Vector2 text_pos = Vector2(-m_viewport.width * 0.5f + 5.0f, m_viewport.height * 0.5f - m_font->GetSize() - 2.0f);
-        m_font->SetText(m_profiler->GetMetrics(), text_pos);
+        m_font->SetText(Profiler::GetMetrics(), text_pos);
 
         cmd_list->BeginMarker("performance_metrics");
         cmd_list->BeginTimeblock("outline");

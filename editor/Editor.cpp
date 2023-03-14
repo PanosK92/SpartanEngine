@@ -73,7 +73,6 @@ namespace _editor
     Widget* widget_world              = nullptr;
     Spartan::Renderer* renderer       = nullptr;
     Spartan::RHI_SwapChain* swapchain = nullptr;
-    Spartan::Profiler* profiler       = nullptr;
     Spartan::Window* window           = nullptr;
     shared_ptr<Spartan::RHI_Device> rhi_device;
 }
@@ -168,7 +167,6 @@ Editor::Editor()
 
     // Acquire useful engine subsystems
     m_context           = m_engine->GetContext();
-    _editor::profiler   = m_context->GetSystem<Spartan::Profiler>();
     _editor::renderer   = m_context->GetSystem<Spartan::Renderer>();
     _editor::window     = m_context->GetSystem<Spartan::Window>();
     _editor::rhi_device = _editor::renderer->GetRhiDevice();

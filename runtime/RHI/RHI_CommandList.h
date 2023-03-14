@@ -34,7 +34,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Spartan
 {
     // Forward declarations
-    class Profiler;
     class Context;
     namespace Math
     {
@@ -152,7 +151,6 @@ namespace Spartan
         RHI_Pipeline* m_pipeline                         = nullptr;
         Renderer* m_renderer                             = nullptr;
         RHI_Device* m_rhi_device                         = nullptr;
-        Profiler* m_profiler                             = nullptr;
         std::atomic<bool> m_discard                      = false;
         bool m_is_rendering                              = false;
         bool m_pipeline_dirty                            = false;

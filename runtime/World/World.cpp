@@ -61,14 +61,12 @@ namespace Spartan
 
     World::~World()
     {
-        m_input    = nullptr;
-        m_profiler = nullptr;
+        m_input = nullptr;
     }
 
     void World::OnInitialise()
     {
-        m_input    = m_context->GetSystem<Input>();
-        m_profiler = m_context->GetSystem<Profiler>();
+        m_input = m_context->GetSystem<Input>();
     }
 
     void World::OnShutdown()
@@ -88,7 +86,7 @@ namespace Spartan
     {
         lock_guard lock(m_entity_access_mutex);
 
-        SP_SCOPED_TIME_BLOCK(m_profiler);
+        SP_PROFILE_FUNCTION();
 
         // Tick entities
         {

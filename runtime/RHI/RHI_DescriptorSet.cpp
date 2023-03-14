@@ -39,9 +39,6 @@ namespace Spartan
         Create(descriptor_set_layout);
         Update(descriptors);
 
-        if (Profiler* profiler = rhi_device->GetContext()->GetSystem<Profiler>())
-        {
-            profiler->m_descriptor_set_count++;
-        }
+        Profiler::m_descriptor_set_count++;
     }
 }

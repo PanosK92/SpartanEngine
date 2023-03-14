@@ -74,7 +74,6 @@ namespace Spartan
     {
         m_queue_type = queue_type;
         m_renderer   = context->GetSystem<Renderer>();
-        m_profiler   = context->GetSystem<Profiler>();
         m_rhi_device = m_renderer->GetRhiDevice().get();
         m_name       = name;
         m_index      = index;
@@ -263,10 +262,7 @@ namespace Spartan
             vkCmdBindPipeline(static_cast<VkCommandBuffer>(m_rhi_resource), pipeline_bind_point, vk_pipeline);
 
             // Profile
-            if (m_profiler)
-            {
-                m_profiler->m_rhi_bindings_pipeline++;
-            }
+            Profiler::m_rhi_bindings_pipeline++;
 
             m_pipeline_dirty = false;
 
@@ -531,10 +527,7 @@ namespace Spartan
             0                                             // firstInstance
         );
 
-        if (m_profiler)
-        {
-            m_profiler->m_rhi_draw++;
-        }
+        Profiler::m_rhi_draw++;
     }
 
     void RHI_CommandList::DrawIndexed(const uint32_t index_count, const uint32_t index_offset, const uint32_t vertex_offset)
@@ -555,7 +548,7 @@ namespace Spartan
         );
 
         // Profile
-        m_profiler->m_rhi_draw++;
+        Profiler::m_rhi_draw++;
     }
 
     void RHI_CommandList::Dispatch(uint32_t x, uint32_t y, uint32_t z /*= 1*/, bool async /*= false*/)
@@ -568,10 +561,7 @@ namespace Spartan
         // Dispatch
         vkCmdDispatch(static_cast<VkCommandBuffer>(m_rhi_resource), x, y, z);
 
-        if (m_profiler)
-        {
-            m_profiler->m_rhi_dispatch++;
-        }
+        Profiler::m_rhi_dispatch++;
     }
 
     void RHI_CommandList::Blit(RHI_Texture* source, RHI_Texture* destination, const bool blit_mips)
@@ -710,10 +700,7 @@ namespace Spartan
 
         m_vertex_buffer_id = buffer->GetObjectId();
 
-        if (m_profiler)
-        {
-            m_profiler->m_rhi_bindings_buffer_vertex++;
-        }
+        Profiler::m_rhi_bindings_buffer_vertex++;
     }
 
     void RHI_CommandList::SetBufferIndex(const RHI_IndexBuffer* buffer)
@@ -733,10 +720,7 @@ namespace Spartan
 
         m_index_buffer_id = buffer->GetObjectId();
 
-        if (m_profiler)
-        {
-            m_profiler->m_rhi_bindings_buffer_index++;
-        }
+        Profiler::m_rhi_bindings_buffer_index++;
     }
 
     void RHI_CommandList::SetConstantBuffer(const uint32_t slot, const uint8_t scope, RHI_ConstantBuffer* constant_buffer) const
@@ -958,10 +942,10 @@ namespace Spartan
         SP_ASSERT(name != nullptr);
 
         // Allowed profiler ?
-        if (m_rhi_device->GetRhiContext()->gpu_profiling && gpu_timing && m_profiler)
+        if (m_rhi_device->GetRhiContext()->gpu_profiling && gpu_timing)
         {
-            m_profiler->TimeBlockStart(name, TimeBlockType::Cpu, this);
-            m_profiler->TimeBlockStart(name, TimeBlockType::Gpu, this);
+            Profiler::TimeBlockStart(name, TimeBlockType::Cpu, this);
+            Profiler::TimeBlockStart(name, TimeBlockType::Gpu, this);
         }
 
         // Allowed to markers ?
@@ -984,10 +968,10 @@ namespace Spartan
         }
 
         // Allowed profiler ?
-        if (m_rhi_device->GetRhiContext()->gpu_profiling && m_profiler)
+        if (m_rhi_device->GetRhiContext()->gpu_profiling)
         {
-            m_profiler->TimeBlockEnd(); // cpu
-            m_profiler->TimeBlockEnd(); // gpu
+            Profiler::TimeBlockEnd(); // cpu
+            Profiler::TimeBlockEnd(); // gpu
         }
 
         m_timeblock_active = nullptr;
@@ -1026,10 +1010,7 @@ namespace Spartan
                     dynamic_offsets.data()                                                   // pDynamicOffsets
                 );
 
-                if (m_profiler)
-                {
-                    m_profiler->m_rhi_bindings_descriptor_set++;
-                }
+                Profiler::m_rhi_bindings_descriptor_set++;
             }
         }
     }

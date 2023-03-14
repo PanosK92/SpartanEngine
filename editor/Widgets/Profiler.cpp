@@ -37,19 +37,18 @@ Profiler::Profiler(Editor* editor) : Widget(editor)
     m_flags        |= ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoScrollbar;
     m_title        = "Profiler";
     m_visible      = false;
-    m_profiler     = m_context->GetSystem<Spartan::Profiler>();
     m_size_initial = Vector2(1000, 715);
     m_position     = k_widget_position_screen_center;
 }
 
 void Profiler::OnShow()
 {
-    m_profiler->SetEnabled(true);
+    Spartan::Profiler::SetEnabled(true);
 }
 
 void Profiler::OnHide()
 {
-    m_profiler->SetEnabled(false);
+    Spartan::Profiler::SetEnabled(false);
 }
 
 static void ShowTimeBlock(const Spartan::TimeBlock& time_block, float total_time)
@@ -80,15 +79,15 @@ void Profiler::TickVisible()
     ImGui::SameLine();
     ImGui::RadioButton("GPU", &m_item_type, 1);
     ImGui::SameLine();
-    float interval = m_profiler->GetUpdateInterval();
+    float interval = Spartan::Profiler::GetUpdateInterval();
     ImGui::DragFloat("Update interval (The smaller the interval the higher the performance impact)", &interval, 0.001f, 0.0f, 0.5f);
-    m_profiler->SetUpdateInterval(interval);
+    Spartan::Profiler::SetUpdateInterval(interval);
     ImGui::Separator();
 
     Spartan::TimeBlockType type                        = m_item_type == 0 ? Spartan::TimeBlockType::Cpu : Spartan::TimeBlockType::Gpu;
-    const std::vector<Spartan::TimeBlock>& time_blocks = m_profiler->GetTimeBlocks();
+    const std::vector<Spartan::TimeBlock>& time_blocks = Spartan::Profiler::GetTimeBlocks();
     const uint32_t time_block_count                    = static_cast<uint32_t>(time_blocks.size());
-    float time_last                                    = type == Spartan::TimeBlockType::Cpu ? m_profiler->GetTimeCpuLast() : m_profiler->GetTimeGpuLast();
+    float time_last                                    = type == Spartan::TimeBlockType::Cpu ? Spartan::Profiler::GetTimeCpuLast() : Spartan::Profiler::GetTimeGpuLast();
 
     // Time blocks
     for (uint32_t i = 0; i < time_block_count; i++)
@@ -127,7 +126,7 @@ void Profiler::TickVisible()
             if (ImGui_SP::button("Clear")) { m_timings.Clear(); }
             ImGui::SameLine();
             ImGui::Text("Cur:%.2f, Avg:%.2f, Min:%.2f, Max:%.2f", time_last, m_timings.m_avg, m_timings.m_min, m_timings.m_max);
-            bool is_stuttering = type == Spartan::TimeBlockType::Cpu ? m_profiler->IsCpuStuttering() : m_profiler->IsGpuStuttering();
+            bool is_stuttering = type == Spartan::TimeBlockType::Cpu ? Spartan::Profiler::IsCpuStuttering() : Spartan::Profiler::IsGpuStuttering();
             ImGui::SameLine();
             ImGui::TextColored(ImVec4(is_stuttering ? 1.0f : 0.0f, is_stuttering ? 0.0f : 1.0f, 0.0f, 1.0f), is_stuttering ? "Stuttering: Yes" : "Stuttering: No");
         }
@@ -150,8 +149,8 @@ void Profiler::TickVisible()
     {
         ImGui::Separator();
 
-        const uint32_t memory_used      = m_profiler->GpuGetMemoryUsed();
-        const uint32_t memory_available = m_profiler->GpuGetMemoryAvailable();
+        const uint32_t memory_used      = Spartan::Profiler::GpuGetMemoryUsed();
+        const uint32_t memory_available = Spartan::Profiler::GpuGetMemoryAvailable();
         const string overlay            = "Memory " + to_string(memory_used) + "/" + to_string(memory_available) + " MB";
 
         ImGui::ProgressBar((float)memory_used / (float)memory_available, ImVec2(-1, 0), overlay.c_str());

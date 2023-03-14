@@ -37,30 +37,102 @@ using namespace std;
 
 namespace Spartan
 {
-    static const int initial_capacity = 256;
+    // Metrics - RHI
+    uint32_t Profiler::m_rhi_draw                       = 0;
+    uint32_t Profiler::m_rhi_dispatch                   = 0;
+    uint32_t Profiler::m_rhi_bindings_buffer_index      = 0;
+    uint32_t Profiler::m_rhi_bindings_buffer_vertex     = 0;
+    uint32_t Profiler::m_rhi_bindings_buffer_constant   = 0;
+    uint32_t Profiler::m_rhi_bindings_buffer_structured = 0;
+    uint32_t Profiler::m_rhi_bindings_sampler           = 0;
+    uint32_t Profiler::m_rhi_bindings_texture_sampled   = 0;
+    uint32_t Profiler::m_rhi_bindings_shader_vertex     = 0;
+    uint32_t Profiler::m_rhi_bindings_shader_pixel      = 0;
+    uint32_t Profiler::m_rhi_bindings_shader_compute    = 0;
+    uint32_t Profiler::m_rhi_bindings_render_target     = 0;
+    uint32_t Profiler::m_rhi_bindings_texture_storage   = 0;
+    uint32_t Profiler::m_rhi_bindings_descriptor_set    = 0;
+    uint32_t Profiler::m_rhi_bindings_pipeline          = 0;
+    uint32_t Profiler::m_rhi_pipeline_barriers          = 0;
+    uint32_t Profiler::m_rhi_timeblock_count            = 0;
 
-    Profiler::Profiler(Context* context) : ISystem(context)
+    // Metrics - Renderer
+    uint32_t Profiler::m_renderer_meshes_rendered = 0;
+
+    // Metrics - Time
+    float Profiler::m_time_frame_avg  = 0.0f;
+    float Profiler::m_time_frame_min  = std::numeric_limits<float>::max();
+    float Profiler::m_time_frame_max  = std::numeric_limits<float>::lowest();
+    float Profiler::m_time_frame_last = 0.0f;
+    float Profiler::m_time_cpu_avg    = 0.0f;
+    float Profiler::m_time_cpu_min    = std::numeric_limits<float>::max();
+    float Profiler::m_time_cpu_max    = std::numeric_limits<float>::lowest();
+    float Profiler::m_time_cpu_last   = 0.0f;
+    float Profiler::m_time_gpu_avg    = 0.0f;
+    float Profiler::m_time_gpu_min    = std::numeric_limits<float>::max();
+    float Profiler::m_time_gpu_max    = std::numeric_limits<float>::lowest();
+    float Profiler::m_time_gpu_last   = 0.0f;
+
+    // Memory
+    uint32_t Profiler::m_descriptor_set_count    = 0;
+    uint32_t Profiler::m_descriptor_set_capacity = 0;
+
+    // Profiling options
+    static bool m_profile                   = false;
+    static bool m_profile_cpu               = true; // cheap
+    static bool m_profile_gpu               = true; // expensive
+    static float m_profiling_interval_sec   = 0.2f;
+    static float m_time_since_profiling_sec = m_profiling_interval_sec;
+
+    // Time blocks (double buffered)
+    static int m_time_block_index = -1;
+    static std::vector<TimeBlock> m_time_blocks_write;
+    static std::vector<TimeBlock> m_time_blocks_read;
+
+    // FPS
+    static float m_fps = 0.0f;
+
+    // Hardware - GPU
+    static std::string m_gpu_name          = "N/A";
+    static std::string m_gpu_driver        = "N/A";
+    static std::string m_gpu_api           = "N/A";
+    static uint32_t m_gpu_memory_available = 0;
+    static uint32_t m_gpu_memory_used      = 0;
+
+    // Stutter detection
+    static float m_stutter_delta_ms = 0.5f;
+    static bool m_is_stuttering_cpu = false;
+    static bool m_is_stuttering_gpu = false;
+
+    // Misc
+    static bool m_poll                 = false;
+    static std::string m_metrics       = "N/A";
+    static bool m_increase_capacity    = false;
+    static bool m_allow_time_block_end = true;
+    static void* m_query_disjoint      = nullptr;
+    
+    // Dependencies
+    static Context* m_context   = nullptr;
+    static Renderer* m_renderer = nullptr;
+    static Timer* m_timer       = nullptr;
+
+    void Profiler::Initialize(Context* context)
     {
+        m_context  = context;
+        m_renderer = context->GetSystem<Renderer>();
+        m_timer    = context->GetSystem<Timer>();
+
+        static const int initial_capacity = 256;
+
         m_time_blocks_read.reserve(initial_capacity);
         m_time_blocks_read.resize(initial_capacity);
         m_time_blocks_write.reserve(initial_capacity);
         m_time_blocks_write.resize(initial_capacity);
 
-        SP_SUBSCRIBE_TO_EVENT(EventType::RendererPostPresent, SP_EVENT_HANDLER(OnPostPresent));
+        SP_SUBSCRIBE_TO_EVENT(EventType::RendererPostPresent, SP_EVENT_HANDLER_STATIC(OnPostPresent));
     }
 
-    Profiler::~Profiler()
-    {
-       
-    }
-
-    void Profiler::OnInitialise()
-    {
-        m_renderer = m_context->GetSystem<Renderer>();
-        m_timer    = m_context->GetSystem<Timer>();
-    }
-
-    void Profiler::OnShutdown()
+    void Profiler::Shutdown()
     {
         if (m_poll)
         {
@@ -72,7 +144,7 @@ namespace Spartan
         ClearRhiMetrics();
     }
 
-    void Profiler::OnPreTick()
+    void Profiler::PreTick()
     {
         RHI_Device* rhi_device = m_renderer->GetRhiDevice().get();
         if (!rhi_device || !rhi_device->GetRhiContext()->gpu_profiling)
@@ -106,7 +178,7 @@ namespace Spartan
         ClearRhiMetrics();
     }
 
-    void Profiler::OnPostTick()
+    void Profiler::PostTick()
     {
         // Compute timings
         {
@@ -266,7 +338,7 @@ namespace Spartan
         }
     }
 
-    void Profiler::ResetMetrics()
+    void Profiler::ClearMetrics()
     {
         m_time_frame_avg  = 0.0f;
         m_time_frame_min  = std::numeric_limits<float>::max();
@@ -280,6 +352,81 @@ namespace Spartan
         m_time_gpu_min    = std::numeric_limits<float>::max();
         m_time_gpu_max    = std::numeric_limits<float>::lowest();
         m_time_gpu_last   = 0.0f;
+    }
+
+    bool Profiler::GetEnabled()
+    {
+        return m_profile;
+    }
+
+    void Profiler::SetEnabled(const bool enabled)
+    {
+        m_profile = enabled;
+    }
+
+    const std::string& Profiler::GetMetrics()
+    {
+        return m_metrics;
+    }
+
+    const std::vector<Spartan::TimeBlock>& Profiler::GetTimeBlocks()
+    {
+        return m_time_blocks_read;
+    }
+
+    float Profiler::GetTimeCpuLast()
+    {
+        return m_time_cpu_last;
+    }
+
+    float Profiler::GetTimeGpuLast()
+    {
+        return m_time_gpu_last;
+    }
+
+    float Profiler::GetTimeFrameLast()
+    {
+        return m_time_frame_last;
+    }
+
+    float Profiler::GetFps()
+    {
+        return m_fps;
+    }
+
+    float Profiler::GetUpdateInterval()
+    {
+        return m_profiling_interval_sec;
+    }
+
+    void Profiler::SetUpdateInterval(float internval)
+    {
+        m_profiling_interval_sec = internval;
+    }
+
+    const string& Profiler::GpuGetName()
+    {
+        return m_gpu_name;
+    }
+
+    uint32_t Profiler::GpuGetMemoryAvailable()
+    {
+        return m_gpu_memory_available;
+    }
+
+    uint32_t Profiler::GpuGetMemoryUsed()
+    {
+        return m_gpu_memory_used;
+    }
+
+    bool Profiler::IsCpuStuttering()
+    {
+        return m_is_stuttering_cpu;
+    }
+
+    bool Profiler::IsGpuStuttering()
+    {
+        return m_is_stuttering_gpu;
     }
 
     TimeBlock* Profiler::GetNewTimeBlock()

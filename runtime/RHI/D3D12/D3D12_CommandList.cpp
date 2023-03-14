@@ -54,7 +54,6 @@ namespace Spartan
 
         m_queue_type            = queue_type;
         m_renderer              = context->GetSystem<Renderer>();
-        m_profiler              = context->GetSystem<Profiler>();
         m_rhi_device            = m_renderer->GetRhiDevice().get();
         m_name                  = name;
         m_rhi_cmd_pool_resource = cmd_pool;
@@ -172,7 +171,7 @@ namespace Spartan
         );
 
         // Profiler
-        m_profiler->m_rhi_draw++;
+        Profiler::m_rhi_draw++;
     }
     
     void RHI_CommandList::DrawIndexed(const uint32_t index_count, const uint32_t index_offset, const uint32_t vertex_offset)
@@ -193,7 +192,7 @@ namespace Spartan
         );
 
         // Profile
-        m_profiler->m_rhi_draw++;
+        Profiler::m_rhi_draw++;
     }
   
     void RHI_CommandList::Dispatch(uint32_t x, uint32_t y, uint32_t z, bool async /*= false*/)
@@ -208,7 +207,7 @@ namespace Spartan
         static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource)->Dispatch(x, y, z);
 
         // Profiler
-        m_profiler->m_rhi_dispatch++;
+        Profiler::m_rhi_dispatch++;
     }
 
     void RHI_CommandList::Blit(RHI_Texture* source, RHI_Texture* destination, const bool blit_mips)
@@ -270,10 +269,7 @@ namespace Spartan
 
         m_vertex_buffer_id = buffer->GetObjectId();
 
-        if (m_profiler)
-        {
-            m_profiler->m_rhi_bindings_buffer_vertex++;
-        }
+        Profiler::m_rhi_bindings_buffer_vertex++;
     }
     
     void RHI_CommandList::SetBufferIndex(const RHI_IndexBuffer* buffer)
@@ -296,10 +292,7 @@ namespace Spartan
 
         m_index_buffer_id = buffer->GetObjectId();
 
-        if (m_profiler)
-        {
-            m_profiler->m_rhi_bindings_buffer_index++;
-        }
+        Profiler::m_rhi_bindings_buffer_index++;
     }
     
     void RHI_CommandList::SetConstantBuffer(const uint32_t slot, const uint8_t scope, RHI_ConstantBuffer* constant_buffer) const

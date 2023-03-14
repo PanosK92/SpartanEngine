@@ -43,13 +43,11 @@ namespace Spartan
     static uint32_t fmod_max_channels = 32;
     static float fmod_distance_entity = 1.0f;
     static Transform* m_listener      = nullptr;
-    static Profiler* m_profiler       = nullptr;
     static Context* m_context         = nullptr;
 
     void Audio::Initialize(Context* context)
     {
-        m_context  = context;
-        m_profiler = context->GetSystem<Profiler>();
+        m_context = context;
 
         // Create FMOD instance
         if (!HandleErrorFmod(System_Create(&fmod_system)))
@@ -103,7 +101,7 @@ namespace Spartan
         if (!m_context->m_engine->IsFlagSet(EngineMode::Game))
             return;
 
-        SP_SCOPED_TIME_BLOCK(m_profiler);
+        SP_PROFILE_FUNCTION();
 
         // Update FMOD
         if (!HandleErrorFmod((fmod_system->update())))

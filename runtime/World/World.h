@@ -37,7 +37,6 @@ namespace Spartan
     class Entity;
     class Light;
     class Input;
-    class Profiler;
     class TransformHandle;
     //====================
 
@@ -97,7 +96,6 @@ namespace Spartan
         std::shared_ptr<Mesh> m_default_model_sponza_curtains = nullptr;
         std::shared_ptr<Mesh> m_default_model_car             = nullptr;
         Input* m_input                                        = nullptr;
-        Profiler* m_profiler                                  = nullptr;
 
         // Sync primitives
         std::mutex m_entity_access_mutex;
