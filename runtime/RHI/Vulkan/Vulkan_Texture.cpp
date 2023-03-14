@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_TextureCube.h"
 #include "../RHI_CommandList.h"
 #include "../../Rendering/Renderer.h"
+#include "../Profiling/Profiler.h"
 //===================================
 
 //= NAMESPACES ===============
@@ -285,6 +286,7 @@ namespace Spartan
     void RHI_Texture::RHI_SetLayout(const RHI_Image_Layout new_layout, RHI_CommandList* cmd_list, const uint32_t mip_start, const uint32_t mip_range)
     {
         vulkan_utility::image::set_layout(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()), this, mip_start, mip_range, m_array_length, m_layout[mip_start], new_layout);
+        Profiler::m_rhi_pipeline_barriers++;
     }
 
     bool RHI_Texture::RHI_CreateResource()

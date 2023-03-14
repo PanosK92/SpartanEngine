@@ -27,11 +27,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../ImGui/Source/imgui.h"
 //================================
 
-//= FORWARD DECLARATIONS ===========================
+//==================================
 struct ImGuiWindow;
 class Editor;
-namespace Spartan { class Context; class Profiler; }
-//==================================================
+namespace Spartan { class Context; }
+//==================================
 
 const float k_widget_default_propery        = -1.0f;
 const float k_widget_position_screen_center = -2.0f;
@@ -79,9 +79,8 @@ protected:
     ImGuiWindow* m_window = nullptr;
 
     // Dependencies
-    Editor* m_editor              = nullptr;
-    Spartan::Context* m_context   = nullptr;
-    Spartan::Profiler* m_profiler = nullptr;
+    Editor* m_editor            = nullptr;
+    Spartan::Context* m_context = nullptr;
 
 private:
     uint8_t m_var_push_count = 0;

@@ -30,10 +30,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 Widget::Widget(Editor* editor)
 {
-    m_editor   = editor;
-    m_context  = editor->GetContext();
-    m_profiler = m_context->GetSystem<Spartan::Profiler>();
-    m_window   = nullptr;
+    m_editor  = editor;
+    m_context = editor->GetContext();
+    m_window  = nullptr;
 }
 
 void Widget::Tick()
@@ -45,7 +44,7 @@ void Widget::Tick()
 
     // Begin
     {
-        SP_TIME_BLOCK_START_NAMED(m_profiler, m_title.c_str());
+        SP_PROFILE_SECTION_START(m_title.c_str());
 
         // Size initial
         if (m_size_initial != k_widget_default_propery)
@@ -119,6 +118,6 @@ void Widget::Tick()
         m_var_push_count = 0;
 
         // End profiling
-        SP_TIME_BLOCK_END(m_profiler);
+        SP_PROFILE_SECTION_END();
     }
 }

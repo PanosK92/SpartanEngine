@@ -47,7 +47,6 @@ namespace Spartan
     class Font;
     class Variant;
     class Grid;
-    class Profiler;
     class Environment;
     //====================
 
@@ -344,8 +343,5 @@ namespace Spartan
         std::mutex m_mutex_entity_addition;
         std::mutex m_mutex_mip_generation;
         std::mutex m_mutex_environment_texture;
-
-        // Dependencies
-        Profiler* m_profiler = nullptr;
     };
 }

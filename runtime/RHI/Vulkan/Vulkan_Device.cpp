@@ -798,11 +798,8 @@ namespace Spartan
         SP_LOG_INFO("Capacity has been set to %d elements", descriptor_set_capacity);
         m_descriptor_set_capacity = descriptor_set_capacity;
 
-        if (Profiler* profiler = m_context->GetSystem<Profiler>())
-        {
-            profiler->m_descriptor_set_count    = 0;
-            profiler->m_descriptor_set_capacity = m_descriptor_set_capacity;
-        }
+        Profiler::m_descriptor_set_count    = 0;
+        Profiler::m_descriptor_set_capacity = m_descriptor_set_capacity;
     }
 
     uint64_t get_allocation_id_from_resource(void* resource)

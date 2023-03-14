@@ -513,7 +513,6 @@ namespace Spartan
 
             // Transition
             RHI_SetLayout(new_layout, cmd_list, mip_index, mip_range);
-            m_context->GetSystem<Profiler>()->m_rhi_pipeline_barriers++;
         }
 
         // Update layout

@@ -105,7 +105,6 @@ namespace Spartan
     {
         // Get dependencies
         m_renderer = m_context->GetSystem<Renderer>();
-        m_profiler = m_context->GetSystem<Profiler>();
 
         // Get version
         const auto major = to_string(btGetVersion() / 100);
@@ -138,7 +137,7 @@ namespace Spartan
         if (!m_context->m_engine->IsFlagSet(EngineMode::Physics) || !m_context->m_engine->IsFlagSet(EngineMode::Game))
             return;
 
-        SP_SCOPED_TIME_BLOCK(m_profiler);
+        SP_PROFILE_FUNCTION();
 
         // Picking
         {

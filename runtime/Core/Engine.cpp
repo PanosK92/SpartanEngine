@@ -56,19 +56,16 @@ namespace Spartan
         m_context->AddSystem<Input>(TickType::Smoothed);
         m_context->AddSystem<Physics>();
         m_context->AddSystem<World>(TickType::Smoothed);
-        m_context->AddSystem<Profiler>();
         m_context->AddSystem<Renderer>();
         SP_LOG_INFO("System addition took %.1f ms", timer_add.GetElapsedTimeMs());
 
         // Initialise
         Stopwatch timer_initialize;
         {
-            // Static
             ThreadPool::Initialize();
             ResourceCache::Initialize(m_context.get());
             Audio::Initialize(m_context.get());
-
-            // Context
+            Profiler::Initialize(m_context.get());
             m_context->OnInitialize();
             
         }
@@ -77,10 +74,7 @@ namespace Spartan
         // Post initialize
         Stopwatch timer_post_initialize;
         {
-            // Context
             m_context->OnPostInitialize();
-
-            // Static
             Settings::PostInitialize(m_context.get());
         }
         SP_LOG_INFO("System post-initialization took %.1f ms", timer_post_initialize.GetElapsedTimeMs());
@@ -91,21 +85,19 @@ namespace Spartan
         // Shutdown
         {
             ResourceCache::Clear();
-
-            // Context
             m_context->OnShutdown();
-
-            // Static
             ThreadPool::Shutdown();
             Event::Shutdown();
             Settings::Shutdown();
             Audio::Shutdown();
+            Profiler::Shutdown();
         }
     }
 
     void Engine::Tick() const
     {
         // Pre-tick
+        Profiler::PreTick();
         m_context->OnPreTick();
 
         // Tick
@@ -115,5 +107,6 @@ namespace Spartan
 
         // Post-tick
         m_context->OnPostTick();
+        Profiler::PostTick();
     }
 }

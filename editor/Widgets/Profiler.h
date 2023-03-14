@@ -70,6 +70,5 @@ public:
 private:
     std::array<float, 400> m_plot;
     Timings m_timings;
-    Spartan::Profiler* m_profiler;
     int m_item_type = 1;
 };

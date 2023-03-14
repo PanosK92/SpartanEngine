@@ -117,9 +117,6 @@ namespace Spartan
         Window* window = m_context->GetSystem<Window>();
         SP_ASSERT_MSG(window, "The Renderer subsystem requires a Window subsystem.");
 
-        // Get profiler subsystem (used to profile things but not required)
-        m_profiler = m_context->GetSystem<Profiler>();
-
         // Create RHI context
         m_rhi_context = make_shared<RHI_Context>();
 

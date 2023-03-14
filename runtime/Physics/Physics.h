@@ -43,7 +43,6 @@ namespace Spartan
 {
     class Renderer;
     class PhysicsDebugDraw;
-    class Profiler;
     class Camera;
     namespace Math { class Vector3; }
 
@@ -92,7 +91,6 @@ namespace Spartan
 
         // Misc
         Renderer* m_renderer = nullptr;
-        Profiler* m_profiler = nullptr;
 
         // World properties
         int m_max_sub_steps        = 1;

@@ -54,7 +54,6 @@ namespace Spartan
     {
         m_queue_type = queue_type;
         m_renderer   = context->GetSystem<Renderer>();
-        m_profiler   = context->GetSystem<Profiler>();
         m_rhi_device = m_renderer->GetRhiDevice().get();
         m_name       = name;
 
@@ -117,10 +116,7 @@ namespace Spartan
             {
                 device_context->VSSetShader(shader, nullptr, 0);
 
-                if (m_profiler)
-                {
-                    m_profiler->m_rhi_bindings_shader_vertex++;
-                }
+                Profiler::m_rhi_bindings_shader_vertex++;
             }
         }
 
@@ -138,10 +134,7 @@ namespace Spartan
             {
                 device_context->PSSetShader(shader, nullptr, 0);
 
-                if (m_profiler)
-                {
-                    m_profiler->m_rhi_bindings_shader_pixel++;
-                }
+                Profiler::m_rhi_bindings_shader_pixel++;
             }
         }
 
@@ -159,10 +152,7 @@ namespace Spartan
             {
                 device_context->CSSetShader(shader, nullptr, 0);
 
-                if (m_profiler)
-                {
-                    m_profiler->m_rhi_bindings_shader_compute++;
-                }
+                Profiler::m_rhi_bindings_shader_compute++;
             }
         }
 
@@ -305,10 +295,7 @@ namespace Spartan
                         depth_stencil
                     );
 
-                    if (m_profiler)
-                    {
-                        m_profiler->m_rhi_bindings_render_target++;
-                    }
+                    Profiler::m_rhi_bindings_render_target++;
                 }
             }
         }
@@ -324,10 +311,7 @@ namespace Spartan
 
         m_renderer->SetGlobalShaderResources(this);
 
-        if (m_profiler)
-        {
-            m_profiler->m_rhi_bindings_pipeline++;
-        }
+        Profiler::m_rhi_bindings_pipeline++;
     }
 
     void RHI_CommandList::BeginRenderPass()
@@ -448,10 +432,7 @@ namespace Spartan
     {
         m_rhi_device->GetRhiContext()->device_context->Draw(static_cast<UINT>(vertex_count), static_cast<UINT>(vertex_start_index));
 
-        if (m_profiler)
-        {
-            m_profiler->m_rhi_draw++;
-        }
+        Profiler::m_rhi_draw++;
     }
 
     void RHI_CommandList::DrawIndexed(const uint32_t index_count, const uint32_t index_offset, const uint32_t vertex_offset)
@@ -463,10 +444,7 @@ namespace Spartan
             static_cast<INT>(vertex_offset)
         );
 
-        if (m_profiler)
-        {
-            m_profiler->m_rhi_draw++;
-        }
+        Profiler::m_rhi_draw++;
     }
 
     void RHI_CommandList::Dispatch(uint32_t x, uint32_t y, uint32_t z, bool async /*= false*/)
@@ -476,10 +454,8 @@ namespace Spartan
 
         device_context->Dispatch(x, y, z);
 
-        if (m_profiler)
-        {
-            m_profiler->m_rhi_dispatch++;
-        }
+        Profiler::m_rhi_dispatch++;
+
         // Make sure to clean the compute shader UAV slots after dispatching.
         // If we try to bind the resource but it's still bound as a computer shader output the runtime will automatically set the it to null.
         const void* resource_array[8] = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
@@ -553,10 +529,7 @@ namespace Spartan
         // Set
         device_context->IASetVertexBuffers(0, 1, &vertex_buffer, &stride, offsets);
 
-        if (m_profiler)
-        {
-            m_profiler->m_rhi_bindings_buffer_vertex++;
-        }
+        Profiler::m_rhi_bindings_buffer_vertex++;
     }
 
     void RHI_CommandList::SetBufferIndex(const RHI_IndexBuffer* buffer)
@@ -581,10 +554,7 @@ namespace Spartan
         // Set
         device_context->IASetIndexBuffer(index_buffer, format, 0);
 
-        if (m_profiler)
-        {
-            m_profiler->m_rhi_bindings_buffer_index++;
-        }
+        Profiler::m_rhi_bindings_buffer_index++;
     }
 
     void RHI_CommandList::SetConstantBuffer(const uint32_t slot, const uint8_t scope, RHI_ConstantBuffer* constant_buffer) const
@@ -603,10 +573,7 @@ namespace Spartan
             {
                 device_context->VSSetConstantBuffers(slot, range, reinterpret_cast<ID3D11Buffer* const*>(range > 1 ? buffer : &buffer_array));
 
-                if (m_profiler)
-                {
-                    m_profiler->m_rhi_bindings_buffer_constant++;
-                }
+                Profiler::m_rhi_bindings_buffer_constant++;
             }
         }
 
@@ -619,10 +586,7 @@ namespace Spartan
             {
                 device_context->PSSetConstantBuffers(slot, range, reinterpret_cast<ID3D11Buffer* const*>(range > 1 ? buffer : &buffer_array));
 
-                if (m_profiler)
-                {
-                    m_profiler->m_rhi_bindings_buffer_constant++;
-                }
+                Profiler::m_rhi_bindings_buffer_constant++;
             }
         }
 
@@ -635,10 +599,7 @@ namespace Spartan
             {
                 device_context->CSSetConstantBuffers(slot, range, reinterpret_cast<ID3D11Buffer* const*>(range > 1 ? buffer : &buffer_array));
 
-                if (m_profiler)
-                {
-                    m_profiler->m_rhi_bindings_buffer_constant++;
-                }
+                Profiler::m_rhi_bindings_buffer_constant++;
             }
         }
     }
@@ -659,10 +620,7 @@ namespace Spartan
             {
                 device_context->CSSetSamplers(start_slot, range, reinterpret_cast<ID3D11SamplerState* const*>(&sampler_array));
 
-                if (m_profiler)
-                {
-                    m_profiler->m_rhi_bindings_sampler++;
-                }
+                Profiler::m_rhi_bindings_sampler++;
             }
         }
         else
@@ -674,10 +632,7 @@ namespace Spartan
             {
                 device_context->PSSetSamplers(start_slot, range, reinterpret_cast<ID3D11SamplerState* const*>(&sampler_array));
 
-                if (m_profiler)
-                {
-                    m_profiler->m_rhi_bindings_sampler++;
-                }
+                Profiler::m_rhi_bindings_sampler++;
             }
         }
     }
@@ -740,10 +695,7 @@ namespace Spartan
             {
                 device_context->CSSetUnorderedAccessViews(slot, range, reinterpret_cast<ID3D11UnorderedAccessView* const*>(resources.data()), nullptr);
 
-                if (m_profiler)
-                {
-                    m_profiler->m_rhi_bindings_texture_storage++;
-                }
+                Profiler::m_rhi_bindings_texture_storage++;
 
                 // Keep track of output textures
                 m_output_textures[m_output_textures_index].texture = texture;
@@ -769,10 +721,7 @@ namespace Spartan
                 {
                     device_context->PSSetShaderResources(slot, range, reinterpret_cast<ID3D11ShaderResourceView* const*>(resources.data()));
 
-                    if (m_profiler)
-                    {
-                        m_profiler->m_rhi_bindings_texture_sampled++;
-                    }
+                    Profiler::m_rhi_bindings_texture_sampled++;
                 }
             }
             else if (scope & RHI_Shader_Compute)
@@ -783,10 +732,7 @@ namespace Spartan
                 {
                     device_context->CSSetShaderResources(slot, range, reinterpret_cast<ID3D11ShaderResourceView* const*>(resources.data()));
 
-                    if (m_profiler)
-                    {
-                        m_profiler->m_rhi_bindings_texture_sampled++;
-                    }
+                    Profiler::m_rhi_bindings_texture_sampled++;
                 }
             }
         }
@@ -805,10 +751,7 @@ namespace Spartan
         {
             device_context->CSSetUnorderedAccessViews(slot, range, reinterpret_cast<ID3D11UnorderedAccessView* const*>(&view_array), nullptr);
 
-            if (m_profiler)
-            {
-                m_profiler->m_rhi_bindings_buffer_structured++;
-            }
+            Profiler::m_rhi_bindings_buffer_structured++;
         }
     }
 
@@ -883,10 +826,10 @@ namespace Spartan
         RHI_Context* rhi_context = m_rhi_device->GetRhiContext();
 
         // Allowed to profile ?
-        if (rhi_context->gpu_profiling && gpu_timing && m_profiler)
+        if (rhi_context->gpu_profiling && gpu_timing)
         {
-            m_profiler->TimeBlockStart(name, TimeBlockType::Cpu, this);
-            m_profiler->TimeBlockStart(name, TimeBlockType::Gpu, this);
+            Profiler::TimeBlockStart(name, TimeBlockType::Cpu, this);
+            Profiler::TimeBlockStart(name, TimeBlockType::Gpu, this);
         }
 
         // Allowed to mark ?
@@ -906,10 +849,10 @@ namespace Spartan
         }
 
         // Allowed to profile ?
-        if (rhi_context->gpu_profiling && m_profiler)
+        if (rhi_context->gpu_profiling)
         {
-            m_profiler->TimeBlockEnd(); // cpu
-            m_profiler->TimeBlockEnd(); // gpu
+            Profiler::TimeBlockEnd(); // cpu
+            Profiler::TimeBlockEnd(); // gpu
         }
     }
 
@@ -950,10 +893,7 @@ namespace Spartan
 
                 device_context->CSSetUnorderedAccessViews(texture.slot, range, reinterpret_cast<ID3D11UnorderedAccessView* const*>(resources.data()), nullptr);
 
-                if (m_profiler)
-                {
-                    m_profiler->m_rhi_bindings_texture_storage++;
-                }
+                Profiler::m_rhi_bindings_texture_storage++;
 
                 texture.texture = nullptr;
             }
