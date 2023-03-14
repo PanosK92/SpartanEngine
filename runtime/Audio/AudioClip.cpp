@@ -97,7 +97,12 @@ namespace Spartan
         if (!IsPaused())
             return false;
 
-        return Audio::HandleErrorFmod(static_cast<FMOD::Channel*>(m_fmod_channel)->setPaused(true));
+        if (FMOD::Channel* channel = static_cast<FMOD::Channel*>(m_fmod_channel))
+        {
+            return Audio::HandleErrorFmod(static_cast<FMOD::Channel*>(m_fmod_channel)->setPaused(true));
+        }
+
+        return false;
     }
 
     bool AudioClip::Stop()
@@ -105,7 +110,12 @@ namespace Spartan
         if (!IsPlaying())
             return false;
 
-        return Audio::HandleErrorFmod(static_cast<FMOD::Channel*>(m_fmod_channel)->stop());
+        if (FMOD::Channel* channel = static_cast<FMOD::Channel*>(m_fmod_channel))
+        {
+            return Audio::HandleErrorFmod(static_cast<FMOD::Channel*>(m_fmod_channel)->stop());
+        }
+
+        return false;
     }
 
     bool AudioClip::SetLoop(const bool loop)
@@ -126,27 +136,52 @@ namespace Spartan
 
     bool AudioClip::SetVolume(float volume)
     {
-        return Audio::HandleErrorFmod(static_cast<FMOD::Channel*>(m_fmod_channel)->setVolume(volume));
+        if (FMOD::Channel* channel = static_cast<FMOD::Channel*>(m_fmod_channel))
+        {
+            return Audio::HandleErrorFmod(static_cast<FMOD::Channel*>(m_fmod_channel)->setVolume(volume));
+        }
+
+        return false;
     }
 
     bool AudioClip::SetMute(const bool mute)
     {
-        return Audio::HandleErrorFmod(static_cast<FMOD::Channel*>(m_fmod_channel)->setMute(mute));
+        if (FMOD::Channel* channel = static_cast<FMOD::Channel*>(m_fmod_channel))
+        {
+            return Audio::HandleErrorFmod(static_cast<FMOD::Channel*>(m_fmod_channel)->setMute(mute));
+        }
+
+        return false;
     }
 
     bool AudioClip::SetPriority(const int priority)
     {
-        return Audio::HandleErrorFmod(static_cast<FMOD::Channel*>(m_fmod_channel)->setPriority(priority));
+        if (FMOD::Channel* channel = static_cast<FMOD::Channel*>(m_fmod_channel))
+        {
+            return Audio::HandleErrorFmod(static_cast<FMOD::Channel*>(m_fmod_channel)->setPriority(priority));
+        }
+
+        return false;
     }
 
     bool AudioClip::SetPitch(const float pitch)
     {
-        return Audio::HandleErrorFmod(static_cast<FMOD::Channel*>(m_fmod_channel)->setPitch(pitch));
+        if (FMOD::Channel* channel = static_cast<FMOD::Channel*>(m_fmod_channel))
+        {
+            return Audio::HandleErrorFmod(static_cast<FMOD::Channel*>(m_fmod_channel)->setPitch(pitch));
+        }
+
+        return false;
     }
 
     bool AudioClip::SetPan(const float pan)
     {
-        return Audio::HandleErrorFmod(static_cast<FMOD::Channel*>(m_fmod_channel)->setPan(pan));
+        if (FMOD::Channel* channel = static_cast<FMOD::Channel*>(m_fmod_channel))
+        {
+            return Audio::HandleErrorFmod(static_cast<FMOD::Channel*>(m_fmod_channel)->setPan(pan));
+        }
+
+        return false;
     }
 
     bool AudioClip::SetRolloff(const vector<Vector3>& curve_points)
@@ -196,7 +231,11 @@ namespace Spartan
     bool AudioClip::IsPlaying()
     {
         bool is_playing = false;
-        Audio::HandleErrorFmod(static_cast<FMOD::Channel*>(m_fmod_channel)->isPlaying(&is_playing));
+
+        if (FMOD::Channel* channel = static_cast<FMOD::Channel*>(m_fmod_channel))
+        {
+            Audio::HandleErrorFmod(channel->isPlaying(&is_playing));
+        }
 
         return is_playing;
     }
@@ -204,7 +243,11 @@ namespace Spartan
     bool AudioClip::IsPaused()
     {
         bool is_paused = false;
-        Audio::HandleErrorFmod(static_cast<FMOD::Channel*>(m_fmod_channel)->getPaused(&is_paused));
+
+        if (FMOD::Channel* channel = static_cast<FMOD::Channel*>(m_fmod_channel))
+        {
+            Audio::HandleErrorFmod(channel->getPaused(&is_paused));
+        }
 
         return is_paused;
     }
