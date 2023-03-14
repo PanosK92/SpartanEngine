@@ -23,7 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "AudioClip.h"
 #include <fmod.hpp>
-#include <fmod_errors.h>
 #include "Audio.h"
 #include "../World/Components/Transform.h"
 #include "../IO/FileStream.h"
@@ -38,32 +37,20 @@ namespace Spartan
 {
     AudioClip::AudioClip(Context* context) : IResource(context, ResourceType::Audio)
     {
-        m_transform   = nullptr;
-        m_systemFMOD  = static_cast<FMOD::System*>(context->GetSystem<Audio>()->GetSystemFMOD());
-        m_result      = FMOD_OK;
-        m_soundFMOD   = nullptr;
-        m_channelFMOD = nullptr;
-        m_playMode    = Play_Memory;
-        m_minDistance = 1.0f;
-        m_maxDistance = 10000.0f;
         m_modeRolloff = FMOD_3D_LINEARROLLOFF;
         m_modeLoop    = FMOD_LOOP_OFF;
     }
 
     AudioClip::~AudioClip()
     {
-        if (!m_soundFMOD)
-            return;
-
-        FMOD_RESULT result = m_soundFMOD->release();
-        SP_ASSERT_MSG(result == FMOD_OK, "Failed to release sound");
+        if (FMOD::Sound* sound = static_cast<FMOD::Sound*>(m_fmod_sound))
+        {
+            Audio::HandleErrorFmod(sound->release());
+        }
     }
 
     bool AudioClip::LoadFromFile(const string& file_path)
     {
-        m_soundFMOD   = nullptr;
-        m_channelFMOD = nullptr;
-
         // Native
         if (FileSystem::GetExtensionFromFilePath(file_path) == EXTENSION_AUDIO)
         {
@@ -81,7 +68,7 @@ namespace Spartan
             SetResourceFilePath(file_path);
         }
 
-        return (m_playMode == Play_Memory) ? CreateSound(GetResourceFilePath()) : CreateStream(GetResourceFilePath());
+        return (m_playMode == PlayMode::Memory) ? CreateSound(GetResourceFilePath()) : CreateStream(GetResourceFilePath());
     }
 
     bool AudioClip::SaveToFile(const string& file_path)
@@ -99,187 +86,72 @@ namespace Spartan
 
     bool AudioClip::Play()
     {
-        // Check if the sound is playing
-        if (IsChannelValid())
-        {
-            auto is_playing = false;
-            m_result = m_channelFMOD->isPlaying(&is_playing);
-            if (m_result != FMOD_OK)
-            {
-                LogErrorFmod(m_result);
-                return false;
-            }
-    
-            // If it's already playing, don't bother
-            if (is_playing)
-                return true;
-        }
-
-        // Start playing the sound
-        m_result = m_systemFMOD->playSound(m_soundFMOD, nullptr, false, &m_channelFMOD);
-        if (m_result != FMOD_OK)
-        {
-            LogErrorFmod(m_result);
+        if (IsPlaying())
             return false;
-        }
 
-        return true;
+        return Audio::PlaySound(m_fmod_sound, m_fmod_channel);
     }
 
     bool AudioClip::Pause()
     {
-        if (!IsChannelValid())
-            return true;
-
-        // Get sound paused state
-        auto is_paused = false;
-        m_result = m_channelFMOD->getPaused(&is_paused);
-        if (m_result != FMOD_OK)
-        {
-            LogErrorFmod(m_result);
+        if (!IsPaused())
             return false;
-        }
 
-        // If it's already paused, don't bother
-        if (!is_paused)
-            return true;
-
-        // Pause the sound
-        m_result = m_channelFMOD->setPaused(true);
-        if (m_result != FMOD_OK)
-        {
-            LogErrorFmod(m_result);
-            return false;
-        }
-
-        return true;
+        return Audio::HandleErrorFmod(static_cast<FMOD::Channel*>(m_fmod_channel)->setPaused(true));
     }
 
     bool AudioClip::Stop()
     {
-        if (!IsChannelValid())
-            return true;
-
         if (!IsPlaying())
-            return true;
-
-        // Stop the sound
-        m_result = m_channelFMOD->stop();
-        if (m_result != FMOD_OK)
-        {
-            m_channelFMOD = nullptr;
-            LogErrorFmod(m_result);
             return false;
-        }
 
-        return true;
+        return Audio::HandleErrorFmod(static_cast<FMOD::Channel*>(m_fmod_channel)->stop());
     }
 
     bool AudioClip::SetLoop(const bool loop)
     {
         m_modeLoop = loop ? FMOD_LOOP_NORMAL : FMOD_LOOP_OFF;
 
-        if (!m_soundFMOD)
+        if (!static_cast<FMOD::Sound*>(m_fmod_sound))
             return false;
 
         // Infinite loops
         if (loop)
         {
-            m_soundFMOD->setLoopCount(-1);
+            static_cast<FMOD::Sound*>(m_fmod_sound)->setLoopCount(-1);
         }
 
-        // Set the channel with the new mode
-        m_result = m_soundFMOD->setMode(GetSoundMode());
-        if (m_result != FMOD_OK)
-        {
-            LogErrorFmod(m_result);
-            return false;
-        }
-
-        return true;
+        return Audio::HandleErrorFmod(static_cast<FMOD::Sound*>(m_fmod_sound)->setMode(GetSoundMode()));
     }
 
     bool AudioClip::SetVolume(float volume)
     {
-        if (!IsChannelValid())
-            return false;
-
-        m_result = m_channelFMOD->setVolume(volume);
-        if (m_result != FMOD_OK)
-        {
-            LogErrorFmod(m_result);
-            return false;
-        }
-
-        return true;
+        return Audio::HandleErrorFmod(static_cast<FMOD::Channel*>(m_fmod_channel)->setVolume(volume));
     }
 
     bool AudioClip::SetMute(const bool mute)
     {
-        if (!IsChannelValid())
-            return false;
-
-        m_result = m_channelFMOD->setMute(mute);
-        if (m_result != FMOD_OK)
-        {
-            LogErrorFmod(m_result);
-            return false;
-        }
-
-        return true;
+        return Audio::HandleErrorFmod(static_cast<FMOD::Channel*>(m_fmod_channel)->setMute(mute));
     }
 
     bool AudioClip::SetPriority(const int priority)
     {
-        if (!IsChannelValid())
-            return false;
-
-        m_result = m_channelFMOD->setPriority(priority);
-        if (m_result != FMOD_OK)
-        {
-            LogErrorFmod(m_result);
-            return false;
-        }
-
-        return true;
+        return Audio::HandleErrorFmod(static_cast<FMOD::Channel*>(m_fmod_channel)->setPriority(priority));
     }
 
     bool AudioClip::SetPitch(const float pitch)
     {
-        if (!IsChannelValid())
-            return false;
-
-        m_result = m_channelFMOD->setPitch(pitch);
-        if (m_result != FMOD_OK)
-        {
-            LogErrorFmod(m_result);
-            return false;
-        }
-
-        return true;
+        return Audio::HandleErrorFmod(static_cast<FMOD::Channel*>(m_fmod_channel)->setPitch(pitch));
     }
 
     bool AudioClip::SetPan(const float pan)
     {
-        if (!IsChannelValid())
-            return false;
-
-        m_result = m_channelFMOD->setPan(pan);
-        if (m_result != FMOD_OK)
-        {
-            LogErrorFmod(m_result);
-            return false;
-        }
-
-        return true;
+        return Audio::HandleErrorFmod(static_cast<FMOD::Channel*>(m_fmod_channel)->setPan(pan));
     }
 
     bool AudioClip::SetRolloff(const vector<Vector3>& curve_points)
     {
-        if (!IsChannelValid())
-            return false;
-
-        SetRolloff(Custom);
+        SetRolloff(Rolloff::Custom);
 
         // Convert Vector3 to FMOD_VECTOR
         vector<FMOD_VECTOR> fmod_curve;
@@ -288,24 +160,17 @@ namespace Spartan
             fmod_curve.push_back(FMOD_VECTOR{ point.x, point.y, point.z });
         }
 
-        m_result = m_channelFMOD->set3DCustomRolloff(&fmod_curve.front(), static_cast<int>(fmod_curve.size()));
-        if (m_result != FMOD_OK)
-        {
-            LogErrorFmod(m_result);
-            return false;
-        }
-
-        return true;
+        return Audio::HandleErrorFmod(static_cast<FMOD::Channel*>(m_fmod_channel)->set3DCustomRolloff(&fmod_curve.front(), static_cast<int>(fmod_curve.size())));
     }
 
     bool AudioClip::SetRolloff(const Rolloff rolloff)
     {
         switch (rolloff)
         {
-        case Linear: m_modeRolloff = FMOD_3D_LINEARROLLOFF;
+        case Rolloff::Linear: m_modeRolloff = FMOD_3D_LINEARROLLOFF;
             break;
 
-        case Custom: m_modeRolloff = FMOD_3D_CUSTOMROLLOFF;
+        case Rolloff::Custom: m_modeRolloff = FMOD_3D_CUSTOMROLLOFF;
             break;
 
         default:
@@ -317,7 +182,7 @@ namespace Spartan
 
     bool AudioClip::Update()
     {
-        if (!IsChannelValid() || !m_transform)
+        if (!m_transform)
             return true;
 
         const auto pos = m_transform->GetPosition();
@@ -325,52 +190,34 @@ namespace Spartan
         FMOD_VECTOR f_mod_pos = { pos.x, pos.y, pos.z };
         FMOD_VECTOR f_mod_vel = { 0, 0, 0 };
 
-        // Set 3D attributes
-        m_result = m_channelFMOD->set3DAttributes(&f_mod_pos, &f_mod_vel);
-        if (m_result != FMOD_OK)
-        {
-            m_channelFMOD = nullptr;
-            LogErrorFmod(m_result);
-            return false;
-        }
-
-        return true;
+        return Audio::HandleErrorFmod(static_cast<FMOD::Channel*>(m_fmod_channel)->set3DAttributes(&f_mod_pos, &f_mod_vel));
     }
 
     bool AudioClip::IsPlaying()
     {
-        if (!IsChannelValid())
-            return false;
-
-        auto is_playing = false;
-        m_result = m_channelFMOD->isPlaying(&is_playing);
-        if (m_result != FMOD_OK)
-        {
-            LogErrorFmod(m_result);
-            return false;
-        }
+        bool is_playing = false;
+        Audio::HandleErrorFmod(static_cast<FMOD::Channel*>(m_fmod_channel)->isPlaying(&is_playing));
 
         return is_playing;
     }
 
-    //= CREATION ================================================
+    bool AudioClip::IsPaused()
+    {
+        bool is_paused = false;
+        Audio::HandleErrorFmod(static_cast<FMOD::Channel*>(m_fmod_channel)->getPaused(&is_paused));
+
+        return is_paused;
+    }
+
     bool AudioClip::CreateSound(const string& file_path)
     {
         // Create sound
-        m_result = m_systemFMOD->createSound(file_path.c_str(), GetSoundMode(), nullptr, &m_soundFMOD);
-        if (m_result != FMOD_OK)
-        {
-            LogErrorFmod(m_result);
+        if (!Audio::CreateSound(file_path, GetSoundMode(), m_fmod_sound))
             return false;
-        }
 
         // Set 3D min max distance
-        m_result = m_soundFMOD->set3DMinMaxDistance(m_minDistance, m_maxDistance);
-        if (m_result != FMOD_OK)
-        {
-            LogErrorFmod(m_result);
+        if (!Audio::HandleErrorFmod(static_cast<FMOD::Sound*>(m_fmod_sound)->set3DMinMaxDistance(m_minDistance, m_maxDistance)))
             return false;
-        }
 
         return true;
     }
@@ -378,20 +225,12 @@ namespace Spartan
     bool AudioClip::CreateStream(const string& file_path)
     {
         // Create sound
-        m_result = m_systemFMOD->createStream(file_path.c_str(), GetSoundMode(), nullptr, &m_soundFMOD);
-        if (m_result != FMOD_OK)
-        {
-            LogErrorFmod(m_result);
+        if (!Audio::CreateStream(file_path, GetSoundMode(), m_fmod_sound))
             return false;
-        }
 
         // Set 3D min max distance
-        m_result = m_soundFMOD->set3DMinMaxDistance(m_minDistance, m_maxDistance);
-        if (m_result != FMOD_OK)
-        {
-            LogErrorFmod(m_result);
+        if (!Audio::HandleErrorFmod(static_cast<FMOD::Sound*>(m_fmod_sound)->set3DMinMaxDistance(m_minDistance, m_maxDistance)))
             return false;
-        }
 
         return true;
     }
@@ -400,20 +239,4 @@ namespace Spartan
     {
         return FMOD_3D | m_modeLoop | m_modeRolloff;
     }
-
-    void AudioClip::LogErrorFmod(int error) const
-    {
-        SP_LOG_ERROR("%s", FMOD_ErrorString(static_cast<FMOD_RESULT>(error)));
-    }
-
-    bool AudioClip::IsChannelValid() const
-    {
-        if (!m_channelFMOD)
-            return false;
-
-        // Do a query and see if it fails or not
-        bool value;
-        return m_channelFMOD->isPlaying(&value) == FMOD_OK;
-    }
-    //===========================================================
 }

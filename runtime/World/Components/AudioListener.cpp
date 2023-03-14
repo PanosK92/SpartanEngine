@@ -29,19 +29,11 @@ namespace Spartan
 {
     AudioListener::AudioListener(Context* context, Entity* entity, uint64_t id /*= 0*/) : IComponent(context, entity, id)
     {
-        m_audio = nullptr;
-    }
 
-    void AudioListener::OnInitialize()
-    {
-        m_audio = GetContext()->GetSystem<Audio>();
     }
 
     void AudioListener::OnTick(double delta_time)
     {
-        if (!m_audio)
-            return;
-
-        m_audio->SetListenerTransform(GetTransform());
+        Audio::SetListenerTransform(GetTransform());
     }
 }

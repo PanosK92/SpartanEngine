@@ -54,7 +54,6 @@ namespace Spartan
         m_context->AddSystem<Window>();
         m_context->AddSystem<Timer>();
         m_context->AddSystem<Input>(TickType::Smoothed);
-        m_context->AddSystem<Audio>();
         m_context->AddSystem<Physics>();
         m_context->AddSystem<World>(TickType::Smoothed);
         m_context->AddSystem<Profiler>();
@@ -67,6 +66,7 @@ namespace Spartan
             // Static
             ThreadPool::Initialize();
             ResourceCache::Initialize(m_context.get());
+            Audio::Initialize(m_context.get());
 
             // Context
             m_context->OnInitialize();
@@ -90,6 +90,8 @@ namespace Spartan
     {
         // Shutdown
         {
+            ResourceCache::Clear();
+
             // Context
             m_context->OnShutdown();
 
@@ -97,6 +99,7 @@ namespace Spartan
             ThreadPool::Shutdown();
             Event::Shutdown();
             Settings::Shutdown();
+            Audio::Shutdown();
         }
     }
 
@@ -106,6 +109,7 @@ namespace Spartan
         m_context->OnPreTick();
 
         // Tick
+        Audio::Tick();
         m_context->OnTick(TickType::Variable, m_context->GetSystem<Timer>()->GetDeltaTimeSec());
         m_context->OnTick(TickType::Smoothed, m_context->GetSystem<Timer>()->GetDeltaTimeSmoothedSec());
 
