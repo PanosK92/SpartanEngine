@@ -21,20 +21,19 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ========================
+//= INCLUDES =================
 #include <memory>
 #include <string>
 #include <any>
 #include <vector>
 #include <functional>
 #include "../../Core/Object.h"
-//===================================
+//============================
 
 namespace Spartan
 {
     class Entity;
     class Transform;
-    class Context;
     class FileStream;
 
     enum class ComponentType : uint32_t
@@ -64,7 +63,7 @@ namespace Spartan
     class SP_CLASS IComponent : public Object, public std::enable_shared_from_this<IComponent>
     {
     public:
-        IComponent(Context* context, Entity* entity, uint64_t id = 0, Transform* transform = nullptr);
+        IComponent(Entity* entity, uint64_t id = 0, Transform* transform = nullptr);
         virtual ~IComponent() = default;
 
         // Runs when the component gets added
@@ -80,7 +79,7 @@ namespace Spartan
         virtual void OnRemove() {}
 
         // Runs every frame
-        virtual void OnTick(double delta_time) {}
+        virtual void OnTick() {}
 
         // Runs when the entity is being saved
         virtual void Serialize(FileStream* stream) {}
@@ -95,7 +94,6 @@ namespace Spartan
 
         //= PROPERTIES ===============================================================================
         Transform* GetTransform()        const { return m_transform; }
-        Context* GetContext()            const { return m_context; }
         ComponentType GetType()          const { return m_type; }
         void SetType(ComponentType type)       { m_type = type; }
 

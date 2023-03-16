@@ -34,7 +34,6 @@ namespace Spartan
     public:
         RHI_DepthStencilState() = default;
         RHI_DepthStencilState(
-            RHI_Device* rhi_device,
             const bool depth_test                                     = true,
             const bool depth_write                                    = true,
             const RHI_Comparison_Function depth_comparison_function   = RHI_Comparison_Function::LessEqual,

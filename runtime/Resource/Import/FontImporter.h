@@ -33,20 +33,18 @@ struct FT_StrokerRec_;
 
 namespace Spartan
 {
-    class Context;
     class Font;
 
     class SP_CLASS FontImporter
     {
     public:
-        FontImporter(Context* context);
+        FontImporter();
         ~FontImporter();
 
         bool LoadFromFile(Font* font, const std::string& file_path);
 
     private:
-        Context* m_context           = nullptr;
-        FT_LibraryRec_* m_library   = nullptr;
-        FT_StrokerRec_* m_stroker   = nullptr;
+        FT_LibraryRec_* m_library = nullptr;
+        FT_StrokerRec_* m_stroker = nullptr;
     };
 }

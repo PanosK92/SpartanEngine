@@ -74,7 +74,7 @@ namespace Spartan
     class SP_CLASS Material : public IResource
     {
     public:
-        Material(Context* context);
+        Material();
         ~Material() = default;
 
         //= IResource ===========================================
@@ -113,6 +113,5 @@ namespace Spartan
 
         // Misc
         bool m_is_editable = true;
-        std::shared_ptr<RHI_Device> m_rhi_device;
     };
 }

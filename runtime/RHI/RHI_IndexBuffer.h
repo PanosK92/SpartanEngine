@@ -21,10 +21,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =====================
-#include <vector>
+//= INCLUDES ==============
 #include "../Core/Object.h"
-//================================
+//=========================
 
 namespace Spartan
 {
@@ -32,9 +31,8 @@ namespace Spartan
     {
     public:
         RHI_IndexBuffer() = default;
-        RHI_IndexBuffer(RHI_Device* rhi_device, bool is_mappable, const char* name)
+        RHI_IndexBuffer(bool is_mappable, const char* name)
         {
-            m_rhi_device  = rhi_device;
             m_is_mappable = is_mappable;
             m_name = name;
         }
@@ -86,11 +84,10 @@ namespace Spartan
         void _create(const void* indices);
         void _destroy();
 
-        void* m_mapped_data      = nullptr;
-        bool m_is_mappable       = false;
-        uint32_t m_stride        = 0;
-        uint32_t m_index_count   = 0;
-        RHI_Device* m_rhi_device = nullptr;
+        void* m_mapped_data    = nullptr;
+        bool m_is_mappable     = false;
+        uint32_t m_stride      = 0;
+        uint32_t m_index_count = 0;
 
         // RHI Resources
         void* m_rhi_resource = nullptr;

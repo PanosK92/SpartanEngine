@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "../RHI_Implementation.h"
 #include "../RHI_StructuredBuffer.h"
+#include "../Rendering/Renderer.h"
 //==================================
 
 //= NAMESPACES =====
@@ -31,10 +32,8 @@ using namespace std;
 
 namespace Spartan
 {
-    RHI_StructuredBuffer::RHI_StructuredBuffer(RHI_Device* rhi_device, const uint32_t stride, const uint32_t element_count, const char* name)
+    RHI_StructuredBuffer::RHI_StructuredBuffer(const uint32_t stride, const uint32_t element_count, const char* name)
     {
-        m_rhi_device = rhi_device;
-
         // Buffer
         D3D11_BUFFER_DESC desc = {};
         {
@@ -51,7 +50,7 @@ namespace Spartan
             subresource_data.pSysMem                = data;
 
             SP_ASSERT_MSG(
-                d3d11_utility::error_check(m_rhi_device->GetRhiContext()->device->CreateBuffer(&desc, data ? &subresource_data : nullptr, reinterpret_cast<ID3D11Buffer**>(&m_rhi_resource))),
+                d3d11_utility::error_check(Renderer::GetRhiDevice()->GetRhiContext()->device->CreateBuffer(&desc, data ? &subresource_data : nullptr, reinterpret_cast<ID3D11Buffer**>(&m_rhi_resource))),
                 "Failed to create buffer");
         }
 
@@ -64,7 +63,7 @@ namespace Spartan
             desc.Buffer.NumElements               = element_count;
 
             SP_ASSERT_MSG(
-                d3d11_utility::error_check(rhi_device->GetRhiContext()->device->CreateUnorderedAccessView(static_cast<ID3D11Resource*>(m_rhi_resource), &desc, reinterpret_cast<ID3D11UnorderedAccessView**>(&m_rhi_uav))),
+                d3d11_utility::error_check(Renderer::GetRhiDevice()->GetRhiContext()->device->CreateUnorderedAccessView(static_cast<ID3D11Resource*>(m_rhi_resource), &desc, reinterpret_cast<ID3D11UnorderedAccessView**>(&m_rhi_uav))),
                 "Failed to create UAV");
         }
     }
@@ -79,7 +78,7 @@ namespace Spartan
     {
         // Map
         D3D11_MAPPED_SUBRESOURCE mapped_resource;
-        if (FAILED(m_rhi_device->GetRhiContext()->device_context->Map(static_cast<ID3D11Buffer*>(m_rhi_resource), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped_resource)))
+        if (FAILED(Renderer::GetRhiDevice()->GetRhiContext()->device_context->Map(static_cast<ID3D11Buffer*>(m_rhi_resource), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped_resource)))
         {
             SP_LOG_ERROR("Failed to map structured buffer");
         }
@@ -88,6 +87,6 @@ namespace Spartan
         memcpy(reinterpret_cast<std::byte*>(mapped_resource.pData), reinterpret_cast<std::byte*>(data_cpu), m_stride);
 
         // Unmap
-        m_rhi_device->GetRhiContext()->device_context->Unmap(static_cast<ID3D11Buffer*>(m_rhi_resource), 0);
+        Renderer::GetRhiDevice()->GetRhiContext()->device_context->Unmap(static_cast<ID3D11Buffer*>(m_rhi_resource), 0);
     }
 }

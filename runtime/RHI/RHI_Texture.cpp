@@ -63,17 +63,8 @@ namespace Spartan
         return format_amd;
     }
 
-    RHI_Texture::RHI_Texture(Context* context) : IResource(context, ResourceType::Texture)
+    RHI_Texture::RHI_Texture() : IResource(ResourceType::Texture)
     {
-        SP_ASSERT(context != nullptr);
-
-        Renderer* renderer = context->GetSystem<Renderer>();
-        SP_ASSERT(renderer != nullptr);
-
-        m_rhi_device = renderer->GetRhiDevice();
-        SP_ASSERT(m_rhi_device != nullptr);
-        SP_ASSERT(m_rhi_device->GetRhiContext()->device != nullptr);
-
         m_layout.fill(RHI_Image_Layout::Undefined);
         m_rhi_srv_mips.fill(nullptr);
         m_rhi_uav_mips.fill(nullptr);
@@ -302,7 +293,7 @@ namespace Spartan
         // Request GPU based mip generation (if needed)
         if (m_flags & RHI_Texture_Mips)
         {
-            m_context->GetSystem<Renderer>()->RequestTextureMipGeneration(shared_from_this());
+            Renderer::RequestTextureMipGeneration(shared_from_this());
         }
 
         return true;

@@ -48,13 +48,11 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    RHI_CommandList::RHI_CommandList(Context* context, const RHI_Queue_Type queue_type, const uint32_t index, void* cmd_pool, const char* name)
+    RHI_CommandList::RHI_CommandList(const RHI_Queue_Type queue_type, const uint32_t index, void* cmd_pool, const char* name)
     {
         SP_ASSERT(cmd_pool != nullptr);
 
         m_queue_type            = queue_type;
-        m_renderer              = context->GetSystem<Renderer>();
-        m_rhi_device            = m_renderer->GetRhiDevice().get();
         m_name                  = name;
         m_rhi_cmd_pool_resource = cmd_pool;
         m_timestamps.fill(0);
@@ -62,7 +60,7 @@ namespace Spartan
         // Created command list
         SP_ASSERT_MSG(
             d3d12_utility::error::check(
-                m_rhi_device->GetRhiContext()->device->CreateCommandList(
+                    Renderer::GetRhiDevice()->GetRhiContext()->device->CreateCommandList(
                     0,
                     D3D12_COMMAND_LIST_TYPE_DIRECT,
                     static_cast<ID3D12CommandAllocator*>(cmd_pool),
@@ -76,7 +74,7 @@ namespace Spartan
     RHI_CommandList::~RHI_CommandList()
     {
         // Wait in case it's still in use by the GPU
-        m_rhi_device->QueueWaitAll();
+        Renderer::GetRhiDevice()->QueueWaitAll();
 
         // Command list
         d3d12_utility::release<ID3D12CommandQueue>(m_rhi_resource);
@@ -92,7 +90,6 @@ namespace Spartan
 
         // Validate a few things
         SP_ASSERT(m_rhi_resource != nullptr);
-        SP_ASSERT(m_rhi_device != nullptr);
         SP_ASSERT(m_state == RHI_CommandListState::Idle);
 
         // Unlike Vulkan, D3D12 wraps both begin and reset under Reset().
@@ -330,7 +327,7 @@ namespace Spartan
         return 0.0f;
     }
 
-    uint32_t RHI_CommandList::GetGpuMemoryUsed(RHI_Device* rhi_device)
+    uint32_t RHI_CommandList::GetGpuMemoryUsed()
     {
         return 0;
     }

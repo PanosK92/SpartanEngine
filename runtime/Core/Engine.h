@@ -22,14 +22,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ===========
-#include <memory>
 #include "Definitions.h"
 //======================
 
 namespace Spartan
 {
-    class Context;
-
     enum class EngineMode : uint32_t
     {
         Physics,
@@ -39,22 +36,14 @@ namespace Spartan
     class SP_CLASS Engine
     {
     public:
-        Engine();
-        ~Engine();
-
-        // Performs a simulation cycle
-        void Tick() const;
+        static void Initialize();
+        static void Shutdown();
+        static void Tick();
 
         //  Flags
-        void SetFlag(const EngineMode flag)          { m_flags |= (1U << static_cast<uint32_t>(flag)); }
-        void RemoveFlag(const EngineMode flag)       { m_flags &= ~(1U << static_cast<uint32_t>(flag)); }
-        bool IsFlagSet(const EngineMode flag)  const { return m_flags & (1U << static_cast<uint32_t>(flag)); }
-        void ToggleFlag(const EngineMode flag)       { IsFlagSet(flag) ? RemoveFlag(flag) : SetFlag(flag); }
-
-        auto GetContext() const { return m_context.get(); }
-
-    private:
-        uint32_t m_flags = 0;
-        std::shared_ptr<Context> m_context;
+        static void SetFlag(const EngineMode flag);
+        static void RemoveFlag(const EngineMode flag);
+        static bool IsFlagSet(const EngineMode flag);
+        static void ToggleFlag(const EngineMode flag);
     };
 }

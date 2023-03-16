@@ -22,6 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =============================
 #include "AssetViewer.h"
 #include "Properties.h"
+#include "Rendering/Mesh.h"
 #include "../WidgetsDeferred/FileDialog.h"
 //========================================
 
@@ -100,8 +101,8 @@ static void mesh_import_dialog()
 AssetViewer::AssetViewer(Editor* editor) : Widget(editor)
 {
     m_title          = "Assets";
-    m_fileDialogView = make_unique<FileDialog>(m_context, false, FileDialog_Type_Browser,       FileDialog_Op_Load, FileDialog_Filter_All);
-    m_fileDialogLoad = make_unique<FileDialog>(m_context, true,  FileDialog_Type_FileSelection, FileDialog_Op_Load, FileDialog_Filter_Model);
+    m_fileDialogView = make_unique<FileDialog>(false, FileDialog_Type_Browser,       FileDialog_Op_Load, FileDialog_Filter_All);
+    m_fileDialogLoad = make_unique<FileDialog>(true,  FileDialog_Type_FileSelection, FileDialog_Op_Load, FileDialog_Filter_Model);
     m_flags          |= ImGuiWindowFlags_NoScrollbar;
 
     // Just clicked, not selected (double clicked, end of dialog)

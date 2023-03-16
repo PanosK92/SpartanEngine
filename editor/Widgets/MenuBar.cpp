@@ -30,6 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RenderOptions.h"
 #include "TextureViewer.h"
 #include "ResourceViewer.h"
+#include "Rendering/Mesh.h"
 //========================================
 
 //= NAMESPACES =====
@@ -44,20 +45,16 @@ namespace _Widget_MenuBar
     static bool imgui_metrics         = false;
     static bool imgui_style           = false;
     static bool imgui_demo            = false;
-    static Spartan::Input* g_input    = nullptr;
-    static Spartan::World* g_world    = nullptr;
     static string g_fileDialogSelection;
 }
 
 MenuBar::MenuBar(Editor *editor) : Widget(editor)
 {
-    m_title                  = "MenuBar";
-    m_is_window              = false;
-    m_tool_bar               = make_unique<Toolbar>(editor);
-    m_file_dialog            = make_unique<FileDialog>(m_context, true, FileDialog_Type_FileSelection, FileDialog_Op_Open, FileDialog_Filter_World);
-    _Widget_MenuBar::g_input = m_context->GetSystem<Spartan::Input>();
-    _Widget_MenuBar::g_world = m_context->GetSystem<Spartan::World>();
-    m_editor                 = editor;
+    m_title        = "MenuBar";
+    m_is_window    = false;
+    m_tool_bar     = make_unique<Toolbar>(editor);
+    m_file_dialog  = make_unique<FileDialog>(true, FileDialog_Type_FileSelection, FileDialog_Op_Open, FileDialog_Filter_World);
+    m_editor       = editor;
 }
 
 template <class T>
@@ -84,7 +81,7 @@ void MenuBar::TickAlways()
         {
             if (ImGui::MenuItem("New"))
             {
-                m_context->GetSystem<Spartan::World>()->New();
+                Spartan::World::New();
             }
 
             ImGui::Separator();
@@ -169,7 +166,7 @@ void MenuBar::TickAlways()
 
 void MenuBar::HandleKeyShortcuts() const
 {
-    if (_Widget_MenuBar::g_input->GetKey(Spartan::KeyCode::Ctrl_Left) && _Widget_MenuBar::g_input->GetKeyDown(Spartan::KeyCode::P))
+    if (Spartan::Input::GetKey(Spartan::KeyCode::Ctrl_Left) && Spartan::Input::GetKeyDown(Spartan::KeyCode::P))
     {
         _Widget_MenuBar::g_showShortcutsWindow = !_Widget_MenuBar::g_showShortcutsWindow;
     }

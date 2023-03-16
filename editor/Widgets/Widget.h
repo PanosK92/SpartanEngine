@@ -79,8 +79,7 @@ protected:
     ImGuiWindow* m_window = nullptr;
 
     // Dependencies
-    Editor* m_editor            = nullptr;
-    Spartan::Context* m_context = nullptr;
+    Editor* m_editor = nullptr;
 
 private:
     uint8_t m_var_push_count = 0;

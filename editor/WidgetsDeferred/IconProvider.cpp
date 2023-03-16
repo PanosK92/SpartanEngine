@@ -32,13 +32,10 @@ using namespace Spartan;
 //=======================
 
 vector<Thumbnail> IconProvider::m_thumbnails;
-static Context* context = nullptr;
 static Thumbnail g_no_thumbnail;
 
-void IconProvider::Initialize(Context* context_)
+void IconProvider::Initialize()
 {
-    context = context_;
-
     // Load standard icons
     ThreadPool::AddTask([]()
     {
@@ -160,7 +157,7 @@ const Thumbnail& IconProvider::LoadFromFile(const string& file_path, IconType ty
     if (FileSystem::IsSupportedImageFile(file_path) || FileSystem::IsEngineTextureFile(file_path))
     {
         // Create a texture
-        shared_ptr<RHI_Texture2D> texture = make_shared<RHI_Texture2D>(context, RHI_Texture_Srv, FileSystem::GetFileNameFromFilePath(file_path).c_str());
+        shared_ptr<RHI_Texture2D> texture = make_shared<RHI_Texture2D>(RHI_Texture_Srv, FileSystem::GetFileNameFromFilePath(file_path).c_str());
 
         // Add it to the thumbnails
         m_thumbnails.emplace_back(type, texture, file_path);

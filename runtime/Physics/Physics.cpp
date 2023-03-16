@@ -48,9 +48,32 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
+    static btBroadphaseInterface* m_broadphase                        = nullptr;
+    static btCollisionDispatcher* m_collision_dispatcher              = nullptr;
+    static btSequentialImpulseConstraintSolver* m_constraint_solver   = nullptr;
+    static btDefaultCollisionConfiguration* m_collision_configuration = nullptr;
+    static btDiscreteDynamicsWorld* m_world                           = nullptr;
+    static btSoftBodyWorldInfo* m_world_info                          = nullptr;
+    static PhysicsDebugDraw* m_debug_draw                             = nullptr;
+
+    // World properties
+    static  int m_max_sub_steps        = 1;
+    static  int m_max_solve_iterations = 256;
+    static  float m_internal_fps       = 60.0f;
+    static  Math::Vector3 m_gravity    = Math::Vector3(0.0f, -9.81f, 0.0f);
+    static  bool m_simulating          = false;
+
+    // Picking
+    static  btRigidBody* m_picked_body                = nullptr;
+    static  btTypedConstraint* m_picked_constraint    = nullptr;
+    static  int m_activation_state                    = 0;
+    static  Math::Vector3 m_hit_position              = Math::Vector3::Zero;
+    static  Math::Vector3 m_picking_position_previous = Math::Vector3::Zero;
+    static  float m_picking_distance_previous         = 0.0f;
+
     static const bool m_soft_body_support = true;
 
-    Physics::Physics(Context* context) : ISystem(context)
+    void Physics::Initialize()
     {
         m_broadphase        = new btDbvtBroadphase();
         m_constraint_solver = new btSequentialImpulseConstraintSolver();
@@ -86,11 +109,26 @@ namespace Spartan
         // Setup
         m_world->setGravity(ToBtVector3(m_gravity));
         m_world->getDispatchInfo().m_useContinuous = true;
-        m_world->getSolverInfo().m_splitImpulse = false;
-        m_world->getSolverInfo().m_numIterations = m_max_solve_iterations;
+        m_world->getSolverInfo().m_splitImpulse    = false;
+        m_world->getSolverInfo().m_numIterations   = m_max_solve_iterations;
+
+        // Get version
+        const string major = to_string(btGetVersion() / 100);
+        const string minor = to_string(btGetVersion()).erase(0, 1);
+        Settings::RegisterThirdPartyLib("Bullet", major + "." + minor, "https://github.com/bulletphysics/bullet3");
+
+        // Enabled debug drawing
+        {
+            m_debug_draw = new PhysicsDebugDraw();
+
+            if (m_world)
+            {
+                m_world->setDebugDrawer(m_debug_draw);
+            }
+        }
     }
 
-    Physics::~Physics()
+    void Physics::Shutdown()
     {
         delete m_world;
         delete m_constraint_solver;
@@ -101,51 +139,30 @@ namespace Spartan
         delete m_debug_draw;
     }
 
-    void Physics::OnInitialise()
-    {
-        // Get dependencies
-        m_renderer = m_context->GetSystem<Renderer>();
-
-        // Get version
-        const auto major = to_string(btGetVersion() / 100);
-        const auto minor = to_string(btGetVersion()).erase(0, 1);
-        Settings::RegisterThirdPartyLib("Bullet", major + "." + minor, "https://github.com/bulletphysics/bullet3");
-
-        // Enabled debug drawing
-        {
-            m_debug_draw = new PhysicsDebugDraw(m_renderer);
-
-            if (m_world)
-            {
-                m_world->setDebugDrawer(m_debug_draw);
-            }
-        }
-    }
-
-    void Physics::OnTick(double delta_time_sec)
+    void Physics::Tick()
     {
         if (!m_world)
             return;
         
         // Debug draw
-        if (m_renderer->GetOption<bool>(RendererOption::Debug_Physics))
+        if (Renderer::GetOption<bool>(RendererOption::Debug_Physics))
         {
             m_world->debugDrawWorld();
         }
 
         // Don't simulate physics if they are turned off or we are not in game mode
-        if (!m_context->m_engine->IsFlagSet(EngineMode::Physics) || !m_context->m_engine->IsFlagSet(EngineMode::Game))
+        if (!Engine::IsFlagSet(EngineMode::Physics) || !Engine::IsFlagSet(EngineMode::Game))
             return;
 
         SP_PROFILE_FUNCTION();
 
         // Picking
         {
-            if (m_context->GetSystem<Input>()->GetKeyDown(KeyCode::Click_Left) && m_context->GetSystem<Input>()->GetMouseIsInViewport())
+            if (Input::GetKeyDown(KeyCode::Click_Left) && Input::GetMouseIsInViewport())
             {
                 PickBody();
             }
-            else if (m_context->GetSystem<Input>()->GetKeyUp(KeyCode::Click_Left))
+            else if (Input::GetKeyUp(KeyCode::Click_Left))
             {
                 UnpickBody();
             }
@@ -155,10 +172,10 @@ namespace Spartan
 
         // This equation must be met: timeStep < maxSubSteps * fixedTimeStep
         auto internal_time_step = 1.0f / m_internal_fps;
-        auto max_substeps       = static_cast<int>(delta_time_sec * m_internal_fps) + 1;
+        auto max_substeps       = static_cast<int>(Timer::GetDeltaTimeSec() * m_internal_fps) + 1;
         if (m_max_sub_steps < 0)
         {
-            internal_time_step  = static_cast<float>(delta_time_sec);
+            internal_time_step  = static_cast<float>(Timer::GetDeltaTimeSec());
             max_substeps        = 1;
         }
         else if (m_max_sub_steps > 0)
@@ -168,11 +185,11 @@ namespace Spartan
 
         // Step the physics world. 
         m_simulating = true;
-        m_world->stepSimulation(static_cast<float>(delta_time_sec), max_substeps, internal_time_step);
+        m_world->stepSimulation(static_cast<float>(Timer::GetDeltaTimeSec()), max_substeps, internal_time_step);
         m_simulating = false;
     }
 
-    void Physics::AddBody(btRigidBody* body) const
+    void Physics::AddBody(btRigidBody* body)
     {
         if (!m_world)
             return;
@@ -180,7 +197,7 @@ namespace Spartan
         m_world->addRigidBody(body);
     }
 
-    void Physics::RemoveBody(btRigidBody*& body) const
+    void Physics::RemoveBody(btRigidBody*& body)
     {
         if (!m_world)
             return;
@@ -190,7 +207,7 @@ namespace Spartan
         delete body;
     }
 
-    void Physics::AddConstraint(btTypedConstraint* constraint, bool collision_with_linked_body /*= true*/) const
+    void Physics::AddConstraint(btTypedConstraint* constraint, bool collision_with_linked_body /*= true*/)
     {
         if (!m_world)
             return;
@@ -198,7 +215,7 @@ namespace Spartan
         m_world->addConstraint(constraint, !collision_with_linked_body);
     }
 
-    void Physics::RemoveConstraint(btTypedConstraint*& constraint) const
+    void Physics::RemoveConstraint(btTypedConstraint*& constraint)
     {
         if (!m_world)
             return;
@@ -207,7 +224,7 @@ namespace Spartan
         delete constraint;
     }
 
-    void Physics::AddBody(btSoftBody* body) const
+    void Physics::AddBody(btSoftBody* body)
     {
         if (!m_world)
             return;
@@ -218,7 +235,7 @@ namespace Spartan
         }
     }
 
-    void Physics::RemoveBody(btSoftBody*& body) const
+    void Physics::RemoveBody(btSoftBody*& body)
     {
         if (btSoftRigidDynamicsWorld* world = static_cast<btSoftRigidDynamicsWorld*>(m_world))
         {
@@ -227,7 +244,7 @@ namespace Spartan
         }
     }
 
-    Vector3 Physics::GetGravity() const
+    Vector3 Physics::GetGravity()
     {
         auto gravity = m_world->getGravity();
         if (!gravity)
@@ -238,9 +255,24 @@ namespace Spartan
         return gravity ? ToVector3(gravity) : Vector3::Zero;
     }
 
+    btSoftBodyWorldInfo& Physics::GetSoftWorldInfo()
+    {
+        return *m_world_info;
+    }
+
+    auto Physics::GetPhysicsDebugDraw()
+    {
+        return m_debug_draw;
+    }
+
+    bool Physics::IsSimulating()
+    {
+        return m_simulating;
+    }
+
     void Physics::PickBody()
     {
-        if (shared_ptr<Camera> camera = m_renderer->GetCamera())
+        if (shared_ptr<Camera> camera = Renderer::GetCamera())
         {
             const Ray& picking_ray = camera->GetPickingRay();
 
@@ -283,7 +315,7 @@ namespace Spartan
                     m_hit_position              = ToVector3(pick_position);
                     m_picking_distance_previous = (m_hit_position - ray_start).Length();
 
-                    m_renderer->DrawSphere(m_hit_position, 0.1f, 32);
+                    Renderer::DrawSphere(m_hit_position, 0.1f, 32);
                 }
             }
         }
@@ -304,7 +336,7 @@ namespace Spartan
 
     void Physics::MovePickedBody()
     {
-        if (shared_ptr<Camera> camera = m_renderer->GetCamera())
+        if (shared_ptr<Camera> camera = Renderer::GetCamera())
         {
             Ray picking_ray       = camera->ComputePickingRay();
             Vector3 ray_start     = picking_ray.GetStart();

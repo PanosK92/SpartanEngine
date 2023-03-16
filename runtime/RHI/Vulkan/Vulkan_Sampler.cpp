@@ -50,7 +50,7 @@ namespace Spartan
         sampler_info.minLod              = 0.0f;
         sampler_info.maxLod              = FLT_MAX;
     
-        if (vkCreateSampler(m_rhi_device->GetRhiContext()->device, &sampler_info, nullptr, reinterpret_cast<VkSampler*>(&m_rhi_resource)) != VK_SUCCESS)
+        if (vkCreateSampler(Renderer::GetRhiDevice()->GetRhiContext()->device, &sampler_info, nullptr, reinterpret_cast<VkSampler*>(&m_rhi_resource)) != VK_SUCCESS)
         {
             SP_LOG_ERROR("Failed to create sampler");
         }
@@ -59,18 +59,15 @@ namespace Spartan
     RHI_Sampler::~RHI_Sampler()
     {
         // Discard the current command list in case it's referencing the sampler.
-        if (Renderer* renderer = m_rhi_device->GetContext()->GetSystem<Renderer>())
+        if (RHI_CommandList* cmd_list = Renderer::GetCmdList())
         {
-            if (RHI_CommandList* cmd_list = renderer->GetCmdList())
-            {
-                cmd_list->Discard();
-            }
+            cmd_list->Discard();
         }
 
         // Wait in case it's still in use by the GPU
-        m_rhi_device->QueueWaitAll();
+        Renderer::GetRhiDevice()->QueueWaitAll();
 
         // Destroy
-        vkDestroySampler(m_rhi_device->GetRhiContext()->device, reinterpret_cast<VkSampler>(m_rhi_resource), nullptr);
+        vkDestroySampler(Renderer::GetRhiDevice()->GetRhiContext()->device, reinterpret_cast<VkSampler>(m_rhi_resource), nullptr);
     }
 }

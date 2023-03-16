@@ -27,12 +27,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-    AudioListener::AudioListener(Context* context, Entity* entity, uint64_t id /*= 0*/) : IComponent(context, entity, id)
+    AudioListener::AudioListener(Entity* entity, uint64_t id /*= 0*/) : IComponent(entity, id)
     {
 
     }
 
-    void AudioListener::OnTick(double delta_time)
+    void AudioListener::OnTick()
     {
         Audio::SetListenerTransform(GetTransform());
     }

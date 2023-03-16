@@ -32,7 +32,6 @@ namespace Spartan
 {
     RHI_BlendState::RHI_BlendState
     (
-        RHI_Device* rhi_device,
         const bool blend_enabled                  /*= false*/,
         const RHI_Blend source_blend              /*= Blend_Src_Alpha*/,
         const RHI_Blend dest_blend                /*= Blend_Inv_Src_Alpha*/,

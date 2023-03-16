@@ -29,7 +29,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Spartan
 {
     RHI_Sampler::RHI_Sampler(
-        const std::shared_ptr<RHI_Device>& rhi_device,
         const RHI_Filter filter_min                         /* = RHI_Filter_Nearest */,
         const RHI_Filter filter_mag                         /* = RHI_Filter_Nearest */,
         const RHI_Sampler_Mipmap_Mode filter_mipmap         /* = RHI_Sampler_Mipmap_Nearest */,
@@ -40,11 +39,7 @@ namespace Spartan
         const float mip_lod_bias                            /* = 0.0f */
     )
     {
-        SP_ASSERT(rhi_device != nullptr);
-        SP_ASSERT(rhi_device->GetRhiContext()->device != nullptr);
-
-        m_rhi_resource             = nullptr;
-        m_rhi_device           = rhi_device;
+        m_rhi_resource         = nullptr;
         m_filter_min           = filter_min;
         m_filter_mag           = filter_mag;
         m_filter_mipmap        = filter_mipmap;

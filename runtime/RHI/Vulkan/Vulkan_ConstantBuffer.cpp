@@ -37,16 +37,15 @@ namespace Spartan
     void RHI_ConstantBuffer::_destroy()
     {
         // Wait
-        m_rhi_device->QueueWaitAll();
+        Renderer::GetRhiDevice()->QueueWaitAll();
 
         // Destroy
-        m_rhi_device->DestroyBuffer(m_rhi_resource);
+        Renderer::GetRhiDevice()->DestroyBuffer(m_rhi_resource);
     }
 
-    RHI_ConstantBuffer::RHI_ConstantBuffer(RHI_Device* rhi_device, const string& name)
+    RHI_ConstantBuffer::RHI_ConstantBuffer(const string& name)
     {
-        m_rhi_device = rhi_device;
-        m_name       = name;
+        m_name = name;
     }
 
     void RHI_ConstantBuffer::_create()
@@ -55,7 +54,7 @@ namespace Spartan
         _destroy();
 
         // Calculate required alignment based on minimum device offset alignment
-        size_t min_alignment = m_rhi_device->GetMinUniformBufferOffsetAllignment();
+        size_t min_alignment = Renderer::GetRhiDevice()->GetMinUniformBufferOffsetAllignment();
         if (min_alignment > 0)
         {
             m_stride = static_cast<uint64_t>((m_stride + min_alignment - 1) & ~(min_alignment - 1));
@@ -66,10 +65,10 @@ namespace Spartan
         VkMemoryPropertyFlags flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT; // mappable
 
         // Create buffer
-        m_rhi_device->CreateBuffer(m_rhi_resource, m_object_size_gpu, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, flags);
+        Renderer::GetRhiDevice()->CreateBuffer(m_rhi_resource, m_object_size_gpu, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, flags);
 
         // Get mapped data pointer
-        m_mapped_data = m_rhi_device->get_mapped_data_from_buffer(m_rhi_resource);
+        m_mapped_data = Renderer::GetRhiDevice()->get_mapped_data_from_buffer(m_rhi_resource);
 
         // Set debug name
         vulkan_utility::debug::set_object_name(static_cast<VkBuffer>(m_rhi_resource), (m_name + string("_size_") + to_string(m_object_size_gpu)).c_str());
@@ -91,6 +90,6 @@ namespace Spartan
 
         // Vulkan is using persistent mapping, so we only need to copy and flush
         memcpy(reinterpret_cast<std::byte*>(m_mapped_data) + m_offset, reinterpret_cast<std::byte*>(data_cpu), m_stride);
-        m_rhi_device->FlushAllocation(m_rhi_resource, m_offset, m_stride);
+        Renderer::GetRhiDevice()->FlushAllocation(m_rhi_resource, m_offset, m_stride);
     }
 }

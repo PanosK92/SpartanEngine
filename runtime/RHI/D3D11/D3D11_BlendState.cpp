@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Implementation.h"
 #include "../RHI_BlendState.h"
 #include "../RHI_Device.h"
+#include "../Rendering/Renderer.h"
 //================================
 
 //= NAMESPACES =====
@@ -34,7 +35,6 @@ namespace Spartan
 {
     RHI_BlendState::RHI_BlendState
     (
-        RHI_Device* rhi_device,
         const bool blend_enabled                  /*= false*/,
         const RHI_Blend source_blend              /*= Blend_Src_Alpha*/,
         const RHI_Blend dest_blend                /*= Blend_Inv_Src_Alpha*/,
@@ -45,9 +45,6 @@ namespace Spartan
         const float blend_factor                  /*= 0.0f*/
     )
     {
-        SP_ASSERT(rhi_device != nullptr);
-        SP_ASSERT(rhi_device->GetRhiContext()->device != nullptr);
-
         // Save parameters
         m_blend_enabled      = blend_enabled;
         m_source_blend       = source_blend;
@@ -73,7 +70,7 @@ namespace Spartan
 
         // Create
         SP_ASSERT_MSG(d3d11_utility::error_check(
-            rhi_device->GetRhiContext()->device->CreateBlendState(&desc, reinterpret_cast<ID3D11BlendState**>(&m_rhi_resource))),
+            Renderer::GetRhiDevice()->GetRhiContext()->device->CreateBlendState(&desc, reinterpret_cast<ID3D11BlendState**>(&m_rhi_resource))),
             "Failed to create blend state");
     }
 

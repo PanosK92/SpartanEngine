@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_InputLayout.h"
 #include "../RHI_DescriptorSetLayout.h"
 #include "../RHI_RasterizerState.h"
+#include "../Rendering/Renderer.h"
 //=====================================
 
 //= NAMESPACES =====
@@ -36,10 +37,9 @@ using namespace std;
 
 namespace Spartan
 {
-    RHI_Pipeline::RHI_Pipeline(RHI_Device* rhi_device, RHI_PipelineState& pipeline_state, RHI_DescriptorSetLayout* descriptor_set_layout)
+    RHI_Pipeline::RHI_Pipeline(RHI_PipelineState& pipeline_state, RHI_DescriptorSetLayout* descriptor_set_layout)
     {
-        m_rhi_device = rhi_device;
-        m_state      = pipeline_state;
+        m_state = pipeline_state;
 
         // Pipeline layout
         {
@@ -60,7 +60,7 @@ namespace Spartan
 
             // Create
             SP_ASSERT_MSG(
-                vkCreatePipelineLayout(m_rhi_device->GetRhiContext()->device, &pipeline_layout_info, nullptr, reinterpret_cast<VkPipelineLayout*>(&m_resource_pipeline_layout)) == VK_SUCCESS,
+                vkCreatePipelineLayout(Renderer::GetRhiDevice()->GetRhiContext()->device, &pipeline_layout_info, nullptr, reinterpret_cast<VkPipelineLayout*>(&m_resource_pipeline_layout)) == VK_SUCCESS,
                 "Failed to create pipeline layout"
                 );
 
@@ -369,7 +369,7 @@ namespace Spartan
                 pipeline_info.renderPass                   = nullptr;
         
                 // Create
-                SP_ASSERT_MSG(vkCreateGraphicsPipelines(m_rhi_device->GetRhiContext()->device, nullptr, 1, &pipeline_info, nullptr, pipeline) == VK_SUCCESS, "Failed to create graphics pipeline");
+                SP_ASSERT_MSG(vkCreateGraphicsPipelines(Renderer::GetRhiDevice()->GetRhiContext()->device, nullptr, 1, &pipeline_info, nullptr, pipeline) == VK_SUCCESS, "Failed to create graphics pipeline");
 
                 // Disable naming until I can come up with a more meaningful name
                 //vulkan_utility::debug::set_name(*pipeline, m_state.pass_name);
@@ -383,7 +383,7 @@ namespace Spartan
                 pipeline_info.stage                       = shader_stages[0];
 
                 // Create
-                SP_ASSERT_MSG(vkCreateComputePipelines(m_rhi_device->GetRhiContext()->device, nullptr, 1, &pipeline_info, nullptr, pipeline) == VK_SUCCESS, "Failed to create compute pipeline");
+                SP_ASSERT_MSG(vkCreateComputePipelines(Renderer::GetRhiDevice()->GetRhiContext()->device, nullptr, 1, &pipeline_info, nullptr, pipeline) == VK_SUCCESS, "Failed to create compute pipeline");
 
                 // Name the pipeline object
                 if (m_state.shader_vertex)
@@ -405,12 +405,12 @@ namespace Spartan
     RHI_Pipeline::~RHI_Pipeline()
     {
         // Wait in case it's still in use by the GPU
-        m_rhi_device->QueueWaitAll();
+        Renderer::GetRhiDevice()->QueueWaitAll();
     
-        vkDestroyPipeline(m_rhi_device->GetRhiContext()->device, static_cast<VkPipeline>(m_resource_pipeline), nullptr);
+        vkDestroyPipeline(Renderer::GetRhiDevice()->GetRhiContext()->device, static_cast<VkPipeline>(m_resource_pipeline), nullptr);
         m_resource_pipeline = nullptr;
         
-        vkDestroyPipelineLayout(m_rhi_device->GetRhiContext()->device, static_cast<VkPipelineLayout>(m_resource_pipeline_layout), nullptr);
+        vkDestroyPipelineLayout(Renderer::GetRhiDevice()->GetRhiContext()->device, static_cast<VkPipelineLayout>(m_resource_pipeline_layout), nullptr);
         m_resource_pipeline_layout = nullptr;
     }
 }

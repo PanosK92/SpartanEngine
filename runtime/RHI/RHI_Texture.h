@@ -80,7 +80,7 @@ namespace Spartan
     class SP_CLASS RHI_Texture : public IResource, public std::enable_shared_from_this<RHI_Texture>
     {
     public:
-        RHI_Texture(Context* context);
+        RHI_Texture();
         ~RHI_Texture();
 
         //= IResource ===========================================
@@ -164,7 +164,6 @@ namespace Spartan
         RHI_Format m_format         = RHI_Format_Undefined;
         RHI_Viewport m_viewport;
         std::vector<RHI_Texture_Slice> m_data;
-        std::shared_ptr<RHI_Device> m_rhi_device;
         std::array<RHI_Image_Layout, rhi_max_mip_count> m_layout;
 
         // API resources

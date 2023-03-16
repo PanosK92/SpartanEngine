@@ -35,7 +35,7 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    AudioClip::AudioClip(Context* context) : IResource(context, ResourceType::Audio)
+    AudioClip::AudioClip() : IResource(ResourceType::Audio)
     {
         m_modeRolloff = FMOD_3D_LINEARROLLOFF;
         m_modeLoop    = FMOD_LOOP_OFF;

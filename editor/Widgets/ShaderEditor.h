@@ -48,7 +48,6 @@ private:
 
     Spartan::RHI_Shader* m_shader = nullptr;
     std::string m_shader_name     = "N/A";
-    Spartan::Renderer* m_renderer = nullptr;
     int32_t m_index_displayed     = -1;
     bool m_first_run              = true;
     std::unique_ptr<TextEditor> m_text_editor;

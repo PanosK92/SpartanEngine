@@ -37,9 +37,8 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    Material::Material(Context* context) : IResource(context, ResourceType::Material)
+    Material::Material() : IResource(ResourceType::Material)
     {
-        m_rhi_device = context->GetSystem<Renderer>()->GetRhiDevice();
         m_textures.fill(nullptr);
 
         // Initialise properties
@@ -254,7 +253,7 @@ namespace Spartan
             float current_alpha = m_properties[static_cast<uint32_t>(property_type)];
             if ((current_alpha != 1.0f && value == 1.0f) || (current_alpha == 1.0f && value != 1.0f))
             {
-                m_context->GetSystem<World>()->Resolve();
+                World::Resolve();
             }
 
             // Transparent objects are typically see-through (low roughness) so use the alpha as the roughness multiplier.

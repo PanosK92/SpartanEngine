@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_BlendState.h"
 #include "../RHI_DepthStencilState.h"
 #include "../RHI_InputLayout.h"
+#include "../Rendering/Renderer.h"
 //===================================
 
 //= NAMESPACES =====
@@ -36,10 +37,9 @@ using namespace std;
 
 namespace Spartan
 {
-    RHI_Pipeline::RHI_Pipeline(RHI_Device* rhi_device, RHI_PipelineState& pipeline_state, RHI_DescriptorSetLayout* descriptor_set_layout)
+    RHI_Pipeline::RHI_Pipeline(RHI_PipelineState& pipeline_state, RHI_DescriptorSetLayout* descriptor_set_layout)
     {
-        m_rhi_device = rhi_device;
-        m_state      = pipeline_state;
+        m_state = pipeline_state;
 
         if (pipeline_state.IsCompute())
         {
@@ -51,7 +51,7 @@ namespace Spartan
             //desc.CachedPSO                          = 0;
             //desc.Flags                              = 0;
 
-            d3d12_utility::error::check(m_rhi_device->GetRhiContext()->device->CreateComputePipelineState(&desc, IID_PPV_ARGS(reinterpret_cast<ID3D12PipelineState**>(&m_resource_pipeline))));
+            d3d12_utility::error::check(Renderer::GetRhiDevice()->GetRhiContext()->device->CreateComputePipelineState(&desc, IID_PPV_ARGS(reinterpret_cast<ID3D12PipelineState**>(&m_resource_pipeline))));
         }
         else if (pipeline_state.IsGraphics())
         {
@@ -139,7 +139,7 @@ namespace Spartan
             desc.RTVFormats[0]                      = DXGI_FORMAT_R8G8B8A8_UNORM;
             desc.SampleDesc.Count                   = 1;
 
-            d3d12_utility::error::check(m_rhi_device->GetRhiContext()->device->CreateGraphicsPipelineState(&desc, IID_PPV_ARGS(reinterpret_cast<ID3D12PipelineState**>(&m_resource_pipeline))));
+            d3d12_utility::error::check(Renderer::GetRhiDevice()->GetRhiContext()->device->CreateGraphicsPipelineState(&desc, IID_PPV_ARGS(reinterpret_cast<ID3D12PipelineState**>(&m_resource_pipeline))));
         }
     }
     

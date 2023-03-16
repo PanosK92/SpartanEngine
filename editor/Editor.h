@@ -28,17 +28,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Widgets/Widget.h"
 //=============================
 
-//= FORWARD DECLARATIONS =
-namespace Spartan 
-{
-    class Window;
-    class Engine;
-    class Context;
-    class Renderer;
-    class Profiler;
-}
-//========================
-
 class Editor
 {
 public:
@@ -46,7 +35,6 @@ public:
     ~Editor();
 
     void Tick();
-    Spartan::Context* GetContext() { return m_context; }
 
     template<typename T>
     T* GetWidget()
@@ -66,7 +54,5 @@ private:
     void BeginWindow();
 
     bool m_editor_begun = false;
-    std::unique_ptr<Spartan::Engine> m_engine;
     std::vector<std::shared_ptr<Widget>> m_widgets;
-    Spartan::Context* m_context = nullptr;
 };

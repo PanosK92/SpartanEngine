@@ -37,7 +37,7 @@ namespace Spartan
     class SP_CLASS Grid
     {
     public:
-        Grid(RHI_Device* rhi_device);
+        Grid();
         ~Grid() = default;
         
         const Math::Matrix& ComputeWorldMatrix(Transform* camera);

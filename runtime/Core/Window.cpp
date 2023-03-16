@@ -35,7 +35,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma comment(lib, "Imm32.lib")
 #pragma comment(lib, "Setupapi.lib")
 #endif
-
 //======================================
 
 //= NAMESPACES =====
@@ -44,7 +43,23 @@ using namespace std;
 
 namespace Spartan
 {
-    Window::Window(Context* context) : ISystem(context)
+    static std::string m_title;
+    static Math::Vector2 m_position = Math::Vector2::Zero;
+    static uint32_t m_width         = 640;
+    static uint32_t m_height        = 480;
+    static bool m_shown             = false;
+    static bool m_minimised         = false;
+    static bool m_maximised         = false;
+    static bool m_close             = false;
+    static bool m_fullscreen        = false;
+    static SDL_Window* m_window     = nullptr;
+
+    // splash-screen
+    static SDL_Window* m_splash_sceen_window      = nullptr;
+    static SDL_Renderer* m_splash_screen_renderer = nullptr;
+    static SDL_Texture* m_splash_screen_texture   = nullptr;
+
+    void Window::Initialize()
     {
         // Initialise video subsystem (if needed)
         if (SDL_WasInit(SDL_INIT_VIDEO) != 1)
@@ -76,8 +91,8 @@ namespace Spartan
         flags |= SDL_WINDOW_VULKAN;
 
         // Create window
-        m_title        = "Spartan " + to_string(sp_version_major) + "." + to_string(sp_version_minor) + "." + to_string(sp_version_revision);
-        m_window       = SDL_CreateWindow(
+        m_title  = "Spartan " + to_string(sp_version_major) + "." + to_string(sp_version_minor) + "." + to_string(sp_version_revision);
+        m_window = SDL_CreateWindow(
             m_title.c_str(),         // window title
             SDL_WINDOWPOS_UNDEFINED, // initial x position
             SDL_WINDOWPOS_UNDEFINED, // initial y position
@@ -95,11 +110,15 @@ namespace Spartan
         // Hide the window until the engine is able to present
         Hide();
 
-        // Show the window and destroy the splash screen, after the first frame has been renderered successfully
-        SP_SUBSCRIBE_TO_EVENT(EventType::RendererOnFirstFrameCompleted, SP_EVENT_HANDLER(OnFirstFrameCompleted));
+        // Show the window and destroy the splash screen, after the first frame has been rendered successfully
+        SP_SUBSCRIBE_TO_EVENT(EventType::RendererOnFirstFrameCompleted, SP_EVENT_HANDLER_STATIC(OnFirstFrameCompleted));
+
+        // Register library
+        string version = to_string(SDL_MAJOR_VERSION) + "." + to_string(SDL_MINOR_VERSION) + "." + to_string(SDL_PATCHLEVEL);
+        Settings::RegisterThirdPartyLib("SDL", version, "https://www.libsdl.org/");
     }
 
-    Window::~Window()
+    void Window::Shutdown()
     {
         // Destroy window
         SDL_DestroyWindow(m_window);
@@ -108,7 +127,7 @@ namespace Spartan
         SDL_Quit();
     }
 
-    void Window::OnTick(double delta_time)
+    void Window::Tick()
     {
         // Process events
         SDL_Event sdl_event;
@@ -135,7 +154,7 @@ namespace Spartan
                     m_height = static_cast<uint32_t>(sdl_event.window.data2);
                     break;
                 case SDL_WINDOWEVENT_SIZE_CHANGED:
-                    m_width = static_cast<uint32_t>(sdl_event.window.data1);
+                    m_width  = static_cast<uint32_t>(sdl_event.window.data1);
                     m_height = static_cast<uint32_t>(sdl_event.window.data2);
                     break;
                 case SDL_WINDOWEVENT_MINIMIZED:
@@ -183,21 +202,12 @@ namespace Spartan
         }
 
         // Handle shortcuts
-        if (Input* input = m_context->GetSystem<Input>())
-        {
-            // Toggle full screen
-            if (input->GetKey(KeyCode::Alt_Right) && input->GetKeyDown(KeyCode::Enter))
-            {
-                ToggleFullScreen();
-            }
-        }
-    }
 
-    void Window::OnInitialise()
-    {
-        // Register library
-        string version = to_string(SDL_MAJOR_VERSION) + "." + to_string(SDL_MINOR_VERSION) + "." + to_string(SDL_PATCHLEVEL);
-        Settings::RegisterThirdPartyLib("SDL", version, "https://www.libsdl.org/");
+        // Toggle full screen
+        if (Input::GetKey(KeyCode::Alt_Right) && Input::GetKeyDown(KeyCode::Enter))
+        {
+            ToggleFullScreen();
+        }
     }
 
     void Window::Show()
@@ -301,6 +311,26 @@ namespace Spartan
         int height = 0;
         SDL_GetWindowSize(m_window, nullptr, &height);
         return static_cast<uint32_t>(height);
+    }
+
+    void* Window::GetHandleSDL()
+    {
+        return m_window;
+    }
+
+    bool Window::WantsToClose()
+    {
+        return m_close;
+    }
+
+    bool Window::IsMinimised()
+    {
+        return m_minimised;
+    }
+
+    bool Window::IsFullScreen()
+    {
+        return m_fullscreen;
     }
 
     void Window::CreateAndShowSplashScreen()

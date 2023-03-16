@@ -31,8 +31,8 @@ namespace Spartan
     {
     public:
         // Display modes
-        static void RegisterDisplayMode(const DisplayMode& display_mode, const bool update_fps_limit_to_highest_hz, Context* context);
-        static void DetectDisplayModes(Context* context);
+        static void RegisterDisplayMode(const DisplayMode& display_mode, const bool update_fps_limit_to_highest_hz);
+        static void DetectDisplayModes();
         static void SetActiveDisplayMode(const DisplayMode& display_mode) { m_display_mode_active = display_mode; }
         static const DisplayMode& GetActiveDisplayMode()                  { return m_display_mode_active; }
         static const std::vector<DisplayMode>& GetDisplayModes()          { return m_display_modes; }

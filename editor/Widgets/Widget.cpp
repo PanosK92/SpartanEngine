@@ -23,16 +23,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Widget.h"
 #include "../Editor.h"
 #include "../ImGui/Source/imgui_internal.h"
-#include "Core/Context.h"
 #include "Profiling/Profiler.h"
 #include "Display/Display.h"
 //=========================================
 
 Widget::Widget(Editor* editor)
 {
-    m_editor  = editor;
-    m_context = editor->GetContext();
-    m_window  = nullptr;
+    m_editor = editor;
+    m_window = nullptr;
 }
 
 void Widget::Tick()

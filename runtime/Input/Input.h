@@ -21,12 +21,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==================
-#include <array>
+//= INCLUDES ===============
+#include "Definitions.h"
 #include "../Math/Vector2.h"
-#include "../Core/ISystem.h"
-#include "../Core/Variant.h"
-//=============================
+//==========================
 
 namespace Spartan
 {
@@ -84,80 +82,63 @@ namespace Spartan
         Touchpad, // PS4/PS5 touchpad button
     };
 
-    class SP_CLASS Input : public ISystem
+    class SP_CLASS Input
     {
     public:
-        Input(Context* context);
-        ~Input() = default;
-
-        //= ISubsystem ========================
-        void OnTick(double delta_time) override;
-        void OnPostTick() override;
-        //=====================================
+        static void Initialize();
+        static void Tick();
+        static void PostTick();
 
         // Polling driven input
-        void PollMouse();
-        void PollKeyboard();
-        void PollController();
+        static void PollMouse();
+        static void PollKeyboard();
+        static void PollController();
 
         // Event driven input
-        void OnEvent(const Variant& event_variant);
-        void OnEventMouse(void* event_mouse);
-        void OnEventController(void* event_controller);
+        static void OnEvent(const Variant& event_variant);
+        static void OnEventMouse(void* event_mouse);
+        static void OnEventController(void* event_controller);
 
         // Keys
-        bool GetKey(const KeyCode key)     { return m_keys[static_cast<uint32_t>(key)]; }                                // Returns true while the button identified by KeyCode is held down.
-        bool GetKeyDown(const KeyCode key) { return GetKey(key) && !m_keys_previous_frame[static_cast<uint32_t>(key)]; } // Returns true during the frame the user pressed down the button identified by KeyCode.
-        bool GetKeyUp(const KeyCode key)   { return !GetKey(key) && m_keys_previous_frame[static_cast<uint32_t>(key)]; } // Returns true the first frame the user releases the button identified by KeyCode.
+        static bool GetKey(const KeyCode key);     // Returns true while the button identified by KeyCode is held down.
+        static bool GetKeyDown(const KeyCode key); // Returns true during the frame the user pressed down the button identified by KeyCode.
+        static bool GetKeyUp(const KeyCode key);   // Returns true the first frame the user releases the button identified by KeyCode.
 
         // Mouse
-        void SetMouseCursorVisible(const bool visible);
-        bool GetMouseCursorVisible()                            const;
-        void SetMouseIsInViewport(const bool is_in_viewport)          { m_mouse_is_in_viewport = is_in_viewport; }
-        bool GetMouseIsInViewport()                             const { return m_mouse_is_in_viewport; }
-        const Math::Vector2& GetMousePosition()                 const { return m_mouse_position; }
-        void SetMousePosition(const Math::Vector2& position);
-        const Math::Vector2& GetMouseDelta()                    const { return m_mouse_delta; }
-        const Math::Vector2& GetMouseWheelDelta()               const { return m_mouse_wheel_delta; }
-        void SetEditorViewportOffset(const Math::Vector2& offset)     { m_editor_viewport_offset = offset; }
-        const Math::Vector2 GetMousePositionRelativeToWindow() const;
-        const Math::Vector2 GetMousePositionRelativeToEditorViewport() const;
+        static void SetMouseCursorVisible(const bool visible);
+        static bool GetMouseCursorVisible();
+        static void SetMouseIsInViewport(const bool is_in_viewport);
+        static bool GetMouseIsInViewport();
+        static const Math::Vector2& GetMousePosition();
+        static void SetMousePosition(const Math::Vector2& position);
+        static const Math::Vector2& GetMouseDelta();
+        static const Math::Vector2& GetMouseWheelDelta();
+        static void SetEditorViewportOffset(const Math::Vector2& offset);
+        static const Math::Vector2 GetMousePositionRelativeToWindow();
+        static const Math::Vector2 GetMousePositionRelativeToEditorViewport();
 
         // Controller
-        bool IsControllerConnected()                        const { return m_is_controller_connected; }
-        const Math::Vector2& GetControllerThumbStickLeft()  const { return m_controller_thumb_left; }
-        const Math::Vector2& GetControllerThumbStickRight() const { return m_controller_thumb_right; }
-        float GetControllerTriggerLeft()                    const { return m_controller_trigger_left; }
-        float GetControllerTriggerRight()                   const { return m_controller_trigger_right; }
+        static bool IsControllerConnected();
+        static const Math::Vector2& GetControllerThumbStickLeft();
+        static const Math::Vector2& GetControllerThumbStickRight();
+        static float GetControllerTriggerLeft();
+        static float GetControllerTriggerRight();
+
         // Vibrate the gamepad.
         // Motor speed range is from 0.0 to 1.0f.
         // The left motor is the low-frequency rumble motor.
         // The right motor is the high-frequency rumble motor. 
         // The two motors are not the same, and they create different vibration effects.
-        bool GamepadVibrate(const float left_motor_speed, const float right_motor_speed) const;
+        static bool GamepadVibrate(const float left_motor_speed, const float right_motor_speed);
 
     private:
+        static std::array<bool, 107>& GetKeys();
+        static uint32_t GetKeyIndexMouse();
+        static uint32_t GetKeyIndexController();
+
         // Keys
-        std::array<bool, 107> m_keys;
-        std::array<bool, 107> m_keys_previous_frame;
-        uint32_t start_index_mouse   = 83;
-        uint32_t start_index_gamepad = 86;
-
-        // Mouse
-        Math::Vector2 m_mouse_position          = Math::Vector2::Zero;
-        Math::Vector2 m_mouse_delta             = Math::Vector2::Zero;
-        Math::Vector2 m_mouse_wheel_delta       = Math::Vector2::Zero;
-        Math::Vector2 m_editor_viewport_offset  = Math::Vector2::Zero;
-        bool m_mouse_is_in_viewport             = true;
-
-        // Controller
-        void* m_controller                      = nullptr;
-        bool m_is_controller_connected          = false;
-        std::string m_controller_name           = "";
-        uint32_t m_controller_index             = 0;
-        Math::Vector2 m_controller_thumb_left   = Math::Vector2::Zero;
-        Math::Vector2 m_controller_thumb_right  = Math::Vector2::Zero;
-        float m_controller_trigger_left         = 0.0f;
-        float m_controller_trigger_right        = 0.0f;
+        static std::array<bool, 107> m_keys;
+        static uint32_t m_start_index_mouse;
+        static uint32_t m_start_index_controller;
     };
 }

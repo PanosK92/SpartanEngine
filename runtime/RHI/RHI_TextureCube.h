@@ -30,10 +30,13 @@ namespace Spartan
     class SP_CLASS RHI_TextureCube : public RHI_Texture
     {
     public:
-        RHI_TextureCube(Context* context) : RHI_Texture(context) { m_resource_type = ResourceType::TextureCube; }
+        RHI_TextureCube()
+        {
+            m_resource_type = ResourceType::TextureCube;
+        }
 
         // Creates a texture from data (intended for sampling)
-        RHI_TextureCube(Context* context, const uint32_t width, const uint32_t height, const RHI_Format format, const uint32_t flags, const std::vector<RHI_Texture_Slice>& data) : RHI_Texture(context)
+        RHI_TextureCube(const uint32_t width, const uint32_t height, const RHI_Format format, const uint32_t flags, const std::vector<RHI_Texture_Slice>& data)
         {
             m_resource_type    = ResourceType::TextureCube;
             m_width            = width;
@@ -52,7 +55,7 @@ namespace Spartan
         }
 
         // Creates a texture without data (intended for use as a render target)
-        RHI_TextureCube(Context* context, const uint32_t width, const uint32_t height, const RHI_Format format, const uint32_t flags, std::string name = "") : RHI_Texture(context)
+        RHI_TextureCube(const uint32_t width, const uint32_t height, const RHI_Format format, const uint32_t flags, std::string name = "")
         {
             m_name          = name;
             m_resource_type = ResourceType::TextureCube;

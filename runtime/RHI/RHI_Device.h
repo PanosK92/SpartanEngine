@@ -35,7 +35,7 @@ namespace Spartan
     class SP_CLASS RHI_Device : public Object
     {
     public:
-        RHI_Device(Context* context, std::shared_ptr<RHI_Context> rhi_context);
+        RHI_Device(std::shared_ptr<RHI_Context> rhi_context);
         ~RHI_Device();
 
         // Physical device
@@ -84,7 +84,6 @@ namespace Spartan
 
         // Misc
         bool IsValidResolution(const uint32_t width, const uint32_t height);
-        Context* GetContext()               const { return m_context; }
         uint32_t GetEnabledGraphicsStages() const { return m_enabled_graphics_shader_stages; }
 
         // Vulkan memory allocator

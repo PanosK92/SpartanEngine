@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI/RHI_Shader.h"
 #include "Rendering/Renderer_Definitions.h"
 #include "../ImGui/ImGuiExtension.h"
+#include "Rendering/Mesh.h"
 //=========================================
 
 //= NAMESPACES =========
@@ -43,7 +44,6 @@ ShaderEditor::ShaderEditor(Editor* editor) : Widget(editor)
     m_visible      = false;
     m_size_initial = ImVec2(1366, 1000);
     m_text_editor  = make_unique<TextEditor>();
-    m_renderer     = m_context->GetSystem<Renderer>();
     m_position     = k_widget_position_screen_center;
     m_alpha        = 1.0f;
 }
@@ -201,7 +201,7 @@ void ShaderEditor::ShowControls()
 
 void ShaderEditor::GetShaderInstances()
 {
-    array<shared_ptr<RHI_Shader>, 47> shaders = m_renderer->GetShaders();
+    array<shared_ptr<RHI_Shader>, 47> shaders = Renderer::GetShaders();
     m_shaders.clear();
 
     for (const shared_ptr<RHI_Shader>& shader : shaders)

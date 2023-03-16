@@ -34,7 +34,6 @@ namespace Spartan
 {
     RHI_RasterizerState::RHI_RasterizerState
     (
-        RHI_Device* rhi_device,
         const RHI_CullMode cull_mode,
         const RHI_PolygonMode polygon_mode,
         const bool depth_clip_enabled,

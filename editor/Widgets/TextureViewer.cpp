@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Rendering/Renderer.h"
 #include "RHI/RHI_Texture.h"
 #include "../ImGui/ImGuiExtension.h"
+#include "Rendering/Mesh.h"
 //==================================
 
 //= NAMESPACES =========
@@ -42,14 +43,12 @@ TextureViewer::TextureViewer(Editor* editor) : Widget(editor)
 
 void TextureViewer::TickVisible()
 {
-    m_renderer = m_context->GetSystem<Renderer>();
-
     // Get render targets
     static vector<string> render_target_options;
     if (render_target_options.empty())
     {
         render_target_options.emplace_back("None");
-        for (const shared_ptr<RHI_Texture>& render_target : m_renderer->GetRenderTargets())
+        for (const shared_ptr<RHI_Texture>& render_target : Renderer::GetRenderTargets())
         {
             if (render_target)
             {
@@ -64,7 +63,7 @@ void TextureViewer::TickVisible()
     ImGui_SP::combo_box("##render_target", render_target_options, &m_texture_index);
 
     // Display the selected texture
-    if (shared_ptr<RHI_Texture> texture = m_renderer->GetRenderTarget(static_cast<RendererTexture>(m_texture_index)))
+    if (shared_ptr<RHI_Texture> texture = Renderer::GetRenderTarget(static_cast<RendererTexture>(m_texture_index)))
     {
         texture->SetFlag(RHI_Texture_Flags::RHI_Texture_Visualise);
 

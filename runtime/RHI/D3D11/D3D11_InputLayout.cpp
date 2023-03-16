@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Implementation.h"
 #include "../RHI_InputLayout.h"
 #include "../RHI_Device.h"
+#include "../Rendering/Renderer.h"
 //================================
 
 //= NAMESPACES =====
@@ -59,7 +60,7 @@ namespace Spartan
 
         // Create input layout
         auto d3d_blob = static_cast<ID3D10Blob*>(vertex_shader_blob);
-        const auto result = m_rhi_device->GetRhiContext()->device->CreateInputLayout
+        const auto result = Renderer::GetRhiDevice()->GetRhiContext()->device->CreateInputLayout
         (
             vertex_attributes.data(),
             static_cast<UINT>(vertex_attributes.size()),

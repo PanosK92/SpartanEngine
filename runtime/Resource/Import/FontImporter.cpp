@@ -375,10 +375,8 @@ namespace Spartan
         }
     }
 
-    FontImporter::FontImporter(Context* context)
+    FontImporter::FontImporter()
     {
-        m_context = context;
-
         // Initialize library
         if (!ft_helper::handle_error(FT_Init_FreeType(&m_library)))
             return;
@@ -508,11 +506,11 @@ namespace Spartan
 
         // Create a texture with of font atlas and a texture of the font outline atlas
         {
-            font->SetAtlas(move(static_pointer_cast<RHI_Texture>(make_shared<RHI_Texture2D>(m_context, atlas_width, atlas_height, RHI_Format_R8_Unorm, RHI_Texture_Srv, texture_data_atlas, "font_atlas"))));
+            font->SetAtlas(move(static_pointer_cast<RHI_Texture>(make_shared<RHI_Texture2D>(atlas_width, atlas_height, RHI_Format_R8_Unorm, RHI_Texture_Srv, texture_data_atlas, "font_atlas"))));
 
             if (outline_size != 0)
             {
-                font->SetAtlasOutline(move(static_pointer_cast<RHI_Texture>(make_shared<RHI_Texture2D>(m_context, atlas_width, atlas_height, RHI_Format_R8_Unorm, RHI_Texture_Srv, texture_data_atlas_outline, "font_atlas_outline"))));
+                font->SetAtlasOutline(move(static_pointer_cast<RHI_Texture>(make_shared<RHI_Texture2D>(atlas_width, atlas_height, RHI_Format_R8_Unorm, RHI_Texture_Srv, texture_data_atlas_outline, "font_atlas_outline"))));
             }
         }
 

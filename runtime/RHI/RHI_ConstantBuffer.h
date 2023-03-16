@@ -32,7 +32,7 @@ namespace Spartan
     {
     public:
         RHI_ConstantBuffer() = default;
-        RHI_ConstantBuffer(RHI_Device* rhi_device, const std::string& name);
+        RHI_ConstantBuffer(const std::string& name);
         ~RHI_ConstantBuffer() { _destroy(); }
 
         template<typename T>
@@ -63,6 +63,5 @@ namespace Spartan
         bool m_reset_offset      = true;
         void* m_mapped_data      = nullptr;
         void* m_rhi_resource     = nullptr;
-        RHI_Device* m_rhi_device = nullptr;
     };
 }

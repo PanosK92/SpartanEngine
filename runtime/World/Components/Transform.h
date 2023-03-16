@@ -37,12 +37,12 @@ namespace Spartan
     class SP_CLASS Transform : public IComponent
     {
     public:
-        Transform(Context* context, Entity* entity, uint64_t id = 0);
+        Transform(Entity* entity, uint64_t id = 0);
         ~Transform() = default;
 
         //= ICOMPONENT ===============================
         void OnInitialize() override;
-        void OnTick(double delta_time) override;
+        void OnTick() override;
         void Serialize(FileStream* stream) override;
         void Deserialize(FileStream* stream) override;
         //============================================

@@ -21,13 +21,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =====================
+//= INCLUDES ==================
 #include <memory>
-#include "../Core/Context.h"
 #include "../Core/FileSystem.h"
 #include "../Core/Object.h"
 #include "../Logging/Log.h"
-//================================
+//=============================
 
 namespace Spartan
 {
@@ -50,7 +49,7 @@ namespace Spartan
     class SP_CLASS IResource : public Object
     {
     public:
-        IResource(Context* context, ResourceType type);
+        IResource(ResourceType type);
         virtual ~IResource() = default;
 
         void SetResourceFilePath(const std::string& path)

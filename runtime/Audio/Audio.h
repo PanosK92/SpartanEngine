@@ -32,7 +32,7 @@ namespace Spartan
     class SP_CLASS Audio
     {
     public:
-        static void Initialize(Context* context);
+        static void Initialize();
         static void Tick();
         static void Shutdown();
         static void SetListenerTransform(Transform* transform);

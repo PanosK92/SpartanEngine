@@ -71,9 +71,7 @@ namespace _editor
 {
     MenuBar* widget_menu_bar          = nullptr;
     Widget* widget_world              = nullptr;
-    Spartan::Renderer* renderer       = nullptr;
     Spartan::RHI_SwapChain* swapchain = nullptr;
-    Spartan::Window* window           = nullptr;
     shared_ptr<Spartan::RHI_Device> rhi_device;
 }
 
@@ -162,15 +160,11 @@ static void ImGui_ApplyStyle()
 
 Editor::Editor()
 {
-    // Create engine
-    m_engine = make_unique<Spartan::Engine>();
+    Spartan::Engine::Initialize();
 
     // Acquire useful engine subsystems
-    m_context           = m_engine->GetContext();
-    _editor::renderer   = m_context->GetSystem<Spartan::Renderer>();
-    _editor::window     = m_context->GetSystem<Spartan::Window>();
-    _editor::rhi_device = _editor::renderer->GetRhiDevice();
-    _editor::swapchain  = _editor::renderer->GetSwapChain();
+    _editor::rhi_device = Spartan::Renderer::GetRhiDevice();
+    _editor::swapchain  = Spartan::Renderer::GetSwapChain();
     
     // Initialise Editor/ImGui
     {
@@ -196,16 +190,16 @@ Editor::Editor()
         io.FontGlobalScale = k_font_scale;
 
         // Initialise ImGui backends
-        ImGui_ImplSDL2_Init(m_context);
-        ImGui::RHI::Initialize(m_context);
+        ImGui_ImplSDL2_Init();
+        ImGui::RHI::Initialize();
 
         // Apply colors and style
         ImGui_ApplyColors();
         ImGui_ApplyStyle();
 
         // Initialization of some helper static classes
-        IconProvider::Initialize(m_context);
-        EditorHelper::Initialize(this, m_context);
+        IconProvider::Initialize();
+        EditorHelper::Initialize(this);
 
         // Create all ImGui widgets
         m_widgets.emplace_back(make_shared<Console>(this));
@@ -234,18 +228,20 @@ Editor::~Editor()
         ImGui_ImplSDL2_Shutdown();
         ImGui::DestroyContext();
     }
+
+    Spartan::Engine::Shutdown();
 }
 
 void Editor::Tick()
 {
-    while (!_editor::window->WantsToClose())
+    while (!Spartan::Window::WantsToClose())
     {
         // Engine - Tick
-        m_engine->Tick();
+        Spartan::Engine::Tick();
 
-        if (_editor::window->IsFullScreen())
+        if (Spartan::Window::IsFullScreen())
         {
-            _editor::renderer->Pass_CopyToBackbuffer();
+            Spartan::Renderer::Pass_CopyToBackbuffer();
         }
         else
         {
@@ -274,10 +270,10 @@ void Editor::Tick()
         }
 
         // Present
-        _editor::renderer->Present();
+        Spartan::Renderer::Present();
 
         // ImGui - child windows
-        if (!_editor::window->IsFullScreen() && ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+        if (!Spartan::Window::IsFullScreen() && ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
         {
             ImGui::UpdatePlatformWindows();
             ImGui::RenderPlatformWindowsDefault();

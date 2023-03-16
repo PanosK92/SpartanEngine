@@ -22,7 +22,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ================================
 #include "pch.h"
 #include "Mesh.h"
-#include "Context.h"
 #include "Renderer.h"
 #include "../RHI/RHI_Vertex.h"
 #include "../RHI/RHI_Texture.h"
@@ -47,8 +46,7 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-
-    Mesh::Mesh(Context* context) : IResource(context, ResourceType::Mesh)
+    Mesh::Mesh() : IResource(ResourceType::Mesh)
     {
         m_flags = GetDefaultFlags();
     }
@@ -260,14 +258,12 @@ namespace Spartan
 
     void Mesh::CreateGpuBuffers()
     {
-        RHI_Device* rhi_device = m_context->GetSystem<Renderer>()->GetRhiDevice().get();
-
         SP_ASSERT_MSG(!m_indices.empty(), "There are no indices");
-        m_index_buffer = make_shared<RHI_IndexBuffer>(rhi_device, false, "mesh");
+        m_index_buffer = make_shared<RHI_IndexBuffer>(false, "mesh");
         m_index_buffer->Create(m_indices);
 
         SP_ASSERT_MSG(!m_vertices.empty(), "There are no vertices");
-        m_vertex_buffer = make_shared<RHI_VertexBuffer>(rhi_device, false, "mesh");
+        m_vertex_buffer = make_shared<RHI_VertexBuffer>(false, "mesh");
         m_vertex_buffer->Create(m_vertices);
     }
 

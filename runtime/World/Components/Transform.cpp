@@ -34,7 +34,7 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    Transform::Transform(Context* context, Entity* entity, uint64_t id /*= 0*/) : IComponent(context, entity, id, this)
+    Transform::Transform(Entity* entity, uint64_t id /*= 0*/) : IComponent(entity, id, this)
     {
         m_position_local  = Vector3::Zero;
         m_rotation_local  = Quaternion(0, 0, 0, 1);
@@ -57,7 +57,7 @@ namespace Spartan
         m_is_dirty = true;
     }
 
-    void Transform::OnTick(double delta_time)
+    void Transform::OnTick()
     {
         if (!m_is_dirty)
             return;
@@ -93,7 +93,7 @@ namespace Spartan
         stream->Read(&parent_entity_id);
         if (parent_entity_id != 0)
         {
-            if (const shared_ptr<Entity>& parent = m_context->GetSystem<World>()->GetEntityById(parent_entity_id))
+            if (const shared_ptr<Entity>& parent = World::GetEntityById(parent_entity_id))
             {
                 parent->GetTransform()->AddChild(this);
             }
@@ -400,7 +400,7 @@ namespace Spartan
         m_children.clear();
         m_children.shrink_to_fit();
 
-        auto entities = GetContext()->GetSystem<World>()->GetAllEntities();
+        auto entities = World::GetAllEntities();
         for (const auto& entity : entities)
         {
             if (!entity)

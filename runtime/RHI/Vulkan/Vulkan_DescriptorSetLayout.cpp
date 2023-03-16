@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Implementation.h"
 #include "../RHI_DescriptorSet.h"
 #include "../RHI_DescriptorSetLayout.h"
+#include "../Rendering/Renderer.h"
 //=====================================
 
 //= NAMESPACES =====
@@ -37,9 +38,9 @@ namespace Spartan
         if (m_resource)
         {
             // Wait in case it's still in use by the GPU
-            m_rhi_device->QueueWaitAll();
+            Renderer::GetRhiDevice()->QueueWaitAll();
 
-            vkDestroyDescriptorSetLayout(m_rhi_device->GetRhiContext()->device, static_cast<VkDescriptorSetLayout>(m_resource), nullptr);
+            vkDestroyDescriptorSetLayout(Renderer::GetRhiDevice()->GetRhiContext()->device, static_cast<VkDescriptorSetLayout>(m_resource), nullptr);
             m_resource = nullptr;
         }
     }
@@ -89,7 +90,7 @@ namespace Spartan
 
         // Descriptor set layout
         SP_ASSERT_MSG(
-            vkCreateDescriptorSetLayout(m_rhi_device->GetRhiContext()->device, &create_info, nullptr, reinterpret_cast<VkDescriptorSetLayout*>(&m_resource)) == VK_SUCCESS,
+            vkCreateDescriptorSetLayout(Renderer::GetRhiDevice()->GetRhiContext()->device, &create_info, nullptr, reinterpret_cast<VkDescriptorSetLayout*>(&m_resource)) == VK_SUCCESS,
             "Failed to allocate descriptor set layout"
         );
 

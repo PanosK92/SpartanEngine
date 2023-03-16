@@ -42,7 +42,7 @@ namespace Spartan
     class SP_CLASS ModelImporter
     {
     public:
-        ModelImporter(Context* context);
+        ModelImporter();
         ~ModelImporter() = default;
 
         bool Load(Mesh* mesh, const std::string& file_path);
@@ -63,9 +63,5 @@ namespace Spartan
         bool m_is_gltf         = false;
         Mesh* m_mesh           = nullptr;
         const aiScene* m_scene = nullptr;
-
-        // Dependencies
-        Context* m_context = nullptr;
-        World* m_world     = nullptr;
     };
 }

@@ -194,7 +194,7 @@ private:
 class FileDialog
 {
 public:
-    FileDialog(Spartan::Context* context, bool standalone_window, FileDialog_Type type, FileDialog_Operation operation, FileDialog_Filter filter);
+    FileDialog(bool standalone_window, FileDialog_Type type, FileDialog_Operation operation, FileDialog_Filter filter);
 
     // Type & Filter
     auto GetType()   const { return m_type; }
@@ -253,7 +253,6 @@ private:
     std::vector<FileDialogItem> m_items;
     Spartan::Math::Vector2 m_item_size;
     ImGuiTextFilter m_search_filter;
-    Spartan::Context* m_context;
 
     // Callbacks
     std::function<void(const std::string&)> m_callback_on_item_clicked;

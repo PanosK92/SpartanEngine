@@ -50,8 +50,7 @@ namespace Spartan
         m_max_tree_depth = Math::Helper::Max(m_max_tree_depth, m_tree_depth);
         if (cmd_list)
         {
-            m_cmd_list   = cmd_list;
-            m_rhi_device = cmd_list->GetContext()->GetSystem<Renderer>()->GetRhiDevice().get();
+            m_cmd_list = cmd_list;
         }
 
         if (type == TimeBlockType::Cpu)
@@ -63,8 +62,8 @@ namespace Spartan
             // Create required queries
             if (!m_query_start)
             {
-                m_rhi_device->QueryCreate(&m_query_start, RHI_Query_Type::Timestamp);
-                m_rhi_device->QueryCreate(&m_query_end, RHI_Query_Type::Timestamp);
+                Renderer::GetRhiDevice()->QueryCreate(&m_query_start, RHI_Query_Type::Timestamp);
+                Renderer::GetRhiDevice()->QueryCreate(&m_query_end, RHI_Query_Type::Timestamp);
             }
 
             cmd_list->BeginTimestamp(m_query_start);
@@ -113,8 +112,8 @@ namespace Spartan
 
         if (m_query_start != nullptr && m_query_end != nullptr)
         {
-            m_rhi_device->QueryRelease(m_query_start);
-            m_rhi_device->QueryRelease(m_query_end);
+            Renderer::GetRhiDevice()->QueryRelease(m_query_start);
+            Renderer::GetRhiDevice()->QueryRelease(m_query_end);
         }
     }
 

@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "Renderer.h"
 #include "Grid.h"
+#include "Mesh.h"
 #include "Font/Font.h"
 #include "../Profiling/Profiler.h"
 #include "../World/Entity.h"
@@ -50,14 +51,99 @@ using namespace Spartan::Math;
 //============================
 
 // Macro to work around the verboseness of some C++ concepts.
-#define render_target(rt_enum)    m_render_targets[static_cast<uint8_t>(rt_enum)]
-#define shader(shader_enum)       m_shaders[static_cast<uint8_t>(shader_enum)]
-#define thread_group_count_x(tex) static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex->GetWidth()) / m_thread_group_count))
+#define render_target(enum_rt)    GetRenderTargets()[static_cast<uint8_t>(enum_rt)]
+#define shader(enum_shader)       GetShaders()[static_cast<uint8_t>(enum_shader)]
+#define thread_group_count_x(tex) static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex->GetWidth())  / m_thread_group_count))
 #define thread_group_count_y(tex) static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex->GetHeight()) / m_thread_group_count))
 
 namespace Spartan
 {
-    void Renderer::SetGlobalShaderResources(RHI_CommandList* cmd_list) const
+    // Depth-stencil states
+    extern shared_ptr<RHI_DepthStencilState> m_depth_stencil_off_off;
+    extern shared_ptr<RHI_DepthStencilState> m_depth_stencil_off_r;
+    extern shared_ptr<RHI_DepthStencilState> m_depth_stencil_rw_off;
+    extern shared_ptr<RHI_DepthStencilState> m_depth_stencil_r_off;
+    extern shared_ptr<RHI_DepthStencilState> m_depth_stencil_rw_w;
+
+    // Blend states 
+    extern shared_ptr<RHI_BlendState> m_blend_disabled;
+    extern shared_ptr<RHI_BlendState> m_blend_alpha;
+    extern shared_ptr<RHI_BlendState> m_blend_additive;
+
+    // Rasterizer states
+    extern shared_ptr<RHI_RasterizerState> m_rasterizer_cull_back_solid;
+    extern shared_ptr<RHI_RasterizerState> m_rasterizer_cull_back_wireframe;
+    extern shared_ptr<RHI_RasterizerState> m_rasterizer_cull_none_solid;
+    extern shared_ptr<RHI_RasterizerState> m_rasterizer_light_point_spot;
+    extern shared_ptr<RHI_RasterizerState> m_rasterizer_light_directional;
+
+    // Samplers
+    extern shared_ptr<RHI_Sampler> m_sampler_compare_depth;
+    extern shared_ptr<RHI_Sampler> m_sampler_point_clamp;
+    extern shared_ptr<RHI_Sampler> m_sampler_point_wrap;
+    extern shared_ptr<RHI_Sampler> m_sampler_bilinear_clamp;
+    extern shared_ptr<RHI_Sampler> m_sampler_bilinear_wrap;
+    extern shared_ptr<RHI_Sampler> m_sampler_trilinear_clamp;
+    extern shared_ptr<RHI_Sampler> m_sampler_anisotropic_wrap;
+
+    //= BUFFERS =============================================
+    extern shared_ptr<RHI_StructuredBuffer> m_sb_spd_counter;
+
+    extern Cb_Frame m_cb_frame_cpu;
+    extern shared_ptr<RHI_ConstantBuffer> m_cb_frame_gpu;
+
+    extern Cb_Uber m_cb_uber_cpu;
+    extern shared_ptr<RHI_ConstantBuffer> m_cb_uber_gpu;
+
+    extern Cb_Light m_cb_light_cpu;
+    extern shared_ptr<RHI_ConstantBuffer> m_cb_light_gpu;
+
+    extern Cb_Material m_cb_material_cpu;
+    extern shared_ptr<RHI_ConstantBuffer> m_cb_material_gpu;
+    //=======================================================
+
+    // Standard textures
+    extern shared_ptr<RHI_Texture> m_tex_default_noise_normal;
+    extern shared_ptr<RHI_Texture> m_tex_default_noise_blue;
+    extern shared_ptr<RHI_Texture> m_tex_default_white;
+    extern shared_ptr<RHI_Texture> m_tex_default_black;
+    extern shared_ptr<RHI_Texture> m_tex_default_transparent;
+    extern shared_ptr<RHI_Texture> m_tex_gizmo_light_directional;
+    extern shared_ptr<RHI_Texture> m_tex_gizmo_light_point;
+    extern shared_ptr<RHI_Texture> m_tex_gizmo_light_spot;
+
+    // Standard vertex/index buffers
+    extern shared_ptr<RHI_VertexBuffer> m_quad_vertex_buffer;
+    extern shared_ptr<RHI_IndexBuffer> m_quad_index_buffer;
+    extern shared_ptr<RHI_VertexBuffer> m_sphere_vertex_buffer;
+    extern shared_ptr<RHI_IndexBuffer> m_sphere_index_buffer;
+    extern shared_ptr<RHI_VertexBuffer> m_vertex_buffer_lines;
+
+    // Lines
+    extern vector<RHI_Vertex_PosCol> m_line_vertices;
+    extern vector<float> m_lines_duration;
+    extern uint32_t m_lines_index_depth_off;
+    extern uint32_t m_lines_index_depth_on;
+
+    // Resolution & Viewport
+    extern Math::Vector2 m_resolution_render;
+    extern Math::Vector2 m_resolution_output;
+    extern RHI_Viewport m_viewport;
+
+    // Misc
+    extern unordered_map<RendererEntityType, vector<Entity*>> m_entities;
+    extern unique_ptr<Font> m_font;
+    extern unique_ptr<Grid> m_gizmo_grid;
+    extern RHI_CommandList* m_cmd_current;
+    extern bool m_brdf_specular_lut_rendered;
+    extern array<Material*, m_max_material_instances> m_material_instances;
+    extern shared_ptr<RHI_SwapChain> m_swap_chain;
+
+    // Misc
+    const float m_thread_group_count = 8.0f;
+    bool m_ffx_fsr2_reset            = false;
+
+    void Renderer::SetGlobalShaderResources(RHI_CommandList* cmd_list)
     {
         // Constant buffers
         cmd_list->SetConstantBuffer(RendererBindingsCb::frame, RHI_Shader_Vertex | RHI_Shader_Pixel | RHI_Shader_Compute, m_cb_frame_gpu);
@@ -95,12 +181,12 @@ namespace Spartan
         // Update frame constant buffer
         Update_Cb_Frame(cmd_list);
 
-        if (m_camera)
+        if (shared_ptr<Camera> camera = GetCamera())
         { 
             // If there are no entities, clear to the camera's color
-            if (m_entities[RendererEntityType::GeometryOpaque].empty() && m_entities[RendererEntityType::GeometryTransparent].empty() && m_entities[RendererEntityType::Light].empty())
+            if (GetEntities()[RendererEntityType::GeometryOpaque].empty() && GetEntities()[RendererEntityType::GeometryTransparent].empty() && GetEntities()[RendererEntityType::Light].empty())
             {
-                m_cmd_current->ClearRenderTarget(rt_output, 0, 0, false, m_camera->GetClearColor());
+                GetCmdList()->ClearRenderTarget(rt_output, 0, 0, false, camera->GetClearColor());
             }
             else // Render frame
             {
@@ -112,7 +198,7 @@ namespace Spartan
                 }
 
                 // Determine if a transparent pass is required
-                const bool do_transparent_pass = !m_entities[RendererEntityType::GeometryTransparent].empty();
+                const bool do_transparent_pass = !GetEntities()[RendererEntityType::GeometryTransparent].empty();
 
                 // Shadow maps
                 {
@@ -176,7 +262,7 @@ namespace Spartan
         else
         {
             // If there is no camera, clear to black and and render the performance metrics
-            m_cmd_current->ClearRenderTarget(rt_output, 0, 0, false, Color::standard_black);
+            GetCmdList()->ClearRenderTarget(rt_output, 0, 0, false, Color::standard_black);
             Pass_PeformanceMetrics(cmd_list, rt_output);
         }
 
@@ -198,14 +284,14 @@ namespace Spartan
             return;
 
         // Get entities
-        const vector<Entity*>& entities = m_entities[is_transparent_pass ? RendererEntityType::GeometryTransparent : RendererEntityType::GeometryOpaque];
+        const vector<Entity*>& entities = GetEntities()[is_transparent_pass ? RendererEntityType::GeometryTransparent : RendererEntityType::GeometryOpaque];
         if (entities.empty())
             return;
 
         cmd_list->BeginTimeblock(is_transparent_pass ? "shadow_maps_color" : "shadow_maps_depth");
 
         // Go through all of the lights
-        const auto& entities_light = m_entities[RendererEntityType::Light];
+        const auto& entities_light = GetEntities()[RendererEntityType::Light];
         for (uint32_t light_index = 0; light_index < entities_light.size(); light_index++)
         {
             const Light* light = entities_light[light_index]->GetComponent<Light>();
@@ -215,7 +301,7 @@ namespace Spartan
                 continue;
 
             // Skip lights which don't cast shadows or have an intensity of zero
-            if (!light->GetShadowsEnabled() || light->GetIntensityForShader(m_camera.get()) == 0.0f)
+            if (!light->GetShadowsEnabled() || light->GetIntensityForShader(GetCamera().get()) == 0.0f)
                 continue;
 
             // Skip lights that don't cast transparent shadows (if this is a transparent pass)
@@ -425,7 +511,7 @@ namespace Spartan
                     {
                         if (Light* light = lights[index_light]->GetComponent<Light>())
                         {
-                            if (light->GetIntensityForShader(m_camera.get()) != 0)
+                            if (light->GetIntensityForShader(GetCamera().get()) != 0)
                             {
                                 // Get renderable
                                 Renderable* renderable = entity->GetRenderable();
@@ -547,7 +633,7 @@ namespace Spartan
                     continue;
 
                 // Skip objects outside of the view frustum
-                if (!m_camera->IsInViewFrustum(renderable))
+                if (!GetCamera()->IsInViewFrustum(renderable))
                     continue;
             
                 // Bind geometry
@@ -653,7 +739,7 @@ namespace Spartan
                     continue;
 
                 // Skip objects outside of the view frustum
-                if (!m_camera->IsInViewFrustum(renderable))
+                if (!GetCamera()->IsInViewFrustum(renderable))
                     continue;
 
                 // Set geometry (will only happen if not already set)
@@ -786,9 +872,9 @@ namespace Spartan
             {
                 // Set uber buffer
                 m_cb_uber_cpu.resolution_rt = m_resolution_render;
-                if (m_camera)
+                if (GetCamera())
                 {
-                    m_cb_uber_cpu.transform = m_gizmo_grid->ComputeWorldMatrix(m_camera->GetTransform()) * m_cb_frame_cpu.view_projection_unjittered;
+                    m_cb_uber_cpu.transform = m_gizmo_grid->ComputeWorldMatrix(GetCamera()->GetTransform()) * m_cb_frame_cpu.view_projection_unjittered;
                 }
                 Update_Cb_Uber(cmd_list);
 
@@ -1907,7 +1993,7 @@ namespace Spartan
             render_target(RendererTexture::fsr2_mask_reactive).get(),
             render_target(RendererTexture::fsr2_mask_transparency).get(),
             tex_out,
-            m_camera.get(),
+            GetCamera().get(),
             m_cb_frame_cpu.delta_time,
             GetOption<float>(RendererOption::Sharpness),
             m_ffx_fsr2_reset
@@ -1931,7 +2017,7 @@ namespace Spartan
 
         // Acquire entities
         auto& lights = m_entities[RendererEntityType::Light];
-        if (lights.empty() || !m_camera)
+        if (lights.empty() || !GetCamera())
             return;
 
         cmd_list->BeginTimeblock("icons");
@@ -1959,9 +2045,9 @@ namespace Spartan
             if (Light* light = entity->GetComponent<Light>())
             {
                 const Vector3 pos_world        = entity->GetTransform()->GetPosition();
-                const Vector3 pos_world_camera = m_camera->GetTransform()->GetPosition();
+                const Vector3 pos_world_camera = GetCamera()->GetTransform()->GetPosition();
                 const Vector3 camera_to_light  = (pos_world - pos_world_camera).Normalized();
-                const float v_dot_l            = Vector3::Dot(m_camera->GetTransform()->GetForward(), camera_to_light);
+                const float v_dot_l            = Vector3::Dot(GetCamera()->GetTransform()->GetForward(), camera_to_light);
 
                 // Only draw if it's inside our view
                 if (v_dot_l > 0.5f)
@@ -2091,7 +2177,7 @@ namespace Spartan
         {
             RHI_Texture* tex_outline           = render_target(RendererTexture::outline).get();
             static const Color clear_color     = Color(0.0f, 0.0f, 0.0f, 0.0f);
-            shared_ptr<Entity> entity_selected = m_context->GetSystem<Renderer>()->GetCamera()->GetSelectedEntity();
+            shared_ptr<Entity> entity_selected = Renderer::GetCamera()->GetSelectedEntity();
 
             if (entity_selected)
             {

@@ -57,7 +57,7 @@ Toolbar::Toolbar(Editor* editor) : Widget(editor)
     m_widgets[IconType::Component_Options]      = m_editor->GetWidget<RenderOptions>();
     m_widgets[IconType::Directory_File_Texture] = m_editor->GetWidget<TextureViewer>();
 
-    m_context->m_engine->RemoveFlag(Spartan::EngineMode::Game);
+    Spartan::Engine::RemoveFlag(Spartan::EngineMode::Game);
 }
 
 void Toolbar::TickAlways()
@@ -86,8 +86,8 @@ void Toolbar::TickAlways()
     // Play button
     widget_button(
         IconType::Button_Play,
-        [this]() { return m_context->m_engine->IsFlagSet(Spartan::EngineMode::Game); },
-        [this]() { m_context->m_engine->ToggleFlag(Spartan::EngineMode::Game); }
+        []() { return Spartan::Engine::IsFlagSet(Spartan::EngineMode::Game); },
+        []() { return Spartan::Engine::ToggleFlag(Spartan::EngineMode::Game); }
     );
 
     // RenderDoc button
@@ -95,7 +95,7 @@ void Toolbar::TickAlways()
     ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyle().Colors[ImGuiCol_Button]);
     if (ImGui_SP::image_button(0, nullptr, IconType::Button_RenderDoc, m_button_size, false))
     {
-        if (m_context->GetSystem<Spartan::Renderer>()->IsRenderDocEnabled())
+        if (Spartan::Renderer::IsRenderDocEnabled())
         {
             Spartan::RHI_RenderDoc::FrameCapture();
         }

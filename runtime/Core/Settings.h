@@ -47,7 +47,7 @@ namespace Spartan
     class SP_CLASS Settings
     {
     public:
-        static void PostInitialize(Context* context);
+        static void PostInitialize();
         static void Shutdown();
 
         // Register a third-party library

@@ -38,7 +38,7 @@ using namespace std;
 
 namespace Spartan
 {
-    ReflectionProbe ::ReflectionProbe(Context* context, Entity* entity, uint64_t id /*= 0*/) : IComponent(context, entity, id)
+    ReflectionProbe ::ReflectionProbe(Entity* entity, uint64_t id /*= 0*/) : IComponent(entity, id)
     {
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_resolution, uint32_t);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_extents, Vector3);
@@ -50,7 +50,7 @@ namespace Spartan
         CreateTextures();
     }
 
-    void ReflectionProbe::OnTick(double delta_time)
+    void ReflectionProbe::OnTick()
     {
         // Determine if it's time to update
         if (m_frames_since_last_update >= m_update_interval_frames)
@@ -141,7 +141,7 @@ namespace Spartan
 
     void ReflectionProbe::SetResolution(const uint32_t resolution)
     {
-        uint32_t new_value = Math::Helper::Clamp<uint32_t>(resolution, 16, m_context->GetSystem<Renderer>()->GetRhiDevice()->GetMaxTextureCubeDimension());
+        uint32_t new_value = Math::Helper::Clamp<uint32_t>(resolution, 16, Renderer::GetRhiDevice()->GetMaxTextureCubeDimension());
 
         if (m_resolution == new_value)
             return;
@@ -194,8 +194,8 @@ namespace Spartan
 
     void ReflectionProbe::CreateTextures()
     {
-        m_texture_color = make_unique<RHI_TextureCube>(m_context, m_resolution, m_resolution, RHI_Format_R8G8B8A8_Unorm, RHI_Texture_RenderTarget | RHI_Texture_Srv, "reflection_probe_color");
-        m_texture_depth = make_unique<RHI_Texture2D>(m_context, m_resolution, m_resolution, 1, RHI_Format_D32_Float, RHI_Texture_RenderTarget | RHI_Texture_Srv, "reflection_probe_depth");
+        m_texture_color = make_unique<RHI_TextureCube>(m_resolution, m_resolution, RHI_Format_R8G8B8A8_Unorm, RHI_Texture_RenderTarget | RHI_Texture_Srv, "reflection_probe_color");
+        m_texture_depth = make_unique<RHI_Texture2D>(m_resolution, m_resolution, 1, RHI_Format_D32_Float, RHI_Texture_RenderTarget | RHI_Texture_Srv, "reflection_probe_depth");
     }
 
     void ReflectionProbe::ComputeProjectionMatrix()

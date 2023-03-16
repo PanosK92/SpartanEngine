@@ -56,7 +56,7 @@ namespace Spartan
     class SP_CLASS Font : public IResource
     {
     public:
-        Font(Context* context, const std::string& file_path, int font_size, const Math::Vector4& color);
+        Font(const std::string& file_path, int font_size, const Math::Vector4& color);
         ~Font() = default;
 
         //= RESOURCE INTERFACE =================================
@@ -113,6 +113,5 @@ namespace Spartan
         std::shared_ptr<RHI_IndexBuffer> m_index_buffer;
         std::vector<RHI_Vertex_PosTex> m_vertices;
         std::vector<uint32_t> m_indices;
-        RHI_Device* m_rhi_device = nullptr;
     };
 }

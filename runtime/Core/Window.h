@@ -1,65 +1,63 @@
+/*
+Copyright(c) 2016-2023 Panos Karabelas
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and / or sell
+copies of the Software, and to permit persons to whom the Software is furnished
+to do so, subject to the following conditions :
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.IN NO EVENT SHALL THE AUTHORS OR
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+*/
+
 #pragma once
 
-//= INCLUDES =======
-#include "Engine.h"
-#include "ISystem.h"
-//==================
-
-//= FORWARD DECLARATIONS =========
-struct SDL_Window;
-struct SDL_Renderer;
-struct SDL_Texture;
-typedef union SDL_Event SDL_Event;
-//================================
+//= INCLUDES ===========
+#include "Definitions.h"
+//======================
 
 namespace Spartan
 {
-    class SP_CLASS Window : public ISystem
+    class SP_CLASS Window
     {
     public:
-        Window(Context* context);
-        ~Window();
+        static void Initialize();
+        static void Shutdown();
+        static void Tick();
 
-        //= ISubsystem =========================
-        void OnTick(double delta_time) override;
-        void OnInitialise() override;
-        //======================================
+        // Behaviour
+        static void Show();
+        static void Hide();
+        static void Focus();
+        static void FullScreen();
+        static void Windowed();
+        static void ToggleFullScreen();
+        static void FullScreenBorderless();
+        static void Minimise();
+        static void Maximise();
 
-        void Show();
-        void Hide();
-        void Focus();
-        void FullScreen();
-        void Windowed();
-        void ToggleFullScreen();
-        void FullScreenBorderless();
-        void Minimise();
-        void Maximise();
-        void SetSize(const uint32_t width, const uint32_t height);
-        uint32_t GetWidth();
-        uint32_t GetHeight();
-        void* GetHandleSDL() const { return m_window; }
-        bool WantsToClose()  const { return m_close; }
-        bool IsMinimised()   const { return m_minimised; }
-        bool IsFullScreen()  const { return m_fullscreen; }
+        // Size
+        static void SetSize(const uint32_t width, const uint32_t height);
+        static uint32_t GetWidth();
+        static uint32_t GetHeight();
+
+        // Misc
+        static void* GetHandleSDL();
+        static bool WantsToClose();
+        static bool IsMinimised();
+        static bool IsFullScreen();
 
     private:
-        void CreateAndShowSplashScreen();
-        void OnFirstFrameCompleted();
-
-        std::string m_title;
-        Math::Vector2 m_position = Math::Vector2::Zero;
-        uint32_t m_width         = 640;
-        uint32_t m_height        = 480;
-        bool m_shown             = false;
-        bool m_minimised         = false;
-        bool m_maximised         = false;
-        bool m_close             = false;
-        bool m_fullscreen        = false;
-        SDL_Window* m_window     = nullptr;
-
-        // splash-screen
-        SDL_Window* m_splash_sceen_window      = nullptr;
-        SDL_Renderer* m_splash_screen_renderer = nullptr;
-        SDL_Texture* m_splash_screen_texture   = nullptr;
+        static void CreateAndShowSplashScreen();
+        static void OnFirstFrameCompleted();
     };
 }

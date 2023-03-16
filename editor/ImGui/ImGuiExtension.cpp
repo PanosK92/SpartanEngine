@@ -24,13 +24,4 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Editor.h"
 //=========================
 
-//= NAMESPACES =========
-using namespace std;
-using namespace Spartan;
-//======================
-
-Editor*   EditorHelper::editor   = nullptr;
-Context*  EditorHelper::context  = nullptr;
-World*    EditorHelper::world    = nullptr;
-Renderer* EditorHelper::renderer = nullptr;
-Input*    EditorHelper::input    = nullptr;
+Editor* EditorHelper::editor = nullptr;

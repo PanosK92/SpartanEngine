@@ -35,11 +35,11 @@ namespace Spartan
     class SP_CLASS ReflectionProbe : public IComponent
     {
     public:
-        ReflectionProbe(Context* context, Entity* entity, uint64_t id = 0);
+        ReflectionProbe(Entity* entity, uint64_t id = 0);
         ~ReflectionProbe() = default;
 
         //= COMPONENT ================================
-        void OnTick(double delta_time) override;
+        void OnTick() override;
         void Serialize(FileStream* stream) override;
         void Deserialize(FileStream* stream) override;
         //============================================

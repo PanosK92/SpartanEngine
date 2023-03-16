@@ -234,7 +234,7 @@ namespace Spartan
         ThreadPool::ParallelLoop(compute_vertex_normals_tangents, vertex_count);
     }
 
-    Terrain::Terrain(Context* context, Entity* entity, uint64_t id /*= 0*/) : IComponent(context, entity, id)
+    Terrain::Terrain(Entity* entity, uint64_t id /*= 0*/) : IComponent(entity, id)
     {
 
     }
@@ -385,7 +385,7 @@ namespace Spartan
         if (!m_mesh)
         {
             // Create new model
-            m_mesh = make_shared<Mesh>(m_context);
+            m_mesh = make_shared<Mesh>();
 
             // Set geometry
             m_mesh->AddIndices(indices);

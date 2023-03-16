@@ -34,7 +34,7 @@ namespace Spartan
     vector<DisplayMode> Display::m_display_modes;
     DisplayMode Display::m_display_mode_active;
 
-    void Display::RegisterDisplayMode(const DisplayMode& display_mode, const bool update_fps_limit_to_highest_hz, Context* context)
+    void Display::RegisterDisplayMode(const DisplayMode& display_mode, const bool update_fps_limit_to_highest_hz)
     {
         // Early exit if display is already registered
         for (const DisplayMode& display_mode_existing : m_display_modes)
@@ -72,16 +72,15 @@ namespace Spartan
         // Update FPS limit
         if (update_fps_limit_to_highest_hz)
         {
-            double hz    = m_display_modes.front().hz;
-            Timer* timer = context->GetSystem<Timer>();
-            if (hz > timer->GetFpsLimit())
+            double hz = m_display_modes.front().hz;
+            if (hz > Timer::GetFpsLimit())
             {
-                timer->SetFpsLimit(hz);
+                Timer::SetFpsLimit(hz);
             }
         }
     }
 
-    void Display::DetectDisplayModes(Context* context)
+    void Display::DetectDisplayModes()
     {
         // Get display modes of all displays
         for (uint32_t display_index = 0; display_index < static_cast<uint32_t>(SDL_GetNumVideoDisplays()); ++display_index) {
@@ -96,7 +95,7 @@ namespace Spartan
 
             // Register display mode (duplicates are discarded)
             bool update_fps_limit_to_highest_hz = true;
-            RegisterDisplayMode(DisplayMode(display_mode.w, display_mode.h, display_mode.refresh_rate, 1), update_fps_limit_to_highest_hz, context);
+            RegisterDisplayMode(DisplayMode(display_mode.w, display_mode.h, display_mode.refresh_rate, 1), update_fps_limit_to_highest_hz);
         }
     }
 

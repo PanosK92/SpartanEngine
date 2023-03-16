@@ -43,12 +43,9 @@ namespace Spartan
     static uint32_t fmod_max_channels = 32;
     static float fmod_distance_entity = 1.0f;
     static Transform* m_listener      = nullptr;
-    static Context* m_context         = nullptr;
 
-    void Audio::Initialize(Context* context)
+    void Audio::Initialize()
     {
-        m_context = context;
-
         // Create FMOD instance
         if (!HandleErrorFmod(System_Create(&fmod_system)))
             return;
@@ -74,9 +71,9 @@ namespace Spartan
         // Get version
         stringstream ss;
         ss << hex << version;
-        const auto major = ss.str().erase(1, 4);
-        const auto minor = ss.str().erase(0, 1).erase(2, 2);
-        const auto rev = ss.str().erase(0, 3);
+        const string major = ss.str().erase(1, 4);
+        const string minor = ss.str().erase(0, 1).erase(2, 2);
+        const string rev   = ss.str().erase(0, 3);
         Settings::RegisterThirdPartyLib("FMOD", major + "." + minor + "." + rev, "https://www.fmod.com/");
 
         // Subscribe to events
@@ -98,7 +95,7 @@ namespace Spartan
     void Audio::Tick()
     {
         // Don't play audio if the engine is not in game mode
-        if (!m_context->m_engine->IsFlagSet(EngineMode::Game))
+        if (!Engine::IsFlagSet(EngineMode::Game))
             return;
 
         SP_PROFILE_FUNCTION();

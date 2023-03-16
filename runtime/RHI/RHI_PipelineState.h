@@ -77,8 +77,5 @@ namespace Spartan
 
         bool render_target_depth_texture_read_only = false;
         //=========================================================
-
-    private:
-        const RHI_Device* m_rhi_device = nullptr;
     };
 }

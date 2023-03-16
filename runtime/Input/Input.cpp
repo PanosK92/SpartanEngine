@@ -38,7 +38,13 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    Input::Input(Context* context) : ISystem(context)
+    // Keys
+    std::array<bool, 107> Input::m_keys;
+    std::array<bool, 107> m_keys_previous_frame;
+    uint32_t Input::m_start_index_mouse      = 83;
+    uint32_t Input::m_start_index_controller = 86;
+
+    void Input::Initialize()
     {
         // Initialise events subsystem (if needed)
         if (SDL_WasInit(SDL_INIT_EVENTS) != 1)
@@ -64,21 +70,16 @@ namespace Spartan
         m_keys_previous_frame.fill(false);
 
         // Get events from the main Window's event processing loop
-        SP_SUBSCRIBE_TO_EVENT(EventType::EventSDL, SP_EVENT_HANDLER_VARIANT(OnEvent));
+        SP_SUBSCRIBE_TO_EVENT(EventType::EventSDL, SP_EVENT_HANDLER_VARIANT_STATIC(OnEvent));
     }
 
-    void Input::OnTick(double delta_time)
+    void Input::Tick()
     {
         m_keys_previous_frame = m_keys;
 
         PollMouse();
         PollKeyboard();
         PollController();
-    }
-
-    void Input::OnPostTick()
-    {
-        m_mouse_wheel_delta = Vector2::Zero;
     }
 
     void Input::OnEvent(const Variant& event_variant)
@@ -104,5 +105,35 @@ namespace Spartan
         {
             OnEventController(event_sdl);
         }
+    }
+
+    bool Input::GetKey(const KeyCode key)
+    {
+        return m_keys[static_cast<uint32_t>(key)];
+    }
+
+    bool Input::GetKeyDown(const KeyCode key)
+    {
+        return GetKey(key) && !m_keys_previous_frame[static_cast<uint32_t>(key)];
+    }
+
+    bool Input::GetKeyUp(const KeyCode key)
+    {
+        return !GetKey(key) && m_keys_previous_frame[static_cast<uint32_t>(key)];
+    }
+
+    array<bool, 107>& Input::GetKeys()
+    {
+        return m_keys;
+    }
+
+    uint32_t Input::GetKeyIndexMouse()
+    {
+        return m_start_index_mouse;
+    }
+
+    uint32_t Input::GetKeyIndexController()
+    {
+        return m_start_index_controller;
     }
 }

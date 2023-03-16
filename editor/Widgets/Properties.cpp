@@ -39,6 +39,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Components/Environment.h"
 #include "World/Components/Terrain.h"
 #include "World/Components/ReflectionProbe.h"
+#include "Rendering/Mesh.h"
 //===============================================
 
 //= NAMESPACES =========
@@ -52,7 +53,6 @@ weak_ptr<Material> Properties::m_inspected_material;
 
 namespace helper
 {
-    static World* world;
     static Vector3 rotation_hint;
 
     static string g_contex_menu_id;
@@ -144,8 +144,6 @@ Properties::Properties(Editor* editor) : Widget(editor)
     m_colorPicker_light     = make_unique<ButtonColorPicker>("Light Color Picker");
     m_material_color_picker = make_unique<ButtonColorPicker>("Material Color Picker");
     m_colorPicker_camera    = make_unique<ButtonColorPicker>("Camera Color Picker");
-
-    helper::world = m_context->GetSystem<World>();
 }
 
 void Properties::TickVisible()
@@ -214,7 +212,7 @@ void Properties::ShowTransform(Transform* transform) const
 {
     if (helper::ComponentBegin("Transform", IconType::Component_Transform, transform, true, false))
     {
-        const bool is_playing = m_context->m_engine->IsFlagSet(EngineMode::Game);
+        const bool is_playing = Engine::IsFlagSet(EngineMode::Game);
 
         //= REFLECT ===========================================================================================
         Vector3 position = transform->GetPositionLocal();
@@ -620,7 +618,7 @@ void Properties::ShowConstraint(Constraint* constraint) const
         if (auto payload = ImGui_SP::receive_drag_drop_payload(ImGui_SP::DragPayloadType::Entity))
         {
             const uint64_t entity_id = get<uint64_t>(payload->data);
-            other_body               = helper::world->GetEntityById(entity_id);
+            other_body               = World::GetEntityById(entity_id);
             other_body_dirty         = true;
         }
         ImGui::PopItemWidth();

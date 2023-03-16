@@ -43,7 +43,6 @@ namespace Spartan
     static uint32_t m_max_thread_count     = 0;
     static double m_fps_limit              = 0;
     static bool m_has_loaded_user_settings = false;
-    static Context* m_context              = nullptr;
     string file_path                       = "spartan.ini";
     ofstream fout;
     ifstream fin;
@@ -124,49 +123,33 @@ namespace Spartan
 
     static void map()
     {
-        if (Timer* timer = m_context->GetSystem<Timer>())
-        {
-            timer->SetFpsLimit(m_fps_limit);
-        }
+        Timer::SetFpsLimit(m_fps_limit);
 
-        if (Input* input = m_context->GetSystem<Input>())
-        {
-            input->SetMouseCursorVisible(m_is_mouse_visible);
-        }
+        Input::SetMouseCursorVisible(m_is_mouse_visible);
 
-        if (Renderer* renderer = m_context->GetSystem<Renderer>())
-        {
-            renderer->SetResolutionOutput(static_cast<uint32_t>(m_resolution_output.x), static_cast<uint32_t>(m_resolution_output.y));
-            renderer->SetResolutionRender(static_cast<uint32_t>(m_resolution_render.x), static_cast<uint32_t>(m_resolution_render.y));
-            renderer->SetOptions(m_render_options);
-        }
+        Renderer::SetResolutionOutput(static_cast<uint32_t>(m_resolution_output.x), static_cast<uint32_t>(m_resolution_output.y));
+        Renderer::SetResolutionRender(static_cast<uint32_t>(m_resolution_render.x), static_cast<uint32_t>(m_resolution_render.y));
+        Renderer::SetOptions(m_render_options);
 
-        if (Window* window = m_context->GetSystem<Window>())
+        if (m_is_fullscreen)
         {
-            if (m_is_fullscreen)
-            {
-                window->FullScreen();
-            }
+            Window::FullScreen();
         }
     }
 
-    static void Reflect()
+    static void reflect()
     {
-        Renderer* renderer = m_context->GetSystem<Renderer>();
-
-        m_fps_limit         = m_context->GetSystem<Timer>()->GetFpsLimit();
+        m_fps_limit         = Timer::GetFpsLimit();
         m_max_thread_count  = ThreadPool::GetSupportedThreadCount();
-        m_is_fullscreen     = m_context->GetSystem<Window>()->IsFullScreen();
-        m_is_mouse_visible  = m_context->GetSystem<Input>()->GetMouseCursorVisible();
-        m_resolution_output = renderer->GetResolutionOutput();
-        m_resolution_render = renderer->GetResolutionRender();
-        m_render_options    = renderer->GetOptions();
+        m_is_fullscreen     = Window::IsFullScreen();
+        m_is_mouse_visible  = Input::GetMouseCursorVisible();
+        m_resolution_output = Renderer::GetResolutionOutput();
+        m_resolution_render = Renderer::GetResolutionRender();
+        m_render_options    = Renderer::GetOptions();
     }
 
-    void Settings::PostInitialize(Context* context)
+    void Settings::PostInitialize()
     {
-        m_context = context;
-
         // Register third party libs which don't register on their own as they are not part of some other initialization procedure
         RegisterThirdPartyLib("pugixml", "1.11.4", "https://github.com/zeux/pugixml");
         RegisterThirdPartyLib("SPIRV-Cross", "03-06-2022", "https://github.com/KhronosGroup/SPIRV-Cross");
@@ -174,7 +157,7 @@ namespace Spartan
 
         // We are in initialising during OnPreTick() as
         // we need all the subsystems to be initialized
-        Reflect();
+        reflect();
 
         if (FileSystem::Exists(file_path))
         {
@@ -192,7 +175,7 @@ namespace Spartan
     
     void Settings::Shutdown()
     {
-        Reflect();
+        reflect();
         save();
     }
 

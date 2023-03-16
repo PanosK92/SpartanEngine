@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Implementation.h"
 #include "../RHI_Device.h"
 #include "../RHI_IndexBuffer.h"
+#include "../Rendering/Renderer.h"
 //================================
 
 //= NAMESPACES =====
@@ -39,9 +40,6 @@ namespace Spartan
 
     void RHI_IndexBuffer::_create(const void* indices)
     {
-        SP_ASSERT(m_rhi_device != nullptr);
-        SP_ASSERT(m_rhi_device->GetRhiContext()->device != nullptr);
-
         const bool is_dynamic = indices == nullptr;
 
         // Destroy previous buffer
@@ -61,17 +59,15 @@ namespace Spartan
         init_data.SysMemPitch               = 0;
         init_data.SysMemSlicePitch          = 0;
 
-        SP_ASSERT(d3d11_utility::error_check(m_rhi_device->GetRhiContext()->device->CreateBuffer(&buffer_desc, is_dynamic ? nullptr : &init_data, reinterpret_cast<ID3D11Buffer**>(&m_rhi_resource))));
+        SP_ASSERT(d3d11_utility::error_check(Renderer::GetRhiDevice()->GetRhiContext()->device->CreateBuffer(&buffer_desc, is_dynamic ? nullptr : &init_data, reinterpret_cast<ID3D11Buffer**>(&m_rhi_resource))));
     }
 
     void* RHI_IndexBuffer::Map()
     {
-        SP_ASSERT(m_rhi_device != nullptr);
-        SP_ASSERT(m_rhi_device->GetRhiContext()->device_context != nullptr);
         SP_ASSERT(m_rhi_resource != nullptr);
 
         D3D11_MAPPED_SUBRESOURCE mapped_resource;
-        if (!d3d11_utility::error_check(m_rhi_device->GetRhiContext()->device_context->Map(static_cast<ID3D11Resource*>(m_rhi_resource), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped_resource)))
+        if (!d3d11_utility::error_check(Renderer::GetRhiDevice()->GetRhiContext()->device_context->Map(static_cast<ID3D11Resource*>(m_rhi_resource), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped_resource)))
         {
             SP_LOG_ERROR("Failed to map index buffer.");
             return nullptr;
@@ -84,6 +80,6 @@ namespace Spartan
     {
         SP_ASSERT(m_rhi_resource != nullptr);
 
-        m_rhi_device->GetRhiContext()->device_context->Unmap(static_cast<ID3D11Resource*>(m_rhi_resource), 0);
+        Renderer::GetRhiDevice()->GetRhiContext()->device_context->Unmap(static_cast<ID3D11Resource*>(m_rhi_resource), 0);
     }
 }

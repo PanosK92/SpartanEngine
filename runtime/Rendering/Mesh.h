@@ -42,7 +42,7 @@ namespace Spartan
     class Mesh : public IResource
     {
     public:
-        Mesh(Context* context);
+        Mesh();
         ~Mesh() = default;
 
         // IResource

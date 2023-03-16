@@ -26,7 +26,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Source/imgui.h"
 #include "World/Components/Transform.h"
 #include "World/Entity.h"
-#include "Context.h"
 #include "Rendering/Renderer.h"
 #include "Input/Input.h"
 //======================================
@@ -46,9 +45,9 @@ namespace ImGui::TransformGizmo
         style.CenterCircleSize           = 6.0f;
     }
 
-    static void tick(Spartan::Context* context)
+    static void tick()
     {
-        std::shared_ptr<Spartan::Camera> camera = context->GetSystem<Spartan::Renderer>()->GetCamera();
+        std::shared_ptr<Spartan::Camera> camera = Spartan::Renderer::GetCamera();
         if (!camera)
             return;
 
@@ -64,15 +63,15 @@ namespace ImGui::TransformGizmo
         static ImGuizmo::OPERATION transform_operation = ImGuizmo::TRANSLATE;
         if (!camera->IsControledInFirstPerson())
         {
-            if (context->GetSystem<Spartan::Input>()->GetKeyDown(Spartan::KeyCode::W))
+            if (Spartan::Input::GetKeyDown(Spartan::KeyCode::W))
             {
                 transform_operation = ImGuizmo::TRANSLATE;
             }
-            else if (context->GetSystem<Spartan::Input>()->GetKeyDown(Spartan::KeyCode::E))
+            else if (Spartan::Input::GetKeyDown(Spartan::KeyCode::E))
             {
                 transform_operation = ImGuizmo::ROTATE;
             }
-            else if (context->GetSystem<Spartan::Input>()->GetKeyDown(Spartan::KeyCode::R))
+            else if (Spartan::Input::GetKeyDown(Spartan::KeyCode::R))
             {
                 transform_operation = ImGuizmo::SCALE;
             }

@@ -47,7 +47,7 @@ namespace Spartan
     class SP_CLASS Constraint : public IComponent
     {
     public:
-        Constraint(Context* context, Entity* entity, uint64_t id = 0);
+        Constraint(Entity* entity, uint64_t id = 0);
         ~Constraint();
 
         //= COMPONENT ================================
@@ -55,7 +55,7 @@ namespace Spartan
         void OnStart() override;
         void OnStop() override;
         void OnRemove() override;
-        void OnTick(double delta_time) override;
+        void OnTick() override;
         void Serialize(FileStream* stream) override;
         void Deserialize(FileStream* stream) override;
         //============================================
@@ -114,7 +114,5 @@ namespace Spartan
         bool m_enabledEffective;
         bool m_collisionWithLinkedBody;
         bool m_deferredConstruction;
-
-        Physics* m_physics;
     };
 }

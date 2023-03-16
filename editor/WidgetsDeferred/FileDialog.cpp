@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "FileDialog.h"
 #include "../ImGui/Source/imgui_internal.h"
 #include "../ImGui/Source/imgui_stdlib.h"
+#include "Rendering/Mesh.h"
 //=========================================
 
 //= NAMESPACES ===============
@@ -36,9 +37,8 @@ static const Vector2 k_size = Vector2(640, 480);
 #define OPERATION_NAME (m_operation == FileDialog_Op_Open) ? "Open"      : (m_operation == FileDialog_Op_Load)   ? "Load"       : (m_operation == FileDialog_Op_Save) ? "Save" : "View"
 #define FILTER_NAME    (m_filter == FileDialog_Filter_All) ? "All (*.*)" : (m_filter == FileDialog_Filter_Model) ? "Model(*.*)" : "World (*.world)"
 
-FileDialog::FileDialog(Context* context, const bool standalone_window, const FileDialog_Type type, const FileDialog_Operation operation, const FileDialog_Filter filter)
+FileDialog::FileDialog(const bool standalone_window, const FileDialog_Type type, const FileDialog_Operation operation, const FileDialog_Filter filter)
 {
-    m_context                           = context;
     m_type                              = type;
     m_operation                         = operation;
     m_filter                            = filter;
@@ -577,7 +577,7 @@ void FileDialog::EmptyAreaContextMenu()
 
     if (ImGui::MenuItem("Create material"))
     {
-        Material material = Material(m_context);
+        Material material = Material();
         const string file_path = m_navigation.m_path_current + "/new_material" + EXTENSION_MATERIAL;
         material.SetResourceFilePath(file_path);
         material.SaveToFile(file_path);

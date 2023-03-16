@@ -77,17 +77,15 @@ namespace Spartan
         RigidBody* m_rigidBody;
     };
 
-    RigidBody::RigidBody(Context* context, Entity* entity, uint64_t id /*= 0*/) : IComponent(context, entity, id)
+    RigidBody::RigidBody(Entity* entity, uint64_t id /*= 0*/) : IComponent(entity, id)
     {
-        m_physics = GetContext()->GetSystem<Physics>();
-
         m_in_world         = false;
         m_mass             = DEFAULT_MASS;
         m_restitution      = DEFAULT_RESTITUTION;
         m_friction         = DEFAULT_FRICTION;
         m_friction_rolling = DEFAULT_FRICTION_ROLLING;
         m_use_gravity      = true;
-        m_gravity          = m_physics->GetGravity();
+        m_gravity          = Physics::GetGravity();
         m_is_kinematic     = false;
         m_position_lock    = Vector3::Zero;
         m_rotation_lock    = Vector3::Zero;
@@ -127,10 +125,10 @@ namespace Spartan
         Activate();
     }
 
-    void RigidBody::OnTick(double delta_time)
+    void RigidBody::OnTick()
     {
         // When the rigid body is inactive or we are in editor mode, allow the user to move/rotate it
-        if (!IsActivated() || !m_context->m_engine->IsFlagSet(EngineMode::Game))
+        if (!IsActivated() || !Engine::IsFlagSet(EngineMode::Game))
         {
             if (GetPosition() != GetTransform()->GetPosition())
             {
@@ -560,7 +558,7 @@ namespace Spartan
         SetRotationLock(m_rotation_lock);
 
         // Add to world
-        m_physics->AddBody(m_rigid_body);
+        Physics::AddBody(m_rigid_body);
 
         if (m_mass > 0.0f)
         {
@@ -600,7 +598,7 @@ namespace Spartan
 
         if (m_in_world)
         {
-            m_physics->RemoveBody(m_rigid_body);
+            Physics::RemoveBody(m_rigid_body);
             m_in_world = false;
         }
     }

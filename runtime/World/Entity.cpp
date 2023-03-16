@@ -45,9 +45,8 @@ using namespace std;
 
 namespace Spartan
 {
-    Entity::Entity(Context* context, uint64_t transform_id /*= 0*/)
+    Entity::Entity(uint64_t transform_id /*= 0*/)
     {
-        m_context               = context;
         m_name                  = "Entity";
         m_is_active             = true;
         m_hierarchy_visibility  = true;
@@ -65,14 +64,13 @@ namespace Spartan
 
     void Entity::Clone()
     {
-        auto scene = m_context->GetSystem<World>();
         vector<Entity*> clones;
 
         // Creation of new entity and copying of a few properties
-        auto clone_entity = [&scene, &clones](Entity* entity)
+        auto clone_entity = [&clones](Entity* entity)
         {
             // Clone the name and the ID
-            auto clone = scene->CreateEntity().get();
+            auto clone = World::CreateEntity().get();
             clone->SetObjectId(GenerateObjectId());
             clone->SetName(entity->GetName());
             clone->SetActive(entity->IsActive());
@@ -139,7 +137,7 @@ namespace Spartan
 
     }
 
-	void Entity::Tick(double delta_time)
+	void Entity::Tick()
     {
         if (!m_is_active)
             return;
@@ -148,7 +146,7 @@ namespace Spartan
         {
             if (component)
             {
-                component->OnTick(delta_time);
+                component->OnTick();
             }
         }
     }
@@ -263,11 +261,10 @@ namespace Spartan
             const uint32_t children_count = stream->ReadAs<uint32_t>();
 
             // Children IDs
-            World* world = m_context->GetSystem<World>();
             vector<weak_ptr<Entity>> children;
             for (uint32_t i = 0; i < children_count; i++)
             {
-                shared_ptr<Entity> child = world->CreateEntity();
+                shared_ptr<Entity> child = World::CreateEntity();
 
                 child->SetObjectId(stream->ReadAs<uint64_t>());
 
@@ -312,7 +309,7 @@ namespace Spartan
             case ComponentType::Transform:       component = static_cast<IComponent*>(AddComponent<Transform>(id));       break;
             case ComponentType::Terrain:         component = static_cast<IComponent*>(AddComponent<Terrain>(id));         break;
             case ComponentType::ReflectionProbe: component = static_cast<IComponent*>(AddComponent<ReflectionProbe>(id)); break;
-            case ComponentType::Undefined:         component = nullptr;                                                     break;
+            case ComponentType::Undefined:       component = nullptr;                                                     break;
             default:                             component = nullptr;                                                     break;
         }
 

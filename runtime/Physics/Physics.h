@@ -21,10 +21,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==================
-#include "../Core/ISystem.h"
-#include "../Math/Vector3.h"
-//=============================
+//= INCLUDES ===========
+#include "Definitions.h"
+//======================
 
 //= FORWARD DECLARATIONS =================
 class btBroadphaseInterface;
@@ -41,70 +40,35 @@ struct btSoftBodyWorldInfo;
 
 namespace Spartan
 {
-    class Renderer;
-    class PhysicsDebugDraw;
-    class Camera;
-    namespace Math { class Vector3; }
-
-    class Physics : public ISystem
+    class SP_CLASS Physics
     {
     public:
-        Physics(Context* context);
-        ~Physics();
-
-        //= Subsystem ==========================
-        void OnInitialise() override;
-        void OnTick(double delta_time) override;
-        //======================================
+        static void Initialize();
+        static void Shutdown();
+        static void Tick();
 
         // Rigid body
-        void AddBody(btRigidBody* body) const;
-        void RemoveBody(btRigidBody*& body) const;
+        static void AddBody(btRigidBody* body);
+        static void RemoveBody(btRigidBody*& body);
 
         // Soft body
-        void AddBody(btSoftBody* body) const;
-        void RemoveBody(btSoftBody*& body) const;
+        static void AddBody(btSoftBody* body);
+        static void RemoveBody(btSoftBody*& body);
 
         // Constraint
-        void AddConstraint(btTypedConstraint* constraint, bool collision_with_linked_body = true) const;
-        void RemoveConstraint(btTypedConstraint*& constraint) const;
+        static void AddConstraint(btTypedConstraint* constraint, bool collision_with_linked_body = true);
+        static void RemoveConstraint(btTypedConstraint*& constraint);
 
         // Properties
-        Math::Vector3 GetGravity()  const;
-        auto& GetSoftWorldInfo()    const { return *m_world_info; }
-        auto GetPhysicsDebugDraw()  const { return m_debug_draw; }
-        bool IsSimulating()         const { return m_simulating; }
+        static Math::Vector3 GetGravity();
+        static btSoftBodyWorldInfo& GetSoftWorldInfo();
+        static auto GetPhysicsDebugDraw();
+        static bool IsSimulating();
 
     private:
         // Picking
-        void PickBody();
-        void UnpickBody();
-        void MovePickedBody();
-
-        btBroadphaseInterface* m_broadphase                         = nullptr;
-        btCollisionDispatcher* m_collision_dispatcher               = nullptr;
-        btSequentialImpulseConstraintSolver* m_constraint_solver    = nullptr;
-        btDefaultCollisionConfiguration* m_collision_configuration  = nullptr;
-        btDiscreteDynamicsWorld* m_world                            = nullptr;
-        btSoftBodyWorldInfo* m_world_info                           = nullptr;
-        PhysicsDebugDraw* m_debug_draw                              = nullptr;
-
-        // Misc
-        Renderer* m_renderer = nullptr;
-
-        // World properties
-        int m_max_sub_steps        = 1;
-        int m_max_solve_iterations = 256;
-        float m_internal_fps       = 60.0f;
-        Math::Vector3 m_gravity    = Math::Vector3(0.0f, -9.81f, 0.0f);
-        bool m_simulating          = false;
-
-        // Picking
-        btRigidBody* m_picked_body                = nullptr;
-        btTypedConstraint* m_picked_constraint    = nullptr;
-        int m_activation_state                         = 0;
-        Math::Vector3 m_hit_position              = Math::Vector3::Zero;
-        Math::Vector3 m_picking_position_previous = Math::Vector3::Zero;
-        float m_picking_distance_previous         = 0.0f;
+        static void PickBody();
+        static void UnpickBody();
+        static void MovePickedBody();
     };
 }

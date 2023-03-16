@@ -37,7 +37,7 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    Environment::Environment(Context* context, Entity* entity, uint64_t id /*= 0*/) : IComponent(context, entity, id)
+    Environment::Environment(Entity* entity, uint64_t id /*= 0*/) : IComponent(entity, id)
     {
         const string environment_texture_directory = ResourceCache::GetResourceDirectory(ResourceDirectory::Environment) + "\\";
 
@@ -60,7 +60,7 @@ namespace Spartan
         }
     }
 
-    void Environment::OnTick(double delta_time)
+    void Environment::OnTick()
     {
         if (m_is_dirty)
         {
@@ -101,7 +101,7 @@ namespace Spartan
     void Environment::SetTexture(const shared_ptr<RHI_Texture> texture)
     {
         m_texture = texture;
-        m_context->GetSystem<Renderer>()->SetEnvironment(this);
+        Renderer::SetEnvironment(this);
     }
 
     void Environment::SetFromTextureArray(const vector<string>& file_paths)
@@ -112,7 +112,7 @@ namespace Spartan
         SP_LOG_INFO("Loading sky box...");
 
         // Load all textures (sides)
-        shared_ptr<RHI_Texture> texture = make_shared<RHI_TextureCube>(GetContext());
+        shared_ptr<RHI_Texture> texture = make_shared<RHI_TextureCube>();
         for (uint32_t slice_index = 0; static_cast<uint32_t>(file_paths.size()); slice_index++)
         {
             ResourceCache::GetImageImporter()->Load(file_paths[slice_index], slice_index, static_cast<RHI_Texture*>(texture.get()));
@@ -135,7 +135,7 @@ namespace Spartan
         SP_LOG_INFO("Loading sky sphere...");
 
         // Create texture
-        shared_ptr<RHI_Texture> texture = make_shared<RHI_Texture2D>(GetContext(), RHI_Texture_Srv | RHI_Texture_Mips);
+        shared_ptr<RHI_Texture> texture = make_shared<RHI_Texture2D>(RHI_Texture_Srv | RHI_Texture_Mips);
         if (!texture->LoadFromFile(file_path))
         {
             SP_LOG_ERROR("Sky sphere creation failed");

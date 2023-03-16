@@ -39,74 +39,85 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    Engine::Engine()
+    static uint32_t m_flags = 0;
+
+    void Engine::Initialize()
     {
         // Set flags
         SetFlag(EngineMode::Physics);
         SetFlag(EngineMode::Game);
 
-        // Create a context
-        m_context = make_shared<Context>();
-        m_context->m_engine = this;
-
-        // Add (addition order is tick order)
-        Stopwatch timer_add;
-        m_context->AddSystem<Window>();
-        m_context->AddSystem<Timer>();
-        m_context->AddSystem<Input>(TickType::Smoothed);
-        m_context->AddSystem<Physics>();
-        m_context->AddSystem<World>(TickType::Smoothed);
-        m_context->AddSystem<Renderer>();
-        SP_LOG_INFO("System addition took %.1f ms", timer_add.GetElapsedTimeMs());
-
         // Initialise
         Stopwatch timer_initialize;
         {
+            Window::Initialize();
+            Input::Initialize();
+            Timer::Initialize();
             ThreadPool::Initialize();
-            ResourceCache::Initialize(m_context.get());
-            Audio::Initialize(m_context.get());
-            Profiler::Initialize(m_context.get());
-            m_context->OnInitialize();
-            
+            ResourceCache::Initialize();
+            Audio::Initialize();
+            Profiler::Initialize();
+            Physics::Initialize();
+            Renderer::Initialize();
+            World::Initialize();
         }
         SP_LOG_INFO("System initialization took %.1f ms", timer_initialize.GetElapsedTimeMs());
 
         // Post initialize
-        Stopwatch timer_post_initialize;
-        {
-            m_context->OnPostInitialize();
-            Settings::PostInitialize(m_context.get());
-        }
-        SP_LOG_INFO("System post-initialization took %.1f ms", timer_post_initialize.GetElapsedTimeMs());
+        Settings::PostInitialize();
     }
 
-    Engine::~Engine()
+    void Engine::Shutdown()
     {
-        // Shutdown
-        {
-            ResourceCache::Clear();
-            m_context->OnShutdown();
-            ThreadPool::Shutdown();
-            Event::Shutdown();
-            Settings::Shutdown();
-            Audio::Shutdown();
-            Profiler::Shutdown();
-        }
+        Renderer::Shutdown();
+        World::Shutdown();
+        Physics::Shutdown();
+        ResourceCache::Clear();
+        ThreadPool::Shutdown();
+        Event::Shutdown();
+        Settings::Shutdown();
+        Audio::Shutdown();
+        Profiler::Shutdown();
+        Window::Shutdown();
     }
 
-    void Engine::Tick() const
+    void Engine::Tick()
     {
         // Pre-tick
         Profiler::PreTick();
-        m_context->OnPreTick();
+        World::PreTick();
 
         // Tick
+        Window::Tick();
+        Timer::Tick();
+        Input::Tick();
+        Physics::Tick();
         Audio::Tick();
-        m_context->OnTick(TickType::Variable, m_context->GetSystem<Timer>()->GetDeltaTimeSec());
-        m_context->OnTick(TickType::Smoothed, m_context->GetSystem<Timer>()->GetDeltaTimeSmoothedSec());
+        World::Tick();
+        Renderer::Tick();
 
         // Post-tick
-        m_context->OnPostTick();
+        Input::PostTick();
         Profiler::PostTick();
+    }
+
+    void Engine::SetFlag(const EngineMode flag)
+    {
+        m_flags |= (1U << static_cast<uint32_t>(flag));
+    }
+
+    void Engine::RemoveFlag(const EngineMode flag)
+    {
+        m_flags &= ~(1U << static_cast<uint32_t>(flag));
+    }
+
+    bool Engine::IsFlagSet(const EngineMode flag)
+    {
+        return m_flags & (1U << static_cast<uint32_t>(flag));
+    }
+
+    void Engine::ToggleFlag(const EngineMode flag)
+    {
+        IsFlagSet(flag) ? RemoveFlag(flag) : SetFlag(flag);
     }
 }

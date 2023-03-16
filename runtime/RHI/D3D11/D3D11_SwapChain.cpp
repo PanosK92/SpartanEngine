@@ -40,7 +40,6 @@ namespace Spartan
 {
     RHI_SwapChain::RHI_SwapChain(
         void* sdl_window,
-        RHI_Device* rhi_device,
         const uint32_t width,
         const uint32_t height,
         const RHI_Format format     /*= Format_R8G8B8A8_UNORM*/,
@@ -49,10 +48,6 @@ namespace Spartan
         const char* name            /*= nullptr */
     )
     {
-        // Verify device
-        SP_ASSERT(rhi_device != nullptr);
-        SP_ASSERT(rhi_device->GetRhiContext()->device != nullptr);
-
         // Get window handle
         SDL_SysWMinfo win_info;
         SDL_VERSION(&win_info.version);
@@ -64,7 +59,7 @@ namespace Spartan
         SP_ASSERT(IsWindow(hwnd));
 
         // Verify resolution
-        if (!rhi_device->IsValidResolution(width, height))
+        if (!Renderer::GetRhiDevice()->IsValidResolution(width, height))
         {
             SP_LOG_WARNING("%dx%d is an invalid resolution", width, height);
             return;
@@ -72,7 +67,7 @@ namespace Spartan
 
         // Get factory
         IDXGIFactory* dxgi_factory = nullptr;
-        if (const auto& adapter = rhi_device->GetPrimaryPhysicalDevice())
+        if (const auto& adapter = Renderer::GetRhiDevice()->GetPrimaryPhysicalDevice())
         {
             auto dxgi_adapter = static_cast<IDXGIAdapter*>(adapter->GetData());
             if (dxgi_adapter->GetParent(IID_PPV_ARGS(&dxgi_factory)) != S_OK)
@@ -89,7 +84,6 @@ namespace Spartan
 
         // Save parameters
         m_format       = format;
-        m_rhi_device   = rhi_device;
         m_buffer_count = buffer_count;
         m_windowed     = true;
         m_width        = width;
@@ -112,7 +106,7 @@ namespace Spartan
             desc.SwapEffect           = d3d11_utility::swap_chain::get_swap_effect(m_flags);
             desc.Flags                = d3d11_utility::swap_chain::get_flags(m_flags);
 
-            if (!d3d11_utility::error_check(dxgi_factory->CreateSwapChain(m_rhi_device->GetRhiContext()->device, &desc, reinterpret_cast<IDXGISwapChain**>(&m_rhi_resource))))
+            if (!d3d11_utility::error_check(dxgi_factory->CreateSwapChain(Renderer::GetRhiDevice()->GetRhiContext()->device, &desc, reinterpret_cast<IDXGISwapChain**>(&m_rhi_resource))))
             {
                 SP_LOG_ERROR("Failed to create swapchain");
                 return;
@@ -130,7 +124,7 @@ namespace Spartan
                 return;
             }
 
-            result = rhi_device->GetRhiContext()->device->CreateRenderTargetView(backbuffer, nullptr, reinterpret_cast<ID3D11RenderTargetView**>(&m_rhi_srv));
+            result = Renderer::GetRhiDevice()->GetRhiContext()->device->CreateRenderTargetView(backbuffer, nullptr, reinterpret_cast<ID3D11RenderTargetView**>(&m_rhi_srv));
             backbuffer->Release();
             if (FAILED(result))
             {
@@ -163,7 +157,7 @@ namespace Spartan
         SP_ASSERT(m_rhi_resource != nullptr);
 
         // Validate resolution
-        m_present_enabled = m_rhi_device->IsValidResolution(width, height);
+        m_present_enabled = Renderer::GetRhiDevice()->IsValidResolution(width, height);
 
         if (!m_present_enabled)
             return false;
@@ -238,7 +232,7 @@ namespace Spartan
 
             // Create new one
             ID3D11RenderTargetView* render_target_view = static_cast<ID3D11RenderTargetView*>(m_rhi_srv);
-            result = m_rhi_device->GetRhiContext()->device->CreateRenderTargetView(backbuffer, nullptr, &render_target_view);
+            result = Renderer::GetRhiDevice()->GetRhiContext()->device->CreateRenderTargetView(backbuffer, nullptr, &render_target_view);
             backbuffer->Release();
             backbuffer = nullptr;
             if (FAILED(result))
