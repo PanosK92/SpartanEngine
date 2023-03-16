@@ -46,7 +46,7 @@ namespace Spartan
     class SP_CLASS Collider : public IComponent
     {
     public:
-        Collider(Context* context, Entity* entity, uint64_t id = 0);
+        Collider(Entity* entity, uint64_t id = 0);
         ~Collider() = default;
 
         //= ICOMPONENT ===============================

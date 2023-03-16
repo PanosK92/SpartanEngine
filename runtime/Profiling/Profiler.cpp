@@ -111,17 +111,8 @@ namespace Spartan
     static bool m_allow_time_block_end = true;
     static void* m_query_disjoint      = nullptr;
     
-    // Dependencies
-    static Context* m_context   = nullptr;
-    static Renderer* m_renderer = nullptr;
-    static Timer* m_timer       = nullptr;
-
-    void Profiler::Initialize(Context* context)
+    void Profiler::Initialize()
     {
-        m_context  = context;
-        m_renderer = context->GetSystem<Renderer>();
-        m_timer    = context->GetSystem<Timer>();
-
         static const int initial_capacity = 256;
 
         m_time_blocks_read.reserve(initial_capacity);
@@ -139,20 +130,19 @@ namespace Spartan
             SwapBuffers();
         }
 
-        m_renderer->GetRhiDevice()->QueryRelease(m_query_disjoint);
+        Renderer::GetRhiDevice()->QueryRelease(m_query_disjoint);
 
         ClearRhiMetrics();
     }
 
     void Profiler::PreTick()
     {
-        RHI_Device* rhi_device = m_renderer->GetRhiDevice().get();
-        if (!rhi_device || !rhi_device->GetRhiContext()->gpu_profiling)
+        if (!Renderer::GetRhiDevice()->GetRhiContext()->gpu_profiling)
             return;
 
         if (m_query_disjoint == nullptr)
         {
-            m_renderer->GetRhiDevice()->QueryCreate(&m_query_disjoint, RHI_Query_Type::Timestamp_Disjoint);
+            Renderer::GetRhiDevice()->QueryCreate(&m_query_disjoint, RHI_Query_Type::Timestamp_Disjoint);
         }
 
         // Increase time block capacity (if needed)
@@ -220,17 +210,17 @@ namespace Spartan
             m_time_gpu_max = Math::Helper::Max(m_time_gpu_max, m_time_gpu_last);
 
             // Frame
-            m_time_frame_last = static_cast<float>(m_timer->GetDeltaTimeMs());
+            m_time_frame_last = static_cast<float>(Timer::GetDeltaTimeMs());
             m_time_frame_avg  = m_time_frame_avg * (1.0f - delta_feedback) + m_time_frame_last * delta_feedback;
             m_time_frame_min  = Math::Helper::Min(m_time_frame_min, m_time_frame_last);
             m_time_frame_max  = Math::Helper::Max(m_time_frame_max, m_time_frame_last);
 
             // FPS
-            m_fps = static_cast<float>(1.0 / m_timer->GetDeltaTimeSec());
+            m_fps = static_cast<float>(1.0 / Timer::GetDeltaTimeSec());
         }
 
         // Check whether we should profile or not
-        m_time_since_profiling_sec += static_cast<float>(m_timer->GetDeltaTimeSec());
+        m_time_since_profiling_sec += static_cast<float>(Timer::GetDeltaTimeSec());
         if (m_time_since_profiling_sec >= m_profiling_interval_sec)
         {
             m_time_since_profiling_sec = 0.0f;
@@ -244,12 +234,12 @@ namespace Spartan
         // Updating every m_profiling_interval_sec
         if (m_poll)
         {
-            m_renderer->GetRhiDevice()->QueryBegin(m_query_disjoint);
+            Renderer::GetRhiDevice()->QueryBegin(m_query_disjoint);
 
             AcquireGpuData();
 
             // Create a string version of the RHI metrics
-            if (m_renderer->GetOption<bool>(RendererOption::Debug_PerformanceMetrics))
+            if (Renderer::GetOption<bool>(RendererOption::Debug_PerformanceMetrics))
             {
                 UpdateRhiMetricsString();
             }
@@ -265,8 +255,8 @@ namespace Spartan
     {
         if (m_poll)
         {
-            m_renderer->GetRhiDevice()->QueryEnd(m_query_disjoint);
-            m_renderer->GetRhiDevice()->QueryGetData(m_query_disjoint);
+            Renderer::GetRhiDevice()->QueryEnd(m_query_disjoint);
+            Renderer::GetRhiDevice()->QueryGetData(m_query_disjoint);
         }
     }
 
@@ -460,14 +450,13 @@ namespace Spartan
 
     void Profiler::AcquireGpuData()
     {
-        RHI_Device* rhi_device = m_renderer->GetRhiDevice().get();
-        if (const PhysicalDevice* physical_device = rhi_device->GetPrimaryPhysicalDevice())
+        if (const PhysicalDevice* physical_device = Renderer::GetRhiDevice()->GetPrimaryPhysicalDevice())
         {
             m_gpu_name             = physical_device->GetName();
-            m_gpu_memory_used      = RHI_CommandList::GetGpuMemoryUsed(rhi_device);
-            m_gpu_memory_available = RHI_CommandList::GetGpuMemory(rhi_device);
+            m_gpu_memory_used      = RHI_CommandList::GetGpuMemoryUsed();
+            m_gpu_memory_available = RHI_CommandList::GetGpuMemory();
             m_gpu_driver           = physical_device->GetDriverVersion();
-            m_gpu_api              = rhi_device->GetRhiContext()->api_version_str;
+            m_gpu_api              = Renderer::GetRhiDevice()->GetRhiContext()->api_version_str;
         }
     }
 
@@ -478,7 +467,7 @@ namespace Spartan
 
         // Get the graphics driver vendor
         string api_vendor_name = "AMD";
-        if (m_renderer->GetRhiDevice()->GetPrimaryPhysicalDevice()->IsNvidia())
+        if (Renderer::GetRhiDevice()->GetPrimaryPhysicalDevice()->IsNvidia())
         {
             api_vendor_name = "NVIDIA";
         }
@@ -537,7 +526,7 @@ namespace Spartan
             // Overview
             m_fps,
             m_time_frame_last,
-            m_renderer->GetFrameNum(),
+            Renderer::GetFrameNum(),
 
             // Detailed times
             m_time_frame_avg, m_time_frame_min, m_time_frame_max, m_time_frame_last,
@@ -547,17 +536,17 @@ namespace Spartan
             // GPU
             m_gpu_name.c_str(),
             m_gpu_memory_used, m_gpu_memory_available,
-            m_renderer->GetRhiDevice()->GetRhiContext()->api_type_str.c_str(), m_gpu_api.c_str(),
-            m_renderer->GetRhiDevice()->GetPrimaryPhysicalDevice()->GetVendorName().c_str(), m_gpu_driver.c_str(),
+            Renderer::GetRhiDevice()->GetRhiContext()->api_type_str.c_str(), m_gpu_api.c_str(),
+            Renderer::GetRhiDevice()->GetPrimaryPhysicalDevice()->GetVendorName().c_str(), m_gpu_driver.c_str(),
 
             // CPU
             ThreadPool::GetWorkingThreadCount(),
             ThreadPool::GetThreadCount(),
 
             // Resolution
-            static_cast<int>(m_renderer->GetResolutionOutput().x), static_cast<int>(m_renderer->GetResolutionOutput().y),
-            static_cast<int>(m_renderer->GetResolutionRender().x), static_cast<int>(m_renderer->GetResolutionRender().y),
-            static_cast<int>(m_renderer->GetViewport().width),     static_cast<int>(m_renderer->GetViewport().height),
+            static_cast<int>(Renderer::GetResolutionOutput().x), static_cast<int>(Renderer::GetResolutionOutput().y),
+            static_cast<int>(Renderer::GetResolutionRender().x), static_cast<int>(Renderer::GetResolutionRender().y),
+            static_cast<int>(Renderer::GetViewport().width),     static_cast<int>(Renderer::GetViewport().height),
 
             // API Calls
             m_rhi_draw,

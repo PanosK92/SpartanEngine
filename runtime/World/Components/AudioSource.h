@@ -34,7 +34,7 @@ namespace Spartan
     class SP_CLASS AudioSource : public IComponent
     {
     public:
-        AudioSource(Context* context, Entity* entity, uint64_t id = 0);
+        AudioSource(Entity* entity, uint64_t id = 0);
         ~AudioSource() = default;
 
         // IComponent
@@ -42,7 +42,7 @@ namespace Spartan
         void OnStart() override;
         void OnStop() override;
         void OnRemove() override;
-        void OnTick(double delta_time) override;
+        void OnTick() override;
         void Serialize(FileStream* stream) override;
         void Deserialize(FileStream* stream) override;
 

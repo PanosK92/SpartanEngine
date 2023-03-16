@@ -33,7 +33,7 @@ namespace Spartan
     class RHI_CommandPool : public Object
     {
     public:
-        RHI_CommandPool(RHI_Device* rhi_device, const char* name, const uint64_t swap_chain_id);
+        RHI_CommandPool(const char* name, const uint64_t swap_chain_id);
         ~RHI_CommandPool();
 
         void AllocateCommandLists(const RHI_Queue_Type queue_type, const uint32_t cmd_list_count = 2, const uint32_t cmd_pool_count = 2);
@@ -63,7 +63,6 @@ namespace Spartan
 
         // Misc
         bool m_first_step           = true;
-        RHI_Device* m_rhi_device    = nullptr;
         RHI_Queue_Type m_queue_type = RHI_Queue_Type::Undefined;
     };
 }

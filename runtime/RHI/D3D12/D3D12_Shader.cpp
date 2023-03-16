@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Device.h"
 #include "../RHI_InputLayout.h"
 #include "../RHI_DirectXShaderCompiler.h"
+#include "../Rendering/Renderer.h"
 //=======================================
 
 //= NAMESPACES =====
@@ -39,7 +40,7 @@ namespace Spartan
         if (m_rhi_resource)
         {
             // Wait in case it's still in use by the GPU
-            m_rhi_device->QueueWaitAll();
+            Renderer::GetRhiDevice()->QueueWaitAll();
 
             d3d12_utility::release<IDxcResult>(m_rhi_resource);
         }

@@ -128,7 +128,7 @@ namespace Spartan
         return extensions_supported;
     }
 
-    RHI_Device::RHI_Device(Context* context, shared_ptr<RHI_Context> rhi_context)
+    RHI_Device::RHI_Device(shared_ptr<RHI_Context> rhi_context)
     {
 #ifdef DEBUG
         // Add validation related extensions
@@ -139,7 +139,6 @@ namespace Spartan
         rhi_context->extensions_instance.emplace_back("VK_EXT_debug_utils");
 #endif
 
-        m_context     = context;
         m_rhi_context = rhi_context;
 
         // Pass pointer to the widely used utility namespace
@@ -647,14 +646,14 @@ namespace Spartan
         // Add some display modes manually
         const uint32_t hz = Display::GetRefreshRate();
         const bool update_fps_limit_to_highest_hz = true;
-        Display::RegisterDisplayMode(DisplayMode(640, 480, hz, 1), update_fps_limit_to_highest_hz, m_context);
-        Display::RegisterDisplayMode(DisplayMode(720, 576, hz, 1), update_fps_limit_to_highest_hz, m_context);
-        Display::RegisterDisplayMode(DisplayMode(1280, 720, hz, 1), update_fps_limit_to_highest_hz, m_context);
-        Display::RegisterDisplayMode(DisplayMode(1920, 1080, hz, 1), update_fps_limit_to_highest_hz, m_context);
-        Display::RegisterDisplayMode(DisplayMode(2560, 1440, hz, 1), update_fps_limit_to_highest_hz, m_context);
+        Display::RegisterDisplayMode(DisplayMode(640, 480, hz, 1), update_fps_limit_to_highest_hz);
+        Display::RegisterDisplayMode(DisplayMode(720, 576, hz, 1), update_fps_limit_to_highest_hz);
+        Display::RegisterDisplayMode(DisplayMode(1280, 720, hz, 1), update_fps_limit_to_highest_hz);
+        Display::RegisterDisplayMode(DisplayMode(1920, 1080, hz, 1), update_fps_limit_to_highest_hz);
+        Display::RegisterDisplayMode(DisplayMode(2560, 1440, hz, 1), update_fps_limit_to_highest_hz);
 
         // Add the current display modes from any connected displays
-        Display::DetectDisplayModes(m_context);
+        Display::DetectDisplayModes();
 
         // VK_KHR_Display is not supported and I don't want to use anything OS specific to acquire the display modes, must think of something.
 

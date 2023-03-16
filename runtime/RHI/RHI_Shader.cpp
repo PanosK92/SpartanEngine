@@ -33,9 +33,9 @@ using namespace std;
 
 namespace Spartan
 {
-    RHI_Shader::RHI_Shader(Context* context) : Object(context)
+    RHI_Shader::RHI_Shader() : Object()
     {
-        m_rhi_device = context->GetSystem<Renderer>()->GetRhiDevice();
+
     }
 
     // Actual API specific compilation
@@ -91,7 +91,7 @@ namespace Spartan
         m_vertex_type = vertex_type;
         if (m_shader_type == RHI_Shader_Vertex)
         {
-            m_input_layout = make_shared<RHI_InputLayout>(m_rhi_device);
+            m_input_layout = make_shared<RHI_InputLayout>();
         }
 
         if (!FileSystem::IsFile(file_path))

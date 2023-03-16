@@ -71,7 +71,6 @@ namespace Spartan
         uint32_t m_id             = 0;
 
         // Dependencies
-        RHI_Device* m_rhi_device    = nullptr;
         RHI_CommandList* m_cmd_list = nullptr;
 
         // CPU timing

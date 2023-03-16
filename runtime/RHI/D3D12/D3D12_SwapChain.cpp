@@ -39,7 +39,6 @@ namespace Spartan
 {
     RHI_SwapChain::RHI_SwapChain(
         void* sdl_window,
-        RHI_Device* rhi_device,
         const uint32_t width,
         const uint32_t height,
         const RHI_Format format	    /*= Format_R8G8B8A8_UNORM*/,
@@ -48,15 +47,13 @@ namespace Spartan
         const char* name            /*= nullptr */
     )
     {
-        SP_ASSERT(rhi_device != nullptr);
-
         // Verify window handle
         const HWND hwnd = static_cast<HWND>(sdl_window);
         SP_ASSERT(hwnd != nullptr);
         SP_ASSERT(IsWindow(hwnd));
 
         // Verify resolution
-        if (!rhi_device->IsValidResolution(width, height))
+        if (!Renderer::GetRhiDevice()->IsValidResolution(width, height))
         {
             SP_LOG_WARNING("%dx%d is an invalid resolution", width, height);
             return;
@@ -66,7 +63,7 @@ namespace Spartan
         Microsoft::WRL::ComPtr<IDXGIFactory4> factory;
         {
             INT dxgiFactoryFlags = 0;
-            if (!rhi_device->GetRhiContext()->validation)
+            if (!Renderer::GetRhiDevice()->GetRhiContext()->validation)
             {
                 dxgiFactoryFlags |= DXGI_CREATE_FACTORY_DEBUG;
             }
@@ -77,7 +74,6 @@ namespace Spartan
 
         // Copy parameters
         m_format       = format;
-        m_rhi_device   = rhi_device;
         m_buffer_count = buffer_count;
         m_width        = width;
         m_height       = height;
@@ -97,7 +93,7 @@ namespace Spartan
 
         IDXGISwapChain1* swap_chain;
         d3d12_utility::error::check(factory->CreateSwapChainForHwnd(
-            static_cast<ID3D12CommandQueue*>(m_rhi_device->GetQueue(RHI_Queue_Type::Graphics)), // Swap chain needs the queue so that it can force a flush on it.
+            static_cast<ID3D12CommandQueue*>(Renderer::GetRhiDevice()->GetQueue(RHI_Queue_Type::Graphics)), // Swap chain needs the queue so that it can force a flush on it.
             hwnd,
             &swap_chain_desc,
             nullptr,

@@ -40,7 +40,7 @@ namespace Spartan
 {
     inline void build(const DefaultGeometry type, Renderable* renderable)
     {    
-        Mesh* mesh = new Mesh(renderable->GetContext());
+        Mesh* mesh = new Mesh();
         vector<RHI_Vertex_PosTexNorTan> vertices;
         vector<uint32_t> indices;
 
@@ -93,7 +93,7 @@ namespace Spartan
         );
     }
 
-    Renderable::Renderable(Context* context, Entity* entity, uint64_t id /*= 0*/) : IComponent(context, entity, id)
+    Renderable::Renderable(Entity* entity, uint64_t id /*= 0*/) : IComponent(entity, id)
     {
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_material_default,        bool);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_material,                Material*);
@@ -231,7 +231,7 @@ namespace Spartan
     shared_ptr<Material> Renderable::SetMaterial(const string& file_path)
     {
         // Load the material
-        auto material = make_shared<Material>(GetContext());
+        auto material = make_shared<Material>();
         if (!material->LoadFromFile(file_path))
         {
             SP_LOG_WARNING("Failed to load material from \"%s\"", file_path.c_str());
@@ -249,7 +249,7 @@ namespace Spartan
         FileSystem::CreateDirectory(data_dir);
 
         // Create material
-        shared_ptr<Material> material = make_shared<Material>(GetContext());
+        shared_ptr<Material> material = make_shared<Material>();
         material->SetResourceFilePath(ResourceCache::GetProjectDirectory() + "standard" + EXTENSION_MATERIAL); // Set resource file path so it can be used by the resource cache
         material->SetIsEditable(false);
         material->SetProperty(MaterialProperty::UvTilingX, 10.0f);

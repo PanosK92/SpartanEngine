@@ -37,9 +37,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Spartan
 {
     class Entity;
-    class Mesh;
     class Renderable;
-    class Input;
     class Renderer;
 
     enum ProjectionType
@@ -57,12 +55,12 @@ namespace Spartan
     class SP_CLASS Camera : public IComponent
     {
     public:
-        Camera(Context* context, Entity* entity, uint64_t id = 0);
+        Camera(Entity* entity, uint64_t id = 0);
         ~Camera() = default;
 
         //= ICOMPONENT ===============================
         void OnInitialize() override;
-        void OnTick(double delta_time) override;
+        void OnTick() override;
         void Serialize(FileStream* stream) override;
         void Deserialize(FileStream* stream) override;
         //============================================
@@ -116,7 +114,6 @@ namespace Spartan
         float GetFovVerticalRad()   const;
         float GetFovHorizontalDeg() const;
         void SetFovHorizontalDeg(float fov);
-        const RHI_Viewport& GetViewport() const;
         //================================================================
 
         //= FRUSTUM ==========================================================================
@@ -149,9 +146,9 @@ namespace Spartan
         void GoToCameraBookmark(int bookmark_index);
 
     private:
-        void ProcessInput(double delta_time);
-        void ProcessInputFpsControl(double delta_time);
-        void ProcessInputLerpToEntity(double delta_time);
+        void ProcessInput();
+        void ProcessInputFpsControl();
+        void ProcessInputLerpToEntity();
 
         float m_aperture                        = 50.0f;        // Size of the lens diaphragm (mm). Controls depth of field and chromatic aberration.
         float m_shutter_speed                   = 1.0f / 60.0f; // Length of time for which the camera shutter is open (sec). Also controls the amount of motion blur.
@@ -191,9 +188,5 @@ namespace Spartan
         Math::Frustum m_frustum;
         std::vector<camera_bookmark> m_bookmarks;
         std::shared_ptr<Spartan::Entity> m_selected_entity = nullptr;
-
-        // Dependencies
-        Renderer* m_renderer = nullptr;
-        Input* m_input       = nullptr;
     };
 }

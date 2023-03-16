@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Implementation.h"
 #include "../RHI_DepthStencilState.h"
 #include "../RHI_Device.h"
+#include "../Rendering/Renderer.h"
 //===================================
 
 //= NAMESPACES =====
@@ -33,7 +34,6 @@ using namespace std;
 namespace Spartan
 {
     RHI_DepthStencilState::RHI_DepthStencilState(
-        RHI_Device* rhi_device,
         const bool depth_test                                     /*= true*/,
         const bool depth_write                                    /*= true*/,
         const RHI_Comparison_Function depth_comparison_function   /*= Comparison_LessEqual*/,
@@ -45,9 +45,6 @@ namespace Spartan
         const RHI_Stencil_Operation stencil_pass_op               /*= RHI_Stencil_Replace */
     )
     {
-        SP_ASSERT(rhi_device != nullptr);
-        SP_ASSERT(rhi_device->GetRhiContext()->device != nullptr);
-
         // Save properties
         m_depth_test_enabled          = depth_test;
         m_depth_write_enabled         = depth_write;
@@ -80,7 +77,7 @@ namespace Spartan
         }
 
         // Create depth-stencil state
-        SP_ASSERT(d3d11_utility::error_check(rhi_device->GetRhiContext()->device->CreateDepthStencilState(&desc, reinterpret_cast<ID3D11DepthStencilState**>(&m_rhi_resource))));
+        SP_ASSERT(d3d11_utility::error_check(Renderer::GetRhiDevice()->GetRhiContext()->device->CreateDepthStencilState(&desc, reinterpret_cast<ID3D11DepthStencilState**>(&m_rhi_resource))));
     }
 
     RHI_DepthStencilState::~RHI_DepthStencilState()

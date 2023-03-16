@@ -37,7 +37,7 @@ namespace Spartan
     class RHI_FSR2
     {
     public:
-        static void OnResolutionChange(RHI_Device* rhi_device, const Math::Vector2& resolution_render, const Math::Vector2& resolution_output);
+        static void OnResolutionChange(const Math::Vector2& resolution_render, const Math::Vector2& resolution_output);
         static void GenerateJitterSample(float* x, float* y);
         static void Dispatch(
             RHI_CommandList* cmd_list,

@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Implementation.h"
 #include "../RHI_ConstantBuffer.h"
 #include "../RHI_Device.h"
+#include "../Rendering/Renderer.h"
 //================================
 
 //= NAMESPACES =====
@@ -34,9 +35,6 @@ namespace Spartan
 {
     void RHI_ConstantBuffer::_create()
     {
-        SP_ASSERT(m_rhi_device != nullptr);
-        SP_ASSERT(m_rhi_device->GetRhiContext()->device != nullptr);
-
         // Destroy previous buffer
         _destroy();
 
@@ -49,7 +47,7 @@ namespace Spartan
         buffer_desc.MiscFlags           = 0;
         buffer_desc.StructureByteStride = 0;
 
-        SP_ASSERT(d3d11_utility::error_check(m_rhi_device->GetRhiContext()->device->CreateBuffer(&buffer_desc, nullptr, reinterpret_cast<ID3D11Buffer**>(&m_rhi_resource))));
+        SP_ASSERT(d3d11_utility::error_check(Renderer::GetRhiDevice()->GetRhiContext()->device->CreateBuffer(&buffer_desc, nullptr, reinterpret_cast<ID3D11Buffer**>(&m_rhi_resource))));
     }
 
     void RHI_ConstantBuffer::_destroy()
@@ -57,10 +55,9 @@ namespace Spartan
         d3d11_utility::release<ID3D11Buffer>(m_rhi_resource);
     }
 
-    RHI_ConstantBuffer::RHI_ConstantBuffer(RHI_Device* rhi_device, const string& name)
+    RHI_ConstantBuffer::RHI_ConstantBuffer(const string& name)
     {
-        m_rhi_device = rhi_device;
-        m_name       = name;
+        m_name = name;
     }
 
     void RHI_ConstantBuffer::Update(void* data_cpu)
@@ -68,7 +65,7 @@ namespace Spartan
         // Map
         D3D11_MAPPED_SUBRESOURCE mapped_resource;
         SP_ASSERT_MSG(
-            SUCCEEDED(m_rhi_device->GetRhiContext()->device_context->Map(static_cast<ID3D11Buffer*>(m_rhi_resource), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped_resource)),
+            SUCCEEDED(Renderer::GetRhiDevice()->GetRhiContext()->device_context->Map(static_cast<ID3D11Buffer*>(m_rhi_resource), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped_resource)),
             "Failed to map constant buffer");
 
         // Copy
@@ -76,6 +73,6 @@ namespace Spartan
 
         // Unmap
         SP_ASSERT(m_rhi_resource != nullptr);
-        m_rhi_device->GetRhiContext()->device_context->Unmap(static_cast<ID3D11Buffer*>(m_rhi_resource), 0);
+        Renderer::GetRhiDevice()->GetRhiContext()->device_context->Unmap(static_cast<ID3D11Buffer*>(m_rhi_resource), 0);
     }
 }

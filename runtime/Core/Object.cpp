@@ -28,9 +28,8 @@ namespace Spartan
 {
     uint64_t g_id = 0;
 
-    Object::Object(Context* context /*= nullptr*/)
+    Object::Object()
     {
-        m_context   = context;
         m_object_id = GenerateObjectId();
     }
 }

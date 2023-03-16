@@ -38,7 +38,7 @@ namespace Spartan
     class SP_CLASS Terrain : public IComponent
     {
     public:
-        Terrain(Context* context, Entity* entity, uint64_t id = 0);
+        Terrain(Entity* entity, uint64_t id = 0);
         ~Terrain() = default;
 
         //= IComponent ===============================

@@ -34,7 +34,7 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    Grid::Grid(RHI_Device* rhi_device)
+    Grid::Grid()
     {
         // Create vertices.
         vector<RHI_Vertex_PosCol> vertices;
@@ -42,7 +42,7 @@ namespace Spartan
         m_vertex_count = static_cast<uint32_t>(vertices.size());
 
         // Create vertex buffer.
-        m_vertex_buffer = make_shared<RHI_VertexBuffer>(rhi_device, false, "grid");
+        m_vertex_buffer = make_shared<RHI_VertexBuffer>(false, "grid");
         m_vertex_buffer->Create(vertices);
     }
 

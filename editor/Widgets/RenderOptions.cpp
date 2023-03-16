@@ -22,12 +22,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =======================
 #include "RenderOptions.h"
 #include "Rendering/Renderer.h"
-#include "Core/Context.h"
 #include "Core/Timer.h"
 #include "Math/MathHelper.h"
 #include "RHI/RHI_Device.h"
 #include "Profiling/Profiler.h"
 #include "../ImGui/ImGuiExtension.h"
+#include "Rendering/Mesh.h"
 //==================================
 
 //= NAMESPACES ===============
@@ -38,15 +38,8 @@ using namespace Spartan::Math;
 
 namespace helper
 {
-    static Renderer* renderer;
-
     static const float k_width_input_numeric = 120.0f;
     static const float k_width_combo_box     = 120.0f;
-
-    void Initialise(Renderer* _renderer)
-    {
-        renderer = _renderer;
-    }
 
     bool Option(const char* title, bool default_open = true)
     {
@@ -112,7 +105,7 @@ namespace helper
 
         SecondColumn();
         {
-            float value = renderer->GetOption<float>(render_option);
+            float value = Renderer::GetOption<float>(render_option);
 
             ImGui::PushID(static_cast<int>(ImGui::GetCursorPosY()));
             ImGui::PushItemWidth(k_width_input_numeric);
@@ -122,9 +115,9 @@ namespace helper
             value = Math::Helper::Clamp(value, min, max);
 
             // Only update if changed
-            if (renderer->GetOption<float>(render_option) != value)
+            if (Renderer::GetOption<float>(render_option) != value)
             {
-                renderer->SetOption(render_option, value);
+                Renderer::SetOption(render_option, value);
             }
         }
     }
@@ -162,7 +155,6 @@ RenderOptions::RenderOptions(Editor* editor) : Widget(editor)
     m_title        = "Renderer Options";
     m_flags        |= ImGuiWindowFlags_AlwaysAutoResize;
     m_visible      = false;
-    m_renderer     = m_context->GetSystem<Renderer>();
     m_alpha        = 1.0f;
     m_position     = k_widget_position_screen_center;
     m_size_initial = Vector2(600.0f, 1000.0f);
@@ -171,28 +163,28 @@ RenderOptions::RenderOptions(Editor* editor) : Widget(editor)
 void RenderOptions::TickVisible()
 {
     // Reflect options from engine
-    bool do_dof                    = m_renderer->GetOption<bool>(RendererOption::DepthOfField);
-    bool do_volumetric_fog         = m_renderer->GetOption<bool>(RendererOption::VolumetricFog);
-    bool do_ssao                   = m_renderer->GetOption<bool>(RendererOption::Ssao);
-    bool do_ssao_gi                = m_renderer->GetOption<bool>(RendererOption::Ssao_Gi);
-    bool do_sss                    = m_renderer->GetOption<bool>(RendererOption::ScreenSpaceShadows);
-    bool do_ssr                    = m_renderer->GetOption<bool>(RendererOption::ScreenSpaceReflections);
-    bool do_motion_blur            = m_renderer->GetOption<bool>(RendererOption::MotionBlur);
-    bool do_film_grain             = m_renderer->GetOption<bool>(RendererOption::FilmGrain);
-    bool do_chromatic_aberration   = m_renderer->GetOption<bool>(RendererOption::ChromaticAberration);
-    bool do_debanding              = m_renderer->GetOption<bool>(RendererOption::Debanding);
-    bool debug_physics             = m_renderer->GetOption<bool>(RendererOption::Debug_Physics);
-    bool debug_aabb                = m_renderer->GetOption<bool>(RendererOption::Debug_Aabb);
-    bool debug_light               = m_renderer->GetOption<bool>(RendererOption::Debug_Lights);
-    bool debug_transform           = m_renderer->GetOption<bool>(RendererOption::Debug_TransformHandle);
-    bool debug_selection_outline   = m_renderer->GetOption<bool>(RendererOption::Debug_SelectionOutline);
-    bool debug_picking_ray         = m_renderer->GetOption<bool>(RendererOption::Debug_PickingRay);
-    bool debug_grid                = m_renderer->GetOption<bool>(RendererOption::Debug_Grid);
-    bool debug_reflection_probes   = m_renderer->GetOption<bool>(RendererOption::Debug_ReflectionProbes);
-    bool performance_metrics = m_renderer->GetOption<bool>(RendererOption::Debug_PerformanceMetrics);
-    bool debug_wireframe           = m_renderer->GetOption<bool>(RendererOption::Debug_Wireframe);
-    bool do_depth_prepass          = m_renderer->GetOption<bool>(RendererOption::DepthPrepass);
-    int resolution_shadow          = m_renderer->GetOption<int>(RendererOption::ShadowResolution);
+    bool do_dof                    = Renderer::GetOption<bool>(RendererOption::DepthOfField);
+    bool do_volumetric_fog         = Renderer::GetOption<bool>(RendererOption::VolumetricFog);
+    bool do_ssao                   = Renderer::GetOption<bool>(RendererOption::Ssao);
+    bool do_ssao_gi                = Renderer::GetOption<bool>(RendererOption::Ssao_Gi);
+    bool do_sss                    = Renderer::GetOption<bool>(RendererOption::ScreenSpaceShadows);
+    bool do_ssr                    = Renderer::GetOption<bool>(RendererOption::ScreenSpaceReflections);
+    bool do_motion_blur            = Renderer::GetOption<bool>(RendererOption::MotionBlur);
+    bool do_film_grain             = Renderer::GetOption<bool>(RendererOption::FilmGrain);
+    bool do_chromatic_aberration   = Renderer::GetOption<bool>(RendererOption::ChromaticAberration);
+    bool do_debanding              = Renderer::GetOption<bool>(RendererOption::Debanding);
+    bool debug_physics             = Renderer::GetOption<bool>(RendererOption::Debug_Physics);
+    bool debug_aabb                = Renderer::GetOption<bool>(RendererOption::Debug_Aabb);
+    bool debug_light               = Renderer::GetOption<bool>(RendererOption::Debug_Lights);
+    bool debug_transform           = Renderer::GetOption<bool>(RendererOption::Debug_TransformHandle);
+    bool debug_selection_outline   = Renderer::GetOption<bool>(RendererOption::Debug_SelectionOutline);
+    bool debug_picking_ray         = Renderer::GetOption<bool>(RendererOption::Debug_PickingRay);
+    bool debug_grid                = Renderer::GetOption<bool>(RendererOption::Debug_Grid);
+    bool debug_reflection_probes   = Renderer::GetOption<bool>(RendererOption::Debug_ReflectionProbes);
+    bool performance_metrics       = Renderer::GetOption<bool>(RendererOption::Debug_PerformanceMetrics);
+    bool debug_wireframe           = Renderer::GetOption<bool>(RendererOption::Debug_Wireframe);
+    bool do_depth_prepass          = Renderer::GetOption<bool>(RendererOption::DepthPrepass);
+    int resolution_shadow          = Renderer::GetOption<int>(RendererOption::ShadowResolution);
 
     // Present options (with a table)
     {
@@ -237,8 +229,6 @@ void RenderOptions::TickVisible()
             ImGuiTableFlags_BordersInnerV   |   // Draw vertical borders between columns.
             ImGuiTableFlags_SizingFixedFit;     // Columns default to _WidthFixed or _WidthAuto (if resizable or not resizable), matching contents width.
 
-        helper::Initialise(m_renderer);
-        
         // Table
         if (ImGui::BeginTable("##render_options", column_count, flags, size))
         {
@@ -249,19 +239,19 @@ void RenderOptions::TickVisible()
             if (helper::Option("Resolution"))
             {
                 // Render
-                Vector2 resolution_render = m_renderer->GetResolutionRender();
+                Vector2 resolution_render = Renderer::GetResolutionRender();
                 uint32_t resolution_render_index = get_display_mode_index(resolution_render);
                 if (helper::ComboBox("Render resolution", display_modes_string, resolution_render_index))
                 {
-                    m_renderer->SetResolutionRender(display_modes[resolution_render_index].width, display_modes[resolution_render_index].height);
+                    Renderer::SetResolutionRender(display_modes[resolution_render_index].width, display_modes[resolution_render_index].height);
                 }
 
                 // Output
-                Vector2 resolution_output = m_renderer->GetResolutionOutput();
+                Vector2 resolution_output = Renderer::GetResolutionOutput();
                 uint32_t resolution_output_index = get_display_mode_index(resolution_output);
                 if (helper::ComboBox("Output resolution", display_modes_string, resolution_output_index))
                 {
-                    m_renderer->SetResolutionOutput(display_modes[resolution_output_index].width, display_modes[resolution_output_index].height);
+                    Renderer::SetResolutionOutput(display_modes[resolution_output_index].width, display_modes[resolution_output_index].height);
                 }
 
                 // Upsampling
@@ -275,10 +265,10 @@ void RenderOptions::TickVisible()
                     bool upsampling_allowed = resolution_render.x < resolution_output.x || resolution_render.y < resolution_output.y;
                     ImGui::BeginDisabled(!upsampling_allowed);
 
-                    uint32_t upsampling_mode = m_renderer->GetOption<uint32_t>(RendererOption::Upsampling);
+                    uint32_t upsampling_mode = Renderer::GetOption<uint32_t>(RendererOption::Upsampling);
                     if (helper::ComboBox("Upsampling", upsampling_modes, upsampling_mode))
                     {
-                        m_renderer->SetOption(RendererOption::Upsampling, static_cast<float>(upsampling_mode));
+                        Renderer::SetOption(RendererOption::Upsampling, static_cast<float>(upsampling_mode));
                     }
 
                     ImGui::EndDisabled();
@@ -287,7 +277,7 @@ void RenderOptions::TickVisible()
                 // Sharpening
                 {
                     // FidelityFX FSR 2.0 sharpening overrides FidelityFX CAS
-                    bool fsr_enabled = m_renderer->GetOption<UpsamplingMode>(RendererOption::Upsampling) == UpsamplingMode::FSR2;
+                    bool fsr_enabled = Renderer::GetOption<UpsamplingMode>(RendererOption::Upsampling) == UpsamplingMode::FSR2;
                     string label = fsr_enabled ? "Sharpness (AMD FidelityFX FSR 2.0)" : "Sharpness (AMD FidelityFX CAS)";
 
                     helper::RenderOptionValue(label.c_str(), RendererOption::Sharpness, "", 0.1f, 0.0f, 1.0f);
@@ -313,7 +303,7 @@ void RenderOptions::TickVisible()
             if (helper::Option("Anti-Aliasing"))
             {
                 // Reflect
-                AntialiasingMode antialiasing = m_renderer->GetOption<AntialiasingMode>(RendererOption::Antialiasing);
+                AntialiasingMode antialiasing = Renderer::GetOption<AntialiasingMode>(RendererOption::Antialiasing);
 
                 // TAA
                 bool taa_enabled = antialiasing == AntialiasingMode::Taa || antialiasing == AntialiasingMode::TaaFxaa;
@@ -326,19 +316,19 @@ void RenderOptions::TickVisible()
                 // Map
                 if (taa_enabled && fxaa_enabled)
                 {
-                    m_renderer->SetOption(RendererOption::Antialiasing, static_cast<float>(AntialiasingMode::TaaFxaa));
+                    Renderer::SetOption(RendererOption::Antialiasing, static_cast<float>(AntialiasingMode::TaaFxaa));
                 }
                 else if (taa_enabled)
                 {
-                    m_renderer->SetOption(RendererOption::Antialiasing, static_cast<float>(AntialiasingMode::Taa));
+                    Renderer::SetOption(RendererOption::Antialiasing, static_cast<float>(AntialiasingMode::Taa));
                 }
                 else if (fxaa_enabled)
                 {
-                    m_renderer->SetOption(RendererOption::Antialiasing, static_cast<float>(AntialiasingMode::Fxaa));
+                    Renderer::SetOption(RendererOption::Antialiasing, static_cast<float>(AntialiasingMode::Fxaa));
                 }
                 else
                 {
-                    m_renderer->SetOption(RendererOption::Antialiasing, static_cast<float>(AntialiasingMode::Disabled));
+                    Renderer::SetOption(RendererOption::Antialiasing, static_cast<float>(AntialiasingMode::Disabled));
                 }
             }
 
@@ -346,10 +336,10 @@ void RenderOptions::TickVisible()
             {
                 // Tonemapping
                 static vector<string> tonemapping_options = { "AMD", "ACES", "Reinhard", "Uncharted 2", "Matrix", "Off" };
-                uint32_t selection_index = m_renderer->GetOption<uint32_t>(RendererOption::Tonemapping);
+                uint32_t selection_index = Renderer::GetOption<uint32_t>(RendererOption::Tonemapping);
                 if (helper::ComboBox("Tonemapping", tonemapping_options, selection_index))
                 {
-                    m_renderer->SetOption(RendererOption::Tonemapping, static_cast<float>(selection_index));
+                    Renderer::SetOption(RendererOption::Tonemapping, static_cast<float>(selection_index));
                 }
 
                 // Gamma
@@ -396,20 +386,18 @@ void RenderOptions::TickVisible()
 
                 // FPS Limit
                 {
-                    Timer* timer = m_context->GetSystem<Timer>();
-                    
                     helper::FirstColumn();
-                    const FpsLimitType fps_limit_type = timer->GetFpsLimitType();
+                    const FpsLimitType fps_limit_type = Timer::GetFpsLimitType();
                     string label = "FPS Limit - " + string((fps_limit_type == FpsLimitType::FixedToMonitor) ? "Fixed to monitor" : (fps_limit_type == FpsLimitType::Unlocked ? "Unlocked" : "Fixed"));
                     ImGui::Text(label.c_str());
 
                     helper::SecondColumn();
                     {
-                        double fps_target = timer->GetFpsLimit();
+                        double fps_target = Timer::GetFpsLimit();
                         ImGui::PushItemWidth(helper::k_width_input_numeric);
                         ImGui::InputDouble("##fps_limit", &fps_target, 0.0, 0.0f, "%.1f");
                         ImGui::PopItemWidth();
-                        timer->SetFpsLimit(fps_target);
+                        Timer::SetFpsLimit(fps_target);
                     }
                 }
 
@@ -452,26 +440,26 @@ void RenderOptions::TickVisible()
     }
 
     // Map options to engine
-    m_renderer->SetOption(RendererOption::ShadowResolution,         static_cast<float>(resolution_shadow));
-    m_renderer->SetOption(RendererOption::DepthOfField,             do_dof);
-    m_renderer->SetOption(RendererOption::VolumetricFog,            do_volumetric_fog);
-    m_renderer->SetOption(RendererOption::Ssao,                     do_ssao);
-    m_renderer->SetOption(RendererOption::Ssao_Gi,                  do_ssao_gi);
-    m_renderer->SetOption(RendererOption::ScreenSpaceShadows,       do_sss);
-    m_renderer->SetOption(RendererOption::ScreenSpaceReflections,   do_ssr);
-    m_renderer->SetOption(RendererOption::MotionBlur,               do_motion_blur);
-    m_renderer->SetOption(RendererOption::FilmGrain,                do_film_grain);
-    m_renderer->SetOption(RendererOption::ChromaticAberration,      do_chromatic_aberration);
-    m_renderer->SetOption(RendererOption::Debanding,                do_debanding);
-    m_renderer->SetOption(RendererOption::Debug_TransformHandle,    debug_transform);
-    m_renderer->SetOption(RendererOption::Debug_SelectionOutline,   debug_selection_outline);
-    m_renderer->SetOption(RendererOption::Debug_Physics,            debug_physics);
-    m_renderer->SetOption(RendererOption::Debug_Aabb,               debug_aabb);
-    m_renderer->SetOption(RendererOption::Debug_Lights,             debug_light);
-    m_renderer->SetOption(RendererOption::Debug_PickingRay,         debug_picking_ray);
-    m_renderer->SetOption(RendererOption::Debug_Grid,               debug_grid);
-    m_renderer->SetOption(RendererOption::Debug_ReflectionProbes,   debug_reflection_probes);
-    m_renderer->SetOption(RendererOption::Debug_PerformanceMetrics, performance_metrics);
-    m_renderer->SetOption(RendererOption::Debug_Wireframe,          debug_wireframe);
-    m_renderer->SetOption(RendererOption::DepthPrepass,             do_depth_prepass);
+    Renderer::SetOption(RendererOption::ShadowResolution,         static_cast<float>(resolution_shadow));
+    Renderer::SetOption(RendererOption::DepthOfField,             do_dof);
+    Renderer::SetOption(RendererOption::VolumetricFog,            do_volumetric_fog);
+    Renderer::SetOption(RendererOption::Ssao,                     do_ssao);
+    Renderer::SetOption(RendererOption::Ssao_Gi,                  do_ssao_gi);
+    Renderer::SetOption(RendererOption::ScreenSpaceShadows,       do_sss);
+    Renderer::SetOption(RendererOption::ScreenSpaceReflections,   do_ssr);
+    Renderer::SetOption(RendererOption::MotionBlur,               do_motion_blur);
+    Renderer::SetOption(RendererOption::FilmGrain,                do_film_grain);
+    Renderer::SetOption(RendererOption::ChromaticAberration,      do_chromatic_aberration);
+    Renderer::SetOption(RendererOption::Debanding,                do_debanding);
+    Renderer::SetOption(RendererOption::Debug_TransformHandle,    debug_transform);
+    Renderer::SetOption(RendererOption::Debug_SelectionOutline,   debug_selection_outline);
+    Renderer::SetOption(RendererOption::Debug_Physics,            debug_physics);
+    Renderer::SetOption(RendererOption::Debug_Aabb,               debug_aabb);
+    Renderer::SetOption(RendererOption::Debug_Lights,             debug_light);
+    Renderer::SetOption(RendererOption::Debug_PickingRay,         debug_picking_ray);
+    Renderer::SetOption(RendererOption::Debug_Grid,               debug_grid);
+    Renderer::SetOption(RendererOption::Debug_ReflectionProbes,   debug_reflection_probes);
+    Renderer::SetOption(RendererOption::Debug_PerformanceMetrics, performance_metrics);
+    Renderer::SetOption(RendererOption::Debug_Wireframe,          debug_wireframe);
+    Renderer::SetOption(RendererOption::DepthPrepass,             do_depth_prepass);
 }

@@ -25,15 +25,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Widget.h"
 //=================
 
-namespace Spartan { class Renderer; }
-
 class RenderOptions : public Widget
 {
 public:
     RenderOptions(Editor* editor);
 
     void TickVisible() override;
-
-private:
-    Spartan::Renderer* m_renderer;
 };

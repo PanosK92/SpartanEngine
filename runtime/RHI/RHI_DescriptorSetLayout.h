@@ -43,7 +43,7 @@ namespace Spartan
     {
     public:
         RHI_DescriptorSetLayout() = default;
-        RHI_DescriptorSetLayout(RHI_Device* rhi_device, const std::vector<RHI_Descriptor>& descriptors, const std::string& name);
+        RHI_DescriptorSetLayout(const std::vector<RHI_Descriptor>& descriptors, const std::string& name);
         ~RHI_DescriptorSetLayout();
 
         // Set
@@ -73,6 +73,5 @@ namespace Spartan
 
         // Misc
         bool m_needs_to_bind     = false;
-        RHI_Device* m_rhi_device = nullptr;
     };
 }

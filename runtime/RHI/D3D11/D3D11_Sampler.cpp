@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Implementation.h"
 #include "../RHI_Sampler.h"
 #include "../RHI_Device.h"
+#include "../Rendering/Renderer.h"
 //================================
 
 namespace Spartan
@@ -45,7 +46,7 @@ namespace Spartan
         sampler_desc.MinLOD             = 0;
         sampler_desc.MaxLOD             = FLT_MAX;
     
-        d3d11_utility::error_check(m_rhi_device->GetRhiContext()->device->CreateSamplerState(&sampler_desc, reinterpret_cast<ID3D11SamplerState**>(&m_rhi_resource)));
+        d3d11_utility::error_check(Renderer::GetRhiDevice()->GetRhiContext()->device->CreateSamplerState(&sampler_desc, reinterpret_cast<ID3D11SamplerState**>(&m_rhi_resource)));
     }
 
     RHI_Sampler::~RHI_Sampler()

@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "../RHI_Implementation.h"
 #include "../RHI_StructuredBuffer.h"
+#include "../Rendering/Renderer.h"
 //==================================
 
 //= NAMESPACES =====
@@ -31,15 +32,14 @@ using namespace std;
 
 namespace Spartan
 {
-    RHI_StructuredBuffer::RHI_StructuredBuffer(RHI_Device* rhi_device, const uint32_t stride, const uint32_t element_count, const char* name)
+    RHI_StructuredBuffer::RHI_StructuredBuffer(const uint32_t stride, const uint32_t element_count, const char* name)
     {
-        m_rhi_device      = rhi_device;
         m_stride          = stride;
         m_element_count   = element_count;
         m_object_size_gpu = stride * element_count;
 
         // Calculate required alignment based on minimum device offset alignment
-        size_t min_alignment = m_rhi_device->GetMinStorageBufferOffsetAllignment();
+        size_t min_alignment = Renderer::GetRhiDevice()->GetMinStorageBufferOffsetAllignment();
         if (min_alignment > 0)
         {
             m_stride = static_cast<uint64_t>((m_stride + min_alignment - 1) & ~(min_alignment - 1));
@@ -50,10 +50,10 @@ namespace Spartan
         VkMemoryPropertyFlags flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT; // mappable
 
         // Create buffer
-        rhi_device->CreateBuffer(m_rhi_resource, m_object_size_gpu, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, flags);
+        Renderer::GetRhiDevice()->CreateBuffer(m_rhi_resource, m_object_size_gpu, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, flags);
 
         // Get mapped data pointer
-        m_mapped_data = m_rhi_device->get_mapped_data_from_buffer(m_rhi_resource);
+        m_mapped_data = Renderer::GetRhiDevice()->get_mapped_data_from_buffer(m_rhi_resource);
 
         // Set debug name
         vulkan_utility::debug::set_object_name(static_cast<VkBuffer>(m_rhi_resource), name);
@@ -62,10 +62,10 @@ namespace Spartan
     RHI_StructuredBuffer::~RHI_StructuredBuffer()
     {
         // Wait in case it's still in use by the GPU
-        m_rhi_device->QueueWaitAll();
+        Renderer::GetRhiDevice()->QueueWaitAll();
 
         // Destroy buffer
-        m_rhi_device->DestroyBuffer(m_rhi_resource);
+        Renderer::GetRhiDevice()->DestroyBuffer(m_rhi_resource);
     }
 
     void RHI_StructuredBuffer::Update(void* data_cpu)
@@ -84,6 +84,6 @@ namespace Spartan
 
         // Vulkan is using persistent mapping, so we only need to copy and flush
         memcpy(reinterpret_cast<std::byte*>(m_mapped_data) + m_offset, reinterpret_cast<std::byte*>(data_cpu), m_stride);
-        m_rhi_device->FlushAllocation(m_rhi_resource, m_offset, m_stride);
+        Renderer::GetRhiDevice()->FlushAllocation(m_rhi_resource, m_offset, m_stride);
     }
 }

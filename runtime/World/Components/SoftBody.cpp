@@ -39,9 +39,9 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    SoftBody::SoftBody(Context* context, Entity* entity, uint64_t id /*= 0*/) : IComponent(context, entity, id)
+    SoftBody::SoftBody(Entity* entity, uint64_t id /*= 0*/) : IComponent(entity, id)
     {
-        m_physics = m_context->GetSystem<Physics>();
+
     }
 
     SoftBody::~SoftBody()
@@ -67,10 +67,10 @@ namespace Spartan
 
     }
 
-    void SoftBody::OnTick(double delta_time)
+    void SoftBody::OnTick()
     {
         // When in editor mode, set engine transform to bullet (so the user can move the body around)
-        if (!m_context->m_engine->IsFlagSet(EngineMode::Game))
+        if (!Engine::IsFlagSet(EngineMode::Game))
         {
             if (GetPosition() != GetTransform()->GetPosition())
             {
@@ -167,10 +167,10 @@ namespace Spartan
             position + extent * btVector3(+1, +1, +1)
         };
 
-        m_soft_body = btSoftBodyHelpers::CreateFromConvexHull(m_physics->GetSoftWorldInfo(), vertices, 8);
+        m_soft_body = btSoftBodyHelpers::CreateFromConvexHull(Physics::GetSoftWorldInfo(), vertices, 8);
         m_soft_body->generateBendingConstraints(2);
 
-        m_physics->AddBody(m_soft_body);
+        Physics::AddBody(m_soft_body);
     }
 
     void SoftBody::CreateAeroCloth() const
@@ -180,7 +180,7 @@ namespace Spartan
         const int count = 5;
         btVector3 pos(-s * segments, 0, 0);
         const btScalar gap = 0.5;
-        btSoftBody* psb = btSoftBodyHelpers::CreatePatch(m_physics->GetSoftWorldInfo(), btVector3(-s, 0, -s * 3),
+        btSoftBody* psb = btSoftBodyHelpers::CreatePatch(Physics::GetSoftWorldInfo(), btVector3(-s, 0, -s * 3),
             btVector3(+s, 0, -s * 3),
             btVector3(-s, 0, +s),
             btVector3(+s, 0, +s),
@@ -229,7 +229,7 @@ namespace Spartan
         //this could help performance in some cases
         btSoftBodyHelpers::ReoptimizeLinkOrder(psb);
         psb->setPose(true, true);
-        m_physics->AddBody(psb);
+        Physics::AddBody(psb);
     }
 
     void SoftBody::Body_Release()
@@ -246,20 +246,17 @@ namespace Spartan
 
     void SoftBody::Body_AddToWorld()
     {
-        if (!m_physics)
-            return;
-
         m_soft_body->setTotalMass(m_mass);
-        m_physics->AddBody(m_soft_body);
+        Physics::AddBody(m_soft_body);
         m_in_world = true;
     }
 
     void SoftBody::Body_RemoveFromWorld()
     {
-        if (!m_physics || !m_soft_body || !m_in_world)
+        if ( !m_soft_body || !m_in_world)
             return;
 
-        m_physics->RemoveBody(m_soft_body);
-        m_in_world  = false;
+        Physics::RemoveBody(m_soft_body);
+        m_in_world = false;
     }
 }

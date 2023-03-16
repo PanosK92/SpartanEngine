@@ -37,11 +37,11 @@ namespace Spartan
     class SP_CLASS Environment : public IComponent
     {
     public:
-        Environment(Context* context, Entity* entity, uint64_t id = 0);
+        Environment(Entity* entity, uint64_t id = 0);
         ~Environment() = default;
 
         //= IComponent ===============================
-        void OnTick(double delta_time) override;
+        void OnTick() override;
         void Serialize(FileStream* stream) override;
         void Deserialize(FileStream* stream) override;
         //============================================

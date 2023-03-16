@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Implementation.h"
 #include "../RHI_RasterizerState.h"
 #include "../RHI_Device.h"
+#include "../Rendering/Renderer.h"
 //=================================
 
 //= NAMESPACES =====
@@ -34,7 +35,6 @@ namespace Spartan
 {
     RHI_RasterizerState::RHI_RasterizerState
     (
-        RHI_Device* rhi_device,
         const RHI_CullMode cull_mode,
         const RHI_PolygonMode polygon_mode,
         const bool depth_clip_enabled,
@@ -45,9 +45,6 @@ namespace Spartan
         const float depth_bias_slope_scaled /*= 0.0f */,
         const float line_width              /*= 1.0f */)
     {
-        SP_ASSERT(rhi_device != nullptr);
-        SP_ASSERT(rhi_device->GetRhiContext()->device != nullptr);
-
         // Save properties
         m_cull_mode               = cull_mode;
         m_polygon_mode            = polygon_mode;
@@ -73,7 +70,7 @@ namespace Spartan
         desc.ScissorEnable          = scissor_enabled;
 
         // Create rasterizer state
-        SP_ASSERT(d3d11_utility::error_check(rhi_device->GetRhiContext()->device->CreateRasterizerState(&desc, reinterpret_cast<ID3D11RasterizerState**>(&m_rhi_resource))));
+        SP_ASSERT(d3d11_utility::error_check(Renderer::GetRhiDevice()->GetRhiContext()->device->CreateRasterizerState(&desc, reinterpret_cast<ID3D11RasterizerState**>(&m_rhi_resource))));
     }
 
     RHI_RasterizerState::~RHI_RasterizerState()

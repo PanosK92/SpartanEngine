@@ -34,7 +34,7 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    AudioSource::AudioSource(Context* context, Entity* entity, uint64_t id /*= 0*/) : IComponent(context, entity, id)
+    AudioSource::AudioSource(Entity* entity, uint64_t id /*= 0*/) : IComponent(entity, id)
     {
 
     }
@@ -69,7 +69,7 @@ namespace Spartan
         m_audio_clip->Stop();
     }
     
-    void AudioSource::OnTick(double delta_time)
+    void AudioSource::OnTick()
     {
         if (!m_audio_clip)
             return;

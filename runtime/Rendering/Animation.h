@@ -64,7 +64,7 @@ namespace Spartan
     class SP_CLASS Animation : public IResource
     {
     public:
-        Animation(Context* context);
+        Animation();
         ~Animation() = default;
 
         //= IResource ==========================================
@@ -78,8 +78,8 @@ namespace Spartan
 
     private:
         std::string m_name;
-        double m_duration       = 0;
-        double m_ticksPerSec    = 0;
+        double m_duration    = 0;
+        double m_ticksPerSec = 0;
 
         // Each channel controls a single node
         std::vector<AnimationNode> m_channels;

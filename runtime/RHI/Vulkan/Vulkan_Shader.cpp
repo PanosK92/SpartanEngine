@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ============================
 #include "pch.h"
+#include "../Rendering/Renderer.h"
 #include "../RHI_Implementation.h"
 #include "../RHI_Device.h"
 #include "../RHI_Shader.h"
@@ -43,9 +44,9 @@ namespace Spartan
         if (m_rhi_resource)
         {
             // Wait in case it's still in use by the GPU
-            m_rhi_device->QueueWaitAll();
+            Renderer::GetRhiDevice()->QueueWaitAll();
 
-            vkDestroyShaderModule(m_rhi_device->GetRhiContext()->device, static_cast<VkShaderModule>(m_rhi_resource), nullptr);
+            vkDestroyShaderModule(Renderer::GetRhiDevice()->GetRhiContext()->device, static_cast<VkShaderModule>(m_rhi_resource), nullptr);
             m_rhi_resource = nullptr;
         }
     }
@@ -125,7 +126,7 @@ namespace Spartan
             create_info.codeSize                 = static_cast<size_t>(shader_buffer->GetBufferSize());
             create_info.pCode                    = reinterpret_cast<const uint32_t*>(shader_buffer->GetBufferPointer());
 
-            SP_ASSERT_MSG(vkCreateShaderModule(m_rhi_device->GetRhiContext()->device, &create_info, nullptr, &shader_module) == VK_SUCCESS, "Failed to create shader module");
+            SP_ASSERT_MSG(vkCreateShaderModule(Renderer::GetRhiDevice()->GetRhiContext()->device, &create_info, nullptr, &shader_module) == VK_SUCCESS, "Failed to create shader module");
 
             // Name the shader module (useful for GPU-based validation)
             vulkan_utility::debug::set_object_name(shader_module, m_name.c_str());

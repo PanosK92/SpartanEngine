@@ -277,11 +277,11 @@ namespace Spartan
         return true;
     }
 
-    static shared_ptr<Material> load_material(Context* context, Mesh* mesh, const string& file_path, const bool is_gltf, const aiMaterial* material_assimp)
+    static shared_ptr<Material> load_material(Mesh* mesh, const string& file_path, const bool is_gltf, const aiMaterial* material_assimp)
     {
         SP_ASSERT(material_assimp != nullptr);
 
-        shared_ptr<Material> material = make_shared<Material>(context);
+        shared_ptr<Material> material = make_shared<Material>();
 
         // NAME
         aiString name;
@@ -304,7 +304,7 @@ namespace Spartan
         material->SetProperty(MaterialProperty::ColorB, color_diffuse.b);
         material->SetProperty(MaterialProperty::ColorA, opacity.r);
 
-        //                                                                          Texture type,                Texture type Assimp (PBR),       Texture type Assimp (Legacy/fallback)
+        //                                                                         Texture type,                Texture type Assimp (PBR),       Texture type Assimp (Legacy/fallback)
         load_material_texture(mesh, file_path, is_gltf, material, material_assimp, MaterialTexture::Color,      aiTextureType_BASE_COLOR,        aiTextureType_DIFFUSE);
         load_material_texture(mesh, file_path, is_gltf, material, material_assimp, MaterialTexture::Roughness,  aiTextureType_DIFFUSE_ROUGHNESS, aiTextureType_SHININESS); // Use specular as fallback
         load_material_texture(mesh, file_path, is_gltf, material, material_assimp, MaterialTexture::Metallness, aiTextureType_METALNESS,         aiTextureType_AMBIENT);   // Use ambient as fallback
@@ -319,11 +319,8 @@ namespace Spartan
         return material;
     }
 
-    ModelImporter::ModelImporter(Context* context)
+    ModelImporter::ModelImporter()
     {
-        m_context = context;
-        m_world   = context->GetSystem<World>();
-
         // Get version
         const int major = aiGetVersionMajor();
         const int minor = aiGetVersionMinor();
@@ -438,7 +435,7 @@ namespace Spartan
             }
 
             // Activate all the newly added entities (they are now thread-safe)
-            m_world->ActivateNewEntities();
+            World::ActivateNewEntities();
         }
         else
         {
@@ -456,7 +453,7 @@ namespace Spartan
         // Create an entity that will match this node.
         // The entity is created as inactive for thread-safety.
         const bool is_active      = false;
-        shared_ptr<Entity> entity = m_world->CreateEntity(is_active);
+        shared_ptr<Entity> entity = World::CreateEntity(is_active);
 
         // Set root entity to mesh
         bool is_root_node = parent_entity == nullptr;
@@ -521,7 +518,7 @@ namespace Spartan
             {
                 // Create entity
                 bool is_active = false;
-                entity         = m_world->CreateEntity(is_active).get();
+                entity         = World::CreateEntity(is_active).get();
 
                 // Set parent
                 entity->GetTransform()->SetParent(node_entity->GetTransform());
@@ -674,7 +671,7 @@ namespace Spartan
             const aiMaterial* assimp_material = m_scene->mMaterials[assimp_mesh->mMaterialIndex];
 
             // Convert it and add it to the model
-            shared_ptr<Material> material = load_material(m_context, m_mesh, m_file_path, m_is_gltf, assimp_material);
+            shared_ptr<Material> material = load_material(m_mesh, m_file_path, m_is_gltf, assimp_material);
 
             m_mesh->AddMaterial(material, entity_parent->GetPtrShared());
         }
@@ -688,7 +685,7 @@ namespace Spartan
         for (uint32_t i = 0; i < m_scene->mNumAnimations; i++)
         {
             const auto assimp_animation = m_scene->mAnimations[i];
-            auto animation = make_shared<Animation>(m_context);
+            auto animation = make_shared<Animation>();
 
             // Basic properties
             animation->SetName(assimp_animation->mName.C_Str());

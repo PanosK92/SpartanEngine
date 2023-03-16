@@ -40,7 +40,7 @@ namespace Spartan
     class SP_CLASS Profiler
     {
     public:
-        static void Initialize(Context* context);
+        static void Initialize();
         static void Shutdown();
         static void PreTick();
         static void PostTick();

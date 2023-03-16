@@ -306,10 +306,8 @@ namespace Spartan
         memcpy(&mip->bytes[0], bytes, size_bytes);
     }
 
-    ImageImporter::ImageImporter(Context* context)
+    ImageImporter::ImageImporter()
     {
-        // Initialize
-        m_context = context;
         FreeImage_Initialise();
 
         // Register error handler

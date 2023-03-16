@@ -29,6 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI_Shader.h"
 #include "RHI_Pipeline.h"
 #include "RHI_CommandPool.h"
+#include "../Rendering/Renderer.h"
 //==================================
 
 //= NAMESPACES =====
@@ -70,9 +71,9 @@ namespace Spartan
         m_discard = true;
     }
     
-    uint32_t RHI_CommandList::GetGpuMemory(RHI_Device* rhi_device)
+    uint32_t RHI_CommandList::GetGpuMemory()
     {
-        if (const PhysicalDevice* physical_device = rhi_device->GetPrimaryPhysicalDevice())
+        if (const PhysicalDevice* physical_device = Renderer::GetRhiDevice()->GetPrimaryPhysicalDevice())
         {
             return physical_device->GetMemory();
         }

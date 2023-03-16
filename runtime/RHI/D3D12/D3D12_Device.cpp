@@ -37,7 +37,7 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    RHI_Device::RHI_Device(Context* context, shared_ptr<RHI_Context> rhi_context)
+    RHI_Device::RHI_Device(shared_ptr<RHI_Context> rhi_context)
     {
         // Detect device limits
         m_max_texture_1d_dimension   = D3D12_REQ_TEXTURE1D_U_DIMENSION;
@@ -46,7 +46,6 @@ namespace Spartan
         m_max_texture_cube_dimension = D3D12_REQ_TEXTURECUBE_DIMENSION;
         m_max_texture_array_layers   = D3D12_REQ_TEXTURE2D_ARRAY_AXIS_DIMENSION;
 
-        m_context                           = context;
         m_rhi_context                       = rhi_context;
         d3d12_utility::globals::rhi_context = rhi_context.get();
         d3d12_utility::globals::rhi_device  = this;
@@ -275,7 +274,7 @@ namespace Spartan
                     for (const DXGI_MODE_DESC& mode : display_modes)
                     {
                         bool update_fps_limit_to_highest_hz = true;
-                        Display::RegisterDisplayMode(DisplayMode(mode.Width, mode.Height, mode.RefreshRate.Numerator, mode.RefreshRate.Denominator), update_fps_limit_to_highest_hz, m_context);
+                        Display::RegisterDisplayMode(DisplayMode(mode.Width, mode.Height, mode.RefreshRate.Numerator, mode.RefreshRate.Denominator), update_fps_limit_to_highest_hz);
                         result = true;
                     }
                 }

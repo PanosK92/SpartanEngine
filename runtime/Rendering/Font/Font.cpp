@@ -42,11 +42,10 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    Font::Font(Context* context, const string& file_path, const int font_size, const Vector4& color) : IResource(context, ResourceType::Font)
+    Font::Font(const string& file_path, const int font_size, const Vector4& color) : IResource(ResourceType::Font)
     {
-        m_rhi_device      = m_context->GetSystem<Renderer>()->GetRhiDevice().get();
-        m_vertex_buffer   = make_shared<RHI_VertexBuffer>(m_rhi_device, true, "font");
-        m_index_buffer    = make_shared<RHI_IndexBuffer>(m_rhi_device, true, "font");
+        m_vertex_buffer   = make_shared<RHI_VertexBuffer>(true, "font");
+        m_index_buffer    = make_shared<RHI_IndexBuffer>(true, "font");
         m_char_max_width  = 0;
         m_char_max_height = 0;
         m_color           = color;
@@ -62,9 +61,6 @@ namespace Spartan
 
     bool Font::LoadFromFile(const string& file_path)
     {
-        if (!m_context)
-            return false;
-
         const Stopwatch timer;
 
         // Load
@@ -155,7 +151,6 @@ namespace Spartan
 
     void Font::UpdateBuffers(vector<RHI_Vertex_PosTex>& vertices, vector<uint32_t>& indices) const
     {
-        SP_ASSERT(m_context != nullptr);
         SP_ASSERT(m_vertex_buffer != nullptr);
         SP_ASSERT(m_index_buffer != nullptr);
 

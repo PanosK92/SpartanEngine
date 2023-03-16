@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_CommandList.h"
 #include "../../Math/Vector2.h"
 #include "../../World/Components/Camera.h"
+#include "../Rendering/Renderer.h"
 //========================================
 
 //= NAMESPACES ===============
@@ -81,10 +82,10 @@ namespace Spartan
         *y = m_ffx_fsr2_dispatch_description.jitterOffset.y;
     }
 
-    void RHI_FSR2::OnResolutionChange(RHI_Device* rhi_device, const Math::Vector2& resolution_render, const Math::Vector2& resolution_output)
+    void RHI_FSR2::OnResolutionChange(const Math::Vector2& resolution_render, const Math::Vector2& resolution_output)
     {
-        VkDevice device = rhi_device->GetRhiContext()->device;
-        VkPhysicalDevice device_physical = rhi_device->GetRhiContext()->device_physical;
+        VkDevice device = Renderer::GetRhiDevice()->GetRhiContext()->device;
+        VkPhysicalDevice device_physical = Renderer::GetRhiDevice()->GetRhiContext()->device_physical;
 
         // Set callbacks
         if (m_ffx_fsr2_context_description.callbacks.scratchBuffer == nullptr)

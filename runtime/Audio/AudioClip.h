@@ -45,7 +45,7 @@ namespace Spartan
     class SP_CLASS AudioClip : public IResource
     {
     public:
-        AudioClip(Context* context);
+        AudioClip();
         ~AudioClip();
 
         //= IResource ===========================================

@@ -37,12 +37,9 @@ namespace Spartan
     class SP_CLASS ImageImporter
     {
     public:
-        ImageImporter(Context* context);
+        ImageImporter();
         ~ImageImporter();
 
         bool Load(const std::string& file_path, const uint32_t slice_index, RHI_Texture* texture);
-
-    private:
-        Context* m_context = nullptr;
     };
 }

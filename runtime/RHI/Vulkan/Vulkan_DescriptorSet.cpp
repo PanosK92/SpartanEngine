@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Sampler.h"
 #include "../RHI_ConstantBuffer.h"
 #include "../RHI_StructuredBuffer.h"
+#include "../Rendering/Renderer.h"
 //=====================================
 
 //= NAMESPACES =====
@@ -46,13 +47,13 @@ namespace Spartan
         // Allocate info
         VkDescriptorSetAllocateInfo allocate_info = {};
         allocate_info.sType                       = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-        allocate_info.descriptorPool              = static_cast<VkDescriptorPool>(m_rhi_device->GetDescriptorPool());
+        allocate_info.descriptorPool              = static_cast<VkDescriptorPool>(Renderer::GetRhiDevice()->GetDescriptorPool());
         allocate_info.descriptorSetCount          = 1;
         allocate_info.pSetLayouts                 = reinterpret_cast<VkDescriptorSetLayout*>(descriptor_set_layouts.data());
 
         // Allocate
         SP_ASSERT_MSG(
-            vkAllocateDescriptorSets(m_rhi_device->GetRhiContext()->device, &allocate_info, reinterpret_cast<VkDescriptorSet*>(&m_resource)) == VK_SUCCESS,
+            vkAllocateDescriptorSets(Renderer::GetRhiDevice()->GetRhiContext()->device, &allocate_info, reinterpret_cast<VkDescriptorSet*>(&m_resource)) == VK_SUCCESS,
             "Failed to allocate descriptor set."
         );
 
@@ -172,11 +173,11 @@ namespace Spartan
         }
 
         vkUpdateDescriptorSets(
-            m_rhi_device->GetRhiContext()->device, // device
-            index,                                 // descriptorWriteCount
-            descriptor_sets.data(),                // pDescriptorWrites
-            0,                                     // descriptorCopyCount
-            nullptr                                // pDescriptorCopies
+            Renderer::GetRhiDevice()->GetRhiContext()->device, // device
+            index,                                             // descriptorWriteCount
+            descriptor_sets.data(),                            // pDescriptorWrites
+            0,                                                 // descriptorCopyCount
+            nullptr                                            // pDescriptorCopies
         );
     }
 }

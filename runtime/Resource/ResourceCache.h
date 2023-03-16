@@ -46,7 +46,7 @@ namespace Spartan
     class SP_CLASS ResourceCache
     {
     public:
-        static void Initialize(Context* context);
+        static void Initialize();
 
         // Get by name
         static std::shared_ptr<IResource>& GetByName(const std::string& name, ResourceType type);
@@ -123,7 +123,7 @@ namespace Spartan
                 return GetByName<T>(name);
 
             // Create new resource
-            std::shared_ptr<T> resource = std::make_shared<T>(m_context);
+            std::shared_ptr<T> resource = std::make_shared<T>();
 
             if (flags != 0)
             {
@@ -200,7 +200,5 @@ namespace Spartan
         static std::shared_ptr<ModelImporter> m_importer_model;
         static std::shared_ptr<ImageImporter> m_importer_image;
         static std::shared_ptr<FontImporter> m_importer_font;
-
-        static Context* m_context;
     };
 }

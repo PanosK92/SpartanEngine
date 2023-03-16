@@ -44,9 +44,8 @@ using namespace std;
 
 namespace Spartan
 {
-    IComponent::IComponent(Context* context, Entity* entity, uint64_t id /*= 0*/, Transform* transform /*= nullptr*/)
+    IComponent::IComponent(Entity* entity, uint64_t id /*= 0*/, Transform* transform /*= nullptr*/)
     {
-        m_context   = context;
         m_entity    = entity;
         m_transform = transform ? transform : entity->GetTransform();
         m_enabled   = true;

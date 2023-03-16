@@ -30,7 +30,7 @@ namespace Spartan
     class RHI_StructuredBuffer : public Object
     {
     public:
-        RHI_StructuredBuffer(RHI_Device* rhi_device, const uint32_t stride, const uint32_t element_count, const char* name);
+        RHI_StructuredBuffer(const uint32_t stride, const uint32_t element_count, const char* name);
         ~RHI_StructuredBuffer();
 
         void Update(void* data);
@@ -49,6 +49,5 @@ namespace Spartan
         void* m_mapped_data      = nullptr;
         void* m_rhi_resource     = nullptr;
         void* m_rhi_uav          = nullptr;
-        RHI_Device* m_rhi_device = nullptr;
     };
 }

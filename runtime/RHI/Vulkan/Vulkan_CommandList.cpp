@@ -70,15 +70,11 @@ namespace Spartan
         return VK_ATTACHMENT_LOAD_OP_CLEAR;
     };
 
-    RHI_CommandList::RHI_CommandList(Context* context, const RHI_Queue_Type queue_type, const uint32_t index, void* cmd_pool, const char* name) : Object(context)
+    RHI_CommandList::RHI_CommandList(const RHI_Queue_Type queue_type, const uint32_t index, void* cmd_pool, const char* name) : Object()
     {
         m_queue_type = queue_type;
-        m_renderer   = context->GetSystem<Renderer>();
-        m_rhi_device = m_renderer->GetRhiDevice().get();
         m_name       = name;
         m_index      = index;
-
-        RHI_Context* rhi_context = m_rhi_device->GetRhiContext();
 
         // Command buffer
         {
@@ -90,7 +86,7 @@ namespace Spartan
 
             // Allocate
             SP_ASSERT_MSG(
-                vkAllocateCommandBuffers(m_rhi_device->GetRhiContext()->device, &allocate_info, reinterpret_cast<VkCommandBuffer*>(&m_rhi_resource)) == VK_SUCCESS,
+                vkAllocateCommandBuffers(Renderer::GetRhiDevice()->GetRhiContext()->device, &allocate_info, reinterpret_cast<VkCommandBuffer*>(&m_rhi_resource)) == VK_SUCCESS,
                 "Failed to allocate command buffer"
             );
 
@@ -99,7 +95,7 @@ namespace Spartan
         }
 
         // Query pool
-        if (rhi_context->gpu_profiling)
+        if (Renderer::GetRhiDevice()->GetRhiContext()->gpu_profiling)
         {
             VkQueryPoolCreateInfo query_pool_create_info = {};
             query_pool_create_info.sType                 = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
@@ -107,25 +103,25 @@ namespace Spartan
             query_pool_create_info.queryCount            = m_max_timestamps;
 
             auto query_pool = reinterpret_cast<VkQueryPool*>(&m_query_pool);
-            SP_ASSERT_MSG(vkCreateQueryPool(rhi_context->device, &query_pool_create_info, nullptr, query_pool) == VK_SUCCESS, "Failed to created qury pool");
+            SP_ASSERT_MSG(vkCreateQueryPool(Renderer::GetRhiDevice()->GetRhiContext()->device, &query_pool_create_info, nullptr, query_pool) == VK_SUCCESS, "Failed to created qury pool");
 
             m_timestamps.fill(0);
         }
 
         // Sync objects
-        m_proccessed_fence     = make_shared<RHI_Fence>(m_rhi_device, name);
-        m_proccessed_semaphore = make_shared<RHI_Semaphore>(m_rhi_device, false, name);
+        m_proccessed_fence     = make_shared<RHI_Fence>(name);
+        m_proccessed_semaphore = make_shared<RHI_Semaphore>(false, name);
     }
 
     RHI_CommandList::~RHI_CommandList()
     {
         // Wait in case it's still in use by the GPU
-        m_rhi_device->QueueWaitAll();
+        Renderer::GetRhiDevice()->QueueWaitAll();
 
         // Query pool
         if (m_query_pool)
         {
-            vkDestroyQueryPool(m_rhi_device->GetRhiContext()->device, static_cast<VkQueryPool>(m_query_pool), nullptr);
+            vkDestroyQueryPool(Renderer::GetRhiDevice()->GetRhiContext()->device, static_cast<VkQueryPool>(m_query_pool), nullptr);
             m_query_pool = nullptr;
         }
     }
@@ -140,7 +136,7 @@ namespace Spartan
         // Get queries
         if (m_queue_type != RHI_Queue_Type::Copy)
         {
-            if (m_rhi_device->GetRhiContext()->gpu_profiling)
+            if (Renderer::GetRhiDevice()->GetRhiContext()->gpu_profiling)
             {
                 if (m_query_pool)
                 {
@@ -151,14 +147,14 @@ namespace Spartan
                         const VkQueryResultFlags flags = VK_QUERY_RESULT_64_BIT;
 
                         vkGetQueryPoolResults(
-                            m_rhi_device->GetRhiContext()->device,  // device
-                            static_cast<VkQueryPool>(m_query_pool), // queryPool
-                            0,                                      // firstQuery
-                            query_count,                            // queryCount
-                            query_count * stride,                   // dataSize
-                            m_timestamps.data(),                    // pData
-                            stride,                                 // stride
-                            flags                                   // flags
+                            Renderer::GetRhiDevice()->GetRhiContext()->device,  // device
+                            static_cast<VkQueryPool>(m_query_pool),             // queryPool
+                            0,                                                  // firstQuery
+                            query_count,                                        // queryCount
+                            query_count * stride,                               // dataSize
+                            m_timestamps.data(),                                // pData
+                            stride,                                             // stride
+                            flags                                               // flags
                         );
                     }
                 }
@@ -208,7 +204,7 @@ namespace Spartan
 
         if (!m_discard)
         {
-            m_rhi_device->QueueSubmit(
+            Renderer::GetRhiDevice()->QueueSubmit(
                 m_queue_type,                                  // queue
                 VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, // wait flags
                 static_cast<VkCommandBuffer>(m_rhi_resource),  // cmd buffer
@@ -236,7 +232,7 @@ namespace Spartan
         if (it == m_pipelines.end())
         {
             // Create a new pipeline
-            it = m_pipelines.emplace(make_pair(hash, move(make_shared<RHI_Pipeline>(m_rhi_device, pso, m_descriptor_layout_current)))).first;
+            it = m_pipelines.emplace(make_pair(hash, move(make_shared<RHI_Pipeline>(pso, m_descriptor_layout_current)))).first;
             SP_LOG_INFO("A new pipeline has been created.");
         }
 
@@ -856,9 +852,9 @@ namespace Spartan
         m_descriptor_layout_current->SetStructuredBuffer(slot, structured_buffer);
     }
 
-    uint32_t RHI_CommandList::GetGpuMemoryUsed(RHI_Device* rhi_device)
+    uint32_t RHI_CommandList::GetGpuMemoryUsed()
     {
-        if (!rhi_device || !rhi_device->GetRhiContext() || !vulkan_utility::functions::get_physical_device_memory_properties_2)
+        if (!vulkan_utility::functions::get_physical_device_memory_properties_2)
             return 0;
 
         VkPhysicalDeviceMemoryBudgetPropertiesEXT device_memory_budget_properties = {};
@@ -869,14 +865,14 @@ namespace Spartan
         device_memory_properties.sType                             = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2;
         device_memory_properties.pNext                             = &device_memory_budget_properties;
 
-        vulkan_utility::functions::get_physical_device_memory_properties_2(static_cast<VkPhysicalDevice>(rhi_device->GetRhiContext()->device_physical), &device_memory_properties);
+        vulkan_utility::functions::get_physical_device_memory_properties_2(static_cast<VkPhysicalDevice>(Renderer::GetRhiDevice()->GetRhiContext()->device_physical), &device_memory_properties);
 
         return static_cast<uint32_t>(device_memory_budget_properties.heapUsage[0] / 1024 / 1024); // MBs
     }
 
     void RHI_CommandList::BeginMarker(const char* name)
     {
-        if (m_rhi_device->GetRhiContext()->gpu_markers)
+        if (Renderer::GetRhiDevice()->GetRhiContext()->gpu_markers)
         {
             vulkan_utility::debug::marker_begin(static_cast<VkCommandBuffer>(m_rhi_resource), name, Vector4::Zero);
         }
@@ -884,7 +880,7 @@ namespace Spartan
 
     void RHI_CommandList::EndMarker()
     {
-        if (m_rhi_device->GetRhiContext()->gpu_markers)
+        if (Renderer::GetRhiDevice()->GetRhiContext()->gpu_markers)
         {
             vulkan_utility::debug::marker_end(static_cast<VkCommandBuffer>(m_rhi_resource));
         }
@@ -895,7 +891,7 @@ namespace Spartan
         // Validate command list state
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
-        if (!m_rhi_device->GetRhiContext()->gpu_profiling)
+        if (!Renderer::GetRhiDevice()->GetRhiContext()->gpu_profiling)
             return;
 
         if (!m_query_pool)
@@ -909,7 +905,7 @@ namespace Spartan
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
         SP_ASSERT(m_query_pool != nullptr);
 
-        if (!m_rhi_device->GetRhiContext()->gpu_profiling)
+        if (!Renderer::GetRhiDevice()->GetRhiContext()->gpu_profiling)
             return;
 
         vkCmdWriteTimestamp(static_cast<VkCommandBuffer>(m_rhi_resource), VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, static_cast<VkQueryPool>(m_query_pool), m_timestamp_index++);
@@ -931,7 +927,7 @@ namespace Spartan
             return 0.0f;
 
         uint64_t duration = Math::Helper::Clamp<uint64_t>(end - start, 0, std::numeric_limits<uint64_t>::max());
-        float duration_ms = static_cast<float>(duration * m_rhi_device->GetTimestampPeriod() * 1e-6f);
+        float duration_ms = static_cast<float>(duration * Renderer::GetRhiDevice()->GetTimestampPeriod() * 1e-6f);
 
         return duration_ms;
     }
@@ -942,14 +938,14 @@ namespace Spartan
         SP_ASSERT(name != nullptr);
 
         // Allowed profiler ?
-        if (m_rhi_device->GetRhiContext()->gpu_profiling && gpu_timing)
+        if (Renderer::GetRhiDevice()->GetRhiContext()->gpu_profiling && gpu_timing)
         {
             Profiler::TimeBlockStart(name, TimeBlockType::Cpu, this);
             Profiler::TimeBlockStart(name, TimeBlockType::Gpu, this);
         }
 
         // Allowed to markers ?
-        if (m_rhi_device->GetRhiContext()->gpu_markers && gpu_marker)
+        if (Renderer::GetRhiDevice()->GetRhiContext()->gpu_markers && gpu_marker)
         {
             vulkan_utility::debug::marker_begin(static_cast<VkCommandBuffer>(m_rhi_resource), name, Vector4::Zero);
         }
@@ -962,13 +958,13 @@ namespace Spartan
         SP_ASSERT_MSG(m_timeblock_active != nullptr, "A time block wasn't started");
 
         // Allowed markers ?
-        if (m_rhi_device->GetRhiContext()->gpu_markers)
+        if (Renderer::GetRhiDevice()->GetRhiContext()->gpu_markers)
         {
             vulkan_utility::debug::marker_end(static_cast<VkCommandBuffer>(m_rhi_resource));
         }
 
         // Allowed profiler ?
-        if (m_rhi_device->GetRhiContext()->gpu_profiling)
+        if (Renderer::GetRhiDevice()->GetRhiContext()->gpu_profiling)
         {
             Profiler::TimeBlockEnd(); // cpu
             Profiler::TimeBlockEnd(); // gpu
@@ -983,7 +979,7 @@ namespace Spartan
 
         // Bind descriptor sets
         {
-            m_renderer->SetGlobalShaderResources(this);
+            Renderer::SetGlobalShaderResources(this);
 
             // If the descriptor set is null, it means we don't need to bind anything.
             if (RHI_DescriptorSet* descriptor_set = m_descriptor_layout_current->GetDescriptorSet())
@@ -1046,7 +1042,7 @@ namespace Spartan
             name        += "-PS:" + (pipeline_state.shader_pixel  ? pipeline_state.shader_pixel->GetName()   : "null");
 
             // Emplace a new descriptor set layout
-            it = m_descriptor_set_layouts.emplace(make_pair(hash, make_shared<RHI_DescriptorSetLayout>(m_rhi_device, descriptors, name.c_str()))).first;
+            it = m_descriptor_set_layouts.emplace(make_pair(hash, make_shared<RHI_DescriptorSetLayout>(descriptors, name.c_str()))).first;
         }
 
         // Get the descriptor set layout we will be using

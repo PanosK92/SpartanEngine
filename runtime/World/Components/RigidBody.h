@@ -46,14 +46,14 @@ namespace Spartan
     class SP_CLASS RigidBody : public IComponent
     {
     public:
-        RigidBody(Context* context, Entity* entity, uint64_t id = 0);
+        RigidBody(Entity* entity, uint64_t id = 0);
         ~RigidBody();
 
         //= ICOMPONENT ===============================
         void OnInitialize() override;
         void OnRemove() override;
         void OnStart() override;
-        void OnTick(double delta_time) override;
+        void OnTick() override;
         void Serialize(FileStream* stream) override;
         void Deserialize(FileStream* stream) override;
         //============================================
@@ -159,10 +159,9 @@ namespace Spartan
         Math::Vector3 m_rotation_lock   = Math::Vector3::Zero;
         Math::Vector3 m_center_of_mass  = Math::Vector3::Zero;
 
-        btRigidBody* m_rigid_body            = nullptr;
+        btRigidBody* m_rigid_body           = nullptr;
         btCollisionShape* m_collision_shape = nullptr;
         bool m_in_world                     = false;
-        Physics* m_physics                  = nullptr;
         std::vector<Constraint*> m_constraints;
     };
 }

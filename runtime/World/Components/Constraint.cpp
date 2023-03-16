@@ -44,7 +44,7 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    Constraint::Constraint(Context* context, Entity* entity, uint64_t id /*= 0*/) : IComponent(context, entity, id)
+    Constraint::Constraint(Entity* entity, uint64_t id /*= 0*/) : IComponent(entity, id)
     {
         m_constraint              = nullptr;
         m_enabledEffective        = true;
@@ -52,7 +52,6 @@ namespace Spartan
         m_errorReduction          = 0.0f;
         m_constraintForceMixing   = 0.0f;
         m_constraintType          = ConstraintType_Point;
-        m_physics                 = GetContext()->GetSystem<Physics>();
 
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_errorReduction, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_constraintForceMixing, float);
@@ -90,7 +89,7 @@ namespace Spartan
         ReleaseConstraint();
     }
 
-    void Constraint::OnTick(double delta_time)
+    void Constraint::OnTick()
     {
         if (m_deferredConstruction)
         {
@@ -119,7 +118,7 @@ namespace Spartan
         stream->Read(&m_lowLimit);
 
         const auto body_other_id = stream->ReadAs<uint32_t>();
-        m_bodyOther = GetContext()->GetSystem<World>()->GetEntityById(body_other_id);
+        m_bodyOther = World::GetEntityById(body_other_id);
 
         Construct();
     }
@@ -213,7 +212,7 @@ namespace Spartan
             if (rigid_body_own)    rigid_body_own->RemoveConstraint(this);
             if (rigid_body_other) rigid_body_other->RemoveConstraint(this);
 
-            m_physics->RemoveConstraint(m_constraint);
+            Physics::RemoveConstraint(m_constraint);
         }
     }
 
@@ -357,7 +356,7 @@ namespace Spartan
             }
 
             ApplyLimits();
-            m_physics->AddConstraint(m_constraint, m_collisionWithLinkedBody);
+            Physics::AddConstraint(m_constraint, m_collisionWithLinkedBody);
         }
     }
 

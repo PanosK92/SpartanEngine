@@ -37,6 +37,11 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
+    vector<RHI_Vertex_PosCol> m_line_vertices;
+    vector<float> m_lines_duration;
+    uint32_t m_lines_index_depth_off = 0;
+    uint32_t m_lines_index_depth_on  = 0;
+
     void Renderer::DrawLine(const Vector3& from, const Vector3& to, const Vector4& color_from, const Vector4& color_to, const float duration /*= 0.0f*/, const bool depth /*= true*/)
     {
         // Get vertex index.
@@ -85,7 +90,7 @@ namespace Spartan
 
     void Renderer::DrawRectangle(const Rectangle& rectangle, const Vector4& color /*= DebugColor*/, const float duration /*= 0.0f*/, bool depth /*= true*/)
     {
-        const float cam_z = m_camera->GetTransform()->GetPosition().z + m_camera->GetNearPlane() + 5.0f;
+        const float cam_z = GetCamera()->GetTransform()->GetPosition().z + GetCamera()->GetNearPlane() + 5.0f;
 
         DrawLine(Vector3(rectangle.left,  rectangle.top,    cam_z), Vector3(rectangle.right, rectangle.top,    cam_z), color, color, duration, depth);
         DrawLine(Vector3(rectangle.right, rectangle.top,    cam_z), Vector3(rectangle.right, rectangle.bottom, cam_z), color, color, duration, depth);
@@ -235,7 +240,7 @@ namespace Spartan
         DrawLine(plane_origin - V * scale, plane_origin + V * scale, color, color, duration, depth);
     }
 
-    void Renderer::Lines_PostMain(const double delta_time)
+    void Renderer::Lines_PostMain()
     {
         // Generate lines for debug primitives supported by the renderer
         m_lines_index_depth_off = numeric_limits<uint32_t>::max(); // max +1 will wrap it to 0.
@@ -278,17 +283,17 @@ namespace Spartan
         // Picking ray
         if (GetOption<bool>(RendererOption::Debug_PickingRay))
         {
-            const auto& ray = m_camera->GetPickingRay();
-            DrawLine(ray.GetStart(), ray.GetStart() + ray.GetDirection() * m_camera->GetFarPlane(), Vector4(0, 1, 0, 1));
+            const auto& ray = GetCamera()->GetPickingRay();
+            DrawLine(ray.GetStart(), ray.GetStart() + ray.GetDirection() * GetCamera()->GetFarPlane(), Vector4(0, 1, 0, 1));
         }
         
         // Lights
         if (GetOption<bool>(RendererOption::Debug_Lights))
         {
-            auto& lights = m_entities[RendererEntityType::Light];
+            auto& lights = GetEntities()[RendererEntityType::Light];
             for (const auto& entity : lights)
             {
-                if (shared_ptr<Camera> camera = m_context->GetSystem<Renderer>()->GetCamera())
+                if (shared_ptr<Camera> camera = GetCamera())
                 {
                     shared_ptr<Entity> entity_selected = camera->GetSelectedEntity();
                     if (entity_selected && entity_selected->GetObjectId() == entity->GetObjectId())
@@ -339,7 +344,7 @@ namespace Spartan
         // AABBs
         if (GetOption<bool>(RendererOption::Debug_Aabb))
         {
-            for (const auto& entity : m_entities[RendererEntityType::GeometryOpaque])
+            for (const auto& entity : GetEntities()[RendererEntityType::GeometryOpaque])
             {
                 if (auto renderable = entity->GetRenderable())
                 {
@@ -347,7 +352,7 @@ namespace Spartan
                 }
             }
         
-            for (const auto& entity : m_entities[RendererEntityType::GeometryTransparent])
+            for (const auto& entity : GetEntities()[RendererEntityType::GeometryTransparent])
             {
                 if (auto renderable = entity->GetRenderable())
                 {

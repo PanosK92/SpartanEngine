@@ -30,13 +30,28 @@ using namespace std;
 
 namespace Spartan
 {
-    Timer::Timer(Context* context) : ISystem(context)
+    // Frame time
+    std::chrono::high_resolution_clock::time_point m_time_start;
+    std::chrono::high_resolution_clock::time_point m_time_sleep_start;
+    std::chrono::high_resolution_clock::time_point m_time_sleep_end;
+    double m_time_ms                = 0.0f;
+    double m_delta_time_ms          = 0.0f;
+    double m_delta_time_smoothed_ms = 0.0f;
+    double m_sleep_overhead         = 0.0f;
+
+    // FPS
+    double m_fps_min                = 10.0;
+    double m_fps_max                = 5000.0;
+    double m_fps_limit              = m_fps_min; // if it's lower than the monitor's hz, it will be updated to match it, so start with something low.
+    bool m_user_selected_fps_target = false;
+
+    void Timer::Initialize()
     {
         m_time_start     = chrono::high_resolution_clock::now();
         m_time_sleep_end = chrono::high_resolution_clock::now();
     }
 
-    void Timer::OnTick(double _delta_time)
+    void Timer::Tick()
     {
         // Compute delta time
         m_time_sleep_start = chrono::high_resolution_clock::now();
@@ -57,7 +72,7 @@ namespace Spartan
 
         // Compute durations
         m_delta_time_ms = static_cast<double>(delta_time.count());
-        m_time_ms       = static_cast<double>(chrono::duration<double, milli>(m_time_sleep_start - m_time_start).count());
+        m_time_ms = static_cast<double>(chrono::duration<double, milli>(m_time_sleep_start - m_time_start).count());
 
         // Compute smoothed delta time
         const double frames_to_accumulate = 10;
@@ -84,6 +99,11 @@ namespace Spartan
         SP_LOG_INFO("Set to %.2f FPS", m_fps_limit);
     }
 
+    double Timer::GetFpsLimit()
+    {
+        return m_fps_limit;
+    }
+
     FpsLimitType Timer::GetFpsLimitType()
     {
         if (m_fps_limit == Display::GetActiveDisplayMode().hz)
@@ -93,5 +113,35 @@ namespace Spartan
             return FpsLimitType::Unlocked;
 
         return FpsLimitType::Fixed;
+    }
+
+    double Timer::GetTimeMs()
+    {
+        return m_time_ms;
+    }
+
+    double Timer::GetTimeSec()
+    {
+        return static_cast<float>(m_time_ms / 1000.0);
+    }
+
+    double Timer::GetDeltaTimeMs()
+    {
+        return m_delta_time_ms;
+    }
+
+    double Timer::GetDeltaTimeSec()
+    {
+        return static_cast<float>(m_delta_time_ms / 1000.0);
+    }
+
+    double Timer::GetDeltaTimeSmoothedMs()
+    {
+        return m_delta_time_smoothed_ms;
+    }
+
+    double Timer::GetDeltaTimeSmoothedSec()
+    {
+        return static_cast<float>(m_delta_time_smoothed_ms / 1000.0);
     }
 }

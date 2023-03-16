@@ -39,7 +39,6 @@ namespace Spartan
         RHI_SwapChain() = default;
         RHI_SwapChain(
             void* sdl_window,
-            RHI_Device* rhi_device,
             uint32_t width,
             uint32_t height,
             RHI_Format format ,
@@ -81,7 +80,6 @@ namespace Spartan
         uint32_t m_flags         = 0;
         RHI_Format m_format      = RHI_Format_R8G8B8A8_Unorm;
         uint32_t m_sync_index    = std::numeric_limits<uint32_t>::max();
-        RHI_Device* m_rhi_device = nullptr;
 
         // Misc
         std::array<RHI_Image_Layout, max_buffer_count> m_layouts;

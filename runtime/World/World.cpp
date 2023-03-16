@@ -42,6 +42,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Rendering/Renderer.h"
 #include "../RHI/RHI_Device.h"
 #include "../RHI/RHI_Texture2D.h"
+#include "../Rendering/Mesh.h"
 //==========================================
 
 //= NAMESPACES ================
@@ -51,30 +52,33 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    World::World(Context* context) : ISystem(context)
+    static std::vector<std::shared_ptr<Entity>> m_entities_to_add;
+    static std::vector<std::shared_ptr<Entity>> m_entities;
+    static std::string m_name;
+    static std::string m_file_path;
+    static bool m_was_in_editor_mode                             = false;
+    static bool m_resolve                                        = true;
+    static std::shared_ptr<Mesh> m_default_model_sponza          = nullptr;
+    static std::shared_ptr<Mesh> m_default_model_sponza_curtains = nullptr;
+    static std::shared_ptr<Mesh> m_default_model_car             = nullptr;
+    
+    // Sync primitives
+    static std::mutex m_entity_access_mutex;
+
+    void World::Initialize()
     {
-        SP_SUBSCRIBE_TO_EVENT(EventType::WorldResolve, SP_EVENT_HANDLER_EXPRESSION
+        SP_SUBSCRIBE_TO_EVENT(EventType::WorldResolve, SP_EVENT_HANDLER_EXPRESSION_STATIC
         (
             m_resolve = true;
         ));
     }
 
-    World::~World()
-    {
-        m_input = nullptr;
-    }
-
-    void World::OnInitialise()
-    {
-        m_input = m_context->GetSystem<Input>();
-    }
-
-    void World::OnShutdown()
+    void World::Shutdown()
     {
         m_entities.clear();
     }
 
-    void World::OnPreTick()
+    void World::PreTick()
     {
         for (shared_ptr<Entity>& entity : m_entities)
         {
@@ -82,7 +86,7 @@ namespace Spartan
         }
     }
 
-    void World::OnTick(double delta_time)
+    void World::Tick()
     {
         lock_guard lock(m_entity_access_mutex);
 
@@ -91,9 +95,9 @@ namespace Spartan
         // Tick entities
         {
             // Detect game toggling
-            const bool started   =  m_context->m_engine->IsFlagSet(EngineMode::Game) &&  m_was_in_editor_mode;
-            const bool stopped   = !m_context->m_engine->IsFlagSet(EngineMode::Game) && !m_was_in_editor_mode;
-            m_was_in_editor_mode = !m_context->m_engine->IsFlagSet(EngineMode::Game);
+            const bool started   =  Engine::IsFlagSet(EngineMode::Game) &&  m_was_in_editor_mode;
+            const bool stopped   = !Engine::IsFlagSet(EngineMode::Game) && !m_was_in_editor_mode;
+            m_was_in_editor_mode = !Engine::IsFlagSet(EngineMode::Game);
 
             // Start
             if (started)
@@ -116,7 +120,7 @@ namespace Spartan
             // Tick
             for (shared_ptr<Entity>& entity : m_entities)
             {
-                entity->Tick(delta_time);
+                entity->Tick();
             }
         }
 
@@ -269,11 +273,16 @@ namespace Spartan
         return true;
     }
 
+    void World::Resolve()
+    {
+        m_resolve = true;
+    }
+    
     shared_ptr<Entity> World::CreateEntity(bool is_active /*= true*/)
     {
         lock_guard lock(m_entity_access_mutex);
 
-        shared_ptr<Entity> entity = m_entities_to_add.emplace_back(make_shared<Entity>(m_context));
+        shared_ptr<Entity> entity = m_entities_to_add.emplace_back(make_shared<Entity>());
         entity->SetActive(is_active);
 
         return entity;
@@ -330,6 +339,11 @@ namespace Spartan
         return empty;
     }
 
+    const std::vector<std::shared_ptr<Entity>>& World::GetAllEntities()
+    {
+        return m_entities;
+    }
+    
     void World::ActivateNewEntities()
     {
         lock_guard lock(m_entity_access_mutex);
@@ -479,7 +493,7 @@ namespace Spartan
         }
 
         // Start simulating (for the physics and the music to work)
-        m_context->m_engine->SetFlag(EngineMode::Game);
+        Engine::SetFlag(EngineMode::Game);
     }
 
     void World::CreateDefaultWorldCar()
@@ -603,7 +617,7 @@ namespace Spartan
         }
 
         // Start simulating (for the physics and the music to work)
-        m_context->m_engine->SetFlag(EngineMode::Game);
+        Engine::SetFlag(EngineMode::Game);
     }
 
     void World::CreateDefaultWorldTerrain()
@@ -617,7 +631,7 @@ namespace Spartan
 
             entity->GetTransform()->SetPosition(Vector3(0.0f, -6.5f, 0.0f));
 
-            shared_ptr<RHI_Texture2D> height_map = make_shared<RHI_Texture2D>(m_context, RHI_Texture_Srv, "height_map");
+            shared_ptr<RHI_Texture2D> height_map = make_shared<RHI_Texture2D>(RHI_Texture_Srv, "height_map");
             height_map->LoadFromFile("project\\height_maps\\a.png");
 
             Terrain* terrain = entity->AddComponent<Terrain>();
@@ -628,7 +642,7 @@ namespace Spartan
         }
 
         // Start simulating (for the physics and the music to work)
-        m_context->m_engine->SetFlag(EngineMode::Game);
+        Engine::SetFlag(EngineMode::Game);
     }
 
     void World::CreateDefaultWorldSponza()
@@ -668,6 +682,16 @@ namespace Spartan
         }
 
         // Start simulating (for the physics and the music to work)
-        m_context->m_engine->SetFlag(EngineMode::Game);
+        Engine::SetFlag(EngineMode::Game);
+    }
+
+    const string World::GetName()
+    {
+        return m_name;
+    }
+
+    const string& World::GetFilePath()
+    {
+        return m_file_path;
     }
 }

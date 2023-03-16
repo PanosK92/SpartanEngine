@@ -43,7 +43,7 @@ namespace Spartan
     class SP_CLASS RHI_CommandList : public Object
     {
     public:
-        RHI_CommandList(Context* context, const RHI_Queue_Type queue_type, const uint32_t index, void* cmd_pool_resource, const char* name);
+        RHI_CommandList(const RHI_Queue_Type queue_type, const uint32_t index, void* cmd_pool_resource, const char* name);
         ~RHI_CommandList();
 
         void Begin();
@@ -126,8 +126,8 @@ namespace Spartan
         void EndTimeblock();
 
         // GPU
-        static uint32_t GetGpuMemory(RHI_Device* rhi_device);
-        static uint32_t GetGpuMemoryUsed(RHI_Device* rhi_device);
+        static uint32_t GetGpuMemory();
+        static uint32_t GetGpuMemoryUsed();
 
         // State
         const RHI_CommandListState GetState() const { return m_state; }
@@ -149,8 +149,6 @@ namespace Spartan
         void GetDescriptorsFromPipelineState(RHI_PipelineState& pipeline_state, std::vector<RHI_Descriptor>& descriptors);
 
         RHI_Pipeline* m_pipeline                         = nullptr;
-        Renderer* m_renderer                             = nullptr;
-        RHI_Device* m_rhi_device                         = nullptr;
         std::atomic<bool> m_discard                      = false;
         bool m_is_rendering                              = false;
         bool m_pipeline_dirty                            = false;

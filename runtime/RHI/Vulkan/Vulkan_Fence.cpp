@@ -24,20 +24,19 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Fence.h"
 #include "../RHI_Implementation.h"
 #include "../RHI_Device.h"
+#include "../Rendering/Renderer.h"
 //================================
 
 namespace Spartan
 {
-    RHI_Fence::RHI_Fence(RHI_Device* rhi_device, const char* name /*= nullptr*/)
+    RHI_Fence::RHI_Fence(const char* name /*= nullptr*/)
     {
-        m_rhi_device = rhi_device;
-
         // Describe
         VkFenceCreateInfo fence_info = {};
         fence_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 
         // Create
-        SP_ASSERT_MSG(vkCreateFence(m_rhi_device->GetRhiContext()->device, &fence_info, nullptr, reinterpret_cast<VkFence*>(&m_resource)) == VK_SUCCESS, "Failed to create fence");
+        SP_ASSERT_MSG(vkCreateFence(Renderer::GetRhiDevice()->GetRhiContext()->device, &fence_info, nullptr, reinterpret_cast<VkFence*>(&m_resource)) == VK_SUCCESS, "Failed to create fence");
 
         // Name
         if (name)
@@ -53,25 +52,25 @@ namespace Spartan
             return;
 
         // Wait in case it's still in use by the GPU
-        m_rhi_device->QueueWaitAll();
+        Renderer::GetRhiDevice()->QueueWaitAll();
 
-        vkDestroyFence(m_rhi_device->GetRhiContext()->device, static_cast<VkFence>(m_resource), nullptr);
+        vkDestroyFence(Renderer::GetRhiDevice()->GetRhiContext()->device, static_cast<VkFence>(m_resource), nullptr);
         m_resource = nullptr;
     }
 
     bool RHI_Fence::IsSignaled()
     {
-        return vkGetFenceStatus(m_rhi_device->GetRhiContext()->device, reinterpret_cast<VkFence>(m_resource)) == VK_SUCCESS;
+        return vkGetFenceStatus(Renderer::GetRhiDevice()->GetRhiContext()->device, reinterpret_cast<VkFence>(m_resource)) == VK_SUCCESS;
     }
 
     bool RHI_Fence::Wait(uint64_t timeout_nanoseconds /*= 1000000000*/)
     {
-        return vkWaitForFences(m_rhi_device->GetRhiContext()->device, 1, reinterpret_cast<VkFence*>(&m_resource), true, timeout_nanoseconds) == VK_SUCCESS;
+        return vkWaitForFences(Renderer::GetRhiDevice()->GetRhiContext()->device, 1, reinterpret_cast<VkFence*>(&m_resource), true, timeout_nanoseconds) == VK_SUCCESS;
     }
 
     void RHI_Fence::Reset()
     {
-        SP_ASSERT_MSG(vkResetFences(m_rhi_device->GetRhiContext()->device, 1, reinterpret_cast<VkFence*>(&m_resource)) == VK_SUCCESS, "Failed to reset fence");
+        SP_ASSERT_MSG(vkResetFences(Renderer::GetRhiDevice()->GetRhiContext()->device, 1, reinterpret_cast<VkFence*>(&m_resource)) == VK_SUCCESS, "Failed to reset fence");
         m_cpu_state = RHI_Sync_State::Idle;
     }
 }

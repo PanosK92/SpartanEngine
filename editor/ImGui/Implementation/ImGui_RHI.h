@@ -54,14 +54,14 @@ namespace ImGui::RHI
     struct ViewportResources
     {
         ViewportResources() = default;
-        ViewportResources(const char* name, RHI_Device* rhi_device, RHI_SwapChain* swapchain)
+        ViewportResources(const char* name, RHI_SwapChain* swapchain)
         {
             // Allocate command pool
-            cmd_pool = rhi_device->AllocateCommandPool("imgui", swapchain->GetObjectId());
+            cmd_pool = Renderer::GetRhiDevice()->AllocateCommandPool("imgui", swapchain->GetObjectId());
             cmd_pool->AllocateCommandLists(RHI_Queue_Type::Graphics, 2, 2);
 
             // Allocate constant buffer
-            cb_gpu = make_shared<RHI_ConstantBuffer>(rhi_device, name);
+            cb_gpu = make_shared<RHI_ConstantBuffer>(name);
             cb_gpu->Create<Cb_ImGui>(256);
         }
 
@@ -86,12 +86,7 @@ namespace ImGui::RHI
     // Forward Declarations
     void InitialisePlatformInterface();
 
-    // Engine subsystems
-    Context*  g_context  = nullptr;
-    Renderer* g_renderer = nullptr;
-
     // Resources
-    static RHI_Device*                       g_rhi_device;
     static shared_ptr<RHI_Texture>           g_font_atlas;
     static shared_ptr<RHI_DepthStencilState> g_depth_stencil_state;
     static shared_ptr<RHI_RasterizerState>   g_rasterizer_state;
@@ -110,24 +105,16 @@ namespace ImGui::RHI
         g_shader_pixel        = nullptr;
     }
 
-    inline bool Initialize(Context* context)
+    inline bool Initialize()
     {
-        g_context    = context;
-        g_renderer   = context->GetSystem<Renderer>();
-        g_rhi_device = g_renderer->GetRhiDevice().get();
-
-        SP_ASSERT(g_context != nullptr);
-        SP_ASSERT(g_rhi_device != nullptr);
-
         // Create required RHI objects
         {
-            g_viewport_data = ViewportResources("imgui", g_rhi_device, g_renderer->GetSwapChain());
+            g_viewport_data = ViewportResources("imgui", Renderer::GetSwapChain());
 
-            g_depth_stencil_state = make_shared<RHI_DepthStencilState>(g_rhi_device, false, false, RHI_Comparison_Function::Always);
+            g_depth_stencil_state = make_shared<RHI_DepthStencilState>(false, false, RHI_Comparison_Function::Always);
 
             g_rasterizer_state = make_shared<RHI_RasterizerState>
             (
-                g_rhi_device,
                 RHI_CullMode::None,
                 RHI_PolygonMode::Solid,
                 true,  // depth clip
@@ -138,7 +125,6 @@ namespace ImGui::RHI
 
             g_blend_state = make_shared<RHI_BlendState>
             (
-                g_rhi_device,
                 true,
                 RHI_Blend::Src_Alpha,     // source blend
                 RHI_Blend::Inv_Src_Alpha, // destination blend
@@ -154,10 +140,10 @@ namespace ImGui::RHI
 
                 bool async = false;
 
-                g_shader_vertex = make_shared<RHI_Shader>(g_context);
+                g_shader_vertex = make_shared<RHI_Shader>();
                 g_shader_vertex->Compile(RHI_Shader_Vertex, shader_path, async, RHI_Vertex_Type::Pos2dUvCol8);
 
-                g_shader_pixel = make_shared<RHI_Shader>(g_context);
+                g_shader_pixel = make_shared<RHI_Shader>();
                 g_shader_pixel->Compile(RHI_Shader_Pixel, shader_path, async);
             }
         }
@@ -178,7 +164,7 @@ namespace ImGui::RHI
             memcpy(&mip[0], reinterpret_cast<std::byte*>(pixels), size);
 
             // Upload texture to graphics system
-            g_font_atlas = make_shared<RHI_Texture2D>(g_context, atlas_width, atlas_height, RHI_Format_R8G8B8A8_Unorm, RHI_Texture_Srv, texture_data, "imgui_font_atlas");
+            g_font_atlas = make_shared<RHI_Texture2D>(atlas_width, atlas_height, RHI_Format_R8G8B8A8_Unorm, RHI_Texture_Srv, texture_data, "imgui_font_atlas");
             io.Fonts->TexID = static_cast<ImTextureID>(g_font_atlas.get());
         }
 
@@ -213,7 +199,7 @@ namespace ImGui::RHI
 
         // Get swap chain and cmd list
         bool is_child_window         = window_data != nullptr;
-        RHI_SwapChain* swap_chain    = is_child_window ? window_data->swapchain.get() : g_renderer->GetSwapChain();
+        RHI_SwapChain* swap_chain    = is_child_window ? window_data->swapchain.get() : Renderer::GetSwapChain();
         ViewportResources* resources = is_child_window ? window_data->viewport_data.get() : &g_viewport_data;
 
         // Tick the command pool
@@ -242,8 +228,8 @@ namespace ImGui::RHI
             while (resources->vertex_buffers.size() <= cmd_index)
             {
                 bool is_mappable = true;
-                resources->vertex_buffers.emplace_back(make_unique<RHI_VertexBuffer>(g_rhi_device, is_mappable, "imgui"));
-                resources->index_buffers.emplace_back(make_unique<RHI_IndexBuffer>(g_rhi_device, is_mappable, "imgui"));
+                resources->vertex_buffers.emplace_back(make_unique<RHI_VertexBuffer>(is_mappable, "imgui"));
+                resources->index_buffers.emplace_back(make_unique<RHI_IndexBuffer>(is_mappable, "imgui"));
             }
 
             vertex_buffer = resources->vertex_buffers[cmd_index].get();
@@ -419,7 +405,6 @@ namespace ImGui::RHI
         window->swapchain = make_shared<RHI_SwapChain>
         (
             platform_handle,
-            g_rhi_device,
             static_cast<uint32_t>(viewport->Size.x),
             static_cast<uint32_t>(viewport->Size.y),
             RHI_Format_R8G8B8A8_Unorm,
@@ -428,7 +413,7 @@ namespace ImGui::RHI
             (string("swapchain_child_") + string(to_string(viewport->ID))).c_str()
         );
 
-        window->viewport_data = make_shared<ViewportResources>("imgui_child_window", g_rhi_device, window->swapchain.get());
+        window->viewport_data = make_shared<ViewportResources>("imgui_child_window", window->swapchain.get());
         viewport->RendererUserData = window;
     }
 
@@ -436,7 +421,7 @@ namespace ImGui::RHI
     {
         if (WindowData* window = static_cast<WindowData*>(viewport->RendererUserData))
         {
-            g_rhi_device->DestroyCommandPool(window->viewport_data->cmd_pool);
+            Renderer::GetRhiDevice()->DestroyCommandPool(window->viewport_data->cmd_pool);
             delete window;
         }
 

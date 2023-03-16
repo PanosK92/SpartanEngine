@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Shader.h"
 #include "../RHI_InputLayout.h"
 #include <d3dcompiler.h>
+#include "../Rendering/Renderer.h"
 //================================
 
 //= NAMESPACES =====
@@ -45,8 +46,7 @@ namespace Spartan
 
     void* RHI_Shader::Compile2()
     {
-        SP_ASSERT(m_rhi_device != nullptr);
-        ID3D11Device5* d3d11_device = m_rhi_device->GetRhiContext()->device;
+        ID3D11Device5* d3d11_device = Renderer::GetRhiDevice()->GetRhiContext()->device;
         SP_ASSERT(d3d11_device != nullptr);
 
         // Compile flags

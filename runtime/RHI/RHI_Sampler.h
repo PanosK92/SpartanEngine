@@ -33,7 +33,6 @@ namespace Spartan
     {
     public:
         RHI_Sampler(
-            const std::shared_ptr<RHI_Device>& rhi_device,
             const RHI_Filter filter_min                         = RHI_Filter::Nearest,
             const RHI_Filter filter_mag                         = RHI_Filter::Nearest,
             const RHI_Sampler_Mipmap_Mode filter_mipmap         = RHI_Sampler_Mipmap_Mode::Nearest,
@@ -65,7 +64,6 @@ namespace Spartan
         float m_anisotropy                              = 0;
         bool m_comparison_enabled                       = false;
         float m_mip_lod_bias                            = 0.0f;
-        std::shared_ptr<RHI_Device> m_rhi_device;
 
         // RHI Resource
         void* m_rhi_resource = nullptr;

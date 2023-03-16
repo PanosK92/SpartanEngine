@@ -31,7 +31,7 @@ namespace Spartan
     class RHI_Semaphore : public Object
     {
     public:
-        RHI_Semaphore(RHI_Device* rhi_device, bool is_timeline = false, const char* name = nullptr);
+        RHI_Semaphore(bool is_timeline = false, const char* name = nullptr);
         ~RHI_Semaphore();
 
         void Reset();
@@ -50,8 +50,5 @@ namespace Spartan
         void* m_resource           = nullptr;
         bool m_is_timeline         = false;
         RHI_Sync_State m_cpu_state = RHI_Sync_State::Idle;
-
-        // Misc
-        RHI_Device* m_rhi_device = nullptr;
     };
 }

@@ -40,14 +40,14 @@ namespace Spartan
     class SP_CLASS SoftBody : public IComponent
     {
     public:
-        SoftBody(Context* context, Entity* entity, uint64_t id = 0);
+        SoftBody(Entity* entity, uint64_t id = 0);
         ~SoftBody();
 
         //= ICOMPONENT ===============================
         void OnInitialize() override;
         void OnRemove() override;
         void OnStart() override;
-        void OnTick(double delta_time) override;
+        void OnTick() override;
         void Serialize(FileStream* stream) override;
         void Deserialize(FileStream* stream) override;
         //============================================
@@ -73,10 +73,9 @@ namespace Spartan
         void Body_AddToWorld();
         void Body_RemoveFromWorld();
 
-        Physics* m_physics              = nullptr;
-        btSoftBody* m_soft_body         = nullptr;
-        bool m_in_world                 = false;
-        Math::Vector3 m_center_of_mass  = Math::Vector3::Zero;
-        float m_mass                    = 0.0f;
+        btSoftBody* m_soft_body        = nullptr;
+        bool m_in_world                = false;
+        Math::Vector3 m_center_of_mass = Math::Vector3::Zero;
+        float m_mass                   = 0.0f;
     };
 }

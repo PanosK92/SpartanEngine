@@ -32,6 +32,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_Texture2DArray.h"
 #include "../RHI/RHI_TextureCube.h"
 #include "../Audio/AudioClip.h"
+#include "../Rendering/Material.h"
+#include "../Rendering/Mesh.h"
 //====================================
 
 //= NAMESPACES ================
@@ -50,12 +52,9 @@ namespace Spartan
     std::shared_ptr<ModelImporter> ResourceCache::m_importer_model;
     std::shared_ptr<ImageImporter> ResourceCache::m_importer_image;
     std::shared_ptr<FontImporter> ResourceCache::m_importer_font;
-    Context* ResourceCache::m_context;
 
-    void ResourceCache::Initialize(Context* context)
+    void ResourceCache::Initialize()
     {
-        m_context = context;
-
         // Create project directory
         SetProjectDirectory("project\\");
 
@@ -74,9 +73,9 @@ namespace Spartan
         SP_SUBSCRIBE_TO_EVENT(EventType::WorldClear,     SP_EVENT_HANDLER_STATIC(Clear));
 
         // Importers
-        m_importer_image = make_shared<ImageImporter>(m_context);
-        m_importer_model = make_shared<ModelImporter>(m_context);
-        m_importer_font  = make_shared<FontImporter>(m_context);
+        m_importer_image = make_shared<ImageImporter>();
+        m_importer_model = make_shared<ModelImporter>();
+        m_importer_font  = make_shared<FontImporter>();
     }
 
     bool ResourceCache::IsCached(const string& resource_name, const ResourceType resource_type)
@@ -181,7 +180,7 @@ namespace Spartan
     void ResourceCache::SaveResourcesToFiles()
     {
         // Create resource list file
-        string file_path = GetProjectDirectoryAbsolute() + m_context->GetSystem<World>()->GetName() + "_resources.dat";
+        string file_path = GetProjectDirectoryAbsolute() + World::GetName() + "_resources.dat";
         auto file = make_unique<FileStream>(file_path, FileStream_Write);
         if (!file->IsOpen())
         {
@@ -218,7 +217,7 @@ namespace Spartan
     void ResourceCache::LoadResourcesFromFiles()
     {
         // Open resource list file
-        string file_path = GetProjectDirectoryAbsolute() + m_context->GetSystem<World>()->GetName() + "_resources.dat";
+        string file_path = GetProjectDirectoryAbsolute() + World::GetName() + "_resources.dat";
         unique_ptr<FileStream> file = make_unique<FileStream>(file_path, FileStream_Read);
         if (!file->IsOpen())
             return;

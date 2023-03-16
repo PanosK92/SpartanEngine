@@ -38,7 +38,7 @@ namespace Spartan
     class SP_CLASS Object
     {
     public:
-        Object(Context* context = nullptr);
+        Object();
         
         // Name
         const std::string& GetName()    const { return m_name; }
@@ -53,16 +53,10 @@ namespace Spartan
         const uint64_t GetObjectSizeCpu() const { return m_object_size_cpu; }
         const uint64_t GetObjectSizeGpu() const { return m_object_size_gpu; }
 
-        // Engine context.
-        Context* GetContext() const { return m_context; }
-
     protected:
         std::string m_name;
         uint64_t m_object_id       = 0;
         uint64_t m_object_size_cpu = 0;
         uint64_t m_object_size_gpu = 0;
-
-        // Engine context
-        Context* m_context = nullptr;
     };
 }

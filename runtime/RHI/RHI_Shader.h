@@ -39,8 +39,7 @@ namespace Spartan
     class SP_CLASS RHI_Shader : public Object
     {
     public:
-        RHI_Shader() = default;
-        RHI_Shader(Context* context);
+        RHI_Shader();
         ~RHI_Shader();
 
         // Compilation
@@ -71,9 +70,6 @@ namespace Spartan
 
         // Resource
         void* GetRhiResource() const;
-
-    protected:
-        std::shared_ptr<RHI_Device> m_rhi_device;
 
     private:
         void PreprocessIncludeDirectives(const std::string& file_path);

@@ -73,13 +73,13 @@ namespace Spartan
     class SP_CLASS Light : public IComponent
     {
     public:
-        Light(Context* context, Entity* entity, uint64_t id = 0);
+        Light(Entity* entity, uint64_t id = 0);
         ~Light() = default;
 
         //= COMPONENT ================================
         void OnInitialize() override;
         void OnStart() override;
-        void OnTick(double delta_time) override;
+        void OnTick() override;
         void Serialize(FileStream* stream) override;
         void Deserialize(FileStream* stream) override;
         //============================================
@@ -160,8 +160,5 @@ namespace Spartan
         // Dirty checks
         bool m_is_dirty                     = true;
         Math::Matrix m_previous_camera_view = Math::Matrix::Identity;
-
-        // Dependencies
-        Renderer* m_renderer = nullptr;
     };
 }

@@ -31,7 +31,7 @@ namespace Spartan
     {
     public:
         RHI_Fence() = default;
-        RHI_Fence(RHI_Device* rhi_device, const char* name = nullptr);
+        RHI_Fence(const char* name = nullptr);
         ~RHI_Fence();
 
         // Returns true if the false was signaled.
@@ -52,7 +52,5 @@ namespace Spartan
     private:
         void* m_resource = nullptr;
         RHI_Sync_State m_cpu_state = RHI_Sync_State::Idle;
-
-        RHI_Device* m_rhi_device = nullptr;
     };
 }

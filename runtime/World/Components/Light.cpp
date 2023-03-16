@@ -40,7 +40,7 @@ using namespace std;
 
 namespace Spartan
 {
-    Light::Light(Context* context, Entity* entity, uint64_t id /*= 0*/) : IComponent(context, entity, id)
+    Light::Light(Entity* entity, uint64_t id /*= 0*/) : IComponent(entity, id)
     {
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_shadows_enabled, bool);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_shadows_screen_space_enabled, bool);
@@ -65,8 +65,6 @@ namespace Spartan
         {
             SetIntensity(LightIntensity::average_flashlight);
         }
-
-        m_renderer = m_context->GetSystem<Renderer>();
     }
 
     void Light::OnInitialize()
@@ -79,10 +77,8 @@ namespace Spartan
 
     }
 
-    void Light::OnTick(double delta_time)
+    void Light::OnTick()
     {
-        SP_ASSERT(m_renderer != nullptr);
-
         // During engine startup, keep checking until the rhi device gets
         // created so we can create potentially required shadow maps
         if (!m_initialized)
@@ -102,7 +98,7 @@ namespace Spartan
             // Camera (needed for directional light cascade computations)
             if (m_light_type == LightType::Directional)
             {
-                if (shared_ptr<Camera> camera = m_renderer->GetCamera())
+                if (shared_ptr<Camera> camera = Renderer::GetCamera())
                 {
                     if (m_previous_camera_view != camera->GetViewMatrix())
                     {
@@ -119,7 +115,7 @@ namespace Spartan
         // Update position based on direction (for directional light)
         if (m_light_type == LightType::Directional)
         {
-            float distance = m_renderer->GetCamera() ? m_renderer->GetCamera()->GetFarPlane() : 1000.0f;
+            float distance = Renderer::GetCamera() ? Renderer::GetCamera()->GetFarPlane() : 1000.0f;
             m_transform->SetPosition(-m_transform->GetForward() * distance);
         }
 
@@ -189,7 +185,7 @@ namespace Spartan
             CreateShadowMap();
         }
 
-        m_context->GetSystem<World>()->Resolve();
+        World::Resolve();
     }
 
     void Light::SetColor(const float temperature)
@@ -347,10 +343,10 @@ namespace Spartan
             return;
 
         // Can happen during the first frame, don't log error
-        if (!m_renderer->GetCamera())
+        if (!Renderer::GetCamera())
             return;
 
-        Camera* camera                        = m_renderer->GetCamera().get();
+        Camera* camera                        = Renderer::GetCamera().get();
         const float clip_near                 = camera->GetNearPlane();
         const float clip_far                  = camera->GetFarPlane();
         const Matrix projection               = camera->ComputeProjection(clip_near, clip_far); // Non reverse-z matrix
@@ -448,7 +444,7 @@ namespace Spartan
     void Light::CreateShadowMap()
     {
         // Early exit if there is no change in shadow map resolution
-        const uint32_t resolution     = m_renderer->GetOption<uint32_t>(RendererOption::ShadowResolution);
+        const uint32_t resolution     = Renderer::GetOption<uint32_t>(RendererOption::ShadowResolution);
         const bool resolution_changed = m_shadow_map.texture_depth ? (resolution != m_shadow_map.texture_depth->GetWidth()) : false;
         if ((!m_is_dirty && !resolution_changed))
             return;
@@ -470,33 +466,33 @@ namespace Spartan
 
         if (GetLightType() == LightType::Directional)
         {
-            m_shadow_map.texture_depth = make_unique<RHI_Texture2DArray>(m_context, resolution, resolution, format_depth, m_cascade_count, RHI_Texture_RenderTarget | RHI_Texture_Srv, "shadow_map_directional");
+            m_shadow_map.texture_depth = make_unique<RHI_Texture2DArray>(resolution, resolution, format_depth, m_cascade_count, RHI_Texture_RenderTarget | RHI_Texture_Srv, "shadow_map_directional");
 
             if (m_shadows_transparent_enabled)
             {
-                m_shadow_map.texture_color = make_unique<RHI_Texture2DArray>(m_context, resolution, resolution, format_color, m_cascade_count, RHI_Texture_RenderTarget | RHI_Texture_Srv, "shadow_map_directional_color");
+                m_shadow_map.texture_color = make_unique<RHI_Texture2DArray>(resolution, resolution, format_color, m_cascade_count, RHI_Texture_RenderTarget | RHI_Texture_Srv, "shadow_map_directional_color");
             }
 
             m_shadow_map.slices = vector<ShadowSlice>(m_cascade_count);
         }
         else if (GetLightType() == LightType::Point)
         {
-            m_shadow_map.texture_depth = make_unique<RHI_TextureCube>(m_context, resolution, resolution, format_depth, RHI_Texture_RenderTarget | RHI_Texture_Srv, "shadow_map_point_color");
+            m_shadow_map.texture_depth = make_unique<RHI_TextureCube>(resolution, resolution, format_depth, RHI_Texture_RenderTarget | RHI_Texture_Srv, "shadow_map_point_color");
 
             if (m_shadows_transparent_enabled)
             {
-                m_shadow_map.texture_color = make_unique<RHI_TextureCube>(m_context, resolution, resolution, format_color, RHI_Texture_RenderTarget | RHI_Texture_Srv, "shadow_map_point_color");
+                m_shadow_map.texture_color = make_unique<RHI_TextureCube>(resolution, resolution, format_color, RHI_Texture_RenderTarget | RHI_Texture_Srv, "shadow_map_point_color");
             }
 
             m_shadow_map.slices = vector<ShadowSlice>(6);
         }
         else if (GetLightType() == LightType::Spot)
         {
-            m_shadow_map.texture_depth  = make_unique<RHI_Texture2D>(m_context, resolution, resolution, 1, format_depth, RHI_Texture_RenderTarget | RHI_Texture_Srv, "shadow_map_spot_color");
+            m_shadow_map.texture_depth  = make_unique<RHI_Texture2D>(resolution, resolution, 1, format_depth, RHI_Texture_RenderTarget | RHI_Texture_Srv, "shadow_map_spot_color");
 
             if (m_shadows_transparent_enabled)
             {
-                m_shadow_map.texture_color = make_unique<RHI_Texture2D>(m_context, resolution, resolution, 1, format_color, RHI_Texture_RenderTarget | RHI_Texture_Srv, "shadow_map_spot_color");
+                m_shadow_map.texture_color = make_unique<RHI_Texture2D>(resolution, resolution, 1, format_color, RHI_Texture_RenderTarget | RHI_Texture_Srv, "shadow_map_spot_color");
             }
 
             m_shadow_map.slices = vector<ShadowSlice>(1);

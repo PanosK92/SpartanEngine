@@ -53,11 +53,7 @@ namespace Spartan
     class SP_CLASS RHI_InputLayout : public Object
     {
     public:
-        RHI_InputLayout(const std::shared_ptr<RHI_Device>& rhi_device)
-        {
-            m_rhi_device = rhi_device;
-        }
-
+        RHI_InputLayout() = default;
         ~RHI_InputLayout();
 
         void Create(const RHI_Vertex_Type vertex_type, void* vertex_shader_blob = nullptr)
@@ -141,7 +137,6 @@ namespace Spartan
         RHI_Vertex_Type m_vertex_type;
         uint32_t m_vertex_size;
         bool _CreateResource(void* vertex_shader_blob);
-        std::shared_ptr<RHI_Device> m_rhi_device;
         std::vector<VertexAttribute> m_vertex_attributes;
 
         // RHI Resource

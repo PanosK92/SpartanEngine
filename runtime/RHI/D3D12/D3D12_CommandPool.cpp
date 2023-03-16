@@ -31,9 +31,8 @@ using namespace std;
 
 namespace Spartan
 {
-    RHI_CommandPool::RHI_CommandPool(RHI_Device* rhi_device, const char* name, const uint64_t swap_chain_id) : Object(rhi_device->GetContext())
+    RHI_CommandPool::RHI_CommandPool(const char* name, const uint64_t swap_chain_id) : Object()
     {
-        m_rhi_device    = rhi_device;
         m_name          = name;
         m_swap_chain_id = swap_chain_id;
 

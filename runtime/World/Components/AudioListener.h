@@ -30,9 +30,9 @@ namespace Spartan
     class SP_CLASS AudioListener : public IComponent
     {
     public:
-        AudioListener(Context* context, Entity* entity, uint64_t id = 0);
+        AudioListener(Entity* entity, uint64_t id = 0);
         ~AudioListener() = default;
 
-        void OnTick(double delta_time) override;
+        void OnTick() override;
     };
 }

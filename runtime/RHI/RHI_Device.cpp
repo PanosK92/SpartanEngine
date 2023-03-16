@@ -72,7 +72,7 @@ namespace Spartan
 
     RHI_CommandPool* RHI_Device::AllocateCommandPool(const char* name, const uint64_t swap_chain_id)
     {
-        return m_cmd_pools.emplace_back(make_shared<RHI_CommandPool>(this, name, swap_chain_id)).get();
+        return m_cmd_pools.emplace_back(make_shared<RHI_CommandPool>(name, swap_chain_id)).get();
     }
     
     void RHI_Device::DestroyCommandPool(RHI_CommandPool* cmd_pool)
@@ -173,7 +173,7 @@ namespace Spartan
         uint32_t queue_index = static_cast<uint32_t>(queue_type);
         if (!m_cmd_pools_immediate[queue_index])
         {
-            m_cmd_pools_immediate[queue_index] = make_shared<RHI_CommandPool>(this, "cmd_immediate_execution", 0);
+            m_cmd_pools_immediate[queue_index] = make_shared<RHI_CommandPool>("cmd_immediate_execution", 0);
             m_cmd_pools_immediate[queue_index]->AllocateCommandLists(queue_type, 1, 1);
         }
 

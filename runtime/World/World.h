@@ -21,83 +21,57 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
+
 //= INCLUDES ===================
-#include <vector>
-#include <memory>
-#include <string>
-#include "../Core/ISystem.h"
-#include "../Core/Definitions.h"
+#include "Definitions.h"
 #include "../Math/Vector3.h"
-#include "../Rendering/Mesh.h"
 //==============================
 
 namespace Spartan
 {
     //= FWD DECLARATIONS =
     class Entity;
-    class Light;
-    class Input;
-    class TransformHandle;
     //====================
 
-    class SP_CLASS World : public ISystem
+    class SP_CLASS World
     {
     public:
-        World(Context* context);
-        ~World();
-
-        //= ISubsystem =========================
-        void OnInitialise() override;
-        void OnShutdown() override;
-        void OnPreTick() override;
-        void OnTick(double delta_time) override;
-        //======================================
+        static void Initialize();
+        static void Shutdown();
+        static void PreTick();
+        static void Tick();
         
-        void New();
-        bool SaveToFile(const std::string& filePath);
-        bool LoadFromFile(const std::string& file_path);
-        void Resolve() { m_resolve = true; }
+        static void New();
+        static bool SaveToFile(const std::string& filePath);
+        static bool LoadFromFile(const std::string& file_path);
+        static void Resolve();
 
         // Default worlds
-        void CreateDefaultWorldCommon(
+        static void CreateDefaultWorldCommon(
             const Math::Vector3& camera_position = Math::Vector3(-2.956f, 1.1474f, -2.9395f),
             const Math::Vector3& camera_rotation = Math::Vector3(15.9976f, 43.5998f, 0.0f)
         );
-        void CreateDefaultWorldCube();
-        void CreateDefaultWorldCar();
-        void CreateDefaultWorldTerrain();
-        void CreateDefaultWorldSponza();
+        static void CreateDefaultWorldCube();
+        static void CreateDefaultWorldCar();
+        static void CreateDefaultWorldTerrain();
+        static void CreateDefaultWorldSponza();
 
-        const std::string GetName()      const { return m_name; }
-        const std::string& GetFilePath() const { return m_file_path; }
+        static const std::string GetName();
+        static const std::string& GetFilePath();
 
-        //= Entities ===========================================================
-        std::shared_ptr<Entity> CreateEntity(bool is_active = true);
-        bool EntityExists(Entity* entity);
-        void RemoveEntity(Entity* entity);
-        std::vector<std::shared_ptr<Entity>> GetRootEntities();
-        const std::shared_ptr<Entity>& GetEntityByName(const std::string& name);
-        const std::shared_ptr<Entity>& GetEntityById(uint64_t id);
-        const auto& GetAllEntities() const { return m_entities; }
-        void ActivateNewEntities();
-        //======================================================================
+        //= Entities ==================================================================
+        static std::shared_ptr<Entity> CreateEntity(bool is_active = true);
+        static bool EntityExists(Entity* entity);
+        static void RemoveEntity(Entity* entity);
+        static std::vector<std::shared_ptr<Entity>> GetRootEntities();
+        static const std::shared_ptr<Entity>& GetEntityByName(const std::string& name);
+        static const std::shared_ptr<Entity>& GetEntityById(uint64_t id);
+        static const std::vector<std::shared_ptr<Entity>>& GetAllEntities();
+        static void ActivateNewEntities();
+        //=============================================================================
 
     private:
-        void Clear();
-        void _EntityRemove(Entity* entity);
-
-        std::vector<std::shared_ptr<Entity>> m_entities_to_add;
-        std::vector<std::shared_ptr<Entity>> m_entities;
-        std::string m_name;
-        std::string m_file_path;
-        bool m_was_in_editor_mode                             = false;
-        bool m_resolve                                        = true;
-        std::shared_ptr<Mesh> m_default_model_sponza          = nullptr;
-        std::shared_ptr<Mesh> m_default_model_sponza_curtains = nullptr;
-        std::shared_ptr<Mesh> m_default_model_car             = nullptr;
-        Input* m_input                                        = nullptr;
-
-        // Sync primitives
-        std::mutex m_entity_access_mutex;
+        static void Clear();
+        static void _EntityRemove(Entity* entity);
     };
 }

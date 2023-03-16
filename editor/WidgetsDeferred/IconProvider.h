@@ -92,7 +92,7 @@ struct Thumbnail
 class IconProvider
 {
 public:
-    static void Initialize(Spartan::Context* context);
+    static void Initialize();
 
     static Spartan::RHI_Texture* GetTextureByType(IconType type);
     static Spartan::RHI_Texture* GetTextureByFilePath(const std::string& file_path);

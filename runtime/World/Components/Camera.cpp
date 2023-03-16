@@ -39,10 +39,9 @@ using namespace std;
 
 namespace Spartan
 {
-    Camera::Camera(Context* context, Entity* entity, uint64_t id /*= 0*/) : IComponent(context, entity, id)
+    Camera::Camera(Entity* entity, uint64_t id /*= 0*/) : IComponent(entity, id)
     {   
-        m_renderer = m_context->GetSystem<Renderer>();
-        m_input    = m_context->GetSystem<Input>();
+
     }
 
     void Camera::OnInitialize()
@@ -52,9 +51,9 @@ namespace Spartan
         m_view_projection = m_view * m_projection;
     }
 
-    void Camera::OnTick(double delta_time)
+    void Camera::OnTick()
     {
-        const auto& current_viewport = m_renderer->GetViewport();
+        const auto& current_viewport = Renderer::GetViewport();
         if (m_last_known_viewport != current_viewport)
         {
             m_last_known_viewport = current_viewport;
@@ -69,7 +68,7 @@ namespace Spartan
             m_is_dirty = true;
         }
 
-        ProcessInput(delta_time);
+        ProcessInput();
 
         if (!m_is_dirty)
             return;
@@ -139,18 +138,13 @@ namespace Spartan
 
     float Camera::GetFovVerticalRad() const
     {
-        return 2.0f * atan(tan(m_fov_horizontal_rad / 2.0f) * (GetViewport().height / GetViewport().width));
+        return 2.0f * atan(tan(m_fov_horizontal_rad / 2.0f) * (Renderer::GetViewport().height / Renderer::GetViewport().width));
     }
 
     void Camera::SetFovHorizontalDeg(const float fov)
     {
         m_fov_horizontal_rad = Helper::DegreesToRadians(fov);
         m_is_dirty           = true;
-    }
-
-    const RHI_Viewport& Camera::GetViewport() const
-    {
-        return m_renderer ? m_renderer->GetViewport() : RHI_Viewport::Undefined;
     }
 
     bool Camera::IsInViewFrustum(Renderable* renderable) const
@@ -170,14 +164,14 @@ namespace Spartan
 	const Spartan::Math::Ray Camera::ComputePickingRay()
 	{
         Vector3 ray_start     = GetTransform()->GetPosition();
-        Vector3 ray_direction = ScreenToWorldCoordinates(m_input->GetMousePositionRelativeToEditorViewport(), 1.0f);
+        Vector3 ray_direction = ScreenToWorldCoordinates(Input::GetMousePositionRelativeToEditorViewport(), 1.0f);
         return Ray(ray_start, ray_direction);
 	}
 
 	void Camera::Pick()
     {
         // Ensure the mouse is inside the viewport
-        if (!m_input->GetMouseIsInViewport())
+        if (!Input::GetMouseIsInViewport())
         {
             m_selected_entity = nullptr;
             return;
@@ -188,7 +182,7 @@ namespace Spartan
         // Traces ray against all AABBs in the world
         vector<RayHit> hits;
         {
-            const auto& entities = m_context->GetSystem<World>()->GetAllEntities();
+            const auto& entities = World::GetAllEntities();
             for (const auto& entity : entities)
             {
                 // Make sure there entity has a renderable
@@ -269,7 +263,7 @@ namespace Spartan
 
     Vector2 Camera::WorldToScreenCoordinates(const Vector3& position_world) const
     {
-        const RHI_Viewport& viewport = GetViewport();
+        const RHI_Viewport& viewport = Renderer::GetViewport();
 
         // A non reverse-z projection matrix is need, we create it
         const Matrix projection = Matrix::CreatePerspectiveFieldOfViewLH(GetFovVerticalRad(), viewport.GetAspectRatio(), m_near_plane, m_far_plane);
@@ -311,7 +305,7 @@ namespace Spartan
 
     Vector3 Camera::ScreenToWorldCoordinates(const Vector2& position_screen, const float z) const
     {
-        const RHI_Viewport& viewport = GetViewport();
+        const RHI_Viewport& viewport = Renderer::GetViewport();
 
         // A non reverse-z projection matrix is need, we create it
         const Matrix projection = Matrix::CreatePerspectiveFieldOfViewLH(GetFovVerticalRad(), viewport.GetAspectRatio(), m_near_plane, m_far_plane); // reverse-z
@@ -329,7 +323,7 @@ namespace Spartan
         return Vector3(position_world) / position_world.w;
     }
 
-    void Camera::ProcessInput(double delta_time)
+    void Camera::ProcessInput()
     {
         // FPS camera controls.
         // X-axis movement: W, A, S, D.
@@ -337,28 +331,28 @@ namespace Spartan
         // Mouse look: Hold right click to enable.
         if (m_first_person_control_enabled)
         {
-            ProcessInputFpsControl(delta_time);
+            ProcessInputFpsControl();
         }
 
         // Shortcuts
         {
             // Focus on selected entity: F.
-            ProcessInputLerpToEntity(delta_time);
+            ProcessInputLerpToEntity();
         }
     }
 
-    void Camera::ProcessInputFpsControl(double delta_time)
+    void Camera::ProcessInputFpsControl()
     {
         // Detect if fps control should be activated
         {
             // Initiate control only when the mouse is within the viewport
-            if (m_input->GetKeyDown(KeyCode::Click_Right) && m_input->GetMouseIsInViewport())
+            if (Input::GetKeyDown(KeyCode::Click_Right) && Input::GetMouseIsInViewport())
             {
                 m_is_controlled_by_keyboard_mouse = true;
             }
 
             // Maintain control as long as the right click is pressed and initial control has been given
-            m_is_controlled_by_keyboard_mouse = m_input->GetKey(KeyCode::Click_Right) && m_is_controlled_by_keyboard_mouse;
+            m_is_controlled_by_keyboard_mouse = Input::GetKey(KeyCode::Click_Right) && m_is_controlled_by_keyboard_mouse;
         }
 
         // Cursor visibility and position
@@ -366,14 +360,14 @@ namespace Spartan
             // Toggle mouse cursor and adjust mouse position
             if (m_is_controlled_by_keyboard_mouse && !m_fps_control_cursor_hidden)
             {
-                m_mouse_last_position = m_input->GetMousePosition();
-                m_input->SetMouseCursorVisible(false);
+                m_mouse_last_position = Input::GetMousePosition();
+                Input::SetMouseCursorVisible(false);
                 m_fps_control_cursor_hidden = true;
             }
             else if (!m_is_controlled_by_keyboard_mouse && m_fps_control_cursor_hidden)
             {
-                m_input->SetMousePosition(m_mouse_last_position);
-                m_input->SetMouseCursorVisible(true);
+                Input::SetMousePosition(m_mouse_last_position);
+                Input::SetMouseCursorVisible(true);
                 m_fps_control_cursor_hidden = false;
             }
         }
@@ -385,16 +379,16 @@ namespace Spartan
                 // Wrap around left and right screen edges (to allow for infinite scrolling)
                 {
                     uint32_t edge_padding  = 5;
-                    Vector2 mouse_position = m_input->GetMousePosition();
+                    Vector2 mouse_position = Input::GetMousePosition();
                     if (mouse_position.x >= Display::GetWidth() - edge_padding)
                     {
                         mouse_position.x = static_cast<float>(edge_padding + 1);
-                        m_input->SetMousePosition(mouse_position);
+                        Input::SetMousePosition(mouse_position);
                     }
                     else if (mouse_position.x <= edge_padding)
                     {
                         mouse_position.x = static_cast<float>(Spartan::Display::GetWidth() - edge_padding - 1);
-                        m_input->SetMousePosition(mouse_position);
+                        Input::SetMousePosition(mouse_position);
                     }
                 }
 
@@ -403,7 +397,7 @@ namespace Spartan
                 m_first_person_rotation.y = m_transform->GetRotation().Pitch();
 
                 // Get mouse delta.
-                const Vector2 mouse_delta = m_input->GetMouseDelta() * m_mouse_sensitivity;
+                const Vector2 mouse_delta = Input::GetMouseDelta() * m_mouse_sensitivity;
 
                 // Lerp to it.
                 m_mouse_smoothed = Helper::Lerp(m_mouse_smoothed, mouse_delta, Helper::Saturate(1.0f - m_mouse_smoothing));
@@ -426,36 +420,36 @@ namespace Spartan
             // Keyboard movement
             {
                 // Compute max speed
-                m_movement_speed_max += m_input->GetMouseWheelDelta().y / 2.0f;
+                m_movement_speed_max += Input::GetMouseWheelDelta().y / 2.0f;
                 m_movement_speed_max = Helper::Clamp(m_movement_speed_max, m_movement_speed_min, numeric_limits<float>::max());
 
                 // Compute direction
                 Vector3 direction = Vector3::Zero;
-                if (m_input->GetKey(KeyCode::W)) direction += m_transform->GetForward();
-                if (m_input->GetKey(KeyCode::S)) direction += m_transform->GetBackward();
-                if (m_input->GetKey(KeyCode::D)) direction += m_transform->GetRight();
-                if (m_input->GetKey(KeyCode::A)) direction += m_transform->GetLeft();
-                if (m_input->GetKey(KeyCode::Q)) direction += m_transform->GetDown();
-                if (m_input->GetKey(KeyCode::E)) direction += m_transform->GetUp();
+                if (Input::GetKey(KeyCode::W)) direction += m_transform->GetForward();
+                if (Input::GetKey(KeyCode::S)) direction += m_transform->GetBackward();
+                if (Input::GetKey(KeyCode::D)) direction += m_transform->GetRight();
+                if (Input::GetKey(KeyCode::A)) direction += m_transform->GetLeft();
+                if (Input::GetKey(KeyCode::Q)) direction += m_transform->GetDown();
+                if (Input::GetKey(KeyCode::E)) direction += m_transform->GetUp();
                 direction.Normalize();
 
                 // Compute speed
-                m_movement_speed += m_movement_acceleration * direction * static_cast<float>(delta_time);
-                m_movement_speed.ClampMagnitude(m_movement_speed_max * static_cast<float>(delta_time));
+                m_movement_speed += m_movement_acceleration * direction * static_cast<float>(Timer::GetDeltaTimeSec());
+                m_movement_speed.ClampMagnitude(m_movement_speed_max * static_cast<float>(Timer::GetDeltaTimeSec()));
             }
         }
 
         // Controller movement
-        if (m_input->IsControllerConnected())
+        if (Input::IsControllerConnected())
         {
             // Look
             {
                 // Get camera rotation
-                m_first_person_rotation.x += m_input->GetControllerThumbStickRight().x;
-                m_first_person_rotation.y += m_input->GetControllerThumbStickRight().y;
+                m_first_person_rotation.x += Input::GetControllerThumbStickRight().x;
+                m_first_person_rotation.y += Input::GetControllerThumbStickRight().y;
 
                 // Get mouse delta.
-                const Vector2 mouse_delta = m_input->GetMouseDelta() * m_mouse_sensitivity;
+                const Vector2 mouse_delta = Input::GetMouseDelta() * m_mouse_sensitivity;
 
                 // Clamp rotation along the x-axis (but not exactly at 90 degrees, this is to avoid a gimbal lock).
                 m_first_person_rotation.y = Helper::Clamp(m_first_person_rotation.y, -80.0f, 80.0f);
@@ -472,27 +466,27 @@ namespace Spartan
             // Movement
             {
                 // Compute max speed
-                m_movement_speed_max += m_input->GetMouseWheelDelta().y / 2.0f;
+                m_movement_speed_max += Input::GetMouseWheelDelta().y / 2.0f;
                 m_movement_speed_max = Helper::Clamp(m_movement_speed_max, m_movement_speed_min, numeric_limits<float>::max());
 
                 // Compute direction
                 Vector3 direction = Vector3::Zero;
-                direction += m_transform->GetForward() * -m_input->GetControllerThumbStickLeft().y;
-                direction += m_transform->GetRight()   * m_input->GetControllerThumbStickLeft().x;
-                direction += m_transform->GetDown()    * m_input->GetControllerTriggerLeft();
-                direction += m_transform->GetUp()      * m_input->GetControllerTriggerRight();
+                direction += m_transform->GetForward() * -Input::GetControllerThumbStickLeft().y;
+                direction += m_transform->GetRight()   * Input::GetControllerThumbStickLeft().x;
+                direction += m_transform->GetDown()    * Input::GetControllerTriggerLeft();
+                direction += m_transform->GetUp()      * Input::GetControllerTriggerRight();
                 direction.Normalize();
 
                 // Compute speed
-                m_movement_speed += m_movement_acceleration * direction * static_cast<float>(delta_time);
-                m_movement_speed.ClampMagnitude(m_movement_speed_max* static_cast<float>(delta_time));
+                m_movement_speed += m_movement_acceleration * direction * static_cast<float>(Timer::GetDeltaTimeSec());
+                m_movement_speed.ClampMagnitude(m_movement_speed_max* static_cast<float>(Timer::GetDeltaTimeSec()));
             }
         }
 
         // Translation
         {
             // Apply movement drag
-            m_movement_speed *= 1.0f - Helper::Saturate(m_movement_drag * static_cast<float>(delta_time));
+            m_movement_speed *= 1.0f - Helper::Saturate(m_movement_drag * static_cast<float>(Timer::GetDeltaTimeSec()));
 
             // Translate for as long as there is speed
             if (m_movement_speed != Vector3::Zero)
@@ -502,12 +496,12 @@ namespace Spartan
         }
     }
 
-    void Camera::ProcessInputLerpToEntity(double delta_time)
+    void Camera::ProcessInputLerpToEntity()
     {
         // Set focused entity as a lerp target
-        if (m_input->GetKeyDown(KeyCode::F))
+        if (Input::GetKeyDown(KeyCode::F))
         {
-            if (shared_ptr<Entity> entity = m_context->GetSystem<Renderer>()->GetCamera()->GetSelectedEntity())
+            if (shared_ptr<Entity> entity = Renderer::GetCamera()->GetSelectedEntity())
             {
                 SP_LOG_INFO("Focusing on entity \"%s\"...", entity->GetTransform()->GetEntity()->GetName().c_str());
 
@@ -547,7 +541,7 @@ namespace Spartan
         if (m_lerp_to_target || lerp_to_bookmark)
         {
             // Alpha
-            m_lerp_to_target_alpha += m_lerp_to_target_speed * static_cast<float>(delta_time);
+            m_lerp_to_target_alpha += m_lerp_to_target_speed * static_cast<float>(Timer::GetDeltaTimeSec());
 
             // Position
             Vector3 interpolated_position = Vector3::Lerp(m_transform->GetPosition(), m_lerp_to_target_position, m_lerp_to_target_alpha);
@@ -590,11 +584,11 @@ namespace Spartan
     {
         if (m_projection_type == Projection_Perspective)
         {
-            return Matrix::CreatePerspectiveFieldOfViewLH(GetFovVerticalRad(), GetViewport().GetAspectRatio(), near_plane, far_plane);
+            return Matrix::CreatePerspectiveFieldOfViewLH(GetFovVerticalRad(), Renderer::GetViewport().GetAspectRatio(), near_plane, far_plane);
         }
         else if (m_projection_type == Projection_Orthographic)
         {
-            return Matrix::CreateOrthographicLH(GetViewport().width, GetViewport().height, near_plane, far_plane);
+            return Matrix::CreateOrthographicLH(Renderer::GetViewport().width, Renderer::GetViewport().height, near_plane, far_plane);
         }
 
         return Matrix::Identity;

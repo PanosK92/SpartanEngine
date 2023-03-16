@@ -37,18 +37,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../WidgetsDeferred/IconProvider.h"
 #include "Source/imgui_internal.h"
 #include "../Editor.h"
+#include "Rendering/Mesh.h"
 //==========================================
 
 class EditorHelper
 {
 public:
-    static void Initialize(Editor* editor_, Spartan::Context* context_)
+    static void Initialize(Editor* editor_)
     {
-        editor   = editor_;
-        context  = context_;
-        world    = context->GetSystem<Spartan::World>();
-        renderer = context->GetSystem<Spartan::Renderer>();
-        input    = context->GetSystem<Spartan::Input>();
+        editor = editor_;
     }
 
     static void LoadMesh(const std::string& file_path, const uint32_t load_flags)
@@ -68,7 +65,7 @@ public:
         // Load the scene asynchronously
         Spartan::ThreadPool::AddTask([file_path]()
         {
-            world->LoadFromFile(file_path);
+            Spartan::World::LoadFromFile(file_path);
         });
     }
 
@@ -77,15 +74,11 @@ public:
         // Save the scene asynchronously
         Spartan::ThreadPool::AddTask([file_path]()
         {
-            world->SaveToFile(file_path);
+            Spartan::World::SaveToFile(file_path);
         });
     }
 
-    static Editor*            editor;
-    static Spartan::Context*  context;
-    static Spartan::World*    world;
-    static Spartan::Renderer* renderer;
-    static Spartan::Input*    input;
+    static Editor* editor;
 };
 
 namespace ImGui_SP
@@ -349,7 +342,7 @@ namespace ImGui_SP
         // Wrap
         if (ImGui::IsMouseDragging(ImGuiMouseButton_Left))
         {
-            Spartan::Math::Vector2 position_cursor = EditorHelper::input->GetMousePosition();
+            Spartan::Math::Vector2 position_cursor = Spartan::Input::GetMousePosition();
             float position_left                    = static_cast<float>(screen_edge_padding);
             float position_right                   = static_cast<float>(Spartan::Display::GetWidth() - screen_edge_padding);
             bool is_on_right_screen_edge           = position_cursor.x >= position_right;

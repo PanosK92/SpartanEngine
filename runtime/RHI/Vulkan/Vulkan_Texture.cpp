@@ -74,7 +74,7 @@ namespace Spartan
         return flags;
     }
 
-    static void create_image(RHI_Device* rhi_device, RHI_Texture* texture)
+    static void create_image(RHI_Texture* texture)
     {
         // Deduce format flags
         bool is_render_target_depth_stencil = texture->IsRenderTargetDepthStencil();
@@ -112,7 +112,7 @@ namespace Spartan
 
         // Create image
         void*& resource = texture->GetRhiResource();
-        rhi_device->CreateTexture(static_cast<void*>(&create_info), resource);
+        Renderer::GetRhiDevice()->CreateTexture(static_cast<void*>(&create_info), resource);
     }
 
     static void set_debug_name(RHI_Texture* texture)
@@ -154,7 +154,7 @@ namespace Spartan
         }
     }
 
-    inline bool copy_to_staging_buffer(RHI_Device* rhi_device, RHI_Texture* texture, vector<VkBufferImageCopy>& regions, void*& staging_buffer)
+    inline bool copy_to_staging_buffer(RHI_Texture* texture, vector<VkBufferImageCopy>& regions, void*& staging_buffer)
     {
         if (!texture->HasData())
         {
@@ -198,12 +198,12 @@ namespace Spartan
         }
 
         // Create staging buffer
-        rhi_device->CreateBuffer(staging_buffer, buffer_offset, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+        Renderer::GetRhiDevice()->CreateBuffer(staging_buffer, buffer_offset, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
         // Copy array and mip level data to the staging buffer
         void* mapped_data = nullptr;
         buffer_offset = 0;
-        rhi_device->MapMemory(staging_buffer, mapped_data);
+        Renderer::GetRhiDevice()->MapMemory(staging_buffer, mapped_data);
         {
             for (uint32_t array_index = 0; array_index < array_length; array_index++)
             {
@@ -215,22 +215,22 @@ namespace Spartan
                 }
             }
 
-            rhi_device->UnmapMemory(staging_buffer, mapped_data);
+            Renderer::GetRhiDevice()->UnmapMemory(staging_buffer, mapped_data);
         }
 
         return true;
     }
 
-    inline bool stage(RHI_Device* rhi_device, RHI_Texture* texture)
+    inline bool stage(RHI_Texture* texture)
     {
         // Copy the texture's data to a staging buffer
         void* staging_buffer = nullptr;
         vector<VkBufferImageCopy> regions;
-        if (!copy_to_staging_buffer(rhi_device, texture, regions, staging_buffer))
+        if (!copy_to_staging_buffer(texture, regions, staging_buffer))
             return false;
 
         // Copy the staging buffer into the image
-        if (RHI_CommandList* cmd_list = rhi_device->ImmediateBegin(RHI_Queue_Type::Graphics))
+        if (RHI_CommandList* cmd_list = Renderer::GetRhiDevice()->ImmediateBegin(RHI_Queue_Type::Graphics))
         {
             // Optimal layout for images which are the destination of a transfer format
             RHI_Image_Layout layout = RHI_Image_Layout::Transfer_Dst_Optimal;
@@ -249,10 +249,10 @@ namespace Spartan
             );
 
             // End/flush
-            rhi_device->ImmediateSubmit(cmd_list);
+            Renderer::GetRhiDevice()->ImmediateSubmit(cmd_list);
 
             // Free staging buffer
-            rhi_device->DestroyBuffer(staging_buffer);
+            Renderer::GetRhiDevice()->DestroyBuffer(staging_buffer);
 
             // Update texture layout
             texture->SetLayout(layout, nullptr);
@@ -291,19 +291,16 @@ namespace Spartan
 
     bool RHI_Texture::RHI_CreateResource()
     {
-        SP_ASSERT(m_rhi_device != nullptr);
-        SP_ASSERT(m_rhi_device->GetRhiContext()->device != nullptr);
-
-        create_image(m_rhi_device.get(), this);
+        create_image(this);
 
         // If the texture has any data, stage it
         if (HasData())
         {
-            SP_ASSERT_MSG(stage(m_rhi_device.get(), this), "Failed to stage");
+            SP_ASSERT_MSG(stage(this), "Failed to stage");
         }
 
         // Transition to target layout
-        if (RHI_CommandList* cmd_list = m_rhi_device->ImmediateBegin(RHI_Queue_Type::Graphics))
+        if (RHI_CommandList* cmd_list = Renderer::GetRhiDevice()->ImmediateBegin(RHI_Queue_Type::Graphics))
         {
             RHI_Image_Layout target_layout = GetAppropriateLayout(this);
 
@@ -311,7 +308,7 @@ namespace Spartan
             vulkan_utility::image::set_layout(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()), this, 0, m_mip_count, m_array_length, m_layout[0], target_layout);
         
             // Flush
-            m_rhi_device->ImmediateSubmit(cmd_list);
+            Renderer::GetRhiDevice()->ImmediateSubmit(cmd_list);
 
             // Update this texture with the new layout
             for (uint32_t i = 0; i < m_mip_count; i++)
@@ -364,22 +361,14 @@ namespace Spartan
 
     void RHI_Texture::RHI_DestroyResource(const bool destroy_main, const bool destroy_per_view)
     {
-        SP_ASSERT(m_rhi_device != nullptr);
-
         // Destruction can happen during engine shutdown, in which case, the renderer might not exist, so, if statement.
-        if (Context* context = m_rhi_device->GetContext())
+        if (RHI_CommandList* cmd_list = Renderer::GetCmdList())
         {
-            if (Renderer* renderer = context->GetSystem<Renderer>())
-            {
-                if (RHI_CommandList* cmd_list = renderer->GetCmdList())
-                {
-                    cmd_list->Discard();
-                }
-            }
+            cmd_list->Discard();
         }
 
         // Wait for any in-flight frames that might be using it.
-        m_rhi_device->QueueWaitAll();
+        Renderer::GetRhiDevice()->QueueWaitAll();
 
         // De-allocate everything
         if (destroy_main)
@@ -403,7 +392,7 @@ namespace Spartan
 
         if (destroy_main)
         {
-            m_rhi_device->DestroyTexture(m_rhi_resource);
+            Renderer::GetRhiDevice()->DestroyTexture(m_rhi_resource);
         }
     }
 }

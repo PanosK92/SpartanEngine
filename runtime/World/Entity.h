@@ -29,14 +29,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-    class Context;
     class Transform;
     class Renderable;
     
     class SP_CLASS Entity : public Object, public std::enable_shared_from_this<Entity>
     {
     public:
-        Entity(Context* context, uint64_t transform_id = 0);
+        Entity(uint64_t transform_id = 0);
         ~Entity();
 
         void Clone();
@@ -51,7 +50,7 @@ namespace Spartan
         void OnPreTick();
 
         // Runs every frame.
-        void Tick(double delta_time);
+        void Tick();
 
         void Serialize(FileStream* stream);
         void Deserialize(FileStream* stream, Transform* parent);
@@ -77,7 +76,7 @@ namespace Spartan
             }
 
             // Create a new component
-            std::shared_ptr<T> component = std::make_shared<T>(m_context, this, id);
+            std::shared_ptr<T> component = std::make_shared<T>(this, id);
 
             // Save new component
             m_components[static_cast<uint32_t>(type)] = std::static_pointer_cast<IComponent>(component);

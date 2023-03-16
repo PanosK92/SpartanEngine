@@ -103,7 +103,6 @@ struct ImGui_ImplSDL2_Data
     char*             ClipboardTextData;
     bool              MouseCanUseGlobalState;
     bool              UseVulkan;
-    Spartan::Context* engine_context;
 
     ImGui_ImplSDL2_Data() { memset(this, 0, sizeof(*this)); }
 };
@@ -351,7 +350,7 @@ bool ImGui_ImplSDL2_ProcessEvent(const SDL_Event* event)
     return false;
 }
 
-bool ImGui_ImplSDL2_Init(Spartan::Context* context)
+bool ImGui_ImplSDL2_Init()
 {
     ImGuiIO& io = ImGui::GetIO();
     IM_ASSERT(io.BackendPlatformUserData == nullptr && "Already initialized a platform backend!");
@@ -384,9 +383,8 @@ bool ImGui_ImplSDL2_Init(Spartan::Context* context)
     bd->MouseCanUseGlobalState = mouse_can_use_global_state;
 
     // Initialise some ImGui stuff
-    bd->Window         = static_cast<SDL_Window*>(context->GetSystem<Spartan::Window>()->GetHandleSDL());
+    bd->Window         = static_cast<SDL_Window*>(Spartan::Window::GetHandleSDL());
     bd->UseVulkan      = true; // we are using SDL_Vulkan_CreateSurface so the window needs the SDL_WINDOW_VULKAN flag
-    bd->engine_context = context;
 
     io.SetClipboardTextFn = ImGui_ImplSDL2_SetClipboardText;
     io.GetClipboardTextFn = ImGui_ImplSDL2_GetClipboardText;
@@ -524,7 +522,6 @@ static void ImGui_ImplSDL2_UpdateMouseCursor()
 
     ImGui_ImplSDL2_Data* bd = ImGui_ImplSDL2_GetBackendData();
     ImGuiMouseCursor imgui_cursor = ImGui::GetMouseCursor();
-    Spartan::Input* input = bd->engine_context->GetSystem<Spartan::Input>();
 
     // State tracking to prevent ImGui from setting the cursor every frame
     // and interfering with the engine wanting to control the state.
@@ -533,13 +530,13 @@ static void ImGui_ImplSDL2_UpdateMouseCursor()
     if ((io.MouseDrawCursor || imgui_cursor == ImGuiMouseCursor_None) && is_visible)
     {
         // Hide OS mouse cursor if imgui is drawing it or if it wants no cursor
-        input->SetMouseCursorVisible(false);
+        Spartan::Input::SetMouseCursorVisible(false);
         is_visible = false;
     }
     else if (!is_visible)
     {
         // Show OS mouse cursor
-        input->SetMouseCursorVisible(true);
+        Spartan::Input::SetMouseCursorVisible(true);
         is_visible = true;
     }
 

@@ -32,11 +32,10 @@ namespace Spartan
     {
     public:
         RHI_VertexBuffer() = default;
-        RHI_VertexBuffer(RHI_Device* rhi_device, bool is_mappable, const char* name)
+        RHI_VertexBuffer(bool is_mappable, const char* name)
         {
-            m_rhi_device  = rhi_device;
             m_is_mappable = is_mappable;
-            m_name = name;
+            m_name        = name;
         }
 
         ~RHI_VertexBuffer()
@@ -80,7 +79,7 @@ namespace Spartan
         void* Map();
         void Unmap();
 
-        void* GetRhiResource()       const { return m_rhi_resource; }
+        void* GetRhiResource()    const { return m_rhi_resource; }
         uint32_t GetStride()      const { return m_stride; }
         uint32_t GetVertexCount() const { return m_vertex_count; }
 
@@ -92,7 +91,6 @@ namespace Spartan
         bool m_is_mappable       = false;
         uint32_t m_stride        = 0;
         uint32_t m_vertex_count  = 0;
-        RHI_Device* m_rhi_device = nullptr;
 
         // RHI Resources
         void* m_rhi_resource = nullptr;
