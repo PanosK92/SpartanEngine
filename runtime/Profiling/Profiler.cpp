@@ -24,10 +24,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Profiler.h"
 #include "../Rendering/Renderer.h"
 #include "../Resource/ResourceCache.h"
-#include "../RHI/RHI_Device.h"
 #include "../RHI/RHI_CommandList.h"
 #include "../RHI/RHI_Implementation.h"
-#include "../Core/Event.h"
 #include "../Core/ThreadPool.h"
 //====================================
 

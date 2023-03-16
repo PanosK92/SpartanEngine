@@ -27,15 +27,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Profiling/Profiler.h"
 #include "../Rendering/Renderer.h"
 #include "../Input/Input.h"
-#include "../World/Components/Transform.h"
 #include "../World/Components/Camera.h"
 SP_WARNINGS_OFF
 #include "BulletCollision/BroadphaseCollision/btDbvtBroadphase.h"
 #include "BulletDynamics/ConstraintSolver/btSequentialImpulseConstraintSolver.h"
 #include "BulletSoftBody/btSoftBodyRigidBodyCollisionConfiguration.h"
-#include "BulletCollision/CollisionDispatch/btCollisionDispatcher.h"
 #include "BulletCollision/NarrowPhaseCollision/btRaycastCallback.h"
-#include "BulletDynamics/Dynamics/btDiscreteDynamicsWorld.h"
 #include "BulletSoftBody/btSoftRigidDynamicsWorld.h"
 #include "BulletDynamics/ConstraintSolver/btPoint2PointConstraint.h"
 SP_WARNINGS_ON

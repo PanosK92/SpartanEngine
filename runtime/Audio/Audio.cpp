@@ -27,7 +27,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 SP_WARNINGS_OFF
 #include <fmod.hpp>
 #include <fmod_errors.h>
-#include "Event.h"
 SP_WARNINGS_ON
 //========================================
 

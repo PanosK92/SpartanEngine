@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =========================
+//= INCLUDES ==================================
 #include <vector>
 #include "ImGui_RHI.h"
 #include "../Source/imgui.h"
@@ -41,7 +41,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI/RHI_Semaphore.h"
 #include "RHI/RHI_CommandPool.h"
 #include "RHI/RHI_ConstantBuffer.h"
-//====================================
+#include "Rendering/Renderer_ConstantBuffers.h"
+//=============================================
 
 namespace ImGui::RHI
 {

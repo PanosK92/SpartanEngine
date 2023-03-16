@@ -47,7 +47,7 @@ namespace Spartan
         SetFlag(EngineMode::Physics);
         SetFlag(EngineMode::Game);
 
-        // Initialise
+        // Initialize
         Stopwatch timer_initialize;
         {
             Window::Initialize();

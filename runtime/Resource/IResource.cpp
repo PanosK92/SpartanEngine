@@ -26,7 +26,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_Texture2D.h"
 #include "../RHI/RHI_Texture2DArray.h"
 #include "../RHI/RHI_TextureCube.h"
-#include "../Rendering/Material.h"
 #include "../Rendering/Font/Font.h"
 #include "../Rendering/Animation.h"
 #include "../Rendering/Mesh.h"
