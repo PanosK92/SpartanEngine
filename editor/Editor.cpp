@@ -24,8 +24,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Core/Engine.h"
 #include "Core/Settings.h"
 #include "Core/Window.h"
-#include "Core/Event.h"
-#include "Profiling/Profiler.h"
 #include "ImGui/ImGuiExtension.h"
 #include "ImGui/Implementation/ImGui_RHI.h"
 #include "ImGui/Implementation/imgui_impl_sdl.h"
@@ -41,7 +39,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Widgets/Profiler.h"
 #include "Widgets/RenderOptions.h"
 #include "Widgets/TextureViewer.h"
-#include "Rendering/Renderer_Definitions.h"
 //==============================================
 
 //= NAMESPACES =====

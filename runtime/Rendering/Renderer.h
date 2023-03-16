@@ -21,20 +21,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ========================
-#include <unordered_map>
-#include <array>
-#include <atomic>
-#include <thread>
-#include "Renderer_ConstantBuffers.h"
-#include "Material.h"
-#include "../RHI/RHI_Definition.h"
-#include "../RHI/RHI_Viewport.h"
-#include "../RHI/RHI_Vertex.h"
-#include "../Math/Rectangle.h"
-#include "../Math/Plane.h"
+//= INCLUDES ====================
 #include "Renderer_Definitions.h"
-//===================================
+#include "../RHI/RHI_Texture.h"
+#include "../Math/Rectangle.h"
+#include "../Math/Vector3.h"
+#include "../Math/Vector4.h"
+#include "../Math/Plane.h"
+#include <unordered_map>
+//===============================
 
 namespace Spartan
 {

@@ -26,8 +26,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World/Components/Transform.h"
 #include "../World/Components/Light.h"
 #include "../World/Entity.h"
-#include "../World/World.h"
 #include "../World/Components/Renderable.h"
+#include "../RHI/RHI_Vertex.h"
 //=========================================
 
 //= NAMESPACES ===============

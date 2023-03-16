@@ -30,7 +30,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Physics/BulletPhysicsHelper.h"
 #include "../../IO/FileStream.h"
 SP_WARNINGS_OFF
-#include "LinearMath/btMotionState.h"
 #include "BulletDynamics/Dynamics/btRigidBody.h"
 #include "BulletCollision/CollisionShapes/btCollisionShape.h"
 SP_WARNINGS_ON
