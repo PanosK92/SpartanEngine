@@ -187,12 +187,14 @@ namespace Spartan
             RHI_RenderDoc::OnPreDeviceCreation();
         }
 
-        // Create device
-        m_rhi_device = make_shared<RHI_Device>(m_rhi_context);
+        Display::DetectDisplayModes();
 
         // Get window size
-        uint32_t window_width = Window::GetWidth();
+        uint32_t window_width  = Window::GetWidth();
         uint32_t window_height = Window::GetHeight();
+
+        // Create device
+        m_rhi_device = make_shared<RHI_Device>(m_rhi_context);
 
         // Create swap chain
         m_swap_chain = make_shared<RHI_SwapChain>
@@ -212,11 +214,10 @@ namespace Spartan
 
         // Set the output and viewport resolution to the display resolution.
         // If the editor is running, it will set the viewport resolution to whatever the viewport.
-        SetResolutionOutput(Display::GetWidth(), Display::GetHeight(), false);
+        
         SetViewport(static_cast<float>(window_width), static_cast<float>(window_height));
-
-        // Set the render resolution to 80% of the display resolution
-        SetResolutionRender(static_cast<uint32_t>(Display::GetWidth() * 0.8f), static_cast<uint32_t>(Display::GetHeight() * 0.8f), false);
+        SetResolutionRender(Display::GetWidth(), Display::GetHeight(), false);
+        SetResolutionOutput(Display::GetWidth(), Display::GetHeight(), false);
 
         CreateConstantBuffers();
         CreateShaders();
@@ -426,16 +427,6 @@ namespace Spartan
         // Set resolution
         m_resolution_render.x = static_cast<float>(width);
         m_resolution_render.y = static_cast<float>(height);
-
-        // Set as active display mode
-        DisplayMode display_mode = Display::GetActiveDisplayMode();
-        display_mode.width       = width;
-        display_mode.height      = height;
-        Display::SetActiveDisplayMode(display_mode);
-
-        // Register display mode (in case it doesn't exist) but maintain the fps limit
-        bool update_fps_limit_to_highest_hz = false;
-        Display::RegisterDisplayMode(display_mode, update_fps_limit_to_highest_hz);
 
         if (recreate_resources)
         {

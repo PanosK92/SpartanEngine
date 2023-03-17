@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "Display.h"
 #include "sdl/SDL.h"
+#include "Window.h"
 //==================
 
 //= NAMESPACES =====
@@ -31,86 +32,94 @@ using namespace std;
 
 namespace Spartan
 {
-    vector<DisplayMode> Display::m_display_modes;
-    DisplayMode Display::m_display_mode_active;
+    static std::vector<DisplayMode> display_modes;
 
-    void Display::RegisterDisplayMode(const DisplayMode& display_mode, const bool update_fps_limit_to_highest_hz)
+    void Display::RegisterDisplayMode(const uint32_t width, const uint32_t height, uint32_t hz, uint8_t display_index)
     {
-        // Early exit if display is already registered
-        for (const DisplayMode& display_mode_existing : m_display_modes)
+        SP_ASSERT_MSG(width  != 0,    "width can't be zero");
+        SP_ASSERT_MSG(height != 0,    "height can't be zero");
+        SP_ASSERT_MSG(hz     != 0.0f, "hz can't be zero");
+
+        // Early exit if the display mode is already registered
+        for (const DisplayMode& display_mode : display_modes)
         {
-            if (display_mode == display_mode_existing)
+            if (display_mode.width         == width  &&
+                display_mode.height        == height &&
+                display_mode.hz            == hz     &&
+                display_mode.display_index == display_index)
                 return;
         }
 
-        DisplayMode& mode = m_display_modes.emplace_back(display_mode);
+        // Add the new display mode
+        display_modes.emplace_back(width, height, hz, display_index);
 
-        // Keep display modes sorted, based on refresh rate, in a descending order.
-        sort(m_display_modes.begin(), m_display_modes.end(), [](const DisplayMode& display_mode_a, const DisplayMode& display_mode_b)
+        // Sort display modes based on width, descending order
+        sort(display_modes.begin(), display_modes.end(), [](const DisplayMode& display_mode_a, const DisplayMode& display_mode_b)
         {
-            return display_mode_a.hz > display_mode_b.hz;
+            return display_mode_a.width > display_mode_b.width;
         });
 
-        // Find preferred display mode
-        for (const DisplayMode& display_mode : m_display_modes)
+        // Set the FPS limit to the HZ corresponding to our optimal display mode
+        if (GetRefreshRate() > Timer::GetFpsLimit())
         {
-            // Try to use higher resolution
-            if (display_mode.width > m_display_mode_active.width || display_mode.height > m_display_mode_active.height)
-            {
-                // But not lower hz
-                if (display_mode.hz >= m_display_mode_active.hz)
-                { 
-                    m_display_mode_active.width       = display_mode.width;
-                    m_display_mode_active.height      = display_mode.height;
-                    m_display_mode_active.hz          = display_mode.hz;
-                    m_display_mode_active.numerator   = display_mode.numerator;
-                    m_display_mode_active.denominator = display_mode.denominator;
-                }
-            }
-        }
-
-        // Update FPS limit
-        if (update_fps_limit_to_highest_hz)
-        {
-            double hz = m_display_modes.front().hz;
-            if (hz > Timer::GetFpsLimit())
-            {
-                Timer::SetFpsLimit(hz);
-            }
+            Timer::SetFpsLimit(static_cast<float>(GetRefreshRate()));
         }
     }
 
     void Display::DetectDisplayModes()
     {
-        // Get display modes of all displays
-        for (uint32_t display_index = 0; display_index < static_cast<uint32_t>(SDL_GetNumVideoDisplays()); ++display_index) {
+        display_modes.clear();
 
-            // Get display mode
-            SDL_DisplayMode display_mode;
-            if (SDL_GetCurrentDisplayMode(display_index, &display_mode) != 0)
-            {
-                SP_LOG_ERROR("Failed to get display mode for display index %d", display_index);
-                continue;
-            }
-
-            // Register display mode (duplicates are discarded)
-            bool update_fps_limit_to_highest_hz = true;
-            RegisterDisplayMode(DisplayMode(display_mode.w, display_mode.h, display_mode.refresh_rate, 1), update_fps_limit_to_highest_hz);
+        // Get display index of the display that contains this window
+        int display_index = SDL_GetWindowDisplayIndex(static_cast<SDL_Window*>(Window::GetHandleSDL()));
+        if (display_index < 0)
+        {
+            SP_LOG_ERROR("Failed to window display index");
+            return;
         }
+
+        // Get display mode count
+        int display_mode_count = SDL_GetNumDisplayModes(display_index);
+        if (display_mode_count <= 0)
+        {
+            SP_LOG_ERROR("Failed to get display mode count");
+            return;
+        }
+
+        // Register display modes
+        for (uint32_t display_mode_index = 0; display_mode_index < display_mode_count; display_mode_index++)
+        {
+            SDL_DisplayMode display_mode;
+            if (SDL_GetDisplayMode(display_index, display_mode_index, &display_mode) == 0)
+            {
+                RegisterDisplayMode(display_mode.w, display_mode.h, display_mode.refresh_rate, display_index);
+            }
+            else
+            {
+                SP_LOG_ERROR("Failed to get display mode %d for display %d", display_mode_index, display_index);
+            }
+        }
+    }
+
+    const vector<DisplayMode>& Display::GetDisplayModes()
+    {
+        return display_modes;
     }
 
     uint32_t Display::GetWidth()
     {
         SDL_DisplayMode display_mode;
-        SP_ASSERT(SDL_GetCurrentDisplayMode(0, &display_mode) == 0);
+        SP_ASSERT(SDL_GetCurrentDisplayMode(GetIndex(), &display_mode) == 0);
 
         return display_mode.w;
     }
 
     uint32_t Display::GetHeight()
     {
+        int display_index = SDL_GetWindowDisplayIndex(static_cast<SDL_Window*>(Window::GetHandleSDL()));
+
         SDL_DisplayMode display_mode;
-        SP_ASSERT(SDL_GetCurrentDisplayMode(0, &display_mode) == 0);
+        SP_ASSERT(SDL_GetCurrentDisplayMode(GetIndex(), &display_mode) == 0);
 
         return display_mode.h;
     }
@@ -118,8 +127,17 @@ namespace Spartan
     uint32_t Display::GetRefreshRate()
     {
         SDL_DisplayMode display_mode;
-        SP_ASSERT(SDL_GetCurrentDisplayMode(0, &display_mode) == 0);
+        SP_ASSERT(SDL_GetCurrentDisplayMode(GetIndex(), &display_mode) == 0);
 
         return display_mode.refresh_rate;
+    }
+
+    uint32_t Display::GetIndex()
+    {
+        int index = SDL_GetWindowDisplayIndex(static_cast<SDL_Window*>(Window::GetHandleSDL()));
+
+        // during engine startup, the window doesn't exist yet, therefore it's not displayed by any monitor.
+        // in this case the index can be -1, so we'll instead set the index to 0 (whatever the primary display is)
+        return index != -1 ? index : 0;
     }
 }

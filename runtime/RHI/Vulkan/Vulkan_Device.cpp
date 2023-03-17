@@ -246,8 +246,8 @@ namespace Spartan
         }
 
         // Find a physical device
-        SP_ASSERT_MSG(DetectPhysicalDevices(),       "Failed to detect any devices");
-        SP_ASSERT_MSG(SelectPrimaryPhysicalDevice(), "Failed to find a suitable device");
+        SP_ASSERT_MSG(DetectPhysicalDevices(), "Failed to detect any devices");
+        SelectPrimaryPhysicalDevice();
 
         // Device
         {
@@ -534,7 +534,7 @@ namespace Spartan
         return true;
     }
 
-    bool RHI_Device::SelectPrimaryPhysicalDevice()
+    void RHI_Device::SelectPrimaryPhysicalDevice()
     {
         auto get_queue_family_index = [](VkQueueFlagBits queue_flags, const vector<VkQueueFamilyProperties>& queue_family_properties, uint32_t* index)
         {
@@ -606,7 +606,7 @@ namespace Spartan
             }
             else
             {
-                SP_LOG_ERROR("Compute queue not suported.");
+                SP_LOG_ERROR("Compute queue not supported.");
                 return false;
             }
 
@@ -617,7 +617,7 @@ namespace Spartan
             }
             else
             {
-                SP_LOG_ERROR("Copy queue not suported.");
+                SP_LOG_ERROR("Copy queue not supported.");
                 return false;
             }
 
@@ -637,27 +637,6 @@ namespace Spartan
                 break;
             }
         }
-
-        return DetectDisplayModes(GetPrimaryPhysicalDevice(), RHI_Format_R8G8B8A8_Unorm); // TODO: Format should be determined based on what the swap chain supports.
-    }
-
-    bool RHI_Device::DetectDisplayModes(const PhysicalDevice* physical_device, const RHI_Format format)
-    {
-        // Add some display modes manually
-        const uint32_t hz = Display::GetRefreshRate();
-        const bool update_fps_limit_to_highest_hz = true;
-        Display::RegisterDisplayMode(DisplayMode(640, 480, hz, 1), update_fps_limit_to_highest_hz);
-        Display::RegisterDisplayMode(DisplayMode(720, 576, hz, 1), update_fps_limit_to_highest_hz);
-        Display::RegisterDisplayMode(DisplayMode(1280, 720, hz, 1), update_fps_limit_to_highest_hz);
-        Display::RegisterDisplayMode(DisplayMode(1920, 1080, hz, 1), update_fps_limit_to_highest_hz);
-        Display::RegisterDisplayMode(DisplayMode(2560, 1440, hz, 1), update_fps_limit_to_highest_hz);
-
-        // Add the current display modes from any connected displays
-        Display::DetectDisplayModes();
-
-        // VK_KHR_Display is not supported and I don't want to use anything OS specific to acquire the display modes, must think of something.
-
-        return true;
     }
 
     void RHI_Device::QueuePresent(void* swapchain, uint32_t* image_index, vector<RHI_Semaphore*>& wait_semaphores)

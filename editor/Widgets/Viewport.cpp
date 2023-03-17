@@ -30,6 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../ImGui/Implementation/ImGui_TransformGizmo.h"
 #include "WorldViewer.h"
 #include "Rendering/Mesh.h"
+#include "RHI/RHI_Device.h"
 //=======================================================
 
 //= NAMESPACES =========
@@ -55,14 +56,13 @@ void Viewport::TickVisible()
     float height = static_cast<float>(ImGui::GetWindowContentRegionMax().y - ImGui::GetWindowContentRegionMin().y);
 
     // Update engine's viewport.
-    // Skip the first frame though, because widgets are still being added and the reported width/height is not valid.
-    if (Renderer::GetFrameNum() >= 1)
+    if (m_width != width || m_height != height)
     {
-        if (m_width != width || m_height != height)
+        if (Renderer::GetRhiDevice()->IsValidResolution(width, height))
         {
             Renderer::SetViewport(width, height);
 
-            m_width  = width;
+            m_width = width;
             m_height = height;
         }
     }

@@ -58,11 +58,7 @@ namespace Spartan
                 return;
             }
 
-            if (!SelectPrimaryPhysicalDevice())
-            {
-                SP_LOG_ERROR("Failed to detect any devices");
-                return;
-            }
+            SelectPrimaryPhysicalDevice();
         }
 
         const PhysicalDevice* physical_device = GetPrimaryPhysicalDevice();
@@ -255,66 +251,10 @@ namespace Spartan
         return true;
     }
 
-    bool RHI_Device::SelectPrimaryPhysicalDevice()
+    void RHI_Device::SelectPrimaryPhysicalDevice()
     {
-        for (uint32_t device_index = 0; device_index < m_physical_devices.size(); device_index++)
-        {
-            // Adapters are ordered by memory (descending), so stop on the first success
-            if (DetectDisplayModes(&m_physical_devices[device_index], RHI_Format_R8G8B8A8_Unorm)) // TODO: Format should be determined based on what the swap chain supports.
-            {
-                SetPrimaryPhysicalDevice(device_index);
-                return true;
-            }
-            else
-            {
-                SP_LOG_ERROR("Failed to get display modes for \"%s\".", m_physical_devices[device_index].GetName().c_str());
-            }
-        }
-
-        // If we failed to detect any display modes but we have at least one adapter, use it.
-        if (m_physical_devices.size() != 0)
-        {
-            SP_LOG_ERROR("Failed to detect display modes for all physical devices, falling back to first available.");
-            SetPrimaryPhysicalDevice(0);
-            return true;
-        }
-
-        return false;
-    }
-
-    bool RHI_Device::DetectDisplayModes(const PhysicalDevice* physical_device, const RHI_Format format)
-    {
-        bool result = false;
-
-        IDXGIAdapter* adapter = static_cast<IDXGIAdapter*>(physical_device->GetData());
-
-        // Enumerate the primary adapter output (monitor).
-        IDXGIOutput* adapter_output = nullptr;
-        if (d3d11_utility::error_check(adapter->EnumOutputs(0, &adapter_output)))
-        {
-            // Get supported display mode count
-            UINT display_mode_count = 0;
-            if (d3d11_utility::error_check(adapter_output->GetDisplayModeList(d3d11_format[format], DXGI_ENUM_MODES_INTERLACED, &display_mode_count, nullptr)))
-            {
-                // Get display modes
-                vector<DXGI_MODE_DESC> display_modes;
-                display_modes.resize(display_mode_count);
-                if (d3d11_utility::error_check(adapter_output->GetDisplayModeList(d3d11_format[format], DXGI_ENUM_MODES_INTERLACED, &display_mode_count, &display_modes[0])))
-                {
-                    // Save all the display modes
-                    for (const DXGI_MODE_DESC& mode : display_modes)
-                    {
-                        bool update_fps_limit_to_highest_hz = true;
-                        Display::RegisterDisplayMode(DisplayMode(mode.Width, mode.Height, mode.RefreshRate.Numerator, mode.RefreshRate.Denominator), update_fps_limit_to_highest_hz);
-                        result = true;
-                    }
-                }
-            }
-
-            adapter_output->Release();
-        }
-
-        return result;
+        // Get the first available device
+        SetPrimaryPhysicalDevice(0);
     }
 
     void RHI_Device::QueuePresent(void* swapchain_view, uint32_t* image_index, std::vector<RHI_Semaphore*>& wait_semaphores)

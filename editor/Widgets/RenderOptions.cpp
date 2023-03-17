@@ -189,14 +189,13 @@ void RenderOptions::TickVisible()
     // Present options (with a table)
     {
         // Get display modes
-        static vector<DisplayMode> display_modes;
-        static vector<string> display_modes_string;
-        const DisplayMode& display_mode_active = Display::GetActiveDisplayMode();
+        vector<DisplayMode> display_modes;
+        vector<string> display_modes_string;
         if (display_modes.empty())
         {
             for (const DisplayMode& display_mode : Display::GetDisplayModes())
             {
-                if (display_mode.hz == display_mode_active.hz)
+                if (display_mode.hz == Display::GetRefreshRate())
                 {
                     display_modes.emplace_back(display_mode);
                     display_modes_string.emplace_back(to_string(display_mode.width) + "x" + to_string(display_mode.height));
@@ -204,7 +203,7 @@ void RenderOptions::TickVisible()
             }
         }
 
-        const auto get_display_mode_index = [](const Vector2& resolution)
+        const auto get_display_mode_index = [&display_modes](const Vector2& resolution)
         {
             uint32_t index = 0;
 
@@ -393,9 +392,9 @@ void RenderOptions::TickVisible()
 
                     helper::SecondColumn();
                     {
-                        double fps_target = Timer::GetFpsLimit();
+                        float fps_target = Timer::GetFpsLimit();
                         ImGui::PushItemWidth(helper::k_width_input_numeric);
-                        ImGui::InputDouble("##fps_limit", &fps_target, 0.0, 0.0f, "%.1f");
+                        ImGui::InputFloat("##fps_limit", &fps_target, 0.0, 0.0f, "%.1f");
                         ImGui::PopItemWidth();
                         Timer::SetFpsLimit(fps_target);
                     }
