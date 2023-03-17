@@ -40,9 +40,9 @@ namespace Spartan
     double m_sleep_overhead         = 0.0f;
 
     // FPS
-    double m_fps_min                = 10.0;
-    double m_fps_max                = 5000.0;
-    double m_fps_limit              = m_fps_min; // if it's lower than the monitor's hz, it will be updated to match it, so start with something low.
+    float m_fps_min                 = 10.0f;
+    float m_fps_max                 = 5000.0f;
+    float m_fps_limit               = m_fps_min; // if it's lower than the monitor's hz, it will be updated to match it, so start with something low.
     bool m_user_selected_fps_target = false;
 
     void Timer::Initialize()
@@ -80,12 +80,11 @@ namespace Spartan
         m_delta_time_smoothed_ms          = m_delta_time_smoothed_ms * (1.0 - delta_feedback) + m_delta_time_ms * delta_feedback;
     }
 
-    void Timer::SetFpsLimit(double fps_in)
+    void Timer::SetFpsLimit(float fps_in)
     {
         if (fps_in < 0.0f) // negative -> match monitor's refresh rate
         {
-            const DisplayMode& display_mode = Display::GetActiveDisplayMode();
-            fps_in = display_mode.hz;
+            fps_in = static_cast<float>(Display::GetRefreshRate());
         }
 
         // Clamp to a minimum of 10 FPS to avoid unresponsiveness
@@ -99,14 +98,14 @@ namespace Spartan
         SP_LOG_INFO("Set to %.2f FPS", m_fps_limit);
     }
 
-    double Timer::GetFpsLimit()
+    float Timer::GetFpsLimit()
     {
         return m_fps_limit;
     }
 
     FpsLimitType Timer::GetFpsLimitType()
     {
-        if (m_fps_limit == Display::GetActiveDisplayMode().hz)
+        if (m_fps_limit == static_cast<float>(Display::GetRefreshRate()))
             return FpsLimitType::FixedToMonitor;
 
         if (m_fps_limit == m_fps_max)

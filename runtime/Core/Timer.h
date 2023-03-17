@@ -41,8 +41,8 @@ namespace Spartan
         static void Tick();
 
         // FPS Limit
-        static void SetFpsLimit(double fps);
-        static double GetFpsLimit();
+        static void SetFpsLimit(float fps);
+        static float GetFpsLimit();
         static FpsLimitType GetFpsLimitType();
 
         // Times

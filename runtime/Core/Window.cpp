@@ -191,6 +191,10 @@ namespace Spartan
                 case SDL_WINDOWEVENT_ICCPROF_CHANGED:
                     SP_LOG_INFO("The ICC profile of the window's display has changed");
                     break;
+                case SDL_WINDOWEVENT_DISPLAY_CHANGED:
+                    Display::DetectDisplayModes();
+                    SP_LOG_INFO("Display has been changed, detected new display modes");
+                    break;
                 default:
                     SP_LOG_ERROR("Unhandled window event");
                     break;

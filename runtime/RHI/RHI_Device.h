@@ -105,11 +105,8 @@ namespace Spartan
         // Physical device
         bool DetectPhysicalDevices();
         void RegisterPhysicalDevice(const PhysicalDevice& physical_device);
-        bool SelectPrimaryPhysicalDevice();
+        void SelectPrimaryPhysicalDevice();
         void SetPrimaryPhysicalDevice(const uint32_t index);
-
-        // Display modes
-        bool DetectDisplayModes(const PhysicalDevice* physical_device, const RHI_Format format);
 
         // Queues
         void* m_queue_graphics          = nullptr;

@@ -54,8 +54,8 @@ namespace Spartan
 
     const PhysicalDevice* RHI_Device::GetPrimaryPhysicalDevice()
     {
-        if (m_physical_device_index >= m_physical_devices.size())
-            return nullptr;
+        SP_ASSERT_MSG(m_physical_devices.size() != 0, "No physical devices detected");
+        SP_ASSERT_MSG(m_physical_device_index < m_physical_devices.size(), "Index out of bounds");
 
         return &m_physical_devices[m_physical_device_index];
     }
