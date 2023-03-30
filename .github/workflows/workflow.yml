@@ -15,9 +15,13 @@ jobs:
 
       - name: Generate project files
         shell: python
+        env:
+          API: ${{ matrix.api }}
         run: |
           import subprocess
-          subprocess.run(f"python generate_vs2022_{{{ matrix.api }}}.py")
+          import os
+          api = os.environ["API"]
+          subprocess.run(f"python generate_vs2022_{api}.py")
 
       - name: Build
         shell: cmd
