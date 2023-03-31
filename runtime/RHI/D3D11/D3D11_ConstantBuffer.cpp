@@ -33,10 +33,21 @@ using namespace std;
 
 namespace Spartan
 {
+    RHI_ConstantBuffer::~RHI_ConstantBuffer()
+    {
+        if (m_rhi_resource)
+        {
+            d3d11_utility::release<ID3D11Buffer>(m_rhi_resource);
+        }
+    }
+
     void RHI_ConstantBuffer::_create()
     {
         // Destroy previous buffer
-        _destroy();
+        if (m_rhi_resource)
+        {
+            d3d11_utility::release<ID3D11Buffer>(m_rhi_resource);
+        }
 
         D3D11_BUFFER_DESC buffer_desc;
         ZeroMemory(&buffer_desc, sizeof(buffer_desc));
@@ -48,11 +59,6 @@ namespace Spartan
         buffer_desc.StructureByteStride = 0;
 
         SP_ASSERT(d3d11_utility::error_check(Renderer::GetRhiDevice()->GetRhiContext()->device->CreateBuffer(&buffer_desc, nullptr, reinterpret_cast<ID3D11Buffer**>(&m_rhi_resource))));
-    }
-
-    void RHI_ConstantBuffer::_destroy()
-    {
-        d3d11_utility::release<ID3D11Buffer>(m_rhi_resource);
     }
 
     RHI_ConstantBuffer::RHI_ConstantBuffer(const string& name)

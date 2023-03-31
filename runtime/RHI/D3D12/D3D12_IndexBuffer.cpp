@@ -32,11 +32,11 @@ using namespace std;
 
 namespace Spartan
 {
-    void RHI_IndexBuffer::_destroy()
+    RHI_IndexBuffer::~RHI_IndexBuffer()
     {
-        
+
     }
-    
+
     void RHI_IndexBuffer::_create(const void* indices)
     {
         //ThrowIfFailed(m_device->CreateCommittedResource(

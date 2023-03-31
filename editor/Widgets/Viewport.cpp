@@ -52,13 +52,13 @@ Viewport::Viewport(Editor* editor) : Widget(editor)
 void Viewport::TickVisible()
 {
     // Get size
-    uint32_t width  = static_cast<uint32_t>(ImGui::GetWindowContentRegionMax().x - ImGui::GetWindowContentRegionMin().x);
-    uint32_t height = static_cast<uint32_t>(ImGui::GetWindowContentRegionMax().y - ImGui::GetWindowContentRegionMin().y);
+    float width  = ImGui::GetWindowContentRegionMax().x - ImGui::GetWindowContentRegionMin().x;
+    float height = ImGui::GetWindowContentRegionMax().y - ImGui::GetWindowContentRegionMin().y;
 
     // Update engine's viewport.
     if (m_width != width || m_height != height)
     {
-        if (Renderer::GetRhiDevice()->IsValidResolution(width, height))
+        if (Renderer::GetRhiDevice()->IsValidResolution(static_cast<uint32_t>(width), static_cast<uint32_t>(height)))
         {
             Renderer::SetViewport(width, height);
 
