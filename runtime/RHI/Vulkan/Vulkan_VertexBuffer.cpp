@@ -35,15 +35,13 @@ using namespace std;
 
 namespace Spartan
 {
-    void RHI_VertexBuffer::_destroy()
+    RHI_VertexBuffer::~RHI_VertexBuffer()
     {
-        SP_ASSERT(m_rhi_resource != nullptr);
-
-        // Wait
-        Renderer::GetRhiDevice()->QueueWaitAll();
-
-        // Destroy
-        Renderer::GetRhiDevice()->DestroyBuffer(m_rhi_resource);
+        if (m_rhi_resource)
+        {
+            Renderer::AddToDeletionQueue(RHI_Resource_Type::buffer, m_rhi_resource);
+            m_rhi_resource = nullptr;
+        }
     }
 
     void RHI_VertexBuffer::_create(const void* vertices)
@@ -51,7 +49,8 @@ namespace Spartan
         // Destroy previous buffer
         if (m_rhi_resource)
         {
-            _destroy();
+            Renderer::AddToDeletionQueue(RHI_Resource_Type::buffer, m_rhi_resource);
+            m_rhi_resource = nullptr;
         }
 
         m_is_mappable = vertices == nullptr;

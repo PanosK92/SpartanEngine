@@ -741,14 +741,7 @@ namespace Spartan
     {
         for (const auto& it : deletion_queue)
         {
-            if (it.first == RHI_Resource_Type::sampler)
-            {
-                for (void* resource : it.second)
-                {
-                    vkDestroySampler(m_rhi_context->device, reinterpret_cast<VkSampler>(resource), nullptr);
-                }
-            }
-            else if (it.first == RHI_Resource_Type::texture)
+            if (it.first == RHI_Resource_Type::texture)
             {
                 for (void* resource : it.second)
                 {
@@ -760,6 +753,27 @@ namespace Spartan
                 for (void* resource : it.second)
                 {
                     vkDestroyImageView(m_rhi_context->device, static_cast<VkImageView>(resource), nullptr);
+                }
+            }
+            else if (it.first == RHI_Resource_Type::sampler)
+            {
+                for (void* resource : it.second)
+                {
+                    vkDestroySampler(m_rhi_context->device, reinterpret_cast<VkSampler>(resource), nullptr);
+                }
+            }
+            else if (it.first == RHI_Resource_Type::buffer)
+            {
+                for (void* resource : it.second)
+                {
+                    DestroyBuffer(resource);
+                }
+            }
+            else if (it.first == RHI_Resource_Type::shader)
+            {
+                for (void* resource : it.second)
+                {
+                    vkDestroyShaderModule(m_rhi_context->device, static_cast<VkShaderModule>(resource), nullptr);
                 }
             }
         }

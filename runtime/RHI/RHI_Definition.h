@@ -69,7 +69,9 @@ namespace Spartan
     {
         texture,
         texture_view,
-        sampler
+        sampler,
+        buffer,
+        shader
     };
 
     enum class RHI_PhysicalDevice_Type

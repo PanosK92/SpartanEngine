@@ -34,19 +34,23 @@ using namespace std;
 
 namespace Spartan
 {
-    void RHI_IndexBuffer::_destroy()
+    RHI_IndexBuffer::~RHI_IndexBuffer()
     {
-        // Wait
-        Renderer::GetRhiDevice()->QueueWaitAll();
-
-        // Destroy
-        Renderer::GetRhiDevice()->DestroyBuffer(m_rhi_resource);
+        if (m_rhi_resource)
+        {
+            Renderer::AddToDeletionQueue(RHI_Resource_Type::buffer, m_rhi_resource);
+            m_rhi_resource = nullptr;
+        }
     }
 
     void RHI_IndexBuffer::_create(const void* indices)
     {
         // Destroy previous buffer
-        _destroy();
+        if (m_rhi_resource)
+        {
+            Renderer::AddToDeletionQueue(RHI_Resource_Type::buffer, m_rhi_resource);
+            m_rhi_resource = nullptr;
+        }
 
         m_is_mappable = indices == nullptr;
 

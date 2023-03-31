@@ -36,11 +36,7 @@ namespace Spartan
             m_is_mappable = is_mappable;
             m_name = name;
         }
-
-        ~RHI_IndexBuffer()
-        {
-            _destroy();
-        }
+        ~RHI_IndexBuffer();
 
         template<typename T>
         void Create(const std::vector<T>& indices)
@@ -82,7 +78,6 @@ namespace Spartan
 
     private:
         void _create(const void* indices);
-        void _destroy();
 
         void* m_mapped_data    = nullptr;
         bool m_is_mappable     = false;

@@ -33,7 +33,7 @@ namespace Spartan
     public:
         RHI_ConstantBuffer() = default;
         RHI_ConstantBuffer(const std::string& name);
-        ~RHI_ConstantBuffer() { _destroy(); }
+        ~RHI_ConstantBuffer();
 
         template<typename T>
         void Create(const uint32_t element_count = 1)
@@ -55,7 +55,6 @@ namespace Spartan
 
     private:
         void _create();
-        void _destroy();
 
         uint32_t m_stride        = 0;
         uint32_t m_offset        = 0;
