@@ -33,9 +33,12 @@ using namespace std;
 
 namespace Spartan
 {
-    void RHI_VertexBuffer::_destroy()
+    RHI_VertexBuffer::~RHI_VertexBuffer()
     {
-        d3d11_utility::release<ID3D11Buffer>(m_rhi_resource);
+        if (m_rhi_resource)
+        {
+            d3d11_utility::release<ID3D11Buffer>(m_rhi_resource);
+        }
     }
 
     void RHI_VertexBuffer::_create(const void* vertices)
@@ -43,7 +46,10 @@ namespace Spartan
         const bool is_dynamic = vertices == nullptr;
 
         // Destroy previous buffer
-        _destroy();
+        if (m_rhi_resource)
+        {
+            d3d11_utility::release<ID3D11Buffer>(m_rhi_resource);
+        }
 
         // fill in a buffer description.
         D3D11_BUFFER_DESC buffer_desc   = {};

@@ -32,11 +32,11 @@ using namespace std;
 
 namespace Spartan
 {
-    void RHI_VertexBuffer::_destroy()
+    RHI_VertexBuffer::~RHI_VertexBuffer()
     {
 
     }
-    
+
     void RHI_VertexBuffer::_create(const void* vertices)
     {
         //ThrowIfFailed(m_device->CreateCommittedResource(

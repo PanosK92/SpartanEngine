@@ -257,6 +257,11 @@ namespace Spartan
         SetPrimaryPhysicalDevice(0);
     }
 
+    void RHI_Device::ParseDeletionQueue(const std::unordered_map<RHI_Resource_Type, std::vector<void*>>& deletion_queue)
+    {
+
+    }
+
     void RHI_Device::QueuePresent(void* swapchain_view, uint32_t* image_index, std::vector<RHI_Semaphore*>& wait_semaphores)
     {
 

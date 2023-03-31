@@ -33,9 +33,12 @@ using namespace std;
 
 namespace Spartan
 {
-    void RHI_IndexBuffer::_destroy()
+    RHI_IndexBuffer::~RHI_IndexBuffer()
     {
-        d3d11_utility::release<ID3D11Buffer>(m_rhi_resource);
+        if (m_rhi_resource)
+        {
+            d3d11_utility::release<ID3D11Buffer>(m_rhi_resource);
+        }
     }
 
     void RHI_IndexBuffer::_create(const void* indices)
@@ -43,7 +46,10 @@ namespace Spartan
         const bool is_dynamic = indices == nullptr;
 
         // Destroy previous buffer
-        _destroy();
+        if (m_rhi_resource)
+        {
+            d3d11_utility::release<ID3D11Buffer>(m_rhi_resource);
+        }
 
         D3D11_BUFFER_DESC buffer_desc;
         ZeroMemory(&buffer_desc, sizeof(buffer_desc));

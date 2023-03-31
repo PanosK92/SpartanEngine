@@ -95,7 +95,7 @@ namespace Spartan
                height > 4 && height <= m_max_texture_2d_dimension;
     }
 
-	RHI_Api_Type RHI_Device::GetRhiApiType()
+    RHI_Api_Type RHI_Device::GetRhiApiType()
     {
         return RHI_Context::api_type;
     }

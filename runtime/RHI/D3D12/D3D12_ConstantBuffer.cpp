@@ -32,14 +32,14 @@ using namespace std;
 
 namespace Spartan
 {
-    void RHI_ConstantBuffer::_create()
+    RHI_ConstantBuffer::~RHI_ConstantBuffer()
     {
 
     }
 
-    void RHI_ConstantBuffer::_destroy()
+    void RHI_ConstantBuffer::_create()
     {
- 
+
     }
 
     RHI_ConstantBuffer::RHI_ConstantBuffer(const string& name)
