@@ -44,6 +44,6 @@ public:
 private:
     Spartan::Math::Vector2 m_offset = Spartan::Math::Vector2::Zero;
     float m_window_padding          = 4.0f;
-    float m_width                   = 0.0f;
-    float m_height                  = 0.0f;
+    uint32_t m_width                = 0;
+    uint32_t m_height               = 0;
 };

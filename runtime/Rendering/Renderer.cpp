@@ -53,20 +53,20 @@ namespace Spartan
 {
     //= BUFFERS =============================================
     extern shared_ptr<RHI_StructuredBuffer> m_sb_spd_counter;
-
+    
     extern Cb_Frame m_cb_frame_cpu;
     extern shared_ptr<RHI_ConstantBuffer> m_cb_frame_gpu;
-
+    
     extern Cb_Uber m_cb_uber_cpu;
     extern shared_ptr<RHI_ConstantBuffer> m_cb_uber_gpu;
-
+    
     extern Cb_Light m_cb_light_cpu;
     extern shared_ptr<RHI_ConstantBuffer> m_cb_light_gpu;
-
+    
     extern Cb_Material m_cb_material_cpu;
     extern shared_ptr<RHI_ConstantBuffer> m_cb_material_gpu;
     //=======================================================
-
+    
     // Standard textures
     extern shared_ptr<RHI_Texture> m_tex_default_noise_normal;
     extern shared_ptr<RHI_Texture> m_tex_default_noise_blue;
@@ -76,63 +76,63 @@ namespace Spartan
     extern shared_ptr<RHI_Texture> m_tex_gizmo_light_directional;
     extern shared_ptr<RHI_Texture> m_tex_gizmo_light_point;
     extern shared_ptr<RHI_Texture> m_tex_gizmo_light_spot;
-
+    
     // Misc
     extern bool m_ffx_fsr2_reset;
-
+    
     // Resolution & Viewport
     Math::Vector2 m_resolution_render          = Math::Vector2::Zero;
     Math::Vector2 m_resolution_output          = Math::Vector2::Zero;
     RHI_Viewport m_viewport                    = RHI_Viewport(0, 0, 0, 0);
     Math::Vector2 m_resolution_output_previous = Math::Vector2::Zero;
     RHI_Viewport m_viewport_previous           = RHI_Viewport(0, 0, 0, 0);
-
+    
     // Environment texture
     shared_ptr<RHI_Texture> m_environment_texture;
     bool m_environment_texture_dirty = false;
-
+    
     // Options
     array<float, 32> m_options;
-
+    
     // Misc
-    Math::Vector2 m_jitter_offset     = Math::Vector2::Zero;
-    float m_near_plane                = 0.0f;
-    float m_far_plane                 = 1.0f;
-    uint64_t m_frame_num              = 0;
-    bool m_is_odd_frame               = false;
-    thread::id m_render_thread_id;
+    Math::Vector2 m_jitter_offset = Math::Vector2::Zero;
+    float m_near_plane            = 0.0f;
+    float m_far_plane             = 1.0f;
+    uint64_t m_frame_num          = 0;
+    bool m_is_odd_frame           = false;
     array<Material*, m_max_material_instances> m_material_instances;
-
+    
     // Constants
     const uint32_t m_resolution_shadow_min = 128;
-
+    
     // Resource management
     unordered_map<RHI_Resource_Type, vector<void*>> m_deletion_queue;
     vector<weak_ptr<RHI_Texture>> m_textures_mip_generation;
-
+    
     // States
     atomic<bool> m_is_rendering_allowed  = true;
     atomic<bool> m_flush_requested       = false;
     bool m_dirty_orthographic_projection = true;
-
+    
     // RHI Core
     shared_ptr<RHI_Context> m_rhi_context;
     shared_ptr<RHI_Device> m_rhi_device;
     RHI_CommandPool* m_cmd_pool    = nullptr;
     RHI_CommandList* m_cmd_current = nullptr;
-
+    
     // Swapchain
-    static const uint8_t m_swap_chain_buffer_count = 2;
+    const uint8_t m_swap_chain_buffer_count = 2;
     shared_ptr<RHI_SwapChain> m_swap_chain;
-
+    
     // Entities
-    vector<Entity*> m_entities_to_add;
+    vector<Entity*> m_queue_addition;
     bool m_add_new_entities = false;
-    unordered_map<RendererEntityType, vector<Entity*>> m_entities;
+    unordered_map<RendererEntityType, vector<Entity*>> m_renderables;
     shared_ptr<Camera> m_camera;
     Environment* m_environment = nullptr;
-
+    
     // Sync objects
+    thread::id m_render_thread_id;
     mutex m_mutex_entity_addition;
     mutex m_mutex_mip_generation;
     mutex m_mutex_environment_texture;
@@ -176,8 +176,6 @@ namespace Spartan
 
         // Get thread id.
         m_render_thread_id = this_thread::get_id();
-
-        m_material_instances.fill(nullptr);
 
         // Create RHI context
         m_rhi_context = make_shared<RHI_Context>();
@@ -480,7 +478,7 @@ namespace Spartan
     void Renderer::Update_Cb_Frame(RHI_CommandList* cmd_list)
     {
         // Update directional light intensity, just grab the first one
-        for (const auto& entity : m_entities[RendererEntityType::light])
+        for (const auto& entity : m_renderables[RendererEntityType::light])
         {
             if (Light* light = entity->GetComponent<Light>())
             {
@@ -565,13 +563,17 @@ namespace Spartan
     {
         lock_guard lock(m_mutex_entity_addition);
 
+        m_queue_addition.clear();
+
         vector<shared_ptr<Entity>> entities = renderables.Get<vector<shared_ptr<Entity>>>();
         for (const shared_ptr<Entity>& entity : entities)
         {
             SP_ASSERT_MSG(entity != nullptr, "Entity is null");
-            SP_ASSERT_MSG(entity->IsActive(), "Entity is inactive");
 
-            m_entities_to_add.emplace_back(entity.get());
+            if (entity->IsActiveRecursively())
+            {
+                m_queue_addition.emplace_back(entity.get());
+            }
         }
 
         m_add_new_entities = true;
@@ -581,7 +583,7 @@ namespace Spartan
     {
         // Flush to remove references to entity resources that will be deallocated
         Flush();
-        m_entities.clear();
+        m_renderables.clear();
     }
 
     void Renderer::OnFullScreenToggled()
@@ -613,7 +615,7 @@ namespace Spartan
 
             if (!m_deletion_queue.empty())
             {
-                uint32_t resource_count = m_deletion_queue.size();
+                uint32_t resource_count = static_cast<uint32_t>(m_deletion_queue.size());
 
                 m_rhi_device->QueueWaitAll();
                 m_rhi_device->ParseDeletionQueue(m_deletion_queue);
@@ -627,10 +629,10 @@ namespace Spartan
         if (m_add_new_entities)
         {
             // Clear previous state
-            m_entities.clear();
+            m_renderables.clear();
             m_camera = nullptr;
 
-            for (Entity* entity : m_entities_to_add)
+            for (Entity* entity : m_queue_addition)
             {
                 if (Renderable* renderable = entity->GetComponent<Renderable>())
                 {
@@ -645,32 +647,32 @@ namespace Spartan
 
                     if (is_visible)
                     {
-                        m_entities[is_transparent ? RendererEntityType::geometry_transparent : RendererEntityType::geometry_opaque].emplace_back(entity);
+                        m_renderables[is_transparent ? RendererEntityType::geometry_transparent : RendererEntityType::geometry_opaque].emplace_back(entity);
                     }
                 }
 
                 if (Light* light = entity->GetComponent<Light>())
                 {
-                    m_entities[RendererEntityType::light].emplace_back(entity);
+                    m_renderables[RendererEntityType::light].emplace_back(entity);
                 }
 
                 if (Camera* camera = entity->GetComponent<Camera>())
                 {
-                    m_entities[RendererEntityType::camera].emplace_back(entity);
+                    m_renderables[RendererEntityType::camera].emplace_back(entity);
                     m_camera = camera->GetPtrShared<Camera>();
                 }
 
                 if (ReflectionProbe* reflection_probe = entity->GetComponent<ReflectionProbe>())
                 {
-                    m_entities[RendererEntityType::reflection_probe].emplace_back(entity);
+                    m_renderables[RendererEntityType::reflection_probe].emplace_back(entity);
                 }
             }
 
             // Sort them by distance
-            SortRenderables(&m_entities[RendererEntityType::geometry_opaque]);
-            SortRenderables(&m_entities[RendererEntityType::geometry_transparent]);
+            SortRenderables(&m_renderables[RendererEntityType::geometry_opaque]);
+            SortRenderables(&m_renderables[RendererEntityType::geometry_transparent]);
 
-            m_entities_to_add.clear();
+            m_queue_addition.clear();
             m_add_new_entities = false;
         }
 
@@ -854,7 +856,7 @@ namespace Spartan
             // Shadow resolution
             else if (option == RendererOption::ShadowResolution)
             {
-                const auto& light_entities = m_entities[RendererEntityType::light];
+                const auto& light_entities = m_renderables[RendererEntityType::light];
                 for (const auto& light_entity : light_entities)
                 {
                     auto light = light_entity->GetComponent<Light>();
@@ -972,7 +974,7 @@ namespace Spartan
 
     unordered_map<RendererEntityType, vector<Entity*>>& Renderer::GetEntities()
     {
-        return m_entities;
+        return m_renderables;
     }
 
     void Renderer::AddToDeletionQueue(const RHI_Resource_Type resource_type, void* resource)

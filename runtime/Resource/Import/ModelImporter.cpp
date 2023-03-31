@@ -434,8 +434,9 @@ namespace Spartan
                 mesh->CreateGpuBuffers();
             }
 
-            // Activate all the newly added entities (they are now thread-safe)
-            World::ActivateNewEntities();
+            // Make the root entity active since it's now thread-safe
+            m_mesh->GetRootEntity()->SetActive(true);
+            World::Resolve();
         }
         else
         {
@@ -451,15 +452,16 @@ namespace Spartan
     void ModelImporter::ParseNode(const aiNode* node, shared_ptr<Entity> parent_entity)
     {
         // Create an entity that will match this node.
-        // The entity is created as inactive for thread-safety.
-        const bool is_active      = false;
-        shared_ptr<Entity> entity = World::CreateEntity(is_active);
+        shared_ptr<Entity> entity = World::CreateEntity();
 
         // Set root entity to mesh
         bool is_root_node = parent_entity == nullptr;
         if (is_root_node)
         {
             m_mesh->SetRootEntity(entity);
+
+            // The root entity is created as inactive for thread-safety.
+            entity->SetActive(false);
         }
 
         SP_ASSERT(entity != nullptr);
@@ -517,8 +519,7 @@ namespace Spartan
             if (assimp_node->mNumMeshes > 1)
             {
                 // Create entity
-                bool is_active = false;
-                entity         = World::CreateEntity(is_active).get();
+                entity = World::CreateEntity().get();
 
                 // Set parent
                 entity->GetTransform()->SetParent(node_entity->GetTransform());

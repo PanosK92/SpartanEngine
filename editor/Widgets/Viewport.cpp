@@ -52,8 +52,8 @@ Viewport::Viewport(Editor* editor) : Widget(editor)
 void Viewport::TickVisible()
 {
     // Get size
-    float width  = static_cast<float>(ImGui::GetWindowContentRegionMax().x - ImGui::GetWindowContentRegionMin().x);
-    float height = static_cast<float>(ImGui::GetWindowContentRegionMax().y - ImGui::GetWindowContentRegionMin().y);
+    uint32_t width  = static_cast<uint32_t>(ImGui::GetWindowContentRegionMax().x - ImGui::GetWindowContentRegionMin().x);
+    uint32_t height = static_cast<uint32_t>(ImGui::GetWindowContentRegionMax().y - ImGui::GetWindowContentRegionMin().y);
 
     // Update engine's viewport.
     if (m_width != width || m_height != height)
@@ -62,7 +62,7 @@ void Viewport::TickVisible()
         {
             Renderer::SetViewport(width, height);
 
-            m_width = width;
+            m_width  = width;
             m_height = height;
         }
     }

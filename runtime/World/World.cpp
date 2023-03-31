@@ -47,18 +47,18 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    static std::vector<std::shared_ptr<Entity>> m_entities_to_add;
-    static std::vector<std::shared_ptr<Entity>> m_entities;
-    static std::string m_name;
-    static std::string m_file_path;
-    static bool m_was_in_editor_mode                             = false;
-    static bool m_resolve                                        = true;
-    static std::shared_ptr<Mesh> m_default_model_sponza          = nullptr;
-    static std::shared_ptr<Mesh> m_default_model_sponza_curtains = nullptr;
-    static std::shared_ptr<Mesh> m_default_model_car             = nullptr;
+    static vector<shared_ptr<Entity>> m_queue_deletion;
+    static vector<shared_ptr<Entity>> m_entities;
+    static string m_name;
+    static string m_file_path;
+    static bool m_resolve                                   = false;
+    static bool m_was_in_editor_mode                        = false;
+    static shared_ptr<Mesh> m_default_model_sponza          = nullptr;
+    static shared_ptr<Mesh> m_default_model_sponza_curtains = nullptr;
+    static shared_ptr<Mesh> m_default_model_car             = nullptr;
     
     // Sync primitives
-    static std::mutex m_entity_access_mutex;
+    static mutex m_entity_access_mutex;
 
     void World::Initialize()
     {
@@ -119,36 +119,17 @@ namespace Spartan
             }
         }
 
-        if (m_resolve || !m_entities_to_add.empty())
+        if (!m_queue_deletion.empty() || m_resolve)
         {
             // Remove entities
-            vector<shared_ptr<Entity>> entities_copy = m_entities;
-            for (shared_ptr<Entity>& entity : entities_copy)
+            for (shared_ptr<Entity>& entity : m_queue_deletion)
             {
-                if (entity->IsPendingDestruction())
-                {
-                    _EntityRemove(entity.get());
-                }
+                _EntityRemove(entity);
             }
-
-            // Add entities
-            auto it = m_entities_to_add.begin();
-            while (it != m_entities_to_add.end())
-            {
-                if ((*it)->IsActive())
-                {
-                    m_entities.emplace_back(*it);
-                    it = m_entities_to_add.erase(it);
-                }
-                else
-                {
-                    ++it;
-                }
-            }
+            m_queue_deletion.clear();
 
             // Notify Renderer
             SP_FIRE_EVENT_DATA(EventType::WorldResolved, m_entities);
-            m_resolve = false;
         }
     }
 
@@ -272,15 +253,11 @@ namespace Spartan
     {
         m_resolve = true;
     }
-    
-    shared_ptr<Entity> World::CreateEntity(bool is_active /*= true*/)
+
+    shared_ptr<Entity> World::CreateEntity()
     {
         lock_guard lock(m_entity_access_mutex);
-
-        shared_ptr<Entity> entity = m_entities_to_add.emplace_back(make_shared<Entity>());
-        entity->SetActive(is_active);
-
-        return entity;
+        return m_entities.emplace_back(make_shared<Entity>());
     }
 
     bool World::EntityExists(Entity* entity)
@@ -292,7 +269,7 @@ namespace Spartan
     void World::RemoveEntity(Entity* entity)
     {
         SP_ASSERT_MSG(entity != nullptr, "Entity is null");
-        entity->MarkForDestruction(); // delayed destruction in case the Renderer is using it
+        m_queue_deletion.push_back(entity->GetPtrShared());
         m_resolve = true;
     }
 
@@ -334,21 +311,11 @@ namespace Spartan
         return empty;
     }
 
-    const std::vector<std::shared_ptr<Entity>>& World::GetAllEntities()
+    const vector<shared_ptr<Entity>>& World::GetAllEntities()
     {
         return m_entities;
     }
-    
-    void World::ActivateNewEntities()
-    {
-        lock_guard lock(m_entity_access_mutex);
-
-        for (shared_ptr<Entity>& entity : m_entities_to_add)
-        {
-            entity->SetActive(true);
-        }
-    }
-    
+      
     void World::Clear()
     {
         // Fire event
@@ -363,33 +330,32 @@ namespace Spartan
         m_resolve = true;
     }
 
-    // Removes an entity and all of it's children
-    void World::_EntityRemove(Entity* entity)
+    // Removes an entity and all of its children
+    void World::_EntityRemove(shared_ptr<Entity> entity_to_remove)
     {
-        // Remove any descendants
-        auto children = entity->GetTransform()->GetChildren();
-        for (const auto& child : children)
+        // Get the root entity and its descendants
+        vector<Transform*> entities_to_remove;
+        entities_to_remove.push_back(entity_to_remove->GetTransform());        // Add the root entity
+        entity_to_remove->GetTransform()->GetDescendants(&entities_to_remove); // Get descendants 
+
+        // Create a set containing the object IDs of entities to remove
+        set<uint64_t> ids_to_remove;
+        for (Transform* transform : entities_to_remove)
         {
-            RemoveEntity(child->GetEntity());
+            ids_to_remove.insert(transform->GetEntity()->GetObjectId());
         }
 
-        // Keep a reference to it's parent (in case it has one)
-        auto parent = entity->GetTransform()->GetParent();
-
-        // Remove this entity
-        for (auto it = m_entities.begin(); it < m_entities.end();)
-        {
-            const auto temp = *it;
-            if (temp->GetObjectId() == entity->GetObjectId())
+        // Remove entities using a single loop
+        //lock_guard lock(m_entity_access_mutex);
+        m_entities.erase(remove_if(m_entities.begin(), m_entities.end(),
+            [&](const shared_ptr<Entity>& entity)
             {
-                it = m_entities.erase(it);
-                break;
-            }
-            ++it;
-        }
+                return ids_to_remove.count(entity->GetObjectId()) > 0;
+            }),
+            m_entities.end());
 
         // If there was a parent, update it
-        if (parent)
+        if (Transform* parent = entity_to_remove->GetTransform()->GetParent())
         {
             parent->AcquireChildren();
         }
