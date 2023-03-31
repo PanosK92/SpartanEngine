@@ -88,11 +88,11 @@ namespace Spartan
     RHI_Viewport m_viewport_previous           = RHI_Viewport(0, 0, 0, 0);
 
     // Environment texture
-    std::shared_ptr<RHI_Texture> m_environment_texture;
+    shared_ptr<RHI_Texture> m_environment_texture;
     bool m_environment_texture_dirty = false;
 
     // Options
-    std::array<float, 32> m_options;
+    array<float, 32> m_options;
 
     // Misc
     Math::Vector2 m_jitter_offset     = Math::Vector2::Zero;
@@ -100,42 +100,43 @@ namespace Spartan
     float m_far_plane                 = 1.0f;
     uint64_t m_frame_num              = 0;
     bool m_is_odd_frame               = false;
-    std::thread::id m_render_thread_id;
+    thread::id m_render_thread_id;
     array<Material*, m_max_material_instances> m_material_instances;
 
     // Constants
     const uint32_t m_resolution_shadow_min = 128;
 
-    // Requests for mip generation
-    std::vector<std::weak_ptr<RHI_Texture>> m_textures_mip_generation;
-    std::vector<std::weak_ptr<RHI_Texture>> m_textures_mip_generation_delete_per_mip;
+    // Resource management
+    unordered_map<RHI_Resource_Type, vector<void*>> m_deletion_queue;
+    vector<weak_ptr<RHI_Texture>> m_textures_mip_generation;
 
     // States
-    std::atomic<bool> m_is_rendering_allowed = true;
-    std::atomic<bool> m_flush_requested      = false;
-    bool m_dirty_orthographic_projection     = true;
+    atomic<bool> m_is_rendering_allowed  = true;
+    atomic<bool> m_flush_requested       = false;
+    bool m_dirty_orthographic_projection = true;
 
     // RHI Core
-    std::shared_ptr<RHI_Context> m_rhi_context;
-    std::shared_ptr<RHI_Device> m_rhi_device;
+    shared_ptr<RHI_Context> m_rhi_context;
+    shared_ptr<RHI_Device> m_rhi_device;
     RHI_CommandPool* m_cmd_pool    = nullptr;
     RHI_CommandList* m_cmd_current = nullptr;
 
     // Swapchain
     static const uint8_t m_swap_chain_buffer_count = 2;
-    std::shared_ptr<RHI_SwapChain> m_swap_chain;
+    shared_ptr<RHI_SwapChain> m_swap_chain;
 
     // Entities
-    std::vector<Entity*> m_entities_to_add;
+    vector<Entity*> m_entities_to_add;
     bool m_add_new_entities = false;
-    std::unordered_map<RendererEntityType, std::vector<Entity*>> m_entities;
-    std::shared_ptr<Camera> m_camera;
+    unordered_map<RendererEntityType, vector<Entity*>> m_entities;
+    shared_ptr<Camera> m_camera;
     Environment* m_environment = nullptr;
 
     // Sync objects
-    std::mutex m_mutex_entity_addition;
-    std::mutex m_mutex_mip_generation;
-    std::mutex m_mutex_environment_texture;
+    mutex m_mutex_entity_addition;
+    mutex m_mutex_mip_generation;
+    mutex m_mutex_environment_texture;
+    mutex m_mutex_deletion_queue;
 
     void Renderer::Initialize()
     {
@@ -479,7 +480,7 @@ namespace Spartan
     void Renderer::Update_Cb_Frame(RHI_CommandList* cmd_list)
     {
         // Update directional light intensity, just grab the first one
-        for (const auto& entity : m_entities[RendererEntityType::Light])
+        for (const auto& entity : m_entities[RendererEntityType::light])
         {
             if (Light* light = entity->GetComponent<Light>())
             {
@@ -606,6 +607,22 @@ namespace Spartan
 
     void Renderer::OnResourceSafe(RHI_CommandList* cmd_list)
     {
+        // Parse deletion queue
+        {
+            lock_guard<mutex> guard(m_mutex_deletion_queue);
+
+            if (!m_deletion_queue.empty())
+            {
+                uint32_t resource_count = m_deletion_queue.size();
+
+                m_rhi_device->QueueWaitAll();
+                m_rhi_device->ParseDeletionQueue(m_deletion_queue);
+                m_deletion_queue.clear();
+
+                SP_LOG_INFO("De-allocated %d RHI resource(s)", resource_count);
+            }
+        }
+
         // Acquire renderables
         if (m_add_new_entities)
         {
@@ -628,30 +645,30 @@ namespace Spartan
 
                     if (is_visible)
                     {
-                        m_entities[is_transparent ? RendererEntityType::GeometryTransparent : RendererEntityType::GeometryOpaque].emplace_back(entity);
+                        m_entities[is_transparent ? RendererEntityType::geometry_transparent : RendererEntityType::geometry_opaque].emplace_back(entity);
                     }
                 }
 
                 if (Light* light = entity->GetComponent<Light>())
                 {
-                    m_entities[RendererEntityType::Light].emplace_back(entity);
+                    m_entities[RendererEntityType::light].emplace_back(entity);
                 }
 
                 if (Camera* camera = entity->GetComponent<Camera>())
                 {
-                    m_entities[RendererEntityType::Camera].emplace_back(entity);
+                    m_entities[RendererEntityType::camera].emplace_back(entity);
                     m_camera = camera->GetPtrShared<Camera>();
                 }
 
                 if (ReflectionProbe* reflection_probe = entity->GetComponent<ReflectionProbe>())
                 {
-                    m_entities[RendererEntityType::ReflectionProbe].emplace_back(entity);
+                    m_entities[RendererEntityType::reflection_probe].emplace_back(entity);
                 }
             }
 
             // Sort them by distance
-            SortRenderables(&m_entities[RendererEntityType::GeometryOpaque]);
-            SortRenderables(&m_entities[RendererEntityType::GeometryTransparent]);
+            SortRenderables(&m_entities[RendererEntityType::geometry_opaque]);
+            SortRenderables(&m_entities[RendererEntityType::geometry_transparent]);
 
             m_entities_to_add.clear();
             m_add_new_entities = false;
@@ -669,12 +686,18 @@ namespace Spartan
         {
             lock_guard<mutex> guard(m_mutex_mip_generation);
 
-            // Clear any previously processed textures
-            if (!m_textures_mip_generation_delete_per_mip.empty())
+            // Generate mips for any pending texture requests
+            for (weak_ptr<RHI_Texture> tex : m_textures_mip_generation)
             {
-                for (weak_ptr<RHI_Texture> tex : m_textures_mip_generation_delete_per_mip)
+                if (shared_ptr<RHI_Texture> texture = tex.lock())
                 {
-                    if (shared_ptr<RHI_Texture> texture = tex.lock())
+                    // Downsample
+                    Pass_Ffx_Spd(m_cmd_current, texture.get());
+
+                    // Set all generated mips to read only optimal
+                    texture->SetLayout(RHI_Image_Layout::Shader_Read_Only_Optimal, cmd_list, 0, texture->GetMipCount());
+
+                    // Destroy per mip resource views since they are no longer needed
                     {
                         // Remove unnecessary flags from texture (were only needed for the downsampling)
                         uint32_t flags = texture->GetFlags();
@@ -690,25 +713,8 @@ namespace Spartan
                         }
                     }
                 }
-
-                m_textures_mip_generation_delete_per_mip.clear();
             }
 
-            // Generate mips for any pending texture requests
-            for (weak_ptr<RHI_Texture> tex : m_textures_mip_generation)
-            {
-                if (shared_ptr<RHI_Texture> texture = tex.lock())
-                {
-                    // Downsample
-                    Pass_Ffx_Spd(m_cmd_current, texture.get());
-
-                    // Set all generated mips to read only optimal
-                    texture->SetLayout(RHI_Image_Layout::Shader_Read_Only_Optimal, cmd_list, 0, texture->GetMipCount());
-                }
-            }
-
-            // Keep textures around until next time, at which point, it would be safe to delete per mip resources
-            m_textures_mip_generation_delete_per_mip.insert(m_textures_mip_generation_delete_per_mip.end(), m_textures_mip_generation.begin(), m_textures_mip_generation.end());
             m_textures_mip_generation.clear();
         }
     }
@@ -848,7 +854,7 @@ namespace Spartan
             // Shadow resolution
             else if (option == RendererOption::ShadowResolution)
             {
-                const auto& light_entities = m_entities[RendererEntityType::Light];
+                const auto& light_entities = m_entities[RendererEntityType::light];
                 for (const auto& light_entity : light_entities)
                 {
                     auto light = light_entity->GetComponent<Light>();
@@ -903,17 +909,10 @@ namespace Spartan
         }
 
         // Flushing
+        if (!m_is_rendering_allowed)
         {
-            if (!m_is_rendering_allowed)
-            {
-                SP_LOG_INFO("Renderer thread is flushing...");
-                m_rhi_device->QueueWaitAll();
-            }
-
-            if (m_cmd_current)
-            {
-                m_cmd_current->Discard();
-            }
+            SP_LOG_INFO("Renderer thread is flushing...");
+            m_rhi_device->QueueWaitAll();
         }
 
         m_flush_requested = false;
@@ -974,5 +973,11 @@ namespace Spartan
     unordered_map<RendererEntityType, vector<Entity*>>& Renderer::GetEntities()
     {
         return m_entities;
+    }
+
+    void Renderer::AddToDeletionQueue(const RHI_Resource_Type resource_type, void* resource)
+    {
+        lock_guard<mutex> guard(m_mutex_deletion_queue);
+        m_deletion_queue[resource_type].emplace_back(resource);
     }
 }

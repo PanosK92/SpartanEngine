@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-    enum class EngineMode : uint32_t
+    enum class EngineMode
     {
         Physics,
         Game

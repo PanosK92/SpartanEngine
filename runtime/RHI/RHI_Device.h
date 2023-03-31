@@ -85,6 +85,7 @@ namespace Spartan
         // Misc
         bool IsValidResolution(const uint32_t width, const uint32_t height);
         uint32_t GetEnabledGraphicsStages() const { return m_enabled_graphics_shader_stages; }
+        void ParseDeletionQueue(const std::unordered_map<RHI_Resource_Type, std::vector<void*>>& deletion_queue);
 
         // Vulkan memory allocator
         void* get_allocation_from_resource(void* resource);

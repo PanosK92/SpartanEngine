@@ -287,7 +287,16 @@ namespace Spartan
         image_acquired_semaphore.fill(nullptr);
     
         // Image views
-        vulkan_utility::image::view::destroy(image_views);
+        {
+            for (void*& image_view : image_views)
+            {
+                if (image_view)
+                {
+                    vkDestroyImageView(rhi_context->device, static_cast<VkImageView>(image_view), nullptr);
+                }
+            }
+            image_views.fill(nullptr);
+        }
 
         // Swap chain view
         if (swap_chain)

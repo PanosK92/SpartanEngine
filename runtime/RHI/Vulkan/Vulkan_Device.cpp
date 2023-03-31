@@ -737,6 +737,34 @@ namespace Spartan
 
     }
 
+    void RHI_Device::ParseDeletionQueue(const unordered_map<RHI_Resource_Type, vector<void*>>& deletion_queue)
+    {
+        for (const auto& it : deletion_queue)
+        {
+            if (it.first == RHI_Resource_Type::sampler)
+            {
+                for (void* resource : it.second)
+                {
+                    vkDestroySampler(m_rhi_context->device, reinterpret_cast<VkSampler>(resource), nullptr);
+                }
+            }
+            else if (it.first == RHI_Resource_Type::texture)
+            {
+                for (void* resource : it.second)
+                {
+                    DestroyTexture(resource);
+                }
+            }
+            else if (it.first == RHI_Resource_Type::texture_view)
+            {
+                for (void* resource : it.second)
+                {
+                    vkDestroyImageView(m_rhi_context->device, static_cast<VkImageView>(resource), nullptr);
+                }
+            }
+        }
+    }
+
     void RHI_Device::SetDescriptorSetCapacity(uint32_t descriptor_set_capacity)
     {
         // If the requested capacity is zero, then only recreate the descriptor pool

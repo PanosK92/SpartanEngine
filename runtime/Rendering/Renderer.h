@@ -132,6 +132,8 @@ namespace Spartan
         static std::unordered_map<RendererEntityType, std::vector<Entity*>>& GetEntities();
         //=================================================================================
 
+        static void AddToDeletionQueue(const RHI_Resource_Type resource_type, void* resource);
+
     private:
         // Constant buffers
         static void Update_Cb_Frame(RHI_CommandList* cmd_list);

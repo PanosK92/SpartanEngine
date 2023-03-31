@@ -457,27 +457,6 @@ namespace Spartan::vulkan_utility
 
                 create(image, image_view, type, vulkan_format[texture->GetFormat()], get_aspect_mask(texture, only_depth, only_stencil), array_index, array_length, mip_index, mip_count);
             }
-
-            inline void destroy(void*& image_view)
-            {
-                if (!image_view)
-                    return;
-
-                vkDestroyImageView(globals::rhi_context->device, static_cast<VkImageView>(image_view), nullptr);
-                image_view = nullptr;
-            }
-
-            inline void destroy(std::array<void*, 3>& image_views)
-            {
-                for (void*& image_view : image_views)
-                {
-                    if (image_view)
-                    {
-                        vkDestroyImageView(globals::rhi_context->device, static_cast<VkImageView>(image_view), nullptr);
-                    }
-                }
-                image_views.fill(nullptr);
-            }
         }
     }
 

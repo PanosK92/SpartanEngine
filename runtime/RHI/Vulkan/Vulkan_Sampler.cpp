@@ -58,16 +58,6 @@ namespace Spartan
 
     RHI_Sampler::~RHI_Sampler()
     {
-        // Discard the current command list in case it's referencing the sampler.
-        if (RHI_CommandList* cmd_list = Renderer::GetCmdList())
-        {
-            cmd_list->Discard();
-        }
-
-        // Wait in case it's still in use by the GPU
-        Renderer::GetRhiDevice()->QueueWaitAll();
-
-        // Destroy
-        vkDestroySampler(Renderer::GetRhiDevice()->GetRhiContext()->device, reinterpret_cast<VkSampler>(m_rhi_resource), nullptr);
+        Renderer::AddToDeletionQueue(RHI_Resource_Type::sampler, m_rhi_resource);
     }
 }

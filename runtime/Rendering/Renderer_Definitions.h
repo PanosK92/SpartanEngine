@@ -240,10 +240,10 @@ namespace Spartan
     
     enum class RendererEntityType
     {
-        GeometryOpaque,
-        GeometryTransparent,
-        Light,
-        Camera,
-        ReflectionProbe
+        geometry_opaque,
+        geometry_transparent,
+        light,
+        camera,
+        reflection_probe
     };
 }
