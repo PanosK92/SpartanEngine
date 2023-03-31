@@ -37,14 +37,7 @@ namespace Spartan
             m_is_mappable = is_mappable;
             m_name        = name;
         }
-
-        ~RHI_VertexBuffer()
-        {
-            if (m_rhi_resource)
-            {
-                _destroy();
-            }
-        }
+        ~RHI_VertexBuffer();
 
         template<typename T>
         void Create(const std::vector<T>& vertices)
@@ -85,7 +78,6 @@ namespace Spartan
 
     private:
         void _create(const void* vertices);
-        void _destroy();
 
         void* m_mapped_data      = nullptr;
         bool m_is_mappable       = false;

@@ -34,24 +34,28 @@ using namespace std;
 
 namespace Spartan
 {
-    void RHI_ConstantBuffer::_destroy()
-    {
-        // Wait
-        Renderer::GetRhiDevice()->QueueWaitAll();
-
-        // Destroy
-        Renderer::GetRhiDevice()->DestroyBuffer(m_rhi_resource);
-    }
-
     RHI_ConstantBuffer::RHI_ConstantBuffer(const string& name)
     {
         m_name = name;
     }
 
+    RHI_ConstantBuffer::~RHI_ConstantBuffer()
+    {
+        if (m_rhi_resource)
+        {
+            Renderer::AddToDeletionQueue(RHI_Resource_Type::buffer, m_rhi_resource);
+            m_rhi_resource = nullptr;
+        }
+    }
+
     void RHI_ConstantBuffer::_create()
     {
         // Destroy previous buffer
-        _destroy();
+        if (m_rhi_resource)
+        {
+            Renderer::AddToDeletionQueue(RHI_Resource_Type::buffer, m_rhi_resource);
+            m_rhi_resource = nullptr;
+        }
 
         // Calculate required alignment based on minimum device offset alignment
         size_t min_alignment = Renderer::GetRhiDevice()->GetMinUniformBufferOffsetAllignment();

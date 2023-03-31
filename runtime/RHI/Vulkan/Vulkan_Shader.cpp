@@ -43,10 +43,7 @@ namespace Spartan
     {
         if (m_rhi_resource)
         {
-            // Wait in case it's still in use by the GPU
-            Renderer::GetRhiDevice()->QueueWaitAll();
-
-            vkDestroyShaderModule(Renderer::GetRhiDevice()->GetRhiContext()->device, static_cast<VkShaderModule>(m_rhi_resource), nullptr);
+            Renderer::AddToDeletionQueue(RHI_Resource_Type::shader, m_rhi_resource);
             m_rhi_resource = nullptr;
         }
     }
