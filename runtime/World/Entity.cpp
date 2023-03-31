@@ -47,9 +47,9 @@ namespace Spartan
 {
     Entity::Entity(uint64_t transform_id /*= 0*/)
     {
-        m_name                  = "Entity";
-        m_is_active             = true;
-        m_hierarchy_visibility  = true;
+        m_name                 = "Entity";
+        m_is_active            = true;
+        m_hierarchy_visibility = true;
         m_components.fill(nullptr);
 
         AddComponent<Transform>(transform_id);
@@ -287,6 +287,16 @@ namespace Spartan
         SP_FIRE_EVENT(EventType::WorldResolve);
     }
 
+    bool Entity::IsActiveRecursively()
+    {
+        if (Transform* parent = GetTransform()->GetParent())
+        {
+            return m_is_active && parent->GetEntity()->IsActiveRecursively();
+        }
+
+        return m_is_active;
+    }
+    
     IComponent* Entity::AddComponent(const ComponentType type, uint64_t id /*= 0*/)
     {
         // This is the only hardcoded part regarding components. It's 

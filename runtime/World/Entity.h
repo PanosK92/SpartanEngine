@@ -58,6 +58,7 @@ namespace Spartan
         // Active
         bool IsActive() const             { return m_is_active; }
         void SetActive(const bool active) { m_is_active = active; }
+        bool IsActiveRecursively();
 
         // Visible
         bool IsVisibleInHierarchy() const                            { return m_hierarchy_visibility; }
@@ -119,9 +120,6 @@ namespace Spartan
         void RemoveComponentById(uint64_t id);
         const auto& GetAllComponents() const { return m_components; }
 
-        void MarkForDestruction()         { m_destruction_pending = true; }
-        bool IsPendingDestruction() const { return m_destruction_pending; }
-
         // Direct access for performance critical usage (not safe)
         Transform* GetTransform() const        { return m_transform; }
         Renderable* GetRenderable() const      { return m_renderable; }
@@ -132,7 +130,6 @@ namespace Spartan
         bool m_hierarchy_visibility   = true;
         Transform* m_transform        = nullptr;
         Renderable* m_renderable      = nullptr;
-        bool m_destruction_pending    = false;
         std::array<std::shared_ptr<IComponent>, 14> m_components;
     };
 }
