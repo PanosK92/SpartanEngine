@@ -65,11 +65,6 @@ namespace Spartan
 
         m_state = RHI_CommandListState::Idle;
     }
-
-    void RHI_CommandList::Discard()
-    {
-        m_discard = true;
-    }
     
     uint32_t RHI_CommandList::GetGpuMemory()
     {

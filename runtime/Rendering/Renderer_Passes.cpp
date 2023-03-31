@@ -182,7 +182,7 @@ namespace Spartan
         if (shared_ptr<Camera> camera = GetCamera())
         { 
             // If there are no entities, clear to the camera's color
-            if (GetEntities()[RendererEntityType::GeometryOpaque].empty() && GetEntities()[RendererEntityType::GeometryTransparent].empty() && GetEntities()[RendererEntityType::Light].empty())
+            if (GetEntities()[RendererEntityType::geometry_opaque].empty() && GetEntities()[RendererEntityType::geometry_transparent].empty() && GetEntities()[RendererEntityType::light].empty())
             {
                 GetCmdList()->ClearRenderTarget(rt_output, 0, 0, false, camera->GetClearColor());
             }
@@ -196,7 +196,7 @@ namespace Spartan
                 }
 
                 // Determine if a transparent pass is required
-                const bool do_transparent_pass = !GetEntities()[RendererEntityType::GeometryTransparent].empty();
+                const bool do_transparent_pass = !GetEntities()[RendererEntityType::geometry_transparent].empty();
 
                 // Shadow maps
                 {
@@ -282,14 +282,14 @@ namespace Spartan
             return;
 
         // Get entities
-        const vector<Entity*>& entities = GetEntities()[is_transparent_pass ? RendererEntityType::GeometryTransparent : RendererEntityType::GeometryOpaque];
+        const vector<Entity*>& entities = GetEntities()[is_transparent_pass ? RendererEntityType::geometry_transparent : RendererEntityType::geometry_opaque];
         if (entities.empty())
             return;
 
         cmd_list->BeginTimeblock(is_transparent_pass ? "shadow_maps_color" : "shadow_maps_depth");
 
         // Go through all of the lights
-        const auto& entities_light = GetEntities()[RendererEntityType::Light];
+        const auto& entities_light = GetEntities()[RendererEntityType::light];
         for (uint32_t light_index = 0; light_index < entities_light.size(); light_index++)
         {
             const Light* light = entities_light[light_index]->GetComponent<Light>();
@@ -444,17 +444,17 @@ namespace Spartan
             return;
 
         // Acquire reflections probes
-        const vector<Entity*>& probes = m_entities[RendererEntityType::ReflectionProbe];
+        const vector<Entity*>& probes = m_entities[RendererEntityType::reflection_probe];
         if (probes.empty())
             return;
 
         // Acquire renderables
-        const vector<Entity*>& renderables = m_entities[RendererEntityType::GeometryOpaque];
+        const vector<Entity*>& renderables = m_entities[RendererEntityType::geometry_opaque];
         if (renderables.empty())
             return;
 
         // Acquire lights
-        const vector<Entity*>& lights = m_entities[RendererEntityType::Light];
+        const vector<Entity*>& lights = m_entities[RendererEntityType::light];
         if (lights.empty())
             return;
 
@@ -584,7 +584,7 @@ namespace Spartan
         cmd_list->BeginTimeblock("depth_prepass");
 
         RHI_Texture* tex_depth = render_target(RendererTexture::gbuffer_depth).get();
-        const vector<Entity*> entities = m_entities[RendererEntityType::GeometryOpaque];
+        const vector<Entity*> entities = m_entities[RendererEntityType::geometry_opaque];
 
         // Define pipeline state
         static RHI_PipelineState pso;
@@ -714,7 +714,7 @@ namespace Spartan
         uint32_t material_index    = 0;
         uint64_t material_bound_id = 0;
         m_material_instances.fill(nullptr);
-        auto& entities = m_entities[is_transparent_pass ? RendererEntityType::GeometryTransparent : RendererEntityType::GeometryOpaque];
+        auto& entities = m_entities[is_transparent_pass ? RendererEntityType::geometry_transparent : RendererEntityType::geometry_opaque];
 
         // Render
         cmd_list->BeginRenderPass();
@@ -1084,7 +1084,7 @@ namespace Spartan
             return;
 
         // Acquire lights
-        const vector<Entity*>& entities = m_entities[RendererEntityType::Light];
+        const vector<Entity*>& entities = m_entities[RendererEntityType::light];
         if (entities.empty())
             return;
 
@@ -1217,7 +1217,7 @@ namespace Spartan
         cmd_list->BeginTimeblock(is_transparent_pass ? "light_image_based_transparent" : "light_image_based");
 
         // Get reflection probe entities
-        const vector<Entity*>& probes = m_entities[RendererEntityType::ReflectionProbe];
+        const vector<Entity*>& probes = m_entities[RendererEntityType::reflection_probe];
 
         // Define pipeline state
         static RHI_PipelineState pso;
@@ -2014,7 +2014,7 @@ namespace Spartan
             return;
 
         // Acquire entities
-        auto& lights = m_entities[RendererEntityType::Light];
+        auto& lights = m_entities[RendererEntityType::light];
         if (lights.empty() || !GetCamera())
             return;
 
@@ -2110,7 +2110,7 @@ namespace Spartan
             return;
 
         // Get reflection probe entities
-        const vector<Entity*>& probes = m_entities[RendererEntityType::ReflectionProbe];
+        const vector<Entity*>& probes = m_entities[RendererEntityType::reflection_probe];
         if (probes.empty())
             return;
 

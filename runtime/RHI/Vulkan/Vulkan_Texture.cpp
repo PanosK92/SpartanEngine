@@ -361,24 +361,19 @@ namespace Spartan
 
     void RHI_Texture::RHI_DestroyResource(const bool destroy_main, const bool destroy_per_view)
     {
-        // Destruction can happen during engine shutdown, in which case, the renderer might not exist, so, if statement.
-        if (RHI_CommandList* cmd_list = Renderer::GetCmdList())
-        {
-            cmd_list->Discard();
-        }
-
-        // Wait for any in-flight frames that might be using it.
-        Renderer::GetRhiDevice()->QueueWaitAll();
-
         // De-allocate everything
         if (destroy_main)
         {
-            vulkan_utility::image::view::destroy(m_rhi_srv);
+            Renderer::AddToDeletionQueue(RHI_Resource_Type::texture_view, m_rhi_srv);
+            m_rhi_srv = nullptr;
 
             for (uint32_t i = 0; i < rhi_max_render_target_count; i++)
             {
-                vulkan_utility::image::view::destroy(m_rhi_dsv[i]);
-                vulkan_utility::image::view::destroy(m_rhi_rtv[i]);
+                Renderer::AddToDeletionQueue(RHI_Resource_Type::texture_view, m_rhi_dsv[i]);
+                m_rhi_dsv[i] = nullptr;
+
+                Renderer::AddToDeletionQueue(RHI_Resource_Type::texture_view, m_rhi_rtv[i]);
+                m_rhi_rtv[i] = nullptr;
             }
         }
 
@@ -386,13 +381,15 @@ namespace Spartan
         {
             for (uint32_t i = 0; i < m_mip_count; i++)
             {
-                vulkan_utility::image::view::destroy(m_rhi_srv_mips[i]);
+                Renderer::AddToDeletionQueue(RHI_Resource_Type::texture_view, m_rhi_srv_mips[i]);
+                m_rhi_srv_mips[i] = nullptr;
             }
         }
 
         if (destroy_main)
         {
-            Renderer::GetRhiDevice()->DestroyTexture(m_rhi_resource);
+            Renderer::AddToDeletionQueue(RHI_Resource_Type::texture, m_rhi_resource);
+            m_rhi_resource = nullptr;
         }
     }
 }

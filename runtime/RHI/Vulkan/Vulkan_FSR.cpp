@@ -160,15 +160,15 @@ namespace Spartan
             // Configuration
             m_ffx_fsr2_dispatch_description.motionVectorScale.x    = -static_cast<float>(resolution_render_x);
             m_ffx_fsr2_dispatch_description.motionVectorScale.y    = -static_cast<float>(resolution_render_y);
-            m_ffx_fsr2_dispatch_description.reset                  = reset;                   // A boolean value which when set to true, indicates the camera has moved discontinuously.
-            m_ffx_fsr2_dispatch_description.enableSharpening       = sharpness != 0.0f;
-            m_ffx_fsr2_dispatch_description.sharpness              = sharpness;
-            m_ffx_fsr2_dispatch_description.frameTimeDelta         = delta_time * 1000.0f;    // Seconds to milliseconds.
-            m_ffx_fsr2_dispatch_description.preExposure            = 1.0f;                    // The exposure value if not using FFX_FSR2_ENABLE_AUTO_EXPOSURE.
-            m_ffx_fsr2_dispatch_description.renderSize.width       = resolution_render_x;
-            m_ffx_fsr2_dispatch_description.renderSize.height      = resolution_render_y;
-            m_ffx_fsr2_dispatch_description.cameraNear             = camera->GetFarPlane();   // far for near because we are using reverse-z.
-            m_ffx_fsr2_dispatch_description.cameraFar              = camera->GetNearPlane();  // near for far because we are using reverse-z.
+            m_ffx_fsr2_dispatch_description.reset                  = reset;                  // A boolean value which when set to true, indicates the camera has moved discontinuously.
+            m_ffx_fsr2_dispatch_description.enableSharpening       = sharpness != 0.0f;      
+            m_ffx_fsr2_dispatch_description.sharpness              = sharpness;              
+            m_ffx_fsr2_dispatch_description.frameTimeDelta         = delta_time * 1000.0f;   // Seconds to milliseconds.
+            m_ffx_fsr2_dispatch_description.preExposure            = 1.0f;                   // The exposure value if not using FFX_FSR2_ENABLE_AUTO_EXPOSURE.
+            m_ffx_fsr2_dispatch_description.renderSize.width       = resolution_render_x;    
+            m_ffx_fsr2_dispatch_description.renderSize.height      = resolution_render_y;    
+            m_ffx_fsr2_dispatch_description.cameraNear             = camera->GetFarPlane();  // far for near because we are using reverse-z.
+            m_ffx_fsr2_dispatch_description.cameraFar              = camera->GetNearPlane(); // near for far because we are using reverse-z.
             m_ffx_fsr2_dispatch_description.cameraFovAngleVertical = camera->GetFovVerticalRad();
         }
 

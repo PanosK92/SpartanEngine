@@ -51,8 +51,6 @@ namespace Spartan
         void Submit();
         // Waits for the command list to finish being processed.
         void Wait(const bool log_on_wait = true);
-        // Causes the command list to ignore one submission call (useful when the command list refers to resources which have been destroyed).
-        void Discard();
 
         // Render pass
         void SetPipelineState(RHI_PipelineState& pso);

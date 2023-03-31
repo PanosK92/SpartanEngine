@@ -290,7 +290,7 @@ namespace Spartan
         // Lights
         if (GetOption<bool>(RendererOption::Debug_Lights))
         {
-            auto& lights = GetEntities()[RendererEntityType::Light];
+            auto& lights = GetEntities()[RendererEntityType::light];
             for (const auto& entity : lights)
             {
                 if (shared_ptr<Camera> camera = GetCamera())
@@ -344,7 +344,7 @@ namespace Spartan
         // AABBs
         if (GetOption<bool>(RendererOption::Debug_Aabb))
         {
-            for (const auto& entity : GetEntities()[RendererEntityType::GeometryOpaque])
+            for (const auto& entity : GetEntities()[RendererEntityType::geometry_opaque])
             {
                 if (auto renderable = entity->GetRenderable())
                 {
@@ -352,7 +352,7 @@ namespace Spartan
                 }
             }
         
-            for (const auto& entity : GetEntities()[RendererEntityType::GeometryTransparent])
+            for (const auto& entity : GetEntities()[RendererEntityType::geometry_transparent])
             {
                 if (auto renderable = entity->GetRenderable())
                 {

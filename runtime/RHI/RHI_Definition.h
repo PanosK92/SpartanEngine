@@ -65,6 +65,13 @@ namespace Spartan
     struct RHI_Vertex_PosUvCol;
     struct RHI_Vertex_PosTexNorTan;
 
+    enum class RHI_Resource_Type
+    {
+        texture,
+        texture_view,
+        sampler
+    };
+
     enum class RHI_PhysicalDevice_Type
     {
         Undefined,
