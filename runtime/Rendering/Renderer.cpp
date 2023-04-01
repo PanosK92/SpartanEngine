@@ -125,9 +125,9 @@ namespace Spartan
     shared_ptr<RHI_SwapChain> m_swap_chain;
     
     // Entities
-    vector<Entity*> m_queue_addition;
+    vector<shared_ptr<Entity>> m_renderables_world;
     bool m_add_new_entities = false;
-    unordered_map<RendererEntityType, vector<Entity*>> m_renderables;
+    unordered_map<RendererEntityType, vector<shared_ptr<Entity>>> m_renderables;
     shared_ptr<Camera> m_camera;
     Environment* m_environment = nullptr;
     
@@ -561,18 +561,22 @@ namespace Spartan
 
     void Renderer::OnAddRenderables(const Variant& renderables)
     {
+        // note: m_renderables is a vector of shared pointers.
+        // this ensures that if any entities are deallocated by the world.
+        // we'll still have some valid pointers until the are overridden by m_renderables_world.
+
         lock_guard lock(m_mutex_entity_addition);
 
-        m_queue_addition.clear();
+        m_renderables_world.clear();
 
         vector<shared_ptr<Entity>> entities = renderables.Get<vector<shared_ptr<Entity>>>();
-        for (const shared_ptr<Entity>& entity : entities)
+        for (shared_ptr<Entity> entity : entities)
         {
             SP_ASSERT_MSG(entity != nullptr, "Entity is null");
 
             if (entity->IsActiveRecursively())
             {
-                m_queue_addition.emplace_back(entity.get());
+                m_renderables_world.emplace_back(entity);
             }
         }
 
@@ -632,7 +636,7 @@ namespace Spartan
             m_renderables.clear();
             m_camera = nullptr;
 
-            for (Entity* entity : m_queue_addition)
+            for (shared_ptr<Entity> entity : m_renderables_world)
             {
                 if (Renderable* renderable = entity->GetComponent<Renderable>())
                 {
@@ -672,7 +676,7 @@ namespace Spartan
             SortRenderables(&m_renderables[RendererEntityType::geometry_opaque]);
             SortRenderables(&m_renderables[RendererEntityType::geometry_transparent]);
 
-            m_queue_addition.clear();
+            m_renderables_world.clear();
             m_add_new_entities = false;
         }
 
@@ -721,12 +725,12 @@ namespace Spartan
         }
     }
 
-    void Renderer::SortRenderables(vector<Entity*>* renderables)
+    void Renderer::SortRenderables(vector<shared_ptr<Entity>>* renderables)
     {
         if (!m_camera || renderables->size() <= 2)
             return;
 
-        auto comparison_op = [](Entity* entity)
+        auto comparison_op = [](shared_ptr<Entity> entity)
         {
             auto renderable = entity->GetRenderable();
             if (!renderable)
@@ -736,7 +740,7 @@ namespace Spartan
         };
 
         // Sort by depth (front to back)
-        sort(renderables->begin(), renderables->end(), [&comparison_op](Entity* a, Entity* b)
+        sort(renderables->begin(), renderables->end(), [&comparison_op](shared_ptr<Entity> a, shared_ptr<Entity> b)
             {
                 return comparison_op(a) < comparison_op(b);
             });
@@ -972,7 +976,7 @@ namespace Spartan
         return m_camera;
     }
 
-    unordered_map<RendererEntityType, vector<Entity*>>& Renderer::GetEntities()
+    unordered_map<RendererEntityType, vector<shared_ptr<Entity>>>& Renderer::GetEntities()
     {
         return m_renderables;
     }

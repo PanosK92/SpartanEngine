@@ -118,7 +118,7 @@ namespace Spartan
         static RHI_CommandList* GetCmdList();
         //=================================================
  
-        //= RESOURCES =====================================================================
+        //= RESOURCES =====================================================================================
         // Render targets
         static std::shared_ptr<RHI_Texture> GetRenderTarget(const RendererTexture rt_enum);
         static std::array<std::shared_ptr<RHI_Texture>, 26>& GetRenderTargets();
@@ -129,8 +129,8 @@ namespace Spartan
         // Misc
         static RHI_Texture* GetFrameTexture();
         static std::shared_ptr<Camera> GetCamera();
-        static std::unordered_map<RendererEntityType, std::vector<Entity*>>& GetEntities();
-        //=================================================================================
+        static std::unordered_map<RendererEntityType, std::vector<std::shared_ptr<Entity>>>& GetEntities();
+        //=================================================================================================
 
         static void AddToDeletionQueue(const RHI_Resource_Type resource_type, void* resource);
 
@@ -194,7 +194,7 @@ namespace Spartan
         static void OnFullScreenToggled();
 
         // Misc
-        static void SortRenderables(std::vector<Entity*>* renderables);
+        static void SortRenderables(std::vector<std::shared_ptr<Entity>>* renderables);
         static bool IsCallingFromOtherThread();
         static void OnResourceSafe(RHI_CommandList* cmd_list);
 

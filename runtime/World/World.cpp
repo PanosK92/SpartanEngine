@@ -122,20 +122,23 @@ namespace Spartan
             }
         }
 
-        if (!m_queue_deletion.empty() || m_resolve)
+        // Remove entities
+        if (!m_queue_deletion.empty())
         {
             lock_guard<mutex> lock(m_entity_access_mutex);
 
-            // Remove entities
             for (shared_ptr<Entity>& entity : m_queue_deletion)
             {
                 _EntityRemove(entity);
             }
+
             m_queue_deletion.clear();
+        }
 
-            // Notify Renderer
+        // Notify Renderer
+        if (m_resolve)
+        {
             SP_FIRE_EVENT_DATA(EventType::WorldResolved, m_entities);
-
             m_resolve = false;
         }
     }

@@ -121,7 +121,7 @@ namespace Spartan
 
     static void map()
     {
-        Timer::SetFpsLimit(m_fps_limit);
+        Timer::SetFpsLimit(static_cast<float>(m_fps_limit));
 
         Input::SetMouseCursorVisible(m_is_mouse_visible);
 
