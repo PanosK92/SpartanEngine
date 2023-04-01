@@ -131,7 +131,7 @@ namespace Spartan
     // Misc
     extern array<Material*, m_max_material_instances> m_material_instances;
     extern shared_ptr<RHI_SwapChain> m_swap_chain;
-    extern unordered_map<RendererEntityType, vector<Entity*>> m_renderables;
+    extern unordered_map<RendererEntityType, vector<shared_ptr<Entity>>> m_renderables;
     extern unique_ptr<Font> m_font;
     extern unique_ptr<Grid> m_gizmo_grid;
     extern RHI_CommandList* m_cmd_current;
@@ -282,7 +282,7 @@ namespace Spartan
             return;
 
         // Get entities
-        const vector<Entity*>& entities = GetEntities()[is_transparent_pass ? RendererEntityType::geometry_transparent : RendererEntityType::geometry_opaque];
+        vector<shared_ptr<Entity>>& entities = m_renderables[is_transparent_pass ? RendererEntityType::geometry_transparent : RendererEntityType::geometry_opaque];
         if (entities.empty())
             return;
 
@@ -355,7 +355,7 @@ namespace Spartan
                 bool render_pass_active    = false;
                 uint64_t m_set_material_id = 0;
 
-                for (Entity* entity : entities)
+                for (shared_ptr<Entity> entity : entities)
                 {
                     // Acquire renderable component
                     Renderable* renderable = entity->GetRenderable();
@@ -444,17 +444,17 @@ namespace Spartan
             return;
 
         // Acquire reflections probes
-        const vector<Entity*>& probes = m_renderables[RendererEntityType::reflection_probe];
+        const vector<shared_ptr<Entity>>& probes = m_renderables[RendererEntityType::reflection_probe];
         if (probes.empty())
             return;
 
         // Acquire renderables
-        const vector<Entity*>& renderables = m_renderables[RendererEntityType::geometry_opaque];
+        const vector<shared_ptr<Entity>>& renderables = m_renderables[RendererEntityType::geometry_opaque];
         if (renderables.empty())
             return;
 
         // Acquire lights
-        const vector<Entity*>& lights = m_renderables[RendererEntityType::light];
+        const vector<shared_ptr<Entity>>& lights = m_renderables[RendererEntityType::light];
         if (lights.empty())
             return;
 
@@ -502,7 +502,7 @@ namespace Spartan
                 // For each renderable entity
                 for (uint32_t index_renderable = 0; index_renderable < static_cast<uint32_t>(renderables.size()); index_renderable++)
                 {
-                    Entity* entity = renderables[index_renderable];
+                    shared_ptr<Entity> entity = renderables[index_renderable];
 
                     // For each light entity
                     for (uint32_t index_light = 0; index_light < static_cast<uint32_t>(lights.size()); index_light++)
@@ -584,7 +584,7 @@ namespace Spartan
         cmd_list->BeginTimeblock("depth_prepass");
 
         RHI_Texture* tex_depth = render_target(RendererTexture::gbuffer_depth).get();
-        const vector<Entity*> entities = m_renderables[RendererEntityType::geometry_opaque];
+        const vector<shared_ptr<Entity>> entities = m_renderables[RendererEntityType::geometry_opaque];
 
         // Define pipeline state
         static RHI_PipelineState pso;
@@ -608,7 +608,7 @@ namespace Spartan
             uint64_t currently_bound_geometry = 0;
             
             // Draw opaque
-            for (const Entity* entity : entities)
+            for (shared_ptr<Entity> entity : entities)
             {
                 // Get renderable
                 Renderable* renderable = entity->GetRenderable();
@@ -719,7 +719,7 @@ namespace Spartan
         // Render
         cmd_list->BeginRenderPass();
         {
-            for (Entity* entity : entities)
+            for (shared_ptr<Entity> entity : entities)
             {
                 // Get renderable
                 Renderable* renderable = entity->GetRenderable();
@@ -1084,7 +1084,7 @@ namespace Spartan
             return;
 
         // Acquire lights
-        const vector<Entity*>& entities = m_renderables[RendererEntityType::light];
+        const vector<shared_ptr<Entity>>& entities = m_renderables[RendererEntityType::light];
         if (entities.empty())
             return;
 
@@ -1108,7 +1108,7 @@ namespace Spartan
         cmd_list->SetPipelineState(pso);
 
         // Iterate through all the light entities
-        for (Entity* entity : entities)
+        for (shared_ptr<Entity> entity : entities)
         {
             if (Light* light = entity->GetComponent<Light>())
             {
@@ -1217,7 +1217,7 @@ namespace Spartan
         cmd_list->BeginTimeblock(is_transparent_pass ? "light_image_based_transparent" : "light_image_based");
 
         // Get reflection probe entities
-        const vector<Entity*>& probes = m_renderables[RendererEntityType::reflection_probe];
+        const vector<shared_ptr<Entity>>& probes = m_renderables[RendererEntityType::reflection_probe];
 
         // Define pipeline state
         static RHI_PipelineState pso;
@@ -2037,7 +2037,7 @@ namespace Spartan
         bool render_pass_started = false;
 
         // For each light
-        for (Entity* entity : lights)
+        for (shared_ptr<Entity> entity : lights)
         {
             // Light can be null if it just got removed and our buffer doesn't update till the next frame
             if (Light* light = entity->GetComponent<Light>())
@@ -2110,7 +2110,7 @@ namespace Spartan
             return;
 
         // Get reflection probe entities
-        const vector<Entity*>& probes = m_renderables[RendererEntityType::reflection_probe];
+        const vector<shared_ptr<Entity>>& probes = m_renderables[RendererEntityType::reflection_probe];
         if (probes.empty())
             return;
 
