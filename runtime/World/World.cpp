@@ -83,6 +83,7 @@ namespace Spartan
 
     void World::Tick()
     {
+        // This is only needed when loading models, it should not be locked every tick
         lock_guard lock(m_entity_access_mutex);
 
         SP_PROFILE_FUNCTION();
@@ -346,7 +347,6 @@ namespace Spartan
         }
 
         // Remove entities using a single loop
-        //lock_guard lock(m_entity_access_mutex);
         m_entities.erase(remove_if(m_entities.begin(), m_entities.end(),
             [&](const shared_ptr<Entity>& entity)
             {

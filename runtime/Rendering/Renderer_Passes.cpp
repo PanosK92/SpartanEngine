@@ -48,7 +48,7 @@ using namespace std;
 using namespace Spartan::Math;
 //============================
 
-// Macro to work around the verboseness of some C++ concepts.
+// Macros to work around the verboseness of some C++ concepts.
 #define render_target(enum_rt)    GetRenderTargets()[static_cast<uint8_t>(enum_rt)]
 #define shader(enum_shader)       GetShaders()[static_cast<uint8_t>(enum_shader)]
 #define thread_group_count_x(tex) static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex->GetWidth())  / m_thread_group_count))
