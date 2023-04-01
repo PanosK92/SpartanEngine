@@ -47,16 +47,19 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    static vector<shared_ptr<Entity>> m_queue_deletion;
-    static vector<shared_ptr<Entity>> m_entities;
-    static string m_name;
-    static string m_file_path;
-    static bool m_resolve                                   = false;
-    static bool m_was_in_editor_mode                        = false;
-    static shared_ptr<Mesh> m_default_model_sponza          = nullptr;
-    static shared_ptr<Mesh> m_default_model_sponza_curtains = nullptr;
-    static shared_ptr<Mesh> m_default_model_car             = nullptr;
-    
+    namespace
+    {
+        static vector<shared_ptr<Entity>> m_queue_deletion;
+        static vector<shared_ptr<Entity>> m_entities;
+        static string m_name;
+        static string m_file_path;
+        static bool m_resolve                                   = false;
+        static bool m_was_in_editor_mode                        = false;
+        static shared_ptr<Mesh> m_default_model_sponza          = nullptr;
+        static shared_ptr<Mesh> m_default_model_sponza_curtains = nullptr;
+        static shared_ptr<Mesh> m_default_model_car             = nullptr;
+    }
+
     // Sync primitives
     static mutex m_entity_access_mutex;
 
@@ -83,9 +86,6 @@ namespace Spartan
 
     void World::Tick()
     {
-        // This is only needed when loading models, it should not be locked every tick
-        lock_guard lock(m_entity_access_mutex);
-
         SP_PROFILE_FUNCTION();
 
         // Tick entities
@@ -94,6 +94,8 @@ namespace Spartan
             const bool started   =  Engine::IsFlagSet(EngineMode::Game) &&  m_was_in_editor_mode;
             const bool stopped   = !Engine::IsFlagSet(EngineMode::Game) && !m_was_in_editor_mode;
             m_was_in_editor_mode = !Engine::IsFlagSet(EngineMode::Game);
+
+            lock_guard<mutex> lock(m_entity_access_mutex);
 
             // Start
             if (started)
@@ -122,6 +124,8 @@ namespace Spartan
 
         if (!m_queue_deletion.empty() || m_resolve)
         {
+            lock_guard<mutex> lock(m_entity_access_mutex);
+
             // Remove entities
             for (shared_ptr<Entity>& entity : m_queue_deletion)
             {
