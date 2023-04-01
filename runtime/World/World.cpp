@@ -135,6 +135,8 @@ namespace Spartan
 
             // Notify Renderer
             SP_FIRE_EVENT_DATA(EventType::WorldResolved, m_entities);
+
+            m_resolve = false;
         }
     }
 

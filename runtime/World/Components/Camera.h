@@ -137,8 +137,8 @@ namespace Spartan
 
         // Misc
         void MakeDirty() { m_is_dirty = true; }
-        void SetSelectedEntity(std::shared_ptr<Spartan::Entity> entity) { m_selected_entity = entity; }
-        std::shared_ptr<Spartan::Entity> GetSelectedEntity()            { return m_selected_entity; }
+        void SetSelectedEntity(std::weak_ptr<Spartan::Entity> entity) { m_selected_entity = entity; }
+        std::weak_ptr<Spartan::Entity> GetSelectedEntity()            { return m_selected_entity; }
 
         Math::Matrix ComputeViewMatrix() const;
         Math::Matrix ComputeProjection(const float near_plane, const float far_plane);
@@ -187,6 +187,6 @@ namespace Spartan
         Math::Ray m_ray;
         Math::Frustum m_frustum;
         std::vector<camera_bookmark> m_bookmarks;
-        std::shared_ptr<Spartan::Entity> m_selected_entity = nullptr;
+        std::weak_ptr<Spartan::Entity> m_selected_entity;
     };
 }

@@ -295,7 +295,7 @@ namespace Spartan
             {
                 if (shared_ptr<Camera> camera = GetCamera())
                 {
-                    shared_ptr<Entity> entity_selected = camera->GetSelectedEntity();
+                    shared_ptr<Entity> entity_selected = camera->GetSelectedEntity().lock();
                     if (entity_selected && entity_selected->GetObjectId() == entity->GetObjectId())
                     {
                         Light* light = entity->GetComponent<Light>();

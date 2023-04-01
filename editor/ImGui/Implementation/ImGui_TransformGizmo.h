@@ -52,7 +52,7 @@ namespace ImGui::TransformGizmo
             return;
 
         // Get selected entity
-        std::shared_ptr<Spartan::Entity> entity = camera->GetSelectedEntity();
+        std::shared_ptr<Spartan::Entity> entity = camera->GetSelectedEntity().lock();
 
         // Enable/disable gizmo
         ImGuizmo::Enable(entity != nullptr);
