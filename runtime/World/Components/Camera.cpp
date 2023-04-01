@@ -174,7 +174,7 @@ namespace Spartan
         // Ensure the mouse is inside the viewport
         if (!Input::GetMouseIsInViewport())
         {
-            m_selected_entity = nullptr;
+            m_selected_entity.reset();
             return;
         }
 
@@ -215,7 +215,7 @@ namespace Spartan
         // Check if there are any hits
         if (hits.empty())
         {
-            m_selected_entity = nullptr;
+            m_selected_entity.reset();
             return;
         }
 
@@ -502,7 +502,7 @@ namespace Spartan
         // Set focused entity as a lerp target
         if (Input::GetKeyDown(KeyCode::F))
         {
-            if (shared_ptr<Entity> entity = Renderer::GetCamera()->GetSelectedEntity())
+            if (shared_ptr<Entity> entity = Renderer::GetCamera()->GetSelectedEntity().lock())
             {
                 SP_LOG_INFO("Focusing on entity \"%s\"...", entity->GetTransform()->GetEntity()->GetName().c_str());
 

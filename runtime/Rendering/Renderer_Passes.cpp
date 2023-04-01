@@ -2173,11 +2173,10 @@ namespace Spartan
 
         cmd_list->BeginTimeblock("outline");
         {
-            RHI_Texture* tex_outline           = render_target(RendererTexture::outline).get();
-            static const Color clear_color     = Color(0.0f, 0.0f, 0.0f, 0.0f);
-            shared_ptr<Entity> entity_selected = Renderer::GetCamera()->GetSelectedEntity();
+            RHI_Texture* tex_outline       = render_target(RendererTexture::outline).get();
+            static const Color clear_color = Color(0.0f, 0.0f, 0.0f, 0.0f);
 
-            if (entity_selected)
+            if (shared_ptr<Entity> entity_selected = Renderer::GetCamera()->GetSelectedEntity().lock())
             {
                 if (const Renderable* renderable = entity_selected->GetRenderable())
                 { 

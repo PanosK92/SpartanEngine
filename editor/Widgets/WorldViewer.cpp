@@ -235,7 +235,7 @@ void WorldViewer::TreeAddEntity(Spartan::Entity* entity)
     // Flag - Is selected?
     if (shared_ptr<Spartan::Camera> camera = Spartan::Renderer::GetCamera())
     {
-        if (shared_ptr<Spartan::Entity> selected_entity = camera->GetSelectedEntity())
+        if (shared_ptr<Spartan::Entity> selected_entity = camera->GetSelectedEntity().lock())
         {
             node_flags |= selected_entity->GetObjectId() == entity->GetObjectId() ? ImGuiTreeNodeFlags_Selected : node_flags;
 
@@ -347,7 +347,7 @@ void WorldViewer::EntityHandleDragDrop(Spartan::Entity* entity_ptr) const
     }
 }
 
-void WorldViewer::SetSelectedEntity(const shared_ptr<Spartan::Entity>& entity)
+void WorldViewer::SetSelectedEntity(const weak_ptr<Spartan::Entity>& entity)
 {
     m_expand_to_selection = true;
 
@@ -374,7 +374,7 @@ void WorldViewer::PopupContextMenu() const
     shared_ptr<Spartan::Entity> selected_entity = nullptr;
     if (shared_ptr<Spartan::Camera> camera = Spartan::Renderer::GetCamera())
     {
-        selected_entity = camera->GetSelectedEntity();
+        selected_entity = camera->GetSelectedEntity().lock();
     }
 
     const bool on_entity = selected_entity != nullptr;
@@ -533,7 +533,7 @@ void WorldViewer::PopupEntityRename() const
 
     if (ImGui::BeginPopup("##RenameEntity"))
     {
-        shared_ptr<Spartan::Entity> selected_entity = Spartan::Renderer::GetCamera()->GetSelectedEntity();
+        shared_ptr<Spartan::Entity> selected_entity = Spartan::Renderer::GetCamera()->GetSelectedEntity().lock();
         if (!selected_entity)
         {
             ImGui::CloseCurrentPopup();
@@ -562,7 +562,7 @@ void WorldViewer::HandleKeyShortcuts()
     // Delete
     if (Spartan::Input::GetKey(Spartan::KeyCode::Delete))
     {
-        if (shared_ptr<Spartan::Entity> selected_entity = Spartan::Renderer::GetCamera()->GetSelectedEntity())
+        if (shared_ptr<Spartan::Entity> selected_entity = Spartan::Renderer::GetCamera()->GetSelectedEntity().lock())
         {
             ActionEntityDelete(selected_entity);
         }
@@ -602,7 +602,7 @@ Spartan::Entity* WorldViewer::ActionEntityCreateEmpty()
     
     if (shared_ptr<Spartan::Camera> camera = Spartan::Renderer::GetCamera())
     {
-        if (shared_ptr<Spartan::Entity> selected_entity = camera->GetSelectedEntity())
+        if (shared_ptr<Spartan::Entity> selected_entity = camera->GetSelectedEntity().lock())
         {
             entity->GetTransform()->SetParent(selected_entity->GetTransform());
         }

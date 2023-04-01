@@ -35,7 +35,7 @@ public:
     WorldViewer(Editor* editor);
 
     void TickVisible() override;
-    void SetSelectedEntity(const std::shared_ptr<Spartan::Entity>& entity);
+    void SetSelectedEntity(const std::weak_ptr<Spartan::Entity>& entity);
 
 private:
     // Tree
