@@ -167,7 +167,7 @@ namespace Spartan
 
     RHI_CommandList* RHI_Device::ImmediateBegin(const RHI_Queue_Type queue_type)
     {
-        m_mutex_immediate.lock();
+        unique_lock<std::mutex> lock(m_mutex_immediate);
 
         // Create command pool for the given queue type, if needed.
         uint32_t queue_index = static_cast<uint32_t>(queue_type);
@@ -182,6 +182,10 @@ namespace Spartan
 
         cmd_pool->Step();
         cmd_pool->GetCurrentCommandList()->Begin();
+
+        // Release the mutex without unlocking it.
+        lock.release();
+
         return cmd_pool->GetCurrentCommandList();
     }
 
@@ -194,6 +198,7 @@ namespace Spartan
         bool log_on_wait = false;
         cmd_list->Wait(log_on_wait);
 
-        m_mutex_immediate.unlock();
+        // Use unique_lock to acquire the mutex and unlock it when the function scope ends.
+        unique_lock<mutex> lock(m_mutex_immediate, std::adopt_lock);
     }
 }
