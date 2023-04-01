@@ -75,39 +75,42 @@ namespace Spartan
     uint32_t Profiler::m_descriptor_set_count    = 0;
     uint32_t Profiler::m_descriptor_set_capacity = 0;
 
-    // Profiling options
-    static bool m_profile                   = false;
-    static bool m_profile_cpu               = true; // cheap
-    static bool m_profile_gpu               = true; // expensive
-    static float m_profiling_interval_sec   = 0.2f;
-    static float m_time_since_profiling_sec = m_profiling_interval_sec;
+    namespace
+    {
+        // Profiling options
+        static bool m_profile                   = false;
+        static bool m_profile_cpu               = true; // cheap
+        static bool m_profile_gpu               = true; // expensive
+        static float m_profiling_interval_sec   = 0.2f;
+        static float m_time_since_profiling_sec = m_profiling_interval_sec;
 
-    // Time blocks (double buffered)
-    static int m_time_block_index = -1;
-    static std::vector<TimeBlock> m_time_blocks_write;
-    static std::vector<TimeBlock> m_time_blocks_read;
+        // Time blocks (double buffered)
+        static int m_time_block_index = -1;
+        static std::vector<TimeBlock> m_time_blocks_write;
+        static std::vector<TimeBlock> m_time_blocks_read;
 
-    // FPS
-    static float m_fps = 0.0f;
+        // FPS
+        static float m_fps = 0.0f;
 
-    // Hardware - GPU
-    static std::string m_gpu_name          = "N/A";
-    static std::string m_gpu_driver        = "N/A";
-    static std::string m_gpu_api           = "N/A";
-    static uint32_t m_gpu_memory_available = 0;
-    static uint32_t m_gpu_memory_used      = 0;
+        // Hardware - GPU
+        static std::string m_gpu_name          = "N/A";
+        static std::string m_gpu_driver        = "N/A";
+        static std::string m_gpu_api           = "N/A";
+        static uint32_t m_gpu_memory_available = 0;
+        static uint32_t m_gpu_memory_used      = 0;
 
-    // Stutter detection
-    static float m_stutter_delta_ms = 0.5f;
-    static bool m_is_stuttering_cpu = false;
-    static bool m_is_stuttering_gpu = false;
+        // Stutter detection
+        static float m_stutter_delta_ms = 0.5f;
+        static bool m_is_stuttering_cpu = false;
+        static bool m_is_stuttering_gpu = false;
 
-    // Misc
-    static bool m_poll                 = false;
-    static std::string m_metrics       = "N/A";
-    static bool m_increase_capacity    = false;
-    static bool m_allow_time_block_end = true;
-    static void* m_query_disjoint      = nullptr;
+        // Misc
+        static bool m_poll                 = false;
+        static std::string m_metrics       = "N/A";
+        static bool m_increase_capacity    = false;
+        static bool m_allow_time_block_end = true;
+        static void* m_query_disjoint      = nullptr;
+    }
     
     void Profiler::Initialize()
     {

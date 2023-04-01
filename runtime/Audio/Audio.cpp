@@ -37,11 +37,14 @@ using namespace FMOD;
 
 namespace Spartan
 {
-    static FMOD::System* fmod_system  = nullptr;
-    static uint32_t fmod_result       = 0;
-    static uint32_t fmod_max_channels = 32;
-    static float fmod_distance_entity = 1.0f;
-    static Transform* m_listener      = nullptr;
+    namespace
+    { 
+        static FMOD::System* fmod_system  = nullptr;
+        static uint32_t fmod_result       = 0;
+        static uint32_t fmod_max_channels = 32;
+        static float fmod_distance_entity = 1.0f;
+        static Transform* m_listener      = nullptr;
+    }
 
     void Audio::Initialize()
     {
