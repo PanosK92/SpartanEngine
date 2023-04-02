@@ -25,30 +25,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Widget.h"
 //=================
 
-//= FWD DECLARATIONS =
-namespace Spartan
-{
-    class Renderer;
-}
-//====================
-
 class TextureViewer : public Widget
 {
 public:
     TextureViewer(Editor* editor);
-
+    void TickAlways() override;
     void TickVisible() override;
-
-private:
-    uint32_t m_texture_index      = 1;
-    bool m_magnifying_glass       = false;
-    bool m_channel_r              = true;
-    bool m_channel_g              = true;
-    bool m_channel_b              = true;
-    bool m_channel_a              = true;
-    bool m_gamma_correct          = false;
-    bool m_pack                   = false;
-    bool m_boost                  = false;
-    bool m_abs                    = false;
-    bool m_point_sampling         = false;
+    static uint32_t GetVisualisationFlags();
+    static int GetMipLevel();
+    static uint64_t GetVisualisedTextureId();
 };

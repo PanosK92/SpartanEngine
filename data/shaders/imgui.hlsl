@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016-2021 Panos Karabelas
+Copyright(c) 2016-2023 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -39,74 +39,40 @@ PS_INPUT mainVS(Vertex_Pos2dUvColor input)
     return output;
 }
 
-float4 postprocess_visualisation_options(float4 color_in)
+float4 mainPS(PS_INPUT input) : SV_Target
 {
-    float4 color = float4(0.0f, 0.0f, 0.0f, 1.0f);
+    float mip            = (float)imgui_mip_level;
+    float4 color_texture = texture_sample_point() ? tex.SampleLevel(sampler_point_wrap, input.uv, mip) : tex.SampleLevel(sampler_bilinear_wrap, input.uv, mip);
+    float4 color_vertex  = input.color;
 
     // Set requested channels channels
+    if (imgui_texture_flags != 0)
     {
-        if (texture_channel_r())
-        {
-            color.r = color_in.r;
-        }
-
-        if (texture_channel_g())
-        {
-            color.g = color_in.g;
-        }
-
-        if (texture_channel_b())
-        {
-            color.b = color_in.b;
-        }
-
-        if (texture_channel_a())
-        {
-            color.a = color_in.a;
-        }
+        color_texture.r *= texture_channel_r() ? 1.0f : 0.0f;
+        color_texture.g *= texture_channel_g() ? 1.0f : 0.0f;
+        color_texture.b *= texture_channel_b() ? 1.0f : 0.0f;
+        color_texture.a *= texture_channel_a() ? 1.0f : 0.0f;
     }
 
     if (texture_gamma_correction())
     {
-        color.rgb = gamma(color.rgb);
+        color_texture.rgb = gamma(color_texture.rgb);
     }
 
     if (texture_abs())
     {
-        color = abs(color);
+        color_texture = abs(color_texture);
     }
 
     if (texture_pack())
     {
-        color.rgb = pack(color.rgb);
+        color_texture.rgb = pack(color_texture.rgb);
     }
 
     if (texture_boost())
     {
-        color.rgb *= 10.0f;
-    }
-
-    return color;
-}
-
-float4 mainPS(PS_INPUT input) : SV_Target
-{
-    float4 color_vertex = input.color;
-    if (imgui_texture_flags == 0)
-        return color_vertex;
-    
-    float4 color_texture = tex.Sample(sampler_bilinear_wrap, input.uv);
-
-    // Render targets can be visualised in various ways.
-    if (texture_visualise())
-    {
-        if (texture_sample_point())
-        {
-            color_texture = tex.Sample(sampler_point_wrap, input.uv);
-        }
-
-        color_texture = postprocess_visualisation_options(color_texture);
-    }
+        color_texture.rgb *= 10.0f;
+    } 
 
     return color_vertex * color_texture;
 

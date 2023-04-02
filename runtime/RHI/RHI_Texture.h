@@ -33,9 +33,6 @@ namespace Spartan
 {
     enum RHI_Texture_Flags : uint32_t
     {
-        // When editing this, make sure that the bit shifts
-        // in common_buffer.hlsl are also updated.
-
         RHI_Texture_Srv                     = 1U << 0,
         RHI_Texture_Uav                     = 1U << 1,
         RHI_Texture_RenderTarget            = 1U << 2,
@@ -46,17 +43,7 @@ namespace Spartan
         RHI_Texture_Srgb                    = 1U << 7,
         RHI_Texture_Mips                    = 1U << 8,
         RHI_Texture_Compressed              = 1U << 9,
-        RHI_Texture_Visualise               = 1U << 10,
-        RHI_Texture_Visualise_Pack          = 1U << 11,
-        RHI_Texture_Visualise_GammaCorrect  = 1U << 12,
-        RHI_Texture_Visualise_Boost         = 1U << 13,
-        RHI_Texture_Visualise_Abs           = 1U << 14,
-        RHI_Texture_Visualise_Channel_R     = 1U << 15,
-        RHI_Texture_Visualise_Channel_G     = 1U << 16,
-        RHI_Texture_Visualise_Channel_B     = 1U << 17,
-        RHI_Texture_Visualise_Channel_A     = 1U << 18,
-        RHI_Texture_Visualise_Sample_Point  = 1U << 19,
-        RHI_Texture_RenderTarget_ReadOnly   = 1U << 20 // only used for D3D11, can be deleted after D3D11 is removed
+        RHI_Texture_RenderTarget_ReadOnly   = 1U << 10 // only used for D3D11, can be deleted after D3D11 is removed
     };
 
     enum RHI_Shader_View_Type : uint8_t
