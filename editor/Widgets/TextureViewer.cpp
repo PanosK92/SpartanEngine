@@ -33,12 +33,50 @@ using namespace Spartan;
 using namespace Math;
 //======================
 
+namespace
+{
+    static uint32_t m_texture_index = 1;
+    static int m_mip_level          = 0;
+    static bool m_magnifying_glass  = false;
+    static bool m_channel_r         = true;
+    static bool m_channel_g         = true;
+    static bool m_channel_b         = true;
+    static bool m_channel_a         = true;
+    static bool m_gamma_correct     = false;
+    static bool m_pack              = false;
+    static bool m_boost             = false;
+    static bool m_abs               = false;
+    static bool m_point_sampling    = false;
+    static uint64_t m_texture_id    = 0;
+
+    // When editing this, make sure that the bit shifts in common_buffer.hlsl are also updated.
+    enum VisualisationOptions
+    {
+        Visualise_Pack         = 1U << 0,
+        Visualise_GammaCorrect = 1U << 1,
+        Visualise_Boost        = 1U << 2,
+        Visualise_Abs          = 1U << 3,
+        Visualise_Channel_R    = 1U << 4,
+        Visualise_Channel_G    = 1U << 5,
+        Visualise_Channel_B    = 1U << 6,
+        Visualise_Channel_A    = 1U << 7,
+        Visualise_Sample_Point = 1U << 8,
+    };
+    static uint32_t m_visualisation_flags = 0;
+}
+
 TextureViewer::TextureViewer(Editor* editor) : Widget(editor)
 {
     m_title    = "Texture Viewer";
     m_visible  = false;
     m_position = k_widget_position_screen_center;
     m_size_min = Vector2(720, 576);
+}
+
+void TextureViewer::TickAlways()
+{
+    m_visualisation_flags = 0;
+    m_texture_id          = 0;
 }
 
 void TextureViewer::TickVisible()
@@ -65,8 +103,6 @@ void TextureViewer::TickVisible()
     // Display the selected texture
     if (shared_ptr<RHI_Texture> texture = Renderer::GetRenderTarget(static_cast<RendererTexture>(m_texture_index)))
     {
-        texture->SetFlag(RHI_Texture_Flags::RHI_Texture_Visualise);
-
         // Calculate a percentage that once multiplied with the texture dimensions, the texture will always be displayed within the window.
         float bottom_padding              = 200.0f; // to fit the information text
         float texture_shrink_percentage_x = ImGui::GetWindowWidth() / static_cast<float>(texture->GetWidth());
@@ -116,6 +152,7 @@ void TextureViewer::TickVisible()
             ImGui::Text("Dimensions: %dx%d", texture->GetWidth(), texture->GetHeight());
             ImGui::Text("Channels: %d",      texture->GetChannelCount());
             ImGui::Text("Format: %s",        string(rhi_format_to_string(texture->GetFormat())).c_str());
+            ImGui::Text("Mips: %d",          texture->GetMipCount());
             ImGui::EndGroup();
 
             // Channels
@@ -136,19 +173,38 @@ void TextureViewer::TickVisible()
             ImGui::Checkbox("Boost", &m_boost);
             ImGui::Checkbox("Abs", &m_abs);
             ImGui::Checkbox("Point sampling", &m_point_sampling);
+            ImGui::PushItemWidth(100); ImGui::InputInt("Mip", &m_mip_level); ImGui::PopItemWidth();
             ImGui::EndGroup();
         }
         ImGui::EndGroup();
 
-        // Map changes to texture
-        texture->SetFlag(RHI_Texture_Flags::RHI_Texture_Visualise_Channel_R,    m_channel_r);
-        texture->SetFlag(RHI_Texture_Flags::RHI_Texture_Visualise_Channel_G,    m_channel_g);
-        texture->SetFlag(RHI_Texture_Flags::RHI_Texture_Visualise_Channel_B,    m_channel_b);
-        texture->SetFlag(RHI_Texture_Flags::RHI_Texture_Visualise_Channel_A,    m_channel_a);
-        texture->SetFlag(RHI_Texture_Flags::RHI_Texture_Visualise_GammaCorrect, m_gamma_correct);
-        texture->SetFlag(RHI_Texture_Flags::RHI_Texture_Visualise_Pack,         m_pack);
-        texture->SetFlag(RHI_Texture_Flags::RHI_Texture_Visualise_Boost,        m_boost);
-        texture->SetFlag(RHI_Texture_Flags::RHI_Texture_Visualise_Abs,          m_abs);
-        texture->SetFlag(RHI_Texture_Flags::RHI_Texture_Visualise_Sample_Point, m_point_sampling);
+        m_mip_level  = Math::Helper::Clamp(m_mip_level, 0, static_cast<int>(texture->GetMipCount()) - 1);
+        m_texture_id = texture->GetObjectId();
+
+        // Map changes
+        m_visualisation_flags |=  m_channel_r      ? Visualise_Channel_R    : 0;
+        m_visualisation_flags |=  m_channel_g      ? Visualise_Channel_G    : 0;
+        m_visualisation_flags |=  m_channel_b      ? Visualise_Channel_B    : 0;
+        m_visualisation_flags |=  m_channel_a      ? Visualise_Channel_A    : 0;
+        m_visualisation_flags |=  m_gamma_correct  ? Visualise_GammaCorrect : 0;
+        m_visualisation_flags |=  m_pack           ? Visualise_Pack         : 0;
+        m_visualisation_flags |=  m_boost          ? Visualise_Boost        : 0;
+        m_visualisation_flags |=  m_abs            ? Visualise_Abs          : 0;
+        m_visualisation_flags |=  m_point_sampling ? Visualise_Sample_Point : 0;
     }
+}
+
+uint32_t TextureViewer::GetVisualisationFlags()
+{
+    return m_visualisation_flags;
+}
+
+int TextureViewer::GetMipLevel()
+{
+    return m_mip_level;
+}
+
+uint64_t TextureViewer::GetVisualisedTextureId()
+{
+    return m_texture_id;
 }

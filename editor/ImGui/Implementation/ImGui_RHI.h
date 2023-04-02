@@ -42,6 +42,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI/RHI_CommandPool.h"
 #include "RHI/RHI_ConstantBuffer.h"
 #include "Rendering/Renderer_ConstantBuffers.h"
+#include "../../Widgets/TextureViewer.h"
 //=============================================
 
 namespace ImGui::RHI
@@ -357,14 +358,10 @@ namespace ImGui::RHI
 
                             cmd_list->SetTexture(RendererBindingsSrv::tex, texture);
 
-                            // Make sure single channel texture appear white instead of red.
-                            if (texture->GetChannelCount() == 1)
-                            {
-                                texture->SetFlag(RHI_Texture_Flags::RHI_Texture_Visualise);
-                                texture->SetFlag(RHI_Texture_Flags::RHI_Texture_Visualise_Channel_R);
-                            }
-
-                            resources->cb_cpu.options_texture_visualisation = texture->GetFlags();
+                            // Update texture viewer parameters
+                            bool is_texture_visualised                      = TextureViewer::GetVisualisedTextureId() == texture->GetObjectId();
+                            resources->cb_cpu.options_texture_visualisation = is_texture_visualised ? TextureViewer::GetVisualisationFlags() : 0;
+                            resources->cb_cpu.mip_level                     = is_texture_visualised ? TextureViewer::GetMipLevel() : 0;
                         }
 
                         // Update and bind the uber constant buffer (will only happen if the data changes)

@@ -243,15 +243,17 @@ namespace Spartan
     // High frequency - update multiply times per frame, ImGui driven
     struct Cb_ImGui
     {
-        Math::Matrix transform = Math::Matrix::Identity;
+        Math::Matrix transform                 = Math::Matrix::Identity;
         uint32_t options_texture_visualisation = 0;
-        Math::Vector3 padding = Math::Vector3::Zero;
+        uint32_t mip_level                     = 0;
+        Math::Vector2 padding                  = Math::Vector2::Zero;
 
         bool operator==(const Cb_ImGui& rhs) const
         {
             return
-                transform == rhs.transform &&
-                options_texture_visualisation == rhs.options_texture_visualisation;
+                transform                     == rhs.transform                     &&
+                options_texture_visualisation == rhs.options_texture_visualisation &&
+                mip_level                     == rhs.mip_level;
         }
     };
 }
