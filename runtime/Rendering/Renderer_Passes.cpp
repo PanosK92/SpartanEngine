@@ -899,8 +899,6 @@ namespace Spartan
             // If the vertex count is 0, the vertex buffer will be uninitialised.
             if (vertex_count != 0)
             {
-                clear_reactive_mask = false;
-
                 // Update vertex buffer
                 RHI_Vertex_PosCol* buffer = static_cast<RHI_Vertex_PosCol*>(m_vertex_buffer_lines->Map());
                 std::copy(m_line_vertices.begin(), m_line_vertices.end(), buffer);
@@ -913,7 +911,7 @@ namespace Spartan
                 pso.rasterizer_state                = m_rasterizer_cull_back_wireframe.get();
                 pso.render_target_color_textures[0] = tex_out;
                 pso.render_target_color_textures[1] = tex_reactive_mask;
-                pso.clear_color[1]                  = clear_color_reactive_mask;
+                pso.clear_color[1]                  = clear_reactive_mask ? clear_color_reactive_mask : rhi_color_load;
                 pso.viewport                        = tex_out->GetViewport();
                 pso.primitive_topology              = RHI_PrimitiveTopology_Mode::LineList;
 
