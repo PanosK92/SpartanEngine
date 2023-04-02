@@ -26,13 +26,98 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Window.h"
 //==================
 
+#if defined(_MSC_VER)
+#include <dxgi.h>
+#include <dxgi1_6.h>
+#include <wrl.h>
+#pragma comment(lib, "dxgi.lib")
+#endif
+
 //= NAMESPACES =====
 using namespace std;
 //==================
 
 namespace Spartan
 {
-    static std::vector<DisplayMode> display_modes;
+    namespace
+    {
+        static vector<DisplayMode> display_modes;
+        static bool hdr;
+        static float luminance_min;
+        static float luminance_max;
+    }
+
+    bool is_hdr_color_space(DXGI_COLOR_SPACE_TYPE colorSpace)
+    {
+        return (colorSpace == DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020)     ||
+               (colorSpace == DXGI_COLOR_SPACE_RGB_FULL_G10_NONE_P709)        ||
+               (colorSpace == DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709)        ||
+               (colorSpace == DXGI_COLOR_SPACE_YCBCR_STUDIO_G2084_LEFT_P2020) ||
+               (colorSpace == DXGI_COLOR_SPACE_YCBCR_STUDIO_G2084_TOPLEFT_P2020);
+    }
+
+    static void get_hdr_capabilities(bool* hdr, float* luminance_min, float* luminance_max)
+    {
+        *hdr           = false;
+        *luminance_min = 0.0f;
+        *luminance_max = 0.0f;
+
+        #if defined(_MSC_VER)
+            // Create DXGI factory
+            Microsoft::WRL::ComPtr<IDXGIFactory6> factory;
+            if (FAILED(CreateDXGIFactory1(IID_PPV_ARGS(&factory))))
+            {
+                SP_LOG_ERROR("Failed to create DXGI factory");
+                return;
+            }
+
+            // Enumerate and get the primary adapter (GPU)
+            Microsoft::WRL::ComPtr<IDXGIAdapter1> adapter;
+            for (UINT i = 0; DXGI_ERROR_NOT_FOUND != factory->EnumAdapters1(i, &adapter); ++i)
+            {
+                DXGI_ADAPTER_DESC1 desc;
+                adapter->GetDesc1(&desc);
+                if (desc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE)
+                {
+                    continue;
+                }
+
+                break;
+            }
+
+            if (!adapter)
+            {
+                SP_LOG_ERROR("No DXGI adapter found");
+                return;
+            }
+
+            // Enumerate outputs (monitors) for the primary adapter
+            Microsoft::WRL::ComPtr<IDXGIOutput> output;
+            if (SUCCEEDED(adapter->EnumOutputs(0, &output)))
+            {
+                DXGI_OUTPUT_DESC outputDesc;
+                output->GetDesc(&outputDesc);
+
+                // Check if the output is the primary monitor
+                if (outputDesc.AttachedToDesktop)
+                {
+                    Microsoft::WRL::ComPtr<IDXGIOutput6> output6;
+                    if (SUCCEEDED(output.As(&output6)))
+                    {
+                        DXGI_OUTPUT_DESC1 desc;
+                        if (SUCCEEDED(output6->GetDesc1(&desc)))
+                        {
+                            *hdr = desc.ColorSpace == DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020 || desc.ColorSpace == DXGI_COLOR_SPACE_RGB_FULL_G10_NONE_P709;
+                            *luminance_min = desc.MinLuminance;
+                            *luminance_max = desc.MaxLuminance;
+                        }
+                    }
+                }
+            }
+        #else
+            SP_LOG_ERROR("HDR support detection not implemented");
+        #endif
+    }
 
     void Display::RegisterDisplayMode(const uint32_t width, const uint32_t height, uint32_t hz, uint8_t display_index)
     {
@@ -99,6 +184,10 @@ namespace Spartan
                 SP_LOG_ERROR("Failed to get display mode %d for display %d", display_mode_index, display_index);
             }
         }
+
+        // Detect HDR capabilities
+        get_hdr_capabilities(&hdr, &luminance_min, &luminance_max);
+        SP_LOG_INFO("HDR: %s, Luminance: %f, %f", hdr ? "true" : "false", luminance_min, luminance_max);
     }
 
     const vector<DisplayMode>& Display::GetDisplayModes()
