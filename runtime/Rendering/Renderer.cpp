@@ -188,6 +188,9 @@ namespace Spartan
 
         Display::DetectDisplayModes();
 
+        // Enable/disable HDR based on display capabilities
+        SetOption(RendererOption::Hdr, Display::GetHdr() ? 1.0f : 0.0f);
+
         // Get window size
         uint32_t window_width  = Window::GetWidth();
         uint32_t window_height = Window::GetHeight();
@@ -201,7 +204,7 @@ namespace Spartan
                 Window::GetHandleSDL(),
                 window_width,
                 window_height,
-                RHI_Format_R8G8B8A8_Unorm,
+                Display::GetHdr() ? RHI_Format_R10G10B10A2_Unorm  : RHI_Format_R8G8B8A8_Unorm,
                 m_swap_chain_buffer_count,
                 RHI_Present_Immediate | RHI_Swap_Flip_Discard,
                 "renderer"
@@ -799,6 +802,15 @@ namespace Spartan
                 SP_LOG_WARNING("FSR 2.0 is not supported on D3D11");
                 return;
             }
+
+            if (option == RendererOption::Hdr)
+            {
+                if (value == 1.0f && !Display::GetHdr())
+                {
+                    SP_LOG_INFO("This display doesn't support HDR");
+                    return;
+                }
+            }
         }
 
         // Set new value
@@ -869,6 +881,10 @@ namespace Spartan
                         light->CreateShadowMap();
                     }
                 }
+            }
+            else if (option == RendererOption::Hdr)
+            {
+                m_swap_chain->SetHdr(value == 1.0f);
             }
         }
     }

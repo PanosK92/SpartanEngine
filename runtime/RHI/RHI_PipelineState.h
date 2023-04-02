@@ -66,8 +66,6 @@ namespace Spartan
         // RT indices (affect render pass)
         uint32_t render_target_color_texture_array_index = 0;
         uint32_t render_target_depth_stencil_texture_array_index = 0;
-
-
         //====================================================================================
 
         //= Dynamic, modification wont' create a new pipeline =====

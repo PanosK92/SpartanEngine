@@ -40,5 +40,6 @@ namespace Spartan
         static uint32_t GetHeight();
         static uint32_t GetRefreshRate();
         static uint32_t GetIndex();
+        static bool GetHdr();
     };
 }

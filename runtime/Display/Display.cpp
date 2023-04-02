@@ -47,15 +47,6 @@ namespace Spartan
         static float luminance_max;
     }
 
-    bool is_hdr_color_space(DXGI_COLOR_SPACE_TYPE colorSpace)
-    {
-        return (colorSpace == DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020)     ||
-               (colorSpace == DXGI_COLOR_SPACE_RGB_FULL_G10_NONE_P709)        ||
-               (colorSpace == DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709)        ||
-               (colorSpace == DXGI_COLOR_SPACE_YCBCR_STUDIO_G2084_LEFT_P2020) ||
-               (colorSpace == DXGI_COLOR_SPACE_YCBCR_STUDIO_G2084_TOPLEFT_P2020);
-    }
-
     static void get_hdr_capabilities(bool* hdr, float* luminance_min, float* luminance_max)
     {
         *hdr           = false;
@@ -91,27 +82,58 @@ namespace Spartan
                 return;
             }
 
-            // Enumerate outputs (monitors) for the primary adapter
-            Microsoft::WRL::ComPtr<IDXGIOutput> output;
-            if (SUCCEEDED(adapter->EnumOutputs(0, &output)))
+            // Find primary display by detecting which display is being intersected the most by the engine window
+            Microsoft::WRL::ComPtr<IDXGIOutput> output_primary;
             {
-                DXGI_OUTPUT_DESC outputDesc;
-                output->GetDesc(&outputDesc);
-
-                // Check if the output is the primary monitor
-                if (outputDesc.AttachedToDesktop)
+                UINT i = 0;
+                Microsoft::WRL::ComPtr<IDXGIOutput> output_current;
+                float best_intersection_area = -1;
+                RECT window_rect;
+                GetWindowRect(static_cast<HWND>(Window::GetHandleWindows()), &window_rect);
+                while (adapter->EnumOutputs(i, &output_current) != DXGI_ERROR_NOT_FOUND)
                 {
-                    Microsoft::WRL::ComPtr<IDXGIOutput6> output6;
-                    if (SUCCEEDED(output.As(&output6)))
+                    // Get the rectangle bounds of the app window
+                    int ax1 = window_rect.left;
+                    int ay1 = window_rect.top;
+                    int ax2 = window_rect.right;
+                    int ay2 = window_rect.bottom;
+
+                    // Get the rectangle bounds of current output
+                    DXGI_OUTPUT_DESC desc;
+                    if (FAILED(output_current->GetDesc(&desc)))
                     {
-                        DXGI_OUTPUT_DESC1 desc;
-                        if (SUCCEEDED(output6->GetDesc1(&desc)))
-                        {
-                            *hdr = desc.ColorSpace == DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020 || desc.ColorSpace == DXGI_COLOR_SPACE_RGB_FULL_G10_NONE_P709;
-                            *luminance_min = desc.MinLuminance;
-                            *luminance_max = desc.MaxLuminance;
-                        }
+                        SP_LOG_ERROR("Failed to get output description");
+                        return;
                     }
+
+                    RECT r = desc.DesktopCoordinates;
+                    int bx1 = r.left;
+                    int by1 = r.top;
+                    int bx2 = r.right;
+                    int by2 = r.bottom;
+
+                    // Compute the intersection
+                    int intersectArea = max(0, min(ax2, bx2) - max(ax1, bx1)) * max(0, min(ay2, by2) - max(ay1, by1));
+                    if (intersectArea > best_intersection_area)
+                    {
+                        output_primary = output_current;
+                        best_intersection_area = static_cast<float>(intersectArea);
+                    }
+
+                    i++;
+                }
+            }
+
+            // Get display capabilities
+            Microsoft::WRL::ComPtr<IDXGIOutput6> output6;
+            if (SUCCEEDED(output_primary.As(&output6)))
+            {
+                DXGI_OUTPUT_DESC1 desc;
+                if (SUCCEEDED(output6->GetDesc1(&desc)))
+                {
+                    *hdr = desc.ColorSpace == DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020 || desc.ColorSpace == DXGI_COLOR_SPACE_RGB_FULL_G10_NONE_P709;
+                    *luminance_min = desc.MinLuminance;
+                    *luminance_max = desc.MaxLuminance;
                 }
             }
         #else
@@ -228,5 +250,10 @@ namespace Spartan
         // during engine startup, the window doesn't exist yet, therefore it's not displayed by any monitor.
         // in this case the index can be -1, so we'll instead set the index to 0 (whatever the primary display is)
         return index != -1 ? index : 0;
+    }
+
+    bool Display::GetHdr()
+    {
+        return hdr;
     }
 }
