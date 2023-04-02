@@ -101,7 +101,7 @@ namespace Spartan
 
     }
 
-    static bool is_format_supported(const VkSurfaceKHR surface, RHI_Format* format, VkColorSpaceKHR& color_space)
+    static bool is_format_supported(const VkSurfaceKHR surface, RHI_Format* format, VkColorSpaceKHR& color_space, const vector<VkSurfaceFormatKHR>& supported_formats)
     {
         // NV supports RHI_Format_B8R8G8A8_Unorm instead of RHI_Format_R8G8B8A8_Unorm.
         if ((*format) == RHI_Format_R8G8B8A8_Unorm && Renderer::GetRhiDevice()->GetPrimaryPhysicalDevice()->IsNvidia())
@@ -109,7 +109,6 @@ namespace Spartan
             (*format) = RHI_Format_B8R8G8A8_Unorm;
         }
 
-        vector<VkSurfaceFormatKHR> supported_formats = get_supported_surface_formats(surface);
         for (const VkSurfaceFormatKHR& supported_format : supported_formats)
         {
             if (supported_format.format == vulkan_format[(*format)])
@@ -166,9 +165,12 @@ namespace Spartan
             *height           = Math::Helper::Clamp(*height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
             VkExtent2D extent = { *width, *height };
 
+            // Get supported surface formats
+            vector<VkSurfaceFormatKHR> supported_formats = get_supported_surface_formats(surface);
+
             // Ensure that the surface supports the requested format, and if so, get the color space.
             VkColorSpaceKHR color_space = VK_COLOR_SPACE_MAX_ENUM_KHR;
-            SP_ASSERT_MSG(is_format_supported(surface, rhi_format, color_space), "The surface doesn't support the requested format");
+            SP_ASSERT_MSG(is_format_supported(surface, rhi_format, color_space, supported_formats), "The surface doesn't support the requested format");
 
             // Swap chain
             VkSwapchainKHR swap_chain;
@@ -203,10 +205,8 @@ namespace Spartan
                 create_info.clipped        = VK_TRUE;
                 create_info.oldSwapchain   = nullptr;
 
-                SP_ASSERT_MSG(
-                    vkCreateSwapchainKHR(rhi_context->device, &create_info, nullptr, &swap_chain) == VK_SUCCESS,
-                    "Failed to create swapchain"
-                );
+                VkResult result = vkCreateSwapchainKHR(rhi_context->device, &create_info, nullptr, &swap_chain);
+                SP_ASSERT_MSG(result == VK_SUCCESS, "Failed to create swapchain");
             }
 
             // Images
