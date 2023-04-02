@@ -482,7 +482,7 @@ namespace Spartan
             VkDevice device                    = nullptr;
 
             std::vector<VkValidationFeatureEnableEXT> validation_extensions = { };
-            std::vector<const char*> extensions_instance                    = { "VK_KHR_surface", "VK_KHR_win32_surface", "VK_EXT_swapchain_colorspace"};
+            std::vector<const char*> extensions_instance                    = { "VK_KHR_surface", "VK_KHR_win32_surface", "VK_EXT_swapchain_colorspace" };
             const std::vector<const char*> validation_layers                = { "VK_LAYER_KHRONOS_validation" };
             const std::vector<const char*> extensions_device                =
             {

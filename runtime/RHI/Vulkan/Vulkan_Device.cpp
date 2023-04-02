@@ -659,7 +659,8 @@ namespace Spartan
         present_info.pSwapchains        = reinterpret_cast<VkSwapchainKHR*>(&swapchain);
         present_info.pImageIndices      = image_index;
 
-        SP_ASSERT_MSG(vkQueuePresentKHR(static_cast<VkQueue>(m_queue_graphics), &present_info) == VK_SUCCESS, "Failed to present");
+        VkResult result = vkQueuePresentKHR(static_cast<VkQueue>(m_queue_graphics), &present_info);
+        SP_ASSERT_MSG(result == VK_SUCCESS, "Failed to present");
 
         // Update semaphore state
         for (uint32_t i = 0; i < semaphore_count; i++)

@@ -226,6 +226,8 @@ Editor::~Editor()
         ImGui::DestroyContext();
     }
 
+    IconProvider::Shutdown();
+
     Spartan::Engine::Shutdown();
 }
 
