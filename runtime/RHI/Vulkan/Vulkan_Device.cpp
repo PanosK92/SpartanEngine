@@ -659,8 +659,7 @@ namespace Spartan
         present_info.pSwapchains        = reinterpret_cast<VkSwapchainKHR*>(&swapchain);
         present_info.pImageIndices      = image_index;
 
-        VkResult result = vkQueuePresentKHR(static_cast<VkQueue>(m_queue_graphics), &present_info);
-        SP_ASSERT_MSG(result == VK_SUCCESS, "Failed to present");
+        SP_VK_ASSERT_MSG(vkQueuePresentKHR(static_cast<VkQueue>(m_queue_graphics), &present_info), "Failed to present");
 
         // Update semaphore state
         for (uint32_t i = 0; i < semaphore_count; i++)
@@ -699,7 +698,7 @@ namespace Spartan
 
         // The actual submit
         lock_guard<mutex> lock(m_mutex_queue);
-        SP_ASSERT(vkQueueSubmit(static_cast<VkQueue>(GetQueue(type)), 1, &submit_info, static_cast<VkFence>(vk_signal_fence)) == VK_SUCCESS);
+        SP_VK_ASSERT_MSG(vkQueueSubmit(static_cast<VkQueue>(GetQueue(type)), 1, &submit_info, static_cast<VkFence>(vk_signal_fence)), "Failed to submit");
 
         // Update semaphore states
         if (wait_semaphore)   wait_semaphore->SetCpuState(RHI_Sync_State::Idle);
