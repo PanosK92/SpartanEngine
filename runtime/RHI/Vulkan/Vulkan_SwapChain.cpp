@@ -127,7 +127,7 @@ namespace Spartan
         uint32_t* height,
         uint32_t buffer_count,
         RHI_Format* rhi_format,
-        array<RHI_Image_Layout, max_buffer_count> layouts,
+        array<RHI_Image_Layout, max_buffer_count>* layouts,
         uint32_t flags,
         void* sdl_window,
         void*& void_ptr_surface,
@@ -233,7 +233,8 @@ namespace Spartan
                             RHI_Image_Layout::Undefined,
                             RHI_Image_Layout::Color_Attachment_Optimal
                         );
-                        layouts[i] = RHI_Image_Layout::Color_Attachment_Optimal;
+
+                        (*layouts)[i] = RHI_Image_Layout::Color_Attachment_Optimal;
                     }
 
                     // End/flush
@@ -350,7 +351,7 @@ namespace Spartan
             &m_height,
             m_buffer_count,
             &m_format,
-            m_layouts,
+            &m_layouts,
             m_flags,
             m_sdl_window,
             m_surface,
@@ -365,9 +366,6 @@ namespace Spartan
 
     RHI_SwapChain::~RHI_SwapChain()
     {
-        // Wait until the GPU is idle
-        Renderer::GetRhiDevice()->QueueWaitAll();
-
         destroy
         (
             m_buffer_count,
@@ -418,7 +416,7 @@ namespace Spartan
             &m_height,
             m_buffer_count,
             &m_format,
-            m_layouts,
+            &m_layouts,
             m_flags,
             m_sdl_window,
             m_surface,
@@ -540,7 +538,7 @@ namespace Spartan
         if (new_format != m_format)
         {
             m_format = new_format;
-            Resize(m_width, m_height);
+            Resize(m_width, m_height, true);
             SP_LOG_INFO("HDR has been %s", enabled ? "enabled" : "disabled");
         }
     }

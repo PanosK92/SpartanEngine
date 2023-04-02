@@ -901,7 +901,7 @@ namespace Spartan
             {
                 // Update vertex buffer
                 RHI_Vertex_PosCol* buffer = static_cast<RHI_Vertex_PosCol*>(m_vertex_buffer_lines->Map());
-                std::copy(m_line_vertices.begin(), m_line_vertices.end(), buffer);
+                copy(m_line_vertices.begin(), m_line_vertices.end(), buffer);
                 m_vertex_buffer_lines->Unmap();
 
                 // Define pipeline state
