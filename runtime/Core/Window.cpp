@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "Window.h"
 #include "sdl/SDL.h"
+#include "sdl/SDL_syswm.h"
 #include "../Input/Input.h"
 #include "../Display/Display.h"
 //=============================
@@ -319,6 +320,14 @@ namespace Spartan
     void* Window::GetHandleSDL()
     {
         return m_window;
+    }
+
+    void* Window::GetHandleWindows()
+    {
+        SDL_SysWMinfo wmInfo;
+        SDL_VERSION(&wmInfo.version);
+        SDL_GetWindowWMInfo(m_window, &wmInfo);
+        return static_cast<void*>(wmInfo.info.win.window);
     }
 
     bool Window::WantsToClose()

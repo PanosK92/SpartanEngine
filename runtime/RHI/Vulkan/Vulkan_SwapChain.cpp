@@ -281,34 +281,34 @@ namespace Spartan
         array<std::shared_ptr<RHI_Semaphore>, max_buffer_count>& image_acquired_semaphore
     )
     {
-        RHI_Context* rhi_context = Renderer::GetRhiDevice()->GetRhiContext();
-
-        // Sync objects
         image_acquired_semaphore.fill(nullptr);
     
         // Image views
         {
-            for (void*& image_view : image_views)
+            for (void* image_view : image_views)
             {
                 if (image_view)
                 {
-                    vkDestroyImageView(rhi_context->device, static_cast<VkImageView>(image_view), nullptr);
+                    Renderer::AddToDeletionQueue(RHI_Resource_Type::texture_view, image_view);
                 }
             }
             image_views.fill(nullptr);
         }
 
+        // Wait until the GPU is idle
+        Renderer::GetRhiDevice()->QueueWaitAll();
+
         // Swap chain view
         if (swap_chain)
         {
-            vkDestroySwapchainKHR(rhi_context->device, static_cast<VkSwapchainKHR>(swap_chain), nullptr);
+            vkDestroySwapchainKHR(Renderer::GetRhiDevice()->GetRhiContext()->device, static_cast<VkSwapchainKHR>(swap_chain), nullptr);
             swap_chain = nullptr;
         }
     
         // Surface
         if (surface)
         {
-            vkDestroySurfaceKHR(rhi_context->instance, static_cast<VkSurfaceKHR>(surface), nullptr);
+            vkDestroySurfaceKHR(Renderer::GetRhiDevice()->GetRhiContext()->instance, static_cast<VkSurfaceKHR>(surface), nullptr);
             surface = nullptr;
         }
     }
@@ -336,13 +336,13 @@ namespace Spartan
         m_layouts.fill(RHI_Image_Layout::Undefined);
 
         // Copy parameters
-        m_format        = format;
-        m_buffer_count  = buffer_count;
-        m_width         = width;
-        m_height        = height;
-        m_sdl_window    = sdl_window;
-        m_flags         = flags;
-        m_name          = name;
+        m_format       = format;
+        m_buffer_count = buffer_count;
+        m_width        = width;
+        m_height       = height;
+        m_sdl_window   = sdl_window;
+        m_flags        = flags;
+        m_name         = name;
 
         create
         (
@@ -396,9 +396,6 @@ namespace Spartan
             if (m_width == width && m_height == height)
                 return false;
         }
-
-        // Wait until the GPU is idle
-        Renderer::GetRhiDevice()->QueueWaitAll();
 
         // Save new dimensions
         m_width  = width;
@@ -529,5 +526,22 @@ namespace Spartan
         );
 
         m_layouts[m_image_index] = layout;
+    }
+
+    void RHI_SwapChain::SetHdr(const bool enabled)
+    {
+        if (enabled)
+        {
+            SP_ASSERT_MSG(Display::GetHdr(), "This display doesn' support HDR");
+        }
+
+        RHI_Format new_format = enabled ? RHI_Format_R10G10B10A2_Unorm : RHI_Format_R8G8B8A8_Unorm;
+
+        if (new_format != m_format)
+        {
+            m_format = new_format;
+            Resize(m_width, m_height);
+            SP_LOG_INFO("HDR has been %s", enabled ? "enabled" : "disabled");
+        }
     }
 }

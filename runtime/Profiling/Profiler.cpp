@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_CommandList.h"
 #include "../RHI/RHI_Implementation.h"
 #include "../Core/ThreadPool.h"
+#include "../RHI/RHI_SwapChain.h"
 //====================================
 
 //= NAMESPACES =====
@@ -501,6 +502,7 @@ namespace Spartan
             "Output:\t\t%dx%d\n"
             "Render:\t\t%dx%d\n"
             "Viewport:\t%dx%d\n"
+            "HDR:\t\t%s\n"
             // API Calls
             "\n"
             "API calls\n"
@@ -548,6 +550,7 @@ namespace Spartan
             static_cast<int>(Renderer::GetResolutionOutput().x), static_cast<int>(Renderer::GetResolutionOutput().y),
             static_cast<int>(Renderer::GetResolutionRender().x), static_cast<int>(Renderer::GetResolutionRender().y),
             static_cast<int>(Renderer::GetViewport().width),     static_cast<int>(Renderer::GetViewport().height),
+            Renderer::GetSwapChain()->IsHdr() ? "Enabled" : "Disabled",
 
             // API Calls
             m_rhi_draw,

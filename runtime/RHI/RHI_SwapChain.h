@@ -51,6 +51,10 @@ namespace Spartan
         bool Resize(uint32_t width, uint32_t height, const bool force = false);
         void Present();
 
+        // HDR
+        void SetHdr(const bool enabled);
+        bool IsHdr() const { return m_format == RHI_Format_R10G10B10A2_Unorm; }
+
         // Properties
         uint32_t GetWidth()       const { return m_width; }
         uint32_t GetHeight()      const { return m_height; }
@@ -59,6 +63,7 @@ namespace Spartan
         uint32_t GetImageIndex()  const { return m_image_index; }
         bool PresentEnabled()     const { return m_present_enabled; }
         RHI_Format GetFormat()    const { return m_format; }
+
 
         // Back buffer layout
         RHI_Image_Layout GetLayout() const { return m_layouts[m_image_index]; }
@@ -72,14 +77,14 @@ namespace Spartan
     private:
         void AcquireNextImage();
 
-        bool m_windowed          = false;
-        bool m_present_enabled   = true;
-        uint32_t m_buffer_count  = 0;
-        uint32_t m_width         = 0;
-        uint32_t m_height        = 0;
-        uint32_t m_flags         = 0;
-        RHI_Format m_format      = RHI_Format_R8G8B8A8_Unorm;
-        uint32_t m_sync_index    = std::numeric_limits<uint32_t>::max();
+        bool m_windowed         = false;
+        bool m_present_enabled  = true;
+        uint32_t m_buffer_count = 0;
+        uint32_t m_width        = 0;
+        uint32_t m_height       = 0;
+        uint32_t m_flags        = 0;
+        RHI_Format m_format     = RHI_Format_R8G8B8A8_Unorm;
+        uint32_t m_sync_index   = std::numeric_limits<uint32_t>::max();
 
         // Misc
         std::array<RHI_Image_Layout, max_buffer_count> m_layouts;

@@ -141,4 +141,9 @@ namespace Spartan
     {
 
     }
+
+    void RHI_SwapChain::SetHdr(const bool enabled)
+    {
+        SP_LOG_ERROR("Not implemented.");
+    }
 }
