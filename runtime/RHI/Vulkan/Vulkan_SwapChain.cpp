@@ -41,6 +41,17 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
+    static VkColorSpaceKHR get_color_space(bool is_hdr)
+    {
+        // VK_COLOR_SPACE_HDR10_ST2084_EXT represents the HDR10 color space with the ST.2084 (PQ)electro - optical transfer function.
+        // This is the most common HDR format used for HDR TVs and monitors.
+
+        // VK_COLOR_SPACE_HDR10_HLG_EXT represents the HDR10 color space with the HLG(Hybrid Log - Gamma) electro - optical transfer function.
+        // This format is primarily used in broadcasting and streaming environments.
+
+        return is_hdr ? VK_COLOR_SPACE_HDR10_ST2084_EXT : VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+    }
+
     static VkSurfaceCapabilitiesKHR get_surface_capabilities(const VkSurfaceKHR surface)
     {
         VkSurfaceCapabilitiesKHR surface_capabilities;
@@ -101,7 +112,7 @@ namespace Spartan
 
     }
 
-    static bool is_format_supported(const VkSurfaceKHR surface, RHI_Format* format, VkColorSpaceKHR& color_space, const vector<VkSurfaceFormatKHR>& supported_formats)
+    static bool is_format_supported(const VkSurfaceKHR surface, RHI_Format* format, VkColorSpaceKHR color_space, const vector<VkSurfaceFormatKHR>& supported_formats)
     {
         // NV supports RHI_Format_B8R8G8A8_Unorm instead of RHI_Format_R8G8B8A8_Unorm.
         if ((*format) == RHI_Format_R8G8B8A8_Unorm && Renderer::GetRhiDevice()->GetPrimaryPhysicalDevice()->IsNvidia())
@@ -111,9 +122,8 @@ namespace Spartan
 
         for (const VkSurfaceFormatKHR& supported_format : supported_formats)
         {
-            if (supported_format.format == vulkan_format[(*format)])
+            if (supported_format.format == vulkan_format[(*format)] && supported_format.colorSpace == color_space)
             {
-                color_space = supported_format.colorSpace;
                 return true;
             }
         }
@@ -127,6 +137,7 @@ namespace Spartan
         uint32_t* height,
         uint32_t buffer_count,
         RHI_Format* rhi_format,
+        bool hdr,
         array<RHI_Image_Layout, max_buffer_count>* layouts,
         uint32_t flags,
         void* sdl_window,
@@ -168,8 +179,8 @@ namespace Spartan
             // Get supported surface formats
             vector<VkSurfaceFormatKHR> supported_formats = get_supported_surface_formats(surface);
 
-            // Ensure that the surface supports the requested format, and if so, get the color space.
-            VkColorSpaceKHR color_space = VK_COLOR_SPACE_MAX_ENUM_KHR;
+            // Ensure that the surface supports the requested format and color space
+            VkColorSpaceKHR color_space = get_color_space(hdr);
             SP_ASSERT_MSG(is_format_supported(surface, rhi_format, color_space, supported_formats), "The surface doesn't support the requested format");
 
             // Swap chain
@@ -351,6 +362,7 @@ namespace Spartan
             &m_height,
             m_buffer_count,
             &m_format,
+            IsHdr(),
             &m_layouts,
             m_flags,
             m_sdl_window,
@@ -416,6 +428,7 @@ namespace Spartan
             &m_height,
             m_buffer_count,
             &m_format,
+            IsHdr(),
             &m_layouts,
             m_flags,
             m_sdl_window,
