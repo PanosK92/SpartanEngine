@@ -216,8 +216,7 @@ namespace Spartan
                 create_info.clipped        = VK_TRUE;
                 create_info.oldSwapchain   = nullptr;
 
-                VkResult result = vkCreateSwapchainKHR(rhi_context->device, &create_info, nullptr, &swap_chain);
-                SP_ASSERT_MSG(result == VK_SUCCESS, "Failed to create swapchain");
+                SP_VK_ASSERT_MSG(vkCreateSwapchainKHR(rhi_context->device, &create_info, nullptr, &swap_chain), "Failed to create swapchain");
             }
 
             // Images
