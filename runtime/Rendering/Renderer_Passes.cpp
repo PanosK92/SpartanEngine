@@ -1013,8 +1013,8 @@ namespace Spartan
         // Blur
         const bool depth_aware   = true;
         const float radius       = 5.0f;
-        const float sigma        = 4.0f;
-        const float pixel_stride = 2.0f;
+        const float sigma        = 2.0f;
+        const float pixel_stride = 1.0;
         Pass_Blur_Gaussian(cmd_list, tex_ssao, depth_aware, radius, sigma, pixel_stride);
         Pass_Blur_Gaussian(cmd_list, tex_ssao_gi, depth_aware, radius, sigma, pixel_stride);
 
@@ -1066,9 +1066,10 @@ namespace Spartan
         for (uint32_t i = 1; i < tex_ssr->GetMipCount(); i++)
         {
             const bool depth_aware   = true;
+            const float radius       = 5.0f;
             const float sigma        = 2.0f;
             const float pixel_stride = 1.0;
-            Pass_Blur_Gaussian(cmd_list, tex_ssr, depth_aware, sigma, pixel_stride, i);
+            Pass_Blur_Gaussian(cmd_list, tex_ssr, depth_aware, radius, sigma, pixel_stride, i);
         }
 
         cmd_list->EndTimeblock();
