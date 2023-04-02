@@ -69,8 +69,8 @@ namespace Spartan
 
     void Engine::Shutdown()
     {
-        Renderer::Shutdown();
         World::Shutdown();
+        Renderer::Shutdown();
         Physics::Shutdown();
         ResourceCache::Clear();
         ThreadPool::Shutdown();

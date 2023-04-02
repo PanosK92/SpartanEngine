@@ -188,9 +188,6 @@ namespace Spartan
 
         Display::DetectDisplayModes();
 
-        // Enable/disable HDR based on display capabilities
-        SetOption(RendererOption::Hdr, Display::GetHdr() ? 1.0f : 0.0f);
-
         // Get window size
         uint32_t window_width  = Window::GetWidth();
         uint32_t window_height = Window::GetHeight();
@@ -209,6 +206,9 @@ namespace Spartan
                 RHI_Present_Immediate | RHI_Swap_Flip_Discard,
                 "renderer"
             );
+
+        // Adjust render option to reflect whether the swapchain is HDR or not
+        SetOption(RendererOption::Hdr, m_swap_chain->IsHdr());
 
         // Create command pool
         m_cmd_pool = m_rhi_device->AllocateCommandPool("renderer", m_swap_chain->GetObjectId());
@@ -237,6 +237,12 @@ namespace Spartan
     void Renderer::Shutdown()
     {
         SP_FIRE_EVENT(EventType::RendererOnShutdown);
+
+        // Deconstructor will add it to the deletion queue
+        m_environment_texture = nullptr;
+
+        // Delete all remaining RHI resources
+        ParseDeletionQueue();
 
         // Log to file as the renderer is no more
         Log::SetLogToFile(true);
@@ -616,21 +622,7 @@ namespace Spartan
 
     void Renderer::OnResourceSafe(RHI_CommandList* cmd_list)
     {
-        // Parse deletion queue
-        {
-            lock_guard<mutex> guard(m_mutex_deletion_queue);
-
-            if (!m_deletion_queue.empty())
-            {
-                uint32_t resource_count = static_cast<uint32_t>(m_deletion_queue.size());
-
-                m_rhi_device->QueueWaitAll();
-                m_rhi_device->ParseDeletionQueue(m_deletion_queue);
-                m_deletion_queue.clear();
-
-                SP_LOG_INFO("De-allocated %d RHI resource(s)", resource_count);
-            }
-        }
+        ParseDeletionQueue();
 
         // Acquire renderables
         if (m_add_new_entities)
@@ -725,6 +717,22 @@ namespace Spartan
             }
 
             m_textures_mip_generation.clear();
+        }
+    }
+
+    void Renderer::ParseDeletionQueue()
+    {
+        lock_guard<mutex> guard(m_mutex_deletion_queue);
+
+        if (!m_deletion_queue.empty())
+        {
+            uint32_t resource_count = static_cast<uint32_t>(m_deletion_queue.size());
+
+            m_rhi_device->QueueWaitAll();
+            m_rhi_device->ParseDeletionQueue(m_deletion_queue);
+            m_deletion_queue.clear();
+
+            SP_LOG_INFO("De-allocated %d RHI resource(s)", resource_count);
         }
     }
 

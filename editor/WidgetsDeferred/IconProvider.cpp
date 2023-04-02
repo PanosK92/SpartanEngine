@@ -82,6 +82,11 @@ void IconProvider::Initialize()
     });
 }
 
+void IconProvider::Shutdown()
+{
+    m_thumbnails.clear();
+}
+
 RHI_Texture* IconProvider::GetTextureByType(IconType type)
 {
     return LoadFromFile("", type).texture.get();
