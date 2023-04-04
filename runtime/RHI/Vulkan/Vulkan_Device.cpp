@@ -128,6 +128,11 @@ namespace Spartan
         return extensions_supported;
     }
 
+    static uint64_t get_allocation_id_from_resource(void* resource)
+    {
+        return reinterpret_cast<uint64_t>(resource);
+    }
+
     RHI_Device::RHI_Device(shared_ptr<RHI_Context> rhi_context)
     {
 #ifdef DEBUG
@@ -822,19 +827,14 @@ namespace Spartan
         Profiler::m_descriptor_set_capacity = m_descriptor_set_capacity;
     }
 
-    uint64_t get_allocation_id_from_resource(void* resource)
-    {
-        return reinterpret_cast<uint64_t>(resource);
-    }
-
-    void* RHI_Device::get_allocation_from_resource(void* resource)
+    void* RHI_Device::GetAllocationFromResource(void* resource)
     {
         return m_allocations.find(get_allocation_id_from_resource(resource))->second;
     }
 
-    void* RHI_Device::get_mapped_data_from_buffer(void* resource)
+    void* RHI_Device::GetMappedDataFromBuffer(void* resource)
     {
-        if (VmaAllocation allocation = static_cast<VmaAllocation>(get_allocation_from_resource(resource)))
+        if (VmaAllocation allocation = static_cast<VmaAllocation>(GetAllocationFromResource(resource)))
         {
             return allocation->GetMappedData();
         }
@@ -888,14 +888,14 @@ namespace Spartan
         // Create the buffer
         VmaAllocation allocation = nullptr;
         VmaAllocationInfo allocation_info;
-        SP_ASSERT_MSG(vmaCreateBuffer(
+        SP_VK_ASSERT_MSG(vmaCreateBuffer(
                 static_cast<VmaAllocator>(m_allocator),
                 &buffer_create_info,
                 &allocation_create_info,
                 reinterpret_cast<VkBuffer*>(&resource),
                 &allocation,
-                &allocation_info) == VK_SUCCESS,
-            "Failed to created buffer");
+                &allocation_info),
+        "Failed to created buffer");
 
         // If a pointer to the buffer data has been passed, map the buffer and copy over the data
         if (data_initial != nullptr)
@@ -908,9 +908,9 @@ namespace Spartan
             // it. Map/unmap operations don't do that automatically.
 
             void* mapped_data = nullptr;
-            SP_ASSERT_MSG(vmaMapMemory(static_cast<VmaAllocator>(m_allocator), allocation, &mapped_data) == VK_SUCCESS, "Failed to map allocation");
+            SP_VK_ASSERT_MSG(vmaMapMemory(static_cast<VmaAllocator>(m_allocator), allocation, &mapped_data), "Failed to map allocation");
             memcpy(mapped_data, data_initial, size);
-            SP_ASSERT_MSG(vmaFlushAllocation(static_cast<VmaAllocator>(m_allocator), allocation, 0, size) == VK_SUCCESS, "Failed to flush allocation");
+            SP_VK_ASSERT_MSG(vmaFlushAllocation(static_cast<VmaAllocator>(m_allocator), allocation, 0, size), "Failed to flush allocation");
             vmaUnmapMemory(static_cast<VmaAllocator>(m_allocator), allocation);
         }
 
@@ -921,12 +921,10 @@ namespace Spartan
 
     void RHI_Device::DestroyBuffer(void*& resource)
     {
-        if (!resource)
-            return;
+        SP_ASSERT_MSG(resource != nullptr, "Resource is null");
 
         lock_guard<mutex> lock(m_mutex_allocation);
-
-        if (VmaAllocation allocation = static_cast<VmaAllocation>(get_allocation_from_resource(resource)))
+        if (VmaAllocation allocation = static_cast<VmaAllocation>(GetAllocationFromResource(resource)))
         {
             vmaDestroyBuffer(static_cast<VmaAllocator>(m_allocator), static_cast<VkBuffer>(resource), allocation);
 
@@ -942,13 +940,13 @@ namespace Spartan
 
         // Create image
         VmaAllocation allocation;
-        SP_ASSERT_MSG(vmaCreateImage(
+        SP_VK_ASSERT_MSG(vmaCreateImage(
                     static_cast<VmaAllocator>(m_allocator),
                     static_cast<VkImageCreateInfo*>(vk_image_creat_info), &allocation_info,
                     reinterpret_cast<VkImage*>(&resource),
                     &allocation,
-                    nullptr) == VK_SUCCESS,
-            "Failed to allocate texture");
+                    nullptr),
+        "Failed to allocate texture");
 
         // Keep allocation reference
         lock_guard<mutex> lock(m_mutex_allocation);
@@ -960,8 +958,7 @@ namespace Spartan
         SP_ASSERT_MSG(resource != nullptr, "Resource is null");
 
         lock_guard<mutex> lock(m_mutex_allocation);
-
-        if (VmaAllocation allocation = static_cast<VmaAllocation>(get_allocation_from_resource(resource)))
+        if (VmaAllocation allocation = static_cast<VmaAllocation>(GetAllocationFromResource(resource)))
         {
             vmaDestroyImage(static_cast<VmaAllocator>(m_allocator), static_cast<VkImage>(resource), allocation);
 
@@ -972,7 +969,7 @@ namespace Spartan
 
     void RHI_Device::MapMemory(void* resource, void*& mapped_data)
     {
-        if (VmaAllocation allocation = static_cast<VmaAllocation>(get_allocation_from_resource(resource)))
+        if (VmaAllocation allocation = static_cast<VmaAllocation>(GetAllocationFromResource(resource)))
         {
             SP_ASSERT_MSG(vmaMapMemory(static_cast<VmaAllocator>(m_allocator), allocation, reinterpret_cast<void**>(&mapped_data)) == VK_SUCCESS, "Failed to map memory");
         }
@@ -982,7 +979,7 @@ namespace Spartan
     {
         SP_ASSERT_MSG(mapped_data, "Memory is already unmapped");
 
-        if (VmaAllocation allocation = static_cast<VmaAllocation>(get_allocation_from_resource(resource)))
+        if (VmaAllocation allocation = static_cast<VmaAllocation>(GetAllocationFromResource(resource)))
         {
             vmaUnmapMemory(static_cast<VmaAllocator>(m_allocator), static_cast<VmaAllocation>(allocation));
             mapped_data = nullptr;
@@ -991,7 +988,7 @@ namespace Spartan
 
     void RHI_Device::FlushAllocation(void* resource, uint64_t offset, uint64_t size)
     {
-        if (VmaAllocation allocation = static_cast<VmaAllocation>(get_allocation_from_resource(resource)))
+        if (VmaAllocation allocation = static_cast<VmaAllocation>(GetAllocationFromResource(resource)))
         {
             SP_ASSERT_MSG(vmaFlushAllocation(static_cast<VmaAllocator>(m_allocator), allocation, offset, size) == VK_SUCCESS, "Failed to flush");
         }

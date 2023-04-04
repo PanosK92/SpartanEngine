@@ -117,13 +117,13 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     float3 emissive = surface.emissive * surface.albedo;
     
      // Diffuse and specular
-    tex_uav[thread_id.xy]  += float4(saturate_16(light_diffuse * light.radiance + surface.gi + emissive), 1.0f);
-    tex_uav2[thread_id.xy] += float4(saturate_16(light_specular * light.radiance), 1.0f);
+    tex_uav[thread_id.xy]  += float4(saturate_11(light_diffuse * light.radiance + surface.gi + emissive), 1.0f);
+    tex_uav2[thread_id.xy] += float4(saturate_11(light_specular * light.radiance), 1.0f);
 
     // Volumetric
     if (light_is_volumetric() && is_volumetric_fog_enabled())
     {
         light_volumetric       += VolumetricLighting(surface, light);
-        tex_uav3[thread_id.xy] += float4(saturate_16(light_volumetric), 1.0f);
+        tex_uav3[thread_id.xy] += float4(saturate_11(light_volumetric), 1.0f);
     }
 }

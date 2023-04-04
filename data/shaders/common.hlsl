@@ -102,15 +102,15 @@ bool is_valid_uv(float2 value) { return (value.x >= 0.0f && value.x <= 1.0f) || 
 /*------------------------------------------------------------------------------
     SATURATE
 ------------------------------------------------------------------------------*/
-float  saturate_11(float x)  { return clamp(x, FLT_MIN, FLT_MAX_11); }
-float2 saturate_11(float2 x) { return clamp(x, FLT_MIN, FLT_MAX_11); }
-float3 saturate_11(float3 x) { return clamp(x, FLT_MIN, FLT_MAX_11); }
-float4 saturate_11(float4 x) { return clamp(x, FLT_MIN, FLT_MAX_11); }
+float  saturate_11(float x)  { return clamp(x, 0.0f, FLT_MAX_11); }
+float2 saturate_11(float2 x) { return clamp(x, 0.0f, FLT_MAX_11); }
+float3 saturate_11(float3 x) { return clamp(x, 0.0f, FLT_MAX_11); }
+float4 saturate_11(float4 x) { return clamp(x, 0.0f, FLT_MAX_11); }
 
-float  saturate_16(float x)  { return clamp(x, FLT_MIN, FLT_MAX_16); }
-float2 saturate_16(float2 x) { return clamp(x, FLT_MIN, FLT_MAX_16); }
-float3 saturate_16(float3 x) { return clamp(x, FLT_MIN, FLT_MAX_16); }
-float4 saturate_16(float4 x) { return clamp(x, FLT_MIN, FLT_MAX_16); }
+float  saturate_16(float x)  { return clamp(x, 0.0f, FLT_MAX_16); }
+float2 saturate_16(float2 x) { return clamp(x, 0.0f, FLT_MAX_16); }
+float3 saturate_16(float3 x) { return clamp(x, 0.0f, FLT_MAX_16); }
+float4 saturate_16(float4 x) { return clamp(x, 0.0f, FLT_MAX_16); }
 
 /*------------------------------------------------------------------------------
     PACKING/UNPACKING
