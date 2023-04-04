@@ -83,11 +83,9 @@ namespace Spartan
     extern bool m_ffx_fsr2_reset;
     
     // Resolution & Viewport
-    Math::Vector2 m_resolution_render          = Math::Vector2::Zero;
-    Math::Vector2 m_resolution_output          = Math::Vector2::Zero;
-    RHI_Viewport m_viewport                    = RHI_Viewport(0, 0, 0, 0);
-    Math::Vector2 m_resolution_output_previous = Math::Vector2::Zero;
-    RHI_Viewport m_viewport_previous           = RHI_Viewport(0, 0, 0, 0);
+    Math::Vector2 m_resolution_render = Math::Vector2::Zero;
+    Math::Vector2 m_resolution_output = Math::Vector2::Zero;
+    RHI_Viewport m_viewport           = RHI_Viewport(0, 0, 0, 0);
     
     // Environment texture
     shared_ptr<RHI_Texture> m_environment_texture;
@@ -383,15 +381,20 @@ namespace Spartan
 
             // These must match what Common_Buffer.hlsl is reading
             m_cb_frame_cpu.set_bit(GetOption<bool>(RendererOption::ScreenSpaceReflections), 1 << 0);
-            m_cb_frame_cpu.set_bit(GetOption<bool>(RendererOption::Ssao), 1 << 1);
-            m_cb_frame_cpu.set_bit(GetOption<bool>(RendererOption::VolumetricFog), 1 << 2);
-            m_cb_frame_cpu.set_bit(GetOption<bool>(RendererOption::ScreenSpaceShadows), 1 << 3);
-            m_cb_frame_cpu.set_bit(GetOption<bool>(RendererOption::Ssao_Gi), 1 << 4);
+            m_cb_frame_cpu.set_bit(GetOption<bool>(RendererOption::Ssao),                   1 << 1);
+            m_cb_frame_cpu.set_bit(GetOption<bool>(RendererOption::VolumetricFog),          1 << 2);
+            m_cb_frame_cpu.set_bit(GetOption<bool>(RendererOption::ScreenSpaceShadows),     1 << 3);
+            m_cb_frame_cpu.set_bit(GetOption<bool>(RendererOption::Ssao_Gi),                1 << 4);
         }
 
         Lines_PreMain();
         Pass_Main(m_cmd_current);
         Lines_PostMain();
+
+        if (Window::IsFullScreen())
+        {
+            Pass_CopyToBackbuffer();
+        }
 
         // Submit
         m_cmd_current->End();
@@ -409,11 +412,13 @@ namespace Spartan
 
     void Renderer::SetViewport(float width, float height)
     {
+        SP_ASSERT_MSG(width != 0,  "Width can't be zero");
+        SP_ASSERT_MSG(height != 0, "Width can't be zero");
+
         if (m_viewport.width != width || m_viewport.height != height)
         {
-            m_viewport.width  = width;
-            m_viewport.height = height;
-
+            m_viewport.width                = width;
+            m_viewport.height               = height;
             m_dirty_orthographic_projection = true;
         }
     }
@@ -605,23 +610,21 @@ namespace Spartan
 
     void Renderer::OnFullScreenToggled()
     {
-        const bool is_full_screen = Window::IsFullScreen();
+        static float width_previous  = 0;
+        static float height_previous = 0;
 
-        if (is_full_screen)
+        if (Window::IsFullScreen())
         {
-            m_viewport_previous          = m_viewport;
-            m_resolution_output_previous = m_resolution_output;
-            
+            width_previous  = m_viewport.width;
+            height_previous = m_viewport.height;
             SetViewport(static_cast<float>(Window::GetWidth()), static_cast<float>(Window::GetHeight()));
-            SetResolutionOutput(Window::GetWidth(), Window::GetHeight());
         }
         else
         {
-            SetViewport(m_viewport_previous.x, m_viewport_previous.y);
-            SetResolutionOutput(static_cast<uint32_t>(m_resolution_output_previous.x), static_cast<uint32_t>(m_resolution_output_previous.y));
+            SetViewport(width_previous, height_previous);
         }
 
-        Input::SetMouseCursorVisible(!is_full_screen);
+        Input::SetMouseCursorVisible(!Window::IsFullScreen());
     }
 
     void Renderer::OnResourceSafe(RHI_CommandList* cmd_list)

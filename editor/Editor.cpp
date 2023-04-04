@@ -235,14 +235,9 @@ void Editor::Tick()
 {
     while (!Spartan::Window::WantsToClose())
     {
-        // Engine - Tick
         Spartan::Engine::Tick();
 
-        if (Spartan::Window::IsFullScreen())
-        {
-            Spartan::Renderer::Pass_CopyToBackbuffer();
-        }
-        else
+        if (!Spartan::Window::IsFullScreen())
         {
             // ImGui - Begin
             ImGui_ImplSDL2_NewFrame();
@@ -271,7 +266,7 @@ void Editor::Tick()
         // Present
         Spartan::Renderer::Present();
 
-        // ImGui - child windows
+        // ImGui - Child windows
         if (!Spartan::Window::IsFullScreen() && ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
         {
             ImGui::UpdatePlatformWindows();
