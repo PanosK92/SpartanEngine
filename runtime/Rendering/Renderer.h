@@ -85,7 +85,6 @@ namespace Spartan
         static void RequestTextureMipGeneration(std::shared_ptr<RHI_Texture> texture);
         static uint64_t GetFrameNum();
         static RHI_Api_Type GetRhiApiType();
-        static bool IsRenderDocEnabled();
 
         //= RESOLUTION/SIZE =============================================================================
         // Viewport

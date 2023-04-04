@@ -53,7 +53,7 @@ namespace Spartan
         Renderer::GetRhiDevice()->CreateBuffer(m_rhi_resource, m_object_size_gpu, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, flags);
 
         // Get mapped data pointer
-        m_mapped_data = Renderer::GetRhiDevice()->get_mapped_data_from_buffer(m_rhi_resource);
+        m_mapped_data = Renderer::GetRhiDevice()->GetMappedDataFromBuffer(m_rhi_resource);
 
         // Set debug name
         vulkan_utility::debug::set_object_name(static_cast<VkBuffer>(m_rhi_resource), name);

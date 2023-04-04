@@ -702,7 +702,7 @@ namespace Spartan
         pso.render_target_color_textures[3] = tex_velocity;
         pso.clear_color[3]                  = pso.clear_color[0];
         pso.render_target_color_textures[4] = tex_fsr2_transparency;
-        pso.clear_color[4]                  = Color(0.0f, 0.0f, 0.0f, 0.0f);
+        pso.clear_color[4]                  = is_transparent_pass ? Color(0.0f, 0.0f, 0.0f, 0.0f) : rhi_color_dont_care;
         pso.render_target_depth_texture     = tex_depth;
         pso.clear_depth                     = (is_transparent_pass || depth_prepass) ? rhi_depth_load : 0.0f; // reverse-z
         pso.viewport                        = tex_albedo->GetViewport();
@@ -816,7 +816,6 @@ namespace Spartan
 
                 // Render
                 cmd_list->DrawIndexed(renderable->GetIndexCount(), renderable->GetIndexOffset(), renderable->GetVertexOffset());
-
                 Profiler::m_renderer_meshes_rendered++;
             }
 

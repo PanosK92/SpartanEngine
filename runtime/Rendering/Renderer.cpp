@@ -78,6 +78,8 @@ namespace Spartan
     extern shared_ptr<RHI_Texture> m_tex_gizmo_light_spot;
     
     // Misc
+    extern array<shared_ptr<RHI_Texture>, 26> m_render_targets;
+    extern array<shared_ptr<RHI_Shader>, 47> m_shaders;
     extern bool m_ffx_fsr2_reset;
     
     // Resolution & Viewport
@@ -238,7 +240,9 @@ namespace Spartan
     {
         SP_FIRE_EVENT(EventType::RendererOnShutdown);
 
-        // Deconstructor will add it to the deletion queue
+        // Deconstructor will add them it to the deletion queue
+        m_render_targets.fill(nullptr);
+        m_shaders.fill(nullptr);
         m_environment_texture = nullptr;
 
         // Delete all remaining RHI resources
@@ -968,11 +972,6 @@ namespace Spartan
         return m_rhi_context.get();
     }
 
-    bool Renderer::IsRenderDocEnabled()
-    {
-        return m_rhi_context->renderdoc;
-    }
-    
     void Renderer::RequestTextureMipGeneration(shared_ptr<RHI_Texture> texture)
     {
         SP_ASSERT(texture != nullptr);

@@ -88,8 +88,8 @@ namespace Spartan
         void ParseDeletionQueue(const std::unordered_map<RHI_Resource_Type, std::vector<void*>>& deletion_queue);
 
         // Vulkan memory allocator
-        void* get_allocation_from_resource(void* resource);
-        void* get_mapped_data_from_buffer(void* resource);
+        void* GetAllocationFromResource(void* resource);
+        void* GetMappedDataFromBuffer(void* resource);
         void CreateBuffer(void*& resource, const uint64_t size, uint32_t usage, uint32_t memory_property_flags, const void* data_initial = nullptr);
         void DestroyBuffer(void*& resource);
         void CreateTexture(void* vk_image_creat_info, void*& resource);

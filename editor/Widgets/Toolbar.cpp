@@ -95,7 +95,7 @@ void Toolbar::TickAlways()
     ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyle().Colors[ImGuiCol_Button]);
     if (ImGui_SP::image_button(0, nullptr, IconType::Button_RenderDoc, m_button_size, false))
     {
-        if (Spartan::Renderer::IsRenderDocEnabled())
+        if (Spartan::RHI_RenderDoc::IsEnabled())
         {
             Spartan::RHI_RenderDoc::FrameCapture();
         }

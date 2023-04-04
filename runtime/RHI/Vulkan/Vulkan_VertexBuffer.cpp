@@ -64,7 +64,7 @@ namespace Spartan
             Renderer::GetRhiDevice()->CreateBuffer(m_rhi_resource, m_object_size_gpu, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, flags);
 
             // Get mapped data pointer
-            m_mapped_data = Renderer::GetRhiDevice()->get_mapped_data_from_buffer(m_rhi_resource);
+            m_mapped_data = Renderer::GetRhiDevice()->GetMappedDataFromBuffer(m_rhi_resource);
         }
         else // The reason we use staging is because memory with VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, the buffer is not not mappable but it's fast, we want that.
         {
