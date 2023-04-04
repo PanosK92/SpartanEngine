@@ -194,7 +194,7 @@ namespace Spartan
         }
 
         // Register display modes
-        for (uint32_t display_mode_index = 0; display_mode_index < display_mode_count; display_mode_index++)
+        for (int display_mode_index = 0; display_mode_index < display_mode_count; display_mode_index++)
         {
             SDL_DisplayMode display_mode;
             if (SDL_GetDisplayMode(display_index, display_mode_index, &display_mode) == 0)

@@ -135,70 +135,73 @@ namespace Spartan
         {
             if (sdl_event.type == SDL_WINDOWEVENT)
             {
-                switch (sdl_event.window.event)
+                if (sdl_event.window.windowID == SDL_GetWindowID(m_window))
                 {
-                case SDL_WINDOWEVENT_SHOWN:
-                    m_shown = true;
-                    break;
-                case SDL_WINDOWEVENT_HIDDEN:
-                    m_shown = false;
-                    break;
-                case SDL_WINDOWEVENT_EXPOSED:
-                    //Window has been exposed and should be redrawn
-                    break;
-                case SDL_WINDOWEVENT_MOVED:
-                    //Window has been moved to data1, data2
-                    break;
-                case SDL_WINDOWEVENT_RESIZED:
-                    m_width  = static_cast<uint32_t>(sdl_event.window.data1);
-                    m_height = static_cast<uint32_t>(sdl_event.window.data2);
-                    break;
-                case SDL_WINDOWEVENT_SIZE_CHANGED:
-                    m_width  = static_cast<uint32_t>(sdl_event.window.data1);
-                    m_height = static_cast<uint32_t>(sdl_event.window.data2);
-                    break;
-                case SDL_WINDOWEVENT_MINIMIZED:
-                    m_minimised = true;
-                    m_maximised = false;
-                    break;
-                case SDL_WINDOWEVENT_MAXIMIZED:
-                    m_maximised = true;
-                    m_minimised = false;
-                    break;
-                case SDL_WINDOWEVENT_RESTORED:
-                    //SDL_Log("Window %d restored", event->window.windowID);
-                    break;
-                case SDL_WINDOWEVENT_ENTER:
-                    //Window has gained mouse focus
-                    break;
-                case SDL_WINDOWEVENT_LEAVE:
-                    //Window has lost mouse focus
-                    break;
-                case SDL_WINDOWEVENT_FOCUS_GAINED:
-                    //Window has gained keyboard focus
-                    break;
-                case SDL_WINDOWEVENT_FOCUS_LOST:
-                    //Window has lost keyboard focus
-                    break;
-                case SDL_WINDOWEVENT_CLOSE:
-                    m_close = true;
-                    break;
-                case SDL_WINDOWEVENT_TAKE_FOCUS:
-                    //Window is being offered a focus (should SetWindowInputFocus() on itself or a subwindow, or ignore)
-                    break;
-                case SDL_WINDOWEVENT_HIT_TEST:
-                    //Window had a hit test that wasn't SDL_HITTEST_NORMAL.
-                    break;
-                case SDL_WINDOWEVENT_ICCPROF_CHANGED:
-                    SP_LOG_INFO("The ICC profile of the window's display has changed");
-                    break;
-                case SDL_WINDOWEVENT_DISPLAY_CHANGED:
-                    Display::DetectDisplayModes();
-                    SP_LOG_INFO("Display has been changed, detected new display modes");
-                    break;
-                default:
-                    SP_LOG_ERROR("Unhandled window event");
-                    break;
+                    switch (sdl_event.window.event)
+                    {
+                    case SDL_WINDOWEVENT_SHOWN:
+                        m_shown = true;
+                        break;
+                    case SDL_WINDOWEVENT_HIDDEN:
+                        m_shown = false;
+                        break;
+                    case SDL_WINDOWEVENT_EXPOSED:
+                        //Window has been exposed and should be redrawn
+                        break;
+                    case SDL_WINDOWEVENT_MOVED:
+                        //Window has been moved to data1, data2
+                        break;
+                    case SDL_WINDOWEVENT_RESIZED:
+                        m_width = static_cast<uint32_t>(sdl_event.window.data1);
+                        m_height = static_cast<uint32_t>(sdl_event.window.data2);
+                        break;
+                    case SDL_WINDOWEVENT_SIZE_CHANGED:
+                        m_width = static_cast<uint32_t>(sdl_event.window.data1);
+                        m_height = static_cast<uint32_t>(sdl_event.window.data2);
+                        break;
+                    case SDL_WINDOWEVENT_MINIMIZED:
+                        m_minimised = true;
+                        m_maximised = false;
+                        break;
+                    case SDL_WINDOWEVENT_MAXIMIZED:
+                        m_maximised = true;
+                        m_minimised = false;
+                        break;
+                    case SDL_WINDOWEVENT_RESTORED:
+                        //SDL_Log("Window %d restored", event->window.windowID);
+                        break;
+                    case SDL_WINDOWEVENT_ENTER:
+                        //Window has gained mouse focus
+                        break;
+                    case SDL_WINDOWEVENT_LEAVE:
+                        //Window has lost mouse focus
+                        break;
+                    case SDL_WINDOWEVENT_FOCUS_GAINED:
+                        //Window has gained keyboard focus
+                        break;
+                    case SDL_WINDOWEVENT_FOCUS_LOST:
+                        //Window has lost keyboard focus
+                        break;
+                    case SDL_WINDOWEVENT_CLOSE:
+                        m_close = true;
+                        break;
+                    case SDL_WINDOWEVENT_TAKE_FOCUS:
+                        //Window is being offered a focus (should SetWindowInputFocus() on itself or a subwindow, or ignore)
+                        break;
+                    case SDL_WINDOWEVENT_HIT_TEST:
+                        //Window had a hit test that wasn't SDL_HITTEST_NORMAL.
+                        break;
+                    case SDL_WINDOWEVENT_ICCPROF_CHANGED:
+                        SP_LOG_INFO("The ICC profile of the window's display has changed");
+                        break;
+                    case SDL_WINDOWEVENT_DISPLAY_CHANGED:
+                        SP_LOG_INFO("Display has been changed, detecting new display modes");
+                        Display::DetectDisplayModes();
+                        break;
+                    default:
+                        SP_LOG_ERROR("Unhandled window event");
+                        break;
+                    }
                 }
             }
 
