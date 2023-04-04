@@ -412,8 +412,8 @@ namespace Spartan
 
     void Renderer::SetViewport(float width, float height)
     {
-        SP_ASSERT_MSG(width != 0,  "Width can't be zero");
-        SP_ASSERT_MSG(height != 0, "Width can't be zero");
+        SP_ASSERT_MSG(width  != 0, "Width can't be zero");
+        SP_ASSERT_MSG(height != 0, "Height can't be zero");
 
         if (m_viewport.width != width || m_viewport.height != height)
         {

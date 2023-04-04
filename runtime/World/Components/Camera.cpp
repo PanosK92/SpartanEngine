@@ -31,6 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Rendering/Renderer.h"
 #include "../../Display/Display.h"
 #include "../RHI/RHI_Vertex.h"
+#include "Window.h"
 //===================================
 
 //= NAMESPACES ===============
@@ -362,13 +363,23 @@ namespace Spartan
             if (m_is_controlled_by_keyboard_mouse && !m_fps_control_cursor_hidden)
             {
                 m_mouse_last_position = Input::GetMousePosition();
-                Input::SetMouseCursorVisible(false);
+
+                if (!Window::IsFullScreen()) // change the mouse state only in editor mode
+                {
+                    Input::SetMouseCursorVisible(false);
+                }
+
                 m_fps_control_cursor_hidden = true;
             }
             else if (!m_is_controlled_by_keyboard_mouse && m_fps_control_cursor_hidden)
             {
                 Input::SetMousePosition(m_mouse_last_position);
-                Input::SetMouseCursorVisible(true);
+
+                if (!Window::IsFullScreen()) // change the mouse state only in editor mode
+                {
+                    Input::SetMouseCursorVisible(true);
+                }
+
                 m_fps_control_cursor_hidden = false;
             }
         }
