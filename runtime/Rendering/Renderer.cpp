@@ -736,7 +736,7 @@ namespace Spartan
             m_rhi_device->ParseDeletionQueue(m_deletion_queue);
             m_deletion_queue.clear();
 
-            SP_LOG_INFO("De-allocated %d RHI resource(s)", resource_count);
+            SP_LOG_INFO("Released %d RHI resource(s)", resource_count);
         }
     }
 
