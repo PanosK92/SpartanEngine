@@ -105,6 +105,9 @@ namespace ImGui::RHI
         g_blend_state         = nullptr;
         g_shader_vertex       = nullptr;
         g_shader_pixel        = nullptr;
+        g_viewport_data.index_buffers.clear();
+        g_viewport_data.vertex_buffers.clear();
+        g_viewport_data.cb_gpu = nullptr;
     }
 
     inline bool Initialize()
@@ -192,7 +195,6 @@ namespace ImGui::RHI
 
     inline void Render(ImDrawData* draw_data, WindowData* window_data = nullptr, const bool clear = true)
     {
-        // Validate draw data
         SP_ASSERT(draw_data != nullptr);
 
         // Don't render when minimised
@@ -217,7 +219,7 @@ namespace ImGui::RHI
         // Begin timeblock
         const char* name = is_child_window ? "imgui_window_child" : "imgui_window_main";
         // don't profile child windows, the profiler also requires more work in order to not
-        // crash when the are brought back into the main viewport and their command pool is destroyed
+        // crash when they are brought back into the main viewport and their command pool is destroyed
         bool gpu_timing = !is_child_window;
         cmd_list->BeginTimeblock(name, true, gpu_timing);
 
@@ -330,9 +332,11 @@ namespace ImGui::RHI
             for (int i = 0; i < draw_data->CmdListsCount; i++)
             {
                 ImDrawList* cmd_list_imgui = draw_data->CmdLists[i];
+
                 for (int cmd_i = 0; cmd_i < cmd_list_imgui->CmdBuffer.Size; cmd_i++)
                 {
                     const ImDrawCmd* pcmd = &cmd_list_imgui->CmdBuffer[cmd_i];
+
                     if (pcmd->UserCallback != nullptr)
                     {
                         pcmd->UserCallback(cmd_list_imgui, pcmd);
@@ -352,24 +356,23 @@ namespace ImGui::RHI
                         resources->cb_cpu.options_texture_visualisation = 0;
                         if (RHI_Texture* texture = static_cast<RHI_Texture*>(pcmd->TextureId))
                         {
-                            // During engine initialization, some editor icons might still be loading on a different thread
-                            if (!texture->IsReadyForUse())
-                                continue;
+                            // During engine startup, some textures might be loading in different threads
+                            if (texture->IsReadyForUse())
+                            {
+                                cmd_list->SetTexture(RendererBindingsSrv::tex, texture);
 
-                            cmd_list->SetTexture(RendererBindingsSrv::tex, texture);
-
-                            // Update texture viewer parameters
-                            bool is_texture_visualised                      = TextureViewer::GetVisualisedTextureId() == texture->GetObjectId();
-                            resources->cb_cpu.options_texture_visualisation = is_texture_visualised ? TextureViewer::GetVisualisationFlags() : 0;
-                            resources->cb_cpu.mip_level                     = is_texture_visualised ? TextureViewer::GetMipLevel() : 0;
+                                // Update texture viewer parameters
+                                bool is_texture_visualised                      = TextureViewer::GetVisualisedTextureId() == texture->GetObjectId();
+                                resources->cb_cpu.options_texture_visualisation = is_texture_visualised ? TextureViewer::GetVisualisationFlags() : 0;
+                                resources->cb_cpu.mip_level                     = is_texture_visualised ? TextureViewer::GetMipLevel() : 0;
+                            }
                         }
 
-                        // Update and bind the uber constant buffer (will only happen if the data changes)
+                        // Update ImGui buffer
                         {
+                            SP_LOG_INFO("%f", resources->cb_cpu.transform.m13);
                             resources->cb_gpu->Update(&resources->cb_cpu);
-
-                            // Bind because the offset just changed
-                            cmd_list->SetConstantBuffer(RendererBindingsCb::imgui, RHI_Shader_Vertex | RHI_Shader_Pixel, resources->cb_gpu);
+                            cmd_list->SetConstantBuffer(RendererBindingsCb::imgui, RHI_Shader_Vertex | RHI_Shader_Pixel, resources->cb_gpu); // bind because the update call changed the offset
                         }
 
                         // Draw

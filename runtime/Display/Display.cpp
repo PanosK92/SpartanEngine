@@ -131,7 +131,7 @@ namespace Spartan
                 DXGI_OUTPUT_DESC1 desc;
                 if (SUCCEEDED(output6->GetDesc1(&desc)))
                 {
-                    *hdr = desc.ColorSpace == DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020 || desc.ColorSpace == DXGI_COLOR_SPACE_RGB_FULL_G10_NONE_P709;
+                    *hdr = desc.ColorSpace == DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020;
                     *luminance_min = desc.MinLuminance;
                     *luminance_max = desc.MaxLuminance;
                 }

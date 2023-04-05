@@ -60,7 +60,7 @@ namespace Spartan
             VkMemoryPropertyFlags flags  = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT; // mappable
 
             // Create
-            Renderer::GetRhiDevice()->CreateBuffer(m_rhi_resource, m_object_size_gpu, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, flags, nullptr);
+            Renderer::GetRhiDevice()->CreateBuffer(m_rhi_resource, m_object_size_gpu, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, flags);
 
             // Get mapped data pointer
             m_mapped_data = Renderer::GetRhiDevice()->GetMappedDataFromBuffer(m_rhi_resource);

@@ -145,14 +145,14 @@ namespace Spartan
         return xml->Save(GetResourceFilePathNative());
     }
 
-    void Material::SetTexture(const MaterialTexture texture_type, const shared_ptr<RHI_Texture> texture)
+    void Material::SetTexture(const MaterialTexture texture_type, RHI_Texture* texture)
     {
         uint32_t type_int = static_cast<uint32_t>(texture_type);
 
         if (texture)
         {
             // Cache the texture to ensure scene serialization/deserialization
-            m_textures[type_int] = ResourceCache::Cache(texture);
+            m_textures[type_int] = ResourceCache::Cache(texture->GetSharedPtr());
         }
         else
         {
@@ -179,12 +179,17 @@ namespace Spartan
         }
     }
 
-    void Material::SetTexture(const MaterialTexture type, const std::shared_ptr<RHI_Texture2D> texture)
+    void Material::SetTexture(const MaterialTexture texture_type, shared_ptr<RHI_Texture> texture)
+    {
+        SetTexture(texture_type, texture.get());
+    }
+
+    void Material::SetTexture(const MaterialTexture type, shared_ptr<RHI_Texture2D> texture)
     {
         SetTexture(type, static_pointer_cast<RHI_Texture>(texture));
     }
 
-    void Material::SetTexture(const MaterialTexture type, const std::shared_ptr<RHI_TextureCube> texture)
+    void Material::SetTexture(const MaterialTexture type, shared_ptr<RHI_TextureCube> texture)
     {
         SetTexture(type, static_pointer_cast<RHI_Texture>(texture));
     }

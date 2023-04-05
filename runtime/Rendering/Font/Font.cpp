@@ -51,7 +51,7 @@ namespace Spartan
         m_color           = color;
         
         SetSize(font_size);
-        Font::LoadFromFile(file_path);
+        LoadFromFile(file_path);
     }
 
     bool Font::SaveToFile(const string& file_path)

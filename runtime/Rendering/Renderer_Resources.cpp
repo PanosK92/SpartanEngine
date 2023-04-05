@@ -116,7 +116,7 @@ namespace Spartan
     array<shared_ptr<RHI_Texture>, 26> m_render_targets;
     array<shared_ptr<RHI_Shader>, 47> m_shaders;
     unique_ptr<Font> m_font;
-    unique_ptr<Grid> m_gizmo_grid;
+    unique_ptr<Grid> m_world_grid;
 
     // States
     bool m_brdf_specular_lut_rendered = false;
@@ -146,12 +146,12 @@ namespace Spartan
     {
         RHI_Comparison_Function reverse_z_aware_comp_func = RHI_Comparison_Function::GreaterEqual; // reverse-z
 
-        // arguments:                                                depth_test, depth_write, depth_function,                     stencil_test, stencil_write, stencil_function
-        m_depth_stencil_off_off = make_shared<RHI_DepthStencilState>(false,      false,       RHI_Comparison_Function::Never,     false,        false,         RHI_Comparison_Function::Never);  // no depth or stencil
-        m_depth_stencil_rw_off  = make_shared<RHI_DepthStencilState>(true,       true,        reverse_z_aware_comp_func,          false,        false,         RHI_Comparison_Function::Never);  // depth
-        m_depth_stencil_r_off   = make_shared<RHI_DepthStencilState>(true,       false,       reverse_z_aware_comp_func,          false,        false,         RHI_Comparison_Function::Never);  // depth
-        m_depth_stencil_off_r   = make_shared<RHI_DepthStencilState>(false,      false,       RHI_Comparison_Function::Never,     true,         false,         RHI_Comparison_Function::Equal);  // depth + stencil
-        m_depth_stencil_rw_w    = make_shared<RHI_DepthStencilState>(true,       true,        reverse_z_aware_comp_func,          false,        true,          RHI_Comparison_Function::Always); // depth + stencil
+        // arguments:                                                depth_test, depth_write, depth_function,                 stencil_test, stencil_write, stencil_function
+        m_depth_stencil_off_off = make_shared<RHI_DepthStencilState>(false,      false,       RHI_Comparison_Function::Never, false,        false,         RHI_Comparison_Function::Never);  // no depth or stencil
+        m_depth_stencil_rw_off  = make_shared<RHI_DepthStencilState>(true,       true,        reverse_z_aware_comp_func,      false,        false,         RHI_Comparison_Function::Never);  // depth
+        m_depth_stencil_r_off   = make_shared<RHI_DepthStencilState>(true,       false,       reverse_z_aware_comp_func,      false,        false,         RHI_Comparison_Function::Never);  // depth
+        m_depth_stencil_off_r   = make_shared<RHI_DepthStencilState>(false,      false,       RHI_Comparison_Function::Never, true,         false,         RHI_Comparison_Function::Equal);  // depth + stencil
+        m_depth_stencil_rw_w    = make_shared<RHI_DepthStencilState>(true,       true,        reverse_z_aware_comp_func,      false,        true,          RHI_Comparison_Function::Always); // depth + stencil
     }
 
     void Renderer::CreateRasterizerStates()
@@ -544,8 +544,7 @@ namespace Spartan
         // Buffer where all the lines are kept
         m_vertex_buffer_lines = make_shared<RHI_VertexBuffer>(true, "lines");
 
-        // World grid
-        m_gizmo_grid = make_unique<Grid>();
+        m_world_grid = make_unique<Grid>();
     }
 
     void Renderer::CreateTextures()

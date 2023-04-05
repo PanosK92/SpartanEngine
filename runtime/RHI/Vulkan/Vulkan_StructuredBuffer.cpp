@@ -61,11 +61,8 @@ namespace Spartan
 
     RHI_StructuredBuffer::~RHI_StructuredBuffer()
     {
-        // Wait in case it's still in use by the GPU
-        Renderer::GetRhiDevice()->QueueWaitAll();
-
-        // Destroy buffer
-        Renderer::GetRhiDevice()->DestroyBuffer(m_rhi_resource);
+        Renderer::AddToDeletionQueue(RHI_Resource_Type::buffer, m_rhi_resource);
+        m_rhi_resource = nullptr;
     }
 
     void RHI_StructuredBuffer::Update(void* data_cpu)
