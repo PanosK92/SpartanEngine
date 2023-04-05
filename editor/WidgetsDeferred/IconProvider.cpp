@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Resource/ResourceCache.h"
 #include "RHI/RHI_Texture2D.h"
 #include "Core/ThreadPool.h"
+#include "Event.h"
 //=================================
 
 //= NAMESPACES ==========
@@ -31,8 +32,13 @@ using namespace std;
 using namespace Spartan;
 //=======================
 
-vector<Thumbnail> IconProvider::m_thumbnails;
+static vector<Thumbnail> m_thumbnails;
 static Thumbnail g_no_thumbnail;
+
+static void destroy_rhi_resources()
+{
+    m_thumbnails.clear();
+}
 
 void IconProvider::Initialize()
 {
@@ -80,11 +86,9 @@ void IconProvider::Initialize()
         LoadFromFile(data_dir + "Icons\\font.png",                             IconType::Directory_File_Font);
         LoadFromFile(data_dir + "Icons\\texture.png",                          IconType::Directory_File_Texture);
     });
-}
 
-void IconProvider::Shutdown()
-{
-    m_thumbnails.clear();
+    // Subscribe to renderer event
+    SP_SUBSCRIBE_TO_EVENT(EventType::RendererOnShutdown, SP_EVENT_HANDLER_STATIC(destroy_rhi_resources));
 }
 
 RHI_Texture* IconProvider::GetTextureByType(IconType type)

@@ -93,7 +93,6 @@ class IconProvider
 {
 public:
     static void Initialize();
-    static void Shutdown();
 
     static Spartan::RHI_Texture* GetTextureByType(IconType type);
     static Spartan::RHI_Texture* GetTextureByFilePath(const std::string& file_path);
@@ -102,5 +101,4 @@ public:
 
 private:
     static const Thumbnail& GetThumbnailByType(IconType type);
-    static std::vector<Thumbnail> m_thumbnails;
 };

@@ -525,14 +525,15 @@ namespace Spartan
                 if (Material* material = entity->GetTransform()->GetDescendantByName("Interior_InteriorPlastic_0")->GetRenderable()->GetMaterial())
                 {
                     material->SetColor(Color::material_tire);
-                    material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.7f);
+                    material->SetTexture(MaterialTexture::Roughness, nullptr);
+                    material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.8f);
                     material->SetProperty(MaterialProperty::MetallnessMultiplier, 0.0f);
                 }
 
                 if (Material* material = entity->GetTransform()->GetDescendantByName("Interior_InteriorPlastic2_0")->GetRenderable()->GetMaterial())
                 {
                     material->SetColor(Color::material_tire);
-                    material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.7f);
+                    material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.8f);
                     material->SetProperty(MaterialProperty::MetallnessMultiplier, 0.0f);
                 }
 
@@ -571,7 +572,8 @@ namespace Spartan
                 if (Material* material = entity->GetTransform()->GetDescendantByName("FL_Wheel_TireMaterial_0")->GetRenderable()->GetMaterial())
                 {
                     material->SetColor(Color::material_tire);
-                    material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.5f);
+                    material->SetTexture(MaterialTexture::Roughness, nullptr);
+                    material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.8f);
                     material->SetProperty(MaterialProperty::MetallnessMultiplier, 0.0f);
                 }
 

@@ -92,6 +92,8 @@ namespace Spartan
         RHI_Format GetFormat()                             const { return m_format; }
         void SetFormat(const RHI_Format format)                  { m_format = format; }
 
+        std::shared_ptr<RHI_Texture> GetSharedPtr() { return shared_from_this(); }
+
         // Data
         uint32_t GetArrayLength()                          const { return m_array_length; }
         uint32_t GetMipCount()                             const { return m_mip_count; }

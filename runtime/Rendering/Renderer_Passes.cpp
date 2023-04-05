@@ -112,9 +112,9 @@ namespace Spartan
 
     // Standard vertex/index buffers
     extern shared_ptr<RHI_VertexBuffer> m_quad_vertex_buffer;
-    extern shared_ptr<RHI_IndexBuffer> m_quad_index_buffer;
+    extern shared_ptr<RHI_IndexBuffer>  m_quad_index_buffer;
     extern shared_ptr<RHI_VertexBuffer> m_sphere_vertex_buffer;
-    extern shared_ptr<RHI_IndexBuffer> m_sphere_index_buffer;
+    extern shared_ptr<RHI_IndexBuffer>  m_sphere_index_buffer;
     extern shared_ptr<RHI_VertexBuffer> m_vertex_buffer_lines;
 
     // Lines
@@ -133,7 +133,7 @@ namespace Spartan
     extern shared_ptr<RHI_SwapChain> m_swap_chain;
     extern unordered_map<RendererEntityType, vector<shared_ptr<Entity>>> m_renderables;
     extern unique_ptr<Font> m_font;
-    extern unique_ptr<Grid> m_gizmo_grid;
+    extern unique_ptr<Grid> m_world_grid;
     extern RHI_CommandList* m_cmd_current;
     extern bool m_brdf_specular_lut_rendered;
 
@@ -871,12 +871,12 @@ namespace Spartan
                 m_cb_uber_cpu.resolution_rt = m_resolution_render;
                 if (GetCamera())
                 {
-                    m_cb_uber_cpu.transform = m_gizmo_grid->ComputeWorldMatrix(GetCamera()->GetTransform()) * m_cb_frame_cpu.view_projection_unjittered;
+                    m_cb_uber_cpu.transform = m_world_grid->ComputeWorldMatrix(GetCamera()->GetTransform()) * m_cb_frame_cpu.view_projection_unjittered;
                 }
                 Update_Cb_Uber(cmd_list);
 
-                cmd_list->SetBufferVertex(m_gizmo_grid->GetVertexBuffer().get());
-                cmd_list->Draw(m_gizmo_grid->GetVertexCount());
+                cmd_list->SetBufferVertex(m_world_grid->GetVertexBuffer().get());
+                cmd_list->Draw(m_world_grid->GetVertexCount());
             }
             cmd_list->EndRenderPass();
 

@@ -66,7 +66,13 @@ namespace Spartan
     extern Cb_Material m_cb_material_cpu;
     extern shared_ptr<RHI_ConstantBuffer> m_cb_material_gpu;
     //=======================================================
-    
+
+    extern shared_ptr<RHI_VertexBuffer> m_quad_vertex_buffer;
+    extern shared_ptr<RHI_IndexBuffer>  m_quad_index_buffer;
+    extern shared_ptr<RHI_VertexBuffer> m_sphere_vertex_buffer;
+    extern shared_ptr<RHI_IndexBuffer>  m_sphere_index_buffer;
+    extern shared_ptr<RHI_VertexBuffer> m_vertex_buffer_lines;
+
     // Standard textures
     extern shared_ptr<RHI_Texture> m_tex_default_noise_normal;
     extern shared_ptr<RHI_Texture> m_tex_default_noise_blue;
@@ -81,7 +87,9 @@ namespace Spartan
     extern array<shared_ptr<RHI_Texture>, 26> m_render_targets;
     extern array<shared_ptr<RHI_Shader>, 47> m_shaders;
     extern bool m_ffx_fsr2_reset;
-    
+    extern unique_ptr<Font> m_font;
+    extern unique_ptr<Grid> m_world_grid;
+
     // Resolution & Viewport
     Math::Vector2 m_resolution_render = Math::Vector2::Zero;
     Math::Vector2 m_resolution_output = Math::Vector2::Zero;
@@ -125,7 +133,7 @@ namespace Spartan
     shared_ptr<RHI_SwapChain> m_swap_chain;
     
     // Entities
-    vector<shared_ptr<Entity>> m_renderables_world;
+    vector<shared_ptr<Entity>> m_renderables_pending;
     bool m_add_new_entities = false;
     unordered_map<RendererEntityType, vector<shared_ptr<Entity>>> m_renderables;
     shared_ptr<Camera> m_camera;
@@ -238,17 +246,38 @@ namespace Spartan
     {
         SP_FIRE_EVENT(EventType::RendererOnShutdown);
 
-        // Deconstructor will add them it to the deletion queue
+        // Manually invoke the deconstructors so that ParseDeletionQueue(), releases their RHI resources.
+        m_renderables_pending.clear();
+        m_renderables.clear();
         m_render_targets.fill(nullptr);
         m_shaders.fill(nullptr);
-        m_environment_texture = nullptr;
+        m_textures_mip_generation.clear();
+        m_world_grid.release();
+        m_font.release();
+        m_quad_vertex_buffer          = nullptr;
+        m_quad_index_buffer           = nullptr;
+        m_sphere_vertex_buffer        = nullptr;
+        m_sphere_index_buffer         = nullptr;
+        m_vertex_buffer_lines         = nullptr;
+        m_sb_spd_counter              = nullptr;
+        m_cb_frame_gpu                = nullptr;
+        m_cb_uber_gpu                 = nullptr;
+        m_cb_light_gpu                = nullptr;
+        m_cb_material_gpu             = nullptr;
+        m_environment_texture         = nullptr;
+        m_tex_default_noise_normal    = nullptr;
+        m_tex_default_noise_blue      = nullptr;
+        m_tex_default_white           = nullptr;
+        m_tex_default_black           = nullptr;
+        m_tex_default_transparent     = nullptr;
+        m_tex_gizmo_light_directional = nullptr;
+        m_tex_gizmo_light_point       = nullptr;
+        m_tex_gizmo_light_spot        = nullptr;
 
         // Delete all remaining RHI resources
         ParseDeletionQueue();
 
-        // Log to file as the renderer is no more
-        Log::SetLogToFile(true);
-
+        Log::SetLogToFile(true); // console doesn't render anymore, log to file
         RHI_RenderDoc::Shutdown();
         RHI_FSR2::Destroy();
     }
@@ -585,7 +614,7 @@ namespace Spartan
 
         lock_guard lock(m_mutex_entity_addition);
 
-        m_renderables_world.clear();
+        m_renderables_pending.clear();
 
         vector<shared_ptr<Entity>> entities = renderables.Get<vector<shared_ptr<Entity>>>();
         for (shared_ptr<Entity> entity : entities)
@@ -594,7 +623,7 @@ namespace Spartan
 
             if (entity->IsActiveRecursively())
             {
-                m_renderables_world.emplace_back(entity);
+                m_renderables_pending.emplace_back(entity);
             }
         }
 
@@ -638,7 +667,7 @@ namespace Spartan
             m_renderables.clear();
             m_camera = nullptr;
 
-            for (shared_ptr<Entity> entity : m_renderables_world)
+            for (shared_ptr<Entity> entity : m_renderables_pending)
             {
                 if (Renderable* renderable = entity->GetComponent<Renderable>())
                 {
@@ -678,7 +707,7 @@ namespace Spartan
             SortRenderables(&m_renderables[RendererEntityType::geometry_opaque]);
             SortRenderables(&m_renderables[RendererEntityType::geometry_transparent]);
 
-            m_renderables_world.clear();
+            m_renderables_pending.clear();
             m_add_new_entities = false;
         }
 
