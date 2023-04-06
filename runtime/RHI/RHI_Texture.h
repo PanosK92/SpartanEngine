@@ -115,8 +115,8 @@ namespace Spartan
         bool IsTransparent()                const { return m_flags & RHI_Texture_Transparent; }
 
         // Format type
-        bool IsDepthFormat()        const { return m_format == RHI_Format_D16_Unorm || m_format == RHI_Format_D32_Float || m_format == RHI_Format_D32_Float_S8X24_Uint; }
-        bool IsStencilFormat()      const { return m_format == RHI_Format_D32_Float_S8X24_Uint; }
+        bool IsDepthFormat()        const { return m_format == RHI_Format::D16_Unorm || m_format == RHI_Format::D32_Float || m_format == RHI_Format::D32_Float_S8X24_Uint; }
+        bool IsStencilFormat()      const { return m_format == RHI_Format::D32_Float_S8X24_Uint; }
         bool IsDepthStencilFormat() const { return IsDepthFormat() || IsStencilFormat(); }
         bool IsColorFormat()        const { return !IsDepthStencilFormat(); }
 
@@ -150,7 +150,7 @@ namespace Spartan
         uint32_t m_channel_count    = 0;
         uint32_t m_array_length     = 1;
         uint32_t m_mip_count        = 1;
-        RHI_Format m_format         = RHI_Format_Undefined;
+        RHI_Format m_format         = RHI_Format::Undefined;
         RHI_Viewport m_viewport;
         std::vector<RHI_Texture_Slice> m_data;
         std::array<RHI_Image_Layout, rhi_max_mip_count> m_layout;

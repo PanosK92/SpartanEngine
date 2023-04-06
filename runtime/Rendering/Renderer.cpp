@@ -209,7 +209,7 @@ namespace Spartan
                 Window::GetHandleSDL(),
                 window_width,
                 window_height,
-                Display::GetHdr() ? RHI_Format_R10G10B10A2_Unorm  : RHI_Format_R8G8B8A8_Unorm,
+                Display::GetHdr() ? RHI_Format::R10G10B10A2_Unorm  : RHI_Format::R8G8B8A8_Unorm,
                 m_swap_chain_buffer_count,
                 RHI_Present_Immediate | RHI_Swap_Flip_Discard,
                 "renderer"

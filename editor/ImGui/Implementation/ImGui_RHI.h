@@ -169,7 +169,7 @@ namespace ImGui::RHI
             memcpy(&mip[0], reinterpret_cast<std::byte*>(pixels), size);
 
             // Upload texture to graphics system
-            g_font_atlas = make_shared<RHI_Texture2D>(atlas_width, atlas_height, RHI_Format_R8G8B8A8_Unorm, RHI_Texture_Srv, texture_data, "imgui_font_atlas");
+            g_font_atlas = make_shared<RHI_Texture2D>(atlas_width, atlas_height, RHI_Format::R8G8B8A8_Unorm, RHI_Texture_Srv, texture_data, "imgui_font_atlas");
             io.Fonts->TexID = static_cast<ImTextureID>(g_font_atlas.get());
         }
 
@@ -370,7 +370,6 @@ namespace ImGui::RHI
 
                         // Update ImGui buffer
                         {
-                            SP_LOG_INFO("%f", resources->cb_cpu.transform.m13);
                             resources->cb_gpu->Update(&resources->cb_cpu);
                             cmd_list->SetConstantBuffer(RendererBindingsCb::imgui, RHI_Shader_Vertex | RHI_Shader_Pixel, resources->cb_gpu); // bind because the update call changed the offset
                         }
@@ -408,7 +407,7 @@ namespace ImGui::RHI
             platform_handle,
             static_cast<uint32_t>(viewport->Size.x),
             static_cast<uint32_t>(viewport->Size.y),
-            RHI_Format_R8G8B8A8_Unorm,
+            RHI_Format::R8G8B8A8_Unorm,
             2,
             RHI_Present_Immediate | RHI_Swap_Flip_Discard,
             (string("swapchain_child_") + string(to_string(viewport->ID))).c_str()

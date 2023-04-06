@@ -191,10 +191,10 @@ namespace Spartan
                 {
                     vertex_attribute_descs.push_back
                     ({
-                        desc.location,              // location
-                        desc.binding,               // binding
-                        vulkan_format[desc.format], // format
-                        desc.offset                 // offset
+                        desc.location,                                   // location
+                        desc.binding,                                    // binding
+                        vulkan_format[rhi_format_to_index(desc.format)], // format
+                        desc.offset                                      // offset
                         });
                 }
             }
@@ -322,7 +322,7 @@ namespace Spartan
                     // Swapchain buffer as a render target
                     if (m_state.render_target_swapchain)
                     {
-                        attachment_formats_color.push_back(vulkan_format[m_state.render_target_swapchain->GetFormat()]);
+                        attachment_formats_color.push_back(vulkan_format[rhi_format_to_index(m_state.render_target_swapchain->GetFormat())]);
                     }
                     else // Regular render target(s)
                     {
@@ -332,7 +332,7 @@ namespace Spartan
                             if (texture == nullptr)
                                 break;
 
-                            attachment_formats_color.push_back(vulkan_format[texture->GetFormat()]);
+                            attachment_formats_color.push_back(vulkan_format[rhi_format_to_index(texture->GetFormat())]);
                         }
                     }
 
@@ -340,7 +340,7 @@ namespace Spartan
                     if (m_state.render_target_depth_texture)
                     {
                         RHI_Texture* tex_depth    = m_state.render_target_depth_texture;
-                        attachment_format_depth   = vulkan_format[tex_depth->GetFormat()];
+                        attachment_format_depth   = vulkan_format[rhi_format_to_index(tex_depth->GetFormat())];
                         attachment_format_stencil = tex_depth->IsStencilFormat() ? attachment_format_depth : VK_FORMAT_UNDEFINED;
                     }
 

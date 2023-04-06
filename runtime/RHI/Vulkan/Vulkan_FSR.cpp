@@ -60,7 +60,7 @@ namespace Spartan
             static_cast<VkImageView>(texture->GetRhiSrv()),
             texture->GetWidth(),
             texture->GetHeight(),
-            vulkan_format[texture->GetFormat()],
+            vulkan_format[rhi_format_to_index(texture->GetFormat())],
             name,
             texture->GetLayout(0) == RHI_Image_Layout::Shader_Read_Only_Optimal ? FFX_RESOURCE_STATE_COMPUTE_READ : FFX_RESOURCE_STATE_UNORDERED_ACCESS
         );

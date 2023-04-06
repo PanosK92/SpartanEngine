@@ -48,13 +48,13 @@ namespace Spartan
         {
             vertex_attributes.emplace_back(D3D11_INPUT_ELEMENT_DESC
             { 
-                vertex_attribute.name.c_str(),          // SemanticName
-                0,                                      // SemanticIndex
-                d3d11_format[vertex_attribute.format],  // Format
-                0,                                      // InputSlot
-                vertex_attribute.offset,                // AlignedByteOffset
-                D3D11_INPUT_PER_VERTEX_DATA,            // InputSlotClass
-                0                                       // InstanceDataStepRate
+                vertex_attribute.name.c_str(),                              // SemanticName
+                0,                                                          // SemanticIndex
+                d3d11_format[rhi_format_to_index(vertex_attribute.format)], // Format
+                0,                                                          // InputSlot
+                vertex_attribute.offset,                                    // AlignedByteOffset
+                D3D11_INPUT_PER_VERTEX_DATA,                                // InputSlotClass
+                0                                                           // InstanceDataStepRate
             });
         }
 

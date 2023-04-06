@@ -188,41 +188,41 @@ namespace Spartan
         Decr
     };
 
-    enum RHI_Format : uint32_t // gets serialized so better be explicit
+    enum class RHI_Format : uint32_t // gets serialized so better be explicit
     {
         // R
-        RHI_Format_R8_Unorm,
-        RHI_Format_R8_Uint,
-        RHI_Format_R16_Unorm,
-        RHI_Format_R16_Uint,
-        RHI_Format_R16_Float,
-        RHI_Format_R32_Uint,
-        RHI_Format_R32_Float,
+        R8_Unorm,
+        R8_Uint,
+        R16_Unorm,
+        R16_Uint,
+        R16_Float,
+        R32_Uint,
+        R32_Float,
         // RG
-        RHI_Format_R8G8_Unorm,
-        RHI_Format_R16G16_Float,
-        RHI_Format_R32G32_Float,
+        R8G8_Unorm,
+        R16G16_Float,
+        R32G32_Float,
         // RGB
-        RHI_Format_R11G11B10_Float,
-        RHI_Format_R32G32B32_Float,
+        R11G11B10_Float,
+        R32G32B32_Float,
         // RGBA
-        RHI_Format_R8G8B8A8_Unorm,
-        RHI_Format_R10G10B10A2_Unorm,
-        RHI_Format_R16G16B16A16_Unorm,
-        RHI_Format_R16G16B16A16_Snorm,
-        RHI_Format_R16G16B16A16_Float,
-        RHI_Format_R32G32B32A32_Float,
+        R8G8B8A8_Unorm,
+        R10G10B10A2_Unorm,
+        R16G16B16A16_Unorm,
+        R16G16B16A16_Snorm,
+        R16G16B16A16_Float,
+        R32G32B32A32_Float,
         // DEPTH
-        RHI_Format_D16_Unorm,
-        RHI_Format_D32_Float,
-        RHI_Format_D32_Float_S8X24_Uint,
+        D16_Unorm,
+        D32_Float,
+        D32_Float_S8X24_Uint,
         // Compressed
-        RHI_Format_BC7,
-        RHI_Format_ASTC,
+        BC7,
+        ASTC,
         // Surface
-        RHI_Format_B8R8G8A8_Unorm,
-
-        RHI_Format_Undefined
+        B8R8G8A8_Unorm,
+        // End
+        Undefined
     };
 
     enum class RHI_Vertex_Type
@@ -357,22 +357,22 @@ namespace Spartan
     {
         switch (format)
         {
-            case RHI_Format_R8_Unorm:           return 8;
-            case RHI_Format_R8_Uint:            return 8;
-            case RHI_Format_R16_Unorm:          return 16;
-            case RHI_Format_R16_Uint:           return 16;
-            case RHI_Format_R16_Float:          return 16;
-            case RHI_Format_R32_Uint:           return 32;
-            case RHI_Format_R32_Float:          return 32;
-            case RHI_Format_R8G8_Unorm:         return 8;
-            case RHI_Format_R16G16_Float:       return 16;
-            case RHI_Format_R32G32_Float:       return 32;
-            case RHI_Format_R32G32B32_Float:    return 32;
-            case RHI_Format_R8G8B8A8_Unorm:     return 8;
-            case RHI_Format_R16G16B16A16_Unorm: return 16;
-            case RHI_Format_R16G16B16A16_Snorm: return 16;
-            case RHI_Format_R16G16B16A16_Float: return 16;
-            case RHI_Format_R32G32B32A32_Float: return 32;
+            case RHI_Format::R8_Unorm:           return 8;
+            case RHI_Format::R8_Uint:            return 8;
+            case RHI_Format::R16_Unorm:          return 16;
+            case RHI_Format::R16_Uint:           return 16;
+            case RHI_Format::R16_Float:          return 16;
+            case RHI_Format::R32_Uint:           return 32;
+            case RHI_Format::R32_Float:          return 32;
+            case RHI_Format::R8G8_Unorm:         return 8;
+            case RHI_Format::R16G16_Float:       return 16;
+            case RHI_Format::R32G32_Float:       return 32;
+            case RHI_Format::R32G32B32_Float:    return 32;
+            case RHI_Format::R8G8B8A8_Unorm:     return 8;
+            case RHI_Format::R16G16B16A16_Unorm: return 16;
+            case RHI_Format::R16G16B16A16_Snorm: return 16;
+            case RHI_Format::R16G16B16A16_Float: return 16;
+            case RHI_Format::R32G32B32A32_Float: return 32;
         }
 
         assert(false && "Unsupported format");
@@ -383,60 +383,65 @@ namespace Spartan
     {
         switch (format)
         {
-            case RHI_Format_R8_Unorm:           return 1;
-            case RHI_Format_R8_Uint:            return 1;
-            case RHI_Format_R16_Unorm:          return 1;
-            case RHI_Format_R16_Uint:           return 1;
-            case RHI_Format_R16_Float:          return 1;
-            case RHI_Format_R32_Uint:           return 1;
-            case RHI_Format_R32_Float:          return 1;
-            case RHI_Format_R8G8_Unorm:         return 2;
-            case RHI_Format_R16G16_Float:       return 2;
-            case RHI_Format_R32G32_Float:       return 2;
-            case RHI_Format_R11G11B10_Float:    return 3;
-            case RHI_Format_R32G32B32_Float:    return 3;
-            case RHI_Format_R8G8B8A8_Unorm:     return 4;
-            case RHI_Format_R10G10B10A2_Unorm:  return 4;
-            case RHI_Format_R16G16B16A16_Unorm: return 4;
-            case RHI_Format_R16G16B16A16_Snorm: return 4;
-            case RHI_Format_R16G16B16A16_Float: return 4;
-            case RHI_Format_R32G32B32A32_Float: return 4;
-            case RHI_Format_D32_Float:          return 1;
+            case RHI_Format::R8_Unorm:           return 1;
+            case RHI_Format::R8_Uint:            return 1;
+            case RHI_Format::R16_Unorm:          return 1;
+            case RHI_Format::R16_Uint:           return 1;
+            case RHI_Format::R16_Float:          return 1;
+            case RHI_Format::R32_Uint:           return 1;
+            case RHI_Format::R32_Float:          return 1;
+            case RHI_Format::R8G8_Unorm:         return 2;
+            case RHI_Format::R16G16_Float:       return 2;
+            case RHI_Format::R32G32_Float:       return 2;
+            case RHI_Format::R11G11B10_Float:    return 3;
+            case RHI_Format::R32G32B32_Float:    return 3;
+            case RHI_Format::R8G8B8A8_Unorm:     return 4;
+            case RHI_Format::R10G10B10A2_Unorm:  return 4;
+            case RHI_Format::R16G16B16A16_Unorm: return 4;
+            case RHI_Format::R16G16B16A16_Snorm: return 4;
+            case RHI_Format::R16G16B16A16_Float: return 4;
+            case RHI_Format::R32G32B32A32_Float: return 4;
+            case RHI_Format::D32_Float:          return 1;
         }
 
         assert(false && "Unsupported format");
         return 0;
     }
 
-    constexpr std::string_view rhi_format_to_string(const RHI_Format result)
+    constexpr const char* rhi_format_to_string(const RHI_Format result)
     {
         switch (result)
         {
-            case RHI_Format_R8_Unorm:             return "RHI_Format_R8_Unorm";
-            case RHI_Format_R8_Uint:              return "RHI_Format_R8_Uint";
-            case RHI_Format_R16_Unorm:            return "RHI_Format_R16_Unorm";
-            case RHI_Format_R16_Uint:             return "RHI_Format_R16_Uint";
-            case RHI_Format_R16_Float:            return "RHI_Format_R16_Float";
-            case RHI_Format_R32_Uint:             return "RHI_Format_R32_Uint";
-            case RHI_Format_R32_Float:            return "RHI_Format_R32_Float";
-            case RHI_Format_R8G8_Unorm:           return "RHI_Format_R8G8_Unorm";
-            case RHI_Format_R16G16_Float:         return "RHI_Format_R16G16_Float";
-            case RHI_Format_R32G32_Float:         return "RHI_Format_R32G32_Float";
-            case RHI_Format_R11G11B10_Float:      return "RHI_Format_R11G11B10_Float";
-            case RHI_Format_R32G32B32_Float:      return "RHI_Format_R32G32B32_Float";
-            case RHI_Format_R8G8B8A8_Unorm:       return "RHI_Format_R8G8B8A8_Unorm";
-            case RHI_Format_R10G10B10A2_Unorm:    return "RHI_Format_R10G10B10A2_Unorm";
-            case RHI_Format_R16G16B16A16_Unorm:   return "RHI_Format_R16G16B16A16_Unorm";
-            case RHI_Format_R16G16B16A16_Snorm:   return "RHI_Format_R16G16B16A16_Snorm";
-            case RHI_Format_R16G16B16A16_Float:   return "RHI_Format_R16G16B16A16_Float";
-            case RHI_Format_R32G32B32A32_Float:   return "RHI_Format_R32G32B32A32_Float";
-            case RHI_Format_D32_Float:            return "RHI_Format_D32_Float";
-            case RHI_Format_D32_Float_S8X24_Uint: return "RHI_Format_D32_Float_S8X24_Uint";
-            case RHI_Format_BC7:                  return "RHI_Format_BC7";
-            case RHI_Format_Undefined:            return "RHI_Format_Undefined";
+            case RHI_Format::R8_Unorm:             return "RHI_Format_R8_Unorm";
+            case RHI_Format::R8_Uint:              return "RHI_Format_R8_Uint";
+            case RHI_Format::R16_Unorm:            return "RHI_Format_R16_Unorm";
+            case RHI_Format::R16_Uint:             return "RHI_Format_R16_Uint";
+            case RHI_Format::R16_Float:            return "RHI_Format_R16_Float";
+            case RHI_Format::R32_Uint:             return "RHI_Format_R32_Uint";
+            case RHI_Format::R32_Float:            return "RHI_Format_R32_Float";
+            case RHI_Format::R8G8_Unorm:           return "RHI_Format_R8G8_Unorm";
+            case RHI_Format::R16G16_Float:         return "RHI_Format_R16G16_Float";
+            case RHI_Format::R32G32_Float:         return "RHI_Format_R32G32_Float";
+            case RHI_Format::R11G11B10_Float:      return "RHI_Format_R11G11B10_Float";
+            case RHI_Format::R32G32B32_Float:      return "RHI_Format_R32G32B32_Float";
+            case RHI_Format::R8G8B8A8_Unorm:       return "RHI_Format_R8G8B8A8_Unorm";
+            case RHI_Format::R10G10B10A2_Unorm:    return "RHI_Format_R10G10B10A2_Unorm";
+            case RHI_Format::R16G16B16A16_Unorm:   return "RHI_Format_R16G16B16A16_Unorm";
+            case RHI_Format::R16G16B16A16_Snorm:   return "RHI_Format_R16G16B16A16_Snorm";
+            case RHI_Format::R16G16B16A16_Float:   return "RHI_Format_R16G16B16A16_Float";
+            case RHI_Format::R32G32B32A32_Float:   return "RHI_Format_R32G32B32A32_Float";
+            case RHI_Format::D32_Float:            return "RHI_Format_D32_Float";
+            case RHI_Format::D32_Float_S8X24_Uint: return "RHI_Format_D32_Float_S8X24_Uint";
+            case RHI_Format::BC7:                  return "RHI_Format_BC7";
+            case RHI_Format::Undefined:            return "RHI_Format_Undefined";
         }
 
         assert(false && "Unsupported format");
         return "";
+    }
+
+    constexpr uint32_t rhi_format_to_index(const RHI_Format format)
+    {
+        return static_cast<uint32_t>(format);
     }
 }

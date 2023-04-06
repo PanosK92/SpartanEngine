@@ -126,50 +126,50 @@ namespace Spartan
         SP_ASSERT(bits_per_channel != 0);
         SP_ASSERT(channel_count != 0);
 
-        RHI_Format format = RHI_Format_Undefined;
+        RHI_Format format = RHI_Format::Undefined;
 
         if (channel_count == 1)
         {
             if (bits_per_channel == 8)
             {
-                format = RHI_Format_R8_Unorm;
+                format = RHI_Format::R8_Unorm;
             }
             else if (bits_per_channel == 16)
             {
-                format = RHI_Format_R16_Unorm;
+                format = RHI_Format::R16_Unorm;
             }
         }
         else if (channel_count == 2)
         {
             if (bits_per_channel == 8)
             {
-                format = RHI_Format_R8G8_Unorm;
+                format = RHI_Format::R8G8_Unorm;
             }
         }
         else if (channel_count == 3)
         {
             if (bits_per_channel == 32)
             {
-                format = RHI_Format_R32G32B32_Float;
+                format = RHI_Format::R32G32B32_Float;
             }
         }
         else if (channel_count == 4)
         {
             if (bits_per_channel == 8)
             {
-                format = RHI_Format_R8G8B8A8_Unorm;
+                format = RHI_Format::R8G8B8A8_Unorm;
             }
             else if (bits_per_channel == 16)
             {
-                format = RHI_Format_R16G16B16A16_Unorm;
+                format = RHI_Format::R16G16B16A16_Unorm;
             }
             else if (bits_per_channel == 32)
             {
-                format = RHI_Format_R32G32B32A32_Float;
+                format = RHI_Format::R32G32B32A32_Float;
             }
         }
 
-        SP_ASSERT(format != RHI_Format_Undefined);
+        SP_ASSERT(format != RHI_Format::Undefined);
 
         return format;
     }

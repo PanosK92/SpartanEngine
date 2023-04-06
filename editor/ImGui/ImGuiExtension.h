@@ -28,16 +28,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI/RHI_Texture.h"
 #include "RHI/RHI_Texture2D.h"
 #include "Rendering/Renderer.h"
+#include "Rendering/Mesh.h"
+#include "World/World.h"
+#include "World/Components/Camera.h"
 #include "Resource/ResourceCache.h"
 #include "Core/ThreadPool.h"
 #include "Input/Input.h"
-#include "World/World.h"
-#include "World/Components/Camera.h"
 #include "Display/Display.h"
-#include "../WidgetsDeferred/IconProvider.h"
 #include "Source/imgui_internal.h"
 #include "../Editor.h"
-#include "Rendering/Mesh.h"
+#include "../WidgetsDeferred/IconProvider.h"
 //==========================================
 
 class EditorHelper
@@ -418,7 +418,6 @@ namespace ImGui_SP
         {
             const float label_float_spacing = 15.0f;
             const float step                = 0.01f;
-            const std::string format        = "%.4f";
 
             // Label
             ImGui::TextUnformatted(axis.x == 1.0f ? "x" : axis.y == 1.0f ? "y" : "z");
@@ -428,7 +427,7 @@ namespace ImGui_SP
             // Float
             ImGui::PushItemWidth(128.0f);
             ImGui::PushID(static_cast<int>(ImGui::GetCursorPosX() + ImGui::GetCursorPosY()));
-            ImGui_SP::draw_float_wrap("##no_label", value, step, std::numeric_limits<float>::lowest(), std::numeric_limits<float>::max(), format.c_str());
+            ImGui_SP::draw_float_wrap("##no_label", value, step, std::numeric_limits<float>::lowest(), std::numeric_limits<float>::max(), "%.4f");
             ImGui::PopID();
             ImGui::PopItemWidth();
 
