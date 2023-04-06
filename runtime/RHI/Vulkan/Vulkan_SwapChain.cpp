@@ -55,17 +55,17 @@ namespace Spartan
     static VkSurfaceCapabilitiesKHR get_surface_capabilities(const VkSurfaceKHR surface)
     {
         VkSurfaceCapabilitiesKHR surface_capabilities;
-        vkGetPhysicalDeviceSurfaceCapabilitiesKHR(vulkan_utility::globals::rhi_context->device_physical, surface, &surface_capabilities);
+        vkGetPhysicalDeviceSurfaceCapabilitiesKHR(RHI_Context::device_physical, surface, &surface_capabilities);
         return surface_capabilities;
     }
 
     static vector<VkPresentModeKHR> get_supported_present_modes(const VkSurfaceKHR surface)
     {
         uint32_t present_mode_count;
-        vkGetPhysicalDeviceSurfacePresentModesKHR(vulkan_utility::globals::rhi_context->device_physical, surface, &present_mode_count, nullptr);
+        vkGetPhysicalDeviceSurfacePresentModesKHR(RHI_Context::device_physical, surface, &present_mode_count, nullptr);
 
         vector<VkPresentModeKHR> surface_present_modes(present_mode_count);
-        vkGetPhysicalDeviceSurfacePresentModesKHR(vulkan_utility::globals::rhi_context->device_physical, surface, &present_mode_count, &surface_present_modes[0]);
+        vkGetPhysicalDeviceSurfacePresentModesKHR(RHI_Context::device_physical, surface, &present_mode_count, &surface_present_modes[0]);
         return surface_present_modes;
     }
 
@@ -97,16 +97,12 @@ namespace Spartan
     static inline vector<VkSurfaceFormatKHR> get_supported_surface_formats(const VkSurfaceKHR surface)
     {
         uint32_t format_count;
-        SP_ASSERT_MSG(vkGetPhysicalDeviceSurfaceFormatsKHR(
-            vulkan_utility::globals::rhi_context->device_physical, surface, &format_count, nullptr) == VK_SUCCESS,
-            "Failed to get physical device surface format count"
-        );
+        SP_VK_ASSERT_MSG(vkGetPhysicalDeviceSurfaceFormatsKHR(RHI_Context::device_physical, surface, &format_count, nullptr),
+            "Failed to get physical device surface format count");
 
         vector<VkSurfaceFormatKHR> surface_formats(format_count);
-        SP_ASSERT_MSG(
-            vkGetPhysicalDeviceSurfaceFormatsKHR(vulkan_utility::globals::rhi_context->device_physical, surface, &format_count, &surface_formats[0]) == VK_SUCCESS,
-            "Failed to get physical device surfaces"
-        );
+        SP_VK_ASSERT_MSG(vkGetPhysicalDeviceSurfaceFormatsKHR(RHI_Context::device_physical, surface, &format_count, &surface_formats[0]),
+            "Failed to get physical device surfaces");
 
         return surface_formats;
 
@@ -149,16 +145,15 @@ namespace Spartan
     )
     {
         SP_ASSERT(sdl_window != nullptr);
-        RHI_Context* rhi_context = Renderer::GetRhiDevice()->GetRhiContext();
-        
+
         // Create surface
         VkSurfaceKHR surface = nullptr;
         {
-            SP_ASSERT_MSG(SDL_Vulkan_CreateSurface(static_cast<SDL_Window*>(sdl_window), rhi_context->instance, &surface), "Failed to created window surface");
+            SP_ASSERT_MSG(SDL_Vulkan_CreateSurface(static_cast<SDL_Window*>(sdl_window), RHI_Context::instance, &surface), "Failed to created window surface");
 
             VkBool32 present_support = false;
             SP_VK_ASSERT_MSG(vkGetPhysicalDeviceSurfaceSupportKHR(
-                    rhi_context->device_physical,
+                    RHI_Context::device_physical,
                     Renderer::GetRhiDevice()->GetQueueIndex(RHI_Queue_Type::Graphics),
                     surface,
                     &present_support),
@@ -215,7 +210,8 @@ namespace Spartan
             create_info.clipped        = VK_TRUE;
             create_info.oldSwapchain   = nullptr;
 
-            SP_VK_ASSERT_MSG(vkCreateSwapchainKHR(rhi_context->device, &create_info, nullptr, &swap_chain), "Failed to create swapchain");
+            SP_VK_ASSERT_MSG(vkCreateSwapchainKHR(RHI_Context::device, &create_info, nullptr, &swap_chain),
+                "Failed to create swapchain");
         }
 
         // Images
@@ -223,9 +219,9 @@ namespace Spartan
         vector<VkImage> images;
         {
             // Get
-            vkGetSwapchainImagesKHR(rhi_context->device, swap_chain, &image_count, nullptr);
+            vkGetSwapchainImagesKHR(RHI_Context::device, swap_chain, &image_count, nullptr);
             images.resize(image_count);
-            vkGetSwapchainImagesKHR(rhi_context->device, swap_chain, &image_count, images.data());
+            vkGetSwapchainImagesKHR(RHI_Context::device, swap_chain, &image_count, images.data());
 
             // Transition layouts to VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
             if (RHI_CommandList* cmd_list = Renderer::GetRhiDevice()->ImmediateBegin(RHI_Queue_Type::Graphics))
@@ -311,14 +307,14 @@ namespace Spartan
         // Swap chain view
         if (swap_chain)
         {
-            vkDestroySwapchainKHR(Renderer::GetRhiDevice()->GetRhiContext()->device, static_cast<VkSwapchainKHR>(swap_chain), nullptr);
+            vkDestroySwapchainKHR(RHI_Context::device, static_cast<VkSwapchainKHR>(swap_chain), nullptr);
             swap_chain = nullptr;
         }
     
         // Surface
         if (surface)
         {
-            vkDestroySurfaceKHR(Renderer::GetRhiDevice()->GetRhiContext()->instance, static_cast<VkSurfaceKHR>(surface), nullptr);
+            vkDestroySurfaceKHR(RHI_Context::instance, static_cast<VkSurfaceKHR>(surface), nullptr);
             surface = nullptr;
         }
     }
@@ -465,7 +461,7 @@ namespace Spartan
 
         // Acquire next image
         SP_VK_ASSERT_MSG(vkAcquireNextImageKHR(
-            Renderer::GetRhiDevice()->GetRhiContext()->device,         // device
+            RHI_Context::device,                                       // device
             static_cast<VkSwapchainKHR>(m_rhi_resource),               // swapchain
             numeric_limits<uint64_t>::max(),                           // timeout
             static_cast<VkSemaphore>(signal_semaphore->GetResource()), // signal semaphore

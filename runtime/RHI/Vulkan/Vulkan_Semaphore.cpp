@@ -63,7 +63,7 @@ namespace Spartan
     {
         m_is_timeline = is_timeline;
 
-        create_semaphore(Renderer::GetRhiDevice()->GetRhiContext()->device, m_is_timeline, m_resource);
+        create_semaphore(RHI_Context::device, m_is_timeline, m_resource);
 
         // Name
         if (name)
@@ -81,7 +81,7 @@ namespace Spartan
         // Wait in case it's still in use by the GPU
         Renderer::GetRhiDevice()->QueueWaitAll();
 
-        destroy_semaphore(Renderer::GetRhiDevice()->GetRhiContext()->device, m_resource);
+        destroy_semaphore(RHI_Context::device, m_resource);
     }
 
     void RHI_Semaphore::Reset()
@@ -89,8 +89,8 @@ namespace Spartan
         // Wait in case it's still in use by the GPU
         Renderer::GetRhiDevice()->QueueWaitAll();
 
-        destroy_semaphore(Renderer::GetRhiDevice()->GetRhiContext()->device, m_resource);
-        create_semaphore(Renderer::GetRhiDevice()->GetRhiContext()->device, m_is_timeline, m_resource);
+        destroy_semaphore(RHI_Context::device, m_resource);
+        create_semaphore(RHI_Context::device, m_is_timeline, m_resource);
         m_cpu_state = RHI_Sync_State::Idle;
     }
 
@@ -106,9 +106,7 @@ namespace Spartan
         semaphore_wait_info.pSemaphores         = reinterpret_cast<VkSemaphore*>(&m_resource);
         semaphore_wait_info.pValues             = &value;
 
-        SP_ASSERT_MSG(vkWaitSemaphores(Renderer::GetRhiDevice()->GetRhiContext()->device, &semaphore_wait_info, timeout) == VK_SUCCESS,
-            "Failed to wait for semaphore"
-        );
+        SP_VK_ASSERT_MSG(vkWaitSemaphores(RHI_Context::device, &semaphore_wait_info, timeout), "Failed to wait for semaphore");
     }
 
     void RHI_Semaphore::Signal(const uint64_t value)
@@ -121,9 +119,8 @@ namespace Spartan
         semaphore_signal_info.semaphore             = static_cast<VkSemaphore>(m_resource);
         semaphore_signal_info.value                 = value;
 
-        SP_ASSERT_MSG(vkSignalSemaphore(Renderer::GetRhiDevice()->GetRhiContext()->device, &semaphore_signal_info) == VK_SUCCESS,
-            "Failed to signal semaphore"
-        );
+        SP_VK_ASSERT_MSG(vkSignalSemaphore(RHI_Context::device, &semaphore_signal_info),
+            "Failed to signal semaphore");
     }
 
     uint64_t RHI_Semaphore::GetValue()
@@ -131,10 +128,9 @@ namespace Spartan
         SP_ASSERT(m_is_timeline);
 
         uint64_t value = 0;
-        SP_ASSERT_MSG(
-            vkGetSemaphoreCounterValue(Renderer::GetRhiDevice()->GetRhiContext()->device, static_cast<VkSemaphore>(m_resource), &value) == VK_SUCCESS,
-            "Failed to get semaphore counter value"
-        );
+        SP_VK_ASSERT_MSG(
+            vkGetSemaphoreCounterValue(RHI_Context::device, static_cast<VkSemaphore>(m_resource), &value),
+            "Failed to get semaphore counter value");
 
         return value;
     }

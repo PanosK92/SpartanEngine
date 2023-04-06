@@ -37,7 +37,7 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    RHI_Device::RHI_Device(shared_ptr<RHI_Context> rhi_context)
+    RHI_Device::RHI_Device()
     {
         // Detect device limits
         m_max_texture_1d_dimension   = D3D12_REQ_TEXTURE1D_U_DIMENSION;
@@ -45,10 +45,6 @@ namespace Spartan
         m_max_texture_3d_dimension   = D3D12_REQ_TEXTURE3D_U_V_OR_W_DIMENSION;
         m_max_texture_cube_dimension = D3D12_REQ_TEXTURECUBE_DIMENSION;
         m_max_texture_array_layers   = D3D12_REQ_TEXTURE2D_ARRAY_AXIS_DIMENSION;
-
-        m_rhi_context                       = rhi_context;
-        d3d12_utility::globals::rhi_context = rhi_context.get();
-        d3d12_utility::globals::rhi_device  = this;
 
         // Find a physical device
         {
@@ -58,7 +54,7 @@ namespace Spartan
 
         // Debug layer
         UINT dxgi_factory_flags = 0;
-        if (m_rhi_context->validation)
+        if (RHI_Context::validation)
         {
             Microsoft::WRL::ComPtr<ID3D12Debug1> debug_interface;
             if (d3d12_utility::error::check(D3D12GetDebugInterface(IID_PPV_ARGS(&debug_interface))))
@@ -102,7 +98,7 @@ namespace Spartan
         (
             adapter.Get(),
             minimum_feature_level,
-            IID_PPV_ARGS(&m_rhi_context->device)
+            IID_PPV_ARGS(&RHI_Context::device)
         )), "Failed to create device");
 
         // Create a graphics, compute and a copy queue.
@@ -111,13 +107,13 @@ namespace Spartan
             queue_desc.Flags                    = D3D12_COMMAND_QUEUE_FLAG_NONE;
 
             queue_desc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
-            d3d12_utility::error::check(m_rhi_context->device->CreateCommandQueue(&queue_desc, IID_PPV_ARGS(reinterpret_cast<ID3D12CommandQueue**>(&m_queue_graphics))));
+            d3d12_utility::error::check(RHI_Context::device->CreateCommandQueue(&queue_desc, IID_PPV_ARGS(reinterpret_cast<ID3D12CommandQueue**>(&m_queue_graphics))));
 
             queue_desc.Type = D3D12_COMMAND_LIST_TYPE_COMPUTE;
-            d3d12_utility::error::check(m_rhi_context->device->CreateCommandQueue(&queue_desc, IID_PPV_ARGS(reinterpret_cast<ID3D12CommandQueue**>(&m_queue_compute))));
+            d3d12_utility::error::check(RHI_Context::device->CreateCommandQueue(&queue_desc, IID_PPV_ARGS(reinterpret_cast<ID3D12CommandQueue**>(&m_queue_compute))));
 
             queue_desc.Type = D3D12_COMMAND_LIST_TYPE_COPY;
-            d3d12_utility::error::check(m_rhi_context->device->CreateCommandQueue(&queue_desc, IID_PPV_ARGS(reinterpret_cast<ID3D12CommandQueue**>(&m_queue_copy))));
+            d3d12_utility::error::check(RHI_Context::device->CreateCommandQueue(&queue_desc, IID_PPV_ARGS(reinterpret_cast<ID3D12CommandQueue**>(&m_queue_copy))));
         }
 
         // Create command list allocator
@@ -142,7 +138,6 @@ namespace Spartan
 
     RHI_Device::~RHI_Device()
     {
-        SP_ASSERT(m_rhi_context != nullptr);
         SP_ASSERT(m_queue_graphics != nullptr);
 
         // Command queues
@@ -155,8 +150,8 @@ namespace Spartan
 
         QueueWaitAll();
 
-        m_rhi_context->device->Release();
-        m_rhi_context->device = nullptr;
+       RHI_Context::device->Release();
+       RHI_Context::device = nullptr;
     }
 
     bool RHI_Device::DetectPhysicalDevices()

@@ -106,7 +106,7 @@ namespace Spartan
             desc.SwapEffect           = d3d11_utility::swap_chain::get_swap_effect(m_flags);
             desc.Flags                = d3d11_utility::swap_chain::get_flags(m_flags);
 
-            if (!d3d11_utility::error_check(dxgi_factory->CreateSwapChain(Renderer::GetRhiDevice()->GetRhiContext()->device, &desc, reinterpret_cast<IDXGISwapChain**>(&m_rhi_resource))))
+            if (!d3d11_utility::error_check(dxgi_factory->CreateSwapChain(RHI_Context::device, &desc, reinterpret_cast<IDXGISwapChain**>(&m_rhi_resource))))
             {
                 SP_LOG_ERROR("Failed to create swapchain");
                 return;
@@ -124,7 +124,7 @@ namespace Spartan
                 return;
             }
 
-            result = Renderer::GetRhiDevice()->GetRhiContext()->device->CreateRenderTargetView(backbuffer, nullptr, reinterpret_cast<ID3D11RenderTargetView**>(&m_rhi_srv));
+            result = RHI_Context::device->CreateRenderTargetView(backbuffer, nullptr, reinterpret_cast<ID3D11RenderTargetView**>(&m_rhi_srv));
             backbuffer->Release();
             if (FAILED(result))
             {
@@ -230,7 +230,7 @@ namespace Spartan
 
             // Create new one
             ID3D11RenderTargetView* render_target_view = static_cast<ID3D11RenderTargetView*>(m_rhi_srv);
-            result = Renderer::GetRhiDevice()->GetRhiContext()->device->CreateRenderTargetView(backbuffer, nullptr, &render_target_view);
+            result = RHI_Context::device->CreateRenderTargetView(backbuffer, nullptr, &render_target_view);
             backbuffer->Release();
             backbuffer = nullptr;
             if (FAILED(result))

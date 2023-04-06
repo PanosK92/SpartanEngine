@@ -139,7 +139,7 @@ namespace Spartan
 
     void Profiler::PreTick()
     {
-        if (!Renderer::GetRhiDevice()->GetRhiContext()->gpu_profiling)
+        if (!RHI_Context::gpu_profiling)
             return;
 
         if (m_query_disjoint == nullptr)
@@ -458,7 +458,7 @@ namespace Spartan
             m_gpu_memory_used      = RHI_CommandList::GetGpuMemoryUsed();
             m_gpu_memory_available = RHI_CommandList::GetGpuMemory();
             m_gpu_driver           = physical_device->GetDriverVersion();
-            m_gpu_api              = Renderer::GetRhiDevice()->GetRhiContext()->api_version_str;
+            m_gpu_api              = RHI_Context::api_version_str;
         }
     }
 
@@ -539,7 +539,7 @@ namespace Spartan
             // GPU
             m_gpu_name.c_str(),
             m_gpu_memory_used, m_gpu_memory_available,
-            Renderer::GetRhiDevice()->GetRhiContext()->api_type_str.c_str(), m_gpu_api.c_str(),
+            RHI_Context::api_type_str.c_str(), m_gpu_api.c_str(),
             Renderer::GetRhiDevice()->GetPrimaryPhysicalDevice()->GetVendorName().c_str(), m_gpu_driver.c_str(),
 
             // CPU

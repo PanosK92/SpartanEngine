@@ -123,7 +123,7 @@ namespace Spartan
             create_info.codeSize                 = static_cast<size_t>(shader_buffer->GetBufferSize());
             create_info.pCode                    = reinterpret_cast<const uint32_t*>(shader_buffer->GetBufferPointer());
 
-            SP_ASSERT_MSG(vkCreateShaderModule(Renderer::GetRhiDevice()->GetRhiContext()->device, &create_info, nullptr, &shader_module) == VK_SUCCESS, "Failed to create shader module");
+            SP_VK_ASSERT_MSG(vkCreateShaderModule(RHI_Context::device, &create_info, nullptr, &shader_module), "Failed to create shader module");
 
             // Name the shader module (useful for GPU-based validation)
             vulkan_utility::debug::set_object_name(shader_module, m_name.c_str());

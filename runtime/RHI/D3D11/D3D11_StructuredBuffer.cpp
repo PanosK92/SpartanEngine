@@ -49,8 +49,7 @@ namespace Spartan
             D3D11_SUBRESOURCE_DATA subresource_data = {};
             subresource_data.pSysMem                = data;
 
-            SP_ASSERT_MSG(
-                d3d11_utility::error_check(Renderer::GetRhiDevice()->GetRhiContext()->device->CreateBuffer(&desc, data ? &subresource_data : nullptr, reinterpret_cast<ID3D11Buffer**>(&m_rhi_resource))),
+            SP_ASSERT_MSG(d3d11_utility::error_check(RHI_Context::device->CreateBuffer(&desc, data ? &subresource_data : nullptr, reinterpret_cast<ID3D11Buffer**>(&m_rhi_resource))),
                 "Failed to create buffer");
         }
 
@@ -62,8 +61,7 @@ namespace Spartan
             desc.Buffer.FirstElement              = 0;
             desc.Buffer.NumElements               = element_count;
 
-            SP_ASSERT_MSG(
-                d3d11_utility::error_check(Renderer::GetRhiDevice()->GetRhiContext()->device->CreateUnorderedAccessView(static_cast<ID3D11Resource*>(m_rhi_resource), &desc, reinterpret_cast<ID3D11UnorderedAccessView**>(&m_rhi_uav))),
+            SP_ASSERT_MSG(d3d11_utility::error_check(RHI_Context::device->CreateUnorderedAccessView(static_cast<ID3D11Resource*>(m_rhi_resource), &desc, reinterpret_cast<ID3D11UnorderedAccessView**>(&m_rhi_uav))),
                 "Failed to create UAV");
         }
     }
@@ -78,7 +76,7 @@ namespace Spartan
     {
         // Map
         D3D11_MAPPED_SUBRESOURCE mapped_resource;
-        if (FAILED(Renderer::GetRhiDevice()->GetRhiContext()->device_context->Map(static_cast<ID3D11Buffer*>(m_rhi_resource), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped_resource)))
+        if (FAILED(RHI_Context::device_context->Map(static_cast<ID3D11Buffer*>(m_rhi_resource), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped_resource)))
         {
             SP_LOG_ERROR("Failed to map structured buffer");
         }
@@ -87,6 +85,6 @@ namespace Spartan
         memcpy(reinterpret_cast<std::byte*>(mapped_resource.pData), reinterpret_cast<std::byte*>(data_cpu), m_stride);
 
         // Unmap
-        Renderer::GetRhiDevice()->GetRhiContext()->device_context->Unmap(static_cast<ID3D11Buffer*>(m_rhi_resource), 0);
+        RHI_Context::device_context->Unmap(static_cast<ID3D11Buffer*>(m_rhi_resource), 0);
     }
 }

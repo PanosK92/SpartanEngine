@@ -36,7 +36,7 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    RHI_Device::RHI_Device(shared_ptr<RHI_Context> rhi_context)
+    RHI_Device::RHI_Device()
     {
         // Detect device limits
         m_max_texture_1d_dimension   = D3D11_REQ_TEXTURE1D_U_DIMENSION;
@@ -45,10 +45,7 @@ namespace Spartan
         m_max_texture_cube_dimension = D3D11_REQ_TEXTURECUBE_DIMENSION;
         m_max_texture_array_layers   = D3D11_REQ_TEXTURE2D_ARRAY_AXIS_DIMENSION;
 
-        m_rhi_context                       = rhi_context;
-        d3d11_utility::globals::rhi_context = m_rhi_context.get();
-        d3d11_utility::globals::rhi_device  = this;
-        const bool multithread_protection   = true;
+        const bool multithread_protection = true;
 
         // Find a physical device
         {
@@ -68,7 +65,7 @@ namespace Spartan
             // Flags
             UINT device_flags = 0;
             // Enable debug layer
-            if (m_rhi_context->validation)
+            if (RHI_Context::validation)
             {
                 device_flags |= D3D11_CREATE_DEVICE_DEBUG;
             }
@@ -80,7 +77,7 @@ namespace Spartan
             };
 
             // Save API version
-            m_rhi_context->api_version_str = "11.1";
+            RHI_Context::api_version_str = "11.1";
 
             IDXGIAdapter* adapter       = static_cast<IDXGIAdapter*>(physical_device->GetData());
             D3D_DRIVER_TYPE driver_type = adapter ? D3D_DRIVER_TYPE_UNKNOWN : D3D_DRIVER_TYPE_HARDWARE;
@@ -99,14 +96,14 @@ namespace Spartan
                     static_cast<UINT>(feature_levels.size()), // FeatureLevels
                     D3D11_SDK_VERSION,                        // SDKVersion
                     &temp_device,                             // ppDevice
-                    nullptr,                                  // pFeatureLevel
+                    nullptr,                                  // pFeatureLevel`
                     &temp_context                             // ppImmediateContext
                 );
 
                 if (SUCCEEDED(result))
                 {
                     // Query old device for newer interface.
-                    if (!d3d11_utility::error_check(temp_device->QueryInterface(__uuidof(ID3D11Device5), (void**)&m_rhi_context->device)))
+                    if (!d3d11_utility::error_check(temp_device->QueryInterface(__uuidof(ID3D11Device5), reinterpret_cast<void**>(&RHI_Context::device))))
                         return E_FAIL;
 
                     // Release old device.
@@ -114,7 +111,7 @@ namespace Spartan
                     temp_device = nullptr;
 
                     // Query old device context for newer interface.
-                    if (!d3d11_utility::error_check(temp_context->QueryInterface(__uuidof(ID3D11DeviceContext4), (void**)&m_rhi_context->device_context)))
+                    if (!d3d11_utility::error_check(temp_context->QueryInterface(__uuidof(ID3D11DeviceContext4), reinterpret_cast<void**>(&RHI_Context::device_context))))
                         return E_FAIL;
 
                     // Release old context.
@@ -151,7 +148,7 @@ namespace Spartan
         if (multithread_protection)
         {
             ID3D11Multithread* multithread = nullptr;
-            if (SUCCEEDED(m_rhi_context->device_context->QueryInterface(__uuidof(ID3D11Multithread), reinterpret_cast<void**>(&multithread))))
+            if (SUCCEEDED(RHI_Context::device_context->QueryInterface(__uuidof(ID3D11Multithread), reinterpret_cast<void**>(&multithread))))
             {        
                 multithread->SetMultithreadProtected(TRUE);
                 multithread->Release();
@@ -163,9 +160,9 @@ namespace Spartan
         }
 
         // Annotations
-        if (m_rhi_context->validation)
+        if (RHI_Context::validation)
         {
-            const auto result = m_rhi_context->device_context->QueryInterface(IID_PPV_ARGS(&m_rhi_context->annotation));
+            const auto result = RHI_Context::device_context->QueryInterface(IID_PPV_ARGS(&RHI_Context::annotation));
             if (FAILED(result))
             {
                 SP_LOG_ERROR("Failed to create ID3DUserDefinedAnnotation for event reporting, %s.", d3d11_utility::dxgi_error_to_string(result));
@@ -176,14 +173,14 @@ namespace Spartan
 
     RHI_Device::~RHI_Device()
     {
-        m_rhi_context->device_context->Release();
-        m_rhi_context->device_context = nullptr;
+        RHI_Context::device_context->Release();
+        RHI_Context::device_context = nullptr;
 
-        m_rhi_context->device->Release();
-        m_rhi_context->device = nullptr;
+        RHI_Context::device->Release();
+        RHI_Context::device = nullptr;
 
-        m_rhi_context->annotation->Release();
-        m_rhi_context->annotation = nullptr;
+        RHI_Context::annotation->Release();
+        RHI_Context::annotation = nullptr;
     }
 
     bool RHI_Device::DetectPhysicalDevices()
@@ -285,7 +282,7 @@ namespace Spartan
         desc.Query            = (type == RHI_Query_Type::Timestamp_Disjoint) ? D3D11_QUERY_TIMESTAMP_DISJOINT : D3D11_QUERY_TIMESTAMP;
         desc.MiscFlags        = 0;
 
-        SP_ASSERT(SUCCEEDED(m_rhi_context->device->CreateQuery(&desc, reinterpret_cast<ID3D11Query**>(query))));
+        SP_ASSERT(SUCCEEDED(RHI_Context::device->CreateQuery(&desc, reinterpret_cast<ID3D11Query**>(query))));
     }
 
     void RHI_Device::QueryRelease(void*& query)
@@ -300,14 +297,14 @@ namespace Spartan
     {
         SP_ASSERT(query != nullptr);
 
-        m_rhi_context->device_context->Begin(static_cast<ID3D11Query*>(query));
+        RHI_Context::device_context->Begin(static_cast<ID3D11Query*>(query));
     }
 
     void RHI_Device::QueryEnd(void* query)
     {
         SP_ASSERT(query != nullptr);
 
-        m_rhi_context->device_context->End(static_cast<ID3D11Query*>(query));
+        RHI_Context::device_context->End(static_cast<ID3D11Query*>(query));
     }
 
     void RHI_Device::QueryGetData(void* query)
@@ -316,7 +313,7 @@ namespace Spartan
 
         // Check whether timestamps were disjoint during the last frame
         D3D10_QUERY_DATA_TIMESTAMP_DISJOINT disjoint_data = {};
-        while (m_rhi_context->device_context->GetData(static_cast<ID3D11Query*>(query), &disjoint_data, sizeof(disjoint_data), 0) != S_OK);
+        while (RHI_Context::device_context->GetData(static_cast<ID3D11Query*>(query), &disjoint_data, sizeof(disjoint_data), 0) != S_OK);
 
         m_timestamp_period = static_cast<float>(disjoint_data.Frequency);
     }

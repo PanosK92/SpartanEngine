@@ -35,7 +35,7 @@ namespace Spartan
     class SP_CLASS RHI_Device : public Object
     {
     public:
-        RHI_Device(std::shared_ptr<RHI_Context> rhi_context);
+        RHI_Device();
         ~RHI_Device();
 
         // Physical device
@@ -77,10 +77,6 @@ namespace Spartan
         RHI_CommandPool* AllocateCommandPool(const char* name, const uint64_t swap_chain_id);
         void DestroyCommandPool(RHI_CommandPool* cmd_pool);
         const std::vector<std::shared_ptr<RHI_CommandPool>>& GetCommandPools() { return m_cmd_pools; }
-
-        // RHI
-        static RHI_Api_Type GetRhiApiType();
-        RHI_Context* GetRhiContext() const { return m_rhi_context.get(); }
 
         // Misc
         bool IsValidResolution(const uint32_t width, const uint32_t height);
@@ -147,7 +143,6 @@ namespace Spartan
         uint32_t m_physical_device_index          = 0;
         uint32_t m_enabled_graphics_shader_stages = 0;
         std::vector<PhysicalDevice> m_physical_devices;
-        std::shared_ptr<RHI_Context> m_rhi_context = nullptr;
 
         // Vulkan memory allocator
         void* m_allocator = nullptr;
