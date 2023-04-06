@@ -29,7 +29,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Resource/ResourceCache.h"
 #include "../Resource/Import/ImageImporter.h"
 #include "../Profiling/Profiler.h"
+SP_WARNINGS_OFF
 #include "compressonator.h"
+SP_WARNINGS_ON
 //===========================================
 
 //= NAMESPACES =====

@@ -42,7 +42,7 @@ namespace Spartan
         size_t min_alignment = Renderer::GetRhiDevice()->GetMinStorageBufferOffsetAllignment();
         if (min_alignment > 0)
         {
-            m_stride = static_cast<uint64_t>((m_stride + min_alignment - 1) & ~(min_alignment - 1));
+            m_stride = static_cast<uint32_t>(static_cast<uint64_t>((m_stride + min_alignment - 1) & ~(min_alignment - 1)));
         }
         m_object_size_gpu = m_stride * m_element_count;
 
