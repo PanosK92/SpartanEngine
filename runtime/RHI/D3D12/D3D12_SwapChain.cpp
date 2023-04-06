@@ -86,7 +86,7 @@ namespace Spartan
         swap_chain_desc.BufferCount           = m_buffer_count;
         swap_chain_desc.Width                 = m_width;
         swap_chain_desc.Height                = m_height;
-        swap_chain_desc.Format                = d3d12_format[format];
+        swap_chain_desc.Format                = d3d12_format[rhi_format_to_index(format)];
         swap_chain_desc.BufferUsage           = DXGI_USAGE_RENDER_TARGET_OUTPUT;
         swap_chain_desc.SwapEffect            = d3d12_utility::swap_chain::get_swap_effect(m_flags);
         swap_chain_desc.SampleDesc.Count      = 1;
