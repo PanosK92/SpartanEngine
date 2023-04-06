@@ -44,16 +44,16 @@ namespace Spartan
 
         switch (format)
         {
-            case RHI_Format::RHI_Format_R8G8B8A8_Unorm:
+            case RHI_Format::R8G8B8A8_Unorm:
                 format_amd = CMP_FORMAT::CMP_FORMAT_RGBA_8888;
                 break;
 
             // Compressed
-            case RHI_Format::RHI_Format_BC7:
+            case RHI_Format::BC7:
                 format_amd = CMP_FORMAT::CMP_FORMAT_BC7;
                 break;
 
-            case RHI_Format::RHI_Format_ASTC:
+            case RHI_Format::ASTC:
                 format_amd = CMP_FORMAT::CMP_FORMAT_ASTC;
                 break;
         }

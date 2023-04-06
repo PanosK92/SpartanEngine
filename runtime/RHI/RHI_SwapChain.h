@@ -53,7 +53,7 @@ namespace Spartan
 
         // HDR
         void SetHdr(const bool enabled);
-        bool IsHdr() const { return m_format == RHI_Format_R10G10B10A2_Unorm; }
+        bool IsHdr() const { return m_format == RHI_Format::R10G10B10A2_Unorm; }
 
         // Properties
         uint32_t GetWidth()       const { return m_width; }
@@ -83,7 +83,7 @@ namespace Spartan
         uint32_t m_width        = 0;
         uint32_t m_height       = 0;
         uint32_t m_flags        = 0;
-        RHI_Format m_format     = RHI_Format_R8G8B8A8_Unorm;
+        RHI_Format m_format     = RHI_Format::R8G8B8A8_Unorm;
         uint32_t m_sync_index   = std::numeric_limits<uint32_t>::max();
 
         // Misc

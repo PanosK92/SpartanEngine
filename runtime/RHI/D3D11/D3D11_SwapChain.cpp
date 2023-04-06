@@ -97,7 +97,7 @@ namespace Spartan
             desc.BufferCount          = static_cast<UINT>(buffer_count);
             desc.BufferDesc.Width     = static_cast<UINT>(width);
             desc.BufferDesc.Height    = static_cast<UINT>(height);
-            desc.BufferDesc.Format    = d3d11_format[format];
+            desc.BufferDesc.Format    = d3d11_format[rhi_format_to_index(format)];
             desc.BufferUsage          = DXGI_USAGE_RENDER_TARGET_OUTPUT;
             desc.OutputWindow         = hwnd;
             desc.SampleDesc.Count     = 1;
@@ -184,7 +184,7 @@ namespace Spartan
             DXGI_MODE_DESC dxgi_mode_desc   = {};
             dxgi_mode_desc.Width            = static_cast<UINT>(width);
             dxgi_mode_desc.Height           = static_cast<UINT>(height);
-            dxgi_mode_desc.Format           = d3d11_format[m_format];
+            dxgi_mode_desc.Format           = d3d11_format[rhi_format_to_index(m_format)];
             dxgi_mode_desc.RefreshRate      = DXGI_RATIONAL{ static_cast<UINT>(Display::GetRefreshRate()), 1 };
             dxgi_mode_desc.Scaling          = DXGI_MODE_SCALING_UNSPECIFIED;
             dxgi_mode_desc.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
@@ -209,7 +209,7 @@ namespace Spartan
             }
 
             const UINT d3d11_flags = d3d11_utility::swap_chain::get_flags(d3d11_utility::swap_chain::validate_flags(m_flags));
-            auto result = swap_chain->ResizeBuffers(m_buffer_count, static_cast<UINT>(width), static_cast<UINT>(height), d3d11_format[m_format], d3d11_flags);
+            auto result = swap_chain->ResizeBuffers(m_buffer_count, static_cast<UINT>(width), static_cast<UINT>(height), d3d11_format[rhi_format_to_index(m_format)], d3d11_flags);
             if (FAILED(result))
             {
                 SP_LOG_ERROR("Failed to resize swapchain buffers, %s.", d3d11_utility::dxgi_error_to_string(result));

@@ -412,7 +412,7 @@ namespace Spartan::vulkan_utility
                     type = VK_IMAGE_VIEW_TYPE_CUBE;
                 }
 
-                create(image, image_view, type, vulkan_format[texture->GetFormat()], get_aspect_mask(texture, only_depth, only_stencil), array_index, array_length, mip_index, mip_count);
+                create(image, image_view, type, vulkan_format[rhi_format_to_index(texture->GetFormat())], get_aspect_mask(texture, only_depth, only_stencil), array_index, array_length, mip_index, mip_count);
             }
         }
     }

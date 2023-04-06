@@ -461,8 +461,8 @@ namespace Spartan
             m_shadow_map.texture_color.reset();
         }
 
-        RHI_Format format_depth = RHI_Format_D32_Float;
-        RHI_Format format_color = RHI_Format_R8G8B8A8_Unorm;
+        RHI_Format format_depth = RHI_Format::D32_Float;
+        RHI_Format format_color = RHI_Format::R8G8B8A8_Unorm;
 
         if (GetLightType() == LightType::Directional)
         {

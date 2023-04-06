@@ -50,38 +50,38 @@ namespace Spartan
 
     static DXGI_FORMAT get_depth_format(RHI_Format format)
     {
-        if (format == RHI_Format_D32_Float_S8X24_Uint)
+        if (format == RHI_Format::D32_Float_S8X24_Uint)
             return DXGI_FORMAT_R32G8X24_TYPELESS;
 
-        if (format == RHI_Format_D32_Float)
+        if (format == RHI_Format::D32_Float)
             return DXGI_FORMAT_R32_TYPELESS;
 
-        return d3d11_format[format];
+        return d3d11_format[rhi_format_to_index(format)];
     }
 
     static DXGI_FORMAT get_depth_format_dsv(RHI_Format format)
     {
-        if (format == RHI_Format_D32_Float_S8X24_Uint)
+        if (format == RHI_Format::D32_Float_S8X24_Uint)
             return DXGI_FORMAT_D32_FLOAT_S8X24_UINT;
 
-        if (format == RHI_Format_D32_Float)
+        if (format == RHI_Format::D32_Float)
             return DXGI_FORMAT_D32_FLOAT;
 
-        return d3d11_format[format];
+        return d3d11_format[rhi_format_to_index(format)];
     }
 
     static DXGI_FORMAT get_depth_format_srv(RHI_Format format)
     {
-        if (format == RHI_Format_D32_Float_S8X24_Uint)
+        if (format == RHI_Format::D32_Float_S8X24_Uint)
         {
             return DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS;
         }
-        else if (format == RHI_Format_D32_Float)
+        else if (format == RHI_Format::D32_Float)
         {
             return DXGI_FORMAT_R32_FLOAT;
         }
 
-        return d3d11_format[format];
+        return d3d11_format[rhi_format_to_index(format)];
     }
 
     static bool create_texture(

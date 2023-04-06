@@ -114,15 +114,15 @@ namespace Spartan
 
     static bool is_format_supported(const VkSurfaceKHR surface, RHI_Format* format, VkColorSpaceKHR color_space, const vector<VkSurfaceFormatKHR>& supported_formats)
     {
-        // NV supports RHI_Format_B8R8G8A8_Unorm instead of RHI_Format_R8G8B8A8_Unorm.
-        if ((*format) == RHI_Format_R8G8B8A8_Unorm && Renderer::GetRhiDevice()->GetPrimaryPhysicalDevice()->IsNvidia())
+        // NV supports RHI_Format::B8R8G8A8_Unorm instead of RHI_Format::R8G8B8A8_Unorm.
+        if ((*format) == RHI_Format::R8G8B8A8_Unorm && Renderer::GetRhiDevice()->GetPrimaryPhysicalDevice()->IsNvidia())
         {
-            (*format) = RHI_Format_B8R8G8A8_Unorm;
+            (*format) = RHI_Format::B8R8G8A8_Unorm;
         }
 
         for (const VkSurfaceFormatKHR& supported_format : supported_formats)
         {
-            if (supported_format.format == vulkan_format[(*format)] && supported_format.colorSpace == color_space)
+            if (supported_format.format == vulkan_format[rhi_format_to_index(*format)] && supported_format.colorSpace == color_space)
             {
                 return true;
             }
@@ -189,7 +189,7 @@ namespace Spartan
             create_info.sType                    = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
             create_info.surface                  = surface;
             create_info.minImageCount            = buffer_count;
-            create_info.imageFormat              = vulkan_format[*rhi_format];
+            create_info.imageFormat              = vulkan_format[rhi_format_to_index(*rhi_format)];
             create_info.imageColorSpace          = color_space;
             create_info.imageExtent              = extent;
             create_info.imageArrayLayers         = 1;
@@ -265,7 +265,7 @@ namespace Spartan
                     static_cast<void*>(images[i]),
                     backbuffer_texture_views[i],
                     VK_IMAGE_VIEW_TYPE_2D,
-                    vulkan_format[*rhi_format],
+                    vulkan_format[rhi_format_to_index(*rhi_format)],
                     VK_IMAGE_ASPECT_COLOR_BIT,
                     0, 1, 0, 1
                 );
@@ -542,7 +542,7 @@ namespace Spartan
             SP_ASSERT_MSG(Display::GetHdr(), "This display doesn' support HDR");
         }
 
-        RHI_Format new_format = enabled ? RHI_Format_R10G10B10A2_Unorm : RHI_Format_R8G8B8A8_Unorm;
+        RHI_Format new_format = enabled ? RHI_Format::R10G10B10A2_Unorm : RHI_Format::R8G8B8A8_Unorm;
 
         if (new_format != m_format)
         {

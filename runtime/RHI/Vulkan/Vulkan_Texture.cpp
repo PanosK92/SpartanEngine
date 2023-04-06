@@ -41,7 +41,7 @@ namespace Spartan
     {
         // Get format properties
         VkFormatProperties format_properties;
-        vkGetPhysicalDeviceFormatProperties(vulkan_utility::globals::rhi_context->device_physical, vulkan_format[format], &format_properties);
+        vkGetPhysicalDeviceFormatProperties(vulkan_utility::globals::rhi_context->device_physical, vulkan_format[rhi_format_to_index(format)], &format_properties);
 
         // Check for optimal support
         if (format_properties.optimalTilingFeatures & feature_flags)
@@ -104,7 +104,7 @@ namespace Spartan
         create_info.extent.depth      = 1;
         create_info.mipLevels         = texture->GetMipCount();
         create_info.arrayLayers       = texture->GetArrayLength();
-        create_info.format            = vulkan_format[format];
+        create_info.format            = vulkan_format[rhi_format_to_index(format)];
         create_info.tiling            = VK_IMAGE_TILING_OPTIMAL;
         create_info.initialLayout     = vulkan_image_layout[static_cast<uint8_t>(texture->GetLayout(0))];
         create_info.samples           = VK_SAMPLE_COUNT_1_BIT;
