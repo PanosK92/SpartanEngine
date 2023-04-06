@@ -408,8 +408,8 @@ namespace ImGui::RHI
             static_cast<uint32_t>(viewport->Size.x),
             static_cast<uint32_t>(viewport->Size.y),
             RHI_Format::R8G8B8A8_Unorm,
+            RHI_Present_Mode::Immediate,
             2,
-            RHI_Present_Immediate | RHI_Swap_Flip_Discard,
             (string("swapchain_child_") + string(to_string(viewport->ID))).c_str()
         );
 

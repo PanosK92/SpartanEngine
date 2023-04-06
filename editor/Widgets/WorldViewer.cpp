@@ -172,7 +172,10 @@ void WorldViewer::TreeShow()
         vector<shared_ptr<Spartan::Entity>> root_entities = Spartan::World::GetRootEntities();
         for (const shared_ptr<Spartan::Entity>& entity : root_entities)
         {
-            TreeAddEntity(entity.get());
+            if (entity->IsActiveRecursively())
+            {
+                TreeAddEntity(entity.get());
+            }
         }
 
         // If we have been expanding to show an entity and no more expansions are taking place, we reached it.

@@ -61,7 +61,8 @@ namespace Spartan
         Tonemapping,
         Upsampling,
         Sharpness,
-        Hdr
+        Hdr,
+        Vsync
     };
 
     enum class AntialiasingMode : uint32_t

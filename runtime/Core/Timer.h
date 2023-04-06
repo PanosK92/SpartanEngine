@@ -44,6 +44,7 @@ namespace Spartan
         static void SetFpsLimit(float fps);
         static float GetFpsLimit();
         static FpsLimitType GetFpsLimitType();
+        static void OnVsyncToggled(const bool enabled);
 
         // Times
         static double GetTimeMs();

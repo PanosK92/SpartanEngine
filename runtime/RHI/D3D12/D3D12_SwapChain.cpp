@@ -37,14 +37,33 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
+    static DXGI_SWAP_EFFECT get_swap_effect()
+    {
+        #if !defined(_WIN32_WINNT)
+            if (flags & RHI_Swap_Flip_Discard)
+            {
+                LOG_WARNING("Swap_Flip_Discard was requested but it's only supported in by Windows 10 or later, using Swap_Discard instead.");
+                return DXGI_SWAP_EFFECT_DISCARD;
+            }
+        #endif
+
+        if (Renderer::GetRhiDevice()->GetPrimaryPhysicalDevice()->IsIntel())
+        {
+            SP_LOG_WARNING("Swap_Flip_Discard was requested but it's not supported by Intel adapters, using Swap_Discard instead.");
+            return DXGI_SWAP_EFFECT_DISCARD;
+        }
+
+        return DXGI_SWAP_EFFECT_FLIP_DISCARD;
+    }
+
     RHI_SwapChain::RHI_SwapChain(
         void* sdl_window,
         const uint32_t width,
         const uint32_t height,
-        const RHI_Format format	    /*= Format_R8G8B8A8_UNORM*/,
-        const uint32_t buffer_count	/*= 2 */,
-        const uint32_t flags	    /*= Present_Immediate */,
-        const char* name            /*= nullptr */
+        const RHI_Format format,
+        const RHI_Present_Mode present_mode,
+        const uint32_t buffer_count,
+        const char* name
     )
     {
         // Verify window handle
@@ -78,8 +97,8 @@ namespace Spartan
         m_width        = width;
         m_height       = height;
         m_sdl_window   = sdl_window;
-        m_flags        = flags;
         m_name         = name;
+        m_present_mode = present_mode;
 
         // Describe and create the swap chain.
         DXGI_SWAP_CHAIN_DESC1 swap_chain_desc = {};
@@ -88,7 +107,7 @@ namespace Spartan
         swap_chain_desc.Height                = m_height;
         swap_chain_desc.Format                = d3d12_format[rhi_format_to_index(format)];
         swap_chain_desc.BufferUsage           = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-        swap_chain_desc.SwapEffect            = d3d12_utility::swap_chain::get_swap_effect(m_flags);
+        swap_chain_desc.SwapEffect            = get_swap_effect();
         swap_chain_desc.SampleDesc.Count      = 1;
 
         IDXGISwapChain1* swap_chain;
@@ -126,7 +145,7 @@ namespace Spartan
         SP_ASSERT(m_present_enabled && "Can't present, presenting has been disabled");
 
         // Present parameters
-        const bool tearing_allowed = m_flags & RHI_Present_Immediate;
+        const bool tearing_allowed = m_present_mode == RHI_Present_Mode::Immediate;
         const UINT sync_interval   = tearing_allowed ? 0 : 1; // sync interval can go up to 4, so this could be improved
         const UINT flags           = (tearing_allowed && m_windowed) ? DXGI_PRESENT_ALLOW_TEARING : 0;
 
@@ -145,5 +164,15 @@ namespace Spartan
     void RHI_SwapChain::SetHdr(const bool enabled)
     {
         SP_LOG_ERROR("Not implemented.");
+    }
+
+    void RHI_SwapChain::SetVsync(const bool enabled)
+    {
+        SP_LOG_ERROR("Not implemented for D3D11. Please use the Vulkan build.");
+    }
+
+    bool RHI_SwapChain::GetVsync()
+    {
+        return false;
     }
 }

@@ -171,9 +171,10 @@ void RenderOptions::TickVisible()
     bool do_ssr                    = Renderer::GetOption<bool>(RendererOption::ScreenSpaceReflections);
     bool do_motion_blur            = Renderer::GetOption<bool>(RendererOption::MotionBlur);
     bool do_film_grain             = Renderer::GetOption<bool>(RendererOption::FilmGrain);
-    bool do_chromatic_aberration   = Renderer::GetOption<bool>(RendererOption::ChromaticAberration);
-    bool do_hdr                    = Renderer::GetOption<bool>(RendererOption::Hdr);
+    bool do_chromatic_aberration   = Renderer::GetOption<bool>(RendererOption::ChromaticAberration); 
     bool do_debanding              = Renderer::GetOption<bool>(RendererOption::Debanding);
+    bool do_hdr                    = Renderer::GetOption<bool>(RendererOption::Hdr);
+    bool do_vsync                  = Renderer::GetOption<bool>(RendererOption::Vsync);
     bool debug_physics             = Renderer::GetOption<bool>(RendererOption::Debug_Physics);
     bool debug_aabb                = Renderer::GetOption<bool>(RendererOption::Debug_Aabb);
     bool debug_light               = Renderer::GetOption<bool>(RendererOption::Debug_Lights);
@@ -381,11 +382,14 @@ void RenderOptions::TickVisible()
 
             if (helper::Option("Misc"))
             {
+                // Dithering
+                helper::CheckBox("Debanding", do_debanding, "Reduces color banding");
+
                 // HDR
                 helper::CheckBox("HDR", do_hdr, "High dynamic range");
 
-                // Dithering
-                helper::CheckBox("Debanding", do_debanding, "Reduces color banding");
+                // VSync
+                helper::CheckBox("VSync", do_vsync, "Vertical Synchronization");
 
                 // FPS Limit
                 {
@@ -453,8 +457,9 @@ void RenderOptions::TickVisible()
     Renderer::SetOption(RendererOption::MotionBlur,               do_motion_blur);
     Renderer::SetOption(RendererOption::FilmGrain,                do_film_grain);
     Renderer::SetOption(RendererOption::ChromaticAberration,      do_chromatic_aberration);
-    Renderer::SetOption(RendererOption::Hdr,                      do_hdr);
     Renderer::SetOption(RendererOption::Debanding,                do_debanding);
+    Renderer::SetOption(RendererOption::Hdr,                      do_hdr);
+    Renderer::SetOption(RendererOption::Vsync,                    do_vsync);
     Renderer::SetOption(RendererOption::Debug_TransformHandle,    debug_transform);
     Renderer::SetOption(RendererOption::Debug_SelectionOutline,   debug_selection_outline);
     Renderer::SetOption(RendererOption::Debug_Physics,            debug_physics);
