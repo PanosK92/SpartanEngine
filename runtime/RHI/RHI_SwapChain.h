@@ -39,11 +39,11 @@ namespace Spartan
         RHI_SwapChain() = default;
         RHI_SwapChain(
             void* sdl_window,
-            uint32_t width,
-            uint32_t height,
-            RHI_Format format ,
-            uint32_t buffer_count,
-            uint32_t flags,
+            const uint32_t width,
+            const uint32_t height,
+            const RHI_Format format,
+            const RHI_Present_Mode present_mode,
+            const uint32_t buffer_count,
             const char* name
         );
         ~RHI_SwapChain();
@@ -55,11 +55,14 @@ namespace Spartan
         void SetHdr(const bool enabled);
         bool IsHdr() const { return m_format == RHI_Format::R10G10B10A2_Unorm; }
 
+        // VSync
+        void SetVsync(const bool enabled);
+        bool GetVsync();
+
         // Properties
         uint32_t GetWidth()       const { return m_width; }
         uint32_t GetHeight()      const { return m_height; }
         uint32_t GetBufferCount() const { return m_buffer_count; }
-        uint32_t GetFlags()       const { return m_flags; }
         uint32_t GetImageIndex()  const { return m_image_index; }
         bool PresentEnabled()     const { return m_present_enabled; }
         RHI_Format GetFormat()    const { return m_format; }
@@ -77,14 +80,14 @@ namespace Spartan
     private:
         void AcquireNextImage();
 
-        bool m_windowed         = false;
-        bool m_present_enabled  = true;
-        uint32_t m_buffer_count = 0;
-        uint32_t m_width        = 0;
-        uint32_t m_height       = 0;
-        uint32_t m_flags        = 0;
-        RHI_Format m_format     = RHI_Format::R8G8B8A8_Unorm;
-        uint32_t m_sync_index   = std::numeric_limits<uint32_t>::max();
+        bool m_windowed                 = false;
+        bool m_present_enabled          = true;
+        uint32_t m_buffer_count         = 0;
+        uint32_t m_width                = 0;
+        uint32_t m_height               = 0;
+        RHI_Format m_format             = RHI_Format::R8G8B8A8_Unorm;
+        RHI_Present_Mode m_present_mode = RHI_Present_Mode::Immediate;
+        uint32_t m_sync_index           = std::numeric_limits<uint32_t>::max();
 
         // Misc
         std::array<RHI_Image_Layout, max_buffer_count> m_layouts;

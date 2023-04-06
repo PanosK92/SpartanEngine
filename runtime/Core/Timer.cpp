@@ -33,19 +33,20 @@ namespace Spartan
     namespace
     { 
         // Frame time
-        std::chrono::high_resolution_clock::time_point m_time_start;
-        std::chrono::high_resolution_clock::time_point m_time_sleep_start;
-        std::chrono::high_resolution_clock::time_point m_time_sleep_end;
-        double m_time_ms                = 0.0f;
-        double m_delta_time_ms          = 0.0f;
-        double m_delta_time_smoothed_ms = 0.0f;
-        double m_sleep_overhead         = 0.0f;
+        static std::chrono::high_resolution_clock::time_point m_time_start;
+        static std::chrono::high_resolution_clock::time_point m_time_sleep_start;
+        static std::chrono::high_resolution_clock::time_point m_time_sleep_end;
+        static double m_time_ms                = 0.0f;
+        static double m_delta_time_ms          = 0.0f;
+        static double m_delta_time_smoothed_ms = 0.0f;
+        static double m_sleep_overhead         = 0.0f;
 
         // FPS
-        float m_fps_min                 = 10.0f;
-        float m_fps_max                 = 5000.0f;
-        float m_fps_limit               = m_fps_min; // if it's lower than the monitor's hz, it will be updated to match it, so start with something low.
-        bool m_user_selected_fps_target = false;
+        static float m_fps_min                 = 10.0f;
+        static float m_fps_max                 = 5000.0f;
+        static float m_fps_limit               = m_fps_min; // if it's lower than the monitor's hz, it will be updated to match it, so start with something low.
+        static float m_fps_limit_previous      = m_fps_limit;
+        static bool m_user_selected_fps_target = false;
     }
 
     void Timer::Initialize()
@@ -115,6 +116,19 @@ namespace Spartan
             return FpsLimitType::Unlocked;
 
         return FpsLimitType::Fixed;
+    }
+
+    void Timer::OnVsyncToggled(const bool enabled)
+    {
+        if (enabled)
+        {
+            m_fps_limit_previous = m_fps_limit;
+            SetFpsLimit(Display::GetRefreshRate());
+        }
+        else
+        {
+            SetFpsLimit(m_fps_limit_previous);
+        }
     }
 
     double Timer::GetTimeMs()

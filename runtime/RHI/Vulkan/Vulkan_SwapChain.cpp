@@ -69,29 +69,32 @@ namespace Spartan
         return surface_present_modes;
     }
 
-    static VkPresentModeKHR get_present_mode(const VkSurfaceKHR surface, const uint32_t flags)
+    static VkPresentModeKHR get_present_mode(const VkSurfaceKHR surface, const RHI_Present_Mode present_mode)
     {
-        // Get preferred present mode
-        VkPresentModeKHR present_mode_preferred = VK_PRESENT_MODE_FIFO_KHR;
-        present_mode_preferred                  = flags & RHI_Present_Immediate                ? VK_PRESENT_MODE_IMMEDIATE_KHR                 : present_mode_preferred;
-        present_mode_preferred                  = flags & RHI_Present_Fifo                     ? VK_PRESENT_MODE_MAILBOX_KHR                   : present_mode_preferred;
-        present_mode_preferred                  = flags & RHI_Present_FifoRelaxed              ? VK_PRESENT_MODE_FIFO_RELAXED_KHR              : present_mode_preferred;
-        present_mode_preferred                  = flags & RHI_Present_SharedDemandRefresh      ? VK_PRESENT_MODE_SHARED_DEMAND_REFRESH_KHR     : present_mode_preferred;
-        present_mode_preferred                  = flags & RHI_Present_SharedDContinuousRefresh ? VK_PRESENT_MODE_SHARED_CONTINUOUS_REFRESH_KHR : present_mode_preferred;
-
-        // Check if the preferred mode is supported
-        VkPresentModeKHR present_mode = VK_PRESENT_MODE_FIFO_KHR; // as per spec, we can rely on VK_PRESENT_MODE_FIFO_KHR to always be present.
-        vector<VkPresentModeKHR> surface_present_modes = get_supported_present_modes(surface);
-        for (const auto& supported_present_mode : surface_present_modes)
+        // Convert RHI_Present_Mode to VkPresentModeKHR
+        VkPresentModeKHR vk_present_mode = VK_PRESENT_MODE_FIFO_KHR;
+        if (present_mode == RHI_Present_Mode::Immediate)
         {
-            if (present_mode_preferred == supported_present_mode)
+            vk_present_mode = VK_PRESENT_MODE_IMMEDIATE_KHR;
+        }
+        else if (present_mode == RHI_Present_Mode::Mailbox)
+        {
+            vk_present_mode = VK_PRESENT_MODE_MAILBOX_KHR;
+        }
+
+        // Return the present mode as is if the surface supports it
+        vector<VkPresentModeKHR> surface_present_modes = get_supported_present_modes(surface);
+        for (const VkPresentModeKHR supported_present_mode : surface_present_modes)
+        {
+            if (vk_present_mode == supported_present_mode)
             {
-                present_mode = present_mode_preferred;
-                break;
+                return vk_present_mode;
             }
         }
 
-        return present_mode;
+        // At this point we call back to VK_PRESENT_MODE_FIFO_KHR, which as per spec is always present
+        SP_LOG_WARNING("Requested present mode is not supported. Falling back to VK_PRESENT_MODE_FIFO_KHR");
+        return VK_PRESENT_MODE_FIFO_KHR;
     }
 
     static inline vector<VkSurfaceFormatKHR> get_supported_surface_formats(const VkSurfaceKHR surface)
@@ -133,9 +136,9 @@ namespace Spartan
         uint32_t* height,
         uint32_t buffer_count,
         RHI_Format* rhi_format,
+        RHI_Present_Mode present_mode,
         bool hdr,
         array<RHI_Image_Layout, max_buffer_count>* layouts,
-        uint32_t flags,
         void* sdl_window,
         void*& void_ptr_surface,
         void*& void_ptr_swap_chain,
@@ -206,7 +209,7 @@ namespace Spartan
 
             create_info.preTransform   = capabilities.currentTransform;
             create_info.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-            create_info.presentMode    = get_present_mode(surface, flags);
+            create_info.presentMode    = get_present_mode(surface, present_mode);
             create_info.clipped        = VK_TRUE;
             create_info.oldSwapchain   = nullptr;
 
@@ -324,8 +327,8 @@ namespace Spartan
         const uint32_t width,
         const uint32_t height,
         const RHI_Format format,
+        const RHI_Present_Mode present_mode,
         const uint32_t buffer_count,
-        const uint32_t flags,
         const char* name
     )
     {
@@ -347,8 +350,8 @@ namespace Spartan
         m_width        = width;
         m_height       = height;
         m_sdl_window   = sdl_window;
-        m_flags        = flags;
         m_name         = name;
+        m_present_mode = present_mode;
 
         create
         (
@@ -356,9 +359,9 @@ namespace Spartan
             &m_height,
             m_buffer_count,
             &m_format,
+            present_mode,
             IsHdr(),
             &m_layouts,
-            m_flags,
             m_sdl_window,
             m_surface,
             m_rhi_resource,
@@ -422,9 +425,9 @@ namespace Spartan
             &m_height,
             m_buffer_count,
             &m_format,
+            m_present_mode,
             IsHdr(),
             &m_layouts,
-            m_flags,
             m_sdl_window,
             m_surface,
             m_rhi_resource,
@@ -546,5 +549,24 @@ namespace Spartan
             Resize(m_width, m_height, true);
             SP_LOG_INFO("HDR has been %s", enabled ? "enabled" : "disabled");
         }
+    }
+
+    void RHI_SwapChain::SetVsync(const bool enabled)
+    {
+        // For v-sync, we could Mailbox for lower latency, but Fifo is always supported, so we'll assume that
+
+        if ((m_present_mode == RHI_Present_Mode::Fifo) != enabled)
+        {
+            m_present_mode = enabled ? RHI_Present_Mode::Fifo : RHI_Present_Mode::Immediate;
+            Resize(m_width, m_height, true);
+            Timer::OnVsyncToggled(enabled);
+            SP_LOG_INFO("VSync has been %s", enabled ? "enabled" : "disabled");
+        }
+    }
+
+    bool RHI_SwapChain::GetVsync()
+    {
+        // For v-sync, we could Mailbox for lower latency, but Fifo is always supported, so we'll assume that
+        return m_present_mode == RHI_Present_Mode::Fifo;
     }
 }

@@ -171,6 +171,7 @@ namespace Spartan
         SetOption(RendererOption::Debug_Lights,             1.0f);
         SetOption(RendererOption::Debug_Physics,            0.0f);
         SetOption(RendererOption::Debug_PerformanceMetrics, 1.0f);
+        SetOption(RendererOption::Vsync,                    0.0f);
         //SetOption(RendererOption::DepthOfField,        1.0f); // This is depth of field from ALDI, so until I improve it, it should be disabled by default.
         //SetOption(RendererOption::Render_DepthPrepass, 1.0f); // Depth-pre-pass is not always faster, so by default, it's disabled.
         //SetOption(RendererOption::Debanding,           1.0f); // Disable debanding as we shouldn't be seeing debanding to begin with.
@@ -208,8 +209,9 @@ namespace Spartan
             window_width,
             window_height,
             Display::GetHdr() ? RHI_Format::R10G10B10A2_Unorm  : RHI_Format::R8G8B8A8_Unorm,
+            // Present mode: For v-sync, we could Mailbox for lower latency, but Fifo is always supported, so we'll assume that
+            GetOption<bool>(RendererOption::Vsync) ? RHI_Present_Mode::Fifo : RHI_Present_Mode::Immediate,
             m_swap_chain_buffer_count,
-            RHI_Present_Immediate | RHI_Swap_Flip_Discard,
             "renderer"
         );
 
@@ -927,6 +929,10 @@ namespace Spartan
             else if (option == RendererOption::Hdr)
             {
                 m_swap_chain->SetHdr(value == 1.0f);
+            }
+            else if (option == RendererOption::Vsync)
+            {
+                m_swap_chain->SetVsync(value == 1.0f);
             }
         }
     }

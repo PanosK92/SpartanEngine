@@ -81,36 +81,6 @@ namespace Spartan::d3d12_utility
         }
     }
 
-    namespace swap_chain
-    {
-        inline DXGI_SWAP_EFFECT get_swap_effect(uint32_t flags)
-        {
-#if !defined(_WIN32_WINNT_WIN10)
-            if (flags & RHI_Swap_Flip_Discard)
-            {
-                LOG_WARNING("Swap_Flip_Discard was requested but it's only supported in Windows 10, using Swap_Discard instead.");
-                flags &= ~RHI_Swap_Flip_Discard;
-                flags |= RHI_Swap_Discard;
-            }
-#endif
-
-            if (flags & RHI_Swap_Flip_Discard && Renderer::GetRhiDevice()->GetPrimaryPhysicalDevice()->IsIntel())
-            {
-                SP_LOG_WARNING("Swap_Flip_Discard was requested but it's not supported by Intel adapters, using Swap_Discard instead.");
-                flags &= ~RHI_Swap_Flip_Discard;
-                flags |= RHI_Swap_Discard;
-            }
-
-            if (flags & RHI_Swap_Discard)         return DXGI_SWAP_EFFECT_DISCARD;
-            if (flags & RHI_Swap_Sequential)      return DXGI_SWAP_EFFECT_SEQUENTIAL;
-            if (flags & RHI_Swap_Flip_Discard)    return DXGI_SWAP_EFFECT_FLIP_DISCARD;
-            if (flags & RHI_Swap_Flip_Sequential) return DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL;
-
-            SP_LOG_ERROR("Unable to determine the requested swap effect, opting for DXGI_SWAP_EFFECT_DISCARD");
-            return DXGI_SWAP_EFFECT_DISCARD;
-        }
-    }
-
     template <typename T>
     constexpr void release(void*& ptr)
     {
