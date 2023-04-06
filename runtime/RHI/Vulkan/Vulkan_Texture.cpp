@@ -41,7 +41,7 @@ namespace Spartan
     {
         // Get format properties
         VkFormatProperties format_properties;
-        vkGetPhysicalDeviceFormatProperties(vulkan_utility::globals::rhi_context->device_physical, vulkan_format[rhi_format_to_index(format)], &format_properties);
+        vkGetPhysicalDeviceFormatProperties(RHI_Context::device_physical, vulkan_format[rhi_format_to_index(format)], &format_properties);
 
         // Check for optimal support
         if (format_properties.optimalTilingFeatures & feature_flags)

@@ -46,9 +46,6 @@ namespace Spartan
 
     void* RHI_Shader::Compile2()
     {
-        ID3D11Device5* d3d11_device = Renderer::GetRhiDevice()->GetRhiContext()->device;
-        SP_ASSERT(d3d11_device != nullptr);
-
         // Compile flags
         uint32_t compile_flags = 0;
 #ifdef DEBUG
@@ -122,7 +119,7 @@ namespace Spartan
         {
             if (m_shader_type == RHI_Shader_Vertex)
             {
-                if (!d3d11_utility::error_check(d3d11_device->CreateVertexShader(shader_blob->GetBufferPointer(), shader_blob->GetBufferSize(), nullptr, reinterpret_cast<ID3D11VertexShader**>(&shader_view))))
+                if (!d3d11_utility::error_check(RHI_Context::device->CreateVertexShader(shader_blob->GetBufferPointer(), shader_blob->GetBufferSize(), nullptr, reinterpret_cast<ID3D11VertexShader**>(&shader_view))))
                 {
                     SP_LOG_ERROR("Failed to create vertex shader");
                 }
@@ -132,14 +129,14 @@ namespace Spartan
             }
             else if (m_shader_type == RHI_Shader_Pixel)
             {
-                if (!d3d11_utility::error_check(d3d11_device->CreatePixelShader(shader_blob->GetBufferPointer(), shader_blob->GetBufferSize(), nullptr, reinterpret_cast<ID3D11PixelShader**>(&shader_view))))
+                if (!d3d11_utility::error_check(RHI_Context::device->CreatePixelShader(shader_blob->GetBufferPointer(), shader_blob->GetBufferSize(), nullptr, reinterpret_cast<ID3D11PixelShader**>(&shader_view))))
                 {
                     SP_LOG_ERROR("Failed to create pixel shader");
                 }
             }
             else if (m_shader_type == RHI_Shader_Compute)
             {
-                if (!d3d11_utility::error_check(d3d11_device->CreateComputeShader(shader_blob->GetBufferPointer(), shader_blob->GetBufferSize(), nullptr, reinterpret_cast<ID3D11ComputeShader**>(&shader_view))))
+                if (!d3d11_utility::error_check(RHI_Context::device->CreateComputeShader(shader_blob->GetBufferPointer(), shader_blob->GetBufferSize(), nullptr, reinterpret_cast<ID3D11ComputeShader**>(&shader_view))))
                 {
                     SP_LOG_ERROR("Failed to create compute shader");
                 }

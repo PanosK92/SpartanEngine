@@ -113,7 +113,6 @@ namespace Spartan
 
         //= RHI RESOURCES==================================
         static std::shared_ptr<RHI_Device>& GetRhiDevice();
-        static const RHI_Context* GetRhiContext();
         static RHI_CommandList* GetCmdList();
         //=================================================
  

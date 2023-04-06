@@ -77,7 +77,7 @@ namespace Spartan
         }
 
         // Create depth-stencil state
-        SP_ASSERT(d3d11_utility::error_check(Renderer::GetRhiDevice()->GetRhiContext()->device->CreateDepthStencilState(&desc, reinterpret_cast<ID3D11DepthStencilState**>(&m_rhi_resource))));
+        SP_ASSERT(d3d11_utility::error_check(RHI_Context::device->CreateDepthStencilState(&desc, reinterpret_cast<ID3D11DepthStencilState**>(&m_rhi_resource))));
     }
 
     RHI_DepthStencilState::~RHI_DepthStencilState()

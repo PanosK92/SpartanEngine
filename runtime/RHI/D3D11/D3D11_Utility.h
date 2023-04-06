@@ -28,16 +28,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <system_error>
 #include "../../Logging/Log.h"
 #include "../../Display/Display.h"
+#include "../Rendering/Renderer.h"
 //================================
 
 namespace Spartan::d3d11_utility
 {
-    struct globals
-    {
-        static inline RHI_Device* rhi_device;
-        static inline RHI_Context* rhi_context;
-    };
-
     inline const char* dxgi_error_to_string(const HRESULT error_code)
     {
         switch (error_code)
@@ -118,7 +113,7 @@ namespace Spartan::d3d11_utility
         }
 
         const bool fullscreen_borderless_support = SUCCEEDED(resut) && allowTearing;
-        const bool vendor_support                = !globals::rhi_device->GetPrimaryPhysicalDevice()->IsIntel(); // Intel, bad
+        const bool vendor_support                = !Renderer::GetRhiDevice()->GetPrimaryPhysicalDevice()->IsIntel(); // Intel, bad
 
         return fullscreen_borderless_support && vendor_support;
     }
@@ -162,7 +157,7 @@ namespace Spartan::d3d11_utility
             }
             #endif
 
-            if (flags & RHI_Swap_Flip_Discard && globals::rhi_device->GetPrimaryPhysicalDevice()->IsIntel())
+            if (flags & RHI_Swap_Flip_Discard && Renderer::GetRhiDevice()->GetPrimaryPhysicalDevice()->IsIntel())
             {
                 SP_LOG_WARNING("Swap_Flip_Discard was requested but it's not supported by Intel adapters, using Swap_Discard instead.");
                 flags &= ~RHI_Swap_Flip_Discard;

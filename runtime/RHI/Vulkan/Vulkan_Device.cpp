@@ -133,25 +133,21 @@ namespace Spartan
         return reinterpret_cast<uint64_t>(resource);
     }
 
-    RHI_Device::RHI_Device(shared_ptr<RHI_Context> rhi_context)
+    RHI_Device::RHI_Device()
     {
-#ifdef DEBUG
-        // Add validation related extensions
-        rhi_context->validation_extensions.emplace_back(VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT);
-        rhi_context->validation_extensions.emplace_back(VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT);
-        // Add debugging related extensions
-        rhi_context->extensions_instance.emplace_back("VK_EXT_debug_report");
-        rhi_context->extensions_instance.emplace_back("VK_EXT_debug_utils");
-#endif
+        SP_ASSERT_MSG(RHI_Context::IsInitialized(), "RHI context not initialized");
 
-        m_rhi_context = rhi_context;
+        #ifdef DEBUG
+            // Add validation related extensions
+            RHI_Context::validation_extensions.emplace_back(VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT);
+            RHI_Context::validation_extensions.emplace_back(VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT);
+            // Add debugging related extensions
+            RHI_Context::extensions_instance.emplace_back("VK_EXT_debug_report");
+            RHI_Context::extensions_instance.emplace_back("VK_EXT_debug_utils");
+        #endif
 
-        // Pass pointer to the widely used utility namespace
-        vulkan_utility::globals::rhi_device  = this;
-        vulkan_utility::globals::rhi_context = rhi_context.get();
-        
         // Create instance
-        VkApplicationInfo app_info  = {};
+        VkApplicationInfo app_info = {};
         {
             app_info.sType              = VK_STRUCTURE_TYPE_APPLICATION_INFO;
             app_info.pApplicationName   = sp_name;
@@ -203,11 +199,11 @@ namespace Spartan
                 }
 
                 //  Save API version
-                m_rhi_context->api_version_str = to_string(VK_API_VERSION_MAJOR(app_info.apiVersion)) + "." + to_string(VK_API_VERSION_MINOR(app_info.apiVersion)) + "." + to_string(VK_API_VERSION_PATCH(app_info.apiVersion));
+                RHI_Context::api_version_str = to_string(VK_API_VERSION_MAJOR(app_info.apiVersion)) + "." + to_string(VK_API_VERSION_MINOR(app_info.apiVersion)) + "." + to_string(VK_API_VERSION_PATCH(app_info.apiVersion));
             }
 
             // Get the supported extensions out of the requested extensions
-            vector<const char*> extensions_supported = get_supported_extensions(m_rhi_context->extensions_instance);
+            vector<const char*> extensions_supported = get_supported_extensions(RHI_Context::extensions_instance);
 
             VkInstanceCreateInfo create_info    = {};
             create_info.sType                   = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
@@ -219,17 +215,17 @@ namespace Spartan
             // Validation features
             VkValidationFeaturesEXT validation_features       = {};
             validation_features.sType                         = VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT;
-            validation_features.enabledValidationFeatureCount = static_cast<uint32_t>(m_rhi_context->validation_extensions.size());
-            validation_features.pEnabledValidationFeatures    = m_rhi_context->validation_extensions.data();
+            validation_features.enabledValidationFeatureCount = static_cast<uint32_t>(RHI_Context::validation_extensions.size());
+            validation_features.pEnabledValidationFeatures    = RHI_Context::validation_extensions.data();
 
-            if (m_rhi_context->validation)
+            if (RHI_Context::validation)
             {
                 // Enable validation layer
-                if (is_present_instance_layer(m_rhi_context->validation_layers.front()))
+                if (is_present_instance_layer(RHI_Context::validation_layers.front()))
                 {
                     // Validation layers
-                    create_info.enabledLayerCount   = static_cast<uint32_t>(m_rhi_context->validation_layers.size());
-                    create_info.ppEnabledLayerNames = m_rhi_context->validation_layers.data();
+                    create_info.enabledLayerCount   = static_cast<uint32_t>(RHI_Context::validation_layers.size());
+                    create_info.ppEnabledLayerNames = RHI_Context::validation_layers.data();
                     create_info.pNext               = &validation_features;
                 }
                 else
@@ -238,16 +234,16 @@ namespace Spartan
                 }
             }
 
-            SP_ASSERT_MSG(vkCreateInstance(&create_info, nullptr, &m_rhi_context->instance) == VK_SUCCESS, "Failed to create instance");
+            SP_ASSERT_MSG(vkCreateInstance(&create_info, nullptr, &RHI_Context::instance) == VK_SUCCESS, "Failed to create instance");
         }
 
         // Get function pointers (from extensions)
-        vulkan_utility::functions::initialize(m_rhi_context->validation, m_rhi_context->gpu_markers);
+        vulkan_utility::functions::initialize(RHI_Context::validation, RHI_Context::gpu_markers);
 
         // Debug
-        if (m_rhi_context->validation)
+        if (RHI_Context::validation)
         {
-            vulkan_utility::debug::initialize(m_rhi_context->instance);
+            vulkan_utility::debug::initialize(RHI_Context::instance);
         }
 
         // Find a physical device
@@ -288,7 +284,7 @@ namespace Spartan
                 properties_device.sType                       = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
                 properties_device.pNext                       = &device_properties_1_3;
 
-                vkGetPhysicalDeviceProperties2(static_cast<VkPhysicalDevice>(m_rhi_context->device_physical), &properties_device);
+                vkGetPhysicalDeviceProperties2(static_cast<VkPhysicalDevice>(RHI_Context::device_physical), &properties_device);
 
                 // Save some properties
                 m_max_texture_1d_dimension            = properties_device.properties.limits.maxImageDimension1D;
@@ -302,10 +298,10 @@ namespace Spartan
                 m_max_bound_descriptor_sets           = properties_device.properties.limits.maxBoundDescriptorSets;
 
                 // Disable profiler if timestamps are not supported
-                if (m_rhi_context->gpu_profiling && !properties_device.properties.limits.timestampComputeAndGraphics)
+                if (RHI_Context::gpu_profiling && !properties_device.properties.limits.timestampComputeAndGraphics)
                 {
                     SP_LOG_ERROR("Device doesn't support timestamps, disabling gpu profiling...");
-                    m_rhi_context->gpu_profiling = false;
+                    RHI_Context::gpu_profiling = false;
                 }
             }
 
@@ -328,7 +324,7 @@ namespace Spartan
                 VkPhysicalDeviceFeatures2 features_supported            = {};
                 features_supported.sType                                = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
                 features_supported.pNext                                = &features_supported_1_2;
-                vkGetPhysicalDeviceFeatures2(m_rhi_context->device_physical, &features_supported);
+                vkGetPhysicalDeviceFeatures2(RHI_Context::device_physical, &features_supported);
 
                 // Check if certain features are supported and enable them
                 {
@@ -400,7 +396,7 @@ namespace Spartan
             }
 
             // Get the supported extensions out of the requested extensions
-            vector<const char*> extensions_supported = get_physical_device_supported_extensions(m_rhi_context->extensions_device, m_rhi_context->device_physical);
+            vector<const char*> extensions_supported = get_physical_device_supported_extensions(RHI_Context::extensions_device, RHI_Context::device_physical);
 
             // Device create info
             VkDeviceCreateInfo create_info = {};
@@ -412,30 +408,30 @@ namespace Spartan
                 create_info.enabledExtensionCount   = static_cast<uint32_t>(extensions_supported.size());
                 create_info.ppEnabledExtensionNames = extensions_supported.data();
 
-                if (m_rhi_context->validation)
+                if (RHI_Context::validation)
                 {
-                    create_info.enabledLayerCount   = static_cast<uint32_t>(m_rhi_context->validation_layers.size());
-                    create_info.ppEnabledLayerNames = m_rhi_context->validation_layers.data();
+                    create_info.enabledLayerCount   = static_cast<uint32_t>(RHI_Context::validation_layers.size());
+                    create_info.ppEnabledLayerNames = RHI_Context::validation_layers.data();
                 }
             }
 
             // Create
-            SP_ASSERT_MSG(vkCreateDevice(m_rhi_context->device_physical, &create_info, nullptr, &m_rhi_context->device) == VK_SUCCESS, "Failed to create device");
+            SP_ASSERT_MSG(vkCreateDevice(RHI_Context::device_physical, &create_info, nullptr, &RHI_Context::device) == VK_SUCCESS, "Failed to create device");
         }
 
         // Get a graphics, compute and a copy queue.
         {
-            vkGetDeviceQueue(m_rhi_context->device, m_queue_graphics_index, 0, reinterpret_cast<VkQueue*>(&m_queue_graphics));
-            vkGetDeviceQueue(m_rhi_context->device, m_queue_compute_index,  0, reinterpret_cast<VkQueue*>(&m_queue_compute));
-            vkGetDeviceQueue(m_rhi_context->device, m_queue_copy_index,     0, reinterpret_cast<VkQueue*>(&m_queue_copy));
+            vkGetDeviceQueue(RHI_Context::device, m_queue_graphics_index, 0, reinterpret_cast<VkQueue*>(&m_queue_graphics));
+            vkGetDeviceQueue(RHI_Context::device, m_queue_compute_index,  0, reinterpret_cast<VkQueue*>(&m_queue_compute));
+            vkGetDeviceQueue(RHI_Context::device, m_queue_copy_index,     0, reinterpret_cast<VkQueue*>(&m_queue_copy));
         }
 
         // Create memory allocator
         {
             VmaAllocatorCreateInfo allocator_info = {};
-            allocator_info.physicalDevice         = m_rhi_context->device_physical;
-            allocator_info.device                 = m_rhi_context->device;
-            allocator_info.instance               = m_rhi_context->instance;
+            allocator_info.physicalDevice         = RHI_Context::device_physical;
+            allocator_info.device                 = RHI_Context::device;
+            allocator_info.instance               = RHI_Context::instance;
             allocator_info.vulkanApiVersion       = app_info.apiVersion;
 
             SP_ASSERT_MSG(vmaCreateAllocator(&allocator_info, reinterpret_cast<VmaAllocator*>(&m_allocator)) == VK_SUCCESS, "Failed to create memory allocator");
@@ -459,7 +455,6 @@ namespace Spartan
 
     RHI_Device::~RHI_Device()
     {
-        SP_ASSERT(m_rhi_context != nullptr);
         SP_ASSERT(m_queue_graphics != nullptr);
 
         QueueWaitAll();
@@ -469,7 +464,7 @@ namespace Spartan
         m_cmd_pools_immediate.fill(nullptr);
         
         // Descriptor pool
-        vkDestroyDescriptorPool(m_rhi_context->device, static_cast<VkDescriptorPool>(m_descriptor_pool), nullptr);
+        vkDestroyDescriptorPool(RHI_Context::device, static_cast<VkDescriptorPool>(m_descriptor_pool), nullptr);
         m_descriptor_pool = nullptr;
         
         // Allocator
@@ -481,21 +476,21 @@ namespace Spartan
         }
         
         // Debug messenger
-        if (m_rhi_context->validation)
+        if (RHI_Context::validation)
         {
-            vulkan_utility::debug::shutdown(m_rhi_context->instance);
+            vulkan_utility::debug::shutdown(RHI_Context::instance);
         }
         
         // Device and instance
-        vkDestroyDevice(m_rhi_context->device, nullptr);
-        vkDestroyInstance(m_rhi_context->instance, nullptr);
+        vkDestroyDevice(RHI_Context::device, nullptr);
+        vkDestroyInstance(RHI_Context::instance, nullptr);
     }
 
     bool RHI_Device::DetectPhysicalDevices()
     {
         uint32_t device_count = 0;
         SP_ASSERT_MSG(
-            vkEnumeratePhysicalDevices(m_rhi_context->instance, &device_count, nullptr) == VK_SUCCESS,
+            vkEnumeratePhysicalDevices(RHI_Context::instance, &device_count, nullptr) == VK_SUCCESS,
             "Failed to geet physical device count"
         );
 
@@ -503,7 +498,7 @@ namespace Spartan
         
         vector<VkPhysicalDevice> physical_devices(device_count);
         SP_ASSERT_MSG(
-            vkEnumeratePhysicalDevices(m_rhi_context->instance, &device_count, physical_devices.data()) == VK_SUCCESS,
+            vkEnumeratePhysicalDevices(RHI_Context::instance, &device_count, physical_devices.data()) == VK_SUCCESS,
             "Failed to enumarate physical devices"
         );
         
@@ -638,7 +633,7 @@ namespace Spartan
             if (get_queue_family_indices(device))
             {
                 SetPrimaryPhysicalDevice(device_index);
-                m_rhi_context->device_physical = device;
+                RHI_Context::device_physical = device;
                 break;
             }
         }
@@ -757,14 +752,14 @@ namespace Spartan
             {
                 for (void* resource : it.second)
                 {
-                    vkDestroyImageView(m_rhi_context->device, static_cast<VkImageView>(resource), nullptr);
+                    vkDestroyImageView(RHI_Context::device, static_cast<VkImageView>(resource), nullptr);
                 }
             }
             else if (it.first == RHI_Resource_Type::sampler)
             {
                 for (void* resource : it.second)
                 {
-                    vkDestroySampler(m_rhi_context->device, reinterpret_cast<VkSampler>(resource), nullptr);
+                    vkDestroySampler(RHI_Context::device, reinterpret_cast<VkSampler>(resource), nullptr);
                 }
             }
             else if (it.first == RHI_Resource_Type::buffer)
@@ -778,7 +773,7 @@ namespace Spartan
             {
                 for (void* resource : it.second)
                 {
-                    vkDestroyShaderModule(m_rhi_context->device, static_cast<VkShaderModule>(resource), nullptr);
+                    vkDestroyShaderModule(RHI_Context::device, static_cast<VkShaderModule>(resource), nullptr);
                 }
             }
         }
@@ -817,7 +812,7 @@ namespace Spartan
             pool_create_info.pPoolSizes                 = pool_sizes.data();
             pool_create_info.maxSets                    = descriptor_set_capacity;
 
-            SP_ASSERT_MSG(vkCreateDescriptorPool(m_rhi_context->device, &pool_create_info, nullptr, reinterpret_cast<VkDescriptorPool*>(&m_descriptor_pool)) == VK_SUCCESS, "Failed to create descriptor pool.");
+            SP_ASSERT_MSG(vkCreateDescriptorPool(RHI_Context::device, &pool_create_info, nullptr, reinterpret_cast<VkDescriptorPool*>(&m_descriptor_pool)) == VK_SUCCESS, "Failed to create descriptor pool.");
         }
 
         SP_LOG_INFO("Capacity has been set to %d elements", descriptor_set_capacity);

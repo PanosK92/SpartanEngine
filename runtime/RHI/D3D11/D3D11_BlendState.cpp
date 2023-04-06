@@ -69,8 +69,7 @@ namespace Spartan
         desc.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
 
         // Create
-        SP_ASSERT_MSG(d3d11_utility::error_check(
-            Renderer::GetRhiDevice()->GetRhiContext()->device->CreateBlendState(&desc, reinterpret_cast<ID3D11BlendState**>(&m_rhi_resource))),
+        SP_ASSERT_MSG(d3d11_utility::error_check(RHI_Context::device->CreateBlendState(&desc, reinterpret_cast<ID3D11BlendState**>(&m_rhi_resource))),
             "Failed to create blend state");
     }
 

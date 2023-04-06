@@ -32,16 +32,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Math/Vector4.h"
 #include "../../Display/Display.h"
 #include "../RHI_Fence.h"
+#include "../Rendering/Renderer.h"
 //===================================
 
 namespace Spartan::vulkan_utility
 {
-    struct globals
-    {
-        static inline RHI_Device* rhi_device;
-        static inline RHI_Context* rhi_context;
-    };
-
     namespace timeline_semaphore
     {
         inline void create(void*& semaphore, const uint64_t intial_value = 0)
@@ -58,7 +53,7 @@ namespace Spartan::vulkan_utility
             semaphore_info.flags = 0;
         
             VkSemaphore* semaphore_vk = reinterpret_cast<VkSemaphore*>(&semaphore);
-            SP_ASSERT_MSG(vkCreateSemaphore(globals::rhi_context->device, &semaphore_info, nullptr, semaphore_vk) == VK_SUCCESS, "Failed to create semaphore");
+            SP_ASSERT_MSG(vkCreateSemaphore(RHI_Context::device, &semaphore_info, nullptr, semaphore_vk) == VK_SUCCESS, "Failed to create semaphore");
         }
 
         inline void destroy(void*& semaphore)
@@ -67,7 +62,7 @@ namespace Spartan::vulkan_utility
                 return;
         
             VkSemaphore semaphore_vk = static_cast<VkSemaphore>(semaphore);
-            vkDestroySemaphore(globals::rhi_context->device, semaphore_vk, nullptr);
+            vkDestroySemaphore(RHI_Context::device, semaphore_vk, nullptr);
             semaphore = nullptr;
         }
 
@@ -83,7 +78,7 @@ namespace Spartan::vulkan_utility
             wait_info.pSemaphores    = reinterpret_cast<VkSemaphore*>(&semaphore);
             wait_info.pValues        = &wait_value;
 
-            SP_ASSERT_MSG(vkWaitSemaphores(globals::rhi_context->device, &wait_info, timeout) == VK_SUCCESS, "Failed to wait for semaphore");
+            SP_ASSERT_MSG(vkWaitSemaphores(RHI_Context::device, &wait_info, timeout) == VK_SUCCESS, "Failed to wait for semaphore");
         }
 
         inline uint64_t get_counter_value(void*& semaphore)
@@ -92,7 +87,7 @@ namespace Spartan::vulkan_utility
                 return 0;
 
             uint64_t value;
-            vkGetSemaphoreCounterValue(globals::rhi_context->device, static_cast<VkSemaphore>(semaphore), &value);
+            vkGetSemaphoreCounterValue(RHI_Context::device, static_cast<VkSemaphore>(semaphore), &value);
             return value;
         }
     }
@@ -201,7 +196,7 @@ namespace Spartan::vulkan_utility
         static VkPipelineStageFlags access_flags_to_pipeline_stage(VkAccessFlags access_flags)
         {
             VkPipelineStageFlags stages = 0;
-            uint32_t enabled_graphics_stages = globals::rhi_device->GetEnabledGraphicsStages();
+            uint32_t enabled_graphics_stages = Renderer::GetRhiDevice()->GetEnabledGraphicsStages();
 
             while (access_flags != 0)
             {
@@ -381,7 +376,7 @@ namespace Spartan::vulkan_utility
                 create_info.components.b                    = VK_COMPONENT_SWIZZLE_IDENTITY;
                 create_info.components.a                    = VK_COMPONENT_SWIZZLE_IDENTITY;
 
-                SP_ASSERT_MSG(vkCreateImageView(globals::rhi_context->device, &create_info, nullptr, reinterpret_cast<VkImageView*>(&image_view)) == VK_SUCCESS, "Failed to create image view");
+                SP_ASSERT_MSG(vkCreateImageView(RHI_Context::device, &create_info, nullptr, reinterpret_cast<VkImageView*>(&image_view)) == VK_SUCCESS, "Failed to create image view");
             }
 
             inline void create(
@@ -426,7 +421,7 @@ namespace Spartan::vulkan_utility
         static void initialize(bool validation_enabled, bool gpu_markers_enabled)
         {
             #define get_func(var, def)\
-            var = reinterpret_cast<PFN_##def>(vkGetInstanceProcAddr(static_cast<VkInstance>(globals::rhi_context->instance), #def));\
+            var = reinterpret_cast<PFN_##def>(vkGetInstanceProcAddr(static_cast<VkInstance>(RHI_Context::instance), #def));\
             if (!var) SP_LOG_ERROR("Failed to get function pointer for %s", #def);\
 
             get_func(get_physical_device_memory_properties_2, vkGetPhysicalDeviceMemoryProperties2);
@@ -528,7 +523,7 @@ namespace Spartan::vulkan_utility
             name_info.objectHandle                  = object;
             name_info.pObjectName                   = name;
 
-            functions::set_object_name(globals::rhi_context->device, &name_info);
+            functions::set_object_name(RHI_Context::device, &name_info);
         }
 
         static void set_object_tag(uint64_t object, VkObjectType objectType, uint64_t name, size_t tagSize, const void* tag)
@@ -545,7 +540,7 @@ namespace Spartan::vulkan_utility
             tag_info.tagSize                      = tagSize;
             tag_info.pTag                         = tag;
 
-            functions::set_object_tag(globals::rhi_context->device, &tag_info);
+            functions::set_object_tag(RHI_Context::device, &tag_info);
         }
 
         static void marker_begin(VkCommandBuffer cmd_buffer, const char* name, const Math::Vector4& color)

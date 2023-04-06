@@ -25,16 +25,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Device.h"
 #include "../../Logging/Log.h"
 #include "../../Display/Display.h"
+#include "../Rendering/Renderer.h"
 //================================
 
 namespace Spartan::d3d12_utility
 {
-    struct globals
-    {
-        static inline RHI_Device* rhi_device;
-        static inline RHI_Context* rhi_context;
-    };
-
     namespace error
     {
         inline const char* dxgi_error_to_string(const HRESULT error_code)
@@ -99,7 +94,7 @@ namespace Spartan::d3d12_utility
             }
 #endif
 
-            if (flags & RHI_Swap_Flip_Discard && globals::rhi_device->GetPrimaryPhysicalDevice()->IsIntel())
+            if (flags & RHI_Swap_Flip_Discard && Renderer::GetRhiDevice()->GetPrimaryPhysicalDevice()->IsIntel())
             {
                 SP_LOG_WARNING("Swap_Flip_Discard was requested but it's not supported by Intel adapters, using Swap_Discard instead.");
                 flags &= ~RHI_Swap_Flip_Discard;

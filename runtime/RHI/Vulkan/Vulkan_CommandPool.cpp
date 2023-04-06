@@ -61,7 +61,7 @@ namespace Spartan
                     VkCommandBuffer vk_cmd_buffer = reinterpret_cast<VkCommandBuffer>(cmd_list->GetRhiResource());
 
                     vkFreeCommandBuffers(
-                        Renderer::GetRhiDevice()->GetRhiContext()->device,
+                        RHI_Context::device,
                         static_cast<VkCommandPool>(m_rhi_resources[index_pool]),
                         1,
                         &vk_cmd_buffer
@@ -77,7 +77,7 @@ namespace Spartan
         // Destroy pools
         for (uint32_t i = 0; i < m_cmd_pool_count; i++)
         {
-            vkDestroyCommandPool(Renderer::GetRhiDevice()->GetRhiContext()->device, static_cast<VkCommandPool>(m_rhi_resources[i]), nullptr);
+            vkDestroyCommandPool(RHI_Context::device, static_cast<VkCommandPool>(m_rhi_resources[i]), nullptr);
             m_rhi_resources[i] = nullptr;
         }
     }
@@ -93,10 +93,8 @@ namespace Spartan
 
         // Create
         m_rhi_resources.emplace_back(nullptr);
-        SP_ASSERT_MSG(
-            vkCreateCommandPool(Renderer::GetRhiDevice()->GetRhiContext()->device, &cmd_pool_info, nullptr, reinterpret_cast<VkCommandPool*>(&m_rhi_resources.back())) == VK_SUCCESS,
-            "Failed to create command pool"
-        );
+        SP_VK_ASSERT_MSG(vkCreateCommandPool(RHI_Context::device, &cmd_pool_info, nullptr, reinterpret_cast<VkCommandPool*>(&m_rhi_resources.back())),
+            "Failed to create command pool");
 
         // Name
         uint32_t cmd_pool_count = static_cast<uint32_t>(m_rhi_resources.size());
@@ -107,8 +105,7 @@ namespace Spartan
     {
         SP_ASSERT_MSG(m_rhi_resources[0] != nullptr, "Can't reset an uninitialised command list pool");
 
-        VkDevice device    = Renderer::GetRhiDevice()->GetRhiContext()->device;
         VkCommandPool pool = static_cast<VkCommandPool>(m_rhi_resources[pool_index]);
-        SP_ASSERT_MSG(vkResetCommandPool(device, pool, 0) == VK_SUCCESS, "Failed to reset command pool");
+        SP_VK_ASSERT_MSG(vkResetCommandPool(RHI_Context::device, pool, 0), "Failed to reset command pool");
     }
 }

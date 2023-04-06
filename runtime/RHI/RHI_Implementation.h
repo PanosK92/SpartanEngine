@@ -456,55 +456,45 @@ static const VkImageLayout vulkan_image_layout[] =
 // RHI_Context
 namespace Spartan
 {
-    struct RHI_Context
+    class SP_CLASS RHI_Context
     {
-        std::string api_version_str;
+    public:
+        static void Initialize();
+        static bool IsInitialized();
 
+        // API agnostic
+        static std::string api_version_str;
+        static std::string api_type_str;
+        static RHI_Api_Type api_type;
+
+        // API specific
         #if defined(API_GRAPHICS_D3D11)
-            static const RHI_Api_Type api_type    = RHI_Api_Type::D3d11;
-            std::string api_type_str              = "D3D11";
-            ID3D11Device5* device                 = nullptr;
-            ID3D11DeviceContext4* device_context  = nullptr;
-            ID3DUserDefinedAnnotation* annotation = nullptr;
+            static ID3D11Device5* device;
+            static ID3D11DeviceContext4* device_context;
+            static ID3DUserDefinedAnnotation* annotation;
+        #elif defined(API_GRAPHICS_D3D12)
+            static ID3D12Device* device;
+        #elif defined(API_GRAPHICS_VULKAN)
+            static VkInstance instance;
+            static VkPhysicalDevice device_physical;
+            static VkDevice device;
+            static std::vector<VkValidationFeatureEnableEXT> validation_extensions;
+            static std::vector<const char*> extensions_instance;
+            static std::vector<const char*> validation_layers;
+            static std::vector<const char*> extensions_device;
         #endif
 
-        #if defined(API_GRAPHICS_D3D12)
-            static const RHI_Api_Type api_type = RHI_Api_Type::D3d12;
-            std::string api_type_str           = "D3D12";
-            ID3D12Device* device               = nullptr;
-        #endif
-
-        #if defined(API_GRAPHICS_VULKAN)
-            static const RHI_Api_Type api_type = RHI_Api_Type::Vulkan;
-            std::string api_type_str           = "Vulkan";
-            VkInstance instance                = nullptr;
-            VkPhysicalDevice device_physical   = nullptr;
-            VkDevice device                    = nullptr;
-
-            std::vector<VkValidationFeatureEnableEXT> validation_extensions = { };
-            std::vector<const char*> extensions_instance                    = { "VK_KHR_surface", "VK_KHR_win32_surface", "VK_EXT_swapchain_colorspace" };
-            const std::vector<const char*> validation_layers                = { "VK_LAYER_KHRONOS_validation" };
-            const std::vector<const char*> extensions_device                =
-            {
-                "VK_KHR_swapchain",    // windows swapchain
-                "VK_EXT_memory_budget" // memory budget
-            };
-
-            // Hardware capability viewer: https://vulkan.gpuinfo.org/
-            // Note: Would like to enable VK_KHR_synchronization2, but only 17.3% of the devices out there support it.
-        #endif
-
-        // Validation\profiling\markers and so on
+        // Build specific
         #ifdef DEBUG
-            bool validation    = true;
-            bool gpu_markers   = true;
-            bool gpu_profiling = true;
-            bool renderdoc     = false;
+            static bool validation;
+            static bool gpu_markers;
+            static bool gpu_profiling;
+            static bool renderdoc;
         #else
-            bool validation    = false;
-            bool gpu_markers   = false;
-            bool gpu_profiling = true;
-            bool renderdoc     = false;
+            static bool validation;
+            static bool gpu_markers;
+            static bool gpu_profiling;
+            static bool renderdoc;
         #endif
     };
 

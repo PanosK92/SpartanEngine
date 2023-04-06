@@ -85,17 +85,15 @@ namespace Spartan
             allocate_info.commandBufferCount          = 1;
 
             // Allocate
-            SP_ASSERT_MSG(
-                vkAllocateCommandBuffers(Renderer::GetRhiDevice()->GetRhiContext()->device, &allocate_info, reinterpret_cast<VkCommandBuffer*>(&m_rhi_resource)) == VK_SUCCESS,
-                "Failed to allocate command buffer"
-            );
+            SP_VK_ASSERT_MSG(vkAllocateCommandBuffers(RHI_Context::device, &allocate_info, reinterpret_cast<VkCommandBuffer*>(&m_rhi_resource)),
+                "Failed to allocate command buffer");
 
             // Name
             vulkan_utility::debug::set_object_name(static_cast<VkCommandBuffer>(m_rhi_resource), name);
         }
 
         // Query pool
-        if (Renderer::GetRhiDevice()->GetRhiContext()->gpu_profiling)
+        if (RHI_Context::gpu_profiling)
         {
             VkQueryPoolCreateInfo query_pool_create_info = {};
             query_pool_create_info.sType                 = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
@@ -103,7 +101,8 @@ namespace Spartan
             query_pool_create_info.queryCount            = m_max_timestamps;
 
             auto query_pool = reinterpret_cast<VkQueryPool*>(&m_query_pool);
-            SP_ASSERT_MSG(vkCreateQueryPool(Renderer::GetRhiDevice()->GetRhiContext()->device, &query_pool_create_info, nullptr, query_pool) == VK_SUCCESS, "Failed to created qury pool");
+            SP_VK_ASSERT_MSG(vkCreateQueryPool(RHI_Context::device, &query_pool_create_info, nullptr, query_pool),
+                "Failed to created query pool");
 
             m_timestamps.fill(0);
         }
@@ -121,7 +120,7 @@ namespace Spartan
         // Query pool
         if (m_query_pool)
         {
-            vkDestroyQueryPool(Renderer::GetRhiDevice()->GetRhiContext()->device, static_cast<VkQueryPool>(m_query_pool), nullptr);
+            vkDestroyQueryPool(RHI_Context::device, static_cast<VkQueryPool>(m_query_pool), nullptr);
             m_query_pool = nullptr;
         }
     }
@@ -136,7 +135,7 @@ namespace Spartan
         // Get queries
         if (m_queue_type != RHI_Queue_Type::Copy)
         {
-            if (Renderer::GetRhiDevice()->GetRhiContext()->gpu_profiling)
+            if (RHI_Context::gpu_profiling)
             {
                 if (m_query_pool)
                 {
@@ -147,15 +146,15 @@ namespace Spartan
                         const VkQueryResultFlags flags = VK_QUERY_RESULT_64_BIT;
 
                         vkGetQueryPoolResults(
-                            Renderer::GetRhiDevice()->GetRhiContext()->device,  // device
-                            static_cast<VkQueryPool>(m_query_pool),             // queryPool
-                            0,                                                  // firstQuery
-                            query_count,                                        // queryCount
-                            query_count * stride,                               // dataSize
-                            m_timestamps.data(),                                // pData
-                            stride,                                             // stride
-                            flags                                               // flags
-                        );
+                            RHI_Context::device,                    // device
+                            static_cast<VkQueryPool>(m_query_pool), // queryPool
+                            0,                                      // firstQuery
+                            query_count,                            // queryCount
+                            query_count * stride,                   // dataSize
+                            m_timestamps.data(),                    // pData
+                            stride,                                 // stride
+                            flags                                   // flags
+                        );                                          
                     }
                 }
             }
@@ -865,14 +864,14 @@ namespace Spartan
         device_memory_properties.sType                             = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2;
         device_memory_properties.pNext                             = &device_memory_budget_properties;
 
-        vulkan_utility::functions::get_physical_device_memory_properties_2(static_cast<VkPhysicalDevice>(Renderer::GetRhiDevice()->GetRhiContext()->device_physical), &device_memory_properties);
+        vulkan_utility::functions::get_physical_device_memory_properties_2(static_cast<VkPhysicalDevice>(RHI_Context::device_physical), &device_memory_properties);
 
         return static_cast<uint32_t>(device_memory_budget_properties.heapUsage[0] / 1024 / 1024); // MBs
     }
 
     void RHI_CommandList::BeginMarker(const char* name)
     {
-        if (Renderer::GetRhiDevice()->GetRhiContext()->gpu_markers)
+        if (RHI_Context::gpu_markers)
         {
             vulkan_utility::debug::marker_begin(static_cast<VkCommandBuffer>(m_rhi_resource), name, Vector4::Zero);
         }
@@ -880,7 +879,7 @@ namespace Spartan
 
     void RHI_CommandList::EndMarker()
     {
-        if (Renderer::GetRhiDevice()->GetRhiContext()->gpu_markers)
+        if (RHI_Context::gpu_markers)
         {
             vulkan_utility::debug::marker_end(static_cast<VkCommandBuffer>(m_rhi_resource));
         }
@@ -891,7 +890,7 @@ namespace Spartan
         // Validate command list state
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
-        if (!Renderer::GetRhiDevice()->GetRhiContext()->gpu_profiling)
+        if (!RHI_Context::gpu_profiling)
             return;
 
         if (!m_query_pool)
@@ -905,7 +904,7 @@ namespace Spartan
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
         SP_ASSERT(m_query_pool != nullptr);
 
-        if (!Renderer::GetRhiDevice()->GetRhiContext()->gpu_profiling)
+        if (!RHI_Context::gpu_profiling)
             return;
 
         vkCmdWriteTimestamp(static_cast<VkCommandBuffer>(m_rhi_resource), VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, static_cast<VkQueryPool>(m_query_pool), m_timestamp_index++);
@@ -938,14 +937,14 @@ namespace Spartan
         SP_ASSERT(name != nullptr);
 
         // Allowed profiler ?
-        if (Renderer::GetRhiDevice()->GetRhiContext()->gpu_profiling && gpu_timing)
+        if (RHI_Context::gpu_profiling && gpu_timing)
         {
             Profiler::TimeBlockStart(name, TimeBlockType::Cpu, this);
             Profiler::TimeBlockStart(name, TimeBlockType::Gpu, this);
         }
 
         // Allowed to markers ?
-        if (Renderer::GetRhiDevice()->GetRhiContext()->gpu_markers && gpu_marker)
+        if (RHI_Context::gpu_markers && gpu_marker)
         {
             vulkan_utility::debug::marker_begin(static_cast<VkCommandBuffer>(m_rhi_resource), name, Vector4::Zero);
         }
@@ -958,13 +957,13 @@ namespace Spartan
         SP_ASSERT_MSG(m_timeblock_active != nullptr, "A time block wasn't started");
 
         // Allowed markers ?
-        if (Renderer::GetRhiDevice()->GetRhiContext()->gpu_markers)
+        if (RHI_Context::gpu_markers)
         {
             vulkan_utility::debug::marker_end(static_cast<VkCommandBuffer>(m_rhi_resource));
         }
 
         // Allowed profiler ?
-        if (Renderer::GetRhiDevice()->GetRhiContext()->gpu_profiling)
+        if (RHI_Context::gpu_profiling)
         {
             Profiler::TimeBlockEnd(); // cpu
             Profiler::TimeBlockEnd(); // gpu

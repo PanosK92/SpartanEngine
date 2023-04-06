@@ -31,7 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // Declarations
 namespace Spartan
 {
-    struct RHI_Context;
+    class RHI_Context;
     class RHI_Device;
     class RHI_CommandPool;
     class RHI_CommandList;
@@ -85,6 +85,7 @@ namespace Spartan
 
     enum class RHI_Api_Type
     {
+        Undefined,
         D3d11,
         D3d12,
         Vulkan

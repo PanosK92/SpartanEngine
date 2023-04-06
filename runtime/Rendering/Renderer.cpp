@@ -123,7 +123,6 @@ namespace Spartan
     bool m_dirty_orthographic_projection = true;
     
     // RHI Core
-    shared_ptr<RHI_Context> m_rhi_context;
     shared_ptr<RHI_Device> m_rhi_device;
     RHI_CommandPool* m_cmd_pool    = nullptr;
     RHI_CommandList* m_cmd_current = nullptr;
@@ -185,11 +184,10 @@ namespace Spartan
         // Get thread id.
         m_render_thread_id = this_thread::get_id();
 
-        // Create RHI context
-        m_rhi_context = make_shared<RHI_Context>();
+        RHI_Context::Initialize();
 
         // Initialise RenderDoc
-        if (m_rhi_context->renderdoc)
+        if (RHI_Context::renderdoc)
         {
             RHI_RenderDoc::OnPreDeviceCreation();
         }
@@ -201,19 +199,19 @@ namespace Spartan
         uint32_t window_height = Window::GetHeight();
 
         // Create device
-        m_rhi_device = make_shared<RHI_Device>(m_rhi_context);
+        m_rhi_device = make_shared<RHI_Device>();
 
         // Create swap chain
         m_swap_chain = make_shared<RHI_SwapChain>
-            (
-                Window::GetHandleSDL(),
-                window_width,
-                window_height,
-                Display::GetHdr() ? RHI_Format::R10G10B10A2_Unorm  : RHI_Format::R8G8B8A8_Unorm,
-                m_swap_chain_buffer_count,
-                RHI_Present_Immediate | RHI_Swap_Flip_Discard,
-                "renderer"
-            );
+        (
+            Window::GetHandleSDL(),
+            window_width,
+            window_height,
+            Display::GetHdr() ? RHI_Format::R10G10B10A2_Unorm  : RHI_Format::R8G8B8A8_Unorm,
+            m_swap_chain_buffer_count,
+            RHI_Present_Immediate | RHI_Swap_Flip_Discard,
+            "renderer"
+        );
 
         // Adjust render option to reflect whether the swapchain is HDR or not
         SetOption(RendererOption::Hdr, m_swap_chain->IsHdr());
@@ -316,7 +314,7 @@ namespace Spartan
             return;
 
         // Tick command pool
-        bool reset = m_cmd_pool->Step() || (RHI_Device::GetRhiApiType() == RHI_Api_Type::D3d11);
+        bool reset = m_cmd_pool->Step() || (RHI_Context::api_type == RHI_Api_Type::D3d11);
 
         // Begin
         m_cmd_current = m_cmd_pool->GetCurrentCommandList();
@@ -364,7 +362,7 @@ namespace Spartan
 
             // Generate jitter sample in case FSR (which also does TAA) is enabled. D3D11 only receives FXAA so it's ignored at this point.
             UpsamplingMode upsampling_mode = GetOption<UpsamplingMode>(RendererOption::Upsampling);
-            if ((upsampling_mode == UpsamplingMode::FSR2 || GetOption<AntialiasingMode>(RendererOption::Antialiasing) == AntialiasingMode::Taa) && RHI_Device::GetRhiApiType() != RHI_Api_Type::D3d11)
+            if ((upsampling_mode == UpsamplingMode::FSR2 || GetOption<AntialiasingMode>(RendererOption::Antialiasing) == AntialiasingMode::Taa) && RHI_Context::api_type != RHI_Api_Type::D3d11)
             {
                 RHI_FSR2::GenerateJitterSample(&m_jitter_offset.x, &m_jitter_offset.y);
                 m_jitter_offset.x          = (m_jitter_offset.x / m_resolution_render.x);
@@ -833,7 +831,7 @@ namespace Spartan
 
         // Reject changes (if needed)
         {
-            bool is_d3d11 = RHI_Device::GetRhiApiType() == RHI_Api_Type::D3d11;
+            bool is_d3d11 = RHI_Context::api_type == RHI_Api_Type::D3d11;
 
             if (is_d3d11 && option == RendererOption::Antialiasing && (value == static_cast<float>(AntialiasingMode::Taa) || value == static_cast<float>(AntialiasingMode::TaaFxaa)))
             {
@@ -997,11 +995,6 @@ namespace Spartan
     shared_ptr<RHI_Device>& Renderer::GetRhiDevice()
     {
         return m_rhi_device;
-    }
-
-    const RHI_Context* Renderer::GetRhiContext()
-    {
-        return m_rhi_context.get();
     }
 
     void Renderer::RequestTextureMipGeneration(shared_ptr<RHI_Texture> texture)

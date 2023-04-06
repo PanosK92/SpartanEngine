@@ -248,7 +248,7 @@ namespace Spartan
 
     bool RHI_RenderDoc::IsEnabled()
     {
-        return Renderer::GetRhiContext()->renderdoc;
+        return RHI_Context::renderdoc;
     }
     
 }

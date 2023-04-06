@@ -84,8 +84,8 @@ namespace Spartan
 
     void RHI_FSR2::OnResolutionChange(const Math::Vector2& resolution_render, const Math::Vector2& resolution_output)
     {
-        VkDevice device = Renderer::GetRhiDevice()->GetRhiContext()->device;
-        VkPhysicalDevice device_physical = Renderer::GetRhiDevice()->GetRhiContext()->device_physical;
+        VkDevice device                  = RHI_Context::device;
+        VkPhysicalDevice device_physical = RHI_Context::device_physical;
 
         // Set callbacks
         if (m_ffx_fsr2_context_description.callbacks.scratchBuffer == nullptr)

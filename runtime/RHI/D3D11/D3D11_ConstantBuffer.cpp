@@ -58,7 +58,7 @@ namespace Spartan
         buffer_desc.MiscFlags           = 0;
         buffer_desc.StructureByteStride = 0;
 
-        SP_ASSERT(d3d11_utility::error_check(Renderer::GetRhiDevice()->GetRhiContext()->device->CreateBuffer(&buffer_desc, nullptr, reinterpret_cast<ID3D11Buffer**>(&m_rhi_resource))));
+        SP_ASSERT(d3d11_utility::error_check(RHI_Context::device->CreateBuffer(&buffer_desc, nullptr, reinterpret_cast<ID3D11Buffer**>(&m_rhi_resource))));
     }
 
     RHI_ConstantBuffer::RHI_ConstantBuffer(const string& name)
@@ -70,8 +70,7 @@ namespace Spartan
     {
         // Map
         D3D11_MAPPED_SUBRESOURCE mapped_resource;
-        SP_ASSERT_MSG(
-            SUCCEEDED(Renderer::GetRhiDevice()->GetRhiContext()->device_context->Map(static_cast<ID3D11Buffer*>(m_rhi_resource), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped_resource)),
+        SP_ASSERT_MSG(SUCCEEDED(RHI_Context::device_context->Map(static_cast<ID3D11Buffer*>(m_rhi_resource), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped_resource)),
             "Failed to map constant buffer");
 
         // Copy
@@ -79,6 +78,6 @@ namespace Spartan
 
         // Unmap
         SP_ASSERT(m_rhi_resource != nullptr);
-        Renderer::GetRhiDevice()->GetRhiContext()->device_context->Unmap(static_cast<ID3D11Buffer*>(m_rhi_resource), 0);
+        RHI_Context::device_context->Unmap(static_cast<ID3D11Buffer*>(m_rhi_resource), 0);
     }
 }
