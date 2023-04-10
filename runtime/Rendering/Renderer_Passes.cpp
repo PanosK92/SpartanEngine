@@ -804,7 +804,7 @@ namespace Spartan
                 // Set uber buffer with entity transform
                 if (Transform* transform = entity->GetTransform())
                 {
-                    m_cb_uber_cpu.transform = transform->GetMatrix();
+                    m_cb_uber_cpu.transform          = transform->GetMatrix();
                     m_cb_uber_cpu.transform_previous = transform->GetMatrixPrevious();
 
                     // Save matrix for velocity computation
