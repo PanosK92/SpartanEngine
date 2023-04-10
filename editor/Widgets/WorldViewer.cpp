@@ -66,9 +66,8 @@ static void load_default_world_prompt(Editor* editor)
         ImVec2 viewport_pos_center   = ImVec2(viewport_pos.x + viewport_size.x * 0.5f, viewport_pos.y + viewport_size.y * 0.5f);
         ImVec2 pivot_center          = ImVec2(0.5f, 0.5f);
         ImGui::SetNextWindowPos(viewport_pos_center, ImGuiCond_Always, pivot_center);
-        ImGui::SetNextWindowSize(ImVec2(415, 215));
 
-        if (ImGui::Begin("World selection", nullptr, ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoScrollbar))
+        if (ImGui::Begin("World selection", nullptr, ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoScrollbar))
         {
             ImGui::Text("Select the world you would like to load and click \"Ok\"");
 
@@ -76,10 +75,11 @@ static void load_default_world_prompt(Editor* editor)
             static const char* items[] =
             {
                 "1. Empty.",
-                "2. A cube on top of a quad",
-                "3. A car on top of a quad.",
-                "4. Height map generated terrain.",
-                "5. The famous Sponza building found in Dubrovnik."
+                "2. A physics enabled cube on top of a quad.",
+                "3. A futuristic helmet.",
+                "4. A car on top of a quad.",
+                "5. Height map generated terrain.",
+                "6. The famous Sponza building found in Dubrovnik."
             };
             static int item_index = 1;
             static int item_count = IM_ARRAYSIZE(items);
@@ -94,14 +94,14 @@ static void load_default_world_prompt(Editor* editor)
                 {
                     Spartan::ThreadPool::AddTask([]()
                     {
-                        Spartan::World::CreateDefaultWorldCube();
+                        Spartan::World::CreateDefaultWorldPhysicsCube();
                     });
                 }
                 else if (item_index == 2)
                 {
                     Spartan::ThreadPool::AddTask([]()
                     {
-                        Spartan::World::CreateDefaultWorldCar();
+                        Spartan::World::CreateDefaultWorldHelmet();
                     });
 
                 }
@@ -109,11 +109,19 @@ static void load_default_world_prompt(Editor* editor)
                 {
                     Spartan::ThreadPool::AddTask([]()
                     {
-                        Spartan::World::CreateDefaultWorldTerrain();
+                        Spartan::World::CreateDefaultWorldCar();
                     });
 
                 }
                 else if (item_index == 4)
+                {
+                    Spartan::ThreadPool::AddTask([]()
+                    {
+                        Spartan::World::CreateDefaultWorldTerrain();
+                    });
+
+                }
+                else if (item_index == 5)
                 {
                     Spartan::ThreadPool::AddTask([]()
                     {

@@ -58,6 +58,7 @@ namespace Spartan
         static shared_ptr<Mesh> m_default_model_sponza          = nullptr;
         static shared_ptr<Mesh> m_default_model_sponza_curtains = nullptr;
         static shared_ptr<Mesh> m_default_model_car             = nullptr;
+        static shared_ptr<Mesh> m_default_model_helmet          = nullptr;
     }
 
     // Sync primitives
@@ -370,7 +371,7 @@ namespace Spartan
         }
     }
 
-    void World::CreateDefaultWorldCommon(const Math::Vector3& camera_position, const Math::Vector3& camera_rotation)
+    void World::CreateDefaultWorldCommon(const Math::Vector3& camera_position, const Math::Vector3& camera_rotation, const char* soundtrack_file_path)
     {
         // Environment
         {
@@ -410,12 +411,12 @@ namespace Spartan
             entity->SetName("audio_source");
 
             AudioSource* audio_source = entity->AddComponent<AudioSource>();
-            audio_source->SetAudioClip("project\\music\\vangelis_cosmos_theme.mp3");
+            audio_source->SetAudioClip(soundtrack_file_path);
             audio_source->SetLoop(true);
         }
     }
 
-    void World::CreateDefaultWorldCube()
+    void World::CreateDefaultWorldPhysicsCube()
     {
         CreateDefaultWorldCommon();
 
@@ -460,6 +461,33 @@ namespace Spartan
             rigid_body->SetFriction(0.2f);
             Collider* collider = entity->AddComponent<Collider>();
             collider->SetShapeType(ColliderShape::Box); // set shape
+        }
+
+        // Start simulating (for the physics and the music to work)
+        Engine::SetFlag(EngineMode::Game);
+    }
+
+    void World::CreateDefaultWorldHelmet()
+    {
+        Vector3 camera_position = Vector3(-1.5523f, 1.2229f, -1.4509f);
+        Vector3 camera_rotation = Vector3(12.9974f, 47.5989f, 0.0f);
+        CreateDefaultWorldCommon(camera_position, camera_rotation, "project\\music\\dj_alvin_midnight.mp3");
+
+        // Quad
+        shared_ptr<Entity> entity = CreateEntity();
+        entity->SetName("quad");
+        entity->GetTransform()->SetPosition(Vector3(0.0f, 0.1f, 0.0f)); // raise a bit to avoid z-fighting with world grid
+        entity->GetTransform()->SetScale(Vector3(8.0f, 1.0f, 8.0f));
+        Renderable* renderable = entity->AddComponent<Renderable>();
+        renderable->SetGeometry(DefaultGeometry::Quad);
+        renderable->SetDefaultMaterial();
+
+        if (m_default_model_helmet = ResourceCache::Load<Mesh>("project\\models\\damaged_helmet\\DamagedHelmet.gltf"))
+        {
+            Entity* entity = m_default_model_helmet->GetRootEntity();
+            entity->SetName("futuristic_helmet");
+            entity->GetTransform()->SetPosition(Vector3(0.0f, 0.8574f, 0.0f));
+            entity->GetTransform()->SetScale(Vector3(0.608f, 0.608f, 0.608f));
         }
 
         // Start simulating (for the physics and the music to work)
