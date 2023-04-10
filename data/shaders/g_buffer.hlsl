@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016-2021 Panos Karabelas
+Copyright(c) 2016-2023 Panos Karabelas
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
 in the Software without restriction, including without limitation the rights
@@ -188,7 +188,7 @@ PixelOutputType mainPS(PixelInputType input)
     g_buffer.normal                 = float4(normal, pack_uint32_to_float16(g_mat_id));
     g_buffer.material               = float4(roughness, metalness, emission, occlusion);
     g_buffer.velocity               = velocity_uv;
-    g_buffer.fsr2_transparency_mask = albedo.a * g_is_transparent_pass;
+    g_buffer.fsr2_transparency_mask = albedo.a;
 
     return g_buffer;
 }
