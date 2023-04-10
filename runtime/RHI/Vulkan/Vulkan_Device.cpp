@@ -186,6 +186,7 @@ namespace Spartan
                 // VK_EXT_subgroup_size_control              - 1.3
                 // VK_KHR_shader_float16_int8                - 1.2
                 // VK_EXT_shader_demote_to_helper_invocation - 1.3
+                // VK_KHR_synchronization2                   - 1.3
                 // We make Vulkan 1.3 the minimum required version and we enable those extensions from the core.
                 SP_ASSERT_MSG(app_info.apiVersion >= VK_API_VERSION_1_3, "Vulkan 1.3 is not supported");
 
