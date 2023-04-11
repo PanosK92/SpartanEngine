@@ -538,7 +538,7 @@ namespace Spartan
     {
         if (enabled)
         {
-            SP_ASSERT_MSG(Display::GetHdr(), "This display doesn' support HDR");
+            SP_ASSERT_MSG(Display::GetHdr(), "This display doesn't support HDR");
         }
 
         RHI_Format new_format = enabled ? RHI_Format::R10G10B10A2_Unorm : RHI_Format::R8G8B8A8_Unorm;

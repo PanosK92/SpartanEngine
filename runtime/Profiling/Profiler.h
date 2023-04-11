@@ -52,7 +52,7 @@ namespace Spartan
         // Properties
         static bool GetEnabled();
         static void SetEnabled(const bool enabled);
-        static const std::string& GetMetrics();
+        static std::string GetMetrics();
         static const std::vector<TimeBlock>& GetTimeBlocks();
         static float GetTimeCpuLast();
         static float GetTimeGpuLast();
@@ -134,7 +134,7 @@ namespace Spartan
 
         static TimeBlock* GetNewTimeBlock();
         static void AcquireGpuData();
-        static void UpdateRhiMetricsString();
+        static void UpdateMetrics();
         static TimeBlock* GetLastIncompleteTimeBlock(TimeBlockType type = TimeBlockType::Undefined);
     };
 
