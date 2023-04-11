@@ -60,16 +60,16 @@ namespace Spartan
 
     // Metrics - Time
     float Profiler::m_time_frame_avg  = 0.0f;
-    float Profiler::m_time_frame_min  = std::numeric_limits<float>::max();
-    float Profiler::m_time_frame_max  = std::numeric_limits<float>::lowest();
+    float Profiler::m_time_frame_min  = numeric_limits<float>::max();
+    float Profiler::m_time_frame_max  = numeric_limits<float>::lowest();
     float Profiler::m_time_frame_last = 0.0f;
     float Profiler::m_time_cpu_avg    = 0.0f;
-    float Profiler::m_time_cpu_min    = std::numeric_limits<float>::max();
-    float Profiler::m_time_cpu_max    = std::numeric_limits<float>::lowest();
+    float Profiler::m_time_cpu_min    = numeric_limits<float>::max();
+    float Profiler::m_time_cpu_max    = numeric_limits<float>::lowest();
     float Profiler::m_time_cpu_last   = 0.0f;
     float Profiler::m_time_gpu_avg    = 0.0f;
-    float Profiler::m_time_gpu_min    = std::numeric_limits<float>::max();
-    float Profiler::m_time_gpu_max    = std::numeric_limits<float>::lowest();
+    float Profiler::m_time_gpu_min    = numeric_limits<float>::max();
+    float Profiler::m_time_gpu_max    = numeric_limits<float>::lowest();
     float Profiler::m_time_gpu_last   = 0.0f;
 
     // Memory
@@ -87,16 +87,16 @@ namespace Spartan
 
         // Time blocks (double buffered)
         static int m_time_block_index = -1;
-        static std::vector<TimeBlock> m_time_blocks_write;
-        static std::vector<TimeBlock> m_time_blocks_read;
+        static vector<TimeBlock> m_time_blocks_write;
+        static vector<TimeBlock> m_time_blocks_read;
 
         // FPS
         static float m_fps = 0.0f;
 
         // Hardware - GPU
-        static std::string m_gpu_name          = "N/A";
-        static std::string m_gpu_driver        = "N/A";
-        static std::string m_gpu_api           = "N/A";
+        static string m_gpu_name          = "N/A";
+        static string m_gpu_driver        = "N/A";
+        static string m_gpu_api           = "N/A";
         static uint32_t m_gpu_memory_available = 0;
         static uint32_t m_gpu_memory_used      = 0;
 
@@ -107,12 +107,12 @@ namespace Spartan
 
         // Misc
         static bool m_poll                 = false;
-        static std::string m_metrics       = "N/A";
         static bool m_increase_capacity    = false;
         static bool m_allow_time_block_end = true;
         static void* m_query_disjoint      = nullptr;
+        static ostringstream m_oss_metrics;
     }
-    
+  
     void Profiler::Initialize()
     {
         static const int initial_capacity = 256;
@@ -243,7 +243,7 @@ namespace Spartan
             // Create a string version of the RHI metrics
             if (Renderer::GetOption<bool>(RendererOption::Debug_PerformanceMetrics))
             {
-                UpdateRhiMetricsString();
+                UpdateMetrics();
             }
         }
 
@@ -333,16 +333,16 @@ namespace Spartan
     void Profiler::ClearMetrics()
     {
         m_time_frame_avg  = 0.0f;
-        m_time_frame_min  = std::numeric_limits<float>::max();
-        m_time_frame_max  = std::numeric_limits<float>::lowest();
+        m_time_frame_min  = numeric_limits<float>::max();
+        m_time_frame_max  = numeric_limits<float>::lowest();
         m_time_frame_last = 0.0f;
         m_time_cpu_avg    = 0.0f;
-        m_time_cpu_min    = std::numeric_limits<float>::max();
-        m_time_cpu_max    = std::numeric_limits<float>::lowest();
+        m_time_cpu_min    = numeric_limits<float>::max();
+        m_time_cpu_max    = numeric_limits<float>::lowest();
         m_time_cpu_last   = 0.0f;
         m_time_gpu_avg    = 0.0f;
-        m_time_gpu_min    = std::numeric_limits<float>::max();
-        m_time_gpu_max    = std::numeric_limits<float>::lowest();
+        m_time_gpu_min    = numeric_limits<float>::max();
+        m_time_gpu_max    = numeric_limits<float>::lowest();
         m_time_gpu_last   = 0.0f;
     }
 
@@ -356,12 +356,12 @@ namespace Spartan
         m_profile = enabled;
     }
 
-    const std::string& Profiler::GetMetrics()
+    string Profiler::GetMetrics()
     {
-        return m_metrics;
+        return m_oss_metrics.str();
     }
 
-    const std::vector<Spartan::TimeBlock>& Profiler::GetTimeBlocks()
+    const vector<TimeBlock>& Profiler::GetTimeBlocks()
     {
         return m_time_blocks_read;
     }
@@ -462,9 +462,30 @@ namespace Spartan
         }
     }
 
-    void Profiler::UpdateRhiMetricsString()
+    static string format_float(float value)
     {
-        const uint32_t texture_count  = ResourceCache::GetResourceCount(ResourceType::Texture) + ResourceCache::GetResourceCount(ResourceType::Texture2d) + ResourceCache::GetResourceCount(ResourceType::TextureCube);
+        std::stringstream ss;
+
+        // Clamp to a certain range to avoid padding and alignment headaches
+        value = Math::Helper::Clamp(value, 0.0f, 99.99f);
+
+        // Set fixed-point notation with 2 decimal places
+        ss << std::fixed << std::setprecision(2);
+
+        // Output the integer part with the fill character '0' and the minimum width of 2 characters
+        int integer_part = static_cast<int>(value);
+        ss << std::setfill('0') << std::setw(2) << integer_part;
+
+        // Output the decimal point and decimal part
+        float decimal_part = value - integer_part;
+        ss << "." << std::setfill('0') << std::setw(2) << static_cast<int>(round(decimal_part * 100));
+
+        return ss.str();
+    }
+
+    void Profiler::UpdateMetrics()
+    {
+        const uint32_t texture_count = ResourceCache::GetResourceCount(ResourceType::Texture) + ResourceCache::GetResourceCount(ResourceType::Texture2d) + ResourceCache::GetResourceCount(ResourceType::TextureCube);
         const uint32_t material_count = ResourceCache::GetResourceCount(ResourceType::Material);
 
         // Get the graphics driver vendor
@@ -474,101 +495,63 @@ namespace Spartan
             api_vendor_name = "NVIDIA";
         }
 
-        static const char* text =
-            // Overview
-            "FPS:\t\t%.2f\n"
-            "Time:\t%.2f ms\n"
-            "Frame:\t%d\n"
-            // Detailed times
-            "\n"
-            "\t\tavg\t\tmin\t\tmax\t\tlast\n"
-            "Total:\t%06.2f\t%06.2f\t%06.2f\t%06.2f ms\n"
-            "CPU:\t%06.2f\t%06.2f\t%06.2f\t%06.2f ms\n"
-            "GPU:\t%06.2f\t%06.2f\t%06.2f\t%06.2f ms\n"
-            // GPU
-            "\n"
-            "GPU\n"
-            "Name:\t\t%s\n"
-            "Memory:\t%d/%d MB\n"
-            "API:\t\t\t%s\t%s\n"
-            "Driver:\t\t%s\t%s\n"
-            // CPU
-            "\n"
-            "CPU\n"
-            "Worker threads: %d/%d\n"
-            // Resolution
-            "\n"
-            "Resolution\n"
-            "Output:\t\t%dx%d\n"
-            "Render:\t\t%dx%d\n"
-            "Viewport:\t%dx%d\n"
-            "HDR:\t\t%s\n"
-            // API Calls
-            "\n"
-            "API calls\n"
-            "Draw:\t\t\t\t\t%d\n"
-            "Dispatch:\t\t\t\t%d\n"
-            "Index buffer bindings:\t\t%d\n"
-            "Vertex buffer bindings:\t%d\n"
-            "Descriptor set bindings:\t%d\n"
-            "Pipeline bindings:\t\t\t%d\n"
-            "Pipeline barriers:\t\t\t%d\n"
-            // Resources
-            "\n"
-            "Resources\n"
-            "Meshes rendered:\t\t\t%d\n"
-            "Textures:\t\t\t\t%d\n"
-            "Materials:\t\t\t\t%d\n"
-            "Descriptor set capacity:\t%d/%d";
+        // Clear
+        m_oss_metrics.str("");
+        m_oss_metrics.clear();
 
-        static char buffer[2048];
-        sprintf
-        (
-            buffer, text,
+        // Set fixed-point notation with 2 decimal places
+        m_oss_metrics << std::fixed << std::setprecision(2);
 
-            // Overview
-            m_fps,
-            m_time_frame_last,
-            Renderer::GetFrameNum(),
+        // Overview
+        m_oss_metrics
+            << "FPS:\t\t" << m_fps << endl
+            << "Time:\t"  << m_time_frame_last << " ms" << endl
+            << "Frame:\t" << Renderer::GetFrameNum() << endl;
 
-            // Detailed times
-            m_time_frame_avg, m_time_frame_min, m_time_frame_max, m_time_frame_last,
-            m_time_cpu_avg,   m_time_cpu_min,   m_time_cpu_max,   m_time_cpu_last,
-            m_time_gpu_avg,   m_time_gpu_min,   m_time_gpu_max,   m_time_gpu_last,
+        // Detailed times
+        m_oss_metrics
+            << endl     << setw(18) << "avg"                          << setw(10) << "min"                          << setw(10) << "max"                          << setw(10) << "last"                                   << endl
+            << "Total:" << setw(10) << format_float(m_time_frame_avg) << setw(8)  << format_float(m_time_frame_min) << setw(9)  << format_float(m_time_frame_max) << setw(9)  << format_float(m_time_frame_last) << " ms" << endl
+            << "CPU:"   << setw(11) << format_float(m_time_cpu_avg)   << setw(8)  << format_float(m_time_cpu_min)   << setw(9)  << format_float(m_time_cpu_max)   << setw(9)  << format_float(m_time_cpu_last)   << " ms" << endl
+            << "GPU:"   << setw(11) << format_float(m_time_gpu_avg)   << setw(8)  << format_float(m_time_gpu_min)   << setw(9)  << format_float(m_time_gpu_max)   << setw(9)  << format_float(m_time_gpu_last)   << " ms" << endl;
 
-            // GPU
-            m_gpu_name.c_str(),
-            m_gpu_memory_used, m_gpu_memory_available,
-            RHI_Context::api_type_str.c_str(), m_gpu_api.c_str(),
-            Renderer::GetRhiDevice()->GetPrimaryPhysicalDevice()->GetVendorName().c_str(), m_gpu_driver.c_str(),
+        // GPU
+        m_oss_metrics
+            << endl << "GPU" << endl
+            << "Name:\t\t"   << m_gpu_name << endl
+            << "Memory:\t"   << m_gpu_memory_used << "/" << m_gpu_memory_available << " MB" << endl
+            << "API:\t\t\t"  << RHI_Context::api_type_str << "\t" << m_gpu_api << endl
+            << "Driver:\t\t" << Renderer::GetRhiDevice()->GetPrimaryPhysicalDevice()->GetVendorName() << "\t" << m_gpu_driver << endl;
 
-            // CPU
-            ThreadPool::GetWorkingThreadCount(),
-            ThreadPool::GetThreadCount(),
+        // CPU
+        m_oss_metrics << endl << "CPU" << endl
+            << "Worker threads: " << ThreadPool::GetWorkingThreadCount() << "/" << ThreadPool::GetThreadCount() << endl;
 
-            // Resolution
-            static_cast<int>(Renderer::GetResolutionOutput().x), static_cast<int>(Renderer::GetResolutionOutput().y),
-            static_cast<int>(Renderer::GetResolutionRender().x), static_cast<int>(Renderer::GetResolutionRender().y),
-            static_cast<int>(Renderer::GetViewport().width),     static_cast<int>(Renderer::GetViewport().height),
-            Renderer::GetSwapChain()->IsHdr() ? "Enabled" : "Disabled",
+        // Resolution
+        m_oss_metrics
+            << "\nResolution\n"
+            << "Output:\t\t" << static_cast<int>(Renderer::GetResolutionOutput().x) << "x" << static_cast<int>(Renderer::GetResolutionOutput().y) << endl
+            << "Render:\t\t" << static_cast<int>(Renderer::GetResolutionRender().x) << "x" << static_cast<int>(Renderer::GetResolutionRender().y) << endl
+            << "Viewport:\t" << static_cast<int>(Renderer::GetViewport().width)     << "x" << static_cast<int>(Renderer::GetViewport().height)    << endl
+            << "HDR:\t\t"    << (Renderer::GetSwapChain()->IsHdr() ? "Enabled" : "Disabled") << endl;
 
-            // API Calls
-            m_rhi_draw,
-            m_rhi_dispatch,
-            m_rhi_bindings_buffer_index,
-            m_rhi_bindings_buffer_vertex,
-            m_rhi_bindings_descriptor_set,
-            m_rhi_bindings_pipeline,
-            m_rhi_pipeline_barriers,
+        // API Calls
+        m_oss_metrics
+            << "\nAPI calls\n"
+            << "Draw:\t\t\t\t\t"            << m_rhi_draw                    << endl
+            << "Dispatch:\t\t\t\t"          << m_rhi_dispatch                << endl
+            << "Index buffer bindings:\t\t" << m_rhi_bindings_buffer_index   << endl
+            << "Vertex buffer bindings:\t"  << m_rhi_bindings_buffer_vertex  << endl
+            << "Descriptor set bindings:\t" << m_rhi_bindings_descriptor_set << endl
+            << "Pipeline bindings:\t\t\t"   << m_rhi_bindings_pipeline       << endl
+            << "Pipeline barriers:\t\t\t"   << m_rhi_pipeline_barriers       << endl;
 
-            // Resources
-            m_renderer_meshes_rendered,
-            texture_count,
-            material_count,
-            m_descriptor_set_count,
-            m_descriptor_set_capacity
-        );
-
-        m_metrics = string(buffer);
+        // Resources
+        m_oss_metrics
+            << "\nResources\n"
+            << "Meshes rendered:\t\t\t"     << m_renderer_meshes_rendered << endl
+            << "Textures:\t\t\t\t"          << texture_count << endl
+            << "Materials:\t\t\t\t"         << material_count << endl
+            << "Descriptor set capacity:\t" << m_descriptor_set_count << "/" << m_descriptor_set_capacity;
     }
 }

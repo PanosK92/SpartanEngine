@@ -21,32 +21,29 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-
-//= INCLUDES ===================
+//= INCLUDES ===============
 #include "Definitions.h"
 #include "../Math/Vector3.h"
-//==============================
+//==========================
 
 namespace Spartan
 {
-    //= FWD DECLARATIONS =
-    class Entity;
-    //====================
-
     class SP_CLASS World
     {
     public:
         static void Initialize();
         static void Shutdown();
+
         static void PreTick();
-        static void Tick();
-        
+        static void Tick();   
         static void New();
         static bool SaveToFile(const std::string& filePath);
         static bool LoadFromFile(const std::string& file_path);
         static void Resolve();
+        static const std::string GetName();
+        static const std::string& GetFilePath();
 
-        // Default worlds
+        //= DEFAULT WORLDS====================================================================
         static void CreateDefaultWorldCommon(
             const Math::Vector3& camera_position = Math::Vector3(-2.956f, 1.1474f, -2.9395f),
             const Math::Vector3& camera_rotation = Math::Vector3(15.9976f, 43.5998f, 0.0f),
@@ -57,11 +54,9 @@ namespace Spartan
         static void CreateDefaultWorldCar();
         static void CreateDefaultWorldTerrain();
         static void CreateDefaultWorldSponza();
+        //====================================================================================
 
-        static const std::string GetName();
-        static const std::string& GetFilePath();
-
-        //= Entities ==================================================================
+        //= ENTITIES ==================================================================
         static std::shared_ptr<Entity> CreateEntity();
         static bool EntityExists(Entity* entity);
         static void RemoveEntity(Entity* entity);
