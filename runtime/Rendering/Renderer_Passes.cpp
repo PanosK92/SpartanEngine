@@ -799,6 +799,7 @@ namespace Spartan
                     m_cb_uber_cpu.mat_textures                          |= material->HasTexture(MaterialTexture::AlphaMask)  ? (1U << 5) : 0;
                     m_cb_uber_cpu.mat_textures                          |= material->HasTexture(MaterialTexture::Emission)   ? (1U << 6) : 0;
                     m_cb_uber_cpu.mat_textures                          |= material->HasTexture(MaterialTexture::Occlusion)  ? (1U << 7) : 0;
+                    m_cb_uber_cpu.is_transparent_pass                    = is_transparent_pass ? 1 : 0;
                 }
 
                 // Set uber buffer with entity transform
