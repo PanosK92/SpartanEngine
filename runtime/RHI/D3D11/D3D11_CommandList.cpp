@@ -270,7 +270,7 @@ namespace Spartan
             // Set render targets
             {
                 // Current state
-                std::array<ID3D11RenderTargetView*, rhi_max_render_target_count> set_render_target_views = { nullptr };
+                array<ID3D11RenderTargetView*, rhi_max_render_target_count> set_render_target_views = { nullptr };
                 ID3D11DepthStencilView* set_depth_stencil_view = nullptr;
                 device_context->OMGetRenderTargets(rhi_max_render_target_count, set_render_target_views.data(), &set_depth_stencil_view);
 
