@@ -133,63 +133,51 @@ namespace Spartan
         return false;
     }
     
-    uint64_t RHI_PipelineState::ComputeHash() const
+    static uint64_t compute_hash(const RHI_PipelineState& pso)
     {
         uint64_t hash = 0;
 
-        hash = rhi_hash_combine(hash, static_cast<uint64_t>(can_use_vertex_index_buffers));
-        hash = rhi_hash_combine(hash, static_cast<uint64_t>(dynamic_scissor));
-        hash = rhi_hash_combine(hash, static_cast<uint64_t>(viewport.x * 100));
-        hash = rhi_hash_combine(hash, static_cast<uint64_t>(viewport.y * 100));
-        hash = rhi_hash_combine(hash, static_cast<uint64_t>(viewport.width * 100));
-        hash = rhi_hash_combine(hash, static_cast<uint64_t>(viewport.height * 100));
-        hash = rhi_hash_combine(hash, static_cast<uint64_t>(primitive_topology));
-        hash = rhi_hash_combine(hash, static_cast<uint64_t>(render_target_color_texture_array_index));
-        hash = rhi_hash_combine(hash, static_cast<uint64_t>(render_target_depth_stencil_texture_array_index));
+        hash = rhi_hash_combine(hash, static_cast<uint64_t>(pso.dynamic_scissor));
+        hash = rhi_hash_combine(hash, static_cast<uint64_t>(pso.can_use_vertex_index_buffers));
+        hash = rhi_hash_combine(hash, static_cast<uint64_t>(pso.primitive_topology));
+        hash = rhi_hash_combine(hash, static_cast<uint64_t>(pso.render_target_color_texture_array_index));
+        hash = rhi_hash_combine(hash, static_cast<uint64_t>(pso.render_target_depth_stencil_texture_array_index));
 
-        if (render_target_swapchain)
+        if (pso.render_target_swapchain)
         {
-            hash = rhi_hash_combine(hash, static_cast<uint64_t>(render_target_swapchain->GetFormat()));
+            hash = rhi_hash_combine(hash, static_cast<uint64_t>(pso.render_target_swapchain->GetFormat()));
         }
 
-        if (!dynamic_scissor)
+        if (pso.rasterizer_state)
         {
-            hash = rhi_hash_combine(hash, static_cast<uint64_t>(scissor.left * 100));
-            hash = rhi_hash_combine(hash, static_cast<uint64_t>(scissor.top * 100));
-            hash = rhi_hash_combine(hash, static_cast<uint64_t>(scissor.right * 100));
-            hash = rhi_hash_combine(hash, static_cast<uint64_t>(scissor.bottom * 100));
+            hash = rhi_hash_combine(hash, pso.rasterizer_state->GetObjectId());
         }
 
-        if (rasterizer_state)
+        if (pso.blend_state)
         {
-            hash = rhi_hash_combine(hash, rasterizer_state->GetObjectId());
+            hash = rhi_hash_combine(hash, pso.blend_state->GetObjectId());
         }
 
-        if (blend_state)
+        if (pso.depth_stencil_state)
         {
-            hash = rhi_hash_combine(hash, blend_state->GetObjectId());
-        }
-
-        if (depth_stencil_state)
-        {
-            hash = rhi_hash_combine(hash, depth_stencil_state->GetObjectId());
+            hash = rhi_hash_combine(hash, pso.depth_stencil_state->GetObjectId());
         }
 
         // Shaders
         {
-            if (shader_compute)
+            if (pso.shader_compute)
             {
-                hash = rhi_hash_combine(hash, shader_compute->GetHash());
+                hash = rhi_hash_combine(hash, pso.shader_compute->GetHash());
             }
 
-            if (shader_vertex)
+            if (pso.shader_vertex)
             {
-                hash = rhi_hash_combine(hash, shader_vertex->GetHash());
+                hash = rhi_hash_combine(hash, pso.shader_vertex->GetHash());
             }
 
-            if (shader_pixel)
+            if (pso.shader_pixel)
             {
-                hash = rhi_hash_combine(hash, shader_pixel->GetHash());
+                hash = rhi_hash_combine(hash, pso.shader_pixel->GetHash());
             }
         }
 
@@ -198,19 +186,29 @@ namespace Spartan
             // Color
             for (uint32_t i = 0; i < rhi_max_render_target_count; i++)
             {
-                if (RHI_Texture* texture = render_target_color_textures[i])
+                if (RHI_Texture* texture = pso.render_target_color_textures[i])
                 {
                     hash = rhi_hash_combine(hash, texture->GetObjectId());
                 }
             }
 
             // Depth
-            if (render_target_depth_texture)
+            if (pso.render_target_depth_texture)
             {
-                hash = rhi_hash_combine(hash, render_target_depth_texture->GetObjectId());
+                hash = rhi_hash_combine(hash, pso.render_target_depth_texture->GetObjectId());
             }
         }
 
         return hash;
+    }
+
+    uint64_t RHI_PipelineState::GetHash()
+    {
+        if (m_hash == 0)
+        {
+          m_hash = compute_hash(*this);
+        }
+
+        return m_hash;
     }
 }

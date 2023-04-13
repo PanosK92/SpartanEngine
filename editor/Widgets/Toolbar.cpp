@@ -101,7 +101,7 @@ void Toolbar::TickAlways()
         }
         else
         {
-            SP_LOG_WARNING("RenderDoc integration is disabled. To enable, go to \"RHI_Implemenation.h\", and set \"renderdoc\" to \"true\"");
+            SP_LOG_WARNING("RenderDoc integration is disabled. To enable, go to \"RHI_Implemenation.cpp\", and set \"renderdoc\" to \"true\"");
         }
     }
     ImGui_SP::tooltip("Captures the next frame and then launches RenderDoc");
