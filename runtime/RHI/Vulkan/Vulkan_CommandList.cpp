@@ -225,8 +225,8 @@ namespace Spartan
         GetDescriptorSetLayoutFromPipelineState(pso);
 
         // If no pipeline exists for this state, create one
-        uint64_t hash_previous = m_pso.ComputeHash();
-        uint64_t hash = pso.ComputeHash();
+        uint64_t hash_previous = m_pso.GetHash();
+        uint64_t hash = pso.GetHash();
         auto it = m_pipelines.find(hash);
         if (it == m_pipelines.end())
         {
@@ -382,6 +382,9 @@ namespace Spartan
 
         // Begin dynamic render pass instance
         vkCmdBeginRendering(static_cast<VkCommandBuffer>(m_rhi_resource), &rendering_info);
+
+        // Set viewport
+        SetViewport(m_pso.viewport);
 
         m_is_rendering = true;
     }
@@ -635,8 +638,9 @@ namespace Spartan
 
     void RHI_CommandList::SetViewport(const RHI_Viewport& viewport) const
     {
-        // Validate command list state
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
+        SP_ASSERT(m_pso.viewport.width != 0);
+        SP_ASSERT(m_pso.viewport.height != 0);
 
         VkViewport vk_viewport = {};
         vk_viewport.x          = viewport.x;
@@ -976,38 +980,35 @@ namespace Spartan
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
-        // Bind descriptor sets
+        // Bind descriptor sets - If the descriptor set is null, it means we don't need to bind anything.
+        Renderer::SetGlobalShaderResources(this);
+        if (RHI_DescriptorSet* descriptor_set = m_descriptor_layout_current->GetDescriptorSet())
         {
-            Renderer::SetGlobalShaderResources(this);
-
-            // If the descriptor set is null, it means we don't need to bind anything.
-            if (RHI_DescriptorSet* descriptor_set = m_descriptor_layout_current->GetDescriptorSet())
-            {
-                // Get descriptor sets
-                array<void*, 1> descriptor_sets = { descriptor_set->GetResource() };
-
-                // Get dynamic offsets
-                static vector<uint32_t> dynamic_offsets;
-                m_descriptor_layout_current->GetDynamicOffsets(&dynamic_offsets);
-
-                // Bind descriptor set
-                vkCmdBindDescriptorSets
-                (
-                    static_cast<VkCommandBuffer>(m_rhi_resource),                            // commandBuffer
-                    m_pso.IsCompute() ?                                                      // pipelineBindPoint
-                    VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_COMPUTE :
-                    VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS,
-                    static_cast<VkPipelineLayout>(m_pipeline->GetResource_PipelineLayout()), // layout
-                    0,                                                                       // firstSet
-                    static_cast<uint32_t>(descriptor_sets.size()),                           // descriptorSetCount
-                    reinterpret_cast<VkDescriptorSet*>(descriptor_sets.data()),              // pDescriptorSets
-                    static_cast<uint32_t>(dynamic_offsets.size()),                           // dynamicOffsetCount
-                    dynamic_offsets.data()                                                   // pDynamicOffsets
-                );
-
-                Profiler::m_rhi_bindings_descriptor_set++;
-            }
+            // Get descriptor sets
+            array<void*, 1> descriptor_sets = { descriptor_set->GetResource() };
+        
+            // Get dynamic offsets
+            static vector<uint32_t> dynamic_offsets;
+            m_descriptor_layout_current->GetDynamicOffsets(&dynamic_offsets);
+        
+            // Bind descriptor set
+            vkCmdBindDescriptorSets
+            (
+                static_cast<VkCommandBuffer>(m_rhi_resource),                            // commandBuffer
+                m_pso.IsCompute() ?                                                      // pipelineBindPoint
+                VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_COMPUTE :
+                VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS,
+                static_cast<VkPipelineLayout>(m_pipeline->GetResource_PipelineLayout()), // layout
+                0,                                                                       // firstSet
+                static_cast<uint32_t>(descriptor_sets.size()),                           // descriptorSetCount
+                reinterpret_cast<VkDescriptorSet*>(descriptor_sets.data()),              // pDescriptorSets
+                static_cast<uint32_t>(dynamic_offsets.size()),                           // dynamicOffsetCount
+                dynamic_offsets.data()                                                   // pDynamicOffsets
+            );
+        
+            Profiler::m_rhi_bindings_descriptor_set++;
         }
+        
     }
 
     void RHI_CommandList::UnbindOutputTextures()

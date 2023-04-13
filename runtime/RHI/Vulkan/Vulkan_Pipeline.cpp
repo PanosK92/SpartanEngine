@@ -73,11 +73,8 @@ namespace Spartan
         VkRect2D scissor                                 = {};
         VkPipelineViewportStateCreateInfo viewport_state = {};
         {
-            // If no viewport has been provided, assume dynamic
-            if (!m_state.viewport.IsDefined())
-            {
-                dynamic_states.emplace_back(VK_DYNAMIC_STATE_VIEWPORT);
-            }
+            // Always allow dynamic viewport
+            dynamic_states.emplace_back(VK_DYNAMIC_STATE_VIEWPORT);
 
             if (m_state.dynamic_scissor)
             {

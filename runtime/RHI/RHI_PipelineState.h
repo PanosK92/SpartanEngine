@@ -36,11 +36,11 @@ namespace Spartan
     public:
         RHI_PipelineState();
         ~RHI_PipelineState();
-
-        bool IsValid();
+ 
         uint32_t GetWidth() const;
         uint32_t GetHeight() const;
-        uint64_t ComputeHash() const;
+        uint64_t GetHash();
+        bool IsValid();
         bool HasClearValues();
         bool IsGraphics() const { return (shader_vertex != nullptr || shader_pixel != nullptr) && !shader_compute; }
         bool IsCompute()  const { return shader_compute != nullptr && !IsGraphics(); }
@@ -54,10 +54,8 @@ namespace Spartan
         RHI_DepthStencilState* depth_stencil_state    = nullptr;
         RHI_SwapChain* render_target_swapchain        = nullptr;
         RHI_PrimitiveTopology_Mode primitive_topology = RHI_PrimitiveTopology_Mode::Undefined;
-        RHI_Viewport viewport                         = RHI_Viewport::Undefined;
-        Math::Rectangle scissor                       = Math::Rectangle::Zero;
-        bool dynamic_scissor                          = false;
         bool can_use_vertex_index_buffers             = true;
+        bool dynamic_scissor                          = false;
 
         // RTs
         RHI_Texture* render_target_depth_texture = nullptr;
@@ -69,11 +67,17 @@ namespace Spartan
         //====================================================================================
 
         //= Dynamic, modification wont' create a new pipeline =====
+        RHI_Viewport viewport   = RHI_Viewport::Undefined;
+        Math::Rectangle scissor = Math::Rectangle::Zero;
+
         float clear_depth      = rhi_depth_load;
         uint32_t clear_stencil = rhi_stencil_load;
         std::array<Color, rhi_max_render_target_count> clear_color;
 
         bool render_target_depth_texture_read_only = false;
         //=========================================================
+
+    private:
+        uint64_t m_hash = 0;
     };
 }

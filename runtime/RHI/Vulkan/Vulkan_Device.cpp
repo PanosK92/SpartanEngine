@@ -349,6 +349,10 @@ namespace Spartan
                     SP_ASSERT(features_supported_1_2.descriptorBindingPartiallyBound == VK_TRUE);
                     device_features_to_enable_1_2.descriptorBindingPartiallyBound = VK_TRUE;
 
+                    // Runtime descriptor array
+                    SP_ASSERT(features_supported_1_2.runtimeDescriptorArray == VK_TRUE);
+                    device_features_to_enable_1_2.runtimeDescriptorArray = VK_TRUE;
+
                     // Timeline semaphores
                     SP_ASSERT(features_supported_1_2.timelineSemaphore == VK_TRUE);
                     device_features_to_enable_1_2.timelineSemaphore = VK_TRUE;
@@ -795,6 +799,12 @@ namespace Spartan
 
         // Create pool
         {
+            static const uint16_t rhi_descriptor_max_textures                 = 16536;
+            static const uint16_t rhi_descriptor_max_storage_textures         = 16536;
+            static const uint16_t rhi_descriptor_max_storage_buffers          = 32;
+            static const uint16_t rhi_descriptor_max_constant_buffers_dynamic = 32;
+            static const uint16_t rhi_descriptor_max_samplers                 = 32;
+
             // Pool sizes
             array<VkDescriptorPoolSize, 5> pool_sizes =
             {
@@ -808,12 +818,15 @@ namespace Spartan
             // Create info
             VkDescriptorPoolCreateInfo pool_create_info = {};
             pool_create_info.sType                      = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-            pool_create_info.flags                      = 0;
+            pool_create_info.flags                      = VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT_EXT;
             pool_create_info.poolSizeCount              = static_cast<uint32_t>(pool_sizes.size());
             pool_create_info.pPoolSizes                 = pool_sizes.data();
             pool_create_info.maxSets                    = descriptor_set_capacity;
 
-            SP_ASSERT_MSG(vkCreateDescriptorPool(RHI_Context::device, &pool_create_info, nullptr, reinterpret_cast<VkDescriptorPool*>(&m_descriptor_pool)) == VK_SUCCESS, "Failed to create descriptor pool.");
+            SP_VK_ASSERT_MSG(
+                vkCreateDescriptorPool(RHI_Context::device, &pool_create_info, nullptr, reinterpret_cast<VkDescriptorPool*>(&m_descriptor_pool)),
+                "Failed to create descriptor pool."
+            );
         }
 
         SP_LOG_INFO("Capacity has been set to %d elements", descriptor_set_capacity);
