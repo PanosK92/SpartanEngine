@@ -167,8 +167,6 @@ namespace Spartan
 
         // Pipelines
         RHI_PipelineState m_pso;
-        // <hash of pipeline state, pipeline state object>
-        static std::unordered_map<uint64_t, std::shared_ptr<RHI_Pipeline>> m_pipelines;
 
         // Keep track of output textures so that we can unbind them and prevent
         // D3D11 warnings when trying to bind them as SRVs in following passes

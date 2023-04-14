@@ -26,9 +26,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Shader.h"
 #include "../RHI_BlendState.h"
 #include "../RHI_InputLayout.h"
-#include "../RHI_DescriptorSetLayout.h"
 #include "../RHI_RasterizerState.h"
-#include "../Rendering/Renderer.h"
+#include "../RHI_DescriptorSetLayout.h"
 //=====================================
 
 //= NAMESPACES =====
@@ -99,8 +98,8 @@ namespace Spartan
             vkViewport.maxDepth = 1.0f;
         
             // Scissor
-            scissor.offset.x      = 0.0f;
-            scissor.offset.y      = 0.0f;
+            scissor.offset.x      = 0;
+            scissor.offset.y      = 0;
             scissor.extent.width  = static_cast<uint32_t>(vkViewport.width);
             scissor.extent.height = static_cast<uint32_t>(vkViewport.height);
         
