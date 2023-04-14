@@ -204,10 +204,9 @@ namespace Spartan
 
     uint64_t RHI_PipelineState::GetHash()
     {
-        if (m_hash == 0)
-        {
-          m_hash = compute_hash(*this);
-        }
+        // We can't really avoid re-computing the hash every time
+        // because certain render passes (e.g. Pass_ShadowMaps) can modify the pipeline state.
+        m_hash = compute_hash(*this);
 
         return m_hash;
     }

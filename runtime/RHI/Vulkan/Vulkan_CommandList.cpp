@@ -46,7 +46,11 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    unordered_map<uint64_t, shared_ptr<RHI_Pipeline>> RHI_CommandList::m_pipelines;
+    namespace
+    {
+        //                  <hash,     pipeline>
+        static unordered_map<uint64_t, shared_ptr<RHI_Pipeline>> pipelines;
+    }
 
     static VkAttachmentLoadOp get_color_load_op(const Color& color)
     {
@@ -226,12 +230,12 @@ namespace Spartan
 
         // If no pipeline exists for this state, create one
         uint64_t hash_previous = m_pso.GetHash();
-        uint64_t hash = pso.GetHash();
-        auto it = m_pipelines.find(hash);
-        if (it == m_pipelines.end())
+        uint64_t hash          = pso.GetHash();
+        auto it = pipelines.find(hash);
+        if (it == pipelines.end())
         {
             // Create a new pipeline
-            it = m_pipelines.emplace(make_pair(hash, move(make_shared<RHI_Pipeline>(pso, m_descriptor_layout_current)))).first;
+            it = pipelines.emplace(make_pair(hash, move(make_shared<RHI_Pipeline>(pso, m_descriptor_layout_current)))).first;
             SP_LOG_INFO("A new pipeline has been created.");
         }
 
