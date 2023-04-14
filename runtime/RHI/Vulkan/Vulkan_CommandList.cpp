@@ -384,7 +384,12 @@ namespace Spartan
         vkCmdBeginRendering(static_cast<VkCommandBuffer>(m_rhi_resource), &rendering_info);
 
         // Set viewport
-        SetViewport(m_pso.viewport);
+        RHI_Viewport viewport = RHI_Viewport(
+            0.0f, 0.0f,
+            static_cast<float>(m_pso.GetWidth()),
+            static_cast<float>(m_pso.GetHeight())
+        );
+        SetViewport(viewport);
 
         m_is_rendering = true;
     }
@@ -639,8 +644,8 @@ namespace Spartan
     void RHI_CommandList::SetViewport(const RHI_Viewport& viewport) const
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
-        SP_ASSERT(m_pso.viewport.width != 0);
-        SP_ASSERT(m_pso.viewport.height != 0);
+        SP_ASSERT(viewport.width != 0);
+        SP_ASSERT(viewport.height != 0);
 
         VkViewport vk_viewport = {};
         vk_viewport.x          = viewport.x;
@@ -1024,9 +1029,9 @@ namespace Spartan
 
         // Compute a hash for the descriptors
         uint64_t hash = 0;
-        for (const RHI_Descriptor& descriptor : descriptors)
+        for (RHI_Descriptor& descriptor : descriptors)
         {
-            hash = rhi_hash_combine(hash, descriptor.ComputeHash());
+            hash = rhi_hash_combine(hash, descriptor.GetHash());
         }
 
         // Search for a descriptor set layout which matches this hash

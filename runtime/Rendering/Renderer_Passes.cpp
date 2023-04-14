@@ -320,7 +320,6 @@ namespace Spartan
             pso.depth_stencil_state             = is_transparent_pass ? m_depth_stencil_r_off.get() : m_depth_stencil_rw_off.get();
             pso.render_target_color_textures[0] = tex_color; // always bind so we can clear to white (in case there are no transparent objects)
             pso.render_target_depth_texture     = tex_depth;
-            pso.viewport                        = tex_depth->GetViewport();
             pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
 
             for (uint32_t array_index = 0; array_index < tex_depth->GetArrayLength(); array_index++)
@@ -479,7 +478,6 @@ namespace Spartan
             pso.clear_color[0]                  = Color::standard_black;
             pso.clear_depth                     = 0.0f; // reverse-z
             pso.clear_stencil                   = rhi_stencil_dont_care;
-            pso.viewport                        = probe->GetColorTexture()->GetViewport();
             pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
 
             // Update cube faces
@@ -595,7 +593,6 @@ namespace Spartan
         pso.depth_stencil_state         = m_depth_stencil_rw_off.get();
         pso.render_target_depth_texture = tex_depth;
         pso.clear_depth                 = 0.0f; // reverse-z
-        pso.viewport                    = tex_depth->GetViewport();
         pso.primitive_topology          = RHI_PrimitiveTopology_Mode::TriangleList;
 
         // Set pipeline state
@@ -705,7 +702,6 @@ namespace Spartan
         pso.clear_color[4]                  = is_transparent_pass ? Color(0.0f, 0.0f, 0.0f, 0.0f) : rhi_color_dont_care;
         pso.render_target_depth_texture     = tex_depth;
         pso.clear_depth                     = (is_transparent_pass || depth_prepass) ? rhi_depth_load : 0.0f; // reverse-z
-        pso.viewport                        = tex_albedo->GetViewport();
         pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
 
         // Set pipeline state
@@ -859,7 +855,6 @@ namespace Spartan
             pso.render_target_color_textures[1] = tex_reactive_mask;
             pso.clear_color[1]                  = clear_color_reactive_mask;
             pso.render_target_depth_texture     = render_target(RendererTexture::gbuffer_depth).get();
-            pso.viewport                        = tex_out->GetViewport();
             pso.primitive_topology              = RHI_PrimitiveTopology_Mode::LineList;
 
             // Set pipeline state
@@ -912,7 +907,6 @@ namespace Spartan
                 pso.render_target_color_textures[0] = tex_out;
                 pso.render_target_color_textures[1] = tex_reactive_mask;
                 pso.clear_color[1]                  = clear_reactive_mask ? clear_color_reactive_mask : rhi_color_load;
-                pso.viewport                        = tex_out->GetViewport();
                 pso.primitive_topology              = RHI_PrimitiveTopology_Mode::LineList;
 
                 // Depth off
@@ -1227,7 +1221,6 @@ namespace Spartan
         pso.blend_state                     = m_blend_additive.get();
         pso.render_target_color_textures[0] = tex_out;
         pso.clear_color[0]                  = rhi_color_load;
-        pso.viewport                        = tex_out->GetViewport();
         pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
         pso.can_use_vertex_index_buffers    = false;
 
@@ -2028,7 +2021,6 @@ namespace Spartan
         pso.depth_stencil_state             = m_depth_stencil_off_off.get();
         pso.render_target_color_textures[0] = tex_out;
         pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
-        pso.viewport                        = tex_out->GetViewport();
 
         // Set pipeline state
         cmd_list->SetPipelineState(pso);
@@ -2124,7 +2116,6 @@ namespace Spartan
         pso.depth_stencil_state             = m_depth_stencil_r_off.get();
         pso.render_target_color_textures[0] = tex_out;
         pso.render_target_depth_texture     = render_target(RendererTexture::gbuffer_depth).get();
-        pso.viewport                        = tex_out->GetViewport();
         pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
 
         // Set pipeline state
@@ -2194,7 +2185,6 @@ namespace Spartan
                                 pso.depth_stencil_state             = m_depth_stencil_off_off.get();
                                 pso.render_target_color_textures[0] = tex_outline;
                                 pso.clear_color[0]                  = clear_color;
-                                pso.viewport                        = tex_outline->GetViewport();
                                 pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
 
                                 // Set pipeline state
@@ -2286,7 +2276,6 @@ namespace Spartan
         pso.depth_stencil_state             = m_depth_stencil_off_off.get();
         pso.render_target_color_textures[0] = tex_out;
         pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
-        pso.viewport                        = tex_out->GetViewport();
 
         // Draw outline
         if (m_font->GetOutline() != Font_Outline_None && m_font->GetOutlineSize() != 0)
@@ -2414,7 +2403,6 @@ namespace Spartan
         pso.render_target_swapchain  = m_swap_chain.get();
         pso.clear_color[0]           = rhi_color_dont_care;
         pso.primitive_topology       = RHI_PrimitiveTopology_Mode::TriangleList;
-        pso.viewport                 = m_viewport;
 
         // Set pipeline state
         m_cmd_current->SetPipelineState(pso);
