@@ -27,8 +27,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-    struct RHI_Descriptor
+    class RHI_Descriptor
     {
+    public:
         RHI_Descriptor() = default;
 
         RHI_Descriptor(const RHI_Descriptor& descriptor)
@@ -52,15 +53,16 @@ namespace Spartan
             this->array_size = array_size;
         }
 
-        uint64_t ComputeHash() const
+        uint64_t GetHash()
         {
-            uint64_t hash = 0;
+            if (hash == 0)
+            {
+                hash = rhi_hash_combine(hash, static_cast<uint64_t>(type));
+                hash = rhi_hash_combine(hash, static_cast<uint64_t>(slot));
+                hash = rhi_hash_combine(hash, static_cast<uint64_t>(stage));
+                hash = rhi_hash_combine(hash, static_cast<uint64_t>(array_size));
+            }
 
-            hash = rhi_hash_combine(hash, static_cast<uint64_t>(type));
-            hash = rhi_hash_combine(hash, static_cast<uint64_t>(slot));
-            hash = rhi_hash_combine(hash, static_cast<uint64_t>(stage));
-            hash = rhi_hash_combine(hash, static_cast<uint64_t>(array_size));
-            
             return hash;
         }
 
@@ -80,8 +82,9 @@ namespace Spartan
         uint32_t mip_range      = 0;
         void* data              = nullptr;
         RHI_Image_Layout layout = RHI_Image_Layout::Undefined;
+        std::string name; // Kept here for debugging purposes
 
-        // Reflected shader resource name, it doesn't affect the hash. Kept here for debugging purposes.
-        std::string name;
+    private:
+        uint64_t hash = 0;
     };
 }

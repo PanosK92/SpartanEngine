@@ -21,13 +21,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =====================
+//= INCLUDES ==============
 #include "RHI_Definition.h"
 #include "RHI_Viewport.h"
 #include "../Core/Object.h"
-#include "../Math/Rectangle.h"
 #include <array>
-//================================
+//=========================
 
 namespace Spartan
 {
@@ -67,8 +66,6 @@ namespace Spartan
         //====================================================================================
 
         //= DYNAMIC - Will not cause PSO generation ===============
-        RHI_Viewport viewport = RHI_Viewport::Undefined;
-
         float clear_depth      = rhi_depth_load;
         uint32_t clear_stencil = rhi_stencil_load;
         std::array<Color, rhi_max_render_target_count> clear_color;

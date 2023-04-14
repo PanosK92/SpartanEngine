@@ -76,6 +76,8 @@ namespace Spartan
             // Always allow dynamic viewport
             dynamic_states.emplace_back(VK_DYNAMIC_STATE_VIEWPORT);
 
+            // If this is always on, Vulkan will expect you to set a scissor rectangle dynamically.
+            // Because of this, we just rely on dynamic_scissor.
             if (m_state.dynamic_scissor)
             {
                 dynamic_states.emplace_back(VK_DYNAMIC_STATE_SCISSOR);
@@ -89,15 +91,16 @@ namespace Spartan
             dynamic_state.pDynamicStates    = dynamic_states.data();
         
             // Viewport
-            vkViewport.x        = m_state.viewport.x;
-            vkViewport.y        = m_state.viewport.y;
-            vkViewport.width    = m_state.viewport.width;
-            vkViewport.height   = m_state.viewport.height;
-            vkViewport.minDepth = m_state.viewport.depth_min;
-            vkViewport.maxDepth = m_state.viewport.depth_max;
+            vkViewport.x        = 0;
+            vkViewport.y        = 0;
+            vkViewport.width    = static_cast<float>(m_state.GetWidth());
+            vkViewport.height   = static_cast<float>(m_state.GetHeight());
+            vkViewport.minDepth = 0.0f;
+            vkViewport.maxDepth = 1.0f;
         
             // Scissor
-            scissor.offset        = { 0, 0 };
+            scissor.offset.x      = 0.0f;
+            scissor.offset.y      = 0.0f;
             scissor.extent.width  = static_cast<uint32_t>(vkViewport.width);
             scissor.extent.height = static_cast<uint32_t>(vkViewport.height);
         

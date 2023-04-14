@@ -44,9 +44,9 @@ namespace Spartan
 
         CreateResource(m_descriptors);
 
-        for (const RHI_Descriptor& descriptor : m_descriptors)
+        for (RHI_Descriptor& descriptor : m_descriptors)
         {
-            m_hash = rhi_hash_combine(m_hash, descriptor.ComputeHash());
+            m_hash = rhi_hash_combine(m_hash, descriptor.GetHash());
         }
     }
 

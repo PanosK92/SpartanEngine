@@ -299,10 +299,8 @@ namespace Spartan
         }
 
         // Viewport
-        if (m_pso.viewport.IsDefined())
-        {
-            SetViewport(m_pso.viewport);
-        }
+        RHI_Viewport viewport = RHI_Viewport(0.0f, 0.0f, m_pso.GetWidth(), m_pso.GetHeight());
+        SetViewport(viewport);
 
         // Clear render target(s)
         ClearPipelineStateRenderTargets(m_pso);
