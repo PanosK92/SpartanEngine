@@ -97,18 +97,9 @@ namespace Spartan
             vkViewport.maxDepth = m_state.viewport.depth_max;
         
             // Scissor
-            if (!m_state.scissor.IsDefined())
-            {
-                scissor.offset = { 0, 0 };
-                scissor.extent.width = static_cast<uint32_t>(vkViewport.width);
-                scissor.extent.height = static_cast<uint32_t>(vkViewport.height);
-            }
-            else
-            {
-                scissor.offset = { static_cast<int32_t>(m_state.scissor.left), static_cast<int32_t>(m_state.scissor.top) };
-                scissor.extent.width  = static_cast<uint32_t>(m_state.scissor.Width());
-                scissor.extent.height = static_cast<uint32_t>(m_state.scissor.Height());
-            }
+            scissor.offset        = { 0, 0 };
+            scissor.extent.width  = static_cast<uint32_t>(vkViewport.width);
+            scissor.extent.height = static_cast<uint32_t>(vkViewport.height);
         
             // Viewport state
             viewport_state.sType         = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;

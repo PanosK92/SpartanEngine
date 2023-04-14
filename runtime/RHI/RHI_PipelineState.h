@@ -45,7 +45,7 @@ namespace Spartan
         bool IsGraphics() const { return (shader_vertex != nullptr || shader_pixel != nullptr) && !shader_compute; }
         bool IsCompute()  const { return shader_compute != nullptr && !IsGraphics(); }
 
-        //= Static, modification can potentially generate a new pipeline =====================
+        //= STATIC - Will cause PSO generation ===============================================
         RHI_Shader* shader_vertex                     = nullptr;
         RHI_Shader* shader_pixel                      = nullptr;
         RHI_Shader* shader_compute                    = nullptr;
@@ -66,9 +66,8 @@ namespace Spartan
         uint32_t render_target_depth_stencil_texture_array_index = 0;
         //====================================================================================
 
-        //= Dynamic, modification wont' create a new pipeline =====
-        RHI_Viewport viewport   = RHI_Viewport::Undefined;
-        Math::Rectangle scissor = Math::Rectangle::Zero;
+        //= DYNAMIC - Will not cause PSO generation ===============
+        RHI_Viewport viewport = RHI_Viewport::Undefined;
 
         float clear_depth      = rhi_depth_load;
         uint32_t clear_stencil = rhi_stencil_load;
