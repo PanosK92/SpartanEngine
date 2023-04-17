@@ -170,6 +170,20 @@ void FileDialog::ShowTop(bool* is_visible)
     ImGui::Separator();
 }
 
+static void set_cursor_position_x(float pos_x)
+{
+    ImGui::SetCursorPosX(pos_x);
+    // imgui requirement to avoid assert
+    ImGui::Dummy(ImVec2(0, 0)); 
+}
+
+static void set_cursor_screen_position(ImVec2 pos)
+{
+    ImGui::SetCursorScreenPos(pos);
+    // imgui requirement to avoid assert
+    ImGui::Dummy(ImVec2(0, 0));
+}
+
 void FileDialog::ShowMiddle()
 {
     // Compute some useful stuff
@@ -206,7 +220,7 @@ void FileDialog::ShowMiddle()
         {
             float offset = ImGui::GetStyle().ItemSpacing.x;
             pen_x_min    = ImGui::GetCursorPosX() + offset;
-            ImGui::SetCursorPosX(pen_x_min);
+            set_cursor_position_x(pen_x_min);
         }
 
         // Go through all the items
@@ -320,29 +334,24 @@ void FileDialog::ShowMiddle()
                         ImVec2 image_size       = item.GetTexture() ? ImVec2(static_cast<float>(texture->GetWidth()), static_cast<float>(texture->GetHeight())) : image_size_max;
                         ImVec2 image_size_delta = ImVec2(0.0f, 0.0f);
 
-                        // Scale the image size to fit the max available size while respecting it's aspect ratio
+                        // Scale the image size to fit the max available size while respecting its aspect ratio
                         {
-                            // Clamp width
-                            if (image_size.x != image_size_max.x)
-                            {
-                                float scale  = image_size_max.x / image_size.x;
-                                image_size.x = image_size_max.x;
-                                image_size.y = image_size.y * scale;
-                            }
-                            // Clamp height
-                            if (image_size.y != image_size_max.y)
-                            { 
-                                float scale     = image_size_max.y / image_size.y;
-                                image_size.x    = image_size.x * scale;
-                                image_size.y    = image_size_max.y;
-                            }
+                            float width_scale  = image_size_max.x / image_size.x;
+                            float height_scale = image_size_max.y / image_size.y;
+                            float scale        = (width_scale < height_scale) ? width_scale : height_scale;
+
+                            image_size.x *= scale;
+                            image_size.y *= scale;
 
                             image_size_delta.x = image_size_max.x - image_size.x;
                             image_size_delta.y = image_size_max.y - image_size.y;
                         }
 
                         // Position the image within the square border
-                        ImGui::SetCursorScreenPos(ImVec2(rect_button.Min.x + style.FramePadding.x + image_size_delta.x * 0.5f, rect_button.Min.y + style.FramePadding.y + image_size_delta.y * 0.5f));
+                        set_cursor_screen_position(ImVec2(
+                            rect_button.Min.x + style.FramePadding.x + image_size_delta.x * 0.5f,
+                            rect_button.Min.y + style.FramePadding.y + image_size_delta.y * 0.5f
+                        ));
 
                         // Draw the image
                         ImGui_SP::image(item.GetTexture(), image_size);
@@ -362,7 +371,7 @@ void FileDialog::ShowMiddle()
                     //ImGui::GetWindowDrawList()->AddRect(rect_label.Min, rect_label.Max, IM_COL32(255, 0, 0, 255)); // debug
 
                     // Draw text
-                    ImGui::SetCursorScreenPos(ImVec2(rect_label.Min.x + text_offset, rect_label.Min.y + text_offset));
+                    set_cursor_screen_position(ImVec2(rect_label.Min.x + text_offset, rect_label.Min.y + text_offset));
                     if (label_size.x <= m_item_size.x && label_size.y <= m_item_size.y)
                     {
                         ImGui::TextUnformatted(label_text);
@@ -382,7 +391,7 @@ void FileDialog::ShowMiddle()
             {
                 ImGui::EndGroup();
                 pen_x = pen_x_min;
-                ImGui::SetCursorPosX(pen_x);
+                set_cursor_position_x(pen_x);
                 new_line = true;
             }
             else
@@ -392,7 +401,9 @@ void FileDialog::ShowMiddle()
         }
 
         if (!new_line)
+        {
             ImGui::EndGroup();
+        }
     }
 
     ImGui::EndChild(); // BeginChild() requires EndChild() to always be called

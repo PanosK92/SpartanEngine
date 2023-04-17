@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -219,6 +219,11 @@
 
 #if defined(__vita__)
 #define __VITA__ 1
+#endif
+
+#if defined(__3DS__)
+#undef __3DS__
+#define __3DS__ 1
 #endif
 
 #include "begin_code.h"
