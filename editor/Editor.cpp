@@ -45,40 +45,38 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace std;
 //==================
 
-//= EDITOR OPTIONS ========================================================================================
-// Shapes
-const float k_roundness = 2.0f;
-// Font
-const float k_font_size  = 24.0f;
-const float k_font_scale = 0.7f;
-// Color
-const ImVec4 k_color_text                = ImVec4(192.0f / 255.0f, 192.0f / 255.0f, 192.0f / 255.0f, 1.0f);
-const ImVec4 k_color_text_disabled       = ImVec4(54.0f / 255.0f, 54.0f / 255.0f, 54.0f / 255.0f, 1.0f);
-const ImVec4 k_color_dark_very           = ImVec4(15.0f / 255.0f, 15.0f / 255.0f, 15.0f / 255.0f, 1.0f);
-const ImVec4 k_color_dark                = ImVec4(21.0f  / 255.0f, 21.0f  / 255.0f, 21.0f  / 255.0f, 1.0f);
-const ImVec4 k_color_mid                 = ImVec4(36.0f  / 255.0f, 36.0f / 255.0f, 36.0f / 255.0f, 1.0f);
-const ImVec4 k_color_light               = ImVec4(47.0f / 255.0f, 47.0f / 255.0f, 47.0f / 255.0f, 1.0f);
-const ImVec4 k_color_shadow              = ImVec4(0.0f, 0.0f, 0.0f, 0.5f);
-const ImVec4 k_color_interactive         = ImVec4(56.0f / 255.0f, 56.0f / 255.0f, 56.0f / 255.0f, 1.0f);
-const ImVec4 k_color_interactive_hovered = ImVec4(0.450f, 0.450f, 0.450f, 1.000f);
-const ImVec4 k_color_check               = ImVec4(26.0f / 255.0f, 140.0f / 255.0f, 192.0f / 255.0f, 1.0f);
-//=========================================================================================================
-
-namespace _editor
+namespace
 {
-    MenuBar* widget_menu_bar          = nullptr;
-    Widget* widget_world              = nullptr;
-    Spartan::RHI_SwapChain* swapchain = nullptr;
-    shared_ptr<Spartan::RHI_Device> rhi_device;
+    // Shapes
+    static const float k_roundness = 2.0f;
+
+    // Font
+    static const float k_font_size  = 24.0f;
+    static const float k_font_scale = 0.7f;
+
+    // Color
+    static const ImVec4 k_color_text                = ImVec4(192.0f / 255.0f, 192.0f / 255.0f, 192.0f / 255.0f, 1.0f);
+    static const ImVec4 k_color_text_disabled       = ImVec4(54.0f / 255.0f, 54.0f / 255.0f, 54.0f / 255.0f, 1.0f);
+    static const ImVec4 k_color_dark_very           = ImVec4(15.0f / 255.0f, 15.0f / 255.0f, 15.0f / 255.0f, 1.0f);
+    static const ImVec4 k_color_dark                = ImVec4(21.0f  / 255.0f, 21.0f  / 255.0f, 21.0f  / 255.0f, 1.0f);
+    static const ImVec4 k_color_mid                 = ImVec4(36.0f  / 255.0f, 36.0f / 255.0f, 36.0f / 255.0f, 1.0f);
+    static const ImVec4 k_color_light               = ImVec4(47.0f / 255.0f, 47.0f / 255.0f, 47.0f / 255.0f, 1.0f);
+    static const ImVec4 k_color_shadow              = ImVec4(0.0f, 0.0f, 0.0f, 0.5f);
+    static const ImVec4 k_color_interactive         = ImVec4(56.0f / 255.0f, 56.0f / 255.0f, 56.0f / 255.0f, 1.0f);
+    static const ImVec4 k_color_interactive_hovered = ImVec4(0.450f, 0.450f, 0.450f, 1.000f);
+    static const ImVec4 k_color_check               = ImVec4(26.0f / 255.0f, 140.0f / 255.0f, 192.0f / 255.0f, 1.0f);
+    
+    MenuBar* widget_menu_bar = nullptr;
+    Widget* widget_world     = nullptr;
 }
 
-static void ImGui_ProcessEvent(const Spartan::Variant& event_variant)
+static void process_event(const Spartan::Variant& event_variant)
 {
     SDL_Event* event_sdl = event_variant.Get<SDL_Event*>();
     ImGui_ImplSDL2_ProcessEvent(event_sdl);
 }
 
-static void ImGui_ApplyColors()
+static void apply_colors()
 {
     // Use default dark style as a base
     ImGui::StyleColorsDark();
@@ -137,7 +135,7 @@ static void ImGui_ApplyColors()
     colors[ImGuiCol_ModalWindowDimBg]      = k_color_dark;                  // Darken/colorize entire screen behind a modal window, when one is active
 }
 
-static void ImGui_ApplyStyle()
+static void apply_style()
 {
     ImGuiStyle& style = ImGui::GetStyle();
 
@@ -159,10 +157,6 @@ Editor::Editor()
 {
     Spartan::Engine::Initialize();
 
-    // Acquire useful engine subsystems
-    _editor::rhi_device = Spartan::Renderer::GetRhiDevice();
-    _editor::swapchain  = Spartan::Renderer::GetSwapChain();
-    
     // Initialise Editor/ImGui
     {
         SP_ASSERT_MSG(IMGUI_CHECKVERSION(), "Version mismatch between source and caller");
@@ -191,8 +185,8 @@ Editor::Editor()
         ImGui::RHI::Initialize();
 
         // Apply colors and style
-        ImGui_ApplyColors();
-        ImGui_ApplyStyle();
+        apply_colors();
+        apply_style();
 
         // Initialization of some helper static classes
         IconProvider::Initialize();
@@ -205,16 +199,18 @@ Editor::Editor()
         m_widgets.emplace_back(make_shared<ShaderEditor>(this));
         m_widgets.emplace_back(make_shared<RenderOptions>(this));
         m_widgets.emplace_back(make_shared<TextureViewer>(this));
-        m_widgets.emplace_back(make_shared<MenuBar>(this)); _editor::widget_menu_bar = static_cast<MenuBar*>(m_widgets.back().get());
+        m_widgets.emplace_back(make_shared<MenuBar>(this));
+        widget_menu_bar = static_cast<MenuBar*>(m_widgets.back().get());
         m_widgets.emplace_back(make_shared<Viewport>(this));
         m_widgets.emplace_back(make_shared<AssetViewer>(this));
         m_widgets.emplace_back(make_shared<Properties>(this));
-        m_widgets.emplace_back(make_shared<WorldViewer>(this)); _editor::widget_world = m_widgets.back().get();
+        m_widgets.emplace_back(make_shared<WorldViewer>(this));
+        widget_world = m_widgets.back().get();
         m_widgets.emplace_back(make_shared<ProgressDialog>(this));
     }
 
-    // Allow ImGui get event's from the engine's event processing loop
-    SP_SUBSCRIBE_TO_EVENT(EventType::EventSDL, SP_EVENT_HANDLER_VARIANT_STATIC(ImGui_ProcessEvent));
+    // Allow ImGui to get event's from the engine's event processing loop
+    SP_SUBSCRIBE_TO_EVENT(EventType::EventSDL, SP_EVENT_HANDLER_VARIANT_STATIC(process_event));
 }
 
 Editor::~Editor()
@@ -231,26 +227,31 @@ Editor::~Editor()
 
 void Editor::Tick()
 {
+    bool render_editor = !Spartan::Window::IsFullScreen();
+
     while (!Spartan::Window::WantsToClose())
     {
-        Spartan::Engine::Tick();
-
-        if (!Spartan::Window::IsFullScreen())
+        // ImGui - Begin
+        if (render_editor)
         {
-            // ImGui - Begin
             ImGui_ImplSDL2_NewFrame();
             ImGui::NewFrame();
+        }
 
-            // Editor - Begin
+        Spartan::Engine::Tick();
+
+        if (render_editor)
+        {
+            // Engine - Begin
             BeginWindow();
 
-            // Editor - Tick
+            // Engine - Tick
             for (shared_ptr<Widget>& widget : m_widgets)
             {
                 widget->Tick();
             }
 
-            // Editor - End
+            // Engine - End
             if (m_editor_begun)
             {
                 ImGui::End();
@@ -265,7 +266,7 @@ void Editor::Tick()
         Spartan::Renderer::Present();
 
         // ImGui - Child windows
-        if (!Spartan::Window::IsFullScreen() && ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+        if (render_editor && ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
         {
             ImGui::UpdatePlatformWindows();
             ImGui::RenderPlatformWindowsDefault();
@@ -286,7 +287,7 @@ void Editor::BeginWindow()
         ImGuiWindowFlags_NoNavFocus;
 
     // Set window position and size
-    float offset_y = _editor::widget_menu_bar ? (_editor::widget_menu_bar->GetHeight() + _editor::widget_menu_bar->GetPadding()) : 0;
+    float offset_y = widget_menu_bar ? (widget_menu_bar->GetHeight() + widget_menu_bar->GetPadding()) : 0;
     const ImGuiViewport* viewport = ImGui::GetMainViewport();
     ImGui::SetNextWindowPos(ImVec2(viewport->Pos.x, viewport->Pos.y + offset_y));
     ImGui::SetNextWindowSize(ImVec2(viewport->Size.x, viewport->Size.y - offset_y));
