@@ -27,34 +27,27 @@ RUNTIME_DIR          = "../" .. RUNTIME_PROJECT_NAME
 LIBRARY_DIR          = "../third_party/libraries"
 OBJ_DIR              = "../binaries/obj"
 TARGET_DIR           = "../binaries"
-API_GRAPHICS         = _ARGS[1]
-IGNORE_FILES         = {}
-ADDITIONAL_INCLUDES  = {}
-ADDITIONAL_LIBRARIES = {}
-ADDITIONAL_LIBRARIES_DBG = {}
+API_CPP_DEFINE		 = ""
+ARG_API_GRAPHICS     = _ARGS[1]
 
-function configure_graphics_api()
-    if API_GRAPHICS == "d3d11" then
-        API_GRAPHICS    = "API_GRAPHICS_D3D11"
-        EXECUTABLE_NAME = EXECUTABLE_NAME .. "_d3d11"
-        IGNORE_FILES[0] = RUNTIME_DIR .. "/RHI/D3D12/**"
-        IGNORE_FILES[1] = RUNTIME_DIR .. "/RHI/Vulkan/**"
-    elseif API_GRAPHICS == "d3d12" then
-        API_GRAPHICS    = "API_GRAPHICS_D3D12"
-        EXECUTABLE_NAME = EXECUTABLE_NAME .. "_d3d12"
-        IGNORE_FILES[0] = RUNTIME_DIR .. "/RHI/D3D11/**"
-        IGNORE_FILES[1] = RUNTIME_DIR .. "/RHI/Vulkan/**"
-    elseif API_GRAPHICS == "vulkan" then
-        API_GRAPHICS    = "API_GRAPHICS_VULKAN"
-        EXECUTABLE_NAME = EXECUTABLE_NAME .. "_vulkan"
-        IGNORE_FILES[0] = RUNTIME_DIR .. "/RHI/D3D11/**"
-        IGNORE_FILES[1] = RUNTIME_DIR .. "/RHI/D3D12/**"
+API_INCLUDES = {
+	vulkan = {
+        "../third_party/spirv_cross",
+        "../third_party/vulkan",
+        "../third_party/fsr2"
+    }
+}
 
-        ADDITIONAL_INCLUDES[0] = "../third_party/spirv_cross";
-        ADDITIONAL_INCLUDES[1] = "../third_party/vulkan";
-        ADDITIONAL_INCLUDES[2] = "../third_party/fsr2";
+API_EXCLUDES = 
+{
+    d3d11  = { RUNTIME_DIR .. "/RHI/D3D12/**", RUNTIME_DIR .. "/RHI/Vulkan/**" },
+    d3d12  = { RUNTIME_DIR .. "/RHI/D3D11/**", RUNTIME_DIR .. "/RHI/Vulkan/**" },
+    vulkan = { RUNTIME_DIR .. "/RHI/D3D11/**", RUNTIME_DIR .. "/RHI/D3D12/**" },
+}
 
-        ADDITIONAL_LIBRARIES = {
+API_LIBRARIES = {
+    vulkan = {
+        release = {
             "spirv-cross-c",
             "spirv-cross-core",
             "spirv-cross-cpp",
@@ -63,9 +56,8 @@ function configure_graphics_api()
             "spirv-cross-reflect",
             "ffx_fsr2_api_x64",
             "ffx_fsr2_api_vk_x64"
-        }
-
-        ADDITIONAL_LIBRARIES_DBG = {
+        },
+        debug = {
             "spirv-cross-c_debug",
             "spirv-cross-core_debug",
             "spirv-cross-cpp_debug",
@@ -75,6 +67,19 @@ function configure_graphics_api()
             "ffx_fsr2_api_x64_debug",
             "ffx_fsr2_api_vk_x64_debug"
         }
+    }
+}
+
+function configure_graphics_api()
+    if ARG_API_GRAPHICS == "d3d11" then
+        API_CPP_DEFINE  = "API_GRAPHICS_D3D11"
+        EXECUTABLE_NAME = EXECUTABLE_NAME .. "_d3d11"
+    elseif ARG_API_GRAPHICS == "d3d12" then
+        API_CPP_DEFINE  = "API_GRAPHICS_D3D12"
+        EXECUTABLE_NAME = EXECUTABLE_NAME .. "_d3d12"
+    elseif ARG_API_GRAPHICS == "vulkan" then
+        API_CPP_DEFINE  = "API_GRAPHICS_VULKAN"
+        EXECUTABLE_NAME = EXECUTABLE_NAME .. "_vulkan"
     end
 end
 
@@ -126,7 +131,7 @@ function runtime_project_configuration()
         cppdialect (CPP_VERSION)
         kind "StaticLib"
         staticruntime "On"
-        defines{ "SPARTAN_RUNTIME", API_GRAPHICS }
+        defines{ "SPARTAN_RUNTIME", API_CPP_DEFINE  }
         if os.target() == "windows" then
             conformancemode "On"
         end
@@ -141,8 +146,8 @@ function runtime_project_configuration()
         }
 
         -- Source to ignore
-        removefiles { IGNORE_FILES[0], IGNORE_FILES[1] }
-
+		removefiles(API_EXCLUDES[ARG_API_GRAPHICS])
+		
         -- Precompiled header
         pchheader "pch.h"
         pchsource "../runtime/Core/pch.cpp"
@@ -157,8 +162,8 @@ function runtime_project_configuration()
         includedirs { "../third_party/compressonator" }
         includedirs { "../third_party/renderdoc" }
         includedirs { "../third_party/pugixml" }
-        includedirs { "../runtime/Core" } -- This is here because clang needs the full pre-compiled header path
-        includedirs { ADDITIONAL_INCLUDES[0], ADDITIONAL_INCLUDES[1], ADDITIONAL_INCLUDES[2] }
+        includedirs(API_INCLUDES[ARG_API_GRAPHICS] or {})
+		includedirs { "../runtime/Core" } -- This is here because clang needs the full pre-compiled header path
 
         -- Libraries
         libdirs (LIBRARY_DIR)
@@ -175,8 +180,8 @@ function runtime_project_configuration()
             links { "BulletCollision", "BulletDynamics", "BulletSoftBody", "LinearMath" }
             links { "SDL2.lib" }
             links { "Compressonator_MT.lib" }
-            links { ADDITIONAL_LIBRARIES[0], ADDITIONAL_LIBRARIES[1], ADDITIONAL_LIBRARIES[2], ADDITIONAL_LIBRARIES[3], ADDITIONAL_LIBRARIES[4], ADDITIONAL_LIBRARIES[5], ADDITIONAL_LIBRARIES[6], ADDITIONAL_LIBRARIES[7] }
-
+			links(API_LIBRARIES[ARG_API_GRAPHICS].release or {})
+			
         -- "Debug"
         filter "configurations:debug"
             debugdir (TARGET_DIR)
@@ -189,7 +194,7 @@ function runtime_project_configuration()
             links { "BulletCollision_debug", "BulletDynamics_debug", "BulletSoftBody_debug", "LinearMath_debug" }
             links { "SDL2_debug.lib" }
             links { "Compressonator_MT_debug.lib" }
-            links { ADDITIONAL_LIBRARIES_DBG[0], ADDITIONAL_LIBRARIES_DBG[1], ADDITIONAL_LIBRARIES_DBG[2], ADDITIONAL_LIBRARIES_DBG[3], ADDITIONAL_LIBRARIES_DBG[4], ADDITIONAL_LIBRARIES_DBG[5], ADDITIONAL_LIBRARIES_DBG[6], ADDITIONAL_LIBRARIES_DBG[7] }
+            links(API_LIBRARIES[ARG_API_GRAPHICS].debug or {})
 end
 
 function editor_project_configuration()
@@ -242,6 +247,7 @@ function editor_project_configuration()
             links { "SDL2_debug" }
 end
 
+configure_graphics_api()
 solution_configuration()
 runtime_project_configuration()
 editor_project_configuration()
