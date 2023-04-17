@@ -24,8 +24,8 @@
 // SOFTWARE.
 //
 
-#include "../../Source/imgui.h"
 #define IMGUI_DEFINE_MATH_OPERATORS
+#include "../../Source/imgui.h"
 #include "../../Source/imgui_internal.h"
 #include <math.h>
 #include <vector>

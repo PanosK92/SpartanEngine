@@ -24,10 +24,10 @@
 // SOFTWARE.
 //
 
-#include "../../Source/imgui.h"
 #ifndef IMGUI_DEFINE_MATH_OPERATORS
 #define IMGUI_DEFINE_MATH_OPERATORS
 #endif
+#include "../../Source/imgui.h"
 #include "../../Source/imgui_internal.h"
 #include "ImGuizmo.h"
 

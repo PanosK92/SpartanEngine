@@ -89,7 +89,7 @@ namespace Spartan
                 Microsoft::WRL::ComPtr<IDXGIOutput> output_current;
                 float best_intersection_area = -1;
                 RECT window_rect;
-                GetWindowRect(static_cast<HWND>(Window::GetHandleWindows()), &window_rect);
+                GetWindowRect(static_cast<HWND>(Window::GetHandleRaw()), &window_rect);
                 while (adapter->EnumOutputs(i, &output_current) != DXGI_ERROR_NOT_FOUND)
                 {
                     // Get the rectangle bounds of the app window

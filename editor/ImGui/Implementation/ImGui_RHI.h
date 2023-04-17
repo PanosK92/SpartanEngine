@@ -110,7 +110,7 @@ namespace ImGui::RHI
         g_viewport_data.cb_gpu = nullptr;
     }
 
-    inline bool Initialize()
+    inline void Initialize()
     {
         // Create required RHI objects
         {
@@ -184,8 +184,6 @@ namespace ImGui::RHI
         }
 
         SP_SUBSCRIBE_TO_EVENT(EventType::RendererOnShutdown, SP_EVENT_HANDLER_STATIC(destroy_rhi_resources));
-
-        return true;
     }
 
     inline void Shutdown()

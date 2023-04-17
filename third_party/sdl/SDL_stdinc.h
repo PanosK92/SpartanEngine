@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -80,9 +80,9 @@
 # include <ctype.h>
 #endif
 #ifdef HAVE_MATH_H
-# if defined(__WINRT__)
+# if defined(_MSC_VER)
 /* Defining _USE_MATH_DEFINES is required to get M_PI to be defined on
-   WinRT.  See http://msdn.microsoft.com/en-us/library/4hwaceh6.aspx
+   Visual Studio.  See http://msdn.microsoft.com/en-us/library/4hwaceh6.aspx
    for more information.
 */
 #  define _USE_MATH_DEFINES
@@ -410,7 +410,7 @@ SDL_COMPILE_TIME_ASSERT(sint64, sizeof(Sint64) == 8);
 
 /** \cond */
 #ifndef DOXYGEN_SHOULD_IGNORE_THIS
-#if !defined(__ANDROID__) && !defined(__VITA__)
+#if !defined(__ANDROID__) && !defined(__VITA__) && !defined(__3DS__)
    /* TODO: include/SDL_stdinc.h:174: error: size of array 'SDL_dummy_enum' is negative */
 typedef enum
 {
@@ -583,6 +583,7 @@ extern DECLSPEC char *SDLCALL SDL_strlwr(char *str);
 extern DECLSPEC char *SDLCALL SDL_strchr(const char *str, int c);
 extern DECLSPEC char *SDLCALL SDL_strrchr(const char *str, int c);
 extern DECLSPEC char *SDLCALL SDL_strstr(const char *haystack, const char *needle);
+extern DECLSPEC char *SDLCALL SDL_strcasestr(const char *haystack, const char *needle);
 extern DECLSPEC char *SDLCALL SDL_strtokr(char *s1, const char *s2, char **saveptr);
 extern DECLSPEC size_t SDLCALL SDL_utf8strlen(const char *str);
 extern DECLSPEC size_t SDLCALL SDL_utf8strnlen(const char *str, size_t bytes);

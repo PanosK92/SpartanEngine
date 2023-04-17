@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -754,7 +754,7 @@ extern DECLSPEC SDL_GameControllerButton SDLCALL SDL_GameControllerGetButtonFrom
  * The caller should not SDL_free() the returned string.
  *
  * \param button an enum value for a given SDL_GameControllerButton
- * \returns a string for the given button, or NULL if an invalid axis is
+ * \returns a string for the given button, or NULL if an invalid button is
  *          specified. The string returned is of the format used by
  *          SDL_GameController mapping strings.
  *
@@ -894,6 +894,25 @@ extern DECLSPEC float SDLCALL SDL_GameControllerGetSensorDataRate(SDL_GameContro
  * \since This function is available since SDL 2.0.14.
  */
 extern DECLSPEC int SDLCALL SDL_GameControllerGetSensorData(SDL_GameController *gamecontroller, SDL_SensorType type, float *data, int num_values);
+
+/**
+ * Get the current state of a game controller sensor with the timestamp of the
+ * last update.
+ *
+ * The number of values and interpretation of the data is sensor dependent.
+ * See SDL_sensor.h for the details for each type of sensor.
+ *
+ * \param gamecontroller The controller to query
+ * \param type The type of sensor to query
+ * \param timestamp A pointer filled with the timestamp in microseconds of the
+ *                  current sensor reading if available, or 0 if not
+ * \param data A pointer filled with the current sensor state
+ * \param num_values The number of values to write to data
+ * \return 0 or -1 if an error occurred.
+ *
+ * \since This function is available since SDL 2.26.0.
+ */
+extern DECLSPEC int SDLCALL SDL_GameControllerGetSensorDataWithTimestamp(SDL_GameController *gamecontroller, SDL_SensorType type, Uint64 *timestamp, float *data, int num_values);
 
 /**
  * Start a rumble effect on a game controller.

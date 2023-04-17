@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2022 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2023 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -82,7 +82,7 @@ extern DECLSPEC void SDLCALL SDL_Metal_DestroyView(SDL_MetalView view);
  *
  * \since This function is available since SDL 2.0.14.
  *
- * \sa SDL_MetalCreateView
+ * \sa SDL_Metal_CreateView
  */
 extern DECLSPEC void *SDLCALL SDL_Metal_GetLayer(SDL_MetalView view);
 

@@ -325,7 +325,7 @@ namespace Spartan
         return m_window;
     }
 
-    void* Window::GetHandleWindows()
+    void* Window::GetHandleRaw()
     {
         SDL_SysWMinfo wmInfo;
         SDL_VERSION(&wmInfo.version);

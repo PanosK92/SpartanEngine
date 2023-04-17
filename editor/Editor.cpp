@@ -19,14 +19,14 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===================================
+//= INCLUDES ====================================
 #include "Editor.h"
 #include "Core/Engine.h"
 #include "Core/Settings.h"
 #include "Core/Window.h"
 #include "ImGui/ImGuiExtension.h"
 #include "ImGui/Implementation/ImGui_RHI.h"
-#include "ImGui/Implementation/imgui_impl_sdl.h"
+#include "ImGui/Implementation/imgui_impl_sdl2.h"
 #include "Widgets/AssetViewer.h"
 #include "Widgets/Console.h"
 #include "Widgets/MenuBar.h"
@@ -39,12 +39,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Widgets/Profiler.h"
 #include "Widgets/RenderOptions.h"
 #include "Widgets/TextureViewer.h"
-//==============================================
+//===============================================
 
 //= NAMESPACES =====
 using namespace std;
 //==================
 
+// Locals
 namespace
 {
     // Shapes
@@ -181,7 +182,7 @@ Editor::Editor()
         io.FontGlobalScale = k_font_scale;
 
         // Initialise ImGui backends
-        ImGui_ImplSDL2_Init();
+        SP_ASSERT_MSG(ImGui_ImplSDL2_Init(), "Failed to initialize ImGui's SDL backend");
         ImGui::RHI::Initialize();
 
         // Apply colors and style
@@ -238,20 +239,21 @@ void Editor::Tick()
             ImGui::NewFrame();
         }
 
+        // Engine - Tick
         Spartan::Engine::Tick();
 
         if (render_editor)
         {
-            // Engine - Begin
+            // Editor - Begin
             BeginWindow();
 
-            // Engine - Tick
+            // Editor - Tick
             for (shared_ptr<Widget>& widget : m_widgets)
             {
                 widget->Tick();
             }
 
-            // Engine - End
+            // Editor - End
             if (m_editor_begun)
             {
                 ImGui::End();

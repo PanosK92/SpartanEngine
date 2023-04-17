@@ -52,7 +52,7 @@ namespace Spartan
 
         // Misc
         static void* GetHandleSDL();
-        static void* GetHandleWindows();
+        static void* GetHandleRaw();
         static bool WantsToClose();
         static bool IsMinimised();
         static bool IsFullScreen();
