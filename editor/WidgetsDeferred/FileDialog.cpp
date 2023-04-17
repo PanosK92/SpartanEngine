@@ -268,7 +268,10 @@ void FileDialog::ShowMiddle()
                 {
                     static const float shadow_thickness = 2.0f;
                     ImVec4 color = ImGui::GetStyle().Colors[ImGuiCol_BorderShadow];
-                    ImGui::GetWindowDrawList()->AddRectFilled(rect_button.Min, ImVec2(rect_label.Max.x + shadow_thickness, rect_label.Max.y + shadow_thickness), IM_COL32(color.x * 255, color.y * 255, color.z * 255, color.w * 255));
+                    ImGui::GetWindowDrawList()->AddRectFilled(
+                        rect_button.Min,
+                        ImVec2(rect_label.Max.x + shadow_thickness, rect_label.Max.y + shadow_thickness),
+                        IM_COL32(color.x * 255, color.y * 255, color.z * 255, color.w * 255));
                 }
 
                 // THUMBNAIL
