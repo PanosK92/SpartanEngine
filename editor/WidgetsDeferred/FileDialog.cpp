@@ -177,13 +177,6 @@ static void set_cursor_position_x(float pos_x)
     ImGui::Dummy(ImVec2(0, 0)); 
 }
 
-static void set_cursor_screen_position(ImVec2 pos)
-{
-    ImGui::SetCursorScreenPos(pos);
-    // imgui requirement to avoid assert
-    ImGui::Dummy(ImVec2(0, 0));
-}
-
 void FileDialog::ShowMiddle()
 {
     // Compute some useful stuff
@@ -295,7 +288,7 @@ void FileDialog::ShowMiddle()
                         }
                         else // Double Click
                         {
-                            m_is_dirty = m_navigation.Navigate(item.GetPath());
+                            m_is_dirty       = m_navigation.Navigate(item.GetPath());
                             m_selection_made = !item.IsDirectory();
 
                             // When browsing files, open them on double click
@@ -330,34 +323,41 @@ void FileDialog::ShowMiddle()
                     }
 
                     // Image
+                    if (RHI_Texture* texture = item.GetTexture())
                     {
-                        // Compute thumbnail size
-                        RHI_Texture* texture    = item.GetTexture();
-                        ImVec2 image_size_max   = ImVec2(rect_button.Max.x - rect_button.Min.x - style.FramePadding.x * 2.0f, rect_button.Max.y - rect_button.Min.y - style.FramePadding.y - label_height - 5.0f);
-                        ImVec2 image_size       = item.GetTexture() ? ImVec2(static_cast<float>(texture->GetWidth()), static_cast<float>(texture->GetHeight())) : image_size_max;
-                        ImVec2 image_size_delta = ImVec2(0.0f, 0.0f);
-
-                        // Scale the image size to fit the max available size while respecting its aspect ratio
+                        if (texture->IsReadyForUse()) // This is possible for when the editor is reading from drive
                         {
-                            float width_scale  = image_size_max.x / image_size.x;
-                            float height_scale = image_size_max.y / image_size.y;
-                            float scale        = (width_scale < height_scale) ? width_scale : height_scale;
+                            // Compute thumbnail size
+                            ImVec2 image_size     = ImVec2(static_cast<float>(texture->GetWidth()), static_cast<float>(texture->GetHeight()));
+                            ImVec2 image_size_max = ImVec2(rect_button.Max.x - rect_button.Min.x - style.FramePadding.x * 2.0f, rect_button.Max.y - rect_button.Min.y - style.FramePadding.y - label_height - 5.0f);
 
-                            image_size.x *= scale;
-                            image_size.y *= scale;
+                            // Scale the image size to fit the max available size while respecting its aspect ratio
+                            {
+                                float width_scale  = image_size_max.x / image_size.x;
+                                float height_scale = image_size_max.y / image_size.y;
+                                float scale        = (width_scale < height_scale) ? width_scale : height_scale;
 
-                            image_size_delta.x = image_size_max.x - image_size.x;
-                            image_size_delta.y = image_size_max.y - image_size.y;
+                                image_size.x *= scale;
+                                image_size.y *= scale;
+                            }
+
+                            // Calculate button center and image position
+                            ImVec2 button_center = ImVec2(
+                                rect_button.Min.x + (rect_button.Max.x - rect_button.Min.x) / 2,
+                                rect_button.Min.y + (rect_button.Max.y - rect_button.Min.y - label_height - 5.0f) / 2
+                            );
+
+                            ImVec2 image_pos = ImVec2(
+                                button_center.x - image_size.x / 2,
+                                button_center.y - image_size.y / 2
+                            );
+
+                            // Position the image within the square border
+                            ImGui::SetCursorScreenPos(image_pos);
+
+                            // Draw the image
+                            ImGui_SP::image(item.GetTexture(), image_size);
                         }
-
-                        // Position the image within the square border
-                        set_cursor_screen_position(ImVec2(
-                            rect_button.Min.x + style.FramePadding.x + image_size_delta.x * 0.5f,
-                            rect_button.Min.y + style.FramePadding.y + image_size_delta.y * 0.5f
-                        ));
-
-                        // Draw the image
-                        ImGui_SP::image(item.GetTexture(), image_size);
                     }
 
                     ImGui::PopStyleColor(2);
@@ -374,7 +374,7 @@ void FileDialog::ShowMiddle()
                     //ImGui::GetWindowDrawList()->AddRect(rect_label.Min, rect_label.Max, IM_COL32(255, 0, 0, 255)); // debug
 
                     // Draw text
-                    set_cursor_screen_position(ImVec2(rect_label.Min.x + text_offset, rect_label.Min.y + text_offset));
+                    ImGui::SetCursorScreenPos(ImVec2(rect_label.Min.x + text_offset, rect_label.Min.y + text_offset));
                     if (label_size.x <= m_item_size.x && label_size.y <= m_item_size.y)
                     {
                         ImGui::TextUnformatted(label_text);
