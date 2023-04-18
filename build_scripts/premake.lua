@@ -46,6 +46,22 @@ API_EXCLUDES =
 }
 
 API_LIBRARIES = {
+	d3d11 = {
+        release = {
+            -- No specific D3D12 release libraries
+        },
+        debug = {
+            -- No specific D3D12 debug libraries
+        }
+    },
+	d3d12 = {
+        release = {
+            -- No specific D3D12 release libraries
+        },
+        debug = {
+            -- No specific D3D12 debug libraries
+        }
+    },
     vulkan = {
         release = {
             "spirv-cross-c",
@@ -206,7 +222,7 @@ function editor_project_configuration()
         cppdialect (CPP_VERSION)
         kind "WindowedApp"
         staticruntime "On"
-        defines{ "SPARTAN_EDITOR", API_GRAPHICS }
+        defines{ "SPARTAN_EDITOR", API_CPP_DEFINE }
         if os.target() == "windows" then
             conformancemode "On"
         end
