@@ -20,29 +20,79 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES ======================
-#include "IconProvider.h"
+#include "IconLoader.h"
 #include "Resource/ResourceCache.h"
 #include "RHI/RHI_Texture2D.h"
 #include "Core/ThreadPool.h"
 #include "Event.h"
 //=================================
 
-//= NAMESPACES ==========
+//= NAMESPACES =========
 using namespace std;
 using namespace Spartan;
-//=======================
+//======================
 
-static vector<Thumbnail> m_thumbnails;
-static Thumbnail g_no_thumbnail;
+namespace
+{
+    static vector<Icon> icons;
+    static Icon no_icon;
+    static std::mutex icon_mutex;
+}
 
 static void destroy_rhi_resources()
 {
-    m_thumbnails.clear();
+    icons.clear();
 }
 
-void IconProvider::Initialize()
+static const Icon& get_icon_by_type(IconType type)
 {
-    // Load standard icons
+    for (Icon& icon : icons)
+    {
+        if (icon.GetType() == type)
+            return icon;
+    }
+
+    return no_icon;
+}
+
+Icon::Icon(IconType type, const std::string& file_path)
+{
+    this->m_type = type;
+
+    // Create texture
+    string name     = FileSystem::GetFileNameFromFilePath(file_path);
+    this->m_texture = make_shared<RHI_Texture2D>(RHI_Texture_Srv, name.c_str());
+
+    // Load texture
+    ThreadPool::AddTask([this, file_path]()
+    {
+        m_texture->LoadFromFile(file_path);
+    });
+}
+
+RHI_Texture* Icon::GetTexture() const
+{
+    if (m_texture && m_texture->IsReadyForUse())
+    {
+        return m_texture.get();
+    }
+
+    return nullptr;
+}
+
+void Icon::SetTexture(shared_ptr<RHI_Texture> texture)
+{
+    m_texture = texture;
+}
+
+string Icon::GetFilePath() const
+{
+    return m_texture->GetResourceFilePath();
+}
+
+void IconLoader::Initialize()
+{
+    // Load all standard editor icons
     ThreadPool::AddTask([]()
     {
         const string data_dir = ResourceCache::GetDataDirectory() + "\\";
@@ -91,106 +141,38 @@ void IconProvider::Initialize()
     SP_SUBSCRIBE_TO_EVENT(EventType::RendererOnShutdown, SP_EVENT_HANDLER_STATIC(destroy_rhi_resources));
 }
 
-RHI_Texture* IconProvider::GetTextureByType(IconType type)
+RHI_Texture* IconLoader::GetTextureByType(IconType type)
 {
-    return LoadFromFile("", type).texture.get();
+    return LoadFromFile("", type).GetTexture();
 }
 
-RHI_Texture* IconProvider::GetTextureByFilePath(const string& filePath)
+const Icon& IconLoader::LoadFromFile(const string& file_path, IconType type /*Undefined*/)
 {
-    return LoadFromFile(filePath).texture.get();
-}
-
-RHI_Texture* IconProvider::GetTextureByThumbnail(const Thumbnail& thumbnail_in)
-{
-    for (const Thumbnail& thumbnail : m_thumbnails)
-    {
-        if (!thumbnail_in.texture || !thumbnail_in.texture->IsReadyForUse())
-            continue;
-
-        if (thumbnail.texture->GetObjectId() == thumbnail_in.texture->GetObjectId())
-        {
-            return thumbnail.texture.get();
-        }
-    }
-
-    return nullptr;
-}
-
-const Thumbnail& IconProvider::LoadFromFile(const string& file_path, IconType type /*Undefined*/, const uint32_t size /*100*/)
-{
-    // Check if we already have this thumbnail
+    // Check if the texture is already loaded, and return that
     bool search_by_type = type != IconType::Undefined;
-    for (Thumbnail& thumbnail : m_thumbnails)
+    for (Icon& icon : icons)
     {
         if (search_by_type)
         {
-            if (thumbnail.type == type)
-                return thumbnail;
+            if (icon.GetType() == type)
+                return icon;
         }
-        else if (thumbnail.file_path == file_path)
+        else if (icon.GetFilePath() == file_path)
         {
-            return thumbnail;
+            return icon;
         }
     }
 
-    // Deduce file path type
-
-    // Directory
-    if (FileSystem::IsDirectory(file_path))                        return GetThumbnailByType(IconType::Directory_Folder);
-    // Model                                                       
-    if (FileSystem::IsSupportedModelFile(file_path))               return GetThumbnailByType(IconType::Directory_File_Model);
-    // Audio                                                       
-    if (FileSystem::IsSupportedAudioFile(file_path))               return GetThumbnailByType(IconType::Directory_File_Audio);
-    // Material                                                    
-    if (FileSystem::IsEngineMaterialFile(file_path))               return GetThumbnailByType(IconType::Directory_File_Material);
-    // Shader                                                      
-    if (FileSystem::IsSupportedShaderFile(file_path))              return GetThumbnailByType(IconType::Directory_File_Shader);
-    // Scene                                                       
-    if (FileSystem::IsEngineSceneFile(file_path))                  return GetThumbnailByType(IconType::Directory_File_World);
-    // Font                                                        
-    if (FileSystem::IsSupportedFontFile(file_path))                return GetThumbnailByType(IconType::Directory_File_Font);
-                                                                   
-    // Xml                                                         
-    if (FileSystem::GetExtensionFromFilePath(file_path) == ".xml") return GetThumbnailByType(IconType::Directory_File_Xml);
-    // Dll                                                         
-    if (FileSystem::GetExtensionFromFilePath(file_path) == ".dll") return GetThumbnailByType(IconType::Directory_File_Dll);
-    // Txt                                                         
-    if (FileSystem::GetExtensionFromFilePath(file_path) == ".txt") return GetThumbnailByType(IconType::Directory_File_Txt);
-    // Ini                                                         
-    if (FileSystem::GetExtensionFromFilePath(file_path) == ".ini") return GetThumbnailByType(IconType::Directory_File_Ini);
-    // Exe                                                         
-    if (FileSystem::GetExtensionFromFilePath(file_path) == ".exe") return GetThumbnailByType(IconType::Directory_File_Exe);
-
-    // Texture
+    // The texture is new so load it
     if (FileSystem::IsSupportedImageFile(file_path) || FileSystem::IsEngineTextureFile(file_path))
     {
-        // Create a texture
-        shared_ptr<RHI_Texture2D> texture = make_shared<RHI_Texture2D>(RHI_Texture_Srv, FileSystem::GetFileNameFromFilePath(file_path).c_str());
+        // Add a new icon
+        lock_guard<mutex> guard(icon_mutex);
+        icons.emplace_back(type, file_path);
 
-        // Add it to the thumbnails
-        m_thumbnails.emplace_back(type, texture, file_path);
-
-        // Load it
-        ThreadPool::AddTask([file_path]()
-        {
-            RHI_Texture* tex_ptr = m_thumbnails.back().texture.get();
-            tex_ptr->LoadFromFile(file_path);
-        });
-
-        return m_thumbnails.back();
+        // Return it
+        return icons.back();
     }
 
-    return GetThumbnailByType(IconType::Directory_File_Default);
-}
-
-const Thumbnail& IconProvider::GetThumbnailByType(IconType type)
-{
-    for (Thumbnail& thumbnail : m_thumbnails)
-    {
-        if (thumbnail.type == type)
-            return thumbnail;
-    }
-
-    return g_no_thumbnail;
+    return get_icon_by_type(IconType::Directory_File_Default);
 }

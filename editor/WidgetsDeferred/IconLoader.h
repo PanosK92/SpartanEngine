@@ -72,33 +72,27 @@ enum class IconType
     Undefined
 };
 
-namespace Spartan { class Context; }
-
-struct Thumbnail
+class Icon
 {
-    Thumbnail() = default;
-    Thumbnail(IconType type, std::shared_ptr<Spartan::RHI_Texture> texture, const std::string& filePath)
-    {
-        this->type      = type;
-        this->texture   = std::move(texture);
-        this->file_path = filePath;
-    }
+public:
+    Icon() = default;
+    Icon(IconType type, const std::string& file_path);
 
-    IconType type = IconType::Undefined;
-    std::shared_ptr<Spartan::RHI_Texture> texture;
-    std::string file_path;
+    Spartan::RHI_Texture* GetTexture() const;
+    void SetTexture(std::shared_ptr<Spartan::RHI_Texture> texture);
+    std::string GetFilePath() const;
+    IconType GetType() const { return m_type; }
+
+private:
+    IconType m_type = IconType::Undefined;
+    std::shared_ptr<Spartan::RHI_Texture> m_texture;
 };
 
-class IconProvider
+class IconLoader
 {
 public:
     static void Initialize();
 
     static Spartan::RHI_Texture* GetTextureByType(IconType type);
-    static Spartan::RHI_Texture* GetTextureByFilePath(const std::string& file_path);
-    static Spartan::RHI_Texture* GetTextureByThumbnail(const Thumbnail& thumbnail);
-    static const Thumbnail& LoadFromFile(const std::string& filePath, IconType type = IconType::Undefined, const uint32_t size = 100);
-
-private:
-    static const Thumbnail& GetThumbnailByType(IconType type);
+    static const Icon& LoadFromFile(const std::string& filePath, IconType type = IconType::Undefined);
 };

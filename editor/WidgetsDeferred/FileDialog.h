@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES =======================
-#include "IconProvider.h"
+#include "IconLoader.h"
 #include "Core/FileSystem.h"
 #include "../ImGui/ImGuiExtension.h"
 //==================================
@@ -158,10 +158,10 @@ public:
 class FileDialogItem
 {
 public:
-    FileDialogItem(const std::string& path, const Thumbnail& thumbnail)
+    FileDialogItem(const std::string& path, const Icon& icon)
     {
         m_path        = path;
-        m_thumbnail   = thumbnail;
+        m_icon        = icon;
         m_id          = Spartan::Object::GenerateObjectId();
         m_isDirectory = Spartan::FileSystem::IsDirectory(path);
         m_label       = Spartan::FileSystem::GetFileNameFromFilePath(path);
@@ -170,7 +170,7 @@ public:
     const auto& GetPath()              const { return m_path; }
     const auto& GetLabel()             const { return m_label; }
     auto GetId()                       const { return m_id; }
-    Spartan::RHI_Texture* GetTexture() const { return IconProvider::GetTextureByThumbnail(m_thumbnail); }
+    Spartan::RHI_Texture* GetTexture() const { return m_icon.GetTexture(); }
     auto IsDirectory()                 const { return m_isDirectory; }
     auto GetTimeSinceLastClickMs()     const { return static_cast<float>(m_time_since_last_click.count()); }
 
@@ -182,7 +182,7 @@ public:
     }
     
 private:
-    Thumbnail m_thumbnail;
+    Icon m_icon;
     uint64_t m_id;
     std::string m_path;
     std::string m_label;
@@ -245,7 +245,7 @@ private:
 
     // Internal
     mutable uint64_t m_context_menu_id;
-    mutable ImGui_SP::DragDropPayload m_drag_drop_payload;
+    mutable ImGuiSp::DragDropPayload m_drag_drop_payload;
     float m_offset_bottom = 0.0f;
     FileDialog_Type m_type;
     FileDialog_Operation m_operation;

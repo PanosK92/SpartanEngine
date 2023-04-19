@@ -55,7 +55,7 @@ static void mesh_import_dialog_checkbox(const MeshOptions option, const char* la
 
     if (tooltip != nullptr)
     {
-        ImGui_SP::tooltip(tooltip);
+        ImGuiSp::tooltip(tooltip);
     }
 }
 
@@ -87,7 +87,7 @@ static void mesh_import_dialog()
             mesh_import_dialog_checkbox(MeshOptions::ImportLights, "Import lights");
 
             // Ok button
-            if (ImGui_SP::button_centered_on_line("Ok", 0.5f))
+            if (ImGuiSp::button_centered_on_line("Ok", 0.5f))
             {
                 EditorHelper::LoadMesh(mesh_import_file_path, mesh_import_dialog_flags);
                 mesh_import_dialog_is_visible = false;
@@ -111,7 +111,7 @@ AssetViewer::AssetViewer(Editor* editor) : Widget(editor)
 
 void AssetViewer::TickVisible()
 {    
-    if (ImGui_SP::button("Import"))
+    if (ImGuiSp::button("Import"))
     {
         show_file_dialog_load = true;
     }

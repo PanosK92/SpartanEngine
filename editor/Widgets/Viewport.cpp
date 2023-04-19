@@ -74,13 +74,13 @@ void Viewport::TickVisible()
     Input::SetEditorViewportOffset(offset);
 
     // Draw the image after a potential resolution change call has been made
-    ImGui_SP::image(Renderer::GetFrameTexture(), ImVec2(static_cast<float>(m_width), static_cast<float>(m_height)));
+    ImGuiSp::image(Renderer::GetFrameTexture(), ImVec2(static_cast<float>(m_width), static_cast<float>(m_height)));
 
     // Let the input system know if the mouse is within the viewport
     Input::SetMouseIsInViewport(ImGui::IsItemHovered());
 
     // Handle model drop
-    if (auto payload = ImGui_SP::receive_drag_drop_payload(ImGui_SP::DragPayloadType::Model))
+    if (auto payload = ImGuiSp::receive_drag_drop_payload(ImGuiSp::DragPayloadType::Model))
     {
         m_editor->GetWidget<AssetViewer>()->ShowMeshImportDialog(get<const char*>(payload->data));
     }
