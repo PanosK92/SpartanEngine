@@ -120,13 +120,6 @@ namespace Spartan
 
     void ThreadPool::AddTask(Task&& task)
     {
-        if (GetIdleThreadCount() == 0)
-        {
-            SP_LOG_WARNING("No available threads, function will execute in the calling thread");
-            task();
-            return;
-        }
-
         // Lock tasks mutex
         unique_lock<mutex> lock(mutex_tasks);
 

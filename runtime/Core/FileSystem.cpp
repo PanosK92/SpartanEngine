@@ -583,7 +583,13 @@ namespace Spartan
 
     string FileSystem::GetParentDirectory(const string& path)
     {
-        return filesystem::path(path).parent_path().generic_string();
+        auto parent_path = filesystem::path(path).parent_path();
+
+        // If there is not parent path, return path as is
+        if (parent_path.empty())
+            return path;
+
+        return parent_path.generic_string();
     }
 
     string FileSystem::GetRootDirectory(const string& path)
