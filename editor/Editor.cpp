@@ -190,7 +190,7 @@ Editor::Editor()
         apply_style();
 
         // Initialization of some helper static classes
-        IconProvider::Initialize();
+        IconLoader::Initialize();
         EditorHelper::Initialize(this);
 
         // Create all ImGui widgets

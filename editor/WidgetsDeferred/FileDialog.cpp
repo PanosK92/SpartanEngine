@@ -129,14 +129,14 @@ void FileDialog::ShowTop(bool* is_visible)
     // Directory navigation buttons
     {
         // Backwards
-        if (ImGui_SP::button("<"))
+        if (ImGuiSp::button("<"))
         {
             m_is_dirty = m_navigation.Backward();
         }
 
         // Forwards
         ImGui::SameLine();
-        if (ImGui_SP::button(">"))
+        if (ImGuiSp::button(">"))
         {
             m_is_dirty = m_navigation.Forward();
         }
@@ -145,7 +145,7 @@ void FileDialog::ShowTop(bool* is_visible)
         for (uint32_t i = 0; i < m_navigation.m_path_hierarchy.size(); i++)
         {
             ImGui::SameLine();
-            if (ImGui_SP::button(m_navigation.m_path_hierarchy_labels[i].c_str()))
+            if (ImGuiSp::button(m_navigation.m_path_hierarchy_labels[i].c_str()))
             {
                 m_is_dirty = m_navigation.Navigate(m_navigation.m_path_hierarchy[i]);
             }
@@ -154,7 +154,7 @@ void FileDialog::ShowTop(bool* is_visible)
 
     // Size slider
     const float slider_width = 200.0f;
-    ImGui::SameLine(ImGui_SP::GetWindowContentRegionWidth() - slider_width);
+    ImGui::SameLine(ImGuiSp::GetWindowContentRegionWidth() - slider_width);
     ImGui::PushItemWidth(slider_width);
     const float previous_width = m_item_size.x;
     ImGui::SliderFloat("##FileDialogSlider", &m_item_size.x, m_item_size_min, m_item_size_max);
@@ -273,7 +273,7 @@ void FileDialog::ShowMiddle()
                     ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0, 0, 0, 0));
                     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1.0f, 1.0f, 1.0f, 0.25f));
 
-                    if (ImGui_SP::button("##dummy", m_item_size))
+                    if (ImGuiSp::button("##dummy", m_item_size))
                     {
                         // Determine type of click
                         item.Clicked();
@@ -356,7 +356,7 @@ void FileDialog::ShowMiddle()
                             ImGui::SetCursorScreenPos(image_pos);
 
                             // Draw the image
-                            ImGui_SP::image(item.GetTexture(), image_size);
+                            ImGuiSp::image(item.GetTexture(), image_size);
                         }
                     }
 
@@ -439,13 +439,13 @@ void FileDialog::ShowBottom(bool* is_visible)
         ImGui::Text(FILTER_NAME);
 
         ImGui::SameLine();
-        if (ImGui_SP::button(OPERATION_NAME))
+        if (ImGuiSp::button(OPERATION_NAME))
         {
             m_selection_made = true;
         }
 
         ImGui::SameLine();
-        if (ImGui_SP::button("Cancel"))
+        if (ImGuiSp::button("Cancel"))
         {
             m_selection_made = false;
             (*is_visible) = false;
@@ -460,20 +460,20 @@ void FileDialog::ItemDrag(FileDialogItem* item) const
 
     if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID))
     {
-        const auto set_payload = [this](const ImGui_SP::DragPayloadType type, const string& path)
+        const auto set_payload = [this](const ImGuiSp::DragPayloadType type, const string& path)
         {
             m_drag_drop_payload.type = type;
             m_drag_drop_payload.data = path.c_str();
-            ImGui_SP::create_drag_drop_paylod(m_drag_drop_payload);
+            ImGuiSp::create_drag_drop_paylod(m_drag_drop_payload);
         };
 
-        if (FileSystem::IsSupportedModelFile(item->GetPath())) { set_payload(ImGui_SP::DragPayloadType::Model,    item->GetPath()); }
-        if (FileSystem::IsSupportedImageFile(item->GetPath())) { set_payload(ImGui_SP::DragPayloadType::Texture,  item->GetPath()); }
-        if (FileSystem::IsSupportedAudioFile(item->GetPath())) { set_payload(ImGui_SP::DragPayloadType::Audio,    item->GetPath()); }
-        if (FileSystem::IsEngineMaterialFile(item->GetPath())) { set_payload(ImGui_SP::DragPayloadType::Material, item->GetPath()); }
+        if (FileSystem::IsSupportedModelFile(item->GetPath())) { set_payload(ImGuiSp::DragPayloadType::Model,    item->GetPath()); }
+        if (FileSystem::IsSupportedImageFile(item->GetPath())) { set_payload(ImGuiSp::DragPayloadType::Texture,  item->GetPath()); }
+        if (FileSystem::IsSupportedAudioFile(item->GetPath())) { set_payload(ImGuiSp::DragPayloadType::Audio,    item->GetPath()); }
+        if (FileSystem::IsEngineMaterialFile(item->GetPath())) { set_payload(ImGuiSp::DragPayloadType::Material, item->GetPath()); }
 
         // Preview
-        ImGui_SP::image(item->GetTexture(), 50);
+        ImGuiSp::image(item->GetTexture(), 50);
 
         ImGui::EndDragDropSource();
     }
@@ -538,7 +538,7 @@ bool FileDialog::DialogUpdateFromDirectory(const string& file_path)
     auto directories = FileSystem::GetDirectoriesInDirectory(file_path);
     for (const string& directory : directories)
     {
-        m_items.emplace_back(directory, IconProvider::LoadFromFile(directory, IconType::Directory_Folder, static_cast<uint32_t>(m_item_size.x)));
+        m_items.emplace_back(directory, IconLoader::LoadFromFile(directory, IconType::Directory_Folder));
     }
 
     // Get files (based on filter)
@@ -549,7 +549,7 @@ bool FileDialog::DialogUpdateFromDirectory(const string& file_path)
         {
             if (!FileSystem::IsEngineTextureFile(anything) && !FileSystem::IsEngineModelFile(anything))
             {
-                m_items.emplace_back(anything, IconProvider::LoadFromFile(anything, IconType::Undefined, static_cast<uint32_t>(m_item_size.x)));
+                m_items.emplace_back(anything, IconLoader::LoadFromFile(anything, IconType::Undefined));
             }
         }
     }
@@ -558,7 +558,7 @@ bool FileDialog::DialogUpdateFromDirectory(const string& file_path)
         vector<string> paths_world = FileSystem::GetSupportedSceneFilesInDirectory(file_path);
         for (const string& world : paths_world)
         {
-            m_items.emplace_back(world, IconProvider::LoadFromFile(world, IconType::Directory_File_World, static_cast<uint32_t>(m_item_size.x)));
+            m_items.emplace_back(world, IconLoader::LoadFromFile(world, IconType::Directory_File_World));
         }
     }
     else if (m_filter == FileDialog_Filter_Model)
@@ -566,7 +566,7 @@ bool FileDialog::DialogUpdateFromDirectory(const string& file_path)
         vector<string> paths_models = FileSystem::GetSupportedModelFilesInDirectory(file_path);
         for (const string& model : paths_models)
         {
-            m_items.emplace_back(model, IconProvider::LoadFromFile(model, IconType::Directory_File_Model, static_cast<uint32_t>(m_item_size.x)));
+            m_items.emplace_back(model, IconLoader::LoadFromFile(model, IconType::Directory_File_Model));
         }
     }
 

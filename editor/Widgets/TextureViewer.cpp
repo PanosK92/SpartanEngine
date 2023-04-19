@@ -111,7 +111,7 @@ void TextureViewer::TickVisible()
         // Texture
         float virtual_width = static_cast<float>(texture->GetWidth()) * texture_shrink_percentage;
         float virtual_height = static_cast<float>(texture->GetHeight()) * texture_shrink_percentage;
-        ImGui_SP::image(texture.get(), Vector2(virtual_width, virtual_height), ImColor(255, 255, 255, 255), ImColor(0, 0, 0, 255));
+        ImGuiSp::image(texture.get(), Vector2(virtual_width, virtual_height), ImColor(255, 255, 255, 255), ImColor(0, 0, 0, 255));
 
         // Magnifying glass
         if (m_magnifying_glass && ImGui::IsItemHovered())
@@ -153,7 +153,7 @@ void TextureViewer::TickVisible()
     // Render target
     ImGui::Text("Render target");
     ImGui::SameLine();
-    ImGui_SP::combo_box("##render_target", render_target_options, &m_texture_index);
+    ImGuiSp::combo_box("##render_target", render_target_options, &m_texture_index);
 
     // Mip level
     ImGui::SameLine();

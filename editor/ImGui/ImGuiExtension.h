@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===============================
+//= INCLUDES =============================
 #include <string>
 #include <variant>
 #include <chrono>
@@ -37,8 +37,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Display/Display.h"
 #include "Source/imgui_internal.h"
 #include "../Editor.h"
-#include "../WidgetsDeferred/IconProvider.h"
-//==========================================
+#include "../WidgetsDeferred/IconLoader.h"
+//========================================
 
 class EditorHelper
 {
@@ -81,7 +81,7 @@ public:
     static Editor* editor;
 };
 
-namespace ImGui_SP
+namespace ImGuiSp
 {
     enum class DragPayloadType
     {
@@ -151,7 +151,7 @@ namespace ImGui_SP
         // Get texture from icon enum (if provided)
         if (!texture && icon != IconType::Undefined)
         {
-            texture = IconProvider::GetTextureByType(icon);
+            texture = IconLoader::GetTextureByType(icon);
         }
 
         // Compute ID
@@ -177,10 +177,10 @@ namespace ImGui_SP
         return result;
     }
 
-    static void image(const Thumbnail& thumbnail, const float size)
+    static void image(const Icon& icon, const float size)
     {
         ImGui::Image(
-            static_cast<ImTextureID>(IconProvider::GetTextureByThumbnail(thumbnail)),
+            static_cast<ImTextureID>(icon.GetTexture()),
             ImVec2(size, size),
             ImVec2(0, 0),
             ImVec2(1, 1),
@@ -226,7 +226,7 @@ namespace ImGui_SP
     static void image(const IconType icon, const float size)
     {
         ImGui::Image(
-            static_cast<void*>(IconProvider::GetTextureByType(icon)),
+            static_cast<void*>(IconLoader::GetTextureByType(icon)),
             ImVec2(size, size),
             ImVec2(0, 0),
             ImVec2(1, 1),
@@ -427,7 +427,7 @@ namespace ImGui_SP
             // Float
             ImGui::PushItemWidth(128.0f);
             ImGui::PushID(static_cast<int>(ImGui::GetCursorPosX() + ImGui::GetCursorPosY()));
-            ImGui_SP::draw_float_wrap("##no_label", value, step, std::numeric_limits<float>::lowest(), std::numeric_limits<float>::max(), "%.4f");
+            ImGuiSp::draw_float_wrap("##no_label", value, step, std::numeric_limits<float>::lowest(), std::numeric_limits<float>::max(), "%.4f");
             ImGui::PopID();
             ImGui::PopItemWidth();
 
@@ -465,7 +465,7 @@ namespace ImGui_SP
         {
             ImGui::Text(text);
 
-            if (ImGui_SP::button_centered_on_line("Yes", 0.4f))
+            if (ImGuiSp::button_centered_on_line("Yes", 0.4f))
             {
                 button_press = ButtonPress::Yes;
             }

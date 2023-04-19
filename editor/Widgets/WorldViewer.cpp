@@ -47,7 +47,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace std;
 //==================
 
-static ImGui_SP::DragDropPayload g_payload;
+static ImGuiSp::DragDropPayload g_payload;
 static bool popup_rename_entity = false;
 static Spartan::Entity* entity_copied    = nullptr;
 static Spartan::Entity* entity_hovered   = nullptr;
@@ -88,7 +88,7 @@ static void load_default_world_prompt(Editor* editor)
             ImGui::PopItemWidth();
 
             // button
-            if (ImGui_SP::button_centered_on_line("Ok"))
+            if (ImGuiSp::button_centered_on_line("Ok"))
             {
                 if (item_index == 1)
                 {
@@ -168,7 +168,7 @@ void WorldViewer::TreeShow()
     if (ImGui::TreeNodeEx("Root", ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanFullWidth))
     {
         // Dropping on the scene node should unparent the entity
-        if (auto payload = ImGui_SP::receive_drag_drop_payload(ImGui_SP::DragPayloadType::Entity))
+        if (auto payload = ImGuiSp::receive_drag_drop_payload(ImGuiSp::DragPayloadType::Entity))
         {
             const uint64_t entity_id = get<uint64_t>(payload->data);
             if (const shared_ptr<Spartan::Entity>& dropped_entity = Spartan::World::GetEntityById(entity_id))
@@ -340,12 +340,12 @@ void WorldViewer::EntityHandleDragDrop(Spartan::Entity* entity_ptr) const
     if (ImGui::BeginDragDropSource())
     {
         g_payload.data = entity_ptr->GetObjectId();
-        g_payload.type = ImGui_SP::DragPayloadType::Entity;
-        ImGui_SP::create_drag_drop_paylod(g_payload);
+        g_payload.type = ImGuiSp::DragPayloadType::Entity;
+        ImGuiSp::create_drag_drop_paylod(g_payload);
         ImGui::EndDragDropSource();
     }
     // Drop
-    if (auto payload = ImGui_SP::receive_drag_drop_payload(ImGui_SP::DragPayloadType::Entity))
+    if (auto payload = ImGuiSp::receive_drag_drop_payload(ImGuiSp::DragPayloadType::Entity))
     {
         const uint64_t entity_id = get<uint64_t>(payload->data);
         if (const shared_ptr<Spartan::Entity>& dropped_entity = Spartan::World::GetEntityById(entity_id))
@@ -557,7 +557,7 @@ void WorldViewer::PopupEntityRename() const
         ImGui::InputText("##edit", &name);
         selected_entity->SetName(string(name));
 
-        if (ImGui_SP::button("Ok"))
+        if (ImGuiSp::button("Ok"))
         { 
             ImGui::CloseCurrentPopup();
             ImGui::EndPopup();
