@@ -371,7 +371,7 @@ namespace Spartan
         }
     }
 
-    void World::CreateDefaultWorldCommon(const Math::Vector3& camera_position, const Math::Vector3& camera_rotation, const char* soundtrack_file_path)
+    void World::CreateDefaultWorldCommon(const Math::Vector3& camera_position, const Math::Vector3& camera_rotation, const float light_intensity, const char* soundtrack_file_path)
     {
         // Environment
         {
@@ -402,7 +402,7 @@ namespace Spartan
             Light* light = entity->AddComponent<Light>();
             light->SetLightType(LightType::Directional);
             light->SetColor(Color::light_sky_clear);
-            light->SetIntensity(50000.0f);
+            light->SetIntensity(light_intensity);
         }
 
         // Music
@@ -471,16 +471,28 @@ namespace Spartan
     {
         Vector3 camera_position = Vector3(-1.5523f, 1.2229f, -1.4509f);
         Vector3 camera_rotation = Vector3(12.9974f, 47.5989f, 0.0f);
-        CreateDefaultWorldCommon(camera_position, camera_rotation, "project\\music\\dj_alvin_midnight.mp3");
+        CreateDefaultWorldCommon(camera_position, camera_rotation, 400.0f, "project\\music\\dj_alvin_midnight.mp3");
+
+        // Point light
+        {
+            shared_ptr<Entity> entity = CreateEntity();
+            entity->GetTransform()->SetPosition(Vector3(0.0f, 2.0f, -1.5f));
+            Light* light = entity->AddComponent<Light>();
+            light->SetLightType(LightType::Point);
+            light->SetColor(Color::material_silver);
+            light->SetIntensity(10000.0f);
+        }
 
         // Quad
-        shared_ptr<Entity> entity = CreateEntity();
-        entity->SetName("quad");
-        entity->GetTransform()->SetPosition(Vector3(0.0f, 0.1f, 0.0f)); // raise a bit to avoid z-fighting with world grid
-        entity->GetTransform()->SetScale(Vector3(8.0f, 1.0f, 8.0f));
-        Renderable* renderable = entity->AddComponent<Renderable>();
-        renderable->SetGeometry(DefaultGeometry::Quad);
-        renderable->SetDefaultMaterial();
+        {
+            shared_ptr<Entity> entity = CreateEntity();
+            entity->SetName("quad");
+            entity->GetTransform()->SetPosition(Vector3(0.0f, 0.1f, 0.0f)); // raise a bit to avoid z-fighting with world grid
+            entity->GetTransform()->SetScale(Vector3(8.0f, 1.0f, 8.0f));
+            Renderable* renderable = entity->AddComponent<Renderable>();
+            renderable->SetGeometry(DefaultGeometry::Quad);
+            renderable->SetDefaultMaterial();
+        }
 
         if (m_default_model_helmet = ResourceCache::Load<Mesh>("project\\models\\damaged_helmet\\DamagedHelmet.gltf"))
         {
