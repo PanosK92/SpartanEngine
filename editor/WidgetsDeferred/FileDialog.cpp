@@ -50,7 +50,7 @@ FileDialog::FileDialog(const bool standalone_window, const FileDialog_Type type,
     m_selection_made                    = false;
     m_callback_on_item_clicked          = nullptr;
     m_callback_on_item_double_clicked   = nullptr;
-    m_navigation.Navigate(ResourceCache::GetProjectDirectory());
+    m_current_path                      = ResourceCache::GetProjectDirectory();
 
     // Default to the center of the screen
     m_position.x = Spartan::Display::GetWidth() * 0.5f;
@@ -86,7 +86,7 @@ bool FileDialog::Show(bool* is_visible, string* directory /*= nullptr*/, string*
 
     if (m_is_dirty)
     {
-        DialogUpdateFromDirectory(m_navigation.m_path_current);
+        DialogUpdateFromDirectory(m_current_path);
         m_is_dirty = false;
     }
 
@@ -94,12 +94,12 @@ bool FileDialog::Show(bool* is_visible, string* directory /*= nullptr*/, string*
     {
         if (directory)
         {
-            (*directory) = m_navigation.m_path_current;
+            (*directory) = m_current_path;
         }
 
         if (file_path)
         {
-            (*file_path) = m_navigation.m_path_current + "/" + string(m_input_box);
+            (*file_path) = m_current_path + "/" + string(m_input_box);
         }
     }
 
@@ -131,25 +131,13 @@ void FileDialog::ShowTop(bool* is_visible)
         // Backwards
         if (ImGuiSp::button("<"))
         {
-            m_is_dirty = m_navigation.Backward();
+            m_current_path = FileSystem::GetParentDirectory(m_current_path);
+            m_is_dirty     = true;
         }
 
-        // Forwards
+        // Display current path
         ImGui::SameLine();
-        if (ImGuiSp::button(">"))
-        {
-            m_is_dirty = m_navigation.Forward();
-        }
-
-        // Individual directories buttons
-        for (uint32_t i = 0; i < m_navigation.m_path_hierarchy.size(); i++)
-        {
-            ImGui::SameLine();
-            if (ImGuiSp::button(m_navigation.m_path_hierarchy_labels[i].c_str()))
-            {
-                m_is_dirty = m_navigation.Navigate(m_navigation.m_path_hierarchy[i]);
-            }
-        }
+        ImGui::LabelText("%s", m_current_path.c_str());
     }
 
     // Size slider
@@ -288,7 +276,8 @@ void FileDialog::ShowMiddle()
                         }
                         else // Double Click
                         {
-                            m_is_dirty       = m_navigation.Navigate(item.GetPath());
+                            m_current_path   = item.GetPath();
+                            m_is_dirty       = true;
                             m_selection_made = !item.IsDirectory();
 
                             // When browsing files, open them on double click
@@ -303,7 +292,7 @@ void FileDialog::ShowMiddle()
                             // Callback
                             if (m_callback_on_item_double_clicked)
                             {
-                                m_callback_on_item_double_clicked(m_navigation.m_path_current);
+                                m_callback_on_item_double_clicked(m_current_path);
                             }
                         }
                     }
@@ -585,14 +574,14 @@ void FileDialog::EmptyAreaContextMenu()
 
     if (ImGui::MenuItem("Create folder"))
     {
-        FileSystem::CreateDirectory(m_navigation.m_path_current + "/New folder");
+        FileSystem::CreateDirectory(m_current_path + "/New folder");
         m_is_dirty = true;
     }
 
     if (ImGui::MenuItem("Create material"))
     {
         Material material = Material();
-        const string file_path = m_navigation.m_path_current + "/new_material" + EXTENSION_MATERIAL;
+        const string file_path = m_current_path + "/new_material" + EXTENSION_MATERIAL;
         material.SetResourceFilePath(file_path);
         material.SaveToFile(file_path);
         m_is_dirty = true;
@@ -600,7 +589,7 @@ void FileDialog::EmptyAreaContextMenu()
 
     if (ImGui::MenuItem("Open directory in explorer"))
     {
-        FileSystem::OpenUrl(m_navigation.m_path_current);
+        FileSystem::OpenUrl(m_current_path);
     }
 
     ImGui::EndPopup();

@@ -34,9 +34,11 @@ using namespace Spartan;
 
 namespace
 {
-    static vector<Icon> icons;
+    // Using shared_ptr because the vector can re-allocate at is grows, and call the destructor of Icon.
+    // If this happens when the Icon's texture is being loaded in the thread pool, we'll get a crash.
+    static vector<shared_ptr<Icon>> icons;
     static Icon no_icon;
-    static std::mutex icon_mutex;
+    static mutex icon_mutex;
 }
 
 static void destroy_rhi_resources()
@@ -44,24 +46,24 @@ static void destroy_rhi_resources()
     icons.clear();
 }
 
-static const Icon& get_icon_by_type(IconType type)
+static Icon* get_icon_by_type(IconType type)
 {
-    for (Icon& icon : icons)
+    for (auto& icon : icons)
     {
-        if (icon.GetType() == type)
-            return icon;
+        if (icon->GetType() == type)
+            return icon.get();
     }
 
-    return no_icon;
+    return &no_icon;
 }
 
-Icon::Icon(IconType type, const std::string& file_path)
+Icon::Icon(IconType type, const string& file_path)
 {
-    this->m_type = type;
+    m_type = type;
 
     // Create texture
-    string name     = FileSystem::GetFileNameFromFilePath(file_path);
-    this->m_texture = make_shared<RHI_Texture2D>(RHI_Texture_Srv, name.c_str());
+    string name = FileSystem::GetFileNameFromFilePath(file_path);
+    m_texture   = make_shared<RHI_Texture2D>(RHI_Texture_Srv, name.c_str());
 
     // Load texture
     ThreadPool::AddTask([this, file_path]()
@@ -143,35 +145,36 @@ void IconLoader::Initialize()
 
 RHI_Texture* IconLoader::GetTextureByType(IconType type)
 {
-    return LoadFromFile("", type).GetTexture();
+    return LoadFromFile("", type)->GetTexture();
 }
 
-const Icon& IconLoader::LoadFromFile(const string& file_path, IconType type /*Undefined*/)
+Icon* IconLoader::LoadFromFile(const string& file_path, IconType type /*Undefined*/)
 {
     // Check if the texture is already loaded, and return that
     bool search_by_type = type != IconType::Undefined;
-    for (Icon& icon : icons)
+    for (auto& icon : icons)
     {
         if (search_by_type)
         {
-            if (icon.GetType() == type)
-                return icon;
+            if (icon->GetType() == type)
+                return icon.get();
         }
-        else if (icon.GetFilePath() == file_path)
+        else if (icon->GetFilePath() == file_path)
         {
-            return icon;
+            return icon.get();
         }
     }
 
     // The texture is new so load it
     if (FileSystem::IsSupportedImageFile(file_path) || FileSystem::IsEngineTextureFile(file_path))
     {
-        // Add a new icon
         lock_guard<mutex> guard(icon_mutex);
-        icons.emplace_back(type, file_path);
+
+        // Add a new icon
+        icons.push_back(make_shared<Icon>(type, file_path));
 
         // Return it
-        return icons.back();
+        return icons.back().get();
     }
 
     return get_icon_by_type(IconType::Directory_File_Default);

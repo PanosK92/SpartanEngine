@@ -47,118 +47,10 @@ enum FileDialog_Filter
     FileDialog_Filter_Model
 };
 
-// Keeps tracks of directory navigation
-class FileDialogNavigation
-{
-public:
-    bool Navigate(std::string directory, bool update_history = true)
-    {
-        if (!Spartan::FileSystem::IsDirectory(directory))
-            return false;
-
-        // If the directory ends with a slash, remove it (simplifies things below)
-        if (directory.back() == '/')
-        {
-            directory = directory.substr(0, directory.size() - 1);
-        }
-
-        // Don't re-navigate
-        if (m_path_current == directory)
-            return false;
-
-        // Update current path
-        m_path_current = directory;
-
-        // Update history
-        if (update_history)
-        {
-            m_path_history.emplace_back(m_path_current);
-            m_path_history_index++;
-        }
-
-        // Clear hierarchy
-        m_path_hierarchy.clear();
-        m_path_hierarchy_labels.clear();
-
-        // Is there a slash ?
-        std::size_t pos = m_path_current.find('/');
-
-        // If there are no slashes then there is no nesting (and we are done)
-        if (pos == std::string::npos)
-        {
-            m_path_hierarchy.emplace_back(m_path_current);
-        }
-        // If there is a slash, get the individual directories between slashes
-        else
-        {
-            std::size_t pos_previous = 0;
-            while (true)
-            {
-                // Save everything before the slash
-                m_path_hierarchy.emplace_back(m_path_current.substr(0, pos));
-
-                // Attempt to find a slash after the one we already found
-                pos_previous    = pos;
-                pos             = m_path_current.find('/', pos + 1);
-
-                // If there are no more slashes
-                if (pos == std::string::npos)
-                {
-                    // Save the complete path to this directory
-                    m_path_hierarchy.emplace_back(m_path_current);
-                    break;
-                }
-            }
-        }
-
-        // Create a proper looking label (to show in the editor) for each path
-        for (const auto& path : m_path_hierarchy)
-        {
-            pos = path.find('/');
-            if (pos == std::string::npos)
-            {
-                m_path_hierarchy_labels.emplace_back(path + " >");
-            }
-            else
-            {
-                m_path_hierarchy_labels.emplace_back(path.substr(path.find_last_of('/') + 1) + " >");
-            }
-        }
-
-        return true;
-    }
-
-    bool Backward()
-    {
-        if (m_path_history.empty() || (m_path_history_index - 1) < 0)
-            return false;
-
-        Navigate(m_path_history[--m_path_history_index], false);
-
-        return true;
-    }
-
-    bool Forward()
-    {
-        if (m_path_history.empty() || (m_path_history_index + 1) >= static_cast<int>(m_path_history.size()))
-            return false;
-
-        Navigate(m_path_history[++m_path_history_index], false);
-
-        return true;
-    }
-
-    std::string m_path_current;
-    std::vector<std::string> m_path_hierarchy;
-    std::vector<std::string> m_path_hierarchy_labels;
-    std::vector<std::string> m_path_history;
-    int m_path_history_index = -1;
-};
-
 class FileDialogItem
 {
 public:
-    FileDialogItem(const std::string& path, const Icon& icon)
+    FileDialogItem(const std::string& path, Icon* icon)
     {
         m_path        = path;
         m_icon        = icon;
@@ -170,7 +62,7 @@ public:
     const auto& GetPath()              const { return m_path; }
     const auto& GetLabel()             const { return m_label; }
     auto GetId()                       const { return m_id; }
-    Spartan::RHI_Texture* GetTexture() const { return m_icon.GetTexture(); }
+    Spartan::RHI_Texture* GetTexture() const { return m_icon->GetTexture(); }
     auto IsDirectory()                 const { return m_isDirectory; }
     auto GetTimeSinceLastClickMs()     const { return static_cast<float>(m_time_since_last_click.count()); }
 
@@ -182,7 +74,7 @@ public:
     }
     
 private:
-    Icon m_icon;
+    Icon* m_icon;
     uint64_t m_id;
     std::string m_path;
     std::string m_label;
@@ -238,7 +130,6 @@ private:
     bool m_is_hovering_item;
     bool m_is_hovering_window;
     std::string m_title;
-    FileDialogNavigation m_navigation;
     std::string m_input_box;
     std::string m_hovered_item_path;
     uint32_t m_displayed_item_count;
@@ -253,6 +144,7 @@ private:
     std::vector<FileDialogItem> m_items;
     Spartan::Math::Vector2 m_item_size;
     ImGuiTextFilter m_search_filter;
+    std::string m_current_path;
 
     // Callbacks
     std::function<void(const std::string&)> m_callback_on_item_clicked;

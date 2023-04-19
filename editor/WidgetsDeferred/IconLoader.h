@@ -94,5 +94,5 @@ public:
     static void Initialize();
 
     static Spartan::RHI_Texture* GetTextureByType(IconType type);
-    static const Icon& LoadFromFile(const std::string& filePath, IconType type = IconType::Undefined);
+    static Icon* LoadFromFile(const std::string& filePath, IconType type = IconType::Undefined);
 };
