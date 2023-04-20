@@ -46,6 +46,59 @@ namespace
 
 namespace Spartan
 {
+    namespace vulkan_memory_allocator
+    {
+        static VmaAllocator allocator;
+        static std::unordered_map<uint64_t, VmaAllocation> allocations;
+
+        static uint64_t resource_to_id(void* resource)
+        {
+            return reinterpret_cast<uint64_t>(resource);
+        }
+
+        static void save_allocation(void*& resource, const char* name, VmaAllocation allocation)
+        {
+            SP_ASSERT_MSG(resource != nullptr, "Resource can't be null");
+            SP_ASSERT_MSG(name != nullptr, "Name can't be empty");
+
+            // Set allocation data
+            vmaSetAllocationUserData(allocator, allocation, resource);
+            vmaSetAllocationName(allocator, allocation, name);
+
+            // Name the allocation's underlying VkDeviceMemory
+            vulkan_utility::debug::set_object_name(allocation->GetMemory(), name);
+
+            lock_guard<mutex> lock(mutex_allocation);
+            allocations[resource_to_id(resource)] = allocation;
+        }
+
+        static void destroy_allocation(void*& resource)
+        {
+            lock_guard<mutex> lock(mutex_allocation);
+
+            auto it = allocations.find(resource_to_id(resource));
+            if (it != allocations.end())
+            {
+                allocations.erase(it);
+            }
+
+            resource = nullptr;
+        }
+
+        static VmaAllocation get_allocation_from_resource(void* resource)
+        {
+            lock_guard<mutex> lock(mutex_allocation);
+
+            auto it = allocations.find(resource_to_id(resource));
+            if (it != allocations.end())
+            {
+                return it->second;
+            }
+
+            return nullptr;
+        }
+    }
+
     static bool is_present_instance_layer(const char* layer_name)
     {
         uint32_t layer_count;
@@ -133,11 +186,6 @@ namespace Spartan
         }
 
         return extensions_supported;
-    }
-
-    static uint64_t get_allocation_id_from_resource(void* resource)
-    {
-        return reinterpret_cast<uint64_t>(resource);
     }
 
     RHI_Device::RHI_Device()
@@ -446,7 +494,7 @@ namespace Spartan
             allocator_info.instance               = RHI_Context::instance;
             allocator_info.vulkanApiVersion       = app_info.apiVersion;
 
-            SP_ASSERT_MSG(vmaCreateAllocator(&allocator_info, reinterpret_cast<VmaAllocator*>(&m_allocator)) == VK_SUCCESS, "Failed to create memory allocator");
+            SP_ASSERT_MSG(vmaCreateAllocator(&allocator_info, &vulkan_memory_allocator::allocator) == VK_SUCCESS, "Failed to create memory allocator");
         }
 
         // Set the descriptor set capacity to an initial value
@@ -465,7 +513,7 @@ namespace Spartan
         }
     }
 
-    RHI_Device::~RHI_Device()
+    void RHI_Device::Destroy()
     {
         SP_ASSERT(m_queue_graphics != nullptr);
 
@@ -474,25 +522,25 @@ namespace Spartan
         // Destroy command pools
         m_cmd_pools.clear();
         m_cmd_pools_immediate.fill(nullptr);
-        
+
         // Descriptor pool
         vkDestroyDescriptorPool(RHI_Context::device, static_cast<VkDescriptorPool>(m_descriptor_pool), nullptr);
         m_descriptor_pool = nullptr;
-        
+
         // Allocator
-        if (m_allocator != nullptr)
+        if (vulkan_memory_allocator::allocator != nullptr)
         {
-            SP_ASSERT_MSG(m_allocations.empty(), "There are still allocations");
-            vmaDestroyAllocator(static_cast<VmaAllocator>(m_allocator));
-            m_allocator = nullptr;
+            SP_ASSERT_MSG(vulkan_memory_allocator::allocations.empty(), "There are still allocations");
+            vmaDestroyAllocator(static_cast<VmaAllocator>(vulkan_memory_allocator::allocator));
+            vulkan_memory_allocator::allocator = nullptr;
         }
-        
+
         // Debug messenger
         if (RHI_Context::validation)
         {
             vulkan_utility::debug::shutdown(RHI_Context::instance);
         }
-        
+
         // Device and instance
         vkDestroyDevice(RHI_Context::device, nullptr);
         vkDestroyInstance(RHI_Context::instance, nullptr);
@@ -503,7 +551,7 @@ namespace Spartan
         uint32_t device_count = 0;
         SP_ASSERT_MSG(
             vkEnumeratePhysicalDevices(RHI_Context::instance, &device_count, nullptr) == VK_SUCCESS,
-            "Failed to geet physical device count"
+            "Failed to get physical device count"
         );
 
         SP_ASSERT_MSG(device_count != 0, "There are no available physical devices");
@@ -511,7 +559,7 @@ namespace Spartan
         vector<VkPhysicalDevice> physical_devices(device_count);
         SP_ASSERT_MSG(
             vkEnumeratePhysicalDevices(RHI_Context::instance, &device_count, physical_devices.data()) == VK_SUCCESS,
-            "Failed to enumarate physical devices"
+            "Failed to enumerate physical devices"
         );
         
         // Go through all the devices
@@ -843,14 +891,9 @@ namespace Spartan
         Profiler::m_descriptor_set_capacity = m_descriptor_set_capacity;
     }
 
-    void* RHI_Device::GetAllocationFromResource(void* resource)
-    {
-        return m_allocations.find(get_allocation_id_from_resource(resource))->second;
-    }
-
     void* RHI_Device::GetMappedDataFromBuffer(void* resource)
     {
-        if (VmaAllocation allocation = static_cast<VmaAllocation>(GetAllocationFromResource(resource)))
+        if (VmaAllocation allocation = static_cast<VmaAllocation>(vulkan_memory_allocator::get_allocation_from_resource(resource)))
         {
             return allocation->GetMappedData();
         }
@@ -858,7 +901,7 @@ namespace Spartan
         return nullptr;
     }
 
-    void RHI_Device::CreateBuffer(void*& resource, const uint64_t size, uint32_t usage, uint32_t memory_property_flags, const void* data_initial /* = nullptr */)
+    void RHI_Device::CreateBuffer(void*& resource, const uint64_t size, uint32_t usage, uint32_t memory_property_flags, const void* data_initial, const char* name)
     {
         // Deduce some memory properties
         bool is_buffer_storage       = (usage & VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) != 0; // aka structured buffer
@@ -905,7 +948,7 @@ namespace Spartan
         VmaAllocation allocation = nullptr;
         VmaAllocationInfo allocation_info;
         SP_VK_ASSERT_MSG(vmaCreateBuffer(
-                static_cast<VmaAllocator>(m_allocator),
+            vulkan_memory_allocator::allocator,
                 &buffer_create_info,
                 &allocation_create_info,
                 reinterpret_cast<VkBuffer*>(&resource),
@@ -916,7 +959,7 @@ namespace Spartan
         // If a pointer to the buffer data has been passed, map the buffer and copy over the data
         if (data_initial != nullptr)
         {
-            SP_ASSERT(is_mappable && "Can't map, you need to create a buffer, with a VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT memory flag.");
+            SP_ASSERT(is_mappable && "Mapping initial data requires the buffer to be created with a VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT memory flag.");
 
             // Memory in Vulkan doesn't need to be unmapped before using it on GPU, but unless a
             // memory type has VK_MEMORY_PROPERTY_HOST_COHERENT_BIT flag set, you need to manually
@@ -924,32 +967,27 @@ namespace Spartan
             // it. Map/unmap operations don't do that automatically.
 
             void* mapped_data = nullptr;
-            SP_VK_ASSERT_MSG(vmaMapMemory(static_cast<VmaAllocator>(m_allocator), allocation, &mapped_data), "Failed to map allocation");
+            SP_VK_ASSERT_MSG(vmaMapMemory(vulkan_memory_allocator::allocator, allocation, &mapped_data), "Failed to map allocation");
             memcpy(mapped_data, data_initial, size);
-            SP_VK_ASSERT_MSG(vmaFlushAllocation(static_cast<VmaAllocator>(m_allocator), allocation, 0, size), "Failed to flush allocation");
-            vmaUnmapMemory(static_cast<VmaAllocator>(m_allocator), allocation);
+            SP_VK_ASSERT_MSG(vmaFlushAllocation(vulkan_memory_allocator::allocator, allocation, 0, size), "Failed to flush allocation");
+            vmaUnmapMemory(vulkan_memory_allocator::allocator, allocation);
         }
 
-        // Keep allocation reference
-        lock_guard<mutex> lock(mutex_allocation);
-        m_allocations[reinterpret_cast<uint64_t>(resource)] = allocation;
+        vulkan_memory_allocator::save_allocation(resource, name, allocation);
     }
 
     void RHI_Device::DestroyBuffer(void*& resource)
     {
         SP_ASSERT_MSG(resource != nullptr, "Resource is null");
 
-        lock_guard<mutex> lock(mutex_allocation);
-        if (VmaAllocation allocation = static_cast<VmaAllocation>(GetAllocationFromResource(resource)))
+        if (VmaAllocation allocation = static_cast<VmaAllocation>(vulkan_memory_allocator::get_allocation_from_resource(resource)))
         {
-            vmaDestroyBuffer(static_cast<VmaAllocator>(m_allocator), static_cast<VkBuffer>(resource), allocation);
-
-            m_allocations.erase(get_allocation_id_from_resource(resource));
-            resource = nullptr;
+            vmaDestroyBuffer(vulkan_memory_allocator::allocator, static_cast<VkBuffer>(resource), allocation);
+            vulkan_memory_allocator::destroy_allocation(resource);
         }
     }
 
-    void RHI_Device::CreateTexture(void* vk_image_creat_info, void*& resource)
+    void RHI_Device::CreateTexture(void* vk_image_creat_info, void*& resource, const char* name)
     {
         VmaAllocationCreateInfo allocation_info = {};
         allocation_info.usage = VMA_MEMORY_USAGE_AUTO;
@@ -957,37 +995,32 @@ namespace Spartan
         // Create image
         VmaAllocation allocation;
         SP_VK_ASSERT_MSG(vmaCreateImage(
-                    static_cast<VmaAllocator>(m_allocator),
-                    static_cast<VkImageCreateInfo*>(vk_image_creat_info), &allocation_info,
-                    reinterpret_cast<VkImage*>(&resource),
-                    &allocation,
-                    nullptr),
+            vulkan_memory_allocator::allocator,
+            static_cast<VkImageCreateInfo*>(vk_image_creat_info), &allocation_info,
+            reinterpret_cast<VkImage*>(&resource),
+            &allocation,
+            nullptr),
         "Failed to allocate texture");
 
-        // Keep allocation reference
-        lock_guard<mutex> lock(mutex_allocation);
-        m_allocations[reinterpret_cast<uint64_t>(resource)] = allocation;
+        vulkan_memory_allocator::save_allocation(resource, name, allocation);
     }
 
     void RHI_Device::DestroyTexture(void*& resource)
     {
         SP_ASSERT_MSG(resource != nullptr, "Resource is null");
 
-        lock_guard<mutex> lock(mutex_allocation);
-        if (VmaAllocation allocation = static_cast<VmaAllocation>(GetAllocationFromResource(resource)))
+        if (VmaAllocation allocation = static_cast<VmaAllocation>(vulkan_memory_allocator::get_allocation_from_resource(resource)))
         {
-            vmaDestroyImage(static_cast<VmaAllocator>(m_allocator), static_cast<VkImage>(resource), allocation);
-
-            m_allocations.erase(get_allocation_id_from_resource(resource));
-            resource = nullptr;
+            vmaDestroyImage(vulkan_memory_allocator::allocator, static_cast<VkImage>(resource), allocation);
+            vulkan_memory_allocator::destroy_allocation(resource);
         }
     }
 
     void RHI_Device::MapMemory(void* resource, void*& mapped_data)
     {
-        if (VmaAllocation allocation = static_cast<VmaAllocation>(GetAllocationFromResource(resource)))
+        if (VmaAllocation allocation = static_cast<VmaAllocation>(vulkan_memory_allocator::get_allocation_from_resource(resource)))
         {
-            SP_ASSERT_MSG(vmaMapMemory(static_cast<VmaAllocator>(m_allocator), allocation, reinterpret_cast<void**>(&mapped_data)) == VK_SUCCESS, "Failed to map memory");
+            SP_ASSERT_MSG(vmaMapMemory(vulkan_memory_allocator::allocator, allocation, reinterpret_cast<void**>(&mapped_data)) == VK_SUCCESS, "Failed to map memory");
         }
     }
 
@@ -995,18 +1028,18 @@ namespace Spartan
     {
         SP_ASSERT_MSG(mapped_data, "Memory is already unmapped");
 
-        if (VmaAllocation allocation = static_cast<VmaAllocation>(GetAllocationFromResource(resource)))
+        if (VmaAllocation allocation = static_cast<VmaAllocation>(vulkan_memory_allocator::get_allocation_from_resource(resource)))
         {
-            vmaUnmapMemory(static_cast<VmaAllocator>(m_allocator), static_cast<VmaAllocation>(allocation));
+            vmaUnmapMemory(vulkan_memory_allocator::allocator, static_cast<VmaAllocation>(allocation));
             mapped_data = nullptr;
         }
     }
 
     void RHI_Device::FlushAllocation(void* resource, uint64_t offset, uint64_t size)
     {
-        if (VmaAllocation allocation = static_cast<VmaAllocation>(GetAllocationFromResource(resource)))
+        if (VmaAllocation allocation = static_cast<VmaAllocation>(vulkan_memory_allocator::get_allocation_from_resource(resource)))
         {
-            SP_ASSERT_MSG(vmaFlushAllocation(static_cast<VmaAllocator>(m_allocator), allocation, offset, size) == VK_SUCCESS, "Failed to flush");
+            SP_ASSERT_MSG(vmaFlushAllocation(vulkan_memory_allocator::allocator, allocation, offset, size) == VK_SUCCESS, "Failed to flush");
         }
     }
 }

@@ -36,7 +36,8 @@ namespace Spartan
     {
     public:
         RHI_Device();
-        ~RHI_Device();
+        ~RHI_Device() = default;
+        void Destroy();
 
         // Physical device
         const PhysicalDevice* GetPrimaryPhysicalDevice();
@@ -84,11 +85,10 @@ namespace Spartan
         void ParseDeletionQueue(const std::unordered_map<RHI_Resource_Type, std::vector<void*>>& deletion_queue);
 
         // Vulkan memory allocator
-        void* GetAllocationFromResource(void* resource);
         void* GetMappedDataFromBuffer(void* resource);
-        void CreateBuffer(void*& resource, const uint64_t size, uint32_t usage, uint32_t memory_property_flags, const void* data_initial = nullptr);
+        void CreateBuffer(void*& resource, const uint64_t size, uint32_t usage, uint32_t memory_property_flags, const void* data_initial, const char* name);
         void DestroyBuffer(void*& resource);
-        void CreateTexture(void* vk_image_creat_info, void*& resource);
+        void CreateTexture(void* vk_image_creat_info, void*& resource, const char* name);
         void DestroyTexture(void*& resource);
         void MapMemory(void* resource, void*& mapped_data);
         void UnmapMemory(void* resource, void*& mapped_data);
@@ -138,9 +138,5 @@ namespace Spartan
         uint32_t m_physical_device_index          = 0;
         uint32_t m_enabled_graphics_shader_stages = 0;
         std::vector<PhysicalDevice> m_physical_devices;
-
-        // Vulkan memory allocator
-        void* m_allocator = nullptr;
-        std::unordered_map<uint64_t, void*> m_allocations;
     };
 }

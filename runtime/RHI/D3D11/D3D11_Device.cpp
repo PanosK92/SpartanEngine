@@ -171,7 +171,7 @@ namespace Spartan
         }
     }
 
-    RHI_Device::~RHI_Device()
+    void RHI_Device::Destroy()
     {
         RHI_Context::device_context->Release();
         RHI_Context::device_context = nullptr;

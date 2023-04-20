@@ -136,7 +136,7 @@ namespace Spartan
         SP_LOG_INFO("DirectX %s", level.c_str());
     }
 
-    RHI_Device::~RHI_Device()
+    void RHI_Device::Destroy()
     {
         SP_ASSERT(m_queue_graphics != nullptr);
 
