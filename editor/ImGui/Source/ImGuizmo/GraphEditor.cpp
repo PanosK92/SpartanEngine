@@ -25,8 +25,8 @@
 //
 
 #define IMGUI_DEFINE_MATH_OPERATORS
-#include "../../Source/imgui.h"
-#include "../../Source/imgui_internal.h"
+#include "imgui.h"
+#include "imgui_internal.h"
 #include <math.h>
 #include <vector>
 #include <float.h>

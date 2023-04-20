@@ -49,10 +49,10 @@ namespace Spartan::Math
         }
         ~Quaternion() = default;
 
-        // Creates a new Quaternion from the specified axis and angle.    
+        // Creates a new Quaternion from the specified axis and angle.
         // The angle in radians.
         // The axis of rotation.
-        static inline Quaternion FromAngleAxis(float angle, const Vector3& axis)
+        static Quaternion FromAngleAxis(float angle, const Vector3& axis)
         {
             const float half = angle * 0.5f;
             const float sin  = sinf(half);
@@ -62,6 +62,32 @@ namespace Spartan::Math
         }
 
         void FromAxes(const Vector3& xAxis, const Vector3& yAxis, const Vector3& zAxis);
+
+        void ToAngleAxis(float& angle, Vector3& axis) const
+        {
+            // Normalize the quaternion to prevent inaccuracies
+            Quaternion q = this->Normalized();
+
+            // Calculate the angle
+            angle = 2.0f * std::acos(q.w) * 180.0f / 3.14159265358979323846f;
+
+            // Calculate the axis
+            float s = std::sqrt(1.0f - q.w * q.w);
+            if (s < 0.001f)
+            {
+                // If s is close to zero, the axis is not well-defined and
+                // we can choose any arbitrary axis
+                axis.x = q.x;
+                axis.y = q.y;
+                axis.z = q.z;
+            }
+            else
+            {
+                axis.x = q.x / s;
+                axis.y = q.y / s;
+                axis.z = q.z / s;
+            }
+        }
 
         // Creates a new Quaternion from the specified yaw, pitch and roll angles.
         // Yaw around the y axis in radians.
@@ -283,23 +309,13 @@ namespace Spartan::Math
         // Normalized linear interpolation with another quaternion.
         Quaternion lerp(const Quaternion& rhs, float t) { return ((*this) + ((rhs - (*this)) * t)).Normalized(); }
 
-        // Assign
+        // Operators
         Quaternion& operator=(const Quaternion& rhs) = default;
-
-        // Add
         Quaternion operator+(const Quaternion& rhs) const { return Quaternion(x + rhs.x, y + rhs.y, z + rhs.z, w + rhs.w); }
-
-        // Subtract
         Quaternion operator-(const Quaternion& rhs) const { return Quaternion(x - rhs.x, y - rhs.y, z - rhs.z, w - rhs.w); }
-
-        // Return negation.
-        Quaternion operator-() const { return Quaternion(-x, -y, -z, -w); }
-
-        // Multiply
+        Quaternion operator-()                      const { return Quaternion(-x, -y, -z, -w); }
         Quaternion operator*(const Quaternion& rhs) const { return Multiply(*this, rhs); }
-
-        void operator*=(const Quaternion& rhs) { *this = Multiply(*this, rhs); }
-
+        void operator*=(const Quaternion& rhs)            { *this = Multiply(*this, rhs); }
         Vector3 operator*(const Vector3& rhs) const
         {
             const Vector3 qVec(x, y, z);
@@ -308,7 +324,6 @@ namespace Spartan::Math
 
             return rhs + 2.0f * (cross1 * w + cross2);
         }
-
         Quaternion& operator*=(float rhs)
         {            
             x *= rhs;
@@ -318,8 +333,7 @@ namespace Spartan::Math
 
             return *this;
         }
-
-        Quaternion operator*(float rhs) const { return Quaternion(x * rhs, y * rhs, z * rhs, w * rhs); }
+        Quaternion operator*(float rhs)             const { return Quaternion(x * rhs, y * rhs, z * rhs, w * rhs); }
 
         // Equality
         bool operator==(const Quaternion& rhs) const { return x == rhs.x && y == rhs.y && z == rhs.z && w == rhs.w; }

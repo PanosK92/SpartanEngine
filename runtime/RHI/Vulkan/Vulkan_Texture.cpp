@@ -93,11 +93,7 @@ namespace Spartan
         VkImageCreateInfo create_info = {};
         create_info.sType             = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
         create_info.imageType         = VK_IMAGE_TYPE_2D;
-        create_info.flags             = 0;
-        if (texture->GetResourceType() == ResourceType::TextureCube)
-        {
-            create_info.flags = VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
-        }
+        create_info.flags             = texture->GetResourceType() == ResourceType::TextureCube ? VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT : 0;
         create_info.usage             = get_usage_flags(texture);
         create_info.extent.width      = texture->GetWidth();
         create_info.extent.height     = texture->GetHeight();

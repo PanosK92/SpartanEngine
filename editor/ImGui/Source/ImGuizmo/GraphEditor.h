@@ -28,8 +28,8 @@
 #include <vector>
 #include <stdint.h>
 #include <string>
-#include "../../Source/imgui.h"
-#include "../../Source/imgui_internal.h"
+#include "imgui.h"
+#include "imgui_internal.h"
 
 namespace GraphEditor {
 
@@ -139,6 +139,8 @@ struct Delegate
     
     virtual const size_t GetLinkCount() = 0;
     virtual const Link GetLink(LinkIndex index) = 0;
+
+    virtual ~Delegate() = default;
 };
 
 void Show(Delegate& delegate, const Options& options, ViewState& viewState, bool enabled, FitOnScreen* fit = nullptr);

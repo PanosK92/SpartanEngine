@@ -37,6 +37,13 @@ using namespace std;
 using namespace Spartan::Math;
 //============================
 
+namespace
+{
+    // Threading
+    static mutex mutex_queue;
+    static mutex mutex_allocation;
+}
+
 namespace Spartan
 {
     static bool is_present_instance_layer(const char* layer_name)
@@ -702,7 +709,7 @@ namespace Spartan
         void* vk_signal_fence = signal_fence ? signal_fence->GetResource() : nullptr;
 
         // The actual submit
-        lock_guard<mutex> lock(m_mutex_queue);
+        lock_guard<mutex> lock(mutex_queue);
         SP_VK_ASSERT_MSG(vkQueueSubmit(static_cast<VkQueue>(GetQueue(type)), 1, &submit_info, static_cast<VkFence>(vk_signal_fence)), "Failed to submit");
 
         // Update semaphore states
@@ -713,7 +720,7 @@ namespace Spartan
 
     void RHI_Device::QueueWait(const RHI_Queue_Type type)
     {
-        lock_guard<mutex> lock(m_mutex_queue);
+        lock_guard<mutex> lock(mutex_queue);
         SP_ASSERT_MSG(vkQueueWaitIdle(static_cast<VkQueue>(GetQueue(type))) == VK_SUCCESS, "Failed to wait for queue");
     }
 
@@ -924,7 +931,7 @@ namespace Spartan
         }
 
         // Keep allocation reference
-        lock_guard<mutex> lock(m_mutex_allocation);
+        lock_guard<mutex> lock(mutex_allocation);
         m_allocations[reinterpret_cast<uint64_t>(resource)] = allocation;
     }
 
@@ -932,7 +939,7 @@ namespace Spartan
     {
         SP_ASSERT_MSG(resource != nullptr, "Resource is null");
 
-        lock_guard<mutex> lock(m_mutex_allocation);
+        lock_guard<mutex> lock(mutex_allocation);
         if (VmaAllocation allocation = static_cast<VmaAllocation>(GetAllocationFromResource(resource)))
         {
             vmaDestroyBuffer(static_cast<VmaAllocator>(m_allocator), static_cast<VkBuffer>(resource), allocation);
@@ -958,7 +965,7 @@ namespace Spartan
         "Failed to allocate texture");
 
         // Keep allocation reference
-        lock_guard<mutex> lock(m_mutex_allocation);
+        lock_guard<mutex> lock(mutex_allocation);
         m_allocations[reinterpret_cast<uint64_t>(resource)] = allocation;
     }
 
@@ -966,7 +973,7 @@ namespace Spartan
     {
         SP_ASSERT_MSG(resource != nullptr, "Resource is null");
 
-        lock_guard<mutex> lock(m_mutex_allocation);
+        lock_guard<mutex> lock(mutex_allocation);
         if (VmaAllocation allocation = static_cast<VmaAllocation>(GetAllocationFromResource(resource)))
         {
             vmaDestroyImage(static_cast<VmaAllocator>(m_allocator), static_cast<VkImage>(resource), allocation);
