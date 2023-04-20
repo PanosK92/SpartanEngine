@@ -27,8 +27,7 @@
 #ifndef IMGUI_DEFINE_MATH_OPERATORS
 #define IMGUI_DEFINE_MATH_OPERATORS
 #endif
-#include "imgui.h"
-#include "imgui_internal.h"
+
 #include "ImGuizmo.h"
 
 #if defined(_MSC_VER) || defined(__MINGW32__)
@@ -38,6 +37,8 @@
 #define _malloca(x) alloca(x)
 #define _freea(x)
 #endif
+#include "../imgui.h"
+#include "../imgui_internal.h"
 
 // includes patches for multiview from
 // https://github.com/CedricGuillemet/ImGuizmo/issues/15
