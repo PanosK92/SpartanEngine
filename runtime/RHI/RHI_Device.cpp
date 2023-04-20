@@ -31,6 +31,14 @@ using namespace std;
 using namespace Spartan::Math;
 //============================
 
+namespace
+{
+    // Threading
+    static mutex mutex_immediate;
+    static condition_variable condition_variable_immediate;
+    static bool immediate_ready = true;
+}
+
 namespace Spartan
 {
     void RHI_Device::RegisterPhysicalDevice(const PhysicalDevice& physical_device)
@@ -162,7 +170,11 @@ namespace Spartan
 
     RHI_CommandList* RHI_Device::ImmediateBegin(const RHI_Queue_Type queue_type)
     {
-        unique_lock<mutex> lock(m_mutex_immediate);
+        unique_lock<mutex> lock(mutex_immediate);
+
+        // Wait until it's safe to proceed
+        condition_variable_immediate.wait(lock, [&] { return immediate_ready; });
+        immediate_ready = false;
 
         // Create command pool for the given queue type, if needed.
         uint32_t queue_index = static_cast<uint32_t>(queue_type);
@@ -178,14 +190,13 @@ namespace Spartan
         cmd_pool->Step();
         cmd_pool->GetCurrentCommandList()->Begin();
 
-        // Release the mutex without unlocking it.
-        lock.release();
-
         return cmd_pool->GetCurrentCommandList();
     }
 
     void RHI_Device::ImmediateSubmit(RHI_CommandList* cmd_list)
     {
+        unique_lock<mutex> lock(mutex_immediate);
+
         cmd_list->End();
         cmd_list->Submit();
 
@@ -193,7 +204,8 @@ namespace Spartan
         bool log_on_wait = false;
         cmd_list->Wait(log_on_wait);
 
-        // Use unique_lock to acquire the mutex and unlock it when the function scope ends.
-        unique_lock<mutex> lock(m_mutex_immediate, adopt_lock);
+        // Signal that it's safe to proceed with the next ImmediateBegin()
+        immediate_ready = true;
+        condition_variable_immediate.notify_one();
     }
 }

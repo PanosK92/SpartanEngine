@@ -134,11 +134,6 @@ namespace Spartan
         std::vector<std::shared_ptr<RHI_CommandPool>> m_cmd_pools;
         std::array<std::shared_ptr<RHI_CommandPool>, 3> m_cmd_pools_immediate;
 
-        // Sync object
-        std::mutex m_mutex_queue;
-        std::mutex m_mutex_allocation;
-        std::mutex m_mutex_immediate;
-
         // Misc
         uint32_t m_physical_device_index          = 0;
         uint32_t m_enabled_graphics_shader_stages = 0;

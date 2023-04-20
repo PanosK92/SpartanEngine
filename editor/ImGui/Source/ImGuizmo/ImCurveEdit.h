@@ -25,7 +25,7 @@
 //
 #pragma once
 #include <stdint.h>
-#include "../../Source/imgui.h"
+#include "imgui.h"
 
 struct ImRect;
 
@@ -74,6 +74,8 @@ namespace ImCurveEdit
       // handle undo/redo thru this functions
       virtual void BeginEdit(int /*index*/) {}
       virtual void EndEdit() {}
+
+      virtual ~Delegate() = default;
    };
 
    int Edit(Delegate& delegate, const ImVec2& size, unsigned int id, const ImRect* clippingRect = NULL, ImVector<EditPoint>* selectedPoints = NULL);
