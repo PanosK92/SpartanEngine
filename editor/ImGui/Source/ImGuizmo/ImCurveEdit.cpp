@@ -24,8 +24,7 @@
 // SOFTWARE.
 //
 #include "ImCurveEdit.h"
-#include "imgui.h"
-#include "imgui_internal.h"
+
 #include <stdint.h>
 #include <set>
 #include <vector>
@@ -37,6 +36,8 @@
 #define _malloca(x) alloca(x)
 #define _freea(x)
 #endif
+#include "../imgui.h"
+#include "../imgui_internal.h"
 
 namespace ImCurveEdit
 {
