@@ -61,7 +61,7 @@ namespace Spartan
             uint32_t flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT; // mappable
 
             // Created
-            Renderer::GetRhiDevice()->CreateBuffer(m_rhi_resource, m_object_size_gpu, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, flags);
+            Renderer::GetRhiDevice()->CreateBuffer(m_rhi_resource, m_object_size_gpu, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, flags, nullptr, m_name.c_str());
 
             // Get mapped data pointer
             m_mapped_data = Renderer::GetRhiDevice()->GetMappedDataFromBuffer(m_rhi_resource);
@@ -70,10 +70,10 @@ namespace Spartan
         {
             // Create staging/source buffer and copy the vertices to it
             void* staging_buffer = nullptr;
-            Renderer::GetRhiDevice()->CreateBuffer(staging_buffer, m_object_size_gpu, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, vertices);
+            Renderer::GetRhiDevice()->CreateBuffer(staging_buffer, m_object_size_gpu, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, vertices, m_name.c_str());
 
             // Create destination buffer
-            Renderer::GetRhiDevice()->CreateBuffer(m_rhi_resource, m_object_size_gpu, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+            Renderer::GetRhiDevice()->CreateBuffer(m_rhi_resource, m_object_size_gpu, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, nullptr, m_name.c_str());
 
             // Copy staging buffer to destination buffer
             {

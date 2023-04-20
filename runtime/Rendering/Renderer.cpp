@@ -280,6 +280,8 @@ namespace Spartan
         Log::SetLogToFile(true); // console doesn't render anymore, log to file
         RHI_RenderDoc::Shutdown();
         RHI_FSR2::Destroy();
+
+        m_rhi_device->Destroy();
     }
 
     void Renderer::Tick()

@@ -108,7 +108,7 @@ namespace Spartan
 
         // Create image
         void*& resource = texture->GetRhiResource();
-        Renderer::GetRhiDevice()->CreateTexture(static_cast<void*>(&create_info), resource);
+        Renderer::GetRhiDevice()->CreateTexture(static_cast<void*>(&create_info), resource, texture->GetName().c_str());
     }
 
     static void set_debug_name(RHI_Texture* texture)
@@ -194,7 +194,7 @@ namespace Spartan
         }
 
         // Create staging buffer
-        Renderer::GetRhiDevice()->CreateBuffer(staging_buffer, buffer_offset, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+        Renderer::GetRhiDevice()->CreateBuffer(staging_buffer, buffer_offset, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, nullptr, "staging_buffer_texture");
 
         // Copy array and mip level data to the staging buffer
         void* mapped_data = nullptr;
