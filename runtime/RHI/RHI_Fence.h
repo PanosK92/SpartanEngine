@@ -31,7 +31,6 @@ namespace Spartan
     class SP_CLASS RHI_Fence : public Object
     {
     public:
-        RHI_Fence() = default;
         RHI_Fence(const char* name = nullptr);
         ~RHI_Fence();
 

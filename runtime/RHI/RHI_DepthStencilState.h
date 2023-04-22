@@ -32,7 +32,6 @@ namespace Spartan
     class SP_CLASS RHI_DepthStencilState : public Object
     {
     public:
-        RHI_DepthStencilState() = default;
         RHI_DepthStencilState(
             const bool depth_test                                     = true,
             const bool depth_write                                    = true,
