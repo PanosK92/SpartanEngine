@@ -118,15 +118,11 @@ namespace Spartan
 
     RHI_CommandList::~RHI_CommandList()
     {
-        // Wait in case it's still in use by the GPU
-        Renderer::GetRhiDevice()->QueueWaitAll();
-
         pipelines.clear();
 
-        // Query pool
         if (m_query_pool)
         {
-            vkDestroyQueryPool(RHI_Context::device, static_cast<VkQueryPool>(m_query_pool), nullptr);
+            Renderer::AddToDeletionQueue(RHI_Resource_Type::query_pool, m_query_pool);
             m_query_pool = nullptr;
         }
     }

@@ -189,17 +189,13 @@ namespace Spartan
 
         RHI_Context::Initialize();
 
-        // Initialise RenderDoc
+        // Initialize RenderDoc
         if (RHI_Context::renderdoc)
         {
             RHI_RenderDoc::OnPreDeviceCreation();
         }
 
         Display::DetectDisplayModes();
-
-        // Get window size
-        uint32_t window_width  = Window::GetWidth();
-        uint32_t window_height = Window::GetHeight();
 
         // Create device
         m_rhi_device = make_shared<RHI_Device>();
@@ -208,8 +204,8 @@ namespace Spartan
         m_swap_chain = make_shared<RHI_SwapChain>
         (
             Window::GetHandleSDL(),
-            window_width,
-            window_height,
+            Window::GetWidth(),
+            Window::GetHeight(),
             Display::GetHdr() ? RHI_Format::R10G10B10A2_Unorm  : RHI_Format::R8G8B8A8_Unorm,
             // Present mode: For v-sync, we could Mailbox for lower latency, but Fifo is always supported, so we'll assume that
             GetOption<bool>(RendererOption::Vsync) ? RHI_Present_Mode::Fifo : RHI_Present_Mode::Immediate,
@@ -227,7 +223,7 @@ namespace Spartan
         // Set the output and viewport resolution to the display resolution.
         // If the editor is running, it will set the viewport resolution to whatever the viewport.
         
-        SetViewport(static_cast<float>(window_width), static_cast<float>(window_height));
+        SetViewport(static_cast<float>(Window::GetWidth()), static_cast<float>(Window::GetHeight()));
         SetResolutionRender(Display::GetWidth(), Display::GetHeight(), false);
         SetResolutionOutput(Display::GetWidth(), Display::GetHeight(), false);
 
@@ -242,6 +238,8 @@ namespace Spartan
         CreateSamplers(false);
         CreateStructuredBuffers();
         CreateTextures();
+
+        SP_FIRE_EVENT(EventType::RendererOnInitialized);
     }
 
     void Renderer::Shutdown()
@@ -308,7 +306,7 @@ namespace Spartan
             uint32_t width  = static_cast<uint32_t>(Window::IsMinimised() ? 0 : Window::GetWidth());
             uint32_t height = static_cast<uint32_t>(Window::IsMinimised() ? 0 : Window::GetHeight());
 
-            if ((m_swap_chain->GetWidth() != width || m_swap_chain->GetHeight() != height) || !m_swap_chain->PresentEnabled())
+            if (m_swap_chain->GetWidth() != width || m_swap_chain->GetHeight() != height)
             {
                 if (m_swap_chain->Resize(width, height))
                 {
@@ -317,7 +315,7 @@ namespace Spartan
             }
         }
 
-        if (!m_swap_chain->PresentEnabled() || !m_is_rendering_allowed)
+        if (!m_is_rendering_allowed)
             return;
 
         // Tick command pool
@@ -957,7 +955,7 @@ namespace Spartan
     
     void Renderer::Present()
     {
-        if (!m_swap_chain->PresentEnabled())
+        if (!m_is_rendering_allowed)
             return;
 
         m_swap_chain->Present();

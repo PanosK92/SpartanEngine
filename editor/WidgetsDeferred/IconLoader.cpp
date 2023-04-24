@@ -94,53 +94,51 @@ string Icon::GetFilePath() const
 
 void IconLoader::Initialize()
 {
-    // Load all standard editor icons
-    ThreadPool::AddTask([]()
+    SP_SUBSCRIBE_TO_EVENT(EventType::RendererOnShutdown, SP_EVENT_HANDLER_STATIC(destroy_rhi_resources));
+
+    ThreadPool::AddTask([&]()
     {
         const string data_dir = ResourceCache::GetDataDirectory() + "\\";
 
-        LoadFromFile(data_dir + "Icons\\component_componentOptions.png",       IconType::Component_Options);
-        LoadFromFile(data_dir + "Icons\\component_audioListener.png",          IconType::Component_AudioListener);
-        LoadFromFile(data_dir + "Icons\\component_audioSource.png",            IconType::Component_AudioSource);
-        LoadFromFile(data_dir + "Icons\\component_reflectionProbe.png",        IconType::Component_ReflectionProbe);
-        LoadFromFile(data_dir + "Icons\\component_camera.png",                 IconType::Component_Camera); 
-        LoadFromFile(data_dir + "Icons\\component_collider.png",               IconType::Component_Collider);
-        LoadFromFile(data_dir + "Icons\\component_light.png",                  IconType::Component_Light);
-        LoadFromFile(data_dir + "Icons\\component_material.png",               IconType::Component_Material);
-        LoadFromFile(data_dir + "Icons\\component_material_removeTexture.png", IconType::Component_Material_RemoveTexture);
-        LoadFromFile(data_dir + "Icons\\component_meshCollider.png",           IconType::Component_MeshCollider);
-        LoadFromFile(data_dir + "Icons\\component_renderable.png",             IconType::Component_Renderable);
-        LoadFromFile(data_dir + "Icons\\component_rigidBody.png",              IconType::Component_RigidBody);
-        LoadFromFile(data_dir + "Icons\\component_softBody.png",               IconType::Component_SoftBody);
-        LoadFromFile(data_dir + "Icons\\component_script.png",                 IconType::Component_Script);
-        LoadFromFile(data_dir + "Icons\\component_transform.png",              IconType::Component_Transform);
-        LoadFromFile(data_dir + "Icons\\component_terrain.png",                IconType::Component_Terrain);
-        LoadFromFile(data_dir + "Icons\\component_environment.png",            IconType::Component_Environment);
-        LoadFromFile(data_dir + "Icons\\console_info.png",                     IconType::Console_Info);
-        LoadFromFile(data_dir + "Icons\\console_warning.png",                  IconType::Console_Warning);
-        LoadFromFile(data_dir + "Icons\\console_error.png",                    IconType::Console_Error);
-        LoadFromFile(data_dir + "Icons\\button_play.png",                      IconType::Button_Play);
-        LoadFromFile(data_dir + "Icons\\profiler.png",                         IconType::Button_Profiler);
-        LoadFromFile(data_dir + "Icons\\resource_cache.png",                   IconType::Button_ResourceCache);
-        LoadFromFile(data_dir + "Icons\\renderdoc.png",                        IconType::Button_RenderDoc);
-        LoadFromFile(data_dir + "Icons\\file.png",                             IconType::Directory_File_Default);
-        LoadFromFile(data_dir + "Icons\\folder.png",                           IconType::Directory_Folder);
-        LoadFromFile(data_dir + "Icons\\audio.png",                            IconType::Directory_File_Audio);
-        LoadFromFile(data_dir + "Icons\\model.png",                            IconType::Directory_File_Model);
-        LoadFromFile(data_dir + "Icons\\world.png",                            IconType::Directory_File_World);
-        LoadFromFile(data_dir + "Icons\\material.png",                         IconType::Directory_File_Material);
-        LoadFromFile(data_dir + "Icons\\shader.png",                           IconType::Directory_File_Shader);
-        LoadFromFile(data_dir + "Icons\\xml.png",                              IconType::Directory_File_Xml);
-        LoadFromFile(data_dir + "Icons\\dll.png",                              IconType::Directory_File_Dll);
-        LoadFromFile(data_dir + "Icons\\txt.png",                              IconType::Directory_File_Txt);
-        LoadFromFile(data_dir + "Icons\\ini.png",                              IconType::Directory_File_Ini);
-        LoadFromFile(data_dir + "Icons\\exe.png",                              IconType::Directory_File_Exe);
-        LoadFromFile(data_dir + "Icons\\font.png",                             IconType::Directory_File_Font);
-        LoadFromFile(data_dir + "Icons\\texture.png",                          IconType::Directory_File_Texture);
+        IconLoader::LoadFromFile(data_dir + "Icons\\component_componentOptions.png", IconType::Component_Options);
+        IconLoader::LoadFromFile(data_dir + "Icons\\component_audioListener.png", IconType::Component_AudioListener);
+        IconLoader::LoadFromFile(data_dir + "Icons\\component_audioSource.png", IconType::Component_AudioSource);
+        IconLoader::LoadFromFile(data_dir + "Icons\\component_reflectionProbe.png", IconType::Component_ReflectionProbe);
+        IconLoader::LoadFromFile(data_dir + "Icons\\component_camera.png", IconType::Component_Camera);
+        IconLoader::LoadFromFile(data_dir + "Icons\\component_collider.png", IconType::Component_Collider);
+        IconLoader::LoadFromFile(data_dir + "Icons\\component_light.png", IconType::Component_Light);
+        IconLoader::LoadFromFile(data_dir + "Icons\\component_material.png", IconType::Component_Material);
+        IconLoader::LoadFromFile(data_dir + "Icons\\component_material_removeTexture.png", IconType::Component_Material_RemoveTexture);
+        IconLoader::LoadFromFile(data_dir + "Icons\\component_meshCollider.png", IconType::Component_MeshCollider);
+        IconLoader::LoadFromFile(data_dir + "Icons\\component_renderable.png", IconType::Component_Renderable);
+        IconLoader::LoadFromFile(data_dir + "Icons\\component_rigidBody.png", IconType::Component_RigidBody);
+        IconLoader::LoadFromFile(data_dir + "Icons\\component_softBody.png", IconType::Component_SoftBody);
+        IconLoader::LoadFromFile(data_dir + "Icons\\component_script.png", IconType::Component_Script);
+        IconLoader::LoadFromFile(data_dir + "Icons\\component_transform.png", IconType::Component_Transform);
+        IconLoader::LoadFromFile(data_dir + "Icons\\component_terrain.png", IconType::Component_Terrain);
+        IconLoader::LoadFromFile(data_dir + "Icons\\component_environment.png", IconType::Component_Environment);
+        IconLoader::LoadFromFile(data_dir + "Icons\\console_info.png", IconType::Console_Info);
+        IconLoader::LoadFromFile(data_dir + "Icons\\console_warning.png", IconType::Console_Warning);
+        IconLoader::LoadFromFile(data_dir + "Icons\\console_error.png", IconType::Console_Error);
+        IconLoader::LoadFromFile(data_dir + "Icons\\button_play.png", IconType::Button_Play);
+        IconLoader::LoadFromFile(data_dir + "Icons\\profiler.png", IconType::Button_Profiler);
+        IconLoader::LoadFromFile(data_dir + "Icons\\resource_cache.png", IconType::Button_ResourceCache);
+        IconLoader::LoadFromFile(data_dir + "Icons\\renderdoc.png", IconType::Button_RenderDoc);
+        IconLoader::LoadFromFile(data_dir + "Icons\\file.png", IconType::Directory_File_Default);
+        IconLoader::LoadFromFile(data_dir + "Icons\\folder.png", IconType::Directory_Folder);
+        IconLoader::LoadFromFile(data_dir + "Icons\\audio.png", IconType::Directory_File_Audio);
+        IconLoader::LoadFromFile(data_dir + "Icons\\model.png", IconType::Directory_File_Model);
+        IconLoader::LoadFromFile(data_dir + "Icons\\world.png", IconType::Directory_File_World);
+        IconLoader::LoadFromFile(data_dir + "Icons\\material.png", IconType::Directory_File_Material);
+        IconLoader::LoadFromFile(data_dir + "Icons\\shader.png", IconType::Directory_File_Shader);
+        IconLoader::LoadFromFile(data_dir + "Icons\\xml.png", IconType::Directory_File_Xml);
+        IconLoader::LoadFromFile(data_dir + "Icons\\dll.png", IconType::Directory_File_Dll);
+        IconLoader::LoadFromFile(data_dir + "Icons\\txt.png", IconType::Directory_File_Txt);
+        IconLoader::LoadFromFile(data_dir + "Icons\\ini.png", IconType::Directory_File_Ini);
+        IconLoader::LoadFromFile(data_dir + "Icons\\exe.png", IconType::Directory_File_Exe);
+        IconLoader::LoadFromFile(data_dir + "Icons\\font.png", IconType::Directory_File_Font);
+        IconLoader::LoadFromFile(data_dir + "Icons\\texture.png", IconType::Directory_File_Texture);
     });
-
-    // Subscribe to renderer event
-    SP_SUBSCRIBE_TO_EVENT(EventType::RendererOnShutdown, SP_EVENT_HANDLER_STATIC(destroy_rhi_resources));
 }
 
 RHI_Texture* IconLoader::GetTextureByType(IconType type)

@@ -30,7 +30,10 @@ using namespace std;
 
 namespace Spartan
 {
-    static std::array<std::vector<subscriber>, 12> event_subscribers;
+    namespace
+    {
+        static array<vector<subscriber>, 13> event_subscribers;
+    }
 
     void Event::Shutdown()
     {

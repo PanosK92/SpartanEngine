@@ -71,7 +71,15 @@ namespace Spartan
         texture_view,
         sampler,
         buffer,
-        shader
+        shader,
+        semaphore,
+        fence,
+        surface,
+        swapchain,
+        descriptor_set_layout,
+        query_pool,
+        pipeline,
+        pipeline_layout
     };
 
     enum class RHI_PhysicalDevice_Type

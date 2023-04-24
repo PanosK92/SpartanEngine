@@ -226,12 +226,7 @@ namespace Spartan
     bool RHI_SwapChain::Resize(const uint32_t width, const uint32_t height, const bool force /*= false*/)
     {
         SP_ASSERT(m_rhi_resource != nullptr);
-
-        // Validate resolution
-        m_present_enabled = Renderer::GetRhiDevice()->IsValidResolution(width, height);
-
-        if (!m_present_enabled)
-            return false;
+        SP_ASSERT_MSG(Renderer::GetRhiDevice()->IsValidResolution(width, height), "Invalid resoution");
 
         // Only resize if needed
         if (!force)
@@ -323,7 +318,6 @@ namespace Spartan
     void RHI_SwapChain::Present()
     {
         SP_ASSERT(m_rhi_resource != nullptr && "Can't present, the swapchain has not been initialised");
-        SP_ASSERT(m_present_enabled && "Can't present, presenting has been disabled");
 
         // Present parameters
         const bool tearing_allowed = m_present_mode == RHI_Present_Mode::Immediate;

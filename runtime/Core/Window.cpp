@@ -19,14 +19,15 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==================
+//= INCLUDES =====================
 #include "pch.h"
 #include "Window.h"
 #include "sdl/SDL.h"
 #include "sdl/SDL_syswm.h"
 #include "../Input/Input.h"
 #include "../Display/Display.h"
-//=============================
+#include "../Rendering/Renderer.h"
+//================================
 
 //= LINKING ============================
 // Statically linking SDL2 requires that

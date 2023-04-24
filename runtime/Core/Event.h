@@ -57,6 +57,7 @@ Note: This is a blocking event system
 enum class EventType
 {
     // Renderer
+    RendererOnInitialized,
     RendererOnFirstFrameCompleted,
     RendererPostPresent,
     RendererOnShutdown,
