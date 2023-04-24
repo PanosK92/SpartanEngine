@@ -155,7 +155,7 @@ void Properties::TickVisible()
         shared_ptr<Entity> entity_ptr = m_inspected_entity.lock();
         Renderable* renderable        = entity_ptr->GetComponent<Renderable>();
         Material* material            = renderable ? renderable->GetMaterial() : nullptr;
-        
+
         ShowTransform(entity_ptr->GetComponent<Transform>());
         ShowLight(entity_ptr->GetComponent<Light>());
         ShowCamera(entity_ptr->GetComponent<Camera>());
@@ -170,7 +170,7 @@ void Properties::TickVisible()
         ShowSoftBody(entity_ptr->GetComponent<SoftBody>());
         ShowCollider(entity_ptr->GetComponent<Collider>());
         ShowConstraint(entity_ptr->GetComponent<Constraint>());
-        
+
         ShowAddComponentButton();
     }
     else if (!m_inspected_material.expired())
@@ -216,7 +216,7 @@ void Properties::ShowTransform(Transform* transform) const
 
         //= REFLECT ===========================================================================================
         Vector3 position = transform->GetPositionLocal();
-        Vector3 rotation = !is_playing ? helper::rotation_hint : transform->GetRotationLocal().ToEulerAngles();
+        Vector3 rotation = transform->GetRotationLocal().ToEulerAngles();
         Vector3 scale    = transform->GetScaleLocal();
         //=====================================================================================================
 
@@ -225,7 +225,7 @@ void Properties::ShowTransform(Transform* transform) const
         ImGuiSp::vector3("Rotation", rotation);
         ImGui::SameLine();
         ImGuiSp::vector3("Scale", scale);
-        
+
         //= MAP ===================================================================
         if (!is_playing)
         {
@@ -718,7 +718,7 @@ void Properties::ShowMaterial(Material* material) const
                     if (name)
                     {
                         ImGui::Text(name);
-                        
+
                         if (tooltip)
                         {
                             ImGuiSp::tooltip(tooltip);
