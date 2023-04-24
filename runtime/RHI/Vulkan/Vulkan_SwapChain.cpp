@@ -304,22 +304,11 @@ namespace Spartan
             image_views.fill(nullptr);
         }
 
-        // Wait until the GPU is idle
-        Renderer::GetRhiDevice()->QueueWaitAll();
+        Renderer::AddToDeletionQueue(RHI_Resource_Type::swapchain, swap_chain);
+        swap_chain = nullptr;
 
-        // Swap chain view
-        if (swap_chain)
-        {
-            vkDestroySwapchainKHR(RHI_Context::device, static_cast<VkSwapchainKHR>(swap_chain), nullptr);
-            swap_chain = nullptr;
-        }
-    
-        // Surface
-        if (surface)
-        {
-            vkDestroySurfaceKHR(RHI_Context::instance, static_cast<VkSurfaceKHR>(surface), nullptr);
-            surface = nullptr;
-        }
+        Renderer::AddToDeletionQueue(RHI_Resource_Type::surface, surface);
+        swap_chain = nullptr;
     }
 
     RHI_SwapChain::RHI_SwapChain(
@@ -387,15 +376,7 @@ namespace Spartan
 
     bool RHI_SwapChain::Resize(const uint32_t width, const uint32_t height, const bool force /*= false*/)
     {
-        // Validate resolution
-        m_present_enabled = Renderer::GetRhiDevice()->IsValidResolution(width, height);
-
-        if (!m_present_enabled)
-        {
-            // Return true as when minimizing, a resolution
-            // of 0,0 can be passed in, and this is fine.
-            return false;
-        }
+        SP_ASSERT_MSG(Renderer::GetRhiDevice()->IsValidResolution(width, height), "Invalid resolution");
 
         // Only resize if needed
         if (!force)
@@ -447,8 +428,6 @@ namespace Spartan
 
     void RHI_SwapChain::AcquireNextImage()
     {
-        SP_ASSERT(m_present_enabled && "No need to acquire next image when presenting is disabled");
-
         // Return if the swapchain has a single buffer and it has already been acquired
         if (m_buffer_count == 1 && m_image_index != numeric_limits<uint32_t>::max())
             return;
@@ -479,7 +458,6 @@ namespace Spartan
     void RHI_SwapChain::Present()
     {
         SP_ASSERT_MSG(m_rhi_resource != nullptr,                                 "The swapchain has not been initialised");
-        SP_ASSERT_MSG(m_present_enabled,                                         "Presenting is disabled");
         SP_ASSERT_MSG(m_image_index != m_image_index_previous,                   "No image was acquired");
         SP_ASSERT_MSG(m_layouts[m_image_index] == RHI_Image_Layout::Present_Src, "The layout must be Present_Src");
 

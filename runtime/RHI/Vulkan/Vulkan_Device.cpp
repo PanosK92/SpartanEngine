@@ -801,39 +801,24 @@ namespace Spartan
     {
         for (const auto& it : deletion_queue)
         {
-            if (it.first == RHI_Resource_Type::texture)
+            for (void* resource : it.second)
             {
-                for (void* resource : it.second)
+                switch (it.first)
                 {
-                    DestroyTexture(resource);
-                }
-            }
-            else if (it.first == RHI_Resource_Type::texture_view)
-            {
-                for (void* resource : it.second)
-                {
-                    vkDestroyImageView(RHI_Context::device, static_cast<VkImageView>(resource), nullptr);
-                }
-            }
-            else if (it.first == RHI_Resource_Type::sampler)
-            {
-                for (void* resource : it.second)
-                {
-                    vkDestroySampler(RHI_Context::device, reinterpret_cast<VkSampler>(resource), nullptr);
-                }
-            }
-            else if (it.first == RHI_Resource_Type::buffer)
-            {
-                for (void* resource : it.second)
-                {
-                    DestroyBuffer(resource);
-                }
-            }
-            else if (it.first == RHI_Resource_Type::shader)
-            {
-                for (void* resource : it.second)
-                {
-                    vkDestroyShaderModule(RHI_Context::device, static_cast<VkShaderModule>(resource), nullptr);
+                    case RHI_Resource_Type::texture:               DestroyTexture(resource); break;
+                    case RHI_Resource_Type::texture_view:          vkDestroyImageView(RHI_Context::device, static_cast<VkImageView>(resource), nullptr);                     break;
+                    case RHI_Resource_Type::sampler:               vkDestroySampler(RHI_Context::device, reinterpret_cast<VkSampler>(resource), nullptr);                    break;
+                    case RHI_Resource_Type::buffer:                DestroyBuffer(resource);                                                                                  break;
+                    case RHI_Resource_Type::shader:                vkDestroyShaderModule(RHI_Context::device, static_cast<VkShaderModule>(resource), nullptr);               break;
+                    case RHI_Resource_Type::semaphore:             vkDestroySemaphore(RHI_Context::device, static_cast<VkSemaphore>(resource), nullptr);                     break;
+                    case RHI_Resource_Type::fence:                 vkDestroyFence(RHI_Context::device, static_cast<VkFence>(resource), nullptr);                             break;
+                    case RHI_Resource_Type::descriptor_set_layout: vkDestroyDescriptorSetLayout(RHI_Context::device, static_cast<VkDescriptorSetLayout>(resource), nullptr); break;
+                    case RHI_Resource_Type::swapchain:             vkDestroySwapchainKHR(RHI_Context::device, static_cast<VkSwapchainKHR>(resource), nullptr);               break;
+                    case RHI_Resource_Type::surface:               vkDestroySurfaceKHR(RHI_Context::instance, static_cast<VkSurfaceKHR>(resource), nullptr);                 break;
+                    case RHI_Resource_Type::query_pool:            vkDestroyQueryPool(RHI_Context::device, static_cast<VkQueryPool>(resource), nullptr);                     break;
+                    case RHI_Resource_Type::pipeline:              vkDestroyPipeline(RHI_Context::device, static_cast<VkPipeline>(resource), nullptr);                       break;
+                    case RHI_Resource_Type::pipeline_layout:       vkDestroyPipelineLayout(RHI_Context::device, static_cast<VkPipelineLayout>(resource), nullptr);           break;
+                    default:                                       SP_ASSERT_MSG(false, "Unknown resource");                                                                 break;
                 }
             }
         }

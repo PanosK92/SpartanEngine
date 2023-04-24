@@ -50,10 +50,7 @@ namespace Spartan
         if (!m_resource)
             return;
 
-        // Wait in case it's still in use by the GPU
-        Renderer::GetRhiDevice()->QueueWaitAll();
-
-        vkDestroyFence(RHI_Context::device, static_cast<VkFence>(m_resource), nullptr);
+        Renderer::AddToDeletionQueue(RHI_Resource_Type::fence, m_resource);
         m_resource = nullptr;
     }
 

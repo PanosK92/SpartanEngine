@@ -64,7 +64,6 @@ namespace Spartan
         uint32_t GetHeight()      const { return m_height; }
         uint32_t GetBufferCount() const { return m_buffer_count; }
         uint32_t GetImageIndex()  const { return m_image_index; }
-        bool PresentEnabled()     const { return m_present_enabled; }
         RHI_Format GetFormat()    const { return m_format; }
 
 
@@ -81,7 +80,6 @@ namespace Spartan
         void AcquireNextImage();
 
         bool m_windowed                 = false;
-        bool m_present_enabled          = true;
         uint32_t m_buffer_count         = 0;
         uint32_t m_width                = 0;
         uint32_t m_height               = 0;

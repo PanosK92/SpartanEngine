@@ -50,15 +50,6 @@ namespace Spartan
         );
     }
 
-    static void destroy_semaphore(VkDevice device, void*& resource)
-    {
-        if (!resource)
-            return;
-
-        vkDestroySemaphore(device, static_cast<VkSemaphore>(resource), nullptr);
-        resource = nullptr;
-    }
-
     RHI_Semaphore::RHI_Semaphore(bool is_timeline /*= false*/, const char* name /*= nullptr*/)
     {
         m_is_timeline = is_timeline;
@@ -78,18 +69,15 @@ namespace Spartan
         if (!m_resource)
             return;
 
-        // Wait in case it's still in use by the GPU
-        Renderer::GetRhiDevice()->QueueWaitAll();
-
-        destroy_semaphore(RHI_Context::device, m_resource);
+        Renderer::AddToDeletionQueue(RHI_Resource_Type::semaphore, m_resource);
+        m_resource = nullptr;
     }
 
     void RHI_Semaphore::Reset()
     {
-        // Wait in case it's still in use by the GPU
-        Renderer::GetRhiDevice()->QueueWaitAll();
+        Renderer::AddToDeletionQueue(RHI_Resource_Type::semaphore, m_resource);
+        m_resource = nullptr;
 
-        destroy_semaphore(RHI_Context::device, m_resource);
         create_semaphore(RHI_Context::device, m_is_timeline, m_resource);
         m_cpu_state = RHI_Sync_State::Idle;
     }
