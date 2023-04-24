@@ -90,25 +90,26 @@ namespace ImGui::TransformGizmo
         ImGuizmo::BeginFrame();
 
         // Map transform to ImGuizmo
-        float matrix_delta[16];
-        float translation[3] = { transform->GetPosition().x, transform->GetPosition().y, transform->GetPosition().z };
-        float rotation[3]    = { transform->GetRotation().ToEulerAngles().x, transform->GetRotation().ToEulerAngles().y, transform->GetRotation().ToEulerAngles().z };
-        float scale[3]       = { transform->GetScale().x, transform->GetScale().y, transform->GetScale().z };
-        ImGuizmo::RecomposeMatrixFromComponents(&translation[0], rotation, scale, matrix_delta);
+        Spartan::Math::Vector3 position = transform->GetPosition();
+        Spartan::Math::Vector3 scale = transform->GetScale();
+        Spartan::Math::Quaternion rotation = transform->GetRotation();
+
+        Spartan::Math::Matrix transform_matrix = Spartan::Math::Matrix::GenerateRowFirst(position, rotation, scale);
 
         // Set viewport rectangle
         ImGuizmo::SetDrawlist();
         ImGuizmo::SetRect(ImGui::GetWindowPos().x, ImGui::GetWindowPos().y, ImGui::GetWindowWidth(), ImGui::GetWindowHeight());
-        ImGuizmo::Manipulate(&matrix_view.m00, &matrix_projection.m00, transform_operation, transform_space, matrix_delta, 0, 0);
+
+        ImGuizmo::Manipulate(&matrix_view.m00, &matrix_projection.m00, transform_operation, transform_space, &transform_matrix.m00, 0, 0);
 
         // Map ImGuizmo to transform
         if (ImGuizmo::IsUsing())
         {
-            ImGuizmo::DecomposeMatrixToComponents(matrix_delta, translation, rotation, scale);
+            transform_matrix.Transposed().Decompose(scale, rotation, position);
 
-            transform->SetPosition(Spartan::Math::Vector3(translation[0], translation[1], translation[2]));
-            transform->SetRotation(Spartan::Math::Quaternion::FromEulerAngles(rotation[0], rotation[1], rotation[2]));
-            transform->SetScale(Spartan::Math::Vector3(scale[0], scale[1], scale[2]));
+            transform->SetPosition(position);
+            transform->SetRotation(rotation);
+            transform->SetScale(scale);
         }
     }
 
