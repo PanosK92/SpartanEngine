@@ -39,7 +39,6 @@ using namespace Spartan::Math;
 
 namespace
 {
-    // Threading
     static mutex mutex_queue;
     static mutex mutex_allocation;
 }
