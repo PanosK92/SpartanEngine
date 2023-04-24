@@ -32,14 +32,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_StructuredBuffer.h"        
 #include "../RHI/RHI_Implementation.h"          
 #include "../RHI/RHI_CommandPool.h"
+#include "../RHI/RHI_SwapChain.h"
+#include "../RHI/RHI_FSR2.h"
+#include "../RHI/RHI_RenderDoc.h"
 #include "../Core/Window.h"                     
 #include "../Input/Input.h"                     
 #include "../World/Components/Environment.h"    
-#include "../RHI/RHI_FSR2.h"
-#include "../RHI/RHI_RenderDoc.h"
 #include "Material.h"
 #include "Renderer_ConstantBuffers.h"
-#include "../RHI/RHI_SwapChain.h"
+#include "Font/Font.h"
+#include "Grid.h"
 //==============================================
 
 //= NAMESPACES ===============
@@ -174,7 +176,7 @@ namespace Spartan
         SetOption(RendererOption::Vsync,                    0.0f);
         //SetOption(RendererOption::DepthOfField,        1.0f); // This is depth of field from ALDI, so until I improve it, it should be disabled by default.
         //SetOption(RendererOption::Render_DepthPrepass, 1.0f); // Depth-pre-pass is not always faster, so by default, it's disabled.
-        //SetOption(RendererOption::Debanding,           1.0f); // Disable debanding as we shouldn't be seeing debanding to begin with.
+        //SetOption(RendererOption::Debanding,           1.0f); // Disable debanding as we shouldn't be seeing banding to begin with.
         //SetOption(RendererOption::VolumetricFog,       1.0f); // Disable by default because it's not that great, I need to do it with a voxelised approach.
 
         // Subscribe to events.
@@ -252,8 +254,8 @@ namespace Spartan
         m_render_targets.fill(nullptr);
         m_shaders.fill(nullptr);
         m_textures_mip_generation.clear();
-        m_world_grid.release();
-        m_font.release();
+        m_world_grid.reset();
+        m_font.reset();
         m_quad_vertex_buffer          = nullptr;
         m_quad_index_buffer           = nullptr;
         m_sphere_vertex_buffer        = nullptr;
