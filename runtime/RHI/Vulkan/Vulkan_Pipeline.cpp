@@ -394,9 +394,6 @@ namespace Spartan
     
     RHI_Pipeline::~RHI_Pipeline()
     {
-        // Wait in case it's still in use by the GPU
-        Renderer::GetRhiDevice()->QueueWaitAll();
-    
         vkDestroyPipeline(RHI_Context::device, static_cast<VkPipeline>(m_resource_pipeline), nullptr);
         m_resource_pipeline = nullptr;
         

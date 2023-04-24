@@ -256,6 +256,7 @@ namespace Spartan
         m_textures_mip_generation.clear();
         m_world_grid.reset();
         m_font.reset();
+        m_swap_chain                  = nullptr;
         m_quad_vertex_buffer          = nullptr;
         m_quad_index_buffer           = nullptr;
         m_sphere_vertex_buffer        = nullptr;

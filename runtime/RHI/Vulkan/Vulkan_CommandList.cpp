@@ -121,6 +121,8 @@ namespace Spartan
         // Wait in case it's still in use by the GPU
         Renderer::GetRhiDevice()->QueueWaitAll();
 
+        pipelines.clear();
+
         // Query pool
         if (m_query_pool)
         {
