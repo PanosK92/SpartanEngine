@@ -123,7 +123,7 @@ namespace Spartan
         if (enabled)
         {
             m_fps_limit_previous = m_fps_limit;
-            SetFpsLimit(Display::GetRefreshRate());
+            SetFpsLimit(static_cast<float>(Display::GetRefreshRate()));
         }
         else
         {

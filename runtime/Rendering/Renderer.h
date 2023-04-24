@@ -37,18 +37,16 @@ namespace Spartan
     class Entity;
     class Camera;
     class Light;
-    class ResourceCache;
-    class Font;
     class Variant;
-    class Grid;
     class Environment;
-    //====================
-
+    
     namespace Math
     {
         class BoundingBox;
         class Frustum;
     }
+
+    //====================
 
     class SP_CLASS Renderer
     {
