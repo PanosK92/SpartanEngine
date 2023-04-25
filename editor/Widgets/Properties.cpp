@@ -51,14 +51,12 @@ using namespace Math;
 weak_ptr<Entity> Properties::m_inspected_entity;
 weak_ptr<Material> Properties::m_inspected_material;
 
-namespace helper
+namespace
 {
-    static Vector3 rotation_hint;
-
-    static string g_contex_menu_id;
-    static float g_column = 180.0f;
-    static const float g_max_width = 100.0f;
-    static IComponent* g_copied;
+    static string context_menu_id;
+    static IComponent* copied_component;
+    static float column_pos_x    = 180.0f;
+    static const float max_width = 100.0f;
 
     inline void ComponentContextMenu_Options(const string& id, IComponent* component, const bool removable)
     {
@@ -80,14 +78,14 @@ namespace helper
 
             if (ImGui::MenuItem("Copy Attributes"))
             {
-                g_copied = component;
+                copied_component = component;
             }
 
             if (ImGui::MenuItem("Paste Attributes"))
             {
-                if (g_copied && g_copied->GetType() == component->GetType())
+                if (copied_component && copied_component->GetType() == component->GetType())
                 {
-                    component->SetAttributes(g_copied->GetAttributes());
+                    component->SetAttributes(copied_component->GetAttributes());
                 }
             }
 
@@ -95,7 +93,7 @@ namespace helper
         }
     }
 
-    inline bool ComponentBegin(const string& name, const IconType icon_enum, IComponent* component_instance, bool options = true, const bool removable = true)
+    static bool component_begin(const string& name, const IconType icon_enum, IComponent* component_instance, bool options = true, const bool removable = true)
     {
         // Collapsible contents
         const bool collapsed = ImGuiSp::collapsing_header(name.c_str(), ImGuiTreeNodeFlags_AllowItemOverlap | ImGuiTreeNodeFlags_DefaultOpen);
@@ -117,20 +115,20 @@ namespace helper
             uint32_t id = static_cast<uint32_t>(ImGui::GetCursorPosX() + ImGui::GetCursorPosY());
             if (ImGuiSp::image_button(id, nullptr, IconType::Component_Options, icon_width, false))
             {
-                g_contex_menu_id = name;
-                ImGui::OpenPopup(g_contex_menu_id.c_str());
+                context_menu_id = name;
+                ImGui::OpenPopup(context_menu_id.c_str());
             }
 
-            if (g_contex_menu_id == name)
+            if (context_menu_id == name)
             {
-                ComponentContextMenu_Options(g_contex_menu_id, component_instance, removable);
+                ComponentContextMenu_Options(context_menu_id, component_instance, removable);
             }
         }
 
         return collapsed;
     }
 
-    inline void ComponentEnd()
+    static void component_end()
     {
         ImGui::Separator();
     }
@@ -148,7 +146,7 @@ Properties::Properties(Editor* editor) : Widget(editor)
 
 void Properties::TickVisible()
 {
-    ImGui::PushItemWidth(helper::g_max_width);
+    ImGui::PushItemWidth(max_width);
 
     if (!m_inspected_entity.expired())
     {
@@ -185,15 +183,6 @@ void Properties::Inspect(const weak_ptr<Entity>& entity)
 {
     m_inspected_entity = entity;
 
-    if (const auto shared_ptr = entity.lock())
-    {
-        helper::rotation_hint = shared_ptr->GetTransform()->GetRotationLocal().ToEulerAngles();
-    }
-    else
-    {
-        helper::rotation_hint = Vector3::Zero;
-    }
-
     // If we were previously inspecting a material, save the changes
     if (!m_inspected_material.expired())
     {
@@ -210,15 +199,13 @@ void Properties::Inspect(const weak_ptr<Material>& material)
 
 void Properties::ShowTransform(Transform* transform) const
 {
-    if (helper::ComponentBegin("Transform", IconType::Component_Transform, transform, true, false))
+    if (component_begin("Transform", IconType::Component_Transform, transform, true, false))
     {
-        const bool is_playing = Engine::IsFlagSet(EngineMode::Game);
-
-        //= REFLECT ===========================================================================================
+        //= REFLECT =====================================================
         Vector3 position = transform->GetPositionLocal();
         Vector3 rotation = transform->GetRotationLocal().ToEulerAngles();
         Vector3 scale    = transform->GetScaleLocal();
-        //=====================================================================================================
+        //===============================================================
 
         ImGuiSp::vector3("Position", position);
         ImGui::SameLine();
@@ -226,21 +213,13 @@ void Properties::ShowTransform(Transform* transform) const
         ImGui::SameLine();
         ImGuiSp::vector3("Scale", scale);
 
-        //= MAP ===================================================================
-        if (!is_playing)
-        {
-            transform->SetPositionLocal(position);
-            transform->SetScaleLocal(scale);
-
-            if (rotation != helper::rotation_hint)
-            {
-                transform->SetRotationLocal(Quaternion::FromEulerAngles(rotation));
-                helper::rotation_hint = rotation;
-            }
-        }
-        //=========================================================================
+        //= MAP ===========================================================
+        transform->SetPositionLocal(position);
+        transform->SetScaleLocal(scale);
+        transform->SetRotationLocal(Quaternion::FromEulerAngles(rotation));
+        //=================================================================
     }
-    helper::ComponentEnd();
+    component_end();
 }
 
 void Properties::ShowLight(Light* light) const
@@ -248,7 +227,7 @@ void Properties::ShowLight(Light* light) const
     if (!light)
         return;
 
-    if (helper::ComponentBegin("Light", IconType::Component_Light, light))
+    if (component_begin("Light", IconType::Component_Light, light))
     {
         //= REFLECT ======================================================================
         static vector<string> types = { "Directional", "Point", "Spot" };
@@ -269,7 +248,7 @@ void Properties::ShowLight(Light* light) const
         // Type
         ImGui::Text("Type");
         ImGui::PushItemWidth(110.0f);
-        ImGui::SameLine(helper::g_column);
+        ImGui::SameLine(column_pos_x);
         uint32_t selection_index = static_cast<uint32_t>(light->GetLightType());
         if (ImGuiSp::combo_box("##LightType", types, &selection_index))
         {
@@ -287,30 +266,30 @@ void Properties::ShowLight(Light* light) const
 
         // Color
         ImGui::Text("Color");
-        ImGui::SameLine(helper::g_column); m_colorPicker_light->Update();
+        ImGui::SameLine(column_pos_x); m_colorPicker_light->Update();
 
         // Intensity
         ImGui::Text(is_directional ? "Intensity" : "Intensity (Lumens)");
-        ImGui::SameLine(helper::g_column);
+        ImGui::SameLine(column_pos_x);
         float v_speed   = 5.0f;
         float v_max     = 120000.0f;
         ImGui::PushItemWidth(300); ImGuiSp::draw_float_wrap("##lightIntensity", &intensity, v_speed, 0.0f, v_max); ImGui::PopItemWidth();
 
         // Shadows
         ImGui::Text("Shadows");
-        ImGui::SameLine(helper::g_column); ImGui::Checkbox("##light_shadows", &shadows);
+        ImGui::SameLine(column_pos_x); ImGui::Checkbox("##light_shadows", &shadows);
 
         // Shadow supplements
         ImGui::BeginDisabled(!shadows);
         {
             // Transparent shadows
             ImGui::Text("Transparent Shadows");
-            ImGui::SameLine(helper::g_column); ImGui::Checkbox("##light_shadows_transparent", &shadows_transparent);
+            ImGui::SameLine(column_pos_x); ImGui::Checkbox("##light_shadows_transparent", &shadows_transparent);
             ImGuiSp::tooltip("Allows transparent objects to cast colored translucent shadows");
 
             // Volumetric
             ImGui::Text("Volumetric");
-            ImGui::SameLine(helper::g_column); ImGui::Checkbox("##light_volumetric", &volumetric);
+            ImGui::SameLine(column_pos_x); ImGui::Checkbox("##light_volumetric", &volumetric);
             ImGuiSp::tooltip("The shadow map is used to determine which parts of the \"air\" should be lit");
 
         }
@@ -318,24 +297,24 @@ void Properties::ShowLight(Light* light) const
 
         // Screen space shadows
         ImGui::Text("Screen Space Shadows");
-        ImGui::SameLine(helper::g_column); ImGui::Checkbox("##light_shadows_screen_space", &shadows_screen_space);
+        ImGui::SameLine(column_pos_x); ImGui::Checkbox("##light_shadows_screen_space", &shadows_screen_space);
         ImGuiSp::tooltip("Small scale shadows which add detail were surfaces meet, also known as contact shadows");
 
         // Bias
         ImGui::Text("Bias");
-        ImGui::SameLine(helper::g_column);
+        ImGui::SameLine(column_pos_x);
         ImGui::PushItemWidth(300); ImGui::InputFloat("##lightBias", &bias, 1.0f, 1.0f, "%.0f"); ImGui::PopItemWidth();
 
         // Normal Bias
         ImGui::Text("Normal Bias");
-        ImGui::SameLine(helper::g_column);
+        ImGui::SameLine(column_pos_x);
         ImGui::PushItemWidth(300); ImGui::InputFloat("##lightNormalBias", &normal_bias, 1.0f, 1.0f, "%.0f"); ImGui::PopItemWidth();
 
         // Range
         if (light->GetLightType() != LightType::Directional)
         {
             ImGui::Text("Range");
-            ImGui::SameLine(helper::g_column);
+            ImGui::SameLine(column_pos_x);
             ImGui::PushItemWidth(300); ImGuiSp::draw_float_wrap("##lightRange", &range, 0.01f, 0.0f, 1000.0f); ImGui::PopItemWidth();
         }
 
@@ -343,7 +322,7 @@ void Properties::ShowLight(Light* light) const
         if (light->GetLightType() == LightType::Spot)
         {
             ImGui::Text("Angle");
-            ImGui::SameLine(helper::g_column);
+            ImGui::SameLine(column_pos_x);
             ImGui::PushItemWidth(300); ImGuiSp::draw_float_wrap("##lightAngle", &angle, 0.01f, 1.0f, 179.0f); ImGui::PopItemWidth();
         }
 
@@ -360,7 +339,7 @@ void Properties::ShowLight(Light* light) const
         if (m_colorPicker_light->GetColor() != light->GetColor())          light->SetColor(m_colorPicker_light->GetColor());
         //===========================================================================================================================
     }
-    helper::ComponentEnd();
+    component_end();
 }
 
 void Properties::ShowRenderable(Renderable* renderable) const
@@ -368,7 +347,7 @@ void Properties::ShowRenderable(Renderable* renderable) const
     if (!renderable)
         return;
 
-    if (helper::ComponentBegin("Renderable", IconType::Component_Renderable, renderable))
+    if (component_begin("Renderable", IconType::Component_Renderable, renderable))
     {
         //= REFLECT =================================================================
         const string& geometry_name = renderable->GetGeometryName();
@@ -378,11 +357,11 @@ void Properties::ShowRenderable(Renderable* renderable) const
         //===========================================================================
 
         ImGui::Text("Geometry");
-        ImGui::SameLine(helper::g_column); ImGui::Text(geometry_name.c_str());
+        ImGui::SameLine(column_pos_x); ImGui::Text(geometry_name.c_str());
 
         // Material
         ImGui::Text("Material");
-        ImGui::SameLine(helper::g_column);
+        ImGui::SameLine(column_pos_x);
         ImGui::PushID("##material_name");
         ImGui::PushItemWidth(200.0f);
         ImGui::InputText("", &material_name, ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_ReadOnly);
@@ -395,13 +374,13 @@ void Properties::ShowRenderable(Renderable* renderable) const
 
         // Cast shadows
         ImGui::Text("Cast Shadows");
-        ImGui::SameLine(helper::g_column); ImGui::Checkbox("##RenderableCastShadows", &cast_shadows);
+        ImGui::SameLine(column_pos_x); ImGui::Checkbox("##RenderableCastShadows", &cast_shadows);
 
         //= MAP ===================================================================================
         if (cast_shadows != renderable->GetCastShadows()) renderable->SetCastShadows(cast_shadows);
         //=========================================================================================
     }
-    helper::ComponentEnd();
+    component_end();
 }
 
 void Properties::ShowRigidBody(RigidBody* rigid_body) const
@@ -409,7 +388,7 @@ void Properties::ShowRigidBody(RigidBody* rigid_body) const
     if (!rigid_body)
         return;
 
-    if (helper::ComponentBegin("RigidBody", IconType::Component_RigidBody, rigid_body))
+    if (component_begin("RigidBody", IconType::Component_RigidBody, rigid_body))
     {
         //= REFLECT ================================================================
         auto mass               = rigid_body->GetMass();
@@ -434,31 +413,31 @@ void Properties::ShowRigidBody(RigidBody* rigid_body) const
 
         // Mass
         ImGui::Text("Mass");
-        ImGui::SameLine(helper::g_column); ImGui::PushItemWidth(item_width); ImGui::InputFloat("##RigidBodyMass", &mass, step, step_fast, precision, input_text_flags); ImGui::PopItemWidth();
+        ImGui::SameLine(column_pos_x); ImGui::PushItemWidth(item_width); ImGui::InputFloat("##RigidBodyMass", &mass, step, step_fast, precision, input_text_flags); ImGui::PopItemWidth();
 
         // Friction
         ImGui::Text("Friction");
-        ImGui::SameLine(helper::g_column); ImGui::PushItemWidth(item_width); ImGui::InputFloat("##RigidBodyFriction", &friction, step, step_fast, precision, input_text_flags); ImGui::PopItemWidth();
+        ImGui::SameLine(column_pos_x); ImGui::PushItemWidth(item_width); ImGui::InputFloat("##RigidBodyFriction", &friction, step, step_fast, precision, input_text_flags); ImGui::PopItemWidth();
 
         // Rolling Friction
         ImGui::Text("Rolling Friction");
-        ImGui::SameLine(helper::g_column); ImGui::PushItemWidth(item_width); ImGui::InputFloat("##RigidBodyRollingFriction", &friction_rolling, step, step_fast, precision, input_text_flags); ImGui::PopItemWidth();
+        ImGui::SameLine(column_pos_x); ImGui::PushItemWidth(item_width); ImGui::InputFloat("##RigidBodyRollingFriction", &friction_rolling, step, step_fast, precision, input_text_flags); ImGui::PopItemWidth();
 
         // Restitution
         ImGui::Text("Restitution");
-        ImGui::SameLine(helper::g_column); ImGui::PushItemWidth(item_width); ImGui::InputFloat("##RigidBodyRestitution", &restitution, step, step_fast, precision, input_text_flags); ImGui::PopItemWidth();
+        ImGui::SameLine(column_pos_x); ImGui::PushItemWidth(item_width); ImGui::InputFloat("##RigidBodyRestitution", &restitution, step, step_fast, precision, input_text_flags); ImGui::PopItemWidth();
 
         // Use Gravity
         ImGui::Text("Use Gravity");
-        ImGui::SameLine(helper::g_column); ImGui::Checkbox("##RigidBodyUseGravity", &use_gravity);
+        ImGui::SameLine(column_pos_x); ImGui::Checkbox("##RigidBodyUseGravity", &use_gravity);
 
         // Is Kinematic
         ImGui::Text("Is Kinematic");
-        ImGui::SameLine(helper::g_column); ImGui::Checkbox("##RigidBodyKinematic", &is_kinematic);
+        ImGui::SameLine(column_pos_x); ImGui::Checkbox("##RigidBodyKinematic", &is_kinematic);
 
         // Freeze Position
         ImGui::Text("Freeze Position");
-        ImGui::SameLine(helper::g_column); ImGui::Text("X");
+        ImGui::SameLine(column_pos_x); ImGui::Text("X");
         ImGui::SameLine(); ImGui::Checkbox("##RigidFreezePosX", &freeze_pos_x);
         ImGui::SameLine(); ImGui::Text("Y");
         ImGui::SameLine(); ImGui::Checkbox("##RigidFreezePosY", &freeze_pos_y);
@@ -467,7 +446,7 @@ void Properties::ShowRigidBody(RigidBody* rigid_body) const
 
         // Freeze Rotation
         ImGui::Text("Freeze Rotation");
-        ImGui::SameLine(helper::g_column); ImGui::Text("X");
+        ImGui::SameLine(column_pos_x); ImGui::Text("X");
         ImGui::SameLine(); ImGui::Checkbox("##RigidFreezeRotX", &freeze_rot_x);
         ImGui::SameLine(); ImGui::Text("Y");
         ImGui::SameLine(); ImGui::Checkbox("##RigidFreezeRotY", &freeze_rot_y);
@@ -489,7 +468,7 @@ void Properties::ShowRigidBody(RigidBody* rigid_body) const
         if (freeze_rot_z != static_cast<bool>(rigid_body->GetRotationLock().z)) rigid_body->SetRotationLock(Vector3(static_cast<float>(freeze_rot_x), static_cast<float>(freeze_rot_y), static_cast<float>(freeze_rot_z)));
         //=================================================================================================================================================================================================================
     }
-    helper::ComponentEnd();
+    component_end();
 }
 
 void Properties::ShowSoftBody(SoftBody* soft_body) const
@@ -497,7 +476,7 @@ void Properties::ShowSoftBody(SoftBody* soft_body) const
     if (!soft_body)
         return;
 
-    if (helper::ComponentBegin("SoftBody", IconType::Component_SoftBody, soft_body))
+    if (component_begin("SoftBody", IconType::Component_SoftBody, soft_body))
     {
         //= REFLECT ===============================================================
         //=========================================================================
@@ -505,7 +484,7 @@ void Properties::ShowSoftBody(SoftBody* soft_body) const
         //= MAP ===================================================================
         //=========================================================================
     }
-    helper::ComponentEnd();
+    component_end();
 }
 
 void Properties::ShowCollider(Collider* collider) const
@@ -513,7 +492,7 @@ void Properties::ShowCollider(Collider* collider) const
     if (!collider)
         return;
 
-    if (helper::ComponentBegin("Collider", IconType::Component_Collider, collider))
+    if (component_begin("Collider", IconType::Component_Collider, collider))
     {
         //= REFLECT =================================================
         static vector<string> shape_types = {
@@ -538,7 +517,7 @@ void Properties::ShowCollider(Collider* collider) const
         // Type
         ImGui::Text("Type");
         ImGui::PushItemWidth(110);
-        ImGui::SameLine(helper::g_column);
+        ImGui::SameLine(column_pos_x);
         uint32_t selection_index = static_cast<uint32_t>(collider->GetShapeType());
         if (ImGuiSp::combo_box("##colliderType", shape_types, &selection_index))
         {
@@ -549,7 +528,7 @@ void Properties::ShowCollider(Collider* collider) const
         // Center
         ImGui::Text("Center");
         ImGui::PushItemWidth(110);
-        ImGui::SameLine(helper::g_column); ImGui::PushID("colCenterX"); ImGui::InputFloat("X", &collider_center.x, step, step_fast, precision, input_text_flags); ImGui::PopID();
+        ImGui::SameLine(column_pos_x); ImGui::PushID("colCenterX"); ImGui::InputFloat("X", &collider_center.x, step, step_fast, precision, input_text_flags); ImGui::PopID();
         ImGui::SameLine();                 ImGui::PushID("colCenterY"); ImGui::InputFloat("Y", &collider_center.y, step, step_fast, precision, input_text_flags); ImGui::PopID();
         ImGui::SameLine();                 ImGui::PushID("colCenterZ"); ImGui::InputFloat("Z", &collider_center.z, step, step_fast, precision, input_text_flags); ImGui::PopID();
         ImGui::PopItemWidth();
@@ -557,7 +536,7 @@ void Properties::ShowCollider(Collider* collider) const
         // Size
         ImGui::Text("Size");
         ImGui::PushItemWidth(110);
-        ImGui::SameLine(helper::g_column); ImGui::PushID("colSizeX"); ImGui::InputFloat("X", &collider_bounding_box.x, step, step_fast, precision, input_text_flags); ImGui::PopID();
+        ImGui::SameLine(column_pos_x); ImGui::PushID("colSizeX"); ImGui::InputFloat("X", &collider_bounding_box.x, step, step_fast, precision, input_text_flags); ImGui::PopID();
         ImGui::SameLine();                 ImGui::PushID("colSizeY"); ImGui::InputFloat("Y", &collider_bounding_box.y, step, step_fast, precision, input_text_flags); ImGui::PopID();
         ImGui::SameLine();                 ImGui::PushID("colSizeZ"); ImGui::InputFloat("Z", &collider_bounding_box.z, step, step_fast, precision, input_text_flags); ImGui::PopID();
         ImGui::PopItemWidth();
@@ -566,7 +545,7 @@ void Properties::ShowCollider(Collider* collider) const
         if (collider->GetShapeType() == ColliderShape::Mesh)
         {
             ImGui::Text("Optimize");
-            ImGui::SameLine(helper::g_column); ImGui::Checkbox("##colliderOptimize", &optimize);
+            ImGui::SameLine(column_pos_x); ImGui::Checkbox("##colliderOptimize", &optimize);
         }
 
         //= MAP =================================================================================================
@@ -575,7 +554,7 @@ void Properties::ShowCollider(Collider* collider) const
         if (optimize != collider->GetOptimize())                 collider->SetOptimize(optimize);
         //=======================================================================================================
     }
-    helper::ComponentEnd();
+    component_end();
 }
 
 void Properties::ShowConstraint(Constraint* constraint) const
@@ -583,7 +562,7 @@ void Properties::ShowConstraint(Constraint* constraint) const
     if (!constraint)
         return;
 
-    if (helper::ComponentBegin("Constraint", IconType::Component_AudioSource, constraint))
+    if (component_begin("Constraint", IconType::Component_AudioSource, constraint))
     {
         //= REFLECT ========================================================================================
         vector<string> constraint_types = {"Point", "Hinge", "Slider", "ConeTwist" };
@@ -603,7 +582,7 @@ void Properties::ShowConstraint(Constraint* constraint) const
 
         // Type
         ImGui::Text("Type");
-        ImGui::SameLine(helper::g_column);
+        ImGui::SameLine(column_pos_x);
         uint32_t selection_index = static_cast<uint32_t>(constraint->GetConstraintType());
         if (ImGuiSp::combo_box("##constraintType", constraint_types, &selection_index))
         {
@@ -611,7 +590,7 @@ void Properties::ShowConstraint(Constraint* constraint) const
         }
 
         // Other body
-        ImGui::Text("Other Body"); ImGui::SameLine(helper::g_column);
+        ImGui::Text("Other Body"); ImGui::SameLine(column_pos_x);
         ImGui::PushID("##OtherBodyName");
         ImGui::PushItemWidth(200.0f);
         ImGui::InputText("", &other_body_name, ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_ReadOnly);
@@ -626,7 +605,7 @@ void Properties::ShowConstraint(Constraint* constraint) const
 
         // Position
         ImGui::Text("Position");
-        ImGui::SameLine(helper::g_column); ImGui::Text("X");
+        ImGui::SameLine(column_pos_x); ImGui::Text("X");
         ImGui::SameLine(); ImGui::InputFloat("##ConsPosX", &position.x, step, step_fast, precision, inputTextFlags);
         ImGui::SameLine(); ImGui::Text("Y");
         ImGui::SameLine(); ImGui::InputFloat("##ConsPosY", &position.y, step, step_fast, precision, inputTextFlags);
@@ -635,7 +614,7 @@ void Properties::ShowConstraint(Constraint* constraint) const
 
         // Rotation
         ImGui::Text("Rotation");
-        ImGui::SameLine(helper::g_column); ImGui::Text("X");
+        ImGui::SameLine(column_pos_x); ImGui::Text("X");
         ImGui::SameLine(); ImGui::InputFloat("##ConsRotX", &rotation.x, step, step_fast, precision, inputTextFlags);
         ImGui::SameLine(); ImGui::Text("Y");
         ImGui::SameLine(); ImGui::InputFloat("##ConsRotY", &rotation.y, step, step_fast, precision, inputTextFlags);
@@ -644,7 +623,7 @@ void Properties::ShowConstraint(Constraint* constraint) const
 
         // High Limit
         ImGui::Text("High Limit");
-        ImGui::SameLine(helper::g_column); ImGui::Text("X");
+        ImGui::SameLine(column_pos_x); ImGui::Text("X");
         ImGui::SameLine(); ImGui::InputFloat("##ConsHighLimX", &high_limit.x, step, step_fast, precision, inputTextFlags);
         if (constraint->GetConstraintType() == ConstraintType_Slider)
         {
@@ -654,7 +633,7 @@ void Properties::ShowConstraint(Constraint* constraint) const
 
         // Low Limit
         ImGui::Text("Low Limit");
-        ImGui::SameLine(helper::g_column); ImGui::Text("X");
+        ImGui::SameLine(column_pos_x); ImGui::Text("X");
         ImGui::SameLine(); ImGui::InputFloat("##ConsLowLimX", &low_limit.x, step, step_fast, precision, inputTextFlags);
         if (constraint->GetConstraintType() == ConstraintType_Slider)
         {
@@ -670,7 +649,7 @@ void Properties::ShowConstraint(Constraint* constraint) const
         if (low_limit != constraint->GetLowLimit())                 constraint->SetLowLimit(low_limit);
         //=============================================================================================================================
     }
-    helper::ComponentEnd();
+    component_end();
 }
 
 void Properties::ShowMaterial(Material* material) const
@@ -678,7 +657,7 @@ void Properties::ShowMaterial(Material* material) const
     if (!material)
         return;
 
-    if (helper::ComponentBegin("Material", IconType::Component_Material, nullptr, false))
+    if (component_begin("Material", IconType::Component_Material, nullptr, false))
     {
         const float offset_from_pos_x = 160;
 
@@ -812,7 +791,7 @@ void Properties::ShowMaterial(Material* material) const
         //=====================================================================================
     }
 
-    helper::ComponentEnd();
+    component_end();
 }
 
 void Properties::ShowCamera(Camera* camera) const
@@ -820,7 +799,7 @@ void Properties::ShowCamera(Camera* camera) const
     if (!camera)
         return;
 
-    if (helper::ComponentBegin("Camera", IconType::Component_Camera, camera))
+    if (component_begin("Camera", IconType::Component_Camera, camera))
     {
         //= REFLECT ====================================================================
         static vector<string> projection_types = { "Perspective", "Orthographic" };
@@ -838,11 +817,11 @@ void Properties::ShowCamera(Camera* camera) const
 
         // Background
         ImGui::Text("Background");
-        ImGui::SameLine(helper::g_column); m_colorPicker_camera->Update();
+        ImGui::SameLine(column_pos_x); m_colorPicker_camera->Update();
 
         // Projection
         ImGui::Text("Projection");
-        ImGui::SameLine(helper::g_column);
+        ImGui::SameLine(column_pos_x);
         ImGui::PushItemWidth(115.0f);
         uint32_t selection_index = static_cast<uint32_t>(camera->GetProjectionType());
         if (ImGuiSp::combo_box("##cameraProjection", projection_types, &selection_index))
@@ -852,32 +831,32 @@ void Properties::ShowCamera(Camera* camera) const
         ImGui::PopItemWidth();
 
         // Aperture
-        ImGui::SetCursorPosX(helper::g_column);
+        ImGui::SetCursorPosX(column_pos_x);
         ImGuiSp::draw_float_wrap("Aperture (mm)", &aperture, 0.01f, 0.01f, 150.0f);
         ImGuiSp::tooltip("Size of the lens diaphragm. Controls depth of field and chromatic aberration.");
 
         // Shutter speed
-        ImGui::SetCursorPosX(helper::g_column);
+        ImGui::SetCursorPosX(column_pos_x);
         ImGuiSp::draw_float_wrap("Shutter Speed (sec)", &shutter_speed, 0.0001f, 0.0f, 1.0f, "%.4f");
         ImGuiSp::tooltip("Length of time for which the camera shutter is open. Controls the amount of motion blur.");
 
         // ISO
-        ImGui::SetCursorPosX(helper::g_column);
+        ImGui::SetCursorPosX(column_pos_x);
         ImGuiSp::draw_float_wrap("ISO", &iso, 0.1f, 0.0f, 2000.0f);
         ImGuiSp::tooltip("Sensitivity to light. Controls camera noise.");
 
         // Field of View
-        ImGui::SetCursorPosX(helper::g_column);
+        ImGui::SetCursorPosX(column_pos_x);
         ImGuiSp::draw_float_wrap("Field of View", &fov, 0.1f, 1.0f, 179.0f);
 
         // Clipping Planes
         ImGui::Text("Clipping Planes");
-        ImGui::SameLine(helper::g_column);      ImGui::PushItemWidth(130); ImGui::InputFloat("Near", &near_plane, 0.01f, 0.01f, "%.2f", input_text_flags); ImGui::PopItemWidth();
-        ImGui::SetCursorPosX(helper::g_column); ImGui::PushItemWidth(130); ImGui::InputFloat("Far", &far_plane, 0.01f, 0.01f, "%.2f", input_text_flags);   ImGui::PopItemWidth();
+        ImGui::SameLine(column_pos_x);      ImGui::PushItemWidth(130); ImGui::InputFloat("Near", &near_plane, 0.01f, 0.01f, "%.2f", input_text_flags); ImGui::PopItemWidth();
+        ImGui::SetCursorPosX(column_pos_x); ImGui::PushItemWidth(130); ImGui::InputFloat("Far", &far_plane, 0.01f, 0.01f, "%.2f", input_text_flags);   ImGui::PopItemWidth();
 
         // FPS Control
         ImGui::Text("First Person Control");
-        ImGui::SameLine(helper::g_column); ImGui::Checkbox("##camera_first_person_control", &first_person_control_enabled);
+        ImGui::SameLine(column_pos_x); ImGui::Checkbox("##camera_first_person_control", &first_person_control_enabled);
         ImGuiSp::tooltip("Enables first person control while holding down the right mouse button (or when a controller is connected)");
 
         //= MAP =======================================================================================================================================
@@ -891,7 +870,7 @@ void Properties::ShowCamera(Camera* camera) const
         if (m_colorPicker_camera->GetColor() != camera->GetClearColor())            camera->SetClearColor(m_colorPicker_camera->GetColor());
         //=============================================================================================================================================
     }
-    helper::ComponentEnd();
+    component_end();
 }
 
 void Properties::ShowEnvironment(Environment* environment) const
@@ -899,13 +878,13 @@ void Properties::ShowEnvironment(Environment* environment) const
     if (!environment)
         return;
 
-    if (helper::ComponentBegin("Environment", IconType::Component_Environment, environment))
+    if (component_begin("Environment", IconType::Component_Environment, environment))
     {
         ImGui::Text("Sphere Map");
 
         ImGuiSp::image_slot(environment->GetTexture(), [&environment](const shared_ptr<RHI_Texture>& texture) { environment->SetTexture(texture); } );
     }
-    helper::ComponentEnd();
+    component_end();
 }
 
 void Properties::ShowTerrain(Terrain* terrain) const
@@ -913,7 +892,7 @@ void Properties::ShowTerrain(Terrain* terrain) const
     if (!terrain)
         return;
 
-    if (helper::ComponentBegin("Terrain", IconType::Component_Terrain, terrain))
+    if (component_begin("Terrain", IconType::Component_Terrain, terrain))
     {
         //= REFLECT =====================
         float min_y = terrain->GetMinY();
@@ -962,7 +941,7 @@ void Properties::ShowTerrain(Terrain* terrain) const
         if (max_y != terrain->GetMaxY()) terrain->SetMaxY(max_y);
         //=======================================================
     }
-    helper::ComponentEnd();
+    component_end();
 }
 
 void Properties::ShowAudioSource(AudioSource* audio_source) const
@@ -970,7 +949,7 @@ void Properties::ShowAudioSource(AudioSource* audio_source) const
     if (!audio_source)
         return;
 
-    if (helper::ComponentBegin("Audio Source", IconType::Component_AudioSource, audio_source))
+    if (component_begin("Audio Source", IconType::Component_AudioSource, audio_source))
     {
         //= REFLECT ==============================================
         string audio_clip_name = audio_source->GetAudioClipName();
@@ -985,7 +964,7 @@ void Properties::ShowAudioSource(AudioSource* audio_source) const
 
         // Audio clip
         ImGui::Text("Audio Clip");
-        ImGui::SameLine(helper::g_column); ImGui::PushItemWidth(250.0f);
+        ImGui::SameLine(column_pos_x); ImGui::PushItemWidth(250.0f);
         ImGui::InputText("##audioSourceAudioClip", &audio_clip_name, ImGuiInputTextFlags_ReadOnly);
         ImGui::PopItemWidth();
         if (auto payload = ImGuiSp::receive_drag_drop_payload(ImGuiSp::DragPayloadType::Audio))
@@ -995,31 +974,31 @@ void Properties::ShowAudioSource(AudioSource* audio_source) const
 
         // Mute
         ImGui::Text("Mute");
-        ImGui::SameLine(helper::g_column); ImGui::Checkbox("##audioSourceMute", &mute);
+        ImGui::SameLine(column_pos_x); ImGui::Checkbox("##audioSourceMute", &mute);
 
         // Play on start
         ImGui::Text("Play on Start");
-        ImGui::SameLine(helper::g_column); ImGui::Checkbox("##audioSourcePlayOnStart", &play_on_start);
+        ImGui::SameLine(column_pos_x); ImGui::Checkbox("##audioSourcePlayOnStart", &play_on_start);
 
         // Loop
         ImGui::Text("Loop");
-        ImGui::SameLine(helper::g_column); ImGui::Checkbox("##audioSourceLoop", &loop);
+        ImGui::SameLine(column_pos_x); ImGui::Checkbox("##audioSourceLoop", &loop);
 
         // Priority
         ImGui::Text("Priority");
-        ImGui::SameLine(helper::g_column); ImGui::SliderInt("##audioSourcePriority", &priority, 0, 255);
+        ImGui::SameLine(column_pos_x); ImGui::SliderInt("##audioSourcePriority", &priority, 0, 255);
 
         // Volume
         ImGui::Text("Volume");
-        ImGui::SameLine(helper::g_column); ImGui::SliderFloat("##audioSourceVolume", &volume, 0.0f, 1.0f);
+        ImGui::SameLine(column_pos_x); ImGui::SliderFloat("##audioSourceVolume", &volume, 0.0f, 1.0f);
 
         // Pitch
         ImGui::Text("Pitch");
-        ImGui::SameLine(helper::g_column); ImGui::SliderFloat("##audioSourcePitch", &pitch, 0.0f, 3.0f);
+        ImGui::SameLine(column_pos_x); ImGui::SliderFloat("##audioSourcePitch", &pitch, 0.0f, 3.0f);
 
         // Pan
         ImGui::Text("Pan");
-        ImGui::SameLine(helper::g_column); ImGui::SliderFloat("##audioSourcePan", &pan, -1.0f, 1.0f);
+        ImGui::SameLine(column_pos_x); ImGui::SliderFloat("##audioSourcePan", &pan, -1.0f, 1.0f);
 
         //= MAP =========================================================================================
         if (mute != audio_source->GetMute())                 audio_source->SetMute(mute);
@@ -1031,7 +1010,7 @@ void Properties::ShowAudioSource(AudioSource* audio_source) const
         if (pan != audio_source->GetPan())                   audio_source->SetPan(pan);
         //===============================================================================================
     }
-    helper::ComponentEnd();
+    component_end();
 }
 
 void Properties::ShowAudioListener(AudioListener* audio_listener) const
@@ -1039,11 +1018,11 @@ void Properties::ShowAudioListener(AudioListener* audio_listener) const
     if (!audio_listener)
         return;
 
-    if (helper::ComponentBegin("Audio Listener", IconType::Component_AudioListener, audio_listener))
+    if (component_begin("Audio Listener", IconType::Component_AudioListener, audio_listener))
     {
 
     }
-    helper::ComponentEnd();
+    component_end();
 }
 
 void Properties::ShowReflectionProbe(Spartan::ReflectionProbe* reflection_probe) const
@@ -1051,7 +1030,7 @@ void Properties::ShowReflectionProbe(Spartan::ReflectionProbe* reflection_probe)
     if (!reflection_probe)
         return;
 
-    if (helper::ComponentBegin("Reflection Probe", IconType::Component_ReflectionProbe, reflection_probe))
+    if (component_begin("Reflection Probe", IconType::Component_ReflectionProbe, reflection_probe))
     {
         //= REFLECT =============================================================
         int resolution             = reflection_probe->GetResolution();
@@ -1064,27 +1043,27 @@ void Properties::ShowReflectionProbe(Spartan::ReflectionProbe* reflection_probe)
 
         // Resolution
         ImGui::Text("Resolution");
-        ImGui::SameLine(helper::g_column);
+        ImGui::SameLine(column_pos_x);
         ImGui::PushItemWidth(300); ImGui::InputInt("##reflection_probe_resolution", &resolution); ImGui::PopItemWidth();
 
         // Update interval frames
         ImGui::Text("Update interval frames");
-        ImGui::SameLine(helper::g_column);
+        ImGui::SameLine(column_pos_x);
         ImGui::PushItemWidth(300); ImGui::InputInt("##reflection_probe_update_interval_frames", &update_interval_frames); ImGui::PopItemWidth();
 
         // Update face count
         ImGui::Text("Update face count");
-        ImGui::SameLine(helper::g_column);
+        ImGui::SameLine(column_pos_x);
         ImGui::PushItemWidth(300); ImGui::InputInt("##reflection_probe_update_face_count", &update_face_count); ImGui::PopItemWidth();
 
         // Near plane
         ImGui::Text("Near plane");
-        ImGui::SameLine(helper::g_column);
+        ImGui::SameLine(column_pos_x);
         ImGui::PushItemWidth(300); ImGui::InputFloat("##reflection_probe_plane_near", &plane_near, 1.0f, 1.0f, "%.1f"); ImGui::PopItemWidth();
 
         // Far plane
         ImGui::Text("Far plane");
-        ImGui::SameLine(helper::g_column);
+        ImGui::SameLine(column_pos_x);
         ImGui::PushItemWidth(300); ImGui::InputFloat("##reflection_probe_plane_far", &plane_far, 1.0f, 1.0f, "%.1f"); ImGui::PopItemWidth();
 
         // Extents
@@ -1094,7 +1073,7 @@ void Properties::ShowReflectionProbe(Spartan::ReflectionProbe* reflection_probe)
         const char* precision                       = "%.3f";
         ImGui::Text("Extents");
         ImGui::PushItemWidth(120);
-        ImGui::SameLine(helper::g_column); ImGui::PushID("##reflection_probe_extents_x"); ImGui::InputFloat("X", &extents.x, step, step_fast, precision, input_text_flags); ImGui::PopID();
+        ImGui::SameLine(column_pos_x); ImGui::PushID("##reflection_probe_extents_x"); ImGui::InputFloat("X", &extents.x, step, step_fast, precision, input_text_flags); ImGui::PopID();
         ImGui::SameLine();                 ImGui::PushID("##reflection_probe_extents_y"); ImGui::InputFloat("Y", &extents.y, step, step_fast, precision, input_text_flags); ImGui::PopID();
         ImGui::SameLine();                 ImGui::PushID("##reflection_probe_extents_z"); ImGui::InputFloat("Z", &extents.z, step, step_fast, precision, input_text_flags); ImGui::PopID();
         ImGui::PopItemWidth();
@@ -1108,7 +1087,7 @@ void Properties::ShowReflectionProbe(Spartan::ReflectionProbe* reflection_probe)
         if (plane_far              != reflection_probe->GetFarPlane())             reflection_probe->SetFarPlane(plane_far);
         //===========================================================================================================================================
     }
-    helper::ComponentEnd();
+    component_end();
 }
 
 void Properties::ShowAddComponentButton() const
