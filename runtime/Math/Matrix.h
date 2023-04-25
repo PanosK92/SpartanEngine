@@ -69,6 +69,21 @@ namespace Spartan::Math
 
         ~Matrix() = default;
 
+        // Generate a matrix with row first memory alignment
+        // We need this for compatibility reasons with ImGui
+        [[nodiscard]] static Matrix GenerateRowFirst(const Vector3& position, const Quaternion& rotation, const Vector3& scale)
+        {
+            const Matrix mRotation = CreateRotation(rotation).Transposed();
+
+            return Matrix
+            (
+                scale.x * mRotation.m00, scale.y * mRotation.m01, scale.z * mRotation.m02, position.x,
+                scale.x * mRotation.m10, scale.y * mRotation.m11, scale.z * mRotation.m12, position.y,
+                scale.x * mRotation.m20, scale.y * mRotation.m21, scale.z * mRotation.m22, position.z,
+                0.0f,                    0.0f                   , 0.0f,                    1.0f
+            );
+        }
+
         //= TRANSLATION ===========================================
         [[nodiscard]] Vector3 GetTranslation() const { return Vector3(m30, m31, m32); }
 
@@ -439,7 +454,7 @@ namespace Spartan::Math
         [[nodiscard]] const float* Data() const { return &m00; }
         [[nodiscard]] std::string ToString() const;
 
-        // Column-major memory representation 
+        // Column-major memory representation
         float m00 = 0.0f, m10 = 0.0f, m20 = 0.0f, m30 = 0.0f;
         float m01 = 0.0f, m11 = 0.0f, m21 = 0.0f, m31 = 0.0f;
         float m02 = 0.0f, m12 = 0.0f, m22 = 0.0f, m32 = 0.0f;

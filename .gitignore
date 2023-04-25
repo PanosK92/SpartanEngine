@@ -252,3 +252,6 @@ ModelManifest.xml
 .fake/
 
 .vscode/
+
+# Rider IDE config dir
+.idea/

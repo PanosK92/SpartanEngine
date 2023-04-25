@@ -31,7 +31,6 @@ namespace Spartan
     class SP_CLASS RHI_BlendState : public Object
     {
     public:
-        RHI_BlendState() = default;
         RHI_BlendState(
             const bool blend_enabled                    = false,
             const RHI_Blend source_blend                = RHI_Blend::Src_Alpha,
