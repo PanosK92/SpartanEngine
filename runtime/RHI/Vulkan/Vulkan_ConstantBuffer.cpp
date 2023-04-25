@@ -43,7 +43,7 @@ namespace Spartan
     {
         if (m_rhi_resource)
         {
-            Renderer::AddToDeletionQueue(RHI_Resource_Type::buffer, m_rhi_resource);
+            RHI_Device::AddToDeletionQueue(RHI_Resource_Type::buffer, m_rhi_resource);
             m_rhi_resource = nullptr;
         }
     }
@@ -53,7 +53,7 @@ namespace Spartan
         // Destroy previous buffer
         if (m_rhi_resource)
         {
-            Renderer::AddToDeletionQueue(RHI_Resource_Type::buffer, m_rhi_resource);
+            RHI_Device::AddToDeletionQueue(RHI_Resource_Type::buffer, m_rhi_resource);
             m_rhi_resource = nullptr;
         }
 

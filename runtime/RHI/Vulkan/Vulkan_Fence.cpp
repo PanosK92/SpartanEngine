@@ -50,7 +50,7 @@ namespace Spartan
         if (!m_resource)
             return;
 
-        Renderer::AddToDeletionQueue(RHI_Resource_Type::fence, m_resource);
+        RHI_Device::AddToDeletionQueue(RHI_Resource_Type::fence, m_resource);
         m_resource = nullptr;
     }
 

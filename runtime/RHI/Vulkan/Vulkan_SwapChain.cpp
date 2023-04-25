@@ -298,16 +298,16 @@ namespace Spartan
             {
                 if (image_view)
                 {
-                    Renderer::AddToDeletionQueue(RHI_Resource_Type::texture_view, image_view);
+                    RHI_Device::AddToDeletionQueue(RHI_Resource_Type::texture_view, image_view);
                 }
             }
             image_views.fill(nullptr);
         }
 
-        Renderer::AddToDeletionQueue(RHI_Resource_Type::swapchain, swap_chain);
+        RHI_Device::AddToDeletionQueue(RHI_Resource_Type::swapchain, swap_chain);
         swap_chain = nullptr;
 
-        Renderer::AddToDeletionQueue(RHI_Resource_Type::surface, surface);
+        RHI_Device::AddToDeletionQueue(RHI_Resource_Type::surface, surface);
         swap_chain = nullptr;
     }
 

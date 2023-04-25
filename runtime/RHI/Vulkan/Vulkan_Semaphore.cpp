@@ -69,13 +69,13 @@ namespace Spartan
         if (!m_resource)
             return;
 
-        Renderer::AddToDeletionQueue(RHI_Resource_Type::semaphore, m_resource);
+        RHI_Device::AddToDeletionQueue(RHI_Resource_Type::semaphore, m_resource);
         m_resource = nullptr;
     }
 
     void RHI_Semaphore::Reset()
     {
-        Renderer::AddToDeletionQueue(RHI_Resource_Type::semaphore, m_resource);
+        RHI_Device::AddToDeletionQueue(RHI_Resource_Type::semaphore, m_resource);
         m_resource = nullptr;
 
         create_semaphore(RHI_Context::device, m_is_timeline, m_resource);

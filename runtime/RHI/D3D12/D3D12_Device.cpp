@@ -37,6 +37,14 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
+    namespace
+    {
+        // Queues
+        static void* m_queue_graphics = nullptr;
+        static void* m_queue_compute  = nullptr;
+        static void* m_queue_copy     = nullptr;
+    }
+
     RHI_Device::RHI_Device()
     {
         // Detect device limits
@@ -225,7 +233,7 @@ namespace Spartan
         SetPrimaryPhysicalDevice(0);
     }
 
-    void RHI_Device::ParseDeletionQueue(const std::unordered_map<RHI_Resource_Type, std::vector<void*>>& deletion_queue)
+    void RHI_Device::ParseDeletionQueue()
     {
 
     }
@@ -263,5 +271,23 @@ namespace Spartan
     void RHI_Device::QueryGetData(void* query)
     {
 
+    }
+
+    void* RHI_Device::GetQueue(const RHI_Queue_Type type)
+    {
+        if (type == RHI_Queue_Type::Graphics)
+        {
+            return m_queue_graphics;
+        }
+        else if (type == RHI_Queue_Type::Copy)
+        {
+            return m_queue_copy;
+        }
+        else if (type == RHI_Queue_Type::Compute)
+        {
+            return m_queue_compute;
+        }
+
+        return nullptr;
     }
 }

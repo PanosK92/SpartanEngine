@@ -394,10 +394,10 @@ namespace Spartan
     
     RHI_Pipeline::~RHI_Pipeline()
     {
-        Renderer::AddToDeletionQueue(RHI_Resource_Type::pipeline, m_resource_pipeline);
+        RHI_Device::AddToDeletionQueue(RHI_Resource_Type::pipeline, m_resource_pipeline);
         m_resource_pipeline = nullptr;
         
-        Renderer::AddToDeletionQueue(RHI_Resource_Type::pipeline_layout, m_resource_pipeline_layout);
+        RHI_Device::AddToDeletionQueue(RHI_Resource_Type::pipeline_layout, m_resource_pipeline_layout);
         m_resource_pipeline_layout = nullptr;
     }
 }

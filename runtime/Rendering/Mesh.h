@@ -43,7 +43,7 @@ namespace Spartan
     {
     public:
         Mesh();
-        ~Mesh() = default;
+        ~Mesh();
 
         // IResource
         bool LoadFromFile(const std::string& file_path) override;

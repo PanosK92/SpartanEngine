@@ -51,6 +51,12 @@ namespace Spartan
         m_flags = GetDefaultFlags();
     }
 
+    Mesh::~Mesh()
+    {
+        m_index_buffer  = nullptr;
+        m_vertex_buffer = nullptr;
+    }
+
     void Mesh::Clear()
     {
         m_indices.clear();
@@ -259,11 +265,11 @@ namespace Spartan
     void Mesh::CreateGpuBuffers()
     {
         SP_ASSERT_MSG(!m_indices.empty(), "There are no indices");
-        m_index_buffer = make_shared<RHI_IndexBuffer>(false, "mesh");
+        m_index_buffer = make_shared<RHI_IndexBuffer>(false, "mesh_index_buffer");
         m_index_buffer->Create(m_indices);
 
         SP_ASSERT_MSG(!m_vertices.empty(), "There are no vertices");
-        m_vertex_buffer = make_shared<RHI_VertexBuffer>(false, "mesh");
+        m_vertex_buffer = make_shared<RHI_VertexBuffer>(false, "mesh_vertex_buffer");
         m_vertex_buffer->Create(m_vertices);
     }
 

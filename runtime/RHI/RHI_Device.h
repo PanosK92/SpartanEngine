@@ -43,13 +43,13 @@ namespace Spartan
         const PhysicalDevice* GetPrimaryPhysicalDevice();
 
         // Queue
-        void QueuePresent(void* swapchain_view, uint32_t* image_index, std::vector<RHI_Semaphore*>& wait_semaphores);
-        void QueueSubmit(const RHI_Queue_Type type, const uint32_t wait_flags, void* cmd_buffer, RHI_Semaphore* wait_semaphore = nullptr, RHI_Semaphore* signal_semaphore = nullptr, RHI_Fence* signal_fence = nullptr);
-        void QueueWait(const RHI_Queue_Type type);
-        void QueueWaitAll();
-        void* GetQueue(const RHI_Queue_Type type) const;
-        uint32_t GetQueueIndex(const RHI_Queue_Type type) const;
-        void SetQueueIndex(const RHI_Queue_Type type, const uint32_t index);
+        static void QueuePresent(void* swapchain_view, uint32_t* image_index, std::vector<RHI_Semaphore*>& wait_semaphores);
+        static void QueueSubmit(const RHI_Queue_Type type, const uint32_t wait_flags, void* cmd_buffer, RHI_Semaphore* wait_semaphore = nullptr, RHI_Semaphore* signal_semaphore = nullptr, RHI_Fence* signal_fence = nullptr);
+        static void QueueWait(const RHI_Queue_Type type);
+        static void QueueWaitAll();
+        static void* GetQueue(const RHI_Queue_Type type);
+        static uint32_t GetQueueIndex(const RHI_Queue_Type type);
+        static void SetQueueIndex(const RHI_Queue_Type type, const uint32_t index);
 
         // Queries
         void QueryCreate(void** query = nullptr, RHI_Query_Type type = RHI_Query_Type::Timestamp);
@@ -82,17 +82,20 @@ namespace Spartan
         // Misc
         bool IsValidResolution(const uint32_t width, const uint32_t height);
         uint32_t GetEnabledGraphicsStages() const { return m_enabled_graphics_shader_stages; }
-        void ParseDeletionQueue(const std::unordered_map<RHI_Resource_Type, std::vector<void*>>& deletion_queue);
+
+        // Deletion queue
+        static void AddToDeletionQueue(const RHI_Resource_Type resource_type, void* resource);
+        static void ParseDeletionQueue();
 
         // Vulkan memory allocator
-        void* GetMappedDataFromBuffer(void* resource);
-        void CreateBuffer(void*& resource, const uint64_t size, uint32_t usage, uint32_t memory_property_flags, const void* data_initial, const char* name);
-        void DestroyBuffer(void*& resource);
-        void CreateTexture(void* vk_image_creat_info, void*& resource, const char* name);
-        void DestroyTexture(void*& resource);
-        void MapMemory(void* resource, void*& mapped_data);
-        void UnmapMemory(void* resource, void*& mapped_data);
-        void FlushAllocation(void* resource, uint64_t offset, uint64_t size);
+        static void* GetMappedDataFromBuffer(void* resource);
+        static void CreateBuffer(void*& resource, const uint64_t size, uint32_t usage, uint32_t memory_property_flags, const void* data_initial, const char* name);
+        static void DestroyBuffer(void*& resource);
+        static void CreateTexture(void* vk_image_creat_info, void*& resource, const char* name);
+        static void DestroyTexture(void*& resource);
+        static void MapMemory(void* resource, void*& mapped_data);
+        static void UnmapMemory(void* resource, void*& mapped_data);
+        static void FlushAllocation(void* resource, uint64_t offset, uint64_t size);
 
         // Immediate
         RHI_CommandList* ImmediateBegin(const RHI_Queue_Type queue_type);
@@ -104,14 +107,6 @@ namespace Spartan
         void RegisterPhysicalDevice(const PhysicalDevice& physical_device);
         void SelectPrimaryPhysicalDevice();
         void SetPrimaryPhysicalDevice(const uint32_t index);
-
-        // Queues
-        void* m_queue_graphics          = nullptr;
-        void* m_queue_compute           = nullptr;
-        void* m_queue_copy              = nullptr;
-        uint32_t m_queue_graphics_index = 0;
-        uint32_t m_queue_compute_index  = 0;
-        uint32_t m_queue_copy_index     = 0;
 
         // Descriptors
         std::unordered_map<uint64_t, RHI_DescriptorSet> m_descriptor_sets;

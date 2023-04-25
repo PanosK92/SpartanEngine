@@ -37,7 +37,7 @@ namespace Spartan
     {
         if (m_resource)
         {
-            Renderer::AddToDeletionQueue(RHI_Resource_Type::descriptor_set_layout, m_resource);
+            RHI_Device::AddToDeletionQueue(RHI_Resource_Type::descriptor_set_layout, m_resource);
             m_resource = nullptr;
         }
     }

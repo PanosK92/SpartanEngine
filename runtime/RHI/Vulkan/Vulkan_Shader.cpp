@@ -43,7 +43,7 @@ namespace Spartan
     {
         if (m_rhi_resource)
         {
-            Renderer::AddToDeletionQueue(RHI_Resource_Type::shader, m_rhi_resource);
+            RHI_Device::AddToDeletionQueue(RHI_Resource_Type::shader, m_rhi_resource);
             m_rhi_resource = nullptr;
         }
     }
