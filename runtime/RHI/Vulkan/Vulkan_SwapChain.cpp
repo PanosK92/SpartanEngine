@@ -19,20 +19,13 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ========================
+//= INCLUDES =====================
 #include "pch.h"
 #include "../RHI_Implementation.h"
-#include "../RHI_SwapChain.h"
-#include "../RHI_Device.h"
-#include "../RHI_CommandList.h"
-#include "../RHI_Pipeline.h"
 #include "../RHI_Semaphore.h"
 #include "../RHI_CommandPool.h"
-#include "../../Profiling/Profiler.h"
-#include "../../Rendering/Renderer.h"
-#include <SDL/SDL.h>
 #include <SDL/SDL_vulkan.h>
-//===================================
+//================================
 
 //= NAMESPACES ===============
 using namespace std;
@@ -108,7 +101,6 @@ namespace Spartan
             "Failed to get physical device surfaces");
 
         return surface_formats;
-
     }
 
     static bool is_format_supported(const VkSurfaceKHR surface, RHI_Format* format, VkColorSpaceKHR color_space, const vector<VkSurfaceFormatKHR>& supported_formats)
@@ -282,33 +274,24 @@ namespace Spartan
         }
     }
     
-    static void destroy(
-        uint8_t buffer_count,
-        void*& surface,
-        void*& swap_chain,
+    static void destroy(uint8_t buffer_count, void* surface, void* swap_chain,
         array<void*, 3>& image_views,
-        array<std::shared_ptr<RHI_Semaphore>, max_buffer_count>& image_acquired_semaphore
+        array<shared_ptr<RHI_Semaphore>, max_buffer_count>& image_acquired_semaphore
     )
     {
-        image_acquired_semaphore.fill(nullptr);
-    
-        // Image views
+        for (void* image_view : image_views)
         {
-            for (void* image_view : image_views)
+            if (image_view)
             {
-                if (image_view)
-                {
-                    RHI_Device::AddToDeletionQueue(RHI_Resource_Type::texture_view, image_view);
-                }
+                RHI_Device::AddToDeletionQueue(RHI_Resource_Type::texture_view, image_view);
             }
-            image_views.fill(nullptr);
         }
 
-        RHI_Device::AddToDeletionQueue(RHI_Resource_Type::swapchain, swap_chain);
-        swap_chain = nullptr;
+        image_views.fill(nullptr);
+        image_acquired_semaphore.fill(nullptr);
 
-        RHI_Device::AddToDeletionQueue(RHI_Resource_Type::surface, surface);
-        swap_chain = nullptr;
+        //RHI_Device::AddToDeletionQueue(RHI_Resource_Type::swapchain, swap_chain);
+        //RHI_Device::AddToDeletionQueue(RHI_Resource_Type::surface, surface);
     }
 
     RHI_SwapChain::RHI_SwapChain(
@@ -321,13 +304,9 @@ namespace Spartan
         const char* name
     )
     {
-        // Verify resolution
-        if (!RHI_Device::IsValidResolution(width, height))
-        {
-            SP_LOG_WARNING("%dx%d is an invalid resolution", width, height);
-            return;
-        }
+        SP_ASSERT_MSG(RHI_Device::IsValidResolution(width, height), "Invalid resolution");
 
+        // Clear
         m_acquire_semaphore.fill(nullptr);
         m_rhi_backbuffer_resource.fill(nullptr);
         m_rhi_backbuffer_srv.fill(nullptr);
@@ -372,6 +351,8 @@ namespace Spartan
             m_rhi_backbuffer_srv,
             m_acquire_semaphore
         );
+        m_rhi_resource = nullptr;
+        m_surface      = nullptr;
     }
 
     bool RHI_SwapChain::Resize(const uint32_t width, const uint32_t height, const bool force /*= false*/)
@@ -398,6 +379,8 @@ namespace Spartan
             m_rhi_backbuffer_srv,
             m_acquire_semaphore
         );
+        m_rhi_resource = nullptr;
+        m_surface      = nullptr;
 
         // Create the swap chain with the new dimensions
         create
@@ -457,9 +440,9 @@ namespace Spartan
 
     void RHI_SwapChain::Present()
     {
-        SP_ASSERT_MSG(m_rhi_resource != nullptr,                                 "The swapchain has not been initialised");
+        SP_ASSERT_MSG(m_rhi_resource != nullptr,                                 "Invalid swapchain");
         SP_ASSERT_MSG(m_image_index != m_image_index_previous,                   "No image was acquired");
-        SP_ASSERT_MSG(m_layouts[m_image_index] == RHI_Image_Layout::Present_Src, "The layout must be Present_Src");
+        SP_ASSERT_MSG(m_layouts[m_image_index] == RHI_Image_Layout::Present_Src, "Invalid layout");
 
         // Get the semaphores that present should wait for
         m_wait_semaphores.clear();
@@ -468,21 +451,15 @@ namespace Spartan
             m_wait_semaphores.emplace_back(m_acquire_semaphore[m_sync_index].get());
 
             // The others are all the command lists
-            const vector<shared_ptr<RHI_CommandPool>>& cmd_pools = RHI_Device::GetCommandPools();
-            for (const shared_ptr<RHI_CommandPool>& cmd_pool : cmd_pools)
+            for (const shared_ptr<RHI_CommandPool>& cmd_pool : RHI_Device::GetCommandPools())
             {
                 // The editor supports multiple windows, so we can be dealing with multiple swapchains.
                 // Therefore we only want to wait on the command list semaphores, which will be presenting their work to this swapchain.
                 if (m_object_id == cmd_pool->GetSwapchainId())
                 {
                     RHI_Semaphore* semaphore = cmd_pool->GetCurrentCommandList()->GetSemaphoreProccessed();
-
-                    // Command lists can be discarded (when they reference destroyed memory).
-                    // In cases like that, the command lists are not submitted and as a result, the semaphore won't be signaled.
-                    if (semaphore->GetCpuState() == RHI_Sync_State::Submitted)
-                    {
-                        m_wait_semaphores.emplace_back(semaphore);
-                    }
+                    SP_ASSERT_MSG(semaphore->GetCpuState() == RHI_Sync_State::Submitted, "Semaphore hasn't been submitted");
+                    m_wait_semaphores.emplace_back(semaphore);
                 }
             }
         }

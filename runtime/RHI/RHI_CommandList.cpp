@@ -79,9 +79,8 @@ namespace Spartan
     bool RHI_CommandList::IsExecuting()
     {
         return
-            m_state == RHI_CommandListState::Submitted && // Submit() has been called.
-            !m_proccessed_fence->IsSignaled()          && // The processed fence hasn't been signaled yet.
-            !m_discard;                                   // It hasn't been discarded, in which case Submit() early exited.
+            m_state == RHI_CommandListState::Submitted && // It has been submitted
+            !m_proccessed_fence->IsSignaled();            // And the fence is not signaled yet
     }
 
     void RHI_CommandList::GetDescriptorsFromPipelineState(RHI_PipelineState& pipeline_state, vector<RHI_Descriptor>& descriptors)

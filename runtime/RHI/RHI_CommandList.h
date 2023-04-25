@@ -147,7 +147,6 @@ namespace Spartan
         void GetDescriptorsFromPipelineState(RHI_PipelineState& pipeline_state, std::vector<RHI_Descriptor>& descriptors);
 
         RHI_Pipeline* m_pipeline                         = nullptr;
-        std::atomic<bool> m_discard                      = false;
         bool m_is_rendering                              = false;
         bool m_pipeline_dirty                            = false;
         std::atomic<RHI_CommandListState> m_state        = RHI_CommandListState::Idle;
