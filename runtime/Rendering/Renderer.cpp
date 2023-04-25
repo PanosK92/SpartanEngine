@@ -146,44 +146,7 @@ namespace Spartan
 
     void Renderer::Initialize()
     {
-        // Default options
-        m_options.fill(0.0f);
-        SetOption(RendererOption::Bloom,                  0.2f); // Non-zero values activate it and define the blend factor.
-        SetOption(RendererOption::MotionBlur,             1.0f);
-        SetOption(RendererOption::Ssao,                   1.0f);
-        SetOption(RendererOption::Ssao_Gi,                1.0f);
-        SetOption(RendererOption::ScreenSpaceShadows,     1.0f);
-        SetOption(RendererOption::ScreenSpaceReflections, 1.0f);
-        SetOption(RendererOption::Anisotropy,             16.0f);
-        SetOption(RendererOption::ShadowResolution,       2048.0f);
-        SetOption(RendererOption::Tonemapping,            static_cast<float>(TonemappingMode::Disabled));
-        SetOption(RendererOption::Gamma,                  2.0f);
-        SetOption(RendererOption::Sharpness,              0.5f);
-        SetOption(RendererOption::Fog,                    0.0f);
-        SetOption(RendererOption::Antialiasing,           static_cast<float>(AntialiasingMode::TaaFxaa)); // This is using FSR 2 for TAA
-        SetOption(RendererOption::Upsampling,             static_cast<float>(UpsamplingMode::FSR2));
-        // Debug
-        SetOption(RendererOption::Debug_TransformHandle,    1.0f);
-        SetOption(RendererOption::Debug_SelectionOutline,   1.0f);
-        SetOption(RendererOption::Debug_Grid,               1.0f);
-        SetOption(RendererOption::Debug_ReflectionProbes,   1.0f);
-        SetOption(RendererOption::Debug_Lights,             1.0f);
-        SetOption(RendererOption::Debug_Physics,            0.0f);
-        SetOption(RendererOption::Debug_PerformanceMetrics, 1.0f);
-        SetOption(RendererOption::Vsync,                    0.0f);
-        //SetOption(RendererOption::DepthOfField,        1.0f); // This is depth of field from ALDI, so until I improve it, it should be disabled by default.
-        //SetOption(RendererOption::Render_DepthPrepass, 1.0f); // Depth-pre-pass is not always faster, so by default, it's disabled.
-        //SetOption(RendererOption::Debanding,           1.0f); // Disable debanding as we shouldn't be seeing banding to begin with.
-        //SetOption(RendererOption::VolumetricFog,       1.0f); // Disable by default because it's not that great, I need to do it with a voxelised approach.
-
-        // Subscribe to events.
-        SP_SUBSCRIBE_TO_EVENT(EventType::WorldResolved,             SP_EVENT_HANDLER_VARIANT_STATIC(OnAddRenderables));
-        SP_SUBSCRIBE_TO_EVENT(EventType::WorldClear,                SP_EVENT_HANDLER_STATIC(OnClear));
-        SP_SUBSCRIBE_TO_EVENT(EventType::WindowOnFullScreenToggled, SP_EVENT_HANDLER_STATIC(OnFullScreenToggled));
-
-        // Get thread id.
         m_render_thread_id = this_thread::get_id();
-
         Display::DetectDisplayModes();
 
         // RHI Initialization
@@ -219,11 +182,41 @@ namespace Spartan
         m_cmd_pool->AllocateCommandLists(RHI_Queue_Type::Graphics, 2, 2);
 
         // Set the output and viewport resolution to the display resolution.
-        // If the editor is running, it will set the viewport resolution to whatever the viewport.
-        
+        // If the editor is running, it will set the viewport resolution to whatever the viewport.      
         SetViewport(static_cast<float>(Window::GetWidth()), static_cast<float>(Window::GetHeight()));
         SetResolutionRender(Display::GetWidth(), Display::GetHeight(), false);
         SetResolutionOutput(Display::GetWidth(), Display::GetHeight(), false);
+
+        // Default options
+        m_options.fill(0.0f);
+        SetOption(RendererOption::Bloom,                  0.2f); // Non-zero values activate it and define the blend factor.
+        SetOption(RendererOption::MotionBlur,             1.0f);
+        SetOption(RendererOption::Ssao,                   1.0f);
+        SetOption(RendererOption::Ssao_Gi,                1.0f);
+        SetOption(RendererOption::ScreenSpaceShadows,     1.0f);
+        SetOption(RendererOption::ScreenSpaceReflections, 1.0f);
+        SetOption(RendererOption::Anisotropy,             16.0f);
+        SetOption(RendererOption::ShadowResolution,       2048.0f);
+        SetOption(RendererOption::Tonemapping,            static_cast<float>(TonemappingMode::Disabled));
+        SetOption(RendererOption::Gamma,                  2.0f);
+        SetOption(RendererOption::Sharpness,              0.5f);
+        SetOption(RendererOption::Fog,                    0.0f);
+        SetOption(RendererOption::Antialiasing,           static_cast<float>(AntialiasingMode::TaaFxaa)); // This is using FSR 2 for TAA
+        SetOption(RendererOption::Upsampling,             static_cast<float>(UpsamplingMode::FSR2));
+        // Debug
+        SetOption(RendererOption::Debug_TransformHandle,    1.0f);
+        SetOption(RendererOption::Debug_SelectionOutline,   1.0f);
+        SetOption(RendererOption::Debug_Grid,               1.0f);
+        SetOption(RendererOption::Debug_ReflectionProbes,   1.0f);
+        SetOption(RendererOption::Debug_Lights,             1.0f);
+        SetOption(RendererOption::Debug_Physics,            0.0f);
+        SetOption(RendererOption::Debug_PerformanceMetrics, 1.0f);
+        SetOption(RendererOption::Vsync,                    0.0f);
+        //SetOption(RendererOption::DepthOfField,        1.0f); // This is depth of field from ALDI, so until I improve it, it should be disabled by default.
+        //SetOption(RendererOption::Render_DepthPrepass, 1.0f); // Depth-pre-pass is not always faster, so by default, it's disabled.
+        //SetOption(RendererOption::Debanding,           1.0f); // Disable debanding as we shouldn't be seeing banding to begin with.
+        //SetOption(RendererOption::VolumetricFog,       1.0f); // Disable by default because it's not that great, I need to do it with a voxelised approach.
+
 
         CreateConstantBuffers();
         CreateShaders();
@@ -237,6 +230,12 @@ namespace Spartan
         CreateStructuredBuffers();
         CreateTextures();
 
+        // Subscribe to events
+        SP_SUBSCRIBE_TO_EVENT(EventType::WorldResolved,             SP_EVENT_HANDLER_VARIANT_STATIC(OnAddRenderables));
+        SP_SUBSCRIBE_TO_EVENT(EventType::WorldClear,                SP_EVENT_HANDLER_STATIC(OnClear));
+        SP_SUBSCRIBE_TO_EVENT(EventType::WindowOnFullScreenToggled, SP_EVENT_HANDLER_STATIC(OnFullScreenToggled));
+
+        // Fire events
         SP_FIRE_EVENT(EventType::RendererOnInitialized);
     }
 

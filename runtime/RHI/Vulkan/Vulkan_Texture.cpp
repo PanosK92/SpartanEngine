@@ -287,6 +287,9 @@ namespace Spartan
 
     bool RHI_Texture::RHI_CreateResource()
     {
+        SP_ASSERT_MSG(m_width != 0,  "Width can't be zero");
+        SP_ASSERT_MSG(m_height != 0, "Height can't be zero");
+
         create_image(this);
 
         // If the texture has any data, stage it
