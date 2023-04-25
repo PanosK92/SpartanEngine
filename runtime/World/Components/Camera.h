@@ -150,39 +150,41 @@ namespace Spartan
         void ProcessInputFpsControl();
         void ProcessInputLerpToEntity();
 
-        float m_aperture                        = 50.0f;        // Size of the lens diaphragm (mm). Controls depth of field and chromatic aberration.
-        float m_shutter_speed                   = 1.0f / 60.0f; // Length of time for which the camera shutter is open (sec). Also controls the amount of motion blur.
-        float m_iso                             = 500.0f;       // Sensitivity to light.
-        float m_fov_horizontal_rad              = Math::Helper::DegreesToRadians(90.0f);
-        float m_near_plane                      = 0.1f;
-        float m_far_plane                       = 1000.0f;
-        ProjectionType m_projection_type        = Projection_Perspective;
-        Color m_clear_color                     = Color::standard_cornflower_blue;
-        Math::Matrix m_view                     = Math::Matrix::Identity;
-        Math::Matrix m_projection               = Math::Matrix::Identity;
-        Math::Matrix m_view_projection          = Math::Matrix::Identity;
-        Math::Vector3 m_position                = Math::Vector3::Zero;
-        Math::Quaternion m_rotation             = Math::Quaternion::Identity;
-        bool m_is_dirty                         = false;
-        bool m_first_person_control_enabled     = true;
-        bool m_is_controlled_by_keyboard_mouse  = false;
-        Math::Vector2 m_mouse_last_position     = Math::Vector2::Zero;
-        bool m_fps_control_cursor_hidden        = false;
-        Math::Vector3 m_movement_speed          = Math::Vector3::Zero;
-        float m_movement_speed_min              = 0.5f;
-        float m_movement_speed_max              = 5.0f;
-        float m_movement_acceleration           = 1000.0f;
-        float m_movement_drag                   = 10.0f;
-        Math::Vector2 m_mouse_smoothed          = Math::Vector2::Zero;
-        Math::Vector2 m_first_person_rotation   = Math::Vector2::Zero;
-        float m_mouse_sensitivity               = 0.2f;
-        float m_mouse_smoothing                 = 0.5f;
-        bool m_lerp_to_target                   = false;
-        bool m_lerpt_to_bookmark                = false;
-        int m_target_bookmark_index             = -1;
-        float m_lerp_to_target_alpha            = 0.0f;
-        float m_lerp_to_target_speed            = 0.0f;
-        Math::Vector3 m_lerp_to_target_position = Math::Vector3::Zero;
+        float m_aperture                           = 50.0f;        // Size of the lens diaphragm (mm). Controls depth of field and chromatic aberration.
+        float m_shutter_speed                      = 1.0f / 60.0f; // Length of time for which the camera shutter is open (sec). Also controls the amount of motion blur.
+        float m_iso                                = 500.0f;       // Sensitivity to light.
+        float m_fov_horizontal_rad                 = Math::Helper::DegreesToRadians(90.0f);
+        float m_near_plane                         = 0.1f;
+        float m_far_plane                          = 1000.0f;
+        ProjectionType m_projection_type           = Projection_Perspective;
+        Color m_clear_color                        = Color::standard_cornflower_blue;
+        Math::Matrix m_view                        = Math::Matrix::Identity;
+        Math::Matrix m_projection                  = Math::Matrix::Identity;
+        Math::Matrix m_view_projection             = Math::Matrix::Identity;
+        Math::Vector3 m_position                   = Math::Vector3::Zero;
+        Math::Quaternion m_rotation                = Math::Quaternion::Identity;
+        bool m_is_dirty                            = false;
+        bool m_first_person_control_enabled        = true;
+        bool m_is_controlled_by_keyboard_mouse     = false;
+        Math::Vector2 m_mouse_last_position        = Math::Vector2::Zero;
+        bool m_fps_control_cursor_hidden           = false;
+        Math::Vector3 m_movement_speed             = Math::Vector3::Zero;
+        float m_movement_speed_min                 = 0.5f;
+        float m_movement_speed_max                 = 5.0f;
+        float m_movement_acceleration              = 1000.0f;
+        float m_movement_drag                      = 10.0f;
+        Math::Vector2 m_mouse_smoothed             = Math::Vector2::Zero;
+        Math::Vector2 m_first_person_rotation      = Math::Vector2::Zero;
+        float m_mouse_sensitivity                  = 0.2f;
+        float m_mouse_smoothing                    = 0.5f;
+        bool m_lerp_to_target_p                    = false;
+        bool m_lerp_to_target_r                    = false;
+        bool m_lerpt_to_bookmark                   = false;
+        int m_target_bookmark_index                = -1;
+        float m_lerp_to_target_alpha               = 0.0f;
+        float m_lerp_to_target_distance            = 0.0f;
+        Math::Vector3 m_lerp_to_target_position    = Math::Vector3::Zero;
+        Math::Quaternion m_lerp_to_target_rotation = Math::Quaternion::Identity;
         RHI_Viewport m_last_known_viewport;
         Math::Ray m_ray;
         Math::Frustum m_frustum;
