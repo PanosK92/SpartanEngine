@@ -517,20 +517,18 @@ namespace Spartan
             {
                 SP_LOG_INFO("Focusing on entity \"%s\"...", entity->GetTransform()->GetEntity()->GetName().c_str());
 
+                m_lerp_to_target_position       = entity->GetTransform()->GetPosition();
+                const Vector3 target_direction  = (m_lerp_to_target_position - m_transform->GetPosition()).Normalized();
+
                 // If the entity has a renderable component, we can get a more accurate target position.
-                // ...otherwise get the default transform position and apply an offset so that the rotation
-                // vector doesn't suffer
+                // ...otherwise we apply a simple offset so that the rotation vector doesn't suffer
                 if (Renderable* renderable = entity->GetRenderable())
                 {
-                    m_lerp_to_target_position       = entity->GetTransform()->GetPosition();
-                    const Vector3 target_direction  = (m_lerp_to_target_position - m_transform->GetPosition()).Normalized();
-                    m_lerp_to_target_position       -= target_direction * renderable->GetAabb().GetExtents().Length() * 2.0f;
+                    m_lerp_to_target_position -= target_direction * renderable->GetAabb().GetExtents().Length() * 2.0f;
                 }
                 else
                 {
-                    m_lerp_to_target_position       = entity->GetTransform()->GetPosition();
-                    const Vector3 target_direction  = (m_lerp_to_target_position - m_transform->GetPosition()).Normalized();
-                    m_lerp_to_target_position       -= target_direction;
+                    m_lerp_to_target_position -= target_direction;
                 }
 
                 m_lerp_to_target_rotation  = Quaternion::FromLookRotation(m_lerp_to_target_position - m_transform->GetPosition()).Normalized();
