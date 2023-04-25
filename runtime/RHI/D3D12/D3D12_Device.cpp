@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Shader.h"
 #include "../RHI_InputLayout.h"
 #include <wrl/client.h>
+#include "../RHI_CommandPool.h"
 //=================================
 
 //= NAMESPACES ===============
@@ -43,9 +44,11 @@ namespace Spartan
         static void* m_queue_graphics = nullptr;
         static void* m_queue_compute  = nullptr;
         static void* m_queue_copy     = nullptr;
+
+        static vector<shared_ptr<RHI_CommandPool>> cmd_pools;
     }
 
-    RHI_Device::RHI_Device()
+    void RHI_Device::Initialize()
     {
         // Detect device limits
         m_max_texture_1d_dimension   = D3D12_REQ_TEXTURE1D_U_DIMENSION;
@@ -289,5 +292,24 @@ namespace Spartan
         }
 
         return nullptr;
+    }
+
+    RHI_CommandPool* RHI_Device::AllocateCommandPool(const char* name, const uint64_t swap_chain_id)
+    {
+        return cmd_pools.emplace_back(make_shared<RHI_CommandPool>(name, swap_chain_id)).get();
+    }
+
+    void RHI_Device::DestroyCommandPool(RHI_CommandPool* cmd_pool)
+    {
+        vector<shared_ptr<RHI_CommandPool>>::iterator it;
+        for (it = cmd_pools.begin(); it != cmd_pools.end();)
+        {
+            if (cmd_pool->GetObjectId() == (*it)->GetObjectId())
+            {
+                it = cmd_pools.erase(it);
+                return;
+            }
+            it++;
+        }
     }
 }

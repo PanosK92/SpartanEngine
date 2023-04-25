@@ -167,12 +167,12 @@ namespace Spartan
         }
 
         // If we don't have a descriptor set to match that state, create one
-        unordered_map<uint64_t, RHI_DescriptorSet>& descriptor_sets = Renderer::GetRhiDevice()->GetDescriptorSets();
+        unordered_map<uint64_t, RHI_DescriptorSet>& descriptor_sets = RHI_Device::GetDescriptorSets();
         const auto it = descriptor_sets.find(hash);
         if (it == descriptor_sets.end())
         {
             // Only allocate if the descriptor set cache hash enough capacity
-            SP_ASSERT(Renderer::GetRhiDevice()->HasDescriptorSetCapacity() && "Descriptor pool has no more memory to allocate another descriptor set");
+            SP_ASSERT_MSG(RHI_Device::HasDescriptorSetCapacity(), "Descriptor pool has no more memory to allocate another descriptor set");
 
             // Create descriptor set
             descriptor_sets[hash] = RHI_DescriptorSet(m_descriptors, this, m_name.c_str());

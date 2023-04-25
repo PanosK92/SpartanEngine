@@ -47,7 +47,7 @@ namespace Spartan
             }
         #endif
 
-        if (Renderer::GetRhiDevice()->GetPrimaryPhysicalDevice()->IsIntel())
+        if (RHI_Device::GetPrimaryPhysicalDevice()->IsIntel())
         {
             SP_LOG_WARNING("Swap_Flip_Discard was requested but it's not supported by Intel adapters, using Swap_Discard instead.");
             return DXGI_SWAP_EFFECT_DISCARD;
@@ -72,7 +72,7 @@ namespace Spartan
         SP_ASSERT(IsWindow(hwnd));
 
         // Verify resolution
-        if (!Renderer::GetRhiDevice()->IsValidResolution(width, height))
+        if (!RHI_Device::IsValidResolution(width, height))
         {
             SP_LOG_WARNING("%dx%d is an invalid resolution", width, height);
             return;
@@ -112,7 +112,7 @@ namespace Spartan
 
         IDXGISwapChain1* swap_chain;
         d3d12_utility::error::check(factory->CreateSwapChainForHwnd(
-            static_cast<ID3D12CommandQueue*>(Renderer::GetRhiDevice()->GetQueue(RHI_Queue_Type::Graphics)), // Swap chain needs the queue so that it can force a flush on it.
+            static_cast<ID3D12CommandQueue*>(RHI_Device::GetQueue(RHI_Queue_Type::Graphics)), // Swap chain needs the queue so that it can force a flush on it.
             hwnd,
             &swap_chain_desc,
             nullptr,

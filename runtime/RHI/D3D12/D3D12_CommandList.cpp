@@ -74,7 +74,7 @@ namespace Spartan
     RHI_CommandList::~RHI_CommandList()
     {
         // Wait in case it's still in use by the GPU
-        Renderer::GetRhiDevice()->QueueWaitAll();
+        RHI_Device::QueueWaitAll();
 
         // Command list
         d3d12_utility::release<ID3D12CommandQueue>(m_rhi_resource);

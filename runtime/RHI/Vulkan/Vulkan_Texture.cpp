@@ -108,7 +108,7 @@ namespace Spartan
 
         // Create image
         void*& resource = texture->GetRhiResource();
-        Renderer::GetRhiDevice()->CreateTexture(static_cast<void*>(&create_info), resource, texture->GetName().c_str());
+        RHI_Device::CreateTexture(static_cast<void*>(&create_info), resource, texture->GetName().c_str());
     }
 
     static void set_debug_name(RHI_Texture* texture)
@@ -194,12 +194,12 @@ namespace Spartan
         }
 
         // Create staging buffer
-        Renderer::GetRhiDevice()->CreateBuffer(staging_buffer, buffer_offset, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, nullptr, "staging_buffer_texture");
+        RHI_Device::CreateBuffer(staging_buffer, buffer_offset, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, nullptr, "staging_buffer_texture");
 
         // Copy array and mip level data to the staging buffer
         void* mapped_data = nullptr;
         buffer_offset = 0;
-        Renderer::GetRhiDevice()->MapMemory(staging_buffer, mapped_data);
+        RHI_Device::MapMemory(staging_buffer, mapped_data);
         {
             for (uint32_t array_index = 0; array_index < array_length; array_index++)
             {
@@ -211,7 +211,7 @@ namespace Spartan
                 }
             }
 
-            Renderer::GetRhiDevice()->UnmapMemory(staging_buffer, mapped_data);
+            RHI_Device::UnmapMemory(staging_buffer, mapped_data);
         }
 
         return true;
@@ -226,7 +226,7 @@ namespace Spartan
             return false;
 
         // Copy the staging buffer into the image
-        if (RHI_CommandList* cmd_list = Renderer::GetRhiDevice()->ImmediateBegin(RHI_Queue_Type::Graphics))
+        if (RHI_CommandList* cmd_list = RHI_Device::ImmediateBegin(RHI_Queue_Type::Graphics))
         {
             // Optimal layout for images which are the destination of a transfer format
             RHI_Image_Layout layout = RHI_Image_Layout::Transfer_Dst_Optimal;
@@ -245,10 +245,10 @@ namespace Spartan
             );
 
             // End/flush
-            Renderer::GetRhiDevice()->ImmediateSubmit(cmd_list);
+            RHI_Device::ImmediateSubmit(cmd_list);
 
             // Free staging buffer
-            Renderer::GetRhiDevice()->DestroyBuffer(staging_buffer);
+            RHI_Device::DestroyBuffer(staging_buffer);
 
             // Update texture layout
             texture->SetLayout(layout, nullptr);
@@ -296,7 +296,7 @@ namespace Spartan
         }
 
         // Transition to target layout
-        if (RHI_CommandList* cmd_list = Renderer::GetRhiDevice()->ImmediateBegin(RHI_Queue_Type::Graphics))
+        if (RHI_CommandList* cmd_list = RHI_Device::ImmediateBegin(RHI_Queue_Type::Graphics))
         {
             RHI_Image_Layout target_layout = GetAppropriateLayout(this);
 
@@ -304,7 +304,7 @@ namespace Spartan
             vulkan_utility::image::set_layout(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()), this, 0, m_mip_count, m_array_length, m_layout[0], target_layout);
         
             // Flush
-            Renderer::GetRhiDevice()->ImmediateSubmit(cmd_list);
+            RHI_Device::ImmediateSubmit(cmd_list);
 
             // Update this texture with the new layout
             for (uint32_t i = 0; i < m_mip_count; i++)

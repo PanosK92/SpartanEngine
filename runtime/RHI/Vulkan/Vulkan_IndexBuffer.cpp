@@ -60,24 +60,24 @@ namespace Spartan
             VkMemoryPropertyFlags flags  = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT; // mappable
 
             // Create
-            Renderer::GetRhiDevice()->CreateBuffer(m_rhi_resource, m_object_size_gpu, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, flags, nullptr, m_name.c_str());
+            RHI_Device::CreateBuffer(m_rhi_resource, m_object_size_gpu, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, flags, nullptr, m_name.c_str());
 
             // Get mapped data pointer
-            m_mapped_data = Renderer::GetRhiDevice()->GetMappedDataFromBuffer(m_rhi_resource);
+            m_mapped_data = RHI_Device::GetMappedDataFromBuffer(m_rhi_resource);
         }
         else // The reason we use staging is because memory with VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT is not mappable but it's fast, we want that.
         {
             // Create staging/source buffer and copy the indices to it
             void* staging_buffer = nullptr;
-            Renderer::GetRhiDevice()->CreateBuffer(staging_buffer, m_object_size_gpu, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, indices, m_name.c_str());
+            RHI_Device::CreateBuffer(staging_buffer, m_object_size_gpu, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, indices, m_name.c_str());
 
             // Create destination buffer
-            Renderer::GetRhiDevice()->CreateBuffer(m_rhi_resource, m_object_size_gpu, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, nullptr, m_name.c_str());
+            RHI_Device::CreateBuffer(m_rhi_resource, m_object_size_gpu, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, nullptr, m_name.c_str());
 
             // Copy staging buffer to destination buffer
             {
                 // Create command buffer
-                RHI_CommandList* cmd_list = Renderer::GetRhiDevice()->ImmediateBegin(RHI_Queue_Type::Copy);
+                RHI_CommandList* cmd_list = RHI_Device::ImmediateBegin(RHI_Queue_Type::Copy);
 
                 VkBuffer* buffer_vk         = reinterpret_cast<VkBuffer*>(&m_rhi_resource);
                 VkBuffer* buffer_staging_vk = reinterpret_cast<VkBuffer*>(&staging_buffer);
@@ -88,10 +88,10 @@ namespace Spartan
                 vkCmdCopyBuffer(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()), *buffer_staging_vk, *buffer_vk, 1, &copy_region);
 
                 // Flush and free command buffer
-                Renderer::GetRhiDevice()->ImmediateSubmit(cmd_list);
+                RHI_Device::ImmediateSubmit(cmd_list);
 
                 // Destroy staging buffer
-                Renderer::GetRhiDevice()->DestroyBuffer(staging_buffer);
+                RHI_Device::DestroyBuffer(staging_buffer);
             }
         }
 

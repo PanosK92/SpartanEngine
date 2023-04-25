@@ -24,6 +24,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Implementation.h"
 #include "../RHI_Semaphore.h"
 #include "../RHI_Fence.h"
+#include "../RHI_CommandPool.h"
+#include "../RHI_DescriptorSet.h"
 #include "../../Core/Window.h"
 #include "../../Profiling/Profiler.h"
 SP_WARNINGS_OFF
@@ -41,6 +43,15 @@ namespace Spartan
 {
     namespace
     {
+        // Descriptors
+        static unordered_map<uint64_t, RHI_DescriptorSet> descriptor_sets;
+        static void* descriptor_pool = nullptr;
+        static uint32_t descriptor_set_capacity = 0;
+
+        // Command pools
+        static vector<shared_ptr<RHI_CommandPool>> cmd_pools;
+        static array<shared_ptr<RHI_CommandPool>, 3> cmd_pools_immediate;
+
         // Queues
         static mutex mutex_queue;
         static void* m_queue_graphics          = nullptr;
@@ -51,6 +62,10 @@ namespace Spartan
         static uint32_t m_queue_copy_index     = 0;
 
         // Misc
+        static uint32_t m_max_bound_descriptor_sets = 4;
+        static mutex mutex_immediate;
+        static condition_variable condition_variable_immediate;
+        static bool immediate_ready = true;
         static mutex mutex_allocation;
         static mutex mutex_deletion;
         static unordered_map<RHI_Resource_Type, vector<void*>> deletion_queue;
@@ -59,7 +74,7 @@ namespace Spartan
     namespace vulkan_memory_allocator
     {
         static VmaAllocator allocator;
-        static std::unordered_map<uint64_t, VmaAllocation> allocations;
+        static unordered_map<uint64_t, VmaAllocation> allocations;
 
         static uint64_t resource_to_id(void* resource)
         {
@@ -198,7 +213,7 @@ namespace Spartan
         return extensions_supported;
     }
 
-    RHI_Device::RHI_Device()
+    void RHI_Device::Initialize()
     {
         SP_ASSERT_MSG(RHI_Context::IsInitialized(), "RHI context not initialized");
 
@@ -530,12 +545,12 @@ namespace Spartan
         QueueWaitAll();
 
         // Destroy command pools
-        m_cmd_pools.clear();
-        m_cmd_pools_immediate.fill(nullptr);
+        cmd_pools.clear();
+        cmd_pools_immediate.fill(nullptr);
 
         // Descriptor pool
-        vkDestroyDescriptorPool(RHI_Context::device, static_cast<VkDescriptorPool>(m_descriptor_pool), nullptr);
-        m_descriptor_pool = nullptr;
+        vkDestroyDescriptorPool(RHI_Context::device, static_cast<VkDescriptorPool>(descriptor_pool), nullptr);
+        descriptor_pool = nullptr;
 
         // Allocator
         if (vulkan_memory_allocator::allocator != nullptr)
@@ -649,7 +664,7 @@ namespace Spartan
             return false;
         };
 
-        auto get_queue_family_indices = [this, &get_queue_family_index](const VkPhysicalDevice& physical_device)
+        auto get_queue_family_indices = [&get_queue_family_index](const VkPhysicalDevice& physical_device)
         {
             uint32_t queue_family_count = 0;
             vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &queue_family_count, nullptr);
@@ -695,9 +710,9 @@ namespace Spartan
         };
 
         // Go through all the devices (sorted from best to worst based on their properties)
-        for (uint32_t device_index = 0; device_index < m_physical_devices.size(); device_index++)
+        for (uint32_t device_index = 0; device_index < GetPhysicalDevices().size(); device_index++)
         {
-            VkPhysicalDevice device = static_cast<VkPhysicalDevice>(m_physical_devices[device_index].GetData());
+            VkPhysicalDevice device = static_cast<VkPhysicalDevice>(GetPhysicalDevices()[device_index].GetData());
 
             // Get the first device that has a graphics, a compute and a transfer queue
             if (get_queue_family_indices(device))
@@ -845,15 +860,15 @@ namespace Spartan
         deletion_queue.clear();
     }
 
-    void RHI_Device::SetDescriptorSetCapacity(uint32_t descriptor_set_capacity)
+    void RHI_Device::SetDescriptorSetCapacity(uint32_t capacity)
     {
         // If the requested capacity is zero, then only recreate the descriptor pool
-        if (descriptor_set_capacity == 0)
+        if (capacity == 0)
         {
-            descriptor_set_capacity = m_descriptor_set_capacity;
+            capacity = descriptor_set_capacity;
         }
 
-        if (m_descriptor_set_capacity == descriptor_set_capacity)
+        if (descriptor_set_capacity == capacity)
         {
             SP_LOG_WARNING("Capacity is already %d, is this reset needed ?");
         }
@@ -882,19 +897,19 @@ namespace Spartan
             pool_create_info.flags                      = VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT_EXT;
             pool_create_info.poolSizeCount              = static_cast<uint32_t>(pool_sizes.size());
             pool_create_info.pPoolSizes                 = pool_sizes.data();
-            pool_create_info.maxSets                    = descriptor_set_capacity;
+            pool_create_info.maxSets                    = capacity;
 
             SP_VK_ASSERT_MSG(
-                vkCreateDescriptorPool(RHI_Context::device, &pool_create_info, nullptr, reinterpret_cast<VkDescriptorPool*>(&m_descriptor_pool)),
+                vkCreateDescriptorPool(RHI_Context::device, &pool_create_info, nullptr, reinterpret_cast<VkDescriptorPool*>(&descriptor_pool)),
                 "Failed to create descriptor pool."
             );
         }
 
+        descriptor_set_capacity = capacity;
         SP_LOG_INFO("Capacity has been set to %d elements", descriptor_set_capacity);
-        m_descriptor_set_capacity = descriptor_set_capacity;
-
+        
         Profiler::m_descriptor_set_count    = 0;
-        Profiler::m_descriptor_set_capacity = m_descriptor_set_capacity;
+        Profiler::m_descriptor_set_capacity = descriptor_set_capacity;
     }
 
     void* RHI_Device::GetMappedDataFromBuffer(void* resource)
@@ -1099,5 +1114,86 @@ namespace Spartan
         {
             m_queue_compute_index = index;
         }
+    }
+
+    void* RHI_Device::GetDescriptorPool()
+    {
+        return descriptor_pool;
+    }
+
+    unordered_map<uint64_t, RHI_DescriptorSet>& RHI_Device::GetDescriptorSets()
+    {
+        return descriptor_sets;
+    }
+
+    bool RHI_Device::HasDescriptorSetCapacity()
+    {
+        const uint32_t required_capacity = static_cast<uint32_t>(descriptor_sets.size());
+        return descriptor_set_capacity > required_capacity;
+    }
+
+    RHI_CommandList* RHI_Device::ImmediateBegin(const RHI_Queue_Type queue_type)
+    {
+        unique_lock<mutex> lock(mutex_immediate);
+
+        // Wait until it's safe to proceed
+        condition_variable_immediate.wait(lock, [&] { return immediate_ready; });
+        immediate_ready = false;
+
+        // Create command pool for the given queue type, if needed.
+        uint32_t queue_index = static_cast<uint32_t>(queue_type);
+        if (!cmd_pools_immediate[queue_index])
+        {
+            cmd_pools_immediate[queue_index] = make_shared<RHI_CommandPool>("cmd_immediate_execution", 0);
+            cmd_pools_immediate[queue_index]->AllocateCommandLists(queue_type, 1, 1);
+        }
+
+        //  Get command pool
+        RHI_CommandPool* cmd_pool = cmd_pools_immediate[queue_index].get();
+
+        cmd_pool->Step();
+        cmd_pool->GetCurrentCommandList()->Begin();
+
+        return cmd_pool->GetCurrentCommandList();
+    }
+
+    void RHI_Device::ImmediateSubmit(RHI_CommandList* cmd_list)
+    {
+        unique_lock<mutex> lock(mutex_immediate);
+
+        cmd_list->End();
+        cmd_list->Submit();
+
+        // Don't log if it waits, since it's always expected to wait.
+        bool log_on_wait = false;
+        cmd_list->Wait(log_on_wait);
+
+        // Signal that it's safe to proceed with the next ImmediateBegin()
+        immediate_ready = true;
+        condition_variable_immediate.notify_one();
+    }
+
+    RHI_CommandPool* RHI_Device::AllocateCommandPool(const char* name, const uint64_t swap_chain_id)
+    {
+        return cmd_pools.emplace_back(make_shared<RHI_CommandPool>(name, swap_chain_id)).get();
+    }
+
+    void RHI_Device::DestroyCommandPool(RHI_CommandPool* cmd_pool)
+    {
+        vector<shared_ptr<RHI_CommandPool>>::iterator it;
+        for (it = cmd_pools.begin(); it != cmd_pools.end();)
+        {
+            if (cmd_pool->GetObjectId() == (*it)->GetObjectId())
+            {
+                it = cmd_pools.erase(it);
+                return;
+            }
+            it++;
+        }
+    }
+
+    const vector<shared_ptr<RHI_CommandPool>>& RHI_Device::GetCommandPools()
+    {
+        return cmd_pools;
     }
 }

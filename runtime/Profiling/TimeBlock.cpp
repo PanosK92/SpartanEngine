@@ -62,8 +62,8 @@ namespace Spartan
             // Create required queries
             if (!m_query_start)
             {
-                Renderer::GetRhiDevice()->QueryCreate(&m_query_start, RHI_Query_Type::Timestamp);
-                Renderer::GetRhiDevice()->QueryCreate(&m_query_end, RHI_Query_Type::Timestamp);
+                RHI_Device::QueryCreate(&m_query_start, RHI_Query_Type::Timestamp);
+                RHI_Device::QueryCreate(&m_query_end, RHI_Query_Type::Timestamp);
             }
 
             cmd_list->BeginTimestamp(m_query_start);
@@ -112,8 +112,8 @@ namespace Spartan
 
         if (m_query_start != nullptr && m_query_end != nullptr)
         {
-            Renderer::GetRhiDevice()->QueryRelease(m_query_start);
-            Renderer::GetRhiDevice()->QueryRelease(m_query_end);
+            RHI_Device::QueryRelease(m_query_start);
+            RHI_Device::QueryRelease(m_query_end);
         }
     }
 

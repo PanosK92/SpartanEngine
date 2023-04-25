@@ -47,7 +47,7 @@ namespace Spartan
         // Allocate info
         VkDescriptorSetAllocateInfo allocate_info = {};
         allocate_info.sType                       = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-        allocate_info.descriptorPool              = static_cast<VkDescriptorPool>(Renderer::GetRhiDevice()->GetDescriptorPool());
+        allocate_info.descriptorPool              = static_cast<VkDescriptorPool>(RHI_Device::GetDescriptorPool());
         allocate_info.descriptorSetCount          = 1;
         allocate_info.pSetLayouts                 = reinterpret_cast<VkDescriptorSetLayout*>(descriptor_set_layouts.data());
 

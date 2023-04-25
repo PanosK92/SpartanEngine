@@ -747,12 +747,12 @@ namespace Spartan
 
     void RHI_CommandList::BeginTimestamp(void* query)
     {
-        Renderer::GetRhiDevice()->QueryEnd(query);
+        RHI_Device::QueryEnd(query);
     }
 
     void RHI_CommandList::EndTimestamp(void* query)
     {
-        Renderer::GetRhiDevice()->QueryEnd(query);
+        RHI_Device::QueryEnd(query);
     }
 
     float RHI_CommandList::GetTimestampDuration(void* query_start, void* query_end, const uint32_t pass_index)
@@ -770,7 +770,7 @@ namespace Spartan
 
         // Compute duration in ms
         const uint64_t delta     = end_time - start_time;
-        const double duration_ms = (delta * 1000.0) / static_cast<double>(Renderer::GetRhiDevice()->GetTimestampPeriod());
+        const double duration_ms = (delta * 1000.0) / static_cast<double>(RHI_Device::GetTimestampPeriod());
 
         return static_cast<float>(duration_ms);
     }
@@ -780,7 +780,7 @@ namespace Spartan
         if (!m_memory_query_support)
             return 0;
 
-        if (const PhysicalDevice* physical_device = Renderer::GetRhiDevice()->GetPrimaryPhysicalDevice())
+        if (const PhysicalDevice* physical_device = RHI_Device::GetPrimaryPhysicalDevice())
         {
             if (IDXGIAdapter3* adapter = static_cast<IDXGIAdapter3*>(physical_device->GetData()))
             {

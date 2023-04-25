@@ -58,7 +58,7 @@ namespace Spartan
         }
 
         // Calculate required alignment based on minimum device offset alignment
-        size_t min_alignment = Renderer::GetRhiDevice()->GetMinUniformBufferOffsetAllignment();
+        size_t min_alignment = RHI_Device::GetMinUniformBufferOffsetAllignment();
         if (min_alignment > 0)
         {
             m_stride = static_cast<uint32_t>(static_cast<uint64_t>((m_stride + min_alignment - 1) & ~(min_alignment - 1)));
@@ -69,10 +69,10 @@ namespace Spartan
         VkMemoryPropertyFlags flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT; // mappable
 
         // Create buffer
-        Renderer::GetRhiDevice()->CreateBuffer(m_rhi_resource, m_object_size_gpu, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, flags, nullptr, m_name.c_str());
+        RHI_Device::CreateBuffer(m_rhi_resource, m_object_size_gpu, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, flags, nullptr, m_name.c_str());
 
         // Get mapped data pointer
-        m_mapped_data = Renderer::GetRhiDevice()->GetMappedDataFromBuffer(m_rhi_resource);
+        m_mapped_data = RHI_Device::GetMappedDataFromBuffer(m_rhi_resource);
 
         // Set debug name
         vulkan_utility::debug::set_object_name(static_cast<VkBuffer>(m_rhi_resource), (m_name + string("_size_") + to_string(m_object_size_gpu)).c_str());
@@ -94,6 +94,6 @@ namespace Spartan
 
         // Vulkan is using persistent mapping, so we only need to copy and flush
         memcpy(reinterpret_cast<std::byte*>(m_mapped_data) + m_offset, reinterpret_cast<std::byte*>(data_cpu), m_stride);
-        Renderer::GetRhiDevice()->FlushAllocation(m_rhi_resource, m_offset, m_stride);
+        RHI_Device::FlushAllocation(m_rhi_resource, m_offset, m_stride);
     }
 }

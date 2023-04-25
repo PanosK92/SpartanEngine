@@ -58,7 +58,7 @@ namespace Spartan
         }
 
         const bool fullscreen_borderless_support = SUCCEEDED(resut) && allowTearing;
-        const bool vendor_support = !Renderer::GetRhiDevice()->GetPrimaryPhysicalDevice()->IsIntel(); // Intel, bad
+        const bool vendor_support = !RHI_Device::GetPrimaryPhysicalDevice()->IsIntel(); // Intel, bad
 
         return fullscreen_borderless_support && vendor_support;
     }
@@ -100,7 +100,7 @@ namespace Spartan
             }
         #endif
 
-        if (Renderer::GetRhiDevice()->GetPrimaryPhysicalDevice()->IsIntel())
+        if (RHI_Device::GetPrimaryPhysicalDevice()->IsIntel())
         {
             SP_LOG_WARNING("Swap_Flip_Discard was requested but it's not supported by Intel adapters, using Swap_Discard instead.");
             return DXGI_SWAP_EFFECT_DISCARD;
@@ -130,7 +130,7 @@ namespace Spartan
         SP_ASSERT(IsWindow(hwnd));
 
         // Verify resolution
-        if (!Renderer::GetRhiDevice()->IsValidResolution(width, height))
+        if (!RHI_Device::IsValidResolution(width, height))
         {
             SP_LOG_WARNING("%dx%d is an invalid resolution", width, height);
             return;
@@ -138,7 +138,7 @@ namespace Spartan
 
         // Get factory
         IDXGIFactory* dxgi_factory = nullptr;
-        if (const auto& adapter = Renderer::GetRhiDevice()->GetPrimaryPhysicalDevice())
+        if (const auto& adapter = RHI_Device::GetPrimaryPhysicalDevice())
         {
             auto dxgi_adapter = static_cast<IDXGIAdapter*>(adapter->GetData());
             if (dxgi_adapter->GetParent(IID_PPV_ARGS(&dxgi_factory)) != S_OK)
@@ -226,7 +226,7 @@ namespace Spartan
     bool RHI_SwapChain::Resize(const uint32_t width, const uint32_t height, const bool force /*= false*/)
     {
         SP_ASSERT(m_rhi_resource != nullptr);
-        SP_ASSERT_MSG(Renderer::GetRhiDevice()->IsValidResolution(width, height), "Invalid resoution");
+        SP_ASSERT_MSG(RHI_Device::IsValidResolution(width, height), "Invalid resolution");
 
         // Only resize if needed
         if (!force)

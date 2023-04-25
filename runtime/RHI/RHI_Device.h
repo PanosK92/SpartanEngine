@@ -22,27 +22,23 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ======================
-#include "../Core/Object.h"
 #include "../Display/DisplayMode.h"
-#include <mutex>
-#include <memory>
 #include "RHI_PhysicalDevice.h"
-#include "RHI_DescriptorSet.h"
+#include <memory>
 //=================================
 
 namespace Spartan
 {
-    class SP_CLASS RHI_Device : public Object
+    class SP_CLASS RHI_Device
     {
     public:
-        RHI_Device();
-        ~RHI_Device() = default;
-        void Destroy();
+        static void Initialize();
+        static void Destroy();
 
         // Physical device
-        const PhysicalDevice* GetPrimaryPhysicalDevice();
+        static PhysicalDevice* GetPrimaryPhysicalDevice();
 
-        // Queue
+        // Queues
         static void QueuePresent(void* swapchain_view, uint32_t* image_index, std::vector<RHI_Semaphore*>& wait_semaphores);
         static void QueueSubmit(const RHI_Queue_Type type, const uint32_t wait_flags, void* cmd_buffer, RHI_Semaphore* wait_semaphore = nullptr, RHI_Semaphore* signal_semaphore = nullptr, RHI_Fence* signal_fence = nullptr);
         static void QueueWait(const RHI_Queue_Type type);
@@ -52,36 +48,36 @@ namespace Spartan
         static void SetQueueIndex(const RHI_Queue_Type type, const uint32_t index);
 
         // Queries
-        void QueryCreate(void** query = nullptr, RHI_Query_Type type = RHI_Query_Type::Timestamp);
-        void QueryRelease(void*& query);
-        void QueryBegin(void* query);
-        void QueryEnd(void* query);
-        void QueryGetData(void* query);
+        static void QueryCreate(void** query = nullptr, RHI_Query_Type type = RHI_Query_Type::Timestamp);
+        static void QueryRelease(void*& query);
+        static void QueryBegin(void* query);
+        static void QueryEnd(void* query);
+        static void QueryGetData(void* query);
 
-        // Device properties
-        uint32_t GetMaxTexture1dDimension()            const { return m_max_texture_1d_dimension; }
-        uint32_t GetMaxTexture2dDimension()            const { return m_max_texture_2d_dimension; }
-        uint32_t GetMaxTexture3dDimension()            const { return m_max_texture_3d_dimension; }
-        uint32_t GetMaxTextureCubeDimension()          const { return m_max_texture_cube_dimension; }
-        uint32_t GetMaxTextureArrayLayers()            const { return m_max_texture_array_layers; }
-        uint64_t GetMinUniformBufferOffsetAllignment() const { return m_min_uniform_buffer_offset_alignment; }
-        uint64_t GetMinStorageBufferOffsetAllignment() const { return m_min_storage_buffer_offset_alignment; }
-        float GetTimestampPeriod()                     const { return m_timestamp_period; }
+        // Properties
+        static uint32_t GetMaxTexture1dDimension()            { return m_max_texture_1d_dimension; }
+        static uint32_t GetMaxTexture2dDimension()            { return m_max_texture_2d_dimension; }
+        static uint32_t GetMaxTexture3dDimension()            { return m_max_texture_3d_dimension; }
+        static uint32_t GetMaxTextureCubeDimension()          { return m_max_texture_cube_dimension; }
+        static uint32_t GetMaxTextureArrayLayers()            { return m_max_texture_array_layers; }
+        static uint64_t GetMinUniformBufferOffsetAllignment() { return m_min_uniform_buffer_offset_alignment; }
+        static uint64_t GetMinStorageBufferOffsetAllignment() { return m_min_storage_buffer_offset_alignment; }
+        static float GetTimestampPeriod()                     { return m_timestamp_period; }
 
         // Descriptors
-        void* GetDescriptorPool()                                            { return m_descriptor_pool; }
-        std::unordered_map<uint64_t, RHI_DescriptorSet>& GetDescriptorSets() { return m_descriptor_sets; }
-        bool HasDescriptorSetCapacity();
-        void SetDescriptorSetCapacity(uint32_t descriptor_set_capacity);
+        static void* GetDescriptorPool();
+        static std::unordered_map<uint64_t, RHI_DescriptorSet>& GetDescriptorSets();
+        static bool HasDescriptorSetCapacity();
+        static void SetDescriptorSetCapacity(uint32_t descriptor_set_capacity);
 
         // Command pools
-        RHI_CommandPool* AllocateCommandPool(const char* name, const uint64_t swap_chain_id);
-        void DestroyCommandPool(RHI_CommandPool* cmd_pool);
-        const std::vector<std::shared_ptr<RHI_CommandPool>>& GetCommandPools() { return m_cmd_pools; }
+        static RHI_CommandPool* AllocateCommandPool(const char* name, const uint64_t swap_chain_id);
+        static void DestroyCommandPool(RHI_CommandPool* cmd_pool);
+        static const std::vector<std::shared_ptr<RHI_CommandPool>>& GetCommandPools();
 
         // Misc
-        bool IsValidResolution(const uint32_t width, const uint32_t height);
-        uint32_t GetEnabledGraphicsStages() const { return m_enabled_graphics_shader_stages; }
+        static bool IsValidResolution(const uint32_t width, const uint32_t height);
+        static uint32_t GetEnabledGraphicsStages() { return m_enabled_graphics_shader_stages; }
 
         // Deletion queue
         static void AddToDeletionQueue(const RHI_Resource_Type resource_type, void* resource);
@@ -98,40 +94,30 @@ namespace Spartan
         static void FlushAllocation(void* resource, uint64_t offset, uint64_t size);
 
         // Immediate
-        RHI_CommandList* ImmediateBegin(const RHI_Queue_Type queue_type);
-        void ImmediateSubmit(RHI_CommandList* cmd_list);
+        static RHI_CommandList* ImmediateBegin(const RHI_Queue_Type queue_type);
+        static void ImmediateSubmit(RHI_CommandList* cmd_list);
 
     private:
         // Physical device
-        bool DetectPhysicalDevices();
-        void RegisterPhysicalDevice(const PhysicalDevice& physical_device);
-        void SelectPrimaryPhysicalDevice();
-        void SetPrimaryPhysicalDevice(const uint32_t index);
+        static bool DetectPhysicalDevices();
+        static void RegisterPhysicalDevice(const PhysicalDevice& physical_device);
+        static void SelectPrimaryPhysicalDevice();
+        static void SetPrimaryPhysicalDevice(const uint32_t index);
+        static std::vector<PhysicalDevice>& GetPhysicalDevices();
 
-        // Descriptors
-        std::unordered_map<uint64_t, RHI_DescriptorSet> m_descriptor_sets;
-        void* m_descriptor_pool            = nullptr;
-        uint32_t m_descriptor_set_capacity = 0;
-
-        // Device properties
-        uint32_t m_max_texture_1d_dimension            = 0;
-        uint32_t m_max_texture_2d_dimension            = 0;
-        uint32_t m_max_texture_3d_dimension            = 0;
-        uint32_t m_max_texture_cube_dimension          = 0;
-        uint32_t m_max_texture_array_layers            = 0;
-        uint64_t m_min_uniform_buffer_offset_alignment = 0;
-        uint64_t m_min_storage_buffer_offset_alignment = 0;
-        float m_timestamp_period                       = 0;
-        bool m_wide_lines                              = false;
-        uint32_t m_max_bound_descriptor_sets           = 4; // worst case scenario
-
-        // Command pools
-        std::vector<std::shared_ptr<RHI_CommandPool>> m_cmd_pools;
-        std::array<std::shared_ptr<RHI_CommandPool>, 3> m_cmd_pools_immediate;
+        // Properties
+        static uint32_t m_max_texture_1d_dimension;
+        static uint32_t m_max_texture_2d_dimension;
+        static uint32_t m_max_texture_3d_dimension;
+        static uint32_t m_max_texture_cube_dimension;
+        static uint32_t m_max_texture_array_layers;
+        static uint64_t m_min_uniform_buffer_offset_alignment;
+        static uint64_t m_min_storage_buffer_offset_alignment;
+        static float m_timestamp_period;
 
         // Misc
-        uint32_t m_physical_device_index          = 0;
-        uint32_t m_enabled_graphics_shader_stages = 0;
-        std::vector<PhysicalDevice> m_physical_devices;
+        static bool m_wide_lines;
+        static uint32_t m_physical_device_index;
+        static uint32_t m_enabled_graphics_shader_stages;
     };
 }

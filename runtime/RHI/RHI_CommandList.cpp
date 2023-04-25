@@ -68,7 +68,7 @@ namespace Spartan
     
     uint32_t RHI_CommandList::GetGpuMemory()
     {
-        if (const PhysicalDevice* physical_device = Renderer::GetRhiDevice()->GetPrimaryPhysicalDevice())
+        if (const PhysicalDevice* physical_device = RHI_Device::GetPrimaryPhysicalDevice())
         {
             return physical_device->GetMemory();
         }

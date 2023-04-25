@@ -124,7 +124,6 @@ namespace Spartan
     bool m_dirty_orthographic_projection = true;
     
     // RHI Core
-    shared_ptr<RHI_Device> m_rhi_device;
     RHI_CommandPool* m_cmd_pool    = nullptr;
     RHI_CommandList* m_cmd_current = nullptr;
     
@@ -185,18 +184,19 @@ namespace Spartan
         // Get thread id.
         m_render_thread_id = this_thread::get_id();
 
-        RHI_Context::Initialize();
-
-        // Initialize RenderDoc
-        if (RHI_Context::renderdoc)
-        {
-            RHI_RenderDoc::OnPreDeviceCreation();
-        }
-
         Display::DetectDisplayModes();
 
-        // Create device
-        m_rhi_device = make_shared<RHI_Device>();
+        // RHI Initialization
+        {
+            RHI_Context::Initialize();
+
+            if (RHI_Context::renderdoc)
+            {
+                RHI_RenderDoc::OnPreDeviceCreation();
+            }
+
+            RHI_Device::Initialize();
+        }
 
         // Create swap chain
         m_swap_chain = make_shared<RHI_SwapChain>
@@ -215,7 +215,7 @@ namespace Spartan
         SetOption(RendererOption::Hdr, m_swap_chain->IsHdr());
 
         // Create command pool
-        m_cmd_pool = m_rhi_device->AllocateCommandPool("renderer", m_swap_chain->GetObjectId());
+        m_cmd_pool = RHI_Device::AllocateCommandPool("renderer", m_swap_chain->GetObjectId());
         m_cmd_pool->AllocateCommandLists(RHI_Queue_Type::Graphics, 2, 2);
 
         // Set the output and viewport resolution to the display resolution.
@@ -277,10 +277,10 @@ namespace Spartan
         RHI_Device::ParseDeletionQueue();
 
         Log::SetLogToFile(true); // console doesn't render anymore, log to file
+
         RHI_RenderDoc::Shutdown();
         RHI_FSR2::Destroy();
-
-        m_rhi_device->Destroy();
+        RHI_Device::Destroy();
     }
 
     void Renderer::Tick()
@@ -461,7 +461,7 @@ namespace Spartan
     void Renderer::SetResolutionRender(uint32_t width, uint32_t height, bool recreate_resources /*= true*/)
     {
         // Return if resolution is invalid
-        if (!m_rhi_device->IsValidResolution(width, height))
+        if (!RHI_Device::IsValidResolution(width, height))
         {
             SP_LOG_WARNING("%dx%d is an invalid resolution", width, height);
             return;
@@ -496,7 +496,7 @@ namespace Spartan
     void Renderer::SetResolutionOutput(uint32_t width, uint32_t height, bool recreate_resources /*= true*/)
     {
         // Return if resolution is invalid
-        if (!m_rhi_device->IsValidResolution(width, height))
+        if (!RHI_Device::IsValidResolution(width, height))
         {
             SP_LOG_WARNING("%dx%d is an invalid resolution", width, height);
             return;
@@ -806,9 +806,9 @@ namespace Spartan
                 value = Helper::Clamp(value, 0.0f, 16.0f);
             }
             // Shadow resolution
-            else if (option == RendererOption::ShadowResolution && m_rhi_device)
+            else if (option == RendererOption::ShadowResolution)
             {
-                value = Helper::Clamp(value, static_cast<float>(m_resolution_shadow_min), static_cast<float>(m_rhi_device->GetMaxTexture2dDimension()));
+                value = Helper::Clamp(value, static_cast<float>(m_resolution_shadow_min), static_cast<float>(RHI_Device::GetMaxTexture2dDimension()));
             }
         }
 
@@ -967,7 +967,7 @@ namespace Spartan
         if (!m_is_rendering_allowed)
         {
             SP_LOG_INFO("Renderer thread is flushing...");
-            m_rhi_device->QueueWaitAll();
+            RHI_Device::QueueWaitAll();
         }
 
         m_flush_requested = false;
@@ -981,11 +981,6 @@ namespace Spartan
     RHI_Api_Type Renderer::GetRhiApiType()
     {
         return RHI_Context::api_type;
-    }
-
-    shared_ptr<RHI_Device>& Renderer::GetRhiDevice()
-    {
-        return m_rhi_device;
     }
 
     void Renderer::RequestTextureMipGeneration(shared_ptr<RHI_Texture> texture)

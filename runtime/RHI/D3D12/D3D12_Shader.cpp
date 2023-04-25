@@ -40,7 +40,7 @@ namespace Spartan
         if (m_rhi_resource)
         {
             // Wait in case it's still in use by the GPU
-            Renderer::GetRhiDevice()->QueueWaitAll();
+            RHI_Device::QueueWaitAll();
 
             d3d12_utility::release<IDxcResult>(m_rhi_resource);
         }

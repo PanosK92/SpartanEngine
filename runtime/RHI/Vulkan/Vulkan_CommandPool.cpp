@@ -45,7 +45,7 @@ namespace Spartan
             return;
 
         // Wait for GPU
-        Renderer::GetRhiDevice()->QueueWait(m_queue_type);
+        RHI_Device::QueueWait(m_queue_type);
 
         // Free command buffers
         uint32_t cmd_index = 0;
@@ -88,7 +88,7 @@ namespace Spartan
 
         VkCommandPoolCreateInfo cmd_pool_info = {};
         cmd_pool_info.sType                   = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-        cmd_pool_info.queueFamilyIndex        = Renderer::GetRhiDevice()->GetQueueIndex(queue_type);
+        cmd_pool_info.queueFamilyIndex        = RHI_Device::GetQueueIndex(queue_type);
         cmd_pool_info.flags                   = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT; // specifies that command buffers allocated from the pool will be short-lived
 
         // Create

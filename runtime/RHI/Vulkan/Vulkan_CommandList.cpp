@@ -205,7 +205,7 @@ namespace Spartan
 
         if (!m_discard)
         {
-            Renderer::GetRhiDevice()->QueueSubmit(
+            RHI_Device::QueueSubmit(
                 m_queue_type,                                  // queue
                 VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, // wait flags
                 static_cast<VkCommandBuffer>(m_rhi_resource),  // cmd buffer
@@ -936,8 +936,8 @@ namespace Spartan
         if (end < start)
             return 0.0f;
 
-        uint64_t duration = Math::Helper::Clamp<uint64_t>(end - start, 0, std::numeric_limits<uint64_t>::max());
-        float duration_ms = static_cast<float>(duration * Renderer::GetRhiDevice()->GetTimestampPeriod() * 1e-6f);
+        uint64_t duration = Math::Helper::Clamp<uint64_t>(end - start, 0, numeric_limits<uint64_t>::max());
+        float duration_ms = static_cast<float>(duration * RHI_Device::GetTimestampPeriod() * 1e-6f);
 
         return duration_ms;
     }
