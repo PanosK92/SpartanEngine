@@ -110,58 +110,6 @@ namespace Spartan
         QueueWait(RHI_Queue_Type::Compute);
     }
 
-    void* RHI_Device::GetQueue(const RHI_Queue_Type type) const
-    {
-        if (type == RHI_Queue_Type::Graphics)
-        {
-            return m_queue_graphics;
-        }
-        else if (type == RHI_Queue_Type::Copy)
-        {
-            return m_queue_copy;
-        }
-        else if (type == RHI_Queue_Type::Compute)
-        {
-            return m_queue_compute;
-        }
-
-        return nullptr;
-    }
-
-    uint32_t RHI_Device::GetQueueIndex(const RHI_Queue_Type type) const
-    {
-        if (type == RHI_Queue_Type::Graphics)
-        {
-            return m_queue_graphics_index;
-        }
-        else if (type == RHI_Queue_Type::Copy)
-        {
-            return m_queue_copy_index;
-        }
-        else if (type == RHI_Queue_Type::Compute)
-        {
-            return m_queue_compute_index;
-        }
-
-        return 0;
-    }
-
-    void RHI_Device::SetQueueIndex(const RHI_Queue_Type type, const uint32_t index)
-    {
-        if (type == RHI_Queue_Type::Graphics)
-        {
-            m_queue_graphics_index = index;
-        }
-        else if (type == RHI_Queue_Type::Copy)
-        {
-            m_queue_copy_index = index;
-        }
-        else if (type == RHI_Queue_Type::Compute)
-        {
-            m_queue_compute_index = index;
-        }
-    }
-
     bool RHI_Device::HasDescriptorSetCapacity()
     {
         const uint32_t required_capacity = static_cast<uint32_t>(m_descriptor_sets.size());

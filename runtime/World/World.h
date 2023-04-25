@@ -35,7 +35,7 @@ namespace Spartan
         static void Shutdown();
 
         static void PreTick();
-        static void Tick();   
+        static void Tick();
         static void New();
         static bool SaveToFile(const std::string& filePath);
         static bool LoadFromFile(const std::string& file_path);

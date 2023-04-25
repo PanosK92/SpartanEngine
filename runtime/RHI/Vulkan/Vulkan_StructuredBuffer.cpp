@@ -61,7 +61,7 @@ namespace Spartan
 
     RHI_StructuredBuffer::~RHI_StructuredBuffer()
     {
-        Renderer::AddToDeletionQueue(RHI_Resource_Type::buffer, m_rhi_resource);
+        RHI_Device::AddToDeletionQueue(RHI_Resource_Type::buffer, m_rhi_resource);
         m_rhi_resource = nullptr;
     }
 

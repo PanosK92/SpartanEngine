@@ -128,8 +128,6 @@ namespace Spartan
         static std::unordered_map<RendererEntityType, std::vector<std::shared_ptr<Entity>>>& GetEntities();
         //=================================================================================================
 
-        static void AddToDeletionQueue(const RHI_Resource_Type resource_type, void* resource);
-
     private:
         // Constant buffers
         static void Update_Cb_Frame(RHI_CommandList* cmd_list);
@@ -193,7 +191,6 @@ namespace Spartan
         static void SortRenderables(std::vector<std::shared_ptr<Entity>>* renderables);
         static bool IsCallingFromOtherThread();
         static void OnResourceSafe(RHI_CommandList* cmd_list);
-        static void ParseDeletionQueue();
 
         // Lines
         static void Lines_PreMain();

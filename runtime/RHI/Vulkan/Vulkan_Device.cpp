@@ -37,14 +37,25 @@ using namespace std;
 using namespace Spartan::Math;
 //============================
 
-namespace
-{
-    static mutex mutex_queue;
-    static mutex mutex_allocation;
-}
-
 namespace Spartan
 {
+    namespace
+    {
+        // Queues
+        static mutex mutex_queue;
+        static void* m_queue_graphics          = nullptr;
+        static void* m_queue_compute           = nullptr;
+        static void* m_queue_copy              = nullptr;
+        static uint32_t m_queue_graphics_index = 0;
+        static uint32_t m_queue_compute_index  = 0;
+        static uint32_t m_queue_copy_index     = 0;
+
+        // Misc
+        static mutex mutex_allocation;
+        static mutex mutex_deletion;
+        static unordered_map<RHI_Resource_Type, vector<void*>> deletion_queue;
+    }
+
     namespace vulkan_memory_allocator
     {
         static VmaAllocator allocator;
@@ -796,8 +807,17 @@ namespace Spartan
 
     }
 
-    void RHI_Device::ParseDeletionQueue(const unordered_map<RHI_Resource_Type, vector<void*>>& deletion_queue)
+    void RHI_Device::AddToDeletionQueue(const RHI_Resource_Type resource_type, void* resource)
     {
+        lock_guard<mutex> guard(mutex_deletion);
+        deletion_queue[resource_type].emplace_back(resource);
+    }
+
+    void RHI_Device::ParseDeletionQueue()
+    {
+        lock_guard<mutex> guard(mutex_deletion);
+        QueueWaitAll();
+
         for (const auto& it : deletion_queue)
         {
             for (void* resource : it.second)
@@ -821,6 +841,8 @@ namespace Spartan
                 }
             }
         }
+
+        deletion_queue.clear();
     }
 
     void RHI_Device::SetDescriptorSetCapacity(uint32_t descriptor_set_capacity)
@@ -1024,6 +1046,58 @@ namespace Spartan
         if (VmaAllocation allocation = static_cast<VmaAllocation>(vulkan_memory_allocator::get_allocation_from_resource(resource)))
         {
             SP_ASSERT_MSG(vmaFlushAllocation(vulkan_memory_allocator::allocator, allocation, offset, size) == VK_SUCCESS, "Failed to flush");
+        }
+    }
+
+    void* RHI_Device::GetQueue(const RHI_Queue_Type type)
+    {
+        if (type == RHI_Queue_Type::Graphics)
+        {
+            return m_queue_graphics;
+        }
+        else if (type == RHI_Queue_Type::Copy)
+        {
+            return m_queue_copy;
+        }
+        else if (type == RHI_Queue_Type::Compute)
+        {
+            return m_queue_compute;
+        }
+
+        return nullptr;
+    }
+
+    uint32_t RHI_Device::GetQueueIndex(const RHI_Queue_Type type)
+    {
+        if (type == RHI_Queue_Type::Graphics)
+        {
+            return m_queue_graphics_index;
+        }
+        else if (type == RHI_Queue_Type::Copy)
+        {
+            return m_queue_copy_index;
+        }
+        else if (type == RHI_Queue_Type::Compute)
+        {
+            return m_queue_compute_index;
+        }
+
+        return 0;
+    }
+
+    void RHI_Device::SetQueueIndex(const RHI_Queue_Type type, const uint32_t index)
+    {
+        if (type == RHI_Queue_Type::Graphics)
+        {
+            m_queue_graphics_index = index;
+        }
+        else if (type == RHI_Queue_Type::Copy)
+        {
+            m_queue_copy_index = index;
+        }
+        else if (type == RHI_Queue_Type::Compute)
+        {
+            m_queue_compute_index = index;
         }
     }
 }

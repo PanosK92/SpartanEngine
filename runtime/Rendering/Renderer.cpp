@@ -116,7 +116,6 @@ namespace Spartan
     const uint32_t m_resolution_shadow_min = 128;
     
     // Resource management
-    unordered_map<RHI_Resource_Type, vector<void*>> m_deletion_queue;
     vector<weak_ptr<RHI_Texture>> m_textures_mip_generation;
     
     // States
@@ -145,7 +144,6 @@ namespace Spartan
     mutex m_mutex_entity_addition;
     mutex m_mutex_mip_generation;
     mutex m_mutex_environment_texture;
-    mutex m_mutex_deletion_queue;
 
     void Renderer::Initialize()
     {
@@ -276,7 +274,7 @@ namespace Spartan
         m_tex_gizmo_light_spot        = nullptr;
 
         // Delete all remaining RHI resources
-        ParseDeletionQueue();
+        RHI_Device::ParseDeletionQueue();
 
         Log::SetLogToFile(true); // console doesn't render anymore, log to file
         RHI_RenderDoc::Shutdown();
@@ -661,7 +659,7 @@ namespace Spartan
 
     void Renderer::OnResourceSafe(RHI_CommandList* cmd_list)
     {
-        ParseDeletionQueue();
+        RHI_Device::ParseDeletionQueue();
 
         // Acquire renderables
         if (m_add_new_entities)
@@ -756,20 +754,6 @@ namespace Spartan
             }
 
             m_textures_mip_generation.clear();
-        }
-    }
-
-    void Renderer::ParseDeletionQueue()
-    {
-        lock_guard<mutex> guard(m_mutex_deletion_queue);
-
-        if (!m_deletion_queue.empty())
-        {
-            uint32_t resource_count = static_cast<uint32_t>(m_deletion_queue.size());
-
-            m_rhi_device->QueueWaitAll();
-            m_rhi_device->ParseDeletionQueue(m_deletion_queue);
-            m_deletion_queue.clear();
         }
     }
 
@@ -1034,11 +1018,5 @@ namespace Spartan
     unordered_map<RendererEntityType, vector<shared_ptr<Entity>>>& Renderer::GetEntities()
     {
         return m_renderables;
-    }
-
-    void Renderer::AddToDeletionQueue(const RHI_Resource_Type resource_type, void* resource)
-    {
-        lock_guard<mutex> guard(m_mutex_deletion_queue);
-        m_deletion_queue[resource_type].emplace_back(resource);
     }
 }
