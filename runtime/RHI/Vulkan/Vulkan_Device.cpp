@@ -794,7 +794,7 @@ namespace Spartan
     void RHI_Device::QueueWait(const RHI_Queue_Type type)
     {
         lock_guard<mutex> lock(mutex_queue);
-        SP_ASSERT_MSG(vkQueueWaitIdle(static_cast<VkQueue>(GetQueue(type))) == VK_SUCCESS, "Failed to wait for queue");
+        SP_VK_ASSERT_MSG(vkQueueWaitIdle(static_cast<VkQueue>(GetQueue(type))), "Failed to wait for queue");
     }
 
     void RHI_Device::QueryCreate(void** query, const RHI_Query_Type type)
