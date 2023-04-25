@@ -129,9 +129,6 @@ namespace Spartan
 
     void RHI_CommandList::Begin()
     {
-        m_discard = false;
-
-        // Validate command list state
         SP_ASSERT(m_state == RHI_CommandListState::Idle);
 
         // Get queries
@@ -203,17 +200,14 @@ namespace Spartan
     {
         SP_ASSERT(m_state == RHI_CommandListState::Ended);
 
-        if (!m_discard)
-        {
-            RHI_Device::QueueSubmit(
-                m_queue_type,                                  // queue
-                VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, // wait flags
-                static_cast<VkCommandBuffer>(m_rhi_resource),  // cmd buffer
-                nullptr,                                       // wait semaphore
-                m_proccessed_semaphore.get(),                  // signal semaphore
-                m_proccessed_fence.get()                       // signal fence
-            );
-        }
+        RHI_Device::QueueSubmit(
+            m_queue_type,                                  // queue
+            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, // wait flags
+            static_cast<VkCommandBuffer>(m_rhi_resource),  // cmd buffer
+            nullptr,                                       // wait semaphore
+            m_proccessed_semaphore.get(),                  // signal semaphore
+            m_proccessed_fence.get()                       // signal fence
+        );
 
         m_state = RHI_CommandListState::Submitted;
     }

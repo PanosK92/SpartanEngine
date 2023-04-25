@@ -23,10 +23,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "../RHI_Implementation.h"
 #include "../RHI_Semaphore.h"
-#include "../RHI_Fence.h"
 #include "../RHI_CommandPool.h"
 #include "../RHI_DescriptorSet.h"
-#include "../../Core/Window.h"
 #include "../../Profiling/Profiler.h"
 SP_WARNINGS_OFF
 #define VMA_IMPLEMENTATION
@@ -757,6 +755,8 @@ namespace Spartan
     {
         SP_ASSERT_MSG(cmd_buffer != nullptr, "Invalid command buffer");
 
+        lock_guard<mutex> lock(mutex_queue);
+
         // Validate semaphores
         if (wait_semaphore)   SP_ASSERT_MSG(wait_semaphore->GetCpuState()   != RHI_Sync_State::Idle,      "Wait semaphore is in an idle state and will never be signaled");
         if (signal_semaphore) SP_ASSERT_MSG(signal_semaphore->GetCpuState() != RHI_Sync_State::Submitted, "Signal semaphore is already in a signaled state.");
@@ -782,7 +782,6 @@ namespace Spartan
         void* vk_signal_fence = signal_fence ? signal_fence->GetResource() : nullptr;
 
         // The actual submit
-        lock_guard<mutex> lock(mutex_queue);
         SP_VK_ASSERT_MSG(vkQueueSubmit(static_cast<VkQueue>(GetQueue(type)), 1, &submit_info, static_cast<VkFence>(vk_signal_fence)), "Failed to submit");
 
         // Update semaphore states

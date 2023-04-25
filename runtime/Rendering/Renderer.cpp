@@ -658,8 +658,6 @@ namespace Spartan
 
     void Renderer::OnResourceSafe(RHI_CommandList* cmd_list)
     {
-        RHI_Device::ParseDeletionQueue();
-
         // Acquire renderables
         if (m_add_new_entities)
         {
@@ -754,6 +752,8 @@ namespace Spartan
 
             m_textures_mip_generation.clear();
         }
+
+        RHI_Device::ParseDeletionQueue();
     }
 
     void Renderer::SortRenderables(vector<shared_ptr<Entity>>* renderables)
