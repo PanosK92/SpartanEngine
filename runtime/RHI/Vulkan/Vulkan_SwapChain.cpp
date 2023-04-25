@@ -114,7 +114,7 @@ namespace Spartan
     static bool is_format_supported(const VkSurfaceKHR surface, RHI_Format* format, VkColorSpaceKHR color_space, const vector<VkSurfaceFormatKHR>& supported_formats)
     {
         // NV supports RHI_Format::B8R8G8A8_Unorm instead of RHI_Format::R8G8B8A8_Unorm.
-        if ((*format) == RHI_Format::R8G8B8A8_Unorm && Renderer::GetRhiDevice()->GetPrimaryPhysicalDevice()->IsNvidia())
+        if ((*format) == RHI_Format::R8G8B8A8_Unorm && RHI_Device::GetPrimaryPhysicalDevice()->IsNvidia())
         {
             (*format) = RHI_Format::B8R8G8A8_Unorm;
         }
@@ -157,7 +157,7 @@ namespace Spartan
             VkBool32 present_support = false;
             SP_VK_ASSERT_MSG(vkGetPhysicalDeviceSurfaceSupportKHR(
                     RHI_Context::device_physical,
-                    Renderer::GetRhiDevice()->GetQueueIndex(RHI_Queue_Type::Graphics),
+                    RHI_Device::GetQueueIndex(RHI_Queue_Type::Graphics),
                     surface,
                     &present_support),
            "Failed to get physical device surface support");
@@ -193,7 +193,7 @@ namespace Spartan
             create_info.imageArrayLayers         = 1;
             create_info.imageUsage               = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
-            uint32_t queueFamilyIndices[] = { Renderer::GetRhiDevice()->GetQueueIndex(RHI_Queue_Type::Compute), Renderer::GetRhiDevice()->GetQueueIndex(RHI_Queue_Type::Graphics) };
+            uint32_t queueFamilyIndices[] = { RHI_Device::GetQueueIndex(RHI_Queue_Type::Compute), RHI_Device::GetQueueIndex(RHI_Queue_Type::Graphics) };
             if (queueFamilyIndices[0] != queueFamilyIndices[1])
             {
                 create_info.imageSharingMode      = VK_SHARING_MODE_CONCURRENT;
@@ -227,7 +227,7 @@ namespace Spartan
             vkGetSwapchainImagesKHR(RHI_Context::device, swap_chain, &image_count, images.data());
 
             // Transition layouts to VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
-            if (RHI_CommandList* cmd_list = Renderer::GetRhiDevice()->ImmediateBegin(RHI_Queue_Type::Graphics))
+            if (RHI_CommandList* cmd_list = RHI_Device::ImmediateBegin(RHI_Queue_Type::Graphics))
             {
                 for (uint32_t i = 0; i < static_cast<uint32_t>(images.size()); i++)
                 {
@@ -246,7 +246,7 @@ namespace Spartan
                 }
 
                 // End/flush
-                Renderer::GetRhiDevice()->ImmediateSubmit(cmd_list);
+                RHI_Device::ImmediateSubmit(cmd_list);
             }
         }
 
@@ -322,7 +322,7 @@ namespace Spartan
     )
     {
         // Verify resolution
-        if (!Renderer::GetRhiDevice()->IsValidResolution(width, height))
+        if (!RHI_Device::IsValidResolution(width, height))
         {
             SP_LOG_WARNING("%dx%d is an invalid resolution", width, height);
             return;
@@ -376,7 +376,7 @@ namespace Spartan
 
     bool RHI_SwapChain::Resize(const uint32_t width, const uint32_t height, const bool force /*= false*/)
     {
-        SP_ASSERT_MSG(Renderer::GetRhiDevice()->IsValidResolution(width, height), "Invalid resolution");
+        SP_ASSERT_MSG(RHI_Device::IsValidResolution(width, height), "Invalid resolution");
 
         // Only resize if needed
         if (!force)
@@ -468,7 +468,7 @@ namespace Spartan
             m_wait_semaphores.emplace_back(m_acquire_semaphore[m_sync_index].get());
 
             // The others are all the command lists
-            const vector<shared_ptr<RHI_CommandPool>>& cmd_pools = Renderer::GetRhiDevice()->GetCommandPools();
+            const vector<shared_ptr<RHI_CommandPool>>& cmd_pools = RHI_Device::GetCommandPools();
             for (const shared_ptr<RHI_CommandPool>& cmd_pool : cmd_pools)
             {
                 // The editor supports multiple windows, so we can be dealing with multiple swapchains.
@@ -490,7 +490,7 @@ namespace Spartan
         SP_ASSERT_MSG(!m_wait_semaphores.empty(), "Present() should wait on at least one semaphore");
 
         // Present
-        Renderer::GetRhiDevice()->QueuePresent(m_rhi_resource, &m_image_index, m_wait_semaphores);
+        RHI_Device::QueuePresent(m_rhi_resource, &m_image_index, m_wait_semaphores);
 
         // Acquire next image
         AcquireNextImage();

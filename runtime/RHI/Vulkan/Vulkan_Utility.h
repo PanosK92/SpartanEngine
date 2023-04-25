@@ -196,7 +196,7 @@ namespace Spartan::vulkan_utility
         static VkPipelineStageFlags access_flags_to_pipeline_stage(VkAccessFlags access_flags)
         {
             VkPipelineStageFlags stages = 0;
-            uint32_t enabled_graphics_stages = Renderer::GetRhiDevice()->GetEnabledGraphicsStages();
+            uint32_t enabled_graphics_stages = RHI_Device::GetEnabledGraphicsStages();
 
             while (access_flags != 0)
             {

@@ -132,7 +132,7 @@ namespace Spartan
             SwapBuffers();
         }
 
-        Renderer::GetRhiDevice()->QueryRelease(m_query_disjoint);
+        RHI_Device::QueryRelease(m_query_disjoint);
 
         ClearRhiMetrics();
     }
@@ -144,7 +144,7 @@ namespace Spartan
 
         if (m_query_disjoint == nullptr)
         {
-            Renderer::GetRhiDevice()->QueryCreate(&m_query_disjoint, RHI_Query_Type::Timestamp_Disjoint);
+            RHI_Device::QueryCreate(&m_query_disjoint, RHI_Query_Type::Timestamp_Disjoint);
         }
 
         // Increase time block capacity (if needed)
@@ -236,7 +236,7 @@ namespace Spartan
         // Updating every m_profiling_interval_sec
         if (m_poll)
         {
-            Renderer::GetRhiDevice()->QueryBegin(m_query_disjoint);
+            RHI_Device::QueryBegin(m_query_disjoint);
 
             AcquireGpuData();
 
@@ -257,8 +257,8 @@ namespace Spartan
     {
         if (m_poll)
         {
-            Renderer::GetRhiDevice()->QueryEnd(m_query_disjoint);
-            Renderer::GetRhiDevice()->QueryGetData(m_query_disjoint);
+            RHI_Device::QueryEnd(m_query_disjoint);
+            RHI_Device::QueryGetData(m_query_disjoint);
         }
     }
 
@@ -452,7 +452,7 @@ namespace Spartan
 
     void Profiler::AcquireGpuData()
     {
-        if (const PhysicalDevice* physical_device = Renderer::GetRhiDevice()->GetPrimaryPhysicalDevice())
+        if (const PhysicalDevice* physical_device = RHI_Device::GetPrimaryPhysicalDevice())
         {
             m_gpu_name             = physical_device->GetName();
             m_gpu_memory_used      = RHI_CommandList::GetGpuMemoryUsed();
@@ -490,7 +490,7 @@ namespace Spartan
 
         // Get the graphics driver vendor
         string api_vendor_name = "AMD";
-        if (Renderer::GetRhiDevice()->GetPrimaryPhysicalDevice()->IsNvidia())
+        if (RHI_Device::GetPrimaryPhysicalDevice()->IsNvidia())
         {
             api_vendor_name = "NVIDIA";
         }
@@ -521,7 +521,7 @@ namespace Spartan
             << "Name:\t\t"   << m_gpu_name << endl
             << "Memory:\t"   << m_gpu_memory_used << "/" << m_gpu_memory_available << " MB" << endl
             << "API:\t\t\t"  << RHI_Context::api_type_str << "\t" << m_gpu_api << endl
-            << "Driver:\t\t" << Renderer::GetRhiDevice()->GetPrimaryPhysicalDevice()->GetVendorName() << "\t" << m_gpu_driver << endl;
+            << "Driver:\t\t" << RHI_Device::GetPrimaryPhysicalDevice()->GetVendorName() << "\t" << m_gpu_driver << endl;
 
         // CPU
         m_oss_metrics << endl << "CPU" << endl

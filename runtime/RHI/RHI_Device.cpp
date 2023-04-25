@@ -31,28 +31,36 @@ using namespace std;
 using namespace Spartan::Math;
 //============================
 
-namespace
-{
-    // Threading
-    static mutex mutex_immediate;
-    static condition_variable condition_variable_immediate;
-    static bool immediate_ready = true;
-}
-
 namespace Spartan
 {
+    // Device properties
+    uint32_t RHI_Device::m_max_texture_1d_dimension            = 0;
+    uint32_t RHI_Device::m_max_texture_2d_dimension            = 0;
+    uint32_t RHI_Device::m_max_texture_3d_dimension            = 0;
+    uint32_t RHI_Device::m_max_texture_cube_dimension          = 0;
+    uint32_t RHI_Device::m_max_texture_array_layers            = 0;
+    uint64_t RHI_Device::m_min_uniform_buffer_offset_alignment = 0;
+    uint64_t RHI_Device::m_min_storage_buffer_offset_alignment = 0;
+    float RHI_Device::m_timestamp_period                       = 0;
+
+    // Misc
+    bool RHI_Device::m_wide_lines                              = false;
+    uint32_t  RHI_Device::m_physical_device_index              = 0;
+    uint32_t  RHI_Device::m_enabled_graphics_shader_stages     = 0;
+    static vector<PhysicalDevice> physical_devices;
+
     void RHI_Device::RegisterPhysicalDevice(const PhysicalDevice& physical_device)
     {
-        m_physical_devices.emplace_back(physical_device);
+        physical_devices.emplace_back(physical_device);
 
         // Sort devices by type, discrete devices come first.
-        sort(m_physical_devices.begin(), m_physical_devices.end(), [](const PhysicalDevice& adapter1, const PhysicalDevice& adapter2)
+        sort(physical_devices.begin(), physical_devices.end(), [](const PhysicalDevice& adapter1, const PhysicalDevice& adapter2)
         {
             return adapter1.GetType() == RHI_PhysicalDevice_Type::Discrete;
         });
 
         // Sort devices by memory, in an ascending order. The type order will be maintained.
-        sort(m_physical_devices.begin(), m_physical_devices.end(), [](const PhysicalDevice& adapter1, const PhysicalDevice& adapter2)
+        sort(physical_devices.begin(), physical_devices.end(), [](const PhysicalDevice& adapter1, const PhysicalDevice& adapter2)
         {
                 return adapter1.GetMemory() > adapter2.GetMemory() && adapter1.GetType() == adapter2.GetType();
         });
@@ -60,12 +68,12 @@ namespace Spartan
         SP_LOG_INFO("%s (%d MB)", physical_device.GetName().c_str(), physical_device.GetMemory());
     }
 
-	const PhysicalDevice* RHI_Device::GetPrimaryPhysicalDevice()
+	PhysicalDevice* RHI_Device::GetPrimaryPhysicalDevice()
     {
-        SP_ASSERT_MSG(m_physical_devices.size() != 0, "No physical devices detected");
-        SP_ASSERT_MSG(m_physical_device_index < m_physical_devices.size(), "Index out of bounds");
+        SP_ASSERT_MSG(physical_devices.size() != 0, "No physical devices detected");
+        SP_ASSERT_MSG(m_physical_device_index < physical_devices.size(), "Index out of bounds");
 
-        return &m_physical_devices[m_physical_device_index];
+        return &physical_devices[m_physical_device_index];
     }
 
     void RHI_Device::SetPrimaryPhysicalDevice(const uint32_t index)
@@ -77,26 +85,12 @@ namespace Spartan
             SP_LOG_INFO("%s (%d MB)", physical_device->GetName().c_str(), physical_device->GetMemory());
         }
     }
+ 
+    vector<PhysicalDevice>& RHI_Device::GetPhysicalDevices()
+    {
+        return physical_devices;
+    }
 
-    RHI_CommandPool* RHI_Device::AllocateCommandPool(const char* name, const uint64_t swap_chain_id)
-    {
-        return m_cmd_pools.emplace_back(make_shared<RHI_CommandPool>(name, swap_chain_id)).get();
-    }
-    
-    void RHI_Device::DestroyCommandPool(RHI_CommandPool* cmd_pool)
-    {
-        vector<shared_ptr<RHI_CommandPool>>::iterator it;
-        for (it = m_cmd_pools.begin(); it != m_cmd_pools.end();)
-        {
-            if (cmd_pool->GetObjectId() == (*it)->GetObjectId())
-            {
-                it = m_cmd_pools.erase(it);
-                return;
-            }
-            it++;
-        }
-    }
-    
     bool RHI_Device::IsValidResolution(const uint32_t width, const uint32_t height)
     {
         return width  > 4 && width  <= m_max_texture_2d_dimension &&
@@ -108,52 +102,5 @@ namespace Spartan
         QueueWait(RHI_Queue_Type::Graphics);
         QueueWait(RHI_Queue_Type::Copy);
         QueueWait(RHI_Queue_Type::Compute);
-    }
-
-    bool RHI_Device::HasDescriptorSetCapacity()
-    {
-        const uint32_t required_capacity = static_cast<uint32_t>(m_descriptor_sets.size());
-        return m_descriptor_set_capacity > required_capacity;
-    }
-
-    RHI_CommandList* RHI_Device::ImmediateBegin(const RHI_Queue_Type queue_type)
-    {
-        unique_lock<mutex> lock(mutex_immediate);
-
-        // Wait until it's safe to proceed
-        condition_variable_immediate.wait(lock, [&] { return immediate_ready; });
-        immediate_ready = false;
-
-        // Create command pool for the given queue type, if needed.
-        uint32_t queue_index = static_cast<uint32_t>(queue_type);
-        if (!m_cmd_pools_immediate[queue_index])
-        {
-            m_cmd_pools_immediate[queue_index] = make_shared<RHI_CommandPool>("cmd_immediate_execution", 0);
-            m_cmd_pools_immediate[queue_index]->AllocateCommandLists(queue_type, 1, 1);
-        }
-
-        //  Get command pool
-        RHI_CommandPool* cmd_pool = m_cmd_pools_immediate[queue_index].get();
-
-        cmd_pool->Step();
-        cmd_pool->GetCurrentCommandList()->Begin();
-
-        return cmd_pool->GetCurrentCommandList();
-    }
-
-    void RHI_Device::ImmediateSubmit(RHI_CommandList* cmd_list)
-    {
-        unique_lock<mutex> lock(mutex_immediate);
-
-        cmd_list->End();
-        cmd_list->Submit();
-
-        // Don't log if it waits, since it's always expected to wait.
-        bool log_on_wait = false;
-        cmd_list->Wait(log_on_wait);
-
-        // Signal that it's safe to proceed with the next ImmediateBegin()
-        immediate_ready = true;
-        condition_variable_immediate.notify_one();
     }
 }

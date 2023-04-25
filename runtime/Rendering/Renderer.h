@@ -109,10 +109,9 @@ namespace Spartan
         static RHI_Texture* GetDefaultTextureTransparent();
         //================================================================
 
-        //= RHI RESOURCES==================================
-        static std::shared_ptr<RHI_Device>& GetRhiDevice();
+        //= RHI RESOURCES====================
         static RHI_CommandList* GetCmdList();
-        //=================================================
+        //===================================
  
         //= RESOURCES =====================================================================================
         // Render targets

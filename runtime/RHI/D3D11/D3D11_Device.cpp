@@ -27,6 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_RasterizerState.h"
 #include "../RHI_Shader.h"
 #include "../RHI_InputLayout.h"
+#include "../RHI_CommandPool.h"
 //=================================
 
 //= NAMESPACES ===============
@@ -36,7 +37,12 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    RHI_Device::RHI_Device()
+    namespace
+    {
+        static vector<shared_ptr<RHI_CommandPool>> cmd_pools;
+    }
+
+    void RHI_Device::Initialize()
     {
         // Detect device limits
         m_max_texture_1d_dimension   = D3D11_REQ_TEXTURE1D_U_DIMENSION;
@@ -82,7 +88,7 @@ namespace Spartan
             IDXGIAdapter* adapter       = static_cast<IDXGIAdapter*>(physical_device->GetData());
             D3D_DRIVER_TYPE driver_type = adapter ? D3D_DRIVER_TYPE_UNKNOWN : D3D_DRIVER_TYPE_HARDWARE;
 
-            auto create_device = [this, &adapter, &driver_type, &device_flags, &feature_levels]()
+            auto create_device = [&adapter, &driver_type, &device_flags, &feature_levels]()
             {
                 ID3D11Device* temp_device = nullptr;
                 ID3D11DeviceContext* temp_context = nullptr;
@@ -316,5 +322,24 @@ namespace Spartan
         while (RHI_Context::device_context->GetData(static_cast<ID3D11Query*>(query), &disjoint_data, sizeof(disjoint_data), 0) != S_OK);
 
         m_timestamp_period = static_cast<float>(disjoint_data.Frequency);
+    }
+
+    RHI_CommandPool* RHI_Device::AllocateCommandPool(const char* name, const uint64_t swap_chain_id)
+    {
+        return cmd_pools.emplace_back(make_shared<RHI_CommandPool>(name, swap_chain_id)).get();
+    }
+
+    void RHI_Device::DestroyCommandPool(RHI_CommandPool* cmd_pool)
+    {
+        vector<shared_ptr<RHI_CommandPool>>::iterator it;
+        for (it = cmd_pools.begin(); it != cmd_pools.end();)
+        {
+            if (cmd_pool->GetObjectId() == (*it)->GetObjectId())
+            {
+                it = cmd_pools.erase(it);
+                return;
+            }
+            it++;
+        }
     }
 }

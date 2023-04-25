@@ -58,7 +58,7 @@ void Viewport::TickVisible()
     // Update engine's viewport.
     if (m_width != width || m_height != height)
     {
-        if (Renderer::GetRhiDevice()->IsValidResolution(static_cast<uint32_t>(width), static_cast<uint32_t>(height)))
+        if (RHI_Device::IsValidResolution(static_cast<uint32_t>(width), static_cast<uint32_t>(height)))
         {
             Renderer::SetViewport(width, height);
 
