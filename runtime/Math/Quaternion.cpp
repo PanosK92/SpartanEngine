@@ -42,9 +42,9 @@ namespace Spartan::Math
     void Quaternion::FromAxes(const Vector3& xAxis, const Vector3& yAxis, const Vector3& zAxis)
     {
         *this = Matrix(
-            xAxis.x, yAxis.x, zAxis.x, 0.0f,
-            xAxis.y, yAxis.y, zAxis.y, 0.0f,
-            xAxis.z, yAxis.z, zAxis.z, 0.0f,
+            xAxis.x, xAxis.y, xAxis.z, 0.0f,
+            yAxis.x, yAxis.y, yAxis.z, 0.0f,
+            zAxis.x, zAxis.y, zAxis.z, 0.0f,
             0.0f, 0.0f, 0.0f, 1.0f
         ).GetRotation();
     }
