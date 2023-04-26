@@ -42,7 +42,7 @@ using namespace std;
 namespace Spartan
 {
     Camera::Camera(Entity* entity, uint64_t id /*= 0*/) : IComponent(entity, id)
-    {   
+    {
 
     }
 
@@ -253,7 +253,7 @@ namespace Spartan
                 Vector3 p3_world = Vector3(vertices[indicies[i + 2]].pos) * vertex_transform;
 
                 float distance = m_ray.HitDistance(p1_world, p2_world, p3_world);
-                
+
                 if (distance < distance_min)
                 {
                     m_selected_entity = hit.m_entity;
@@ -517,21 +517,27 @@ namespace Spartan
             {
                 SP_LOG_INFO("Focusing on entity \"%s\"...", entity->GetTransform()->GetEntity()->GetName().c_str());
 
-                // Get lerp target position.
-                m_lerp_to_target_position = entity->GetTransform()->GetPosition();
+                m_lerp_to_target_position       = entity->GetTransform()->GetPosition();
+                const Vector3 target_direction  = (m_lerp_to_target_position - m_transform->GetPosition()).Normalized();
 
                 // If the entity has a renderable component, we can get a more accurate target position.
+                // ...otherwise we apply a simple offset so that the rotation vector doesn't suffer
                 if (Renderable* renderable = entity->GetRenderable())
                 {
-                    m_lerp_to_target_position = renderable->GetAabb().GetCenter();
-
-                    Vector3 target_direction  = (m_lerp_to_target_position - m_transform->GetPosition()).Normalized();
                     m_lerp_to_target_position -= target_direction * renderable->GetAabb().GetExtents().Length() * 2.0f;
                 }
+                else
+                {
+                    m_lerp_to_target_position -= target_direction;
+                }
 
-                // Compute lerp speed based on how far the entity is from the camera.
-                m_lerp_to_target_speed = Vector3::Distance(m_lerp_to_target_position, m_transform->GetPosition()) * 0.1f;
-                m_lerp_to_target       = true;
+                m_lerp_to_target_rotation  = Quaternion::FromLookRotation(entity->GetTransform()->GetPosition() - m_lerp_to_target_position).Normalized();
+                m_lerp_to_target_distance  = Vector3::Distance(m_lerp_to_target_position, m_transform->GetPosition());
+
+                const float lerp_angle = acosf(Quaternion::Dot(m_lerp_to_target_rotation.Normalized(), m_transform->GetRotation().Normalized())) * Helper::RAD_TO_DEG;
+
+                m_lerp_to_target_p = m_lerp_to_target_distance > 0.1f ? true : false;
+                m_lerp_to_target_r = lerp_angle > 1.0f ? true : false;
             }
         }
 
@@ -542,32 +548,43 @@ namespace Spartan
             m_lerp_to_target_position = m_bookmarks[m_target_bookmark_index].position;
 
             // Compute lerp speed based on how far the entity is from the camera.
-            m_lerp_to_target_speed = Vector3::Distance(m_lerp_to_target_position, m_transform->GetPosition()) * 0.1f;
-            m_lerp_to_target       = true;
+            m_lerp_to_target_distance = Vector3::Distance(m_lerp_to_target_position, m_transform->GetPosition());
+            m_lerp_to_target_p       = true;
 
             m_target_bookmark_index = -1;
             m_lerpt_to_bookmark     = false;
         }
 
         // Lerp
-        if (m_lerp_to_target || lerp_to_bookmark)
+        if (m_lerp_to_target_p || m_lerp_to_target_r || lerp_to_bookmark)
         {
+            // Lerp duration in seconds
+            // 2.0 seconds + [0.0 - 2.0] seconds based on distance
+            // Something is not right with the duration...
+            const float lerp_duration = 2.0f + Helper::Clamp(m_lerp_to_target_distance * 0.01f, 0.0f, 2.0f);
+
             // Alpha
-            m_lerp_to_target_alpha += m_lerp_to_target_speed * static_cast<float>(Timer::GetDeltaTimeSec());
+            m_lerp_to_target_alpha += static_cast<float>(Timer::GetDeltaTimeSec()) / lerp_duration;
 
             // Position
-            Vector3 interpolated_position = Vector3::Lerp(m_transform->GetPosition(), m_lerp_to_target_position, m_lerp_to_target_alpha);
-            m_transform->SetPosition(interpolated_position);
+            if (m_lerp_to_target_p)
+            {
+                const Vector3 interpolated_position = Vector3::Lerp(m_transform->GetPosition(), m_lerp_to_target_position, m_lerp_to_target_alpha);
+                m_transform->SetPosition(interpolated_position);
+            }
 
             // Rotation
-            Vector3 target_direction         = (m_lerp_to_target_position - m_transform->GetPosition()).Normalized();
-            Quaternion interpolated_rotation = Quaternion::Lerp(m_transform->GetRotation(), Quaternion::FromLookRotation(target_direction), m_lerp_to_target_alpha);
-            //m_transform->SetRotation(interpolated_rotation);
+            if (m_lerp_to_target_r)
+            {
+                const Quaternion interpolated_rotation = Quaternion::Lerp(m_transform->GetRotation(), m_lerp_to_target_rotation, Helper::Clamp(m_lerp_to_target_alpha, 0.0f, 1.0f));
+                m_transform->SetRotation(interpolated_rotation);
+            }
 
             // If the lerp has completed or the user has initiated fps control, stop lerping.
             if (m_lerp_to_target_alpha >= 1.0f || m_is_controlled_by_keyboard_mouse)
             {
-                m_lerp_to_target          = false;
+                m_lerp_to_target_p        = false;
+                m_lerp_to_target_r        = false;
                 m_lerp_to_target_alpha    = 0.0f;
                 m_lerp_to_target_position = Vector3::Zero;
             }
