@@ -531,7 +531,7 @@ namespace Spartan
                     m_lerp_to_target_position -= target_direction;
                 }
 
-                m_lerp_to_target_rotation  = Quaternion::FromLookRotation(m_lerp_to_target_position - m_transform->GetPosition()).Normalized();
+                m_lerp_to_target_rotation  = Quaternion::FromLookRotation(entity->GetTransform()->GetPosition() - m_lerp_to_target_position).Normalized();
                 m_lerp_to_target_distance  = Vector3::Distance(m_lerp_to_target_position, m_transform->GetPosition());
 
                 const float lerp_angle = acosf(Quaternion::Dot(m_lerp_to_target_rotation.Normalized(), m_transform->GetRotation().Normalized())) * Helper::RAD_TO_DEG;
