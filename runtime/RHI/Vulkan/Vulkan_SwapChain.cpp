@@ -274,7 +274,7 @@ namespace Spartan
         }
     }
     
-    static void destroy(uint8_t buffer_count, void* surface, void* swap_chain,
+    static void destroy(uint8_t buffer_count, void*& surface, void*& swap_chain,
         array<void*, 3>& image_views,
         array<shared_ptr<RHI_Semaphore>, max_buffer_count>& image_acquired_semaphore
     )
@@ -290,8 +290,13 @@ namespace Spartan
         image_views.fill(nullptr);
         image_acquired_semaphore.fill(nullptr);
 
-        //RHI_Device::AddToDeletionQueue(RHI_Resource_Type::swapchain, swap_chain);
-        //RHI_Device::AddToDeletionQueue(RHI_Resource_Type::surface, surface);
+        RHI_Device::QueueWaitAll();
+
+        vkDestroySwapchainKHR(RHI_Context::device, static_cast<VkSwapchainKHR>(swap_chain), nullptr);
+        swap_chain = nullptr;
+
+        vkDestroySurfaceKHR(RHI_Context::instance, static_cast<VkSurfaceKHR>(surface), nullptr);
+        surface = nullptr;
     }
 
     RHI_SwapChain::RHI_SwapChain(
@@ -351,8 +356,6 @@ namespace Spartan
             m_rhi_backbuffer_srv,
             m_acquire_semaphore
         );
-        m_rhi_resource = nullptr;
-        m_surface      = nullptr;
     }
 
     bool RHI_SwapChain::Resize(const uint32_t width, const uint32_t height, const bool force /*= false*/)
@@ -379,8 +382,6 @@ namespace Spartan
             m_rhi_backbuffer_srv,
             m_acquire_semaphore
         );
-        m_rhi_resource = nullptr;
-        m_surface      = nullptr;
 
         // Create the swap chain with the new dimensions
         create

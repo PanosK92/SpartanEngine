@@ -71,6 +71,7 @@ namespace Spartan
 
     namespace vulkan_memory_allocator
     {
+        static mutex mutex_allocator;
         static VmaAllocator allocator;
         static unordered_map<uint64_t, VmaAllocation> allocations;
 
@@ -846,8 +847,6 @@ namespace Spartan
                     case RHI_Resource_Type::semaphore:             vkDestroySemaphore(RHI_Context::device, static_cast<VkSemaphore>(resource), nullptr);                     break;
                     case RHI_Resource_Type::fence:                 vkDestroyFence(RHI_Context::device, static_cast<VkFence>(resource), nullptr);                             break;
                     case RHI_Resource_Type::descriptor_set_layout: vkDestroyDescriptorSetLayout(RHI_Context::device, static_cast<VkDescriptorSetLayout>(resource), nullptr); break;
-                    case RHI_Resource_Type::swapchain:             vkDestroySwapchainKHR(RHI_Context::device, static_cast<VkSwapchainKHR>(resource), nullptr);               break;
-                    case RHI_Resource_Type::surface:               vkDestroySurfaceKHR(RHI_Context::instance, static_cast<VkSurfaceKHR>(resource), nullptr);                 break;
                     case RHI_Resource_Type::query_pool:            vkDestroyQueryPool(RHI_Context::device, static_cast<VkQueryPool>(resource), nullptr);                     break;
                     case RHI_Resource_Type::pipeline:              vkDestroyPipeline(RHI_Context::device, static_cast<VkPipeline>(resource), nullptr);                       break;
                     case RHI_Resource_Type::pipeline_layout:       vkDestroyPipelineLayout(RHI_Context::device, static_cast<VkPipelineLayout>(resource), nullptr);           break;
@@ -923,6 +922,8 @@ namespace Spartan
 
     void RHI_Device::CreateBuffer(void*& resource, const uint64_t size, uint32_t usage, uint32_t memory_property_flags, const void* data_initial, const char* name)
     {
+        lock_guard<mutex> lock(vulkan_memory_allocator::mutex_allocator);
+
         // Deduce some memory properties
         bool is_buffer_storage       = (usage & VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) != 0; // aka structured buffer
         bool is_buffer_constant      = (usage & VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT) != 0;
@@ -999,6 +1000,7 @@ namespace Spartan
     void RHI_Device::DestroyBuffer(void*& resource)
     {
         SP_ASSERT_MSG(resource != nullptr, "Resource is null");
+        lock_guard<mutex> lock(vulkan_memory_allocator::mutex_allocator);
 
         if (VmaAllocation allocation = static_cast<VmaAllocation>(vulkan_memory_allocator::get_allocation_from_resource(resource)))
         {
@@ -1009,8 +1011,10 @@ namespace Spartan
 
     void RHI_Device::CreateTexture(void* vk_image_creat_info, void*& resource, const char* name)
     {
+        lock_guard<mutex> lock(vulkan_memory_allocator::mutex_allocator);
+
         VmaAllocationCreateInfo allocation_info = {};
-        allocation_info.usage = VMA_MEMORY_USAGE_AUTO;
+        allocation_info.usage                   = VMA_MEMORY_USAGE_AUTO;
 
         // Create image
         VmaAllocation allocation;
@@ -1028,6 +1032,7 @@ namespace Spartan
     void RHI_Device::DestroyTexture(void*& resource)
     {
         SP_ASSERT_MSG(resource != nullptr, "Resource is null");
+        lock_guard<mutex> lock(vulkan_memory_allocator::mutex_allocator);
 
         if (VmaAllocation allocation = static_cast<VmaAllocation>(vulkan_memory_allocator::get_allocation_from_resource(resource)))
         {
