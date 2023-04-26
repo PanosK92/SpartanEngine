@@ -21,7 +21,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===================================
 #include "pch.h"
-#include "Renderer.h"
 #include "Grid.h"
 #include "Mesh.h"
 #include "Font/Font.h"
@@ -40,7 +39,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_FSR2.h"
 #include "../RHI/RHI_StructuredBuffer.h"
 #include "Renderer_ConstantBuffers.h"
-#include "../RHI/RHI_SwapChain.h"
 //==============================================
 
 //= NAMESPACES ===============

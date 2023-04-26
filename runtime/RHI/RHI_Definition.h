@@ -74,8 +74,6 @@ namespace Spartan
         shader,
         semaphore,
         fence,
-        surface,
-        swapchain,
         descriptor_set_layout,
         query_pool,
         pipeline,

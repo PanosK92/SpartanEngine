@@ -32,7 +32,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_StructuredBuffer.h"        
 #include "../RHI/RHI_Implementation.h"          
 #include "../RHI/RHI_CommandPool.h"
-#include "../RHI/RHI_SwapChain.h"
 #include "../RHI/RHI_FSR2.h"
 #include "../RHI/RHI_RenderDoc.h"
 #include "../Core/Window.h"                     
@@ -49,6 +48,7 @@ using namespace std;
 using namespace Spartan::Math;
 //============================
 
+// Macro to work around the verboseness of some C++ concepts.
 #define render_target(enum_rt) GetRenderTargets()[static_cast<uint8_t>(enum_rt)]
 
 namespace Spartan
@@ -174,15 +174,15 @@ namespace Spartan
             "renderer"
         );
 
-        // Adjust render option to reflect whether the swapchain is HDR or not
-        SetOption(RendererOption::Hdr, m_swap_chain->IsHdr());
-
         // Create command pool
         m_cmd_pool = RHI_Device::AllocateCommandPool("renderer", m_swap_chain->GetObjectId());
         m_cmd_pool->AllocateCommandLists(RHI_Queue_Type::Graphics, 2, 2);
 
+        // Adjust render option to reflect whether the swapchain is HDR or not
+        SetOption(RendererOption::Hdr, m_swap_chain->IsHdr());
+
         // Set the output and viewport resolution to the display resolution.
-        // If the editor is running, it will set the viewport resolution to whatever the viewport.      
+        // If the editor is running, it will set the viewport resolution to whatever the viewport is.
         SetViewport(static_cast<float>(Window::GetWidth()), static_cast<float>(Window::GetHeight()));
         SetResolutionRender(Display::GetWidth(), Display::GetHeight(), false);
         SetResolutionOutput(Display::GetWidth(), Display::GetHeight(), false);
@@ -217,7 +217,7 @@ namespace Spartan
         //SetOption(RendererOption::Debanding,           1.0f); // Disable debanding as we shouldn't be seeing banding to begin with.
         //SetOption(RendererOption::VolumetricFog,       1.0f); // Disable by default because it's not that great, I need to do it with a voxelised approach.
 
-
+        // Create all the resources
         CreateConstantBuffers();
         CreateShaders();
         CreateDepthStencilStates();
@@ -235,12 +235,13 @@ namespace Spartan
         SP_SUBSCRIBE_TO_EVENT(EventType::WorldClear,                SP_EVENT_HANDLER_STATIC(OnClear));
         SP_SUBSCRIBE_TO_EVENT(EventType::WindowOnFullScreenToggled, SP_EVENT_HANDLER_STATIC(OnFullScreenToggled));
 
-        // Fire events
+        // Fire event
         SP_FIRE_EVENT(EventType::RendererOnInitialized);
     }
 
     void Renderer::Shutdown()
     {
+        // Fire event
         SP_FIRE_EVENT(EventType::RendererOnShutdown);
 
         // Manually invoke the deconstructors so that ParseDeletionQueue(), releases their RHI resources.
