@@ -207,10 +207,16 @@ namespace Spartan
         }
         
         // Rasterizer state
-        VkPipelineRasterizationStateCreateInfo rasterizer_state = {};
+        VkPipelineRasterizationStateCreateInfo rasterizer_state             = {};
+        VkPipelineRasterizationDepthClipStateCreateInfoEXT depth_clip_state = {};
         if (m_state.rasterizer_state)
         {
+            depth_clip_state.sType           = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_DEPTH_CLIP_STATE_CREATE_INFO_EXT;
+            depth_clip_state.depthClipEnable = m_state.rasterizer_state->GetDepthClipEnabled();
+            depth_clip_state.pNext           = nullptr;
+
             rasterizer_state.sType                   = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+            rasterizer_state.pNext                   = &depth_clip_state;
             rasterizer_state.depthClampEnable        = VK_FALSE;
             rasterizer_state.rasterizerDiscardEnable = VK_FALSE;
             rasterizer_state.polygonMode             = vulkan_polygon_mode[static_cast<uint32_t>(m_state.rasterizer_state->GetPolygonMode())];
