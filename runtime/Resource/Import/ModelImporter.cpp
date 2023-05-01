@@ -55,6 +55,16 @@ using namespace Assimp;
 
 namespace Spartan
 {
+    namespace
+    {
+        static std::string m_file_path;
+        static std::string m_name;
+        static bool m_has_animation   = false;
+        static bool m_is_gltf         = false;
+        static Mesh* m_mesh           = nullptr;
+        static const aiScene* m_scene = nullptr;
+    }
+
     static Matrix convert_matrix(const aiMatrix4x4& transform)
     {
         return Matrix
@@ -319,7 +329,7 @@ namespace Spartan
         return material;
     }
 
-    ModelImporter::ModelImporter()
+    void ModelImporter::Initialize()
     {
         // Get version
         const int major = aiGetVersionMajor();

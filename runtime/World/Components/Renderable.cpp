@@ -38,7 +38,7 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    inline void build(const DefaultGeometry type, Renderable* renderable)
+    static void build(const DefaultGeometry type, Renderable* renderable)
     {    
         Mesh* mesh = new Mesh();
         vector<RHI_Vertex_PosTexNorTan> vertices;
@@ -83,7 +83,7 @@ namespace Spartan
         mesh->CreateGpuBuffers();
 
         renderable->SetGeometry(
-            "Default_Geometry",
+            "default_geometry",
             0,
             static_cast<uint32_t>(indices.size()),
             0,
