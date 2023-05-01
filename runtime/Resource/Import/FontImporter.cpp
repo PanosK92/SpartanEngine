@@ -36,12 +36,18 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    // Properties of the texture font atlas which holds all visible ASCII characters
-    static const uint32_t GLYPH_START   = 32;
-    static const uint32_t GLYPH_END     = 127;
-    static const uint32_t ATLAS_WIDTH   = 512;
+    namespace
+    {
+        // Properties of the texture font atlas which holds all visible ASCII characters
+        static const uint32_t GLYPH_START = 32;
+        static const uint32_t GLYPH_END   = 127;
+        static const uint32_t ATLAS_WIDTH = 512;
 
-    static FT_UInt32 g_glyph_load_flags = 0;
+        static FT_UInt32 g_glyph_load_flags = 0;
+
+        FT_LibraryRec_* library = nullptr;
+        FT_StrokerRec_* stroker = nullptr;
+    }
 
     // FreeType has questionable a design, but it's free, so we just write this helper namespace and forget about it
     namespace ft_helper
@@ -57,13 +63,13 @@ namespace Spartan
                 }
             }
 
-            uint32_t width              = 0;
-            uint32_t height             = 0;
-            unsigned char pixel_mode    = 0;
-            unsigned char* buffer       = nullptr;
+            uint32_t width           = 0;
+            uint32_t height          = 0;
+            unsigned char pixel_mode = 0;
+            unsigned char* buffer    = nullptr;
         };
 
-        inline bool handle_error(int error_code)
+        static bool handle_error(int error_code)
         {
             if (error_code == FT_Err_Ok)
                 return true;
@@ -375,35 +381,35 @@ namespace Spartan
         }
     }
 
-    FontImporter::FontImporter()
+    void FontImporter::Initialize()
     {
         // Initialize library
-        if (!ft_helper::handle_error(FT_Init_FreeType(&m_library)))
+        if (!ft_helper::handle_error(FT_Init_FreeType(&library)))
             return;
 
         // Initialize stroker
-        if (!ft_helper::handle_error(FT_Stroker_New(m_library, &m_stroker)))
+        if (!ft_helper::handle_error(FT_Stroker_New(library, &stroker)))
             return;
 
         // Get version
         FT_Int major;
         FT_Int minor;
         FT_Int rev;
-        FT_Library_Version(m_library, &major, &minor, &rev);
+        FT_Library_Version(library, &major, &minor, &rev);
         Settings::RegisterThirdPartyLib("FreeType", to_string(major) + "." + to_string(minor) + "." + to_string(rev), "https://freetype.org/");
     }
 
-    FontImporter::~FontImporter()
+    void FontImporter::Shutdown()
     {
-        FT_Stroker_Done(m_stroker);
-        ft_helper::handle_error(FT_Done_FreeType(m_library));
+        FT_Stroker_Done(stroker);
+        ft_helper::handle_error(FT_Done_FreeType(library));
     }
 
     bool FontImporter::LoadFromFile(Font* font, const string& file_path)
     {
         // Load font (called face)
         FT_Face ft_font = nullptr;
-        if (!ft_helper::handle_error(FT_New_Face(m_library, file_path.c_str(), 0, &ft_font)))
+        if (!ft_helper::handle_error(FT_New_Face(library, file_path.c_str(), 0, &ft_font)))
         {
             ft_helper::handle_error(FT_Done_Face(ft_font));
             return false;
@@ -426,7 +432,7 @@ namespace Spartan
         const bool outline            = outline_size != 0;
         if (outline)
         {
-            FT_Stroker_Set(m_stroker, outline_size * 64, FT_STROKER_LINECAP_ROUND, FT_STROKER_LINEJOIN_ROUND, 0);
+            FT_Stroker_Set(stroker, outline_size * 64, FT_STROKER_LINECAP_ROUND, FT_STROKER_LINEJOIN_ROUND, 0);
         }
 
         g_glyph_load_flags = ft_helper::get_load_flags(font);
@@ -466,7 +472,7 @@ namespace Spartan
             ft_helper::ft_bitmap bitmap_outline;
             if (outline)
             {
-                ft_helper::get_bitmap(&bitmap_outline, font, m_stroker, ft_font, char_code);
+                ft_helper::get_bitmap(&bitmap_outline, font, stroker, ft_font, char_code);
             }
 
             // Advance pen

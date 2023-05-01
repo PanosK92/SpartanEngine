@@ -30,6 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Profiling/Profiler.h"
 #include "../Rendering/Renderer.h"
 #include "../Resource/ResourceCache.h"
+#include "../Resource/Import/FontImporter.h"
 #include "../Resource/Import/ModelImporter.h"
 #include "../Resource/Import/ImageImporter.h"
 //===========================================
@@ -52,6 +53,7 @@ namespace Spartan
         // Initialize
         Stopwatch timer_initialize;
         {
+            FontImporter::Initialize();
             ImageImporter::Initialize();
             ModelImporter::Initialize();
             Window::Initialize();
@@ -84,6 +86,7 @@ namespace Spartan
         Profiler::Shutdown();
         Window::Shutdown();
         ImageImporter::Shutdown();
+        FontImporter::Shutdown();
     }
 
     void Engine::Tick()

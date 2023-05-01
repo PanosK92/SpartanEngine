@@ -22,7 +22,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =========================
 #include "pch.h"
 #include "ResourceCache.h"
-#include "Import/FontImporter.h"
 #include "../World/World.h"
 #include "../IO/FileStream.h"
 #include "../RHI/RHI_Texture2D.h"
@@ -39,13 +38,13 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    // Directories
-    static std::array<std::string, 6> m_standard_resource_directories;
-    static std::string m_project_directory;
-
-    std::vector<std::shared_ptr<IResource>> ResourceCache::m_resources;
-    std::mutex ResourceCache::m_mutex;
-    std::shared_ptr<FontImporter> ResourceCache::m_importer_font;
+    namespace
+    {
+        static array<string, 6> m_standard_resource_directories;
+        static string m_project_directory;
+        static vector<shared_ptr<IResource>> m_resources;
+        static mutex m_mutex;
+    }
 
     void ResourceCache::Initialize()
     {
@@ -65,9 +64,6 @@ namespace Spartan
         SP_SUBSCRIBE_TO_EVENT(EventType::WorldSaveStart, SP_EVENT_HANDLER_STATIC(SaveResourcesToFiles));
         SP_SUBSCRIBE_TO_EVENT(EventType::WorldLoadStart, SP_EVENT_HANDLER_STATIC(LoadResourcesFromFiles));
         SP_SUBSCRIBE_TO_EVENT(EventType::WorldClear,     SP_EVENT_HANDLER_STATIC(Clear));
-
-        // Importers
-        m_importer_font  = make_shared<FontImporter>();
     }
 
     bool ResourceCache::IsCached(const string& resource_name, const ResourceType resource_type)
@@ -302,4 +298,13 @@ namespace Spartan
         return "Data";
     }
 
+    vector<shared_ptr<IResource>>& ResourceCache::GetResources()
+    {
+        return m_resources;
+    }
+
+    mutex& ResourceCache::GetMutex()
+    {
+        return m_mutex;
+    }
 }
