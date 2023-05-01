@@ -22,7 +22,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =========================
 #include "pch.h"
 #include "ResourceCache.h"
-#include "Import/ImageImporter.h"
 #include "Import/FontImporter.h"
 #include "../World/World.h"
 #include "../IO/FileStream.h"
@@ -46,7 +45,6 @@ namespace Spartan
 
     std::vector<std::shared_ptr<IResource>> ResourceCache::m_resources;
     std::mutex ResourceCache::m_mutex;
-    std::shared_ptr<ImageImporter> ResourceCache::m_importer_image;
     std::shared_ptr<FontImporter> ResourceCache::m_importer_font;
 
     void ResourceCache::Initialize()
@@ -69,7 +67,6 @@ namespace Spartan
         SP_SUBSCRIBE_TO_EVENT(EventType::WorldClear,     SP_EVENT_HANDLER_STATIC(Clear));
 
         // Importers
-        m_importer_image = make_shared<ImageImporter>();
         m_importer_font  = make_shared<FontImporter>();
     }
 

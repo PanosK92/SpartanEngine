@@ -21,25 +21,20 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ========================
-#include <vector>
+//= INCLUDES ======================
 #include <string>
-#include "../../RHI/RHI_Definition.h"
 #include "../../Core/Definitions.h"
-//===================================
-
-struct FIBITMAP;
+//=================================
 
 namespace Spartan
 {
-    class Context;
+    class RHI_Texture;
 
     class SP_CLASS ImageImporter
     {
     public:
-        ImageImporter();
-        ~ImageImporter();
-
-        bool Load(const std::string& file_path, const uint32_t slice_index, RHI_Texture* texture);
+        static void Initialize();
+        static void Shutdown();
+        static bool Load(const std::string& file_path, const uint32_t slice_index, RHI_Texture* texture);
     };
 }
