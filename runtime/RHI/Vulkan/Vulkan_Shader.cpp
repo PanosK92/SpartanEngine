@@ -126,7 +126,7 @@ namespace Spartan
             SP_VK_ASSERT_MSG(vkCreateShaderModule(RHI_Context::device, &create_info, nullptr, &shader_module), "Failed to create shader module");
 
             // Name the shader module (useful for GPU-based validation)
-            vulkan_utility::debug::set_object_name(shader_module, m_name.c_str());
+            vulkan_utility::debug::set_object_name(shader_module, m_object_name.c_str());
 
             // Reflect shader resources (so that descriptor sets can be created later)
             Reflect

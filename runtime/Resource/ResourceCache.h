@@ -92,8 +92,8 @@ namespace Spartan
             }
 
             // Ensure that this resource is not already cached
-            if (IsCached(resource->GetResourceName(), resource->GetResourceType()))
-                return GetByName<T>(resource->GetResourceName());
+            if (IsCached(resource->GetObjectName(), resource->GetResourceType()))
+                return GetByName<T>(resource->GetObjectName());
 
             std::lock_guard<std::mutex> guard(GetMutex());
 
@@ -147,7 +147,7 @@ namespace Spartan
             if (!resource)
                 return;
 
-            if (!IsCached(resource->GetResourceName(), resource->GetResourceType()))
+            if (!IsCached(resource->GetObjectName(), resource->GetResourceType()))
                 return;
 
             GetResources().erase

@@ -91,7 +91,7 @@ namespace Spartan
         stream->Write(has_audio_clip);
         if (has_audio_clip)
         {
-            stream->Write(m_audio_clip->GetResourceName());
+            stream->Write(m_audio_clip->GetObjectName());
         }
     }
     
@@ -124,7 +124,7 @@ namespace Spartan
 
     string AudioSource::GetAudioClipName() const
     {
-        return m_audio_clip ? m_audio_clip->GetResourceName() : "";
+        return m_audio_clip ? m_audio_clip->GetObjectName() : "";
     }
     
     bool AudioSource::Play() const

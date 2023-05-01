@@ -185,7 +185,7 @@ namespace Spartan
             return false;
         }
 
-        inline FT_UInt32 get_load_flags(const Font* font)
+        static FT_UInt32 get_load_flags(const Font* font)
         {
             FT_UInt32 flags = FT_LOAD_DEFAULT | FT_LOAD_RENDER;
 
@@ -207,12 +207,12 @@ namespace Spartan
             return flags;
         }
 
-        inline bool load_glyph(const FT_Face& face, const uint32_t char_code, const uint32_t flags = g_glyph_load_flags)
+        static bool load_glyph(const FT_Face& face, const uint32_t char_code, const uint32_t flags = g_glyph_load_flags)
         {
             return ft_helper::handle_error(FT_Load_Char(face, char_code, flags));
         }
 
-        inline void get_character_max_dimensions(uint32_t* max_width, uint32_t* max_height, FT_Face& face, const uint32_t outline_size)
+        static void get_character_max_dimensions(uint32_t* max_width, uint32_t* max_height, FT_Face& face, const uint32_t outline_size)
         {
             uint32_t width  = 0;
             uint32_t height = 0;
@@ -231,7 +231,7 @@ namespace Spartan
             *max_height = height + outline_size * 2;
         }
 
-        inline void get_texture_atlas_dimensions(uint32_t* atlas_width, uint32_t* atlas_height, uint32_t* atlas_cell_width, uint32_t* atlas_cell_height, FT_Face& face, const uint32_t outline_size)
+        static void get_texture_atlas_dimensions(uint32_t* atlas_width, uint32_t* atlas_height, uint32_t* atlas_cell_width, uint32_t* atlas_cell_height, FT_Face& face, const uint32_t outline_size)
         {
             uint32_t max_width  = 0;
             uint32_t max_height = 0;
@@ -247,7 +247,7 @@ namespace Spartan
             *atlas_cell_height  = max_height;
         }
 
-        inline void get_bitmap(ft_bitmap* bitmap, const Font* font, const FT_Stroker& stroker, FT_Face& ft_font, const uint32_t char_code)
+        static void get_bitmap(ft_bitmap* bitmap, const Font* font, const FT_Stroker& stroker, FT_Face& ft_font, const uint32_t char_code)
         {
             // Load glyph
             if (!load_glyph(ft_font, char_code, stroker ? FT_LOAD_NO_BITMAP : g_glyph_load_flags))
@@ -309,7 +309,7 @@ namespace Spartan
             }
         }
 
-        inline void copy_to_atlas(vector<std::byte>& atlas, const ft_bitmap& bitmap, const Vector2& pen, const uint32_t atlas_width, const uint32_t outline_size)
+        static void copy_to_atlas(vector<std::byte>& atlas, const ft_bitmap& bitmap, const Vector2& pen, const uint32_t atlas_width, const uint32_t outline_size)
         {
             for (uint32_t glyph_y = 0; glyph_y < bitmap.height; glyph_y++)
             {
@@ -349,7 +349,7 @@ namespace Spartan
             }
         }
 
-        inline Glyph get_glyph(const FT_Face& ft_font, const uint32_t char_code, const Vector2& pen, const uint32_t atlas_width, const uint32_t atlas_height, const uint32_t outline_size)
+        static Glyph get_glyph(const FT_Face& ft_font, const uint32_t char_code, const Vector2& pen, const uint32_t atlas_width, const uint32_t atlas_height, const uint32_t outline_size)
         {
             // The glyph metrics refer to whatever the last loaded glyph was, this is up to the caller of the function
             FT_Glyph_Metrics& metrics = ft_font->glyph->metrics; 
@@ -417,11 +417,11 @@ namespace Spartan
 
         // Set font size
         if (!ft_helper::handle_error(FT_Set_Char_Size(
-            ft_font,                // handle to face object
-            0,                        // char_width in 1/64th of points 
-            font->GetSize() * 64,    // char_height in 1/64th of points
-            96,                        // horizontal device resolution
-            96)))                    // vertical device resolution
+            ft_font,              // handle to face object
+            0,                    // char_width in 1/64th of points 
+            font->GetSize() * 64, // char_height in 1/64th of points
+            96,                   // horizontal device resolution
+            96)))                 // vertical device resolution
         {
             ft_helper::handle_error(FT_Done_Face(ft_font));
             return false;

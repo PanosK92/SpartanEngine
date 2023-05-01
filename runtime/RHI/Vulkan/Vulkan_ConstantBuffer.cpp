@@ -36,7 +36,7 @@ namespace Spartan
 {
     RHI_ConstantBuffer::RHI_ConstantBuffer(const string& name)
     {
-        m_name = name;
+        m_object_name = name;
     }
 
     RHI_ConstantBuffer::~RHI_ConstantBuffer()
@@ -69,13 +69,13 @@ namespace Spartan
         VkMemoryPropertyFlags flags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT; // mappable
 
         // Create buffer
-        RHI_Device::CreateBuffer(m_rhi_resource, m_object_size_gpu, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, flags, nullptr, m_name.c_str());
+        RHI_Device::CreateBuffer(m_rhi_resource, m_object_size_gpu, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, flags, nullptr, m_object_name.c_str());
 
         // Get mapped data pointer
         m_mapped_data = RHI_Device::GetMappedDataFromBuffer(m_rhi_resource);
 
         // Set debug name
-        vulkan_utility::debug::set_object_name(static_cast<VkBuffer>(m_rhi_resource), (m_name + string("_size_") + to_string(m_object_size_gpu)).c_str());
+        vulkan_utility::debug::set_object_name(static_cast<VkBuffer>(m_rhi_resource), (m_object_name + string("_size_") + to_string(m_object_size_gpu)).c_str());
     }
 
     void RHI_ConstantBuffer::Update(void* data_cpu)

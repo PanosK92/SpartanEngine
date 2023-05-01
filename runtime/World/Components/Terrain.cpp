@@ -244,7 +244,7 @@ namespace Spartan
         const string no_path;
 
         stream->Write(m_height_map ? m_height_map->GetResourceFilePathNative() : no_path);
-        stream->Write(m_mesh ? m_mesh->GetResourceName() : no_path);
+        stream->Write(m_mesh ? m_mesh->GetObjectName() : no_path);
         stream->Write(m_min_y);
         stream->Write(m_max_y);
     }
@@ -395,7 +395,7 @@ namespace Spartan
             m_mesh->ComputeAabb();
 
             // Set a file path so the model can be used by the resource cache
-            m_mesh->SetResourceFilePath(ResourceCache::GetProjectDirectory() + m_entity->GetName() + "_terrain_" + to_string(m_object_id) + string(EXTENSION_MODEL));
+            m_mesh->SetResourceFilePath(ResourceCache::GetProjectDirectory() + m_entity->GetObjectName() + "_terrain_" + to_string(m_object_id) + string(EXTENSION_MODEL));
             m_mesh = ResourceCache::Cache(m_mesh);
         }
         else

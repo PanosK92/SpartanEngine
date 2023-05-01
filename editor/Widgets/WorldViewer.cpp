@@ -264,7 +264,7 @@ void WorldViewer::TreeAddEntity(Spartan::Entity* entity)
 
     // Add node
     const void* node_id     = reinterpret_cast<void*>(static_cast<uint64_t>(entity->GetObjectId()));
-    string node_name        = entity->GetName();
+    string node_name        = entity->GetObjectName();
     const bool is_node_open = ImGui::TreeNodeEx(node_id, node_flags, node_name.c_str());
 
     // Keep a copy of the selected item's rect so that we can scroll to bring it into view
@@ -552,10 +552,10 @@ void WorldViewer::PopupEntityRename() const
             return;
         }
 
-        string name = selected_entity->GetName();
+        string name = selected_entity->GetObjectName();
         ImGui::Text("Name:");
         ImGui::InputText("##edit", &name);
-        selected_entity->SetName(string(name));
+        selected_entity->SetObjectName(string(name));
 
         if (ImGuiSp::button("Ok"))
         { 
@@ -628,7 +628,7 @@ void WorldViewer::ActionEntityCreateCube()
     auto renderable = entity->AddComponent<Spartan::Renderable>();
     renderable->SetGeometry(Spartan::DefaultGeometry::Cube);
     renderable->SetDefaultMaterial();
-    entity->SetName("Cube");
+    entity->SetObjectName("Cube");
 }
 
 void WorldViewer::ActionEntityCreateQuad()
@@ -637,7 +637,7 @@ void WorldViewer::ActionEntityCreateQuad()
     auto renderable = entity->AddComponent<Spartan::Renderable>();
     renderable->SetGeometry(Spartan::DefaultGeometry::Quad);
     renderable->SetDefaultMaterial();
-    entity->SetName("Quad");
+    entity->SetObjectName("Quad");
 }
 
 void WorldViewer::ActionEntityCreateSphere()
@@ -646,7 +646,7 @@ void WorldViewer::ActionEntityCreateSphere()
     auto renderable = entity->AddComponent<Spartan::Renderable>();
     renderable->SetGeometry(Spartan::DefaultGeometry::Sphere);
     renderable->SetDefaultMaterial();
-    entity->SetName("Sphere");
+    entity->SetObjectName("Sphere");
 }
 
 void WorldViewer::ActionEntityCreateCylinder()
@@ -655,7 +655,7 @@ void WorldViewer::ActionEntityCreateCylinder()
     auto renderable = entity->AddComponent<Spartan::Renderable>();
     renderable->SetGeometry(Spartan::DefaultGeometry::Cylinder);
     renderable->SetDefaultMaterial();
-    entity->SetName("Cylinder");
+    entity->SetObjectName("Cylinder");
 }
 
 void WorldViewer::ActionEntityCreateCone()
@@ -664,34 +664,34 @@ void WorldViewer::ActionEntityCreateCone()
     auto renderable = entity->AddComponent<Spartan::Renderable>();
     renderable->SetGeometry(Spartan::DefaultGeometry::Cone);
     renderable->SetDefaultMaterial();
-    entity->SetName("Cone");
+    entity->SetObjectName("Cone");
 }
 
 void WorldViewer::ActionEntityCreateCamera()
 {
     auto entity = ActionEntityCreateEmpty();
     entity->AddComponent<Spartan::Camera>();
-    entity->SetName("Camera");
+    entity->SetObjectName("Camera");
 }
 
 void WorldViewer::ActionEntityCreateTerrain()
 {
     auto entity = ActionEntityCreateEmpty();
     entity->AddComponent<Spartan::Terrain>();
-    entity->SetName("Terrain");
+    entity->SetObjectName("Terrain");
 }
 
 void WorldViewer::ActionEntityCreateLightDirectional()
 {
     auto entity = ActionEntityCreateEmpty();
     entity->AddComponent<Spartan::Light>()->SetLightType(Spartan::LightType::Directional);
-    entity->SetName("Directional");
+    entity->SetObjectName("Directional");
 }
 
 void WorldViewer::ActionEntityCreateLightPoint()
 {
     auto entity = ActionEntityCreateEmpty();
-    entity->SetName("Point");
+    entity->SetObjectName("Point");
 
     Spartan::Light* light = entity->AddComponent<Spartan::Light>();
     light->SetLightType(Spartan::LightType::Point);
@@ -701,7 +701,7 @@ void WorldViewer::ActionEntityCreateLightPoint()
 void WorldViewer::ActionEntityCreateLightSpot()
 {
     auto entity = ActionEntityCreateEmpty();
-    entity->SetName("Spot");
+    entity->SetObjectName("Spot");
 
     Spartan::Light* light = entity->AddComponent<Spartan::Light>();
     light->SetLightType(Spartan::LightType::Spot);
@@ -712,54 +712,54 @@ void WorldViewer::ActionEntityCreateRigidBody()
 {
     auto entity = ActionEntityCreateEmpty();
     entity->AddComponent<Spartan::RigidBody>();
-    entity->SetName("RigidBody");
+    entity->SetObjectName("RigidBody");
 }
 
 void WorldViewer::ActionEntityCreateSoftBody()
 {
     auto entity = ActionEntityCreateEmpty();
     entity->AddComponent<Spartan::SoftBody>();
-    entity->SetName("SoftBody");
+    entity->SetObjectName("SoftBody");
 }
 
 void WorldViewer::ActionEntityCreateCollider()
 {
     auto entity = ActionEntityCreateEmpty();
     entity->AddComponent<Spartan::Collider>();
-    entity->SetName("Collider");
+    entity->SetObjectName("Collider");
 }
 
 void WorldViewer::ActionEntityCreateConstraint()
 {
     auto entity = ActionEntityCreateEmpty();
     entity->AddComponent<Spartan::Constraint>();
-    entity->SetName("Constraint");
+    entity->SetObjectName("Constraint");
 }
 
 void WorldViewer::ActionEntityCreateAudioSource()
 {
     auto entity = ActionEntityCreateEmpty();
     entity->AddComponent<Spartan::AudioSource>();
-    entity->SetName("AudioSource");
+    entity->SetObjectName("AudioSource");
 }
 
 void WorldViewer::ActionEntityCreateAudioListener()
 {
     auto entity = ActionEntityCreateEmpty();
     entity->AddComponent<Spartan::AudioListener>();
-    entity->SetName("AudioListener");
+    entity->SetObjectName("AudioListener");
 }
 
 void WorldViewer::ActionEntityCreateEnvironment()
 {
     auto entity = ActionEntityCreateEmpty();
     entity->AddComponent<Spartan::Environment>();
-    entity->SetName("Environment");
+    entity->SetObjectName("Environment");
 }
 
 void WorldViewer::ActionEntityCreateReflectionProbe()
 {
     auto entity = ActionEntityCreateEmpty();
     entity->AddComponent<Spartan::ReflectionProbe>();
-    entity->SetName("ReflectionProbe");
+    entity->SetObjectName("ReflectionProbe");
 }

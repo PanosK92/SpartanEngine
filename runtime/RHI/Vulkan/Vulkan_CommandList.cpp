@@ -77,7 +77,7 @@ namespace Spartan
     RHI_CommandList::RHI_CommandList(const RHI_Queue_Type queue_type, const uint32_t index, void* cmd_pool, const char* name) : Object()
     {
         m_queue_type = queue_type;
-        m_name       = name;
+        m_object_name       = name;
         m_index      = index;
 
         // Command buffer
@@ -730,7 +730,7 @@ namespace Spartan
 
         if (!m_descriptor_layout_current)
         {
-            SP_LOG_WARNING("Descriptor layout not set, try setting constant buffer \"%s\" within a render pass", constant_buffer->GetName().c_str());
+            SP_LOG_WARNING("Descriptor layout not set, try setting constant buffer \"%s\" within a render pass", constant_buffer->GetObjectName().c_str());
             return;
         }
 
@@ -745,7 +745,7 @@ namespace Spartan
 
         if (!m_descriptor_layout_current)
         {
-            SP_LOG_WARNING("Descriptor layout not set, try setting sampler \"%s\" within a render pass", sampler->GetName().c_str());
+            SP_LOG_WARNING("Descriptor layout not set, try setting sampler \"%s\" within a render pass", sampler->GetObjectName().c_str());
             return;
         }
 
@@ -764,7 +764,7 @@ namespace Spartan
 
         if (!m_descriptor_layout_current)
         {
-            SP_LOG_WARNING("Descriptor layout not set, try setting texture \"%s\" within a render pass", texture->GetName().c_str());
+            SP_LOG_WARNING("Descriptor layout not set, try setting texture \"%s\" within a render pass", texture->GetObjectName().c_str());
             return;
         }
 
@@ -849,7 +849,7 @@ namespace Spartan
 
         if (!m_descriptor_layout_current)
         {
-            SP_LOG_WARNING("Descriptor layout not set, try setting structured buffer \"%s\" within a render pass", structured_buffer->GetName().c_str());
+            SP_LOG_WARNING("Descriptor layout not set, try setting structured buffer \"%s\" within a render pass", structured_buffer->GetObjectName().c_str());
             return;
         }
 
@@ -1038,9 +1038,9 @@ namespace Spartan
         if (!cached)
         {
             // Create a name for the descriptor set layout, very useful for Vulkan debugging
-            string name  = "CS:" + (pipeline_state.shader_compute ? pipeline_state.shader_compute->GetName() : "null");
-            name        += "-VS:" + (pipeline_state.shader_vertex ? pipeline_state.shader_vertex->GetName()  : "null");
-            name        += "-PS:" + (pipeline_state.shader_pixel  ? pipeline_state.shader_pixel->GetName()   : "null");
+            string name  = "CS:" + (pipeline_state.shader_compute ? pipeline_state.shader_compute->GetObjectName() : "null");
+            name        += "-VS:" + (pipeline_state.shader_vertex ? pipeline_state.shader_vertex->GetObjectName()  : "null");
+            name        += "-PS:" + (pipeline_state.shader_pixel  ? pipeline_state.shader_pixel->GetObjectName()   : "null");
 
             // Emplace a new descriptor set layout
             it = m_descriptor_set_layouts.emplace(make_pair(hash, make_shared<RHI_DescriptorSetLayout>(descriptors, name.c_str()))).first;

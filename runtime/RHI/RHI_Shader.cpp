@@ -109,13 +109,13 @@ namespace Spartan
 
             if (!async)
             {
-                CompileShader(m_compilation_state, m_shader_type, m_defines, m_name, m_rhi_resource, bind(&RHI_Shader::Compile2, this));
+                CompileShader(m_compilation_state, m_shader_type, m_defines, m_object_name, m_rhi_resource, bind(&RHI_Shader::Compile2, this));
             }
             else
             {
                 ThreadPool::AddTask([this]()
                 {
-                    CompileShader(m_compilation_state, m_shader_type, m_defines, m_name, m_rhi_resource, std::bind(&RHI_Shader::Compile2, this));
+                    CompileShader(m_compilation_state, m_shader_type, m_defines, m_object_name, m_rhi_resource, std::bind(&RHI_Shader::Compile2, this));
                 });
             }
         }
@@ -177,7 +177,7 @@ namespace Spartan
     void RHI_Shader::LoadSource(const string& file_path)
     {
         // Initialise a couple of things
-        m_name      = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path);
+        m_object_name      = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path);
         m_file_path = file_path;
         m_preprocessed_source.clear();
         m_names.clear();

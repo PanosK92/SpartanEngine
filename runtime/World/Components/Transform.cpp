@@ -245,7 +245,7 @@ namespace Spartan
     {
         if (!HasChildren())
         {
-            SP_LOG_WARNING("%s has no children.", GetEntity()->GetName().c_str());
+            SP_LOG_WARNING("%s has no children.", GetEntity()->GetObjectName().c_str());
             return nullptr;
         }
 
@@ -263,7 +263,7 @@ namespace Spartan
     {
         for (Transform* child : m_children)
         {
-            if (child->GetEntity()->GetName() == name)
+            if (child->GetEntity()->GetObjectName() == name)
                 return child;
         }
 
@@ -464,7 +464,7 @@ namespace Spartan
 
         for (Transform* transform : descendants)
         {
-            if (transform->GetEntity()->GetName() == name)
+            if (transform->GetEntity()->GetObjectName() == name)
                 return transform->GetEntity();
         }
 

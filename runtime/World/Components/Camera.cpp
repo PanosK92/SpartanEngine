@@ -515,7 +515,7 @@ namespace Spartan
         {
             if (shared_ptr<Entity> entity = Renderer::GetCamera()->GetSelectedEntity().lock())
             {
-                SP_LOG_INFO("Focusing on entity \"%s\"...", entity->GetTransform()->GetEntity()->GetName().c_str());
+                SP_LOG_INFO("Focusing on entity \"%s\"...", entity->GetTransform()->GetEntity()->GetObjectName().c_str());
 
                 m_lerp_to_target_position       = entity->GetTransform()->GetPosition();
                 const Vector3 target_direction  = (m_lerp_to_target_position - m_transform->GetPosition()).Normalized();

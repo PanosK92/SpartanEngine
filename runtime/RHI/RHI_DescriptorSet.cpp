@@ -32,7 +32,7 @@ namespace Spartan
     {
         if (name)
         {
-            m_name = name;
+            m_object_name = name;
         }
 
         Create(descriptor_set_layout);

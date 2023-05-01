@@ -58,7 +58,7 @@ namespace
     static float column_pos_x    = 180.0f;
     static const float max_width = 100.0f;
 
-    inline void ComponentContextMenu_Options(const string& id, IComponent* component, const bool removable)
+    static void component_context_menu_options(const string& id, IComponent* component, const bool removable)
     {
         if (ImGui::BeginPopup(id.c_str()))
         {
@@ -121,7 +121,7 @@ namespace
 
             if (context_menu_id == name)
             {
-                ComponentContextMenu_Options(context_menu_id, component_instance, removable);
+                component_context_menu_options(context_menu_id, component_instance, removable);
             }
         }
 
@@ -256,14 +256,6 @@ void Properties::ShowLight(Light* light) const
         }
         ImGui::PopItemWidth();
 
-        // Time of day
-        //if (light->GetLightType() == LightType_Directional)
-        //{
-        //    ImGui::Text("Time of day");
-        //    ImGui::SameLine(ComponentProperty::g_column);
-        //    ImGui::PushItemWidth(300); ImGuiEx::DragFloatWrap("##lightTime", &time_of_day, 0.1f, 0.0f, 24.0f); ImGui::PopItemWidth();
-        //}
-
         // Color
         ImGui::Text("Color");
         ImGui::SameLine(column_pos_x); m_colorPicker_light->Update();
@@ -349,12 +341,12 @@ void Properties::ShowRenderable(Renderable* renderable) const
 
     if (component_begin("Renderable", IconType::Component_Renderable, renderable))
     {
-        //= REFLECT =================================================================
+        //= REFLECT ===============================================================
         const string& geometry_name = renderable->GetGeometryName();
         Material* material          = renderable->GetMaterial();
-        string material_name        = material ? material->GetResourceName() : "N/A";
+        string material_name        = material ? material->GetObjectName() : "N/A";
         bool cast_shadows           = renderable->GetCastShadows();
-        //===========================================================================
+        //=========================================================================
 
         ImGui::Text("Geometry");
         ImGui::SameLine(column_pos_x); ImGui::Text(geometry_name.c_str());
@@ -390,20 +382,20 @@ void Properties::ShowRigidBody(RigidBody* rigid_body) const
 
     if (component_begin("RigidBody", IconType::Component_RigidBody, rigid_body))
     {
-        //= REFLECT ================================================================
-        auto mass               = rigid_body->GetMass();
-        auto friction           = rigid_body->GetFriction();
-        auto friction_rolling   = rigid_body->GetFrictionRolling();
-        auto restitution        = rigid_body->GetRestitution();
-        auto use_gravity        = rigid_body->GetUseGravity();
-        auto is_kinematic       = rigid_body->GetIsKinematic();
-        auto freeze_pos_x       = static_cast<bool>(rigid_body->GetPositionLock().x);
-        auto freeze_pos_y       = static_cast<bool>(rigid_body->GetPositionLock().y);
-        auto freeze_pos_z       = static_cast<bool>(rigid_body->GetPositionLock().z);
-        auto freeze_rot_x       = static_cast<bool>(rigid_body->GetRotationLock().x);
-        auto freeze_rot_y       = static_cast<bool>(rigid_body->GetRotationLock().y);
-        auto freeze_rot_z       = static_cast<bool>(rigid_body->GetRotationLock().z);
-        //==========================================================================
+        //= REFLECT ===============================================================
+        auto mass             = rigid_body->GetMass();
+        auto friction         = rigid_body->GetFriction();
+        auto friction_rolling = rigid_body->GetFrictionRolling();
+        auto restitution      = rigid_body->GetRestitution();
+        auto use_gravity      = rigid_body->GetUseGravity();
+        auto is_kinematic     = rigid_body->GetIsKinematic();
+        auto freeze_pos_x     = static_cast<bool>(rigid_body->GetPositionLock().x);
+        auto freeze_pos_y     = static_cast<bool>(rigid_body->GetPositionLock().y);
+        auto freeze_pos_z     = static_cast<bool>(rigid_body->GetPositionLock().z);
+        auto freeze_rot_x     = static_cast<bool>(rigid_body->GetRotationLock().x);
+        auto freeze_rot_y     = static_cast<bool>(rigid_body->GetRotationLock().y);
+        auto freeze_rot_z     = static_cast<bool>(rigid_body->GetRotationLock().z);
+        //=========================================================================
 
         const auto input_text_flags = ImGuiInputTextFlags_CharsDecimal;
         const auto item_width       = 120.0f;
@@ -529,16 +521,16 @@ void Properties::ShowCollider(Collider* collider) const
         ImGui::Text("Center");
         ImGui::PushItemWidth(110);
         ImGui::SameLine(column_pos_x); ImGui::PushID("colCenterX"); ImGui::InputFloat("X", &collider_center.x, step, step_fast, precision, input_text_flags); ImGui::PopID();
-        ImGui::SameLine();                 ImGui::PushID("colCenterY"); ImGui::InputFloat("Y", &collider_center.y, step, step_fast, precision, input_text_flags); ImGui::PopID();
-        ImGui::SameLine();                 ImGui::PushID("colCenterZ"); ImGui::InputFloat("Z", &collider_center.z, step, step_fast, precision, input_text_flags); ImGui::PopID();
+        ImGui::SameLine();             ImGui::PushID("colCenterY"); ImGui::InputFloat("Y", &collider_center.y, step, step_fast, precision, input_text_flags); ImGui::PopID();
+        ImGui::SameLine();             ImGui::PushID("colCenterZ"); ImGui::InputFloat("Z", &collider_center.z, step, step_fast, precision, input_text_flags); ImGui::PopID();
         ImGui::PopItemWidth();
 
         // Size
         ImGui::Text("Size");
         ImGui::PushItemWidth(110);
         ImGui::SameLine(column_pos_x); ImGui::PushID("colSizeX"); ImGui::InputFloat("X", &collider_bounding_box.x, step, step_fast, precision, input_text_flags); ImGui::PopID();
-        ImGui::SameLine();                 ImGui::PushID("colSizeY"); ImGui::InputFloat("Y", &collider_bounding_box.y, step, step_fast, precision, input_text_flags); ImGui::PopID();
-        ImGui::SameLine();                 ImGui::PushID("colSizeZ"); ImGui::InputFloat("Z", &collider_bounding_box.z, step, step_fast, precision, input_text_flags); ImGui::PopID();
+        ImGui::SameLine();             ImGui::PushID("colSizeY"); ImGui::InputFloat("Y", &collider_bounding_box.y, step, step_fast, precision, input_text_flags); ImGui::PopID();
+        ImGui::SameLine();             ImGui::PushID("colSizeZ"); ImGui::InputFloat("Z", &collider_bounding_box.z, step, step_fast, precision, input_text_flags); ImGui::PopID();
         ImGui::PopItemWidth();
 
         // Optimize
@@ -572,7 +564,7 @@ void Properties::ShowConstraint(Constraint* constraint) const
         Vector3 rotation                = constraint->GetRotation().ToEulerAngles();
         Vector2 high_limit              = constraint->GetHighLimit();
         Vector2 low_limit               = constraint->GetLowLimit();
-        string other_body_name          = other_body.expired() ? "N/A" : other_body.lock()->GetName();
+        string other_body_name          = other_body.expired() ? "N/A" : other_body.lock()->GetObjectName();
         //==================================================================================================
 
         const auto inputTextFlags   = ImGuiInputTextFlags_CharsDecimal;
@@ -682,7 +674,7 @@ void Properties::ShowMaterial(Material* material) const
 
         // Name
         ImGui::Text("Name");
-        ImGui::SameLine(offset_from_pos_x); ImGui::Text(material->GetResourceName().c_str());
+        ImGui::SameLine(offset_from_pos_x); ImGui::Text(material->GetObjectName().c_str());
 
         if (material->IsEditable())
         {

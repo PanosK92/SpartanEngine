@@ -47,7 +47,7 @@ namespace Spartan
 {
     Entity::Entity(uint64_t transform_id /*= 0*/)
     {
-        m_name                 = "Entity";
+        m_object_name                 = "Entity";
         m_is_active            = true;
         m_hierarchy_visibility = true;
         m_components.fill(nullptr);
@@ -72,7 +72,7 @@ namespace Spartan
             // Clone the name and the ID
             auto clone = World::CreateEntity().get();
             clone->SetObjectId(GenerateObjectId());
-            clone->SetName(entity->GetName());
+            clone->SetObjectName(entity->GetObjectName());
             clone->SetActive(entity->IsActive());
             clone->SetHierarchyVisibility(entity->IsVisibleInHierarchy());
 
@@ -158,7 +158,7 @@ namespace Spartan
             stream->Write(m_is_active);
             stream->Write(m_hierarchy_visibility);
             stream->Write(GetObjectId());
-            stream->Write(m_name);
+            stream->Write(m_object_name);
         }
 
         // COMPONENTS
@@ -216,7 +216,7 @@ namespace Spartan
             stream->Read(&m_is_active);
             stream->Read(&m_hierarchy_visibility);
             stream->Read(&m_object_id);
-            stream->Read(&m_name);
+            stream->Read(&m_object_name);
         }
 
         // COMPONENTS

@@ -59,7 +59,7 @@ namespace Spartan
         // Name
         if (name)
         {
-            m_name = name;
+            m_object_name = name;
             vulkan_utility::debug::set_object_name(static_cast<VkSemaphore>(m_resource), name);
         }
     }

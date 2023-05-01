@@ -80,8 +80,8 @@ namespace Spartan
                 m_resource_file_path_foreign.clear();
                 m_resource_file_path_native = file_path_relative;
             }
-            m_resource_name                 = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path_relative);
-            m_resource_directory            = FileSystem::GetDirectoryFromFilePath(file_path_relative);
+            m_object_name               = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path_relative);
+            m_resource_directory = FileSystem::GetDirectoryFromFilePath(file_path_relative);
         }
         
         ResourceType GetResourceType()                 const { return m_resource_type; }
@@ -89,8 +89,6 @@ namespace Spartan
         bool HasFilePathNative()                       const { return !m_resource_file_path_native.empty(); }
         const std::string& GetResourceFilePath()       const { return m_resource_file_path_foreign; }
         const std::string& GetResourceFilePathNative() const { return m_resource_file_path_native; }
-        const std::string& GetResourceName()           const { return m_resource_name; }
-        const std::string& GetResourceFileName()       const { return m_resource_name; }
         const std::string& GetResourceDirectory()      const { return m_resource_directory; }
 
         // Flags
@@ -125,7 +123,6 @@ namespace Spartan
         uint32_t m_flags                     = 0;
 
     private:
-        std::string m_resource_name;
         std::string m_resource_directory;
         std::string m_resource_file_path_native;
         std::string m_resource_file_path_foreign;

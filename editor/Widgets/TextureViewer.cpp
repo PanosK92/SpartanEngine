@@ -94,7 +94,7 @@ void TextureViewer::TickVisible()
         {
             if (render_target)
             {
-                render_target_options.emplace_back(render_target->GetName());
+                render_target_options.emplace_back(render_target->GetObjectName());
             }
         }
     }
@@ -141,7 +141,7 @@ void TextureViewer::TickVisible()
         // Disable for now as it's buggy.
         //ImGui::Checkbox("Magnifying glass", &m_magnifying_glass);
 
-        name          = texture->GetName();
+        name          = texture->GetObjectName();
         width         = texture->GetWidth();
         height        = texture->GetHeight();
         mip_count     = texture->GetMipCount();

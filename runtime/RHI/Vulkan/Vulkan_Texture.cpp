@@ -108,12 +108,12 @@ namespace Spartan
 
         // Create image
         void*& resource = texture->GetRhiResource();
-        RHI_Device::CreateTexture(static_cast<void*>(&create_info), resource, texture->GetName().c_str());
+        RHI_Device::CreateTexture(static_cast<void*>(&create_info), resource, texture->GetObjectName().c_str());
     }
 
     static void set_debug_name(RHI_Texture* texture)
     {
-        string name = texture->GetName();
+        string name = texture->GetObjectName();
 
         // If a name hasn't been defined, try to make a reasonable one.
         if (name.empty())

@@ -138,7 +138,7 @@ namespace Spartan
             auto tex_node = "texture_" + to_string(i);
             xml->AddChildNode("textures", tex_node);
             xml->AddAttribute(tex_node, "texture_type", i++);
-            xml->AddAttribute(tex_node, "texture_name", texture ? texture->GetResourceName() : "");
+            xml->AddAttribute(tex_node, "texture_name", texture ? texture->GetObjectName() : "");
             xml->AddAttribute(tex_node, "texture_path", texture ? texture->GetResourceFilePathNative() : "");
         }
 

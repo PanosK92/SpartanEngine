@@ -41,8 +41,8 @@ namespace Spartan
         Object();
         
         // Name
-        const std::string& GetName()    const { return m_name; }
-        void SetName(const std::string& name) { m_name = name; }
+        const std::string& GetObjectName()    const { return m_object_name; }
+        void SetObjectName(const std::string& name) { m_object_name = name; }
 
         // Id
         const uint64_t GetObjectId()        const { return m_object_id; }
@@ -54,7 +54,7 @@ namespace Spartan
         const uint64_t GetObjectSizeGpu() const { return m_object_size_gpu; }
 
     protected:
-        std::string m_name;
+        std::string m_object_name;
         uint64_t m_object_id       = 0;
         uint64_t m_object_size_cpu = 0;
         uint64_t m_object_size_gpu = 0;
