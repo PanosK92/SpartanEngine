@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Semaphore.h"
 #include "../RHI_CommandPool.h"
 #include <SDL/SDL_vulkan.h>
+#include "Window.h"
 //================================
 
 //= NAMESPACES ===============
@@ -441,6 +442,7 @@ namespace Spartan
 
     void RHI_SwapChain::Present()
     {
+        SP_ASSERT_MSG(!Window::IsMinimised(),                                    "The window is minimzed, can't present");
         SP_ASSERT_MSG(m_rhi_resource != nullptr,                                 "Invalid swapchain");
         SP_ASSERT_MSG(m_image_index != m_image_index_previous,                   "No image was acquired");
         SP_ASSERT_MSG(m_layouts[m_image_index] == RHI_Image_Layout::Present_Src, "Invalid layout");

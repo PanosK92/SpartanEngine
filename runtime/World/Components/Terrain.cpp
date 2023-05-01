@@ -361,7 +361,7 @@ namespace Spartan
         });
     }
 
-    void Terrain::UpdateFromMesh(const shared_ptr<Mesh>& mesh) const
+    void Terrain::UpdateFromMesh(const shared_ptr<Mesh> mesh) const
     {
         if (Renderable* renderable = m_entity->AddComponent<Renderable>())
         {
@@ -372,7 +372,7 @@ namespace Spartan
                 0,                      // vertex offset
                 mesh->GetVertexCount(), // vertex count
                 mesh->GetAabb(),
-                mesh.get()
+                mesh
             );
 
             renderable->SetDefaultMaterial();

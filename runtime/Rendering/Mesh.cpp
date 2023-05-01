@@ -99,7 +99,7 @@ namespace Spartan
         {
             SetResourceFilePath(file_path);
 
-            if (ModelImporter::Load(this, file_path))
+            if (ModelImporter::Load(GetSharedPtr(), file_path))
             {
                 // Set the normalized scale to the root entity's transform
                 m_normalized_scale = ComputeNormalizedScale();
@@ -265,11 +265,11 @@ namespace Spartan
     void Mesh::CreateGpuBuffers()
     {
         SP_ASSERT_MSG(!m_indices.empty(), "There are no indices");
-        m_index_buffer = make_shared<RHI_IndexBuffer>(false, (string("mesh_index_buffer") + m_object_name).c_str());
+        m_index_buffer = make_shared<RHI_IndexBuffer>(false, (string("mesh_index_buffer_") + m_object_name).c_str());
         m_index_buffer->Create(m_indices);
 
         SP_ASSERT_MSG(!m_vertices.empty(), "There are no vertices");
-        m_vertex_buffer = make_shared<RHI_VertexBuffer>(false, (string("mesh_vertex_buffer") + m_object_name).c_str());
+        m_vertex_buffer = make_shared<RHI_VertexBuffer>(false, (string("mesh_vertex_buffer_") + m_object_name).c_str());
         m_vertex_buffer->Create(m_vertices);
     }
 

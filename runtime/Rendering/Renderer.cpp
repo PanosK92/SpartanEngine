@@ -286,6 +286,10 @@ namespace Spartan
 
     void Renderer::Tick()
     {
+        // Don't bother producing frames if the window is minimized
+        if (Window::IsMinimised())
+            return;
+
         // After the first frame has completed, we can be sure that the renderer is working.
         if (m_frame_num == 1)
         {
@@ -302,8 +306,8 @@ namespace Spartan
         // Resize swapchain to window size (if needed)
         {
             // Passing zero dimensions will cause the swapchain to not present at all
-            uint32_t width  = static_cast<uint32_t>(Window::IsMinimised() ? 0 : Window::GetWidth());
-            uint32_t height = static_cast<uint32_t>(Window::IsMinimised() ? 0 : Window::GetHeight());
+            uint32_t width  = Window::GetWidth();
+            uint32_t height = Window::GetHeight();
 
             if (m_swap_chain->GetWidth() != width || m_swap_chain->GetHeight() != height)
             {
@@ -940,7 +944,7 @@ namespace Spartan
     
     void Renderer::Present()
     {
-        if (!m_is_rendering_allowed)
+        if (!m_is_rendering_allowed || Window::IsMinimised())
             return;
 
         m_swap_chain->Present();

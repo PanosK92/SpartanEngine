@@ -57,12 +57,12 @@ namespace Spartan
 {
     namespace
     {
-        static std::string m_file_path;
-        static std::string m_name;
-        static bool m_has_animation   = false;
-        static bool m_is_gltf         = false;
-        static Mesh* m_mesh           = nullptr;
-        static const aiScene* m_scene = nullptr;
+        static std::string model_file_path;
+        static std::string model_name;
+        static shared_ptr<Mesh> mesh    = nullptr;
+        static bool model_has_animation = false;
+        static bool model_is_gltf       = false;
+        static const aiScene* scene     = nullptr;
     }
 
     static Matrix convert_matrix(const aiMatrix4x4& transform)
@@ -226,7 +226,7 @@ namespace Spartan
     }
 
     static bool load_material_texture(
-        Mesh* mesh,
+        shared_ptr<Mesh> mesh,
         const string& file_path,
         const bool is_gltf,
         shared_ptr<Material> material,
@@ -287,7 +287,7 @@ namespace Spartan
         return true;
     }
 
-    static shared_ptr<Material> load_material(Mesh* mesh, const string& file_path, const bool is_gltf, const aiMaterial* material_assimp)
+    static shared_ptr<Material> load_material(shared_ptr<Mesh> mesh, const string& file_path, const bool is_gltf, const aiMaterial* material_assimp)
     {
         SP_ASSERT(material_assimp != nullptr);
 
@@ -338,9 +338,9 @@ namespace Spartan
         Settings::RegisterThirdPartyLib("Assimp", to_string(major) + "." + to_string(minor) + "." + to_string(rev), "https://github.com/assimp/assimp");
     }
 
-    bool ModelImporter::Load(Mesh* mesh, const string& file_path)
+    bool ModelImporter::Load(shared_ptr<Mesh> mesh_in, const string& file_path)
     {
-        SP_ASSERT_MSG(mesh != nullptr, "Invalid parameter");
+        SP_ASSERT_MSG(mesh_in != nullptr, "Invalid parameter");
 
         if (!FileSystem::IsFile(file_path))
         {
@@ -349,10 +349,10 @@ namespace Spartan
         }
 
         // Model params
-        m_file_path = file_path;
-        m_name      = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path);
-        m_mesh      = mesh;
-        m_is_gltf   = FileSystem::GetExtensionFromFilePath(file_path) == ".gltf";
+        model_file_path = file_path;
+        model_name      = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path);
+        mesh            = mesh_in;
+        model_is_gltf   = FileSystem::GetExtensionFromFilePath(file_path) == ".gltf";
 
         // Set up the importer
         Importer importer;
@@ -413,16 +413,15 @@ namespace Spartan
 
         ProgressTracker::GetProgress(ProgressType::ModelImporter).Start(1, "Loading model from drive...");
 
-        // Read the 3D model file from disc
-        if (const aiScene* scene = importer.ReadFile(file_path, import_flags))
+        // Read the 3D model file from drive
+        if (scene = importer.ReadFile(file_path, import_flags))
         {
             // Update progress tracking
             uint32_t job_count = 0;
             compute_node_count(scene->mRootNode, &job_count);
             ProgressTracker::GetProgress(ProgressType::ModelImporter).Start(job_count, "Parsing model...");
 
-            m_scene         = scene;
-            m_has_animation = scene->mNumAnimations != 0;
+            model_has_animation = scene->mNumAnimations != 0;
 
             // Recursively parse nodes
             ParseNode(scene->mRootNode);
@@ -445,7 +444,7 @@ namespace Spartan
             }
 
             // Make the root entity active since it's now thread-safe
-            m_mesh->GetRootEntity()->SetActive(true);
+            mesh->GetRootEntity()->SetActive(true);
             World::Resolve();
         }
         else
@@ -455,8 +454,9 @@ namespace Spartan
         }
 
         importer.FreeScene();
+        mesh = nullptr;
 
-        return m_scene != nullptr;
+        return scene != nullptr;
     }
 
     void ModelImporter::ParseNode(const aiNode* node, shared_ptr<Entity> parent_entity)
@@ -468,7 +468,7 @@ namespace Spartan
         bool is_root_node = parent_entity == nullptr;
         if (is_root_node)
         {
-            m_mesh->SetRootEntity(entity);
+            mesh->SetRootEntity(entity);
 
             // The root entity is created as inactive for thread-safety.
             entity->SetActive(false);
@@ -477,8 +477,8 @@ namespace Spartan
         SP_ASSERT(entity != nullptr);
 
         // Name the entity
-        string node_name = is_root_node ? m_name : node->mName.C_Str();
-        entity->SetObjectName(m_name);
+        string node_name = is_root_node ? model_name : node->mName.C_Str();
+        entity->SetObjectName(model_name);
 
         // Update progress tracking
         ProgressTracker::GetProgress(ProgressType::ModelImporter).SetText("Creating entity for " + entity->GetObjectName());
@@ -497,7 +497,7 @@ namespace Spartan
         }
 
         // Light component
-        if ((m_mesh->GetFlags() & (1U << static_cast<uint32_t>(MeshOptions::ImportLights))) != 0)
+        if ((mesh->GetFlags() & (1U << static_cast<uint32_t>(MeshOptions::ImportLights))) != 0)
         {
             ParseNodeLight(node, entity.get());
         }
@@ -522,7 +522,7 @@ namespace Spartan
         for (uint32_t i = 0; i < assimp_node->mNumMeshes; i++)
         {
             Entity* entity    = node_entity;
-            aiMesh* node_mesh = m_scene->mMeshes[assimp_node->mMeshes[i]];
+            aiMesh* node_mesh = scene->mMeshes[assimp_node->mMeshes[i]];
             string node_name  = assimp_node->mName.C_Str();
 
             // if this node has more than one meshes, create an entity for each mesh, then make that entity a child of node_entity
@@ -548,12 +548,12 @@ namespace Spartan
 
     void ModelImporter::ParseNodeLight(const aiNode* node, Entity* new_entity)
     {
-        for (uint32_t i = 0; i < m_scene->mNumLights; i++)
+        for (uint32_t i = 0; i < scene->mNumLights; i++)
         {
-            if (m_scene->mLights[i]->mName == node->mName)
+            if (scene->mLights[i]->mName == node->mName)
             {
                 // Get Assimp light
-                const aiLight* light_assimp = m_scene->mLights[i];
+                const aiLight* light_assimp = scene->mLights[i];
 
                 // Add a light component
                 Light* light = new_entity->AddComponent<Light>();
@@ -658,8 +658,8 @@ namespace Spartan
         // Add the mesh to the model
         uint32_t index_offset  = 0;
         uint32_t vertex_offset = 0;
-        m_mesh->AddIndices(indices, &index_offset);
-        m_mesh->AddVertices(vertices, &vertex_offset);
+        mesh->AddIndices(indices, &index_offset);
+        mesh->AddVertices(vertices, &vertex_offset);
 
         // Add a renderable component to this entity
         Renderable* renderable = entity_parent->AddComponent<Renderable>();
@@ -672,19 +672,19 @@ namespace Spartan
             vertex_offset,
             static_cast<uint32_t>(vertices.size()),
             aabb,
-            m_mesh
+            mesh
         );
 
         // Material
-        if (m_scene->HasMaterials())
+        if (scene->HasMaterials())
         {
             // Get aiMaterial
-            const aiMaterial* assimp_material = m_scene->mMaterials[assimp_mesh->mMaterialIndex];
+            const aiMaterial* assimp_material = scene->mMaterials[assimp_mesh->mMaterialIndex];
 
             // Convert it and add it to the model
-            shared_ptr<Material> material = load_material(m_mesh, m_file_path, m_is_gltf, assimp_material);
+            shared_ptr<Material> material = load_material(mesh, model_file_path, model_is_gltf, assimp_material);
 
-            m_mesh->AddMaterial(material, entity_parent->GetPtrShared());
+            mesh->AddMaterial(material, entity_parent->GetPtrShared());
         }
 
         // Bones
@@ -693,9 +693,9 @@ namespace Spartan
 
     void ModelImporter::ParseAnimations()
     {
-        for (uint32_t i = 0; i < m_scene->mNumAnimations; i++)
+        for (uint32_t i = 0; i < scene->mNumAnimations; i++)
         {
-            const auto assimp_animation = m_scene->mAnimations[i];
+            const auto assimp_animation = scene->mAnimations[i];
             auto animation = make_shared<Animation>();
 
             // Basic properties

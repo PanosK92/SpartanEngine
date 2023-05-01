@@ -40,13 +40,13 @@ namespace Spartan
 {
     static void build(const DefaultGeometry type, Renderable* renderable)
     {    
-        Mesh* mesh = new Mesh();
         vector<RHI_Vertex_PosTexNorTan> vertices;
         vector<uint32_t> indices;
 
         const string project_directory = ResourceCache::GetProjectDirectory();
 
         // Construct geometry
+        shared_ptr<Mesh> mesh = make_shared<Mesh>();
         if (type == DefaultGeometry::Cube)
         {
             Geometry::CreateCube(&vertices, &indices);
@@ -103,11 +103,16 @@ namespace Spartan
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometry_vertex_offset,  uint32_t);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometry_vertex_count,   uint32_t);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometry_name,           string);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_mesh,                    Mesh*);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_mesh,                    shared_ptr<Mesh>);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_bounding_box,            BoundingBox);
         SP_REGISTER_ATTRIBUTE_GET_SET(DefaultGeometry, SetGeometry,  DefaultGeometry);
     }
 
+    Renderable::~Renderable()
+    {
+        m_mesh = nullptr;
+    }
+    
     void Renderable::Serialize(FileStream* stream)
     {
         // Mesh
@@ -139,7 +144,7 @@ namespace Spartan
         stream->Read(&m_bounding_box);
         string model_name;
         stream->Read(&model_name);
-        m_mesh = ResourceCache::GetByName<Mesh>(model_name).get();
+        m_mesh = ResourceCache::GetByName<Mesh>(model_name);
 
         // If it was a default mesh, we have to reconstruct it
         if (m_geometry_type != DefaultGeometry::Undefined)
@@ -162,14 +167,8 @@ namespace Spartan
         }
     }
 
-    void Renderable::SetGeometry(const string& name, const uint32_t index_offset, const uint32_t index_count, const uint32_t vertex_offset, const uint32_t vertex_count, const BoundingBox& bounding_box, Mesh* mesh)
+    void Renderable::SetGeometry(const string& name, const uint32_t index_offset, const uint32_t index_count, const uint32_t vertex_offset, const uint32_t vertex_count, const BoundingBox& bounding_box, shared_ptr<Mesh> mesh)
     {
-        // Terrible way to delete previous geometry in case it's a default one
-        if (m_geometry_name == "Default_Geometry")
-        {
-            delete m_mesh;
-        }
-
         m_geometry_name          = name;
         m_geometry_index_offset  = index_offset;
         m_geometry_index_count   = index_count;

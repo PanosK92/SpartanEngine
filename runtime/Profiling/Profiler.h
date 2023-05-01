@@ -107,8 +107,7 @@ namespace Spartan
         static uint32_t m_descriptor_set_capacity;
 
     private:
-        static void OnPostPresent();
-        static  void SwapBuffers();
+        static void SwapBuffers();
 
         static void ClearRhiMetrics()
         {
