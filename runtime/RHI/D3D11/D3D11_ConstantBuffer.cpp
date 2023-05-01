@@ -63,7 +63,7 @@ namespace Spartan
 
     RHI_ConstantBuffer::RHI_ConstantBuffer(const string& name)
     {
-        m_name = name;
+        m_object_name = name;
     }
 
     void RHI_ConstantBuffer::Update(void* data_cpu)
