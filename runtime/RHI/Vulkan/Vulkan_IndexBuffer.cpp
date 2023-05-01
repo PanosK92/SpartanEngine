@@ -60,7 +60,7 @@ namespace Spartan
             VkMemoryPropertyFlags flags  = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT; // mappable
 
             // Create
-            RHI_Device::CreateBuffer(m_rhi_resource, m_object_size_gpu, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, flags, nullptr, m_name.c_str());
+            RHI_Device::CreateBuffer(m_rhi_resource, m_object_size_gpu, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, flags, nullptr, m_object_name.c_str());
 
             // Get mapped data pointer
             m_mapped_data = RHI_Device::GetMappedDataFromBuffer(m_rhi_resource);
@@ -69,10 +69,10 @@ namespace Spartan
         {
             // Create staging/source buffer and copy the indices to it
             void* staging_buffer = nullptr;
-            RHI_Device::CreateBuffer(staging_buffer, m_object_size_gpu, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, indices, m_name.c_str());
+            RHI_Device::CreateBuffer(staging_buffer, m_object_size_gpu, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, indices, m_object_name.c_str());
 
             // Create destination buffer
-            RHI_Device::CreateBuffer(m_rhi_resource, m_object_size_gpu, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, nullptr, m_name.c_str());
+            RHI_Device::CreateBuffer(m_rhi_resource, m_object_size_gpu, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, nullptr, m_object_name.c_str());
 
             // Copy staging buffer to destination buffer
             {
@@ -96,7 +96,7 @@ namespace Spartan
         }
 
         // Set debug name
-        vulkan_utility::debug::set_object_name(static_cast<VkBuffer>(m_rhi_resource), m_name.c_str());
+        vulkan_utility::debug::set_object_name(static_cast<VkBuffer>(m_rhi_resource), m_object_name.c_str());
     }
 
     void* RHI_IndexBuffer::Map()

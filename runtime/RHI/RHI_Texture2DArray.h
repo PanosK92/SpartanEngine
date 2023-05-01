@@ -38,14 +38,14 @@ namespace Spartan
 
             if (name != nullptr)
             {
-                m_name = name;
+                m_object_name = name;
             }
         }
 
         // Creates a texture without any data (intended for usage as a render target)
         RHI_Texture2DArray(const uint32_t width, const uint32_t height, const RHI_Format format, const uint32_t array_length, const uint32_t flags, std::string name = "")
         {
-            m_name          = name;
+            m_object_name          = name;
             m_resource_type = ResourceType::Texture2dArray;
             m_width         = width;
             m_height        = height;

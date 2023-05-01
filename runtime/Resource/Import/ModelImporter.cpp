@@ -478,10 +478,10 @@ namespace Spartan
 
         // Name the entity
         string node_name = is_root_node ? m_name : node->mName.C_Str();
-        entity->SetName(m_name);
+        entity->SetObjectName(m_name);
 
         // Update progress tracking
-        ProgressTracker::GetProgress(ProgressType::ModelImporter).SetText("Creating entity for " + entity->GetName());
+        ProgressTracker::GetProgress(ProgressType::ModelImporter).SetText("Creating entity for " + entity->GetObjectName());
 
         // Set the transform of parent_node as the parent of the new_entity's transform
         Transform* parent_trans = parent_entity ? parent_entity->GetTransform() : nullptr;
@@ -539,7 +539,7 @@ namespace Spartan
             }
 
             // Set entity name
-            entity->SetName(node_name);
+            entity->SetObjectName(node_name);
             
             // Load the mesh onto the entity (via a Renderable component)
             ParseMesh(node_mesh, entity);
@@ -666,7 +666,7 @@ namespace Spartan
 
         // Set the geometry
         renderable->SetGeometry(
-            entity_parent->GetName(),
+            entity_parent->GetObjectName(),
             index_offset,
             static_cast<uint32_t>(indices.size()),
             vertex_offset,
@@ -699,7 +699,7 @@ namespace Spartan
             auto animation = make_shared<Animation>();
 
             // Basic properties
-            animation->SetName(assimp_animation->mName.C_Str());
+            animation->SetObjectName(assimp_animation->mName.C_Str());
             animation->SetDuration(assimp_animation->mDuration);
             animation->SetTicksPerSec(assimp_animation->mTicksPerSecond != 0.0f ? assimp_animation->mTicksPerSecond : 25.0f);
 

@@ -34,7 +34,7 @@ namespace Spartan
         RHI_IndexBuffer(bool is_mappable, const char* name)
         {
             m_is_mappable = is_mappable;
-            m_name = name;
+            m_object_name = name;
         }
         ~RHI_IndexBuffer();
 

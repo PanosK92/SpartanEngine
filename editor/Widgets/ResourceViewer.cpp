@@ -104,7 +104,7 @@ void ResourceViewer::TickVisible()
 
                 // Name
                 ImGui::TableSetColumnIndex(2);
-                ImGui::Text(resource->GetResourceName().c_str());
+                ImGui::Text(resource->GetObjectName().c_str());
 
                 // Path
                 ImGui::TableSetColumnIndex(3);

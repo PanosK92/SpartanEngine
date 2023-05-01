@@ -302,7 +302,7 @@ namespace Spartan
     {
         for (shared_ptr<Entity>& entity : m_entities)
         {
-            if (entity->GetName() == name)
+            if (entity->GetObjectName() == name)
                 return entity;
         }
 
@@ -376,14 +376,14 @@ namespace Spartan
         // Environment
         {
             shared_ptr<Entity> environment = CreateEntity();
-            environment->SetName("environment");
+            environment->SetObjectName("environment");
             environment->AddComponent<Environment>();
         }
 
         // Camera
         {
             shared_ptr<Entity> entity = CreateEntity();
-            entity->SetName("camera");
+            entity->SetObjectName("camera");
 
             entity->AddComponent<Camera>();
             entity->AddComponent<AudioListener>();
@@ -394,7 +394,7 @@ namespace Spartan
         // Light - Directional
         {
             shared_ptr<Entity> entity = CreateEntity();
-            entity->SetName("light_directional");
+            entity->SetObjectName("light_directional");
 
             entity->GetTransform()->SetPosition(Vector3(0.0f, 10.0f, 0.0f));
             entity->GetTransform()->SetRotation(Quaternion::FromEulerAngles(112.37f, -60.91f, 0.0f));
@@ -408,7 +408,7 @@ namespace Spartan
         // Music
         {
             shared_ptr<Entity> entity = CreateEntity();
-            entity->SetName("audio_source");
+            entity->SetObjectName("audio_source");
 
             AudioSource* audio_source = entity->AddComponent<AudioSource>();
             audio_source->SetAudioClip(soundtrack_file_path);
@@ -424,7 +424,7 @@ namespace Spartan
         {
             // Create entity
             shared_ptr<Entity> entity = CreateEntity();
-            entity->SetName("quad");
+            entity->SetObjectName("quad");
             entity->GetTransform()->SetPosition(Vector3(0.0f, 0.1f, 0.0f)); // raise a bit to avoid z-fighting with world grid
             entity->GetTransform()->SetScale(Vector3(4.0f, 1.0f, 4.0f));
 
@@ -446,7 +446,7 @@ namespace Spartan
         {
             // Create entity
             shared_ptr<Entity> entity = CreateEntity();
-            entity->SetName("cube");
+            entity->SetObjectName("cube");
             entity->GetTransform()->SetPosition(Vector3(0.0f, 4.0f, 0.0f));
 
             // Add a renderable component
@@ -486,7 +486,7 @@ namespace Spartan
         // Quad
         {
             shared_ptr<Entity> entity = CreateEntity();
-            entity->SetName("quad");
+            entity->SetObjectName("quad");
             entity->GetTransform()->SetPosition(Vector3(0.0f, 0.1f, 0.0f)); // raise a bit to avoid z-fighting with world grid
             entity->GetTransform()->SetScale(Vector3(8.0f, 1.0f, 8.0f));
             Renderable* renderable = entity->AddComponent<Renderable>();
@@ -497,7 +497,7 @@ namespace Spartan
         if (m_default_model_helmet = ResourceCache::Load<Mesh>("project\\models\\damaged_helmet\\DamagedHelmet.gltf"))
         {
             Entity* entity = m_default_model_helmet->GetRootEntity();
-            entity->SetName("futuristic_helmet");
+            entity->SetObjectName("futuristic_helmet");
             entity->GetTransform()->SetPosition(Vector3(0.0f, 0.8574f, 0.0f));
             entity->GetTransform()->SetScale(Vector3(0.608f, 0.608f, 0.608f));
         }
@@ -514,7 +514,7 @@ namespace Spartan
 
         // Quad
         shared_ptr<Entity> entity = CreateEntity();
-        entity->SetName("quad");
+        entity->SetObjectName("quad");
         entity->GetTransform()->SetPosition(Vector3(0.0f, 0.1f, 0.0f)); // raise a bit to avoid z-fighting with world grid
         entity->GetTransform()->SetScale(Vector3(8.0f, 1.0f, 8.0f));
         Renderable* renderable = entity->AddComponent<Renderable>();
@@ -524,7 +524,7 @@ namespace Spartan
         if (m_default_model_car = ResourceCache::Load<Mesh>("project\\models\\toyota_ae86_sprinter_trueno_zenki\\scene.gltf"))
         {
             Entity* entity = m_default_model_car->GetRootEntity();
-            entity->SetName("car");
+            entity->SetObjectName("car");
 
             entity->GetTransform()->SetPosition(Vector3(0.0f, 0.05f, 0.0f));
             entity->GetTransform()->SetRotation(Quaternion::FromEulerAngles(90.0f, -4.8800f, -95.0582f));
@@ -639,7 +639,7 @@ namespace Spartan
         // Terrain
         {
             shared_ptr<Entity> entity = CreateEntity();
-            entity->SetName("terrain");
+            entity->SetObjectName("terrain");
 
             entity->GetTransform()->SetPosition(Vector3(0.0f, -6.5f, 0.0f));
 
@@ -667,7 +667,7 @@ namespace Spartan
         if (m_default_model_sponza = ResourceCache::Load<Mesh>("project\\models\\sponza\\main\\NewSponza_Main_Blender_glTF.gltf"))
         {
             Entity* entity = m_default_model_sponza->GetRootEntity();
-            entity->SetName("sponza");
+            entity->SetObjectName("sponza");
             entity->GetTransform()->SetPosition(Vector3(0.0f, 0.06f, 0.0f));
             entity->GetTransform()->SetScale(Vector3::One);
 
@@ -687,7 +687,7 @@ namespace Spartan
             if (m_default_model_sponza_curtains = ResourceCache::Load<Mesh>("project\\models\\sponza\\curtains\\NewSponza_Curtains_glTF.gltf"))
             {
                 Entity* entity = m_default_model_sponza_curtains->GetRootEntity();
-                entity->SetName("sponza_curtains");
+                entity->SetObjectName("sponza_curtains");
                 entity->GetTransform()->SetPosition(Vector3(0.0f, 0.06f, 0.0f));
                 entity->GetTransform()->SetScale(Vector3::One);
             }

@@ -77,7 +77,7 @@ namespace Spartan
             if (resource->GetResourceType() != resource_type)
                 continue;
 
-            if (resource_name == resource->GetResourceName())
+            if (resource_name == resource->GetObjectName())
                 return true;
         }
 
@@ -103,7 +103,7 @@ namespace Spartan
 
         for (shared_ptr<IResource>& resource : m_resources)
         {
-            if (name == resource->GetResourceName())
+            if (name == resource->GetObjectName())
                 return resource;
         }
 
