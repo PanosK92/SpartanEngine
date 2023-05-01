@@ -115,7 +115,7 @@ namespace Spartan
         shared_ptr<RHI_Texture> texture = make_shared<RHI_TextureCube>();
         for (uint32_t slice_index = 0; static_cast<uint32_t>(file_paths.size()); slice_index++)
         {
-            ResourceCache::GetImageImporter()->Load(file_paths[slice_index], slice_index, static_cast<RHI_Texture*>(texture.get()));
+            ImageImporter::Load(file_paths[slice_index], slice_index, static_cast<RHI_Texture*>(texture.get()));
         }
 
         // Set resource file path

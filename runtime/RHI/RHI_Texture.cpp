@@ -226,10 +226,9 @@ namespace Spartan
                 }
 
                 // Load texture
-                ImageImporter* image_importer = ResourceCache::GetImageImporter();
                 for (uint32_t slice_index = 0; slice_index < static_cast<uint32_t>(file_paths.size()); slice_index++)
                 {
-                    if (!image_importer->Load(file_paths[slice_index], slice_index, this))
+                    if (!ImageImporter::Load(file_paths[slice_index], slice_index, this))
                     {
                         SP_LOG_ERROR("Failed to load \"%s\".", file_path.c_str());
                         return false;

@@ -306,7 +306,7 @@ namespace Spartan
         memcpy(&mip->bytes[0], bytes, size_bytes);
     }
 
-    ImageImporter::ImageImporter()
+    void ImageImporter::Initialize()
     {
         FreeImage_Initialise();
 
@@ -324,7 +324,7 @@ namespace Spartan
         Settings::RegisterThirdPartyLib("FreeImage", FreeImage_GetVersion(), "https://freeimage.sourceforge.io/");
     }
 
-    ImageImporter::~ImageImporter()
+    void ImageImporter::Shutdown()
     {
         FreeImage_DeInitialise();
     }

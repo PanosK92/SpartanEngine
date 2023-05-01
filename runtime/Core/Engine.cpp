@@ -19,19 +19,20 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES =========================
+//= INCLUDES ================================
 #include "pch.h"
 #include "Window.h"
 #include "ThreadPool.h"
 #include "../Audio/Audio.h"
 #include "../Input/Input.h"
+#include "../World/World.h"
 #include "../Physics/Physics.h"
 #include "../Profiling/Profiler.h"
 #include "../Rendering/Renderer.h"
 #include "../Resource/ResourceCache.h"
-#include "../World/World.h"
 #include "../Resource/Import/ModelImporter.h"
-//====================================
+#include "../Resource/Import/ImageImporter.h"
+//===========================================
 
 //= NAMESPACES ===============
 using namespace std;
@@ -51,6 +52,7 @@ namespace Spartan
         // Initialize
         Stopwatch timer_initialize;
         {
+            ImageImporter::Initialize();
             ModelImporter::Initialize();
             Window::Initialize();
             Input::Initialize();
@@ -81,6 +83,7 @@ namespace Spartan
         Audio::Shutdown();
         Profiler::Shutdown();
         Window::Shutdown();
+        ImageImporter::Shutdown();
     }
 
     void Engine::Tick()
