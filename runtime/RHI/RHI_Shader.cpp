@@ -177,8 +177,8 @@ namespace Spartan
     void RHI_Shader::LoadSource(const string& file_path)
     {
         // Initialise a couple of things
-        m_object_name      = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path);
-        m_file_path = file_path;
+        m_object_name = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path);
+        m_file_path   = file_path;
         m_preprocessed_source.clear();
         m_names.clear();
         m_file_paths.clear();

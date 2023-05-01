@@ -39,7 +39,7 @@ namespace Spartan
         NormalizeScale
     };
 
-    class Mesh : public IResource
+    class Mesh : public IResource, std::enable_shared_from_this<Mesh>
     {
     public:
         Mesh();
@@ -87,6 +87,7 @@ namespace Spartan
         void SetRootEntity(std::shared_ptr<Entity>& entity) { m_root_entity = entity; }
 
         // Misc
+        std::shared_ptr<Mesh> GetSharedPtr() { return std::shared_ptr<Mesh>(this); }
         static uint32_t GetDefaultFlags();
         float ComputeNormalizedScale();
         void Optimize();

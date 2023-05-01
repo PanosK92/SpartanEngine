@@ -47,7 +47,7 @@ namespace Spartan
 {
     Entity::Entity(uint64_t transform_id /*= 0*/)
     {
-        m_object_name                 = "Entity";
+        m_object_name          = "Entity";
         m_is_active            = true;
         m_hierarchy_visibility = true;
         m_components.fill(nullptr);

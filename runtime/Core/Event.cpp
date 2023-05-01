@@ -32,7 +32,7 @@ namespace Spartan
 {
     namespace
     {
-        static array<vector<subscriber>, 13> event_subscribers;
+        static array<vector<subscriber>, 14> event_subscribers;
     }
 
     void Event::Shutdown()

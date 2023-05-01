@@ -94,9 +94,9 @@ namespace Spartan
         static float m_fps = 0.0f;
 
         // Hardware - GPU
-        static string m_gpu_name          = "N/A";
-        static string m_gpu_driver        = "N/A";
-        static string m_gpu_api           = "N/A";
+        static string m_gpu_name               = "N/A";
+        static string m_gpu_driver             = "N/A";
+        static string m_gpu_api                = "N/A";
         static uint32_t m_gpu_memory_available = 0;
         static uint32_t m_gpu_memory_used      = 0;
 
@@ -111,6 +111,16 @@ namespace Spartan
         static bool m_allow_time_block_end = true;
         static void* m_query_disjoint      = nullptr;
         static ostringstream m_oss_metrics;
+
+        // Event handlers
+        static void on_post_present()
+        {
+            if (m_poll)
+            {
+                RHI_Device::QueryEnd(m_query_disjoint);
+                RHI_Device::QueryGetData(m_query_disjoint);
+            }
+        }
     }
   
     void Profiler::Initialize()
@@ -122,18 +132,13 @@ namespace Spartan
         m_time_blocks_write.reserve(initial_capacity);
         m_time_blocks_write.resize(initial_capacity);
 
-        SP_SUBSCRIBE_TO_EVENT(EventType::RendererPostPresent, SP_EVENT_HANDLER_STATIC(OnPostPresent));
+        // Subscribe to events
+        SP_SUBSCRIBE_TO_EVENT(EventType::RendererPostPresent, SP_EVENT_HANDLER_STATIC(on_post_present));
     }
 
     void Profiler::Shutdown()
     {
-        if (m_poll)
-        {
-            SwapBuffers();
-        }
-
         RHI_Device::QueryRelease(m_query_disjoint);
-
         ClearRhiMetrics();
     }
 
@@ -250,15 +255,6 @@ namespace Spartan
         if (m_profile && m_poll)
         {
             SwapBuffers();
-        }
-    }
-
-    void Profiler::OnPostPresent()
-    {
-        if (m_poll)
-        {
-            RHI_Device::QueryEnd(m_query_disjoint);
-            RHI_Device::QueryGetData(m_query_disjoint);
         }
     }
 

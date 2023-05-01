@@ -62,7 +62,7 @@ namespace Spartan
         void GenerateAsync();
 
     private:
-        void UpdateFromMesh(const std::shared_ptr<Mesh>& mesh) const;
+        void UpdateFromMesh(const std::shared_ptr<Mesh> mesh) const;
         void UpdateFromVertices(const std::vector<uint32_t>& indices, std::vector<RHI_Vertex_PosTexNorTan>& vertices);
 
         float m_min_y                     = 0.0f;

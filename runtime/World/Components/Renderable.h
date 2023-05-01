@@ -53,7 +53,7 @@ namespace Spartan
     {
     public:
         Renderable(Entity* entity, uint64_t id = 0);
-        ~Renderable() = default;
+        ~Renderable();
 
         // IComponent
         void Serialize(FileStream* stream) override;
@@ -67,7 +67,7 @@ namespace Spartan
             uint32_t vertex_offset,
             uint32_t vertex_count,
             const Math::BoundingBox& aabb, 
-            Mesh* mesh
+            std::shared_ptr<Mesh> mesh
         );
         void SetGeometry(DefaultGeometry type);
 
@@ -81,7 +81,7 @@ namespace Spartan
         uint32_t GetVertexCount()                 const { return m_geometry_vertex_count; }
         DefaultGeometry GetGeometryType()         const { return m_geometry_type; }
         const std::string& GetGeometryName()      const { return m_geometry_name; }
-        Mesh* GetMesh()                           const { return m_mesh; }
+        std::shared_ptr<Mesh> GetMesh()           const { return m_mesh; }
         const Math::BoundingBox& GetBoundingBox() const { return m_bounding_box; }
         const Math::BoundingBox& GetAabb();
         void Clear();
@@ -112,7 +112,7 @@ namespace Spartan
         Math::Matrix m_last_transform     = Math::Matrix::Identity;
         bool m_cast_shadows               = true;
         bool m_material_default           = false;
-        Mesh* m_mesh                      = nullptr;
+        std::shared_ptr<Mesh> m_mesh      = nullptr;
         Material* m_material              = nullptr;
         Math::BoundingBox m_bounding_box;
         Math::BoundingBox m_aabb;
