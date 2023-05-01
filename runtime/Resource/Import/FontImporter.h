@@ -26,11 +26,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Core/Definitions.h"
 //=================================
 
-//= FORWARD DECLARATIONS =
-struct FT_LibraryRec_;
-struct FT_StrokerRec_;
-//========================
-
 namespace Spartan
 {
     class Font;
@@ -38,13 +33,8 @@ namespace Spartan
     class SP_CLASS FontImporter
     {
     public:
-        FontImporter();
-        ~FontImporter();
-
-        bool LoadFromFile(Font* font, const std::string& file_path);
-
-    private:
-        FT_LibraryRec_* m_library = nullptr;
-        FT_StrokerRec_* m_stroker = nullptr;
+        static void Initialize();
+        static void Shutdown();
+        static bool LoadFromFile(Font* font, const std::string& file_path);
     };
 }

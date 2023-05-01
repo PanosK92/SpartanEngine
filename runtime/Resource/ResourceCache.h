@@ -60,7 +60,7 @@ namespace Spartan
         template <class T>
         static std::shared_ptr<T> GetByPath(const std::string& path)
         {
-            for (std::shared_ptr<IResource>& resource : m_resources)
+            for (std::shared_ptr<IResource>& resource : GetResources())
             {
                 if (path == resource->GetResourceFilePathNative())
                     return std::static_pointer_cast<T>(resource);
@@ -95,13 +95,13 @@ namespace Spartan
             if (IsCached(resource->GetResourceName(), resource->GetResourceType()))
                 return GetByName<T>(resource->GetResourceName());
 
-            std::lock_guard<std::mutex> guard(m_mutex);
+            std::lock_guard<std::mutex> guard(GetMutex());
 
             // In order to guarantee deserialization, we save it now
             resource->SaveToFile(resource->GetResourceFilePathNative());
 
             // Cache it
-            return std::static_pointer_cast<T>(m_resources.emplace_back(resource));
+            return std::static_pointer_cast<T>(GetResources().emplace_back(resource));
         }
 
         // Loads a resource and adds it to the resource cache
@@ -150,15 +150,15 @@ namespace Spartan
             if (!IsCached(resource->GetResourceName(), resource->GetResourceType()))
                 return;
 
-            m_resources.erase
+            GetResources().erase
             (
                 std::remove_if
                 (
-                    m_resources.begin(),
-                    m_resources.end(),
+                    GetResources().begin(),
+                    GetResources().end(),
                     [](std::shared_ptr<IResource> resource) { return dynamic_cast<Object*>(resource.get())->GetObjectId() == resource->GetObjectId(); }
                 ),
-                m_resources.end()
+                GetResources().end()
             );
         }
 
@@ -176,8 +176,9 @@ namespace Spartan
         static const std::string& GetProjectDirectory();
         static std::string GetDataDirectory();
 
-        // Importers
-        static FontImporter* GetFontImporter()   { return m_importer_font.get(); }
+        // Misc
+        static std::vector<std::shared_ptr<IResource>>& GetResources();
+        static std::mutex& GetMutex();
 
     private:
         static bool IsCached(const uint64_t resource_id);
@@ -186,12 +187,5 @@ namespace Spartan
         // Event handlers
         static void SaveResourcesToFiles();
         static void LoadResourcesFromFiles();
-
-        // Cache
-        static std::vector<std::shared_ptr<IResource>> m_resources;
-        static std::mutex m_mutex;
-
-        // Importers
-        static std::shared_ptr<FontImporter> m_importer_font;
     };
 }

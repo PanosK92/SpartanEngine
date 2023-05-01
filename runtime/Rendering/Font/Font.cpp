@@ -64,7 +64,7 @@ namespace Spartan
         const Stopwatch timer;
 
         // Load
-        if (!ResourceCache::GetFontImporter()->LoadFromFile(this, file_path))
+        if (!FontImporter::LoadFromFile(this, file_path))
         {
             SP_LOG_ERROR("Failed to load font \"%s\"", file_path.c_str());
             return false;
