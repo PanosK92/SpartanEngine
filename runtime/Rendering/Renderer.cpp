@@ -944,8 +944,20 @@ namespace Spartan
     
     void Renderer::Present()
     {
-        if (!m_is_rendering_allowed || Window::IsMinimised())
+        if (!m_is_rendering_allowed)
             return;
+
+        if (Window::IsMinimised())
+        {
+            SP_LOG_INFO("Skipping present, the window is minimzed");
+            return;
+        }
+
+        if (m_swap_chain->GetLayout() != RHI_Image_Layout::Present_Src)
+        {
+            SP_LOG_INFO("Skipping present, Pass_CopyToBackbuffer() was not called.");
+            return;
+        }
 
         m_swap_chain->Present();
         SP_FIRE_EVENT(EventType::RendererPostPresent);

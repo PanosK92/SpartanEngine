@@ -33,7 +33,7 @@ namespace Spartan
 {
     RHI_CommandPool::RHI_CommandPool(const char* name, const uint64_t swap_chain_id) : Object()
     {
-        m_name          = name;
+        m_object_name   = name;
         m_swap_chain_id = swap_chain_id;
 
         // Create command pool 

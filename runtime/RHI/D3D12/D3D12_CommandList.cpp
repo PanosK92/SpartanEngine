@@ -53,7 +53,7 @@ namespace Spartan
         SP_ASSERT(cmd_pool != nullptr);
 
         m_queue_type            = queue_type;
-        m_name                  = name;
+        m_object_name           = name;
         m_rhi_cmd_pool_resource = cmd_pool;
         m_timestamps.fill(0);
 

@@ -95,11 +95,11 @@ namespace Spartan
                 const auto is_error = line.find("error") != string::npos;
                 if (is_error)
                 {
-                    SP_LOG_ERROR(m_name + "(" + FileSystem::GetStringAfterExpression(line, "("));
+                    SP_LOG_ERROR(m_object_name + "(" + FileSystem::GetStringAfterExpression(line, "("));
                 }
                 else
                 {
-                    SP_LOG_WARNING(m_name + "(" + FileSystem::GetStringAfterExpression(line, "("));
+                    SP_LOG_WARNING(m_object_name + "(" + FileSystem::GetStringAfterExpression(line, "("));
                 }
             }
 
@@ -110,7 +110,7 @@ namespace Spartan
         // Log compilation failure
         if (FAILED(result) || !shader_blob)
         {
-            SP_LOG_ERROR("An error occurred when trying to load and compile \"%s\"", m_name.c_str());
+            SP_LOG_ERROR("An error occurred when trying to load and compile \"%s\"", m_object_name.c_str());
         }
 
         // Create shader

@@ -244,7 +244,6 @@ namespace Spartan
         SP_ASSERT(m_window != nullptr);
 
         SP_LOG_INFO("Entering full screen mode...");
-
         SDL_SetWindowFullscreen(m_window, SDL_WINDOW_FULLSCREEN);
         m_fullscreen = true;
     }
@@ -254,7 +253,6 @@ namespace Spartan
         SP_ASSERT(m_window != nullptr);
 
         SP_LOG_INFO("Entering windowed mode...");
-
         SDL_SetWindowFullscreen(m_window, 0);
         m_fullscreen = false;
     }

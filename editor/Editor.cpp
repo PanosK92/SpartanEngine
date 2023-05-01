@@ -228,10 +228,11 @@ Editor::~Editor()
 
 void Editor::Tick()
 {
-    bool render_editor = !Spartan::Window::IsFullScreen();
-
+    // this is the main editor/engine loop
     while (!Spartan::Window::WantsToClose())
     {
+        bool render_editor = !Spartan::Window::IsFullScreen();
+
         // ImGui - Begin
         if (render_editor)
         {

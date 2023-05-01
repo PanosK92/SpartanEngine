@@ -159,7 +159,7 @@ namespace Spartan
         m_windowed     = true;
         m_width        = width;
         m_height       = height;
-        m_name         = name;
+        m_object_name  = name;
         m_present_mode = present_mode;
 
         // Create swap chain

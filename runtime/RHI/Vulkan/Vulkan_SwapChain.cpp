@@ -461,8 +461,11 @@ namespace Spartan
                 if (m_object_id == cmd_pool->GetSwapchainId())
                 {
                     RHI_Semaphore* semaphore = cmd_pool->GetCurrentCommandList()->GetSemaphoreProccessed();
-                    SP_ASSERT_MSG(semaphore->GetCpuState() == RHI_Sync_State::Submitted, "Semaphore hasn't been submitted");
-                    m_wait_semaphores.emplace_back(semaphore);
+
+                    if (semaphore->GetCpuState() == RHI_Sync_State::Submitted)
+                    {
+                        m_wait_semaphores.emplace_back(semaphore);
+                    }
                 }
             }
         }
