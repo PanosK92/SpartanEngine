@@ -22,46 +22,30 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ======================
-#include <memory>
 #include <string>
 #include "../../Core/Definitions.h"
 //=================================
 
 struct aiNode;
-struct aiScene;
-struct aiMaterial;
 struct aiMesh;
 
 namespace Spartan
 {
-    class Context;
     class Entity;
     class Mesh;
-    class World;
 
     class SP_CLASS ModelImporter
     {
     public:
-        ModelImporter();
-        ~ModelImporter() = default;
-
-        bool Load(Mesh* mesh, const std::string& file_path);
+        static void Initialize();
+        static bool Load(Mesh* mesh, const std::string& file_path);
 
     private:
-        // Parsing
-        void ParseNode(const aiNode* node, std::shared_ptr<Entity> parent_entity = nullptr);
-        void ParseNodeMeshes(const aiNode* node, Entity* new_entity);
-        void ParseNodeLight(const aiNode* node, Entity* new_entity);
-        void ParseAnimations();
-        void ParseMesh(aiMesh* mesh, Entity* entity_parent);
-        void ParseNodes(const aiMesh* mesh);
-
-        // Model
-        std::string m_file_path;
-        std::string m_name;
-        bool m_has_animation   = false;
-        bool m_is_gltf         = false;
-        Mesh* m_mesh           = nullptr;
-        const aiScene* m_scene = nullptr;
+        static void ParseNode(const aiNode* node, std::shared_ptr<Entity> parent_entity = nullptr);
+        static void ParseNodeMeshes(const aiNode* node, Entity* new_entity);
+        static void ParseNodeLight(const aiNode* node, Entity* new_entity);
+        static void ParseAnimations();
+        static void ParseMesh(aiMesh* mesh, Entity* entity_parent);
+        static void ParseNodes(const aiMesh* mesh);
     };
 }

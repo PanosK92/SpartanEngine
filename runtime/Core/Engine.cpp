@@ -30,6 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Rendering/Renderer.h"
 #include "../Resource/ResourceCache.h"
 #include "../World/World.h"
+#include "../Resource/Import/ModelImporter.h"
 //====================================
 
 //= NAMESPACES ===============
@@ -50,6 +51,7 @@ namespace Spartan
         // Initialize
         Stopwatch timer_initialize;
         {
+            ModelImporter::Initialize();
             Window::Initialize();
             Input::Initialize();
             Timer::Initialize();

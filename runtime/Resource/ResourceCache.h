@@ -28,10 +28,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-    // Forward declarations
     class FontImporter;
     class ImageImporter;
-    class ModelImporter;
 
     enum class ResourceDirectory
     {
@@ -180,7 +178,6 @@ namespace Spartan
         static std::string GetDataDirectory();
 
         // Importers
-        static ModelImporter* GetModelImporter() { return m_importer_model.get(); }
         static ImageImporter* GetImageImporter() { return m_importer_image.get(); }
         static FontImporter* GetFontImporter()   { return m_importer_font.get(); }
 
@@ -197,7 +194,6 @@ namespace Spartan
         static std::mutex m_mutex;
 
         // Importers
-        static std::shared_ptr<ModelImporter> m_importer_model;
         static std::shared_ptr<ImageImporter> m_importer_image;
         static std::shared_ptr<FontImporter> m_importer_font;
     };
