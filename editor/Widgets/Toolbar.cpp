@@ -63,7 +63,7 @@ Toolbar::Toolbar(Editor* editor) : Widget(editor)
 void Toolbar::TickAlways()
 {
     // A button that when pressed will call "on press" and derives it's color (active/inactive) based on "get_visibility".
-    auto widget_button = [this](IconType icon_type, const function<bool()>& get_visibility, const function<void()>& on_press)
+    auto widget_button = [this](IconType icon_type, const string title, const function<bool()>& get_visibility, const function<void()>& on_press)
     {
         ImGui::SameLine();
         ImGui::PushStyleColor(ImGuiCol_Button, get_visibility() ? ImGui::GetStyle().Colors[ImGuiCol_ButtonActive] : ImGui::GetStyle().Colors[ImGuiCol_Button]);
@@ -72,6 +72,10 @@ void Toolbar::TickAlways()
             on_press();
         }
         ImGui::PopStyleColor();
+        if (ImGui::IsItemHovered())
+        {
+            ImGui::SetTooltip(title.c_str());
+        }
     };
 
     // Widget buttons
@@ -80,12 +84,12 @@ void Toolbar::TickAlways()
         Widget* widget             = widget_it.second;
         const IconType widget_icon = widget_it.first;
 
-        widget_button(widget_icon, [this, &widget](){ return widget->GetVisible(); }, [this, &widget]() { widget->SetVisible(true); });
+        widget_button(widget_icon, widget->GetTitle(), [this, &widget](){ return widget->GetVisible(); }, [this, &widget]() { widget->SetVisible(true); });
     }
 
     // Play button
     widget_button(
-        IconType::Button_Play,
+        IconType::Button_Play, "play",
         []() { return Spartan::Engine::IsFlagSet(Spartan::EngineMode::Game); },
         []() { return Spartan::Engine::ToggleFlag(Spartan::EngineMode::Game); }
     );
