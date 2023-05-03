@@ -89,7 +89,7 @@ void Toolbar::TickAlways()
 
     // Play button
     widget_button(
-        IconType::Button_Play, "play",
+        IconType::Button_Play, "Play",
         []() { return Spartan::Engine::IsFlagSet(Spartan::EngineMode::Game); },
         []() { return Spartan::Engine::ToggleFlag(Spartan::EngineMode::Game); }
     );
