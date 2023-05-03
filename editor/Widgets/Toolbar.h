@@ -37,5 +37,4 @@ public:
 
 private:
     std::unordered_map<IconType, Widget*> m_widgets;
-    float m_button_size = 16.0f;
 };

@@ -28,8 +28,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "TextureViewer.h"
 #include "Core/Engine.h"
 #include "RHI/RHI_RenderDoc.h"
-#include "Rendering/Renderer.h"
-#include "../Editor.h"
 #include "../ImGui/ImGuiExtension.h"
 //==================================
 
@@ -37,6 +35,25 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace std;
 using namespace Spartan::Math;
 //============================
+
+namespace
+{
+    static const float button_size = 16.0f;
+
+    // A button that when pressed will call "on press" and derives it's color (active/inactive) based on "get_visibility".
+    static void toolbar_button(IconType icon_type, const string tooltip_text, const function<bool()>& get_visibility, const function<void()>& on_press)
+    {
+        ImGui::SameLine();
+        ImGui::PushStyleColor(ImGuiCol_Button, get_visibility() ? ImGui::GetStyle().Colors[ImGuiCol_ButtonActive] : ImGui::GetStyle().Colors[ImGuiCol_Button]);
+        if (ImGuiSp::image_button(0, nullptr, icon_type, button_size, false))
+        {
+            on_press();
+        }
+        ImGui::PopStyleColor();
+
+        ImGuiSp::tooltip(tooltip_text.c_str());
+    }
+}
 
 Toolbar::Toolbar(Editor* editor) : Widget(editor)
 {
@@ -62,52 +79,38 @@ Toolbar::Toolbar(Editor* editor) : Widget(editor)
 
 void Toolbar::TickAlways()
 {
-    // A button that when pressed will call "on press" and derives it's color (active/inactive) based on "get_visibility".
-    auto widget_button = [this](IconType icon_type, const string title, const function<bool()>& get_visibility, const function<void()>& on_press)
-    {
-        ImGui::SameLine();
-        ImGui::PushStyleColor(ImGuiCol_Button, get_visibility() ? ImGui::GetStyle().Colors[ImGuiCol_ButtonActive] : ImGui::GetStyle().Colors[ImGuiCol_Button]);
-        if (ImGuiSp::image_button(0, nullptr, icon_type, m_button_size, false))
-        {
-            on_press();
-        }
-        ImGui::PopStyleColor();
-        if (ImGui::IsItemHovered())
-        {
-            ImGui::SetTooltip(title.c_str());
-        }
-    };
-
-    // Widget buttons
+    // Expose widgets as buttons 
     for (auto& widget_it : m_widgets)
     {
         Widget* widget             = widget_it.second;
         const IconType widget_icon = widget_it.first;
 
-        widget_button(widget_icon, widget->GetTitle(), [this, &widget](){ return widget->GetVisible(); }, [this, &widget]() { widget->SetVisible(true); });
+        toolbar_button(widget_icon, widget->GetTitle(), [this, &widget](){ return widget->GetVisible(); }, [this, &widget]() { widget->SetVisible(true); });
     }
 
-    // Play button
-    widget_button(
-        IconType::Button_Play, "Play",
-        []() { return Spartan::Engine::IsFlagSet(Spartan::EngineMode::Game); },
-        []() { return Spartan::Engine::ToggleFlag(Spartan::EngineMode::Game); }
-    );
-
-    // RenderDoc button
-    ImGui::SameLine();
-    ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyle().Colors[ImGuiCol_Button]);
-    if (ImGuiSp::image_button(0, nullptr, IconType::Button_RenderDoc, m_button_size, false))
+    // Expose functionality as buttons
     {
-        if (Spartan::RHI_RenderDoc::IsEnabled())
-        {
-            Spartan::RHI_RenderDoc::FrameCapture();
-        }
-        else
-        {
-            SP_LOG_WARNING("RenderDoc integration is disabled. To enable, go to \"RHI_Implemenation.cpp\", and set \"renderdoc\" to \"true\"");
-        }
+        // Play
+        toolbar_button(
+            IconType::Button_Play, "Play",
+            []() { return Spartan::Engine::IsFlagSet(Spartan::EngineMode::Game); },
+            []() { return Spartan::Engine::ToggleFlag(Spartan::EngineMode::Game); }
+        );
+
+        // RenderDoc
+        toolbar_button(
+            IconType::Button_RenderDoc, "Captures the next frame and then launches RenderDoc",
+            []() { return false; },
+            []() {
+                if (Spartan::RHI_RenderDoc::IsEnabled())
+                {
+                    Spartan::RHI_RenderDoc::FrameCapture();
+                }
+                else
+                {
+                    SP_LOG_WARNING("RenderDoc integration is disabled. To enable, go to \"RHI_Implemenation.cpp\", and set \"renderdoc\" to \"true\"");
+                }
+            }
+        );
     }
-    ImGuiSp::tooltip("Captures the next frame and then launches RenderDoc");
-    ImGui::PopStyleColor();
 }
