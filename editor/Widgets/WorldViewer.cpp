@@ -408,7 +408,7 @@ void WorldViewer::PopupContextMenu() const
         popup_rename_entity = true;
     }
 
-    if (on_entity) if (ImGui::MenuItem("Focus"))
+    if (on_entity && (ImGui::MenuItem("Focus")))
     {
         Spartan::Renderer::GetCamera()->FocusSelectedEntity();
     }
