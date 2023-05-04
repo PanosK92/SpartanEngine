@@ -408,6 +408,11 @@ void WorldViewer::PopupContextMenu() const
         popup_rename_entity = true;
     }
 
+    if (on_entity) if (ImGui::MenuItem("Focus"))
+    {
+        Spartan::Renderer::GetCamera()->FocusSelectedEntity();
+    }
+
     if (on_entity) if (ImGui::MenuItem("Delete", "Delete"))
     {
         ActionEntityDelete(selected_entity);
