@@ -75,7 +75,7 @@ Occasional livestreams on Discord for interesting topics.
 - Switch to bindless.
 - Outperform D3D11.
 - Deprecate D3D11.
-- Continue work on D3D12 (on going and non blockin since Vulkan is there).
+- Continue work on D3D12 (on going and non blocking since Vulkan is there).
 - Create a startup/default world which is closer to playable to a demo.
 
 ## Long-term
