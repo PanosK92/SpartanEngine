@@ -476,6 +476,7 @@ namespace Spartan
         // Point light
         {
             shared_ptr<Entity> entity = CreateEntity();
+            entity->SetObjectName("light_point");
             entity->GetTransform()->SetPosition(Vector3(0.0f, 2.0f, -1.5f));
             Light* light = entity->AddComponent<Light>();
             light->SetLightType(LightType::Point);
@@ -488,7 +489,7 @@ namespace Spartan
             shared_ptr<Entity> entity = CreateEntity();
             entity->SetObjectName("quad");
             entity->GetTransform()->SetPosition(Vector3(0.0f, 0.1f, 0.0f)); // raise a bit to avoid z-fighting with world grid
-            entity->GetTransform()->SetScale(Vector3(8.0f, 1.0f, 8.0f));
+            entity->GetTransform()->SetScale(Vector3(30.0f, 1.0f, 30.0f));
             Renderable* renderable = entity->AddComponent<Renderable>();
             renderable->SetGeometry(DefaultGeometry::Quad);
             renderable->SetDefaultMaterial();
