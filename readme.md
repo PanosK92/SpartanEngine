@@ -1,3 +1,4 @@
+
 <img align="center" padding="2" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/data/textures/banner.bmp"/>
 
 <p>Spartan is a research-focused game engine designed for real-time solutions, providing a dynamic experience. Not intended for game development yet, it serves as a valuable study resource due to its clean, modern, and high-quality architecture.</p>
@@ -69,24 +70,24 @@ Occasional livestreams on Discord for interesting topics.
 
 # Roadmap
 
-## Currently
+## Short-term
+- Fix the remaining startup crash for Vulkan.
+- Switch to bindless.
+- Outperform D3D11.
+- Deprecate D3D11.
+- Continue work on D3D12 (on going and non blockin since Vulkan is there).
+- Create a startup/default world which is closer to playable to a demo.
 
-Feature            | Completion | Notes
-:-                 | :-         | :-
-Vulkan polishing       | 98%      | Outperform D3D11 in all cases and improve stability.
-DirectX 12        | 10%   | The rendering API has matured thanks to Vulkan, finishing with DX12 should be easy.
-Ray traced shadows      | -          | Low priority, first I get Vulkan to be as stable as possible.
-Ray traced reflections     | -          | Low priority, first I get Vulkan to be as stable as possible.
-Eye Adaptation        | -          | Low priority.
-Subsurface Scattering      | -          | Low priority.
-Linux support             | -          | Vulkan and SDL is there, working on a linux port is now possible.
-
-## Future
-
+## Long-term
 - Skeletal Animation.
 - Atmospheric Scattering.
+- Eye Adaptation.
+- Subsurface scattering.
+- Ray traced reflections.
+- Ray traced shadows.
 - Dynamic resolution scaling.
 - Export on Windows.
 - UI components.
 - Make editor more stylish.
 - Scripting.
+- Linux port.

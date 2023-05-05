@@ -371,7 +371,13 @@ namespace Spartan
         }
     }
 
-    void World::CreateDefaultWorldCommon(const Math::Vector3& camera_position, const Math::Vector3& camera_rotation, const float light_intensity, const char* soundtrack_file_path)
+    void World::CreateDefaultWorldCommon(
+        const bool create_floor,
+        const Math::Vector3& camera_position,
+        const Math::Vector3& camera_rotation,
+        const float directional_light_intensity,
+        const char* soundtrack_file_path
+    )
     {
         // Environment
         {
@@ -402,7 +408,7 @@ namespace Spartan
             Light* light = entity->AddComponent<Light>();
             light->SetLightType(LightType::Directional);
             light->SetColor(Color::light_sky_clear);
-            light->SetIntensity(light_intensity);
+            light->SetIntensity(directional_light_intensity);
         }
 
         // Music
@@ -414,19 +420,14 @@ namespace Spartan
             audio_source->SetAudioClip(soundtrack_file_path);
             audio_source->SetLoop(true);
         }
-    }
 
-    void World::CreateDefaultWorldPhysicsCube()
-    {
-        CreateDefaultWorldCommon();
-
-        // Quad
+        // Floor
+        if (create_floor)
         {
-            // Create entity
             shared_ptr<Entity> entity = CreateEntity();
-            entity->SetObjectName("quad");
+            entity->SetObjectName("floor");
             entity->GetTransform()->SetPosition(Vector3(0.0f, 0.1f, 0.0f)); // raise a bit to avoid z-fighting with world grid
-            entity->GetTransform()->SetScale(Vector3(4.0f, 1.0f, 4.0f));
+            entity->GetTransform()->SetScale(Vector3(30.0f, 1.0f, 30.0f));
 
             // Add a renderable component
             Renderable* renderable = entity->AddComponent<Renderable>();
@@ -441,6 +442,11 @@ namespace Spartan
             Collider* collider = entity->AddComponent<Collider>();
             collider->SetShapeType(ColliderShape::StaticPlane); // set shape
         }
+    }
+
+    void World::CreateDefaultWorldPhysicsCube()
+    {
+        CreateDefaultWorldCommon(true);
 
         // Cube
         {
@@ -471,7 +477,7 @@ namespace Spartan
     {
         Vector3 camera_position = Vector3(-1.5523f, 1.2229f, -1.4509f);
         Vector3 camera_rotation = Vector3(12.9974f, 47.5989f, 0.0f);
-        CreateDefaultWorldCommon(camera_position, camera_rotation, 400.0f, "project\\music\\dj_alvin_midnight.mp3");
+        CreateDefaultWorldCommon(true, camera_position, camera_rotation, 400.0f, "project\\music\\dj_alvin_midnight.mp3");
 
         // Point light
         {
@@ -482,17 +488,6 @@ namespace Spartan
             light->SetLightType(LightType::Point);
             light->SetColor(Color::material_silver);
             light->SetIntensity(10000.0f);
-        }
-
-        // Quad
-        {
-            shared_ptr<Entity> entity = CreateEntity();
-            entity->SetObjectName("quad");
-            entity->GetTransform()->SetPosition(Vector3(0.0f, 0.1f, 0.0f)); // raise a bit to avoid z-fighting with world grid
-            entity->GetTransform()->SetScale(Vector3(30.0f, 1.0f, 30.0f));
-            Renderable* renderable = entity->AddComponent<Renderable>();
-            renderable->SetGeometry(DefaultGeometry::Quad);
-            renderable->SetDefaultMaterial();
         }
 
         if (m_default_model_helmet = ResourceCache::Load<Mesh>("project\\models\\damaged_helmet\\DamagedHelmet.gltf"))
@@ -511,16 +506,7 @@ namespace Spartan
     {
         Vector3 camera_position = Vector3(-2.8436f, 1.6070f, -2.6946f);
         Vector3 camera_rotation = Vector3(18.7975f, 37.3995f, 0.0f);
-        CreateDefaultWorldCommon(camera_position, camera_rotation);
-
-        // Quad
-        shared_ptr<Entity> entity = CreateEntity();
-        entity->SetObjectName("quad");
-        entity->GetTransform()->SetPosition(Vector3(0.0f, 0.1f, 0.0f)); // raise a bit to avoid z-fighting with world grid
-        entity->GetTransform()->SetScale(Vector3(8.0f, 1.0f, 8.0f));
-        Renderable* renderable = entity->AddComponent<Renderable>();
-        renderable->SetGeometry(DefaultGeometry::Quad);
-        renderable->SetDefaultMaterial();
+        CreateDefaultWorldCommon(true, camera_position, camera_rotation);
 
         if (m_default_model_car = ResourceCache::Load<Mesh>("project\\models\\toyota_ae86_sprinter_trueno_zenki\\scene.gltf"))
         {
@@ -635,7 +621,7 @@ namespace Spartan
 
     void World::CreateDefaultWorldTerrain()
     {
-        CreateDefaultWorldCommon();
+        CreateDefaultWorldCommon(false);
 
         // Terrain
         {
@@ -662,7 +648,7 @@ namespace Spartan
     {
         Vector3 camera_position = Vector3(-10.4144f, 7.3257f, -1.1735f);
         Vector3 camera_rotation = Vector3(-6.0022f, 88.3969f, 0.0f);
-        CreateDefaultWorldCommon(camera_position, camera_rotation);
+        CreateDefaultWorldCommon(false, camera_position, camera_rotation);
 
         // 3D model - Sponza
         if (m_default_model_sponza = ResourceCache::Load<Mesh>("project\\models\\sponza\\main\\NewSponza_Main_Blender_glTF.gltf"))

@@ -290,7 +290,8 @@ namespace Spartan
         if (Window::IsMinimised())
             return;
 
-        // After the first frame has completed, we can be sure that the renderer is working.
+        // After the first frame has completed, we know the renderer is working.
+        // We stop logging to a file and we start logging to the on-screen console.
         if (m_frame_num == 1)
         {
             Log::SetLogToFile(false);
