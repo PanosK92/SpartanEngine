@@ -91,3 +91,8 @@ Occasional livestreams on Discord for interesting topics.
 - Make editor more stylish.
 - Scripting.
 - Linux port.
+
+## Wiki
+Don't forget that there is a [wiki](https://github.com/PanosK92/SpartanEngine/wiki) that can help answers some of your questions. Here are some of it's contents:
+- [How to compile](https://github.com/PanosK92/SpartanEngine/wiki/How-to-compile) 
+- [How to contribute](https://github.com/PanosK92/SpartanEngine/wiki/How-to-contribute)
