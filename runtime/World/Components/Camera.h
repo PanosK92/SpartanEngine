@@ -144,7 +144,7 @@ namespace Spartan
         Math::Matrix ComputeProjection(const float near_plane, const float far_plane);
 
         void GoToCameraBookmark(int bookmark_index);
-        void FocusSelectedEntity();
+        void FocusOnSelectedEntity();
 
     private:
         void ProcessInput();
