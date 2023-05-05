@@ -37,15 +37,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace std;
 //==================
 
-namespace _Widget_MenuBar
+namespace
 {
-    static bool g_showShortcutsWindow = false;
-    static bool g_showAboutWindow     = false;
-    static bool g_fileDialogVisible   = false;
-    static bool imgui_metrics         = false;
-    static bool imgui_style           = false;
-    static bool imgui_demo            = false;
-    static string g_fileDialogSelection;
+    static bool show_shortcuts_window     = false;
+    static bool show_about_window         = false;
+    static bool show_file_dialog          = false;
+    static bool show_imgui_metrics_window = false;
+    static bool show_imgui_style_window   = false;
+    static bool show_imgui_demo_widow     = false;
+    static string file_dialog_selection_path;
 }
 
 MenuBar::MenuBar(Editor *editor) : Widget(editor)
@@ -116,9 +116,9 @@ void MenuBar::TickAlways()
 
             if (ImGui::BeginMenu("ImGui"))
             {
-                ImGui::MenuItem("Metrics", nullptr, &_Widget_MenuBar::imgui_metrics);
-                ImGui::MenuItem("Style",   nullptr, &_Widget_MenuBar::imgui_style);
-                ImGui::MenuItem("Demo",    nullptr, &_Widget_MenuBar::imgui_demo);
+                ImGui::MenuItem("Metrics", nullptr, &show_imgui_metrics_window);
+                ImGui::MenuItem("Style",   nullptr, &show_imgui_style_window);
+                ImGui::MenuItem("Demo",    nullptr, &show_imgui_demo_widow);
                 ImGui::EndMenu();
             }
 
@@ -127,8 +127,20 @@ void MenuBar::TickAlways()
 
         if (ImGui::BeginMenu("Help"))
         {
-            ImGui::MenuItem("About", nullptr, &_Widget_MenuBar::g_showAboutWindow);
-            ImGui::MenuItem("Shortcuts & Input Reference", "Ctrl+P", &_Widget_MenuBar::g_showShortcutsWindow);
+            ImGui::MenuItem("About", nullptr, &show_about_window);
+
+            if (ImGui::MenuItem("Learn how to contribute", nullptr, nullptr))
+            {
+                Spartan::FileSystem::OpenUrl("https://github.com/PanosK92/SpartanEngine/wiki/How-to-contribute");
+            }
+
+            if (ImGui::MenuItem("Join the Discord server", nullptr, nullptr))
+            {
+                Spartan::FileSystem::OpenUrl("https://discord.gg/TG5r2BS");
+            }
+
+            ImGui::MenuItem("Shortcuts & Input Reference", "Ctrl+P", show_shortcuts_window);
+
             ImGui::EndMenu();
         }
 
@@ -141,21 +153,21 @@ void MenuBar::TickAlways()
 
     ImGui::PopStyleVar(2);
 
-    if (_Widget_MenuBar::imgui_metrics)
+    if (show_imgui_metrics_window)
     {
         ImGui::ShowMetricsWindow();
     }
 
-    if (_Widget_MenuBar::imgui_style)
+    if (show_imgui_style_window)
     {
         ImGui::Begin("Style Editor", nullptr, ImGuiWindowFlags_NoDocking);
         ImGui::ShowStyleEditor();
         ImGui::End();
     }
 
-    if (_Widget_MenuBar::imgui_demo)
+    if (show_imgui_demo_widow)
     {
-        ImGui::ShowDemoWindow(&_Widget_MenuBar::imgui_demo);
+        ImGui::ShowDemoWindow(&show_imgui_demo_widow);
     }
 
     HandleKeyShortcuts();
@@ -168,39 +180,39 @@ void MenuBar::HandleKeyShortcuts() const
 {
     if (Spartan::Input::GetKey(Spartan::KeyCode::Ctrl_Left) && Spartan::Input::GetKeyDown(Spartan::KeyCode::P))
     {
-        _Widget_MenuBar::g_showShortcutsWindow = !_Widget_MenuBar::g_showShortcutsWindow;
+        show_shortcuts_window = !show_shortcuts_window;
     }
 }
 
 void MenuBar::ShowWorldSaveDialog()
 {
     m_file_dialog->SetOperation(FileDialog_Op_Save);
-    _Widget_MenuBar::g_fileDialogVisible = true;
+    show_file_dialog = true;
 }
 
 void MenuBar::ShowWorldLoadDialog()
 {
     m_file_dialog->SetOperation(FileDialog_Op_Load);
-    _Widget_MenuBar::g_fileDialogVisible = true;
+    show_file_dialog = true;
 }
 
 void MenuBar::DrawFileDialog() const
 {
-    if (_Widget_MenuBar::g_fileDialogVisible)
+    if (show_file_dialog)
     {
         ImGui::SetNextWindowFocus();
     }
 
-    if (m_file_dialog->Show(&_Widget_MenuBar::g_fileDialogVisible, nullptr, &_Widget_MenuBar::g_fileDialogSelection))
+    if (m_file_dialog->Show(&show_file_dialog, nullptr, &file_dialog_selection_path))
     {
         // LOAD
         if (m_file_dialog->GetOperation() == FileDialog_Op_Open || m_file_dialog->GetOperation() == FileDialog_Op_Load)
         {
             // Scene
-            if (Spartan::FileSystem::IsEngineSceneFile(_Widget_MenuBar::g_fileDialogSelection))
+            if (Spartan::FileSystem::IsEngineSceneFile(file_dialog_selection_path))
             {
-                EditorHelper::LoadWorld(_Widget_MenuBar::g_fileDialogSelection);
-                _Widget_MenuBar::g_fileDialogVisible = false;
+                EditorHelper::LoadWorld(file_dialog_selection_path);
+                show_file_dialog = false;
             }
         }
         // SAVE
@@ -209,8 +221,8 @@ void MenuBar::DrawFileDialog() const
             // Scene
             if (m_file_dialog->GetFilter() == FileDialog_Filter_World)
             {
-                EditorHelper::SaveWorld(_Widget_MenuBar::g_fileDialogSelection);
-                _Widget_MenuBar::g_fileDialogVisible = false;
+                EditorHelper::SaveWorld(file_dialog_selection_path);
+                show_file_dialog = false;
             }
         }
     }
@@ -218,12 +230,12 @@ void MenuBar::DrawFileDialog() const
 
 void MenuBar::DrawShortcutsWindow() const
 {
-    if (!_Widget_MenuBar::g_showShortcutsWindow)
+    if (!show_shortcuts_window)
         return;
 
     ImGui::SetNextWindowContentSize(ImVec2(540.f, 360.f));
     ImGui::SetNextWindowFocus();
-    ImGui::Begin("Shortcuts & Input Reference", &_Widget_MenuBar::g_showShortcutsWindow, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoDocking);
+    ImGui::Begin("Shortcuts & Input Reference", &show_shortcuts_window, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoDocking);
     {
         static float col_a = 220.0f;
         static float col_b = 20.0f;
@@ -266,11 +278,11 @@ void MenuBar::DrawShortcutsWindow() const
 
 void MenuBar::DrawAboutWindow() const
 {
-    if (!_Widget_MenuBar::g_showAboutWindow)
+    if (!show_about_window)
         return;
 
     ImGui::SetNextWindowFocus();
-    ImGui::Begin("About", &_Widget_MenuBar::g_showAboutWindow, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoDocking);
+    ImGui::Begin("About", &show_about_window, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoDocking);
     {
         ImGui::Text("Spartan %s", (to_string(sp_version_major) + "." + to_string(sp_version_minor) + "." + to_string(sp_version_revision)).c_str());
         ImGui::Text("Author: Panos Karabelas");
