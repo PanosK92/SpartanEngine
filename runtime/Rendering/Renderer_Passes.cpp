@@ -2055,14 +2055,14 @@ namespace Spartan
                     // Compute transform
                     {
                         // Use the distance from the camera to scale the icon, this will
-                        // cancel out perspective scaling, hence keep the icon scale constant.
+                        // cancel out perspective scaling, hence keeping the icon scale constant.
                         const float distance = (pos_world_camera - pos_world).Length();
                         const float scale    = distance * 0.04f;
 
                         // 1st rotation: The quad's normal is parallel to the world's Y axis, so we rotate to make it camera facing.
                         Quaternion rotation_reorient_quad = Quaternion::FromEulerAngles(-90.0f, 0.0f, 0.0f);
                         // 2nd rotation: Rotate the camera facing quad with the camera, so that it remains a camera facing quad.
-                        Quaternion rotation_camera_billboard = Quaternion::FromLookRotation(pos_world - pos_world_camera).Conjugate();
+                        Quaternion rotation_camera_billboard = Quaternion::FromLookRotation(pos_world - pos_world_camera);
 
                         Matrix transform = Matrix(pos_world, rotation_camera_billboard * rotation_reorient_quad, scale);
 
