@@ -432,6 +432,14 @@ namespace Spartan
             // Keyboard movement
             {
                 // Compute max speed
+                if (Input::GetKey(KeyCode::Shift_Left))
+                {
+                    m_movement_speed_max = 10.0f;
+                }
+                else
+                {
+                    m_movement_speed_max = 5.0f;
+                }
                 m_movement_speed_max += Input::GetMouseWheelDelta().y / 2.0f;
                 m_movement_speed_max = Helper::Clamp(m_movement_speed_max, m_movement_speed_min, numeric_limits<float>::max());
 
@@ -513,32 +521,7 @@ namespace Spartan
         // Set focused entity as a lerp target
         if (Input::GetKeyDown(KeyCode::F))
         {
-            if (shared_ptr<Entity> entity = Renderer::GetCamera()->GetSelectedEntity().lock())
-            {
-                SP_LOG_INFO("Focusing on entity \"%s\"...", entity->GetTransform()->GetEntity()->GetObjectName().c_str());
-
-                m_lerp_to_target_position       = entity->GetTransform()->GetPosition();
-                const Vector3 target_direction  = (m_lerp_to_target_position - m_transform->GetPosition()).Normalized();
-
-                // If the entity has a renderable component, we can get a more accurate target position.
-                // ...otherwise we apply a simple offset so that the rotation vector doesn't suffer
-                if (Renderable* renderable = entity->GetRenderable())
-                {
-                    m_lerp_to_target_position -= target_direction * renderable->GetAabb().GetExtents().Length() * 2.0f;
-                }
-                else
-                {
-                    m_lerp_to_target_position -= target_direction;
-                }
-
-                m_lerp_to_target_rotation  = Quaternion::FromLookRotation(entity->GetTransform()->GetPosition() - m_lerp_to_target_position).Normalized();
-                m_lerp_to_target_distance  = Vector3::Distance(m_lerp_to_target_position, m_transform->GetPosition());
-
-                const float lerp_angle = acosf(Quaternion::Dot(m_lerp_to_target_rotation.Normalized(), m_transform->GetRotation().Normalized())) * Helper::RAD_TO_DEG;
-
-                m_lerp_to_target_p = m_lerp_to_target_distance > 0.1f ? true : false;
-                m_lerp_to_target_r = lerp_angle > 1.0f ? true : false;
-            }
+            FocusSelectedEntity();
         }
 
         // Set bookmark as a lerp target
@@ -588,6 +571,37 @@ namespace Spartan
                 m_lerp_to_target_alpha    = 0.0f;
                 m_lerp_to_target_position = Vector3::Zero;
             }
+        }
+    }
+
+
+    void Camera::FocusSelectedEntity()
+    {
+        if (shared_ptr<Entity> entity = Renderer::GetCamera()->GetSelectedEntity().lock())
+        {
+            SP_LOG_INFO("Focusing on entity \"%s\"...", entity->GetTransform()->GetEntity()->GetObjectName().c_str());
+
+            m_lerp_to_target_position = entity->GetTransform()->GetPosition();
+            const Vector3 target_direction = (m_lerp_to_target_position - m_transform->GetPosition()).Normalized();
+
+            // If the entity has a renderable component, we can get a more accurate target position.
+            // ...otherwise we apply a simple offset so that the rotation vector doesn't suffer
+            if (Renderable* renderable = entity->GetRenderable())
+            {
+                m_lerp_to_target_position -= target_direction * renderable->GetAabb().GetExtents().Length() * 2.0f;
+            }
+            else
+            {
+                m_lerp_to_target_position -= target_direction;
+            }
+
+            m_lerp_to_target_rotation = Quaternion::FromLookRotation(entity->GetTransform()->GetPosition() - m_lerp_to_target_position).Normalized();
+            m_lerp_to_target_distance = Vector3::Distance(m_lerp_to_target_position, m_transform->GetPosition());
+
+            const float lerp_angle = acosf(Quaternion::Dot(m_lerp_to_target_rotation.Normalized(), m_transform->GetRotation().Normalized())) * Helper::RAD_TO_DEG;
+
+            m_lerp_to_target_p = m_lerp_to_target_distance > 0.1f ? true : false;
+            m_lerp_to_target_r = lerp_angle > 1.0f ? true : false;
         }
     }
 
