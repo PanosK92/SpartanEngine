@@ -390,30 +390,27 @@ void WorldViewer::PopupContextMenu() const
 
     const bool on_entity = selected_entity != nullptr;
 
-    if (on_entity) if (ImGui::MenuItem("Copy"))
+    if (ImGui::MenuItem("Copy") && on_entity)
     {
         entity_copied = selected_entity.get();
     }
 
-    if (ImGui::MenuItem("Paste"))
+    if (ImGui::MenuItem("Paste") && entity_copied)
     {
-        if (entity_copied)
-        {
-            entity_copied->Clone();
-        }
+        entity_copied->Clone();
     }
 
-    if (on_entity) if (ImGui::MenuItem("Rename"))
+    if (ImGui::MenuItem("Rename") && on_entity)
     {
         popup_rename_entity = true;
     }
 
-    if (on_entity && (ImGui::MenuItem("Focus")))
+    if (ImGui::MenuItem("Focus") && on_entity)
     {
-        Spartan::Renderer::GetCamera()->FocusSelectedEntity();
+        Spartan::Renderer::GetCamera()->FocusOnSelectedEntity();
     }
 
-    if (on_entity) if (ImGui::MenuItem("Delete", "Delete"))
+    if (ImGui::MenuItem("Delete", "Delete") && on_entity)
     {
         ActionEntityDelete(selected_entity);
     }

@@ -521,7 +521,7 @@ namespace Spartan
         // Set focused entity as a lerp target
         if (Input::GetKeyDown(KeyCode::F))
         {
-            FocusSelectedEntity();
+            FocusOnSelectedEntity();
         }
 
         // Set bookmark as a lerp target
@@ -575,7 +575,7 @@ namespace Spartan
     }
 
 
-    void Camera::FocusSelectedEntity()
+    void Camera::FocusOnSelectedEntity()
     {
         if (shared_ptr<Entity> entity = Renderer::GetCamera()->GetSelectedEntity().lock())
         {
