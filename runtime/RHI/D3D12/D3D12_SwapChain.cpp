@@ -174,4 +174,9 @@ namespace Spartan
     {
         return false;
     }
+
+    RHI_Image_Layout RHI_SwapChain::GetLayout() const
+    {
+        return m_layouts[m_image_index];
+    }
 }

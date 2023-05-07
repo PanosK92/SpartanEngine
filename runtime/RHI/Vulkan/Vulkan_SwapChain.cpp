@@ -530,4 +530,9 @@ namespace Spartan
         // For v-sync, we could Mailbox for lower latency, but Fifo is always supported, so we'll assume that
         return m_present_mode == RHI_Present_Mode::Fifo;
     }
+
+    RHI_Image_Layout RHI_SwapChain::GetLayout() const
+    {
+        return m_layouts[m_image_index];
+    }
 }
