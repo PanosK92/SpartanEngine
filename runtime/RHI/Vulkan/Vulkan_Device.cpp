@@ -1156,6 +1156,12 @@ namespace Spartan
         RHI_CommandPool* cmd_pool = cmd_pools_immediate[queue_index].get();
 
         cmd_pool->Step();
+
+        if (cmd_pool->GetCurrentCommandList()->IsExecuting())
+        {
+            cmd_pool->GetCurrentCommandList()->Wait(false);
+        }
+
         cmd_pool->GetCurrentCommandList()->Begin();
 
         return cmd_pool->GetCurrentCommandList();

@@ -347,4 +347,9 @@ namespace Spartan
     {
         return false;
     }
+
+    RHI_Image_Layout RHI_SwapChain::GetLayout() const
+    {
+        return RHI_Image_Layout::Present_Src;
+    }
 }

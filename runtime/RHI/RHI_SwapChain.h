@@ -68,7 +68,7 @@ namespace Spartan
 
 
         // Back buffer layout
-        RHI_Image_Layout GetLayout() const { return m_layouts[m_image_index]; }
+        RHI_Image_Layout GetLayout() const;
         void SetLayout(const RHI_Image_Layout& layout, RHI_CommandList* cmd_list);
 
         // RHI Resources
