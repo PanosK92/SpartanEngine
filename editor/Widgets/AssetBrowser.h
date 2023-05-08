@@ -28,10 +28,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 class FileDialog;
 
-class AssetViewer : public Widget
+class AssetBrowser : public Widget
 {
 public:
-    AssetViewer(Editor* editor);
+    AssetBrowser(Editor* editor);
 
     void TickVisible() override;
     void ShowMeshImportDialog(const std::string& file_path);
@@ -39,6 +39,6 @@ public:
 private:
     void OnPathClicked(const std::string& path) const;
 
-    std::unique_ptr<FileDialog> m_fileDialogView;
-    std::unique_ptr<FileDialog> m_fileDialogLoad;
+    std::unique_ptr<FileDialog> m_file_dialog_view;
+    std::unique_ptr<FileDialog> n_file_dialog_load;
 };
