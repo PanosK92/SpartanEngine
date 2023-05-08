@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ============================================
 #include "Viewport.h"
-#include "AssetViewer.h"
+#include "AssetBrowser.h"
 #include "Core/Timer.h"
 #include "Rendering/Renderer.h"
 #include "Event.h"
@@ -82,7 +82,7 @@ void Viewport::TickVisible()
     // Handle model drop
     if (auto payload = ImGuiSp::receive_drag_drop_payload(ImGuiSp::DragPayloadType::Model))
     {
-        m_editor->GetWidget<AssetViewer>()->ShowMeshImportDialog(get<const char*>(payload->data));
+        m_editor->GetWidget<AssetBrowser>()->ShowMeshImportDialog(get<const char*>(payload->data));
     }
 
     // Mouse picking

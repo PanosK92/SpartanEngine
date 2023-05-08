@@ -128,7 +128,7 @@ void FileDialog::ShowTop(bool* is_visible)
     
     // Directory navigation buttons
     {
-        // Backwards
+        // Go backwards
         if (ImGuiSp::button("<"))
         {
             m_current_path = FileSystem::GetParentDirectory(m_current_path);

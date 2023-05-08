@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "ImGui/ImGuiExtension.h"
 #include "ImGui/Implementation/ImGui_RHI.h"
 #include "ImGui/Implementation/imgui_impl_sdl2.h"
-#include "Widgets/AssetViewer.h"
+#include "Widgets/AssetBrowser.h"
 #include "Widgets/Console.h"
 #include "Widgets/MenuBar.h"
 #include "Widgets/ProgressDialog.h"
@@ -203,7 +203,7 @@ Editor::Editor()
         m_widgets.emplace_back(make_shared<MenuBar>(this));
         widget_menu_bar = static_cast<MenuBar*>(m_widgets.back().get());
         m_widgets.emplace_back(make_shared<Viewport>(this));
-        m_widgets.emplace_back(make_shared<AssetViewer>(this));
+        m_widgets.emplace_back(make_shared<AssetBrowser>(this));
         m_widgets.emplace_back(make_shared<Properties>(this));
         m_widgets.emplace_back(make_shared<WorldViewer>(this));
         widget_world = m_widgets.back().get();

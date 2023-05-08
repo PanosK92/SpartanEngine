@@ -20,7 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES =============================
-#include "AssetViewer.h"
+#include "AssetBrowser.h"
 #include "Properties.h"
 #include "Rendering/Mesh.h"
 #include "../WidgetsDeferred/FileDialog.h"
@@ -31,11 +31,14 @@ using namespace std;
 using namespace Spartan;
 //======================
 
-static bool show_file_dialog_view         = true;
-static bool show_file_dialog_load         = false;
-static bool mesh_import_dialog_is_visible = false;
-static uint32_t mesh_import_dialog_flags  = 0;
-static string mesh_import_file_path;
+namespace
+{
+    static bool show_file_dialog_view         = true;
+    static bool show_file_dialog_load         = false;
+    static bool mesh_import_dialog_is_visible = false;
+    static uint32_t mesh_import_dialog_flags  = 0;
+    static string mesh_import_file_path;
+}
 
 static void mesh_import_dialog_checkbox(const MeshOptions option, const char* label, const char* tooltip = nullptr)
 {
@@ -98,18 +101,18 @@ static void mesh_import_dialog()
     }
 }
 
-AssetViewer::AssetViewer(Editor* editor) : Widget(editor)
+AssetBrowser::AssetBrowser(Editor* editor) : Widget(editor)
 {
-    m_title          = "Assets";
-    m_fileDialogView = make_unique<FileDialog>(false, FileDialog_Type_Browser,       FileDialog_Op_Load, FileDialog_Filter_All);
-    m_fileDialogLoad = make_unique<FileDialog>(true,  FileDialog_Type_FileSelection, FileDialog_Op_Load, FileDialog_Filter_Model);
-    m_flags          |= ImGuiWindowFlags_NoScrollbar;
+    m_title            = "Assets";
+    m_file_dialog_view = make_unique<FileDialog>(false, FileDialog_Type_Browser,       FileDialog_Op_Load, FileDialog_Filter_All);
+    n_file_dialog_load = make_unique<FileDialog>(true,  FileDialog_Type_FileSelection, FileDialog_Op_Load, FileDialog_Filter_Model);
+    m_flags           |= ImGuiWindowFlags_NoScrollbar;
 
     // Just clicked, not selected (double clicked, end of dialog)
-    m_fileDialogView->SetCallbackOnItemClicked([this](const string& str) { OnPathClicked(str); });
+    m_file_dialog_view->SetCallbackOnItemClicked([this](const string& str) { OnPathClicked(str); });
 }
 
-void AssetViewer::TickVisible()
+void AssetBrowser::TickVisible()
 {    
     if (ImGuiSp::button("Import"))
     {
@@ -119,10 +122,10 @@ void AssetViewer::TickVisible()
     ImGui::SameLine();
     
     // View
-    m_fileDialogView->Show(&show_file_dialog_view);
+    m_file_dialog_view->Show(&show_file_dialog_view);
 
     // Show load file dialog. True if a selection is made
-    if (m_fileDialogLoad->Show(&show_file_dialog_load, nullptr, &mesh_import_file_path))
+    if (n_file_dialog_load->Show(&show_file_dialog_load, nullptr, &mesh_import_file_path))
     {
         show_file_dialog_load = false;
         ShowMeshImportDialog(mesh_import_file_path);
@@ -131,7 +134,7 @@ void AssetViewer::TickVisible()
     mesh_import_dialog();
 }
 
-void AssetViewer::ShowMeshImportDialog(const std::string& file_path)
+void AssetBrowser::ShowMeshImportDialog(const std::string& file_path)
 {
     if (FileSystem::IsSupportedModelFile(mesh_import_file_path))
     {
@@ -141,7 +144,7 @@ void AssetViewer::ShowMeshImportDialog(const std::string& file_path)
     }
 }
 
-void AssetViewer::OnPathClicked(const std::string& path) const
+void AssetBrowser::OnPathClicked(const std::string& path) const
 {
     if (!FileSystem::IsFile(path))
         return;
