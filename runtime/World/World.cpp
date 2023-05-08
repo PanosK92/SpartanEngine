@@ -59,10 +59,8 @@ namespace Spartan
         static shared_ptr<Mesh> m_default_model_sponza_curtains = nullptr;
         static shared_ptr<Mesh> m_default_model_car             = nullptr;
         static shared_ptr<Mesh> m_default_model_helmet          = nullptr;
+        static mutex m_entity_access_mutex;
     }
-
-    // Sync primitives
-    static mutex m_entity_access_mutex;
 
     void World::Initialize()
     {
@@ -477,7 +475,7 @@ namespace Spartan
     {
         Vector3 camera_position = Vector3(-1.5523f, 1.2229f, -1.4509f);
         Vector3 camera_rotation = Vector3(12.9974f, 47.5989f, 0.0f);
-        CreateDefaultWorldCommon(true, camera_position, camera_rotation, 400.0f, "project\\music\\dj_alvin_midnight.mp3");
+        CreateDefaultWorldCommon(true, camera_position, camera_rotation, 400.0f, "project\\music\\vangelis_pulstar.mp3");
 
         // Point light
         {
