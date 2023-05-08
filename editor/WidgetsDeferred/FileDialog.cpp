@@ -137,7 +137,7 @@ void FileDialog::ShowTop(bool* is_visible)
 
         // Display current path
         ImGui::SameLine();
-        ImGui::LabelText("%s", m_current_path.c_str());
+        ImGui::Text("%s", m_current_path.c_str());
     }
 
     // Size slider
@@ -411,8 +411,8 @@ void FileDialog::ShowBottom(bool* is_visible)
         m_offset_bottom = 20.0f;
         ImGui::SetCursorPosY(ImGui::GetWindowSize().y - m_offset_bottom);
 
-        const char* text = (m_displayed_item_count == 1) ? "%d item" : "%d items";
-        ImGui::Text(text, m_displayed_item_count);
+        string text = (m_displayed_item_count == 1) ? "%d item" : "%d items";
+        ImGui::Text(text.c_str(), m_displayed_item_count);
     }
     else
     {
