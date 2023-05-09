@@ -88,7 +88,7 @@ Occasional livestreams on Discord for interesting topics.
 - Dynamic resolution scaling.
 - Export on Windows.
 - UI components.
-- Make editor more stylish.
+- Improve editor looks.
 - Scripting.
 - Linux port.
 
