@@ -170,10 +170,7 @@ namespace Spartan
         Math::Vector2 m_mouse_last_position        = Math::Vector2::Zero;
         bool m_fps_control_cursor_hidden           = false;
         Math::Vector3 m_movement_speed             = Math::Vector3::Zero;
-        float m_movement_speed_min                 = 0.5f;
-        float m_movement_speed_max                 = 5.0f;
-        float m_movement_acceleration              = 1000.0f;
-        float m_movement_drag                      = 10.0f;
+        float m_movement_scroll_accumulator        = 0.0f;
         Math::Vector2 m_mouse_smoothed             = Math::Vector2::Zero;
         Math::Vector2 m_first_person_rotation      = Math::Vector2::Zero;
         float m_mouse_sensitivity                  = 0.2f;
