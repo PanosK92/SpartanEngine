@@ -32,7 +32,7 @@ namespace Spartan
     class Transform;
     class Renderable;
     
-    class SP_CLASS Entity : public Object, public std::enable_shared_from_this<Entity>
+    class SP_CLASS Entity : public Object
     {
     public:
         Entity(uint64_t transform_id = 0);
@@ -129,9 +129,8 @@ namespace Spartan
         const auto& GetAllComponents() const { return m_components; }
 
         // Direct access for performance critical usage (not safe)
-        Transform* GetTransform() const        { return m_transform; }
-        Renderable* GetRenderable() const      { return m_renderable; }
-        std::shared_ptr<Entity> GetPtrShared() { return shared_from_this(); }
+        Transform* GetTransform() const   { return m_transform; }
+        Renderable* GetRenderable() const { return m_renderable; }
 
     private:
         std::atomic<bool> m_is_active = true;

@@ -2165,7 +2165,7 @@ namespace Spartan
             RHI_Texture* tex_outline       = render_target(RendererTexture::outline).get();
             static const Color clear_color = Color(0.0f, 0.0f, 0.0f, 0.0f);
 
-            if (shared_ptr<Entity> entity_selected = Renderer::GetCamera()->GetSelectedEntity().lock())
+            if (shared_ptr<Entity> entity_selected = Renderer::GetCamera()->GetSelectedEntity())
             {
                 if (const Renderable* renderable = entity_selected->GetRenderable())
                 { 

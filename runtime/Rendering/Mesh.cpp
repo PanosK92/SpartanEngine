@@ -273,7 +273,7 @@ namespace Spartan
         m_vertex_buffer->Create(m_vertices);
     }
 
-    void Mesh::AddMaterial(shared_ptr<Material>& material, const shared_ptr<Entity>& entity) const
+    void Mesh::AddMaterial(shared_ptr<Material>& material, Entity* entity) const
     {
         SP_ASSERT(material != nullptr);
         SP_ASSERT(entity != nullptr);

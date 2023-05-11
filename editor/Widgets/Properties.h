@@ -55,8 +55,8 @@ public:
 
     void TickVisible() override;
 
-    static void Inspect(const std::weak_ptr<Spartan::Entity>& entity);
-    static void Inspect(const std::weak_ptr<Spartan::Material>& material);
+    static void Inspect(const std::shared_ptr<Spartan::Entity> entity);
+    static void Inspect(const std::shared_ptr<Spartan::Material> material);
 
     // Inspected resources
     static std::weak_ptr<Spartan::Entity> m_inspected_entity;

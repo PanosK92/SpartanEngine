@@ -91,7 +91,7 @@ namespace Spartan
         static uint32_t GetDefaultFlags();
         float ComputeNormalizedScale();
         void Optimize();
-        void AddMaterial(std::shared_ptr<Material>& material, const std::shared_ptr<Entity>& entity) const;
+        void AddMaterial(std::shared_ptr<Material>& material, Entity* entity) const;
         void AddTexture(std::shared_ptr<Material>& material, MaterialTexture texture_type, const std::string& file_path, bool is_gltf);
 
     private:
