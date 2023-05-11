@@ -179,7 +179,7 @@ void Properties::TickVisible()
     ImGui::PopItemWidth();
 }
 
-void Properties::Inspect(const weak_ptr<Entity>& entity)
+void Properties::Inspect(const shared_ptr<Entity> entity)
 {
     m_inspected_entity = entity;
 
@@ -191,7 +191,7 @@ void Properties::Inspect(const weak_ptr<Entity>& entity)
     m_inspected_material.reset();
 }
 
-void Properties::Inspect(const weak_ptr<Material>& material)
+void Properties::Inspect(const shared_ptr<Material> material)
 {
     m_inspected_entity.reset();
     m_inspected_material = material;

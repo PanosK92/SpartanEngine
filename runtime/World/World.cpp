@@ -278,7 +278,7 @@ namespace Spartan
     void World::RemoveEntity(Entity* entity)
     {
         SP_ASSERT_MSG(entity != nullptr, "Entity is null");
-        m_queue_deletion.push_back(entity->GetPtrShared());
+        m_queue_deletion.push_back(GetEntityById(entity->GetObjectId()));
         m_resolve = true;
     }
 

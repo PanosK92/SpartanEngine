@@ -47,11 +47,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace std;
 //==================
 
-static ImGuiSp::DragDropPayload g_payload;
-static bool popup_rename_entity = false;
-static Spartan::Entity* entity_copied    = nullptr;
-static Spartan::Entity* entity_hovered   = nullptr;
-static Spartan::Entity* entity_clicked   = nullptr;
+namespace
+{
+    static bool popup_rename_entity        = false;
+    static Spartan::Entity* entity_copied  = nullptr;
+    static weak_ptr <Spartan::Entity> entity_clicked;
+    static weak_ptr <Spartan::Entity> entity_hovered;
+    static ImGuiSp::DragDropPayload g_payload;
+}
 
 static void load_default_world_prompt(Editor* editor)
 {
@@ -148,14 +151,21 @@ void WorldViewer::TickVisible()
     TreeShow();
 
     // On left click, select entity but only on release
-    if (ImGui::IsMouseReleased(0) && entity_clicked)
+    if (ImGui::IsMouseReleased(0))
     {
         // Make sure that the mouse was released while on the same entity
-        if (entity_hovered && entity_hovered->GetObjectId() == entity_clicked->GetObjectId())
+        if (shared_ptr<Spartan::Entity> entity_clicked_raw = entity_clicked.lock())
         {
-            SetSelectedEntity(entity_clicked->GetPtrShared());
+            if (shared_ptr<Spartan::Entity> entity_hovered_raw = entity_hovered.lock())
+            {
+                if (entity_hovered_raw->GetObjectId() == entity_clicked_raw->GetObjectId())
+                {
+                    SetSelectedEntity(entity_clicked_raw);
+                }
+
+                entity_clicked.reset();
+            }
         }
-        entity_clicked = nullptr;
     }
 
     load_default_world_prompt(m_editor);
@@ -182,7 +192,7 @@ void WorldViewer::TreeShow()
         {
             if (entity->IsActiveRecursively())
             {
-                TreeAddEntity(entity.get());
+                TreeAddEntity(entity);
             }
         }
 
@@ -202,7 +212,7 @@ void WorldViewer::TreeShow()
 
 void WorldViewer::OnTreeBegin()
 {
-    entity_hovered = nullptr;
+    entity_hovered.reset();
 }
 
 void WorldViewer::OnTreeEnd()
@@ -212,7 +222,7 @@ void WorldViewer::OnTreeEnd()
     Popups();
 }
 
-void WorldViewer::TreeAddEntity(Spartan::Entity* entity)
+void WorldViewer::TreeAddEntity(shared_ptr<Spartan::Entity> entity)
 {
     if (!entity)
         return;
@@ -246,7 +256,7 @@ void WorldViewer::TreeAddEntity(Spartan::Entity* entity)
     // Flag - Is selected?
     if (shared_ptr<Spartan::Camera> camera = Spartan::Renderer::GetCamera())
     {
-        if (shared_ptr<Spartan::Entity> selected_entity = camera->GetSelectedEntity().lock())
+        if (shared_ptr<Spartan::Entity> selected_entity = camera->GetSelectedEntity())
         {
             node_flags |= selected_entity->GetObjectId() == entity->GetObjectId() ? ImGuiTreeNodeFlags_Selected : node_flags;
 
@@ -291,7 +301,7 @@ void WorldViewer::TreeAddEntity(Spartan::Entity* entity)
                 if (!child->GetEntity()->IsVisibleInHierarchy())
                     continue;
 
-                TreeAddEntity(child->GetEntity());
+                TreeAddEntity(Spartan::World::GetEntityById(child->GetEntity()->GetObjectId()));
             }
         }
 
@@ -311,7 +321,7 @@ void WorldViewer::HandleClicking()
         return;    
 
     // Left click on item - Don't select yet
-    if (left_click && entity_hovered)
+    if (left_click && entity_hovered.lock())
     {
         entity_clicked = entity_hovered;
     }
@@ -319,22 +329,22 @@ void WorldViewer::HandleClicking()
     // Right click on item - Select and show context menu
     if (ImGui::IsMouseClicked(1))
     {
-        if (entity_hovered)
+        if (shared_ptr<Spartan::Entity> entity = entity_hovered.lock())
         {            
-            SetSelectedEntity(entity_hovered->GetPtrShared());
+            SetSelectedEntity(entity);
         }
 
         ImGui::OpenPopup("##HierarchyContextMenu");
     }
 
     // Clicking on empty space - Clear selection
-    if ((left_click || right_click) && !entity_hovered)
+    if ((left_click || right_click) && !entity_hovered.lock())
     {
         SetSelectedEntity(m_entity_empty);
     }
 }
 
-void WorldViewer::EntityHandleDragDrop(Spartan::Entity* entity_ptr) const
+void WorldViewer::EntityHandleDragDrop(shared_ptr<Spartan::Entity> entity_ptr) const
 {
     // Drag
     if (ImGui::BeginDragDropSource())
@@ -358,7 +368,7 @@ void WorldViewer::EntityHandleDragDrop(Spartan::Entity* entity_ptr) const
     }
 }
 
-void WorldViewer::SetSelectedEntity(const weak_ptr<Spartan::Entity>& entity)
+void WorldViewer::SetSelectedEntity(const std::shared_ptr<Spartan::Entity> entity)
 {
     m_expand_to_selection = true;
 
@@ -385,7 +395,7 @@ void WorldViewer::PopupContextMenu() const
     shared_ptr<Spartan::Entity> selected_entity = nullptr;
     if (shared_ptr<Spartan::Camera> camera = Spartan::Renderer::GetCamera())
     {
-        selected_entity = camera->GetSelectedEntity().lock();
+        selected_entity = camera->GetSelectedEntity();
     }
 
     const bool on_entity = selected_entity != nullptr;
@@ -546,7 +556,7 @@ void WorldViewer::PopupEntityRename() const
 
     if (ImGui::BeginPopup("##RenameEntity"))
     {
-        shared_ptr<Spartan::Entity> selected_entity = Spartan::Renderer::GetCamera()->GetSelectedEntity().lock();
+        shared_ptr<Spartan::Entity> selected_entity = Spartan::Renderer::GetCamera()->GetSelectedEntity();
         if (!selected_entity)
         {
             ImGui::CloseCurrentPopup();
@@ -575,7 +585,7 @@ void WorldViewer::HandleKeyShortcuts()
     // Delete
     if (Spartan::Input::GetKey(Spartan::KeyCode::Delete))
     {
-        if (shared_ptr<Spartan::Entity> selected_entity = Spartan::Renderer::GetCamera()->GetSelectedEntity().lock())
+        if (shared_ptr<Spartan::Entity> selected_entity = Spartan::Renderer::GetCamera()->GetSelectedEntity())
         {
             ActionEntityDelete(selected_entity);
         }
@@ -615,7 +625,7 @@ Spartan::Entity* WorldViewer::ActionEntityCreateEmpty()
     
     if (shared_ptr<Spartan::Camera> camera = Spartan::Renderer::GetCamera())
     {
-        if (shared_ptr<Spartan::Entity> selected_entity = camera->GetSelectedEntity().lock())
+        if (shared_ptr<Spartan::Entity> selected_entity = camera->GetSelectedEntity())
         {
             entity->GetTransform()->SetParent(selected_entity->GetTransform());
         }
