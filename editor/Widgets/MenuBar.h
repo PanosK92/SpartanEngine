@@ -43,8 +43,6 @@ public:
     static float GetPadding() { return 8.0f; }
 private:
     void DrawFileDialog() const;
-    void DrawAboutWindow() const;
-    void DrawShortcutsWindow() const;
     void HandleKeyShortcuts() const;
 
     std::unique_ptr<Toolbar> m_tool_bar;

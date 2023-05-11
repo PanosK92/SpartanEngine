@@ -81,7 +81,7 @@ static void load_default_world_prompt(Editor* editor)
                 "5. Height map generated terrain.",
                 "6. The famous Sponza building found in Dubrovnik."
             };
-            static int item_index = 1;
+            static int item_index = 2;
             static int item_count = IM_ARRAYSIZE(items);
             ImGui::PushItemWidth(800.0f);
             ImGui::ListBox("##list_box", &item_index, items, item_count, item_count);
