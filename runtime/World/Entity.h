@@ -107,6 +107,14 @@ namespace Spartan
             return static_cast<T*>(m_components[static_cast<uint32_t>(component_type)].get());
         }
 
+        // Returns a component of type T (if it exists)
+        template <class T>
+        std::shared_ptr<T> GetComponentShared()
+        {
+            const ComponentType component_type = IComponent::TypeToEnum<T>();
+            return std::static_pointer_cast<T>(m_components[static_cast<uint32_t>(component_type)]);
+        }
+
         // Removes a component (if it exists)
         template <class T>
         void RemoveComponent()

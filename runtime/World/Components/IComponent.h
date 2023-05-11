@@ -60,7 +60,7 @@ namespace Spartan
         std::function<void(std::any)> setter;
     };
 
-    class SP_CLASS IComponent : public Object, public std::enable_shared_from_this<IComponent>
+    class SP_CLASS IComponent : public Object
     {
     public:
         IComponent(Entity* entity, uint64_t id = 0, Transform* transform = nullptr);
@@ -92,13 +92,10 @@ namespace Spartan
         static constexpr ComponentType TypeToEnum();
         //==========================================
 
-        //= PROPERTIES ===============================================================================
+        //= PROPERTIES ==============================================================
         Transform* GetTransform()        const { return m_transform; }
         ComponentType GetType()          const { return m_type; }
         void SetType(ComponentType type)       { m_type = type; }
-
-        template <typename T>
-        std::shared_ptr<T> GetPtrShared() { return std::dynamic_pointer_cast<T>(shared_from_this()); }
 
         const auto& GetAttributes() const { return m_attributes; }
         void SetAttributes(const std::vector<Attribute>& attributes)
@@ -111,7 +108,7 @@ namespace Spartan
 
         // Entity
         Entity* GetEntity() const { return m_entity; }
-        //============================================================================================
+        //===========================================================================
         
     protected:
         #define SP_REGISTER_ATTRIBUTE_GET_SET(getter, setter, type) RegisterAttribute(  \
