@@ -345,6 +345,12 @@ namespace Spartan
 
     void Camera::ProcessInputFpsControl()
     {
+        static const float movement_speed_max = 5.0f;
+        static float movement_acceleration    = 1.0f;
+        static const float movement_drag      = 10.0f;
+        Vector3 movement_direction            = Vector3::Zero;
+        float delta_time                      = static_cast<float>(Timer::GetDeltaTimeSec());
+
         // Detect if fps control should be activated
         {
             // Initiate control only when the mouse is within the viewport
@@ -390,7 +396,7 @@ namespace Spartan
             {
                 // Wrap around left and right screen edges (to allow for infinite scrolling)
                 {
-                    uint32_t edge_padding  = 5;
+                    uint32_t edge_padding = 5;
                     Vector2 mouse_position = Input::GetMousePosition();
                     if (mouse_position.x >= Display::GetWidth() - edge_padding)
                     {
@@ -429,33 +435,27 @@ namespace Spartan
                 m_transform->SetRotationLocal(rotation);
             }
 
-            // Keyboard movement
+            // Keyboard movement direction
             {
-                // Compute max speed
-                if (Input::GetKey(KeyCode::Shift_Left))
-                {
-                    m_movement_speed_max = 10.0f;
-                }
-                else
-                {
-                    m_movement_speed_max = 5.0f;
-                }
-                m_movement_speed_max += Input::GetMouseWheelDelta().y / 2.0f;
-                m_movement_speed_max = Helper::Clamp(m_movement_speed_max, m_movement_speed_min, numeric_limits<float>::max());
-
                 // Compute direction
-                Vector3 direction = Vector3::Zero;
-                if (Input::GetKey(KeyCode::W)) direction += m_transform->GetForward();
-                if (Input::GetKey(KeyCode::S)) direction += m_transform->GetBackward();
-                if (Input::GetKey(KeyCode::D)) direction += m_transform->GetRight();
-                if (Input::GetKey(KeyCode::A)) direction += m_transform->GetLeft();
-                if (Input::GetKey(KeyCode::Q)) direction += m_transform->GetDown();
-                if (Input::GetKey(KeyCode::E)) direction += m_transform->GetUp();
-                direction.Normalize();
+                if (Input::GetKey(KeyCode::W)) movement_direction += m_transform->GetForward();
+                if (Input::GetKey(KeyCode::S)) movement_direction += m_transform->GetBackward();
+                if (Input::GetKey(KeyCode::D)) movement_direction += m_transform->GetRight();
+                if (Input::GetKey(KeyCode::A)) movement_direction += m_transform->GetLeft();
+                if (Input::GetKey(KeyCode::Q)) movement_direction += m_transform->GetDown();
+                if (Input::GetKey(KeyCode::E)) movement_direction += m_transform->GetUp();
+                movement_direction.Normalize();
+            }
 
-                // Compute speed
-                m_movement_speed += m_movement_acceleration * direction * static_cast<float>(Timer::GetDeltaTimeSec());
-                m_movement_speed.ClampMagnitude(m_movement_speed_max * static_cast<float>(Timer::GetDeltaTimeSec()));
+            // Wheel delta (used to adjust movement speed)
+            {
+                // Accumulate
+                m_movement_scroll_accumulator += Input::GetMouseWheelDelta().y * 0.1f;
+
+                // Clamp
+                float min = -movement_acceleration + 0.1f; // Prevent it from negating or zeroing the acceleration, see translation calculation.
+                float max = movement_acceleration * 2.0f;  // An empirically chosen max.
+                m_movement_scroll_accumulator = Helper::Clamp(m_movement_scroll_accumulator, min, max);
             }
         }
 
@@ -483,30 +483,35 @@ namespace Spartan
                 m_transform->SetRotationLocal(rotation);
             }
 
-            // Movement
-            {
-                // Compute max speed
-                m_movement_speed_max += Input::GetMouseWheelDelta().y / 2.0f;
-                m_movement_speed_max = Helper::Clamp(m_movement_speed_max, m_movement_speed_min, numeric_limits<float>::max());
-
-                // Compute direction
-                Vector3 direction = Vector3::Zero;
-                direction += m_transform->GetForward() * -Input::GetControllerThumbStickLeft().y;
-                direction += m_transform->GetRight()   * Input::GetControllerThumbStickLeft().x;
-                direction += m_transform->GetDown()    * Input::GetControllerTriggerLeft();
-                direction += m_transform->GetUp()      * Input::GetControllerTriggerRight();
-                direction.Normalize();
-
-                // Compute speed
-                m_movement_speed += m_movement_acceleration * direction * static_cast<float>(Timer::GetDeltaTimeSec());
-                m_movement_speed.ClampMagnitude(m_movement_speed_max* static_cast<float>(Timer::GetDeltaTimeSec()));
-            }
+            // Controller movement direction
+            movement_direction += m_transform->GetForward() * -Input::GetControllerThumbStickLeft().y;
+            movement_direction += m_transform->GetRight()   * Input::GetControllerThumbStickLeft().x;
+            movement_direction += m_transform->GetDown()    * Input::GetControllerTriggerLeft();
+            movement_direction += m_transform->GetUp()      * Input::GetControllerTriggerRight();
+            movement_direction.Normalize();
         }
 
         // Translation
         {
-            // Apply movement drag
-            m_movement_speed *= 1.0f - Helper::Saturate(m_movement_drag * static_cast<float>(Timer::GetDeltaTimeSec()));
+            Vector3 translation = (movement_acceleration + m_movement_scroll_accumulator) * movement_direction;
+
+            // On shift, double the translation
+            if (Input::GetKey(KeyCode::Shift_Left))
+            {
+                translation *= 2.0f;
+            }
+
+            // Accelerate
+            m_movement_speed += translation * delta_time;
+
+            // Apply drag
+            m_movement_speed *= 1.0f - movement_drag * delta_time;
+
+            // Clamp it
+            if (m_movement_speed.Length() > movement_speed_max)
+            {
+                m_movement_speed = m_movement_speed.Normalized() * movement_speed_max;
+            }
 
             // Translate for as long as there is speed
             if (m_movement_speed != Vector3::Zero)
@@ -573,7 +578,6 @@ namespace Spartan
             }
         }
     }
-
 
     void Camera::FocusOnSelectedEntity()
     {
