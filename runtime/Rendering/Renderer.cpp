@@ -696,10 +696,10 @@ namespace Spartan
                     m_renderables[RendererEntityType::light].emplace_back(entity);
                 }
 
-                if (Camera* camera = entity->GetComponent<Camera>())
+                if (shared_ptr<Camera> camera = entity->GetComponentShared<Camera>())
                 {
                     m_renderables[RendererEntityType::camera].emplace_back(entity);
-                    m_camera = camera->GetPtrShared<Camera>();
+                    m_camera = camera;
                 }
 
                 if (ReflectionProbe* reflection_probe = entity->GetComponent<ReflectionProbe>())
