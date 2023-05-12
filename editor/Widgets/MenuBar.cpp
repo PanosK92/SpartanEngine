@@ -127,7 +127,7 @@ namespace
         static vector<string> contributors =
         {
              // format: name,contribution,country,button text,button url
-             //"Jesse Smith,bla,US,GitHub,actual url",
+            "Jesse Guerrero,Editor UX improvements,US,LinkedIn,https://www.linkedin.com/in/jguer",
             "Konstantinos Benos,Editor transformation bug fixes,Greece,Twitter,https://twitter.com/deg3x"
         };
 
@@ -165,19 +165,25 @@ namespace
                     // Switch row
                     ImGui::TableNextRow();
 
+                    // Shit text down so that it's on the same line with the button
+                    static const float y_shift = 6.0f;
+
                     // Name
                     ImGui::TableSetColumnIndex(0);
+                    ImGui::SetCursorPosY(ImGui::GetCursorPosY() + y_shift);
                     ImGui::Text(contributor_parts[0].c_str());
 
                     // Contribution
                     ImGui::TableSetColumnIndex(1);
+                    ImGui::SetCursorPosY(ImGui::GetCursorPosY() + y_shift);
                     ImGui::Text(contributor_parts[1].c_str());
 
                     // Country
                     ImGui::TableSetColumnIndex(2);
+                    ImGui::SetCursorPosY(ImGui::GetCursorPosY() + y_shift);
                     ImGui::Text(contributor_parts[2].c_str());
 
-                    // URL
+                    // Button (URL)
                     ImGui::TableSetColumnIndex(3);
                     if (ImGuiSp::button(contributor_parts[3].c_str()))
                     {
