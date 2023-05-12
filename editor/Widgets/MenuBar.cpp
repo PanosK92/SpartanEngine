@@ -132,7 +132,7 @@ namespace
         };
 
         ImGui::SetNextWindowFocus();
-        ImGui::Begin("Contributors", &show_contributors_window, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoDocking);
+        ImGui::Begin("Spartans", &show_contributors_window, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoDocking);
         {
             ImGui::Text("In alphabetical order");
 
