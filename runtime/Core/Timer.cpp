@@ -31,11 +31,14 @@ using namespace std;
 namespace Spartan
 {
     namespace
-    { 
+    {
+        static const uint32_t frames_to_accumulate = 20;
+        static const double weight_delta           = 1.0 / static_cast<float>(frames_to_accumulate);
+
         // Frame time
-        static std::chrono::high_resolution_clock::time_point m_time_start;
-        static std::chrono::high_resolution_clock::time_point m_time_sleep_start;
-        static std::chrono::high_resolution_clock::time_point m_time_sleep_end;
+        static chrono::high_resolution_clock::time_point m_time_start;
+        static chrono::high_resolution_clock::time_point m_time_sleep_start;
+        static chrono::high_resolution_clock::time_point m_time_sleep_end;
         static double m_time_ms                = 0.0f;
         static double m_delta_time_ms          = 0.0f;
         static double m_delta_time_smoothed_ms = 0.0f;
@@ -58,30 +61,29 @@ namespace Spartan
     void Timer::Tick()
     {
         // Compute delta time
-        m_time_sleep_start = chrono::high_resolution_clock::now();
+        m_time_sleep_start = chrono::steady_clock::now();
         chrono::duration<double, milli> delta_time = m_time_sleep_start - m_time_sleep_end;
 
         // FPS limiting
         {
             // The kernel takes time to wake up the thread after the thread has finished sleeping.
-            // It can't be trusted for accurate frame limiting, hence we do it simple stupid.
+            // Therefore we can't trust thread sleeping for accurate frame limiting. A loop works the best.
+
             double target_ms = 1000.0 / m_fps_limit;
             while (delta_time.count() < target_ms)
             {
-                delta_time = chrono::high_resolution_clock::now() - m_time_sleep_start;
+                delta_time = chrono::steady_clock::now() - m_time_sleep_start;
             }
 
-            m_time_sleep_end = chrono::high_resolution_clock::now();
+            m_time_sleep_end = chrono::steady_clock::now();
         }
 
         // Compute durations
         m_delta_time_ms = static_cast<double>(delta_time.count());
-        m_time_ms = static_cast<double>(chrono::duration<double, milli>(m_time_sleep_start - m_time_start).count());
+        m_time_ms       = static_cast<double>(chrono::duration<double, milli>(m_time_sleep_start - m_time_start).count());
 
         // Compute smoothed delta time
-        const double frames_to_accumulate = 10;
-        const double delta_feedback       = 1.0 / frames_to_accumulate;
-        m_delta_time_smoothed_ms          = m_delta_time_smoothed_ms * (1.0 - delta_feedback) + m_delta_time_ms * delta_feedback;
+        m_delta_time_smoothed_ms          = m_delta_time_smoothed_ms * (1.0 - weight_delta) + m_delta_time_ms * weight_delta;
     }
 
     void Timer::SetFpsLimit(float fps_in)
@@ -138,7 +140,7 @@ namespace Spartan
 
     double Timer::GetTimeSec()
     {
-        return static_cast<float>(m_time_ms / 1000.0);
+        return m_time_ms / 1000.0;
     }
 
     double Timer::GetDeltaTimeMs()
@@ -148,7 +150,7 @@ namespace Spartan
 
     double Timer::GetDeltaTimeSec()
     {
-        return static_cast<float>(m_delta_time_ms / 1000.0);
+        return m_delta_time_ms / 1000.0;
     }
 
     double Timer::GetDeltaTimeSmoothedMs()
@@ -158,6 +160,6 @@ namespace Spartan
 
     double Timer::GetDeltaTimeSmoothedSec()
     {
-        return static_cast<float>(m_delta_time_smoothed_ms / 1000.0);
+        return m_delta_time_smoothed_ms / 1000.0;
     }
 }
