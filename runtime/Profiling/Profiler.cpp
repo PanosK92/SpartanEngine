@@ -179,16 +179,13 @@ namespace Spartan
     {
         // Compute timings
         {
-            // Detect stutters
-            float frames_to_accumulate = 5.0f;
-            float delta_feedback       = 1.0f / frames_to_accumulate;
-            m_is_stuttering_cpu        = m_time_cpu_last > (m_time_cpu_avg + m_stutter_delta_ms);
-            m_is_stuttering_gpu        = m_time_gpu_last > (m_time_gpu_avg + m_stutter_delta_ms);
-
-            frames_to_accumulate = 20.0f;
-            delta_feedback       = 1.0f / frames_to_accumulate;
-            m_time_cpu_last      = 0.0f;
-            m_time_gpu_last      = 0.0f;
+            uint32_t frames_to_accumulate = 20;
+            float weight_delta            = 1.0f / static_cast<float>(frames_to_accumulate);
+            float weight_history          = (1.0f - weight_delta);
+            m_is_stuttering_cpu           = m_time_cpu_last > (m_time_cpu_avg + m_stutter_delta_ms);
+            m_is_stuttering_gpu           = m_time_gpu_last > (m_time_gpu_avg + m_stutter_delta_ms);
+            m_time_cpu_last               = 0.0f;
+            m_time_gpu_last               = 0.0f;
 
             for (const TimeBlock& time_block : m_time_blocks_read)
             {
@@ -207,23 +204,24 @@ namespace Spartan
             }
 
             // CPU
-            m_time_cpu_avg = m_time_cpu_avg * (1.0f - delta_feedback) + m_time_cpu_last * delta_feedback;
+            m_time_cpu_avg = (m_time_cpu_avg * weight_history) + m_time_cpu_last * weight_delta;
             m_time_cpu_min = Math::Helper::Min(m_time_cpu_min, m_time_cpu_last);
             m_time_cpu_max = Math::Helper::Max(m_time_cpu_max, m_time_cpu_last);
 
             // GPU
-            m_time_gpu_avg = m_time_gpu_avg * (1.0f - delta_feedback) + m_time_gpu_last * delta_feedback;
+            m_time_gpu_avg = (m_time_gpu_avg * weight_history) + m_time_gpu_last * weight_delta;
             m_time_gpu_min = Math::Helper::Min(m_time_gpu_min, m_time_gpu_last);
             m_time_gpu_max = Math::Helper::Max(m_time_gpu_max, m_time_gpu_last);
 
             // Frame
             m_time_frame_last = static_cast<float>(Timer::GetDeltaTimeMs());
-            m_time_frame_avg  = m_time_frame_avg * (1.0f - delta_feedback) + m_time_frame_last * delta_feedback;
+            m_time_frame_avg  = (m_time_frame_avg * weight_history) + m_time_frame_last * weight_delta;
             m_time_frame_min  = Math::Helper::Min(m_time_frame_min, m_time_frame_last);
             m_time_frame_max  = Math::Helper::Max(m_time_frame_max, m_time_frame_last);
 
             // FPS
-            m_fps = static_cast<float>(1.0 / Timer::GetDeltaTimeSec());
+            float fps_sample = 1.0f / static_cast<float>(Timer::GetDeltaTimeSec());
+            m_fps = (m_fps * weight_history) + fps_sample * weight_delta;
         }
 
         // Check whether we should profile or not
@@ -506,10 +504,10 @@ namespace Spartan
 
         // Detailed times
         m_oss_metrics
-            << endl     << setw(18) << "avg"                          << setw(10) << "min"                          << setw(10) << "max"                          << setw(10) << "last"                                   << endl
-            << "Total:" << setw(10) << format_float(m_time_frame_avg) << setw(8)  << format_float(m_time_frame_min) << setw(9)  << format_float(m_time_frame_max) << setw(9)  << format_float(m_time_frame_last) << " ms" << endl
-            << "CPU:"   << setw(11) << format_float(m_time_cpu_avg)   << setw(8)  << format_float(m_time_cpu_min)   << setw(9)  << format_float(m_time_cpu_max)   << setw(9)  << format_float(m_time_cpu_last)   << " ms" << endl
-            << "GPU:"   << setw(11) << format_float(m_time_gpu_avg)   << setw(8)  << format_float(m_time_gpu_min)   << setw(9)  << format_float(m_time_gpu_max)   << setw(9)  << format_float(m_time_gpu_last)   << " ms" << endl;
+            << endl     << "\t" << "\tavg"                          << "\t" << "\tmin"                        << "\t" << "\tmax"                        << "\t" << "\tlast"                                 << endl
+            << "Total:" << "\t"   << format_float(m_time_frame_avg) << "\t" << format_float(m_time_frame_min) << "\t" << format_float(m_time_frame_max) << "\t" << format_float(m_time_frame_last) << " ms" << endl
+            << "CPU:"   << "\t"   << format_float(m_time_cpu_avg)   << "\t" << format_float(m_time_cpu_min)   << "\t" << format_float(m_time_cpu_max)   << "\t" << format_float(m_time_cpu_last)   << " ms" << endl
+            << "GPU:"   << "\t"   << format_float(m_time_gpu_avg)   << "\t" << format_float(m_time_gpu_min)   << "\t" << format_float(m_time_gpu_max)   << "\t" << format_float(m_time_gpu_last)   << " ms" << endl;
 
         // GPU
         m_oss_metrics
