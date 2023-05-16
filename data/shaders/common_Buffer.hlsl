@@ -49,10 +49,10 @@ cbuffer BufferFrame : register(b0)
     float3 g_camera_direction;
     
     float g_gamma;
-    float g_toneMapping;
+    float g_tone_mapping;
     float g_directional_light_intensity;
     float g_shadow_resolution;
-    
+
     float2 g_resolution_render;
     float2 g_resolution_output;
 
@@ -65,7 +65,8 @@ cbuffer BufferFrame : register(b0)
     uint g_ssr_mip_count;
 
     float2 g_resolution_environment;
-    float2 g_padding;
+    float g_exposure;
+    float g_padding;
 };
 
 // Medium frequency - Updates per render pass

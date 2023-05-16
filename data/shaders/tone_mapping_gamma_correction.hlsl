@@ -169,7 +169,7 @@ float3 amd(float3 color)
 
 float3 tonemap(float3 color)
 {
-    switch (g_toneMapping)
+    switch (g_tone_mapping)
     {
         case 0: return amd(color);
         case 1: return aces(color);
@@ -187,7 +187,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     if (any(int2(thread_id.xy) >= g_resolution_rt.xy))
         return;
 
-    // Tone map and gamma correct
+    // exposure, tone-mapping, gamma correction
     float4 color = tex[thread_id.xy];
-    tex_uav[thread_id.xy] = float4(gamma(tonemap(color.rgb)), color.a);
+    tex_uav[thread_id.xy] = float4(gamma(tonemap(color.rgb * g_exposure)), color.a);
 }

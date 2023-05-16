@@ -76,7 +76,8 @@ namespace Spartan
         uint32_t ssr_mip_count;
 
         Math::Vector2 resolution_environment;
-        Math::Vector2 padding;
+        float exposure;
+        float padding;
 
         void set_bit(const bool set, const uint32_t bit)
         {
@@ -118,7 +119,8 @@ namespace Spartan
                 options                     == rhs.options                     &&
                 frame_mip_count             == rhs.frame_mip_count             &&
                 ssr_mip_count               == rhs.ssr_mip_count               &&
-                resolution_environment      == rhs.resolution_environment;
+                resolution_environment      == rhs.resolution_environment      &&
+                exposure                    == rhs.exposure;
         }
         bool operator!=(const Cb_Frame& rhs) const { return !(*this == rhs); }
     };

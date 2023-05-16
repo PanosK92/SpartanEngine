@@ -346,6 +346,9 @@ void RenderOptions::TickVisible()
                 // Gamma
                 helper::RenderOptionValue("Gamma", RendererOption::Gamma);
 
+                // Gamma
+                helper::RenderOptionValue("Exposure", RendererOption::Exposure);
+
                 // Bloom
                 helper::RenderOptionValue("Bloom", RendererOption::Bloom, "Controls the blend factor. If zero, then bloom is disabled.", 0.01f);
 
