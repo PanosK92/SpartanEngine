@@ -45,13 +45,15 @@ namespace Spartan
         static bool hdr;
         static float luminance_min;
         static float luminance_max;
+        static Math::Vector2 white_point;
     }
 
-    static void get_hdr_capabilities(bool* hdr, float* luminance_min, float* luminance_max)
+    static void get_hdr_capabilities(bool* hdr, float* luminance_min, float* luminance_max, Math::Vector2* white_point)
     {
         *hdr           = false;
         *luminance_min = 0.0f;
         *luminance_max = 0.0f;
+        *white_point   = Math::Vector2::Zero;
 
         #if defined(_MSC_VER)
             // Create DXGI factory
@@ -131,13 +133,18 @@ namespace Spartan
                 DXGI_OUTPUT_DESC1 desc;
                 if (SUCCEEDED(output6->GetDesc1(&desc)))
                 {
-                    *hdr = desc.ColorSpace == DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020;
-                    *luminance_min = desc.MinLuminance;
+                    *hdr           = desc.ColorSpace == DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020;
+                    // An SDR monitor can report a min luminance of 0.5, but the min we will accept is 0.01.
+                    // This is because despite what an SDR monitor reports, it can typically do better (I observed it).
+                    // Also, I don't know to what extent we can trust IDXGIOutput6.
+                    *luminance_min = Math::Helper::Min(desc.MinLuminance, 0.01f);
                     *luminance_max = desc.MaxLuminance;
+                    white_point->x = desc.WhitePoint[0];
+                    white_point->y = desc.WhitePoint[1];
                 }
             }
         #else
-            SP_LOG_ERROR("HDR support detection not implemented");
+            SP_ASSERT_MSG(false, "HDR support detection not implemented");
         #endif
     }
 
@@ -208,7 +215,7 @@ namespace Spartan
         }
 
         // Detect HDR capabilities
-        get_hdr_capabilities(&hdr, &luminance_min, &luminance_max);
+        get_hdr_capabilities(&hdr, &luminance_min, &luminance_max, &white_point);
         SP_LOG_INFO("HDR: %s, Luminance: %f, %f", hdr ? "true" : "false", luminance_min, luminance_max);
     }
 
