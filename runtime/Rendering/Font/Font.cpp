@@ -101,7 +101,7 @@ namespace Spartan
             if (text_char == ASCII_TAB)
             {
                 const uint32_t space_offset      = m_glyphs[ASCII_SPACE].horizontal_advance;
-                const uint32_t space_count       = 8; // spaces in a typical terminal
+                const uint32_t space_count       = 4; // spaces in a typical editor
                 const uint32_t tab_spacing       = space_offset * space_count;
                 const uint32_t offset_from_start = static_cast<uint32_t>(Math::Helper::Abs(pen.x - position.x));
                 const uint32_t next_column_index = (offset_from_start / tab_spacing) + 1;
