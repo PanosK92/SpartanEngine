@@ -118,8 +118,6 @@ namespace Spartan
 
     RHI_CommandList::~RHI_CommandList()
     {
-        pipelines.clear();
-
         if (m_query_pool)
         {
             RHI_Device::AddToDeletionQueue(RHI_Resource_Type::query_pool, m_query_pool);
@@ -214,7 +212,7 @@ namespace Spartan
 
     void RHI_CommandList::SetPipelineState(RHI_PipelineState& pso)
     {
-        SP_ASSERT_MSG(pso.IsValid(), "Invalide pipeline state");
+        SP_ASSERT_MSG(pso.IsValid(), "Invalid pipeline state");
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
         // Update the descriptor cache with the pipeline state
