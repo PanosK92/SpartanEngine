@@ -56,19 +56,11 @@ namespace Spartan
         float GetDepthBias()             const { return m_depth_bias; }
         float GetDepthBiasClamp()        const { return m_depth_bias_clamp; }
         float GetDepthBiasSlopeScaled()  const { return m_depth_bias_slope_scaled; }
+        uint64_t GetHash()               const { return m_hash; }
 
         bool operator==(const RHI_RasterizerState& rhs) const
         {
-            return
-                m_cull_mode               == rhs.GetCullMode()              &&
-                m_polygon_mode            == rhs.GetPolygonMode()           &&
-                m_depth_clip_enabled      == rhs.GetDepthClipEnabled()      &&
-                m_scissor_enabled         == rhs.GetScissorEnabled()        &&
-                m_antialised_line_enabled == rhs.GetAntialisedLineEnabled() &&
-                m_line_width              == rhs.GetLineWidth()             &&
-                m_depth_bias              == rhs.GetDepthBias()             &&
-                m_depth_bias_clamp        == rhs.GetDepthBiasClamp()        &&
-                m_depth_bias_slope_scaled == rhs.GetDepthBiasSlopeScaled();
+            return m_hash == rhs.GetHash();
         }
 
     private:
@@ -81,7 +73,8 @@ namespace Spartan
         float m_depth_bias_clamp        = 0.0f;
         float m_depth_bias_slope_scaled = 0.0f;
         float m_line_width              = 1.0f;
-        
+
+        uint64_t m_hash       = 0;
         void* m_rhi_resource = nullptr;
     };
 }

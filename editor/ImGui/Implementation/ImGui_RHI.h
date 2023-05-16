@@ -394,13 +394,12 @@ namespace ImGui::RHI
     static void RHI_Window_Create(ImGuiViewport* viewport)
     {
         // PlatformHandle is SDL_Window, PlatformHandleRaw is HWND
-        void* platform_handle = viewport->PlatformHandle;
-        SP_ASSERT_MSG(platform_handle != nullptr, "Platform handle is invalid");
+        SP_ASSERT_MSG(viewport->PlatformHandle != nullptr, "Platform handle is invalid");
 
         WindowData* window = new WindowData();
         window->swapchain = make_shared<RHI_SwapChain>
         (
-            platform_handle,
+            viewport->PlatformHandle,
             static_cast<uint32_t>(viewport->Size.x),
             static_cast<uint32_t>(viewport->Size.y),
             false, // is hdr

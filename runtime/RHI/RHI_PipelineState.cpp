@@ -150,17 +150,17 @@ namespace Spartan
 
         if (pso.rasterizer_state)
         {
-            hash = rhi_hash_combine(hash, pso.rasterizer_state->GetObjectId());
+            hash = rhi_hash_combine(hash, pso.rasterizer_state->GetHash());
         }
 
         if (pso.blend_state)
         {
-            hash = rhi_hash_combine(hash, pso.blend_state->GetObjectId());
+            hash = rhi_hash_combine(hash, pso.blend_state->GetHash());
         }
 
         if (pso.depth_stencil_state)
         {
-            hash = rhi_hash_combine(hash, pso.depth_stencil_state->GetObjectId());
+            hash = rhi_hash_combine(hash, pso.depth_stencil_state->GetHash());
         }
 
         // Shaders
@@ -188,14 +188,14 @@ namespace Spartan
             {
                 if (RHI_Texture* texture = pso.render_target_color_textures[i])
                 {
-                    hash = rhi_hash_combine(hash, texture->GetObjectId());
+                    hash = rhi_hash_combine(hash, static_cast<uint64_t>(texture->GetFormat()));
                 }
             }
 
             // Depth
             if (pso.render_target_depth_texture)
             {
-                hash = rhi_hash_combine(hash, pso.render_target_depth_texture->GetObjectId());
+                hash = rhi_hash_combine(hash, static_cast<uint64_t>(pso.render_target_depth_texture->GetFormat()));
             }
         }
 

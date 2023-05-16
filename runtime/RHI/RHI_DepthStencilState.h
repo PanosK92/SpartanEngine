@@ -21,11 +21,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =====================
+//= INCLUDES ==============
 #include <memory>
 #include "RHI_Definition.h"
 #include "../Core/Object.h"
-//================================
+//=========================
 
 namespace Spartan
 {
@@ -56,7 +56,9 @@ namespace Spartan
         RHI_Stencil_Operation GetStencilPassOperation()        const { return m_stencil_pass_op; }
         uint8_t GetStencilReadMask()                           const { return m_stencil_read_mask; }
         uint8_t GetStencilWriteMask()                          const { return m_stencil_write_mask; }
-        void* GetRhiResource()                                 const { return m_rhi_resource; }
+
+        uint64_t GetHash()     const { return m_hash; }
+        void* GetRhiResource() const { return m_rhi_resource; }
 
     private:
         bool m_depth_test_enabled                             = false;
@@ -70,6 +72,8 @@ namespace Spartan
         RHI_Stencil_Operation m_stencil_pass_op               = RHI_Stencil_Operation::Replace;
         uint8_t m_stencil_read_mask                           = 1;
         uint8_t m_stencil_write_mask                          = 1;
-        void* m_rhi_resource                                  = nullptr;
+
+        uint64_t m_hash      = 0;
+        void* m_rhi_resource = nullptr;
     };
 }
