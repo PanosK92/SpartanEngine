@@ -199,7 +199,7 @@ namespace Spartan
         SetOption(RendererOption::Anisotropy,             16.0f);
         SetOption(RendererOption::ShadowResolution,       2048.0f);
         SetOption(RendererOption::Tonemapping,            static_cast<float>(TonemappingMode::Disabled));
-        SetOption(RendererOption::Gamma,                  2.0f);
+        SetOption(RendererOption::Gamma,                  2.2f);
         SetOption(RendererOption::Exposure,               1.0f);
         SetOption(RendererOption::Sharpness,              0.5f);
         SetOption(RendererOption::Fog,                    0.0f);
@@ -411,6 +411,8 @@ namespace Spartan
             m_cb_frame_cpu.tonemapping            = GetOption<float>(RendererOption::Tonemapping);
             m_cb_frame_cpu.gamma                  = GetOption<float>(RendererOption::Gamma);
             m_cb_frame_cpu.exposure               = GetOption<float>(RendererOption::Exposure);
+            m_cb_frame_cpu.luminance_min          = Display::GetLuminanceMin();
+            m_cb_frame_cpu.luminance_max          = Display::GetLuminanceMax();
             m_cb_frame_cpu.shadow_resolution      = GetOption<float>(RendererOption::ShadowResolution);
             m_cb_frame_cpu.frame                  = static_cast<uint32_t>(m_frame_num);
             m_cb_frame_cpu.frame_mip_count        = render_target(RendererTexture::frame_render)->GetMipCount();

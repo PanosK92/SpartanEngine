@@ -256,4 +256,14 @@ namespace Spartan
     {
         return hdr;
     }
+
+    float Display::GetLuminanceMin()
+    {
+        return luminance_min;
+    }
+
+    float Display::GetLuminanceMax()
+    {
+        return luminance_max;
+    }
 }

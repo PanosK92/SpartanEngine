@@ -189,5 +189,28 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 
     // exposure, tone-mapping, gamma correction
     float4 color = tex[thread_id.xy];
-    tex_uav[thread_id.xy] = float4(gamma(tonemap(color.rgb * g_exposure)), color.a);
+
+    // 1. Normalize luminance based on monitor capabilities
+    {
+        // Normalize the color's luminance
+        float luminance_original   = luminance(color.rgb);
+        float luminance_normalized = (luminance_original - g_luminance_min) / (g_luminance_max - g_luminance_min);
+
+        // Apply the display's luminance range
+        float luminance_display = luminance_normalized * g_luminance_max + g_luminance_min;
+
+        // Replace original luminance with the new display luminance
+         color.rgb *= (luminance_display / max(luminance_original, FLT_MIN));
+    }
+
+    // 2. Expose
+    color.rgb *= g_exposure;
+
+    // 3. Tone-map
+    color.rgb = tonemap(color.rgb);
+
+    // 4. Gamma-correct
+    color.rgb = gamma(color.rgb);
+
+    tex_uav[thread_id.xy] = color;
 }
