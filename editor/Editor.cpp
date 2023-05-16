@@ -243,6 +243,7 @@ void Editor::Tick()
         // Engine - Tick
         Spartan::Engine::Tick();
 
+        // Editor - Tick/End
         if (render_editor)
         {
             // Editor - Begin

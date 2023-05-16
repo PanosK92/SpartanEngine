@@ -35,12 +35,6 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    namespace
-    {
-        RHI_Format format_sdr = RHI_Format::R8G8B8A8_Unorm;
-        RHI_Format format_hdr = RHI_Format::R10G10B10A2_Unorm;
-    }
-
     static VkColorSpaceKHR get_color_space(bool is_hdr)
     {
         // VK_COLOR_SPACE_HDR10_ST2084_EXT represents the HDR10 color space with the ST.2084 (PQ)electro - optical transfer function.
@@ -213,7 +207,7 @@ namespace Spartan
             create_info.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
             create_info.presentMode    = get_present_mode(surface, present_mode);
             create_info.clipped        = VK_TRUE;
-            create_info.oldSwapchain   = nullptr;
+            create_info.oldSwapchain = nullptr;
 
             SP_VK_ASSERT_MSG(vkCreateSwapchainKHR(RHI_Context::device, &create_info, nullptr, &swap_chain),
                 "Failed to create swapchain");
@@ -313,7 +307,7 @@ namespace Spartan
         void* sdl_window,
         const uint32_t width,
         const uint32_t height,
-        const RHI_Format format,
+        const bool is_hdr,
         const RHI_Present_Mode present_mode,
         const uint32_t buffer_count,
         const char* name
@@ -328,7 +322,7 @@ namespace Spartan
         m_layouts.fill(RHI_Image_Layout::Undefined);
 
         // Copy parameters
-        m_format       = format;
+        m_format       = is_hdr ? format_hdr : format_sdr;
         m_buffer_count = buffer_count;
         m_width        = width;
         m_height       = height;
@@ -343,7 +337,7 @@ namespace Spartan
             m_buffer_count,
             &m_format,
             present_mode,
-            IsHdr(),
+            is_hdr,
             &m_layouts,
             m_sdl_window,
             m_surface,
@@ -422,6 +416,9 @@ namespace Spartan
 
     void RHI_SwapChain::AcquireNextImage()
     {
+        // This is a blocking function.
+        // It will stop execution until an image becomes available.
+        
         // Return if the swapchain has a single buffer and it has already been acquired
         if (m_buffer_count == 1 && m_image_index != numeric_limits<uint32_t>::max())
             return;
@@ -469,11 +466,10 @@ namespace Spartan
                 // Therefore we only want to wait on the command list semaphores, which will be presenting their work to this swapchain.
                 if (m_object_id == cmd_pool->GetSwapchainId())
                 {
-                    RHI_Semaphore* semaphore = cmd_pool->GetCurrentCommandList()->GetSemaphoreProccessed();
-
-                    if (semaphore->GetCpuState() == RHI_Sync_State::Submitted)
+                    RHI_Semaphore* cmd_list_semaphore = cmd_pool->GetCurrentCommandList()->GetSemaphoreProccessed();
+                    if (cmd_list_semaphore->GetCpuState() == RHI_Sync_State::Submitted)
                     {
-                        m_wait_semaphores.emplace_back(semaphore);
+                        m_wait_semaphores.emplace_back(cmd_list_semaphore);
                     }
                 }
             }
