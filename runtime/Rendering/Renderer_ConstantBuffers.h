@@ -80,7 +80,7 @@ namespace Spartan
         float luminance_min;
 
         float luminance_max;
-        Math::Vector3 padding;
+        float paper_white;
 
         void set_bit(const bool set, const uint32_t bit)
         {
@@ -125,8 +125,10 @@ namespace Spartan
                 resolution_environment      == rhs.resolution_environment      &&
                 exposure                    == rhs.exposure                    &&
                 luminance_min               == rhs.luminance_min               &&
-                luminance_max               == rhs.luminance_max;
+                luminance_max               == rhs.luminance_max               &&
+                paper_white                 == rhs.paper_white;
         }
+
         bool operator!=(const Cb_Frame& rhs) const { return !(*this == rhs); }
     };
     

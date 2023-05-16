@@ -103,7 +103,7 @@ namespace Spartan
     bool m_environment_texture_dirty = false;
     
     // Options
-    array<float, 33> m_options;
+    array<float, 34> m_options;
     
     // Misc
     Math::Vector2 m_jitter_offset = Math::Vector2::Zero;
@@ -201,6 +201,7 @@ namespace Spartan
         SetOption(RendererOption::Tonemapping,            static_cast<float>(TonemappingMode::Disabled));
         SetOption(RendererOption::Gamma,                  2.2f);
         SetOption(RendererOption::Exposure,               1.0f);
+        SetOption(RendererOption::PaperWhite,             150.0f); // nits
         SetOption(RendererOption::Sharpness,              0.5f);
         SetOption(RendererOption::Fog,                    0.0f);
         SetOption(RendererOption::Antialiasing,           static_cast<float>(AntialiasingMode::TaaFxaa)); // This is using FSR 2 for TAA
@@ -413,6 +414,7 @@ namespace Spartan
             m_cb_frame_cpu.exposure               = GetOption<float>(RendererOption::Exposure);
             m_cb_frame_cpu.luminance_min          = Display::GetLuminanceMin();
             m_cb_frame_cpu.luminance_max          = Display::GetLuminanceMax();
+            m_cb_frame_cpu.paper_white            = Renderer::GetOption<bool>(RendererOption::Hdr) ? GetOption<float>(RendererOption::PaperWhite) : 1.0f;
             m_cb_frame_cpu.shadow_resolution      = GetOption<float>(RendererOption::ShadowResolution);
             m_cb_frame_cpu.frame                  = static_cast<uint32_t>(m_frame_num);
             m_cb_frame_cpu.frame_mip_count        = render_target(RendererTexture::frame_render)->GetMipCount();
@@ -932,12 +934,12 @@ namespace Spartan
         }
     }
 
-    array<float, 33>& Renderer::GetOptions()
+    array<float, 34>& Renderer::GetOptions()
     {
         return m_options;
     }
 
-    void Renderer::SetOptions(array<float, 33> options)
+    void Renderer::SetOptions(array<float, 34> options)
     {
         m_options = options;
     }

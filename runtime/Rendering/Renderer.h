@@ -69,8 +69,8 @@ namespace Spartan
         template<typename T>
         static T GetOption(const RendererOption option) { return static_cast<T>(GetOptions()[static_cast<uint32_t>(option)]); }
         static void SetOption(RendererOption option, float value);
-        static std::array<float, 33>& GetOptions();
-        static void SetOptions(std::array<float, 33> options);
+        static std::array<float, 34>& GetOptions();
+        static void SetOptions(std::array<float, 34> options);
 
         // Swapchain
         static RHI_SwapChain* GetSwapChain();
