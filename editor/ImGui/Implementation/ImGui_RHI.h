@@ -403,7 +403,7 @@ namespace ImGui::RHI
             platform_handle,
             static_cast<uint32_t>(viewport->Size.x),
             static_cast<uint32_t>(viewport->Size.y),
-            RHI_Format::R8G8B8A8_Unorm,
+            false, // is hdr
             RHI_Present_Mode::Immediate,
             2,
             (string("swapchain_child_") + string(to_string(viewport->ID))).c_str()

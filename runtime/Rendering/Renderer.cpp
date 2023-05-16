@@ -168,7 +168,7 @@ namespace Spartan
             Window::GetHandleSDL(),
             Window::GetWidth(),
             Window::GetHeight(),
-            Display::GetHdr() ? RHI_Format::R10G10B10A2_Unorm  : RHI_Format::R8G8B8A8_Unorm,
+            Display::GetHdr(),
             // Present mode: For v-sync, we could Mailbox for lower latency, but Fifo is always supported, so we'll assume that
             GetOption<bool>(RendererOption::Vsync) ? RHI_Present_Mode::Fifo : RHI_Present_Mode::Immediate,
             m_swap_chain_buffer_count,

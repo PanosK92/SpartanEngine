@@ -21,17 +21,19 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =====================
+//= INCLUDES ==============
 #include <memory>
 #include <vector>
 #include <array>
 #include "RHI_Definition.h"
 #include "../Core/Object.h"
-//================================
+//=========================
 
 namespace Spartan
 {
     static const uint8_t max_buffer_count = 3;
+    static const RHI_Format format_sdr    = RHI_Format::R8G8B8A8_Unorm;
+    static const RHI_Format format_hdr    = RHI_Format::R16G16B16A16_Float;
 
     class SP_CLASS RHI_SwapChain : public Object
     {
@@ -41,7 +43,7 @@ namespace Spartan
             void* sdl_window,
             const uint32_t width,
             const uint32_t height,
-            const RHI_Format format,
+            const bool is_hdr,
             const RHI_Present_Mode present_mode,
             const uint32_t buffer_count,
             const char* name
@@ -53,7 +55,7 @@ namespace Spartan
 
         // HDR
         void SetHdr(const bool enabled);
-        bool IsHdr() const { return m_format == RHI_Format::R10G10B10A2_Unorm; }
+        bool IsHdr() const { return m_format == format_hdr; }
 
         // VSync
         void SetVsync(const bool enabled);
@@ -63,7 +65,6 @@ namespace Spartan
         uint32_t GetWidth()       const { return m_width; }
         uint32_t GetHeight()      const { return m_height; }
         uint32_t GetBufferCount() const { return m_buffer_count; }
-        uint32_t GetImageIndex()  const { return m_image_index; }
         RHI_Format GetFormat()    const { return m_format; }
 
 
@@ -83,7 +84,7 @@ namespace Spartan
         uint32_t m_buffer_count         = 0;
         uint32_t m_width                = 0;
         uint32_t m_height               = 0;
-        RHI_Format m_format             = RHI_Format::R8G8B8A8_Unorm;
+        RHI_Format m_format             = RHI_Format::Undefined;
         RHI_Present_Mode m_present_mode = RHI_Present_Mode::Immediate;
         uint32_t m_sync_index           = std::numeric_limits<uint32_t>::max();
 

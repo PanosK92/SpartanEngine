@@ -216,7 +216,7 @@ static const DXGI_FORMAT d3d12_format[] =
     DXGI_FORMAT_UNKNOWN,
     // Surface
     DXGI_FORMAT_B8G8R8A8_UNORM,
-
+    // Unknown
     DXGI_FORMAT_UNKNOWN
 };
 
@@ -336,22 +336,22 @@ static const VkFormat vulkan_format[] =
     VK_FORMAT_R32G32B32_SFLOAT,
     // RGBA
     VK_FORMAT_R8G8B8A8_UNORM,
-    VK_FORMAT_A2B10G10R10_UNORM_PACK32,
+    VK_FORMAT_A2R10G10B10_UNORM_PACK32,
     VK_FORMAT_R16G16B16A16_UNORM,
     VK_FORMAT_R16G16B16A16_SNORM,
     VK_FORMAT_R16G16B16A16_SFLOAT,
     VK_FORMAT_R32G32B32A32_SFLOAT,
-    // DEPTH
+    // Depth
     VK_FORMAT_D16_UNORM,
     VK_FORMAT_D32_SFLOAT,
     VK_FORMAT_D32_SFLOAT_S8_UINT,
     // Compressed
     VK_FORMAT_BC7_UNORM_BLOCK,
-    VK_FORMAT_ASTC_4x4_UNORM_BLOCK,
-    //Surface
+    VK_FORMAT_UNDEFINED,
+    // Surface
     VK_FORMAT_B8G8R8A8_UNORM,
-
-    VK_FORMAT_MAX_ENUM
+    // Unknown
+    VK_FORMAT_UNDEFINED
 };
 
 static const VkSamplerAddressMode vulkan_sampler_address_mode[] =

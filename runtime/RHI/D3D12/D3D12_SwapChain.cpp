@@ -60,7 +60,7 @@ namespace Spartan
         void* sdl_window,
         const uint32_t width,
         const uint32_t height,
-        const RHI_Format format,
+        const bool is_hdr,
         const RHI_Present_Mode present_mode,
         const uint32_t buffer_count,
         const char* name
@@ -92,7 +92,7 @@ namespace Spartan
         }
 
         // Copy parameters
-        m_format       = format;
+        m_format       = is_hdr ? format_hdr : format_sdr;
         m_buffer_count = buffer_count;
         m_width        = width;
         m_height       = height;

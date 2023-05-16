@@ -725,7 +725,7 @@ namespace Spartan
 
     void RHI_Device::QueuePresent(void* swapchain, uint32_t* image_index, vector<RHI_Semaphore*>& wait_semaphores)
     {
-        static array<VkSemaphore, 3> vk_wait_semaphores = {};
+        array<VkSemaphore, 3> vk_wait_semaphores = { nullptr, nullptr, nullptr };
 
         // Get semaphore Vulkan resource
         uint32_t semaphore_count = static_cast<uint32_t>(wait_semaphores.size());
