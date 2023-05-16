@@ -35,13 +35,21 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
+    namespace
+    {
+        RHI_Format format_sdr = RHI_Format::R8G8B8A8_Unorm;
+        RHI_Format format_hdr = RHI_Format::R10G10B10A2_Unorm;
+    }
+
     static VkColorSpaceKHR get_color_space(bool is_hdr)
     {
         // VK_COLOR_SPACE_HDR10_ST2084_EXT represents the HDR10 color space with the ST.2084 (PQ)electro - optical transfer function.
         // This is the most common HDR format used for HDR TVs and monitors.
 
-        // VK_COLOR_SPACE_HDR10_HLG_EXT represents the HDR10 color space with the HLG(Hybrid Log - Gamma) electro - optical transfer function.
-        // This format is primarily used in broadcasting and streaming environments.
+        // VK_COLOR_SPACE_SRGB_NONLINEAR_KHR represents the sRGB color space.
+        // This is the standard color space for the web and is supported by most modern displays.
+        // sRGB is a nonlinear color space, which means that the values stored in an image are not directly proportional to the perceived brightness of the colors.
+        // When displaying an image in sRGB, the values must be converted to linear space before they are displayed.
 
         return is_hdr ? VK_COLOR_SPACE_HDR10_ST2084_EXT : VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
     }
@@ -114,10 +122,11 @@ namespace Spartan
 
         for (const VkSurfaceFormatKHR& supported_format : supported_formats)
         {
-            if (supported_format.format == vulkan_format[rhi_format_to_index(*format)] && supported_format.colorSpace == color_space)
-            {
+            bool support_format      = supported_format.format == vulkan_format[rhi_format_to_index(*format)];
+            bool support_color_space = supported_format.colorSpace == color_space;
+
+            if (support_format && support_color_space)
                 return true;
-            }
         }
 
         return false;
@@ -502,7 +511,7 @@ namespace Spartan
             SP_ASSERT_MSG(Display::GetHdr(), "This display doesn't support HDR");
         }
 
-        RHI_Format new_format = enabled ? RHI_Format::R10G10B10A2_Unorm : RHI_Format::R8G8B8A8_Unorm;
+        RHI_Format new_format = enabled ? format_hdr : format_sdr;
 
         if (new_format != m_format)
         {
