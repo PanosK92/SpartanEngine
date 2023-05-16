@@ -335,20 +335,6 @@ void RenderOptions::TickVisible()
 
             if (helper::Option("Camera"))
             {
-                // Tonemapping
-                static vector<string> tonemapping_options = { "AMD", "ACES", "Reinhard", "Uncharted 2", "Matrix", "Off" };
-                uint32_t selection_index = Renderer::GetOption<uint32_t>(RendererOption::Tonemapping);
-                if (helper::ComboBox("Tonemapping", tonemapping_options, selection_index))
-                {
-                    Renderer::SetOption(RendererOption::Tonemapping, static_cast<float>(selection_index));
-                }
-
-                // Gamma
-                helper::RenderOptionValue("Gamma", RendererOption::Gamma);
-
-                // Gamma
-                helper::RenderOptionValue("Exposure", RendererOption::Exposure);
-
                 // Bloom
                 helper::RenderOptionValue("Bloom", RendererOption::Bloom, "Controls the blend factor. If zero, then bloom is disabled.", 0.01f);
 
@@ -385,11 +371,31 @@ void RenderOptions::TickVisible()
 
             if (helper::Option("Misc"))
             {
-                // Dithering
-                helper::CheckBox("Debanding", do_debanding, "Reduces color banding");
+                // Tonemapping
+                static vector<string> tonemapping_options = { "AMD", "ACES", "Reinhard", "Uncharted 2", "Matrix", "Off" };
+                uint32_t selection_index = Renderer::GetOption<uint32_t>(RendererOption::Tonemapping);
+                if (helper::ComboBox("Tonemapping", tonemapping_options, selection_index))
+                {
+                    Renderer::SetOption(RendererOption::Tonemapping, static_cast<float>(selection_index));
+                }
+
+                // Gamma
+                helper::RenderOptionValue("Gamma", RendererOption::Gamma);
+
+                // Exposure
+                helper::RenderOptionValue("Exposure", RendererOption::Exposure);
 
                 // HDR
                 helper::CheckBox("HDR", do_hdr, "High dynamic range");
+
+                // Paper white
+                if (do_hdr)
+                {
+                    helper::RenderOptionValue("Paper white (nits)", RendererOption::PaperWhite, nullptr, 1.0f);
+                }
+
+                // Dithering
+                helper::CheckBox("Debanding", do_debanding, "Reduces color banding");
 
                 // VSync
                 helper::CheckBox("VSync", do_vsync, "Vertical Synchronization");

@@ -193,11 +193,11 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     // 1. Normalize luminance based on monitor capabilities
     {
         // Normalize the color's luminance
-        float luminance_original   = luminance(color.rgb);
-        float luminance_normalized = (luminance_original - g_luminance_min) / (g_luminance_max - g_luminance_min);
+        float luminance_original   = luminance(color.rgb) * 100; // compute lumiannce in cd/m^2 and convert it to nits
+        float luminance_normalized = max(0.0f, (luminance_original - g_luminance_min_nits) / (g_luminance_max_nits - g_luminance_min_nits));
 
         // Apply the display's luminance range
-        float luminance_display = luminance_normalized * g_luminance_max + g_luminance_min;
+        float luminance_display = luminance_normalized * g_luminance_max_nits + g_luminance_min_nits;
 
         // Replace original luminance with the new display luminance
          color.rgb *= (luminance_display / max(luminance_original, FLT_MIN));
@@ -211,6 +211,9 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 
     // 4. Gamma-correct
     color.rgb = gamma(color.rgb);
+
+    // 5. Adjust for paper white
+    color.rgb /= g_paper_white_nits;
 
     tex_uav[thread_id.xy] = color;
 }

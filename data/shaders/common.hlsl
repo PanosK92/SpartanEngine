@@ -442,16 +442,16 @@ uint direction_to_cube_face_index(const float3 direction)
 /*------------------------------------------------------------------------------
     LUMINANCE
 ------------------------------------------------------------------------------*/
-static const float3 luminance_coefficient = float3(0.299f, 0.587f, 0.114f);
+static const float3 srgb_color_space_coefficient = float3(0.299f, 0.587f, 0.114f);
 
 float luminance(float3 color)
 {
-    return max(dot(color, luminance_coefficient), FLT_MIN);
+    return max(dot(color, srgb_color_space_coefficient), FLT_MIN);
 }
 
 float luminance(float4 color)
 {
-    return max(dot(color.rgb, luminance_coefficient), FLT_MIN);
+    return max(dot(color.rgb, srgb_color_space_coefficient), FLT_MIN);
 }
 
 /*------------------------------------------------------------------------------
