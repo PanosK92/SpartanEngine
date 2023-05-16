@@ -53,17 +53,11 @@ namespace Spartan
         void SetBlendFactor(const float blend_factor)       { m_blend_factor = blend_factor; }
         float GetBlendFactor()                        const { return m_blend_factor; }
 
+        uint64_t GetHash() const { return m_hash; }
+
         bool operator==(const RHI_BlendState& rhs) const
         {
-            return
-                m_blend_enabled      == rhs.GetBlendEnabled()     &&
-                m_source_blend       == rhs.GetSourceBlend()      &&
-                m_dest_blend         == rhs.GetDestBlend()        &&
-                m_blend_op           == rhs.GetBlendOp()          &&
-                m_source_blend_alpha == rhs.GetSourceBlendAlpha() &&
-                m_dest_blend_alpha   == rhs.GetDestBlendAlpha()   &&
-                m_blend_op_alpha     == rhs.GetBlendOpAlpha()     &&
-                m_blend_factor       == rhs.GetBlendFactor();
+            return m_hash == rhs.m_hash;
         }
 
         void* GetRhiResource() const { return m_rhi_resource; }
@@ -78,7 +72,7 @@ namespace Spartan
         RHI_Blend_Operation m_blend_op_alpha = RHI_Blend_Operation::Add;
         float m_blend_factor                 = 1.0f;
 
-        // RHI Resource
+        uint64_t m_hash      = 0;
         void* m_rhi_resource = nullptr;
     };
 }

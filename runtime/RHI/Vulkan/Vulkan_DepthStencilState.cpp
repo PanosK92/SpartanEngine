@@ -42,6 +42,7 @@ namespace Spartan
         const RHI_Stencil_Operation stencil_pass_op               /*= RHI_Stencil_Replace */
     )
     {
+        // save
         m_depth_test_enabled          = depth_test;
         m_depth_write_enabled         = depth_write;
         m_depth_comparison_function   = depth_comparison_function;
@@ -51,6 +52,17 @@ namespace Spartan
         m_stencil_fail_op             = stencil_fail_op;
         m_stencil_depth_fail_op       = stencil_depth_fail_op;
         m_stencil_pass_op             = stencil_pass_op;
+
+        // hash
+        m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(m_depth_test_enabled));
+        m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(m_depth_write_enabled));
+        m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(m_depth_comparison_function));
+        m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(m_stencil_test_enabled));
+        m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(m_stencil_write_enabled));
+        m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(m_stencil_comparison_function));
+        m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(m_stencil_fail_op));
+        m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(m_stencil_depth_fail_op));
+        m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(m_stencil_pass_op));
     }
 
     RHI_DepthStencilState::~RHI_DepthStencilState() = default;
