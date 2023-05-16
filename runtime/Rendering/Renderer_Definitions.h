@@ -56,6 +56,7 @@ namespace Spartan
         Anisotropy,
         ShadowResolution,
         Gamma,
+        Exposure,
         Fog,
         Antialiasing,
         Tonemapping,

@@ -44,7 +44,7 @@ namespace Spartan
     string file_path                       = "spartan.ini";
     ofstream fout;
     ifstream fin;
-    static std::array<float, 32> m_render_options;
+    static std::array<float, 33> m_render_options;
     static std::vector<third_party_lib> m_third_party_libs;
 
     template <class T>
