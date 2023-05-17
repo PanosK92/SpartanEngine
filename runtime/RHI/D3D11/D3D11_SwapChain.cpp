@@ -168,7 +168,7 @@ namespace Spartan
             desc.BufferCount          = static_cast<UINT>(buffer_count);
             desc.BufferDesc.Width     = static_cast<UINT>(width);
             desc.BufferDesc.Height    = static_cast<UINT>(height);
-            desc.BufferDesc.Format    = d3d11_format[rhi_format_to_index(format)];
+            desc.BufferDesc.Format    = d3d11_format[rhi_format_to_index(m_format)];
             desc.BufferUsage          = DXGI_USAGE_RENDER_TARGET_OUTPUT;
             desc.OutputWindow         = hwnd;
             desc.SampleDesc.Count     = 1;
