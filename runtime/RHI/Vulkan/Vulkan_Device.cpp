@@ -214,7 +214,7 @@ namespace Spartan
 
     void RHI_Device::Initialize()
     {
-        SP_ASSERT_MSG(RHI_Context::IsInitialized(), "RHI context not initialized");
+        SP_ASSERT_MSG(RHI_Context::api_type == RHI_Api_Type::Vulkan, "RHI context not initialized");
 
         #ifdef DEBUG
             // Add validation related extensions

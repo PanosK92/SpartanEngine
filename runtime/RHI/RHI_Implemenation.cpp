@@ -30,11 +30,6 @@ using namespace std;
 
 namespace Spartan
 {
-    // API agnostic
-    string RHI_Context::api_version_str;
-    string RHI_Context::api_type_str;
-    RHI_Api_Type RHI_Context::api_type = RHI_Api_Type::Undefined;
-
     // API specific
     #if defined(API_GRAPHICS_D3D11)
         ID3D11Device5* RHI_Context::device;
@@ -52,31 +47,27 @@ namespace Spartan
         vector<const char*> RHI_Context::extensions_device;
     #endif
     
-        // Build specific
-    #ifdef DEBUG
-        bool RHI_Context::validation;
-        bool RHI_Context::gpu_markers;
-        bool RHI_Context::gpu_profiling;
-        bool RHI_Context::renderdoc;
-    #else
-        bool RHI_Context::validation;
-        bool RHI_Context::gpu_markers;
-        bool RHI_Context::gpu_profiling;
-        bool RHI_Context::renderdoc;
-    #endif
+    // API agnostic
+    string RHI_Context::api_version_str;
+    string RHI_Context::api_type_str;
+    RHI_Api_Type RHI_Context::api_type = RHI_Api_Type::Undefined;
+    bool RHI_Context::validation;
+    bool RHI_Context::gpu_markers;
+    bool RHI_Context::gpu_profiling;
+    bool RHI_Context::renderdoc;
 
     void RHI_Context::Initialize()
     {
         #if defined(API_GRAPHICS_D3D11)
-            api_type       = RHI_Api_Type::D3d11;
-            api_type_str   = "D3D11";
-            device         = nullptr;
-            device_context = nullptr;
-            annotation     = nullptr;
+            api_type            = RHI_Api_Type::D3d11;
+            api_type_str        = "D3D11";
+            device              = nullptr;
+            device_context      = nullptr;
+            annotation          = nullptr;
         #elif defined(API_GRAPHICS_D3D12)
-            api_type     = RHI_Api_Type::D3d12;
-            api_type_str = "D3D12";
-            device       = nullptr;
+            api_type            = RHI_Api_Type::D3d12;
+            api_type_str        = "D3D12";
+            device              = nullptr;
         #elif defined(API_GRAPHICS_VULKAN)
             api_type            = RHI_Api_Type::Vulkan;
             api_type_str        = "Vulkan";
@@ -100,10 +91,5 @@ namespace Spartan
             gpu_profiling = true;
             renderdoc     = false;
         #endif
-    }
-
-    bool RHI_Context::IsInitialized()
-    {
-        return api_type != RHI_Api_Type::Undefined;
-    }
+    } 
 }
