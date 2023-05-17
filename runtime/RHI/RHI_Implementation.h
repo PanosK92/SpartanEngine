@@ -444,28 +444,66 @@ static const VkImageLayout vulkan_image_layout[] =
     VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
 };
 
-#endif
+static const char* vkresult_to_string(const VkResult result)
+{
+    switch (result)
+    {
+        case VK_SUCCESS:                                            return "VK_SUCCESS";
+        case VK_NOT_READY:                                          return "VK_NOT_READY";
+        case VK_TIMEOUT:                                            return "VK_TIMEOUT";
+        case VK_EVENT_SET:                                          return "VK_EVENT_SET";
+        case VK_EVENT_RESET:                                        return "VK_EVENT_RESET";
+        case VK_INCOMPLETE:                                         return "VK_INCOMPLETE";
+        case VK_ERROR_OUT_OF_HOST_MEMORY:                           return "VK_ERROR_OUT_OF_HOST_MEMORY";
+        case VK_ERROR_OUT_OF_DEVICE_MEMORY:                         return "VK_ERROR_OUT_OF_DEVICE_MEMORY";
+        case VK_ERROR_INITIALIZATION_FAILED:                        return "VK_ERROR_INITIALIZATION_FAILED";
+        case VK_ERROR_DEVICE_LOST:                                  return "VK_ERROR_DEVICE_LOST";
+        case VK_ERROR_MEMORY_MAP_FAILED:                            return "VK_ERROR_MEMORY_MAP_FAILED";
+        case VK_ERROR_LAYER_NOT_PRESENT:                            return "VK_ERROR_LAYER_NOT_PRESENT";
+        case VK_ERROR_EXTENSION_NOT_PRESENT:                        return "VK_ERROR_EXTENSION_NOT_PRESENT";
+        case VK_ERROR_FEATURE_NOT_PRESENT:                          return "VK_ERROR_FEATURE_NOT_PRESENT";
+        case VK_ERROR_INCOMPATIBLE_DRIVER:                          return "VK_ERROR_INCOMPATIBLE_DRIVER";
+        case VK_ERROR_TOO_MANY_OBJECTS:                             return "VK_ERROR_TOO_MANY_OBJECTS";
+        case VK_ERROR_FORMAT_NOT_SUPPORTED:                         return "VK_ERROR_FORMAT_NOT_SUPPORTED";
+        case VK_ERROR_FRAGMENTED_POOL:                              return "VK_ERROR_FRAGMENTED_POOL";
+        case VK_ERROR_OUT_OF_POOL_MEMORY:                           return "VK_ERROR_OUT_OF_POOL_MEMORY";
+        case VK_ERROR_INVALID_EXTERNAL_HANDLE:                      return "VK_ERROR_INVALID_EXTERNAL_HANDLE";
+        case VK_ERROR_SURFACE_LOST_KHR:                             return "VK_ERROR_SURFACE_LOST_KHR";
+        case VK_ERROR_NATIVE_WINDOW_IN_USE_KHR:                     return "VK_ERROR_NATIVE_WINDOW_IN_USE_KHR";
+        case VK_SUBOPTIMAL_KHR:                                     return "VK_SUBOPTIMAL_KHR";
+        case VK_ERROR_OUT_OF_DATE_KHR:                              return "VK_ERROR_OUT_OF_DATE_KHR";
+        case VK_ERROR_INCOMPATIBLE_DISPLAY_KHR:                     return "VK_ERROR_INCOMPATIBLE_DISPLAY_KHR";
+        case VK_ERROR_VALIDATION_FAILED_EXT:                        return "VK_ERROR_VALIDATION_FAILED_EXT";
+        case VK_ERROR_INVALID_SHADER_NV:                            return "VK_ERROR_INVALID_SHADER_NV";
+        case VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT: return "VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT";
+        case VK_ERROR_FRAGMENTATION_EXT:                            return "VK_ERROR_FRAGMENTATION_EXT";
+        case VK_ERROR_NOT_PERMITTED_EXT:                            return "VK_ERROR_NOT_PERMITTED_EXT";
+        case VK_ERROR_INVALID_DEVICE_ADDRESS_EXT:                   return "VK_ERROR_INVALID_DEVICE_ADDRESS_EXT";
+        case VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT:          return "VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT";
+        case VK_ERROR_UNKNOWN:                                      return "VK_ERROR_UNKNOWN";
+        case VK_RESULT_MAX_ENUM:                                    return "VK_RESULT_MAX_ENUM";
+    }
 
-// RHI_Context header dependencies
-#include "RHI_Definition.h"
-#if defined (API_GRAPHICS_VULKAN)
-    #include <vector>
-    #include <unordered_map>
+    return "Unknown error code";
+}
+
+#define SP_VK_ASSERT_MSG(vk_result, text_message)          \
+    if (vk_result != VK_SUCCESS)                           \
+    {                                                      \
+        Log::SetLogToFile(true);                           \
+        SP_LOG_ERROR("%s", vkresult_to_string(vk_result)); \
+        SP_ASSERT(false && text_message);                  \
+    }
 #endif
 
 // RHI_Context
+#include "RHI_Definition.h"
 namespace Spartan
 {
     class SP_CLASS RHI_Context
     {
     public:
         static void Initialize();
-        static bool IsInitialized();
-
-        // API agnostic
-        static std::string api_version_str;
-        static std::string api_type_str;
-        static RHI_Api_Type api_type;
 
         // API specific
         #if defined(API_GRAPHICS_D3D11)
@@ -484,72 +522,15 @@ namespace Spartan
             static std::vector<const char*> extensions_device;
         #endif
 
-        // Build specific
-        #ifdef DEBUG
-            static bool validation;
-            static bool gpu_markers;
-            static bool gpu_profiling;
-            static bool renderdoc;
-        #else
-            static bool validation;
-            static bool gpu_markers;
-            static bool gpu_profiling;
-            static bool renderdoc;
-        #endif
+        // API agnostic
+        static std::string api_version_str;
+        static std::string api_type_str;
+        static RHI_Api_Type api_type;
+        static bool validation;
+        static bool gpu_markers;
+        static bool gpu_profiling;
+        static bool renderdoc;
     };
-
-#if defined(API_GRAPHICS_VULKAN)
-    static const char* vkresult_to_string(const VkResult result)
-    {
-        switch (result)
-        {
-            case VK_SUCCESS:                                            return "VK_SUCCESS";
-            case VK_NOT_READY:                                          return "VK_NOT_READY";
-            case VK_TIMEOUT:                                            return "VK_TIMEOUT";
-            case VK_EVENT_SET:                                          return "VK_EVENT_SET";
-            case VK_EVENT_RESET:                                        return "VK_EVENT_RESET";
-            case VK_INCOMPLETE:                                         return "VK_INCOMPLETE";
-            case VK_ERROR_OUT_OF_HOST_MEMORY:                           return "VK_ERROR_OUT_OF_HOST_MEMORY";
-            case VK_ERROR_OUT_OF_DEVICE_MEMORY:                         return "VK_ERROR_OUT_OF_DEVICE_MEMORY";
-            case VK_ERROR_INITIALIZATION_FAILED:                        return "VK_ERROR_INITIALIZATION_FAILED";
-            case VK_ERROR_DEVICE_LOST:                                  return "VK_ERROR_DEVICE_LOST";
-            case VK_ERROR_MEMORY_MAP_FAILED:                            return "VK_ERROR_MEMORY_MAP_FAILED";
-            case VK_ERROR_LAYER_NOT_PRESENT:                            return "VK_ERROR_LAYER_NOT_PRESENT";
-            case VK_ERROR_EXTENSION_NOT_PRESENT:                        return "VK_ERROR_EXTENSION_NOT_PRESENT";
-            case VK_ERROR_FEATURE_NOT_PRESENT:                          return "VK_ERROR_FEATURE_NOT_PRESENT";
-            case VK_ERROR_INCOMPATIBLE_DRIVER:                          return "VK_ERROR_INCOMPATIBLE_DRIVER";
-            case VK_ERROR_TOO_MANY_OBJECTS:                             return "VK_ERROR_TOO_MANY_OBJECTS";
-            case VK_ERROR_FORMAT_NOT_SUPPORTED:                         return "VK_ERROR_FORMAT_NOT_SUPPORTED";
-            case VK_ERROR_FRAGMENTED_POOL:                              return "VK_ERROR_FRAGMENTED_POOL";
-            case VK_ERROR_OUT_OF_POOL_MEMORY:                           return "VK_ERROR_OUT_OF_POOL_MEMORY";
-            case VK_ERROR_INVALID_EXTERNAL_HANDLE:                      return "VK_ERROR_INVALID_EXTERNAL_HANDLE";
-            case VK_ERROR_SURFACE_LOST_KHR:                             return "VK_ERROR_SURFACE_LOST_KHR";
-            case VK_ERROR_NATIVE_WINDOW_IN_USE_KHR:                     return "VK_ERROR_NATIVE_WINDOW_IN_USE_KHR";
-            case VK_SUBOPTIMAL_KHR:                                     return "VK_SUBOPTIMAL_KHR";
-            case VK_ERROR_OUT_OF_DATE_KHR:                              return "VK_ERROR_OUT_OF_DATE_KHR";
-            case VK_ERROR_INCOMPATIBLE_DISPLAY_KHR:                     return "VK_ERROR_INCOMPATIBLE_DISPLAY_KHR";
-            case VK_ERROR_VALIDATION_FAILED_EXT:                        return "VK_ERROR_VALIDATION_FAILED_EXT";
-            case VK_ERROR_INVALID_SHADER_NV:                            return "VK_ERROR_INVALID_SHADER_NV";
-            case VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT: return "VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT";
-            case VK_ERROR_FRAGMENTATION_EXT:                            return "VK_ERROR_FRAGMENTATION_EXT";
-            case VK_ERROR_NOT_PERMITTED_EXT:                            return "VK_ERROR_NOT_PERMITTED_EXT";
-            case VK_ERROR_INVALID_DEVICE_ADDRESS_EXT:                   return "VK_ERROR_INVALID_DEVICE_ADDRESS_EXT";
-            case VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT:          return "VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT";
-            case VK_ERROR_UNKNOWN:                                      return "VK_ERROR_UNKNOWN";
-            case VK_RESULT_MAX_ENUM:                                    return "VK_RESULT_MAX_ENUM";
-        }
-
-        return "Unknown error code";
-    }
-
-    #define SP_VK_ASSERT_MSG(vk_result, text_message)      \
-    if (vk_result != VK_SUCCESS)                           \
-    {                                                      \
-        Log::SetLogToFile(true);                           \
-        SP_LOG_ERROR("%s", vkresult_to_string(vk_result)); \
-        SP_ASSERT(false && text_message);                  \
-    }
-    #endif
 }
 
 // HELPERS

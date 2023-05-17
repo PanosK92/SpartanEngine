@@ -501,7 +501,7 @@ namespace Spartan
         // Overview
         oss_metrics
             << "FPS:\t\t\t" << m_fps << endl
-            << "Time:\t\t"  << m_time_frame_last << " ms" << endl
+            << "Time:\t\t"  << m_time_frame_avg << " ms" << endl
             << "Frame:\t"   << Renderer::GetFrameNum() << endl;
 
         // Detailed times
