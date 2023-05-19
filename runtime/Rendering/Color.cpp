@@ -72,14 +72,6 @@ namespace Spartan
         b /= 255.0f;
     }
 
-    Color::Color(const Color& color)
-    {
-        r = color.r;
-        g = color.g;
-        b = color.b;
-        a = color.a;
-    }
-
     Color::Color(const float r, const float g, const float b, const float a /*= 1.0f*/)
     {
         this->r = r;

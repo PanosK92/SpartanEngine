@@ -38,11 +38,7 @@ namespace Spartan::Math
             y = 0;
         }
 
-        Vector2(const Vector2& vector)
-        {
-            this->x = vector.x;
-            this->y = vector.y;
-        }
+        Vector2(const Vector2& vector) = default;
 
         Vector2(float x, float y)
         {
