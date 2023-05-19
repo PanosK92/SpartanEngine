@@ -81,18 +81,18 @@ namespace Spartan
             arguments.emplace_back("-fvk-use-dx-layout");     // Use DirectX memory layout for Vulkan resources
             arguments.emplace_back("-fvk-use-dx-position-w"); // Reciprocate SV_Position.w after reading from stage input in PS to accommodate the difference between Vulkan and DirectX
 
+            // Negate SV_Position.y before writing to stage output in VS/DS/GS to accommodate Vulkan's coordinate system
+            if (m_shader_type == RHI_Shader_Vertex)
+            {
+                arguments.emplace_back("-fvk-invert-y");
+            }
+
             // Debug: Disable optimizations and embed HLSL source in the shaders
             #ifdef DEBUG
             arguments.emplace_back("-Od");           // Disable optimizations
             arguments.emplace_back("-Zi");           // Enable debug information
             arguments.emplace_back("-Qembed_debug"); // Embed PDB in shader container (must be used with /Zi)
             #endif
-
-            // Negate SV_Position.y before writing to stage output in VS/DS/GS to accommodate Vulkan's coordinate system
-            if (m_shader_type == RHI_Shader_Vertex)
-            {
-                arguments.emplace_back("-fvk-invert-y");
-            }
         }
 
         // Defines

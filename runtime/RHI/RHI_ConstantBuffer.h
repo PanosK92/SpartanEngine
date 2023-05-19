@@ -39,13 +39,12 @@ namespace Spartan
         void Create(const uint32_t element_count)
         {
             SP_ASSERT_STATIC_IS_TRIVIALLY_COPYABLE(T);
-            SP_ASSERT_MSG(element_count != 0, "Element count can't be zero");
+            SP_ASSERT_MSG(sizeof(T) % 16 == 0, "The size is not a multiple of 16");
+            SP_ASSERT_MSG(element_count != 0,  "Element count can't be zero");
 
             m_element_count   = element_count;
             m_stride          = static_cast<uint32_t>(sizeof(T));
             m_object_size_gpu = static_cast<uint64_t>(m_stride * m_element_count);
-
-            SP_ASSERT_MSG(m_stride % 16 == 0, "The size is not a multiple of 16");
 
             RHI_CreateResource();
         }

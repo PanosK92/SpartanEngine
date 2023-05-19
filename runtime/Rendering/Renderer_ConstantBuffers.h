@@ -254,6 +254,7 @@ namespace Spartan
     struct Cb_ImGui
     {
         Math::Matrix transform                 = Math::Matrix::Identity;
+
         uint32_t options_texture_visualisation = 0;
         uint32_t mip_level                     = 0;
         Math::Vector2 padding                  = Math::Vector2::Zero;
