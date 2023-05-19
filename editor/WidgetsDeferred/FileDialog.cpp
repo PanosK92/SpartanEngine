@@ -99,7 +99,7 @@ bool FileDialog::Show(bool* is_visible, string* directory /*= nullptr*/, string*
 
         if (file_path)
         {
-            (*file_path) = m_current_path + "/" + string(m_input_box);
+            (*file_path) = FileSystem::GetDirectoryFromFilePath(m_current_path) + "/" + string(m_input_box);
         }
     }
 
