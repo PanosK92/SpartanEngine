@@ -48,7 +48,7 @@ namespace Spartan
         }
     }
 
-    void RHI_ConstantBuffer::_create()
+    void RHI_ConstantBuffer::RHI_CreateResource()
     {
         // Destroy previous buffer
         if (m_rhi_resource)
@@ -85,15 +85,14 @@ namespace Spartan
         SP_ASSERT_MSG(m_offset + m_stride <= m_object_size_gpu, "Out of memory");
 
         // Advance offset
-        m_offset += m_stride;
-        if (m_reset_offset)
+        if (m_has_updated)
         {
-            m_offset       = 0;
-            m_reset_offset = false;
+            m_offset += m_stride;
         }
 
-        // Vulkan is using persistent mapping, so we only need to copy and flush
+        // We are using persistent mapping, so we can simply copy.
         memcpy(reinterpret_cast<std::byte*>(m_mapped_data) + m_offset, reinterpret_cast<std::byte*>(data_cpu), m_stride);
-        RHI_Device::FlushAllocation(m_rhi_resource, m_offset, m_stride);
+
+        m_has_updated = true;
     }
 }

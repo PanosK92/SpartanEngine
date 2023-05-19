@@ -41,7 +41,7 @@ namespace Spartan
         }
     }
 
-    void RHI_ConstantBuffer::_create()
+    void RHI_ConstantBuffer::RHI_CreateResource()
     {
         // Destroy previous buffer
         if (m_rhi_resource)
