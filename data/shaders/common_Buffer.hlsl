@@ -68,9 +68,9 @@ cbuffer BufferFrame : register(b0)
     float g_exposure;
     float g_luminance_min_nits;
 
-    float g_luminance_max_nits;
-    float g_paper_white_nits;
-    float2 g_padding;
+    //float g_luminance_max_nits;
+    //float g_paper_white_nits;
+    //float2 g_padding;
 };
 
 // Medium frequency - Updates per render pass
