@@ -24,7 +24,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Implementation.h"
 #include "../RHI_ConstantBuffer.h"
 #include "../RHI_Device.h"
-#include "../Rendering/Renderer.h"
 //================================
 
 //= NAMESPACES =====
@@ -33,6 +32,11 @@ using namespace std;
 
 namespace Spartan
 {
+    RHI_ConstantBuffer::RHI_ConstantBuffer(const string& name)
+    {
+        m_object_name = name;
+    }
+
     RHI_ConstantBuffer::~RHI_ConstantBuffer()
     {
         if (m_rhi_resource)
@@ -43,14 +47,12 @@ namespace Spartan
 
     void RHI_ConstantBuffer::RHI_CreateResource()
     {
-        // Destroy previous buffer
         if (m_rhi_resource)
         {
             d3d11_utility::release<ID3D11Buffer>(m_rhi_resource);
         }
 
-        D3D11_BUFFER_DESC buffer_desc;
-        ZeroMemory(&buffer_desc, sizeof(buffer_desc));
+        D3D11_BUFFER_DESC buffer_desc   = {};
         buffer_desc.ByteWidth           = static_cast<UINT>(m_stride);
         buffer_desc.Usage               = D3D11_USAGE_DYNAMIC;
         buffer_desc.BindFlags           = D3D11_BIND_CONSTANT_BUFFER;
@@ -59,11 +61,6 @@ namespace Spartan
         buffer_desc.StructureByteStride = 0;
 
         SP_ASSERT(d3d11_utility::error_check(RHI_Context::device->CreateBuffer(&buffer_desc, nullptr, reinterpret_cast<ID3D11Buffer**>(&m_rhi_resource))));
-    }
-
-    RHI_ConstantBuffer::RHI_ConstantBuffer(const string& name)
-    {
-        m_object_name = name;
     }
 
     void RHI_ConstantBuffer::Update(void* data_cpu)

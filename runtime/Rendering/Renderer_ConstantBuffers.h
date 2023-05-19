@@ -81,6 +81,7 @@ namespace Spartan
 
         float luminance_max;
         float paper_white;
+        Math::Vector2 padding;
 
         void set_bit(const bool set, const uint32_t bit)
         {
