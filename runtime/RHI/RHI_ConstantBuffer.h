@@ -39,16 +39,22 @@ namespace Spartan
         void Create(const uint32_t element_count = 1)
         {
             SP_ASSERT_STATIC_IS_TRIVIALLY_COPYABLE(T);
+            SP_ASSERT_MSG(element_count != 0, "Element count can't be zero");
 
             m_element_count   = element_count;
             m_stride          = static_cast<uint32_t>(sizeof(T));
             m_object_size_gpu = static_cast<uint64_t>(m_stride * m_element_count);
 
-            _create();
+            RHI_CreateResource();
         }
 
         void Update(void* data);
-        void ResetOffset() { m_reset_offset = true; }
+
+        void ResetOffset()
+        {
+            m_offset      = 0;
+            m_has_updated = false;
+        }
         
         uint32_t GetStride()      const { return m_stride; }
         uint32_t GetOffset()      const { return m_offset; }
@@ -56,12 +62,12 @@ namespace Spartan
         void* GetRhiResource()    const { return m_rhi_resource; }
 
     private:
-        void _create();
+        void RHI_CreateResource();
 
         uint32_t m_stride        = 0;
         uint32_t m_offset        = 0;
         uint32_t m_element_count = 0;
-        bool m_reset_offset      = true;
+        bool m_has_updated       = false;
         void* m_mapped_data      = nullptr;
         void* m_rhi_resource     = nullptr;
     };

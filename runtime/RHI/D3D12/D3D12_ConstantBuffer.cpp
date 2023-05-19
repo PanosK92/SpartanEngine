@@ -37,9 +37,9 @@ namespace Spartan
 
     }
 
-    void RHI_ConstantBuffer::_create()
+    void RHI_ConstantBuffer::RHI_CreateResource()
     {
-
+        SP_ASSERT_MSG(false, "Not implemented");
     }
 
     RHI_ConstantBuffer::RHI_ConstantBuffer(const string& name)
