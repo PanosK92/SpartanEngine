@@ -137,12 +137,13 @@ cbuffer BufferMaterial : register(b3)
 cbuffer ImGuiBuffer : register(b4)
 {
     matrix imgui_transform;
+
     uint imgui_texture_flags;
     uint imgui_mip_level;
-    float2 g_padding4;
+    float2 imgui_padding4;
 }
 
-// Options g-buffer textures                  
+// g-buffer texture options
 bool has_texture_height()                     { return g_mat_textures & uint(1U << 0); }
 bool has_texture_normal()                     { return g_mat_textures & uint(1U << 1); }
 bool has_texture_albedo()                     { return g_mat_textures & uint(1U << 2); }
@@ -153,7 +154,7 @@ bool has_texture_emissive()                   { return g_mat_textures & uint(1U 
 bool has_texture_occlusion()                  { return g_mat_textures & uint(1U << 7); }
 bool has_single_texture_roughness_metalness() { return single_texture_roughness_metalness; }
 
-// Options lighting
+// lighting options
 bool light_is_directional()           { return cb_options & uint(1U << 0); }
 bool light_is_point()                 { return cb_options & uint(1U << 1); }
 bool light_is_spot()                  { return cb_options & uint(1U << 2); }
@@ -162,7 +163,7 @@ bool light_has_shadows_transparent()  { return cb_options & uint(1U << 4); }
 bool light_has_shadows_screen_space() { return cb_options & uint(1U << 5); }
 bool light_is_volumetric()            { return cb_options & uint(1U << 6); }
 
-// Options passes
+// pass options
 bool is_taa_enabled()                  { return any(g_taa_jitter_current); }
 bool is_ssr_enabled()                  { return g_options & uint(1U << 0); }
 bool is_ssao_enabled()                 { return g_options & uint(1U << 1); }
@@ -170,7 +171,7 @@ bool is_volumetric_fog_enabled()       { return g_options & uint(1U << 2); }
 bool is_screen_space_shadows_enabled() { return g_options & uint(1U << 3); }
 bool is_ssao_gi_enabled()              { return g_options & uint(1U << 4); }
 
-// Options texture visualisation
+// texture visualization options (for the editor)
 bool texture_pack()             { return imgui_texture_flags & uint(1U << 0); }
 bool texture_gamma_correction() { return imgui_texture_flags & uint(1U << 1); }
 bool texture_boost()            { return imgui_texture_flags & uint(1U << 2); }
@@ -181,6 +182,6 @@ bool texture_channel_b()        { return imgui_texture_flags & uint(1U << 6); }
 bool texture_channel_a()        { return imgui_texture_flags & uint(1U << 7); }
 bool texture_sample_point()     { return imgui_texture_flags & uint(1U << 8); }
 
-// Misc
+// misc
 bool is_opaque_pass()      { return g_is_transparent_pass == 0; }
 bool is_transparent_pass() { return g_is_transparent_pass == 1; }
