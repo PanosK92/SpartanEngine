@@ -38,6 +38,8 @@ namespace Spartan
         template<typename T>
         void Create(const uint32_t element_count = 1)
         {
+            SP_ASSERT_STATIC_IS_TRIVIALLY_COPYABLE(T);
+
             m_element_count   = element_count;
             m_stride          = static_cast<uint32_t>(sizeof(T));
             m_object_size_gpu = static_cast<uint64_t>(m_stride * m_element_count);

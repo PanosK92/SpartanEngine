@@ -100,6 +100,11 @@ if (!(##expression))                  \
 #define SP_ASSERT_MSG(expression, text_message) SP_ASSERT(expression && text_message)
 //===================================================================================
 
+//= Assert static ==============================================================
+#define SP_ASSERT_STATIC_IS_TRIVIALLY_COPYABLE(T) \
+static_assert(std::is_trivially_copyable_v<T>, "Type is not trivially copyable")
+//==============================================================================
+
 #if defined(_MSC_VER)
 //= DISABLE CERTAIN WARNINGS ========================================================================================
 #pragma warning(disable: 4251) 

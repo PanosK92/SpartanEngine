@@ -43,12 +43,7 @@ namespace Spartan::Math
         }
 
         // Copy-constructor
-        Vector3(const Vector3& vector)
-        {
-            x = vector.x;
-            y = vector.y;
-            z = vector.z;
-        }
+        Vector3(const Vector3& vector) = default;
 
         // Copy-constructor
         Vector3(const Vector4& vector);

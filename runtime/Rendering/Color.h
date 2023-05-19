@@ -32,7 +32,7 @@ namespace Spartan
     {
     public:
         Color() = default;
-        Color(const Color& color);
+        Color(const Color& color) = default;
         Color(const float temperature_kelvin);
         Color(const float r, const float g, const float b, const float a = 1.0f);
         ~Color() = default;
