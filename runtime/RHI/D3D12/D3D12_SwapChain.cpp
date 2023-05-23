@@ -91,7 +91,7 @@ namespace Spartan
         }
 
         // Copy parameters
-        m_format       = is_hdr ? format_hdr : format_sdr;
+        m_format       = IsHdr() ? format_hdr : format_sdr;
         m_buffer_count = buffer_count;
         m_width        = width;
         m_height       = height;
@@ -119,13 +119,13 @@ namespace Spartan
             &swap_chain
         ));
 
-        m_rhi_resource = static_cast<void*>(swap_chain);
-        m_image_index  = static_cast<IDXGISwapChain3*>(m_rhi_resource)->GetCurrentBackBufferIndex();
+        m_rhi_swapchain = static_cast<void*>(swap_chain);
+        m_image_index   = static_cast<IDXGISwapChain3*>(m_rhi_swapchain)->GetCurrentBackBufferIndex();
     }
     
     RHI_SwapChain::~RHI_SwapChain()
     {
-        d3d12_utility::release<IDXGISwapChain3>(m_rhi_resource);
+        d3d12_utility::release<IDXGISwapChain3>(m_rhi_swapchain);
     }
     
     bool RHI_SwapChain::Resize(const uint32_t width, const uint32_t height, const bool force /*= false*/)
@@ -135,12 +135,12 @@ namespace Spartan
     
     void RHI_SwapChain::AcquireNextImage()
     {
-        m_image_index = static_cast<IDXGISwapChain3*>(m_rhi_resource)->GetCurrentBackBufferIndex();
+        m_image_index = static_cast<IDXGISwapChain3*>(m_rhi_swapchain)->GetCurrentBackBufferIndex();
     }
     
     void RHI_SwapChain::Present()
     {
-        SP_ASSERT(m_rhi_resource != nullptr && "Can't present, the swapchain has not been initialised");
+        SP_ASSERT(m_rhi_swapchain != nullptr && "Can't present, the swapchain has not been initialised");
 
         // Present parameters
         const bool tearing_allowed = m_present_mode == RHI_Present_Mode::Immediate;
@@ -148,7 +148,7 @@ namespace Spartan
         const UINT flags           = (tearing_allowed && m_windowed) ? DXGI_PRESENT_ALLOW_TEARING : 0;
 
         // Present
-        SP_ASSERT(d3d12_utility::error::check(static_cast<IDXGISwapChain3*>(m_rhi_resource)->Present(sync_interval, flags))
+        SP_ASSERT(d3d12_utility::error::check(static_cast<IDXGISwapChain3*>(m_rhi_swapchain)->Present(sync_interval, flags))
             && "Failed to present");
 
         AcquireNextImage();
