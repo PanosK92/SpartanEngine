@@ -65,7 +65,7 @@ namespace Spartan
             desc_rasterizer.SlopeScaledDepthBias  = m_state.rasterizer_state->GetDepthBiasSlopeScaled();
             desc_rasterizer.DepthClipEnable       = m_state.rasterizer_state->GetDepthClipEnabled();
             desc_rasterizer.MultisampleEnable     = false;
-            desc_rasterizer.AntialiasedLineEnable = m_state.rasterizer_state->GetAntialisedLineEnabled();
+            desc_rasterizer.AntialiasedLineEnable = m_state.rasterizer_state->GetLineWidth() > 1.0f;
             desc_rasterizer.ForcedSampleCount     = 0;
             desc_rasterizer.ConservativeRaster    = D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF;
 

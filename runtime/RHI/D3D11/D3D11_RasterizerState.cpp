@@ -64,7 +64,7 @@ namespace Spartan
         desc.SlopeScaledDepthBias   = depth_bias_slope_scaled;
         desc.DepthClipEnable        = depth_clip_enabled;
         desc.MultisampleEnable      = false;
-        desc.AntialiasedLineEnable  = m_line_width > 1.0f ? true : false;
+        desc.AntialiasedLineEnable  = m_line_width > 1.0f;
         desc.ScissorEnable          = scissor_enabled;
 
         // Create rasterizer state
