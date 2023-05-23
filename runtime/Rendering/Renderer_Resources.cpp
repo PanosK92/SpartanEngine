@@ -159,13 +159,14 @@ namespace Spartan
         static const float depth_bias              = -0.004f;
         static const float depth_bias_clamp        = 0.0f;
         static const float depth_bias_slope_scaled = -2.0f;
+        static const float line_width              = 2.0f;
 
-        //                                                                  cull mode,          filled mode,                depth clip enabled, scissor enabled, antialised lines enabled
-        m_rasterizer_cull_back_solid     = make_shared<RHI_RasterizerState>(RHI_CullMode::Back, RHI_PolygonMode::Solid,     true,               false,           false);
-        m_rasterizer_cull_back_wireframe = make_shared<RHI_RasterizerState>(RHI_CullMode::Back, RHI_PolygonMode::Wireframe, true,               false,           true);
-        m_rasterizer_cull_none_solid     = make_shared<RHI_RasterizerState>(RHI_CullMode::Back, RHI_PolygonMode::Solid,     true,               false,           false);
-        m_rasterizer_light_point_spot    = make_shared<RHI_RasterizerState>(RHI_CullMode::Back, RHI_PolygonMode::Solid,     true,               false,           false, depth_bias,        depth_bias_clamp, depth_bias_slope_scaled);
-        m_rasterizer_light_directional   = make_shared<RHI_RasterizerState>(RHI_CullMode::Back, RHI_PolygonMode::Solid,     false,              false,           false, depth_bias * 0.1f, depth_bias_clamp, depth_bias_slope_scaled);
+        //                                                                  cull mode,          filled mode,                depth clip enabled, scissor enabled, bias,              bias clamp,       slope scaled bias,       line width
+        m_rasterizer_cull_back_solid     = make_shared<RHI_RasterizerState>(RHI_CullMode::Back, RHI_PolygonMode::Solid,     true,               false,           0.0f,              0.0f,             0.0f,                    line_width);
+        m_rasterizer_cull_back_wireframe = make_shared<RHI_RasterizerState>(RHI_CullMode::Back, RHI_PolygonMode::Wireframe, true,               false,           0.0f,              0.0f,             0.0f,                    line_width);
+        m_rasterizer_cull_none_solid     = make_shared<RHI_RasterizerState>(RHI_CullMode::Back, RHI_PolygonMode::Solid,     true,               false,           0.0f,              0.0f,             0.0f,                    line_width);
+        m_rasterizer_light_point_spot    = make_shared<RHI_RasterizerState>(RHI_CullMode::Back, RHI_PolygonMode::Solid,     true,               false,           depth_bias,        depth_bias_clamp, depth_bias_slope_scaled, 0.0f);
+        m_rasterizer_light_directional   = make_shared<RHI_RasterizerState>(RHI_CullMode::Back, RHI_PolygonMode::Solid,     false,              false,           depth_bias * 0.1f, depth_bias_clamp, depth_bias_slope_scaled, 0.0f);
     }
 
     void Renderer::CreateBlendStates()
