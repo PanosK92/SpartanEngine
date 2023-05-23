@@ -86,7 +86,15 @@ bool FileDialog::Show(bool* is_visible, string* directory /*= nullptr*/, string*
 
     if (m_is_dirty)
     {
-        DialogUpdateFromDirectory(m_current_path);
+        if (FileSystem::IsFile(m_current_path))
+        {
+            DialogUpdateFromDirectory(FileSystem::GetDirectoryFromFilePath(m_current_path));
+        }
+        else
+        {
+            DialogUpdateFromDirectory(m_current_path);
+        }
+
         m_is_dirty = false;
     }
 
