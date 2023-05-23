@@ -93,7 +93,7 @@ namespace Spartan
         return VK_PRESENT_MODE_FIFO_KHR;
     }
 
-    static inline vector<VkSurfaceFormatKHR> get_supported_surface_formats(const VkSurfaceKHR surface)
+    static vector<VkSurfaceFormatKHR> get_supported_surface_formats(const VkSurfaceKHR surface)
     {
         uint32_t format_count;
         SP_VK_ASSERT_MSG(vkGetPhysicalDeviceSurfaceFormatsKHR(RHI_Context::device_physical, surface, &format_count, nullptr),
@@ -129,6 +129,34 @@ namespace Spartan
         return false;
     }
 
+    static VkCompositeAlphaFlagBitsKHR get_supported_composite_alpha_format(const VkSurfaceKHR surface)
+    {
+        vector<VkCompositeAlphaFlagBitsKHR> composite_alpha_flags =
+        {
+            VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
+            VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR,
+            VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR,
+            VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR,
+        };
+
+        // Get physical device surface capabilities
+        VkSurfaceCapabilitiesKHR surface_capabilities;
+        SP_VK_ASSERT_MSG(
+            vkGetPhysicalDeviceSurfaceCapabilitiesKHR(RHI_Context::device_physical, surface, &surface_capabilities),
+            "Failed to get surface capabilities");
+
+        // Simply select the first composite alpha format available
+        for (VkCompositeAlphaFlagBitsKHR& composite_alpha : composite_alpha_flags)
+        {
+            if (surface_capabilities.supportedCompositeAlpha & composite_alpha)
+            {
+                return composite_alpha;
+            };
+        }
+
+        return VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+    }
+
     RHI_SwapChain::RHI_SwapChain(
         void* sdl_window,
         const uint32_t width,
@@ -141,7 +169,7 @@ namespace Spartan
         SP_ASSERT_MSG(RHI_Device::IsValidResolution(width, height), "Invalid resolution");
 
         // Copy parameters
-        m_format       = Display::GetHdr() ? format_hdr : format_sdr;
+        m_format       = format_sdr; // temp disable till I fix the assert when enabling - Display::GetHdr() ? format_hdr : format_sdr;
         m_buffer_count = buffer_count;
         m_width        = width;
         m_height       = height;
@@ -165,7 +193,9 @@ namespace Spartan
         // Create surface
         VkSurfaceKHR surface = nullptr;
         {
-            SP_ASSERT_MSG(SDL_Vulkan_CreateSurface(static_cast<SDL_Window*>(m_sdl_window), RHI_Context::instance, &surface), "Failed to created window surface");
+            SP_ASSERT_MSG(
+                SDL_Vulkan_CreateSurface(static_cast<SDL_Window*>(m_sdl_window), RHI_Context::instance, &surface),
+                "Failed to created window surface");
 
             VkBool32 present_support = false;
             SP_VK_ASSERT_MSG(vkGetPhysicalDeviceSurfaceSupportKHR(
@@ -218,7 +248,7 @@ namespace Spartan
             }
 
             create_info.preTransform   = capabilities.currentTransform;
-            create_info.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+            create_info.compositeAlpha = get_supported_composite_alpha_format(surface);
             create_info.presentMode    = get_present_mode(surface, m_present_mode);
             create_info.clipped        = VK_TRUE;
             create_info.oldSwapchain   = nullptr;
