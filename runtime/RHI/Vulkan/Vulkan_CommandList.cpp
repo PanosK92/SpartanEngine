@@ -296,7 +296,7 @@ namespace Spartan
 
                 VkRenderingAttachmentInfo color_attachment = {};
                 color_attachment.sType                     = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR;
-                color_attachment.imageView                 = static_cast<VkImageView>(swapchain->GetRhiSrv());
+                color_attachment.imageView                 = static_cast<VkImageView>(swapchain->GetRhiRtv());
                 color_attachment.imageLayout               = vulkan_image_layout[static_cast<uint8_t>(swapchain->GetLayout())];
                 color_attachment.loadOp                    = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
                 color_attachment.storeOp                   = VK_ATTACHMENT_STORE_OP_STORE;

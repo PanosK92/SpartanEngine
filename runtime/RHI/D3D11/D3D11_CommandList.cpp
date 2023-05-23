@@ -158,14 +158,14 @@ namespace Spartan
         {
             // New state
             ID3D11BlendState* blend_state_set = nullptr;
-            std::array<FLOAT, 4> blend_factor_set = { 0.0f };
+            array<FLOAT, 4> blend_factor_set = { 0.0f };
             UINT mask_set = 0;
             device_context->OMGetBlendState(&blend_state_set, blend_factor_set.data(), &mask_set);
 
             // Current state
             ID3D11BlendState* blend_state = static_cast<ID3D11BlendState*>(m_pso.blend_state ? m_pso.blend_state->GetRhiResource() : nullptr);
             const float blendFactor = m_pso.blend_state ? m_pso.blend_state->GetBlendFactor() : 0.0f;
-            std::array<FLOAT, 4> blend_factor = { blendFactor, blendFactor, blendFactor, blendFactor };
+            array<FLOAT, 4> blend_factor = { blendFactor, blendFactor, blendFactor, blendFactor };
             const UINT mask = 0;
 
             // Set if dirty
@@ -244,7 +244,7 @@ namespace Spartan
             }
 
             // Detect color targets
-            std::array<ID3D11RenderTargetView*, rhi_max_render_target_count> render_targets = { nullptr };
+            array<ID3D11RenderTargetView*, rhi_max_render_target_count> render_targets = { nullptr };
             {
                 // Swapchain
                 if (m_pso.render_target_swapchain)

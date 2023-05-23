@@ -106,8 +106,11 @@ namespace Spartan
         return surface_formats;
     }
 
-    static bool is_format_supported(const VkSurfaceKHR surface, RHI_Format* format, VkColorSpaceKHR color_space, const vector<VkSurfaceFormatKHR>& supported_formats)
+    static bool is_format_and_color_space_supported(const VkSurfaceKHR surface, RHI_Format* format, VkColorSpaceKHR color_space)
     {
+        // Get supported surface formats
+        vector<VkSurfaceFormatKHR> supported_formats = get_supported_surface_formats(surface);
+
         // NV supports RHI_Format::B8R8G8A8_Unorm instead of RHI_Format::R8G8B8A8_Unorm.
         if ((*format) == RHI_Format::R8G8B8A8_Unorm && RHI_Device::GetPrimaryPhysicalDevice()->IsNvidia())
         {
@@ -126,37 +129,52 @@ namespace Spartan
         return false;
     }
 
-    static void create
-    (
-        uint32_t* width,
-        uint32_t* height,
-        uint32_t buffer_count,
-        RHI_Format* rhi_format,
-        RHI_Present_Mode present_mode,
-        bool hdr,
-        array<RHI_Image_Layout, max_buffer_count>* layouts,
+    RHI_SwapChain::RHI_SwapChain(
         void* sdl_window,
-        void*& void_ptr_surface,
-        void*& void_ptr_swap_chain,
-        array<void*, max_buffer_count>& backbuffer_textures,
-        array<void*, max_buffer_count>& backbuffer_texture_views,
-        array<shared_ptr<RHI_Semaphore>, max_buffer_count>& image_acquired_semaphore
+        const uint32_t width,
+        const uint32_t height,
+        const bool is_hdr,
+        const RHI_Present_Mode present_mode,
+        const uint32_t buffer_count,
+        const char* name
     )
     {
-        SP_ASSERT(sdl_window != nullptr);
+        SP_ASSERT_MSG(RHI_Device::IsValidResolution(width, height), "Invalid resolution");
+
+        // Copy parameters
+        m_format       = is_hdr ? format_hdr : format_sdr;
+        m_buffer_count = buffer_count;
+        m_width        = width;
+        m_height       = height;
+        m_sdl_window   = sdl_window;
+        m_object_name  = name;
+        m_present_mode = present_mode;
+
+        Create();
+        AcquireNextImage();
+    }
+
+    RHI_SwapChain::~RHI_SwapChain()
+    {
+        Destroy();
+    }
+
+    void RHI_SwapChain::Create()
+    {
+        SP_ASSERT(m_sdl_window != nullptr);
 
         // Create surface
         VkSurfaceKHR surface = nullptr;
         {
-            SP_ASSERT_MSG(SDL_Vulkan_CreateSurface(static_cast<SDL_Window*>(sdl_window), RHI_Context::instance, &surface), "Failed to created window surface");
+            SP_ASSERT_MSG(SDL_Vulkan_CreateSurface(static_cast<SDL_Window*>(m_sdl_window), RHI_Context::instance, &surface), "Failed to created window surface");
 
             VkBool32 present_support = false;
             SP_VK_ASSERT_MSG(vkGetPhysicalDeviceSurfaceSupportKHR(
-                    RHI_Context::device_physical,
-                    RHI_Device::GetQueueIndex(RHI_Queue_Type::Graphics),
-                    surface,
-                    &present_support),
-           "Failed to get physical device surface support");
+                RHI_Context::device_physical,
+                RHI_Device::GetQueueIndex(RHI_Queue_Type::Graphics),
+                surface,
+                &present_support),
+                "Failed to get physical device surface support");
 
             SP_ASSERT_MSG(present_support, "The device does not support this kind of surface");
         }
@@ -165,16 +183,13 @@ namespace Spartan
         VkSurfaceCapabilitiesKHR capabilities = get_surface_capabilities(surface);
 
         // Compute extent
-        *width            = Math::Helper::Clamp(*width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
-        *height           = Math::Helper::Clamp(*height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
-        VkExtent2D extent = { *width, *height };
-
-        // Get supported surface formats
-        vector<VkSurfaceFormatKHR> supported_formats = get_supported_surface_formats(surface);
+        m_width  = Math::Helper::Clamp(m_width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
+        m_height = Math::Helper::Clamp(m_height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
+        VkExtent2D extent = { m_width, m_height };
 
         // Ensure that the surface supports the requested format and color space
-        VkColorSpaceKHR color_space = get_color_space(hdr);
-        SP_ASSERT_MSG(is_format_supported(surface, rhi_format, color_space, supported_formats), "The surface doesn't support the requested format");
+        VkColorSpaceKHR color_space = get_color_space(IsHdr());
+        SP_ASSERT_MSG(is_format_and_color_space_supported(surface, &m_format, color_space), "The surface doesn't support the requested format");
 
         // Swap chain
         VkSwapchainKHR swap_chain;
@@ -182,8 +197,8 @@ namespace Spartan
             VkSwapchainCreateInfoKHR create_info = {};
             create_info.sType                    = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
             create_info.surface                  = surface;
-            create_info.minImageCount            = buffer_count;
-            create_info.imageFormat              = vulkan_format[rhi_format_to_index(*rhi_format)];
+            create_info.minImageCount            = m_buffer_count;
+            create_info.imageFormat              = vulkan_format[rhi_format_to_index(m_format)];
             create_info.imageColorSpace          = color_space;
             create_info.imageExtent              = extent;
             create_info.imageArrayLayers         = 1;
@@ -205,31 +220,28 @@ namespace Spartan
 
             create_info.preTransform   = capabilities.currentTransform;
             create_info.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-            create_info.presentMode    = get_present_mode(surface, present_mode);
+            create_info.presentMode    = get_present_mode(surface, m_present_mode);
             create_info.clipped        = VK_TRUE;
-            create_info.oldSwapchain = nullptr;
+            create_info.oldSwapchain   = nullptr;
 
             SP_VK_ASSERT_MSG(vkCreateSwapchainKHR(RHI_Context::device, &create_info, nullptr, &swap_chain),
                 "Failed to create swapchain");
         }
 
         // Images
-        uint32_t image_count;
-        vector<VkImage> images;
         {
-            // Get
-            vkGetSwapchainImagesKHR(RHI_Context::device, swap_chain, &image_count, nullptr);
-            images.resize(image_count);
-            vkGetSwapchainImagesKHR(RHI_Context::device, swap_chain, &image_count, images.data());
+            uint32_t image_count = 0;
+            SP_VK_ASSERT_MSG(vkGetSwapchainImagesKHR(RHI_Context::device, swap_chain, &image_count, nullptr), "Failed to get swapchain image count");
+            SP_VK_ASSERT_MSG(vkGetSwapchainImagesKHR(RHI_Context::device, swap_chain, &image_count, reinterpret_cast<VkImage*>(m_rhi_rt.data())), "Failed to get swapchain image count");
 
             // Transition layouts to VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
             if (RHI_CommandList* cmd_list = RHI_Device::ImmediateBegin(RHI_Queue_Type::Graphics))
             {
-                for (uint32_t i = 0; i < static_cast<uint32_t>(images.size()); i++)
+                for (uint32_t i = 0; i < m_buffer_count; i++)
                 {
                     vulkan_utility::image::set_layout(
                         cmd_list->GetRhiResource(),
-                        reinterpret_cast<void*>(images[i]),
+                        m_rhi_rt[i],
                         VK_IMAGE_ASPECT_COLOR_BIT,
                         0,
                         1,
@@ -238,7 +250,7 @@ namespace Spartan
                         RHI_Image_Layout::Color_Attachment_Optimal
                     );
 
-                    (*layouts)[i] = RHI_Image_Layout::Color_Attachment_Optimal;
+                    m_layouts[i] = RHI_Image_Layout::Color_Attachment_Optimal;
                 }
 
                 // End/flush
@@ -248,42 +260,40 @@ namespace Spartan
 
         // Image views
         {
-            for (uint32_t i = 0; i < image_count; i++)
+            for (uint32_t i = 0; i < m_buffer_count; i++)
             {
-                backbuffer_textures[i] = static_cast<void*>(images[i]);
-
                 // Name the image
-                vulkan_utility::debug::set_object_name(images[i], string(string("swapchain_image_") + to_string(i)).c_str());
+                vulkan_utility::debug::set_object_name(
+                    static_cast<VkImageView>(m_rhi_rt[i]),
+                    string(string("swapchain_image_") + to_string(i)).c_str()
+                );
 
                 vulkan_utility::image::view::create
                 (
-                    static_cast<void*>(images[i]),
-                    backbuffer_texture_views[i],
+                    m_rhi_rt[i],
+                    m_rhi_rtv[i],
                     VK_IMAGE_VIEW_TYPE_2D,
-                    vulkan_format[rhi_format_to_index(*rhi_format)],
+                    vulkan_format[rhi_format_to_index(m_format)],
                     VK_IMAGE_ASPECT_COLOR_BIT,
                     0, 1, 0, 1
                 );
             }
         }
 
-        void_ptr_surface    = static_cast<void*>(surface);
-        void_ptr_swap_chain = static_cast<void*>(swap_chain);
+        m_rhi_surface   = static_cast<void*>(surface);
+        m_rhi_swapchain = static_cast<void*>(swap_chain);
 
         // Semaphores
-        for (uint32_t i = 0; i < buffer_count; i++)
+        for (uint32_t i = 0; i < m_buffer_count; i++)
         {
             string name = (string("swapchain_image_acquired_") + to_string(i));
-            image_acquired_semaphore[i] = make_shared<RHI_Semaphore>(false, name.c_str());
+            m_acquire_semaphore[i] = make_shared<RHI_Semaphore>(false, name.c_str());
         }
     }
-    
-    static void destroy(uint8_t buffer_count, void*& surface, void*& swap_chain,
-        array<void*, 3>& image_views,
-        array<shared_ptr<RHI_Semaphore>, max_buffer_count>& image_acquired_semaphore
-    )
+
+    void RHI_SwapChain::Destroy()
     {
-        for (void* image_view : image_views)
+        for (void* image_view : m_rhi_rtv)
         {
             if (image_view)
             {
@@ -291,75 +301,22 @@ namespace Spartan
             }
         }
 
-        image_views.fill(nullptr);
-        image_acquired_semaphore.fill(nullptr);
+        m_rhi_rtv.fill(nullptr);
+        m_acquire_semaphore.fill(nullptr);
 
         RHI_Device::QueueWaitAll();
 
-        vkDestroySwapchainKHR(RHI_Context::device, static_cast<VkSwapchainKHR>(swap_chain), nullptr);
-        swap_chain = nullptr;
+        vkDestroySwapchainKHR(RHI_Context::device, static_cast<VkSwapchainKHR>(m_rhi_swapchain), nullptr);
+        m_rhi_swapchain = nullptr;
 
-        vkDestroySurfaceKHR(RHI_Context::instance, static_cast<VkSurfaceKHR>(surface), nullptr);
-        surface = nullptr;
+        vkDestroySurfaceKHR(RHI_Context::instance, static_cast<VkSurfaceKHR>(m_rhi_surface), nullptr);
+        m_rhi_surface = nullptr;
     }
 
-    RHI_SwapChain::RHI_SwapChain(
-        void* sdl_window,
-        const uint32_t width,
-        const uint32_t height,
-        const bool is_hdr,
-        const RHI_Present_Mode present_mode,
-        const uint32_t buffer_count,
-        const char* name
-    )
+    void RHI_SwapChain::Recreate()
     {
-        SP_ASSERT_MSG(RHI_Device::IsValidResolution(width, height), "Invalid resolution");
-
-        // Clear
-        m_acquire_semaphore.fill(nullptr);
-        m_rhi_backbuffer_resource.fill(nullptr);
-        m_rhi_backbuffer_srv.fill(nullptr);
-        m_layouts.fill(RHI_Image_Layout::Undefined);
-
-        // Copy parameters
-        m_format       = is_hdr ? format_hdr : format_sdr;
-        m_buffer_count = buffer_count;
-        m_width        = width;
-        m_height       = height;
-        m_sdl_window   = sdl_window;
-        m_object_name  = name;
-        m_present_mode = present_mode;
-
-        create
-        (
-            &m_width,
-            &m_height,
-            m_buffer_count,
-            &m_format,
-            present_mode,
-            is_hdr,
-            &m_layouts,
-            m_sdl_window,
-            m_surface,
-            m_rhi_resource,
-            m_rhi_backbuffer_resource,
-            m_rhi_backbuffer_srv,
-            m_acquire_semaphore
-        );
-
-        AcquireNextImage();
-    }
-
-    RHI_SwapChain::~RHI_SwapChain()
-    {
-        destroy
-        (
-            m_buffer_count,
-            m_surface,
-            m_rhi_resource,
-            m_rhi_backbuffer_srv,
-            m_acquire_semaphore
-        );
+        Destroy();
+        Create();
     }
 
     bool RHI_SwapChain::Resize(const uint32_t width, const uint32_t height, const bool force /*= false*/)
@@ -377,38 +334,11 @@ namespace Spartan
         m_width  = width;
         m_height = height;
 
-        // Destroy previous swap chain
-        destroy
-        (
-            m_buffer_count,
-            m_surface,
-            m_rhi_resource,
-            m_rhi_backbuffer_srv,
-            m_acquire_semaphore
-        );
-
-        // Create the swap chain with the new dimensions
-        create
-        (
-            &m_width,
-            &m_height,
-            m_buffer_count,
-            &m_format,
-            m_present_mode,
-            IsHdr(),
-            &m_layouts,
-            m_sdl_window,
-            m_surface,
-            m_rhi_resource,
-            m_rhi_backbuffer_resource,
-            m_rhi_backbuffer_srv,
-            m_acquire_semaphore
-        );
-
         // Reset image index
         m_image_index          = numeric_limits<uint32_t>::max();
         m_image_index_previous = m_image_index;
 
+        Recreate();
         AcquireNextImage();
 
         return true;
@@ -435,7 +365,7 @@ namespace Spartan
         // Acquire next image
         SP_VK_ASSERT_MSG(vkAcquireNextImageKHR(
             RHI_Context::device,                                       // device
-            static_cast<VkSwapchainKHR>(m_rhi_resource),               // swapchain
+            static_cast<VkSwapchainKHR>(m_rhi_swapchain),              // swapchain
             numeric_limits<uint64_t>::max(),                           // timeout
             static_cast<VkSemaphore>(signal_semaphore->GetResource()), // signal semaphore
             nullptr,                                                   // signal fence
@@ -449,7 +379,7 @@ namespace Spartan
     void RHI_SwapChain::Present()
     {
         SP_ASSERT_MSG(!Window::IsMinimised(),                                    "The window is minimzed, can't present");
-        SP_ASSERT_MSG(m_rhi_resource != nullptr,                                 "Invalid swapchain");
+        SP_ASSERT_MSG(m_rhi_swapchain != nullptr,                                "Invalid swapchain");
         SP_ASSERT_MSG(m_image_index != m_image_index_previous,                   "No image was acquired");
         SP_ASSERT_MSG(m_layouts[m_image_index] == RHI_Image_Layout::Present_Src, "Invalid layout");
 
@@ -478,9 +408,8 @@ namespace Spartan
         SP_ASSERT_MSG(!m_wait_semaphores.empty(), "Present() should wait on at least one semaphore");
 
         // Present
-        RHI_Device::QueuePresent(m_rhi_resource, &m_image_index, m_wait_semaphores);
+        RHI_Device::QueuePresent(m_rhi_swapchain, &m_image_index, m_wait_semaphores);
 
-        // Acquire next image
         AcquireNextImage();
     }
 
@@ -490,8 +419,8 @@ namespace Spartan
             return;
 
         vulkan_utility::image::set_layout(
-            reinterpret_cast<void*>(cmd_list->GetRhiResource()),
-            reinterpret_cast<void*>(m_rhi_backbuffer_resource[m_image_index]),
+            cmd_list->GetRhiResource(),
+            m_rhi_rt[m_image_index],
             VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 1,
             m_layouts[m_image_index],
             layout

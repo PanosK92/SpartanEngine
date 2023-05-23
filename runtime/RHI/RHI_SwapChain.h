@@ -66,41 +66,39 @@ namespace Spartan
         uint32_t GetHeight()      const { return m_height; }
         uint32_t GetBufferCount() const { return m_buffer_count; }
         RHI_Format GetFormat()    const { return m_format; }
+        void* GetRhiRtv()         const { return m_rhi_rtv[m_image_index]; }
 
-
-        // Back buffer layout
+        // Layout
         RHI_Image_Layout GetLayout() const;
         void SetLayout(const RHI_Image_Layout& layout, RHI_CommandList* cmd_list);
 
-        // RHI Resources
-        void* GetRhiResource() const { return m_rhi_backbuffer_resource[0]; }
-        void* GetRhiSrv()      const { return m_rhi_backbuffer_srv[m_image_index]; }
-        void* GetRhiRtv()      const { return m_rhi_srv; }
-
     private:
+        void Create();
+        void Destroy();
+        void Recreate();
         void AcquireNextImage();
 
+        // Main
         bool m_windowed                 = false;
         uint32_t m_buffer_count         = 0;
         uint32_t m_width                = 0;
         uint32_t m_height               = 0;
         RHI_Format m_format             = RHI_Format::Undefined;
         RHI_Present_Mode m_present_mode = RHI_Present_Mode::Immediate;
-        uint32_t m_sync_index           = std::numeric_limits<uint32_t>::max();
 
         // Misc
-        std::array<RHI_Image_Layout, max_buffer_count> m_layouts;
+        uint32_t m_sync_index                                    = std::numeric_limits<uint32_t>::max();
+        uint32_t m_image_index                                   = std::numeric_limits<uint32_t>::max();
+        uint32_t m_image_index_previous                          = m_image_index;
+        void* m_sdl_window                                       = nullptr;
+        std::array<RHI_Image_Layout, max_buffer_count> m_layouts = { RHI_Image_Layout::Undefined, RHI_Image_Layout::Undefined, RHI_Image_Layout::Undefined };
         std::array<std::shared_ptr<RHI_Semaphore>, max_buffer_count> m_acquire_semaphore;
         std::vector<RHI_Semaphore*> m_wait_semaphores;
-        uint32_t m_image_index          = std::numeric_limits<uint32_t>::max();
-        uint32_t m_image_index_previous = m_image_index;
 
-        // RHI Resources
-        void* m_surface      = nullptr;
-        void* m_sdl_window   = nullptr;
-        void* m_rhi_resource = nullptr;
-        void* m_rhi_srv      = nullptr;
-        std::array<void*, max_buffer_count> m_rhi_backbuffer_resource;
-        std::array<void*, max_buffer_count> m_rhi_backbuffer_srv;
+        // RHI
+        void* m_rhi_swapchain                          = nullptr;
+        void* m_rhi_surface                            = nullptr;
+        std::array<void*, max_buffer_count> m_rhi_rt  = { nullptr, nullptr, nullptr};
+        std::array<void*, max_buffer_count> m_rhi_rtv = { nullptr, nullptr, nullptr};
     };
 }
