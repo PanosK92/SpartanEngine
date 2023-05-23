@@ -293,7 +293,7 @@ namespace Spartan
             {
                 // Name the image
                 vulkan_utility::debug::set_object_name(
-                    static_cast<VkImageView>(m_rhi_rt[i]),
+                    static_cast<VkImage>(m_rhi_rt[i]),
                     string(string("swapchain_image_") + to_string(i)).c_str()
                 );
 
