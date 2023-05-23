@@ -38,7 +38,6 @@ namespace Spartan
         const RHI_PolygonMode polygon_mode,
         const bool depth_clip_enabled,
         const bool scissor_enabled,
-        const bool antialised_line_enabled,
         const float depth_bias              /*= 0.0f */,
         const float depth_bias_clamp        /*= 0.0f */,
         const float depth_bias_slope_scaled /*= 0.0f */,
@@ -49,7 +48,6 @@ namespace Spartan
         m_polygon_mode            = polygon_mode;
         m_depth_clip_enabled      = depth_clip_enabled;
         m_scissor_enabled         = scissor_enabled;
-        m_antialised_line_enabled = antialised_line_enabled;
         m_depth_bias              = depth_bias;
         m_depth_bias_clamp        = depth_bias_clamp;
         m_depth_bias_slope_scaled = depth_bias_slope_scaled;
