@@ -389,7 +389,6 @@ namespace Spartan
 
             shader(RendererShader::copy_point_p) = make_shared<RHI_Shader>();
             shader(RendererShader::copy_point_p)->AddDefine("PIXEL");
-            shader(RendererShader::copy_point_p)->AddDefine("BILINEAR");
             shader(RendererShader::copy_point_p)->Compile(RHI_Shader_Pixel, shader_dir + "copy.hlsl", async);
 
             shader(RendererShader::copy_bilinear_p) = make_shared<RHI_Shader>();
