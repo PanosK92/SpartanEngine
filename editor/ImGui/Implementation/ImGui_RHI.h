@@ -400,7 +400,6 @@ namespace ImGui::RHI
             viewport->PlatformHandle,
             static_cast<uint32_t>(viewport->Size.x),
             static_cast<uint32_t>(viewport->Size.y),
-            false, // is hdr
             RHI_Present_Mode::Immediate,
             2,
             (string("swapchain_child_") + string(to_string(viewport->ID))).c_str()
