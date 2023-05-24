@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016-2022 Panos Karabelas
+Copyright(c) 2016-2023 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -89,7 +89,7 @@ void compute_ssgi(uint2 pos, inout float occlusion, inout float3 diffuse_bounce)
     }
 
     occlusion      = pow((1.0f - saturate(occlusion * ao_samples_rcp)), g_ao_intensity);
-    diffuse_bounce *= ao_samples_rcp;
+    diffuse_bounce *= ao_samples_rcp * g_ao_intensity * 5.0f;
 }
 
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
@@ -103,5 +103,6 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     float3 diffuse_bounce = 0.0f;
     compute_ssgi(thread_id.xy, occlusion, diffuse_bounce);
 
-    tex_uav[thread_id.xy] = float4(diffuse_bounce, 1.0f);
+    tex_uav[thread_id.xy] = float4(diffuse_bounce, occlusion);
 }
+

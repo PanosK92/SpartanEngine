@@ -971,14 +971,14 @@ namespace Spartan
             return;
 
         // Acquire shaders
-        RHI_Shader* shader_c = shader(RendererShader::ssao_c).get();
+        RHI_Shader* shader_c = shader(RendererShader::ssgi_c).get();
         if (!shader_c->IsCompiled())
             return;
 
         // Acquire render targets
         RHI_Texture* tex_ssgi = render_target(RendererTexture::ssgi).get();
 
-        cmd_list->BeginTimeblock("ssao");
+        cmd_list->BeginTimeblock("ssgi");
 
         // Define pipeline state
         static RHI_PipelineState pso;

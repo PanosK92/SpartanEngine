@@ -472,9 +472,9 @@ namespace Spartan
         shader(RendererShader::debanding_c) = make_shared<RHI_Shader>();
         shader(RendererShader::debanding_c)->Compile(RHI_Shader_Compute, shader_dir + "debanding.hlsl", async);
 
-        // SSAO
-        shader(RendererShader::ssao_c) = make_shared<RHI_Shader>();
-        shader(RendererShader::ssao_c)->Compile(RHI_Shader_Compute, shader_dir + "ssao.hlsl", async);
+        // SSGI
+        shader(RendererShader::ssgi_c) = make_shared<RHI_Shader>();
+        shader(RendererShader::ssgi_c)->Compile(RHI_Shader_Compute, shader_dir + "ssgi.hlsl", async);
 
         // Light
         {
