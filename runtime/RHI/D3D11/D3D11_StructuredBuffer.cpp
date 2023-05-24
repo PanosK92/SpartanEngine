@@ -74,19 +74,6 @@ namespace Spartan
 
     void RHI_StructuredBuffer::Update(void* data_cpu)
     {
-        // Map
-        D3D11_MAPPED_SUBRESOURCE mapped_resource;
-        HRESULT result = RHI_Context::device_context->Map(static_cast<ID3D11Buffer*>(m_rhi_resource), 0, D3D11_MAP_WRITE_NO_OVERWRITE, 0, &mapped_resource);
-        if (FAILED(result))
-        {
-            SP_LOG_ERROR("Failed to map structured buffer");
-            return;
-        }
-
-        // Copy
-        memcpy(reinterpret_cast<std::byte*>(mapped_resource.pData), reinterpret_cast<std::byte*>(data_cpu), m_stride);
-
-        // Unmap
-        RHI_Context::device_context->Unmap(static_cast<ID3D11Buffer*>(m_rhi_resource), 0);
+        RHI_Context::device_context->UpdateSubresource(static_cast<ID3D11Buffer*>(m_rhi_resource), 0, nullptr, data_cpu, 0, 0);
     }
 }
