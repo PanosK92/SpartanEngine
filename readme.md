@@ -42,7 +42,7 @@ Occasional livestreams on Discord for interesting topics.
 - Depth of Field
 - Lights with physical units (lux for directional, candelas for point and spot lights)
 - Shadows with penumbra and colored translucency (Cascaded and omnidirectional shadow mapping with Vogel filtering)
-- SSAO (Screen space ambient occlusion). Can be extented to SSGI (Screen space global illumination)
+- SSGI (Screen space global illumination, an extension of SSAO)
 - SSR (Screen space reflections)
 - SSS (Screen space shadows)
 - TAA (Temporal anti-aliasing)
