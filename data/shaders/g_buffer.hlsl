@@ -61,6 +61,10 @@ PixelInputType mainVS(Vertex_PosUvNorTan input)
 
 PixelOutputType mainPS(PixelInputType input)
 {
+    // UV
+    float2 uv = input.uv;
+    uv        = float2(uv.x * g_mat_tiling.x + g_mat_offset.x, uv.y * g_mat_tiling.y + g_mat_offset.y);
+
     // Velocity
     float2 position_uv_current  = ndc_to_uv((input.position_ss_current.xy / input.position_ss_current.w) - g_taa_jitter_current);
     float2 position_uv_previous = ndc_to_uv((input.position_ss_previous.xy / input.position_ss_previous.w) - g_taa_jitter_previous);
@@ -72,11 +76,6 @@ PixelOutputType mainPS(PixelInputType input)
     {
         TBN = makeTBN(input.normal, input.tangent);
     }
-
-    // Compute UV coordinates.
-    float2 taa_jitter_uv_space = ddx_fine(input.uv) * g_taa_jitter_current.x + ddy_fine(input.uv) * g_taa_jitter_current.y;
-    float2 uv                  = input.uv - ((float) is_taa_enabled() * taa_jitter_uv_space);                            // If TAA is enabled, remove jitter (less blurring).
-    uv                         = float2(uv.x * g_mat_tiling.x + g_mat_offset.x, uv.y * g_mat_tiling.y + g_mat_offset.y); // Apply material tiling and offset.
 
     // Parallax mapping
     if (has_texture_height())

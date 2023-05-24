@@ -153,7 +153,7 @@ namespace Spartan
         static void Pass_ReflectionProbes(RHI_CommandList* cmd_list);
         static void Pass_Depth_Prepass(RHI_CommandList* cmd_list);
         static void Pass_GBuffer(RHI_CommandList* cmd_list, const bool is_transparent_pass);
-        static void Pass_Ssao(RHI_CommandList* cmd_list);
+        static void Pass_Ssgi(RHI_CommandList* cmd_list);
         static void Pass_Ssr(RHI_CommandList* cmd_list, RHI_Texture* tex_in);
         static void Pass_PostProcess(RHI_CommandList* cmd_list);
         static void Pass_ToneMappingGammaCorrection(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);

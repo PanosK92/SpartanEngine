@@ -43,8 +43,7 @@ namespace Spartan
         Debug_Wireframe,
         Bloom,
         VolumetricFog,
-        Ssao,
-        Ssao_Gi,
+        Ssgi,
         ScreenSpaceShadows,
         ScreenSpaceReflections,
         MotionBlur,
@@ -142,14 +141,13 @@ namespace Spartan
         // Misc
         lutIbl           = 27,
         environment      = 28,
-        ssao             = 29,
-        ssao_gi          = 30,
-        ssr              = 31,
-        frame            = 32,
-        tex              = 33,
-        tex2             = 34,
-        font_atlas       = 35,
-        reflection_probe = 36
+        ssgi             = 29,
+        ssr              = 30,
+        frame            = 31,
+        tex              = 32,
+        tex2             = 33,
+        font_atlas       = 34,
+        reflection_probe = 35
     };
 
     enum class RendererBindingsUav
@@ -232,8 +230,7 @@ namespace Spartan
         frame_output_2,
         dof_half,
         dof_half_2,
-        ssao,
-        ssao_gi,
+        ssgi,
         ssr,
         bloom,
         blur,

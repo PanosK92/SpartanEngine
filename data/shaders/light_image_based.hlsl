@@ -80,8 +80,8 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     
     // Construct surface
     Surface surface;
-    bool use_ssao = is_opaque_pass(); // we don't do ssao for transparents.
-    surface.Build(pos, true, use_ssao, false);
+    bool use_ssgi = is_opaque_pass(); // we don't do ssgi for transparents.
+    surface.Build(pos, true, use_ssgi, false);
 
     bool early_exit_1 = is_opaque_pass() && surface.is_transparent(); // If this is an opaque pass, ignore all transparent pixels.
     bool early_exit_2 = is_transparent_pass() && surface.is_opaque(); // If this is an transparent pass, ignore all opaque pixels.
@@ -154,8 +154,8 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
 
     float3 ibl = ibl_diffuse + ibl_specular;
     
-    // SSAO
-    if (is_ssao_enabled() && use_ssao)
+    // SSGI
+    if (is_ssgi_enabled() && use_ssgi)
     {
         ibl *= surface.occlusion;
     }

@@ -51,7 +51,7 @@ float4 mainPS(Pixel_Input input) : SV_TARGET
     surface.Build(input.uv * g_resolution_render, true, true, true);
 
     Light light;
-    light.Build(input.position_ws, input.normal, 0.0f, 0.0f);
+    light.Build(input.position_ws, input.normal, 0.0f);
 
     AngularInfo angular_info;
     angular_info.Build(light, surface);

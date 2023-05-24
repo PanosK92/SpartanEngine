@@ -169,7 +169,7 @@ namespace Spartan
         SP_ASSERT_MSG(RHI_Device::IsValidResolution(width, height), "Invalid resolution");
 
         // Copy parameters
-        m_format       = format_sdr; // for now, we use SDR by defaulta as HDR doesn't look rigth - Display::GetHdr() ? format_hdr : format_sdr;
+        m_format       = format_sdr; // for now, we use SDR by default as HDR doesn't look rigth - Display::GetHdr() ? format_hdr : format_sdr;
         m_buffer_count = buffer_count;
         m_width        = width;
         m_height       = height;

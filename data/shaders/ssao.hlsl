@@ -48,8 +48,8 @@ float compute_visibility(float3 origin_normal, float3 origin_to_sample)
     return saturate(n_dot_v - g_ao_occlusion_bias) * falloff;
 }
 
-// Screen space directional and temporal ground truth ambient occlusion with global illumination and bent normals.
-void compute_uber_ssao(uint2 pos, inout float3 bent_normal, inout float occlusion, inout float3 diffuse_bounce)
+// Screen space temporal occlusion and diffuse illumination
+void compute_ssgi(uint2 pos, inout float occlusion, inout float3 diffuse_bounce)
 {
     const float2 origin_uv       = (pos + 0.5f) / g_resolution_rt;
     const float3 origin_position = get_position_view_space(pos);
@@ -83,18 +83,11 @@ void compute_uber_ssao(uint2 pos, inout float3 bent_normal, inout float occlusio
             float3 origin_to_sample = sample_position - origin_position;
             float visibility        = compute_visibility(origin_normal, origin_to_sample);
 
-            occlusion   += visibility;
-            bent_normal += normalize(origin_to_sample) * visibility;
-
-            // Light
-            if (is_ssao_gi_enabled())
-            {
-                diffuse_bounce += tex_light_diffuse[sample_pos].rgb * tex_albedo[sample_pos].rgb * visibility;
-            }
+            occlusion      += visibility;
+            diffuse_bounce += tex_light_diffuse[sample_pos].rgb * tex_albedo[sample_pos].rgb * visibility;
         }
     }
 
-    bent_normal    *= ao_samples_rcp;
     occlusion      = pow((1.0f - saturate(occlusion * ao_samples_rcp)), g_ao_intensity);
     diffuse_bounce *= ao_samples_rcp;
 }
@@ -106,11 +99,9 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     if (any(int2(thread_id.xy) >= g_resolution_rt.xy))
         return;
 
-    float3 bent_normal    = 0.0f;
     float occlusion       = 0.0f;
     float3 diffuse_bounce = 0.0f;
-    compute_uber_ssao(thread_id.xy, bent_normal, occlusion, diffuse_bounce);
+    compute_ssgi(thread_id.xy, occlusion, diffuse_bounce);
 
-    tex_uav[thread_id.xy]  = float4(bent_normal, occlusion);
-    tex_uav2[thread_id.xy] = float4(diffuse_bounce, 1.0f);
+    tex_uav[thread_id.xy] = float4(diffuse_bounce, 1.0f);
 }
