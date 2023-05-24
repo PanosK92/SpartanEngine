@@ -214,7 +214,7 @@ namespace Spartan
 
                     Pass_Depth_Prepass(cmd_list);
                     Pass_GBuffer(cmd_list, is_transparent_pass);
-                    Pass_Ssao(cmd_list);
+                    Pass_Ssgi(cmd_list);
                     Pass_Ssr(cmd_list, rt1);
                     Pass_Light(cmd_list, is_transparent_pass); // compute diffuse and specular buffers
                     Pass_Light_Composition(cmd_list, rt1, is_transparent_pass); // compose diffuse, specular, ssao, volumetric etc.
@@ -965,9 +965,9 @@ namespace Spartan
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::Pass_Ssao(RHI_CommandList* cmd_list)
+    void Renderer::Pass_Ssgi(RHI_CommandList* cmd_list)
     {
-        if (!GetOption<bool>(RendererOption::Ssao))
+        if (!GetOption<bool>(RendererOption::Ssgi))
             return;
 
         // Acquire shaders
@@ -976,8 +976,7 @@ namespace Spartan
             return;
 
         // Acquire render targets
-        RHI_Texture* tex_ssao    = render_target(RendererTexture::ssao).get();
-        RHI_Texture* tex_ssao_gi = render_target(RendererTexture::ssao_gi).get();
+        RHI_Texture* tex_ssgi = render_target(RendererTexture::ssgi).get();
 
         cmd_list->BeginTimeblock("ssao");
 
@@ -989,27 +988,25 @@ namespace Spartan
         cmd_list->SetPipelineState(pso);
 
         // Set uber buffer
-        m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(tex_ssao->GetWidth()), static_cast<float>(tex_ssao->GetHeight()));
+        m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(tex_ssgi->GetWidth()), static_cast<float>(tex_ssgi->GetHeight()));
         Update_Cb_Uber(cmd_list);
 
         // Set textures
-        cmd_list->SetTexture(RendererBindingsUav::tex,            tex_ssao);
-        cmd_list->SetTexture(RendererBindingsUav::tex2,           tex_ssao_gi);
+        cmd_list->SetTexture(RendererBindingsUav::tex,            tex_ssgi);
         cmd_list->SetTexture(RendererBindingsSrv::gbuffer_albedo, render_target(RendererTexture::gbuffer_albedo));
         cmd_list->SetTexture(RendererBindingsSrv::gbuffer_normal, render_target(RendererTexture::gbuffer_normal));
         cmd_list->SetTexture(RendererBindingsSrv::gbuffer_depth,  render_target(RendererTexture::gbuffer_depth));
         cmd_list->SetTexture(RendererBindingsSrv::light_diffuse,  render_target(RendererTexture::light_diffuse));
 
         // Render
-        cmd_list->Dispatch(thread_group_count_x(tex_ssao), thread_group_count_y(tex_ssao));
+        cmd_list->Dispatch(thread_group_count_x(tex_ssgi), thread_group_count_y(tex_ssgi));
 
         // Blur
         const bool depth_aware   = true;
         const float radius       = 5.0f;
         const float sigma        = 2.0f;
         const float pixel_stride = 1.0;
-        Pass_Blur_Gaussian(cmd_list, tex_ssao, depth_aware, radius, sigma, pixel_stride);
-        Pass_Blur_Gaussian(cmd_list, tex_ssao_gi, depth_aware, radius, sigma, pixel_stride);
+        Pass_Blur_Gaussian(cmd_list, tex_ssgi, depth_aware, radius, sigma, pixel_stride);
 
         cmd_list->EndTimeblock();
     }
@@ -1112,8 +1109,7 @@ namespace Spartan
                 cmd_list->SetTexture(RendererBindingsSrv::gbuffer_normal,   render_target(RendererTexture::gbuffer_normal));
                 cmd_list->SetTexture(RendererBindingsSrv::gbuffer_material, render_target(RendererTexture::gbuffer_material));
                 cmd_list->SetTexture(RendererBindingsSrv::gbuffer_depth,    render_target(RendererTexture::gbuffer_depth));
-                cmd_list->SetTexture(RendererBindingsSrv::ssao,             render_target(RendererTexture::ssao));
-                cmd_list->SetTexture(RendererBindingsSrv::ssao_gi,          render_target(RendererTexture::ssao_gi));
+                cmd_list->SetTexture(RendererBindingsSrv::ssgi,             render_target(RendererTexture::ssgi));
                 
                 // Set shadow maps
                 {
@@ -1189,7 +1185,7 @@ namespace Spartan
         cmd_list->SetTexture(RendererBindingsSrv::light_specular,   is_transparent_pass ? render_target(RendererTexture::light_specular_transparent).get() : render_target(RendererTexture::light_specular).get());
         cmd_list->SetTexture(RendererBindingsSrv::light_volumetric, render_target(RendererTexture::light_volumetric));
         cmd_list->SetTexture(RendererBindingsSrv::frame,            render_target(RendererTexture::frame_render_2)); // refraction
-        cmd_list->SetTexture(RendererBindingsSrv::ssao,             render_target(RendererTexture::ssao));
+        cmd_list->SetTexture(RendererBindingsSrv::ssgi,             render_target(RendererTexture::ssgi));
         cmd_list->SetTexture(RendererBindingsSrv::environment,      GetEnvironmentTexture());
 
         // Render
@@ -1231,7 +1227,7 @@ namespace Spartan
         cmd_list->SetTexture(RendererBindingsSrv::gbuffer_normal,   render_target(RendererTexture::gbuffer_normal));
         cmd_list->SetTexture(RendererBindingsSrv::gbuffer_material, render_target(RendererTexture::gbuffer_material));
         cmd_list->SetTexture(RendererBindingsSrv::gbuffer_depth,    render_target(RendererTexture::gbuffer_depth));
-        cmd_list->SetTexture(RendererBindingsSrv::ssao,             render_target(RendererTexture::ssao));
+        cmd_list->SetTexture(RendererBindingsSrv::ssgi,             render_target(RendererTexture::ssgi));
         cmd_list->SetTexture(RendererBindingsSrv::ssr,              render_target(RendererTexture::ssr));
         cmd_list->SetTexture(RendererBindingsSrv::lutIbl,           render_target(RendererTexture::brdf_specular_lut));
         cmd_list->SetTexture(RendererBindingsSrv::environment,      GetEnvironmentTexture());

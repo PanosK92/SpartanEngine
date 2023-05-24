@@ -165,8 +165,7 @@ void RenderOptions::TickVisible()
     // Reflect options from engine
     bool do_dof                    = Renderer::GetOption<bool>(RendererOption::DepthOfField);
     bool do_volumetric_fog         = Renderer::GetOption<bool>(RendererOption::VolumetricFog);
-    bool do_ssao                   = Renderer::GetOption<bool>(RendererOption::Ssao);
-    bool do_ssao_gi                = Renderer::GetOption<bool>(RendererOption::Ssao_Gi);
+    bool do_ssgi                   = Renderer::GetOption<bool>(RendererOption::Ssgi);
     bool do_sss                    = Renderer::GetOption<bool>(RendererOption::ScreenSpaceShadows);
     bool do_ssr                    = Renderer::GetOption<bool>(RendererOption::ScreenSpaceReflections);
     bool do_motion_blur            = Renderer::GetOption<bool>(RendererOption::MotionBlur);
@@ -290,15 +289,8 @@ void RenderOptions::TickVisible()
                 // SSR
                 helper::CheckBox("SSR - Screen space reflections", do_ssr);
 
-                // SSAO
-                helper::CheckBox("SSAO - Screen space ambient occlusion", do_ssao);
-
-                // SSAO + GI
-                {
-                    ImGui::BeginDisabled(!do_ssao);
-                    helper::CheckBox("SSAO GI - Screen space global illumination", do_ssao_gi, "Use SSAO to compute diffuse global illumination");
-                    ImGui::EndDisabled();
-                }
+                // SSGI
+                helper::CheckBox("SSGI - Screen space global illumination", do_ssgi, "SSAO with a diffuse light bounce");
             }
 
             if (helper::Option("Anti-Aliasing"))
@@ -459,8 +451,7 @@ void RenderOptions::TickVisible()
     Renderer::SetOption(RendererOption::ShadowResolution,         static_cast<float>(resolution_shadow));
     Renderer::SetOption(RendererOption::DepthOfField,             do_dof);
     Renderer::SetOption(RendererOption::VolumetricFog,            do_volumetric_fog);
-    Renderer::SetOption(RendererOption::Ssao,                     do_ssao);
-    Renderer::SetOption(RendererOption::Ssao_Gi,                  do_ssao_gi);
+    Renderer::SetOption(RendererOption::Ssgi,                     do_ssgi);
     Renderer::SetOption(RendererOption::ScreenSpaceShadows,       do_sss);
     Renderer::SetOption(RendererOption::ScreenSpaceReflections,   do_ssr);
     Renderer::SetOption(RendererOption::MotionBlur,               do_motion_blur);

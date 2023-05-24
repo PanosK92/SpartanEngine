@@ -192,8 +192,7 @@ namespace Spartan
         m_options.fill(0.0f);
         SetOption(RendererOption::Bloom,                  0.2f); // Non-zero values activate it and define the blend factor.
         SetOption(RendererOption::MotionBlur,             1.0f);
-        SetOption(RendererOption::Ssao,                   1.0f);
-        SetOption(RendererOption::Ssao_Gi,                1.0f);
+        SetOption(RendererOption::Ssgi,                   1.0f);
         SetOption(RendererOption::ScreenSpaceShadows,     1.0f);
         SetOption(RendererOption::ScreenSpaceReflections, 1.0f);
         SetOption(RendererOption::Anisotropy,             16.0f);
@@ -423,10 +422,9 @@ namespace Spartan
 
             // These must match what Common_Buffer.hlsl is reading
             m_cb_frame_cpu.set_bit(GetOption<bool>(RendererOption::ScreenSpaceReflections), 1 << 0);
-            m_cb_frame_cpu.set_bit(GetOption<bool>(RendererOption::Ssao),                   1 << 1);
+            m_cb_frame_cpu.set_bit(GetOption<bool>(RendererOption::Ssgi),                   1 << 1);
             m_cb_frame_cpu.set_bit(GetOption<bool>(RendererOption::VolumetricFog),          1 << 2);
             m_cb_frame_cpu.set_bit(GetOption<bool>(RendererOption::ScreenSpaceShadows),     1 << 3);
-            m_cb_frame_cpu.set_bit(GetOption<bool>(RendererOption::Ssao_Gi),                1 << 4);
         }
 
         Lines_PreMain();

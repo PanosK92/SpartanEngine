@@ -8,7 +8,7 @@ to use, copy, modify, merge, publish, distribute, sublicense, and / or sell
 copies of the Software, and to permit persons to whom the Software is furnished
 to do so, subject to the following conditions :
 
-The above copyright notice and this permission notice shall be included in
+The abofe copyright notice and this permission notice shall be included in
 all copies or substantial portions of the Software.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
@@ -41,9 +41,8 @@ struct Surface
     float   anisotropic_rotation;
     float   sheen;
     float   sheen_tint;
-    float3  occlusion;
+    float   occlusion;
     float3  gi;
-    float3  bent_normal;
     float3  emissive;
     float3  F0;
     int     id;
@@ -66,7 +65,7 @@ struct Surface
         return max(x, ((x * a + b) * x + c) * x);
     }
     
-    void Build(uint2 position_screen, bool use_albedo, bool use_ssao, bool replace_color_with_one)
+    void Build(uint2 position_screen, bool use_albedo, bool use_ssgi, bool replace_color_with_one)
     {
         // Sample render targets
         float4 sample_albedo   = use_albedo ? tex_albedo[position_screen] : 0.0f;
@@ -97,28 +96,23 @@ struct Surface
 
         // Roughness is authored as perceptual roughness; as is convention,
         // convert to material roughness by squaring the perceptual roughness.
-        roughness_alpha = roughness * roughness;
+        roughness_alpha         = roughness * roughness;
         roughness_alpha_squared = roughness_alpha * roughness_alpha;
 
-        // Occlusion + GI
+        // SSGI
         {
-            occlusion   = 1.0f;
-            gi          = 0.0f;
-            bent_normal = normal;
+            occlusion = 1.0f;
+            gi        = 0.0f;
 
-            if (is_ssao_enabled() && use_ssao)
+            if (is_ssgi_enabled() && use_ssgi)
             {
-                // Sample ssao texture
-                float4 ssao = tex_ssao[position_screen];
-                bent_normal = ssao.xyz;
-                occlusion   = ssao.a;
+                // Sample ssgi texture
+                float4 ssgi = tex_ssgi[position_screen];
+                occlusion   = ssgi.a;
+                gi          = ssgi.rgb;
 
                 // Combine occlusion with material occlusion (baked texture).
                 occlusion = min(sample_material.a, occlusion);
-                occlusion = multi_bounce_ao(ssao.a, albedo);
-
-                // If ssao gi is not enabled, approximate some light bouncing
-                gi = is_ssao_gi_enabled() ? tex_ssao_gi[position_screen].rgb : 0.0f;
             }
         }
 
@@ -136,21 +130,21 @@ struct Surface
 struct Light
 {
     // Properties
-    float3  color;
-    float3  position;
-    float   intensity;
-    float3  to_pixel;
-    float3  forward;
-    float   distance_to_pixel;
-    float   angle;
-    float   bias;
-    float   normal_bias;
-    float   near;
-    float   far;
-    float3  radiance;
-    float   n_dot_l;
-    uint    array_size;
-    float   attenuation;
+    float3 color;
+    float3 position;
+    float  intensity;
+    float3 to_pixel;
+    float3 forward;
+    float  distance_to_pixel;
+    float  angle;
+    float  bias;
+    float  normal_bias;
+    float  near;
+    float  far;
+    float3 radiance;
+    float  n_dot_l;
+    uint   array_size;
+    float  attenuation;
 
     // attenuation functions are derived from Frostbite
     // https://media.contentapi.ea.com/content/dam/eacom/frostbite/files/course-notes-moving-frostbite-to-pbr-v2.pdf
@@ -177,7 +171,7 @@ struct Light
         return attenuation * attenuation;
     }
 
-    // Final attenuation for all suported lights
+    // Final attenuation for all supported lights
     float compute_attenuation(const float3 surface_position)
     {
         float attenuation = 0.0f;
@@ -218,7 +212,7 @@ struct Light
         return direction;
     }
 
-    void Build(float3 surface_position, float3 surface_normal, float3 surface_bent_normal, float3 occlusion)
+    void Build(float3 surface_position, float3 surface_normal, float occlusion)
     {
         color             = cb_light_color.rgb;
         position          = cb_light_position.xyz;
@@ -235,8 +229,8 @@ struct Light
         attenuation       = compute_attenuation(surface_position);
         array_size        = light_is_directional() ? 4 : 1;
 
-        // Apply SSAO
-        if (is_ssao_enabled())
+        // Apply occlusion
+        if (is_ssgi_enabled())
         {
             radiance = color * intensity * attenuation * n_dot_l * occlusion;
         }
@@ -248,7 +242,7 @@ struct Light
 
     void Build(Surface surface)
     {
-        Build(surface.position, surface.normal, surface.bent_normal, surface.occlusion);
+        Build(surface.position, surface.normal, surface.occlusion);
     }
 };
 

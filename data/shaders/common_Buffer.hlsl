@@ -166,10 +166,9 @@ bool light_is_volumetric()            { return cb_options & uint(1U << 6); }
 // pass options
 bool is_taa_enabled()                  { return any(g_taa_jitter_current); }
 bool is_ssr_enabled()                  { return g_options & uint(1U << 0); }
-bool is_ssao_enabled()                 { return g_options & uint(1U << 1); }
+bool is_ssgi_enabled()                 { return g_options & uint(1U << 1); }
 bool is_volumetric_fog_enabled()       { return g_options & uint(1U << 2); }
 bool is_screen_space_shadows_enabled() { return g_options & uint(1U << 3); }
-bool is_ssao_gi_enabled()              { return g_options & uint(1U << 4); }
 
 // texture visualization options (for the editor)
 bool texture_pack()             { return imgui_texture_flags & uint(1U << 0); }
