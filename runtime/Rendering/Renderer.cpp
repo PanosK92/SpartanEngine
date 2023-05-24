@@ -148,6 +148,7 @@ namespace Spartan
     void Renderer::Initialize()
     {
         m_render_thread_id = this_thread::get_id();
+
         Display::DetectDisplayModes();
 
         // RHI Initialization
@@ -166,8 +167,8 @@ namespace Spartan
         m_swap_chain = make_shared<RHI_SwapChain>
         (
             Window::GetHandleSDL(),
-            Window::GetWidth(),
-            Window::GetHeight(),
+            Display::GetWidth(),
+            Display::GetHeight(),
             // Present mode: For v-sync, we could Mailbox for lower latency, but Fifo is always supported, so we'll assume that
             GetOption<bool>(RendererOption::Vsync) ? RHI_Present_Mode::Fifo : RHI_Present_Mode::Immediate,
             m_swap_chain_buffer_count,
@@ -182,10 +183,10 @@ namespace Spartan
         SetOption(RendererOption::Hdr, m_swap_chain->IsHdr());
 
         // Set the output and viewport resolution to the display resolution.
-        // If the editor is running, it will set the viewport resolution to whatever the viewport is.
-        SetViewport(static_cast<float>(Window::GetWidth()), static_cast<float>(Window::GetHeight()));
         SetResolutionRender(Display::GetWidth(), Display::GetHeight(), false);
         SetResolutionOutput(Display::GetWidth(), Display::GetHeight(), false);
+        // Note: The viewport resolution is overridden by the editor based on the actual viewport size
+        SetViewport(static_cast<float>(Display::GetWidth()), static_cast<float>(Display::GetHeight()));
 
         // Default options
         m_options.fill(0.0f);

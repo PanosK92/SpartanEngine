@@ -50,7 +50,7 @@ namespace Spartan
         SetFlag(EngineMode::Physics);
         SetFlag(EngineMode::Game);
 
-        // Initialize
+        // Initialize systems
         Stopwatch timer_initialize;
         {
             FontImporter::Initialize();
@@ -66,11 +66,10 @@ namespace Spartan
             Physics::Initialize();
             Renderer::Initialize();
             World::Initialize();
+            Settings::Initialize();
         }
-        SP_LOG_INFO("System initialization took %.1f ms", timer_initialize.GetElapsedTimeMs());
 
-        // Post initialize
-        Settings::PostInitialize();
+        SP_LOG_INFO("Initialization took %.1f ms", timer_initialize.GetElapsedTimeMs());
     }
 
     void Engine::Shutdown()
@@ -78,17 +77,17 @@ namespace Spartan
         SP_FIRE_EVENT(EventType::EngineShutdown);
 
         World::Shutdown();
-        ResourceCache::Clear();
         Renderer::Shutdown();
+        ResourceCache::Clear();
         Physics::Shutdown();
         ThreadPool::Shutdown();
         Event::Shutdown();
-        Settings::Shutdown();
         Audio::Shutdown();
         Profiler::Shutdown();
         Window::Shutdown();
         ImageImporter::Shutdown();
         FontImporter::Shutdown();
+        Settings::Shutdown();
     }
 
     void Engine::Tick()
