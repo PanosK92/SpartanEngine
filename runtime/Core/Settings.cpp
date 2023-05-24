@@ -146,15 +146,13 @@ namespace Spartan
         m_render_options    = Renderer::GetOptions();
     }
 
-    void Settings::PostInitialize()
+    void Settings::Initialize()
     {
         // Register third party libs which don't register on their own as they are not part of some other initialization procedure
         RegisterThirdPartyLib("pugixml", "1.11.4", "https://github.com/zeux/pugixml");
         RegisterThirdPartyLib("SPIRV-Cross", "03-06-2022", "https://github.com/KhronosGroup/SPIRV-Cross");
         RegisterThirdPartyLib("DirectXShaderCompiler", "1.7.2207.3", "https://github.com/microsoft/DirectXShaderCompiler");
 
-        // We are in initialising during OnPreTick() as
-        // we need all the subsystems to be initialized
         reflect();
 
         if (FileSystem::Exists(file_path))
