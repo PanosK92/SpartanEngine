@@ -200,7 +200,7 @@ namespace Spartan
         outline_c,
         font_v,
         font_p,
-        ssao_c,
+        ssgi_c,
         ssr_c,
         blur_gaussian_c,
         blur_gaussian_bilaterial_c,
