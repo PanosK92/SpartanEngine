@@ -46,13 +46,13 @@ void CasInput(inout float r, inout float g, inout float b)
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
     // Out of bounds check
-    if (any(int2(thread_id.xy) >= g_resolution_rt.xy))
+    if (any(int2(thread_id.xy) >= buffer_uber.resolution_rt.xy))
         return;
 
     float4 const0;
     float4 const1;
-    CasSetup(const0, const1, buffer_frame.sharpen_strength, g_resolution_rt.x, g_resolution_rt.y, g_resolution_rt.x, g_resolution_rt.y);
-    
+    CasSetup(const0, const1, buffer_frame.sharpen_strength, buffer_uber.resolution_rt.x, buffer_uber.resolution_rt.y, buffer_uber.resolution_rt.x, buffer_uber.resolution_rt.y);
+
     float3 color = 0.0f;
     CasFilter(color.r, color.g, color.b, thread_id.xy, const0, const1, true);
 

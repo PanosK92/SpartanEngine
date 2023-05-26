@@ -39,11 +39,11 @@ inline float3 dither(uint2 screen_pos)
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
     // Out of bounds check
-    if (any(int2(thread_id.xy) >= g_resolution_rt.xy))
+    if (any(int2(thread_id.xy) >= buffer_uber.resolution_rt.xy))
         return;
 
     float4 color = tex[thread_id.xy];
-    float rnd    = dither(thread_id.xy * g_resolution_rt.xy).x;
+    float rnd    = dither(thread_id.xy * buffer_uber.resolution_rt.xy).x;
     
     tex_uav[thread_id.xy] = color + lerp(-g_debanding_offset, g_debanding_offset, rnd);
 }

@@ -36,10 +36,10 @@ float gaussian(float z, float u, float o) {
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
     // Out of bounds check
-    if (any(int2(thread_id.xy) >= g_resolution_rt.xy))
+    if (any(int2(thread_id.xy) >= buffer_uber.resolution_rt.xy))
         return;
     
-    const float2 uv = (thread_id.xy + 0.5f) / g_resolution_rt;
+    const float2 uv = (thread_id.xy + 0.5f) / buffer_uber.resolution_rt;
     float4 color    = tex[thread_id.xy];
 
     // Film grain

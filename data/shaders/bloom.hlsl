@@ -29,7 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
     // Out of bounds check
-    if (any(int2(thread_id.xy) >= g_resolution_rt.xy))
+    if (any(int2(thread_id.xy) >= buffer_uber.resolution_rt.xy))
         return;
 
     float3 color = tex[thread_id.xy].rgb;
@@ -64,10 +64,10 @@ float3 tent_antiflicker_filter(float2 uv, float2 texel_size)
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
     // Out of bounds check
-    if (any(int2(thread_id.xy) >= g_resolution_rt.xy))
+    if (any(int2(thread_id.xy) >= buffer_uber.resolution_rt.xy))
         return;
 
-    const float2 uv        = (thread_id.xy + 0.5f) / g_resolution_rt;
+    const float2 uv        = (thread_id.xy + 0.5f) / buffer_uber.resolution_rt;
     float3 upsampled_color = tent_antiflicker_filter(uv, g_texel_size * 0.5f);
     tex_uav[thread_id.xy]  = float4(saturate_16(tex_uav[thread_id.xy].rgb + upsampled_color * 0.5f), tex_uav[thread_id.xy].a);
 }
@@ -80,7 +80,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
     // Out of bounds check
-    if (any(int2(thread_id.xy) >= g_resolution_rt.xy))
+    if (any(int2(thread_id.xy) >= buffer_uber.resolution_rt.xy))
         return;
 
     float4 color_frame    = tex[thread_id.xy];

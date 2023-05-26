@@ -36,10 +36,10 @@ static const float g_fxaa_edgeThresholdMin = 0.0833f; // Trims the algorithm fro
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
     // Out of bounds check
-    if (any(int2(thread_id.xy) >= g_resolution_rt.xy))
+    if (any(int2(thread_id.xy) >= buffer_uber.resolution_rt.xy))
         return;
 
-    const float2 uv = (thread_id.xy + 0.5f) / g_resolution_rt;
+    const float2 uv = (thread_id.xy + 0.5f) / buffer_uber.resolution_rt;
 
     FxaaTex fxaa_tex = { sampler_bilinear_clamp, tex };
     float2 fxaaQualityRcpFrame = g_texel_size;

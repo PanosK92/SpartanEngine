@@ -28,7 +28,7 @@ Pixel_PosUv mainVS(Vertex_PosUv input)
     Pixel_PosUv output;
 
     input.position.w = 1.0f;
-    output.position  = mul(input.position, g_transform);
+    output.position  = mul(input.position, buffer_uber.transform);
     output.uv        = input.uv;
 
     return output;
@@ -37,6 +37,6 @@ Pixel_PosUv mainVS(Vertex_PosUv input)
 // transparent shadows
 float4 mainPS(Pixel_PosUv input) : SV_TARGET
 {
-    float2 uv = float2(input.uv.x * g_mat_tiling.x + g_mat_offset.x, input.uv.y * g_mat_offset.y + g_mat_tiling.y);
-    return degamma(tex.SampleLevel(sampler_anisotropic_wrap, uv, 0)) * g_mat_color;
+    float2 uv = float2(input.uv.x * buffer_uber.mat_tiling.x + buffer_uber.mat_offset.x, input.uv.y * buffer_uber.mat_offset.y + buffer_uber.mat_tiling.y);
+    return degamma(tex.SampleLevel(sampler_anisotropic_wrap, uv, 0)) * buffer_uber.mat_color;
 }

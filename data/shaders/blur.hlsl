@@ -27,7 +27,7 @@ static const float g_threshold = 0.1f;
 
 float compute_gaussian_weight(int sample_distance)
 {
-    float sigma2 = g_blur_sigma * g_blur_sigma;
+    float sigma2 = buffer_uber.blur_sigma * buffer_uber.blur_sigma;
     float g = 1.0f / sqrt(2.0f * 3.14159f * sigma2);
     return (g * exp(-(sample_distance * sample_distance) / (2.0f * sigma2)));
 }
@@ -36,20 +36,20 @@ float compute_gaussian_weight(int sample_distance)
 // https://github.com/TheRealMJP/MSAAFilter/blob/master/MSAAFilter/PostProcessing.hlsl#L50
 float3 gaussian_blur(const uint2 pos)
 {
-    const float2 uv             = (pos.xy + 0.5f) / g_resolution_in;
-    const float2 texel_size     = float2(1.0f / g_resolution_in.x, 1.0f / g_resolution_in.y);
-    const float2 direction      = texel_size * g_blur_direction;
-    const bool is_vertical_pass = g_blur_direction.y != 0.0f;
+    const float2 uv             = (pos.xy + 0.5f) / buffer_uber.resolution_in;
+    const float2 texel_size     = float2(1.0f / buffer_uber.resolution_in.x, 1.0f / buffer_uber.resolution_in.y);
+    const float2 direction      = texel_size * buffer_uber.blur_direction;
+    const bool is_vertical_pass = buffer_uber.blur_direction.y != 0.0f;
 
     float weight_sum = 0.0f;
     float3 color     = 0.0f;
-    for (int i = -g_blur_radius; i < g_blur_radius; i++)
+    for (int i = -buffer_uber.blur_radius; i < buffer_uber.blur_radius; i++)
     {
         float2 sample_uv = uv + (i * direction);
 
-        // During the vertical pass, the input texture is seconday scratch texture which belongs to the blur pass.
-        // It's at least as big as the original input texture (to be blurred), so we have to adapt the smaple uv.
-        sample_uv = lerp(sample_uv, (trunc(sample_uv * g_resolution_in) + 0.5f) / g_resolution_rt, is_vertical_pass);
+        // During the vertical pass, the input texture is secondary scratch texture which belongs to the blur pass.
+        // It's at least as big as the original input texture (to be blurred), so we have to adapt the sample uv.
+        sample_uv = lerp(sample_uv, (trunc(sample_uv * buffer_uber.resolution_in) + 0.5f) / buffer_uber.resolution_rt, is_vertical_pass);
         
         float weight = compute_gaussian_weight(i);
         color        += tex.SampleLevel(sampler_bilinear_clamp, sample_uv, 0).rgb * weight;
@@ -62,17 +62,17 @@ float3 gaussian_blur(const uint2 pos)
 // Depth aware Gaussian blur
 float3 depth_aware_gaussian_blur(const uint2 pos)
 {
-    const float2 uv             = (pos.xy + 0.5f) / g_resolution_in;
-    const float2 texel_size     = float2(1.0f / g_resolution_in.x, 1.0f / g_resolution_in.y);
-    const float2 direction      = texel_size * g_blur_direction;
-    const bool is_vertical_pass = g_blur_direction.y != 0.0f;
+    const float2 uv             = (pos.xy + 0.5f) / buffer_uber.resolution_in;
+    const float2 texel_size     = float2(1.0f / buffer_uber.resolution_in.x, 1.0f / buffer_uber.resolution_in.y);
+    const float2 direction      = texel_size * buffer_uber.blur_direction;
+    const bool is_vertical_pass = buffer_uber.blur_direction.y != 0.0f;
     
     const float center_depth   = get_linear_depth(uv);
     const float3 center_normal = get_normal(uv);
 
     float weight_sum = 0.0f;
     float3 color     = 0.0f;
-    for (int i = -g_blur_radius; i < g_blur_radius; i++)
+    for (int i = -buffer_uber.blur_radius; i < buffer_uber.blur_radius; i++)
     {
         float2 sample_uv     = uv + (i * direction);
         float sample_depth   = get_linear_depth(sample_uv);
@@ -85,7 +85,7 @@ float3 depth_aware_gaussian_blur(const uint2 pos)
 
         // During the vertical pass, the input texture is secondary scratch texture which belongs to the blur pass.
         // It's at least as big as the original input texture (to be blurred), so we have to adapt the sample uv.
-        sample_uv = lerp(sample_uv, (trunc(sample_uv * g_resolution_in) + 0.5f) / g_resolution_rt, is_vertical_pass);
+        sample_uv = lerp(sample_uv, (trunc(sample_uv * buffer_uber.resolution_in) + 0.5f) / buffer_uber.resolution_rt, is_vertical_pass);
 
         float weight = compute_gaussian_weight(i) * awareness;
         color        += tex.SampleLevel(sampler_bilinear_clamp, sample_uv, 0).rgb * weight;
@@ -99,7 +99,7 @@ float3 depth_aware_gaussian_blur(const uint2 pos)
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
     // Out of bounds check
-    if (any(int2(thread_id.xy) >= g_resolution_rt.xy))
+    if (any(int2(thread_id.xy) >= buffer_uber.resolution_rt.xy))
         return;
 
     float3 color = 0.0f;

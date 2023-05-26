@@ -35,7 +35,7 @@ groupshared AU1 spd_counter;
 
 AF4 SpdLoadSourceImage(ASU2 p, AU1 slice)
 {
-    float2 uv = (p + 0.5f) / g_resolution_rt;
+    float2 uv = (p + 0.5f) / buffer_uber.resolution_rt;
     return tex.SampleLevel(sampler_bilinear_clamp, uv, 0);
 }
 
@@ -91,5 +91,5 @@ void SpdResetAtomicCounter(AU1 slice)
 [numthreads(256, 1, 1)]
 void mainCS(uint3 work_group_id : SV_GroupID, uint local_thread_index : SV_GroupIndex)
 {
-    SpdDownsample(work_group_id.xy, local_thread_index, g_mip_count, g_work_group_count, work_group_id.z);
+    SpdDownsample(work_group_id.xy, local_thread_index, buffer_uber.mip_count, buffer_uber.work_group_count, work_group_id.z);
 }

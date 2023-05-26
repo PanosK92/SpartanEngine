@@ -29,7 +29,7 @@ Pixel_PosUv mainVS(Vertex_PosUv input)
 
     // position computation has to be an exact match to gbuffer.hlsl
     input.position.w    = 1.0f; 
-    output.position     = mul(input.position, g_transform);
+    output.position     = mul(input.position, buffer_uber.transform);
     output.position     = mul(output.position, buffer_frame.view_projection);
 
     output.uv = input.uv;
@@ -39,9 +39,9 @@ Pixel_PosUv mainVS(Vertex_PosUv input)
 
 void mainPS(Pixel_PosUv input)
 {
-    if (g_is_transparent_pass && tex_material_mask.Sample(sampler_anisotropic_wrap, input.uv).r <= ALPHA_THRESHOLD)
+    if (buffer_uber.is_transparent_pass && tex_material_mask.Sample(sampler_anisotropic_wrap, input.uv).r <= ALPHA_THRESHOLD)
         discard;
 
-    if (g_mat_color.a == 1.0f && tex_material_albedo.Sample(sampler_anisotropic_wrap, input.uv).a <= ALPHA_THRESHOLD)
+    if (buffer_uber.mat_color.a == 1.0f && tex_material_albedo.Sample(sampler_anisotropic_wrap, input.uv).a <= ALPHA_THRESHOLD)
         discard;
 }
