@@ -535,18 +535,6 @@ namespace Spartan
 
     void Renderer::Update_Cb_Frame(RHI_CommandList* cmd_list)
     {
-        // Update directional light intensity, just grab the first one
-        for (const auto& entity : m_renderables[RendererEntityType::light])
-        {
-            if (Light* light = entity->GetComponent<Light>())
-            {
-                if (light->GetLightType() == LightType::Directional)
-                {
-                    m_cb_frame_cpu.directional_light_intensity = light->GetIntensityForShader(m_camera.get());
-                }
-            }
-        }
-
         m_cb_frame_gpu->Update(&m_cb_frame_cpu);
 
         // Bind because the offset just changed

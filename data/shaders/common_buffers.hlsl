@@ -49,7 +49,7 @@ struct FrameBufferData
     
     float gamma;
     float tone_mapping;
-    float directional_light_intensity;
+    float fog_density;
     float shadow_resolution;
 
     float2 resolution_render;
@@ -58,16 +58,15 @@ struct FrameBufferData
     float2 taa_jitter_current;
     float2 taa_jitter_previous;
 
-    float fog_density;
     uint options;
     uint frame_mip_count;
     uint ssr_mip_count;
+    float exposure;
 
     float2 resolution_environment;
-    float exposure;
     float luminance_min_nits;
+    float g_luminance_max_nits;
 
-    //float g_luminance_max_nits;
     //float g_paper_white_nits;
     //float2 g_padding;
 };
