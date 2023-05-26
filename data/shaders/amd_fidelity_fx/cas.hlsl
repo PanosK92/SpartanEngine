@@ -51,7 +51,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 
     float4 const0;
     float4 const1;
-    CasSetup(const0, const1, g_sharpen_strength, g_resolution_rt.x, g_resolution_rt.y, g_resolution_rt.x, g_resolution_rt.y);
+    CasSetup(const0, const1, buffer_frame.sharpen_strength, g_resolution_rt.x, g_resolution_rt.y, g_resolution_rt.x, g_resolution_rt.y);
     
     float3 color = 0.0f;
     CasFilter(color.r, color.g, color.b, thread_id.xy, const0, const1, true);

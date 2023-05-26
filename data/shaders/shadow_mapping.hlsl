@@ -275,7 +275,7 @@ static const float2 poisson_disk[64] =
 float Technique_Poisson(Surface surface, float3 uv, float compare)
 {
     float shadow          = 0.0f;
-    float temporal_offset = get_noise_interleaved_gradient(uv.xy * g_shadow_resolution); // helps with noise if TAA is active
+    float temporal_offset = get_noise_interleaved_gradient(uv.xy * buffer_frame.shadow_resolution); // helps with noise if TAA is active
 
     for (uint i = 0; i < g_shadow_samples; i++)
     {

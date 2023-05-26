@@ -46,7 +46,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     float3 fog = get_fog_factor(surface.position.y, surface.camera_to_pixel_length);
 
     // Modulate fog with ambient light
-    float ambient_light = saturate(g_directional_light_intensity);
+    float ambient_light = saturate(buffer_frame.directional_light_intensity);
     fog *= ambient_light * 0.25f;
 
     float4 color = float4(0.0f, 0.0f, 0.0f, 1.0f);
@@ -82,7 +82,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 
             // Refraction from ALDI.
             float roughness2 = surface.roughness * surface.roughness;
-            float mip_level  = lerp(0, g_frame_mip_count, roughness2);
+            float mip_level  = lerp(0, buffer_frame.frame_mip_count, roughness2);
             light_refraction = tex_frame.SampleLevel(sampler_trilinear_clamp, surface.uv + refraction_uv_offset * is_behind, mip_level).rgb;
         }
         

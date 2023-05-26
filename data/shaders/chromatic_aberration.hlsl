@@ -33,7 +33,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         return;
 
     const float2 uv    = (thread_id.xy + 0.5f) / g_resolution_rt;
-    float camera_error = 1.0f / g_camera_aperture;
+    float camera_error = 1.0f / buffer_frame.camera_aperture;
     float intensity    = camera_error * g_chromatic_aberration_intensity;
     float2 shift       = float2(intensity, -intensity);
 

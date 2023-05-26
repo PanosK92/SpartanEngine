@@ -27,7 +27,7 @@ Pixel_PosNor mainVS(Vertex_PosUvNorTan input)
 {
     Pixel_PosNor output;
 
-    float4x4 wvp = mul(g_transform, g_view_projection_unjittered);
+    float4x4 wvp = mul(g_transform, buffer_frame.view_projection_unjittered);
 
     input.position.w = 1.0f;
     output.position  = mul(input.position, wvp);
@@ -38,5 +38,5 @@ Pixel_PosNor mainVS(Vertex_PosUvNorTan input)
 
 float4 mainPS(Pixel_PosNor input) : SV_TARGET
 {
-    return float4(tex_reflection_probe.SampleLevel(sampler_bilinear_clamp, reflect(g_camera_direction, input.normal), 0.0f).rgb, 1.0f);
+    return float4(tex_reflection_probe.SampleLevel(sampler_bilinear_clamp, reflect(buffer_frame.camera_direction, input.normal), 0.0f).rgb, 1.0f);
 }

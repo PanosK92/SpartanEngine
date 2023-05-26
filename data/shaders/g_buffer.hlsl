@@ -47,11 +47,11 @@ PixelInputType mainVS(Vertex_PosUvNorTan input)
     // position computation has to be an exact match to depth_prepass.hlsl
     input.position.w = 1.0f;
     output.position  = mul(input.position, g_transform);
-    output.position  = mul(output.position, g_view_projection);
+    output.position  = mul(output.position, buffer_frame.view_projection);
     
     output.position_ss_current  = output.position;
     output.position_ss_previous = mul(input.position, g_transform_previous);
-    output.position_ss_previous = mul(output.position_ss_previous, g_view_projection_previous);
+    output.position_ss_previous = mul(output.position_ss_previous, buffer_frame.view_projection_previous);
     output.normal               = normalize(mul(input.normal,  (float3x3)g_transform)).xyz;
     output.tangent              = normalize(mul(input.tangent, (float3x3)g_transform)).xyz;
     output.uv                   = input.uv;
@@ -66,8 +66,8 @@ PixelOutputType mainPS(PixelInputType input)
     uv        = float2(uv.x * g_mat_tiling.x + g_mat_offset.x, uv.y * g_mat_tiling.y + g_mat_offset.y);
 
     // Velocity
-    float2 position_uv_current  = ndc_to_uv((input.position_ss_current.xy / input.position_ss_current.w) - g_taa_jitter_current);
-    float2 position_uv_previous = ndc_to_uv((input.position_ss_previous.xy / input.position_ss_previous.w) - g_taa_jitter_previous);
+    float2 position_uv_current  = ndc_to_uv((input.position_ss_current.xy / input.position_ss_current.w) - buffer_frame.taa_jitter_current);
+    float2 position_uv_previous = ndc_to_uv((input.position_ss_previous.xy / input.position_ss_previous.w) - buffer_frame.taa_jitter_previous);
     float2 velocity_uv          = position_uv_current - position_uv_previous;
 
     // TBN
@@ -81,7 +81,7 @@ PixelOutputType mainPS(PixelInputType input)
     if (has_texture_height())
     {
         float height_scale     = g_mat_height * 0.04f;
-        float3 camera_to_pixel = normalize(g_camera_position - input.position.xyz);
+        float3 camera_to_pixel = normalize(buffer_frame.camera_position - input.position.xyz);
         uv                     = ParallaxMapping(tex_material_height, sampler_anisotropic_wrap, uv, camera_to_pixel, TBN, height_scale);
     }
 

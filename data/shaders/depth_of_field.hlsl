@@ -58,7 +58,7 @@ static const float2 g_dof_samples[22] =
 float get_focal_depth()
 {
     const float2 uv         = float2(0.5f, 0.5f); // center
-    const float2 texel_size = float2(1.0f / g_resolution_render.x, 1.0f / g_resolution_render.y);
+    const float2 texel_size = float2(1.0f / buffer_frame.resolution_render.x, 1.0f / buffer_frame.resolution_render.y);
     const float radius      = 10.0f;
     const float4 o          = texel_size.xyxy * float2(-radius, radius).xxyy;
 
@@ -74,7 +74,7 @@ float get_focal_depth()
 float circle_of_confusion(float2 uv, float focus_distance)
 {
     float depth       = get_linear_depth(uv);
-    float focus_range = g_camera_aperture * 0.4f;
+    float focus_range = buffer_frame.camera_aperture * 0.4f;
     float coc         = ((depth - focus_distance) / (focus_range + FLT_MIN)) * g_dof_bokeh_radius;
 
     return coc;

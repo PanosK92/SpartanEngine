@@ -48,7 +48,7 @@ Pixel_Input mainVS(Vertex_PosUvNorTan input)
 float4 mainPS(Pixel_Input input) : SV_TARGET
 {
     Surface surface;
-    surface.Build(input.uv * g_resolution_render, true, true, true);
+    surface.Build(input.uv * buffer_frame.resolution_render, true, true, true);
 
     Light light;
     light.Build(input.position_ws, input.normal, 0.0f);

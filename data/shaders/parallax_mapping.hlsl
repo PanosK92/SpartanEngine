@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 float2 ParallaxMapping(Texture2D depth_tex, SamplerState depth_sampler, float2 texCoords, float3 view_dir, float3x3 TBN, float height_scale)
 { 
     float3x3 to_tangent = transpose(TBN);
-    view_dir            = mul(view_dir, to_tangent);    
+    view_dir            = mul(view_dir, to_tangent);
     height_scale        *= -1.0f;
 
     // number of depth layers
@@ -54,7 +54,7 @@ float2 ParallaxMapping(Texture2D depth_tex, SamplerState depth_sampler, float2 t
         // shift texture coordinates along direction of P
         currentTexCoords -= deltaTexCoords;
 
-        // get depthmap value at current texture coordinates
+        // get depth map value at current texture coordinates
         currentDepthMapValue = depth_tex.SampleGrad(depth_sampler, currentTexCoords, deriv_x, deriv_y).r;
 
         // get depth of next layer
