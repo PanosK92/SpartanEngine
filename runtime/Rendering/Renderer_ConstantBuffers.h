@@ -125,7 +125,6 @@ namespace Spartan
                 exposure                    == rhs.exposure                    &&
                 luminance_min               == rhs.luminance_min               &&
                 luminance_max               == rhs.luminance_max;
-                //paper_white                 == rhs.paper_white;
         }
 
         bool operator!=(const Cb_Frame& rhs) const { return !(*this == rhs); }
