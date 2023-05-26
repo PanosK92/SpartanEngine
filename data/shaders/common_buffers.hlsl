@@ -123,6 +123,12 @@ struct LightBufferData
     float2 padding;
 };
 
+struct MaterialBufferData
+{
+    float4 clearcoat_clearcoatRough_aniso_anisoRot;
+    float4 sheen_sheenTint_pad;
+};
+
 struct ImGuiBufferData
 {
     matrix transform;
@@ -132,19 +138,11 @@ struct ImGuiBufferData
     float2 padding;
 };
 
-cbuffer BufferFrame : register(b0) { FrameBufferData buffer_frame; }; // Low frequency    - Updates once per frame
-cbuffer BufferUber  : register(b1) { UberBufferData buffer_uber;   }; // Medium frequency - Updates per render pass
-cbuffer BufferLight : register(b2) { LightBufferData buffer_light; }; // Medium frequency - Updates per render pass
-
-// Low frequency - Updates once per frame
-static const int g_max_materials = 1024;
-cbuffer BufferMaterial : register(b3)
-{
-    float4 mat_clearcoat_clearcoatRough_aniso_anisoRot[g_max_materials];
-    float4 mat_sheen_sheenTint_pad[g_max_materials];
-}
-
-cbuffer ImGuiBuffer : register(b4) { ImGuiBufferData buffer_imgui; } // High frequency - Update multiply times per frame
+cbuffer BufferFrame    : register(b0) { FrameBufferData buffer_frame;              }; // Low frequency    - Updates once per frame
+cbuffer BufferUber     : register(b1) { UberBufferData buffer_uber;                }; // Medium frequency - Updates per render pass
+cbuffer BufferLight    : register(b2) { LightBufferData buffer_light;              }; // Medium frequency - Updates per render pass
+cbuffer BufferMaterial : register(b3) { MaterialBufferData buffer_materials[1024]; }; // Low frequency    - Updates once per frame
+cbuffer ImGuiBuffer    : register(b4) { ImGuiBufferData buffer_imgui;              }; // High frequency   - Update multiply times per frame
 
 // g-buffer texture options
 bool has_texture_height()                     { return buffer_uber.mat_textures & uint(1U << 0); }

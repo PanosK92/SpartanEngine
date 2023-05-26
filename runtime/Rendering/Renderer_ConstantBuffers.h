@@ -234,17 +234,25 @@ namespace Spartan
     };
 
     // Material buffer
-    static const uint32_t m_max_material_instances = 1024; // must match the shader
+    static const uint32_t m_max_material_instances = 1024; // must match common_buffers.hlsl
+    struct _material
+    {
+        Math::Vector4 clearcoat_clearcoatRough_anis_anisRot;
+        Math::Vector4 sheen_sheenTint_pad;
+
+        bool operator==(const _material& rhs) const
+        {
+            return clearcoat_clearcoatRough_anis_anisRot == rhs.clearcoat_clearcoatRough_anis_anisRot
+                && sheen_sheenTint_pad == rhs.sheen_sheenTint_pad;
+        }
+    };
     struct Cb_Material
     {
-        std::array<Math::Vector4, m_max_material_instances> mat_clearcoat_clearcoatRough_anis_anisRot;
-        std::array<Math::Vector4, m_max_material_instances> mat_sheen_sheenTint_pad;
+        std::array<_material, m_max_material_instances> materials;
 
         bool operator==(const Cb_Material& rhs) const
         {
-            return
-                mat_clearcoat_clearcoatRough_anis_anisRot == rhs.mat_clearcoat_clearcoatRough_anis_anisRot &&
-                mat_sheen_sheenTint_pad == rhs.mat_sheen_sheenTint_pad;
+            return std::equal(materials.begin(), materials.end(), rhs.materials.begin(), rhs.materials.end());
         }
 
         bool operator!=(const Cb_Material& rhs) const { return !(*this == rhs); }
