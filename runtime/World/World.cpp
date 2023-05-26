@@ -540,17 +540,17 @@ namespace Spartan
         {
             shared_ptr<Entity> entity = CreateEntity();
             entity->SetObjectName("light_point_side");
-            entity->GetTransform()->SetPosition(Vector3(1.0f, 1.0f, -3.5f));
+            entity->GetTransform()->SetPosition(Vector3(1.0f, 2.3f, -4.2f));
 
             Light* light = entity->AddComponent<Light>();
             light->SetLightType(LightType::Point);
-            light->SetColor(Color::light_fluorescent_tube_light);
+            light->SetColor(Color::light_photo_flash);
             light->SetIntensity(5000.0f);
         }
 
         // Environment
         {
-            m_default_environment->GetComponent<Environment>()->SetFromTextureSphere("project\\\environment\\night.jpg");
+            m_default_environment->GetComponent<Environment>()->SetFromTextureSphere("project\\\environment\\good_evening.jpg");
         }
 
         // Load floor material
