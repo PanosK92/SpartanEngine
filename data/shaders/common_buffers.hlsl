@@ -19,6 +19,59 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
+struct FrameBufferData
+{
+    matrix view;
+    matrix projection;
+    matrix projection_inverted;
+    matrix projection_orthographic;
+    matrix view_projection;
+    matrix view_projection_inverted;
+    matrix view_projection_orthographic;
+    matrix view_projection_unjittered;
+    matrix view_projection_previous;
+
+    float delta_time;
+    float time;
+    uint frame;
+    float camera_aperture;
+
+    float camera_shutter_speed;
+    float camera_iso;
+    float camera_near;
+    float camera_far;
+
+    float3 camera_position;
+    float bloom_intensity;
+    
+    float sharpen_strength;
+    float3 camera_direction;
+    
+    float gamma;
+    float tone_mapping;
+    float directional_light_intensity;
+    float shadow_resolution;
+
+    float2 resolution_render;
+    float2 resolution_output;
+
+    float2 taa_jitter_current;
+    float2 taa_jitter_previous;
+
+    float fog_density;
+    uint options;
+    uint frame_mip_count;
+    uint ssr_mip_count;
+
+    float2 resolution_environment;
+    float exposure;
+    float luminance_min_nits;
+
+    //float g_luminance_max_nits;
+    //float g_paper_white_nits;
+    //float2 g_padding;
+};
+
 struct ImGuiBufferData
 {
     matrix transform;
@@ -29,58 +82,7 @@ struct ImGuiBufferData
 };
 
 // Low frequency - Updates once per frame
-cbuffer BufferFrame : register(b0)
-{
-    matrix g_view;
-    matrix g_projection;
-    matrix g_projection_inverted;
-    matrix g_projection_orthographic;
-    matrix g_view_projection;
-    matrix g_view_projection_inverted;
-    matrix g_view_projection_orthographic;
-    matrix g_view_projection_unjittered;
-    matrix g_view_projection_previous;
-
-    float g_delta_time;
-    float g_time;
-    uint g_frame;
-    float g_camera_aperture;
-
-    float g_camera_shutter_speed;
-    float g_camera_iso;
-    float g_camera_near;
-    float g_camera_far;
-
-    float3 g_camera_position;
-    float g_bloom_intensity;
-    
-    float g_sharpen_strength;
-    float3 g_camera_direction;
-    
-    float g_gamma;
-    float g_tone_mapping;
-    float g_directional_light_intensity;
-    float g_shadow_resolution;
-
-    float2 g_resolution_render;
-    float2 g_resolution_output;
-
-    float2 g_taa_jitter_current;
-    float2 g_taa_jitter_previous;
-
-    float g_fog_density;
-    uint g_options;
-    uint g_frame_mip_count;
-    uint g_ssr_mip_count;
-
-    float2 g_resolution_environment;
-    float g_exposure;
-    float g_luminance_min_nits;
-
-    //float g_luminance_max_nits;
-    //float g_paper_white_nits;
-    //float2 g_padding;
-};
+cbuffer BufferFrame : register(b0) { FrameBufferData buffer_frame; };
 
 // Medium frequency - Updates per render pass
 cbuffer BufferUber : register(b1)
@@ -165,12 +167,12 @@ bool light_has_shadows_transparent()  { return cb_options & uint(1U << 4); }
 bool light_has_shadows_screen_space() { return cb_options & uint(1U << 5); }
 bool light_is_volumetric()            { return cb_options & uint(1U << 6); }
 
-// pass options
-bool is_taa_enabled()                  { return any(g_taa_jitter_current); }
-bool is_ssr_enabled()                  { return g_options & uint(1U << 0); }
-bool is_ssgi_enabled()                 { return g_options & uint(1U << 1); }
-bool is_volumetric_fog_enabled()       { return g_options & uint(1U << 2); }
-bool is_screen_space_shadows_enabled() { return g_options & uint(1U << 3); }
+// frame options
+bool is_taa_enabled()                  { return any(buffer_frame.taa_jitter_current); }
+bool is_ssr_enabled()                  { return buffer_frame.options & uint(1U << 0); }
+bool is_ssgi_enabled()                 { return buffer_frame.options & uint(1U << 1); }
+bool is_volumetric_fog_enabled()       { return buffer_frame.options & uint(1U << 2); }
+bool is_screen_space_shadows_enabled() { return buffer_frame.options & uint(1U << 3); }
 
 // misc
 bool is_opaque_pass()      { return g_is_transparent_pass == 0; }

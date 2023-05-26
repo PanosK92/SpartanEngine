@@ -43,14 +43,14 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     float4 color    = tex[thread_id.xy];
 
     // Film grain
-    float t          = g_time * float(g_film_grain_speed);
+    float t          = buffer_frame.time * float(g_film_grain_speed);
     float seed       = dot(uv, float2(12.9898, 78.233));
     float noise      = frac(sin(seed) * 43758.5453 + t);
     noise            = gaussian(noise, float(g_film_grain_mean), float(g_film_grain_variance) * float(g_film_grain_variance));
     float film_grain =  noise * g_film_grain_intensity;
 
     // Iso noise
-    float iso_noise = get_random(frac(uv.x * uv.y * g_time)) * g_camera_iso * 0.000002f;
+    float iso_noise = get_random(frac(uv.x * uv.y * buffer_frame.time)) * buffer_frame.camera_iso * 0.000002f;
     
     // Additive blending
     color.rgb += (film_grain + iso_noise) * 0.5f;

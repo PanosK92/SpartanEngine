@@ -46,7 +46,7 @@ float3 sample_environment(float2 uv, float mip_level)
 
 float3 get_parallax_corrected_reflection(Surface surface, float3 position_probe, float3 box_min, float3 box_max)
 {
-    float3 camera_to_pixel = surface.position - g_camera_position;
+    float3 camera_to_pixel = surface.position - buffer_frame.camera_position;
     float3 reflection      = reflect(camera_to_pixel, surface.normal);
     
     // Find the ray intersection with box plane
@@ -90,7 +90,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
         discard;
 
     // Just a hack to tone down IBL since it comes from a static texture
-    float3 light_ambient = (g_directional_light_intensity * 0.15f) * surface.occlusion;
+    float3 light_ambient = (buffer_frame.directional_light_intensity * 0.15f) * surface.occlusion;
     
     // Compute specular energy
     const float n_dot_v          = saturate(dot(-surface.camera_to_pixel, surface.normal));
@@ -110,7 +110,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     float3 ibl_specular_environment    = sample_environment(direction_sphere_uv(dominant_specular_direction), mip_level) * light_ambient;
     
     // Get ssr color
-    mip_level               = lerp(0, g_ssr_mip_count, surface.roughness);
+    mip_level               = lerp(0, buffer_frame.ssr_mip_count, surface.roughness);
     const float4 ssr_sample = (is_ssr_enabled() && is_opaque_pass() && surface.is_opaque()) ? tex_ssr.SampleLevel(sampler_trilinear_clamp, surface.uv, mip_level) : 0.0f;
     const float3 color_ssr  = ssr_sample.rgb;
     float ssr_alpha         = ssr_sample.a;

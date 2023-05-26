@@ -55,11 +55,11 @@ static const uint THREAD_GROUP_COUNT   = 64;
     MACROS
 ------------------------------------------------------------------------------*/
 #define g_texel_size              float2(1.0f / g_resolution_rt.x, 1.0f / g_resolution_rt.y)
-#define g_shadow_texel_size       (1.0f / g_shadow_resolution)
-#define degamma(color)            pow(abs(color), g_gamma)
-#define gamma(color)              pow(abs(color), 1.0f / g_gamma)
-#define g_tex_noise_normal_scale  float2(g_resolution_render.x / 256.0f, g_resolution_render.y / 256.0f)
-#define g_tex_noise_blue_scale    float2(g_resolution_render.x / 470.0f, g_resolution_render.y / 470.0f)
+#define g_shadow_texel_size       (1.0f / buffer_frame.shadow_resolution)
+#define degamma(color)            pow(abs(color), buffer_frame.gamma)
+#define gamma(color)              pow(abs(color), 1.0f / buffer_frame.gamma)
+#define g_tex_noise_normal_scale  float2(buffer_frame.resolution_render.x / 256.0f, buffer_frame.resolution_render.y / 256.0f)
+#define g_tex_noise_blue_scale    float2(buffer_frame.resolution_render.x / 470.0f, buffer_frame.resolution_render.y / 470.0f)
 #define g_ssr_roughness_threshold 0.8f
 /*------------------------------------------------------------------------------
     MATH
@@ -197,12 +197,12 @@ float fast_cos(float x)
 ------------------------------------------------------------------------------*/
 float3 world_to_view(float3 x, bool is_position = true)
 {
-    return mul(float4(x, (float)is_position), g_view).xyz;
+    return mul(float4(x, (float)is_position), buffer_frame.view).xyz;
 }
 
 float3 world_to_ndc(float3 x, bool is_position = true)
 {
-    float4 ndc = mul(float4(x, (float)is_position), g_view_projection);
+    float4 ndc = mul(float4(x, (float)is_position), buffer_frame.view_projection);
     return ndc.xyz / ndc.w;
 }
 
@@ -214,19 +214,19 @@ float3 world_to_ndc(float3 x, float4x4 transform) // shadow mapping
 
 float3 view_to_ndc(float3 x, bool is_position = true)
 {
-    float4 ndc = mul(float4(x, (float)is_position), g_projection);
+    float4 ndc = mul(float4(x, (float)is_position), buffer_frame.projection);
     return ndc.xyz / ndc.w;
 }
 
 float2 world_to_uv(float3 x, bool is_position = true)
 {
-    float4 uv = mul(float4(x, (float)is_position), g_view_projection);
+    float4 uv = mul(float4(x, (float)is_position), buffer_frame.view_projection);
     return (uv.xy / uv.w) * float2(0.5f, -0.5f) + 0.5f;
 }
 
 float2 view_to_uv(float3 x, bool is_position = true)
 {
-    float4 uv = mul(float4(x, (float)is_position), g_projection);
+    float4 uv = mul(float4(x, (float)is_position), buffer_frame.projection);
     return (uv.xy / uv.w) * float2(0.5f, -0.5f) + 0.5f;
 }
 
@@ -245,14 +245,14 @@ float3 get_position_ws_from_depth(const float2 uv, const float depth)
     float x          = uv.x * 2.0f - 1.0f;
     float y          = (1.0f - uv.y) * 2.0f - 1.0f;
     float4 pos_clip  = float4(x, y, depth, 1.0f);
-    float4 pos_world = mul(pos_clip, g_view_projection_inverted);
+    float4 pos_world = mul(pos_clip, buffer_frame.view_projection_inverted);
     return             pos_world.xyz / pos_world.w;
 }
 
 /*------------------------------------------------------------------------------
     NORMAL
 ------------------------------------------------------------------------------*/
-// Reconsutrct normal Z, X and Y components have to be in a -1 to 1 range.
+// Reconstruct normal Z, X and Y components have to be in a -1 to 1 range.
 float3 reconstruct_normal_z(float2 normal)
 {
     float z = sqrt(saturate(1.0f - dot(normal, normal)));
@@ -262,8 +262,8 @@ float3 reconstruct_normal_z(float2 normal)
 float3 get_normal(uint2 pos)
 {
     // Load returns 0 for any value accessed out of bounds, so clamp.
-    pos.x = clamp(pos.x, 0, g_resolution_render.x);
-    pos.y = clamp(pos.y, 0, g_resolution_render.y);
+    pos.x = clamp(pos.x, 0, buffer_frame.resolution_render.x);
+    pos.y = clamp(pos.y, 0, buffer_frame.resolution_render.y);
     
     return tex_normal[pos].xyz;
 }
@@ -275,12 +275,12 @@ float3 get_normal(float2 uv)
 
 float3 get_normal_view_space(uint2 pos)
 {
-    return normalize(mul(float4(get_normal(pos), 0.0f), g_view).xyz);
+    return normalize(mul(float4(get_normal(pos), 0.0f), buffer_frame.view).xyz);
 }
 
 float3 get_normal_view_space(float2 uv)
 {
-    return normalize(mul(float4(get_normal(uv), 0.0f), g_view).xyz);
+    return normalize(mul(float4(get_normal(uv), 0.0f), buffer_frame.view).xyz);
 }
 
 float3x3 makeTBN(float3 n, float3 t)
@@ -299,7 +299,7 @@ float3x3 makeTBN(float3 n, float3 t)
 float get_depth(uint2 position)
 {
     // out of bounds check
-    position = clamp(position, uint2(0, 0), uint2(g_resolution_render) - uint2(1, 1));
+    position = clamp(position, uint2(0, 0), uint2(buffer_frame.resolution_render) - uint2(1, 1));
     return tex_depth[position].r;
 }
 
@@ -318,7 +318,7 @@ float get_linear_depth(float z, float near, float far)
 
 float get_linear_depth(float z)
 {
-    return get_linear_depth(z, g_camera_near, g_camera_far);
+    return get_linear_depth(z, buffer_frame.camera_near, buffer_frame.camera_far);
 }
 
 float get_linear_depth(uint2 pos)
@@ -339,7 +339,7 @@ float3 get_position(float z, float2 uv)
     float x             = uv.x * 2.0f - 1.0f;
     float y             = (1.0f - uv.y) * 2.0f - 1.0f;
     float4 pos_clip     = float4(x, y, z, 1.0f);
-    float4 pos_world    = mul(pos_clip, g_view_projection_inverted);
+    float4 pos_world    = mul(pos_clip, buffer_frame.view_projection_inverted);
     return pos_world.xyz / pos_world.w;
 }
 
@@ -356,12 +356,12 @@ float3 get_position(uint2 pos)
 
 float3 get_position_view_space(uint2 pos)
 {
-    return mul(float4(get_position(pos), 1.0f), g_view).xyz;
+    return mul(float4(get_position(pos), 1.0f), buffer_frame.view).xyz;
 }
 
 float3 get_position_view_space(float2 uv)
 {
-    return mul(float4(get_position(uv), 1.0f), g_view).xyz;
+    return mul(float4(get_position(uv), 1.0f), buffer_frame.view).xyz;
 }
 
 /*------------------------------------------------------------------------------
@@ -369,7 +369,7 @@ float3 get_position_view_space(float2 uv)
 ------------------------------------------------------------------------------*/
 float3 get_view_direction(float3 position_world)
 {
-    return normalize(position_world - g_camera_position.xyz);
+    return normalize(position_world - buffer_frame.camera_position.xyz);
 }
 
 float3 get_view_direction(float depth, float2 uv)
@@ -390,7 +390,7 @@ float3 get_view_direction(uint2 pos)
 
 float3 get_view_direction_view_space(float2 uv)
 {
-    return mul(float4(get_view_direction(get_position(uv)), 0.0f), g_view).xyz;
+    return mul(float4(get_view_direction(get_position(uv)), 0.0f), buffer_frame.view).xyz;
 }
 
 float3 get_view_direction_view_space(uint2 pos)
@@ -401,7 +401,7 @@ float3 get_view_direction_view_space(uint2 pos)
 
 float3 get_view_direction_view_space(float3 position_world)
 {
-    return mul(float4(get_view_direction(position_world), 0.0f), g_view).xyz;
+    return mul(float4(get_view_direction(position_world), 0.0f), buffer_frame.view).xyz;
 }
 
 /*------------------------------------------------------------------------------
@@ -473,15 +473,15 @@ float get_offset_non_temporal(uint2 screen_pos)
 static const float offsets[] = { 0.0f, 0.5f, 0.25f, 0.75f };
 float get_offset()
 {
-    return offsets[g_frame % 4] * is_taa_enabled();
+    return offsets[buffer_frame.frame % 4] * is_taa_enabled();
 }
 
 // Based on Activision GTAO paper: https://www.activision.com/cdn/research/s2016_pbs_activision_occlusion.pptx
-// Rotations are 60.0f, 300.0f, 180.0f, 240.0f, 120.0f, 0.0f, devided by 360.0f.
+// Rotations are 60.0f, 300.0f, 180.0f, 240.0f, 120.0f, 0.0f, divided by 360.0f.
 static const float rotations[] = { 0.1666f, 0.8333, 0.5f, 0.6666, 0.3333, 0.0f };
 float get_direction()
 {
-    return rotations[g_frame % 6] * is_taa_enabled();
+    return rotations[buffer_frame.frame % 6] * is_taa_enabled();
 }
 
 // Derived from the interleaved gradient function from Jimenez 2014 http://goo.gl/eomGso
@@ -489,7 +489,7 @@ float get_noise_interleaved_gradient(float2 screen_pos)
 {
     // Temporal factor
     float taaOn      = (float)is_taa_enabled();
-    float frameCount = (float)g_frame;
+    float frameCount = (float)buffer_frame.frame;
     float frameStep  = taaOn * float(frameCount % 16) * RPC_16;
     screen_pos.x     += frameStep * 4.7526;
     screen_pos.y     += frameStep * 3.1914;
@@ -508,7 +508,7 @@ float get_noise_blue(float2 screen_pos)
     //screen_pos.y    += frameStep * 3.1914;
 
     // Temporal factor - alternate between blue noise images
-    float slice = (g_frame % 8) * (float)is_taa_enabled();
+    float slice = (buffer_frame.frame % 8) * (float)is_taa_enabled();
 
     float2 uv = (screen_pos + 0.5f) * g_tex_noise_blue_scale;
     return tex_noise_blue.SampleLevel(sampler_point_wrap, float3(uv.x, uv.y, slice), 0).r;
@@ -682,8 +682,8 @@ static const float3 hemisphere_samples[64] =
     float3(-0.44272, -0.67928, 0.1865)
 };
 
-//= INCLUDES ================
-#include "common_struct.hlsl"
-//===========================
+//= INCLUDES =================
+#include "common_structs.hlsl"
+//============================
 
 #endif // SPARTAN_COMMON

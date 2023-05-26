@@ -30,7 +30,7 @@ Pixel_PosUv mainVS(Vertex_PosUv input)
     // position computation has to be an exact match to gbuffer.hlsl
     input.position.w    = 1.0f; 
     output.position     = mul(input.position, g_transform);
-    output.position     = mul(output.position, g_view_projection);
+    output.position     = mul(output.position, buffer_frame.view_projection);
 
     output.uv = input.uv;
 

@@ -169,7 +169,7 @@ float3 amd(float3 color)
 
 float3 tonemap(float3 color)
 {
-    switch (g_tone_mapping)
+    switch (buffer_frame.tone_mapping)
     {
         case 0: return amd(color);
         case 1: return aces(color);
@@ -204,7 +204,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     //}
 
     // 2. Expose
-    color.rgb *= g_exposure;
+    color.rgb *= buffer_frame.exposure;
 
     // 3. Tone-map
     color.rgb = tonemap(color.rgb);
