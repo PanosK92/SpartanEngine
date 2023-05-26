@@ -140,9 +140,9 @@ struct ImGuiBufferData
 
 cbuffer BufferFrame    : register(b0) { FrameBufferData buffer_frame;              }; // Low frequency    - Updates once per frame
 cbuffer BufferUber     : register(b1) { UberBufferData buffer_uber;                }; // Medium frequency - Updates per render pass
-cbuffer BufferLight    : register(b2) { LightBufferData buffer_light;              }; // Medium frequency - Updates per render pass
-cbuffer BufferMaterial : register(b3) { MaterialBufferData buffer_materials[1024]; }; // Low frequency    - Updates once per frame
-cbuffer ImGuiBuffer    : register(b4) { ImGuiBufferData buffer_imgui;              }; // High frequency   - Update multiply times per frame
+cbuffer BufferLight    : register(b2) { LightBufferData buffer_light;              }; // Medium frequency - Updates per light
+cbuffer BufferMaterial : register(b3) { MaterialBufferData buffer_materials[1024]; }; // Low frequency    - Updates once per frame (maybe)
+cbuffer BufferImGui    : register(b4) { ImGuiBufferData buffer_imgui;              }; // High frequency   - Update multiply times per frame
 
 // g-buffer texture options
 bool has_texture_height()                     { return buffer_uber.mat_textures & uint(1U << 0); }

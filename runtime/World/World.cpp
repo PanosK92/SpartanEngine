@@ -55,11 +55,22 @@ namespace Spartan
         static string m_file_path;
         static bool m_resolve                                   = false;
         static bool m_was_in_editor_mode                        = false;
+        static shared_ptr<Entity> m_default_model_floor         = nullptr;
         static shared_ptr<Mesh> m_default_model_sponza          = nullptr;
         static shared_ptr<Mesh> m_default_model_sponza_curtains = nullptr;
         static shared_ptr<Mesh> m_default_model_car             = nullptr;
         static shared_ptr<Mesh> m_default_model_helmet          = nullptr;
         static mutex m_entity_access_mutex;
+
+        static void update_default_scene()
+        {
+            if (m_default_model_car)
+            {
+                // Rotate the car
+                Entity* entity = m_default_model_car->GetRootEntity();
+                entity->GetTransform()->Rotate(Quaternion::FromAngleAxis(10.0f * Timer::GetDeltaTimeSmoothedSec() * Helper::DEG_TO_RAD, Vector3::Forward));
+            }
+        }
     }
 
     void World::Initialize()
@@ -139,6 +150,11 @@ namespace Spartan
         {
             SP_FIRE_EVENT_DATA(EventType::WorldResolved, m_entities);
             m_resolve = false;
+        }
+
+        if (Engine::IsFlagSet(EngineMode::Game))
+        {
+            update_default_scene();
         }
     }
 
@@ -422,22 +438,22 @@ namespace Spartan
         // Floor
         if (create_floor)
         {
-            shared_ptr<Entity> entity = CreateEntity();
-            entity->SetObjectName("floor");
-            entity->GetTransform()->SetPosition(Vector3(0.0f, 0.1f, 0.0f)); // raise a bit to avoid z-fighting with world grid
-            entity->GetTransform()->SetScale(Vector3(30.0f, 1.0f, 30.0f));
+            m_default_model_floor = CreateEntity();
+            m_default_model_floor->SetObjectName("floor");
+            m_default_model_floor->GetTransform()->SetPosition(Vector3(0.0f, 0.1f, 0.0f)); // raise a bit to avoid z-fighting with world grid
+            m_default_model_floor->GetTransform()->SetScale(Vector3(30.0f, 1.0f, 30.0f));
 
             // Add a renderable component
-            Renderable* renderable = entity->AddComponent<Renderable>();
+            Renderable* renderable = m_default_model_floor->AddComponent<Renderable>();
             renderable->SetGeometry(DefaultGeometry::Quad);
             renderable->SetDefaultMaterial();
 
             // Add physics components
-            RigidBody* rigid_body = entity->AddComponent<RigidBody>();
+            RigidBody* rigid_body = m_default_model_floor->AddComponent<RigidBody>();
             rigid_body->SetMass(0.0f); // make it static/immovable
             rigid_body->SetFriction(0.5f);
             rigid_body->SetRestitution(0.2f);
-            Collider* collider = entity->AddComponent<Collider>();
+            Collider* collider = m_default_model_floor->AddComponent<Collider>();
             collider->SetShapeType(ColliderShape::StaticPlane); // set shape
         }
     }
@@ -502,16 +518,77 @@ namespace Spartan
 
     void World::CreateDefaultWorldCar()
     {
-        Vector3 camera_position = Vector3(-2.8436f, 1.6070f, -2.6946f);
-        Vector3 camera_rotation = Vector3(18.7975f, 37.3995f, 0.0f);
-        CreateDefaultWorldCommon(true, camera_position, camera_rotation);
+        Vector3 camera_position = Vector3(-0.1498f, 1.5592f, -4.4386f);
+        Vector3 camera_rotation = Vector3(9.1971f, 0.1993f, 0.0f);
+        CreateDefaultWorldCommon(true, camera_position, camera_rotation, 0.0f, "project\\music\\isola_any_day.mp3");
+
+        // Point light - top of car
+        {
+            shared_ptr<Entity> entity = CreateEntity();
+            entity->SetObjectName("light_point_top");
+            entity->GetTransform()->SetPosition(Vector3(0.0f, 4.5f, 0.0f));
+
+            Light* light = entity->AddComponent<Light>();
+            light->SetLightType(LightType::Point);
+            light->SetColor(Color::light_fluorescent_tube_light);
+            light->SetIntensity(5000.0f);
+        }
+
+
+        // Point light - top of car
+        {
+            shared_ptr<Entity> entity = CreateEntity();
+            entity->SetObjectName("light_point_side");
+            entity->GetTransform()->SetPosition(Vector3(1.0f, 1.0f, -3.5f));
+
+            Light* light = entity->AddComponent<Light>();
+            light->SetLightType(LightType::Point);
+            light->SetColor(Color::light_fluorescent_tube_light);
+            light->SetIntensity(5000.0f);
+        }
+
+        // Load floor material
+        {
+            // Load textures
+            shared_ptr<RHI_Texture2D> tex_albedo = make_shared<RHI_Texture2D>();
+            tex_albedo->LoadFromFile("project\\materials\\tile_black\\albedo.png");
+
+            shared_ptr<RHI_Texture2D> tex_normal = make_shared<RHI_Texture2D>();
+            tex_normal->LoadFromFile("project\\materials\\tile_black\\normal.png");
+
+            shared_ptr<RHI_Texture2D> tex_occlusion = make_shared<RHI_Texture2D>();
+            tex_occlusion->LoadFromFile("project\\materials\\tile_black\\ao.png");
+
+            shared_ptr<RHI_Texture2D> tex_roughness = make_shared<RHI_Texture2D>();
+            tex_roughness->LoadFromFile("project\\materials\\tile_black\\roughness.png");
+
+            shared_ptr<RHI_Texture2D> tex_metalness = make_shared<RHI_Texture2D>();
+            tex_metalness->LoadFromFile("project\\materials\\tile_black\\metallic.png");
+
+            // Create material
+            shared_ptr<Material> material = make_shared<Material>();
+            material->SetTexture(MaterialTexture::Color, tex_albedo);
+            material->SetTexture(MaterialTexture::Normal, tex_normal);
+            material->SetTexture(MaterialTexture::Occlusion, tex_occlusion);
+            material->SetTexture(MaterialTexture::Roughness, tex_roughness);
+            material->SetTexture(MaterialTexture::Metallness, tex_metalness);
+            material->SetProperty(MaterialProperty::UvTilingX, 10.0f);
+            material->SetProperty(MaterialProperty::UvTilingY, 10.0f);
+
+            // Create a file path for this material (required for the material to be able to be cached by the resource cache)
+            const string file_path = "project\\materials\\tile_black" + string(EXTENSION_MATERIAL);
+            material->SetResourceFilePath(file_path);
+
+            // Set material
+            m_default_model_floor->GetComponent<Renderable>()->SetMaterial(material);
+        }
 
         if (m_default_model_car = ResourceCache::Load<Mesh>("project\\models\\toyota_ae86_sprinter_trueno_zenki\\scene.gltf"))
         {
             Entity* entity = m_default_model_car->GetRootEntity();
             entity->SetObjectName("car");
 
-            entity->GetTransform()->SetPosition(Vector3(0.0f, 0.05f, 0.0f));
+            entity->GetTransform()->SetPosition(Vector3(0.0f, 0.07f, 0.0f));
             entity->GetTransform()->SetRotation(Quaternion::FromEulerAngles(90.0f, -4.8800f, -95.0582f));
             entity->GetTransform()->SetScale(Vector3(0.0125f, 0.0125f, 0.0125f));
 
