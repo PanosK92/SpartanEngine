@@ -214,14 +214,14 @@ struct Light
 
     void Build(float3 surface_position, float3 surface_normal, float occlusion)
     {
-        color             = cb_light_color.rgb;
-        position          = cb_light_position.xyz;
-        intensity         = cb_light_intensity_range_angle_bias.x;
-        far               = cb_light_intensity_range_angle_bias.y;
-        angle             = cb_light_intensity_range_angle_bias.z;
-        bias              = cb_light_intensity_range_angle_bias.w;
-        forward           = cb_light_direction.xyz;
-        normal_bias       = cb_light_normal_bias;
+        color             = buffer_light.color.rgb;
+        position          = buffer_light.position.xyz;
+        intensity         = buffer_light.intensity_range_angle_bias.x;
+        far               = buffer_light.intensity_range_angle_bias.y;
+        angle             = buffer_light.intensity_range_angle_bias.z;
+        bias              = buffer_light.intensity_range_angle_bias.w;
+        forward           = buffer_light.direction.xyz;
+        normal_bias       = buffer_light.normal_bias;
         near              = 0.1f;
         distance_to_pixel = length(surface_position - position);
         to_pixel          = compute_direction(position, surface_position);

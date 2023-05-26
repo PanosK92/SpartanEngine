@@ -110,6 +110,19 @@ struct UberBufferData
     float3 position;
 };
 
+struct LightBufferData
+{
+    matrix view_projection[6];
+    float4 intensity_range_angle_bias;
+    float4 color;
+    float4 position;
+    float4 direction;
+
+    float normal_bias;
+    uint options;
+    float2 padding;
+};
+
 struct ImGuiBufferData
 {
     matrix transform;
@@ -121,19 +134,7 @@ struct ImGuiBufferData
 
 cbuffer BufferFrame : register(b0) { FrameBufferData buffer_frame; }; // Low frequency    - Updates once per frame
 cbuffer BufferUber  : register(b1) { UberBufferData buffer_uber;   }; // Medium frequency - Updates per render pass
-
-
-cbuffer LightBuffer : register(b2) // Medium frequency - Updates per render pass
-{
-    matrix cb_light_view_projection[6];
-    float4 cb_light_intensity_range_angle_bias;
-    float4 cb_light_color;
-    float4 cb_light_position;
-    float4 cb_light_direction;
-    float cb_light_normal_bias;
-    uint cb_options;
-    float2 cb_padding;
-};
+cbuffer BufferLight : register(b2) { LightBufferData buffer_light; }; // Medium frequency - Updates per render pass
 
 // Low frequency - Updates once per frame
 static const int g_max_materials = 1024;
@@ -157,13 +158,13 @@ bool has_texture_occlusion()                  { return buffer_uber.mat_textures 
 bool has_single_texture_roughness_metalness() { return buffer_uber.single_texture_roughness_metalness; }
 
 // lighting options
-bool light_is_directional()           { return cb_options & uint(1U << 0); }
-bool light_is_point()                 { return cb_options & uint(1U << 1); }
-bool light_is_spot()                  { return cb_options & uint(1U << 2); }
-bool light_has_shadows()              { return cb_options & uint(1U << 3); }
-bool light_has_shadows_transparent()  { return cb_options & uint(1U << 4); }
-bool light_has_shadows_screen_space() { return cb_options & uint(1U << 5); }
-bool light_is_volumetric()            { return cb_options & uint(1U << 6); }
+bool light_is_directional()           { return buffer_light.options & uint(1U << 0); }
+bool light_is_point()                 { return buffer_light.options & uint(1U << 1); }
+bool light_is_spot()                  { return buffer_light.options & uint(1U << 2); }
+bool light_has_shadows()              { return buffer_light.options & uint(1U << 3); }
+bool light_has_shadows_transparent()  { return buffer_light.options & uint(1U << 4); }
+bool light_has_shadows_screen_space() { return buffer_light.options & uint(1U << 5); }
+bool light_is_volumetric()            { return buffer_light.options & uint(1U << 6); }
 
 // frame options
 bool is_taa_enabled()                  { return any(buffer_frame.taa_jitter_current); }

@@ -27,7 +27,7 @@ static const float g_sss_max_delta_from_original_depth = 0.005f; // The maximum 
 static const float g_sss_step_length                   = g_sss_ray_max_distance / (float)g_sss_max_steps;
 
 //= INLUCES ==========
-#include "Common.hlsl"
+#include "common.hlsl"
 //====================
 
 float ScreenSpaceShadows(Surface surface, Light light)
