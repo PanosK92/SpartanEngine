@@ -1175,6 +1175,19 @@ namespace Spartan
         m_cb_uber_cpu.is_transparent_pass = is_transparent_pass;
         Update_Cb_Uber(cmd_list);
 
+        // Update light buffer with the directional light
+        {
+            const vector<shared_ptr<Entity>>& entities = m_renderables[RendererEntityType::light];
+            for (shared_ptr<Entity> entity : entities)
+            {
+                if (entity->GetComponent<Light>()->GetLightType() == LightType::Directional)
+                {
+                    Update_Cb_Light(cmd_list, entity->GetComponent<Light>(), RHI_Shader_Compute);
+                    break;
+                }
+            }
+        }
+
         // Set textures
         cmd_list->SetTexture(RendererBindingsUav::tex,              tex_out);
         cmd_list->SetTexture(RendererBindingsSrv::gbuffer_albedo,   render_target(RendererTexture::gbuffer_albedo));
@@ -1247,6 +1260,19 @@ namespace Spartan
         m_cb_uber_cpu.is_transparent_pass         = is_transparent_pass;
         m_cb_uber_cpu.reflection_proble_available = !probes.empty();
         Update_Cb_Uber(cmd_list);
+
+        // Update light buffer with the directional light
+        {
+            const vector<shared_ptr<Entity>>& entities = m_renderables[RendererEntityType::light];
+            for (shared_ptr<Entity> entity : entities)
+            {
+                if (entity->GetComponent<Light>()->GetLightType() == LightType::Directional)
+                {
+                    Update_Cb_Light(cmd_list, entity->GetComponent<Light>(), RHI_Shader_Compute);
+                    break;
+                }
+            }
+        }
 
         // Render
         cmd_list->BeginRenderPass();

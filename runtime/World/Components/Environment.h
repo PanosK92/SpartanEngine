@@ -49,10 +49,11 @@ namespace Spartan
         const std::shared_ptr<RHI_Texture> GetTexture() const;
         void SetTexture(const std::shared_ptr<RHI_Texture> texture);
 
-    private:
-        void SetFromTextureArray(const std::vector<std::string>& file_paths);
         void SetFromTextureSphere(const std::string& file_path);
 
+    private:
+        void SetFromTextureArray(const std::vector<std::string>& file_paths);
+        
         std::vector<std::string> m_file_paths;
         std::shared_ptr<RHI_Texture> m_texture;
         EnvironmentType m_environment_type = EnvironmentType::Sphere;

@@ -55,6 +55,7 @@ namespace Spartan
         static string m_file_path;
         static bool m_resolve                                   = false;
         static bool m_was_in_editor_mode                        = false;
+        static shared_ptr<Entity> m_default_environment         = nullptr;
         static shared_ptr<Entity> m_default_model_floor         = nullptr;
         static shared_ptr<Mesh> m_default_model_sponza          = nullptr;
         static shared_ptr<Mesh> m_default_model_sponza_curtains = nullptr;
@@ -395,9 +396,9 @@ namespace Spartan
     {
         // Environment
         {
-            shared_ptr<Entity> environment = CreateEntity();
-            environment->SetObjectName("environment");
-            environment->AddComponent<Environment>();
+            m_default_environment = CreateEntity();
+            m_default_environment->SetObjectName("environment");
+            m_default_environment->AddComponent<Environment>();
         }
 
         // Camera
@@ -518,9 +519,10 @@ namespace Spartan
 
     void World::CreateDefaultWorldCar()
     {
-        Vector3 camera_position = Vector3(-0.1498f, 1.5592f, -4.4386f);
-        Vector3 camera_rotation = Vector3(9.1971f, 0.1993f, 0.0f);
-        CreateDefaultWorldCommon(true, camera_position, camera_rotation, 0.0f, "project\\music\\isola_any_day.mp3");
+        Vector3 camera_position           = Vector3(-0.5878f, 1.2774f, -5.5491f);
+        Vector3 camera_rotation           = Vector3(4.7969f, 0.7993f, 0.0f);
+        float directional_light_intensity = 1000.0f;
+        CreateDefaultWorldCommon(true, camera_position, camera_rotation, directional_light_intensity, "project\\music\\isola_any_day.mp3");
 
         // Point light - top of car
         {
@@ -534,7 +536,6 @@ namespace Spartan
             light->SetIntensity(5000.0f);
         }
 
-
         // Point light - top of car
         {
             shared_ptr<Entity> entity = CreateEntity();
@@ -545,6 +546,11 @@ namespace Spartan
             light->SetLightType(LightType::Point);
             light->SetColor(Color::light_fluorescent_tube_light);
             light->SetIntensity(5000.0f);
+        }
+
+        // Environment
+        {
+            m_default_environment->GetComponent<Environment>()->SetFromTextureSphere("project\\\environment\\night.jpg");
         }
 
         // Load floor material

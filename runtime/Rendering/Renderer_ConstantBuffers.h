@@ -61,7 +61,7 @@ namespace Spartan
 
         float gamma;
         float tonemapping;
-        float directional_light_intensity;
+        float fog;
         float shadow_resolution;
 
         Math::Vector2 resolution_render;
@@ -70,16 +70,15 @@ namespace Spartan
         Math::Vector2 taa_jitter_current;
         Math::Vector2 taa_jitter_previous;
 
-        float fog;
         uint32_t options;
         uint32_t frame_mip_count;
         uint32_t ssr_mip_count;
+        float exposure;
 
         Math::Vector2 resolution_environment;
-        float exposure;
         float luminance_min;
+        float luminance_max;
 
-        //float luminance_max;
         //float paper_white;
         //Math::Vector2 padding;
 
@@ -113,7 +112,6 @@ namespace Spartan
                 camera_direction            == rhs.camera_direction            &&
                 gamma                       == rhs.gamma                       &&
                 tonemapping                 == rhs.tonemapping                 &&
-                directional_light_intensity == rhs.directional_light_intensity &&
                 shadow_resolution           == rhs.shadow_resolution           &&
                 fog                         == rhs.fog                         &&
                 resolution_output           == rhs.resolution_output           &&
@@ -125,8 +123,8 @@ namespace Spartan
                 ssr_mip_count               == rhs.ssr_mip_count               &&
                 resolution_environment      == rhs.resolution_environment      &&
                 exposure                    == rhs.exposure                    &&
-                luminance_min               == rhs.luminance_min;
-                //luminance_max               == rhs.luminance_max               &&
+                luminance_min               == rhs.luminance_min               &&
+                luminance_max               == rhs.luminance_max;
                 //paper_white                 == rhs.paper_white;
         }
 

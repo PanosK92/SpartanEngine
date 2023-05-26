@@ -89,8 +89,11 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     if (early_exit_1 || early_exit_2 || early_exit_3)
         discard;
 
-    // Just a hack to tone down IBL since it comes from a static texture
-    float3 light_ambient = (buffer_frame.directional_light_intensity * 0.15f) * surface.occlusion;
+    // Try to compute some sort of ambient light that makes sense
+    float3 light_ambient = 1.0f;
+    {
+        light_ambient = buffer_light.intensity_range_angle_bias.x * 0.2f * surface.occlusion;
+    }
     
     // Compute specular energy
     const float n_dot_v          = saturate(dot(-surface.camera_to_pixel, surface.normal));
