@@ -1547,12 +1547,6 @@ namespace Spartan
         // Generate mips
         Pass_Ffx_Spd(cmd_list, tex_bloom);
 
-        // Blur
-        const bool depth_aware = false;
-        const float radius     = 1.0f;
-        const float sigma      = 12.0f;
-        Pass_Blur_Gaussian(cmd_list, tex_bloom, depth_aware, radius, sigma);
-
         // Starting from the lowest mip, upsample and blend with the higher one
         cmd_list->BeginMarker("upsample_and_blend_with_higher_mip");
         {
@@ -1576,10 +1570,10 @@ namespace Spartan
                 Update_Cb_Uber(cmd_list);
 
                 // Set textures
-                cmd_list->SetTexture(RendererBindingsSrv::tex, tex_bloom, mip_index_small, 1);
                 cmd_list->SetTexture(RendererBindingsUav::tex, tex_bloom, mip_index_big, 1);
-
-                // Render
+                cmd_list->SetTexture(RendererBindingsSrv::tex, tex_bloom, mip_index_small, 1);
+                
+                // Blend
                 uint32_t thread_group_count_x_ = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(mip_width_large) / m_thread_group_count));
                 uint32_t thread_group_count_y_ = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(mip_height_height) / m_thread_group_count));
                 cmd_list->Dispatch(thread_group_count_x_, thread_group_count_y_);
@@ -2236,8 +2230,7 @@ namespace Spartan
                                 const bool depth_aware   = false;
                                 const float radius       = 30.0f;
                                 const float sigma        = 32.0f;
-                                const float pixel_stride = 1.0f;
-                                Pass_Blur_Gaussian(cmd_list, tex_outline, depth_aware, radius, sigma, pixel_stride);
+                                Pass_Blur_Gaussian(cmd_list, tex_outline, depth_aware, radius, sigma);
                             }
 
                             // Combine color silhouette with frame
