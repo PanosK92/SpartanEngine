@@ -233,11 +233,10 @@ namespace Spartan
                     // Blur the smaller mips to reduce blockiness/flickering
                     for (uint32_t i = 1; i < rt2->GetMipCount(); i++)
                     {
-                        const bool depth_aware   = false;
-                        const float radius       = 5.0f;
-                        const float sigma        = 2.0f;
-                        const float pixel_stride = 1.0;
-                        Pass_Blur_Gaussian(cmd_list, rt2, depth_aware, radius, sigma, pixel_stride, i);
+                        const bool depth_aware = false;
+                        const float radius     = 1.0f;
+                        const float sigma      = 12.0f;
+                        Pass_Blur_Gaussian(cmd_list, rt2, depth_aware, radius, sigma, i);
                     }
 
                     bool is_transparent_pass = true;
@@ -1002,11 +1001,10 @@ namespace Spartan
         cmd_list->Dispatch(thread_group_count_x(tex_ssgi), thread_group_count_y(tex_ssgi));
 
         // Blur
-        const bool depth_aware   = true;
-        const float radius       = 5.0f;
-        const float sigma        = 2.0f;
-        const float pixel_stride = 1.0;
-        Pass_Blur_Gaussian(cmd_list, tex_ssgi, depth_aware, radius, sigma, pixel_stride);
+        const bool depth_aware = true;
+        const float radius     = 12.0f;
+        const float sigma      = 12.0f;
+        Pass_Blur_Gaussian(cmd_list, tex_ssgi, depth_aware, radius, sigma);
 
         cmd_list->EndTimeblock();
     }
@@ -1055,11 +1053,10 @@ namespace Spartan
         // Blur the smaller mips to reduce blockiness/flickering
         for (uint32_t i = 1; i < tex_ssr->GetMipCount(); i++)
         {
-            const bool depth_aware   = true;
-            const float radius       = 5.0f;
-            const float sigma        = 2.0f;
-            const float pixel_stride = 1.0;
-            Pass_Blur_Gaussian(cmd_list, tex_ssr, depth_aware, radius, sigma, pixel_stride, i);
+            const bool depth_aware = true;
+            const float radius     = 5.0f;
+            const float sigma      = 2.0f;
+            Pass_Blur_Gaussian(cmd_list, tex_ssr, depth_aware, radius, sigma, i);
         }
 
         cmd_list->EndTimeblock();
@@ -1284,13 +1281,14 @@ namespace Spartan
         cmd_list->EndTimeblock();
     }
 
-    void Renderer::Pass_Blur_Gaussian(RHI_CommandList* cmd_list, RHI_Texture* tex_in, const bool depth_aware, const float radius, const float sigma, const float pixel_stride, const uint32_t mip /*= all_mips*/)
+    void Renderer::Pass_Blur_Gaussian(RHI_CommandList* cmd_list, RHI_Texture* tex_in, const bool depth_aware, const float radius, const float sigma, const uint32_t mip /*= all_mips*/)
     {
         // Acquire shaders
         RHI_Shader* shader_c = shader(depth_aware ? RendererShader::blur_gaussian_bilaterial_c : RendererShader::blur_gaussian_c).get();
         if (!shader_c->IsCompiled())
             return;
 
+        const float pixel_stride = 1.0f;
         const bool mip_requested = mip != rhi_all_mips;
         const uint32_t mip_range = mip_requested ? 1 : 0;
 
@@ -1548,6 +1546,12 @@ namespace Spartan
 
         // Generate mips
         Pass_Ffx_Spd(cmd_list, tex_bloom);
+
+        // Blur
+        const bool depth_aware = false;
+        const float radius     = 1.0f;
+        const float sigma      = 12.0f;
+        Pass_Blur_Gaussian(cmd_list, tex_bloom, depth_aware, radius, sigma);
 
         // Starting from the lowest mip, upsample and blend with the higher one
         cmd_list->BeginMarker("upsample_and_blend_with_higher_mip");

@@ -164,7 +164,7 @@ namespace Spartan
         static void Pass_DepthOfField(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
         static void Pass_Debanding(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
         static void Pass_Bloom(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
-        static void Pass_Blur_Gaussian(RHI_CommandList* cmd_list, RHI_Texture* tex_in, const bool depth_aware, const float radius, const float sigma, const float pixel_stride, const uint32_t mip = rhi_all_mips);
+        static void Pass_Blur_Gaussian(RHI_CommandList* cmd_list, RHI_Texture* tex_in, const bool depth_aware, const float radius, const float sigma, const uint32_t mip = rhi_all_mips);
         static void Pass_Lines(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
         static void Pass_DebugMeshes(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
         static void Pass_Outline(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
