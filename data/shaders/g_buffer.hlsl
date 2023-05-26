@@ -46,14 +46,14 @@ PixelInputType mainVS(Vertex_PosUvNorTan input)
 
     // position computation has to be an exact match to depth_prepass.hlsl
     input.position.w = 1.0f;
-    output.position  = mul(input.position, g_transform);
+    output.position  = mul(input.position, buffer_uber.transform);
     output.position  = mul(output.position, buffer_frame.view_projection);
     
     output.position_ss_current  = output.position;
-    output.position_ss_previous = mul(input.position, g_transform_previous);
+    output.position_ss_previous = mul(input.position, buffer_uber.transform_previous);
     output.position_ss_previous = mul(output.position_ss_previous, buffer_frame.view_projection_previous);
-    output.normal               = normalize(mul(input.normal,  (float3x3)g_transform)).xyz;
-    output.tangent              = normalize(mul(input.tangent, (float3x3)g_transform)).xyz;
+    output.normal               = normalize(mul(input.normal,  (float3x3)buffer_uber.transform)).xyz;
+    output.tangent              = normalize(mul(input.tangent, (float3x3)buffer_uber.transform)).xyz;
     output.uv                   = input.uv;
     
     return output;
@@ -63,7 +63,7 @@ PixelOutputType mainPS(PixelInputType input)
 {
     // UV
     float2 uv = input.uv;
-    uv        = float2(uv.x * g_mat_tiling.x + g_mat_offset.x, uv.y * g_mat_tiling.y + g_mat_offset.y);
+    uv        = float2(uv.x * buffer_uber.mat_tiling.x + buffer_uber.mat_offset.x, uv.y * buffer_uber.mat_tiling.y + buffer_uber.mat_offset.y);
 
     // Velocity
     float2 position_uv_current  = ndc_to_uv((input.position_ss_current.xy / input.position_ss_current.w) - buffer_frame.taa_jitter_current);
@@ -80,7 +80,7 @@ PixelOutputType mainPS(PixelInputType input)
     // Parallax mapping
     if (has_texture_height())
     {
-        float height_scale     = g_mat_height * 0.04f;
+        float height_scale     = buffer_uber.mat_height * 0.04f;
         float3 camera_to_pixel = normalize(buffer_frame.camera_position - input.position.xyz);
         uv                     = ParallaxMapping(tex_material_height, sampler_anisotropic_wrap, uv, camera_to_pixel, TBN, height_scale);
     }
@@ -93,7 +93,7 @@ PixelOutputType mainPS(PixelInputType input)
     }
 
     // Albedo
-    float4 albedo = g_mat_color;
+    float4 albedo = buffer_uber.mat_color;
     if (has_texture_albedo())
     {
         float4 albedo_sample = tex_material_albedo.Sample(sampler_anisotropic_wrap, uv);
@@ -111,8 +111,8 @@ PixelOutputType mainPS(PixelInputType input)
         discard;
 
     // Roughness + Metalness
-    float roughness = g_mat_roughness;
-    float metalness = g_mat_metallness;
+    float roughness = buffer_uber.mat_roughness;
+    float metalness = buffer_uber.mat_metallness;
     {
         if (!has_single_texture_roughness_metalness())
         {
@@ -146,7 +146,7 @@ PixelOutputType mainPS(PixelInputType input)
     {
         // Get tangent space normal and apply the user defined intensity. Then transform it to world space.
         float3 tangent_normal  = normalize(unpack(tex_material_normal.Sample(sampler_anisotropic_wrap, uv).rgb));
-        float normal_intensity = clamp(g_mat_normal, 0.012f, g_mat_normal);
+        float normal_intensity = clamp(buffer_uber.mat_normal, 0.012f, buffer_uber.mat_normal);
         tangent_normal.xy      *= saturate(normal_intensity);
         normal                 = normalize(mul(tangent_normal, TBN).xyz);
     }
@@ -184,10 +184,10 @@ PixelOutputType mainPS(PixelInputType input)
     // Write to G-Buffer
     PixelOutputType g_buffer;
     g_buffer.albedo                 = albedo;
-    g_buffer.normal                 = float4(normal, pack_uint32_to_float16(g_mat_id));
+    g_buffer.normal                 = float4(normal, pack_uint32_to_float16(buffer_uber.mat_id));
     g_buffer.material               = float4(roughness, metalness, emission, occlusion);
     g_buffer.velocity               = velocity_uv;
-    g_buffer.fsr2_transparency_mask = albedo.a * g_is_transparent_pass;
+    g_buffer.fsr2_transparency_mask = albedo.a * buffer_uber.is_transparent_pass;
 
     return g_buffer;
 }

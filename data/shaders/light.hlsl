@@ -33,7 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
     // Out of bounds check.
-    if (any(int2(thread_id.xy) >= g_resolution_rt.xy))
+    if (any(int2(thread_id.xy) >= buffer_uber.resolution_rt.xy))
         return;
 
     // Create surface
@@ -66,7 +66,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         }
 
         // Ensure that the shadow is as transparent as the material
-        if (g_is_transparent_pass)
+        if (buffer_uber.is_transparent_pass)
         {
             shadow.a = clamp(shadow.a, surface.alpha, 1.0f);
         }

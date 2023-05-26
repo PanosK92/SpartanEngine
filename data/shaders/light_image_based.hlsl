@@ -76,7 +76,7 @@ bool is_inside_box(in float3 p, in float3 min, in float3 max)
 
 float4 mainPS(Pixel_PosUv input) : SV_TARGET
 {
-    const uint2 pos = input.uv * g_resolution_rt;
+    const uint2 pos = input.uv * buffer_uber.resolution_rt;
     
     // Construct surface
     Surface surface;
@@ -124,12 +124,12 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     // Sample reflection probe
     float3 ibl_specular_probe = 0.0f;
     float probe_alpha         = 0.0f;
-    if (g_reflection_probe_available != 0)
+    if (buffer_uber.reflection_probe_available != 0)
     {
-        float probe_radius    = g_radius;
-        float3 probe_position = g_position;
-        float3 box_min        = probe_position - g_extents;
-        float3 box_max        = probe_position + g_extents;
+        float probe_radius    = buffer_uber.radius;
+        float3 probe_position = buffer_uber.position;
+        float3 box_min        = probe_position - buffer_uber.extents;
+        float3 box_max        = probe_position + buffer_uber.extents;
 
         if (is_inside_box(surface.position, box_min, box_max))
         {

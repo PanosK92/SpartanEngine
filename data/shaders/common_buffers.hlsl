@@ -72,6 +72,44 @@ struct FrameBufferData
     //float2 g_padding;
 };
 
+struct UberBufferData
+{
+    matrix transform;
+    matrix transform_previous;
+
+    float blur_radius;
+    float blur_sigma;
+    float2 blur_direction;
+
+    float2 resolution_rt;
+    float2 resolution_in;
+
+    bool single_texture_roughness_metalness;
+    float radius;
+    float2 padding2;
+
+    float4 mat_color;
+
+    float2 mat_tiling;
+    float2 mat_offset;
+
+    float mat_roughness;
+    float mat_metallness;
+    float mat_normal;
+    float mat_height;
+
+    uint mat_id;
+    uint mat_textures;
+    uint is_transparent_pass;
+    uint mip_count;
+
+    float3 extents;
+    uint work_group_count;
+
+    uint reflection_probe_available;
+    float3 position;
+};
+
 struct ImGuiBufferData
 {
     matrix transform;
@@ -81,50 +119,11 @@ struct ImGuiBufferData
     float2 padding;
 };
 
-// Low frequency - Updates once per frame
-cbuffer BufferFrame : register(b0) { FrameBufferData buffer_frame; };
+cbuffer BufferFrame : register(b0) { FrameBufferData buffer_frame; }; // Low frequency    - Updates once per frame
+cbuffer BufferUber  : register(b1) { UberBufferData buffer_uber;   }; // Medium frequency - Updates per render pass
 
-// Medium frequency - Updates per render pass
-cbuffer BufferUber : register(b1)
-{
-    matrix g_transform;
-    matrix g_transform_previous;
 
-    float g_blur_radius;
-    float g_blur_sigma;
-    float2 g_blur_direction;
-
-    float2 g_resolution_rt;
-    float2 g_resolution_in;
-
-    bool single_texture_roughness_metalness;
-    float g_radius;
-    float2 g_padding2;
-
-    float4 g_mat_color;
-
-    float2 g_mat_tiling;
-    float2 g_mat_offset;
-
-    float g_mat_roughness;
-    float g_mat_metallness;
-    float g_mat_normal;
-    float g_mat_height;
-
-    uint g_mat_id;
-    uint g_mat_textures;
-    uint g_is_transparent_pass;
-    uint g_mip_count;
-
-    float3 g_extents;
-    uint g_work_group_count;
-
-    uint g_reflection_probe_available;
-    float3 g_position;
-};
-
-// High frequency - Updates per light
-cbuffer LightBuffer : register(b2)
+cbuffer LightBuffer : register(b2) // Medium frequency - Updates per render pass
 {
     matrix cb_light_view_projection[6];
     float4 cb_light_intensity_range_angle_bias;
@@ -144,19 +143,18 @@ cbuffer BufferMaterial : register(b3)
     float4 mat_sheen_sheenTint_pad[g_max_materials];
 }
 
-// High frequency - update multiply times per frame, ImGui driven
-cbuffer ImGuiBuffer : register(b4) { ImGuiBufferData buffer_imgui; }
+cbuffer ImGuiBuffer : register(b4) { ImGuiBufferData buffer_imgui; } // High frequency - Update multiply times per frame
 
 // g-buffer texture options
-bool has_texture_height()                     { return g_mat_textures & uint(1U << 0); }
-bool has_texture_normal()                     { return g_mat_textures & uint(1U << 1); }
-bool has_texture_albedo()                     { return g_mat_textures & uint(1U << 2); }
-bool has_texture_roughness()                  { return g_mat_textures & uint(1U << 3); }
-bool has_texture_metalness()                  { return g_mat_textures & uint(1U << 4); }
-bool has_texture_alpha_mask()                 { return g_mat_textures & uint(1U << 5); }
-bool has_texture_emissive()                   { return g_mat_textures & uint(1U << 6); }
-bool has_texture_occlusion()                  { return g_mat_textures & uint(1U << 7); }
-bool has_single_texture_roughness_metalness() { return single_texture_roughness_metalness; }
+bool has_texture_height()                     { return buffer_uber.mat_textures & uint(1U << 0); }
+bool has_texture_normal()                     { return buffer_uber.mat_textures & uint(1U << 1); }
+bool has_texture_albedo()                     { return buffer_uber.mat_textures & uint(1U << 2); }
+bool has_texture_roughness()                  { return buffer_uber.mat_textures & uint(1U << 3); }
+bool has_texture_metalness()                  { return buffer_uber.mat_textures & uint(1U << 4); }
+bool has_texture_alpha_mask()                 { return buffer_uber.mat_textures & uint(1U << 5); }
+bool has_texture_emissive()                   { return buffer_uber.mat_textures & uint(1U << 6); }
+bool has_texture_occlusion()                  { return buffer_uber.mat_textures & uint(1U << 7); }
+bool has_single_texture_roughness_metalness() { return buffer_uber.single_texture_roughness_metalness; }
 
 // lighting options
 bool light_is_directional()           { return cb_options & uint(1U << 0); }
@@ -175,5 +173,5 @@ bool is_volumetric_fog_enabled()       { return buffer_frame.options & uint(1U <
 bool is_screen_space_shadows_enabled() { return buffer_frame.options & uint(1U << 3); }
 
 // misc
-bool is_opaque_pass()      { return g_is_transparent_pass == 0; }
-bool is_transparent_pass() { return g_is_transparent_pass == 1; }
+bool is_opaque_pass()      { return buffer_uber.is_transparent_pass == 0; }
+bool is_transparent_pass() { return buffer_uber.is_transparent_pass == 1; }

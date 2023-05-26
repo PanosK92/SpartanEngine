@@ -54,7 +54,7 @@ static const uint THREAD_GROUP_COUNT   = 64;
 /*------------------------------------------------------------------------------
     MACROS
 ------------------------------------------------------------------------------*/
-#define g_texel_size              float2(1.0f / g_resolution_rt.x, 1.0f / g_resolution_rt.y)
+#define g_texel_size              float2(1.0f / buffer_uber.resolution_rt.x, 1.0f / buffer_uber.resolution_rt.y)
 #define g_shadow_texel_size       (1.0f / buffer_frame.shadow_resolution)
 #define degamma(color)            pow(abs(color), buffer_frame.gamma)
 #define gamma(color)              pow(abs(color), 1.0f / buffer_frame.gamma)
@@ -350,7 +350,7 @@ float3 get_position(float2 uv)
 
 float3 get_position(uint2 pos)
 {
-    const float2 uv = (pos + 0.5f) / g_resolution_rt;
+    const float2 uv = (pos + 0.5f) / buffer_uber.resolution_rt;
     return get_position(get_depth(pos), uv);
 }
 
@@ -384,7 +384,7 @@ float3 get_view_direction(float2 uv)
 
 float3 get_view_direction(uint2 pos)
 {
-    const float2 uv = (pos + 0.5f) / g_resolution_rt;
+    const float2 uv = (pos + 0.5f) / buffer_uber.resolution_rt;
     return get_view_direction(uv);
 }
 
@@ -395,7 +395,7 @@ float3 get_view_direction_view_space(float2 uv)
 
 float3 get_view_direction_view_space(uint2 pos)
 {
-    const float2 uv = (pos + 0.5f) / g_resolution_rt;
+    const float2 uv = (pos + 0.5f) / buffer_uber.resolution_rt;
     return get_view_direction_view_space(uv);
 }
 
@@ -544,7 +544,7 @@ float microw_shadowing_cod(float n_dot_l, float visibility)
 float draw_line(float2 p1, float2 p2, float2 uv, float a)
 {
     float r = 0.0f;
-    float one_px = 1. / g_resolution_rt.x; // not really one px
+    float one_px = 1. / buffer_uber.resolution_rt.x; // not really one px
 
     // get dist between points
     float d = distance(p1, p2);

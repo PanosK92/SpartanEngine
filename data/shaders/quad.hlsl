@@ -28,7 +28,7 @@ Pixel_PosUv mainVS(Vertex_PosUvNorTan input)
     Pixel_PosUv output;
 
     input.position.w = 1.0f;
-    output.position  = mul(input.position, g_transform);
+    output.position  = mul(input.position, buffer_uber.transform);
     output.uv        = input.uv;
 
     return output;
