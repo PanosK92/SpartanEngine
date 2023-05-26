@@ -85,12 +85,12 @@ struct Surface
         metallic             = sample_material.g;
         emissive             = sample_material.b;
         F0                   = lerp(0.04f, albedo, metallic);
-        clearcoat            = mat_clearcoat_clearcoatRough_aniso_anisoRot[id].x;
-        clearcoat_roughness  = mat_clearcoat_clearcoatRough_aniso_anisoRot[id].y;
-        anisotropic          = mat_clearcoat_clearcoatRough_aniso_anisoRot[id].z;
-        anisotropic_rotation = mat_clearcoat_clearcoatRough_aniso_anisoRot[id].w;
-        sheen                = mat_sheen_sheenTint_pad[id].x;
-        sheen_tint           = mat_sheen_sheenTint_pad[id].y;
+        clearcoat            = buffer_materials[id].clearcoat_clearcoatRough_aniso_anisoRot.x;
+        clearcoat_roughness  = buffer_materials[id].clearcoat_clearcoatRough_aniso_anisoRot.y;
+        anisotropic          = buffer_materials[id].clearcoat_clearcoatRough_aniso_anisoRot.z;
+        anisotropic_rotation = buffer_materials[id].clearcoat_clearcoatRough_aniso_anisoRot.w;
+        sheen                = buffer_materials[id].sheen_sheenTint_pad.x;
+        sheen_tint           = buffer_materials[id].sheen_sheenTint_pad.y;
         specular_energy      = 1.0f;
         diffuse_energy       = 1.0f;
 
