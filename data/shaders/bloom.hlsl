@@ -67,9 +67,10 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     if (any(int2(thread_id.xy) >= buffer_uber.resolution_rt.xy))
         return;
 
-    const float2 uv        = (thread_id.xy + 0.5f) / buffer_uber.resolution_rt;
-    float3 upsampled_color = tent_antiflicker_filter(uv, g_texel_size * 0.5f);
-    tex_uav[thread_id.xy]  = float4(saturate_16(tex_uav[thread_id.xy].rgb + upsampled_color * 0.5f), tex_uav[thread_id.xy].a);
+    const float2 uv          = (thread_id.xy + 0.5f) / buffer_uber.resolution_rt;
+    float4 destination_color = tex_uav[thread_id.xy];
+    float3 upsampled_color   = tent_antiflicker_filter(uv, g_texel_size * 0.5f);
+    tex_uav[thread_id.xy]    = float4(saturate_16(destination_color.rgb + upsampled_color), destination_color.a);
 }
 
 #endif
