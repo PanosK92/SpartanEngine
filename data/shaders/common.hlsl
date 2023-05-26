@@ -24,9 +24,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ======================
 #include "common_vertex_pixel.hlsl"
-#include "common_buffer.hlsl"
-#include "common_sampler.hlsl"
-#include "common_texture.hlsl"
+#include "common_buffers.hlsl"
+#include "common_samplers.hlsl"
+#include "common_textures.hlsl"
 //=================================
 
 /*------------------------------------------------------------------------------

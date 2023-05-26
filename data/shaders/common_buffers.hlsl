@@ -19,6 +19,15 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
+struct ImGuiBufferData
+{
+    matrix transform;
+
+    uint texture_flags;
+    uint mip_level;
+    float2 padding;
+};
+
 // Low frequency - Updates once per frame
 cbuffer BufferFrame : register(b0)
 {
@@ -134,14 +143,7 @@ cbuffer BufferMaterial : register(b3)
 }
 
 // High frequency - update multiply times per frame, ImGui driven
-cbuffer ImGuiBuffer : register(b4)
-{
-    matrix imgui_transform;
-
-    uint imgui_texture_flags;
-    uint imgui_mip_level;
-    float2 imgui_padding4;
-}
+cbuffer ImGuiBuffer : register(b4) { ImGuiBufferData buffer_imgui; }
 
 // g-buffer texture options
 bool has_texture_height()                     { return g_mat_textures & uint(1U << 0); }
@@ -169,17 +171,6 @@ bool is_ssr_enabled()                  { return g_options & uint(1U << 0); }
 bool is_ssgi_enabled()                 { return g_options & uint(1U << 1); }
 bool is_volumetric_fog_enabled()       { return g_options & uint(1U << 2); }
 bool is_screen_space_shadows_enabled() { return g_options & uint(1U << 3); }
-
-// texture visualization options (for the editor)
-bool texture_pack()             { return imgui_texture_flags & uint(1U << 0); }
-bool texture_gamma_correction() { return imgui_texture_flags & uint(1U << 1); }
-bool texture_boost()            { return imgui_texture_flags & uint(1U << 2); }
-bool texture_abs()              { return imgui_texture_flags & uint(1U << 3); }
-bool texture_channel_r()        { return imgui_texture_flags & uint(1U << 4); }
-bool texture_channel_g()        { return imgui_texture_flags & uint(1U << 5); }
-bool texture_channel_b()        { return imgui_texture_flags & uint(1U << 6); }
-bool texture_channel_a()        { return imgui_texture_flags & uint(1U << 7); }
-bool texture_sample_point()     { return imgui_texture_flags & uint(1U << 8); }
 
 // misc
 bool is_opaque_pass()      { return g_is_transparent_pass == 0; }
