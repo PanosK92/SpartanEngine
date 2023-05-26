@@ -2180,86 +2180,89 @@ namespace Spartan
         if (!shader_v->IsCompiled() || !shader_p->IsCompiled() || !shader_c->IsCompiled())
             return;
 
-        cmd_list->BeginTimeblock("outline");
+        if (shared_ptr<Camera> camera = Renderer::GetCamera())
         {
-            RHI_Texture* tex_outline       = render_target(RendererTexture::outline).get();
-            static const Color clear_color = Color(0.0f, 0.0f, 0.0f, 0.0f);
-
-            if (shared_ptr<Entity> entity_selected = Renderer::GetCamera()->GetSelectedEntity())
+            if (shared_ptr<Entity> entity_selected = camera->GetSelectedEntity())
             {
-                if (const Renderable* renderable = entity_selected->GetRenderable())
-                { 
-                    if (shared_ptr<Mesh> mesh = renderable->GetMesh())
-                    { 
-                        if (mesh->GetVertexBuffer() && mesh->GetIndexBuffer())
+                cmd_list->BeginTimeblock("outline");
+                {
+                    RHI_Texture* tex_outline = render_target(RendererTexture::outline).get();
+                    static const Color clear_color = Color(0.0f, 0.0f, 0.0f, 0.0f);
+
+                    if (const Renderable* renderable = entity_selected->GetRenderable())
+                    {
+                        if (shared_ptr<Mesh> mesh = renderable->GetMesh())
                         {
-                            cmd_list->BeginMarker("color_silhouette");
+                            if (mesh->GetVertexBuffer() && mesh->GetIndexBuffer())
                             {
-                                // Define render state
-                                static RHI_PipelineState pso;
-                                pso.shader_vertex                   = shader_v;
-                                pso.shader_pixel                    = shader_p;
-                                pso.rasterizer_state                = m_rasterizer_cull_back_solid.get();
-                                pso.blend_state                     = m_blend_disabled.get();
-                                pso.depth_stencil_state             = m_depth_stencil_off_off.get();
-                                pso.render_target_color_textures[0] = tex_outline;
-                                pso.clear_color[0]                  = clear_color;
-                                pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
-
-                                // Set pipeline state
-                                cmd_list->SetPipelineState(pso);
-
-                                // Render
-                                cmd_list->BeginRenderPass();
+                                cmd_list->BeginMarker("color_silhouette");
                                 {
-                                     // Set uber buffer with entity transform
-                                    m_cb_uber_cpu.transform = entity_selected->GetTransform()->GetMatrix() * m_cb_frame_cpu.view_projection_unjittered;
-                                    m_cb_uber_cpu.mat_color = DEBUG_COLOR;
+                                    // Define render state
+                                    static RHI_PipelineState pso;
+                                    pso.shader_vertex                   = shader_v;
+                                    pso.shader_pixel                    = shader_p;
+                                    pso.rasterizer_state                = m_rasterizer_cull_back_solid.get();
+                                    pso.blend_state                     = m_blend_disabled.get();
+                                    pso.depth_stencil_state             = m_depth_stencil_off_off.get();
+                                    pso.render_target_color_textures[0] = tex_outline;
+                                    pso.clear_color[0]                  = clear_color;
+                                    pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
+
+                                    // Set pipeline state
+                                    cmd_list->SetPipelineState(pso);
+
+                                    // Render
+                                    cmd_list->BeginRenderPass();
+                                    {
+                                        // Set uber buffer with entity transform
+                                        m_cb_uber_cpu.transform = entity_selected->GetTransform()->GetMatrix() * m_cb_frame_cpu.view_projection_unjittered;
+                                        m_cb_uber_cpu.mat_color = DEBUG_COLOR;
+                                        Update_Cb_Uber(cmd_list);
+
+                                        cmd_list->SetBufferVertex(mesh->GetVertexBuffer());
+                                        cmd_list->SetBufferIndex(mesh->GetIndexBuffer());
+                                        cmd_list->DrawIndexed(renderable->GetIndexCount(), renderable->GetIndexOffset(), renderable->GetVertexOffset());
+                                        cmd_list->EndRenderPass();
+                                    }
+                                }
+                                cmd_list->EndMarker();
+
+                                // Blur the color silhouette
+                                {
+                                    const bool depth_aware = false;
+                                    const float radius     = 30.0f;
+                                    const float sigma      = 32.0f;
+                                    Pass_Blur_Gaussian(cmd_list, tex_outline, depth_aware, radius, sigma);
+                                }
+
+                                // Combine color silhouette with frame
+                                cmd_list->BeginMarker("composition");
+                                {
+                                    static RHI_PipelineState pso;
+                                    pso.shader_compute = shader_c;
+
+                                    // Set pipeline state
+                                    cmd_list->SetPipelineState(pso);
+
+                                    // Set uber buffer
+                                    m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
                                     Update_Cb_Uber(cmd_list);
 
-                                    cmd_list->SetBufferVertex(mesh->GetVertexBuffer());
-                                    cmd_list->SetBufferIndex(mesh->GetIndexBuffer());
-                                    cmd_list->DrawIndexed(renderable->GetIndexCount(), renderable->GetIndexOffset(), renderable->GetVertexOffset());
-                                    cmd_list->EndRenderPass();
+                                    // Set textures
+                                    cmd_list->SetTexture(RendererBindingsUav::tex, tex_out);
+                                    cmd_list->SetTexture(RendererBindingsSrv::tex, tex_outline);
+
+                                    // Render
+                                    cmd_list->Dispatch(thread_group_count_x(tex_out), thread_group_count_y(tex_out));
                                 }
+                                cmd_list->EndMarker();
                             }
-                            cmd_list->EndMarker();
-
-                            // Blur the color silhouette
-                            {
-                                const bool depth_aware   = false;
-                                const float radius       = 30.0f;
-                                const float sigma        = 32.0f;
-                                Pass_Blur_Gaussian(cmd_list, tex_outline, depth_aware, radius, sigma);
-                            }
-
-                            // Combine color silhouette with frame
-                            cmd_list->BeginMarker("composition");
-                            {
-                                static RHI_PipelineState pso;
-                                pso.shader_compute = shader_c;
-
-                                // Set pipeline state
-                                cmd_list->SetPipelineState(pso);
-
-                                // Set uber buffer
-                                m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
-                                Update_Cb_Uber(cmd_list);
-
-                                // Set textures
-                                cmd_list->SetTexture(RendererBindingsUav::tex, tex_out);
-                                cmd_list->SetTexture(RendererBindingsSrv::tex, tex_outline);
-
-                                // Render
-                                cmd_list->Dispatch(thread_group_count_x(tex_out), thread_group_count_y(tex_out));
-                            }
-                            cmd_list->EndMarker();
                         }
                     }
                 }
+                cmd_list->EndTimeblock();
             }
         }
-        cmd_list->EndTimeblock();
     }
 
     void Renderer::Pass_PeformanceMetrics(RHI_CommandList* cmd_list, RHI_Texture* tex_out)
