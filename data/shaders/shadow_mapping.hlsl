@@ -347,7 +347,7 @@ float4 Shadow_Map(Surface surface, Light light)
         for (uint cascade_index = 0; cascade_index < light.array_size; cascade_index++)
         {
             // Project into light space
-            float3 pos_ndc = world_to_ndc(position_world, cb_light_view_projection[cascade_index]);
+            float3 pos_ndc = world_to_ndc(position_world, buffer_light.view_projection[cascade_index]);
             float2 pos_uv  = ndc_to_uv(pos_ndc);
 
             // Ensure not out of bound
@@ -372,7 +372,7 @@ float4 Shadow_Map(Surface surface, Light light)
                 if (cascade_fade > 0.0f && cascade_index_next < light.array_size - 1)
                 {
                     // Project into light space
-                    pos_ndc = world_to_ndc(position_world, cb_light_view_projection[cascade_index_next]);
+                    pos_ndc = world_to_ndc(position_world, buffer_light.view_projection[cascade_index_next]);
                     pos_uv  = ndc_to_uv(pos_ndc);
 
                     // Sample secondary cascade
@@ -401,7 +401,7 @@ float4 Shadow_Map(Surface surface, Light light)
         {
             // Project into light space
             uint slice_index  = direction_to_cube_face_index(light.to_pixel);
-            float3 pos_ndc    = world_to_ndc(position_world, cb_light_view_projection[slice_index]);
+            float3 pos_ndc    = world_to_ndc(position_world, buffer_light.view_projection[slice_index]);
 
             auto_bias(surface, pos_ndc, light);
             shadow.a = SampleShadowMap(surface, light.to_pixel, pos_ndc.z);
@@ -420,7 +420,7 @@ float4 Shadow_Map(Surface surface, Light light)
         if (light.distance_to_pixel < light.far)
         {
             // Project into light space
-            float3 pos_ndc  = world_to_ndc(position_world, cb_light_view_projection[0]);
+            float3 pos_ndc  = world_to_ndc(position_world, buffer_light.view_projection[0]);
             float3 pos_uv   = float3(ndc_to_uv(pos_ndc), 0);
 
             // Ensure not out of bound
@@ -442,4 +442,3 @@ float4 Shadow_Map(Surface surface, Light light)
 
     return shadow;
 }
-

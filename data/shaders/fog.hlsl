@@ -93,7 +93,7 @@ float3 vl_raymarch(Light light, float3 ray_pos, float3 ray_step, float3 ray_dir,
         float3 pos_ndc = 0.0f;
         if (light_has_shadows() || light_has_shadows_transparent())
         {
-            pos_ndc = world_to_ndc(ray_pos, cb_light_view_projection[cascade_index]);
+            pos_ndc = world_to_ndc(ray_pos, buffer_light.view_projection[cascade_index]);
         }
 
         // Shadows - Opaque
@@ -149,7 +149,7 @@ float3 VolumetricLighting(Surface surface, Light light)
         for (uint cascade_index = 0; cascade_index < light.array_size; cascade_index++)
         {
             // Project into light space
-            float3 pos_ndc = world_to_ndc(ray_pos, cb_light_view_projection[cascade_index]);
+            float3 pos_ndc = world_to_ndc(ray_pos, buffer_light.view_projection[cascade_index]);
             float2 pos_uv  = ndc_to_uv(pos_ndc);
         
             // Ensure not out of bound
