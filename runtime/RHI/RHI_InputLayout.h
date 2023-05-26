@@ -62,6 +62,8 @@ namespace Spartan
 
             if (vertex_type == RHI_Vertex_Type::Undefined)
             {
+                // The full-screen triangle vertex shaders generates it's own vertices.
+                // Therefore it doesn't need to define a vertex type for an input layout.
                 m_vertex_size = 0;
             }
             else if (vertex_type == RHI_Vertex_Type::Pos)

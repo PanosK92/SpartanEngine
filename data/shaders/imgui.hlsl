@@ -23,30 +23,36 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 //====================
 
-struct PS_INPUT
-{
-    float4 position : SV_POSITION;
-    float4 color    : COLOR;
-    float2 uv       : TEXCOORD;
-};
+// texture visualization options
+bool texture_pack()             { return buffer_imgui.texture_flags & uint(1U << 0); }
+bool texture_gamma_correction() { return buffer_imgui.texture_flags & uint(1U << 1); }
+bool texture_boost()            { return buffer_imgui.texture_flags & uint(1U << 2); }
+bool texture_abs()              { return buffer_imgui.texture_flags & uint(1U << 3); }
+bool texture_channel_r()        { return buffer_imgui.texture_flags & uint(1U << 4); }
+bool texture_channel_g()        { return buffer_imgui.texture_flags & uint(1U << 5); }
+bool texture_channel_b()        { return buffer_imgui.texture_flags & uint(1U << 6); }
+bool texture_channel_a()        { return buffer_imgui.texture_flags & uint(1U << 7); }
+bool texture_sample_point()     { return buffer_imgui.texture_flags & uint(1U << 8); }
 
-PS_INPUT mainVS(Vertex_Pos2dUvColor input)
+Pixel_PosColUv mainVS(Vertex_Pos2dUvColor input)
 {
-    PS_INPUT output;
-    output.position = mul(imgui_transform, float4(input.position.xy, 0.f, 1.f));
+    Pixel_PosColUv output;
+
+    output.position = mul(buffer_imgui.transform, float4(input.position.x, input.position.y, 0.0f, 1.0f));
     output.color    = input.color;
     output.uv       = input.uv;
+
     return output;
 }
 
-float4 mainPS(PS_INPUT input) : SV_Target
+float4 mainPS(Pixel_PosColUv input) : SV_Target
 {
-    float mip            = (float)imgui_mip_level;
+    float mip            = (float)buffer_imgui.mip_level;
     float4 color_texture = texture_sample_point() ? tex.SampleLevel(sampler_point_wrap, input.uv, mip) : tex.SampleLevel(sampler_bilinear_wrap, input.uv, mip);
     float4 color_vertex  = input.color;
 
     // Set requested channels channels
-    if (imgui_texture_flags != 0)
+    if (buffer_imgui.texture_flags != 0)
     {
         color_texture.r *= texture_channel_r() ? 1.0f : 0.0f;
         color_texture.g *= texture_channel_g() ? 1.0f : 0.0f;

@@ -78,14 +78,20 @@ namespace Spartan
             arguments.emplace_back("-fvk-s-shift"); arguments.emplace_back(to_string(rhi_shader_shift_register_s)); arguments.emplace_back("all"); // Specify Vulkan binding number shift for s-type (sampler) register
 
             // Use DirectX conventions
-            arguments.emplace_back("-fvk-use-dx-layout");     // Use DirectX memory layout for Vulkan resources
-            arguments.emplace_back("-fvk-use-dx-position-w"); // Reciprocate SV_Position.w after reading from stage input in PS to accommodate the difference between Vulkan and DirectX
-
-            // Negate SV_Position.y before writing to stage output in VS/DS/GS to accommodate Vulkan's coordinate system
-            if (m_shader_type == RHI_Shader_Vertex)
             {
-                arguments.emplace_back("-fvk-invert-y");
+                arguments.emplace_back("-fvk-use-dx-layout");     // Use DirectX memory layout for Vulkan resources
+                arguments.emplace_back("-fvk-use-dx-position-w"); // Reciprocate SV_Position.w after reading from stage input in PS to accommodate the difference between Vulkan and DirectX
+
+                // Negate SV_Position.y before writing to stage output in VS/DS/GS to accommodate Vulkan's coordinate system
+                if (m_shader_type == RHI_Shader_Vertex)
+                {
+                    arguments.emplace_back("-fvk-invert-y");
+                }
             }
+
+            // Misc
+            arguments.emplace_back("-no-legacy-cbuf-layout"); // Do not use legacy cbuffer load
+            arguments.emplace_back("-Zpc"); // Pack matrices in column-major order
 
             // Debug: Disable optimizations and embed HLSL source in the shaders
             #ifdef DEBUG
