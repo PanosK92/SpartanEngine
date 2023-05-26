@@ -65,10 +65,7 @@ struct FrameBufferData
 
     float2 resolution_environment;
     float luminance_min_nits;
-    float g_luminance_max_nits;
-
-    //float g_paper_white_nits;
-    //float2 g_padding;
+    float luminance_max_nits;
 };
 
 struct UberBufferData
