@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =============================
 #include "MenuBar.h"
+
 #include "Toolbar.h"
 #include "Core/Settings.h"
 #include "../WidgetsDeferred/FileDialog.h"
@@ -31,6 +32,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "TextureViewer.h"
 #include "ResourceViewer.h"
 #include "Rendering/Mesh.h"
+
+//== WINDOWS =============================
+#include "AssetBrowser.h"
+#include "Console.h"
+#include "Properties.h"
+#include "Viewport.h"
+#include "WorldViewer.h"
+
+//== WINDOWS =============================
+
 //========================================
 
 //= NAMESPACES =====
@@ -311,6 +322,16 @@ void MenuBar::TickAlways()
             widget_menu_item<RenderOptions>(m_editor);
             widget_menu_item<TextureViewer>(m_editor);
             widget_menu_item<ResourceViewer>(m_editor);
+
+            if (ImGui::BeginMenu("Windows"))
+            {
+                widget_menu_item<AssetBrowser>(m_editor);
+                widget_menu_item<Console>(m_editor);
+                widget_menu_item<Properties>(m_editor);
+                widget_menu_item<Viewport>(m_editor);
+                widget_menu_item<WorldViewer>(m_editor);
+                ImGui::EndMenu();
+            }
 
             if (ImGui::BeginMenu("ImGui"))
             {
