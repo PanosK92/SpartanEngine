@@ -286,83 +286,11 @@ void MenuBar::TickAlways()
 
     if (ImGui::BeginMainMenuBar())
     {
-        if (ImGui::BeginMenu("World"))
-        {
-            if (ImGui::MenuItem("New"))
-            {
-                Spartan::World::New();
-            }
+        CreateWorldMenuItem();
 
-            ImGui::Separator();
+        CreateViewMenuItem();
 
-            if (ImGui::MenuItem("Load"))
-            {
-                ShowWorldLoadDialog();
-            }
-
-            ImGui::Separator();
-
-            if (ImGui::MenuItem("Save", "Ctrl+S"))
-            {
-                ShowWorldSaveDialog();
-            }
-
-            if (ImGui::MenuItem("Save As...", "Ctrl+S"))
-            {
-                ShowWorldSaveDialog();
-            }
-
-            ImGui::EndMenu();
-        }
-
-        if (ImGui::BeginMenu("View"))
-        {
-            widget_menu_item<Profiler>(m_editor);
-            widget_menu_item<ShaderEditor>(m_editor);
-            widget_menu_item<RenderOptions>(m_editor);
-            widget_menu_item<TextureViewer>(m_editor);
-            widget_menu_item<ResourceViewer>(m_editor);
-
-            if (ImGui::BeginMenu("Windows"))
-            {
-                widget_menu_item<AssetBrowser>(m_editor);
-                widget_menu_item<Console>(m_editor);
-                widget_menu_item<Properties>(m_editor);
-                widget_menu_item<Viewport>(m_editor);
-                widget_menu_item<WorldViewer>(m_editor);
-                ImGui::EndMenu();
-            }
-
-            if (ImGui::BeginMenu("ImGui"))
-            {
-                ImGui::MenuItem("Metrics", nullptr, &show_imgui_metrics_window);
-                ImGui::MenuItem("Style",   nullptr, &show_imgui_style_window);
-                ImGui::MenuItem("Demo",    nullptr, &show_imgui_demo_widow);
-                ImGui::EndMenu();
-            }
-
-            ImGui::EndMenu();
-        }
-
-        if (ImGui::BeginMenu("Help"))
-        {
-            ImGui::MenuItem("About", nullptr, &show_about_window);
-            ImGui::MenuItem("Contributors", nullptr, &show_contributors_window);
-
-            if (ImGui::MenuItem("Learn how to contribute", nullptr, nullptr))
-            {
-                Spartan::FileSystem::OpenUrl("https://github.com/PanosK92/SpartanEngine/wiki/How-to-contribute");
-            }
-
-            if (ImGui::MenuItem("Join the Discord server", nullptr, nullptr))
-            {
-                Spartan::FileSystem::OpenUrl("https://discord.gg/TG5r2BS");
-            }
-
-            ImGui::MenuItem("Shortcuts & Input Reference", "Ctrl+P", show_shortcuts_window);
-
-            ImGui::EndMenu();
-        }
+        CreateHelpMenuItem();
 
         // Tool bar
         ImGui::Spacing();
@@ -395,6 +323,94 @@ void MenuBar::TickAlways()
     window_about();
     window_contributors();
     window_shortcuts();
+}
+
+
+void MenuBar::CreateWorldMenuItem()
+{
+    if (ImGui::BeginMenu("World"))
+    {
+        if (ImGui::MenuItem("New"))
+        {
+            Spartan::World::New();
+        }
+
+        ImGui::Separator();
+
+        if (ImGui::MenuItem("Load"))
+        {
+            ShowWorldLoadDialog();
+        }
+
+        ImGui::Separator();
+
+        if (ImGui::MenuItem("Save", "Ctrl+S"))
+        {
+            ShowWorldSaveDialog();
+        }
+
+        if (ImGui::MenuItem("Save As...", "Ctrl+S"))
+        {
+            ShowWorldSaveDialog();
+        }
+
+        ImGui::EndMenu();
+    }
+}
+
+void MenuBar::CreateViewMenuItem()
+{
+    if (ImGui::BeginMenu("View"))
+    {
+        widget_menu_item<Profiler>(m_editor);
+        widget_menu_item<ShaderEditor>(m_editor);
+        widget_menu_item<RenderOptions>(m_editor);
+        widget_menu_item<TextureViewer>(m_editor);
+        widget_menu_item<ResourceViewer>(m_editor);
+
+        if (ImGui::BeginMenu("Windows"))
+        {
+            widget_menu_item<AssetBrowser>(m_editor);
+            widget_menu_item<Console>(m_editor);
+            widget_menu_item<Properties>(m_editor);
+            widget_menu_item<Viewport>(m_editor);
+            widget_menu_item<WorldViewer>(m_editor);
+            ImGui::EndMenu();
+        }
+
+        if (ImGui::BeginMenu("ImGui"))
+        {
+            ImGui::MenuItem("Metrics", nullptr, &show_imgui_metrics_window);
+            ImGui::MenuItem("Style", nullptr, &show_imgui_style_window);
+            ImGui::MenuItem("Demo", nullptr, &show_imgui_demo_widow);
+            ImGui::EndMenu();
+        }
+
+        ImGui::EndMenu();
+    }
+}
+
+void MenuBar::CreateHelpMenuItem()
+{
+    if (ImGui::BeginMenu("Help"))
+    {
+        ImGui::MenuItem("About", nullptr, &show_about_window);
+        ImGui::MenuItem("Contributors", nullptr, &show_contributors_window);
+
+        if (ImGui::MenuItem("Learn how to contribute", nullptr, nullptr))
+        {
+            Spartan::FileSystem::OpenUrl("https://github.com/PanosK92/SpartanEngine/wiki/How-to-contribute");
+        }
+
+        if (ImGui::MenuItem("Join the Discord server", nullptr, nullptr))
+        {
+            Spartan::FileSystem::OpenUrl("https://discord.gg/TG5r2BS");
+        }
+
+        ImGui::MenuItem("Shortcuts & Input Reference", "Ctrl+P", show_shortcuts_window);
+
+        ImGui::EndMenu();
+    }
 }
 
 void MenuBar::HandleKeyShortcuts() const
