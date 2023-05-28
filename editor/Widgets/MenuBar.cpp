@@ -368,7 +368,7 @@ void MenuBar::CreateViewMenuItem()
         widget_menu_item<TextureViewer>(m_editor);
         widget_menu_item<ResourceViewer>(m_editor);
 
-        if (ImGui::BeginMenu("Windows"))
+        if (ImGui::BeginMenu("Widgets"))
         {
             widget_menu_item<AssetBrowser>(m_editor);
             widget_menu_item<Console>(m_editor);
