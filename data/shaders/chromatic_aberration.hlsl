@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016-2021 Panos Karabelas
+Copyright(c) 2016-2023 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -43,9 +43,9 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 
     // Sample color
     float3 color = 0.0f; 
-    color.r      = tex.SampleLevel(sampler_bilinear_clamp, uv + (g_texel_size * shift), 0).r;
+    color.r      = tex.SampleLevel(sampler_bilinear_clamp, uv + (get_rt_texel_size() * shift), 0).r;
     color.g      = tex[thread_id.xy].g;
-    color.b      = tex.SampleLevel(sampler_bilinear_clamp, uv - (g_texel_size * shift), 0).b;
+    color.b      = tex.SampleLevel(sampler_bilinear_clamp, uv - (get_rt_texel_size() * shift), 0).b;
 
     tex_uav[thread_id.xy] = float4(color, tex[thread_id.xy].a);
 }

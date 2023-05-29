@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016-2021 Panos Karabelas
+Copyright(c) 2016-2023 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -38,5 +38,6 @@ Pixel_PosUv mainVS(Vertex_PosUv input)
 float4 mainPS(Pixel_PosUv input) : SV_TARGET
 {
     float2 uv = float2(input.uv.x * buffer_uber.mat_tiling.x + buffer_uber.mat_offset.x, input.uv.y * buffer_uber.mat_offset.y + buffer_uber.mat_tiling.y);
-    return degamma(tex.SampleLevel(sampler_anisotropic_wrap, uv, 0)) * buffer_uber.mat_color;
+    float4 color = tex.SampleLevel(sampler_anisotropic_wrap, uv, 0);
+    return float4(degamma(color.rgb), color.a) * buffer_uber.mat_color;
 }

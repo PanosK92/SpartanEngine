@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016-2021 Panos Karabelas
+Copyright(c) 2016-2023 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -19,7 +19,6 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-// Settings
 static const uint  g_sss_max_steps                     = 12;    // Max ray steps, affects quality and performance.
 static const float g_sss_ray_max_distance              = 0.05f; // Max shadow length, longer shadows are less accurate.
 static const float g_sss_thickness                     = 0.05f; // Depth testing thickness.

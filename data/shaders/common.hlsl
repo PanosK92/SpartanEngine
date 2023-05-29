@@ -52,15 +52,15 @@ static const uint THREAD_GROUP_COUNT_Y = 8;
 static const uint THREAD_GROUP_COUNT   = 64;
 
 /*------------------------------------------------------------------------------
-    MACROS
+   COMMON
 ------------------------------------------------------------------------------*/
-#define g_texel_size              float2(1.0f / buffer_uber.resolution_rt.x, 1.0f / buffer_uber.resolution_rt.y)
-#define g_shadow_texel_size       (1.0f / buffer_frame.shadow_resolution)
-#define degamma(color)            pow(abs(color), buffer_frame.gamma)
-#define gamma(color)              pow(abs(color), 1.0f / buffer_frame.gamma)
-#define g_tex_noise_normal_scale  float2(buffer_frame.resolution_render.x / 256.0f, buffer_frame.resolution_render.y / 256.0f)
-#define g_tex_noise_blue_scale    float2(buffer_frame.resolution_render.x / 470.0f, buffer_frame.resolution_render.y / 470.0f)
-#define g_ssr_roughness_threshold 0.8f
+float2 get_rt_texel_size()          { return float2(1.0f / buffer_uber.resolution_rt.x, 1.0f / buffer_uber.resolution_rt.y); }
+float get_shadow_texel_size()       { return (1.0f / buffer_frame.shadow_resolution); }
+float2 get_tex_noise_normal_scale() { return float2(buffer_frame.resolution_render.x / 256.0f, buffer_frame.resolution_render.y / 256.0f); }
+float2 get_tex_noise_blue_scale()   { return float2(buffer_frame.resolution_render.x / 470.0f, buffer_frame.resolution_render.y / 470.0f); }
+float3 degamma(float3 color)        { return pow(color, buffer_frame.gamma); }
+float3 gamma(float3 color)          { return pow(color, 1.0f / buffer_frame.gamma); }
+
 /*------------------------------------------------------------------------------
     MATH
 ------------------------------------------------------------------------------*/
@@ -510,13 +510,13 @@ float get_noise_blue(float2 screen_pos)
     // Temporal factor - alternate between blue noise images
     float slice = (buffer_frame.frame % 8) * (float)is_taa_enabled();
 
-    float2 uv = (screen_pos + 0.5f) * g_tex_noise_blue_scale;
+    float2 uv = (screen_pos + 0.5f) * get_tex_noise_blue_scale();
     return tex_noise_blue.SampleLevel(sampler_point_wrap, float3(uv.x, uv.y, slice), 0).r;
 }
 
 float3 get_noise_normal(uint2 screen_pos)
 {
-    float2 uv = (screen_pos + 0.5f) * g_tex_noise_normal_scale;
+    float2 uv = (screen_pos + 0.5f) * get_tex_noise_normal_scale();
     return normalize(tex_noise_normal.SampleLevel(sampler_point_wrap, uv, 0).xyz);
 }
 

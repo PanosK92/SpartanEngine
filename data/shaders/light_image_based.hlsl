@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016-2022 Panos Karabelas
+Copyright(c) 2016-2023 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -119,9 +119,10 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     float ssr_alpha         = ssr_sample.a;
 
     // Remap alpha above a certain roughness threshold in order to hide blocky reflections (from very small mips)
-    if (surface.roughness > g_ssr_roughness_threshold)
+    static const float ssr_roughness_threshold = 0.8f;
+    if (surface.roughness > ssr_roughness_threshold)
     {
-        ssr_alpha = lerp(ssr_alpha, 0.0f, (surface.roughness - g_ssr_roughness_threshold) / (1.0f - g_ssr_roughness_threshold));
+        ssr_alpha = lerp(ssr_alpha, 0.0f, (surface.roughness - ssr_roughness_threshold) / (1.0f - ssr_roughness_threshold));
     }
 
     // Sample reflection probe
@@ -166,4 +167,3 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     // Perfection achieved
     return float4(ibl, 0.0f);
 }
-

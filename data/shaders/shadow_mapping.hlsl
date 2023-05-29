@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016-2022 Panos Karabelas
+Copyright(c) 2016-2023 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -34,8 +34,8 @@ static const uint   g_shadow_samples                 = 3;
 static const float  g_shadow_filter_size             = 3.0f;
 static const float  g_shadow_cascade_blend_threshold = 0.8f;
 // technique - vogel
-static const uint   g_penumbra_samples                = 8;
-static const float  g_penumbra_filter_size            = 128.0f;
+static const uint   g_penumbra_samples               = 8;
+static const float  g_penumbra_filter_size           = 128.0f;
 // technique - pre-calculated
 static const float g_pcf_filter_size    = (sqrt((float)g_shadow_samples) - 1.0f) / 2.0f;
 static const float g_shadow_samples_rpc = 1.0f / (float) g_shadow_samples;
@@ -141,7 +141,7 @@ float compute_penumbra(float vogel_angle, float3 uv, float compare)
 
     for(uint i = 0; i < g_penumbra_samples; i ++)
     {
-        float2 offset = vogel_disk_sample(i, g_penumbra_samples, vogel_angle) * g_shadow_texel_size * g_penumbra_filter_size;
+        float2 offset = vogel_disk_sample(i, g_penumbra_samples, vogel_angle) * get_shadow_texel_size() * g_penumbra_filter_size;
         float depth   = shadow_sample_depth(uv + float3(offset, 0.0f));
 
         if(depth > compare)
@@ -178,7 +178,7 @@ float Technique_Vogel(Surface surface, float3 uv, float compare)
 
     for (uint i = 0; i < g_shadow_samples; i++)
     {
-        float2 offset = vogel_disk_sample(i, g_shadow_samples, temporal_angle) * g_shadow_texel_size * g_shadow_filter_size * penumbra;
+        float2 offset = vogel_disk_sample(i, g_shadow_samples, temporal_angle) * get_shadow_texel_size() * g_shadow_filter_size * penumbra;
         shadow        += shadow_compare_depth(uv + float3(offset, 0.0f), compare);
     } 
 
@@ -194,7 +194,7 @@ float3 Technique_Vogel_Color(Surface surface, float3 uv)
     
     for (uint i = 0; i < g_shadow_samples; i++)
     {
-        float2 offset = vogel_disk_sample(i, g_shadow_samples, vogel_angle) * g_shadow_texel_size * g_shadow_filter_size;
+        float2 offset = vogel_disk_sample(i, g_shadow_samples, vogel_angle) * get_shadow_texel_size() * g_shadow_filter_size;
         shadow        += shadow_sample_color(uv + float3(offset, 0.0f));
     } 
 
@@ -280,7 +280,7 @@ float Technique_Poisson(Surface surface, float3 uv, float compare)
     for (uint i = 0; i < g_shadow_samples; i++)
     {
         uint index    = uint(g_shadow_samples * get_random(uv.xy * i)) % g_shadow_samples; // A pseudo-random number between 0 and 15, different for each pixel and each index
-        float2 offset = (poisson_disk[index] + temporal_offset) * g_shadow_texel_size * g_shadow_filter_size;
+        float2 offset = (poisson_disk[index] + temporal_offset) * get_shadow_texel_size() * g_shadow_filter_size;
         shadow        += shadow_compare_depth(uv + float3(offset, 0.0f), compare);
     }   
 
@@ -298,7 +298,7 @@ float Technique_Pcf(Surface surface, float3 uv, float compare)
     {
         for (float x = -g_pcf_filter_size; x <= g_pcf_filter_size; x++)
         {
-            float2 offset = float2(x, y) * g_shadow_texel_size;
+            float2 offset = float2(x, y) * get_shadow_texel_size();
             shadow        += shadow_compare_depth(uv + float3(offset, 0.0f), compare);
         }
     }
@@ -331,7 +331,7 @@ inline void auto_bias(Surface surface, inout float3 position, Light light, float
 
 inline float3 bias_normal_offset(Surface surface, Light light, float3 normal)
 {
-    return normal * (1.0f - saturate(light.n_dot_l)) * light.normal_bias * g_shadow_texel_size * 10;
+    return normal * (1.0f - saturate(light.n_dot_l)) * light.normal_bias * get_shadow_texel_size() * 10;
 }
 
 /*------------------------------------------------------------------------------
