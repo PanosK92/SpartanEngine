@@ -70,7 +70,7 @@ namespace Spartan
         m_keys_previous_frame.fill(false);
 
         // Get events from the main Window's event processing loop
-        SP_SUBSCRIBE_TO_EVENT(EventType::EventSDL, SP_EVENT_HANDLER_VARIANT_STATIC(OnEvent));
+        SP_SUBSCRIBE_TO_EVENT(EventType::Sdl, SP_EVENT_HANDLER_VARIANT_STATIC(OnEvent));
     }
 
     void Input::Tick()
@@ -82,9 +82,9 @@ namespace Spartan
         PollController();
     }
 
-    void Input::OnEvent(const Variant& event_variant)
+    void Input::OnEvent(sp_variant data)
     {
-        SDL_Event* event_sdl = event_variant.Get<SDL_Event*>();
+        SDL_Event* event_sdl = static_cast<SDL_Event*>(get<void*>(data));
         Uint32 event_type    = event_sdl->type;
 
         if (event_type == SDL_MOUSEWHEEL)

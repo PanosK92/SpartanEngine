@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ====================================
 #include "Editor.h"
+#include "Core/Event.h"
 #include "Core/Engine.h"
 #include "Core/Settings.h"
 #include "Core/Window.h"
@@ -45,7 +46,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 using namespace std;
 //==================
 
-// Locals
 namespace
 {
     // Shapes
@@ -71,9 +71,9 @@ namespace
     Widget* widget_world     = nullptr;
 }
 
-static void process_event(const Spartan::Variant& event_variant)
+static void process_event(Spartan::sp_variant data)
 {
-    SDL_Event* event_sdl = event_variant.Get<SDL_Event*>();
+    SDL_Event* event_sdl = static_cast<SDL_Event*>(get<void*>(data));
     ImGui_ImplSDL2_ProcessEvent(event_sdl);
 }
 
@@ -211,7 +211,7 @@ Editor::Editor()
     }
 
     // Allow ImGui to get event's from the engine's event processing loop
-    SP_SUBSCRIBE_TO_EVENT(EventType::EventSDL, SP_EVENT_HANDLER_VARIANT_STATIC(process_event));
+    SP_SUBSCRIBE_TO_EVENT(Spartan::EventType::Sdl, SP_EVENT_HANDLER_VARIANT_STATIC(process_event));
 }
 
 Editor::~Editor()
