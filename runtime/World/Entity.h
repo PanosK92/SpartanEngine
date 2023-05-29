@@ -21,11 +21,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =====================
-#include <vector>
-#include "../Core/Event.h"
+//= INCLUDES ====================
 #include "Components/Component.h"
-//================================
+#include "Event.h"
+//===============================
 
 namespace Spartan
 {
@@ -71,7 +70,7 @@ namespace Spartan
         {
             const ComponentType type = Component::TypeToEnum<T>();
 
-            // Early exit if the component exist
+            // Early exit if the component exists
             if (std::shared_ptr<T> component = GetComponent<T>())
                 return component;
 
@@ -94,7 +93,7 @@ namespace Spartan
         // Adds a component of ComponentType 
         std::shared_ptr<Component> AddComponent(ComponentType type);
 
-        // Returns a component of type T (if it exists)
+        // Returns a component of type T
         template <class T>
         std::shared_ptr<T> GetComponent()
         {
@@ -102,7 +101,7 @@ namespace Spartan
             return std::static_pointer_cast<T>(m_components[static_cast<uint32_t>(component_type)]);
         }
 
-        // Removes a component (if it exists)
+        // Removes a component
         template <class T>
         void RemoveComponent()
         {

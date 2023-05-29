@@ -604,7 +604,7 @@ namespace Spartan
         cmd_list->SetConstantBuffer(RendererBindingsCb::material, RHI_Shader_Pixel, m_cb_material_gpu);
     }
 
-    void Renderer::OnAddRenderables(const Variant& renderables)
+    void Renderer::OnAddRenderables(sp_variant data)
     {
         // note: m_renderables is a vector of shared pointers.
         // this ensures that if any entities are deallocated by the world.
@@ -614,7 +614,7 @@ namespace Spartan
 
         m_renderables_pending.clear();
 
-        vector<shared_ptr<Entity>> entities = renderables.Get<vector<shared_ptr<Entity>>>();
+        vector<shared_ptr<Entity>> entities = get<vector<shared_ptr<Entity>>>(data);
         for (shared_ptr<Entity> entity : entities)
         {
             SP_ASSERT_MSG(entity != nullptr, "Entity is null");

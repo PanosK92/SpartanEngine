@@ -29,6 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Math/Vector4.h"
 #include "../Math/Plane.h"
 #include <unordered_map>
+#include "Event.h"
 //===============================
 
 namespace Spartan
@@ -37,7 +38,6 @@ namespace Spartan
     class Entity;
     class Camera;
     class Light;
-    class Variant;
     class Environment;
     
     namespace Math
@@ -182,7 +182,7 @@ namespace Spartan
         static void Pass_Ffx_Fsr2(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
 
         // Event handlers
-        static void OnAddRenderables(const Variant& renderables);
+        static void OnAddRenderables(sp_variant data);
         static void OnClear();
         static void OnFullScreenToggled();
 

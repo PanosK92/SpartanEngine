@@ -134,9 +134,9 @@ namespace Spartan
         }
 
         // The type of the component
-        ComponentType m_type   = ComponentType::Undefined;
+        ComponentType m_type = ComponentType::Undefined;
         // The state of the component
-        bool m_enabled         = false;
+        bool m_enabled       = false;
         // The owner of the component
         std::weak_ptr<Entity> m_entity_ptr_weak;
         Entity* m_entity_ptr = nullptr;

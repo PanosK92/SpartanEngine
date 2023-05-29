@@ -43,14 +43,14 @@ namespace Spartan
         }
     }
 
-    void Event::Subscribe(const EventType event_id, subscriber&& function)
+    void Event::Subscribe(const EventType event_type, subscriber&& function)
     {
-        event_subscribers[static_cast<uint32_t>(event_id)].push_back(forward<subscriber>(function));
+        event_subscribers[static_cast<uint32_t>(event_type)].push_back(forward<subscriber>(function));
     }
 
-    void Event::Fire(const EventType event_id, const Variant& data /*= 0*/)
+    void Event::Fire(const EventType event_type, sp_variant data /*= 0*/)
     {
-        for (const auto& subscriber : event_subscribers[static_cast<uint32_t>(event_id)])
+        for (const auto& subscriber : event_subscribers[static_cast<uint32_t>(event_type)])
         {
             subscriber(data);
         }

@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===============
 #include "Definitions.h"
 #include "../Math/Vector2.h"
+#include "Event.h"
 //==========================
 
 namespace Spartan
@@ -95,7 +96,7 @@ namespace Spartan
         static void PollController();
 
         // Event driven input
-        static void OnEvent(const Variant& event_variant);
+        static void OnEvent(sp_variant data);
         static void OnEventMouse(void* event_mouse);
         static void OnEventController(void* event_controller);
 
