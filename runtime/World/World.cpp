@@ -681,7 +681,7 @@ namespace Spartan
                 {
                     material->SetColor(Color::material_tire);
                     material->SetTexture(MaterialTexture::Roughness, nullptr);
-                    material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.8f);
+                    material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.5f);
                     material->SetProperty(MaterialProperty::MetallnessMultiplier, 0.0f);
                 }
 

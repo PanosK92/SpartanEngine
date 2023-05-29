@@ -21,7 +21,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =============================
 #include "MenuBar.h"
-
 #include "Toolbar.h"
 #include "Core/Settings.h"
 #include "../WidgetsDeferred/FileDialog.h"
@@ -32,16 +31,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "TextureViewer.h"
 #include "ResourceViewer.h"
 #include "Rendering/Mesh.h"
-
-//== WINDOWS =============================
 #include "AssetBrowser.h"
 #include "Console.h"
 #include "Properties.h"
 #include "Viewport.h"
 #include "WorldViewer.h"
-
-//== WINDOWS =============================
-
 //========================================
 
 //= NAMESPACES =====
@@ -139,7 +133,8 @@ namespace
         {
              // format: name,contribution,country,button text,button url
             "Jesse Guerrero,Editor UX improvements,US,LinkedIn,https://www.linkedin.com/in/jguer",
-            "Konstantinos Benos,Editor transformation bug fixes,Greece,Twitter,https://twitter.com/deg3x"
+            "Konstantinos Benos,Editor transformation bug fixes,Greece,Twitter,https://twitter.com/deg3x",
+            "Nick Polyderopoulos,Editor UX improvements,Greece,LinkedIn,https://www.linkedin.com/in/nick-polyderopoulos-21742397"
         };
 
         ImGui::SetNextWindowFocus();

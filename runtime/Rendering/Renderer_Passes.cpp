@@ -2216,7 +2216,7 @@ namespace Spartan
                                     {
                                         // Set uber buffer with entity transform
                                         m_cb_uber_cpu.transform = entity_selected->GetTransform()->GetMatrix() * m_cb_frame_cpu.view_projection_unjittered;
-                                        m_cb_uber_cpu.mat_color = DEBUG_COLOR;
+                                        m_cb_uber_cpu.mat_color = Math::Vector4(0.0f, 1.0f, 1.0f, 1.0f); // cyan
                                         Update_Cb_Uber(cmd_list);
 
                                         cmd_list->SetBufferVertex(mesh->GetVertexBuffer());
