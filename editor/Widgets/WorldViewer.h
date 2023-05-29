@@ -53,7 +53,7 @@ private:
     void HandleKeyShortcuts();
 
     // Context menu actions
-    static void ActionEntityDelete(const std::shared_ptr<Spartan::Entity>& entity);
+    static void ActionEntityDelete(const std::shared_ptr<Spartan::Entity> entity);
     static Spartan::Entity* ActionEntityCreateEmpty();
     static void ActionEntityCreateCube();
     static void ActionEntityCreateQuad();

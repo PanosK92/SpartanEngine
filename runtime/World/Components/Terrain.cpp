@@ -234,7 +234,7 @@ namespace Spartan
         ThreadPool::ParallelLoop(compute_vertex_normals_tangents, vertex_count);
     }
 
-    Terrain::Terrain(Entity* entity, uint64_t id /*= 0*/) : IComponent(entity, id)
+    Terrain::Terrain(weak_ptr<Entity> entity) : IComponent(entity)
     {
 
     }
@@ -278,7 +278,7 @@ namespace Spartan
 
             ResourceCache::Remove(m_mesh);
             m_mesh = nullptr;
-            if (Renderable* renderable = m_entity->AddComponent<Renderable>())
+            if (Renderable* renderable = m_entity_ptr->AddComponent<Renderable>())
             {
                 renderable->Clear();
             }
@@ -363,7 +363,7 @@ namespace Spartan
 
     void Terrain::UpdateFromMesh(const shared_ptr<Mesh> mesh) const
     {
-        if (Renderable* renderable = m_entity->AddComponent<Renderable>())
+        if (Renderable* renderable = m_entity_ptr->AddComponent<Renderable>())
         {
             renderable->SetGeometry(
                 "Terrain",
@@ -395,7 +395,7 @@ namespace Spartan
             m_mesh->ComputeAabb();
 
             // Set a file path so the model can be used by the resource cache
-            m_mesh->SetResourceFilePath(ResourceCache::GetProjectDirectory() + m_entity->GetObjectName() + "_terrain_" + to_string(m_object_id) + string(EXTENSION_MODEL));
+            m_mesh->SetResourceFilePath(ResourceCache::GetProjectDirectory() + m_entity_ptr->GetObjectName() + "_terrain_" + to_string(m_object_id) + string(EXTENSION_MODEL));
             m_mesh = ResourceCache::Cache(m_mesh);
         }
         else

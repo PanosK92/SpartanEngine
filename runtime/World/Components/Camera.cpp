@@ -41,13 +41,15 @@ using namespace std;
 
 namespace Spartan
 {
-    Camera::Camera(Entity* entity, uint64_t id /*= 0*/) : IComponent(entity, id)
+    Camera::Camera(weak_ptr<Entity> entity) : IComponent(entity)
     {
 
     }
 
     void Camera::OnInitialize()
     {
+        IComponent::OnInitialize();
+
         m_view            = ComputeViewMatrix();
         m_projection      = ComputeProjection(m_far_plane, m_near_plane); // reverse-z
         m_view_projection = m_view * m_projection;
@@ -583,7 +585,7 @@ namespace Spartan
     {
         if (shared_ptr<Entity> entity = Renderer::GetCamera()->GetSelectedEntity())
         {
-            SP_LOG_INFO("Focusing on entity \"%s\"...", entity->GetTransform()->GetEntity()->GetObjectName().c_str());
+            SP_LOG_INFO("Focusing on entity \"%s\"...", entity->GetTransform()->GetEntityPtr()->GetObjectName().c_str());
 
             m_lerp_to_target_position = entity->GetTransform()->GetPosition();
             const Vector3 target_direction = (m_lerp_to_target_position - m_transform->GetPosition()).Normalized();
@@ -616,9 +618,9 @@ namespace Spartan
 
     Matrix Camera::ComputeViewMatrix() const
     {
-        const auto position = GetTransform()->GetPosition();
-        auto look_at        = GetTransform()->GetRotation() * Vector3::Forward;
-        const auto up       = GetTransform()->GetRotation() * Vector3::Up;
+        const auto position = m_transform->GetPosition();
+        auto look_at        = m_transform->GetRotation() * Vector3::Forward;
+        const auto up       = m_transform->GetRotation() * Vector3::Up;
 
         // offset look_at by current position
         look_at += position;

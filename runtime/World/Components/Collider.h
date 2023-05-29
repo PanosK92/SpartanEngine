@@ -46,7 +46,7 @@ namespace Spartan
     class SP_CLASS Collider : public IComponent
     {
     public:
-        Collider(Entity* entity, uint64_t id = 0);
+        Collider(std::weak_ptr<Entity> entity);
         ~Collider() = default;
 
         //= ICOMPONENT ===============================

@@ -31,13 +31,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-    class RHI_Device;
-    class RHI_ConstantBuffer;
-
     class SP_CLASS Transform : public IComponent
     {
     public:
-        Transform(Entity* entity, uint64_t id = 0);
+        Transform(std::weak_ptr<Entity> entity);
         ~Transform() = default;
 
         //= ICOMPONENT ===============================
@@ -97,7 +94,8 @@ namespace Spartan
         void AddChild(Transform* child);
         bool IsDescendantOf(Transform* transform) const;
         void GetDescendants(std::vector<Transform*>* descendants);
-        Entity* GetDescendantByName(const std::string& name);
+        Entity* GetDescendantPtrByName(const std::string& name);
+        std::weak_ptr<Entity> GetDescendantPtrWeakByName(const std::string& name);
         bool IsRoot()                          const { return m_parent == nullptr; }
         bool HasParent()                       const { return m_parent != nullptr; }
         bool HasChildren()                     const { return GetChildrenCount() > 0 ? true : false; }

@@ -55,7 +55,7 @@ namespace Spartan
     class SP_CLASS Camera : public IComponent
     {
     public:
-        Camera(Entity* entity, uint64_t id = 0);
+        Camera(std::weak_ptr<Entity> entity);
         ~Camera() = default;
 
         //= ICOMPONENT ===============================

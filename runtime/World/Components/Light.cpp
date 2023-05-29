@@ -40,7 +40,7 @@ using namespace std;
 
 namespace Spartan
 {
-    Light::Light(Entity* entity, uint64_t id /*= 0*/) : IComponent(entity, id)
+    Light::Light(weak_ptr<Entity> entity) : IComponent(entity)
     {
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_shadows_enabled, bool);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_shadows_screen_space_enabled, bool);
@@ -69,7 +69,7 @@ namespace Spartan
 
     void Light::OnInitialize()
     {
-
+        IComponent::OnInitialize();
     }
 
     void Light::OnStart()

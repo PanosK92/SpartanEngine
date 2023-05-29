@@ -52,7 +52,7 @@ namespace Spartan
     class SP_CLASS Renderable : public IComponent
     {
     public:
-        Renderable(Entity* entity, uint64_t id = 0);
+        Renderable(std::weak_ptr<Entity> entity);
         ~Renderable();
 
         // IComponent

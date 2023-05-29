@@ -46,7 +46,7 @@ namespace Spartan
     class SP_CLASS RigidBody : public IComponent
     {
     public:
-        RigidBody(Entity* entity, uint64_t id = 0);
+        RigidBody(std::weak_ptr<Entity> entity);
         ~RigidBody();
 
         //= ICOMPONENT ===============================
