@@ -25,9 +25,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Audio/Audio.h"
 //============================
 
+//= NAMESPACES =====
+using namespace std;
+//==================
+
 namespace Spartan
 {
-    AudioListener::AudioListener(Entity* entity, uint64_t id /*= 0*/) : IComponent(entity, id)
+    AudioListener::AudioListener(weak_ptr<Entity> entity) : IComponent(entity)
     {
 
     }

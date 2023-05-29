@@ -32,12 +32,13 @@ namespace Spartan
     class Transform;
     class Renderable;
     
-    class SP_CLASS Entity : public Object
+    class SP_CLASS Entity : public Object, public std::enable_shared_from_this<Entity>
     {
     public:
-        Entity(uint64_t transform_id = 0);
+        Entity();
         ~Entity();
 
+        void Initialize();
         void Clone();
 
         // Runs once, before the simulation ends.
@@ -66,18 +67,16 @@ namespace Spartan
 
         // Adds a component of type T
         template <class T>
-        T* AddComponent(uint64_t id = 0)
+        T* AddComponent()
         {
             const ComponentType type = IComponent::TypeToEnum<T>();
 
-            // If the component exists, return the existing one
+            // Early exit if the component exist
             if (T* component = GetComponent<T>())
-            {
                 return component;
-            }
 
             // Create a new component
-            std::shared_ptr<T> component = std::make_shared<T>(this, id);
+            std::shared_ptr<T> component = std::make_shared<T>(this->shared_from_this());
 
             // Save new component
             m_components[static_cast<uint32_t>(type)] = std::static_pointer_cast<IComponent>(component);
@@ -97,7 +96,7 @@ namespace Spartan
         }
 
         // Adds a component of ComponentType 
-        IComponent* AddComponent(ComponentType type, uint64_t id = 0);
+        IComponent* AddComponent(ComponentType type);
 
         // Returns a component of type T (if it exists)
         template <class T>

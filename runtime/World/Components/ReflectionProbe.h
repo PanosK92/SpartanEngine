@@ -35,7 +35,7 @@ namespace Spartan
     class SP_CLASS ReflectionProbe : public IComponent
     {
     public:
-        ReflectionProbe(Entity* entity, uint64_t id = 0);
+        ReflectionProbe(std::weak_ptr<Entity> entity);
         ~ReflectionProbe() = default;
 
         //= COMPONENT ================================

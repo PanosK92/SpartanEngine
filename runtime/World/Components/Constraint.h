@@ -47,7 +47,7 @@ namespace Spartan
     class SP_CLASS Constraint : public IComponent
     {
     public:
-        Constraint(Entity* entity, uint64_t id = 0);
+        Constraint(std::weak_ptr<Entity> entity);
         ~Constraint();
 
         //= COMPONENT ================================

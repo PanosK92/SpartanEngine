@@ -34,13 +34,15 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    AudioSource::AudioSource(Entity* entity, uint64_t id /*= 0*/) : IComponent(entity, id)
+    AudioSource::AudioSource(weak_ptr<Entity> entity) : IComponent(entity)
     {
 
     }
     
     void AudioSource::OnInitialize()
     {
+        IComponent::OnInitialize();
+
         if (!m_audio_clip)
             return;
         

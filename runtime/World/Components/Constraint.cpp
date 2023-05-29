@@ -44,7 +44,7 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    Constraint::Constraint(Entity* entity, uint64_t id /*= 0*/) : IComponent(entity, id)
+    Constraint::Constraint(weak_ptr<Entity> entity) : IComponent(entity)
     {
         m_constraint              = nullptr;
         m_enabledEffective        = true;
@@ -71,7 +71,7 @@ namespace Spartan
 
     void Constraint::OnInitialize()
     {
-
+        IComponent::OnInitialize();
     }
 
     void Constraint::OnStart()
@@ -173,7 +173,7 @@ namespace Spartan
         if (body_other.expired())
             return;
 
-        if (!body_other.expired() && body_other.lock()->GetObjectId() == m_entity->GetObjectId())
+        if (!body_other.expired() && body_other.lock()->GetObjectId() == m_entity_ptr->GetObjectId())
         {
             SP_LOG_WARNING("You can't connect a body to itself.");
             return;
@@ -205,7 +205,7 @@ namespace Spartan
     {
         if (m_constraint)
         {
-            RigidBody* rigid_body_own    = m_entity->GetComponent<RigidBody>();
+            RigidBody* rigid_body_own    = m_entity_ptr->GetComponent<RigidBody>();
             RigidBody* rigid_body_other    = !m_bodyOther.expired() ? m_bodyOther.lock()->GetComponent<RigidBody>() : nullptr;
 
             // Make both bodies aware of the removal of this constraint
@@ -221,7 +221,7 @@ namespace Spartan
         if (!m_constraint || m_bodyOther.expired())
             return;
 
-        RigidBody* rigid_body_own   = m_entity->GetComponent<RigidBody>();
+        RigidBody* rigid_body_own   = m_entity_ptr->GetComponent<RigidBody>();
         RigidBody* rigid_body_other = !m_bodyOther.expired() ? m_bodyOther.lock()->GetComponent<RigidBody>() : nullptr;
         btRigidBody* bt_own_body    = rigid_body_own ? rigid_body_own->GetBtRigidBody() : nullptr;
         btRigidBody* bt_other_body  = rigid_body_other ? rigid_body_other->GetBtRigidBody() : nullptr;
@@ -279,7 +279,7 @@ namespace Spartan
         ReleaseConstraint();
 
         // Make sure we have two bodies
-        RigidBody* rigid_body_own    = m_entity->GetComponent<RigidBody>();
+        RigidBody* rigid_body_own    = m_entity_ptr->GetComponent<RigidBody>();
         RigidBody* rigid_body_other    = !m_bodyOther.expired() ? m_bodyOther.lock()->GetComponent<RigidBody>() : nullptr;
         if (!rigid_body_own || !rigid_body_other)
         {

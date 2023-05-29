@@ -240,7 +240,7 @@ void WorldViewer::TreeAddEntity(shared_ptr<Spartan::Entity> entity)
     const vector<Spartan::Transform*>& children = entity->GetTransform()->GetChildren();
     for (Spartan::Transform* child : children)
     {
-        if (child->GetEntity()->IsVisibleInHierarchy())
+        if (child->GetEntityPtr()->IsVisibleInHierarchy())
         {
             has_visible_children = true;
             break;
@@ -298,10 +298,10 @@ void WorldViewer::TreeAddEntity(shared_ptr<Spartan::Entity> entity)
         {
             for (const auto& child : children)
             {
-                if (!child->GetEntity()->IsVisibleInHierarchy())
+                if (!child->GetEntityPtr()->IsVisibleInHierarchy())
                     continue;
 
-                TreeAddEntity(Spartan::World::GetEntityById(child->GetEntity()->GetObjectId()));
+                TreeAddEntity(Spartan::World::GetEntityById(child->GetEntityPtr()->GetObjectId()));
             }
         }
 
@@ -613,10 +613,11 @@ void WorldViewer::HandleKeyShortcuts()
     }
 }
 
-void WorldViewer::ActionEntityDelete(const shared_ptr<Spartan::Entity>& entity)
+void WorldViewer::ActionEntityDelete(const shared_ptr<Spartan::Entity> entity)
 {
     SP_ASSERT_MSG(entity != nullptr, "Entity is null");
-    Spartan::World::RemoveEntity(entity.get());
+
+    Spartan::World::RemoveEntity(entity);
 }
 
 Spartan::Entity* WorldViewer::ActionEntityCreateEmpty()

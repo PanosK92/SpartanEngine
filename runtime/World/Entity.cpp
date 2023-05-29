@@ -45,14 +45,12 @@ using namespace std;
 
 namespace Spartan
 {
-    Entity::Entity(uint64_t transform_id /*= 0*/)
+    Entity::Entity()
     {
         m_object_name          = "Entity";
         m_is_active            = true;
         m_hierarchy_visibility = true;
         m_components.fill(nullptr);
-
-        AddComponent<Transform>(transform_id);
     }
 
     Entity::~Entity()
@@ -60,6 +58,11 @@ namespace Spartan
         m_components.fill(nullptr);
         m_renderable = nullptr;
         m_transform  = nullptr;
+    }
+
+    void Entity::Initialize()
+    {
+        AddComponent<Transform>();
     }
 
     void Entity::Clone()
@@ -98,7 +101,7 @@ namespace Spartan
             // clone children make them call this lambda
             for (const auto& child_transform : original->GetTransform()->GetChildren())
             {
-                const auto clone_child = clone_entity_and_descendants(child_transform->GetEntity());
+                const auto clone_child = clone_entity_and_descendants(child_transform->GetEntityPtr());
                 clone_child->GetTransform()->SetParent(clone_self->GetTransform());
             }
 
@@ -201,9 +204,9 @@ namespace Spartan
             // Children
             for (Transform* child : children)
             {
-                if (child->GetEntity())
+                if (child->GetEntityPtr())
                 {
-                    child->GetEntity()->Serialize(stream);
+                    child->GetEntityPtr()->Serialize(stream);
                 }
             }
         }
@@ -233,7 +236,8 @@ namespace Spartan
                     uint64_t component_id = 0;
                     stream->Read(&component_id);
 
-                    AddComponent(static_cast<ComponentType>(component_type), component_id);
+                    IComponent* component = AddComponent(static_cast<ComponentType>(component_type));
+                    component->SetObjectId(component_id);
                 }
             }
 
@@ -291,13 +295,13 @@ namespace Spartan
     {
         if (Transform* parent = GetTransform()->GetParent())
         {
-            return m_is_active && parent->GetEntity()->IsActiveRecursively();
+            return m_is_active && parent->GetEntityPtr()->IsActiveRecursively();
         }
 
         return m_is_active;
     }
     
-    IComponent* Entity::AddComponent(const ComponentType type, uint64_t id /*= 0*/)
+    IComponent* Entity::AddComponent(const ComponentType type)
     {
         // This is the only hardcoded part regarding components. It's 
         // one function but it would be nice if that gets automated too.
@@ -306,21 +310,21 @@ namespace Spartan
 
         switch (type)
         {
-            case ComponentType::AudioListener:   component = static_cast<IComponent*>(AddComponent<AudioListener>(id));   break;
-            case ComponentType::AudioSource:     component = static_cast<IComponent*>(AddComponent<AudioSource>(id));     break;
-            case ComponentType::Camera:          component = static_cast<IComponent*>(AddComponent<Camera>(id));          break;
-            case ComponentType::Collider:        component = static_cast<IComponent*>(AddComponent<Collider>(id));        break;
-            case ComponentType::Constraint:      component = static_cast<IComponent*>(AddComponent<Constraint>(id));      break;
-            case ComponentType::Light:           component = static_cast<IComponent*>(AddComponent<Light>(id));           break;
-            case ComponentType::Renderable:      component = static_cast<IComponent*>(AddComponent<Renderable>(id));      break;
-            case ComponentType::RigidBody:       component = static_cast<IComponent*>(AddComponent<RigidBody>(id));       break;
-            case ComponentType::SoftBody:        component = static_cast<IComponent*>(AddComponent<SoftBody>(id));        break;
-            case ComponentType::Environment:     component = static_cast<IComponent*>(AddComponent<Environment>(id));     break;
-            case ComponentType::Transform:       component = static_cast<IComponent*>(AddComponent<Transform>(id));       break;
-            case ComponentType::Terrain:         component = static_cast<IComponent*>(AddComponent<Terrain>(id));         break;
-            case ComponentType::ReflectionProbe: component = static_cast<IComponent*>(AddComponent<ReflectionProbe>(id)); break;
-            case ComponentType::Undefined:       component = nullptr;                                                     break;
-            default:                             component = nullptr;                                                     break;
+            case ComponentType::AudioListener:   component = static_cast<IComponent*>(AddComponent<AudioListener>());   break;
+            case ComponentType::AudioSource:     component = static_cast<IComponent*>(AddComponent<AudioSource>());     break;
+            case ComponentType::Camera:          component = static_cast<IComponent*>(AddComponent<Camera>());          break;
+            case ComponentType::Collider:        component = static_cast<IComponent*>(AddComponent<Collider>());        break;
+            case ComponentType::Constraint:      component = static_cast<IComponent*>(AddComponent<Constraint>());      break;
+            case ComponentType::Light:           component = static_cast<IComponent*>(AddComponent<Light>());           break;
+            case ComponentType::Renderable:      component = static_cast<IComponent*>(AddComponent<Renderable>());      break;
+            case ComponentType::RigidBody:       component = static_cast<IComponent*>(AddComponent<RigidBody>());       break;
+            case ComponentType::SoftBody:        component = static_cast<IComponent*>(AddComponent<SoftBody>());        break;
+            case ComponentType::Environment:     component = static_cast<IComponent*>(AddComponent<Environment>());     break;
+            case ComponentType::Transform:       component = static_cast<IComponent*>(AddComponent<Transform>());       break;
+            case ComponentType::Terrain:         component = static_cast<IComponent*>(AddComponent<Terrain>());         break;
+            case ComponentType::ReflectionProbe: component = static_cast<IComponent*>(AddComponent<ReflectionProbe>()); break;
+            case ComponentType::Undefined:       component = nullptr;                                                   break;
+            default:                             component = nullptr;                                                   break;
         }
 
         SP_ASSERT(component != nullptr);

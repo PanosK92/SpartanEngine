@@ -38,7 +38,7 @@ using namespace std;
 
 namespace Spartan
 {
-    ReflectionProbe ::ReflectionProbe(Entity* entity, uint64_t id /*= 0*/) : IComponent(entity, id)
+    ReflectionProbe ::ReflectionProbe(weak_ptr<Entity> entity) : IComponent(entity)
     {
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_resolution, uint32_t);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_extents, Vector3);

@@ -69,7 +69,8 @@ namespace Spartan
             {
                 // Rotate the car
                 Entity* entity = m_default_model_car->GetRootEntity();
-                entity->GetTransform()->Rotate(Quaternion::FromAngleAxis(10.0f * Timer::GetDeltaTimeSmoothedSec() * Helper::DEG_TO_RAD, Vector3::Forward));
+                float rotation_delta = 10.0f * static_cast<float>(Timer::GetDeltaTimeSmoothedSec()) * Helper::DEG_TO_RAD;
+                entity->GetTransform()->Rotate(Quaternion::FromAngleAxis(rotation_delta, Vector3::Forward));
             }
         }
     }
@@ -283,7 +284,12 @@ namespace Spartan
     shared_ptr<Entity> World::CreateEntity()
     {
         lock_guard lock(m_entity_access_mutex);
-        return m_entities.emplace_back(make_shared<Entity>());
+
+        shared_ptr<Entity> entity = make_shared<Entity>();
+        entity->Initialize();
+        m_entities.emplace_back(entity);
+
+        return entity;
     }
 
     bool World::EntityExists(Entity* entity)
@@ -292,10 +298,11 @@ namespace Spartan
         return GetEntityById(entity->GetObjectId()) != nullptr;
     }
 
-    void World::RemoveEntity(Entity* entity)
+    void World::RemoveEntity(shared_ptr<Entity> entity)
     {
         SP_ASSERT_MSG(entity != nullptr, "Entity is null");
-        m_queue_deletion.push_back(GetEntityById(entity->GetObjectId()));
+
+        m_queue_deletion.push_back(entity);
         m_resolve = true;
     }
 
@@ -359,6 +366,8 @@ namespace Spartan
     // Removes an entity and all of its children
     void World::_EntityRemove(shared_ptr<Entity> entity_to_remove)
     {
+        SP_ASSERT(entity_to_remove != nullptr);
+
         // Get the root entity and its descendants
         vector<Transform*> entities_to_remove;
         entities_to_remove.push_back(entity_to_remove->GetTransform());        // Add the root entity
@@ -368,7 +377,7 @@ namespace Spartan
         set<uint64_t> ids_to_remove;
         for (Transform* transform : entities_to_remove)
         {
-            ids_to_remove.insert(transform->GetEntity()->GetObjectId());
+            ids_to_remove.insert(transform->GetEntityPtr()->GetObjectId());
         }
 
         // Remove entities using a single loop
@@ -599,13 +608,13 @@ namespace Spartan
             entity->GetTransform()->SetScale(Vector3(0.0125f, 0.0125f, 0.0125f));
 
             // Break calipers have a wrong rotation, probably a bug with sketchfab auto converting to gltf
-            entity->GetTransform()->GetDescendantByName("FR_Caliper_BrakeCaliper_0")->GetTransform()->SetRotationLocal(Quaternion::FromEulerAngles(0.0f, 75.0f, 0.0f));
-            entity->GetTransform()->GetDescendantByName("RR_Caliper_BrakeCaliper_0")->GetTransform()->SetRotationLocal(Quaternion::FromEulerAngles(0.0f, 75.0f, 0.0f));
+            entity->GetTransform()->GetDescendantPtrByName("FR_Caliper_BrakeCaliper_0")->GetTransform()->SetRotationLocal(Quaternion::FromEulerAngles(0.0f, 75.0f, 0.0f));
+            entity->GetTransform()->GetDescendantPtrByName("RR_Caliper_BrakeCaliper_0")->GetTransform()->SetRotationLocal(Quaternion::FromEulerAngles(0.0f, 75.0f, 0.0f));
 
             // body
             {
                 // metal - make it aluminum
-                if (Material* material = entity->GetTransform()->GetDescendantByName("CarBody_Primary_0")->GetRenderable()->GetMaterial())
+                if (Material* material = entity->GetTransform()->GetDescendantPtrByName("CarBody_Primary_0")->GetRenderable()->GetMaterial())
                 {
                     material->SetColor(Color::material_aluminum);
                     material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.1f);
@@ -614,13 +623,13 @@ namespace Spartan
 
                 // plastic
                 {
-                    if (Material* material = entity->GetTransform()->GetDescendantByName("CarBody_Secondary_0")->GetRenderable()->GetMaterial())
+                    if (Material* material = entity->GetTransform()->GetDescendantPtrByName("CarBody_Secondary_0")->GetRenderable()->GetMaterial())
                     {
                         material->SetColor(Color::material_tire);
                         material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.35f);
                     }
 
-                    if (Material* material = entity->GetTransform()->GetDescendantByName("CarBody_Trim1_0")->GetRenderable()->GetMaterial())
+                    if (Material* material = entity->GetTransform()->GetDescendantPtrByName("CarBody_Trim1_0")->GetRenderable()->GetMaterial())
                     {
                         material->SetColor(Color::material_tire);
                         material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.35f);
@@ -630,7 +639,7 @@ namespace Spartan
 
             // interior
             {
-                if (Material* material = entity->GetTransform()->GetDescendantByName("Interior_InteriorPlastic_0")->GetRenderable()->GetMaterial())
+                if (Material* material = entity->GetTransform()->GetDescendantPtrByName("Interior_InteriorPlastic_0")->GetRenderable()->GetMaterial())
                 {
                     material->SetColor(Color::material_tire);
                     material->SetTexture(MaterialTexture::Roughness, nullptr);
@@ -638,7 +647,7 @@ namespace Spartan
                     material->SetProperty(MaterialProperty::MetallnessMultiplier, 0.0f);
                 }
 
-                if (Material* material = entity->GetTransform()->GetDescendantByName("Interior_InteriorPlastic2_0")->GetRenderable()->GetMaterial())
+                if (Material* material = entity->GetTransform()->GetDescendantPtrByName("Interior_InteriorPlastic2_0")->GetRenderable()->GetMaterial())
                 {
                     material->SetColor(Color::material_tire);
                     material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.8f);
@@ -649,7 +658,7 @@ namespace Spartan
 
             // lights
             {
-                if (Material* material = entity->GetTransform()->GetDescendantByName("CarBody_LampCovers_0")->GetRenderable()->GetMaterial())
+                if (Material* material = entity->GetTransform()->GetDescendantPtrByName("CarBody_LampCovers_0")->GetRenderable()->GetMaterial())
                 {
                     material->SetColor(Color::material_glass);
                     material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.2f);
@@ -657,7 +666,7 @@ namespace Spartan
                 }
 
                 // plastic covers
-                if (Material* material = entity->GetTransform()->GetDescendantByName("Headlights_Trim2_0")->GetRenderable()->GetMaterial())
+                if (Material* material = entity->GetTransform()->GetDescendantPtrByName("Headlights_Trim2_0")->GetRenderable()->GetMaterial())
                 {
                     material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.35f);
                     material->SetColor(Color::material_tire);
@@ -667,7 +676,7 @@ namespace Spartan
             // wheels
             {
                 // brake caliper
-                if (Material* material = entity->GetTransform()->GetDescendantByName("FR_Caliper_BrakeCaliper_0")->GetRenderable()->GetMaterial())
+                if (Material* material = entity->GetTransform()->GetDescendantPtrByName("FR_Caliper_BrakeCaliper_0")->GetRenderable()->GetMaterial())
                 {
                     material->SetColor(Color::material_aluminum);
                     material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.5f);
@@ -677,7 +686,7 @@ namespace Spartan
                 }
 
                 // tires
-                if (Material* material = entity->GetTransform()->GetDescendantByName("FL_Wheel_TireMaterial_0")->GetRenderable()->GetMaterial())
+                if (Material* material = entity->GetTransform()->GetDescendantPtrByName("FL_Wheel_TireMaterial_0")->GetRenderable()->GetMaterial())
                 {
                     material->SetColor(Color::material_tire);
                     material->SetTexture(MaterialTexture::Roughness, nullptr);
@@ -686,7 +695,7 @@ namespace Spartan
                 }
 
                 // rims
-                if (Material* material = entity->GetTransform()->GetDescendantByName("FR_Wheel_RimMaterial_0")->GetRenderable()->GetMaterial())
+                if (Material* material = entity->GetTransform()->GetDescendantPtrByName("FR_Wheel_RimMaterial_0")->GetRenderable()->GetMaterial())
                 {
                     material->SetColor(Color::material_aluminum);
                     material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.5f);
@@ -740,16 +749,16 @@ namespace Spartan
             entity->GetTransform()->SetScale(Vector3::One);
 
             // Make the lamp frame not cast shadows, so we can place a light within it
-            if (Renderable* renderable = entity->GetTransform()->GetDescendantByName("lamp_1stfloor_entrance_1")->GetRenderable())
+            if (Renderable* renderable = entity->GetTransform()->GetDescendantPtrByName("lamp_1stfloor_entrance_1")->GetRenderable())
             {
                 renderable->SetCastShadows(false);
             }
 
             // Delete dirt decals since they look bad.
             // They are hovering over the surfaces, to avoid z-fighting, and they also cast shadows underneath them.
-            RemoveEntity(entity->GetTransform()->GetDescendantByName("decals_1st_floor"));
-            RemoveEntity(entity->GetTransform()->GetDescendantByName("decals_2nd_floor"));
-            RemoveEntity(entity->GetTransform()->GetDescendantByName("decals_3rd_floor"));
+            RemoveEntity(entity->GetTransform()->GetDescendantPtrWeakByName("decals_1st_floor").lock());
+            RemoveEntity(entity->GetTransform()->GetDescendantPtrWeakByName("decals_2nd_floor").lock());
+            RemoveEntity(entity->GetTransform()->GetDescendantPtrWeakByName("decals_3rd_floor").lock());
 
             // 3D model - Sponza curtains
             if (m_default_model_sponza_curtains = ResourceCache::Load<Mesh>("project\\models\\sponza\\curtains\\NewSponza_Curtains_glTF.gltf"))

@@ -76,7 +76,7 @@ namespace Spartan
         RigidBody* m_rigidBody;
     };
 
-    RigidBody::RigidBody(Entity* entity, uint64_t id /*= 0*/) : IComponent(entity, id)
+    RigidBody::RigidBody(weak_ptr<Entity> entity) : IComponent(entity)
     {
         m_in_world         = false;
         m_mass             = DEFAULT_MASS;
@@ -89,7 +89,7 @@ namespace Spartan
         m_position_lock    = Vector3::Zero;
         m_rotation_lock    = Vector3::Zero;
         m_collision_shape  = nullptr;
-        m_rigid_body        = nullptr;
+        m_rigid_body       = nullptr;
 
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_mass, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_friction, float);
@@ -110,6 +110,8 @@ namespace Spartan
 
     void RigidBody::OnInitialize()
     {
+        IComponent::OnInitialize();
+
         Body_AcquireShape();
         Body_AddToWorld();
     }
@@ -604,7 +606,7 @@ namespace Spartan
 
     void RigidBody::Body_AcquireShape()
     {
-        if (const auto& collider = m_entity->GetComponent<Collider>())
+        if (const auto& collider = m_entity_ptr->GetComponent<Collider>())
         {
             m_collision_shape    = collider->GetShape();
             m_center_of_mass    = collider->GetCenter();

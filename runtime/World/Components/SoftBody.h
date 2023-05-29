@@ -40,7 +40,7 @@ namespace Spartan
     class SP_CLASS SoftBody : public IComponent
     {
     public:
-        SoftBody(Entity* entity, uint64_t id = 0);
+        SoftBody(std::weak_ptr<Entity> entity);
         ~SoftBody();
 
         //= ICOMPONENT ===============================

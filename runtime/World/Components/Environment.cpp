@@ -37,7 +37,7 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    Environment::Environment(Entity* entity, uint64_t id /*= 0*/) : IComponent(entity, id)
+    Environment::Environment(weak_ptr<Entity> entity) : IComponent(entity)
     {
         const string environment_texture_directory = ResourceCache::GetResourceDirectory(ResourceDirectory::Environment) + "\\";
 

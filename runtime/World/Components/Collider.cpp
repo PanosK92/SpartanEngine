@@ -47,7 +47,7 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    Collider::Collider(Entity* entity, uint64_t id /*= 0*/) : IComponent(entity, id)
+    Collider::Collider(weak_ptr<Entity> entity) : IComponent(entity)
     {
         m_shapeType = ColliderShape::Box;
         m_center    = Vector3::Zero;
@@ -63,8 +63,10 @@ namespace Spartan
 
     void Collider::OnInitialize()
     {
+        IComponent::OnInitialize();
+
         // If there is a mesh, use it's bounding box
-        if (auto renderable = GetEntity()->GetRenderable())
+        if (auto renderable = GetEntityPtr()->GetRenderable())
         {
             m_center = Vector3::Zero;
             m_size   = renderable->GetAabb().GetSize();
@@ -166,7 +168,7 @@ namespace Spartan
 
         case ColliderShape::Mesh:
             // Get Renderable
-            Renderable* renderable = GetEntity()->GetComponent<Renderable>();
+            Renderable* renderable = GetEntityPtr()->GetComponent<Renderable>();
             if (!renderable)
             {
                 SP_LOG_WARNING("Can't construct mesh shape, there is no Renderable component attached.");
@@ -221,7 +223,7 @@ namespace Spartan
 
     void Collider::RigidBody_SetShape(btCollisionShape* shape) const
     {
-        if (const auto& rigidBody = m_entity->GetComponent<RigidBody>())
+        if (const auto& rigidBody = m_entity_ptr->GetComponent<RigidBody>())
         {
             rigidBody->SetShape(shape);
         }
@@ -229,7 +231,7 @@ namespace Spartan
 
     void Collider::RigidBody_SetCenterOfMass(const Vector3& center) const
     {
-        if (const auto& rigidBody = m_entity->GetComponent<RigidBody>())
+        if (const auto& rigidBody = m_entity_ptr->GetComponent<RigidBody>())
         {
             rigidBody->SetCenterOfMass(center);
         }

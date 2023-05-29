@@ -30,7 +30,7 @@ namespace Spartan
     class SP_CLASS AudioListener : public IComponent
     {
     public:
-        AudioListener(Entity* entity, uint64_t id = 0);
+        AudioListener(std::weak_ptr<Entity> entity);
         ~AudioListener() = default;
 
         void OnTick() override;

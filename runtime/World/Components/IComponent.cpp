@@ -44,11 +44,16 @@ using namespace std;
 
 namespace Spartan
 {
-    IComponent::IComponent(Entity* entity, uint64_t id /*= 0*/, Transform* transform /*= nullptr*/)
+    IComponent::IComponent(weak_ptr<Entity> entity)
     {
-        m_entity    = entity;
-        m_transform = transform ? transform : entity->GetTransform();
-        m_enabled   = true;
+        m_entity_ptr_weak = entity;
+        m_entity_ptr      = entity.lock().get();
+        m_enabled         = true;
+    }
+
+    void IComponent::OnInitialize()
+    {
+        m_transform = m_entity_ptr->GetTransform();
     }
 
     template <typename T>

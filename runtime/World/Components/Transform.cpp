@@ -34,7 +34,7 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    Transform::Transform(Entity* entity, uint64_t id /*= 0*/) : IComponent(entity, id, this)
+    Transform::Transform(weak_ptr<Entity> entity) : IComponent(entity)
     {
         m_position_local  = Vector3::Zero;
         m_rotation_local  = Quaternion(0, 0, 0, 1);
@@ -54,6 +54,8 @@ namespace Spartan
 
     void Transform::OnInitialize()
     {
+        IComponent::OnInitialize();
+
         m_is_dirty = true;
     }
 
@@ -78,7 +80,7 @@ namespace Spartan
         stream->Write(m_scale_local);
 
         // Hierarchy
-        stream->Write(m_parent ? m_parent->GetEntity()->GetObjectId() : 0);
+        stream->Write(m_parent ? m_parent->GetEntityPtr()->GetObjectId() : 0);
     }
 
     void Transform::Deserialize(FileStream* stream)
@@ -245,7 +247,7 @@ namespace Spartan
     {
         if (!HasChildren())
         {
-            SP_LOG_WARNING("%s has no children.", GetEntity()->GetObjectName().c_str());
+            SP_LOG_WARNING("%s has no children.", GetEntityPtr()->GetObjectName().c_str());
             return nullptr;
         }
 
@@ -263,7 +265,7 @@ namespace Spartan
     {
         for (Transform* child : m_children)
         {
-            if (child->GetEntity()->GetObjectName() == name)
+            if (child->GetEntityPtr()->GetObjectName() == name)
                 return child;
         }
 
@@ -457,18 +459,33 @@ namespace Spartan
         }
     }
 
-    Entity* Transform::GetDescendantByName(const std::string& name)
+    Entity* Transform::GetDescendantPtrByName(const std::string& name)
     {
         vector<Transform*> descendants;
         GetDescendants(&descendants);
 
         for (Transform* transform : descendants)
         {
-            if (transform->GetEntity()->GetObjectName() == name)
-                return transform->GetEntity();
+            if (transform->GetEntityPtr()->GetObjectName() == name)
+                return transform->GetEntityPtr();
         }
 
         return nullptr;
+    }
+
+    weak_ptr<Entity> Transform::GetDescendantPtrWeakByName(const std::string& name)
+    {
+        vector<Transform*> descendants;
+        GetDescendants(&descendants);
+
+        for (Transform* transform : descendants)
+        {
+            if (transform->GetEntityPtr()->GetObjectName() == name)
+                return transform->GetEntityPtrWeak();
+        }
+
+        static weak_ptr<Entity> empty;
+        return empty;
     }
 
     Matrix Transform::GetParentTransformMatrix() const
