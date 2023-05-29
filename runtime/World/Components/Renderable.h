@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ======================
-#include "IComponent.h"
+#include "Component.h"
 #include <vector>
 #include "../../Math/BoundingBox.h"
 #include "../../Math/Matrix.h"
@@ -49,7 +49,7 @@ namespace Spartan
         Cone
     };
 
-    class SP_CLASS Renderable : public IComponent
+    class SP_CLASS Renderable : public Component
     {
     public:
         Renderable(std::weak_ptr<Entity> entity);

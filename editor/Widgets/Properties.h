@@ -45,7 +45,7 @@ namespace Spartan
     class Terrain;
     class Environment;
     class ReflectionProbe;
-    class IComponent;
+    class Component;
 }
 
 class Properties : public Widget
@@ -63,20 +63,20 @@ public:
     static std::weak_ptr<Spartan::Material> m_inspected_material;
 
 private:
-    void ShowTransform(Spartan::Transform* transform) const;
-    void ShowLight(Spartan::Light* light) const;
-    void ShowRenderable(Spartan::Renderable* renderable) const;
-    void ShowRigidBody(Spartan::RigidBody* rigid_body) const;
-    void ShowSoftBody(Spartan::SoftBody* soft_body) const;
-    void ShowCollider(Spartan::Collider* collider) const;
-    void ShowConstraint(Spartan::Constraint* constraint) const;
+    void ShowTransform(std::shared_ptr<Spartan::Transform> transform) const;
+    void ShowLight(std::shared_ptr<Spartan::Light> light) const;
+    void ShowRenderable(std::shared_ptr<Spartan::Renderable> renderable) const;
+    void ShowRigidBody(std::shared_ptr<Spartan::RigidBody> rigid_body) const;
+    void ShowSoftBody(std::shared_ptr<Spartan::SoftBody> soft_body) const;
+    void ShowCollider(std::shared_ptr<Spartan::Collider> collider) const;
+    void ShowConstraint(std::shared_ptr<Spartan::Constraint> constraint) const;
     void ShowMaterial(Spartan::Material* material) const;
-    void ShowCamera(Spartan::Camera* camera) const;
-    void ShowEnvironment(Spartan::Environment* environment) const;
-    void ShowTerrain(Spartan::Terrain* terrain) const;
-    void ShowAudioSource(Spartan::AudioSource* audio_source) const;
-    void ShowAudioListener(Spartan::AudioListener* audio_listener) const;
-    void ShowReflectionProbe(Spartan::ReflectionProbe* reflection_probe) const;
+    void ShowCamera(std::shared_ptr<Spartan::Camera> camera) const;
+    void ShowEnvironment(std::shared_ptr<Spartan::Environment> environment) const;
+    void ShowTerrain(std::shared_ptr<Spartan::Terrain> terrain) const;
+    void ShowAudioSource(std::shared_ptr<Spartan::AudioSource> audio_source) const;
+    void ShowAudioListener(std::shared_ptr<Spartan::AudioListener> audio_listener) const;
+    void ShowReflectionProbe(std::shared_ptr<Spartan::ReflectionProbe> reflection_probe) const;
 
     void ShowAddComponentButton() const;
     void ComponentContextMenu_Add() const;

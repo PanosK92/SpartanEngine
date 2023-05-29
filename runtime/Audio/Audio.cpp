@@ -123,9 +123,9 @@ namespace Spartan
         }
     }
 
-    void Audio::SetListenerTransform(Transform* transform)
+    void Audio::SetListenerTransform(shared_ptr<Transform> transform)
     {
-        m_listener = transform;
+        m_listener = transform.get();
     }
 
     bool Audio::HandleErrorFmod(int result)

@@ -47,7 +47,7 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    Collider::Collider(weak_ptr<Entity> entity) : IComponent(entity)
+    Collider::Collider(weak_ptr<Entity> entity) : Component(entity)
     {
         m_shapeType = ColliderShape::Box;
         m_center    = Vector3::Zero;
@@ -63,10 +63,10 @@ namespace Spartan
 
     void Collider::OnInitialize()
     {
-        IComponent::OnInitialize();
+        Component::OnInitialize();
 
         // If there is a mesh, use it's bounding box
-        if (auto renderable = GetEntityPtr()->GetRenderable())
+        if (auto renderable = GetEntityPtr()->GetComponent<Renderable>())
         {
             m_center = Vector3::Zero;
             m_size   = renderable->GetAabb().GetSize();
@@ -168,7 +168,7 @@ namespace Spartan
 
         case ColliderShape::Mesh:
             // Get Renderable
-            Renderable* renderable = GetEntityPtr()->GetComponent<Renderable>();
+            shared_ptr<Renderable> renderable = GetEntityPtr()->GetComponent<Renderable>();
             if (!renderable)
             {
                 SP_LOG_WARNING("Can't construct mesh shape, there is no Renderable component attached.");

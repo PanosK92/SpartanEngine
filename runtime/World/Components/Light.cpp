@@ -40,7 +40,7 @@ using namespace std;
 
 namespace Spartan
 {
-    Light::Light(weak_ptr<Entity> entity) : IComponent(entity)
+    Light::Light(weak_ptr<Entity> entity) : Component(entity)
     {
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_shadows_enabled, bool);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_shadows_screen_space_enabled, bool);
@@ -69,7 +69,7 @@ namespace Spartan
 
     void Light::OnInitialize()
     {
-        IComponent::OnInitialize();
+        Component::OnInitialize();
     }
 
     void Light::OnStart()
@@ -90,7 +90,7 @@ namespace Spartan
         // Dirty checks
         {
             // Position, rotation
-            if (m_transform->HasPositionChangedThisFrame() || m_transform->HasRotationChangedThisFrame())
+            if (GetTransform()->HasPositionChangedThisFrame() || GetTransform()->HasRotationChangedThisFrame())
             {
                 m_is_dirty = true;
             }
@@ -116,7 +116,7 @@ namespace Spartan
         if (m_light_type == LightType::Directional)
         {
             float distance = Renderer::GetCamera() ? Renderer::GetCamera()->GetFarPlane() : 1000.0f;
-            m_transform->SetPosition(-m_transform->GetForward() * distance);
+            GetTransform()->SetPosition(GetTransform()->GetForward() * distance);
         }
 
         // Update shadow map(s)
@@ -270,7 +270,7 @@ namespace Spartan
                 for (uint32_t i = 0; i < m_cascade_count; i++)
                 {
                     ShadowSlice& shadow_map = m_shadow_map.slices[i];
-                    Vector3 position        = shadow_map.center - m_transform->GetForward() * shadow_map.max.z;
+                    Vector3 position        = shadow_map.center - GetTransform()->GetForward() * shadow_map.max.z;
                     Vector3 target          = shadow_map.center;
                     Vector3 up              = Vector3::Up;
                     m_matrix_view[i]        = Matrix::CreateLookAtLH(position, target, up);
@@ -279,16 +279,16 @@ namespace Spartan
         }
         else if (m_light_type == LightType::Spot)
         {   
-            const Vector3 position = m_transform->GetPosition();
-            const Vector3 forward  = m_transform->GetForward();
-            const Vector3 up       = m_transform->GetUp();
+            const Vector3 position = GetTransform()->GetPosition();
+            const Vector3 forward  = GetTransform()->GetForward();
+            const Vector3 up       = GetTransform()->GetUp();
 
             // Compute
             m_matrix_view[0] = Matrix::CreateLookAtLH(position, position + forward, up);
         }
         else if (m_light_type == LightType::Point)
         {
-            const Vector3 position = m_transform->GetPosition();
+            const Vector3 position = GetTransform()->GetPosition();
 
             // Compute view for each side of the cube map
             m_matrix_view[0] = Matrix::CreateLookAtLH(position, position + Vector3::Right,    Vector3::Up);       // x+
@@ -499,7 +499,7 @@ namespace Spartan
         }
     }
 
-    bool Light::IsInViewFrustum(Renderable* renderable, uint32_t index) const
+    bool Light::IsInViewFrustum(shared_ptr<Renderable> renderable, uint32_t index) const
     {
         const auto box     = renderable->GetAabb();
         const auto center  = box.GetCenter();

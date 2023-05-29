@@ -21,15 +21,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =====================
+//= INCLUDES =============================
 #include "../Resource/IResource.h"
 #include "../Math/Vector3.h"
-//================================
+#include "../World/Components/Transform.h"
+//========================================
 
 namespace Spartan
 {
-    class Transform;
-
     enum class PlayMode
     {
         Memory,
@@ -80,7 +79,7 @@ namespace Spartan
         bool SetRolloff(Rolloff rolloff);
 
         // Makes the audio use the 3D attributes of the transform
-        void SetTransform(Transform* transform) { m_transform = transform; }
+        void SetTransform(std::shared_ptr<Transform> transform) { m_transform = transform.get(); }
 
         // Should be called per frame to update the 3D attributes of the sound
         bool Update();

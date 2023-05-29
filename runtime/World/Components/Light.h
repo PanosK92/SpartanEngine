@@ -24,7 +24,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ========================
 #include <array>
 #include <memory>
-#include "IComponent.h"
+#include "Component.h"
+#include "Renderable.h"
 #include "../../Math/Vector4.h"
 #include "../../Math/Vector3.h"
 #include "../../Math/Matrix.h"
@@ -37,8 +38,6 @@ namespace Spartan
 {
     //= FWD DECLARATIONS =
     class Camera;
-    class Renderable;
-    class Renderer;
     //====================
 
     enum class LightType
@@ -70,7 +69,7 @@ namespace Spartan
         std::vector<ShadowSlice> slices;
     };
 
-    class SP_CLASS Light : public IComponent
+    class SP_CLASS Light : public Component
     {
     public:
         Light(std::weak_ptr<Entity> entity);
@@ -128,7 +127,7 @@ namespace Spartan
         uint32_t GetShadowArraySize() const;
         void CreateShadowMap();
 
-        bool IsInViewFrustum(Renderable* renderable, uint32_t index) const;
+        bool IsInViewFrustum(std::shared_ptr<Renderable> renderable, uint32_t index) const;
 
     private:
         void ComputeViewMatrix();

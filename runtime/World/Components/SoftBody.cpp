@@ -39,7 +39,7 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    SoftBody::SoftBody(weak_ptr<Entity> entity) : IComponent(entity)
+    SoftBody::SoftBody(weak_ptr<Entity> entity) : Component(entity)
     {
 
     }
@@ -51,7 +51,7 @@ namespace Spartan
 
     void SoftBody::OnInitialize()
     {
-        IComponent::OnInitialize();
+        Component::OnInitialize();
 
         // Test
         m_mass = 30.0f;

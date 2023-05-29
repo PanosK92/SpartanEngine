@@ -22,17 +22,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ========================
-#include "IComponent.h"
+#include "Component.h"
+#include "Renderable.h"
 #include "../../RHI/RHI_Definition.h"
 //===================================
 
 namespace Spartan
 {
-    //= FWD DECLARATIONS =
-    class Renderable;
-    //====================
-
-    class SP_CLASS ReflectionProbe : public IComponent
+    class SP_CLASS ReflectionProbe : public Component
     {
     public:
         ReflectionProbe(std::weak_ptr<Entity> entity);
@@ -45,7 +42,7 @@ namespace Spartan
         //============================================
 
         // Returns true if the entity (renderable) is within the view frustum of a particular face (index) of the probe.
-        bool IsInViewFrustum(Renderable* renderable, uint32_t index) const;
+        bool IsInViewFrustum(std::shared_ptr<Renderable> renderable, uint32_t index) const;
 
         // Properties
         RHI_Texture* GetColorTexture()                    { return m_texture_color.get(); }

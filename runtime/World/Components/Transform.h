@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES =====================
-#include "IComponent.h"
+#include "Component.h"
 #include <vector>
 #include "../../Math/Vector3.h"
 #include "../../Math/Quaternion.h"
@@ -31,7 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-    class SP_CLASS Transform : public IComponent
+    class SP_CLASS Transform : public Component
     {
     public:
         Transform(std::weak_ptr<Entity> entity);
@@ -86,7 +86,7 @@ namespace Spartan
         //================================================================================
 
         //= HIERARCHY ======================================================================================
-        void SetParent(Transform* new_parent);
+        void SetParent(std::shared_ptr<Transform> new_parent);
         Transform* GetChildByIndex(uint32_t index);
         Transform* GetChildByName(const std::string& name);
         void AcquireChildren();

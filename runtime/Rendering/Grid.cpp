@@ -46,7 +46,7 @@ namespace Spartan
         m_vertex_buffer->Create(vertices);
     }
 
-    const Matrix& Grid::ComputeWorldMatrix(Transform* camera)
+    const Matrix& Grid::ComputeWorldMatrix(shared_ptr<Transform> camera)
     {
         // To get the grid to feel infinite, it has to follow the camera,
         // but only by increments of the grid's spacing size. This gives the illusion 

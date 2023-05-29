@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===============
 #include "pch.h"
-#include "IComponent.h"
+#include "Component.h"
 #include "Light.h"
 #include "Environment.h"
 #include "RigidBody.h"
@@ -44,26 +44,26 @@ using namespace std;
 
 namespace Spartan
 {
-    IComponent::IComponent(weak_ptr<Entity> entity)
+    Component::Component(weak_ptr<Entity> entity)
     {
         m_entity_ptr_weak = entity;
         m_entity_ptr      = entity.lock().get();
         m_enabled         = true;
     }
 
-    void IComponent::OnInitialize()
+    template <typename T>
+    inline constexpr ComponentType Component::TypeToEnum() { return ComponentType::Undefined; }
+
+    shared_ptr<Transform> Component::GetTransform() const
     {
-        m_transform = m_entity_ptr->GetTransform();
+        return GetEntityPtr()->GetComponent<Transform>();
     }
 
-    template <typename T>
-    inline constexpr ComponentType IComponent::TypeToEnum() { return ComponentType::Undefined; }
-
     template<typename T>
-    inline constexpr void validate_component_type() { static_assert(is_base_of<IComponent, T>::value, "Provided type does not implement IComponent"); }
+    inline constexpr void validate_component_type() { static_assert(is_base_of<Component, T>::value, "Provided type does not implement IComponent"); }
 
     // Explicit template instantiation
-    #define REGISTER_COMPONENT(T, enumT) template<> SP_CLASS ComponentType IComponent::TypeToEnum<T>() { validate_component_type<T>(); return enumT; }
+    #define REGISTER_COMPONENT(T, enumT) template<> SP_CLASS ComponentType Component::TypeToEnum<T>() { validate_component_type<T>(); return enumT; }
 
     // To add a new component to the engine, simply register it here
     REGISTER_COMPONENT(AudioListener,   ComponentType::AudioListener)

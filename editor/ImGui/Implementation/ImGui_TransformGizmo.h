@@ -82,7 +82,7 @@ namespace ImGui::TransformGizmo
         // Get some data
         const Spartan::Math::Matrix& matrix_projection = camera->GetProjectionMatrix().Transposed();
         const Spartan::Math::Matrix& matrix_view       = camera->GetViewMatrix().Transposed();
-        Spartan::Transform* transform                  = entity->GetComponent<Spartan::Transform>();
+        std::shared_ptr<Spartan::Transform> transform  = entity->GetComponent<Spartan::Transform>();
 
         // Begin
         const bool is_orthographic = false;
@@ -90,8 +90,8 @@ namespace ImGui::TransformGizmo
         ImGuizmo::BeginFrame();
 
         // Map transform to ImGuizmo
-        Spartan::Math::Vector3 position = transform->GetPosition();
-        Spartan::Math::Vector3 scale = transform->GetScale();
+        Spartan::Math::Vector3 position    = transform->GetPosition();
+        Spartan::Math::Vector3 scale       = transform->GetScale();
         Spartan::Math::Quaternion rotation = transform->GetRotation();
 
         Spartan::Math::Matrix transform_matrix = Spartan::Math::Matrix::GenerateRowFirst(position, rotation, scale);
@@ -100,7 +100,7 @@ namespace ImGui::TransformGizmo
         ImGuizmo::SetDrawlist();
         ImGuizmo::SetRect(ImGui::GetWindowPos().x, ImGui::GetWindowPos().y, ImGui::GetWindowWidth(), ImGui::GetWindowHeight());
 
-        ImGuizmo::Manipulate(&matrix_view.m00, &matrix_projection.m00, transform_operation, transform_space, &transform_matrix.m00, 0, 0);
+        ImGuizmo::Manipulate(&matrix_view.m00, &matrix_projection.m00, transform_operation, transform_space, &transform_matrix.m00, nullptr, nullptr);
 
         // Map ImGuizmo to transform
         if (ImGuizmo::IsUsing())

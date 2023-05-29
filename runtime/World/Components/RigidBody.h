@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ==================
-#include "IComponent.h"
+#include "Component.h"
 #include <vector>
 #include "../../Math/Vector3.h"
 //=============================
@@ -43,7 +43,7 @@ namespace Spartan
         Impulse
     };
 
-    class SP_CLASS RigidBody : public IComponent
+    class SP_CLASS RigidBody : public Component
     {
     public:
         RigidBody(std::weak_ptr<Entity> entity);

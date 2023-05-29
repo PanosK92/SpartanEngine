@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ==========
-#include "IComponent.h"
+#include "Component.h"
 #include <memory>
 #include <string>
 //=====================
@@ -31,7 +31,7 @@ namespace Spartan
 {
     class AudioClip;
 
-    class SP_CLASS AudioSource : public IComponent
+    class SP_CLASS AudioSource : public Component
     {
     public:
         AudioSource(std::weak_ptr<Entity> entity);

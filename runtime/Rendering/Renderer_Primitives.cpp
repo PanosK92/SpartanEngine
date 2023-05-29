@@ -298,7 +298,7 @@ namespace Spartan
                     shared_ptr<Entity> entity_selected = camera->GetSelectedEntity();
                     if (entity_selected && entity_selected->GetObjectId() == entity->GetObjectId())
                     {
-                        Light* light = entity->GetComponent<Light>();
+                        shared_ptr<Light> light = entity->GetComponent<Light>();
 
                         if (light->GetLightType() == LightType::Directional)
                         {
@@ -346,7 +346,7 @@ namespace Spartan
         {
             for (const auto& entity : GetEntities()[RendererEntityType::geometry_opaque])
             {
-                if (auto renderable = entity->GetRenderable())
+                if (auto renderable = entity->GetComponent<Renderable>())
                 {
                     DrawBox(renderable->GetAabb(), Vector4(0.41f, 0.86f, 1.0f, 1.0f));
                 }
@@ -354,7 +354,7 @@ namespace Spartan
         
             for (const auto& entity : GetEntities()[RendererEntityType::geometry_transparent])
             {
-                if (auto renderable = entity->GetRenderable())
+                if (auto renderable = entity->GetComponent<Renderable>())
                 {
                     DrawBox(renderable->GetAabb(), Vector4(0.41f, 0.86f, 1.0f, 1.0f));
                 }

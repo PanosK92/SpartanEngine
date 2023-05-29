@@ -264,7 +264,8 @@ namespace Spartan
         // Serialize root entities
         for (uint32_t i = 0; i < root_entity_count; i++)
         {
-            m_entities[i]->Deserialize(file.get(), nullptr);
+            static shared_ptr<Transform> empty;
+            m_entities[i]->Deserialize(file.get(), empty);
             ProgressTracker::GetProgress(ProgressType::World).JobDone();
         }
 
@@ -370,7 +371,7 @@ namespace Spartan
 
         // Get the root entity and its descendants
         vector<Transform*> entities_to_remove;
-        entities_to_remove.push_back(entity_to_remove->GetTransform());        // Add the root entity
+        entities_to_remove.push_back(entity_to_remove->GetTransform().get());  // Add the root entity
         entity_to_remove->GetTransform()->GetDescendants(&entities_to_remove); // Get descendants 
 
         // Create a set containing the object IDs of entities to remove
@@ -429,7 +430,7 @@ namespace Spartan
             entity->GetTransform()->SetPosition(Vector3(0.0f, 10.0f, 0.0f));
             entity->GetTransform()->SetRotation(Quaternion::FromEulerAngles(112.37f, -60.91f, 0.0f));
 
-            Light* light = entity->AddComponent<Light>();
+            shared_ptr<Light> light = entity->AddComponent<Light>();
             light->SetLightType(LightType::Directional);
             light->SetColor(Color::light_sky_clear);
             light->SetIntensity(directional_light_intensity);
@@ -440,7 +441,7 @@ namespace Spartan
             shared_ptr<Entity> entity = CreateEntity();
             entity->SetObjectName("audio_source");
 
-            AudioSource* audio_source = entity->AddComponent<AudioSource>();
+            shared_ptr<AudioSource> audio_source = entity->AddComponent<AudioSource>();
             audio_source->SetAudioClip(soundtrack_file_path);
             audio_source->SetLoop(true);
         }
@@ -454,16 +455,16 @@ namespace Spartan
             m_default_model_floor->GetTransform()->SetScale(Vector3(30.0f, 1.0f, 30.0f));
 
             // Add a renderable component
-            Renderable* renderable = m_default_model_floor->AddComponent<Renderable>();
+            shared_ptr<Renderable> renderable = m_default_model_floor->AddComponent<Renderable>();
             renderable->SetGeometry(DefaultGeometry::Quad);
             renderable->SetDefaultMaterial();
 
             // Add physics components
-            RigidBody* rigid_body = m_default_model_floor->AddComponent<RigidBody>();
+            shared_ptr<RigidBody> rigid_body = m_default_model_floor->AddComponent<RigidBody>();
             rigid_body->SetMass(0.0f); // make it static/immovable
             rigid_body->SetFriction(0.5f);
             rigid_body->SetRestitution(0.2f);
-            Collider* collider = m_default_model_floor->AddComponent<Collider>();
+            shared_ptr<Collider> collider = m_default_model_floor->AddComponent<Collider>();
             collider->SetShapeType(ColliderShape::StaticPlane); // set shape
         }
     }
@@ -480,16 +481,16 @@ namespace Spartan
             entity->GetTransform()->SetPosition(Vector3(0.0f, 4.0f, 0.0f));
 
             // Add a renderable component
-            Renderable* renderable = entity->AddComponent<Renderable>();
+            shared_ptr<Renderable> renderable = entity->AddComponent<Renderable>();
             renderable->SetGeometry(DefaultGeometry::Cube);
             renderable->SetDefaultMaterial();
 
             // Add physics components
-            RigidBody* rigid_body = entity->AddComponent<RigidBody>();
+            shared_ptr<RigidBody> rigid_body = entity->AddComponent<RigidBody>();
             rigid_body->SetMass(1.0f); // give it some mass
             rigid_body->SetRestitution(1.0f);
             rigid_body->SetFriction(0.2f);
-            Collider* collider = entity->AddComponent<Collider>();
+            shared_ptr<Collider> collider = entity->AddComponent<Collider>();
             collider->SetShapeType(ColliderShape::Box); // set shape
         }
 
@@ -508,7 +509,8 @@ namespace Spartan
             shared_ptr<Entity> entity = CreateEntity();
             entity->SetObjectName("light_point");
             entity->GetTransform()->SetPosition(Vector3(0.0f, 2.0f, -1.5f));
-            Light* light = entity->AddComponent<Light>();
+
+            shared_ptr<Light> light = entity->AddComponent<Light>();
             light->SetLightType(LightType::Point);
             light->SetColor(Color::material_silver);
             light->SetIntensity(10000.0f);
@@ -539,7 +541,7 @@ namespace Spartan
             entity->SetObjectName("light_point_top");
             entity->GetTransform()->SetPosition(Vector3(0.0f, 4.5f, 0.0f));
 
-            Light* light = entity->AddComponent<Light>();
+            shared_ptr<Light> light = entity->AddComponent<Light>();
             light->SetLightType(LightType::Point);
             light->SetColor(Color::light_fluorescent_tube_light);
             light->SetIntensity(5000.0f);
@@ -551,7 +553,7 @@ namespace Spartan
             entity->SetObjectName("light_point_side");
             entity->GetTransform()->SetPosition(Vector3(1.0f, 2.3f, -4.2f));
 
-            Light* light = entity->AddComponent<Light>();
+            shared_ptr<Light> light = entity->AddComponent<Light>();
             light->SetLightType(LightType::Point);
             light->SetColor(Color::light_photo_flash);
             light->SetIntensity(5000.0f);
@@ -614,7 +616,7 @@ namespace Spartan
             // body
             {
                 // metal - make it aluminum
-                if (Material* material = entity->GetTransform()->GetDescendantPtrByName("CarBody_Primary_0")->GetRenderable()->GetMaterial())
+                if (Material* material = entity->GetTransform()->GetDescendantPtrByName("CarBody_Primary_0")->GetComponent<Renderable>()->GetMaterial())
                 {
                     material->SetColor(Color::material_aluminum);
                     material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.1f);
@@ -623,13 +625,13 @@ namespace Spartan
 
                 // plastic
                 {
-                    if (Material* material = entity->GetTransform()->GetDescendantPtrByName("CarBody_Secondary_0")->GetRenderable()->GetMaterial())
+                    if (Material* material = entity->GetTransform()->GetDescendantPtrByName("CarBody_Secondary_0")->GetComponent<Renderable>()->GetMaterial())
                     {
                         material->SetColor(Color::material_tire);
                         material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.35f);
                     }
 
-                    if (Material* material = entity->GetTransform()->GetDescendantPtrByName("CarBody_Trim1_0")->GetRenderable()->GetMaterial())
+                    if (Material* material = entity->GetTransform()->GetDescendantPtrByName("CarBody_Trim1_0")->GetComponent<Renderable>()->GetMaterial())
                     {
                         material->SetColor(Color::material_tire);
                         material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.35f);
@@ -639,7 +641,7 @@ namespace Spartan
 
             // interior
             {
-                if (Material* material = entity->GetTransform()->GetDescendantPtrByName("Interior_InteriorPlastic_0")->GetRenderable()->GetMaterial())
+                if (Material* material = entity->GetTransform()->GetDescendantPtrByName("Interior_InteriorPlastic_0")->GetComponent<Renderable>()->GetMaterial())
                 {
                     material->SetColor(Color::material_tire);
                     material->SetTexture(MaterialTexture::Roughness, nullptr);
@@ -647,7 +649,7 @@ namespace Spartan
                     material->SetProperty(MaterialProperty::MetallnessMultiplier, 0.0f);
                 }
 
-                if (Material* material = entity->GetTransform()->GetDescendantPtrByName("Interior_InteriorPlastic2_0")->GetRenderable()->GetMaterial())
+                if (Material* material = entity->GetTransform()->GetDescendantPtrByName("Interior_InteriorPlastic2_0")->GetComponent<Renderable>()->GetMaterial())
                 {
                     material->SetColor(Color::material_tire);
                     material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.8f);
@@ -658,7 +660,7 @@ namespace Spartan
 
             // lights
             {
-                if (Material* material = entity->GetTransform()->GetDescendantPtrByName("CarBody_LampCovers_0")->GetRenderable()->GetMaterial())
+                if (Material* material = entity->GetTransform()->GetDescendantPtrByName("CarBody_LampCovers_0")->GetComponent<Renderable>()->GetMaterial())
                 {
                     material->SetColor(Color::material_glass);
                     material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.2f);
@@ -666,7 +668,7 @@ namespace Spartan
                 }
 
                 // plastic covers
-                if (Material* material = entity->GetTransform()->GetDescendantPtrByName("Headlights_Trim2_0")->GetRenderable()->GetMaterial())
+                if (Material* material = entity->GetTransform()->GetDescendantPtrByName("Headlights_Trim2_0")->GetComponent<Renderable>()->GetMaterial())
                 {
                     material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.35f);
                     material->SetColor(Color::material_tire);
@@ -676,7 +678,7 @@ namespace Spartan
             // wheels
             {
                 // brake caliper
-                if (Material* material = entity->GetTransform()->GetDescendantPtrByName("FR_Caliper_BrakeCaliper_0")->GetRenderable()->GetMaterial())
+                if (Material* material = entity->GetTransform()->GetDescendantPtrByName("FR_Caliper_BrakeCaliper_0")->GetComponent<Renderable>()->GetMaterial())
                 {
                     material->SetColor(Color::material_aluminum);
                     material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.5f);
@@ -686,7 +688,7 @@ namespace Spartan
                 }
 
                 // tires
-                if (Material* material = entity->GetTransform()->GetDescendantPtrByName("FL_Wheel_TireMaterial_0")->GetRenderable()->GetMaterial())
+                if (Material* material = entity->GetTransform()->GetDescendantPtrByName("FL_Wheel_TireMaterial_0")->GetComponent<Renderable>()->GetMaterial())
                 {
                     material->SetColor(Color::material_tire);
                     material->SetTexture(MaterialTexture::Roughness, nullptr);
@@ -695,7 +697,7 @@ namespace Spartan
                 }
 
                 // rims
-                if (Material* material = entity->GetTransform()->GetDescendantPtrByName("FR_Wheel_RimMaterial_0")->GetRenderable()->GetMaterial())
+                if (Material* material = entity->GetTransform()->GetDescendantPtrByName("FR_Wheel_RimMaterial_0")->GetComponent<Renderable>()->GetMaterial())
                 {
                     material->SetColor(Color::material_aluminum);
                     material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.5f);
@@ -723,7 +725,7 @@ namespace Spartan
             shared_ptr<RHI_Texture2D> height_map = make_shared<RHI_Texture2D>(RHI_Texture_Srv, "height_map");
             height_map->LoadFromFile("project\\height_maps\\a.png");
 
-            Terrain* terrain = entity->AddComponent<Terrain>();
+            shared_ptr<Terrain> terrain = entity->AddComponent<Terrain>();
             terrain->SetMinY(0.0f);
             terrain->SetMaxY(12.0f);
             terrain->SetHeightMap(height_map);
@@ -749,7 +751,7 @@ namespace Spartan
             entity->GetTransform()->SetScale(Vector3::One);
 
             // Make the lamp frame not cast shadows, so we can place a light within it
-            if (Renderable* renderable = entity->GetTransform()->GetDescendantPtrByName("lamp_1stfloor_entrance_1")->GetRenderable())
+            if (shared_ptr<Renderable> renderable = entity->GetTransform()->GetDescendantPtrByName("lamp_1stfloor_entrance_1")->GetComponent<Renderable>())
             {
                 renderable->SetCastShadows(false);
             }
