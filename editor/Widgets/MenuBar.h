@@ -44,6 +44,9 @@ public:
 private:
     void DrawFileDialog() const;
     void HandleKeyShortcuts() const;
+    void CreateWorldMenuItem();
+    void CreateViewMenuItem();
+    void CreateHelpMenuItem();
 
     std::unique_ptr<Toolbar> m_tool_bar;
     std::unique_ptr<FileDialog> m_file_dialog;
