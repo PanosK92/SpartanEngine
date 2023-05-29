@@ -60,14 +60,14 @@ namespace Spartan
         std::function<void(std::any)> setter;
     };
 
-    class SP_CLASS IComponent : public Object
+    class SP_CLASS Component : public Object
     {
     public:
-        IComponent(std::weak_ptr<Entity> entity);
-        virtual ~IComponent() = default;
+        Component(std::weak_ptr<Entity> entity);
+        virtual ~Component() = default;
 
         // Runs when the component gets added
-        virtual void OnInitialize();
+        virtual void OnInitialize() {}
 
         // Runs every time the simulation starts
         virtual void OnStart() {}
@@ -93,7 +93,7 @@ namespace Spartan
         //==========================================
 
         //= PROPERTIES ==============================================================
-        Transform* GetTransform()        const { return m_transform; }
+        std::shared_ptr<Transform> GetTransform() const;
         ComponentType GetType()          const { return m_type; }
         void SetType(ComponentType type)       { m_type = type; }
 
@@ -137,8 +137,6 @@ namespace Spartan
         ComponentType m_type   = ComponentType::Undefined;
         // The state of the component
         bool m_enabled         = false;
-        // The transform of the component (always exists)
-        Transform* m_transform = nullptr;
         // The owner of the component
         std::weak_ptr<Entity> m_entity_ptr_weak;
         Entity* m_entity_ptr = nullptr;

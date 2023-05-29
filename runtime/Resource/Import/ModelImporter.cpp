@@ -484,7 +484,7 @@ namespace Spartan
         ProgressTracker::GetProgress(ProgressType::ModelImporter).SetText("Creating entity for " + entity->GetObjectName());
 
         // Set the transform of parent_node as the parent of the new_entity's transform
-        Transform* parent_trans = parent_entity ? parent_entity->GetTransform() : nullptr;
+        shared_ptr<Transform> parent_trans = parent_entity ? parent_entity->GetTransform() : nullptr;
         entity->GetTransform()->SetParent(parent_trans);
 
         // Apply node transformation
@@ -556,7 +556,7 @@ namespace Spartan
                 const aiLight* light_assimp = scene->mLights[i];
 
                 // Add a light component
-                Light* light = new_entity->AddComponent<Light>();
+                shared_ptr<Light> light = new_entity->AddComponent<Light>();
 
                 // Disable shadows (to avoid tanking the framerate)
                 light->SetShadowsEnabled(false);
@@ -662,7 +662,7 @@ namespace Spartan
         mesh->AddVertices(vertices, &vertex_offset);
 
         // Add a renderable component to this entity
-        Renderable* renderable = entity_parent->AddComponent<Renderable>();
+        shared_ptr<Renderable> renderable = entity_parent->AddComponent<Renderable>();
 
         // Set the geometry
         renderable->SetGeometry(

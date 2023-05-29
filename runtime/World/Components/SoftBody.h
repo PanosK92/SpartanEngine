@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES =====================
-#include "IComponent.h"
+#include "Component.h"
 #include "../../Math/Vector3.h"
 #include "../../Math/Quaternion.h"
 //================================
@@ -37,7 +37,7 @@ namespace Spartan
     class Physics;
     //=========================
 
-    class SP_CLASS SoftBody : public IComponent
+    class SP_CLASS SoftBody : public Component
     {
     public:
         SoftBody(std::weak_ptr<Entity> entity);

@@ -93,7 +93,7 @@ namespace Spartan
         );
     }
 
-    Renderable::Renderable(weak_ptr<Entity> entity) : IComponent(entity)
+    Renderable::Renderable(weak_ptr<Entity> entity) : Component(entity)
     {
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_material_default,        bool);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_material,                Material*);

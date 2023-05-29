@@ -34,7 +34,7 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    Transform::Transform(weak_ptr<Entity> entity) : IComponent(entity)
+    Transform::Transform(weak_ptr<Entity> entity) : Component(entity)
     {
         m_position_local  = Vector3::Zero;
         m_rotation_local  = Quaternion(0, 0, 0, 1);
@@ -54,7 +54,7 @@ namespace Spartan
 
     void Transform::OnInitialize()
     {
-        IComponent::OnInitialize();
+        Component::OnInitialize();
 
         m_is_dirty = true;
     }
@@ -272,7 +272,7 @@ namespace Spartan
         return nullptr;
     }
 
-    void Transform::SetParent(Transform* new_parent)
+    void Transform::SetParent(shared_ptr<Transform> new_parent)
     {
         // Early exit if the parent is this transform (which is invalid).
         if (new_parent)
@@ -315,7 +315,7 @@ namespace Spartan
         }
 
         // Assign the new parent.
-        m_parent   = new_parent;
+        m_parent   = new_parent ? new_parent.get() : nullptr;
         m_is_dirty = true;
     }
 
@@ -327,7 +327,7 @@ namespace Spartan
         if (child->GetObjectId() == GetObjectId())
             return;
 
-        child->SetParent(this);
+        child->SetParent(m_entity_ptr->GetComponent<Transform>());
     }
 
     void Transform::RemoveChild(Transform* child)
@@ -419,7 +419,7 @@ namespace Spartan
             if (possible_child->GetParent()->GetObjectId() == GetObjectId())
             {
                 // welcome home son
-                m_children.emplace_back(possible_child);
+                m_children.emplace_back(possible_child.get());
 
                 // make the child do the same thing all over, essentially resolving the entire hierarchy.
                 possible_child->AcquireChildren();

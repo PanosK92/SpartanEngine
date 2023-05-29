@@ -234,7 +234,7 @@ namespace Spartan
         ThreadPool::ParallelLoop(compute_vertex_normals_tangents, vertex_count);
     }
 
-    Terrain::Terrain(weak_ptr<Entity> entity) : IComponent(entity)
+    Terrain::Terrain(weak_ptr<Entity> entity) : Component(entity)
     {
 
     }
@@ -278,7 +278,7 @@ namespace Spartan
 
             ResourceCache::Remove(m_mesh);
             m_mesh = nullptr;
-            if (Renderable* renderable = m_entity_ptr->AddComponent<Renderable>())
+            if (shared_ptr<Renderable> renderable = m_entity_ptr->AddComponent<Renderable>())
             {
                 renderable->Clear();
             }
@@ -363,7 +363,7 @@ namespace Spartan
 
     void Terrain::UpdateFromMesh(const shared_ptr<Mesh> mesh) const
     {
-        if (Renderable* renderable = m_entity_ptr->AddComponent<Renderable>())
+        if (shared_ptr<Renderable> renderable = m_entity_ptr->AddComponent<Renderable>())
         {
             renderable->SetGeometry(
                 "Terrain",

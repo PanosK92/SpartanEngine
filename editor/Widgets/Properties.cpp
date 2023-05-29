@@ -54,11 +54,11 @@ weak_ptr<Material> Properties::m_inspected_material;
 namespace
 {
     static string context_menu_id;
-    static IComponent* copied_component;
-    static float column_pos_x    = 180.0f;
-    static const float max_width = 100.0f;
+    static shared_ptr<Component> copied_component = nullptr;
+    static float column_pos_x                     = 180.0f;
+    static const float max_width                  = 100.0f;
 
-    static void component_context_menu_options(const string& id, IComponent* component, const bool removable)
+    static void component_context_menu_options(const string& id, shared_ptr<Component> component, const bool removable)
     {
         if (ImGui::BeginPopup(id.c_str()))
         {
@@ -93,7 +93,7 @@ namespace
         }
     }
 
-    static bool component_begin(const string& name, const IconType icon_enum, IComponent* component_instance, bool options = true, const bool removable = true)
+    static bool component_begin(const string& name, const IconType icon_enum, shared_ptr<Component> component_instance, bool options = true, const bool removable = true)
     {
         // Collapsible contents
         const bool collapsed = ImGuiSp::collapsing_header(name.c_str(), ImGuiTreeNodeFlags_AllowItemOverlap | ImGuiTreeNodeFlags_DefaultOpen);
@@ -150,9 +150,9 @@ void Properties::TickVisible()
 
     if (!m_inspected_entity.expired())
     {
-        shared_ptr<Entity> entity_ptr = m_inspected_entity.lock();
-        Renderable* renderable        = entity_ptr->GetComponent<Renderable>();
-        Material* material            = renderable ? renderable->GetMaterial() : nullptr;
+        shared_ptr<Entity> entity_ptr     = m_inspected_entity.lock();
+        shared_ptr<Renderable> renderable = entity_ptr->GetComponent<Renderable>();
+        Material* material                = renderable ? renderable->GetMaterial() : nullptr;
 
         ShowTransform(entity_ptr->GetComponent<Transform>());
         ShowLight(entity_ptr->GetComponent<Light>());
@@ -197,7 +197,7 @@ void Properties::Inspect(const shared_ptr<Material> material)
     m_inspected_material = material;
 }
 
-void Properties::ShowTransform(Transform* transform) const
+void Properties::ShowTransform(shared_ptr<Transform> transform) const
 {
     if (component_begin("Transform", IconType::Component_Transform, transform, true, false))
     {
@@ -222,7 +222,7 @@ void Properties::ShowTransform(Transform* transform) const
     component_end();
 }
 
-void Properties::ShowLight(Light* light) const
+void Properties::ShowLight(shared_ptr<Light> light) const
 {
     if (!light)
         return;
@@ -334,7 +334,7 @@ void Properties::ShowLight(Light* light) const
     component_end();
 }
 
-void Properties::ShowRenderable(Renderable* renderable) const
+void Properties::ShowRenderable(shared_ptr<Renderable> renderable) const
 {
     if (!renderable)
         return;
@@ -375,7 +375,7 @@ void Properties::ShowRenderable(Renderable* renderable) const
     component_end();
 }
 
-void Properties::ShowRigidBody(RigidBody* rigid_body) const
+void Properties::ShowRigidBody(shared_ptr<RigidBody> rigid_body) const
 {
     if (!rigid_body)
         return;
@@ -463,7 +463,7 @@ void Properties::ShowRigidBody(RigidBody* rigid_body) const
     component_end();
 }
 
-void Properties::ShowSoftBody(SoftBody* soft_body) const
+void Properties::ShowSoftBody(shared_ptr<SoftBody> soft_body) const
 {
     if (!soft_body)
         return;
@@ -479,7 +479,7 @@ void Properties::ShowSoftBody(SoftBody* soft_body) const
     component_end();
 }
 
-void Properties::ShowCollider(Collider* collider) const
+void Properties::ShowCollider(shared_ptr<Collider> collider) const
 {
     if (!collider)
         return;
@@ -549,7 +549,7 @@ void Properties::ShowCollider(Collider* collider) const
     component_end();
 }
 
-void Properties::ShowConstraint(Constraint* constraint) const
+void Properties::ShowConstraint(shared_ptr<Constraint> constraint) const
 {
     if (!constraint)
         return;
@@ -786,7 +786,7 @@ void Properties::ShowMaterial(Material* material) const
     component_end();
 }
 
-void Properties::ShowCamera(Camera* camera) const
+void Properties::ShowCamera(shared_ptr<Camera> camera) const
 {
     if (!camera)
         return;
@@ -865,7 +865,7 @@ void Properties::ShowCamera(Camera* camera) const
     component_end();
 }
 
-void Properties::ShowEnvironment(Environment* environment) const
+void Properties::ShowEnvironment(shared_ptr<Environment> environment) const
 {
     if (!environment)
         return;
@@ -879,7 +879,7 @@ void Properties::ShowEnvironment(Environment* environment) const
     component_end();
 }
 
-void Properties::ShowTerrain(Terrain* terrain) const
+void Properties::ShowTerrain(shared_ptr<Terrain> terrain) const
 {
     if (!terrain)
         return;
@@ -936,7 +936,7 @@ void Properties::ShowTerrain(Terrain* terrain) const
     component_end();
 }
 
-void Properties::ShowAudioSource(AudioSource* audio_source) const
+void Properties::ShowAudioSource(shared_ptr<AudioSource> audio_source) const
 {
     if (!audio_source)
         return;
@@ -1005,7 +1005,7 @@ void Properties::ShowAudioSource(AudioSource* audio_source) const
     component_end();
 }
 
-void Properties::ShowAudioListener(AudioListener* audio_listener) const
+void Properties::ShowAudioListener(shared_ptr<AudioListener> audio_listener) const
 {
     if (!audio_listener)
         return;
@@ -1017,7 +1017,7 @@ void Properties::ShowAudioListener(AudioListener* audio_listener) const
     component_end();
 }
 
-void Properties::ShowReflectionProbe(Spartan::ReflectionProbe* reflection_probe) const
+void Properties::ShowReflectionProbe(shared_ptr<ReflectionProbe> reflection_probe) const
 {
     if (!reflection_probe)
         return;

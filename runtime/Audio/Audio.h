@@ -21,21 +21,20 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===========
+//= INCLUDES =============================
 #include "Definitions.h"
-//======================
+#include "../World/Components/Transform.h"
+//========================================
 
 namespace Spartan
 {
-    class Transform;
-
     class SP_CLASS Audio
     {
     public:
         static void Initialize();
         static void Tick();
         static void Shutdown();
-        static void SetListenerTransform(Transform* transform);
+        static void SetListenerTransform(std::shared_ptr<Transform> transform);
         static bool HandleErrorFmod(int result);
         static bool CreateSound(const std::string& file_path, int sound_mode, void*& sound);
         static bool CreateStream(const std::string& file_path, int sound_mode, void*& sound);

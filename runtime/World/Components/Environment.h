@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ========================
-#include "IComponent.h"
+#include "Component.h"
 #include "../../RHI/RHI_Definition.h"
 //===================================
 
@@ -34,7 +34,7 @@ namespace Spartan
         Sphere
     };
 
-    class SP_CLASS Environment : public IComponent
+    class SP_CLASS Environment : public Component
     {
     public:
         Environment(std::weak_ptr<Entity> entity);

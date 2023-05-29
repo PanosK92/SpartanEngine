@@ -21,26 +21,24 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =====================
+//= INCLUDES =============================
 #include <vector>
 #include <memory>
 #include "../RHI/RHI_Definition.h"
 #include "../Math/Matrix.h"
 #include "../Core/Definitions.h"
-//================================
+#include "../World/Components/Transform.h"
+//========================================
 
 namespace Spartan
 {
-    class Context;
-    class Transform;
-
     class SP_CLASS Grid
     {
     public:
         Grid();
         ~Grid() = default;
         
-        const Math::Matrix& ComputeWorldMatrix(Transform* camera);
+        const Math::Matrix& ComputeWorldMatrix(std::shared_ptr<Transform> camera);
         const auto& GetVertexBuffer()   const { return m_vertex_buffer; }
         const uint32_t GetVertexCount() const { return m_vertex_count; }
 

@@ -290,7 +290,7 @@ namespace Spartan
         const auto& entities_light = GetEntities()[RendererEntityType::light];
         for (uint32_t light_index = 0; light_index < entities_light.size(); light_index++)
         {
-            const Light* light = entities_light[light_index]->GetComponent<Light>();
+            shared_ptr<Light> light = entities_light[light_index]->GetComponent<Light>();
 
             // Can happen when loading a new scene and the lights get deleted
             if (!light)
@@ -355,7 +355,7 @@ namespace Spartan
                 for (shared_ptr<Entity> entity : entities)
                 {
                     // Acquire renderable component
-                    Renderable* renderable = entity->GetRenderable();
+                    shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
                     if (!renderable)
                         continue;
 
@@ -460,7 +460,7 @@ namespace Spartan
         // For each reflection probe
         for (uint32_t probe_index = 0; probe_index < static_cast<uint32_t>(probes.size()); probe_index++)
         {
-            ReflectionProbe* probe = probes[probe_index]->GetComponent<ReflectionProbe>();
+            shared_ptr<ReflectionProbe> probe = probes[probe_index]->GetComponent<ReflectionProbe>();
             if (!probe || !probe->GetNeedsToUpdate())
                 continue;
 
@@ -503,12 +503,12 @@ namespace Spartan
                     // For each light entity
                     for (uint32_t index_light = 0; index_light < static_cast<uint32_t>(lights.size()); index_light++)
                     {
-                        if (Light* light = lights[index_light]->GetComponent<Light>())
+                        if (shared_ptr<Light> light = lights[index_light]->GetComponent<Light>())
                         {
                             if (light->GetIntensityForShader(GetCamera().get()) != 0)
                             {
                                 // Get renderable
-                                Renderable* renderable = entity->GetRenderable();
+                                shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
                                 if (!renderable)
                                     continue;
 
@@ -606,7 +606,7 @@ namespace Spartan
             for (shared_ptr<Entity> entity : entities)
             {
                 // Get renderable
-                Renderable* renderable = entity->GetRenderable();
+                shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
                 if (!renderable)
                     continue;
 
@@ -621,7 +621,7 @@ namespace Spartan
                     continue;
 
                 // Get transform
-                Transform* transform = entity->GetTransform();
+                shared_ptr<Transform> transform = entity->GetTransform();
                 if (!transform)
                     continue;
 
@@ -716,7 +716,7 @@ namespace Spartan
             for (shared_ptr<Entity> entity : entities)
             {
                 // Get renderable
-                Renderable* renderable = entity->GetRenderable();
+                shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
                 if (!renderable)
                     continue;
 
@@ -797,9 +797,9 @@ namespace Spartan
                 }
 
                 // Set uber buffer with entity transform
-                if (Transform* transform = entity->GetTransform())
+                if (shared_ptr<Transform> transform = entity->GetTransform())
                 {
-                    m_cb_uber_cpu.transform = transform->GetMatrix();
+                    m_cb_uber_cpu.transform          = transform->GetMatrix();
                     m_cb_uber_cpu.transform_previous = transform->GetMatrixPrevious();
 
                     // Save matrix for velocity computation
@@ -1096,7 +1096,7 @@ namespace Spartan
         // Iterate through all the light entities
         for (shared_ptr<Entity> entity : entities)
         {
-            if (Light* light = entity->GetComponent<Light>())
+            if (shared_ptr<Light> light = entity->GetComponent<Light>())
             {
                 // Do the lighting even when intensity is zero, since we can have emissive lighting.
                 cmd_list->SetTexture(RendererBindingsUav::tex,              tex_diffuse);
@@ -1245,7 +1245,7 @@ namespace Spartan
         // Set probe textures and data
         if (!probes.empty())
         {
-            ReflectionProbe* probe = probes[0]->GetComponent<ReflectionProbe>();
+            shared_ptr<ReflectionProbe> probe = probes[0]->GetComponent<ReflectionProbe>();
 
             cmd_list->SetTexture(RendererBindingsSrv::reflection_probe, probe->GetColorTexture());
             m_cb_uber_cpu.extents  = probe->GetExtents();
@@ -2050,7 +2050,7 @@ namespace Spartan
         for (shared_ptr<Entity> entity : lights)
         {
             // Light can be null if it just got removed and our buffer doesn't update till the next frame
-            if (Light* light = entity->GetComponent<Light>())
+            if (shared_ptr<Light> light = entity->GetComponent<Light>())
             {
                 const Vector3 pos_world        = entity->GetTransform()->GetPosition();
                 const Vector3 pos_world_camera = GetCamera()->GetTransform()->GetPosition();
@@ -2148,7 +2148,7 @@ namespace Spartan
 
             for (uint32_t probe_index = 0; probe_index < static_cast<uint32_t>(probes.size()); probe_index++)
             {
-                if (ReflectionProbe* probe = probes[probe_index]->GetComponent<ReflectionProbe>())
+                if (shared_ptr<ReflectionProbe> probe = probes[probe_index]->GetComponent<ReflectionProbe>())
                 {
                     // Set uber buffer
                     m_cb_uber_cpu.transform = probe->GetTransform()->GetMatrix();
@@ -2189,7 +2189,7 @@ namespace Spartan
                     RHI_Texture* tex_outline = render_target(RendererTexture::outline).get();
                     static const Color clear_color = Color(0.0f, 0.0f, 0.0f, 0.0f);
 
-                    if (const Renderable* renderable = entity_selected->GetRenderable())
+                    if (shared_ptr<Renderable> renderable = entity_selected->GetComponent<Renderable>())
                     {
                         if (shared_ptr<Mesh> mesh = renderable->GetMesh())
                         {

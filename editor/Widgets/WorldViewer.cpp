@@ -263,7 +263,7 @@ void WorldViewer::TreeAddEntity(shared_ptr<Spartan::Entity> entity)
             if (m_expand_to_selection)
             {
                 // If the selected entity is a descendant of the this entity, start expanding (this can happen if an entity is selected in the viewport)
-                if (selected_entity->GetTransform()->IsDescendantOf(entity->GetTransform()))
+                if (selected_entity->GetTransform()->IsDescendantOf(entity->GetTransform().get()))
                 {
                     ImGui::SetNextItemOpen(true);
                     m_expanded_to_selection = true;
@@ -706,7 +706,7 @@ void WorldViewer::ActionEntityCreateLightPoint()
     auto entity = ActionEntityCreateEmpty();
     entity->SetObjectName("Point");
 
-    Spartan::Light* light = entity->AddComponent<Spartan::Light>();
+    shared_ptr<Spartan::Light> light = entity->AddComponent<Spartan::Light>();
     light->SetLightType(Spartan::LightType::Point);
     light->SetIntensity(Spartan::LightIntensity::bulb_150_watt);
 }
@@ -716,7 +716,7 @@ void WorldViewer::ActionEntityCreateLightSpot()
     auto entity = ActionEntityCreateEmpty();
     entity->SetObjectName("Spot");
 
-    Spartan::Light* light = entity->AddComponent<Spartan::Light>();
+    shared_ptr<Spartan::Light> light = entity->AddComponent<Spartan::Light>();
     light->SetLightType(Spartan::LightType::Spot);
     light->SetIntensity(Spartan::LightIntensity::bulb_150_watt);
 }

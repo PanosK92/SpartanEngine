@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =====================
 #include <vector>
 #include "../Core/Event.h"
-#include "Components/IComponent.h"
+#include "Components/Component.h"
 //================================
 
 namespace Spartan
@@ -54,7 +54,7 @@ namespace Spartan
         void Tick();
 
         void Serialize(FileStream* stream);
-        void Deserialize(FileStream* stream, Transform* parent);
+        void Deserialize(FileStream* stream, std::shared_ptr<Transform> parent);
 
         // Active
         bool IsActive() const             { return m_is_active; }
@@ -67,23 +67,19 @@ namespace Spartan
 
         // Adds a component of type T
         template <class T>
-        T* AddComponent()
+        std::shared_ptr<T> AddComponent()
         {
-            const ComponentType type = IComponent::TypeToEnum<T>();
+            const ComponentType type = Component::TypeToEnum<T>();
 
             // Early exit if the component exist
-            if (T* component = GetComponent<T>())
+            if (std::shared_ptr<T> component = GetComponent<T>())
                 return component;
 
             // Create a new component
             std::shared_ptr<T> component = std::make_shared<T>(this->shared_from_this());
 
             // Save new component
-            m_components[static_cast<uint32_t>(type)] = std::static_pointer_cast<IComponent>(component);
-
-            // Caching of rendering performance critical components
-            if constexpr (std::is_same<T, Transform>::value)  { m_transform  = static_cast<Transform*>(component.get()); }
-            if constexpr (std::is_same<T, Renderable>::value) { m_renderable = static_cast<Renderable*>(component.get()); }
+            m_components[static_cast<uint32_t>(type)] = std::static_pointer_cast<Component>(component);
 
             // Initialize component
             component->SetType(type);
@@ -92,25 +88,17 @@ namespace Spartan
             // Make the scene resolve
             SP_FIRE_EVENT(EventType::WorldResolve);
 
-            return component.get();
+            return component;
         }
 
         // Adds a component of ComponentType 
-        IComponent* AddComponent(ComponentType type);
+        std::shared_ptr<Component> AddComponent(ComponentType type);
 
         // Returns a component of type T (if it exists)
         template <class T>
-        T* GetComponent()
+        std::shared_ptr<T> GetComponent()
         {
-            const ComponentType component_type = IComponent::TypeToEnum<T>();
-            return static_cast<T*>(m_components[static_cast<uint32_t>(component_type)].get());
-        }
-
-        // Returns a component of type T (if it exists)
-        template <class T>
-        std::shared_ptr<T> GetComponentShared()
-        {
-            const ComponentType component_type = IComponent::TypeToEnum<T>();
+            const ComponentType component_type = Component::TypeToEnum<T>();
             return std::static_pointer_cast<T>(m_components[static_cast<uint32_t>(component_type)]);
         }
 
@@ -118,7 +106,7 @@ namespace Spartan
         template <class T>
         void RemoveComponent()
         {
-            const ComponentType component_type = IComponent::TypeToEnum<T>();
+            const ComponentType component_type = Component::TypeToEnum<T>();
             m_components[static_cast<uint32_t>(component_type)] = nullptr;
 
             SP_FIRE_EVENT(EventType::WorldResolve);
@@ -126,16 +114,11 @@ namespace Spartan
 
         void RemoveComponentById(uint64_t id);
         const auto& GetAllComponents() const { return m_components; }
-
-        // Direct access for performance critical usage (not safe)
-        Transform* GetTransform() const   { return m_transform; }
-        Renderable* GetRenderable() const { return m_renderable; }
+        std::shared_ptr<Transform> GetTransform();
 
     private:
         std::atomic<bool> m_is_active = true;
         bool m_hierarchy_visibility   = true;
-        Transform* m_transform        = nullptr;
-        Renderable* m_renderable      = nullptr;
-        std::array<std::shared_ptr<IComponent>, 14> m_components;
+        std::array<std::shared_ptr<Component>, 14> m_components;
     };
 }

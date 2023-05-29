@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ==================
-#include "IComponent.h"
+#include "Component.h"
 #include "../../Math/Vector3.h"
 //=============================
 
@@ -43,7 +43,7 @@ namespace Spartan
         Mesh,
     };
 
-    class SP_CLASS Collider : public IComponent
+    class SP_CLASS Collider : public Component
     {
     public:
         Collider(std::weak_ptr<Entity> entity);

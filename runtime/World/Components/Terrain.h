@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ========================
-#include "IComponent.h"
+#include "Component.h"
 #include <atomic>
 #include "../../RHI/RHI_Definition.h"
 //===================================
@@ -35,7 +35,7 @@ namespace Spartan
         class Vector3;
     }
 
-    class SP_CLASS Terrain : public IComponent
+    class SP_CLASS Terrain : public Component
     {
     public:
         Terrain(std::weak_ptr<Entity> entity);

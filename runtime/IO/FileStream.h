@@ -34,8 +34,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-    class Entity;
-
     enum FileStream_Mode : uint32_t
     {
         FileStream_Read   = 1 << 0,

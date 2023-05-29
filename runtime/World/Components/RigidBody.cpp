@@ -76,7 +76,7 @@ namespace Spartan
         RigidBody* m_rigidBody;
     };
 
-    RigidBody::RigidBody(weak_ptr<Entity> entity) : IComponent(entity)
+    RigidBody::RigidBody(weak_ptr<Entity> entity) : Component(entity)
     {
         m_in_world         = false;
         m_mass             = DEFAULT_MASS;
@@ -110,7 +110,7 @@ namespace Spartan
 
     void RigidBody::OnInitialize()
     {
-        IComponent::OnInitialize();
+        Component::OnInitialize();
 
         Body_AcquireShape();
         Body_AddToWorld();

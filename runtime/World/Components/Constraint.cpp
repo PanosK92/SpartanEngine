@@ -44,7 +44,7 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    Constraint::Constraint(weak_ptr<Entity> entity) : IComponent(entity)
+    Constraint::Constraint(weak_ptr<Entity> entity) : Component(entity)
     {
         m_constraint              = nullptr;
         m_enabledEffective        = true;
@@ -71,7 +71,7 @@ namespace Spartan
 
     void Constraint::OnInitialize()
     {
-        IComponent::OnInitialize();
+        Component::OnInitialize();
     }
 
     void Constraint::OnStart()
@@ -205,11 +205,11 @@ namespace Spartan
     {
         if (m_constraint)
         {
-            RigidBody* rigid_body_own    = m_entity_ptr->GetComponent<RigidBody>();
-            RigidBody* rigid_body_other    = !m_bodyOther.expired() ? m_bodyOther.lock()->GetComponent<RigidBody>() : nullptr;
+            shared_ptr<RigidBody> rigid_body_own   = m_entity_ptr->GetComponent<RigidBody>();
+            shared_ptr<RigidBody> rigid_body_other = !m_bodyOther.expired() ? m_bodyOther.lock()->GetComponent<RigidBody>() : nullptr;
 
             // Make both bodies aware of the removal of this constraint
-            if (rigid_body_own)    rigid_body_own->RemoveConstraint(this);
+            if (rigid_body_own)   rigid_body_own->RemoveConstraint(this);
             if (rigid_body_other) rigid_body_other->RemoveConstraint(this);
 
             Physics::RemoveConstraint(m_constraint);
@@ -221,12 +221,12 @@ namespace Spartan
         if (!m_constraint || m_bodyOther.expired())
             return;
 
-        RigidBody* rigid_body_own   = m_entity_ptr->GetComponent<RigidBody>();
-        RigidBody* rigid_body_other = !m_bodyOther.expired() ? m_bodyOther.lock()->GetComponent<RigidBody>() : nullptr;
-        btRigidBody* bt_own_body    = rigid_body_own ? rigid_body_own->GetBtRigidBody() : nullptr;
-        btRigidBody* bt_other_body  = rigid_body_other ? rigid_body_other->GetBtRigidBody() : nullptr;
+        shared_ptr<RigidBody> rigid_body_own   = m_entity_ptr->GetComponent<RigidBody>();
+        shared_ptr<RigidBody> rigid_body_other = !m_bodyOther.expired() ? m_bodyOther.lock()->GetComponent<RigidBody>() : nullptr;
+        btRigidBody* bt_own_body               = rigid_body_own ? rigid_body_own->GetBtRigidBody() : nullptr;
+        btRigidBody* bt_other_body             = rigid_body_other ? rigid_body_other->GetBtRigidBody() : nullptr;
 
-        Vector3 own_body_scaled_position    = m_position * m_transform->GetScale() - rigid_body_own->GetCenterOfMass();
+        Vector3 own_body_scaled_position    = m_position * GetTransform()->GetScale() - rigid_body_own->GetCenterOfMass();
         Vector3 other_body_scaled_position  = !m_bodyOther.expired() ? m_positionOther * rigid_body_other->GetTransform()->GetScale() - rigid_body_other->GetCenterOfMass() : m_positionOther;
 
         switch (m_constraint->getConstraintType())
@@ -279,8 +279,8 @@ namespace Spartan
         ReleaseConstraint();
 
         // Make sure we have two bodies
-        RigidBody* rigid_body_own    = m_entity_ptr->GetComponent<RigidBody>();
-        RigidBody* rigid_body_other    = !m_bodyOther.expired() ? m_bodyOther.lock()->GetComponent<RigidBody>() : nullptr;
+        shared_ptr<RigidBody> rigid_body_own   = m_entity_ptr->GetComponent<RigidBody>();
+        shared_ptr<RigidBody> rigid_body_other = !m_bodyOther.expired() ? m_bodyOther.lock()->GetComponent<RigidBody>() : nullptr;
         if (!rigid_body_own || !rigid_body_other)
         {
             SP_LOG_INFO("A RigidBody component is still initializing, deferring construction...");
@@ -304,8 +304,8 @@ namespace Spartan
             bt_other_body = &btTypedConstraint::getFixedBody();
         }    
         
-        Vector3 own_body_scaled_position    = m_position * m_transform->GetScale() - rigid_body_own->GetCenterOfMass();
-        Vector3 other_body_scaled_position    = rigid_body_other ? m_positionOther * rigid_body_other->GetTransform()->GetScale() - rigid_body_other->GetCenterOfMass() : m_positionOther;
+        Vector3 own_body_scaled_position   = m_position * GetTransform()->GetScale() - rigid_body_own->GetCenterOfMass();
+        Vector3 other_body_scaled_position = rigid_body_other ? m_positionOther * rigid_body_other->GetTransform()->GetScale() - rigid_body_other->GetCenterOfMass() : m_positionOther;
 
         switch (m_constraintType)
         {

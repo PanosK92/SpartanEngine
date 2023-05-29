@@ -41,14 +41,14 @@ using namespace std;
 
 namespace Spartan
 {
-    Camera::Camera(weak_ptr<Entity> entity) : IComponent(entity)
+    Camera::Camera(weak_ptr<Entity> entity) : Component(entity)
     {
 
     }
 
     void Camera::OnInitialize()
     {
-        IComponent::OnInitialize();
+        Component::OnInitialize();
 
         m_view            = ComputeViewMatrix();
         m_projection      = ComputeProjection(m_far_plane, m_near_plane); // reverse-z
@@ -151,7 +151,7 @@ namespace Spartan
         m_is_dirty           = true;
     }
 
-    bool Camera::IsInViewFrustum(Renderable* renderable) const
+    bool Camera::IsInViewFrustum(shared_ptr<Renderable> renderable) const
     {
         const BoundingBox& box = renderable->GetAabb();
         const Vector3 center   = box.GetCenter();
@@ -234,7 +234,7 @@ namespace Spartan
         for (RayHit& hit : hits)
         {
             // Get entity geometry
-            Renderable* renderable = hit.m_entity->GetRenderable();
+            shared_ptr<Renderable> renderable = hit.m_entity->GetComponent<Renderable>();
             vector<uint32_t> indicies;
             vector<RHI_Vertex_PosTexNorTan> vertices;
             renderable->GetGeometry(&indicies, &vertices);
@@ -413,8 +413,8 @@ namespace Spartan
                 }
 
                 // Get camera rotation.
-                m_first_person_rotation.x = m_transform->GetRotation().Yaw();
-                m_first_person_rotation.y = m_transform->GetRotation().Pitch();
+                m_first_person_rotation.x = GetTransform()->GetRotation().Yaw();
+                m_first_person_rotation.y = GetTransform()->GetRotation().Pitch();
 
                 // Get mouse delta.
                 const Vector2 mouse_delta = Input::GetMouseDelta() * m_mouse_sensitivity;
@@ -434,18 +434,18 @@ namespace Spartan
                 const Quaternion rotation    = xQuaternion * yQuaternion;
 
                 // Rotate
-                m_transform->SetRotationLocal(rotation);
+                GetTransform()->SetRotationLocal(rotation);
             }
 
             // Keyboard movement direction
             {
                 // Compute direction
-                if (Input::GetKey(KeyCode::W)) movement_direction += m_transform->GetForward();
-                if (Input::GetKey(KeyCode::S)) movement_direction += m_transform->GetBackward();
-                if (Input::GetKey(KeyCode::D)) movement_direction += m_transform->GetRight();
-                if (Input::GetKey(KeyCode::A)) movement_direction += m_transform->GetLeft();
-                if (Input::GetKey(KeyCode::Q)) movement_direction += m_transform->GetDown();
-                if (Input::GetKey(KeyCode::E)) movement_direction += m_transform->GetUp();
+                if (Input::GetKey(KeyCode::W)) movement_direction += GetTransform()->GetForward();
+                if (Input::GetKey(KeyCode::S)) movement_direction += GetTransform()->GetBackward();
+                if (Input::GetKey(KeyCode::D)) movement_direction += GetTransform()->GetRight();
+                if (Input::GetKey(KeyCode::A)) movement_direction += GetTransform()->GetLeft();
+                if (Input::GetKey(KeyCode::Q)) movement_direction += GetTransform()->GetDown();
+                if (Input::GetKey(KeyCode::E)) movement_direction += GetTransform()->GetUp();
                 movement_direction.Normalize();
             }
 
@@ -482,14 +482,14 @@ namespace Spartan
                 const Quaternion rotation    = xQuaternion * yQuaternion;
 
                 // Rotate
-                m_transform->SetRotationLocal(rotation);
+                GetTransform()->SetRotationLocal(rotation);
             }
 
             // Controller movement direction
-            movement_direction += m_transform->GetForward() * -Input::GetControllerThumbStickLeft().y;
-            movement_direction += m_transform->GetRight()   * Input::GetControllerThumbStickLeft().x;
-            movement_direction += m_transform->GetDown()    * Input::GetControllerTriggerLeft();
-            movement_direction += m_transform->GetUp()      * Input::GetControllerTriggerRight();
+            movement_direction += GetTransform()->GetForward() * -Input::GetControllerThumbStickLeft().y;
+            movement_direction += GetTransform()->GetRight()   * Input::GetControllerThumbStickLeft().x;
+            movement_direction += GetTransform()->GetDown()    * Input::GetControllerTriggerLeft();
+            movement_direction += GetTransform()->GetUp()      * Input::GetControllerTriggerRight();
             movement_direction.Normalize();
         }
 
@@ -518,7 +518,7 @@ namespace Spartan
             // Translate for as long as there is speed
             if (m_movement_speed != Vector3::Zero)
             {
-                m_transform->Translate(m_movement_speed);
+                GetTransform()->Translate(m_movement_speed);
             }
         }
     }
@@ -538,7 +538,7 @@ namespace Spartan
             m_lerp_to_target_position = m_bookmarks[m_target_bookmark_index].position;
 
             // Compute lerp speed based on how far the entity is from the camera.
-            m_lerp_to_target_distance = Vector3::Distance(m_lerp_to_target_position, m_transform->GetPosition());
+            m_lerp_to_target_distance = Vector3::Distance(m_lerp_to_target_position, GetTransform()->GetPosition());
             m_lerp_to_target_p       = true;
 
             m_target_bookmark_index = -1;
@@ -559,15 +559,15 @@ namespace Spartan
             // Position
             if (m_lerp_to_target_p)
             {
-                const Vector3 interpolated_position = Vector3::Lerp(m_transform->GetPosition(), m_lerp_to_target_position, m_lerp_to_target_alpha);
-                m_transform->SetPosition(interpolated_position);
+                const Vector3 interpolated_position = Vector3::Lerp(GetTransform()->GetPosition(), m_lerp_to_target_position, m_lerp_to_target_alpha);
+                GetTransform()->SetPosition(interpolated_position);
             }
 
             // Rotation
             if (m_lerp_to_target_r)
             {
-                const Quaternion interpolated_rotation = Quaternion::Lerp(m_transform->GetRotation(), m_lerp_to_target_rotation, Helper::Clamp(m_lerp_to_target_alpha, 0.0f, 1.0f));
-                m_transform->SetRotation(interpolated_rotation);
+                const Quaternion interpolated_rotation = Quaternion::Lerp(GetTransform()->GetRotation(), m_lerp_to_target_rotation, Helper::Clamp(m_lerp_to_target_alpha, 0.0f, 1.0f));
+                GetTransform()->SetRotation(interpolated_rotation);
             }
 
             // If the lerp has completed or the user has initiated fps control, stop lerping.
@@ -588,11 +588,11 @@ namespace Spartan
             SP_LOG_INFO("Focusing on entity \"%s\"...", entity->GetTransform()->GetEntityPtr()->GetObjectName().c_str());
 
             m_lerp_to_target_position = entity->GetTransform()->GetPosition();
-            const Vector3 target_direction = (m_lerp_to_target_position - m_transform->GetPosition()).Normalized();
+            const Vector3 target_direction = (m_lerp_to_target_position - GetTransform()->GetPosition()).Normalized();
 
             // If the entity has a renderable component, we can get a more accurate target position.
             // ...otherwise we apply a simple offset so that the rotation vector doesn't suffer
-            if (Renderable* renderable = entity->GetRenderable())
+            if (shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>())
             {
                 m_lerp_to_target_position -= target_direction * renderable->GetAabb().GetExtents().Length() * 2.0f;
             }
@@ -602,9 +602,9 @@ namespace Spartan
             }
 
             m_lerp_to_target_rotation = Quaternion::FromLookRotation(entity->GetTransform()->GetPosition() - m_lerp_to_target_position).Normalized();
-            m_lerp_to_target_distance = Vector3::Distance(m_lerp_to_target_position, m_transform->GetPosition());
+            m_lerp_to_target_distance = Vector3::Distance(m_lerp_to_target_position, GetTransform()->GetPosition());
 
-            const float lerp_angle = acosf(Quaternion::Dot(m_lerp_to_target_rotation.Normalized(), m_transform->GetRotation().Normalized())) * Helper::RAD_TO_DEG;
+            const float lerp_angle = acosf(Quaternion::Dot(m_lerp_to_target_rotation.Normalized(), GetTransform()->GetRotation().Normalized())) * Helper::RAD_TO_DEG;
 
             m_lerp_to_target_p = m_lerp_to_target_distance > 0.1f ? true : false;
             m_lerp_to_target_r = lerp_angle > 1.0f ? true : false;
@@ -618,9 +618,9 @@ namespace Spartan
 
     Matrix Camera::ComputeViewMatrix() const
     {
-        const auto position = m_transform->GetPosition();
-        auto look_at        = m_transform->GetRotation() * Vector3::Forward;
-        const auto up       = m_transform->GetRotation() * Vector3::Up;
+        const auto position = GetTransform()->GetPosition();
+        auto look_at        = GetTransform()->GetRotation() * Vector3::Forward;
+        const auto up       = GetTransform()->GetRotation() * Vector3::Up;
 
         // offset look_at by current position
         look_at += position;

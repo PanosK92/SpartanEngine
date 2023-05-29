@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ========================
-#include "IComponent.h"
+#include "Component.h"
 #include <memory>
 #include "../../RHI/RHI_Definition.h"
 #include "../../RHI/RHI_Viewport.h"
@@ -52,26 +52,24 @@ namespace Spartan
         Math::Vector3 rotation = Math::Vector3::Zero;
     };
 
-    class SP_CLASS Camera : public IComponent
+    class SP_CLASS Camera : public Component
     {
     public:
         Camera(std::weak_ptr<Entity> entity);
         ~Camera() = default;
 
-        //= ICOMPONENT ===============================
+        // Component
         void OnInitialize() override;
         void OnTick() override;
         void Serialize(FileStream* stream) override;
         void Deserialize(FileStream* stream) override;
-        //============================================
 
-        //= MATRICES ====================================================================
+        // Matrices
         const Math::Matrix& GetViewMatrix()           const { return m_view; }
         const Math::Matrix& GetProjectionMatrix()     const { return m_projection; }
         const Math::Matrix& GetViewProjectionMatrix() const { return m_view_projection; }
-        //===============================================================================
 
-        //= RAYCASTING ====================================================================================================
+        // Raycasting
         const Math::Ray ComputePickingRay();
         const Math::Ray& GetPickingRay() const { return m_ray; }
 
@@ -88,43 +86,43 @@ namespace Spartan
         Math::Vector3 ScreenToWorldCoordinates(const Math::Vector2& position_screen, const float z) const;
         //=================================================================================================================
 
+        // Aperture
         float GetAperture() const { return m_aperture; }
         void SetAperture(const float aperture) { m_aperture = aperture; }
 
+        // Shutter speed
         float GetShutterSpeed() const                   { return m_shutter_speed; }
         void SetShutterSpeed(const float shutter_speed) { m_shutter_speed = shutter_speed; }
 
+        // ISO
         float GetIso() const         { return m_iso; }
         void SetIso(const float iso) { m_iso = iso; }
 
+        // Exposure
         float GetEv100()    const { return std::log2((m_aperture * m_aperture) / m_shutter_speed * 100.0f / m_iso);} // Reference: https://google.github.io/filament/Filament.md.html#lighting/units/lightunitsvalidation
         float GetExposure() const { return 1.0f / (std::pow(2.0f, GetEv100()) * 1.2f); } // Frostbite: https://seblagarde.files.wordpress.com/2015/07/course_notes_moving_frostbite_to_pbr_v32.pdf
 
-        //= PLANES/PROJECTION ================================================
+        // Planes/projection
         void SetNearPlane(float near_plane);
         void SetFarPlane(float far_plane);
         void SetProjection(ProjectionType projection);
         float GetNearPlane()               const { return m_near_plane; }
         float GetFarPlane()                const { return m_far_plane; }
         ProjectionType GetProjectionType() const { return m_projection_type; }
-        //====================================================================
 
-        //= FOV ==========================================================
+        // FOV
         float GetFovHorizontalRad() const { return m_fov_horizontal_rad; }
         float GetFovVerticalRad()   const;
         float GetFovHorizontalDeg() const;
         void SetFovHorizontalDeg(float fov);
-        //================================================================
-
-        //= FRUSTUM ==========================================================================
-        bool IsInViewFrustum(Renderable* renderable) const;
+  
+        // Frustum
+        bool IsInViewFrustum(std::shared_ptr<Renderable> renderable) const;
         bool IsInViewFrustum(const Math::Vector3& center, const Math::Vector3& extents) const;
-        //====================================================================================
 
-        //= BOOKMARKS ===================================================================================
+        // Bookmarks
         void AddBookmark(camera_bookmark bookmark)               { m_bookmarks.emplace_back(bookmark); };
         const std::vector<camera_bookmark>& GetBookmarks() const { return m_bookmarks; };
-        //===============================================================================================
 
         // Clear color
         const Color& GetClearColor()                   const  { return m_clear_color; }

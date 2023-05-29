@@ -56,8 +56,6 @@ namespace Spartan
     Entity::~Entity()
     {
         m_components.fill(nullptr);
-        m_renderable = nullptr;
-        m_transform  = nullptr;
     }
 
     void Entity::Initialize()
@@ -115,7 +113,7 @@ namespace Spartan
 
     void Entity::OnStart()
     {
-        for (shared_ptr<IComponent> component : m_components)
+        for (shared_ptr<Component> component : m_components)
         {
             if (component)
             {
@@ -126,7 +124,7 @@ namespace Spartan
 
     void Entity::OnStop()
     {
-        for (shared_ptr<IComponent> component : m_components)
+        for (shared_ptr<Component> component : m_components)
         {
             if (component)
             {
@@ -145,7 +143,7 @@ namespace Spartan
         if (!m_is_active)
             return;
 
-        for (shared_ptr<IComponent> component : m_components)
+        for (shared_ptr<Component> component : m_components)
         {
             if (component)
             {
@@ -166,7 +164,7 @@ namespace Spartan
 
         // COMPONENTS
         {
-            for (shared_ptr<IComponent>& component : m_components)
+            for (shared_ptr<Component>& component : m_components)
             {
                 if (component)
                 {
@@ -179,7 +177,7 @@ namespace Spartan
                 }
             }
 
-            for (shared_ptr<IComponent>& component : m_components)
+            for (shared_ptr<Component>& component : m_components)
             {
                 if (component)
                 {
@@ -212,7 +210,7 @@ namespace Spartan
         }
     }
 
-    void Entity::Deserialize(FileStream* stream, Transform* parent)
+    void Entity::Deserialize(FileStream* stream, shared_ptr<Transform> parent)
     {
         // BASIC DATA
         {
@@ -236,7 +234,7 @@ namespace Spartan
                     uint64_t component_id = 0;
                     stream->Read(&component_id);
 
-                    IComponent* component = AddComponent(static_cast<ComponentType>(component_type));
+                    shared_ptr<Component> component = AddComponent(static_cast<ComponentType>(component_type));
                     component->SetObjectId(component_id);
                 }
             }
@@ -244,7 +242,7 @@ namespace Spartan
             // Sometimes there are component dependencies, e.g. a collider that needs
             // to set it's shape to a rigibody. So, it's important to first create all 
             // the components (like above) and then deserialize them (like here).
-            for (shared_ptr<IComponent>& component : m_components)
+            for (shared_ptr<Component>& component : m_components)
             {
                 if (component)
                 {
@@ -253,10 +251,7 @@ namespace Spartan
             }
 
             // Set the transform's parent
-            if (m_transform)
-            {
-                m_transform->SetParent(parent);
-            }
+            GetTransform()->SetParent(parent);
         }
 
         // CHILDREN
@@ -281,10 +276,7 @@ namespace Spartan
                 child.lock()->Deserialize(stream, GetTransform());
             }
 
-            if (m_transform)
-            {
-                m_transform->AcquireChildren();
-            }
+            GetTransform()->AcquireChildren();
         }
 
         // Make the scene resolve
@@ -301,30 +293,30 @@ namespace Spartan
         return m_is_active;
     }
     
-    IComponent* Entity::AddComponent(const ComponentType type)
+    shared_ptr<Component> Entity::AddComponent(const ComponentType type)
     {
         // This is the only hardcoded part regarding components. It's 
         // one function but it would be nice if that gets automated too.
 
-        IComponent* component = nullptr;
+        shared_ptr<Component> component = nullptr;
 
         switch (type)
         {
-            case ComponentType::AudioListener:   component = static_cast<IComponent*>(AddComponent<AudioListener>());   break;
-            case ComponentType::AudioSource:     component = static_cast<IComponent*>(AddComponent<AudioSource>());     break;
-            case ComponentType::Camera:          component = static_cast<IComponent*>(AddComponent<Camera>());          break;
-            case ComponentType::Collider:        component = static_cast<IComponent*>(AddComponent<Collider>());        break;
-            case ComponentType::Constraint:      component = static_cast<IComponent*>(AddComponent<Constraint>());      break;
-            case ComponentType::Light:           component = static_cast<IComponent*>(AddComponent<Light>());           break;
-            case ComponentType::Renderable:      component = static_cast<IComponent*>(AddComponent<Renderable>());      break;
-            case ComponentType::RigidBody:       component = static_cast<IComponent*>(AddComponent<RigidBody>());       break;
-            case ComponentType::SoftBody:        component = static_cast<IComponent*>(AddComponent<SoftBody>());        break;
-            case ComponentType::Environment:     component = static_cast<IComponent*>(AddComponent<Environment>());     break;
-            case ComponentType::Transform:       component = static_cast<IComponent*>(AddComponent<Transform>());       break;
-            case ComponentType::Terrain:         component = static_cast<IComponent*>(AddComponent<Terrain>());         break;
-            case ComponentType::ReflectionProbe: component = static_cast<IComponent*>(AddComponent<ReflectionProbe>()); break;
-            case ComponentType::Undefined:       component = nullptr;                                                   break;
-            default:                             component = nullptr;                                                   break;
+            case ComponentType::AudioListener:   component = static_pointer_cast<Component>(AddComponent<AudioListener>());   break;
+            case ComponentType::AudioSource:     component = static_pointer_cast<Component>(AddComponent<AudioSource>());     break;
+            case ComponentType::Camera:          component = static_pointer_cast<Component>(AddComponent<Camera>());          break;
+            case ComponentType::Collider:        component = static_pointer_cast<Component>(AddComponent<Collider>());        break;
+            case ComponentType::Constraint:      component = static_pointer_cast<Component>(AddComponent<Constraint>());      break;
+            case ComponentType::Light:           component = static_pointer_cast<Component>(AddComponent<Light>());           break;
+            case ComponentType::Renderable:      component = static_pointer_cast<Component>(AddComponent<Renderable>());      break;
+            case ComponentType::RigidBody:       component = static_pointer_cast<Component>(AddComponent<RigidBody>());       break;
+            case ComponentType::SoftBody:        component = static_pointer_cast<Component>(AddComponent<SoftBody>());        break;
+            case ComponentType::Environment:     component = static_pointer_cast<Component>(AddComponent<Environment>());     break;
+            case ComponentType::Transform:       component = static_pointer_cast<Component>(AddComponent<Transform>());       break;
+            case ComponentType::Terrain:         component = static_pointer_cast<Component>(AddComponent<Terrain>());         break;
+            case ComponentType::ReflectionProbe: component = static_pointer_cast<Component>(AddComponent<ReflectionProbe>()); break;
+            case ComponentType::Undefined:       component = nullptr;                                                          break;
+            default:                             component = nullptr;                                                          break;
         }
 
         SP_ASSERT(component != nullptr);
@@ -334,7 +326,7 @@ namespace Spartan
 
     void Entity::RemoveComponentById(const uint64_t id)
     {
-        for (shared_ptr<IComponent>& component : m_components)
+        for (shared_ptr<Component>& component : m_components)
         {
             if (component)
             {
@@ -349,5 +341,10 @@ namespace Spartan
 
         // Make the scene resolve
         SP_FIRE_EVENT(EventType::WorldResolve);
+    }
+
+    shared_ptr<Transform> Entity::GetTransform()
+    {
+        return GetComponent<Transform>();
     }
 }

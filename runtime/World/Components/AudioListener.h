@@ -22,12 +22,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ==========
-#include "IComponent.h"
+#include "Component.h"
 //=====================
 
 namespace Spartan
 {
-    class SP_CLASS AudioListener : public IComponent
+    class SP_CLASS AudioListener : public Component
     {
     public:
         AudioListener(std::weak_ptr<Entity> entity);

@@ -548,7 +548,7 @@ namespace Spartan
         cmd_list->SetConstantBuffer(RendererBindingsCb::uber, RHI_Shader_Vertex | RHI_Shader_Pixel | RHI_Shader_Compute, m_cb_uber_gpu);
     }
 
-    void Renderer::Update_Cb_Light(RHI_CommandList* cmd_list, const Light* light, const RHI_Shader_Type scope)
+    void Renderer::Update_Cb_Light(RHI_CommandList* cmd_list, shared_ptr<Light> light, const RHI_Shader_Type scope)
     {
         for (uint32_t i = 0; i < light->GetShadowArraySize(); i++)
         {
@@ -562,18 +562,18 @@ namespace Spartan
             light->GetBias()
         );
 
-        m_cb_light_cpu.color                      = light->GetColor();
-        m_cb_light_cpu.normal_bias                = light->GetNormalBias();
-        m_cb_light_cpu.position                   = light->GetTransform()->GetPosition();
-        m_cb_light_cpu.direction                  = light->GetTransform()->GetForward();
-        m_cb_light_cpu.options                    = 0;
-        m_cb_light_cpu.options                    |= light->GetLightType() == LightType::Directional ? (1 << 0) : 0;
-        m_cb_light_cpu.options                    |= light->GetLightType() == LightType::Point       ? (1 << 1) : 0;
-        m_cb_light_cpu.options                    |= light->GetLightType() == LightType::Spot        ? (1 << 2) : 0;
-        m_cb_light_cpu.options                    |= light->GetShadowsEnabled()                      ? (1 << 3) : 0;
-        m_cb_light_cpu.options                    |= light->GetShadowsTransparentEnabled()           ? (1 << 4) : 0;
-        m_cb_light_cpu.options                    |= light->GetShadowsScreenSpaceEnabled()           ? (1 << 5) : 0;
-        m_cb_light_cpu.options                    |= light->GetVolumetricEnabled()                   ? (1 << 6) : 0;
+        m_cb_light_cpu.color       = light->GetColor();
+        m_cb_light_cpu.normal_bias = light->GetNormalBias();
+        m_cb_light_cpu.position    = light->GetTransform()->GetPosition();
+        m_cb_light_cpu.direction   = light->GetTransform()->GetForward();
+        m_cb_light_cpu.options     = 0;
+        m_cb_light_cpu.options     |= light->GetLightType() == LightType::Directional ? (1 << 0) : 0;
+        m_cb_light_cpu.options     |= light->GetLightType() == LightType::Point       ? (1 << 1) : 0;
+        m_cb_light_cpu.options     |= light->GetLightType() == LightType::Spot        ? (1 << 2) : 0;
+        m_cb_light_cpu.options     |= light->GetShadowsEnabled()                      ? (1 << 3) : 0;
+        m_cb_light_cpu.options     |= light->GetShadowsTransparentEnabled()           ? (1 << 4) : 0;
+        m_cb_light_cpu.options     |= light->GetShadowsScreenSpaceEnabled()           ? (1 << 5) : 0;
+        m_cb_light_cpu.options     |= light->GetVolumetricEnabled()                   ? (1 << 6) : 0;
 
         m_cb_light_gpu->Update(&m_cb_light_cpu);
 
@@ -665,7 +665,7 @@ namespace Spartan
 
             for (shared_ptr<Entity> entity : m_renderables_pending)
             {
-                if (Renderable* renderable = entity->GetComponent<Renderable>())
+                if (shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>())
                 {
                     bool is_transparent = false;
                     bool is_visible     = true;
@@ -682,18 +682,18 @@ namespace Spartan
                     }
                 }
 
-                if (Light* light = entity->GetComponent<Light>())
+                if (shared_ptr<Light> light = entity->GetComponent<Light>())
                 {
                     m_renderables[RendererEntityType::light].emplace_back(entity);
                 }
 
-                if (shared_ptr<Camera> camera = entity->GetComponentShared<Camera>())
+                if (shared_ptr<Camera> camera = entity->GetComponent<Camera>())
                 {
                     m_renderables[RendererEntityType::camera].emplace_back(entity);
                     m_camera = camera;
                 }
 
-                if (ReflectionProbe* reflection_probe = entity->GetComponent<ReflectionProbe>())
+                if (shared_ptr<ReflectionProbe> reflection_probe = entity->GetComponent<ReflectionProbe>())
                 {
                     m_renderables[RendererEntityType::reflection_probe].emplace_back(entity);
                 }
@@ -761,7 +761,7 @@ namespace Spartan
 
         auto comparison_op = [](shared_ptr<Entity> entity)
         {
-            auto renderable = entity->GetRenderable();
+            auto renderable = entity->GetComponent<Renderable>();
             if (!renderable)
                 return 0.0f;
 

@@ -38,7 +38,7 @@ using namespace std;
 
 namespace Spartan
 {
-    ReflectionProbe ::ReflectionProbe(weak_ptr<Entity> entity) : IComponent(entity)
+    ReflectionProbe ::ReflectionProbe(weak_ptr<Entity> entity) : Component(entity)
     {
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_resolution, uint32_t);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_extents, Vector3);
@@ -85,10 +85,10 @@ namespace Spartan
 
         ComputeProjectionMatrix();
 
-        if (m_transform->HasPositionChangedThisFrame())
+        if (GetTransform()->HasPositionChangedThisFrame())
         { 
             // Compute view for each side of the cube map
-            const Vector3 position = m_transform->GetPosition();
+            const Vector3 position = GetTransform()->GetPosition();
             m_matrix_view[0] = Matrix::CreateLookAtLH(position, position + Vector3::Right,    Vector3::Up);       // x+
             m_matrix_view[1] = Matrix::CreateLookAtLH(position, position + Vector3::Left,     Vector3::Up);       // x-
             m_matrix_view[2] = Matrix::CreateLookAtLH(position, position + Vector3::Up,       Vector3::Backward); // y+
@@ -99,7 +99,7 @@ namespace Spartan
             m_aabb = BoundingBox(position - m_extents, position + m_extents);
         }
 
-        if (m_transform->HasPositionChangedThisFrame())
+        if (GetTransform()->HasPositionChangedThisFrame())
         {
             // Compute frustum
             for (uint32_t i = 0; i < m_texture_color->GetArrayLength(); i++)
@@ -130,7 +130,7 @@ namespace Spartan
         stream->Read(&m_plane_far);
     }
 
-    bool ReflectionProbe::IsInViewFrustum(Renderable* renderable, uint32_t index) const
+    bool ReflectionProbe::IsInViewFrustum(shared_ptr<Renderable> renderable, uint32_t index) const
     {
         const auto box     = renderable->GetAabb();
         const auto center  = box.GetCenter();

@@ -131,7 +131,7 @@ namespace Spartan
         // Constant buffers
         static void Update_Cb_Frame(RHI_CommandList* cmd_list);
         static void Update_Cb_Uber(RHI_CommandList* cmd_list);
-        static void Update_Cb_Light(RHI_CommandList* cmd_list, const Light* light, const RHI_Shader_Type scope);
+        static void Update_Cb_Light(RHI_CommandList* cmd_list, const std::shared_ptr<Light> light, const RHI_Shader_Type scope);
         static void Update_Cb_Material(RHI_CommandList* cmd_list);
 
         // Resource creation

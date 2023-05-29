@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES =====================
-#include "IComponent.h"
+#include "Component.h"
 #include "../../Math/Vector3.h"
 #include "../../Math/Vector2.h"
 #include "../../Math/Quaternion.h"
@@ -44,7 +44,7 @@ namespace Spartan
         ConstraintType_ConeTwist
     };
 
-    class SP_CLASS Constraint : public IComponent
+    class SP_CLASS Constraint : public Component
     {
     public:
         Constraint(std::weak_ptr<Entity> entity);
