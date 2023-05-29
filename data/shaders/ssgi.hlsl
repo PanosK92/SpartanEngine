@@ -41,9 +41,9 @@ float compute_falloff(float distance_squared)
 
 float compute_visibility(float3 origin_normal, float3 origin_to_sample)
 {
-    float distance_squared  = dot(origin_to_sample, origin_to_sample);
-    float n_dot_v           = dot(origin_normal, origin_to_sample) * rsqrt(distance_squared);
-    float falloff           = compute_falloff(distance_squared);
+    float distance_squared = dot(origin_to_sample, origin_to_sample);
+    float n_dot_v          = dot(origin_normal, origin_to_sample) * rsqrt(distance_squared);
+    float falloff          = compute_falloff(distance_squared);
 
     return saturate(n_dot_v - g_ao_occlusion_bias) * falloff;
 }
@@ -73,7 +73,7 @@ void compute_ssgi(uint2 pos, inout float occlusion, inout float3 diffuse_bounce)
     for (uint direction_index = 0; direction_index < g_ao_directions; direction_index++)
     {
         float rotation_angle      = (direction_index + noise_gradient_temporal + offset_rotation_temporal) * step_direction;
-        float2 rotation_direction = float2(cos(rotation_angle), sin(rotation_angle)) * g_texel_size;
+        float2 rotation_direction = float2(cos(rotation_angle), sin(rotation_angle)) * get_rt_texel_size();
 
         for (uint step_index = 0; step_index < g_ao_steps; ++step_index)
         {

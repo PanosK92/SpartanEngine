@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016-2021 Panos Karabelas
+Copyright(c) 2016-2023 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -20,13 +20,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES =========
-#include "Common.hlsl"
+#include "common.hlsl"
 //====================
 
-static const float g_ssr_max_distance       = 100.0f;
-static const uint g_ssr_max_steps           = 45;
-static const uint g_ssr_binary_search_steps = 24;
-static const float g_ssr_thickness          = 0.0001f;
+static const float g_ssr_max_distance        = 100.0f;
+static const uint g_ssr_max_steps            = 45;
+static const uint g_ssr_binary_search_steps  = 24;
+static const float g_ssr_thickness           = 0.0001f;
+static const float g_ssr_roughness_threshold = 0.8f;
 
 float compute_alpha(uint2 screen_pos, float2 hit_uv, float v_dot_r)
 {

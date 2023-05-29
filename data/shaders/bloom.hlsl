@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016-2021 Panos Karabelas
+Copyright(c) 2016-2023 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -69,7 +69,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 
     const float2 uv          = (thread_id.xy + 0.5f) / buffer_uber.resolution_rt;
     float4 destination_color = tex_uav[thread_id.xy];
-    float3 upsampled_color   = tent_antiflicker_filter(uv, g_texel_size * 0.5f);
+    float3 upsampled_color   = tent_antiflicker_filter(uv, get_rt_texel_size() * 0.5f);
     tex_uav[thread_id.xy]    = float4(saturate_16(destination_color.rgb + upsampled_color), destination_color.a);
 }
 

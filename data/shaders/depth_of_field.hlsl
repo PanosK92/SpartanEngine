@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016-2022 Panos Karabelas
+Copyright(c) 2016-2023 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -91,7 +91,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     const float2 uv = (thread_id.xy + 0.5f) / buffer_uber.resolution_rt;
 
     // Coc
-    const float4 o          = g_texel_size.xyxy * float2(-0.5, 0.5).xxyy;
+    const float4 o          = get_rt_texel_size().xyxy * float2(-0.5, 0.5).xxyy;
     const float focal_depth = get_focal_depth();
     float coc1              = circle_of_confusion(uv + o.xy, focal_depth);
     float coc2              = circle_of_confusion(uv + o.zy, focal_depth);
@@ -125,7 +125,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     for (uint i = 0; i < g_dof_sample_count; i++)
     {
         float2 radius = g_dof_samples[i] * g_dof_bokeh_radius;
-        float4 s = tex.SampleLevel(sampler_bilinear_clamp, uv + radius * g_texel_size, 0);
+        float4 s = tex.SampleLevel(sampler_bilinear_clamp, uv + radius * get_rt_texel_size(), 0);
 
         // If the sample's CoC is at least as large as the kernel radius, use it.
         if (abs(s.a) >= length(radius))
@@ -149,7 +149,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         return;
 
     const float2 uv = (thread_id.xy + 0.5f) / buffer_uber.resolution_rt;
-    const float4 o  = g_texel_size.xyxy * float2(-0.5, 0.5).xxyy;
+    const float4 o  = get_rt_texel_size().xyxy * float2(-0.5, 0.5).xxyy;
 
     float3 s1 = tex.SampleLevel(sampler_bilinear_clamp, uv + o.xy, 0).rgb;
     float3 s2 = tex.SampleLevel(sampler_bilinear_clamp, uv + o.zy, 0).rgb;
