@@ -78,7 +78,7 @@ Occasional livestreams on Discord for interesting topics.
 - Outperform D3D11.
 - Deprecate D3D11.
 - Continue work on D3D12 (on going and non blocking since Vulkan is there).
-- Create a startup/default world which is closer to playable to a demo.
+- Create a startup/default world which is closer to a playable demo.
 
 ## Long-term
 - Skeletal Animation.
