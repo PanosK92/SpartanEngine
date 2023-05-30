@@ -15,6 +15,8 @@
 ![build_status](https://github.com/PanosK92/SpartanEngine/actions/workflows/workflow.yml/badge.svg)
 [![Discord](https://img.shields.io/discord/677302405263785986?label=Discord)](https://discord.gg/TG5r2BS)
 
+Don't use D3D12 yet, it's not not done.
+
 # Livestreams
 
 Occasional livestreams on Discord for interesting topics.
@@ -93,6 +95,6 @@ Occasional livestreams on Discord for interesting topics.
 - Linux port.
 
 ## Wiki
-Don't forget that there is a [wiki](https://github.com/PanosK92/SpartanEngine/wiki) that can help answers some of your questions. Here are some of it's contents:
+Don't forget that there is a [wiki](https://github.com/PanosK92/SpartanEngine/wiki) that can help answer some of your questions. Here are some of it's contents:
 - [How to compile](https://github.com/PanosK92/SpartanEngine/wiki/How-to-compile) 
 - [How to contribute](https://github.com/PanosK92/SpartanEngine/wiki/How-to-contribute)
