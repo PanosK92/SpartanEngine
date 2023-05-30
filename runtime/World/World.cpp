@@ -561,7 +561,7 @@ namespace Spartan
 
         // Environment
         {
-            m_default_environment->GetComponent<Environment>()->SetFromTextureSphere("project\\\environment\\good_evening.jpg");
+            m_default_environment->GetComponent<Environment>()->SetFromTextureSphere("project\\environment\\good_evening.jpg");
         }
 
         // Load floor material
