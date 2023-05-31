@@ -15,7 +15,7 @@
 ![build_status](https://github.com/PanosK92/SpartanEngine/actions/workflows/workflow.yml/badge.svg)
 [![Discord](https://img.shields.io/discord/677302405263785986?label=Discord)](https://discord.gg/TG5r2BS)
 
-Don't use D3D12 yet, it's not not done.
+Don't use D3D12 yet, it's not done.
 
 # Livestreams
 
@@ -78,7 +78,7 @@ Occasional livestreams on Discord for interesting topics.
 - Outperform D3D11.
 - Deprecate D3D11.
 - Continue work on D3D12 (on going and non blocking since Vulkan is there).
-- Create a startup/default world which is closer to playable to a demo.
+- Create a startup/default world which is closer to a playable demo.
 
 ## Long-term
 - Skeletal Animation.
