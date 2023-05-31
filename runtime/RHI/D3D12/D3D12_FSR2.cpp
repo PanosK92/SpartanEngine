@@ -30,7 +30,7 @@ namespace Spartan
 
     }
 
-    void RHI_FSR2::OnResolutionChange(const Math::Vector2& resolution_render, const Math::Vector2& resolution_output)
+    void RHI_FSR2::OnDisplayModeChanged(const Math::Vector2& resolution_render, const Math::Vector2& resolution_output)
     {
 
     }

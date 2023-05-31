@@ -297,7 +297,7 @@ namespace Spartan
             render_target(RendererTexture::blur) = make_unique<RHI_Texture2D>(width, height, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv, "rt_blur");
         }
 
-        RHI_FSR2::OnResolutionChange(GetResolutionRender(), GetResolutionOutput());
+        RHI_FSR2::OnDisplayModeChanged(GetResolutionRender(), GetResolutionOutput());
     }
 
     void Renderer::CreateShaders()
