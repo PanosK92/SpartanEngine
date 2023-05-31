@@ -223,7 +223,7 @@ namespace Spartan
     {
         return display_modes;
     }
-
+    
     uint32_t Display::GetWidth()
     {
         SDL_DisplayMode display_mode;

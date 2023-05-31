@@ -481,7 +481,7 @@ namespace Spartan
 
     void Profiler::UpdateMetrics()
     {
-        const uint32_t texture_count = ResourceCache::GetResourceCount(ResourceType::Texture) + ResourceCache::GetResourceCount(ResourceType::Texture2d) + ResourceCache::GetResourceCount(ResourceType::TextureCube);
+        const uint32_t texture_count  = ResourceCache::GetResourceCount(ResourceType::Texture) + ResourceCache::GetResourceCount(ResourceType::Texture2d) + ResourceCache::GetResourceCount(ResourceType::TextureCube);
         const uint32_t material_count = ResourceCache::GetResourceCount(ResourceType::Material);
 
         // Get the graphics driver vendor
@@ -546,8 +546,8 @@ namespace Spartan
         oss_metrics
             << "\nResources\n"
             << "Meshes rendered:\t\t\t\t"   << m_renderer_meshes_rendered << endl
-            << "Textures:\t\t\t\t\t\t\t"    << texture_count << endl
-            << "Materials:\t\t\t\t\t\t\t"   << material_count << endl
+            << "Textures:\t\t\t\t\t\t\t"    << texture_count              << endl
+            << "Materials:\t\t\t\t\t\t\t"   << material_count             << endl
             << "Descriptor set capacity:\t" << m_descriptor_set_count << "/" << m_descriptor_set_capacity;
     }
 }

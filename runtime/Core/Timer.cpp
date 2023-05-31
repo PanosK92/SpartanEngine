@@ -66,24 +66,22 @@ namespace Spartan
 
         // FPS limiting
         {
-            // The kernel takes time to wake up the thread after the thread has finished sleeping.
-            // Therefore we can't trust thread sleeping for accurate frame limiting. A loop works the best.
-
             double target_ms = 1000.0 / m_fps_limit;
             while (delta_time.count() < target_ms)
             {
+                // Yield the CPU to other threads/processes instead of busy waiting.
+                std::this_thread::yield();
+
                 delta_time = chrono::steady_clock::now() - m_time_sleep_start;
             }
 
             m_time_sleep_end = chrono::steady_clock::now();
         }
 
-        // Compute durations
-        m_delta_time_ms = static_cast<double>(delta_time.count());
-        m_time_ms       = static_cast<double>(chrono::duration<double, milli>(m_time_sleep_start - m_time_start).count());
-
-        // Compute smoothed delta time
-        m_delta_time_smoothed_ms          = m_delta_time_smoothed_ms * (1.0 - weight_delta) + m_delta_time_ms * weight_delta;
+        // Compute times
+        m_delta_time_ms          = static_cast<double>(delta_time.count());
+        m_time_ms                = static_cast<double>(chrono::duration<double, milli>(m_time_sleep_start - m_time_start).count());
+        m_delta_time_smoothed_ms = m_delta_time_smoothed_ms * (1.0 - weight_delta) + m_delta_time_ms * weight_delta;
     }
 
     void Timer::SetFpsLimit(float fps_in)
