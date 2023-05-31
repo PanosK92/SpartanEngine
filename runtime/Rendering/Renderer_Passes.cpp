@@ -1265,7 +1265,7 @@ namespace Spartan
             {
                 if (entity->GetComponent<Light>()->GetLightType() == LightType::Directional)
                 {
-                    Update_Cb_Light(cmd_list, entity->GetComponent<Light>(), RHI_Shader_Compute);
+                    Update_Cb_Light(cmd_list, entity->GetComponent<Light>(), RHI_Shader_Pixel);
                     break;
                 }
             }
