@@ -469,11 +469,7 @@ namespace Spartan::vulkan_utility
         {
             std::string msg = "Vulkan: " + std::string(p_callback_data->pMessage);
 
-            if (msg_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT)
-            {
-                Log::Write(msg.c_str(), LogType::Info);
-            }
-            else if (msg_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT)
+            if (/*(msg_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT) ||*/ (msg_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT))
             {
                 Log::Write(msg.c_str(), LogType::Info);
             }
