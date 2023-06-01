@@ -182,7 +182,7 @@ namespace Spartan
         static void Pass_Ffx_Fsr2(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
 
         // Event handlers
-        static void OnAddRenderables(sp_variant data);
+        static void OnWorldResolved(sp_variant data);
         static void OnClear();
         static void OnFullScreenToggled();
 

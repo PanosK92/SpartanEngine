@@ -163,25 +163,6 @@ namespace Spartan
             RHI_Device::Initialize();
         }
 
-        // Create swap chain
-        m_swap_chain = make_shared<RHI_SwapChain>
-        (
-            Window::GetHandleSDL(),
-            Display::GetWidth(),
-            Display::GetHeight(),
-            // Present mode: For v-sync, we could Mailbox for lower latency, but Fifo is always supported, so we'll assume that
-            GetOption<bool>(RendererOption::Vsync) ? RHI_Present_Mode::Fifo : RHI_Present_Mode::Immediate,
-            m_swap_chain_buffer_count,
-            "renderer"
-        );
-
-        // Create command pool
-        m_cmd_pool = RHI_Device::AllocateCommandPool("renderer", m_swap_chain->GetObjectId());
-        m_cmd_pool->AllocateCommandLists(RHI_Queue_Type::Graphics, 2, 2);
-
-        // Adjust render option to reflect whether the swapchain is HDR or not
-        SetOption(RendererOption::Hdr, m_swap_chain->IsHdr());
-
         // Resolution
         {
             // SDL2 doesn't work with Windows scaling, meaning we can't always get the true screen resolution using GetWidth() and GetHeight().
@@ -200,6 +181,25 @@ namespace Spartan
 
             // Note: If the editor is active, it will set the render and viewport resolution to what the actual viewport is.
         }
+
+        // Create swap chain
+        m_swap_chain = make_shared<RHI_SwapChain>
+        (
+            Window::GetHandleSDL(),
+            static_cast<uint32_t>(m_resolution_output.x),
+            static_cast<uint32_t>(m_resolution_output.y),
+            // Present mode: For v-sync, we could Mailbox for lower latency, but Fifo is always supported, so we'll assume that
+            GetOption<bool>(RendererOption::Vsync) ? RHI_Present_Mode::Fifo : RHI_Present_Mode::Immediate,
+            m_swap_chain_buffer_count,
+            "renderer"
+        );
+
+        // Create command pool
+        m_cmd_pool = RHI_Device::AllocateCommandPool("renderer", m_swap_chain->GetObjectId());
+        m_cmd_pool->AllocateCommandLists(RHI_Queue_Type::Graphics, 2, 2);
+
+        // Adjust render option to reflect whether the swapchain is HDR or not
+        SetOption(RendererOption::Hdr, m_swap_chain->IsHdr());
 
         // Default options
         m_options.fill(0.0f);
@@ -246,7 +246,7 @@ namespace Spartan
         CreateTextures();
 
         // Subscribe to events
-        SP_SUBSCRIBE_TO_EVENT(EventType::WorldResolved,             SP_EVENT_HANDLER_VARIANT_STATIC(OnAddRenderables));
+        SP_SUBSCRIBE_TO_EVENT(EventType::WorldResolved,             SP_EVENT_HANDLER_VARIANT_STATIC(OnWorldResolved));
         SP_SUBSCRIBE_TO_EVENT(EventType::WorldClear,                SP_EVENT_HANDLER_STATIC(OnClear));
         SP_SUBSCRIBE_TO_EVENT(EventType::WindowOnFullScreenToggled, SP_EVENT_HANDLER_STATIC(OnFullScreenToggled));
 
@@ -617,7 +617,7 @@ namespace Spartan
         cmd_list->SetConstantBuffer(RendererBindingsCb::material, RHI_Shader_Pixel, m_cb_material_gpu);
     }
 
-    void Renderer::OnAddRenderables(sp_variant data)
+    void Renderer::OnWorldResolved(sp_variant data)
     {
         // note: m_renderables is a vector of shared pointers.
         // this ensures that if any entities are deallocated by the world.

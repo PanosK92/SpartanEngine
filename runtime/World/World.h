@@ -70,6 +70,5 @@ namespace Spartan
 
     private:
         static void Clear();
-        static void _EntityRemove(std::shared_ptr<Entity> entity_to_remove);
     };
 }
