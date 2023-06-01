@@ -62,7 +62,7 @@ void Viewport::TickVisible()
 
             if (m_first_tick)
             {
-                Renderer::SetResolutionRender(width, height);
+                Renderer::SetResolutionRender(static_cast<uint32_t>(width), static_cast<uint32_t>(height));
                 m_first_tick = false;
             }
 
