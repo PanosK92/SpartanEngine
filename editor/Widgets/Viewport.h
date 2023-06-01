@@ -26,14 +26,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "RHI/RHI_Viewport.h"
 //===========================
 
-//= FORWARD DECLARATIONS =
-namespace Spartan
-{
-    class Renderer;
-    class World;
-}
-//========================
-
 class Viewport : public Widget
 {
 public:
@@ -46,4 +38,5 @@ private:
     float m_window_padding          = 4.0f;
     float m_width                   = 0.0f;
     float m_height                  = 0.0f;
+    bool m_first_tick               = true;
 };
