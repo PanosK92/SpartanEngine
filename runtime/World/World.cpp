@@ -49,7 +49,6 @@ namespace Spartan
 {
     namespace
     {
-        static vector<shared_ptr<Entity>> m_queue_deletion;
         static vector<shared_ptr<Entity>> m_entities;
         static string m_name;
         static string m_file_path;
@@ -67,10 +66,12 @@ namespace Spartan
         {
             if (m_default_model_car)
             {
-                // Rotate the car
-                Entity* entity = m_default_model_car->GetRootEntity();
-                float rotation_delta = 10.0f * static_cast<float>(Timer::GetDeltaTimeSmoothedSec()) * Helper::DEG_TO_RAD;
-                entity->GetTransform()->Rotate(Quaternion::FromAngleAxis(rotation_delta, Vector3::Forward));
+                if (Entity* entity = m_default_model_car->GetRootEntity()) // can be true when the entity is deleted
+                {
+                    // Rotate the car
+                    float rotation_delta = 10.0f * static_cast<float>(Timer::GetDeltaTimeSmoothedSec()) * Helper::DEG_TO_RAD;
+                    entity->GetTransform()->Rotate(Quaternion::FromAngleAxis(rotation_delta, Vector3::Forward));
+                }
             }
         }
     }
@@ -100,14 +101,14 @@ namespace Spartan
     {
         SP_PROFILE_FUNCTION();
 
+        lock_guard<mutex> lock(m_entity_access_mutex);
+
         // Tick entities
         {
             // Detect game toggling
             const bool started   =  Engine::IsFlagSet(EngineMode::Game) &&  m_was_in_editor_mode;
             const bool stopped   = !Engine::IsFlagSet(EngineMode::Game) && !m_was_in_editor_mode;
             m_was_in_editor_mode = !Engine::IsFlagSet(EngineMode::Game);
-
-            lock_guard<mutex> lock(m_entity_access_mutex);
 
             // Start
             if (started)
@@ -132,19 +133,6 @@ namespace Spartan
             {
                 entity->Tick();
             }
-        }
-
-        // Remove entities
-        if (!m_queue_deletion.empty())
-        {
-            lock_guard<mutex> lock(m_entity_access_mutex);
-
-            for (shared_ptr<Entity>& entity : m_queue_deletion)
-            {
-                _EntityRemove(entity);
-            }
-
-            m_queue_deletion.clear();
         }
 
         // Notify Renderer
@@ -299,11 +287,41 @@ namespace Spartan
         return GetEntityById(entity->GetObjectId()) != nullptr;
     }
 
-    void World::RemoveEntity(shared_ptr<Entity> entity)
+    void World::RemoveEntity(shared_ptr<Entity> entity_to_remove)
     {
-        SP_ASSERT_MSG(entity != nullptr, "Entity is null");
+        SP_ASSERT_MSG(entity_to_remove != nullptr, "Entity is null");
 
-        m_queue_deletion.push_back(entity);
+        lock_guard<mutex> lock(m_entity_access_mutex);
+
+        // Remove the entity and all of its children
+        {
+            // Get the root entity and its descendants
+            vector<Transform*> entities_to_remove;
+            entities_to_remove.push_back(entity_to_remove->GetTransform().get());  // Add the root entity
+            entity_to_remove->GetTransform()->GetDescendants(&entities_to_remove); // Get descendants 
+
+            // Create a set containing the object IDs of entities to remove
+            set<uint64_t> ids_to_remove;
+            for (Transform* transform : entities_to_remove)
+            {
+                ids_to_remove.insert(transform->GetEntityPtr()->GetObjectId());
+            }
+
+            // Remove entities using a single loop
+            m_entities.erase(remove_if(m_entities.begin(), m_entities.end(),
+                [&](const shared_ptr<Entity>& entity)
+                {
+                    return ids_to_remove.count(entity->GetObjectId()) > 0;
+                }),
+                m_entities.end());
+
+            // If there was a parent, update it
+            if (Transform* parent = entity_to_remove->GetTransform()->GetParent())
+            {
+                parent->AcquireChildren();
+            }
+        }
+
         m_resolve = true;
     }
 
@@ -362,38 +380,6 @@ namespace Spartan
 
         // Mark for resolve
         m_resolve = true;
-    }
-
-    // Removes an entity and all of its children
-    void World::_EntityRemove(shared_ptr<Entity> entity_to_remove)
-    {
-        SP_ASSERT(entity_to_remove != nullptr);
-
-        // Get the root entity and its descendants
-        vector<Transform*> entities_to_remove;
-        entities_to_remove.push_back(entity_to_remove->GetTransform().get());  // Add the root entity
-        entity_to_remove->GetTransform()->GetDescendants(&entities_to_remove); // Get descendants 
-
-        // Create a set containing the object IDs of entities to remove
-        set<uint64_t> ids_to_remove;
-        for (Transform* transform : entities_to_remove)
-        {
-            ids_to_remove.insert(transform->GetEntityPtr()->GetObjectId());
-        }
-
-        // Remove entities using a single loop
-        m_entities.erase(remove_if(m_entities.begin(), m_entities.end(),
-            [&](const shared_ptr<Entity>& entity)
-            {
-                return ids_to_remove.count(entity->GetObjectId()) > 0;
-            }),
-            m_entities.end());
-
-        // If there was a parent, update it
-        if (Transform* parent = entity_to_remove->GetTransform()->GetParent())
-        {
-            parent->AcquireChildren();
-        }
     }
 
     void World::CreateDefaultWorldCommon(

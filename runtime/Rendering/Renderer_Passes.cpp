@@ -1570,9 +1570,9 @@ namespace Spartan
                 Update_Cb_Uber(cmd_list);
 
                 // Set textures
-                cmd_list->SetTexture(RendererBindingsUav::tex, tex_bloom, mip_index_big, 1);
                 cmd_list->SetTexture(RendererBindingsSrv::tex, tex_bloom, mip_index_small, 1);
-                
+                cmd_list->SetTexture(RendererBindingsUav::tex, tex_bloom, mip_index_big, 1);
+
                 // Blend
                 uint32_t thread_group_count_x_ = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(mip_width_large) / m_thread_group_count));
                 uint32_t thread_group_count_y_ = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(mip_height_height) / m_thread_group_count));
