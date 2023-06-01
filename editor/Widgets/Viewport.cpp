@@ -45,8 +45,6 @@ Viewport::Viewport(Editor* editor) : Widget(editor)
     m_size_initial = Vector2(400, 250);
     m_flags        |= ImGuiWindowFlags_NoScrollbar;
     m_padding      = Vector2(2.0f);
-
-    //ImGui::TransformGizmo::apply_style();
 }
 
 void Viewport::TickVisible()
@@ -61,6 +59,12 @@ void Viewport::TickVisible()
         if (RHI_Device::IsValidResolution(static_cast<uint32_t>(width), static_cast<uint32_t>(height)))
         {
             Renderer::SetViewport(width, height);
+
+            if (m_first_tick)
+            {
+                Renderer::SetResolutionRender(width, height);
+                m_first_tick = false;
+            }
 
             m_width  = width;
             m_height = height;

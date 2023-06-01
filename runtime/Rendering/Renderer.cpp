@@ -184,18 +184,21 @@ namespace Spartan
 
         // Resolution
         {
-            // The resolution of the actual rendering
-            SetResolutionRender(Display::GetWidth(), Display::GetHeight(), false);
-
-            // The resolution of the output frame, we can upscale to that linearly or with FSR 2.
             // SDL2 doesn't work with Windows scaling, meaning we can't always get the true screen resolution using GetWidth() and GetHeight().
             // However we can get the first display mode, which is the highest resolution mode supported by the monitor, which will work for now.
             // SDL3 will be DPI aware so we won't have to do this.
             DisplayMode display_mode = Display::GetDisplayModes()[0];
+
+            // The resolution of the actual rendering
+            SetResolutionRender(display_mode.width, display_mode.height, false);
+
+            // The resolution of the output frame, we can upscale to that linearly or with FSR 2.
             SetResolutionOutput(display_mode.width, display_mode.height, false);
 
             // The resolution/size of the editor's viewport. This is overridden by the editor based on the actual viewport size.
-            SetViewport(static_cast<float>(Display::GetWidth()), static_cast<float>(Display::GetHeight()));
+            SetViewport(static_cast<float>(display_mode.width), static_cast<float>(display_mode.height));
+
+            // Note: If the editor is active, it will set the render and viewport resolution to what the actual viewport is.
         }
 
         // Default options
