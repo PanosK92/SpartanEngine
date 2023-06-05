@@ -25,12 +25,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Core/Timer.h"
 #include "Rendering/Renderer.h"
 #include "Event.h"
-#include "../Editor.h"
-#include "../ImGui/ImGuiExtension.h"
-#include "../ImGui/Implementation/ImGui_TransformGizmo.h"
 #include "WorldViewer.h"
 #include "Rendering/Mesh.h"
 #include "RHI/RHI_Device.h"
+#include "../Editor.h"
+#include "../ImGui/ImGuiExtension.h"
+#include "../ImGui/Implementation/ImGui_TransformGizmo.h"
 //=======================================================
 
 //= NAMESPACES =========
@@ -63,6 +63,7 @@ void Viewport::TickVisible()
             if (m_first_tick)
             {
                 Renderer::SetResolutionRender(static_cast<uint32_t>(width), static_cast<uint32_t>(height));
+
                 m_first_tick = false;
             }
 
@@ -78,7 +79,7 @@ void Viewport::TickVisible()
     Input::SetEditorViewportOffset(offset);
 
     // Draw the image after a potential resolution change call has been made
-    ImGuiSp::image(Renderer::GetFrameTexture(), ImVec2(static_cast<float>(m_width), static_cast<float>(m_height)));
+    ImGuiSp::image(Renderer::GetFrameTexture(), ImVec2(width, height));
 
     // Let the input system know if the mouse is within the viewport
     Input::SetMouseIsInViewport(ImGui::IsItemHovered());

@@ -36,39 +36,52 @@ using namespace Spartan;
 using namespace Spartan::Math;
 //============================
 
-namespace helper
+namespace
 {
-    static const float k_width_input_numeric = 120.0f;
-    static const float k_width_combo_box     = 120.0f;
+    // table
+    static int column_count      = 2;
+    static ImGuiTableFlags flags =
+        ImGuiTableFlags_NoHostExtendX | // Make outer width auto-fit to columns, overriding outer_size.x value. Only available when ScrollX/ScrollY are disabled and Stretch columns are not used.
+        ImGuiTableFlags_BordersInnerV | // Draw vertical borders between columns.
+        ImGuiTableFlags_SizingFixedFit;  // Columns default to _WidthFixed or _WidthAuto (if resizable or not resizable), matching contents width.
 
-    bool Option(const char* title, bool default_open = true)
+    // options sizes
+    static const float width_input_numeric = 120.0f;
+    static const float width_combo_box     = 120.0f;
+
+    // misc
+    static vector<DisplayMode> display_modes;
+    static vector<string> display_modes_string;
+
+    // helper functions
+    bool option(const char* title, bool default_open = true)
     {
         ImGui::TableNextRow();
         ImGui::TableSetColumnIndex(0);
         return ImGuiSp::collapsing_header(title, default_open ? ImGuiTreeNodeFlags_DefaultOpen : ImGuiTreeNodeFlags_None);
     }
 
-    void FirstColumn()
+    void option_first_column()
     {
         ImGui::TableNextRow();
         ImGui::TableSetColumnIndex(0);
     }
 
-    void SecondColumn()
+    void option_second_column()
     {
         ImGui::TableSetColumnIndex(1);
     }
 
-    bool CheckBox(const char* label, bool& option, const char* tooltip = nullptr)
+    bool option_check_box(const char* label, bool& option, const char* tooltip = nullptr)
     {
-        FirstColumn();
+        option_first_column();
         ImGui::Text(label);
         if (tooltip)
         {
             ImGuiSp::tooltip(tooltip);
         }
 
-        SecondColumn();
+        option_second_column();
         ImGui::PushID(static_cast<int>(ImGui::GetCursorPosY()));
         ImGui::Checkbox("", &option);
         ImGui::PopID();
@@ -76,39 +89,39 @@ namespace helper
         return option;
     }
 
-    bool ComboBox(const char* label, const std::vector<std::string>& options, uint32_t& selection_index, const char* tooltip = nullptr)
+    bool option_combo_box(const char* label, const vector<string>& options, uint32_t& selection_index, const char* tooltip = nullptr)
     {
-        FirstColumn();
+        option_first_column();
         ImGui::Text(label);
         if (tooltip)
         {
             ImGuiSp::tooltip(tooltip);
         }
 
-        SecondColumn();
+        option_second_column();
         ImGui::PushID(static_cast<int>(ImGui::GetCursorPosY()));
-        ImGui::PushItemWidth(k_width_combo_box);
+        ImGui::PushItemWidth(width_combo_box);
         bool result = ImGuiSp::combo_box("", options, &selection_index);
         ImGui::PopItemWidth();
         ImGui::PopID();
         return result;
     }
 
-    void RenderOptionValue(const char* label, RendererOption render_option, const char* tooltip = nullptr, float step = 0.1f, float min = 0.0f, float max = numeric_limits<float>::max(), const char* format = "%.3f")
+    void option_value(const char* label, RendererOption render_option, const char* tooltip = nullptr, float step = 0.1f, float min = 0.0f, float max = numeric_limits<float>::max(), const char* format = "%.3f")
     {
-        FirstColumn();
+        option_first_column();
         ImGui::Text(label);
         if (tooltip)
         {
             ImGuiSp::tooltip(tooltip);
         }
 
-        SecondColumn();
+        option_second_column();
         {
             float value = Renderer::GetOption<float>(render_option);
 
             ImGui::PushID(static_cast<int>(ImGui::GetCursorPosY()));
-            ImGui::PushItemWidth(k_width_input_numeric);
+            ImGui::PushItemWidth(width_input_numeric);
             ImGui::InputFloat("", &value, step, 0.0f, format);
             ImGui::PopItemWidth();
             ImGui::PopID();
@@ -122,32 +135,50 @@ namespace helper
         }
     }
 
-    void Float(const char* label, float& option, float step = 0.1f, const char* format = "%.3f")
+    void option_float(const char* label, float& option, float step = 0.1f, const char* format = "%.3f")
     {
-        FirstColumn();
+        option_first_column();
         ImGui::Text(label);
 
-        SecondColumn();
+        option_second_column();
         {
             ImGui::PushID(static_cast<int>(ImGui::GetCursorPosY()));
-            ImGui::PushItemWidth(k_width_input_numeric);
+            ImGui::PushItemWidth(width_input_numeric);
             ImGui::InputFloat("", &option, step, 0.0f, format);
             ImGui::PopItemWidth();
             ImGui::PopID();
         }
     }
 
-    void Int(const char* label, int& option, int step = 1)
+    void option_int(const char* label, int& option, int step = 1)
     {
-        helper::FirstColumn();
+        option_first_column();
         ImGui::Text(label);
-        helper::SecondColumn();
+        option_second_column();
         ImGui::PushID(static_cast<int>(ImGui::GetCursorPosY()));
-        ImGui::PushItemWidth(k_width_input_numeric);
+        ImGui::PushItemWidth(width_input_numeric);
         ImGui::InputInt("##shadow_resolution", &option, step);
         ImGui::PopItemWidth();
         ImGui::PopID();
     }
+
+    uint32_t get_display_mode_index(const Vector2& resolution)
+    {
+        uint32_t index = 0;
+
+        for (uint32_t i = 0; i < static_cast<uint32_t>(display_modes.size()); i++)
+        {
+            const DisplayMode& display_mode = display_modes[i];
+
+            if (display_mode.width == resolution.x && display_mode.height == resolution.y)
+            {
+                index = i;
+                break;
+            }
+        }
+
+        return index;
+    };
 }
 
 RenderOptions::RenderOptions(Editor* editor) : Widget(editor)
@@ -160,38 +191,13 @@ RenderOptions::RenderOptions(Editor* editor) : Widget(editor)
     m_size_initial = Vector2(600.0f, 1000.0f);
 }
 
-void RenderOptions::TickVisible()
+void RenderOptions::OnVisible()
 {
-    // Reflect options from engine
-    bool do_dof                    = Renderer::GetOption<bool>(RendererOption::DepthOfField);
-    bool do_volumetric_fog         = Renderer::GetOption<bool>(RendererOption::VolumetricFog);
-    bool do_ssgi                   = Renderer::GetOption<bool>(RendererOption::Ssgi);
-    bool do_sss                    = Renderer::GetOption<bool>(RendererOption::ScreenSpaceShadows);
-    bool do_ssr                    = Renderer::GetOption<bool>(RendererOption::ScreenSpaceReflections);
-    bool do_motion_blur            = Renderer::GetOption<bool>(RendererOption::MotionBlur);
-    bool do_film_grain             = Renderer::GetOption<bool>(RendererOption::FilmGrain);
-    bool do_chromatic_aberration   = Renderer::GetOption<bool>(RendererOption::ChromaticAberration); 
-    bool do_debanding              = Renderer::GetOption<bool>(RendererOption::Debanding);
-    bool do_hdr                    = Renderer::GetOption<bool>(RendererOption::Hdr);
-    bool do_vsync                  = Renderer::GetOption<bool>(RendererOption::Vsync);
-    bool debug_physics             = Renderer::GetOption<bool>(RendererOption::Debug_Physics);
-    bool debug_aabb                = Renderer::GetOption<bool>(RendererOption::Debug_Aabb);
-    bool debug_light               = Renderer::GetOption<bool>(RendererOption::Debug_Lights);
-    bool debug_transform           = Renderer::GetOption<bool>(RendererOption::Debug_TransformHandle);
-    bool debug_selection_outline   = Renderer::GetOption<bool>(RendererOption::Debug_SelectionOutline);
-    bool debug_picking_ray         = Renderer::GetOption<bool>(RendererOption::Debug_PickingRay);
-    bool debug_grid                = Renderer::GetOption<bool>(RendererOption::Debug_Grid);
-    bool debug_reflection_probes   = Renderer::GetOption<bool>(RendererOption::Debug_ReflectionProbes);
-    bool performance_metrics       = Renderer::GetOption<bool>(RendererOption::Debug_PerformanceMetrics);
-    bool debug_wireframe           = Renderer::GetOption<bool>(RendererOption::Debug_Wireframe);
-    bool do_depth_prepass          = Renderer::GetOption<bool>(RendererOption::DepthPrepass);
-    int resolution_shadow          = Renderer::GetOption<int>(RendererOption::ShadowResolution);
-
-    // Present options (with a table)
+    // Get display modes
     {
-        // Get display modes
-        vector<DisplayMode> display_modes;
-        vector<string> display_modes_string;
+        display_modes.clear();
+        display_modes_string.clear();
+
         if (display_modes.empty())
         {
             for (const DisplayMode& display_mode : Display::GetDisplayModes())
@@ -203,53 +209,59 @@ void RenderOptions::TickVisible()
                 }
             }
         }
+    }
+}
 
-        const auto get_display_mode_index = [&display_modes](const Vector2& resolution)
-        {
-            uint32_t index = 0;
+void RenderOptions::TickVisible()
+{
+    // Reflect options from engine
+    bool do_dof                  = Renderer::GetOption<bool>(RendererOption::DepthOfField);
+    bool do_volumetric_fog       = Renderer::GetOption<bool>(RendererOption::VolumetricFog);
+    bool do_ssgi                 = Renderer::GetOption<bool>(RendererOption::Ssgi);
+    bool do_sss                  = Renderer::GetOption<bool>(RendererOption::ScreenSpaceShadows);
+    bool do_ssr                  = Renderer::GetOption<bool>(RendererOption::ScreenSpaceReflections);
+    bool do_motion_blur          = Renderer::GetOption<bool>(RendererOption::MotionBlur);
+    bool do_film_grain           = Renderer::GetOption<bool>(RendererOption::FilmGrain);
+    bool do_chromatic_aberration = Renderer::GetOption<bool>(RendererOption::ChromaticAberration); 
+    bool do_debanding            = Renderer::GetOption<bool>(RendererOption::Debanding);
+    bool do_hdr                  = Renderer::GetOption<bool>(RendererOption::Hdr);
+    bool do_vsync                = Renderer::GetOption<bool>(RendererOption::Vsync);
+    bool debug_physics           = Renderer::GetOption<bool>(RendererOption::Debug_Physics);
+    bool debug_aabb              = Renderer::GetOption<bool>(RendererOption::Debug_Aabb);
+    bool debug_light             = Renderer::GetOption<bool>(RendererOption::Debug_Lights);
+    bool debug_transform         = Renderer::GetOption<bool>(RendererOption::Debug_TransformHandle);
+    bool debug_selection_outline = Renderer::GetOption<bool>(RendererOption::Debug_SelectionOutline);
+    bool debug_picking_ray       = Renderer::GetOption<bool>(RendererOption::Debug_PickingRay);
+    bool debug_grid              = Renderer::GetOption<bool>(RendererOption::Debug_Grid);
+    bool debug_reflection_probes = Renderer::GetOption<bool>(RendererOption::Debug_ReflectionProbes);
+    bool performance_metrics     = Renderer::GetOption<bool>(RendererOption::Debug_PerformanceMetrics);
+    bool debug_wireframe         = Renderer::GetOption<bool>(RendererOption::Debug_Wireframe);
+    bool do_depth_prepass        = Renderer::GetOption<bool>(RendererOption::DepthPrepass);
+    int resolution_shadow        = Renderer::GetOption<int>(RendererOption::ShadowResolution);
 
-            for (uint32_t i = 0; i < static_cast<uint32_t>(display_modes.size()); i++)
-            {
-                const DisplayMode& display_mode = display_modes[i];
-
-                if (display_mode.width == resolution.x && display_mode.height == resolution.y)
-                {
-                    index = i;
-                    break;
-                }
-            }
-
-            return index;
-        };
-
-        static ImVec2 size           = ImVec2(0.0f);
-        static int column_count      = 2;
-        static ImGuiTableFlags flags =
-            ImGuiTableFlags_NoHostExtendX   |   // Make outer width auto-fit to columns, overriding outer_size.x value. Only available when ScrollX/ScrollY are disabled and Stretch columns are not used.
-            ImGuiTableFlags_BordersInnerV   |   // Draw vertical borders between columns.
-            ImGuiTableFlags_SizingFixedFit;     // Columns default to _WidthFixed or _WidthAuto (if resizable or not resizable), matching contents width.
-
+    // Present options (with a table)
+    {
         // Table
-        if (ImGui::BeginTable("##render_options", column_count, flags, size))
+        if (ImGui::BeginTable("##render_options", column_count, flags, ImVec2(0.0f)))
         {
             ImGui::TableSetupColumn("Option");
             ImGui::TableSetupColumn("Value");
             ImGui::TableHeadersRow();
 
-            if (helper::Option("Resolution"))
+            if (option("Resolution"))
             {
                 // Render
-                Vector2 resolution_render = Renderer::GetResolutionRender();
+                Vector2 resolution_render        = Renderer::GetResolutionRender();
                 uint32_t resolution_render_index = get_display_mode_index(resolution_render);
-                if (helper::ComboBox("Render resolution", display_modes_string, resolution_render_index))
+                if (option_combo_box("Render resolution", display_modes_string, resolution_render_index))
                 {
                     Renderer::SetResolutionRender(display_modes[resolution_render_index].width, display_modes[resolution_render_index].height);
                 }
 
                 // Output
-                Vector2 resolution_output = Renderer::GetResolutionOutput();
+                Vector2 resolution_output        = Renderer::GetResolutionOutput();
                 uint32_t resolution_output_index = get_display_mode_index(resolution_output);
-                if (helper::ComboBox("Output resolution", display_modes_string, resolution_output_index))
+                if (option_combo_box("Output resolution", display_modes_string, resolution_output_index))
                 {
                     Renderer::SetResolutionOutput(display_modes[resolution_output_index].width, display_modes[resolution_output_index].height);
                 }
@@ -266,7 +278,7 @@ void RenderOptions::TickVisible()
                     ImGui::BeginDisabled(!upsampling_allowed);
 
                     uint32_t upsampling_mode = Renderer::GetOption<uint32_t>(RendererOption::Upsampling);
-                    if (helper::ComboBox("Upsampling", upsampling_modes, upsampling_mode))
+                    if (option_combo_box("Upsampling", upsampling_modes, upsampling_mode))
                     {
                         Renderer::SetOption(RendererOption::Upsampling, static_cast<float>(upsampling_mode));
                     }
@@ -280,31 +292,31 @@ void RenderOptions::TickVisible()
                     bool fsr_enabled = Renderer::GetOption<UpsamplingMode>(RendererOption::Upsampling) == UpsamplingMode::FSR2;
                     string label = fsr_enabled ? "Sharpness (AMD FidelityFX FSR 2.0)" : "Sharpness (AMD FidelityFX CAS)";
 
-                    helper::RenderOptionValue(label.c_str(), RendererOption::Sharpness, "", 0.1f, 0.0f, 1.0f);
+                    option_value(label.c_str(), RendererOption::Sharpness, "", 0.1f, 0.0f, 1.0f);
                 }
             }
 
-            if (helper::Option("Screen space lighting"))
+            if (option("Screen space lighting"))
             {
                 // SSR
-                helper::CheckBox("SSR - Screen space reflections", do_ssr);
+                option_check_box("SSR - Screen space reflections", do_ssr);
 
                 // SSGI
-                helper::CheckBox("SSGI - Screen space global illumination", do_ssgi, "SSAO with a diffuse light bounce");
+                option_check_box("SSGI - Screen space global illumination", do_ssgi, "SSAO with a diffuse light bounce");
             }
 
-            if (helper::Option("Anti-Aliasing"))
+            if (option("Anti-Aliasing"))
             {
                 // Reflect
                 AntialiasingMode antialiasing = Renderer::GetOption<AntialiasingMode>(RendererOption::Antialiasing);
 
                 // TAA
                 bool taa_enabled = antialiasing == AntialiasingMode::Taa || antialiasing == AntialiasingMode::TaaFxaa;
-                helper::CheckBox("TAA - Temporal anti-aliasing", taa_enabled, "Used to improve many stochastic effects, you want this to always be enabled.");
+                option_check_box("TAA - Temporal anti-aliasing", taa_enabled, "Used to improve many stochastic effects, you want this to always be enabled.");
 
                 // FXAA
                 bool fxaa_enabled = antialiasing == AntialiasingMode::Fxaa || antialiasing == AntialiasingMode::TaaFxaa;
-                helper::CheckBox("FXAA - Fast approximate anti-aliasing", fxaa_enabled);
+                option_check_box("FXAA - Fast approximate anti-aliasing", fxaa_enabled);
 
                 // Map
                 if (taa_enabled && fxaa_enabled)
@@ -325,84 +337,84 @@ void RenderOptions::TickVisible()
                 }
             }
 
-            if (helper::Option("Camera"))
+            if (option("Camera"))
             {
                 // Bloom
-                helper::RenderOptionValue("Bloom", RendererOption::Bloom, "Controls the blend factor. If zero, then bloom is disabled.", 0.01f);
+                option_value("Bloom", RendererOption::Bloom, "Controls the blend factor. If zero, then bloom is disabled.", 0.01f);
 
                 // Motion blur
-                helper::CheckBox("Motion blur (controlled by the camera's shutter speed)", do_motion_blur);
+                option_check_box("Motion blur (controlled by the camera's shutter speed)", do_motion_blur);
 
                 // Depth of Field
-                helper::CheckBox("Depth of field (controlled by the camera's aperture)", do_dof);
+                option_check_box("Depth of field (controlled by the camera's aperture)", do_dof);
 
                 // Chromatic aberration
-                helper::CheckBox("Chromatic aberration (controlled by the camera's aperture)", do_chromatic_aberration, "Emulates the inability of old cameras to focus all colors in the same focal point.");
+                option_check_box("Chromatic aberration (controlled by the camera's aperture)", do_chromatic_aberration, "Emulates the inability of old cameras to focus all colors in the same focal point.");
 
                 // Film grain
-                helper::CheckBox("Film grain", do_film_grain);
+                option_check_box("Film grain", do_film_grain);
             }
 
-            if (helper::Option("Lights"))
+            if (option("Lights"))
             {
                 // Volumetric fog
-                helper::CheckBox("Volumetric fog", do_volumetric_fog, "Requires a light with shadows enabled.");
+                option_check_box("Volumetric fog", do_volumetric_fog, "Requires a light with shadows enabled.");
                 {
                     // Density
                     ImGui::BeginDisabled(!do_volumetric_fog);
-                    helper::RenderOptionValue("Volumetric fog density", RendererOption::Fog, "", 0.01f, 0.0f, 16.0f, "%.2f");
+                    option_value("Volumetric fog density", RendererOption::Fog, "", 0.01f, 0.0f, 16.0f, "%.2f");
                     ImGui::EndDisabled();
                 }
 
                 // Screen space shadows
-                helper::CheckBox("Screen space shadows", do_sss);
+                option_check_box("Screen space shadows", do_sss);
 
                 // Shadow resolution
-                helper::Int("Shadow resolution", resolution_shadow);
+                option_int("Shadow resolution", resolution_shadow);
             }
 
-            if (helper::Option("Misc"))
+            if (option("Misc"))
             {
                 // Tonemapping
                 static vector<string> tonemapping_options = { "AMD", "ACES", "Reinhard", "Uncharted 2", "Matrix", "Off" };
                 uint32_t selection_index = Renderer::GetOption<uint32_t>(RendererOption::Tonemapping);
-                if (helper::ComboBox("Tonemapping", tonemapping_options, selection_index))
+                if (option_combo_box("Tonemapping", tonemapping_options, selection_index))
                 {
                     Renderer::SetOption(RendererOption::Tonemapping, static_cast<float>(selection_index));
                 }
 
                 // Gamma
-                helper::RenderOptionValue("Gamma", RendererOption::Gamma);
+                option_value("Gamma", RendererOption::Gamma);
 
                 // Exposure
-                helper::RenderOptionValue("Exposure", RendererOption::Exposure);
+                option_value("Exposure", RendererOption::Exposure);
 
                 // HDR
-                helper::CheckBox("HDR", do_hdr, "High dynamic range");
+                option_check_box("HDR", do_hdr, "High dynamic range");
 
                 // Paper white
                 if (do_hdr)
                 {
-                    helper::RenderOptionValue("Paper white (nits)", RendererOption::PaperWhite, nullptr, 1.0f);
+                    option_value("Paper white (nits)", RendererOption::PaperWhite, nullptr, 1.0f);
                 }
 
                 // Dithering
-                helper::CheckBox("Debanding", do_debanding, "Reduces color banding");
+                option_check_box("Debanding", do_debanding, "Reduces color banding");
 
                 // VSync
-                helper::CheckBox("VSync", do_vsync, "Vertical Synchronization");
+                option_check_box("VSync", do_vsync, "Vertical Synchronization");
 
                 // FPS Limit
                 {
-                    helper::FirstColumn();
+                    option_first_column();
                     const FpsLimitType fps_limit_type = Timer::GetFpsLimitType();
                     string label = "FPS Limit - " + string((fps_limit_type == FpsLimitType::FixedToMonitor) ? "Fixed to monitor" : (fps_limit_type == FpsLimitType::Unlocked ? "Unlocked" : "Fixed"));
                     ImGui::Text(label.c_str());
 
-                    helper::SecondColumn();
+                    option_second_column();
                     {
                         float fps_target = Timer::GetFpsLimit();
-                        ImGui::PushItemWidth(helper::k_width_input_numeric);
+                        ImGui::PushItemWidth(width_input_numeric);
                         ImGui::InputFloat("##fps_limit", &fps_target, 0.0, 0.0f, "%.1f");
                         ImGui::PopItemWidth();
                         Timer::SetFpsLimit(fps_target);
@@ -410,12 +422,12 @@ void RenderOptions::TickVisible()
                 }
 
                 // Depth-PrePass
-                helper::CheckBox("Depth PrePass", do_depth_prepass);
+                option_check_box("Depth PrePass", do_depth_prepass);
 
                 // Performance metrics
                 {
                     bool performance_metrics_previous = performance_metrics;
-                    helper::CheckBox("Performance Metrics", performance_metrics);
+                    option_check_box("Performance Metrics", performance_metrics);
 
                     // Reset metrics on activation
                     if (performance_metrics_previous == false && performance_metrics == true)
@@ -425,17 +437,17 @@ void RenderOptions::TickVisible()
                 }
             }
 
-            if (helper::Option("Gizmos", false))
+            if (option("Gizmos", false))
             {
-                helper::CheckBox("Transform",                           debug_transform);
-                helper::CheckBox("Selection outline",                   debug_selection_outline);
-                helper::CheckBox("Physics",                             debug_physics);
-                helper::CheckBox("AABBs - Axis-aligned bounding boxes", debug_aabb);
-                helper::CheckBox("Lights",                              debug_light);
-                helper::CheckBox("Picking ray",                         debug_picking_ray);
-                helper::CheckBox("Grid",                                debug_grid);
-                helper::CheckBox("Reflection probes",                   debug_reflection_probes);
-                helper::CheckBox("Wireframe",                           debug_wireframe);
+                option_check_box("Transform",                           debug_transform);
+                option_check_box("Selection outline",                   debug_selection_outline);
+                option_check_box("Physics",                             debug_physics);
+                option_check_box("AABBs - Axis-aligned bounding boxes", debug_aabb);
+                option_check_box("Lights",                              debug_light);
+                option_check_box("Picking ray",                         debug_picking_ray);
+                option_check_box("Grid",                                debug_grid);
+                option_check_box("Reflection probes",                   debug_reflection_probes);
+                option_check_box("Wireframe",                           debug_wireframe);
             }
 
             ImGui::EndTable();

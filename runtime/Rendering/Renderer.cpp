@@ -506,6 +506,9 @@ namespace Spartan
             CreateSamplers(true);
         }
 
+        // Register this resolution as a display mode (it won't happen if already registered)
+        Display::RegisterDisplayMode(static_cast<uint32_t>(width), static_cast<uint32_t>(height), Display::GetRefreshRate(), Display::GetIndex());
+
         // Log
         SP_LOG_INFO("Render resolution has been set to %dx%d", width, height);
     }
@@ -545,7 +548,7 @@ namespace Spartan
         SP_LOG_INFO("Output resolution output has been set to %dx%d", width, height);
     }
 
-    void Renderer::Update_Cb_Frame(RHI_CommandList* cmd_list)
+    void Renderer::UpdateConstantBufferFrame(RHI_CommandList* cmd_list)
     {
         m_cb_frame_gpu->Update(&m_cb_frame_cpu);
 
@@ -553,7 +556,7 @@ namespace Spartan
         cmd_list->SetConstantBuffer(RendererBindingsCb::frame, RHI_Shader_Vertex | RHI_Shader_Pixel | RHI_Shader_Compute, m_cb_frame_gpu);
     }
 
-    void Renderer::Update_Cb_Uber(RHI_CommandList* cmd_list)
+    void Renderer::UpdateConstantBufferUber(RHI_CommandList* cmd_list)
     {
         m_cb_uber_gpu->Update(&m_cb_uber_cpu);
 
@@ -561,7 +564,7 @@ namespace Spartan
         cmd_list->SetConstantBuffer(RendererBindingsCb::uber, RHI_Shader_Vertex | RHI_Shader_Pixel | RHI_Shader_Compute, m_cb_uber_gpu);
     }
 
-    void Renderer::Update_Cb_Light(RHI_CommandList* cmd_list, shared_ptr<Light> light, const RHI_Shader_Type scope)
+    void Renderer::UpdateConstantBufferLight(RHI_CommandList* cmd_list, shared_ptr<Light> light, const RHI_Shader_Type scope)
     {
         for (uint32_t i = 0; i < light->GetShadowArraySize(); i++)
         {
@@ -594,7 +597,7 @@ namespace Spartan
         cmd_list->SetConstantBuffer(RendererBindingsCb::light, scope, m_cb_light_gpu);
     }
 
-    void Renderer::Update_Cb_Material(RHI_CommandList* cmd_list)
+    void Renderer::UpdateConstantBufferMaterial(RHI_CommandList* cmd_list)
     {
         // Update
         for (uint32_t i = 0; i < m_max_material_instances; i++)

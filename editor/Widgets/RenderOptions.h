@@ -30,5 +30,6 @@ class RenderOptions : public Widget
 public:
     RenderOptions(Editor* editor);
 
+    void OnVisible() override;
     void TickVisible() override;
 };

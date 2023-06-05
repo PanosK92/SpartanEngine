@@ -96,11 +96,11 @@ void Widget::Tick()
         // Callbacks
         if (m_window && m_window->Appearing)
         {
-            OnShow();
+            OnVisible();
         }
         else if (!m_visible)
         {
-            OnHide();
+            OnHidden();
         }
     }
 
