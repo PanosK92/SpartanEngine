@@ -44,11 +44,20 @@ public:
 
     void Tick();
 
-    virtual void TickAlways() {};     // Called always
-    virtual void TickVisible() {};    // Called only when the widget is visible
-    virtual void OnShow() {};         // Called when the window becomes visible
-    virtual void OnHide() {};         // Called when the window becomes invisible
-    virtual void OnPushStyleVar() {}; // Called just before ImGui::Begin()
+    // Called always
+    virtual void TickAlways() {};
+
+    // Called only when the widget is visible
+    virtual void TickVisible() {};
+
+    // Called when the window becomes visible
+    virtual void OnVisible() {};
+
+    // Called when the window becomes invisible
+    virtual void OnHidden() {};
+
+    // Called just before ImGui::Begin()
+    virtual void OnPushStyleVar() {};
 
     // Use this to push style variables. They will be automatically popped.
     template<typename T>

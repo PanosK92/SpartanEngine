@@ -41,12 +41,12 @@ Profiler::Profiler(Editor* editor) : Widget(editor)
     m_position     = k_widget_position_screen_center;
 }
 
-void Profiler::OnShow()
+void Profiler::OnVisible()
 {
     Spartan::Profiler::SetEnabled(true);
 }
 
-void Profiler::OnHide()
+void Profiler::OnHidden()
 {
     Spartan::Profiler::SetEnabled(false);
 }
