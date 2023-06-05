@@ -186,8 +186,8 @@ namespace Spartan
         // Traces ray against all AABBs in the world
         vector<RayHit> hits;
         {
-            const auto& entities = World::GetAllEntities();
-            for (const auto& entity : entities)
+            const vector<shared_ptr<Entity>>& entities = World::GetAllEntities();
+            for (const shared_ptr<Entity> entity : entities)
             {
                 // Make sure there entity has a renderable
                 if (!entity->GetComponent<Renderable>())
@@ -212,7 +212,7 @@ namespace Spartan
             }
 
             // Sort by distance (ascending)
-            std::sort(hits.begin(), hits.end(), [](const RayHit& a, const RayHit& b) { return a.m_distance < b.m_distance; });
+            sort(hits.begin(), hits.end(), [](const RayHit& a, const RayHit& b) { return a.m_distance < b.m_distance; });
         }
 
         // Check if there are any hits

@@ -24,20 +24,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ======================
 #include "Component.h"
 #include <vector>
-#include "../../Math/BoundingBox.h"
 #include "../../Math/Matrix.h"
+#include "../../Math/BoundingBox.h"
 //=================================
 
 namespace Spartan
 {
     class Mesh;
-    class Mesh;
-    class Light;
     class Material;
-    namespace Math
-    {
-        class Vector3;
-    }
 
     enum class DefaultGeometry
     {

@@ -56,10 +56,10 @@ namespace Spartan
         static bool m_was_in_editor_mode                        = false;
         static shared_ptr<Entity> m_default_environment         = nullptr;
         static shared_ptr<Entity> m_default_model_floor         = nullptr;
-        static shared_ptr<Mesh> m_default_model_sponza          = nullptr;
+        static shared_ptr<Mesh> m_default_model_sponza = nullptr;
         static shared_ptr<Mesh> m_default_model_sponza_curtains = nullptr;
-        static shared_ptr<Mesh> m_default_model_car             = nullptr;
-        static shared_ptr<Mesh> m_default_model_helmet          = nullptr;
+        static shared_ptr<Mesh> m_default_model_car = nullptr;
+        static shared_ptr<Mesh> m_default_model_helmet = nullptr;
         static mutex m_entity_access_mutex;
 
         static void update_default_scene()
@@ -327,6 +327,8 @@ namespace Spartan
 
     vector<shared_ptr<Entity>> World::GetRootEntities()
     {
+        lock_guard<mutex> lock(m_entity_access_mutex);
+
         vector<shared_ptr<Entity>> root_entities;
         for (const shared_ptr<Entity>& entity : m_entities)
         {
@@ -341,6 +343,8 @@ namespace Spartan
 
     const shared_ptr<Entity>& World::GetEntityByName(const string& name)
     {
+        lock_guard<mutex> lock(m_entity_access_mutex);
+
         for (shared_ptr<Entity>& entity : m_entities)
         {
             if (entity->GetObjectName() == name)
@@ -353,6 +357,8 @@ namespace Spartan
 
     const shared_ptr<Entity>& World::GetEntityById(const uint64_t id)
     {
+        lock_guard<mutex> lock(m_entity_access_mutex);
+
         for (const auto& entity : m_entities)
         {
             if (entity->GetObjectId() == id)
@@ -516,9 +522,9 @@ namespace Spartan
 
     void World::CreateDefaultWorldCar()
     {
-        Vector3 camera_position           = Vector3(-0.5878f, 1.2774f, -5.5491f);
-        Vector3 camera_rotation           = Vector3(4.7969f, 0.7993f, 0.0f);
-        float directional_light_intensity = 1000.0f;
+        Vector3 camera_position           = Vector3(6.2f, 1.0f, -0.2f);
+        Vector3 camera_rotation           = Vector3(0.0f, -90.0f, 0.0f);
+        float directional_light_intensity = 6000.0f;
         CreateDefaultWorldCommon(true, camera_position, camera_rotation, directional_light_intensity, "project\\music\\isola_any_day.mp3");
 
         // Point light - top of car
@@ -537,7 +543,7 @@ namespace Spartan
         {
             shared_ptr<Entity> entity = CreateEntity();
             entity->SetObjectName("light_point_side");
-            entity->GetTransform()->SetPosition(Vector3(1.0f, 2.3f, -4.2f));
+            entity->GetTransform()->SetPosition(Vector3(4.4f, 1.3f, 1.0f));
 
             shared_ptr<Light> light = entity->AddComponent<Light>();
             light->SetLightType(LightType::Point);

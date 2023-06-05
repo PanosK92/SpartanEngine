@@ -203,7 +203,7 @@ namespace Spartan
 
         // Default options
         m_options.fill(0.0f);
-        SetOption(RendererOption::Bloom,                  0.1f); // Non-zero values activate it and define the blend factor.
+        SetOption(RendererOption::Bloom,                  0.05f); // Non-zero values activate it and define the blend factor.
         SetOption(RendererOption::MotionBlur,             1.0f);
         SetOption(RendererOption::Ssgi,                   1.0f);
         SetOption(RendererOption::ScreenSpaceShadows,     1.0f);

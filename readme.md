@@ -73,7 +73,7 @@ Occasional livestreams on Discord for interesting topics.
 # Roadmap
 
 ## Short-term
-- Fix the remaining startup crash for Vulkan.
+- Some bug fixing so we are stable again.
 - Switch to bindless.
 - Outperform D3D11.
 - Deprecate D3D11.
