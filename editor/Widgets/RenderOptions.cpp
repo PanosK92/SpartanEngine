@@ -21,13 +21,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =======================
 #include "RenderOptions.h"
-#include "Rendering/Renderer.h"
 #include "Core/Timer.h"
-#include "Math/MathHelper.h"
-#include "RHI/RHI_Device.h"
 #include "Profiling/Profiler.h"
 #include "../ImGui/ImGuiExtension.h"
-#include "Rendering/Mesh.h"
 //==================================
 
 //= NAMESPACES ===============

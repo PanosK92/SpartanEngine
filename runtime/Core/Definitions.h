@@ -79,8 +79,26 @@ constexpr int sp_version_revision = 3;
     #pragma warn "Unkown compiler/platform."
 #endif
 
+//= ERROR WINDOW ============================================================
+// An error window that can display text and terminate the program
 
-//= Assert ==========================================================================
+#define WIDE_STR_HELPER(x) L ## x
+#define WIDE_STR(x) WIDE_STR_HELPER(x)
+
+#if defined(_MSC_VER)
+#define SP_ERROR_WINDOW(text_message)                                       \
+{                                                                           \
+    MessageBeep(MB_ICONERROR);                                              \
+    HWND hwnd = GetConsoleWindow();                                         \
+    MessageBox(hwnd, WIDE_STR(text_message), L"Error", MB_OK | MB_TOPMOST); \
+    SP_DEBUG_BREAK();                                                       \
+}
+#else
+#pragma warn "SP_ERROR_WINDOW not implemented for this compiler/platform"
+#endif
+//===========================================================================
+
+//= ASSERT ==========================================================================
 // On debug mode, the assert will have the default behaviour.
 // On release mode, the assert will write the error to a file and then break.
 #include <cassert>
@@ -97,13 +115,13 @@ if (!(##expression))                  \
 #endif
 
 // An assert which can print a text message
-#define SP_ASSERT_MSG(expression, text_message) SP_ASSERT(expression && text_message)
-//===================================================================================
+#define SP_ASSERT_MSG(expression, text_message) \
+SP_ASSERT(expression && text_message)
 
-//= Assert static ==============================================================
+// A static assert
 #define SP_ASSERT_STATIC_IS_TRIVIALLY_COPYABLE(T) \
 static_assert(std::is_trivially_copyable_v<T>, "Type is not trivially copyable")
-//==============================================================================
+//===================================================================================
 
 #if defined(_MSC_VER)
 //= DISABLE CERTAIN WARNINGS ========================================================================================

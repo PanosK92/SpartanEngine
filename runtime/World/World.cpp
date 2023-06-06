@@ -28,7 +28,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Components/Light.h"
 #include "Components/Environment.h"
 #include "Components/AudioListener.h"
-#include "Components/Renderable.h"
 #include "Components/AudioSource.h"
 #include "Components/RigidBody.h"
 #include "Components/Collider.h"
@@ -672,6 +671,20 @@ namespace Spartan
                 // brake caliper
                 if (Material* material = entity->GetTransform()->GetDescendantPtrByName("FR_Caliper_BrakeCaliper_0")->GetComponent<Renderable>()->GetMaterial())
                 {
+                    material->SetTexture(MaterialTexture::Roughness, nullptr);
+                    material->SetTexture(MaterialTexture::Metallness, nullptr);
+                    material->SetColor(Color::material_aluminum);
+                    material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.5f);
+                    material->SetProperty(MaterialProperty::MetallnessMultiplier, 1.0f);
+                    material->SetProperty(MaterialProperty::Anisotropic, 1.0f);
+                    material->SetProperty(MaterialProperty::AnisotropicRotation, 0.5f);
+                }
+
+                // brake disc
+                if (Material* material = entity->GetTransform()->GetDescendantPtrByName("FL_Wheel_Brake Disc_0")->GetComponent<Renderable>()->GetMaterial())
+                {
+                    material->SetTexture(MaterialTexture::Roughness, nullptr);
+                    material->SetTexture(MaterialTexture::Metallness, nullptr);
                     material->SetColor(Color::material_aluminum);
                     material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.5f);
                     material->SetProperty(MaterialProperty::MetallnessMultiplier, 1.0f);
@@ -691,9 +704,10 @@ namespace Spartan
                 // rims
                 if (Material* material = entity->GetTransform()->GetDescendantPtrByName("FR_Wheel_RimMaterial_0")->GetComponent<Renderable>()->GetMaterial())
                 {
+                    material->SetTexture(MaterialTexture::Roughness, nullptr);
+                    material->SetTexture(MaterialTexture::Metallness, nullptr);
                     material->SetColor(Color::material_aluminum);
-                    material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.5f);
-                    material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.5f);
+                    material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.2f);
                     material->SetProperty(MaterialProperty::MetallnessMultiplier, 1.0f);
                 }
             }
