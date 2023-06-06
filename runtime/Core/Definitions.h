@@ -1,83 +1,89 @@
 #pragma once
 
-// TODO: detect clang and add clang specific directives
-
-// Version
+// version
 constexpr char sp_name[]          = "Spartan";
 constexpr int sp_version_major    = 0;
 constexpr int sp_version_minor    = 3;
 constexpr int sp_version_revision = 3;
 
-#if defined(__clang__)
-    #pragma warn "SP_OPTIMISE and SP_WARNINGS are not implemented for clang"
-
-    // Class
-    #define SP_CLASS
-    #if SPARTAN_RUNTIME_SHARED == 1
-        #ifdef SPARTAN_RUNTIME
-            #define SP_CLASS __attribute__((visibility("default")))
-        #else
-            #define SP_CLASS 
-        #endif
-    #endif
-
-    // Optimisation
-    #define SP_OPTIMISE_OFF _Pragma("clang optimize off")
-    #define SP_OPTIMISE_ON _Pragma("clang optimize on")
-
-    // Warnings
-    #define SP_WARNINGS_OFF _Pragma("clang diagnostic push") \
-                            _Pragma("clang diagnostic ignored \"-Wall -Wpedantic\"")
-    #define SP_WARNINGS_ON _Pragma("clang diagnostic pop")
-#elif defined(__GNUC__) || defined(__GNUG__)
-
-    #include <signal.h>
-
-    // Class
-    #define SP_CLASS
-    #if SPARTAN_RUNTIME_SHARED == 1
-        #ifdef SPARTAN_RUNTIME
-            #define SP_CLASS __attribute__((visibility("default")))
-        #else
-            #define SP_CLASS 
-        #endif
-    #endif
-
-    // Optimisation
-    #define SP_OPTIMISE_OFF _Pragma("GCC optimize(\"O2\"")
-    #define SP_OPTIMISE_ON _Pragma("GCC optimize(\"O0\"")
-
-    // Warnings
-    #define SP_WARNINGS_OFF _Pragma("GCC diagnostic push") \
-                            _Pragma("GCC diagnostic ignored \"-Wall -Wpedantic\"")
-    #define SP_WARNINGS_ON _Pragma("GCC diagnostic pop")
-
-    // Debug break
-    #define SP_DEBUG_BREAK() raise(SIGTRAP)
-#elif defined(_MSC_VER)
-    // Class
-    #define SP_CLASS
-    #if SPARTAN_RUNTIME_SHARED == 1
-        #ifdef SPARTAN_RUNTIME
-            #define SP_CLASS __declspec(dllexport)
-        #else
-            #define SP_CLASS __declspec(dllimport)
-        #endif
-    #endif
-
-    // Optimisation
-    #define SP_OPTIMISE_OFF __pragma(optimize("", off))
-    #define SP_OPTIMISE_ON __pragma(optimize("", on))
-
-    // Warnings
-    #define SP_WARNINGS_OFF __pragma(warning(push, 0))
-    #define SP_WARNINGS_ON __pragma(warning(pop))
-
-    // Debug break
-    #define SP_DEBUG_BREAK() __debugbreak()
+//= CLASS EXPORTING/IMPORTING =======================================
+#if defined(_MSC_VER)
+#define SP_CLASS
+#if SPARTAN_RUNTIME_SHARED == 1
+#ifdef SPARTAN_RUNTIME
+#undef SP_CLASS
+#define SP_CLASS __declspec(dllexport)
 #else
-    #pragma warn "Unkown compiler/platform."
+#undef SP_CLASS
+#define SP_CLASS __declspec(dllimport)
 #endif
+#endif
+#elif defined(__clang__) || defined(__GNUC__) || defined(__GNUG__)
+#define SP_CLASS
+#if SPARTAN_RUNTIME_SHARED == 1
+#ifdef SPARTAN_RUNTIME
+#undef SP_CLASS
+#define SP_CLASS __attribute__((visibility("default")))
+#else
+#undef SP_CLASS
+#define SP_CLASS
+#endif
+#endif
+#else
+#pragma warn "SP_CLASS is not implemented for this compiler/platform"
+#endif
+
+//===================================================================
+
+//= OPTIMISATION ON/OFF ==================================================
+#if defined(_MSC_VER)
+#define SP_OPTIMISE_OFF __pragma(optimize("", off))
+#define SP_OPTIMISE_ON  __pragma(optimize("", on))
+#elif defined(__clang__)
+#define SP_OPTIMISE_OFF _Pragma("clang optimize off")
+#define SP_OPTIMISE_ON  _Pragma("clang optimize on")
+#elif defined(__GNUC__) || defined(__GNUG__)
+#define SP_OPTIMISE_OFF                                 \
+    _Pragma("GCC push_options")                         \
+    _Pragma("GCC optimize (\"O0\")")
+#define SP_OPTIMISE_ON _Pragma("GCC pop_options")
+#else
+#pragma warn "SP_OPTIMISE_* is not implemented for this compiler/platform"
+#endif
+//========================================================================
+
+//= WARNINGS ON/OFF ======================================================
+#if defined(_MSC_VER)
+#define SP_WARNINGS_OFF __pragma(warning(push, 0))
+#define SP_WARNINGS_ON  __pragma(warning(pop))
+#elif defined(__clang__)
+#define SP_WARNINGS_OFF                                  \
+    _Pragma("clang diagnostic push")                     \
+    _Pragma("clang diagnostic ignored \"-Weverything\"")
+#define SP_WARNINGS_ON _Pragma("clang diagnostic pop")
+#elif defined(__GNUC__) || defined(__GNUG__)
+#define SP_WARNINGS_OFF                                  \
+    _Pragma("GCC diagnostic push")                       \
+    _Pragma("GCC diagnostic ignored \"-Wall\"")          \
+    _Pragma("GCC diagnostic ignored \"-Wextra\"")
+#define SP_WARNINGS_ON _Pragma("GCC diagnostic pop")
+#else
+#pragma warn "SP_WARNINGS_* is not implemented for this compiler/platform"
+#endif
+
+//========================================================================
+
+//= DEBUG BREAK ===========================================================
+#if defined(_MSC_VER)
+#define SP_DEBUG_BREAK() __debugbreak()
+#elif defined(__clang__)
+#define SP_DEBUG_BREAK() __builtin_trap()
+#elif defined(__GNUC__) || defined(__GNUG__)
+#define SP_DEBUG_BREAK() __builtin_trap()
+#else
+#pragma warn "SP_DEBUG_BREAK is not implemented for this compiler/platform"
+#endif
+//=========================================================================
 
 //= ERROR WINDOW ============================================================
 // An error window that can display text and terminate the program
@@ -94,7 +100,7 @@ constexpr int sp_version_revision = 3;
     SP_DEBUG_BREAK();                                                       \
 }
 #else
-#pragma warn "SP_ERROR_WINDOW not implemented for this compiler/platform"
+#pragma warn "SP_ERROR_WINDOW is not implemented for this compiler/platform"
 #endif
 //===========================================================================
 
