@@ -1,108 +1,107 @@
 #pragma once
 
-// version
-constexpr char sp_name[]          = "Spartan";
-constexpr int sp_version_major    = 0;
-constexpr int sp_version_minor    = 3;
-constexpr int sp_version_revision = 3;
+struct sp_info{
+    static constexpr char name[]           = "Spartan";
+    static constexpr int  version_major    = 0;
+    static constexpr int  version_minor    = 3;
+    static constexpr int  version_revision = 3;
+};
 
-//= CLASS EXPORTING/IMPORTING =======================================
+//= CLASS EXPORTING/IMPORTING =====================================
 #if defined(_MSC_VER)
-#define SP_CLASS
-#if SPARTAN_RUNTIME_SHARED == 1
-#ifdef SPARTAN_RUNTIME
-#undef SP_CLASS
-#define SP_CLASS __declspec(dllexport)
-#else
-#undef SP_CLASS
-#define SP_CLASS __declspec(dllimport)
-#endif
+    #define SP_CLASS
+    #if SPARTAN_RUNTIME_SHARED == 1
+        #ifdef SPARTAN_RUNTIME
+        #undef SP_CLASS
+        #define SP_CLASS __declspec(dllexport)
+    #else
+        #undef SP_CLASS
+        #define SP_CLASS __declspec(dllimport)
+    #endif
 #endif
 #elif defined(__clang__) || defined(__GNUC__) || defined(__GNUG__)
-#define SP_CLASS
-#if SPARTAN_RUNTIME_SHARED == 1
-#ifdef SPARTAN_RUNTIME
-#undef SP_CLASS
-#define SP_CLASS __attribute__((visibility("default")))
+    #define SP_CLASS
+    #if SPARTAN_RUNTIME_SHARED == 1
+        #ifdef SPARTAN_RUNTIME
+            #undef SP_CLASS
+            #define SP_CLASS __attribute__((visibility("default")))
+        #else
+            #undef SP_CLASS
+            #define SP_CLASS
+        #endif
+#endif
 #else
-#undef SP_CLASS
-#define SP_CLASS
+#error "SP_CLASS is not implemented for this compiler/platform"
 #endif
-#endif
-#else
-#pragma warn "SP_CLASS is not implemented for this compiler/platform"
-#endif
+//=================================================================
 
-//===================================================================
-
-//= OPTIMISATION ON/OFF ==================================================
+//= OPTIMISATION ON/OFF ================================================
 #if defined(_MSC_VER)
-#define SP_OPTIMISE_OFF __pragma(optimize("", off))
-#define SP_OPTIMISE_ON  __pragma(optimize("", on))
+    #define SP_OPTIMISE_OFF __pragma(optimize("", off))
+    #define SP_OPTIMISE_ON  __pragma(optimize("", on))
 #elif defined(__clang__)
-#define SP_OPTIMISE_OFF _Pragma("clang optimize off")
-#define SP_OPTIMISE_ON  _Pragma("clang optimize on")
+    #define SP_OPTIMISE_OFF _Pragma("clang optimize off")
+    #define SP_OPTIMISE_ON  _Pragma("clang optimize on")
 #elif defined(__GNUC__) || defined(__GNUG__)
-#define SP_OPTIMISE_OFF                                 \
-    _Pragma("GCC push_options")                         \
-    _Pragma("GCC optimize (\"O0\")")
-#define SP_OPTIMISE_ON _Pragma("GCC pop_options")
+    #define SP_OPTIMISE_OFF         \
+        _Pragma("GCC push_options") \
+        _Pragma("GCC optimize (\"O0\")")
+    #define SP_OPTIMISE_ON _Pragma("GCC pop_options")
 #else
-#pragma warn "SP_OPTIMISE_* is not implemented for this compiler/platform"
+    #error "SP_OPTIMISE_* is not implemented for this compiler/platform"
 #endif
-//========================================================================
+//======================================================================
 
-//= WARNINGS ON/OFF ======================================================
+//= WARNINGS ON/OFF ====================================================
 #if defined(_MSC_VER)
-#define SP_WARNINGS_OFF __pragma(warning(push, 0))
-#define SP_WARNINGS_ON  __pragma(warning(pop))
+    #define SP_WARNINGS_OFF __pragma(warning(push, 0))
+    #define SP_WARNINGS_ON  __pragma(warning(pop))
 #elif defined(__clang__)
-#define SP_WARNINGS_OFF                                  \
-    _Pragma("clang diagnostic push")                     \
-    _Pragma("clang diagnostic ignored \"-Weverything\"")
-#define SP_WARNINGS_ON _Pragma("clang diagnostic pop")
-#elif defined(__GNUC__) || defined(__GNUG__)
-#define SP_WARNINGS_OFF                                  \
-    _Pragma("GCC diagnostic push")                       \
-    _Pragma("GCC diagnostic ignored \"-Wall\"")          \
-    _Pragma("GCC diagnostic ignored \"-Wextra\"")
-#define SP_WARNINGS_ON _Pragma("GCC diagnostic pop")
+    #define SP_WARNINGS_OFF              \
+        _Pragma("clang diagnostic push") \
+        _Pragma("clang diagnostic ignored \"-Weverything\"")
+    #define SP_WARNINGS_ON _Pragma("clang diagnostic pop")  
+#elif defined(__GNUC__) || defined(__GNUG__)                
+    #define SP_WARNINGS_OFF                           \
+        _Pragma("GCC diagnostic push")                \
+        _Pragma("GCC diagnostic ignored \"-Wall\"")   \
+        _Pragma("GCC diagnostic ignored \"-Wextra\"") 
+    #define SP_WARNINGS_ON _Pragma("GCC diagnostic pop")
 #else
-#pragma warn "SP_WARNINGS_* is not implemented for this compiler/platform"
+    #error "SP_WARNINGS_* is not implemented for this compiler/platform"
 #endif
+//======================================================================
 
-//========================================================================
-
-//= DEBUG BREAK ===========================================================
+//= DEBUG BREAK =========================================================
 #if defined(_MSC_VER)
 #define SP_DEBUG_BREAK() __debugbreak()
-#elif defined(__clang__)
-#define SP_DEBUG_BREAK() __builtin_trap()
-#elif defined(__GNUC__) || defined(__GNUG__)
-#define SP_DEBUG_BREAK() __builtin_trap()
+#elif defined(__clang__) || defined(__GNUC__) || defined(__GNUG__)
+    #define SP_DEBUG_BREAK() __builtin_trap()
 #else
-#pragma warn "SP_DEBUG_BREAK is not implemented for this compiler/platform"
+    #error "SP_DEBUG_BREAK is not implemented for this compiler/platform"
 #endif
-//=========================================================================
+//=======================================================================
 
-//= ERROR WINDOW ============================================================
-// An error window that can display text and terminate the program
-
+//= ERROR WINDOW =================================================================
 #define WIDE_STR_HELPER(x) L ## x
 #define WIDE_STR(x) WIDE_STR_HELPER(x)
 
 #if defined(_MSC_VER)
-#define SP_ERROR_WINDOW(text_message)                                       \
-{                                                                           \
-    MessageBeep(MB_ICONERROR);                                              \
-    HWND hwnd = GetConsoleWindow();                                         \
-    MessageBox(hwnd, WIDE_STR(text_message), L"Error", MB_OK | MB_TOPMOST); \
-    SP_DEBUG_BREAK();                                                       \
-}
+    #define SP_ERROR_WINDOW(text_message)                                       \
+    {                                                                           \
+        MessageBeep(MB_ICONERROR);                                              \
+        HWND hwnd = GetConsoleWindow();                                         \
+        MessageBox(hwnd, WIDE_STR(text_message), L"Error", MB_OK | MB_TOPMOST); \
+        SP_DEBUG_BREAK();                                                       \
+    }
 #else
-#pragma warn "SP_ERROR_WINDOW is not implemented for this compiler/platform"
+    #define SP_ERROR_WINDOW(text_message)    \
+    {                                        \
+        printf("Error: %s\n", text_message); \
+        SP_DEBUG_BREAK();                    \
+    }
 #endif
-//===========================================================================
+//================================================================================
 
 //= ASSERT ==========================================================================
 // On debug mode, the assert will have the default behaviour.

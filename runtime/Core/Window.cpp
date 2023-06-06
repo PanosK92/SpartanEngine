@@ -92,7 +92,7 @@ namespace Spartan
         flags |= SDL_WINDOW_VULKAN;
 
         // Create window
-        m_title  = "Spartan " + to_string(sp_version_major) + "." + to_string(sp_version_minor) + "." + to_string(sp_version_revision);
+        m_title  = "Spartan " + to_string(sp_info::version_major) + "." + to_string(sp_info::version_minor) + "." + to_string(sp_info::version_revision);
         m_window = SDL_CreateWindow(
             m_title.c_str(),         // window title
             SDL_WINDOWPOS_UNDEFINED, // initial x position
