@@ -229,9 +229,9 @@ namespace Spartan
         VkApplicationInfo app_info = {};
         {
             app_info.sType              = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-            app_info.pApplicationName   = sp_name;
+            app_info.pApplicationName   = sp_info::name;
             app_info.pEngineName        = app_info.pApplicationName;
-            app_info.engineVersion      = VK_MAKE_VERSION(sp_version_major, sp_version_minor, sp_version_revision);
+            app_info.engineVersion      = VK_MAKE_VERSION(sp_info::version_major, sp_info::version_minor, sp_info::version_revision);
             app_info.applicationVersion = app_info.engineVersion;
 
             // Deduce API version to use

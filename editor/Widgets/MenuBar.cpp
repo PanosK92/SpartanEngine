@@ -61,7 +61,7 @@ namespace
         ImGui::SetNextWindowFocus();
         ImGui::Begin("About", &show_about_window, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoDocking);
         {
-            ImGui::Text("Spartan %s", (to_string(sp_version_major) + "." + to_string(sp_version_minor) + "." + to_string(sp_version_revision)).c_str());
+            ImGui::Text("Spartan %s", (to_string(sp_info::version_major) + "." + to_string(sp_info::version_minor) + "." + to_string(sp_info::version_revision)).c_str());
             ImGui::Text("Author: Panos Karabelas");
             ImGui::SameLine(ImGuiSp::GetWindowContentRegionWidth());
             ImGui::SetCursorPosX(ImGui::GetCursorPosX() - 55);
