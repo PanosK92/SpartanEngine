@@ -1431,7 +1431,7 @@ namespace Spartan
             else if (upsampling_mode == UpsamplingMode::Linear)
             {
                 // D3D11 baggage, can't blit to a texture with a different resolution or mip count
-                swap_render = !swap_render;
+                swap_render   = !swap_render;
                 bool bilinear = m_resolution_output != m_resolution_render;
                 Pass_Copy(cmd_list, get_render_in, rt_frame_output, bilinear);
             }

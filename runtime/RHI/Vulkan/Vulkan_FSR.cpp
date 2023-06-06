@@ -18,6 +18,7 @@ COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
 IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
+
 //= INCLUDES =============================
 #include "pch.h"
 #include "../RHI_FSR2.h"
@@ -25,9 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "fsr2/vk/ffx_fsr2_vk.h"
 #include "../RHI_Implementation.h"
 #include "../RHI_CommandList.h"
-#include "../../Math/Vector2.h"
 #include "../../World/Components/Camera.h"
-#include "../Rendering/Renderer.h"
 //========================================
 
 //= NAMESPACES ===============
@@ -84,20 +83,17 @@ namespace Spartan
 
     void RHI_FSR2::OnDisplayModeChanged(const Math::Vector2& resolution_render, const Math::Vector2& resolution_output)
     {
-        VkDevice device                  = RHI_Context::device;
-        VkPhysicalDevice device_physical = RHI_Context::device_physical;
-
         // Set callbacks
         if (m_ffx_fsr2_context_description.callbacks.scratchBuffer == nullptr)
         {
-            const size_t scratch_buffer_size = ffxFsr2GetScratchMemorySizeVK(device_physical);
+            const size_t scratch_buffer_size = ffxFsr2GetScratchMemorySizeVK(RHI_Context::device_physical);
             void* scratch_buffer = malloc(scratch_buffer_size);
-            SP_ASSERT(ffxFsr2GetInterfaceVK(&m_ffx_fsr2_context_description.callbacks, scratch_buffer, scratch_buffer_size, device_physical, vkGetDeviceProcAddr) == FFX_OK);
+            SP_ASSERT(ffxFsr2GetInterfaceVK(&m_ffx_fsr2_context_description.callbacks, scratch_buffer, scratch_buffer_size, RHI_Context::device_physical, vkGetDeviceProcAddr) == FFX_OK);
         }
 
         // create context
         {
-            m_ffx_fsr2_context_description.device               = ffxGetDeviceVK(device);
+            m_ffx_fsr2_context_description.device               = ffxGetDeviceVK(RHI_Context::device);
             m_ffx_fsr2_context_description.maxRenderSize.width  = static_cast<uint32_t>(resolution_render.x);
             m_ffx_fsr2_context_description.maxRenderSize.height = static_cast<uint32_t>(resolution_render.y);
             m_ffx_fsr2_context_description.displaySize.width    = static_cast<uint32_t>(resolution_output.x);

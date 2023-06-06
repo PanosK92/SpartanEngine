@@ -22,13 +22,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ============================================
 #include "Viewport.h"
 #include "AssetBrowser.h"
-#include "Core/Timer.h"
-#include "Rendering/Renderer.h"
-#include "Event.h"
 #include "WorldViewer.h"
-#include "Rendering/Mesh.h"
 #include "RHI/RHI_Device.h"
-#include "../Editor.h"
 #include "../ImGui/ImGuiExtension.h"
 #include "../ImGui/Implementation/ImGui_TransformGizmo.h"
 //=======================================================

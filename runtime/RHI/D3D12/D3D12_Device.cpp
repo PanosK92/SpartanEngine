@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016-2021 Panos Karabelas
+Copyright(c) 2016-2023 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -50,6 +50,8 @@ namespace Spartan
 
     void RHI_Device::Initialize()
     {
+        SP_ERROR_WINDOW("The D3D12 backend is not implemented, use it only if your goal is to work on it.");
+
         // Detect device limits
         m_max_texture_1d_dimension   = D3D12_REQ_TEXTURE1D_U_DIMENSION;
         m_max_texture_2d_dimension   = D3D12_REQ_TEXTURE2D_U_OR_V_DIMENSION;

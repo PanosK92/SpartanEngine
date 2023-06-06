@@ -506,7 +506,7 @@ namespace Spartan
             CreateSamplers(true);
         }
 
-        // Register this resolution as a display mode (it won't happen if already registered)
+        // Register this resolution as a display mode so it shows up in the editor's render options (it won't happen if already registered)
         Display::RegisterDisplayMode(static_cast<uint32_t>(width), static_cast<uint32_t>(height), Display::GetRefreshRate(), Display::GetIndex());
 
         // Log
