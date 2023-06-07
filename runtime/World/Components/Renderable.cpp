@@ -38,81 +38,24 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    namespace
-    {
-        static array<shared_ptr<Mesh>, 5> standard_meshes;
-        static mutex mesh_mutex;
-
-        static void create_mesh(const GeometryType type)
-        {
-            lock_guard lock(mesh_mutex);
-
-            // early exit if already created
-            if (standard_meshes[static_cast<uint8_t>(type)] != nullptr)
-                return;
-
-            const string project_directory = ResourceCache::GetProjectDirectory();
-            shared_ptr<Mesh> mesh = make_shared<Mesh>();
-            vector<RHI_Vertex_PosTexNorTan> vertices;
-            vector<uint32_t> indices;
-
-            if (type == GeometryType::Cube)
-            {
-                Geometry::CreateCube(&vertices, &indices);
-                mesh->SetResourceFilePath(project_directory + "standard_mesh_cube" + EXTENSION_MODEL);
-            }
-            else if (type == GeometryType::Quad)
-            {
-                Geometry::CreateQuad(&vertices, &indices);
-                mesh->SetResourceFilePath(project_directory + "standard_mesh_quad" + EXTENSION_MODEL);
-            }
-            else if (type == GeometryType::Sphere)
-            {
-                Geometry::CreateSphere(&vertices, &indices);
-                mesh->SetResourceFilePath(project_directory + "standard_mesh_sphere" + EXTENSION_MODEL);
-            }
-            else if (type == GeometryType::Cylinder)
-            {
-                Geometry::CreateCylinder(&vertices, &indices);
-                mesh->SetResourceFilePath(project_directory + "standard_mesh_cylinder" + EXTENSION_MODEL);
-            }
-            else if (type == GeometryType::Cone)
-            {
-                Geometry::CreateCone(&vertices, &indices);
-                mesh->SetResourceFilePath(project_directory + "standard_mesh_cone" + EXTENSION_MODEL);
-            }
-
-            mesh->AddIndices(indices);
-            mesh->AddVertices(vertices);
-            mesh->ComputeAabb();
-            mesh->ComputeNormalizedScale();
-            mesh->CreateGpuBuffers();
-
-            standard_meshes[static_cast<uint8_t>(type)] = mesh;
-        }
-    }
-
     Renderable::Renderable(weak_ptr<Entity> entity) : Component(entity)
     {
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_material_default,        bool);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_material,                Material*);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_cast_shadows,            bool);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometry_index_offset,   uint32_t);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometry_index_count,    uint32_t);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometry_vertex_offset,  uint32_t);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometry_vertex_count,   uint32_t);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometry_name,           string);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_mesh,                    shared_ptr<Mesh>);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_bounding_box,            BoundingBox);
-        SP_REGISTER_ATTRIBUTE_GET_SET(GeometryType, SetGeometry,     GeometryType);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_material_default,            bool);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_material,                    Material*);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_cast_shadows,                bool);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometry_index_offset,       uint32_t);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometry_index_count,        uint32_t);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometry_vertex_offset,      uint32_t);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometry_vertex_count,       uint32_t);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometry_name,               string);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_mesh,                        shared_ptr<Mesh>);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_bounding_box,                BoundingBox);
+        SP_REGISTER_ATTRIBUTE_GET_SET(RendererStandardMesh, SetGeometry, RendererStandardMesh);
     }
 
     Renderable::~Renderable()
     {
         m_mesh = nullptr;
-
-        lock_guard lock(mesh_mutex);
-        standard_meshes.fill(nullptr);
     }
     
     void Renderable::Serialize(FileStream* stream)
@@ -138,7 +81,7 @@ namespace Spartan
     void Renderable::Deserialize(FileStream* stream)
     {
         // Geometry
-        m_geometry_type          = static_cast<GeometryType>(stream->ReadAs<uint32_t>());
+        m_geometry_type          = static_cast<RendererStandardMesh>(stream->ReadAs<uint32_t>());
         m_geometry_index_offset  = stream->ReadAs<uint32_t>();
         m_geometry_index_count   = stream->ReadAs<uint32_t>();
         m_geometry_vertex_offset = stream->ReadAs<uint32_t>();
@@ -149,7 +92,7 @@ namespace Spartan
         m_mesh = ResourceCache::GetByName<Mesh>(model_name);
 
         // If it was a default mesh, we have to reconstruct it
-        if (m_geometry_type != GeometryType::Custom)
+        if (m_geometry_type != RendererStandardMesh::custom)
         {
             SetGeometry(m_geometry_type);
         }
@@ -180,14 +123,13 @@ namespace Spartan
         m_mesh                   = mesh;
     }
 
-    void Renderable::SetGeometry(const GeometryType type)
+    void Renderable::SetGeometry(const RendererStandardMesh type)
     {
         m_geometry_type = type;
 
-        if (type != GeometryType::Custom)
+        if (type != RendererStandardMesh::custom)
         {
-            create_mesh(type);
-            shared_ptr<Mesh> mesh = standard_meshes[static_cast<uint8_t>(type)];
+            shared_ptr<Mesh> mesh = Renderer::GetStandardMesh(type);
 
             SetGeometry(
                 "default_geometry",

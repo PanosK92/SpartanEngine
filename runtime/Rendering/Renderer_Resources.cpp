@@ -39,6 +39,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_IndexBuffer.h"
 #include "../RHI/RHI_FSR2.h"
 #include "Renderer_ConstantBuffers.h"
+#include "Mesh.h"
 //=======================================
 
 //= NAMESPACES ===============
@@ -54,8 +55,49 @@ namespace Spartan
         static array<shared_ptr<RHI_Shader>, 47> m_shaders;
         static array<shared_ptr<RHI_Sampler>, 7> m_samplers;
         static array<shared_ptr<RHI_Texture>, 9> m_standard_textures;
-        static array<shared_ptr<RHI_VertexBuffer>, 2> m_standard_vertex_buffer;
-        static array<shared_ptr<RHI_IndexBuffer>, 2> m_standard_index_buffer;
+        static array<shared_ptr<Mesh>, 5> m_standard_meshes;
+
+        static void create_mesh(const RendererStandardMesh type)
+        {
+            const string project_directory = ResourceCache::GetProjectDirectory();
+            shared_ptr<Mesh> mesh = make_shared<Mesh>();
+            vector<RHI_Vertex_PosTexNorTan> vertices;
+            vector<uint32_t> indices;
+
+            if (type == RendererStandardMesh::cube)
+            {
+                Geometry::CreateCube(&vertices, &indices);
+                mesh->SetResourceFilePath(project_directory + "standard_mesh_cube" + EXTENSION_MODEL);
+            }
+            else if (type == RendererStandardMesh::quad)
+            {
+                Geometry::CreateQuad(&vertices, &indices);
+                mesh->SetResourceFilePath(project_directory + "standard_mesh_quad" + EXTENSION_MODEL);
+            }
+            else if (type == RendererStandardMesh::sphere)
+            {
+                Geometry::CreateSphere(&vertices, &indices);
+                mesh->SetResourceFilePath(project_directory + "standard_mesh_sphere" + EXTENSION_MODEL);
+            }
+            else if (type == RendererStandardMesh::cylinder)
+            {
+                Geometry::CreateCylinder(&vertices, &indices);
+                mesh->SetResourceFilePath(project_directory + "standard_mesh_cylinder" + EXTENSION_MODEL);
+            }
+            else if (type == RendererStandardMesh::cone)
+            {
+                Geometry::CreateCone(&vertices, &indices);
+                mesh->SetResourceFilePath(project_directory + "standard_mesh_cone" + EXTENSION_MODEL);
+            }
+
+            mesh->AddIndices(indices);
+            mesh->AddVertices(vertices);
+            mesh->ComputeAabb();
+            mesh->ComputeNormalizedScale();
+            mesh->CreateGpuBuffers();
+
+            m_standard_meshes[static_cast<uint8_t>(type)] = mesh;
+        }
     }
 
     // Depth-stencil states
@@ -498,39 +540,15 @@ namespace Spartan
 
     void Renderer::CreateStandardMeshes()
     {
-        #define standard_mesh_vertex_buffer(x) m_standard_vertex_buffer[static_cast<uint8_t>(x)]
-        #define standard_mesh_index_buffer(x)  m_standard_index_buffer[static_cast<uint8_t>(x)]
+        create_mesh(RendererStandardMesh::cube);
+        create_mesh(RendererStandardMesh::quad);
+        create_mesh(RendererStandardMesh::sphere);
+        create_mesh(RendererStandardMesh::cylinder);
+        create_mesh(RendererStandardMesh::cone);
 
-        // Sphere
-        {
-            vector<RHI_Vertex_PosTexNorTan> vertices;
-            vector<uint32_t> indices;
-            Geometry::CreateSphere(&vertices, &indices, 0.2f, 20, 20);
-
-            standard_mesh_vertex_buffer(RendererStandardMesh::sphere) = make_shared<RHI_VertexBuffer>(false, "standard_vertex_buffer_sphere");
-            standard_mesh_vertex_buffer(RendererStandardMesh::sphere)->Create(vertices);
-
-            standard_mesh_index_buffer(RendererStandardMesh::sphere) = make_shared<RHI_IndexBuffer>(false, "standard_index_buffer_sphere");
-            standard_mesh_index_buffer(RendererStandardMesh::sphere)->Create(indices);
-        }
-
-        // Quad
-        {
-            vector<RHI_Vertex_PosTexNorTan> vertices;
-            vector<uint32_t> indices;
-            Geometry::CreateQuad(&vertices, &indices);
-
-            standard_mesh_vertex_buffer(RendererStandardMesh::quad) = make_shared<RHI_VertexBuffer>(false, "standard_vertex_buffer_quad");
-            standard_mesh_vertex_buffer(RendererStandardMesh::quad)->Create(vertices);
-
-            standard_mesh_index_buffer(RendererStandardMesh::quad) = make_shared<RHI_IndexBuffer>(false, "standard_index_buffer_quad");
-            standard_mesh_index_buffer(RendererStandardMesh::quad)->Create(indices);
-        }
-
-        // Buffer where all the lines are kept
+        // misc
         m_vertex_buffer_lines = make_shared<RHI_VertexBuffer>(true, "lines");
-
-        m_world_grid = make_unique<Grid>();
+        m_world_grid          = make_unique<Grid>();
     }
 
     void Renderer::CreateStandardTextures()
@@ -595,14 +613,9 @@ namespace Spartan
         return m_standard_textures;
     }
 
-    array<shared_ptr<RHI_VertexBuffer>, 2>& Renderer::GetStandardVertexBuffers()
+    array<shared_ptr<Mesh>, 5>& Renderer::GetStandardMeshes()
     {
-        return m_standard_vertex_buffer;
-    }
-
-    array<shared_ptr<RHI_IndexBuffer>, 2>& Renderer::GetStandardIndexBuffers()
-    {
-        return m_standard_index_buffer;
+        return m_standard_meshes;
     }
 
     shared_ptr<RHI_Texture> Renderer::GetRenderTarget(const RendererTexture type)
@@ -625,13 +638,8 @@ namespace Spartan
         return m_standard_textures[static_cast<uint8_t>(type)];
     }
 
-    shared_ptr<RHI_VertexBuffer> Renderer::GetStandardVertexBuffer(const RendererStandardMesh type)
+    shared_ptr<Mesh> Renderer::GetStandardMesh(const RendererStandardMesh type)
     {
-        return m_standard_vertex_buffer[static_cast<uint8_t>(type)];
-    }
-
-    shared_ptr<RHI_IndexBuffer> Renderer::GetStandardIndexBuffer(const RendererStandardMesh type)
-    {
-        return m_standard_index_buffer[static_cast<uint8_t>(type)];
+        return m_standard_meshes[static_cast<uint8_t>(type)];
     }
 }

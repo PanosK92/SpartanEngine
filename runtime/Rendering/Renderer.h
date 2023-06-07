@@ -30,6 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Math/Plane.h"
 #include <unordered_map>
 #include "Event.h"
+#include "Mesh.h"
 //===============================
 
 namespace Spartan
@@ -38,7 +39,7 @@ namespace Spartan
     class Entity;
     class Camera;
     class Light;
-    class Environment; 
+    class Environment;
     namespace Math
     {
         class BoundingBox;
@@ -115,16 +116,14 @@ namespace Spartan
         static std::array<std::shared_ptr<RHI_Shader>, 47>& GetShaders();
         static std::array<std::shared_ptr<RHI_Sampler>, 7>& GetSamplers();
         static std::array<std::shared_ptr<RHI_Texture>, 9>& GetStandardTextures();
-        static std::array<std::shared_ptr<RHI_VertexBuffer>, 2>& GetStandardVertexBuffers();
-        static std::array<std::shared_ptr<RHI_IndexBuffer>, 2>& GetStandardIndexBuffers();
+        static std::array<std::shared_ptr<Mesh>, 5>& GetStandardMeshes();
 
         // Get individual
         static std::shared_ptr<RHI_Texture> GetRenderTarget(const RendererTexture type);
         static std::shared_ptr<RHI_Shader> GetShader(const RendererShader type);
         static std::shared_ptr<RHI_Sampler> GetSampler(const RendererSampler type);
         static std::shared_ptr<RHI_Texture> GetStandardTexture(const RendererStandardTexture type);
-        static std::shared_ptr<RHI_VertexBuffer> GetStandardVertexBuffer(const RendererStandardMesh type);
-        static std::shared_ptr<RHI_IndexBuffer> GetStandardIndexBuffer(const RendererStandardMesh type);
+        static std::shared_ptr<Mesh> GetStandardMesh(const RendererStandardMesh type);
         //================================================================================================
 
     private:

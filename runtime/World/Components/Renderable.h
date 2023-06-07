@@ -21,27 +21,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ======================
+//= INCLUDES =================================
 #include "Component.h"
 #include <vector>
 #include "../../Math/Matrix.h"
 #include "../../Math/BoundingBox.h"
-//=================================
+#include "../Rendering/Renderer_Definitions.h"
+//============================================
 
 namespace Spartan
 {
     class Mesh;
     class Material;
-
-    enum class GeometryType
-    {
-        Cube,
-        Quad,
-        Sphere,
-        Cylinder,
-        Cone,
-        Custom
-    };
 
     class SP_CLASS Renderable : public Component
     {
@@ -63,7 +54,7 @@ namespace Spartan
             const Math::BoundingBox& aabb, 
             std::shared_ptr<Mesh> mesh
         );
-        void SetGeometry(GeometryType type);
+        void SetGeometry(const RendererStandardMesh type);
 
         // Get geometry
         void GetGeometry(std::vector<uint32_t>* indices, std::vector<RHI_Vertex_PosTexNorTan>* vertices) const;
@@ -73,7 +64,7 @@ namespace Spartan
         uint32_t GetIndexCount()                  const { return m_geometry_index_count; }
         uint32_t GetVertexOffset()                const { return m_geometry_vertex_offset; }
         uint32_t GetVertexCount()                 const { return m_geometry_vertex_count; }
-        GeometryType GetGeometryType()            const { return m_geometry_type; }
+        RendererStandardMesh GetGeometryType()    const { return m_geometry_type; }
         const std::string& GetGeometryName()      const { return m_geometry_name; }
         std::shared_ptr<Mesh> GetMesh()           const { return m_mesh; }
         const Math::BoundingBox& GetBoundingBox() const { return m_bounding_box; }
@@ -98,16 +89,16 @@ namespace Spartan
         auto GetCastShadows() const                  { return m_cast_shadows; }
 
     private:
-        uint32_t m_geometry_index_offset  = 0;
-        uint32_t m_geometry_index_count   = 0;
-        uint32_t m_geometry_vertex_offset = 0;
-        uint32_t m_geometry_vertex_count  = 0;
-        GeometryType m_geometry_type      = GeometryType::Custom;
-        Math::Matrix m_last_transform     = Math::Matrix::Identity;
-        bool m_cast_shadows               = true;
-        bool m_material_default           = false;
-        std::shared_ptr<Mesh> m_mesh      = nullptr;
-        Material* m_material              = nullptr;
+        uint32_t m_geometry_index_offset     = 0;
+        uint32_t m_geometry_index_count      = 0;
+        uint32_t m_geometry_vertex_offset    = 0;
+        uint32_t m_geometry_vertex_count     = 0;
+        RendererStandardMesh m_geometry_type = RendererStandardMesh::custom;
+        Math::Matrix m_last_transform        = Math::Matrix::Identity;
+        bool m_cast_shadows                  = true;
+        bool m_material_default              = false;
+        std::shared_ptr<Mesh> m_mesh         = nullptr;
+        Material* m_material                 = nullptr;
         Math::BoundingBox m_bounding_box;
         Math::BoundingBox m_aabb;
         std::string m_geometry_name;

@@ -274,7 +274,11 @@ namespace Spartan
 
     enum class RendererStandardMesh
     {
+        cube,
         quad,
-        sphere
+        sphere,
+        cylinder,
+        cone,
+        custom
     };
 }

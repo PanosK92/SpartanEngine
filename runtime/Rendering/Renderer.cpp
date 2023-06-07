@@ -245,8 +245,7 @@ namespace Spartan
             GetShaders().fill(nullptr);
             GetSamplers().fill(nullptr);
             GetStandardTextures().fill(nullptr);
-            GetStandardVertexBuffers().fill(nullptr);
-            GetStandardIndexBuffers().fill(nullptr);
+            GetStandardMeshes().fill(nullptr);
 
             m_renderables_pending.clear();
             m_renderables.clear();
