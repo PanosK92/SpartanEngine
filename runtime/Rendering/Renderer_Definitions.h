@@ -259,6 +259,14 @@ namespace Spartan
         anisotropic_wrap
     };
 
+    enum class RendererConstantBuffer
+    {
+        frame,
+        uber,
+        light,
+        material
+    };
+
     enum class RendererStandardTexture
     {
         noise_normal,
