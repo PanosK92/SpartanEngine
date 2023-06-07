@@ -256,6 +256,6 @@ namespace Spartan
         bilinear_clamp,
         bilinear_wrap,
         trilinear_clamp,
-        anisotropic_wrap,
+        anisotropic_wrap
     };
 }
