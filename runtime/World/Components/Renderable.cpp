@@ -38,59 +38,58 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    static void build(const GeometryType type, Renderable* renderable)
-    {    
-        vector<RHI_Vertex_PosTexNorTan> vertices;
-        vector<uint32_t> indices;
+    namespace
+    {
+        static array<shared_ptr<Mesh>, 5> standard_meshes;
+        static mutex mesh_mutex;
 
-        const string project_directory = ResourceCache::GetProjectDirectory();
+        static void create_mesh(const GeometryType type)
+        {
+            lock_guard lock(mesh_mutex);
 
-        // Construct geometry
-        shared_ptr<Mesh> mesh = make_shared<Mesh>();
-        if (type == GeometryType::Cube)
-        {
-            Geometry::CreateCube(&vertices, &indices);
-            mesh->SetResourceFilePath(project_directory + "default_cube" + EXTENSION_MODEL);
-        }
-        else if (type == GeometryType::Quad)
-        {
-            Geometry::CreateQuad(&vertices, &indices);
-            mesh->SetResourceFilePath(project_directory + "default_quad" + EXTENSION_MODEL);
-        }
-        else if (type == GeometryType::Sphere)
-        {
-            Geometry::CreateSphere(&vertices, &indices);
-            mesh->SetResourceFilePath(project_directory + "default_sphere" + EXTENSION_MODEL);
-        }
-        else if (type == GeometryType::Cylinder)
-        {
-            Geometry::CreateCylinder(&vertices, &indices);
-            mesh->SetResourceFilePath(project_directory + "default_cylinder" + EXTENSION_MODEL);
-        }
-        else if (type == GeometryType::Cone)
-        {
-            Geometry::CreateCone(&vertices, &indices);
-            mesh->SetResourceFilePath(project_directory + "default_cone" + EXTENSION_MODEL);
-        }
+            // early exit if already created
+            if (standard_meshes[static_cast<uint8_t>(type)] != nullptr)
+                return;
 
-        if (vertices.empty() || indices.empty())
-            return;
+            const string project_directory = ResourceCache::GetProjectDirectory();
+            shared_ptr<Mesh> mesh = make_shared<Mesh>();
+            vector<RHI_Vertex_PosTexNorTan> vertices;
+            vector<uint32_t> indices;
 
-        mesh->AddIndices(indices);
-        mesh->AddVertices(vertices);
-        mesh->ComputeAabb();
-        mesh->ComputeNormalizedScale();
-        mesh->CreateGpuBuffers();
+            if (type == GeometryType::Cube)
+            {
+                Geometry::CreateCube(&vertices, &indices);
+                mesh->SetResourceFilePath(project_directory + "standard_mesh_cube" + EXTENSION_MODEL);
+            }
+            else if (type == GeometryType::Quad)
+            {
+                Geometry::CreateQuad(&vertices, &indices);
+                mesh->SetResourceFilePath(project_directory + "standard_mesh_quad" + EXTENSION_MODEL);
+            }
+            else if (type == GeometryType::Sphere)
+            {
+                Geometry::CreateSphere(&vertices, &indices);
+                mesh->SetResourceFilePath(project_directory + "standard_mesh_sphere" + EXTENSION_MODEL);
+            }
+            else if (type == GeometryType::Cylinder)
+            {
+                Geometry::CreateCylinder(&vertices, &indices);
+                mesh->SetResourceFilePath(project_directory + "standard_mesh_cylinder" + EXTENSION_MODEL);
+            }
+            else if (type == GeometryType::Cone)
+            {
+                Geometry::CreateCone(&vertices, &indices);
+                mesh->SetResourceFilePath(project_directory + "standard_mesh_cone" + EXTENSION_MODEL);
+            }
 
-        renderable->SetGeometry(
-            "default_geometry",
-            0,
-            static_cast<uint32_t>(indices.size()),
-            0,
-            static_cast<uint32_t>(vertices.size()),
-            BoundingBox(vertices.data(), static_cast<uint32_t>(vertices.size())),
-            mesh
-        );
+            mesh->AddIndices(indices);
+            mesh->AddVertices(vertices);
+            mesh->ComputeAabb();
+            mesh->ComputeNormalizedScale();
+            mesh->CreateGpuBuffers();
+
+            standard_meshes[static_cast<uint8_t>(type)] = mesh;
+        }
     }
 
     Renderable::Renderable(weak_ptr<Entity> entity) : Component(entity)
@@ -111,6 +110,9 @@ namespace Spartan
     Renderable::~Renderable()
     {
         m_mesh = nullptr;
+
+        lock_guard lock(mesh_mutex);
+        standard_meshes.fill(nullptr);
     }
     
     void Renderable::Serialize(FileStream* stream)
@@ -184,7 +186,18 @@ namespace Spartan
 
         if (type != GeometryType::Custom)
         {
-            build(type, this);
+            create_mesh(type);
+            shared_ptr<Mesh> mesh = standard_meshes[static_cast<uint8_t>(type)];
+
+            SetGeometry(
+                "default_geometry",
+                0,
+                mesh->GetIndexCount(),
+                0,
+                mesh->GetVertexCount(),
+                BoundingBox(mesh->GetVertices().data(), mesh->GetVertexCount()),
+                mesh
+            );
         }
     }
 
