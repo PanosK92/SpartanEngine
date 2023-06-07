@@ -51,6 +51,7 @@ namespace Spartan
 {
     namespace
     {
+        static array<shared_ptr<RHI_ConstantBuffer>, 4> m_constant_buffers;
         static array<shared_ptr<RHI_Texture>, 26> m_render_targets;
         static array<shared_ptr<RHI_Shader>, 47> m_shaders;
         static array<shared_ptr<RHI_Sampler>, 7> m_samplers;
@@ -121,18 +122,10 @@ namespace Spartan
 
     //= BUFFERS ======================================
     shared_ptr<RHI_StructuredBuffer> m_sb_spd_counter;
-
     Cb_Frame m_cb_frame_cpu;
-    shared_ptr<RHI_ConstantBuffer> m_cb_frame_gpu;
-
     Cb_Uber m_cb_uber_cpu;
-    shared_ptr<RHI_ConstantBuffer> m_cb_uber_gpu;
-
     Cb_Light m_cb_light_cpu;
-    shared_ptr<RHI_ConstantBuffer> m_cb_light_gpu;
-
     Cb_Material m_cb_material_cpu;
-    shared_ptr<RHI_ConstantBuffer> m_cb_material_gpu;
     //===============================================
 
     // Misc
@@ -145,17 +138,19 @@ namespace Spartan
 
     void Renderer::CreateConstantBuffers()
     {
-        m_cb_frame_gpu = make_shared<RHI_ConstantBuffer>("frame");
-        m_cb_frame_gpu->Create<Cb_Frame>(8000);
+        #define constant_buffer(x) m_constant_buffers[static_cast<uint8_t>(x)]
 
-        m_cb_uber_gpu = make_shared<RHI_ConstantBuffer>("uber");
-        m_cb_uber_gpu->Create<Cb_Uber>(30000);
+        constant_buffer(RendererConstantBuffer::frame) = make_shared<RHI_ConstantBuffer>("frame");
+        constant_buffer(RendererConstantBuffer::frame)->Create<Cb_Frame>(8000);
 
-        m_cb_light_gpu = make_shared<RHI_ConstantBuffer>("light");
-        m_cb_light_gpu->Create<Cb_Light>(8000);
+        constant_buffer(RendererConstantBuffer::uber) = make_shared<RHI_ConstantBuffer>("uber");
+        constant_buffer(RendererConstantBuffer::uber)->Create<Cb_Uber>(30000);
 
-        m_cb_material_gpu = make_shared<RHI_ConstantBuffer>("material");
-        m_cb_material_gpu->Create<Cb_Material>(4000); // NV failed to allocate beyond this point
+        constant_buffer(RendererConstantBuffer::light) = make_shared<RHI_ConstantBuffer>("light");
+        constant_buffer(RendererConstantBuffer::light)->Create<Cb_Light>(8000);
+
+        constant_buffer(RendererConstantBuffer::material) = make_shared<RHI_ConstantBuffer>("material");
+        constant_buffer(RendererConstantBuffer::material)->Create<Cb_Material>(4000); // NV failed to allocate beyond this point
     }
 
     void Renderer::CreateStructuredBuffers()
@@ -593,6 +588,11 @@ namespace Spartan
         }
     }
 
+    array<shared_ptr<RHI_ConstantBuffer>, 4>& Renderer::GetConstantBuffers()
+    {
+        return m_constant_buffers;
+    }
+
     array<shared_ptr<RHI_Texture>, 26>& Renderer::GetRenderTargets()
     {
         return m_render_targets;
@@ -616,6 +616,11 @@ namespace Spartan
     array<shared_ptr<Mesh>, 5>& Renderer::GetStandardMeshes()
     {
         return m_standard_meshes;
+    }
+
+    shared_ptr<RHI_ConstantBuffer> Renderer::GetConstantBuffer(const RendererConstantBuffer type)
+    {
+        return m_constant_buffers[static_cast<uint8_t>(type)];
     }
 
     shared_ptr<RHI_Texture> Renderer::GetRenderTarget(const RendererTexture type)

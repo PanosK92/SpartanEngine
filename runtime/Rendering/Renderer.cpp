@@ -51,20 +51,33 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
+    namespace
+    {
+        // sync objects
+        static thread::id m_render_thread_id;
+        static mutex m_mutex_entity_addition;
+        static mutex m_mutex_mip_generation;
+        static mutex m_mutex_environment_texture;
+
+        // states
+        static atomic<bool> m_is_rendering_allowed  = true;
+        static atomic<bool> m_flush_requested       = false;
+        static bool m_dirty_orthographic_projection = true;
+
+        // options
+        static array<float, 34> m_options;
+
+        // frame
+        static uint64_t m_frame_num = 0;
+        static bool m_is_odd_frame  = false;
+    }
+
     //= BUFFERS =============================================
     extern shared_ptr<RHI_StructuredBuffer> m_sb_spd_counter;
-    
     extern Cb_Frame m_cb_frame_cpu;
-    extern shared_ptr<RHI_ConstantBuffer> m_cb_frame_gpu;
-    
     extern Cb_Uber m_cb_uber_cpu;
-    extern shared_ptr<RHI_ConstantBuffer> m_cb_uber_gpu;
-    
     extern Cb_Light m_cb_light_cpu;
-    extern shared_ptr<RHI_ConstantBuffer> m_cb_light_gpu;
-    
     extern Cb_Material m_cb_material_cpu;
-    extern shared_ptr<RHI_ConstantBuffer> m_cb_material_gpu;
     //=======================================================
 
     // Misc
@@ -80,36 +93,24 @@ namespace Spartan
     // Environment texture
     shared_ptr<RHI_Texture> m_environment_texture;
     bool m_environment_texture_dirty = false;
-    
-    // Options
-    array<float, 34> m_options;
-    
+
     // Misc
     Math::Vector2 m_jitter_offset = Math::Vector2::Zero;
     float m_near_plane            = 0.0f;
     float m_far_plane             = 1.0f;
-    uint64_t m_frame_num          = 0;
-    bool m_is_odd_frame           = false;
     array<Material*, m_max_material_instances> m_material_instances;
-    
-    // Constants
     const uint32_t m_resolution_shadow_min = 128;
     
     // Resource management
     vector<weak_ptr<RHI_Texture>> m_textures_mip_generation;
-    
-    // States
-    atomic<bool> m_is_rendering_allowed  = true;
-    atomic<bool> m_flush_requested       = false;
-    bool m_dirty_orthographic_projection = true;
-    
-    // RHI Core
-    RHI_CommandPool* m_cmd_pool    = nullptr;
-    RHI_CommandList* m_cmd_current = nullptr;
-    
+
     // Swapchain
     const uint8_t m_swap_chain_buffer_count = 2;
     shared_ptr<RHI_SwapChain> m_swap_chain;
+
+    // RHI Core
+    RHI_CommandPool* m_cmd_pool    = nullptr;
+    RHI_CommandList* m_cmd_current = nullptr;
     
     // Entities
     vector<shared_ptr<Entity>> m_renderables_pending;
@@ -118,12 +119,6 @@ namespace Spartan
     shared_ptr<Camera> m_camera;
     Environment* m_environment = nullptr;
     
-    // Sync objects
-    thread::id m_render_thread_id;
-    mutex m_mutex_entity_addition;
-    mutex m_mutex_mip_generation;
-    mutex m_mutex_environment_texture;
-
     void Renderer::Initialize()
     {
         m_render_thread_id = this_thread::get_id();
@@ -240,6 +235,7 @@ namespace Spartan
 
         // Manually invoke the deconstructors so that ParseDeletionQueue(), releases their RHI resources.
         {
+            GetConstantBuffers().fill(nullptr);
             GetRenderTargets().fill(nullptr);
             GetShaders().fill(nullptr);
             GetSamplers().fill(nullptr);
@@ -255,10 +251,6 @@ namespace Spartan
             m_swap_chain          = nullptr;
             m_vertex_buffer_lines = nullptr;
             m_sb_spd_counter      = nullptr;
-            m_cb_frame_gpu        = nullptr;
-            m_cb_uber_gpu         = nullptr;
-            m_cb_light_gpu        = nullptr;
-            m_cb_material_gpu     = nullptr;
             m_environment_texture = nullptr;
         }
 
@@ -320,10 +312,10 @@ namespace Spartan
         if (reset)
         {
             // Reset dynamic buffer indices
-            m_cb_uber_gpu->ResetOffset();
-            m_cb_frame_gpu->ResetOffset();
-            m_cb_light_gpu->ResetOffset();
-            m_cb_material_gpu->ResetOffset();
+            for (shared_ptr<RHI_ConstantBuffer> constant_buffer : GetConstantBuffers())
+            {
+                constant_buffer->ResetOffset();
+            }
             m_sb_spd_counter->ResetOffset();
 
             // Perform operations which might modify, create or destroy resources
@@ -524,18 +516,18 @@ namespace Spartan
 
     void Renderer::UpdateConstantBufferFrame(RHI_CommandList* cmd_list)
     {
-        m_cb_frame_gpu->Update(&m_cb_frame_cpu);
+        GetConstantBuffer(RendererConstantBuffer::frame)->Update(&m_cb_frame_cpu);
 
         // Bind because the offset just changed
-        cmd_list->SetConstantBuffer(RendererBindingsCb::frame, RHI_Shader_Vertex | RHI_Shader_Pixel | RHI_Shader_Compute, m_cb_frame_gpu);
+        cmd_list->SetConstantBuffer(RendererBindingsCb::frame, RHI_Shader_Vertex | RHI_Shader_Pixel | RHI_Shader_Compute, GetConstantBuffer(RendererConstantBuffer::frame));
     }
 
     void Renderer::UpdateConstantBufferUber(RHI_CommandList* cmd_list)
     {
-        m_cb_uber_gpu->Update(&m_cb_uber_cpu);
+        GetConstantBuffer(RendererConstantBuffer::uber)->Update(&m_cb_uber_cpu);
 
         // Bind because the offset just changed
-        cmd_list->SetConstantBuffer(RendererBindingsCb::uber, RHI_Shader_Vertex | RHI_Shader_Pixel | RHI_Shader_Compute, m_cb_uber_gpu);
+        cmd_list->SetConstantBuffer(RendererBindingsCb::uber, RHI_Shader_Vertex | RHI_Shader_Pixel | RHI_Shader_Compute, GetConstantBuffer(RendererConstantBuffer::uber));
     }
 
     void Renderer::UpdateConstantBufferLight(RHI_CommandList* cmd_list, shared_ptr<Light> light, const RHI_Shader_Type scope)
@@ -565,10 +557,10 @@ namespace Spartan
         m_cb_light_cpu.options     |= light->GetShadowsScreenSpaceEnabled()           ? (1 << 5) : 0;
         m_cb_light_cpu.options     |= light->GetVolumetricEnabled()                   ? (1 << 6) : 0;
 
-        m_cb_light_gpu->Update(&m_cb_light_cpu);
+        GetConstantBuffer(RendererConstantBuffer::light)->Update(&m_cb_light_cpu);
 
         // Bind because the offset just changed
-        cmd_list->SetConstantBuffer(RendererBindingsCb::light, scope, m_cb_light_gpu);
+        cmd_list->SetConstantBuffer(RendererBindingsCb::light, scope, GetConstantBuffer(RendererConstantBuffer::light));
     }
 
     void Renderer::UpdateConstantBufferMaterial(RHI_CommandList* cmd_list)
@@ -588,10 +580,10 @@ namespace Spartan
             m_cb_material_cpu.materials[i].sheen_sheenTint_pad.y                   = material->GetProperty(MaterialProperty::SheenTint);
         }
 
-        m_cb_material_gpu->Update(&m_cb_material_cpu);
+        GetConstantBuffer(RendererConstantBuffer::material)->Update(&m_cb_material_cpu);
 
         // Bind because the offset just changed
-        cmd_list->SetConstantBuffer(RendererBindingsCb::material, RHI_Shader_Pixel, m_cb_material_gpu);
+        cmd_list->SetConstantBuffer(RendererBindingsCb::material, RHI_Shader_Pixel, GetConstantBuffer(RendererConstantBuffer::material));
     }
 
     void Renderer::OnWorldResolved(sp_variant data)

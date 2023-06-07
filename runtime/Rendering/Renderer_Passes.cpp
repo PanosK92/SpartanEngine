@@ -72,18 +72,10 @@ namespace Spartan
 
     //= BUFFERS =============================================
     extern shared_ptr<RHI_StructuredBuffer> m_sb_spd_counter;
-
     extern Cb_Frame m_cb_frame_cpu;
-    extern shared_ptr<RHI_ConstantBuffer> m_cb_frame_gpu;
-
     extern Cb_Uber m_cb_uber_cpu;
-    extern shared_ptr<RHI_ConstantBuffer> m_cb_uber_gpu;
-
     extern Cb_Light m_cb_light_cpu;
-    extern shared_ptr<RHI_ConstantBuffer> m_cb_light_gpu;
-
     extern Cb_Material m_cb_material_cpu;
-    extern shared_ptr<RHI_ConstantBuffer> m_cb_material_gpu;
     //=======================================================
 
     // Lines
@@ -113,10 +105,10 @@ namespace Spartan
     void Renderer::SetGlobalShaderResources(RHI_CommandList* cmd_list)
     {
         // Constant buffers
-        cmd_list->SetConstantBuffer(RendererBindingsCb::frame, RHI_Shader_Vertex | RHI_Shader_Pixel | RHI_Shader_Compute, m_cb_frame_gpu);
-        cmd_list->SetConstantBuffer(RendererBindingsCb::uber,  RHI_Shader_Vertex | RHI_Shader_Pixel | RHI_Shader_Compute, m_cb_uber_gpu);
-        cmd_list->SetConstantBuffer(RendererBindingsCb::light, RHI_Shader_Compute, m_cb_light_gpu);
-        cmd_list->SetConstantBuffer(RendererBindingsCb::material, RHI_Shader_Pixel | RHI_Shader_Compute, m_cb_material_gpu);
+        cmd_list->SetConstantBuffer(RendererBindingsCb::frame,    RHI_Shader_Vertex | RHI_Shader_Pixel | RHI_Shader_Compute, GetConstantBuffer(RendererConstantBuffer::frame));
+        cmd_list->SetConstantBuffer(RendererBindingsCb::uber,     RHI_Shader_Vertex | RHI_Shader_Pixel | RHI_Shader_Compute, GetConstantBuffer(RendererConstantBuffer::uber));
+        cmd_list->SetConstantBuffer(RendererBindingsCb::light,    RHI_Shader_Compute,                                        GetConstantBuffer(RendererConstantBuffer::light));
+        cmd_list->SetConstantBuffer(RendererBindingsCb::material, RHI_Shader_Pixel | RHI_Shader_Compute,                     GetConstantBuffer(RendererConstantBuffer::material));
 
         // Samplers
         cmd_list->SetSampler(0, GetSampler(RendererSampler::compare_depth));
