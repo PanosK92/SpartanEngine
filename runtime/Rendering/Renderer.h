@@ -111,19 +111,20 @@ namespace Spartan
         static RHI_CommandList* GetCmdList();
         //===================================
  
-        //= RESOURCES =====================================================================================
-        // Render targets
-        static std::shared_ptr<RHI_Texture> GetRenderTarget(const RendererTexture rt_enum);
-        static std::array<std::shared_ptr<RHI_Texture>, 26>& GetRenderTargets();
-
-        // Shaders
-        static std::array<std::shared_ptr<RHI_Shader>, 47>& GetShaders();
-
-        // Misc
+        //= RESOURCES =================================================================================
         static RHI_Texture* GetFrameTexture();
         static std::shared_ptr<Camera> GetCamera();
         static std::unordered_map<RendererEntity, std::vector<std::shared_ptr<Entity>>>& GetEntities();
-        //=================================================================================================
+
+        // Get all
+        static std::array<std::shared_ptr<RHI_Texture>, 26>& GetRenderTargets();
+        static std::array<std::shared_ptr<RHI_Shader>, 47>& GetShaders();
+
+        // Get individual
+        static std::shared_ptr<RHI_Texture> GetRenderTarget(const RendererTexture type);
+        static std::shared_ptr<RHI_Shader> GetShader(const RendererShader type);
+        static std::shared_ptr<RHI_Sampler> GetSampler(const RendererSampler type);
+        //=============================================================================================
 
     private:
         // Constant buffers
@@ -188,7 +189,6 @@ namespace Spartan
         static void SortRenderables(std::vector<std::shared_ptr<Entity>>* renderables);
         static bool IsCallingFromOtherThread();
         static void OnResourceSafe(RHI_CommandList* cmd_list);
-        static std::shared_ptr<RHI_Sampler> GetSampler(const RendererSampler type);
 
         // Lines
         static void Lines_PreMain();

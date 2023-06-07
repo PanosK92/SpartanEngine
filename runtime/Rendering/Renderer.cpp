@@ -49,9 +49,6 @@ using namespace std;
 using namespace Spartan::Math;
 //============================
 
-// Macro to work around the verboseness of some C++ concepts.
-#define render_target(enum_rt) GetRenderTargets()[static_cast<uint8_t>(enum_rt)]
-
 namespace Spartan
 {
     //= BUFFERS =============================================
@@ -87,8 +84,6 @@ namespace Spartan
     extern shared_ptr<RHI_Texture> m_tex_gizmo_light_spot;
     
     // Misc
-    extern array<shared_ptr<RHI_Texture>, 26> m_render_targets;
-    extern array<shared_ptr<RHI_Shader>, 47> m_shaders;
     extern bool m_ffx_fsr2_reset;
     extern unique_ptr<Font> m_font;
     extern unique_ptr<Grid> m_world_grid;
@@ -262,8 +257,8 @@ namespace Spartan
         // Manually invoke the deconstructors so that ParseDeletionQueue(), releases their RHI resources.
         m_renderables_pending.clear();
         m_renderables.clear();
-        m_render_targets.fill(nullptr);
-        m_shaders.fill(nullptr);
+        GetRenderTargets().fill(nullptr);
+        GetShaders().fill(nullptr);
         m_textures_mip_generation.clear();
         m_world_grid.reset();
         m_font.reset();
@@ -428,8 +423,8 @@ namespace Spartan
             m_cb_frame_cpu.luminance_max          = Display::GetLuminanceMax();
             m_cb_frame_cpu.shadow_resolution      = GetOption<float>(RendererOption::ShadowResolution);
             m_cb_frame_cpu.frame                  = static_cast<uint32_t>(m_frame_num);
-            m_cb_frame_cpu.frame_mip_count        = render_target(RendererTexture::frame_render)->GetMipCount();
-            m_cb_frame_cpu.ssr_mip_count          = render_target(RendererTexture::ssr)->GetMipCount();
+            m_cb_frame_cpu.frame_mip_count        = GetRenderTarget(RendererTexture::frame_render)->GetMipCount();
+            m_cb_frame_cpu.ssr_mip_count          = GetRenderTarget(RendererTexture::ssr)->GetMipCount();
             m_cb_frame_cpu.resolution_environment = Vector2(GetEnvironmentTexture()->GetWidth(), GetEnvironmentTexture()->GetHeight());
 
             // These must match what Common_Buffer.hlsl is reading
