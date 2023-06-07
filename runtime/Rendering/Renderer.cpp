@@ -135,7 +135,7 @@ namespace Spartan
     // Entities
     vector<shared_ptr<Entity>> m_renderables_pending;
     bool m_add_new_entities = false;
-    unordered_map<RendererEntityType, vector<shared_ptr<Entity>>> m_renderables;
+    unordered_map<RendererEntity, vector<shared_ptr<Entity>>> m_renderables;
     shared_ptr<Camera> m_camera;
     Environment* m_environment = nullptr;
     
@@ -694,30 +694,30 @@ namespace Spartan
 
                     if (is_visible)
                     {
-                        m_renderables[is_transparent ? RendererEntityType::geometry_transparent : RendererEntityType::geometry_opaque].emplace_back(entity);
+                        m_renderables[is_transparent ? RendererEntity::geometry_transparent : RendererEntity::geometry_opaque].emplace_back(entity);
                     }
                 }
 
                 if (shared_ptr<Light> light = entity->GetComponent<Light>())
                 {
-                    m_renderables[RendererEntityType::light].emplace_back(entity);
+                    m_renderables[RendererEntity::light].emplace_back(entity);
                 }
 
                 if (shared_ptr<Camera> camera = entity->GetComponent<Camera>())
                 {
-                    m_renderables[RendererEntityType::camera].emplace_back(entity);
+                    m_renderables[RendererEntity::camera].emplace_back(entity);
                     m_camera = camera;
                 }
 
                 if (shared_ptr<ReflectionProbe> reflection_probe = entity->GetComponent<ReflectionProbe>())
                 {
-                    m_renderables[RendererEntityType::reflection_probe].emplace_back(entity);
+                    m_renderables[RendererEntity::reflection_probe].emplace_back(entity);
                 }
             }
 
             // Sort them by distance
-            SortRenderables(&m_renderables[RendererEntityType::geometry_opaque]);
-            SortRenderables(&m_renderables[RendererEntityType::geometry_transparent]);
+            SortRenderables(&m_renderables[RendererEntity::geometry_opaque]);
+            SortRenderables(&m_renderables[RendererEntity::geometry_transparent]);
 
             m_renderables_pending.clear();
             m_add_new_entities = false;
@@ -914,7 +914,7 @@ namespace Spartan
             // Shadow resolution
             else if (option == RendererOption::ShadowResolution)
             {
-                const auto& light_entities = m_renderables[RendererEntityType::light];
+                const auto& light_entities = m_renderables[RendererEntity::light];
                 for (const auto& light_entity : light_entities)
                 {
                     auto light = light_entity->GetComponent<Light>();
@@ -1035,7 +1035,7 @@ namespace Spartan
         return m_camera;
     }
 
-    unordered_map<RendererEntityType, vector<shared_ptr<Entity>>>& Renderer::GetEntities()
+    unordered_map<RendererEntity, vector<shared_ptr<Entity>>>& Renderer::GetEntities()
     {
         return m_renderables;
     }

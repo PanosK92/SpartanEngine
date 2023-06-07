@@ -38,8 +38,7 @@ namespace Spartan
     class Entity;
     class Camera;
     class Light;
-    class Environment;
-    
+    class Environment; 
     namespace Math
     {
         class BoundingBox;
@@ -123,7 +122,7 @@ namespace Spartan
         // Misc
         static RHI_Texture* GetFrameTexture();
         static std::shared_ptr<Camera> GetCamera();
-        static std::unordered_map<RendererEntityType, std::vector<std::shared_ptr<Entity>>>& GetEntities();
+        static std::unordered_map<RendererEntity, std::vector<std::shared_ptr<Entity>>>& GetEntities();
         //=================================================================================================
 
     private:
@@ -189,6 +188,7 @@ namespace Spartan
         static void SortRenderables(std::vector<std::shared_ptr<Entity>>* renderables);
         static bool IsCallingFromOtherThread();
         static void OnResourceSafe(RHI_CommandList* cmd_list);
+        static std::shared_ptr<RHI_Sampler> GetSampler(const RendererSampler type);
 
         // Lines
         static void Lines_PreMain();

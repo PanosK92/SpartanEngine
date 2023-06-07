@@ -46,11 +46,17 @@ using namespace std;
 using namespace Spartan::Math;
 //============================
 
-#define render_target(enum_rt) m_render_targets[static_cast<uint8_t>(enum_rt)]
-#define shader(enum_shader)    m_shaders[static_cast<uint8_t>(enum_shader)]
+#define render_target(x) m_render_targets[static_cast<uint8_t>(x)]
+#define shader(x)        m_shaders[static_cast<uint8_t>(x)]
+#define sampler(x)       m_samplers[static_cast<uint8_t>(x)]
 
 namespace Spartan
 {
+    namespace
+    {
+        static array<shared_ptr<RHI_Sampler>, 7> m_samplers;
+    }
+
     // Depth-stencil states
     shared_ptr<RHI_DepthStencilState> m_depth_stencil_off_off;
     shared_ptr<RHI_DepthStencilState> m_depth_stencil_off_r;
@@ -70,14 +76,6 @@ namespace Spartan
     shared_ptr<RHI_RasterizerState> m_rasterizer_light_point_spot;
     shared_ptr<RHI_RasterizerState> m_rasterizer_light_directional;
 
-    // Samplers
-    shared_ptr<RHI_Sampler> m_sampler_compare_depth;
-    shared_ptr<RHI_Sampler> m_sampler_point_clamp;
-    shared_ptr<RHI_Sampler> m_sampler_point_wrap;
-    shared_ptr<RHI_Sampler> m_sampler_bilinear_clamp;
-    shared_ptr<RHI_Sampler> m_sampler_bilinear_wrap;
-    shared_ptr<RHI_Sampler> m_sampler_trilinear_clamp;
-    shared_ptr<RHI_Sampler> m_sampler_anisotropic_wrap;
 
     //= BUFFERS ======================================
     shared_ptr<RHI_StructuredBuffer> m_sb_spd_counter;
@@ -191,16 +189,16 @@ namespace Spartan
 
         if (!create_only_anisotropic)
         {
-            // arguments:                                        minification,        magnification,       mip,                              sampler address mode,            comparison,                       anisotropy, comparison enabled, mip lod bias
-            m_sampler_compare_depth   = make_shared<RHI_Sampler>(RHI_Filter::Linear,  RHI_Filter::Linear,  RHI_Sampler_Mipmap_Mode::Nearest, RHI_Sampler_Address_Mode::Clamp, RHI_Comparison_Function::Greater, 0.0f,       true); // reverse-z
-            m_sampler_point_clamp     = make_shared<RHI_Sampler>(RHI_Filter::Nearest, RHI_Filter::Nearest, RHI_Sampler_Mipmap_Mode::Nearest, RHI_Sampler_Address_Mode::Clamp, RHI_Comparison_Function::Always);
-            m_sampler_point_wrap      = make_shared<RHI_Sampler>(RHI_Filter::Nearest, RHI_Filter::Nearest, RHI_Sampler_Mipmap_Mode::Nearest, RHI_Sampler_Address_Mode::Wrap,  RHI_Comparison_Function::Always);
-            m_sampler_bilinear_clamp  = make_shared<RHI_Sampler>(RHI_Filter::Linear,  RHI_Filter::Linear,  RHI_Sampler_Mipmap_Mode::Nearest, RHI_Sampler_Address_Mode::Clamp, RHI_Comparison_Function::Always);
-            m_sampler_bilinear_wrap   = make_shared<RHI_Sampler>(RHI_Filter::Linear,  RHI_Filter::Linear,  RHI_Sampler_Mipmap_Mode::Nearest, RHI_Sampler_Address_Mode::Wrap,  RHI_Comparison_Function::Always);
-            m_sampler_trilinear_clamp = make_shared<RHI_Sampler>(RHI_Filter::Linear,  RHI_Filter::Linear,  RHI_Sampler_Mipmap_Mode::Linear,  RHI_Sampler_Address_Mode::Clamp, RHI_Comparison_Function::Always);
+            // arguments:                                                        minification,        magnification,       mip,                              sampler address mode,            comparison,                       anisotropy, comparison enabled, mip lod bias
+            sampler(RendererSampler::compare_depth)   = make_shared<RHI_Sampler>(RHI_Filter::Linear,  RHI_Filter::Linear,  RHI_Sampler_Mipmap_Mode::Nearest, RHI_Sampler_Address_Mode::Clamp, RHI_Comparison_Function::Greater, 0.0f,       true); // reverse-z
+            sampler(RendererSampler::point_clamp)     = make_shared<RHI_Sampler>(RHI_Filter::Nearest, RHI_Filter::Nearest, RHI_Sampler_Mipmap_Mode::Nearest, RHI_Sampler_Address_Mode::Clamp, RHI_Comparison_Function::Always);
+            sampler(RendererSampler::point_wrap)      = make_shared<RHI_Sampler>(RHI_Filter::Nearest, RHI_Filter::Nearest, RHI_Sampler_Mipmap_Mode::Nearest, RHI_Sampler_Address_Mode::Wrap,  RHI_Comparison_Function::Always);
+            sampler(RendererSampler::bilinear_clamp)  = make_shared<RHI_Sampler>(RHI_Filter::Linear,  RHI_Filter::Linear,  RHI_Sampler_Mipmap_Mode::Nearest, RHI_Sampler_Address_Mode::Clamp, RHI_Comparison_Function::Always);
+            sampler(RendererSampler::bilinear_wrap)   = make_shared<RHI_Sampler>(RHI_Filter::Linear,  RHI_Filter::Linear,  RHI_Sampler_Mipmap_Mode::Nearest, RHI_Sampler_Address_Mode::Wrap,  RHI_Comparison_Function::Always);
+            sampler(RendererSampler::trilinear_clamp) = make_shared<RHI_Sampler>(RHI_Filter::Linear,  RHI_Filter::Linear,  RHI_Sampler_Mipmap_Mode::Linear,  RHI_Sampler_Address_Mode::Clamp, RHI_Comparison_Function::Always);
         }
 
-        m_sampler_anisotropic_wrap = make_shared<RHI_Sampler>(RHI_Filter::Linear, RHI_Filter::Linear, RHI_Sampler_Mipmap_Mode::Linear, RHI_Sampler_Address_Mode::Wrap, RHI_Comparison_Function::Always, anisotropy, false, mip_bias);
+        sampler(RendererSampler::anisotropic_wrap) = make_shared<RHI_Sampler>(RHI_Filter::Linear, RHI_Filter::Linear, RHI_Sampler_Mipmap_Mode::Linear, RHI_Sampler_Address_Mode::Wrap, RHI_Comparison_Function::Always, anisotropy, false, mip_bias);
 
         SP_LOG_INFO("Mip bias set to %f", mip_bias);
     }
@@ -599,6 +597,11 @@ namespace Spartan
     array<shared_ptr<RHI_Shader>, 47>& Renderer::GetShaders()
     {
         return m_shaders;
+    }
+
+    shared_ptr<RHI_Sampler> Renderer::GetSampler(const RendererSampler type)
+    {
+        return sampler(type);
     }
 
     RHI_Texture* Renderer::GetDefaultTextureWhite()
