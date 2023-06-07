@@ -105,7 +105,7 @@ namespace Spartan
         static RHI_CommandList* GetCmdList();
         //===================================
  
-        //= RESOURCES =================================================================================
+        //= RESOURCES ====================================================================================
         static RHI_Texture* GetFrameTexture();
         static std::shared_ptr<Camera> GetCamera();
         static std::unordered_map<RendererEntity, std::vector<std::shared_ptr<Entity>>>& GetEntities();
@@ -115,13 +115,17 @@ namespace Spartan
         static std::array<std::shared_ptr<RHI_Shader>, 47>& GetShaders();
         static std::array<std::shared_ptr<RHI_Sampler>, 7>& GetSamplers();
         static std::array<std::shared_ptr<RHI_Texture>, 8>& GetStandardTextures();
+        static std::array<std::shared_ptr<RHI_VertexBuffer>, 2>& GetStandardVertexBuffers();
+        static std::array<std::shared_ptr<RHI_IndexBuffer>, 2>& GetStandardIndexBuffers();
 
         // Get individual
         static std::shared_ptr<RHI_Texture> GetRenderTarget(const RendererTexture type);
         static std::shared_ptr<RHI_Shader> GetShader(const RendererShader type);
         static std::shared_ptr<RHI_Sampler> GetSampler(const RendererSampler type);
         static std::shared_ptr<RHI_Texture> GetStandardTexture(const RendererStandardTexture type);
-        //=============================================================================================
+        static std::shared_ptr<RHI_VertexBuffer> GetStandardVertexBuffer(const RendererStandardMesh type);
+        static std::shared_ptr<RHI_IndexBuffer> GetStandardIndexBuffer(const RendererStandardMesh type);
+        //================================================================================================
 
     private:
         // Constant buffers
@@ -137,7 +141,7 @@ namespace Spartan
         static void CreateRasterizerStates();
         static void CreateBlendStates();
         static void CreateFonts();
-        static void CreateMeshes();
+        static void CreateStandardMeshes();
         static void CreateStandardTextures();
         static void CreateShaders();
         static void CreateSamplers(const bool create_only_anisotropic = false);

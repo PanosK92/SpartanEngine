@@ -270,4 +270,10 @@ namespace Spartan
         gizmo_light_point,
         gizmo_light_spot
     };
+
+    enum class RendererStandardMesh
+    {
+        quad,
+        sphere
+    };
 }
