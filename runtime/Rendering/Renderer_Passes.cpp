@@ -70,13 +70,12 @@ namespace Spartan
     extern shared_ptr<RHI_RasterizerState> m_rasterizer_light_point_spot;
     extern shared_ptr<RHI_RasterizerState> m_rasterizer_light_directional;
 
-    //= BUFFERS =============================================
-    extern shared_ptr<RHI_StructuredBuffer> m_sb_spd_counter;
+    //= BUFFERS =========================
     extern Cb_Frame m_cb_frame_cpu;
     extern Cb_Uber m_cb_uber_cpu;
     extern Cb_Light m_cb_light_cpu;
     extern Cb_Material m_cb_material_cpu;
-    //=======================================================
+    //===================================
 
     // Lines
     extern vector<RHI_Vertex_PosCol> m_line_vertices;
@@ -1940,8 +1939,8 @@ namespace Spartan
 
         // Update counter
         uint32_t counter_value = 0;
-        m_sb_spd_counter->Update(&counter_value);
-        cmd_list->SetStructuredBuffer(RendererBindingsUav::atomic_counter, m_sb_spd_counter);
+        GetStructuredBuffer()->Update(&counter_value);
+        cmd_list->SetStructuredBuffer(RendererBindingsUav::atomic_counter, GetStructuredBuffer());
 
         // Set textures
         cmd_list->SetTexture(RendererBindingsSrv::tex, tex, 0, 1);                            // top mip

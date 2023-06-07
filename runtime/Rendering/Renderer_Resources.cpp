@@ -51,54 +51,16 @@ namespace Spartan
 {
     namespace
     {
-        static array<shared_ptr<RHI_ConstantBuffer>, 4> m_constant_buffers;
+        // core resources
         static array<shared_ptr<RHI_Texture>, 26> m_render_targets;
         static array<shared_ptr<RHI_Shader>, 47> m_shaders;
         static array<shared_ptr<RHI_Sampler>, 7> m_samplers;
+        static array<shared_ptr<RHI_ConstantBuffer>, 4> m_constant_buffers;
+        static shared_ptr<RHI_StructuredBuffer> m_sb_spd_counter;
+
+        // standard resources
         static array<shared_ptr<RHI_Texture>, 9> m_standard_textures;
         static array<shared_ptr<Mesh>, 5> m_standard_meshes;
-
-        static void create_mesh(const RendererStandardMesh type)
-        {
-            const string project_directory = ResourceCache::GetProjectDirectory();
-            shared_ptr<Mesh> mesh = make_shared<Mesh>();
-            vector<RHI_Vertex_PosTexNorTan> vertices;
-            vector<uint32_t> indices;
-
-            if (type == RendererStandardMesh::cube)
-            {
-                Geometry::CreateCube(&vertices, &indices);
-                mesh->SetResourceFilePath(project_directory + "standard_mesh_cube" + EXTENSION_MODEL);
-            }
-            else if (type == RendererStandardMesh::quad)
-            {
-                Geometry::CreateQuad(&vertices, &indices);
-                mesh->SetResourceFilePath(project_directory + "standard_mesh_quad" + EXTENSION_MODEL);
-            }
-            else if (type == RendererStandardMesh::sphere)
-            {
-                Geometry::CreateSphere(&vertices, &indices);
-                mesh->SetResourceFilePath(project_directory + "standard_mesh_sphere" + EXTENSION_MODEL);
-            }
-            else if (type == RendererStandardMesh::cylinder)
-            {
-                Geometry::CreateCylinder(&vertices, &indices);
-                mesh->SetResourceFilePath(project_directory + "standard_mesh_cylinder" + EXTENSION_MODEL);
-            }
-            else if (type == RendererStandardMesh::cone)
-            {
-                Geometry::CreateCone(&vertices, &indices);
-                mesh->SetResourceFilePath(project_directory + "standard_mesh_cone" + EXTENSION_MODEL);
-            }
-
-            mesh->AddIndices(indices);
-            mesh->AddVertices(vertices);
-            mesh->ComputeAabb();
-            mesh->ComputeNormalizedScale();
-            mesh->CreateGpuBuffers();
-
-            m_standard_meshes[static_cast<uint8_t>(type)] = mesh;
-        }
     }
 
     // Depth-stencil states
@@ -120,20 +82,14 @@ namespace Spartan
     shared_ptr<RHI_RasterizerState> m_rasterizer_light_point_spot;
     shared_ptr<RHI_RasterizerState> m_rasterizer_light_directional;
 
-    //= BUFFERS ======================================
-    shared_ptr<RHI_StructuredBuffer> m_sb_spd_counter;
+    // Misc
     Cb_Frame m_cb_frame_cpu;
     Cb_Uber m_cb_uber_cpu;
     Cb_Light m_cb_light_cpu;
     Cb_Material m_cb_material_cpu;
-    //===============================================
-
-    // Misc
     shared_ptr<RHI_VertexBuffer> m_vertex_buffer_lines;
     unique_ptr<Font> m_font;
     unique_ptr<Grid> m_world_grid;
-
-    // States
     bool m_brdf_specular_lut_rendered = false;
 
     void Renderer::CreateConstantBuffers()
@@ -535,6 +491,48 @@ namespace Spartan
 
     void Renderer::CreateStandardMeshes()
     {
+        auto create_mesh = [](const RendererStandardMesh type)
+        {
+            const string project_directory = ResourceCache::GetProjectDirectory();
+            shared_ptr<Mesh> mesh = make_shared<Mesh>();
+            vector<RHI_Vertex_PosTexNorTan> vertices;
+            vector<uint32_t> indices;
+
+            if (type == RendererStandardMesh::cube)
+            {
+                Geometry::CreateCube(&vertices, &indices);
+                mesh->SetResourceFilePath(project_directory + "standard_mesh_cube" + EXTENSION_MODEL);
+            }
+            else if (type == RendererStandardMesh::quad)
+            {
+                Geometry::CreateQuad(&vertices, &indices);
+                mesh->SetResourceFilePath(project_directory + "standard_mesh_quad" + EXTENSION_MODEL);
+            }
+            else if (type == RendererStandardMesh::sphere)
+            {
+                Geometry::CreateSphere(&vertices, &indices);
+                mesh->SetResourceFilePath(project_directory + "standard_mesh_sphere" + EXTENSION_MODEL);
+            }
+            else if (type == RendererStandardMesh::cylinder)
+            {
+                Geometry::CreateCylinder(&vertices, &indices);
+                mesh->SetResourceFilePath(project_directory + "standard_mesh_cylinder" + EXTENSION_MODEL);
+            }
+            else if (type == RendererStandardMesh::cone)
+            {
+                Geometry::CreateCone(&vertices, &indices);
+                mesh->SetResourceFilePath(project_directory + "standard_mesh_cone" + EXTENSION_MODEL);
+            }
+
+            mesh->AddIndices(indices);
+            mesh->AddVertices(vertices);
+            mesh->ComputeAabb();
+            mesh->ComputeNormalizedScale();
+            mesh->CreateGpuBuffers();
+
+            m_standard_meshes[static_cast<uint8_t>(type)] = mesh;
+        };
+
         create_mesh(RendererStandardMesh::cube);
         create_mesh(RendererStandardMesh::quad);
         create_mesh(RendererStandardMesh::sphere);
@@ -588,9 +586,15 @@ namespace Spartan
         }
     }
 
-    array<shared_ptr<RHI_ConstantBuffer>, 4>& Renderer::GetConstantBuffers()
+    void Renderer::DestroyResources()
     {
-        return m_constant_buffers;
+        m_render_targets.fill(nullptr);
+        m_shaders.fill(nullptr);
+        m_constant_buffers.fill(nullptr);
+        m_samplers.fill(nullptr);
+        m_standard_textures.fill(nullptr);
+        m_standard_meshes.fill(nullptr);
+        m_sb_spd_counter = nullptr;
     }
 
     array<shared_ptr<RHI_Texture>, 26>& Renderer::GetRenderTargets()
@@ -603,24 +607,9 @@ namespace Spartan
         return m_shaders;
     }
 
-    array<shared_ptr<RHI_Sampler>, 7>& Renderer::GetSamplers()
+    array<shared_ptr<RHI_ConstantBuffer>, 4>& Renderer::GetConstantBuffers()
     {
-        return m_samplers;
-    }
-
-    array<shared_ptr<RHI_Texture>, 9>& Renderer::GetStandardTextures()
-    {
-        return m_standard_textures;
-    }
-
-    array<shared_ptr<Mesh>, 5>& Renderer::GetStandardMeshes()
-    {
-        return m_standard_meshes;
-    }
-
-    shared_ptr<RHI_ConstantBuffer> Renderer::GetConstantBuffer(const RendererConstantBuffer type)
-    {
-        return m_constant_buffers[static_cast<uint8_t>(type)];
+        return m_constant_buffers;
     }
 
     shared_ptr<RHI_Texture> Renderer::GetRenderTarget(const RendererTexture type)
@@ -636,6 +625,16 @@ namespace Spartan
     shared_ptr<RHI_Sampler> Renderer::GetSampler(const RendererSampler type)
     {
         return m_samplers[static_cast<uint8_t>(type)];
+    }
+
+    shared_ptr<RHI_ConstantBuffer> Renderer::GetConstantBuffer(const RendererConstantBuffer type)
+    {
+        return m_constant_buffers[static_cast<uint8_t>(type)];
+    }
+
+    shared_ptr<RHI_StructuredBuffer> Renderer::GetStructuredBuffer()
+    {
+        return m_sb_spd_counter;
     }
 
     shared_ptr<RHI_Texture> Renderer::GetStandardTexture(const RendererStandardTexture type)

@@ -106,27 +106,25 @@ namespace Spartan
         static RHI_CommandList* GetCmdList();
         //===================================
  
-        //= RESOURCES ====================================================================================
+        //= RESOURCES ======================================================================================
         static RHI_Texture* GetFrameTexture();
         static std::shared_ptr<Camera> GetCamera();
         static std::unordered_map<RendererEntity, std::vector<std::shared_ptr<Entity>>>& GetEntities();
 
         // Get all
-        static std::array<std::shared_ptr<RHI_ConstantBuffer>, 4>& GetConstantBuffers();
         static std::array<std::shared_ptr<RHI_Texture>, 26>& GetRenderTargets();
         static std::array<std::shared_ptr<RHI_Shader>, 47>& GetShaders();
-        static std::array<std::shared_ptr<RHI_Sampler>, 7>& GetSamplers();
-        static std::array<std::shared_ptr<RHI_Texture>, 9>& GetStandardTextures();
-        static std::array<std::shared_ptr<Mesh>, 5>& GetStandardMeshes();
+        static std::array<std::shared_ptr<RHI_ConstantBuffer>, 4>& GetConstantBuffers();
 
         // Get individual
-        static std::shared_ptr<RHI_ConstantBuffer> GetConstantBuffer(const RendererConstantBuffer type);
         static std::shared_ptr<RHI_Texture> GetRenderTarget(const RendererTexture type);
         static std::shared_ptr<RHI_Shader> GetShader(const RendererShader type);
         static std::shared_ptr<RHI_Sampler> GetSampler(const RendererSampler type);
+        static std::shared_ptr<RHI_ConstantBuffer> GetConstantBuffer(const RendererConstantBuffer type);
+        static std::shared_ptr<RHI_StructuredBuffer> GetStructuredBuffer();
         static std::shared_ptr<RHI_Texture> GetStandardTexture(const RendererStandardTexture type);
         static std::shared_ptr<Mesh> GetStandardMesh(const RendererStandardMesh type);
-        //================================================================================================
+        //==================================================================================================
 
     private:
         // Constant buffers
@@ -191,6 +189,7 @@ namespace Spartan
         static void SortRenderables(std::vector<std::shared_ptr<Entity>>* renderables);
         static bool IsCallingFromOtherThread();
         static void OnResourceSafe(RHI_CommandList* cmd_list);
+        static void DestroyResources();
 
         // Lines
         static void Lines_PreMain();
