@@ -72,15 +72,11 @@ namespace Spartan
         static bool m_is_odd_frame  = false;
     }
 
-    //= BUFFERS =============================================
-    extern shared_ptr<RHI_StructuredBuffer> m_sb_spd_counter;
+    // misc
     extern Cb_Frame m_cb_frame_cpu;
     extern Cb_Uber m_cb_uber_cpu;
     extern Cb_Light m_cb_light_cpu;
     extern Cb_Material m_cb_material_cpu;
-    //=======================================================
-
-    // Misc
     extern shared_ptr<RHI_VertexBuffer> m_vertex_buffer_lines;
     extern unique_ptr<Font> m_font;
     extern unique_ptr<Grid> m_world_grid;
@@ -235,12 +231,7 @@ namespace Spartan
 
         // Manually invoke the deconstructors so that ParseDeletionQueue(), releases their RHI resources.
         {
-            GetConstantBuffers().fill(nullptr);
-            GetRenderTargets().fill(nullptr);
-            GetShaders().fill(nullptr);
-            GetSamplers().fill(nullptr);
-            GetStandardTextures().fill(nullptr);
-            GetStandardMeshes().fill(nullptr);
+            DestroyResources();
 
             m_renderables_pending.clear();
             m_renderables.clear();
@@ -250,7 +241,6 @@ namespace Spartan
 
             m_swap_chain          = nullptr;
             m_vertex_buffer_lines = nullptr;
-            m_sb_spd_counter      = nullptr;
             m_environment_texture = nullptr;
         }
 
@@ -316,7 +306,7 @@ namespace Spartan
             {
                 constant_buffer->ResetOffset();
             }
-            m_sb_spd_counter->ResetOffset();
+            GetStructuredBuffer()->ResetOffset();
 
             // Perform operations which might modify, create or destroy resources
             OnResourceSafe(m_cmd_current);
