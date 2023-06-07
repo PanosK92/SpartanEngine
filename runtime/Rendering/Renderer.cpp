@@ -73,16 +73,6 @@ namespace Spartan
     extern shared_ptr<RHI_IndexBuffer>  m_sphere_index_buffer;
     extern shared_ptr<RHI_VertexBuffer> m_vertex_buffer_lines;
 
-    // Standard textures
-    extern shared_ptr<RHI_Texture> m_tex_default_noise_normal;
-    extern shared_ptr<RHI_Texture> m_tex_default_noise_blue;
-    extern shared_ptr<RHI_Texture> m_tex_default_white;
-    extern shared_ptr<RHI_Texture> m_tex_default_black;
-    extern shared_ptr<RHI_Texture> m_tex_default_transparent;
-    extern shared_ptr<RHI_Texture> m_tex_gizmo_light_directional;
-    extern shared_ptr<RHI_Texture> m_tex_gizmo_light_point;
-    extern shared_ptr<RHI_Texture> m_tex_gizmo_light_spot;
-    
     // Misc
     extern bool m_ffx_fsr2_reset;
     extern unique_ptr<Font> m_font;
@@ -238,7 +228,7 @@ namespace Spartan
         CreateMeshes();
         CreateSamplers(false);
         CreateStructuredBuffers();
-        CreateTextures();
+        CreateStandardTextures();
 
         // Subscribe to events
         SP_SUBSCRIBE_TO_EVENT(EventType::WorldResolved,             SP_EVENT_HANDLER_VARIANT_STATIC(OnWorldResolved));
@@ -257,31 +247,25 @@ namespace Spartan
         // Manually invoke the deconstructors so that ParseDeletionQueue(), releases their RHI resources.
         m_renderables_pending.clear();
         m_renderables.clear();
-        GetRenderTargets().fill(nullptr);
-        GetShaders().fill(nullptr);
         m_textures_mip_generation.clear();
         m_world_grid.reset();
         m_font.reset();
-        m_swap_chain                  = nullptr;
-        m_quad_vertex_buffer          = nullptr;
-        m_quad_index_buffer           = nullptr;
-        m_sphere_vertex_buffer        = nullptr;
-        m_sphere_index_buffer         = nullptr;
-        m_vertex_buffer_lines         = nullptr;
-        m_sb_spd_counter              = nullptr;
-        m_cb_frame_gpu                = nullptr;
-        m_cb_uber_gpu                 = nullptr;
-        m_cb_light_gpu                = nullptr;
-        m_cb_material_gpu             = nullptr;
-        m_environment_texture         = nullptr;
-        m_tex_default_noise_normal    = nullptr;
-        m_tex_default_noise_blue      = nullptr;
-        m_tex_default_white           = nullptr;
-        m_tex_default_black           = nullptr;
-        m_tex_default_transparent     = nullptr;
-        m_tex_gizmo_light_directional = nullptr;
-        m_tex_gizmo_light_point       = nullptr;
-        m_tex_gizmo_light_spot        = nullptr;
+        GetRenderTargets().fill(nullptr);
+        GetShaders().fill(nullptr);
+        GetSamplers().fill(nullptr);
+        GetStandardTextures().fill(nullptr);
+        m_swap_chain           = nullptr;
+        m_quad_vertex_buffer   = nullptr;
+        m_quad_index_buffer    = nullptr;
+        m_sphere_vertex_buffer = nullptr;
+        m_sphere_index_buffer  = nullptr;
+        m_vertex_buffer_lines  = nullptr;
+        m_sb_spd_counter       = nullptr;
+        m_cb_frame_gpu         = nullptr;
+        m_cb_uber_gpu          = nullptr;
+        m_cb_light_gpu         = nullptr;
+        m_cb_material_gpu      = nullptr;
+        m_environment_texture  = nullptr;
 
         // Delete all remaining RHI resources
         RHI_Device::ParseDeletionQueue();
@@ -793,7 +777,7 @@ namespace Spartan
 
     const shared_ptr<RHI_Texture> Renderer::GetEnvironmentTexture()
     {
-        return m_environment_texture ? m_environment_texture : m_tex_default_black;
+        return m_environment_texture ? m_environment_texture : GetStandardTexture(RendererStandardTexture::black);
     }
 
     void Renderer::SetEnvironment(Environment* environment)

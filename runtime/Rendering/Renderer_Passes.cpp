@@ -86,16 +86,6 @@ namespace Spartan
     extern shared_ptr<RHI_ConstantBuffer> m_cb_material_gpu;
     //=======================================================
 
-    // Standard textures
-    extern shared_ptr<RHI_Texture> m_tex_default_noise_normal;
-    extern shared_ptr<RHI_Texture> m_tex_default_noise_blue;
-    extern shared_ptr<RHI_Texture> m_tex_default_white;
-    extern shared_ptr<RHI_Texture> m_tex_default_black;
-    extern shared_ptr<RHI_Texture> m_tex_default_transparent;
-    extern shared_ptr<RHI_Texture> m_tex_gizmo_light_directional;
-    extern shared_ptr<RHI_Texture> m_tex_gizmo_light_point;
-    extern shared_ptr<RHI_Texture> m_tex_gizmo_light_spot;
-
     // Standard vertex/index buffers
     extern shared_ptr<RHI_VertexBuffer> m_quad_vertex_buffer;
     extern shared_ptr<RHI_IndexBuffer>  m_quad_index_buffer;
@@ -145,8 +135,8 @@ namespace Spartan
         cmd_list->SetSampler(6, GetSampler(RendererSampler::anisotropic_wrap));
 
         // Textures
-        cmd_list->SetTexture(RendererBindingsSrv::noise_normal, m_tex_default_noise_normal);
-        cmd_list->SetTexture(RendererBindingsSrv::noise_blue, m_tex_default_noise_blue);
+        cmd_list->SetTexture(RendererBindingsSrv::noise_normal, GetStandardTexture(RendererStandardTexture::noise_normal));
+        cmd_list->SetTexture(RendererBindingsSrv::noise_blue, GetStandardTexture(RendererStandardTexture::noise_blue));
     }
 
     void Renderer::Pass_Main(RHI_CommandList* cmd_list)
@@ -375,7 +365,7 @@ namespace Spartan
                     {
                         // Bind material textures
                         RHI_Texture* tex_albedo = material->GetTexture(MaterialTexture::Color);
-                        cmd_list->SetTexture(RendererBindingsSrv::tex, tex_albedo ? tex_albedo : m_tex_default_white.get());
+                        cmd_list->SetTexture(RendererBindingsSrv::tex, tex_albedo ? tex_albedo : GetStandardTexture(RendererStandardTexture::white).get());
 
                         // Set uber buffer with material properties
                         m_cb_uber_cpu.mat_color = Vector4(
@@ -1101,7 +1091,7 @@ namespace Spartan
                     // This is because we are using an uber shader and APIs like Vulkan, expect all texture slots to be bound with something.
 
                     RHI_Texture* tex_depth = light->GetDepthTexture();
-                    RHI_Texture* tex_color = light->GetShadowsTransparentEnabled() ? light->GetColorTexture() : m_tex_default_white.get();
+                    RHI_Texture* tex_color = light->GetShadowsTransparentEnabled() ? light->GetColorTexture() : GetStandardTexture(RendererStandardTexture::white).get();
 
                     if (light->GetLightType() == LightType::Directional)
                     {
@@ -2055,9 +2045,9 @@ namespace Spartan
 
                     // Get the texture
                     RHI_Texture* texture = nullptr;
-                    if (light->GetLightType() == LightType::Directional) texture = m_tex_gizmo_light_directional.get();
-                    else if (light->GetLightType() == LightType::Point)  texture = m_tex_gizmo_light_point.get();
-                    else if (light->GetLightType() == LightType::Spot)   texture = m_tex_gizmo_light_spot.get();
+                    if (light->GetLightType() == LightType::Directional) texture = GetStandardTexture(RendererStandardTexture::gizmo_light_directional).get();
+                    else if (light->GetLightType() == LightType::Point)  texture = GetStandardTexture(RendererStandardTexture::gizmo_light_point).get();
+                    else if (light->GetLightType() == LightType::Spot)   texture = GetStandardTexture(RendererStandardTexture::gizmo_light_spot).get();
 
                     // Compute transform
                     {

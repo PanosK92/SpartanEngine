@@ -96,15 +96,9 @@ namespace Spartan
         static void SetResolutionOutput(uint32_t width, uint32_t height, bool recreate_resources = true);
         //===============================================================================================
 
-        //= TEXTURES =====================================================
-        // Environment texture
+        //= ENVIRONMENT ==================================================
         static const std::shared_ptr<RHI_Texture> GetEnvironmentTexture();
         static void SetEnvironment(Environment* environment);
-
-        // Default colored textures
-        static RHI_Texture* GetDefaultTextureWhite();
-        static RHI_Texture* GetDefaultTextureBlack();
-        static RHI_Texture* GetDefaultTextureTransparent();
         //================================================================
 
         //= RHI RESOURCES====================
@@ -119,11 +113,14 @@ namespace Spartan
         // Get all
         static std::array<std::shared_ptr<RHI_Texture>, 26>& GetRenderTargets();
         static std::array<std::shared_ptr<RHI_Shader>, 47>& GetShaders();
+        static std::array<std::shared_ptr<RHI_Sampler>, 7>& GetSamplers();
+        static std::array<std::shared_ptr<RHI_Texture>, 8>& GetStandardTextures();
 
         // Get individual
         static std::shared_ptr<RHI_Texture> GetRenderTarget(const RendererTexture type);
         static std::shared_ptr<RHI_Shader> GetShader(const RendererShader type);
         static std::shared_ptr<RHI_Sampler> GetSampler(const RendererSampler type);
+        static std::shared_ptr<RHI_Texture> GetStandardTexture(const RendererStandardTexture type);
         //=============================================================================================
 
     private:
@@ -141,7 +138,7 @@ namespace Spartan
         static void CreateBlendStates();
         static void CreateFonts();
         static void CreateMeshes();
-        static void CreateTextures();
+        static void CreateStandardTextures();
         static void CreateShaders();
         static void CreateSamplers(const bool create_only_anisotropic = false);
         static void CreateRenderTextures(const bool create_render, const bool create_output, const bool create_fixed, const bool create_dynamic);

@@ -53,6 +53,7 @@ namespace Spartan
         static array<shared_ptr<RHI_Texture>, 26> m_render_targets;
         static array<shared_ptr<RHI_Shader>, 47> m_shaders;
         static array<shared_ptr<RHI_Sampler>, 7> m_samplers;
+        static array<shared_ptr<RHI_Texture>, 8> m_standard_textures;
     }
 
     // Depth-stencil states
@@ -96,16 +97,6 @@ namespace Spartan
     shared_ptr<RHI_VertexBuffer> m_sphere_vertex_buffer;
     shared_ptr<RHI_IndexBuffer> m_sphere_index_buffer;
     shared_ptr<RHI_VertexBuffer> m_vertex_buffer_lines;
-
-    // Standard textures
-    shared_ptr<RHI_Texture> m_tex_default_noise_normal;
-    shared_ptr<RHI_Texture> m_tex_default_noise_blue;
-    shared_ptr<RHI_Texture> m_tex_default_white;
-    shared_ptr<RHI_Texture> m_tex_default_black;
-    shared_ptr<RHI_Texture> m_tex_default_transparent;
-    shared_ptr<RHI_Texture> m_tex_gizmo_light_directional;
-    shared_ptr<RHI_Texture> m_tex_gizmo_light_point;
-    shared_ptr<RHI_Texture> m_tex_gizmo_light_spot;
 
     // Misc
     unique_ptr<Font> m_font;
@@ -543,42 +534,42 @@ namespace Spartan
         m_world_grid = make_unique<Grid>();
     }
 
-    void Renderer::CreateTextures()
+    void Renderer::CreateStandardTextures()
     {
-        // Get standard texture directory
         const string dir_texture = ResourceCache::GetResourceDirectory(ResourceDirectory::Textures) + "\\";
+        #define standard_texture(x) m_standard_textures[static_cast<uint8_t>(x)]
 
         // Noise textures
         {
-            m_tex_default_noise_normal = make_shared<RHI_Texture2D>(RHI_Texture_Srv, "default_noise_normal");
-            m_tex_default_noise_normal->LoadFromFile(dir_texture + "noise_normal.png");
+            standard_texture(RendererStandardTexture::noise_normal) = make_shared<RHI_Texture2D>(RHI_Texture_Srv, "standard_noise_normal");
+            standard_texture(RendererStandardTexture::noise_normal)->LoadFromFile(dir_texture + "noise_normal.png");
 
-            m_tex_default_noise_blue = static_pointer_cast<RHI_Texture>(make_shared<RHI_Texture2DArray>(RHI_Texture_Srv, "default_noise_blue"));
-            m_tex_default_noise_blue->LoadFromFile(dir_texture + "noise_blue_0.png");
+            standard_texture(RendererStandardTexture::noise_blue) = static_pointer_cast<RHI_Texture>(make_shared<RHI_Texture2DArray>(RHI_Texture_Srv, "standard_noise_blue"));
+            standard_texture(RendererStandardTexture::noise_blue)->LoadFromFile(dir_texture + "noise_blue_0.png");
         }
 
         // Color textures
         {
-            m_tex_default_white = make_shared<RHI_Texture2D>(RHI_Texture_Srv, "default_white");
-            m_tex_default_white->LoadFromFile(dir_texture + "white.png");
+            standard_texture(RendererStandardTexture::white) = make_shared<RHI_Texture2D>(RHI_Texture_Srv, "standard_white");
+            standard_texture(RendererStandardTexture::white)->LoadFromFile(dir_texture + "white.png");
 
-            m_tex_default_black = make_shared<RHI_Texture2D>(RHI_Texture_Srv, "default_black");
-            m_tex_default_black->LoadFromFile(dir_texture + "black.png");
+            standard_texture(RendererStandardTexture::black) = make_shared<RHI_Texture2D>(RHI_Texture_Srv, "standard_black");
+            standard_texture(RendererStandardTexture::black)->LoadFromFile(dir_texture + "black.png");
 
-            m_tex_default_transparent = make_shared<RHI_Texture2D>(RHI_Texture_Srv, "default_transparent");
-            m_tex_default_transparent->LoadFromFile(dir_texture + "transparent.png");
+            standard_texture(RendererStandardTexture::transparent) = make_shared<RHI_Texture2D>(RHI_Texture_Srv, "standard_transparent");
+            standard_texture(RendererStandardTexture::transparent)->LoadFromFile(dir_texture + "transparent.png");
         }
 
         // Gizmo icons
         {
-            m_tex_gizmo_light_directional = make_shared<RHI_Texture2D>(RHI_Texture_Srv, "default_icon_light_directional");
-            m_tex_gizmo_light_directional->LoadFromFile(dir_texture + "sun.png");
+            standard_texture(RendererStandardTexture::gizmo_light_directional) = make_shared<RHI_Texture2D>(RHI_Texture_Srv, "standard_icon_light_directional");
+            standard_texture(RendererStandardTexture::gizmo_light_directional)->LoadFromFile(dir_texture + "sun.png");
 
-            m_tex_gizmo_light_point = make_shared<RHI_Texture2D>(RHI_Texture_Srv, "default_icon_light_point");
-            m_tex_gizmo_light_point->LoadFromFile(dir_texture + "light_bulb.png");
+            standard_texture(RendererStandardTexture::gizmo_light_point) = make_shared<RHI_Texture2D>(RHI_Texture_Srv, "standard_icon_light_point");
+            standard_texture(RendererStandardTexture::gizmo_light_point)->LoadFromFile(dir_texture + "light_bulb.png");
 
-            m_tex_gizmo_light_spot = make_shared<RHI_Texture2D>(RHI_Texture_Srv, "default_icon_light_spot");
-            m_tex_gizmo_light_spot->LoadFromFile(dir_texture + "flashlight.png");
+            standard_texture(RendererStandardTexture::gizmo_light_spot) = make_shared<RHI_Texture2D>(RHI_Texture_Srv, "standard_icon_light_spot");
+            standard_texture(RendererStandardTexture::gizmo_light_spot)->LoadFromFile(dir_texture + "flashlight.png");
         }
     }
 
@@ -590,6 +581,16 @@ namespace Spartan
     array<shared_ptr<RHI_Shader>, 47>& Renderer::GetShaders()
     {
         return m_shaders;
+    }
+
+    array<shared_ptr<RHI_Sampler>, 7>& Renderer::GetSamplers()
+    {
+        return m_samplers;
+    }
+
+    array<shared_ptr<RHI_Texture>, 8>& Renderer::GetStandardTextures()
+    {
+        return m_standard_textures;
     }
 
     shared_ptr<RHI_Texture> Renderer::GetRenderTarget(const RendererTexture type)
@@ -607,18 +608,8 @@ namespace Spartan
         return m_samplers[static_cast<uint8_t>(type)];
     }
 
-    RHI_Texture* Renderer::GetDefaultTextureWhite()
+    shared_ptr<RHI_Texture> Renderer::GetStandardTexture(const RendererStandardTexture type)
     {
-        return m_tex_default_white.get();
-    }
-
-    RHI_Texture* Renderer::GetDefaultTextureBlack()
-    {
-        return m_tex_default_black.get();
-    }
-
-    RHI_Texture* Renderer::GetDefaultTextureTransparent()
-    {
-        return m_tex_default_transparent.get();
+        return m_standard_textures[static_cast<uint8_t>(type)];
     }
 }
