@@ -361,12 +361,12 @@ namespace Spartan
 
         // Create splash screen
         m_splash_sceen_window = SDL_CreateWindow(
-            "splash_screen",                                                    // window title
-            pos_x,                                                              // initial x position
-            pos_y,                                                              // initial y position
-            width,                                                              // width in pixels
-            height,                                                             // height in pixels
-            SDL_WINDOW_SHOWN | SDL_WINDOW_ALWAYS_ON_TOP | SDL_WINDOW_BORDERLESS // flags
+            "splash_screen",                         // window title
+            pos_x,                                   // initial x position
+            pos_y,                                   // initial y position
+            width,                                   // width in pixels
+            height,                                  // height in pixels
+            SDL_WINDOW_SHOWN | SDL_WINDOW_BORDERLESS // flags
         );
 
         // Create a renderer

@@ -100,10 +100,28 @@ struct sp_info
 #endif
 //=======================================================================
 
-//= ERROR WINDOW =================================================================
+//= WARNING WINDOW ================================================================
 #define WIDE_STR_HELPER(x) L ## x
 #define WIDE_STR(x) WIDE_STR_HELPER(x)
 
+#if defined(_MSC_VER)
+    #define SP_WARNING_WINDOW(text_message)                                      \
+    {                                                                            \
+        MessageBeep(MB_ICONWARNING);                                             \
+        HWND hwnd = GetConsoleWindow();                                          \
+        MessageBox(hwnd, WIDE_STR(text_message), L"Warning", MB_OK | MB_TOPMOST);\
+    }
+#else
+    #define SP_WARNING_WINDOW(text_message)    \
+    {                                          \
+        printf("Warning: %s\n", text_message); \
+    }
+#endif
+//================================================================================
+
+//================================================================================
+// 
+//= ERROR WINDOW =================================================================
 #if defined(_MSC_VER)
     #define SP_ERROR_WINDOW(text_message)                                       \
     {                                                                           \
@@ -121,7 +139,7 @@ struct sp_info
 #endif
 //================================================================================
 
-//= ASSERT ==========================================================================
+//= ASSERT =====================================================================
 // On debug mode, the assert will have the default behaviour.
 // On release mode, the assert will write the error to a file and then break.
 #include <cassert>
@@ -144,7 +162,7 @@ SP_ASSERT(expression && text_message)
 // A static assert
 #define SP_ASSERT_STATIC_IS_TRIVIALLY_COPYABLE(T) \
 static_assert(std::is_trivially_copyable_v<T>, "Type is not trivially copyable")
-//===================================================================================
+//==============================================================================
 
 #if defined(_MSC_VER)
 
