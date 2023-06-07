@@ -44,6 +44,8 @@ namespace Spartan
 
     void RHI_Device::Initialize()
     {
+        SP_WARNING_WINDOW("D3D11 lacks features and is about to be deprecated, use it only if you have to.");
+
         // Detect device limits
         m_max_texture_1d_dimension   = D3D11_REQ_TEXTURE1D_U_DIMENSION;
         m_max_texture_2d_dimension   = D3D11_REQ_TEXTURE2D_U_OR_V_DIMENSION;
