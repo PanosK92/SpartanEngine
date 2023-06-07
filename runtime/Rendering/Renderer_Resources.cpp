@@ -54,6 +54,8 @@ namespace Spartan
         static array<shared_ptr<RHI_Shader>, 47> m_shaders;
         static array<shared_ptr<RHI_Sampler>, 7> m_samplers;
         static array<shared_ptr<RHI_Texture>, 8> m_standard_textures;
+        static array<shared_ptr<RHI_VertexBuffer>, 2> m_standard_vertex_buffer;
+        static array<shared_ptr<RHI_IndexBuffer>, 2> m_standard_index_buffer;
     }
 
     // Depth-stencil states
@@ -91,14 +93,8 @@ namespace Spartan
     shared_ptr<RHI_ConstantBuffer> m_cb_material_gpu;
     //===============================================
 
-    // Standard vertex/index buffers
-    shared_ptr<RHI_VertexBuffer> m_quad_vertex_buffer;
-    shared_ptr<RHI_IndexBuffer> m_quad_index_buffer;
-    shared_ptr<RHI_VertexBuffer> m_sphere_vertex_buffer;
-    shared_ptr<RHI_IndexBuffer> m_sphere_index_buffer;
-    shared_ptr<RHI_VertexBuffer> m_vertex_buffer_lines;
-
     // Misc
+    shared_ptr<RHI_VertexBuffer> m_vertex_buffer_lines;
     unique_ptr<Font> m_font;
     unique_ptr<Grid> m_world_grid;
 
@@ -500,19 +496,22 @@ namespace Spartan
         m_font = make_unique<Font>(dir_font + "CalibriBold.ttf", 16, Vector4(0.8f, 0.8f, 0.8f, 1.0f));
     }
 
-    void Renderer::CreateMeshes()
+    void Renderer::CreateStandardMeshes()
     {
+        #define standard_mesh_vertex_buffer(x) m_standard_vertex_buffer[static_cast<uint8_t>(x)]
+        #define standard_mesh_index_buffer(x)  m_standard_index_buffer[static_cast<uint8_t>(x)]
+
         // Sphere
         {
             vector<RHI_Vertex_PosTexNorTan> vertices;
             vector<uint32_t> indices;
             Geometry::CreateSphere(&vertices, &indices, 0.2f, 20, 20);
 
-            m_sphere_vertex_buffer = make_shared<RHI_VertexBuffer>(false, "sphere");
-            m_sphere_vertex_buffer->Create(vertices);
+            standard_mesh_vertex_buffer(RendererStandardMesh::sphere) = make_shared<RHI_VertexBuffer>(false, "standard_vertex_buffer_sphere");
+            standard_mesh_vertex_buffer(RendererStandardMesh::sphere)->Create(vertices);
 
-            m_sphere_index_buffer = make_shared<RHI_IndexBuffer>(false, "sphere");
-            m_sphere_index_buffer->Create(indices);
+            standard_mesh_index_buffer(RendererStandardMesh::sphere) = make_shared<RHI_IndexBuffer>(false, "standard_index_buffer_sphere");
+            standard_mesh_index_buffer(RendererStandardMesh::sphere)->Create(indices);
         }
 
         // Quad
@@ -521,11 +520,11 @@ namespace Spartan
             vector<uint32_t> indices;
             Geometry::CreateQuad(&vertices, &indices);
 
-            m_quad_vertex_buffer = make_shared<RHI_VertexBuffer>(false, "rectangle");
-            m_quad_vertex_buffer->Create(vertices);
+            standard_mesh_vertex_buffer(RendererStandardMesh::quad) = make_shared<RHI_VertexBuffer>(false, "standard_vertex_buffer_quad");
+            standard_mesh_vertex_buffer(RendererStandardMesh::quad)->Create(vertices);
 
-            m_quad_index_buffer = make_shared<RHI_IndexBuffer>(false, "rectangle");
-            m_quad_index_buffer->Create(indices);
+            standard_mesh_index_buffer(RendererStandardMesh::quad) = make_shared<RHI_IndexBuffer>(false, "standard_index_buffer_quad");
+            standard_mesh_index_buffer(RendererStandardMesh::quad)->Create(indices);
         }
 
         // Buffer where all the lines are kept
@@ -593,6 +592,16 @@ namespace Spartan
         return m_standard_textures;
     }
 
+    array<shared_ptr<RHI_VertexBuffer>, 2>& Renderer::GetStandardVertexBuffers()
+    {
+        return m_standard_vertex_buffer;
+    }
+
+    array<shared_ptr<RHI_IndexBuffer>, 2>& Renderer::GetStandardIndexBuffers()
+    {
+        return m_standard_index_buffer;
+    }
+
     shared_ptr<RHI_Texture> Renderer::GetRenderTarget(const RendererTexture type)
     {
         return m_render_targets[static_cast<uint8_t>(type)];
@@ -611,5 +620,15 @@ namespace Spartan
     shared_ptr<RHI_Texture> Renderer::GetStandardTexture(const RendererStandardTexture type)
     {
         return m_standard_textures[static_cast<uint8_t>(type)];
+    }
+
+    shared_ptr<RHI_VertexBuffer> Renderer::GetStandardVertexBuffer(const RendererStandardMesh type)
+    {
+        return m_standard_vertex_buffer[static_cast<uint8_t>(type)];
+    }
+
+    shared_ptr<RHI_IndexBuffer> Renderer::GetStandardIndexBuffer(const RendererStandardMesh type)
+    {
+        return m_standard_index_buffer[static_cast<uint8_t>(type)];
     }
 }

@@ -86,13 +86,6 @@ namespace Spartan
     extern shared_ptr<RHI_ConstantBuffer> m_cb_material_gpu;
     //=======================================================
 
-    // Standard vertex/index buffers
-    extern shared_ptr<RHI_VertexBuffer> m_quad_vertex_buffer;
-    extern shared_ptr<RHI_IndexBuffer>  m_quad_index_buffer;
-    extern shared_ptr<RHI_VertexBuffer> m_sphere_vertex_buffer;
-    extern shared_ptr<RHI_IndexBuffer>  m_sphere_index_buffer;
-    extern shared_ptr<RHI_VertexBuffer> m_vertex_buffer_lines;
-
     // Lines
     extern vector<RHI_Vertex_PosCol> m_line_vertices;
     extern vector<float> m_lines_duration;
@@ -105,6 +98,7 @@ namespace Spartan
     extern RHI_Viewport m_viewport;
 
     // Misc
+    extern shared_ptr<RHI_VertexBuffer> m_vertex_buffer_lines;
     extern array<Material*, m_max_material_instances> m_material_instances;
     extern shared_ptr<RHI_SwapChain> m_swap_chain;
     extern unordered_map<RendererEntity, vector<shared_ptr<Entity>>> m_renderables;
@@ -2070,8 +2064,8 @@ namespace Spartan
 
                     // Draw rectangle
                     cmd_list->SetTexture(RendererBindingsSrv::tex, texture);
-                    cmd_list->SetBufferIndex(m_quad_index_buffer.get());
-                    cmd_list->SetBufferVertex(m_quad_vertex_buffer.get());
+                    cmd_list->SetBufferVertex(GetStandardVertexBuffer(RendererStandardMesh::quad).get());
+                    cmd_list->SetBufferIndex(GetStandardIndexBuffer(RendererStandardMesh::quad).get());
                     cmd_list->DrawIndexed(6);
                 }
             }
@@ -2120,8 +2114,8 @@ namespace Spartan
         // Render
         cmd_list->BeginRenderPass();
         {
-            cmd_list->SetBufferVertex(m_sphere_vertex_buffer.get());
-            cmd_list->SetBufferIndex(m_sphere_index_buffer.get());
+            cmd_list->SetBufferVertex(GetStandardVertexBuffer(RendererStandardMesh::sphere).get());
+            cmd_list->SetBufferIndex(GetStandardIndexBuffer(RendererStandardMesh::sphere).get());
 
             for (uint32_t probe_index = 0; probe_index < static_cast<uint32_t>(probes.size()); probe_index++)
             {
@@ -2132,7 +2126,7 @@ namespace Spartan
                     UpdateConstantBufferUber(cmd_list);
 
                     cmd_list->SetTexture(RendererBindingsSrv::reflection_probe, probe->GetColorTexture());
-                    cmd_list->DrawIndexed(m_sphere_index_buffer->GetIndexCount());
+                    cmd_list->DrawIndexed(GetStandardIndexBuffer(RendererStandardMesh::sphere)->GetIndexCount());
 
                     // Draw a box which represents the extents of the reflection probe (which is used as a geometry proxy for parallax corrected cubemap reflections)
                     BoundingBox extents = BoundingBox(probe->GetTransform()->GetPosition() - probe->GetExtents(), probe->GetTransform()->GetPosition() + probe->GetExtents());

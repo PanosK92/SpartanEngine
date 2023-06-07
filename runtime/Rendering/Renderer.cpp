@@ -67,13 +67,8 @@ namespace Spartan
     extern shared_ptr<RHI_ConstantBuffer> m_cb_material_gpu;
     //=======================================================
 
-    extern shared_ptr<RHI_VertexBuffer> m_quad_vertex_buffer;
-    extern shared_ptr<RHI_IndexBuffer>  m_quad_index_buffer;
-    extern shared_ptr<RHI_VertexBuffer> m_sphere_vertex_buffer;
-    extern shared_ptr<RHI_IndexBuffer>  m_sphere_index_buffer;
-    extern shared_ptr<RHI_VertexBuffer> m_vertex_buffer_lines;
-
     // Misc
+    extern shared_ptr<RHI_VertexBuffer> m_vertex_buffer_lines;
     extern bool m_ffx_fsr2_reset;
     extern unique_ptr<Font> m_font;
     extern unique_ptr<Grid> m_world_grid;
@@ -225,10 +220,10 @@ namespace Spartan
         CreateBlendStates();
         CreateRenderTextures(true, true, true, true);
         CreateFonts();
-        CreateMeshes();
         CreateSamplers(false);
         CreateStructuredBuffers();
         CreateStandardTextures();
+        CreateStandardMeshes();
 
         // Subscribe to events
         SP_SUBSCRIBE_TO_EVENT(EventType::WorldResolved,             SP_EVENT_HANDLER_VARIANT_STATIC(OnWorldResolved));
@@ -245,27 +240,29 @@ namespace Spartan
         SP_FIRE_EVENT(EventType::RendererOnShutdown);
 
         // Manually invoke the deconstructors so that ParseDeletionQueue(), releases their RHI resources.
-        m_renderables_pending.clear();
-        m_renderables.clear();
-        m_textures_mip_generation.clear();
-        m_world_grid.reset();
-        m_font.reset();
-        GetRenderTargets().fill(nullptr);
-        GetShaders().fill(nullptr);
-        GetSamplers().fill(nullptr);
-        GetStandardTextures().fill(nullptr);
-        m_swap_chain           = nullptr;
-        m_quad_vertex_buffer   = nullptr;
-        m_quad_index_buffer    = nullptr;
-        m_sphere_vertex_buffer = nullptr;
-        m_sphere_index_buffer  = nullptr;
-        m_vertex_buffer_lines  = nullptr;
-        m_sb_spd_counter       = nullptr;
-        m_cb_frame_gpu         = nullptr;
-        m_cb_uber_gpu          = nullptr;
-        m_cb_light_gpu         = nullptr;
-        m_cb_material_gpu      = nullptr;
-        m_environment_texture  = nullptr;
+        {
+            GetRenderTargets().fill(nullptr);
+            GetShaders().fill(nullptr);
+            GetSamplers().fill(nullptr);
+            GetStandardTextures().fill(nullptr);
+            GetStandardVertexBuffers().fill(nullptr);
+            GetStandardIndexBuffers().fill(nullptr);
+
+            m_renderables_pending.clear();
+            m_renderables.clear();
+            m_textures_mip_generation.clear();
+            m_world_grid.reset();
+            m_font.reset();
+
+            m_swap_chain          = nullptr;
+            m_vertex_buffer_lines = nullptr;
+            m_sb_spd_counter      = nullptr;
+            m_cb_frame_gpu        = nullptr;
+            m_cb_uber_gpu         = nullptr;
+            m_cb_light_gpu        = nullptr;
+            m_cb_material_gpu     = nullptr;
+            m_environment_texture = nullptr;
+        }
 
         // Delete all remaining RHI resources
         RHI_Device::ParseDeletionQueue();
