@@ -46,8 +46,7 @@ namespace Spartan
         RHI_Texture* tex_output,
         Camera* camera,
         float delta_time,
-        float sharpness,
-        bool reset
+        float sharpness
     )
     {
 

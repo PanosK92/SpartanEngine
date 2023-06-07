@@ -38,6 +38,7 @@ namespace Spartan
     FfxFsr2Context RHI_FSR2::m_ffx_fsr2_context;
     FfxFsr2ContextDescription RHI_FSR2::m_ffx_fsr2_context_description;
     FfxFsr2DispatchDescription RHI_FSR2::m_ffx_fsr2_dispatch_description;
+    bool RHI_FSR2::m_reset = false;
 
     static void on_fsr2_message(FfxFsr2MsgType type, const wchar_t* message)
     {
@@ -123,8 +124,7 @@ namespace Spartan
         RHI_Texture* tex_output,
         Camera* camera,
         float delta_time,
-        float sharpness,
-        bool reset
+        float sharpness
     )
     {
         // Get render and output resolution from the context description (safe to do as we are not using dynamic resolution)
@@ -156,7 +156,7 @@ namespace Spartan
             // Configuration
             m_ffx_fsr2_dispatch_description.motionVectorScale.x    = -static_cast<float>(resolution_render_x);
             m_ffx_fsr2_dispatch_description.motionVectorScale.y    = -static_cast<float>(resolution_render_y);
-            m_ffx_fsr2_dispatch_description.reset                  = reset;                  // A boolean value which when set to true, indicates the camera has moved discontinuously.
+            m_ffx_fsr2_dispatch_description.reset                  = m_reset;       // A boolean value which when set to true, indicates the camera has moved discontinuously.
             m_ffx_fsr2_dispatch_description.enableSharpening       = sharpness != 0.0f;
             m_ffx_fsr2_dispatch_description.sharpness              = sharpness;
             m_ffx_fsr2_dispatch_description.frameTimeDelta         = delta_time * 1000.0f;   // Seconds to milliseconds.
@@ -169,6 +169,7 @@ namespace Spartan
         }
 
         SP_ASSERT(ffxFsr2ContextDispatch(&m_ffx_fsr2_context, &m_ffx_fsr2_dispatch_description) == FFX_OK);
+        m_reset = false;
     }
 
     void RHI_FSR2::Destroy()

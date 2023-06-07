@@ -49,14 +49,15 @@ namespace Spartan
             RHI_Texture* tex_output,
             Camera* camera,
             float delta_time,
-            float sharpness,
-            bool reset
+            float sharpness
         );
         static void Destroy();
+        static void ResetHistory() { m_reset = true; }
 
     private:
         static FfxFsr2Context m_ffx_fsr2_context;
         static FfxFsr2ContextDescription m_ffx_fsr2_context_description;
         static FfxFsr2DispatchDescription m_ffx_fsr2_dispatch_description;
+        static bool m_reset;
     };
 }

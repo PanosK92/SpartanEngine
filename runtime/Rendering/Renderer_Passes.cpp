@@ -109,7 +109,6 @@ namespace Spartan
 
     // Misc
     const float m_thread_group_count = 8.0f;
-    bool m_ffx_fsr2_reset            = false;
 
     void Renderer::SetGlobalShaderResources(RHI_CommandList* cmd_list)
     {
@@ -1976,11 +1975,8 @@ namespace Spartan
             tex_out,
             GetCamera().get(),
             m_cb_frame_cpu.delta_time,
-            GetOption<float>(RendererOption::Sharpness),
-            m_ffx_fsr2_reset
+            GetOption<float>(RendererOption::Sharpness)
         );
-
-        m_ffx_fsr2_reset = false;
 
         cmd_list->EndTimeblock();
     }

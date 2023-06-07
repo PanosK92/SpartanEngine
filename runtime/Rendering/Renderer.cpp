@@ -69,7 +69,6 @@ namespace Spartan
 
     // Misc
     extern shared_ptr<RHI_VertexBuffer> m_vertex_buffer_lines;
-    extern bool m_ffx_fsr2_reset;
     extern unique_ptr<Font> m_font;
     extern unique_ptr<Grid> m_world_grid;
 
@@ -847,7 +846,7 @@ namespace Spartan
                     if (!fsr_enabled)
                     {
                         m_options[static_cast<uint32_t>(RendererOption::Upsampling)] = static_cast<float>(UpsamplingMode::FSR2);
-                        m_ffx_fsr2_reset = true;
+                        RHI_FSR2::ResetHistory();
                         SP_LOG_INFO("Enabled FSR 2.0 since it's used for TAA.");
                     }
                 }
@@ -881,7 +880,7 @@ namespace Spartan
                     if (!taa_enabled)
                     {
                         m_options[static_cast<uint32_t>(RendererOption::Antialiasing)] = static_cast<float>(AntialiasingMode::Taa);
-                        m_ffx_fsr2_reset = true;
+                        RHI_FSR2::ResetHistory();
                         SP_LOG_INFO("Enabled TAA since FSR 2.0 does it.");
                     }
                 }
