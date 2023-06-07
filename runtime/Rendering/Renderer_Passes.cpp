@@ -22,7 +22,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===================================
 #include "pch.h"
 #include "Grid.h"
-#include "Mesh.h"
 #include "Font/Font.h"
 #include "../Profiling/Profiler.h"
 #include "../World/Entity.h"
@@ -32,8 +31,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_CommandList.h"
 #include "../RHI/RHI_Implementation.h"
 #include "../RHI/RHI_VertexBuffer.h"
-#include "../RHI/RHI_IndexBuffer.h"
-#include "../RHI/RHI_SwapChain.h"
 #include "../RHI/RHI_Shader.h"
 #include "../RHI/RHI_FSR2.h"
 #include "../RHI/RHI_StructuredBuffer.h"

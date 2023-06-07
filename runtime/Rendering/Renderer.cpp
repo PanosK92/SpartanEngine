@@ -23,8 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"                                
 #include "Renderer.h"                           
 #include "../World/Entity.h"                    
-#include "../World/Components/Transform.h"      
-#include "../World/Components/Renderable.h"     
 #include "../World/Components/Camera.h"         
 #include "../World/Components/Light.h"          
 #include "../World/Components/ReflectionProbe.h"
@@ -37,11 +35,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Window.h"                     
 #include "../Input/Input.h"                     
 #include "../World/Components/Environment.h"    
-#include "Material.h"
 #include "Renderer_ConstantBuffers.h"
 #include "Font/Font.h"
 #include "Grid.h"
-#include "../RHI/RHI_SwapChain.h"
 //==============================================
 
 //= NAMESPACES ===============

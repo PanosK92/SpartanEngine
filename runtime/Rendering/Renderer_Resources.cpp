@@ -36,10 +36,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_DepthStencilState.h"
 #include "../RHI/RHI_StructuredBuffer.h"
 #include "../RHI/RHI_VertexBuffer.h"
-#include "../RHI/RHI_IndexBuffer.h"
 #include "../RHI/RHI_FSR2.h"
 #include "Renderer_ConstantBuffers.h"
-#include "Mesh.h"
 //=======================================
 
 //= NAMESPACES ===============
