@@ -1,6 +1,28 @@
+/*
+Copyright(c) 2016-2023 Panos Karabelas
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and / or sell
+copies of the Software, and to permit persons to whom the Software is furnished
+to do so, subject to the following conditions :
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.IN NO EVENT SHALL THE AUTHORS OR
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+*/
+
 #pragma once
 
-struct sp_info{
+struct sp_info
+{
     static constexpr char name[]           = "Spartan";
     static constexpr int  version_major    = 0;
     static constexpr int  version_minor    = 3;
@@ -12,10 +34,8 @@ struct sp_info{
     #define SP_CLASS
     #if SPARTAN_RUNTIME_SHARED == 1
         #ifdef SPARTAN_RUNTIME
-        #undef SP_CLASS
         #define SP_CLASS __declspec(dllexport)
     #else
-        #undef SP_CLASS
         #define SP_CLASS __declspec(dllimport)
     #endif
 #endif
@@ -23,15 +43,13 @@ struct sp_info{
     #define SP_CLASS
     #if SPARTAN_RUNTIME_SHARED == 1
         #ifdef SPARTAN_RUNTIME
-            #undef SP_CLASS
             #define SP_CLASS __attribute__((visibility("default")))
         #else
-            #undef SP_CLASS
             #define SP_CLASS
         #endif
-#endif
+    #endif
 #else
-#error "SP_CLASS is not implemented for this compiler/platform"
+    #error "SP_CLASS is not implemented for this compiler/platform"
 #endif
 //=================================================================
 
@@ -60,11 +78,11 @@ struct sp_info{
     #define SP_WARNINGS_OFF              \
         _Pragma("clang diagnostic push") \
         _Pragma("clang diagnostic ignored \"-Weverything\"")
-    #define SP_WARNINGS_ON _Pragma("clang diagnostic pop")  
-#elif defined(__GNUC__) || defined(__GNUG__)                
-    #define SP_WARNINGS_OFF                           \
-        _Pragma("GCC diagnostic push")                \
-        _Pragma("GCC diagnostic ignored \"-Wall\"")   \
+    #define SP_WARNINGS_ON _Pragma("clang diagnostic pop")
+#elif defined(__GNUC__) || defined(__GNUG__)
+    #define SP_WARNINGS_OFF                         \
+        _Pragma("GCC diagnostic push")              \
+        _Pragma("GCC diagnostic ignored \"-Wall\"") \
         _Pragma("GCC diagnostic ignored \"-Wextra\"") 
     #define SP_WARNINGS_ON _Pragma("GCC diagnostic pop")
 #else
@@ -129,6 +147,7 @@ static_assert(std::is_trivially_copyable_v<T>, "Type is not trivially copyable")
 //===================================================================================
 
 #if defined(_MSC_VER)
+
 //= DISABLE CERTAIN WARNINGS ========================================================================================
 #pragma warning(disable: 4251) 
 // 'type' : class 'type1' needs to have dll-interface to be used by clients of class 'type2'
@@ -150,11 +169,11 @@ static_assert(std::is_trivially_copyable_v<T>, "Type is not trivially copyable")
 // Caller failing to hold lock <lock> before calling function <func>
 // https://docs.microsoft.com/en-us/cpp/code-quality/c26110?view=msvc-170
 //===================================================================================================================
-#endif
 
-// Windows - Avoid conflicts with numeric limit min/max
-#if defined(_MSC_VER)
+//= Avoid conflicts with numeric limit min/max =
 #ifndef NOMINMAX
 #define NOMINMAX
 #endif
+//==============================================
+
 #endif
