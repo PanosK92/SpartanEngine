@@ -2065,8 +2065,8 @@ namespace Spartan
 
                     // Draw rectangle
                     cmd_list->SetTexture(RendererBindingsSrv::tex, texture);
-                    cmd_list->SetBufferVertex(GetStandardVertexBuffer(RendererStandardMesh::quad).get());
-                    cmd_list->SetBufferIndex(GetStandardIndexBuffer(RendererStandardMesh::quad).get());
+                    cmd_list->SetBufferVertex(GetStandardMesh(RendererStandardMesh::quad)->GetVertexBuffer());
+                    cmd_list->SetBufferIndex(GetStandardMesh(RendererStandardMesh::quad)->GetIndexBuffer());
                     cmd_list->DrawIndexed(6);
                 }
             }
@@ -2115,8 +2115,8 @@ namespace Spartan
         // Render
         cmd_list->BeginRenderPass();
         {
-            cmd_list->SetBufferVertex(GetStandardVertexBuffer(RendererStandardMesh::sphere).get());
-            cmd_list->SetBufferIndex(GetStandardIndexBuffer(RendererStandardMesh::sphere).get());
+            cmd_list->SetBufferVertex(GetStandardMesh(RendererStandardMesh::sphere)->GetVertexBuffer());
+            cmd_list->SetBufferIndex(GetStandardMesh(RendererStandardMesh::sphere)->GetIndexBuffer());
 
             for (uint32_t probe_index = 0; probe_index < static_cast<uint32_t>(probes.size()); probe_index++)
             {
@@ -2127,7 +2127,7 @@ namespace Spartan
                     UpdateConstantBufferUber(cmd_list);
 
                     cmd_list->SetTexture(RendererBindingsSrv::reflection_probe, probe->GetColorTexture());
-                    cmd_list->DrawIndexed(GetStandardIndexBuffer(RendererStandardMesh::sphere)->GetIndexCount());
+                    cmd_list->DrawIndexed(GetStandardMesh(RendererStandardMesh::sphere)->GetIndexCount());
 
                     // Draw a box which represents the extents of the reflection probe (which is used as a geometry proxy for parallax corrected cubemap reflections)
                     BoundingBox extents = BoundingBox(probe->GetTransform()->GetPosition() - probe->GetExtents(), probe->GetTransform()->GetPosition() + probe->GetExtents());
