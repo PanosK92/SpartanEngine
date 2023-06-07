@@ -15,8 +15,6 @@
 ![build_status](https://github.com/PanosK92/SpartanEngine/actions/workflows/workflow.yml/badge.svg)
 [![Discord](https://img.shields.io/discord/677302405263785986?label=Discord)](https://discord.gg/TG5r2BS)
 
-Don't use D3D12 yet, it's not done.
-
 # Livestreams
 
 Occasional livestreams on Discord for interesting topics.
