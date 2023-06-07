@@ -239,12 +239,23 @@ namespace Spartan
         outline
     };
     
-    enum class RendererEntityType
+    enum class RendererEntity
     {
         geometry_opaque,
         geometry_transparent,
         light,
         camera,
         reflection_probe
+    };
+
+    enum class RendererSampler
+    {
+        compare_depth,
+        point_clamp,
+        point_wrap,
+        bilinear_clamp,
+        bilinear_wrap,
+        trilinear_clamp,
+        anisotropic_wrap,
     };
 }

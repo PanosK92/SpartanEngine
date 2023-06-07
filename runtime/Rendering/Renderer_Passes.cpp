@@ -74,15 +74,6 @@ namespace Spartan
     extern shared_ptr<RHI_RasterizerState> m_rasterizer_light_point_spot;
     extern shared_ptr<RHI_RasterizerState> m_rasterizer_light_directional;
 
-    // Samplers
-    extern shared_ptr<RHI_Sampler> m_sampler_compare_depth;
-    extern shared_ptr<RHI_Sampler> m_sampler_point_clamp;
-    extern shared_ptr<RHI_Sampler> m_sampler_point_wrap;
-    extern shared_ptr<RHI_Sampler> m_sampler_bilinear_clamp;
-    extern shared_ptr<RHI_Sampler> m_sampler_bilinear_wrap;
-    extern shared_ptr<RHI_Sampler> m_sampler_trilinear_clamp;
-    extern shared_ptr<RHI_Sampler> m_sampler_anisotropic_wrap;
-
     //= BUFFERS =============================================
     extern shared_ptr<RHI_StructuredBuffer> m_sb_spd_counter;
 
@@ -130,7 +121,7 @@ namespace Spartan
     // Misc
     extern array<Material*, m_max_material_instances> m_material_instances;
     extern shared_ptr<RHI_SwapChain> m_swap_chain;
-    extern unordered_map<RendererEntityType, vector<shared_ptr<Entity>>> m_renderables;
+    extern unordered_map<RendererEntity, vector<shared_ptr<Entity>>> m_renderables;
     extern unique_ptr<Font> m_font;
     extern unique_ptr<Grid> m_world_grid;
     extern RHI_CommandList* m_cmd_current;
@@ -149,13 +140,13 @@ namespace Spartan
         cmd_list->SetConstantBuffer(RendererBindingsCb::material, RHI_Shader_Pixel | RHI_Shader_Compute, m_cb_material_gpu);
 
         // Samplers
-        cmd_list->SetSampler(0, m_sampler_compare_depth);
-        cmd_list->SetSampler(1, m_sampler_point_clamp);
-        cmd_list->SetSampler(2, m_sampler_point_wrap);
-        cmd_list->SetSampler(3, m_sampler_bilinear_clamp);
-        cmd_list->SetSampler(4, m_sampler_bilinear_wrap);
-        cmd_list->SetSampler(5, m_sampler_trilinear_clamp);
-        cmd_list->SetSampler(6, m_sampler_anisotropic_wrap);
+        cmd_list->SetSampler(0, GetSampler(RendererSampler::compare_depth));
+        cmd_list->SetSampler(1, GetSampler(RendererSampler::point_clamp));
+        cmd_list->SetSampler(2, GetSampler(RendererSampler::point_wrap));
+        cmd_list->SetSampler(3, GetSampler(RendererSampler::bilinear_clamp));
+        cmd_list->SetSampler(4, GetSampler(RendererSampler::bilinear_wrap));
+        cmd_list->SetSampler(5, GetSampler(RendererSampler::trilinear_clamp));
+        cmd_list->SetSampler(6, GetSampler(RendererSampler::anisotropic_wrap));
 
         // Textures
         cmd_list->SetTexture(RendererBindingsSrv::noise_normal, m_tex_default_noise_normal);
@@ -181,7 +172,7 @@ namespace Spartan
         if (shared_ptr<Camera> camera = GetCamera())
         { 
             // If there are no entities, clear to the camera's color
-            if (GetEntities()[RendererEntityType::geometry_opaque].empty() && GetEntities()[RendererEntityType::geometry_transparent].empty() && GetEntities()[RendererEntityType::light].empty())
+            if (GetEntities()[RendererEntity::geometry_opaque].empty() && GetEntities()[RendererEntity::geometry_transparent].empty() && GetEntities()[RendererEntity::light].empty())
             {
                 GetCmdList()->ClearRenderTarget(rt_output, 0, 0, false, camera->GetClearColor());
             }
@@ -195,7 +186,7 @@ namespace Spartan
                 }
 
                 // Determine if a transparent pass is required
-                const bool do_transparent_pass = !GetEntities()[RendererEntityType::geometry_transparent].empty();
+                const bool do_transparent_pass = !GetEntities()[RendererEntity::geometry_transparent].empty();
 
                 // Shadow maps
                 {
@@ -280,14 +271,14 @@ namespace Spartan
             return;
 
         // Get entities
-        vector<shared_ptr<Entity>>& entities = m_renderables[is_transparent_pass ? RendererEntityType::geometry_transparent : RendererEntityType::geometry_opaque];
+        vector<shared_ptr<Entity>>& entities = m_renderables[is_transparent_pass ? RendererEntity::geometry_transparent : RendererEntity::geometry_opaque];
         if (entities.empty())
             return;
 
         cmd_list->BeginTimeblock(is_transparent_pass ? "shadow_maps_color" : "shadow_maps_depth");
 
         // Go through all of the lights
-        const auto& entities_light = GetEntities()[RendererEntityType::light];
+        const auto& entities_light = GetEntities()[RendererEntity::light];
         for (uint32_t light_index = 0; light_index < entities_light.size(); light_index++)
         {
             shared_ptr<Light> light = entities_light[light_index]->GetComponent<Light>();
@@ -441,17 +432,17 @@ namespace Spartan
             return;
 
         // Acquire reflections probes
-        const vector<shared_ptr<Entity>>& probes = m_renderables[RendererEntityType::reflection_probe];
+        const vector<shared_ptr<Entity>>& probes = m_renderables[RendererEntity::reflection_probe];
         if (probes.empty())
             return;
 
         // Acquire renderables
-        const vector<shared_ptr<Entity>>& renderables = m_renderables[RendererEntityType::geometry_opaque];
+        const vector<shared_ptr<Entity>>& renderables = m_renderables[RendererEntity::geometry_opaque];
         if (renderables.empty())
             return;
 
         // Acquire lights
-        const vector<shared_ptr<Entity>>& lights = m_renderables[RendererEntityType::light];
+        const vector<shared_ptr<Entity>>& lights = m_renderables[RendererEntity::light];
         if (lights.empty())
             return;
 
@@ -580,7 +571,7 @@ namespace Spartan
         cmd_list->BeginTimeblock("depth_prepass");
 
         RHI_Texture* tex_depth = render_target(RendererTexture::gbuffer_depth).get();
-        const vector<shared_ptr<Entity>> entities = m_renderables[RendererEntityType::geometry_opaque];
+        const vector<shared_ptr<Entity>> entities = m_renderables[RendererEntity::geometry_opaque];
 
         // Define pipeline state
         static RHI_PipelineState pso;
@@ -708,7 +699,7 @@ namespace Spartan
         uint32_t material_index    = 0;
         uint64_t material_bound_id = 0;
         m_material_instances.fill(nullptr);
-        auto& entities = m_renderables[is_transparent_pass ? RendererEntityType::geometry_transparent : RendererEntityType::geometry_opaque];
+        auto& entities = m_renderables[is_transparent_pass ? RendererEntity::geometry_transparent : RendererEntity::geometry_opaque];
 
         // Render
         cmd_list->BeginRenderPass();
@@ -1070,7 +1061,7 @@ namespace Spartan
             return;
 
         // Acquire lights
-        const vector<shared_ptr<Entity>>& entities = m_renderables[RendererEntityType::light];
+        const vector<shared_ptr<Entity>>& entities = m_renderables[RendererEntity::light];
         if (entities.empty())
             return;
 
@@ -1174,7 +1165,7 @@ namespace Spartan
 
         // Update light buffer with the directional light
         {
-            const vector<shared_ptr<Entity>>& entities = m_renderables[RendererEntityType::light];
+            const vector<shared_ptr<Entity>>& entities = m_renderables[RendererEntity::light];
             for (shared_ptr<Entity> entity : entities)
             {
                 if (entity->GetComponent<Light>()->GetLightType() == LightType::Directional)
@@ -1215,7 +1206,7 @@ namespace Spartan
         cmd_list->BeginTimeblock(is_transparent_pass ? "light_image_based_transparent" : "light_image_based");
 
         // Get reflection probe entities
-        const vector<shared_ptr<Entity>>& probes = m_renderables[RendererEntityType::reflection_probe];
+        const vector<shared_ptr<Entity>>& probes = m_renderables[RendererEntity::reflection_probe];
 
         // Define pipeline state
         static RHI_PipelineState pso;
@@ -1260,7 +1251,7 @@ namespace Spartan
 
         // Update light buffer with the directional light
         {
-            const vector<shared_ptr<Entity>>& entities = m_renderables[RendererEntityType::light];
+            const vector<shared_ptr<Entity>>& entities = m_renderables[RendererEntity::light];
             for (shared_ptr<Entity> entity : entities)
             {
                 if (entity->GetComponent<Light>()->GetLightType() == LightType::Directional)
@@ -2025,7 +2016,7 @@ namespace Spartan
             return;
 
         // Acquire entities
-        auto& lights = m_renderables[RendererEntityType::light];
+        auto& lights = m_renderables[RendererEntity::light];
         if (lights.empty() || !GetCamera())
             return;
 
@@ -2120,7 +2111,7 @@ namespace Spartan
             return;
 
         // Get reflection probe entities
-        const vector<shared_ptr<Entity>>& probes = m_renderables[RendererEntityType::reflection_probe];
+        const vector<shared_ptr<Entity>>& probes = m_renderables[RendererEntity::reflection_probe];
         if (probes.empty())
             return;
 
