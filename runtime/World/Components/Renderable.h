@@ -33,14 +33,14 @@ namespace Spartan
     class Mesh;
     class Material;
 
-    enum class DefaultGeometry
+    enum class GeometryType
     {
-        Undefined,
         Cube,
         Quad,
         Sphere,
         Cylinder,
-        Cone
+        Cone,
+        Custom
     };
 
     class SP_CLASS Renderable : public Component
@@ -63,7 +63,7 @@ namespace Spartan
             const Math::BoundingBox& aabb, 
             std::shared_ptr<Mesh> mesh
         );
-        void SetGeometry(DefaultGeometry type);
+        void SetGeometry(GeometryType type);
 
         // Get geometry
         void GetGeometry(std::vector<uint32_t>* indices, std::vector<RHI_Vertex_PosTexNorTan>* vertices) const;
@@ -73,7 +73,7 @@ namespace Spartan
         uint32_t GetIndexCount()                  const { return m_geometry_index_count; }
         uint32_t GetVertexOffset()                const { return m_geometry_vertex_offset; }
         uint32_t GetVertexCount()                 const { return m_geometry_vertex_count; }
-        DefaultGeometry GetGeometryType()         const { return m_geometry_type; }
+        GeometryType GetGeometryType()            const { return m_geometry_type; }
         const std::string& GetGeometryName()      const { return m_geometry_name; }
         std::shared_ptr<Mesh> GetMesh()           const { return m_mesh; }
         const Math::BoundingBox& GetBoundingBox() const { return m_bounding_box; }
@@ -102,7 +102,7 @@ namespace Spartan
         uint32_t m_geometry_index_count   = 0;
         uint32_t m_geometry_vertex_offset = 0;
         uint32_t m_geometry_vertex_count  = 0;
-        DefaultGeometry m_geometry_type   = DefaultGeometry::Undefined;
+        GeometryType m_geometry_type      = GeometryType::Custom;
         Math::Matrix m_last_transform     = Math::Matrix::Identity;
         bool m_cast_shadows               = true;
         bool m_material_default           = false;

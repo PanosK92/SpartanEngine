@@ -26,9 +26,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../IO/FileStream.h"
 #include "../../Resource/ResourceCache.h"
 #include "../../RHI/RHI_Texture2D.h"
-#include "../../RHI/RHI_Vertex.h"
 #include "../Rendering/Geometry.h"
 #include "../Rendering/Mesh.h"
+#include "../Rendering/Renderer.h"
 //=======================================
 
 //= NAMESPACES ===============
@@ -38,7 +38,7 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    static void build(const DefaultGeometry type, Renderable* renderable)
+    static void build(const GeometryType type, Renderable* renderable)
     {    
         vector<RHI_Vertex_PosTexNorTan> vertices;
         vector<uint32_t> indices;
@@ -47,27 +47,27 @@ namespace Spartan
 
         // Construct geometry
         shared_ptr<Mesh> mesh = make_shared<Mesh>();
-        if (type == DefaultGeometry::Cube)
+        if (type == GeometryType::Cube)
         {
             Geometry::CreateCube(&vertices, &indices);
             mesh->SetResourceFilePath(project_directory + "default_cube" + EXTENSION_MODEL);
         }
-        else if (type == DefaultGeometry::Quad)
+        else if (type == GeometryType::Quad)
         {
             Geometry::CreateQuad(&vertices, &indices);
             mesh->SetResourceFilePath(project_directory + "default_quad" + EXTENSION_MODEL);
         }
-        else if (type == DefaultGeometry::Sphere)
+        else if (type == GeometryType::Sphere)
         {
             Geometry::CreateSphere(&vertices, &indices);
             mesh->SetResourceFilePath(project_directory + "default_sphere" + EXTENSION_MODEL);
         }
-        else if (type == DefaultGeometry::Cylinder)
+        else if (type == GeometryType::Cylinder)
         {
             Geometry::CreateCylinder(&vertices, &indices);
             mesh->SetResourceFilePath(project_directory + "default_cylinder" + EXTENSION_MODEL);
         }
-        else if (type == DefaultGeometry::Cone)
+        else if (type == GeometryType::Cone)
         {
             Geometry::CreateCone(&vertices, &indices);
             mesh->SetResourceFilePath(project_directory + "default_cone" + EXTENSION_MODEL);
@@ -105,7 +105,7 @@ namespace Spartan
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometry_name,           string);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_mesh,                    shared_ptr<Mesh>);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_bounding_box,            BoundingBox);
-        SP_REGISTER_ATTRIBUTE_GET_SET(DefaultGeometry, SetGeometry,  DefaultGeometry);
+        SP_REGISTER_ATTRIBUTE_GET_SET(GeometryType, SetGeometry,     GeometryType);
     }
 
     Renderable::~Renderable()
@@ -136,7 +136,7 @@ namespace Spartan
     void Renderable::Deserialize(FileStream* stream)
     {
         // Geometry
-        m_geometry_type          = static_cast<DefaultGeometry>(stream->ReadAs<uint32_t>());
+        m_geometry_type          = static_cast<GeometryType>(stream->ReadAs<uint32_t>());
         m_geometry_index_offset  = stream->ReadAs<uint32_t>();
         m_geometry_index_count   = stream->ReadAs<uint32_t>();
         m_geometry_vertex_offset = stream->ReadAs<uint32_t>();
@@ -147,7 +147,7 @@ namespace Spartan
         m_mesh = ResourceCache::GetByName<Mesh>(model_name);
 
         // If it was a default mesh, we have to reconstruct it
-        if (m_geometry_type != DefaultGeometry::Undefined)
+        if (m_geometry_type != GeometryType::Custom)
         {
             SetGeometry(m_geometry_type);
         }
@@ -178,11 +178,11 @@ namespace Spartan
         m_mesh                   = mesh;
     }
 
-    void Renderable::SetGeometry(const DefaultGeometry type)
+    void Renderable::SetGeometry(const GeometryType type)
     {
         m_geometry_type = type;
 
-        if (type != DefaultGeometry::Undefined)
+        if (type != GeometryType::Custom)
         {
             build(type, this);
         }
@@ -258,9 +258,8 @@ namespace Spartan
         material->SetProperty(MaterialProperty::ColorB, 1.0f);
         material->SetProperty(MaterialProperty::ColorA, 1.0f);
 
-        // Se default texture
-        const shared_ptr<RHI_Texture2D> texture = ResourceCache::Load<RHI_Texture2D>(ResourceCache::GetResourceDirectory(ResourceDirectory::Textures) + "\\no_texture.png");
-        material->SetTexture(MaterialTexture::Color, texture);
+        // Set default texture
+        material->SetTexture(MaterialTexture::Color, Renderer::GetStandardTexture(RendererStandardTexture::checkerboard));
 
         // Set material
         SetMaterial(material);

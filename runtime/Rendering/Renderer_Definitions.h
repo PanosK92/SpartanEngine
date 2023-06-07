@@ -266,6 +266,7 @@ namespace Spartan
         white,
         black,
         transparent,
+        checkerboard,
         gizmo_light_directional,
         gizmo_light_point,
         gizmo_light_spot

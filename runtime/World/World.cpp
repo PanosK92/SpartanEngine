@@ -447,7 +447,7 @@ namespace Spartan
 
             // Add a renderable component
             shared_ptr<Renderable> renderable = m_default_model_floor->AddComponent<Renderable>();
-            renderable->SetGeometry(DefaultGeometry::Quad);
+            renderable->SetGeometry(GeometryType::Quad);
             renderable->SetDefaultMaterial();
 
             // Add physics components
@@ -473,7 +473,7 @@ namespace Spartan
 
             // Add a renderable component
             shared_ptr<Renderable> renderable = entity->AddComponent<Renderable>();
-            renderable->SetGeometry(DefaultGeometry::Cube);
+            renderable->SetGeometry(GeometryType::Cube);
             renderable->SetDefaultMaterial();
 
             // Add physics components
