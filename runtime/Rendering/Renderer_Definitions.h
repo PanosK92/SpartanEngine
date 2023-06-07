@@ -258,4 +258,16 @@ namespace Spartan
         trilinear_clamp,
         anisotropic_wrap
     };
+
+    enum class RendererStandardTexture
+    {
+        noise_normal,
+        noise_blue,
+        white,
+        black,
+        transparent,
+        gizmo_light_directional,
+        gizmo_light_point,
+        gizmo_light_spot
+    };
 }
