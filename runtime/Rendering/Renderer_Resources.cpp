@@ -53,7 +53,7 @@ namespace Spartan
         static array<shared_ptr<RHI_Texture>, 26> m_render_targets;
         static array<shared_ptr<RHI_Shader>, 47> m_shaders;
         static array<shared_ptr<RHI_Sampler>, 7> m_samplers;
-        static array<shared_ptr<RHI_Texture>, 8> m_standard_textures;
+        static array<shared_ptr<RHI_Texture>, 9> m_standard_textures;
         static array<shared_ptr<RHI_VertexBuffer>, 2> m_standard_vertex_buffer;
         static array<shared_ptr<RHI_IndexBuffer>, 2> m_standard_index_buffer;
     }
@@ -557,6 +557,9 @@ namespace Spartan
 
             standard_texture(RendererStandardTexture::transparent) = make_shared<RHI_Texture2D>(RHI_Texture_Srv, "standard_transparent");
             standard_texture(RendererStandardTexture::transparent)->LoadFromFile(dir_texture + "transparent.png");
+
+            standard_texture(RendererStandardTexture::checkerboard) = make_shared<RHI_Texture2D>(RHI_Texture_Srv, "standard_transparent");
+            standard_texture(RendererStandardTexture::checkerboard)->LoadFromFile(dir_texture + "no_texture.png");
         }
 
         // Gizmo icons
@@ -587,7 +590,7 @@ namespace Spartan
         return m_samplers;
     }
 
-    array<shared_ptr<RHI_Texture>, 8>& Renderer::GetStandardTextures()
+    array<shared_ptr<RHI_Texture>, 9>& Renderer::GetStandardTextures()
     {
         return m_standard_textures;
     }

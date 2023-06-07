@@ -696,6 +696,7 @@ namespace Spartan
                 if (!material)
                     continue;
 
+
                 // Get geometry
                 shared_ptr<Mesh> mesh = renderable->GetMesh();
                 if (!mesh || !mesh->GetVertexBuffer() || !mesh->GetIndexBuffer())
