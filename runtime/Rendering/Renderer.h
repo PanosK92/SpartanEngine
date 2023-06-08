@@ -105,8 +105,8 @@ namespace Spartan
         //= RHI RESOURCES====================
         static RHI_CommandList* GetCmdList();
         //===================================
- 
-        //= RESOURCES ==================================================================================
+
+        //= RESOURCES ===========================================================================================
         static RHI_Texture* GetFrameTexture();
         static std::shared_ptr<Camera> GetCamera();
         static std::unordered_map<RendererEntity, std::vector<std::shared_ptr<Entity>>>& GetEntities();
@@ -117,6 +117,9 @@ namespace Spartan
         static std::array<std::shared_ptr<RHI_ConstantBuffer>, 4>& GetConstantBuffers();
 
         // Get individual
+        static std::shared_ptr<RHI_RasterizerState> GetRasterizerState(const RendererRasterizerState type);
+        static std::shared_ptr<RHI_DepthStencilState> GetDepthStencilState(const RendererDepthStencilState type);
+        static std::shared_ptr<RHI_BlendState> GetBlendState(const RendererBlendState type);
         static std::shared_ptr<RHI_Texture> GetRenderTarget(const RendererTexture type);
         static std::shared_ptr<RHI_Shader> GetShader(const RendererShader type);
         static std::shared_ptr<RHI_Sampler> GetSampler(const RendererSampler type);
@@ -124,7 +127,7 @@ namespace Spartan
         static std::shared_ptr<RHI_StructuredBuffer> GetStructuredBuffer();
         static std::shared_ptr<RHI_Texture> GetStandardTexture(const RendererStandardTexture type);
         static std::shared_ptr<Mesh> GetStandardMesh(const RendererStandardMesh type);
-        //==============================================================================================
+        //=======================================================================================================
 
     private:
         // Constant buffers

@@ -289,4 +289,29 @@ namespace Spartan
         cone,
         custom
     };
+
+    enum class RendererRasterizerState
+    {
+        cull_back_solid,
+        cull_back_wireframe,
+        cull_none_solid,
+        light_point_spot,
+        light_directional
+    };
+
+    enum class RendererDepthStencilState
+    {
+        off_off,
+        off_r,
+        rw_off,
+        r_off,
+        rw_w
+    };
+
+    enum class RendererBlendState
+    {
+        disabled,
+        alpha,
+        additive
+    };
 }

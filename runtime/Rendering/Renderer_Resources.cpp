@@ -49,36 +49,22 @@ namespace Spartan
 {
     namespace
     {
-        // core resources
-        static array<shared_ptr<RHI_Texture>, 26> m_render_targets;
-        static array<shared_ptr<RHI_Shader>, 47> m_shaders;
-        static array<shared_ptr<RHI_Sampler>, 7> m_samplers;
+        // graphics states
+        static array<shared_ptr<RHI_RasterizerState>, 5>   m_rasterizer_states;
+        static array<shared_ptr<RHI_DepthStencilState>, 5> m_depth_stencil_states;
+        static array<shared_ptr<RHI_BlendState>, 3>        m_blend_states;
+
+        // renderer resources
+        static array<shared_ptr<RHI_Texture>, 26>       m_render_targets;
+        static array<shared_ptr<RHI_Shader>, 47>        m_shaders;
+        static array<shared_ptr<RHI_Sampler>, 7>        m_samplers;
         static array<shared_ptr<RHI_ConstantBuffer>, 4> m_constant_buffers;
-        static shared_ptr<RHI_StructuredBuffer> m_sb_spd_counter;
+        static shared_ptr<RHI_StructuredBuffer>         m_sb_spd_counter;
 
-        // standard resources
+        // asset resources
         static array<shared_ptr<RHI_Texture>, 9> m_standard_textures;
-        static array<shared_ptr<Mesh>, 5> m_standard_meshes;
+        static array<shared_ptr<Mesh>, 5>        m_standard_meshes;
     }
-
-    // Depth-stencil states
-    shared_ptr<RHI_DepthStencilState> m_depth_stencil_off_off;
-    shared_ptr<RHI_DepthStencilState> m_depth_stencil_off_r;
-    shared_ptr<RHI_DepthStencilState> m_depth_stencil_rw_off;
-    shared_ptr<RHI_DepthStencilState> m_depth_stencil_r_off;
-    shared_ptr<RHI_DepthStencilState> m_depth_stencil_rw_w;
-
-    // Blend states 
-    shared_ptr<RHI_BlendState> m_blend_disabled;
-    shared_ptr<RHI_BlendState> m_blend_alpha;
-    shared_ptr<RHI_BlendState> m_blend_additive;
-
-    // Rasterizer states
-    shared_ptr<RHI_RasterizerState> m_rasterizer_cull_back_solid;
-    shared_ptr<RHI_RasterizerState> m_rasterizer_cull_back_wireframe;
-    shared_ptr<RHI_RasterizerState> m_rasterizer_cull_none_solid;
-    shared_ptr<RHI_RasterizerState> m_rasterizer_light_point_spot;
-    shared_ptr<RHI_RasterizerState> m_rasterizer_light_directional;
 
     // Misc
     Cb_Frame m_cb_frame_cpu;
@@ -117,12 +103,13 @@ namespace Spartan
     {
         RHI_Comparison_Function reverse_z_aware_comp_func = RHI_Comparison_Function::GreaterEqual; // reverse-z
 
-        // arguments:                                                depth_test, depth_write, depth_function,                 stencil_test, stencil_write, stencil_function
-        m_depth_stencil_off_off = make_shared<RHI_DepthStencilState>(false,      false,       RHI_Comparison_Function::Never, false,        false,         RHI_Comparison_Function::Never);  // no depth or stencil
-        m_depth_stencil_rw_off  = make_shared<RHI_DepthStencilState>(true,       true,        reverse_z_aware_comp_func,      false,        false,         RHI_Comparison_Function::Never);  // depth
-        m_depth_stencil_r_off   = make_shared<RHI_DepthStencilState>(true,       false,       reverse_z_aware_comp_func,      false,        false,         RHI_Comparison_Function::Never);  // depth
-        m_depth_stencil_off_r   = make_shared<RHI_DepthStencilState>(false,      false,       RHI_Comparison_Function::Never, true,         false,         RHI_Comparison_Function::Equal);  // depth + stencil
-        m_depth_stencil_rw_w    = make_shared<RHI_DepthStencilState>(true,       true,        reverse_z_aware_comp_func,      false,        true,          RHI_Comparison_Function::Always); // depth + stencil
+        #define depth_stencil_state(x) m_depth_stencil_states[static_cast<uint8_t>(x)]
+        // arguments:                                                                           depth_test, depth_write, depth_function, stencil_test, stencil_write, stencil_function
+        depth_stencil_state(RendererDepthStencilState::off_off) = make_shared<RHI_DepthStencilState>(false, false, RHI_Comparison_Function::Never, false, false, RHI_Comparison_Function::Never);  // no depth or stencil
+        depth_stencil_state(RendererDepthStencilState::rw_off)  = make_shared<RHI_DepthStencilState>(true,  true,  reverse_z_aware_comp_func,      false, false, RHI_Comparison_Function::Never);  // depth
+        depth_stencil_state(RendererDepthStencilState::r_off)   = make_shared<RHI_DepthStencilState>(true,  false, reverse_z_aware_comp_func,      false, false, RHI_Comparison_Function::Never);  // depth
+        depth_stencil_state(RendererDepthStencilState::off_r)   = make_shared<RHI_DepthStencilState>(false, false, RHI_Comparison_Function::Never, true,  false, RHI_Comparison_Function::Equal);  // depth + stencil
+        depth_stencil_state(RendererDepthStencilState::rw_w)    = make_shared<RHI_DepthStencilState>(true,  true,  reverse_z_aware_comp_func,      false, true,  RHI_Comparison_Function::Always); // depth + stencil
     }
 
     void Renderer::CreateRasterizerStates()
@@ -132,20 +119,22 @@ namespace Spartan
         static const float depth_bias_slope_scaled = -2.0f;
         static const float line_width              = 2.0f;
 
-        //                                                                  cull mode,          filled mode,                depth clip enabled, scissor enabled, bias,              bias clamp,       slope scaled bias,       line width
-        m_rasterizer_cull_back_solid     = make_shared<RHI_RasterizerState>(RHI_CullMode::Back, RHI_PolygonMode::Solid,     true,               false,           0.0f,              0.0f,             0.0f,                    line_width);
-        m_rasterizer_cull_back_wireframe = make_shared<RHI_RasterizerState>(RHI_CullMode::Back, RHI_PolygonMode::Wireframe, true,               false,           0.0f,              0.0f,             0.0f,                    line_width);
-        m_rasterizer_cull_none_solid     = make_shared<RHI_RasterizerState>(RHI_CullMode::Back, RHI_PolygonMode::Solid,     true,               false,           0.0f,              0.0f,             0.0f,                    line_width);
-        m_rasterizer_light_point_spot    = make_shared<RHI_RasterizerState>(RHI_CullMode::Back, RHI_PolygonMode::Solid,     true,               false,           depth_bias,        depth_bias_clamp, depth_bias_slope_scaled, 0.0f);
-        m_rasterizer_light_directional   = make_shared<RHI_RasterizerState>(RHI_CullMode::Back, RHI_PolygonMode::Solid,     false,              false,           depth_bias * 0.1f, depth_bias_clamp, depth_bias_slope_scaled, 0.0f);
+        #define rasterizer_state(x) m_rasterizer_states[static_cast<uint8_t>(x)]
+        //                                                                                                cull mode,          filled mode,           depth clip, scissor, bias,            bias clamp,       slope scaled bias,       line width
+        rasterizer_state(RendererRasterizerState::cull_back_solid)     = make_shared<RHI_RasterizerState>(RHI_CullMode::Back, RHI_PolygonMode::Solid,     true,  false, 0.0f,              0.0f,             0.0f,                    line_width);
+        rasterizer_state(RendererRasterizerState::cull_back_wireframe) = make_shared<RHI_RasterizerState>(RHI_CullMode::Back, RHI_PolygonMode::Wireframe, true,  false, 0.0f,              0.0f,             0.0f,                    line_width);
+        rasterizer_state(RendererRasterizerState::cull_none_solid)     = make_shared<RHI_RasterizerState>(RHI_CullMode::Back, RHI_PolygonMode::Solid,     true,  false, 0.0f,              0.0f,             0.0f,                    line_width);
+        rasterizer_state(RendererRasterizerState::light_point_spot)    = make_shared<RHI_RasterizerState>(RHI_CullMode::Back, RHI_PolygonMode::Solid,     true,  false, depth_bias,        depth_bias_clamp, depth_bias_slope_scaled, 0.0f);
+        rasterizer_state(RendererRasterizerState::light_directional)   = make_shared<RHI_RasterizerState>(RHI_CullMode::Back, RHI_PolygonMode::Solid,     false, false, depth_bias * 0.1f, depth_bias_clamp, depth_bias_slope_scaled, 0.0f);
     }
 
     void Renderer::CreateBlendStates()
     {
-        // blend_enabled, source_blend, dest_blend, blend_op, source_blend_alpha, dest_blend_alpha, blend_op_alpha, blend_factor
-        m_blend_disabled = make_shared<RHI_BlendState>(false);
-        m_blend_alpha    = make_shared<RHI_BlendState>(true, RHI_Blend::Src_Alpha, RHI_Blend::Inv_Src_Alpha, RHI_Blend_Operation::Add, RHI_Blend::One, RHI_Blend::One, RHI_Blend_Operation::Add, 0.0f);
-        m_blend_additive = make_shared<RHI_BlendState>(true, RHI_Blend::One,       RHI_Blend::One,           RHI_Blend_Operation::Add, RHI_Blend::One, RHI_Blend::One, RHI_Blend_Operation::Add, 1.0f);
+        #define blend_state(x) m_blend_states[static_cast<uint8_t>(x)]
+        //                                                                      blend_enabled, source_blend, dest_blend, blend_op, source_blend_alpha, dest_blend_alpha, blend_op_alpha, blend_factor
+        blend_state(RendererBlendState::disabled) = make_shared<RHI_BlendState>(false);
+        blend_state(RendererBlendState::alpha)    = make_shared<RHI_BlendState>(true, RHI_Blend::Src_Alpha, RHI_Blend::Inv_Src_Alpha, RHI_Blend_Operation::Add, RHI_Blend::One, RHI_Blend::One, RHI_Blend_Operation::Add, 0.0f);
+        blend_state(RendererBlendState::additive) = make_shared<RHI_BlendState>(true, RHI_Blend::One,       RHI_Blend::One,           RHI_Blend_Operation::Add, RHI_Blend::One, RHI_Blend::One, RHI_Blend_Operation::Add, 1.0f);
     }
 
     void Renderer::CreateSamplers(const bool create_only_anisotropic /*= false*/)
@@ -608,6 +597,21 @@ namespace Spartan
     array<shared_ptr<RHI_ConstantBuffer>, 4>& Renderer::GetConstantBuffers()
     {
         return m_constant_buffers;
+    }
+
+    shared_ptr<RHI_RasterizerState> Renderer::GetRasterizerState(const RendererRasterizerState type)
+    {
+        return m_rasterizer_states[static_cast<uint8_t>(type)];
+    }
+
+    shared_ptr<RHI_DepthStencilState> Renderer::GetDepthStencilState(const RendererDepthStencilState type)
+    {
+        return m_depth_stencil_states[static_cast<uint8_t>(type)];
+    }
+
+    shared_ptr<RHI_BlendState> Renderer::GetBlendState(const RendererBlendState type)
+    {
+        return m_blend_states[static_cast<uint8_t>(type)];
     }
 
     shared_ptr<RHI_Texture> Renderer::GetRenderTarget(const RendererTexture type)
