@@ -80,17 +80,17 @@ namespace Spartan
     {
         #define constant_buffer(x) m_constant_buffers[static_cast<uint8_t>(x)]
 
-        constant_buffer(RendererConstantBuffer::frame) = make_shared<RHI_ConstantBuffer>("frame");
-        constant_buffer(RendererConstantBuffer::frame)->Create<Cb_Frame>(8000);
+        constant_buffer(Renderer_ConstantBuffer::Frame) = make_shared<RHI_ConstantBuffer>("frame");
+        constant_buffer(Renderer_ConstantBuffer::Frame)->Create<Cb_Frame>(8000);
 
-        constant_buffer(RendererConstantBuffer::uber) = make_shared<RHI_ConstantBuffer>("uber");
-        constant_buffer(RendererConstantBuffer::uber)->Create<Cb_Uber>(30000);
+        constant_buffer(Renderer_ConstantBuffer::Uber) = make_shared<RHI_ConstantBuffer>("uber");
+        constant_buffer(Renderer_ConstantBuffer::Uber)->Create<Cb_Uber>(30000);
 
-        constant_buffer(RendererConstantBuffer::light) = make_shared<RHI_ConstantBuffer>("light");
-        constant_buffer(RendererConstantBuffer::light)->Create<Cb_Light>(8000);
+        constant_buffer(Renderer_ConstantBuffer::Light) = make_shared<RHI_ConstantBuffer>("light");
+        constant_buffer(Renderer_ConstantBuffer::Light)->Create<Cb_Light>(8000);
 
-        constant_buffer(RendererConstantBuffer::material) = make_shared<RHI_ConstantBuffer>("material");
-        constant_buffer(RendererConstantBuffer::material)->Create<Cb_Material>(4000); // NV failed to allocate beyond this point
+        constant_buffer(Renderer_ConstantBuffer::Material) = make_shared<RHI_ConstantBuffer>("material");
+        constant_buffer(Renderer_ConstantBuffer::Material)->Create<Cb_Material>(4000); // NV failed to allocate beyond this point
     }
 
     void Renderer::CreateStructuredBuffers()
@@ -105,11 +105,11 @@ namespace Spartan
 
         #define depth_stencil_state(x) m_depth_stencil_states[static_cast<uint8_t>(x)]
         // arguments: depth_test, depth_write, depth_function, stencil_test, stencil_write, stencil_function
-        depth_stencil_state(RendererDepthStencilState::off)                            = make_shared<RHI_DepthStencilState>(false, false, RHI_Comparison_Function::Never, false, false, RHI_Comparison_Function::Never);
-        depth_stencil_state(RendererDepthStencilState::depth_read_write_stencil_read)  = make_shared<RHI_DepthStencilState>(true,  true,  reverse_z_aware_comp_func,      false, false, RHI_Comparison_Function::Never);
-        depth_stencil_state(RendererDepthStencilState::depth_read)                     = make_shared<RHI_DepthStencilState>(true,  false, reverse_z_aware_comp_func,      false, false, RHI_Comparison_Function::Never);
-        depth_stencil_state(RendererDepthStencilState::stencil_read)                   = make_shared<RHI_DepthStencilState>(false, false, RHI_Comparison_Function::Never, true,  false, RHI_Comparison_Function::Equal);
-        depth_stencil_state(RendererDepthStencilState::depth_read_write_stencil_write) = make_shared<RHI_DepthStencilState>(true, true,   reverse_z_aware_comp_func,      false, true, RHI_Comparison_Function::Always);
+        depth_stencil_state(Renderer_DepthStencilState::Off)                            = make_shared<RHI_DepthStencilState>(false, false, RHI_Comparison_Function::Never, false, false, RHI_Comparison_Function::Never);
+        depth_stencil_state(Renderer_DepthStencilState::Depth_read_write_stencil_read)  = make_shared<RHI_DepthStencilState>(true,  true,  reverse_z_aware_comp_func,      false, false, RHI_Comparison_Function::Never);
+        depth_stencil_state(Renderer_DepthStencilState::Depth_read)                     = make_shared<RHI_DepthStencilState>(true,  false, reverse_z_aware_comp_func,      false, false, RHI_Comparison_Function::Never);
+        depth_stencil_state(Renderer_DepthStencilState::Stencil_read)                   = make_shared<RHI_DepthStencilState>(false, false, RHI_Comparison_Function::Never, true,  false, RHI_Comparison_Function::Equal);
+        depth_stencil_state(Renderer_DepthStencilState::Depth_read_write_stencil_write) = make_shared<RHI_DepthStencilState>(true, true,   reverse_z_aware_comp_func,      false, true, RHI_Comparison_Function::Always);
     }
 
     void Renderer::CreateRasterizerStates()
@@ -121,26 +121,24 @@ namespace Spartan
 
         #define rasterizer_state(x) m_rasterizer_states[static_cast<uint8_t>(x)]
         // cull mode, filled mode, depth clip, scissor, bias, bias clamp, slope scaled bias, line width
-        rasterizer_state(RendererRasterizerState::cull_back_solid)     = make_shared<RHI_RasterizerState>(RHI_CullMode::Back, RHI_PolygonMode::Solid,     true,  false, 0.0f,              0.0f,             0.0f,                    line_width);
-        rasterizer_state(RendererRasterizerState::cull_back_wireframe) = make_shared<RHI_RasterizerState>(RHI_CullMode::Back, RHI_PolygonMode::Wireframe, true,  false, 0.0f,              0.0f,             0.0f,                    line_width);
-        rasterizer_state(RendererRasterizerState::cull_none_solid)     = make_shared<RHI_RasterizerState>(RHI_CullMode::Back, RHI_PolygonMode::Solid,     true,  false, 0.0f,              0.0f,             0.0f,                    line_width);
-        rasterizer_state(RendererRasterizerState::light_point_spot)    = make_shared<RHI_RasterizerState>(RHI_CullMode::Back, RHI_PolygonMode::Solid,     true,  false, depth_bias,        depth_bias_clamp, depth_bias_slope_scaled, 0.0f);
-        rasterizer_state(RendererRasterizerState::light_directional)   = make_shared<RHI_RasterizerState>(RHI_CullMode::Back, RHI_PolygonMode::Solid,     false, false, depth_bias * 0.1f, depth_bias_clamp, depth_bias_slope_scaled, 0.0f);
+        rasterizer_state(Renderer_RasterizerState::Cull_back_solid)     = make_shared<RHI_RasterizerState>(RHI_CullMode::Back, RHI_PolygonMode::Solid,     true,  false, 0.0f,              0.0f,             0.0f,                    line_width);
+        rasterizer_state(Renderer_RasterizerState::Cull_back_wireframe) = make_shared<RHI_RasterizerState>(RHI_CullMode::Back, RHI_PolygonMode::Wireframe, true,  false, 0.0f,              0.0f,             0.0f,                    line_width);
+        rasterizer_state(Renderer_RasterizerState::Cull_none_solid)     = make_shared<RHI_RasterizerState>(RHI_CullMode::Back, RHI_PolygonMode::Solid,     true,  false, 0.0f,              0.0f,             0.0f,                    line_width);
+        rasterizer_state(Renderer_RasterizerState::Light_point_spot)    = make_shared<RHI_RasterizerState>(RHI_CullMode::Back, RHI_PolygonMode::Solid,     true,  false, depth_bias,        depth_bias_clamp, depth_bias_slope_scaled, 0.0f);
+        rasterizer_state(Renderer_RasterizerState::Light_directional)   = make_shared<RHI_RasterizerState>(RHI_CullMode::Back, RHI_PolygonMode::Solid,     false, false, depth_bias * 0.1f, depth_bias_clamp, depth_bias_slope_scaled, 0.0f);
     }
 
     void Renderer::CreateBlendStates()
     {
         #define blend_state(x) m_blend_states[static_cast<uint8_t>(x)]
         // blend_enabled, source_blend, dest_blend, blend_op, source_blend_alpha, dest_blend_alpha, blend_op_alpha, blend_factor
-        blend_state(RendererBlendState::disabled) = make_shared<RHI_BlendState>(false);
-        blend_state(RendererBlendState::alpha)    = make_shared<RHI_BlendState>(true, RHI_Blend::Src_Alpha, RHI_Blend::Inv_Src_Alpha, RHI_Blend_Operation::Add, RHI_Blend::One, RHI_Blend::One, RHI_Blend_Operation::Add, 0.0f);
-        blend_state(RendererBlendState::additive) = make_shared<RHI_BlendState>(true, RHI_Blend::One,       RHI_Blend::One,           RHI_Blend_Operation::Add, RHI_Blend::One, RHI_Blend::One, RHI_Blend_Operation::Add, 1.0f);
+        blend_state(Renderer_BlendState::Disabled) = make_shared<RHI_BlendState>(false);
+        blend_state(Renderer_BlendState::Alpha)    = make_shared<RHI_BlendState>(true, RHI_Blend::Src_Alpha, RHI_Blend::Inv_Src_Alpha, RHI_Blend_Operation::Add, RHI_Blend::One, RHI_Blend::One, RHI_Blend_Operation::Add, 0.0f);
+        blend_state(Renderer_BlendState::Additive) = make_shared<RHI_BlendState>(true, RHI_Blend::One,       RHI_Blend::One,           RHI_Blend_Operation::Add, RHI_Blend::One, RHI_Blend::One, RHI_Blend_Operation::Add, 1.0f);
     }
 
     void Renderer::CreateSamplers(const bool create_only_anisotropic /*= false*/)
     {
-        float anisotropy = GetOption<float>(RendererOption::Anisotropy);
-
         // Compute mip bias
         float mip_bias = 0.0f;
         if (GetResolutionOutput().x > GetResolutionRender().x)
@@ -148,20 +146,21 @@ namespace Spartan
             // Progressively negative values when upsampling for increased texture fidelity
             mip_bias = log2(GetResolutionRender().x / GetResolutionOutput().x) - 1.0f;
         }
+        
         #define sampler(x) m_samplers[static_cast<uint8_t>(x)]
-
         if (!create_only_anisotropic)
         {
             // arguments: minification, magnification, mip, sampler address mode, comparison, anisotropy, comparison enabled, mip lod bias
-            sampler(RendererSampler::compare_depth)   = make_shared<RHI_Sampler>(RHI_Filter::Linear,  RHI_Filter::Linear,  RHI_Sampler_Mipmap_Mode::Nearest, RHI_Sampler_Address_Mode::Clamp, RHI_Comparison_Function::Greater, 0.0f, true); // reverse-z
-            sampler(RendererSampler::point_clamp)     = make_shared<RHI_Sampler>(RHI_Filter::Nearest, RHI_Filter::Nearest, RHI_Sampler_Mipmap_Mode::Nearest, RHI_Sampler_Address_Mode::Clamp, RHI_Comparison_Function::Always);
-            sampler(RendererSampler::point_wrap)      = make_shared<RHI_Sampler>(RHI_Filter::Nearest, RHI_Filter::Nearest, RHI_Sampler_Mipmap_Mode::Nearest, RHI_Sampler_Address_Mode::Wrap,  RHI_Comparison_Function::Always);
-            sampler(RendererSampler::bilinear_clamp)  = make_shared<RHI_Sampler>(RHI_Filter::Linear,  RHI_Filter::Linear,  RHI_Sampler_Mipmap_Mode::Nearest, RHI_Sampler_Address_Mode::Clamp, RHI_Comparison_Function::Always);
-            sampler(RendererSampler::bilinear_wrap)   = make_shared<RHI_Sampler>(RHI_Filter::Linear,  RHI_Filter::Linear,  RHI_Sampler_Mipmap_Mode::Nearest, RHI_Sampler_Address_Mode::Wrap,  RHI_Comparison_Function::Always);
-            sampler(RendererSampler::trilinear_clamp) = make_shared<RHI_Sampler>(RHI_Filter::Linear,  RHI_Filter::Linear,  RHI_Sampler_Mipmap_Mode::Linear,  RHI_Sampler_Address_Mode::Clamp, RHI_Comparison_Function::Always);
+            sampler(Renderer_Sampler::Compare_depth)   = make_shared<RHI_Sampler>(RHI_Filter::Linear,  RHI_Filter::Linear,  RHI_Sampler_Mipmap_Mode::Nearest, RHI_Sampler_Address_Mode::Clamp, RHI_Comparison_Function::Greater, 0.0f, true); // reverse-z
+            sampler(Renderer_Sampler::Point_clamp)     = make_shared<RHI_Sampler>(RHI_Filter::Nearest, RHI_Filter::Nearest, RHI_Sampler_Mipmap_Mode::Nearest, RHI_Sampler_Address_Mode::Clamp, RHI_Comparison_Function::Always);
+            sampler(Renderer_Sampler::Point_wrap)      = make_shared<RHI_Sampler>(RHI_Filter::Nearest, RHI_Filter::Nearest, RHI_Sampler_Mipmap_Mode::Nearest, RHI_Sampler_Address_Mode::Wrap,  RHI_Comparison_Function::Always);
+            sampler(Renderer_Sampler::Bilinear_clamp)  = make_shared<RHI_Sampler>(RHI_Filter::Linear,  RHI_Filter::Linear,  RHI_Sampler_Mipmap_Mode::Nearest, RHI_Sampler_Address_Mode::Clamp, RHI_Comparison_Function::Always);
+            sampler(Renderer_Sampler::Bilinear_wrap)   = make_shared<RHI_Sampler>(RHI_Filter::Linear,  RHI_Filter::Linear,  RHI_Sampler_Mipmap_Mode::Nearest, RHI_Sampler_Address_Mode::Wrap,  RHI_Comparison_Function::Always);
+            sampler(Renderer_Sampler::Trilinear_clamp) = make_shared<RHI_Sampler>(RHI_Filter::Linear,  RHI_Filter::Linear,  RHI_Sampler_Mipmap_Mode::Linear,  RHI_Sampler_Address_Mode::Clamp, RHI_Comparison_Function::Always);
         }
 
-        sampler(RendererSampler::anisotropic_wrap) = make_shared<RHI_Sampler>(RHI_Filter::Linear, RHI_Filter::Linear, RHI_Sampler_Mipmap_Mode::Linear, RHI_Sampler_Address_Mode::Wrap, RHI_Comparison_Function::Always, anisotropy, false, mip_bias);
+        float anisotropy = GetOption<float>(Renderer_Option::Anisotropy);
+        sampler(Renderer_Sampler::Anisotropic_wrap) = make_shared<RHI_Sampler>(RHI_Filter::Linear, RHI_Filter::Linear, RHI_Sampler_Mipmap_Mode::Linear, RHI_Sampler_Address_Mode::Wrap, RHI_Comparison_Function::Always, anisotropy, false, mip_bias);
 
         SP_LOG_INFO("Mip bias set to %f", mip_bias);
     }
@@ -196,56 +195,56 @@ namespace Spartan
         if (create_render)
         {
             // Frame (HDR) - Mips are used to emulate roughness when blending with transparent surfaces
-            render_target(RendererRenderTexture::frame_render)   = make_unique<RHI_Texture2D>(width_render, height_render, mip_count, RHI_Format::R16G16B16A16_Float, RHI_Texture_RenderTarget | RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipViews | RHI_Texture_ClearOrBlit, "rt_frame_render");
-            render_target(RendererRenderTexture::frame_render_2) = make_unique<RHI_Texture2D>(width_render, height_render, mip_count, RHI_Format::R16G16B16A16_Float, RHI_Texture_RenderTarget | RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipViews | RHI_Texture_ClearOrBlit, "rt_frame_render_2");
+            render_target(Renderer_RenderTexture::frame_render)   = make_unique<RHI_Texture2D>(width_render, height_render, mip_count, RHI_Format::R16G16B16A16_Float, RHI_Texture_RenderTarget | RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipViews | RHI_Texture_ClearOrBlit, "rt_frame_render");
+            render_target(Renderer_RenderTexture::frame_render_2) = make_unique<RHI_Texture2D>(width_render, height_render, mip_count, RHI_Format::R16G16B16A16_Float, RHI_Texture_RenderTarget | RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipViews | RHI_Texture_ClearOrBlit, "rt_frame_render_2");
 
             // G-Buffer
-            render_target(RendererRenderTexture::gbuffer_albedo)   = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R8G8B8A8_Unorm,     RHI_Texture_RenderTarget | RHI_Texture_Srv,                                     "rt_gbuffer_albedo");
-            render_target(RendererRenderTexture::gbuffer_normal)   = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_RenderTarget | RHI_Texture_Srv,                                     "rt_gbuffer_normal");
-            render_target(RendererRenderTexture::gbuffer_material) = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R8G8B8A8_Unorm,     RHI_Texture_RenderTarget | RHI_Texture_Srv,                                     "rt_gbuffer_material");
-            render_target(RendererRenderTexture::gbuffer_velocity) = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16_Float,       RHI_Texture_RenderTarget | RHI_Texture_Srv,                                     "rt_gbuffer_velocity");
-            render_target(RendererRenderTexture::gbuffer_depth)    = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::D32_Float,          RHI_Texture_RenderTarget | RHI_Texture_Srv | RHI_Texture_RenderTarget_ReadOnly, "rt_gbuffer_depth");
+            render_target(Renderer_RenderTexture::gbuffer_albedo)   = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R8G8B8A8_Unorm,     RHI_Texture_RenderTarget | RHI_Texture_Srv,                                     "rt_gbuffer_albedo");
+            render_target(Renderer_RenderTexture::gbuffer_normal)   = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_RenderTarget | RHI_Texture_Srv,                                     "rt_gbuffer_normal");
+            render_target(Renderer_RenderTexture::gbuffer_material) = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R8G8B8A8_Unorm,     RHI_Texture_RenderTarget | RHI_Texture_Srv,                                     "rt_gbuffer_material");
+            render_target(Renderer_RenderTexture::gbuffer_velocity) = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16_Float,       RHI_Texture_RenderTarget | RHI_Texture_Srv,                                     "rt_gbuffer_velocity");
+            render_target(Renderer_RenderTexture::gbuffer_depth)    = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::D32_Float,          RHI_Texture_RenderTarget | RHI_Texture_Srv | RHI_Texture_RenderTarget_ReadOnly, "rt_gbuffer_depth");
 
             // Light
-            render_target(RendererRenderTexture::light_diffuse)              = make_unique<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R11G11B10_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearOrBlit, "rt_light_diffuse");
-            render_target(RendererRenderTexture::light_diffuse_transparent)  = make_unique<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R11G11B10_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearOrBlit, "rt_light_diffuse_transparent");
-            render_target(RendererRenderTexture::light_specular)             = make_unique<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R11G11B10_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearOrBlit, "rt_light_specular");
-            render_target(RendererRenderTexture::light_specular_transparent) = make_unique<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R11G11B10_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearOrBlit, "rt_light_specular_transparent");
-            render_target(RendererRenderTexture::light_volumetric)           = make_unique<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R11G11B10_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearOrBlit, "rt_light_volumetric");
+            render_target(Renderer_RenderTexture::light_diffuse)              = make_unique<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R11G11B10_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearOrBlit, "rt_light_diffuse");
+            render_target(Renderer_RenderTexture::light_diffuse_transparent)  = make_unique<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R11G11B10_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearOrBlit, "rt_light_diffuse_transparent");
+            render_target(Renderer_RenderTexture::light_specular)             = make_unique<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R11G11B10_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearOrBlit, "rt_light_specular");
+            render_target(Renderer_RenderTexture::light_specular_transparent) = make_unique<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R11G11B10_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearOrBlit, "rt_light_specular_transparent");
+            render_target(Renderer_RenderTexture::light_volumetric)           = make_unique<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R11G11B10_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearOrBlit, "rt_light_volumetric");
 
             // SSR - Mips are used to emulate roughness for surfaces which require it
-            render_target(RendererRenderTexture::ssr) = make_shared<RHI_Texture2D>(width_render, height_render, mip_count, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipViews, "rt_ssr");
+            render_target(Renderer_RenderTexture::ssr) = make_shared<RHI_Texture2D>(width_render, height_render, mip_count, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipViews, "rt_ssr");
 
             // SSAO
-            render_target(RendererRenderTexture::ssgi) = make_unique<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv, "rt_ssgi");
+            render_target(Renderer_RenderTexture::ssgi) = make_unique<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv, "rt_ssgi");
 
             // Dof
-            render_target(RendererRenderTexture::dof_half)   = make_unique<RHI_Texture2D>(width_render / 2, height_render / 2, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv, "rt_dof_half");
-            render_target(RendererRenderTexture::dof_half_2) = make_unique<RHI_Texture2D>(width_render / 2, height_render / 2, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv, "rt_dof_half_2");
+            render_target(Renderer_RenderTexture::dof_half)   = make_unique<RHI_Texture2D>(width_render / 2, height_render / 2, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv, "rt_dof_half");
+            render_target(Renderer_RenderTexture::dof_half_2) = make_unique<RHI_Texture2D>(width_render / 2, height_render / 2, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv, "rt_dof_half_2");
 
             // FSR 2 masks
-            render_target(RendererRenderTexture::fsr2_mask_reactive)     = make_unique<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R8_Unorm, RHI_Texture_RenderTarget | RHI_Texture_Srv | RHI_Texture_ClearOrBlit, "rt_fsr2_reactive_mask");
-            render_target(RendererRenderTexture::fsr2_mask_transparency) = make_unique<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R8_Unorm, RHI_Texture_RenderTarget | RHI_Texture_Srv, "rt_fsr2_transparency_mask");
+            render_target(Renderer_RenderTexture::fsr2_mask_reactive)     = make_unique<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R8_Unorm, RHI_Texture_RenderTarget | RHI_Texture_Srv | RHI_Texture_ClearOrBlit, "rt_fsr2_reactive_mask");
+            render_target(Renderer_RenderTexture::fsr2_mask_transparency) = make_unique<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R8_Unorm, RHI_Texture_RenderTarget | RHI_Texture_Srv, "rt_fsr2_transparency_mask");
 
             // Selection outline
-            render_target(RendererRenderTexture::outline) = make_unique<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R8G8B8A8_Unorm, RHI_Texture_RenderTarget | RHI_Texture_Srv | RHI_Texture_Uav, "rt_outline");
+            render_target(Renderer_RenderTexture::outline) = make_unique<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R8G8B8A8_Unorm, RHI_Texture_RenderTarget | RHI_Texture_Srv | RHI_Texture_Uav, "rt_outline");
         }
 
         // Output resolution
         if (create_output)
         {
             // Frame (LDR)
-            render_target(RendererRenderTexture::frame_output)   = make_unique<RHI_Texture2D>(width_output, height_output, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_RenderTarget | RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearOrBlit, "rt_frame_output");
-            render_target(RendererRenderTexture::frame_output_2) = make_unique<RHI_Texture2D>(width_output, height_output, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_RenderTarget | RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearOrBlit, "rt_frame_output_2");
+            render_target(Renderer_RenderTexture::frame_output)   = make_unique<RHI_Texture2D>(width_output, height_output, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_RenderTarget | RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearOrBlit, "rt_frame_output");
+            render_target(Renderer_RenderTexture::frame_output_2) = make_unique<RHI_Texture2D>(width_output, height_output, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_RenderTarget | RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearOrBlit, "rt_frame_output_2");
 
             // Bloom
-            render_target(RendererRenderTexture::bloom) = make_shared<RHI_Texture2D>(width_output, height_output, mip_count, RHI_Format::R11G11B10_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipViews, "rt_bloom");
+            render_target(Renderer_RenderTexture::bloom) = make_shared<RHI_Texture2D>(width_output, height_output, mip_count, RHI_Format::R11G11B10_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipViews, "rt_bloom");
         }
 
         // Fixed resolution
         if (create_fixed)
         {
-            render_target(RendererRenderTexture::brdf_specular_lut) = make_unique<RHI_Texture2D>(400, 400, 1, RHI_Format::R8G8_Unorm, RHI_Texture_Uav | RHI_Texture_Srv, "rt_brdf_specular_lut");
+            render_target(Renderer_RenderTexture::brdf_specular_lut) = make_unique<RHI_Texture2D>(400, 400, 1, RHI_Format::R8G8_Unorm, RHI_Texture_Uav | RHI_Texture_Srv, "rt_brdf_specular_lut");
             m_brdf_specular_lut_rendered = false;
         }
 
@@ -256,7 +255,7 @@ namespace Spartan
             bool is_output_larger = width_output > width_render && height_output > height_render;
             uint32_t width        = is_output_larger ? width_output : width_render;
             uint32_t height       = is_output_larger ? height_output : height_render;
-            render_target(RendererRenderTexture::blur) = make_unique<RHI_Texture2D>(width, height, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv, "rt_blur");
+            render_target(Renderer_RenderTexture::blur) = make_unique<RHI_Texture2D>(width, height, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv, "rt_blur");
         }
 
         RHI_FSR2::OnDisplayModeChanged(GetResolutionRender(), GetResolutionOutput());
@@ -269,202 +268,202 @@ namespace Spartan
         #define shader(x) m_shaders[static_cast<uint8_t>(x)]
 
         // G-Buffer
-        shader(RendererShader::gbuffer_v) = make_shared<RHI_Shader>();
-        shader(RendererShader::gbuffer_v)->Compile(RHI_Shader_Vertex, shader_dir + "g_buffer.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
-        shader(RendererShader::gbuffer_p) = make_shared<RHI_Shader>();
-        shader(RendererShader::gbuffer_p)->Compile(RHI_Shader_Pixel, shader_dir + "g_buffer.hlsl", async);
+        shader(Renderer_Shader::gbuffer_v) = make_shared<RHI_Shader>();
+        shader(Renderer_Shader::gbuffer_v)->Compile(RHI_Shader_Vertex, shader_dir + "g_buffer.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
+        shader(Renderer_Shader::gbuffer_p) = make_shared<RHI_Shader>();
+        shader(Renderer_Shader::gbuffer_p)->Compile(RHI_Shader_Pixel, shader_dir + "g_buffer.hlsl", async);
 
         // Light
-        shader(RendererShader::light_c) = make_shared<RHI_Shader>();
-        shader(RendererShader::light_c)->Compile(RHI_Shader_Compute, shader_dir + "light.hlsl", async);
+        shader(Renderer_Shader::light_c) = make_shared<RHI_Shader>();
+        shader(Renderer_Shader::light_c)->Compile(RHI_Shader_Compute, shader_dir + "light.hlsl", async);
 
         // Triangle & Quad
         {
-            shader(RendererShader::fullscreen_triangle_v) = make_shared<RHI_Shader>();
-            shader(RendererShader::fullscreen_triangle_v)->Compile(RHI_Shader_Vertex, shader_dir + "fullscreen_triangle.hlsl", async, RHI_Vertex_Type::Undefined);
+            shader(Renderer_Shader::fullscreen_triangle_v) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::fullscreen_triangle_v)->Compile(RHI_Shader_Vertex, shader_dir + "fullscreen_triangle.hlsl", async, RHI_Vertex_Type::Undefined);
 
-            shader(RendererShader::quad_v) = make_shared<RHI_Shader>();
-            shader(RendererShader::quad_v)->Compile(RHI_Shader_Vertex, shader_dir + "quad.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
+            shader(Renderer_Shader::quad_v) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::quad_v)->Compile(RHI_Shader_Vertex, shader_dir + "quad.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
         }
 
         // Depth prepass
         {
-            shader(RendererShader::depth_prepass_v) = make_shared<RHI_Shader>();
-            shader(RendererShader::depth_prepass_v)->Compile(RHI_Shader_Vertex, shader_dir + "depth_prepass.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
+            shader(Renderer_Shader::depth_prepass_v) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::depth_prepass_v)->Compile(RHI_Shader_Vertex, shader_dir + "depth_prepass.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
 
-            shader(RendererShader::depth_prepass_p) = make_shared<RHI_Shader>();
-            shader(RendererShader::depth_prepass_p)->Compile(RHI_Shader_Pixel, shader_dir + "depth_prepass.hlsl", async);
+            shader(Renderer_Shader::depth_prepass_p) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::depth_prepass_p)->Compile(RHI_Shader_Pixel, shader_dir + "depth_prepass.hlsl", async);
         }
 
         // Depth light
         {
-            shader(RendererShader::depth_light_V) = make_shared<RHI_Shader>();
-            shader(RendererShader::depth_light_V)->Compile(RHI_Shader_Vertex, shader_dir + "depth_light.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
+            shader(Renderer_Shader::depth_light_V) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::depth_light_V)->Compile(RHI_Shader_Vertex, shader_dir + "depth_light.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
 
-            shader(RendererShader::depth_light_p) = make_shared<RHI_Shader>();
-            shader(RendererShader::depth_light_p)->Compile(RHI_Shader_Pixel, shader_dir + "depth_light.hlsl", async);
+            shader(Renderer_Shader::depth_light_p) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::depth_light_p)->Compile(RHI_Shader_Pixel, shader_dir + "depth_light.hlsl", async);
         }
 
         // Font
-        shader(RendererShader::font_v) = make_shared<RHI_Shader>();
-        shader(RendererShader::font_v)->Compile(RHI_Shader_Vertex, shader_dir + "font.hlsl", async, RHI_Vertex_Type::PosUv);
-        shader(RendererShader::font_p) = make_shared<RHI_Shader>();
-        shader(RendererShader::font_p)->Compile(RHI_Shader_Pixel, shader_dir + "font.hlsl", async);
+        shader(Renderer_Shader::font_v) = make_shared<RHI_Shader>();
+        shader(Renderer_Shader::font_v)->Compile(RHI_Shader_Vertex, shader_dir + "font.hlsl", async, RHI_Vertex_Type::PosUv);
+        shader(Renderer_Shader::font_p) = make_shared<RHI_Shader>();
+        shader(Renderer_Shader::font_p)->Compile(RHI_Shader_Pixel, shader_dir + "font.hlsl", async);
 
         // Line
-        shader(RendererShader::line_v) = make_shared<RHI_Shader>();
-        shader(RendererShader::line_v)->Compile(RHI_Shader_Vertex, shader_dir + "line.hlsl", async, RHI_Vertex_Type::PosCol);
-        shader(RendererShader::line_p) = make_shared<RHI_Shader>();
-        shader(RendererShader::line_p)->Compile(RHI_Shader_Pixel, shader_dir + "line.hlsl", async);
+        shader(Renderer_Shader::line_v) = make_shared<RHI_Shader>();
+        shader(Renderer_Shader::line_v)->Compile(RHI_Shader_Vertex, shader_dir + "line.hlsl", async, RHI_Vertex_Type::PosCol);
+        shader(Renderer_Shader::line_p) = make_shared<RHI_Shader>();
+        shader(Renderer_Shader::line_p)->Compile(RHI_Shader_Pixel, shader_dir + "line.hlsl", async);
 
         // Outline
-        shader(RendererShader::outline_v) = make_shared<RHI_Shader>();
-        shader(RendererShader::outline_v)->Compile(RHI_Shader_Vertex, shader_dir + "outline.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
-        shader(RendererShader::outline_p) = make_shared<RHI_Shader>();
-        shader(RendererShader::outline_p)->Compile(RHI_Shader_Pixel, shader_dir + "outline.hlsl", async);
-        shader(RendererShader::outline_c) = make_shared<RHI_Shader>();
-        shader(RendererShader::outline_c)->Compile(RHI_Shader_Compute, shader_dir + "outline.hlsl", async);
+        shader(Renderer_Shader::outline_v) = make_shared<RHI_Shader>();
+        shader(Renderer_Shader::outline_v)->Compile(RHI_Shader_Vertex, shader_dir + "outline.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
+        shader(Renderer_Shader::outline_p) = make_shared<RHI_Shader>();
+        shader(Renderer_Shader::outline_p)->Compile(RHI_Shader_Pixel, shader_dir + "outline.hlsl", async);
+        shader(Renderer_Shader::outline_c) = make_shared<RHI_Shader>();
+        shader(Renderer_Shader::outline_c)->Compile(RHI_Shader_Compute, shader_dir + "outline.hlsl", async);
 
         // Reflection probe
-        shader(RendererShader::reflection_probe_v) = make_shared<RHI_Shader>();
-        shader(RendererShader::reflection_probe_v)->Compile(RHI_Shader_Vertex, shader_dir + "reflection_probe.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
-        shader(RendererShader::reflection_probe_p) = make_shared<RHI_Shader>();
-        shader(RendererShader::reflection_probe_p)->Compile(RHI_Shader_Pixel, shader_dir + "reflection_probe.hlsl", async);
+        shader(Renderer_Shader::reflection_probe_v) = make_shared<RHI_Shader>();
+        shader(Renderer_Shader::reflection_probe_v)->Compile(RHI_Shader_Vertex, shader_dir + "reflection_probe.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
+        shader(Renderer_Shader::reflection_probe_p) = make_shared<RHI_Shader>();
+        shader(Renderer_Shader::reflection_probe_p)->Compile(RHI_Shader_Pixel, shader_dir + "reflection_probe.hlsl", async);
 
         // Debug
         {
-            shader(RendererShader::debug_reflection_probe_v) = make_shared<RHI_Shader>();
-            shader(RendererShader::debug_reflection_probe_v)->Compile(RHI_Shader_Vertex, shader_dir + "debug_reflection_probe.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
-            shader(RendererShader::debug_reflection_probe_p) = make_shared<RHI_Shader>();
-            shader(RendererShader::debug_reflection_probe_p)->Compile(RHI_Shader_Pixel, shader_dir + "debug_reflection_probe.hlsl", async);
+            shader(Renderer_Shader::debug_reflection_probe_v) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::debug_reflection_probe_v)->Compile(RHI_Shader_Vertex, shader_dir + "debug_reflection_probe.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
+            shader(Renderer_Shader::debug_reflection_probe_p) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::debug_reflection_probe_p)->Compile(RHI_Shader_Pixel, shader_dir + "debug_reflection_probe.hlsl", async);
         }
 
         // Copy
         {
-            shader(RendererShader::copy_point_c) = make_shared<RHI_Shader>();
-            shader(RendererShader::copy_point_c)->AddDefine("COMPUTE");
-            shader(RendererShader::copy_point_c)->Compile(RHI_Shader_Compute, shader_dir + "copy.hlsl", async);
+            shader(Renderer_Shader::copy_point_c) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::copy_point_c)->AddDefine("COMPUTE");
+            shader(Renderer_Shader::copy_point_c)->Compile(RHI_Shader_Compute, shader_dir + "copy.hlsl", async);
 
-            shader(RendererShader::copy_bilinear_c) = make_shared<RHI_Shader>();
-            shader(RendererShader::copy_bilinear_c)->AddDefine("COMPUTE");
-            shader(RendererShader::copy_bilinear_c)->AddDefine("BILINEAR");
-            shader(RendererShader::copy_bilinear_c)->Compile(RHI_Shader_Compute, shader_dir + "copy.hlsl", async);
+            shader(Renderer_Shader::copy_bilinear_c) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::copy_bilinear_c)->AddDefine("COMPUTE");
+            shader(Renderer_Shader::copy_bilinear_c)->AddDefine("BILINEAR");
+            shader(Renderer_Shader::copy_bilinear_c)->Compile(RHI_Shader_Compute, shader_dir + "copy.hlsl", async);
 
-            shader(RendererShader::copy_point_p) = make_shared<RHI_Shader>();
-            shader(RendererShader::copy_point_p)->AddDefine("PIXEL");
-            shader(RendererShader::copy_point_p)->Compile(RHI_Shader_Pixel, shader_dir + "copy.hlsl", async);
+            shader(Renderer_Shader::copy_point_p) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::copy_point_p)->AddDefine("PIXEL");
+            shader(Renderer_Shader::copy_point_p)->Compile(RHI_Shader_Pixel, shader_dir + "copy.hlsl", async);
 
-            shader(RendererShader::copy_bilinear_p) = make_shared<RHI_Shader>();
-            shader(RendererShader::copy_bilinear_p)->AddDefine("PIXEL");
-            shader(RendererShader::copy_bilinear_p)->AddDefine("BILINEAR");
-            shader(RendererShader::copy_bilinear_p)->Compile(RHI_Shader_Pixel, shader_dir + "copy.hlsl", async);
+            shader(Renderer_Shader::copy_bilinear_p) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::copy_bilinear_p)->AddDefine("PIXEL");
+            shader(Renderer_Shader::copy_bilinear_p)->AddDefine("BILINEAR");
+            shader(Renderer_Shader::copy_bilinear_p)->Compile(RHI_Shader_Pixel, shader_dir + "copy.hlsl", async);
         }
 
         // Blur
         {
             // Gaussian
-            shader(RendererShader::blur_gaussian_c) = make_shared<RHI_Shader>();
-            shader(RendererShader::blur_gaussian_c)->AddDefine("PASS_BLUR_GAUSSIAN");
-            shader(RendererShader::blur_gaussian_c)->Compile(RHI_Shader_Compute, shader_dir + "blur.hlsl", async);
+            shader(Renderer_Shader::blur_gaussian_c) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::blur_gaussian_c)->AddDefine("PASS_BLUR_GAUSSIAN");
+            shader(Renderer_Shader::blur_gaussian_c)->Compile(RHI_Shader_Compute, shader_dir + "blur.hlsl", async);
 
             // Gaussian bilateral 
-            shader(RendererShader::blur_gaussian_bilaterial_c) = make_shared<RHI_Shader>();
-            shader(RendererShader::blur_gaussian_bilaterial_c)->AddDefine("PASS_BLUR_BILATERAL_GAUSSIAN");
-            shader(RendererShader::blur_gaussian_bilaterial_c)->Compile(RHI_Shader_Compute, shader_dir + "blur.hlsl", async);
+            shader(Renderer_Shader::blur_gaussian_bilaterial_c) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::blur_gaussian_bilaterial_c)->AddDefine("PASS_BLUR_BILATERAL_GAUSSIAN");
+            shader(Renderer_Shader::blur_gaussian_bilaterial_c)->Compile(RHI_Shader_Compute, shader_dir + "blur.hlsl", async);
         }
 
         // Bloom
         {
             // Downsample luminance
-            shader(RendererShader::bloom_luminance_c) = make_shared<RHI_Shader>();
-            shader(RendererShader::bloom_luminance_c)->AddDefine("LUMINANCE");
-            shader(RendererShader::bloom_luminance_c)->Compile(RHI_Shader_Compute, shader_dir + "bloom.hlsl", async);
+            shader(Renderer_Shader::bloom_luminance_c) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::bloom_luminance_c)->AddDefine("LUMINANCE");
+            shader(Renderer_Shader::bloom_luminance_c)->Compile(RHI_Shader_Compute, shader_dir + "bloom.hlsl", async);
 
             // Upsample blend (with previous mip)
-            shader(RendererShader::bloom_upsample_blend_mip_c) = make_shared<RHI_Shader>();
-            shader(RendererShader::bloom_upsample_blend_mip_c)->AddDefine("UPSAMPLE_BLEND_MIP");
-            shader(RendererShader::bloom_upsample_blend_mip_c)->Compile(RHI_Shader_Compute, shader_dir + "bloom.hlsl", async);
+            shader(Renderer_Shader::bloom_upsample_blend_mip_c) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::bloom_upsample_blend_mip_c)->AddDefine("UPSAMPLE_BLEND_MIP");
+            shader(Renderer_Shader::bloom_upsample_blend_mip_c)->Compile(RHI_Shader_Compute, shader_dir + "bloom.hlsl", async);
 
             // Upsample blend (with frame)
-            shader(RendererShader::bloom_blend_frame_c) = make_shared<RHI_Shader>();
-            shader(RendererShader::bloom_blend_frame_c)->AddDefine("BLEND_FRAME");
-            shader(RendererShader::bloom_blend_frame_c)->Compile(RHI_Shader_Compute, shader_dir + "bloom.hlsl", async);
+            shader(Renderer_Shader::bloom_blend_frame_c) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::bloom_blend_frame_c)->AddDefine("BLEND_FRAME");
+            shader(Renderer_Shader::bloom_blend_frame_c)->Compile(RHI_Shader_Compute, shader_dir + "bloom.hlsl", async);
         }
 
         // Film grain
-        shader(RendererShader::film_grain_c) = make_shared<RHI_Shader>();
-        shader(RendererShader::film_grain_c)->Compile(RHI_Shader_Compute, shader_dir + "film_grain.hlsl", async);
+        shader(Renderer_Shader::film_grain_c) = make_shared<RHI_Shader>();
+        shader(Renderer_Shader::film_grain_c)->Compile(RHI_Shader_Compute, shader_dir + "film_grain.hlsl", async);
 
         // Chromatic aberration
-        shader(RendererShader::chromatic_aberration_c) = make_shared<RHI_Shader>();
-        shader(RendererShader::chromatic_aberration_c)->AddDefine("PASS_CHROMATIC_ABERRATION");
-        shader(RendererShader::chromatic_aberration_c)->Compile(RHI_Shader_Compute, shader_dir + "chromatic_aberration.hlsl", async);
+        shader(Renderer_Shader::chromatic_aberration_c) = make_shared<RHI_Shader>();
+        shader(Renderer_Shader::chromatic_aberration_c)->AddDefine("PASS_CHROMATIC_ABERRATION");
+        shader(Renderer_Shader::chromatic_aberration_c)->Compile(RHI_Shader_Compute, shader_dir + "chromatic_aberration.hlsl", async);
 
         // Tone-mapping & gamma correction
-        shader(RendererShader::tonemapping_gamma_correction_c) = make_shared<RHI_Shader>();
-        shader(RendererShader::tonemapping_gamma_correction_c)->Compile(RHI_Shader_Compute, shader_dir + "tone_mapping_gamma_correction.hlsl", async);
+        shader(Renderer_Shader::tonemapping_gamma_correction_c) = make_shared<RHI_Shader>();
+        shader(Renderer_Shader::tonemapping_gamma_correction_c)->Compile(RHI_Shader_Compute, shader_dir + "tone_mapping_gamma_correction.hlsl", async);
 
         // FXAA
-        shader(RendererShader::fxaa_c) = make_shared<RHI_Shader>();
-        shader(RendererShader::fxaa_c)->Compile(RHI_Shader_Compute, shader_dir + "fxaa.hlsl", async);
+        shader(Renderer_Shader::fxaa_c) = make_shared<RHI_Shader>();
+        shader(Renderer_Shader::fxaa_c)->Compile(RHI_Shader_Compute, shader_dir + "fxaa.hlsl", async);
 
         // Depth of Field
         {
-            shader(RendererShader::dof_downsample_coc_c) = make_shared<RHI_Shader>();
-            shader(RendererShader::dof_downsample_coc_c)->AddDefine("DOWNSAMPLE_CIRCLE_OF_CONFUSION");
-            shader(RendererShader::dof_downsample_coc_c)->Compile(RHI_Shader_Compute, shader_dir + "depth_of_field.hlsl", async);
+            shader(Renderer_Shader::dof_downsample_coc_c) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::dof_downsample_coc_c)->AddDefine("DOWNSAMPLE_CIRCLE_OF_CONFUSION");
+            shader(Renderer_Shader::dof_downsample_coc_c)->Compile(RHI_Shader_Compute, shader_dir + "depth_of_field.hlsl", async);
 
-            shader(RendererShader::dof_bokeh_c) = make_shared<RHI_Shader>();
-            shader(RendererShader::dof_bokeh_c)->AddDefine("BOKEH");
-            shader(RendererShader::dof_bokeh_c)->Compile(RHI_Shader_Compute, shader_dir + "depth_of_field.hlsl", async);
+            shader(Renderer_Shader::dof_bokeh_c) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::dof_bokeh_c)->AddDefine("BOKEH");
+            shader(Renderer_Shader::dof_bokeh_c)->Compile(RHI_Shader_Compute, shader_dir + "depth_of_field.hlsl", async);
 
-            shader(RendererShader::dof_tent_c) = make_shared<RHI_Shader>();
-            shader(RendererShader::dof_tent_c)->AddDefine("TENT");
-            shader(RendererShader::dof_tent_c)->Compile(RHI_Shader_Compute, shader_dir + "depth_of_field.hlsl", async);
+            shader(Renderer_Shader::dof_tent_c) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::dof_tent_c)->AddDefine("TENT");
+            shader(Renderer_Shader::dof_tent_c)->Compile(RHI_Shader_Compute, shader_dir + "depth_of_field.hlsl", async);
 
-            shader(RendererShader::dof_upscale_blend_c) = make_shared<RHI_Shader>();
-            shader(RendererShader::dof_upscale_blend_c)->AddDefine("UPSCALE_BLEND");
-            shader(RendererShader::dof_upscale_blend_c)->Compile(RHI_Shader_Compute, shader_dir + "depth_of_field.hlsl", async);
+            shader(Renderer_Shader::dof_upscale_blend_c) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::dof_upscale_blend_c)->AddDefine("UPSCALE_BLEND");
+            shader(Renderer_Shader::dof_upscale_blend_c)->Compile(RHI_Shader_Compute, shader_dir + "depth_of_field.hlsl", async);
         }
 
         // Motion Blur
-        shader(RendererShader::motion_blur_c) = make_shared<RHI_Shader>();
-        shader(RendererShader::motion_blur_c)->Compile(RHI_Shader_Compute, shader_dir + "motion_blur.hlsl", async);
+        shader(Renderer_Shader::motion_blur_c) = make_shared<RHI_Shader>();
+        shader(Renderer_Shader::motion_blur_c)->Compile(RHI_Shader_Compute, shader_dir + "motion_blur.hlsl", async);
 
         // Dithering
-        shader(RendererShader::debanding_c) = make_shared<RHI_Shader>();
-        shader(RendererShader::debanding_c)->Compile(RHI_Shader_Compute, shader_dir + "debanding.hlsl", async);
+        shader(Renderer_Shader::debanding_c) = make_shared<RHI_Shader>();
+        shader(Renderer_Shader::debanding_c)->Compile(RHI_Shader_Compute, shader_dir + "debanding.hlsl", async);
 
         // SSGI
-        shader(RendererShader::ssgi_c) = make_shared<RHI_Shader>();
-        shader(RendererShader::ssgi_c)->Compile(RHI_Shader_Compute, shader_dir + "ssgi.hlsl", async);
+        shader(Renderer_Shader::ssgi_c) = make_shared<RHI_Shader>();
+        shader(Renderer_Shader::ssgi_c)->Compile(RHI_Shader_Compute, shader_dir + "ssgi.hlsl", async);
 
         // Light
         {
-            shader(RendererShader::light_composition_c) = make_shared<RHI_Shader>();
-            shader(RendererShader::light_composition_c)->Compile(RHI_Shader_Compute, shader_dir + "light_composition.hlsl", async);
+            shader(Renderer_Shader::light_composition_c) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::light_composition_c)->Compile(RHI_Shader_Compute, shader_dir + "light_composition.hlsl", async);
 
-            shader(RendererShader::light_image_based_p) = make_shared<RHI_Shader>();
-            shader(RendererShader::light_image_based_p)->Compile(RHI_Shader_Pixel, shader_dir + "light_image_based.hlsl", async);
+            shader(Renderer_Shader::light_image_based_p) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::light_image_based_p)->Compile(RHI_Shader_Pixel, shader_dir + "light_image_based.hlsl", async);
         }
 
         // SSR
-        shader(RendererShader::ssr_c) = make_shared<RHI_Shader>();
-        shader(RendererShader::ssr_c)->Compile(RHI_Shader_Compute, shader_dir + "ssr.hlsl", async);
+        shader(Renderer_Shader::ssr_c) = make_shared<RHI_Shader>();
+        shader(Renderer_Shader::ssr_c)->Compile(RHI_Shader_Compute, shader_dir + "ssr.hlsl", async);
 
         // AMD FidelityFX CAS - Contrast Adaptive Sharpening
-        shader(RendererShader::ffx_cas_c) = make_shared<RHI_Shader>();
-        shader(RendererShader::ffx_cas_c)->Compile(RHI_Shader_Compute, shader_dir + "amd_fidelity_fx\\cas.hlsl", async);
+        shader(Renderer_Shader::ffx_cas_c) = make_shared<RHI_Shader>();
+        shader(Renderer_Shader::ffx_cas_c)->Compile(RHI_Shader_Compute, shader_dir + "amd_fidelity_fx\\cas.hlsl", async);
 
         // Compiled immediately, they are needed the moment the engine starts.
         {
             // AMD FidelityFX SPD - Single Pass Downsample
-            shader(RendererShader::ffx_spd_c) = make_shared<RHI_Shader>();
-            shader(RendererShader::ffx_spd_c)->Compile(RHI_Shader_Compute, shader_dir + "amd_fidelity_fx\\spd.hlsl", false);
+            shader(Renderer_Shader::ffx_spd_c) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::ffx_spd_c)->Compile(RHI_Shader_Compute, shader_dir + "amd_fidelity_fx\\spd.hlsl", false);
 
             // BRDF - Specular Lut
-            shader(RendererShader::brdf_specular_lut_c) = make_shared<RHI_Shader>();
-            shader(RendererShader::brdf_specular_lut_c)->Compile(RHI_Shader_Compute, shader_dir + "brdf_specular_lut.hlsl", false); }
+            shader(Renderer_Shader::brdf_specular_lut_c) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::brdf_specular_lut_c)->Compile(RHI_Shader_Compute, shader_dir + "brdf_specular_lut.hlsl", false); }
     }
 
     void Renderer::CreateFonts()
@@ -478,34 +477,34 @@ namespace Spartan
 
     void Renderer::CreateStandardMeshes()
     {
-        auto create_mesh = [](const RendererStandardMesh type)
+        auto create_mesh = [](const Renderer_StandardMesh type)
         {
             const string project_directory = ResourceCache::GetProjectDirectory();
             shared_ptr<Mesh> mesh = make_shared<Mesh>();
             vector<RHI_Vertex_PosTexNorTan> vertices;
             vector<uint32_t> indices;
 
-            if (type == RendererStandardMesh::cube)
+            if (type == Renderer_StandardMesh::Cube)
             {
                 Geometry::CreateCube(&vertices, &indices);
                 mesh->SetResourceFilePath(project_directory + "standard_mesh_cube" + EXTENSION_MODEL);
             }
-            else if (type == RendererStandardMesh::quad)
+            else if (type == Renderer_StandardMesh::Quad)
             {
                 Geometry::CreateQuad(&vertices, &indices);
                 mesh->SetResourceFilePath(project_directory + "standard_mesh_quad" + EXTENSION_MODEL);
             }
-            else if (type == RendererStandardMesh::sphere)
+            else if (type == Renderer_StandardMesh::Sphere)
             {
                 Geometry::CreateSphere(&vertices, &indices);
                 mesh->SetResourceFilePath(project_directory + "standard_mesh_sphere" + EXTENSION_MODEL);
             }
-            else if (type == RendererStandardMesh::cylinder)
+            else if (type == Renderer_StandardMesh::Cylinder)
             {
                 Geometry::CreateCylinder(&vertices, &indices);
                 mesh->SetResourceFilePath(project_directory + "standard_mesh_cylinder" + EXTENSION_MODEL);
             }
-            else if (type == RendererStandardMesh::cone)
+            else if (type == Renderer_StandardMesh::Cone)
             {
                 Geometry::CreateCone(&vertices, &indices);
                 mesh->SetResourceFilePath(project_directory + "standard_mesh_cone" + EXTENSION_MODEL);
@@ -520,11 +519,11 @@ namespace Spartan
             m_standard_meshes[static_cast<uint8_t>(type)] = mesh;
         };
 
-        create_mesh(RendererStandardMesh::cube);
-        create_mesh(RendererStandardMesh::quad);
-        create_mesh(RendererStandardMesh::sphere);
-        create_mesh(RendererStandardMesh::cylinder);
-        create_mesh(RendererStandardMesh::cone);
+        create_mesh(Renderer_StandardMesh::Cube);
+        create_mesh(Renderer_StandardMesh::Quad);
+        create_mesh(Renderer_StandardMesh::Sphere);
+        create_mesh(Renderer_StandardMesh::Cylinder);
+        create_mesh(Renderer_StandardMesh::Cone);
 
         // misc
         m_vertex_buffer_lines = make_shared<RHI_VertexBuffer>(true, "lines");
@@ -538,38 +537,38 @@ namespace Spartan
 
         // Noise textures
         {
-            standard_texture(RendererStandardTexture::noise_normal) = make_shared<RHI_Texture2D>(RHI_Texture_Srv, "standard_noise_normal");
-            standard_texture(RendererStandardTexture::noise_normal)->LoadFromFile(dir_texture + "noise_normal.png");
+            standard_texture(Renderer_StandardTexture::Noise_normal) = make_shared<RHI_Texture2D>(RHI_Texture_Srv, "standard_noise_normal");
+            standard_texture(Renderer_StandardTexture::Noise_normal)->LoadFromFile(dir_texture + "noise_normal.png");
 
-            standard_texture(RendererStandardTexture::noise_blue) = static_pointer_cast<RHI_Texture>(make_shared<RHI_Texture2DArray>(RHI_Texture_Srv, "standard_noise_blue"));
-            standard_texture(RendererStandardTexture::noise_blue)->LoadFromFile(dir_texture + "noise_blue_0.png");
+            standard_texture(Renderer_StandardTexture::Noise_blue) = static_pointer_cast<RHI_Texture>(make_shared<RHI_Texture2DArray>(RHI_Texture_Srv, "standard_noise_blue"));
+            standard_texture(Renderer_StandardTexture::Noise_blue)->LoadFromFile(dir_texture + "noise_blue_0.png");
         }
 
         // Color textures
         {
-            standard_texture(RendererStandardTexture::white) = make_shared<RHI_Texture2D>(RHI_Texture_Srv, "standard_white");
-            standard_texture(RendererStandardTexture::white)->LoadFromFile(dir_texture + "white.png");
+            standard_texture(Renderer_StandardTexture::White) = make_shared<RHI_Texture2D>(RHI_Texture_Srv, "standard_white");
+            standard_texture(Renderer_StandardTexture::White)->LoadFromFile(dir_texture + "white.png");
 
-            standard_texture(RendererStandardTexture::black) = make_shared<RHI_Texture2D>(RHI_Texture_Srv, "standard_black");
-            standard_texture(RendererStandardTexture::black)->LoadFromFile(dir_texture + "black.png");
+            standard_texture(Renderer_StandardTexture::Black) = make_shared<RHI_Texture2D>(RHI_Texture_Srv, "standard_black");
+            standard_texture(Renderer_StandardTexture::Black)->LoadFromFile(dir_texture + "black.png");
 
-            standard_texture(RendererStandardTexture::transparent) = make_shared<RHI_Texture2D>(RHI_Texture_Srv, "standard_transparent");
-            standard_texture(RendererStandardTexture::transparent)->LoadFromFile(dir_texture + "transparent.png");
+            standard_texture(Renderer_StandardTexture::Transparent) = make_shared<RHI_Texture2D>(RHI_Texture_Srv, "standard_transparent");
+            standard_texture(Renderer_StandardTexture::Transparent)->LoadFromFile(dir_texture + "transparent.png");
 
-            standard_texture(RendererStandardTexture::checkerboard) = make_shared<RHI_Texture2D>(RHI_Texture_Srv, "standard_transparent");
-            standard_texture(RendererStandardTexture::checkerboard)->LoadFromFile(dir_texture + "no_texture.png");
+            standard_texture(Renderer_StandardTexture::Checkerboard) = make_shared<RHI_Texture2D>(RHI_Texture_Srv, "standard_transparent");
+            standard_texture(Renderer_StandardTexture::Checkerboard)->LoadFromFile(dir_texture + "no_texture.png");
         }
 
         // Gizmo icons
         {
-            standard_texture(RendererStandardTexture::gizmo_light_directional) = make_shared<RHI_Texture2D>(RHI_Texture_Srv, "standard_icon_light_directional");
-            standard_texture(RendererStandardTexture::gizmo_light_directional)->LoadFromFile(dir_texture + "sun.png");
+            standard_texture(Renderer_StandardTexture::Gizmo_light_directional) = make_shared<RHI_Texture2D>(RHI_Texture_Srv, "standard_icon_light_directional");
+            standard_texture(Renderer_StandardTexture::Gizmo_light_directional)->LoadFromFile(dir_texture + "sun.png");
 
-            standard_texture(RendererStandardTexture::gizmo_light_point) = make_shared<RHI_Texture2D>(RHI_Texture_Srv, "standard_icon_light_point");
-            standard_texture(RendererStandardTexture::gizmo_light_point)->LoadFromFile(dir_texture + "light_bulb.png");
+            standard_texture(Renderer_StandardTexture::Gizmo_light_point) = make_shared<RHI_Texture2D>(RHI_Texture_Srv, "standard_icon_light_point");
+            standard_texture(Renderer_StandardTexture::Gizmo_light_point)->LoadFromFile(dir_texture + "light_bulb.png");
 
-            standard_texture(RendererStandardTexture::gizmo_light_spot) = make_shared<RHI_Texture2D>(RHI_Texture_Srv, "standard_icon_light_spot");
-            standard_texture(RendererStandardTexture::gizmo_light_spot)->LoadFromFile(dir_texture + "flashlight.png");
+            standard_texture(Renderer_StandardTexture::Gizmo_light_spot) = make_shared<RHI_Texture2D>(RHI_Texture_Srv, "standard_icon_light_spot");
+            standard_texture(Renderer_StandardTexture::Gizmo_light_spot)->LoadFromFile(dir_texture + "flashlight.png");
         }
     }
 
@@ -599,37 +598,37 @@ namespace Spartan
         return m_constant_buffers;
     }
 
-    shared_ptr<RHI_RasterizerState> Renderer::GetRasterizerState(const RendererRasterizerState type)
+    shared_ptr<RHI_RasterizerState> Renderer::GetRasterizerState(const Renderer_RasterizerState type)
     {
         return m_rasterizer_states[static_cast<uint8_t>(type)];
     }
 
-    shared_ptr<RHI_DepthStencilState> Renderer::GetDepthStencilState(const RendererDepthStencilState type)
+    shared_ptr<RHI_DepthStencilState> Renderer::GetDepthStencilState(const Renderer_DepthStencilState type)
     {
         return m_depth_stencil_states[static_cast<uint8_t>(type)];
     }
 
-    shared_ptr<RHI_BlendState> Renderer::GetBlendState(const RendererBlendState type)
+    shared_ptr<RHI_BlendState> Renderer::GetBlendState(const Renderer_BlendState type)
     {
         return m_blend_states[static_cast<uint8_t>(type)];
     }
 
-    shared_ptr<RHI_Texture> Renderer::GetRenderTarget(const RendererRenderTexture type)
+    shared_ptr<RHI_Texture> Renderer::GetRenderTarget(const Renderer_RenderTexture type)
     {
         return m_render_targets[static_cast<uint8_t>(type)];
     }
 
-    shared_ptr<RHI_Shader> Renderer::GetShader(const RendererShader type)
+    shared_ptr<RHI_Shader> Renderer::GetShader(const Renderer_Shader type)
     {
         return m_shaders[static_cast<uint8_t>(type)];
     }
 
-    shared_ptr<RHI_Sampler> Renderer::GetSampler(const RendererSampler type)
+    shared_ptr<RHI_Sampler> Renderer::GetSampler(const Renderer_Sampler type)
     {
         return m_samplers[static_cast<uint8_t>(type)];
     }
 
-    shared_ptr<RHI_ConstantBuffer> Renderer::GetConstantBuffer(const RendererConstantBuffer type)
+    shared_ptr<RHI_ConstantBuffer> Renderer::GetConstantBuffer(const Renderer_ConstantBuffer type)
     {
         return m_constant_buffers[static_cast<uint8_t>(type)];
     }
@@ -639,12 +638,12 @@ namespace Spartan
         return m_sb_spd_counter;
     }
 
-    shared_ptr<RHI_Texture> Renderer::GetStandardTexture(const RendererStandardTexture type)
+    shared_ptr<RHI_Texture> Renderer::GetStandardTexture(const Renderer_StandardTexture type)
     {
         return m_standard_textures[static_cast<uint8_t>(type)];
     }
 
-    shared_ptr<Mesh> Renderer::GetStandardMesh(const RendererStandardMesh type)
+    shared_ptr<Mesh> Renderer::GetStandardMesh(const Renderer_StandardMesh type)
     {
         return m_standard_meshes[static_cast<uint8_t>(type)];
     }

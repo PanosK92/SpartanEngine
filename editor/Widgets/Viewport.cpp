@@ -96,7 +96,7 @@ void Viewport::TickVisible()
     }
 
     // Entity transform gizmo (will only show if an entity has been picked)
-    if (Renderer::GetOption<bool>(Spartan::RendererOption::Debug_TransformHandle))
+    if (Renderer::GetOption<bool>(Spartan::Renderer_Option::Debug_TransformHandle))
     {
         ImGui::TransformGizmo::tick();
     }

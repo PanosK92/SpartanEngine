@@ -100,7 +100,7 @@ void TextureViewer::TickVisible()
     }
 
     // Display the selected texture
-    if (shared_ptr<RHI_Texture> texture = Renderer::GetRenderTarget(static_cast<RendererRenderTexture>(m_texture_index)))
+    if (shared_ptr<RHI_Texture> texture = Renderer::GetRenderTarget(static_cast<Renderer_RenderTexture>(m_texture_index)))
     {
         // Calculate a percentage that once multiplied with the texture dimensions, the texture will always be displayed within the window.
         float bottom_padding              = 200.0f; // to fit the information text

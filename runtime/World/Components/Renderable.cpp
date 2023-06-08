@@ -50,7 +50,7 @@ namespace Spartan
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometry_name,               string);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_mesh,                        shared_ptr<Mesh>);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_bounding_box,                BoundingBox);
-        SP_REGISTER_ATTRIBUTE_GET_SET(RendererStandardMesh, SetGeometry, RendererStandardMesh);
+        SP_REGISTER_ATTRIBUTE_GET_SET(Renderer_StandardMesh, SetGeometry, Renderer_StandardMesh);
     }
 
     Renderable::~Renderable()
@@ -81,7 +81,7 @@ namespace Spartan
     void Renderable::Deserialize(FileStream* stream)
     {
         // Geometry
-        m_geometry_type          = static_cast<RendererStandardMesh>(stream->ReadAs<uint32_t>());
+        m_geometry_type          = static_cast<Renderer_StandardMesh>(stream->ReadAs<uint32_t>());
         m_geometry_index_offset  = stream->ReadAs<uint32_t>();
         m_geometry_index_count   = stream->ReadAs<uint32_t>();
         m_geometry_vertex_offset = stream->ReadAs<uint32_t>();
@@ -92,7 +92,7 @@ namespace Spartan
         m_mesh = ResourceCache::GetByName<Mesh>(model_name);
 
         // If it was a default mesh, we have to reconstruct it
-        if (m_geometry_type != RendererStandardMesh::custom)
+        if (m_geometry_type != Renderer_StandardMesh::Custom)
         {
             SetGeometry(m_geometry_type);
         }
@@ -123,11 +123,11 @@ namespace Spartan
         m_mesh                   = mesh;
     }
 
-    void Renderable::SetGeometry(const RendererStandardMesh type)
+    void Renderable::SetGeometry(const Renderer_StandardMesh type)
     {
         m_geometry_type = type;
 
-        if (type != RendererStandardMesh::custom)
+        if (type != Renderer_StandardMesh::Custom)
         {
             shared_ptr<Mesh> mesh = Renderer::GetStandardMesh(type);
 
@@ -214,7 +214,7 @@ namespace Spartan
         material->SetProperty(MaterialProperty::ColorA, 1.0f);
 
         // Set default texture
-        material->SetTexture(MaterialTexture::Color, Renderer::GetStandardTexture(RendererStandardTexture::checkerboard));
+        material->SetTexture(MaterialTexture::Color, Renderer::GetStandardTexture(Renderer_StandardTexture::Checkerboard));
 
         // Set material
         SetMaterial(material);

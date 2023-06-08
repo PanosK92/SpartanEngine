@@ -98,7 +98,7 @@ namespace Spartan
     }
 
     // misc
-    unordered_map<RendererEntity, vector<shared_ptr<Entity>>> m_renderables;
+    unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>> m_renderables;
     array<Material*, m_max_material_instances> m_material_instances;
 
     // misc extern
@@ -154,7 +154,7 @@ namespace Spartan
             static_cast<uint32_t>(m_resolution_output.x),
             static_cast<uint32_t>(m_resolution_output.y),
             // Present mode: For v-sync, we could Mailbox for lower latency, but Fifo is always supported, so we'll assume that
-            GetOption<bool>(RendererOption::Vsync) ? RHI_Present_Mode::Fifo : RHI_Present_Mode::Immediate,
+            GetOption<bool>(Renderer_Option::Vsync) ? RHI_Present_Mode::Fifo : RHI_Present_Mode::Immediate,
             m_swap_chain_buffer_count,
             "renderer"
         );
@@ -164,34 +164,34 @@ namespace Spartan
         m_cmd_pool->AllocateCommandLists(RHI_Queue_Type::Graphics, 2, 2);
 
         // Adjust render option to reflect whether the swapchain is HDR or not
-        SetOption(RendererOption::Hdr, m_swap_chain->IsHdr());
+        SetOption(Renderer_Option::Hdr, m_swap_chain->IsHdr());
 
         // Default options
         m_options.fill(0.0f);
-        SetOption(RendererOption::Bloom,                  0.05f); // Non-zero values activate it and define the blend factor.
-        SetOption(RendererOption::MotionBlur,             1.0f);
-        SetOption(RendererOption::Ssgi,                   1.0f);
-        SetOption(RendererOption::ScreenSpaceShadows,     1.0f);
-        SetOption(RendererOption::ScreenSpaceReflections, 1.0f);
-        SetOption(RendererOption::Anisotropy,             16.0f);
-        SetOption(RendererOption::ShadowResolution,       2048.0f);
-        SetOption(RendererOption::Tonemapping,            static_cast<float>(TonemappingMode::Disabled));
-        SetOption(RendererOption::Gamma,                  2.2f);
-        SetOption(RendererOption::Exposure,               1.0f);
-        SetOption(RendererOption::PaperWhite,             150.0f); // nits
-        SetOption(RendererOption::Sharpness,              0.5f);
-        SetOption(RendererOption::Fog,                    0.0f);
-        SetOption(RendererOption::Antialiasing,           static_cast<float>(AntialiasingMode::TaaFxaa)); // This is using FSR 2 for TAA
-        SetOption(RendererOption::Upsampling,             static_cast<float>(UpsamplingMode::FSR2));
+        SetOption(Renderer_Option::Bloom,                  0.05f); // Non-zero values activate it and define the blend factor.
+        SetOption(Renderer_Option::MotionBlur,             1.0f);
+        SetOption(Renderer_Option::Ssgi,                   1.0f);
+        SetOption(Renderer_Option::ScreenSpaceShadows,     1.0f);
+        SetOption(Renderer_Option::ScreenSpaceReflections, 1.0f);
+        SetOption(Renderer_Option::Anisotropy,             16.0f);
+        SetOption(Renderer_Option::ShadowResolution,       2048.0f);
+        SetOption(Renderer_Option::Tonemapping,            static_cast<float>(Renderer_Tonemapping::Disabled));
+        SetOption(Renderer_Option::Gamma,                  2.2f);
+        SetOption(Renderer_Option::Exposure,               1.0f);
+        SetOption(Renderer_Option::PaperWhite,             150.0f); // nits
+        SetOption(Renderer_Option::Sharpness,              0.5f);
+        SetOption(Renderer_Option::Fog,                    0.0f);
+        SetOption(Renderer_Option::Antialiasing,           static_cast<float>(Renderer_Antialiasing::TaaFxaa)); // This is using FSR 2 for TAA
+        SetOption(Renderer_Option::Upsampling,             static_cast<float>(Renderer_Upsampling::FSR2));
         // Debug
-        SetOption(RendererOption::Debug_TransformHandle,    1.0f);
-        SetOption(RendererOption::Debug_SelectionOutline,   1.0f);
-        SetOption(RendererOption::Debug_Grid,               1.0f);
-        SetOption(RendererOption::Debug_ReflectionProbes,   1.0f);
-        SetOption(RendererOption::Debug_Lights,             1.0f);
-        SetOption(RendererOption::Debug_Physics,            0.0f);
-        SetOption(RendererOption::Debug_PerformanceMetrics, 1.0f);
-        SetOption(RendererOption::Vsync,                    0.0f);
+        SetOption(Renderer_Option::Debug_TransformHandle,    1.0f);
+        SetOption(Renderer_Option::Debug_SelectionOutline,   1.0f);
+        SetOption(Renderer_Option::Debug_Grid,               1.0f);
+        SetOption(Renderer_Option::Debug_ReflectionProbes,   1.0f);
+        SetOption(Renderer_Option::Debug_Lights,             1.0f);
+        SetOption(Renderer_Option::Debug_Physics,            0.0f);
+        SetOption(Renderer_Option::Debug_PerformanceMetrics, 1.0f);
+        SetOption(Renderer_Option::Vsync,                    0.0f);
         //SetOption(RendererOption::DepthOfField,        1.0f); // This is depth of field from ALDI, so until I improve it, it should be disabled by default.
         //SetOption(RendererOption::Render_DepthPrepass, 1.0f); // Depth-pre-pass is not always faster, so by default, it's disabled.
         //SetOption(RendererOption::Debanding,           1.0f); // Disable debanding as we shouldn't be seeing banding to begin with.
@@ -336,8 +336,8 @@ namespace Spartan
             }
 
             // Generate jitter sample in case FSR (which also does TAA) is enabled. D3D11 only receives FXAA so it's ignored at this point.
-            UpsamplingMode upsampling_mode = GetOption<UpsamplingMode>(RendererOption::Upsampling);
-            if ((upsampling_mode == UpsamplingMode::FSR2 || GetOption<AntialiasingMode>(RendererOption::Antialiasing) == AntialiasingMode::Taa) && RHI_Context::api_type != RHI_Api_Type::D3d11)
+            Renderer_Upsampling upsampling_mode = GetOption<Renderer_Upsampling>(Renderer_Option::Upsampling);
+            if ((upsampling_mode == Renderer_Upsampling::FSR2 || GetOption<Renderer_Antialiasing>(Renderer_Option::Antialiasing) == Renderer_Antialiasing::Taa) && RHI_Context::api_type != RHI_Api_Type::D3d11)
             {
                 RHI_FSR2::GenerateJitterSample(&m_jitter_offset.x, &m_jitter_offset.y);
                 m_jitter_offset.x          = (m_jitter_offset.x / m_resolution_render.x);
@@ -370,25 +370,25 @@ namespace Spartan
             m_cb_frame_cpu.taa_jitter_current     = m_jitter_offset;
             m_cb_frame_cpu.delta_time             = static_cast<float>(Timer::GetDeltaTimeSmoothedSec());
             m_cb_frame_cpu.time                   = static_cast<float>(Timer::GetTimeSec());
-            m_cb_frame_cpu.bloom_intensity        = GetOption<float>(RendererOption::Bloom);
-            m_cb_frame_cpu.sharpness              = GetOption<float>(RendererOption::Sharpness);
-            m_cb_frame_cpu.fog                    = GetOption<float>(RendererOption::Fog);
-            m_cb_frame_cpu.tonemapping            = GetOption<float>(RendererOption::Tonemapping);
-            m_cb_frame_cpu.gamma                  = GetOption<float>(RendererOption::Gamma);
-            m_cb_frame_cpu.exposure               = GetOption<float>(RendererOption::Exposure);
+            m_cb_frame_cpu.bloom_intensity        = GetOption<float>(Renderer_Option::Bloom);
+            m_cb_frame_cpu.sharpness              = GetOption<float>(Renderer_Option::Sharpness);
+            m_cb_frame_cpu.fog                    = GetOption<float>(Renderer_Option::Fog);
+            m_cb_frame_cpu.tonemapping            = GetOption<float>(Renderer_Option::Tonemapping);
+            m_cb_frame_cpu.gamma                  = GetOption<float>(Renderer_Option::Gamma);
+            m_cb_frame_cpu.exposure               = GetOption<float>(Renderer_Option::Exposure);
             m_cb_frame_cpu.luminance_min          = Display::GetLuminanceMin();
             m_cb_frame_cpu.luminance_max          = Display::GetLuminanceMax();
-            m_cb_frame_cpu.shadow_resolution      = GetOption<float>(RendererOption::ShadowResolution);
+            m_cb_frame_cpu.shadow_resolution      = GetOption<float>(Renderer_Option::ShadowResolution);
             m_cb_frame_cpu.frame                  = static_cast<uint32_t>(m_frame_num);
-            m_cb_frame_cpu.frame_mip_count        = GetRenderTarget(RendererRenderTexture::frame_render)->GetMipCount();
-            m_cb_frame_cpu.ssr_mip_count          = GetRenderTarget(RendererRenderTexture::ssr)->GetMipCount();
+            m_cb_frame_cpu.frame_mip_count        = GetRenderTarget(Renderer_RenderTexture::frame_render)->GetMipCount();
+            m_cb_frame_cpu.ssr_mip_count          = GetRenderTarget(Renderer_RenderTexture::ssr)->GetMipCount();
             m_cb_frame_cpu.resolution_environment = Vector2(GetEnvironmentTexture()->GetWidth(), GetEnvironmentTexture()->GetHeight());
 
             // These must match what Common_Buffer.hlsl is reading
-            m_cb_frame_cpu.set_bit(GetOption<bool>(RendererOption::ScreenSpaceReflections), 1 << 0);
-            m_cb_frame_cpu.set_bit(GetOption<bool>(RendererOption::Ssgi),                   1 << 1);
-            m_cb_frame_cpu.set_bit(GetOption<bool>(RendererOption::VolumetricFog),          1 << 2);
-            m_cb_frame_cpu.set_bit(GetOption<bool>(RendererOption::ScreenSpaceShadows),     1 << 3);
+            m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::ScreenSpaceReflections), 1 << 0);
+            m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::Ssgi),                   1 << 1);
+            m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::VolumetricFog),          1 << 2);
+            m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::ScreenSpaceShadows),     1 << 3);
         }
 
         Lines_PreMain();
@@ -502,18 +502,18 @@ namespace Spartan
 
     void Renderer::UpdateConstantBufferFrame(RHI_CommandList* cmd_list)
     {
-        GetConstantBuffer(RendererConstantBuffer::frame)->Update(&m_cb_frame_cpu);
+        GetConstantBuffer(Renderer_ConstantBuffer::Frame)->Update(&m_cb_frame_cpu);
 
         // Bind because the offset just changed
-        cmd_list->SetConstantBuffer(RendererBindingsCb::frame, RHI_Shader_Vertex | RHI_Shader_Pixel | RHI_Shader_Compute, GetConstantBuffer(RendererConstantBuffer::frame));
+        cmd_list->SetConstantBuffer(Renderer_BindingsCb::frame, RHI_Shader_Vertex | RHI_Shader_Pixel | RHI_Shader_Compute, GetConstantBuffer(Renderer_ConstantBuffer::Frame));
     }
 
     void Renderer::UpdateConstantBufferUber(RHI_CommandList* cmd_list)
     {
-        GetConstantBuffer(RendererConstantBuffer::uber)->Update(&m_cb_uber_cpu);
+        GetConstantBuffer(Renderer_ConstantBuffer::Uber)->Update(&m_cb_uber_cpu);
 
         // Bind because the offset just changed
-        cmd_list->SetConstantBuffer(RendererBindingsCb::uber, RHI_Shader_Vertex | RHI_Shader_Pixel | RHI_Shader_Compute, GetConstantBuffer(RendererConstantBuffer::uber));
+        cmd_list->SetConstantBuffer(Renderer_BindingsCb::uber, RHI_Shader_Vertex | RHI_Shader_Pixel | RHI_Shader_Compute, GetConstantBuffer(Renderer_ConstantBuffer::Uber));
     }
 
     void Renderer::UpdateConstantBufferLight(RHI_CommandList* cmd_list, shared_ptr<Light> light, const RHI_Shader_Type scope)
@@ -543,10 +543,10 @@ namespace Spartan
         m_cb_light_cpu.options     |= light->GetShadowsScreenSpaceEnabled()           ? (1 << 5) : 0;
         m_cb_light_cpu.options     |= light->GetVolumetricEnabled()                   ? (1 << 6) : 0;
 
-        GetConstantBuffer(RendererConstantBuffer::light)->Update(&m_cb_light_cpu);
+        GetConstantBuffer(Renderer_ConstantBuffer::Light)->Update(&m_cb_light_cpu);
 
         // Bind because the offset just changed
-        cmd_list->SetConstantBuffer(RendererBindingsCb::light, scope, GetConstantBuffer(RendererConstantBuffer::light));
+        cmd_list->SetConstantBuffer(Renderer_BindingsCb::light, scope, GetConstantBuffer(Renderer_ConstantBuffer::Light));
     }
 
     void Renderer::UpdateConstantBufferMaterial(RHI_CommandList* cmd_list)
@@ -566,10 +566,10 @@ namespace Spartan
             m_cb_material_cpu.materials[i].sheen_sheenTint_pad.y                   = material->GetProperty(MaterialProperty::SheenTint);
         }
 
-        GetConstantBuffer(RendererConstantBuffer::material)->Update(&m_cb_material_cpu);
+        GetConstantBuffer(Renderer_ConstantBuffer::Material)->Update(&m_cb_material_cpu);
 
         // Bind because the offset just changed
-        cmd_list->SetConstantBuffer(RendererBindingsCb::material, RHI_Shader_Pixel, GetConstantBuffer(RendererConstantBuffer::material));
+        cmd_list->SetConstantBuffer(Renderer_BindingsCb::material, RHI_Shader_Pixel, GetConstantBuffer(Renderer_ConstantBuffer::Material));
     }
 
     void Renderer::OnWorldResolved(sp_variant data)
@@ -646,30 +646,30 @@ namespace Spartan
 
                     if (is_visible)
                     {
-                        m_renderables[is_transparent ? RendererEntity::geometry_transparent : RendererEntity::geometry_opaque].emplace_back(entity);
+                        m_renderables[is_transparent ? Renderer_Entity::Geometry_transparent : Renderer_Entity::Geometry_opaque].emplace_back(entity);
                     }
                 }
 
                 if (shared_ptr<Light> light = entity->GetComponent<Light>())
                 {
-                    m_renderables[RendererEntity::light].emplace_back(entity);
+                    m_renderables[Renderer_Entity::Light].emplace_back(entity);
                 }
 
                 if (shared_ptr<Camera> camera = entity->GetComponent<Camera>())
                 {
-                    m_renderables[RendererEntity::camera].emplace_back(entity);
+                    m_renderables[Renderer_Entity::Camera].emplace_back(entity);
                     m_camera = camera;
                 }
 
                 if (shared_ptr<ReflectionProbe> reflection_probe = entity->GetComponent<ReflectionProbe>())
                 {
-                    m_renderables[RendererEntity::reflection_probe].emplace_back(entity);
+                    m_renderables[Renderer_Entity::Reflection_probe].emplace_back(entity);
                 }
             }
 
             // Sort them by distance
-            SortRenderables(&m_renderables[RendererEntity::geometry_opaque]);
-            SortRenderables(&m_renderables[RendererEntity::geometry_transparent]);
+            SortRenderables(&m_renderables[Renderer_Entity::Geometry_opaque]);
+            SortRenderables(&m_renderables[Renderer_Entity::Geometry_transparent]);
 
             m_renderables_pending.clear();
             m_add_new_entities = false;
@@ -750,7 +750,7 @@ namespace Spartan
 
     const shared_ptr<RHI_Texture> Renderer::GetEnvironmentTexture()
     {
-        return m_environment_texture ? m_environment_texture : GetStandardTexture(RendererStandardTexture::black);
+        return m_environment_texture ? m_environment_texture : GetStandardTexture(Renderer_StandardTexture::Black);
     }
 
     void Renderer::SetEnvironment(Environment* environment)
@@ -761,17 +761,17 @@ namespace Spartan
         m_environment_texture_dirty = true;
     }
 
-    void Renderer::SetOption(RendererOption option, float value)
+    void Renderer::SetOption(Renderer_Option option, float value)
     {
         // Clamp value
         {
             // Anisotropy
-            if (option == RendererOption::Anisotropy)
+            if (option == Renderer_Option::Anisotropy)
             {
                 value = Helper::Clamp(value, 0.0f, 16.0f);
             }
             // Shadow resolution
-            else if (option == RendererOption::ShadowResolution)
+            else if (option == Renderer_Option::ShadowResolution)
             {
                 value = Helper::Clamp(value, static_cast<float>(m_resolution_shadow_min), static_cast<float>(RHI_Device::GetMaxTexture2dDimension()));
             }
@@ -785,19 +785,19 @@ namespace Spartan
         {
             bool is_d3d11 = RHI_Context::api_type == RHI_Api_Type::D3d11;
 
-            if (is_d3d11 && option == RendererOption::Antialiasing && (value == static_cast<float>(AntialiasingMode::Taa) || value == static_cast<float>(AntialiasingMode::TaaFxaa)))
+            if (is_d3d11 && option == Renderer_Option::Antialiasing && (value == static_cast<float>(Renderer_Antialiasing::Taa) || value == static_cast<float>(Renderer_Antialiasing::TaaFxaa)))
             {
                 SP_LOG_WARNING("TAA is not supported on D3D11");
                 return;
             }
 
-            if (is_d3d11 && option == RendererOption::Upsampling && value == static_cast<float>(UpsamplingMode::FSR2))
+            if (is_d3d11 && option == Renderer_Option::Upsampling && value == static_cast<float>(Renderer_Upsampling::FSR2))
             {
                 SP_LOG_WARNING("FSR 2.0 is not supported on D3D11");
                 return;
             }
 
-            if (option == RendererOption::Hdr)
+            if (option == Renderer_Option::Hdr)
             {
                 if (value == 1.0f && !Display::GetHdr())
                 {
@@ -813,17 +813,17 @@ namespace Spartan
         // Handle cascading changes
         {
             // Antialiasing
-            if (option == RendererOption::Antialiasing)
+            if (option == Renderer_Option::Antialiasing)
             {
-                bool taa_enabled = value == static_cast<float>(AntialiasingMode::Taa) || value == static_cast<float>(AntialiasingMode::TaaFxaa);
-                bool fsr_enabled = GetOption<UpsamplingMode>(RendererOption::Upsampling) == UpsamplingMode::FSR2;
+                bool taa_enabled = value == static_cast<float>(Renderer_Antialiasing::Taa) || value == static_cast<float>(Renderer_Antialiasing::TaaFxaa);
+                bool fsr_enabled = GetOption<Renderer_Upsampling>(Renderer_Option::Upsampling) == Renderer_Upsampling::FSR2;
 
                 if (taa_enabled)
                 {
                     // Implicitly enable FSR since it's doing TAA.
                     if (!fsr_enabled)
                     {
-                        m_options[static_cast<uint32_t>(RendererOption::Upsampling)] = static_cast<float>(UpsamplingMode::FSR2);
+                        m_options[static_cast<uint32_t>(Renderer_Option::Upsampling)] = static_cast<float>(Renderer_Upsampling::FSR2);
                         RHI_FSR2::ResetHistory();
                         SP_LOG_INFO("Enabled FSR 2.0 since it's used for TAA.");
                     }
@@ -833,40 +833,40 @@ namespace Spartan
                     // Implicitly disable FSR since it's doing TAA
                     if (fsr_enabled)
                     {
-                        m_options[static_cast<uint32_t>(RendererOption::Upsampling)] = static_cast<float>(UpsamplingMode::Linear);
+                        m_options[static_cast<uint32_t>(Renderer_Option::Upsampling)] = static_cast<float>(Renderer_Upsampling::Linear);
                         SP_LOG_INFO("Disabed FSR 2.0 since it's used for TAA.");
                     }
                 }
             }
             // Upsampling
-            else if (option == RendererOption::Upsampling)
+            else if (option == Renderer_Option::Upsampling)
             {
-                bool taa_enabled = GetOption<AntialiasingMode>(RendererOption::Antialiasing) == AntialiasingMode::Taa;
+                bool taa_enabled = GetOption<Renderer_Antialiasing>(Renderer_Option::Antialiasing) == Renderer_Antialiasing::Taa;
 
-                if (value == static_cast<float>(UpsamplingMode::Linear))
+                if (value == static_cast<float>(Renderer_Upsampling::Linear))
                 {
                     // Implicitly disable TAA since FSR 2.0 is doing it
                     if (taa_enabled)
                     {
-                        m_options[static_cast<uint32_t>(RendererOption::Antialiasing)] = static_cast<float>(AntialiasingMode::Disabled);
+                        m_options[static_cast<uint32_t>(Renderer_Option::Antialiasing)] = static_cast<float>(Renderer_Antialiasing::Disabled);
                         SP_LOG_INFO("Disabled TAA since it's done by FSR 2.0.");
                     }
                 }
-                else if (value == static_cast<float>(UpsamplingMode::FSR2))
+                else if (value == static_cast<float>(Renderer_Upsampling::FSR2))
                 {
                     // Implicitly enable TAA since FSR 2.0 is doing it
                     if (!taa_enabled)
                     {
-                        m_options[static_cast<uint32_t>(RendererOption::Antialiasing)] = static_cast<float>(AntialiasingMode::Taa);
+                        m_options[static_cast<uint32_t>(Renderer_Option::Antialiasing)] = static_cast<float>(Renderer_Antialiasing::Taa);
                         RHI_FSR2::ResetHistory();
                         SP_LOG_INFO("Enabled TAA since FSR 2.0 does it.");
                     }
                 }
             }
             // Shadow resolution
-            else if (option == RendererOption::ShadowResolution)
+            else if (option == Renderer_Option::ShadowResolution)
             {
-                const auto& light_entities = m_renderables[RendererEntity::light];
+                const auto& light_entities = m_renderables[Renderer_Entity::Light];
                 for (const auto& light_entity : light_entities)
                 {
                     auto light = light_entity->GetComponent<Light>();
@@ -876,11 +876,11 @@ namespace Spartan
                     }
                 }
             }
-            else if (option == RendererOption::Hdr)
+            else if (option == Renderer_Option::Hdr)
             {
                 m_swap_chain->SetHdr(value == 1.0f);
             }
-            else if (option == RendererOption::Vsync)
+            else if (option == Renderer_Option::Vsync)
             {
                 m_swap_chain->SetVsync(value == 1.0f);
             }
@@ -974,7 +974,7 @@ namespace Spartan
 
     RHI_Texture* Renderer::GetFrameTexture()
     {
-        return GetRenderTarget(RendererRenderTexture::frame_output).get();
+        return GetRenderTarget(Renderer_RenderTexture::frame_output).get();
     }
 
     uint64_t Renderer::GetFrameNum()
@@ -987,7 +987,7 @@ namespace Spartan
         return m_camera;
     }
 
-    unordered_map<RendererEntity, vector<shared_ptr<Entity>>>& Renderer::GetEntities()
+    unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>>& Renderer::GetEntities()
     {
         return m_renderables;
     }

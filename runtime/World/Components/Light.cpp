@@ -444,7 +444,7 @@ namespace Spartan
     void Light::CreateShadowMap()
     {
         // Early exit if there is no change in shadow map resolution
-        const uint32_t resolution     = Renderer::GetOption<uint32_t>(RendererOption::ShadowResolution);
+        const uint32_t resolution     = Renderer::GetOption<uint32_t>(Renderer_Option::ShadowResolution);
         const bool resolution_changed = m_shadow_map.texture_depth ? (resolution != m_shadow_map.texture_depth->GetWidth()) : false;
         if ((!m_is_dirty && !resolution_changed))
             return;

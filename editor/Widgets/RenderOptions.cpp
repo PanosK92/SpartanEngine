@@ -103,7 +103,7 @@ namespace
         return result;
     }
 
-    void option_value(const char* label, RendererOption render_option, const char* tooltip = nullptr, float step = 0.1f, float min = 0.0f, float max = numeric_limits<float>::max(), const char* format = "%.3f")
+    void option_value(const char* label, Renderer_Option render_option, const char* tooltip = nullptr, float step = 0.1f, float min = 0.0f, float max = numeric_limits<float>::max(), const char* format = "%.3f")
     {
         option_first_column();
         ImGui::Text(label);
@@ -211,29 +211,29 @@ void RenderOptions::OnVisible()
 void RenderOptions::TickVisible()
 {
     // Reflect options from engine
-    bool do_dof                  = Renderer::GetOption<bool>(RendererOption::DepthOfField);
-    bool do_volumetric_fog       = Renderer::GetOption<bool>(RendererOption::VolumetricFog);
-    bool do_ssgi                 = Renderer::GetOption<bool>(RendererOption::Ssgi);
-    bool do_sss                  = Renderer::GetOption<bool>(RendererOption::ScreenSpaceShadows);
-    bool do_ssr                  = Renderer::GetOption<bool>(RendererOption::ScreenSpaceReflections);
-    bool do_motion_blur          = Renderer::GetOption<bool>(RendererOption::MotionBlur);
-    bool do_film_grain           = Renderer::GetOption<bool>(RendererOption::FilmGrain);
-    bool do_chromatic_aberration = Renderer::GetOption<bool>(RendererOption::ChromaticAberration); 
-    bool do_debanding            = Renderer::GetOption<bool>(RendererOption::Debanding);
-    bool do_hdr                  = Renderer::GetOption<bool>(RendererOption::Hdr);
-    bool do_vsync                = Renderer::GetOption<bool>(RendererOption::Vsync);
-    bool debug_physics           = Renderer::GetOption<bool>(RendererOption::Debug_Physics);
-    bool debug_aabb              = Renderer::GetOption<bool>(RendererOption::Debug_Aabb);
-    bool debug_light             = Renderer::GetOption<bool>(RendererOption::Debug_Lights);
-    bool debug_transform         = Renderer::GetOption<bool>(RendererOption::Debug_TransformHandle);
-    bool debug_selection_outline = Renderer::GetOption<bool>(RendererOption::Debug_SelectionOutline);
-    bool debug_picking_ray       = Renderer::GetOption<bool>(RendererOption::Debug_PickingRay);
-    bool debug_grid              = Renderer::GetOption<bool>(RendererOption::Debug_Grid);
-    bool debug_reflection_probes = Renderer::GetOption<bool>(RendererOption::Debug_ReflectionProbes);
-    bool performance_metrics     = Renderer::GetOption<bool>(RendererOption::Debug_PerformanceMetrics);
-    bool debug_wireframe         = Renderer::GetOption<bool>(RendererOption::Debug_Wireframe);
-    bool do_depth_prepass        = Renderer::GetOption<bool>(RendererOption::DepthPrepass);
-    int resolution_shadow        = Renderer::GetOption<int>(RendererOption::ShadowResolution);
+    bool do_dof                  = Renderer::GetOption<bool>(Renderer_Option::DepthOfField);
+    bool do_volumetric_fog       = Renderer::GetOption<bool>(Renderer_Option::VolumetricFog);
+    bool do_ssgi                 = Renderer::GetOption<bool>(Renderer_Option::Ssgi);
+    bool do_sss                  = Renderer::GetOption<bool>(Renderer_Option::ScreenSpaceShadows);
+    bool do_ssr                  = Renderer::GetOption<bool>(Renderer_Option::ScreenSpaceReflections);
+    bool do_motion_blur          = Renderer::GetOption<bool>(Renderer_Option::MotionBlur);
+    bool do_film_grain           = Renderer::GetOption<bool>(Renderer_Option::FilmGrain);
+    bool do_chromatic_aberration = Renderer::GetOption<bool>(Renderer_Option::ChromaticAberration); 
+    bool do_debanding            = Renderer::GetOption<bool>(Renderer_Option::Debanding);
+    bool do_hdr                  = Renderer::GetOption<bool>(Renderer_Option::Hdr);
+    bool do_vsync                = Renderer::GetOption<bool>(Renderer_Option::Vsync);
+    bool debug_physics           = Renderer::GetOption<bool>(Renderer_Option::Debug_Physics);
+    bool debug_aabb              = Renderer::GetOption<bool>(Renderer_Option::Debug_Aabb);
+    bool debug_light             = Renderer::GetOption<bool>(Renderer_Option::Debug_Lights);
+    bool debug_transform         = Renderer::GetOption<bool>(Renderer_Option::Debug_TransformHandle);
+    bool debug_selection_outline = Renderer::GetOption<bool>(Renderer_Option::Debug_SelectionOutline);
+    bool debug_picking_ray       = Renderer::GetOption<bool>(Renderer_Option::Debug_PickingRay);
+    bool debug_grid              = Renderer::GetOption<bool>(Renderer_Option::Debug_Grid);
+    bool debug_reflection_probes = Renderer::GetOption<bool>(Renderer_Option::Debug_ReflectionProbes);
+    bool performance_metrics     = Renderer::GetOption<bool>(Renderer_Option::Debug_PerformanceMetrics);
+    bool debug_wireframe         = Renderer::GetOption<bool>(Renderer_Option::Debug_Wireframe);
+    bool do_depth_prepass        = Renderer::GetOption<bool>(Renderer_Option::DepthPrepass);
+    int resolution_shadow        = Renderer::GetOption<int>(Renderer_Option::ShadowResolution);
 
     // Present options (with a table)
     {
@@ -273,10 +273,10 @@ void RenderOptions::TickVisible()
                     bool upsampling_allowed = resolution_render.x < resolution_output.x || resolution_render.y < resolution_output.y;
                     ImGui::BeginDisabled(!upsampling_allowed);
 
-                    uint32_t upsampling_mode = Renderer::GetOption<uint32_t>(RendererOption::Upsampling);
+                    uint32_t upsampling_mode = Renderer::GetOption<uint32_t>(Renderer_Option::Upsampling);
                     if (option_combo_box("Upsampling", upsampling_modes, upsampling_mode))
                     {
-                        Renderer::SetOption(RendererOption::Upsampling, static_cast<float>(upsampling_mode));
+                        Renderer::SetOption(Renderer_Option::Upsampling, static_cast<float>(upsampling_mode));
                     }
 
                     ImGui::EndDisabled();
@@ -285,10 +285,10 @@ void RenderOptions::TickVisible()
                 // Sharpening
                 {
                     // FidelityFX FSR 2.0 sharpening overrides FidelityFX CAS
-                    bool fsr_enabled = Renderer::GetOption<UpsamplingMode>(RendererOption::Upsampling) == UpsamplingMode::FSR2;
+                    bool fsr_enabled = Renderer::GetOption<Renderer_Upsampling>(Renderer_Option::Upsampling) == Renderer_Upsampling::FSR2;
                     string label = fsr_enabled ? "Sharpness (AMD FidelityFX FSR 2.0)" : "Sharpness (AMD FidelityFX CAS)";
 
-                    option_value(label.c_str(), RendererOption::Sharpness, "", 0.1f, 0.0f, 1.0f);
+                    option_value(label.c_str(), Renderer_Option::Sharpness, "", 0.1f, 0.0f, 1.0f);
                 }
             }
 
@@ -304,39 +304,39 @@ void RenderOptions::TickVisible()
             if (option("Anti-Aliasing"))
             {
                 // Reflect
-                AntialiasingMode antialiasing = Renderer::GetOption<AntialiasingMode>(RendererOption::Antialiasing);
+                Renderer_Antialiasing antialiasing = Renderer::GetOption<Renderer_Antialiasing>(Renderer_Option::Antialiasing);
 
                 // TAA
-                bool taa_enabled = antialiasing == AntialiasingMode::Taa || antialiasing == AntialiasingMode::TaaFxaa;
+                bool taa_enabled = antialiasing == Renderer_Antialiasing::Taa || antialiasing == Renderer_Antialiasing::TaaFxaa;
                 option_check_box("TAA - Temporal anti-aliasing", taa_enabled, "Used to improve many stochastic effects, you want this to always be enabled.");
 
                 // FXAA
-                bool fxaa_enabled = antialiasing == AntialiasingMode::Fxaa || antialiasing == AntialiasingMode::TaaFxaa;
+                bool fxaa_enabled = antialiasing == Renderer_Antialiasing::Fxaa || antialiasing == Renderer_Antialiasing::TaaFxaa;
                 option_check_box("FXAA - Fast approximate anti-aliasing", fxaa_enabled);
 
                 // Map
                 if (taa_enabled && fxaa_enabled)
                 {
-                    Renderer::SetOption(RendererOption::Antialiasing, static_cast<float>(AntialiasingMode::TaaFxaa));
+                    Renderer::SetOption(Renderer_Option::Antialiasing, static_cast<float>(Renderer_Antialiasing::TaaFxaa));
                 }
                 else if (taa_enabled)
                 {
-                    Renderer::SetOption(RendererOption::Antialiasing, static_cast<float>(AntialiasingMode::Taa));
+                    Renderer::SetOption(Renderer_Option::Antialiasing, static_cast<float>(Renderer_Antialiasing::Taa));
                 }
                 else if (fxaa_enabled)
                 {
-                    Renderer::SetOption(RendererOption::Antialiasing, static_cast<float>(AntialiasingMode::Fxaa));
+                    Renderer::SetOption(Renderer_Option::Antialiasing, static_cast<float>(Renderer_Antialiasing::Fxaa));
                 }
                 else
                 {
-                    Renderer::SetOption(RendererOption::Antialiasing, static_cast<float>(AntialiasingMode::Disabled));
+                    Renderer::SetOption(Renderer_Option::Antialiasing, static_cast<float>(Renderer_Antialiasing::Disabled));
                 }
             }
 
             if (option("Camera"))
             {
                 // Bloom
-                option_value("Bloom", RendererOption::Bloom, "Controls the blend factor. If zero, then bloom is disabled.", 0.01f);
+                option_value("Bloom", Renderer_Option::Bloom, "Controls the blend factor. If zero, then bloom is disabled.", 0.01f);
 
                 // Motion blur
                 option_check_box("Motion blur (controlled by the camera's shutter speed)", do_motion_blur);
@@ -358,7 +358,7 @@ void RenderOptions::TickVisible()
                 {
                     // Density
                     ImGui::BeginDisabled(!do_volumetric_fog);
-                    option_value("Volumetric fog density", RendererOption::Fog, "", 0.01f, 0.0f, 16.0f, "%.2f");
+                    option_value("Volumetric fog density", Renderer_Option::Fog, "", 0.01f, 0.0f, 16.0f, "%.2f");
                     ImGui::EndDisabled();
                 }
 
@@ -373,17 +373,17 @@ void RenderOptions::TickVisible()
             {
                 // Tonemapping
                 static vector<string> tonemapping_options = { "AMD", "ACES", "Reinhard", "Uncharted 2", "Matrix", "Off" };
-                uint32_t selection_index = Renderer::GetOption<uint32_t>(RendererOption::Tonemapping);
+                uint32_t selection_index = Renderer::GetOption<uint32_t>(Renderer_Option::Tonemapping);
                 if (option_combo_box("Tonemapping", tonemapping_options, selection_index))
                 {
-                    Renderer::SetOption(RendererOption::Tonemapping, static_cast<float>(selection_index));
+                    Renderer::SetOption(Renderer_Option::Tonemapping, static_cast<float>(selection_index));
                 }
 
                 // Gamma
-                option_value("Gamma", RendererOption::Gamma);
+                option_value("Gamma", Renderer_Option::Gamma);
 
                 // Exposure
-                option_value("Exposure", RendererOption::Exposure);
+                option_value("Exposure", Renderer_Option::Exposure);
 
                 // HDR
                 option_check_box("HDR", do_hdr, "High dynamic range");
@@ -391,7 +391,7 @@ void RenderOptions::TickVisible()
                 // Paper white
                 if (do_hdr)
                 {
-                    option_value("Paper white (nits)", RendererOption::PaperWhite, nullptr, 1.0f);
+                    option_value("Paper white (nits)", Renderer_Option::PaperWhite, nullptr, 1.0f);
                 }
 
                 // Dithering
@@ -456,27 +456,27 @@ void RenderOptions::TickVisible()
     }
 
     // Map options to engine
-    Renderer::SetOption(RendererOption::ShadowResolution,         static_cast<float>(resolution_shadow));
-    Renderer::SetOption(RendererOption::DepthOfField,             do_dof);
-    Renderer::SetOption(RendererOption::VolumetricFog,            do_volumetric_fog);
-    Renderer::SetOption(RendererOption::Ssgi,                     do_ssgi);
-    Renderer::SetOption(RendererOption::ScreenSpaceShadows,       do_sss);
-    Renderer::SetOption(RendererOption::ScreenSpaceReflections,   do_ssr);
-    Renderer::SetOption(RendererOption::MotionBlur,               do_motion_blur);
-    Renderer::SetOption(RendererOption::FilmGrain,                do_film_grain);
-    Renderer::SetOption(RendererOption::ChromaticAberration,      do_chromatic_aberration);
-    Renderer::SetOption(RendererOption::Debanding,                do_debanding);
-    Renderer::SetOption(RendererOption::Hdr,                      do_hdr);
-    Renderer::SetOption(RendererOption::Vsync,                    do_vsync);
-    Renderer::SetOption(RendererOption::Debug_TransformHandle,    debug_transform);
-    Renderer::SetOption(RendererOption::Debug_SelectionOutline,   debug_selection_outline);
-    Renderer::SetOption(RendererOption::Debug_Physics,            debug_physics);
-    Renderer::SetOption(RendererOption::Debug_Aabb,               debug_aabb);
-    Renderer::SetOption(RendererOption::Debug_Lights,             debug_light);
-    Renderer::SetOption(RendererOption::Debug_PickingRay,         debug_picking_ray);
-    Renderer::SetOption(RendererOption::Debug_Grid,               debug_grid);
-    Renderer::SetOption(RendererOption::Debug_ReflectionProbes,   debug_reflection_probes);
-    Renderer::SetOption(RendererOption::Debug_PerformanceMetrics, performance_metrics);
-    Renderer::SetOption(RendererOption::Debug_Wireframe,          debug_wireframe);
-    Renderer::SetOption(RendererOption::DepthPrepass,             do_depth_prepass);
+    Renderer::SetOption(Renderer_Option::ShadowResolution,         static_cast<float>(resolution_shadow));
+    Renderer::SetOption(Renderer_Option::DepthOfField,             do_dof);
+    Renderer::SetOption(Renderer_Option::VolumetricFog,            do_volumetric_fog);
+    Renderer::SetOption(Renderer_Option::Ssgi,                     do_ssgi);
+    Renderer::SetOption(Renderer_Option::ScreenSpaceShadows,       do_sss);
+    Renderer::SetOption(Renderer_Option::ScreenSpaceReflections,   do_ssr);
+    Renderer::SetOption(Renderer_Option::MotionBlur,               do_motion_blur);
+    Renderer::SetOption(Renderer_Option::FilmGrain,                do_film_grain);
+    Renderer::SetOption(Renderer_Option::ChromaticAberration,      do_chromatic_aberration);
+    Renderer::SetOption(Renderer_Option::Debanding,                do_debanding);
+    Renderer::SetOption(Renderer_Option::Hdr,                      do_hdr);
+    Renderer::SetOption(Renderer_Option::Vsync,                    do_vsync);
+    Renderer::SetOption(Renderer_Option::Debug_TransformHandle,    debug_transform);
+    Renderer::SetOption(Renderer_Option::Debug_SelectionOutline,   debug_selection_outline);
+    Renderer::SetOption(Renderer_Option::Debug_Physics,            debug_physics);
+    Renderer::SetOption(Renderer_Option::Debug_Aabb,               debug_aabb);
+    Renderer::SetOption(Renderer_Option::Debug_Lights,             debug_light);
+    Renderer::SetOption(Renderer_Option::Debug_PickingRay,         debug_picking_ray);
+    Renderer::SetOption(Renderer_Option::Debug_Grid,               debug_grid);
+    Renderer::SetOption(Renderer_Option::Debug_ReflectionProbes,   debug_reflection_probes);
+    Renderer::SetOption(Renderer_Option::Debug_PerformanceMetrics, performance_metrics);
+    Renderer::SetOption(Renderer_Option::Debug_Wireframe,          debug_wireframe);
+    Renderer::SetOption(Renderer_Option::DepthPrepass,             do_depth_prepass);
 }
