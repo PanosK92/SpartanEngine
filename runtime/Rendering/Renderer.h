@@ -66,8 +66,8 @@ namespace Spartan
 
         // Options
         template<typename T>
-        static T GetOption(const RendererOption option) { return static_cast<T>(GetOptions()[static_cast<uint32_t>(option)]); }
-        static void SetOption(RendererOption option, float value);
+        static T GetOption(const Renderer_Option option) { return static_cast<T>(GetOptions()[static_cast<uint32_t>(option)]); }
+        static void SetOption(Renderer_Option option, float value);
         static std::array<float, 34>& GetOptions();
         static void SetOptions(std::array<float, 34> options);
 
@@ -109,7 +109,7 @@ namespace Spartan
         //= RESOURCES ===========================================================================================
         static RHI_Texture* GetFrameTexture();
         static std::shared_ptr<Camera> GetCamera();
-        static std::unordered_map<RendererEntity, std::vector<std::shared_ptr<Entity>>>& GetEntities();
+        static std::unordered_map<Renderer_Entity, std::vector<std::shared_ptr<Entity>>>& GetEntities();
 
         // Get all
         static std::array<std::shared_ptr<RHI_Texture>, 26>& GetRenderTargets();
@@ -117,16 +117,16 @@ namespace Spartan
         static std::array<std::shared_ptr<RHI_ConstantBuffer>, 4>& GetConstantBuffers();
 
         // Get individual
-        static std::shared_ptr<RHI_RasterizerState> GetRasterizerState(const RendererRasterizerState type);
-        static std::shared_ptr<RHI_DepthStencilState> GetDepthStencilState(const RendererDepthStencilState type);
-        static std::shared_ptr<RHI_BlendState> GetBlendState(const RendererBlendState type);
-        static std::shared_ptr<RHI_Texture> GetRenderTarget(const RendererRenderTexture type);
-        static std::shared_ptr<RHI_Shader> GetShader(const RendererShader type);
-        static std::shared_ptr<RHI_Sampler> GetSampler(const RendererSampler type);
-        static std::shared_ptr<RHI_ConstantBuffer> GetConstantBuffer(const RendererConstantBuffer type);
+        static std::shared_ptr<RHI_RasterizerState> GetRasterizerState(const Renderer_RasterizerState type);
+        static std::shared_ptr<RHI_DepthStencilState> GetDepthStencilState(const Renderer_DepthStencilState type);
+        static std::shared_ptr<RHI_BlendState> GetBlendState(const Renderer_BlendState type);
+        static std::shared_ptr<RHI_Texture> GetRenderTarget(const Renderer_RenderTexture type);
+        static std::shared_ptr<RHI_Shader> GetShader(const Renderer_Shader type);
+        static std::shared_ptr<RHI_Sampler> GetSampler(const Renderer_Sampler type);
+        static std::shared_ptr<RHI_ConstantBuffer> GetConstantBuffer(const Renderer_ConstantBuffer type);
         static std::shared_ptr<RHI_StructuredBuffer> GetStructuredBuffer();
-        static std::shared_ptr<RHI_Texture> GetStandardTexture(const RendererStandardTexture type);
-        static std::shared_ptr<Mesh> GetStandardMesh(const RendererStandardMesh type);
+        static std::shared_ptr<RHI_Texture> GetStandardTexture(const Renderer_StandardTexture type);
+        static std::shared_ptr<Mesh> GetStandardMesh(const Renderer_StandardMesh type);
         //=======================================================================================================
 
     private:

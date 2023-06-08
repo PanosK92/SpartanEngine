@@ -281,16 +281,16 @@ namespace Spartan
     void Renderer::Lines_PreMain()
     {
         // Picking ray
-        if (GetOption<bool>(RendererOption::Debug_PickingRay))
+        if (GetOption<bool>(Renderer_Option::Debug_PickingRay))
         {
             const auto& ray = GetCamera()->GetPickingRay();
             DrawLine(ray.GetStart(), ray.GetStart() + ray.GetDirection() * GetCamera()->GetFarPlane(), Vector4(0, 1, 0, 1));
         }
         
         // Lights
-        if (GetOption<bool>(RendererOption::Debug_Lights))
+        if (GetOption<bool>(Renderer_Option::Debug_Lights))
         {
-            auto& lights = GetEntities()[RendererEntity::light];
+            auto& lights = GetEntities()[Renderer_Entity::Light];
             for (const auto& entity : lights)
             {
                 if (shared_ptr<Camera> camera = GetCamera())
@@ -342,9 +342,9 @@ namespace Spartan
         }
         
         // AABBs
-        if (GetOption<bool>(RendererOption::Debug_Aabb))
+        if (GetOption<bool>(Renderer_Option::Debug_Aabb))
         {
-            for (const auto& entity : GetEntities()[RendererEntity::geometry_opaque])
+            for (const auto& entity : GetEntities()[Renderer_Entity::Geometry_opaque])
             {
                 if (auto renderable = entity->GetComponent<Renderable>())
                 {
@@ -352,7 +352,7 @@ namespace Spartan
                 }
             }
         
-            for (const auto& entity : GetEntities()[RendererEntity::geometry_transparent])
+            for (const auto& entity : GetEntities()[Renderer_Entity::Geometry_transparent])
             {
                 if (auto renderable = entity->GetComponent<Renderable>())
                 {

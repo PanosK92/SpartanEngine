@@ -29,7 +29,7 @@ namespace Spartan
 {
     #define DEBUG_COLOR Math::Vector4(0.41f, 0.86f, 1.0f, 1.0f)
 
-    enum class RendererOption : uint32_t
+    enum class Renderer_Option : uint32_t
     {
         Debug_Aabb,
         Debug_PickingRay,
@@ -66,7 +66,7 @@ namespace Spartan
         Vsync
     };
 
-    enum class AntialiasingMode : uint32_t
+    enum class Renderer_Antialiasing : uint32_t
     {
         Disabled,
         Fxaa,
@@ -74,7 +74,7 @@ namespace Spartan
         TaaFxaa
     };
 
-    enum class TonemappingMode : uint32_t
+    enum class Renderer_Tonemapping : uint32_t
     {
         Amd,
         Aces,
@@ -84,13 +84,13 @@ namespace Spartan
         Disabled,
     };
 
-    enum class UpsamplingMode : uint32_t
+    enum class Renderer_Upsampling : uint32_t
     {
         Linear,
         FSR2
     };
 
-    enum class RendererBindingsCb
+    enum class Renderer_BindingsCb
     {
         frame    = 0,
         uber     = 1,
@@ -99,7 +99,7 @@ namespace Spartan
         imgui    = 4
     };
     
-    enum class RendererBindingsSrv
+    enum class Renderer_BindingsSrv
     {
         // Material
         material_albedo    = 0,
@@ -150,7 +150,7 @@ namespace Spartan
         reflection_probe = 35
     };
 
-    enum class RendererBindingsUav
+    enum class Renderer_BindingsUav
     {
         tex            = 0,
         tex2           = 1,
@@ -159,7 +159,7 @@ namespace Spartan
         tex_array      = 4
     };
 
-    enum class RendererShader : uint8_t
+    enum class Renderer_Shader : uint8_t
     {
         gbuffer_v,
         gbuffer_p,
@@ -210,7 +210,7 @@ namespace Spartan
         ffx_spd_c
     };
     
-    enum class RendererRenderTexture : uint8_t
+    enum class Renderer_RenderTexture : uint8_t
     {
         undefined,
         gbuffer_albedo,
@@ -239,79 +239,79 @@ namespace Spartan
         outline
     };
     
-    enum class RendererEntity
+    enum class Renderer_Entity
     {
-        geometry_opaque,
-        geometry_transparent,
-        light,
-        camera,
-        reflection_probe
+        Geometry_opaque,
+        Geometry_transparent,
+        Light,
+        Camera,
+        Reflection_probe
     };
 
-    enum class RendererSampler
+    enum class Renderer_Sampler
     {
-        compare_depth,
-        point_clamp,
-        point_wrap,
-        bilinear_clamp,
-        bilinear_wrap,
-        trilinear_clamp,
-        anisotropic_wrap
+        Compare_depth,
+        Point_clamp,
+        Point_wrap,
+        Bilinear_clamp,
+        Bilinear_wrap,
+        Trilinear_clamp,
+        Anisotropic_wrap
     };
 
-    enum class RendererConstantBuffer
+    enum class Renderer_ConstantBuffer
     {
-        frame,
-        uber,
-        light,
-        material
+        Frame,
+        Uber,
+        Light,
+        Material
     };
 
-    enum class RendererStandardTexture
+    enum class Renderer_StandardTexture
     {
-        noise_normal,
-        noise_blue,
-        white,
-        black,
-        transparent,
-        checkerboard,
-        gizmo_light_directional,
-        gizmo_light_point,
-        gizmo_light_spot
+        Noise_normal,
+        Noise_blue,
+        White,
+        Black,
+        Transparent,
+        Checkerboard,
+        Gizmo_light_directional,
+        Gizmo_light_point,
+        Gizmo_light_spot
     };
 
-    enum class RendererStandardMesh
+    enum class Renderer_StandardMesh
     {
-        cube,
-        quad,
-        sphere,
-        cylinder,
-        cone,
-        custom
+        Cube,
+        Quad,
+        Sphere,
+        Cylinder,
+        Cone,
+        Custom
     };
 
-    enum class RendererRasterizerState
+    enum class Renderer_RasterizerState
     {
-        cull_back_solid,
-        cull_back_wireframe,
-        cull_none_solid,
-        light_point_spot,
-        light_directional
+        Cull_back_solid,
+        Cull_back_wireframe,
+        Cull_none_solid,
+        Light_point_spot,
+        Light_directional
     };
 
-    enum class RendererDepthStencilState
+    enum class Renderer_DepthStencilState
     {
-        off,
-        stencil_read,
-        depth_read_write_stencil_read,
-        depth_read,
-        depth_read_write_stencil_write
+        Off,
+        Stencil_read,
+        Depth_read_write_stencil_read,
+        Depth_read,
+        Depth_read_write_stencil_write
     };
 
-    enum class RendererBlendState
+    enum class Renderer_BlendState
     {
-        disabled,
-        alpha,
-        additive
+        Disabled,
+        Alpha,
+        Additive
     };
 }
