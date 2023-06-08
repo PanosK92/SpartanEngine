@@ -54,7 +54,7 @@ namespace Spartan
         static const float m_thread_group_count = 8.0f;
     }
 
-    // Misc
+    // misc
     extern Cb_Frame m_cb_frame_cpu;
     extern Cb_Uber m_cb_uber_cpu;
     extern Cb_Light m_cb_light_cpu;
@@ -65,11 +65,9 @@ namespace Spartan
     extern uint32_t m_lines_index_depth_on;
     extern shared_ptr<RHI_VertexBuffer> m_vertex_buffer_lines;
     extern array<Material*, m_max_material_instances> m_material_instances;
-    extern shared_ptr<RHI_SwapChain> m_swap_chain;
     extern unordered_map<RendererEntity, vector<shared_ptr<Entity>>> m_renderables;
     extern unique_ptr<Font> m_font;
     extern unique_ptr<Grid> m_world_grid;
-    extern RHI_CommandList* m_cmd_current;
     extern bool m_brdf_specular_lut_rendered;
 
     void Renderer::SetGlobalShaderResources(RHI_CommandList* cmd_list)
@@ -2339,10 +2337,13 @@ namespace Spartan
         if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
             return;
 
-        m_cmd_current->BeginMarker("copy_to_back_buffer");
+        RHI_SwapChain* swap_chain = GetSwapChain();
+        RHI_CommandList* cmd_list = GetCmdList();
+
+        cmd_list->BeginMarker("copy_to_back_buffer");
 
         // Transition swap chain image
-        m_swap_chain->SetLayout(RHI_Image_Layout::Color_Attachment_Optimal, m_cmd_current);
+        swap_chain->SetLayout(RHI_Image_Layout::Color_Attachment_Optimal, cmd_list);
 
         // Define render state
         static RHI_PipelineState pso = {};
@@ -2351,30 +2352,30 @@ namespace Spartan
         pso.rasterizer_state         = GetRasterizerState(RendererRasterizerState::cull_back_solid).get();
         pso.blend_state              = GetBlendState(RendererBlendState::disabled).get();
         pso.depth_stencil_state      = GetDepthStencilState(RendererDepthStencilState::off).get();
-        pso.render_target_swapchain  = m_swap_chain.get();
+        pso.render_target_swapchain  = swap_chain;
         pso.clear_color[0]           = rhi_color_dont_care;
         pso.primitive_topology       = RHI_PrimitiveTopology_Mode::TriangleList;
 
         // Set pipeline state
-        m_cmd_current->SetPipelineState(pso);
+        cmd_list->SetPipelineState(pso);
 
         // Set uber buffer
-        m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(m_swap_chain->GetWidth()), static_cast<float>(m_swap_chain->GetHeight()));
-        UpdateConstantBufferUber(m_cmd_current);
+        m_cb_uber_cpu.resolution_rt = Vector2(static_cast<float>(swap_chain->GetWidth()), static_cast<float>(swap_chain->GetHeight()));
+        UpdateConstantBufferUber(cmd_list);
 
         // Set texture
-        m_cmd_current->SetTexture(RendererBindingsSrv::tex, GetRenderTarget(RendererTexture::frame_output).get());
+        cmd_list->SetTexture(RendererBindingsSrv::tex, GetRenderTarget(RendererTexture::frame_output).get());
 
         // Render
-        m_cmd_current->BeginRenderPass();
+        cmd_list->BeginRenderPass();
         {
-            m_cmd_current->DrawIndexed(3, 0);
+            cmd_list->DrawIndexed(3, 0);
         }
-        m_cmd_current->EndRenderPass();
+        cmd_list->EndRenderPass();
 
         // Transition swap chain image
-        m_swap_chain->SetLayout(RHI_Image_Layout::Present_Src, m_cmd_current);
+        swap_chain->SetLayout(RHI_Image_Layout::Present_Src, cmd_list);
 
-        m_cmd_current->EndMarker();
+        cmd_list->EndMarker();
     }
 }
