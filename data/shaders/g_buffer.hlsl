@@ -25,8 +25,9 @@ struct PixelInputType
 {
     float4 position             : SV_POSITION;
     float2 uv                   : TEXCOORD;
-    float3 normal               : NORMAL;
-    float3 tangent              : TANGENT;
+    float3 normal_world         : WORLD_NORMAL;
+    float3 tangent_world        : WORLD_TANGENT;
+    float4 position_world       : WORLD_POS;
     float4 position_ss_current  : SCREEN_POS;
     float4 position_ss_previous : SCREEN_POS_PREVIOUS;
 };
@@ -45,15 +46,15 @@ PixelInputType mainVS(Vertex_PosUvNorTan input)
     PixelInputType output;
 
     // position computation has to be an exact match to depth_prepass.hlsl
-    input.position.w = 1.0f;
-    output.position  = mul(input.position, buffer_uber.transform);
-    output.position  = mul(output.position, buffer_frame.view_projection);
-    
+    input.position.w       = 1.0f;
+    output.position_world  = mul(input.position, buffer_uber.transform);
+    output.position        = mul(output.position_world, buffer_frame.view_projection);
+
     output.position_ss_current  = output.position;
     output.position_ss_previous = mul(input.position, buffer_uber.transform_previous);
     output.position_ss_previous = mul(output.position_ss_previous, buffer_frame.view_projection_previous);
-    output.normal               = normalize(mul(input.normal,  (float3x3)buffer_uber.transform)).xyz;
-    output.tangent              = normalize(mul(input.tangent, (float3x3)buffer_uber.transform)).xyz;
+    output.normal_world         = normalize(mul(input.normal,  (float3x3)buffer_uber.transform)).xyz;
+    output.tangent_world        = normalize(mul(input.tangent, (float3x3)buffer_uber.transform)).xyz;
     output.uv                   = input.uv;
     
     return output;
@@ -61,28 +62,30 @@ PixelInputType mainVS(Vertex_PosUvNorTan input)
 
 PixelOutputType mainPS(PixelInputType input)
 {
-    // UV
-    float2 uv = input.uv;
-    uv        = float2(uv.x * buffer_uber.mat_tiling.x + buffer_uber.mat_offset.x, uv.y * buffer_uber.mat_tiling.y + buffer_uber.mat_offset.y);
-
     // Velocity
     float2 position_uv_current  = ndc_to_uv((input.position_ss_current.xy / input.position_ss_current.w) - buffer_frame.taa_jitter_current);
     float2 position_uv_previous = ndc_to_uv((input.position_ss_previous.xy / input.position_ss_previous.w) - buffer_frame.taa_jitter_previous);
     float2 velocity_uv          = position_uv_current - position_uv_previous;
 
+    // UV
+    float2 uv = input.uv;
+    uv        = float2(uv.x * buffer_uber.mat_tiling.x + buffer_uber.mat_offset.x, uv.y * buffer_uber.mat_tiling.y + buffer_uber.mat_offset.y);
+
     // TBN
     float3x3 TBN = 0.0f;
     if (has_texture_height() || has_texture_normal())
     {
-        TBN = makeTBN(input.normal, input.tangent);
+        TBN = makeTBN(input.normal_world, input.tangent_world);
     }
 
     // Parallax mapping
     if (has_texture_height())
     {
-        float height_scale     = buffer_uber.mat_height * 0.04f;
-        float3 camera_to_pixel = normalize(buffer_frame.camera_position - input.position.xyz);
-        uv                     = ParallaxMapping(tex_material_height, sampler_anisotropic_wrap, uv, camera_to_pixel, TBN, height_scale);
+        float3 camera_to_pixel_world   = normalize(buffer_frame.camera_position - input.position_world.xyz);
+        float3 camera_to_pixel_tangent = mul(camera_to_pixel_world, TBN);
+        float height                   = tex_material_height.Sample(sampler_anisotropic_wrap, uv).r * 2.0f - 1.0f;
+        float height_scale             = buffer_uber.mat_height;
+        uv                             += camera_to_pixel_tangent.xy * height * height_scale;
     }
 
     // Alpha mask
@@ -141,7 +144,7 @@ PixelOutputType mainPS(PixelInputType input)
     }
     
     // Normal
-    float3 normal = input.normal.xyz;
+    float3 normal = input.normal_world.xyz;
     if (has_texture_normal())
     {
         // Get tangent space normal and apply the user defined intensity. Then transform it to world space.
@@ -191,3 +194,4 @@ PixelOutputType mainPS(PixelInputType input)
 
     return g_buffer;
 }
+
