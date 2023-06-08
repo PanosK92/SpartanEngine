@@ -67,6 +67,17 @@ namespace Spartan
         // frame
         static uint64_t m_frame_num = 0;
         static bool m_is_odd_frame  = false;
+
+        // Resolution & Viewport
+        static Math::Vector2 m_resolution_render = Math::Vector2::Zero;
+        static Math::Vector2 m_resolution_output = Math::Vector2::Zero;
+        static RHI_Viewport m_viewport           = RHI_Viewport(0, 0, 0, 0);
+
+        // misc
+        static vector<shared_ptr<Entity>> m_renderables_pending;
+        static bool m_add_new_entities = false;
+        static shared_ptr<Camera> m_camera;
+        static Environment* m_environment = nullptr;
     }
 
     // misc
@@ -77,12 +88,8 @@ namespace Spartan
     extern shared_ptr<RHI_VertexBuffer> m_vertex_buffer_lines;
     extern unique_ptr<Font> m_font;
     extern unique_ptr<Grid> m_world_grid;
+    unordered_map<RendererEntity, vector<shared_ptr<Entity>>> m_renderables;
 
-    // Resolution & Viewport
-    Math::Vector2 m_resolution_render = Math::Vector2::Zero;
-    Math::Vector2 m_resolution_output = Math::Vector2::Zero;
-    RHI_Viewport m_viewport           = RHI_Viewport(0, 0, 0, 0);
-    
     // Environment texture
     shared_ptr<RHI_Texture> m_environment_texture;
     bool m_environment_texture_dirty = false;
@@ -104,13 +111,6 @@ namespace Spartan
     // RHI Core
     RHI_CommandPool* m_cmd_pool    = nullptr;
     RHI_CommandList* m_cmd_current = nullptr;
-    
-    // Entities
-    vector<shared_ptr<Entity>> m_renderables_pending;
-    bool m_add_new_entities = false;
-    unordered_map<RendererEntity, vector<shared_ptr<Entity>>> m_renderables;
-    shared_ptr<Camera> m_camera;
-    Environment* m_environment = nullptr;
     
     void Renderer::Initialize()
     {
