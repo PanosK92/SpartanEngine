@@ -66,7 +66,7 @@ namespace Spartan
         static array<shared_ptr<Mesh>, 5>        m_standard_meshes;
     }
 
-    // Misc
+    // misc
     Cb_Frame m_cb_frame_cpu;
     Cb_Uber m_cb_uber_cpu;
     Cb_Light m_cb_light_cpu;
@@ -109,7 +109,7 @@ namespace Spartan
         depth_stencil_state(RendererDepthStencilState::depth_read_write_stencil_read)  = make_shared<RHI_DepthStencilState>(true,  true,  reverse_z_aware_comp_func,      false, false, RHI_Comparison_Function::Never);
         depth_stencil_state(RendererDepthStencilState::depth_read)                     = make_shared<RHI_DepthStencilState>(true,  false, reverse_z_aware_comp_func,      false, false, RHI_Comparison_Function::Never);
         depth_stencil_state(RendererDepthStencilState::stencil_read)                   = make_shared<RHI_DepthStencilState>(false, false, RHI_Comparison_Function::Never, true,  false, RHI_Comparison_Function::Equal);
-        depth_stencil_state(RendererDepthStencilState::depth_read_write_stencil_write) = make_shared<RHI_DepthStencilState>(true,  true,  reverse_z_aware_comp_func,      false, true,  RHI_Comparison_Function::Always)
+        depth_stencil_state(RendererDepthStencilState::depth_read_write_stencil_write) = make_shared<RHI_DepthStencilState>(true, true,   reverse_z_aware_comp_func,      false, true, RHI_Comparison_Function::Always);
     }
 
     void Renderer::CreateRasterizerStates()

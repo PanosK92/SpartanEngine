@@ -73,6 +73,18 @@ namespace Spartan
         static Math::Vector2 m_resolution_output = Math::Vector2::Zero;
         static RHI_Viewport m_viewport           = RHI_Viewport(0, 0, 0, 0);
 
+        // Environment texture
+        static shared_ptr<RHI_Texture> m_environment_texture;
+        static bool m_environment_texture_dirty = false;
+
+        // Swapchain
+        static const uint8_t m_swap_chain_buffer_count = 2;
+        static shared_ptr<RHI_SwapChain> m_swap_chain;
+
+        // RHI Core
+        static RHI_CommandPool* m_cmd_pool    = nullptr;
+        static RHI_CommandList* m_cmd_current = nullptr;
+
         // misc
         static vector<shared_ptr<Entity>> m_renderables_pending;
         static bool m_add_new_entities = false;
@@ -88,30 +100,16 @@ namespace Spartan
     extern shared_ptr<RHI_VertexBuffer> m_vertex_buffer_lines;
     extern unique_ptr<Font> m_font;
     extern unique_ptr<Grid> m_world_grid;
+
+    // misc
     unordered_map<RendererEntity, vector<shared_ptr<Entity>>> m_renderables;
-
-    // Environment texture
-    shared_ptr<RHI_Texture> m_environment_texture;
-    bool m_environment_texture_dirty = false;
-
-    // Misc
     Math::Vector2 m_jitter_offset = Math::Vector2::Zero;
-    float m_near_plane            = 0.0f;
-    float m_far_plane             = 1.0f;
+    float m_near_plane = 0.0f;
+    float m_far_plane = 1.0f;
     array<Material*, m_max_material_instances> m_material_instances;
     const uint32_t m_resolution_shadow_min = 128;
-    
-    // Resource management
     vector<weak_ptr<RHI_Texture>> m_textures_mip_generation;
 
-    // Swapchain
-    const uint8_t m_swap_chain_buffer_count = 2;
-    shared_ptr<RHI_SwapChain> m_swap_chain;
-
-    // RHI Core
-    RHI_CommandPool* m_cmd_pool    = nullptr;
-    RHI_CommandList* m_cmd_current = nullptr;
-    
     void Renderer::Initialize()
     {
         m_render_thread_id = this_thread::get_id();
