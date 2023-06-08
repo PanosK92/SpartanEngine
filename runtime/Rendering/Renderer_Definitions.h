@@ -210,7 +210,7 @@ namespace Spartan
         ffx_spd_c
     };
     
-    enum class RendererTexture : uint8_t
+    enum class RendererRenderTexture : uint8_t
     {
         undefined,
         gbuffer_albedo,

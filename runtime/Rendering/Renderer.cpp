@@ -221,6 +221,9 @@ namespace Spartan
 
     void Renderer::Shutdown()
     {
+        // console doesn't render anymore, log to file
+        Log::SetLogToFile(true); 
+
         // Fire event
         SP_FIRE_EVENT(EventType::RendererOnShutdown);
 
@@ -241,8 +244,6 @@ namespace Spartan
 
         // Delete all remaining RHI resources
         RHI_Device::ParseDeletionQueue();
-
-        Log::SetLogToFile(true); // console doesn't render anymore, log to file
 
         RHI_RenderDoc::Shutdown();
         RHI_FSR2::Destroy();
@@ -327,7 +328,7 @@ namespace Spartan
 
                 if (m_dirty_orthographic_projection)
                 { 
-                    // Near clip does not affect depth accuracy in orthographic projection, so set it to 0 to avoid problems which can result an infinitely small [3,2] after the multiplication below.
+                    // Near clip does not affect depth accuracy in orthographic projection, so set it to 0 to avoid problems which can result an infinitely small [3,2] (NaN) after the multiplication below.
                     m_cb_frame_cpu.projection_ortho      = Matrix::CreateOrthographicLH(m_viewport.width, m_viewport.height, 0.0f, m_far_plane);
                     m_cb_frame_cpu.view_projection_ortho = Matrix::CreateLookAtLH(Vector3(0, 0, -m_near_plane), Vector3::Forward, Vector3::Up) * m_cb_frame_cpu.projection_ortho;
                     m_dirty_orthographic_projection      = false;
@@ -379,8 +380,8 @@ namespace Spartan
             m_cb_frame_cpu.luminance_max          = Display::GetLuminanceMax();
             m_cb_frame_cpu.shadow_resolution      = GetOption<float>(RendererOption::ShadowResolution);
             m_cb_frame_cpu.frame                  = static_cast<uint32_t>(m_frame_num);
-            m_cb_frame_cpu.frame_mip_count        = GetRenderTarget(RendererTexture::frame_render)->GetMipCount();
-            m_cb_frame_cpu.ssr_mip_count          = GetRenderTarget(RendererTexture::ssr)->GetMipCount();
+            m_cb_frame_cpu.frame_mip_count        = GetRenderTarget(RendererRenderTexture::frame_render)->GetMipCount();
+            m_cb_frame_cpu.ssr_mip_count          = GetRenderTarget(RendererRenderTexture::ssr)->GetMipCount();
             m_cb_frame_cpu.resolution_environment = Vector2(GetEnvironmentTexture()->GetWidth(), GetEnvironmentTexture()->GetHeight());
 
             // These must match what Common_Buffer.hlsl is reading
@@ -433,14 +434,14 @@ namespace Spartan
 
     void Renderer::SetResolutionRender(uint32_t width, uint32_t height, bool recreate_resources /*= true*/)
     {
-        // Return if resolution is invalid
+        // Early exit if the resolution is invalid
         if (!RHI_Device::IsValidResolution(width, height))
         {
             SP_LOG_WARNING("%dx%d is an invalid resolution", width, height);
             return;
         }
 
-        // Silently return if resolution is already set
+        // Early exit if the resoution is already set
         if (m_resolution_render.x == width && m_resolution_render.y == height)
             return;
 
@@ -973,7 +974,7 @@ namespace Spartan
 
     RHI_Texture* Renderer::GetFrameTexture()
     {
-        return GetRenderTarget(RendererTexture::frame_output).get();
+        return GetRenderTarget(RendererRenderTexture::frame_output).get();
     }
 
     uint64_t Renderer::GetFrameNum()

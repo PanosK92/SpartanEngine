@@ -120,7 +120,7 @@ namespace Spartan
         static std::shared_ptr<RHI_RasterizerState> GetRasterizerState(const RendererRasterizerState type);
         static std::shared_ptr<RHI_DepthStencilState> GetDepthStencilState(const RendererDepthStencilState type);
         static std::shared_ptr<RHI_BlendState> GetBlendState(const RendererBlendState type);
-        static std::shared_ptr<RHI_Texture> GetRenderTarget(const RendererTexture type);
+        static std::shared_ptr<RHI_Texture> GetRenderTarget(const RendererRenderTexture type);
         static std::shared_ptr<RHI_Shader> GetShader(const RendererShader type);
         static std::shared_ptr<RHI_Sampler> GetSampler(const RendererSampler type);
         static std::shared_ptr<RHI_ConstantBuffer> GetConstantBuffer(const RendererConstantBuffer type);
