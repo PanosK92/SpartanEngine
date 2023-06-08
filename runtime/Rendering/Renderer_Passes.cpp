@@ -54,7 +54,7 @@ namespace Spartan
         static const float m_thread_group_count = 8.0f;
     }
 
-    // misc
+    // misc extern
     extern Cb_Frame m_cb_frame_cpu;
     extern Cb_Uber m_cb_uber_cpu;
     extern Cb_Light m_cb_light_cpu;

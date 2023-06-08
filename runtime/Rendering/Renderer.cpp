@@ -87,12 +87,21 @@ namespace Spartan
 
         // misc
         static vector<shared_ptr<Entity>> m_renderables_pending;
-        static bool m_add_new_entities = false;
+        static vector<weak_ptr<RHI_Texture>> m_textures_mip_generation;
         static shared_ptr<Camera> m_camera;
-        static Environment* m_environment = nullptr;
+        static Math::Vector2 m_jitter_offset          = Math::Vector2::Zero;
+        static Environment* m_environment             = nullptr;
+        static bool m_add_new_entities                = false;
+        static const uint32_t m_resolution_shadow_min = 128;
+        static float m_near_plane                     = 0.0f;
+        static float m_far_plane                      = 1.0f;
     }
 
     // misc
+    unordered_map<RendererEntity, vector<shared_ptr<Entity>>> m_renderables;
+    array<Material*, m_max_material_instances> m_material_instances;
+
+    // misc extern
     extern Cb_Frame m_cb_frame_cpu;
     extern Cb_Uber m_cb_uber_cpu;
     extern Cb_Light m_cb_light_cpu;
@@ -100,15 +109,6 @@ namespace Spartan
     extern shared_ptr<RHI_VertexBuffer> m_vertex_buffer_lines;
     extern unique_ptr<Font> m_font;
     extern unique_ptr<Grid> m_world_grid;
-
-    // misc
-    unordered_map<RendererEntity, vector<shared_ptr<Entity>>> m_renderables;
-    Math::Vector2 m_jitter_offset = Math::Vector2::Zero;
-    float m_near_plane = 0.0f;
-    float m_far_plane = 1.0f;
-    array<Material*, m_max_material_instances> m_material_instances;
-    const uint32_t m_resolution_shadow_min = 128;
-    vector<weak_ptr<RHI_Texture>> m_textures_mip_generation;
 
     void Renderer::Initialize()
     {
