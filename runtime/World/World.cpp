@@ -55,10 +55,10 @@ namespace Spartan
         static bool m_was_in_editor_mode                        = false;
         static shared_ptr<Entity> m_default_environment         = nullptr;
         static shared_ptr<Entity> m_default_model_floor         = nullptr;
-        static shared_ptr<Mesh> m_default_model_sponza = nullptr;
+        static shared_ptr<Mesh> m_default_model_sponza          = nullptr;
         static shared_ptr<Mesh> m_default_model_sponza_curtains = nullptr;
-        static shared_ptr<Mesh> m_default_model_car = nullptr;
-        static shared_ptr<Mesh> m_default_model_helmet = nullptr;
+        static shared_ptr<Mesh> m_default_model_car             = nullptr;
+        static shared_ptr<Mesh> m_default_model_helmet          = nullptr;
         static mutex m_entity_access_mutex;
 
         static void update_default_scene()
@@ -471,10 +471,42 @@ namespace Spartan
             entity->SetObjectName("cube");
             entity->GetTransform()->SetPosition(Vector3(0.0f, 4.0f, 0.0f));
 
+            // Load textures
+            shared_ptr<RHI_Texture2D> tex_albedo = make_shared<RHI_Texture2D>();
+            tex_albedo->LoadFromFile("project\\materials\\crate_space\\albedo.png");
+
+            shared_ptr<RHI_Texture2D> tex_normal = make_shared<RHI_Texture2D>();
+            tex_normal->LoadFromFile("project\\materials\\crate_space\\normal.png");
+
+            shared_ptr<RHI_Texture2D> tex_occlusion = make_shared<RHI_Texture2D>();
+            tex_occlusion->LoadFromFile("project\\materials\\crate_space\\ao.png");
+
+            shared_ptr<RHI_Texture2D> tex_roughness = make_shared<RHI_Texture2D>();
+            tex_roughness->LoadFromFile("project\\materials\\crate_space\\roughness.png");
+
+            shared_ptr<RHI_Texture2D> tex_metalness = make_shared<RHI_Texture2D>();
+            tex_metalness->LoadFromFile("project\\materials\\crate_space\\metallic.png");
+
+            shared_ptr<RHI_Texture2D> tex_height = make_shared<RHI_Texture2D>();
+            tex_height->LoadFromFile("project\\materials\\crate_space\\height.png");
+
+            // Create material
+            shared_ptr<Material> material = make_shared<Material>();
+            material->SetTexture(MaterialTexture::Color, tex_albedo);
+            material->SetTexture(MaterialTexture::Normal, tex_normal);
+            material->SetTexture(MaterialTexture::Occlusion, tex_occlusion);
+            material->SetTexture(MaterialTexture::Roughness, tex_roughness);
+            material->SetTexture(MaterialTexture::Metallness, tex_metalness);
+            //material->SetTexture(MaterialTexture::Height, tex_height);
+
+            // Create a file path for this material (required for the material to be able to be cached by the resource cache)
+            const string file_path = "project\\materials\\crate_space" + string(EXTENSION_MATERIAL);
+            material->SetResourceFilePath(file_path);
+
             // Add a renderable component
             shared_ptr<Renderable> renderable = entity->AddComponent<Renderable>();
             renderable->SetGeometry(Renderer_StandardMesh::Cube);
-            renderable->SetDefaultMaterial();
+            renderable->SetMaterial(material);
 
             // Add physics components
             shared_ptr<RigidBody> rigid_body = entity->AddComponent<RigidBody>();
@@ -573,6 +605,9 @@ namespace Spartan
             shared_ptr<RHI_Texture2D> tex_metalness = make_shared<RHI_Texture2D>();
             tex_metalness->LoadFromFile("project\\materials\\tile_black\\metallic.png");
 
+            shared_ptr<RHI_Texture2D> tex_height = make_shared<RHI_Texture2D>();
+            tex_height->LoadFromFile("project\\materials\\tile_black\\height.png");
+
             // Create material
             shared_ptr<Material> material = make_shared<Material>();
             material->SetTexture(MaterialTexture::Color, tex_albedo);
@@ -580,6 +615,7 @@ namespace Spartan
             material->SetTexture(MaterialTexture::Occlusion, tex_occlusion);
             material->SetTexture(MaterialTexture::Roughness, tex_roughness);
             material->SetTexture(MaterialTexture::Metallness, tex_metalness);
+            //material->SetTexture(MaterialTexture::Height, tex_height);
             material->SetProperty(MaterialProperty::UvTilingX, 10.0f);
             material->SetProperty(MaterialProperty::UvTilingY, 10.0f);
 
