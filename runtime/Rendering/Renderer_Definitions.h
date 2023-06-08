@@ -301,11 +301,11 @@ namespace Spartan
 
     enum class RendererDepthStencilState
     {
-        off_off,
-        off_r,
-        rw_off,
-        r_off,
-        rw_w
+        off,
+        stencil_read,
+        depth_read_write_stencil_read,
+        depth_read,
+        depth_read_write_stencil_write
     };
 
     enum class RendererBlendState
