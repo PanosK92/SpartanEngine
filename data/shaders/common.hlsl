@@ -283,7 +283,7 @@ float3 get_normal_view_space(float2 uv)
     return normalize(mul(float4(get_normal(uv), 0.0f), buffer_frame.view).xyz);
 }
 
-float3x3 makeTBN(float3 n, float3 t)
+float3x3 make_tangent_to_world_matrix(float3 n, float3 t)
 {
     // re-orthogonalize T with respect to N
     t = normalize(t - dot(t, n) * n);
@@ -291,6 +291,11 @@ float3x3 makeTBN(float3 n, float3 t)
     float3 b = cross(n, t);
     // create matrix
     return float3x3(t, b, n); 
+}
+
+float3x3 make_world_to_tangent_matrix(float3 n, float3 t)
+{
+    return transpose(make_tangent_to_world_matrix(n, t));
 }
 
 /*------------------------------------------------------------------------------

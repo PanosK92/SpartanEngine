@@ -497,7 +497,7 @@ namespace Spartan
             material->SetTexture(MaterialTexture::Occlusion, tex_occlusion);
             material->SetTexture(MaterialTexture::Roughness, tex_roughness);
             material->SetTexture(MaterialTexture::Metallness, tex_metalness);
-            //material->SetTexture(MaterialTexture::Height, tex_height);
+            material->SetTexture(MaterialTexture::Height, tex_height);
 
             // Create a file path for this material (required for the material to be able to be cached by the resource cache)
             const string file_path = "project\\materials\\crate_space" + string(EXTENSION_MATERIAL);
@@ -615,7 +615,7 @@ namespace Spartan
             material->SetTexture(MaterialTexture::Occlusion, tex_occlusion);
             material->SetTexture(MaterialTexture::Roughness, tex_roughness);
             material->SetTexture(MaterialTexture::Metallness, tex_metalness);
-            //material->SetTexture(MaterialTexture::Height, tex_height);
+            material->SetTexture(MaterialTexture::Height, tex_height);
             material->SetProperty(MaterialProperty::UvTilingX, 10.0f);
             material->SetProperty(MaterialProperty::UvTilingY, 10.0f);
 

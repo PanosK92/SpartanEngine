@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016-2021 Panos Karabelas
+Copyright(c) 2016-2023 Panos Karabelas
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
 in the Software without restriction, including without limitation the rights
@@ -16,10 +16,9 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ===================
+//= INCLUDES =========
 #include "common.hlsl"
-#include "parallax_mapping.hlsl"
-//==============================
+//====================
 
 struct PixelInputType
 {
@@ -71,21 +70,16 @@ PixelOutputType mainPS(PixelInputType input)
     float2 uv = input.uv;
     uv        = float2(uv.x * buffer_uber.mat_tiling.x + buffer_uber.mat_offset.x, uv.y * buffer_uber.mat_tiling.y + buffer_uber.mat_offset.y);
 
-    // TBN
-    float3x3 TBN = 0.0f;
-    if (has_texture_height() || has_texture_normal())
-    {
-        TBN = makeTBN(input.normal_world, input.tangent_world);
-    }
-
     // Parallax mapping
     if (has_texture_height())
     {
+        float scale = buffer_uber.mat_height * 0.01f;
+
+        float3x3 world_to_tangent      = make_world_to_tangent_matrix(input.normal_world, input.tangent_world);
         float3 camera_to_pixel_world   = normalize(buffer_frame.camera_position - input.position_world.xyz);
-        float3 camera_to_pixel_tangent = mul(camera_to_pixel_world, TBN);
-        float height                   = tex_material_height.Sample(sampler_anisotropic_wrap, uv).r * 2.0f - 1.0f;
-        float height_scale             = buffer_uber.mat_height;
-        uv                             += camera_to_pixel_tangent.xy * height * height_scale;
+        float3 camera_to_pixel_tangent = normalize(mul(camera_to_pixel_world, world_to_tangent));
+        float height                   = tex_material_height.Sample(sampler_anisotropic_wrap, uv).r - 0.5f;
+        uv                             += (camera_to_pixel_tangent.xy / camera_to_pixel_tangent.z) * height * scale;
     }
 
     // Alpha mask
@@ -148,10 +142,11 @@ PixelOutputType mainPS(PixelInputType input)
     if (has_texture_normal())
     {
         // Get tangent space normal and apply the user defined intensity. Then transform it to world space.
-        float3 tangent_normal  = normalize(unpack(tex_material_normal.Sample(sampler_anisotropic_wrap, uv).rgb));
-        float normal_intensity = clamp(buffer_uber.mat_normal, 0.012f, buffer_uber.mat_normal);
-        tangent_normal.xy      *= saturate(normal_intensity);
-        normal                 = normalize(mul(tangent_normal, TBN).xyz);
+        float3 tangent_normal     = normalize(unpack(tex_material_normal.Sample(sampler_anisotropic_wrap, uv).rgb));
+        float normal_intensity    = clamp(buffer_uber.mat_normal, 0.012f, buffer_uber.mat_normal);
+        tangent_normal.xy         *= saturate(normal_intensity);
+        float3x3 tangent_to_world = make_tangent_to_world_matrix(input.normal_world, input.tangent_world);
+        normal                    = normalize(mul(tangent_normal, tangent_to_world).xyz);
     }
 
     // Occlusion
@@ -194,4 +189,8 @@ PixelOutputType mainPS(PixelInputType input)
 
     return g_buffer;
 }
+
+
+
+
 
