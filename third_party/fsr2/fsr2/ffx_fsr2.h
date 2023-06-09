@@ -40,7 +40,7 @@
 /// FidelityFX Super Resolution 2 patch version.
 ///
 /// @ingroup FSR2
-#define FFX_FSR2_VERSION_PATCH      (0)
+#define FFX_FSR2_VERSION_PATCH      (1)
 
 /// The size of the context specified in 32bit values.
 ///
@@ -134,7 +134,7 @@ typedef struct FfxFsr2DispatchDescription {
     float                       preExposure;                        ///< The pre exposure value (must be > 0.0f)
     bool                        reset;                              ///< A boolean value which when set to true, indicates the camera has moved discontinuously.
     float                       cameraNear;                         ///< The distance to the near plane of the camera.
-    float                       cameraFar;                          ///< The distance to the far plane of the camera. This is used only used in case of non infinite depth.
+    float                       cameraFar;                          ///< The distance to the far plane of the camera.
     float                       cameraFovAngleVertical;             ///< The camera angle field of view in the vertical direction (expressed in radians).
     float                       viewSpaceToMetersFactor;            ///< The scale factor to convert view space units to meters
 
