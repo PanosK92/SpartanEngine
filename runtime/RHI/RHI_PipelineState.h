@@ -23,26 +23,27 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==============
 #include "RHI_Definition.h"
-#include "RHI_Viewport.h"
 #include "../Core/Object.h"
 #include <array>
 //=========================
 
 namespace Spartan
 {
-    class SP_CLASS RHI_PipelineState : public Object
+    class SP_CLASS RHI_PipelineState : public Object, public std::enable_shared_from_this<RHI_PipelineState>
     {
     public:
         RHI_PipelineState();
         ~RHI_PipelineState();
- 
-        uint32_t GetWidth() const;
-        uint32_t GetHeight() const;
-        uint64_t GetHash();
-        bool IsValid();
-        bool HasClearValues();
-        bool IsGraphics() const { return (shader_vertex != nullptr || shader_pixel != nullptr) && !shader_compute; }
-        bool IsCompute()  const { return shader_compute != nullptr && !IsGraphics(); }
+
+        bool NeedsToUpdateHash();
+        uint64_t ComputeHash();
+        uint64_t GetHash()       const { return m_hash; }
+        uint32_t GetWidth()      const;
+        uint32_t GetHeight()     const;
+        bool IsValid()           const;
+        bool HasClearValues()    const;
+        bool IsGraphics()        const { return (shader_vertex != nullptr || shader_pixel != nullptr) && !shader_compute; }
+        bool IsCompute()         const { return shader_compute != nullptr && !IsGraphics(); }
 
         //= STATIC - Will cause PSO generation ===============================================
         RHI_Shader* shader_vertex                     = nullptr;
@@ -59,9 +60,7 @@ namespace Spartan
         // RTs
         RHI_Texture* render_target_depth_texture = nullptr;
         std::array<RHI_Texture*, rhi_max_render_target_count> render_target_color_textures;
-
-        // RT indices (affect render pass)
-        uint32_t render_target_color_texture_array_index = 0;
+        uint32_t render_target_color_texture_array_index         = 0;
         uint32_t render_target_depth_stencil_texture_array_index = 0;
         //====================================================================================
 
@@ -74,6 +73,7 @@ namespace Spartan
         //=========================================================
 
     private:
-        uint64_t m_hash = 0;
+        uint64_t m_hash                                   = 0;
+        std::shared_ptr<RHI_PipelineState> m_pso_previous = nullptr;
     };
 }

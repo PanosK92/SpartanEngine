@@ -49,43 +49,136 @@ namespace Spartan
 
     }
 
-    bool RHI_PipelineState::IsValid()
+    uint64_t RHI_PipelineState::ComputeHash()
     {
-        // Deduce states
-        bool has_shader_compute  = shader_compute ? shader_compute->IsCompiled() : false;
-        bool has_shader_vertex   = shader_vertex  ? shader_vertex->IsCompiled()  : false;
-        bool has_shader_pixel    = shader_pixel   ? shader_pixel->IsCompiled()   : false;
-        bool has_render_target   = render_target_color_textures[0] || render_target_depth_texture; // Check that there is at least one render target
-        bool has_backbuffer      = render_target_swapchain;                                        // Check that no both the swapchain and the color render target are active
-        bool has_graphics_states = rasterizer_state && blend_state && depth_stencil_state && primitive_topology != RHI_PrimitiveTopology_Mode::Undefined;
-        bool is_graphics_pso     = (has_shader_vertex || has_shader_pixel) && !has_shader_compute;
-        bool is_compute_pso      = has_shader_compute && (!has_shader_vertex && !has_shader_pixel);
+        m_hash = 0;
 
-        // There must be at least one shader
-        if (!has_shader_compute && !has_shader_vertex && !has_shader_pixel)
-            return false;
+        m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(dynamic_scissor));
+        m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(can_use_vertex_index_buffers));
+        m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(primitive_topology));
+        m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(render_target_color_texture_array_index));
+        m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(render_target_depth_stencil_texture_array_index));
 
-        // If this is a graphics pso then there must he graphics states
-        if (is_graphics_pso && !has_graphics_states)
+        if (render_target_swapchain)
         {
-            return false;
+            m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(render_target_swapchain->GetFormat()));
         }
 
-        // If this is a graphics pso then there must be a render target
-        if (is_graphics_pso && !has_render_target && !has_backbuffer)
+        if (rasterizer_state)
         {
-            if (!has_render_target && !has_backbuffer)
+            m_hash = rhi_hash_combine(m_hash, rasterizer_state->GetHash());
+        }
+
+        if (blend_state)
+        {
+            m_hash = rhi_hash_combine(m_hash, blend_state->GetHash());
+        }
+
+        if (depth_stencil_state)
+        {
+            m_hash = rhi_hash_combine(m_hash, depth_stencil_state->GetHash());
+        }
+
+        // Shaders
+        {
+            if (shader_compute)
             {
-                return false;
+                m_hash = rhi_hash_combine(m_hash, shader_compute->GetHash());
             }
 
-            if (has_render_target && has_backbuffer)
+            if (shader_vertex)
             {
-                return false;
+                m_hash = rhi_hash_combine(m_hash, shader_vertex->GetHash());
+            }
+
+            if (shader_pixel)
+            {
+                m_hash = rhi_hash_combine(m_hash, shader_pixel->GetHash());
             }
         }
 
-        return true;
+        // RTs
+        {
+            // Color
+            for (uint32_t i = 0; i < rhi_max_render_target_count; i++)
+            {
+                if (RHI_Texture* texture = render_target_color_textures[i])
+                {
+                    m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(texture->GetFormat()));
+                }
+            }
+
+            // Depth
+            if (render_target_depth_texture)
+            {
+                m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(render_target_depth_texture->GetFormat()));
+            }
+        }
+
+        return m_hash;
+    }
+
+    bool RHI_PipelineState::NeedsToUpdateHash()
+    {
+        // RHI_PipelineState::ComputeHash() is expensive CPU-wise.
+        // This is why we need to explicitly check states before actually calling it.
+        bool needs_to_update = false;
+
+        if (!m_pso_previous)
+            needs_to_update = true;
+
+        if (!needs_to_update && m_pso_previous->dynamic_scissor != dynamic_scissor)
+            needs_to_update = true;
+
+        if (!needs_to_update && m_pso_previous->can_use_vertex_index_buffers != can_use_vertex_index_buffers)
+            needs_to_update = true;
+
+        if (!needs_to_update && m_pso_previous->primitive_topology != primitive_topology)
+            needs_to_update = true;
+
+        if (!needs_to_update && m_pso_previous->render_target_color_texture_array_index != render_target_color_texture_array_index)
+            needs_to_update = true;
+
+        if (!needs_to_update && m_pso_previous->render_target_depth_stencil_texture_array_index != render_target_depth_stencil_texture_array_index)
+            needs_to_update = true;
+
+        if (!needs_to_update && render_target_swapchain && (!m_pso_previous->render_target_swapchain || m_pso_previous->render_target_swapchain->GetFormat() != render_target_swapchain->GetFormat()))
+            needs_to_update = true;
+
+        if (!needs_to_update && rasterizer_state && (!m_pso_previous->rasterizer_state || m_pso_previous->rasterizer_state->GetHash() != rasterizer_state->GetHash()))
+            needs_to_update = true;
+
+        if (!needs_to_update && blend_state && (!m_pso_previous->blend_state || m_pso_previous->blend_state->GetHash() != blend_state->GetHash()))
+            needs_to_update = true;
+
+        if (!needs_to_update && depth_stencil_state && (!m_pso_previous->depth_stencil_state || m_pso_previous->depth_stencil_state->GetHash() != depth_stencil_state->GetHash()))
+            needs_to_update = true;
+
+        if (!needs_to_update && shader_compute && (!m_pso_previous->shader_compute || m_pso_previous->shader_compute->GetHash() != shader_compute->GetHash()))
+            needs_to_update = true;
+
+        if (!needs_to_update && shader_vertex && (!m_pso_previous->shader_vertex || m_pso_previous->shader_vertex->GetHash() != shader_vertex->GetHash()))
+            needs_to_update = true;
+
+        if (!needs_to_update && shader_pixel && (!m_pso_previous->shader_pixel || m_pso_previous->shader_pixel->GetHash() != shader_pixel->GetHash()))
+            needs_to_update = true;
+
+        for (uint32_t i = 0; i < rhi_max_render_target_count; i++)
+        {
+            RHI_Texture* texture = render_target_color_textures[i];
+            if (!needs_to_update && texture && (!m_pso_previous->render_target_color_textures[i] || m_pso_previous->render_target_color_textures[i]->GetFormat() != texture->GetFormat()))
+                needs_to_update = true;
+        }
+
+        if (!needs_to_update && render_target_depth_texture && (!m_pso_previous->render_target_depth_texture || m_pso_previous->render_target_depth_texture->GetFormat() != render_target_depth_texture->GetFormat()))
+            needs_to_update = true;
+
+        if (needs_to_update)
+        {
+            m_pso_previous = make_shared<RHI_PipelineState>(*this);
+        }
+
+        return needs_to_update;
     }
 
     uint32_t RHI_PipelineState::GetWidth() const
@@ -116,7 +209,40 @@ namespace Spartan
         return 0;
     }
 
-    bool RHI_PipelineState::HasClearValues()
+    bool RHI_PipelineState::IsValid() const
+    {
+        // Deduce states
+        bool has_shader_compute  = shader_compute ? shader_compute->IsCompiled() : false;
+        bool has_shader_vertex   = shader_vertex  ? shader_vertex->IsCompiled()  : false;
+        bool has_shader_pixel    = shader_pixel   ? shader_pixel->IsCompiled()   : false;
+        bool has_render_target   = render_target_color_textures[0] || render_target_depth_texture; // Check that there is at least one render target
+        bool has_backbuffer      = render_target_swapchain;                                        // Check that no both the swapchain and the color render target are active
+        bool has_graphics_states = rasterizer_state && blend_state && depth_stencil_state && primitive_topology != RHI_PrimitiveTopology_Mode::Undefined;
+        bool is_graphics         = (has_shader_vertex || has_shader_pixel) && !has_shader_compute;
+        bool is_compute          = has_shader_compute && (!has_shader_vertex && !has_shader_pixel);
+
+        // There must be at least one shader
+        if (!has_shader_compute && !has_shader_vertex && !has_shader_pixel)
+            return false;
+
+        // If this is a graphics then there must he graphics states
+        if (is_graphics&& !has_graphics_states)
+            return false;
+
+        // If this is a graphics then there must be a render target
+        if (is_graphics&& !has_render_target && !has_backbuffer)
+        {
+            if (!has_render_target && !has_backbuffer)
+                return false;
+            
+            if (has_render_target && has_backbuffer)
+                return false;
+        }
+
+        return true;
+    }
+
+    bool RHI_PipelineState::HasClearValues() const
     {
         if (clear_depth != rhi_depth_load && clear_depth != rhi_depth_dont_care)
             return true;
@@ -131,83 +257,5 @@ namespace Spartan
         }
 
         return false;
-    }
-    
-    static uint64_t compute_hash(const RHI_PipelineState& pso)
-    {
-        uint64_t hash = 0;
-
-        hash = rhi_hash_combine(hash, static_cast<uint64_t>(pso.dynamic_scissor));
-        hash = rhi_hash_combine(hash, static_cast<uint64_t>(pso.can_use_vertex_index_buffers));
-        hash = rhi_hash_combine(hash, static_cast<uint64_t>(pso.primitive_topology));
-        hash = rhi_hash_combine(hash, static_cast<uint64_t>(pso.render_target_color_texture_array_index));
-        hash = rhi_hash_combine(hash, static_cast<uint64_t>(pso.render_target_depth_stencil_texture_array_index));
-
-        if (pso.render_target_swapchain)
-        {
-            hash = rhi_hash_combine(hash, static_cast<uint64_t>(pso.render_target_swapchain->GetFormat()));
-        }
-
-        if (pso.rasterizer_state)
-        {
-            hash = rhi_hash_combine(hash, pso.rasterizer_state->GetHash());
-        }
-
-        if (pso.blend_state)
-        {
-            hash = rhi_hash_combine(hash, pso.blend_state->GetHash());
-        }
-
-        if (pso.depth_stencil_state)
-        {
-            hash = rhi_hash_combine(hash, pso.depth_stencil_state->GetHash());
-        }
-
-        // Shaders
-        {
-            if (pso.shader_compute)
-            {
-                hash = rhi_hash_combine(hash, pso.shader_compute->GetHash());
-            }
-
-            if (pso.shader_vertex)
-            {
-                hash = rhi_hash_combine(hash, pso.shader_vertex->GetHash());
-            }
-
-            if (pso.shader_pixel)
-            {
-                hash = rhi_hash_combine(hash, pso.shader_pixel->GetHash());
-            }
-        }
-
-        // RTs
-        {
-            // Color
-            for (uint32_t i = 0; i < rhi_max_render_target_count; i++)
-            {
-                if (RHI_Texture* texture = pso.render_target_color_textures[i])
-                {
-                    hash = rhi_hash_combine(hash, static_cast<uint64_t>(texture->GetFormat()));
-                }
-            }
-
-            // Depth
-            if (pso.render_target_depth_texture)
-            {
-                hash = rhi_hash_combine(hash, static_cast<uint64_t>(pso.render_target_depth_texture->GetFormat()));
-            }
-        }
-
-        return hash;
-    }
-
-    uint64_t RHI_PipelineState::GetHash()
-    {
-        // We can't really avoid re-computing the hash every time
-        // because certain render passes (e.g. Pass_ShadowMaps) can modify the pipeline state.
-        m_hash = compute_hash(*this);
-
-        return m_hash;
     }
 }

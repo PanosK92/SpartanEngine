@@ -215,6 +215,11 @@ namespace Spartan
         SP_ASSERT_MSG(pso.IsValid(), "Invalid pipeline state");
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
+        if (pso.NeedsToUpdateHash())
+        {
+            pso.ComputeHash();
+        }
+
         // Update the descriptor cache with the pipeline state
         GetDescriptorSetLayoutFromPipelineState(pso);
 
