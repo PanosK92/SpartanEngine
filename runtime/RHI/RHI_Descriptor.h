@@ -55,15 +55,15 @@ namespace Spartan
 
         uint64_t GetHash()
         {
-            if (hash == 0)
+            if (m_hash == 0)
             {
-                hash = rhi_hash_combine(hash, static_cast<uint64_t>(type));
-                hash = rhi_hash_combine(hash, static_cast<uint64_t>(slot));
-                hash = rhi_hash_combine(hash, static_cast<uint64_t>(stage));
-                hash = rhi_hash_combine(hash, static_cast<uint64_t>(array_size));
+                m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(type));
+                m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(slot));
+                m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(stage));
+                m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(array_size));
             }
 
-            return hash;
+            return m_hash;
         }
 
         bool IsStorage() const { return type == RHI_Descriptor_Type::TextureStorage; }
@@ -85,6 +85,6 @@ namespace Spartan
         std::string name; // Kept here for debugging purposes
 
     private:
-        uint64_t hash = 0;
+        uint64_t m_hash = 0;
     };
 }

@@ -212,7 +212,7 @@ namespace Spartan
 
     void RHI_CommandList::SetPipelineState(RHI_PipelineState& pso)
     {
-        SP_ASSERT_MSG(pso.IsValid(), "Invalid pipeline state");
+        SP_ASSERT(pso.IsValid());
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
         if (pso.NeedsToUpdateHash())
@@ -247,7 +247,7 @@ namespace Spartan
         if (m_pipeline_dirty)
         {
             // Get vulkan pipeline object
-            SP_ASSERT(m_pipeline);
+            SP_ASSERT(m_pipeline != nullptr);
             VkPipeline vk_pipeline = static_cast<VkPipeline>(m_pipeline->GetResource_Pipeline());
             SP_ASSERT(vk_pipeline != nullptr);
 
