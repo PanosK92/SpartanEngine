@@ -41,7 +41,6 @@ namespace Spartan
         static uint32_t GetRefreshRate();
         static uint32_t GetIndex();
         static bool GetHdr();
-        static float GetLuminanceMin();
         static float GetLuminanceMax();
     };
 }

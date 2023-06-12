@@ -42,18 +42,14 @@ namespace Spartan
     namespace
     {
         static vector<DisplayMode> display_modes;
-        static bool hdr;
-        static float luminance_min;
+        static bool is_hdr_capable;
         static float luminance_max;
-        static Math::Vector2 white_point;
     }
 
-    static void get_hdr_capabilities(bool* hdr, float* luminance_min, float* luminance_max, Math::Vector2* white_point)
+    static void get_hdr_capabilities(bool* is_hdr_capable, float* luminance_max)
     {
-        *hdr           = false;
-        *luminance_min = 0.0f;
+        *is_hdr_capable           = false;
         *luminance_max = 0.0f;
-        *white_point   = Math::Vector2::Zero;
 
         #if defined(_MSC_VER)
             // Create DXGI factory
@@ -133,14 +129,8 @@ namespace Spartan
                 DXGI_OUTPUT_DESC1 desc;
                 if (SUCCEEDED(output6->GetDesc1(&desc)))
                 {
-                    *hdr           = desc.ColorSpace == DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020;
-                    // An SDR monitor can report a min luminance of 0.5, but the min we will accept is 0.01.
-                    // This is because despite what an SDR monitor reports, it can typically do better (I observed it).
-                    // Also, I don't know to what extent we can trust IDXGIOutput6.
-                    *luminance_min = Math::Helper::Min(desc.MinLuminance, 0.01f);
-                    *luminance_max = desc.MaxLuminance;
-                    white_point->x = desc.WhitePoint[0];
-                    white_point->y = desc.WhitePoint[1];
+                    *is_hdr_capable = desc.ColorSpace == DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020;
+                    *luminance_max  = desc.MaxLuminance;
                 }
             }
         #else
@@ -215,8 +205,8 @@ namespace Spartan
         }
 
         // Detect HDR capabilities
-        get_hdr_capabilities(&hdr, &luminance_min, &luminance_max, &white_point);
-        SP_LOG_INFO("HDR: %s, Luminance: %f, %f", hdr ? "true" : "false", luminance_min, luminance_max);
+        get_hdr_capabilities(&is_hdr_capable, &luminance_max);
+        SP_LOG_INFO("HDR: %s, Luminance: %f, %f", is_hdr_capable ? "true" : "false", luminance_max);
     }
 
     const vector<DisplayMode>& Display::GetDisplayModes()
@@ -261,12 +251,7 @@ namespace Spartan
 
     bool Display::GetHdr()
     {
-        return hdr;
-    }
-
-    float Display::GetLuminanceMin()
-    {
-        return luminance_min;
+        return is_hdr_capable;
     }
 
     float Display::GetLuminanceMax()

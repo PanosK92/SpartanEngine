@@ -376,7 +376,6 @@ namespace Spartan
             m_cb_frame_cpu.tonemapping            = GetOption<float>(Renderer_Option::Tonemapping);
             m_cb_frame_cpu.gamma                  = GetOption<float>(Renderer_Option::Gamma);
             m_cb_frame_cpu.exposure               = GetOption<float>(Renderer_Option::Exposure);
-            m_cb_frame_cpu.luminance_min          = Display::GetLuminanceMin();
             m_cb_frame_cpu.luminance_max          = Display::GetLuminanceMax();
             m_cb_frame_cpu.shadow_resolution      = GetOption<float>(Renderer_Option::ShadowResolution);
             m_cb_frame_cpu.frame                  = static_cast<uint32_t>(m_frame_num);
