@@ -325,16 +325,16 @@ namespace Spartan
     static const uint32_t rhi_shader_shift_register_t = 200;
     static const uint32_t rhi_shader_shift_register_s = 300;
 
-    static const Color         rhi_color_dont_care           = Color(std::numeric_limits<float>::max(), 0.0f, 0.0f, 0.0f);
-    static const Color         rhi_color_load                = Color(std::numeric_limits<float>::infinity(), 0.0f, 0.0f, 0.0f);
-    static const float         rhi_depth_dont_care           = std::numeric_limits<float>::max();
-    static const float         rhi_depth_load                = std::numeric_limits<float>::infinity();
-    static const uint32_t      rhi_stencil_dont_care         = std::numeric_limits<uint32_t>::max();
-    static const uint32_t      rhi_stencil_load              = std::numeric_limits<uint32_t>::infinity();
-    static const uint8_t       rhi_max_render_target_count   = 8;
-    static const uint8_t       rhi_max_constant_buffer_count = 8;
-    static const uint32_t      rhi_dynamic_offset_empty      = std::numeric_limits<uint32_t>::max();
-    static const uint8_t       rhi_max_mip_count             = 13;
+    static const Color    rhi_color_dont_care           = Color(std::numeric_limits<float>::max(), 0.0f, 0.0f, 0.0f);
+    static const Color    rhi_color_load                = Color(std::numeric_limits<float>::infinity(), 0.0f, 0.0f, 0.0f);
+    static const float    rhi_depth_dont_care           = std::numeric_limits<float>::max();
+    static const float    rhi_depth_load                = std::numeric_limits<float>::infinity();
+    static const uint32_t rhi_stencil_dont_care         = std::numeric_limits<uint32_t>::max();
+    static const uint32_t rhi_stencil_load              = std::numeric_limits<uint32_t>::infinity();
+    static const uint8_t  rhi_max_render_target_count   = 8;
+    static const uint8_t  rhi_max_constant_buffer_count = 8;
+    static const uint32_t rhi_dynamic_offset_empty      = std::numeric_limits<uint32_t>::max();
+    static const uint8_t  rhi_max_mip_count             = 13;
 
     static uint64_t rhi_hash_combine(uint64_t seed, uint64_t x)
     {
