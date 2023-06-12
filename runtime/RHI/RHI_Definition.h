@@ -338,9 +338,7 @@ namespace Spartan
 
     static uint64_t rhi_hash_combine(uint64_t seed, uint64_t x)
     {
-        static std::hash<uint64_t> hasher;
-        seed ^= hasher(x) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-        return seed;
+        return seed ^ (x + 0x9e3779b9 + (seed << 6) + (seed >> 2));
     }
 
     constexpr uint32_t rhi_format_to_bits_per_channel(const RHI_Format format)

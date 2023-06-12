@@ -163,7 +163,6 @@ PixelOutputType mainPS(PixelInputType input)
         float3 emissive_color = tex_material_emission.Sample(sampler_anisotropic_wrap, uv).rgb;
         emission              = luminance(emissive_color);
         albedo.rgb            += emissive_color;
-
     }
 
     // Specular anti-aliasing
@@ -189,8 +188,3 @@ PixelOutputType mainPS(PixelInputType input)
 
     return g_buffer;
 }
-
-
-
-
-
