@@ -76,11 +76,8 @@ namespace Spartan
         float exposure;
 
         Math::Vector2 resolution_environment;
-        float luminance_min;
         float luminance_max;
-
-        //float paper_white;
-        //Math::Vector2 padding;
+        float padding;
 
         void set_bit(const bool set, const uint32_t bit)
         {
@@ -90,41 +87,40 @@ namespace Spartan
         bool operator==(const Cb_Frame& rhs) const
         {
             return
-                view                        == rhs.view                        &&
-                projection                  == rhs.projection                  &&
-                projection_inverted         == rhs.projection_inverted         &&
-                projection_ortho            == rhs.projection_ortho            &&
-                view_projection             == rhs.view_projection             &&
-                view_projection_inv         == rhs.view_projection_inv         &&
-                view_projection_ortho       == rhs.view_projection_ortho       &&
-                view_projection_unjittered  == rhs.view_projection_unjittered  &&
-                view_projection_previous    == rhs.view_projection_previous    &&
-                delta_time                  == rhs.delta_time                  &&
-                time                        == rhs.time                        &&
-                frame                       == rhs.frame                       &&
-                camera_aperture             == rhs.camera_aperture             &&
-                camera_shutter_speed        == rhs.camera_shutter_speed        &&
-                camera_iso                  == rhs.camera_iso                  &&
-                camera_near                 == rhs.camera_near                 &&
-                camera_far                  == rhs.camera_far                  &&
-                camera_position             == rhs.camera_position             &&
-                sharpness                   == rhs.sharpness                   &&
-                camera_direction            == rhs.camera_direction            &&
-                gamma                       == rhs.gamma                       &&
-                tonemapping                 == rhs.tonemapping                 &&
-                shadow_resolution           == rhs.shadow_resolution           &&
-                fog                         == rhs.fog                         &&
-                resolution_output           == rhs.resolution_output           &&
-                resolution_render           == rhs.resolution_render           &&
-                taa_jitter_current          == rhs.taa_jitter_current          &&
-                taa_jitter_previous         == rhs.taa_jitter_previous         &&
-                options                     == rhs.options                     &&
-                frame_mip_count             == rhs.frame_mip_count             &&
-                ssr_mip_count               == rhs.ssr_mip_count               &&
-                resolution_environment      == rhs.resolution_environment      &&
-                exposure                    == rhs.exposure                    &&
-                luminance_min               == rhs.luminance_min               &&
-                luminance_max               == rhs.luminance_max;
+                view                        == rhs.view                       &&
+                projection                  == rhs.projection                 &&
+                projection_inverted         == rhs.projection_inverted        &&
+                projection_ortho            == rhs.projection_ortho           &&
+                view_projection             == rhs.view_projection            &&
+                view_projection_inv         == rhs.view_projection_inv        &&
+                view_projection_ortho       == rhs.view_projection_ortho      &&
+                view_projection_unjittered  == rhs.view_projection_unjittered &&
+                view_projection_previous    == rhs.view_projection_previous   &&
+                delta_time                  == rhs.delta_time                 &&
+                time                        == rhs.time                       &&
+                frame                       == rhs.frame                      &&
+                camera_aperture             == rhs.camera_aperture            &&
+                camera_shutter_speed        == rhs.camera_shutter_speed       &&
+                camera_iso                  == rhs.camera_iso                 &&
+                camera_near                 == rhs.camera_near                &&
+                camera_far                  == rhs.camera_far                 &&
+                camera_position             == rhs.camera_position            &&
+                sharpness                   == rhs.sharpness                  &&
+                camera_direction            == rhs.camera_direction           &&
+                gamma                       == rhs.gamma                      &&
+                tonemapping                 == rhs.tonemapping                &&
+                shadow_resolution           == rhs.shadow_resolution          &&
+                fog                         == rhs.fog                        &&
+                resolution_output           == rhs.resolution_output          &&
+                resolution_render           == rhs.resolution_render          &&
+                taa_jitter_current          == rhs.taa_jitter_current         &&
+                taa_jitter_previous         == rhs.taa_jitter_previous        &&
+                options                     == rhs.options                    &&
+                frame_mip_count             == rhs.frame_mip_count            &&
+                ssr_mip_count               == rhs.ssr_mip_count              &&
+                resolution_environment      == rhs.resolution_environment     &&
+                exposure                    == rhs.exposure                   &&
+                luminance_max               == rhs.luminance_max;             
         }
 
         bool operator!=(const Cb_Frame& rhs) const { return !(*this == rhs); }

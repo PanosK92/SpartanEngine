@@ -64,8 +64,8 @@ struct FrameBufferData
     float exposure;
 
     float2 resolution_environment;
-    float luminance_min_nits;
     float luminance_max_nits;
+    float padding;
 };
 
 struct UberBufferData
