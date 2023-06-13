@@ -67,6 +67,95 @@ namespace Spartan
         static mutex mutex_allocation;
         static mutex mutex_deletion;
         static unordered_map<RHI_Resource_Type, vector<void*>> deletion_queue;
+
+        static bool is_present_instance_layer(const char* layer_name)
+        {
+            uint32_t layer_count;
+            vkEnumerateInstanceLayerProperties(&layer_count, nullptr);
+
+            vector<VkLayerProperties> layers(layer_count);
+            vkEnumerateInstanceLayerProperties(&layer_count, layers.data());
+
+            for (const auto& layer : layers)
+            {
+                if (strcmp(layer_name, layer.layerName) == 0)
+                    return true;
+            }
+
+            return false;
+        }
+
+        static bool is_present_device_extension(const char* extension_name, VkPhysicalDevice device_physical)
+        {
+            uint32_t extension_count = 0;
+            vkEnumerateDeviceExtensionProperties(device_physical, nullptr, &extension_count, nullptr);
+
+            vector<VkExtensionProperties> extensions(extension_count);
+            vkEnumerateDeviceExtensionProperties(device_physical, nullptr, &extension_count, extensions.data());
+
+            for (const auto& extension : extensions)
+            {
+                if (strcmp(extension_name, extension.extensionName) == 0)
+                    return true;
+            }
+
+            return false;
+        }
+
+        static bool is_present_instance(const char* extension_name)
+        {
+            uint32_t extension_count = 0;
+            vkEnumerateInstanceExtensionProperties(nullptr, &extension_count, nullptr);
+
+            vector<VkExtensionProperties> extensions(extension_count);
+            vkEnumerateInstanceExtensionProperties(nullptr, &extension_count, extensions.data());
+
+            for (const auto& extension : extensions)
+            {
+                if (strcmp(extension_name, extension.extensionName) == 0)
+                    return true;
+            }
+
+            return false;
+        }
+
+        static vector<const char*> get_physical_device_supported_extensions(const vector<const char*>& extensions, VkPhysicalDevice device_physical)
+        {
+            vector<const char*> extensions_supported;
+
+            for (const auto& extension : extensions)
+            {
+                if (is_present_device_extension(extension, device_physical))
+                {
+                    extensions_supported.emplace_back(extension);
+                }
+                else
+                {
+                    SP_LOG_ERROR("Device extension \"%s\" is not supported", extension);
+                }
+            }
+
+            return extensions_supported;
+        }
+
+        static vector<const char*> get_supported_extensions(const vector<const char*>& extensions)
+        {
+            vector<const char*> extensions_supported;
+
+            for (const auto& extension : extensions)
+            {
+                if (is_present_instance(extension))
+                {
+                    extensions_supported.emplace_back(extension);
+                }
+                else
+                {
+                    SP_LOG_ERROR("Instance extension \"%s\" is not supported", extension);
+                }
+            }
+
+            return extensions_supported;
+        }
     }
 
     namespace vulkan_memory_allocator
@@ -121,95 +210,6 @@ namespace Spartan
 
             return nullptr;
         }
-    }
-
-    static bool is_present_instance_layer(const char* layer_name)
-    {
-        uint32_t layer_count;
-        vkEnumerateInstanceLayerProperties(&layer_count, nullptr);
-
-        vector<VkLayerProperties> layers(layer_count);
-        vkEnumerateInstanceLayerProperties(&layer_count, layers.data());
-
-        for (const auto& layer : layers)
-        {
-            if (strcmp(layer_name, layer.layerName) == 0)
-                return true;
-        }
-
-        return false;
-    }
-
-    static bool is_present_device_extension(const char* extension_name, VkPhysicalDevice device_physical)
-    {
-        uint32_t extension_count = 0;
-        vkEnumerateDeviceExtensionProperties(device_physical, nullptr, &extension_count, nullptr);
-
-        vector<VkExtensionProperties> extensions(extension_count);
-        vkEnumerateDeviceExtensionProperties(device_physical, nullptr, &extension_count, extensions.data());
-
-        for (const auto& extension : extensions)
-        {
-            if (strcmp(extension_name, extension.extensionName) == 0)
-                return true;
-        }
-
-        return false;
-    }
-
-    static bool is_present_instance(const char* extension_name)
-    {
-        uint32_t extension_count = 0;
-        vkEnumerateInstanceExtensionProperties(nullptr, &extension_count, nullptr);
-
-        vector<VkExtensionProperties> extensions(extension_count);
-        vkEnumerateInstanceExtensionProperties(nullptr, &extension_count, extensions.data());
-
-        for (const auto& extension : extensions)
-        {
-            if (strcmp(extension_name, extension.extensionName) == 0)
-                return true;
-        }
-
-        return false;
-    }
-
-    static vector<const char*> get_physical_device_supported_extensions(const vector<const char*>& extensions, VkPhysicalDevice device_physical)
-    {
-        vector<const char*> extensions_supported;
-
-        for (const auto& extension : extensions)
-        {
-            if (is_present_device_extension(extension, device_physical))
-            {
-                extensions_supported.emplace_back(extension);
-            }
-            else
-            {
-                SP_LOG_ERROR("Device extension \"%s\" is not supported", extension);
-            }
-        }
-
-        return extensions_supported;
-    }
-
-    static vector<const char*> get_supported_extensions(const vector<const char*>& extensions)
-    {
-        vector<const char*> extensions_supported;
-
-        for (const auto& extension : extensions)
-        {
-            if (is_present_instance(extension))
-            {
-                extensions_supported.emplace_back(extension);
-            }
-            else
-            {
-                SP_LOG_ERROR("Instance extension \"%s\" is not supported", extension);
-            }
-        }
-
-        return extensions_supported;
     }
 
     void RHI_Device::Initialize()
@@ -440,29 +440,9 @@ namespace Spartan
                     SP_ASSERT(features_supported_1_3.dynamicRendering == VK_TRUE);
                     device_features_to_enable_1_3.dynamicRendering = VK_TRUE;
 
-                    // Float16 - FSR 2.0 will opt for it (for performance), but it's not a requirement, so don't assert on this one.
-                    if (features_supported_1_2.shaderFloat16 == VK_TRUE)
-                    {
-                        device_features_to_enable_1_2.shaderFloat16 = VK_TRUE;
-                    }
-
-                    // Int16 - FSR 2.0 will opt for it (for performance), but it's not a requirement, so don't assert on this one.
-                    if (features_supported.features.shaderInt16 == VK_TRUE)
-                    {
-                        device_features_to_enable.features.shaderInt16 = VK_TRUE;
-                    }
-
-                    // Wave64 - FSR 2.0 will opt for it (for performance), but it's not a requirement, so don't assert on this one.
-                    if (features_supported_1_3.subgroupSizeControl == VK_TRUE)
-                    {
-                        device_features_to_enable_1_3.subgroupSizeControl = VK_TRUE;
-                    }
-
-                    // Wave64 - FSR 2.0 will opt for it (for performance), but it's not a requirement, so don't assert on this one.
-                    if (features_supported_1_3.shaderDemoteToHelperInvocation == VK_TRUE)
-                    {
-                        device_features_to_enable_1_3.shaderDemoteToHelperInvocation = VK_TRUE;
-                    }
+                    // Wave64
+                    SP_ASSERT(features_supported_1_3.shaderDemoteToHelperInvocation == VK_TRUE);
+                    device_features_to_enable_1_3.shaderDemoteToHelperInvocation = VK_TRUE;
                 }
             }
 

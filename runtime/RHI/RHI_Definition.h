@@ -317,31 +317,33 @@ namespace Spartan
         Submitted
     };
 
-    static const uint32_t rhi_all_mips = std::numeric_limits<uint32_t>::max();
+    const uint32_t rhi_all_mips = std::numeric_limits<uint32_t>::max();
 
     // Shader register slot shifts (required to produce spirv from hlsl)
-    static const uint32_t rhi_shader_shift_register_u = 000;
-    static const uint32_t rhi_shader_shift_register_b = 100;
-    static const uint32_t rhi_shader_shift_register_t = 200;
-    static const uint32_t rhi_shader_shift_register_s = 300;
+    const uint32_t rhi_shader_shift_register_u = 000;
+    const uint32_t rhi_shader_shift_register_b = 100;
+    const uint32_t rhi_shader_shift_register_t = 200;
+    const uint32_t rhi_shader_shift_register_s = 300;
 
-    static const Color    rhi_color_dont_care           = Color(std::numeric_limits<float>::max(), 0.0f, 0.0f, 0.0f);
-    static const Color    rhi_color_load                = Color(std::numeric_limits<float>::infinity(), 0.0f, 0.0f, 0.0f);
-    static const float    rhi_depth_dont_care           = std::numeric_limits<float>::max();
-    static const float    rhi_depth_load                = std::numeric_limits<float>::infinity();
-    static const uint32_t rhi_stencil_dont_care         = std::numeric_limits<uint32_t>::max();
-    static const uint32_t rhi_stencil_load              = std::numeric_limits<uint32_t>::infinity();
-    static const uint8_t  rhi_max_render_target_count   = 8;
-    static const uint8_t  rhi_max_constant_buffer_count = 8;
-    static const uint32_t rhi_dynamic_offset_empty      = std::numeric_limits<uint32_t>::max();
-    static const uint8_t  rhi_max_mip_count             = 13;
+    const Color    rhi_color_dont_care           = Color(std::numeric_limits<float>::max(), 0.0f, 0.0f, 0.0f);
+    const Color    rhi_color_load                = Color(std::numeric_limits<float>::infinity(), 0.0f, 0.0f, 0.0f);
+    const float    rhi_depth_dont_care           = std::numeric_limits<float>::max();
+    const float    rhi_depth_load                = std::numeric_limits<float>::infinity();
+    const uint32_t rhi_stencil_dont_care         = std::numeric_limits<uint32_t>::max();
+    const uint32_t rhi_stencil_load              = std::numeric_limits<uint32_t>::infinity();
+    const uint8_t  rhi_max_render_target_count   = 8;
+    const uint8_t  rhi_max_constant_buffer_count = 8;
+    const uint32_t rhi_dynamic_offset_empty      = std::numeric_limits<uint32_t>::max();
+    const uint8_t  rhi_max_mip_count             = 13;
 
     static uint64_t rhi_hash_combine(uint64_t seed, uint64_t x)
     {
+        // xxHash is probably the best hashing lib out there.
+        // To avoid having it as yet another dependency, we'll do this instead:
         return seed ^ (x + 0x9e3779b9 + (seed << 6) + (seed >> 2));
     }
 
-    constexpr uint32_t rhi_format_to_bits_per_channel(const RHI_Format format)
+    static uint32_t rhi_format_to_bits_per_channel(const RHI_Format format)
     {
         switch (format)
         {
@@ -367,7 +369,7 @@ namespace Spartan
         return 0;
     }
 
-    constexpr uint32_t rhi_to_format_channel_count(const RHI_Format format)
+    static uint32_t rhi_to_format_channel_count(const RHI_Format format)
     {
         switch (format)
         {
@@ -396,7 +398,7 @@ namespace Spartan
         return 0;
     }
 
-    constexpr const char* rhi_format_to_string(const RHI_Format result)
+    static const char* rhi_format_to_string(const RHI_Format result)
     {
         switch (result)
         {
@@ -428,7 +430,7 @@ namespace Spartan
         return "";
     }
 
-    constexpr uint32_t rhi_format_to_index(const RHI_Format format)
+    static uint32_t rhi_format_to_index(const RHI_Format format)
     {
         return static_cast<uint32_t>(format);
     }
