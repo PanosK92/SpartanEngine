@@ -984,8 +984,9 @@ namespace Spartan
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
-        // Bind descriptor sets - If the descriptor set is null, it means we don't need to bind anything.
         Renderer::SetGlobalShaderResources(this);
+
+        // Bind descriptor sets - If the descriptor set is null, it means we don't need to bind anything.
         if (RHI_DescriptorSet* descriptor_set = m_descriptor_layout_current->GetDescriptorSet())
         {
             // Get descriptor sets
