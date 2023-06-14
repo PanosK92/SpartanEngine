@@ -275,7 +275,7 @@ namespace Spartan
                         continue;
 
                     // Acquire geometry
-                    shared_ptr<Mesh> mesh = renderable->GetMesh();
+                    Mesh* mesh = renderable->GetMesh();
                     if (!mesh || !mesh->GetVertexBuffer() || !mesh->GetIndexBuffer())
                         continue;
 
@@ -429,7 +429,7 @@ namespace Spartan
                                     continue;
 
                                 // Get geometry
-                                shared_ptr<Mesh> mesh = renderable->GetMesh();
+                                Mesh* mesh = renderable->GetMesh();
                                 if (!mesh || !mesh->GetVertexBuffer() || !mesh->GetIndexBuffer())
                                     continue;
 
@@ -527,7 +527,7 @@ namespace Spartan
                     continue;
 
                 // Get geometry
-                shared_ptr<Mesh> mesh = renderable->GetMesh();
+                Mesh* mesh = renderable->GetMesh();
                 if (!mesh || !mesh->GetVertexBuffer() || !mesh->GetIndexBuffer())
                     continue;
 
@@ -638,7 +638,7 @@ namespace Spartan
 
 
                 // Get geometry
-                shared_ptr<Mesh> mesh = renderable->GetMesh();
+                Mesh* mesh = renderable->GetMesh();
                 if (!mesh || !mesh->GetVertexBuffer() || !mesh->GetIndexBuffer())
                     continue;
 
@@ -2100,7 +2100,7 @@ namespace Spartan
 
                     if (shared_ptr<Renderable> renderable = entity_selected->GetComponent<Renderable>())
                     {
-                        if (shared_ptr<Mesh> mesh = renderable->GetMesh())
+                        if (Mesh* mesh = renderable->GetMesh())
                         {
                             if (mesh->GetVertexBuffer() && mesh->GetIndexBuffer())
                             {

@@ -99,7 +99,7 @@ namespace Spartan
         {
             SetResourceFilePath(file_path);
 
-            if (ModelImporter::Load(GetSharedPtr(), file_path))
+            if (ModelImporter::Load(this, file_path))
             {
                 // Set the normalized scale to the root entity's transform
                 m_normalized_scale = ComputeNormalizedScale();
@@ -221,7 +221,7 @@ namespace Spartan
     uint32_t Mesh::GetDefaultFlags()
     {
         return
-            (1U << static_cast<uint32_t>(MeshOptions::RemoveRedundantData));
+            (1U << static_cast<uint32_t>(MeshProcessingOptions::RemoveRedundantData));
     }
     
     float Mesh::ComputeNormalizedScale()

@@ -372,7 +372,7 @@ namespace Spartan
                 0,                      // vertex offset
                 mesh->GetVertexCount(), // vertex count
                 mesh->GetAabb(),
-                mesh
+                mesh.get()
             );
 
             renderable->SetDefaultMaterial();
