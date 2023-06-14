@@ -86,6 +86,8 @@ namespace Spartan
     void World::Shutdown()
     {
         m_entities.clear();
+        m_default_environment           = nullptr;
+        m_default_model_floor           = nullptr;
         m_default_model_sponza          = nullptr;
         m_default_model_sponza_curtains = nullptr;
         m_default_model_car             = nullptr;
