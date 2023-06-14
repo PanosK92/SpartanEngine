@@ -40,7 +40,7 @@ namespace
     static string mesh_import_file_path;
 }
 
-static void mesh_import_dialog_checkbox(const MeshOptions option, const char* label, const char* tooltip = nullptr)
+static void mesh_import_dialog_checkbox(const MeshProcessingOptions option, const char* label, const char* tooltip = nullptr)
 {
     bool enabled = (mesh_import_dialog_flags & (1U << static_cast<uint32_t>(option))) != 0;
 
@@ -74,20 +74,20 @@ static void mesh_import_dialog()
         // Begin
         if (ImGui::Begin("Mesh import options", &mesh_import_dialog_is_visible, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse))
         {
-            mesh_import_dialog_checkbox(MeshOptions::RemoveRedundantData,
+            mesh_import_dialog_checkbox(MeshProcessingOptions::RemoveRedundantData,
                 "Remove redundant data",
                 "Joins identical vertices, removes redundant materials, duplicate meshes, zeroed normals and invalid UVs.");
 
-            mesh_import_dialog_checkbox(MeshOptions::NormalizeScale,
+            mesh_import_dialog_checkbox(MeshProcessingOptions::NormalizeScale,
                 "Normalize scale",
                 "Scales the mesh so that it's not bigger than a cubic unit."
             );
 
-            mesh_import_dialog_checkbox(MeshOptions::CombineMeshes,
+            mesh_import_dialog_checkbox(MeshProcessingOptions::CombineMeshes,
                 "Combine meshes",
                 "Joins some meshes, removes some nodes and pretransforms vertices.");
 
-            mesh_import_dialog_checkbox(MeshOptions::ImportLights, "Import lights");
+            mesh_import_dialog_checkbox(MeshProcessingOptions::ImportLights, "Import lights");
 
             // Ok button
             if (ImGuiSp::button_centered_on_line("Ok", 0.5f))

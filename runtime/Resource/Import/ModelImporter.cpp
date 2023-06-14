@@ -59,7 +59,7 @@ namespace Spartan
     {
         static std::string model_file_path;
         static std::string model_name;
-        static shared_ptr<Mesh> mesh    = nullptr;
+        static Mesh* mesh               = nullptr;
         static bool model_has_animation = false;
         static bool model_is_gltf       = false;
         static const aiScene* scene     = nullptr;
@@ -226,7 +226,7 @@ namespace Spartan
     }
 
     static bool load_material_texture(
-        shared_ptr<Mesh> mesh,
+        Mesh* mesh,
         const string& file_path,
         const bool is_gltf,
         shared_ptr<Material> material,
@@ -287,7 +287,7 @@ namespace Spartan
         return true;
     }
 
-    static shared_ptr<Material> load_material(shared_ptr<Mesh> mesh, const string& file_path, const bool is_gltf, const aiMaterial* material_assimp)
+    static shared_ptr<Material> load_material(Mesh* mesh, const string& file_path, const bool is_gltf, const aiMaterial* material_assimp)
     {
         SP_ASSERT(material_assimp != nullptr);
 
@@ -338,7 +338,7 @@ namespace Spartan
         Settings::RegisterThirdPartyLib("Assimp", to_string(major) + "." + to_string(minor) + "." + to_string(rev), "https://github.com/assimp/assimp");
     }
 
-    bool ModelImporter::Load(shared_ptr<Mesh> mesh_in, const string& file_path)
+    bool ModelImporter::Load(Mesh* mesh_in, const string& file_path)
     {
         SP_ASSERT_MSG(mesh_in != nullptr, "Invalid parameter");
 
@@ -363,7 +363,7 @@ namespace Spartan
             // Remove cameras and lights
             {
                 uint32_t component_flags = aiComponent_CAMERAS;
-                if ((mesh->GetFlags() & (1U << static_cast<uint32_t>(MeshOptions::ImportLights))) == 0)
+                if ((mesh->GetFlags() & (1U << static_cast<uint32_t>(MeshProcessingOptions::ImportLights))) == 0)
                 {
                     component_flags |= aiComponent_LIGHTS;
                 }
@@ -393,7 +393,7 @@ namespace Spartan
             import_flags |= aiProcess_GenUVCoords;      // Converts non-UV mappings (such as spherical or cylindrical mapping) to proper texture coordinate channels
 
             // Combine meshes
-            if ((mesh->GetFlags() & (1U << static_cast<uint32_t>(MeshOptions::CombineMeshes))) != 0)
+            if ((mesh->GetFlags() & (1U << static_cast<uint32_t>(MeshProcessingOptions::CombineMeshes))) != 0)
             {
                 import_flags |= aiProcess_OptimizeMeshes;
                 import_flags |= aiProcess_OptimizeGraph;
@@ -401,7 +401,7 @@ namespace Spartan
             }
 
             // Validate
-            if ((mesh->GetFlags() & (1U << static_cast<uint32_t>(MeshOptions::RemoveRedundantData))) != 0)
+            if ((mesh->GetFlags() & (1U << static_cast<uint32_t>(MeshProcessingOptions::RemoveRedundantData))) != 0)
             {
                 import_flags |= aiProcess_RemoveRedundantMaterials; // Searches for redundant/unreferenced materials and removes them
                 import_flags |= aiProcess_JoinIdenticalVertices;    // Identifies and joins identical vertex data sets within all imported meshes     
@@ -436,7 +436,7 @@ namespace Spartan
 
                 //mesh->Optimize();
                 mesh->ComputeAabb();
-                if ((mesh->GetFlags() & (1U << static_cast<uint32_t>(MeshOptions::NormalizeScale))) != 0)
+                if ((mesh->GetFlags() & (1U << static_cast<uint32_t>(MeshProcessingOptions::NormalizeScale))) != 0)
                 {
                     mesh->ComputeNormalizedScale();
                 }
@@ -474,8 +474,6 @@ namespace Spartan
             entity->SetActive(false);
         }
 
-        SP_ASSERT(entity != nullptr);
-
         // Name the entity
         string node_name = is_root_node ? model_name : node->mName.C_Str();
         entity->SetObjectName(model_name);
@@ -497,7 +495,7 @@ namespace Spartan
         }
 
         // Light component
-        if ((mesh->GetFlags() & (1U << static_cast<uint32_t>(MeshOptions::ImportLights))) != 0)
+        if ((mesh->GetFlags() & (1U << static_cast<uint32_t>(MeshProcessingOptions::ImportLights))) != 0)
         {
             ParseNodeLight(node, entity.get());
         }

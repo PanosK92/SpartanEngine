@@ -52,7 +52,7 @@ namespace Spartan
             uint32_t vertex_offset,
             uint32_t vertex_count,
             const Math::BoundingBox& aabb, 
-            std::shared_ptr<Mesh> mesh
+            Mesh* mesh
         );
         void SetGeometry(const Renderer_StandardMesh type);
 
@@ -64,9 +64,9 @@ namespace Spartan
         uint32_t GetIndexCount()                  const { return m_geometry_index_count; }
         uint32_t GetVertexOffset()                const { return m_geometry_vertex_offset; }
         uint32_t GetVertexCount()                 const { return m_geometry_vertex_count; }
-        Renderer_StandardMesh GetGeometryType()    const { return m_geometry_type; }
+        Renderer_StandardMesh GetGeometryType()   const { return m_geometry_type; }
         const std::string& GetGeometryName()      const { return m_geometry_name; }
-        std::shared_ptr<Mesh> GetMesh()           const { return m_mesh; }
+        Mesh* GetMesh()                           const { return m_mesh; }
         const Math::BoundingBox& GetBoundingBox() const { return m_bounding_box; }
         const Math::BoundingBox& GetAabb();
         void Clear();
@@ -97,7 +97,7 @@ namespace Spartan
         Math::Matrix m_last_transform        = Math::Matrix::Identity;
         bool m_cast_shadows                  = true;
         bool m_material_default              = false;
-        std::shared_ptr<Mesh> m_mesh         = nullptr;
+        Mesh* m_mesh                         = nullptr;
         Material* m_material                 = nullptr;
         Math::BoundingBox m_bounding_box;
         Math::BoundingBox m_aabb;
