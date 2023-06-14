@@ -40,15 +40,14 @@ namespace Spartan
         Environment(std::weak_ptr<Entity> entity);
         ~Environment() = default;
 
-        //= IComponent ===============================
+        // IComponent
         void OnTick() override;
         void Serialize(FileStream* stream) override;
         void Deserialize(FileStream* stream) override;
-        //============================================
 
+        // Texture
         const std::shared_ptr<RHI_Texture> GetTexture() const;
         void SetTexture(const std::shared_ptr<RHI_Texture> texture);
-
         void SetFromTextureSphere(const std::string& file_path);
 
     private:
