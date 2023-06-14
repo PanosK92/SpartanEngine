@@ -227,7 +227,6 @@ namespace Spartan
     };
 
     // Material buffer
-    static const uint32_t m_max_material_instances = 1024; // must match common_buffers.hlsl
     struct _material
     {
         Math::Vector4 clearcoat_clearcoatRough_anis_anisRot;

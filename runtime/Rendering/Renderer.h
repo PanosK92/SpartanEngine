@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ====================
+//= INCLUDES ========================
 #include "Renderer_Definitions.h"
 #include "../RHI/RHI_Texture.h"
 #include "../Math/Rectangle.h"
@@ -31,7 +31,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <unordered_map>
 #include "Event.h"
 #include "Mesh.h"
-//===============================
+#include "Renderer_ConstantBuffers.h"
+#include "Font/Font.h"
+#include "Grid.h"
+//===================================
 
 namespace Spartan
 {
@@ -197,5 +200,21 @@ namespace Spartan
         // Lines
         static void Lines_PreMain();
         static void Lines_PostMain();
+
+        // misc
+        static std::unordered_map<Renderer_Entity, std::vector<std::shared_ptr<Entity>>> m_renderables;
+        static std::array<Material*, m_max_material_instances> m_material_instances;
+        static Cb_Frame m_cb_frame_cpu;
+        static Cb_Uber m_cb_uber_cpu;
+        static Cb_Light m_cb_light_cpu;
+        static Cb_Material m_cb_material_cpu;
+        static std::shared_ptr<RHI_VertexBuffer> m_vertex_buffer_lines;
+        static std::unique_ptr<Font> m_font;
+        static std::unique_ptr<Grid> m_world_grid;
+        static bool m_brdf_specular_lut_rendered;
+        static std::vector<RHI_Vertex_PosCol> m_line_vertices;
+        static std::vector<float> m_lines_duration;
+        static uint32_t m_lines_index_depth_off;
+        static uint32_t m_lines_index_depth_on;
     };
 }

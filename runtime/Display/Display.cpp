@@ -42,14 +42,14 @@ namespace Spartan
     namespace
     {
         static vector<DisplayMode> display_modes;
-        static bool is_hdr_capable;
-        static float luminance_max;
+        static bool is_hdr_capable      = false;
+        static float max_luminance_nits = 0;
     }
 
-    static void get_hdr_capabilities(bool* is_hdr_capable, float* luminance_max)
+    static void get_hdr_capabilities(bool* is_hdr_capable, float* max_luminance)
     {
         *is_hdr_capable           = false;
-        *luminance_max = 0.0f;
+        *max_luminance = 0.0f;
 
         #if defined(_MSC_VER)
             // Create DXGI factory
@@ -130,7 +130,7 @@ namespace Spartan
                 if (SUCCEEDED(output6->GetDesc1(&desc)))
                 {
                     *is_hdr_capable = desc.ColorSpace == DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020;
-                    *luminance_max  = desc.MaxLuminance;
+                    *max_luminance  = desc.MaxLuminance;
                 }
             }
         #else
@@ -205,8 +205,8 @@ namespace Spartan
         }
 
         // Detect HDR capabilities
-        get_hdr_capabilities(&is_hdr_capable, &luminance_max);
-        SP_LOG_INFO("HDR: %s, Luminance: %f, %f", is_hdr_capable ? "true" : "false", luminance_max);
+        get_hdr_capabilities(&is_hdr_capable, &max_luminance_nits);
+        SP_LOG_INFO("HDR: %s, Max luminance: %.0f nits", is_hdr_capable ? "true" : "false", max_luminance_nits);
     }
 
     const vector<DisplayMode>& Display::GetDisplayModes()
@@ -256,6 +256,6 @@ namespace Spartan
 
     float Display::GetLuminanceMax()
     {
-        return luminance_max;
+        return max_luminance_nits;
     }
 }

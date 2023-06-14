@@ -21,8 +21,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===================================
 #include "pch.h"
-#include "Grid.h"
-#include "Font/Font.h"
 #include "../Profiling/Profiler.h"
 #include "../World/Entity.h"
 #include "../World/Components/Camera.h"
@@ -34,7 +32,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_Shader.h"
 #include "../RHI/RHI_FSR2.h"
 #include "../RHI/RHI_StructuredBuffer.h"
-#include "Renderer_ConstantBuffers.h"
 #include "../RHI/RHI_SwapChain.h"
 //==============================================
 
@@ -53,22 +50,6 @@ namespace Spartan
     {
         static const float m_thread_group_count = 8.0f;
     }
-
-    // misc extern
-    extern Cb_Frame m_cb_frame_cpu;
-    extern Cb_Uber m_cb_uber_cpu;
-    extern Cb_Light m_cb_light_cpu;
-    extern Cb_Material m_cb_material_cpu;
-    extern vector<RHI_Vertex_PosCol> m_line_vertices;
-    extern vector<float> m_lines_duration;
-    extern uint32_t m_lines_index_depth_off;
-    extern uint32_t m_lines_index_depth_on;
-    extern shared_ptr<RHI_VertexBuffer> m_vertex_buffer_lines;
-    extern array<Material*, m_max_material_instances> m_material_instances;
-    extern unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>> m_renderables;
-    extern unique_ptr<Font> m_font;
-    extern unique_ptr<Grid> m_world_grid;
-    extern bool m_brdf_specular_lut_rendered;
 
     void Renderer::SetGlobalShaderResources(RHI_CommandList* cmd_list)
     {
