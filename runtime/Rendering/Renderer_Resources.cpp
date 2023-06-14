@@ -23,8 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "Renderer.h"
 #include "Geometry.h"
-#include "Grid.h"
-#include "Font/Font.h"
 #include "../Resource/ResourceCache.h"
 #include "../RHI/RHI_Texture2D.h"
 #include "../RHI/RHI_Texture2DArray.h"
@@ -37,7 +35,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_StructuredBuffer.h"
 #include "../RHI/RHI_VertexBuffer.h"
 #include "../RHI/RHI_FSR2.h"
-#include "Renderer_ConstantBuffers.h"
 //=======================================
 
 //= NAMESPACES ===============
@@ -65,16 +62,6 @@ namespace Spartan
         static array<shared_ptr<RHI_Texture>, 9> m_standard_textures;
         static array<shared_ptr<Mesh>, 5>        m_standard_meshes;
     }
-
-    // misc
-    Cb_Frame m_cb_frame_cpu;
-    Cb_Uber m_cb_uber_cpu;
-    Cb_Light m_cb_light_cpu;
-    Cb_Material m_cb_material_cpu;
-    shared_ptr<RHI_VertexBuffer> m_vertex_buffer_lines;
-    unique_ptr<Font> m_font;
-    unique_ptr<Grid> m_world_grid;
-    bool m_brdf_specular_lut_rendered = false;
 
     void Renderer::CreateConstantBuffers()
     {

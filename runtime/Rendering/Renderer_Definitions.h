@@ -28,6 +28,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Spartan
 {
     #define DEBUG_COLOR Math::Vector4(0.41f, 0.86f, 1.0f, 1.0f)
+    static const uint32_t m_max_material_instances = 1024; // must match common_buffers.hlsl
 
     enum class Renderer_Option : uint32_t
     {

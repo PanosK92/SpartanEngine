@@ -35,9 +35,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Window.h"                     
 #include "../Input/Input.h"                     
 #include "../World/Components/Environment.h"    
-#include "Renderer_ConstantBuffers.h"
-#include "Font/Font.h"
-#include "Grid.h"
 #include "../RHI/RHI_SwapChain.h"
 //==============================================
 
@@ -97,22 +94,25 @@ namespace Spartan
         static float m_far_plane                      = 1.0f;
     }
 
-    // misc
-    unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>> m_renderables;
-    array<Material*, m_max_material_instances> m_material_instances;
-
-    // misc extern
-    extern Cb_Frame m_cb_frame_cpu;
-    extern Cb_Uber m_cb_uber_cpu;
-    extern Cb_Light m_cb_light_cpu;
-    extern Cb_Material m_cb_material_cpu;
-    extern shared_ptr<RHI_VertexBuffer> m_vertex_buffer_lines;
-    extern unique_ptr<Font> m_font;
-    extern unique_ptr<Grid> m_world_grid;
+    unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>> Renderer::m_renderables;
+    array<Material*, m_max_material_instances> Renderer::m_material_instances;
+    Cb_Frame Renderer::m_cb_frame_cpu;
+    Cb_Uber Renderer::m_cb_uber_cpu;
+    Cb_Light Renderer::m_cb_light_cpu;
+    Cb_Material Renderer::m_cb_material_cpu;
+    shared_ptr<RHI_VertexBuffer> Renderer::m_vertex_buffer_lines;
+    unique_ptr<Font> Renderer::m_font;
+    unique_ptr<Grid> Renderer::m_world_grid;
+    vector<RHI_Vertex_PosCol> Renderer::m_line_vertices;
+    vector<float> Renderer::m_lines_duration;
+    uint32_t Renderer::m_lines_index_depth_off;
+    uint32_t Renderer::m_lines_index_depth_on;
+    bool Renderer::m_brdf_specular_lut_rendered;
 
     void Renderer::Initialize()
     {
-        m_render_thread_id = this_thread::get_id();
+        m_render_thread_id           = this_thread::get_id();
+        m_brdf_specular_lut_rendered = false;
 
         Display::DetectDisplayModes();
 
