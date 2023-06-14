@@ -86,6 +86,10 @@ namespace Spartan
     void World::Shutdown()
     {
         m_entities.clear();
+        m_default_model_sponza          = nullptr;
+        m_default_model_sponza_curtains = nullptr;
+        m_default_model_car             = nullptr;
+        m_default_model_helmet          = nullptr;
     }
 
     void World::PreTick()

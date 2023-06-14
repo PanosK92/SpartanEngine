@@ -99,15 +99,15 @@ namespace ImGui::RHI
 
     static void destroy_rhi_resources()
     {
-        g_font_atlas          = nullptr;
-        g_depth_stencil_state = nullptr;
-        g_rasterizer_state    = nullptr;
-        g_blend_state         = nullptr;
-        g_shader_vertex       = nullptr;
-        g_shader_pixel        = nullptr;
+        g_font_atlas           = nullptr;
+        g_depth_stencil_state  = nullptr;
+        g_rasterizer_state     = nullptr;
+        g_blend_state          = nullptr;
+        g_shader_vertex        = nullptr;
+        g_shader_pixel         = nullptr;
+        g_viewport_data.cb_gpu = nullptr;
         g_viewport_data.index_buffers.clear();
         g_viewport_data.vertex_buffers.clear();
-        g_viewport_data.cb_gpu = nullptr;
     }
 
     inline void Initialize()

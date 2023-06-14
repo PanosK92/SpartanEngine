@@ -44,6 +44,7 @@ namespace Spartan
     {
     public:
         static void Initialize();
+        static void Shutdown();
 
         // Get by name
         static std::shared_ptr<IResource>& GetByName(const std::string& name, ResourceType type);
@@ -166,7 +167,6 @@ namespace Spartan
         static uint64_t GetMemoryUsageCpu(ResourceType type = ResourceType::Unknown);
         static uint64_t GetMemoryUsageGpu(ResourceType type = ResourceType::Unknown);
         static uint32_t GetResourceCount(ResourceType type = ResourceType::Unknown);
-        static void Clear();
 
         // Directories
         static void AddResourceDirectory(ResourceDirectory type, const std::string& directory);

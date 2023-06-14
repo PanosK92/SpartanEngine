@@ -63,7 +63,7 @@ namespace Spartan
         // Subscribe to events
         SP_SUBSCRIBE_TO_EVENT(EventType::WorldSaveStart, SP_EVENT_HANDLER_STATIC(SaveResourcesToFiles));
         SP_SUBSCRIBE_TO_EVENT(EventType::WorldLoadStart, SP_EVENT_HANDLER_STATIC(LoadResourcesFromFiles));
-        SP_SUBSCRIBE_TO_EVENT(EventType::WorldClear,     SP_EVENT_HANDLER_STATIC(Clear));
+        SP_SUBSCRIBE_TO_EVENT(EventType::WorldClear,     SP_EVENT_HANDLER_STATIC(Shutdown));
     }
 
     bool ResourceCache::IsCached(const string& resource_name, const ResourceType resource_type)
@@ -249,12 +249,10 @@ namespace Spartan
 
     }
 
-    void ResourceCache::Clear()
+    void ResourceCache::Shutdown()
     {
         uint32_t resource_count = static_cast<uint32_t>(m_resources.size());
-
         m_resources.clear();
-
         SP_LOG_INFO("%d resources have been cleared", resource_count);
     }
 
