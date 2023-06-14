@@ -35,7 +35,7 @@ namespace Spartan
         RHI_VertexBuffer(bool is_mappable, const char* name)
         {
             m_is_mappable = is_mappable;
-            m_object_name        = name;
+            m_object_name = name;
         }
         ~RHI_VertexBuffer();
 
