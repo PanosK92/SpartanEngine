@@ -58,7 +58,6 @@ namespace Spartan
             ModelImporter::Initialize();
             Window::Initialize();
             Input::Initialize();
-            Timer::Initialize();
             ThreadPool::Initialize();
             ResourceCache::Initialize();
             Audio::Initialize();
@@ -98,7 +97,6 @@ namespace Spartan
 
         // Tick
         Window::Tick();
-        Timer::Tick();
         Input::Tick();
         Physics::Tick();
         Audio::Tick();
@@ -107,6 +105,7 @@ namespace Spartan
 
         // Post-tick
         Input::PostTick();
+        Timer::PostTick();
         Profiler::PostTick();
     }
 
