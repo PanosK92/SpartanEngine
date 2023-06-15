@@ -506,30 +506,30 @@ namespace Spartan
 
         // Detailed times
         oss_metrics
-            << endl     << "\t" << "\t\tavg"                        << "\t" << "\tmin"                        << "\t" << "\tmax"                        << "\t" << "\tlast"                                 << endl
-            << "Total:" << "\t"   << format_float(m_time_frame_avg) << "\t" << format_float(m_time_frame_min) << "\t" << format_float(m_time_frame_max) << "\t" << format_float(m_time_frame_last) << " ms" << endl
-            << "CPU:"   << "\t"   << format_float(m_time_cpu_avg)   << "\t" << format_float(m_time_cpu_min)   << "\t" << format_float(m_time_cpu_max)   << "\t" << format_float(m_time_cpu_last)   << " ms" << endl
-            << "GPU:"   << "\t"   << format_float(m_time_gpu_avg)   << "\t" << format_float(m_time_gpu_min)   << "\t" << format_float(m_time_gpu_max)   << "\t" << format_float(m_time_gpu_last)   << " ms" << endl;
+            << endl     << "\t" << "\t\tavg"                      << "\t" << "\tmin"                        << "\t" << "\tmax"                        << "\t" << "\tlast"                                 << endl
+            << "Total:" << "\t" << format_float(m_time_frame_avg) << "\t" << format_float(m_time_frame_min) << "\t" << format_float(m_time_frame_max) << "\t" << format_float(m_time_frame_last) << " ms" << endl
+            << "CPU:"   << "\t" << format_float(m_time_cpu_avg)   << "\t" << format_float(m_time_cpu_min)   << "\t" << format_float(m_time_cpu_max)   << "\t" << format_float(m_time_cpu_last)   << " ms" << endl
+            << "GPU:"   << "\t" << format_float(m_time_gpu_avg)   << "\t" << format_float(m_time_gpu_min)   << "\t" << format_float(m_time_gpu_max)   << "\t" << format_float(m_time_gpu_last)   << " ms" << endl;
 
         // GPU
         oss_metrics
             << endl << "GPU" << endl
             << "Name:\t\t\t"   << gpu_name << endl
             << "Memory:\t"     << gpu_memory_used << "/" << gpu_memory_available << " MB" << endl
-            << "API:\t\t\t\t"  << RHI_Context::api_type_str << "\t\t" << gpu_api << endl
-            << "Driver:\t\t\t" << RHI_Device::GetPrimaryPhysicalDevice()->GetVendorName() << "\t\t" << gpu_driver << endl;
+            << "API:\t\t\t\t"  << RHI_Context::api_type_str << "\t" << gpu_api << endl
+            << "Driver:\t\t"   << RHI_Device::GetPrimaryPhysicalDevice()->GetVendorName() << "\t\t" << gpu_driver << endl;
 
-        // CPU
-        oss_metrics << endl << "CPU" << endl
-            << "Worker threads: " << ThreadPool::GetWorkingThreadCount() << "/" << ThreadPool::GetThreadCount() << endl;
-
-        // Resolution
+        // Display
         oss_metrics
-            << "\nResolution\n"
+            << "\nDisplay\n"
             << "Output:\t\t" << static_cast<int>(Renderer::GetResolutionOutput().x) << "x" << static_cast<int>(Renderer::GetResolutionOutput().y) << endl
             << "Render:\t\t" << static_cast<int>(Renderer::GetResolutionRender().x) << "x" << static_cast<int>(Renderer::GetResolutionRender().y) << endl
             << "Viewport:\t" << static_cast<int>(Renderer::GetViewport().width)     << "x" << static_cast<int>(Renderer::GetViewport().height)    << endl
             << "HDR:\t\t\t"  << (Renderer::GetSwapChain()->IsHdr() ? "Enabled" : "Disabled") << endl;
+
+        // CPU
+        oss_metrics << endl << "CPU" << endl
+            << "Worker threads: " << ThreadPool::GetWorkingThreadCount() << "/" << ThreadPool::GetThreadCount() << endl;
 
         // API Calls
         oss_metrics
@@ -545,7 +545,7 @@ namespace Spartan
         // Resources
         oss_metrics
             << "\nResources\n"
-            << "Meshes rendered:\t\t\t\t"   << m_renderer_meshes_rendered << endl
+            << "Meshes rendered:\t\t\t"     << m_renderer_meshes_rendered << endl
             << "Textures:\t\t\t\t\t\t\t"    << texture_count              << endl
             << "Materials:\t\t\t\t\t\t\t"   << material_count             << endl
             << "Descriptor set capacity:\t" << m_descriptor_set_count << "/" << m_descriptor_set_capacity;
