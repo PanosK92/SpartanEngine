@@ -36,13 +36,10 @@ namespace Spartan
         static const double weight_delta           = 1.0 / static_cast<float>(frames_to_accumulate);
 
         // Frame time
-        static chrono::high_resolution_clock::time_point m_time_start;
-        static chrono::high_resolution_clock::time_point m_time_sleep_start;
-        static chrono::high_resolution_clock::time_point m_time_sleep_end;
+        static chrono::high_resolution_clock::time_point last_tick_time;
         static double m_time_ms                = 0.0f;
         static double m_delta_time_ms          = 0.0f;
         static double m_delta_time_smoothed_ms = 0.0f;
-        static double m_sleep_overhead         = 0.0f;
 
         // FPS
         static float m_fps_min                 = 10.0f;
@@ -52,36 +49,31 @@ namespace Spartan
         static bool m_user_selected_fps_target = false;
     }
 
-    void Timer::Initialize()
+    void Timer::PostTick()
     {
-        m_time_start     = chrono::high_resolution_clock::now();
-        m_time_sleep_end = chrono::high_resolution_clock::now();
-    }
+        // Capture the current time at the start of this tick
+        auto now = chrono::steady_clock::now();
 
-    void Timer::Tick()
-    {
-        // Compute delta time
-        m_time_sleep_start = chrono::steady_clock::now();
-        chrono::duration<double, milli> delta_time = m_time_sleep_start - m_time_sleep_end;
-
-        // FPS limiting
+        // If this is not the first tick, we calculate the delta time
+        if (last_tick_time.time_since_epoch() != chrono::steady_clock::duration::zero())
         {
-            double target_ms = 1000.0 / m_fps_limit;
-            while (delta_time.count() < target_ms)
-            {
-                // Yield the CPU to other threads/processes instead of busy waiting.
-                std::this_thread::yield();
-
-                delta_time = chrono::steady_clock::now() - m_time_sleep_start;
-            }
-
-            m_time_sleep_end = chrono::steady_clock::now();
+            // Compute delta time
+            m_delta_time_ms = static_cast<double>(chrono::duration<double, milli>(now - last_tick_time).count());
+            m_delta_time_smoothed_ms = m_delta_time_smoothed_ms * (1.0 - weight_delta) + m_delta_time_ms * weight_delta;
+            m_time_ms += m_delta_time_ms;
         }
 
-        // Compute times
-        m_delta_time_ms          = static_cast<double>(delta_time.count());
-        m_time_ms                = static_cast<double>(chrono::duration<double, milli>(m_time_sleep_start - m_time_start).count());
-        m_delta_time_smoothed_ms = m_delta_time_smoothed_ms * (1.0 - weight_delta) + m_delta_time_ms * weight_delta;
+        // FPS Limit
+        double target_ms = 1000.0 / m_fps_limit;
+        while (m_delta_time_ms < target_ms)
+        {
+            this_thread::yield(); // yield the CPU to other threads/processes instead of busy waiting.
+            now             = chrono::steady_clock::now();
+            m_delta_time_ms = static_cast<double>(chrono::duration<double, milli>(now - last_tick_time).count());
+        }
+
+        // End
+        last_tick_time = now;
     }
 
     void Timer::SetFpsLimit(float fps_in)

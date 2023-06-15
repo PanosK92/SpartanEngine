@@ -250,6 +250,19 @@ namespace
         }
         ImGui::End();
     }
+
+    template <class T>
+    static void widget_menu_item(Editor* editor)
+    {
+        T* widget = editor->GetWidget<T>();
+
+        // Menu item with checkmark based on widget->GetVisible()
+        if (ImGui::MenuItem(widget->GetTitle().c_str(), nullptr, widget->GetVisible()))
+        {
+            // Toggle visibility
+            widget->SetVisible(!widget->GetVisible());
+        }
+    }
 }
 
 MenuBar::MenuBar(Editor *editor) : Widget(editor)
@@ -259,19 +272,6 @@ MenuBar::MenuBar(Editor *editor) : Widget(editor)
     m_tool_bar     = make_unique<Toolbar>(editor);
     m_file_dialog  = make_unique<FileDialog>(true, FileDialog_Type_FileSelection, FileDialog_Op_Open, FileDialog_Filter_World);
     m_editor       = editor;
-}
-
-template <class T>
-static void widget_menu_item(Editor* editor)
-{
-    T* widget = editor->GetWidget<T>();
-
-    // Menu item with checkmark based on widget->GetVisible()
-    if (ImGui::MenuItem(widget->GetTitle().c_str(), nullptr, widget->GetVisible()))
-    {
-        // Toggle visibility
-        widget->SetVisible(!widget->GetVisible());
-    }
 }
 
 void MenuBar::TickAlways()
@@ -319,7 +319,6 @@ void MenuBar::TickAlways()
     window_contributors();
     window_shortcuts();
 }
-
 
 void MenuBar::CreateWorldMenuItem()
 {

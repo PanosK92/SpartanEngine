@@ -25,7 +25,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <string>
 #include <vector>
 #include "TimeBlock.h"
-#include "../Core/Stopwatch.h"
 #include "../Core/Definitions.h"
 //==============================
 
@@ -59,7 +58,7 @@ namespace Spartan
         static float GetTimeFrameLast();
         static float GetFps();
         static float GetUpdateInterval();
-        static void SetUpdateInterval(float internval);
+        static void SetUpdateInterval(float interval);
         static const std::string& GpuGetName();
         static uint32_t GpuGetMemoryAvailable();
         static uint32_t GpuGetMemoryUsed();

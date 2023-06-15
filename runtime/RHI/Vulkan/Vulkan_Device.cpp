@@ -60,10 +60,10 @@ namespace Spartan
         static uint32_t m_queue_copy_index     = 0;
 
         // Misc
+        static mutex immediate_execution_mutex;
+        static condition_variable immediate_execution_condition_variable;
+        static bool immediate_is_executing = false;
         static uint32_t m_max_bound_descriptor_sets = 4;
-        static mutex mutex_immediate;
-        static condition_variable condition_variable_immediate;
-        static bool immediate_ready = true;
         static mutex mutex_allocation;
         static mutex mutex_deletion;
         static unordered_map<RHI_Resource_Type, vector<void*>> deletion_queue;
@@ -1118,11 +1118,10 @@ namespace Spartan
 
     RHI_CommandList* RHI_Device::ImmediateBegin(const RHI_Queue_Type queue_type)
     {
-        unique_lock<mutex> lock(mutex_immediate);
-
         // Wait until it's safe to proceed
-        condition_variable_immediate.wait(lock, [&] { return immediate_ready; });
-        immediate_ready = false;
+        unique_lock<mutex> lock(immediate_execution_mutex);
+        immediate_execution_condition_variable.wait(lock, [] { return !immediate_is_executing; });
+        immediate_is_executing = true;
 
         // Create command pool for the given queue type, if needed.
         uint32_t queue_index = static_cast<uint32_t>(queue_type);
@@ -1149,8 +1148,6 @@ namespace Spartan
 
     void RHI_Device::ImmediateSubmit(RHI_CommandList* cmd_list)
     {
-        unique_lock<mutex> lock(mutex_immediate);
-
         cmd_list->End();
         cmd_list->Submit();
 
@@ -1159,8 +1156,8 @@ namespace Spartan
         cmd_list->Wait(log_on_wait);
 
         // Signal that it's safe to proceed with the next ImmediateBegin()
-        immediate_ready = true;
-        condition_variable_immediate.notify_one();
+        immediate_is_executing = false;
+        immediate_execution_condition_variable.notify_one();
     }
 
     RHI_CommandPool* RHI_Device::AllocateCommandPool(const char* name, const uint64_t swap_chain_id)

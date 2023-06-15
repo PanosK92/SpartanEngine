@@ -387,9 +387,9 @@ namespace Spartan
         return profiling_interval_sec;
     }
 
-    void Profiler::SetUpdateInterval(float internval)
+    void Profiler::SetUpdateInterval(float interval)
     {
-        profiling_interval_sec = internval;
+        profiling_interval_sec = interval;
     }
 
     const string& Profiler::GpuGetName()
