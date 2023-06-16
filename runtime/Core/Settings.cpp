@@ -39,7 +39,7 @@ namespace Spartan
     static Vector2 m_resolution_output     = Vector2::Zero;
     static Vector2 m_resolution_render     = Vector2::Zero;
     static uint32_t m_max_thread_count     = 0;
-    static double m_fps_limit              = 0;
+    static double fps_limit                = 0;
     static bool m_has_loaded_user_settings = false;
     string file_path                       = "spartan.ini";
     ofstream fout;
@@ -81,7 +81,7 @@ namespace Spartan
         write_setting("iResolutionOutputHeight", m_resolution_output.y);
         write_setting("iResolutionRenderWidth",  m_resolution_render.x);
         write_setting("iResolutionRenderHeight", m_resolution_render.y);
-        write_setting("fFPSLimit",               m_fps_limit);
+        write_setting("fFPSLimit",               fps_limit);
         write_setting("iMaxThreadCount",         m_max_thread_count);
 
         for (uint32_t i = 0; i < static_cast<uint32_t>(m_render_options.size()); i++)
@@ -105,7 +105,7 @@ namespace Spartan
         read_setting("iResolutionOutputHeight", m_resolution_output.y);
         read_setting("iResolutionRenderWidth",  m_resolution_render.x);
         read_setting("iResolutionRenderHeight", m_resolution_render.y);
-        read_setting("fFPSLimit",               m_fps_limit);
+        read_setting("fFPSLimit",               fps_limit);
         read_setting("iMaxThreadCount",         m_max_thread_count);
 
         for (uint32_t i = 0; i < static_cast<uint32_t>(m_render_options.size()); i++)
@@ -121,7 +121,7 @@ namespace Spartan
 
     static void map()
     {
-        Timer::SetFpsLimit(static_cast<float>(m_fps_limit));
+        Timer::SetFpsLimit(static_cast<float>(fps_limit));
 
         Input::SetMouseCursorVisible(m_is_mouse_visible);
 
@@ -137,7 +137,7 @@ namespace Spartan
 
     static void reflect()
     {
-        m_fps_limit         = Timer::GetFpsLimit();
+        fps_limit           = Timer::GetFpsLimit();
         m_max_thread_count  = ThreadPool::GetSupportedThreadCount();
         m_is_fullscreen     = Window::IsFullScreen();
         m_is_mouse_visible  = Input::GetMouseCursorVisible();
@@ -165,7 +165,7 @@ namespace Spartan
             save();
         }
 
-        SP_LOG_INFO("FPS Limit: %f.", m_fps_limit);
+        SP_LOG_INFO("FPS Limit: %f.", fps_limit);
         SP_LOG_INFO("Max threads: %d.", m_max_thread_count);
     }
     

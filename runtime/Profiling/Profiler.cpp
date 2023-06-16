@@ -222,8 +222,8 @@ namespace Spartan
             m_time_frame_max  = Math::Helper::Max(m_time_frame_max, m_time_frame_last);
 
             // FPS
-            float fps_sample = 1.0f / delta_time_sec;
-            m_fps = (m_fps * weight_history) + fps_sample * weight_delta;
+            float fps_sample = (delta_time_sec > 0.0f) ? (1.0f / delta_time_sec) : 0.0f;
+            m_fps            = (m_fps * weight_history) + fps_sample * weight_delta;
         }
 
         // Check whether we should profile or not
