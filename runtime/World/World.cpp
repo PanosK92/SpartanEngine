@@ -68,7 +68,7 @@ namespace Spartan
                 if (Entity* entity = m_default_model_car->GetRootEntity()) // can be true when the entity is deleted
                 {
                     // Rotate the car
-                    float rotation_delta = 30.0f * static_cast<float>(Timer::GetDeltaTimeSmoothedSec()) * Helper::DEG_TO_RAD;
+                    float rotation_delta = 10.0f * static_cast<float>(Timer::GetDeltaTimeSmoothedSec()) * Helper::DEG_TO_RAD;
                     entity->GetTransform()->Rotate(Quaternion::FromAngleAxis(rotation_delta, Vector3::Forward));
                 }
             }
