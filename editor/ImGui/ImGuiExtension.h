@@ -361,12 +361,13 @@ namespace ImGuiSp
 
             if (needs_to_wrap)
             {
-                // Update mouse position
+                // Set mouse position
                 ImGuiIO& imgui_io        = ImGui::GetIO();
                 imgui_io.MousePos        = position_cursor;
-                // Set an invalid previous position to eliminate big screen wrap delta (see ImGui::UpdateMouseInputs())
-                imgui_io.MousePosPrev    = ImVec2(-FLT_MAX, -FLT_MAX); 
                 imgui_io.WantSetMousePos = true;
+                // Set an invalid previous position to eliminate big screen wrap delta.
+                // See ImGui::UpdateMouseInputs() for details.
+                imgui_io.MousePosPrev = position_cursor;
 
                 needs_to_wrap = false;
             }
