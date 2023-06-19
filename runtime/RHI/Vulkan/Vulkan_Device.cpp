@@ -443,6 +443,24 @@ namespace Spartan
                     // Wave64
                     SP_ASSERT(features_supported_1_3.shaderDemoteToHelperInvocation == VK_TRUE);
                     device_features_to_enable_1_3.shaderDemoteToHelperInvocation = VK_TRUE;
+
+                    // Wave64 - FSR 2.0 will opt for it (for performance), if it's supported, so don't assert.
+                    if (features_supported_1_3.subgroupSizeControl == VK_TRUE)
+                    {
+                        device_features_to_enable_1_3.subgroupSizeControl = VK_TRUE;
+                    }
+
+                    // Float16 - FSR 2.0 will opt for it (for performance), if it's supported, so don't assert.
+                    if (features_supported_1_2.shaderFloat16 == VK_TRUE)
+                    {
+                        device_features_to_enable_1_2.shaderFloat16 = VK_TRUE;
+                    }
+
+                    // Int16 - FSR 2.0 will opt for it (for performance), if it's supported, so don't assert.
+                    if (features_supported.features.shaderInt16 == VK_TRUE)
+                    {
+                        device_features_to_enable.features.shaderInt16 = VK_TRUE;
+                    }
                 }
             }
 
