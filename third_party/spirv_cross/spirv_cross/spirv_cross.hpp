@@ -99,6 +99,8 @@ struct ShaderResources
 	// but keep the vector in case this restriction is lifted in the future.
 	SmallVector<Resource> push_constant_buffers;
 
+	SmallVector<Resource> shader_record_buffers;
+
 	// For Vulkan GLSL and HLSL source,
 	// these correspond to separate texture2D and samplers respectively.
 	SmallVector<Resource> separate_images;
@@ -369,6 +371,7 @@ public:
 	spv::ExecutionModel get_execution_model() const;
 
 	bool is_tessellation_shader() const;
+	bool is_tessellating_triangles() const;
 
 	// In SPIR-V, the compute work group size can be represented by a constant vector, in which case
 	// the LocalSize execution mode is ignored.
@@ -749,12 +752,14 @@ protected:
 	bool is_force_recompile = false;
 	bool is_force_recompile_forward_progress = false;
 
+	bool block_is_noop(const SPIRBlock &block) const;
 	bool block_is_loop_candidate(const SPIRBlock &block, SPIRBlock::Method method) const;
 
 	bool types_are_logically_equivalent(const SPIRType &a, const SPIRType &b) const;
 	void inherit_expression_dependencies(uint32_t dst, uint32_t source);
 	void add_implied_read_expression(SPIRExpression &e, uint32_t source);
 	void add_implied_read_expression(SPIRAccessChain &e, uint32_t source);
+	void add_active_interface_variable(uint32_t var_id);
 
 	// For proper multiple entry point support, allow querying if an Input or Output
 	// variable is part of that entry points interface.
@@ -930,6 +935,7 @@ protected:
 	// Similar is implemented for images, as well as if subpass inputs are needed.
 	std::unordered_set<uint32_t> comparison_ids;
 	bool need_subpass_input = false;
+	bool need_subpass_input_ms = false;
 
 	// In certain backends, we will need to use a dummy sampler to be able to emit code.
 	// GLSL does not support texelFetch on texture2D objects, but SPIR-V does,
@@ -969,6 +975,7 @@ protected:
 
 		void add_hierarchy_to_comparison_ids(uint32_t ids);
 		bool need_subpass_input = false;
+		bool need_subpass_input_ms = false;
 		void add_dependency(uint32_t dst, uint32_t src);
 	};
 
@@ -1009,7 +1016,8 @@ protected:
 		std::unordered_map<uint32_t, std::unordered_set<uint32_t>> partial_write_variables_to_block;
 		std::unordered_set<uint32_t> access_chain_expressions;
 		// Access chains used in multiple blocks mean hoisting all the variables used to construct the access chain as not all backends can use pointers.
-		std::unordered_map<uint32_t, std::unordered_set<uint32_t>> access_chain_children;
+		// This is also relevant when forwarding opaque objects since we cannot lower these to temporaries.
+		std::unordered_map<uint32_t, std::unordered_set<uint32_t>> rvalue_forward_children;
 		const SPIRBlock *current_block = nullptr;
 	};
 
@@ -1137,6 +1145,8 @@ protected:
 
 	bool type_is_array_of_pointers(const SPIRType &type) const;
 	bool type_is_top_level_physical_pointer(const SPIRType &type) const;
+	bool type_is_top_level_pointer(const SPIRType &type) const;
+	bool type_is_top_level_array(const SPIRType &type) const;
 	bool type_is_block_like(const SPIRType &type) const;
 	bool type_is_opaque_value(const SPIRType &type) const;
 
