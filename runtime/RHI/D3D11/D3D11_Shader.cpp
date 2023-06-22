@@ -44,7 +44,7 @@ namespace Spartan
         return m_rhi_resource;
     }
 
-    void* RHI_Shader::Compile2()
+    void* RHI_Shader::RHI_Compile()
     {
         // Compile flags
         uint32_t compile_flags = 0;
