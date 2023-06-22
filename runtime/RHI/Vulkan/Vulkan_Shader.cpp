@@ -72,8 +72,8 @@ namespace Spartan
                 arguments.emplace_back("-spirv");                     // Generate SPIR-V code
                 arguments.emplace_back("-fspv-target-env=vulkan1.3"); // Specify the target environment
 
-                // his prevents all sorts of issues with constant buffers having random data.
-                arguments.emplace_back("-fspv-preserve-bindings");    // Preserves all bindings declared within the module, even when those bindings are unused
+                // This prevents all sorts of issues with constant buffers having random data.
+                arguments.emplace_back("-fspv-preserve-bindings"); // Preserves all bindings declared within the module, even when those bindings are unused
 
                 // Shift registers to avoid conflicts
                 arguments.emplace_back("-fvk-u-shift"); arguments.emplace_back(to_string(rhi_shader_shift_register_u)); arguments.emplace_back("all"); // Specify Vulkan binding number shift for u-type (read/write buffer) register
@@ -104,7 +104,6 @@ namespace Spartan
             // Misc
             arguments.emplace_back("-Zpc");                                // Pack matrices in column-major order
             //arguments.emplace_back("-HV"); arguments.emplace_back("2021"); // HLSL version (2016, 2017, 2018, 2021). Default is 2018
-
         }
 
         // Defines

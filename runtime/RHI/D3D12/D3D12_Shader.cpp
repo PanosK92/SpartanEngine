@@ -57,7 +57,7 @@ namespace Spartan
         return shader_buffer->GetBufferPointer();
     }
 
-    void* RHI_Shader::Compile2()
+    void* RHI_Shader::RHI_Compile()
     {
         // Arguments (and defines)
         vector<string> arguments;
