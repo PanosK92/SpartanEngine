@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===============
 #include "Rendering/Color.h"
 #include <string>
+#include <cstdint>
 //==========================
 
 class ButtonColorPicker
