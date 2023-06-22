@@ -30,8 +30,8 @@ SP_WARNINGS_ON
 namespace Spartan
 {
     /*
-    Version: dxcompiler.dll: 1.7 - 1.7.0.3637 (e578f266a)
-    
+    Version: dxcompiler.dll: 1.7 - 1.7.0.3942 (e8b1fcb05)
+
     USAGE: dxc.exe [options] <inputs>
     
     Common Options:
@@ -62,6 +62,7 @@ namespace Spartan
       -Fc <file>              Output assembly code listing file
       -fdiagnostics-show-option
                               Print option name with mappable diagnostics
+      -fdisable-loc-tracking  Disable source location tracking in IR. This will break diagnostic generation for late validation. (Ignored if /Zi is passed)
       -Fd <file>              Write debug information to the given file, or automatically named file in directory when ending in '\'
       -Fe <file>              Output warnings and errors to the given file
       -Fh <file>              Output header file containing object code
@@ -70,6 +71,7 @@ namespace Spartan
                               Expand the operands before performing token-pasting operation (fxc behavior)
       -flegacy-resource-reservation
                               Reserve unused explicit register assignments for compatibility with shader model 5.0 and below
+      -fnew-inlining-behavior Experimental option to use heuristics-driven late inlining and disable alwaysinline annotation for library shaders
       -fno-diagnostics-show-option
                               Do not print option name with mappable diagnostics
       -force-rootsig-ver <profile>
@@ -78,6 +80,9 @@ namespace Spartan
       -Fre <file>             Output reflection to the given file
       -Frs <file>             Output root signature to the given file
       -Fsh <file>             Output shader hash to the given file
+      -ftime-report           Print time report
+      -ftime-trace=<value>    Print hierchial time tracing to file
+      -ftime-trace            Print hierchial time tracing to stdout
       -Gec                    Enable backward compatibility mode
       -Ges                    Enable strict mode
       -Gfa                    Avoid flow control constructs
@@ -111,6 +116,7 @@ namespace Spartan
                      as_6_5, as_6_6, as_6_7,
     
       -Vd                     Disable validation
+      -verify<value>          Verify diagnostic output using comment directives
       -Vi                     Display details about the include process.
       -Vn <name>              Use <name> as variable name in header file
       -WX                     Treat warnings as errors
@@ -127,10 +133,12 @@ namespace Spartan
       -M         Dumps the list of the compilation target dependencies.
     
     Optimization Options:
-      -O0 Optimization Level 0
-      -O1 Optimization Level 1
-      -O2 Optimization Level 2
-      -O3 Optimization Level 3 (Default)
+      -ffinite-math-only    Allow optimizations for floating-point arithmetic that assume that arguments and results are not NaNs or +-Infs.
+      -fno-finite-math-only Disallow optimizations for floating-point arithmetic that assume that arguments and results are not NaNs or +-Infs.
+      -O0                   Optimization Level 0
+      -O1                   Optimization Level 1
+      -O2                   Optimization Level 2
+      -O3                   Optimization Level 3 (Default)
     
     Rewriter Options:
       -decl-global-cb         Collect all global constants outside cbuffer declarations into cbuffer GlobalCB { ... }. Still experimental, not all dependency scenarios handled.
@@ -147,12 +155,13 @@ namespace Spartan
       -unchanged              Rewrite HLSL, without changes.
     
     SPIR-V CodeGen Options:
-      -fspv-debug=<value>     Specify whitelist of debug info category (file -> source -> line, tool)
+      -fspv-debug=<value>     Specify whitelist of debug info category (file -> source -> line, tool, vulkan-with-source)
       -fspv-entrypoint-name=<value>
                               Specify the SPIR-V entry point name. Defaults to the HLSL entry point name.
       -fspv-extension=<value> Specify SPIR-V extension permitted to use
       -fspv-flatten-resource-arrays
                               Flatten arrays of resources so each array element takes one binding number
+      -fspv-preserve-bindings Preserves all bindings declared within the module, even when those bindings are unused
       -fspv-print-all         Print the SPIR-V module before each pass and after the last one. Useful for debugging SPIR-V legalization and optimization passes.
       -fspv-reduce-load-size  Replaces loads of composite objects to reduce memory pressure for the loads
       -fspv-reflect           Emit additional SPIR-V instructions to aid reflection
@@ -307,8 +316,6 @@ namespace Spartan
             // Check for errors
             if (!error_check(dxc_result))
             {
-                SP_LOG_ERROR("Failed to compile");
-
                 if (dxc_result)
                 {
                     dxc_result->Release();

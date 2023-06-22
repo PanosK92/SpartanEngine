@@ -57,8 +57,6 @@ namespace Spartan
 
         // Log compilation result
         {
-            string prefix_str = (compilation_state == Shader_Compilation_State::Succeeded) ? "Successfully compiled" : "Failed to compile";
-
             string type_str = "unknown";
             type_str = shader_type == RHI_Shader_Vertex  ? "vertex"  : type_str;
             type_str = shader_type == RHI_Shader_Pixel   ? "pixel"   : type_str;
@@ -73,16 +71,31 @@ namespace Spartan
                 defines_str += define.first + " = " + define.second;
             }
 
-            if (defines_str.empty())
+            // Success
+            if (compilation_state == Shader_Compilation_State::Succeeded)
             {
-                SP_LOG_INFO("%s %s shader \"%s\" in %.2f ms.", prefix_str.c_str(), type_str.c_str(), object_name.c_str(), timer.GetElapsedTimeMs());
+                if (defines_str.empty())
+                {
+                    SP_LOG_INFO("Successfully compiled %s shader \"%s\" in %.2f ms.", type_str.c_str(), object_name.c_str(), timer.GetElapsedTimeMs());
+                }
+                else
+                {
+                    SP_LOG_INFO("Successfully compiled %s shader \"%s\" with definitions \"%s\" in %.2f ms.", type_str.c_str(), object_name.c_str(), defines_str.c_str(), timer.GetElapsedTimeMs());
+                }
             }
+            // Failure
             else
             {
-                SP_LOG_INFO("%s %s shader \"%s\" with definitions \"%s\" in %.2f ms.", prefix_str.c_str(), type_str.c_str(), object_name.c_str(), defines_str.c_str(), timer.GetElapsedTimeMs());
+                if (defines_str.empty())
+                {
+                    SP_LOG_ERROR("Failed to compile shader \"%s\".", object_name.c_str());
+                }
+                else
+                {
+                    SP_LOG_ERROR("Failed to compile shader \"%s\" with definitions \"%s\".", object_name.c_str(), defines_str.c_str());
+                }
             }
         }
-
     };
 
     void RHI_Shader::Compile(const RHI_Shader_Type type, const string& file_path, bool async, const RHI_Vertex_Type vertex_type)
@@ -109,13 +122,13 @@ namespace Spartan
 
             if (!async)
             {
-                CompileShader(m_compilation_state, m_shader_type, m_defines, m_object_name, m_rhi_resource, bind(&RHI_Shader::Compile2, this));
+                CompileShader(m_compilation_state, m_shader_type, m_defines, m_object_name, m_rhi_resource, bind(&RHI_Shader::RHI_Compile, this));
             }
             else
             {
                 ThreadPool::AddTask([this]()
                 {
-                    CompileShader(m_compilation_state, m_shader_type, m_defines, m_object_name, m_rhi_resource, std::bind(&RHI_Shader::Compile2, this));
+                    CompileShader(m_compilation_state, m_shader_type, m_defines, m_object_name, m_rhi_resource, std::bind(&RHI_Shader::RHI_Compile, this));
                 });
             }
         }
