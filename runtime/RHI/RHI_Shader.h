@@ -73,7 +73,7 @@ namespace Spartan
 
     private:
         void PreprocessIncludeDirectives(const std::string& file_path);
-        void* Compile2();
+        void* RHI_Compile();
         void Reflect(const RHI_Shader_Type shader_type, const uint32_t* ptr, uint32_t size);
 
         std::string m_file_path;
