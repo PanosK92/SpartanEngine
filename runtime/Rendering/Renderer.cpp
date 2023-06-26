@@ -130,10 +130,15 @@ namespace Spartan
 
         // Resolution
         {
-            // SDL2 doesn't work with Windows scaling, meaning we can't always get the true screen resolution using GetWidth() and GetHeight().
+            // (1) SDL2 doesn't work with Windows scaling, meaning we can't always get the true screen resolution using GetWidth() and GetHeight().
             // However we can get the first display mode, which is the highest resolution mode supported by the monitor, which will work for now.
             // SDL3 will be DPI aware so we won't have to do this.
             DisplayMode display_mode = Display::GetDisplayModes()[0];
+
+            // Nvidia's DSR will report resolutions beyond 4K.
+            // Because we rely on (1), we'll have to max out at 4K here.
+            display_mode.width  = Math::Helper::Min<uint32_t>(display_mode.width, 3840);
+            display_mode.height = Math::Helper::Min<uint32_t>(display_mode.height, 2160);
 
             // The resolution of the actual rendering
             SetResolutionRender(display_mode.width, display_mode.height, false);
