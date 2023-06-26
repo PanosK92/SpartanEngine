@@ -44,21 +44,25 @@ using namespace std;
 
 namespace Spartan
 {
-    static std::string m_title;
-    static Math::Vector2 m_position = Math::Vector2::Zero;
-    static uint32_t m_width         = 640;
-    static uint32_t m_height        = 480;
-    static bool m_shown             = false;
-    static bool m_minimised         = false;
-    static bool m_maximised         = false;
-    static bool m_close             = false;
-    static bool m_fullscreen        = false;
-    static SDL_Window* m_window     = nullptr;
+    namespace
+    { 
+        static std::string m_title;
+        static Math::Vector2 m_position = Math::Vector2::Zero;
+        static uint32_t m_width         = 640;
+        static uint32_t m_height        = 480;
+        static bool m_shown             = false;
+        static bool m_minimised         = false;
+        static bool m_maximised         = false;
+        static bool m_close             = false;
+        static bool m_fullscreen        = false;
+        static SDL_Window* m_window     = nullptr;
 
-    // splash-screen
-    static SDL_Window* m_splash_sceen_window      = nullptr;
-    static SDL_Renderer* m_splash_screen_renderer = nullptr;
-    static SDL_Texture* m_splash_screen_texture   = nullptr;
+        // splash-screen
+        static bool m_show_splash_screen              = true;
+        static SDL_Window* m_splash_sceen_window      = nullptr;
+        static SDL_Renderer* m_splash_screen_renderer = nullptr;
+        static SDL_Texture* m_splash_screen_texture   = nullptr;
+    }
 
     void Window::Initialize()
     {
@@ -83,7 +87,10 @@ namespace Spartan
         }
 
         // Show a splash screen
-        CreateAndShowSplashScreen();
+        if (m_show_splash_screen)
+        {
+            CreateAndShowSplashScreen();
+        }
 
         // Set window flags
         uint32_t flags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_MAXIMIZED;
@@ -108,11 +115,14 @@ namespace Spartan
             return;
         }
 
-        // Hide the window until the engine is able to present
-        Hide();
+        if (m_show_splash_screen)
+        {
+            // Hide the window until the engine is able to present
+            Hide();
 
-        // Show the window and destroy the splash screen, after the first frame has been rendered successfully
-        SP_SUBSCRIBE_TO_EVENT(EventType::RendererOnFirstFrameCompleted, SP_EVENT_HANDLER_STATIC(OnFirstFrameCompleted));
+            // Show the window and destroy the splash screen, after the first frame has been rendered successfully
+            SP_SUBSCRIBE_TO_EVENT(EventType::RendererOnFirstFrameCompleted, SP_EVENT_HANDLER_STATIC(OnFirstFrameCompleted));
+        }
 
         // Register library
         string version = to_string(SDL_MAJOR_VERSION) + "." + to_string(SDL_MINOR_VERSION) + "." + to_string(SDL_PATCHLEVEL);
@@ -153,11 +163,11 @@ namespace Spartan
                         //Window has been moved to data1, data2
                         break;
                     case SDL_WINDOWEVENT_RESIZED:
-                        m_width = static_cast<uint32_t>(sdl_event.window.data1);
+                        m_width  = static_cast<uint32_t>(sdl_event.window.data1);
                         m_height = static_cast<uint32_t>(sdl_event.window.data2);
                         break;
                     case SDL_WINDOWEVENT_SIZE_CHANGED:
-                        m_width = static_cast<uint32_t>(sdl_event.window.data1);
+                        m_width  = static_cast<uint32_t>(sdl_event.window.data1);
                         m_height = static_cast<uint32_t>(sdl_event.window.data2);
                         break;
                     case SDL_WINDOWEVENT_MINIMIZED:
