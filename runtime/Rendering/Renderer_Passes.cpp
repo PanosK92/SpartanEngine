@@ -1856,12 +1856,12 @@ namespace Spartan
         // Documentation: https://github.com/GPUOpen-Effects/FidelityFX-SPD/blob/master/docs/FidelityFX_SPD.pdf
 
         uint32_t output_mip_count = tex->GetMipCount() - 1;
-        uint32_t smallest_width   = tex->GetWidth() >> output_mip_count;
-        uint32_t smallest_height  = tex->GetWidth() >> output_mip_count;
+        uint32_t smallest_width   = tex->GetWidth()  >> output_mip_count;
+        uint32_t smallest_height  = tex->GetHeight() >> output_mip_count;
 
         // Ensure that the input texture meets the requirements.
         SP_ASSERT(tex->HasPerMipViews());
-        SP_ASSERT(output_mip_count <= 12); // As per documentation (page 22)
+        SP_ASSERT(tex->GetWidth() <= 4096 && tex->GetHeight() <= 4096 && output_mip_count <= 12); // As per documentation (page 22)
 
         // Acquire shader
         RHI_Shader* shader_c = GetShader(Renderer_Shader::ffx_spd_c).get();
