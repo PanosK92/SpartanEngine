@@ -48,8 +48,8 @@ namespace Spartan
 
     static void get_hdr_capabilities(bool* is_hdr_capable, float* max_luminance)
     {
-        *is_hdr_capable           = false;
-        *max_luminance = 0.0f;
+        *is_hdr_capable = false;
+        *max_luminance  = 0.0f;
 
         #if defined(_MSC_VER)
             // Create DXGI factory
