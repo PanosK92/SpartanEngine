@@ -213,7 +213,7 @@ namespace Spartan
         // Create material
         shared_ptr<Material> material = make_shared<Material>();
         material->SetResourceFilePath(ResourceCache::GetProjectDirectory() + "standard" + EXTENSION_MATERIAL); // Set resource file path so it can be used by the resource cache
-        material->SetIsEditable(false);
+        material->SetProperty(MaterialProperty::CanBeEdited, 0.0f);
         material->SetProperty(MaterialProperty::UvTilingX, 10.0f);
         material->SetProperty(MaterialProperty::UvTilingY, 10.0f);
         material->SetProperty(MaterialProperty::ColorR, 1.0f);
