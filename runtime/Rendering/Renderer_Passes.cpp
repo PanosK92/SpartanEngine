@@ -589,6 +589,14 @@ namespace Spartan
         bool depth_prepass = GetOption<bool>(Renderer_Option::DepthPrepass);
         bool wireframe     = GetOption<bool>(Renderer_Option::Debug_Wireframe);
 
+        // Deduce rasterizer state
+        RHI_RasterizerState* rasterizer_state = is_transparent_pass ? GetRasterizerState(Renderer_RasterizerState::Solid_cull_none).get() : GetRasterizerState(Renderer_RasterizerState::Solid_cull_back).get();
+        rasterizer_state                      = wireframe ? GetRasterizerState(Renderer_RasterizerState::Wireframe_cull_none).get() : rasterizer_state;
+
+        // Deduce depth-stencil state
+        RHI_DepthStencilState* depth_stencil_state = depth_prepass ? GetDepthStencilState(Renderer_DepthStencilState::Depth_read).get() : GetDepthStencilState(Renderer_DepthStencilState::Depth_read_write_stencil_read).get();
+        depth_stencil_state                        = is_transparent_pass ? GetDepthStencilState(Renderer_DepthStencilState::Depth_read).get() : depth_stencil_state;
+
         // Clearing to zero, this will draw the sky
         static Color clear_color = Color(0.0f, 0.0f, 0.0f, 0.0f);
 
@@ -597,8 +605,8 @@ namespace Spartan
         pso.shader_vertex                   = shader_v;
         pso.shader_pixel                    = shader_p;
         pso.blend_state                     = GetBlendState(Renderer_BlendState::Disabled).get();
-        pso.rasterizer_state                = wireframe ? GetRasterizerState(Renderer_RasterizerState::Wireframe_cull_none).get() : GetRasterizerState(Renderer_RasterizerState::Solid_cull_back).get();
-        pso.depth_stencil_state             = is_transparent_pass ? GetDepthStencilState(Renderer_DepthStencilState::Depth_read_write_stencil_write).get() : (depth_prepass ? GetDepthStencilState(Renderer_DepthStencilState::Depth_read).get() : GetDepthStencilState(Renderer_DepthStencilState::Depth_read_write_stencil_read).get());
+        pso.rasterizer_state                = rasterizer_state;
+        pso.depth_stencil_state             = depth_stencil_state;
         pso.render_target_color_textures[0] = tex_albedo;
         pso.clear_color[0]                  = is_transparent_pass ? rhi_color_load : Color::standard_transparent;
         pso.render_target_color_textures[1] = tex_normal;

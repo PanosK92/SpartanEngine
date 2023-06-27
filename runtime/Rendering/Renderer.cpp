@@ -92,6 +92,29 @@ namespace Spartan
         static const uint32_t m_resolution_shadow_min = 128;
         static float m_near_plane                     = 0.0f;
         static float m_far_plane                      = 1.0f;
+
+        static void sort_renderables(vector<shared_ptr<Entity>>* renderables, const bool are_transparent)
+        {
+            if (!m_camera || renderables->size() <= 2)
+                return;
+
+            auto comparison_op = [](shared_ptr<Entity> entity)
+            {
+                auto renderable = entity->GetComponent<Renderable>();
+                if (!renderable)
+                    return 0.0f;
+
+                return (renderable->GetAabb().GetCenter() - m_camera->GetTransform()->GetPosition()).LengthSquared();
+            };
+
+            // sort by depth
+            sort(renderables->begin(), renderables->end(), [&comparison_op, &are_transparent](shared_ptr<Entity> a, shared_ptr<Entity> b)
+            {
+                bool front_to_back = comparison_op(a) <= comparison_op(b);
+                bool back_to_front = !front_to_back;
+                return are_transparent ? back_to_front : front_to_back;
+            });
+        }
     }
 
     unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>> Renderer::m_renderables;
@@ -671,8 +694,8 @@ namespace Spartan
             }
 
             // Sort them by distance
-            SortRenderables(&m_renderables[Renderer_Entity::Geometry_opaque]);
-            SortRenderables(&m_renderables[Renderer_Entity::Geometry_transparent]);
+            sort_renderables(&m_renderables[Renderer_Entity::Geometry_opaque], false);
+            sort_renderables(&m_renderables[Renderer_Entity::Geometry_transparent], true);
 
             m_renderables_pending.clear();
             m_add_new_entities = false;
@@ -723,27 +746,6 @@ namespace Spartan
         }
 
         RHI_Device::ParseDeletionQueue();
-    }
-
-    void Renderer::SortRenderables(vector<shared_ptr<Entity>>* renderables)
-    {
-        if (!m_camera || renderables->size() <= 2)
-            return;
-
-        auto comparison_op = [](shared_ptr<Entity> entity)
-        {
-            auto renderable = entity->GetComponent<Renderable>();
-            if (!renderable)
-                return 0.0f;
-
-            return (renderable->GetAabb().GetCenter() - m_camera->GetTransform()->GetPosition()).LengthSquared();
-        };
-
-        // Sort by depth (front to back)
-        sort(renderables->begin(), renderables->end(), [&comparison_op](shared_ptr<Entity> a, shared_ptr<Entity> b)
-            {
-                return comparison_op(a) < comparison_op(b);
-            });
     }
 
     bool Renderer::IsCallingFromOtherThread()
