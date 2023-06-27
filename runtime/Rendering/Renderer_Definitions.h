@@ -293,9 +293,9 @@ namespace Spartan
 
     enum class Renderer_RasterizerState
     {
-        Cull_back_solid,
-        Cull_back_wireframe,
-        Cull_none_solid,
+        Solid_cull_back,
+        Wireframe_cull_none,
+        Solid_cull_none,
         Light_point_spot,
         Light_directional
     };

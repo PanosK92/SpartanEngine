@@ -152,7 +152,7 @@ namespace Spartan
         static void CreateSamplers(const bool create_only_anisotropic = false);
         static void CreateRenderTextures(const bool create_render, const bool create_output, const bool create_fixed, const bool create_dynamic);
 
-        // Passes
+        // Passes - Core
         static void Pass_Main(RHI_CommandList* cmd_list);
         static void Pass_ShadowMaps(RHI_CommandList* cmd_list, const bool is_transparent_pass);
         static void Pass_ReflectionProbes(RHI_CommandList* cmd_list);
@@ -160,6 +160,16 @@ namespace Spartan
         static void Pass_GBuffer(RHI_CommandList* cmd_list, const bool is_transparent_pass);
         static void Pass_Ssgi(RHI_CommandList* cmd_list);
         static void Pass_Ssr(RHI_CommandList* cmd_list, RHI_Texture* tex_in);
+        static void Pass_BrdfSpecularLut(RHI_CommandList* cmd_list);
+        static void Pass_Copy(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out, const bool bilinear);
+        // Passes - Debug/Editor
+        static void Pass_Blur_Gaussian(RHI_CommandList* cmd_list, RHI_Texture* tex_in, const bool depth_aware, const float radius, const float sigma, const uint32_t mip = rhi_all_mips);
+        static void Pass_Lines(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
+        static void Pass_DebugMeshes(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
+        static void Pass_Outline(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
+        static void Pass_Icons(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
+        static void Pass_PeformanceMetrics(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
+        // Passes - Post-Process
         static void Pass_PostProcess(RHI_CommandList* cmd_list);
         static void Pass_ToneMappingGammaCorrection(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
         static void Pass_Fxaa(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
@@ -169,19 +179,11 @@ namespace Spartan
         static void Pass_DepthOfField(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
         static void Pass_Debanding(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
         static void Pass_Bloom(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
-        static void Pass_Blur_Gaussian(RHI_CommandList* cmd_list, RHI_Texture* tex_in, const bool depth_aware, const float radius, const float sigma, const uint32_t mip = rhi_all_mips);
-        static void Pass_Lines(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
-        static void Pass_DebugMeshes(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
-        static void Pass_Outline(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
-        static void Pass_Icons(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
-        static void Pass_PeformanceMetrics(RHI_CommandList* cmd_list, RHI_Texture* tex_out);
-        static void Pass_BrdfSpecularLut(RHI_CommandList* cmd_list);
-        static void Pass_Copy(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out, const bool bilinear);
-        // Lighting
+        // Passes - Lighting
         static void Pass_Light(RHI_CommandList* cmd_list, const bool is_transparent_pass);
         static void Pass_Light_Composition(RHI_CommandList* cmd_list, RHI_Texture* tex_out, const bool is_transparent_pass);
         static void Pass_Light_ImageBased(RHI_CommandList* cmd_list, RHI_Texture* tex_out, const bool is_transparent_pass);
-        // AMD FidelityFX
+        // Passes - AMD FidelityFX
         static void Pass_Ffx_Cas(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
         static void Pass_Ffx_Spd(RHI_CommandList* cmd_list, RHI_Texture* tex);
         static void Pass_Ffx_Fsr2(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out);
@@ -191,15 +193,15 @@ namespace Spartan
         static void OnClear();
         static void OnFullScreenToggled();
 
+        // Lines
+        static void Lines_PreMain();
+        static void Lines_PostMain();
+
         // Misc
         static void SortRenderables(std::vector<std::shared_ptr<Entity>>* renderables);
         static bool IsCallingFromOtherThread();
         static void OnResourceSafe(RHI_CommandList* cmd_list);
         static void DestroyResources();
-
-        // Lines
-        static void Lines_PreMain();
-        static void Lines_PostMain();
 
         // misc
         static std::unordered_map<Renderer_Entity, std::vector<std::shared_ptr<Entity>>> m_renderables;
