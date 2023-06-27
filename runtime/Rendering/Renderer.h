@@ -198,7 +198,6 @@ namespace Spartan
         static void Lines_PostMain();
 
         // Misc
-        static void SortRenderables(std::vector<std::shared_ptr<Entity>>* renderables);
         static bool IsCallingFromOtherThread();
         static void OnResourceSafe(RHI_CommandList* cmd_list);
         static void DestroyResources();
