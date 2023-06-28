@@ -56,10 +56,7 @@ namespace Spartan
         // If this is not the first tick, we calculate the delta time
         if (last_tick_time.time_since_epoch() != chrono::steady_clock::duration::zero())
         {
-            // Compute delta time
-            delta_time_ms          = static_cast<double>(chrono::duration<double, milli>(chrono::steady_clock::now() - last_tick_time).count());
-            delta_time_smoothed_ms = delta_time_smoothed_ms * (1.0 - weight_delta) + delta_time_ms * weight_delta;
-            time_ms                += delta_time_ms;
+            delta_time_ms = static_cast<double>(chrono::duration<double, milli>(chrono::steady_clock::now() - last_tick_time).count());
         }
 
         // FPS Limit
@@ -70,7 +67,8 @@ namespace Spartan
         }
 
         // Update delta_time_ms after delay
-        delta_time_ms = static_cast<double>(chrono::duration<double, milli>(chrono::steady_clock::now() - last_tick_time).count());
+        delta_time_smoothed_ms = delta_time_smoothed_ms * (1.0 - weight_delta) + delta_time_ms * weight_delta;
+        time_ms                += delta_time_ms;
 
         // End
         last_tick_time = chrono::steady_clock::now();
