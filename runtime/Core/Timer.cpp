@@ -48,7 +48,7 @@ namespace Spartan
         static float fps_limit_previous = fps_limit;
 
         // Misc
-        static chrono::high_resolution_clock::time_point last_tick_time;
+        static chrono::steady_clock::time_point last_tick_time;
     }
 
     void Timer::PostTick()
