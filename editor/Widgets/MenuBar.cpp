@@ -391,7 +391,7 @@ void MenuBar::CreateHelpMenuItem()
         ImGui::MenuItem("About", nullptr, &show_about_window);
         ImGui::MenuItem("Contributors", nullptr, &show_contributors_window);
 
-        if (ImGui::MenuItem("Learn how to contribute", nullptr, nullptr))
+        if (ImGui::MenuItem("How to contribute", nullptr, nullptr))
         {
             Spartan::FileSystem::OpenUrl("https://github.com/PanosK92/SpartanEngine/wiki/How-to-contribute");
         }
@@ -401,7 +401,7 @@ void MenuBar::CreateHelpMenuItem()
             Spartan::FileSystem::OpenUrl("https://discord.gg/TG5r2BS");
         }
 
-        ImGui::MenuItem("Shortcuts & Input Reference", "Ctrl+P", show_shortcuts_window);
+        ImGui::MenuItem("Shortcuts & Input Reference", "Ctrl+P", &show_shortcuts_window);
 
         ImGui::EndMenu();
     }
