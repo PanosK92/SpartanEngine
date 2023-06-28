@@ -108,9 +108,9 @@ namespace Spartan
 
         #define rasterizer_state(x) m_rasterizer_states[static_cast<uint8_t>(x)]
         // cull mode, filled mode, depth clip, scissor, bias, bias clamp, slope scaled bias, line width
-        rasterizer_state(Renderer_RasterizerState::Cull_back_solid)     = make_shared<RHI_RasterizerState>(RHI_CullMode::Back, RHI_PolygonMode::Solid,     true,  false, 0.0f,              0.0f,             0.0f,                    line_width);
-        rasterizer_state(Renderer_RasterizerState::Cull_back_wireframe) = make_shared<RHI_RasterizerState>(RHI_CullMode::Back, RHI_PolygonMode::Wireframe, true,  false, 0.0f,              0.0f,             0.0f,                    line_width);
-        rasterizer_state(Renderer_RasterizerState::Cull_none_solid)     = make_shared<RHI_RasterizerState>(RHI_CullMode::Back, RHI_PolygonMode::Solid,     true,  false, 0.0f,              0.0f,             0.0f,                    line_width);
+        rasterizer_state(Renderer_RasterizerState::Solid_cull_back)     = make_shared<RHI_RasterizerState>(RHI_CullMode::Back, RHI_PolygonMode::Solid,     true,  false, 0.0f,              0.0f,             0.0f,                    line_width);
+        rasterizer_state(Renderer_RasterizerState::Solid_cull_none)     = make_shared<RHI_RasterizerState>(RHI_CullMode::None, RHI_PolygonMode::Solid,     true,  false, 0.0f,              0.0f,             0.0f,                    line_width);
+        rasterizer_state(Renderer_RasterizerState::Wireframe_cull_none) = make_shared<RHI_RasterizerState>(RHI_CullMode::None, RHI_PolygonMode::Wireframe, true,  false, 0.0f,              0.0f,             0.0f,                    line_width);
         rasterizer_state(Renderer_RasterizerState::Light_point_spot)    = make_shared<RHI_RasterizerState>(RHI_CullMode::Back, RHI_PolygonMode::Solid,     true,  false, depth_bias,        depth_bias_clamp, depth_bias_slope_scaled, 0.0f);
         rasterizer_state(Renderer_RasterizerState::Light_directional)   = make_shared<RHI_RasterizerState>(RHI_CullMode::Back, RHI_PolygonMode::Solid,     false, false, depth_bias * 0.1f, depth_bias_clamp, depth_bias_slope_scaled, 0.0f);
     }
