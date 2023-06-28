@@ -35,126 +35,129 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    static VkColorSpaceKHR get_color_space(bool is_hdr)
-    {
-        // VK_COLOR_SPACE_HDR10_ST2084_EXT represents the HDR10 color space with the ST.2084 (PQ)electro - optical transfer function.
-        // This is the most common HDR format used for HDR TVs and monitors.
-
-        // VK_COLOR_SPACE_SRGB_NONLINEAR_KHR represents the sRGB color space.
-        // This is the standard color space for the web and is supported by most modern displays.
-        // sRGB is a nonlinear color space, which means that the values stored in an image are not directly proportional to the perceived brightness of the colors.
-        // When displaying an image in sRGB, the values must be converted to linear space before they are displayed.
-
-        return is_hdr ? VK_COLOR_SPACE_HDR10_ST2084_EXT : VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
-    }
-
-    static VkSurfaceCapabilitiesKHR get_surface_capabilities(const VkSurfaceKHR surface)
-    {
-        VkSurfaceCapabilitiesKHR surface_capabilities;
-        vkGetPhysicalDeviceSurfaceCapabilitiesKHR(RHI_Context::device_physical, surface, &surface_capabilities);
-        return surface_capabilities;
-    }
-
-    static vector<VkPresentModeKHR> get_supported_present_modes(const VkSurfaceKHR surface)
-    {
-        uint32_t present_mode_count;
-        vkGetPhysicalDeviceSurfacePresentModesKHR(RHI_Context::device_physical, surface, &present_mode_count, nullptr);
-
-        vector<VkPresentModeKHR> surface_present_modes(present_mode_count);
-        vkGetPhysicalDeviceSurfacePresentModesKHR(RHI_Context::device_physical, surface, &present_mode_count, &surface_present_modes[0]);
-        return surface_present_modes;
-    }
-
-    static VkPresentModeKHR get_present_mode(const VkSurfaceKHR surface, const RHI_Present_Mode present_mode)
-    {
-        // Convert RHI_Present_Mode to VkPresentModeKHR
-        VkPresentModeKHR vk_present_mode = VK_PRESENT_MODE_FIFO_KHR;
-        if (present_mode == RHI_Present_Mode::Immediate)
+    namespace
+    { 
+        static VkColorSpaceKHR get_color_space(bool is_hdr)
         {
-            vk_present_mode = VK_PRESENT_MODE_IMMEDIATE_KHR;
-        }
-        else if (present_mode == RHI_Present_Mode::Mailbox)
-        {
-            vk_present_mode = VK_PRESENT_MODE_MAILBOX_KHR;
+            // VK_COLOR_SPACE_HDR10_ST2084_EXT represents the HDR10 color space with the ST.2084 (PQ)electro - optical transfer function.
+            // This is the most common HDR format used for HDR TVs and monitors.
+
+            // VK_COLOR_SPACE_SRGB_NONLINEAR_KHR represents the sRGB color space.
+            // This is the standard color space for the web and is supported by most modern displays.
+            // sRGB is a nonlinear color space, which means that the values stored in an image are not directly proportional to the perceived brightness of the colors.
+            // When displaying an image in sRGB, the values must be converted to linear space before they are displayed.
+
+            return is_hdr ? VK_COLOR_SPACE_HDR10_ST2084_EXT : VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
         }
 
-        // Return the present mode as is if the surface supports it
-        vector<VkPresentModeKHR> surface_present_modes = get_supported_present_modes(surface);
-        for (const VkPresentModeKHR supported_present_mode : surface_present_modes)
+        static VkSurfaceCapabilitiesKHR get_surface_capabilities(const VkSurfaceKHR surface)
         {
-            if (vk_present_mode == supported_present_mode)
+            VkSurfaceCapabilitiesKHR surface_capabilities;
+            vkGetPhysicalDeviceSurfaceCapabilitiesKHR(RHI_Context::device_physical, surface, &surface_capabilities);
+            return surface_capabilities;
+        }
+
+        static vector<VkPresentModeKHR> get_supported_present_modes(const VkSurfaceKHR surface)
+        {
+            uint32_t present_mode_count;
+            vkGetPhysicalDeviceSurfacePresentModesKHR(RHI_Context::device_physical, surface, &present_mode_count, nullptr);
+
+            vector<VkPresentModeKHR> surface_present_modes(present_mode_count);
+            vkGetPhysicalDeviceSurfacePresentModesKHR(RHI_Context::device_physical, surface, &present_mode_count, &surface_present_modes[0]);
+            return surface_present_modes;
+        }
+
+        static VkPresentModeKHR get_present_mode(const VkSurfaceKHR surface, const RHI_Present_Mode present_mode)
+        {
+            // Convert RHI_Present_Mode to VkPresentModeKHR
+            VkPresentModeKHR vk_present_mode = VK_PRESENT_MODE_FIFO_KHR;
+            if (present_mode == RHI_Present_Mode::Immediate)
             {
-                return vk_present_mode;
+                vk_present_mode = VK_PRESENT_MODE_IMMEDIATE_KHR;
             }
-        }
-
-        // At this point we call back to VK_PRESENT_MODE_FIFO_KHR, which as per spec is always present
-        SP_LOG_WARNING("Requested present mode is not supported. Falling back to VK_PRESENT_MODE_FIFO_KHR");
-        return VK_PRESENT_MODE_FIFO_KHR;
-    }
-
-    static vector<VkSurfaceFormatKHR> get_supported_surface_formats(const VkSurfaceKHR surface)
-    {
-        uint32_t format_count;
-        SP_VK_ASSERT_MSG(vkGetPhysicalDeviceSurfaceFormatsKHR(RHI_Context::device_physical, surface, &format_count, nullptr),
-            "Failed to get physical device surface format count");
-
-        vector<VkSurfaceFormatKHR> surface_formats(format_count);
-        SP_VK_ASSERT_MSG(vkGetPhysicalDeviceSurfaceFormatsKHR(RHI_Context::device_physical, surface, &format_count, &surface_formats[0]),
-            "Failed to get physical device surfaces");
-
-        return surface_formats;
-    }
-
-    static bool is_format_and_color_space_supported(const VkSurfaceKHR surface, RHI_Format* format, VkColorSpaceKHR color_space)
-    {
-        // Get supported surface formats
-        vector<VkSurfaceFormatKHR> supported_formats = get_supported_surface_formats(surface);
-
-        // NV supports RHI_Format::B8R8G8A8_Unorm instead of RHI_Format::R8G8B8A8_Unorm.
-        if ((*format) == RHI_Format::R8G8B8A8_Unorm && RHI_Device::GetPrimaryPhysicalDevice()->IsNvidia())
-        {
-            (*format) = RHI_Format::B8R8G8A8_Unorm;
-        }
-
-        for (const VkSurfaceFormatKHR& supported_format : supported_formats)
-        {
-            bool support_format      = supported_format.format == vulkan_format[rhi_format_to_index(*format)];
-            bool support_color_space = supported_format.colorSpace == color_space;
-
-            if (support_format && support_color_space)
-                return true;
-        }
-
-        return false;
-    }
-
-    static VkCompositeAlphaFlagBitsKHR get_supported_composite_alpha_format(const VkSurfaceKHR surface)
-    {
-        vector<VkCompositeAlphaFlagBitsKHR> composite_alpha_flags =
-        {
-            VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
-            VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR,
-            VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR,
-            VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR,
-        };
-
-        // Get physical device surface capabilities
-        VkSurfaceCapabilitiesKHR surface_capabilities;
-        SP_VK_ASSERT_MSG(
-            vkGetPhysicalDeviceSurfaceCapabilitiesKHR(RHI_Context::device_physical, surface, &surface_capabilities),
-            "Failed to get surface capabilities");
-
-        // Simply select the first composite alpha format available
-        for (VkCompositeAlphaFlagBitsKHR& composite_alpha : composite_alpha_flags)
-        {
-            if (surface_capabilities.supportedCompositeAlpha & composite_alpha)
+            else if (present_mode == RHI_Present_Mode::Mailbox)
             {
-                return composite_alpha;
-            };
+                vk_present_mode = VK_PRESENT_MODE_MAILBOX_KHR;
+            }
+
+            // Return the present mode as is if the surface supports it
+            vector<VkPresentModeKHR> surface_present_modes = get_supported_present_modes(surface);
+            for (const VkPresentModeKHR supported_present_mode : surface_present_modes)
+            {
+                if (vk_present_mode == supported_present_mode)
+                {
+                    return vk_present_mode;
+                }
+            }
+
+            // At this point we call back to VK_PRESENT_MODE_FIFO_KHR, which as per spec is always present
+            SP_LOG_WARNING("Requested present mode is not supported. Falling back to VK_PRESENT_MODE_FIFO_KHR");
+            return VK_PRESENT_MODE_FIFO_KHR;
         }
 
-        return VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+        static vector<VkSurfaceFormatKHR> get_supported_surface_formats(const VkSurfaceKHR surface)
+        {
+            uint32_t format_count;
+            SP_VK_ASSERT_MSG(vkGetPhysicalDeviceSurfaceFormatsKHR(RHI_Context::device_physical, surface, &format_count, nullptr),
+                "Failed to get physical device surface format count");
+
+            vector<VkSurfaceFormatKHR> surface_formats(format_count);
+            SP_VK_ASSERT_MSG(vkGetPhysicalDeviceSurfaceFormatsKHR(RHI_Context::device_physical, surface, &format_count, &surface_formats[0]),
+                "Failed to get physical device surfaces");
+
+            return surface_formats;
+        }
+
+        static bool is_format_and_color_space_supported(const VkSurfaceKHR surface, RHI_Format* format, VkColorSpaceKHR color_space)
+        {
+            // Get supported surface formats
+            vector<VkSurfaceFormatKHR> supported_formats = get_supported_surface_formats(surface);
+
+            // NV supports RHI_Format::B8R8G8A8_Unorm instead of RHI_Format::R8G8B8A8_Unorm.
+            if ((*format) == RHI_Format::R8G8B8A8_Unorm && RHI_Device::GetPrimaryPhysicalDevice()->IsNvidia())
+            {
+                (*format) = RHI_Format::B8R8G8A8_Unorm;
+            }
+
+            for (const VkSurfaceFormatKHR& supported_format : supported_formats)
+            {
+                bool support_format      = supported_format.format == vulkan_format[rhi_format_to_index(*format)];
+                bool support_color_space = supported_format.colorSpace == color_space;
+
+                if (support_format && support_color_space)
+                    return true;
+            }
+
+            return false;
+        }
+
+        static VkCompositeAlphaFlagBitsKHR get_supported_composite_alpha_format(const VkSurfaceKHR surface)
+        {
+            vector<VkCompositeAlphaFlagBitsKHR> composite_alpha_flags =
+            {
+                VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
+                VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR,
+                VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR,
+                VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR,
+            };
+
+            // Get physical device surface capabilities
+            VkSurfaceCapabilitiesKHR surface_capabilities;
+            SP_VK_ASSERT_MSG(
+                vkGetPhysicalDeviceSurfaceCapabilitiesKHR(RHI_Context::device_physical, surface, &surface_capabilities),
+                "Failed to get surface capabilities");
+
+            // Simply select the first composite alpha format available
+            for (VkCompositeAlphaFlagBitsKHR& composite_alpha : composite_alpha_flags)
+            {
+                if (surface_capabilities.supportedCompositeAlpha & composite_alpha)
+                {
+                    return composite_alpha;
+                };
+            }
+
+            return VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+        }
     }
 
     RHI_SwapChain::RHI_SwapChain(
@@ -350,7 +353,7 @@ namespace Spartan
 
     bool RHI_SwapChain::Resize(const uint32_t width, const uint32_t height, const bool force /*= false*/)
     {
-        SP_ASSERT_MSG(RHI_Device::IsValidResolution(width, height), "Invalid resolution");
+        SP_ASSERT(RHI_Device::IsValidResolution(width, height));
 
         // Only resize if needed
         if (!force)
@@ -407,10 +410,10 @@ namespace Spartan
 
     void RHI_SwapChain::Present()
     {
-        SP_ASSERT_MSG(!Window::IsMinimised(),                                    "The window is minimzed, can't present");
-        SP_ASSERT_MSG(m_rhi_swapchain != nullptr,                                "Invalid swapchain");
-        SP_ASSERT_MSG(m_image_index != m_image_index_previous,                   "No image was acquired");
-        SP_ASSERT_MSG(m_layouts[m_image_index] == RHI_Image_Layout::Present_Src, "Invalid layout");
+        SP_ASSERT_MSG(!(SDL_GetWindowFlags(static_cast<SDL_Window*>(m_sdl_window)) & SDL_WINDOW_MINIMIZED), "The window is minimzed, can't present");
+        SP_ASSERT_MSG(m_rhi_swapchain != nullptr,                                                           "Invalid swapchain");
+        SP_ASSERT_MSG(m_image_index != m_image_index_previous,                                              "No image was acquired");
+        SP_ASSERT_MSG(m_layouts[m_image_index] == RHI_Image_Layout::Present_Src,                            "Invalid layout");
 
         // Get the semaphores that present should wait for
         m_wait_semaphores.clear();

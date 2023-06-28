@@ -50,11 +50,7 @@ namespace Spartan
         static Math::Vector2 m_position = Math::Vector2::Zero;
         static uint32_t m_width         = 640;
         static uint32_t m_height        = 480;
-        static bool m_shown             = false;
-        static bool m_minimised         = false;
-        static bool m_maximised         = false;
         static bool m_close             = false;
-        static bool m_fullscreen        = false;
         static SDL_Window* m_window     = nullptr;
 
         // splash-screen
@@ -151,16 +147,12 @@ namespace Spartan
                     switch (sdl_event.window.event)
                     {
                     case SDL_WINDOWEVENT_SHOWN:
-                        m_shown = true;
                         break;
                     case SDL_WINDOWEVENT_HIDDEN:
-                        m_shown = false;
                         break;
                     case SDL_WINDOWEVENT_EXPOSED:
-                        //Window has been exposed and should be redrawn
                         break;
                     case SDL_WINDOWEVENT_MOVED:
-                        //Window has been moved to data1, data2
                         break;
                     case SDL_WINDOWEVENT_RESIZED:
                         m_width  = static_cast<uint32_t>(sdl_event.window.data1);
@@ -171,36 +163,31 @@ namespace Spartan
                         m_height = static_cast<uint32_t>(sdl_event.window.data2);
                         break;
                     case SDL_WINDOWEVENT_MINIMIZED:
-                        m_minimised = true;
-                        m_maximised = false;
                         break;
                     case SDL_WINDOWEVENT_MAXIMIZED:
-                        m_maximised = true;
-                        m_minimised = false;
                         break;
                     case SDL_WINDOWEVENT_RESTORED:
-                        //SDL_Log("Window %d restored", event->window.windowID);
                         break;
                     case SDL_WINDOWEVENT_ENTER:
-                        //Window has gained mouse focus
+                        // Window has gained mouse focus
                         break;
                     case SDL_WINDOWEVENT_LEAVE:
-                        //Window has lost mouse focus
+                        // Window has lost mouse focus
                         break;
                     case SDL_WINDOWEVENT_FOCUS_GAINED:
-                        //Window has gained keyboard focus
+                        // Window has gained keyboard focus
                         break;
                     case SDL_WINDOWEVENT_FOCUS_LOST:
-                        //Window has lost keyboard focus
+                        // Window has lost keyboard focus
                         break;
                     case SDL_WINDOWEVENT_CLOSE:
                         m_close = true;
                         break;
                     case SDL_WINDOWEVENT_TAKE_FOCUS:
-                        //Window is being offered a focus (should SetWindowInputFocus() on itself or a subwindow, or ignore)
+                        // Window is being offered a focus (should SetWindowInputFocus() on itself or a subwindow, or ignore)
                         break;
                     case SDL_WINDOWEVENT_HIT_TEST:
-                        //Window had a hit test that wasn't SDL_HITTEST_NORMAL.
+                        // Window had a hit test that wasn't SDL_HITTEST_NORMAL.
                         break;
                     case SDL_WINDOWEVENT_ICCPROF_CHANGED:
                         SP_LOG_INFO("The ICC profile of the window's display has changed");
@@ -253,29 +240,25 @@ namespace Spartan
     {
         SP_ASSERT(m_window != nullptr);
 
-        SP_LOG_INFO("Entering full screen mode...");
         SDL_SetWindowFullscreen(m_window, SDL_WINDOW_FULLSCREEN);
-        m_fullscreen = true;
     }
 
     void Window::Windowed()
     {
         SP_ASSERT(m_window != nullptr);
 
-        SP_LOG_INFO("Entering windowed mode...");
         SDL_SetWindowFullscreen(m_window, 0);
-        m_fullscreen = false;
     }
 
     void Window::ToggleFullScreen()
 	{
-        if (!m_fullscreen)
+        if (IsFullScreen())
         {
-            FullScreen();
+            Windowed();
         }
         else
         {
-            Windowed();
+            FullScreen();
         }
 
         SP_FIRE_EVENT(EventType::WindowOnFullScreenToggled);
@@ -286,7 +269,6 @@ namespace Spartan
         SP_ASSERT(m_window != nullptr);
 
         SDL_SetWindowFullscreen(m_window, SDL_WINDOW_FULLSCREEN_DESKTOP);
-        m_fullscreen = true;
     }
 
     void Window::Minimise()
@@ -349,12 +331,12 @@ namespace Spartan
 
     bool Window::IsMinimised()
     {
-        return m_minimised;
+        return SDL_GetWindowFlags(m_window) & SDL_WINDOW_MINIMIZED;
     }
 
     bool Window::IsFullScreen()
     {
-        return m_fullscreen;
+        return SDL_GetWindowFlags(m_window) & SDL_WINDOW_FULLSCREEN;
     }
 
     void Window::CreateAndShowSplashScreen()
