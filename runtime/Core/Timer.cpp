@@ -66,7 +66,7 @@ namespace Spartan
             delta_time_ms = static_cast<double>(chrono::duration<double, milli>(chrono::steady_clock::now() - last_tick_time).count());
         }
 
-        // Update delta_time_ms after delay
+        // Compute delta time based timings
         delta_time_smoothed_ms = delta_time_smoothed_ms * (1.0 - weight_delta) + delta_time_ms * weight_delta;
         time_ms                += delta_time_ms;
 
