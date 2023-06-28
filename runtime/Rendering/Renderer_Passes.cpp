@@ -644,7 +644,6 @@ namespace Spartan
                 if (!material)
                     continue;
 
-
                 // Get geometry
                 Mesh* mesh = renderable->GetMesh();
                 if (!mesh || !mesh->GetVertexBuffer() || !mesh->GetIndexBuffer())
@@ -659,7 +658,7 @@ namespace Spartan
                 cmd_list->SetBufferVertex(mesh->GetVertexBuffer());
 
                 // Bind material
-                const bool firs_run = material_index == 0;
+                const bool firs_run     = material_index == 0;
                 const bool new_material = material_bound_id != material->GetObjectId();
                 if (firs_run || new_material)
                 {
