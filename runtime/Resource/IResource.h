@@ -23,6 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==================
 #include <memory>
+#include <atomic>
 #include "../Core/FileSystem.h"
 #include "../Core/Object.h"
 #include "../Logging/Log.h"
