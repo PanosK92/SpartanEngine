@@ -21,21 +21,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ======================
+//= INCLUDES =====================
 #include <memory>
 #include <array>
-#include <unordered_map>
 #include "../RHI/RHI_Definition.h"
 #include "../Resource/IResource.h"
-#include "../Math/Vector2.h"
-#include "../Math/Vector4.h"
-//=================================
+//================================
 
 namespace Spartan
 {
     enum class MaterialTexture
     {
-        Undefined,
         Color,
         Roughness,  // Specifies microfacet roughness of the surface for diffuse and specular reflection
         Metallness, // Blends between a non-metallic and metallic material model
@@ -43,12 +39,12 @@ namespace Spartan
         Occlusion,  // A texture that will be mixed with ssao.
         Emission,   // A texture that will cause a surface to be lit, works nice with bloom.
         Height,     // Perceived depth for parallax mapping.
-        AlphaMask   // A texture which will use pixel shader discards for transparent pixels.
+        AlphaMask,  // A texture which will use pixel shader discards for transparent pixels.
+        Undefined
     };
 
     enum class MaterialProperty
     {
-        Undefined,
         Clearcoat,           // Extra white specular layer on top of others
         Clearcoat_Roughness, // Roughness of clearcoat specular
         Anisotropic,         // Amount of anisotropy for specular reflection
@@ -68,7 +64,9 @@ namespace Spartan
         UvTilingY,
         UvOffsetX,
         UvOffsetY,
-        SingleTextureRoughnessMetalness
+        SingleTextureRoughnessMetalness,
+        CanBeEdited,
+        Undefined
     };
 
     class SP_CLASS Material : public IResource
@@ -95,24 +93,13 @@ namespace Spartan
         std::shared_ptr<RHI_Texture>& GetTexture_PtrShared(const MaterialTexture texturtexture_type);
         //============================================================================================
         
-        //= PROPERTIES =============================================================================================================
-        auto IsEditable()                          const { return m_is_editable; }
-        void SetIsEditable(const bool is_editable) { m_is_editable = is_editable; }
-
         float GetProperty(const MaterialProperty property_type) const { return m_properties[static_cast<uint32_t>(property_type)]; }
         void SetProperty(const MaterialProperty property_type, const float value);
 
         void SetColor(const Color& color);
-        //==========================================================================================================================
  
     private:
-        // Textures
         std::array<std::shared_ptr<RHI_Texture>, 9> m_textures;
-
-        // Properties
-        std::array<float, 21> m_properties;
-
-        // Misc
-        bool m_is_editable = true;
+        std::array<float, 22> m_properties;
     };
 }

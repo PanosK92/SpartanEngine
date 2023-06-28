@@ -33,7 +33,7 @@ namespace Spartan
     namespace
     {
         // Accumulation
-        static const uint32_t frames_to_accumulate = 20;
+        static const uint32_t frames_to_accumulate = 15;
         static const double weight_delta           = 1.0 / static_cast<float>(frames_to_accumulate);
 
         // Frame time
@@ -43,7 +43,7 @@ namespace Spartan
 
         // FPS
         static float fps_min            = 30.0f;
-        static float fps_max            = 1000.0f;
+        static float fps_max            = 10000.0f;
         static float fps_limit          = fps_min; // if it's lower than the monitor's hz, it will be updated to match it, so start with something low.
         static float fps_limit_previous = fps_limit;
 
@@ -56,10 +56,7 @@ namespace Spartan
         // If this is not the first tick, we calculate the delta time
         if (last_tick_time.time_since_epoch() != chrono::steady_clock::duration::zero())
         {
-            // Compute delta time
-            delta_time_ms          = static_cast<double>(chrono::duration<double, milli>(chrono::steady_clock::now() - last_tick_time).count());
-            delta_time_smoothed_ms = delta_time_smoothed_ms * (1.0 - weight_delta) + delta_time_ms * weight_delta;
-            time_ms                += delta_time_ms;
+            delta_time_ms = static_cast<double>(chrono::duration<double, milli>(chrono::steady_clock::now() - last_tick_time).count());
         }
 
         // FPS Limit
@@ -68,6 +65,10 @@ namespace Spartan
         {
             delta_time_ms = static_cast<double>(chrono::duration<double, milli>(chrono::steady_clock::now() - last_tick_time).count());
         }
+
+        // Compute delta time based timings
+        delta_time_smoothed_ms = delta_time_smoothed_ms * (1.0 - weight_delta) + delta_time_ms * weight_delta;
+        time_ms                += delta_time_ms;
 
         // End
         last_tick_time = chrono::steady_clock::now();

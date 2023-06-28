@@ -676,7 +676,7 @@ void Properties::ShowMaterial(Material* material) const
         ImGui::Text("Name");
         ImGui::SameLine(offset_from_pos_x); ImGui::Text(material->GetObjectName().c_str());
 
-        if (material->IsEditable())
+        if (material->GetProperty(MaterialProperty::CanBeEdited) == 1.0f)
         {
             // Texture slots
             {
@@ -769,6 +769,10 @@ void Properties::ShowMaterial(Material* material) const
                 ImGui::SameLine(); ImGui::InputFloat("##matOffsetY", &offset.y, 0.01f, 0.1f, "%.2f", ImGuiInputTextFlags_CharsDecimal);
                 ImGui::PopItemWidth();
             }
+        }
+        else
+        {
+            ImGui::Text("Can not be edited");
         }
 
         //= MAP ===============================================================================

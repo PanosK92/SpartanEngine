@@ -40,9 +40,10 @@ namespace Spartan
     Material::Material() : IResource(ResourceType::Material)
     {
         m_textures.fill(nullptr);
-
-        // Initialise properties
         m_properties.fill(0.0f);
+
+        // initialize properties
+        SetProperty(MaterialProperty::CanBeEdited,         1.0f);
         SetProperty(MaterialProperty::ColorR,              1.0f);
         SetProperty(MaterialProperty::ColorG,              1.0f);
         SetProperty(MaterialProperty::ColorB,              1.0f);
@@ -78,7 +79,7 @@ namespace Spartan
         xml->GetAttribute("Material", "uv_tiling_y",                     &m_properties[static_cast<uint32_t>(MaterialProperty::UvTilingY)]);
         xml->GetAttribute("Material", "uv_offset_x",                     &m_properties[static_cast<uint32_t>(MaterialProperty::UvOffsetX)]);
         xml->GetAttribute("Material", "uv_offset_y",                     &m_properties[static_cast<uint32_t>(MaterialProperty::UvOffsetY)]);
-        xml->GetAttribute("Material", "is_editable",                     &m_is_editable);
+        xml->GetAttribute("Material", "can_be_edited",                   &m_properties[static_cast<uint32_t>(MaterialProperty::CanBeEdited)]);
 
         const uint32_t texture_count = xml->GetAttributeAs<uint32_t>("textures", "count");
         for (uint32_t i = 0; i < texture_count; i++)
@@ -128,7 +129,7 @@ namespace Spartan
         xml->AddAttribute("Material", "uv_tiling_y",                     GetProperty(MaterialProperty::UvTilingY));
         xml->AddAttribute("Material", "uv_offset_x",                     GetProperty(MaterialProperty::UvOffsetX));
         xml->AddAttribute("Material", "uv_offset_y",                     GetProperty(MaterialProperty::UvOffsetY));
-        xml->AddAttribute("Material", "is_editable",                     m_is_editable);
+        xml->AddAttribute("Material", "can_be_edited",                   GetProperty(MaterialProperty::CanBeEdited));
 
         xml->AddChildNode("Material", "textures");
         xml->AddAttribute("textures", "count", static_cast<uint32_t>(m_textures.size()));

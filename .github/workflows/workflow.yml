@@ -1,4 +1,4 @@
-name: d3d11_d3d12_vulkan_
+name: build
 
 on: [push, pull_request]
 
@@ -6,7 +6,7 @@ jobs:
   build:
     strategy:
       matrix:
-        api: [d3d11, d3d12, vulkan]
+        api: [vulkan, d3d12]
     runs-on: "windows-2022"
     env:
       msbuild_path: C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\
@@ -48,13 +48,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-    
-      - name: Download D3D11 build
-        uses: actions/download-artifact@v2
-        with:
-          name: build_d3d11
-          path: build_d3d11.7z
-      
+     
       - name: Download Vulkan build
         uses: actions/download-artifact@v2
         with:
@@ -69,6 +63,5 @@ jobs:
           prerelease: true
           title: "Development Build"
           files: |
-            build_d3d11.7z
             build_vulkan.7z
             LICENSE.txt
