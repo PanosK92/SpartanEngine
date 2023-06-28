@@ -84,7 +84,10 @@ namespace Spartan
         static bool profile_gpu                    = true;
         static float profiling_interval_sec        = 0.15f;
         static float time_since_profiling_sec      = profiling_interval_sec;
-        static const uint32_t frames_to_accumulate = 20;
+
+        static const uint32_t frames_to_accumulate = 15;
+        static const float weight_delta            = 1.0f / static_cast<float>(frames_to_accumulate);
+        static const float weight_history          = (1.0f - weight_delta);
 
         // Time blocks (double buffered)
         static int m_time_block_index = -1;
@@ -178,16 +181,12 @@ namespace Spartan
 
     void Profiler::PostTick()
     {
-        float delta_time_sec = static_cast<float>(Timer::GetDeltaTimeSec());
-
         // Compute timings
         {
-            float weight_delta   = 1.0f / static_cast<float>(frames_to_accumulate);
-            float weight_history = (1.0f - weight_delta);
-            is_stuttering_cpu    = m_time_cpu_last > (m_time_cpu_avg + stutter_delta_ms);
-            is_stuttering_gpu    = m_time_gpu_last > (m_time_gpu_avg + stutter_delta_ms);
-            m_time_cpu_last      = 0.0f;
-            m_time_gpu_last      = 0.0f;
+            is_stuttering_cpu = m_time_cpu_last > (m_time_cpu_avg + stutter_delta_ms);
+            is_stuttering_gpu = m_time_gpu_last > (m_time_gpu_avg + stutter_delta_ms);
+            m_time_cpu_last   = 0.0f;
+            m_time_gpu_last   = 0.0f;
 
             for (const TimeBlock& time_block : m_time_blocks_read)
             {
@@ -221,13 +220,12 @@ namespace Spartan
             m_time_frame_min  = Math::Helper::Min(m_time_frame_min, m_time_frame_last);
             m_time_frame_max  = Math::Helper::Max(m_time_frame_max, m_time_frame_last);
 
-            // FPS
-            float fps_sample = (delta_time_sec > 0.0f) ? (1.0f / delta_time_sec) : 0.0f;
-            m_fps            = (m_fps * weight_history) + fps_sample * weight_delta;
+            // FPS  
+            m_fps = 1000.0f / m_time_frame_avg;
         }
 
         // Check whether we should profile or not
-        time_since_profiling_sec += delta_time_sec;
+        time_since_profiling_sec += static_cast<float>(Timer::GetDeltaTimeSec());
         if (time_since_profiling_sec >= profiling_interval_sec)
         {
             time_since_profiling_sec = 0.0f;
