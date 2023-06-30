@@ -112,13 +112,6 @@ namespace Spartan
         if (!m_is_dirty)
             return;
 
-        // Update position based on direction (for directional light)
-        if (m_light_type == LightType::Directional)
-        {
-            float distance = Renderer::GetCamera() ? Renderer::GetCamera()->GetFarPlane() : 1000.0f;
-            GetTransform()->SetPosition(GetTransform()->GetForward() * distance);
-        }
-
         // Update shadow map(s)
         if (m_shadows_enabled)
         {
