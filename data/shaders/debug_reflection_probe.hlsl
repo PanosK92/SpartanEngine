@@ -27,11 +27,11 @@ Pixel_PosNor mainVS(Vertex_PosUvNorTan input)
 {
     Pixel_PosNor output;
 
-    float4x4 wvp = mul(buffer_uber.transform, buffer_frame.view_projection_unjittered);
+    float4x4 wvp = mul(buffer_pass.transform, buffer_frame.view_projection_unjittered);
 
     input.position.w = 1.0f;
     output.position  = mul(input.position, wvp);
-    output.normal    = normalize(mul(input.normal, (float3x3)buffer_uber.transform)).xyz;
+    output.normal    = normalize(mul(input.normal, (float3x3)buffer_pass.transform)).xyz;
 
     return output;
 }

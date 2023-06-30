@@ -120,7 +120,7 @@ namespace ImGuiSp
     static bool button(const char* label, const ImVec2& size = ImVec2(0, 0))
     {
         ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
-        ImGui::PushID(ImGui::GetCursorPosX() + ImGui::GetCursorPosY());
+        ImGui::PushID(static_cast<int>(ImGui::GetCursorPosX() + ImGui::GetCursorPosY()));
         bool result = ImGui::Button(label, size);
         ImGui::PopID();
         ImGui::PopStyleVar();

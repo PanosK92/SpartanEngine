@@ -317,7 +317,7 @@ namespace Spartan
         //                                                                         Texture type,                Texture type Assimp (PBR),       Texture type Assimp (Legacy/fallback)
         load_material_texture(mesh, file_path, is_gltf, material, material_assimp, MaterialTexture::Color,      aiTextureType_BASE_COLOR,        aiTextureType_DIFFUSE);
         load_material_texture(mesh, file_path, is_gltf, material, material_assimp, MaterialTexture::Roughness,  aiTextureType_DIFFUSE_ROUGHNESS, aiTextureType_SHININESS); // Use specular as fallback
-        load_material_texture(mesh, file_path, is_gltf, material, material_assimp, MaterialTexture::Metallness, aiTextureType_METALNESS,         aiTextureType_AMBIENT);   // Use ambient as fallback
+        load_material_texture(mesh, file_path, is_gltf, material, material_assimp, MaterialTexture::Metalness,  aiTextureType_METALNESS,         aiTextureType_AMBIENT);   // Use ambient as fallback
         load_material_texture(mesh, file_path, is_gltf, material, material_assimp, MaterialTexture::Normal,     aiTextureType_NORMAL_CAMERA,     aiTextureType_NORMALS);
         load_material_texture(mesh, file_path, is_gltf, material, material_assimp, MaterialTexture::Occlusion,  aiTextureType_AMBIENT_OCCLUSION, aiTextureType_LIGHTMAP);
         load_material_texture(mesh, file_path, is_gltf, material, material_assimp, MaterialTexture::Emission,   aiTextureType_EMISSION_COLOR,    aiTextureType_EMISSIVE);

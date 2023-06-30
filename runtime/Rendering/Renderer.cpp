@@ -118,9 +118,8 @@ namespace Spartan
     }
 
     unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>> Renderer::m_renderables;
-    array<Material*, m_max_material_instances> Renderer::m_material_instances;
     Cb_Frame Renderer::m_cb_frame_cpu;
-    Cb_Uber Renderer::m_cb_uber_cpu;
+    Cb_Pass Renderer::m_cb_pass_cpu;
     Cb_Light Renderer::m_cb_light_cpu;
     Cb_Material Renderer::m_cb_material_cpu;
     shared_ptr<RHI_VertexBuffer> Renderer::m_vertex_buffer_lines;
@@ -534,12 +533,12 @@ namespace Spartan
         cmd_list->SetConstantBuffer(Renderer_BindingsCb::frame, RHI_Shader_Vertex | RHI_Shader_Pixel | RHI_Shader_Compute, GetConstantBuffer(Renderer_ConstantBuffer::Frame));
     }
 
-    void Renderer::UpdateConstantBufferUber(RHI_CommandList* cmd_list)
+    void Renderer::UpdateConstantBufferPass(RHI_CommandList* cmd_list)
     {
-        GetConstantBuffer(Renderer_ConstantBuffer::Uber)->Update(&m_cb_uber_cpu);
+        GetConstantBuffer(Renderer_ConstantBuffer::Pass)->Update(&m_cb_pass_cpu);
 
         // Bind because the offset just changed
-        cmd_list->SetConstantBuffer(Renderer_BindingsCb::uber, RHI_Shader_Vertex | RHI_Shader_Pixel | RHI_Shader_Compute, GetConstantBuffer(Renderer_ConstantBuffer::Uber));
+        cmd_list->SetConstantBuffer(Renderer_BindingsCb::uber, RHI_Shader_Vertex | RHI_Shader_Pixel | RHI_Shader_Compute, GetConstantBuffer(Renderer_ConstantBuffer::Pass));
     }
 
     void Renderer::UpdateConstantBufferLight(RHI_CommandList* cmd_list, shared_ptr<Light> light, const RHI_Shader_Type scope)
@@ -575,27 +574,43 @@ namespace Spartan
         cmd_list->SetConstantBuffer(Renderer_BindingsCb::light, scope, GetConstantBuffer(Renderer_ConstantBuffer::Light));
     }
 
-    void Renderer::UpdateConstantBufferMaterial(RHI_CommandList* cmd_list)
+    void Renderer::UpdateConstantBufferMaterial(RHI_CommandList* cmd_list, Material* material)
     {
+        // Set
+        m_cb_material_cpu.color.x              = material->GetProperty(MaterialProperty::ColorR);
+        m_cb_material_cpu.color.y              = material->GetProperty(MaterialProperty::ColorG);
+        m_cb_material_cpu.color.z              = material->GetProperty(MaterialProperty::ColorB);
+        m_cb_material_cpu.color.w              = material->GetProperty(MaterialProperty::ColorA);
+        m_cb_material_cpu.tiling_uv.x          = material->GetProperty(MaterialProperty::UvTilingX);
+        m_cb_material_cpu.tiling_uv.y          = material->GetProperty(MaterialProperty::UvTilingY);
+        m_cb_material_cpu.offset_uv.x          = material->GetProperty(MaterialProperty::UvOffsetX);
+        m_cb_material_cpu.offset_uv.y          = material->GetProperty(MaterialProperty::UvOffsetY);
+        m_cb_material_cpu.roughness_mul        = material->GetProperty(MaterialProperty::RoughnessMultiplier);
+        m_cb_material_cpu.metallic_mul         = material->GetProperty(MaterialProperty::MetalnessMultiplier);
+        m_cb_material_cpu.normal_mul           = material->GetProperty(MaterialProperty::NormalMultiplier);
+        m_cb_material_cpu.height_mul           = material->GetProperty(MaterialProperty::HeightMultiplier);
+        m_cb_material_cpu.anisotropic          = material->GetProperty(MaterialProperty::Anisotropic);
+        m_cb_material_cpu.anisitropic_rotation = material->GetProperty(MaterialProperty::AnisotropicRotation);
+        m_cb_material_cpu.clearcoat            = material->GetProperty(MaterialProperty::Clearcoat);
+        m_cb_material_cpu.clearcoat_roughness  = material->GetProperty(MaterialProperty::Clearcoat_Roughness);
+        m_cb_material_cpu.sheen                = material->GetProperty(MaterialProperty::Sheen);
+        m_cb_material_cpu.sheen_tint           = material->GetProperty(MaterialProperty::SheenTint);
+        m_cb_material_cpu.properties           = 0;
+        m_cb_material_cpu.properties          |= material->GetProperty(MaterialProperty::SingleTextureRoughnessMetalness) ? (1U << 0) : 0;
+        m_cb_material_cpu.properties          |= material->HasTexture(MaterialTexture::Height)                            ? (1U << 1) : 0;
+        m_cb_material_cpu.properties          |= material->HasTexture(MaterialTexture::Normal)                            ? (1U << 2) : 0;
+        m_cb_material_cpu.properties          |= material->HasTexture(MaterialTexture::Color)                             ? (1U << 3) : 0;
+        m_cb_material_cpu.properties          |= material->HasTexture(MaterialTexture::Roughness)                         ? (1U << 4) : 0;
+        m_cb_material_cpu.properties          |= material->HasTexture(MaterialTexture::Metalness)                        ? (1U << 5) : 0;
+        m_cb_material_cpu.properties          |= material->HasTexture(MaterialTexture::AlphaMask)                         ? (1U << 6) : 0;
+        m_cb_material_cpu.properties          |= material->HasTexture(MaterialTexture::Emission)                          ? (1U << 7) : 0;
+        m_cb_material_cpu.properties          |= material->HasTexture(MaterialTexture::Occlusion)                         ? (1U << 8) : 0;
+
         // Update
-        for (uint32_t i = 0; i < m_max_material_instances; i++)
-        {
-            Material* material = m_material_instances[i];
-            if (!material)
-                continue;
-
-            m_cb_material_cpu.materials[i].clearcoat_clearcoatRough_anis_anisRot.x = material->GetProperty(MaterialProperty::Clearcoat);
-            m_cb_material_cpu.materials[i].clearcoat_clearcoatRough_anis_anisRot.y = material->GetProperty(MaterialProperty::Clearcoat_Roughness);
-            m_cb_material_cpu.materials[i].clearcoat_clearcoatRough_anis_anisRot.z = material->GetProperty(MaterialProperty::Anisotropic);
-            m_cb_material_cpu.materials[i].clearcoat_clearcoatRough_anis_anisRot.w = material->GetProperty(MaterialProperty::AnisotropicRotation);
-            m_cb_material_cpu.materials[i].sheen_sheenTint_pad.x                   = material->GetProperty(MaterialProperty::Sheen);
-            m_cb_material_cpu.materials[i].sheen_sheenTint_pad.y                   = material->GetProperty(MaterialProperty::SheenTint);
-        }
-
         GetConstantBuffer(Renderer_ConstantBuffer::Material)->Update(&m_cb_material_cpu);
 
         // Bind because the offset just changed
-        cmd_list->SetConstantBuffer(Renderer_BindingsCb::material, RHI_Shader_Pixel, GetConstantBuffer(Renderer_ConstantBuffer::Material));
+        cmd_list->SetConstantBuffer(Renderer_BindingsCb::material, RHI_Shader_Pixel | RHI_Shader_Compute, GetConstantBuffer(Renderer_ConstantBuffer::Material));
     }
 
     void Renderer::OnWorldResolved(sp_variant data)

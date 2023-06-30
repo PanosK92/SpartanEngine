@@ -302,10 +302,10 @@ namespace Spartan
 
                         if (light->GetLightType() == LightType::Directional)
                         {
-                            Vector3 pos_start = light->GetTransform()->GetPosition();
-                            Vector3 pos_end = -pos_start;
+                            Vector3 extent    = light->GetTransform()->GetForward() * 1000.0f;
+                            Vector3 pos_start = light->GetTransform()->GetPosition() - extent;
+                            Vector3 pos_end   = light->GetTransform()->GetPosition() + extent;
                             DrawLine(pos_start, pos_end);
-
                         }
                         else if (light->GetLightType() == LightType::Point)
                         {

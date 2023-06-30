@@ -184,7 +184,7 @@ float3 tonemap(float3 color)
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
     // Out of bounds check
-    if (any(int2(thread_id.xy) >= buffer_uber.resolution_rt.xy))
+    if (any(int2(thread_id.xy) >= buffer_pass.resolution_rt.xy))
         return;
 
     // exposure, tone-mapping, gamma correction

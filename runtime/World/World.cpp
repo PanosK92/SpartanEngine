@@ -58,7 +58,8 @@ namespace Spartan
         static shared_ptr<Mesh> m_default_model_sponza          = nullptr;
         static shared_ptr<Mesh> m_default_model_sponza_curtains = nullptr;
         static shared_ptr<Mesh> m_default_model_car             = nullptr;
-        static shared_ptr<Mesh> m_default_model_helmet          = nullptr;
+        static shared_ptr<Mesh> m_default_model_helmet_flight   = nullptr;
+        static shared_ptr<Mesh> m_default_model_helmet_damaged  = nullptr;
         static mutex m_entity_access_mutex;
 
         static void update_default_scene()
@@ -91,7 +92,8 @@ namespace Spartan
         m_default_model_sponza          = nullptr;
         m_default_model_sponza_curtains = nullptr;
         m_default_model_car             = nullptr;
-        m_default_model_helmet          = nullptr;
+        m_default_model_helmet_flight   = nullptr;
+        m_default_model_helmet_damaged  = nullptr;
     }
 
     void World::PreTick()
@@ -424,12 +426,11 @@ namespace Spartan
             shared_ptr<Entity> entity = CreateEntity();
             entity->SetObjectName("light_directional");
 
-            entity->GetTransform()->SetPosition(Vector3(0.0f, 10.0f, 0.0f));
-            entity->GetTransform()->SetRotation(Quaternion::FromEulerAngles(112.37f, -60.91f, 0.0f));
+            entity->GetTransform()->SetRotation(Quaternion::FromEulerAngles(35.0f, 90.0f, 0.0f));
 
             shared_ptr<Light> light = entity->AddComponent<Light>();
             light->SetLightType(LightType::Directional);
-            light->SetColor(Color::light_sky_clear);
+            light->SetColor(Color::light_sky_sunrise);
             light->SetIntensity(directional_light_intensity);
         }
 
@@ -502,7 +503,7 @@ namespace Spartan
             material->SetTexture(MaterialTexture::Normal, tex_normal);
             material->SetTexture(MaterialTexture::Occlusion, tex_occlusion);
             material->SetTexture(MaterialTexture::Roughness, tex_roughness);
-            material->SetTexture(MaterialTexture::Metallness, tex_metalness);
+            material->SetTexture(MaterialTexture::Metalness, tex_metalness);
             material->SetTexture(MaterialTexture::Height, tex_height);
 
             // Create a file path for this material (required for the material to be able to be cached by the resource cache)
@@ -527,10 +528,10 @@ namespace Spartan
         Engine::SetFlag(EngineMode::Game);
     }
 
-    void World::CreateDefaultWorldHelmet()
+    void World::CreateDefaultWorldHelmets()
     {
-        Vector3 camera_position = Vector3(-1.5523f, 1.2229f, -1.4509f);
-        Vector3 camera_rotation = Vector3(12.9974f, 47.5989f, 0.0f);
+        Vector3 camera_position = Vector3(-1.1131f, 1.3112f, -1.8209f);
+        Vector3 camera_rotation = Vector3(14.1965f, 43.3965f, 0.0f);
         CreateDefaultWorldCommon(true, camera_position, camera_rotation, 400.0f, "project\\music\\vangelis_pulstar.mp3");
 
         // Point light
@@ -541,16 +542,24 @@ namespace Spartan
 
             shared_ptr<Light> light = entity->AddComponent<Light>();
             light->SetLightType(LightType::Point);
-            light->SetColor(Color::material_silver);
+            light->SetColor(Color::light_light_bulb);
             light->SetIntensity(10000.0f);
         }
 
-        if (m_default_model_helmet = ResourceCache::Load<Mesh>("project\\models\\damaged_helmet\\DamagedHelmet.gltf"))
+        if (m_default_model_helmet_flight = ResourceCache::Load<Mesh>("project\\models\\flight_helmet\\FlightHelmet.gltf"))
         {
-            Entity* entity = m_default_model_helmet->GetRootEntity();
-            entity->SetObjectName("futuristic_helmet");
-            entity->GetTransform()->SetPosition(Vector3(0.0f, 0.8574f, 0.0f));
-            entity->GetTransform()->SetScale(Vector3(0.608f, 0.608f, 0.608f));
+            Entity* entity = m_default_model_helmet_flight->GetRootEntity();
+            entity->SetObjectName("flight_helmet");
+            entity->GetTransform()->SetPosition(Vector3(0.0f, 0.1f, 0.0f));
+            entity->GetTransform()->SetScale(Vector3(2.0f, 2.0f, 2.0f));
+        }
+
+        if (m_default_model_helmet_damaged = ResourceCache::Load<Mesh>("project\\models\\damaged_helmet\\DamagedHelmet.gltf"))
+        {
+            Entity* entity = m_default_model_helmet_damaged->GetRootEntity();
+            entity->SetObjectName("damaged_helmet");
+            entity->GetTransform()->SetPosition(Vector3(1.5f, 0.8f, 0.0f));
+            entity->GetTransform()->SetScale(Vector3(0.5f, 0.5f, 0.5f));
         }
 
         // Start simulating (for the physics and the music to work)
@@ -561,7 +570,7 @@ namespace Spartan
     {
         Vector3 camera_position           = Vector3(6.2f, 1.0f, -0.2f);
         Vector3 camera_rotation           = Vector3(0.0f, -90.0f, 0.0f);
-        float directional_light_intensity = 6000.0f;
+        float directional_light_intensity = 20000.0f;
         CreateDefaultWorldCommon(true, camera_position, camera_rotation, directional_light_intensity, "project\\music\\isola_any_day.mp3");
 
         // Point light - top of car
@@ -620,7 +629,7 @@ namespace Spartan
             material->SetTexture(MaterialTexture::Normal, tex_normal);
             material->SetTexture(MaterialTexture::Occlusion, tex_occlusion);
             material->SetTexture(MaterialTexture::Roughness, tex_roughness);
-            material->SetTexture(MaterialTexture::Metallness, tex_metalness);
+            material->SetTexture(MaterialTexture::Metalness, tex_metalness);
             material->SetTexture(MaterialTexture::Height, tex_height);
             material->SetProperty(MaterialProperty::UvTilingX, 10.0f);
             material->SetProperty(MaterialProperty::UvTilingY, 10.0f);
@@ -653,7 +662,9 @@ namespace Spartan
                 {
                     material->SetColor(Color::material_aluminum);
                     material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.1f);
-                    material->SetProperty(MaterialProperty::MetallnessMultiplier, 0.15f);
+                    material->SetProperty(MaterialProperty::MetalnessMultiplier, 0.15f);
+                    material->SetProperty(MaterialProperty::Clearcoat,           1.0f);
+                    material->SetProperty(MaterialProperty::Clearcoat_Roughness, 0.25f);
                 }
 
                 // plastic
@@ -679,14 +690,14 @@ namespace Spartan
                     material->SetColor(Color::material_tire);
                     material->SetTexture(MaterialTexture::Roughness, nullptr);
                     material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.8f);
-                    material->SetProperty(MaterialProperty::MetallnessMultiplier, 0.0f);
+                    material->SetProperty(MaterialProperty::MetalnessMultiplier, 0.0f);
                 }
 
                 if (Material* material = entity->GetTransform()->GetDescendantPtrByName("Interior_InteriorPlastic2_0")->GetComponent<Renderable>()->GetMaterial())
                 {
                     material->SetColor(Color::material_tire);
                     material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.8f);
-                    material->SetProperty(MaterialProperty::MetallnessMultiplier, 0.0f);
+                    material->SetProperty(MaterialProperty::MetalnessMultiplier, 0.0f);
                 }
 
             }
@@ -714,10 +725,10 @@ namespace Spartan
                 if (Material* material = entity->GetTransform()->GetDescendantPtrByName("FR_Caliper_BrakeCaliper_0")->GetComponent<Renderable>()->GetMaterial())
                 {
                     material->SetTexture(MaterialTexture::Roughness, nullptr);
-                    material->SetTexture(MaterialTexture::Metallness, nullptr);
+                    material->SetTexture(MaterialTexture::Metalness, nullptr);
                     material->SetColor(Color::material_aluminum);
                     material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.5f);
-                    material->SetProperty(MaterialProperty::MetallnessMultiplier, 1.0f);
+                    material->SetProperty(MaterialProperty::MetalnessMultiplier, 1.0f);
                     material->SetProperty(MaterialProperty::Anisotropic, 1.0f);
                     material->SetProperty(MaterialProperty::AnisotropicRotation, 0.5f);
                 }
@@ -726,10 +737,10 @@ namespace Spartan
                 if (Material* material = entity->GetTransform()->GetDescendantPtrByName("FL_Wheel_Brake Disc_0")->GetComponent<Renderable>()->GetMaterial())
                 {
                     material->SetTexture(MaterialTexture::Roughness, nullptr);
-                    material->SetTexture(MaterialTexture::Metallness, nullptr);
+                    material->SetTexture(MaterialTexture::Metalness, nullptr);
                     material->SetColor(Color::material_aluminum);
                     material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.5f);
-                    material->SetProperty(MaterialProperty::MetallnessMultiplier, 1.0f);
+                    material->SetProperty(MaterialProperty::MetalnessMultiplier, 1.0f);
                     material->SetProperty(MaterialProperty::Anisotropic, 1.0f);
                     material->SetProperty(MaterialProperty::AnisotropicRotation, 0.5f);
                 }
@@ -740,17 +751,17 @@ namespace Spartan
                     material->SetColor(Color::material_tire);
                     material->SetTexture(MaterialTexture::Roughness, nullptr);
                     material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.5f);
-                    material->SetProperty(MaterialProperty::MetallnessMultiplier, 0.0f);
+                    material->SetProperty(MaterialProperty::MetalnessMultiplier, 0.0f);
                 }
 
                 // rims
                 if (Material* material = entity->GetTransform()->GetDescendantPtrByName("FR_Wheel_RimMaterial_0")->GetComponent<Renderable>()->GetMaterial())
                 {
                     material->SetTexture(MaterialTexture::Roughness, nullptr);
-                    material->SetTexture(MaterialTexture::Metallness, nullptr);
+                    material->SetTexture(MaterialTexture::Metalness, nullptr);
                     material->SetColor(Color::material_aluminum);
                     material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.2f);
-                    material->SetProperty(MaterialProperty::MetallnessMultiplier, 1.0f);
+                    material->SetProperty(MaterialProperty::MetalnessMultiplier, 1.0f);
                 }
             }
         }
@@ -761,7 +772,9 @@ namespace Spartan
 
     void World::CreateDefaultWorldTerrain()
     {
-        CreateDefaultWorldCommon(false);
+        Vector3 camera_position = Vector3(53.7133f, 12.2256f, 10.1426f);
+        Vector3 camera_rotation = Vector3(13.9972f, -27.1993f, 0.0f);
+        CreateDefaultWorldCommon(false, camera_position, camera_rotation);
 
         // Terrain
         {
@@ -775,7 +788,7 @@ namespace Spartan
 
             shared_ptr<Terrain> terrain = entity->AddComponent<Terrain>();
             terrain->SetMinY(0.0f);
-            terrain->SetMaxY(12.0f);
+            terrain->SetMaxY(25.0f);
             terrain->SetHeightMap(height_map);
             terrain->GenerateAsync();
         }

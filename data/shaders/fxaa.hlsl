@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016-2021 Panos Karabelas
+Copyright(c) 2016-2023 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -36,10 +36,10 @@ static const float g_fxaa_edgeThresholdMin = 0.0833f; // Trims the algorithm fro
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
     // Out of bounds check
-    if (any(int2(thread_id.xy) >= buffer_uber.resolution_rt.xy))
+    if (any(int2(thread_id.xy) >= buffer_pass.resolution_rt.xy))
         return;
 
-    const float2 uv = (thread_id.xy + 0.5f) / buffer_uber.resolution_rt;
+    const float2 uv = (thread_id.xy + 0.5f) / buffer_pass.resolution_rt;
 
     FxaaTex fxaa_tex = { sampler_bilinear_clamp, tex };
     float2 fxaaQualityRcpFrame = get_rt_texel_size();
