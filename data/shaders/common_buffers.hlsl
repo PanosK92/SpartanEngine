@@ -137,11 +137,11 @@ struct ImGuiBufferData
     float2 padding;
 };
 
-cbuffer BufferFrame    : register(b0) { FrameBufferData buffer_frame;       }; // Low frequency    - Updates once per frame
-cbuffer BufferPass     : register(b1) { PassBufferData buffer_pass;         }; // Medium frequency - Updates per render pass
-cbuffer BufferLight    : register(b2) { LightBufferData buffer_light;       }; // Medium frequency - Updates per light
-cbuffer BufferMaterial : register(b3) { MaterialBufferData buffer_material; }; // Medium frequency - Updates per material during the g-buffer pass
-cbuffer BufferImGui    : register(b4) { ImGuiBufferData buffer_imgui;       }; // High frequency   - Update multiply times per frame
+cbuffer BufferFrame    : register(b0) { FrameBufferData buffer_frame;       }; // Low frequency            - Updates once per frame
+cbuffer BufferPass     : register(b1) { PassBufferData buffer_pass;         }; // Medium frequency         - Updates per render pass
+cbuffer BufferLight    : register(b2) { LightBufferData buffer_light;       }; // Medium frequency         - Updates per light
+cbuffer BufferMaterial : register(b3) { MaterialBufferData buffer_material; }; // Medium to high frequency - Updates per material during the g-buffer pass
+cbuffer BufferImGui    : register(b4) { ImGuiBufferData buffer_imgui;       }; // High frequency           - Update multiply times per frame
 
 // g-buffer texture properties
 bool has_single_texture_roughness_metalness() { return buffer_material.properties & uint(1U << 0); }

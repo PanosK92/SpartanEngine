@@ -77,10 +77,10 @@ static void load_default_world_prompt(Editor* editor)
             // list box
             static const char* items[] =
             {
-                "1. Empty.",
-                "2. A physics enabled cube on top of a quad.",
-                "3. A futuristic helmet.",
-                "4. A car on top of a quad.",
+                "1. An empty world.",
+                "2. A physics enabled cube (moused pickable) on top of a quad.",
+                "3. A set of helmets.",
+                "4. A rotating car on top of a quad.",
                 "5. Height map generated terrain.",
                 "6. The famous Sponza building found in Dubrovnik."
             };
@@ -104,7 +104,7 @@ static void load_default_world_prompt(Editor* editor)
                 {
                     Spartan::ThreadPool::AddTask([]()
                     {
-                        Spartan::World::CreateDefaultWorldHelmet();
+                        Spartan::World::CreateDefaultWorldHelmets();
                     });
 
                 }
