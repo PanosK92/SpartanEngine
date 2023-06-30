@@ -36,8 +36,9 @@ struct PixelOutputType
     float4 albedo                : SV_Target0;
     float4 normal                : SV_Target1;
     float4 material              : SV_Target2;
-    float2 velocity              : SV_Target3;
-    float fsr2_transparency_mask : SV_Target4;
+    float4 material_2            : SV_Target3;
+    float2 velocity              : SV_Target4;
+    float fsr2_transparency_mask : SV_Target5;
 };
 
 PixelInputType mainVS(Vertex_PosUvNorTan input)
@@ -45,15 +46,15 @@ PixelInputType mainVS(Vertex_PosUvNorTan input)
     PixelInputType output;
 
     // position computation has to be an exact match to depth_prepass.hlsl
-    input.position.w       = 1.0f;
-    output.position_world  = mul(input.position, buffer_uber.transform);
-    output.position        = mul(output.position_world, buffer_frame.view_projection);
+    input.position.w      = 1.0f;
+    output.position_world = mul(input.position, buffer_pass.transform);
+    output.position       = mul(output.position_world, buffer_frame.view_projection);
 
     output.position_ss_current  = output.position;
-    output.position_ss_previous = mul(input.position, buffer_uber.transform_previous);
+    output.position_ss_previous = mul(input.position, buffer_pass.transform_previous);
     output.position_ss_previous = mul(output.position_ss_previous, buffer_frame.view_projection_previous);
-    output.normal_world         = normalize(mul(input.normal,  (float3x3)buffer_uber.transform)).xyz;
-    output.tangent_world        = normalize(mul(input.tangent, (float3x3)buffer_uber.transform)).xyz;
+    output.normal_world         = normalize(mul(input.normal, (float3x3)buffer_pass.transform)).xyz;
+    output.tangent_world        = normalize(mul(input.tangent, (float3x3)buffer_pass.transform)).xyz;
     output.uv                   = input.uv;
     
     return output;
@@ -68,12 +69,12 @@ PixelOutputType mainPS(PixelInputType input)
 
     // UV
     float2 uv = input.uv;
-    uv        = float2(uv.x * buffer_uber.mat_tiling.x + buffer_uber.mat_offset.x, uv.y * buffer_uber.mat_tiling.y + buffer_uber.mat_offset.y);
+    uv = float2(uv.x * buffer_material.tiling.x + buffer_material.offset.x, uv.y * buffer_material.tiling.y + buffer_material.offset.y);
 
     // Parallax mapping
     if (has_texture_height())
     {
-        float scale = buffer_uber.mat_height * 0.01f;
+        float scale = buffer_material.height * 0.01f;
 
         float3x3 world_to_tangent      = make_world_to_tangent_matrix(input.normal_world, input.tangent_world);
         float3 camera_to_pixel_world   = normalize(buffer_frame.camera_position - input.position_world.xyz);
@@ -90,7 +91,7 @@ PixelOutputType mainPS(PixelInputType input)
     }
 
     // Albedo
-    float4 albedo = buffer_uber.mat_color;
+    float4 albedo = buffer_material.color;
     if (has_texture_albedo())
     {
         float4 albedo_sample = tex_material_albedo.Sample(sampler_anisotropic_wrap, uv);
@@ -108,8 +109,8 @@ PixelOutputType mainPS(PixelInputType input)
         discard;
 
     // Roughness + Metalness
-    float roughness = buffer_uber.mat_roughness;
-    float metalness = buffer_uber.mat_metallness;
+    float roughness = buffer_material.roughness;
+    float metalness = buffer_material.metallness;
     {
         if (!has_single_texture_roughness_metalness())
         {
@@ -143,7 +144,7 @@ PixelOutputType mainPS(PixelInputType input)
     {
         // Get tangent space normal and apply the user defined intensity. Then transform it to world space.
         float3 tangent_normal     = normalize(unpack(tex_material_normal.Sample(sampler_anisotropic_wrap, uv).rgb));
-        float normal_intensity    = clamp(buffer_uber.mat_normal, 0.012f, buffer_uber.mat_normal);
+        float normal_intensity    = clamp(buffer_material.normal, 0.012f, buffer_material.normal);
         tangent_normal.xy         *= saturate(normal_intensity);
         float3x3 tangent_to_world = make_tangent_to_world_matrix(input.normal_world, input.tangent_world);
         normal                    = normalize(mul(tangent_normal, tangent_to_world).xyz);
@@ -181,10 +182,11 @@ PixelOutputType mainPS(PixelInputType input)
     // Write to G-Buffer
     PixelOutputType g_buffer;
     g_buffer.albedo                 = albedo;
-    g_buffer.normal                 = float4(normal, pack_uint32_to_float16(buffer_uber.mat_id));
+    g_buffer.normal                 = float4(normal, buffer_material.sheen);
     g_buffer.material               = float4(roughness, metalness, emission, occlusion);
+    g_buffer.material_2             = float4(buffer_material.anisotropic, buffer_material.anisotropic_rotation, buffer_material.clearcoat, buffer_material.clearcoat_roughness);
     g_buffer.velocity               = velocity_uv;
-    g_buffer.fsr2_transparency_mask = albedo.a * buffer_uber.is_transparent_pass;
+    g_buffer.fsr2_transparency_mask = albedo.a * buffer_pass.is_transparent_pass;
 
     return g_buffer;
 }

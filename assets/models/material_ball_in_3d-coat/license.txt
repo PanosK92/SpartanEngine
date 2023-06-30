@@ -1,0 +1,11 @@
+Model Information:
+* title:	Material ball in 3D-Coat
+* source:	https://sketchfab.com/3d-models/material-ball-in-3d-coat-a6bdf1d11d714e07b9dd99dda02de965
+* author:	3d-coat (https://sketchfab.com/3d-coat)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Material ball in 3D-Coat" (https://sketchfab.com/3d-models/material-ball-in-3d-coat-a6bdf1d11d714e07b9dd99dda02de965) by 3d-coat (https://sketchfab.com/3d-coat) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)

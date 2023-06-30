@@ -30,7 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-    // Low frequency buffer - Updates once per frame
+    // Low frequency    - Updates once per frame
     struct Cb_Frame
     {
         Math::Matrix view;
@@ -126,8 +126,8 @@ namespace Spartan
         bool operator!=(const Cb_Frame& rhs) const { return !(*this == rhs); }
     };
     
-    // High frequency - Updates like crazy
-    struct Cb_Uber
+    // Medium frequency - Updates per render pass
+    struct Cb_Pass
     {
         Math::Matrix transform          = Math::Matrix::Identity;
         Math::Matrix transform_previous = Math::Matrix::Identity;
@@ -139,24 +139,10 @@ namespace Spartan
         Math::Vector2 resolution_rt  = Math::Vector2::Zero;
         Math::Vector2 resolution_in  = Math::Vector2::Zero;
 
-        bool mat_single_texture_rougness_metalness = false;
-        float radius                               = 0.0f;
-        Math::Vector2 padding                      = Math::Vector2::Zero;
-
-        Math::Vector4 mat_color = Math::Vector4::Zero;
-
-        Math::Vector2 mat_tiling_uv = Math::Vector2::Zero;
-        Math::Vector2 mat_offset_uv = Math::Vector2::Zero;
-
-        float mat_roughness_mul = 0.0f;
-        float mat_metallic_mul  = 0.0f;
-        float mat_normal_mul    = 0.0f;
-        float mat_height_mul    = 0.0f;
-
-        uint32_t mat_id              = 0;
-        uint32_t mat_textures        = 0;
+        float radius                 = 0.0f;
         uint32_t is_transparent_pass = 0;
         uint32_t mip_count           = 0;
+        float alpha                  = 0.0f;
 
         Math::Vector3 extents     = Math::Vector3::Zero;
         uint32_t work_group_count = 0;
@@ -164,39 +150,30 @@ namespace Spartan
         uint32_t reflection_proble_available = 0;
         Math::Vector3 position               = Math::Vector3::Zero;
 
-        bool operator==(const Cb_Uber& rhs) const
+        bool operator==(const Cb_Pass& rhs) const
         {
             return
-                transform                             == rhs.transform                             &&
-                transform_previous                    == rhs.transform_previous                    &&
-                mat_id                                == rhs.mat_id                                &&
-                mat_color                             == rhs.mat_color                             &&
-                mat_tiling_uv                         == rhs.mat_tiling_uv                         &&
-                mat_offset_uv                         == rhs.mat_offset_uv                         &&
-                mat_roughness_mul                     == rhs.mat_roughness_mul                     &&
-                mat_metallic_mul                      == rhs.mat_metallic_mul                      &&
-                mat_normal_mul                        == rhs.mat_normal_mul                        &&
-                mat_height_mul                        == rhs.mat_height_mul                        &&
-                blur_radius                           == rhs.blur_radius                           &&
-                blur_sigma                            == rhs.blur_sigma                            &&
-                blur_direction                        == rhs.blur_direction                        &&
-                is_transparent_pass                   == rhs.is_transparent_pass                   &&
-                resolution_rt                         == rhs.resolution_rt                         &&
-                resolution_in                         == rhs.resolution_in                         &&
-                mip_count                             == rhs.mip_count                             &&
-                work_group_count                      == rhs.work_group_count                      &&
-                reflection_proble_available           == rhs.reflection_proble_available           &&
-                radius                                == rhs.radius                                &&
-                extents                               == rhs.extents                               &&
-                mat_textures                          == rhs.mat_textures                          &&
-                mat_single_texture_rougness_metalness == rhs.mat_single_texture_rougness_metalness &&
-                position                              == rhs.position;
+                transform                   == rhs.transform                   &&
+                transform_previous          == rhs.transform_previous          &&
+                blur_radius                 == rhs.blur_radius                 &&
+                blur_sigma                  == rhs.blur_sigma                  &&
+                blur_direction              == rhs.blur_direction              && 
+                resolution_rt               == rhs.resolution_rt               &&
+                resolution_in               == rhs.resolution_in               &&
+                radius                      == rhs.radius                      &&
+                is_transparent_pass         == rhs.is_transparent_pass         &&
+                mip_count                   == rhs.mip_count                   &&
+                alpha                       == rhs.alpha                       &&
+                extents                     == rhs.extents                     &&
+                work_group_count            == rhs.work_group_count            &&
+                reflection_proble_available == rhs.reflection_proble_available &&
+                position                    == rhs.position;
         }
 
-        bool operator!=(const Cb_Uber& rhs) const { return !(*this == rhs); }
+        bool operator!=(const Cb_Pass& rhs) const { return !(*this == rhs); }
     };
     
-    // Light buffer
+    // Medium frequency - Updates per light
     struct Cb_Light
     {
         Math::Matrix view_projection[6];
@@ -226,31 +203,50 @@ namespace Spartan
         }
     };
 
-    // Material buffer
-    struct _material
-    {
-        Math::Vector4 clearcoat_clearcoatRough_anis_anisRot;
-        Math::Vector4 sheen_sheenTint_pad;
-
-        bool operator==(const _material& rhs) const
-        {
-            return clearcoat_clearcoatRough_anis_anisRot == rhs.clearcoat_clearcoatRough_anis_anisRot
-                && sheen_sheenTint_pad == rhs.sheen_sheenTint_pad;
-        }
-    };
+    // Medium to high frequency - Updates per light
     struct Cb_Material
     {
-        std::array<_material, m_max_material_instances> materials;
+        Math::Vector4 color = Math::Vector4::Zero;
+
+        Math::Vector2 tiling_uv = Math::Vector2::Zero;
+        Math::Vector2 offset_uv = Math::Vector2::Zero;
+
+        float roughness_mul = 0.0f;
+        float metallic_mul  = 0.0f;
+        float normal_mul    = 0.0f;
+        float height_mul    = 0.0f;
+
+        uint32_t properties = 0;
+        float clearcoat;
+        float clearcoat_roughness;
+        float anisotropic;
+
+        float anisitropic_rotation;
+        float sheen;
+        float sheen_tint;
+        float padding;
 
         bool operator==(const Cb_Material& rhs) const
         {
-            return std::equal(materials.begin(), materials.end(), rhs.materials.begin(), rhs.materials.end());
+            return
+                color                == rhs.color                &&
+                tiling_uv            == rhs.tiling_uv            &&
+                offset_uv            == rhs.offset_uv            &&
+                roughness_mul        == rhs.roughness_mul        &&
+                metallic_mul         == rhs.metallic_mul         &&
+                normal_mul           == rhs.normal_mul           &&
+                height_mul           == rhs.height_mul           &&
+                properties           == rhs.properties           &&
+                clearcoat            == rhs.clearcoat            &&
+                clearcoat_roughness  == rhs.clearcoat_roughness  &&
+                anisotropic          == rhs.anisotropic          &&
+                anisitropic_rotation == rhs.anisitropic_rotation &&
+                sheen                == rhs.sheen                &&
+                sheen_tint           == rhs.sheen_tint;
         }
-
-        bool operator!=(const Cb_Material& rhs) const { return !(*this == rhs); }
     };
 
-    // High frequency - update multiply times per frame, ImGui driven
+    // High frequency   - Update multiply times per frame
     struct Cb_ImGui
     {
         Math::Matrix transform                 = Math::Matrix::Identity;

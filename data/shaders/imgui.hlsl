@@ -57,7 +57,7 @@ float4 mainPS(Pixel_PosColUv input) : SV_Target
         color_texture.r *= texture_channel_r() ? 1.0f : 0.0f;
         color_texture.g *= texture_channel_g() ? 1.0f : 0.0f;
         color_texture.b *= texture_channel_b() ? 1.0f : 0.0f;
-        color_texture.a *= texture_channel_a() ? 1.0f : 0.0f;
+        color_texture.a  = texture_channel_a() ? color_texture.a : 1.0f;
     }
 
     if (texture_gamma_correction())

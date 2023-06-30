@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016-2021 Panos Karabelas
+Copyright(c) 2016-2023 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -20,7 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES =========
-#include "Common.hlsl"
+#include "common.hlsl"
 //====================
 
 Pixel_PosUv mainVS(Vertex_PosUv input)
@@ -45,7 +45,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     color.a = color.r;
 
     // Color it
-    color *= buffer_uber.mat_color;
+    color *= float4(buffer_pass.position, 1.0f); // ugly name I know, but it's the color of the text
 
     return color;
 }

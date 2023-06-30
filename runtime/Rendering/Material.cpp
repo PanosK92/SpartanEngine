@@ -66,7 +66,7 @@ namespace Spartan
         xml->GetAttribute("Material", "color_b",                         &m_properties[static_cast<uint32_t>(MaterialProperty::ColorB)]);
         xml->GetAttribute("Material", "color_a",                         &m_properties[static_cast<uint32_t>(MaterialProperty::ColorA)]);
         xml->GetAttribute("Material", "roughness_multiplier",            &m_properties[static_cast<uint32_t>(MaterialProperty::RoughnessMultiplier)]);
-        xml->GetAttribute("Material", "metallic_multiplier",             &m_properties[static_cast<uint32_t>(MaterialProperty::MetallnessMultiplier)]);
+        xml->GetAttribute("Material", "metalness_multiplier",            &m_properties[static_cast<uint32_t>(MaterialProperty::MetalnessMultiplier)]);
         xml->GetAttribute("Material", "normal_multiplier",               &m_properties[static_cast<uint32_t>(MaterialProperty::NormalMultiplier)]);
         xml->GetAttribute("Material", "height_multiplier",               &m_properties[static_cast<uint32_t>(MaterialProperty::HeightMultiplier)]);
         xml->GetAttribute("Material", "clearcoat_multiplier",            &m_properties[static_cast<uint32_t>(MaterialProperty::Clearcoat)]);
@@ -116,7 +116,7 @@ namespace Spartan
         xml->AddAttribute("Material", "color_b",                         GetProperty(MaterialProperty::ColorB));
         xml->AddAttribute("Material", "color_a",                         GetProperty(MaterialProperty::ColorA));
         xml->AddAttribute("Material", "roughness_multiplier",            GetProperty(MaterialProperty::RoughnessMultiplier));
-        xml->AddAttribute("Material", "metallic_multiplier",             GetProperty(MaterialProperty::MetallnessMultiplier));
+        xml->AddAttribute("Material", "metalness_multiplier",            GetProperty(MaterialProperty::MetalnessMultiplier));
         xml->AddAttribute("Material", "normal_multiplier",               GetProperty(MaterialProperty::NormalMultiplier));
         xml->AddAttribute("Material", "height_multiplier",               GetProperty(MaterialProperty::HeightMultiplier));
         xml->AddAttribute("Material", "clearcoat_multiplier",            GetProperty(MaterialProperty::Clearcoat));
@@ -166,9 +166,9 @@ namespace Spartan
         {
             SetProperty(MaterialProperty::RoughnessMultiplier, multiplier);
         }
-        else if (texture_type == MaterialTexture::Metallness)
+        else if (texture_type == MaterialTexture::Metalness)
         {
-            SetProperty(MaterialProperty::MetallnessMultiplier, multiplier);
+            SetProperty(MaterialProperty::MetalnessMultiplier, multiplier);
         }
         else if (texture_type == MaterialTexture::Normal)
         {

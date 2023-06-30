@@ -724,7 +724,18 @@ void Properties::ShowMaterial(Material* material) const
                         {
                             ImGui::PushID(static_cast<int>(ImGui::GetCursorPosX() + ImGui::GetCursorPosY()));
                             float value = material->GetProperty(mat_property);
-                            ImGuiSp::draw_float_wrap("", &value, 0.004f, 0.0f, 1.0f);
+
+                            if (mat_property != MaterialProperty::MetalnessMultiplier)
+                            {
+                                ImGuiSp::draw_float_wrap("", &value, 0.004f, 0.0f, 1.0f);
+                            }
+                            else
+                            {
+                                bool is_metallic = value != 0.0f;
+                                ImGui::Checkbox("##metalness", &is_metallic);
+                                value = is_metallic ? 1.0f : 0.0f;
+                            }
+
                             material->SetProperty(mat_property, value);
                             ImGui::PopID();
                         }
@@ -739,7 +750,7 @@ void Properties::ShowMaterial(Material* material) const
                 show_property("Sheen tint",           "Mix between white and using base color for sheen reflection",                       MaterialTexture::Undefined,  MaterialProperty::SheenTint);
                 show_property("Color",                "Diffuse or metal surface color",                                                    MaterialTexture::Color,      MaterialProperty::ColorTint);
                 show_property("Roughness",            "Specifies microfacet roughness of the surface for diffuse and specular reflection", MaterialTexture::Roughness,  MaterialProperty::RoughnessMultiplier);
-                show_property("Metallness",           "Blends between a non-metallic and metallic material model",                         MaterialTexture::Metallness, MaterialProperty::MetallnessMultiplier);
+                show_property("Metalness",            "Blends between a non-metallic and metallic material model",                         MaterialTexture::Metalness,  MaterialProperty::MetalnessMultiplier);
                 show_property("Normal",               "Controls the normals of the base layers",                                           MaterialTexture::Normal,     MaterialProperty::NormalMultiplier);
                 show_property("Height",               "Perceived depth for parallax mapping",                                              MaterialTexture::Height,     MaterialProperty::HeightMultiplier);
                 show_property("Occlusion",            "Amount of light loss, can be complementary to SSAO",                                MaterialTexture::Occlusion,  MaterialProperty::Undefined);
