@@ -321,7 +321,15 @@ namespace Spartan
         SDL_SysWMinfo wmInfo;
         SDL_VERSION(&wmInfo.version);
         SDL_GetWindowWMInfo(m_window, &wmInfo);
+        if(SDL_FALSE == SDL_GetWindowWMInfo(m_window, &wmInfo)) {
+            printf("Error: %s", SDL_GetError());
+            return static_cast<void*>(nullptr);
+        }
+#ifdef _WIN32
         return static_cast<void*>(wmInfo.info.win.window);
+#elif __linux__
+        return reinterpret_cast<void*>(wmInfo.info.x11.window);
+#endif
     }
 
     bool Window::WantsToClose()
