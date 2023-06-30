@@ -37,9 +37,9 @@ Pixel_Input mainVS(Vertex_PosUvNorTan input)
     Pixel_Input output;
 
     input.position.w   = 1.0f;
-    output.position    = mul(input.position, buffer_uber.transform);
+    output.position    = mul(input.position, buffer_pass.transform);
     output.position_ws = output.position.xyz;
-    output.normal      = normalize(mul(input.normal, (float3x3)buffer_uber.transform)).xyz;
+    output.normal      = normalize(mul(input.normal, (float3x3)buffer_pass.transform)).xyz;
     output.uv          = input.uv;
 
     return output;

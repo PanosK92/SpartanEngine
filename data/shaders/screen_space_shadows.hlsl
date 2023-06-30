@@ -39,7 +39,7 @@ float ScreenSpaceShadows(Surface surface, Light light)
     float3 ray_step = ray_dir * g_sss_step_length;
 
     // Offset starting position with temporal interleaved gradient noise
-    float offset = get_noise_interleaved_gradient(surface.uv * buffer_uber.resolution_rt);
+    float offset = get_noise_interleaved_gradient(surface.uv * buffer_pass.resolution_rt);
     ray_pos      += ray_step * offset;
     
     // Save the original depth
