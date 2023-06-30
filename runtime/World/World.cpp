@@ -504,7 +504,7 @@ namespace Spartan
             material->SetTexture(MaterialTexture::Normal, tex_normal);
             material->SetTexture(MaterialTexture::Occlusion, tex_occlusion);
             material->SetTexture(MaterialTexture::Roughness, tex_roughness);
-            material->SetTexture(MaterialTexture::Metallness, tex_metalness);
+            material->SetTexture(MaterialTexture::Metalness, tex_metalness);
             material->SetTexture(MaterialTexture::Height, tex_height);
 
             // Create a file path for this material (required for the material to be able to be cached by the resource cache)
@@ -630,7 +630,7 @@ namespace Spartan
             material->SetTexture(MaterialTexture::Normal, tex_normal);
             material->SetTexture(MaterialTexture::Occlusion, tex_occlusion);
             material->SetTexture(MaterialTexture::Roughness, tex_roughness);
-            material->SetTexture(MaterialTexture::Metallness, tex_metalness);
+            material->SetTexture(MaterialTexture::Metalness, tex_metalness);
             material->SetTexture(MaterialTexture::Height, tex_height);
             material->SetProperty(MaterialProperty::UvTilingX, 10.0f);
             material->SetProperty(MaterialProperty::UvTilingY, 10.0f);
@@ -663,7 +663,7 @@ namespace Spartan
                 {
                     material->SetColor(Color::material_aluminum);
                     material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.1f);
-                    material->SetProperty(MaterialProperty::MetallnessMultiplier, 0.15f);
+                    material->SetProperty(MaterialProperty::MetalnessMultiplier, 0.15f);
                 }
 
                 // plastic
@@ -689,14 +689,14 @@ namespace Spartan
                     material->SetColor(Color::material_tire);
                     material->SetTexture(MaterialTexture::Roughness, nullptr);
                     material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.8f);
-                    material->SetProperty(MaterialProperty::MetallnessMultiplier, 0.0f);
+                    material->SetProperty(MaterialProperty::MetalnessMultiplier, 0.0f);
                 }
 
                 if (Material* material = entity->GetTransform()->GetDescendantPtrByName("Interior_InteriorPlastic2_0")->GetComponent<Renderable>()->GetMaterial())
                 {
                     material->SetColor(Color::material_tire);
                     material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.8f);
-                    material->SetProperty(MaterialProperty::MetallnessMultiplier, 0.0f);
+                    material->SetProperty(MaterialProperty::MetalnessMultiplier, 0.0f);
                 }
 
             }
@@ -724,10 +724,10 @@ namespace Spartan
                 if (Material* material = entity->GetTransform()->GetDescendantPtrByName("FR_Caliper_BrakeCaliper_0")->GetComponent<Renderable>()->GetMaterial())
                 {
                     material->SetTexture(MaterialTexture::Roughness, nullptr);
-                    material->SetTexture(MaterialTexture::Metallness, nullptr);
+                    material->SetTexture(MaterialTexture::Metalness, nullptr);
                     material->SetColor(Color::material_aluminum);
                     material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.5f);
-                    material->SetProperty(MaterialProperty::MetallnessMultiplier, 1.0f);
+                    material->SetProperty(MaterialProperty::MetalnessMultiplier, 1.0f);
                     material->SetProperty(MaterialProperty::Anisotropic, 1.0f);
                     material->SetProperty(MaterialProperty::AnisotropicRotation, 0.5f);
                 }
@@ -736,10 +736,10 @@ namespace Spartan
                 if (Material* material = entity->GetTransform()->GetDescendantPtrByName("FL_Wheel_Brake Disc_0")->GetComponent<Renderable>()->GetMaterial())
                 {
                     material->SetTexture(MaterialTexture::Roughness, nullptr);
-                    material->SetTexture(MaterialTexture::Metallness, nullptr);
+                    material->SetTexture(MaterialTexture::Metalness, nullptr);
                     material->SetColor(Color::material_aluminum);
                     material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.5f);
-                    material->SetProperty(MaterialProperty::MetallnessMultiplier, 1.0f);
+                    material->SetProperty(MaterialProperty::MetalnessMultiplier, 1.0f);
                     material->SetProperty(MaterialProperty::Anisotropic, 1.0f);
                     material->SetProperty(MaterialProperty::AnisotropicRotation, 0.5f);
                 }
@@ -750,17 +750,17 @@ namespace Spartan
                     material->SetColor(Color::material_tire);
                     material->SetTexture(MaterialTexture::Roughness, nullptr);
                     material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.5f);
-                    material->SetProperty(MaterialProperty::MetallnessMultiplier, 0.0f);
+                    material->SetProperty(MaterialProperty::MetalnessMultiplier, 0.0f);
                 }
 
                 // rims
                 if (Material* material = entity->GetTransform()->GetDescendantPtrByName("FR_Wheel_RimMaterial_0")->GetComponent<Renderable>()->GetMaterial())
                 {
                     material->SetTexture(MaterialTexture::Roughness, nullptr);
-                    material->SetTexture(MaterialTexture::Metallness, nullptr);
+                    material->SetTexture(MaterialTexture::Metalness, nullptr);
                     material->SetColor(Color::material_aluminum);
                     material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.2f);
-                    material->SetProperty(MaterialProperty::MetallnessMultiplier, 1.0f);
+                    material->SetProperty(MaterialProperty::MetalnessMultiplier, 1.0f);
                 }
             }
         }

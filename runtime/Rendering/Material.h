@@ -34,7 +34,7 @@ namespace Spartan
     {
         Color,
         Roughness,  // Specifies microfacet roughness of the surface for diffuse and specular reflection
-        Metallness, // Blends between a non-metallic and metallic material model
+        Metalness, // Blends between a non-metallic and metallic material model
         Normal,
         Occlusion,  // A texture that will be mixed with ssao.
         Emission,   // A texture that will cause a surface to be lit, works nice with bloom.
@@ -57,7 +57,7 @@ namespace Spartan
         ColorB,
         ColorA,
         RoughnessMultiplier,
-        MetallnessMultiplier,
+        MetalnessMultiplier,
         NormalMultiplier,
         HeightMultiplier,
         UvTilingX,

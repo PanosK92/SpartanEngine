@@ -426,7 +426,7 @@ namespace Spartan
                                 // Bind material textures
                                 cmd_list->SetTexture(Renderer_BindingsSrv::material_albedo,    material->GetTexture(MaterialTexture::Color));
                                 cmd_list->SetTexture(Renderer_BindingsSrv::material_roughness, material->GetTexture(MaterialTexture::Roughness));
-                                cmd_list->SetTexture(Renderer_BindingsSrv::material_metallic,  material->GetTexture(MaterialTexture::Metallness));
+                                cmd_list->SetTexture(Renderer_BindingsSrv::material_metallic,  material->GetTexture(MaterialTexture::Metalness));
 
                                 // Set uber buffer with cascade transform
                                 m_cb_pass_cpu.transform = entity->GetTransform()->GetMatrix() * view_projection;
@@ -635,7 +635,7 @@ namespace Spartan
                     // Set textures
                     cmd_list->SetTexture(Renderer_BindingsSrv::material_albedo,    material->GetTexture(MaterialTexture::Color));
                     cmd_list->SetTexture(Renderer_BindingsSrv::material_roughness, material->GetTexture(MaterialTexture::Roughness));
-                    cmd_list->SetTexture(Renderer_BindingsSrv::material_metallic,  material->GetTexture(MaterialTexture::Metallness));
+                    cmd_list->SetTexture(Renderer_BindingsSrv::material_metallic,  material->GetTexture(MaterialTexture::Metalness));
                     cmd_list->SetTexture(Renderer_BindingsSrv::material_normal,    material->GetTexture(MaterialTexture::Normal));
                     cmd_list->SetTexture(Renderer_BindingsSrv::material_height,    material->GetTexture(MaterialTexture::Height));
                     cmd_list->SetTexture(Renderer_BindingsSrv::material_occlusion, material->GetTexture(MaterialTexture::Occlusion));
