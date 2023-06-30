@@ -52,7 +52,7 @@ namespace Spartan
             const char* soundtrack_file_pat         = "project\\music\\vangelis_cosmos_theme.mp3"
         );
         static void CreateDefaultWorldPhysicsCube();
-        static void CreateDefaultWorldHelmet();
+        static void CreateDefaultWorldHelmets();
         static void CreateDefaultWorldCar();
         static void CreateDefaultWorldTerrain();
         static void CreateDefaultWorldSponza();

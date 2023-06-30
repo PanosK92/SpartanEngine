@@ -203,7 +203,7 @@ namespace Spartan
         }
     };
 
-    // Medium frequency - Updates per light
+    // Medium to high frequency - Updates per light
     struct Cb_Material
     {
         Math::Vector4 color = Math::Vector4::Zero;
@@ -212,9 +212,9 @@ namespace Spartan
         Math::Vector2 offset_uv = Math::Vector2::Zero;
 
         float roughness_mul = 0.0f;
-        float metallic_mul = 0.0f;
-        float normal_mul = 0.0f;
-        float height_mul = 0.0f;
+        float metallic_mul  = 0.0f;
+        float normal_mul    = 0.0f;
+        float height_mul    = 0.0f;
 
         uint32_t properties = 0;
         float clearcoat;
