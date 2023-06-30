@@ -169,7 +169,8 @@ function runtime_project_configuration()
         pchsource "../runtime/Core/pch.cpp"
 
         -- Includes
-        includedirs { "../third_party/" }
+        includedirs { "../third_party" }
+        includedirs { "../third_party/sdl" }
         includedirs { "../third_party/assimp" }
         includedirs { "../third_party/bullet" }
         includedirs { "../third_party/fmod" }
@@ -241,7 +242,7 @@ function editor_project_configuration()
         includedirs { RUNTIME_DIR }
         includedirs { RUNTIME_DIR .. "/Core" }     -- This is here because the runtime uses it
         includedirs { "../third_party/free_type" } -- Used to rasterise the ImGui font atlas
-        includedirs { "../third_party" }       	   -- SDL, used by ImGui to create windows
+        includedirs { "../third_party/sdl" }  	   -- SDL, used by ImGui to create windows
 
         -- Libraries
         libdirs (LIBRARY_DIR)
