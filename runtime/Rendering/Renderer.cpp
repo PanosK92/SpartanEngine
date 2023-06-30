@@ -586,7 +586,7 @@ namespace Spartan
         m_cb_material_cpu.offset_uv.x          = material->GetProperty(MaterialProperty::UvOffsetX);
         m_cb_material_cpu.offset_uv.y          = material->GetProperty(MaterialProperty::UvOffsetY);
         m_cb_material_cpu.roughness_mul        = material->GetProperty(MaterialProperty::RoughnessMultiplier);
-        m_cb_material_cpu.metallic_mul         = material->GetProperty(MaterialProperty::MetallnessMultiplier);
+        m_cb_material_cpu.metallic_mul         = material->GetProperty(MaterialProperty::MetalnessMultiplier);
         m_cb_material_cpu.normal_mul           = material->GetProperty(MaterialProperty::NormalMultiplier);
         m_cb_material_cpu.height_mul           = material->GetProperty(MaterialProperty::HeightMultiplier);
         m_cb_material_cpu.anisotropic          = material->GetProperty(MaterialProperty::Anisotropic);
@@ -601,7 +601,7 @@ namespace Spartan
         m_cb_material_cpu.properties          |= material->HasTexture(MaterialTexture::Normal)                            ? (1U << 2) : 0;
         m_cb_material_cpu.properties          |= material->HasTexture(MaterialTexture::Color)                             ? (1U << 3) : 0;
         m_cb_material_cpu.properties          |= material->HasTexture(MaterialTexture::Roughness)                         ? (1U << 4) : 0;
-        m_cb_material_cpu.properties          |= material->HasTexture(MaterialTexture::Metallness)                        ? (1U << 5) : 0;
+        m_cb_material_cpu.properties          |= material->HasTexture(MaterialTexture::Metalness)                        ? (1U << 5) : 0;
         m_cb_material_cpu.properties          |= material->HasTexture(MaterialTexture::AlphaMask)                         ? (1U << 6) : 0;
         m_cb_material_cpu.properties          |= material->HasTexture(MaterialTexture::Emission)                          ? (1U << 7) : 0;
         m_cb_material_cpu.properties          |= material->HasTexture(MaterialTexture::Occlusion)                         ? (1U << 8) : 0;
