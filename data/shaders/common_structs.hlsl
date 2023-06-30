@@ -29,31 +29,30 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 struct Surface
 {
     // Properties
-    float3  albedo;
-    float   alpha;
-    float   roughness;
-    float   roughness_alpha;
-    float   roughness_alpha_squared;
-    float   metallic;
-    float   clearcoat;
-    float   clearcoat_roughness;
-    float   anisotropic;
-    float   anisotropic_rotation;
-    float   sheen;
-    float   sheen_tint;
-    float   occlusion;
-    float3  gi;
-    float3  emissive;
-    float3  F0;
-    int     id;
-    float2  uv;
-    float   depth;
-    float3  position;
-    float3  normal;
-    float3  camera_to_pixel;
-    float   camera_to_pixel_length;
-    float3  specular_energy;
-    float3  diffuse_energy;
+    float3 albedo;
+    float  alpha;
+    float  roughness;
+    float  roughness_alpha;
+    float  roughness_alpha_squared;
+    float  metallic;
+    float  clearcoat;
+    float  clearcoat_roughness;
+    float  anisotropic;
+    float  anisotropic_rotation;
+    float  sheen;
+    float  sheen_tint;
+    float  occlusion;
+    float3 gi;
+    float3 emissive;
+    float3 F0;
+    float2 uv;
+    float  depth;
+    float3 position;
+    float3 normal;
+    float3 camera_to_pixel;
+    float  camera_to_pixel_length;
+    float3 specular_energy;
+    float3 diffuse_energy;
     
     // Activision GTAO paper: https://www.activision.com/cdn/research/s2016_pbs_activision_occlusion.pptx
     float3 multi_bounce_ao(float visibility, float3 albedo)
@@ -68,29 +67,29 @@ struct Surface
     void Build(uint2 position_screen, bool use_albedo, bool use_ssgi, bool replace_color_with_one)
     {
         // Sample render targets
-        float4 sample_albedo   = use_albedo ? tex_albedo[position_screen] : 0.0f;
-        float4 sample_normal   = tex_normal[position_screen];
-        float4 sample_material = tex_material[position_screen];
-        float sample_depth     = get_depth(position_screen);
+        float4 sample_albedo     = use_albedo ? tex_albedo[position_screen] : 0.0f;
+        float4 sample_normal     = tex_normal[position_screen];
+        float4 sample_material   = tex_material[position_screen];
+        float4 sample_material_2 = tex_material_2[position_screen];
+        float sample_depth       = get_depth(position_screen);
 
         // Misc
-        uv     = (position_screen + 0.5f) / buffer_uber.resolution_rt;
+        uv     = (position_screen + 0.5f) / buffer_pass.resolution_rt;
         depth  = sample_depth;
         normal = sample_normal.xyz;
-        id     = unpack_float16_to_uint32(sample_normal.a);
-
+ 
         albedo               = replace_color_with_one ? 1.0f : sample_albedo.rgb;
         alpha                = sample_albedo.a;
         roughness            = sample_material.r;
         metallic             = sample_material.g;
         emissive             = sample_material.b;
         F0                   = lerp(0.04f, albedo, metallic);
-        clearcoat            = buffer_materials[id].clearcoat_clearcoatRough_aniso_anisoRot.x;
-        clearcoat_roughness  = buffer_materials[id].clearcoat_clearcoatRough_aniso_anisoRot.y;
-        anisotropic          = buffer_materials[id].clearcoat_clearcoatRough_aniso_anisoRot.z;
-        anisotropic_rotation = buffer_materials[id].clearcoat_clearcoatRough_aniso_anisoRot.w;
-        sheen                = buffer_materials[id].sheen_sheenTint_pad.x;
-        sheen_tint           = buffer_materials[id].sheen_sheenTint_pad.y;
+        anisotropic          = sample_material_2.x;
+        anisotropic_rotation = sample_material_2.y;
+        clearcoat            = sample_material_2.z;
+        clearcoat_roughness  = sample_material_2.w;
+        sheen                = sample_normal.w;
+        sheen_tint           = 1.0f; // TODO
         specular_energy      = 1.0f;
         diffuse_energy       = 1.0f;
 

@@ -51,12 +51,12 @@ float compute_visibility(float3 origin_normal, float3 origin_to_sample)
 // Screen space temporal occlusion and diffuse illumination
 void compute_ssgi(uint2 pos, inout float occlusion, inout float3 diffuse_bounce)
 {
-    const float2 origin_uv       = (pos + 0.5f) / buffer_uber.resolution_rt;
+    const float2 origin_uv       = (pos + 0.5f) / buffer_pass.resolution_rt;
     const float3 origin_position = get_position_view_space(pos);
     const float3 origin_normal   = get_normal_view_space(pos);
 
     // Compute step in pixels
-    const float pixel_offset = max((g_ao_radius * buffer_uber.resolution_rt.x * 0.5f) / origin_position.z, (float)g_ao_steps);
+    const float pixel_offset = max((g_ao_radius * buffer_pass.resolution_rt.x * 0.5f) / origin_position.z, (float)g_ao_steps);
     const float step_offset  = pixel_offset / float(g_ao_steps + 1.0f); // divide by steps + 1 so that the farthest samples are not fully attenuated
 
     // Compute rotation step
@@ -78,7 +78,7 @@ void compute_ssgi(uint2 pos, inout float occlusion, inout float3 diffuse_bounce)
         for (uint step_index = 0; step_index < g_ao_steps; ++step_index)
         {
             float2 uv_offset        = round(max(step_offset * (step_index + ray_offset), 1 + step_index)) * rotation_direction;
-            uint2 sample_pos        = (origin_uv + uv_offset) * buffer_uber.resolution_rt;
+            uint2 sample_pos        = (origin_uv + uv_offset) * buffer_pass.resolution_rt;
             float3 sample_position  = get_position_view_space(sample_pos);
             float3 origin_to_sample = sample_position - origin_position;
             float visibility        = compute_visibility(origin_normal, origin_to_sample);
@@ -96,7 +96,7 @@ void compute_ssgi(uint2 pos, inout float occlusion, inout float3 diffuse_bounce)
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
     // Out of bounds check
-    if (any(int2(thread_id.xy) >= buffer_uber.resolution_rt.xy))
+    if (any(int2(thread_id.xy) >= buffer_pass.resolution_rt.xy))
         return;
 
     float occlusion       = 0.0f;

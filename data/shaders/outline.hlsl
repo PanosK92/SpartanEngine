@@ -28,7 +28,7 @@ Pixel_Pos mainVS(Vertex_PosUv input)
     Pixel_Pos output;
 
     input.position.w = 1.0f;
-    output.position  = mul(input.position, buffer_uber.transform);
+    output.position  = mul(input.position, buffer_pass.transform);
 
     return output;
 }
@@ -42,7 +42,7 @@ float4 mainPS(Pixel_Pos input) : SV_Target
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
     // Out of bounds check
-    if (any(int2(thread_id.xy) >= buffer_uber.resolution_rt.xy))
+    if (any(int2(thread_id.xy) >= buffer_pass.resolution_rt.xy))
         return;
 
     float4 silhouette = tex[thread_id.xy];

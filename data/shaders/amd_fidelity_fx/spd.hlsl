@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016-2022 Panos Karabelas
+Copyright(c) 2016-2023 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -35,7 +35,7 @@ groupshared AU1 spd_counter;
 
 AF4 SpdLoadSourceImage(ASU2 p, AU1 slice)
 {
-    float2 uv = (p + 0.5f) / buffer_uber.resolution_rt;
+    float2 uv = (p + 0.5f) / buffer_pass.resolution_rt;
     return tex.SampleLevel(sampler_bilinear_clamp, uv, 0);
 }
 
@@ -91,5 +91,5 @@ void SpdResetAtomicCounter(AU1 slice)
 [numthreads(256, 1, 1)]
 void mainCS(uint3 work_group_id : SV_GroupID, uint local_thread_index : SV_GroupIndex)
 {
-    SpdDownsample(work_group_id.xy, local_thread_index, buffer_uber.mip_count, buffer_uber.work_group_count, work_group_id.z);
+    SpdDownsample(work_group_id.xy, local_thread_index, buffer_pass.mip_count, buffer_pass.work_group_count, work_group_id.z);
 }

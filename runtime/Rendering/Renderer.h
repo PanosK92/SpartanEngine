@@ -135,9 +135,9 @@ namespace Spartan
     private:
         // Constant buffers
         static void UpdateConstantBufferFrame(RHI_CommandList* cmd_list);
-        static void UpdateConstantBufferUber(RHI_CommandList* cmd_list);
+        static void UpdateConstantBufferPass(RHI_CommandList* cmd_list);
         static void UpdateConstantBufferLight(RHI_CommandList* cmd_list, const std::shared_ptr<Light> light, const RHI_Shader_Type scope);
-        static void UpdateConstantBufferMaterial(RHI_CommandList* cmd_list);
+        static void UpdateConstantBufferMaterial(RHI_CommandList* cmd_list, Material* material);
 
         // Resource creation
         static void CreateConstantBuffers();
@@ -204,9 +204,8 @@ namespace Spartan
 
         // misc
         static std::unordered_map<Renderer_Entity, std::vector<std::shared_ptr<Entity>>> m_renderables;
-        static std::array<Material*, m_max_material_instances> m_material_instances;
         static Cb_Frame m_cb_frame_cpu;
-        static Cb_Uber m_cb_uber_cpu;
+        static Cb_Pass m_cb_pass_cpu;
         static Cb_Light m_cb_light_cpu;
         static Cb_Material m_cb_material_cpu;
         static std::shared_ptr<RHI_VertexBuffer> m_vertex_buffer_lines;

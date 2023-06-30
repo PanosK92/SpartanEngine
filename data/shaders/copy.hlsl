@@ -29,11 +29,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
     // Out of bounds check
-    if (any(int2(thread_id.xy) >= buffer_uber.resolution_rt.xy))
+    if (any(int2(thread_id.xy) >= buffer_pass.resolution_rt.xy))
         return;
 
 #if BILINEAR
-    const float2 uv = (thread_id.xy + 0.5f) / buffer_uber.resolution_rt;
+    const float2 uv = (thread_id.xy + 0.5f) / buffer_pass.resolution_rt;
     tex_uav[thread_id.xy] = tex.SampleLevel(sampler_bilinear_clamp, uv, 0);
 #else
     tex_uav[thread_id.xy] = tex[thread_id.xy];
