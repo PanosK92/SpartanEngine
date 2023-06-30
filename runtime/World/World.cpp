@@ -426,8 +426,7 @@ namespace Spartan
             shared_ptr<Entity> entity = CreateEntity();
             entity->SetObjectName("light_directional");
 
-            entity->GetTransform()->SetPosition(Vector3(0.0f, 10.0f, 0.0f));
-            entity->GetTransform()->SetRotation(Quaternion::FromEulerAngles(112.37f, -60.91f, 0.0f));
+            entity->GetTransform()->SetRotation(Quaternion::FromEulerAngles(35.0f, 90.0f, 0.0f));
 
             shared_ptr<Light> light = entity->AddComponent<Light>();
             light->SetLightType(LightType::Directional);
@@ -664,7 +663,7 @@ namespace Spartan
                     material->SetColor(Color::material_aluminum);
                     material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.1f);
                     material->SetProperty(MaterialProperty::MetalnessMultiplier, 0.15f);
-                    material->SetProperty(MaterialProperty::Clearcoat, 1.0f);
+                    material->SetProperty(MaterialProperty::Clearcoat,           1.0f);
                     material->SetProperty(MaterialProperty::Clearcoat_Roughness, 0.25f);
                 }
 
@@ -773,7 +772,9 @@ namespace Spartan
 
     void World::CreateDefaultWorldTerrain()
     {
-        CreateDefaultWorldCommon(false);
+        Vector3 camera_position = Vector3(53.7133f, 12.2256f, 10.1426f);
+        Vector3 camera_rotation = Vector3(13.9972f, -27.1993f, 0.0f);
+        CreateDefaultWorldCommon(false, camera_position, camera_rotation);
 
         // Terrain
         {
@@ -787,7 +788,7 @@ namespace Spartan
 
             shared_ptr<Terrain> terrain = entity->AddComponent<Terrain>();
             terrain->SetMinY(0.0f);
-            terrain->SetMaxY(12.0f);
+            terrain->SetMaxY(25.0f);
             terrain->SetHeightMap(height_map);
             terrain->GenerateAsync();
         }
