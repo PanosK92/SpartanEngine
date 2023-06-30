@@ -664,6 +664,8 @@ namespace Spartan
                     material->SetColor(Color::material_aluminum);
                     material->SetProperty(MaterialProperty::RoughnessMultiplier, 0.1f);
                     material->SetProperty(MaterialProperty::MetalnessMultiplier, 0.15f);
+                    material->SetProperty(MaterialProperty::Clearcoat, 1.0f);
+                    material->SetProperty(MaterialProperty::Clearcoat_Roughness, 0.25f);
                 }
 
                 // plastic
