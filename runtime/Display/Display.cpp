@@ -22,8 +22,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =======
 #include "pch.h"
 #include "Display.h"
-#include "sdl/SDL.h"
-#include "Window.h"
+#include <SDL.h>
+#include <Window.h>
 //==================
 
 #if defined(_MSC_VER)
