@@ -183,7 +183,7 @@ namespace Spartan
 
     void Light::SetColor(const float temperature)
     {
-
+        m_color_rgb = Color(temperature);
     }
 
     void Light::SetIntensity(const LightIntensity lumens)

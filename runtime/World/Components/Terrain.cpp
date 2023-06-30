@@ -239,6 +239,11 @@ namespace Spartan
 
     }
 
+    Terrain::~Terrain()
+    {
+        m_height_map = nullptr;
+    }
+
     void Terrain::Serialize(FileStream* stream)
     {
         const string no_path;

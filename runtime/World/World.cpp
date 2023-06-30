@@ -430,7 +430,7 @@ namespace Spartan
 
             shared_ptr<Light> light = entity->AddComponent<Light>();
             light->SetLightType(LightType::Directional);
-            light->SetColor(Color::light_sky_clear);
+            light->SetColor(Color::light_sky_sunrise);
             light->SetIntensity(directional_light_intensity);
         }
 
@@ -570,7 +570,7 @@ namespace Spartan
     {
         Vector3 camera_position           = Vector3(6.2f, 1.0f, -0.2f);
         Vector3 camera_rotation           = Vector3(0.0f, -90.0f, 0.0f);
-        float directional_light_intensity = 6000.0f;
+        float directional_light_intensity = 20000.0f;
         CreateDefaultWorldCommon(true, camera_position, camera_rotation, directional_light_intensity, "project\\music\\isola_any_day.mp3");
 
         // Point light - top of car
