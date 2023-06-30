@@ -39,14 +39,14 @@ namespace Spartan
     {
     public:
         Terrain(std::weak_ptr<Entity> entity);
-        ~Terrain() = default;
+        ~Terrain();
 
         //= IComponent ===============================
         void Serialize(FileStream* stream) override;
         void Deserialize(FileStream* stream) override;
         //============================================
 
-        const std::shared_ptr<RHI_Texture>& GetHeightMap() const { return m_height_map; }
+        const std::shared_ptr<RHI_Texture> GetHeightMap() const { return m_height_map; }
         void SetHeightMap(const std::shared_ptr<RHI_Texture>& height_map);
 
         float GetMinY()     const { return m_min_y; }
