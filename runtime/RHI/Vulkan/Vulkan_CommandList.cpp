@@ -529,7 +529,10 @@ namespace Spartan
             0                                             // firstInstance
         );
 
-        Profiler::m_rhi_draw++;
+        if (Profiler::m_granularity == ProfilerGranularity::Full)
+        {
+            Profiler::m_rhi_draw++;
+        }
     }
 
     void RHI_CommandList::DrawIndexed(const uint32_t index_count, const uint32_t index_offset, const uint32_t vertex_offset)
@@ -550,7 +553,10 @@ namespace Spartan
         );
 
         // Profile
-        Profiler::m_rhi_draw++;
+        if (Profiler::m_granularity == ProfilerGranularity::Full)
+        {
+            Profiler::m_rhi_draw++;
+        }
     }
 
     void RHI_CommandList::Dispatch(uint32_t x, uint32_t y, uint32_t z /*= 1*/, bool async /*= false*/)
