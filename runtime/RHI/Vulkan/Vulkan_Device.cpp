@@ -41,11 +41,6 @@ namespace Spartan
 {
     namespace
     {
-        // Descriptors
-        static unordered_map<uint64_t, RHI_DescriptorSet> descriptor_sets;
-        static void* descriptor_pool = nullptr;
-        static uint32_t descriptor_set_capacity = 0;
-
         // Command pools
         static vector<shared_ptr<RHI_CommandPool>> cmd_pools;
         static array<shared_ptr<RHI_CommandPool>, 3> cmd_pools_immediate;
@@ -156,6 +151,13 @@ namespace Spartan
 
             return extensions_supported;
         }
+    }
+
+    namespace descriptors
+    {
+        static unordered_map<uint64_t, RHI_DescriptorSet> descriptor_sets;
+        static VkDescriptorPool descriptor_pool = nullptr;
+        static uint32_t descriptor_set_capacity = 2048;
     }
 
     namespace vulkan_memory_allocator
@@ -520,7 +522,7 @@ namespace Spartan
         }
 
         // Set the descriptor set capacity to an initial value
-        SetDescriptorSetCapacity(2048);
+        SetDescriptorSetCapacity(descriptors::descriptor_set_capacity);
 
         // Detect and log version
         {
@@ -546,8 +548,8 @@ namespace Spartan
         cmd_pools_immediate.fill(nullptr);
 
         // Descriptor pool
-        vkDestroyDescriptorPool(RHI_Context::device, static_cast<VkDescriptorPool>(descriptor_pool), nullptr);
-        descriptor_pool = nullptr;
+        vkDestroyDescriptorPool(RHI_Context::device, descriptors::descriptor_pool, nullptr);
+        descriptors::descriptor_pool = nullptr;
 
         // Allocator
         if (vulkan_memory_allocator::allocator != nullptr)
@@ -861,12 +863,7 @@ namespace Spartan
         // If the requested capacity is zero, then only recreate the descriptor pool
         if (capacity == 0)
         {
-            capacity = descriptor_set_capacity;
-        }
-
-        if (descriptor_set_capacity == capacity)
-        {
-            SP_LOG_WARNING("Capacity is already %d, is this reset needed ?");
+            capacity = descriptors::descriptor_set_capacity;
         }
 
         // Create pool
@@ -896,16 +893,16 @@ namespace Spartan
             pool_create_info.maxSets                    = capacity;
 
             SP_VK_ASSERT_MSG(
-                vkCreateDescriptorPool(RHI_Context::device, &pool_create_info, nullptr, reinterpret_cast<VkDescriptorPool*>(&descriptor_pool)),
+                vkCreateDescriptorPool(RHI_Context::device, &pool_create_info, nullptr, &descriptors::descriptor_pool),
                 "Failed to create descriptor pool."
             );
         }
 
-        descriptor_set_capacity = capacity;
-        SP_LOG_INFO("Capacity has been set to %d elements", descriptor_set_capacity);
+        descriptors::descriptor_set_capacity = capacity;
+        SP_LOG_INFO("Capacity has been set to %d elements", capacity);
         
         Profiler::m_descriptor_set_count    = 0;
-        Profiler::m_descriptor_set_capacity = descriptor_set_capacity;
+        Profiler::m_descriptor_set_capacity = capacity;
     }
 
     void* RHI_Device::GetMappedDataFromBuffer(void* resource)
@@ -1120,18 +1117,18 @@ namespace Spartan
 
     void* RHI_Device::GetDescriptorPool()
     {
-        return descriptor_pool;
+        return descriptors::descriptor_pool;
     }
 
     unordered_map<uint64_t, RHI_DescriptorSet>& RHI_Device::GetDescriptorSets()
     {
-        return descriptor_sets;
+        return descriptors::descriptor_sets;
     }
 
     bool RHI_Device::HasDescriptorSetCapacity()
     {
-        const uint32_t required_capacity = static_cast<uint32_t>(descriptor_sets.size());
-        return descriptor_set_capacity > required_capacity;
+        const uint32_t required_capacity = static_cast<uint32_t>(descriptors::descriptor_sets.size());
+        return descriptors::descriptor_set_capacity > required_capacity;
     }
 
     RHI_CommandList* RHI_Device::ImmediateBegin(const RHI_Queue_Type queue_type)
