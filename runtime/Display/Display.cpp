@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "Display.h"
 #include <SDL.h>
-#include <Window.h>
+#include "Window.h"
 //==================
 
 #if defined(_MSC_VER)
