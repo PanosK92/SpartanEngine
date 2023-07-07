@@ -94,7 +94,6 @@ namespace Spartan
     enum class RHI_Api_Type
     {
         Undefined,
-        D3d11,
         D3d12,
         Vulkan
     };

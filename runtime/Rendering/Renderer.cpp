@@ -315,7 +315,7 @@ namespace Spartan
             return;
 
         // Tick command pool
-        bool reset = m_cmd_pool->Step() || (RHI_Context::api_type == RHI_Api_Type::D3d11);
+        bool reset = m_cmd_pool->Step();
 
         // Begin
         m_cmd_current = m_cmd_pool->GetCurrentCommandList();
@@ -363,7 +363,7 @@ namespace Spartan
 
             // Generate jitter sample in case FSR (which also does TAA) is enabled. D3D11 only receives FXAA so it's ignored at this point.
             Renderer_Upsampling upsampling_mode = GetOption<Renderer_Upsampling>(Renderer_Option::Upsampling);
-            if ((upsampling_mode == Renderer_Upsampling::FSR2 || GetOption<Renderer_Antialiasing>(Renderer_Option::Antialiasing) == Renderer_Antialiasing::Taa) && RHI_Context::api_type != RHI_Api_Type::D3d11)
+            if (upsampling_mode == Renderer_Upsampling::FSR2 || GetOption<Renderer_Antialiasing>(Renderer_Option::Antialiasing) == Renderer_Antialiasing::Taa)
             {
                 RHI_FSR2::GenerateJitterSample(&m_jitter_offset.x, &m_jitter_offset.y);
                 m_jitter_offset.x          = (m_jitter_offset.x / m_resolution_render.x);
@@ -803,20 +803,6 @@ namespace Spartan
 
         // Reject changes (if needed)
         {
-            bool is_d3d11 = RHI_Context::api_type == RHI_Api_Type::D3d11;
-
-            if (is_d3d11 && option == Renderer_Option::Antialiasing && (value == static_cast<float>(Renderer_Antialiasing::Taa) || value == static_cast<float>(Renderer_Antialiasing::TaaFxaa)))
-            {
-                SP_LOG_WARNING("TAA is not supported on D3D11");
-                return;
-            }
-
-            if (is_d3d11 && option == Renderer_Option::Upsampling && value == static_cast<float>(Renderer_Upsampling::FSR2))
-            {
-                SP_LOG_WARNING("FSR 2.0 is not supported on D3D11");
-                return;
-            }
-
             if (option == Renderer_Option::Hdr)
             {
                 if (value == 1.0f && !Display::GetHdr())
