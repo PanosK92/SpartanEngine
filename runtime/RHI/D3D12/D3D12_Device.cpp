@@ -314,4 +314,9 @@ namespace Spartan
             it++;
         }
     }
+
+    void RHI_Device::SetBindlessSamplers(const std::array<std::shared_ptr<RHI_Sampler>, 7>& samplers)
+    {
+
+    }
 }
