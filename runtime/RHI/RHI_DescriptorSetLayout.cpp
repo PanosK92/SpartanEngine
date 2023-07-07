@@ -40,7 +40,7 @@ namespace Spartan
     RHI_DescriptorSetLayout::RHI_DescriptorSetLayout(const vector<RHI_Descriptor>& descriptors, const string& name)
     {
         m_descriptors = descriptors;
-        m_object_name        = name;
+        m_object_name = name;
 
         CreateResource(m_descriptors);
 

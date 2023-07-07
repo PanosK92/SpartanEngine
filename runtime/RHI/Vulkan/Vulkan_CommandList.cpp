@@ -32,11 +32,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_DescriptorSet.h"
 #include "../RHI_DescriptorSetLayout.h"
 #include "../RHI_Semaphore.h"
-#include "../RHI_Fence.h"
 #include "../RHI_Shader.h"
-#include "../RHI_CommandPool.h"
 #include "../../Profiling/Profiler.h"
-#include "../../Rendering/Renderer.h"
 //=====================================
 
 //= NAMESPACES ===============
@@ -46,12 +43,6 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    namespace
-    {
-        //                  <hash,     pipeline>
-        static unordered_map<uint64_t, shared_ptr<RHI_Pipeline>> pipelines;
-    }
-
     static VkAttachmentLoadOp get_color_load_op(const Color& color)
     {
         if (color == rhi_color_dont_care)
@@ -226,11 +217,11 @@ namespace Spartan
         // If no pipeline exists for this state, create one
         uint64_t hash_previous = m_pso.GetHash();
         uint64_t hash          = pso.GetHash();
-        auto it = pipelines.find(hash);
-        if (it == pipelines.end())
+        auto it = RHI_Device::GetPipelines().find(hash);
+        if (it == RHI_Device::GetPipelines().end())
         {
             // Create a new pipeline
-            it = pipelines.emplace(make_pair(hash, move(make_shared<RHI_Pipeline>(pso, m_descriptor_layout_current)))).first;
+            it = RHI_Device::GetPipelines().emplace(make_pair(hash, move(make_shared<RHI_Pipeline>(pso, m_descriptor_layout_current)))).first;
             SP_LOG_INFO("A new pipeline has been created.");
         }
 
@@ -996,19 +987,26 @@ namespace Spartan
         if (RHI_DescriptorSet* descriptor_set = m_descriptor_layout_current->GetDescriptorSet())
         {
             // Get descriptor sets
-            array<void*, 1> descriptor_sets = { descriptor_set->GetResource() };
-        
+            array<void*, 3> descriptor_sets =
+            {
+                descriptor_set->GetResource(),
+                RHI_Device::GetDescriptorSet(RHI_Device_Resource::sampler_comparison),
+                RHI_Device::GetDescriptorSet(RHI_Device_Resource::sampler_regular)
+            };
+
             // Get dynamic offsets
             static vector<uint32_t> dynamic_offsets;
             m_descriptor_layout_current->GetDynamicOffsets(&dynamic_offsets);
-        
+
+            VkPipelineBindPoint bind_point = m_pso.IsCompute() ?
+                VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_COMPUTE :
+                VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS;
+
             // Bind descriptor set
             vkCmdBindDescriptorSets
             (
                 static_cast<VkCommandBuffer>(m_rhi_resource),                            // commandBuffer
-                m_pso.IsCompute() ?                                                      // pipelineBindPoint
-                VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_COMPUTE :
-                VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS,
+                bind_point,                                                              // pipelineBindPoint
                 static_cast<VkPipelineLayout>(m_pipeline->GetResource_PipelineLayout()), // layout
                 0,                                                                       // firstSet
                 static_cast<uint32_t>(descriptor_sets.size()),                           // descriptorSetCount
@@ -1016,15 +1014,9 @@ namespace Spartan
                 static_cast<uint32_t>(dynamic_offsets.size()),                           // dynamicOffsetCount
                 dynamic_offsets.data()                                                   // pDynamicOffsets
             );
-        
+
             Profiler::m_rhi_bindings_descriptor_set++;
         }
-        
-    }
-
-    void RHI_CommandList::UnbindOutputTextures()
-    {
-
     }
 
     void RHI_CommandList::GetDescriptorSetLayoutFromPipelineState(RHI_PipelineState& pipeline_state)

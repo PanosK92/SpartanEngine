@@ -49,17 +49,17 @@ float shadow_compare_depth(float3 uv, float compare)
     if (light_is_directional())
     {
         // float3 -> uv, slice
-        return tex_light_directional_depth.SampleCmpLevelZero(sampler_compare_depth, uv, compare).r;
+        return tex_light_directional_depth.SampleCmpLevelZero(samplers_comparison[sampler_compare_depth], uv, compare).r;
     }
     else if (light_is_point())
     {
         // float3 -> direction
-        return tex_light_point_depth.SampleCmpLevelZero(sampler_compare_depth, uv, compare).r;
+        return tex_light_point_depth.SampleCmpLevelZero(samplers_comparison[sampler_compare_depth], uv, compare).r;
     }
     else if (light_is_spot())
     {
         // float3 -> uv, 0
-        return tex_light_spot_depth.SampleCmpLevelZero(sampler_compare_depth, uv.xy, compare).r;
+        return tex_light_spot_depth.SampleCmpLevelZero(samplers_comparison[sampler_compare_depth], uv.xy, compare).r;
     }
     else
     {
@@ -74,17 +74,17 @@ float shadow_sample_depth(float3 uv)
     if (light_is_directional())
     {
         // float3 -> uv, slice
-        return tex_light_directional_depth.SampleLevel(sampler_point_clamp, uv, 0).r;
+        return tex_light_directional_depth.SampleLevel(samplers[sampler_point_clamp], uv, 0).r;
     }
     else if (light_is_point())
     {
         // float3 -> direction
-        return tex_light_point_depth.SampleLevel(sampler_point_clamp, uv, 0).r;
+        return tex_light_point_depth.SampleLevel(samplers[sampler_point_clamp], uv, 0).r;
     }
     else if (light_is_spot())
     {
         // float3 -> uv, 0
-        return tex_light_spot_depth.SampleLevel(sampler_point_clamp, uv.xy, 0).r;
+        return tex_light_spot_depth.SampleLevel(samplers[sampler_point_clamp], uv.xy, 0).r;
     }
     else
     {
@@ -99,17 +99,17 @@ float3 shadow_sample_color(float3 uv)
     if (light_is_directional())
     {
         // float3 -> uv, slice
-        return tex_light_directional_color.SampleLevel(sampler_point_clamp, uv, 0).rgb;
+        return tex_light_directional_color.SampleLevel(samplers[sampler_point_clamp], uv, 0).rgb;
     }
     else if (light_is_point())
     {
         // float3 -> direction
-        return tex_light_point_color.SampleLevel(sampler_point_clamp, uv, 0).rgb;
+        return tex_light_point_color.SampleLevel(samplers[sampler_point_clamp], uv, 0).rgb;
     }
     else if (light_is_spot())
     {
         // float3 -> uv, 0
-        return tex_light_spot_color.SampleLevel(sampler_point_clamp, uv.xy, 0).rgb;
+        return tex_light_spot_color.SampleLevel(samplers[sampler_point_clamp], uv.xy, 0).rgb;
     }
     else
     {

@@ -102,7 +102,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     float coc               = coc_max >= -coc_min ? coc_max : coc_min;
 
     // Color
-    float3 color = tex.SampleLevel(sampler_bilinear_clamp, uv, 0).rgb;
+    float3 color = tex.SampleLevel(samplers[sampler_bilinear_clamp], uv, 0).rgb;
 
     tex_uav[thread_id.xy] = float4(color, coc);
 }
@@ -125,7 +125,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     for (uint i = 0; i < g_dof_sample_count; i++)
     {
         float2 radius = g_dof_samples[i] * g_dof_bokeh_radius;
-        float4 s = tex.SampleLevel(sampler_bilinear_clamp, uv + radius * get_rt_texel_size(), 0);
+        float4 s = tex.SampleLevel(samplers[sampler_bilinear_clamp], uv + radius * get_rt_texel_size(), 0);
 
         // If the sample's CoC is at least as large as the kernel radius, use it.
         if (abs(s.a) >= length(radius))
@@ -151,10 +151,10 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     const float2 uv = (thread_id.xy + 0.5f) / buffer_pass.resolution_rt;
     const float4 o  = get_rt_texel_size().xyxy * float2(-0.5, 0.5).xxyy;
 
-    float3 s1 = tex.SampleLevel(sampler_bilinear_clamp, uv + o.xy, 0).rgb;
-    float3 s2 = tex.SampleLevel(sampler_bilinear_clamp, uv + o.zy, 0).rgb;
-    float3 s3 = tex.SampleLevel(sampler_bilinear_clamp, uv + o.xw, 0).rgb;
-    float3 s4 = tex.SampleLevel(sampler_bilinear_clamp, uv + o.zw, 0).rgb;
+    float3 s1 = tex.SampleLevel(samplers[sampler_bilinear_clamp], uv + o.xy, 0).rgb;
+    float3 s2 = tex.SampleLevel(samplers[sampler_bilinear_clamp], uv + o.zy, 0).rgb;
+    float3 s3 = tex.SampleLevel(samplers[sampler_bilinear_clamp], uv + o.xw, 0).rgb;
+    float3 s4 = tex.SampleLevel(samplers[sampler_bilinear_clamp], uv + o.zw, 0).rgb;
 
     float coc = tex[thread_id.xy].a;
 
@@ -173,7 +173,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     const float2 uv = (thread_id.xy + 0.5f) / buffer_pass.resolution_rt;
 
     // Get dof and coc
-    float4 bokeh = tex2.SampleLevel(sampler_bilinear_clamp, uv, 0);
+    float4 bokeh = tex2.SampleLevel(samplers[sampler_bilinear_clamp], uv, 0);
     float3 dof   = bokeh.rgb;
     float coc    = bokeh.a;
 

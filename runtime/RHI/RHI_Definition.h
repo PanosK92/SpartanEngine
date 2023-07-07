@@ -68,6 +68,8 @@ namespace Spartan
 
     enum class RHI_Resource_Type
     {
+        descriptor_set,
+        descriptor_set_layout,
         texture,
         texture_view,
         sampler,
@@ -75,7 +77,6 @@ namespace Spartan
         shader,
         semaphore,
         fence,
-        descriptor_set_layout,
         query_pool,
         pipeline,
         pipeline_layout
@@ -147,12 +148,6 @@ namespace Spartan
         Linear,
     };
 
-    enum class RHI_Sampler_Mipmap_Mode
-    {
-        Nearest,
-        Linear,
-    };
-
     enum class RHI_Sampler_Address_Mode
     {
         Wrap,
@@ -196,21 +191,21 @@ namespace Spartan
         R16_Float,
         R32_Uint,
         R32_Float,
-        // RG
+        // Rg
         R8G8_Unorm,
         R16G16_Float,
         R32G32_Float,
-        // RGB
+        // Rgb
         R11G11B10_Float,
         R32G32B32_Float,
-        // RGBA
+        // Rgba
         R8G8B8A8_Unorm,
         R10G10B10A2_Unorm,
         R16G16B16A16_Unorm,
         R16G16B16A16_Snorm,
         R16G16B16A16_Float,
         R32G32B32A32_Float,
-        // DEPTH
+        // Depth
         D16_Unorm,
         D32_Float,
         D32_Float_S8X24_Uint,

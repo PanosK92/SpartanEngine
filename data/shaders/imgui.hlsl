@@ -48,7 +48,7 @@ Pixel_PosColUv mainVS(Vertex_Pos2dUvColor input)
 float4 mainPS(Pixel_PosColUv input) : SV_Target
 {
     float mip            = (float)buffer_imgui.mip_level;
-    float4 color_texture = texture_sample_point() ? tex.SampleLevel(sampler_point_wrap, input.uv, mip) : tex.SampleLevel(sampler_bilinear_wrap, input.uv, mip);
+    float4 color_texture = texture_sample_point() ? tex.SampleLevel(samplers[sampler_point_wrap], input.uv, mip) : tex.SampleLevel(samplers[sampler_bilinear_wrap], input.uv, mip);
     float4 color_vertex  = input.color;
 
     // Set requested channels channels

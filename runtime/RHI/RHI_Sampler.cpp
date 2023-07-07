@@ -29,9 +29,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Spartan
 {
     RHI_Sampler::RHI_Sampler(
-        const RHI_Filter filter_min                         /* = RHI_Filter_Nearest */,
-        const RHI_Filter filter_mag                         /* = RHI_Filter_Nearest */,
-        const RHI_Sampler_Mipmap_Mode filter_mipmap         /* = RHI_Sampler_Mipmap_Nearest */,
+        const RHI_Filter filter_min                         /* = RHI_Filter::Nearest */,
+        const RHI_Filter filter_mag                         /* = RHI_Filter::Nearest */,
+        const RHI_Filter filter_mipmap                      /* = RHI_Filter::Nearest */,
         const RHI_Sampler_Address_Mode sampler_address_mode /* = RHI_Sampler_Address_Wrap */,
         const RHI_Comparison_Function comparison_function   /* = RHI_Comparison_Always */,
         const float anisotropy                              /* = 0.0f */,

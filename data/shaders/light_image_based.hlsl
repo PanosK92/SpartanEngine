@@ -41,7 +41,7 @@ float3 sample_environment(float2 uv, float mip_level)
         uv = float2(0.5f, 0.0);
     }
 
-    return tex_environment.SampleLevel(sampler_trilinear_clamp, uv, mip_level).rgb;
+    return tex_environment.SampleLevel(samplers[sampler_trilinear_clamp], uv, mip_level).rgb;
 }
 
 float3 get_parallax_corrected_reflection(Surface surface, float3 position_probe, float3 box_min, float3 box_max)
@@ -98,7 +98,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     // Compute specular energy
     const float n_dot_v          = saturate(dot(-surface.camera_to_pixel, surface.normal));
     const float3 F               = F_Schlick_Roughness(surface.F0, n_dot_v, surface.roughness);
-    const float2 envBRDF         = tex_lut_ibl.SampleLevel(sampler_bilinear_clamp, float2(n_dot_v, surface.roughness), 0.0f).xy;
+    const float2 envBRDF         = tex_lut_ibl.SampleLevel(samplers[sampler_bilinear_clamp], float2(n_dot_v, surface.roughness), 0.0f).xy;
     const float3 specular_energy = F * envBRDF.x + envBRDF.y;
 
     // IBL - Diffuse
@@ -114,7 +114,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     
     // Get ssr color
     mip_level               = lerp(0, buffer_frame.ssr_mip_count, surface.roughness);
-    const float4 ssr_sample = (is_ssr_enabled() && is_opaque_pass() && surface.is_opaque()) ? tex_ssr.SampleLevel(sampler_trilinear_clamp, surface.uv, mip_level) : 0.0f;
+    const float4 ssr_sample = (is_ssr_enabled() && is_opaque_pass() && surface.is_opaque()) ? tex_ssr.SampleLevel(samplers[sampler_trilinear_clamp], surface.uv, mip_level) : 0.0f;
     const float3 color_ssr  = ssr_sample.rgb;
     float ssr_alpha         = ssr_sample.a;
 
@@ -138,7 +138,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
         if (is_inside_box(surface.position, box_min, box_max))
         {
             float3 reflection   = get_parallax_corrected_reflection(surface, probe_position, box_min, box_max);
-            float4 probe_sample = tex_reflection_probe.SampleLevel(sampler_bilinear_clamp, reflection, 0.0f);
+            float4 probe_sample = tex_reflection_probe.SampleLevel(samplers[sampler_bilinear_clamp], reflection, 0.0f);
             ibl_specular_probe  = probe_sample.rgb;
             probe_alpha         = probe_sample.a;
         }
