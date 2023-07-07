@@ -175,7 +175,7 @@ namespace Spartan
 
         if (needs_to_update)
         {
-            m_pso_previous = make_shared<RHI_PipelineState>(*this);
+            m_pso_previous = this;
         }
 
         return needs_to_update;

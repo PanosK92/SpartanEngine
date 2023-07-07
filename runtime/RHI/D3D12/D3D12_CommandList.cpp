@@ -357,11 +357,6 @@ namespace Spartan
         SP_ASSERT_MSG(false, "Function is not implemented");
     }
 
-    void RHI_CommandList::UnbindOutputTextures()
-    {
-        SP_ASSERT_MSG(false, "Function is not implemented");
-    }
-
     void RHI_CommandList::GetDescriptorSetLayoutFromPipelineState(RHI_PipelineState& pipeline_state)
     {
         SP_ASSERT_MSG(false, "Function is not implemented");

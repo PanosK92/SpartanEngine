@@ -19,12 +19,10 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==================
+//= INCLUDES ==========
 #include "pch.h"
 #include "RHI_Device.h"
-#include "RHI_Implementation.h"
-#include "RHI_CommandPool.h"
-//=============================
+//=====================
 
 //= NAMESPACES ===============
 using namespace std;
@@ -44,9 +42,9 @@ namespace Spartan
     float RHI_Device::m_timestamp_period                       = 0;
 
     // Misc
-    bool RHI_Device::m_wide_lines                              = false;
-    uint32_t  RHI_Device::m_physical_device_index              = 0;
-    uint32_t  RHI_Device::m_enabled_graphics_shader_stages     = 0;
+    bool RHI_Device::m_wide_lines                          = false;
+    uint32_t  RHI_Device::m_physical_device_index          = 0;
+    uint32_t  RHI_Device::m_enabled_graphics_shader_stages = 0;
     static vector<PhysicalDevice> physical_devices;
 
     void RHI_Device::RegisterPhysicalDevice(const PhysicalDevice& physical_device)
@@ -62,7 +60,7 @@ namespace Spartan
         // Sort devices by memory, in an ascending order. The type order will be maintained.
         sort(physical_devices.begin(), physical_devices.end(), [](const PhysicalDevice& adapter1, const PhysicalDevice& adapter2)
         {
-                return adapter1.GetMemory() > adapter2.GetMemory() && adapter1.GetType() == adapter2.GetType();
+            return adapter1.GetMemory() > adapter2.GetMemory() && adapter1.GetType() == adapter2.GetType();
         });
 
         SP_LOG_INFO("%s (%d MB)", physical_device.GetName().c_str(), physical_device.GetMemory());

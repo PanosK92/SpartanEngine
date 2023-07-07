@@ -25,8 +25,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ======================
 #include "common_vertex_pixel.hlsl"
 #include "common_buffers.hlsl"
-#include "common_samplers.hlsl"
 #include "common_textures.hlsl"
+#include "common_samplers.hlsl"
 //=================================
 
 /*------------------------------------------------------------------------------
@@ -270,7 +270,7 @@ float3 get_normal(uint2 pos)
 
 float3 get_normal(float2 uv)
 {
-    return tex_normal.SampleLevel(sampler_point_clamp, uv, 0).xyz;
+    return tex_normal.SampleLevel(samplers[sampler_point_clamp], uv, 0).xyz;
 }
 
 float3 get_normal_view_space(uint2 pos)
@@ -311,7 +311,7 @@ float get_depth(uint2 position)
 float get_depth(float2 uv)
 {
     // effects like screen space shadows, can get artefacts if a point sampler is used
-    return tex_depth.SampleLevel(sampler_bilinear_clamp, uv, 0).r;
+    return tex_depth.SampleLevel(samplers[sampler_bilinear_clamp], uv, 0).r;
 }
 
 float get_linear_depth(float z, float near, float far)
@@ -516,13 +516,13 @@ float get_noise_blue(float2 screen_pos)
     float slice = (buffer_frame.frame % 8) * (float)is_taa_enabled();
 
     float2 uv = (screen_pos + 0.5f) * get_tex_noise_blue_scale();
-    return tex_noise_blue.SampleLevel(sampler_point_wrap, float3(uv.x, uv.y, slice), 0).r;
+    return tex_noise_blue.SampleLevel(samplers[sampler_point_wrap], float3(uv.x, uv.y, slice), 0).r;
 }
 
 float3 get_noise_normal(uint2 screen_pos)
 {
     float2 uv = (screen_pos + 0.5f) * get_tex_noise_normal_scale();
-    return normalize(tex_noise_normal.SampleLevel(sampler_point_wrap, uv, 0).xyz);
+    return normalize(tex_noise_normal.SampleLevel(samplers[sampler_point_wrap], uv, 0).xyz);
 }
 
 /*------------------------------------------------------------------------------

@@ -78,7 +78,7 @@ static void load_default_world_prompt(Editor* editor)
             static const char* items[] =
             {
                 "1. An empty world.",
-                "2. A physics enabled cube (moused pickable) on top of a quad.",
+                "2. A physics enabled cube (mouse pickable) on top of a quad.",
                 "3. A set of helmets.",
                 "4. A rotating car on top of a quad.",
                 "5. Height map generated terrain.",
