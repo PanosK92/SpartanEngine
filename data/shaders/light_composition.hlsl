@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016-2021 Panos Karabelas
+Copyright(c) 2016-2023 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -54,7 +54,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     // Draw the sky
     if (surface.is_sky()) 
     {
-        color.rgb += tex_environment.SampleLevel(sampler_bilinear_clamp, direction_sphere_uv(surface.camera_to_pixel), 0).rgb;
+        color.rgb += tex_environment.SampleLevel(samplers[sampler_bilinear_clamp], direction_sphere_uv(surface.camera_to_pixel), 0).rgb;
         color.rgb *= ambient_light; // Modulate it's intensity in order to fake day/night.
         fog       *= luminance(color.rgb);
     }
@@ -83,7 +83,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
             // Refraction from ALDI.
             float roughness2 = surface.roughness * surface.roughness;
             float mip_level  = lerp(0, buffer_frame.frame_mip_count, roughness2);
-            light_refraction = tex_frame.SampleLevel(sampler_trilinear_clamp, surface.uv + refraction_uv_offset * is_behind, mip_level).rgb;
+            light_refraction = tex_frame.SampleLevel(samplers[sampler_trilinear_clamp], surface.uv + refraction_uv_offset * is_behind, mip_level).rgb;
         }
         
         // Compose everything.

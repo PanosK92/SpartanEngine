@@ -140,7 +140,6 @@ namespace Spartan
 
     private:
         void OnDraw();
-        void UnbindOutputTextures();
 
         // Descriptors
         void GetDescriptorSetLayoutFromPipelineState(RHI_PipelineState& pipeline_state);

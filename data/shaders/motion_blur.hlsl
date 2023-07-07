@@ -40,7 +40,7 @@ float2 get_velocity_max_3x3(float2 uv)
         for (int x = -1; x <= 1; ++x)
         {
             float2 offset   = float2(x, y) * get_rt_texel_size();
-            float2 velocity = tex_velocity.SampleLevel(sampler_point_clamp, uv + offset, 0).xy;
+            float2 velocity = tex_velocity.SampleLevel(samplers[sampler_point_clamp], uv + offset, 0).xy;
             float length2   = dot(velocity, velocity);
 
             if (length2 > max_length2)
@@ -82,7 +82,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     for (uint i = 1; i < g_motion_blur_samples; ++i)
     {
         float2 offset = velocity * (float(i) / float(g_motion_blur_samples - 1) - 0.5f);
-        color.rgb += tex.SampleLevel(sampler_bilinear_clamp, uv + offset, 0).rgb;
+        color.rgb += tex.SampleLevel(samplers[sampler_bilinear_clamp], uv + offset, 0).rgb;
     }
 
     tex_uav[thread_id.xy] = float4(color.rgb / float(g_motion_blur_samples), 1.0f);

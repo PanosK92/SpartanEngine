@@ -41,7 +41,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 
     const float2 uv = (thread_id.xy + 0.5f) / buffer_pass.resolution_rt;
 
-    FxaaTex fxaa_tex = { sampler_bilinear_clamp, tex };
+    FxaaTex fxaa_tex = { samplers[sampler_bilinear_clamp], tex };
     float2 fxaaQualityRcpFrame = get_rt_texel_size();
 
     float3 color = FxaaPixelShader
