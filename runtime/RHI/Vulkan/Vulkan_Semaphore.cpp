@@ -75,10 +75,6 @@ namespace Spartan
 
     void RHI_Semaphore::Reset()
     {
-        RHI_Device::AddToDeletionQueue(RHI_Resource_Type::semaphore, m_resource);
-        m_resource = nullptr;
-
-        create_semaphore(RHI_Context::device, m_is_timeline, m_resource);
         m_cpu_state = RHI_Sync_State::Idle;
     }
 
