@@ -40,20 +40,11 @@ API_INCLUDES = {
 
 API_EXCLUDES = 
 {
-    d3d11  = { RUNTIME_DIR .. "/RHI/D3D12/**", RUNTIME_DIR .. "/RHI/Vulkan/**" },
     d3d12  = { RUNTIME_DIR .. "/RHI/D3D11/**", RUNTIME_DIR .. "/RHI/Vulkan/**" },
     vulkan = { RUNTIME_DIR .. "/RHI/D3D11/**", RUNTIME_DIR .. "/RHI/D3D12/**" },
 }
 
 API_LIBRARIES = {
-	d3d11 = {
-        release = {
-            -- No specific D3D12 release libraries
-        },
-        debug = {
-            -- No specific D3D12 debug libraries
-        }
-    },
 	d3d12 = {
         release = {
             -- No specific D3D12 release libraries
@@ -87,10 +78,7 @@ API_LIBRARIES = {
 }
 
 function configure_graphics_api()
-    if ARG_API_GRAPHICS == "d3d11" then
-        API_CPP_DEFINE  = "API_GRAPHICS_D3D11"
-        EXECUTABLE_NAME = EXECUTABLE_NAME .. "_d3d11"
-    elseif ARG_API_GRAPHICS == "d3d12" then
+    if ARG_API_GRAPHICS == "d3d12" then
         API_CPP_DEFINE  = "API_GRAPHICS_D3D12"
         EXECUTABLE_NAME = EXECUTABLE_NAME .. "_d3d12"
     elseif ARG_API_GRAPHICS == "vulkan" then
