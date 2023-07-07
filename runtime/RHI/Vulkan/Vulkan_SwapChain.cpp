@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Implementation.h"
 #include "../RHI_Semaphore.h"
 #include "../RHI_CommandPool.h"
-#include <SDL/SDL_vulkan.h>
+#include <SDL_vulkan.h>
 #include "Window.h"
 //================================
 
