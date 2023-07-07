@@ -31,5 +31,5 @@ static const int sampler_trilinear_clamp  = 4;
 static const int sampler_anisotropic_wrap = 5;
 
 // samplers
-SamplerComparisonState samplers_comparison[1] : register(s0);
-SamplerState samplers[6]                      : register(s1);
+SamplerComparisonState samplers_comparison[1] : register(s0, space1);
+SamplerState samplers[6]                      : register(s1, space2);
