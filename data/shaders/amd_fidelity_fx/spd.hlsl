@@ -36,7 +36,7 @@ groupshared AU1 spd_counter;
 AF4 SpdLoadSourceImage(ASU2 p, AU1 slice)
 {
     float2 uv = (p + 0.5f) / buffer_pass.resolution_rt;
-    return tex.SampleLevel(sampler_bilinear_clamp, uv, 0);
+    return tex.SampleLevel(samplers[sampler_bilinear_clamp], uv, 0);
 }
 
 // Load from mip 5

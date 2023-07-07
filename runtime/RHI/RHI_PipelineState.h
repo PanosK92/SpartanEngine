@@ -29,7 +29,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-    class SP_CLASS RHI_PipelineState : public Object, public std::enable_shared_from_this<RHI_PipelineState>
+    class SP_CLASS RHI_PipelineState : public Object
     {
     public:
         RHI_PipelineState();
@@ -37,15 +37,15 @@ namespace Spartan
 
         bool NeedsToUpdateHash();
         uint64_t ComputeHash();
-        uint64_t GetHash()       const { return m_hash; }
-        uint32_t GetWidth()      const;
-        uint32_t GetHeight()     const;
-        bool IsValid()           const;
-        bool HasClearValues()    const;
-        bool IsGraphics()        const { return (shader_vertex != nullptr || shader_pixel != nullptr) && !shader_compute; }
-        bool IsCompute()         const { return shader_compute != nullptr && !IsGraphics(); }
-
-        //= STATIC - Will cause PSO generation ===============================================
+        uint64_t GetHash()    const { return m_hash; }
+        uint32_t GetWidth()   const;
+        uint32_t GetHeight()  const;
+        bool IsValid()        const;
+        bool HasClearValues() const;
+        bool IsGraphics()     const { return (shader_vertex != nullptr || shader_pixel != nullptr) && !shader_compute; }
+        bool IsCompute()      const { return shader_compute != nullptr && !IsGraphics(); }
+        
+        //= STATIC - Can cause PSO generation ================================================
         RHI_Shader* shader_vertex                     = nullptr;
         RHI_Shader* shader_pixel                      = nullptr;
         RHI_Shader* shader_compute                    = nullptr;
@@ -73,7 +73,7 @@ namespace Spartan
         //=========================================================
 
     private:
-        uint64_t m_hash                                   = 0;
-        std::shared_ptr<RHI_PipelineState> m_pso_previous = nullptr;
+        uint64_t m_hash                   = 0;
+        RHI_PipelineState* m_pso_previous = nullptr;
     };
 }

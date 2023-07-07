@@ -45,10 +45,10 @@ float3 tent_antiflicker_filter(float2 uv, float2 texel_size)
 {
     // Tent
     float4 d  = texel_size.xyxy * float4(-1.0f, -1.0f, 1.0f, 1.0f) * 2.0f;
-    float3 s1 = tex.SampleLevel(sampler_bilinear_clamp, uv + d.xy, 0.0f).rgb;
-    float3 s2 = tex.SampleLevel(sampler_bilinear_clamp, uv + d.zy, 0.0f).rgb;
-    float3 s3 = tex.SampleLevel(sampler_bilinear_clamp, uv + d.xw, 0.0f).rgb;
-    float3 s4 = tex.SampleLevel(sampler_bilinear_clamp, uv + d.zw, 0.0f).rgb;
+    float3 s1 = tex.SampleLevel(samplers[sampler_bilinear_clamp], uv + d.xy, 0.0f).rgb;
+    float3 s2 = tex.SampleLevel(samplers[sampler_bilinear_clamp], uv + d.zy, 0.0f).rgb;
+    float3 s3 = tex.SampleLevel(samplers[sampler_bilinear_clamp], uv + d.xw, 0.0f).rgb;
+    float3 s4 = tex.SampleLevel(samplers[sampler_bilinear_clamp], uv + d.zw, 0.0f).rgb;
     
     // Luma weighted average
     float s1w = 1.0f / (luminance(s1) + 1.0f);

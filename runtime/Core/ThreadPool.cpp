@@ -30,23 +30,25 @@ using namespace std;
 
 namespace Spartan
 {
-    // Stats
-    static uint32_t thread_count                 = 0;
-    static uint32_t thread_count_support         = 0;
-    static atomic<uint32_t> working_thread_count = 0;
+    namespace
+    {
+        // Stats
+        static uint32_t thread_count                 = 0;
+        static atomic<uint32_t> working_thread_count = 0;
 
-    // Sync objects
-    static mutex mutex_tasks;
-    static condition_variable condition_var;
+        // Sync objects
+        static mutex mutex_tasks;
+        static condition_variable condition_var;
 
-    // Threads
-    static vector<thread> threads;
+        // Threads
+        static vector<thread> threads;
 
-    // Tasks
-    static deque<Task> tasks;
+        // Tasks
+        static deque<Task> tasks;
 
-    // Misc
-    static bool is_stopping;
+        // Misc
+        static bool is_stopping;
+    }
 
     static void thread_loop()
     {
@@ -80,9 +82,9 @@ namespace Spartan
 
     void ThreadPool::Initialize()
     {
-        is_stopping          = false;
-        thread_count_support = thread::hardware_concurrency();
-        thread_count         = thread_count_support - 1; // exclude the calling thread
+        is_stopping                      = false;
+        uint32_t concurrent_thread_count = thread::hardware_concurrency();
+        thread_count                     = concurrent_thread_count - 1; // exclude the calling thread
 
         for (uint32_t i = 0; i < thread_count; i++)
         {
@@ -143,9 +145,11 @@ namespace Spartan
         uint32_t work_remainder    = work_total % available_threads;
         uint32_t work_index        = 0;
         atomic<uint32_t> work_done = 0;
+        condition_variable cv;
+        mutex cv_m;
 
         // Split work into multiple tasks
-        while(work_index < work_total)
+        while (work_index < work_total)
         {
             uint32_t work_to_do = work_per_thread;
 
@@ -156,25 +160,22 @@ namespace Spartan
                 work_remainder = 0;
             }
 
-            AddTask([&function, &work_done, work_index, work_to_do]()
+            AddTask([&function, &work_done, &cv, work_index, work_to_do]()
             {
                 function(work_index, work_index + work_to_do);
                 work_done += work_to_do;
+
+                cv.notify_one(); // notify that a thread has finished its work
             });
 
             work_index += work_to_do;
         }
 
-        SP_ASSERT_MSG(work_index == work_total, "Some work wasn't assigned to any thread");
-
         // Wait for threads to finish work
-        while (work_done != work_total)
-        {
-            this_thread::sleep_for(chrono::microseconds(16));
-        }
-
-        SP_ASSERT_MSG(work_done == work_total, "One or more threads, didn't finish their work");
+        unique_lock<mutex> lk(cv_m);
+        cv.wait(lk, [&]() { return work_done == work_total; });
     }
+
 
     void ThreadPool::Flush(bool remove_queued /*= false*/)
     {
@@ -191,9 +192,8 @@ namespace Spartan
         }
     }
 
-    uint32_t ThreadPool::GetThreadCount()          { return thread_count; }
-    uint32_t ThreadPool::GetSupportedThreadCount() { return thread_count_support; }
-    uint32_t ThreadPool::GetWorkingThreadCount()   { return working_thread_count; }
-    uint32_t ThreadPool::GetIdleThreadCount()      { return thread_count - working_thread_count; }
-    bool ThreadPool::AreTasksRunning()             { return GetIdleThreadCount() != GetThreadCount(); }
+    uint32_t ThreadPool::GetThreadCount()        { return thread_count; }
+    uint32_t ThreadPool::GetWorkingThreadCount() { return working_thread_count; }
+    uint32_t ThreadPool::GetIdleThreadCount()    { return thread_count - working_thread_count; }
+    bool ThreadPool::AreTasksRunning()           { return GetIdleThreadCount() != GetThreadCount(); }
 }

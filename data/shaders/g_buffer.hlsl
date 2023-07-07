@@ -79,7 +79,7 @@ PixelOutputType mainPS(PixelInputType input)
         float3x3 world_to_tangent      = make_world_to_tangent_matrix(input.normal_world, input.tangent_world);
         float3 camera_to_pixel_world   = normalize(buffer_frame.camera_position - input.position_world.xyz);
         float3 camera_to_pixel_tangent = normalize(mul(camera_to_pixel_world, world_to_tangent));
-        float height                   = tex_material_height.Sample(sampler_anisotropic_wrap, uv).r - 0.5f;
+        float height = tex_material_height.Sample(samplers[sampler_anisotropic_wrap], uv).r - 0.5f;
         uv                             += (camera_to_pixel_tangent.xy / camera_to_pixel_tangent.z) * height * scale;
     }
 
@@ -87,14 +87,14 @@ PixelOutputType mainPS(PixelInputType input)
     float alpha_mask = 1.0f;
     if (has_texture_alpha_mask())
     {
-        alpha_mask = tex_material_mask.Sample(sampler_anisotropic_wrap, uv).r;
+        alpha_mask = tex_material_mask.Sample(samplers[sampler_anisotropic_wrap], uv).r;
     }
 
     // Albedo
     float4 albedo = buffer_material.color;
     if (has_texture_albedo())
     {
-        float4 albedo_sample = tex_material_albedo.Sample(sampler_anisotropic_wrap, uv);
+        float4 albedo_sample = tex_material_albedo.Sample(samplers[sampler_anisotropic_wrap], uv);
 
         // Read albedo's alpha channel as an alpha mask as well.
         alpha_mask      = min(alpha_mask, albedo_sample.a);
@@ -116,24 +116,24 @@ PixelOutputType mainPS(PixelInputType input)
         {
             if (has_texture_roughness())
             {
-                roughness *= tex_material_roughness.Sample(sampler_anisotropic_wrap, uv).r;
+                roughness *= tex_material_roughness.Sample(samplers[sampler_anisotropic_wrap], uv).r;
             }
 
             if (has_texture_metalness())
             {
-                metalness *= tex_material_metallness.Sample(sampler_anisotropic_wrap, uv).r;
+                metalness *= tex_material_metallness.Sample(samplers[sampler_anisotropic_wrap], uv).r;
             }
         }
         else
         {
             if (has_texture_roughness())
             {
-                roughness *= tex_material_roughness.Sample(sampler_anisotropic_wrap, uv).g;
+                roughness *= tex_material_roughness.Sample(samplers[sampler_anisotropic_wrap], uv).g;
             }
 
             if (has_texture_metalness())
             {
-                metalness *= tex_material_metallness.Sample(sampler_anisotropic_wrap, uv).b;
+                metalness *= tex_material_metallness.Sample(samplers[sampler_anisotropic_wrap], uv).b;
             }
         }
     }
@@ -143,7 +143,7 @@ PixelOutputType mainPS(PixelInputType input)
     if (has_texture_normal())
     {
         // Get tangent space normal and apply the user defined intensity. Then transform it to world space.
-        float3 tangent_normal     = normalize(unpack(tex_material_normal.Sample(sampler_anisotropic_wrap, uv).rgb));
+        float3 tangent_normal = normalize(unpack(tex_material_normal.Sample(samplers[sampler_anisotropic_wrap], uv).rgb));
         float normal_intensity    = clamp(buffer_material.normal, 0.012f, buffer_material.normal);
         tangent_normal.xy         *= saturate(normal_intensity);
         float3x3 tangent_to_world = make_tangent_to_world_matrix(input.normal_world, input.tangent_world);
@@ -154,14 +154,14 @@ PixelOutputType mainPS(PixelInputType input)
     float occlusion = 1.0f;
     if (has_texture_occlusion())
     {
-        occlusion = tex_material_occlusion.Sample(sampler_anisotropic_wrap, uv).r;
+        occlusion = tex_material_occlusion.Sample(samplers[sampler_anisotropic_wrap], uv).r;
     }
 
     // Emission
     float emission = 0.0f;
     if (has_texture_emissive())
     {
-        float3 emissive_color = tex_material_emission.Sample(sampler_anisotropic_wrap, uv).rgb;
+        float3 emissive_color = tex_material_emission.Sample(samplers[sampler_anisotropic_wrap], uv).rgb;
         emission              = luminance(emissive_color);
         albedo.rgb            += emissive_color;
     }

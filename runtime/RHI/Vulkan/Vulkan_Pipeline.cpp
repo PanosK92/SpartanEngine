@@ -42,7 +42,13 @@ namespace Spartan
 
         // Pipeline layout
         {
-            array<void*, 1> layouts = { descriptor_set_layout->GetResource() };
+            // order is important here, as it will be used to index the descriptor sets
+            array<void*, 3> layouts =
+            {
+                descriptor_set_layout->GetResource(),
+                RHI_Device::GetDescriptorSetLayout(RHI_Device_Resource::sampler_comparison),
+                RHI_Device::GetDescriptorSetLayout(RHI_Device_Resource::sampler_regular)
+            };
 
             // Validate descriptor set layouts
             for (void* layout : layouts)

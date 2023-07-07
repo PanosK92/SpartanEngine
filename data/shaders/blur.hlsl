@@ -52,7 +52,7 @@ float3 gaussian_blur(const uint2 pos)
         sample_uv = lerp(sample_uv, (trunc(sample_uv * buffer_pass.resolution_in) + 0.5f) / buffer_pass.resolution_rt, is_vertical_pass);
         
         float weight = compute_gaussian_weight(i);
-        color        += tex.SampleLevel(sampler_bilinear_clamp, sample_uv, 0).rgb * weight;
+        color        += tex.SampleLevel(samplers[sampler_bilinear_clamp], sample_uv, 0).rgb * weight;
         weight_sum   += weight;
     }
 
@@ -88,7 +88,7 @@ float3 depth_aware_gaussian_blur(const uint2 pos)
         sample_uv = lerp(sample_uv, (trunc(sample_uv * buffer_pass.resolution_in) + 0.5f) / buffer_pass.resolution_rt, is_vertical_pass);
 
         float weight = compute_gaussian_weight(i) * awareness;
-        color        += tex.SampleLevel(sampler_bilinear_clamp, sample_uv, 0).rgb * weight;
+        color        += tex.SampleLevel(samplers[sampler_bilinear_clamp], sample_uv, 0).rgb * weight;
         weight_sum   += weight; 
     }
 

@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016-2021 Panos Karabelas
+Copyright(c) 2016-2023 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -34,7 +34,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 
 #if BILINEAR
     const float2 uv = (thread_id.xy + 0.5f) / buffer_pass.resolution_rt;
-    tex_uav[thread_id.xy] = tex.SampleLevel(sampler_bilinear_clamp, uv, 0);
+    tex_uav[thread_id.xy] = tex.SampleLevel(samplers[sampler_bilinear_clamp], uv, 0);
 #else
     tex_uav[thread_id.xy] = tex[thread_id.xy];
 #endif
@@ -45,9 +45,9 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 float4 mainPS(Pixel_PosUv input) : SV_TARGET
 {
 #if BILINEAR
-    return tex.Sample(sampler_bilinear_clamp, input.uv);
+    return tex.Sample(samplers[sampler_bilinear_clamp], input.uv);
 #else
-    return tex.Sample(sampler_point_clamp, input.uv);
+    return tex.Sample(samplers[sampler_point_clamp], input.uv);
 #endif
 }
 

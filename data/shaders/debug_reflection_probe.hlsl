@@ -38,5 +38,5 @@ Pixel_PosNor mainVS(Vertex_PosUvNorTan input)
 
 float4 mainPS(Pixel_PosNor input) : SV_TARGET
 {
-    return float4(tex_reflection_probe.SampleLevel(sampler_bilinear_clamp, reflect(buffer_frame.camera_direction, input.normal), 0.0f).rgb, 1.0f);
+    return float4(tex_reflection_probe.SampleLevel(samplers[sampler_bilinear_clamp], reflect(buffer_frame.camera_direction, input.normal), 0.0f).rgb, 1.0f);
 }

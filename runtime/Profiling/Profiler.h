@@ -34,7 +34,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-    class Context;
+    enum class ProfilerGranularity
+    {
+        Light,
+        Full
+    };
 
     class SP_CLASS Profiler
     {
@@ -104,6 +108,9 @@ namespace Spartan
         // Memory
         static uint32_t m_descriptor_set_count;
         static uint32_t m_descriptor_set_capacity;
+
+        // Misc
+        static ProfilerGranularity m_granularity;
 
     private:
         static void SwapBuffers();

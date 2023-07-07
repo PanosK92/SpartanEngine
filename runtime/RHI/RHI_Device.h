@@ -29,6 +29,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
+    enum class RHI_Device_Resource
+    {
+        sampler_comparison,
+        sampler_regular
+    };
+
     class SP_CLASS RHI_Device
     {
     public:
@@ -69,6 +75,12 @@ namespace Spartan
         static std::unordered_map<uint64_t, RHI_DescriptorSet>& GetDescriptorSets();
         static bool HasDescriptorSetCapacity();
         static void SetDescriptorSetCapacity(uint32_t descriptor_set_capacity);
+        static void SetBindlessSamplers(const std::array<std::shared_ptr<RHI_Sampler>, 7>& samplers);
+        static void* GetDescriptorSet(const RHI_Device_Resource resource_type);
+        static void* GetDescriptorSetLayout(const RHI_Device_Resource resource_type);
+
+        // Pipelines
+        static std::unordered_map<uint64_t, std::shared_ptr<RHI_Pipeline>>& GetPipelines();
 
         // Command pools
         static RHI_CommandPool* AllocateCommandPool(const char* name, const uint64_t swap_chain_id);

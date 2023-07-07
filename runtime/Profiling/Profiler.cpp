@@ -76,6 +76,8 @@ namespace Spartan
     uint32_t Profiler::m_descriptor_set_count    = 0;
     uint32_t Profiler::m_descriptor_set_capacity = 0;
 
+    ProfilerGranularity Profiler::m_granularity = ProfilerGranularity::Light;
+
     namespace
     {
         // Profiling options
@@ -130,13 +132,11 @@ namespace Spartan
     void Profiler::Initialize()
     {
         static const int initial_capacity = 256;
-
         m_time_blocks_read.reserve(initial_capacity);
         m_time_blocks_read.resize(initial_capacity);
         m_time_blocks_write.reserve(initial_capacity);
         m_time_blocks_write.resize(initial_capacity);
 
-        // Subscribe to events
         SP_SUBSCRIBE_TO_EVENT(EventType::RendererPostPresent, SP_EVENT_HANDLER_STATIC(on_post_present));
     }
 
@@ -510,16 +510,14 @@ namespace Spartan
             << "GPU:"   << "\t" << format_float(m_time_gpu_avg)   << "\t" << format_float(m_time_gpu_min)   << "\t" << format_float(m_time_gpu_max)   << "\t" << format_float(m_time_gpu_last)   << " ms" << endl;
 
         // GPU
-        oss_metrics
-            << endl << "GPU" << endl
+        oss_metrics << endl << "GPU" << endl
             << "Name:\t\t\t"   << gpu_name << endl
             << "Memory:\t"     << gpu_memory_used << "/" << gpu_memory_available << " MB" << endl
             << "API:\t\t\t\t"  << RHI_Context::api_type_str << "\t" << gpu_api << endl
             << "Driver:\t\t"   << RHI_Device::GetPrimaryPhysicalDevice()->GetVendorName() << "\t\t" << gpu_driver << endl;
 
         // Display
-        oss_metrics
-            << "\nDisplay\n"
+        oss_metrics << "\nDisplay\n"
             << "Output:\t\t" << static_cast<int>(Renderer::GetResolutionOutput().x) << "x" << static_cast<int>(Renderer::GetResolutionOutput().y) << endl
             << "Render:\t\t" << static_cast<int>(Renderer::GetResolutionRender().x) << "x" << static_cast<int>(Renderer::GetResolutionRender().y) << endl
             << "Viewport:\t" << static_cast<int>(Renderer::GetViewport().width)     << "x" << static_cast<int>(Renderer::GetViewport().height)    << endl
@@ -530,9 +528,12 @@ namespace Spartan
             << "Worker threads: " << ThreadPool::GetWorkingThreadCount() << "/" << ThreadPool::GetThreadCount() << endl;
 
         // API Calls
+        oss_metrics << "\nAPI calls" << endl;
+        if (Profiler::m_granularity == ProfilerGranularity::Full)
+        {
+            oss_metrics  << "Draw:\t\t\t\t\t\t\t\t\t" << m_rhi_draw << endl;
+        }
         oss_metrics
-            << "\nAPI calls\n"
-            << "Draw:\t\t\t\t\t\t\t\t\t"    << m_rhi_draw                    << endl
             << "Dispatch:\t\t\t\t\t\t\t"    << m_rhi_dispatch                << endl
             << "Index buffer bindings:\t\t" << m_rhi_bindings_buffer_index   << endl
             << "Vertex buffer bindings:\t"  << m_rhi_bindings_buffer_vertex  << endl
@@ -541,8 +542,7 @@ namespace Spartan
             << "Pipeline barriers:\t\t\t\t" << m_rhi_pipeline_barriers       << endl;
 
         // Resources
-        oss_metrics
-            << "\nResources\n"
+        oss_metrics << "\nResources\n"
             << "Meshes rendered:\t\t\t"     << m_renderer_meshes_rendered << endl
             << "Textures:\t\t\t\t\t\t\t"    << texture_count              << endl
             << "Materials:\t\t\t\t\t\t\t"   << material_count             << endl

@@ -41,14 +41,14 @@ using namespace Spartan::Math;
 //============================
 
 // Macros to work around the verboseness of some C++ concepts.
-#define thread_group_count_x(tex) static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex->GetWidth())  / m_thread_group_count))
-#define thread_group_count_y(tex) static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex->GetHeight()) / m_thread_group_count))
+#define thread_group_count_x(tex) static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex->GetWidth())  / thread_group_count))
+#define thread_group_count_y(tex) static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex->GetHeight()) / thread_group_count))
 
 namespace Spartan
 {
     namespace
     {
-        static const float m_thread_group_count = 8.0f;
+        static const float thread_group_count = 8.0f;
     }
 
     void Renderer::SetGlobalShaderResources(RHI_CommandList* cmd_list)
@@ -58,15 +58,6 @@ namespace Spartan
         cmd_list->SetConstantBuffer(Renderer_BindingsCb::uber,     RHI_Shader_Vertex | RHI_Shader_Pixel | RHI_Shader_Compute, GetConstantBuffer(Renderer_ConstantBuffer::Pass));
         cmd_list->SetConstantBuffer(Renderer_BindingsCb::light,    RHI_Shader_Compute,                                        GetConstantBuffer(Renderer_ConstantBuffer::Light));
         cmd_list->SetConstantBuffer(Renderer_BindingsCb::material, RHI_Shader_Pixel | RHI_Shader_Compute,                     GetConstantBuffer(Renderer_ConstantBuffer::Material));
-
-        // Samplers
-        cmd_list->SetSampler(0, GetSampler(Renderer_Sampler::Compare_depth));
-        cmd_list->SetSampler(1, GetSampler(Renderer_Sampler::Point_clamp));
-        cmd_list->SetSampler(2, GetSampler(Renderer_Sampler::Point_wrap));
-        cmd_list->SetSampler(3, GetSampler(Renderer_Sampler::Bilinear_clamp));
-        cmd_list->SetSampler(4, GetSampler(Renderer_Sampler::Bilinear_wrap));
-        cmd_list->SetSampler(5, GetSampler(Renderer_Sampler::Trilinear_clamp));
-        cmd_list->SetSampler(6, GetSampler(Renderer_Sampler::Anisotropic_wrap));
 
         // Textures
         cmd_list->SetTexture(Renderer_BindingsSrv::noise_normal, GetStandardTexture(Renderer_StandardTexture::Noise_normal));
@@ -1021,8 +1012,8 @@ namespace Spartan
         SP_ASSERT(tex_blur->GetWidth() >= width && tex_blur->GetHeight() >= height);
 
         // Compute thread group count
-        const uint32_t thread_group_count_x_ = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(width) / m_thread_group_count));
-        const uint32_t thread_group_count_y_ = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(height) / m_thread_group_count));
+        const uint32_t thread_group_count_x_ = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(width) / thread_group_count));
+        const uint32_t thread_group_count_y_ = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(height) / thread_group_count));
 
         cmd_list->BeginMarker("blur_gaussian");
 
@@ -1284,8 +1275,8 @@ namespace Spartan
                 cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_bloom, mip_index_big, 1);
 
                 // Blend
-                uint32_t thread_group_count_x_ = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(mip_width_large) / m_thread_group_count));
-                uint32_t thread_group_count_y_ = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(mip_height_height) / m_thread_group_count));
+                uint32_t thread_group_count_x_ = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(mip_width_large) / thread_group_count));
+                uint32_t thread_group_count_y_ = static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(mip_height_height) / thread_group_count));
                 cmd_list->Dispatch(thread_group_count_x_, thread_group_count_y_);
             }
         }
