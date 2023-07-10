@@ -1466,7 +1466,7 @@ namespace Spartan
         }
     }
 
-    uint32_t RHI_Device::GetMemory()
+    uint32_t RHI_Device::GetMemoryMb()
     {
         if (const PhysicalDevice* physical_device = RHI_Device::GetPrimaryPhysicalDevice())
         {
@@ -1476,7 +1476,7 @@ namespace Spartan
         return 0;
     }
 
-    uint32_t RHI_Device::GetMemoryUsed()
+    uint32_t RHI_Device::GetMemoryUsedMb()
     {
         if (!functions::get_physical_device_memory_properties_2)
             return 0;
