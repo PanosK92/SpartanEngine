@@ -49,6 +49,7 @@ namespace Spartan
         static void SetSize(const uint32_t width, const uint32_t height);
         static uint32_t GetWidth();
         static uint32_t GetHeight();
+        static float GetDpiScale();
 
         // Misc
         static void* GetHandleSDL();

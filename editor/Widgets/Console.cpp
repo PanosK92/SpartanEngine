@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ==============================
 #include "Console.h"
+#include "Window.h"
 #include "../ImGui/ImGuiExtension.h"
 #include "../ImGui/Source/imgui_internal.h"
 //=========================================
@@ -63,7 +64,7 @@ void Console::TickVisible()
     {
         bool& visibility = m_log_type_visibility[index];
         ImGui::PushStyleColor(ImGuiCol_Button, visibility ? ImGui::GetStyle().Colors[ImGuiCol_Button] : ImGui::GetStyle().Colors[ImGuiCol_FrameBg]);
-        if (ImGuiSp::image_button(0, nullptr, icon, 15.0f, false))
+        if (ImGuiSp::image_button(0, nullptr, icon, 15.0f * Spartan::Window::GetDpiScale(), false))
         {
             visibility = !visibility;
         }

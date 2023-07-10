@@ -52,8 +52,8 @@ namespace
     static const float k_roundness = 2.0f;
 
     // Font
-    static const float k_font_size  = 24.0f;
-    static const float k_font_scale = 0.7f;
+    static const float k_font_size  = 16.0f;
+    static const float k_font_scale = 1.0f;
 
     // Color
     static const ImVec4 k_color_text                = ImVec4(192.0f / 255.0f, 192.0f / 255.0f, 192.0f / 255.0f, 1.0f);
@@ -69,15 +69,14 @@ namespace
     
     MenuBar* widget_menu_bar = nullptr;
     Widget* widget_world     = nullptr;
-}
 
-static void process_event(Spartan::sp_variant data)
-{
-    SDL_Event* event_sdl = static_cast<SDL_Event*>(get<void*>(data));
-    ImGui_ImplSDL2_ProcessEvent(event_sdl);
-}
-
-static void apply_colors()
+    static void process_event(Spartan::sp_variant data)
+    {
+        SDL_Event* event_sdl = static_cast<SDL_Event*>(get<void*>(data));
+        ImGui_ImplSDL2_ProcessEvent(event_sdl);
+    }
+    
+    static void apply_colors()
 {
     // Use default dark style as a base
     ImGui::StyleColorsDark();
@@ -135,23 +134,26 @@ static void apply_colors()
     colors[ImGuiCol_NavWindowingDimBg]     = k_color_dark;                  // Darken/colorize entire screen behind the CTRL+TAB window list, when active
     colors[ImGuiCol_ModalWindowDimBg]      = k_color_dark;                  // Darken/colorize entire screen behind a modal window, when one is active
 }
-
-static void apply_style()
-{
-    ImGuiStyle& style = ImGui::GetStyle();
-
-    style.WindowBorderSize         = 1.0f;
-    style.FrameBorderSize          = 1.0f;
-    style.ScrollbarSize            = 20.0f;
-    style.FramePadding             = ImVec2(5, 5);
-    style.ItemSpacing              = ImVec2(6, 5);
-    style.WindowMenuButtonPosition = ImGuiDir_Right;
-    style.WindowRounding           = k_roundness;
-    style.FrameRounding            = k_roundness;
-    style.PopupRounding            = k_roundness;
-    style.GrabRounding             = k_roundness;
-    style.ScrollbarRounding        = k_roundness;
-    style.Alpha                    = 1.0f;
+    
+    static void apply_style()
+    {
+        ImGuiStyle& style = ImGui::GetStyle();
+    
+        style.WindowBorderSize         = 1.0f;
+        style.FrameBorderSize          = 1.0f;
+        style.ScrollbarSize            = 20.0f;
+        style.FramePadding             = ImVec2(5, 5);
+        style.ItemSpacing              = ImVec2(6, 5);
+        style.WindowMenuButtonPosition = ImGuiDir_Right;
+        style.WindowRounding           = k_roundness;
+        style.FrameRounding            = k_roundness;
+        style.PopupRounding            = k_roundness;
+        style.GrabRounding             = k_roundness;
+        style.ScrollbarRounding        = k_roundness;
+        style.Alpha                    = 1.0f;
+    
+        style.ScaleAllSizes(Spartan::Window::GetDpiScale());
+    }
 }
 
 Editor::Editor()
@@ -167,7 +169,7 @@ Editor::Editor()
         ImGui::CreateContext();
 
         // Configuration
-        ImGuiIO& io = ImGui::GetIO();
+        ImGuiIO& io                      = ImGui::GetIO();
         io.ConfigFlags                  |= ImGuiConfigFlags_NavEnableKeyboard;
         io.ConfigFlags                  |= ImGuiConfigFlags_DockingEnable;
         io.ConfigFlags                  |= ImGuiConfigFlags_ViewportsEnable;
@@ -178,7 +180,7 @@ Editor::Editor()
 
         // Load font
         string dir_fonts = Spartan::ResourceCache::GetResourceDirectory(Spartan::ResourceDirectory::Fonts) + "/";
-        io.Fonts->AddFontFromFileTTF((dir_fonts + "Calibri.ttf").c_str(), k_font_size);
+        io.Fonts->AddFontFromFileTTF((dir_fonts + "Calibri.ttf").c_str(), k_font_size * Spartan::Window::GetDpiScale());
         io.FontGlobalScale = k_font_scale;
 
         // Initialise ImGui backends
@@ -267,7 +269,10 @@ void Editor::Tick()
         }
 
         // Present
-        Spartan::Renderer::Present();
+        if (!Spartan::Window::IsMinimised())
+        {
+            Spartan::Renderer::Present();
+        }
 
         // ImGui - Child windows
         if (render_editor && ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)

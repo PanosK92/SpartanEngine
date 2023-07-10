@@ -55,13 +55,6 @@ void Viewport::TickVisible()
         {
             Renderer::SetViewport(width, height);
 
-            if (m_first_tick)
-            {
-                Renderer::SetResolutionRender(static_cast<uint32_t>(width), static_cast<uint32_t>(height));
-
-                m_first_tick = false;
-            }
-
             m_width  = width;
             m_height = height;
         }

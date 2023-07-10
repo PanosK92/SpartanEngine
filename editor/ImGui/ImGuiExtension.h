@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <string>
 #include <variant>
 #include <chrono>
+#include "Window.h"
 #include "RHI/RHI_Texture.h"
 #include "RHI/RHI_Texture2D.h"
 #include "Rendering/Renderer.h"
@@ -271,8 +272,8 @@ namespace ImGuiSp
     // Image slot
     static void image_slot(const std::shared_ptr<Spartan::RHI_Texture>& texture_in, const std::function<void(const std::shared_ptr<Spartan::RHI_Texture>&)>& setter)
     {
-        const ImVec2 slot_size  = ImVec2(80, 80);
-        const float button_size = 15.0f;
+        const ImVec2 slot_size  = ImVec2(80 * Spartan::Window::GetDpiScale());
+        const float button_size = 15.0f * Spartan::Window::GetDpiScale();
 
         // Image
         ImGui::BeginGroup();
@@ -415,11 +416,11 @@ namespace ImGuiSp
 
     static void vector3(const char* label, Spartan::Math::Vector3& vector)
     {
-        const float label_indetation = 15.0f;
+        const float label_indetation = 15.0f * Spartan::Window::GetDpiScale();
 
         const auto show_float = [](Spartan::Math::Vector3 axis, float* value)
         {
-            const float label_float_spacing = 15.0f;
+            const float label_float_spacing = 15.0f * Spartan::Window::GetDpiScale();
             const float step                = 0.01f;
 
             // Label

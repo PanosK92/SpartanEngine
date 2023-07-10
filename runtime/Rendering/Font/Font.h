@@ -56,7 +56,7 @@ namespace Spartan
     class SP_CLASS Font : public IResource
     {
     public:
-        Font(const std::string& file_path, int font_size, const Math::Vector4& color);
+        Font(const std::string& file_path, const uint32_t font_size, const Math::Vector4& color);
         ~Font() = default;
 
         //= RESOURCE INTERFACE =================================

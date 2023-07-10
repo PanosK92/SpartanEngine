@@ -42,7 +42,7 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    Font::Font(const string& file_path, const int font_size, const Vector4& color) : IResource(ResourceType::Font)
+    Font::Font(const string& file_path, const uint32_t font_size, const Vector4& color) : IResource(ResourceType::Font)
     {
         m_vertex_buffer   = make_shared<RHI_VertexBuffer>(true, "font");
         m_index_buffer    = make_shared<RHI_IndexBuffer>(true, "font");

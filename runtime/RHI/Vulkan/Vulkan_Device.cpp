@@ -1400,15 +1400,18 @@ namespace Spartan
 
     void RHI_Device::SetResourceName(void* resource, const RHI_Resource_Type resource_type, const std::string name)
     {
-         SP_ASSERT(vulkan_utility::functions::set_object_name != nullptr);
+        if (RHI_Context::validation) // function pointers are not initialized if validation disabled 
+        { 
+            SP_ASSERT(vulkan_utility::functions::set_object_name != nullptr);
 
-        VkDebugUtilsObjectNameInfoEXT name_info = {};
-        name_info.sType                         = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
-        name_info.pNext                         = nullptr;
-        name_info.objectType                    = vulkan_object_type[static_cast<uint32_t>(resource_type)];
-        name_info.objectHandle                  = reinterpret_cast<uint64_t>(resource);
-        name_info.pObjectName                   = name.c_str();
+            VkDebugUtilsObjectNameInfoEXT name_info = {};
+            name_info.sType                         = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
+            name_info.pNext                         = nullptr;
+            name_info.objectType                    = vulkan_object_type[static_cast<uint32_t>(resource_type)];
+            name_info.objectHandle                  = reinterpret_cast<uint64_t>(resource);
+            name_info.pObjectName                   = name.c_str();
 
-        vulkan_utility::functions::set_object_name(RHI_Context::device, &name_info);
+            vulkan_utility::functions::set_object_name(RHI_Context::device, &name_info);
+        }
 	}
 }
