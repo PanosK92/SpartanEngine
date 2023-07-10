@@ -150,7 +150,7 @@ namespace Spartan
         }
     }
 
-    inline bool copy_to_staging_buffer(RHI_Texture* texture, vector<VkBufferImageCopy>& regions, void*& staging_buffer)
+    static bool copy_to_staging_buffer(RHI_Texture* texture, vector<VkBufferImageCopy>& regions, void*& staging_buffer)
     {
         if (!texture->HasData())
         {
@@ -217,7 +217,7 @@ namespace Spartan
         return true;
     }
 
-    inline bool stage(RHI_Texture* texture)
+    static bool stage(RHI_Texture* texture)
     {
         // Copy the texture's data to a staging buffer
         void* staging_buffer = nullptr;
@@ -257,7 +257,7 @@ namespace Spartan
         return true;
     }
 
-    inline RHI_Image_Layout GetAppropriateLayout(RHI_Texture* texture)
+    static RHI_Image_Layout GetAppropriateLayout(RHI_Texture* texture)
     {
         RHI_Image_Layout target_layout = RHI_Image_Layout::Preinitialized;
 

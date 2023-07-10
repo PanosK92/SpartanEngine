@@ -39,6 +39,7 @@ namespace Spartan
     {
     public:
         static void Initialize();
+        static void Tick(const uint32_t frame_count);
         static void Destroy();
 
         // Physical device
@@ -105,8 +106,8 @@ namespace Spartan
         static uint32_t GetEnabledGraphicsStages() { return m_enabled_graphics_shader_stages; }
 
         // Memory
-        static uint32_t GetMemoryMb();
-        static uint32_t GetMemoryUsedMb();
+        static uint32_t GetMemoryUsageMb();
+        static uint32_t GetMemoryBudgetMb();
 
         // Properties
         static uint32_t GetMaxTexture1dDimension()            { return m_max_texture_1d_dimension; }

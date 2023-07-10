@@ -320,12 +320,12 @@ namespace Spartan
 
     }
 
-    uint32_t RHI_Device::GetMemoryMb()
+    uint32_t RHI_Device::GetMemoryUsageMb()
     {
         return 0;
     }
 
-    uint32_t RHI_Device::GetMemoryUsedMb()
+    uint32_t RHI_Device::GetMemoryBudgetMb()
     {
         return 0;
     }
