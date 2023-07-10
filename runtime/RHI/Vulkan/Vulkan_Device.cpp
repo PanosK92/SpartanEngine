@@ -1483,8 +1483,6 @@ namespace Spartan
         }
     }
 
-    
-
     uint32_t RHI_Device::GetMemoryUsageMb()
     {
         VkDeviceSize bytes = 0;
