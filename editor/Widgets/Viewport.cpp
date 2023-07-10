@@ -59,7 +59,7 @@ void Viewport::TickVisible()
             if (RHI_Device::IsValidResolution(static_cast<uint32_t>(width), static_cast<uint32_t>(height)))
             {
                 Renderer::SetViewport(width, height);
-                Renderer::SetResolutionRender(width, height);
+                Renderer::SetResolutionRender(static_cast<uint32_t>(width), static_cast<uint32_t>(height));
 
                 width_previous  = width;
                 height_previous = height;

@@ -128,10 +128,6 @@ namespace Spartan
         void BeginTimeblock(const char* name, const bool gpu_marker = true, const bool gpu_timing = true);
         void EndTimeblock();
 
-        // GPU
-        static uint32_t GetGpuMemory();
-        static uint32_t GetGpuMemoryUsed();
-
         // State
         const RHI_CommandListState GetState() const { return m_state; }
         bool IsExecuting();

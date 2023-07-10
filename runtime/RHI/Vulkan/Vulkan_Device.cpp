@@ -26,6 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_CommandPool.h"
 #include "../RHI_DescriptorSet.h"
 #include "../RHI_Sampler.h"
+#include "../RHI_Fence.h"
 #include "../../Profiling/Profiler.h"
 SP_WARNINGS_OFF
 #define VMA_IMPLEMENTATION
@@ -285,11 +286,61 @@ namespace Spartan
         }
     }
 
+    namespace functions
+    {
+        static PFN_vkCreateDebugUtilsMessengerEXT          create_messenger;
+        static PFN_vkDestroyDebugUtilsMessengerEXT         destroy_messenger;
+        static PFN_vkSetDebugUtilsObjectTagEXT             set_object_tag;
+        static PFN_vkSetDebugUtilsObjectNameEXT            set_object_name;
+        static PFN_vkCmdBeginDebugUtilsLabelEXT            marker_begin;
+        static PFN_vkCmdEndDebugUtilsLabelEXT              marker_end;
+        static PFN_vkGetPhysicalDeviceMemoryProperties2KHR get_physical_device_memory_properties_2;
+
+        static void initialize(bool validation_enabled, bool gpu_markers_enabled)
+        {
+            #define get_func(var, def)\
+            var = reinterpret_cast<PFN_##def>(vkGetInstanceProcAddr(static_cast<VkInstance>(RHI_Context::instance), #def));\
+            if (!var) SP_LOG_ERROR("Failed to get function pointer for %s", #def);\
+        
+            get_func(get_physical_device_memory_properties_2, vkGetPhysicalDeviceMemoryProperties2);
+        
+            /* VK_EXT_debug_utils */
+            {
+                if (validation_enabled)
+                {
+                    get_func(create_messenger, vkCreateDebugUtilsMessengerEXT);
+                    get_func(destroy_messenger, vkDestroyDebugUtilsMessengerEXT);
+                }
+        
+                if (gpu_markers_enabled)
+                {
+                    get_func(marker_begin, vkCmdBeginDebugUtilsLabelEXT);
+                    get_func(marker_end, vkCmdEndDebugUtilsLabelEXT);
+                }
+            }
+        
+            /* VK_EXT_debug_marker */
+            if (validation_enabled)
+            {
+                get_func(set_object_tag, vkSetDebugUtilsObjectTagEXT);
+                get_func(set_object_name, vkSetDebugUtilsObjectNameEXT);
+            }
+        }
+    }
+
     namespace validation_layer_logging
     {
-        static VKAPI_ATTR VkBool32 VKAPI_CALL callback(VkDebugUtilsMessageSeverityFlagBitsEXT msg_severity, VkDebugUtilsMessageTypeFlagsEXT msg_type, const VkDebugUtilsMessengerCallbackDataEXT* p_callback_data, void* p_user_data)
+        static VkDebugUtilsMessengerEXT messenger;
+
+        static VKAPI_ATTR VkBool32 VKAPI_CALL callback
+        (
+            VkDebugUtilsMessageSeverityFlagBitsEXT msg_severity,
+            VkDebugUtilsMessageTypeFlagsEXT msg_type,
+            const VkDebugUtilsMessengerCallbackDataEXT* p_callback_data,
+            void* p_user_data
+        )
         {
-            std::string msg = "Vulkan: " + std::string(p_callback_data->pMessage);
+            string msg = "Vulkan: " + std::string(p_callback_data->pMessage);
 
             if (/*(msg_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT) ||*/ (msg_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT))
             {
@@ -309,7 +360,7 @@ namespace Spartan
 
         static void initialize(VkInstance instance)
         {
-            if (vulkan_utility::functions::create_messenger)
+            if (functions::create_messenger)
             {
                 VkDebugUtilsMessengerCreateInfoEXT create_info = {};
                 create_info.sType                              = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
@@ -317,16 +368,16 @@ namespace Spartan
                 create_info.messageType                        = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
                 create_info.pfnUserCallback                    = callback;
 
-                vulkan_utility::functions::create_messenger(instance, &create_info, nullptr, &vulkan_utility::functions::messenger);
+                functions::create_messenger(instance, &create_info, nullptr, &messenger);
             }
         }
 
         static void shutdown(VkInstance instance)
         {
-            if (!vulkan_utility::functions::destroy_messenger)
+            if (!functions::destroy_messenger)
                 return;
 
-            vulkan_utility::functions::destroy_messenger(instance, vulkan_utility::functions::messenger, nullptr);
+            functions::destroy_messenger(instance, messenger, nullptr);
         }
     }
 
@@ -436,7 +487,7 @@ namespace Spartan
         }
 
         // Get function pointers (from extensions)
-        vulkan_utility::functions::initialize(RHI_Context::validation, RHI_Context::gpu_markers);
+        functions::initialize(RHI_Context::validation, RHI_Context::gpu_markers);
 
         // Debug
         if (RHI_Context::validation)
@@ -1377,7 +1428,7 @@ namespace Spartan
     void RHI_Device::MarkerBegin(RHI_CommandList* cmd_list, const char* name, const Math::Vector4& color)
     {
         SP_ASSERT(RHI_Context::gpu_markers);
-        SP_ASSERT(vulkan_utility::functions::marker_begin != nullptr);
+        SP_ASSERT(functions::marker_begin != nullptr);
 
         VkDebugUtilsLabelEXT label = {};
         label.sType                = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
@@ -1388,21 +1439,21 @@ namespace Spartan
         label.color[2]             = color.z;
         label.color[3]             = color.w;
 
-        vulkan_utility::functions::marker_begin(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()), &label);
+        functions::marker_begin(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()), &label);
     }
 
     void RHI_Device::MarkerEnd(RHI_CommandList* cmd_list)
     {
         SP_ASSERT(RHI_Context::gpu_markers);
 
-        vulkan_utility::functions::marker_end(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()));
+        functions::marker_end(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()));
     }
 
     void RHI_Device::SetResourceName(void* resource, const RHI_Resource_Type resource_type, const std::string name)
     {
         if (RHI_Context::validation) // function pointers are not initialized if validation disabled 
         { 
-            SP_ASSERT(vulkan_utility::functions::set_object_name != nullptr);
+            SP_ASSERT(functions::set_object_name != nullptr);
 
             VkDebugUtilsObjectNameInfoEXT name_info = {};
             name_info.sType                         = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
@@ -1411,7 +1462,35 @@ namespace Spartan
             name_info.objectHandle                  = reinterpret_cast<uint64_t>(resource);
             name_info.pObjectName                   = name.c_str();
 
-            vulkan_utility::functions::set_object_name(RHI_Context::device, &name_info);
+            functions::set_object_name(RHI_Context::device, &name_info);
         }
-	}
+    }
+
+    uint32_t RHI_Device::GetMemory()
+    {
+        if (const PhysicalDevice* physical_device = RHI_Device::GetPrimaryPhysicalDevice())
+        {
+            return physical_device->GetMemory();
+        }
+
+        return 0;
+    }
+
+    uint32_t RHI_Device::GetMemoryUsed()
+    {
+        if (!functions::get_physical_device_memory_properties_2)
+            return 0;
+
+        VkPhysicalDeviceMemoryBudgetPropertiesEXT device_memory_budget_properties = {};
+        device_memory_budget_properties.sType                                     = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_BUDGET_PROPERTIES_EXT;
+        device_memory_budget_properties.pNext                                     = nullptr;
+
+        VkPhysicalDeviceMemoryProperties2 device_memory_properties = {};
+        device_memory_properties.sType                             = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2;
+        device_memory_properties.pNext                             = &device_memory_budget_properties;
+
+        functions::get_physical_device_memory_properties_2(static_cast<VkPhysicalDevice>(RHI_Context::device_physical), &device_memory_properties);
+
+        return static_cast<uint32_t>(device_memory_budget_properties.heapUsage[0] / 1024 / 1024); // MBs
+    }
 }
