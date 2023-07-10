@@ -104,6 +104,10 @@ namespace Spartan
         static bool IsValidResolution(const uint32_t width, const uint32_t height);
         static uint32_t GetEnabledGraphicsStages() { return m_enabled_graphics_shader_stages; }
 
+        // Memory
+        static uint32_t GetMemory();
+        static uint32_t GetMemoryUsed();
+
         // Properties
         static uint32_t GetMaxTexture1dDimension()            { return m_max_texture_1d_dimension; }
         static uint32_t GetMaxTexture2dDimension()            { return m_max_texture_2d_dimension; }

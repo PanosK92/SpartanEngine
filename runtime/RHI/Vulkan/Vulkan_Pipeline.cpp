@@ -24,9 +24,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Implementation.h"
 #include "../RHI_Pipeline.h"
 #include "../RHI_Shader.h"
+#include "../RHI_SwapChain.h"
 #include "../RHI_BlendState.h"
 #include "../RHI_InputLayout.h"
 #include "../RHI_RasterizerState.h"
+#include "../RHI_DepthStencilState.h"
 #include "../RHI_DescriptorSetLayout.h"
 //=====================================
 

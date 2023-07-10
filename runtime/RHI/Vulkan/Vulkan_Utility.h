@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016-2021 Panos Karabelas
+Copyright(c) 2016-2023 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -23,20 +23,34 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ========================
 #include "../RHI_Implementation.h"
-#include "../RHI_Device.h"
-#include "../RHI_Texture.h"
-#include "../RHI_SwapChain.h"
-#include "../RHI_DepthStencilState.h"
 #include "../RHI_Descriptor.h"
-#include "../../Logging/Log.h"
-#include "../../Math/Vector4.h"
-#include "../../Display/Display.h"
-#include "../RHI_Fence.h"
-#include "../Rendering/Renderer.h"
+#include "../RHI_Texture.h"
+#include "../RHI_Device.h"
 //===================================
 
 namespace Spartan::vulkan_utility
 {
+    static VkDescriptorType to_vulkan_desscriptor_type(const RHI_Descriptor& descriptor)
+    {
+        if (descriptor.type == RHI_Descriptor_Type::Sampler)
+            return VkDescriptorType::VK_DESCRIPTOR_TYPE_SAMPLER;
+
+        if (descriptor.type == RHI_Descriptor_Type::Texture)
+            return VkDescriptorType::VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+
+        if (descriptor.type == RHI_Descriptor_Type::TextureStorage)
+            return VkDescriptorType::VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+
+        if (descriptor.type == RHI_Descriptor_Type::StructuredBuffer)
+            return VkDescriptorType::VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
+
+        if (descriptor.type == RHI_Descriptor_Type::ConstantBuffer)
+            return VkDescriptorType::VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+
+        SP_ASSERT_MSG(false, "Unhandled descriptor type");
+        return VkDescriptorType::VK_DESCRIPTOR_TYPE_MAX_ENUM;
+    }
+
     namespace timeline_semaphore
     {
         inline void create(void*& semaphore, const uint64_t intial_value = 0)
@@ -410,73 +424,5 @@ namespace Spartan::vulkan_utility
                 create(image, image_view, type, vulkan_format[rhi_format_to_index(texture->GetFormat())], get_aspect_mask(texture, only_depth, only_stencil), array_index, array_length, mip_index, mip_count);
             }
         }
-    }
-
-    class functions
-    {
-    public:
-        functions() = default;
-        ~functions() = default;
-
-        static void initialize(bool validation_enabled, bool gpu_markers_enabled)
-        {
-            #define get_func(var, def)\
-            var = reinterpret_cast<PFN_##def>(vkGetInstanceProcAddr(static_cast<VkInstance>(RHI_Context::instance), #def));\
-            if (!var) SP_LOG_ERROR("Failed to get function pointer for %s", #def);\
-
-            get_func(get_physical_device_memory_properties_2, vkGetPhysicalDeviceMemoryProperties2);
-
-            /* VK_EXT_debug_utils */
-            {
-                if (validation_enabled)
-                {
-                    get_func(create_messenger,  vkCreateDebugUtilsMessengerEXT);
-                    get_func(destroy_messenger, vkDestroyDebugUtilsMessengerEXT);
-                }
-
-                if (gpu_markers_enabled)
-                {
-                    get_func(marker_begin, vkCmdBeginDebugUtilsLabelEXT);
-                    get_func(marker_end,   vkCmdEndDebugUtilsLabelEXT);
-                }
-            }
-
-            /* VK_EXT_debug_marker */
-            if (validation_enabled)
-            {
-                get_func(set_object_tag,  vkSetDebugUtilsObjectTagEXT);
-                get_func(set_object_name, vkSetDebugUtilsObjectNameEXT);
-            }
-        }
-
-        static PFN_vkCreateDebugUtilsMessengerEXT          create_messenger;
-        static VkDebugUtilsMessengerEXT                    messenger;
-        static PFN_vkDestroyDebugUtilsMessengerEXT         destroy_messenger;
-        static PFN_vkSetDebugUtilsObjectTagEXT             set_object_tag;
-        static PFN_vkSetDebugUtilsObjectNameEXT            set_object_name;
-        static PFN_vkCmdBeginDebugUtilsLabelEXT            marker_begin;
-        static PFN_vkCmdEndDebugUtilsLabelEXT              marker_end;
-        static PFN_vkGetPhysicalDeviceMemoryProperties2KHR get_physical_device_memory_properties_2;
-    };
-
-    static VkDescriptorType to_vulkan_desscriptor_type(const RHI_Descriptor& descriptor)
-    {
-        if (descriptor.type == RHI_Descriptor_Type::Sampler)
-            return VkDescriptorType::VK_DESCRIPTOR_TYPE_SAMPLER;
-
-        if (descriptor.type == RHI_Descriptor_Type::Texture)
-            return VkDescriptorType::VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-
-        if (descriptor.type == RHI_Descriptor_Type::TextureStorage)
-            return VkDescriptorType::VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-
-        if (descriptor.type == RHI_Descriptor_Type::StructuredBuffer)
-            return VkDescriptorType::VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
-
-        if (descriptor.type == RHI_Descriptor_Type::ConstantBuffer)
-            return VkDescriptorType::VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
-
-        SP_ASSERT_MSG(false, "Unhandled descriptor type");
-        return VkDescriptorType::VK_DESCRIPTOR_TYPE_MAX_ENUM;
     }
 }

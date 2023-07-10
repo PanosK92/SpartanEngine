@@ -33,6 +33,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_DescriptorSetLayout.h"
 #include "../RHI_Semaphore.h"
 #include "../RHI_Shader.h"
+#include "../RHI_Fence.h"
+#include "../RHI_SwapChain.h"
+#include "../Rendering/Renderer.h"
 #include "../../Profiling/Profiler.h"
 //=====================================
 
@@ -904,24 +907,6 @@ namespace Spartan
         }
 
         m_descriptor_layout_current->SetStructuredBuffer(slot, structured_buffer);
-    }
-
-    uint32_t RHI_CommandList::GetGpuMemoryUsed()
-    {
-        if (!vulkan_utility::functions::get_physical_device_memory_properties_2)
-            return 0;
-
-        VkPhysicalDeviceMemoryBudgetPropertiesEXT device_memory_budget_properties = {};
-        device_memory_budget_properties.sType                                     = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_BUDGET_PROPERTIES_EXT;
-        device_memory_budget_properties.pNext                                     = nullptr;
-
-        VkPhysicalDeviceMemoryProperties2 device_memory_properties = {};
-        device_memory_properties.sType                             = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2;
-        device_memory_properties.pNext                             = &device_memory_budget_properties;
-
-        vulkan_utility::functions::get_physical_device_memory_properties_2(static_cast<VkPhysicalDevice>(RHI_Context::device_physical), &device_memory_properties);
-
-        return static_cast<uint32_t>(device_memory_budget_properties.heapUsage[0] / 1024 / 1024); // MBs
     }
 
     void RHI_CommandList::BeginMarker(const char* name)

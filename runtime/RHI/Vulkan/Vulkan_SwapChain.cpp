@@ -21,11 +21,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =====================
 #include "pch.h"
+#include "Window.h"
+#include <SDL_video.h>
+#include <SDL_vulkan.h>
+#include "../RHI_SwapChain.h"
 #include "../RHI_Implementation.h"
 #include "../RHI_Semaphore.h"
 #include "../RHI_CommandPool.h"
-#include <SDL_vulkan.h>
-#include "Window.h"
+#include "../Display/Display.h"
 //================================
 
 //= NAMESPACES ===============
