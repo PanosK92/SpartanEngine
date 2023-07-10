@@ -581,12 +581,14 @@ namespace Spartan
             blit_region.srcSubresource.baseArrayLayer = 0;
             blit_region.srcSubresource.layerCount     = 1;
             blit_region.srcSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
-            blit_region.srcOffsets[0]                 = blit_size;
+            blit_region.srcOffsets[0]                 = { 0, 0, 0 };
+            blit_region.srcOffsets[1]                 = blit_size;
             blit_region.dstSubresource.mipLevel       = mip_index;
             blit_region.dstSubresource.baseArrayLayer = 0;
             blit_region.dstSubresource.layerCount     = 1;
             blit_region.dstSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
-            blit_region.dstOffsets[0]                 = blit_size;
+            blit_region.dstOffsets[0]                 = { 0, 0, 0 };
+            blit_region.dstOffsets[1]                 = blit_size;
         }
 
         // Save the initial layouts
@@ -602,7 +604,7 @@ namespace Spartan
             static_cast<VkCommandBuffer>(m_rhi_resource),
             static_cast<VkImage>(source->GetRhiResource()),      VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
             static_cast<VkImage>(destination->GetRhiResource()), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-            blit_region_count,&blit_regions[0],
+            blit_region_count, &blit_regions[0],
             vulkan_filter[static_cast<uint32_t>(filter)]
         );
 
@@ -639,12 +641,14 @@ namespace Spartan
         blit_region.srcSubresource.baseArrayLayer = 0;
         blit_region.srcSubresource.layerCount     = 1;
         blit_region.srcSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
-        blit_region.srcOffsets[0]                 = blit_size;
+        blit_region.srcOffsets[0]                 = { 0, 0, 0 };
+        blit_region.srcOffsets[1]                 = blit_size;
         blit_region.dstSubresource.mipLevel       = 0;
         blit_region.dstSubresource.baseArrayLayer = 0;
         blit_region.dstSubresource.layerCount     = 1;
         blit_region.dstSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
-        blit_region.dstOffsets[0]                 = blit_size;
+        blit_region.dstOffsets[0]                 = { 0, 0, 0 };
+        blit_region.dstOffsets[1]                 = blit_size;
 
         // Transition to blit appropriate layouts
         RHI_Image_Layout layout_initial_source = source->GetLayout(0);
