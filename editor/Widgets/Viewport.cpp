@@ -45,21 +45,22 @@ Viewport::Viewport(Editor* editor) : Widget(editor)
 void Viewport::TickVisible()
 {
     // Get size
-    float width  = ImGui::GetWindowContentRegionMax().x - ImGui::GetWindowContentRegionMin().x;
-    float height = ImGui::GetWindowContentRegionMax().y - ImGui::GetWindowContentRegionMin().y;
+    uint32_t width  = static_cast<uint32_t>(ImGui::GetWindowContentRegionMax().x - ImGui::GetWindowContentRegionMin().x);
+    uint32_t height = static_cast<uint32_t>(ImGui::GetWindowContentRegionMax().y - ImGui::GetWindowContentRegionMin().y);
 
     // Update engine's viewport.
-    static bool first_frame      = true;
-    static float width_previous  = 0;
-    static float height_previous = 0;
+    static bool first_frame         = true;
+    static uint32_t width_previous  = 0;
+    static uint32_t height_previous = 0;
     if (!first_frame) // during the first frame the viewport is not yet initialized (or it's size will be something weird)
     {
         if (width_previous != width || height_previous != height)
         {
-            if (RHI_Device::IsValidResolution(static_cast<uint32_t>(width), static_cast<uint32_t>(height)))
+            if (RHI_Device::IsValidResolution(width, height))
             {
-                Renderer::SetViewport(width, height);
-                Renderer::SetResolutionRender(static_cast<uint32_t>(width), static_cast<uint32_t>(height));
+                Renderer::SetViewport(static_cast<float>(width), static_cast<float>(height));
+                Renderer::SetResolutionRender(width, height);
+                Renderer::SetResolutionOutput(width, height);
 
                 width_previous  = width;
                 height_previous = height;
