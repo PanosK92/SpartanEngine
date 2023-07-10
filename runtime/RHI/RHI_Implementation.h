@@ -224,6 +224,26 @@ static const VkFormat vulkan_format[] =
     VK_FORMAT_UNDEFINED
 };
 
+static const VkObjectType vulkan_object_type[] =
+{
+    VK_OBJECT_TYPE_FENCE,
+    VK_OBJECT_TYPE_SEMAPHORE,
+    VK_OBJECT_TYPE_SHADER_MODULE,
+    VK_OBJECT_TYPE_SAMPLER,
+    VK_OBJECT_TYPE_QUERY_POOL,
+    VK_OBJECT_TYPE_DEVICE_MEMORY,
+    VK_OBJECT_TYPE_BUFFER,
+    VK_OBJECT_TYPE_COMMAND_BUFFER,
+    VK_OBJECT_TYPE_COMMAND_POOL,
+    VK_OBJECT_TYPE_IMAGE,
+    VK_OBJECT_TYPE_IMAGE_VIEW,
+    VK_OBJECT_TYPE_DESCRIPTOR_SET,
+    VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT,
+    VK_OBJECT_TYPE_PIPELINE,
+    VK_OBJECT_TYPE_PIPELINE_LAYOUT,
+    VK_OBJECT_TYPE_UNKNOWN
+};
+
 static const VkSamplerAddressMode vulkan_sampler_address_mode[] =
 {
     VK_SAMPLER_ADDRESS_MODE_REPEAT,
@@ -301,7 +321,6 @@ static const VkSamplerMipmapMode vulkan_mipmap_mode[] =
 
 static const VkImageLayout vulkan_image_layout[] =
 {
-    VK_IMAGE_LAYOUT_UNDEFINED,
     VK_IMAGE_LAYOUT_GENERAL,
     VK_IMAGE_LAYOUT_PREINITIALIZED,
     VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
@@ -311,7 +330,8 @@ static const VkImageLayout vulkan_image_layout[] =
     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
     VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
     VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-    VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
+    VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+    VK_IMAGE_LAYOUT_UNDEFINED
 };
 
 static const char* vkresult_to_string(const VkResult result)

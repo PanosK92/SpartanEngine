@@ -60,7 +60,7 @@ namespace Spartan
         if (name)
         {
             m_object_name = name;
-            vulkan_utility::debug::set_object_name(static_cast<VkSemaphore>(m_resource), name);
+            RHI_Device::SetResourceName(m_resource, RHI_Resource_Type::Semaphore, name);
         }
     }
 
@@ -69,7 +69,7 @@ namespace Spartan
         if (!m_resource)
             return;
 
-        RHI_Device::AddToDeletionQueue(RHI_Resource_Type::semaphore, m_resource);
+        RHI_Device::AddToDeletionQueue(RHI_Resource_Type::Semaphore, m_resource);
         m_resource = nullptr;
     }
 

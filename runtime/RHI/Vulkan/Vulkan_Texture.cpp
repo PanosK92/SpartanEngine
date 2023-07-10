@@ -134,18 +134,18 @@ namespace Spartan
             }
         }
 
-        vulkan_utility::debug::set_object_name(static_cast<VkImage>(texture->GetRhiResource()), name.c_str());
+        RHI_Device::SetResourceName(texture->GetRhiResource(), RHI_Resource_Type::Texture, name);
 
         if (texture->IsSrv())
         {
-            vulkan_utility::debug::set_object_name(static_cast<VkImageView>(texture->GetRhiSrv()), name.c_str());
+            RHI_Device::SetResourceName(texture->GetRhiSrv(), RHI_Resource_Type::TextureView, name);
         }
 
         if (texture->HasPerMipViews())
         {
             for (uint32_t i = 0; i < texture->GetMipCount(); i++)
             {
-                vulkan_utility::debug::set_object_name(static_cast<VkImageView>(texture->GetRhiSrvMip(i)), name.c_str());
+                RHI_Device::SetResourceName(texture->GetRhiSrvMip(i), RHI_Resource_Type::TextureView, name);
             }
         }
     }
@@ -363,15 +363,15 @@ namespace Spartan
         // De-allocate everything
         if (destroy_main)
         {
-            RHI_Device::AddToDeletionQueue(RHI_Resource_Type::texture_view, m_rhi_srv);
+            RHI_Device::AddToDeletionQueue(RHI_Resource_Type::TextureView, m_rhi_srv);
             m_rhi_srv = nullptr;
 
             for (uint32_t i = 0; i < rhi_max_render_target_count; i++)
             {
-                RHI_Device::AddToDeletionQueue(RHI_Resource_Type::texture_view, m_rhi_dsv[i]);
+                RHI_Device::AddToDeletionQueue(RHI_Resource_Type::TextureView, m_rhi_dsv[i]);
                 m_rhi_dsv[i] = nullptr;
 
-                RHI_Device::AddToDeletionQueue(RHI_Resource_Type::texture_view, m_rhi_rtv[i]);
+                RHI_Device::AddToDeletionQueue(RHI_Resource_Type::TextureView, m_rhi_rtv[i]);
                 m_rhi_rtv[i] = nullptr;
             }
         }
@@ -380,14 +380,14 @@ namespace Spartan
         {
             for (uint32_t i = 0; i < m_mip_count; i++)
             {
-                RHI_Device::AddToDeletionQueue(RHI_Resource_Type::texture_view, m_rhi_srv_mips[i]);
+                RHI_Device::AddToDeletionQueue(RHI_Resource_Type::TextureView, m_rhi_srv_mips[i]);
                 m_rhi_srv_mips[i] = nullptr;
             }
         }
 
         if (destroy_main)
         {
-            RHI_Device::AddToDeletionQueue(RHI_Resource_Type::texture, m_rhi_resource);
+            RHI_Device::AddToDeletionQueue(RHI_Resource_Type::Texture, m_rhi_resource);
             m_rhi_resource = nullptr;
         }
     }

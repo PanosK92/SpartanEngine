@@ -43,7 +43,7 @@ namespace Spartan
     {
         if (m_rhi_resource)
         {
-            RHI_Device::AddToDeletionQueue(RHI_Resource_Type::shader, m_rhi_resource);
+            RHI_Device::AddToDeletionQueue(RHI_Resource_Type::Shader, m_rhi_resource);
             m_rhi_resource = nullptr;
         }
     }
@@ -137,7 +137,7 @@ namespace Spartan
             SP_VK_ASSERT_MSG(vkCreateShaderModule(RHI_Context::device, &create_info, nullptr, &shader_module), "Failed to create shader module");
 
             // Name the shader module (useful for GPU-based validation)
-            vulkan_utility::debug::set_object_name(shader_module, m_object_name.c_str());
+            RHI_Device::SetResourceName(static_cast<void*>(shader_module), RHI_Resource_Type::Shader, m_object_name.c_str());
 
             // Reflect shader resources (so that descriptor sets can be created later)
             Reflect

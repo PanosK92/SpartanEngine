@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =====================
+//= INCLUDES ==============
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -29,12 +29,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Object.h"
 #include "RHI_Vertex.h"
 #include "RHI_Descriptor.h"
-//================================
+//=========================
 
 namespace Spartan
 {
-    // Forward declarations
-    class Context;
+    enum class RHI_ShaderCompilationState
+    {
+        Idle,
+        Compiling,
+        Succeeded,
+        Failed
+    };
 
     class SP_CLASS RHI_Shader : public Object
     {
@@ -44,8 +49,8 @@ namespace Spartan
 
         // Compilation
         void Compile(const RHI_Shader_Type type, const std::string& file_path, bool async, const RHI_Vertex_Type vertex_type = RHI_Vertex_Type::Undefined);
-        Shader_Compilation_State GetCompilationState() const { return m_compilation_state; }
-        bool IsCompiled()                              const { return m_compilation_state == Shader_Compilation_State::Succeeded; }
+        RHI_ShaderCompilationState GetCompilationState() const { return m_compilation_state; }
+        bool IsCompiled()                                  const { return m_compilation_state == RHI_ShaderCompilationState::Succeeded; }
 
         // Source
         void LoadSource(const std::string& file_path);
@@ -85,10 +90,10 @@ namespace Spartan
         std::unordered_map<std::string, std::string> m_defines;
         std::vector<RHI_Descriptor> m_descriptors;
         std::shared_ptr<RHI_InputLayout> m_input_layout;
-        std::atomic<Shader_Compilation_State> m_compilation_state = Shader_Compilation_State::Idle;
-        RHI_Shader_Type m_shader_type                             = RHI_Shader_Unknown;
-        RHI_Vertex_Type m_vertex_type                             = RHI_Vertex_Type::Undefined;
-        uint64_t m_hash                                           = 0;
+        std::atomic<RHI_ShaderCompilationState> m_compilation_state = RHI_ShaderCompilationState::Idle;
+        RHI_Shader_Type m_shader_type                                 = RHI_Shader_Unknown;
+        RHI_Vertex_Type m_vertex_type                                 = RHI_Vertex_Type::Undefined;
+        uint64_t m_hash                                               = 0;
 
         // RHI Resource
         void* m_rhi_resource = nullptr;

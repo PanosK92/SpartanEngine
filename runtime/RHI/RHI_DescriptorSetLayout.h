@@ -21,13 +21,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =====================
+//= INCLUDES ==============
 #include "../Core/Object.h"
-#include <unordered_map>
 #include <vector>
-#include <array>
 #include "RHI_Descriptor.h"
-//================================
+//=========================
 
 // A descriptor set layout is created by individual descriptors.
 // The descriptors come from shader reflection and contain no resource pointers.
@@ -35,7 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // 
 // The descriptors that are a member RHI_DescriptorSetLayout also hold resource pointers.
 // These descriptors are used to created a descriptor set.
-// The descriptor is what is actually bound before any draw/dispatch calls.
+// The descriptor set is what is actually bound before any draw/dispatch calls.
  
 namespace Spartan
 {
@@ -59,19 +57,14 @@ namespace Spartan
         void ClearDescriptorData();
         RHI_DescriptorSet* GetDescriptorSet();
         void NeedsToBind()        { m_needs_to_bind = true; }
-        void* GetResource() const { return m_resource; }
+        void* GetRhiResource() const { return m_rhi_resource; }
 
     private:
-        void CreateResource(const std::vector<RHI_Descriptor>& descriptors);
+        void CreateRhiResource(const std::vector<RHI_Descriptor>& descriptors);
 
-        // Descriptor set layout
-        void* m_resource = nullptr;
-        uint64_t m_hash  = 0;
-
-        // Descriptors
+        void* m_rhi_resource = nullptr;
+        uint64_t m_hash      = 0;
+        bool m_needs_to_bind = false;
         std::vector<RHI_Descriptor> m_descriptors;
-
-        // Misc
-        bool m_needs_to_bind     = false;
     };
 }

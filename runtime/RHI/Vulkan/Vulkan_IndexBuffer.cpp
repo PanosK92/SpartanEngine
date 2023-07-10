@@ -38,7 +38,7 @@ namespace Spartan
     {
         if (m_rhi_resource)
         {
-            RHI_Device::AddToDeletionQueue(RHI_Resource_Type::buffer, m_rhi_resource);
+            RHI_Device::AddToDeletionQueue(RHI_Resource_Type::Buffer, m_rhi_resource);
             m_rhi_resource = nullptr;
         }
     }
@@ -48,7 +48,7 @@ namespace Spartan
         // Destroy previous buffer
         if (m_rhi_resource)
         {
-            RHI_Device::AddToDeletionQueue(RHI_Resource_Type::buffer, m_rhi_resource);
+            RHI_Device::AddToDeletionQueue(RHI_Resource_Type::Buffer, m_rhi_resource);
             m_rhi_resource = nullptr;
         }
 
@@ -96,7 +96,7 @@ namespace Spartan
         }
 
         // Set debug name
-        vulkan_utility::debug::set_object_name(static_cast<VkBuffer>(m_rhi_resource), m_object_name.c_str());
+        RHI_Device::SetResourceName(m_rhi_resource, RHI_Resource_Type::Buffer, m_object_name);
     }
 
     void* RHI_IndexBuffer::Map()

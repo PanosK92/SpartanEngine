@@ -98,7 +98,7 @@ namespace Spartan
 
         // Name
         uint32_t cmd_pool_count = static_cast<uint32_t>(m_rhi_resources.size());
-        vulkan_utility::debug::set_object_name(static_cast<VkCommandPool>(m_rhi_resources.back()), (m_object_name + string("_") + to_string(cmd_pool_count)).c_str());
+        RHI_Device::SetResourceName(m_rhi_resources.back(), RHI_Resource_Type::CommandPool, (m_object_name + string("_") + to_string(cmd_pool_count)));
     }
 
     void RHI_CommandPool::Reset(const uint32_t pool_index)

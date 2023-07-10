@@ -34,11 +34,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace Spartan
 {
     // Forward declarations
-    class Context;
-    namespace Math
+    namespace Math { class Rectangle; }
+
+    enum class RHI_CommandListState : uint8_t
     {
-        class Rectangle;
-    }
+        Idle,
+        Recording,
+        Ended,
+        Submitted
+    };
 
     class SP_CLASS RHI_CommandList : public Object
     {
