@@ -563,18 +563,8 @@ namespace Spartan
         Profiler::m_rhi_dispatch++;
     }
 
-    void RHI_CommandList::Blit(RHI_Texture* source, RHI_Texture* destination, const bool blit_mips)
+    void RHI_CommandList::Blit(RHI_Texture* source, RHI_Texture* destination, const RHI_Filter filter, const bool blit_mips)
     {
-        // D3D11 baggage: https://docs.microsoft.com/en-us/windows/win32/api/d3d11/nf-d3d11-id3d11devicecontext-copyresource
-        SP_ASSERT(source != nullptr);
-        SP_ASSERT(destination != nullptr);
-        SP_ASSERT(source->GetRhiResource() != destination->GetRhiResource());
-        SP_ASSERT(source->GetFormat() == destination->GetFormat());
-        SP_ASSERT(source->GetWidth() == destination->GetWidth());
-        SP_ASSERT(source->GetHeight() == destination->GetHeight());
-        SP_ASSERT(source->GetArrayLength() == destination->GetArrayLength());
-        SP_ASSERT(source->GetMipCount() == destination->GetMipCount());
-
         // Validate transfer bits
         SP_ASSERT_MSG((source->GetFlags() & RHI_Texture_ClearOrBlit) != 0, "The texture needs the RHI_Texture_ClearOrBlit flag");
         SP_ASSERT_MSG((destination->GetFlags() & RHI_Texture_ClearOrBlit) != 0, "The texture needs the RHI_Texture_ClearOrBlit flag");
@@ -618,7 +608,7 @@ namespace Spartan
             static_cast<VkImage>(destination->GetRhiResource()), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
             blit_region_count,
             &blit_regions[0],
-            VK_FILTER_NEAREST
+            vulkan_filter[static_cast<uint32_t>(filter)]
         );
 
         // Transition to the initial layouts
