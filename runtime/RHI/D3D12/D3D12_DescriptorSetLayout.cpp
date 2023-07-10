@@ -37,7 +37,7 @@ namespace Spartan
 
     }
 
-    void RHI_DescriptorSetLayout::CreateResource(const vector<RHI_Descriptor>& descriptors)
+    void RHI_DescriptorSetLayout::CreateRhiResource(const vector<RHI_Descriptor>& descriptors)
     {
 
     }

@@ -207,7 +207,12 @@ namespace Spartan
         Profiler::m_rhi_dispatch++;
     }
 
-    void RHI_CommandList::Blit(RHI_Texture* source, RHI_Texture* destination, const bool blit_mips)
+    void RHI_CommandList::Blit(RHI_Texture* source, RHI_Texture* destination, const RHI_Filter filter,const bool blit_mips)
+    {
+        SP_ASSERT_MSG(false, "Function is not implemented");
+    }
+
+    void RHI_CommandList::Blit(RHI_Texture* source, RHI_SwapChain* destination, const RHI_Filter filter)
     {
         SP_ASSERT_MSG(false, "Function is not implemented");
     }
@@ -325,11 +330,6 @@ namespace Spartan
     float RHI_CommandList::GetTimestampDuration(void* query_start, void* query_end, const uint32_t pass_index)
     {
         return 0.0f;
-    }
-
-    uint32_t RHI_CommandList::GetGpuMemoryUsed()
-    {
-        return 0;
     }
 
     void RHI_CommandList::BeginTimeblock(const char* name, const bool gpu_marker, const bool gpu_timing)

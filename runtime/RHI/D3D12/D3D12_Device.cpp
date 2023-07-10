@@ -319,4 +319,14 @@ namespace Spartan
     {
 
     }
+
+    uint32_t RHI_Device::GetMemoryMb()
+    {
+        return 0;
+    }
+
+    uint32_t RHI_Device::GetMemoryUsedMb()
+    {
+        return 0;
+    }
 }

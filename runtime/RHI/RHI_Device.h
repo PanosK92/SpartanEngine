@@ -105,8 +105,8 @@ namespace Spartan
         static uint32_t GetEnabledGraphicsStages() { return m_enabled_graphics_shader_stages; }
 
         // Memory
-        static uint32_t GetMemory();
-        static uint32_t GetMemoryUsed();
+        static uint32_t GetMemoryMb();
+        static uint32_t GetMemoryUsedMb();
 
         // Properties
         static uint32_t GetMaxTexture1dDimension()            { return m_max_texture_1d_dimension; }
