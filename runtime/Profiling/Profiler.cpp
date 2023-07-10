@@ -513,7 +513,7 @@ namespace Spartan
         oss_metrics << endl << "GPU" << endl
             << "Name:\t\t\t"   << gpu_name << endl
             << "Memory:\t"     << gpu_memory_used << "/" << gpu_memory_available << " MB" << endl
-            << "API:\t\t\t\t"  << RHI_Context::api_type_str << "\t" << gpu_api << endl
+            << "API:\t\t\t\t"  << RHI_Context::api_type_str << "\t\t" << gpu_api << endl
             << "Driver:\t\t"   << RHI_Device::GetPrimaryPhysicalDevice()->GetVendorName() << "\t\t" << gpu_driver << endl;
 
         // Display
@@ -534,16 +534,16 @@ namespace Spartan
             oss_metrics  << "Draw:\t\t\t\t\t\t\t\t\t" << m_rhi_draw << endl;
         }
         oss_metrics
-            << "Dispatch:\t\t\t\t\t\t\t"    << m_rhi_dispatch                << endl
-            << "Index buffer bindings:\t\t" << m_rhi_bindings_buffer_index   << endl
-            << "Vertex buffer bindings:\t"  << m_rhi_bindings_buffer_vertex  << endl
-            << "Descriptor set bindings:\t" << m_rhi_bindings_descriptor_set << endl
-            << "Pipeline bindings:\t\t\t\t" << m_rhi_bindings_pipeline       << endl
-            << "Pipeline barriers:\t\t\t\t" << m_rhi_pipeline_barriers       << endl;
+            << "Dispatch:\t\t\t\t\t\t\t"     << m_rhi_dispatch                << endl
+            << "Index buffer bindings:\t\t"  << m_rhi_bindings_buffer_index   << endl
+            << "Vertex buffer bindings:\t\t" << m_rhi_bindings_buffer_vertex  << endl
+            << "Descriptor set bindings:\t"  << m_rhi_bindings_descriptor_set << endl
+            << "Pipeline bindings:\t\t\t\t"  << m_rhi_bindings_pipeline       << endl
+            << "Pipeline barriers:\t\t\t\t"  << m_rhi_pipeline_barriers       << endl;
 
         // Resources
         oss_metrics << "\nResources\n"
-            << "Meshes rendered:\t\t\t"     << m_renderer_meshes_rendered << endl
+            << "Meshes rendered:\t\t\t\t"   << m_renderer_meshes_rendered << endl
             << "Textures:\t\t\t\t\t\t\t"    << texture_count              << endl
             << "Materials:\t\t\t\t\t\t\t"   << material_count             << endl
             << "Descriptor set capacity:\t" << m_descriptor_set_count << "/" << m_descriptor_set_capacity;

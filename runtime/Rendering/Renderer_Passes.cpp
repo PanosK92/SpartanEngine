@@ -1716,7 +1716,7 @@ namespace Spartan
 
         // Acquire shaders
         RHI_Shader* shader_v = GetShader(Renderer_Shader::quad_v).get();
-        RHI_Shader* shader_p = GetShader(Renderer_Shader::copy_bilinear_p).get();
+        RHI_Shader* shader_p = GetShader(Renderer_Shader::quad_p).get();
         if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
             return;
 
@@ -2209,55 +2209,5 @@ namespace Spartan
         cmd_list->Dispatch(thread_group_count_x(tex_brdf_specular_lut), thread_group_count_y(tex_brdf_specular_lut));
 
         cmd_list->EndTimeblock();
-    }
-
-    void Renderer::Pass_CopyToBackbuffer()
-    {
-        // Acquire shaders
-        RHI_Shader* shader_v = GetShader(Renderer_Shader::fullscreen_triangle_v).get();
-        RHI_Shader* shader_p = GetShader(Renderer_Shader::copy_point_p).get();
-        if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
-            return;
-
-        RHI_SwapChain* swap_chain = GetSwapChain();
-        RHI_CommandList* cmd_list = GetCmdList();
-
-        cmd_list->BeginMarker("copy_to_back_buffer");
-
-        // Transition swap chain image
-        swap_chain->SetLayout(RHI_Image_Layout::Color_Attachment_Optimal, cmd_list);
-
-        // Define render state
-        static RHI_PipelineState pso = {};
-        pso.shader_vertex            = shader_v;
-        pso.shader_pixel             = shader_p;
-        pso.rasterizer_state         = GetRasterizerState(Renderer_RasterizerState::Solid_cull_back).get();
-        pso.blend_state              = GetBlendState(Renderer_BlendState::Disabled).get();
-        pso.depth_stencil_state      = GetDepthStencilState(Renderer_DepthStencilState::Off).get();
-        pso.render_target_swapchain  = swap_chain;
-        pso.clear_color[0]           = rhi_color_dont_care;
-        pso.primitive_topology       = RHI_PrimitiveTopology_Mode::TriangleList;
-
-        // Set pipeline state
-        cmd_list->SetPipelineState(pso);
-
-        // Set uber buffer
-        m_cb_pass_cpu.resolution_rt = Vector2(static_cast<float>(swap_chain->GetWidth()), static_cast<float>(swap_chain->GetHeight()));
-        UpdateConstantBufferPass(cmd_list);
-
-        // Set texture
-        cmd_list->SetTexture(Renderer_BindingsSrv::tex, GetRenderTarget(Renderer_RenderTexture::frame_output).get());
-
-        // Render
-        cmd_list->BeginRenderPass();
-        {
-            cmd_list->DrawIndexed(3, 0);
-        }
-        cmd_list->EndRenderPass();
-
-        // Transition swap chain image
-        swap_chain->SetLayout(RHI_Image_Layout::Present_Src, cmd_list);
-
-        cmd_list->EndMarker();
     }
 }

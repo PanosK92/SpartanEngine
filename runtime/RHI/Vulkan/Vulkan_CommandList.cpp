@@ -171,12 +171,6 @@ namespace Spartan
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
-        if (swapchain_to_transition)
-        {
-            swapchain_to_transition->SetLayout(RHI_Image_Layout::Present_Src, this);
-            swapchain_to_transition = nullptr;
-        }
-
         SP_ASSERT_MSG(
             vkEndCommandBuffer(static_cast<VkCommandBuffer>(m_rhi_resource)) == VK_SUCCESS,
             "Failed to end command buffer"
@@ -282,8 +276,6 @@ namespace Spartan
             RHI_SwapChain* swapchain = m_pso.render_target_swapchain;
             if (swapchain)
             {
-                swapchain_to_transition = swapchain;
-
                 // Transition to the appropriate layout
                 if (swapchain->GetLayout() != RHI_Image_Layout::Color_Attachment_Optimal)
                 {
@@ -390,6 +382,11 @@ namespace Spartan
         {
             vkCmdEndRendering(static_cast<VkCommandBuffer>(m_rhi_resource));
             m_is_rendering = false;
+        }
+
+        if (m_pso.render_target_swapchain)
+        {
+            m_pso.render_target_swapchain->SetLayout(RHI_Image_Layout::Present_Src, this);
         }
     }
 
@@ -565,7 +562,6 @@ namespace Spartan
 
     void RHI_CommandList::Blit(RHI_Texture* source, RHI_Texture* destination, const RHI_Filter filter, const bool blit_mips)
     {
-        // Validate transfer bits
         SP_ASSERT_MSG((source->GetFlags() & RHI_Texture_ClearOrBlit) != 0, "The texture needs the RHI_Texture_ClearOrBlit flag");
         SP_ASSERT_MSG((destination->GetFlags() & RHI_Texture_ClearOrBlit) != 0, "The texture needs the RHI_Texture_ClearOrBlit flag");
 
@@ -585,12 +581,12 @@ namespace Spartan
             blit_region.srcSubresource.baseArrayLayer = 0;
             blit_region.srcSubresource.layerCount     = 1;
             blit_region.srcSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
-            blit_region.srcOffsets[1]                 = blit_size;
+            blit_region.srcOffsets[0]                 = blit_size;
             blit_region.dstSubresource.mipLevel       = mip_index;
             blit_region.dstSubresource.baseArrayLayer = 0;
             blit_region.dstSubresource.layerCount     = 1;
             blit_region.dstSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
-            blit_region.dstOffsets[1]                 = blit_size;
+            blit_region.dstOffsets[0]                 = blit_size;
         }
 
         // Save the initial layouts
@@ -606,8 +602,7 @@ namespace Spartan
             static_cast<VkCommandBuffer>(m_rhi_resource),
             static_cast<VkImage>(source->GetRhiResource()),      VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
             static_cast<VkImage>(destination->GetRhiResource()), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-            blit_region_count,
-            &blit_regions[0],
+            blit_region_count,&blit_regions[0],
             vulkan_filter[static_cast<uint32_t>(filter)]
         );
 
@@ -625,6 +620,48 @@ namespace Spartan
             source->SetLayout(layouts_initial_source[0], this);
             destination->SetLayout(layouts_initial_destination[0], this);
         }
+    }
+
+    void RHI_CommandList::Blit(RHI_Texture* source, RHI_SwapChain* destination, const RHI_Filter filter)
+    {
+        SP_ASSERT_MSG((source->GetFlags() & RHI_Texture_ClearOrBlit) != 0, "The texture needs the RHI_Texture_ClearOrBlit flag");
+
+        VkOffset3D blit_size = {};
+        blit_size.x          = source->GetWidth();
+        blit_size.y          = source->GetHeight();
+        blit_size.z          = 1;
+
+        SP_ASSERT_MSG(blit_size.x <= destination->GetWidth() && blit_size.y <= destination->GetHeight(),
+            "The source texture dimension(s) are larger than the swapchain");
+
+        VkImageBlit blit_region                   = {};
+        blit_region.srcSubresource.mipLevel       = 0;
+        blit_region.srcSubresource.baseArrayLayer = 0;
+        blit_region.srcSubresource.layerCount     = 1;
+        blit_region.srcSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+        blit_region.srcOffsets[0]                 = blit_size;
+        blit_region.dstSubresource.mipLevel       = 0;
+        blit_region.dstSubresource.baseArrayLayer = 0;
+        blit_region.dstSubresource.layerCount     = 1;
+        blit_region.dstSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+        blit_region.dstOffsets[0]                 = blit_size;
+
+        // Transition to blit appropriate layouts
+        RHI_Image_Layout layout_initial_source = source->GetLayout(0);
+        source->SetLayout(RHI_Image_Layout::Transfer_Src_Optimal, this);
+        destination->SetLayout(RHI_Image_Layout::Transfer_Dst_Optimal, this);
+
+        // Blit
+        vkCmdBlitImage(
+            static_cast<VkCommandBuffer>(m_rhi_resource),
+            static_cast<VkImage>(source->GetRhiResource()), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+            static_cast<VkImage>(destination->GetRhiRt()),  VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            1, &blit_region,
+            vulkan_filter[static_cast<uint32_t>(filter)]
+        );
+
+        // Transition to the initial layout
+        source->SetLayout(layout_initial_source, this);
     }
 
     void RHI_CommandList::SetViewport(const RHI_Viewport& viewport) const

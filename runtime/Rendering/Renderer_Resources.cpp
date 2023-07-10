@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ============================
 #include "pch.h"
+#include "Window.h"
 #include "Renderer.h"
 #include "Geometry.h"
 #include "../Resource/ResourceCache.h"
@@ -54,7 +55,7 @@ namespace Spartan
 
         // renderer resources
         static array<shared_ptr<RHI_Texture>, 26>       m_render_targets;
-        static array<shared_ptr<RHI_Shader>, 47>        m_shaders;
+        static array<shared_ptr<RHI_Shader>, 44>        m_shaders;
         static array<shared_ptr<RHI_Sampler>, 7>        m_samplers;
         static array<shared_ptr<RHI_ConstantBuffer>, 4> m_constant_buffers;
         static shared_ptr<RHI_StructuredBuffer>         m_sb_spd_counter;
@@ -275,6 +276,9 @@ namespace Spartan
 
             shader(Renderer_Shader::quad_v) = make_shared<RHI_Shader>();
             shader(Renderer_Shader::quad_v)->Compile(RHI_Shader_Vertex, shader_dir + "quad.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
+
+            shader(Renderer_Shader::quad_p) = make_shared<RHI_Shader>();
+            shader(Renderer_Shader::quad_p)->Compile(RHI_Shader_Pixel, shader_dir + "quad.hlsl", async);
         }
 
         // Depth prepass
@@ -327,27 +331,6 @@ namespace Spartan
             shader(Renderer_Shader::debug_reflection_probe_v)->Compile(RHI_Shader_Vertex, shader_dir + "debug_reflection_probe.hlsl", async, RHI_Vertex_Type::PosUvNorTan);
             shader(Renderer_Shader::debug_reflection_probe_p) = make_shared<RHI_Shader>();
             shader(Renderer_Shader::debug_reflection_probe_p)->Compile(RHI_Shader_Pixel, shader_dir + "debug_reflection_probe.hlsl", async);
-        }
-
-        // Copy
-        {
-            shader(Renderer_Shader::copy_point_c) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::copy_point_c)->AddDefine("COMPUTE");
-            shader(Renderer_Shader::copy_point_c)->Compile(RHI_Shader_Compute, shader_dir + "copy.hlsl", async);
-
-            shader(Renderer_Shader::copy_bilinear_c) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::copy_bilinear_c)->AddDefine("COMPUTE");
-            shader(Renderer_Shader::copy_bilinear_c)->AddDefine("BILINEAR");
-            shader(Renderer_Shader::copy_bilinear_c)->Compile(RHI_Shader_Compute, shader_dir + "copy.hlsl", async);
-
-            shader(Renderer_Shader::copy_point_p) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::copy_point_p)->AddDefine("PIXEL");
-            shader(Renderer_Shader::copy_point_p)->Compile(RHI_Shader_Pixel, shader_dir + "copy.hlsl", async);
-
-            shader(Renderer_Shader::copy_bilinear_p) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::copy_bilinear_p)->AddDefine("PIXEL");
-            shader(Renderer_Shader::copy_bilinear_p)->AddDefine("BILINEAR");
-            shader(Renderer_Shader::copy_bilinear_p)->Compile(RHI_Shader_Pixel, shader_dir + "copy.hlsl", async);
         }
 
         // Blur
@@ -463,7 +446,7 @@ namespace Spartan
         const string dir_font = ResourceCache::GetResourceDirectory(ResourceDirectory::Fonts) + "\\";
 
         // Load a font (used for performance metrics)
-        m_font = make_unique<Font>(dir_font + "CalibriBold.ttf", 13, Vector4(0.8f, 0.8f, 0.8f, 1.0f));
+        m_font = make_unique<Font>(dir_font + "CalibriBold.ttf", 13 * Window::GetDpiScale(), Vector4(0.8f, 0.8f, 0.8f, 1.0f));
     }
 
     void Renderer::CreateStandardMeshes()
@@ -579,7 +562,7 @@ namespace Spartan
         return m_render_targets;
     }
 
-    array<shared_ptr<RHI_Shader>, 47>& Renderer::GetShaders()
+    array<shared_ptr<RHI_Shader>, 44>& Renderer::GetShaders()
     {
         return m_shaders;
     }

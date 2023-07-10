@@ -80,7 +80,6 @@ namespace Spartan
 
         // Misc
         static void Flush();
-        static void Pass_CopyToBackbuffer();
         static void SetGlobalShaderResources(RHI_CommandList* cmd_list);
         static void RequestTextureMipGeneration(std::shared_ptr<RHI_Texture> texture);
         static uint64_t GetFrameNum();
@@ -116,7 +115,7 @@ namespace Spartan
 
         // Get all
         static std::array<std::shared_ptr<RHI_Texture>, 26>& GetRenderTargets();
-        static std::array<std::shared_ptr<RHI_Shader>, 47>& GetShaders();
+        static std::array<std::shared_ptr<RHI_Shader>, 44>& GetShaders();
         static std::array<std::shared_ptr<RHI_ConstantBuffer>, 4>& GetConstantBuffers();
 
         // Get individual

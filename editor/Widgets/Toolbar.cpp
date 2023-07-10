@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =======================
 #include "Toolbar.h"
+#include "Window.h"
 #include "Profiler.h"
 #include "ResourceViewer.h"
 #include "ShaderEditor.h"
@@ -38,14 +39,14 @@ using namespace Spartan::Math;
 
 namespace
 {
-    static const float button_size = 16.0f;
+    static const float button_size = 15.0f;
 
     // A button that when pressed will call "on press" and derives it's color (active/inactive) based on "get_visibility".
     static void toolbar_button(IconType icon_type, const string tooltip_text, const function<bool()>& get_visibility, const function<void()>& on_press)
     {
         ImGui::SameLine();
         ImGui::PushStyleColor(ImGuiCol_Button, get_visibility() ? ImGui::GetStyle().Colors[ImGuiCol_ButtonActive] : ImGui::GetStyle().Colors[ImGuiCol_Button]);
-        if (ImGuiSp::image_button(0, nullptr, icon_type, button_size, false))
+        if (ImGuiSp::image_button(0, nullptr, icon_type, button_size * Spartan::Window::GetDpiScale(), false))
         {
             on_press();
         }

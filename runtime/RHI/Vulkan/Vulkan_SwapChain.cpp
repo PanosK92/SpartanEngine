@@ -182,6 +182,9 @@ namespace Spartan
 
         Create();
         AcquireNextImage();
+
+        SP_SUBSCRIBE_TO_EVENT(EventType::WindowResized, SP_EVENT_HANDLER(ResizeToWindowSize));
+        SP_SUBSCRIBE_TO_EVENT(EventType::WindowFullscreen, SP_EVENT_HANDLER(ResizeToWindowSize));
     }
 
     RHI_SwapChain::~RHI_SwapChain()
@@ -215,7 +218,7 @@ namespace Spartan
         VkSurfaceCapabilitiesKHR capabilities = get_surface_capabilities(surface);
 
         // Compute extent
-        m_width  = Math::Helper::Clamp(m_width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
+        m_width  = Math::Helper::Clamp(m_width,  capabilities.minImageExtent.width,  capabilities.maxImageExtent.width);
         m_height = Math::Helper::Clamp(m_height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
         VkExtent2D extent = { m_width, m_height };
 
@@ -232,7 +235,7 @@ namespace Spartan
             create_info.minImageCount            = m_buffer_count;
             create_info.imageFormat              = vulkan_format[rhi_format_to_index(m_format)];
             create_info.imageColorSpace          = color_space;
-            create_info.imageExtent              = extent;
+            create_info.imageExtent              = { m_width, m_height };
             create_info.imageArrayLayers         = 1;
             create_info.imageUsage               = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
@@ -348,7 +351,7 @@ namespace Spartan
         Create();
     }
 
-    bool RHI_SwapChain::Resize(const uint32_t width, const uint32_t height, const bool force /*= false*/)
+    void RHI_SwapChain::Resize(const uint32_t width, const uint32_t height, const bool force /*= false*/)
     {
         SP_ASSERT(RHI_Device::IsValidResolution(width, height));
 
@@ -356,7 +359,7 @@ namespace Spartan
         if (!force)
         {
             if (m_width == width && m_height == height)
-                return false;
+                return;
         }
 
         // Save new dimensions
@@ -370,7 +373,12 @@ namespace Spartan
         Recreate();
         AcquireNextImage();
 
-        return true;
+        SP_LOG_INFO("Resolution has been set to %dx%d", width, height);
+    }
+
+    void RHI_SwapChain::ResizeToWindowSize()
+    {
+        Resize(Window::GetWidth(), Window::GetHeight());
     }
 
     void RHI_SwapChain::AcquireNextImage()

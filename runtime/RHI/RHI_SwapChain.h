@@ -49,8 +49,9 @@ namespace Spartan
         );
         ~RHI_SwapChain();
 
-        bool Resize(uint32_t width, uint32_t height, const bool force = false);
-        void Present();
+        // Size
+        void Resize(uint32_t width, uint32_t height, const bool force = false);
+        void ResizeToWindowSize();
 
         // HDR
         void SetHdr(const bool enabled);
@@ -60,11 +61,14 @@ namespace Spartan
         void SetVsync(const bool enabled);
         bool GetVsync();
 
+        void Present();
+
         // Properties
         uint32_t GetWidth()       const { return m_width; }
         uint32_t GetHeight()      const { return m_height; }
         uint32_t GetBufferCount() const { return m_buffer_count; }
         RHI_Format GetFormat()    const { return m_format; }
+        void* GetRhiRt()          const { return m_rhi_rt[m_image_index]; }
         void* GetRhiRtv()         const { return m_rhi_rtv[m_image_index]; }
 
         // Layout

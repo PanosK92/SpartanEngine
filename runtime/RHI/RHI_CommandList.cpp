@@ -65,7 +65,7 @@ namespace Spartan
 
         m_state = RHI_CommandListState::Idle;
     }
-    
+
     uint32_t RHI_CommandList::GetGpuMemory()
     {
         if (const PhysicalDevice* physical_device = RHI_Device::GetPrimaryPhysicalDevice())

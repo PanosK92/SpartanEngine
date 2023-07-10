@@ -38,5 +38,4 @@ private:
     float m_window_padding          = 4.0f;
     float m_width                   = 0.0f;
     float m_height                  = 0.0f;
-    bool m_first_tick               = true;
 };

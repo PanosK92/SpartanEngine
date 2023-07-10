@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =======================
 #include "RenderOptions.h"
+#include "Window.h"
 #include "Core/Timer.h"
 #include "Profiling/Profiler.h"
 #include "../ImGui/ImGuiExtension.h"
@@ -39,11 +40,11 @@ namespace
     static ImGuiTableFlags flags =
         ImGuiTableFlags_NoHostExtendX | // Make outer width auto-fit to columns, overriding outer_size.x value. Only available when ScrollX/ScrollY are disabled and Stretch columns are not used.
         ImGuiTableFlags_BordersInnerV | // Draw vertical borders between columns.
-        ImGuiTableFlags_SizingFixedFit;  // Columns default to _WidthFixed or _WidthAuto (if resizable or not resizable), matching contents width.
+        ImGuiTableFlags_SizingFixedFit; // Columns default to _WidthFixed or _WidthAuto (if resizable or not resizable), matching contents width.
 
     // options sizes
-    static const float width_input_numeric = 120.0f;
-    static const float width_combo_box     = 120.0f;
+    #define width_input_numeric 120.0f * Spartan::Window::GetDpiScale()
+    #define width_combo_box     120.0f * Spartan::Window::GetDpiScale()
 
     // misc
     static vector<DisplayMode> display_modes;
@@ -179,12 +180,11 @@ namespace
 
 RenderOptions::RenderOptions(Editor* editor) : Widget(editor)
 {
-    m_title        = "Renderer Options";
-    m_flags        |= ImGuiWindowFlags_AlwaysAutoResize;
-    m_visible      = false;
-    m_alpha        = 1.0f;
-    m_position     = k_widget_position_screen_center;
-    m_size_initial = Vector2(600.0f, 1000.0f);
+    m_title    = "Renderer Options";
+    m_flags    |= ImGuiWindowFlags_AlwaysAutoResize;
+    m_visible  = false;
+    m_alpha    = 1.0f;
+    m_position = k_widget_position_screen_center;
 }
 
 void RenderOptions::OnVisible()
@@ -236,223 +236,215 @@ void RenderOptions::TickVisible()
     int resolution_shadow        = Renderer::GetOption<int>(Renderer_Option::ShadowResolution);
 
     // Present options (with a table)
+    if (ImGui::BeginTable("##render_options", column_count, flags, ImVec2(0.0f)))
     {
-        // Table
-        if (ImGui::BeginTable("##render_options", column_count, flags, ImVec2(0.0f)))
+        ImGui::TableSetupColumn("Option");
+        ImGui::TableSetupColumn("Value");
+        ImGui::TableHeadersRow();
+
+        if (option("Resolution"))
         {
-            ImGui::TableSetupColumn("Option");
-            ImGui::TableSetupColumn("Value");
-            ImGui::TableHeadersRow();
-
-            if (option("Resolution"))
+            // Render
+            Vector2 resolution_render        = Renderer::GetResolutionRender();
+            uint32_t resolution_render_index = get_display_mode_index(resolution_render);
+            if (option_combo_box("Render resolution", display_modes_string, resolution_render_index))
             {
-                // Render
-                Vector2 resolution_render        = Renderer::GetResolutionRender();
-                uint32_t resolution_render_index = get_display_mode_index(resolution_render);
-                if (option_combo_box("Render resolution", display_modes_string, resolution_render_index))
-                {
-                    Renderer::SetResolutionRender(display_modes[resolution_render_index].width, display_modes[resolution_render_index].height);
-                }
-
-                // Output
-                Vector2 resolution_output        = Renderer::GetResolutionOutput();
-                uint32_t resolution_output_index = get_display_mode_index(resolution_output);
-                if (option_combo_box("Output resolution", display_modes_string, resolution_output_index))
-                {
-                    Renderer::SetResolutionOutput(display_modes[resolution_output_index].width, display_modes[resolution_output_index].height);
-                }
-
-                // Upsampling
-                {
-                    static vector<string> upsampling_modes =
-                    {
-                        "Linear",
-                        "FSR 2"
-                    };
-
-                    bool upsampling_allowed = resolution_render.x < resolution_output.x || resolution_render.y < resolution_output.y;
-                    ImGui::BeginDisabled(!upsampling_allowed);
-
-                    uint32_t upsampling_mode = Renderer::GetOption<uint32_t>(Renderer_Option::Upsampling);
-                    if (option_combo_box("Upsampling", upsampling_modes, upsampling_mode))
-                    {
-                        Renderer::SetOption(Renderer_Option::Upsampling, static_cast<float>(upsampling_mode));
-                    }
-
-                    ImGui::EndDisabled();
-                }
-
-                // Sharpening
-                {
-                    // FidelityFX FSR 2.0 sharpening overrides FidelityFX CAS
-                    bool fsr_enabled = Renderer::GetOption<Renderer_Upsampling>(Renderer_Option::Upsampling) == Renderer_Upsampling::FSR2;
-                    string label = fsr_enabled ? "Sharpness (AMD FidelityFX FSR 2.0)" : "Sharpness (AMD FidelityFX CAS)";
-
-                    option_value(label.c_str(), Renderer_Option::Sharpness, "", 0.1f, 0.0f, 1.0f);
-                }
+                Renderer::SetResolutionRender(display_modes[resolution_render_index].width, display_modes[resolution_render_index].height);
             }
 
-            if (option("Screen space lighting"))
+            // Output
+            Vector2 resolution_output        = Renderer::GetResolutionOutput();
+            uint32_t resolution_output_index = get_display_mode_index(resolution_output);
+            if (option_combo_box("Output resolution", display_modes_string, resolution_output_index))
             {
-                // SSR
-                option_check_box("SSR - Screen space reflections", do_ssr);
-
-                // SSGI
-                option_check_box("SSGI - Screen space global illumination", do_ssgi, "SSAO with a diffuse light bounce");
+                Renderer::SetResolutionOutput(display_modes[resolution_output_index].width, display_modes[resolution_output_index].height);
             }
 
-            if (option("Anti-Aliasing"))
+            // Upsampling
             {
-                // Reflect
-                Renderer_Antialiasing antialiasing = Renderer::GetOption<Renderer_Antialiasing>(Renderer_Option::Antialiasing);
+                static vector<string> upsampling_modes =
+                {
+                    "Linear",
+                    "FSR 2"
+                };
 
-                // TAA
-                bool taa_enabled = antialiasing == Renderer_Antialiasing::Taa || antialiasing == Renderer_Antialiasing::TaaFxaa;
-                option_check_box("TAA - Temporal anti-aliasing", taa_enabled, "Used to improve many stochastic effects, you want this to always be enabled.");
+                bool upsampling_allowed = resolution_render.x < resolution_output.x || resolution_render.y < resolution_output.y;
+                ImGui::BeginDisabled(!upsampling_allowed);
 
-                // FXAA
-                bool fxaa_enabled = antialiasing == Renderer_Antialiasing::Fxaa || antialiasing == Renderer_Antialiasing::TaaFxaa;
-                option_check_box("FXAA - Fast approximate anti-aliasing", fxaa_enabled);
+                uint32_t upsampling_mode = Renderer::GetOption<uint32_t>(Renderer_Option::Upsampling);
+                if (option_combo_box("Upsampling", upsampling_modes, upsampling_mode))
+                {
+                    Renderer::SetOption(Renderer_Option::Upsampling, static_cast<float>(upsampling_mode));
+                }
 
-                // Map
-                if (taa_enabled && fxaa_enabled)
-                {
-                    Renderer::SetOption(Renderer_Option::Antialiasing, static_cast<float>(Renderer_Antialiasing::TaaFxaa));
-                }
-                else if (taa_enabled)
-                {
-                    Renderer::SetOption(Renderer_Option::Antialiasing, static_cast<float>(Renderer_Antialiasing::Taa));
-                }
-                else if (fxaa_enabled)
-                {
-                    Renderer::SetOption(Renderer_Option::Antialiasing, static_cast<float>(Renderer_Antialiasing::Fxaa));
-                }
-                else
-                {
-                    Renderer::SetOption(Renderer_Option::Antialiasing, static_cast<float>(Renderer_Antialiasing::Disabled));
-                }
+                ImGui::EndDisabled();
             }
 
-            if (option("Camera"))
+            // Sharpening
             {
-                // Bloom
-                option_value("Bloom", Renderer_Option::Bloom, "Controls the blend factor. If zero, then bloom is disabled.", 0.01f);
+                // FidelityFX FSR 2.0 sharpening overrides FidelityFX CAS
+                bool fsr_enabled = Renderer::GetOption<Renderer_Upsampling>(Renderer_Option::Upsampling) == Renderer_Upsampling::FSR2;
+                string label = fsr_enabled ? "Sharpness (AMD FidelityFX FSR 2.0)" : "Sharpness (AMD FidelityFX CAS)";
 
-                // Motion blur
-                option_check_box("Motion blur (controlled by the camera's shutter speed)", do_motion_blur);
-
-                // Depth of Field
-                option_check_box("Depth of field (controlled by the camera's aperture)", do_dof);
-
-                // Chromatic aberration
-                option_check_box("Chromatic aberration (controlled by the camera's aperture)", do_chromatic_aberration, "Emulates the inability of old cameras to focus all colors in the same focal point.");
-
-                // Film grain
-                option_check_box("Film grain", do_film_grain);
+                option_value(label.c_str(), Renderer_Option::Sharpness, "", 0.1f, 0.0f, 1.0f);
             }
-
-            if (option("Lights"))
-            {
-                // Volumetric fog
-                option_check_box("Volumetric fog", do_volumetric_fog, "Requires a light with shadows enabled.");
-                {
-                    // Density
-                    ImGui::BeginDisabled(!do_volumetric_fog);
-                    option_value("Volumetric fog density", Renderer_Option::Fog, "", 0.01f, 0.0f, 16.0f, "%.2f");
-                    ImGui::EndDisabled();
-                }
-
-                // Screen space shadows
-                option_check_box("Screen space shadows", do_sss);
-
-                // Shadow resolution
-                option_int("Shadow resolution", resolution_shadow);
-            }
-
-            if (option("Misc"))
-            {
-                // Tonemapping
-                static vector<string> tonemapping_options = { "AMD", "ACES", "Reinhard", "Uncharted 2", "Matrix", "Off" };
-                uint32_t selection_index = Renderer::GetOption<uint32_t>(Renderer_Option::Tonemapping);
-                if (option_combo_box("Tonemapping", tonemapping_options, selection_index))
-                {
-                    Renderer::SetOption(Renderer_Option::Tonemapping, static_cast<float>(selection_index));
-                }
-
-                // Gamma
-                option_value("Gamma", Renderer_Option::Gamma);
-
-                // Exposure
-                option_value("Exposure", Renderer_Option::Exposure);
-
-                // HDR
-                option_check_box("HDR", do_hdr, "High dynamic range");
-
-                // Paper white
-                if (do_hdr)
-                {
-                    option_value("Paper white (nits)", Renderer_Option::PaperWhite, nullptr, 1.0f);
-                }
-
-                // Dithering
-                option_check_box("Debanding", do_debanding, "Reduces color banding");
-
-                // VSync
-                option_check_box("VSync", do_vsync, "Vertical Synchronization");
-
-                // FPS Limit
-                {
-                    option_first_column();
-                    const FpsLimitType fps_limit_type = Timer::GetFpsLimitType();
-                    string label = "FPS Limit - " + string((fps_limit_type == FpsLimitType::FixedToMonitor) ? "Fixed to monitor" : (fps_limit_type == FpsLimitType::Unlocked ? "Unlocked" : "Fixed"));
-                    ImGui::Text(label.c_str());
-
-                    option_second_column();
-                    {
-                        float fps_target = Timer::GetFpsLimit();
-                        ImGui::PushItemWidth(width_input_numeric);
-                        ImGui::InputFloat("##fps_limit", &fps_target, 0.0, 0.0f, "%.1f");
-                        ImGui::PopItemWidth();
-                        Timer::SetFpsLimit(fps_target);
-                    }
-                }
-
-                // Depth-PrePass
-                option_check_box("Depth PrePass", do_depth_prepass);
-
-                // Performance metrics
-                {
-                    bool performance_metrics_previous = performance_metrics;
-                    option_check_box("Performance Metrics", performance_metrics);
-
-                    // Reset metrics on activation
-                    if (performance_metrics_previous == false && performance_metrics == true)
-                    {
-                        Profiler::ClearMetrics();
-                    }
-                }
-            }
-
-            if (option("Gizmos", false))
-            {
-                option_check_box("Transform",                           debug_transform);
-                option_check_box("Selection outline",                   debug_selection_outline);
-                option_check_box("Physics",                             debug_physics);
-                option_check_box("AABBs - Axis-aligned bounding boxes", debug_aabb);
-                option_check_box("Lights",                              debug_light);
-                option_check_box("Picking ray",                         debug_picking_ray);
-                option_check_box("Grid",                                debug_grid);
-                option_check_box("Reflection probes",                   debug_reflection_probes);
-                option_check_box("Wireframe",                           debug_wireframe);
-            }
-
-            ImGui::EndTable();
         }
-        
-        // Opacity
-        ImGui::PushItemWidth(m_window->ContentSize.x - 60);
-        ImGui::SliderFloat("Opacity", &m_alpha, 0.1f, 1.0f, "%.1f");
-        ImGui::PopItemWidth();
+
+        if (option("Screen space lighting"))
+        {
+            // SSR
+            option_check_box("SSR - Screen space reflections", do_ssr);
+
+            // SSGI
+            option_check_box("SSGI - Screen space global illumination", do_ssgi, "SSAO with a diffuse light bounce");
+        }
+
+        if (option("Anti-Aliasing"))
+        {
+            // Reflect
+            Renderer_Antialiasing antialiasing = Renderer::GetOption<Renderer_Antialiasing>(Renderer_Option::Antialiasing);
+
+            // TAA
+            bool taa_enabled = antialiasing == Renderer_Antialiasing::Taa || antialiasing == Renderer_Antialiasing::TaaFxaa;
+            option_check_box("TAA - Temporal anti-aliasing", taa_enabled, "Used to improve many stochastic effects, you want this to always be enabled.");
+
+            // FXAA
+            bool fxaa_enabled = antialiasing == Renderer_Antialiasing::Fxaa || antialiasing == Renderer_Antialiasing::TaaFxaa;
+            option_check_box("FXAA - Fast approximate anti-aliasing", fxaa_enabled);
+
+            // Map
+            if (taa_enabled && fxaa_enabled)
+            {
+                Renderer::SetOption(Renderer_Option::Antialiasing, static_cast<float>(Renderer_Antialiasing::TaaFxaa));
+            }
+            else if (taa_enabled)
+            {
+                Renderer::SetOption(Renderer_Option::Antialiasing, static_cast<float>(Renderer_Antialiasing::Taa));
+            }
+            else if (fxaa_enabled)
+            {
+                Renderer::SetOption(Renderer_Option::Antialiasing, static_cast<float>(Renderer_Antialiasing::Fxaa));
+            }
+            else
+            {
+                Renderer::SetOption(Renderer_Option::Antialiasing, static_cast<float>(Renderer_Antialiasing::Disabled));
+            }
+        }
+
+        if (option("Camera"))
+        {
+            // Bloom
+            option_value("Bloom", Renderer_Option::Bloom, "Controls the blend factor. If zero, then bloom is disabled.", 0.01f);
+
+            // Motion blur
+            option_check_box("Motion blur (controlled by the camera's shutter speed)", do_motion_blur);
+
+            // Depth of Field
+            option_check_box("Depth of field (controlled by the camera's aperture)", do_dof);
+
+            // Chromatic aberration
+            option_check_box("Chromatic aberration (controlled by the camera's aperture)", do_chromatic_aberration, "Emulates the inability of old cameras to focus all colors in the same focal point.");
+
+            // Film grain
+            option_check_box("Film grain", do_film_grain);
+        }
+
+        if (option("Lights"))
+        {
+            // Volumetric fog
+            option_check_box("Volumetric fog", do_volumetric_fog, "Requires a light with shadows enabled.");
+            {
+                // Density
+                ImGui::BeginDisabled(!do_volumetric_fog);
+                option_value("Volumetric fog density", Renderer_Option::Fog, "", 0.01f, 0.0f, 16.0f, "%.2f");
+                ImGui::EndDisabled();
+            }
+
+            // Screen space shadows
+            option_check_box("Screen space shadows", do_sss);
+
+            // Shadow resolution
+            option_int("Shadow resolution", resolution_shadow);
+        }
+
+        if (option("Misc"))
+        {
+            // Tonemapping
+            static vector<string> tonemapping_options = { "AMD", "ACES", "Reinhard", "Uncharted 2", "Matrix", "Off" };
+            uint32_t selection_index = Renderer::GetOption<uint32_t>(Renderer_Option::Tonemapping);
+            if (option_combo_box("Tonemapping", tonemapping_options, selection_index))
+            {
+                Renderer::SetOption(Renderer_Option::Tonemapping, static_cast<float>(selection_index));
+            }
+
+            // Gamma
+            option_value("Gamma", Renderer_Option::Gamma);
+
+            // Exposure
+            option_value("Exposure", Renderer_Option::Exposure);
+
+            // HDR
+            option_check_box("HDR", do_hdr, "High dynamic range");
+
+            // Paper white
+            if (do_hdr)
+            {
+                option_value("Paper white (nits)", Renderer_Option::PaperWhite, nullptr, 1.0f);
+            }
+
+            // Dithering
+            option_check_box("Debanding", do_debanding, "Reduces color banding");
+
+            // VSync
+            option_check_box("VSync", do_vsync, "Vertical Synchronization");
+
+            // FPS Limit
+            {
+                option_first_column();
+                const FpsLimitType fps_limit_type = Timer::GetFpsLimitType();
+                string label = "FPS Limit - " + string((fps_limit_type == FpsLimitType::FixedToMonitor) ? "Fixed to monitor" : (fps_limit_type == FpsLimitType::Unlocked ? "Unlocked" : "Fixed"));
+                ImGui::Text(label.c_str());
+
+                option_second_column();
+                {
+                    float fps_target = Timer::GetFpsLimit();
+                    ImGui::PushItemWidth(width_input_numeric);
+                    ImGui::InputFloat("##fps_limit", &fps_target, 0.0, 0.0f, "%.1f");
+                    ImGui::PopItemWidth();
+                    Timer::SetFpsLimit(fps_target);
+                }
+            }
+
+            // Depth-PrePass
+            option_check_box("Depth PrePass", do_depth_prepass);
+
+            // Performance metrics
+            {
+                bool performance_metrics_previous = performance_metrics;
+                option_check_box("Performance Metrics", performance_metrics);
+
+                // Reset metrics on activation
+                if (performance_metrics_previous == false && performance_metrics == true)
+                {
+                    Profiler::ClearMetrics();
+                }
+            }
+        }
+
+        if (option("Gizmos", false))
+        {
+            option_check_box("Transform",                           debug_transform);
+            option_check_box("Selection outline",                   debug_selection_outline);
+            option_check_box("Physics",                             debug_physics);
+            option_check_box("AABBs - Axis-aligned bounding boxes", debug_aabb);
+            option_check_box("Lights",                              debug_light);
+            option_check_box("Picking ray",                         debug_picking_ray);
+            option_check_box("Grid",                                debug_grid);
+            option_check_box("Reflection probes",                   debug_reflection_probes);
+            option_check_box("Wireframe",                           debug_wireframe);
+        }
+
+        ImGui::EndTable();
     }
 
     // Map options to engine

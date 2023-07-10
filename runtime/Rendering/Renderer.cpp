@@ -152,26 +152,19 @@ namespace Spartan
 
         // Resolution
         {
-            // (1) SDL2 doesn't work with Windows scaling, meaning we can't always get the true screen resolution using GetWidth() and GetHeight().
-            // However we can get the first display mode, which is the highest resolution mode supported by the monitor, which will work for now.
-            // SDL3 will be DPI aware so we won't have to do this.
-            DisplayMode display_mode = Display::GetDisplayModes()[0];
-
-            // Nvidia's DSR will report resolutions beyond 4K.
-            // Because we rely on (1), we'll have to max out at 4K here.
-            display_mode.width  = Math::Helper::Min<uint32_t>(display_mode.width, 3840);
-            display_mode.height = Math::Helper::Min<uint32_t>(display_mode.height, 2160);
+            uint32_t width  = Window::GetWidth();
+            uint32_t height = Window::GetHeight();
 
             // The resolution of the actual rendering
-            SetResolutionRender(display_mode.width, display_mode.height, false);
+            SetResolutionRender(width, height, false);
 
-            // The resolution of the output frame, we can upscale to that linearly or with FSR 2.
-            SetResolutionOutput(display_mode.width, display_mode.height, false);
+            // The resolution of the output frame *we can upscale to that linearly or with FSR 2)
+            SetResolutionOutput(width, height, false);
 
-            // The resolution/size of the editor's viewport. This is overridden by the editor based on the actual viewport size.
-            SetViewport(static_cast<float>(display_mode.width), static_cast<float>(display_mode.height));
+            // The resolution/size of the editor's viewport. This is overridden by the editor based on the actual viewport size
+            SetViewport(static_cast<float>(width), static_cast<float>(height));
 
-            // Note: If the editor is active, it will set the render and viewport resolution to what the actual viewport is.
+            // Note: If the editor is active, it will set the render and viewport resolution to what the actual viewport is
         }
 
         // Create swap chain
@@ -240,7 +233,7 @@ namespace Spartan
         // Subscribe to events
         SP_SUBSCRIBE_TO_EVENT(EventType::WorldResolved,             SP_EVENT_HANDLER_VARIANT_STATIC(OnWorldResolved));
         SP_SUBSCRIBE_TO_EVENT(EventType::WorldClear,                SP_EVENT_HANDLER_STATIC(OnClear));
-        SP_SUBSCRIBE_TO_EVENT(EventType::WindowOnFullScreenToggled, SP_EVENT_HANDLER_STATIC(OnFullScreenToggled));
+        SP_SUBSCRIBE_TO_EVENT(EventType::WindowFullscreenWindowedToggled, SP_EVENT_HANDLER_STATIC(OnFullScreenToggled));
 
         // Fire event
         SP_FIRE_EVENT(EventType::RendererOnInitialized);
@@ -294,21 +287,6 @@ namespace Spartan
         if (m_flush_requested)
         {
             Flush();
-        }
-
-        // Resize swapchain to window size (if needed)
-        {
-            // Passing zero dimensions will cause the swapchain to not present at all
-            uint32_t width  = Window::GetWidth();
-            uint32_t height = Window::GetHeight();
-
-            if (m_swap_chain->GetWidth() != width || m_swap_chain->GetHeight() != height)
-            {
-                if (m_swap_chain->Resize(width, height))
-                {
-                    SP_LOG_INFO("Swapchain resolution has been set to %dx%d", width, height);
-                }
-            }
         }
 
         if (!m_is_rendering_allowed)
@@ -422,7 +400,10 @@ namespace Spartan
 
         if (Window::IsFullScreen())
         {
-            Pass_CopyToBackbuffer();
+            m_cmd_current->BeginMarker("copy_to_back_buffer");
+            m_cmd_current->Blit(GetRenderTarget(Renderer_RenderTexture::frame_output).get(), m_swap_chain.get(), RHI_Filter::Nearest);
+            m_swap_chain->SetLayout(RHI_Image_Layout::Present_Src, m_cmd_current);
+            m_cmd_current->EndMarker();
         }
 
         // Submit
@@ -646,18 +627,18 @@ namespace Spartan
 
     void Renderer::OnFullScreenToggled()
     {
-        static float width_previous  = 0;
-        static float height_previous = 0;
+        static float viewport_width_previous  = 0;
+        static float viewport_height_previous = 0;
 
         if (Window::IsFullScreen())
         {
-            width_previous  = m_viewport.width;
-            height_previous = m_viewport.height;
+            viewport_width_previous  = m_viewport.width;
+            viewport_height_previous = m_viewport.height;
             SetViewport(static_cast<float>(Window::GetWidth()), static_cast<float>(Window::GetHeight()));
         }
         else
         {
-            SetViewport(width_previous, height_previous);
+            SetViewport(viewport_width_previous, viewport_height_previous);
         }
 
         Input::SetMouseCursorVisible(!Window::IsFullScreen());
@@ -913,19 +894,11 @@ namespace Spartan
         if (!m_is_rendering_allowed)
             return;
 
-        if (Window::IsMinimised())
-        {
-            SP_LOG_INFO("Skipping present, the window is minimzed");
-            return;
-        }
-
-        if (m_swap_chain->GetLayout() != RHI_Image_Layout::Present_Src)
-        {
-            SP_LOG_INFO("Skipping present, Pass_CopyToBackbuffer() was not called.");
-            return;
-        }
+        SP_ASSERT_MSG(!Window::IsMinimised(), "Don't call present if the window is minimized");
+        SP_ASSERT(m_swap_chain->GetLayout() == RHI_Image_Layout::Present_Src);
 
         m_swap_chain->Present();
+
         SP_FIRE_EVENT(EventType::RendererPostPresent);
     }
 

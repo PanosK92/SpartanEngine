@@ -422,10 +422,7 @@ namespace ImGui::RHI
 
     static void RHI_Window_SetSize(ImGuiViewport* viewport, const ImVec2 size)
     {
-        SP_ASSERT_MSG(
-            static_cast<WindowData*>(viewport->RendererUserData)->swapchain->Resize(static_cast<uint32_t>(size.x), static_cast<uint32_t>(size.y)),
-            "Failed to resize swap chain"
-        );
+        static_cast<WindowData*>(viewport->RendererUserData)->swapchain->Resize(static_cast<uint32_t>(size.x), static_cast<uint32_t>(size.y));
     }
 
     static void RHI_Window_Render(ImGuiViewport* viewport, void*)

@@ -82,6 +82,7 @@ namespace Spartan
 
         // Blit
         void Blit(RHI_Texture* source, RHI_Texture* destination, const RHI_Filter filter, const bool blit_mips);
+        void Blit(RHI_Texture* source, RHI_SwapChain* destination, const RHI_Filter filter);
 
         // Viewport
         void SetViewport(const RHI_Viewport& viewport) const;
@@ -154,7 +155,6 @@ namespace Spartan
         bool m_pipeline_dirty                            = false;
         std::atomic<RHI_CommandListState> m_state        = RHI_CommandListState::Idle;
         static const uint8_t m_resource_array_length_max = 16;
-        RHI_SwapChain* swapchain_to_transition           = nullptr;
         static bool m_memory_query_support;
         std::mutex m_mutex_reset;
         uint32_t m_index = 0;

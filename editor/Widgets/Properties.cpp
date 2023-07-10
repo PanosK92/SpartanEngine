@@ -21,6 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ====================================
 #include "Properties.h"
+#include "Window.h"
 #include "../ImGui/ImGuiExtension.h"
 #include "../ImGui/Source/imgui_stdlib.h"
 #include "../ImGui/Source/imgui_internal.h"
@@ -53,10 +54,12 @@ weak_ptr<Material> Properties::m_inspected_material;
 
 namespace
 {
+    #define column_pos_x               180.0f * Spartan::Window::GetDpiScale()
+    #define item_width                 110.0f * Spartan::Window::GetDpiScale()
+    #define material_offset_from_pos_x 160    * Spartan::Window::GetDpiScale()
+
     static string context_menu_id;
     static shared_ptr<Component> copied_component = nullptr;
-    static float column_pos_x                     = 180.0f;
-    static const float max_width                  = 100.0f;
 
     static void component_context_menu_options(const string& id, shared_ptr<Component> component, const bool removable)
     {
@@ -146,7 +149,7 @@ Properties::Properties(Editor* editor) : Widget(editor)
 
 void Properties::TickVisible()
 {
-    ImGui::PushItemWidth(max_width);
+    ImGui::PushItemWidth(item_width);
 
     if (!m_inspected_entity.expired())
     {
@@ -247,14 +250,12 @@ void Properties::ShowLight(shared_ptr<Light> light) const
 
         // Type
         ImGui::Text("Type");
-        ImGui::PushItemWidth(110.0f);
         ImGui::SameLine(column_pos_x);
         uint32_t selection_index = static_cast<uint32_t>(light->GetLightType());
         if (ImGuiSp::combo_box("##LightType", types, &selection_index))
         {
             light->SetLightType(static_cast<LightType>(selection_index));
         }
-        ImGui::PopItemWidth();
 
         // Color
         ImGui::Text("Color");
@@ -265,7 +266,7 @@ void Properties::ShowLight(shared_ptr<Light> light) const
         ImGui::SameLine(column_pos_x);
         float v_speed   = 5.0f;
         float v_max     = 120000.0f;
-        ImGui::PushItemWidth(300); ImGuiSp::draw_float_wrap("##lightIntensity", &intensity, v_speed, 0.0f, v_max); ImGui::PopItemWidth();
+        ImGuiSp::draw_float_wrap("##lightIntensity", &intensity, v_speed, 0.0f, v_max);
 
         // Shadows
         ImGui::Text("Shadows");
@@ -295,19 +296,19 @@ void Properties::ShowLight(shared_ptr<Light> light) const
         // Bias
         ImGui::Text("Bias");
         ImGui::SameLine(column_pos_x);
-        ImGui::PushItemWidth(300); ImGui::InputFloat("##lightBias", &bias, 1.0f, 1.0f, "%.0f"); ImGui::PopItemWidth();
+        ImGui::InputFloat("##lightBias", &bias, 1.0f, 1.0f, "%.0f");
 
         // Normal Bias
         ImGui::Text("Normal Bias");
         ImGui::SameLine(column_pos_x);
-        ImGui::PushItemWidth(300); ImGui::InputFloat("##lightNormalBias", &normal_bias, 1.0f, 1.0f, "%.0f"); ImGui::PopItemWidth();
+        ImGui::InputFloat("##lightNormalBias", &normal_bias, 1.0f, 1.0f, "%.0f");
 
         // Range
         if (light->GetLightType() != LightType::Directional)
         {
             ImGui::Text("Range");
             ImGui::SameLine(column_pos_x);
-            ImGui::PushItemWidth(300); ImGuiSp::draw_float_wrap("##lightRange", &range, 0.01f, 0.0f, 1000.0f); ImGui::PopItemWidth();
+            ImGuiSp::draw_float_wrap("##lightRange", &range, 0.01f, 0.0f, 1000.0f);
         }
 
         // Angle
@@ -315,7 +316,7 @@ void Properties::ShowLight(shared_ptr<Light> light) const
         {
             ImGui::Text("Angle");
             ImGui::SameLine(column_pos_x);
-            ImGui::PushItemWidth(300); ImGuiSp::draw_float_wrap("##lightAngle", &angle, 0.01f, 1.0f, 179.0f); ImGui::PopItemWidth();
+            ImGuiSp::draw_float_wrap("##lightAngle", &angle, 0.01f, 1.0f, 179.0f);
         }
 
         //= MAP =====================================================================================================================
@@ -355,13 +356,11 @@ void Properties::ShowRenderable(shared_ptr<Renderable> renderable) const
         ImGui::Text("Material");
         ImGui::SameLine(column_pos_x);
         ImGui::PushID("##material_name");
-        ImGui::PushItemWidth(200.0f);
         ImGui::InputText("", &material_name, ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_ReadOnly);
         if (auto payload = ImGuiSp::receive_drag_drop_payload(ImGuiSp::DragPayloadType::Material))
         {
             renderable->SetMaterial(std::get<const char*>(payload->data));
         }
-        ImGui::PopItemWidth();
         ImGui::PopID();
 
         // Cast shadows
@@ -398,26 +397,25 @@ void Properties::ShowRigidBody(shared_ptr<RigidBody> rigid_body) const
         //=========================================================================
 
         const auto input_text_flags = ImGuiInputTextFlags_CharsDecimal;
-        const auto item_width       = 120.0f;
         const auto step             = 0.1f;
         const auto step_fast        = 0.1f;
         const auto precision        = "%.3f";
 
         // Mass
         ImGui::Text("Mass");
-        ImGui::SameLine(column_pos_x); ImGui::PushItemWidth(item_width); ImGui::InputFloat("##RigidBodyMass", &mass, step, step_fast, precision, input_text_flags); ImGui::PopItemWidth();
+        ImGui::SameLine(column_pos_x); ImGui::InputFloat("##RigidBodyMass", &mass, step, step_fast, precision, input_text_flags);
 
         // Friction
         ImGui::Text("Friction");
-        ImGui::SameLine(column_pos_x); ImGui::PushItemWidth(item_width); ImGui::InputFloat("##RigidBodyFriction", &friction, step, step_fast, precision, input_text_flags); ImGui::PopItemWidth();
+        ImGui::SameLine(column_pos_x); ImGui::InputFloat("##RigidBodyFriction", &friction, step, step_fast, precision, input_text_flags);
 
         // Rolling Friction
         ImGui::Text("Rolling Friction");
-        ImGui::SameLine(column_pos_x); ImGui::PushItemWidth(item_width); ImGui::InputFloat("##RigidBodyRollingFriction", &friction_rolling, step, step_fast, precision, input_text_flags); ImGui::PopItemWidth();
+        ImGui::SameLine(column_pos_x); ImGui::InputFloat("##RigidBodyRollingFriction", &friction_rolling, step, step_fast, precision, input_text_flags);
 
         // Restitution
         ImGui::Text("Restitution");
-        ImGui::SameLine(column_pos_x); ImGui::PushItemWidth(item_width); ImGui::InputFloat("##RigidBodyRestitution", &restitution, step, step_fast, precision, input_text_flags); ImGui::PopItemWidth();
+        ImGui::SameLine(column_pos_x); ImGui::InputFloat("##RigidBodyRestitution", &restitution, step, step_fast, precision, input_text_flags);
 
         // Use Gravity
         ImGui::Text("Use Gravity");
@@ -508,30 +506,24 @@ void Properties::ShowCollider(shared_ptr<Collider> collider) const
 
         // Type
         ImGui::Text("Type");
-        ImGui::PushItemWidth(110);
         ImGui::SameLine(column_pos_x);
         uint32_t selection_index = static_cast<uint32_t>(collider->GetShapeType());
         if (ImGuiSp::combo_box("##colliderType", shape_types, &selection_index))
         {
             collider->SetShapeType(static_cast<ColliderShape>(selection_index));
         }
-        ImGui::PopItemWidth();
 
         // Center
         ImGui::Text("Center");
-        ImGui::PushItemWidth(110);
         ImGui::SameLine(column_pos_x); ImGui::PushID("colCenterX"); ImGui::InputFloat("X", &collider_center.x, step, step_fast, precision, input_text_flags); ImGui::PopID();
         ImGui::SameLine();             ImGui::PushID("colCenterY"); ImGui::InputFloat("Y", &collider_center.y, step, step_fast, precision, input_text_flags); ImGui::PopID();
         ImGui::SameLine();             ImGui::PushID("colCenterZ"); ImGui::InputFloat("Z", &collider_center.z, step, step_fast, precision, input_text_flags); ImGui::PopID();
-        ImGui::PopItemWidth();
 
         // Size
         ImGui::Text("Size");
-        ImGui::PushItemWidth(110);
         ImGui::SameLine(column_pos_x); ImGui::PushID("colSizeX"); ImGui::InputFloat("X", &collider_bounding_box.x, step, step_fast, precision, input_text_flags); ImGui::PopID();
         ImGui::SameLine();             ImGui::PushID("colSizeY"); ImGui::InputFloat("Y", &collider_bounding_box.y, step, step_fast, precision, input_text_flags); ImGui::PopID();
         ImGui::SameLine();             ImGui::PushID("colSizeZ"); ImGui::InputFloat("Z", &collider_bounding_box.z, step, step_fast, precision, input_text_flags); ImGui::PopID();
-        ImGui::PopItemWidth();
 
         // Optimize
         if (collider->GetShapeType() == ColliderShape::Mesh)
@@ -584,7 +576,6 @@ void Properties::ShowConstraint(shared_ptr<Constraint> constraint) const
         // Other body
         ImGui::Text("Other Body"); ImGui::SameLine(column_pos_x);
         ImGui::PushID("##OtherBodyName");
-        ImGui::PushItemWidth(200.0f);
         ImGui::InputText("", &other_body_name, ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_ReadOnly);
         if (auto payload = ImGuiSp::receive_drag_drop_payload(ImGuiSp::DragPayloadType::Entity))
         {
@@ -592,7 +583,6 @@ void Properties::ShowConstraint(shared_ptr<Constraint> constraint) const
             other_body               = World::GetEntityById(entity_id);
             other_body_dirty         = true;
         }
-        ImGui::PopItemWidth();
         ImGui::PopID();
 
         // Position
@@ -651,8 +641,6 @@ void Properties::ShowMaterial(Material* material) const
 
     if (component_begin("Material", IconType::Component_Material, nullptr, false))
     {
-        const float offset_from_pos_x = 160;
-
         //= REFLECT ===========================================
         Math::Vector2 tiling = Vector2(
             material->GetProperty(MaterialProperty::UvTilingX),
@@ -674,13 +662,13 @@ void Properties::ShowMaterial(Material* material) const
 
         // Name
         ImGui::Text("Name");
-        ImGui::SameLine(offset_from_pos_x); ImGui::Text(material->GetObjectName().c_str());
+        ImGui::SameLine(material_offset_from_pos_x); ImGui::Text(material->GetObjectName().c_str());
 
         if (material->GetProperty(MaterialProperty::CanBeEdited) == 1.0f)
         {
             // Texture slots
             {
-                const auto show_property = [this, &offset_from_pos_x, &material](const char* name, const char* tooltip, const MaterialTexture mat_tex, const MaterialProperty mat_property)
+                const auto show_property = [this, &material](const char* name, const char* tooltip, const MaterialTexture mat_tex, const MaterialProperty mat_property)
                 {
                     bool show_texture  = mat_tex      != MaterialTexture::Undefined;
                     bool show_modifier = mat_property != MaterialProperty::Undefined;
@@ -697,7 +685,7 @@ void Properties::ShowMaterial(Material* material) const
 
                         if (show_texture || show_modifier)
                         {
-                            ImGui::SameLine(offset_from_pos_x);
+                            ImGui::SameLine(material_offset_from_pos_x);
                         }
                     }
 
@@ -760,25 +748,19 @@ void Properties::ShowMaterial(Material* material) const
 
             // UV
             {
-                const float input_width = 128.0f;
-
                 // Tiling
                 ImGui::Text("Tiling");
-                ImGui::SameLine(offset_from_pos_x); ImGui::Text("X");
-                ImGui::PushItemWidth(input_width);
+                ImGui::SameLine(material_offset_from_pos_x); ImGui::Text("X");
                 ImGui::SameLine(); ImGui::InputFloat("##matTilingX", &tiling.x, 0.01f, 0.1f, "%.2f", ImGuiInputTextFlags_CharsDecimal);
                 ImGui::SameLine(); ImGui::Text("Y");
                 ImGui::SameLine(); ImGui::InputFloat("##matTilingY", &tiling.y, 0.01f, 0.1f, "%.2f", ImGuiInputTextFlags_CharsDecimal);
-                ImGui::PopItemWidth();
 
                 // Offset
                 ImGui::Text("Offset");
-                ImGui::SameLine(offset_from_pos_x); ImGui::Text("X");
-                ImGui::PushItemWidth(input_width);
+                ImGui::SameLine(material_offset_from_pos_x); ImGui::Text("X");
                 ImGui::SameLine(); ImGui::InputFloat("##matOffsetX", &offset.x, 0.01f, 0.1f, "%.2f", ImGuiInputTextFlags_CharsDecimal);
                 ImGui::SameLine(); ImGui::Text("Y");
                 ImGui::SameLine(); ImGui::InputFloat("##matOffsetY", &offset.y, 0.01f, 0.1f, "%.2f", ImGuiInputTextFlags_CharsDecimal);
-                ImGui::PopItemWidth();
             }
         }
         else
@@ -829,13 +811,11 @@ void Properties::ShowCamera(shared_ptr<Camera> camera) const
         // Projection
         ImGui::Text("Projection");
         ImGui::SameLine(column_pos_x);
-        ImGui::PushItemWidth(115.0f);
         uint32_t selection_index = static_cast<uint32_t>(camera->GetProjectionType());
         if (ImGuiSp::combo_box("##cameraProjection", projection_types, &selection_index))
         {
             camera->SetProjection(static_cast<ProjectionType>(selection_index));
         }
-        ImGui::PopItemWidth();
 
         // Aperture
         ImGui::SetCursorPosX(column_pos_x);
@@ -858,8 +838,8 @@ void Properties::ShowCamera(shared_ptr<Camera> camera) const
 
         // Clipping Planes
         ImGui::Text("Clipping Planes");
-        ImGui::SameLine(column_pos_x);      ImGui::PushItemWidth(130); ImGui::InputFloat("Near", &near_plane, 0.01f, 0.01f, "%.2f", input_text_flags); ImGui::PopItemWidth();
-        ImGui::SetCursorPosX(column_pos_x); ImGui::PushItemWidth(130); ImGui::InputFloat("Far", &far_plane, 0.01f, 0.01f, "%.2f", input_text_flags);   ImGui::PopItemWidth();
+        ImGui::SameLine(column_pos_x);      ImGui::InputFloat("Near", &near_plane, 0.01f, 0.01f, "%.2f", input_text_flags);
+        ImGui::SetCursorPosX(column_pos_x); ImGui::InputFloat("Far", &far_plane, 0.01f, 0.01f, "%.2f", input_text_flags);
 
         // FPS Control
         ImGui::Text("First Person Control");
@@ -971,9 +951,8 @@ void Properties::ShowAudioSource(shared_ptr<AudioSource> audio_source) const
 
         // Audio clip
         ImGui::Text("Audio Clip");
-        ImGui::SameLine(column_pos_x); ImGui::PushItemWidth(250.0f);
+        ImGui::SameLine(column_pos_x);
         ImGui::InputText("##audioSourceAudioClip", &audio_clip_name, ImGuiInputTextFlags_ReadOnly);
-        ImGui::PopItemWidth();
         if (auto payload = ImGuiSp::receive_drag_drop_payload(ImGuiSp::DragPayloadType::Audio))
         {
             audio_source->SetAudioClip(std::get<const char*>(payload->data));
@@ -1051,27 +1030,27 @@ void Properties::ShowReflectionProbe(shared_ptr<ReflectionProbe> reflection_prob
         // Resolution
         ImGui::Text("Resolution");
         ImGui::SameLine(column_pos_x);
-        ImGui::PushItemWidth(300); ImGui::InputInt("##reflection_probe_resolution", &resolution); ImGui::PopItemWidth();
+        ImGui::InputInt("##reflection_probe_resolution", &resolution);
 
         // Update interval frames
         ImGui::Text("Update interval frames");
         ImGui::SameLine(column_pos_x);
-        ImGui::PushItemWidth(300); ImGui::InputInt("##reflection_probe_update_interval_frames", &update_interval_frames); ImGui::PopItemWidth();
+        ImGui::InputInt("##reflection_probe_update_interval_frames", &update_interval_frames);
 
         // Update face count
         ImGui::Text("Update face count");
         ImGui::SameLine(column_pos_x);
-        ImGui::PushItemWidth(300); ImGui::InputInt("##reflection_probe_update_face_count", &update_face_count); ImGui::PopItemWidth();
+        ImGui::InputInt("##reflection_probe_update_face_count", &update_face_count);
 
         // Near plane
         ImGui::Text("Near plane");
         ImGui::SameLine(column_pos_x);
-        ImGui::PushItemWidth(300); ImGui::InputFloat("##reflection_probe_plane_near", &plane_near, 1.0f, 1.0f, "%.1f"); ImGui::PopItemWidth();
+        ImGui::InputFloat("##reflection_probe_plane_near", &plane_near, 1.0f, 1.0f, "%.1f");
 
         // Far plane
         ImGui::Text("Far plane");
         ImGui::SameLine(column_pos_x);
-        ImGui::PushItemWidth(300); ImGui::InputFloat("##reflection_probe_plane_far", &plane_far, 1.0f, 1.0f, "%.1f"); ImGui::PopItemWidth();
+        ImGui::InputFloat("##reflection_probe_plane_far", &plane_far, 1.0f, 1.0f, "%.1f");
 
         // Extents
         const ImGuiInputTextFlags_ input_text_flags = ImGuiInputTextFlags_CharsDecimal;
@@ -1079,11 +1058,9 @@ void Properties::ShowReflectionProbe(shared_ptr<ReflectionProbe> reflection_prob
         const float step_fast                       = 0.1f;
         const char* precision                       = "%.3f";
         ImGui::Text("Extents");
-        ImGui::PushItemWidth(120);
         ImGui::SameLine(column_pos_x); ImGui::PushID("##reflection_probe_extents_x"); ImGui::InputFloat("X", &extents.x, step, step_fast, precision, input_text_flags); ImGui::PopID();
-        ImGui::SameLine();                 ImGui::PushID("##reflection_probe_extents_y"); ImGui::InputFloat("Y", &extents.y, step, step_fast, precision, input_text_flags); ImGui::PopID();
-        ImGui::SameLine();                 ImGui::PushID("##reflection_probe_extents_z"); ImGui::InputFloat("Z", &extents.z, step, step_fast, precision, input_text_flags); ImGui::PopID();
-        ImGui::PopItemWidth();
+        ImGui::SameLine();             ImGui::PushID("##reflection_probe_extents_y"); ImGui::InputFloat("Y", &extents.y, step, step_fast, precision, input_text_flags); ImGui::PopID();
+        ImGui::SameLine();             ImGui::PushID("##reflection_probe_extents_z"); ImGui::InputFloat("Z", &extents.z, step, step_fast, precision, input_text_flags); ImGui::PopID();
 
         //= MAP =====================================================================================================================================
         if (resolution             != reflection_probe->GetResolution())           reflection_probe->SetResolution(resolution);
