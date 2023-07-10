@@ -142,7 +142,7 @@ namespace Spartan
                             m_timestamps.data(),                    // pData
                             stride,                                 // stride
                             flags                                   // flags
-                        );                                          
+                        );
                     }
                 }
             }
