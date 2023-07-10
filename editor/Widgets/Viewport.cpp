@@ -49,16 +49,24 @@ void Viewport::TickVisible()
     float height = ImGui::GetWindowContentRegionMax().y - ImGui::GetWindowContentRegionMin().y;
 
     // Update engine's viewport.
-    if (m_width != width || m_height != height)
+    static bool first_frame      = true;
+    static float width_previous  = 0;
+    static float height_previous = 0;
+    if (!first_frame) // during the first frame the viewport is not yet initialized (or it's size will be something weird)
     {
-        if (RHI_Device::IsValidResolution(static_cast<uint32_t>(width), static_cast<uint32_t>(height)))
+        if (width_previous != width || height_previous != height)
         {
-            Renderer::SetViewport(width, height);
+            if (RHI_Device::IsValidResolution(static_cast<uint32_t>(width), static_cast<uint32_t>(height)))
+            {
+                Renderer::SetViewport(width, height);
+                Renderer::SetResolutionRender(width, height);
 
-            m_width  = width;
-            m_height = height;
+                width_previous  = width;
+                height_previous = height;
+            }
         }
     }
+    first_frame = false;
 
     // Let the input system know about the position of this viewport within the editor.
     // This will allow the system to properly calculate a relative mouse position.
