@@ -562,19 +562,33 @@ namespace Spartan
 
     void RHI_CommandList::Blit(RHI_Texture* source, RHI_Texture* destination, const RHI_Filter filter, const bool blit_mips)
     {
-        SP_ASSERT_MSG((source->GetFlags() & RHI_Texture_ClearOrBlit) != 0, "The texture needs the RHI_Texture_ClearOrBlit flag");
+        SP_ASSERT_MSG((source->GetFlags() & RHI_Texture_ClearOrBlit) != 0,      "The texture needs the RHI_Texture_ClearOrBlit flag");
         SP_ASSERT_MSG((destination->GetFlags() & RHI_Texture_ClearOrBlit) != 0, "The texture needs the RHI_Texture_ClearOrBlit flag");
+        if (blit_mips)
+        {
+            SP_ASSERT_MSG(source->GetMipCount() == destination->GetMipCount(),
+                "If the mips are blitted, then the mip count between the source and the destination textures must match");
+        }
 
         // Compute a blit region for each mip
-        array<VkOffset3D,  rhi_max_mip_count> blit_region_sizes = {};
-        array<VkImageBlit, rhi_max_mip_count> blit_regions      = {};
-        uint32_t blit_region_count                              = source->GetMipCount();
+        array<VkOffset3D,  rhi_max_mip_count> blit_offsets_source     = {};
+        array<VkOffset3D, rhi_max_mip_count> blit_offsets_destination = {};
+        array<VkImageBlit, rhi_max_mip_count> blit_regions            = {};
+        uint32_t blit_region_count                                    = blit_mips ? source->GetMipCount() : 1;
         for (uint32_t mip_index = 0; mip_index < blit_region_count; mip_index++)
         {
-            VkOffset3D& blit_size = blit_region_sizes[mip_index];
-            blit_size.x           = source->GetWidth() >> mip_index;
-            blit_size.y           = source->GetHeight() >> mip_index;
-            blit_size.z           = 1;
+            VkOffset3D& source_blit_size = blit_offsets_source[mip_index];
+            source_blit_size.x           = source->GetWidth()  >> mip_index;
+            source_blit_size.y           = source->GetHeight() >> mip_index;
+            source_blit_size.z           = 1;
+
+            VkOffset3D& destination_blit_size = blit_offsets_destination[mip_index];
+            destination_blit_size.x           = destination->GetWidth()  >> mip_index;
+            destination_blit_size.y           = destination->GetHeight() >> mip_index;
+            destination_blit_size.z           = 1;
+
+            SP_ASSERT_MSG(source_blit_size.x <= destination_blit_size.x && source_blit_size.y <= destination_blit_size.y,
+                "The source texture dimension(s) are larger than the those of the destination texture");
 
             VkImageBlit& blit_region                  = blit_regions[mip_index];
             blit_region.srcSubresource.mipLevel       = mip_index;
@@ -582,13 +596,13 @@ namespace Spartan
             blit_region.srcSubresource.layerCount     = 1;
             blit_region.srcSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
             blit_region.srcOffsets[0]                 = { 0, 0, 0 };
-            blit_region.srcOffsets[1]                 = blit_size;
+            blit_region.srcOffsets[1]                 = source_blit_size;
             blit_region.dstSubresource.mipLevel       = mip_index;
             blit_region.dstSubresource.baseArrayLayer = 0;
             blit_region.dstSubresource.layerCount     = 1;
             blit_region.dstSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
             blit_region.dstOffsets[0]                 = { 0, 0, 0 };
-            blit_region.dstOffsets[1]                 = blit_size;
+            blit_region.dstOffsets[1]                 = destination_blit_size;
         }
 
         // Save the initial layouts
@@ -609,7 +623,7 @@ namespace Spartan
         );
 
         // Transition to the initial layouts
-        if (source->GetMipCount() > 1)
+        if (blit_mips)
         {
             for (uint32_t i = 0; i < source->GetMipCount(); i++)
             {
@@ -628,13 +642,18 @@ namespace Spartan
     {
         SP_ASSERT_MSG((source->GetFlags() & RHI_Texture_ClearOrBlit) != 0, "The texture needs the RHI_Texture_ClearOrBlit flag");
 
-        VkOffset3D blit_size = {};
-        blit_size.x          = source->GetWidth();
-        blit_size.y          = source->GetHeight();
-        blit_size.z          = 1;
+        VkOffset3D source_blit_size = {};
+        source_blit_size.x          = source->GetWidth();
+        source_blit_size.y          = source->GetHeight();
+        source_blit_size.z          = 1;
 
-        SP_ASSERT_MSG(blit_size.x <= destination->GetWidth() && blit_size.y <= destination->GetHeight(),
-            "The source texture dimension(s) are larger than the swapchain");
+        VkOffset3D destination_blit_size = {};
+        destination_blit_size.x          = destination->GetWidth();
+        destination_blit_size.y          = destination->GetHeight();
+        destination_blit_size.z          = 1;
+
+        SP_ASSERT_MSG(source_blit_size.x <= destination_blit_size.x && source_blit_size.y <= destination_blit_size.y,
+            "The source texture dimension(s) are larger than the those of the swapchain");
 
         VkImageBlit blit_region                   = {};
         blit_region.srcSubresource.mipLevel       = 0;
@@ -642,13 +661,13 @@ namespace Spartan
         blit_region.srcSubresource.layerCount     = 1;
         blit_region.srcSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
         blit_region.srcOffsets[0]                 = { 0, 0, 0 };
-        blit_region.srcOffsets[1]                 = blit_size;
+        blit_region.srcOffsets[1]                 = source_blit_size;
         blit_region.dstSubresource.mipLevel       = 0;
         blit_region.dstSubresource.baseArrayLayer = 0;
         blit_region.dstSubresource.layerCount     = 1;
         blit_region.dstSubresource.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
         blit_region.dstOffsets[0]                 = { 0, 0, 0 };
-        blit_region.dstOffsets[1]                 = blit_size;
+        blit_region.dstOffsets[1]                 = destination_blit_size;
 
         // Transition to blit appropriate layouts
         RHI_Image_Layout layout_initial_source = source->GetLayout(0);
