@@ -630,18 +630,28 @@ namespace Spartan
 
     void Renderer::OnFullScreenToggled()
     {
-        static float viewport_width_previous  = 0;
-        static float viewport_height_previous = 0;
+        static float    width_previous_viewport  = 0;
+        static float    height_previous_viewport = 0;
+        static uint32_t width_previous_output    = 0;
+        static uint32_t height_previous_output   = 0;
 
         if (Window::IsFullScreen())
         {
-            viewport_width_previous  = m_viewport.width;
-            viewport_height_previous = m_viewport.height;
-            SetViewport(static_cast<float>(Window::GetWidth()), static_cast<float>(Window::GetHeight()));
+            uint32_t width  = Window::GetWidth();
+            uint32_t height = Window::GetHeight();
+
+            width_previous_viewport  = m_viewport.width;
+            height_previous_viewport = m_viewport.height;
+            SetViewport(static_cast<float>(width), static_cast<float>(height));
+
+            width_previous_output  = static_cast<uint32_t>(m_viewport.width);
+            height_previous_output = static_cast<uint32_t>(m_viewport.height);
+            SetResolutionOutput(width, height);
         }
         else
         {
-            SetViewport(viewport_width_previous, viewport_height_previous);
+            SetViewport(width_previous_viewport, height_previous_viewport);
+            SetResolutionOutput(width_previous_output, height_previous_output);
         }
 
         Input::SetMouseCursorVisible(!Window::IsFullScreen());
