@@ -40,7 +40,7 @@ namespace Spartan
 
     // Actual API specific compilation
     static void CompileShader(
-        atomic<Shader_Compilation_State>& compilation_state,
+        atomic<RHI_ShaderCompilationState>& compilation_state,
         RHI_Shader_Type shader_type,
         const unordered_map<string, string>& defines,
         string& object_name,
@@ -51,9 +51,9 @@ namespace Spartan
         const Stopwatch timer;
 
         // Compile
-        compilation_state = Shader_Compilation_State::Compiling;
+        compilation_state = RHI_ShaderCompilationState::Compiling;
         resource          = compile2();
-        compilation_state = resource ? Shader_Compilation_State::Succeeded : Shader_Compilation_State::Failed;
+        compilation_state = resource ? RHI_ShaderCompilationState::Succeeded : RHI_ShaderCompilationState::Failed;
 
         // Log compilation result
         {
@@ -72,7 +72,7 @@ namespace Spartan
             }
 
             // Success
-            if (compilation_state == Shader_Compilation_State::Succeeded)
+            if (compilation_state == RHI_ShaderCompilationState::Succeeded)
             {
                 if (defines_str.empty())
                 {
@@ -118,7 +118,7 @@ namespace Spartan
 
         // Compile
         {
-            m_compilation_state = Shader_Compilation_State::Idle;
+            m_compilation_state = RHI_ShaderCompilationState::Idle;
 
             if (!async)
             {

@@ -60,16 +60,6 @@ namespace Spartan
         static void QueryEnd(void* query);
         static void QueryGetData(void* query);
 
-        // Properties
-        static uint32_t GetMaxTexture1dDimension()            { return m_max_texture_1d_dimension; }
-        static uint32_t GetMaxTexture2dDimension()            { return m_max_texture_2d_dimension; }
-        static uint32_t GetMaxTexture3dDimension()            { return m_max_texture_3d_dimension; }
-        static uint32_t GetMaxTextureCubeDimension()          { return m_max_texture_cube_dimension; }
-        static uint32_t GetMaxTextureArrayLayers()            { return m_max_texture_array_layers; }
-        static uint64_t GetMinUniformBufferOffsetAllignment() { return m_min_uniform_buffer_offset_alignment; }
-        static uint64_t GetMinStorageBufferOffsetAllignment() { return m_min_storage_buffer_offset_alignment; }
-        static float GetTimestampPeriod()                     { return m_timestamp_period; }
-
         // Descriptors
         static void* GetDescriptorPool();
         static std::unordered_map<uint64_t, RHI_DescriptorSet>& GetDescriptorSets();
@@ -87,10 +77,6 @@ namespace Spartan
         static void DestroyCommandPool(RHI_CommandPool* cmd_pool);
         static const std::vector<std::shared_ptr<RHI_CommandPool>>& GetCommandPools();
 
-        // Misc
-        static bool IsValidResolution(const uint32_t width, const uint32_t height);
-        static uint32_t GetEnabledGraphicsStages() { return m_enabled_graphics_shader_stages; }
-
         // Deletion queue
         static void AddToDeletionQueue(const RHI_Resource_Type resource_type, void* resource);
         static void ParseDeletionQueue();
@@ -105,9 +91,28 @@ namespace Spartan
         static void UnmapMemory(void* resource, void*& mapped_data);
         static void FlushAllocation(void* resource, uint64_t offset, uint64_t size);
 
-        // Immediate
+        // Immediate execution
         static RHI_CommandList* ImmediateBegin(const RHI_Queue_Type queue_type);
         static void ImmediateSubmit(RHI_CommandList* cmd_list);
+
+        // Debug
+        static void MarkerBegin(RHI_CommandList* cmd_list, const char* name, const Math::Vector4& color);
+        static void MarkerEnd(RHI_CommandList* cmd_list);
+        static void SetResourceName(void* resource, const RHI_Resource_Type resource_type, const std::string name);
+
+        // Misc
+        static bool IsValidResolution(const uint32_t width, const uint32_t height);
+        static uint32_t GetEnabledGraphicsStages() { return m_enabled_graphics_shader_stages; }
+
+        // Properties
+        static uint32_t GetMaxTexture1dDimension()            { return m_max_texture_1d_dimension; }
+        static uint32_t GetMaxTexture2dDimension()            { return m_max_texture_2d_dimension; }
+        static uint32_t GetMaxTexture3dDimension()            { return m_max_texture_3d_dimension; }
+        static uint32_t GetMaxTextureCubeDimension()          { return m_max_texture_cube_dimension; }
+        static uint32_t GetMaxTextureArrayLayers()            { return m_max_texture_array_layers; }
+        static uint64_t GetMinUniformBufferOffsetAllignment() { return m_min_uniform_buffer_offset_alignment; }
+        static uint64_t GetMinStorageBufferOffsetAllignment() { return m_min_storage_buffer_offset_alignment; }
+        static float GetTimestampPeriod()                     { return m_timestamp_period; }
 
     private:
         // Physical device

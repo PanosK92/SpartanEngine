@@ -84,7 +84,7 @@ namespace Spartan
                 "Failed to allocate command buffer");
 
             // Name
-            vulkan_utility::debug::set_object_name(static_cast<VkCommandBuffer>(m_rhi_resource), name);
+            RHI_Device::SetResourceName(static_cast<void*>(m_rhi_resource), RHI_Resource_Type::CommandList, name);
         }
 
         // Query pool
@@ -111,7 +111,7 @@ namespace Spartan
     {
         if (m_query_pool)
         {
-            RHI_Device::AddToDeletionQueue(RHI_Resource_Type::query_pool, m_query_pool);
+            RHI_Device::AddToDeletionQueue(RHI_Resource_Type::QueryPool, m_query_pool);
             m_query_pool = nullptr;
         }
     }
@@ -878,7 +878,7 @@ namespace Spartan
     {
         if (RHI_Context::gpu_markers)
         {
-            vulkan_utility::debug::marker_begin(static_cast<VkCommandBuffer>(m_rhi_resource), name, Vector4::Zero);
+            RHI_Device::MarkerBegin(this, name, Vector4::Zero);
         }
     }
 
@@ -886,7 +886,7 @@ namespace Spartan
     {
         if (RHI_Context::gpu_markers)
         {
-            vulkan_utility::debug::marker_end(static_cast<VkCommandBuffer>(m_rhi_resource));
+            RHI_Device::MarkerEnd(this);
         }
     }
 
@@ -951,7 +951,7 @@ namespace Spartan
         // Allowed to markers ?
         if (RHI_Context::gpu_markers && gpu_marker)
         {
-            vulkan_utility::debug::marker_begin(static_cast<VkCommandBuffer>(m_rhi_resource), name, Vector4::Zero);
+            RHI_Device::MarkerBegin(this, name, Vector4::Zero);
         }
 
         m_timeblock_active = name;
@@ -964,7 +964,7 @@ namespace Spartan
         // Allowed markers ?
         if (RHI_Context::gpu_markers)
         {
-            vulkan_utility::debug::marker_end(static_cast<VkCommandBuffer>(m_rhi_resource));
+            RHI_Device::MarkerEnd(this);
         }
 
         // Allowed profiler ?

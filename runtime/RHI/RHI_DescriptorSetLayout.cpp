@@ -42,7 +42,7 @@ namespace Spartan
         m_descriptors = descriptors;
         m_object_name = name;
 
-        CreateResource(m_descriptors);
+        CreateRhiResource(m_descriptors);
 
         for (RHI_Descriptor& descriptor : m_descriptors)
         {

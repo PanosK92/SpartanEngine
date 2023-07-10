@@ -45,7 +45,7 @@ namespace Spartan
             // order is important here, as it will be used to index the descriptor sets
             array<void*, 3> layouts =
             {
-                descriptor_set_layout->GetResource(),
+                descriptor_set_layout->GetRhiResource(),
                 RHI_Device::GetDescriptorSetLayout(RHI_Device_Resource::sampler_comparison),
                 RHI_Device::GetDescriptorSetLayout(RHI_Device_Resource::sampler_regular)
             };
@@ -388,28 +388,31 @@ namespace Spartan
                     "Failed to create compute pipeline");
 
                 // Name the pipeline object
+                string name = "undefined_name";
                 if (m_state.shader_vertex)
                 {
-                    vulkan_utility::debug::set_object_name(*pipeline, m_state.shader_vertex->GetObjectName().c_str());
+                    name = m_state.shader_vertex->GetObjectName();
                 }
                 else if (m_state.shader_pixel)
                 {
-                    vulkan_utility::debug::set_object_name(*pipeline, m_state.shader_pixel->GetObjectName().c_str());
+                    name = m_state.shader_pixel->GetObjectName();
                 }
                 else if (m_state.shader_compute)
                 {
-                    vulkan_utility::debug::set_object_name(*pipeline, m_state.shader_compute->GetObjectName().c_str());
+                    name = m_state.shader_compute->GetObjectName();
                 }
+
+                RHI_Device::SetResourceName(static_cast<void*>(*pipeline), RHI_Resource_Type::Pipeline, name.c_str());
             }
         }
     }
     
     RHI_Pipeline::~RHI_Pipeline()
     {
-        RHI_Device::AddToDeletionQueue(RHI_Resource_Type::pipeline, m_resource_pipeline);
+        RHI_Device::AddToDeletionQueue(RHI_Resource_Type::Pipeline, m_resource_pipeline);
         m_resource_pipeline = nullptr;
         
-        RHI_Device::AddToDeletionQueue(RHI_Resource_Type::pipeline_layout, m_resource_pipeline_layout);
+        RHI_Device::AddToDeletionQueue(RHI_Resource_Type::PipelineLayout, m_resource_pipeline_layout);
         m_resource_pipeline_layout = nullptr;
     }
 }

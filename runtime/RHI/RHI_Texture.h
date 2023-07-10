@@ -33,17 +33,16 @@ namespace Spartan
 {
     enum RHI_Texture_Flags : uint32_t
     {
-        RHI_Texture_Srv                     = 1U << 0,
-        RHI_Texture_Uav                     = 1U << 1,
-        RHI_Texture_RenderTarget            = 1U << 2,
-        RHI_Texture_ClearOrBlit             = 1U << 3,
-        RHI_Texture_PerMipViews             = 1U << 4,
-        RHI_Texture_Greyscale               = 1U << 5,
-        RHI_Texture_Transparent             = 1U << 6,
-        RHI_Texture_Srgb                    = 1U << 7,
-        RHI_Texture_Mips                    = 1U << 8,
-        RHI_Texture_Compressed              = 1U << 9,
-        RHI_Texture_RenderTarget_ReadOnly   = 1U << 10 // only used for D3D11, can be deleted after D3D11 is removed
+        RHI_Texture_Srv          = 1U << 0,
+        RHI_Texture_Uav          = 1U << 1,
+        RHI_Texture_RenderTarget = 1U << 2,
+        RHI_Texture_ClearOrBlit  = 1U << 3,
+        RHI_Texture_PerMipViews  = 1U << 4,
+        RHI_Texture_Greyscale    = 1U << 5,
+        RHI_Texture_Transparent  = 1U << 6,
+        RHI_Texture_Srgb         = 1U << 7,
+        RHI_Texture_Mips         = 1U << 8,
+        RHI_Texture_Compressed   = 1U << 9
     };
 
     enum RHI_Shader_View_Type : uint8_t

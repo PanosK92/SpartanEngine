@@ -35,16 +35,16 @@ namespace Spartan
 {
     RHI_DescriptorSetLayout::~RHI_DescriptorSetLayout()
     {
-        if (m_resource)
+        if (m_rhi_resource)
         {
-            RHI_Device::AddToDeletionQueue(RHI_Resource_Type::descriptor_set_layout, m_resource);
-            m_resource = nullptr;
+            RHI_Device::AddToDeletionQueue(RHI_Resource_Type::DescriptorSetLayout, m_rhi_resource);
+            m_rhi_resource = nullptr;
         }
     }
 
-    void RHI_DescriptorSetLayout::CreateResource(const vector<RHI_Descriptor>& descriptors)
+    void RHI_DescriptorSetLayout::CreateRhiResource(const vector<RHI_Descriptor>& descriptors)
     {
-        SP_ASSERT(m_resource == nullptr);
+        SP_ASSERT(m_rhi_resource == nullptr);
 
         // Layout bindings
         static const uint8_t descriptors_max = 255;
@@ -87,10 +87,10 @@ namespace Spartan
 
         // Descriptor set layout
         SP_VK_ASSERT_MSG(
-            vkCreateDescriptorSetLayout(RHI_Context::device, &create_info, nullptr, reinterpret_cast<VkDescriptorSetLayout*>(&m_resource)),
+            vkCreateDescriptorSetLayout(RHI_Context::device, &create_info, nullptr, reinterpret_cast<VkDescriptorSetLayout*>(&m_rhi_resource)),
             "Failed to allocate descriptor set layout");
 
         // Name
-        vulkan_utility::debug::set_object_name(static_cast<VkDescriptorSetLayout>(m_resource), m_object_name.c_str());
+        RHI_Device::SetResourceName(m_rhi_resource, RHI_Resource_Type::DescriptorSetLayout, m_object_name);
     }
 }

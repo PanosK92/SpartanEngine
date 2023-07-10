@@ -41,7 +41,7 @@ namespace Spartan
         if (name)
         {
             m_object_name = name;
-            vulkan_utility::debug::set_object_name(static_cast<VkFence>(m_resource), m_object_name.c_str());
+            RHI_Device::SetResourceName(m_resource, RHI_Resource_Type::Fence, m_object_name);
         }
     }
 
@@ -50,7 +50,7 @@ namespace Spartan
         if (!m_resource)
             return;
 
-        RHI_Device::AddToDeletionQueue(RHI_Resource_Type::fence, m_resource);
+        RHI_Device::AddToDeletionQueue(RHI_Resource_Type::Fence, m_resource);
         m_resource = nullptr;
     }
 

@@ -42,7 +42,7 @@ namespace Spartan
         SP_ASSERT(m_resource == nullptr);
 
         // Descriptor set layouts
-        array<void*, 1> descriptor_set_layouts = { descriptor_set_layout->GetResource() };
+        array<void*, 1> descriptor_set_layouts = { descriptor_set_layout->GetRhiResource() };
 
         // Allocate info
         VkDescriptorSetAllocateInfo allocate_info = {};
@@ -56,7 +56,7 @@ namespace Spartan
             "Failed to allocate descriptor set.");
 
         // Name
-        vulkan_utility::debug::set_object_name(*reinterpret_cast<VkDescriptorSet*>(&m_resource), m_object_name.c_str());
+        RHI_Device::SetResourceName(m_resource, RHI_Resource_Type::DescriptorSet, m_object_name);
     }
 
     void RHI_DescriptorSet::Update(const vector<RHI_Descriptor>& descriptors)

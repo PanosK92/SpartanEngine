@@ -197,7 +197,7 @@ namespace Spartan
             layout_info.flags                           = VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT_EXT;
 
             SP_VK_ASSERT_MSG(vkCreateDescriptorSetLayout(RHI_Context::device, &layout_info, nullptr, descriptor_set_layout), "Failed to create descriptor set layout");
-            vulkan_utility::debug::set_object_name(*descriptor_set_layout, debug_name.c_str());
+            RHI_Device::SetResourceName(static_cast<void*>(*descriptor_set_layout), RHI_Resource_Type::DescriptorSetLayout, debug_name);
 
             // Create descriptor set
             VkDescriptorSetAllocateInfo allocInfo = {};
@@ -207,7 +207,7 @@ namespace Spartan
             allocInfo.pSetLayouts                 = descriptor_set_layout;
 
             SP_VK_ASSERT_MSG(vkAllocateDescriptorSets(RHI_Context::device, &allocInfo, descriptor_set), "Failed to allocate descriptor set");
-            vulkan_utility::debug::set_object_name(*descriptor_set, debug_name.c_str());
+            RHI_Device::SetResourceName(static_cast<void*>(*descriptor_set), RHI_Resource_Type::DescriptorSet, debug_name);
 
             // Update descriptor set with samplers
             vector<VkDescriptorImageInfo> image_infos(sampler_count);
@@ -252,7 +252,7 @@ namespace Spartan
             vmaSetAllocationName(allocator, allocation, name);
 
             // Name the allocation's underlying VkDeviceMemory
-            vulkan_utility::debug::set_object_name(allocation->GetMemory(), name);
+            RHI_Device::SetResourceName(allocation->GetMemory(), RHI_Resource_Type::DeviceMemory, name);
 
             lock_guard<mutex> lock(mutex_allocation);
             allocations[resource_to_id(resource)] = allocation;
@@ -282,6 +282,51 @@ namespace Spartan
             }
 
             return nullptr;
+        }
+    }
+
+    namespace validation_layer_logging
+    {
+        static VKAPI_ATTR VkBool32 VKAPI_CALL callback(VkDebugUtilsMessageSeverityFlagBitsEXT msg_severity, VkDebugUtilsMessageTypeFlagsEXT msg_type, const VkDebugUtilsMessengerCallbackDataEXT* p_callback_data, void* p_user_data)
+        {
+            std::string msg = "Vulkan: " + std::string(p_callback_data->pMessage);
+
+            if (/*(msg_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT) ||*/ (msg_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT))
+            {
+                Log::Write(msg.c_str(), LogType::Info);
+            }
+            else if (msg_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
+            {
+                Log::Write(msg.c_str(), LogType::Warning);
+            }
+            else if (msg_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
+            {
+                Log::Write(msg.c_str(), LogType::Error);
+            }
+
+            return VK_FALSE;
+        }
+
+        static void initialize(VkInstance instance)
+        {
+            if (vulkan_utility::functions::create_messenger)
+            {
+                VkDebugUtilsMessengerCreateInfoEXT create_info = {};
+                create_info.sType                              = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+                create_info.messageSeverity                    = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+                create_info.messageType                        = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+                create_info.pfnUserCallback                    = callback;
+
+                vulkan_utility::functions::create_messenger(instance, &create_info, nullptr, &vulkan_utility::functions::messenger);
+            }
+        }
+
+        static void shutdown(VkInstance instance)
+        {
+            if (!vulkan_utility::functions::destroy_messenger)
+                return;
+
+            vulkan_utility::functions::destroy_messenger(instance, vulkan_utility::functions::messenger, nullptr);
         }
     }
 
@@ -396,7 +441,7 @@ namespace Spartan
         // Debug
         if (RHI_Context::validation)
         {
-            vulkan_utility::debug::initialize(RHI_Context::instance);
+            validation_layer_logging::initialize(RHI_Context::instance);
         }
 
         // Find a physical device
@@ -632,7 +677,7 @@ namespace Spartan
         // Debug messenger
         if (RHI_Context::validation)
         {
-            vulkan_utility::debug::shutdown(RHI_Context::instance);
+            validation_layer_logging::shutdown(RHI_Context::instance);
         }
 
         // Device and instance
@@ -912,17 +957,17 @@ namespace Spartan
             {
                 switch (it.first)
                 {
-                    case RHI_Resource_Type::texture:               DestroyTexture(resource); break;
-                    case RHI_Resource_Type::texture_view:          vkDestroyImageView(RHI_Context::device, static_cast<VkImageView>(resource), nullptr);                     break;
-                    case RHI_Resource_Type::sampler:               vkDestroySampler(RHI_Context::device, reinterpret_cast<VkSampler>(resource), nullptr);                    break;
-                    case RHI_Resource_Type::buffer:                DestroyBuffer(resource);                                                                                  break;
-                    case RHI_Resource_Type::shader:                vkDestroyShaderModule(RHI_Context::device, static_cast<VkShaderModule>(resource), nullptr);               break;
-                    case RHI_Resource_Type::semaphore:             vkDestroySemaphore(RHI_Context::device, static_cast<VkSemaphore>(resource), nullptr);                     break;
-                    case RHI_Resource_Type::fence:                 vkDestroyFence(RHI_Context::device, static_cast<VkFence>(resource), nullptr);                             break;
-                    case RHI_Resource_Type::descriptor_set_layout: vkDestroyDescriptorSetLayout(RHI_Context::device, static_cast<VkDescriptorSetLayout>(resource), nullptr); break;
-                    case RHI_Resource_Type::query_pool:            vkDestroyQueryPool(RHI_Context::device, static_cast<VkQueryPool>(resource), nullptr);                     break;
-                    case RHI_Resource_Type::pipeline:              vkDestroyPipeline(RHI_Context::device, static_cast<VkPipeline>(resource), nullptr);                       break;
-                    case RHI_Resource_Type::pipeline_layout:       vkDestroyPipelineLayout(RHI_Context::device, static_cast<VkPipelineLayout>(resource), nullptr);           break;
+                    case RHI_Resource_Type::Texture:               DestroyTexture(resource); break;
+                    case RHI_Resource_Type::TextureView:          vkDestroyImageView(RHI_Context::device, static_cast<VkImageView>(resource), nullptr);                     break;
+                    case RHI_Resource_Type::Sampler:               vkDestroySampler(RHI_Context::device, reinterpret_cast<VkSampler>(resource), nullptr);                    break;
+                    case RHI_Resource_Type::Buffer:                DestroyBuffer(resource);                                                                                  break;
+                    case RHI_Resource_Type::Shader:                vkDestroyShaderModule(RHI_Context::device, static_cast<VkShaderModule>(resource), nullptr);               break;
+                    case RHI_Resource_Type::Semaphore:             vkDestroySemaphore(RHI_Context::device, static_cast<VkSemaphore>(resource), nullptr);                     break;
+                    case RHI_Resource_Type::Fence:                 vkDestroyFence(RHI_Context::device, static_cast<VkFence>(resource), nullptr);                             break;
+                    case RHI_Resource_Type::DescriptorSetLayout: vkDestroyDescriptorSetLayout(RHI_Context::device, static_cast<VkDescriptorSetLayout>(resource), nullptr); break;
+                    case RHI_Resource_Type::QueryPool:            vkDestroyQueryPool(RHI_Context::device, static_cast<VkQueryPool>(resource), nullptr);                     break;
+                    case RHI_Resource_Type::Pipeline:              vkDestroyPipeline(RHI_Context::device, static_cast<VkPipeline>(resource), nullptr);                       break;
+                    case RHI_Resource_Type::PipelineLayout:       vkDestroyPipelineLayout(RHI_Context::device, static_cast<VkPipelineLayout>(resource), nullptr);           break;
                     default:                                       SP_ASSERT_MSG(false, "Unknown resource");                                                                 break;
                 }
             }
@@ -984,27 +1029,28 @@ namespace Spartan
 
         // comparison
         {
+            if (descriptor_sets::descriptor_set_layouts_bindless[static_cast<uint32_t>(RHI_Device_Resource::sampler_comparison)] != nullptr)
+            {
+                RHI_Device::AddToDeletionQueue(RHI_Resource_Type::DescriptorSetLayout, descriptor_sets::descriptor_set_layouts_bindless[static_cast<uint32_t>(RHI_Device_Resource::sampler_comparison)]);
+                descriptor_sets::descriptor_set_layouts_bindless[static_cast<uint32_t>(RHI_Device_Resource::sampler_comparison)] = nullptr;
+            }
+
             vector<shared_ptr<RHI_Sampler>> samplers_comparison =
             {
                 samplers[0], // comparison
             };
-
-            if (descriptor_sets::descriptor_set_layouts_bindless[static_cast<uint32_t>(RHI_Device_Resource::sampler_comparison)] != nullptr)
-            {
-                RHI_Device::AddToDeletionQueue
-                (
-                    RHI_Resource_Type::descriptor_set_layout,
-                    descriptor_sets::descriptor_set_layouts_bindless[static_cast<uint32_t>(RHI_Device_Resource::sampler_comparison)]
-                );
-
-                descriptor_sets::descriptor_set_layouts_bindless[static_cast<uint32_t>(RHI_Device_Resource::sampler_comparison)] = nullptr;
-            }
 
             descriptor_sets::create_descriptor_set_samplers(samplers_comparison, 0, RHI_Device_Resource::sampler_comparison);
         }
 
         // regular
         {
+            if (descriptor_sets::descriptor_set_layouts_bindless[static_cast<uint32_t>(RHI_Device_Resource::sampler_regular)] != nullptr)
+            {
+                RHI_Device::AddToDeletionQueue(RHI_Resource_Type::DescriptorSetLayout, descriptor_sets::descriptor_set_layouts_bindless[static_cast<uint32_t>(RHI_Device_Resource::sampler_regular)]);
+                descriptor_sets::descriptor_set_layouts_bindless[static_cast<uint32_t>(RHI_Device_Resource::sampler_regular)] = nullptr;
+            }
+
             vector<shared_ptr<RHI_Sampler>> samplers_regular =
             {
                 samplers[1], // point_clamp
@@ -1014,17 +1060,6 @@ namespace Spartan
                 samplers[5], // trilinear_clamp
                 samplers[6]  // anisotropic_wrap
             };
-
-            if (descriptor_sets::descriptor_set_layouts_bindless[static_cast<uint32_t>(RHI_Device_Resource::sampler_regular)] != nullptr)
-            {
-                RHI_Device::AddToDeletionQueue
-                (
-                    RHI_Resource_Type::descriptor_set_layout,
-                    descriptor_sets::descriptor_set_layouts_bindless[static_cast<uint32_t>(RHI_Device_Resource::sampler_regular)]
-                );
-
-                descriptor_sets::descriptor_set_layouts_bindless[static_cast<uint32_t>(RHI_Device_Resource::sampler_regular)] = nullptr;
-            }
 
             descriptor_sets::create_descriptor_set_samplers(samplers_regular, 1, RHI_Device_Resource::sampler_regular);
         }
@@ -1338,4 +1373,42 @@ namespace Spartan
     {
         return pipelines::cache;
     }
+
+    void RHI_Device::MarkerBegin(RHI_CommandList* cmd_list, const char* name, const Math::Vector4& color)
+    {
+        SP_ASSERT(RHI_Context::gpu_markers);
+        SP_ASSERT(vulkan_utility::functions::marker_begin != nullptr);
+
+        VkDebugUtilsLabelEXT label = {};
+        label.sType                = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
+        label.pNext                = nullptr;
+        label.pLabelName           = name;
+        label.color[0]             = color.x;
+        label.color[1]             = color.y;
+        label.color[2]             = color.z;
+        label.color[3]             = color.w;
+
+        vulkan_utility::functions::marker_begin(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()), &label);
+    }
+
+    void RHI_Device::MarkerEnd(RHI_CommandList* cmd_list)
+    {
+        SP_ASSERT(RHI_Context::gpu_markers);
+
+        vulkan_utility::functions::marker_end(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()));
+    }
+
+    void RHI_Device::SetResourceName(void* resource, const RHI_Resource_Type resource_type, const std::string name)
+    {
+         SP_ASSERT(vulkan_utility::functions::set_object_name != nullptr);
+
+        VkDebugUtilsObjectNameInfoEXT name_info = {};
+        name_info.sType                         = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
+        name_info.pNext                         = nullptr;
+        name_info.objectType                    = vulkan_object_type[static_cast<uint32_t>(resource_type)];
+        name_info.objectHandle                  = reinterpret_cast<uint64_t>(resource);
+        name_info.pObjectName                   = name.c_str();
+
+        vulkan_utility::functions::set_object_name(RHI_Context::device, &name_info);
+	}
 }

@@ -53,6 +53,6 @@ namespace Spartan
 
     RHI_Sampler::~RHI_Sampler()
     {
-        RHI_Device::AddToDeletionQueue(RHI_Resource_Type::sampler, m_rhi_resource);
+        RHI_Device::AddToDeletionQueue(RHI_Resource_Type::Sampler, m_rhi_resource);
     }
 }

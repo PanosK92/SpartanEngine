@@ -98,7 +98,7 @@ namespace Spartan
 
         if (pipeline_state.IsCompute())
         {
-            SP_ASSERT_MSG(pipeline_state.shader_compute->GetCompilationState() == Shader_Compilation_State::Succeeded, "Shader hasn't compiled");
+            SP_ASSERT_MSG(pipeline_state.shader_compute->GetCompilationState() == RHI_ShaderCompilationState::Succeeded, "Shader hasn't compiled");
 
             // Get compute shader descriptors
             descriptors = pipeline_state.shader_compute->GetDescriptors();
@@ -106,7 +106,7 @@ namespace Spartan
         }
         else if (pipeline_state.IsGraphics())
         {
-            SP_ASSERT_MSG(pipeline_state.shader_vertex->GetCompilationState() == Shader_Compilation_State::Succeeded, "Shader hasn't compiled");
+            SP_ASSERT_MSG(pipeline_state.shader_vertex->GetCompilationState() == RHI_ShaderCompilationState::Succeeded, "Shader hasn't compiled");
 
             // Get vertex shader descriptors
             descriptors = pipeline_state.shader_vertex->GetDescriptors();
@@ -115,7 +115,7 @@ namespace Spartan
             // If there is a pixel shader, merge it's resources into our map as well
             if (pipeline_state.shader_pixel)
             {
-                SP_ASSERT_MSG(pipeline_state.shader_pixel->GetCompilationState() == Shader_Compilation_State::Succeeded, "Shader hasn't compiled");
+                SP_ASSERT_MSG(pipeline_state.shader_pixel->GetCompilationState() == RHI_ShaderCompilationState::Succeeded, "Shader hasn't compiled");
 
                 for (const RHI_Descriptor& descriptor_reflected : pipeline_state.shader_pixel->GetDescriptors())
                 {

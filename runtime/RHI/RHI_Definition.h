@@ -66,36 +66,20 @@ namespace Spartan
     struct RHI_Vertex_PosUvCol;
     struct RHI_Vertex_PosTexNorTan;
 
-    enum class RHI_Resource_Type
-    {
-        descriptor_set,
-        descriptor_set_layout,
-        texture,
-        texture_view,
-        sampler,
-        buffer,
-        shader,
-        semaphore,
-        fence,
-        query_pool,
-        pipeline,
-        pipeline_layout
-    };
-
     enum class RHI_PhysicalDevice_Type
     {
-        Undefined,
         Integrated,
         Discrete,
         Virtual,
-        Cpu
+        Cpu,
+        Undefined
     };
 
     enum class RHI_Api_Type
     {
-        Undefined,
         D3d12,
-        Vulkan
+        Vulkan,
+        Undefined
     };
 
     enum class RHI_Present_Mode
@@ -217,14 +201,35 @@ namespace Spartan
         Undefined
     };
 
+    enum class RHI_Resource_Type
+    {
+        Fence,
+        Semaphore,
+        Shader,
+        Sampler,
+        QueryPool,
+        DeviceMemory,
+        Buffer,
+        CommandList,
+        CommandPool,
+        Texture,
+        TextureView,
+        DescriptorSet,
+        DescriptorSetLayout,
+        Pipeline,
+        PipelineLayout,
+        Undefined
+    };
+
     enum class RHI_Vertex_Type
     {
-        Undefined,
+
         Pos,
         PosCol,
         PosUv,
         PosUvNorTan,
-        Pos2dUvCol8
+        Pos2dUvCol8,
+        Undefined
     };
 
     enum class RHI_Blend
@@ -254,7 +259,8 @@ namespace Spartan
         Subtract,
         Rev_Subtract,
         Min,
-        Max
+        Max,
+        Undefined
     };
 
     enum class RHI_Descriptor_Type
@@ -269,7 +275,6 @@ namespace Spartan
 
     enum class RHI_Image_Layout
     {
-        Undefined,
         General,
         Preinitialized,
         Color_Attachment_Optimal,
@@ -279,13 +284,15 @@ namespace Spartan
         Shader_Read_Only_Optimal,
         Transfer_Src_Optimal,
         Transfer_Dst_Optimal,
-        Present_Src
+        Present_Src,
+        Undefined
     };
 
     enum class RHI_Sync_State
     {
         Idle,
-        Submitted
+        Submitted,
+        Undefined,
     };
 
     enum RHI_Shader_Type : uint8_t
@@ -294,22 +301,6 @@ namespace Spartan
         RHI_Shader_Vertex  = 1 << 0,
         RHI_Shader_Pixel   = 1 << 1,
         RHI_Shader_Compute = 1 << 2,
-    };
-
-    enum class Shader_Compilation_State
-    {
-        Idle,
-        Compiling,
-        Succeeded,
-        Failed
-    };
-
-    enum class RHI_CommandListState : uint8_t
-    {
-        Idle,
-        Recording,
-        Ended,
-        Submitted
     };
 
     const uint32_t rhi_all_mips = std::numeric_limits<uint32_t>::max();
