@@ -71,14 +71,12 @@ Occasional livestreams on Discord for interesting topics.
 # Roadmap
 
 ## Short-term
-- Some bug fixing so we are stable again.
-- Switch to bindless.
-- Outperform D3D11.
-- Deprecate D3D11.
-- Continue work on D3D12 (on going and non blocking since Vulkan is there).
+- Continue bug fixing until Vulkan is stable.
+- Continue switching to bindless.
 - Create a startup/default world which is closer to a playable demo.
 
 ## Long-term
+- Continue work on D3D12 (on going and non blocking since Vulkan is there).
 - Skeletal Animation.
 - Atmospheric Scattering.
 - Eye Adaptation.
