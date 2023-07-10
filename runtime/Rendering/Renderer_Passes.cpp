@@ -127,7 +127,7 @@ namespace Spartan
                 if (do_transparent_pass)
                 {
                     // Blit the frame so that refraction can sample from it
-                    cmd_list->Blit(rt1, rt2, true);
+                    cmd_list->Blit(rt1, rt2, RHI_Filter::Nearest, true);
 
                     // Generate frame mips so that the reflections can simulate roughness
                     Pass_Ffx_Spd(cmd_list, rt2);
@@ -1131,10 +1131,8 @@ namespace Spartan
             // Linear
             else if (upsampling_mode == Renderer_Upsampling::Linear)
             {
-                // D3D11 baggage, can't blit to a texture with a different resolution or mip count
-                swap_render   = !swap_render;
-                bool bilinear = GetResolutionOutput() != GetResolutionRender();
-                Pass_Copy(cmd_list, get_render_in, rt_frame_output, bilinear);
+                swap_render = !swap_render;
+                cmd_list->Blit(get_render_in, rt_frame_output, RHI_Filter::Linear, false);
             }
         }
 
@@ -1201,7 +1199,7 @@ namespace Spartan
         // If the last written texture is not the output one, then make sure it is.
         if (!swap_output)
         {
-            cmd_list->Blit(rt_frame_output_scratch, rt_frame_output, false);
+            cmd_list->Blit(rt_frame_output_scratch, rt_frame_output, RHI_Filter::Nearest, false);
         }
 
         cmd_list->EndMarker();
@@ -2211,35 +2209,6 @@ namespace Spartan
         cmd_list->Dispatch(thread_group_count_x(tex_brdf_specular_lut), thread_group_count_y(tex_brdf_specular_lut));
 
         cmd_list->EndTimeblock();
-    }
-
-    void Renderer::Pass_Copy(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out, const bool bilinear)
-    {
-        // Acquire shaders
-        RHI_Shader* shader_c = GetShader(bilinear ? Renderer_Shader::copy_bilinear_c : Renderer_Shader::copy_point_c).get();
-        if (!shader_c->IsCompiled())
-            return;
-
-        cmd_list->BeginMarker(bilinear ? "copy_bilinear" : "copy_point");
-
-        // Define render state
-        static RHI_PipelineState pso;
-        pso.shader_compute  = shader_c;
-
-        // Set pipeline state
-        cmd_list->SetPipelineState(pso);
-
-        // Set uber buffer
-        m_cb_pass_cpu.resolution_rt = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
-        UpdateConstantBufferPass(cmd_list);
-
-        cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_out);
-        cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);
-
-        // Render
-        cmd_list->Dispatch(thread_group_count_x(tex_out), thread_group_count_y(tex_out));
-
-        cmd_list->EndMarker();
     }
 
     void Renderer::Pass_CopyToBackbuffer()
