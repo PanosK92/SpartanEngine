@@ -238,6 +238,32 @@ namespace Spartan
         static VmaAllocator allocator;
         static unordered_map<uint64_t, VmaAllocation> allocations;
 
+        static void initialize(const uint32_t api_version)
+        {
+            // https://gpuopen-librariesandsdks.github.io/VulkanMemoryAllocator/html/staying_within_budget.html
+            // It is recommended to use VK_EXT_memory_budget device extension to obtain information about the budget from Vulkan device.
+            // VMA is able to use this extension automatically. When not enabled, the allocator behaves same way, but then it estimates
+            // current usage and available budget based on its internal information and Vulkan memory heap sizes, which may be less precise.
+
+
+            VmaAllocatorCreateInfo allocator_info = {};
+            allocator_info.physicalDevice         = RHI_Context::device_physical;
+            allocator_info.device                 = RHI_Context::device;
+            allocator_info.instance               = RHI_Context::instance;
+            allocator_info.vulkanApiVersion       = api_version;
+            allocator_info.flags                  = VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT;
+
+            SP_ASSERT_MSG(vmaCreateAllocator(&allocator_info, &vulkan_memory_allocator::allocator) == VK_SUCCESS, "Failed to create memory allocator");
+        }
+
+        static void destroy()
+        {
+            SP_ASSERT(vulkan_memory_allocator::allocator != nullptr);
+            SP_ASSERT_MSG(vulkan_memory_allocator::allocations.empty(),  "There are still allocations");
+            vmaDestroyAllocator(static_cast<VmaAllocator>(vulkan_memory_allocator::allocator));
+            vulkan_memory_allocator::allocator = nullptr;
+        }
+
         static uint64_t resource_to_id(void* resource)
         {
             return reinterpret_cast<uint64_t>(resource);
@@ -288,22 +314,19 @@ namespace Spartan
 
     namespace functions
     {
-        static PFN_vkCreateDebugUtilsMessengerEXT          create_messenger;
-        static PFN_vkDestroyDebugUtilsMessengerEXT         destroy_messenger;
-        static PFN_vkSetDebugUtilsObjectTagEXT             set_object_tag;
-        static PFN_vkSetDebugUtilsObjectNameEXT            set_object_name;
-        static PFN_vkCmdBeginDebugUtilsLabelEXT            marker_begin;
-        static PFN_vkCmdEndDebugUtilsLabelEXT              marker_end;
-        static PFN_vkGetPhysicalDeviceMemoryProperties2KHR get_physical_device_memory_properties_2;
+        static PFN_vkCreateDebugUtilsMessengerEXT  create_messenger;
+        static PFN_vkDestroyDebugUtilsMessengerEXT destroy_messenger;
+        static PFN_vkSetDebugUtilsObjectTagEXT     set_object_tag;
+        static PFN_vkSetDebugUtilsObjectNameEXT    set_object_name;
+        static PFN_vkCmdBeginDebugUtilsLabelEXT    marker_begin;
+        static PFN_vkCmdEndDebugUtilsLabelEXT      marker_end;
 
         static void initialize(bool validation_enabled, bool gpu_markers_enabled)
         {
             #define get_func(var, def)\
             var = reinterpret_cast<PFN_##def>(vkGetInstanceProcAddr(static_cast<VkInstance>(RHI_Context::instance), #def));\
             if (!var) SP_LOG_ERROR("Failed to get function pointer for %s", #def);\
-        
-            get_func(get_physical_device_memory_properties_2, vkGetPhysicalDeviceMemoryProperties2);
-        
+
             /* VK_EXT_debug_utils */
             {
                 if (validation_enabled)
@@ -676,16 +699,7 @@ namespace Spartan
             vkGetDeviceQueue(RHI_Context::device, queues::index_copy,     0, reinterpret_cast<VkQueue*>(&queues::copy));
         }
 
-        // Create memory allocator
-        {
-            VmaAllocatorCreateInfo allocator_info = {};
-            allocator_info.physicalDevice         = RHI_Context::device_physical;
-            allocator_info.device                 = RHI_Context::device;
-            allocator_info.instance               = RHI_Context::instance;
-            allocator_info.vulkanApiVersion       = app_info.apiVersion;
-
-            SP_ASSERT_MSG(vmaCreateAllocator(&allocator_info, &vulkan_memory_allocator::allocator) == VK_SUCCESS, "Failed to create memory allocator");
-        }
+        vulkan_memory_allocator::initialize(app_info.apiVersion);
 
         // Set the descriptor set capacity to an initial value
         SetDescriptorSetCapacity(descriptor_sets::descriptor_set_capacity);
@@ -703,6 +717,14 @@ namespace Spartan
         }
     }
 
+    void RHI_Device::Tick(const uint32_t frame_count)
+    {
+        // https://gpuopen-librariesandsdks.github.io/VulkanMemoryAllocator/html/staying_within_budget.html
+        // Make sure to call vmaSetCurrentFrameIndex() every frame.
+        // Budget is queried from Vulkan inside of it to avoid overhead of querying it with every allocation.
+        vmaSetCurrentFrameIndex(vulkan_memory_allocator::allocator, frame_count);
+    }
+
     void RHI_Device::Destroy()
     {
         SP_ASSERT(queues::graphics != nullptr);
@@ -718,12 +740,7 @@ namespace Spartan
         descriptor_sets::descriptor_pool = nullptr;
 
         // Allocator
-        if (vulkan_memory_allocator::allocator != nullptr)
-        {
-            SP_ASSERT_MSG(vulkan_memory_allocator::allocations.empty(), "There are still allocations");
-            vmaDestroyAllocator(static_cast<VmaAllocator>(vulkan_memory_allocator::allocator));
-            vulkan_memory_allocator::allocator = nullptr;
-        }
+        vulkan_memory_allocator::destroy();
 
         // Debug messenger
         if (RHI_Context::validation)
@@ -1466,31 +1483,57 @@ namespace Spartan
         }
     }
 
-    uint32_t RHI_Device::GetMemoryMb()
+    
+
+    uint32_t RHI_Device::GetMemoryUsageMb()
     {
-        if (const PhysicalDevice* physical_device = RHI_Device::GetPrimaryPhysicalDevice())
+        VkDeviceSize bytes = 0;
+
+        // Get the physical device memory properties
+        VkPhysicalDeviceMemoryProperties memory_properties;
+        vkGetPhysicalDeviceMemoryProperties(static_cast<VkPhysicalDevice>(RHI_Context::device_physical), &memory_properties);
+
+        // Get the memory usage
+        VmaBudget budgets[VK_MAX_MEMORY_HEAPS];
+        vmaGetHeapBudgets(vulkan_memory_allocator::allocator, budgets);
+        for (uint32_t i = 0; i < VK_MAX_MEMORY_HEAPS; i++)
         {
-            return physical_device->GetMemory();
+            // Only consider device local heaps
+            if (memory_properties.memoryHeaps[i].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT)
+            {
+                if (budgets[i].budget < 1ull << 60)
+                {
+                    bytes += budgets[i].usage;
+                }
+            }
         }
 
-        return 0;
+        return static_cast<uint32_t>(bytes / 1024 / 1024);
     }
 
-    uint32_t RHI_Device::GetMemoryUsedMb()
+    uint32_t RHI_Device::GetMemoryBudgetMb()
     {
-        if (!functions::get_physical_device_memory_properties_2)
-            return 0;
+        VkDeviceSize bytes = 0;
 
-        VkPhysicalDeviceMemoryBudgetPropertiesEXT device_memory_budget_properties = {};
-        device_memory_budget_properties.sType                                     = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_BUDGET_PROPERTIES_EXT;
-        device_memory_budget_properties.pNext                                     = nullptr;
+        // Get the physical device memory properties
+        VkPhysicalDeviceMemoryProperties memory_properties;
+        vkGetPhysicalDeviceMemoryProperties(static_cast<VkPhysicalDevice>(RHI_Context::device_physical), &memory_properties);
 
-        VkPhysicalDeviceMemoryProperties2 device_memory_properties = {};
-        device_memory_properties.sType                             = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2;
-        device_memory_properties.pNext                             = &device_memory_budget_properties;
+        // Get available memory
+        VmaBudget budgets[VK_MAX_MEMORY_HEAPS];
+        vmaGetHeapBudgets(vulkan_memory_allocator::allocator, budgets);
+        for (uint32_t i = 0; i < VK_MAX_MEMORY_HEAPS; i++)
+        {
+            // Only consider device local heaps
+            if (memory_properties.memoryHeaps[i].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT)
+            {
+                if (budgets[i].budget < 1ull << 60)
+                {
+                    bytes += budgets[i].budget;
+                }
+            }
+        }
 
-        functions::get_physical_device_memory_properties_2(static_cast<VkPhysicalDevice>(RHI_Context::device_physical), &device_memory_properties);
-
-        return static_cast<uint32_t>(device_memory_budget_properties.heapUsage[0] / 1024 / 1024); // MBs
+        return static_cast<uint32_t>(bytes / 1024 / 1024);
     }
 }

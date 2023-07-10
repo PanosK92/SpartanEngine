@@ -293,6 +293,8 @@ namespace Spartan
         if (!m_is_rendering_allowed)
             return;
 
+        RHI_Device::Tick(m_frame_num);
+
         // Tick command pool
         bool reset = m_cmd_pool->Step();
 

@@ -66,7 +66,7 @@ namespace Spartan
         SP_LOG_INFO("%s (%d MB)", physical_device.GetName().c_str(), physical_device.GetMemory());
     }
 
-	PhysicalDevice* RHI_Device::GetPrimaryPhysicalDevice()
+    PhysicalDevice* RHI_Device::GetPrimaryPhysicalDevice()
     {
         SP_ASSERT_MSG(physical_devices.size() != 0, "No physical devices detected");
         SP_ASSERT_MSG(m_physical_device_index < physical_devices.size(), "Index out of bounds");
