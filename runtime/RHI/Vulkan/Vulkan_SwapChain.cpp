@@ -240,7 +240,8 @@ namespace Spartan
             create_info.imageColorSpace          = color_space;
             create_info.imageExtent              = { m_width, m_height };
             create_info.imageArrayLayers         = 1;
-            create_info.imageUsage               = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+            create_info.imageUsage               = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT; // fer rendering on it
+            create_info.imageUsage               |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;    // for blitting to it
 
             uint32_t queueFamilyIndices[] = { RHI_Device::GetQueueIndex(RHI_Queue_Type::Compute), RHI_Device::GetQueueIndex(RHI_Queue_Type::Graphics) };
             if (queueFamilyIndices[0] != queueFamilyIndices[1])
@@ -348,12 +349,6 @@ namespace Spartan
         m_rhi_surface = nullptr;
     }
 
-    void RHI_SwapChain::Recreate()
-    {
-        Destroy();
-        Create();
-    }
-
     void RHI_SwapChain::Resize(const uint32_t width, const uint32_t height, const bool force /*= false*/)
     {
         SP_ASSERT(RHI_Device::IsValidResolution(width, height));
@@ -373,7 +368,8 @@ namespace Spartan
         m_image_index          = numeric_limits<uint32_t>::max();
         m_image_index_previous = m_image_index;
 
-        Recreate();
+        Destroy();
+        Create();
         AcquireNextImage();
 
         SP_LOG_INFO("Resolution has been set to %dx%d", width, height);
@@ -418,7 +414,7 @@ namespace Spartan
 
     void RHI_SwapChain::Present()
     {
-        SP_ASSERT_MSG(!(SDL_GetWindowFlags(static_cast<SDL_Window*>(m_sdl_window)) & SDL_WINDOW_MINIMIZED), "The window is minimzed, can't present");
+        SP_ASSERT_MSG(!(SDL_GetWindowFlags(static_cast<SDL_Window*>(m_sdl_window)) & SDL_WINDOW_MINIMIZED), "Present should not be called for a minimized window");
         SP_ASSERT_MSG(m_rhi_swapchain != nullptr,                                                           "Invalid swapchain");
         SP_ASSERT_MSG(m_image_index != m_image_index_previous,                                              "No image was acquired");
         SP_ASSERT_MSG(m_layouts[m_image_index] == RHI_Image_Layout::Present_Src,                            "Invalid layout");
@@ -427,7 +423,9 @@ namespace Spartan
         m_wait_semaphores.clear();
         {
             // The first is simply the image acquired semaphore
-            m_wait_semaphores.emplace_back(m_acquire_semaphore[m_sync_index].get());
+            RHI_Semaphore* semaphore_image_aquired = m_acquire_semaphore[m_sync_index].get();
+            SP_ASSERT(semaphore_image_aquired->GetCpuState() == RHI_Sync_State::Submitted);
+            m_wait_semaphores.emplace_back(semaphore_image_aquired);
 
             // The others are all the command lists
             for (const shared_ptr<RHI_CommandPool>& cmd_pool : RHI_Device::GetCommandPools())
@@ -445,9 +443,8 @@ namespace Spartan
             }
         }
 
-        SP_ASSERT_MSG(!m_wait_semaphores.empty(), "Present() should wait on at least one semaphore");
-
         // Present
+        SP_ASSERT_MSG(!m_wait_semaphores.empty(), "Present() should wait on at least one semaphore");
         RHI_Device::QueuePresent(m_rhi_swapchain, &m_image_index, m_wait_semaphores);
 
         AcquireNextImage();

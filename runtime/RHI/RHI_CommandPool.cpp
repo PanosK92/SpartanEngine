@@ -52,7 +52,7 @@ namespace Spartan
 
         // Increment the command list index and and wait for the command list to be ready to use, if needed
         {
-            if (!m_first_step)
+            if (!m_first_tick)
             {
                 m_cmd_list_index = (m_cmd_list_index + 1) % static_cast<uint32_t>(m_cmd_lists.size());
                 if (m_cmd_lists[m_cmd_list_index]->GetState() == RHI_CommandListState::Submitted)
@@ -61,7 +61,7 @@ namespace Spartan
                 }
             }
 
-            m_first_step = false;
+            m_first_tick = false;
         }
 
         // Every time the command pool (that the command list comes from) changes, we reset it
