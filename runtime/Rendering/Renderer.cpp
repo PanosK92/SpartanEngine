@@ -296,7 +296,7 @@ namespace Spartan
         RHI_Device::Tick(m_frame_num);
 
         // Tick command pool
-        bool reset = m_cmd_pool->Step();
+        bool reset = m_cmd_pool->Tick();
 
         // Begin
         m_cmd_current = m_cmd_pool->GetCurrentCommandList();

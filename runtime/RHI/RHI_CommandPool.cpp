@@ -46,7 +46,7 @@ namespace Spartan
         }
     }
 
-    bool RHI_CommandPool::Step()
+    bool RHI_CommandPool::Tick()
     {
         if (!m_first_step)
         {
