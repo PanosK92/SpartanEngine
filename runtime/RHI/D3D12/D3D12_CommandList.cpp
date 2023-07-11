@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016-2022 Panos Karabelas
+Copyright(c) 2016-2023 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -48,7 +48,7 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    RHI_CommandList::RHI_CommandList(const RHI_Queue_Type queue_type, const uint32_t index, void* cmd_pool, const char* name)
+    RHI_CommandList::RHI_CommandList(const RHI_Queue_Type queue_type, const uint32_t index, const uint32_t swapchain_index, void* cmd_pool, const char* name)
     {
         SP_ASSERT(cmd_pool != nullptr);
 

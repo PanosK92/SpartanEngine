@@ -1,5 +1,5 @@
 /*
-Copyright(c) 2016-2021 Panos Karabelas
+Copyright(c) 2016-2023 Panos Karabelas
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -36,11 +36,6 @@ namespace Spartan
     }
 
     RHI_Semaphore::~RHI_Semaphore()
-    {
-
-    }
-
-    void RHI_Semaphore::Reset()
     {
 
     }
