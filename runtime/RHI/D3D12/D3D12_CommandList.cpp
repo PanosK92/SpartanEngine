@@ -85,7 +85,7 @@ namespace Spartan
         // If the command list is in use, wait for it
         if (m_state == RHI_CommandListState::Submitted)
         {
-            Wait();
+            WaitForExecution();
         }
 
         // Validate a few things
