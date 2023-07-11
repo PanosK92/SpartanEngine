@@ -41,7 +41,7 @@ namespace Spartan
             {
                 CreateCommandPool(queue_type);
                 string cmd_list_name = m_object_name + "_cmd_pool_" + to_string(index_cmd_pool) + "_cmd_list_" + to_string(index_cmd_list);
-                m_cmd_lists.push_back(make_shared<RHI_CommandList>(queue_type, index_cmd_list, m_rhi_resources[index_cmd_pool], cmd_list_name.c_str()));
+                m_cmd_lists.push_back(make_shared<RHI_CommandList>(queue_type, index_cmd_list, m_swap_chain_id, m_rhi_resources[index_cmd_pool], cmd_list_name.c_str()));
             }
         }
     }

@@ -47,7 +47,7 @@ namespace Spartan
     class SP_CLASS RHI_CommandList : public Object
     {
     public:
-        RHI_CommandList(const RHI_Queue_Type queue_type, const uint32_t index, void* cmd_pool_resource, const char* name);
+        RHI_CommandList(const RHI_Queue_Type queue_type, const uint32_t index, const uint32_t swapchain_id, void* cmd_pool_resource, const char* name);
         ~RHI_CommandList();
 
         void Begin();

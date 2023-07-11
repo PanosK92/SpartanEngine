@@ -76,7 +76,7 @@ void Viewport::TickVisible()
     Input::SetEditorViewportOffset(offset);
 
     // Draw the image after a potential resolution change call has been made
-    ImGuiSp::image(Renderer::GetFrameTexture(), ImVec2(width, height));
+    ImGuiSp::image(Renderer::GetFrameTexture(), ImVec2(static_cast<float>(width), static_cast<float>(height)));
 
     // Let the input system know if the mouse is within the viewport
     Input::SetMouseIsInViewport(ImGui::IsItemHovered());

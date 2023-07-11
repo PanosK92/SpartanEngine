@@ -53,14 +53,10 @@ namespace Spartan
             SP_ASSERT_MSG(m_proccessed_fence->Wait(), "Timed out while waiting for the fence");
         }
 
-        // Reset fence & semaphore
-        if (m_proccessed_fence) // d3d11 doesn't have any sync primitives
+        // Reset fence
+        if (m_proccessed_fence->GetCpuState() == RHI_Sync_State::Submitted)
         {
-            if (m_proccessed_fence->GetCpuState() == RHI_Sync_State::Submitted)
-            {
-                m_proccessed_fence->Reset();
-                m_proccessed_semaphore->Reset();
-            }
+            m_proccessed_fence->Reset();
         }
 
         m_state = RHI_CommandListState::Idle;
