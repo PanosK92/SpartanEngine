@@ -67,16 +67,18 @@ namespace Spartan
         // Every time the command pool (that the command list comes from) changes, we reset it
         if ((m_cmd_list_index % m_cmd_pool_count) == 0)
         {
+            uint32_t pool_index = GetPoolIndex();
+
             // Ensure no command list is executing, if so, wait for it to finish
-            for (shared_ptr<RHI_CommandList> cmd_list : m_cmd_lists)
+            for (uint32_t i = pool_index; i < pool_index + m_cmd_list_count; i++)
             {
-                if (cmd_list->GetState() == RHI_CommandListState::Submitted)
+                if (m_cmd_lists[i]->GetState() == RHI_CommandListState::Submitted)
                 {
-                    cmd_list->WaitForExecution();
+                    m_cmd_lists[i]->WaitForExecution();
                 }
             }
 
-            Reset(GetPoolIndex());
+            Reset(pool_index);
             pool_reset_took_place = true;
         }
 

@@ -46,7 +46,6 @@ namespace Spartan
         if (IsExecuting())
         {
             //SP_LOG_WARNING("Waiting for command list \"%s\" to finish executing...", m_object_name.c_str());
-
             SP_ASSERT_MSG(m_proccessed_fence->Wait(), "Timed out while waiting for the fence");
         }
 
