@@ -39,7 +39,7 @@ namespace Spartan
     {
     public:
         static void Initialize();
-        static void Tick(const uint32_t frame_count);
+        static void Tick(const uint64_t frame_count);
         static void Destroy();
 
         // Physical device

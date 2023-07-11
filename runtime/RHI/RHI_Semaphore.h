@@ -34,8 +34,6 @@ namespace Spartan
         RHI_Semaphore(bool is_timeline = false, const char* name = nullptr);
         ~RHI_Semaphore();
 
-        void Reset();
-
         // Timeline
         bool IsTimelineSemaphore() const { return m_is_timeline; }
         void Wait(const uint64_t value, const uint64_t timeout = std::numeric_limits<uint64_t>::max());

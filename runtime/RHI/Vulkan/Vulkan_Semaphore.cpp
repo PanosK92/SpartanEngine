@@ -73,11 +73,6 @@ namespace Spartan
         m_resource = nullptr;
     }
 
-    void RHI_Semaphore::Reset()
-    {
-        m_cpu_state = RHI_Sync_State::Idle;
-    }
-
     void RHI_Semaphore::Wait(const uint64_t value, uint64_t timeout /*= std::numeric_limits<uint64_t>::max()*/)
     {
         SP_ASSERT(m_is_timeline);

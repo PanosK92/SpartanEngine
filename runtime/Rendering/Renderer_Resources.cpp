@@ -437,7 +437,8 @@ namespace Spartan
 
             // BRDF - Specular Lut
             shader(Renderer_Shader::brdf_specular_lut_c) = make_shared<RHI_Shader>();
-            shader(Renderer_Shader::brdf_specular_lut_c)->Compile(RHI_Shader_Compute, shader_dir + "brdf_specular_lut.hlsl", false); }
+            shader(Renderer_Shader::brdf_specular_lut_c)->Compile(RHI_Shader_Compute, shader_dir + "brdf_specular_lut.hlsl", false);
+        }
     }
 
     void Renderer::CreateFonts()
@@ -446,7 +447,7 @@ namespace Spartan
         const string dir_font = ResourceCache::GetResourceDirectory(ResourceDirectory::Fonts) + "\\";
 
         // Load a font (used for performance metrics)
-        m_font = make_unique<Font>(dir_font + "CalibriBold.ttf", 13 * Window::GetDpiScale(), Vector4(0.8f, 0.8f, 0.8f, 1.0f));
+        m_font = make_unique<Font>(dir_font + "CalibriBold.ttf", static_cast<uint32_t>(13 * Window::GetDpiScale()), Vector4(0.8f, 0.8f, 0.8f, 1.0f));
     }
 
     void Renderer::CreateStandardMeshes()

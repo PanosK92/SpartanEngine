@@ -717,12 +717,12 @@ namespace Spartan
         }
     }
 
-    void RHI_Device::Tick(const uint32_t frame_count)
+    void RHI_Device::Tick(const uint64_t frame_count)
     {
         // https://gpuopen-librariesandsdks.github.io/VulkanMemoryAllocator/html/staying_within_budget.html
         // Make sure to call vmaSetCurrentFrameIndex() every frame.
         // Budget is queried from Vulkan inside of it to avoid overhead of querying it with every allocation.
-        vmaSetCurrentFrameIndex(vulkan_memory_allocator::allocator, frame_count);
+        vmaSetCurrentFrameIndex(vulkan_memory_allocator::allocator, static_cast<uint32_t>(frame_count));
     }
 
     void RHI_Device::Destroy()
