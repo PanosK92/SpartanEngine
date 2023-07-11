@@ -30,7 +30,7 @@ using namespace std;
 
 namespace Spartan
 {
-    void RHI_CommandPool::AllocateCommandLists(const RHI_Queue_Type queue_type, const uint32_t cmd_list_count /*= 2*/, const uint32_t cmd_pool_count /*= 2*/)
+    void RHI_CommandPool::AllocateCommandLists(const RHI_Queue_Type queue_type, const uint32_t cmd_pool_count /*= 2*/, const uint32_t cmd_list_count /*= 2*/)
     {
         m_cmd_list_count = cmd_list_count;
         m_cmd_pool_count = cmd_pool_count;
@@ -48,26 +48,38 @@ namespace Spartan
 
     bool RHI_CommandPool::Tick()
     {
-        if (!m_first_step)
-        {
-            m_cmd_list_index = (m_cmd_list_index + 1) % static_cast<uint32_t>(m_cmd_lists.size());
+        bool pool_reset_took_place = false;
 
-            // Ensure that the new m_cmd_list_index refers to a command list that's ready to use
-            if (m_cmd_lists[m_cmd_list_index]->GetState() == RHI_CommandListState::Submitted)
+        // Increment the command list index and and wait for the command list to be ready to use, if needed
+        {
+            if (!m_first_step)
             {
-                m_cmd_lists[m_cmd_list_index]->Wait();
+                m_cmd_list_index = (m_cmd_list_index + 1) % static_cast<uint32_t>(m_cmd_lists.size());
+                if (m_cmd_lists[m_cmd_list_index]->GetState() == RHI_CommandListState::Submitted)
+                {
+                    m_cmd_lists[m_cmd_list_index]->WaitForExecution();
+                }
             }
+
+            m_first_step = false;
         }
 
-        m_first_step = false;
-
-        // Every time the command pool (that the command list comes from) changes, we reset it.
+        // Every time the command pool (that the command list comes from) changes, we reset it
         if ((m_cmd_list_index % m_cmd_pool_count) == 0)
         {
+            // Ensure no command list is executing, if so, wait for it to finish
+            for (shared_ptr<RHI_CommandList> cmd_list : m_cmd_lists)
+            {
+                if (cmd_list->GetState() == RHI_CommandListState::Submitted)
+                {
+                    cmd_list->WaitForExecution();
+                }
+            }
+
             Reset(GetPoolIndex());
-            return true;
+            pool_reset_took_place = true;
         }
 
-        return false;
+        return pool_reset_took_place;
     }
 }
