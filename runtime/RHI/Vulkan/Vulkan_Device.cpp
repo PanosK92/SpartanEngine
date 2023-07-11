@@ -1391,7 +1391,7 @@ namespace Spartan
 
         if (cmd_pool->GetCurrentCommandList()->IsExecuting())
         {
-            cmd_pool->GetCurrentCommandList()->Wait(false);
+            cmd_pool->GetCurrentCommandList()->WaitForExecution();
         }
 
         cmd_pool->GetCurrentCommandList()->Begin();
@@ -1403,10 +1403,7 @@ namespace Spartan
     {
         cmd_list->End();
         cmd_list->Submit();
-
-        // Don't log if it waits, since it's always expected to wait.
-        bool log_on_wait = false;
-        cmd_list->Wait(log_on_wait);
+        cmd_list->WaitForExecution();
 
         // Signal that it's safe to proceed with the next ImmediateBegin()
         command_pools::is_immediate_executing = false;

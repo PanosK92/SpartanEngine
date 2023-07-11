@@ -53,8 +53,7 @@ namespace Spartan
         void Begin();
         void End();
         void Submit();
-        // Waits for the command list to finish being processed.
-        void Wait(const bool log_on_wait = true);
+        void WaitForExecution();
 
         // Render pass
         void SetPipelineState(RHI_PipelineState& pso);

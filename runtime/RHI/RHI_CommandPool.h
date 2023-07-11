@@ -36,7 +36,7 @@ namespace Spartan
         RHI_CommandPool(const char* name, const uint64_t swap_chain_id);
         ~RHI_CommandPool();
 
-        void AllocateCommandLists(const RHI_Queue_Type queue_type, const uint32_t cmd_list_count = 2, const uint32_t cmd_pool_count = 2);
+        void AllocateCommandLists(const RHI_Queue_Type queue_type, const uint32_t cmd_pool_count = 2, const uint32_t cmd_list_count = 2);
         bool Tick();
 
         RHI_CommandList* GetCurrentCommandList()       { return m_cmd_lists[m_cmd_list_index].get(); }
