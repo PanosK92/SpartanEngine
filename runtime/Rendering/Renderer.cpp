@@ -232,8 +232,8 @@ namespace Spartan
         CreateStandardMeshes();
 
         // Subscribe to events
-        SP_SUBSCRIBE_TO_EVENT(EventType::WorldResolved,             SP_EVENT_HANDLER_VARIANT_STATIC(OnWorldResolved));
-        SP_SUBSCRIBE_TO_EVENT(EventType::WorldClear,                SP_EVENT_HANDLER_STATIC(OnClear));
+        SP_SUBSCRIBE_TO_EVENT(EventType::WorldResolved,                   SP_EVENT_HANDLER_VARIANT_STATIC(OnWorldResolved));
+        SP_SUBSCRIBE_TO_EVENT(EventType::WorldClear,                      SP_EVENT_HANDLER_STATIC(OnClear));
         SP_SUBSCRIBE_TO_EVENT(EventType::WindowFullscreenWindowedToggled, SP_EVENT_HANDLER_STATIC(OnFullScreenToggled));
 
         // Fire event

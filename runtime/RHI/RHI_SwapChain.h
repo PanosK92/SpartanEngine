@@ -78,7 +78,6 @@ namespace Spartan
     private:
         void Create();
         void Destroy();
-        void Recreate();
         void AcquireNextImage();
 
         // Main

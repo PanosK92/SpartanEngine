@@ -83,7 +83,7 @@ namespace Spartan
             SP_ASSERT_MSG(pipeline_state.shader_compute->GetCompilationState() == RHI_ShaderCompilationState::Succeeded, "Shader hasn't compiled");
 
             // Get compute shader descriptors
-            descriptors = pipeline_state.shader_compute->GetDescriptors();
+            descriptors          = pipeline_state.shader_compute->GetDescriptors();
             descriptors_acquired = true;
         }
         else if (pipeline_state.IsGraphics())
