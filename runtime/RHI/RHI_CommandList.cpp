@@ -50,7 +50,7 @@ namespace Spartan
         }
 
         // Reset fence
-        if (m_proccessed_fence->GetCpuState() == RHI_Sync_State::Submitted)
+        if (m_proccessed_fence->GetStateCpu() == RHI_Sync_State::Submitted)
         {
             m_proccessed_fence->Reset();
         }

@@ -70,7 +70,7 @@ namespace Spartan
                 "Failed to create pipeline layout");
 
             // Name
-            //vulkan_utility::debug::set_name(static_cast<VkPipelineLayout>(m_resource_pipeline_layout), m_state.pass_name);
+            RHI_Device::SetResourceName(m_resource_pipeline_layout, RHI_Resource_Type::PipelineLayout, pipeline_state.name);
         }
 
         // Viewport & Scissor
@@ -389,22 +389,8 @@ namespace Spartan
                 SP_VK_ASSERT_MSG(vkCreateComputePipelines(RHI_Context::device, nullptr, 1, &pipeline_info, nullptr, pipeline),
                     "Failed to create compute pipeline");
 
-                // Name the pipeline object
-                string name = "undefined_name";
-                if (m_state.shader_vertex)
-                {
-                    name = m_state.shader_vertex->GetObjectName();
-                }
-                else if (m_state.shader_pixel)
-                {
-                    name = m_state.shader_pixel->GetObjectName();
-                }
-                else if (m_state.shader_compute)
-                {
-                    name = m_state.shader_compute->GetObjectName();
-                }
-
-                RHI_Device::SetResourceName(static_cast<void*>(*pipeline), RHI_Resource_Type::Pipeline, name.c_str());
+                // Name
+                RHI_Device::SetResourceName(static_cast<void*>(*pipeline), RHI_Resource_Type::Pipeline, pipeline_state.name);
             }
         }
     }

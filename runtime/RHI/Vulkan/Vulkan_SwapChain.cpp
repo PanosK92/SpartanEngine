@@ -220,28 +220,27 @@ namespace Spartan
         // Get surface capabilities
         VkSurfaceCapabilitiesKHR capabilities = get_surface_capabilities(surface);
 
-        // Compute extent
-        m_width  = Math::Helper::Clamp(m_width,  capabilities.minImageExtent.width,  capabilities.maxImageExtent.width);
-        m_height = Math::Helper::Clamp(m_height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
-        VkExtent2D extent = { m_width, m_height };
-
         // Ensure that the surface supports the requested format and color space
         VkColorSpaceKHR color_space = get_color_space(IsHdr());
         SP_ASSERT_MSG(is_format_and_color_space_supported(surface, &m_format, color_space), "The surface doesn't support the requested format");
 
+        // Clamp size between the supported min and max
+        m_width  = Math::Helper::Clamp(m_width,  capabilities.minImageExtent.width,  capabilities.maxImageExtent.width);
+        m_height = Math::Helper::Clamp(m_height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
+
         // Swap chain
         VkSwapchainKHR swap_chain;
         {
-            VkSwapchainCreateInfoKHR create_info = {};
-            create_info.sType                    = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-            create_info.surface                  = surface;
-            create_info.minImageCount            = m_buffer_count;
-            create_info.imageFormat              = vulkan_format[rhi_format_to_index(m_format)];
-            create_info.imageColorSpace          = color_space;
-            create_info.imageExtent              = { m_width, m_height };
-            create_info.imageArrayLayers         = 1;
-            create_info.imageUsage               = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT; // fer rendering on it
-            create_info.imageUsage               |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;    // for blitting to it
+            VkSwapchainCreateInfoKHR create_info  = {};
+            create_info.sType                     = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+            create_info.surface                   = surface;
+            create_info.minImageCount             = m_buffer_count;
+            create_info.imageFormat               = vulkan_format[rhi_format_to_index(m_format)];
+            create_info.imageColorSpace           = color_space;
+            create_info.imageExtent               = { m_width, m_height };
+            create_info.imageArrayLayers          = 1;
+            create_info.imageUsage                = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT; // fer rendering on it
+            create_info.imageUsage               |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;     // for blitting to it
 
             uint32_t queueFamilyIndices[] = { RHI_Device::GetQueueIndex(RHI_Queue_Type::Compute), RHI_Device::GetQueueIndex(RHI_Queue_Type::Graphics) };
             if (queueFamilyIndices[0] != queueFamilyIndices[1])
@@ -382,9 +381,9 @@ namespace Spartan
 
     void RHI_SwapChain::AcquireNextImage()
     {
-        // This is a blocking function.
-        // It will stop execution until an image becomes available.
-        
+        // This is a blocking function, it will stop execution until an image becomes available
+        constexpr uint64_t timeout = numeric_limits<uint64_t>::max();
+
         // Return if the swapchain has a single buffer and it has already been acquired
         if (m_buffer_count == 1 && m_image_index != numeric_limits<uint32_t>::max())
             return;
@@ -394,7 +393,7 @@ namespace Spartan
         RHI_Semaphore* signal_semaphore = m_acquire_semaphore[m_sync_index].get();
 
         // Ensure semaphore state
-        SP_ASSERT_MSG(signal_semaphore->GetCpuState() != RHI_Sync_State::Submitted, "The semaphore is already signaled");
+        SP_ASSERT_MSG(signal_semaphore->GetStateCpu() != RHI_Sync_State::Submitted, "The semaphore is already signaled");
 
         m_image_index_previous = m_image_index;
 
@@ -402,14 +401,14 @@ namespace Spartan
         SP_VK_ASSERT_MSG(vkAcquireNextImageKHR(
             RHI_Context::device,                                       // device
             static_cast<VkSwapchainKHR>(m_rhi_swapchain),              // swapchain
-            numeric_limits<uint64_t>::max(),                           // timeout
-            static_cast<VkSemaphore>(signal_semaphore->GetResource()), // signal semaphore
+            timeout,                                                   // timeout
+            static_cast<VkSemaphore>(signal_semaphore->GetRhiResource()), // signal semaphore
             nullptr,                                                   // signal fence
             &m_image_index                                             // pImageIndex
         ), "Failed to acquire next image");
 
         // Update semaphore state
-        signal_semaphore->SetCpuState(RHI_Sync_State::Submitted);
+        signal_semaphore->SetStateCpu(RHI_Sync_State::Submitted);
     }
 
     void RHI_SwapChain::Present()
@@ -422,31 +421,28 @@ namespace Spartan
         // Get the semaphores that present should wait for
         m_wait_semaphores.clear();
         {
-            // The first is simply the image acquired semaphore
-            RHI_Semaphore* semaphore_image_aquired = m_acquire_semaphore[m_sync_index].get();
-            SP_ASSERT(semaphore_image_aquired->GetCpuState() == RHI_Sync_State::Submitted);
-            m_wait_semaphores.emplace_back(semaphore_image_aquired);
-
-            // The others are all the command lists
+            // Semaphores which are signaled when command lists have finished executing
             for (const shared_ptr<RHI_CommandPool>& cmd_pool : RHI_Device::GetCommandPools())
             {
-                // The editor supports multiple windows, so we can be dealing with multiple swapchains.
-                // Therefore we only want to wait on the command list semaphores, which will be presenting their work to this swapchain.
+                // The editor supports multiple windows, so we can be dealing with multiple swapchains
                 if (m_object_id == cmd_pool->GetSwapchainId())
                 {
-                    RHI_Semaphore* cmd_list_semaphore = cmd_pool->GetCurrentCommandList()->GetSemaphoreProccessed();
-                    if (cmd_list_semaphore->GetCpuState() == RHI_Sync_State::Submitted)
+                    RHI_Semaphore* semaphore_cmd_list = cmd_pool->GetCurrentCommandList()->GetSemaphoreProccessed();
+                    if (semaphore_cmd_list->GetStateCpu() == RHI_Sync_State::Submitted)
                     {
-                        m_wait_semaphores.emplace_back(cmd_list_semaphore);
+                        m_wait_semaphores.emplace_back(semaphore_cmd_list);
                     }
                 }
             }
+            SP_ASSERT_MSG(!m_wait_semaphores.empty(), "Present() present should not be called if no work is to be presented");
+
+            // Semaphore that's signaled when the image is acquired
+            RHI_Semaphore* semaphore_image_aquired = m_acquire_semaphore[m_sync_index].get();
+            SP_ASSERT(semaphore_image_aquired->GetStateCpu() == RHI_Sync_State::Submitted);
+            m_wait_semaphores.emplace_back(semaphore_image_aquired);
         }
 
-        // Present
-        SP_ASSERT_MSG(!m_wait_semaphores.empty(), "Present() should wait on at least one semaphore");
         RHI_Device::QueuePresent(m_rhi_swapchain, &m_image_index, m_wait_semaphores);
-
         AcquireNextImage();
     }
 

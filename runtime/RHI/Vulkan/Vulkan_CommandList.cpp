@@ -1080,13 +1080,8 @@ namespace Spartan
         // If there is no descriptor set layout for this particular hash, create one
         if (!cached)
         {
-            // Create a name for the descriptor set layout, very useful for Vulkan debugging
-            string name  = "CS:" + (pipeline_state.shader_compute ? pipeline_state.shader_compute->GetObjectName() : "null");
-            name        += "-VS:" + (pipeline_state.shader_vertex ? pipeline_state.shader_vertex->GetObjectName()  : "null");
-            name        += "-PS:" + (pipeline_state.shader_pixel  ? pipeline_state.shader_pixel->GetObjectName()   : "null");
-
             // Emplace a new descriptor set layout
-            it = m_descriptor_set_layouts.emplace(make_pair(hash, make_shared<RHI_DescriptorSetLayout>(descriptors, name.c_str()))).first;
+            it = m_descriptor_set_layouts.emplace(make_pair(hash, make_shared<RHI_DescriptorSetLayout>(descriptors, pipeline_state.name))).first;
         }
 
         // Get the descriptor set layout we will be using

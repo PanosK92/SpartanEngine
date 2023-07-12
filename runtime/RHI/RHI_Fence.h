@@ -43,14 +43,14 @@ namespace Spartan
         // Resets the fence
         void Reset();
 
-        void* GetResource() { return m_resource; }
+        void* GetRhiResource() { return m_rhi_resource; }
 
-        // Cpu state
-        RHI_Sync_State GetCpuState()                 const { return m_cpu_state; }
-        void SetCpuState(const RHI_Sync_State state)       { m_cpu_state = state; }
+        // State
+        RHI_Sync_State GetStateCpu()                 const { return n_state_cpu; }
+        void SetStateCpu(const RHI_Sync_State state)       { n_state_cpu = state; }
 
     private:
-        void* m_resource = nullptr;
-        RHI_Sync_State m_cpu_state = RHI_Sync_State::Idle;
+        void* m_rhi_resource           = nullptr;
+        RHI_Sync_State n_state_cpu = RHI_Sync_State::Idle;
     };
 }

@@ -70,6 +70,8 @@ namespace Spartan
         std::array<Color, rhi_max_render_target_count> clear_color;
 
         bool render_target_depth_texture_read_only = false;
+
+        std::string name;
         //=========================================================
 
     private:
