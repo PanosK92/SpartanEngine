@@ -159,6 +159,178 @@ namespace Spartan
         static uint32_t index_compute  = 0;
         static uint32_t index_copy     = 0;
     }
+    
+    namespace functions
+    {
+        static PFN_vkCreateDebugUtilsMessengerEXT  create_messenger;
+        static PFN_vkDestroyDebugUtilsMessengerEXT destroy_messenger;
+        static PFN_vkSetDebugUtilsObjectTagEXT     set_object_tag;
+        static PFN_vkSetDebugUtilsObjectNameEXT    set_object_name;
+        static PFN_vkCmdBeginDebugUtilsLabelEXT    marker_begin;
+        static PFN_vkCmdEndDebugUtilsLabelEXT      marker_end;
+
+        static void initialize(bool validation_enabled, bool gpu_markers_enabled)
+        {
+            #define get_func(var, def)\
+            var = reinterpret_cast<PFN_##def>(vkGetInstanceProcAddr(static_cast<VkInstance>(RHI_Context::instance), #def));\
+            if (!var) SP_LOG_ERROR("Failed to get function pointer for %s", #def);\
+
+            /* VK_EXT_debug_utils */
+            {
+                if (validation_enabled)
+                {
+                    get_func(create_messenger, vkCreateDebugUtilsMessengerEXT);
+                    get_func(destroy_messenger, vkDestroyDebugUtilsMessengerEXT);
+                }
+        
+                if (gpu_markers_enabled)
+                {
+                    get_func(marker_begin, vkCmdBeginDebugUtilsLabelEXT);
+                    get_func(marker_end, vkCmdEndDebugUtilsLabelEXT);
+                }
+            }
+        
+            /* VK_EXT_debug_marker */
+            if (validation_enabled)
+            {
+                get_func(set_object_tag, vkSetDebugUtilsObjectTagEXT);
+                get_func(set_object_name, vkSetDebugUtilsObjectNameEXT);
+            }
+        }
+    }
+
+    namespace validation_layer_logging
+    {
+        static VkDebugUtilsMessengerEXT messenger;
+
+        static VKAPI_ATTR VkBool32 VKAPI_CALL callback
+        (
+            VkDebugUtilsMessageSeverityFlagBitsEXT msg_severity,
+            VkDebugUtilsMessageTypeFlagsEXT msg_type,
+            const VkDebugUtilsMessengerCallbackDataEXT* p_callback_data,
+            void* p_user_data
+        )
+        {
+            string msg = "Vulkan: " + std::string(p_callback_data->pMessage);
+
+            if (/*(msg_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT) ||*/ (msg_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT))
+            {
+                Log::Write(msg.c_str(), LogType::Info);
+            }
+            else if (msg_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
+            {
+                Log::Write(msg.c_str(), LogType::Warning);
+            }
+            else if (msg_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
+            {
+                Log::Write(msg.c_str(), LogType::Error);
+            }
+
+            return VK_FALSE;
+        }
+
+        static void initialize(VkInstance instance)
+        {
+            if (functions::create_messenger)
+            {
+                VkDebugUtilsMessengerCreateInfoEXT create_info = {};
+                create_info.sType                              = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+                create_info.messageSeverity                    = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+                create_info.messageType                        = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+                create_info.pfnUserCallback                    = callback;
+
+                functions::create_messenger(instance, &create_info, nullptr, &messenger);
+            }
+        }
+
+        static void shutdown(VkInstance instance)
+        {
+            if (!functions::destroy_messenger)
+                return;
+
+            functions::destroy_messenger(instance, messenger, nullptr);
+        }
+    }
+
+    namespace vulkan_memory_allocator
+    {
+        static mutex mutex_allocator;
+        static VmaAllocator allocator;
+        static unordered_map<uint64_t, VmaAllocation> allocations;
+
+        static void initialize(const uint32_t api_version)
+        {
+            // https://gpuopen-librariesandsdks.github.io/VulkanMemoryAllocator/html/staying_within_budget.html
+            // It is recommended to use VK_EXT_memory_budget device extension to obtain information about the budget from Vulkan device.
+            // VMA is able to use this extension automatically. When not enabled, the allocator behaves same way, but then it estimates
+            // current usage and available budget based on its internal information and Vulkan memory heap sizes, which may be less precise.
+
+
+            VmaAllocatorCreateInfo allocator_info = {};
+            allocator_info.physicalDevice         = RHI_Context::device_physical;
+            allocator_info.device                 = RHI_Context::device;
+            allocator_info.instance               = RHI_Context::instance;
+            allocator_info.vulkanApiVersion       = api_version;
+            allocator_info.flags                  = VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT;
+
+            SP_ASSERT_MSG(vmaCreateAllocator(&allocator_info, &vulkan_memory_allocator::allocator) == VK_SUCCESS, "Failed to create memory allocator");
+        }
+
+        static void destroy()
+        {
+            SP_ASSERT(vulkan_memory_allocator::allocator != nullptr);
+            SP_ASSERT_MSG(vulkan_memory_allocator::allocations.empty(),  "There are still allocations");
+            vmaDestroyAllocator(static_cast<VmaAllocator>(vulkan_memory_allocator::allocator));
+            vulkan_memory_allocator::allocator = nullptr;
+        }
+
+        static uint64_t resource_to_id(void* resource)
+        {
+            return reinterpret_cast<uint64_t>(resource);
+        }
+
+        static void save_allocation(void*& resource, const char* name, VmaAllocation allocation)
+        {
+            SP_ASSERT_MSG(resource != nullptr, "Resource can't be null");
+            SP_ASSERT_MSG(name != nullptr, "Name can't be empty");
+
+            // Set allocation data
+            vmaSetAllocationUserData(allocator, allocation, resource);
+            vmaSetAllocationName(allocator, allocation, name);
+
+            // Name the allocation's underlying VkDeviceMemory
+            RHI_Device::SetResourceName(allocation->GetMemory(), RHI_Resource_Type::DeviceMemory, name);
+
+            lock_guard<mutex> lock(mutex_allocation);
+            allocations[resource_to_id(resource)] = allocation;
+        }
+
+        static void destroy_allocation(void*& resource)
+        {
+            lock_guard<mutex> lock(mutex_allocation);
+
+            auto it = allocations.find(resource_to_id(resource));
+            if (it != allocations.end())
+            {
+                allocations.erase(it);
+            }
+
+            resource = nullptr;
+        }
+
+        static VmaAllocation get_allocation_from_resource(void* resource)
+        {
+            lock_guard<mutex> lock(mutex_allocation);
+
+            auto it = allocations.find(resource_to_id(resource));
+            if (it != allocations.end())
+            {
+                return it->second;
+            }
+
+            return nullptr;
+        }
+    }
 
     namespace cache
     {
@@ -323,178 +495,6 @@ namespace Spartan
             descriptor_set_layout->NeedsToBind();
 
             return descriptor_set_layout;
-        }
-    }
-
-    namespace vulkan_memory_allocator
-    {
-        static mutex mutex_allocator;
-        static VmaAllocator allocator;
-        static unordered_map<uint64_t, VmaAllocation> allocations;
-
-        static void initialize(const uint32_t api_version)
-        {
-            // https://gpuopen-librariesandsdks.github.io/VulkanMemoryAllocator/html/staying_within_budget.html
-            // It is recommended to use VK_EXT_memory_budget device extension to obtain information about the budget from Vulkan device.
-            // VMA is able to use this extension automatically. When not enabled, the allocator behaves same way, but then it estimates
-            // current usage and available budget based on its internal information and Vulkan memory heap sizes, which may be less precise.
-
-
-            VmaAllocatorCreateInfo allocator_info = {};
-            allocator_info.physicalDevice         = RHI_Context::device_physical;
-            allocator_info.device                 = RHI_Context::device;
-            allocator_info.instance               = RHI_Context::instance;
-            allocator_info.vulkanApiVersion       = api_version;
-            allocator_info.flags                  = VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT;
-
-            SP_ASSERT_MSG(vmaCreateAllocator(&allocator_info, &vulkan_memory_allocator::allocator) == VK_SUCCESS, "Failed to create memory allocator");
-        }
-
-        static void destroy()
-        {
-            SP_ASSERT(vulkan_memory_allocator::allocator != nullptr);
-            SP_ASSERT_MSG(vulkan_memory_allocator::allocations.empty(),  "There are still allocations");
-            vmaDestroyAllocator(static_cast<VmaAllocator>(vulkan_memory_allocator::allocator));
-            vulkan_memory_allocator::allocator = nullptr;
-        }
-
-        static uint64_t resource_to_id(void* resource)
-        {
-            return reinterpret_cast<uint64_t>(resource);
-        }
-
-        static void save_allocation(void*& resource, const char* name, VmaAllocation allocation)
-        {
-            SP_ASSERT_MSG(resource != nullptr, "Resource can't be null");
-            SP_ASSERT_MSG(name != nullptr, "Name can't be empty");
-
-            // Set allocation data
-            vmaSetAllocationUserData(allocator, allocation, resource);
-            vmaSetAllocationName(allocator, allocation, name);
-
-            // Name the allocation's underlying VkDeviceMemory
-            RHI_Device::SetResourceName(allocation->GetMemory(), RHI_Resource_Type::DeviceMemory, name);
-
-            lock_guard<mutex> lock(mutex_allocation);
-            allocations[resource_to_id(resource)] = allocation;
-        }
-
-        static void destroy_allocation(void*& resource)
-        {
-            lock_guard<mutex> lock(mutex_allocation);
-
-            auto it = allocations.find(resource_to_id(resource));
-            if (it != allocations.end())
-            {
-                allocations.erase(it);
-            }
-
-            resource = nullptr;
-        }
-
-        static VmaAllocation get_allocation_from_resource(void* resource)
-        {
-            lock_guard<mutex> lock(mutex_allocation);
-
-            auto it = allocations.find(resource_to_id(resource));
-            if (it != allocations.end())
-            {
-                return it->second;
-            }
-
-            return nullptr;
-        }
-    }
-
-    namespace functions
-    {
-        static PFN_vkCreateDebugUtilsMessengerEXT  create_messenger;
-        static PFN_vkDestroyDebugUtilsMessengerEXT destroy_messenger;
-        static PFN_vkSetDebugUtilsObjectTagEXT     set_object_tag;
-        static PFN_vkSetDebugUtilsObjectNameEXT    set_object_name;
-        static PFN_vkCmdBeginDebugUtilsLabelEXT    marker_begin;
-        static PFN_vkCmdEndDebugUtilsLabelEXT      marker_end;
-
-        static void initialize(bool validation_enabled, bool gpu_markers_enabled)
-        {
-            #define get_func(var, def)\
-            var = reinterpret_cast<PFN_##def>(vkGetInstanceProcAddr(static_cast<VkInstance>(RHI_Context::instance), #def));\
-            if (!var) SP_LOG_ERROR("Failed to get function pointer for %s", #def);\
-
-            /* VK_EXT_debug_utils */
-            {
-                if (validation_enabled)
-                {
-                    get_func(create_messenger, vkCreateDebugUtilsMessengerEXT);
-                    get_func(destroy_messenger, vkDestroyDebugUtilsMessengerEXT);
-                }
-        
-                if (gpu_markers_enabled)
-                {
-                    get_func(marker_begin, vkCmdBeginDebugUtilsLabelEXT);
-                    get_func(marker_end, vkCmdEndDebugUtilsLabelEXT);
-                }
-            }
-        
-            /* VK_EXT_debug_marker */
-            if (validation_enabled)
-            {
-                get_func(set_object_tag, vkSetDebugUtilsObjectTagEXT);
-                get_func(set_object_name, vkSetDebugUtilsObjectNameEXT);
-            }
-        }
-    }
-
-    namespace validation_layer_logging
-    {
-        static VkDebugUtilsMessengerEXT messenger;
-
-        static VKAPI_ATTR VkBool32 VKAPI_CALL callback
-        (
-            VkDebugUtilsMessageSeverityFlagBitsEXT msg_severity,
-            VkDebugUtilsMessageTypeFlagsEXT msg_type,
-            const VkDebugUtilsMessengerCallbackDataEXT* p_callback_data,
-            void* p_user_data
-        )
-        {
-            string msg = "Vulkan: " + std::string(p_callback_data->pMessage);
-
-            if (/*(msg_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT) ||*/ (msg_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT))
-            {
-                Log::Write(msg.c_str(), LogType::Info);
-            }
-            else if (msg_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
-            {
-                Log::Write(msg.c_str(), LogType::Warning);
-            }
-            else if (msg_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
-            {
-                Log::Write(msg.c_str(), LogType::Error);
-            }
-
-            return VK_FALSE;
-        }
-
-        static void initialize(VkInstance instance)
-        {
-            if (functions::create_messenger)
-            {
-                VkDebugUtilsMessengerCreateInfoEXT create_info = {};
-                create_info.sType                              = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-                create_info.messageSeverity                    = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-                create_info.messageType                        = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-                create_info.pfnUserCallback                    = callback;
-
-                functions::create_messenger(instance, &create_info, nullptr, &messenger);
-            }
-        }
-
-        static void shutdown(VkInstance instance)
-        {
-            if (!functions::destroy_messenger)
-                return;
-
-            functions::destroy_messenger(instance, messenger, nullptr);
         }
     }
 
@@ -789,8 +789,13 @@ namespace Spartan
         // Get a graphics, compute and a copy queue.
         {
             vkGetDeviceQueue(RHI_Context::device, queues::index_graphics, 0, reinterpret_cast<VkQueue*>(&queues::graphics));
-            vkGetDeviceQueue(RHI_Context::device, queues::index_compute,  0, reinterpret_cast<VkQueue*>(&queues::compute));
-            vkGetDeviceQueue(RHI_Context::device, queues::index_copy,     0, reinterpret_cast<VkQueue*>(&queues::copy));
+            SetResourceName(queues::graphics, RHI_Resource_Type::Queue, "graphics");
+
+            vkGetDeviceQueue(RHI_Context::device, queues::index_compute, 0, reinterpret_cast<VkQueue*>(&queues::compute));
+            SetResourceName(queues::compute, RHI_Resource_Type::Queue, "compute");
+
+            vkGetDeviceQueue(RHI_Context::device, queues::index_copy, 0, reinterpret_cast<VkQueue*>(&queues::copy));
+            SetResourceName(queues::copy, RHI_Resource_Type::Queue, "copy");
         }
 
         vulkan_memory_allocator::initialize(app_info.apiVersion);
