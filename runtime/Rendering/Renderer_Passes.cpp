@@ -222,6 +222,7 @@ namespace Spartan
             pso.render_target_color_textures[0] = tex_color; // always bind so we can clear to white (in case there are no transparent objects)
             pso.render_target_depth_texture     = tex_depth;
             pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
+            pso.name                            = "Pass_ShadowMaps";
 
             for (uint32_t array_index = 0; array_index < tex_depth->GetArrayLength(); array_index++)
             {
@@ -2137,6 +2138,7 @@ namespace Spartan
         pso.depth_stencil_state             = GetDepthStencilState(Renderer_DepthStencilState::Off).get();
         pso.render_target_color_textures[0] = tex_out;
         pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
+        pso.name                            = "Pass_PeformanceMetrics";
 
         // Draw outline
         if (m_font->GetOutline() != Font_Outline_None && m_font->GetOutlineSize() != 0)

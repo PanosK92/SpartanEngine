@@ -21,10 +21,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =====================
+//= INCLUDES ==============
 #include "../Core/Object.h"
 #include "RHI_Definition.h"
-//================================
+//=========================
 
 namespace Spartan
 {
@@ -39,14 +39,15 @@ namespace Spartan
         void Wait(const uint64_t value, const uint64_t timeout = std::numeric_limits<uint64_t>::max());
         void Signal(const uint64_t value);
         uint64_t GetValue();
-        void* GetResource() { return m_resource; }
+        void* GetRhiResource() { return m_rhi_resource; }
 
-        RHI_Sync_State GetCpuState()                 const { return m_cpu_state; }
-        void SetCpuState(const RHI_Sync_State state)       { m_cpu_state = state; }
+        // State
+        RHI_Sync_State GetStateCpu()                 const { return m_state_cpu; }
+        void SetStateCpu(const RHI_Sync_State state)       { m_state_cpu = state; }
 
     private:
-        void* m_resource           = nullptr;
+        void* m_rhi_resource           = nullptr;
         bool m_is_timeline         = false;
-        RHI_Sync_State m_cpu_state = RHI_Sync_State::Idle;
+        RHI_Sync_State m_state_cpu = RHI_Sync_State::Idle;
     };
 }

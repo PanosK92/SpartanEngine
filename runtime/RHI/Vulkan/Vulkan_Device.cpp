@@ -914,8 +914,8 @@ namespace Spartan
         uint32_t semaphore_count = static_cast<uint32_t>(wait_semaphores.size());
         for (uint32_t i = 0; i < semaphore_count; i++)
         {
-            SP_ASSERT_MSG(wait_semaphores[i]->GetCpuState() == RHI_Sync_State::Submitted, "The wait semaphore hasn't been signaled");
-            vk_wait_semaphores[i] = static_cast<VkSemaphore>(wait_semaphores[i]->GetResource());
+            SP_ASSERT_MSG(wait_semaphores[i]->GetStateCpu() == RHI_Sync_State::Submitted, "The wait semaphore hasn't been signaled");
+            vk_wait_semaphores[i] = static_cast<VkSemaphore>(wait_semaphores[i]->GetRhiResource());
         }
 
         VkPresentInfoKHR present_info   = {};
@@ -931,7 +931,7 @@ namespace Spartan
         // Update semaphore state
         for (uint32_t i = 0; i < semaphore_count; i++)
         {
-            wait_semaphores[i]->SetCpuState(RHI_Sync_State::Idle);
+            wait_semaphores[i]->SetStateCpu(RHI_Sync_State::Idle);
         }
     }
 
@@ -942,13 +942,13 @@ namespace Spartan
         lock_guard<mutex> lock(queues::mutex_queue);
 
         // Validate semaphores
-        if (wait_semaphore)   SP_ASSERT_MSG(wait_semaphore->GetCpuState()   != RHI_Sync_State::Idle,      "Wait semaphore is in an idle state and will never be signaled");
-        if (signal_semaphore) SP_ASSERT_MSG(signal_semaphore->GetCpuState() != RHI_Sync_State::Submitted, "Signal semaphore is already in a signaled state.");
-        if (signal_fence)     SP_ASSERT_MSG(signal_fence->GetCpuState()     != RHI_Sync_State::Submitted, "Signal fence is already in a signaled state.");
+        if (wait_semaphore)   SP_ASSERT_MSG(wait_semaphore->GetStateCpu()   != RHI_Sync_State::Idle,      "Wait semaphore is in an idle state and will never be signaled");
+        if (signal_semaphore) SP_ASSERT_MSG(signal_semaphore->GetStateCpu() != RHI_Sync_State::Submitted, "Signal semaphore is already in a signaled state.");
+        if (signal_fence)     SP_ASSERT_MSG(signal_fence->GetStateCpu()     != RHI_Sync_State::Submitted, "Signal fence is already in a signaled state.");
 
         // Get semaphores
-        array<VkSemaphore, 1> vk_wait_semaphore   = { wait_semaphore   ? static_cast<VkSemaphore>(wait_semaphore->GetResource())   : nullptr };
-        array<VkSemaphore, 1> vk_signal_semaphore = { signal_semaphore ? static_cast<VkSemaphore>(signal_semaphore->GetResource()) : nullptr };
+        array<VkSemaphore, 1> vk_wait_semaphore   = { wait_semaphore   ? static_cast<VkSemaphore>(wait_semaphore->GetRhiResource())   : nullptr };
+        array<VkSemaphore, 1> vk_signal_semaphore = { signal_semaphore ? static_cast<VkSemaphore>(signal_semaphore->GetRhiResource()) : nullptr };
 
         // Submit info
         VkSubmitInfo submit_info         = {};
@@ -963,15 +963,15 @@ namespace Spartan
         submit_info.pCommandBuffers      = reinterpret_cast<VkCommandBuffer*>(&cmd_buffer);
 
         // Get signal fence
-        void* vk_signal_fence = signal_fence ? signal_fence->GetResource() : nullptr;
+        void* vk_signal_fence = signal_fence ? signal_fence->GetRhiResource() : nullptr;
 
         // The actual submit
         SP_VK_ASSERT_MSG(vkQueueSubmit(static_cast<VkQueue>(GetQueue(type)), 1, &submit_info, static_cast<VkFence>(vk_signal_fence)), "Failed to submit");
 
         // Update semaphore states
-        if (wait_semaphore)   wait_semaphore->SetCpuState(RHI_Sync_State::Idle);
-        if (signal_semaphore) signal_semaphore->SetCpuState(RHI_Sync_State::Submitted);
-        if (signal_fence)     signal_fence->SetCpuState(RHI_Sync_State::Submitted);
+        if (wait_semaphore)   wait_semaphore->SetStateCpu(RHI_Sync_State::Idle);
+        if (signal_semaphore) signal_semaphore->SetStateCpu(RHI_Sync_State::Submitted);
+        if (signal_fence)     signal_fence->SetStateCpu(RHI_Sync_State::Submitted);
     }
 
     void RHI_Device::QueueWait(const RHI_Queue_Type type)
@@ -1025,18 +1025,18 @@ namespace Spartan
             {
                 switch (it.first)
                 {
-                    case RHI_Resource_Type::Texture:               DestroyTexture(resource); break;
-                    case RHI_Resource_Type::TextureView:          vkDestroyImageView(RHI_Context::device, static_cast<VkImageView>(resource), nullptr);                     break;
-                    case RHI_Resource_Type::Sampler:               vkDestroySampler(RHI_Context::device, reinterpret_cast<VkSampler>(resource), nullptr);                    break;
-                    case RHI_Resource_Type::Buffer:                DestroyBuffer(resource);                                                                                  break;
-                    case RHI_Resource_Type::Shader:                vkDestroyShaderModule(RHI_Context::device, static_cast<VkShaderModule>(resource), nullptr);               break;
-                    case RHI_Resource_Type::Semaphore:             vkDestroySemaphore(RHI_Context::device, static_cast<VkSemaphore>(resource), nullptr);                     break;
-                    case RHI_Resource_Type::Fence:                 vkDestroyFence(RHI_Context::device, static_cast<VkFence>(resource), nullptr);                             break;
+                    case RHI_Resource_Type::Texture:             DestroyTexture(resource); break;
+                    case RHI_Resource_Type::TextureView:         vkDestroyImageView(RHI_Context::device, static_cast<VkImageView>(resource), nullptr);                     break;
+                    case RHI_Resource_Type::Sampler:             vkDestroySampler(RHI_Context::device, reinterpret_cast<VkSampler>(resource), nullptr);                    break;
+                    case RHI_Resource_Type::Buffer:              DestroyBuffer(resource);                                                                                  break;
+                    case RHI_Resource_Type::Shader:              vkDestroyShaderModule(RHI_Context::device, static_cast<VkShaderModule>(resource), nullptr);               break;
+                    case RHI_Resource_Type::Semaphore:           vkDestroySemaphore(RHI_Context::device, static_cast<VkSemaphore>(resource), nullptr);                     break;
+                    case RHI_Resource_Type::Fence:               vkDestroyFence(RHI_Context::device, static_cast<VkFence>(resource), nullptr);                             break;
                     case RHI_Resource_Type::DescriptorSetLayout: vkDestroyDescriptorSetLayout(RHI_Context::device, static_cast<VkDescriptorSetLayout>(resource), nullptr); break;
-                    case RHI_Resource_Type::QueryPool:            vkDestroyQueryPool(RHI_Context::device, static_cast<VkQueryPool>(resource), nullptr);                     break;
-                    case RHI_Resource_Type::Pipeline:              vkDestroyPipeline(RHI_Context::device, static_cast<VkPipeline>(resource), nullptr);                       break;
-                    case RHI_Resource_Type::PipelineLayout:       vkDestroyPipelineLayout(RHI_Context::device, static_cast<VkPipelineLayout>(resource), nullptr);           break;
-                    default:                                       SP_ASSERT_MSG(false, "Unknown resource");                                                                 break;
+                    case RHI_Resource_Type::QueryPool:           vkDestroyQueryPool(RHI_Context::device, static_cast<VkQueryPool>(resource), nullptr);                     break;
+                    case RHI_Resource_Type::Pipeline:            vkDestroyPipeline(RHI_Context::device, static_cast<VkPipeline>(resource), nullptr);                       break;
+                    case RHI_Resource_Type::PipelineLayout:      vkDestroyPipelineLayout(RHI_Context::device, static_cast<VkPipelineLayout>(resource), nullptr);           break;
+                    default:                                     SP_ASSERT_MSG(false, "Unknown resource");                                                                 break;
                 }
             }
         }
