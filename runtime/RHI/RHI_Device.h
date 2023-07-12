@@ -61,7 +61,7 @@ namespace Spartan
         static void QueryEnd(void* query);
         static void QueryGetData(void* query);
 
-        // Descriptors
+        // Descriptors sets, descriptor set layouts and pipelines
         static void* GetDescriptorPool();
         static std::unordered_map<uint64_t, RHI_DescriptorSet>& GetDescriptorSets();
         static bool HasDescriptorSetCapacity();
@@ -69,9 +69,7 @@ namespace Spartan
         static void SetBindlessSamplers(const std::array<std::shared_ptr<RHI_Sampler>, 7>& samplers);
         static void* GetDescriptorSet(const RHI_Device_Resource resource_type);
         static void* GetDescriptorSetLayout(const RHI_Device_Resource resource_type);
-
-        // Pipelines
-        static std::unordered_map<uint64_t, std::shared_ptr<RHI_Pipeline>>& GetPipelines();
+        static void GetOrCreatePipeline(RHI_PipelineState& pso, RHI_Pipeline*& pipeline, RHI_DescriptorSetLayout*& descriptor_set_layout);
 
         // Command pools
         static RHI_CommandPool* AllocateCommandPool(const char* name, const uint64_t swap_chain_id);

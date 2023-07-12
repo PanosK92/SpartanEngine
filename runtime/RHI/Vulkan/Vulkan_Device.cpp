@@ -19,7 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ========================
+//= INCLUDES ==========================
 #include "pch.h"
 #include "../RHI_Implementation.h"
 #include "../RHI_Semaphore.h"
@@ -27,12 +27,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_DescriptorSet.h"
 #include "../RHI_Sampler.h"
 #include "../RHI_Fence.h"
+#include "../RHI_Shader.h"
+#include "../RHI_DescriptorSetLayout.h"
+#include "../RHI_Pipeline.h"
 #include "../../Profiling/Profiler.h"
 SP_WARNINGS_OFF
 #define VMA_IMPLEMENTATION
 #include "vk_mem_alloc.h"
 SP_WARNINGS_ON
-//===================================
+//=====================================
 
 //= NAMESPACES ===============
 using namespace std;
@@ -157,17 +160,15 @@ namespace Spartan
         static uint32_t index_copy     = 0;
     }
 
-    namespace pipelines
-    {
-        //                  <hash,     pipeline>
-        static unordered_map<uint64_t, shared_ptr<RHI_Pipeline>> cache;
-    }
-
-    namespace descriptor_sets
+    namespace cache
     {
         static uint32_t descriptor_set_capacity = 2048;
         static VkDescriptorPool descriptor_pool = nullptr;
+
+        // cache
         static unordered_map<uint64_t, RHI_DescriptorSet> descriptor_sets;
+        static unordered_map<uint64_t, shared_ptr<RHI_DescriptorSetLayout>> descriptor_set_layouts;
+        static unordered_map<uint64_t, shared_ptr<RHI_Pipeline>> pipelines;
         static array<VkDescriptorSet, 2> descriptor_sets_bindless;
         static array<VkDescriptorSetLayout, 2> descriptor_set_layouts_bindless;
 
@@ -229,6 +230,99 @@ namespace Spartan
             descriptor_write.pImageInfo           = image_infos.data();
 
             vkUpdateDescriptorSets(RHI_Context::device, 1, &descriptor_write, 0, nullptr);
+        }
+
+        static void get_descriptors_from_pipeline_state(RHI_PipelineState& pipeline_state, vector<RHI_Descriptor>& descriptors)
+        {
+            if (!pipeline_state.IsValid())
+            {
+                SP_LOG_ERROR("Invalid pipeline state");
+                descriptors.clear();
+                return;
+            }
+
+            descriptors.clear();
+
+            bool descriptors_acquired = false;
+
+            if (pipeline_state.IsCompute())
+            {
+                SP_ASSERT_MSG(pipeline_state.shader_compute->GetCompilationState() == RHI_ShaderCompilationState::Succeeded, "Shader hasn't compiled");
+
+                // Get compute shader descriptors
+                descriptors = pipeline_state.shader_compute->GetDescriptors();
+                descriptors_acquired = true;
+            }
+            else if (pipeline_state.IsGraphics())
+            {
+                SP_ASSERT_MSG(pipeline_state.shader_vertex->GetCompilationState() == RHI_ShaderCompilationState::Succeeded, "Shader hasn't compiled");
+
+                // Get vertex shader descriptors
+                descriptors = pipeline_state.shader_vertex->GetDescriptors();
+                descriptors_acquired = true;
+
+                // If there is a pixel shader, merge it's resources into our map as well
+                if (pipeline_state.shader_pixel)
+                {
+                    SP_ASSERT_MSG(pipeline_state.shader_pixel->GetCompilationState() == RHI_ShaderCompilationState::Succeeded, "Shader hasn't compiled");
+
+                    for (const RHI_Descriptor& descriptor_reflected : pipeline_state.shader_pixel->GetDescriptors())
+                    {
+                        // Assume that the descriptor has been created in the vertex shader and only try to update it's shader stage
+                        bool updated_existing = false;
+                        for (RHI_Descriptor& descriptor : descriptors)
+                        {
+                            bool is_same_resource =
+                                (descriptor.type == descriptor_reflected.type) &&
+                                (descriptor.slot == descriptor_reflected.slot);
+
+                            if ((descriptor.type == descriptor_reflected.type) && (descriptor.slot == descriptor_reflected.slot))
+                            {
+                                descriptor.stage |= descriptor_reflected.stage;
+                                updated_existing = true;
+                                break;
+                            }
+                        }
+
+                        // If no updating took place, this descriptor is new, so add it
+                        if (!updated_existing)
+                        {
+                            descriptors.emplace_back(descriptor_reflected);
+                        }
+                    }
+                }
+            }
+        }
+
+        static shared_ptr<RHI_DescriptorSetLayout> get_or_create_descriptor_set_layout(RHI_PipelineState& pipeline_state)
+        {
+            // Get pipeline
+            vector<RHI_Descriptor> descriptors;
+            get_descriptors_from_pipeline_state(pipeline_state, descriptors);
+
+            // Compute a hash for the descriptors
+            uint64_t hash = 0;
+            for (RHI_Descriptor& descriptor : descriptors)
+            {
+                hash = rhi_hash_combine(hash, descriptor.GetHash());
+            }
+
+            // Search for a descriptor set layout which matches this hash
+            auto it = descriptor_set_layouts.find(hash);
+            bool cached = it !=descriptor_set_layouts.end();
+
+            // If there is no descriptor set layout for this particular hash, create one
+            if (!cached)
+            {
+                // Emplace a new descriptor set layout
+                it = descriptor_set_layouts.emplace(make_pair(hash, make_shared<RHI_DescriptorSetLayout>(descriptors, pipeline_state.name))).first;
+            }
+            shared_ptr<RHI_DescriptorSetLayout> descriptor_set_layout = it->second;
+
+            descriptor_set_layout->ClearDescriptorData();
+            descriptor_set_layout->NeedsToBind();
+
+            return descriptor_set_layout;
         }
     }
 
@@ -702,7 +796,7 @@ namespace Spartan
         vulkan_memory_allocator::initialize(app_info.apiVersion);
 
         // Set the descriptor set capacity to an initial value
-        SetDescriptorSetCapacity(descriptor_sets::descriptor_set_capacity);
+        SetDescriptorSetCapacity(cache::descriptor_set_capacity);
 
         // Detect and log version
         {
@@ -736,8 +830,8 @@ namespace Spartan
         command_pools::immediate.fill(nullptr);
 
         // Descriptor pool
-        vkDestroyDescriptorPool(RHI_Context::device, descriptor_sets::descriptor_pool, nullptr);
-        descriptor_sets::descriptor_pool = nullptr;
+        vkDestroyDescriptorPool(RHI_Context::device, cache::descriptor_pool, nullptr);
+        cache::descriptor_pool = nullptr;
 
         // Allocator
         vulkan_memory_allocator::destroy();
@@ -1049,7 +1143,7 @@ namespace Spartan
         // If the requested capacity is zero, then only recreate the descriptor pool
         if (capacity == 0)
         {
-            capacity = descriptor_sets::descriptor_set_capacity;
+            capacity = cache::descriptor_set_capacity;
         }
 
         // Create pool
@@ -1079,12 +1173,12 @@ namespace Spartan
             pool_create_info.maxSets                    = capacity;
 
             SP_VK_ASSERT_MSG(
-                vkCreateDescriptorPool(RHI_Context::device, &pool_create_info, nullptr, &descriptor_sets::descriptor_pool),
+                vkCreateDescriptorPool(RHI_Context::device, &pool_create_info, nullptr, &cache::descriptor_pool),
                 "Failed to create descriptor pool."
             );
         }
 
-        descriptor_sets::descriptor_set_capacity = capacity;
+        cache::descriptor_set_capacity = capacity;
         SP_LOG_INFO("Capacity has been set to %d elements", capacity);
         
         Profiler::m_descriptor_set_count    = 0;
@@ -1093,14 +1187,14 @@ namespace Spartan
 
     void RHI_Device::SetBindlessSamplers(const std::array<std::shared_ptr<RHI_Sampler>, 7>& samplers)
     {
-        pipelines::cache.clear();
+        cache::pipelines.clear();
 
         // comparison
         {
-            if (descriptor_sets::descriptor_set_layouts_bindless[static_cast<uint32_t>(RHI_Device_Resource::sampler_comparison)] != nullptr)
+            if (cache::descriptor_set_layouts_bindless[static_cast<uint32_t>(RHI_Device_Resource::sampler_comparison)] != nullptr)
             {
-                RHI_Device::AddToDeletionQueue(RHI_Resource_Type::DescriptorSetLayout, descriptor_sets::descriptor_set_layouts_bindless[static_cast<uint32_t>(RHI_Device_Resource::sampler_comparison)]);
-                descriptor_sets::descriptor_set_layouts_bindless[static_cast<uint32_t>(RHI_Device_Resource::sampler_comparison)] = nullptr;
+                RHI_Device::AddToDeletionQueue(RHI_Resource_Type::DescriptorSetLayout, cache::descriptor_set_layouts_bindless[static_cast<uint32_t>(RHI_Device_Resource::sampler_comparison)]);
+                cache::descriptor_set_layouts_bindless[static_cast<uint32_t>(RHI_Device_Resource::sampler_comparison)] = nullptr;
             }
 
             vector<shared_ptr<RHI_Sampler>> samplers_comparison =
@@ -1108,15 +1202,15 @@ namespace Spartan
                 samplers[0], // comparison
             };
 
-            descriptor_sets::create_descriptor_set_samplers(samplers_comparison, 0, RHI_Device_Resource::sampler_comparison);
+            cache::create_descriptor_set_samplers(samplers_comparison, 0, RHI_Device_Resource::sampler_comparison);
         }
 
         // regular
         {
-            if (descriptor_sets::descriptor_set_layouts_bindless[static_cast<uint32_t>(RHI_Device_Resource::sampler_regular)] != nullptr)
+            if (cache::descriptor_set_layouts_bindless[static_cast<uint32_t>(RHI_Device_Resource::sampler_regular)] != nullptr)
             {
-                RHI_Device::AddToDeletionQueue(RHI_Resource_Type::DescriptorSetLayout, descriptor_sets::descriptor_set_layouts_bindless[static_cast<uint32_t>(RHI_Device_Resource::sampler_regular)]);
-                descriptor_sets::descriptor_set_layouts_bindless[static_cast<uint32_t>(RHI_Device_Resource::sampler_regular)] = nullptr;
+                RHI_Device::AddToDeletionQueue(RHI_Resource_Type::DescriptorSetLayout, cache::descriptor_set_layouts_bindless[static_cast<uint32_t>(RHI_Device_Resource::sampler_regular)]);
+                cache::descriptor_set_layouts_bindless[static_cast<uint32_t>(RHI_Device_Resource::sampler_regular)] = nullptr;
             }
 
             vector<shared_ptr<RHI_Sampler>> samplers_regular =
@@ -1129,18 +1223,18 @@ namespace Spartan
                 samplers[6]  // anisotropic_wrap
             };
 
-            descriptor_sets::create_descriptor_set_samplers(samplers_regular, 1, RHI_Device_Resource::sampler_regular);
+            cache::create_descriptor_set_samplers(samplers_regular, 1, RHI_Device_Resource::sampler_regular);
         }
     }
 
     void* RHI_Device::GetDescriptorSet(const RHI_Device_Resource resource_type)
     {
-        return static_cast<void*>(descriptor_sets::descriptor_sets_bindless[static_cast<uint32_t>(resource_type)]);
+        return static_cast<void*>(cache::descriptor_sets_bindless[static_cast<uint32_t>(resource_type)]);
     }
 
     void* RHI_Device::GetDescriptorSetLayout(const RHI_Device_Resource resource_type)
     {
-        return static_cast<void*>(descriptor_sets::descriptor_set_layouts_bindless[static_cast<uint32_t>(resource_type)]);
+        return static_cast<void*>(cache::descriptor_set_layouts_bindless[static_cast<uint32_t>(resource_type)]);
     }
 
     void* RHI_Device::GetMappedDataFromBuffer(void* resource)
@@ -1355,18 +1449,42 @@ namespace Spartan
 
     void* RHI_Device::GetDescriptorPool()
     {
-        return descriptor_sets::descriptor_pool;
+        return cache::descriptor_pool;
     }
 
     unordered_map<uint64_t, RHI_DescriptorSet>& RHI_Device::GetDescriptorSets()
     {
-        return descriptor_sets::descriptor_sets;
+        return cache::descriptor_sets;
+    }
+
+    void RHI_Device::GetOrCreatePipeline(RHI_PipelineState& pso, RHI_Pipeline*& pipeline, RHI_DescriptorSetLayout*& descriptor_set_layout)
+    {
+        SP_ASSERT(pso.IsValid());
+
+        if (pso.NeedsToUpdateHash())
+        {
+            pso.ComputeHash();
+        }
+
+        descriptor_set_layout = cache::get_or_create_descriptor_set_layout(pso).get();
+
+        // If no pipeline exists, create one
+        uint64_t hash = pso.GetHash();
+        auto it = cache::pipelines.find(hash);
+        if (it == cache::pipelines.end())
+        {
+            // Create a new pipeline
+            it = cache::pipelines.emplace(make_pair(hash, make_shared<RHI_Pipeline>(pso, descriptor_set_layout))).first;
+            SP_LOG_INFO("A new pipeline has been created.");
+        }
+
+        pipeline = it->second.get();
     }
 
     bool RHI_Device::HasDescriptorSetCapacity()
     {
-        const uint32_t required_capacity = static_cast<uint32_t>(descriptor_sets::descriptor_sets.size());
-        return descriptor_sets::descriptor_set_capacity > required_capacity;
+        const uint32_t required_capacity = static_cast<uint32_t>(cache::descriptor_sets.size());
+        return cache::descriptor_set_capacity > required_capacity;
     }
 
     RHI_CommandList* RHI_Device::ImmediateBegin(const RHI_Queue_Type queue_type)
@@ -1432,11 +1550,6 @@ namespace Spartan
     const vector<shared_ptr<RHI_CommandPool>>& RHI_Device::GetCommandPools()
     {
         return command_pools::regular;
-    }
-
-    unordered_map<uint64_t, shared_ptr<RHI_Pipeline>>& RHI_Device::GetPipelines()
-    {
-        return pipelines::cache;
     }
 
     void RHI_Device::MarkerBegin(RHI_CommandList* cmd_list, const char* name, const Math::Vector4& color)
