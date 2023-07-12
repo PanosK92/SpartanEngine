@@ -218,6 +218,7 @@ namespace Spartan
         DescriptorSetLayout,
         Pipeline,
         PipelineLayout,
+        Queue,
         Undefined
     };
 
