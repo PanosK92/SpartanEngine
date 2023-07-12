@@ -32,7 +32,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_DescriptorSet.h"
 #include "../RHI_DescriptorSetLayout.h"
 #include "../RHI_Semaphore.h"
-#include "../RHI_Shader.h"
 #include "../RHI_Fence.h"
 #include "../RHI_SwapChain.h"
 #include "../Rendering/Renderer.h"
@@ -206,35 +205,18 @@ namespace Spartan
 
     void RHI_CommandList::SetPipelineState(RHI_PipelineState& pso)
     {
-        SP_ASSERT(pso.IsValid());
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
-        if (pso.NeedsToUpdateHash())
-        {
-            pso.ComputeHash();
-        }
+        // Get (or create) a pipeline which matches the requested pipeline state
+        RHI_Device::GetOrCreatePipeline(pso, m_pipeline, m_descriptor_layout_current);
 
-        // Update the descriptor cache with the pipeline state
-        GetDescriptorSetLayoutFromPipelineState(pso);
-
-        // If no pipeline exists for this state, create one
         uint64_t hash_previous = m_pso.GetHash();
-        uint64_t hash          = pso.GetHash();
-        auto it = RHI_Device::GetPipelines().find(hash);
-        if (it == RHI_Device::GetPipelines().end())
-        {
-            // Create a new pipeline
-            it = RHI_Device::GetPipelines().emplace(make_pair(hash, move(make_shared<RHI_Pipeline>(pso, m_descriptor_layout_current)))).first;
-            SP_LOG_INFO("A new pipeline has been created.");
-        }
-
-        m_pipeline = it->second.get();
-        m_pso      = pso;
+        m_pso                  = pso;
 
         // Determine if the pipeline is dirty
         if (!m_pipeline_dirty)
         {
-            m_pipeline_dirty = hash_previous != hash;
+            m_pipeline_dirty = hash_previous != m_pso.GetHash();
         }
 
         // Bind pipeline
@@ -1058,42 +1040,5 @@ namespace Spartan
 
             Profiler::m_rhi_bindings_descriptor_set++;
         }
-    }
-
-    void RHI_CommandList::GetDescriptorSetLayoutFromPipelineState(RHI_PipelineState& pipeline_state)
-    {
-        // Get pipeline
-        vector<RHI_Descriptor> descriptors;
-        GetDescriptorsFromPipelineState(pipeline_state, descriptors);
-
-        // Compute a hash for the descriptors
-        uint64_t hash = 0;
-        for (RHI_Descriptor& descriptor : descriptors)
-        {
-            hash = rhi_hash_combine(hash, descriptor.GetHash());
-        }
-
-        // Search for a descriptor set layout which matches this hash
-        auto it     = m_descriptor_set_layouts.find(hash);
-        bool cached = it != m_descriptor_set_layouts.end();
-
-        // If there is no descriptor set layout for this particular hash, create one
-        if (!cached)
-        {
-            // Emplace a new descriptor set layout
-            it = m_descriptor_set_layouts.emplace(make_pair(hash, make_shared<RHI_DescriptorSetLayout>(descriptors, pipeline_state.name))).first;
-        }
-
-        // Get the descriptor set layout we will be using
-        m_descriptor_layout_current = it->second.get();
-
-        // Clear any data data the the descriptors might contain from previous uses (and hence can possibly be invalid by now)
-        if (cached)
-        {
-            m_descriptor_layout_current->ClearDescriptorData();
-        }
-
-        // Make it bind
-        m_descriptor_layout_current->NeedsToBind();
     }
 }

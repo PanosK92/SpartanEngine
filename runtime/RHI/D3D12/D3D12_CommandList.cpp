@@ -260,8 +260,8 @@ namespace Spartan
 
         D3D12_VERTEX_BUFFER_VIEW vertex_buffer_view = {};
         vertex_buffer_view.BufferLocation           = 0;
-        vertex_buffer_view.StrideInBytes            = buffer->GetStride();
-        vertex_buffer_view.SizeInBytes              = buffer->GetObjectSizeGpu();
+        vertex_buffer_view.StrideInBytes            = static_cast<UINT>(buffer->GetStride());
+        vertex_buffer_view.SizeInBytes              = static_cast<UINT>(buffer->GetObjectSizeGpu());
 
         static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource)->IASetVertexBuffers(
             0,                  // StartSlot
@@ -353,11 +353,6 @@ namespace Spartan
     }
 
     void RHI_CommandList::OnDraw()
-    {
-        SP_ASSERT_MSG(false, "Function is not implemented");
-    }
-
-    void RHI_CommandList::GetDescriptorSetLayoutFromPipelineState(RHI_PipelineState& pipeline_state)
     {
         SP_ASSERT_MSG(false, "Function is not implemented");
     }

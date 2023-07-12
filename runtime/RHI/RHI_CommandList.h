@@ -142,7 +142,6 @@ namespace Spartan
         void OnDraw();
 
         // Descriptors
-        void GetDescriptorSetLayoutFromPipelineState(RHI_PipelineState& pipeline_state);
         void GetDescriptorsFromPipelineState(RHI_PipelineState& pipeline_state, std::vector<RHI_Descriptor>& descriptors);
 
         RHI_Pipeline* m_pipeline                         = nullptr;
@@ -153,14 +152,11 @@ namespace Spartan
         static bool m_memory_query_support;
         std::mutex m_mutex_reset;
         uint32_t m_index = 0;
+        RHI_DescriptorSetLayout* m_descriptor_layout_current = nullptr;
 
         // Sync
         std::shared_ptr<RHI_Fence> m_proccessed_fence;
         std::shared_ptr<RHI_Semaphore> m_proccessed_semaphore;
-
-        // Descriptors
-        std::unordered_map<uint64_t, std::shared_ptr<RHI_DescriptorSetLayout>> m_descriptor_set_layouts;
-        RHI_DescriptorSetLayout* m_descriptor_layout_current = nullptr;
 
         // Pipelines
         RHI_PipelineState m_pso;
