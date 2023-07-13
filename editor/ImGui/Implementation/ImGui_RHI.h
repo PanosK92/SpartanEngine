@@ -59,8 +59,7 @@ namespace ImGui::RHI
         ViewportResources(const char* name, RHI_SwapChain* swapchain)
         {
             // Allocate command pool
-            cmd_pool = RHI_Device::AllocateCommandPool("imgui", swapchain->GetObjectId());
-            cmd_pool->AllocateCommandLists(RHI_Queue_Type::Graphics, 2, 2);
+            cmd_pool = RHI_Device::AllocateCommandPool("imgui", swapchain->GetObjectId(), RHI_Queue_Type::Graphics);
 
             // Allocate constant buffer
             cb_gpu = make_shared<RHI_ConstantBuffer>(name);

@@ -181,8 +181,7 @@ namespace Spartan
         );
 
         // Create command pool
-        m_cmd_pool = RHI_Device::AllocateCommandPool("renderer", m_swap_chain->GetObjectId());
-        m_cmd_pool->AllocateCommandLists(RHI_Queue_Type::Graphics, 2, 2);
+        m_cmd_pool = RHI_Device::AllocateCommandPool("renderer", m_swap_chain->GetObjectId(), RHI_Queue_Type::Graphics);
 
         // Adjust render option to reflect whether the swapchain is HDR or not
         SetOption(Renderer_Option::Hdr, m_swap_chain->IsHdr());

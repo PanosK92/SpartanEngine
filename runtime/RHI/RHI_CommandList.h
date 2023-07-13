@@ -47,7 +47,7 @@ namespace Spartan
     class SP_CLASS RHI_CommandList : public Object
     {
     public:
-        RHI_CommandList(const RHI_Queue_Type queue_type, const uint32_t index, const uint32_t swapchain_id, void* cmd_pool_resource, const char* name);
+        RHI_CommandList(const RHI_Queue_Type queue_type, const uint32_t swapchain_id, void* cmd_pool_resource, const char* name);
         ~RHI_CommandList();
 
         void Begin();
@@ -136,7 +136,6 @@ namespace Spartan
 
         // Misc
         void* GetRhiResource() const { return m_rhi_resource; }
-        uint32_t GetIndex()    const { return m_index; }
 
     private:
         void OnDraw();
@@ -151,7 +150,6 @@ namespace Spartan
         static const uint8_t m_resource_array_length_max = 16;
         static bool m_memory_query_support;
         std::mutex m_mutex_reset;
-        uint32_t m_index = 0;
         RHI_DescriptorSetLayout* m_descriptor_layout_current = nullptr;
 
         // Sync

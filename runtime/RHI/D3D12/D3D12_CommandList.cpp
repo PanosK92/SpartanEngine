@@ -48,7 +48,7 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    RHI_CommandList::RHI_CommandList(const RHI_Queue_Type queue_type, const uint32_t index, const uint32_t swapchain_index, void* cmd_pool, const char* name)
+    RHI_CommandList::RHI_CommandList(const RHI_Queue_Type queue_type, const uint32_t swapchain_index, void* cmd_pool, const char* name)
     {
         SP_ASSERT(cmd_pool != nullptr);
 
@@ -285,7 +285,7 @@ namespace Spartan
 
         D3D12_INDEX_BUFFER_VIEW index_buffer_view = {};
         index_buffer_view.BufferLocation          = 0;
-        index_buffer_view.SizeInBytes             = buffer->GetObjectSizeGpu();
+        index_buffer_view.SizeInBytes             = static_cast<UINT>(buffer->GetObjectSizeGpu());
         index_buffer_view.Format                  = buffer->Is16Bit() ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT;
 
         static_cast<ID3D12GraphicsCommandList*>(m_rhi_resource)->IASetIndexBuffer(
@@ -297,7 +297,7 @@ namespace Spartan
         Profiler::m_rhi_bindings_buffer_index++;
     }
     
-    void RHI_CommandList::SetConstantBuffer(const uint32_t slot, const uint8_t scope, RHI_ConstantBuffer* constant_buffer) const
+    void RHI_CommandList::SetConstantBuffer(const uint32_t slot, RHI_ConstantBuffer* constant_buffer) const
     {
         SP_ASSERT_MSG(false, "Function is not implemented");
     }
