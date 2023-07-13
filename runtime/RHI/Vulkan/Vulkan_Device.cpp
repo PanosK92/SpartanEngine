@@ -406,60 +406,46 @@ namespace Spartan
 
         static void get_descriptors_from_pipeline_state(RHI_PipelineState& pipeline_state, vector<RHI_Descriptor>& descriptors)
         {
-            if (!pipeline_state.IsValid())
-            {
-                SP_LOG_ERROR("Invalid pipeline state");
-                descriptors.clear();
-                return;
-            }
-
+            SP_ASSERT(pipeline_state.IsValid());
             descriptors.clear();
-
-            bool descriptors_acquired = false;
 
             if (pipeline_state.IsCompute())
             {
-                SP_ASSERT_MSG(pipeline_state.shader_compute->GetCompilationState() == RHI_ShaderCompilationState::Succeeded, "Shader hasn't compiled");
-
-                // Get compute shader descriptors
+                SP_ASSERT(pipeline_state.shader_compute->GetCompilationState() == RHI_ShaderCompilationState::Succeeded);
                 descriptors = pipeline_state.shader_compute->GetDescriptors();
-                descriptors_acquired = true;
             }
             else if (pipeline_state.IsGraphics())
             {
-                SP_ASSERT_MSG(pipeline_state.shader_vertex->GetCompilationState() == RHI_ShaderCompilationState::Succeeded, "Shader hasn't compiled");
-
-                // Get vertex shader descriptors
+                SP_ASSERT(pipeline_state.shader_vertex->GetCompilationState() == RHI_ShaderCompilationState::Succeeded);
                 descriptors = pipeline_state.shader_vertex->GetDescriptors();
-                descriptors_acquired = true;
 
                 // If there is a pixel shader, merge it's resources into our map as well
                 if (pipeline_state.shader_pixel)
                 {
-                    SP_ASSERT_MSG(pipeline_state.shader_pixel->GetCompilationState() == RHI_ShaderCompilationState::Succeeded, "Shader hasn't compiled");
+                    SP_ASSERT(pipeline_state.shader_pixel->GetCompilationState() == RHI_ShaderCompilationState::Succeeded);
 
-                    for (const RHI_Descriptor& descriptor_reflected : pipeline_state.shader_pixel->GetDescriptors())
+                    for (const RHI_Descriptor& descriptor_pixel : pipeline_state.shader_pixel->GetDescriptors())
                     {
                         // Assume that the descriptor has been created in the vertex shader and only try to update it's shader stage
                         bool updated_existing = false;
-                        for (RHI_Descriptor& descriptor : descriptors)
+                        for (RHI_Descriptor& descriptor_vertex : descriptors)
                         {
                             bool is_same_resource =
-                                (descriptor.type == descriptor_reflected.type) &&
-                                (descriptor.slot == descriptor_reflected.slot);
+                                (descriptor_vertex.type == descriptor_pixel.type) &&
+                                (descriptor_vertex.slot == descriptor_pixel.slot);
 
-                            if ((descriptor.type == descriptor_reflected.type) && (descriptor.slot == descriptor_reflected.slot))
+                            if (is_same_resource)
                             {
-                                descriptor.stage |= descriptor_reflected.stage;
+                                descriptor_vertex.stage |= descriptor_pixel.stage;
                                 updated_existing = true;
                                 break;
                             }
                         }
 
-                        // If no updating took place, this descriptor is new, so add it
+                        // If no updating took place, this a pixel shader only resource, add it
                         if (!updated_existing)
                         {
-                            descriptors.emplace_back(descriptor_reflected);
+                            descriptors.emplace_back(descriptor_pixel);
                         }
                     }
                 }
@@ -468,7 +454,7 @@ namespace Spartan
 
         static shared_ptr<RHI_DescriptorSetLayout> get_or_create_descriptor_set_layout(RHI_PipelineState& pipeline_state)
         {
-            // Get pipeline
+            // Get descriptors from pipeline state
             vector<RHI_Descriptor> descriptors;
             get_descriptors_from_pipeline_state(pipeline_state, descriptors);
 
@@ -476,12 +462,12 @@ namespace Spartan
             uint64_t hash = 0;
             for (RHI_Descriptor& descriptor : descriptors)
             {
-                hash = rhi_hash_combine(hash, descriptor.GetHash());
+                hash = rhi_hash_combine(hash, descriptor.ComputeHash());
             }
 
             // Search for a descriptor set layout which matches this hash
-            auto it = descriptor_set_layouts.find(hash);
-            bool cached = it !=descriptor_set_layouts.end();
+            auto it     = descriptor_set_layouts.find(hash);
+            bool cached = it != descriptor_set_layouts.end();
 
             // If there is no descriptor set layout for this particular hash, create one
             if (!cached)
@@ -491,7 +477,10 @@ namespace Spartan
             }
             shared_ptr<RHI_DescriptorSetLayout> descriptor_set_layout = it->second;
 
-            descriptor_set_layout->ClearDescriptorData();
+            if (cached)
+            {
+                descriptor_set_layout->ClearDescriptorData();
+            }
             descriptor_set_layout->NeedsToBind();
 
             return descriptor_set_layout;
@@ -1466,10 +1455,7 @@ namespace Spartan
     {
         SP_ASSERT(pso.IsValid());
 
-        if (pso.NeedsToUpdateHash())
-        {
-            pso.ComputeHash();
-        }
+        pso.ComputeHash();
 
         descriptor_set_layout = cache::get_or_create_descriptor_set_layout(pso).get();
 

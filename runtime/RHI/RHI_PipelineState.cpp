@@ -118,69 +118,6 @@ namespace Spartan
         return m_hash;
     }
 
-    bool RHI_PipelineState::NeedsToUpdateHash()
-    {
-        // RHI_PipelineState::ComputeHash() is expensive CPU-wise.
-        // This is why we need to explicitly check states before actually calling it.
-        bool needs_to_update = false;
-
-        if (!m_pso_previous)
-            needs_to_update = true;
-
-        if (!needs_to_update && m_pso_previous->dynamic_scissor != dynamic_scissor)
-            needs_to_update = true;
-
-        if (!needs_to_update && m_pso_previous->can_use_vertex_index_buffers != can_use_vertex_index_buffers)
-            needs_to_update = true;
-
-        if (!needs_to_update && m_pso_previous->primitive_topology != primitive_topology)
-            needs_to_update = true;
-
-        if (!needs_to_update && m_pso_previous->render_target_color_texture_array_index != render_target_color_texture_array_index)
-            needs_to_update = true;
-
-        if (!needs_to_update && m_pso_previous->render_target_depth_stencil_texture_array_index != render_target_depth_stencil_texture_array_index)
-            needs_to_update = true;
-
-        if (!needs_to_update && render_target_swapchain && (!m_pso_previous->render_target_swapchain || m_pso_previous->render_target_swapchain->GetFormat() != render_target_swapchain->GetFormat()))
-            needs_to_update = true;
-
-        if (!needs_to_update && rasterizer_state && (!m_pso_previous->rasterizer_state || m_pso_previous->rasterizer_state->GetHash() != rasterizer_state->GetHash()))
-            needs_to_update = true;
-
-        if (!needs_to_update && blend_state && (!m_pso_previous->blend_state || m_pso_previous->blend_state->GetHash() != blend_state->GetHash()))
-            needs_to_update = true;
-
-        if (!needs_to_update && depth_stencil_state && (!m_pso_previous->depth_stencil_state || m_pso_previous->depth_stencil_state->GetHash() != depth_stencil_state->GetHash()))
-            needs_to_update = true;
-
-        if (!needs_to_update && shader_compute && (!m_pso_previous->shader_compute || m_pso_previous->shader_compute->GetHash() != shader_compute->GetHash()))
-            needs_to_update = true;
-
-        if (!needs_to_update && shader_vertex && (!m_pso_previous->shader_vertex || m_pso_previous->shader_vertex->GetHash() != shader_vertex->GetHash()))
-            needs_to_update = true;
-
-        if (!needs_to_update && shader_pixel && (!m_pso_previous->shader_pixel || m_pso_previous->shader_pixel->GetHash() != shader_pixel->GetHash()))
-            needs_to_update = true;
-
-        for (uint32_t i = 0; i < rhi_max_render_target_count; i++)
-        {
-            RHI_Texture* texture = render_target_color_textures[i];
-            if (!needs_to_update && texture && (!m_pso_previous->render_target_color_textures[i] || m_pso_previous->render_target_color_textures[i]->GetFormat() != texture->GetFormat()))
-                needs_to_update = true;
-        }
-
-        if (!needs_to_update && render_target_depth_texture && (!m_pso_previous->render_target_depth_texture || m_pso_previous->render_target_depth_texture->GetFormat() != render_target_depth_texture->GetFormat()))
-            needs_to_update = true;
-
-        if (needs_to_update)
-        {
-            m_pso_previous = this;
-        }
-
-        return needs_to_update;
-    }
-
     uint32_t RHI_PipelineState::GetWidth() const
     {
         if (render_target_swapchain)
