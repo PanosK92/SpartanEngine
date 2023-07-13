@@ -39,16 +39,15 @@ static const float k_horizontal_split_offset_from_bottom = 81.0f;
 
 ShaderEditor::ShaderEditor(Editor* editor) : Widget(editor)
 {
-    m_title        = "Shader Editor";
+    m_title         = "Shader Editor";
     m_flags        |= ImGuiWindowFlags_NoScrollbar;
-    m_visible      = false;
-    m_size_initial = ImVec2(1366, 1000);
-    m_text_editor  = make_unique<TextEditor>();
-    m_position     = k_widget_position_screen_center;
-    m_alpha        = 1.0f;
+    m_visible       = false;
+    m_size_initial  = ImVec2(1366, 1000);
+    m_text_editor   = make_unique<TextEditor>();
+    m_alpha         = 1.0f;
 }
 
-void ShaderEditor::TickVisible()
+void ShaderEditor::OnTickVisible()
 {
     // Source
     ShowShaderSource();

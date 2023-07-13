@@ -54,7 +54,7 @@ Console::~Console()
     Log::SetLogger(nullptr);
 }
 
-void Console::TickVisible()
+void Console::OnTickVisible()
 {
     // Clear Button
     if (ImGuiSp::button("Clear")) { Clear();} ImGui::SameLine();
@@ -80,7 +80,7 @@ void Console::TickVisible()
     button_log_type_visibility_toggle(IconType::Console_Error,   2);
 
     // Text filter
-    const float label_width = 37.0f; //ImGui::CalcTextSize("Filter", nullptr, true).x;
+    const float label_width = 37.0f * Spartan::Window::GetDpiScale();
     ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 12);
     m_log_filter.Draw("Filter", ImGui::GetContentRegionAvail().x - label_width);
     ImGui::PopStyleVar();

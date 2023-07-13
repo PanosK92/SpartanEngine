@@ -33,8 +33,7 @@ class Editor;
 namespace Spartan { class Context; }
 //==================================
 
-const float k_widget_default_propery        = -1.0f;
-const float k_widget_position_screen_center = -2.0f;
+constexpr float k_widget_default_property = -1.0f;
 
 class Widget
 {
@@ -45,10 +44,10 @@ public:
     void Tick();
 
     // Called always
-    virtual void TickAlways() {};
+    virtual void OnTick() {};
 
     // Called only when the widget is visible
-    virtual void TickVisible() {};
+    virtual void OnTickVisible() {};
 
     // Called when the window becomes visible
     virtual void OnVisible() {};
@@ -57,18 +56,19 @@ public:
     virtual void OnHidden() {};
 
     // Called just before ImGui::Begin()
-    virtual void OnPushStyleVar() {};
+    virtual void OnPreBegin();
 
     // Use this to push style variables. They will be automatically popped.
     template<typename T>
     void PushStyleVar(ImGuiStyleVar idx, T val) { ImGui::PushStyleVar(idx, val); m_var_push_count++; }
 
     // Properties
-    float GetHeight()           const { return m_height; }
-    ImGuiWindow* GetWindow()    const { return m_window; }
-    const auto& GetTitle()      const { return m_title; }
-    bool& GetVisible()                { return m_visible; }
-    void SetVisible(bool is_visible)  { m_visible = is_visible; }
+    Spartan::Math::Vector2 GetCenter() const;
+    float GetHeight()                  const { return m_height; }
+    ImGuiWindow* GetWindow()           const { return m_window; }
+    const auto& GetTitle()             const { return m_title; }
+    bool& GetVisible()                       { return m_visible; }
+    void SetVisible(bool is_visible)         { m_visible = is_visible; }
 
 protected:
     // Properties
@@ -77,11 +77,10 @@ protected:
     int m_flags                           = ImGuiWindowFlags_NoCollapse;
     float m_height                        = 0;
     float m_alpha                         = -1.0f;
-    Spartan::Math::Vector2 m_position     = k_widget_default_propery;
-    Spartan::Math::Vector2 m_size_initial = k_widget_default_propery;
-    Spartan::Math::Vector2 m_size_min     = k_widget_default_propery;
+    Spartan::Math::Vector2 m_size_initial = k_widget_default_property;
+    Spartan::Math::Vector2 m_size_min     = k_widget_default_property;
     Spartan::Math::Vector2 m_size_max     = FLT_MAX;
-    Spartan::Math::Vector2 m_padding      = k_widget_default_propery;
+    Spartan::Math::Vector2 m_padding      = k_widget_default_property;
     std::string m_title                   = "Title";
 
     // The ImGui window this widget corresponds to

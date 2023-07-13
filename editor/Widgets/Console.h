@@ -67,7 +67,7 @@ public:
     Console(Editor* editor);
     ~Console();
 
-    void TickVisible() override;
+    void OnTickVisible() override;
     void AddLogPackage(const LogPackage& package);
     void Clear();
 

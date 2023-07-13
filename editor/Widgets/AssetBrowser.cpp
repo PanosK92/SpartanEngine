@@ -24,6 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Properties.h"
 #include "Rendering/Mesh.h"
 #include "../WidgetsDeferred/FileDialog.h"
+#include "Viewport.h"
 //========================================
 
 //= NAMESPACES =========
@@ -38,69 +39,65 @@ namespace
     static bool mesh_import_dialog_is_visible = false;
     static uint32_t mesh_import_dialog_flags  = 0;
     static string mesh_import_file_path;
-}
 
-static void mesh_import_dialog_checkbox(const MeshProcessingOptions option, const char* label, const char* tooltip = nullptr)
-{
-    bool enabled = (mesh_import_dialog_flags & (1U << static_cast<uint32_t>(option))) != 0;
-
-    if (ImGui::Checkbox(label, &enabled))
+    static void mesh_import_dialog_checkbox(const MeshProcessingOptions option, const char* label, const char* tooltip = nullptr)
     {
-        if (enabled)
+        bool enabled = (mesh_import_dialog_flags & (1U << static_cast<uint32_t>(option))) != 0;
+    
+        if (ImGui::Checkbox(label, &enabled))
         {
-            mesh_import_dialog_flags |= (1U << static_cast<uint32_t>(option));
-        }
-        else
-        {
-            mesh_import_dialog_flags &= ~(1U << static_cast<uint32_t>(option));
-        }
-    }
-
-    if (tooltip != nullptr)
-    {
-        ImGuiSp::tooltip(tooltip);
-    }
-}
-
-static void mesh_import_dialog()
-{
-    if (mesh_import_dialog_is_visible)
-    {
-        // Set window position
-        ImVec2 position     = ImVec2(Spartan::Display::GetWidth() * 0.5f, Spartan::Display::GetHeight() * 0.5f);
-        ImVec2 pivot_center = ImVec2(0.5f, 0.5f);
-        ImGui::SetNextWindowPos(position, ImGuiCond_Appearing, pivot_center);
-
-        // Begin
-        if (ImGui::Begin("Mesh import options", &mesh_import_dialog_is_visible, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse))
-        {
-            mesh_import_dialog_checkbox(MeshProcessingOptions::RemoveRedundantData,
-                "Remove redundant data",
-                "Joins identical vertices, removes redundant materials, duplicate meshes, zeroed normals and invalid UVs.");
-
-            mesh_import_dialog_checkbox(MeshProcessingOptions::NormalizeScale,
-                "Normalize scale",
-                "Scales the mesh so that it's not bigger than a cubic unit."
-            );
-
-            mesh_import_dialog_checkbox(MeshProcessingOptions::CombineMeshes,
-                "Combine meshes",
-                "Joins some meshes, removes some nodes and pretransforms vertices.");
-
-            mesh_import_dialog_checkbox(MeshProcessingOptions::ImportLights, "Import lights");
-
-            // Ok button
-            if (ImGuiSp::button_centered_on_line("Ok", 0.5f))
+            if (enabled)
             {
-                EditorHelper::LoadMesh(mesh_import_file_path, mesh_import_dialog_flags);
-                mesh_import_dialog_is_visible = false;
+                mesh_import_dialog_flags |= (1U << static_cast<uint32_t>(option));
+            }
+            else
+            {
+                mesh_import_dialog_flags &= ~(1U << static_cast<uint32_t>(option));
             }
         }
-
-        ImGui::End();
+    
+        if (tooltip != nullptr)
+        {
+            ImGuiSp::tooltip(tooltip);
+        }
+    }
+    
+    static void mesh_import_dialog(Editor* editor)
+    {
+        if (mesh_import_dialog_is_visible)
+        {
+            ImGui::SetNextWindowPos(editor->GetWidget<Viewport>()->GetCenter(), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+    
+            // Begin
+            if (ImGui::Begin("Mesh import options", &mesh_import_dialog_is_visible, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse))
+            {
+                mesh_import_dialog_checkbox(MeshProcessingOptions::RemoveRedundantData,
+                    "Remove redundant data",
+                    "Joins identical vertices, removes redundant materials, duplicate meshes, zeroed normals and invalid UVs.");
+    
+                mesh_import_dialog_checkbox(MeshProcessingOptions::NormalizeScale,
+                    "Normalize scale",
+                    "Scales the mesh so that it's not bigger than a cubic unit."
+                );
+    
+                mesh_import_dialog_checkbox(MeshProcessingOptions::CombineMeshes,
+                    "Combine meshes",
+                    "Joins some meshes, removes some nodes and pretransforms vertices.");
+    
+                mesh_import_dialog_checkbox(MeshProcessingOptions::ImportLights, "Import lights");
+    
+                // Ok button
+                if (ImGuiSp::button_centered_on_line("Ok", 0.5f))
+                {
+                    EditorHelper::LoadMesh(mesh_import_file_path, mesh_import_dialog_flags);
+                    mesh_import_dialog_is_visible = false;
+                }
+            }
+    
+            ImGui::End();
+        }
     }
 }
-
 AssetBrowser::AssetBrowser(Editor* editor) : Widget(editor)
 {
     m_title            = "Assets";
@@ -112,7 +109,7 @@ AssetBrowser::AssetBrowser(Editor* editor) : Widget(editor)
     m_file_dialog_view->SetCallbackOnItemClicked([this](const string& str) { OnPathClicked(str); });
 }
 
-void AssetBrowser::TickVisible()
+void AssetBrowser::OnTickVisible()
 {    
     if (ImGuiSp::button("Import"))
     {
@@ -122,16 +119,16 @@ void AssetBrowser::TickVisible()
     ImGui::SameLine();
     
     // View
-    m_file_dialog_view->Show(&show_file_dialog_view);
+    m_file_dialog_view->Show(&show_file_dialog_view, m_editor);
 
     // Show load file dialog. True if a selection is made
-    if (n_file_dialog_load->Show(&show_file_dialog_load, nullptr, &mesh_import_file_path))
+    if (n_file_dialog_load->Show(&show_file_dialog_load, m_editor, nullptr, &mesh_import_file_path))
     {
         show_file_dialog_load = false;
         ShowMeshImportDialog(mesh_import_file_path);
     }
 
-    mesh_import_dialog();
+    mesh_import_dialog(m_editor);
 }
 
 void AssetBrowser::ShowMeshImportDialog(const std::string& file_path)

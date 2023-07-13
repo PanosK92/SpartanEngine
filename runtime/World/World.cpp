@@ -558,8 +558,8 @@ namespace Spartan
         {
             Entity* entity = m_default_model_helmet_damaged->GetRootEntity();
             entity->SetObjectName("damaged_helmet");
-            entity->GetTransform()->SetPosition(Vector3(1.5f, 0.8f, 0.0f));
-            entity->GetTransform()->SetScale(Vector3(0.5f, 0.5f, 0.5f));
+            entity->GetTransform()->SetPosition(Vector3(1.5f, 1.1377f, 0.0f));
+            entity->GetTransform()->SetScale(Vector3(0.4343f, 0.4343f, 0.4343f));
         }
 
         // Start simulating (for the physics and the music to work)

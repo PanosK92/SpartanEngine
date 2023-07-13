@@ -30,6 +30,6 @@ class ResourceViewer : public Widget
 public:
     ResourceViewer(Editor* editor);
 
-    void TickVisible() override;
+    void OnTickVisible() override;
 private:
 };

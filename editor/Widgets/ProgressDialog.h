@@ -22,7 +22,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ======
-#include <string>
 #include "Widget.h"
 //=================
 
@@ -32,6 +31,6 @@ public:
     ProgressDialog(Editor* editor);
     ~ProgressDialog() = default;
 
-    void TickAlways() override;
-    void TickVisible() override;
+    void OnTick() override;
+    void OnTickVisible() override;
 };

@@ -31,5 +31,5 @@ public:
     RenderOptions(Editor* editor);
 
     void OnVisible() override;
-    void TickVisible() override;
+    void OnTickVisible() override;
 };

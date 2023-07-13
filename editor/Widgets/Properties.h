@@ -53,7 +53,7 @@ class Properties : public Widget
 public:
     Properties(Editor* editor);
 
-    void TickVisible() override;
+    void OnTickVisible() override;
 
     static void Inspect(const std::shared_ptr<Spartan::Entity> entity);
     static void Inspect(const std::shared_ptr<Spartan::Material> material);

@@ -24,11 +24,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Properties.h"
 #include "MenuBar.h"
 #include "Viewport.h"
-#include "../Editor.h"
-#include "../ImGui/ImGuiExtension.h"
 #include "../ImGui/Source/imgui_stdlib.h"
 #include "World/Entity.h"
-#include "World/Components/Transform.h"
 #include "World/Components/Light.h"
 #include "World/Components/AudioSource.h"
 #include "World/Components/AudioListener.h"
@@ -36,11 +33,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "World/Components/SoftBody.h"
 #include "World/Components/Collider.h"
 #include "World/Components/Constraint.h"
-#include "World/Components/Renderable.h"
 #include "World/Components/Environment.h"
 #include "World/Components/Terrain.h"
 #include "World/Components/ReflectionProbe.h"
-#include "Rendering/Mesh.h"
 //===========================================
 
 //= NAMESPACES =====
@@ -54,89 +49,83 @@ namespace
     static weak_ptr <Spartan::Entity> entity_clicked;
     static weak_ptr <Spartan::Entity> entity_hovered;
     static ImGuiSp::DragDropPayload g_payload;
-}
 
-static void load_default_world_prompt(Editor* editor)
-{
-    // Load default world window
-    static bool is_default_world_window_visible = true;
-    if (is_default_world_window_visible)
+    static void load_default_world_prompt(Editor* editor)
     {
-        // Set position and size
-        ImGuiWindow* viewport_window = editor->GetWidget<Viewport>()->GetWindow();
-        ImVec2 viewport_pos          = viewport_window->Pos;
-        ImVec2 viewport_size         = viewport_window->Size;
-        ImVec2 viewport_pos_center   = ImVec2(viewport_pos.x + viewport_size.x * 0.5f, viewport_pos.y + viewport_size.y * 0.5f);
-        ImVec2 pivot_center          = ImVec2(0.5f, 0.5f);
-        ImGui::SetNextWindowPos(viewport_pos_center, ImGuiCond_Always, pivot_center);
-
-        if (ImGui::Begin("World selection", nullptr, ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoScrollbar))
+        // Load default world window
+        static bool is_default_world_window_visible = true;
+        if (is_default_world_window_visible)
         {
-            ImGui::Text("Select the world you would like to load and click \"Ok\"");
-
-            // list box
-            static const char* items[] =
+            ImGui::SetNextWindowPos(editor->GetWidget<Viewport>()->GetCenter(), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+    
+            if (ImGui::Begin("World selection", nullptr, ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoScrollbar))
             {
-                "1. An empty world.",
-                "2. A physics enabled cube (mouse pickable) on top of a quad.",
-                "3. A set of helmets.",
-                "4. A rotating car on top of a quad.",
-                "5. Height map generated terrain.",
-                "6. The famous Sponza building found in Dubrovnik."
-            };
-            static int item_index = 3;
-            static int item_count = IM_ARRAYSIZE(items);
-            ImGui::PushItemWidth(800.0f);
-            ImGui::ListBox("##list_box", &item_index, items, item_count, item_count);
-            ImGui::PopItemWidth();
-
-            // button
-            if (ImGuiSp::button_centered_on_line("Ok"))
-            {
-                if (item_index == 1)
+                ImGui::Text("Select the world you would like to load and click \"Ok\"");
+    
+                // list box
+                static const char* items[] =
                 {
-                    Spartan::ThreadPool::AddTask([]()
-                    {
-                        Spartan::World::CreateDefaultWorldPhysicsCube();
-                    });
-                }
-                else if (item_index == 2)
+                    "1. An empty world.",
+                    "2. A physics enabled cube (mouse pickable) on top of a quad.",
+                    "3. A set of helmets.",
+                    "4. A rotating car on top of a quad.",
+                    "5. Height map generated terrain.",
+                    "6. The famous Sponza building found in Dubrovnik."
+                };
+                static int item_index = 3;
+                static int item_count = IM_ARRAYSIZE(items);
+                ImGui::PushItemWidth(450.0f * Spartan::Window::GetDpiScale());
+                ImGui::ListBox("##list_box", &item_index, items, item_count, item_count);
+                ImGui::PopItemWidth();
+    
+                // button
+                if (ImGuiSp::button_centered_on_line("Ok"))
                 {
-                    Spartan::ThreadPool::AddTask([]()
+                    if (item_index == 1)
                     {
-                        Spartan::World::CreateDefaultWorldHelmets();
-                    });
-
-                }
-                else if (item_index == 3)
-                {
-                    Spartan::ThreadPool::AddTask([]()
+                        Spartan::ThreadPool::AddTask([]()
+                        {
+                            Spartan::World::CreateDefaultWorldPhysicsCube();
+                        });
+                    }
+                    else if (item_index == 2)
                     {
-                        Spartan::World::CreateDefaultWorldCar();
-                    });
-
-                }
-                else if (item_index == 4)
-                {
-                    Spartan::ThreadPool::AddTask([]()
+                        Spartan::ThreadPool::AddTask([]()
+                        {
+                            Spartan::World::CreateDefaultWorldHelmets();
+                        });
+    
+                    }
+                    else if (item_index == 3)
                     {
-                        Spartan::World::CreateDefaultWorldTerrain();
-                    });
-
-                }
-                else if (item_index == 5)
-                {
-                    Spartan::ThreadPool::AddTask([]()
+                        Spartan::ThreadPool::AddTask([]()
+                        {
+                            Spartan::World::CreateDefaultWorldCar();
+                        });
+    
+                    }
+                    else if (item_index == 4)
                     {
-                        Spartan::World::CreateDefaultWorldSponza();
-                    });
-
+                        Spartan::ThreadPool::AddTask([]()
+                        {
+                            Spartan::World::CreateDefaultWorldTerrain();
+                        });
+    
+                    }
+                    else if (item_index == 5)
+                    {
+                        Spartan::ThreadPool::AddTask([]()
+                        {
+                            Spartan::World::CreateDefaultWorldSponza();
+                        });
+    
+                    }
+    
+                    is_default_world_window_visible = false;
                 }
-
-                is_default_world_window_visible = false;
             }
+            ImGui::End();
         }
-        ImGui::End();
     }
 }
 
@@ -146,7 +135,7 @@ WorldViewer::WorldViewer(Editor* editor) : Widget(editor)
     m_flags |= ImGuiWindowFlags_HorizontalScrollbar;
 }
 
-void WorldViewer::TickVisible()
+void WorldViewer::OnTickVisible()
 {
     TreeShow();
 

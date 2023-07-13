@@ -38,7 +38,7 @@ class ShaderEditor : public Widget
 public:
     ShaderEditor(Editor* editor);
 
-    void TickVisible() override;
+    void OnTickVisible() override;
 
 private:
     void ShowShaderSource();

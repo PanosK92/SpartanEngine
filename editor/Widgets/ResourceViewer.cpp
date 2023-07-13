@@ -36,7 +36,6 @@ ResourceViewer::ResourceViewer(Editor* editor) : Widget(editor)
     m_title        = "Resource Viewer";
     m_size_initial = ImVec2(1366, 768);
     m_visible      = false;
-    m_position     = k_widget_position_screen_center;
 }
 
 inline void print_memory(uint64_t memory)
@@ -55,7 +54,7 @@ inline void print_memory(uint64_t memory)
     }
 }
 
-void ResourceViewer::TickVisible()
+void ResourceViewer::OnTickVisible()
 { 
     auto resources               = ResourceCache::GetByType();
     const float memory_usage_cpu = ResourceCache::GetMemoryUsageCpu() / 1000.0f / 1000.0f;

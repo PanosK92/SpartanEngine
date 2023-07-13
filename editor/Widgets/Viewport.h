@@ -31,7 +31,7 @@ class Viewport : public Widget
 public:
     Viewport(Editor* editor);
 
-    void TickVisible() override;
+    void OnTickVisible() override;
 
 private:
     Spartan::Math::Vector2 m_offset = Spartan::Math::Vector2::Zero;
