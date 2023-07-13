@@ -21,10 +21,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ========================
+//= INCLUDES =========================
 #include "Component.h"
 #include <memory>
-#include "../../RHI/RHI_Definition.h"
+#include "../../RHI/RHI_Definitions.h"
 #include "../../RHI/RHI_Viewport.h"
 #include "../../Math/Matrix.h"
 #include "../../Math/Ray.h"
@@ -32,7 +32,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Math/Vector2.h"
 #include "../../Math/Rectangle.h"
 #include "../../Rendering/Color.h"
-//===================================
+//====================================
 
 namespace Spartan
 {
@@ -149,9 +149,9 @@ namespace Spartan
         void ProcessInputFpsControl();
         void ProcessInputLerpToEntity();
 
-        float m_aperture                           = 50.0f;         // Size of the lens diaphragm (mm). Controls depth of field and chromatic aberration.
-        float m_shutter_speed                      = 1.0f / 60.0f;  // Length of time for which the camera shutter is open (sec). Also controls the amount of motion blur.
-        float m_iso                                = 500.0f;        // Sensitivity to light.
+        float m_aperture                           = 50.0f;        // Size of the lens diaphragm (mm). Controls depth of field and chromatic aberration.
+        float m_shutter_speed                      = 1.0f / 60.0f; // Length of time for which the camera shutter is open (sec). Also controls the amount of motion blur.
+        float m_iso                                = 500.0f;       // Sensitivity to light.
         float m_fov_horizontal_rad                 = Math::Helper::DegreesToRadians(90.0f);
         float m_near_plane                         = 0.1f;
         float m_far_plane                          = 1000.0f;

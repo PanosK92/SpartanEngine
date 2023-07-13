@@ -24,7 +24,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =================================
 #include <array>
 #include <atomic>
-#include "RHI_Definition.h"
+#include "RHI_Definitions.h"
 #include "RHI_PipelineState.h"
 #include "RHI_Descriptor.h"
 #include "../Core/Object.h"

@@ -23,7 +23,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===============
 #include "../Math/Vector2.h"
-#include "RHI_Definition.h"
+#include "RHI_Definitions.h"
 //==========================
 
 struct FfxFsr2Context;

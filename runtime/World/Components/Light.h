@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ========================
+//= INCLUDES =========================
 #include <array>
 #include <memory>
 #include "Component.h"
@@ -29,10 +29,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../../Math/Vector4.h"
 #include "../../Math/Vector3.h"
 #include "../../Math/Matrix.h"
-#include "../../RHI/RHI_Definition.h"
+#include "../../RHI/RHI_Definitions.h"
 #include "../../Math/Frustum.h"
 #include "../../Rendering/Color.h"
-//===================================
+//====================================
 
 namespace Spartan
 {
