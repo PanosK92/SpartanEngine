@@ -227,21 +227,24 @@ Editor::~Editor()
 
 void Editor::Tick()
 {
-    // this is the main editor/engine loop
+    // This is the main editor/engine loop
     while (!Spartan::Window::WantsToClose())
     {
         bool render_editor = !Spartan::Window::IsFullScreen();
 
+        // ImGui tick
+        if (render_editor)
+        {
+            ImGui_ImplSDL2_NewFrame();
+            ImGui::NewFrame();
+        }
+
+        // Engine tick
+        Spartan::Engine::Tick();
+
         // Editor
         {
-            // Begin
-            if (render_editor)
-            {
-                ImGui_ImplSDL2_NewFrame();
-                ImGui::NewFrame();
-            }
-
-            // Tick
+            // Window
             if (render_editor)
             {
                 // Begin window
@@ -273,16 +276,10 @@ void Editor::Tick()
 
         }
 
-        // Engine
+        // Engine present
+        if (!Spartan::Window::IsMinimised())
         {
-            // Tick
-            Spartan::Engine::Tick();
-
-            // Present
-            if (!Spartan::Window::IsMinimised())
-            {
-                Spartan::Renderer::Present();
-            }
+            Spartan::Renderer::Present();
         }
     }
 }
