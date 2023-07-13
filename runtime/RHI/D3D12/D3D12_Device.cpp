@@ -301,9 +301,9 @@ namespace Spartan
         return nullptr;
     }
 
-    RHI_CommandPool* RHI_Device::AllocateCommandPool(const char* name, const uint64_t swap_chain_id)
+    RHI_CommandPool* RHI_Device::AllocateCommandPool(const char* name, const uint64_t swap_chain_id, const RHI_Queue_Type queue_type)
     {
-        return cmd_pools.emplace_back(make_shared<RHI_CommandPool>(name, swap_chain_id)).get();
+        return cmd_pools.emplace_back(make_shared<RHI_CommandPool>(name, swap_chain_id, queue_type)).get();
     }
 
     void RHI_Device::DestroyCommandPool(RHI_CommandPool* cmd_pool)

@@ -1489,8 +1489,7 @@ namespace Spartan
         uint32_t queue_index = static_cast<uint32_t>(queue_type);
         if (!command_pools::immediate[queue_index])
         {
-            command_pools::immediate[queue_index] = make_shared<RHI_CommandPool>("cmd_immediate_execution", 0);
-            command_pools::immediate[queue_index]->AllocateCommandLists(queue_type, 1, 1);
+            command_pools::immediate[queue_index] = make_shared<RHI_CommandPool>("cmd_immediate_execution", 0, queue_type);
         }
 
         //  Get command pool
@@ -1519,9 +1518,9 @@ namespace Spartan
         command_pools::condition_variable_immediate_execution.notify_one();
     }
 
-    RHI_CommandPool* RHI_Device::AllocateCommandPool(const char* name, const uint64_t swap_chain_id)
+    RHI_CommandPool* RHI_Device::AllocateCommandPool(const char* name, const uint64_t swap_chain_id, const RHI_Queue_Type queue_type)
     {
-        return command_pools::regular.emplace_back(make_shared<RHI_CommandPool>(name, swap_chain_id)).get();
+        return command_pools::regular.emplace_back(make_shared<RHI_CommandPool>(name, swap_chain_id, queue_type)).get();
     }
 
     void RHI_Device::DestroyCommandPool(RHI_CommandPool* cmd_pool)

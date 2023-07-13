@@ -31,10 +31,11 @@ using namespace std;
 
 namespace Spartan
 {
-    RHI_CommandPool::RHI_CommandPool(const char* name, const uint64_t swap_chain_id) : Object()
+    RHI_CommandPool::RHI_CommandPool(const char* name, const uint64_t swap_chain_id, const RHI_Queue_Type queue_type) : Object()
     {
         m_object_name   = name;
         m_swap_chain_id = swap_chain_id;
+        m_queue_type    = queue_type;
 
         // Create command pool 
         for (uint32_t i = 0; i < static_cast<uint32_t>(m_rhi_resources.size()); i++)
@@ -48,13 +49,8 @@ namespace Spartan
 
     }
 
-    void RHI_CommandPool::CreateCommandPool(const RHI_Queue_Type queue_type)
+    bool RHI_CommandPool::Tick()
     {
-
-    }
-
-    void RHI_CommandPool::Reset(const uint32_t pool_index)
-    {
-
+        return false;
     }
 }

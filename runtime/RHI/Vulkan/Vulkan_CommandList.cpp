@@ -67,11 +67,10 @@ namespace Spartan
         return VK_ATTACHMENT_LOAD_OP_CLEAR;
     };
 
-    RHI_CommandList::RHI_CommandList(const RHI_Queue_Type queue_type, const uint32_t index, const uint32_t swapchain_id, void* cmd_pool, const char* name) : Object()
+    RHI_CommandList::RHI_CommandList(const RHI_Queue_Type queue_type, const uint32_t swapchain_id, void* cmd_pool, const char* name) : Object()
     {
         m_queue_type  = queue_type;
         m_object_name = name;
-        m_index       = index;
 
         // Command buffer
         {

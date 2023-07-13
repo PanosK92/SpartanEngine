@@ -25,7 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Core/Object.h"
 #include "RHI_Definitions.h"
 #include "RHI_CommandList.h"
-#include <vector>
+#include <array>
 //==========================
 
 namespace Spartan
@@ -33,36 +33,24 @@ namespace Spartan
     class RHI_CommandPool : public Object
     {
     public:
-        RHI_CommandPool(const char* name, const uint64_t swap_chain_id);
+        RHI_CommandPool(const char* name, const uint64_t swap_chain_id, const RHI_Queue_Type queue_type);
         ~RHI_CommandPool();
 
-        void AllocateCommandLists(const RHI_Queue_Type queue_type, const uint32_t cmd_pool_count = 2, const uint32_t cmd_list_count = 2);
         bool Tick();
 
-        RHI_CommandList* GetCurrentCommandList()       { return m_cmd_lists[m_cmd_list_index].get(); }
+        RHI_CommandList* GetCurrentCommandList()       { return m_using_pool_a ? m_cmd_lists_a[m_cmd_list_index].get() : m_cmd_lists_b[m_cmd_list_index].get(); }
         uint32_t GetCommandListIndex()           const { return m_cmd_list_index; }
-        void*& GetResource()                           { return m_rhi_resources[GetPoolIndex()]; }
         uint64_t GetSwapchainId()                const { return m_swap_chain_id; }
 
     private:
-        void CreateCommandPool(const RHI_Queue_Type queue_type);
-        void Reset(const uint32_t pool_index);
-        uint32_t GetPoolIndex() { return m_cmd_list_index / m_cmd_pool_count; }
+        std::array<std::shared_ptr<RHI_CommandList>, 2> m_cmd_lists_a;
+        std::array<std::shared_ptr<RHI_CommandList>, 2> m_cmd_lists_b;
+        std::array<void*, 2> m_rhi_resources;
 
-        // Command lists
-        std::vector<std::shared_ptr<RHI_CommandList>> m_cmd_lists;
-        uint32_t m_cmd_list_index = 0;
-        uint32_t m_cmd_list_count = 0;
-
-        // Command pools
-        std::vector<void*> m_rhi_resources;
-        uint32_t m_cmd_pool_count = 0;
-
-        // The swapchain for which this thread pool's command lists will be presenting to.
-        uint64_t m_swap_chain_id = 0;
-
-        // Misc
+        uint32_t m_cmd_list_index   = 0;
+        bool m_using_pool_a         = true;
         bool m_first_tick           = true;
+        uint64_t m_swap_chain_id    = 0;
         RHI_Queue_Type m_queue_type = RHI_Queue_Type::Undefined;
     };
 }

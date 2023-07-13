@@ -72,7 +72,7 @@ namespace Spartan
         static void GetOrCreatePipeline(RHI_PipelineState& pso, RHI_Pipeline*& pipeline, RHI_DescriptorSetLayout*& descriptor_set_layout);
 
         // Command pools
-        static RHI_CommandPool* AllocateCommandPool(const char* name, const uint64_t swap_chain_id);
+        static RHI_CommandPool* AllocateCommandPool(const char* name, const uint64_t swap_chain_id, const RHI_Queue_Type queue_type);
         static void DestroyCommandPool(RHI_CommandPool* cmd_pool);
         static const std::vector<std::shared_ptr<RHI_CommandPool>>& GetCommandPools();
 
