@@ -50,6 +50,7 @@ void Viewport::OnTickVisible()
 
     // Update engine's viewport.
     static bool first_frame         = true;
+    static bool resolutions_set     = false;
     static uint32_t width_previous  = 0;
     static uint32_t height_previous = 0;
     if (!first_frame) // during the first frame the viewport is not yet initialized (or it's size will be something weird)
@@ -58,9 +59,18 @@ void Viewport::OnTickVisible()
         {
             if (RHI_Device::IsValidResolution(width, height))
             {
-                Renderer::SetViewport(static_cast<float>(width), static_cast<float>(height));
-                Renderer::SetResolutionRender(width, height);
-                Renderer::SetResolutionOutput(width, height);
+                Renderer::SetViewport(static_cast<float>(width), static_cast<float>(height)); 
+                
+                if (!resolutions_set)
+                {
+                    // Only set the render and output resolutions once.
+                    // They are expensive operations and we don't want to do it frequently.
+
+                    Renderer::SetResolutionRender(width, height);
+                    Renderer::SetResolutionOutput(width, height);
+
+                    resolutions_set = true;
+                }
 
                 width_previous  = width;
                 height_previous = height;
