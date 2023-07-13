@@ -29,10 +29,12 @@ static const float g_ao_radius         = 2.0f;
 static const float g_ao_occlusion_bias = 0.0f;
 static const float g_ao_intensity      = 2.0f;
 
-static const float ao_samples       = (float)(g_ao_directions * g_ao_steps);
-static const float ao_samples_rcp   = 1.0f / ao_samples;
-static const float ao_radius2       = g_ao_radius * g_ao_radius;
-static const float ao_negInvRadius2 = -1.0f / ao_radius2;
+static const float ao_samples        = (float)(g_ao_directions * g_ao_steps);
+static const float ao_samples_rcp    = 1.0f / ao_samples;
+static const float ao_radius2        = g_ao_radius * g_ao_radius;
+static const float ao_negInvRadius2  = -1.0f / ao_radius2;
+static const float ao_rpc_intensity  = ao_samples_rcp * g_ao_intensity * 2.0f;
+static const float ao_step_direction = PI2 / (float) g_ao_directions;
 
 float compute_falloff(float distance_squared)
 {
@@ -59,9 +61,6 @@ void compute_ssgi(uint2 pos, inout float occlusion, inout float3 diffuse_bounce)
     const float pixel_offset = max((g_ao_radius * buffer_pass.resolution_rt.x * 0.5f) / origin_position.z, (float)g_ao_steps);
     const float step_offset  = pixel_offset / float(g_ao_steps + 1.0f); // divide by steps + 1 so that the farthest samples are not fully attenuated
 
-    // Compute rotation step
-    const float step_direction = PI2 / (float)g_ao_directions;
-
     // Offsets (noise over space and time)
     const float noise_gradient_temporal  = get_noise_interleaved_gradient(pos);
     const float offset_spatial           = get_offset_non_temporal(pos);
@@ -70,11 +69,13 @@ void compute_ssgi(uint2 pos, inout float occlusion, inout float3 diffuse_bounce)
     const float ray_offset               = frac(offset_spatial + offset_temporal) + (get_random(origin_uv) * 2.0 - 1.0) * 0.25;
 
     // Compute light/occlusion and bend normal
+    [unroll]
     for (uint direction_index = 0; direction_index < g_ao_directions; direction_index++)
     {
-        float rotation_angle      = (direction_index + noise_gradient_temporal + offset_rotation_temporal) * step_direction;
+        float rotation_angle      = (direction_index + noise_gradient_temporal + offset_rotation_temporal) * ao_step_direction;
         float2 rotation_direction = float2(cos(rotation_angle), sin(rotation_angle)) * get_rt_texel_size();
 
+        [unroll]
         for (uint step_index = 0; step_index < g_ao_steps; ++step_index)
         {
             float2 uv_offset        = round(max(step_offset * (step_index + ray_offset), 1 + step_index)) * rotation_direction;
@@ -89,7 +90,7 @@ void compute_ssgi(uint2 pos, inout float occlusion, inout float3 diffuse_bounce)
     }
 
     occlusion      = pow((1.0f - saturate(occlusion * ao_samples_rcp)), g_ao_intensity);
-    diffuse_bounce *= ao_samples_rcp * g_ao_intensity * 2.0f;
+    diffuse_bounce *= ao_rpc_intensity;
 }
 
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
