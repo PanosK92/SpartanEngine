@@ -514,7 +514,7 @@ namespace Spartan
         GetConstantBuffer(Renderer_ConstantBuffer::Frame)->Update(&m_cb_frame_cpu);
 
         // Bind because the offset just changed
-        cmd_list->SetConstantBuffer(Renderer_BindingsCb::frame, RHI_Shader_Vertex | RHI_Shader_Pixel | RHI_Shader_Compute, GetConstantBuffer(Renderer_ConstantBuffer::Frame));
+        cmd_list->SetConstantBuffer(Renderer_BindingsCb::frame, GetConstantBuffer(Renderer_ConstantBuffer::Frame));
     }
 
     void Renderer::UpdateConstantBufferPass(RHI_CommandList* cmd_list)
@@ -522,7 +522,7 @@ namespace Spartan
         GetConstantBuffer(Renderer_ConstantBuffer::Pass)->Update(&m_cb_pass_cpu);
 
         // Bind because the offset just changed
-        cmd_list->SetConstantBuffer(Renderer_BindingsCb::uber, RHI_Shader_Vertex | RHI_Shader_Pixel | RHI_Shader_Compute, GetConstantBuffer(Renderer_ConstantBuffer::Pass));
+        cmd_list->SetConstantBuffer(Renderer_BindingsCb::uber, GetConstantBuffer(Renderer_ConstantBuffer::Pass));
     }
 
     void Renderer::UpdateConstantBufferLight(RHI_CommandList* cmd_list, shared_ptr<Light> light, const RHI_Shader_Type scope)
@@ -555,7 +555,7 @@ namespace Spartan
         GetConstantBuffer(Renderer_ConstantBuffer::Light)->Update(&m_cb_light_cpu);
 
         // Bind because the offset just changed
-        cmd_list->SetConstantBuffer(Renderer_BindingsCb::light, scope, GetConstantBuffer(Renderer_ConstantBuffer::Light));
+        cmd_list->SetConstantBuffer(Renderer_BindingsCb::light, GetConstantBuffer(Renderer_ConstantBuffer::Light));
     }
 
     void Renderer::UpdateConstantBufferMaterial(RHI_CommandList* cmd_list, Material* material)
@@ -594,7 +594,7 @@ namespace Spartan
         GetConstantBuffer(Renderer_ConstantBuffer::Material)->Update(&m_cb_material_cpu);
 
         // Bind because the offset just changed
-        cmd_list->SetConstantBuffer(Renderer_BindingsCb::material, RHI_Shader_Pixel | RHI_Shader_Compute, GetConstantBuffer(Renderer_ConstantBuffer::Material));
+        cmd_list->SetConstantBuffer(Renderer_BindingsCb::material, GetConstantBuffer(Renderer_ConstantBuffer::Material));
     }
 
     void Renderer::OnWorldResolved(sp_variant data)

@@ -764,7 +764,7 @@ namespace Spartan
         Profiler::m_rhi_bindings_buffer_index++;
     }
 
-    void RHI_CommandList::SetConstantBuffer(const uint32_t slot, const uint8_t scope, RHI_ConstantBuffer* constant_buffer) const
+    void RHI_CommandList::SetConstantBuffer(const uint32_t slot, RHI_ConstantBuffer* constant_buffer) const
     {
         // Validate command list state
         SP_ASSERT(m_state == RHI_CommandListState::Recording);

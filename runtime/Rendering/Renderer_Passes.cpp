@@ -55,10 +55,10 @@ namespace Spartan
     void Renderer::SetGlobalShaderResources(RHI_CommandList* cmd_list)
     {
         // Constant buffers
-        cmd_list->SetConstantBuffer(Renderer_BindingsCb::frame,    RHI_Shader_Vertex | RHI_Shader_Pixel | RHI_Shader_Compute, GetConstantBuffer(Renderer_ConstantBuffer::Frame));
-        cmd_list->SetConstantBuffer(Renderer_BindingsCb::uber,     RHI_Shader_Vertex | RHI_Shader_Pixel | RHI_Shader_Compute, GetConstantBuffer(Renderer_ConstantBuffer::Pass));
-        cmd_list->SetConstantBuffer(Renderer_BindingsCb::light,    RHI_Shader_Compute,                                        GetConstantBuffer(Renderer_ConstantBuffer::Light));
-        cmd_list->SetConstantBuffer(Renderer_BindingsCb::material, RHI_Shader_Pixel | RHI_Shader_Compute,                     GetConstantBuffer(Renderer_ConstantBuffer::Material));
+        cmd_list->SetConstantBuffer(Renderer_BindingsCb::frame, GetConstantBuffer(Renderer_ConstantBuffer::Frame));
+        cmd_list->SetConstantBuffer(Renderer_BindingsCb::uber, GetConstantBuffer(Renderer_ConstantBuffer::Pass));
+        cmd_list->SetConstantBuffer(Renderer_BindingsCb::light, GetConstantBuffer(Renderer_ConstantBuffer::Light));
+        cmd_list->SetConstantBuffer(Renderer_BindingsCb::material, GetConstantBuffer(Renderer_ConstantBuffer::Material));
 
         // Textures
         cmd_list->SetTexture(Renderer_BindingsSrv::noise_normal, GetStandardTexture(Renderer_StandardTexture::Noise_normal));
