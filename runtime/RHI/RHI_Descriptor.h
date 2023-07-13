@@ -53,7 +53,7 @@ namespace Spartan
             this->array_size = array_size;
         }
 
-        uint64_t GetHash()
+        uint64_t ComputeHash()
         {
             if (m_hash == 0)
             {
@@ -69,20 +69,24 @@ namespace Spartan
         bool IsStorage() const { return type == RHI_Descriptor_Type::TextureStorage; }
         bool IsArray()   const { return array_size > 0; };
 
-        // Properties that affect the hash. They are reflected from the shader
+        // Properties that affect the descriptor hash. They are reflected from the shader
         RHI_Descriptor_Type type = RHI_Descriptor_Type::Undefined;
-        uint32_t slot            = 0; // the binding slot in the shader
-        uint32_t stage           = 0; // the pipeline stages from which which the descriptor resources is accessed from
-        uint32_t array_size      = 0; // the size of the array in the shader
+        uint32_t slot            = 0;
+        uint32_t stage           = 0;
+        uint32_t array_size      = 0;
        
-        // Properties that don't affect the hash. Data that simply needs to be passed around
-        uint32_t dynamic_offset = 0; // the offset used for dynamic constant buffers
+        // Properties that don't affect the descriptor hash. They affect the descriptor set hash.
         uint64_t range          = 0; // the size in bytes that is used for a descriptor update
         uint32_t mip            = 0;
         uint32_t mip_range      = 0;
         void* data              = nullptr;
+
+        // Properties that don't affect any hash.
+        uint32_t dynamic_offset = 0; // the offset used for dynamic constant buffers
         RHI_Image_Layout layout = RHI_Image_Layout::Undefined;
-        std::string name; // Kept here for debugging purposes
+
+        // Debugging
+        std::string name;
 
     private:
         uint64_t m_hash = 0;

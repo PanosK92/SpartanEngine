@@ -35,7 +35,6 @@ namespace Spartan
         RHI_PipelineState();
         ~RHI_PipelineState();
 
-        bool NeedsToUpdateHash();
         uint64_t ComputeHash();
         uint64_t GetHash()    const { return m_hash; }
         uint32_t GetWidth()   const;
