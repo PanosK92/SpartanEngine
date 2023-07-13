@@ -366,7 +366,7 @@ namespace ImGui::RHI
 
                         // Update ImGui buffer
                         resources->cb_gpu->Update(&resources->cb_cpu);
-                        cmd_list->SetConstantBuffer(Renderer_BindingsCb::imgui, RHI_Shader_Vertex | RHI_Shader_Pixel, resources->cb_gpu);
+                        cmd_list->SetConstantBuffer(Renderer_BindingsCb::imgui, resources->cb_gpu);
 
                         // Draw
                         cmd_list->DrawIndexed(pcmd->ElemCount, pcmd->IdxOffset + global_idx_offset, pcmd->VtxOffset + global_vtx_offset);
