@@ -21,10 +21,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ====================================
 #include "Editor.h"
-#include "Core/Event.h"
 #include "Core/Engine.h"
 #include "Core/Settings.h"
-#include "Core/Window.h"
 #include "ImGui/ImGuiExtension.h"
 #include "ImGui/Implementation/ImGui_RHI.h"
 #include "ImGui/Implementation/imgui_impl_sdl2.h"
@@ -39,7 +37,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Widgets/ResourceViewer.h"
 #include "Widgets/Profiler.h"
 #include "Widgets/RenderOptions.h"
-#include "Widgets/TextureViewer.h"
 //===============================================
 
 //= NAMESPACES =====
@@ -235,50 +232,57 @@ void Editor::Tick()
     {
         bool render_editor = !Spartan::Window::IsFullScreen();
 
-        // ImGui - Begin
-        if (render_editor)
+        // Editor
         {
-            ImGui_ImplSDL2_NewFrame();
-            ImGui::NewFrame();
-        }
-
-        // Engine - Tick
-        Spartan::Engine::Tick();
-
-        // Editor - Tick/End
-        if (render_editor)
-        {
-            // Editor - Begin
-            BeginWindow();
-
-            // Editor - Tick
-            for (shared_ptr<Widget>& widget : m_widgets)
+            // Begin
+            if (render_editor)
             {
-                widget->Tick();
+                ImGui_ImplSDL2_NewFrame();
+                ImGui::NewFrame();
             }
 
-            // Editor - End
-            if (m_editor_begun)
+            // Tick
+            if (render_editor)
             {
-                ImGui::End();
+                // Begin window
+                BeginWindow();
+
+                // Tick widgets
+                for (shared_ptr<Widget>& widget : m_widgets)
+                {
+                    widget->Tick();
+                }
+
+                // End window
+                if (m_editor_begun)
+                {
+                    ImGui::End();
+                }
+
+                // Render
+                ImGui::Render();
+                ImGui::RHI::Render(ImGui::GetDrawData());
             }
 
-            // ImGui - End/Render
-            ImGui::Render();
-            ImGui::RHI::Render(ImGui::GetDrawData());
+            // Child windows
+            if (render_editor && ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+            {
+                ImGui::UpdatePlatformWindows();
+                ImGui::RenderPlatformWindowsDefault();
+            }
+
         }
 
-        // Present
-        if (!Spartan::Window::IsMinimised())
+        // Engine
         {
-            Spartan::Renderer::Present();
-        }
+            // Tick
+            Spartan::Engine::Tick();
 
-        // ImGui - Child windows
-        if (render_editor && ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
-        {
-            ImGui::UpdatePlatformWindows();
-            ImGui::RenderPlatformWindowsDefault();
+            // Present
+            if (!Spartan::Window::IsMinimised())
+            {
+                Spartan::Renderer::Present();
+            }
         }
     }
 }
