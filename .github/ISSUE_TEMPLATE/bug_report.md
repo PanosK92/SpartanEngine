@@ -1,19 +1,33 @@
 ---
 name: Bug report
-about: Create a report to help us improve
+about: Create a report to help improve the engine
 title: ''
 labels: ''
 assignees: ''
 
 ---
 
-Hello!
+### Bug Report
 
-Feel free to use the Issue tracker to submit bug reports, feature requests or suggestions.
-You may ask for help or advice as well, I will be happy to help. However, please carefully read this wall of text before doing so.
+**Issue:**
+[Briefly describe what the issue is.]
 
-Do your best to clarify your issue (you don't have to follow any strict template). By providing complete information and by minimizing ambiguity, you increase the changes of me being able to remotely help you while I also fix any potential bugs. It's a win-win.
+**Steps to Reproduce:**
+1.
+2.
+3.
+...
 
-Try to keep things organized. For example, if there is no issue which is related to what you are looking for, open a new one. Please don't hijack an existing, unrelated issue and start commenting there unless your intention is to contribute towards the resolution of that issue.
+**Expected Outcome:**
+[What should happen when steps are followed.]
 
-Thank you!
+**Actual Outcome:**
+[What actually happened.]
+
+**Environment:**
+- Operating System:
+- GPU
+- CPU
+
+**Screenshots or Logs (if any):**
+[Attach any screenshots or logs related to the issue here.]
