@@ -147,7 +147,7 @@ Properties::Properties(Editor* editor) : Widget(editor)
     m_colorPicker_camera    = make_unique<ButtonColorPicker>("Camera Color Picker");
 }
 
-void Properties::TickVisible()
+void Properties::OnTickVisible()
 {
     ImGui::PushItemWidth(item_width);
 

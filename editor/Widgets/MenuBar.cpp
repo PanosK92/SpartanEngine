@@ -208,7 +208,6 @@ namespace
         if (!show_shortcuts_window)
             return;
 
-        ImGui::SetNextWindowContentSize(ImVec2(540.f, 360.f));
         ImGui::SetNextWindowFocus();
         ImGui::Begin("Shortcuts & Input Reference", &show_shortcuts_window, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoDocking);
         {
@@ -274,7 +273,7 @@ MenuBar::MenuBar(Editor *editor) : Widget(editor)
     m_editor       = editor;
 }
 
-void MenuBar::TickAlways()
+void MenuBar::OnTick()
 {
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(GetPadding(), GetPadding()));
     ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);

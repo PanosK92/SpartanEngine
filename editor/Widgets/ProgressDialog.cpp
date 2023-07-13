@@ -31,18 +31,20 @@ using namespace Spartan;
 using namespace Spartan::Math;
 //============================
 
-static array<Progress*, 5> progresses;
+namespace
+{
+    static array<Progress*, 5> progresses;
+}
 
 ProgressDialog::ProgressDialog(Editor* editor) : Widget(editor)
 {
-    m_title        = "Hold on...";
-    m_visible      = false;
-    m_size_initial = Vector2(500.0f, 83.0f);
+    m_title         = "Hold on...";
+    m_visible       = false;
+    m_size_initial  = Vector2(500.0f, 83.0f);
     m_flags        |= ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_AlwaysAutoResize;
-    m_position     = k_widget_position_screen_center;
 }
 
-void ProgressDialog::TickAlways()
+void ProgressDialog::OnTick()
 {
     progresses[static_cast<uint32_t>(ProgressType::ModelImporter)] = &ProgressTracker::GetProgress(ProgressType::ModelImporter);
     progresses[static_cast<uint32_t>(ProgressType::World)]         = &ProgressTracker::GetProgress(ProgressType::World);
@@ -66,7 +68,7 @@ void ProgressDialog::TickAlways()
     SetVisible(in_progress);
 }
 
-void ProgressDialog::TickVisible()
+void ProgressDialog::OnTickVisible()
 {
     ImGui::SetWindowFocus();
 

@@ -73,17 +73,16 @@ TextureViewer::TextureViewer(Editor* editor) : Widget(editor)
 {
     m_title    = "Texture Viewer";
     m_visible  = false;
-    m_position = k_widget_position_screen_center;
     m_size_min = Vector2(720, 576);
 }
 
-void TextureViewer::TickAlways()
+void TextureViewer::OnTick()
 {
     m_visualisation_flags = 0;
-    texture_id          = 0;
+    texture_id            = 0;
 }
 
-void TextureViewer::TickVisible()
+void TextureViewer::OnTickVisible()
 {
     // Get render targets
     static vector<string> render_target_options;

@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../ImGui/Source/imgui_internal.h"
 #include "Profiling/Profiler.h"
 #include "Display/Display.h"
+#include "Viewport.h"
 //=========================================
 
 Widget::Widget(Editor* editor)
@@ -35,7 +36,7 @@ Widget::Widget(Editor* editor)
 
 void Widget::Tick()
 {
-    TickAlways();
+    OnTick();
 
     if (!m_is_window || !m_visible)
         return;
@@ -45,46 +46,33 @@ void Widget::Tick()
         SP_PROFILE_SECTION_START(m_title.c_str());
 
         // Size initial
-        if (m_size_initial != k_widget_default_propery)
+        if (m_size_initial != k_widget_default_property)
         {
             ImGui::SetNextWindowSize(m_size_initial, ImGuiCond_FirstUseEver);
         }
 
         // Size min max
-        if (m_size_min != k_widget_default_propery || m_size_max != FLT_MAX)
+        if (m_size_min != k_widget_default_property || m_size_max != FLT_MAX)
         {
             ImGui::SetNextWindowSizeConstraints(m_size_min, m_size_max);
         }
 
         // Padding
-        if (m_padding != k_widget_default_propery)
+        if (m_padding != k_widget_default_property)
         {
             ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, m_padding);
             m_var_push_count++;
         }
 
         // Alpha
-        if (m_alpha != k_widget_default_propery)
+        if (m_alpha != k_widget_default_property)
         {
             ImGui::PushStyleVar(ImGuiStyleVar_Alpha, m_alpha);
             m_var_push_count++;
         }
 
-        // Position
-        if (m_position != k_widget_default_propery)
-        {
-            if (m_position == k_widget_position_screen_center)
-            {
-                m_position.x = Spartan::Display::GetWidth() * 0.5f;
-                m_position.y = Spartan::Display::GetHeight() * 0.5f;
-            }
-
-            ImVec2 pivot_center = ImVec2(0.5f, 0.5f);
-            ImGui::SetNextWindowPos(m_position, ImGuiCond_FirstUseEver, pivot_center);
-        }
-
         // Callback
-        OnPushStyleVar();
+        OnPreBegin();
 
         // Begin
         if (ImGui::Begin(m_title.c_str(), &m_visible, m_flags))
@@ -104,7 +92,7 @@ void Widget::Tick()
         }
     }
 
-    TickVisible();
+    OnTickVisible();
 
     // End
     {
@@ -118,4 +106,30 @@ void Widget::Tick()
         // End profiling
         SP_PROFILE_SECTION_END();
     }
+}
+
+void Widget::OnPreBegin()
+{
+    // Set the position to the viewport's center
+    if (Viewport* viewport = m_editor->GetWidget<Viewport>())
+    {
+        if (ImGuiWindow* window = viewport->GetWindow())
+        {
+            ImVec2 pos    = window->Pos;
+            ImVec2 sze    = window->Size;
+            ImVec2 center = ImVec2(pos.x + sze.x * 0.5f, pos.y + sze.y * 0.5f);
+            ImVec2 pivot  = ImVec2(0.5f, 0.5f);
+
+            ImGui::SetNextWindowPos(center, ImGuiCond_FirstUseEver, pivot);
+        }
+    }
+}
+
+Spartan::Math::Vector2 Widget::GetCenter() const
+{
+    ImVec2 pos    = m_window->Pos;
+    ImVec2 sze    = m_window->Size;
+    ImVec2 center = ImVec2(pos.x + sze.x * 0.5f, pos.y + sze.y * 0.5f);
+
+    return center;
 }

@@ -29,8 +29,8 @@ class TextureViewer : public Widget
 {
 public:
     TextureViewer(Editor* editor);
-    void TickAlways() override;
-    void TickVisible() override;
+    void OnTick() override;
+    void OnTickVisible() override;
     static uint32_t GetVisualisationFlags();
     static int GetMipLevel();
     static uint64_t GetVisualisedTextureId();

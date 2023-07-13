@@ -184,7 +184,6 @@ RenderOptions::RenderOptions(Editor* editor) : Widget(editor)
     m_flags    |= ImGuiWindowFlags_AlwaysAutoResize;
     m_visible  = false;
     m_alpha    = 1.0f;
-    m_position = k_widget_position_screen_center;
 }
 
 void RenderOptions::OnVisible()
@@ -208,7 +207,7 @@ void RenderOptions::OnVisible()
     }
 }
 
-void RenderOptions::TickVisible()
+void RenderOptions::OnTickVisible()
 {
     // Reflect options from engine
     bool do_dof                  = Renderer::GetOption<bool>(Renderer_Option::DepthOfField);

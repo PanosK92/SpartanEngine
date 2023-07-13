@@ -33,7 +33,7 @@ class Toolbar : public Widget
 public:
     Toolbar(Editor* editor);
 
-    void TickAlways() override;
+    void OnTick() override;
 
 private:
     std::unordered_map<IconType, Widget*> m_widgets;

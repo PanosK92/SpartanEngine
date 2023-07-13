@@ -42,7 +42,7 @@ Viewport::Viewport(Editor* editor) : Widget(editor)
     m_padding      = Vector2(2.0f);
 }
 
-void Viewport::TickVisible()
+void Viewport::OnTickVisible()
 {
     // Get size
     uint32_t width  = static_cast<uint32_t>(ImGui::GetWindowContentRegionMax().x - ImGui::GetWindowContentRegionMin().x);

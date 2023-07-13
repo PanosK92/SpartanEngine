@@ -38,7 +38,6 @@ Profiler::Profiler(Editor* editor) : Widget(editor)
     m_title        = "Profiler";
     m_visible      = false;
     m_size_initial = Vector2(1000, 715);
-    m_position     = k_widget_position_screen_center;
 }
 
 void Profiler::OnVisible()
@@ -71,7 +70,7 @@ static void ShowTimeBlock(const Spartan::TimeBlock& time_block, float total_time
     ImGui::Text("%s - %.2f ms", name, duration);
 }
 
-void Profiler::TickVisible()
+void Profiler::OnTickVisible()
 {
     int previous_item_type = m_item_type;
 

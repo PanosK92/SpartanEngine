@@ -395,12 +395,12 @@ namespace Spartan
             {
                 VkClearAttachment& attachment = attachments[attachment_count++];
 
-                attachment.aspectMask                   = VK_IMAGE_ASPECT_COLOR_BIT;
-                attachment.colorAttachment              = 0;
-                attachment.clearValue.color.float32[0]  = pipeline_state.clear_color[i].r;
-                attachment.clearValue.color.float32[1]  = pipeline_state.clear_color[i].g;
-                attachment.clearValue.color.float32[2]  = pipeline_state.clear_color[i].b;
-                attachment.clearValue.color.float32[3]  = pipeline_state.clear_color[i].a;
+                attachment.aspectMask                  = VK_IMAGE_ASPECT_COLOR_BIT;
+                attachment.colorAttachment             = 0;
+                attachment.clearValue.color.float32[0] = pipeline_state.clear_color[i].r;
+                attachment.clearValue.color.float32[1] = pipeline_state.clear_color[i].g;
+                attachment.clearValue.color.float32[2] = pipeline_state.clear_color[i].b;
+                attachment.clearValue.color.float32[3] = pipeline_state.clear_color[i].a;
             }
         }
 

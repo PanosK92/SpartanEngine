@@ -33,7 +33,7 @@ class AssetBrowser : public Widget
 public:
     AssetBrowser(Editor* editor);
 
-    void TickVisible() override;
+    void OnTickVisible() override;
     void ShowMeshImportDialog(const std::string& file_path);
 
 private:

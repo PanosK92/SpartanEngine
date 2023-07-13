@@ -36,7 +36,7 @@ class MenuBar : public Widget
 public:
     MenuBar(Editor* editor);
 
-    void TickAlways() override;
+    void OnTick() override;
     void ShowWorldSaveDialog();
     void ShowWorldLoadDialog();
 

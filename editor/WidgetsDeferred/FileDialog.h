@@ -97,13 +97,13 @@ public:
     void SetOperation(FileDialog_Operation operation);
 
     // Shows the dialog and returns true if a a selection was made
-    bool Show(bool* is_visible, std::string* directory = nullptr, std::string* file_path = nullptr);
+    bool Show(bool* is_visible, Editor* editor, std::string* directory = nullptr, std::string* file_path = nullptr);
 
     void SetCallbackOnItemClicked(const std::function<void(const std::string&)>& callback)       { m_callback_on_item_clicked = callback; }
     void SetCallbackOnItemDoubleClicked(const std::function<void(const std::string&)>& callback) { m_callback_on_item_double_clicked = callback; }
 
 private:
-    void ShowTop(bool* is_visible);
+    void ShowTop(bool* is_visible, Editor* editor);
     void ShowMiddle();
     void ShowBottom(bool* is_visible);
 
@@ -117,10 +117,9 @@ private:
     void EmptyAreaContextMenu();
 
     // Options
-    Spartan::Math::Vector2 m_position = Spartan::Math::Vector2(-1.0f, -1.0f);
-    const bool m_drop_shadow          = true;
-    const float m_item_size_min       = 50.0f;
-    const float m_item_size_max       = 200.0f;
+    const bool m_drop_shadow    = true;
+    const float m_item_size_min = 50.0f;
+    const float m_item_size_max = 200.0f;
     const Spartan::Math::Vector4 m_content_background_color = Spartan::Math::Vector4(0.0f, 0.0f, 0.0f, 50.0f);
 
     // Flags

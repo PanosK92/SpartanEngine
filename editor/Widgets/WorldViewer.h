@@ -34,7 +34,7 @@ class WorldViewer : public Widget
 public:
     WorldViewer(Editor* editor);
 
-    void TickVisible() override;
+    void OnTickVisible() override;
     void SetSelectedEntity(const std::shared_ptr<Spartan::Entity> entity);
 
 private:

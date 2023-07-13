@@ -65,7 +65,7 @@ public:
 
     void OnVisible()   override;
     void OnHidden()    override;
-    void TickVisible() override;
+    void OnTickVisible() override;
 
 private:
     std::array<float, 400> m_plot;

@@ -78,7 +78,7 @@ Toolbar::Toolbar(Editor* editor) : Widget(editor)
     Spartan::Engine::RemoveFlag(Spartan::EngineMode::Game);
 }
 
-void Toolbar::TickAlways()
+void Toolbar::OnTick()
 {
     // Expose widgets as buttons 
     for (auto& widget_it : m_widgets)
