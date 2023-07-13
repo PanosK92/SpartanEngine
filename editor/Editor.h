@@ -21,12 +21,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==================
+//= INCLUDES ===================
 #include <vector>
 #include <memory>
-#include "RHI/RHI_Definition.h"
+#include "RHI/RHI_Definitions.h"
 #include "Widgets/Widget.h"
-//=============================
+//==============================
 
 class Editor
 {

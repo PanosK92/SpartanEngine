@@ -388,7 +388,7 @@ static const char* vkresult_to_string(const VkResult result)
 #endif
 
 // RHI_Context
-#include "RHI_Definition.h"
+#include "RHI_Definitions.h"
 namespace Spartan
 {
     class SP_CLASS RHI_Context

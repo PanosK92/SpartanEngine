@@ -211,7 +211,7 @@ namespace Spartan
             void* p_user_data
         )
         {
-            string msg = "Vulkan: " + std::string(p_callback_data->pMessage);
+            string msg = "Vulkan: " + string(p_callback_data->pMessage);
 
             if (/*(msg_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT) ||*/ (msg_severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT))
             {

@@ -21,11 +21,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ========================
+//= INCLUDES =========================
 #include "Component.h"
 #include "Renderable.h"
-#include "../../RHI/RHI_Definition.h"
-//===================================
+#include "../../RHI/RHI_Definitions.h"
+//====================================
 
 namespace Spartan
 {
