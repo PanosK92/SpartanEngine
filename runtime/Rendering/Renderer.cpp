@@ -403,8 +403,7 @@ namespace Spartan
         if (Window::IsFullScreen())
         {
             m_cmd_current->BeginMarker("copy_to_back_buffer");
-            m_cmd_current->Blit(GetRenderTarget(Renderer_RenderTexture::frame_output).get(), m_swap_chain.get(), RHI_Filter::Nearest);
-            m_swap_chain->SetLayout(RHI_Image_Layout::Present_Src, m_cmd_current);
+            m_cmd_current->Copy(GetRenderTarget(Renderer_RenderTexture::frame_output).get(), m_swap_chain.get());
             m_cmd_current->EndMarker();
         }
 

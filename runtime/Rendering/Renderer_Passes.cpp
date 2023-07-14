@@ -128,7 +128,7 @@ namespace Spartan
                 if (do_transparent_pass)
                 {
                     // Blit the frame so that refraction can sample from it
-                    cmd_list->Blit(rt1, rt2, RHI_Filter::Nearest, true);
+                    cmd_list->Copy(rt1, rt2, true);
 
                     // Generate frame mips so that the reflections can simulate roughness
                     Pass_Ffx_Spd(cmd_list, rt2);
@@ -1134,7 +1134,7 @@ namespace Spartan
             else if (upsampling_mode == Renderer_Upsampling::Linear)
             {
                 swap_render = !swap_render;
-                cmd_list->Blit(get_render_in, rt_frame_output, RHI_Filter::Linear, false);
+                cmd_list->Blit(get_render_in, rt_frame_output, false);
             }
         }
 
@@ -1201,7 +1201,7 @@ namespace Spartan
         // If the last written texture is not the output one, then make sure it is.
         if (!swap_output)
         {
-            cmd_list->Blit(rt_frame_output_scratch, rt_frame_output, RHI_Filter::Nearest, false);
+            cmd_list->Copy(rt_frame_output_scratch, rt_frame_output, false);
         }
 
         cmd_list->EndMarker();
