@@ -80,8 +80,7 @@ namespace Spartan
         void Dispatch(uint32_t x, uint32_t y, uint32_t z = 1, bool async = false);
 
         // Blit
-        void Blit(RHI_Texture* source, RHI_Texture* destination, const RHI_Filter filter, const bool blit_mips);
-        void Blit(RHI_Texture* source, RHI_SwapChain* destination, const RHI_Filter filter);
+        void Blit(RHI_Texture* source, RHI_Texture* destination, const bool blit_mips);
 
         // Copy
         void Copy(RHI_Texture* source, RHI_Texture* destination, const bool blit_mips);

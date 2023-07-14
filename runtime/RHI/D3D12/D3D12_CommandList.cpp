@@ -207,14 +207,21 @@ namespace Spartan
         Profiler::m_rhi_dispatch++;
     }
 
-    void RHI_CommandList::Blit(RHI_Texture* source, RHI_Texture* destination, const RHI_Filter filter,const bool blit_mips)
+    void RHI_CommandList::Blit(RHI_Texture* source, RHI_Texture* destination, const bool blit_mips)
     {
         SP_ASSERT_MSG(false, "Function is not implemented");
     }
 
-    void RHI_CommandList::Blit(RHI_Texture* source, RHI_SwapChain* destination, const RHI_Filter filter)
+    void RHI_CommandList::Copy(RHI_Texture* source, RHI_Texture* destination, const bool blit_mips)
     {
         SP_ASSERT_MSG(false, "Function is not implemented");
+    }
+
+    void RHI_CommandList::Copy(RHI_Texture* source, RHI_SwapChain* destination)
+    {
+        SP_ASSERT_MSG((source->GetFlags() & RHI_Texture_ClearOrBlit) != 0, "The texture needs the RHI_Texture_ClearOrBlit flag");
+        SP_ASSERT(source->GetWidth() == destination->GetWidth());
+        SP_ASSERT(source->GetHeight() == destination->GetHeight());
     }
 
     void RHI_CommandList::SetViewport(const RHI_Viewport& viewport) const
