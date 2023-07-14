@@ -84,7 +84,7 @@ namespace Spartan
         static bool profile                        = false;
         static bool profile_cpu                    = true;
         static bool profile_gpu                    = true;
-        static float profiling_interval_sec        = 0.15f;
+        static float profiling_interval_sec        = 0.05f;
         static float time_since_profiling_sec      = profiling_interval_sec;
 
         static const uint32_t frames_to_accumulate = 15;

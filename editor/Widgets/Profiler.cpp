@@ -79,7 +79,7 @@ void Profiler::OnTickVisible()
     ImGui::RadioButton("GPU", &m_item_type, 1);
     ImGui::SameLine();
     float interval = Spartan::Profiler::GetUpdateInterval();
-    ImGui::DragFloat("Update interval (The smaller the interval the higher the performance impact)", &interval, 0.001f, 0.0f, 0.5f);
+    ImGui::DragFloat("Update interval", &interval, 0.001f, 0.0f, 0.5f);
     Spartan::Profiler::SetUpdateInterval(interval);
     ImGui::Separator();
 
