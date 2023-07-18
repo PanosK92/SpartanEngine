@@ -49,52 +49,52 @@ namespace Spartan
     namespace
     {
         // sync objects
-        static thread::id m_render_thread_id;
-        static mutex m_mutex_entity_addition;
-        static mutex m_mutex_mip_generation;
-        static mutex m_mutex_environment_texture;
+        thread::id m_render_thread_id;
+        mutex m_mutex_entity_addition;
+        mutex m_mutex_mip_generation;
+        mutex m_mutex_environment_texture;
 
         // states
-        static atomic<bool> m_is_rendering_allowed  = true;
-        static atomic<bool> m_flush_requested       = false;
-        static bool m_dirty_orthographic_projection = true;
+        atomic<bool> m_is_rendering_allowed  = true;
+        atomic<bool> m_flush_requested       = false;
+        bool m_dirty_orthographic_projection = true;
 
         // options
-        static array<float, 34> m_options;
+        array<float, 34> m_options;
 
         // frame
-        static uint64_t m_frame_num = 0;
-        static bool m_is_odd_frame  = false;
+        uint64_t m_frame_num = 0;
+        bool m_is_odd_frame  = false;
 
         // Resolution & Viewport
-        static Math::Vector2 m_resolution_render = Math::Vector2::Zero;
-        static Math::Vector2 m_resolution_output = Math::Vector2::Zero;
-        static RHI_Viewport m_viewport           = RHI_Viewport(0, 0, 0, 0);
+        Math::Vector2 m_resolution_render = Math::Vector2::Zero;
+        Math::Vector2 m_resolution_output = Math::Vector2::Zero;
+        RHI_Viewport m_viewport           = RHI_Viewport(0, 0, 0, 0);
 
         // Environment texture
-        static shared_ptr<RHI_Texture> m_environment_texture;
-        static bool m_environment_texture_dirty = false;
+        shared_ptr<RHI_Texture> m_environment_texture;
+        bool m_environment_texture_dirty = false;
 
         // Swapchain
-        static const uint8_t m_swap_chain_buffer_count = 2;
-        static shared_ptr<RHI_SwapChain> m_swap_chain;
+        const uint8_t m_swap_chain_buffer_count = 2;
+        shared_ptr<RHI_SwapChain> m_swap_chain;
 
         // RHI Core
-        static RHI_CommandPool* m_cmd_pool    = nullptr;
-        static RHI_CommandList* m_cmd_current = nullptr;
+        RHI_CommandPool* m_cmd_pool    = nullptr;
+        RHI_CommandList* m_cmd_current = nullptr;
 
         // misc
-        static vector<shared_ptr<Entity>> m_renderables_pending;
-        static vector<weak_ptr<RHI_Texture>> m_textures_mip_generation;
-        static shared_ptr<Camera> m_camera;
-        static Math::Vector2 m_jitter_offset          = Math::Vector2::Zero;
-        static Environment* m_environment             = nullptr;
-        static bool m_add_new_entities                = false;
-        static const uint32_t m_resolution_shadow_min = 128;
-        static float m_near_plane                     = 0.0f;
-        static float m_far_plane                      = 1.0f;
+        vector<shared_ptr<Entity>> m_renderables_pending;
+        vector<weak_ptr<RHI_Texture>> m_textures_mip_generation;
+        shared_ptr<Camera> m_camera;
+        Math::Vector2 m_jitter_offset          = Math::Vector2::Zero;
+        Environment* m_environment             = nullptr;
+        bool m_add_new_entities                = false;
+        const uint32_t m_resolution_shadow_min = 128;
+        float m_near_plane                     = 0.0f;
+        float m_far_plane                      = 1.0f;
 
-        static void sort_renderables(vector<shared_ptr<Entity>>* renderables, const bool are_transparent)
+        void sort_renderables(vector<shared_ptr<Entity>>* renderables, const bool are_transparent)
         {
             if (!m_camera || renderables->size() <= 2)
                 return;
@@ -131,6 +131,7 @@ namespace Spartan
     uint32_t Renderer::m_lines_index_depth_off;
     uint32_t Renderer::m_lines_index_depth_on;
     bool Renderer::m_brdf_specular_lut_rendered;
+    uint32_t Renderer::m_constant_buffer_index = 0;
 
     void Renderer::Initialize()
     {
@@ -305,16 +306,17 @@ namespace Spartan
 
         if (reset)
         {
-            RHI_Device::QueueWaitAll(); // todo, remove and synchronize properly
+            // switch to the next array of constant buffers
+            m_constant_buffer_index = (m_constant_buffer_index + 1) % 2;
 
             // Reset dynamic buffer indices
             for (shared_ptr<RHI_ConstantBuffer> constant_buffer : GetConstantBuffers())
             {
                 constant_buffer->ResetOffset();
             }
-            GetStructuredBuffer()->ResetOffset();
 
-            // Perform operations which might modify, create or destroy resources
+            // todo: these are still not safe and need proper handling
+            GetStructuredBuffer()->ResetOffset();
             OnResourceSafe(m_cmd_current);
         }
 

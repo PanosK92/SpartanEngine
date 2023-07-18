@@ -49,37 +49,40 @@ namespace Spartan
     namespace
     {
         // graphics states
-        static array<shared_ptr<RHI_RasterizerState>, 5>   m_rasterizer_states;
-        static array<shared_ptr<RHI_DepthStencilState>, 5> m_depth_stencil_states;
-        static array<shared_ptr<RHI_BlendState>, 3>        m_blend_states;
+        array<shared_ptr<RHI_RasterizerState>, 5>   m_rasterizer_states;
+        array<shared_ptr<RHI_DepthStencilState>, 5> m_depth_stencil_states;
+        array<shared_ptr<RHI_BlendState>, 3>        m_blend_states;
 
         // renderer resources
-        static array<shared_ptr<RHI_Texture>, 26>       m_render_targets;
-        static array<shared_ptr<RHI_Shader>, 44>        m_shaders;
-        static array<shared_ptr<RHI_Sampler>, 7>        m_samplers;
-        static array<shared_ptr<RHI_ConstantBuffer>, 4> m_constant_buffers;
-        static shared_ptr<RHI_StructuredBuffer>         m_sb_spd_counter;
+        array<shared_ptr<RHI_Texture>, 26>                 m_render_targets;
+        array<shared_ptr<RHI_Shader>, 44>                  m_shaders;
+        array<shared_ptr<RHI_Sampler>, 7>                  m_samplers;
+        array<array<shared_ptr<RHI_ConstantBuffer>, 4>, 2> m_constant_buffers;
+        shared_ptr<RHI_StructuredBuffer>                   m_sb_spd_counter;
 
         // asset resources
-        static array<shared_ptr<RHI_Texture>, 9> m_standard_textures;
-        static array<shared_ptr<Mesh>, 5>        m_standard_meshes;
+        array<shared_ptr<RHI_Texture>, 9> m_standard_textures;
+        array<shared_ptr<Mesh>, 5>        m_standard_meshes;
     }
 
     void Renderer::CreateConstantBuffers()
     {
-        #define constant_buffer(x) m_constant_buffers[static_cast<uint8_t>(x)]
+        #define constant_buffer(i, x) m_constant_buffers[i][static_cast<uint8_t>(x)]
 
-        constant_buffer(Renderer_ConstantBuffer::Frame) = make_shared<RHI_ConstantBuffer>("frame");
-        constant_buffer(Renderer_ConstantBuffer::Frame)->Create<Cb_Frame>(8000);
+        for (uint32_t i = 0; i < 2; i++)
+        {
+            constant_buffer(i, Renderer_ConstantBuffer::Frame) = make_shared<RHI_ConstantBuffer>("frame");
+            constant_buffer(i, Renderer_ConstantBuffer::Frame)->Create<Cb_Frame>(8000);
 
-        constant_buffer(Renderer_ConstantBuffer::Pass) = make_shared<RHI_ConstantBuffer>("pass");
-        constant_buffer(Renderer_ConstantBuffer::Pass)->Create<Cb_Pass>(30000);
+            constant_buffer(i, Renderer_ConstantBuffer::Pass) = make_shared<RHI_ConstantBuffer>("pass");
+            constant_buffer(i, Renderer_ConstantBuffer::Pass)->Create<Cb_Pass>(30000);
 
-        constant_buffer(Renderer_ConstantBuffer::Light) = make_shared<RHI_ConstantBuffer>("light");
-        constant_buffer(Renderer_ConstantBuffer::Light)->Create<Cb_Light>(8000);
+            constant_buffer(i, Renderer_ConstantBuffer::Light) = make_shared<RHI_ConstantBuffer>("light");
+            constant_buffer(i, Renderer_ConstantBuffer::Light)->Create<Cb_Light>(8000);
 
-        constant_buffer(Renderer_ConstantBuffer::Material) = make_shared<RHI_ConstantBuffer>("material");
-        constant_buffer(Renderer_ConstantBuffer::Material)->Create<Cb_Material>(30000);
+            constant_buffer(i, Renderer_ConstantBuffer::Material) = make_shared<RHI_ConstantBuffer>("material");
+            constant_buffer(i, Renderer_ConstantBuffer::Material)->Create<Cb_Material>(30000);
+        }
     }
 
     void Renderer::CreateStructuredBuffers()
@@ -552,7 +555,8 @@ namespace Spartan
     {
         m_render_targets.fill(nullptr);
         m_shaders.fill(nullptr);
-        m_constant_buffers.fill(nullptr);
+        m_constant_buffers[0].fill(nullptr);
+        m_constant_buffers[1].fill(nullptr);
         m_samplers.fill(nullptr);
         m_standard_textures.fill(nullptr);
         m_standard_meshes.fill(nullptr);
@@ -571,7 +575,7 @@ namespace Spartan
 
     array<shared_ptr<RHI_ConstantBuffer>, 4>& Renderer::GetConstantBuffers()
     {
-        return m_constant_buffers;
+        return m_constant_buffers[m_constant_buffer_index];
     }
 
     shared_ptr<RHI_RasterizerState> Renderer::GetRasterizerState(const Renderer_RasterizerState type)
@@ -606,7 +610,7 @@ namespace Spartan
 
     shared_ptr<RHI_ConstantBuffer> Renderer::GetConstantBuffer(const Renderer_ConstantBuffer type)
     {
-        return m_constant_buffers[static_cast<uint8_t>(type)];
+        return m_constant_buffers[m_constant_buffer_index][static_cast<uint8_t>(type)];
     }
 
     shared_ptr<RHI_StructuredBuffer> Renderer::GetStructuredBuffer()
