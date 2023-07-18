@@ -31,7 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_Implementation.h"
 #include "../RHI/RHI_VertexBuffer.h"
 #include "../RHI/RHI_Shader.h"
-#include "../RHI/RHI_FSR2.h"
+#include "../RHI/RHI_AMD_FidelityFX.h"
 #include "../RHI/RHI_StructuredBuffer.h"
 #include "../RHI/RHI_SwapChain.h"
 //==============================================
@@ -1695,7 +1695,7 @@ namespace Spartan
     {
         cmd_list->BeginTimeblock("amd_ffx_fsr2");
 
-        RHI_FSR2::Dispatch(
+        RHI_AMD_FidelityFX::FSR2_Dispatch(
             cmd_list,
             tex_in,
             GetRenderTarget(Renderer_RenderTexture::gbuffer_depth).get(),

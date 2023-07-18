@@ -401,8 +401,8 @@ namespace Spartan
             static ID3D12Device* device;
         #elif defined(API_GRAPHICS_VULKAN)
             static VkInstance instance;
-            static VkPhysicalDevice device_physical;
             static VkDevice device;
+            static VkPhysicalDevice device_physical;
             static std::vector<VkValidationFeatureEnableEXT> validation_extensions;
             static std::vector<const char*> extensions_instance;
             static std::vector<const char*> validation_layers;

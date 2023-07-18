@@ -30,7 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_StructuredBuffer.h"        
 #include "../RHI/RHI_Implementation.h"          
 #include "../RHI/RHI_CommandPool.h"
-#include "../RHI/RHI_FSR2.h"
+#include "../RHI/RHI_AMD_FidelityFX.h"
 #include "../RHI/RHI_RenderDoc.h"
 #include "../Core/Window.h"                     
 #include "../Input/Input.h"                     
@@ -183,6 +183,8 @@ namespace Spartan
         // Create command pool
         m_cmd_pool = RHI_Device::AllocateCommandPool("renderer", m_swap_chain->GetObjectId(), RHI_Queue_Type::Graphics);
 
+        RHI_AMD_FidelityFX::Initialize();
+
         // Adjust render option to reflect whether the swapchain is HDR or not
         SetOption(Renderer_Option::Hdr, m_swap_chain->IsHdr());
 
@@ -247,6 +249,8 @@ namespace Spartan
         // Fire event
         SP_FIRE_EVENT(EventType::RendererOnShutdown);
 
+        RHI_Device::QueueWaitAll();
+
         // Manually invoke the deconstructors so that ParseDeletionQueue(), releases their RHI resources.
         {
             DestroyResources();
@@ -261,11 +265,9 @@ namespace Spartan
             m_environment_texture = nullptr;
         }
 
-        // Delete all remaining RHI resources
         RHI_Device::ParseDeletionQueue();
-
         RHI_RenderDoc::Shutdown();
-        RHI_FSR2::Destroy();
+        RHI_AMD_FidelityFX::Destroy();
         RHI_Device::Destroy();
     }
 
@@ -345,7 +347,7 @@ namespace Spartan
             Renderer_Upsampling upsampling_mode = GetOption<Renderer_Upsampling>(Renderer_Option::Upsampling);
             if (upsampling_mode == Renderer_Upsampling::FSR2 || GetOption<Renderer_Antialiasing>(Renderer_Option::Antialiasing) == Renderer_Antialiasing::Taa)
             {
-                RHI_FSR2::GenerateJitterSample(&m_jitter_offset.x, &m_jitter_offset.y);
+                RHI_AMD_FidelityFX::FSR2_GenerateJitterSample(&m_jitter_offset.x, &m_jitter_offset.y);
                 m_jitter_offset.x          = (m_jitter_offset.x / m_resolution_render.x);
                 m_jitter_offset.y          = (m_jitter_offset.y / m_resolution_render.y);
                 m_cb_frame_cpu.projection *= Matrix::CreateTranslation(Vector3(m_jitter_offset.x, m_jitter_offset.y, 0.0f));
@@ -822,7 +824,7 @@ namespace Spartan
                     if (!fsr_enabled)
                     {
                         m_options[static_cast<uint32_t>(Renderer_Option::Upsampling)] = static_cast<float>(Renderer_Upsampling::FSR2);
-                        RHI_FSR2::ResetHistory();
+                        RHI_AMD_FidelityFX::FSR2_ResetHistory();
                         SP_LOG_INFO("Enabled FSR 2.0 since it's used for TAA.");
                     }
                 }
@@ -856,7 +858,7 @@ namespace Spartan
                     if (!taa_enabled)
                     {
                         m_options[static_cast<uint32_t>(Renderer_Option::Antialiasing)] = static_cast<float>(Renderer_Antialiasing::Taa);
-                        RHI_FSR2::ResetHistory();
+                        RHI_AMD_FidelityFX::FSR2_ResetHistory();
                         SP_LOG_INFO("Enabled TAA since FSR 2.0 does it.");
                     }
                 }

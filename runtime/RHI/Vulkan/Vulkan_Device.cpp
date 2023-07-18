@@ -265,7 +265,6 @@ namespace Spartan
             // VMA is able to use this extension automatically. When not enabled, the allocator behaves same way, but then it estimates
             // current usage and available budget based on its internal information and Vulkan memory heap sizes, which may be less precise.
 
-
             VmaAllocatorCreateInfo allocator_info = {};
             allocator_info.physicalDevice         = RHI_Context::device_physical;
             allocator_info.device                 = RHI_Context::device;
@@ -1105,8 +1104,7 @@ namespace Spartan
             return;
 
         lock_guard<mutex> guard(mutex_deletion);
-        QueueWaitAll();
-
+       
         for (const auto& it : deletion_queue)
         {
             for (void* resource : it.second)
