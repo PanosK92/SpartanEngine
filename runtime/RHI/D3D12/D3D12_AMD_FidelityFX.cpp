@@ -19,15 +19,13 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-//= INCLUDES ==================================
+//= INCLUDES =============================
 #include "pch.h"
 #include "../RHI_AMD_FidelityFX.h"
-#include <FidelityFX/host/backends/vk/ffx_vk.h>
-#include <FidelityFX/host/ffx_fsr2.h>
 #include "../RHI_Implementation.h"
 #include "../RHI_CommandList.h"
 #include "../../World/Components/Camera.h"
-//=============================================
+//========================================
 
 //= NAMESPACES ===============
 using namespace Spartan::Math;
