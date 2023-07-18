@@ -119,25 +119,24 @@ namespace Spartan
         // If we have no more command lists, switch to the other pool
         if (m_cmd_list_index == 2)
         {
-            // Switch
-            m_cmd_list_index = 0;
-            m_using_pool_a   = !m_using_pool_a;
+            // Switch command pool
+            m_cmd_list_index   = 0;
+            m_using_pool_a     = !m_using_pool_a;
+            auto& cmd_lists    = m_using_pool_a ? m_cmd_lists_a : m_cmd_lists_b;
+            VkCommandPool pool = static_cast<VkCommandPool>(m_rhi_resources[m_using_pool_a ? 0 : 1]);
 
             // Wait
-            for (uint32_t i = 0; i < 2; i++)
+            for (shared_ptr<RHI_CommandList> cmd_list : cmd_lists)
             {
-                auto& cmd_lists = m_using_pool_a ? m_cmd_lists_a : m_cmd_lists_b;
-                for (shared_ptr<RHI_CommandList> cmd_list : cmd_lists)
+                SP_ASSERT(cmd_list->GetState() != RHI_CommandListState::Recording);
+
+                if (cmd_list->GetState() == RHI_CommandListState::Submitted)
                 {
-                    if (cmd_list->GetState() == RHI_CommandListState::Submitted)
-                    {
-                        cmd_list->WaitForExecution();
-                    }
+                    cmd_list->WaitForExecution();
                 }
             }
 
             // Reset
-            VkCommandPool pool = static_cast<VkCommandPool>(m_rhi_resources[m_using_pool_a ? 0 : 1]);
             SP_VK_ASSERT_MSG(vkResetCommandPool(RHI_Context::device, pool, 0), "Failed to reset command pool");
         }
 
