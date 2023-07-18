@@ -305,6 +305,8 @@ namespace Spartan
 
         if (reset)
         {
+            RHI_Device::QueueWaitAll(); // todo, remove and synchronize properly
+
             // Reset dynamic buffer indices
             for (shared_ptr<RHI_ConstantBuffer> constant_buffer : GetConstantBuffers())
             {

@@ -44,14 +44,14 @@ using namespace std;
 
 namespace
 {
-    static bool show_shortcuts_window     = false;
-    static bool show_about_window         = false;
-    static bool show_contributors_window  = false;
-    static bool show_file_dialog          = false;
-    static bool show_imgui_metrics_window = false;
-    static bool show_imgui_style_window   = false;
-    static bool show_imgui_demo_widow     = false;
-    static string file_dialog_selection_path;
+    bool show_shortcuts_window     = false;
+    bool show_about_window         = false;
+    bool show_contributors_window  = false;
+    bool show_file_dialog          = false;
+    bool show_imgui_metrics_window = false;
+    bool show_imgui_style_window   = false;
+    bool show_imgui_demo_widow     = false;
+    string file_dialog_selection_path;
 
     static void window_about(Editor* editor)
     {
