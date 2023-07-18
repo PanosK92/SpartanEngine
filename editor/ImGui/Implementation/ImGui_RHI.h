@@ -55,6 +55,13 @@ namespace ImGui::RHI
 
     struct ViewportResources
     {
+        RHI_CommandPool* cmd_pool = nullptr;
+        vector<unique_ptr<RHI_IndexBuffer>>  index_buffers;
+        vector<unique_ptr<RHI_VertexBuffer>> vertex_buffers;
+        uint32_t cb_index = 0;
+        array<shared_ptr<RHI_ConstantBuffer>, 2> cb_gpu;
+        Cb_ImGui cb_cpu;
+
         ViewportResources() = default;
         ViewportResources(const char* name, RHI_SwapChain* swapchain)
         {
@@ -62,20 +69,16 @@ namespace ImGui::RHI
             cmd_pool = RHI_Device::AllocateCommandPool("imgui", swapchain->GetObjectId(), RHI_Queue_Type::Graphics);
 
             // Allocate constant buffer
-            cb_gpu = make_shared<RHI_ConstantBuffer>(name);
-            cb_gpu->Create<Cb_ImGui>(256);
+            {
+                cb_gpu[0] = make_shared<RHI_ConstantBuffer>(name);
+                cb_gpu[0]->Create<Cb_ImGui>(256);
+
+                cb_gpu[1] = make_shared<RHI_ConstantBuffer>(name);
+                cb_gpu[1]->Create<Cb_ImGui>(256);
+            }
         }
 
-        // Index and vertex buffers
-        vector<unique_ptr<RHI_IndexBuffer>>  index_buffers;
-        vector<unique_ptr<RHI_VertexBuffer>> vertex_buffers;
-
-        // Constant buffer
-        shared_ptr<RHI_ConstantBuffer> cb_gpu;
-        Cb_ImGui cb_cpu;
-
-        // Command pool
-        RHI_CommandPool* cmd_pool = nullptr;
+        shared_ptr<RHI_ConstantBuffer> GetCbGpu() const { return cb_gpu[cb_index]; }
     };
 
     struct WindowData
@@ -98,13 +101,14 @@ namespace ImGui::RHI
 
     static void destroy_rhi_resources()
     {
-        g_font_atlas           = nullptr;
-        g_depth_stencil_state  = nullptr;
-        g_rasterizer_state     = nullptr;
-        g_blend_state          = nullptr;
-        g_shader_vertex        = nullptr;
-        g_shader_pixel         = nullptr;
-        g_viewport_data.cb_gpu = nullptr;
+        g_font_atlas              = nullptr;
+        g_depth_stencil_state     = nullptr;
+        g_rasterizer_state        = nullptr;
+        g_blend_state             = nullptr;
+        g_shader_vertex           = nullptr;
+        g_shader_pixel            = nullptr;
+        g_viewport_data.cb_gpu[0] = nullptr;
+        g_viewport_data.cb_gpu[1] = nullptr;
         g_viewport_data.index_buffers.clear();
         g_viewport_data.vertex_buffers.clear();
     }
@@ -206,8 +210,9 @@ namespace ImGui::RHI
         // Tick the command pool
         if (resources->cmd_pool->Tick())
         {
-            RHI_Device::QueueWaitAll(); // todo, remove and synchronize properly
-            resources->cb_gpu->ResetOffset();
+            // switch to the next constant buffer
+            resources->cb_index = (resources->cb_index + 1) % 2;
+            resources->GetCbGpu()->ResetOffset();
         }
 
         // Get current command list
@@ -365,8 +370,8 @@ namespace ImGui::RHI
                         }
 
                         // Update ImGui buffer
-                        resources->cb_gpu->Update(&resources->cb_cpu);
-                        cmd_list->SetConstantBuffer(Renderer_BindingsCb::imgui, resources->cb_gpu);
+                        resources->GetCbGpu()->Update(&resources->cb_cpu);
+                        cmd_list->SetConstantBuffer(Renderer_BindingsCb::imgui, resources->GetCbGpu());
 
                         // Draw
                         cmd_list->DrawIndexed(pcmd->ElemCount, pcmd->IdxOffset + global_idx_offset, pcmd->VtxOffset + global_vtx_offset);
