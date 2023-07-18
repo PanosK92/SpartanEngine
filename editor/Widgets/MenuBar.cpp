@@ -53,19 +53,20 @@ namespace
     static bool show_imgui_demo_widow     = false;
     static string file_dialog_selection_path;
 
-    static void window_about()
+    static void window_about(Editor* editor)
     {
         if (!show_about_window)
             return;
 
+        ImGui::SetNextWindowPos(editor->GetWidget<Viewport>()->GetCenter(), ImGuiCond_FirstUseEver, ImVec2(0.5f, 0.5f));
         ImGui::SetNextWindowFocus();
         ImGui::Begin("About", &show_about_window, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoDocking);
         {
             ImGui::Text("Spartan %s", (to_string(sp_info::version_major) + "." + to_string(sp_info::version_minor) + "." + to_string(sp_info::version_revision)).c_str());
             ImGui::Text("Author: Panos Karabelas");
             ImGui::SameLine(ImGuiSp::GetWindowContentRegionWidth());
-            ImGui::SetCursorPosX(ImGui::GetCursorPosX() - 55);
-            ImGui::SetCursorPosY(ImGui::GetCursorPosY() - 5);
+            ImGui::SetCursorPosX(ImGui::GetCursorPosX() - 50 * Spartan::Window::GetDpiScale());
+            ImGui::SetCursorPosY(ImGui::GetCursorPosY() - 5 * Spartan::Window::GetDpiScale());
 
             if (ImGuiSp::button("GitHub"))
             {
@@ -94,8 +95,8 @@ namespace
 
             ImGui::Separator();
 
-            static float col_a = 220.0f;
-            static float col_b = 340.0f;
+            float col_a = 220.0f * Spartan::Window::GetDpiScale();
+            float col_b = 320.0f * Spartan::Window::GetDpiScale();
 
             ImGui::Text("Third party libraries");
             {
@@ -123,7 +124,7 @@ namespace
         ImGui::End();
     }
 
-    static void window_contributors()
+    static void window_contributors(Editor* editor)
     {
         if (!show_contributors_window)
             return;
@@ -137,6 +138,7 @@ namespace
             "Nick Polyderopoulos,Editor UX improvements,Greece,LinkedIn,https://www.linkedin.com/in/nick-polyderopoulos-21742397"
         };
 
+        ImGui::SetNextWindowPos(editor->GetWidget<Viewport>()->GetCenter(), ImGuiCond_FirstUseEver, ImVec2(0.5f, 0.5f));
         ImGui::SetNextWindowFocus();
         ImGui::Begin("Spartans", &show_contributors_window, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoDocking);
         {
@@ -203,11 +205,12 @@ namespace
         ImGui::End();
     }
 
-    static void window_shortcuts()
+    static void window_shortcuts(Editor* editor)
     {
         if (!show_shortcuts_window)
             return;
 
+        ImGui::SetNextWindowPos(editor->GetWidget<Viewport>()->GetCenter(), ImGuiCond_FirstUseEver, ImVec2(0.5f, 0.5f));
         ImGui::SetNextWindowFocus();
         ImGui::Begin("Shortcuts & Input Reference", &show_shortcuts_window, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoDocking);
         {
@@ -314,9 +317,9 @@ void MenuBar::OnTick()
 
     HandleKeyShortcuts();
     DrawFileDialog();
-    window_about();
-    window_contributors();
-    window_shortcuts();
+    window_about(m_editor);
+    window_contributors(m_editor);
+    window_shortcuts(m_editor);
 }
 
 void MenuBar::CreateWorldMenuItem()
