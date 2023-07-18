@@ -18,26 +18,49 @@ COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
 IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
-//= INCLUDES ===========
+
+//= INCLUDES ==================================
 #include "pch.h"
-#include "../RHI_FSR2.h"
-//======================
+#include "../RHI_AMD_FidelityFX.h"
+#include <FidelityFX/host/backends/vk/ffx_vk.h>
+#include <FidelityFX/host/ffx_fsr2.h>
+#include "../RHI_Implementation.h"
+#include "../RHI_CommandList.h"
+#include "../../World/Components/Camera.h"
+//=============================================
+
+//= NAMESPACES ===============
+using namespace Spartan::Math;
+//============================
 
 namespace Spartan
 {
-    bool RHI_FSR2::m_reset = false;
-
-    void RHI_FSR2::GenerateJitterSample(float* x, float* y)
+    void RHI_AMD_FidelityFX::Initialize()
     {
 
     }
 
-    void RHI_FSR2::OnDisplayModeChanged(const Math::Vector2& resolution_render, const Math::Vector2& resolution_output)
+    void RHI_AMD_FidelityFX::Destroy()
     {
 
     }
 
-    void RHI_FSR2::Dispatch
+    void RHI_AMD_FidelityFX::FSR2_ResetHistory()
+    {
+
+    }
+
+    void RHI_AMD_FidelityFX::FSR2_GenerateJitterSample(float* x, float* y)
+    {
+
+    }
+
+    void RHI_AMD_FidelityFX::OnResize(const Math::Vector2& resolution_render, const Math::Vector2& resolution_output)
+    {
+
+    }
+
+    void RHI_AMD_FidelityFX::FSR2_Dispatch
     (
         RHI_CommandList* cmd_list,
         RHI_Texture* tex_input,
@@ -47,15 +70,10 @@ namespace Spartan
         RHI_Texture* tex_mask_transparency,
         RHI_Texture* tex_output,
         Camera* camera,
-        float delta_time,
+        float delta_time_sec,
         float sharpness
     )
     {
-
-    }
-
-    void RHI_FSR2::Destroy()
-    {
-
+       
     }
 }

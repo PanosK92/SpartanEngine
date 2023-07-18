@@ -206,6 +206,7 @@ namespace ImGui::RHI
         // Tick the command pool
         if (resources->cmd_pool->Tick())
         {
+            RHI_Device::QueueWaitAll(); // todo, remove and synchronize properly
             resources->cb_gpu->ResetOffset();
         }
 

@@ -117,7 +117,7 @@ namespace Spartan
                 static_cast<VkImage>(texture->GetRhiResource()),
                 resource_description,
                 const_cast<wchar_t*>(name),
-                FfxResourceStates::FFX_RESOURCE_STATE_PIXEL_COMPUTE_READ
+                texture->GetLayout(0) == RHI_Image_Layout::Shader_Read_Only_Optimal ? FFX_RESOURCE_STATE_PIXEL_COMPUTE_READ : FFX_RESOURCE_STATE_UNORDERED_ACCESS
             );
         }
     }
