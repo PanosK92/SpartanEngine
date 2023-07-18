@@ -34,7 +34,7 @@ API_INCLUDES = {
 	vulkan = {
         "../third_party/spirv_cross",
         "../third_party/vulkan",
-        "../third_party/fsr2"
+        "../third_party/amd_fidelity_fx"
     }
 }
 
@@ -61,8 +61,8 @@ API_LIBRARIES = {
             "spirv-cross-glsl",
             "spirv-cross-hlsl",
             "spirv-cross-reflect",
-            "ffx_fsr2_api_x64",
-            "ffx_fsr2_api_vk_x64"
+            "ffx_backend_vk",
+			"ffx_fsr2"
         },
         debug = {
             "spirv-cross-c_debug",
@@ -71,8 +71,8 @@ API_LIBRARIES = {
             "spirv-cross-glsl_debug",
             "spirv-cross-hlsl_debug",
             "spirv-cross-reflect_debug",
-            "ffx_fsr2_api_x64_debug",
-            "ffx_fsr2_api_vk_x64_debug"
+            "ffx_backend_vk_debug",
+			"ffx_fsr2_debug"
         }
     }
 }

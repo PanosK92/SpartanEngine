@@ -35,7 +35,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_DepthStencilState.h"
 #include "../RHI/RHI_StructuredBuffer.h"
 #include "../RHI/RHI_VertexBuffer.h"
-#include "../RHI/RHI_FSR2.h"
+#include "../RHI/RHI_AMD_FidelityFX.h"
 #include "../RHI/RHI_Device.h"
 //=======================================
 
@@ -158,6 +158,8 @@ namespace Spartan
 
     void Renderer::CreateRenderTextures(const bool create_render, const bool create_output, const bool create_fixed, const bool create_dynamic)
     {
+        RHI_Device::QueueWaitAll();
+
         // Get render resolution
         uint32_t width_render  = static_cast<uint32_t>(GetResolutionRender().x);
         uint32_t height_render = static_cast<uint32_t>(GetResolutionRender().y);
@@ -250,7 +252,7 @@ namespace Spartan
             render_target(Renderer_RenderTexture::blur) = make_unique<RHI_Texture2D>(width, height, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv, "rt_blur");
         }
 
-        RHI_FSR2::OnDisplayModeChanged(GetResolutionRender(), GetResolutionOutput());
+        RHI_AMD_FidelityFX::OnResize(GetResolutionRender(), GetResolutionOutput());
     }
 
     void Renderer::CreateShaders()
