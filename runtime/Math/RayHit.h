@@ -36,9 +36,9 @@ namespace Spartan
         {
         public:
             RayHit(const std::shared_ptr<Entity>& entity, const Vector3& position, float distance, bool is_inside)
+                :m_entity{entity}
+                , m_position{position}
             {
-                m_entity   = entity;
-                m_position = position;
                 m_distance = distance;
                 m_inside   = is_inside;
             };
