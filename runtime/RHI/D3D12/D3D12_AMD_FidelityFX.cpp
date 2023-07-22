@@ -53,7 +53,7 @@ namespace Spartan
 
     }
 
-    void RHI_AMD_FidelityFX::OnResize(const Math::Vector2& resolution_render, const Math::Vector2& resolution_output)
+    void RHI_AMD_FidelityFX::FSR2_Resize(const Math::Vector2& resolution_render, const Math::Vector2& resolution_output)
     {
 
     }
