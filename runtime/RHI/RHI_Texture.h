@@ -103,15 +103,15 @@ namespace Spartan
         RHI_Texture_Slice& GetSlice(const uint32_t array_index);
 
         // Flags
-        bool IsSrv()                        const { return m_flags & RHI_Texture_Srv; }
-        bool IsUav()                        const { return m_flags & RHI_Texture_Uav; }
-        bool IsRenderTarget()               const { return m_flags & RHI_Texture_RenderTarget; }
-        bool IsRenderTargetDepthStencil()   const { return IsRenderTarget() && IsDepthStencilFormat(); }
-        bool IsRenderTargetColor()          const { return IsRenderTarget() && IsColorFormat(); }
-        bool HasPerMipViews()               const { return m_flags & RHI_Texture_PerMipViews; }
-        bool HasMips()                      const { return m_flags & RHI_Texture_Mips; }
-        bool IsGrayscale()                  const { return m_flags & RHI_Texture_Greyscale; }
-        bool IsTransparent()                const { return m_flags & RHI_Texture_Transparent; }
+        bool IsSrv()                      const { return m_flags & RHI_Texture_Srv; }
+        bool IsUav()                      const { return m_flags & RHI_Texture_Uav; }
+        bool IsRenderTarget()             const { return m_flags & RHI_Texture_RenderTarget; }
+        bool IsRenderTargetDepthStencil() const { return IsRenderTarget() && IsDepthStencilFormat(); }
+        bool IsRenderTargetColor()        const { return IsRenderTarget() && IsColorFormat(); }
+        bool HasPerMipViews()             const { return m_flags & RHI_Texture_PerMipViews; }
+        bool HasMips()                    const { return m_flags & RHI_Texture_Mips; }
+        bool IsGrayscale()                const { return m_flags & RHI_Texture_Greyscale; }
+        bool IsTransparent()              const { return m_flags & RHI_Texture_Transparent; }
 
         // Format type
         bool IsDepthFormat()        const { return m_format == RHI_Format::D16_Unorm || m_format == RHI_Format::D32_Float || m_format == RHI_Format::D32_Float_S8X24_Uint; }

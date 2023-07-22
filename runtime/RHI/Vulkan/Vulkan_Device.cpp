@@ -713,6 +713,10 @@ namespace Spartan
                     SP_ASSERT(features_supported_1_3.dynamicRendering == VK_TRUE);
                     device_features_to_enable_1_3.dynamicRendering = VK_TRUE;
 
+                    // Extended types (int8, int16, int64, etc) - SPD
+                    SP_ASSERT(features_supported_1_2.shaderSubgroupExtendedTypes == VK_TRUE);
+                    device_features_to_enable_1_2.shaderSubgroupExtendedTypes = VK_TRUE;
+
                     // Wave64
                     SP_ASSERT(features_supported_1_3.shaderDemoteToHelperInvocation == VK_TRUE);
                     device_features_to_enable_1_3.shaderDemoteToHelperInvocation = VK_TRUE;
