@@ -309,6 +309,7 @@ namespace Spartan
             // switch to the next array of constant buffers
             m_constant_buffer_index = (m_constant_buffer_index + 1) % 2;
 
+            RHI_Device::QueueWaitAll();
             // Reset dynamic buffer indices
             for (shared_ptr<RHI_ConstantBuffer> constant_buffer : GetConstantBuffers())
             {
