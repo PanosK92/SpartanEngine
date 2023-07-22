@@ -332,7 +332,7 @@ namespace Spartan
         {
             if (image_view)
             {
-                RHI_Device::AddToDeletionQueue(RHI_Resource_Type::TextureView, image_view);
+                RHI_Device::DeletionQueue_Add(RHI_Resource_Type::TextureView, image_view);
             }
         }
 

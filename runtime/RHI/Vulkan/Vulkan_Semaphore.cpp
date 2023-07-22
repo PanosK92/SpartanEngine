@@ -69,7 +69,7 @@ namespace Spartan
         if (!m_rhi_resource)
             return;
 
-        RHI_Device::AddToDeletionQueue(RHI_Resource_Type::Semaphore, m_rhi_resource);
+        RHI_Device::DeletionQueue_Add(RHI_Resource_Type::Semaphore, m_rhi_resource);
         m_rhi_resource = nullptr;
     }
 

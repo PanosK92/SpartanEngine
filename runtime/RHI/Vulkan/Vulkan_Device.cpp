@@ -1096,17 +1096,14 @@ namespace Spartan
 
     }
 
-    void RHI_Device::AddToDeletionQueue(const RHI_Resource_Type resource_type, void* resource)
+    void RHI_Device::DeletionQueue_Add(const RHI_Resource_Type resource_type, void* resource)
     {
         lock_guard<mutex> guard(mutex_deletion);
         deletion_queue[resource_type].emplace_back(resource);
     }
 
-    void RHI_Device::ParseDeletionQueue()
+    void RHI_Device::DeletionQueue_Parse()
     {
-        if (deletion_queue.empty())
-            return;
-
         lock_guard<mutex> guard(mutex_deletion);
        
         for (const auto& it : deletion_queue)
@@ -1132,6 +1129,11 @@ namespace Spartan
         }
 
         deletion_queue.clear();
+    }
+
+    bool RHI_Device::DeletionQueue_NeedsToParse()
+    {
+        return deletion_queue.size() > 5;
     }
 
     void RHI_Device::SetDescriptorSetCapacity(uint32_t capacity)
@@ -1189,7 +1191,7 @@ namespace Spartan
         {
             if (cache::descriptor_set_layouts_bindless[static_cast<uint32_t>(RHI_Device_Resource::sampler_comparison)] != nullptr)
             {
-                RHI_Device::AddToDeletionQueue(RHI_Resource_Type::DescriptorSetLayout, cache::descriptor_set_layouts_bindless[static_cast<uint32_t>(RHI_Device_Resource::sampler_comparison)]);
+                RHI_Device::DeletionQueue_Add(RHI_Resource_Type::DescriptorSetLayout, cache::descriptor_set_layouts_bindless[static_cast<uint32_t>(RHI_Device_Resource::sampler_comparison)]);
                 cache::descriptor_set_layouts_bindless[static_cast<uint32_t>(RHI_Device_Resource::sampler_comparison)] = nullptr;
             }
 
@@ -1205,7 +1207,7 @@ namespace Spartan
         {
             if (cache::descriptor_set_layouts_bindless[static_cast<uint32_t>(RHI_Device_Resource::sampler_regular)] != nullptr)
             {
-                RHI_Device::AddToDeletionQueue(RHI_Resource_Type::DescriptorSetLayout, cache::descriptor_set_layouts_bindless[static_cast<uint32_t>(RHI_Device_Resource::sampler_regular)]);
+                RHI_Device::DeletionQueue_Add(RHI_Resource_Type::DescriptorSetLayout, cache::descriptor_set_layouts_bindless[static_cast<uint32_t>(RHI_Device_Resource::sampler_regular)]);
                 cache::descriptor_set_layouts_bindless[static_cast<uint32_t>(RHI_Device_Resource::sampler_regular)] = nullptr;
             }
 

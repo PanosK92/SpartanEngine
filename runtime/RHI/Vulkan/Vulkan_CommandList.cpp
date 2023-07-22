@@ -118,7 +118,7 @@ namespace Spartan
     {
         if (m_query_pool)
         {
-            RHI_Device::AddToDeletionQueue(RHI_Resource_Type::QueryPool, m_query_pool);
+            RHI_Device::DeletionQueue_Add(RHI_Resource_Type::QueryPool, m_query_pool);
             m_query_pool = nullptr;
         }
     }

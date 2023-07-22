@@ -159,7 +159,7 @@ namespace Spartan
             // context
             spd_context_description.flags = FFX_SPD_SAMPLER_LINEAR | FFX_SPD_WAVE_INTEROP_WAVE_OPS | FFX_SPD_MATH_PACKED;
             //ffxSpdContextCreate(&spd_context, &spd_context_description);
-            spd_context_created = true;
+            //spd_context_created = true;
         }
 
         // fsr 2

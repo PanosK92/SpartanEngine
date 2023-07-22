@@ -250,8 +250,6 @@ namespace Spartan
         // Fire event
         SP_FIRE_EVENT(EventType::RendererOnShutdown);
 
-        RHI_Device::QueueWaitAll();
-
         // Manually invoke the deconstructors so that ParseDeletionQueue(), releases their RHI resources.
         {
             DestroyResources();
@@ -266,9 +264,10 @@ namespace Spartan
             m_environment_texture = nullptr;
         }
 
-        RHI_Device::ParseDeletionQueue();
         RHI_RenderDoc::Shutdown();
+        RHI_Device::QueueWaitAll();
         RHI_AMD_FidelityFX::Destroy();
+        RHI_Device::DeletionQueue_Parse();
         RHI_Device::Destroy();
     }
 
@@ -316,9 +315,6 @@ namespace Spartan
             }
 
             GetStructuredBuffer()->ResetOffset();
-
-            // todo: this are still not safe and need proper handling
-            RHI_Device::QueueWaitAll();
             OnResourceSafe(m_cmd_current);
         }
 
@@ -760,7 +756,12 @@ namespace Spartan
             m_textures_mip_generation.clear();
         }
 
-        RHI_Device::ParseDeletionQueue();
+        if (RHI_Device::DeletionQueue_NeedsToParse())
+        {
+            RHI_Device::QueueWaitAll();
+            RHI_Device::DeletionQueue_Parse();
+            SP_LOG_INFO("Parsed deletion queue");
+        }
     }
 
     bool Renderer::IsCallingFromOtherThread()

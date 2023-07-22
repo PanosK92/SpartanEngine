@@ -77,8 +77,9 @@ namespace Spartan
         static const std::vector<std::shared_ptr<RHI_CommandPool>>& GetCommandPools();
 
         // Deletion queue
-        static void AddToDeletionQueue(const RHI_Resource_Type resource_type, void* resource);
-        static void ParseDeletionQueue();
+        static void DeletionQueue_Add(const RHI_Resource_Type resource_type, void* resource);
+        static void DeletionQueue_Parse();
+        static bool DeletionQueue_NeedsToParse();
 
         // Vulkan memory allocator
         static void* GetMappedDataFromBuffer(void* resource);
