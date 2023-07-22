@@ -72,6 +72,6 @@ namespace Spartan
         float sharpness
     )
     {
-       
+
     }
 }
