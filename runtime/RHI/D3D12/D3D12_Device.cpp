@@ -243,9 +243,19 @@ namespace Spartan
         SetPrimaryPhysicalDevice(0);
     }
 
-    void RHI_Device::ParseDeletionQueue()
+    void RHI_Device::DeletionQueue_Add(const RHI_Resource_Type resource_type, void* resource)
     {
 
+    }
+
+    void RHI_Device::DeletionQueue_Parse()
+    {
+
+    }
+
+    bool RHI_Device::DeletionQueue_NeedsToParse()
+    {
+        return false;
     }
 
     void RHI_Device::QueueSubmit(const RHI_Queue_Type type, const uint32_t wait_flags, void* cmd_buffer, RHI_Semaphore* wait_semaphore /*= nullptr*/, RHI_Semaphore* signal_semaphore /*= nullptr*/, RHI_Fence* signal_fence /*= nullptr*/)
