@@ -58,7 +58,7 @@ namespace Spartan
         array<shared_ptr<RHI_Shader>, 44>                  m_shaders;
         array<shared_ptr<RHI_Sampler>, 7>                  m_samplers;
         array<array<shared_ptr<RHI_ConstantBuffer>, 4>, 2> m_constant_buffers;
-        shared_ptr<RHI_StructuredBuffer>                   m_sb_spd_counter;
+        array < shared_ptr<RHI_StructuredBuffer>, 2>       m_sb_spd_counters;
 
         // asset resources
         array<shared_ptr<RHI_Texture>, 9> m_standard_textures;
@@ -88,7 +88,8 @@ namespace Spartan
     void Renderer::CreateStructuredBuffers()
     {
         const uint32_t offset_count = 32;
-        m_sb_spd_counter = make_shared<RHI_StructuredBuffer>(static_cast<uint32_t>(sizeof(uint32_t)), offset_count, "spd_counter");
+        m_sb_spd_counters[0] = make_shared<RHI_StructuredBuffer>(static_cast<uint32_t>(sizeof(uint32_t)), offset_count, "spd_counter_1");
+        m_sb_spd_counters[1] = make_shared<RHI_StructuredBuffer>(static_cast<uint32_t>(sizeof(uint32_t)), offset_count, "spd_counter_2");
     }
 
     void Renderer::CreateDepthStencilStates()
@@ -560,7 +561,7 @@ namespace Spartan
         m_samplers.fill(nullptr);
         m_standard_textures.fill(nullptr);
         m_standard_meshes.fill(nullptr);
-        m_sb_spd_counter = nullptr;
+        m_sb_spd_counters.fill(nullptr);
     }
 
     array<shared_ptr<RHI_Texture>, 26>& Renderer::GetRenderTargets()
@@ -575,7 +576,7 @@ namespace Spartan
 
     array<shared_ptr<RHI_ConstantBuffer>, 4>& Renderer::GetConstantBuffers()
     {
-        return m_constant_buffers[m_constant_buffer_index];
+        return m_constant_buffers[m_resource_index];
     }
 
     shared_ptr<RHI_RasterizerState> Renderer::GetRasterizerState(const Renderer_RasterizerState type)
@@ -610,12 +611,12 @@ namespace Spartan
 
     shared_ptr<RHI_ConstantBuffer> Renderer::GetConstantBuffer(const Renderer_ConstantBuffer type)
     {
-        return m_constant_buffers[m_constant_buffer_index][static_cast<uint8_t>(type)];
+        return m_constant_buffers[m_resource_index][static_cast<uint8_t>(type)];
     }
 
     shared_ptr<RHI_StructuredBuffer> Renderer::GetStructuredBuffer()
     {
-        return m_sb_spd_counter;
+        return m_sb_spd_counters[m_resource_index];
     }
 
     shared_ptr<RHI_Texture> Renderer::GetStandardTexture(const Renderer_StandardTexture type)

@@ -131,7 +131,7 @@ namespace Spartan
     uint32_t Renderer::m_lines_index_depth_off;
     uint32_t Renderer::m_lines_index_depth_on;
     bool Renderer::m_brdf_specular_lut_rendered;
-    uint32_t Renderer::m_constant_buffer_index = 0;
+    uint32_t Renderer::m_resource_index = 0;
 
     void Renderer::Initialize()
     {
@@ -306,8 +306,8 @@ namespace Spartan
 
         if (reset)
         {
-            // switch to the next array of constant buffers
-            m_constant_buffer_index = (m_constant_buffer_index + 1) % 2;
+            // switch to the next array of constant buffers and structured buffers
+            m_resource_index = (m_resource_index + 1) % 2;
 
             // Reset dynamic buffer indices
             for (shared_ptr<RHI_ConstantBuffer> constant_buffer : GetConstantBuffers())
@@ -315,9 +315,10 @@ namespace Spartan
                 constant_buffer->ResetOffset();
             }
 
-            // todo: these are still not safe and need proper handling
-            RHI_Device::QueueWaitAll();
             GetStructuredBuffer()->ResetOffset();
+
+            // todo: this are still not safe and need proper handling
+            RHI_Device::QueueWaitAll();
             OnResourceSafe(m_cmd_current);
         }
 

@@ -214,6 +214,6 @@ namespace Spartan
         static std::vector<float> m_lines_duration;
         static uint32_t m_lines_index_depth_off;
         static uint32_t m_lines_index_depth_on;
-        static uint32_t m_constant_buffer_index;
+        static uint32_t m_resource_index;
     };
 }
