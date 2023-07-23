@@ -191,7 +191,7 @@ namespace Spartan
         SetOption(Renderer_Option::Anisotropy,             16.0f);
         SetOption(Renderer_Option::ShadowResolution,       2048.0f);
         SetOption(Renderer_Option::Tonemapping,            static_cast<float>(Renderer_Tonemapping::Disabled));
-        SetOption(Renderer_Option::Gamma,                  2.2f);
+        SetOption(Renderer_Option::Gamma,                  1.5f); // seems to be the default for things like NV control panel
         SetOption(Renderer_Option::Exposure,               1.0f);
         SetOption(Renderer_Option::PaperWhite,             150.0f); // nits
         SetOption(Renderer_Option::Sharpness,              0.5f);

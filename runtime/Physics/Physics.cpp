@@ -56,19 +56,19 @@ namespace Spartan
         static PhysicsDebugDraw* m_debug_draw                             = nullptr;
 
         // World properties
-        static  int m_max_sub_steps        = 1;
-        static  int m_max_solve_iterations = 256;
-        static  float m_internal_fps       = 60.0f;
-        static  Math::Vector3 m_gravity    = Math::Vector3(0.0f, -9.81f, 0.0f);
-        static  bool m_simulating          = false;
+        static int m_max_sub_steps        = 1;
+        static int m_max_solve_iterations = 256;
+        static float m_internal_fps       = 60.0f;
+        static Math::Vector3 m_gravity    = Math::Vector3(0.0f, -9.81f, 0.0f);
+        static bool m_simulating          = false;
 
         // Picking
-        static  btRigidBody* m_picked_body                = nullptr;
-        static  btTypedConstraint* m_picked_constraint    = nullptr;
-        static  int m_activation_state                    = 0;
-        static  Math::Vector3 m_hit_position              = Math::Vector3::Zero;
-        static  Math::Vector3 m_picking_position_previous = Math::Vector3::Zero;
-        static  float m_picking_distance_previous         = 0.0f;
+        static btRigidBody* m_picked_body                = nullptr;
+        static btTypedConstraint* m_picked_constraint    = nullptr;
+        static int m_activation_state                    = 0;
+        static Math::Vector3 m_hit_position              = Math::Vector3::Zero;
+        static Math::Vector3 m_picking_position_previous = Math::Vector3::Zero;
+        static float m_picking_distance_previous         = 0.0f;
 
         static const bool m_soft_body_support = true;
     }
