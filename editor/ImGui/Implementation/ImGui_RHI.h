@@ -91,10 +91,10 @@ namespace ImGui::RHI
         shared_ptr<RHI_SwapChain>     swapchain;
     };
 
-    // Forward Declarations
+    // forward Declarations
     void InitialisePlatformInterface();
 
-    // Editor resources (main window)
+    // editor resources (main window)
     static shared_ptr<RHI_Texture>           g_font_atlas;
     static shared_ptr<RHI_DepthStencilState> g_depth_stencil_state;
     static shared_ptr<RHI_RasterizerState>   g_rasterizer_state;
@@ -264,7 +264,7 @@ namespace ImGui::RHI
                 }
             }
 
-            // Copy and convert all vertices into a single contiguous buffer
+            // copy and convert all vertices into a single contiguous buffer
             ImDrawVert* vtx_dst = static_cast<ImDrawVert*>(vertex_buffer->GetMappedData());
             ImDrawIdx*  idx_dst = static_cast<ImDrawIdx*>(index_buffer->GetMappedData());
             if (vtx_dst && idx_dst)
@@ -387,7 +387,7 @@ namespace ImGui::RHI
 
     static void RHI_Window_Create(ImGuiViewport* viewport)
     {
-        // PlatformHandle is SDL_Window, PlatformHandleRaw is HWND
+        // platformHandle is SDL_Window, PlatformHandleRaw is HWND
         SP_ASSERT_MSG(viewport->PlatformHandle != nullptr, "Platform handle is invalid");
 
         WindowData* window = new WindowData();
@@ -429,13 +429,8 @@ namespace ImGui::RHI
 
     static void RHI_Window_Present(ImGuiViewport* viewport, void*)
     {
-        // Get window data
         WindowData* window = static_cast<WindowData*>(viewport->RendererUserData);
-
-        // Validate cmd list state
         SP_ASSERT(window->viewport_data->cmd_pool->GetCurrentCommandList()->GetState() == Spartan::RHI_CommandListState::Submitted);
-
-        // Present
         window->swapchain->Present();
     }
 

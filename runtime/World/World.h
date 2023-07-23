@@ -51,7 +51,7 @@ namespace Spartan
             const float directional_light_intensity = 50000.0f,
             const char* soundtrack_file_pat         = "project\\music\\vangelis_cosmos_theme.mp3"
         );
-        static void CreateDefaultWorldPhysicsCube();
+        static void CreateDefaultWorldPickablePhysicsCube();
         static void CreateDefaultWorldHelmets();
         static void CreateDefaultWorldCar();
         static void CreateDefaultWorldTerrain();

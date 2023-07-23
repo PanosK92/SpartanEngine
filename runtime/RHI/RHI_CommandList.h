@@ -33,7 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-    // Forward declarations
+    // forward declarations
     namespace Math { class Rectangle; }
 
     enum class RHI_CommandListState : uint8_t
@@ -134,37 +134,20 @@ namespace Spartan
         const RHI_CommandListState GetState() const { return m_state; }
         bool IsExecuting();
 
-        // Sync
-        RHI_Semaphore* GetSemaphoreProccessed() { return m_proccessed_semaphore.get(); }
-
         // Misc
+        RHI_Semaphore* GetSemaphoreProccessed() { return m_proccessed_semaphore.get(); }
         void* GetRhiResource() const { return m_rhi_resource; }
 
     private:
         void OnDraw();
-
-        // Descriptors
         void GetDescriptorsFromPipelineState(RHI_PipelineState& pipeline_state, std::vector<RHI_Descriptor>& descriptors);
-
-        RHI_Pipeline* m_pipeline                         = nullptr;
-        bool m_is_rendering                              = false;
-        bool m_pipeline_dirty                            = false;
-        std::atomic<RHI_CommandListState> m_state        = RHI_CommandListState::Idle;
-        static const uint8_t m_resource_array_length_max = 16;
-        static bool m_memory_query_support;
-        std::mutex m_mutex_reset;
-        RHI_DescriptorSetLayout* m_descriptor_layout_current = nullptr;
 
         // Sync
         std::shared_ptr<RHI_Fence> m_proccessed_fence;
         std::shared_ptr<RHI_Semaphore> m_proccessed_semaphore;
 
-        // Pipelines
-        RHI_PipelineState m_pso;
-
         // Profiling
         const char* m_timeblock_active         = nullptr;
-        void* m_query_pool                     = nullptr;
         uint32_t m_timestamp_index             = 0;
         static const uint32_t m_max_timestamps = 512;
         std::array<uint64_t, m_max_timestamps> m_timestamps;
@@ -173,10 +156,21 @@ namespace Spartan
         uint64_t m_vertex_buffer_id = 0;
         uint64_t m_index_buffer_id  = 0;
 
+        // Misc
+        RHI_Pipeline* m_pipeline                             = nullptr;
+        bool m_is_rendering                                  = false;
+        bool m_pipeline_dirty                                = false;
+        static const uint8_t m_resource_array_length_max     = 16;
+        RHI_DescriptorSetLayout* m_descriptor_layout_current = nullptr;
+        std::atomic<RHI_CommandListState> m_state            = RHI_CommandListState::Idle;
+        RHI_Queue_Type m_queue_type                          = RHI_Queue_Type::Undefined;
+        static bool m_memory_query_support;
+        std::mutex m_mutex_reset;
+        RHI_PipelineState m_pso;
+
         // RHI Resources
         void* m_rhi_resource          = nullptr;
         void* m_rhi_cmd_pool_resource = nullptr;
-
-        RHI_Queue_Type m_queue_type = RHI_Queue_Type::Undefined;
+        void* m_rhi_query_pool        = nullptr;
     };
 }

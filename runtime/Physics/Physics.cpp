@@ -298,24 +298,22 @@ namespace Spartan
                     {
                         if (!(body->isStaticObject() || body->isKinematicObject()))
                         {
-                            m_picked_body = body;
-                            m_activation_state = m_picked_body->getActivationState();
+                            m_picked_body                 = body;
+                            m_activation_state            = m_picked_body->getActivationState();
                             m_picked_body->setActivationState(DISABLE_DEACTIVATION);
-                            btVector3 localPivot = body->getCenterOfMassTransform().inverse() * pick_position;
-                            btPoint2PointConstraint* p2p = new btPoint2PointConstraint(*body, localPivot);
+                            btVector3 localPivot          = body->getCenterOfMassTransform().inverse() * pick_position;
+                            btPoint2PointConstraint* p2p  = new btPoint2PointConstraint(*body, localPivot);
                             m_world->addConstraint(p2p, true);
-                            m_picked_constraint = p2p;
-                            btScalar mousePickClamping = 30.f;
+                            m_picked_constraint           = p2p;
+                            btScalar mousePickClamping    = 30.f;
                             p2p->m_setting.m_impulseClamp = mousePickClamping;
-                            p2p->m_setting.m_tau = 0.001f; // very weak constraint for picking
+                            p2p->m_setting.m_tau          = 0.001f; // very weak constraint for picking
                         }
                     }
 
                     m_picking_position_previous = ray_end;
                     m_hit_position              = ToVector3(pick_position);
                     m_picking_distance_previous = (m_hit_position - ray_start).Length();
-
-                    Renderer::DrawSphere(m_hit_position, 0.1f, 32);
                 }
             }
         }
@@ -330,7 +328,7 @@ namespace Spartan
             m_world->removeConstraint(m_picked_constraint);
             delete m_picked_constraint;
             m_picked_constraint = nullptr;
-            m_picked_body = nullptr;
+            m_picked_body       = nullptr;
         }
     }
 
