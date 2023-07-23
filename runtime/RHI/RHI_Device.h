@@ -54,13 +54,6 @@ namespace Spartan
         static uint32_t GetQueueIndex(const RHI_Queue_Type type);
         static void SetQueueIndex(const RHI_Queue_Type type, const uint32_t index);
 
-        // Queries
-        static void QueryCreate(void** query = nullptr, RHI_Query_Type type = RHI_Query_Type::Timestamp);
-        static void QueryRelease(void*& query);
-        static void QueryBegin(void* query);
-        static void QueryEnd(void* query);
-        static void QueryGetData(void* query);
-
         // Descriptors sets, descriptor set layouts and pipelines
         static void* GetDescriptorPool();
         static std::unordered_map<uint64_t, RHI_DescriptorSet>& GetDescriptorSets();

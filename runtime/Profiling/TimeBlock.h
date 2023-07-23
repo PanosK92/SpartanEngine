@@ -46,8 +46,8 @@ namespace Spartan
 
         void Begin(const uint32_t id, const char* name, TimeBlockType type, const TimeBlock* parent = nullptr, RHI_CommandList* cmd_list = nullptr);
         void End();
-        void ComputeDuration(const uint32_t pass_index);
         void Reset();
+
         TimeBlockType GetType()      const { return m_type; }
         const char* GetName()        const { return m_name; }
         const TimeBlock* GetParent() const { return m_parent; }
@@ -56,19 +56,19 @@ namespace Spartan
         float GetDuration()          const { return m_duration; }
         bool IsComplete()            const { return m_is_complete; }
         uint32_t GetId()             const { return m_id; }
-        void ClearGpuObjects();
 
     private:    
         static uint32_t FindTreeDepth(const TimeBlock* time_block, uint32_t depth = 0);
         static uint32_t m_max_tree_depth;
 
-        const char* m_name        = nullptr;
-        TimeBlockType m_type      = TimeBlockType::Undefined;
-        float m_duration          = 0.0f;
-        const TimeBlock* m_parent = nullptr;
-        uint32_t m_tree_depth     = 0;
-        bool m_is_complete        = false;
-        uint32_t m_id             = 0;
+        const char* m_name         = nullptr;
+        TimeBlockType m_type       = TimeBlockType::Undefined;
+        float m_duration           = 0.0f;
+        const TimeBlock* m_parent  = nullptr;
+        uint32_t m_tree_depth      = 0;
+        bool m_is_complete         = false;
+        uint32_t m_id              = 0;
+        uint32_t m_timestamp_index = 0;
 
         // Dependencies
         RHI_CommandList* m_cmd_list = nullptr;
@@ -76,9 +76,5 @@ namespace Spartan
         // CPU timing
         std::chrono::high_resolution_clock::time_point m_start;
         std::chrono::high_resolution_clock::time_point m_end;
-    
-        // GPU timing
-        void* m_query_start = nullptr;
-        void* m_query_end   = nullptr;
     };
 }

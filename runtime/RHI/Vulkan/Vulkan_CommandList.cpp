@@ -956,42 +956,39 @@ namespace Spartan
             RHI_Device::MarkerEnd(this);
         }
     }
-
-    void RHI_CommandList::BeginTimestamp(void* query)
-    {
-        // Validate command list state
-        SP_ASSERT(m_state == RHI_CommandListState::Recording);
-
-        if (!RHI_Context::gpu_profiling)
-            return;
-
-        if (!m_query_pool)
-            return;
-
-        vkCmdWriteTimestamp(static_cast<VkCommandBuffer>(m_rhi_resource), VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, static_cast<VkQueryPool>(m_query_pool), m_timestamp_index++);
-    }
-
-    void RHI_CommandList::EndTimestamp(void* query)
+    
+    uint32_t RHI_CommandList::BeginTimestamp()
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
+        SP_ASSERT(RHI_Context::gpu_profiling);
         SP_ASSERT(m_query_pool != nullptr);
 
-        if (!RHI_Context::gpu_profiling)
-            return;
+        uint32_t timestamp_index = m_timestamp_index;
+        vkCmdWriteTimestamp(static_cast<VkCommandBuffer>(m_rhi_resource), VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, static_cast<VkQueryPool>(m_query_pool), timestamp_index);
+        m_timestamp_index++;
+
+        return timestamp_index;
+    }
+
+    void RHI_CommandList::EndTimestamp()
+    {
+        SP_ASSERT(m_state == RHI_CommandListState::Recording);
+        SP_ASSERT(RHI_Context::gpu_profiling);
+        SP_ASSERT(m_query_pool != nullptr);
 
         vkCmdWriteTimestamp(static_cast<VkCommandBuffer>(m_rhi_resource), VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, static_cast<VkQueryPool>(m_query_pool), m_timestamp_index++);
     }
 
-    float RHI_CommandList::GetTimestampDuration(void* query_start, void* query_end, const uint32_t pass_index)
+    float RHI_CommandList::GetTimestampDuration(const uint32_t timestamp_index)
     {
-        if (pass_index + 1 >= m_timestamps.size())
+        if (timestamp_index + 1 >= m_timestamps.size())
         {
             SP_LOG_ERROR("Pass index out of timestamp array range");
             return 0.0f;
         }
 
-        uint64_t start = m_timestamps[pass_index];
-        uint64_t end   = m_timestamps[pass_index + 1];
+        uint64_t start = m_timestamps[timestamp_index];
+        uint64_t end   = m_timestamps[timestamp_index + 1];
 
         // If end has not been acquired yet (zero), early exit
         if (end < start)

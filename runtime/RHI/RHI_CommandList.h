@@ -122,9 +122,9 @@ namespace Spartan
         void EndMarker();
 
         // Timestamps
-        void BeginTimestamp(void* query);
-        void EndTimestamp(void* query);
-        float GetTimestampDuration(void* query_start, void* query_end, const uint32_t pass_index);
+        uint32_t BeginTimestamp();
+        void EndTimestamp();
+        float GetTimestampDuration(const uint32_t timestamp_index);
 
         // Timeblocks (Markers + Timestamps)
         void BeginTimeblock(const char* name, const bool gpu_marker = true, const bool gpu_timing = true);
@@ -161,18 +161,6 @@ namespace Spartan
 
         // Pipelines
         RHI_PipelineState m_pso;
-
-        // Keep track of output textures so that we can unbind them and prevent
-        // D3D11 warnings when trying to bind them as SRVs in following passes
-        struct OutputTexture
-        {
-            RHI_Texture* texture = nullptr;
-            uint32_t slot;
-            int mip;
-            bool ranged;
-        };
-        std::array<OutputTexture, m_resource_array_length_max> m_output_textures;
-        uint32_t m_output_textures_index = 0;
 
         // Profiling
         const char* m_timeblock_active         = nullptr;

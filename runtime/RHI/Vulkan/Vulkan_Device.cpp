@@ -1071,31 +1071,6 @@ namespace Spartan
         SP_VK_ASSERT_MSG(vkQueueWaitIdle(static_cast<VkQueue>(GetQueue(type))), "Failed to wait for queue");
     }
 
-    void RHI_Device::QueryCreate(void** query, const RHI_Query_Type type)
-    {
-
-    }
-
-    void RHI_Device::QueryRelease(void*& query)
-    {
-
-    }
-
-    void RHI_Device::QueryBegin(void* query)
-    {
-
-    }
-
-    void RHI_Device::QueryEnd(void* query)
-    {
-
-    }
-
-    void RHI_Device::QueryGetData(void* query)
-    {
-
-    }
-
     void RHI_Device::DeletionQueue_Add(const RHI_Resource_Type resource_type, void* resource)
     {
         lock_guard<mutex> guard(mutex_deletion_queue);

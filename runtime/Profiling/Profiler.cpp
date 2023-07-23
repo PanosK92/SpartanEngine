@@ -81,6 +81,7 @@ namespace Spartan
     namespace
     {
         // Profiling options
+        static const uint32_t initial_capacity     = 256;
         static bool profile                        = false;
         static bool profile_cpu                    = true;
         static bool profile_gpu                    = true;
@@ -115,34 +116,19 @@ namespace Spartan
         static bool poll                 = false;
         static bool increase_capacity    = false;
         static bool allow_time_block_end = true;
-        static void* query_disjoint      = nullptr;
         static ostringstream oss_metrics;
-
-        // Event handlers
-        static void on_post_present()
-        {
-            if (poll)
-            {
-                RHI_Device::QueryEnd(query_disjoint);
-                RHI_Device::QueryGetData(query_disjoint);
-            }
-        }
     }
   
     void Profiler::Initialize()
     {
-        static const int initial_capacity = 256;
         m_time_blocks_read.reserve(initial_capacity);
         m_time_blocks_read.resize(initial_capacity);
         m_time_blocks_write.reserve(initial_capacity);
         m_time_blocks_write.resize(initial_capacity);
-
-        SP_SUBSCRIBE_TO_EVENT(EventType::RendererPostPresent, SP_EVENT_HANDLER_STATIC(on_post_present));
     }
 
     void Profiler::Shutdown()
     {
-        RHI_Device::QueryRelease(query_disjoint);
         ClearRhiMetrics();
     }
 
@@ -150,11 +136,6 @@ namespace Spartan
     {
         if (!RHI_Context::gpu_profiling)
             return;
-
-        if (query_disjoint == nullptr)
-        {
-            RHI_Device::QueryCreate(&query_disjoint, RHI_Query_Type::Timestamp_Disjoint);
-        }
 
         // Increase time block capacity (if needed)
         if (increase_capacity)
@@ -239,8 +220,6 @@ namespace Spartan
         // Updating every m_profiling_interval_sec
         if (poll)
         {
-            RHI_Device::QueryBegin(query_disjoint);
-
             AcquireGpuData();
 
             // Create a string version of the RHI metrics
@@ -269,10 +248,6 @@ namespace Spartan
                 // Compute time block duration
                 if (time_block.IsComplete())
                 {
-                    // ComputeDuration() must only be called here, at the end of the frame, and not in TimeBlockEnd().
-                    // This is because D3D11 waits too much for the results to be ready, which increases CPU time.
-                    time_block.ComputeDuration(pass_index_gpu);
-
                     if (time_block.GetType() == TimeBlockType::Gpu)
                     {
                         pass_index_gpu += 2;
@@ -285,8 +260,6 @@ namespace Spartan
 
                 // Copy over
                 m_time_blocks_read[i] = time_block;
-                // Nullify GPU query objects as we don't want them to de-allocate twice (read and write vectors) once the profiler deconstructs.
-                m_time_blocks_read[i].ClearGpuObjects();
 
                 // Reset
                 time_block.Reset();

@@ -268,31 +268,6 @@ namespace Spartan
 
     }
 
-    void RHI_Device::QueryCreate(void** query, const RHI_Query_Type type)
-    {
-
-    }
-
-    void RHI_Device::QueryRelease(void*& query)
-    {
-
-    }
-
-    void RHI_Device::QueryBegin(void* query)
-    {
-
-    }
-
-    void RHI_Device::QueryEnd(void* query)
-    {
-
-    }
-
-    void RHI_Device::QueryGetData(void* query)
-    {
-
-    }
-
     void* RHI_Device::GetQueue(const RHI_Queue_Type type)
     {
         if (type == RHI_Queue_Type::Graphics)
