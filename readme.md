@@ -34,7 +34,7 @@ Occasional livestreams on Discord for interesting topics.
 - 20+ audio file formats support (FMOD)
 - 30+ image file formats support (FreeImage)
 - 40+ model file formats support (Assimp)
-- Vulkan and DirectX 11 backends (same HLSL shaders compile everywhere)
+- Vulkan and DirectX 12 backends (same HLSL shaders compile everywhere)
 - Deferred rendering with transparency (under a single render path and using the same shaders)
 - Principled BSDF supporting anisotropic, clearcoat and cloth materials (combined with things like normal mapping, parallax, masking, occlusion etc)
 - Bloom (Based on a study of Resident Evil 2's RE Engine)

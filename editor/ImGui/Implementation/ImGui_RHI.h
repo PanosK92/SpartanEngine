@@ -372,10 +372,10 @@ namespace ImGui::RHI
                 global_idx_offset += static_cast<uint32_t>(cmd_list_imgui->IdxBuffer.Size);
                 global_vtx_offset += static_cast<uint32_t>(cmd_list_imgui->VtxBuffer.Size);
             }
-
-            cmd_list->EndRenderPass();
         }
 
+        // submit
+        cmd_list->EndRenderPass();
         cmd_list->EndTimeblock();
         cmd_list->End();
         cmd_list->Submit();
