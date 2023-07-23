@@ -39,7 +39,6 @@ namespace Spartan
         bool Tick();
 
         RHI_CommandList* GetCurrentCommandList()       { return m_using_pool_a ? m_cmd_lists_a[m_cmd_list_index].get() : m_cmd_lists_b[m_cmd_list_index].get(); }
-        uint32_t GetCommandListIndex()           const { return m_cmd_list_index; }
         uint64_t GetSwapchainId()                const { return m_swap_chain_id; }
 
     private:

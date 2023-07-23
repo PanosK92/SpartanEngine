@@ -74,14 +74,4 @@ namespace Spartan
 
         //m_numIndices = SampleAssets::IndexDataSize / 4;    // R32_UINT (SampleAssets::StandardIndexFormat) = 4 bytes each.
     }
-    
-    void* RHI_IndexBuffer::Map()
-    {
-        return nullptr;
-    }
-    
-    void RHI_IndexBuffer::Unmap()
-    {
-
-    }
 }

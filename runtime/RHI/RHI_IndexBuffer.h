@@ -68,9 +68,7 @@ namespace Spartan
             _create(nullptr);
         }
 
-        void* Map();
-        void Unmap();
-
+        void* GetMappedData()    const { return m_mapped_data; }
         void* GetRhiResource()   const { return m_rhi_resource; }
         uint32_t GetIndexCount() const { return m_index_count; }
         bool Is16Bit()           const { return sizeof(uint16_t) == m_stride; }
