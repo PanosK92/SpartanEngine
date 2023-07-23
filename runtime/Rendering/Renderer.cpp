@@ -78,11 +78,10 @@ namespace Spartan
         array<float, 34> m_options;
         thread::id render_thread_id;
         mutex mutex_entity_addition;
-        vector<shared_ptr<Entity>> m_renderables_pending;
+        vector<shared_ptr<Entity>> m_entities_to_add;
         shared_ptr<Camera> m_camera;
         uint64_t frame_num                   = 0;
         Math::Vector2 jitter_offset          = Math::Vector2::Zero;
-        bool add_new_entities                = false;
         const uint32_t resolution_shadow_min = 128;
         float near_plane                     = 0.0f;
         float far_plane                      = 1.0f;
@@ -247,7 +246,7 @@ namespace Spartan
         {
             DestroyResources();
 
-            m_renderables_pending.clear();
+            m_entities_to_add.clear();
             m_renderables.clear();
             m_world_grid.reset();
             m_font.reset();
@@ -605,22 +604,20 @@ namespace Spartan
         // this ensures that if any entities are deallocated by the world.
         // we'll still have some valid pointers until the are overridden by m_renderables_world.
 
-        lock_guard lock(mutex_entity_addition);
-
-        m_renderables_pending.clear();
-
         vector<shared_ptr<Entity>> entities = get<vector<shared_ptr<Entity>>>(data);
+
+        lock_guard lock(mutex_entity_addition);
+        m_entities_to_add.clear();
+
         for (shared_ptr<Entity> entity : entities)
         {
             SP_ASSERT_MSG(entity != nullptr, "Entity is null");
 
             if (entity->IsActiveRecursively())
             {
-                m_renderables_pending.emplace_back(entity);
+                m_entities_to_add.emplace_back(entity);
             }
         }
-
-        add_new_entities = true;
     }
 
     void Renderer::OnClear()
@@ -662,13 +659,13 @@ namespace Spartan
     void Renderer::OnFrameStart(RHI_CommandList* cmd_list)
     {
         // acquire renderables
-        if (add_new_entities)
+        if (!m_entities_to_add.empty())
         {
             // clear previous state
             m_renderables.clear();
             m_camera = nullptr;
 
-            for (shared_ptr<Entity> entity : m_renderables_pending)
+            for (shared_ptr<Entity> entity : m_entities_to_add)
             {
                 if (shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>())
                 {
@@ -708,8 +705,7 @@ namespace Spartan
             sort_renderables(&m_renderables[Renderer_Entity::Geometry_opaque], false);
             sort_renderables(&m_renderables[Renderer_Entity::Geometry_transparent], true);
 
-            m_renderables_pending.clear();
-            add_new_entities = false;
+            m_entities_to_add.clear();
         }
 
         // generate mips
@@ -913,7 +909,7 @@ namespace Spartan
         flush_requested = false;
     }
 
-    void Renderer::EnqueueForMipGeneration(RHI_Texture* texture)
+    void Renderer::AddTextureForMipGeneration(RHI_Texture* texture)
     {
         lock_guard<mutex> guard(mutex_mip_generation);
         textures_mip_generation.push_back(texture);

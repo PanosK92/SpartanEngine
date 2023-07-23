@@ -79,7 +79,7 @@ namespace Spartan
         static void Present();
 
         // Mip generation
-        static void EnqueueForMipGeneration(RHI_Texture* texture);
+        static void AddTextureForMipGeneration(RHI_Texture* texture);
         static void Pass_GenerateMips(RHI_CommandList* cmd_list, RHI_Texture* texture);
 
         // Misc
