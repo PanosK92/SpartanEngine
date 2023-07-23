@@ -28,12 +28,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../World/Components/Light.h"
 #include "../World/Components/ReflectionProbe.h"
 #include "../RHI/RHI_CommandList.h"
-#include "../RHI/RHI_Implementation.h"
 #include "../RHI/RHI_VertexBuffer.h"
 #include "../RHI/RHI_Shader.h"
 #include "../RHI/RHI_AMD_FidelityFX.h"
 #include "../RHI/RHI_StructuredBuffer.h"
-#include "../RHI/RHI_SwapChain.h"
 //==============================================
 
 //= NAMESPACES ===============
@@ -41,7 +39,7 @@ using namespace std;
 using namespace Spartan::Math;
 //============================
 
-// Macros to work around the verboseness of some C++ concepts.
+// macros to work around the verboseness of some C++ concepts.
 #define thread_group_count_x(tex) static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex->GetWidth())  / thread_group_count))
 #define thread_group_count_y(tex) static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex->GetHeight()) / thread_group_count))
 
@@ -49,58 +47,55 @@ namespace Spartan
 {
     namespace
     {
+        mutex mutex_generate_mips;
         static const float thread_group_count = 8.0f;
     }
 
     void Renderer::SetGlobalShaderResources(RHI_CommandList* cmd_list)
     {
-        // Constant buffers
-        cmd_list->SetConstantBuffer(Renderer_BindingsCb::frame, GetConstantBuffer(Renderer_ConstantBuffer::Frame));
-        cmd_list->SetConstantBuffer(Renderer_BindingsCb::uber, GetConstantBuffer(Renderer_ConstantBuffer::Pass));
-        cmd_list->SetConstantBuffer(Renderer_BindingsCb::light, GetConstantBuffer(Renderer_ConstantBuffer::Light));
+        // constant buffers
+        cmd_list->SetConstantBuffer(Renderer_BindingsCb::frame,    GetConstantBuffer(Renderer_ConstantBuffer::Frame));
+        cmd_list->SetConstantBuffer(Renderer_BindingsCb::uber,     GetConstantBuffer(Renderer_ConstantBuffer::Pass));
+        cmd_list->SetConstantBuffer(Renderer_BindingsCb::light,    GetConstantBuffer(Renderer_ConstantBuffer::Light));
         cmd_list->SetConstantBuffer(Renderer_BindingsCb::material, GetConstantBuffer(Renderer_ConstantBuffer::Material));
 
-        // Textures
+        // textures
         cmd_list->SetTexture(Renderer_BindingsSrv::noise_normal, GetStandardTexture(Renderer_StandardTexture::Noise_normal));
-        cmd_list->SetTexture(Renderer_BindingsSrv::noise_blue, GetStandardTexture(Renderer_StandardTexture::Noise_blue));
+        cmd_list->SetTexture(Renderer_BindingsSrv::noise_blue,   GetStandardTexture(Renderer_StandardTexture::Noise_blue));
     }
 
-    void Renderer::Pass_Main(RHI_CommandList* cmd_list)
+    void Renderer::Pass_Frame(RHI_CommandList* cmd_list)
     {
-        // Validate cmd list
-        SP_ASSERT(cmd_list != nullptr);
-        SP_ASSERT(cmd_list->GetState() == RHI_CommandListState::Recording);
-
         SP_PROFILE_FUNCTION();
 
-        // Acquire render targets
+        // acquire render targets
         RHI_Texture* rt1       = GetRenderTarget(Renderer_RenderTexture::frame_render).get();
         RHI_Texture* rt2       = GetRenderTarget(Renderer_RenderTexture::frame_render_2).get();
         RHI_Texture* rt_output = GetRenderTarget(Renderer_RenderTexture::frame_output).get();
 
-        // Update frame constant buffer
+        // update frame constant buffer
         UpdateConstantBufferFrame(cmd_list);
 
         if (shared_ptr<Camera> camera = GetCamera())
         { 
-            // If there are no entities, clear to the camera's color
+            // if there are no entities, clear to the camera's color
             if (GetEntities()[Renderer_Entity::Geometry_opaque].empty() && GetEntities()[Renderer_Entity::Geometry_transparent].empty() && GetEntities()[Renderer_Entity::Light].empty())
             {
                 GetCmdList()->ClearRenderTarget(rt_output, 0, 0, false, camera->GetClearColor());
             }
-            else // Render frame
+            else // render frame
             {
-                // Generate brdf specular lut
+                // generate brdf specular lut
                 if (!m_brdf_specular_lut_rendered)
                 {
                     Pass_BrdfSpecularLut(cmd_list);
                     m_brdf_specular_lut_rendered = true;
                 }
 
-                // Determine if a transparent pass is required
+                // determine if a transparent pass is required
                 const bool do_transparent_pass = !GetEntities()[Renderer_Entity::Geometry_transparent].empty();
 
-                // Shadow maps
+                // shadow maps
                 {
                     Pass_ShadowMaps(cmd_list, false);
                     if (do_transparent_pass)
@@ -111,7 +106,7 @@ namespace Spartan
 
                 Pass_ReflectionProbes(cmd_list);
 
-                // Opaque
+                // opaque
                 {
                     bool is_transparent_pass = false;
 
@@ -124,16 +119,16 @@ namespace Spartan
                     Pass_Light_ImageBased(cmd_list, rt1, is_transparent_pass);  // apply IBL and SSR
                 }
 
-                // Transparent
+                // transparent
                 if (do_transparent_pass)
                 {
-                    // Blit the frame so that refraction can sample from it
+                    // blit the frame so that refraction can sample from it
                     cmd_list->Copy(rt1, rt2, true);
 
-                    // Generate frame mips so that the reflections can simulate roughness
+                    // generate frame mips so that the reflections can simulate roughness
                     Pass_Ffx_Spd(cmd_list, rt2);
 
-                    // Blur the smaller mips to reduce blockiness/flickering
+                    // blur the smaller mips to reduce blockiness/flickering
                     for (uint32_t i = 1; i < rt2->GetMipCount(); i++)
                     {
                         const bool depth_aware = false;
@@ -153,20 +148,20 @@ namespace Spartan
                 Pass_PostProcess(cmd_list);
             }
 
-            // Editor related stuff - Passes that render on top of each other
+            // editor related stuff - passes that render on top of each other
             Pass_DebugMeshes(cmd_list, rt_output);
             Pass_Icons(cmd_list, rt_output);
             Pass_PeformanceMetrics(cmd_list, rt_output);
         }
         else
         {
-            // If there is no camera, clear to black and and render the performance metrics
+            // if there is no camera, clear to black and and render the performance metrics
             GetCmdList()->ClearRenderTarget(rt_output, 0, 0, false, Color::standard_black);
             Pass_PeformanceMetrics(cmd_list, rt_output);
         }
 
-        // No further rendering is done on this render target, which is the final output.
-        // However, ImGui will display it within the viewport, so the appropriate layout has to be set.
+        // no further rendering is done on this render target, which is the final output.
+        // however, ImGui will display it within the viewport, so the appropriate layout has to be set.
         rt_output->SetLayout(RHI_Image_Layout::Shader_Read_Only_Optimal, cmd_list);
     }
 
@@ -648,7 +643,7 @@ namespace Spartan
                     // Update transform
                     if (shared_ptr<Transform> transform = entity->GetTransform())
                     {
-                        m_cb_pass_cpu.transform = transform->GetMatrix();
+                        m_cb_pass_cpu.transform          = transform->GetMatrix();
                         m_cb_pass_cpu.transform_previous = transform->GetMatrixPrevious();
 
                         // Save matrix for velocity computation
@@ -2184,33 +2179,66 @@ namespace Spartan
 
     void Renderer::Pass_BrdfSpecularLut(RHI_CommandList* cmd_list)
     {
-        // Acquire shader
+        // acquire shader
         RHI_Shader* shader_c = GetShader(Renderer_Shader::brdf_specular_lut_c).get();
         if (!shader_c->IsCompiled())
             return;
 
-        // Acquire render target
+        // acquire render target
         RHI_Texture* tex_brdf_specular_lut = GetRenderTarget(Renderer_RenderTexture::brdf_specular_lut).get();
 
-        // Define render state
+        // define render state
         static RHI_PipelineState pso;
         pso.shader_compute = shader_c;
 
         cmd_list->BeginTimeblock("brdf_specular_lut");
 
-        // Set pipeline state
+        // set pipeline state
         cmd_list->SetPipelineState(pso);
 
-        // Set uber buffer
+        // set uber buffer
         m_cb_pass_cpu.resolution_rt = Vector2(static_cast<float>(tex_brdf_specular_lut->GetWidth()), static_cast<float>(tex_brdf_specular_lut->GetHeight()));
         UpdateConstantBufferPass(cmd_list);
 
-        // Set texture
+        // set texture
         cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_brdf_specular_lut);
 
-        // Render
+        // render
         cmd_list->Dispatch(thread_group_count_x(tex_brdf_specular_lut), thread_group_count_y(tex_brdf_specular_lut));
 
         cmd_list->EndTimeblock();
+    }
+
+    void Renderer::Pass_GenerateMips(RHI_CommandList* cmd_list, RHI_Texture* texture)
+    {
+        SP_ASSERT(texture != nullptr);
+        SP_ASSERT(texture->GetRhiSrv() != nullptr);
+        SP_ASSERT(texture->HasMips());        // ensure the texture has mips (of course, they are empty at this point)
+        SP_ASSERT(texture->HasPerMipViews()); // ensure that the texture has per mip views since they are required for GPU downsampling.
+        SP_ASSERT(texture->IsReadyForUse());  // ensure that any loading and resource creation has finished
+
+        lock_guard<mutex> lock(mutex_generate_mips);
+
+        // downsample
+        Pass_Ffx_Spd(cmd_list, texture);
+
+        // set all generated mips to read only optimal
+        texture->SetLayout(RHI_Image_Layout::Shader_Read_Only_Optimal, cmd_list, 0, texture->GetMipCount());
+
+        // destroy per mip resource views since they are no longer needed
+        {
+            // remove unnecessary flags from texture (were only needed for the downsampling)
+            uint32_t flags = texture->GetFlags();
+            flags &= ~RHI_Texture_PerMipViews;
+            flags &= ~RHI_Texture_Uav;
+            texture->SetFlags(flags);
+
+            // destroy the resources associated with those flags
+            {
+                const bool destroy_main     = false;
+                const bool destroy_per_view = true;
+                texture->RHI_DestroyResource(destroy_main, destroy_per_view);
+            }
+        }
     }
 }

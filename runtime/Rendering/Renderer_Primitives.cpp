@@ -240,7 +240,7 @@ namespace Spartan
         DrawLine(plane_origin - V * scale, plane_origin + V * scale, color, color, duration, depth);
     }
 
-    void Renderer::Lines_PostMain()
+    void Renderer::Lines_OnFrameEnd()
     {
         // Generate lines for debug primitives supported by the renderer
         m_lines_index_depth_off = numeric_limits<uint32_t>::max(); // max +1 will wrap it to 0.
@@ -278,7 +278,7 @@ namespace Spartan
         //}
     }
 
-    void Renderer::Lines_PreMain()
+    void Renderer::Lines_OneFrameStart()
     {
         // Picking ray
         if (GetOption<bool>(Renderer_Option::Debug_PickingRay))

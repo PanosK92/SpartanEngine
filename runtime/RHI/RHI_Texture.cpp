@@ -22,13 +22,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ================================
 #include "pch.h"
 #include "RHI_Texture.h"
-#include "RHI_Device.h"
-#include "RHI_Implementation.h"
 #include "../IO/FileStream.h"
 #include "../Rendering/Renderer.h"
-#include "../Resource/ResourceCache.h"
 #include "../Resource/Import/ImageImporter.h"
-#include "../Profiling/Profiler.h"
 SP_WARNINGS_OFF
 #include "compressonator.h"
 SP_WARNINGS_ON
@@ -90,7 +86,7 @@ namespace Spartan
 
     bool RHI_Texture::SaveToFile(const string& file_path)
     {
-        // If a file already exists, get the byte count
+        // if a file already exists, get the byte count
         m_object_size_cpu = 0;
         {
             if (FileSystem::Exists(file_path))
@@ -108,7 +104,7 @@ namespace Spartan
         if (!file->IsOpen())
             return false;
 
-        // If the existing file has texture data but we don't, don't overwrite them
+        // if the existing file has texture data but we don't, don't overwrite them
         bool dont_overwrite_data = m_object_size_cpu != 0 && !HasData();
         if (dont_overwrite_data)
         {
@@ -124,12 +120,12 @@ namespace Spartan
         {
             ComputeMemoryUsage();
 
-            // Write mip info
+            // write mip info
             file->Write(m_object_size_cpu);
             file->Write(m_array_length);
             file->Write(m_mip_count);
 
-            // Write mip data
+            // write mip data
             for (RHI_Texture_Slice& slice : m_data)
             {
                 for (RHI_Texture_Mip& mip : slice.mips)
@@ -138,12 +134,12 @@ namespace Spartan
                 }
             }
 
-            // The bytes have been saved, so we can now free some memory
+            // the bytes have been saved, so we can now free some memory
             m_data.clear();
             m_data.shrink_to_fit();
         }
 
-        // Write properties
+        // write properties
         file->Write(m_width);
         file->Write(m_height);
         file->Write(m_channel_count);
@@ -163,7 +159,7 @@ namespace Spartan
         m_data.clear();
         m_data.shrink_to_fit();
 
-        // Load from drive
+        // load from drive
         bool is_native_format  = FileSystem::IsEngineTextureFile(file_path);
         bool is_foreign_format = FileSystem::IsSupportedImageFile(file_path);
         {
@@ -179,12 +175,12 @@ namespace Spartan
                 m_data.clear();
                 m_data.shrink_to_fit();
 
-                // Read mip info
+                // read mip info
                 file->Read(&m_object_size_cpu);
                 file->Read(&m_array_length);
                 file->Read(&m_mip_count);
 
-                // Read mip data
+                // read mip data
                 m_data.resize(m_array_length);
                 for (RHI_Texture_Slice& slice : m_data)
                 {
@@ -195,7 +191,7 @@ namespace Spartan
                     }
                 }
 
-                // Read properties
+                // read properties
                 file->Read(&m_width);
                 file->Read(&m_height);
                 file->Read(&m_channel_count);
@@ -209,7 +205,7 @@ namespace Spartan
             {
                 vector<string> file_paths = { file_path };
 
-                // If this is an array, try to find all the textures
+                // if this is an array, try to find all the textures
                 if (m_resource_type == ResourceType::Texture2dArray)
                 {
                     string file_path_extension    = FileSystem::GetExtensionFromFilePath(file_path);
@@ -225,7 +221,7 @@ namespace Spartan
                     }
                 }
 
-                // Load texture
+                // load texture
                 for (uint32_t slice_index = 0; slice_index < static_cast<uint32_t>(file_paths.size()); slice_index++)
                 {
                     if (!ImageImporter::Load(file_paths[slice_index], slice_index, this))
@@ -235,10 +231,10 @@ namespace Spartan
                     }
                 }
 
-                // Set resource file path so it can be used by the resource cache.
+                // set resource file path so it can be used by the resource cache.
                 SetResourceFilePath(file_path);
 
-                // Compress texture
+                // compress texture
                 if (m_flags & RHI_Texture_Compressed)
                 {
                     //Compress(RHI_Format::RHI_Format_BC7);
@@ -246,19 +242,19 @@ namespace Spartan
             }
         }
 
-        // Assign texture name to the object name since Vulkan is using this for it's validation layer.
+        // assign texture name to the object name since Vulkan is using this for it's validation layer.
         if (m_object_name.empty())
         {
             m_object_name = GetObjectName();
         }
 
-        // Prepare for mip generation (if needed).
+        // prepare for mip generation (if needed).
         if (m_flags & RHI_Texture_Mips)
         {
             // if it's native format, that mip count has already been loaded.
             if (!is_native_format) 
             {
-                // Deduce how many mips are required to scale down any dimension to 1px.
+                // deduce how many mips are required to scale down any dimension to 1px.
                 uint32_t width              = m_width;
                 uint32_t height             = m_height;
                 uint32_t smallest_dimension = 1;
@@ -270,16 +266,16 @@ namespace Spartan
                 }
             }
 
-            // Ensure the texture has the appropriate flags so that it can be used to generate mips on the GPU.
-            // Once the mips have been generated, those flags and the resources associated with them, will be removed.
+            // ensure the texture has the appropriate flags so that it can be used to generate mips on the GPU.
+            // once the mips have been generated, those flags and the resources associated with them, will be removed.
             m_flags |= RHI_Texture_PerMipViews;
             m_flags |= RHI_Texture_Uav;
         }
 
-        // Create GPU resource
+        // create GPU resource
         SP_ASSERT_MSG(RHI_CreateResource(), "Failed to create GPU resource");
 
-        // If this was a native texture (means the data is already saved) and the GPU resource
+        // if this was a native texture (means the data is already saved) and the GPU resource
         // has been created, then clear the data as we don't need them anymore.
         if (is_native_format)
         {
@@ -294,7 +290,7 @@ namespace Spartan
         // Request GPU based mip generation (if needed)
         if (m_flags & RHI_Texture_Mips)
         {
-            Renderer::RequestTextureMipGeneration(shared_from_this());
+            Renderer::EnqueueForMipGeneration(this);
         }
 
         return true;

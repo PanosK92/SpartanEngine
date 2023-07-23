@@ -47,7 +47,7 @@ namespace Spartan
     namespace
     {
         static mutex mutex_allocation;
-        static mutex mutex_deletion;
+        static mutex mutex_deletion_queue;
         static unordered_map<RHI_Resource_Type, vector<void*>> deletion_queue;
 
         static bool is_present_instance_layer(const char* layer_name)
@@ -1098,13 +1098,13 @@ namespace Spartan
 
     void RHI_Device::DeletionQueue_Add(const RHI_Resource_Type resource_type, void* resource)
     {
-        lock_guard<mutex> guard(mutex_deletion);
+        lock_guard<mutex> guard(mutex_deletion_queue);
         deletion_queue[resource_type].emplace_back(resource);
     }
 
     void RHI_Device::DeletionQueue_Parse()
     {
-        lock_guard<mutex> guard(mutex_deletion);
+        lock_guard<mutex> guard(mutex_deletion_queue);
        
         for (const auto& it : deletion_queue)
         {

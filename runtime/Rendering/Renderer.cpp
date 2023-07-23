@@ -48,51 +48,44 @@ namespace Spartan
 {
     namespace
     {
-        // sync objects
-        thread::id m_render_thread_id;
-        mutex m_mutex_entity_addition;
-        mutex m_mutex_mip_generation;
-        mutex m_mutex_environment_texture;
-
         // states
-        atomic<bool> m_is_rendering_allowed  = true;
-        atomic<bool> m_flush_requested       = false;
-        bool m_dirty_orthographic_projection = true;
+        atomic<bool> is_rendering_allowed  = true;
+        atomic<bool> flush_requested       = false;
+        bool dirty_orthographic_projection = true;
 
-        // options
-        array<float, 34> m_options;
-
-        // frame
-        uint64_t m_frame_num = 0;
-        bool m_is_odd_frame  = false;
-
-        // Resolution & Viewport
+        // resolution & viewport
         Math::Vector2 m_resolution_render = Math::Vector2::Zero;
         Math::Vector2 m_resolution_output = Math::Vector2::Zero;
         RHI_Viewport m_viewport           = RHI_Viewport(0, 0, 0, 0);
 
-        // Environment texture
-        shared_ptr<RHI_Texture> m_environment_texture;
-        bool m_environment_texture_dirty = false;
+        // environment texture
+        shared_ptr<RHI_Texture> environment_texture;
+        mutex mutex_environment_texture;
 
-        // Swapchain
-        const uint8_t m_swap_chain_buffer_count = 2;
-        shared_ptr<RHI_SwapChain> m_swap_chain;
+        // swapchain
+        const uint8_t swap_chain_buffer_count = 2;
+        shared_ptr<RHI_SwapChain> swap_chain;
 
-        // RHI Core
-        RHI_CommandPool* m_cmd_pool    = nullptr;
-        RHI_CommandList* m_cmd_current = nullptr;
+        // mip generation
+        mutex mutex_mip_generation;
+        vector<RHI_Texture*> textures_mip_generation;
+
+        // rhi resources
+        RHI_CommandPool* cmd_pool    = nullptr;
+        RHI_CommandList* cmd_current = nullptr;
 
         // misc
+        array<float, 34> m_options;
+        thread::id render_thread_id;
+        mutex mutex_entity_addition;
         vector<shared_ptr<Entity>> m_renderables_pending;
-        vector<weak_ptr<RHI_Texture>> m_textures_mip_generation;
         shared_ptr<Camera> m_camera;
-        Math::Vector2 m_jitter_offset          = Math::Vector2::Zero;
-        Environment* m_environment             = nullptr;
-        bool m_add_new_entities                = false;
-        const uint32_t m_resolution_shadow_min = 128;
-        float m_near_plane                     = 0.0f;
-        float m_far_plane                      = 1.0f;
+        uint64_t frame_num                   = 0;
+        Math::Vector2 jitter_offset          = Math::Vector2::Zero;
+        bool add_new_entities                = false;
+        const uint32_t resolution_shadow_min = 128;
+        float near_plane                     = 0.0f;
+        float far_plane                      = 1.0f;
 
         void sort_renderables(vector<shared_ptr<Entity>>* renderables, const bool are_transparent)
         {
@@ -135,7 +128,7 @@ namespace Spartan
 
     void Renderer::Initialize()
     {
-        m_render_thread_id           = this_thread::get_id();
+        render_thread_id             = this_thread::get_id();
         m_brdf_specular_lut_rendered = false;
 
         Display::DetectDisplayModes();
@@ -170,24 +163,24 @@ namespace Spartan
         }
 
         // Create swap chain
-        m_swap_chain = make_shared<RHI_SwapChain>
+        swap_chain = make_shared<RHI_SwapChain>
         (
             Window::GetHandleSDL(),
             static_cast<uint32_t>(m_resolution_output.x),
             static_cast<uint32_t>(m_resolution_output.y),
             // Present mode: For v-sync, we could Mailbox for lower latency, but Fifo is always supported, so we'll assume that
             GetOption<bool>(Renderer_Option::Vsync) ? RHI_Present_Mode::Fifo : RHI_Present_Mode::Immediate,
-            m_swap_chain_buffer_count,
+            swap_chain_buffer_count,
             "renderer"
         );
 
         // Create command pool
-        m_cmd_pool = RHI_Device::AllocateCommandPool("renderer", m_swap_chain->GetObjectId(), RHI_Queue_Type::Graphics);
+        cmd_pool = RHI_Device::AllocateCommandPool("renderer", swap_chain->GetObjectId(), RHI_Queue_Type::Graphics);
 
         RHI_AMD_FidelityFX::Initialize();
 
         // Adjust render option to reflect whether the swapchain is HDR or not
-        SetOption(Renderer_Option::Hdr, m_swap_chain->IsHdr());
+        SetOption(Renderer_Option::Hdr, swap_chain->IsHdr());
 
         // Default options
         m_options.fill(0.0f);
@@ -245,7 +238,7 @@ namespace Spartan
     void Renderer::Shutdown()
     {
         // console doesn't render anymore, log to file
-        Log::SetLogToFile(true); 
+        Log::SetLogToFile(true);
 
         // Fire event
         SP_FIRE_EVENT(EventType::RendererOnShutdown);
@@ -256,12 +249,11 @@ namespace Spartan
 
             m_renderables_pending.clear();
             m_renderables.clear();
-            m_textures_mip_generation.clear();
             m_world_grid.reset();
             m_font.reset();
-            m_swap_chain          = nullptr;
+            swap_chain            = nullptr;
             m_vertex_buffer_lines = nullptr;
-            m_environment_texture = nullptr;
+            environment_texture   = nullptr;
         }
 
         RHI_RenderDoc::Shutdown();
@@ -279,29 +271,29 @@ namespace Spartan
 
         // After the first frame has completed, we know the renderer is working.
         // We stop logging to a file and we start logging to the on-screen console.
-        if (m_frame_num == 1)
+        if (frame_num == 1)
         {
             Log::SetLogToFile(false);
             SP_FIRE_EVENT(EventType::RendererOnFirstFrameCompleted);
         }
 
         // Happens when core resources are created/destroyed
-        if (m_flush_requested)
+        if (flush_requested)
         {
             Flush();
         }
 
-        if (!m_is_rendering_allowed)
+        if (!is_rendering_allowed)
             return;
 
-        RHI_Device::Tick(m_frame_num);
+        RHI_Device::Tick(frame_num);
 
         // Tick command pool
-        bool reset = m_cmd_pool->Tick();
+        bool reset = cmd_pool->Tick();
 
         // Begin
-        m_cmd_current = m_cmd_pool->GetCurrentCommandList();
-        m_cmd_current->Begin();
+        cmd_current = cmd_pool->GetCurrentCommandList();
+        cmd_current->Begin();
 
         if (reset)
         {
@@ -315,8 +307,17 @@ namespace Spartan
             }
 
             GetStructuredBuffer()->ResetOffset();
-            OnResourceSafe(m_cmd_current);
+
+            // Delete any RHI resources that have accumulated an need to be deleted
+            if (RHI_Device::DeletionQueue_NeedsToParse())
+            {
+                RHI_Device::QueueWaitAll();
+                RHI_Device::DeletionQueue_Parse();
+                SP_LOG_INFO("Parsed deletion queue");
+            }
         }
+
+        OnFrameStart(cmd_current);
 
         // Update frame buffer
         {
@@ -324,11 +325,11 @@ namespace Spartan
             {
                 if (m_camera)
                 {
-                    if (m_near_plane != m_camera->GetNearPlane() || m_far_plane != m_camera->GetFarPlane())
+                    if (near_plane != m_camera->GetNearPlane() || far_plane != m_camera->GetFarPlane())
                     {
-                        m_near_plane                    = m_camera->GetNearPlane();
-                        m_far_plane                     = m_camera->GetFarPlane();
-                        m_dirty_orthographic_projection = true;
+                        near_plane                    = m_camera->GetNearPlane();
+                        far_plane                     = m_camera->GetFarPlane();
+                        dirty_orthographic_projection = true;
                     }
 
                     m_cb_frame_cpu.view                = m_camera->GetViewMatrix();
@@ -336,12 +337,12 @@ namespace Spartan
                     m_cb_frame_cpu.projection_inverted = Matrix::Invert(m_cb_frame_cpu.projection);
                 }
 
-                if (m_dirty_orthographic_projection)
+                if (dirty_orthographic_projection)
                 { 
                     // Near clip does not affect depth accuracy in orthographic projection, so set it to 0 to avoid problems which can result an infinitely small [3,2] (NaN) after the multiplication below.
-                    m_cb_frame_cpu.projection_ortho      = Matrix::CreateOrthographicLH(m_viewport.width, m_viewport.height, 0.0f, m_far_plane);
-                    m_cb_frame_cpu.view_projection_ortho = Matrix::CreateLookAtLH(Vector3(0, 0, -m_near_plane), Vector3::Forward, Vector3::Up) * m_cb_frame_cpu.projection_ortho;
-                    m_dirty_orthographic_projection      = false;
+                    m_cb_frame_cpu.projection_ortho      = Matrix::CreateOrthographicLH(m_viewport.width, m_viewport.height, 0.0f, far_plane);
+                    m_cb_frame_cpu.view_projection_ortho = Matrix::CreateLookAtLH(Vector3(0, 0, -near_plane), Vector3::Forward, Vector3::Up) * m_cb_frame_cpu.projection_ortho;
+                    dirty_orthographic_projection        = false;
                 }
             }
 
@@ -349,14 +350,14 @@ namespace Spartan
             Renderer_Upsampling upsampling_mode = GetOption<Renderer_Upsampling>(Renderer_Option::Upsampling);
             if (upsampling_mode == Renderer_Upsampling::FSR2 || GetOption<Renderer_Antialiasing>(Renderer_Option::Antialiasing) == Renderer_Antialiasing::Taa)
             {
-                RHI_AMD_FidelityFX::FSR2_GenerateJitterSample(&m_jitter_offset.x, &m_jitter_offset.y);
-                m_jitter_offset.x          = (m_jitter_offset.x / m_resolution_render.x);
-                m_jitter_offset.y          = (m_jitter_offset.y / m_resolution_render.y);
-                m_cb_frame_cpu.projection *= Matrix::CreateTranslation(Vector3(m_jitter_offset.x, m_jitter_offset.y, 0.0f));
+                RHI_AMD_FidelityFX::FSR2_GenerateJitterSample(&jitter_offset.x, &jitter_offset.y);
+                jitter_offset.x            = (jitter_offset.x / m_resolution_render.x);
+                jitter_offset.y            = (jitter_offset.y / m_resolution_render.y);
+                m_cb_frame_cpu.projection *= Matrix::CreateTranslation(Vector3(jitter_offset.x, jitter_offset.y, 0.0f));
             }
             else
             {
-                m_jitter_offset = Vector2::Zero;
+                jitter_offset = Vector2::Zero;
             }
             
             // Update the remaining of the frame buffer
@@ -377,7 +378,7 @@ namespace Spartan
             m_cb_frame_cpu.resolution_output      = m_resolution_output;
             m_cb_frame_cpu.resolution_render      = m_resolution_render;
             m_cb_frame_cpu.taa_jitter_previous    = m_cb_frame_cpu.taa_jitter_current;
-            m_cb_frame_cpu.taa_jitter_current     = m_jitter_offset;
+            m_cb_frame_cpu.taa_jitter_current     = jitter_offset;
             m_cb_frame_cpu.delta_time             = static_cast<float>(Timer::GetDeltaTimeSmoothedSec());
             m_cb_frame_cpu.time                   = static_cast<float>(Timer::GetTimeSec());
             m_cb_frame_cpu.bloom_intensity        = GetOption<float>(Renderer_Option::Bloom);
@@ -388,7 +389,7 @@ namespace Spartan
             m_cb_frame_cpu.exposure               = GetOption<float>(Renderer_Option::Exposure);
             m_cb_frame_cpu.luminance_max          = Display::GetLuminanceMax();
             m_cb_frame_cpu.shadow_resolution      = GetOption<float>(Renderer_Option::ShadowResolution);
-            m_cb_frame_cpu.frame                  = static_cast<uint32_t>(m_frame_num);
+            m_cb_frame_cpu.frame                  = static_cast<uint32_t>(frame_num);
             m_cb_frame_cpu.frame_mip_count        = GetRenderTarget(Renderer_RenderTexture::frame_render)->GetMipCount();
             m_cb_frame_cpu.ssr_mip_count          = GetRenderTarget(Renderer_RenderTexture::ssr)->GetMipCount();
             m_cb_frame_cpu.resolution_environment = Vector2(GetEnvironmentTexture()->GetWidth(), GetEnvironmentTexture()->GetHeight());
@@ -400,26 +401,25 @@ namespace Spartan
             m_cb_frame_cpu.set_bit(GetOption<bool>(Renderer_Option::ScreenSpaceShadows),     1 << 3);
         }
 
-        Lines_PreMain();
-        Pass_Main(m_cmd_current);
-        Lines_PostMain();
+        Pass_Frame(cmd_current);
 
         if (Window::IsFullScreen())
         {
-            m_cmd_current->BeginMarker("copy_to_back_buffer");
-            m_cmd_current->Copy(GetRenderTarget(Renderer_RenderTexture::frame_output).get(), m_swap_chain.get());
-            m_cmd_current->EndMarker();
+            cmd_current->BeginMarker("copy_to_back_buffer");
+            cmd_current->Copy(GetRenderTarget(Renderer_RenderTexture::frame_output).get(), swap_chain.get());
+            cmd_current->EndMarker();
         }
 
-        // Submit
-        m_cmd_current->End();
-        m_cmd_current->Submit();
+        OnFrameEnd(cmd_current);
 
-        // Update frame tracking
-        m_frame_num++;
-        m_is_odd_frame = (m_frame_num % 2) == 1;
+        // submit
+        cmd_current->End();
+        cmd_current->Submit();
+
+        // track frame
+        frame_num++;
     }
-    
+
     const RHI_Viewport& Renderer::GetViewport()
     {
         return m_viewport;
@@ -432,9 +432,9 @@ namespace Spartan
 
         if (m_viewport.width != width || m_viewport.height != height)
         {
-            m_viewport.width                = width;
-            m_viewport.height               = height;
-            m_dirty_orthographic_projection = true;
+            m_viewport.width              = width;
+            m_viewport.height             = height;
+            dirty_orthographic_projection = true;
         }
     }
 
@@ -605,7 +605,7 @@ namespace Spartan
         // this ensures that if any entities are deallocated by the world.
         // we'll still have some valid pointers until the are overridden by m_renderables_world.
 
-        lock_guard lock(m_mutex_entity_addition);
+        lock_guard lock(mutex_entity_addition);
 
         m_renderables_pending.clear();
 
@@ -620,7 +620,7 @@ namespace Spartan
             }
         }
 
-        m_add_new_entities = true;
+        add_new_entities = true;
     }
 
     void Renderer::OnClear()
@@ -659,12 +659,12 @@ namespace Spartan
         Input::SetMouseCursorVisible(!Window::IsFullScreen());
     }
 
-    void Renderer::OnResourceSafe(RHI_CommandList* cmd_list)
+    void Renderer::OnFrameStart(RHI_CommandList* cmd_list)
     {
-        // Acquire renderables
-        if (m_add_new_entities)
+        // acquire renderables
+        if (add_new_entities)
         {
-            // Clear previous state
+            // clear previous state
             m_renderables.clear();
             m_camera = nullptr;
 
@@ -704,82 +704,46 @@ namespace Spartan
                 }
             }
 
-            // Sort them by distance
+            // sort them by distance
             sort_renderables(&m_renderables[Renderer_Entity::Geometry_opaque], false);
             sort_renderables(&m_renderables[Renderer_Entity::Geometry_transparent], true);
 
             m_renderables_pending.clear();
-            m_add_new_entities = false;
+            add_new_entities = false;
         }
 
-        // Handle environment texture assignment requests
-        if (m_environment_texture_dirty)
+        // generate mips
         {
-            lock_guard lock(m_mutex_environment_texture);
-            m_environment_texture       = m_environment->GetTexture();
-            m_environment_texture_dirty = false;
-        }
-
-        // Handle texture mip generation requests
-        {
-            lock_guard<mutex> guard(m_mutex_mip_generation);
-
-            // Generate mips for any pending texture requests
-            for (weak_ptr<RHI_Texture> tex : m_textures_mip_generation)
+            lock_guard lock(mutex_mip_generation);
+            for (RHI_Texture* texture : textures_mip_generation)
             {
-                if (shared_ptr<RHI_Texture> texture = tex.lock())
-                {
-                    // Downsample
-                    Pass_Ffx_Spd(m_cmd_current, texture.get());
-
-                    // Set all generated mips to read only optimal
-                    texture->SetLayout(RHI_Image_Layout::Shader_Read_Only_Optimal, cmd_list, 0, texture->GetMipCount());
-
-                    // Destroy per mip resource views since they are no longer needed
-                    {
-                        // Remove unnecessary flags from texture (were only needed for the downsampling)
-                        uint32_t flags = texture->GetFlags();
-                        flags &= ~RHI_Texture_PerMipViews;
-                        flags &= ~RHI_Texture_Uav;
-                        texture->SetFlags(flags);
-
-                        // Destroy the resources associated with those flags
-                        {
-                            const bool destroy_main     = false;
-                            const bool destroy_per_view = true;
-                            texture->RHI_DestroyResource(destroy_main, destroy_per_view);
-                        }
-                    }
-                }
+                Pass_GenerateMips(cmd_list, texture);
             }
-
-            m_textures_mip_generation.clear();
+            textures_mip_generation.clear();
         }
 
-        if (RHI_Device::DeletionQueue_NeedsToParse())
-        {
-            RHI_Device::QueueWaitAll();
-            RHI_Device::DeletionQueue_Parse();
-            SP_LOG_INFO("Parsed deletion queue");
-        }
+        Lines_OneFrameStart();
+    }
+
+    void Renderer::OnFrameEnd(RHI_CommandList* cmd_list)
+    {
+        Lines_OnFrameEnd();
     }
 
     bool Renderer::IsCallingFromOtherThread()
     {
-        return m_render_thread_id != this_thread::get_id();
+        return render_thread_id != this_thread::get_id();
     }
 
     const shared_ptr<RHI_Texture> Renderer::GetEnvironmentTexture()
     {
-        return m_environment_texture ? m_environment_texture : GetStandardTexture(Renderer_StandardTexture::Black);
+        return environment_texture ? environment_texture : GetStandardTexture(Renderer_StandardTexture::Black);
     }
 
     void Renderer::SetEnvironment(Environment* environment)
     {
-        lock_guard lock(m_mutex_environment_texture);
-
-        m_environment = environment;
-        m_environment_texture_dirty = true;
+        lock_guard lock(mutex_environment_texture);
+        environment_texture = environment->GetTexture();
     }
 
     void Renderer::SetOption(Renderer_Option option, float value)
@@ -794,7 +758,7 @@ namespace Spartan
             // Shadow resolution
             else if (option == Renderer_Option::ShadowResolution)
             {
-                value = Helper::Clamp(value, static_cast<float>(m_resolution_shadow_min), static_cast<float>(RHI_Device::GetMaxTexture2dDimension()));
+                value = Helper::Clamp(value, static_cast<float>(resolution_shadow_min), static_cast<float>(RHI_Device::GetMaxTexture2dDimension()));
             }
         }
 
@@ -885,11 +849,11 @@ namespace Spartan
             }
             else if (option == Renderer_Option::Hdr)
             {
-                m_swap_chain->SetHdr(value == 1.0f);
+                swap_chain->SetHdr(value == 1.0f);
             }
             else if (option == Renderer_Option::Vsync)
             {
-                m_swap_chain->SetVsync(value == 1.0f);
+                swap_chain->SetVsync(value == 1.0f);
             }
         }
     }
@@ -906,18 +870,18 @@ namespace Spartan
 
     RHI_SwapChain* Renderer::GetSwapChain()
     {
-        return m_swap_chain.get();
+        return swap_chain.get();
     }
     
     void Renderer::Present()
     {
-        if (!m_is_rendering_allowed)
+        if (!is_rendering_allowed)
             return;
 
         SP_ASSERT_MSG(!Window::IsMinimised(), "Don't call present if the window is minimized");
-        SP_ASSERT(m_swap_chain->GetLayout() == RHI_Image_Layout::Present_Src);
+        SP_ASSERT(swap_chain->GetLayout() == RHI_Image_Layout::Present_Src);
 
-        m_swap_chain->Present();
+        swap_chain->Present();
 
         SP_FIRE_EVENT(EventType::RendererPostPresent);
     }
@@ -927,10 +891,10 @@ namespace Spartan
         // The external thread requests a flush from the renderer thread (to avoid a myriad of thread issues and Vulkan errors)
         if (IsCallingFromOtherThread())
         {
-            m_is_rendering_allowed = false;
-            m_flush_requested      = true;
+            is_rendering_allowed = false;
+            flush_requested      = true;
 
-            while (m_flush_requested)
+            while (flush_requested)
             {
                 SP_LOG_INFO("External thread is waiting for the renderer thread to flush...");
                 this_thread::sleep_for(chrono::milliseconds(16));
@@ -940,35 +904,29 @@ namespace Spartan
         }
 
         // Flushing
-        if (!m_is_rendering_allowed)
+        if (!is_rendering_allowed)
         {
             SP_LOG_INFO("Renderer thread is flushing...");
             RHI_Device::QueueWaitAll();
         }
 
-        m_flush_requested = false;
+        flush_requested = false;
+    }
+
+    void Renderer::EnqueueForMipGeneration(RHI_Texture* texture)
+    {
+        lock_guard<mutex> guard(mutex_mip_generation);
+        textures_mip_generation.push_back(texture);
     }
 
     RHI_CommandList* Renderer::GetCmdList()
     {
-        return m_cmd_current;
+        return cmd_current;
     }
 
     RHI_Api_Type Renderer::GetRhiApiType()
     {
         return RHI_Context::api_type;
-    }
-
-    void Renderer::RequestTextureMipGeneration(shared_ptr<RHI_Texture> texture)
-    {
-        SP_ASSERT(texture != nullptr);
-        SP_ASSERT(texture->GetRhiSrv() != nullptr);
-        SP_ASSERT(texture->HasMips());        // Ensure the texture requires mips
-        SP_ASSERT(texture->HasPerMipViews()); // Ensure that the texture has per mip views since they are required for GPU downsampling.
-        SP_ASSERT(texture->IsReadyForUse());  // Ensure that any loading and resource creation has finished
-
-        lock_guard<mutex> guard(m_mutex_mip_generation);
-        m_textures_mip_generation.push_back(texture);
     }
 
     RHI_Texture* Renderer::GetFrameTexture()
@@ -978,7 +936,7 @@ namespace Spartan
 
     uint64_t Renderer::GetFrameNum()
     {
-        return m_frame_num;
+        return frame_num;
     }
 
     shared_ptr<Camera> Renderer::GetCamera()
