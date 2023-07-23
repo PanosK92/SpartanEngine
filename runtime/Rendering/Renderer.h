@@ -78,10 +78,13 @@ namespace Spartan
         static RHI_SwapChain* GetSwapChain();
         static void Present();
 
+        // Mip generation
+        static void EnqueueForMipGeneration(RHI_Texture* texture);
+        static void Pass_GenerateMips(RHI_CommandList* cmd_list, RHI_Texture* texture);
+
         // Misc
         static void Flush();
         static void SetGlobalShaderResources(RHI_CommandList* cmd_list);
-        static void RequestTextureMipGeneration(std::shared_ptr<RHI_Texture> texture);
         static uint64_t GetFrameNum();
         static RHI_Api_Type GetRhiApiType();
 
@@ -152,7 +155,7 @@ namespace Spartan
         static void CreateRenderTextures(const bool create_render, const bool create_output, const bool create_fixed, const bool create_dynamic);
 
         // Passes - Core
-        static void Pass_Main(RHI_CommandList* cmd_list);
+        static void Pass_Frame(RHI_CommandList* cmd_list);
         static void Pass_ShadowMaps(RHI_CommandList* cmd_list, const bool is_transparent_pass);
         static void Pass_ReflectionProbes(RHI_CommandList* cmd_list);
         static void Pass_Depth_Prepass(RHI_CommandList* cmd_list);
@@ -192,12 +195,15 @@ namespace Spartan
         static void OnFullScreenToggled();
 
         // Lines
-        static void Lines_PreMain();
-        static void Lines_PostMain();
+        static void Lines_OneFrameStart();
+        static void Lines_OnFrameEnd();
+
+        // Frame
+        static void OnFrameStart(RHI_CommandList* cmd_list);
+        static void OnFrameEnd(RHI_CommandList* cmd_list);
 
         // Misc
         static bool IsCallingFromOtherThread();
-        static void OnResourceSafe(RHI_CommandList* cmd_list);
         static void DestroyResources();
 
         // misc
