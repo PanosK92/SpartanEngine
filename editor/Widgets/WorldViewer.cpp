@@ -85,7 +85,7 @@ namespace
                     {
                         Spartan::ThreadPool::AddTask([]()
                         {
-                            Spartan::World::CreateDefaultWorldPhysicsCube();
+                            Spartan::World::CreateDefaultWorldPickablePhysicsCube();
                         });
                     }
                     else if (item_index == 2)

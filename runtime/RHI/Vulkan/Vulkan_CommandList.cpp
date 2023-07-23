@@ -96,7 +96,7 @@ namespace Spartan
             query_pool_create_info.queryType             = VK_QUERY_TYPE_TIMESTAMP;
             query_pool_create_info.queryCount            = m_max_timestamps;
 
-            auto query_pool = reinterpret_cast<VkQueryPool*>(&m_query_pool);
+            auto query_pool = reinterpret_cast<VkQueryPool*>(&m_rhi_query_pool);
             SP_VK_ASSERT_MSG(vkCreateQueryPool(RHI_Context::device, &query_pool_create_info, nullptr, query_pool),
                 "Failed to created query pool");
 
@@ -116,10 +116,10 @@ namespace Spartan
 
     RHI_CommandList::~RHI_CommandList()
     {
-        if (m_query_pool)
+        if (m_rhi_query_pool)
         {
-            RHI_Device::DeletionQueue_Add(RHI_Resource_Type::QueryPool, m_query_pool);
-            m_query_pool = nullptr;
+            RHI_Device::DeletionQueue_Add(RHI_Resource_Type::QueryPool, m_rhi_query_pool);
+            m_rhi_query_pool = nullptr;
         }
     }
 
@@ -132,7 +132,7 @@ namespace Spartan
         {
             if (RHI_Context::gpu_profiling)
             {
-                if (m_query_pool)
+                if (m_rhi_query_pool)
                 {
                     if (m_timestamp_index != 0)
                     {
@@ -142,7 +142,7 @@ namespace Spartan
 
                         vkGetQueryPoolResults(
                             RHI_Context::device,                    // device
-                            static_cast<VkQueryPool>(m_query_pool), // queryPool
+                            static_cast<VkQueryPool>(m_rhi_query_pool), // queryPool
                             0,                                      // firstQuery
                             query_count,                            // queryCount
                             query_count * stride,                   // dataSize
@@ -166,7 +166,7 @@ namespace Spartan
         // Reset query pool - Has to be done after vkBeginCommandBuffer or a VK_DEVICE_LOST will occur
         if (m_queue_type != RHI_Queue_Type::Copy)
         {
-            vkCmdResetQueryPool(static_cast<VkCommandBuffer>(m_rhi_resource), static_cast<VkQueryPool>(m_query_pool), 0, m_max_timestamps);
+            vkCmdResetQueryPool(static_cast<VkCommandBuffer>(m_rhi_resource), static_cast<VkQueryPool>(m_rhi_query_pool), 0, m_max_timestamps);
         }
 
         // Update states
@@ -382,7 +382,6 @@ namespace Spartan
 
     void RHI_CommandList::ClearPipelineStateRenderTargets(RHI_PipelineState& pipeline_state)
     {
-        // Validate state
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
         uint32_t attachment_count = 0;
@@ -746,7 +745,6 @@ namespace Spartan
 
     void RHI_CommandList::SetScissorRectangle(const Math::Rectangle& scissor_rectangle) const
     {
-        // Validate command list state
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
         VkRect2D vk_scissor;
@@ -765,7 +763,6 @@ namespace Spartan
 
     void RHI_CommandList::SetBufferVertex(const RHI_VertexBuffer* buffer)
     {
-        // Validate command list state
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
         // Skip if already set
@@ -790,7 +787,6 @@ namespace Spartan
 
     void RHI_CommandList::SetBufferIndex(const RHI_IndexBuffer* buffer)
     {
-        // Validate command list state
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
         if (m_index_buffer_id == buffer->GetObjectId())
@@ -810,7 +806,6 @@ namespace Spartan
 
     void RHI_CommandList::SetConstantBuffer(const uint32_t slot, RHI_ConstantBuffer* constant_buffer) const
     {
-        // Validate command list state
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
         if (!m_descriptor_layout_current)
@@ -825,7 +820,6 @@ namespace Spartan
 
     void RHI_CommandList::SetSampler(const uint32_t slot, RHI_Sampler* sampler) const
     {
-        // Validate command list state
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
         if (!m_descriptor_layout_current)
@@ -929,7 +923,6 @@ namespace Spartan
 
     void RHI_CommandList::SetStructuredBuffer(const uint32_t slot, RHI_StructuredBuffer* structured_buffer) const
     {
-        // Validate command list state
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
         if (!m_descriptor_layout_current)
@@ -961,10 +954,10 @@ namespace Spartan
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
         SP_ASSERT(RHI_Context::gpu_profiling);
-        SP_ASSERT(m_query_pool != nullptr);
+        SP_ASSERT(m_rhi_query_pool != nullptr);
 
         uint32_t timestamp_index = m_timestamp_index;
-        vkCmdWriteTimestamp(static_cast<VkCommandBuffer>(m_rhi_resource), VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, static_cast<VkQueryPool>(m_query_pool), timestamp_index);
+        vkCmdWriteTimestamp(static_cast<VkCommandBuffer>(m_rhi_resource), VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, static_cast<VkQueryPool>(m_rhi_query_pool), timestamp_index);
         m_timestamp_index++;
 
         return timestamp_index;
@@ -974,9 +967,9 @@ namespace Spartan
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
         SP_ASSERT(RHI_Context::gpu_profiling);
-        SP_ASSERT(m_query_pool != nullptr);
+        SP_ASSERT(m_rhi_query_pool != nullptr);
 
-        vkCmdWriteTimestamp(static_cast<VkCommandBuffer>(m_rhi_resource), VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, static_cast<VkQueryPool>(m_query_pool), m_timestamp_index++);
+        vkCmdWriteTimestamp(static_cast<VkCommandBuffer>(m_rhi_resource), VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, static_cast<VkQueryPool>(m_rhi_query_pool), m_timestamp_index++);
     }
 
     float RHI_CommandList::GetTimestampDuration(const uint32_t timestamp_index)

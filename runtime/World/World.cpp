@@ -467,7 +467,7 @@ namespace Spartan
         }
     }
 
-    void World::CreateDefaultWorldPhysicsCube()
+    void World::CreateDefaultWorldPickablePhysicsCube()
     {
         CreateDefaultWorldCommon(true);
 
