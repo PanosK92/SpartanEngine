@@ -290,7 +290,7 @@ namespace Spartan
         // Request GPU based mip generation (if needed)
         if (m_flags & RHI_Texture_Mips)
         {
-            Renderer::EnqueueForMipGeneration(this);
+            Renderer::AddTextureForMipGeneration(this);
         }
 
         return true;
