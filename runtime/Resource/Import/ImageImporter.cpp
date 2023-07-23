@@ -256,7 +256,6 @@ namespace Spartan
     
         // Most GPUs can't use a 32 bit RGB texture as a color attachment.
         // Vulkan tells you, your GPU doesn't support it.
-        // D3D11 seems to be doing some sort of emulation under the hood while throwing some warnings regarding sampling it.
         // So to prevent that, we maintain the 32 bits and convert to an RGBA format.
         if (get_channel_count(bitmap) == 3 && get_bits_per_channel(bitmap) == 32)
         {

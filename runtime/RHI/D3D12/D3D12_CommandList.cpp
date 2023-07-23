@@ -324,17 +324,18 @@ namespace Spartan
         SP_ASSERT_MSG(false, "Function is not implemented");
     }
 
-    void RHI_CommandList::BeginTimestamp(void* query)
+    uint32_t RHI_CommandList::BeginTimestamp()
+    {
+        SP_ASSERT_MSG(false, "Function is not implemented");
+        return 0;
+    }
+
+    void RHI_CommandList::EndTimestamp()
     {
         SP_ASSERT_MSG(false, "Function is not implemented");
     }
 
-    void RHI_CommandList::EndTimestamp(void* query)
-    {
-        SP_ASSERT_MSG(false, "Function is not implemented");
-    }
-
-    float RHI_CommandList::GetTimestampDuration(void* query_start, void* query_end, const uint32_t pass_index)
+    float RHI_CommandList::GetTimestampDuration(const uint32_t timestamp_index)
     {
         return 0.0f;
     }

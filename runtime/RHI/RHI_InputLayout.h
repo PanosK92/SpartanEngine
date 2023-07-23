@@ -118,12 +118,6 @@ namespace Spartan
 
                 m_vertex_size = sizeof(RHI_Vertex_PosTexNorTan);
             }
-
-            // This only applies to D3D11
-            if (vertex_shader_blob && !m_vertex_attributes.empty())
-            {
-                SP_ASSERT_MSG(_CreateResource(vertex_shader_blob), "Failed to create input layout");
-            }
         }
 
         RHI_Vertex_Type GetVertexType()                                const { return m_vertex_type; }

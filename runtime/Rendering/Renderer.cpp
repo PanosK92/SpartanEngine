@@ -338,14 +338,14 @@ namespace Spartan
 
                 if (dirty_orthographic_projection)
                 { 
-                    // Near clip does not affect depth accuracy in orthographic projection, so set it to 0 to avoid problems which can result an infinitely small [3,2] (NaN) after the multiplication below.
+                    // near clip does not affect depth accuracy in orthographic projection, so set it to 0 to avoid problems which can result an infinitely small [3,2] (NaN) after the multiplication below.
                     m_cb_frame_cpu.projection_ortho      = Matrix::CreateOrthographicLH(m_viewport.width, m_viewport.height, 0.0f, far_plane);
                     m_cb_frame_cpu.view_projection_ortho = Matrix::CreateLookAtLH(Vector3(0, 0, -near_plane), Vector3::Forward, Vector3::Up) * m_cb_frame_cpu.projection_ortho;
                     dirty_orthographic_projection        = false;
                 }
             }
 
-            // Generate jitter sample in case FSR (which also does TAA) is enabled. D3D11 only receives FXAA so it's ignored at this point.
+            // generate jitter sample in case FSR (which also does TAA) is enabled
             Renderer_Upsampling upsampling_mode = GetOption<Renderer_Upsampling>(Renderer_Option::Upsampling);
             if (upsampling_mode == Renderer_Upsampling::FSR2 || GetOption<Renderer_Antialiasing>(Renderer_Option::Antialiasing) == Renderer_Antialiasing::Taa)
             {
@@ -359,7 +359,7 @@ namespace Spartan
                 jitter_offset = Vector2::Zero;
             }
             
-            // Update the remaining of the frame buffer
+            // update the remaining of the frame buffer
             m_cb_frame_cpu.view_projection_previous = m_cb_frame_cpu.view_projection;
             m_cb_frame_cpu.view_projection          = m_cb_frame_cpu.view * m_cb_frame_cpu.projection;
             m_cb_frame_cpu.view_projection_inv      = Matrix::Invert(m_cb_frame_cpu.view_projection);

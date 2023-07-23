@@ -31,11 +31,7 @@ using namespace std;
 namespace Spartan
 {
     // API specific
-    #if defined(API_GRAPHICS_D3D11)
-        ID3D11Device5* RHI_Context::device;
-        ID3D11DeviceContext4* RHI_Context::device_context;
-        ID3DUserDefinedAnnotation* RHI_Context::annotation;
-    #elif defined(API_GRAPHICS_D3D12)
+#   if defined(API_GRAPHICS_D3D12)
         ID3D12Device* RHI_Context::device;
     #elif defined(API_GRAPHICS_VULKAN)
         VkInstance RHI_Context::instance;
@@ -58,13 +54,7 @@ namespace Spartan
 
     void RHI_Context::Initialize()
     {
-        #if defined(API_GRAPHICS_D3D11)
-            api_type            = RHI_Api_Type::D3d11;
-            api_type_str        = "D3D11";
-            device              = nullptr;
-            device_context      = nullptr;
-            annotation          = nullptr;
-        #elif defined(API_GRAPHICS_D3D12)
+        #if defined(API_GRAPHICS_D3D12)
             api_type            = RHI_Api_Type::D3d12;
             api_type_str        = "D3D12";
             device              = nullptr;
