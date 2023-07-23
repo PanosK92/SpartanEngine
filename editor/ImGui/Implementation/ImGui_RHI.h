@@ -22,7 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #pragma once
 
 //= INCLUDES ==================================
-#include <vector>
+#include <array>
 #include "ImGui_RHI.h"
 #include "../Source/imgui.h"
 #include "Core/Event.h"
@@ -53,32 +53,36 @@ namespace ImGui::RHI
     using namespace std;
     //======================
 
+    static const uint32_t buffer_count = 2;
+
     struct ViewportResources
     {
-        RHI_CommandPool* cmd_pool = nullptr;
-        vector<unique_ptr<RHI_IndexBuffer>>  index_buffers;
-        vector<unique_ptr<RHI_VertexBuffer>> vertex_buffers;
-        uint32_t cb_index = 0;
-        array<shared_ptr<RHI_ConstantBuffer>, 2> cb_gpu;
-        Cb_ImGui cb_cpu;
+        uint32_t buffer_index = 0;
 
+        RHI_CommandPool* cmd_pool = nullptr;
+        array<unique_ptr<RHI_IndexBuffer>,    buffer_count> index_buffers;
+        array<unique_ptr<RHI_VertexBuffer>,   buffer_count> vertex_buffers;
+        array<shared_ptr<RHI_ConstantBuffer>, buffer_count> cb_gpu;
+        Cb_ImGui cb_cpu;
+        
         ViewportResources() = default;
         ViewportResources(const char* name, RHI_SwapChain* swapchain)
         {
-            // Allocate command pool
+            // allocate command pool
             cmd_pool = RHI_Device::AllocateCommandPool("imgui", swapchain->GetObjectId(), RHI_Queue_Type::Graphics);
 
-            // Allocate constant buffer
+            // allocate buffers
+            for (uint32_t i = 0; i < buffer_count; i++)
             {
-                cb_gpu[0] = make_shared<RHI_ConstantBuffer>(name);
-                cb_gpu[0]->Create<Cb_ImGui>(256);
+                cb_gpu[i] = make_shared<RHI_ConstantBuffer>(name);
+                cb_gpu[i]->Create<Cb_ImGui>(256);
 
-                cb_gpu[1] = make_shared<RHI_ConstantBuffer>(name);
-                cb_gpu[1]->Create<Cb_ImGui>(256);
+                index_buffers[i]  = make_unique<RHI_IndexBuffer>(true, name);
+                vertex_buffers[i] = make_unique<RHI_VertexBuffer>(true, name);
             }
         }
 
-        shared_ptr<RHI_ConstantBuffer> GetCbGpu() const { return cb_gpu[cb_index]; }
+        shared_ptr<RHI_ConstantBuffer> GetCbGpu() const { return cb_gpu[buffer_index]; }
     };
 
     struct WindowData
@@ -90,7 +94,7 @@ namespace ImGui::RHI
     // Forward Declarations
     void InitialisePlatformInterface();
 
-    // Resources
+    // Editor resources (main window)
     static shared_ptr<RHI_Texture>           g_font_atlas;
     static shared_ptr<RHI_DepthStencilState> g_depth_stencil_state;
     static shared_ptr<RHI_RasterizerState>   g_rasterizer_state;
@@ -101,21 +105,23 @@ namespace ImGui::RHI
 
     static void destroy_rhi_resources()
     {
-        g_font_atlas              = nullptr;
-        g_depth_stencil_state     = nullptr;
-        g_rasterizer_state        = nullptr;
-        g_blend_state             = nullptr;
-        g_shader_vertex           = nullptr;
-        g_shader_pixel            = nullptr;
-        g_viewport_data.cb_gpu[0] = nullptr;
-        g_viewport_data.cb_gpu[1] = nullptr;
-        g_viewport_data.index_buffers.clear();
-        g_viewport_data.vertex_buffers.clear();
+        g_font_atlas                      = nullptr;
+        g_depth_stencil_state             = nullptr;
+        g_rasterizer_state                = nullptr;
+        g_blend_state                     = nullptr;
+        g_shader_vertex                   = nullptr;
+        g_shader_pixel                    = nullptr;
+        g_viewport_data.cb_gpu[0]         = nullptr;
+        g_viewport_data.cb_gpu[1]         = nullptr;
+        g_viewport_data.index_buffers[0]  = nullptr;
+        g_viewport_data.index_buffers[1]  = nullptr;
+        g_viewport_data.vertex_buffers[0] = nullptr;
+        g_viewport_data.vertex_buffers[1] = nullptr;
     }
 
-    inline void Initialize()
+    static void Initialize()
     {
-        // Create required RHI objects
+        // create required RHI objects
         {
             g_viewport_data = ViewportResources("imgui", Renderer::GetSwapChain());
 
@@ -142,7 +148,7 @@ namespace ImGui::RHI
                 RHI_Blend_Operation::Add  // destination op alpha
             );
 
-            // Compile shaders
+            // compile shaders
             {
                 const string shader_path = ResourceCache::GetResourceDirectory(ResourceDirectory::Shaders) + "\\ImGui.hlsl";
 
@@ -156,31 +162,33 @@ namespace ImGui::RHI
             }
         }
 
-        // Font atlas
+        // font atlas
         {
-            unsigned char* pixels;
-            int atlas_width, atlas_height, bpp;
-            auto& io = GetIO();
+            unsigned char* pixels = nullptr;
+            int atlas_width       = 0;
+            int atlas_height      = 0;
+            int bpp               = 0;
+            ImGuiIO& io           = GetIO();
             io.Fonts->GetTexDataAsRGBA32(&pixels, &atlas_width, &atlas_height, &bpp);
 
-            // Copy pixel data
-            const uint32_t size = atlas_width * atlas_height * bpp;
+            // copy pixel data
             vector<RHI_Texture_Slice> texture_data;
             vector<std::byte>& mip = texture_data.emplace_back().mips.emplace_back().bytes;
+            const uint32_t size = atlas_width * atlas_height * bpp;
             mip.resize(size);
             mip.reserve(size);
             memcpy(&mip[0], reinterpret_cast<std::byte*>(pixels), size);
 
-            // Upload texture to graphics system
+            // upload texture to graphics system
             g_font_atlas = make_shared<RHI_Texture2D>(atlas_width, atlas_height, RHI_Format::R8G8B8A8_Unorm, RHI_Texture_Srv, texture_data, "imgui_font_atlas");
             io.Fonts->TexID = static_cast<ImTextureID>(g_font_atlas.get());
         }
 
-        // Setup back-end capabilities flags
-        auto& io = GetIO();
+        // setup back-end capabilities flags
+        ImGuiIO& io             = GetIO();
         io.BackendFlags        |= ImGuiBackendFlags_RendererHasViewports;
         io.BackendFlags        |= ImGuiBackendFlags_RendererHasVtxOffset;
-        io.BackendRendererName = "RHI";
+        io.BackendRendererName  = "RHI";
         if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
         {
             InitialisePlatformInterface();
@@ -189,60 +197,48 @@ namespace ImGui::RHI
         SP_SUBSCRIBE_TO_EVENT(EventType::RendererOnShutdown, SP_EVENT_HANDLER_STATIC(destroy_rhi_resources));
     }
 
-    inline void Shutdown()
+    static void Shutdown()
     {
         DestroyPlatformWindows();
     }
 
-    inline void Render(ImDrawData* draw_data, WindowData* window_data = nullptr, const bool clear = true)
+    static void Render(ImDrawData* draw_data, WindowData* window_data = nullptr, const bool clear = true)
     {
         SP_ASSERT(draw_data != nullptr);
 
-        // Don't render when minimised
+        // don't render when minimised
         if (draw_data->DisplaySize.x == 0 || draw_data->DisplaySize.y == 0)
             return;
 
-        // Get swap chain and cmd list
+        // get swap chain and cmd list
         bool is_child_window         = window_data != nullptr;
         RHI_SwapChain* swap_chain    = is_child_window ? window_data->swapchain.get() : Renderer::GetSwapChain();
         ViewportResources* resources = is_child_window ? window_data->viewport_data.get() : &g_viewport_data;
 
-        // Tick the command pool
+        // tick the command pool
         if (resources->cmd_pool->Tick())
         {
             // switch to the next constant buffer
-            resources->cb_index = (resources->cb_index + 1) % 2;
+            resources->buffer_index = (resources->buffer_index + 1) % buffer_count;
             resources->GetCbGpu()->ResetOffset();
         }
 
-        // Get current command list
+        // get current command list
         RHI_CommandList* cmd_list = resources->cmd_pool->GetCurrentCommandList();
         cmd_list->Begin();
 
-        // Begin timeblock
+        // begin timeblock
         const char* name = is_child_window ? "imgui_window_child" : "imgui_window_main";
         // don't profile child windows, the profiler also requires more work in order to not
         // crash when they are brought back into the main viewport and their command pool is destroyed
         bool gpu_timing = !is_child_window;
         cmd_list->BeginTimeblock(name, true, gpu_timing);
 
-        // Update vertex and index buffers
-        RHI_VertexBuffer* vertex_buffer = nullptr;
-        RHI_IndexBuffer* index_buffer   = nullptr;
+        // update vertex and index buffers
+        RHI_VertexBuffer* vertex_buffer = resources->vertex_buffers[resources->buffer_index].get();
+        RHI_IndexBuffer* index_buffer   = resources->index_buffers[resources->buffer_index].get();
         {
-            const uint32_t cmd_index = resources->cmd_pool->GetCommandListIndex();
-
-            while (resources->vertex_buffers.size() <= cmd_index)
-            {
-                bool is_mappable = true;
-                resources->vertex_buffers.emplace_back(make_unique<RHI_VertexBuffer>(is_mappable, "imgui"));
-                resources->index_buffers.emplace_back(make_unique<RHI_IndexBuffer>(is_mappable, "imgui"));
-            }
-
-            vertex_buffer = resources->vertex_buffers[cmd_index].get();
-            index_buffer  = resources->index_buffers[cmd_index].get();
-
-            // Grow vertex buffer as needed
+            // grow vertex buffer as needed
             if (vertex_buffer->GetVertexCount() < static_cast<uint32_t>(draw_data->TotalVtxCount))
             {
                 const uint32_t vertex_count     = vertex_buffer->GetVertexCount();
@@ -255,7 +251,7 @@ namespace ImGui::RHI
                 }
             }
 
-            // Grow index buffer as needed
+            // grow index buffer as needed
             if (index_buffer->GetIndexCount() < static_cast<uint32_t>(draw_data->TotalIdxCount))
             {
                 const uint32_t index_count     = index_buffer->GetIndexCount();
@@ -269,8 +265,8 @@ namespace ImGui::RHI
             }
 
             // Copy and convert all vertices into a single contiguous buffer
-            ImDrawVert* vtx_dst = static_cast<ImDrawVert*>(vertex_buffer->Map());
-            ImDrawIdx*  idx_dst = static_cast<ImDrawIdx*>(index_buffer->Map());
+            ImDrawVert* vtx_dst = static_cast<ImDrawVert*>(vertex_buffer->GetMappedData());
+            ImDrawIdx*  idx_dst = static_cast<ImDrawIdx*>(index_buffer->GetMappedData());
             if (vtx_dst && idx_dst)
             {
                 for (auto i = 0; i < draw_data->CmdListsCount; i++)
@@ -281,13 +277,10 @@ namespace ImGui::RHI
                     vtx_dst += imgui_cmd_list->VtxBuffer.Size;
                     idx_dst += imgui_cmd_list->IdxBuffer.Size;
                 }
-            
-                vertex_buffer->Unmap();
-                index_buffer->Unmap();
             }
         }
 
-        // Define pipeline state
+        // define pipeline state
         static RHI_PipelineState pso = {};
         pso.shader_vertex            = g_shader_vertex.get();
         pso.shader_pixel             = g_shader_pixel.get();
@@ -299,20 +292,17 @@ namespace ImGui::RHI
         pso.dynamic_scissor          = true;
         pso.primitive_topology       = RHI_PrimitiveTopology_Mode::TriangleList;
 
-        // Set pipeline state
+        // start rendering
         cmd_list->SetPipelineState(pso);
-
-        // Render
         cmd_list->BeginRenderPass();
         {
-            // Setup orthographic projection matrix into our constant buffer
-            // Our visible ImGui space lies from draw_data->DisplayPos (top left) to 
-            // draw_data->DisplayPos+data_data->DisplaySize (bottom right). DisplayMin is (0,0) for single viewport apps.
+            // compute transformation matrix
             {
                 const float L = draw_data->DisplayPos.x;
                 const float R = draw_data->DisplayPos.x + draw_data->DisplaySize.x;
                 const float T = draw_data->DisplayPos.y;
                 const float B = draw_data->DisplayPos.y + draw_data->DisplaySize.y;
+
                 resources->cb_cpu.transform = Matrix
                 (
                     2.0f / (R - L), 0.0f, 0.0f, (R + L) / (L - R),
@@ -325,16 +315,14 @@ namespace ImGui::RHI
             cmd_list->SetBufferVertex(vertex_buffer);
             cmd_list->SetBufferIndex(index_buffer);
 
-            // Render command lists
-            int global_vtx_offset  = 0;
-            int global_idx_offset  = 0;
-            const ImVec2& clip_off = draw_data->DisplayPos;
-            Math::Rectangle scissor_rect;
-            for (int i = 0; i < draw_data->CmdListsCount; i++)
+            // render command lists
+            uint32_t global_vtx_offset = 0;
+            uint32_t global_idx_offset = 0;
+            for (uint32_t i = 0; i < static_cast<uint32_t>(draw_data->CmdListsCount); i++)
             {
                 ImDrawList* cmd_list_imgui = draw_data->CmdLists[i];
 
-                for (int cmd_i = 0; cmd_i < cmd_list_imgui->CmdBuffer.Size; cmd_i++)
+                for (uint32_t cmd_i = 0; cmd_i < static_cast<uint32_t>(cmd_list_imgui->CmdBuffer.Size); cmd_i++)
                 {
                     const ImDrawCmd* pcmd = &cmd_list_imgui->CmdBuffer[cmd_i];
 
@@ -344,16 +332,18 @@ namespace ImGui::RHI
                     }
                     else
                     {
-                        // Compute scissor rectangle
-                        scissor_rect.left   = pcmd->ClipRect.x - clip_off.x;
-                        scissor_rect.top    = pcmd->ClipRect.y - clip_off.y;
-                        scissor_rect.right  = pcmd->ClipRect.z - clip_off.x;
-                        scissor_rect.bottom = pcmd->ClipRect.w - clip_off.y;
+                        // set scissor rectangle
+                        {
+                            Math::Rectangle scissor_rect;
+                            scissor_rect.left   = pcmd->ClipRect.x - draw_data->DisplayPos.x;
+                            scissor_rect.top    = pcmd->ClipRect.y - draw_data->DisplayPos.y;
+                            scissor_rect.right  = pcmd->ClipRect.z - draw_data->DisplayPos.x;
+                            scissor_rect.bottom = pcmd->ClipRect.w - draw_data->DisplayPos.y;
 
-                        // Set scissor rectangle
-                        cmd_list->SetScissorRectangle(scissor_rect);
+                            cmd_list->SetScissorRectangle(scissor_rect);
+                        }
 
-                        // Set texture
+                        // set texture
                         resources->cb_cpu.options_texture_visualisation = 0;
                         if (RHI_Texture* texture = static_cast<RHI_Texture*>(pcmd->TextureId))
                         {
@@ -369,17 +359,18 @@ namespace ImGui::RHI
                             }
                         }
 
-                        // Update ImGui buffer
+                        // update imgui buffer
                         resources->GetCbGpu()->Update(&resources->cb_cpu);
                         cmd_list->SetConstantBuffer(Renderer_BindingsCb::imgui, resources->GetCbGpu());
 
-                        // Draw
+                        // draw
                         cmd_list->DrawIndexed(pcmd->ElemCount, pcmd->IdxOffset + global_idx_offset, pcmd->VtxOffset + global_vtx_offset);
                     }
 
                 }
-                global_idx_offset += cmd_list_imgui->IdxBuffer.Size;
-                global_vtx_offset += cmd_list_imgui->VtxBuffer.Size;
+
+                global_idx_offset += static_cast<uint32_t>(cmd_list_imgui->IdxBuffer.Size);
+                global_vtx_offset += static_cast<uint32_t>(cmd_list_imgui->VtxBuffer.Size);
             }
 
             cmd_list->EndRenderPass();

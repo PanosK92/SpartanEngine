@@ -161,16 +161,14 @@ namespace Spartan
             m_index_buffer->CreateDynamic<uint32_t>(static_cast<uint32_t>(indices.size()));
         }
 
-        if (const auto vertex_buffer = static_cast<RHI_Vertex_PosTex*>(m_vertex_buffer->Map()))
+        if (const auto vertex_buffer = static_cast<RHI_Vertex_PosTex*>(m_vertex_buffer->GetMappedData()))
         {
             copy(vertices.begin(), vertices.end(), vertex_buffer);
-            m_vertex_buffer->Unmap();
         }
 
-        if (const auto index_buffer = static_cast<uint32_t*>(m_index_buffer->Map()))
+        if (const auto index_buffer = static_cast<uint32_t*>(m_index_buffer->GetMappedData()))
         {
             copy(indices.begin(), indices.end(), index_buffer);
-            m_index_buffer->Unmap();
         }
     }
 }

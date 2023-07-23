@@ -72,14 +72,4 @@ namespace Spartan
         //m_vertexBufferView.StrideInBytes = SampleAssets::StandardVertexStride;
         //m_vertexBufferView.SizeInBytes = SampleAssets::VertexDataSize;
     }
-    
-    void* RHI_VertexBuffer::Map()
-    {
-        return nullptr;
-    }
-    
-    void RHI_VertexBuffer::Unmap()
-    {
-
-    }
 }

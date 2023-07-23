@@ -69,9 +69,7 @@ namespace Spartan
             _create(nullptr);
         }
 
-        void* Map();
-        void Unmap();
-
+        void* GetMappedData()     const { return m_mapped_data; }
         void* GetRhiResource()    const { return m_rhi_resource; }
         uint32_t GetStride()      const { return m_stride; }
         uint32_t GetVertexCount() const { return m_vertex_count; }

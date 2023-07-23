@@ -98,14 +98,4 @@ namespace Spartan
         // Set debug name
         RHI_Device::SetResourceName(m_rhi_resource, RHI_Resource_Type::Buffer, m_object_name);
     }
-
-    void* RHI_IndexBuffer::Map()
-    {
-        return m_mapped_data;
-    }
-
-    void RHI_IndexBuffer::Unmap()
-    {
-        // buffer is mapped on creation and unmapped during destruction
-    }
 }

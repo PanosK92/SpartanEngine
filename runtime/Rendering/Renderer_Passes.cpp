@@ -1874,9 +1874,8 @@ namespace Spartan
             if (vertex_count != 0)
             {
                 // Update vertex buffer
-                RHI_Vertex_PosCol* buffer = static_cast<RHI_Vertex_PosCol*>(m_vertex_buffer_lines->Map());
+                RHI_Vertex_PosCol* buffer = static_cast<RHI_Vertex_PosCol*>(m_vertex_buffer_lines->GetMappedData());
                 copy(m_line_vertices.begin(), m_line_vertices.end(), buffer);
-                m_vertex_buffer_lines->Unmap();
 
                 // Define pipeline state
                 static RHI_PipelineState pso;
