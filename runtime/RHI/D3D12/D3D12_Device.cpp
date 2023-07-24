@@ -319,4 +319,9 @@ namespace Spartan
     {
         return 0;
     }
+
+    uint32_t RHI_Device::GetPipelineCount()
+    {
+        return 0;
+    }
 }

@@ -96,6 +96,7 @@ namespace Spartan
         // Misc
         static bool IsValidResolution(const uint32_t width, const uint32_t height);
         static uint32_t GetEnabledGraphicsStages() { return m_enabled_graphics_shader_stages; }
+        static uint32_t GetPipelineCount();
 
         // Memory
         static uint32_t GetMemoryUsageMb();

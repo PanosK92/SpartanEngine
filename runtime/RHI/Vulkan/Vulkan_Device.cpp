@@ -1613,4 +1613,9 @@ namespace Spartan
 
         return static_cast<uint32_t>(bytes / 1024 / 1024);
     }
+
+    uint32_t RHI_Device::GetPipelineCount()
+    {
+        return static_cast<uint32_t>(cache::pipelines.size());
+    }
 }
