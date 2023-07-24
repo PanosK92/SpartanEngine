@@ -400,6 +400,7 @@ namespace Spartan
         const Math::Vector3& camera_position,
         const Math::Vector3& camera_rotation,
         const float directional_light_intensity,
+        const bool directional_light_cast_shadows,
         const char* soundtrack_file_path
     )
     {
@@ -432,6 +433,7 @@ namespace Spartan
             light->SetLightType(LightType::Directional);
             light->SetColor(Color::light_sky_sunrise);
             light->SetIntensity(directional_light_intensity);
+            light->SetShadowsEnabled(directional_light_cast_shadows);
         }
 
         // Music
@@ -532,7 +534,7 @@ namespace Spartan
     {
         Vector3 camera_position = Vector3(-1.1131f, 1.3112f, -1.8209f);
         Vector3 camera_rotation = Vector3(14.1965f, 43.3965f, 0.0f);
-        CreateDefaultWorldCommon(true, camera_position, camera_rotation, 400.0f, "project\\music\\vangelis_pulstar.mp3");
+        CreateDefaultWorldCommon(true, camera_position, camera_rotation, 400.0f, false, "project\\music\\vangelis_pulstar.mp3");
 
         // Point light
         {
@@ -571,7 +573,7 @@ namespace Spartan
         Vector3 camera_position           = Vector3(6.2f, 1.0f, -0.2f);
         Vector3 camera_rotation           = Vector3(0.0f, -90.0f, 0.0f);
         float directional_light_intensity = 20000.0f;
-        CreateDefaultWorldCommon(true, camera_position, camera_rotation, directional_light_intensity, "project\\music\\isola_any_day.mp3");
+        CreateDefaultWorldCommon(true, camera_position, camera_rotation, directional_light_intensity, true, "project\\music\\isola_any_day.mp3");
 
         // Point light - top of car
         {

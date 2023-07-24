@@ -289,13 +289,7 @@ namespace Spartan
         RHI_Device::Tick(frame_num);
 
         // Tick command pool
-        bool reset = cmd_pool->Tick();
-
-        // Begin
-        cmd_current = cmd_pool->GetCurrentCommandList();
-        cmd_current->Begin();
-
-        if (reset)
+        if (cmd_pool->Tick())
         {
             // switch to the next array of constant buffers and structured buffers
             m_resource_index = (m_resource_index + 1) % 2;
@@ -316,6 +310,10 @@ namespace Spartan
                 SP_LOG_INFO("Parsed deletion queue");
             }
         }
+
+        // Begin
+        cmd_current = cmd_pool->GetCurrentCommandList();
+        cmd_current->Begin();
 
         OnFrameStart(cmd_current);
 

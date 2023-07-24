@@ -55,18 +55,18 @@ namespace ImGui::RHI
 
     static const uint32_t buffer_count = 2;
 
-    struct ViewportResources
+    struct ViewportRhiResources
     {
         uint32_t buffer_index = 0;
 
         RHI_CommandPool* cmd_pool = nullptr;
         array<unique_ptr<RHI_IndexBuffer>,    buffer_count> index_buffers;
         array<unique_ptr<RHI_VertexBuffer>,   buffer_count> vertex_buffers;
-        array<shared_ptr<RHI_ConstantBuffer>, buffer_count> cb_gpu;
-        Cb_ImGui cb_cpu;
+        array<shared_ptr<RHI_ConstantBuffer>, buffer_count> constant_buffer;
+        Cb_ImGui constant_buffer_cpu;
         
-        ViewportResources() = default;
-        ViewportResources(const char* name, RHI_SwapChain* swapchain)
+        ViewportRhiResources() = default;
+        ViewportRhiResources(const char* name, RHI_SwapChain* swapchain)
         {
             // allocate command pool
             cmd_pool = RHI_Device::AllocateCommandPool("imgui", swapchain->GetObjectId(), RHI_Queue_Type::Graphics);
@@ -74,56 +74,56 @@ namespace ImGui::RHI
             // allocate buffers
             for (uint32_t i = 0; i < buffer_count; i++)
             {
-                cb_gpu[i] = make_shared<RHI_ConstantBuffer>(name);
-                cb_gpu[i]->Create<Cb_ImGui>(256);
+                constant_buffer[i] = make_shared<RHI_ConstantBuffer>(name);
+                constant_buffer[i]->Create<Cb_ImGui>(256);
 
                 index_buffers[i]  = make_unique<RHI_IndexBuffer>(true, name);
                 vertex_buffers[i] = make_unique<RHI_VertexBuffer>(true, name);
             }
         }
-
-        shared_ptr<RHI_ConstantBuffer> GetCbGpu() const { return cb_gpu[buffer_index]; }
     };
 
     struct WindowData
     {
-        shared_ptr<ViewportResources> viewport_data;
-        shared_ptr<RHI_SwapChain>     swapchain;
+        shared_ptr<ViewportRhiResources> viewport_rhi_resources;
+        shared_ptr<RHI_SwapChain>        swapchain;
     };
 
-    // forward Declarations
+    // forward declarations
     void InitialisePlatformInterface();
 
-    // editor resources (main window)
-    static shared_ptr<RHI_Texture>           g_font_atlas;
-    static shared_ptr<RHI_DepthStencilState> g_depth_stencil_state;
-    static shared_ptr<RHI_RasterizerState>   g_rasterizer_state;
-    static shared_ptr<RHI_BlendState>        g_blend_state;
-    static shared_ptr<RHI_Shader>            g_shader_vertex;
-    static shared_ptr<RHI_Shader>            g_shader_pixel;
-    ViewportResources                        g_viewport_data; // per swapchain resources
+    // main window rhi resources
+    ViewportRhiResources g_viewport_data;
+
+    // shared rhi resources (between all windows)
+    shared_ptr<RHI_Texture>           g_font_atlas;
+    shared_ptr<RHI_DepthStencilState> g_depth_stencil_state;
+    shared_ptr<RHI_RasterizerState>   g_rasterizer_state;
+    shared_ptr<RHI_BlendState>        g_blend_state;
+    shared_ptr<RHI_Shader>            g_shader_vertex;
+    shared_ptr<RHI_Shader>            g_shader_pixel;
 
     static void destroy_rhi_resources()
     {
-        g_font_atlas                      = nullptr;
-        g_depth_stencil_state             = nullptr;
-        g_rasterizer_state                = nullptr;
-        g_blend_state                     = nullptr;
-        g_shader_vertex                   = nullptr;
-        g_shader_pixel                    = nullptr;
-        g_viewport_data.cb_gpu[0]         = nullptr;
-        g_viewport_data.cb_gpu[1]         = nullptr;
-        g_viewport_data.index_buffers[0]  = nullptr;
-        g_viewport_data.index_buffers[1]  = nullptr;
-        g_viewport_data.vertex_buffers[0] = nullptr;
-        g_viewport_data.vertex_buffers[1] = nullptr;
+        g_font_atlas                       = nullptr;
+        g_depth_stencil_state              = nullptr;
+        g_rasterizer_state                 = nullptr;
+        g_blend_state                      = nullptr;
+        g_shader_vertex                    = nullptr;
+        g_shader_pixel                     = nullptr;
+        g_viewport_data.constant_buffer[0] = nullptr;
+        g_viewport_data.constant_buffer[1] = nullptr;
+        g_viewport_data.index_buffers[0]   = nullptr;
+        g_viewport_data.index_buffers[1]   = nullptr;
+        g_viewport_data.vertex_buffers[0]  = nullptr;
+        g_viewport_data.vertex_buffers[1]  = nullptr;
     }
 
     static void Initialize()
     {
         // create required RHI objects
         {
-            g_viewport_data = ViewportResources("imgui", Renderer::GetSwapChain());
+            g_viewport_data = ViewportRhiResources("imgui", Renderer::GetSwapChain());
 
             g_depth_stencil_state = make_shared<RHI_DepthStencilState>(false, false, RHI_Comparison_Function::Always);
 
@@ -210,33 +210,25 @@ namespace ImGui::RHI
         if (draw_data->DisplaySize.x == 0 || draw_data->DisplaySize.y == 0)
             return;
 
-        // get swap chain and cmd list
-        bool is_child_window         = window_data != nullptr;
-        RHI_SwapChain* swap_chain    = is_child_window ? window_data->swapchain.get() : Renderer::GetSwapChain();
-        ViewportResources* resources = is_child_window ? window_data->viewport_data.get() : &g_viewport_data;
+        // get the viewport resources
+        bool is_child_window                = window_data != nullptr;
+        ViewportRhiResources* rhi_resources = is_child_window ? window_data->viewport_rhi_resources.get() : &g_viewport_data;
 
         // tick the command pool
-        if (resources->cmd_pool->Tick())
+        if (rhi_resources->cmd_pool->Tick())
         {
-            // switch to the next constant buffer
-            resources->buffer_index = (resources->buffer_index + 1) % buffer_count;
-            resources->GetCbGpu()->ResetOffset();
+            // switch to the next buffers
+            rhi_resources->buffer_index = (rhi_resources->buffer_index + 1) % buffer_count;
+            rhi_resources->constant_buffer[rhi_resources->buffer_index]->ResetOffset();
         }
 
-        // get current command list
-        RHI_CommandList* cmd_list = resources->cmd_pool->GetCurrentCommandList();
-        cmd_list->Begin();
-
-        // begin timeblock
-        const char* name = is_child_window ? "imgui_window_child" : "imgui_window_main";
-        // don't profile child windows, the profiler also requires more work in order to not
-        // crash when they are brought back into the main viewport and their command pool is destroyed
-        bool gpu_timing = !is_child_window;
-        cmd_list->BeginTimeblock(name, true, gpu_timing);
+        // get rhi resources for this command buffer
+        shared_ptr<RHI_ConstantBuffer> constant_buffer = rhi_resources->constant_buffer[rhi_resources->buffer_index];
+        RHI_VertexBuffer* vertex_buffer                = rhi_resources->vertex_buffers[rhi_resources->buffer_index].get();
+        RHI_IndexBuffer* index_buffer                  = rhi_resources->index_buffers[rhi_resources->buffer_index].get();
+        RHI_CommandList* cmd_list                      = rhi_resources->cmd_pool->GetCurrentCommandList();
 
         // update vertex and index buffers
-        RHI_VertexBuffer* vertex_buffer = resources->vertex_buffers[resources->buffer_index].get();
-        RHI_IndexBuffer* index_buffer   = resources->index_buffers[resources->buffer_index].get();
         {
             // grow vertex buffer as needed
             if (vertex_buffer->GetVertexCount() < static_cast<uint32_t>(draw_data->TotalVtxCount))
@@ -264,7 +256,7 @@ namespace ImGui::RHI
                 }
             }
 
-            // copy and convert all vertices into a single contiguous buffer
+            // copy all imgui vertices into a single buffer
             ImDrawVert* vtx_dst = static_cast<ImDrawVert*>(vertex_buffer->GetMappedData());
             ImDrawIdx*  idx_dst = static_cast<ImDrawIdx*>(index_buffer->GetMappedData());
             if (vtx_dst && idx_dst)
@@ -272,13 +264,21 @@ namespace ImGui::RHI
                 for (auto i = 0; i < draw_data->CmdListsCount; i++)
                 {
                     const ImDrawList* imgui_cmd_list = draw_data->CmdLists[i];
+
                     memcpy(vtx_dst, imgui_cmd_list->VtxBuffer.Data, imgui_cmd_list->VtxBuffer.Size * sizeof(ImDrawVert));
                     memcpy(idx_dst, imgui_cmd_list->IdxBuffer.Data, imgui_cmd_list->IdxBuffer.Size * sizeof(ImDrawIdx));
+
                     vtx_dst += imgui_cmd_list->VtxBuffer.Size;
                     idx_dst += imgui_cmd_list->IdxBuffer.Size;
                 }
             }
         }
+
+        // begin timeblock
+        const char* name = is_child_window ? "imgui_window_child" : "imgui_window_main";
+        bool gpu_timing = !is_child_window; // profiler requires more work when windows are enter the main window and their command pool is destroyed
+        cmd_list->Begin();
+        cmd_list->BeginTimeblock(name, true, gpu_timing);
 
         // define pipeline state
         static RHI_PipelineState pso = {};
@@ -287,7 +287,7 @@ namespace ImGui::RHI
         pso.rasterizer_state         = g_rasterizer_state.get();
         pso.blend_state              = g_blend_state.get();
         pso.depth_stencil_state      = g_depth_stencil_state.get();
-        pso.render_target_swapchain  = swap_chain;
+        pso.render_target_swapchain  = is_child_window ? window_data->swapchain.get() : Renderer::GetSwapChain();
         pso.clear_color[0]           = clear ? Color::standard_black : rhi_color_dont_care;
         pso.dynamic_scissor          = true;
         pso.primitive_topology       = RHI_PrimitiveTopology_Mode::TriangleList;
@@ -303,7 +303,7 @@ namespace ImGui::RHI
                 const float T = draw_data->DisplayPos.y;
                 const float B = draw_data->DisplayPos.y + draw_data->DisplaySize.y;
 
-                resources->cb_cpu.transform = Matrix
+                rhi_resources->constant_buffer_cpu.transform = Matrix
                 (
                     2.0f / (R - L), 0.0f, 0.0f, (R + L) / (L - R),
                     0.0f, 2.0f / (T - B), 0.0f, (T + B) / (B - T),
@@ -344,24 +344,24 @@ namespace ImGui::RHI
                         }
 
                         // set texture
-                        resources->cb_cpu.options_texture_visualisation = 0;
+                        rhi_resources->constant_buffer_cpu.options_texture_visualisation = 0;
                         if (RHI_Texture* texture = static_cast<RHI_Texture*>(pcmd->TextureId))
                         {
-                            // During engine startup, some textures might be loading in different threads
+                            // during engine startup, some textures might be loading in different threads
                             if (texture->IsReadyForUse())
                             {
                                 cmd_list->SetTexture(Renderer_BindingsSrv::tex, texture);
 
-                                // Update texture viewer parameters
-                                bool is_texture_visualised                      = TextureViewer::GetVisualisedTextureId() == texture->GetObjectId();
-                                resources->cb_cpu.options_texture_visualisation = is_texture_visualised ? TextureViewer::GetVisualisationFlags() : 0;
-                                resources->cb_cpu.mip_level                     = is_texture_visualised ? TextureViewer::GetMipLevel() : 0;
+                                // update texture viewer parameters
+                                bool is_texture_visualised                                       = TextureViewer::GetVisualisedTextureId() == texture->GetObjectId();
+                                rhi_resources->constant_buffer_cpu.options_texture_visualisation = is_texture_visualised ? TextureViewer::GetVisualisationFlags() : 0;
+                                rhi_resources->constant_buffer_cpu.mip_level                     = is_texture_visualised ? TextureViewer::GetMipLevel() : 0;
                             }
                         }
 
                         // update imgui buffer
-                        resources->GetCbGpu()->Update(&resources->cb_cpu);
-                        cmd_list->SetConstantBuffer(Renderer_BindingsCb::imgui, resources->GetCbGpu());
+                        constant_buffer->Update(&rhi_resources->constant_buffer_cpu);
+                        cmd_list->SetConstantBuffer(Renderer_BindingsCb::imgui, constant_buffer);
 
                         // draw
                         cmd_list->DrawIndexed(pcmd->ElemCount, pcmd->IdxOffset + global_idx_offset, pcmd->VtxOffset + global_vtx_offset);
@@ -401,7 +401,7 @@ namespace ImGui::RHI
             (string("swapchain_child_") + string(to_string(viewport->ID))).c_str()
         );
 
-        window->viewport_data = make_shared<ViewportResources>("imgui_child_window", window->swapchain.get());
+        window->viewport_rhi_resources = make_shared<ViewportRhiResources>("imgui_child_window", window->swapchain.get());
         viewport->RendererUserData = window;
     }
 
@@ -409,7 +409,7 @@ namespace ImGui::RHI
     {
         if (WindowData* window = static_cast<WindowData*>(viewport->RendererUserData))
         {
-            RHI_Device::DestroyCommandPool(window->viewport_data->cmd_pool);
+            RHI_Device::DestroyCommandPool(window->viewport_rhi_resources->cmd_pool);
             delete window;
         }
 
@@ -430,7 +430,7 @@ namespace ImGui::RHI
     static void RHI_Window_Present(ImGuiViewport* viewport, void*)
     {
         WindowData* window = static_cast<WindowData*>(viewport->RendererUserData);
-        SP_ASSERT(window->viewport_data->cmd_pool->GetCurrentCommandList()->GetState() == Spartan::RHI_CommandListState::Submitted);
+        SP_ASSERT(window->viewport_rhi_resources->cmd_pool->GetCurrentCommandList()->GetState() == Spartan::RHI_CommandListState::Submitted);
         window->swapchain->Present();
     }
 
