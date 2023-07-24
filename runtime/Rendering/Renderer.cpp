@@ -104,9 +104,14 @@ namespace Spartan
             // sort by depth
             sort(renderables->begin(), renderables->end(), [&comparison_op, &are_transparent](shared_ptr<Entity> a, shared_ptr<Entity> b)
             {
-                bool front_to_back = comparison_op(a) <= comparison_op(b);
-                bool back_to_front = !front_to_back;
-                return are_transparent ? back_to_front : front_to_back;
+                if (are_transparent)
+                {
+                    return comparison_op(a) > comparison_op(b); // back-to-front for transparent
+                }
+                else
+                {
+                    return comparison_op(a) < comparison_op(b); // front-to-back for opaque
+                }
             });
         }
     }
