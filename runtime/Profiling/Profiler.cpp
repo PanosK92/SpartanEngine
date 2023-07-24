@@ -454,6 +454,7 @@ namespace Spartan
     {
         const uint32_t texture_count  = ResourceCache::GetResourceCount(ResourceType::Texture) + ResourceCache::GetResourceCount(ResourceType::Texture2d) + ResourceCache::GetResourceCount(ResourceType::TextureCube);
         const uint32_t material_count = ResourceCache::GetResourceCount(ResourceType::Material);
+        const uint32_t pipeline_count = RHI_Device::GetPipelineCount();
 
         // Get the graphics driver vendor
         string api_vendor_name = "AMD";
@@ -519,6 +520,7 @@ namespace Spartan
             << "Meshes rendered:\t\t\t\t"   << m_renderer_meshes_rendered << endl
             << "Textures:\t\t\t\t\t\t\t"    << texture_count              << endl
             << "Materials:\t\t\t\t\t\t\t"   << material_count             << endl
+            << "Pipelines:\t\t\t\t\t\t\t"   << pipeline_count             << endl
             << "Descriptor set capacity:\t" << m_descriptor_set_count << "/" << m_descriptor_set_capacity;
     }
 }
