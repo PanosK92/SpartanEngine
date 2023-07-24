@@ -344,7 +344,7 @@ namespace Spartan
         // AABBs
         if (GetOption<bool>(Renderer_Option::Debug_Aabb))
         {
-            for (const auto& entity : GetEntities()[Renderer_Entity::Geometry_opaque])
+            for (const auto& entity : GetEntities()[Renderer_Entity::Geometry])
             {
                 if (auto renderable = entity->GetComponent<Renderable>())
                 {
@@ -352,7 +352,7 @@ namespace Spartan
                 }
             }
         
-            for (const auto& entity : GetEntities()[Renderer_Entity::Geometry_transparent])
+            for (const auto& entity : GetEntities()[Renderer_Entity::GeometryTransparent])
             {
                 if (auto renderable = entity->GetComponent<Renderable>())
                 {

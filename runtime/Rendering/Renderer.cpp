@@ -34,7 +34,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_RenderDoc.h"
 #include "../Core/Window.h"                     
 #include "../Input/Input.h"                     
-#include "../World/Components/Environment.h"    
+#include "../World/Components/Environment.h"
+#include "../World/Components/AudioSource.h"
 #include "../RHI/RHI_SwapChain.h"
 #include "../Display/Display.h"
 //==============================================
@@ -680,7 +681,7 @@ namespace Spartan
 
                     if (is_visible)
                     {
-                        m_renderables[is_transparent ? Renderer_Entity::Geometry_transparent : Renderer_Entity::Geometry_opaque].emplace_back(entity);
+                        m_renderables[is_transparent ? Renderer_Entity::GeometryTransparent : Renderer_Entity::Geometry].emplace_back(entity);
                     }
                 }
 
@@ -697,13 +698,18 @@ namespace Spartan
 
                 if (shared_ptr<ReflectionProbe> reflection_probe = entity->GetComponent<ReflectionProbe>())
                 {
-                    m_renderables[Renderer_Entity::Reflection_probe].emplace_back(entity);
+                    m_renderables[Renderer_Entity::ReflectionProbe].emplace_back(entity);
+                }
+
+                if (shared_ptr<AudioSource> audio_source = entity->GetComponent<AudioSource>())
+                {
+                    m_renderables[Renderer_Entity::AudioSource].emplace_back(entity);
                 }
             }
 
             // sort them by distance
-            sort_renderables(&m_renderables[Renderer_Entity::Geometry_opaque], false);
-            sort_renderables(&m_renderables[Renderer_Entity::Geometry_transparent], true);
+            sort_renderables(&m_renderables[Renderer_Entity::Geometry], false);
+            sort_renderables(&m_renderables[Renderer_Entity::GeometryTransparent], true);
 
             m_entities_to_add.clear();
         }
