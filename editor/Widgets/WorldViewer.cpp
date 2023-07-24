@@ -65,12 +65,12 @@ namespace
                 // list box
                 static const char* items[] =
                 {
-                    "1. An empty world.",
-                    "2. A physics enabled cube (mouse pickable) on top of a quad.",
-                    "3. A set of helmets.",
-                    "4. A rotating car on top of a quad.",
+                    "1. Empty.",
+                    "2. Pickable physics cube.",
+                    "3. Set of helmets.",
+                    "4. Rotating car on top of a quad.",
                     "5. Height map generated terrain.",
-                    "6. The famous Sponza building found in Dubrovnik."
+                    "6. The Sponza building found in Dubrovnik."
                 };
                 static int item_index = 3;
                 static int item_count = IM_ARRAYSIZE(items);

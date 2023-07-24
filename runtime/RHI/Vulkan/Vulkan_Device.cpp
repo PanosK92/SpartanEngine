@@ -1475,12 +1475,6 @@ namespace Spartan
         RHI_CommandPool* cmd_pool = command_pools::immediate[queue_index].get();
 
         cmd_pool->Tick();
-
-        if (cmd_pool->GetCurrentCommandList()->IsExecuting())
-        {
-            cmd_pool->GetCurrentCommandList()->WaitForExecution();
-        }
-
         cmd_pool->GetCurrentCommandList()->Begin();
 
         return cmd_pool->GetCurrentCommandList();

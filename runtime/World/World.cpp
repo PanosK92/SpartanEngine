@@ -801,9 +801,9 @@ namespace Spartan
 
     void World::CreateDefaultWorldSponza()
     {
-        Vector3 camera_position = Vector3(-10.4144f, 7.3257f, -1.1735f);
-        Vector3 camera_rotation = Vector3(-6.0022f, 88.3969f, 0.0f);
-        CreateDefaultWorldCommon(false, camera_position, camera_rotation);
+        Vector3 camera_position = Vector3(-10.0f, 2.0f, 0.1385f);
+        Vector3 camera_rotation = Vector3(0.0f, 90.0f, 0.0f);
+        CreateDefaultWorldCommon(false, camera_position, camera_rotation, 0.0f, false);
 
         // 3D model - Sponza
         if (m_default_model_sponza = ResourceCache::Load<Mesh>("project\\models\\sponza\\main\\NewSponza_Main_Blender_glTF.gltf"))
@@ -832,6 +832,19 @@ namespace Spartan
                 entity->SetObjectName("sponza_curtains");
                 entity->GetTransform()->SetPosition(Vector3(0.0f, 0.06f, 0.0f));
                 entity->GetTransform()->SetScale(Vector3::One);
+            }
+
+            // Point light
+            {
+                shared_ptr<Entity> entity = CreateEntity();
+                entity->SetObjectName("light_point");
+                entity->GetTransform()->SetPosition(Vector3(0.0f, 4.0f, 0.0f));
+
+                shared_ptr<Light> light = entity->AddComponent<Light>();
+                light->SetLightType(LightType::Point);
+                light->SetColor(Color::light_light_bulb);
+                light->SetRange(15.0f);
+                light->SetIntensity(7000.0f);
             }
         }
 
