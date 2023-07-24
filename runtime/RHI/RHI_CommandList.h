@@ -81,6 +81,7 @@ namespace Spartan
 
         // Blit
         void Blit(RHI_Texture* source, RHI_Texture* destination, const bool blit_mips);
+        void Blit(RHI_Texture* source, RHI_SwapChain* destination);
 
         // Copy
         void Copy(RHI_Texture* source, RHI_Texture* destination, const bool blit_mips);

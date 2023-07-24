@@ -399,12 +399,12 @@ namespace Spartan
 
         // Acquire next image
         SP_VK_ASSERT_MSG(vkAcquireNextImageKHR(
-            RHI_Context::device,                                       // device
-            static_cast<VkSwapchainKHR>(m_rhi_swapchain),              // swapchain
-            timeout,                                                   // timeout
+            RHI_Context::device,                                          // device
+            static_cast<VkSwapchainKHR>(m_rhi_swapchain),                 // swapchain
+            timeout,                                                      // timeout
             static_cast<VkSemaphore>(signal_semaphore->GetRhiResource()), // signal semaphore
-            nullptr,                                                   // signal fence
-            &m_image_index                                             // pImageIndex
+            nullptr,                                                      // signal fence
+            &m_image_index                                                // pImageIndex
         ), "Failed to acquire next image");
 
         // Update semaphore state

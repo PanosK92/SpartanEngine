@@ -192,7 +192,7 @@ namespace Spartan
         SetOption(Renderer_Option::Anisotropy,             16.0f);
         SetOption(Renderer_Option::ShadowResolution,       2048.0f);
         SetOption(Renderer_Option::Tonemapping,            static_cast<float>(Renderer_Tonemapping::Disabled));
-        SetOption(Renderer_Option::Gamma,                  1.5f); // seems to be the default for things like NV control panel
+        SetOption(Renderer_Option::Gamma,                  1.7f); // despite what literature says, 2.2 is too bright (optimal solution is gamma calibration screen)
         SetOption(Renderer_Option::Exposure,               1.0f);
         SetOption(Renderer_Option::PaperWhite,             150.0f); // nits
         SetOption(Renderer_Option::Sharpness,              0.5f);
@@ -406,7 +406,7 @@ namespace Spartan
         if (Window::IsFullScreen())
         {
             cmd_current->BeginMarker("copy_to_back_buffer");
-            cmd_current->Copy(GetRenderTarget(Renderer_RenderTexture::frame_output).get(), swap_chain.get());
+            cmd_current->Blit(GetRenderTarget(Renderer_RenderTexture::frame_output).get(), swap_chain.get());
             cmd_current->EndMarker();
         }
 

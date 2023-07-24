@@ -375,7 +375,6 @@ namespace Spartan
 
         // Chromatic aberration
         shader(Renderer_Shader::chromatic_aberration_c) = make_shared<RHI_Shader>();
-        shader(Renderer_Shader::chromatic_aberration_c)->AddDefine("PASS_CHROMATIC_ABERRATION");
         shader(Renderer_Shader::chromatic_aberration_c)->Compile(RHI_Shader_Compute, shader_dir + "chromatic_aberration.hlsl", async);
 
         // Tone-mapping & gamma correction
