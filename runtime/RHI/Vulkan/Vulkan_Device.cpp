@@ -333,7 +333,7 @@ namespace Spartan
 
     namespace cache
     {
-        static uint32_t descriptor_set_capacity = 2048;
+        static uint32_t descriptor_set_capacity = 4096;
         static VkDescriptorPool descriptor_pool = nullptr;
 
         // cache
