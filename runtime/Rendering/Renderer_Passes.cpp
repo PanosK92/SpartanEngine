@@ -79,7 +79,7 @@ namespace Spartan
         if (shared_ptr<Camera> camera = GetCamera())
         { 
             // if there are no entities, clear to the camera's color
-            if (GetEntities()[Renderer_Entity::Geometry_opaque].empty() && GetEntities()[Renderer_Entity::Geometry_transparent].empty() && GetEntities()[Renderer_Entity::Light].empty())
+            if (GetEntities()[Renderer_Entity::Geometry].empty() && GetEntities()[Renderer_Entity::GeometryTransparent].empty() && GetEntities()[Renderer_Entity::Light].empty())
             {
                 GetCmdList()->ClearRenderTarget(rt_output, 0, 0, false, camera->GetClearColor());
             }
@@ -93,7 +93,7 @@ namespace Spartan
                 }
 
                 // determine if a transparent pass is required
-                const bool do_transparent_pass = !GetEntities()[Renderer_Entity::Geometry_transparent].empty();
+                const bool do_transparent_pass = !GetEntities()[Renderer_Entity::GeometryTransparent].empty();
 
                 // shadow maps
                 {
@@ -178,7 +178,7 @@ namespace Spartan
             return;
 
         // Get entities
-        vector<shared_ptr<Entity>>& entities = m_renderables[is_transparent_pass ? Renderer_Entity::Geometry_transparent : Renderer_Entity::Geometry_opaque];
+        vector<shared_ptr<Entity>>& entities = m_renderables[is_transparent_pass ? Renderer_Entity::GeometryTransparent : Renderer_Entity::Geometry];
         if (entities.empty())
             return;
 
@@ -322,12 +322,12 @@ namespace Spartan
             return;
 
         // Acquire reflections probes
-        const vector<shared_ptr<Entity>>& probes = m_renderables[Renderer_Entity::Reflection_probe];
+        const vector<shared_ptr<Entity>>& probes = m_renderables[Renderer_Entity::ReflectionProbe];
         if (probes.empty())
             return;
 
         // Acquire renderables
-        const vector<shared_ptr<Entity>>& renderables = m_renderables[Renderer_Entity::Geometry_opaque];
+        const vector<shared_ptr<Entity>>& renderables = m_renderables[Renderer_Entity::Geometry];
         if (renderables.empty())
             return;
 
@@ -449,7 +449,7 @@ namespace Spartan
         cmd_list->BeginTimeblock("depth_prepass");
 
         RHI_Texture* tex_depth = GetRenderTarget(Renderer_RenderTexture::gbuffer_depth).get();
-        const vector<shared_ptr<Entity>> entities = m_renderables[Renderer_Entity::Geometry_opaque];
+        const vector<shared_ptr<Entity>> entities = m_renderables[Renderer_Entity::Geometry];
 
         // Define pipeline state
         static RHI_PipelineState pso;
@@ -585,7 +585,7 @@ namespace Spartan
         // Set pipeline state
         cmd_list->SetPipelineState(pso);
 
-        auto& entities = m_renderables[is_transparent_pass ? Renderer_Entity::Geometry_transparent : Renderer_Entity::Geometry_opaque];
+        auto& entities = m_renderables[is_transparent_pass ? Renderer_Entity::GeometryTransparent : Renderer_Entity::Geometry];
 
         // Render
         cmd_list->BeginRenderPass();
@@ -913,7 +913,7 @@ namespace Spartan
         cmd_list->BeginTimeblock(is_transparent_pass ? "light_image_based_transparent" : "light_image_based");
 
         // Get reflection probe entities
-        const vector<shared_ptr<Entity>>& probes = m_renderables[Renderer_Entity::Reflection_probe];
+        const vector<shared_ptr<Entity>>& probes = m_renderables[Renderer_Entity::ReflectionProbe];
 
         // Define pipeline state
         static RHI_PipelineState pso;
@@ -1718,8 +1718,9 @@ namespace Spartan
             return;
 
         // Acquire entities
-        auto& lights = m_renderables[Renderer_Entity::Light];
-        if (lights.empty() || !GetCamera())
+        auto& lights        = m_renderables[Renderer_Entity::Light];
+        auto& audio_sources = m_renderables[Renderer_Entity::AudioSource];
+        if ((lights.empty() && audio_sources.empty()) || !GetCamera())
             return;
 
         cmd_list->BeginTimeblock("icons");
@@ -1738,59 +1739,70 @@ namespace Spartan
         cmd_list->SetPipelineState(pso);
 
         bool render_pass_started = false;
+        auto draw_icon = [&cmd_list, &render_pass_started](Transform* transform, RHI_Texture* texture)
+        {
+            const Vector3 pos_world        = transform->GetPosition();
+            const Vector3 pos_world_camera = GetCamera()->GetTransform()->GetPosition();
+            const Vector3 camera_to_light  = (pos_world - pos_world_camera).Normalized();
+            const float v_dot_l            = Vector3::Dot(GetCamera()->GetTransform()->GetForward(), camera_to_light);
 
-        // For each light
+            // Only draw if it's inside our view
+            if (v_dot_l > 0.5f)
+            {
+                if (!render_pass_started)
+                {
+                    cmd_list->BeginRenderPass();
+                    render_pass_started = true;
+                }
+
+                // Compute transform
+                {
+                    // Use the distance from the camera to scale the icon, this will
+                    // cancel out perspective scaling, hence keeping the icon scale constant.
+                    const float distance = (pos_world_camera - pos_world).Length();
+                    const float scale = distance * 0.04f;
+
+                    // 1st rotation: The quad's normal is parallel to the world's Y axis, so we rotate to make it camera facing.
+                    Quaternion rotation_reorient_quad = Quaternion::FromEulerAngles(-90.0f, 0.0f, 0.0f);
+                    // 2nd rotation: Rotate the camera facing quad with the camera, so that it remains a camera facing quad.
+                    Quaternion rotation_camera_billboard = Quaternion::FromLookRotation(pos_world - pos_world_camera);
+
+                    Matrix transform = Matrix(pos_world, rotation_camera_billboard * rotation_reorient_quad, scale);
+
+                    // Update transform
+                    m_cb_pass_cpu.transform = transform * m_cb_frame_cpu.view_projection;
+                    UpdateConstantBufferPass(cmd_list);
+                }
+
+                // Draw rectangle
+                cmd_list->SetTexture(Renderer_BindingsSrv::tex, texture);
+                cmd_list->SetBufferVertex(GetStandardMesh(Renderer_StandardMesh::Quad)->GetVertexBuffer());
+                cmd_list->SetBufferIndex(GetStandardMesh(Renderer_StandardMesh::Quad)->GetIndexBuffer());
+                cmd_list->DrawIndexed(6);
+            }
+        };
+
+        // Draw audio source icons
+        for (shared_ptr<Entity> entity : audio_sources)
+        {
+            draw_icon(entity->GetTransform().get(), GetStandardTexture(Renderer_StandardTexture::Gizmo_audio_source).get());
+        }
+
+        // Draw light icons
         for (shared_ptr<Entity> entity : lights)
         {
+            RHI_Texture* texture = nullptr;
+
             // Light can be null if it just got removed and our buffer doesn't update till the next frame
             if (shared_ptr<Light> light = entity->GetComponent<Light>())
             {
-                const Vector3 pos_world        = entity->GetTransform()->GetPosition();
-                const Vector3 pos_world_camera = GetCamera()->GetTransform()->GetPosition();
-                const Vector3 camera_to_light  = (pos_world - pos_world_camera).Normalized();
-                const float v_dot_l            = Vector3::Dot(GetCamera()->GetTransform()->GetForward(), camera_to_light);
-
-                // Only draw if it's inside our view
-                if (v_dot_l > 0.5f)
-                {
-                    if (!render_pass_started)
-                    {
-                        cmd_list->BeginRenderPass();
-                        render_pass_started = true;
-                    }
-
-                    // Get the texture
-                    RHI_Texture* texture = nullptr;
-                    if (light->GetLightType() == LightType::Directional) texture = GetStandardTexture(Renderer_StandardTexture::Gizmo_light_directional).get();
-                    else if (light->GetLightType() == LightType::Point)  texture = GetStandardTexture(Renderer_StandardTexture::Gizmo_light_point).get();
-                    else if (light->GetLightType() == LightType::Spot)   texture = GetStandardTexture(Renderer_StandardTexture::Gizmo_light_spot).get();
-
-                    // Compute transform
-                    {
-                        // Use the distance from the camera to scale the icon, this will
-                        // cancel out perspective scaling, hence keeping the icon scale constant.
-                        const float distance = (pos_world_camera - pos_world).Length();
-                        const float scale    = distance * 0.04f;
-
-                        // 1st rotation: The quad's normal is parallel to the world's Y axis, so we rotate to make it camera facing.
-                        Quaternion rotation_reorient_quad = Quaternion::FromEulerAngles(-90.0f, 0.0f, 0.0f);
-                        // 2nd rotation: Rotate the camera facing quad with the camera, so that it remains a camera facing quad.
-                        Quaternion rotation_camera_billboard = Quaternion::FromLookRotation(pos_world - pos_world_camera);
-
-                        Matrix transform = Matrix(pos_world, rotation_camera_billboard * rotation_reorient_quad, scale);
-
-                        // Update transform
-                        m_cb_pass_cpu.transform = transform * m_cb_frame_cpu.view_projection;
-                        UpdateConstantBufferPass(cmd_list);
-                    }
-
-                    // Draw rectangle
-                    cmd_list->SetTexture(Renderer_BindingsSrv::tex, texture);
-                    cmd_list->SetBufferVertex(GetStandardMesh(Renderer_StandardMesh::Quad)->GetVertexBuffer());
-                    cmd_list->SetBufferIndex(GetStandardMesh(Renderer_StandardMesh::Quad)->GetIndexBuffer());
-                    cmd_list->DrawIndexed(6);
-                }
+                // Get the texture
+                if (light->GetLightType() == LightType::Directional) texture = GetStandardTexture(Renderer_StandardTexture::Gizmo_light_directional).get();
+                else if (light->GetLightType() == LightType::Point)  texture = GetStandardTexture(Renderer_StandardTexture::Gizmo_light_point).get();
+                else if (light->GetLightType() == LightType::Spot)   texture = GetStandardTexture(Renderer_StandardTexture::Gizmo_light_spot).get();
             }
+
+            draw_icon(entity->GetTransform().get(), texture);
         }
 
         if (render_pass_started)
@@ -1956,7 +1968,7 @@ namespace Spartan
             return;
 
         // Get reflection probe entities
-        const vector<shared_ptr<Entity>>& probes = m_renderables[Renderer_Entity::Reflection_probe];
+        const vector<shared_ptr<Entity>>& probes = m_renderables[Renderer_Entity::ReflectionProbe];
         if (probes.empty())
             return;
 

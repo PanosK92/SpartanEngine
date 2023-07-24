@@ -240,11 +240,12 @@ namespace Spartan
     
     enum class Renderer_Entity
     {
-        Geometry_opaque,
-        Geometry_transparent,
+        Geometry,
+        GeometryTransparent,
         Light,
         Camera,
-        Reflection_probe
+        ReflectionProbe,
+        AudioSource
     };
 
     enum class Renderer_Sampler
@@ -276,7 +277,8 @@ namespace Spartan
         Checkerboard,
         Gizmo_light_directional,
         Gizmo_light_point,
-        Gizmo_light_spot
+        Gizmo_light_spot,
+        Gizmo_audio_source
     };
 
     enum class Renderer_StandardMesh

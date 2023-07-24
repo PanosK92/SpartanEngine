@@ -61,8 +61,8 @@ namespace Spartan
         array < shared_ptr<RHI_StructuredBuffer>, 2>       m_sb_spd_counters;
 
         // asset resources
-        array<shared_ptr<RHI_Texture>, 9> m_standard_textures;
-        array<shared_ptr<Mesh>, 5>        m_standard_meshes;
+        array<shared_ptr<RHI_Texture>, 10> m_standard_textures;
+        array<shared_ptr<Mesh>, 5>         m_standard_meshes;
     }
 
     void Renderer::CreateConstantBuffers()
@@ -549,6 +549,9 @@ namespace Spartan
 
             standard_texture(Renderer_StandardTexture::Gizmo_light_spot) = make_shared<RHI_Texture2D>(RHI_Texture_Srv, "standard_icon_light_spot");
             standard_texture(Renderer_StandardTexture::Gizmo_light_spot)->LoadFromFile(dir_texture + "flashlight.png");
+
+            standard_texture(Renderer_StandardTexture::Gizmo_audio_source) = make_shared<RHI_Texture2D>(RHI_Texture_Srv, "standard_icon_audio_source");
+            standard_texture(Renderer_StandardTexture::Gizmo_audio_source)->LoadFromFile(dir_texture + "audio.png");
         }
     }
 
