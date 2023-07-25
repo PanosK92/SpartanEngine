@@ -125,7 +125,7 @@ void FileDialog::ShowTop(bool* is_visible, Editor* editor)
     if (m_is_window)
     {
         ImGui::SetNextWindowPos(editor->GetWidget<Viewport>()->GetCenter(), ImGuiCond_FirstUseEver, ImVec2(0.5f, 0.5f));
-        ImGui::SetNextWindowSizeConstraints(ImVec2(350, 250), ImVec2(FLT_MAX, FLT_MAX));
+        ImGui::SetNextWindowSizeConstraints(ImVec2(800, 600), ImVec2(FLT_MAX, FLT_MAX));
         ImGui::Begin(m_title.c_str(), is_visible, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoDocking);
         ImGui::SetWindowFocus();
     }
@@ -405,7 +405,7 @@ void FileDialog::ShowBottom(bool* is_visible)
     if (m_type == FileDialog_Type_Browser)
     {
         // move to the bottom of the window
-        m_offset_bottom = 20.0f;
+        m_offset_bottom = 20.0f * Spartan::Window::GetDpiScale();
         ImGui::SetCursorPosY(ImGui::GetWindowSize().y - m_offset_bottom);
 
         string text = (m_displayed_item_count == 1) ? "%d item" : "%d items";
@@ -414,10 +414,10 @@ void FileDialog::ShowBottom(bool* is_visible)
     else
     {
         // move to the bottom of the window
-        m_offset_bottom = 35.0f;
+        m_offset_bottom = 35.0f * Spartan::Window::GetDpiScale();
         ImGui::SetCursorPosY(ImGui::GetWindowSize().y - m_offset_bottom);
 
-        ImGui::PushItemWidth(ImGui::GetWindowSize().x - 235);
+        ImGui::PushItemWidth(ImGui::GetWindowSize().x - 235 * Spartan::Window::GetDpiScale());
         ImGui::InputText("##InputBox", &m_input_box);
         ImGui::PopItemWidth();
 
