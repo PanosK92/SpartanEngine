@@ -641,14 +641,15 @@ namespace Spartan
                 vkGetPhysicalDeviceProperties2(static_cast<VkPhysicalDevice>(RHI_Context::device_physical), &properties_device);
 
                 // Save some properties
+                m_timestamp_period                    = properties_device.properties.limits.timestampPeriod;
+                m_min_uniform_buffer_offset_alignment = properties_device.properties.limits.minUniformBufferOffsetAlignment;
+                m_min_storage_buffer_offset_alignment = properties_device.properties.limits.minStorageBufferOffsetAlignment;
                 m_max_texture_1d_dimension            = properties_device.properties.limits.maxImageDimension1D;
                 m_max_texture_2d_dimension            = properties_device.properties.limits.maxImageDimension2D;
                 m_max_texture_3d_dimension            = properties_device.properties.limits.maxImageDimension3D;
                 m_max_texture_cube_dimension          = properties_device.properties.limits.maxImageDimensionCube;
                 m_max_texture_array_layers            = properties_device.properties.limits.maxImageArrayLayers;
-                m_min_uniform_buffer_offset_alignment = properties_device.properties.limits.minUniformBufferOffsetAlignment;
-                m_min_storage_buffer_offset_alignment = properties_device.properties.limits.minStorageBufferOffsetAlignment;
-                m_timestamp_period                    = properties_device.properties.limits.timestampPeriod;
+                m_max_push_constant_size              = properties_device.properties.limits.maxPushConstantsSize;
 
                 // Disable profiler if timestamps are not supported
                 if (RHI_Context::gpu_profiling && !properties_device.properties.limits.timestampComputeAndGraphics)
