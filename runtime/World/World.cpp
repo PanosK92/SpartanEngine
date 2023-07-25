@@ -805,6 +805,19 @@ namespace Spartan
         Vector3 camera_rotation = Vector3(0.0f, 90.0f, 0.0f);
         CreateDefaultWorldCommon(false, camera_position, camera_rotation, 0.0f, false);
 
+        // Point light
+        {
+            shared_ptr<Entity> entity = CreateEntity();
+            entity->SetObjectName("light_point");
+            entity->GetTransform()->SetPosition(Vector3(0.0f, 7.5f, 0.0f));
+
+            shared_ptr<Light> light = entity->AddComponent<Light>();
+            light->SetLightType(LightType::Point);
+            light->SetColor(Color::light_light_bulb);
+            light->SetRange(14.960f);
+            light->SetIntensity(7000.0f);
+        }
+
         // 3D model - Sponza
         if (m_default_model_sponza = ResourceCache::Load<Mesh>("project\\models\\sponza\\main\\NewSponza_Main_Blender_glTF.gltf"))
         {
@@ -832,19 +845,6 @@ namespace Spartan
                 entity->SetObjectName("sponza_curtains");
                 entity->GetTransform()->SetPosition(Vector3(0.0f, 0.06f, 0.0f));
                 entity->GetTransform()->SetScale(Vector3::One);
-            }
-
-            // Point light
-            {
-                shared_ptr<Entity> entity = CreateEntity();
-                entity->SetObjectName("light_point");
-                entity->GetTransform()->SetPosition(Vector3(0.0f, 4.0f, 0.0f));
-
-                shared_ptr<Light> light = entity->AddComponent<Light>();
-                light->SetLightType(LightType::Point);
-                light->SetColor(Color::light_light_bulb);
-                light->SetRange(15.0f);
-                light->SetIntensity(7000.0f);
             }
         }
 
