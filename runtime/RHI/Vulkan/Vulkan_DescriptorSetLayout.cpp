@@ -63,7 +63,7 @@ namespace Spartan
 
             layout_bindings[i].descriptorType     = vulkan_utility::to_vulkan_desscriptor_type(descriptor);
             layout_bindings[i].binding            = descriptor.slot;
-            layout_bindings[i].descriptorCount    = descriptor.IsArray() ? descriptor.array_size : 1;
+            layout_bindings[i].descriptorCount    = descriptor.IsArray() ? descriptor.array_length : 1;
             layout_bindings[i].stageFlags         = stage_flags;
             layout_bindings[i].pImmutableSamplers = nullptr;
 

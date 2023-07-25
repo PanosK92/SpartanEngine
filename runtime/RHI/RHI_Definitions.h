@@ -269,6 +269,7 @@ namespace Spartan
         Sampler,
         Texture,
         TextureStorage,
+        PushConstantBuffer,
         ConstantBuffer,
         StructuredBuffer,
         Undefined

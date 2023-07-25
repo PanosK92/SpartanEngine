@@ -34,23 +34,33 @@ namespace Spartan
 
         RHI_Descriptor(const RHI_Descriptor& descriptor)
         {
-            type       = descriptor.type;
-            layout     = descriptor.layout;
-            slot       = descriptor.slot;
-            stage      = descriptor.stage;
-            name       = descriptor.name;
-            mip        = descriptor.mip;
-            array_size = descriptor.array_size;
+            type         = descriptor.type;
+            layout       = descriptor.layout;
+            slot         = descriptor.slot;
+            stage        = descriptor.stage;
+            name         = descriptor.name;
+            mip          = descriptor.mip;
+            array_length = descriptor.array_length;
+            struct_size  = descriptor.struct_size;
         }
 
-        RHI_Descriptor(const std::string& name, const RHI_Descriptor_Type type, const RHI_Image_Layout layout, const uint32_t slot, const uint32_t array_size, const uint32_t stage)
+        RHI_Descriptor(
+            const std::string& name,
+            const RHI_Descriptor_Type type,
+            const RHI_Image_Layout layout,
+            const uint32_t slot,
+            const uint32_t array_length,
+            const uint32_t stage,
+            const uint32_t struct_size
+        )
         {
-            this->type       = type;
-            this->layout     = layout;
-            this->slot       = slot;
-            this->stage      = stage;
-            this->name       = name;
-            this->array_size = array_size;
+            this->type         = type;
+            this->layout       = layout;
+            this->slot         = slot;
+            this->stage        = stage;
+            this->name         = name;
+            this->array_length = array_length;
+            this->struct_size  = struct_size;
         }
 
         uint64_t ComputeHash()
@@ -60,20 +70,20 @@ namespace Spartan
                 m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(type));
                 m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(slot));
                 m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(stage));
-                m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(array_size));
+                m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(array_length));
             }
 
             return m_hash;
         }
 
         bool IsStorage() const { return type == RHI_Descriptor_Type::TextureStorage; }
-        bool IsArray()   const { return array_size > 0; };
+        bool IsArray()   const { return array_length > 0; };
 
         // Properties that affect the descriptor hash. They are reflected from the shader
         RHI_Descriptor_Type type = RHI_Descriptor_Type::Undefined;
         uint32_t slot            = 0;
         uint32_t stage           = 0;
-        uint32_t array_size      = 0;
+        uint32_t array_length      = 0;
        
         // Properties that don't affect the descriptor hash. They affect the descriptor set hash.
         uint64_t range          = 0; // the size in bytes that is used for a descriptor update
@@ -84,6 +94,7 @@ namespace Spartan
         // Properties that don't affect any hash.
         uint32_t dynamic_offset = 0; // the offset used for dynamic constant buffers
         RHI_Image_Layout layout = RHI_Image_Layout::Undefined;
+        uint32_t struct_size    = 0;
 
         // Debugging
         std::string name;
