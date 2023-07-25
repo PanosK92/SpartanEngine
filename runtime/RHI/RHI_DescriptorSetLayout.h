@@ -56,9 +56,10 @@ namespace Spartan
         // Misc
         void ClearDescriptorData();
         RHI_DescriptorSet* GetDescriptorSet();
-        void NeedsToBind()           { m_needs_to_bind = true; }
-        void* GetRhiResource() const { return m_rhi_resource; }
-        uint64_t GetHash()     const { return m_hash; }
+        const std::vector<RHI_Descriptor>& GetDescriptors() const { return m_descriptors; }
+        void NeedsToBind()                                        { m_needs_to_bind = true; }
+        uint64_t GetHash()                                  const { return m_hash; }
+        void* GetRhiResource()                              const { return m_rhi_resource; }
 
     private:
         void CreateRhiResource(const std::vector<RHI_Descriptor>& descriptors);

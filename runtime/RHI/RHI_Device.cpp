@@ -32,14 +32,15 @@ using namespace Spartan::Math;
 namespace Spartan
 {
     // Device properties
+    float RHI_Device::m_timestamp_period                       = 0;
+    uint64_t RHI_Device::m_min_uniform_buffer_offset_alignment = 0;
+    uint64_t RHI_Device::m_min_storage_buffer_offset_alignment = 0;
     uint32_t RHI_Device::m_max_texture_1d_dimension            = 0;
     uint32_t RHI_Device::m_max_texture_2d_dimension            = 0;
     uint32_t RHI_Device::m_max_texture_3d_dimension            = 0;
     uint32_t RHI_Device::m_max_texture_cube_dimension          = 0;
     uint32_t RHI_Device::m_max_texture_array_layers            = 0;
-    uint64_t RHI_Device::m_min_uniform_buffer_offset_alignment = 0;
-    uint64_t RHI_Device::m_min_storage_buffer_offset_alignment = 0;
-    float RHI_Device::m_timestamp_period                       = 0;
+    uint32_t RHI_Device::m_max_push_constant_size              = 0;
 
     // Misc
     bool RHI_Device::m_wide_lines                          = false;

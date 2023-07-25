@@ -103,15 +103,16 @@ namespace Spartan
         static uint32_t GetMemoryBudgetMb();
 
         // Properties
+        static float GetTimestampPeriod()                     { return m_timestamp_period; }
+        static uint64_t GetMinUniformBufferOffsetAllignment() { return m_min_uniform_buffer_offset_alignment; }
+        static uint64_t GetMinStorageBufferOffsetAllignment() { return m_min_storage_buffer_offset_alignment; }
         static uint32_t GetMaxTexture1dDimension()            { return m_max_texture_1d_dimension; }
         static uint32_t GetMaxTexture2dDimension()            { return m_max_texture_2d_dimension; }
         static uint32_t GetMaxTexture3dDimension()            { return m_max_texture_3d_dimension; }
         static uint32_t GetMaxTextureCubeDimension()          { return m_max_texture_cube_dimension; }
         static uint32_t GetMaxTextureArrayLayers()            { return m_max_texture_array_layers; }
-        static uint64_t GetMinUniformBufferOffsetAllignment() { return m_min_uniform_buffer_offset_alignment; }
-        static uint64_t GetMinStorageBufferOffsetAllignment() { return m_min_storage_buffer_offset_alignment; }
-        static float GetTimestampPeriod()                     { return m_timestamp_period; }
-
+        static uint32_t GetMaxPushConstantSize()              { return m_max_push_constant_size; }
+ 
     private:
         // Physical device
         static bool DetectPhysicalDevices();
@@ -121,14 +122,15 @@ namespace Spartan
         static std::vector<PhysicalDevice>& GetPhysicalDevices();
 
         // Properties
+        static float m_timestamp_period;
+        static uint64_t m_min_uniform_buffer_offset_alignment;
+        static uint64_t m_min_storage_buffer_offset_alignment;
         static uint32_t m_max_texture_1d_dimension;
         static uint32_t m_max_texture_2d_dimension;
         static uint32_t m_max_texture_3d_dimension;
         static uint32_t m_max_texture_cube_dimension;
         static uint32_t m_max_texture_array_layers;
-        static uint64_t m_min_uniform_buffer_offset_alignment;
-        static uint64_t m_min_storage_buffer_offset_alignment;
-        static float m_timestamp_period;
+        static uint32_t m_max_push_constant_size;
 
         // Misc
         static bool m_wide_lines;
