@@ -316,6 +316,11 @@ namespace Spartan
         SP_ASSERT_MSG(false, "Function is not implemented");
     }
 
+    void RHI_CommandList::PushConstants(const uint32_t offset, const uint32_t size, const void* data)
+    {
+        SP_ASSERT_MSG(false, "Function is not implemented");
+    }
+
     void RHI_CommandList::SetStructuredBuffer(const uint32_t slot, RHI_StructuredBuffer* structured_buffer) const
     {
         SP_ASSERT_MSG(false, "Function is not implemented");
