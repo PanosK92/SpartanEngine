@@ -155,7 +155,7 @@ void ShaderEditor::ShowShaderList()
                 m_first_run       = false;
     
                 // Reload in case it has been modified
-                m_shader->LoadSource(m_shader->GetFilePath());
+                m_shader->LoadFromDrive(m_shader->GetFilePath());
             }
         }
     }

@@ -39,30 +39,17 @@ namespace Spartan
     {
         if (m_rhi_resource)
         {
-            // Wait in case it's still in use by the GPU
             RHI_Device::QueueWaitAll();
-
             d3d12_utility::release<IDxcResult>(m_rhi_resource);
         }
     }
 
-    void* RHI_Shader::GetRhiResource() const
-    {
-        IDxcResult* dxc_result = static_cast<IDxcResult*>(m_rhi_resource);
-
-        // Get compiled shader buffer
-        IDxcBlob* shader_buffer = nullptr;
-        dxc_result->GetResult(&shader_buffer);
-
-        return shader_buffer->GetBufferPointer();
-    }
-
     void* RHI_Shader::RHI_Compile()
     {
-        // Arguments (and defines)
+        // arguments (and defines)
         vector<string> arguments;
 
-        // Arguments
+        // arguments
         {
             arguments.emplace_back("-E"); arguments.emplace_back(GetEntryPoint());
             arguments.emplace_back("-T"); arguments.emplace_back(GetTargetProfile());
@@ -73,28 +60,20 @@ namespace Spartan
 #endif
         }
 
-        // Defines
+        // defines
+        for (const auto& define : m_defines)
         {
-            // Add standard defines
-            arguments.emplace_back("-D"); arguments.emplace_back("VS=" + to_string(static_cast<uint8_t>(m_shader_type == RHI_Shader_Vertex)));
-            arguments.emplace_back("-D"); arguments.emplace_back("PS=" + to_string(static_cast<uint8_t>(m_shader_type == RHI_Shader_Pixel)));
-            arguments.emplace_back("-D"); arguments.emplace_back("CS=" + to_string(static_cast<uint8_t>(m_shader_type == RHI_Shader_Compute)));
-
-            // Add the rest of the defines
-            for (const auto& define : m_defines)
-            {
-                arguments.emplace_back("-D"); arguments.emplace_back(define.first + "=" + define.second);
-            }
+            arguments.emplace_back("-D"); arguments.emplace_back(define.first + "=" + define.second);
         }
 
-        // Compile
+        // compile
         if (IDxcResult* dxc_result = DirecXShaderCompiler::Compile(m_preprocessed_source, arguments))
         {
             // Get compiled shader buffer
             IDxcBlob* shader_buffer = nullptr;
             dxc_result->GetResult(&shader_buffer);
 
-            // Reflect shader resources (so that descriptor sets can be created later)
+            // reflect shader resources (so that descriptor sets can be created later)
             Reflect
             (
                 m_shader_type,
@@ -102,15 +81,15 @@ namespace Spartan
                 static_cast<uint32_t>(shader_buffer->GetBufferSize() / 4)
             );
 
-            // Create input layout
-            if (m_shader_type == RHI_Shader_Vertex)
+            // create input layout
+            if (m_shader_type & RHI_Shader_Vertex)
             {
                 m_input_layout->Create(m_vertex_type, nullptr);
             }
 
             m_object_size_cpu = shader_buffer->GetBufferSize();
 
-            return static_cast<void*>(dxc_result);
+            return static_cast<void*>(shader_buffer->GetBufferPointer());
         }
 
         return nullptr;
@@ -119,14 +98,5 @@ namespace Spartan
     void RHI_Shader::Reflect(const RHI_Shader_Type shader_type, const uint32_t* ptr, uint32_t size)
     {
 
-    }
-
-    const char* RHI_Shader::GetTargetProfile() const
-    {
-        if (m_shader_type == RHI_Shader_Vertex)  return "vs_6_6";
-        if (m_shader_type == RHI_Shader_Pixel)   return "ps_6_6";
-        if (m_shader_type == RHI_Shader_Compute) return "cs_6_6";
-
-        return nullptr;
     }
 }
