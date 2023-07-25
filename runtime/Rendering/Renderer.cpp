@@ -530,7 +530,7 @@ namespace Spartan
         cmd_list->SetConstantBuffer(Renderer_BindingsCb::uber, GetConstantBuffer(Renderer_ConstantBuffer::Pass));
     }
 
-    void Renderer::UpdateConstantBufferLight(RHI_CommandList* cmd_list, shared_ptr<Light> light, const RHI_Shader_Type scope)
+    void Renderer::UpdateConstantBufferLight(RHI_CommandList* cmd_list, shared_ptr<Light> light)
     {
         for (uint32_t i = 0; i < light->GetShadowArraySize(); i++)
         {

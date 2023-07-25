@@ -421,7 +421,7 @@ namespace Spartan
                                 UpdateConstantBufferPass(cmd_list);
 
                                 // Update light buffer
-                                UpdateConstantBufferLight(cmd_list, light, RHI_Shader_Pixel);
+                                UpdateConstantBufferLight(cmd_list, light);
 
                                 cmd_list->DrawIndexed(renderable->GetIndexCount(), renderable->GetIndexOffset(), renderable->GetVertexOffset());
                             }
@@ -835,7 +835,7 @@ namespace Spartan
                 }
                 
                 // Update light buffer
-                UpdateConstantBufferLight(cmd_list, light, RHI_Shader_Compute);
+                UpdateConstantBufferLight(cmd_list, light);
                 
                 // Set uber buffer
                 m_cb_pass_cpu.resolution_rt       = Vector2(static_cast<float>(tex_diffuse->GetWidth()), static_cast<float>(tex_diffuse->GetHeight()));
@@ -877,7 +877,7 @@ namespace Spartan
             {
                 if (entity->GetComponent<Light>()->GetLightType() == LightType::Directional)
                 {
-                    UpdateConstantBufferLight(cmd_list, entity->GetComponent<Light>(), RHI_Shader_Compute);
+                    UpdateConstantBufferLight(cmd_list, entity->GetComponent<Light>());
                     break;
                 }
             }
@@ -963,7 +963,7 @@ namespace Spartan
             {
                 if (entity->GetComponent<Light>()->GetLightType() == LightType::Directional)
                 {
-                    UpdateConstantBufferLight(cmd_list, entity->GetComponent<Light>(), RHI_Shader_Pixel);
+                    UpdateConstantBufferLight(cmd_list, entity->GetComponent<Light>());
                     break;
                 }
             }
