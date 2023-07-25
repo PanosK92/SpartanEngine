@@ -21,9 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ============================
 #include "pch.h"
-#include "../Rendering/Renderer.h"
 #include "../RHI_Implementation.h"
-#include "../RHI_Device.h"
 #include "../RHI_Shader.h"
 #include "../RHI_InputLayout.h"
 #include "../RHI_DirectXShaderCompiler.h"
@@ -48,17 +46,12 @@ namespace Spartan
         }
     }
 
-    void* RHI_Shader::GetRhiResource() const
-    {
-        return m_rhi_resource;
-    }
-
     void* RHI_Shader::RHI_Compile()
     {
-        // Arguments (and defines)
+        // arguments (and defines)
         vector<string> arguments;
 
-        // Arguments
+        // arguments
         {
             // arguments.emplace_back("-fspv-reflect"); // Emit additional SPIR-V instructions to aid reflection
             // Can this be helpful in some way? It forces the use of "SPV_GOOGLE_user_type" extension.
@@ -67,22 +60,22 @@ namespace Spartan
             arguments.emplace_back("-E"); arguments.emplace_back(GetEntryPoint());
             arguments.emplace_back("-T"); arguments.emplace_back(GetTargetProfile());
 
-            // SPIR-V
+            // spir-v
             {
                 arguments.emplace_back("-spirv");                     // Generate SPIR-V code
                 arguments.emplace_back("-fspv-target-env=vulkan1.3"); // Specify the target environment
 
-                // This prevents all sorts of issues with constant buffers having random data.
+                // this prevents all sorts of issues with constant buffers having random data.
                 arguments.emplace_back("-fspv-preserve-bindings"); // Preserves all bindings declared within the module, even when those bindings are unused
 
-                // Shift registers to avoid conflicts
+                // shift registers to avoid conflicts
                 arguments.emplace_back("-fvk-u-shift"); arguments.emplace_back(to_string(rhi_shader_shift_register_u)); arguments.emplace_back("all"); // Specify Vulkan binding number shift for u-type (read/write buffer) register
                 arguments.emplace_back("-fvk-b-shift"); arguments.emplace_back(to_string(rhi_shader_shift_register_b)); arguments.emplace_back("all"); // Specify Vulkan binding number shift for b-type (buffer) register
                 arguments.emplace_back("-fvk-t-shift"); arguments.emplace_back(to_string(rhi_shader_shift_register_t)); arguments.emplace_back("all"); // Specify Vulkan binding number shift for t-type (texture) register
                 arguments.emplace_back("-fvk-s-shift"); arguments.emplace_back(to_string(rhi_shader_shift_register_s)); arguments.emplace_back("all"); // Specify Vulkan binding number shift for s-type (sampler) register
             }
 
-            // DirectX conventions
+            // directX conventions
             {
                 arguments.emplace_back("-fvk-use-dx-layout");     // Use DirectX memory layout for Vulkan resources
                 arguments.emplace_back("-fvk-use-dx-position-w"); // Reciprocate SV_Position.w after reading from stage input in PS to accommodate the difference between Vulkan and DirectX
@@ -94,40 +87,32 @@ namespace Spartan
                 }
             }
 
-            // Debug: Disable optimizations and embed HLSL source in the shaders
+            // debug: Disable optimizations and embed HLSL source in the shaders
             #ifdef DEBUG
             arguments.emplace_back("-Od");           // Disable optimizations
             arguments.emplace_back("-Zi");           // Enable debug information
             arguments.emplace_back("-Qembed_debug"); // Embed PDB in shader container (must be used with -Zi)
             #endif
 
-            // Misc
+            // misc
             arguments.emplace_back("-Zpc");                                // Pack matrices in column-major order
             arguments.emplace_back("-HV"); arguments.emplace_back("2021"); // HLSL version (2016, 2017, 2018, 2021). Default is 2018
         }
 
-        // Defines
+        // defines
+        for (const auto& define : m_defines)
         {
-            // Add standard defines
-            arguments.emplace_back("-D"); arguments.emplace_back("VS="+ to_string(static_cast<uint8_t>(m_shader_type == RHI_Shader_Vertex)));
-            arguments.emplace_back("-D"); arguments.emplace_back("PS="+ to_string(static_cast<uint8_t>(m_shader_type == RHI_Shader_Pixel)));
-            arguments.emplace_back("-D"); arguments.emplace_back("CS="+ to_string(static_cast<uint8_t>(m_shader_type == RHI_Shader_Compute)));
-
-            // Add the rest of the defines
-            for (const auto& define : m_defines)
-            {
-                arguments.emplace_back("-D"); arguments.emplace_back(define.first + "=" + define.second);
-            }
+            arguments.emplace_back("-D"); arguments.emplace_back(define.first + "=" + define.second);
         }
 
-        // Compile
+        // compile
         if (IDxcResult* dxc_result = DirecXShaderCompiler::Compile(m_preprocessed_source, arguments))
         {
-            // Get compiled shader buffer
+            // get compiled shader buffer
             IDxcBlob* shader_buffer = nullptr;
             dxc_result->GetResult(&shader_buffer);
 
-            // Create shader module
+            // create shader module
             VkShaderModule shader_module         = nullptr;
             VkShaderModuleCreateInfo create_info = {};
             create_info.sType                    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
@@ -136,10 +121,10 @@ namespace Spartan
 
             SP_VK_ASSERT_MSG(vkCreateShaderModule(RHI_Context::device, &create_info, nullptr, &shader_module), "Failed to create shader module");
 
-            // Name the shader module (useful for GPU-based validation)
+            // name the shader module (useful for GPU-based validation)
             RHI_Device::SetResourceName(static_cast<void*>(shader_module), RHI_Resource_Type::Shader, m_object_name.c_str());
 
-            // Reflect shader resources (so that descriptor sets can be created later)
+            // reflect shader resources (so that descriptor sets can be created later)
             Reflect
             (
                 m_shader_type,
@@ -147,13 +132,13 @@ namespace Spartan
                 static_cast<uint32_t>(shader_buffer->GetBufferSize() / 4)
             );
             
-            // Create input layout
+            // create input layout
             if (m_input_layout)
             {
                 m_input_layout->Create(m_vertex_type, nullptr);
             }
 
-            // Release
+            // release
             dxc_result->Release();
 
             return static_cast<void*>(shader_module);
@@ -162,7 +147,7 @@ namespace Spartan
         return nullptr;
     }
 
-    void RHI_Shader::Reflect(const RHI_Shader_Type shader_type, const uint32_t* ptr, const uint32_t size)
+    void RHI_Shader::Reflect(const RHI_Shader_Stage shader_type, const uint32_t* ptr, const uint32_t size)
     {
         SP_ASSERT(ptr != nullptr);
         SP_ASSERT(size != 0);
@@ -254,14 +239,5 @@ namespace Spartan
                 shader_type                                                   // stage
             );
         }
-    }
-
-    const char* RHI_Shader::GetTargetProfile() const
-    {
-        if (m_shader_type == RHI_Shader_Vertex)  return "vs_6_7";
-        if (m_shader_type == RHI_Shader_Pixel)   return "ps_6_7";
-        if (m_shader_type == RHI_Shader_Compute) return "cs_6_7";
-
-        return nullptr;
     }
 }

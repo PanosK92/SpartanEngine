@@ -296,7 +296,7 @@ namespace Spartan
         Undefined,
     };
 
-    enum RHI_Shader_Type : uint8_t
+    enum RHI_Shader_Stage : uint32_t
     {
         RHI_Shader_Unknown = 0,
         RHI_Shader_Vertex  = 1 << 0,
