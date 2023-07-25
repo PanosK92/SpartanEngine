@@ -876,6 +876,25 @@ namespace Spartan
         m_descriptor_layout_current->SetConstantBuffer(slot, constant_buffer);
     }
 
+    void RHI_CommandList::PushConstants(const uint32_t offset, const uint32_t size, const void* data)
+    {
+        SP_ASSERT(m_state == RHI_CommandListState::Recording);
+        SP_ASSERT(size <= RHI_Device::GetMaxPushConstantSize());
+
+        uint32_t stages = m_pso.IsCompute() ?
+            VkShaderStageFlagBits::VK_SHADER_STAGE_COMPUTE_BIT :
+            VkShaderStageFlagBits::VK_SHADER_STAGE_VERTEX_BIT | VkShaderStageFlagBits::VK_SHADER_STAGE_FRAGMENT_BIT;
+
+        vkCmdPushConstants(
+            static_cast<VkCommandBuffer>(m_rhi_resource),
+            static_cast<VkPipelineLayout>(m_pipeline->GetResource_PipelineLayout()),
+            stages,
+            offset,
+            size,
+            data
+        );
+    }
+
     void RHI_CommandList::SetSampler(const uint32_t slot, RHI_Sampler* sampler) const
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);

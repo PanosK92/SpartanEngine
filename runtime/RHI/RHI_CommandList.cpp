@@ -57,7 +57,7 @@ namespace Spartan
         m_state = RHI_CommandListState::Idle;
     }
 
-	bool RHI_CommandList::IsExecuting()
+    bool RHI_CommandList::IsExecuting()
     {
         return
             m_state == RHI_CommandListState::Submitted && // It has been submitted
