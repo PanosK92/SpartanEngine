@@ -37,6 +37,46 @@ using namespace SPIRV_CROSS_NAMESPACE;
 
 namespace Spartan
 {
+    namespace
+    {
+        void spirv_resources_to_descriptors(
+            const CompilerHLSL& compiler,
+            vector<RHI_Descriptor>& descriptors,
+            const SmallVector<Resource>& resources,
+            const RHI_Descriptor_Type descriptor_type,
+            const RHI_Shader_Stage shader_stage
+        )
+        {
+            // this only matters for textures
+            RHI_Image_Layout layout = RHI_Image_Layout::Undefined;
+            layout                  = descriptor_type == RHI_Descriptor_Type::TextureStorage ? RHI_Image_Layout::General                  : layout;
+            layout                  = descriptor_type == RHI_Descriptor_Type::Texture        ? RHI_Image_Layout::Shader_Read_Only_Optimal : layout;
+
+            for (const Resource& resource : resources)
+            {
+                uint32_t slot         = compiler.get_decoration(resource.id, spv::DecorationBinding);
+                SPIRType type         = compiler.get_type(resource.type_id);
+                uint32_t array_length = !type.array.empty() ? type.array[0] : 0;
+                uint32_t size         = 0;
+                if (descriptor_type == RHI_Descriptor_Type::ConstantBuffer || descriptor_type == RHI_Descriptor_Type::PushConstantBuffer)
+                {
+                    size = static_cast<uint32_t>(compiler.get_declared_struct_size(type));
+                }
+
+                descriptors.emplace_back
+                (
+                    resource.name,   // name
+                    descriptor_type, // type
+                    layout,          // layout
+                    slot,            // slot
+                    array_length,    // array length
+                    shader_stage,    // stage
+                    size             // struct size
+                );
+            }
+        };
+    }
+
     RHI_Shader::~RHI_Shader()
     {
         if (m_rhi_resource)
@@ -147,97 +187,19 @@ namespace Spartan
         return nullptr;
     }
 
-    void RHI_Shader::Reflect(const RHI_Shader_Stage shader_type, const uint32_t* ptr, const uint32_t size)
+    void RHI_Shader::Reflect(const RHI_Shader_Stage shader_stage, const uint32_t* ptr, const uint32_t size)
     {
         SP_ASSERT(ptr != nullptr);
         SP_ASSERT(size != 0);
         
-        // Initialize compiler with SPIR-V data
         const CompilerHLSL compiler = CompilerHLSL(ptr, size);
+        ShaderResources resources   = compiler.get_shader_resources();
 
-        // The SPIR-V is now parsed, and we can perform reflection on it
-        ShaderResources resources = compiler.get_shader_resources();
-
-        // Pre-allocate enough memory for the descriptor vector
-        uint32_t count = static_cast<uint32_t>
-        (
-            resources.storage_images.size()  +
-            resources.storage_buffers.size() +
-            resources.uniform_buffers.size() +
-            resources.separate_images.size() +
-            resources.separate_samplers.size()
-        );
-
-        m_descriptors.reserve(count);
-
-        // Get storage images
-        for (const Resource& resource : resources.storage_images)
-        {
-            m_descriptors.emplace_back
-            (
-                resource.name,                                                // name
-                RHI_Descriptor_Type::TextureStorage,                          // type
-                RHI_Image_Layout::General,                                    // layout
-                compiler.get_decoration(resource.id, spv::DecorationBinding), // slot
-                compiler.get_type(resource.type_id).array[0],                 // array size
-                shader_type                                                   // stage
-            );
-        }
-
-        // Get storage buffers
-        for (const Resource& resource : resources.storage_buffers)
-        {
-            m_descriptors.emplace_back
-            (
-                resource.name,                                                // name
-                RHI_Descriptor_Type::StructuredBuffer,                        // type
-                RHI_Image_Layout::Undefined,                                  // layout
-                compiler.get_decoration(resource.id, spv::DecorationBinding), // slot
-                compiler.get_type(resource.type_id).array[0],                 // array size
-                shader_type                                                   // stage
-            );
-        }
-
-        // Get constant buffers
-        for (const Resource& resource : resources.uniform_buffers)
-        {
-            m_descriptors.emplace_back
-            (
-                resource.name,                                                // name
-                RHI_Descriptor_Type::ConstantBuffer,                          // type
-                RHI_Image_Layout::Undefined,                                  // layout
-                compiler.get_decoration(resource.id, spv::DecorationBinding), // slot
-                compiler.get_type(resource.type_id).array[0],                 // array size
-                shader_type                                                   // stage
-            );
-        }
-
-        // Get textures
-        for (const Resource& resource : resources.separate_images)
-        {
-            m_descriptors.emplace_back
-            (
-                resource.name,                                                // name
-                RHI_Descriptor_Type::Texture,                                 // type
-                RHI_Image_Layout::Shader_Read_Only_Optimal,                   // layout
-                compiler.get_decoration(resource.id, spv::DecorationBinding), // slot
-                compiler.get_type(resource.type_id).array[0],                 // array size
-                shader_type                                                   // stage
-            );
-        }
-
-        // Get samplers
-        for (const Resource& resource : resources.separate_samplers)
-        {
-            m_descriptors.emplace_back
-            (
-                resource.name,                                                // name
-                RHI_Descriptor_Type::Sampler,                                 // type
-                RHI_Image_Layout::Undefined,                                  // layout
-                compiler.get_decoration(resource.id, spv::DecorationBinding), // slot
-                compiler.get_type(resource.type_id).array[0],                 // array size
-                shader_type                                                   // stage
-            );
-        }
+        spirv_resources_to_descriptors(compiler, m_descriptors, resources.separate_images,       RHI_Descriptor_Type::Texture,            shader_stage); // SRVs
+        spirv_resources_to_descriptors(compiler, m_descriptors, resources.storage_images,        RHI_Descriptor_Type::TextureStorage,     shader_stage); // UAVs
+        spirv_resources_to_descriptors(compiler, m_descriptors, resources.storage_buffers,       RHI_Descriptor_Type::StructuredBuffer,   shader_stage);
+        spirv_resources_to_descriptors(compiler, m_descriptors, resources.uniform_buffers,       RHI_Descriptor_Type::ConstantBuffer,     shader_stage);
+        spirv_resources_to_descriptors(compiler, m_descriptors, resources.push_constant_buffers, RHI_Descriptor_Type::PushConstantBuffer, shader_stage);
+        spirv_resources_to_descriptors(compiler, m_descriptors, resources.separate_samplers,     RHI_Descriptor_Type::Sampler,            shader_stage);
     }
 }
