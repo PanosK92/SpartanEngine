@@ -36,9 +36,9 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     Surface surface;
     surface.Build(thread_id.xy, true, false, false);
 
-    bool early_exit_1 = is_opaque_pass() && surface.is_transparent(); // If this is an opaque pass, ignore all transparent pixels.
-    bool early_exit_2 = is_transparent_pass() && surface.is_opaque(); // If this is an transparent pass, ignore all opaque pixels.
-    bool early_exit_3 = is_transparent_pass() && surface.is_sky();    // If this is a transparent pass, ignore sky pixels (they only render in the opaque)
+    bool early_exit_1 = pass_is_opaque() && surface.is_transparent(); // If this is an opaque pass, ignore all transparent pixels.
+    bool early_exit_2 = pass_is_transparent() && surface.is_opaque(); // If this is an transparent pass, ignore all opaque pixels.
+    bool early_exit_3 = pass_is_transparent() && surface.is_sky();    // If this is a transparent pass, ignore sky pixels (they only render in the opaque)
     if (early_exit_1 || early_exit_2 || early_exit_3)
         return;
 

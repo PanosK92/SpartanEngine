@@ -129,34 +129,46 @@ namespace Spartan
     // Medium frequency - Updates per render pass
     struct Cb_Pass
     {
-        Math::Matrix transform          = Math::Matrix::Identity;
-        Math::Matrix transform_previous = Math::Matrix::Identity;
-
-        float f_value                = 0.0f;
-        float blur_sigma             = 0.0f;
-        Math::Vector2 blur_direction = Math::Vector2::Zero;
+        Math::Matrix transform = Math::Matrix::Identity;
+        Math::Matrix m_value   = Math::Matrix::Identity;
 
         Math::Vector2 resolution_rt  = Math::Vector2::Zero;
         Math::Vector2 resolution_in  = Math::Vector2::Zero;
 
         Math::Vector3 f3_value = Math::Vector3::Zero;
-        uint32_t u_value;
+        uint32_t u_state;
 
-        Math::Vector3 position = Math::Vector3::Zero;
-        float padding2;
+        void set_transform_previous(const Math::Matrix& transform_previous)
+        {
+            m_value = transform_previous;
+        }
+
+        void set_position(const Math::Vector3& position)
+        {
+            m_value.m00 = position.x;
+            m_value.m01 = position.y;
+            m_value.m02 = position.z;
+        };
+
+        void set_color(const Math::Vector4& color)
+        {
+            m_value.m10 = color.x;
+            m_value.m11 = color.y;
+            m_value.m12 = color.z;
+            m_value.m13 = color.w;
+        };
+
+        void set_f_value(const float value)  { m_value.m20 = value; }
+        void set_f_value2(const float value) { m_value.m21 = value; }
 
         bool operator==(const Cb_Pass& rhs) const
         {
             return
-                transform          == rhs.transform          &&
-                transform_previous == rhs.transform_previous &&
-                f_value            == rhs.f_value            &&
-                blur_sigma         == rhs.blur_sigma         &&
-                blur_direction     == rhs.blur_direction     && 
-                resolution_rt      == rhs.resolution_rt      &&
-                resolution_in      == rhs.resolution_in      &&
-                f3_value           == rhs.f3_value           &&
-                position           == rhs.position;
+                transform     == rhs.transform     &&
+                m_value       == rhs.m_value       &&
+                resolution_rt == rhs.resolution_rt &&
+                resolution_in == rhs.resolution_in &&
+                f3_value      == rhs.f3_value;
         }
 
         bool operator!=(const Cb_Pass& rhs) const { return !(*this == rhs); }
