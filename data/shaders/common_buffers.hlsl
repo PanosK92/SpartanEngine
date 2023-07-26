@@ -159,13 +159,12 @@ bool is_screen_space_shadows_enabled() { return buffer_frame.options & uint(1U <
 
 // pass properties
 matrix pass_get_transform_previous()      { return buffer_pass.m_value; }
-bool pass_is_transparent()                { return buffer_pass.states & uint(1U << 0); }
-bool pass_is_opaque()                     { return !pass_is_transparent(); }
-bool pass_is_reflection_probe_available() { return buffer_pass.states & uint(1U << 1); }
-bool pass_has_alpha_mask()                { return buffer_pass.states & uint(1U << 2); }
 float2 pass_get_resolution_in()           { return float2(buffer_pass.m_value._m03, buffer_pass.m_value._m22); }
 float2 pass_get_resolution_out()          { return float2(buffer_pass.m_value._m23, buffer_pass.m_value._m30); }
 float3 pass_get_f3_value()                { return float3(buffer_pass.m_value._m00, buffer_pass.m_value._m01, buffer_pass.m_value._m02); }
 float4 pass_get_f4_value()                { return float4(buffer_pass.m_value._m10, buffer_pass.m_value._m11, buffer_pass.m_value._m12, buffer_pass.m_value._m13); }
 float pass_get_f3_value2()                { return float3(buffer_pass.m_value._m20, buffer_pass.m_value._m21, buffer_pass.m_value._m31); }
+bool pass_is_transparent()                { return buffer_pass.m_value._m33; }
+bool pass_is_reflection_probe_available() { return pass_get_f4_value().x == 1.0f; } // this is more risky
+bool pass_is_opaque()                     { return !pass_is_transparent(); }
 // m33 is free

@@ -30,7 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-    // Low frequency    - Updates once per frame
+    // Low frequency - Updates once per frame
     struct Cb_Frame
     {
         Math::Matrix view;
@@ -169,15 +169,15 @@ namespace Spartan
         float normal_mul    = 0.0f;
         float height_mul    = 0.0f;
 
-        uint32_t properties = 0;
-        float clearcoat;
-        float clearcoat_roughness;
-        float anisotropic;
+        uint32_t properties       = 0;
+        float clearcoat           = 0.0f;
+        float clearcoat_roughness = 0.0f;
+        float anisotropic         = 0.0f;
 
-        float anisitropic_rotation;
-        float sheen;
-        float sheen_tint;
-        float padding;
+        float anisitropic_rotation = 0.0f;
+        float sheen                = 0.0f;
+        float sheen_tint           = 0.0f;
+        float padding              = 0.0f;
 
         bool operator==(const Cb_Material& rhs) const
         {
@@ -199,14 +199,11 @@ namespace Spartan
         }
     };
 
-    // Push constant buffer - Per pass
+    // About to become a push constant buffer - Per pass
     struct Cb_Pass
     {
         Math::Matrix transform = Math::Matrix::Identity;
         Math::Matrix m_value   = Math::Matrix::Identity;
-
-        Math::Vector3 padding = Math::Vector3::Zero;
-        uint32_t u_state;
 
         void set_transform_previous(const Math::Matrix& transform_previous)
         {
@@ -267,16 +264,27 @@ namespace Spartan
             m_value.m13 = color.w;
         };
 
+        void set_f4_value(const float x, const float y, const float z, const float w)
+        {
+            m_value.m10 = x;
+            m_value.m11 = y;
+            m_value.m12 = z;
+            m_value.m13 = w;
+        };
+
+        void set_is_transparent(const bool is_transparent)
+        {
+            m_value.m33 = is_transparent ? 1.0f : 0.0f;
+        }
+
         bool operator==(const Cb_Pass& rhs) const
         {
-            return
-                transform == rhs.transform &&
-                m_value   == rhs.m_value   &&
-                u_state   == rhs.u_state;
+            return transform == rhs.transform && m_value == rhs.m_value;
         }
 
         bool operator!=(const Cb_Pass& rhs) const { return !(*this == rhs); }
     };
+
     // Push constant buffer - ImGui
     struct Cb_ImGui
     {
