@@ -95,7 +95,7 @@ namespace Spartan
         return nullptr;
     }
 
-    void RHI_Shader::Reflect(const RHI_Shader_Type shader_type, const uint32_t* ptr, uint32_t size)
+    void RHI_Shader::Reflect(const RHI_Shader_Stage shader_type, const uint32_t* ptr, uint32_t size)
     {
 
     }
