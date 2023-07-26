@@ -637,7 +637,7 @@ namespace Spartan
 
                 // Update uber buffer
                 {
-                    m_cb_pass_cpu.u_state = is_transparent_pass ? 1U << 0 : 0;
+                    m_cb_pass_cpu.set_is_transparent(is_transparent_pass);
 
                     // Update transform
                     if (shared_ptr<Transform> transform = entity->GetTransform())
@@ -838,7 +838,7 @@ namespace Spartan
                 
                 // Set uber buffer
                 m_cb_pass_cpu.set_resolution_out(tex_diffuse);
-                m_cb_pass_cpu.u_state = is_transparent_pass ? 1U << 0 : 0;
+                m_cb_pass_cpu.set_is_transparent(is_transparent_pass);
                 UpdateConstantBufferPass(cmd_list);
                 
                 cmd_list->Dispatch(thread_group_count_x(tex_diffuse), thread_group_count_y(tex_diffuse));
@@ -866,7 +866,7 @@ namespace Spartan
 
         // Set uber buffer
         m_cb_pass_cpu.set_resolution_out(tex_out);
-        m_cb_pass_cpu.u_state = is_transparent_pass;
+        m_cb_pass_cpu.set_is_transparent(is_transparent_pass);
         UpdateConstantBufferPass(cmd_list);
 
         // Update light buffer with the directional light
@@ -951,9 +951,8 @@ namespace Spartan
 
         // Set uber buffer
         m_cb_pass_cpu.set_resolution_out(tex_out);
-        m_cb_pass_cpu.u_state  = 0;
-        m_cb_pass_cpu.u_state |= is_transparent_pass ? 1U << 0 : 0;
-        m_cb_pass_cpu.u_state |= !probes.empty()     ? 1U << 1 : 0; // reflection probe available
+        m_cb_pass_cpu.set_is_transparent(is_transparent_pass);
+        m_cb_pass_cpu.set_f4_value(!probes.empty() ? 1.0f : 0.0f, 0.0f, 0.0f, 0.0f); // reflection probe available
         UpdateConstantBufferPass(cmd_list);
 
         // Update light buffer with the directional light
