@@ -512,8 +512,7 @@ namespace Spartan
 
                 // Set uber buffer
                 m_cb_pass_cpu.transform = transform->GetMatrix();
-                m_cb_pass_cpu.set_f_value(material->HasTexture(MaterialTexture::Color) ? 1.0f : 0.0f);
-                m_cb_pass_cpu.u_state   = material->HasTexture(MaterialTexture::AlphaMask) ? 1U << 2 : 0;
+                m_cb_pass_cpu.set_f3_value(material->HasTexture(MaterialTexture::AlphaMask) ? 1.0f : 0.0f, material->GetProperty(MaterialProperty::ColorA), 0.0f);
                 UpdateConstantBufferPass(cmd_list);
             
                 // Draw
@@ -946,8 +945,8 @@ namespace Spartan
             shared_ptr<ReflectionProbe> probe = probes[0]->GetComponent<ReflectionProbe>();
 
             cmd_list->SetTexture(Renderer_BindingsSrv::reflection_probe, probe->GetColorTexture());
-            m_cb_pass_cpu.f3_value = probe->GetExtents();
             m_cb_pass_cpu.set_f3_value(probe->GetTransform()->GetPosition());
+            m_cb_pass_cpu.set_f3_value2(probe->GetExtents());
         }
 
         // Set uber buffer
@@ -1027,10 +1026,8 @@ namespace Spartan
             // Set uber buffer
             m_cb_pass_cpu.set_resolution_in(Vector2(static_cast<float>(width), static_cast<float>(height)));
             m_cb_pass_cpu.set_resolution_out(tex_blur);
-            m_cb_pass_cpu.f3_value.x = pixel_stride;
-            m_cb_pass_cpu.f3_value.y = 0.0f;
-            m_cb_pass_cpu.set_f_value(radius);
-            m_cb_pass_cpu.set_f_value2(sigma);
+            m_cb_pass_cpu.set_f3_value(pixel_stride, 0.0f, radius);
+            m_cb_pass_cpu.set_f3_value2(sigma);
             UpdateConstantBufferPass(cmd_list);
 
             // Set textures
@@ -1058,10 +1055,8 @@ namespace Spartan
             // Set uber buffer
             m_cb_pass_cpu.set_resolution_in(Vector2(static_cast<float>(width), static_cast<float>(height)));
             m_cb_pass_cpu.set_resolution_out(tex_blur);
-            m_cb_pass_cpu.f3_value.x = 0.0f;
-            m_cb_pass_cpu.f3_value.y = pixel_stride;
-            m_cb_pass_cpu.set_f_value(radius);
-            m_cb_pass_cpu.set_f_value2(sigma);
+            m_cb_pass_cpu.set_f3_value(0.0f, pixel_stride, radius);
+            m_cb_pass_cpu.set_f3_value2(sigma);
             UpdateConstantBufferPass(cmd_list);
 
             // Set textures
@@ -1673,8 +1668,7 @@ namespace Spartan
 
         // Set uber buffer
         m_cb_pass_cpu.set_resolution_out(tex);
-        m_cb_pass_cpu.f3_value.x = output_mip_count;
-        m_cb_pass_cpu.f3_value.y = thread_group_count_x_ * thread_group_count_y_;
+        m_cb_pass_cpu.set_f3_value(output_mip_count, thread_group_count_x_ * thread_group_count_y_, 0.0f);
         UpdateConstantBufferPass(cmd_list);
 
         // Update counter

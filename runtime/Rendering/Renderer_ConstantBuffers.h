@@ -205,7 +205,7 @@ namespace Spartan
         Math::Matrix transform = Math::Matrix::Identity;
         Math::Matrix m_value   = Math::Matrix::Identity;
 
-        Math::Vector3 f3_value = Math::Vector3::Zero;
+        Math::Vector3 padding = Math::Vector3::Zero;
         uint32_t u_state;
 
         void set_transform_previous(const Math::Matrix& transform_previous)
@@ -231,11 +231,32 @@ namespace Spartan
             m_value.m30 = resolution.y;
         };
 
-        void set_f3_value(const Math::Vector3& position)
+        void set_f3_value(const Math::Vector3& value)
         {
-            m_value.m00 = position.x;
-            m_value.m01 = position.y;
-            m_value.m02 = position.z;
+            m_value.m00 = value.x;
+            m_value.m01 = value.y;
+            m_value.m02 = value.z;
+        };
+
+        void set_f3_value(const float x, const float y, const float z)
+        {
+            m_value.m00 = x;
+            m_value.m01 = y;
+            m_value.m02 = z;
+        };
+
+        void set_f3_value2(const Math::Vector3& value)
+        {
+            m_value.m20 = value.x;
+            m_value.m21 = value.y;
+            m_value.m31 = value.z;
+        };
+
+        void set_f3_value2(const float x, const float y, const float z)
+        {
+            m_value.m20 = x;
+            m_value.m21 = y;
+            m_value.m31 = z;
         };
 
         void set_f4_value(const Math::Vector4& color)
@@ -246,15 +267,11 @@ namespace Spartan
             m_value.m13 = color.w;
         };
 
-        void set_f_value(const float value)  { m_value.m20 = value; }
-        void set_f_value2(const float value) { m_value.m21 = value; }
-
         bool operator==(const Cb_Pass& rhs) const
         {
             return
                 transform == rhs.transform &&
                 m_value   == rhs.m_value   &&
-                f3_value  == rhs.f3_value &&
                 u_state   == rhs.u_state;
         }
 
