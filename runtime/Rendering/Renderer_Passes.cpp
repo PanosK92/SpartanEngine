@@ -947,7 +947,7 @@ namespace Spartan
 
             cmd_list->SetTexture(Renderer_BindingsSrv::reflection_probe, probe->GetColorTexture());
             m_cb_pass_cpu.f3_value = probe->GetExtents();
-            m_cb_pass_cpu.set_position(probe->GetTransform()->GetPosition());
+            m_cb_pass_cpu.set_f3_value(probe->GetTransform()->GetPosition());
         }
 
         // Set uber buffer
@@ -1025,8 +1025,8 @@ namespace Spartan
             cmd_list->SetPipelineState(pso);
 
             // Set uber buffer
-            m_cb_pass_cpu.set_resolution_out(Vector2(static_cast<float>(width), static_cast<float>(height)));
             m_cb_pass_cpu.set_resolution_in(Vector2(static_cast<float>(width), static_cast<float>(height)));
+            m_cb_pass_cpu.set_resolution_out(tex_blur);
             m_cb_pass_cpu.f3_value.x = pixel_stride;
             m_cb_pass_cpu.f3_value.y = 0.0f;
             m_cb_pass_cpu.set_f_value(radius);
@@ -1056,9 +1056,12 @@ namespace Spartan
             cmd_list->SetPipelineState(pso);
 
             // Set uber buffer
+            m_cb_pass_cpu.set_resolution_in(Vector2(static_cast<float>(width), static_cast<float>(height)));
             m_cb_pass_cpu.set_resolution_out(tex_blur);
             m_cb_pass_cpu.f3_value.x = 0.0f;
             m_cb_pass_cpu.f3_value.y = pixel_stride;
+            m_cb_pass_cpu.set_f_value(radius);
+            m_cb_pass_cpu.set_f_value2(sigma);
             UpdateConstantBufferPass(cmd_list);
 
             // Set textures
@@ -2157,7 +2160,7 @@ namespace Spartan
             {
                 // Set uber buffer
                 m_cb_pass_cpu.set_resolution_out(tex_out);
-                m_cb_pass_cpu.set_color(m_font->GetColorOutline());
+                m_cb_pass_cpu.set_f4_value(m_font->GetColorOutline());
                 UpdateConstantBufferPass(cmd_list);
 
                 cmd_list->SetBufferIndex(m_font->GetIndexBuffer());
@@ -2177,7 +2180,7 @@ namespace Spartan
         {
             // Set uber buffer
             m_cb_pass_cpu.set_resolution_out(tex_out);
-            m_cb_pass_cpu.set_color(m_font->GetColor());
+            m_cb_pass_cpu.set_f4_value(m_font->GetColor());
             UpdateConstantBufferPass(cmd_list);
 
             cmd_list->SetBufferIndex(m_font->GetIndexBuffer());
