@@ -63,10 +63,8 @@ Occasional livestreams on Discord for interesting topics.
 - Profiling (CPU & GPU)
 - Support for XML files
 - Easy to build (Single click project generation which includes editor and runtime)
-- AMD FidelityFX Contrast Adaptive Sharpening
-- AMD FidelityFX Single Pass Downsampler
-- AMD FidelityFX Super Resolution 2
-- AMD Compressonator for texture compression
+- AMD FidelityFX (FSR2, Single Pass Downsampler, Contrast Adaptive Sharpening, Compressonator for texture compression)
+- All render passes use a push constant buffer with a size of 120 bytes, pushing data to the GPU at lightening speeds.
 
 # Roadmap
 
