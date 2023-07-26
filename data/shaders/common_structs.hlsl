@@ -74,7 +74,7 @@ struct Surface
         float sample_depth       = get_depth(position_screen);
 
         // Misc
-        uv     = (position_screen + 0.5f) / buffer_pass.resolution_rt;
+        uv     = (position_screen + 0.5f) / pass_get_resolution_out();
         depth  = sample_depth;
         normal = sample_normal.xyz;
  

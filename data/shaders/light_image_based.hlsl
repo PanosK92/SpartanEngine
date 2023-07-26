@@ -76,7 +76,7 @@ bool is_inside_box(in float3 p, in float3 min, in float3 max)
 
 float4 mainPS(Pixel_PosUv input) : SV_TARGET
 {
-    const uint2 pos = input.uv * buffer_pass.resolution_rt;
+    const uint2 pos = input.uv * pass_get_resolution_out();
     
     // Construct surface
     Surface surface;
