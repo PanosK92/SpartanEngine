@@ -80,11 +80,11 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     
     // Construct surface
     Surface surface;
-    bool use_ssgi = is_opaque_pass(); // we don't do ssgi for transparents.
+    bool use_ssgi = pass_is_opaque(); // we don't do ssgi for transparents.
     surface.Build(pos, true, use_ssgi, false);
 
-    bool early_exit_1 = is_opaque_pass() && surface.is_transparent(); // If this is an opaque pass, ignore all transparent pixels.
-    bool early_exit_2 = is_transparent_pass() && surface.is_opaque(); // If this is an transparent pass, ignore all opaque pixels.
+    bool early_exit_1 = pass_is_opaque() && surface.is_transparent(); // If this is an opaque pass, ignore all transparent pixels.
+    bool early_exit_2 = pass_is_transparent() && surface.is_opaque(); // If this is an transparent pass, ignore all opaque pixels.
     bool early_exit_3 = surface.is_sky();                             // We don't want to do IBL on the sky itself.
     if (early_exit_1 || early_exit_2 || early_exit_3)
         discard;
@@ -114,7 +114,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     
     // Get ssr color
     mip_level               = lerp(0, buffer_frame.ssr_mip_count, surface.roughness);
-    const float4 ssr_sample = (is_ssr_enabled() && is_opaque_pass() && surface.is_opaque()) ? tex_ssr.SampleLevel(samplers[sampler_trilinear_clamp], surface.uv, mip_level) : 0.0f;
+    const float4 ssr_sample = (is_ssr_enabled() && pass_is_opaque() && surface.is_opaque()) ? tex_ssr.SampleLevel(samplers[sampler_trilinear_clamp], surface.uv, mip_level) : 0.0f;
     const float3 color_ssr  = ssr_sample.rgb;
     float ssr_alpha         = ssr_sample.a;
 
@@ -128,10 +128,10 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     // Sample reflection probe
     float3 ibl_specular_probe = 0.0f;
     float probe_alpha         = 0.0f;
-    if (is_reflection_probe_available())
+    if (pass_is_reflection_probe_available())
     {
-        float probe_radius    = buffer_pass.f_value;
-        float3 probe_position = buffer_pass.position;
+        float probe_radius    = pass_get_f_value();
+        float3 probe_position = pass_get_position();
         float3 extents        = buffer_pass.f3_value;
         float3 box_min        = probe_position - extents;
         float3 box_max        = probe_position + extents;

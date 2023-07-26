@@ -51,7 +51,7 @@ PixelInputType mainVS(Vertex_PosUvNorTan input)
     output.position       = mul(output.position_world, buffer_frame.view_projection);
 
     output.position_ss_current  = output.position;
-    output.position_ss_previous = mul(input.position, buffer_pass.transform_previous);
+    output.position_ss_previous = mul(input.position, pass_get_transform_previous());
     output.position_ss_previous = mul(output.position_ss_previous, buffer_frame.view_projection_previous);
     output.normal_world         = normalize(mul(input.normal, (float3x3)buffer_pass.transform)).xyz;
     output.tangent_world        = normalize(mul(input.tangent, (float3x3)buffer_pass.transform)).xyz;
@@ -79,7 +79,7 @@ PixelOutputType mainPS(PixelInputType input)
         float3x3 world_to_tangent      = make_world_to_tangent_matrix(input.normal_world, input.tangent_world);
         float3 camera_to_pixel_world   = normalize(buffer_frame.camera_position - input.position_world.xyz);
         float3 camera_to_pixel_tangent = normalize(mul(camera_to_pixel_world, world_to_tangent));
-        float height = tex_material_height.Sample(samplers[sampler_anisotropic_wrap], uv).r - 0.5f;
+        float height                   = tex_material_height.Sample(samplers[sampler_anisotropic_wrap], uv).r - 0.5f;
         uv                             += (camera_to_pixel_tangent.xy / camera_to_pixel_tangent.z) * height * scale;
     }
 
@@ -143,11 +143,11 @@ PixelOutputType mainPS(PixelInputType input)
     if (has_texture_normal())
     {
         // Get tangent space normal and apply the user defined intensity. Then transform it to world space.
-        float3 tangent_normal = normalize(unpack(tex_material_normal.Sample(samplers[sampler_anisotropic_wrap], uv).rgb));
-        float normal_intensity    = clamp(buffer_material.normal, 0.012f, buffer_material.normal);
+        float3 tangent_normal      = normalize(unpack(tex_material_normal.Sample(samplers[sampler_anisotropic_wrap], uv).rgb));
+        float normal_intensity     = clamp(buffer_material.normal, 0.012f, buffer_material.normal);
         tangent_normal.xy         *= saturate(normal_intensity);
-        float3x3 tangent_to_world = make_tangent_to_world_matrix(input.normal_world, input.tangent_world);
-        normal                    = normalize(mul(tangent_normal, tangent_to_world).xyz);
+        float3x3 tangent_to_world  = make_tangent_to_world_matrix(input.normal_world, input.tangent_world);
+        normal                     = normalize(mul(tangent_normal, tangent_to_world).xyz);
     }
 
     // Occlusion
@@ -161,8 +161,8 @@ PixelOutputType mainPS(PixelInputType input)
     float emission = 0.0f;
     if (has_texture_emissive())
     {
-        float3 emissive_color = tex_material_emission.Sample(samplers[sampler_anisotropic_wrap], uv).rgb;
-        emission              = luminance(emissive_color);
+        float3 emissive_color  = tex_material_emission.Sample(samplers[sampler_anisotropic_wrap], uv).rgb;
+        emission               = luminance(emissive_color);
         albedo.rgb            += emissive_color;
     }
 
@@ -186,7 +186,7 @@ PixelOutputType mainPS(PixelInputType input)
     g_buffer.material               = float4(roughness, metalness, emission, occlusion);
     g_buffer.material_2             = float4(buffer_material.anisotropic, buffer_material.anisotropic_rotation, buffer_material.clearcoat, buffer_material.clearcoat_roughness);
     g_buffer.velocity               = velocity_uv;
-    g_buffer.fsr2_transparency_mask = albedo.a * (is_transparent_pass() ? 1.0f : 0.0f);
+    g_buffer.fsr2_transparency_mask = albedo.a * (pass_is_transparent() ? 1.0f : 0.0f);
 
     return g_buffer;
 }

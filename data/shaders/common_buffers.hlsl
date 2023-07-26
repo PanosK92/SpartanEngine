@@ -71,20 +71,13 @@ struct FrameBufferData
 struct PassBufferData
 {
     matrix transform;
-    matrix transform_previous;
-
-    float f_value; // radius, alpha
-    float blur_sigma;
-    float2 blur_direction;
+    matrix m_value;
 
     float2 resolution_rt;
     float2 resolution_in;
 
-    float3 f3_value; // extents and others
-    uint states;     // is_transparent_pass, reflection_probe_available
-    
-    float3 position;
-    float padding1;
+    float3 f3_value;
+    uint states;
 };
 
 struct LightBufferData
@@ -167,8 +160,13 @@ bool is_ssgi_enabled()                 { return buffer_frame.options & uint(1U <
 bool is_volumetric_fog_enabled()       { return buffer_frame.options & uint(1U << 2); }
 bool is_screen_space_shadows_enabled() { return buffer_frame.options & uint(1U << 3); }
 
-// misc
-bool is_transparent_pass()           { return buffer_pass.states & uint(1U << 0); }
-bool is_opaque_pass()                { return !is_transparent_pass(); }
-bool is_reflection_probe_available() { return buffer_pass.states & uint(1U << 1); }
-bool has_alpha_max()                 { return buffer_pass.states & uint(1U << 2); }
+// pass properties
+matrix pass_get_transform_previous()      { return buffer_pass.m_value; }
+float3 pass_get_position()                { return float3(buffer_pass.m_value._m00, buffer_pass.m_value._m01, buffer_pass.m_value._m02); }
+float4 pass_get_color()                   { return float4(buffer_pass.m_value._m10, buffer_pass.m_value._m11, buffer_pass.m_value._m12, buffer_pass.m_value._m13); }
+float pass_get_f_value()                  { return buffer_pass.m_value._m20; }
+float pass_get_f_value2()                 { return buffer_pass.m_value._m21; }
+bool pass_is_transparent()                { return buffer_pass.states & uint(1U << 0); }
+bool pass_is_opaque()                     { return !pass_is_transparent(); }
+bool pass_is_reflection_probe_available() { return buffer_pass.states & uint(1U << 1); }
+bool has_alpha_max()                      { return buffer_pass.states & uint(1U << 2); }

@@ -512,8 +512,8 @@ namespace Spartan
 
                 // Set uber buffer
                 m_cb_pass_cpu.transform = transform->GetMatrix();
-                m_cb_pass_cpu.f_value   = material->HasTexture(MaterialTexture::Color) ? 1.0f : 0.0f;
-                m_cb_pass_cpu.u_value   = material->HasTexture(MaterialTexture::AlphaMask) ? 1U << 2 : 0;
+                m_cb_pass_cpu.set_f_value(material->HasTexture(MaterialTexture::Color) ? 1.0f : 0.0f);
+                m_cb_pass_cpu.u_state   = material->HasTexture(MaterialTexture::AlphaMask) ? 1U << 2 : 0;
                 UpdateConstantBufferPass(cmd_list);
             
                 // Draw
@@ -638,13 +638,13 @@ namespace Spartan
 
                 // Update uber buffer
                 {
-                    m_cb_pass_cpu.u_value = is_transparent_pass ? 1U << 0 : 0;
+                    m_cb_pass_cpu.u_state = is_transparent_pass ? 1U << 0 : 0;
 
                     // Update transform
                     if (shared_ptr<Transform> transform = entity->GetTransform())
                     {
-                        m_cb_pass_cpu.transform          = transform->GetMatrix();
-                        m_cb_pass_cpu.transform_previous = transform->GetMatrixPrevious();
+                        m_cb_pass_cpu.transform = transform->GetMatrix();
+                        m_cb_pass_cpu.set_transform_previous(transform->GetMatrixPrevious());
 
                         // Save matrix for velocity computation
                         transform->SetMatrixPrevious(m_cb_pass_cpu.transform);
@@ -839,7 +839,7 @@ namespace Spartan
                 
                 // Set uber buffer
                 m_cb_pass_cpu.resolution_rt = Vector2(static_cast<float>(tex_diffuse->GetWidth()), static_cast<float>(tex_diffuse->GetHeight()));
-                m_cb_pass_cpu.u_value       = is_transparent_pass ? 1U << 0 : 0;
+                m_cb_pass_cpu.u_state       = is_transparent_pass ? 1U << 0 : 0;
                 UpdateConstantBufferPass(cmd_list);
                 
                 cmd_list->Dispatch(thread_group_count_x(tex_diffuse), thread_group_count_y(tex_diffuse));
@@ -867,7 +867,7 @@ namespace Spartan
 
         // Set uber buffer
         m_cb_pass_cpu.resolution_rt = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
-        m_cb_pass_cpu.u_value       = is_transparent_pass;
+        m_cb_pass_cpu.u_state       = is_transparent_pass;
         UpdateConstantBufferPass(cmd_list);
 
         // Update light buffer with the directional light
@@ -947,14 +947,14 @@ namespace Spartan
 
             cmd_list->SetTexture(Renderer_BindingsSrv::reflection_probe, probe->GetColorTexture());
             m_cb_pass_cpu.f3_value = probe->GetExtents();
-            m_cb_pass_cpu.position = probe->GetTransform()->GetPosition();
+            m_cb_pass_cpu.set_position(probe->GetTransform()->GetPosition());
         }
 
         // Set uber buffer
         m_cb_pass_cpu.resolution_rt  = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
-        m_cb_pass_cpu.u_value        = 0;
-        m_cb_pass_cpu.u_value       |= is_transparent_pass ? 1U << 0 : 0;
-        m_cb_pass_cpu.u_value       |= !probes.empty()     ? 1U << 1 : 0; // reflection probe available
+        m_cb_pass_cpu.u_state        = 0;
+        m_cb_pass_cpu.u_state       |= is_transparent_pass ? 1U << 0 : 0;
+        m_cb_pass_cpu.u_state       |= !probes.empty()     ? 1U << 1 : 0; // reflection probe available
         UpdateConstantBufferPass(cmd_list);
 
         // Update light buffer with the directional light
@@ -1025,11 +1025,12 @@ namespace Spartan
             cmd_list->SetPipelineState(pso);
 
             // Set uber buffer
-            m_cb_pass_cpu.resolution_rt  = Vector2(static_cast<float>(width), static_cast<float>(height));
-            m_cb_pass_cpu.resolution_in  = Vector2(static_cast<float>(width), static_cast<float>(height));
-            m_cb_pass_cpu.f_value        = radius;
-            m_cb_pass_cpu.blur_sigma     = sigma;
-            m_cb_pass_cpu.blur_direction = Vector2(pixel_stride, 0.0f);
+            m_cb_pass_cpu.resolution_rt = Vector2(static_cast<float>(width), static_cast<float>(height));
+            m_cb_pass_cpu.resolution_in = Vector2(static_cast<float>(width), static_cast<float>(height));
+            m_cb_pass_cpu.f3_value.x    = pixel_stride;
+            m_cb_pass_cpu.f3_value.y    = 0.0f;
+            m_cb_pass_cpu.set_f_value(radius);
+            m_cb_pass_cpu.set_f_value2(sigma);
             UpdateConstantBufferPass(cmd_list);
 
             // Set textures
@@ -1055,8 +1056,9 @@ namespace Spartan
             cmd_list->SetPipelineState(pso);
 
             // Set uber buffer
-            m_cb_pass_cpu.resolution_rt  = Vector2(static_cast<float>(tex_blur->GetWidth()), static_cast<float>(tex_blur->GetHeight()));
-            m_cb_pass_cpu.blur_direction = Vector2(0.0f, pixel_stride);
+            m_cb_pass_cpu.resolution_rt = Vector2(static_cast<float>(tex_blur->GetWidth()), static_cast<float>(tex_blur->GetHeight()));
+            m_cb_pass_cpu.f3_value.x    = 0.0f;
+            m_cb_pass_cpu.f3_value.y    = pixel_stride;
             UpdateConstantBufferPass(cmd_list);
 
             // Set textures
@@ -2155,7 +2157,7 @@ namespace Spartan
             {
                 // Set uber buffer
                 m_cb_pass_cpu.resolution_rt = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
-                m_cb_pass_cpu.position      = m_font->GetColorOutline();
+                m_cb_pass_cpu.set_color(m_font->GetColorOutline());
                 UpdateConstantBufferPass(cmd_list);
 
                 cmd_list->SetBufferIndex(m_font->GetIndexBuffer());
@@ -2175,7 +2177,7 @@ namespace Spartan
         {
             // Set uber buffer
             m_cb_pass_cpu.resolution_rt = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
-            m_cb_pass_cpu.position      = m_font->GetColor();
+            m_cb_pass_cpu.set_color(m_font->GetColor());
             UpdateConstantBufferPass(cmd_list);
 
             cmd_list->SetBufferIndex(m_font->GetIndexBuffer());

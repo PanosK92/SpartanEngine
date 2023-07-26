@@ -45,7 +45,7 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     color.a = color.r;
 
     // Color it
-    color *= float4(buffer_pass.position, 1.0f); // ugly name I know, but it's the color of the text
+    color *= float4(pass_get_color().rgb, 1.0f);
 
     return color;
 }

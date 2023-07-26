@@ -41,8 +41,8 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     surface.Build(thread_id.xy, true, true, true);
 
     // Early exit cases
-    bool early_exit_1 = is_opaque_pass() && surface.is_transparent() && !surface.is_sky(); // do shade sky pixels during the opaque pass (volumetric lighting)
-    bool early_exit_2 = is_transparent_pass() && surface.is_opaque();
+    bool early_exit_1 = pass_is_opaque() && surface.is_transparent() && !surface.is_sky(); // do shade sky pixels during the opaque pass (volumetric lighting)
+    bool early_exit_2 = pass_is_transparent() && surface.is_opaque();
     if (early_exit_1 || early_exit_2)
         return;
 
@@ -66,7 +66,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         }
 
         // Ensure that the shadow is as transparent as the material
-        if (is_transparent_pass())
+        if (pass_is_transparent())
         {
             shadow.a = clamp(shadow.a, surface.alpha, 1.0f);
         }
