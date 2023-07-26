@@ -62,7 +62,7 @@ namespace ImGui::RHI
         RHI_CommandPool* cmd_pool = nullptr;
         array<unique_ptr<RHI_IndexBuffer>,  buffer_count> index_buffers;
         array<unique_ptr<RHI_VertexBuffer>, buffer_count> vertex_buffers;
-        Cb_ImGui constant_buffer_cpu;
+        Cb_Pass constant_buffer_cpu;
         
         ViewportRhiResources() = default;
         ViewportRhiResources(const char* name, RHI_SwapChain* swapchain)
@@ -335,29 +335,54 @@ namespace ImGui::RHI
                             cmd_list->SetScissorRectangle(scissor_rect);
                         }
 
-                        // set texture
-                        rhi_resources->constant_buffer_cpu.options_texture_visualisation = 0;
-                        if (RHI_Texture* texture = static_cast<RHI_Texture*>(pcmd->TextureId))
+                        // Set texture and update texture viewer parameters
                         {
-                            // during engine startup, some textures might be loading in different threads
-                            if (texture->IsReadyForUse())
-                            {
-                                cmd_list->SetTexture(Renderer_BindingsSrv::tex, texture);
+                            bool m_channel_r           = false;
+                            bool m_channel_g           = false;
+                            bool m_channel_b           = false;
+                            bool m_channel_a           = false;
+                            bool m_gamma_correct       = false;
+                            bool m_pack                = false;
+                            bool m_boost               = false;
+                            bool m_abs                 = false;
+                            bool m_point_sampling      = false;
+                            float mip_level            = 0;
+                            bool is_texture_visualised = false;
 
-                                // update texture viewer parameters
-                                bool is_texture_visualised                                       = TextureViewer::GetVisualisedTextureId() == texture->GetObjectId();
-                                rhi_resources->constant_buffer_cpu.options_texture_visualisation = is_texture_visualised ? TextureViewer::GetVisualisationFlags() : 0;
-                                rhi_resources->constant_buffer_cpu.mip_level                     = is_texture_visualised ? TextureViewer::GetMipLevel() : 0;
+                            if (RHI_Texture* texture = static_cast<RHI_Texture*>(pcmd->TextureId))
+                            {
+                                // during engine startup, some textures might be loading in different threads
+                                if (texture->IsReadyForUse())
+                                {
+                                    cmd_list->SetTexture(Renderer_BindingsSrv::tex, texture);
+
+                                    // update texture viewer parameters
+                                    is_texture_visualised = TextureViewer::GetVisualisedTextureId() == texture->GetObjectId();
+                                    mip_level = static_cast<float>(is_texture_visualised ? TextureViewer::GetMipLevel() : 0);
+                                    if (is_texture_visualised)
+                                    {
+                                        m_channel_r      = TextureViewer::GetVisualisationFlags() & Visualise_Channel_R;
+                                        m_channel_g      = TextureViewer::GetVisualisationFlags() & Visualise_Channel_G;
+                                        m_channel_b      = TextureViewer::GetVisualisationFlags() & Visualise_Channel_B;
+                                        m_channel_a      = TextureViewer::GetVisualisationFlags() & Visualise_Channel_A;
+                                        m_gamma_correct  = TextureViewer::GetVisualisationFlags() & Visualise_GammaCorrect;
+                                        m_pack           = TextureViewer::GetVisualisationFlags() & Visualise_Pack;
+                                        m_boost          = TextureViewer::GetVisualisationFlags() & Visualise_Boost;
+                                        m_abs            = TextureViewer::GetVisualisationFlags() & Visualise_Abs;
+                                        m_point_sampling = TextureViewer::GetVisualisationFlags() & Visualise_Sample_Point;
+                                    }
+                                }
                             }
+
+                            rhi_resources->constant_buffer_cpu.set_f4_value(m_channel_r, m_channel_g, m_channel_b, m_channel_a);
+                            rhi_resources->constant_buffer_cpu.set_f3_value(m_gamma_correct, m_pack, m_boost);
+                            rhi_resources->constant_buffer_cpu.set_f3_value2(m_abs, m_point_sampling, mip_level);
+                            rhi_resources->constant_buffer_cpu.set_is_transparent(is_texture_visualised);
                         }
 
-                        // update imgui buffer
-                        cmd_list->PushConstants(0, sizeof(Cb_ImGui), &rhi_resources->constant_buffer_cpu);
-
-                        // draw
+                        cmd_list->PushConstants(0, sizeof(Cb_Pass), &rhi_resources->constant_buffer_cpu);
                         cmd_list->DrawIndexed(pcmd->ElemCount, pcmd->IdxOffset + global_idx_offset, pcmd->VtxOffset + global_vtx_offset);
                     }
-
                 }
 
                 global_idx_offset += static_cast<uint32_t>(cmd_list_imgui->IdxBuffer.Size);

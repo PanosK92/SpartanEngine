@@ -68,15 +68,6 @@ struct FrameBufferData
     float padding;
 };
 
-struct PassBufferData
-{
-    matrix transform;
-    matrix m_value;
-
-    float3 padding32a;
-    uint states;
-};
-
 struct LightBufferData
 {
     matrix view_projection[6];
@@ -113,22 +104,18 @@ struct MaterialBufferData
     float padding;
 };
 
-struct ImGuiBufferData
+cbuffer BufferFrame    : register(b0) { FrameBufferData buffer_frame;       }; // Low frequency            - Updates once per frame
+cbuffer BufferLight    : register(b1) { LightBufferData buffer_light;       }; // Medium frequency         - Updates per light
+cbuffer BufferMaterial : register(b2) { MaterialBufferData buffer_material; }; // Medium to high frequency - Updates per material during the g-buffer pass
+
+struct PassBufferData
 {
     matrix transform;
-
-    uint texture_flags;
-    uint mip_level;
-    float2 padding;
+    matrix m_value;
 };
 
-cbuffer BufferFrame    : register(b0) { FrameBufferData buffer_frame;       }; // Low frequency            - Updates once per frame
-cbuffer BufferPass     : register(b1) { PassBufferData buffer_pass;         }; // Medium frequency         - Updates per render pass
-cbuffer BufferLight    : register(b2) { LightBufferData buffer_light;       }; // Medium frequency         - Updates per light
-cbuffer BufferMaterial : register(b3) { MaterialBufferData buffer_material; }; // Medium to high frequency - Updates per material during the g-buffer pass
-
 [[vk::push_constant]]
-ImGuiBufferData buffer_imgui;
+PassBufferData buffer_pass;
 
 // g-buffer texture properties
 bool has_single_texture_roughness_metalness() { return buffer_material.properties & uint(1U << 0); }
@@ -162,9 +149,9 @@ matrix pass_get_transform_previous()      { return buffer_pass.m_value; }
 float2 pass_get_resolution_in()           { return float2(buffer_pass.m_value._m03, buffer_pass.m_value._m22); }
 float2 pass_get_resolution_out()          { return float2(buffer_pass.m_value._m23, buffer_pass.m_value._m30); }
 float3 pass_get_f3_value()                { return float3(buffer_pass.m_value._m00, buffer_pass.m_value._m01, buffer_pass.m_value._m02); }
+float3 pass_get_f3_value2()               { return float3(buffer_pass.m_value._m20, buffer_pass.m_value._m21, buffer_pass.m_value._m31); }
 float4 pass_get_f4_value()                { return float4(buffer_pass.m_value._m10, buffer_pass.m_value._m11, buffer_pass.m_value._m12, buffer_pass.m_value._m13); }
-float pass_get_f3_value2()                { return float3(buffer_pass.m_value._m20, buffer_pass.m_value._m21, buffer_pass.m_value._m31); }
 bool pass_is_transparent()                { return buffer_pass.m_value._m33; }
 bool pass_is_reflection_probe_available() { return pass_get_f4_value().x == 1.0f; } // this is more risky
 bool pass_is_opaque()                     { return !pass_is_transparent(); }
-// m33 is free
+// m32 is free

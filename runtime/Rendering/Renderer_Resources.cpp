@@ -57,7 +57,7 @@ namespace Spartan
         array<shared_ptr<RHI_Texture>, 26>                 m_render_targets;
         array<shared_ptr<RHI_Shader>, 44>                  m_shaders;
         array<shared_ptr<RHI_Sampler>, 7>                  m_samplers;
-        array<array<shared_ptr<RHI_ConstantBuffer>, 4>, 2> m_constant_buffers;
+        array<array<shared_ptr<RHI_ConstantBuffer>, 3>, 2> m_constant_buffers;
         array < shared_ptr<RHI_StructuredBuffer>, 2>       m_sb_spd_counters;
 
         // asset resources
@@ -74,14 +74,11 @@ namespace Spartan
             constant_buffer(i, Renderer_ConstantBuffer::Frame) = make_shared<RHI_ConstantBuffer>("frame");
             constant_buffer(i, Renderer_ConstantBuffer::Frame)->Create<Cb_Frame>(8000);
 
-            constant_buffer(i, Renderer_ConstantBuffer::Pass) = make_shared<RHI_ConstantBuffer>("pass");
-            constant_buffer(i, Renderer_ConstantBuffer::Pass)->Create<Cb_Pass>(30000);
-
             constant_buffer(i, Renderer_ConstantBuffer::Light) = make_shared<RHI_ConstantBuffer>("light");
             constant_buffer(i, Renderer_ConstantBuffer::Light)->Create<Cb_Light>(8000);
 
             constant_buffer(i, Renderer_ConstantBuffer::Material) = make_shared<RHI_ConstantBuffer>("material");
-            constant_buffer(i, Renderer_ConstantBuffer::Material)->Create<Cb_Material>(30000);
+            constant_buffer(i, Renderer_ConstantBuffer::Material)->Create<Cb_Material>(15000);
         }
     }
 
@@ -576,7 +573,7 @@ namespace Spartan
         return m_shaders;
     }
 
-    array<shared_ptr<RHI_ConstantBuffer>, 4>& Renderer::GetConstantBuffers()
+    array<shared_ptr<RHI_ConstantBuffer>, 3>& Renderer::GetConstantBuffers()
     {
         return m_constant_buffers[m_resource_index];
     }
