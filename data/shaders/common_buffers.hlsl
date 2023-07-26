@@ -73,23 +73,18 @@ struct PassBufferData
     matrix transform;
     matrix transform_previous;
 
-    float blur_radius;
+    float f_value; // radius, alpha
     float blur_sigma;
     float2 blur_direction;
 
     float2 resolution_rt;
     float2 resolution_in;
 
-    float radius;
-    uint is_transparent_pass;
-    uint mip_count;
-    float alpha;
-
-    float3 extents;
-    uint work_group_count;
-
-    uint reflection_probe_available;
+    float3 f3_value; // extents and others
+    uint states;     // is_transparent_pass, reflection_probe_available
+    
     float3 position;
+    float padding1;
 };
 
 struct LightBufferData
@@ -173,5 +168,7 @@ bool is_volumetric_fog_enabled()       { return buffer_frame.options & uint(1U <
 bool is_screen_space_shadows_enabled() { return buffer_frame.options & uint(1U << 3); }
 
 // misc
-bool is_opaque_pass()      { return buffer_pass.is_transparent_pass == 0; }
-bool is_transparent_pass() { return buffer_pass.is_transparent_pass == 1; }
+bool is_transparent_pass()           { return buffer_pass.states & uint(1U << 0); }
+bool is_opaque_pass()                { return !is_transparent_pass(); }
+bool is_reflection_probe_available() { return buffer_pass.states & uint(1U << 1); }
+bool has_alpha_max()                 { return buffer_pass.states & uint(1U << 2); }
