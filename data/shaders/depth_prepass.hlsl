@@ -39,10 +39,13 @@ Pixel_PosUv mainVS(Vertex_PosUv input)
 
 void mainPS(Pixel_PosUv input)
 {
-    if (pass_is_transparent() && tex_material_mask.Sample(samplers[sampler_anisotropic_wrap], input.uv).r <= ALPHA_THRESHOLD)
+    const float3 f3_value     = pass_get_f3_value();
+    const bool has_alpha_mask = f3_value.x == 1.0f;
+    const float alpha         = f3_value.y;
+    
+    if (has_alpha_mask && tex_material_mask.Sample(samplers[sampler_anisotropic_wrap], input.uv).r <= ALPHA_THRESHOLD)
         discard;
 
-    float alpha = pass_get_f_value();
     if (alpha == 1.0f && tex_material_albedo.Sample(samplers[sampler_anisotropic_wrap], input.uv).a <= ALPHA_THRESHOLD)
         discard;
 }

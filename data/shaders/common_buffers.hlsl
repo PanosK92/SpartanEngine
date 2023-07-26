@@ -73,7 +73,7 @@ struct PassBufferData
     matrix transform;
     matrix m_value;
 
-    float3 f3_value;
+    float3 padding32a;
     uint states;
 };
 
@@ -167,5 +167,5 @@ float2 pass_get_resolution_in()           { return float2(buffer_pass.m_value._m
 float2 pass_get_resolution_out()          { return float2(buffer_pass.m_value._m23, buffer_pass.m_value._m30); }
 float3 pass_get_f3_value()                { return float3(buffer_pass.m_value._m00, buffer_pass.m_value._m01, buffer_pass.m_value._m02); }
 float4 pass_get_f4_value()                { return float4(buffer_pass.m_value._m10, buffer_pass.m_value._m11, buffer_pass.m_value._m12, buffer_pass.m_value._m13); }
-float pass_get_f_value()                  { return buffer_pass.m_value._m20; }
-float pass_get_f_value2()                 { return buffer_pass.m_value._m21; }
+float pass_get_f3_value2()                { return float3(buffer_pass.m_value._m20, buffer_pass.m_value._m21, buffer_pass.m_value._m31); }
+// m33 is free

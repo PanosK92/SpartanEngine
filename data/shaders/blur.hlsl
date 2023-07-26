@@ -27,9 +27,9 @@ static const float g_threshold = 0.1f;
 
 float compute_gaussian_weight(int sample_distance)
 {
-    float sigma  = pass_get_f_value2();
+    float sigma  = pass_get_f3_value2().x;
     float sigma2 = sigma * sigma;
-    float g = 1.0f / sqrt(2.0f * 3.14159f * sigma2);
+    float g      = 1.0f / sqrt(2.0f * 3.14159f * sigma2);
     return (g * exp(-(sample_distance * sample_distance) / (2.0f * sigma2)));
 }
 
@@ -37,15 +37,17 @@ float compute_gaussian_weight(int sample_distance)
 // https://github.com/TheRealMJP/MSAAFilter/blob/master/MSAAFilter/PostProcessing.hlsl#L50
 float3 gaussian_blur(const uint2 pos)
 {
+    const float3 f3_value = pass_get_f3_value();
+
     const float2 uv             = (pos.xy + 0.5f) / pass_get_resolution_in();
     const float2 texel_size     = float2(1.0f / pass_get_resolution_in().x, 1.0f / pass_get_resolution_in().y);
-    const float2 blur_direction = buffer_pass.f3_value.xy;
+    const float2 blur_direction = f3_value.xy;
     const float2 direction      = texel_size * blur_direction;
     const bool is_vertical_pass = blur_direction.y != 0.0f;
 
     float weight_sum = 0.0f;
     float3 color     = 0.0f;
-    float radius     = pass_get_f_value();
+    float radius     = f3_value.z;
     for (int i = -radius; i < radius; i++)
     {
         float2 sample_uv = uv + (i * direction);
@@ -65,9 +67,11 @@ float3 gaussian_blur(const uint2 pos)
 // Depth aware Gaussian blur
 float3 depth_aware_gaussian_blur(const uint2 pos)
 {
+    const float3 f3_value = pass_get_f3_value();
+
     const float2 uv             = (pos.xy + 0.5f) / pass_get_resolution_in();
     const float2 texel_size     = float2(1.0f / pass_get_resolution_in().x, 1.0f / pass_get_resolution_in().y);
-    const float2 blur_direction = buffer_pass.f3_value.xy;
+    const float2 blur_direction = f3_value.xy;
     const float2 direction      = texel_size * blur_direction;
     const bool is_vertical_pass = blur_direction.y != 0.0f;
     
@@ -76,7 +80,7 @@ float3 depth_aware_gaussian_blur(const uint2 pos)
 
     float weight_sum = 0.0f;
     float3 color     = 0.0f;
-    float radius     = pass_get_f_value();
+    float radius     = f3_value.z;
     for (int i = -radius; i < radius; i++)
     {
         float2 sample_uv     = uv + (i * direction);
