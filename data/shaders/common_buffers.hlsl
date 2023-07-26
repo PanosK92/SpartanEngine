@@ -104,9 +104,9 @@ struct MaterialBufferData
     float padding;
 };
 
-cbuffer BufferFrame    : register(b0) { FrameBufferData buffer_frame;       }; // Low frequency            - Updates once per frame
-cbuffer BufferLight    : register(b1) { LightBufferData buffer_light;       }; // Medium frequency         - Updates per light
-cbuffer BufferMaterial : register(b2) { MaterialBufferData buffer_material; }; // Medium to high frequency - Updates per material during the g-buffer pass
+cbuffer BufferFrame    : register(b0) { FrameBufferData buffer_frame;       }; // Low frequency    - Updates once per frame
+cbuffer BufferLight    : register(b1) { LightBufferData buffer_light;       }; // Medium frequency - Updates per light
+cbuffer BufferMaterial : register(b2) { MaterialBufferData buffer_material; }; // Medium frequency - Updates per material during the g-buffer pass
 
 struct PassBufferData
 {

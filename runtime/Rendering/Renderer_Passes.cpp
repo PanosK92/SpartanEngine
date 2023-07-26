@@ -762,41 +762,41 @@ namespace Spartan
 
     void Renderer::Pass_Light(RHI_CommandList* cmd_list, const bool is_transparent_pass)
     {
-        // Acquire shaders
+        // acquire shaders
         RHI_Shader* shader_c = GetShader(Renderer_Shader::light_c).get();
         if (!shader_c->IsCompiled())
             return;
 
-        // Acquire lights
+        // acquire lights
         const vector<shared_ptr<Entity>>& entities = m_renderables[Renderer_Entity::Light];
         if (entities.empty())
             return;
 
         cmd_list->BeginTimeblock(is_transparent_pass ? "light_transparent" : "light");
 
-        // Acquire render targets
+        // acquire render targets
         RHI_Texture* tex_diffuse    = is_transparent_pass ? GetRenderTarget(Renderer_RenderTexture::light_diffuse_transparent).get()  : GetRenderTarget(Renderer_RenderTexture::light_diffuse).get();
         RHI_Texture* tex_specular   = is_transparent_pass ? GetRenderTarget(Renderer_RenderTexture::light_specular_transparent).get() : GetRenderTarget(Renderer_RenderTexture::light_specular).get();
         RHI_Texture* tex_volumetric = GetRenderTarget(Renderer_RenderTexture::light_volumetric).get();
 
-        // Clear render targets
+        // clear render targets
         cmd_list->ClearRenderTarget(tex_diffuse,    0, 0, true, Color::standard_black);
         cmd_list->ClearRenderTarget(tex_specular,   0, 0, true, Color::standard_black);
         cmd_list->ClearRenderTarget(tex_volumetric, 0, 0, true, Color::standard_black);
 
-        // Define pipeline state
+        // define pipeline state
         static RHI_PipelineState pso;
         pso.shader_compute = shader_c;
 
-        // Set pipeline state
+        // set pipeline state
         cmd_list->SetPipelineState(pso);
 
-        // Iterate through all the light entities
+        // iterate through all the lights
         for (shared_ptr<Entity> entity : entities)
         {
             if (shared_ptr<Light> light = entity->GetComponent<Light>())
             {
-                // Do the lighting even when intensity is zero, since we can have emissive lighting.
+                // do the lighting even when intensity is zero, since we can have emissive lighting.
                 cmd_list->SetTexture(Renderer_BindingsUav::tex,                tex_diffuse);
                 cmd_list->SetTexture(Renderer_BindingsUav::tex2,               tex_specular);
                 cmd_list->SetTexture(Renderer_BindingsUav::tex3,               tex_volumetric);
@@ -807,35 +807,32 @@ namespace Spartan
                 cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_depth,      GetRenderTarget(Renderer_RenderTexture::gbuffer_depth));
                 cmd_list->SetTexture(Renderer_BindingsSrv::ssgi,               GetRenderTarget(Renderer_RenderTexture::ssgi));
                 
-                // Set shadow maps
+                // set shadow maps
+                if (light->GetShadowsEnabled())
                 {
-                    // We always bind all the shadow maps, regardless of the light type or if shadows are enabled.
-                    // This is because we are using an uber shader and APIs like Vulkan, expect all texture slots to be bound with something.
-
-                    RHI_Texture* tex_depth = light->GetDepthTexture();
-                    RHI_Texture* tex_color = light->GetShadowsTransparentEnabled() ? light->GetColorTexture() : GetStandardTexture(Renderer_StandardTexture::White).get();
+                    RHI_Texture* tex_color = light->GetShadowsTransparentEnabled() ? light->GetColorTexture() : nullptr;
 
                     if (light->GetLightType() == LightType::Directional)
                     {
-                        cmd_list->SetTexture(Renderer_BindingsSrv::light_directional_depth, tex_depth);
+                        cmd_list->SetTexture(Renderer_BindingsSrv::light_directional_depth, light->GetDepthTexture());
                         cmd_list->SetTexture(Renderer_BindingsSrv::light_directional_color, tex_color);
                     }
                     else if (light->GetLightType() == LightType::Point)
                     {
-                        cmd_list->SetTexture(Renderer_BindingsSrv::light_point_depth, tex_depth);
+                        cmd_list->SetTexture(Renderer_BindingsSrv::light_point_depth, light->GetDepthTexture());
                         cmd_list->SetTexture(Renderer_BindingsSrv::light_point_color, tex_color);
                     }
                     else if (light->GetLightType() == LightType::Spot)
                     {
-                        cmd_list->SetTexture(Renderer_BindingsSrv::light_spot_depth, tex_depth);
+                        cmd_list->SetTexture(Renderer_BindingsSrv::light_spot_depth, light->GetDepthTexture());
                         cmd_list->SetTexture(Renderer_BindingsSrv::light_spot_color, tex_color);
                     }
                 }
                 
-                // Update light buffer
+                // update light buffer
                 UpdateConstantBufferLight(cmd_list, light);
                 
-                // Set uber buffer
+                // push pass constants
                 m_cb_pass_cpu.set_resolution_out(tex_diffuse);
                 m_cb_pass_cpu.set_is_transparent(is_transparent_pass);
                 PushPassConstants(cmd_list);
@@ -849,26 +846,26 @@ namespace Spartan
 
     void Renderer::Pass_Light_Composition(RHI_CommandList* cmd_list, RHI_Texture* tex_out, const bool is_transparent_pass)
     {
-        // Acquire shaders
+        // acquire shaders
         RHI_Shader* shader_c = GetShader(Renderer_Shader::light_composition_c).get();
         if (!shader_c->IsCompiled())
             return;
 
         cmd_list->BeginTimeblock(is_transparent_pass ? "light_composition_transparent" : "light_composition");
 
-        // Define pipeline state
+        // define pipeline state
         static RHI_PipelineState pso;
         pso.shader_compute = shader_c;
 
-        // Set pipeline state
+        // set pipeline state
         cmd_list->SetPipelineState(pso);
 
-        // Set uber buffer
+        // push pass constants
         m_cb_pass_cpu.set_resolution_out(tex_out);
         m_cb_pass_cpu.set_is_transparent(is_transparent_pass);
         PushPassConstants(cmd_list);
 
-        // Update light buffer with the directional light
+        // update light buffer with the directional light
         {
             const vector<shared_ptr<Entity>>& entities = m_renderables[Renderer_Entity::Light];
             for (shared_ptr<Entity> entity : entities)
@@ -881,7 +878,7 @@ namespace Spartan
             }
         }
 
-        // Set textures
+        // set textures
         cmd_list->SetTexture(Renderer_BindingsUav::tex,              tex_out);
         cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_albedo,   GetRenderTarget(Renderer_RenderTexture::gbuffer_albedo));
         cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_material, GetRenderTarget(Renderer_RenderTexture::gbuffer_material));
@@ -894,9 +891,8 @@ namespace Spartan
         cmd_list->SetTexture(Renderer_BindingsSrv::ssgi,             GetRenderTarget(Renderer_RenderTexture::ssgi));
         cmd_list->SetTexture(Renderer_BindingsSrv::environment,      GetEnvironmentTexture());
 
-        // Render
+        // render
         cmd_list->Dispatch(thread_group_count_x(tex_out), thread_group_count_y(tex_out));
-
         cmd_list->EndTimeblock();
     }
 
@@ -1642,45 +1638,44 @@ namespace Spartan
         uint32_t smallest_width   = tex->GetWidth()  >> output_mip_count;
         uint32_t smallest_height  = tex->GetHeight() >> output_mip_count;
 
-        // Ensure that the input texture meets the requirements.
+        // ensure that the input texture meets the requirements.
         SP_ASSERT(tex->HasPerMipViews());
         SP_ASSERT(tex->GetWidth() <= 4096 && tex->GetHeight() <= 4096 && output_mip_count <= 12); // As per documentation (page 22)
 
-        // Acquire shader
+        // acquire shader
         RHI_Shader* shader_c = GetShader(Renderer_Shader::ffx_spd_c).get();
         if (!shader_c->IsCompiled())
             return;
 
         cmd_list->BeginMarker("ffx_spd");
 
-        // Define render state
+        // define render state
         static RHI_PipelineState pso;
         pso.shader_compute = shader_c;
 
-        // Set pipeline state
+        // set pipeline state
         cmd_list->SetPipelineState(pso);
 
-        // As per documentation (page 22)
+        // as per documentation (page 22)
         const uint32_t thread_group_count_x_ = (tex->GetWidth() + 63) >> 6;
         const uint32_t thread_group_count_y_ = (tex->GetHeight() + 63) >> 6;
 
-        // Set uber buffer
+        // push pass data
         m_cb_pass_cpu.set_resolution_out(tex);
-        m_cb_pass_cpu.set_f3_value(output_mip_count, thread_group_count_x_ * thread_group_count_y_, 0.0f);
+        m_cb_pass_cpu.set_f3_value(static_cast<float>(output_mip_count), static_cast<float>(thread_group_count_x_ * thread_group_count_y_), 0.0f);
         PushPassConstants(cmd_list);
 
-        // Update counter
+        // update counter
         uint32_t counter_value = 0;
         GetStructuredBuffer()->Update(&counter_value);
         cmd_list->SetStructuredBuffer(Renderer_BindingsUav::atomic_counter, GetStructuredBuffer());
 
-        // Set textures
+        // set textures
         cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex, 0, 1);                            // top mip
         cmd_list->SetTexture(Renderer_BindingsUav::tex_array, tex, 1, tex->GetMipCount() - 1); // rest of the mips
 
-        // Render
+        // render
         cmd_list->Dispatch(thread_group_count_x_, thread_group_count_y_);
-
         cmd_list->EndMarker();
     }
 
