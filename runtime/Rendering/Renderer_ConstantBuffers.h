@@ -246,7 +246,7 @@ namespace Spartan
         }
     };
 
-    // High frequency   - Update multiply times per frame
+    // Push constant buffer
     struct Cb_ImGui
     {
         Math::Matrix transform                 = Math::Matrix::Identity;
