@@ -522,12 +522,9 @@ namespace Spartan
         cmd_list->SetConstantBuffer(Renderer_BindingsCb::frame, GetConstantBuffer(Renderer_ConstantBuffer::Frame));
     }
 
-    void Renderer::UpdateConstantBufferPass(RHI_CommandList* cmd_list)
+    void Renderer::PushPassConstants(RHI_CommandList* cmd_list)
     {
-        GetConstantBuffer(Renderer_ConstantBuffer::Pass)->Update(&m_cb_pass_cpu);
-
-        // Bind because the offset just changed
-        cmd_list->SetConstantBuffer(Renderer_BindingsCb::uber, GetConstantBuffer(Renderer_ConstantBuffer::Pass));
+        cmd_list->PushConstants(0, sizeof(Cb_Pass), &m_cb_pass_cpu);
     }
 
     void Renderer::UpdateConstantBufferLight(RHI_CommandList* cmd_list, shared_ptr<Light> light)

@@ -55,7 +55,6 @@ namespace Spartan
     {
         // constant buffers
         cmd_list->SetConstantBuffer(Renderer_BindingsCb::frame,    GetConstantBuffer(Renderer_ConstantBuffer::Frame));
-        cmd_list->SetConstantBuffer(Renderer_BindingsCb::uber,     GetConstantBuffer(Renderer_ConstantBuffer::Pass));
         cmd_list->SetConstantBuffer(Renderer_BindingsCb::light,    GetConstantBuffer(Renderer_ConstantBuffer::Light));
         cmd_list->SetConstantBuffer(Renderer_BindingsCb::material, GetConstantBuffer(Renderer_ConstantBuffer::Material));
 
@@ -298,7 +297,7 @@ namespace Spartan
 
                     // Set uber buffer with cascade transform
                     m_cb_pass_cpu.transform = entity->GetTransform()->GetMatrix() * view_projection;
-                    UpdateConstantBufferPass(cmd_list);
+                    PushPassConstants(cmd_list);
 
                     cmd_list->DrawIndexed(renderable->GetIndexCount(), renderable->GetIndexOffset(), renderable->GetVertexOffset());
                 }
@@ -418,7 +417,7 @@ namespace Spartan
 
                                 // Set uber buffer with cascade transform
                                 m_cb_pass_cpu.transform = entity->GetTransform()->GetMatrix() * view_projection;
-                                UpdateConstantBufferPass(cmd_list);
+                                PushPassConstants(cmd_list);
 
                                 // Update light buffer
                                 UpdateConstantBufferLight(cmd_list, light);
@@ -513,7 +512,7 @@ namespace Spartan
                 // Set uber buffer
                 m_cb_pass_cpu.transform = transform->GetMatrix();
                 m_cb_pass_cpu.set_f3_value(material->HasTexture(MaterialTexture::AlphaMask) ? 1.0f : 0.0f, material->GetProperty(MaterialProperty::ColorA), 0.0f);
-                UpdateConstantBufferPass(cmd_list);
+                PushPassConstants(cmd_list);
             
                 // Draw
                 cmd_list->DrawIndexed(renderable->GetIndexCount(), renderable->GetIndexOffset(), renderable->GetVertexOffset());
@@ -649,7 +648,7 @@ namespace Spartan
                         transform->SetMatrixPrevious(m_cb_pass_cpu.transform);
                     }
 
-                    UpdateConstantBufferPass(cmd_list);
+                    PushPassConstants(cmd_list);
                 }
 
                 // Render
@@ -687,7 +686,7 @@ namespace Spartan
 
         // Set uber buffer
         m_cb_pass_cpu.set_resolution_out(tex_ssgi);
-        UpdateConstantBufferPass(cmd_list);
+        PushPassConstants(cmd_list);
 
         // Set textures
         cmd_list->SetTexture(Renderer_BindingsUav::tex,            tex_ssgi);
@@ -732,7 +731,7 @@ namespace Spartan
 
         // Set uber buffer
         m_cb_pass_cpu.set_resolution_out(tex_ssr);
-        UpdateConstantBufferPass(cmd_list);
+        PushPassConstants(cmd_list);
 
         // Set textures
         cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_ssr);    // write to that
@@ -839,7 +838,7 @@ namespace Spartan
                 // Set uber buffer
                 m_cb_pass_cpu.set_resolution_out(tex_diffuse);
                 m_cb_pass_cpu.set_is_transparent(is_transparent_pass);
-                UpdateConstantBufferPass(cmd_list);
+                PushPassConstants(cmd_list);
                 
                 cmd_list->Dispatch(thread_group_count_x(tex_diffuse), thread_group_count_y(tex_diffuse));
             }
@@ -867,7 +866,7 @@ namespace Spartan
         // Set uber buffer
         m_cb_pass_cpu.set_resolution_out(tex_out);
         m_cb_pass_cpu.set_is_transparent(is_transparent_pass);
-        UpdateConstantBufferPass(cmd_list);
+        PushPassConstants(cmd_list);
 
         // Update light buffer with the directional light
         {
@@ -953,7 +952,7 @@ namespace Spartan
         m_cb_pass_cpu.set_resolution_out(tex_out);
         m_cb_pass_cpu.set_is_transparent(is_transparent_pass);
         m_cb_pass_cpu.set_f4_value(!probes.empty() ? 1.0f : 0.0f, 0.0f, 0.0f, 0.0f); // reflection probe available
-        UpdateConstantBufferPass(cmd_list);
+        PushPassConstants(cmd_list);
 
         // Update light buffer with the directional light
         {
@@ -1027,7 +1026,7 @@ namespace Spartan
             m_cb_pass_cpu.set_resolution_out(tex_blur);
             m_cb_pass_cpu.set_f3_value(pixel_stride, 0.0f, radius);
             m_cb_pass_cpu.set_f3_value2(sigma);
-            UpdateConstantBufferPass(cmd_list);
+            PushPassConstants(cmd_list);
 
             // Set textures
             cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_blur);
@@ -1056,7 +1055,7 @@ namespace Spartan
             m_cb_pass_cpu.set_resolution_out(tex_blur);
             m_cb_pass_cpu.set_f3_value(0.0f, pixel_stride, radius);
             m_cb_pass_cpu.set_f3_value2(sigma);
-            UpdateConstantBufferPass(cmd_list);
+            PushPassConstants(cmd_list);
 
             // Set textures
             cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_in, mip, mip_range);
@@ -1229,7 +1228,7 @@ namespace Spartan
 
             // Set uber buffer
             m_cb_pass_cpu.set_resolution_out(tex_bloom);
-            UpdateConstantBufferPass(cmd_list);
+            PushPassConstants(cmd_list);
 
             // Set textures
             cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_bloom);
@@ -1263,7 +1262,7 @@ namespace Spartan
 
                 // Set uber buffer
                 m_cb_pass_cpu.set_resolution_out(Vector2(static_cast<float>(mip_width_large), static_cast<float>(mip_height_height)));
-                UpdateConstantBufferPass(cmd_list);
+                PushPassConstants(cmd_list);
 
                 // Set textures
                 cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_bloom, mip_index_small, 1);
@@ -1289,7 +1288,7 @@ namespace Spartan
 
             // Set uber buffer
             m_cb_pass_cpu.set_resolution_out(tex_out);
-            UpdateConstantBufferPass(cmd_list);
+            PushPassConstants(cmd_list);
 
             // Set textures
             cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_out);
@@ -1322,7 +1321,7 @@ namespace Spartan
 
         // Set uber buffer
         m_cb_pass_cpu.set_resolution_out(tex_out);
-        UpdateConstantBufferPass(cmd_list);
+        PushPassConstants(cmd_list);
 
         // Set textures
         cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_out);
@@ -1352,7 +1351,7 @@ namespace Spartan
 
         // Set uber buffer
         m_cb_pass_cpu.set_resolution_out(tex_out);
-        UpdateConstantBufferPass(cmd_list);
+        PushPassConstants(cmd_list);
 
         // Set textures
         cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);
@@ -1382,7 +1381,7 @@ namespace Spartan
 
         // Set uber buffer
         m_cb_pass_cpu.set_resolution_out(tex_out);
-        UpdateConstantBufferPass(cmd_list);
+        PushPassConstants(cmd_list);
 
         // Set textures
         cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_out);
@@ -1412,7 +1411,7 @@ namespace Spartan
 
         // Set uber buffer
         m_cb_pass_cpu.set_resolution_out(tex_out);
-        UpdateConstantBufferPass(cmd_list);
+        PushPassConstants(cmd_list);
 
         // Set textures
         cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_out);
@@ -1455,7 +1454,7 @@ namespace Spartan
 
             // Set uber buffer
             m_cb_pass_cpu.set_resolution_out(tex_bokeh_half);
-            UpdateConstantBufferPass(cmd_list);
+            PushPassConstants(cmd_list);
 
             // Set textures
             cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_bokeh_half);
@@ -1479,7 +1478,7 @@ namespace Spartan
 
             // Set uber buffer
             m_cb_pass_cpu.set_resolution_out(tex_bokeh_half_2);
-            UpdateConstantBufferPass(cmd_list);
+            PushPassConstants(cmd_list);
 
             // Set textures
             cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_bokeh_half_2);
@@ -1502,7 +1501,7 @@ namespace Spartan
 
             // Set uber buffer
             m_cb_pass_cpu.set_resolution_out(tex_bokeh_half);
-            UpdateConstantBufferPass(cmd_list);
+            PushPassConstants(cmd_list);
 
             // Set textures
             cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_bokeh_half);
@@ -1525,7 +1524,7 @@ namespace Spartan
 
             // Set uber buffer
             m_cb_pass_cpu.set_resolution_out(tex_out);
-            UpdateConstantBufferPass(cmd_list);
+            PushPassConstants(cmd_list);
 
             // Set textures
             cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_out);
@@ -1559,7 +1558,7 @@ namespace Spartan
 
         // Set uber buffer
         m_cb_pass_cpu.set_resolution_out(tex_out);
-        UpdateConstantBufferPass(cmd_list);
+        PushPassConstants(cmd_list);
 
         // Set textures
         cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_out);
@@ -1590,7 +1589,7 @@ namespace Spartan
         // Render
         // Set uber buffer
         m_cb_pass_cpu.set_resolution_out(tex_out);
-        UpdateConstantBufferPass(cmd_list);
+        PushPassConstants(cmd_list);
 
         // Set textures
         cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_out);
@@ -1620,7 +1619,7 @@ namespace Spartan
 
         // Set uber buffer
         m_cb_pass_cpu.set_resolution_out(tex_out);
-        UpdateConstantBufferPass(cmd_list);
+        PushPassConstants(cmd_list);
 
         // Set textures
         cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_out);
@@ -1668,7 +1667,7 @@ namespace Spartan
         // Set uber buffer
         m_cb_pass_cpu.set_resolution_out(tex);
         m_cb_pass_cpu.set_f3_value(output_mip_count, thread_group_count_x_ * thread_group_count_y_, 0.0f);
-        UpdateConstantBufferPass(cmd_list);
+        PushPassConstants(cmd_list);
 
         // Update counter
         uint32_t counter_value = 0;
@@ -1770,7 +1769,7 @@ namespace Spartan
 
                     // Update transform
                     m_cb_pass_cpu.transform = transform * m_cb_frame_cpu.view_projection;
-                    UpdateConstantBufferPass(cmd_list);
+                    PushPassConstants(cmd_list);
                 }
 
                 // Draw rectangle
@@ -1859,7 +1858,7 @@ namespace Spartan
                 {
                     m_cb_pass_cpu.transform = m_world_grid->ComputeWorldMatrix(GetCamera()->GetTransform()) * m_cb_frame_cpu.view_projection_unjittered;
                 }
-                UpdateConstantBufferPass(cmd_list);
+                PushPassConstants(cmd_list);
 
                 cmd_list->SetBufferVertex(m_world_grid->GetVertexBuffer().get());
                 cmd_list->Draw(m_world_grid->GetVertexCount());
@@ -1999,7 +1998,7 @@ namespace Spartan
                 {
                     // Set uber buffer
                     m_cb_pass_cpu.transform = probe->GetTransform()->GetMatrix();
-                    UpdateConstantBufferPass(cmd_list);
+                    PushPassConstants(cmd_list);
 
                     cmd_list->SetTexture(Renderer_BindingsSrv::reflection_probe, probe->GetColorTexture());
                     cmd_list->DrawIndexed(GetStandardMesh(Renderer_StandardMesh::Sphere)->GetIndexCount());
@@ -2063,7 +2062,7 @@ namespace Spartan
                                     {
                                         // Set uber buffer with entity transform
                                         m_cb_pass_cpu.transform = entity_selected->GetTransform()->GetMatrix() * m_cb_frame_cpu.view_projection_unjittered;
-                                        UpdateConstantBufferPass(cmd_list);
+                                        PushPassConstants(cmd_list);
 
                                         cmd_list->SetBufferVertex(mesh->GetVertexBuffer());
                                         cmd_list->SetBufferIndex(mesh->GetIndexBuffer());
@@ -2092,7 +2091,7 @@ namespace Spartan
 
                                     // Set uber buffer
                                     m_cb_pass_cpu.set_resolution_out(tex_out);
-                                    UpdateConstantBufferPass(cmd_list);
+                                    PushPassConstants(cmd_list);
 
                                     // Set textures
                                     cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_out);
@@ -2154,7 +2153,7 @@ namespace Spartan
                 // Set uber buffer
                 m_cb_pass_cpu.set_resolution_out(tex_out);
                 m_cb_pass_cpu.set_f4_value(m_font->GetColorOutline());
-                UpdateConstantBufferPass(cmd_list);
+                PushPassConstants(cmd_list);
 
                 cmd_list->SetBufferIndex(m_font->GetIndexBuffer());
                 cmd_list->SetBufferVertex(m_font->GetVertexBuffer());
@@ -2174,7 +2173,7 @@ namespace Spartan
             // Set uber buffer
             m_cb_pass_cpu.set_resolution_out(tex_out);
             m_cb_pass_cpu.set_f4_value(m_font->GetColor());
-            UpdateConstantBufferPass(cmd_list);
+            PushPassConstants(cmd_list);
 
             cmd_list->SetBufferIndex(m_font->GetIndexBuffer());
             cmd_list->SetBufferVertex(m_font->GetVertexBuffer());
@@ -2208,7 +2207,7 @@ namespace Spartan
 
         // set uber buffer
         m_cb_pass_cpu.set_resolution_out(tex_brdf_specular_lut);
-        UpdateConstantBufferPass(cmd_list);
+        PushPassConstants(cmd_list);
 
         // set texture
         cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_brdf_specular_lut);

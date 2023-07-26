@@ -34,38 +34,24 @@ using namespace Math;
 namespace
 {
     static string name;
-    static RHI_Format rhi_format    = RHI_Format::Undefined;
-    static uint32_t m_texture_index = 1;
-    static int mip_level            = 0;
-    static int  mip_count           = 0;
-    static bool m_magnifying_glass  = false;
-    static bool m_channel_r         = true;
-    static bool m_channel_g         = true;
-    static bool m_channel_b         = true;
-    static bool m_channel_a         = true;
-    static bool m_gamma_correct     = false;
-    static bool m_pack              = false;
-    static bool m_boost             = false;
-    static bool m_abs               = false;
-    static bool m_point_sampling    = false;
-    static uint32_t width           = 0;
-    static uint32_t height          = 0;
-    static uint32_t channel_count   = 0;
-    static uint64_t texture_id    = 0;
-
-    // When editing this, make sure that the bit shifts in common_buffer.hlsl are also updated.
-    enum VisualisationOptions
-    {
-        Visualise_Pack         = 1U << 0,
-        Visualise_GammaCorrect = 1U << 1,
-        Visualise_Boost        = 1U << 2,
-        Visualise_Abs          = 1U << 3,
-        Visualise_Channel_R    = 1U << 4,
-        Visualise_Channel_G    = 1U << 5,
-        Visualise_Channel_B    = 1U << 6,
-        Visualise_Channel_A    = 1U << 7,
-        Visualise_Sample_Point = 1U << 8,
-    };
+    static RHI_Format rhi_format          = RHI_Format::Undefined;
+    static uint32_t m_texture_index       = 1;
+    static int mip_level                  = 0;
+    static int  mip_count                 = 0;
+    static bool m_magnifying_glass        = false;
+    static bool m_channel_r               = true;
+    static bool m_channel_g               = true;
+    static bool m_channel_b               = true;
+    static bool m_channel_a               = true;
+    static bool m_gamma_correct           = false;
+    static bool m_pack                    = false;
+    static bool m_boost                   = false;
+    static bool m_abs                     = false;
+    static bool m_point_sampling          = false;
+    static uint32_t width                 = 0;
+    static uint32_t height                = 0;
+    static uint32_t channel_count         = 0;
+    static uint64_t texture_id            = 0;
     static uint32_t m_visualisation_flags = 0;
 }
 

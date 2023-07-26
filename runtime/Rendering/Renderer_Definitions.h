@@ -93,10 +93,8 @@ namespace Spartan
     enum class Renderer_BindingsCb
     {
         frame    = 0,
-        uber     = 1,
-        light    = 2,
-        material = 3,
-        imgui    = 4
+        light    = 1,
+        material = 2
     };
     
     enum class Renderer_BindingsSrv
@@ -262,7 +260,6 @@ namespace Spartan
     enum class Renderer_ConstantBuffer
     {
         Frame,
-        Pass,
         Light,
         Material
     };

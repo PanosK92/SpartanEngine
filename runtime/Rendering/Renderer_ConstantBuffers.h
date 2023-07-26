@@ -284,22 +284,4 @@ namespace Spartan
 
         bool operator!=(const Cb_Pass& rhs) const { return !(*this == rhs); }
     };
-
-    // Push constant buffer - ImGui
-    struct Cb_ImGui
-    {
-        Math::Matrix transform                 = Math::Matrix::Identity;
-
-        uint32_t options_texture_visualisation = 0;
-        uint32_t mip_level                     = 0;
-        Math::Vector2 padding                  = Math::Vector2::Zero;
-
-        bool operator==(const Cb_ImGui& rhs) const
-        {
-            return
-                transform                     == rhs.transform                     &&
-                options_texture_visualisation == rhs.options_texture_visualisation &&
-                mip_level                     == rhs.mip_level;
-        }
-    };
 }

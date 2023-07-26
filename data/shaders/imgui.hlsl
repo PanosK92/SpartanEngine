@@ -23,22 +23,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 //====================
 
-// texture visualization options
-bool texture_pack()             { return buffer_imgui.texture_flags & uint(1U << 0); }
-bool texture_gamma_correction() { return buffer_imgui.texture_flags & uint(1U << 1); }
-bool texture_boost()            { return buffer_imgui.texture_flags & uint(1U << 2); }
-bool texture_abs()              { return buffer_imgui.texture_flags & uint(1U << 3); }
-bool texture_channel_r()        { return buffer_imgui.texture_flags & uint(1U << 4); }
-bool texture_channel_g()        { return buffer_imgui.texture_flags & uint(1U << 5); }
-bool texture_channel_b()        { return buffer_imgui.texture_flags & uint(1U << 6); }
-bool texture_channel_a()        { return buffer_imgui.texture_flags & uint(1U << 7); }
-bool texture_sample_point()     { return buffer_imgui.texture_flags & uint(1U << 8); }
-
 Pixel_PosColUv mainVS(Vertex_Pos2dUvColor input)
 {
     Pixel_PosColUv output;
 
-    output.position = mul(buffer_imgui.transform, float4(input.position.x, input.position.y, 0.0f, 1.0f));
+    output.position = mul(buffer_pass.transform, float4(input.position.x, input.position.y, 0.0f, 1.0f));
     output.color    = input.color;
     output.uv       = input.uv;
 
@@ -47,38 +36,48 @@ Pixel_PosColUv mainVS(Vertex_Pos2dUvColor input)
 
 float4 mainPS(Pixel_PosColUv input) : SV_Target
 {
-    float mip            = (float)buffer_imgui.mip_level;
-    float4 color_texture = texture_sample_point() ? tex.SampleLevel(samplers[sampler_point_wrap], input.uv, mip) : tex.SampleLevel(samplers[sampler_bilinear_wrap], input.uv, mip);
-    float4 color_vertex  = input.color;
-
-    // Set requested channels channels
-    if (buffer_imgui.texture_flags != 0)
+     // texture visualization options
+    float4 channels     = pass_get_f4_value();
+    float3 f3_value     = pass_get_f3_value();
+    bool gamma_correct  = f3_value.x == 1.0f;
+    bool packed         = f3_value.y == 1.0f;
+    bool boost          = f3_value.z == 1.0f;
+    float3 f3_value2    = pass_get_f3_value2();
+    bool absolute       = f3_value2.x == 1.0f;
+    bool point_sampling = f3_value2.y == 1.0f;
+    float mip           = f3_value2.z;
+    bool is_visualized  = pass_is_transparent();
+   
+    float4 color_texture = point_sampling ? tex.SampleLevel(samplers[sampler_point_wrap], input.uv, mip) : tex.SampleLevel(samplers[sampler_bilinear_wrap], input.uv, mip);
+ 
+    if (is_visualized)
     {
-        color_texture.r *= texture_channel_r() ? 1.0f : 0.0f;
-        color_texture.g *= texture_channel_g() ? 1.0f : 0.0f;
-        color_texture.b *= texture_channel_b() ? 1.0f : 0.0f;
-        color_texture.a  = texture_channel_a() ? color_texture.a : 1.0f;
+        color_texture.r *= channels.r ? 1.0f : 0.0f;
+        color_texture.g *= channels.g ? 1.0f : 0.0f;
+        color_texture.b *= channels.b ? 1.0f : 0.0f;
+        color_texture.a  = channels.a ? color_texture.a : 1.0f;
+    
+        if (gamma_correct)
+        {
+            color_texture.rgb = gamma(color_texture.rgb);
+        }
+    
+        if (absolute)
+        {
+            color_texture = abs(color_texture);
+        }
+    
+        if (packed)
+        {
+            color_texture.rgb = pack(color_texture.rgb);
+        }
+    
+        if (boost)
+        {
+            color_texture.rgb *= 10.0f;
+        }
     }
 
-    if (texture_gamma_correction())
-    {
-        color_texture.rgb = gamma(color_texture.rgb);
-    }
-
-    if (texture_abs())
-    {
-        color_texture = abs(color_texture);
-    }
-
-    if (texture_pack())
-    {
-        color_texture.rgb = pack(color_texture.rgb);
-    }
-
-    if (texture_boost())
-    {
-        color_texture.rgb *= 10.0f;
-    } 
-
+    float4 color_vertex = input.color;
     return color_vertex * color_texture;
-}
+ }
