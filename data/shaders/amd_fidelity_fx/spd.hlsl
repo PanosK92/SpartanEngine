@@ -91,5 +91,7 @@ void SpdResetAtomicCounter(AU1 slice)
 [numthreads(256, 1, 1)]
 void mainCS(uint3 work_group_id : SV_GroupID, uint local_thread_index : SV_GroupIndex)
 {
-    SpdDownsample(work_group_id.xy, local_thread_index, buffer_pass.mip_count, buffer_pass.work_group_count, work_group_id.z);
+    float mip_count        = buffer_pass.f3_value.x;
+    float work_group_count = buffer_pass.f3_value.y;
+    SpdDownsample(work_group_id.xy, local_thread_index, mip_count, work_group_count, work_group_id.z);
 }

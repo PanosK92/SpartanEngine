@@ -66,7 +66,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         }
 
         // Ensure that the shadow is as transparent as the material
-        if (buffer_pass.is_transparent_pass)
+        if (is_transparent_pass())
         {
             shadow.a = clamp(shadow.a, surface.alpha, 1.0f);
         }

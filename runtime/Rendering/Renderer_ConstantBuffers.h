@@ -132,42 +132,31 @@ namespace Spartan
         Math::Matrix transform          = Math::Matrix::Identity;
         Math::Matrix transform_previous = Math::Matrix::Identity;
 
-        float blur_radius            = 5.0f;
+        float f_value                = 0.0f;
         float blur_sigma             = 0.0f;
         Math::Vector2 blur_direction = Math::Vector2::Zero;
 
         Math::Vector2 resolution_rt  = Math::Vector2::Zero;
         Math::Vector2 resolution_in  = Math::Vector2::Zero;
 
-        float radius                 = 0.0f;
-        uint32_t is_transparent_pass = 0;
-        uint32_t mip_count           = 0;
-        float alpha                  = 0.0f;
+        Math::Vector3 f3_value = Math::Vector3::Zero;
+        uint32_t u_value;
 
-        Math::Vector3 extents     = Math::Vector3::Zero;
-        uint32_t work_group_count = 0;
-
-        uint32_t reflection_proble_available = 0;
-        Math::Vector3 position               = Math::Vector3::Zero;
+        Math::Vector3 position = Math::Vector3::Zero;
+        float padding2;
 
         bool operator==(const Cb_Pass& rhs) const
         {
             return
-                transform                   == rhs.transform                   &&
-                transform_previous          == rhs.transform_previous          &&
-                blur_radius                 == rhs.blur_radius                 &&
-                blur_sigma                  == rhs.blur_sigma                  &&
-                blur_direction              == rhs.blur_direction              && 
-                resolution_rt               == rhs.resolution_rt               &&
-                resolution_in               == rhs.resolution_in               &&
-                radius                      == rhs.radius                      &&
-                is_transparent_pass         == rhs.is_transparent_pass         &&
-                mip_count                   == rhs.mip_count                   &&
-                alpha                       == rhs.alpha                       &&
-                extents                     == rhs.extents                     &&
-                work_group_count            == rhs.work_group_count            &&
-                reflection_proble_available == rhs.reflection_proble_available &&
-                position                    == rhs.position;
+                transform          == rhs.transform          &&
+                transform_previous == rhs.transform_previous &&
+                f_value            == rhs.f_value            &&
+                blur_sigma         == rhs.blur_sigma         &&
+                blur_direction     == rhs.blur_direction     && 
+                resolution_rt      == rhs.resolution_rt      &&
+                resolution_in      == rhs.resolution_in      &&
+                f3_value           == rhs.f3_value           &&
+                position           == rhs.position;
         }
 
         bool operator!=(const Cb_Pass& rhs) const { return !(*this == rhs); }

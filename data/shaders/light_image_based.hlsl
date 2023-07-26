@@ -27,7 +27,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 float3 get_dominant_specular_direction(float3 normal, float3 reflection, float roughness)
 {
     const float smoothness = 1.0f - roughness;
-    const float alpha = smoothness * (sqrt(smoothness) + roughness);
+    const float alpha      = smoothness * (sqrt(smoothness) + roughness);
     
     return lerp(normal, reflection, alpha);
 }
@@ -128,12 +128,13 @@ float4 mainPS(Pixel_PosUv input) : SV_TARGET
     // Sample reflection probe
     float3 ibl_specular_probe = 0.0f;
     float probe_alpha         = 0.0f;
-    if (buffer_pass.reflection_probe_available != 0)
+    if (is_reflection_probe_available())
     {
-        float probe_radius    = buffer_pass.radius;
+        float probe_radius    = buffer_pass.f_value;
         float3 probe_position = buffer_pass.position;
-        float3 box_min        = probe_position - buffer_pass.extents;
-        float3 box_max        = probe_position + buffer_pass.extents;
+        float3 extents        = buffer_pass.f3_value;
+        float3 box_min        = probe_position - extents;
+        float3 box_max        = probe_position + extents;
 
         if (is_inside_box(surface.position, box_min, box_max))
         {

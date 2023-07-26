@@ -43,7 +43,8 @@ float3 gaussian_blur(const uint2 pos)
 
     float weight_sum = 0.0f;
     float3 color     = 0.0f;
-    for (int i = -buffer_pass.blur_radius; i < buffer_pass.blur_radius; i++)
+    float radius     = buffer_pass.f_value;
+    for (int i = -radius; i < radius; i++)
     {
         float2 sample_uv = uv + (i * direction);
 
@@ -72,7 +73,8 @@ float3 depth_aware_gaussian_blur(const uint2 pos)
 
     float weight_sum = 0.0f;
     float3 color     = 0.0f;
-    for (int i = -buffer_pass.blur_radius; i < buffer_pass.blur_radius; i++)
+    float radius     = buffer_pass.f_value;
+    for (int i = -radius; i < radius; i++)
     {
         float2 sample_uv     = uv + (i * direction);
         float sample_depth   = get_linear_depth(sample_uv);
