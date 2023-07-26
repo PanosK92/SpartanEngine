@@ -125,55 +125,7 @@ namespace Spartan
 
         bool operator!=(const Cb_Frame& rhs) const { return !(*this == rhs); }
     };
-    
-    // Medium frequency - Updates per render pass
-    struct Cb_Pass
-    {
-        Math::Matrix transform = Math::Matrix::Identity;
-        Math::Matrix m_value   = Math::Matrix::Identity;
-
-        Math::Vector2 resolution_rt  = Math::Vector2::Zero;
-        Math::Vector2 resolution_in  = Math::Vector2::Zero;
-
-        Math::Vector3 f3_value = Math::Vector3::Zero;
-        uint32_t u_state;
-
-        void set_transform_previous(const Math::Matrix& transform_previous)
-        {
-            m_value = transform_previous;
-        }
-
-        void set_position(const Math::Vector3& position)
-        {
-            m_value.m00 = position.x;
-            m_value.m01 = position.y;
-            m_value.m02 = position.z;
-        };
-
-        void set_color(const Math::Vector4& color)
-        {
-            m_value.m10 = color.x;
-            m_value.m11 = color.y;
-            m_value.m12 = color.z;
-            m_value.m13 = color.w;
-        };
-
-        void set_f_value(const float value)  { m_value.m20 = value; }
-        void set_f_value2(const float value) { m_value.m21 = value; }
-
-        bool operator==(const Cb_Pass& rhs) const
-        {
-            return
-                transform     == rhs.transform     &&
-                m_value       == rhs.m_value       &&
-                resolution_rt == rhs.resolution_rt &&
-                resolution_in == rhs.resolution_in &&
-                f3_value      == rhs.f3_value;
-        }
-
-        bool operator!=(const Cb_Pass& rhs) const { return !(*this == rhs); }
-    };
-    
+      
     // Medium frequency - Updates per light
     struct Cb_Light
     {
@@ -247,7 +199,67 @@ namespace Spartan
         }
     };
 
-    // Push constant buffer
+    // Push constant buffer - Per pass
+    struct Cb_Pass
+    {
+        Math::Matrix transform = Math::Matrix::Identity;
+        Math::Matrix m_value   = Math::Matrix::Identity;
+
+        Math::Vector3 f3_value = Math::Vector3::Zero;
+        uint32_t u_state;
+
+        void set_transform_previous(const Math::Matrix& transform_previous)
+        {
+            m_value = transform_previous;
+        }
+
+        void set_resolution_in(const Math::Vector2& resolution)
+        {
+            m_value.m03 = resolution.x;
+            m_value.m22 = resolution.y;
+        };
+
+        void set_resolution_out(const RHI_Texture* texture)
+        {
+            m_value.m23 = static_cast<float>(texture->GetWidth());
+            m_value.m30 = static_cast<float>(texture->GetHeight());
+        };
+
+        void set_resolution_out(const Math::Vector2& resolution)
+        {
+            m_value.m23 = resolution.x;
+            m_value.m30 = resolution.y;
+        };
+
+        void set_position(const Math::Vector3& position)
+        {
+            m_value.m00 = position.x;
+            m_value.m01 = position.y;
+            m_value.m02 = position.z;
+        };
+
+        void set_color(const Math::Vector4& color)
+        {
+            m_value.m10 = color.x;
+            m_value.m11 = color.y;
+            m_value.m12 = color.z;
+            m_value.m13 = color.w;
+        };
+
+        void set_f_value(const float value)  { m_value.m20 = value; }
+        void set_f_value2(const float value) { m_value.m21 = value; }
+
+        bool operator==(const Cb_Pass& rhs) const
+        {
+            return
+                transform == rhs.transform &&
+                m_value   == rhs.m_value   &&
+                f3_value  == rhs.f3_value;
+        }
+
+        bool operator!=(const Cb_Pass& rhs) const { return !(*this == rhs); }
+    };
+    // Push constant buffer - ImGui
     struct Cb_ImGui
     {
         Math::Matrix transform                 = Math::Matrix::Identity;

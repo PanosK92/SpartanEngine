@@ -687,7 +687,7 @@ namespace Spartan
         cmd_list->SetPipelineState(pso);
 
         // Set uber buffer
-        m_cb_pass_cpu.resolution_rt = Vector2(static_cast<float>(tex_ssgi->GetWidth()), static_cast<float>(tex_ssgi->GetHeight()));
+        m_cb_pass_cpu.set_resolution_out(tex_ssgi);
         UpdateConstantBufferPass(cmd_list);
 
         // Set textures
@@ -732,7 +732,7 @@ namespace Spartan
         cmd_list->SetPipelineState(pso);
 
         // Set uber buffer
-        m_cb_pass_cpu.resolution_rt = Vector2(static_cast<float>(tex_ssr->GetWidth()), static_cast<float>(tex_ssr->GetHeight()));
+        m_cb_pass_cpu.set_resolution_out(tex_ssr);
         UpdateConstantBufferPass(cmd_list);
 
         // Set textures
@@ -838,8 +838,8 @@ namespace Spartan
                 UpdateConstantBufferLight(cmd_list, light);
                 
                 // Set uber buffer
-                m_cb_pass_cpu.resolution_rt = Vector2(static_cast<float>(tex_diffuse->GetWidth()), static_cast<float>(tex_diffuse->GetHeight()));
-                m_cb_pass_cpu.u_state       = is_transparent_pass ? 1U << 0 : 0;
+                m_cb_pass_cpu.set_resolution_out(tex_diffuse);
+                m_cb_pass_cpu.u_state = is_transparent_pass ? 1U << 0 : 0;
                 UpdateConstantBufferPass(cmd_list);
                 
                 cmd_list->Dispatch(thread_group_count_x(tex_diffuse), thread_group_count_y(tex_diffuse));
@@ -866,8 +866,8 @@ namespace Spartan
         cmd_list->SetPipelineState(pso);
 
         // Set uber buffer
-        m_cb_pass_cpu.resolution_rt = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
-        m_cb_pass_cpu.u_state       = is_transparent_pass;
+        m_cb_pass_cpu.set_resolution_out(tex_out);
+        m_cb_pass_cpu.u_state = is_transparent_pass;
         UpdateConstantBufferPass(cmd_list);
 
         // Update light buffer with the directional light
@@ -951,10 +951,10 @@ namespace Spartan
         }
 
         // Set uber buffer
-        m_cb_pass_cpu.resolution_rt  = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
-        m_cb_pass_cpu.u_state        = 0;
-        m_cb_pass_cpu.u_state       |= is_transparent_pass ? 1U << 0 : 0;
-        m_cb_pass_cpu.u_state       |= !probes.empty()     ? 1U << 1 : 0; // reflection probe available
+        m_cb_pass_cpu.set_resolution_out(tex_out);
+        m_cb_pass_cpu.u_state  = 0;
+        m_cb_pass_cpu.u_state |= is_transparent_pass ? 1U << 0 : 0;
+        m_cb_pass_cpu.u_state |= !probes.empty()     ? 1U << 1 : 0; // reflection probe available
         UpdateConstantBufferPass(cmd_list);
 
         // Update light buffer with the directional light
@@ -1025,10 +1025,10 @@ namespace Spartan
             cmd_list->SetPipelineState(pso);
 
             // Set uber buffer
-            m_cb_pass_cpu.resolution_rt = Vector2(static_cast<float>(width), static_cast<float>(height));
-            m_cb_pass_cpu.resolution_in = Vector2(static_cast<float>(width), static_cast<float>(height));
-            m_cb_pass_cpu.f3_value.x    = pixel_stride;
-            m_cb_pass_cpu.f3_value.y    = 0.0f;
+            m_cb_pass_cpu.set_resolution_out(Vector2(static_cast<float>(width), static_cast<float>(height)));
+            m_cb_pass_cpu.set_resolution_in(Vector2(static_cast<float>(width), static_cast<float>(height)));
+            m_cb_pass_cpu.f3_value.x = pixel_stride;
+            m_cb_pass_cpu.f3_value.y = 0.0f;
             m_cb_pass_cpu.set_f_value(radius);
             m_cb_pass_cpu.set_f_value2(sigma);
             UpdateConstantBufferPass(cmd_list);
@@ -1056,9 +1056,9 @@ namespace Spartan
             cmd_list->SetPipelineState(pso);
 
             // Set uber buffer
-            m_cb_pass_cpu.resolution_rt = Vector2(static_cast<float>(tex_blur->GetWidth()), static_cast<float>(tex_blur->GetHeight()));
-            m_cb_pass_cpu.f3_value.x    = 0.0f;
-            m_cb_pass_cpu.f3_value.y    = pixel_stride;
+            m_cb_pass_cpu.set_resolution_out(tex_blur);
+            m_cb_pass_cpu.f3_value.x = 0.0f;
+            m_cb_pass_cpu.f3_value.y = pixel_stride;
             UpdateConstantBufferPass(cmd_list);
 
             // Set textures
@@ -1231,7 +1231,7 @@ namespace Spartan
             cmd_list->SetPipelineState(pso);
 
             // Set uber buffer
-            m_cb_pass_cpu.resolution_rt = Vector2(static_cast<float>(tex_bloom->GetWidth()), static_cast<float>(tex_bloom->GetHeight()));
+            m_cb_pass_cpu.set_resolution_out(tex_bloom);
             UpdateConstantBufferPass(cmd_list);
 
             // Set textures
@@ -1265,7 +1265,7 @@ namespace Spartan
                 int mip_height_height = tex_bloom->GetHeight() >> mip_index_big;
 
                 // Set uber buffer
-                m_cb_pass_cpu.resolution_rt = Vector2(static_cast<float>(mip_width_large), static_cast<float>(mip_height_height));
+                m_cb_pass_cpu.set_resolution_out(Vector2(static_cast<float>(mip_width_large), static_cast<float>(mip_height_height)));
                 UpdateConstantBufferPass(cmd_list);
 
                 // Set textures
@@ -1291,7 +1291,7 @@ namespace Spartan
             cmd_list->SetPipelineState(pso);
 
             // Set uber buffer
-            m_cb_pass_cpu.resolution_rt = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
+            m_cb_pass_cpu.set_resolution_out(tex_out);
             UpdateConstantBufferPass(cmd_list);
 
             // Set textures
@@ -1324,7 +1324,7 @@ namespace Spartan
         cmd_list->SetPipelineState(pso);
 
         // Set uber buffer
-        m_cb_pass_cpu.resolution_rt = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
+        m_cb_pass_cpu.set_resolution_out(tex_out);
         UpdateConstantBufferPass(cmd_list);
 
         // Set textures
@@ -1354,7 +1354,7 @@ namespace Spartan
         cmd_list->SetPipelineState(pso);
 
         // Set uber buffer
-        m_cb_pass_cpu.resolution_rt = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
+        m_cb_pass_cpu.set_resolution_out(tex_out);
         UpdateConstantBufferPass(cmd_list);
 
         // Set textures
@@ -1384,7 +1384,7 @@ namespace Spartan
         cmd_list->SetPipelineState(pso);
 
         // Set uber buffer
-        m_cb_pass_cpu.resolution_rt = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
+        m_cb_pass_cpu.set_resolution_out(tex_out);
         UpdateConstantBufferPass(cmd_list);
 
         // Set textures
@@ -1414,7 +1414,7 @@ namespace Spartan
         cmd_list->SetPipelineState(pso);
 
         // Set uber buffer
-        m_cb_pass_cpu.resolution_rt = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
+        m_cb_pass_cpu.set_resolution_out(tex_out);
         UpdateConstantBufferPass(cmd_list);
 
         // Set textures
@@ -1457,7 +1457,7 @@ namespace Spartan
             cmd_list->SetPipelineState(pso);
 
             // Set uber buffer
-            m_cb_pass_cpu.resolution_rt = Vector2(static_cast<float>(tex_bokeh_half->GetWidth()), static_cast<float>(tex_bokeh_half->GetHeight()));
+            m_cb_pass_cpu.set_resolution_out(tex_bokeh_half);
             UpdateConstantBufferPass(cmd_list);
 
             // Set textures
@@ -1481,7 +1481,7 @@ namespace Spartan
             cmd_list->SetPipelineState(pso);
 
             // Set uber buffer
-            m_cb_pass_cpu.resolution_rt = Vector2(static_cast<float>(tex_bokeh_half_2->GetWidth()), static_cast<float>(tex_bokeh_half_2->GetHeight()));
+            m_cb_pass_cpu.set_resolution_out(tex_bokeh_half_2);
             UpdateConstantBufferPass(cmd_list);
 
             // Set textures
@@ -1504,7 +1504,7 @@ namespace Spartan
             cmd_list->SetPipelineState(pso);
 
             // Set uber buffer
-            m_cb_pass_cpu.resolution_rt = Vector2(static_cast<float>(tex_bokeh_half->GetWidth()), static_cast<float>(tex_bokeh_half->GetHeight()));
+            m_cb_pass_cpu.set_resolution_out(tex_bokeh_half);
             UpdateConstantBufferPass(cmd_list);
 
             // Set textures
@@ -1527,7 +1527,7 @@ namespace Spartan
             cmd_list->SetPipelineState(pso);
 
             // Set uber buffer
-            m_cb_pass_cpu.resolution_rt = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
+            m_cb_pass_cpu.set_resolution_out(tex_out);
             UpdateConstantBufferPass(cmd_list);
 
             // Set textures
@@ -1561,7 +1561,7 @@ namespace Spartan
         cmd_list->SetPipelineState(pso);
 
         // Set uber buffer
-        m_cb_pass_cpu.resolution_rt = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
+        m_cb_pass_cpu.set_resolution_out(tex_out);
         UpdateConstantBufferPass(cmd_list);
 
         // Set textures
@@ -1592,7 +1592,7 @@ namespace Spartan
 
         // Render
         // Set uber buffer
-        m_cb_pass_cpu.resolution_rt = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
+        m_cb_pass_cpu.set_resolution_out(tex_out);
         UpdateConstantBufferPass(cmd_list);
 
         // Set textures
@@ -1622,7 +1622,7 @@ namespace Spartan
         cmd_list->SetPipelineState(pso);
 
         // Set uber buffer
-        m_cb_pass_cpu.resolution_rt = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
+        m_cb_pass_cpu.set_resolution_out(tex_out);
         UpdateConstantBufferPass(cmd_list);
 
         // Set textures
@@ -1669,9 +1669,9 @@ namespace Spartan
         const uint32_t thread_group_count_y_ = (tex->GetHeight() + 63) >> 6;
 
         // Set uber buffer
-        m_cb_pass_cpu.resolution_rt = Vector2(static_cast<float>(tex->GetWidth()), static_cast<float>(tex->GetHeight()));
-        m_cb_pass_cpu.f3_value.x    = output_mip_count;
-        m_cb_pass_cpu.f3_value.y    = thread_group_count_x_ * thread_group_count_y_;
+        m_cb_pass_cpu.set_resolution_out(tex);
+        m_cb_pass_cpu.f3_value.x = output_mip_count;
+        m_cb_pass_cpu.f3_value.y = thread_group_count_x_ * thread_group_count_y_;
         UpdateConstantBufferPass(cmd_list);
 
         // Update counter
@@ -1858,7 +1858,7 @@ namespace Spartan
             cmd_list->BeginRenderPass();
             {
                 // Set uber buffer
-                m_cb_pass_cpu.resolution_rt = GetResolutionRender();
+                m_cb_pass_cpu.set_resolution_out(GetResolutionRender());
                 if (GetCamera())
                 {
                     m_cb_pass_cpu.transform = m_world_grid->ComputeWorldMatrix(GetCamera()->GetTransform()) * m_cb_frame_cpu.view_projection_unjittered;
@@ -2095,7 +2095,7 @@ namespace Spartan
                                     cmd_list->SetPipelineState(pso);
 
                                     // Set uber buffer
-                                    m_cb_pass_cpu.resolution_rt = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
+                                    m_cb_pass_cpu.set_resolution_out(tex_out);
                                     UpdateConstantBufferPass(cmd_list);
 
                                     // Set textures
@@ -2156,7 +2156,7 @@ namespace Spartan
             cmd_list->BeginRenderPass();
             {
                 // Set uber buffer
-                m_cb_pass_cpu.resolution_rt = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
+                m_cb_pass_cpu.set_resolution_out(tex_out);
                 m_cb_pass_cpu.set_color(m_font->GetColorOutline());
                 UpdateConstantBufferPass(cmd_list);
 
@@ -2176,7 +2176,7 @@ namespace Spartan
         cmd_list->BeginRenderPass();
         {
             // Set uber buffer
-            m_cb_pass_cpu.resolution_rt = Vector2(static_cast<float>(tex_out->GetWidth()), static_cast<float>(tex_out->GetHeight()));
+            m_cb_pass_cpu.set_resolution_out(tex_out);
             m_cb_pass_cpu.set_color(m_font->GetColor());
             UpdateConstantBufferPass(cmd_list);
 
@@ -2211,7 +2211,7 @@ namespace Spartan
         cmd_list->SetPipelineState(pso);
 
         // set uber buffer
-        m_cb_pass_cpu.resolution_rt = Vector2(static_cast<float>(tex_brdf_specular_lut->GetWidth()), static_cast<float>(tex_brdf_specular_lut->GetHeight()));
+        m_cb_pass_cpu.set_resolution_out(tex_brdf_specular_lut);
         UpdateConstantBufferPass(cmd_list);
 
         // set texture

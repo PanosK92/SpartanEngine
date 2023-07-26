@@ -124,7 +124,7 @@ float2 trace_ray(uint2 screen_pos, float3 ray_start_vs, float3 ray_dir_vs)
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
     // Out of bounds check
-    if (any(int2(thread_id.xy) >= buffer_pass.resolution_rt.xy))
+    if (any(int2(thread_id.xy) >= pass_get_resolution_out()))
         return;
 
     // Construct surface

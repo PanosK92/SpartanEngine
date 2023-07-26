@@ -54,7 +54,7 @@ static const uint THREAD_GROUP_COUNT   = 64;
 /*------------------------------------------------------------------------------
    COMMON
 ------------------------------------------------------------------------------*/
-float2 get_rt_texel_size()          { return float2(1.0f / buffer_pass.resolution_rt.x, 1.0f / buffer_pass.resolution_rt.y); }
+float2 get_rt_texel_size()          { return float2(1.0f / pass_get_resolution_out().x, 1.0f /pass_get_resolution_out().y); }
 float get_shadow_texel_size()       { return (1.0f / buffer_frame.shadow_resolution); }
 float2 get_tex_noise_normal_scale() { return float2(buffer_frame.resolution_render.x / 256.0f, buffer_frame.resolution_render.y / 256.0f); }
 float2 get_tex_noise_blue_scale()   { return float2(buffer_frame.resolution_render.x / 470.0f, buffer_frame.resolution_render.y / 470.0f); }
@@ -355,7 +355,7 @@ float3 get_position(float2 uv)
 
 float3 get_position(uint2 pos)
 {
-    const float2 uv = (pos + 0.5f) / buffer_pass.resolution_rt;
+    const float2 uv = (pos + 0.5f) / pass_get_resolution_out();
     return get_position(get_depth(pos), uv);
 }
 
@@ -389,7 +389,7 @@ float3 get_view_direction(float2 uv)
 
 float3 get_view_direction(uint2 pos)
 {
-    const float2 uv = (pos + 0.5f) / buffer_pass.resolution_rt;
+    const float2 uv = (pos + 0.5f) / pass_get_resolution_out();
     return get_view_direction(uv);
 }
 
@@ -400,7 +400,7 @@ float3 get_view_direction_view_space(float2 uv)
 
 float3 get_view_direction_view_space(uint2 pos)
 {
-    const float2 uv = (pos + 0.5f) / buffer_pass.resolution_rt;
+    const float2 uv = (pos + 0.5f) / pass_get_resolution_out();
     return get_view_direction_view_space(uv);
 }
 
@@ -549,7 +549,7 @@ float microw_shadowing_cod(float n_dot_l, float visibility)
 float draw_line(float2 p1, float2 p2, float2 uv, float a)
 {
     float r = 0.0f;
-    float one_px = 1. / buffer_pass.resolution_rt.x; // not really one px
+    float one_px = 1. / pass_get_resolution_out().x; // not really one px
 
     // get dist between points
     float d = distance(p1, p2);

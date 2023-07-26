@@ -85,10 +85,10 @@ float circle_of_confusion(float2 uv, float focus_distance)
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
     // Out of bounds check
-    if (any(int2(thread_id.xy) >= buffer_pass.resolution_rt.xy))
+    if (any(int2(thread_id.xy) >= pass_get_resolution_out()))
         return;
 
-    const float2 uv = (thread_id.xy + 0.5f) / buffer_pass.resolution_rt;
+    const float2 uv = (thread_id.xy + 0.5f) / pass_get_resolution_out();
 
     // Coc
     const float4 o          = get_rt_texel_size().xyxy * float2(-0.5, 0.5).xxyy;
@@ -113,10 +113,10 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
     // Out of bounds check
-    if (any(int2(thread_id.xy) >= buffer_pass.resolution_rt.xy))
+    if (any(int2(thread_id.xy) >= pass_get_resolution_out()))
         return;
 
-    const float2 uv = (thread_id.xy + 0.5f) / buffer_pass.resolution_rt;
+    const float2 uv = (thread_id.xy + 0.5f) / pass_get_resolution_out();
 
     // Sample color
     float3 color = 0.0f;
@@ -145,10 +145,10 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
     // Out of bounds check
-    if (any(int2(thread_id.xy) >= buffer_pass.resolution_rt.xy))
+    if (any(int2(thread_id.xy) >= pass_get_resolution_out()))
         return;
 
-    const float2 uv = (thread_id.xy + 0.5f) / buffer_pass.resolution_rt;
+    const float2 uv = (thread_id.xy + 0.5f) / pass_get_resolution_out();
     const float4 o  = get_rt_texel_size().xyxy * float2(-0.5, 0.5).xxyy;
 
     float3 s1 = tex.SampleLevel(samplers[sampler_bilinear_clamp], uv + o.xy, 0).rgb;
@@ -167,10 +167,10 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
     // Out of bounds check
-    if (any(int2(thread_id.xy) >= buffer_pass.resolution_rt.xy))
+    if (any(int2(thread_id.xy) >= pass_get_resolution_out()))
         return;
 
-    const float2 uv = (thread_id.xy + 0.5f) / buffer_pass.resolution_rt;
+    const float2 uv = (thread_id.xy + 0.5f) / pass_get_resolution_out();
 
     // Get dof and coc
     float4 bokeh = tex2.SampleLevel(samplers[sampler_bilinear_clamp], uv, 0);

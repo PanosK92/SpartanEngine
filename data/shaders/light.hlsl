@@ -33,7 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
     // Out of bounds check.
-    if (any(int2(thread_id.xy) >= buffer_pass.resolution_rt.xy))
+    if (any(int2(thread_id.xy) >= pass_get_resolution_out()))
         return;
 
     // Create surface
