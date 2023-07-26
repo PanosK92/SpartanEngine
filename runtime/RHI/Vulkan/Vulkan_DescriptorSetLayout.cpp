@@ -22,10 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ==========================
 #include "pch.h"
 #include "../RHI_Implementation.h"
-#include "../RHI_DescriptorSet.h"
 #include "../RHI_DescriptorSetLayout.h"
-#include "../Rendering/Renderer.h"
-#include <unordered_set>
 //=====================================
 
 //= NAMESPACES =====
