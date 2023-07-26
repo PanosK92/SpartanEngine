@@ -68,7 +68,7 @@ struct Pixel_PosUv
 struct Pixel_PosColor
 {
     float4 position : SV_POSITION;
-    float4 color    : COLOR;
+    float4 color    : COLOR0;
 };
 
 
@@ -81,7 +81,7 @@ struct Pixel_PosNor
 struct Pixel_PosColUv
 {
     float4 position : SV_POSITION;
-    float4 color    : COLOR;
+    float4 color    : COLOR0;
     float2 uv       : TEXCOORD;
 };
 

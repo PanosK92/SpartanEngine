@@ -235,20 +235,24 @@ namespace Spartan
 
         // create context
         {
+            // the maximum size that rendering will be performed at
             fsr2_context_description.maxRenderSize.width  = static_cast<uint32_t>(resolution_render.x);
             fsr2_context_description.maxRenderSize.height = static_cast<uint32_t>(resolution_render.y);
-            fsr2_context_description.displaySize.width    = static_cast<uint32_t>(resolution_output.x);
-            fsr2_context_description.displaySize.height   = static_cast<uint32_t>(resolution_output.y);
-            fsr2_context_description.flags                = FFX_FSR2_ENABLE_DEPTH_INVERTED     |
-                                                            FFX_FSR2_ENABLE_AUTO_EXPOSURE      |
-                                                            FFX_FSR2_ENABLE_HIGH_DYNAMIC_RANGE;
 
-            // debug checking
-            #ifdef DEBUG
-            fsr2_context_description.flags     |= FFX_FSR2_ENABLE_DEBUG_CHECKING;
-            fsr2_context_description.fpMessage  = &ffx_message_callback;
-            #endif
+            // the size of the presentation resolution targeted by the upscaling process
+            fsr2_context_description.displaySize.width  = static_cast<uint32_t>(resolution_output.x);
+            fsr2_context_description.displaySize.height = static_cast<uint32_t>(resolution_output.y);
 
+            // flags
+            {
+                fsr2_context_description.flags      = FFX_FSR2_ENABLE_DEPTH_INVERTED | FFX_FSR2_ENABLE_AUTO_EXPOSURE | FFX_FSR2_ENABLE_HIGH_DYNAMIC_RANGE;
+                #ifdef DEBUG
+                fsr2_context_description.flags     |= FFX_FSR2_ENABLE_DEBUG_CHECKING;
+                fsr2_context_description.fpMessage  = &ffx_message_callback;
+                #endif
+            }
+
+            // context
             ffxFsr2ContextCreate(&fsr2_context, &fsr2_context_description);
             fsr2_context_created = true;
         }
@@ -271,12 +275,6 @@ namespace Spartan
         float sharpness
     )
     {
-        // get render and output resolution from the context description (safe to do as we are not using dynamic resolution)
-        uint32_t resolution_render_x = static_cast<uint32_t>(fsr2_context_description.maxRenderSize.width);
-        uint32_t resolution_render_y = static_cast<uint32_t>(fsr2_context_description.maxRenderSize.height);
-        uint32_t resolution_output_x = static_cast<uint32_t>(fsr2_context_description.displaySize.width);
-        uint32_t resolution_output_y = static_cast<uint32_t>(fsr2_context_description.displaySize.height);
-
         // transition to the appropriate layouts (will only happen if needed)
         tex_input->SetLayout(RHI_Image_Layout::Shader_Read_Only_Optimal, cmd_list);
         tex_depth->SetLayout(RHI_Image_Layout::Shader_Read_Only_Optimal, cmd_list);
@@ -297,20 +295,21 @@ namespace Spartan
             fsr2_dispatch_description.commandList                = ffxGetCommandListVK(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()));
 
             // configuration
-            fsr2_dispatch_description.motionVectorScale.x    = -static_cast<float>(resolution_render_x);
-            fsr2_dispatch_description.motionVectorScale.y    = -static_cast<float>(resolution_render_y);
+            fsr2_dispatch_description.motionVectorScale.x    = -static_cast<float>(tex_velocity->GetWidth());
+            fsr2_dispatch_description.motionVectorScale.y    = -static_cast<float>(tex_velocity->GetHeight());
             fsr2_dispatch_description.reset                  = fsr2_reset_history;       // a boolean value which when set to true, indicates the camera has moved discontinuously
             fsr2_dispatch_description.enableSharpening       = sharpness != 0.0f;
             fsr2_dispatch_description.sharpness              = sharpness;
             fsr2_dispatch_description.frameTimeDelta         = delta_time_sec * 1000.0f; // seconds to milliseconds
             fsr2_dispatch_description.preExposure            = 1.0f;                     // the exposure value if not using FFX_FSR2_ENABLE_AUTO_EXPOSURE
-            fsr2_dispatch_description.renderSize.width       = resolution_render_x;
-            fsr2_dispatch_description.renderSize.height      = resolution_render_y;
+            fsr2_dispatch_description.renderSize.width       = tex_input->GetWidth();    // the resolution that was used for rendering the input resources
+            fsr2_dispatch_description.renderSize.height      = tex_input->GetHeight();   // the resolution that was used for rendering the input resources
             fsr2_dispatch_description.cameraNear             = camera->GetFarPlane();    // far as near because we are using reverse-z
             fsr2_dispatch_description.cameraFar              = camera->GetNearPlane();   // near as far because we are using reverse-z
             fsr2_dispatch_description.cameraFovAngleVertical = camera->GetFovVerticalRad();
         }
 
+        // dispatch
         SP_ASSERT(ffxFsr2ContextDispatch(&fsr2_context, &fsr2_dispatch_description) == FFX_OK);
         fsr2_reset_history = false;
     }
