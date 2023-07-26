@@ -77,7 +77,7 @@ namespace Spartan
                 const float alphaWidth  = 1.0f - static_cast<float>(Helper::Abs(j)) / static_cast<float>(halfSizeH);
                 const float alphaHeight = 1.0f - static_cast<float>(Helper::Abs(i)) / static_cast<float>(halfSizeW);
                 float alpha             = (alphaWidth + alphaHeight) * 0.5f;
-                alpha                   = Helper::Pow(alpha, 10.0f);
+                alpha                   = Helper::Clamp(Helper::Pow(alpha, 10.0f), 0.0f, 1.0f);
 
                 // LINE 1
                 // Upper left.
