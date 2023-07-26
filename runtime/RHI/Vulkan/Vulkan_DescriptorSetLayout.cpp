@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_DescriptorSet.h"
 #include "../RHI_DescriptorSetLayout.h"
 #include "../Rendering/Renderer.h"
+#include <unordered_set>
 //=====================================
 
 //= NAMESPACES =====
@@ -42,11 +43,19 @@ namespace Spartan
         }
     }
 
-    void RHI_DescriptorSetLayout::CreateRhiResource(const vector<RHI_Descriptor>& descriptors)
+    void RHI_DescriptorSetLayout::CreateRhiResource(vector<RHI_Descriptor> descriptors)
     {
         SP_ASSERT(m_rhi_resource == nullptr);
 
-        // Layout bindings
+        // remove push constants since they are not part of the descriptor set layout
+        descriptors.erase(
+            std::remove_if(descriptors.begin(), descriptors.end(), [](RHI_Descriptor& descriptor)
+                { return descriptor.type == RHI_Descriptor_Type::PushConstantBuffer;}
+            ),
+            descriptors.end()
+        );
+
+        // layout bindings
         static const uint8_t descriptors_max = 255;
         static array<VkDescriptorSetLayoutBinding, descriptors_max> layout_bindings;
         static array<VkDescriptorBindingFlags, descriptors_max> layout_binding_flags;
@@ -55,11 +64,11 @@ namespace Spartan
         {
             const RHI_Descriptor& descriptor = descriptors[i];
 
-            // Stage flags
-            VkShaderStageFlags stage_flags = 0;
-            stage_flags |= (descriptor.stage & RHI_Shader_Vertex)  ? VK_SHADER_STAGE_VERTEX_BIT   : 0;
-            stage_flags |= (descriptor.stage & RHI_Shader_Pixel)   ? VK_SHADER_STAGE_FRAGMENT_BIT : 0;
-            stage_flags |= (descriptor.stage & RHI_Shader_Compute) ? VK_SHADER_STAGE_COMPUTE_BIT  : 0;
+            // stage flags
+            VkShaderStageFlags stage_flags  = 0;
+            stage_flags                    |= (descriptor.stage & RHI_Shader_Vertex)  ? VK_SHADER_STAGE_VERTEX_BIT   : 0;
+            stage_flags                    |= (descriptor.stage & RHI_Shader_Pixel)   ? VK_SHADER_STAGE_FRAGMENT_BIT : 0;
+            stage_flags                    |= (descriptor.stage & RHI_Shader_Compute) ? VK_SHADER_STAGE_COMPUTE_BIT  : 0;
 
             layout_bindings[i].descriptorType     = vulkan_utility::to_vulkan_desscriptor_type(descriptor);
             layout_bindings[i].binding            = descriptor.slot;
@@ -77,7 +86,7 @@ namespace Spartan
         flags_info.bindingCount                                   = static_cast<uint32_t>(descriptors.size());
         flags_info.pBindingFlags                                  = layout_binding_flags.data();
 
-        // Create info
+        // create info
         VkDescriptorSetLayoutCreateInfo create_info = {};
         create_info.sType                           = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
         create_info.flags                           = 0;
@@ -85,12 +94,12 @@ namespace Spartan
         create_info.bindingCount                    = static_cast<uint32_t>(descriptors.size());
         create_info.pBindings                       = layout_bindings.data();
 
-        // Descriptor set layout
+        // descriptor set layout
         SP_VK_ASSERT_MSG(
             vkCreateDescriptorSetLayout(RHI_Context::device, &create_info, nullptr, reinterpret_cast<VkDescriptorSetLayout*>(&m_rhi_resource)),
             "Failed to allocate descriptor set layout");
 
-        // Name
+        // name
         RHI_Device::SetResourceName(m_rhi_resource, RHI_Resource_Type::DescriptorSetLayout, m_object_name);
     }
 }

@@ -62,7 +62,7 @@ namespace Spartan
         void* GetRhiResource()                              const { return m_rhi_resource; }
 
     private:
-        void CreateRhiResource(const std::vector<RHI_Descriptor>& descriptors);
+        void CreateRhiResource(std::vector<RHI_Descriptor> descriptors);
 
         void* m_rhi_resource = nullptr;
         uint64_t m_hash      = 0;

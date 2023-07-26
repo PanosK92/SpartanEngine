@@ -60,9 +60,8 @@ namespace ImGui::RHI
         uint32_t buffer_index = 0;
 
         RHI_CommandPool* cmd_pool = nullptr;
-        array<unique_ptr<RHI_IndexBuffer>,    buffer_count> index_buffers;
-        array<unique_ptr<RHI_VertexBuffer>,   buffer_count> vertex_buffers;
-        array<shared_ptr<RHI_ConstantBuffer>, buffer_count> constant_buffer;
+        array<unique_ptr<RHI_IndexBuffer>,  buffer_count> index_buffers;
+        array<unique_ptr<RHI_VertexBuffer>, buffer_count> vertex_buffers;
         Cb_ImGui constant_buffer_cpu;
         
         ViewportRhiResources() = default;
@@ -74,9 +73,6 @@ namespace ImGui::RHI
             // allocate buffers
             for (uint32_t i = 0; i < buffer_count; i++)
             {
-                constant_buffer[i] = make_shared<RHI_ConstantBuffer>(name);
-                constant_buffer[i]->Create<Cb_ImGui>(256);
-
                 index_buffers[i]  = make_unique<RHI_IndexBuffer>(true, name);
                 vertex_buffers[i] = make_unique<RHI_VertexBuffer>(true, name);
             }
@@ -105,18 +101,16 @@ namespace ImGui::RHI
 
     static void destroy_rhi_resources()
     {
-        g_font_atlas                       = nullptr;
-        g_depth_stencil_state              = nullptr;
-        g_rasterizer_state                 = nullptr;
-        g_blend_state                      = nullptr;
-        g_shader_vertex                    = nullptr;
-        g_shader_pixel                     = nullptr;
-        g_viewport_data.constant_buffer[0] = nullptr;
-        g_viewport_data.constant_buffer[1] = nullptr;
-        g_viewport_data.index_buffers[0]   = nullptr;
-        g_viewport_data.index_buffers[1]   = nullptr;
-        g_viewport_data.vertex_buffers[0]  = nullptr;
-        g_viewport_data.vertex_buffers[1]  = nullptr;
+        g_font_atlas                      = nullptr;
+        g_depth_stencil_state             = nullptr;
+        g_rasterizer_state                = nullptr;
+        g_blend_state                     = nullptr;
+        g_shader_vertex                   = nullptr;
+        g_shader_pixel                    = nullptr;
+        g_viewport_data.index_buffers[0]  = nullptr;
+        g_viewport_data.index_buffers[1]  = nullptr;
+        g_viewport_data.vertex_buffers[0] = nullptr;
+        g_viewport_data.vertex_buffers[1] = nullptr;
     }
 
     static void Initialize()
@@ -217,16 +211,14 @@ namespace ImGui::RHI
         // tick the command pool
         if (rhi_resources->cmd_pool->Tick())
         {
-            // switch to the next buffers
+            // switch to the next set of buffers
             rhi_resources->buffer_index = (rhi_resources->buffer_index + 1) % buffer_count;
-            rhi_resources->constant_buffer[rhi_resources->buffer_index]->ResetOffset();
         }
 
         // get rhi resources for this command buffer
-        shared_ptr<RHI_ConstantBuffer> constant_buffer = rhi_resources->constant_buffer[rhi_resources->buffer_index];
-        RHI_VertexBuffer* vertex_buffer                = rhi_resources->vertex_buffers[rhi_resources->buffer_index].get();
-        RHI_IndexBuffer* index_buffer                  = rhi_resources->index_buffers[rhi_resources->buffer_index].get();
-        RHI_CommandList* cmd_list                      = rhi_resources->cmd_pool->GetCurrentCommandList();
+        RHI_VertexBuffer* vertex_buffer = rhi_resources->vertex_buffers[rhi_resources->buffer_index].get();
+        RHI_IndexBuffer* index_buffer   = rhi_resources->index_buffers[rhi_resources->buffer_index].get();
+        RHI_CommandList* cmd_list       = rhi_resources->cmd_pool->GetCurrentCommandList();
 
         // update vertex and index buffers
         {
@@ -276,7 +268,7 @@ namespace ImGui::RHI
 
         // begin timeblock
         const char* name = is_child_window ? "imgui_window_child" : "imgui_window_main";
-        bool gpu_timing = !is_child_window; // profiler requires more work when windows are enter the main window and their command pool is destroyed
+        bool gpu_timing = !is_child_window; // profiler requires more work when windows enter the main window and their command pool is destroyed
         cmd_list->Begin();
         cmd_list->BeginTimeblock(name, true, gpu_timing);
 
@@ -360,8 +352,7 @@ namespace ImGui::RHI
                         }
 
                         // update imgui buffer
-                        constant_buffer->Update(&rhi_resources->constant_buffer_cpu);
-                        cmd_list->SetConstantBuffer(Renderer_BindingsCb::imgui, constant_buffer);
+                        cmd_list->PushConstants(0, sizeof(Cb_ImGui), &rhi_resources->constant_buffer_cpu);
 
                         // draw
                         cmd_list->DrawIndexed(pcmd->ElemCount, pcmd->IdxOffset + global_idx_offset, pcmd->VtxOffset + global_vtx_offset);
