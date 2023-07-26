@@ -815,7 +815,7 @@ namespace Spartan
             light->SetLightType(LightType::Point);
             light->SetColor(Color::light_light_bulb);
             light->SetRange(14.960f);
-            light->SetIntensity(7000.0f);
+            light->SetIntensity(12000.0f);
         }
 
         // 3D model - Sponza

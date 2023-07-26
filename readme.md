@@ -64,7 +64,7 @@ Occasional livestreams on Discord for interesting topics.
 - Support for XML files
 - Easy to build (Single click project generation which includes editor and runtime)
 - AMD FidelityFX (FSR2, Single Pass Downsampler, Contrast Adaptive Sharpening, Compressonator for texture compression)
-- All render passes use a push constant buffer with a size of 120 bytes, pushing data to the GPU at lightening speeds.
+- All passes use a push constant buffer with a size of 128 bytes, pushing data to the GPU at lightening speeds.
 
 # Roadmap
 
