@@ -231,14 +231,14 @@ namespace Spartan
             m_value.m30 = resolution.y;
         };
 
-        void set_position(const Math::Vector3& position)
+        void set_f3_value(const Math::Vector3& position)
         {
             m_value.m00 = position.x;
             m_value.m01 = position.y;
             m_value.m02 = position.z;
         };
 
-        void set_color(const Math::Vector4& color)
+        void set_f4_value(const Math::Vector4& color)
         {
             m_value.m10 = color.x;
             m_value.m11 = color.y;
@@ -254,7 +254,8 @@ namespace Spartan
             return
                 transform == rhs.transform &&
                 m_value   == rhs.m_value   &&
-                f3_value  == rhs.f3_value;
+                f3_value  == rhs.f3_value &&
+                u_state   == rhs.u_state;
         }
 
         bool operator!=(const Cb_Pass& rhs) const { return !(*this == rhs); }
