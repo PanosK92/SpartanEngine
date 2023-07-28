@@ -536,7 +536,7 @@ namespace Spartan
 
         m_cb_light_cpu.intensity_range_angle_bias = Vector4
         (
-            light->GetIntensityForShader(m_camera.get()),
+            light->GetIntensityWatt(m_camera.get()),
             light->GetRange(), light->GetAngle(),
             light->GetBias()
         );

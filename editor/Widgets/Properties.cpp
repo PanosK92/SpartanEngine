@@ -234,7 +234,7 @@ void Properties::ShowLight(shared_ptr<Light> light) const
     {
         //= REFLECT ======================================================================
         static vector<string> types = { "Directional", "Point", "Spot" };
-        float intensity             = light->GetIntensity();
+        float intensity             = light->GetIntensityLumens();
         float angle                 = light->GetAngle() * Math::Helper::RAD_TO_DEG * 2.0f;
         bool shadows                = light->GetShadowsEnabled();
         bool shadows_transparent    = light->GetShadowsTransparentEnabled();
@@ -259,11 +259,41 @@ void Properties::ShowLight(shared_ptr<Light> light) const
         ImGui::SameLine(column_pos_x); m_colorPicker_light->Update();
 
         // Intensity
-        ImGui::Text("Intensity (lumens)");
-        ImGui::SameLine(column_pos_x);
-        float v_speed   = 5.0f;
-        float v_max     = 120000.0f;
-        ImGuiSp::draw_float_wrap("##lightIntensity", &intensity, v_speed, 0.0f, v_max);
+        {
+            static vector<string> intensity_types =
+            {
+                "sky direct sunlight noon",
+                "sky direct sunlight morning evening",
+                "sky overcast day",
+                "sky twilight",
+                "stadium light",
+                "bulb 500 watt",
+                "bulb 150 watt",
+                "bulb 100 watt",
+                "bulb 60 watt",
+                "bulb 25 watt",
+                "average flashlight",
+                "black_hole",
+                "custom"
+            };
+
+            ImGui::Text("Intensity (lumens)");
+
+            // lumen
+            ImGui::SameLine(column_pos_x);
+            float v_speed = 5.0f;
+            float v_max   = 120000.0f;
+            ImGuiSp::draw_float_wrap("##lightIntensity", &intensity, v_speed, 0.0f, v_max);
+
+            // enum
+            ImGui::SameLine();
+            uint32_t intensity_type_index = static_cast<uint32_t>(light->GetIntensity());
+            if (ImGuiSp::combo_box("##light_intensity_type", intensity_types, &intensity_type_index))
+            {
+                light->SetIntensity(static_cast<LightIntensity>(intensity_type_index));
+                intensity = light->GetIntensityLumens();
+            }
+        }
 
         // Shadows
         ImGui::Text("Shadows");
@@ -312,7 +342,7 @@ void Properties::ShowLight(shared_ptr<Light> light) const
         }
 
         //= MAP =====================================================================================================================
-        if (intensity != light->GetIntensity())                            light->SetIntensity(intensity);
+        if (intensity != light->GetIntensityLumens())                      light->SetIntensityLumens(intensity);
         if (shadows != light->GetShadowsEnabled())                         light->SetShadowsEnabled(shadows);
         if (shadows_transparent != light->GetShadowsTransparentEnabled())  light->SetShadowsTransparentEnabled(shadows_transparent);
         if (volumetric != light->GetVolumetricEnabled())                   light->SetVolumetricEnabled(volumetric);

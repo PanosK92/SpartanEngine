@@ -49,18 +49,19 @@ namespace Spartan
 
     enum class LightIntensity
     {
-        black_hole,                      // No light emitted
-        direct_sunlight_noon,            // Direct sunlight at noon, the brightest light
-        direct_sunlight_morning_evening, // Direct sunlight at morning or evening, less intense than noon light
-        overcast_day,                    // Light on an overcast day, considerably less intense than direct sunlight
-        twilight,                        // Light just after sunset, a soft and less intense light
-        stadium_light,                   // Intense light used in stadiums for sports events, comparable to sunlight
-        bulb_500_watt,                   // A very bright domestic bulb or small industrial light
-        bulb_150_watt,                   // A bright domestic bulb, equivalent to an old-school incandescent bulb
-        bulb_100_watt,                   // A typical bright domestic bulb
-        bulb_60_watt,                    // A medium intensity domestic bulb
-        bulb_25_watt,                    // A low intensity domestic bulb, used for mood lighting or as a nightlight
-        average_flashlight,              // Light emitted by an average flashlight, portable and less intense
+        sky_direct_sunlight_noon,            // Direct sunlight at noon, the brightest light
+        sky_direct_sunlight_morning_evening, // Direct sunlight at morning or evening, less intense than noon light
+        sky_overcast_day,                    // Light on an overcast day, considerably less intense than direct sunlight
+        sky_twilight,                        // Light just after sunset, a soft and less intense light
+        stadium_light,                       // Intense light used in stadiums for sports events, comparable to sunlight
+        bulb_500_watt,                       // A very bright domestic bulb or small industrial light
+        bulb_150_watt,                       // A bright domestic bulb, equivalent to an old-school incandescent bulb
+        bulb_100_watt,                       // A typical bright domestic bulb
+        bulb_60_watt,                        // A medium intensity domestic bulb
+        bulb_25_watt,                        // A low intensity domestic bulb, used for mood lighting or as a night light
+        average_flashlight,                  // Light emitted by an average flashlight, portable and less intense
+        black_hole,                          // No light emitted
+        custom                               // Custom intensity
     };
 
     struct ShadowSlice
@@ -86,7 +87,6 @@ namespace Spartan
 
         //= COMPONENT ================================
         void OnInitialize() override;
-        void OnStart() override;
         void OnTick() override;
         void Serialize(FileStream* stream) override;
         void Deserialize(FileStream* stream) override;
@@ -99,10 +99,12 @@ namespace Spartan
         void SetColor(const Color& rgb) { m_color_rgb = rgb; }
         const Color& GetColor()   const { return m_color_rgb; }
 
+        // Intensity
+        void SetIntensityLumens(const float lumens);
         void SetIntensity(const LightIntensity lumens);
-        void SetIntensity(const float lumens) { m_intensity_lumens = lumens; }
-        float GetIntensity()            const { return m_intensity_lumens; }
-        float GetIntensityForShader(Camera* camera) const;
+        float GetIntensityLumens() const    { return m_intensity_lumens; }
+        LightIntensity GetIntensity() const { return m_intensity; }
+        float GetIntensityWatt(Camera* camera) const;
 
         bool GetShadowsEnabled() const { return m_shadows_enabled; }
         void SetShadowsEnabled(bool cast_shadows);
@@ -140,6 +142,10 @@ namespace Spartan
         void ComputeProjectionMatrix(uint32_t index = 0);
         void ComputeCascadeSplits();
 
+        // Intensity
+        LightIntensity m_intensity = LightIntensity::bulb_500_watt;
+        float m_intensity_lumens   = 2600.0f;
+
         // Shadows
         bool m_shadows_enabled             = true;
         bool m_shadows_transparent_enabled = true;
@@ -155,7 +161,6 @@ namespace Spartan
         Color m_color_rgb         = Color(1.0f, 0.76f, 0.57f, 1.0f);
         bool m_volumetric_enabled = true;
         float m_range             = 10.0f;
-        float m_intensity_lumens  = 0.0f;
         float m_angle_rad         = 0.5f; // about 30 degrees
         bool m_initialized        = false;
         std::array<Math::Matrix, 6> m_matrix_view;

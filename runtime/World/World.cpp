@@ -80,7 +80,7 @@ namespace Spartan
             const Math::Vector3& camera_position = Math::Vector3(-2.956f, 1.1474f, -2.9395f),
             const Math::Vector3& camera_rotation = Math::Vector3(15.9976f, 43.5998f, 0.0f),
             const char* soundtrack_file_path     = "project\\music\\vangelis_cosmos_theme.mp3",
-            const LightIntensity sun_intensity   = LightIntensity::direct_sunlight_morning_evening
+            const LightIntensity sun_intensity   = LightIntensity::sky_direct_sunlight_morning_evening
         )
         {
             // Environment
@@ -112,7 +112,7 @@ namespace Spartan
                 light->SetLightType(LightType::Directional);
                 light->SetColor(Color::light_sky_sunrise);
                 light->SetIntensity(sun_intensity);
-                light->SetShadowsEnabled(light->GetIntensity() > 0.0f);
+                light->SetShadowsEnabled(light->GetIntensityLumens() > 0.0f);
             }
 
             // Music
@@ -571,7 +571,7 @@ namespace Spartan
     {
         Vector3 camera_position = Vector3(6.2f, 1.0f, -0.2f);
         Vector3 camera_rotation = Vector3(0.0f, -90.0f, 0.0f);
-        create_default_world_common(true, camera_position, camera_rotation, "project\\music\\isola_any_day.mp3", LightIntensity::twilight);
+        create_default_world_common(true, camera_position, camera_rotation, "project\\music\\isola_any_day.mp3", LightIntensity::sky_twilight);
 
         // Point light - top of car
         {
