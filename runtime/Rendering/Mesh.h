@@ -31,12 +31,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-    enum class MeshProcessingOptions : uint32_t
+    enum class MeshFlags : uint32_t
     {
-        CombineMeshes,
-        RemoveRedundantData,
-        ImportLights,
-        NormalizeScale
+        ImporRemoveRedundantData = 1 << 0,
+        ImportLights             = 1 << 1,
+        ImportCombineMeshes      = 1 << 2,
+        ImportNormalizeScale     = 1 << 3
     };
 
     class Mesh : public IResource
@@ -87,6 +87,7 @@ namespace Spartan
         void SetRootEntity(std::shared_ptr<Entity>& entity) { m_root_entity = entity; }
 
         // Misc
+        uint32_t GetFlags() const { return m_flags; }
         static uint32_t GetDefaultFlags();
         float ComputeNormalizedScale();
         void Optimize();
@@ -106,11 +107,12 @@ namespace Spartan
         Math::BoundingBox m_aabb;
 
         // Sync primitives
-        std::mutex m_mutex_add_indices;
-        std::mutex m_mutex_add_verices;
+        std::mutex m_mutex_indices;
+        std::mutex m_mutex_vertices;
 
         // Misc
         std::weak_ptr<Entity> m_root_entity;
         float m_normalized_scale = 0.0f;
+        uint32_t m_flags         = 0;
     };
 }

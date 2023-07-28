@@ -179,7 +179,7 @@ namespace Spartan
 
     void Mesh::AddVertices(const vector<RHI_Vertex_PosTexNorTan>& vertices, uint32_t* vertex_offset_out /*= nullptr*/)
     {
-        lock_guard lock(m_mutex_add_verices);
+        lock_guard lock(m_mutex_vertices);
 
         if (vertex_offset_out)
         {
@@ -191,7 +191,7 @@ namespace Spartan
 
     void Mesh::AddIndices(const vector<uint32_t>& indices, uint32_t* index_offset_out /*= nullptr*/)
     {
-        lock_guard lock(m_mutex_add_verices);
+        lock_guard lock(m_mutex_vertices);
 
         if (index_offset_out)
         {
@@ -220,10 +220,9 @@ namespace Spartan
 
     uint32_t Mesh::GetDefaultFlags()
     {
-        return
-            (1U << static_cast<uint32_t>(MeshProcessingOptions::RemoveRedundantData));
+        return static_cast<uint32_t>(MeshFlags::ImporRemoveRedundantData);
     }
-    
+
     float Mesh::ComputeNormalizedScale()
     {
         // Compute scale offset

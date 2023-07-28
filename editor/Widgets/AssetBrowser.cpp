@@ -40,7 +40,7 @@ namespace
     static uint32_t mesh_import_dialog_flags  = 0;
     static string mesh_import_file_path;
 
-    static void mesh_import_dialog_checkbox(const MeshProcessingOptions option, const char* label, const char* tooltip = nullptr)
+    static void mesh_import_dialog_checkbox(const MeshFlags option, const char* label, const char* tooltip = nullptr)
     {
         bool enabled = (mesh_import_dialog_flags & (1U << static_cast<uint32_t>(option))) != 0;
     
@@ -71,20 +71,24 @@ namespace
             // Begin
             if (ImGui::Begin("Mesh import options", &mesh_import_dialog_is_visible, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse))
             {
-                mesh_import_dialog_checkbox(MeshProcessingOptions::RemoveRedundantData,
+                mesh_import_dialog_checkbox(MeshFlags::ImporRemoveRedundantData,
                     "Remove redundant data",
                     "Joins identical vertices, removes redundant materials, duplicate meshes, zeroed normals and invalid UVs.");
     
-                mesh_import_dialog_checkbox(MeshProcessingOptions::NormalizeScale,
+                mesh_import_dialog_checkbox(MeshFlags::ImportNormalizeScale,
                     "Normalize scale",
                     "Scales the mesh so that it's not bigger than a cubic unit."
                 );
     
-                mesh_import_dialog_checkbox(MeshProcessingOptions::CombineMeshes,
+                mesh_import_dialog_checkbox(MeshFlags::ImportCombineMeshes,
                     "Combine meshes",
-                    "Joins some meshes, removes some nodes and pretransforms vertices.");
+                    "Joins some meshes, removes some nodes and pretransforms vertices."
+                );
     
-                mesh_import_dialog_checkbox(MeshProcessingOptions::ImportLights, "Import lights");
+                mesh_import_dialog_checkbox(MeshFlags::ImportLights,
+                    "Import meshes",
+                    "Some models might define lights, they can be imported as well."
+                );
     
                 // Ok button
                 if (ImGuiSp::button_centered_on_line("Ok", 0.5f))
@@ -131,7 +135,7 @@ void AssetBrowser::OnTickVisible()
     mesh_import_dialog(m_editor);
 }
 
-void AssetBrowser::ShowMeshImportDialog(const std::string& file_path)
+void AssetBrowser::ShowMeshImportDialog(const string& file_path)
 {
     if (FileSystem::IsSupportedModelFile(mesh_import_file_path))
     {
@@ -141,7 +145,7 @@ void AssetBrowser::ShowMeshImportDialog(const std::string& file_path)
     }
 }
 
-void AssetBrowser::OnPathClicked(const std::string& path) const
+void AssetBrowser::OnPathClicked(const string& path) const
 {
     if (!FileSystem::IsFile(path))
         return;
