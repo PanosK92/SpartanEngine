@@ -54,7 +54,7 @@ namespace Spartan
 
         if (m_light_type == LightType::Directional)
         {
-            SetIntensity(LightIntensity::direct_sunlight_noon);
+            SetIntensity(LightIntensity::sky_direct_sunlight_noon);
         }
         else if (m_light_type == LightType::Point)
         {
@@ -69,11 +69,6 @@ namespace Spartan
     void Light::OnInitialize()
     {
         Component::OnInitialize();
-    }
-
-    void Light::OnStart()
-    {
-
     }
 
     void Light::OnTick()
@@ -183,49 +178,51 @@ namespace Spartan
         m_color_rgb = Color(temperature);
     }
 
-    void Light::SetIntensity(const LightIntensity lumens)
+    void Light::SetIntensity(const LightIntensity intensity)
     {
-        if (lumens == LightIntensity::direct_sunlight_noon)
+        m_intensity = intensity;
+
+        if (intensity == LightIntensity::sky_direct_sunlight_noon)
         {
             m_intensity_lumens = 120000.0f;
         }
-        else if (lumens == LightIntensity::direct_sunlight_morning_evening)
+        else if (intensity == LightIntensity::sky_direct_sunlight_morning_evening)
         {
             m_intensity_lumens = 60000.0f;
         }
-        else if (lumens == LightIntensity::overcast_day)
+        else if (intensity == LightIntensity::sky_overcast_day)
         {
             m_intensity_lumens = 20000.0f;
         }
-        else if (lumens == LightIntensity::twilight)
+        else if (intensity == LightIntensity::sky_twilight)
         {
             m_intensity_lumens = 10000.0f;
         }
-        else if (lumens == LightIntensity::stadium_light)
+        else if (intensity == LightIntensity::stadium_light)
         {
             m_intensity_lumens = 200000.0f;
         }
-        else if (lumens == LightIntensity::bulb_500_watt)
+        else if (intensity == LightIntensity::bulb_500_watt)
         {
             m_intensity_lumens = 8500.0f;
         }
-        else if (lumens == LightIntensity::bulb_150_watt)
+        else if (intensity == LightIntensity::bulb_150_watt)
         {
             m_intensity_lumens = 2600.0f;
         }
-        else if (lumens == LightIntensity::bulb_100_watt)
+        else if (intensity == LightIntensity::bulb_100_watt)
         {
             m_intensity_lumens = 1600.0f;
         }
-        else if (lumens == LightIntensity::bulb_60_watt)
+        else if (intensity == LightIntensity::bulb_60_watt)
         {
             m_intensity_lumens = 800.0f;
         }
-        else if (lumens == LightIntensity::bulb_25_watt)
+        else if (intensity == LightIntensity::bulb_25_watt)
         {
             m_intensity_lumens = 200.0f;
         }
-        else if (lumens == LightIntensity::average_flashlight)
+        else if (intensity == LightIntensity::average_flashlight)
         {
             m_intensity_lumens = 100.0f;
         }
@@ -235,7 +232,13 @@ namespace Spartan
         }
     }
 
-    float Light::GetIntensityForShader(Camera* camera) const
+    void Light::SetIntensityLumens(const float lumens)
+    {
+        m_intensity_lumens = lumens;
+        m_intensity        = LightIntensity::custom;
+    }
+
+    float Light::GetIntensityWatt(Camera* camera) const
     {
         SP_ASSERT(camera != nullptr);
 
