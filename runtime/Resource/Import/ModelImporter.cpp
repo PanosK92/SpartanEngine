@@ -355,7 +355,7 @@ namespace Spartan
             // Remove cameras and lights
             {
                 uint32_t component_flags = aiComponent_CAMERAS;
-                if ((mesh->GetFlags() & (1U << static_cast<uint32_t>(MeshProcessingOptions::ImportLights))) == 0)
+                if ((mesh->GetFlags() & (1U << static_cast<uint32_t>(MeshFlags::ImportLights))) == 0)
                 {
                     component_flags |= aiComponent_LIGHTS;
                 }
@@ -385,7 +385,7 @@ namespace Spartan
             import_flags |= aiProcess_GenUVCoords;      // Converts non-UV mappings (such as spherical or cylindrical mapping) to proper texture coordinate channels
 
             // Combine meshes
-            if ((mesh->GetFlags() & (1U << static_cast<uint32_t>(MeshProcessingOptions::CombineMeshes))) != 0)
+            if (mesh->GetFlags() & static_cast<uint32_t>(MeshFlags::ImportCombineMeshes))
             {
                 import_flags |= aiProcess_OptimizeMeshes;
                 import_flags |= aiProcess_OptimizeGraph;
@@ -393,10 +393,10 @@ namespace Spartan
             }
 
             // Validate
-            if ((mesh->GetFlags() & (1U << static_cast<uint32_t>(MeshProcessingOptions::RemoveRedundantData))) != 0)
+            if (mesh->GetFlags() & static_cast<uint32_t>(MeshFlags::ImporRemoveRedundantData))
             {
                 import_flags |= aiProcess_RemoveRedundantMaterials; // Searches for redundant/unreferenced materials and removes them
-                import_flags |= aiProcess_JoinIdenticalVertices;    // Identifies and joins identical vertex data sets within all imported meshes     
+                import_flags |= aiProcess_JoinIdenticalVertices;    // Identifies and joins identical vertex data sets within all imported meshes
                 import_flags |= aiProcess_FindDegenerates;          // Convert degenerate primitives to proper lines or points.
                 import_flags |= aiProcess_FindInvalidData;          // This step searches all meshes for invalid data, such as zeroed normal vectors or invalid UV coords and removes / fixes them
                 import_flags |= aiProcess_FindInstances;            // This step searches for duplicate meshes and replaces them with references to the first mesh
@@ -428,7 +428,7 @@ namespace Spartan
 
                 //mesh->Optimize();
                 mesh->ComputeAabb();
-                if ((mesh->GetFlags() & (1U << static_cast<uint32_t>(MeshProcessingOptions::NormalizeScale))) != 0)
+                if ((mesh->GetFlags() & (1 << static_cast<uint32_t>(MeshFlags::ImportNormalizeScale))) != 0)
                 {
                     mesh->ComputeNormalizedScale();
                 }
@@ -487,7 +487,7 @@ namespace Spartan
         }
 
         // Light component
-        if ((mesh->GetFlags() & (1U << static_cast<uint32_t>(MeshProcessingOptions::ImportLights))) != 0)
+        if (mesh->GetFlags() & static_cast<uint32_t>(MeshFlags::ImportLights))
         {
             ParseNodeLight(node, entity.get());
         }
@@ -542,24 +542,24 @@ namespace Spartan
         {
             if (scene->mLights[i]->mName == node->mName)
             {
-                // Get Assimp light
+                // get assimp light
                 const aiLight* light_assimp = scene->mLights[i];
 
-                // Add a light component
+                // add a light component
                 shared_ptr<Light> light = new_entity->AddComponent<Light>();
 
-                // Disable shadows (to avoid tanking the framerate)
+                // disable shadows (to avoid tanking the framerate)
                 light->SetShadowsEnabled(false);
                 light->SetShadowsTransparentEnabled(false);
 
-                // Local transform
+                // local transform
                 light->GetTransform()->SetPositionLocal(convert_vector3(light_assimp->mPosition));
                 light->GetTransform()->SetRotationLocal(Quaternion::FromLookRotation(convert_vector3(light_assimp->mDirection)));
 
-                // Color
+                // color
                 light->SetColor(convert_color(light_assimp->mColorDiffuse));
 
-                // Type
+                // type
                 if (light_assimp->mType == aiLightSource_DIRECTIONAL)
                 {
                     light->SetLightType(LightType::Directional);
