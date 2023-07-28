@@ -110,7 +110,7 @@ struct Surface
                 occlusion   = ssgi.a;
                 gi          = ssgi.rgb;
 
-                // Combine occlusion with material occlusion (baked texture).
+                // combine occlusion with material occlusion (baked texture).
                 occlusion = min(sample_material.a, occlusion);
             }
         }
@@ -199,11 +199,7 @@ struct Light
         {
             direction = normalize(forward.xyz);
         }
-        else if (light_is_point())
-        {
-            direction = normalize(fragment_position - light_position);
-        }
-        else if (light_is_spot())
+        else if (light_is_point() || light_is_spot())
         {
             direction = normalize(fragment_position - light_position);
         }
@@ -228,15 +224,9 @@ struct Light
         attenuation       = compute_attenuation(surface_position);
         array_size        = light_is_directional() ? 4 : 1;
 
-        // Apply occlusion
-        if (is_ssgi_enabled())
-        {
-            radiance = color * intensity * attenuation * n_dot_l * occlusion;
-        }
-        else
-        {
-            radiance = color * intensity * attenuation * n_dot_l;
-        }
+        // apply occlusion
+        float occlusion_factor = is_ssgi_enabled() ? occlusion : 1.0;
+        radiance               = color * intensity * attenuation * n_dot_l * occlusion_factor;
     }
 
     void Build(Surface surface)

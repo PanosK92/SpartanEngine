@@ -393,7 +393,7 @@ namespace Spartan
             }
 
             // Validate
-            if (mesh->GetFlags() & static_cast<uint32_t>(MeshFlags::ImporRemoveRedundantData))
+            if (mesh->GetFlags() & static_cast<uint32_t>(MeshFlags::ImportRemoveRedundantData))
             {
                 import_flags |= aiProcess_RemoveRedundantMaterials; // Searches for redundant/unreferenced materials and removes them
                 import_flags |= aiProcess_JoinIdenticalVertices;    // Identifies and joins identical vertex data sets within all imported meshes
@@ -572,6 +572,9 @@ namespace Spartan
                 {
                     light->SetLightType(LightType::Spot);
                 }
+
+                // intensity
+                light->SetIntensity(LightIntensity::bulb_150_watt);
             }
         }
     }

@@ -33,10 +33,10 @@ namespace Spartan
 {
     enum class MeshFlags : uint32_t
     {
-        ImporRemoveRedundantData = 1 << 0,
-        ImportLights             = 1 << 1,
-        ImportCombineMeshes      = 1 << 2,
-        ImportNormalizeScale     = 1 << 3
+        ImportRemoveRedundantData = 1 << 0,
+        ImportLights              = 1 << 1,
+        ImportCombineMeshes       = 1 << 2,
+        ImportNormalizeScale      = 1 << 3
     };
 
     class Mesh : public IResource

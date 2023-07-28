@@ -71,7 +71,7 @@ namespace
             // Begin
             if (ImGui::Begin("Mesh import options", &mesh_import_dialog_is_visible, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse))
             {
-                mesh_import_dialog_checkbox(MeshFlags::ImporRemoveRedundantData,
+                mesh_import_dialog_checkbox(MeshFlags::ImportRemoveRedundantData,
                     "Remove redundant data",
                     "Joins identical vertices, removes redundant materials, duplicate meshes, zeroed normals and invalid UVs.");
     
