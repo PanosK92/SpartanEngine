@@ -237,7 +237,6 @@ void Properties::ShowLight(shared_ptr<Light> light) const
         float intensity             = light->GetIntensity();
         float angle                 = light->GetAngle() * Math::Helper::RAD_TO_DEG * 2.0f;
         bool shadows                = light->GetShadowsEnabled();
-        bool shadows_screen_space   = light->GetShadowsScreenSpaceEnabled();
         bool shadows_transparent    = light->GetShadowsTransparentEnabled();
         bool volumetric             = light->GetVolumetricEnabled();
         float bias                  = light->GetBias();
@@ -288,11 +287,6 @@ void Properties::ShowLight(shared_ptr<Light> light) const
         }
         ImGui::EndDisabled();
 
-        // Screen space shadows
-        ImGui::Text("Screen Space Shadows");
-        ImGui::SameLine(column_pos_x); ImGui::Checkbox("##light_shadows_screen_space", &shadows_screen_space);
-        ImGuiSp::tooltip("Small scale shadows which add detail were surfaces meet, also known as contact shadows");
-
         // Bias
         ImGui::Text("Bias");
         ImGui::SameLine(column_pos_x);
@@ -322,7 +316,6 @@ void Properties::ShowLight(shared_ptr<Light> light) const
         //= MAP =====================================================================================================================
         if (intensity != light->GetIntensity())                            light->SetIntensity(intensity);
         if (shadows != light->GetShadowsEnabled())                         light->SetShadowsEnabled(shadows);
-        if (shadows_screen_space != light->GetShadowsScreenSpaceEnabled()) light->SetShadowsScreenSpaceEnabled(shadows_screen_space);
         if (shadows_transparent != light->GetShadowsTransparentEnabled())  light->SetShadowsTransparentEnabled(shadows_transparent);
         if (volumetric != light->GetVolumetricEnabled())                   light->SetVolumetricEnabled(volumetric);
         if (bias != light->GetBias())                                      light->SetBias(bias);

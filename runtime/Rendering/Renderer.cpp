@@ -551,8 +551,7 @@ namespace Spartan
         m_cb_light_cpu.options     |= light->GetLightType() == LightType::Spot        ? (1 << 2) : 0;
         m_cb_light_cpu.options     |= light->GetShadowsEnabled()                      ? (1 << 3) : 0;
         m_cb_light_cpu.options     |= light->GetShadowsTransparentEnabled()           ? (1 << 4) : 0;
-        m_cb_light_cpu.options     |= light->GetShadowsScreenSpaceEnabled()           ? (1 << 5) : 0;
-        m_cb_light_cpu.options     |= light->GetVolumetricEnabled()                   ? (1 << 6) : 0;
+        m_cb_light_cpu.options     |= light->GetVolumetricEnabled()                   ? (1 << 5) : 0;
 
         GetConstantBuffer(Renderer_ConstantBuffer::Light)->Update(&m_cb_light_cpu);
 

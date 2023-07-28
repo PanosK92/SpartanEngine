@@ -43,7 +43,6 @@ namespace Spartan
     Light::Light(weak_ptr<Entity> entity) : Component(entity)
     {
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_shadows_enabled, bool);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_shadows_screen_space_enabled, bool);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_shadows_transparent_enabled, bool);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_range, float);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_intensity_lumens, float);
@@ -139,7 +138,6 @@ namespace Spartan
     {
         stream->Write(static_cast<uint32_t>(m_light_type));
         stream->Write(m_shadows_enabled);
-        stream->Write(m_shadows_screen_space_enabled);
         stream->Write(m_shadows_transparent_enabled);
         stream->Write(m_volumetric_enabled);
         stream->Write(m_color_rgb);
@@ -154,7 +152,6 @@ namespace Spartan
     {
         SetLightType(static_cast<LightType>(stream->ReadAs<uint32_t>()));
         stream->Read(&m_shadows_enabled);
-        stream->Read(&m_shadows_screen_space_enabled);
         stream->Read(&m_shadows_transparent_enabled);
         stream->Read(&m_volumetric_enabled);
         stream->Read(&m_color_rgb);
