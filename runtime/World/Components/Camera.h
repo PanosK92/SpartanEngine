@@ -87,7 +87,7 @@ namespace Spartan
         //=================================================================================================================
 
         // Aperture
-        float GetAperture() const { return m_aperture; }
+        float GetAperture() const              { return m_aperture; }
         void SetAperture(const float aperture) { m_aperture = aperture; }
 
         // Shutter speed
@@ -99,8 +99,9 @@ namespace Spartan
         void SetIso(const float iso) { m_iso = iso; }
 
         // Exposure
-        float GetEv100()    const { return std::log2((m_aperture * m_aperture) / m_shutter_speed * 100.0f / m_iso);} // Reference: https://google.github.io/filament/Filament.md.html#lighting/units/lightunitsvalidation
-        float GetExposure() const { return 1.0f / (std::pow(2.0f, GetEv100()) * 1.2f); } // Frostbite: https://seblagarde.files.wordpress.com/2015/07/course_notes_moving_frostbite_to_pbr_v32.pdf
+        float GetEv100()    const { return std::log2(m_aperture / m_shutter_speed * 100.0f / m_iso); }
+        float GetExposure() const { return 1.0f / (std::pow(2.0f, GetEv100())); }
+
 
         // Planes/projection
         void SetNearPlane(float near_plane);
@@ -149,7 +150,7 @@ namespace Spartan
         void ProcessInputFpsControl();
         void ProcessInputLerpToEntity();
 
-        float m_aperture                           = 50.0f;        // Size of the lens diaphragm (mm). Controls depth of field and chromatic aberration.
+        float m_aperture                           = 2.8f;         // Aperture value in f-stop. Controls the amount of light, depth of field and chromatic aberration.
         float m_shutter_speed                      = 1.0f / 60.0f; // Length of time for which the camera shutter is open (sec). Also controls the amount of motion blur.
         float m_iso                                = 500.0f;       // Sensitivity to light.
         float m_fov_horizontal_rad                 = Math::Helper::DegreesToRadians(90.0f);

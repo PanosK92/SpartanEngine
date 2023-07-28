@@ -197,7 +197,7 @@ namespace Spartan
         SetOption(Renderer_Option::Anisotropy,             16.0f);
         SetOption(Renderer_Option::ShadowResolution,       2048.0f);
         SetOption(Renderer_Option::Tonemapping,            static_cast<float>(Renderer_Tonemapping::Disabled));
-        SetOption(Renderer_Option::Gamma,                  1.7f); // despite what literature says, 2.2 is too bright (optimal solution is gamma calibration screen)
+        SetOption(Renderer_Option::Gamma,                  2.2f);
         SetOption(Renderer_Option::Exposure,               1.0f);
         SetOption(Renderer_Option::PaperWhite,             150.0f); // nits
         SetOption(Renderer_Option::Sharpness,              0.5f);

@@ -33,9 +33,9 @@ namespace Spartan
     public:
         static void Initialize();
         static void Shutdown();
-
         static void PreTick();
         static void Tick();
+
         static void New();
         static bool SaveToFile(const std::string& filePath);
         static bool LoadFromFile(const std::string& file_path);
@@ -43,21 +43,13 @@ namespace Spartan
         static const std::string GetName();
         static const std::string& GetFilePath();
 
-        //= DEFAULT WORLDS=======================================================================
-        static void CreateDefaultWorldCommon(
-            const bool create_floor,
-            const Math::Vector3& camera_position      = Math::Vector3(-2.956f, 1.1474f, -2.9395f),
-            const Math::Vector3& camera_rotation      = Math::Vector3(15.9976f, 43.5998f, 0.0f),
-            const float directional_light_intensity   = 50000.0f,
-            const bool directional_light_cast_shadows = true,
-            const char* soundtrack_file_pat           = "project\\music\\vangelis_cosmos_theme.mp3"
-        );
+        //= DEFAULT WORLDS========================================================================
         static void CreateDefaultWorldPickablePhysicsCube();
         static void CreateDefaultWorldHelmets();
         static void CreateDefaultWorldCar();
         static void CreateDefaultWorldTerrain();
         static void CreateDefaultWorldSponza();
-        //=======================================================================================
+        //========================================================================================
 
         //= ENTITIES ==================================================================
         static std::shared_ptr<Entity> CreateEntity();

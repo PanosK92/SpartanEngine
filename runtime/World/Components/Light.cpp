@@ -54,7 +54,7 @@ namespace Spartan
 
         if (m_light_type == LightType::Directional)
         {
-            SetIntensity(LightIntensity::direct_sunglight);
+            SetIntensity(LightIntensity::direct_sunlight_noon);
         }
         else if (m_light_type == LightType::Point)
         {
@@ -185,18 +185,53 @@ namespace Spartan
 
     void Light::SetIntensity(const LightIntensity lumens)
     {
-        if (lumens == LightIntensity::direct_sunglight)
+        if (lumens == LightIntensity::direct_sunlight_noon)
         {
-            // The directional light is using an arbitrary value
             m_intensity_lumens = 120000.0f;
+        }
+        else if (lumens == LightIntensity::direct_sunlight_morning_evening)
+        {
+            m_intensity_lumens = 60000.0f;
+        }
+        else if (lumens == LightIntensity::overcast_day)
+        {
+            m_intensity_lumens = 20000.0f;
+        }
+        else if (lumens == LightIntensity::twilight)
+        {
+            m_intensity_lumens = 10000.0f;
+        }
+        else if (lumens == LightIntensity::stadium_light)
+        {
+            m_intensity_lumens = 200000.0f;
+        }
+        else if (lumens == LightIntensity::bulb_500_watt)
+        {
+            m_intensity_lumens = 8500.0f;
         }
         else if (lumens == LightIntensity::bulb_150_watt)
         {
             m_intensity_lumens = 2600.0f;
         }
+        else if (lumens == LightIntensity::bulb_100_watt)
+        {
+            m_intensity_lumens = 1600.0f;
+        }
+        else if (lumens == LightIntensity::bulb_60_watt)
+        {
+            m_intensity_lumens = 800.0f;
+        }
+        else if (lumens == LightIntensity::bulb_25_watt)
+        {
+            m_intensity_lumens = 200.0f;
+        }
         else if (lumens == LightIntensity::average_flashlight)
         {
             m_intensity_lumens = 100.0f;
+        }
+        else // black hole
+        {
+            m_intensity_lumens = 0.0f;
         }
     }
 
@@ -204,18 +239,24 @@ namespace Spartan
     {
         SP_ASSERT(camera != nullptr);
 
-        float magic_value            = 30.76f; // based on personal observations
-        float correct_looking_lumens = m_intensity_lumens * magic_value;
-        float luminous_intensity     = correct_looking_lumens * camera->GetExposure();
+        // Convert lumens to power (in watts) assuming all light is at 555nm.
+        float power = m_intensity_lumens / 683.0f;
 
-        // The directional light is using an arbitrary value
+        // For point lights and spot lights, intensity should fall off with the square of the distance,
+        // so we don't need to modify the power. For directional lights, intensity should be constant,
+        // so we need to multiply the power by the area over which the light is spread.
+        // This is pretty much a magic number. It's chosen to approximately match the point light falloff.
         if (m_light_type == LightType::Directional)
         {
-            return luminous_intensity * 0.1f;
+            float area  = 1.0f; // world depended
+            power      *= area;
         }
 
-        return luminous_intensity;
+        // The power is now in watts.
+        // We can multiply by the camera's exposure to get the final intensity.
+        return power * camera->GetExposure();
     }
+
 
     void Light::SetShadowsEnabled(bool cast_shadows)
     {

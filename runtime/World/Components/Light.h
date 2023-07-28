@@ -49,9 +49,18 @@ namespace Spartan
 
     enum class LightIntensity
     {
-        direct_sunglight,
-        bulb_150_watt,
-        average_flashlight
+        black_hole,                      // No light emitted
+        direct_sunlight_noon,            // Direct sunlight at noon, the brightest light
+        direct_sunlight_morning_evening, // Direct sunlight at morning or evening, less intense than noon light
+        overcast_day,                    // Light on an overcast day, considerably less intense than direct sunlight
+        twilight,                        // Light just after sunset, a soft and less intense light
+        stadium_light,                   // Intense light used in stadiums for sports events, comparable to sunlight
+        bulb_500_watt,                   // A very bright domestic bulb or small industrial light
+        bulb_150_watt,                   // A bright domestic bulb, equivalent to an old-school incandescent bulb
+        bulb_100_watt,                   // A typical bright domestic bulb
+        bulb_60_watt,                    // A medium intensity domestic bulb
+        bulb_25_watt,                    // A low intensity domestic bulb, used for mood lighting or as a nightlight
+        average_flashlight,              // Light emitted by an average flashlight, portable and less intense
     };
 
     struct ShadowSlice
