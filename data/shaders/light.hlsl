@@ -85,9 +85,15 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         angular_info.Build(light, surface);
 
         // specular
-        light_specular += lerp(BRDF_Specular_Isotropic(surface, angular_info),
-                               BRDF_Specular_Anisotropic(surface, angular_info),
-                               step(0.0, surface.anisotropic));
+        if (surface.anisotropic == 0.0f)
+        {
+            light_specular += BRDF_Specular_Isotropic(surface, angular_info);
+        }
+        else
+        {
+            light_specular += BRDF_Specular_Anisotropic(surface, angular_info);
+        }
+
 
         // specular clearcoat
         if (surface.clearcoat != 0.0f)
@@ -111,7 +117,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     float3 emissive = surface.emissive * surface.albedo;
     
      // diffuse and specular
-    tex_uav[thread_id.xy]  += float4(saturate_11(light_diffuse * light.radiance + surface.gi + emissive), 1.0f);
+    tex_uav[thread_id.xy]  += float4(saturate_11(light_diffuse * light.radiance + emissive), 1.0f);
     tex_uav2[thread_id.xy] += float4(saturate_11(light_specular * light.radiance), 1.0f);
 
     // volumetric

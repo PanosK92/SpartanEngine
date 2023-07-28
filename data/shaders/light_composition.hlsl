@@ -34,7 +34,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         return;
 
     Surface surface;
-    surface.Build(thread_id.xy, true, false, false);
+    surface.Build(thread_id.xy, true, true, false);
 
     bool early_exit_1 = pass_is_opaque() && surface.is_transparent(); // If this is an opaque pass, ignore all transparent pixels.
     bool early_exit_2 = pass_is_transparent() && surface.is_opaque(); // If this is an transparent pass, ignore all opaque pixels.
@@ -87,7 +87,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         }
         
         // Compose everything.
-        float3 light_ds = light_diffuse * surface.albedo + light_specular;
+        float3 light_ds = (light_diffuse + surface.gi) * surface.albedo + light_specular;
         color.rgb       += lerp(light_ds, light_refraction, 1.0f - surface.alpha);
     }
 
