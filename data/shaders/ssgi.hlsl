@@ -20,7 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES =========
-#include "Common.hlsl"
+#include "common.hlsl"
 //====================
 
 static const uint g_ao_directions      = 2;
@@ -50,25 +50,25 @@ float compute_visibility(float3 origin_normal, float3 origin_to_sample)
     return saturate(n_dot_v - g_ao_occlusion_bias) * falloff;
 }
 
-// Screen space temporal occlusion and diffuse illumination
+// screen space temporal occlusion and diffuse illumination
 void compute_ssgi(uint2 pos, inout float occlusion, inout float3 diffuse_bounce)
 {
     const float2 origin_uv       = (pos + 0.5f) / pass_get_resolution_out();
     const float3 origin_position = get_position_view_space(pos);
     const float3 origin_normal   = get_normal_view_space(pos);
 
-    // Compute step in pixels
+    // compute step in pixels
     const float pixel_offset = max((g_ao_radius * pass_get_resolution_out().x * 0.5f) / origin_position.z, (float) g_ao_steps);
     const float step_offset  = pixel_offset / float(g_ao_steps + 1.0f); // divide by steps + 1 so that the farthest samples are not fully attenuated
 
-    // Offsets (noise over space and time)
+    // offsets (noise over space and time)
     const float noise_gradient_temporal  = get_noise_interleaved_gradient(pos);
     const float offset_spatial           = get_offset_non_temporal(pos);
     const float offset_temporal          = get_offset();
     const float offset_rotation_temporal = get_direction();
     const float ray_offset               = frac(offset_spatial + offset_temporal) + (get_random(origin_uv) * 2.0 - 1.0) * 0.25;
 
-    // Compute light/occlusion and bend normal
+    // compute light/occlusion
     [unroll]
     for (uint direction_index = 0; direction_index < g_ao_directions; direction_index++)
     {
@@ -96,7 +96,6 @@ void compute_ssgi(uint2 pos, inout float occlusion, inout float3 diffuse_bounce)
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
-    // Out of bounds check
     if (any(int2(thread_id.xy) >= pass_get_resolution_out()))
         return;
 
