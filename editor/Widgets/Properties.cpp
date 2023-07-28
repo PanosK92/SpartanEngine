@@ -243,8 +243,6 @@ void Properties::ShowLight(shared_ptr<Light> light) const
         float normal_bias           = light->GetNormalBias();
         float range                 = light->GetRange();
         m_colorPicker_light->SetColor(light->GetColor());
-
-        bool is_directional = light->GetLightType() == LightType::Directional;
         //================================================================================
 
         // Type
@@ -261,7 +259,7 @@ void Properties::ShowLight(shared_ptr<Light> light) const
         ImGui::SameLine(column_pos_x); m_colorPicker_light->Update();
 
         // Intensity
-        ImGui::Text(is_directional ? "Intensity" : "Intensity (Lumens)");
+        ImGui::Text("Intensity (lumens)");
         ImGui::SameLine(column_pos_x);
         float v_speed   = 5.0f;
         float v_max     = 120000.0f;
@@ -812,8 +810,8 @@ void Properties::ShowCamera(shared_ptr<Camera> camera) const
 
         // Aperture
         ImGui::SetCursorPosX(column_pos_x);
-        ImGuiSp::draw_float_wrap("Aperture (mm)", &aperture, 0.01f, 0.01f, 150.0f);
-        ImGuiSp::tooltip("Size of the lens diaphragm. Controls depth of field and chromatic aberration.");
+        ImGuiSp::draw_float_wrap("Aperture (f-stop)", &aperture, 0.01f, 0.01f, 150.0f);
+        ImGuiSp::tooltip("Aperture value in f-stop. Controls the amount of light, depth of field and chromatic aberration");
 
         // Shutter speed
         ImGui::SetCursorPosX(column_pos_x);
