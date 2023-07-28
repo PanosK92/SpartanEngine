@@ -98,9 +98,6 @@ namespace Spartan
         bool GetShadowsEnabled() const { return m_shadows_enabled; }
         void SetShadowsEnabled(bool cast_shadows);
 
-        bool GetShadowsScreenSpaceEnabled() const                    { return m_shadows_screen_space_enabled; }
-        void SetShadowsScreenSpaceEnabled(bool cast_contact_shadows) { m_shadows_screen_space_enabled = cast_contact_shadows; }
-
         bool GetShadowsTransparentEnabled() const { return m_shadows_transparent_enabled; }
         void SetShadowsTransparentEnabled(bool cast_transparent_shadows);
 
@@ -135,10 +132,9 @@ namespace Spartan
         void ComputeCascadeSplits();
 
         // Shadows
-        bool m_shadows_enabled              = true;
-        bool m_shadows_screen_space_enabled = true;
-        bool m_shadows_transparent_enabled  = true;
-        uint32_t m_cascade_count            = 4;
+        bool m_shadows_enabled             = true;
+        bool m_shadows_transparent_enabled = true;
+        uint32_t m_cascade_count           = 4;
         ShadowMap m_shadow_map;
 
         // Bias

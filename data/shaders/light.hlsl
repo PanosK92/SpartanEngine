@@ -60,7 +60,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         }
         
         // Screen space shadows
-        if (is_screen_space_shadows_enabled() && light_has_shadows_screen_space())
+        if (is_screen_space_shadows_enabled())
         {
             shadow.a = min(shadow.a, ScreenSpaceShadows(surface, light));
         }

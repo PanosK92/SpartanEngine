@@ -268,7 +268,7 @@ namespace ImGui::RHI
 
         // begin timeblock
         const char* name = is_child_window ? "imgui_window_child" : "imgui_window_main";
-        bool gpu_timing = !is_child_window; // profiler requires more work when windows enter the main window and their command pool is destroyed
+        bool gpu_timing  = !is_child_window; // profiler requires more work when windows enter the main window and their command pool is destroyed
         cmd_list->Begin();
         cmd_list->BeginTimeblock(name, true, gpu_timing);
 

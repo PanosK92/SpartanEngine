@@ -551,7 +551,6 @@ namespace Spartan
                 // Disable shadows (to avoid tanking the framerate)
                 light->SetShadowsEnabled(false);
                 light->SetShadowsTransparentEnabled(false);
-                light->SetShadowsScreenSpaceEnabled(false);
 
                 // Local transform
                 light->GetTransform()->SetPositionLocal(convert_vector3(light_assimp->mPosition));
