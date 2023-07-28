@@ -32,95 +32,89 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
-    // Out of bounds check.
     if (any(int2(thread_id.xy) >= pass_get_resolution_out()))
         return;
 
-    // Create surface
+    // create surface
     Surface surface;
     surface.Build(thread_id.xy, true, true, true);
 
-    // Early exit cases
+    // early exit cases
     bool early_exit_1 = pass_is_opaque() && surface.is_transparent() && !surface.is_sky(); // do shade sky pixels during the opaque pass (volumetric lighting)
     bool early_exit_2 = pass_is_transparent() && surface.is_opaque();
     if (early_exit_1 || early_exit_2)
         return;
 
-    // Create light
+    // create light
     Light light;
     light.Build(surface);
 
-    // Shadows
+    // shadows
     float4 shadow = 1.0f;
     {
-        // Shadow mapping
+        // shadow mapping
         if (light_has_shadows())
         {
             shadow = Shadow_Map(surface, light);
         }
         
-        // Screen space shadows
+        // screen space shadows
         if (is_screen_space_shadows_enabled())
         {
             shadow.a = min(shadow.a, ScreenSpaceShadows(surface, light));
         }
 
-        // Ensure that the shadow is as transparent as the material
+        // ensure that the shadow is as transparent as the material
         if (pass_is_transparent())
         {
             shadow.a = clamp(shadow.a, surface.alpha, 1.0f);
         }
     }
 
-    // Compute final radiance
+    // compute final radiance
     light.radiance *= shadow.rgb * shadow.a;
     
     float3 light_diffuse    = 0.0f;
     float3 light_specular   = 0.0f;
     float3 light_volumetric = 0.0f;
 
-    // Reflectance equation
+    // reflectance equation
     if (!surface.is_sky())
     {
         AngularInfo angular_info;
         angular_info.Build(light, surface);
 
-        // Specular
-        if (surface.anisotropic == 0.0f)
-        {
-            light_specular += BRDF_Specular_Isotropic(surface, angular_info);
-        }
-        else
-        {
-            light_specular += BRDF_Specular_Anisotropic(surface, angular_info);
-        }
+        // specular
+        light_specular += lerp(BRDF_Specular_Isotropic(surface, angular_info),
+                               BRDF_Specular_Anisotropic(surface, angular_info),
+                               step(0.0, surface.anisotropic));
 
-        // Specular clearcoat
+        // specular clearcoat
         if (surface.clearcoat != 0.0f)
         {
             light_specular += BRDF_Specular_Clearcoat(surface, angular_info);
         }
 
-        // Sheen
+        // sheen
         if (surface.sheen != 0.0f)
         {
             light_specular += BRDF_Specular_Sheen(surface, angular_info);
         }
         
-        // Diffuse
+        // diffuse
         light_diffuse += BRDF_Diffuse(surface, angular_info);
 
-        // Tone down diffuse such as that only non metals have it
+        // tone down diffuse such as that only non metals have it
         light_diffuse *= surface.diffuse_energy;
     }
 
     float3 emissive = surface.emissive * surface.albedo;
     
-     // Diffuse and specular
+     // diffuse and specular
     tex_uav[thread_id.xy]  += float4(saturate_11(light_diffuse * light.radiance + surface.gi + emissive), 1.0f);
     tex_uav2[thread_id.xy] += float4(saturate_11(light_specular * light.radiance), 1.0f);
 
-    // Volumetric
+    // volumetric
     if (light_is_volumetric() && is_volumetric_fog_enabled())
     {
         light_volumetric       += VolumetricLighting(surface, light);
