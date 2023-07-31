@@ -15,18 +15,13 @@
 ![build_status](https://github.com/PanosK92/SpartanEngine/actions/workflows/workflow.yml/badge.svg)
 [![Discord](https://img.shields.io/discord/677302405263785986?label=Discord)](https://discord.gg/TG5r2BS)
 
-# Livestreams
+# Videos
 
-Occasional livestreams on Discord for interesting topics.
+Livestreams [![Image1](https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/assets/github/readme_1.4.jpg)](https://www.youtube.com/watch?v=QhyMal6RY7M) | Features [![Image2](https://i.imgur.com/j6zIEI9.jpg)](https://www.youtube.com/watch?v=RIae1ma_DSo) 
+:- | :- 
 
-[![](https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/assets/github/readme_1.4.jpg)](https://www.youtube.com/watch?v=QhyMal6RY7M)
-
-### Media
-[![](https://i.imgur.com/j6zIEI9.jpg)](https://www.youtube.com/watch?v=RIae1ma_DSo)
-<img align="center" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/assets/github/readme_1.5.jpg"/>
-
-
-<img align="center" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/assets/github//readme_1.1.jpg"/>|<img align="center" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/assets/github/readme_1.2.jpg"/>
+#### Gallery
+<img align="center" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/assets/github//readme_1.1.jpg"/> | <img align="center" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/assets/github/readme_1.2.jpg"/>
 :- | :-
 
 ## Features (v0.31)
@@ -58,24 +53,18 @@ Occasional livestreams on Discord for interesting topics.
 - Wide file format support: 10+ for fonts, 20+ for audio, 30+ for images, and 40+ for models.
 
 # Roadmap
-
-#### Short-term
 - Continue bug fixing until Vulkan is stable.
 - Continue switching to bindless.
 - Create a startup/default world which is closer to a playable demo.
-
-#### Long-term
 - Continue work on D3D12 (on going and non blocking since Vulkan is there).
 - Skeletal Animation.
 - Atmospheric Scattering.
 - Eye Adaptation.
 - Subsurface scattering.
-- Ray traced reflections.
-- Ray traced shadows.
+- Ray traced reflections & shadows.
 - Dynamic resolution scaling.
 - Export on Windows.
-- UI components.
-- Improve editor looks.
+- Improved the editor style/theme.
 - Scripting.
 - Linux port.
 
