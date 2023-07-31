@@ -11,7 +11,7 @@
   
 - <img align="left" width="32" height="32" src="https://i0.wp.com/opensource.org/wp-content/uploads/2023/01/cropped-cropped-OSI_Horizontal_Logo_0-e1674081292667.png">Adhering to the <a href="https://en.wikipedia.org/wiki/MIT_License">MIT license</a> is appreciated. This means that you can copy all the code you want as long as you include a copy of the original license.
 
-### Status
+#### Status
 ![build_status](https://github.com/PanosK92/SpartanEngine/actions/workflows/workflow.yml/badge.svg)
 [![Discord](https://img.shields.io/discord/677302405263785986?label=Discord)](https://discord.gg/TG5r2BS)
 
@@ -21,7 +21,7 @@ Occasional livestreams on Discord for interesting topics.
 
 [![](https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/assets/github/readme_1.4.jpg)](https://www.youtube.com/watch?v=QhyMal6RY7M)
 
-## Media
+### Media
 [![](https://i.imgur.com/j6zIEI9.jpg)](https://www.youtube.com/watch?v=RIae1ma_DSo)
 <img align="center" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/assets/github/readme_1.5.jpg"/>
 
@@ -30,41 +30,41 @@ Occasional livestreams on Discord for interesting topics.
 :- | :-
 
 ## Features (v0.31)
-- 10+ font file formats support (FreeType)
-- 20+ audio file formats support (FMOD)
-- 30+ image file formats support (FreeImage)
-- 40+ model file formats support (Assimp)
-- Vulkan and DirectX 12 backends (same HLSL shaders compile everywhere)
-- Deferred rendering with transparency (under a single render path and using the same shaders)
-- Principled BSDF supporting anisotropic, clearcoat and cloth materials (combined with things like normal mapping, parallax, masking, occlusion etc)
+#### Rendering
+- All passes use a push constant buffer with a size of 128 bytes, pushing data to the GPU at lightning speeds.
+- AMD FidelityFX (FSR2, Single Pass Downsampler, Contrast Adaptive Sharpening, Compressonator for texture compression)
 - Bloom (Based on a study of Resident Evil 2's RE Engine)
-- Volumetric lighting
-- Depth of Field
-- Lights with physical units (lux for directional, candelas for point and spot lights)
+- Deferred rendering with transparency (under a single render path and using the same shaders)
+- Depth of field (controlled by the aperture of the camera)
+- Debug rendering (Transform gizmo, scene grid, bounding boxes, colliders, raycasts, g-buffer visualization etc)
+- Font rendering
+- Frustum culling
+- Lights with physical units (candelas)
+- Motion blur (controlled by the shutter speed of the camera)
+- On the fly mip generation on the GPU, using a single dispatch
+- Physically based camera (Aperture, Shutter Speed, ISO)
+- Principled BSDF supporting anisotropic, clearcoat and cloth materials (combined with things like normal mapping, parallax, masking, occlusion etc)
 - Shadows with penumbra and colored translucency (Cascaded and omnidirectional shadow mapping with Vogel filtering)
 - SSGI (Screen space global illumination, an extension of SSAO)
 - SSR (Screen space reflections)
 - SSS (Screen space shadows)
 - TAA (Temporal anti-aliasing)
-- Physically based camera (Aperture, Shutter Speed, ISO)
-- Depth of field (controlled by the aperture of the camera)
-- Motion blur (controlled by the shutter speed of the camera)
-- Real-time shader editor
-- On the fly mip generation on the GPU, using a single dispatch.
-- Font rendering
-- Frustum culling
-- Physics (Rigid bodies, Constraints, Colliders)
+- Vulkan and DirectX 12 backends (same HLSL shaders compile everywhere)
+- Volumetric lighting
+#### System
+- Easy to build (Single click project generation which includes editor and runtime)
 - Entity-component system
 - Event system
 - Mouse & keyboard input as well as controller support (tested with a PS5 controller)
-- Debug rendering (Transform gizmo, scene grid, bounding boxes, colliders, raycasts, g-buffer visualization etc)
-- Thread pool
-- Engine rendered platform agnostic editor
+- Physics (Rigid bodies, Constraints, Colliders)
 - Profiling (CPU & GPU)
 - Support for XML files
-- Easy to build (Single click project generation which includes editor and runtime)
-- AMD FidelityFX (FSR2, Single Pass Downsampler, Contrast Adaptive Sharpening, Compressonator for texture compression)
-- All passes use a push constant buffer with a size of 128 bytes, pushing data to the GPU at lightening speeds.
+- Thread pool
+#### Formats
+- 10+ font file formats support (FreeType)
+- 20+ audio file formats support (FMOD)
+- 30+ image file formats support (FreeImage)
+- 40+ model file formats support (Assimp)
 
 # Roadmap
 
