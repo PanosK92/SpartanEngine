@@ -20,8 +20,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
 //= INCLUDES ==========================
-#include "../RHI_Implementation.h"
+#include "pch.h"
 #include "../RHI_Pipeline.h"
+#include "../RHI_Implementation.h"
 #include "../RHI_Shader.h"
 #include "../RHI_SwapChain.h"
 #include "../RHI_BlendState.h"

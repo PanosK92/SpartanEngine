@@ -33,7 +33,7 @@ Livestreams [![Image1](https://raw.githubusercontent.com/PanosK92/SpartanEngine/
 - Camera-controlled depth of field, motion blur and chromatic aberration.
 - Comprehensive debug rendering options.
 - Frustum culling for performance optimization.
-- Physically measured lighting (candelas).
+- Physically measured lighting (lumens).
 - GPU-based mip generation (single dispatch).
 - Physically based camera and BSDF.
 - Advanced shadow features with penumbra and colored translucency.
