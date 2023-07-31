@@ -31,6 +31,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_Shader.h"
 #include "../RHI_DescriptorSetLayout.h"
 #include "../RHI_Pipeline.h"
+#include "../RHI_Texture.h"
 #include "../../Profiling/Profiler.h"
 SP_WARNINGS_OFF
 #define VMA_IMPLEMENTATION
@@ -1869,5 +1870,26 @@ namespace Spartan
     uint32_t RHI_Device::GetPipelineCount()
     {
         return static_cast<uint32_t>(cache::pipelines.size());
+    }
+
+    uint32_t RHI_Device::GetDescriptorType(const RHI_Descriptor& descriptor)
+    {
+        if (descriptor.type == RHI_Descriptor_Type::Sampler)
+            return VkDescriptorType::VK_DESCRIPTOR_TYPE_SAMPLER;
+
+        if (descriptor.type == RHI_Descriptor_Type::Texture)
+            return VkDescriptorType::VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+
+        if (descriptor.type == RHI_Descriptor_Type::TextureStorage)
+            return VkDescriptorType::VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+
+        if (descriptor.type == RHI_Descriptor_Type::StructuredBuffer)
+            return VkDescriptorType::VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
+
+        if (descriptor.type == RHI_Descriptor_Type::ConstantBuffer)
+            return VkDescriptorType::VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+
+        SP_ASSERT_MSG(false, "Unhandled descriptor type");
+        return VkDescriptorType::VK_DESCRIPTOR_TYPE_MAX_ENUM;
     }
 }

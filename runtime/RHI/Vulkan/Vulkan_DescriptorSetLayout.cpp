@@ -68,7 +68,7 @@ namespace Spartan
             stage_flags                    |= (descriptor.stage & RHI_Shader_Pixel)   ? VK_SHADER_STAGE_FRAGMENT_BIT : 0;
             stage_flags                    |= (descriptor.stage & RHI_Shader_Compute) ? VK_SHADER_STAGE_COMPUTE_BIT  : 0;
 
-            layout_bindings[i].descriptorType     = vulkan_utility::to_vulkan_desscriptor_type(descriptor);
+            layout_bindings[i].descriptorType     = static_cast<VkDescriptorType>(RHI_Device::GetDescriptorType(descriptor));
             layout_bindings[i].binding            = descriptor.slot;
             layout_bindings[i].descriptorCount    = descriptor.IsArray() ? descriptor.array_length : 1;
             layout_bindings[i].stageFlags         = stage_flags;

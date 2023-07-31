@@ -25,6 +25,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Display/DisplayMode.h"
 #include "RHI_PhysicalDevice.h"
 #include <memory>
+#include "RHI_Descriptor.h"
 //=================================
 
 namespace Spartan
@@ -95,7 +96,8 @@ namespace Spartan
 
         // Layouts
         static uint32_t GetAspectMask(const RHI_Texture* texture, const bool only_depth = false, const bool only_stencil = false);
-        static void SetLayout(void* cmd_buffer, void* image,
+        static void SetLayout(void* cmd_buffer,
+            void* image,
             const uint32_t aspect_mask,
             const uint32_t mip_index, const uint32_t mip_range, const uint32_t array_length,
             const RHI_Image_Layout layout_old, const RHI_Image_Layout layout_new);
@@ -122,6 +124,7 @@ namespace Spartan
         static bool IsValidResolution(const uint32_t width, const uint32_t height);
         static uint32_t GetEnabledGraphicsStages() { return m_enabled_graphics_shader_stages; }
         static uint32_t GetPipelineCount();
+        static uint32_t GetDescriptorType(const RHI_Descriptor& descriptor);
  
     private:
         // Physical device

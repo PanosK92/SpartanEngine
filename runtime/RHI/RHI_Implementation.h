@@ -420,11 +420,9 @@ namespace Spartan
     };
 }
 
-// HELPERS
+// Utilities
 #if defined (API_GRAPHICS_D3D12)
     #include "D3D12/D3D12_Utility.h"
-#elif defined (API_GRAPHICS_VULKAN)
-    #include "Vulkan/Vulkan_Utility.h"
 #endif
 
 #endif // RUNTIME
