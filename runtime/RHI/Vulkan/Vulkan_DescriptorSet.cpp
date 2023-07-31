@@ -163,7 +163,7 @@ namespace Spartan
             descriptor_sets[index].dstBinding       = descriptor.slot;
             descriptor_sets[index].dstArrayElement  = 0; // The starting element in that array
             descriptor_sets[index].descriptorCount  = descriptor_count;
-            descriptor_sets[index].descriptorType   = vulkan_utility::to_vulkan_desscriptor_type(descriptor);
+            descriptor_sets[index].descriptorType   = static_cast<VkDescriptorType>(RHI_Device::GetDescriptorType(descriptor));
             descriptor_sets[index].pImageInfo       = &info_images[descriptor_index_start];
             descriptor_sets[index].pBufferInfo      = &info_buffers[descriptor_index_start];
             descriptor_sets[index].pTexelBufferView = nullptr;

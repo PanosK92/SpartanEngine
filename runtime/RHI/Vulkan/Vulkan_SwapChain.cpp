@@ -29,7 +29,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_CommandPool.h"
 #include "../Display/Display.h"
 SP_WARNINGS_OFF
-#include <SDL_video.h>
 #include <SDL_vulkan.h>
 SP_WARNINGS_ON
 //================================
@@ -299,22 +298,28 @@ namespace Spartan
             }
         }
 
-        // Image views
+        // image views
         {
             for (uint32_t i = 0; i < m_buffer_count; i++)
             {
-                // Name the image
                 RHI_Device::SetResourceName(m_rhi_rt[i], RHI_Resource_Type::Texture, string(string("swapchain_image_") + to_string(i)));
 
-                vulkan_utility::image::view::create
-                (
-                    m_rhi_rt[i],
-                    m_rhi_rtv[i],
-                    VK_IMAGE_VIEW_TYPE_2D,
-                    vulkan_format[rhi_format_to_index(m_format)],
-                    VK_IMAGE_ASPECT_COLOR_BIT,
-                    0, 1, 0, 1
-                );
+                VkImageViewCreateInfo create_info           = {};
+                create_info.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+                create_info.image                           = static_cast<VkImage>(m_rhi_rt[i]);
+                create_info.viewType                        = VK_IMAGE_VIEW_TYPE_2D;
+                create_info.format                          = vulkan_format[rhi_format_to_index(m_format)];
+                create_info.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+                create_info.subresourceRange.baseMipLevel   = 0;
+                create_info.subresourceRange.levelCount     = 1;
+                create_info.subresourceRange.baseArrayLayer = 0;
+                create_info.subresourceRange.layerCount     = 1;
+                create_info.components.r                    = VK_COMPONENT_SWIZZLE_IDENTITY;
+                create_info.components.g                    = VK_COMPONENT_SWIZZLE_IDENTITY;
+                create_info.components.b                    = VK_COMPONENT_SWIZZLE_IDENTITY;
+                create_info.components.a                    = VK_COMPONENT_SWIZZLE_IDENTITY;
+
+                SP_ASSERT_MSG(vkCreateImageView(RHI_Context::device, &create_info, nullptr, reinterpret_cast<VkImageView*>(&m_rhi_rtv[i])) == VK_SUCCESS, "Failed to create swapchain RTV");
             }
         }
 
