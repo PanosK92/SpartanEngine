@@ -30,6 +30,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI_RasterizerState.h"
 #include "../RHI_DepthStencilState.h"
 #include "../RHI_DescriptorSetLayout.h"
+#include "../RHI_Device.h"
 //=====================================
 
 //= NAMESPACES =====

@@ -315,8 +315,8 @@ namespace Spartan
             case ComponentType::Transform:       component = static_pointer_cast<Component>(AddComponent<Transform>());       break;
             case ComponentType::Terrain:         component = static_pointer_cast<Component>(AddComponent<Terrain>());         break;
             case ComponentType::ReflectionProbe: component = static_pointer_cast<Component>(AddComponent<ReflectionProbe>()); break;
-            case ComponentType::Undefined:       component = nullptr;                                                          break;
-            default:                             component = nullptr;                                                          break;
+            case ComponentType::Undefined:       component = nullptr;                                                         break;
+            default:                             component = nullptr;                                                         break;
         }
 
         SP_ASSERT(component != nullptr);

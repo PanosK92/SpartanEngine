@@ -22,13 +22,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES =====================
 #include "pch.h"
 #include "Window.h"
-#include <SDL_video.h>
-#include <SDL_vulkan.h>
+#include "../RHI_Device.h"
 #include "../RHI_SwapChain.h"
 #include "../RHI_Implementation.h"
 #include "../RHI_Semaphore.h"
 #include "../RHI_CommandPool.h"
 #include "../Display/Display.h"
+SP_WARNINGS_OFF
+#include <SDL_video.h>
+#include <SDL_vulkan.h>
+SP_WARNINGS_ON
 //================================
 
 //= NAMESPACES ===============
@@ -277,7 +280,7 @@ namespace Spartan
             {
                 for (uint32_t i = 0; i < m_buffer_count; i++)
                 {
-                    vulkan_utility::image::set_layout(
+                    RHI_Device::SetLayout(
                         cmd_list->GetRhiResource(),
                         m_rhi_rt[i],
                         VK_IMAGE_ASPECT_COLOR_BIT,
@@ -451,7 +454,7 @@ namespace Spartan
         if (m_layouts[m_image_index] == layout)
             return;
 
-        vulkan_utility::image::set_layout(
+       RHI_Device::SetLayout(
             cmd_list->GetRhiResource(),
             m_rhi_rt[m_image_index],
             VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 1,

@@ -25,15 +25,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include <cstdint>
 #include <cassert>
 #include <string>
-#include "../Rendering/Color.h"
 #include <limits>
+#include "../Rendering/Color.h"
 //=============================
 
 // Declarations
 namespace Spartan
 {
     class RHI_Context;
-    class RHI_Device;
     class RHI_CommandPool;
     class RHI_CommandList;
     class RHI_PipelineState;

@@ -219,22 +219,22 @@ namespace Spartan
 
     static bool stage(RHI_Texture* texture)
     {
-        // Copy the texture's data to a staging buffer
+        // copy the texture's data to a staging buffer
         void* staging_buffer = nullptr;
         vector<VkBufferImageCopy> regions;
         if (!copy_to_staging_buffer(texture, regions, staging_buffer))
             return false;
 
-        // Copy the staging buffer into the image
+        // copy the staging buffer into the image
         if (RHI_CommandList* cmd_list = RHI_Device::ImmediateBegin(RHI_Queue_Type::Graphics))
         {
-            // Optimal layout for images which are the destination of a transfer format
+            // optimal layout for images which are the destination of a transfer format
             RHI_Image_Layout layout = RHI_Image_Layout::Transfer_Dst_Optimal;
 
-            // Insert memory barrier
-            vulkan_utility::image::set_layout(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()), texture, 0, texture->GetMipCount(), texture->GetArrayLength(), texture->GetLayout(0), layout);
+            // insert memory barrier
+            RHI_Device::SetLayout(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()), texture, 0, texture->GetMipCount(), texture->GetArrayLength(), texture->GetLayout(0), layout);
 
-            // Copy the staging buffer to the image
+            // copy the staging buffer to the image
             vkCmdCopyBufferToImage(
                 static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()),
                 static_cast<VkBuffer>(staging_buffer),
@@ -244,13 +244,13 @@ namespace Spartan
                 regions.data()
             );
 
-            // End/flush
+            // end/flush
             RHI_Device::ImmediateSubmit(cmd_list);
 
-            // Free staging buffer
+            // free staging buffer
             RHI_Device::DestroyBuffer(staging_buffer);
 
-            // Update texture layout
+            // update texture layout
             texture->SetLayout(layout, nullptr);
         }
 
@@ -281,44 +281,44 @@ namespace Spartan
 
     void RHI_Texture::RHI_SetLayout(const RHI_Image_Layout new_layout, RHI_CommandList* cmd_list, const uint32_t mip_start, const uint32_t mip_range)
     {
-        vulkan_utility::image::set_layout(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()), this, mip_start, mip_range, m_array_length, m_layout[mip_start], new_layout);
+        RHI_Device::SetLayout(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()), this, mip_start, mip_range, m_array_length, m_layout[mip_start], new_layout);
         Profiler::m_rhi_pipeline_barriers++;
     }
 
     bool RHI_Texture::RHI_CreateResource()
     {
-        SP_ASSERT_MSG(m_width != 0,  "Width can't be zero");
+        SP_ASSERT_MSG(m_width  != 0, "Width can't be zero");
         SP_ASSERT_MSG(m_height != 0, "Height can't be zero");
 
         create_image(this);
 
-        // If the texture has any data, stage it
+        // if the texture has any data, stage it
         if (HasData())
         {
             SP_ASSERT_MSG(stage(this), "Failed to stage");
         }
 
-        // Transition to target layout
+        // transition to target layout
         if (RHI_CommandList* cmd_list = RHI_Device::ImmediateBegin(RHI_Queue_Type::Graphics))
         {
             RHI_Image_Layout target_layout = GetAppropriateLayout(this);
 
-            // Transition to the final layout
-            vulkan_utility::image::set_layout(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()), this, 0, m_mip_count, m_array_length, m_layout[0], target_layout);
+            // transition to the final layout
+            RHI_Device::SetLayout(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()), this, 0, m_mip_count, m_array_length, m_layout[0], target_layout);
         
-            // Flush
+            // flush
             RHI_Device::ImmediateSubmit(cmd_list);
 
-            // Update this texture with the new layout
+            // update this texture with the new layout
             for (uint32_t i = 0; i < m_mip_count; i++)
             {
                 m_layout[i] = target_layout;
             }
         }
 
-        // Create image views
+        // create image views
         {
-            // Shader resource views
+            // shader resource views
             if (IsSrv())
             {
                 vulkan_utility::image::view::create(m_rhi_resource, m_rhi_srv, this, m_resource_type, 0, m_array_length, 0, m_mip_count, IsDepthFormat(), false);
@@ -331,14 +331,14 @@ namespace Spartan
                     }
                 }
 
-                // todo: stencil requires a separate view
+                // stencil requires a separate view
             }
 
-            // Render target views
+            // render target views
             for (uint32_t i = 0; i < m_array_length; i++)
             {
-                // Both cube map slices/faces and array length is encoded into m_array_length.
-                // They are rendered on individually, hence why the resource type is ResourceType::Texture2d
+                // both cube map slices/faces and array length is encoded into m_array_length.
+                // they are rendered on individually, hence why the resource type is ResourceType::Texture2d
 
                 if (IsRenderTargetColor())
                 {
@@ -351,7 +351,7 @@ namespace Spartan
                 }
             }
 
-            // Name the image and image view(s)
+            // name the image and image view(s)
             set_debug_name(this);
         }
 
