@@ -24,7 +24,7 @@ Livestreams [![Image1](https://raw.githubusercontent.com/PanosK92/SpartanEngine/
 <img align="center" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/assets/github//readme_1.1.jpg"/> | <img align="center" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/assets/github/readme_1.2.jpg"/>
 :- | :-
 
-## Features
+# Features
 #### Rendering
 - 128-byte push constant buffer for lightning fast GPU data transfer.
 - AMD FidelityFX suite for enhanced visuals and performance.
