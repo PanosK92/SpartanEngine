@@ -31,49 +31,40 @@ Occasional livestreams on Discord for interesting topics.
 
 ## Features (v0.31)
 #### Rendering
-- All passes use a push constant buffer with a size of 128 bytes, pushing data to the GPU at lightning speeds.
-- AMD FidelityFX (FSR2, Single Pass Downsampler, Contrast Adaptive Sharpening, Compressonator for texture compression)
-- Bloom (Based on a study of Resident Evil 2's RE Engine)
-- Deferred rendering with transparency (under a single render path and using the same shaders)
-- Depth of field (controlled by the aperture of the camera)
-- Debug rendering (Transform gizmo, scene grid, bounding boxes, colliders, raycasts, g-buffer visualization etc)
-- Font rendering
-- Frustum culling
-- Lights with physical units (candelas)
-- Motion blur (controlled by the shutter speed of the camera)
-- On the fly mip generation on the GPU, using a single dispatch
-- Physically based camera (Aperture, Shutter Speed, ISO)
-- Principled BSDF supporting anisotropic, clearcoat and cloth materials (combined with things like normal mapping, parallax, masking, occlusion etc)
-- Shadows with penumbra and colored translucency (Cascaded and omnidirectional shadow mapping with Vogel filtering)
-- SSGI (Screen space global illumination, an extension of SSAO)
-- SSR (Screen space reflections)
-- SSS (Screen space shadows)
-- TAA (Temporal anti-aliasing)
-- Vulkan and DirectX 12 backends (same HLSL shaders compile everywhere)
-- Volumetric lighting
+- 128-byte push constant buffer for lightning fast GPU data transfer.
+- AMD FidelityFX suite for enhanced visuals and performance.
+- Bloom effect inspired by Resident Evil 2's RE Engine.
+- Unified deferred rendering with transparency (same render path and shaders).
+- Camera-controlled depth of field, motion blur and chromatic aberration.
+- Comprehensive debug rendering options.
+- Frustum culling for performance optimization.
+- Physically measured lighting (candelas).
+- GPU-based mip generation (single dispatch).
+- Physically based camera and BSDF.
+- Advanced shadow features with penumbra and colored translucency.
+- Screen space global illumination, reflections, and shadows.
+- Temporal anti-aliasing for smoother visuals.
+- Vulkan and DirectX 12 backends with universal HLSL shaders.
+- Volumetric lighting for atmospheric effects.
 #### System
-- Easy to build (Single click project generation which includes editor and runtime)
-- Entity-component system
-- Event system
-- Mouse & keyboard input as well as controller support (tested with a PS5 controller)
-- Physics (Rigid bodies, Constraints, Colliders)
-- Profiling (CPU & GPU)
-- Support for XML files
-- Thread pool
+- One-click build for easy setup.
+- Entity-component and event systems for flexible architecture.
+- Universal input support, including mouse, keyboard, and controllers (tested with a PS5 controller).
+- Comprehensive physics features.
+- CPU & GPU profiling for performance tuning.
+- XML support for data handling.
+- Thread pool for efficient multitasking.
 #### Formats
-- 10+ font file formats support (FreeType)
-- 20+ audio file formats support (FMOD)
-- 30+ image file formats support (FreeImage)
-- 40+ model file formats support (Assimp)
+- Wide file format support: 10+ for fonts, 20+ for audio, 30+ for images, and 40+ for models.
 
 # Roadmap
 
-## Short-term
+#### Short-term
 - Continue bug fixing until Vulkan is stable.
 - Continue switching to bindless.
 - Create a startup/default world which is closer to a playable demo.
 
-## Long-term
+#### Long-term
 - Continue work on D3D12 (on going and non blocking since Vulkan is there).
 - Skeletal Animation.
 - Atmospheric Scattering.
@@ -88,7 +79,7 @@ Occasional livestreams on Discord for interesting topics.
 - Scripting.
 - Linux port.
 
-## Wiki
+# Wiki
 Don't forget that there is a [wiki](https://github.com/PanosK92/SpartanEngine/wiki) that can help answer some of your questions. Here are some of it's contents:
 - [How to compile](https://github.com/PanosK92/SpartanEngine/wiki/How-to-compile) 
 - [How to contribute](https://github.com/PanosK92/SpartanEngine/wiki/How-to-contribute)
