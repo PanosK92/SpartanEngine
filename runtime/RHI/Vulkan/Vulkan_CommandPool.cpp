@@ -21,9 +21,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES =====================
 #include "pch.h"
+#include "Vulkan_Utility.h"
+#include "../RHI_Device.h"
 #include "../RHI_CommandPool.h"
 #include "../RHI_CommandList.h"
-#include "Vulkan_Utility.h"
 #include "../Rendering/Renderer.h"
 //================================
 

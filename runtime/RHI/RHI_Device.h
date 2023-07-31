@@ -93,10 +93,15 @@ namespace Spartan
         static void MarkerEnd(RHI_CommandList* cmd_list);
         static void SetResourceName(void* resource, const RHI_Resource_Type resource_type, const std::string name);
 
-        // Misc
-        static bool IsValidResolution(const uint32_t width, const uint32_t height);
-        static uint32_t GetEnabledGraphicsStages() { return m_enabled_graphics_shader_stages; }
-        static uint32_t GetPipelineCount();
+        // Layouts
+        static uint32_t GetAspectMask(const RHI_Texture* texture, const bool only_depth = false, const bool only_stencil = false);
+        static void SetLayout(void* cmd_buffer, void* image,
+            const uint32_t aspect_mask,
+            const uint32_t mip_index, const uint32_t mip_range, const uint32_t array_length,
+            const RHI_Image_Layout layout_old, const RHI_Image_Layout layout_new);
+        static void SetLayout(void* cmd_buffer, RHI_Texture* texture,
+            const uint32_t mip_start, const uint32_t mip_range, const uint32_t array_length,
+            const RHI_Image_Layout layout_old, const RHI_Image_Layout layout_new);
 
         // Memory
         static uint32_t GetMemoryUsageMb();
@@ -112,6 +117,11 @@ namespace Spartan
         static uint32_t GetMaxTextureCubeDimension()          { return m_max_texture_cube_dimension; }
         static uint32_t GetMaxTextureArrayLayers()            { return m_max_texture_array_layers; }
         static uint32_t GetMaxPushConstantSize()              { return m_max_push_constant_size; }
+
+        // Misc
+        static bool IsValidResolution(const uint32_t width, const uint32_t height);
+        static uint32_t GetEnabledGraphicsStages() { return m_enabled_graphics_shader_stages; }
+        static uint32_t GetPipelineCount();
  
     private:
         // Physical device
