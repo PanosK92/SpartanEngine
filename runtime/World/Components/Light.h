@@ -49,19 +49,19 @@ namespace Spartan
 
     enum class LightIntensity
     {
-        sky_direct_sunlight_noon,            // Direct sunlight at noon, the brightest light
-        sky_direct_sunlight_morning_evening, // Direct sunlight at morning or evening, less intense than noon light
-        sky_overcast_day,                    // Light on an overcast day, considerably less intense than direct sunlight
-        sky_twilight,                        // Light just after sunset, a soft and less intense light
-        stadium_light,                       // Intense light used in stadiums for sports events, comparable to sunlight
-        bulb_500_watt,                       // A very bright domestic bulb or small industrial light
-        bulb_150_watt,                       // A bright domestic bulb, equivalent to an old-school incandescent bulb
-        bulb_100_watt,                       // A typical bright domestic bulb
-        bulb_60_watt,                        // A medium intensity domestic bulb
-        bulb_25_watt,                        // A low intensity domestic bulb, used for mood lighting or as a night light
-        average_flashlight,                  // Light emitted by an average flashlight, portable and less intense
-        black_hole,                          // No light emitted
-        custom                               // Custom intensity
+        sky_sunlight_noon,            // Direct sunlight at noon, the brightest light
+        sky_sunlight_morning_evening, // Direct sunlight at morning or evening, less intense than noon light
+        sky_overcast_day,             // Light on an overcast day, considerably less intense than direct sunlight
+        sky_twilight,                 // Light just after sunset, a soft and less intense light
+        bulb_stadium,                 // Intense light used in stadiums for sports events, comparable to sunlight
+        bulb_500_watt,                // A very bright domestic bulb or small industrial light
+        bulb_150_watt,                // A bright domestic bulb, equivalent to an old-school incandescent bulb
+        bulb_100_watt,                // A typical bright domestic bulb
+        bulb_60_watt,                 // A medium intensity domestic bulb
+        bulb_25_watt,                 // A low intensity domestic bulb, used for mood lighting or as a night light
+        bulb_flashlight,              // Light emitted by an average flashlight, portable and less intense
+        black_hole,                   // No light emitted
+        custom                        // Custom intensity
     };
 
     struct ShadowSlice
@@ -95,9 +95,11 @@ namespace Spartan
         const auto GetLightType() const { return m_light_type; }
         void SetLightType(LightType type);
 
-        void SetColor(const float temperature);
-        void SetColor(const Color& rgb) { m_color_rgb = rgb; }
-        const Color& GetColor()   const { return m_color_rgb; }
+        void SetTemperature(const float temperature_kelvin);
+        float GetTemperature() const { return m_temperature_kelvin; }
+
+        void SetColor(const Color& rgb);
+        const Color& GetColor() const { return m_color_rgb; }
 
         // Intensity
         void SetIntensityLumens(const float lumens);
@@ -157,12 +159,13 @@ namespace Spartan
         float m_normal_bias = 10.0f;
 
         // Misc
-        LightType m_light_type    = LightType::Directional;
-        Color m_color_rgb         = Color(1.0f, 0.76f, 0.57f, 1.0f);
-        bool m_volumetric_enabled = true;
-        float m_range             = 10.0f;
-        float m_angle_rad         = 0.5f; // about 30 degrees
-        bool m_initialized        = false;
+        LightType m_light_type     = LightType::Directional;
+        Color m_color_rgb          = Color::standard_black;;
+        float m_temperature_kelvin = 0.0f;
+        bool m_volumetric_enabled  = true;
+        float m_range              = 10.0f;
+        float m_angle_rad          = 0.5f; // about 30 degrees
+        bool m_initialized         = false;
         std::array<Math::Matrix, 6> m_matrix_view;
         std::array<Math::Matrix, 6> m_matrix_projection;
 

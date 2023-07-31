@@ -150,14 +150,16 @@ ButtonColorPicker::ButtonColorPicker(const string& window_title)
 
 void ButtonColorPicker::Update()
 {
+    // button
     if (ImGui::ColorButton("##color_button", ImVec4(m_color.r, m_color.g, m_color.b, m_color.a)))
     {
         m_is_visible = true;
     }
 
+    // picker
     if (m_is_visible)
     {
-        //ImGui::SetNextWindowFocus();
+        ImGui::SetNextWindowFocus();
         ImGui::SetNextWindowSize(ImVec2(400, 400), ImGuiCond_FirstUseEver);
         ImGui::Begin(m_window_title.c_str(), &m_is_visible, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDocking);
 

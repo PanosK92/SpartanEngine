@@ -54,7 +54,7 @@ namespace Spartan
 
         if (m_light_type == LightType::Directional)
         {
-            SetIntensity(LightIntensity::sky_direct_sunlight_noon);
+            SetIntensity(LightIntensity::sky_sunlight_noon);
         }
         else if (m_light_type == LightType::Point)
         {
@@ -62,7 +62,7 @@ namespace Spartan
         }
         else if (m_light_type == LightType::Spot)
         {
-            SetIntensity(LightIntensity::average_flashlight);
+            SetIntensity(LightIntensity::bulb_flashlight);
         }
     }
 
@@ -173,20 +173,50 @@ namespace Spartan
         World::Resolve();
     }
 
-    void Light::SetColor(const float temperature)
+    void Light::SetTemperature(const float temperature_kelvin)
     {
-        m_color_rgb = Color(temperature);
+        m_temperature_kelvin = temperature_kelvin;
+        m_color_rgb          = Color(temperature_kelvin);
     }
+
+    void Light::SetColor(const Color& rgb)
+    {
+        m_color_rgb = rgb;
+
+        if (rgb == Color::light_sky_clear)
+            m_temperature_kelvin = 15000.0f;
+        else if (rgb == Color::light_sky_daylight_overcast)
+            m_temperature_kelvin = 6500.0f;
+        else if (rgb == Color::light_sky_moonlight)
+            m_temperature_kelvin = 4000.0f;
+        else if (rgb == Color::light_sky_sunrise)
+            m_temperature_kelvin = 2000.0f;
+        else if (rgb == Color::light_candle_flame)
+            m_temperature_kelvin = 1850.0f;
+        else if (rgb == Color::light_direct_sunlight)
+            m_temperature_kelvin = 5778.0f;
+        else if (rgb == Color::light_digital_display)
+            m_temperature_kelvin = 6500.0f;
+        else if (rgb == Color::light_fluorescent_tube_light)
+            m_temperature_kelvin = 5000.0f;
+        else if (rgb == Color::light_kerosene_lamp)
+            m_temperature_kelvin = 1850.0f;
+        else if (rgb == Color::light_light_bulb)
+            m_temperature_kelvin = 2700.0f;
+        else if (rgb == Color::light_photo_flash)
+            m_temperature_kelvin = 5500.0f;
+    }
+
 
     void Light::SetIntensity(const LightIntensity intensity)
     {
         m_intensity = intensity;
 
-        if (intensity == LightIntensity::sky_direct_sunlight_noon)
+        if (intensity == LightIntensity::sky_sunlight_noon)
         {
             m_intensity_lumens = 120000.0f;
         }
-        else if (intensity == LightIntensity::sky_direct_sunlight_morning_evening)
+        else if (intensity == LightIntensity::sky_sunlight_morning_evening)
         {
             m_intensity_lumens = 60000.0f;
         }
@@ -198,7 +228,7 @@ namespace Spartan
         {
             m_intensity_lumens = 10000.0f;
         }
-        else if (intensity == LightIntensity::stadium_light)
+        else if (intensity == LightIntensity::bulb_stadium)
         {
             m_intensity_lumens = 200000.0f;
         }
@@ -222,7 +252,7 @@ namespace Spartan
         {
             m_intensity_lumens = 200.0f;
         }
-        else if (intensity == LightIntensity::average_flashlight)
+        else if (intensity == LightIntensity::bulb_flashlight)
         {
             m_intensity_lumens = 100.0f;
         }

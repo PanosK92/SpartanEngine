@@ -80,7 +80,7 @@ namespace Spartan
             const Math::Vector3& camera_position = Math::Vector3(-2.956f, 1.1474f, -2.9395f),
             const Math::Vector3& camera_rotation = Math::Vector3(15.9976f, 43.5998f, 0.0f),
             const char* soundtrack_file_path     = "project\\music\\vangelis_cosmos_theme.mp3",
-            const LightIntensity sun_intensity   = LightIntensity::sky_direct_sunlight_morning_evening
+            const LightIntensity sun_intensity   = LightIntensity::sky_sunlight_morning_evening
         )
         {
             // Environment
@@ -544,7 +544,7 @@ namespace Spartan
             shared_ptr<Light> light = entity->AddComponent<Light>();
             light->SetLightType(LightType::Point);
             light->SetColor(Color::light_light_bulb);
-            light->SetIntensity(LightIntensity::stadium_light);
+            light->SetIntensity(LightIntensity::bulb_stadium);
         }
 
         if (m_default_model_helmet_flight = ResourceCache::Load<Mesh>("project\\models\\flight_helmet\\FlightHelmet.gltf"))
@@ -594,7 +594,7 @@ namespace Spartan
             shared_ptr<Light> light = entity->AddComponent<Light>();
             light->SetLightType(LightType::Point);
             light->SetColor(Color::light_photo_flash);
-            light->SetIntensity(LightIntensity::stadium_light);
+            light->SetIntensity(LightIntensity::bulb_stadium);
         }
 
         // Environment
@@ -813,7 +813,7 @@ namespace Spartan
             light->SetLightType(LightType::Point);
             light->SetColor(Color::light_light_bulb);
             light->SetRange(14.960f);
-            light->SetIntensity(LightIntensity::stadium_light);
+            light->SetIntensity(LightIntensity::bulb_stadium);
         }
 
         // 3D model - Sponza

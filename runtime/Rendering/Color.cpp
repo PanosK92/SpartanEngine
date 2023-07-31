@@ -30,46 +30,56 @@ using namespace std;
 
 namespace Spartan
 {
-    // Most of the color/temperature values are derived from: https://physicallybased.info/
-  
-    // Might get inaccurate over 40000 K
+    // Most of the color/temperature values are derived from: https://physicallybased.info/ 
+    // Might get inaccurate over 40000 K (which is really the limit that you should be using)
     static void temperature_to_color(const float temperature_kelvin, float& r, float& g, float& b)
     {
-        float magic = temperature_kelvin / 100.0f;
+        // Constants for color temperature to RGB conversion
+        const float A_R = 329.698727446f;
+        const float B_R = -0.1332047592f;
+        const float A_G = 288.1221695283f;
+        const float B_G = -0.0755148492f;
+
+        // Ensure temperature is above absolute zero
+        if (temperature_kelvin < 0) {
+            // Handle error
+        }
+
+        float temp = temperature_kelvin / 100.0f;
 
         r = 0.0f;
         g = 0.0f;
         b = 0.0f;
 
-        if (magic <= 66)
-        {     
+        if (temp <= 66)
+        {
             r = 255;
-            g = magic;
+            g = temp;
             g = 99.4708025861f * Math::Helper::Log(g) - 161.1195681661f;
 
-            if (magic <= 19)
+            if (temp <= 19)
             {
                 b = 0;
             }
             else
             {
-                b = magic - 10.0f;
+                b = temp - 10.0f;
                 b = 138.5177312231f * Math::Helper::Log(b) - 305.0447927307f;
             }
         }
         else
         {
-            r = magic - 60.0f;
-            r = 329.698727446f * Math::Helper::Pow(r, -0.1332047592f);
-            g = magic - 60.0f;
-            g = 288.1221695283f * Math::Helper::Pow(g, -0.0755148492f);
+            r = temp - 60.0f;
+            r = A_R * Math::Helper::Pow(r, B_R);
+            g = temp - 60.0f;
+            g = A_G * Math::Helper::Pow(g, B_G);
             b = 255;
-        
         }
 
-        r /= 255.0f;
-        g /= 255.0f;
-        b /= 255.0f;
+        // Clamp RGB values to [0, 1]
+        r = Math::Helper::Clamp(r / 255.0f, 0.0f, 1.0f);
+        g = Math::Helper::Clamp(g / 255.0f, 0.0f, 1.0f);
+        b = Math::Helper::Clamp(b / 255.0f, 0.0f, 1.0f);
     }
 
     Color::Color(const float r, const float g, const float b, const float a /*= 1.0f*/)
