@@ -55,7 +55,7 @@ weak_ptr<Material> Properties::m_inspected_material;
 namespace
 {
     #define column_pos_x               180.0f * Spartan::Window::GetDpiScale()
-    #define item_width                 110.0f * Spartan::Window::GetDpiScale()
+    #define item_width                 120.0f * Spartan::Window::GetDpiScale()
     #define material_offset_from_pos_x 160    * Spartan::Window::GetDpiScale()
 
     static string context_menu_id;
@@ -235,6 +235,7 @@ void Properties::ShowLight(shared_ptr<Light> light) const
         //= REFLECT ======================================================================
         static vector<string> types = { "Directional", "Point", "Spot" };
         float intensity             = light->GetIntensityLumens();
+        float temperature_kelvin    = light->GetTemperature();
         float angle                 = light->GetAngle() * Math::Helper::RAD_TO_DEG * 2.0f;
         bool shadows                = light->GetShadowsEnabled();
         bool shadows_transparent    = light->GetShadowsTransparentEnabled();
@@ -245,7 +246,7 @@ void Properties::ShowLight(shared_ptr<Light> light) const
         m_colorPicker_light->SetColor(light->GetColor());
         //================================================================================
 
-        // Type
+        // type
         ImGui::Text("Type");
         ImGui::SameLine(column_pos_x);
         uint32_t selection_index = static_cast<uint32_t>(light->GetLightType());
@@ -254,45 +255,51 @@ void Properties::ShowLight(shared_ptr<Light> light) const
             light->SetLightType(static_cast<LightType>(selection_index));
         }
 
-        // Color
-        ImGui::Text("Color");
-        ImGui::SameLine(column_pos_x); m_colorPicker_light->Update();
+        // temperature
+        {
+            ImGui::Text("Temperature");
 
-        // Intensity
+            // color
+            ImGui::SameLine(column_pos_x);
+            m_colorPicker_light->Update();
+
+            // kelvin
+            ImGui::SameLine();
+            ImGuiSp::draw_float_wrap("K", &temperature_kelvin, 0.3f, 1000.0f, 40000.0f);
+        }
+        // intensity
         {
             static vector<string> intensity_types =
             {
-                "sky direct sunlight noon",
-                "sky direct sunlight morning evening",
-                "sky overcast day",
-                "sky twilight",
-                "stadium light",
-                "bulb 500 watt",
-                "bulb 150 watt",
-                "bulb 100 watt",
-                "bulb 60 watt",
-                "bulb 25 watt",
-                "average flashlight",
-                "black_hole",
-                "custom"
+                "Sky Sunlight Noon",
+                "Sky Sunlight Morning Evening",
+                "Sky Overcast Day",
+                "Sky Twilight",
+                "Bulb Stadium",
+                "Bulb 500 watt",
+                "Bulb 150 watt",
+                "Bulb 100 watt",
+                "Bulb 60 watt",
+                "Bulb 25 watt",
+                "Bulb Flashlight",
+                "Black Hole",
+                "Custom"
             };
 
-            ImGui::Text("Intensity (lumens)");
-
-            // lumen
-            ImGui::SameLine(column_pos_x);
-            float v_speed = 5.0f;
-            float v_max   = 120000.0f;
-            ImGuiSp::draw_float_wrap("##lightIntensity", &intensity, v_speed, 0.0f, v_max);
+            ImGui::Text("Intensity");
 
             // enum
-            ImGui::SameLine();
+            ImGui::SameLine(column_pos_x);
             uint32_t intensity_type_index = static_cast<uint32_t>(light->GetIntensity());
             if (ImGuiSp::combo_box("##light_intensity_type", intensity_types, &intensity_type_index))
             {
                 light->SetIntensity(static_cast<LightIntensity>(intensity_type_index));
                 intensity = light->GetIntensityLumens();
             }
+
+            // lumens
+            ImGui::SameLine();
+            ImGuiSp::draw_float_wrap("lm", &intensity, 1.0f, 5.0f, 120000.0f);
         }
 
         // Shadows
@@ -351,6 +358,7 @@ void Properties::ShowLight(shared_ptr<Light> light) const
         if (angle != light->GetAngle() * Math::Helper::RAD_TO_DEG * 0.5f)  light->SetAngle(angle * Math::Helper::DEG_TO_RAD * 0.5f);
         if (range != light->GetRange())                                    light->SetRange(range);
         if (m_colorPicker_light->GetColor() != light->GetColor())          light->SetColor(m_colorPicker_light->GetColor());
+        if (temperature_kelvin != light->GetTemperature())                 light->SetTemperature(temperature_kelvin);
         //===========================================================================================================================
     }
     component_end();
