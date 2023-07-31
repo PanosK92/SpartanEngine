@@ -15,8 +15,8 @@
 ![build_status](https://github.com/PanosK92/SpartanEngine/actions/workflows/workflow.yml/badge.svg)
 [![Discord](https://img.shields.io/discord/677302405263785986?label=Discord)](https://discord.gg/TG5r2BS)
 
-# Videos
-
+# Media
+#### Videos
 Livestreams [![Image1](https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/assets/github/readme_1.4.jpg)](https://www.youtube.com/watch?v=QhyMal6RY7M) | Features [![Image2](https://i.imgur.com/j6zIEI9.jpg)](https://www.youtube.com/watch?v=RIae1ma_DSo) 
 :- | :- 
 
@@ -24,7 +24,7 @@ Livestreams [![Image1](https://raw.githubusercontent.com/PanosK92/SpartanEngine/
 <img align="center" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/assets/github//readme_1.1.jpg"/> | <img align="center" src="https://raw.githubusercontent.com/PanosK92/SpartanEngine/master/assets/github/readme_1.2.jpg"/>
 :- | :-
 
-## Features (v0.31)
+## Features
 #### Rendering
 - 128-byte push constant buffer for lightning fast GPU data transfer.
 - AMD FidelityFX suite for enhanced visuals and performance.
