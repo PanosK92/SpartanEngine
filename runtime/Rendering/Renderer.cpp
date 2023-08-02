@@ -21,24 +21,24 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 //= INCLUDES ===================================
 #include "pch.h"
+#include "Renderer.h"
 #include "../RHI/RHI_Device.h"
 #include "../RHI/RHI_SwapChain.h"
-#include "../RHI/RHI_ConstantBuffer.h"          
-#include "../RHI/RHI_StructuredBuffer.h"        
-#include "../RHI/RHI_Implementation.h"          
-#include "../RHI/RHI_CommandPool.h"
-#include "../RHI/RHI_AMD_FidelityFX.h"
 #include "../RHI/RHI_RenderDoc.h"
-#include "../World/Entity.h"                    
-#include "../World/Components/Camera.h"         
-#include "../World/Components/Light.h"          
-#include "../World/Components/ReflectionProbe.h"
-#include "../Core/Window.h"                     
-#include "../Input/Input.h"                     
+#include "../RHI/RHI_CommandPool.h"
+#include "../RHI/RHI_ConstantBuffer.h"
+#include "../RHI/RHI_Implementation.h"
+#include "../RHI/RHI_AMD_FidelityFX.h"
+#include "../RHI/RHI_StructuredBuffer.h"
+#include "../World/Entity.h"
+#include "../World/Components/Light.h"
+#include "../World/Components/Camera.h"
 #include "../World/Components/Environment.h"
 #include "../World/Components/AudioSource.h"
+#include "../World/Components/ReflectionProbe.h"
+#include "../Core/Window.h"
+#include "../Input/Input.h"
 #include "../Display/Display.h"
-#include "Renderer.h"
 //==============================================
 
 //= NAMESPACES ===============
@@ -73,7 +73,6 @@ namespace Spartan
         vector<RHI_Texture*> textures_mip_generation;
 
         // rhi resources
-        RHI_CommandPool* cmd_pool    = nullptr;
         RHI_CommandList* cmd_current = nullptr;
 
         // misc
@@ -82,11 +81,12 @@ namespace Spartan
         mutex mutex_entity_addition;
         vector<shared_ptr<Entity>> m_entities_to_add;
         shared_ptr<Camera> m_camera;
-        uint64_t frame_num                   = 0;
-        Math::Vector2 jitter_offset          = Math::Vector2::Zero;
-        const uint32_t resolution_shadow_min = 128;
-        float near_plane                     = 0.0f;
-        float far_plane                      = 1.0f;
+        uint64_t frame_num                       = 0;
+        Math::Vector2 jitter_offset              = Math::Vector2::Zero;
+        const uint32_t resolution_shadow_min     = 128;
+        float near_plane                         = 0.0f;
+        float far_plane                          = 1.0f;
+        uint32_t buffers_frames_since_last_reset = 0;
 
         void sort_renderables(vector<shared_ptr<Entity>>* renderables, const bool are_transparent)
         {
@@ -119,7 +119,7 @@ namespace Spartan
 
     unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>> Renderer::m_renderables;
     Cb_Frame Renderer::m_cb_frame_cpu;
-    Cb_Pass Renderer::m_cb_pass_cpu;
+    Pcb_Pass Renderer::m_cb_pass_cpu;
     Cb_Light Renderer::m_cb_light_cpu;
     Cb_Material Renderer::m_cb_material_cpu;
     shared_ptr<RHI_VertexBuffer> Renderer::m_vertex_buffer_lines;
@@ -130,7 +130,7 @@ namespace Spartan
     uint32_t Renderer::m_lines_index_depth_off;
     uint32_t Renderer::m_lines_index_depth_on;
     bool Renderer::m_brdf_specular_lut_rendered;
-    uint32_t Renderer::m_resource_index = 0;
+    RHI_CommandPool* Renderer::m_cmd_pool = nullptr;
 
     void Renderer::Initialize()
     {
@@ -139,7 +139,7 @@ namespace Spartan
 
         Display::DetectDisplayModes();
 
-        // RHI Initialization
+        // RHI initialization
         {
             RHI_Context::Initialize();
 
@@ -151,7 +151,7 @@ namespace Spartan
             RHI_Device::Initialize();
         }
 
-        // Resolution
+        // resolution
         {
             uint32_t width  = Window::GetWidth();
             uint32_t height = Window::GetHeight();
@@ -168,7 +168,7 @@ namespace Spartan
             // Note: If the editor is active, it will set the render and viewport resolution to what the actual viewport is
         }
 
-        // Create swap chain
+        // swap chain
         swap_chain = make_shared<RHI_SwapChain>
         (
             Window::GetHandleSDL(),
@@ -180,32 +180,32 @@ namespace Spartan
             "renderer"
         );
 
-        // Create command pool
-        cmd_pool = RHI_Device::AllocateCommandPool("renderer", swap_chain->GetObjectId(), RHI_Queue_Type::Graphics);
+        // command pool
+        m_cmd_pool = RHI_Device::AllocateCommandPool("renderer", swap_chain->GetObjectId(), RHI_Queue_Type::Graphics);
 
+        // AMD FidelityFX suite
         RHI_AMD_FidelityFX::Initialize();
 
-        // Adjust render option to reflect whether the swapchain is HDR or not
-        SetOption(Renderer_Option::Hdr, swap_chain->IsHdr());
-
-        // Default options
+        // options
         m_options.fill(0.0f);
-        SetOption(Renderer_Option::Bloom,                  0.05f); // Non-zero values activate it and define the blend factor.
-        SetOption(Renderer_Option::MotionBlur,             1.0f);
-        SetOption(Renderer_Option::Ssgi,                   1.0f);
-        SetOption(Renderer_Option::ScreenSpaceShadows,     1.0f);
-        SetOption(Renderer_Option::ScreenSpaceReflections, 1.0f);
-        SetOption(Renderer_Option::Anisotropy,             16.0f);
-        SetOption(Renderer_Option::ShadowResolution,       2048.0f);
-        SetOption(Renderer_Option::Tonemapping,            static_cast<float>(Renderer_Tonemapping::Disabled));
-        SetOption(Renderer_Option::Gamma,                  2.2f);
-        SetOption(Renderer_Option::Exposure,               1.0f);
-        SetOption(Renderer_Option::PaperWhite,             150.0f); // nits
-        SetOption(Renderer_Option::Sharpness,              0.5f);
-        SetOption(Renderer_Option::Fog,                    0.0f);
-        SetOption(Renderer_Option::Antialiasing,           static_cast<float>(Renderer_Antialiasing::TaaFxaa)); // This is using FSR 2 for TAA
-        SetOption(Renderer_Option::Upsampling,             static_cast<float>(Renderer_Upsampling::FSR2));
-        // Debug
+        SetOption(Renderer_Option::Hdr,                      swap_chain->IsHdr() ? 1.0f : 0.0f);                 // HDR is enabled by default if the swapchain is HDR
+        SetOption(Renderer_Option::Bloom,                    0.05f);                                             // non-zero values activate it and define the blend factor.
+        SetOption(Renderer_Option::MotionBlur,               1.0f);
+        SetOption(Renderer_Option::Ssgi,                     1.0f);
+        SetOption(Renderer_Option::ScreenSpaceShadows,       1.0f);
+        SetOption(Renderer_Option::ScreenSpaceReflections,   1.0f);
+        SetOption(Renderer_Option::Anisotropy,               16.0f);
+        SetOption(Renderer_Option::ShadowResolution,         2048.0f);
+        SetOption(Renderer_Option::Tonemapping,              static_cast<float>(Renderer_Tonemapping::Disabled));
+        SetOption(Renderer_Option::Gamma,                    2.2f);
+        SetOption(Renderer_Option::Exposure,                 1.0f);
+        SetOption(Renderer_Option::Sharpness,                0.5f);
+        SetOption(Renderer_Option::Fog,                      0.0f);
+        SetOption(Renderer_Option::Antialiasing,             static_cast<float>(Renderer_Antialiasing::TaaFxaa)); // this is using FSR 2 for TAA
+        SetOption(Renderer_Option::Upsampling,               static_cast<float>(Renderer_Upsampling::FSR2));
+        SetOption(Renderer_Option::Vsync,                    0.0f);
+        SetOption(Renderer_Option::DepthPrepass,             0.0f);                                               // depth prepass is not always faster, so by default, it's disabled.
+        SetOption(Renderer_Option::Debanding,                0.0f); 
         SetOption(Renderer_Option::Debug_TransformHandle,    1.0f);
         SetOption(Renderer_Option::Debug_SelectionOutline,   1.0f);
         SetOption(Renderer_Option::Debug_Grid,               1.0f);
@@ -213,13 +213,12 @@ namespace Spartan
         SetOption(Renderer_Option::Debug_Lights,             1.0f);
         SetOption(Renderer_Option::Debug_Physics,            0.0f);
         SetOption(Renderer_Option::Debug_PerformanceMetrics, 1.0f);
-        SetOption(Renderer_Option::Vsync,                    0.0f);
-        //SetOption(RendererOption::DepthOfField,        1.0f); // This is depth of field from ALDI, so until I improve it, it should be disabled by default.
-        //SetOption(RendererOption::Render_DepthPrepass, 1.0f); // Depth-pre-pass is not always faster, so by default, it's disabled.
-        //SetOption(RendererOption::Debanding,           1.0f); // Disable debanding as we shouldn't be seeing banding to begin with.
-        //SetOption(RendererOption::VolumetricFog,       1.0f); // Disable by default because it's not that great, I need to do it with a voxelised approach.
+        // Buggy or unused options
+        //SetOption(Renderer_Option::PaperWhite,             150.0f);                                            // nits
+        //SetOption(RendererOption::DepthOfField,            1.0f);                                              // this is depth of field from ALDI, so until I improve it, it should be disabled by default.
+        //SetOption(RendererOption::VolumetricFog,           1.0f);                                              // disable by default because it's not that great, I need to do it with a voxelised approach.
 
-        // Create all the resources
+        // resources
         CreateConstantBuffers();
         CreateShaders();
         CreateDepthStencilStates();
@@ -232,13 +231,16 @@ namespace Spartan
         CreateStandardTextures();
         CreateStandardMeshes();
 
-        // Subscribe to events
-        SP_SUBSCRIBE_TO_EVENT(EventType::WorldResolved,                   SP_EVENT_HANDLER_VARIANT_STATIC(OnWorldResolved));
-        SP_SUBSCRIBE_TO_EVENT(EventType::WorldClear,                      SP_EVENT_HANDLER_STATIC(OnClear));
-        SP_SUBSCRIBE_TO_EVENT(EventType::WindowFullscreenWindowedToggled, SP_EVENT_HANDLER_STATIC(OnFullScreenToggled));
+        // events
+        {
+            // subscribe
+            SP_SUBSCRIBE_TO_EVENT(EventType::WorldResolved,                   SP_EVENT_HANDLER_VARIANT_STATIC(OnWorldResolved));
+            SP_SUBSCRIBE_TO_EVENT(EventType::WorldClear,                      SP_EVENT_HANDLER_STATIC(OnClear));
+            SP_SUBSCRIBE_TO_EVENT(EventType::WindowFullscreenWindowedToggled, SP_EVENT_HANDLER_STATIC(OnFullScreenToggled));
 
-        // Fire event
-        SP_FIRE_EVENT(EventType::RendererOnInitialized);
+            // fire
+            SP_FIRE_EVENT(EventType::RendererOnInitialized);
+        }
     }
 
     void Renderer::Shutdown()
@@ -271,19 +273,19 @@ namespace Spartan
 
     void Renderer::Tick()
     {
-        // Don't bother producing frames if the window is minimized
+        // don't produce frames if the window is minimized
         if (Window::IsMinimised())
             return;
 
-        // After the first frame has completed, we know the renderer is working.
-        // We stop logging to a file and we start logging to the on-screen console.
+        // after the first frame has completed, we know the renderer is working
+        // we stop logging to a file and we start logging to the on-screen console
         if (frame_num == 1)
         {
             Log::SetLogToFile(false);
             SP_FIRE_EVENT(EventType::RendererOnFirstFrameCompleted);
         }
 
-        // Happens when core resources are created/destroyed
+        // happens when core resources are created/destroyed
         if (flush_requested)
         {
             Flush();
@@ -292,38 +294,40 @@ namespace Spartan
         if (!is_rendering_allowed)
             return;
 
-        RHI_Device::Tick(frame_num);
-
-        // Tick command pool
-        if (cmd_pool->Tick())
+        // delete any RHI resources that have accumulated
+        if (RHI_Device::DeletionQueue_NeedsToParse())
         {
-            // switch to the next array of constant buffers and structured buffers
-            m_resource_index = (m_resource_index + 1) % 2;
-
-            // Reset dynamic buffer indices
-            for (shared_ptr<RHI_ConstantBuffer> constant_buffer : GetConstantBuffers())
-            {
-                constant_buffer->ResetOffset();
-            }
-
-            GetStructuredBuffer()->ResetOffset();
-
-            // Delete any RHI resources that have accumulated an need to be deleted
-            if (RHI_Device::DeletionQueue_NeedsToParse())
-            {
-                RHI_Device::QueueWaitAll();
-                RHI_Device::DeletionQueue_Parse();
-                SP_LOG_INFO("Parsed deletion queue");
-            }
+            RHI_Device::QueueWaitAll();
+            RHI_Device::DeletionQueue_Parse();
+            SP_LOG_INFO("Parsed deletion queue");
         }
 
-        // Begin
-        cmd_current = cmd_pool->GetCurrentCommandList();
+        // reset buffer offsets
+        {
+            if (buffers_frames_since_last_reset == 5)
+            {
+                for (shared_ptr<RHI_ConstantBuffer> constant_buffer : GetConstantBuffers())
+                {
+                    constant_buffer->ResetOffset();
+                }
+                GetStructuredBuffer()->ResetOffset();
+
+                buffers_frames_since_last_reset = true;
+            }
+
+            buffers_frames_since_last_reset++;
+        }
+
+        RHI_Device::Tick(frame_num);
+
+        // begin
+        m_cmd_pool->Tick();
+        cmd_current = m_cmd_pool->GetCurrentCommandList();
         cmd_current->Begin();
 
         OnFrameStart(cmd_current);
 
-        // Update frame buffer
+        // update frame buffer
         {
             // Matrices
             {
@@ -407,6 +411,7 @@ namespace Spartan
 
         Pass_Frame(cmd_current);
 
+        // blit to back buffer when in full screen
         if (Window::IsFullScreen())
         {
             cmd_current->BeginMarker("copy_to_back_buffer");
@@ -456,7 +461,7 @@ namespace Spartan
             return;
         }
 
-        // Early exit if the resoution is already set
+        // Early exit if the resolution is already set
         if (m_resolution_render.x == width && m_resolution_render.y == height)
             return;
 
@@ -525,7 +530,7 @@ namespace Spartan
 
     void Renderer::PushPassConstants(RHI_CommandList* cmd_list)
     {
-        cmd_list->PushConstants(0, sizeof(Cb_Pass), &m_cb_pass_cpu);
+        cmd_list->PushConstants(0, sizeof(Pcb_Pass), &m_cb_pass_cpu);
     }
 
     void Renderer::UpdateConstantBufferLight(RHI_CommandList* cmd_list, shared_ptr<Light> light)

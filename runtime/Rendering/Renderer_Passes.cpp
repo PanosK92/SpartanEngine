@@ -22,6 +22,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ===================================
 #include "pch.h"
 #include "Renderer.h"
+#include "Window.h"
 #include "../Profiling/Profiler.h"
 #include "../World/Entity.h"
 #include "../World/Components/Camera.h"
@@ -159,9 +160,12 @@ namespace Spartan
             Pass_PeformanceMetrics(cmd_list, rt_output);
         }
 
-        // no further rendering is done on this render target, which is the final output.
-        // however, ImGui will display it within the viewport, so the appropriate layout has to be set.
-        rt_output->SetLayout(RHI_Image_Layout::Shader_Read_Only_Optimal, cmd_list);
+        // if we are not in full screen mode (so in the editor), transition the
+        // render target to a readable state so it can be rendered within the viewport
+        if (!Window::IsFullScreen())
+        {
+            rt_output->SetLayout(RHI_Image_Layout::Shader_Read_Only_Optimal, cmd_list);
+        }
     }
 
     void Renderer::Pass_ShadowMaps(RHI_CommandList* cmd_list, const bool is_transparent_pass)

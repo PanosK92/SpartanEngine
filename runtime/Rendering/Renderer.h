@@ -209,7 +209,7 @@ namespace Spartan
         // misc
         static std::unordered_map<Renderer_Entity, std::vector<std::shared_ptr<Entity>>> m_renderables;
         static Cb_Frame m_cb_frame_cpu;
-        static Cb_Pass m_cb_pass_cpu;
+        static Pcb_Pass m_cb_pass_cpu;
         static Cb_Light m_cb_light_cpu;
         static Cb_Material m_cb_material_cpu;
         static std::shared_ptr<RHI_VertexBuffer> m_vertex_buffer_lines;
@@ -220,6 +220,6 @@ namespace Spartan
         static std::vector<float> m_lines_duration;
         static uint32_t m_lines_index_depth_off;
         static uint32_t m_lines_index_depth_on;
-        static uint32_t m_resource_index;
+        static RHI_CommandPool* m_cmd_pool;
     };
 }

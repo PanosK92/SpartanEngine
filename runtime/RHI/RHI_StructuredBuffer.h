@@ -34,8 +34,7 @@ namespace Spartan
         ~RHI_StructuredBuffer();
 
         void Update(void* data);
-        void ResetOffset() { m_reset_offset = true; }
-
+        void ResetOffset()           { m_offset = 0; }
         uint32_t GetStride()   const { return m_stride; }
         uint32_t GetOffset()   const { return m_offset; }
         void* GetRhiResource() const { return m_rhi_resource; }
@@ -45,7 +44,6 @@ namespace Spartan
         uint32_t m_stride        = 0;
         uint32_t m_offset        = 0;
         uint32_t m_element_count = 0;
-        bool m_reset_offset      = false;
         void* m_mapped_data      = nullptr;
         void* m_rhi_resource     = nullptr;
         void* m_rhi_uav          = nullptr;
