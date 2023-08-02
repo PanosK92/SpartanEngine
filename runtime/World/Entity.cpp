@@ -45,11 +45,53 @@ using namespace std;
 
 namespace Spartan
 {
+    namespace
+    {
+        // input is an entity, output is a clone of that entity (descendant entities are not cloned)
+        Entity* clone_entity(Entity* entity)
+        {
+            // clone the name and the ID
+            Entity* clone = World::CreateEntity().get();
+            clone->SetObjectId(Object::GenerateObjectId());
+            clone->SetObjectName(entity->GetObjectName());
+            clone->SetActive(entity->IsActive());
+            clone->SetHierarchyVisibility(entity->IsVisibleInHierarchy());
+
+            // clone all the components
+            for (shared_ptr<Component> component_original : entity->GetAllComponents())
+            {
+                // component
+                shared_ptr<Component> component_clone = clone->AddComponent(component_original->GetType());
+
+                // component's properties
+                component_clone->SetAttributes(component_original->GetAttributes());
+            }
+
+            return clone;
+        };
+
+        // input is an entity, output is a clone of that entity (descendant entities are cloned)
+        Entity* clone_entity_and_descendants(Entity* entity)
+        {
+            Entity* clone_self = clone_entity(entity);
+
+            // clone children make them call this lambda
+            for (Transform* child_transform : entity->GetTransform()->GetChildren())
+            {
+                Entity* clone_child = clone_entity_and_descendants(child_transform->GetEntityPtr());
+                clone_child->GetTransform()->SetParent(clone_self->GetTransform());
+            }
+
+            return clone_self;
+        };
+    }
+
     Entity::Entity()
     {
         m_object_name          = "Entity";
         m_is_active            = true;
         m_hierarchy_visibility = true;
+
         m_components.fill(nullptr);
     }
 
@@ -65,49 +107,6 @@ namespace Spartan
 
     void Entity::Clone()
     {
-        vector<Entity*> clones;
-
-        // Creation of new entity and copying of a few properties
-        auto clone_entity = [&clones](Entity* entity)
-        {
-            // Clone the name and the ID
-            auto clone = World::CreateEntity().get();
-            clone->SetObjectId(GenerateObjectId());
-            clone->SetObjectName(entity->GetObjectName());
-            clone->SetActive(entity->IsActive());
-            clone->SetHierarchyVisibility(entity->IsVisibleInHierarchy());
-
-            // Clone all the components
-            for (const auto& component : entity->GetAllComponents())
-            {
-                const auto& original_comp = component;
-                auto clone_comp           = clone->AddComponent(component->GetType());
-                clone_comp->SetAttributes(original_comp->GetAttributes());
-            }
-
-            clones.emplace_back(clone);
-
-            return clone;
-        };
-
-        // Cloning of an entity and it's descendants (this is a recursive lambda)
-        function<Entity*(Entity*)> clone_entity_and_descendants = [&clone_entity_and_descendants, &clone_entity](Entity* original)
-        {
-            // clone self
-            const auto clone_self = clone_entity(original);
-
-            // clone children make them call this lambda
-            for (const auto& child_transform : original->GetTransform()->GetChildren())
-            {
-                const auto clone_child = clone_entity_and_descendants(child_transform->GetEntityPtr());
-                clone_child->GetTransform()->SetParent(clone_self->GetTransform());
-            }
-
-            // return self
-            return clone_self;
-        };
-
-        // Clone the entire hierarchy
         clone_entity_and_descendants(this);
     }
 

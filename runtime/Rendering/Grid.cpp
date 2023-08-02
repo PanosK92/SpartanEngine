@@ -66,62 +66,62 @@ namespace Spartan
 
     void Grid::BuildGrid(vector<RHI_Vertex_PosCol>* vertices)
     {
-        const int halfSizeW = int(m_terrain_width * 0.5f);
-        const int halfSizeH = int(m_terrain_height * 0.5f);
+        const int half_size_w = int(m_terrain_width * 0.5f);
+        const int half_size_h = int(m_terrain_height * 0.5f);
 
-        for (int j = -halfSizeH; j < halfSizeH; j++)
+        for (int j = -half_size_h; j < half_size_h; j++)
         {
-            for (int i = -halfSizeW; i < halfSizeW; i++)
+            for (int i = -half_size_w; i < half_size_w; i++)
             {
                 // Become more transparent, the further out we go
-                const float alphaWidth  = 1.0f - static_cast<float>(Helper::Abs(j)) / static_cast<float>(halfSizeH);
-                const float alphaHeight = 1.0f - static_cast<float>(Helper::Abs(i)) / static_cast<float>(halfSizeW);
+                const float alphaWidth  = 1.0f - static_cast<float>(Helper::Abs(j)) / static_cast<float>(half_size_h);
+                const float alphaHeight = 1.0f - static_cast<float>(Helper::Abs(i)) / static_cast<float>(half_size_w);
                 float alpha             = (alphaWidth + alphaHeight) * 0.5f;
                 alpha                   = Helper::Clamp(Helper::Pow(alpha, 15.0f), 0.0f, 1.0f);
 
                 // LINE 1
                 // Upper left.
-                float positionX = static_cast<float>(i);
-                float positionZ = static_cast<float>(j + 1);
-                vertices->emplace_back(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, alpha));
+                float position_x = static_cast<float>(i);
+                float position_z = static_cast<float>(j + 1);
+                vertices->emplace_back(Vector3(position_x, 0.0f, position_z), Vector4(1.0f, 1.0f, 1.0f, alpha));
 
                 // Upper right.
-                positionX = static_cast<float>(i + 1);
-                positionZ = static_cast<float>(j + 1);
-                vertices->emplace_back(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, alpha));
+                position_x = static_cast<float>(i + 1);
+                position_z = static_cast<float>(j + 1);
+                vertices->emplace_back(Vector3(position_x, 0.0f, position_z), Vector4(1.0f, 1.0f, 1.0f, alpha));
 
                 // LINE 2
                 // Upper right.
-                positionX = static_cast<float>(i + 1);
-                positionZ = static_cast<float>(j + 1);
-                vertices->emplace_back(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, alpha));
+                position_x = static_cast<float>(i + 1);
+                position_z = static_cast<float>(j + 1);
+                vertices->emplace_back(Vector3(position_x, 0.0f, position_z), Vector4(1.0f, 1.0f, 1.0f, alpha));
 
                 // Bottom right.
-                positionX = static_cast<float>(i + 1);
-                positionZ = static_cast<float>(j);
-                vertices->emplace_back(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, alpha));
+                position_x = static_cast<float>(i + 1);
+                position_z = static_cast<float>(j);
+                vertices->emplace_back(Vector3(position_x, 0.0f, position_z), Vector4(1.0f, 1.0f, 1.0f, alpha));
 
                 // LINE 3
                 // Bottom right.
-                positionX = static_cast<float>(i + 1);
-                positionZ = static_cast<float>(j);
-                vertices->emplace_back(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, alpha));
+                position_x = static_cast<float>(i + 1);
+                position_z = static_cast<float>(j);
+                vertices->emplace_back(Vector3(position_x, 0.0f, position_z), Vector4(1.0f, 1.0f, 1.0f, alpha));
 
                 // Bottom left.
-                positionX = static_cast<float>(i);
-                positionZ = static_cast<float>(j);
-                vertices->emplace_back(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, alpha));
+                position_x = static_cast<float>(i);
+                position_z = static_cast<float>(j);
+                vertices->emplace_back(Vector3(position_x, 0.0f, position_z), Vector4(1.0f, 1.0f, 1.0f, alpha));
 
                 // LINE 4
                 // Bottom left.
-                positionX = static_cast<float>(i);
-                positionZ = static_cast<float>(j);
-                vertices->emplace_back(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, alpha));
+                position_x = static_cast<float>(i);
+                position_z = static_cast<float>(j);
+                vertices->emplace_back(Vector3(position_x, 0.0f, position_z), Vector4(1.0f, 1.0f, 1.0f, alpha));
 
                 // Upper left.
-                positionX = static_cast<float>(i);
-                positionZ = static_cast<float>(j + 1);
-                vertices->emplace_back(Vector3(positionX, 0.0f, positionZ), Vector4(1.0f, 1.0f, 1.0f, alpha));
+                position_x = static_cast<float>(i);
+                position_z = static_cast<float>(j + 1);
+                vertices->emplace_back(Vector3(position_x, 0.0f, position_z), Vector4(1.0f, 1.0f, 1.0f, alpha));
             }
         }
     }

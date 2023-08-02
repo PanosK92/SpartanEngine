@@ -80,7 +80,7 @@ namespace Spartan
             const Math::Vector3& camera_position = Math::Vector3(-2.956f, 1.1474f, -2.9395f),
             const Math::Vector3& camera_rotation = Math::Vector3(15.9976f, 43.5998f, 0.0f),
             const char* soundtrack_file_path     = "project\\music\\vangelis_cosmos_theme.mp3",
-            const LightIntensity sun_intensity   = LightIntensity::sky_sunlight_morning_evening
+            const LightIntensity sun_intensity   = LightIntensity::sky_sunlight_noon
         )
         {
             // Environment
