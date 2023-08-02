@@ -38,15 +38,15 @@ namespace Spartan
 
         bool Tick();
 
-        RHI_CommandList* GetCurrentCommandList()       { return m_using_pool_a ? m_cmd_lists_a[m_cmd_list_index].get() : m_cmd_lists_b[m_cmd_list_index].get(); }
+        RHI_CommandList* GetCurrentCommandList()       { return m_using_pool_a ? m_cmd_lists_0[m_index].get() : m_cmd_lists_1[m_index].get(); }
         uint64_t GetSwapchainId()                const { return m_swap_chain_id; }
 
     private:
-        std::array<std::shared_ptr<RHI_CommandList>, 2> m_cmd_lists_a;
-        std::array<std::shared_ptr<RHI_CommandList>, 2> m_cmd_lists_b;
+        std::array<std::shared_ptr<RHI_CommandList>, 2> m_cmd_lists_0;
+        std::array<std::shared_ptr<RHI_CommandList>, 2> m_cmd_lists_1;
         std::array<void*, 2> m_rhi_resources;
 
-        uint32_t m_cmd_list_index   = 0;
+        uint32_t m_index            = 0;
         bool m_using_pool_a         = true;
         bool m_first_tick           = true;
         uint64_t m_swap_chain_id    = 0;

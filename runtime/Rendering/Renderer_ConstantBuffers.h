@@ -199,8 +199,8 @@ namespace Spartan
         }
     };
 
-    // About to become a push constant buffer - Per pass
-    struct Cb_Pass
+    // 128 byte push constant buffer - Per pass/draw
+    struct Pcb_Pass
     {
         Math::Matrix transform = Math::Matrix::Identity;
         Math::Matrix m_value   = Math::Matrix::Identity;
@@ -277,11 +277,11 @@ namespace Spartan
             m_value.m33 = is_transparent ? 1.0f : 0.0f;
         }
 
-        bool operator==(const Cb_Pass& rhs) const
+        bool operator==(const Pcb_Pass& rhs) const
         {
             return transform == rhs.transform && m_value == rhs.m_value;
         }
 
-        bool operator!=(const Cb_Pass& rhs) const { return !(*this == rhs); }
+        bool operator!=(const Pcb_Pass& rhs) const { return !(*this == rhs); }
     };
 }

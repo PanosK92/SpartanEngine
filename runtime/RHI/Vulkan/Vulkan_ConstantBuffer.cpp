@@ -82,13 +82,13 @@ namespace Spartan
         SP_ASSERT_MSG(m_mapped_data != nullptr,                 "Invalid mapped data");
         SP_ASSERT_MSG(m_offset + m_stride <= m_object_size_gpu, "Out of memory");
 
-        // Advance offset
+        // advance offset
         if (m_has_updated)
         {
             m_offset += m_stride;
         }
 
-        // We are using persistent mapping, so we can simply copy.
+        // we are using persistent mapping, so we can only copy
         memcpy(reinterpret_cast<std::byte*>(m_mapped_data) + m_offset, reinterpret_cast<std::byte*>(data_cpu), m_stride);
 
         m_has_updated = true;

@@ -37,6 +37,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_VertexBuffer.h"
 #include "../RHI/RHI_AMD_FidelityFX.h"
 #include "../RHI/RHI_Device.h"
+#include "../RHI/RHI_CommandPool.h"
 //=======================================
 
 //= NAMESPACES ===============
@@ -54,11 +55,11 @@ namespace Spartan
         array<shared_ptr<RHI_BlendState>, 3>        m_blend_states;
 
         // renderer resources
-        array<shared_ptr<RHI_Texture>, 26>                 m_render_targets;
-        array<shared_ptr<RHI_Shader>, 44>                  m_shaders;
-        array<shared_ptr<RHI_Sampler>, 7>                  m_samplers;
-        array<array<shared_ptr<RHI_ConstantBuffer>, 3>, 2> m_constant_buffers;
-        array < shared_ptr<RHI_StructuredBuffer>, 2>       m_sb_spd_counters;
+        array<shared_ptr<RHI_Texture>, 26>       m_render_targets;
+        array<shared_ptr<RHI_Shader>, 44>        m_shaders;
+        array<shared_ptr<RHI_Sampler>, 7>        m_samplers;
+        array<shared_ptr<RHI_ConstantBuffer>, 3> m_constant_buffers;
+        shared_ptr<RHI_StructuredBuffer>         m_structured_buffer;
 
         // asset resources
         array<shared_ptr<RHI_Texture>, 10> m_standard_textures;
@@ -67,26 +68,26 @@ namespace Spartan
 
     void Renderer::CreateConstantBuffers()
     {
-        #define constant_buffer(i, x) m_constant_buffers[i][static_cast<uint8_t>(x)]
+        #define constant_buffer(x) m_constant_buffers[static_cast<uint8_t>(x)]
 
         for (uint32_t i = 0; i < 2; i++)
         {
-            constant_buffer(i, Renderer_ConstantBuffer::Frame) = make_shared<RHI_ConstantBuffer>("frame");
-            constant_buffer(i, Renderer_ConstantBuffer::Frame)->Create<Cb_Frame>(8000);
+            constant_buffer(Renderer_ConstantBuffer::Frame) = make_shared<RHI_ConstantBuffer>(string("frame_" + to_string(i)));
+            constant_buffer(Renderer_ConstantBuffer::Frame)->Create<Cb_Frame>(8000);
 
-            constant_buffer(i, Renderer_ConstantBuffer::Light) = make_shared<RHI_ConstantBuffer>("light");
-            constant_buffer(i, Renderer_ConstantBuffer::Light)->Create<Cb_Light>(8000);
+            constant_buffer(Renderer_ConstantBuffer::Light) = make_shared<RHI_ConstantBuffer>(string("light_" + to_string(i)));
+            constant_buffer(Renderer_ConstantBuffer::Light)->Create<Cb_Light>(8000);
 
-            constant_buffer(i, Renderer_ConstantBuffer::Material) = make_shared<RHI_ConstantBuffer>("material");
-            constant_buffer(i, Renderer_ConstantBuffer::Material)->Create<Cb_Material>(15000);
+            constant_buffer(Renderer_ConstantBuffer::Material) = make_shared<RHI_ConstantBuffer>(string("material_" + to_string(i)));
+            constant_buffer(Renderer_ConstantBuffer::Material)->Create<Cb_Material>(15000);
         }
     }
 
     void Renderer::CreateStructuredBuffers()
     {
         const uint32_t offset_count = 32;
-        m_sb_spd_counters[0] = make_shared<RHI_StructuredBuffer>(static_cast<uint32_t>(sizeof(uint32_t)), offset_count, "spd_counter_1");
-        m_sb_spd_counters[1] = make_shared<RHI_StructuredBuffer>(static_cast<uint32_t>(sizeof(uint32_t)), offset_count, "spd_counter_2");
+
+        m_structured_buffer = make_shared<RHI_StructuredBuffer>(static_cast<uint32_t>(sizeof(uint32_t)), offset_count, "spd_counter");
     }
 
     void Renderer::CreateDepthStencilStates()
@@ -555,12 +556,11 @@ namespace Spartan
     {
         m_render_targets.fill(nullptr);
         m_shaders.fill(nullptr);
-        m_constant_buffers[0].fill(nullptr);
-        m_constant_buffers[1].fill(nullptr);
         m_samplers.fill(nullptr);
         m_standard_textures.fill(nullptr);
         m_standard_meshes.fill(nullptr);
-        m_sb_spd_counters.fill(nullptr);
+        m_constant_buffers.fill(nullptr);
+        m_structured_buffer = nullptr;
     }
 
     array<shared_ptr<RHI_Texture>, 26>& Renderer::GetRenderTargets()
@@ -575,7 +575,7 @@ namespace Spartan
 
     array<shared_ptr<RHI_ConstantBuffer>, 3>& Renderer::GetConstantBuffers()
     {
-        return m_constant_buffers[m_resource_index];
+        return m_constant_buffers;
     }
 
     shared_ptr<RHI_RasterizerState> Renderer::GetRasterizerState(const Renderer_RasterizerState type)
@@ -610,12 +610,12 @@ namespace Spartan
 
     shared_ptr<RHI_ConstantBuffer> Renderer::GetConstantBuffer(const Renderer_ConstantBuffer type)
     {
-        return m_constant_buffers[m_resource_index][static_cast<uint8_t>(type)];
+        return m_constant_buffers[static_cast<uint8_t>(type)];
     }
 
     shared_ptr<RHI_StructuredBuffer> Renderer::GetStructuredBuffer()
     {
-        return m_sb_spd_counters[m_resource_index];
+        return m_structured_buffer;
     }
 
     shared_ptr<RHI_Texture> Renderer::GetStandardTexture(const Renderer_StandardTexture type)

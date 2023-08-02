@@ -35,6 +35,7 @@ namespace Spartan
 {
     RHI_StructuredBuffer::RHI_StructuredBuffer(const uint32_t stride, const uint32_t element_count, const char* name)
     {
+        m_object_name     = name;
         m_stride          = stride;
         m_element_count   = element_count;
         m_object_size_gpu = stride * element_count;
@@ -72,16 +73,10 @@ namespace Spartan
         SP_ASSERT_MSG(m_mapped_data != nullptr,                 "Invalid mapped data");
         SP_ASSERT_MSG(m_offset + m_stride <= m_object_size_gpu, "Out of memory");
 
-        // Advance offset
+        // advance offset
         m_offset += m_stride;
-        if (m_reset_offset)
-        {
-            m_offset       = 0;
-            m_reset_offset = false;
-        }
 
-        // Vulkan is using persistent mapping, so we only need to copy and flush
+        // we are using persistent mapping, so we can only copy
         memcpy(reinterpret_cast<std::byte*>(m_mapped_data) + m_offset, reinterpret_cast<std::byte*>(data_cpu), m_stride);
-        RHI_Device::FlushAllocation(m_rhi_resource, m_offset, m_stride);
     }
 }
