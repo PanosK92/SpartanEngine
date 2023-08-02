@@ -1852,7 +1852,7 @@ namespace Spartan
                 m_cb_pass_cpu.set_resolution_out(GetResolutionRender());
                 if (GetCamera())
                 {
-                    m_cb_pass_cpu.transform = m_world_grid->ComputeWorldMatrix(GetCamera()->GetTransform()) * m_cb_frame_cpu.view_projection_unjittered;
+                    m_cb_pass_cpu.transform = m_world_grid->ComputeWorldMatrix(GetCamera()->GetTransform());
                 }
                 PushPassConstants(cmd_list);
             }

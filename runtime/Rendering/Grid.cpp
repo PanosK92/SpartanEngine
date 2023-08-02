@@ -36,12 +36,12 @@ namespace Spartan
 {
     Grid::Grid()
     {
-        // Create vertices.
+        // create vertices
         vector<RHI_Vertex_PosCol> vertices;
         BuildGrid(&vertices);
         m_vertex_count = static_cast<uint32_t>(vertices.size());
 
-        // Create vertex buffer.
+        // create vertex buffer
         m_vertex_buffer = make_shared<RHI_VertexBuffer>(false, "grid");
         m_vertex_buffer->Create(vertices);
     }
@@ -77,7 +77,7 @@ namespace Spartan
                 const float alphaWidth  = 1.0f - static_cast<float>(Helper::Abs(j)) / static_cast<float>(halfSizeH);
                 const float alphaHeight = 1.0f - static_cast<float>(Helper::Abs(i)) / static_cast<float>(halfSizeW);
                 float alpha             = (alphaWidth + alphaHeight) * 0.5f;
-                alpha                   = Helper::Clamp(Helper::Pow(alpha, 10.0f), 0.0f, 1.0f);
+                alpha                   = Helper::Clamp(Helper::Pow(alpha, 15.0f), 0.0f, 1.0f);
 
                 // LINE 1
                 // Upper left.
