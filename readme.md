@@ -29,16 +29,16 @@ Livestreams [![Image1](https://raw.githubusercontent.com/PanosK92/SpartanEngine/
 - 128-byte push constant buffer for lightning fast GPU data transfer.
 - AMD FidelityFX suite for enhanced visuals and performance.
 - Bloom effect inspired by Resident Evil 2's RE Engine.
-- Unified deferred rendering with transparency (same render path and shaders).
+- Unified deferred rendering with transparency (BSDF with same render path and shaders).
 - Camera-controlled depth of field, motion blur and chromatic aberration.
 - Comprehensive debug rendering options.
-- Frustum culling for performance optimization.
-- Physically measured lighting (lumens).
+- Frustum culling.
+- Physical light units (intensity from lumens and color from kelvin).
+- Physically based camera.
 - GPU-based mip generation (single dispatch).
-- Physically based camera and BSDF.
 - Advanced shadow features with penumbra and colored translucency.
 - Screen space global illumination, reflections, and shadows.
-- Temporal anti-aliasing for smoother visuals.
+- Temporal anti-aliasing for smooth visuals.
 - Vulkan and DirectX 12 backends with universal HLSL shaders.
 - Volumetric lighting for atmospheric effects.
 #### System
