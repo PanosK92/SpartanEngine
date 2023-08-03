@@ -74,7 +74,7 @@ float get_focal_depth()
 float circle_of_confusion(float2 uv, float focus_distance)
 {
     float depth       = get_linear_depth(uv);
-    float focus_range = buffer_frame.camera_aperture * 0.4f;
+    float focus_range = buffer_frame.camera_aperture * 20.0f;
     float coc         = ((depth - focus_distance) / (focus_range + FLT_MIN)) * g_dof_bokeh_radius;
 
     return coc;
