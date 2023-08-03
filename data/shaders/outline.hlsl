@@ -29,13 +29,15 @@ Pixel_Pos mainVS(Vertex_PosUv input)
 
     input.position.w = 1.0f;
     output.position  = mul(input.position, buffer_pass.transform);
+    output.position  = mul(output.position, buffer_frame.view_projection_unjittered);
 
     return output;
 }
  
 float4 mainPS(Pixel_Pos input) : SV_Target
 {
-    return float4(0.0f, 0.0f, 1.0f, 1.0f);
+    // just a color
+    return pass_get_f4_value();
 }
 
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]

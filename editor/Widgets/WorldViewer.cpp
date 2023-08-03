@@ -65,14 +65,15 @@ namespace
                 // list box
                 static const char* items[] =
                 {
-                    "1. Empty.",
-                    "2. Pickable physics cube.",
-                    "3. Set of helmets.",
-                    "4. Rotating car on top of a quad.",
-                    "5. Height map generated terrain.",
-                    "6. The Sponza building found in Dubrovnik."
+                    "1. Empty",
+                    "2. Pickable physics cube",
+                    "3. Set of helmets",
+                    "4. Rotating car on top of a quad",
+                    "5. Height map generated terrain",
+                    "6. The Sponza building found in Dubrovnik",
+                    "7. Doom E1M1"
                 };
-                static int item_index = 3;
+                static int item_index = 2;
                 static int item_count = IM_ARRAYSIZE(items);
                 ImGui::PushItemWidth(450.0f * Spartan::Window::GetDpiScale());
                 ImGui::ListBox("##list_box", &item_index, items, item_count, item_count);
@@ -119,6 +120,14 @@ namespace
                             Spartan::World::CreateDefaultWorldSponza();
                         });
     
+                    }
+                    else if (item_index == 6)
+                    {
+                        Spartan::ThreadPool::AddTask([]()
+                            {
+                                Spartan::World::CreateDefaultWorldDoomE1M1();
+                            });
+
                     }
     
                     is_default_world_window_visible = false;
