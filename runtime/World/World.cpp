@@ -789,7 +789,7 @@ namespace Spartan
     {
         Vector3 camera_position = Vector3(-10.0f, 2.0f, 0.1385f);
         Vector3 camera_rotation = Vector3(0.0f, 90.0f, 0.0f);
-        create_default_world_common(false, camera_position, camera_rotation, LightIntensity::black_hole);
+        create_default_world_common(false, camera_position, camera_rotation, LightIntensity::black_hole, "project\\music\\jake_chudnow_olive.mp3");
 
         // Point light
         {
