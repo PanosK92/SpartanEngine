@@ -160,12 +160,9 @@ namespace Spartan
             Pass_PeformanceMetrics(cmd_list, rt_output);
         }
 
-        // if we are not in full screen mode (so in the editor), transition the
-        // render target to a readable state so it can be rendered within the viewport
-        if (!Window::IsFullScreen())
-        {
-            rt_output->SetLayout(RHI_Image_Layout::Shader_Read_Only_Optimal, cmd_list);
-        }
+        // transition the render target to a readable state so it can be rendered
+        // within the viewport or copied to the swap chain back buffer
+        rt_output->SetLayout(RHI_Image_Layout::Shader_Read_Only_Optimal, cmd_list);
     }
 
     void Renderer::Pass_ShadowMaps(RHI_CommandList* cmd_list, const bool is_transparent_pass)
@@ -1861,6 +1858,10 @@ namespace Spartan
             cmd_list->EndRenderPass();
             cmd_list->EndMarker();
         }
+
+        // lines below this point are drawn in world space
+        m_cb_pass_cpu.transform = Matrix::Identity;
+        PushPassConstants(cmd_list);
 
         // draw independent lines
         const bool draw_lines_depth_off = m_lines_index_depth_off != numeric_limits<uint32_t>::max();
