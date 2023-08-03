@@ -266,6 +266,7 @@ void Properties::ShowLight(shared_ptr<Light> light) const
             // kelvin
             ImGui::SameLine();
             ImGuiSp::draw_float_wrap("K", &temperature_kelvin, 0.3f, 1000.0f, 40000.0f);
+            ImGuiSp::tooltip("Temperature expressed in Kelvin");
         }
         // intensity
         {
@@ -288,7 +289,7 @@ void Properties::ShowLight(shared_ptr<Light> light) const
 
             ImGui::Text("Intensity");
 
-            // enum
+            // light types
             ImGui::SameLine(column_pos_x);
             uint32_t intensity_type_index = static_cast<uint32_t>(light->GetIntensity());
             if (ImGuiSp::combo_box("##light_intensity_type", intensity_types, &intensity_type_index))
@@ -296,10 +297,12 @@ void Properties::ShowLight(shared_ptr<Light> light) const
                 light->SetIntensity(static_cast<LightIntensity>(intensity_type_index));
                 intensity = light->GetIntensityLumens();
             }
+            ImGuiSp::tooltip("Common light types");
 
             // lumens
             ImGui::SameLine();
             ImGuiSp::draw_float_wrap("lm", &intensity, 1.0f, 5.0f, 120000.0f);
+            ImGuiSp::tooltip("Intensity expressed in lumens");
         }
 
         // Shadows
@@ -849,17 +852,17 @@ void Properties::ShowCamera(shared_ptr<Camera> camera) const
         // Aperture
         ImGui::SetCursorPosX(column_pos_x);
         ImGuiSp::draw_float_wrap("Aperture (f-stop)", &aperture, 0.01f, 0.01f, 150.0f);
-        ImGuiSp::tooltip("Aperture value in f-stop. Controls the amount of light, depth of field and chromatic aberration");
+        ImGuiSp::tooltip("Aperture value in f-stop, controls the amount of light, depth of field and chromatic aberration");
 
         // Shutter speed
         ImGui::SetCursorPosX(column_pos_x);
         ImGuiSp::draw_float_wrap("Shutter Speed (sec)", &shutter_speed, 0.0001f, 0.0f, 1.0f, "%.4f");
-        ImGuiSp::tooltip("Length of time for which the camera shutter is open. Controls the amount of motion blur.");
+        ImGuiSp::tooltip("Length of time for which the camera shutter is open, controls the amount of motion blur");
 
         // ISO
         ImGui::SetCursorPosX(column_pos_x);
         ImGuiSp::draw_float_wrap("ISO", &iso, 0.1f, 0.0f, 2000.0f);
-        ImGuiSp::tooltip("Sensitivity to light. Controls camera noise.");
+        ImGuiSp::tooltip("Sensitivity to light, controls camera noise");
 
         // Field of View
         ImGui::SetCursorPosX(column_pos_x);
