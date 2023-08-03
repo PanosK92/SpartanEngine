@@ -79,8 +79,8 @@ namespace Spartan
             const bool create_floor,
             const Math::Vector3& camera_position = Math::Vector3(-2.956f, 1.1474f, -2.9395f),
             const Math::Vector3& camera_rotation = Math::Vector3(15.9976f, 43.5998f, 0.0f),
-            const char* soundtrack_file_path     = "project\\music\\vangelis_cosmos_theme.mp3",
-            const LightIntensity sun_intensity   = LightIntensity::sky_sunlight_noon
+            const LightIntensity sun_intensity   = LightIntensity::sky_sunlight_noon,
+            const char* soundtrack_file_path     = "project\\music\\jake_chudnow_shona.mp3"
         )
         {
             // Environment
@@ -533,7 +533,7 @@ namespace Spartan
     {
         Vector3 camera_position = Vector3(-1.1131f, 1.3112f, -1.8209f);
         Vector3 camera_rotation = Vector3(14.1965f, 43.3965f, 0.0f);
-        create_default_world_common(true, camera_position, camera_rotation, "project\\music\\vangelis_pulstar.mp3", LightIntensity::black_hole);
+        create_default_world_common(true, camera_position, camera_rotation, LightIntensity::black_hole);
 
         // Point light
         {
@@ -571,7 +571,7 @@ namespace Spartan
     {
         Vector3 camera_position = Vector3(6.2f, 1.0f, -0.2f);
         Vector3 camera_rotation = Vector3(0.0f, -90.0f, 0.0f);
-        create_default_world_common(true, camera_position, camera_rotation, "project\\music\\isola_any_day.mp3", LightIntensity::sky_twilight);
+        create_default_world_common(true, camera_position, camera_rotation, LightIntensity::sky_twilight, "project\\music\\isola_any_day.mp3");
 
         // Point light - side of car
         {
@@ -789,7 +789,7 @@ namespace Spartan
     {
         Vector3 camera_position = Vector3(-10.0f, 2.0f, 0.1385f);
         Vector3 camera_rotation = Vector3(0.0f, 90.0f, 0.0f);
-        create_default_world_common(false, camera_position, camera_rotation, "project\\music\\vangelis_cosmos_theme.mp3", LightIntensity::black_hole);
+        create_default_world_common(false, camera_position, camera_rotation, LightIntensity::black_hole);
 
         // Point light
         {
