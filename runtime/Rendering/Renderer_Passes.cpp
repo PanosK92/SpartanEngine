@@ -2026,8 +2026,9 @@ namespace Spartan
                                     // Render
                                     cmd_list->BeginRenderPass();
                                     {
-                                        // Set uber buffer with entity transform
-                                        m_cb_pass_cpu.transform = entity_selected->GetTransform()->GetMatrix() * m_cb_frame_cpu.view_projection_unjittered;
+                                        // push draw data
+                                        m_cb_pass_cpu.set_f4_value(DEBUG_COLOR);
+                                        m_cb_pass_cpu.transform = entity_selected->GetTransform()->GetMatrix();
                                         PushPassConstants(cmd_list);
 
                                         cmd_list->SetBufferVertex(mesh->GetVertexBuffer());

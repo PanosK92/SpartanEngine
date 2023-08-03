@@ -1,0 +1,227 @@
+# MTL for doom.wad, map E1M1
+# Created by GZDoom Builder 2.3.0.2787
+
+newmtl BIGDOOR2
+Kd 1.0 1.0 1.0
+map_Kd D:\Downloads\DOOM_E1M1\BIGDOOR2.PNG
+
+newmtl BIGDOOR4
+Kd 1.0 1.0 1.0
+map_Kd D:\Downloads\DOOM_E1M1\BIGDOOR4.PNG
+
+newmtl BRNBIGC
+Kd 1.0 1.0 1.0
+map_Kd D:\Downloads\DOOM_E1M1\BRNBIGC.PNG
+
+newmtl BRNBIGL
+Kd 1.0 1.0 1.0
+map_Kd D:\Downloads\DOOM_E1M1\BRNBIGL.PNG
+
+newmtl BRNBIGR
+Kd 1.0 1.0 1.0
+map_Kd D:\Downloads\DOOM_E1M1\BRNBIGR.PNG
+
+newmtl BROWN1
+Kd 1.0 1.0 1.0
+map_Kd D:\Downloads\DOOM_E1M1\BROWN1.PNG
+
+newmtl BROWN144
+Kd 1.0 1.0 1.0
+map_Kd D:\Downloads\DOOM_E1M1\BROWN144.PNG
+
+newmtl BROWN96
+Kd 1.0 1.0 1.0
+map_Kd D:\Downloads\DOOM_E1M1\BROWN96.PNG
+
+newmtl BROWNGRN
+Kd 1.0 1.0 1.0
+map_Kd D:\Downloads\DOOM_E1M1\BROWNGRN.PNG
+
+newmtl COMPSPAN
+Kd 1.0 1.0 1.0
+map_Kd D:\Downloads\DOOM_E1M1\COMPSPAN.PNG
+
+newmtl COMPTALL
+Kd 1.0 1.0 1.0
+map_Kd D:\Downloads\DOOM_E1M1\COMPTALL.PNG
+
+newmtl COMPTILE
+Kd 1.0 1.0 1.0
+map_Kd D:\Downloads\DOOM_E1M1\COMPTILE.PNG
+
+newmtl COMPUTE2
+Kd 1.0 1.0 1.0
+map_Kd D:\Downloads\DOOM_E1M1\COMPUTE2.PNG
+
+newmtl COMPUTE3
+Kd 1.0 1.0 1.0
+map_Kd D:\Downloads\DOOM_E1M1\COMPUTE3.PNG
+
+newmtl DOOR3
+Kd 1.0 1.0 1.0
+map_Kd D:\Downloads\DOOM_E1M1\DOOR3.PNG
+
+newmtl DOORSTOP
+Kd 1.0 1.0 1.0
+map_Kd D:\Downloads\DOOM_E1M1\DOORSTOP.PNG
+
+newmtl DOORTRAK
+Kd 1.0 1.0 1.0
+map_Kd D:\Downloads\DOOM_E1M1\DOORTRAK.PNG
+
+newmtl EXITDOOR
+Kd 1.0 1.0 1.0
+map_Kd D:\Downloads\DOOM_E1M1\EXITDOOR.PNG
+
+newmtl EXITSIGN
+Kd 1.0 1.0 1.0
+map_Kd D:\Downloads\DOOM_E1M1\EXITSIGN.PNG
+
+newmtl LITE3
+Kd 1.0 1.0 1.0
+map_Kd D:\Downloads\DOOM_E1M1\LITE3.PNG
+
+newmtl NUKE24
+Kd 1.0 1.0 1.0
+map_Kd D:\Downloads\DOOM_E1M1\NUKE24.PNG
+
+newmtl PLANET1
+Kd 1.0 1.0 1.0
+map_Kd D:\Downloads\DOOM_E1M1\PLANET1.PNG
+
+newmtl SLADWALL
+Kd 1.0 1.0 1.0
+map_Kd D:\Downloads\DOOM_E1M1\SLADWALL.PNG
+
+newmtl STARG3
+Kd 1.0 1.0 1.0
+map_Kd D:\Downloads\DOOM_E1M1\STARG3.PNG
+
+newmtl STARGR1
+Kd 1.0 1.0 1.0
+map_Kd D:\Downloads\DOOM_E1M1\STARGR1.PNG
+
+newmtl STARTAN1
+Kd 1.0 1.0 1.0
+map_Kd D:\Downloads\DOOM_E1M1\STARTAN1.PNG
+
+newmtl STARTAN3
+Kd 1.0 1.0 1.0
+map_Kd D:\Downloads\DOOM_E1M1\STARTAN3.PNG
+
+newmtl STEP1
+Kd 1.0 1.0 1.0
+map_Kd D:\Downloads\DOOM_E1M1\STEP1.PNG
+
+newmtl STEP6
+Kd 1.0 1.0 1.0
+map_Kd D:\Downloads\DOOM_E1M1\STEP6.PNG
+
+newmtl SUPPORT2
+Kd 1.0 1.0 1.0
+map_Kd D:\Downloads\DOOM_E1M1\SUPPORT2.PNG
+
+newmtl SW1COMP
+Kd 1.0 1.0 1.0
+map_Kd D:\Downloads\DOOM_E1M1\SW1COMP.PNG
+
+newmtl SW1STRTN
+Kd 1.0 1.0 1.0
+map_Kd D:\Downloads\DOOM_E1M1\SW1STRTN.PNG
+
+newmtl TEKWALL1
+Kd 1.0 1.0 1.0
+map_Kd D:\Downloads\DOOM_E1M1\TEKWALL1.PNG
+
+newmtl TEKWALL4
+Kd 1.0 1.0 1.0
+map_Kd D:\Downloads\DOOM_E1M1\TEKWALL4.PNG
+
+newmtl CEIL3_5
+Kd 1.0 1.0 1.0
+map_Kd D:\Downloads\DOOM_E1M1\CEIL3_5.PNG
+
+newmtl CEIL5_1
+Kd 1.0 1.0 1.0
+map_Kd D:\Downloads\DOOM_E1M1\CEIL5_1.PNG
+
+newmtl CEIL5_2
+Kd 1.0 1.0 1.0
+map_Kd D:\Downloads\DOOM_E1M1\CEIL5_2.PNG
+
+newmtl F_SKY1
+Kd 1.0 1.0 1.0
+map_Kd D:\Downloads\DOOM_E1M1\F_SKY1.PNG
+
+newmtl FLAT14
+Kd 1.0 1.0 1.0
+map_Kd D:\Downloads\DOOM_E1M1\FLAT14.PNG
+
+newmtl FLAT18
+Kd 1.0 1.0 1.0
+map_Kd D:\Downloads\DOOM_E1M1\FLAT18.PNG
+
+newmtl FLAT20
+Kd 1.0 1.0 1.0
+map_Kd D:\Downloads\DOOM_E1M1\FLAT20.PNG
+
+newmtl FLAT23
+Kd 1.0 1.0 1.0
+map_Kd D:\Downloads\DOOM_E1M1\FLAT23.PNG
+
+newmtl FLAT5_5
+Kd 1.0 1.0 1.0
+map_Kd D:\Downloads\DOOM_E1M1\FLAT5_5.PNG
+
+newmtl FLOOR1_1
+Kd 1.0 1.0 1.0
+map_Kd D:\Downloads\DOOM_E1M1\FLOOR1_1.PNG
+
+newmtl FLOOR4_8
+Kd 1.0 1.0 1.0
+map_Kd D:\Downloads\DOOM_E1M1\FLOOR4_8.PNG
+
+newmtl FLOOR5_1
+Kd 1.0 1.0 1.0
+map_Kd D:\Downloads\DOOM_E1M1\FLOOR5_1.PNG
+
+newmtl FLOOR5_2
+Kd 1.0 1.0 1.0
+map_Kd D:\Downloads\DOOM_E1M1\FLOOR5_2.PNG
+
+newmtl FLOOR6_2
+Kd 1.0 1.0 1.0
+map_Kd D:\Downloads\DOOM_E1M1\FLOOR6_2.PNG
+
+newmtl FLOOR7_1
+Kd 1.0 1.0 1.0
+map_Kd D:\Downloads\DOOM_E1M1\FLOOR7_1.PNG
+
+newmtl FLOOR7_2
+Kd 1.0 1.0 1.0
+map_Kd D:\Downloads\DOOM_E1M1\FLOOR7_2.PNG
+
+newmtl NUKAGE3
+Kd 1.0 1.0 1.0
+map_Kd D:\Downloads\DOOM_E1M1\NUKAGE3.PNG
+
+newmtl STEP2
+Kd 1.0 1.0 1.0
+map_Kd D:\Downloads\DOOM_E1M1\STEP2.PNG
+
+newmtl TLITE6_1
+Kd 1.0 1.0 1.0
+map_Kd D:\Downloads\DOOM_E1M1\TLITE6_1.PNG
+
+newmtl TLITE6_4
+Kd 1.0 1.0 1.0
+map_Kd D:\Downloads\DOOM_E1M1\TLITE6_4.PNG
+
+newmtl TLITE6_5
+Kd 1.0 1.0 1.0
+map_Kd D:\Downloads\DOOM_E1M1\TLITE6_5.PNG
+
+newmtl TLITE6_6
+Kd 1.0 1.0 1.0
+map_Kd D:\Downloads\DOOM_E1M1\TLITE6_6.PNG
+

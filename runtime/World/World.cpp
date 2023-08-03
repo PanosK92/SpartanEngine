@@ -80,7 +80,8 @@ namespace Spartan
             const Math::Vector3& camera_position = Math::Vector3(-2.956f, 1.1474f, -2.9395f),
             const Math::Vector3& camera_rotation = Math::Vector3(15.9976f, 43.5998f, 0.0f),
             const LightIntensity sun_intensity   = LightIntensity::sky_sunlight_noon,
-            const char* soundtrack_file_path     = "project\\music\\jake_chudnow_shona.mp3"
+            const char* soundtrack_file_path     = "project\\music\\jake_chudnow_shona.mp3",
+            const bool shadows_enabled           = true
         )
         {
             // Environment
@@ -112,7 +113,7 @@ namespace Spartan
                 light->SetLightType(LightType::Directional);
                 light->SetColor(Color::light_sky_sunrise);
                 light->SetIntensity(sun_intensity);
-                light->SetShadowsEnabled(light->GetIntensityLumens() > 0.0f);
+                light->SetShadowsEnabled(shadows_enabled ? (light->GetIntensityLumens() > 0.0f) : false);
             }
 
             // Music
@@ -547,6 +548,7 @@ namespace Spartan
             light->SetIntensity(LightIntensity::bulb_500_watt);
         }
 
+        // Flight helmet
         if (m_default_model_helmet_flight = ResourceCache::Load<Mesh>("project\\models\\flight_helmet\\FlightHelmet.gltf"))
         {
             Entity* entity = m_default_model_helmet_flight->GetRootEntity();
@@ -555,11 +557,12 @@ namespace Spartan
             entity->GetTransform()->SetScale(Vector3(2.0f, 2.0f, 2.0f));
         }
 
+        // Damaged helmet
         if (m_default_model_helmet_damaged = ResourceCache::Load<Mesh>("project\\models\\damaged_helmet\\DamagedHelmet.gltf"))
         {
             Entity* entity = m_default_model_helmet_damaged->GetRootEntity();
             entity->SetObjectName("damaged_helmet");
-            entity->GetTransform()->SetPosition(Vector3(1.5f, 1.1377f, 0.0f));
+            entity->GetTransform()->SetPosition(Vector3(1.1713f, 0.4747f, -0.1711f));
             entity->GetTransform()->SetScale(Vector3(0.4343f, 0.4343f, 0.4343f));
         }
 
@@ -832,6 +835,25 @@ namespace Spartan
                 entity->GetTransform()->SetPosition(Vector3(0.0f, 0.06f, 0.0f));
                 entity->GetTransform()->SetScale(Vector3::One);
             }
+        }
+
+        // Start simulating (for the physics and the music to work)
+        Engine::SetFlag(EngineMode::Game);
+    }
+
+    void World::CreateDefaultWorldDoomE1M1()
+    {
+        Vector3 camera_position = Vector3(-134.9146f, 11.6170f, -31.7093f);
+        Vector3 camera_rotation = Vector3(0.0f, 90.0f, 0.0f);
+        create_default_world_common(true, camera_position, camera_rotation, LightIntensity::sky_sunlight_noon, "project\\music\\doom_e1m1.mp3", false);
+
+        // doom level
+        if (m_default_model_helmet_flight = ResourceCache::Load<Mesh>("project\\models\\doom_e1m1\\doom_E1M1.obj"))
+        {
+            Entity* entity = m_default_model_helmet_flight->GetRootEntity();
+            entity->SetObjectName("doom_e1m1");
+            entity->GetTransform()->SetPosition(Vector3(0.0f, 9.0f, -355.5300));
+            entity->GetTransform()->SetScale(Vector3(0.1f, 0.1f, 0.1f));
         }
 
         // Start simulating (for the physics and the music to work)
