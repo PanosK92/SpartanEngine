@@ -40,16 +40,15 @@ using namespace std;
 using namespace Spartan::Math;
 //============================
 
-// macros to work around the verboseness of some C++ concepts.
-#define thread_group_count_x(tex) static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex->GetWidth())  / thread_group_count))
-#define thread_group_count_y(tex) static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex->GetHeight()) / thread_group_count))
-
 namespace Spartan
 {
     namespace
     {
         mutex mutex_generate_mips;
-        static const float thread_group_count = 8.0f;
+
+        const float thread_group_count = 8.0f;
+        #define thread_group_count_x(tex) static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex->GetWidth())  / thread_group_count))
+        #define thread_group_count_y(tex) static_cast<uint32_t>(Math::Helper::Ceil(static_cast<float>(tex->GetHeight()) / thread_group_count))
     }
 
     void Renderer::SetGlobalShaderResources(RHI_CommandList* cmd_list)

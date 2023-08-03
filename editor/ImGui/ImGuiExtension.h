@@ -341,15 +341,16 @@ namespace ImGuiSp
     {
         static const uint32_t screen_edge_padding = 10;
         static bool needs_to_wrap                 = false;
+        ImGuiIO& imgui_io                         = ImGui::GetIO();
 
         // Wrap
         if (ImGui::IsMouseDragging(ImGuiMouseButton_Left))
         {
-            Spartan::Math::Vector2 position_cursor = Spartan::Input::GetMousePosition();
-            float position_left                    = static_cast<float>(screen_edge_padding);
-            float position_right                   = static_cast<float>(Spartan::Display::GetWidth() - screen_edge_padding);
-            bool is_on_right_screen_edge           = position_cursor.x >= position_right;
-            bool is_on_left_screen_edge            = position_cursor.x <= position_left;
+            ImVec2 position_cursor       = imgui_io.MousePos;
+            float position_left          = static_cast<float>(screen_edge_padding);
+            float position_right         = static_cast<float>(Spartan::Display::GetWidth() - screen_edge_padding);
+            bool is_on_right_screen_edge = position_cursor.x >= position_right;
+            bool is_on_left_screen_edge  = position_cursor.x <= position_left;
 
             if (is_on_right_screen_edge)
             {
@@ -364,13 +365,12 @@ namespace ImGuiSp
 
             if (needs_to_wrap)
             {
-                // Set mouse position
-                ImGuiIO& imgui_io        = ImGui::GetIO();
+                // set mouse position
                 imgui_io.MousePos        = position_cursor;
                 imgui_io.WantSetMousePos = true;
-                // Set an invalid previous position to eliminate big screen wrap delta.
-                // See ImGui::UpdateMouseInputs() for details.
-                imgui_io.MousePosPrev = position_cursor;
+
+                // prevent delta from being huge by invalidating the previous position
+                imgui_io.MousePosPrev = ImVec2(-FLT_MAX, -FLT_MAX);
 
                 needs_to_wrap = false;
             }
