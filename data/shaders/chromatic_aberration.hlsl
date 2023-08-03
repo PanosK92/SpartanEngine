@@ -23,17 +23,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 //====================
 
-static const float g_chromatic_aberration_intensity = 100.0f;
+// empirically chosen to match how much the lens effect is visible in real world images
+static const float g_chromatic_aberration_intensity = 5.0f;
 
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
-    // Out of bounds check
     if (any(int2(thread_id.xy) >= pass_get_resolution_out()))
         return;
 
     const float2 uv    = (thread_id.xy + 0.5f) / pass_get_resolution_out();
-    float camera_error = 1.0f / buffer_frame.camera_aperture;
+    float camera_error = sqrt(1.0f / buffer_frame.camera_aperture);
     float intensity    = camera_error * g_chromatic_aberration_intensity;
     float2 shift       = float2(intensity, -intensity);
 
