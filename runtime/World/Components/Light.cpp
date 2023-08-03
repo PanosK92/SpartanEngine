@@ -272,22 +272,25 @@ namespace Spartan
     {
         SP_ASSERT(camera != nullptr);
 
-        // Convert lumens to power (in watts) assuming all light is at 555nm.
-        float power = m_intensity_lumens / 683.0f;
+        // This magic values are chosen empirically based on how the lights
+        // types in the LightIntensity enum should look in the engine
+        const float magic_value_a = 50.0f;
+        const float magic_value_b = 0.025f;
 
-        // For point lights and spot lights, intensity should fall off with the square of the distance,
+        // convert lumens to power (in watts) assuming all light is at 555nm
+        float power_watts = (m_intensity_lumens / 683.0f) * magic_value_a;
+
+        // for point lights and spot lights, intensity should fall off with the square of the distance,
         // so we don't need to modify the power. For directional lights, intensity should be constant,
-        // so we need to multiply the power by the area over which the light is spread.
-        // This is pretty much a magic number. It's chosen to approximately match the point light falloff.
+        // so we need to multiply the power by the area over which the light is spread
         if (m_light_type == LightType::Directional)
         {
-            float area  = 1.0f; // world depended
-            power      *= area;
+            float area  = magic_value_b;
+            power_watts *= area;
         }
 
-        // The power is now in watts.
-        // We can multiply by the camera's exposure to get the final intensity.
-        return power * camera->GetExposure();
+        // watts can be multiplied by the camera's exposure to get the final intensity
+        return power_watts * camera->GetExposure();
     }
 
 
@@ -315,7 +318,7 @@ namespace Spartan
 
     void Light::SetRange(float range)
     {
-        m_range = Helper::Clamp(range, 0.0f, std::numeric_limits<float>::max());
+        m_range    = Helper::Clamp(range, 0.0f, std::numeric_limits<float>::max());
         m_is_dirty = true;
     }
 

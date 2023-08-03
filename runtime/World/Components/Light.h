@@ -92,12 +92,12 @@ namespace Spartan
         void Deserialize(FileStream* stream) override;
         //============================================
 
-        const auto GetLightType() const { return m_light_type; }
+        const LightType GetLightType() const { return m_light_type; }
         void SetLightType(LightType type);
 
+        // Color
         void SetTemperature(const float temperature_kelvin);
         float GetTemperature() const { return m_temperature_kelvin; }
-
         void SetColor(const Color& rgb);
         const Color& GetColor() const { return m_color_rgb; }
 

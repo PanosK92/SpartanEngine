@@ -544,7 +544,7 @@ namespace Spartan
             shared_ptr<Light> light = entity->AddComponent<Light>();
             light->SetLightType(LightType::Point);
             light->SetColor(Color::light_light_bulb);
-            light->SetIntensity(LightIntensity::bulb_stadium);
+            light->SetIntensity(LightIntensity::bulb_500_watt);
         }
 
         if (m_default_model_helmet_flight = ResourceCache::Load<Mesh>("project\\models\\flight_helmet\\FlightHelmet.gltf"))
@@ -573,28 +573,16 @@ namespace Spartan
         Vector3 camera_rotation = Vector3(0.0f, -90.0f, 0.0f);
         create_default_world_common(true, camera_position, camera_rotation, "project\\music\\isola_any_day.mp3", LightIntensity::sky_twilight);
 
-        // Point light - top of car
-        {
-            shared_ptr<Entity> entity = CreateEntity();
-            entity->SetObjectName("light_point_top");
-            entity->GetTransform()->SetPosition(Vector3(0.0f, 4.5f, 0.0f));
-
-            shared_ptr<Light> light = entity->AddComponent<Light>();
-            light->SetLightType(LightType::Point);
-            light->SetColor(Color::light_fluorescent_tube_light);
-            light->SetIntensity(LightIntensity::bulb_500_watt);
-        }
-
         // Point light - side of car
         {
             shared_ptr<Entity> entity = CreateEntity();
             entity->SetObjectName("light_point_side");
-            entity->GetTransform()->SetPosition(Vector3(4.4f, 1.3f, 1.0f));
+            entity->GetTransform()->SetPosition(Vector3(4.0f, 2.5, 3.0f));
 
             shared_ptr<Light> light = entity->AddComponent<Light>();
             light->SetLightType(LightType::Point);
             light->SetColor(Color::light_photo_flash);
-            light->SetIntensity(LightIntensity::bulb_stadium);
+            light->SetIntensity(LightIntensity::bulb_500_watt);
         }
 
         // Environment
@@ -813,7 +801,7 @@ namespace Spartan
             light->SetLightType(LightType::Point);
             light->SetColor(Color::light_light_bulb);
             light->SetRange(14.960f);
-            light->SetIntensity(LightIntensity::bulb_stadium);
+            light->SetIntensity(LightIntensity::bulb_500_watt);
         }
 
         // 3D model - Sponza
