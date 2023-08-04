@@ -170,6 +170,7 @@ Editor::Editor()
         io.ConfigFlags                  |= ImGuiConfigFlags_NavEnableKeyboard;
         io.ConfigFlags                  |= ImGuiConfigFlags_DockingEnable;
         io.ConfigFlags                  |= ImGuiConfigFlags_ViewportsEnable;
+        io.ConfigFlags                  |= ImGuiConfigFlags_NoMouseCursorChange; // cursor visiblity is handled by the engine
         io.ConfigWindowsResizeFromEdges = true;
         io.ConfigViewportsNoTaskBarIcon = true;
         io.ConfigViewportsNoDecoration  = true; // aka borderless but with ImGui min, max and close buttons
