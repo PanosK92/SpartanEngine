@@ -44,16 +44,16 @@ Viewport::Viewport(Editor* editor) : Widget(editor)
 
 void Viewport::OnTickVisible()
 {
-    // Get size
+    // get viewport size
     uint32_t width  = static_cast<uint32_t>(ImGui::GetWindowContentRegionMax().x - ImGui::GetWindowContentRegionMin().x);
     uint32_t height = static_cast<uint32_t>(ImGui::GetWindowContentRegionMax().y - ImGui::GetWindowContentRegionMin().y);
 
-    // Update engine's viewport.
+    // update engine's viewport
     static bool first_frame         = true;
     static bool resolutions_set     = false;
     static uint32_t width_previous  = 0;
     static uint32_t height_previous = 0;
-    if (!first_frame) // during the first frame the viewport is not yet initialized (or it's size will be something weird)
+    if (!first_frame) // during the first frame the viewport is not yet initialized (it's size will be something weird)
     {
         if (width_previous != width || height_previous != height)
         {
@@ -79,25 +79,25 @@ void Viewport::OnTickVisible()
     }
     first_frame = false;
 
-    // Let the input system know about the position of this viewport within the editor.
-    // This will allow the system to properly calculate a relative mouse position.
+    // let the input system know about the position of this viewport within the editor
+    // this will allow the system to properly calculate a relative mouse position
     Vector2 offset = ImGui::GetCursorPos();
     offset.y += 34; // TODO: this is probably the tab bar height, find a way to get it properly
     Input::SetEditorViewportOffset(offset);
 
-    // Draw the image after a potential resolution change call has been made
+    // draw the image after a potential resolution change call has been made
     ImGuiSp::image(Renderer::GetFrameTexture(), ImVec2(static_cast<float>(width), static_cast<float>(height)));
 
-    // Let the input system know if the mouse is within the viewport
+    // let the input system know if the mouse is within the viewport
     Input::SetMouseIsInViewport(ImGui::IsItemHovered());
 
-    // Handle model drop
+    // handle model drop
     if (auto payload = ImGuiSp::receive_drag_drop_payload(ImGuiSp::DragPayloadType::Model))
     {
         m_editor->GetWidget<AssetBrowser>()->ShowMeshImportDialog(get<const char*>(payload->data));
     }
 
-    // Mouse picking
+    // mouse picking
     if (ImGui::IsMouseClicked(0) && ImGui::IsItemHovered() && ImGui::TransformGizmo::allow_picking())
     {
         if (shared_ptr<Camera> camera = Renderer::GetCamera())
@@ -107,7 +107,7 @@ void Viewport::OnTickVisible()
         }
     }
 
-    // Entity transform gizmo (will only show if an entity has been picked)
+    // entity transform gizmo (will only show if an entity has been picked)
     if (Renderer::GetOption<bool>(Spartan::Renderer_Option::Debug_TransformHandle))
     {
         ImGui::TransformGizmo::tick();

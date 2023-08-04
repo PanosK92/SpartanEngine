@@ -101,9 +101,9 @@ namespace Spartan
         static void OnEventController(void* event_controller);
 
         // Keys
-        static bool GetKey(const KeyCode key);     // Returns true while the button identified by KeyCode is held down.
-        static bool GetKeyDown(const KeyCode key); // Returns true during the frame the user pressed down the button identified by KeyCode.
-        static bool GetKeyUp(const KeyCode key);   // Returns true the first frame the user releases the button identified by KeyCode.
+        static bool GetKey(const KeyCode key);     // Returns true while a button is held down
+        static bool GetKeyDown(const KeyCode key); // Returns true during the frame the user pressed down the button
+        static bool GetKeyUp(const KeyCode key);   // Returns true during the frame the user releases the button
 
         // Mouse
         static void SetMouseCursorVisible(const bool visible);
