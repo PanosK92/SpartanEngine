@@ -60,13 +60,20 @@ namespace Spartan
             // clone all the components
             for (shared_ptr<Component> component_original : entity->GetAllComponents())
             {
-                // component
-                shared_ptr<Component> component_clone = clone->AddComponent(component_original->GetType());
+                /*
+                 * TODO: Clone() requires ownership and hierarchy refactor.
+                 * TEMP: 'if' block prevents crash on Copy->Paste Entity through WorldViewer.
+                 * Mesh defaults to 'default_cube'.
+                 */
+                 if (component_original !=nullptr)
+                 {
+                    // component
+                    shared_ptr<Component> component_clone = clone->AddComponent(component_original->GetType());
 
-                // component's properties
-                component_clone->SetAttributes(component_original->GetAttributes());
+                    // component's properties
+                    component_clone->SetAttributes(component_original->GetAttributes());
+                }
             }
-
             return clone;
         };
 
