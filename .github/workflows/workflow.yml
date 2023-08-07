@@ -28,12 +28,12 @@ jobs:
         run: '"%msbuild_path%\MSBuild.exe" /p:Platform=Windows /p:Configuration=Release /m spartan.sln'
         
       - name: Create artifact
-        if: matrix.api != 'd3d12'
+        if: github.event_name != 'pull_request' && matrix.api != 'd3d12'
         shell: cmd
         run: 'build_scripts\package_artifact.bat ${{ matrix.api }}'
       
       - name: Upload artifact
-        if: matrix.api != 'd3d12'
+        if: github.event_name != 'pull_request' && matrix.api != 'd3d12'
         uses: actions/upload-artifact@v2
         with:
           name: build_${{ matrix.api }}
