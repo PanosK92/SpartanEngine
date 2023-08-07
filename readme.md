@@ -70,5 +70,6 @@ Livestreams [![Image1](https://raw.githubusercontent.com/PanosK92/SpartanEngine/
 
 # Wiki
 Don't forget that there is a [wiki](https://github.com/PanosK92/SpartanEngine/wiki) that can help answer some of your questions. Here are some of it's contents:
-- [How to compile](https://github.com/PanosK92/SpartanEngine/wiki/How-to-compile) 
-- [How to contribute](https://github.com/PanosK92/SpartanEngine/wiki/How-to-contribute)
+- [Compiling](https://github.com/PanosK92/SpartanEngine/wiki/Compiling) 
+- [Contributing](https://github.com/PanosK92/SpartanEngine/wiki/Contributing)
+- [Perks of a contributor](https://github.com/PanosK92/SpartanEngine/wiki/Perks-of-a-contributor)
