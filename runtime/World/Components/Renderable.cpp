@@ -162,6 +162,15 @@ namespace Spartan
         m_mesh->GetGeometry(m_geometry_index_offset, m_geometry_index_count, m_geometry_vertex_offset, m_geometry_vertex_count, indices, vertices);
     }
 
+    shared_ptr<Mesh> Renderable::GetMeshSptr() const
+    {
+        SP_ASSERT(m_mesh != nullptr);
+
+        shared_ptr<Mesh> sMesh(m_mesh);
+
+        return sMesh;
+    }
+
     const BoundingBox& Renderable::GetAabb()
     {
         // Updated if dirty
@@ -172,6 +181,13 @@ namespace Spartan
         }
 
         return m_aabb;
+    }
+
+    void Renderable::SetMesh(Mesh* mesh)
+    {
+        SP_ASSERT(mesh != nullptr);
+
+        m_mesh = mesh;
     }
 
     // All functions (set/load) resolve to this
