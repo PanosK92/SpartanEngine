@@ -1159,6 +1159,8 @@ namespace Spartan
 
     void RHI_Device::QueuePresent(void* swapchain, uint32_t* image_index, vector<RHI_Semaphore*>& wait_semaphores)
     {
+        lock_guard<mutex> lock(queues::mutex_queue);
+
         array<VkSemaphore, 3> vk_wait_semaphores = { nullptr, nullptr, nullptr };
 
         // Get semaphore Vulkan resource
@@ -1188,9 +1190,9 @@ namespace Spartan
 
     void RHI_Device::QueueSubmit(const RHI_Queue_Type type, const uint32_t wait_flags, void* cmd_buffer, RHI_Semaphore* wait_semaphore /*= nullptr*/, RHI_Semaphore* signal_semaphore /*= nullptr*/, RHI_Fence* signal_fence /*= nullptr*/)
     {
-        SP_ASSERT_MSG(cmd_buffer != nullptr, "Invalid command buffer");
-
         lock_guard<mutex> lock(queues::mutex_queue);
+
+        SP_ASSERT_MSG(cmd_buffer != nullptr, "Invalid command buffer");
 
         // Validate semaphores
         if (wait_semaphore)   SP_ASSERT_MSG(wait_semaphore->GetStateCpu()   != RHI_Sync_State::Idle,      "Wait semaphore is in an idle state and will never be signaled");
@@ -1228,6 +1230,7 @@ namespace Spartan
     void RHI_Device::QueueWait(const RHI_Queue_Type type)
     {
         lock_guard<mutex> lock(queues::mutex_queue);
+
         SP_VK_ASSERT_MSG(vkQueueWaitIdle(static_cast<VkQueue>(GetQueue(type))), "Failed to wait for queue");
     }
 
