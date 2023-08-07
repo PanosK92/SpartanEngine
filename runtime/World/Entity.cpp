@@ -37,6 +37,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "Components/Terrain.h"
 #include "Components/ReflectionProbe.h"
 #include "../IO/FileStream.h"
+#include "../Rendering/Mesh.h"
 //=====================================
 
 //= NAMESPACES =====
@@ -61,17 +62,31 @@ namespace Spartan
             for (shared_ptr<Component> component_original : entity->GetAllComponents())
             {
                 /*
-                 * TODO: Clone() requires ownership and hierarchy refactor.
-                 * TEMP: 'if' block prevents crash on Copy->Paste Entity through WorldViewer.
-                 * Mesh defaults to 'default_cube'.
+                 * DIRTY FIX: 'if' block prevents crash on Copy->Paste Entity through WorldViewer.
+                 * Mesh defaults Renderer::GetStandardMesh(Cube).
                  */
-                 if (component_original !=nullptr)
-                 {
-                    // component
-                    shared_ptr<Component> component_clone = clone->AddComponent(component_original->GetType());
+                if (component_original !=nullptr)
+                {
+                   // component
+                   shared_ptr<Component> component_clone = clone->AddComponent(component_original->GetType());
 
-                    // component's properties
-                    component_clone->SetAttributes(component_original->GetAttributes());
+                   if (component_original->GetType() == ComponentType::Renderable)
+                   {
+                       shared_ptr<Renderable> renderable_component = std::dynamic_pointer_cast<Renderable>(component_original);
+                       shared_ptr<Renderable> renderable_component_clone = std::dynamic_pointer_cast<Renderable>(component_clone);
+
+                       renderable_component_clone->SetAttributes(renderable_component->GetAttributes());
+
+                       Mesh* mesh_clone = renderable_component->GetMesh();
+                       SP_LOG_INFO("Renderable component's Mesh: %s", mesh_clone->GetObjectName().c_str());
+                       renderable_component_clone->SetMesh(mesh_clone);
+                   }
+                   else
+                   {
+                       SP_LOG_INFO("Cloned component type: %d", component_original->GetType());
+                       // component's properties
+                       component_clone->SetAttributes(component_original->GetAttributes());
+                   }
                 }
             }
             return clone;
