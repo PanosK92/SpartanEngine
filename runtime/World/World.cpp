@@ -852,7 +852,7 @@ namespace Spartan
         {
             Entity* entity = m_default_model_helmet_flight->GetRootEntity();
             entity->SetObjectName("doom_e1m1");
-            entity->GetTransform()->SetPosition(Vector3(0.0f, 9.0f, -355.5300));
+            entity->GetTransform()->SetPosition(Vector3(0.0f, 9.0f, -355.5300f));
             entity->GetTransform()->SetScale(Vector3(0.1f, 0.1f, 0.1f));
         }
 
