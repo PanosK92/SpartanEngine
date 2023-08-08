@@ -165,7 +165,7 @@ namespace Spartan
     const BoundingBox& Renderable::GetAabb()
     {
         // Updated if dirty
-        if (m_last_transform != GetTransform()->GetMatrix() || !m_aabb.Defined())
+        if (m_last_transform != GetTransform()->GetMatrix() || m_aabb == BoundingBox::Undefined)
         {
             m_aabb = m_bounding_box.Transform(GetTransform()->GetMatrix());
             m_last_transform = GetTransform()->GetMatrix();

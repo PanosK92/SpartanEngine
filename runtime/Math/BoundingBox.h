@@ -75,13 +75,15 @@ namespace Spartan
             // Merge with another bounding box
             void Merge(const BoundingBox& box);
 
+            bool operator==(const BoundingBox& other) const
+            {
+                return GetMin() == other.GetMin() && GetMax() == other.GetMax();
+            }
+
             const Vector3& GetMin() const { return m_min; }
             const Vector3& GetMax() const { return m_max; }
 
-            void Undefine()      { m_min = Vector3::InfinityNeg; m_max = Vector3::Infinity; }
-            bool Defined() const { return m_min.x != INFINITY; }
-
-            static const BoundingBox Zero;
+            static const BoundingBox Undefined;
 
         private:
             Vector3 m_min;

@@ -26,7 +26,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan::Math
 {
-    const BoundingBox BoundingBox::Zero(Vector3::Zero, Vector3::Zero);
+    const BoundingBox BoundingBox::Undefined(Vector3::Infinity, Vector3::InfinityNeg);
 
     BoundingBox::BoundingBox()
     {

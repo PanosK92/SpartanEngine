@@ -38,7 +38,7 @@ namespace Spartan::Math
     float Ray::HitDistance(const BoundingBox& box) const
     {
         // If undefined, no hit (infinite distance)
-        if (!box.Defined())
+        if (box == BoundingBox::Undefined)
             return Helper::INFINITY_;
         
         // Check for ray origin being inside the box
