@@ -67,14 +67,9 @@ namespace Spartan
         Renderer_StandardMesh GetGeometryType()   const { return m_geometry_type; }
         const std::string& GetGeometryName()      const { return m_geometry_name; }
         Mesh* GetMesh()                           const { return m_mesh; }
-        std::shared_ptr<Mesh> GetMeshSptr()       const;
         const Math::BoundingBox& GetBoundingBox() const { return m_bounding_box; }
         const Math::BoundingBox& GetAabb();
         void Clear();
-
-        //= MESH ========================================================================
-        // Sets a mesh from memory (adds it to the resource cache by default)
-        void SetMesh(Mesh* mesh);
 
         //= MATERIAL ====================================================================
         // Sets a material from memory (adds it to the resource cache by default)
