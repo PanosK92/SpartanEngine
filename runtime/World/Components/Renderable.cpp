@@ -50,7 +50,7 @@ namespace Spartan
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometry_name,                string);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_mesh,                         Mesh*);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_bounding_box,                 BoundingBox);
-        SP_REGISTER_ATTRIBUTE_GET_SET(Renderer_StandardMesh, SetGeometry, Renderer_StandardMesh);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometry_type,                Renderer_StandardMesh);
     }
 
     Renderable::~Renderable()
