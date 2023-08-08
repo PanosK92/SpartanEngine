@@ -40,6 +40,7 @@ jobs:
           path: build_${{ matrix.api }}.7z
 
   release:
+    if: github.event_name != 'pull_request'
     runs-on: "ubuntu-latest"
     needs:
       - build
@@ -56,7 +57,6 @@ jobs:
           path: build_vulkan.7z
       
       - name: Publish release
-        if: github.event_name != 'pull_request'
         uses: "marvinpinto/action-automatic-releases@v1.2.1"
         with:
           repo_token: "${{ secrets.GITHUB_TOKEN }}"
