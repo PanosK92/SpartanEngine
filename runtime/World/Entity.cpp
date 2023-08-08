@@ -62,31 +62,40 @@ namespace Spartan
             for (shared_ptr<Component> component_original : entity->GetAllComponents())
             {
                 /*
-                 * DIRTY FIX: 'if' block prevents crash on Copy->Paste Entity through WorldViewer.
-                 * Mesh defaults Renderer::GetStandardMesh(Cube).
+                 * TODO:
+                 * Transfer handling Mesh clone of Renderable component functionality to Renderable class. 
+                 * Currently this 'if' block prevents Mesh defaulting to Renderer::GetStandardMesh(Cube).
                  */
                 if (component_original !=nullptr)
                 {
-                   // component
-                   shared_ptr<Component> component_clone = clone->AddComponent(component_original->GetType());
+                    // component
+                    shared_ptr<Component> component_clone = clone->AddComponent(component_original->GetType());
 
-                   if (component_original->GetType() == ComponentType::Renderable)
-                   {
-                       shared_ptr<Renderable> renderable_component = std::dynamic_pointer_cast<Renderable>(component_original);
-                       shared_ptr<Renderable> renderable_component_clone = std::dynamic_pointer_cast<Renderable>(component_clone);
+                    if (component_original->GetType() == ComponentType::Renderable)
+                    {
+                        shared_ptr<Renderable> renderable_component = std::dynamic_pointer_cast<Renderable>(component_original);
+                        shared_ptr<Renderable> renderable_component_clone = std::dynamic_pointer_cast<Renderable>(component_clone);
 
-                       renderable_component_clone->SetAttributes(renderable_component->GetAttributes());
+                        auto vc          = renderable_component->GetVertexCount();
+                        auto vo          = renderable_component->GetVertexOffset();
+                        auto gn          = renderable_component->GetGeometryName();
+                        auto gt          = renderable_component->GetGeometryType();
+                        auto aabb        = renderable_component->GetAabb();
+                        auto bb          = renderable_component->GetBoundingBox();
+                        auto ic          = renderable_component->GetIndexCount();
+                        auto io          = renderable_component->GetIndexOffset();
+                        Mesh* mesh_clone = renderable_component->GetMesh();
 
-                       Mesh* mesh_clone = renderable_component->GetMesh();
-                       SP_LOG_INFO("Renderable component's Mesh: %s", mesh_clone->GetObjectName().c_str());
-                       renderable_component_clone->SetMesh(mesh_clone);
-                   }
-                   else
-                   {
-                       SP_LOG_INFO("Cloned component type: %d", component_original->GetType());
-                       // component's properties
-                       component_clone->SetAttributes(component_original->GetAttributes());
-                   }
+                        // renderable component's properties
+                        renderable_component_clone->SetAttributes(renderable_component->GetAttributes());
+                        renderable_component_clone->SetGeometry(gn, io, ic, vo, vc, bb, mesh_clone);
+                    }
+                    else
+                    {
+                        SP_LOG_INFO("Cloned component type: %d", component_original->GetType());
+                        // component's properties
+                        component_clone->SetAttributes(component_original->GetAttributes());
+                    }
                 }
             }
             return clone;
