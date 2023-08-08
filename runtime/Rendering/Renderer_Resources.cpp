@@ -63,7 +63,7 @@ namespace Spartan
 
         // asset resources
         array<shared_ptr<RHI_Texture>, 10> m_standard_textures;
-        array<shared_ptr<Mesh>, 5>         m_standard_meshes;
+        array<shared_ptr<Mesh>, 6>         m_standard_meshes;
     }
 
     void Renderer::CreateConstantBuffers()
@@ -464,27 +464,27 @@ namespace Spartan
             if (type == Renderer_MeshType::Cube)
             {
                 Geometry::CreateCube(&vertices, &indices);
-                mesh->SetResourceFilePath(project_directory + "standard_mesh_cube" + EXTENSION_MODEL);
+                mesh->SetResourceFilePath(project_directory + "standard_cube" + EXTENSION_MODEL);
             }
             else if (type == Renderer_MeshType::Quad)
             {
                 Geometry::CreateQuad(&vertices, &indices);
-                mesh->SetResourceFilePath(project_directory + "standard_mesh_quad" + EXTENSION_MODEL);
+                mesh->SetResourceFilePath(project_directory + "standard_quad" + EXTENSION_MODEL);
             }
             else if (type == Renderer_MeshType::Sphere)
             {
                 Geometry::CreateSphere(&vertices, &indices);
-                mesh->SetResourceFilePath(project_directory + "standard_mesh_sphere" + EXTENSION_MODEL);
+                mesh->SetResourceFilePath(project_directory + "standard_sphere" + EXTENSION_MODEL);
             }
             else if (type == Renderer_MeshType::Cylinder)
             {
                 Geometry::CreateCylinder(&vertices, &indices);
-                mesh->SetResourceFilePath(project_directory + "standard_mesh_cylinder" + EXTENSION_MODEL);
+                mesh->SetResourceFilePath(project_directory + "standard_cylinder" + EXTENSION_MODEL);
             }
             else if (type == Renderer_MeshType::Cone)
             {
                 Geometry::CreateCone(&vertices, &indices);
-                mesh->SetResourceFilePath(project_directory + "standard_mesh_cone" + EXTENSION_MODEL);
+                mesh->SetResourceFilePath(project_directory + "standard_cone" + EXTENSION_MODEL);
             }
 
             mesh->AddIndices(indices);

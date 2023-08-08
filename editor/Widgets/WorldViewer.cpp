@@ -637,7 +637,7 @@ void WorldViewer::ActionEntityCreateCube()
 {
     auto entity = ActionEntityCreateEmpty();
     auto renderable = entity->AddComponent<Spartan::Renderable>();
-    renderable->SetGeometry(Spartan::Renderer_MeshType::Cube);
+    renderable->SetGeometry(Spartan::Renderer::GetStandardMesh(Spartan::Renderer_MeshType::Cube).get());
     renderable->SetDefaultMaterial();
     entity->SetObjectName("Cube");
 }
@@ -646,7 +646,7 @@ void WorldViewer::ActionEntityCreateQuad()
 {
     auto entity = ActionEntityCreateEmpty();
     auto renderable = entity->AddComponent<Spartan::Renderable>();
-    renderable->SetGeometry(Spartan::Renderer_MeshType::Quad);
+    renderable->SetGeometry(Spartan::Renderer::GetStandardMesh(Spartan::Renderer_MeshType::Quad).get());
     renderable->SetDefaultMaterial();
     entity->SetObjectName("Quad");
 }
@@ -655,7 +655,7 @@ void WorldViewer::ActionEntityCreateSphere()
 {
     auto entity = ActionEntityCreateEmpty();
     auto renderable = entity->AddComponent<Spartan::Renderable>();
-    renderable->SetGeometry(Spartan::Renderer_MeshType::Sphere);
+    renderable->SetGeometry(Spartan::Renderer::GetStandardMesh(Spartan::Renderer_MeshType::Sphere).get());
     renderable->SetDefaultMaterial();
     entity->SetObjectName("Sphere");
 }
@@ -664,7 +664,7 @@ void WorldViewer::ActionEntityCreateCylinder()
 {
     auto entity = ActionEntityCreateEmpty();
     auto renderable = entity->AddComponent<Spartan::Renderable>();
-    renderable->SetGeometry(Spartan::Renderer_MeshType::Cylinder);
+    renderable->SetGeometry(Spartan::Renderer::GetStandardMesh(Spartan::Renderer_MeshType::Cylinder).get());
     renderable->SetDefaultMaterial();
     entity->SetObjectName("Cylinder");
 }
@@ -673,7 +673,7 @@ void WorldViewer::ActionEntityCreateCone()
 {
     auto entity = ActionEntityCreateEmpty();
     auto renderable = entity->AddComponent<Spartan::Renderable>();
-    renderable->SetGeometry(Spartan::Renderer_MeshType::Cone);
+    renderable->SetGeometry(Spartan::Renderer::GetStandardMesh(Spartan::Renderer_MeshType::Cone).get());
     renderable->SetDefaultMaterial();
     entity->SetObjectName("Cone");
 }
