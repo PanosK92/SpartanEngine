@@ -83,7 +83,7 @@ namespace Spartan
 
         // Defines the are within which all rendered objects will received parallax corrected cubemap reflections.
         Math::Vector3 m_extents  = Math::Vector3(4.0f, 2.0f, 4.0f);
-        Math::BoundingBox m_aabb = Math::BoundingBox::Zero;
+        Math::BoundingBox m_aabb = Math::BoundingBox::Undefined;
 
         // How often should the reflection update.
         uint32_t m_update_interval_frames = 0;
