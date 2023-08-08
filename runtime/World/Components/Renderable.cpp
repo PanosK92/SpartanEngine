@@ -50,7 +50,7 @@ namespace Spartan
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometry_name,                string);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_mesh,                         Mesh*);
         SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_bounding_box,                 BoundingBox);
-        SP_REGISTER_ATTRIBUTE_GET_SET(Renderer_StandardMesh, SetGeometry, Renderer_StandardMesh);
+        SP_REGISTER_ATTRIBUTE_GET_SET(Renderer_MeshType, SetGeometry, Renderer_MeshType);
     }
 
     Renderable::~Renderable()
@@ -81,7 +81,7 @@ namespace Spartan
     void Renderable::Deserialize(FileStream* stream)
     {
         // Geometry
-        m_geometry_type          = static_cast<Renderer_StandardMesh>(stream->ReadAs<uint32_t>());
+        m_geometry_type          = static_cast<Renderer_MeshType>(stream->ReadAs<uint32_t>());
         m_geometry_index_offset  = stream->ReadAs<uint32_t>();
         m_geometry_index_count   = stream->ReadAs<uint32_t>();
         m_geometry_vertex_offset = stream->ReadAs<uint32_t>();
@@ -92,7 +92,7 @@ namespace Spartan
         m_mesh = ResourceCache::GetByName<Mesh>(model_name).get();
 
         // If it was a default mesh, we have to reconstruct it
-        if (m_geometry_type != Renderer_StandardMesh::Custom)
+        if (m_geometry_type != Renderer_MeshType::Custom)
         {
             SetGeometry(m_geometry_type);
         }
@@ -131,11 +131,11 @@ namespace Spartan
         m_mesh                   = mesh;
     }
 
-    void Renderable::SetGeometry(const Renderer_StandardMesh type)
+    void Renderable::SetGeometry(const Renderer_MeshType type)
     {
         m_geometry_type = type;
 
-        if (type != Renderer_StandardMesh::Custom)
+        if (type != Renderer_MeshType::Custom)
         {
             shared_ptr<Mesh> mesh = Renderer::GetStandardMesh(type);
 

@@ -278,8 +278,9 @@ namespace Spartan
         Gizmo_audio_source
     };
 
-    enum class Renderer_StandardMesh
+    enum class Renderer_MeshType
     {
+        NotAssigned,
         Cube,
         Quad,
         Sphere,

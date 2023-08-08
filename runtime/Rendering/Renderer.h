@@ -131,7 +131,7 @@ namespace Spartan
         static std::shared_ptr<RHI_ConstantBuffer> GetConstantBuffer(const Renderer_ConstantBuffer type);
         static std::shared_ptr<RHI_StructuredBuffer> GetStructuredBuffer();
         static std::shared_ptr<RHI_Texture> GetStandardTexture(const Renderer_StandardTexture type);
-        static std::shared_ptr<Mesh> GetStandardMesh(const Renderer_StandardMesh type);
+        static std::shared_ptr<Mesh> GetStandardMesh(const Renderer_MeshType type);
         //=======================================================================================================
 
     private:
