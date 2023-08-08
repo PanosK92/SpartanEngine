@@ -1769,8 +1769,8 @@ namespace Spartan
 
                 // Draw rectangle
                 cmd_list->SetTexture(Renderer_BindingsSrv::tex, texture);
-                cmd_list->SetBufferVertex(GetStandardMesh(Renderer_StandardMesh::Quad)->GetVertexBuffer());
-                cmd_list->SetBufferIndex(GetStandardMesh(Renderer_StandardMesh::Quad)->GetIndexBuffer());
+                cmd_list->SetBufferVertex(GetStandardMesh(Renderer_MeshType::Quad)->GetVertexBuffer());
+                cmd_list->SetBufferIndex(GetStandardMesh(Renderer_MeshType::Quad)->GetIndexBuffer());
                 cmd_list->DrawIndexed(6);
             }
         };
@@ -1955,8 +1955,8 @@ namespace Spartan
         // Render
         cmd_list->BeginRenderPass();
         {
-            cmd_list->SetBufferVertex(GetStandardMesh(Renderer_StandardMesh::Sphere)->GetVertexBuffer());
-            cmd_list->SetBufferIndex(GetStandardMesh(Renderer_StandardMesh::Sphere)->GetIndexBuffer());
+            cmd_list->SetBufferVertex(GetStandardMesh(Renderer_MeshType::Sphere)->GetVertexBuffer());
+            cmd_list->SetBufferIndex(GetStandardMesh(Renderer_MeshType::Sphere)->GetIndexBuffer());
 
             for (uint32_t probe_index = 0; probe_index < static_cast<uint32_t>(probes.size()); probe_index++)
             {
@@ -1967,7 +1967,7 @@ namespace Spartan
                     PushPassConstants(cmd_list);
 
                     cmd_list->SetTexture(Renderer_BindingsSrv::reflection_probe, probe->GetColorTexture());
-                    cmd_list->DrawIndexed(GetStandardMesh(Renderer_StandardMesh::Sphere)->GetIndexCount());
+                    cmd_list->DrawIndexed(GetStandardMesh(Renderer_MeshType::Sphere)->GetIndexCount());
 
                     // Draw a box which represents the extents of the reflection probe (which is used as a geometry proxy for parallax corrected cubemap reflections)
                     BoundingBox extents = BoundingBox(probe->GetTransform()->GetPosition() - probe->GetExtents(), probe->GetTransform()->GetPosition() + probe->GetExtents());

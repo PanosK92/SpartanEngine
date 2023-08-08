@@ -54,7 +54,7 @@ namespace Spartan
             const Math::BoundingBox& aabb, 
             Mesh* mesh
         );
-        void SetGeometry(const Renderer_StandardMesh type);
+        void SetGeometry(const Renderer_MeshType type);
 
         // Get geometry
         void GetGeometry(std::vector<uint32_t>* indices, std::vector<RHI_Vertex_PosTexNorTan>* vertices) const;
@@ -64,7 +64,7 @@ namespace Spartan
         uint32_t GetIndexCount()                  const { return m_geometry_index_count; }
         uint32_t GetVertexOffset()                const { return m_geometry_vertex_offset; }
         uint32_t GetVertexCount()                 const { return m_geometry_vertex_count; }
-        Renderer_StandardMesh GetGeometryType()   const { return m_geometry_type; }
+        Renderer_MeshType GetGeometryType()   const { return m_geometry_type; }
         const std::string& GetGeometryName()      const { return m_geometry_name; }
         Mesh* GetMesh()                           const { return m_mesh; }
         const Math::BoundingBox& GetBoundingBox() const { return m_bounding_box; }
@@ -89,16 +89,16 @@ namespace Spartan
         auto GetCastShadows() const                  { return m_cast_shadows; }
 
     private:
-        uint32_t m_geometry_index_offset     = 0;
-        uint32_t m_geometry_index_count      = 0;
-        uint32_t m_geometry_vertex_offset    = 0;
-        uint32_t m_geometry_vertex_count     = 0;
-        Renderer_StandardMesh m_geometry_type = Renderer_StandardMesh::Custom;
-        Math::Matrix m_last_transform        = Math::Matrix::Identity;
-        bool m_cast_shadows                  = true;
-        bool m_material_default              = false;
-        Mesh* m_mesh                         = nullptr;
-        Material* m_material                 = nullptr;
+        uint32_t m_geometry_index_offset      = 0;
+        uint32_t m_geometry_index_count       = 0;
+        uint32_t m_geometry_vertex_offset     = 0;
+        uint32_t m_geometry_vertex_count      = 0;
+        Renderer_MeshType m_geometry_type = Renderer_MeshType::Custom;
+        Math::Matrix m_last_transform         = Math::Matrix::Identity;
+        bool m_cast_shadows                   = true;
+        bool m_material_default               = false;
+        Mesh* m_mesh                          = nullptr;
+        Material* m_material                  = nullptr;
         Math::BoundingBox m_bounding_box;
         Math::BoundingBox m_aabb;
         std::string m_geometry_name;
