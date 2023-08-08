@@ -40,17 +40,15 @@ namespace Spartan
 {
     Renderable::Renderable(weak_ptr<Entity> entity) : Component(entity)
     {
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_material_default,             bool);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_material,                     Material*);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_cast_shadows,                 bool);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometry_index_offset,        uint32_t);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometry_index_count,         uint32_t);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometry_vertex_offset,       uint32_t);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometry_vertex_count,        uint32_t);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometry_name,                string);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_mesh,                         Mesh*);
-        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_bounding_box,                 BoundingBox);
-        SP_REGISTER_ATTRIBUTE_GET_SET(Renderer_MeshType, SetGeometry, Renderer_MeshType);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_material_default,       bool);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_material,               Material*);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_cast_shadows,           bool);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometry_index_offset,  uint32_t);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometry_index_count,   uint32_t);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometry_vertex_offset, uint32_t);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_geometry_vertex_count,  uint32_t);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_mesh,                   Mesh*);
+        SP_REGISTER_ATTRIBUTE_VALUE_VALUE(m_bounding_box,           BoundingBox);
     }
 
     Renderable::~Renderable()
@@ -60,8 +58,7 @@ namespace Spartan
     
     void Renderable::Serialize(FileStream* stream)
     {
-        // Mesh
-        stream->Write(static_cast<uint32_t>(m_geometry_type));
+        // mesh
         stream->Write(m_geometry_index_offset);
         stream->Write(m_geometry_index_count);
         stream->Write(m_geometry_vertex_offset);
@@ -69,7 +66,7 @@ namespace Spartan
         stream->Write(m_bounding_box);
         stream->Write(m_mesh ? m_mesh->GetObjectName() : "");
 
-        // Material
+        // material
         stream->Write(m_cast_shadows);
         stream->Write(m_material_default);
         if (!m_material_default)
@@ -80,8 +77,7 @@ namespace Spartan
 
     void Renderable::Deserialize(FileStream* stream)
     {
-        // Geometry
-        m_geometry_type          = static_cast<Renderer_MeshType>(stream->ReadAs<uint32_t>());
+        // geometry
         m_geometry_index_offset  = stream->ReadAs<uint32_t>();
         m_geometry_index_count   = stream->ReadAs<uint32_t>();
         m_geometry_vertex_offset = stream->ReadAs<uint32_t>();
@@ -91,13 +87,7 @@ namespace Spartan
         stream->Read(&model_name);
         m_mesh = ResourceCache::GetByName<Mesh>(model_name).get();
 
-        // If it was a default mesh, we have to reconstruct it
-        if (m_geometry_type != Renderer_MeshType::Custom)
-        {
-            SetGeometry(m_geometry_type);
-        }
-
-        // Material
+        // material
         stream->Read(&m_cast_shadows);
         stream->Read(&m_material_default);
         if (m_material_default)
@@ -113,47 +103,37 @@ namespace Spartan
     }
 
     void Renderable::SetGeometry(
-        const string& name,
-        const uint32_t index_offset,
-        const uint32_t index_count,
-        const uint32_t vertex_offset,
-        const uint32_t vertex_count,
-        const BoundingBox& bounding_box,
-        Mesh* mesh
+        Mesh* mesh,
+        const Math::BoundingBox aabb /*= Math::BoundingBox::Undefined*/,
+        uint32_t index_offset  /*= 0*/, uint32_t index_count /*= 0*/,
+        uint32_t vertex_offset /*= 0*/, uint32_t vertex_count /*= 0 */
     )
     {
-        m_geometry_name          = name;
+        m_mesh                   = mesh;
+        m_bounding_box           = aabb;
         m_geometry_index_offset  = index_offset;
         m_geometry_index_count   = index_count;
         m_geometry_vertex_offset = vertex_offset;
         m_geometry_vertex_count  = vertex_count;
-        m_bounding_box           = bounding_box;
-        m_mesh                   = mesh;
-    }
 
-    void Renderable::SetGeometry(const Renderer_MeshType type)
-    {
-        m_geometry_type = type;
-
-        if (type != Renderer_MeshType::Custom)
+        if (m_geometry_index_count == 0)
         {
-            shared_ptr<Mesh> mesh = Renderer::GetStandardMesh(type);
-
-            SetGeometry(
-                "default_geometry",
-                0,
-                mesh->GetIndexCount(),
-                0,
-                mesh->GetVertexCount(),
-                BoundingBox(mesh->GetVertices().data(), mesh->GetVertexCount()),
-                mesh.get()
-            );
+            m_geometry_index_count = m_mesh->GetIndexCount();
         }
-    }
 
-    void Renderable::Clear()
-    {
-        SetGeometry("Cleared", 0, 0, 0, 0, BoundingBox(), nullptr);
+        if (m_geometry_vertex_count == 0)
+        {
+            m_geometry_vertex_count = m_mesh->GetVertexCount();
+        }
+
+        if (m_bounding_box == BoundingBox::Undefined)
+        {
+            m_bounding_box = m_mesh->GetAabb();
+        }
+
+        SP_ASSERT(m_geometry_index_count  != 0);
+        SP_ASSERT(m_geometry_vertex_count != 0);
+        SP_ASSERT(m_bounding_box          != BoundingBox::Undefined);
     }
 
     void Renderable::GetGeometry(vector<uint32_t>* indices, vector<RHI_Vertex_PosTexNorTan>* vertices) const
@@ -164,7 +144,7 @@ namespace Spartan
 
     const BoundingBox& Renderable::GetAabb()
     {
-        // Updated if dirty
+        // update if dirty
         if (m_last_transform != GetTransform()->GetMatrix() || m_aabb == BoundingBox::Undefined)
         {
             m_aabb = m_bounding_box.Transform(GetTransform()->GetMatrix());
