@@ -54,9 +54,8 @@ weak_ptr<Material> Properties::m_inspected_material;
 
 namespace
 {
-    #define column_pos_x               180.0f * Spartan::Window::GetDpiScale()
-    #define item_width                 120.0f * Spartan::Window::GetDpiScale()
-    #define material_offset_from_pos_x 160    * Spartan::Window::GetDpiScale()
+    #define column_pos_x 180.0f * Spartan::Window::GetDpiScale()
+    #define item_width   120.0f * Spartan::Window::GetDpiScale()
 
     static string context_menu_id;
     static shared_ptr<Component> copied_component = nullptr;
@@ -374,26 +373,26 @@ void Properties::ShowRenderable(shared_ptr<Renderable> renderable) const
 
     if (component_begin("Renderable", IconType::Component_Renderable, renderable))
     {
-        //= REFLECT ===============================================================
-        const string& geometry_name = renderable->GetGeometryName();
-        Material* material          = renderable->GetMaterial();
-        string material_name        = material ? material->GetObjectName() : "N/A";
-        bool cast_shadows           = renderable->GetCastShadows();
-        //=========================================================================
+        //= REFLECT ========================================================
+        Mesh* mesh           = renderable->GetMesh();
+        Material* material   = renderable->GetMaterial();
+        string name_mesh     = mesh ? mesh->GetObjectName() : "N/A";
+        string name_material = material ? material->GetObjectName() : "N/A";
+        bool cast_shadows    = renderable->GetCastShadows();
+        //==================================================================
 
-        ImGui::Text("Geometry");
-        ImGui::SameLine(column_pos_x); ImGui::Text(geometry_name.c_str());
+        ImGui::Text("Mesh");
+        ImGui::SameLine(column_pos_x);
+        ImGui::InputText("##renderable_mesh", &name_mesh, ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_ReadOnly);
 
         // Material
         ImGui::Text("Material");
         ImGui::SameLine(column_pos_x);
-        ImGui::PushID("##material_name");
-        ImGui::InputText("", &material_name, ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_ReadOnly);
+        ImGui::InputText("##renderable_material", &name_material, ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_ReadOnly);
         if (auto payload = ImGuiSp::receive_drag_drop_payload(ImGuiSp::DragPayloadType::Material))
         {
             renderable->SetMaterial(std::get<const char*>(payload->data));
         }
-        ImGui::PopID();
 
         // Cast shadows
         ImGui::Text("Cast Shadows");
@@ -694,7 +693,7 @@ void Properties::ShowMaterial(Material* material) const
 
         // Name
         ImGui::Text("Name");
-        ImGui::SameLine(material_offset_from_pos_x); ImGui::Text(material->GetObjectName().c_str());
+        ImGui::SameLine(column_pos_x); ImGui::Text(material->GetObjectName().c_str());
 
         if (material->GetProperty(MaterialProperty::CanBeEdited) == 1.0f)
         {
@@ -717,7 +716,7 @@ void Properties::ShowMaterial(Material* material) const
 
                         if (show_texture || show_modifier)
                         {
-                            ImGui::SameLine(material_offset_from_pos_x);
+                            ImGui::SameLine(column_pos_x);
                         }
                     }
 
@@ -782,14 +781,14 @@ void Properties::ShowMaterial(Material* material) const
             {
                 // Tiling
                 ImGui::Text("Tiling");
-                ImGui::SameLine(material_offset_from_pos_x); ImGui::Text("X");
+                ImGui::SameLine(column_pos_x); ImGui::Text("X");
                 ImGui::SameLine(); ImGui::InputFloat("##matTilingX", &tiling.x, 0.01f, 0.1f, "%.2f", ImGuiInputTextFlags_CharsDecimal);
                 ImGui::SameLine(); ImGui::Text("Y");
                 ImGui::SameLine(); ImGui::InputFloat("##matTilingY", &tiling.y, 0.01f, 0.1f, "%.2f", ImGuiInputTextFlags_CharsDecimal);
 
                 // Offset
                 ImGui::Text("Offset");
-                ImGui::SameLine(material_offset_from_pos_x); ImGui::Text("X");
+                ImGui::SameLine(column_pos_x); ImGui::Text("X");
                 ImGui::SameLine(); ImGui::InputFloat("##matOffsetX", &offset.x, 0.01f, 0.1f, "%.2f", ImGuiInputTextFlags_CharsDecimal);
                 ImGui::SameLine(); ImGui::Text("Y");
                 ImGui::SameLine(); ImGui::InputFloat("##matOffsetY", &offset.y, 0.01f, 0.1f, "%.2f", ImGuiInputTextFlags_CharsDecimal);

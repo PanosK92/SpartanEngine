@@ -340,19 +340,20 @@ namespace Spartan
             return false;
         }
 
-        // Model params
+        // model params
         model_file_path = file_path;
         model_name      = FileSystem::GetFileNameWithoutExtensionFromFilePath(file_path);
         mesh            = mesh_in;
         model_is_gltf   = FileSystem::GetExtensionFromFilePath(file_path) == ".gltf";
+        mesh->SetObjectName(model_name);
 
-        // Set up the importer
+        // set up the importer
         Importer importer;
         {
-            // Remove points and lines.
+            // remove points and lines.
             importer.SetPropertyInteger(AI_CONFIG_PP_SBP_REMOVE, aiPrimitiveType_LINE | aiPrimitiveType_POINT);
 
-            // Remove cameras and lights
+            // remove cameras and lights
             {
                 uint32_t component_flags = aiComponent_CAMERAS;
                 if ((mesh->GetFlags() & (1U << static_cast<uint32_t>(MeshFlags::ImportLights))) == 0)
@@ -367,19 +368,19 @@ namespace Spartan
             importer.SetProgressHandler(new AssimpProgress(file_path));
         }
 
-        // Import flags
+        // import flags
         uint32_t import_flags = 0;
         {
             import_flags |= aiProcess_ValidateDataStructure; // Validates the imported scene data structure.
             import_flags |= aiProcess_Triangulate;           // Triangulates all faces of all meshes.
             import_flags |= aiProcess_SortByPType;           // Splits meshes with more than one primitive type in homogeneous sub-meshes.
 
-            // Switch to engine conventions
+            // switch to engine conventions
             import_flags |= aiProcess_MakeLeftHanded;   // DirectX style.
             import_flags |= aiProcess_FlipUVs;          // DirectX style.
             import_flags |= aiProcess_FlipWindingOrder; // DirectX style.
 
-            // Generate missing normals or UVs
+            // generate missing normals or UVs
             import_flags |= aiProcess_CalcTangentSpace; // Calculates  tangents and bitangents
             import_flags |= aiProcess_GenSmoothNormals; // Ignored if the mesh already has normals
             import_flags |= aiProcess_GenUVCoords;      // Converts non-UV mappings (such as spherical or cylindrical mapping) to proper texture coordinate channels
@@ -392,7 +393,7 @@ namespace Spartan
                 import_flags |= aiProcess_PreTransformVertices;
             }
 
-            // Validate
+            // validate
             if (mesh->GetFlags() & static_cast<uint32_t>(MeshFlags::ImportRemoveRedundantData))
             {
                 import_flags |= aiProcess_RemoveRedundantMaterials; // Searches for redundant/unreferenced materials and removes them
@@ -405,20 +406,20 @@ namespace Spartan
 
         ProgressTracker::GetProgress(ProgressType::ModelImporter).Start(1, "Loading model from drive...");
 
-        // Read the 3D model file from drive
+        // read the 3D model file from drive
         if (scene = importer.ReadFile(file_path, import_flags))
         {
-            // Update progress tracking
+            // update progress tracking
             uint32_t job_count = 0;
             compute_node_count(scene->mRootNode, &job_count);
             ProgressTracker::GetProgress(ProgressType::ModelImporter).Start(job_count, "Parsing model...");
 
             model_has_animation = scene->mNumAnimations != 0;
 
-            // Recursively parse nodes
+            // recursively parse nodes
             ParseNode(scene->mRootNode);
 
-            // Update model geometry
+            // update model geometry
             {
                 while (ProgressTracker::GetProgress(ProgressType::ModelImporter).GetFraction() != 1.0f)
                 {
@@ -435,7 +436,7 @@ namespace Spartan
                 mesh->CreateGpuBuffers();
             }
 
-            // Make the root entity active since it's now thread-safe
+            // make the root entity active since it's now thread-safe
             mesh->GetRootEntity()->SetActive(true);
             World::Resolve();
         }
@@ -587,20 +588,20 @@ namespace Spartan
         const uint32_t vertex_count = assimp_mesh->mNumVertices;
         const uint32_t index_count  = assimp_mesh->mNumFaces * 3;
 
-        // Vertices
+        // vertices
         vector<RHI_Vertex_PosTexNorTan> vertices = vector<RHI_Vertex_PosTexNorTan>(vertex_count);
         {
             for (uint32_t i = 0; i < vertex_count; i++)
             {
                 RHI_Vertex_PosTexNorTan& vertex = vertices[i];
 
-                // Position
+                // position
                 const aiVector3D& pos = assimp_mesh->mVertices[i];
                 vertex.pos[0] = pos.x;
                 vertex.pos[1] = pos.y;
                 vertex.pos[2] = pos.z;
 
-                // Normal
+                // normal
                 if (assimp_mesh->mNormals)
                 {
                     const aiVector3D& normal = assimp_mesh->mNormals[i];
@@ -609,7 +610,7 @@ namespace Spartan
                     vertex.nor[2] = normal.z;
                 }
 
-                // Tangent
+                // tangent
                 if (assimp_mesh->mTangents)
                 {
                     const aiVector3D& tangent = assimp_mesh->mTangents[i];
@@ -618,7 +619,7 @@ namespace Spartan
                     vertex.tan[2] = tangent.z;
                 }
 
-                // Texture coordinates
+                // texture coordinates
                 const uint32_t uv_channel = 0;
                 if (assimp_mesh->HasTextureCoords(uv_channel))
                 {
@@ -629,10 +630,10 @@ namespace Spartan
             }
         }
 
-        // Indices
+        // indices
         vector<uint32_t> indices = vector<uint32_t>(index_count);
         {
-            // Get indices by iterating through each face of the mesh.
+            // get indices by iterating through each face of the mesh.
             for (uint32_t face_index = 0; face_index < assimp_mesh->mNumFaces; face_index++)
             {
                 // if (aiPrimitiveType_LINE | aiPrimitiveType_POINT) && aiProcess_Triangulate) then (face.mNumIndices == 3)
@@ -644,36 +645,35 @@ namespace Spartan
             }
         }
 
-        // Compute AABB (before doing move operation on vertices)
+        // compute AABB (before doing move operation on vertices)
         const BoundingBox aabb = BoundingBox(vertices.data(), static_cast<uint32_t>(vertices.size()));
 
-        // Add the mesh to the model
+        // add the mesh to the model
         uint32_t index_offset  = 0;
         uint32_t vertex_offset = 0;
         mesh->AddIndices(indices, &index_offset);
         mesh->AddVertices(vertices, &vertex_offset);
 
-        // Add a renderable component to this entity
+        // add a renderable component to this entity
         shared_ptr<Renderable> renderable = entity_parent->AddComponent<Renderable>();
 
-        // Set the geometry
+        // set the geometry
         renderable->SetGeometry(
-            entity_parent->GetObjectName(),
+            mesh,
+            aabb,
             index_offset,
             static_cast<uint32_t>(indices.size()),
             vertex_offset,
-            static_cast<uint32_t>(vertices.size()),
-            aabb,
-            mesh
+            static_cast<uint32_t>(vertices.size())
         );
 
-        // Material
+        // material
         if (scene->HasMaterials())
         {
-            // Get aiMaterial
+            // get aiMaterial
             const aiMaterial* assimp_material = scene->mMaterials[assimp_mesh->mMaterialIndex];
 
-            // Convert it and add it to the model
+            // convert it and add it to the model
             shared_ptr<Material> material = load_material(mesh, model_file_path, model_is_gltf, assimp_material);
 
             mesh->AddMaterial(material, entity_parent);

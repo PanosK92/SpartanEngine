@@ -37,6 +37,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Profiling/Profiler.h"
 #include "../RHI/RHI_Texture2D.h"
 #include "../Rendering/Mesh.h"
+#include "../Rendering/Renderer.h"
 //====================================
 
 //= NAMESPACES ================
@@ -136,7 +137,7 @@ namespace Spartan
 
                 // Add a renderable component
                 shared_ptr<Renderable> renderable = m_default_model_floor->AddComponent<Renderable>();
-                renderable->SetGeometry(Renderer_MeshType::Quad);
+                renderable->SetGeometry(Renderer::GetStandardMesh(Renderer_MeshType::Quad).get());
                 renderable->SetDefaultMaterial();
 
                 // Add physics components
@@ -514,7 +515,7 @@ namespace Spartan
 
             // Add a renderable component
             shared_ptr<Renderable> renderable = entity->AddComponent<Renderable>();
-            renderable->SetGeometry(Renderer_MeshType::Cube);
+            renderable->SetGeometry(Renderer::GetStandardMesh(Renderer_MeshType::Cube).get());
             renderable->SetMaterial(material);
 
             // Add physics components

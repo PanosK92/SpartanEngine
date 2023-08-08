@@ -285,7 +285,7 @@ namespace Spartan
             m_mesh = nullptr;
             if (shared_ptr<Renderable> renderable = m_entity_ptr->AddComponent<Renderable>())
             {
-                renderable->Clear();
+                renderable->SetGeometry(nullptr);
             }
             
             return;
@@ -371,13 +371,12 @@ namespace Spartan
         if (shared_ptr<Renderable> renderable = m_entity_ptr->AddComponent<Renderable>())
         {
             renderable->SetGeometry(
-                "Terrain",
-                0,                      // index offset
-                mesh->GetIndexCount(),  // index count
-                0,                      // vertex offset
-                mesh->GetVertexCount(), // vertex count
+                mesh.get(),
                 mesh->GetAabb(),
-                mesh.get()
+                0,                     // index offset
+                mesh->GetIndexCount(), // index count
+                0,                     // vertex offset
+                mesh->GetVertexCount() // vertex count
             );
 
             renderable->SetDefaultMaterial();
@@ -391,6 +390,7 @@ namespace Spartan
         {
             // Create new model
             m_mesh = make_shared<Mesh>();
+            m_mesh->SetObjectName("Terrain");
 
             // Set geometry
             m_mesh->AddIndices(indices);
