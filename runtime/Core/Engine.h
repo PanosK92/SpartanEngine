@@ -40,7 +40,7 @@ namespace Spartan
         static void Shutdown();
         static void Tick();
 
-        //  Flags
+        // Flags
         static void SetFlag(const EngineMode flag);
         static void RemoveFlag(const EngineMode flag);
         static bool IsFlagSet(const EngineMode flag);
