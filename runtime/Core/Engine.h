@@ -27,10 +27,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-    enum class EngineMode
+    enum class EngineMode : uint32_t
     {
-        Physics,
-        Game
+        Physics = 1 << 0,
+        Game    = 1 << 1
     };
 
     class SP_CLASS Engine
@@ -41,7 +41,7 @@ namespace Spartan
         static void Tick();
 
         // Flags
-        static void SetFlag(const EngineMode flag);
+        static void AddFlag(const EngineMode flag);
         static void RemoveFlag(const EngineMode flag);
         static bool IsFlagSet(const EngineMode flag);
         static void ToggleFlag(const EngineMode flag);

@@ -648,11 +648,19 @@ namespace Spartan
         // compute AABB (before doing move operation on vertices)
         const BoundingBox aabb = BoundingBox(vertices.data(), static_cast<uint32_t>(vertices.size()));
 
-        // add the mesh to the model
+        // add vertex and index data to the mesh
         uint32_t index_offset  = 0;
         uint32_t vertex_offset = 0;
-        mesh->AddIndices(indices, &index_offset);
+        mesh->AddIndices(indices,  &index_offset);
         mesh->AddVertices(vertices, &vertex_offset);
+
+        // optimize (if requested)
+        if ((mesh->GetFlags() & static_cast<uint32_t>(MeshFlags::OptimizeVertexCache)) ||
+            (mesh->GetFlags() & static_cast<uint32_t>(MeshFlags::OptimizeVertexFetch)) ||
+            (mesh->GetFlags() & static_cast<uint32_t>(MeshFlags::OptimizeOverdraw)))
+        {
+            mesh->Optimize();
+        }
 
         // add a renderable component to this entity
         shared_ptr<Renderable> renderable = entity_parent->AddComponent<Renderable>();
