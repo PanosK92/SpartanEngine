@@ -49,11 +49,10 @@ namespace Spartan
 
     void Engine::Initialize()
     {
-        // Set flags
-        SetFlag(EngineMode::Physics);
-        SetFlag(EngineMode::Game);
+        AddFlag(EngineMode::Physics);
+        AddFlag(EngineMode::Game);
 
-        // Initialize systems
+        // initialize systems
         Stopwatch timer_initialize;
         {
             FontImporter::Initialize();
@@ -94,11 +93,11 @@ namespace Spartan
 
     void Engine::Tick()
     {
-        // Pre-tick
+        // pre-tick
         Profiler::PreTick();
         World::PreTick();
 
-        // Tick
+        // tick
         Window::Tick();
         Input::Tick();
         Physics::Tick();
@@ -106,13 +105,13 @@ namespace Spartan
         World::Tick();
         Renderer::Tick();
 
-        // Post-tick
+        // post-tick
         Input::PostTick();
         Timer::PostTick();
         Profiler::PostTick();
     }
 
-    void Engine::SetFlag(const EngineMode flag)
+    void Engine::AddFlag(const EngineMode flag)
     {
         m_flags |= static_cast<uint32_t>(flag);
     }
@@ -129,6 +128,6 @@ namespace Spartan
 
     void Engine::ToggleFlag(const EngineMode flag)
     {
-        IsFlagSet(flag) ? RemoveFlag(flag) : SetFlag(flag);
+        IsFlagSet(flag) ? RemoveFlag(flag) : AddFlag(flag);
     }
 }

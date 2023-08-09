@@ -23,8 +23,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "pch.h"
 #include "Mesh.h"
 #include "Renderer.h"
-#include "../RHI/RHI_Vertex.h"
-#include "../RHI/RHI_Texture.h"
 #include "../RHI/RHI_VertexBuffer.h"
 #include "../RHI/RHI_IndexBuffer.h"
 #include "../RHI/RHI_Texture2D.h"
@@ -33,7 +31,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Resource/ResourceCache.h"
 #include "../IO/FileStream.h"
 #include "../Resource/Import/ModelImporter.h"
-#include "../World/Components/Transform.h"
 SP_WARNINGS_OFF
 #include "meshoptimizer/meshoptimizer.h"
 SP_WARNINGS_ON
@@ -76,10 +73,10 @@ namespace Spartan
             return false;
         }
 
-        // Load engine format
+        // load engine format
         if (FileSystem::GetExtensionFromFilePath(file_path) == EXTENSION_MODEL)
         {
-            // Deserialize
+            // deserialize
             auto file = make_unique<FileStream>(file_path, FileStream_Read);
             if (!file->IsOpen())
                 return false;
@@ -94,14 +91,14 @@ namespace Spartan
             ComputeNormalizedScale();
             CreateGpuBuffers();
         }
-        // Load foreign format
+        // load foreign format
         else
         {
             SetResourceFilePath(file_path);
 
             if (ModelImporter::Load(this, file_path))
             {
-                // Set the normalized scale to the root entity's transform
+                // set the normalized scale to the root entity's transform
                 m_normalized_scale = ComputeNormalizedScale();
                 m_root_entity.lock()->GetComponent<Transform>()->SetScale(m_normalized_scale);
             }
@@ -111,12 +108,12 @@ namespace Spartan
             }
         }
 
-        // Compute memory usage
+        // compute memory usage
         {
-            // Cpu
+            // cpu
             m_object_size_cpu = GetMemoryUsage();
 
-            // Gpu
+            // gpu
             if (m_vertex_buffer && m_index_buffer)
             {
                 m_object_size_gpu = m_vertex_buffer->GetObjectSizeGpu();
@@ -220,25 +217,26 @@ namespace Spartan
 
     uint32_t Mesh::GetDefaultFlags()
     {
-        return static_cast<uint32_t>(MeshFlags::ImportRemoveRedundantData);
+        return
+            static_cast<uint32_t>(MeshFlags::ImportRemoveRedundantData);
+            //static_cast<uint32_t>(MeshFlags::OptimizeVertexCache) |
+            //static_cast<uint32_t>(MeshFlags::OptimizeOverdraw) |
+            //static_cast<uint32_t>(MeshFlags::OptimizeVertexFetch);
     }
 
     float Mesh::ComputeNormalizedScale()
     {
-        // Compute scale offset
+        // compute scale offset
         const auto scale_offset = m_aabb.GetExtents().Length();
     
-        // Return normalized scale
+        // return normalized scale
         return 1.0f / scale_offset;
     }
     
     void Mesh::Optimize()
     {
-        // Running this causes object picking to crash for some meshes.
-        // I need to fix that then enable this.
-        return;
-
-        SP_ASSERT_MSG(!m_indices.empty() && !m_vertices.empty(), "Invalid data");
+        SP_ASSERT(!m_indices.empty());
+        SP_ASSERT(!m_vertices.empty());
 
         uint32_t index_count                     = static_cast<uint32_t>(m_indices.size());
         uint32_t vertex_count                    = static_cast<uint32_t>(m_vertices.size());
@@ -246,19 +244,29 @@ namespace Spartan
         vector<uint32_t> indices                 = m_indices;
         vector<RHI_Vertex_PosTexNorTan> vertices = m_vertices;
 
-        // The optimization order is important
+        // vertex cache optimization
+        // improves the GPU's post-transform cache hit rate, reducing the required vertex shader invocations
+        if (m_flags & static_cast<uint32_t>(MeshFlags::OptimizeVertexCache))
+        {
+            meshopt_optimizeVertexCache(&indices[0], &m_indices[0], index_count, vertex_count);
+        }
 
-        // Vertex cache optimization - reordering triangles to maximize cache locality
-        SP_LOG_INFO("Optimizing vertex cache...");
-        meshopt_optimizeVertexCache(&indices[0], &m_indices[0], index_count, vertex_count);
+        // overdraw optimization
+        // minimizes overdraw by reordering triangles, aiming to reduce pixel shader invocations
+        if (m_flags & static_cast<uint32_t>(MeshFlags::OptimizeOverdraw))
+        {
+            meshopt_optimizeOverdraw(&indices[0], &indices[0], index_count, &m_vertices[0].pos[0], vertex_count, vertex_size, 1.05f);
+        }
 
-        // Overdraw optimizations - reorders triangles to minimize overdraw from all directions
-        SP_LOG_INFO("Optimizing overdraw...");
-        meshopt_optimizeOverdraw(&m_indices[0], &indices[0], index_count, &m_vertices[0].pos[0], vertex_count, vertex_size, 1.05f);
+        // vertex fetch optimization
+        // reorders vertices and changes indices to improve vertex fetch cache performance, reducing the bandwidth needed to fetch vertices
+        if (m_flags & static_cast<uint32_t>(MeshFlags::OptimizeVertexFetch))
+        {
+            meshopt_optimizeVertexFetch(&m_vertices[0], &indices[0], index_count, &vertices[0], vertex_count, vertex_size);
+        }
 
-        // Vertex fetch optimization - reorders triangles to maximize memory access locality
-        SP_LOG_INFO("Optimizing vertex fetch...");
-        meshopt_optimizeVertexFetch(&m_vertices[0], &m_indices[0], index_count, &vertices[0], vertex_count, vertex_size);
+        // store the updated indices back to m_indices
+        m_indices = indices;
     }
 
     void Mesh::CreateGpuBuffers()

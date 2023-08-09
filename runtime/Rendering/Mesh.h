@@ -36,7 +36,10 @@ namespace Spartan
         ImportRemoveRedundantData = 1 << 0,
         ImportLights              = 1 << 1,
         ImportCombineMeshes       = 1 << 2,
-        ImportNormalizeScale      = 1 << 3
+        ImportNormalizeScale      = 1 << 3,
+        OptimizeVertexCache       = 1 << 4,
+        OptimizeVertexFetch       = 1 << 5,
+        OptimizeOverdraw          = 1 << 6,
     };
 
     class Mesh : public IResource

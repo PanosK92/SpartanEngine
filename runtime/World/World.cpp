@@ -528,7 +528,7 @@ namespace Spartan
         }
 
         // Start simulating (for the physics and the music to work)
-        Engine::SetFlag(EngineMode::Game);
+        Engine::AddFlag(EngineMode::Game);
     }
 
     void World::CreateDefaultWorldHelmets()
@@ -568,7 +568,7 @@ namespace Spartan
         }
 
         // Start simulating (for the physics and the music to work)
-        Engine::SetFlag(EngineMode::Game);
+        Engine::AddFlag(EngineMode::Game);
     }
 
     void World::CreateDefaultWorldCar()
@@ -759,7 +759,7 @@ namespace Spartan
         }
 
         // Start simulating (for the physics and the music to work)
-        Engine::SetFlag(EngineMode::Game);
+        Engine::AddFlag(EngineMode::Game);
     }
 
     void World::CreateDefaultWorldTerrain()
@@ -786,7 +786,7 @@ namespace Spartan
         }
 
         // Start simulating (for the physics and the music to work)
-        Engine::SetFlag(EngineMode::Game);
+        Engine::AddFlag(EngineMode::Game);
     }
 
     void World::CreateDefaultWorldSponza()
@@ -839,7 +839,7 @@ namespace Spartan
         }
 
         // Start simulating (for the physics and the music to work)
-        Engine::SetFlag(EngineMode::Game);
+        Engine::AddFlag(EngineMode::Game);
     }
 
     void World::CreateDefaultWorldDoomE1M1()
@@ -858,7 +858,7 @@ namespace Spartan
         }
 
         // Start simulating (for the physics and the music to work)
-        Engine::SetFlag(EngineMode::Game);
+        Engine::AddFlag(EngineMode::Game);
     }
 
     const string World::GetName()
