@@ -22,13 +22,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //= INCLUDES ============================
 #include "pch.h"
 #include "Renderable.h"
-#include "Transform.h"
+#include "../Rendering/Renderer.h"
 #include "../../IO/FileStream.h"
 #include "../../Resource/ResourceCache.h"
-#include "../../RHI/RHI_Texture2D.h"
-#include "../Rendering/Geometry.h"
-#include "../Rendering/Mesh.h"
-#include "../Rendering/Renderer.h"
 //=======================================
 
 //= NAMESPACES ===============
@@ -105,7 +101,7 @@ namespace Spartan
     void Renderable::SetGeometry(
         Mesh* mesh,
         const Math::BoundingBox aabb /*= Math::BoundingBox::Undefined*/,
-        uint32_t index_offset  /*= 0*/, uint32_t index_count /*= 0*/,
+        uint32_t index_offset  /*= 0*/, uint32_t index_count  /*= 0*/,
         uint32_t vertex_offset /*= 0*/, uint32_t vertex_count /*= 0 */
     )
     {

@@ -86,7 +86,7 @@ namespace
                 );
     
                 mesh_import_dialog_checkbox(MeshFlags::ImportLights,
-                    "Import meshes",
+                    "Import lights",
                     "Some models might define lights, they can be imported as well."
                 );
     
