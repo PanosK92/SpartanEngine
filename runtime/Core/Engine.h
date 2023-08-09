@@ -36,6 +36,7 @@ namespace Spartan
     class SP_CLASS Engine
     {
     public:
+        // Main
         static void Initialize();
         static void Shutdown();
         static void Tick();
