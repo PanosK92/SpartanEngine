@@ -34,25 +34,25 @@ using namespace Spartan;
 
 namespace
 {
-    static bool show_file_dialog_view         = true;
-    static bool show_file_dialog_load         = false;
-    static bool mesh_import_dialog_is_visible = false;
-    static uint32_t mesh_import_dialog_flags  = 0;
-    static string mesh_import_file_path;
+    bool show_file_dialog_view         = true;
+    bool show_file_dialog_load         = false;
+    bool mesh_import_dialog_is_visible = false;
+    uint32_t mesh_import_dialog_flags  = 0;
+    string mesh_import_file_path;
 
     static void mesh_import_dialog_checkbox(const MeshFlags option, const char* label, const char* tooltip = nullptr)
     {
-        bool enabled = (mesh_import_dialog_flags & (1U << static_cast<uint32_t>(option))) != 0;
+        bool enabled = mesh_import_dialog_flags & static_cast<uint32_t>(option);
     
         if (ImGui::Checkbox(label, &enabled))
         {
             if (enabled)
             {
-                mesh_import_dialog_flags |= (1U << static_cast<uint32_t>(option));
+                mesh_import_dialog_flags |= static_cast<uint32_t>(option);
             }
             else
             {
-                mesh_import_dialog_flags &= ~(1U << static_cast<uint32_t>(option));
+                mesh_import_dialog_flags &= ~static_cast<uint32_t>(option);
             }
         }
     
@@ -66,23 +66,23 @@ namespace
     {
         if (mesh_import_dialog_is_visible)
         {
-            ImGui::SetNextWindowPos(editor->GetWidget<Viewport>()->GetCenter(), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+            ImGui::SetNextWindowPos(editor->GetWidget<Viewport>()->GetCenter(), ImGuiCond_FirstUseEver, ImVec2(0.5f, 0.5f));
     
             // Begin
             if (ImGui::Begin("Mesh import options", &mesh_import_dialog_is_visible, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse))
             {
                 mesh_import_dialog_checkbox(MeshFlags::ImportRemoveRedundantData,
                     "Remove redundant data",
-                    "Joins identical vertices, removes redundant materials, duplicate meshes, zeroed normals and invalid UVs.");
+                    "Join identical vertices, remove redundant materials, duplicate meshes, zeroed normals and invalid UVs.");
     
                 mesh_import_dialog_checkbox(MeshFlags::ImportNormalizeScale,
                     "Normalize scale",
-                    "Scales the mesh so that it's not bigger than a cubic unit."
+                    "Scale the mesh so that it's not bigger than a cubic unit."
                 );
     
                 mesh_import_dialog_checkbox(MeshFlags::ImportCombineMeshes,
                     "Combine meshes",
-                    "Joins some meshes, removes some nodes and pretransforms vertices."
+                    "Join some meshes, remove some nodes and pre-transform vertices."
                 );
     
                 mesh_import_dialog_checkbox(MeshFlags::ImportLights,
@@ -102,14 +102,15 @@ namespace
         }
     }
 }
+
 AssetBrowser::AssetBrowser(Editor* editor) : Widget(editor)
 {
-    m_title            = "Assets";
-    m_file_dialog_view = make_unique<FileDialog>(false, FileDialog_Type_Browser,       FileDialog_Op_Load, FileDialog_Filter_All);
-    n_file_dialog_load = make_unique<FileDialog>(true,  FileDialog_Type_FileSelection, FileDialog_Op_Load, FileDialog_Filter_Model);
-    m_flags           |= ImGuiWindowFlags_NoScrollbar;
+    m_title             = "Assets";
+    m_file_dialog_view  = make_unique<FileDialog>(false, FileDialog_Type_Browser,       FileDialog_Op_Load, FileDialog_Filter_All);
+    n_file_dialog_load  = make_unique<FileDialog>(true,  FileDialog_Type_FileSelection, FileDialog_Op_Load, FileDialog_Filter_Model);
+    m_flags            |= ImGuiWindowFlags_NoScrollbar;
 
-    // Just clicked, not selected (double clicked, end of dialog)
+    // just clicked, not selected (double clicked, end of dialog)
     m_file_dialog_view->SetCallbackOnItemClicked([this](const string& str) { OnPathClicked(str); });
 }
 
@@ -122,10 +123,10 @@ void AssetBrowser::OnTickVisible()
 
     ImGui::SameLine();
     
-    // View
+    // view
     m_file_dialog_view->Show(&show_file_dialog_view, m_editor);
 
-    // Show load file dialog. True if a selection is made
+    // show load file dialog, true if a selection is made
     if (n_file_dialog_load->Show(&show_file_dialog_load, m_editor, nullptr, &mesh_import_file_path))
     {
         show_file_dialog_load = false;

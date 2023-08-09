@@ -79,7 +79,7 @@ namespace Spartan
 
         // GPU buffers
         void CreateGpuBuffers();
-        RHI_IndexBuffer* GetIndexBuffer()   { return m_index_buffer.get(); }
+        RHI_IndexBuffer* GetIndexBuffer()   { return m_index_buffer.get();  }
         RHI_VertexBuffer* GetVertexBuffer() { return m_vertex_buffer.get(); }
 
         // Root entity
