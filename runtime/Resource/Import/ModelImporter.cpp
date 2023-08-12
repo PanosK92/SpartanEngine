@@ -49,12 +49,12 @@ namespace Spartan
 {
     namespace
     {
-        static std::string model_file_path;
-        static std::string model_name;
-        static Mesh* mesh               = nullptr;
-        static bool model_has_animation = false;
-        static bool model_is_gltf       = false;
-        static const aiScene* scene     = nullptr;
+        std::string model_file_path;
+        std::string model_name;
+        Mesh* mesh               = nullptr;
+        bool model_has_animation = false;
+        bool model_is_gltf       = false;
+        const aiScene* scene     = nullptr;
     }
 
     static Matrix convert_matrix(const aiMatrix4x4& transform)
@@ -427,12 +427,24 @@ namespace Spartan
                     this_thread::sleep_for(std::chrono::milliseconds(16));
                 }
 
-                //mesh->Optimize();
-                mesh->ComputeAabb();
-                if ((mesh->GetFlags() & (1 << static_cast<uint32_t>(MeshFlags::ImportNormalizeScale))) != 0)
+                // optimize
+                if ((mesh->GetFlags() & static_cast<uint32_t>(MeshFlags::OptimizeVertexCache)) ||
+                    (mesh->GetFlags() & static_cast<uint32_t>(MeshFlags::OptimizeVertexFetch)) ||
+                    (mesh->GetFlags() & static_cast<uint32_t>(MeshFlags::OptimizeOverdraw)))
                 {
-                    mesh->ComputeNormalizedScale();
+                    mesh->Optimize();
                 }
+
+                // aabb
+                mesh->ComputeAabb();
+
+                // normalize scale
+                if (mesh->GetFlags() & static_cast<uint32_t>(MeshFlags::ImportNormalizeScale))
+                {
+                    float normalized_scale = mesh->ComputeNormalizedScale();
+                    mesh->GetRootEntity()->GetTransform()->SetScale(normalized_scale);
+                }
+
                 mesh->CreateGpuBuffers();
             }
 
@@ -653,14 +665,6 @@ namespace Spartan
         uint32_t vertex_offset = 0;
         mesh->AddIndices(indices,  &index_offset);
         mesh->AddVertices(vertices, &vertex_offset);
-
-        // optimize (if requested)
-        if ((mesh->GetFlags() & static_cast<uint32_t>(MeshFlags::OptimizeVertexCache)) ||
-            (mesh->GetFlags() & static_cast<uint32_t>(MeshFlags::OptimizeVertexFetch)) ||
-            (mesh->GetFlags() & static_cast<uint32_t>(MeshFlags::OptimizeOverdraw)))
-        {
-            mesh->Optimize();
-        }
 
         // add a renderable component to this entity
         shared_ptr<Renderable> renderable = entity_parent->AddComponent<Renderable>();

@@ -133,9 +133,10 @@ namespace
         static vector<string> contributors =
         {
              // format: name,contribution,country,button text,button url
-            "Jesse Guerrero,Editor UX improvements,US,LinkedIn,https://www.linkedin.com/in/jguer",
-            "Konstantinos Benos,Editor transformation bug fixes,Greece,Twitter,https://twitter.com/deg3x",
-            "Nick Polyderopoulos,Editor UX improvements,Greece,LinkedIn,https://www.linkedin.com/in/nick-polyderopoulos-21742397"
+            "Apostolos Bouzalas,ECS bug fixes,Greece,LinkedIn,https://www.linkedin.com/in/apostolos-bouzalas/",
+            "Jesse Guerrero,UX improvements,US,LinkedIn,https://www.linkedin.com/in/jguer",
+            "Konstantinos Benos,Transform handle bug fixes,Greece,Twitter,https://twitter.com/deg3x",
+            "Nick Polyderopoulos,UX improvements,Greece,LinkedIn,https://www.linkedin.com/in/nick-polyderopoulos-21742397"
         };
 
         ImGui::SetNextWindowPos(editor->GetWidget<Viewport>()->GetCenter(), ImGuiCond_FirstUseEver, ImVec2(0.5f, 0.5f));
