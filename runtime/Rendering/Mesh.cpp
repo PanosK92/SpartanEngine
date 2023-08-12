@@ -82,7 +82,6 @@ namespace Spartan
                 return false;
 
             SetResourceFilePath(file->ReadAs<string>());
-            file->Read(&m_normalized_scale);
             file->Read(&m_indices);
             file->Read(&m_vertices);
 
@@ -96,16 +95,8 @@ namespace Spartan
         {
             SetResourceFilePath(file_path);
 
-            if (ModelImporter::Load(this, file_path))
-            {
-                // set the normalized scale to the root entity's transform
-                m_normalized_scale = ComputeNormalizedScale();
-                m_root_entity.lock()->GetComponent<Transform>()->SetScale(m_normalized_scale);
-            }
-            else
-            {
+            if (!ModelImporter::Load(this, file_path))
                 return false;
-            }
         }
 
         // compute memory usage
@@ -133,7 +124,6 @@ namespace Spartan
             return false;
 
         file->Write(GetResourceFilePath());
-        file->Write(m_normalized_scale);
         file->Write(m_indices);
         file->Write(m_vertices);
 
@@ -218,7 +208,8 @@ namespace Spartan
     uint32_t Mesh::GetDefaultFlags()
     {
         return
-            static_cast<uint32_t>(MeshFlags::ImportRemoveRedundantData);
+            static_cast<uint32_t>(MeshFlags::ImportRemoveRedundantData) |
+            static_cast<uint32_t>(MeshFlags::ImportNormalizeScale);
             //static_cast<uint32_t>(MeshFlags::OptimizeVertexCache) |
             //static_cast<uint32_t>(MeshFlags::OptimizeOverdraw) |
             //static_cast<uint32_t>(MeshFlags::OptimizeVertexFetch);
@@ -226,11 +217,10 @@ namespace Spartan
 
     float Mesh::ComputeNormalizedScale()
     {
-        // compute scale offset
-        const auto scale_offset = m_aabb.GetExtents().Length();
-    
-        // return normalized scale
-        return 1.0f / scale_offset;
+        float scale_offset     = m_aabb.GetExtents().Length();
+        float normalized_scale = 1.0f / scale_offset;
+
+        return normalized_scale;
     }
     
     void Mesh::Optimize()

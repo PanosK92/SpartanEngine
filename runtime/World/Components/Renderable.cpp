@@ -141,26 +141,26 @@ namespace Spartan
     const BoundingBox& Renderable::GetAabb()
     {
         // update if dirty
-        if (m_last_transform != GetTransform()->GetMatrix() || m_aabb == BoundingBox::Undefined)
+        if (m_last_transform != GetTransform()->GetMatrix() || m_bounding_box_transformed == BoundingBox::Undefined)
         {
-            m_aabb = m_bounding_box.Transform(GetTransform()->GetMatrix());
+            m_bounding_box_transformed = m_bounding_box.Transform(GetTransform()->GetMatrix());
             m_last_transform = GetTransform()->GetMatrix();
         }
 
-        return m_aabb;
+        return m_bounding_box_transformed;
     }
 
-    // All functions (set/load) resolve to this
+    // all functions (set/load) resolve to this
     shared_ptr<Material> Renderable::SetMaterial(const shared_ptr<Material>& material)
     {
         SP_ASSERT(material != nullptr);
 
-        // In order for the component to guarantee serialization/deserialization, we cache the material
+        // in order for the component to guarantee serialization/deserialization, we cache the material
         shared_ptr<Material> _material = ResourceCache::Cache(material);
 
         m_material = _material.get();
 
-        // Set to false otherwise material won't serialize/deserialize
+        // set to false otherwise material won't serialize/deserialize
         m_material_default = false;
 
         return _material;
@@ -168,7 +168,7 @@ namespace Spartan
 
     shared_ptr<Material> Renderable::SetMaterial(const string& file_path)
     {
-        // Load the material
+        // load the material
         auto material = make_shared<Material>();
         if (!material->LoadFromFile(file_path))
         {
@@ -176,7 +176,7 @@ namespace Spartan
             return nullptr;
         }
 
-        // Set it as the current material
+        // set it as the current material
         return SetMaterial(material);
     }
 
@@ -186,7 +186,7 @@ namespace Spartan
         const string data_dir = ResourceCache::GetDataDirectory() + "\\";
         FileSystem::CreateDirectory(data_dir);
 
-        // Create material
+        // create material
         shared_ptr<Material> material = make_shared<Material>();
         material->SetResourceFilePath(ResourceCache::GetProjectDirectory() + "standard" + EXTENSION_MATERIAL); // Set resource file path so it can be used by the resource cache
         material->SetProperty(MaterialProperty::CanBeEdited, 0.0f);
@@ -197,10 +197,10 @@ namespace Spartan
         material->SetProperty(MaterialProperty::ColorB, 1.0f);
         material->SetProperty(MaterialProperty::ColorA, 1.0f);
 
-        // Set default texture
+        // set default texture
         material->SetTexture(MaterialTexture::Color, Renderer::GetStandardTexture(Renderer_StandardTexture::Checkerboard));
 
-        // Set material
+        // set material
         SetMaterial(material);
         m_material_default = true;
     }

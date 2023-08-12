@@ -115,7 +115,6 @@ namespace Spartan
 
         // Misc
         std::weak_ptr<Entity> m_root_entity;
-        float m_normalized_scale = 0.0f;
-        uint32_t m_flags         = 0;
+        uint32_t m_flags = 0;
     };
 }

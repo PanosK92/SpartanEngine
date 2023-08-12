@@ -86,6 +86,8 @@ namespace Spartan
         uint32_t m_geometry_vertex_offset = 0;
         uint32_t m_geometry_vertex_count  = 0;
         Mesh* m_mesh                      = nullptr;
+        Math::BoundingBox m_bounding_box;
+        Math::BoundingBox m_bounding_box_transformed;
 
         // material
         bool m_material_default = false;
@@ -94,7 +96,6 @@ namespace Spartan
         // misc
         Math::Matrix m_last_transform = Math::Matrix::Identity;
         bool m_cast_shadows           = true;
-        Math::BoundingBox m_bounding_box;
-        Math::BoundingBox m_aabb;
+
     };
 }
