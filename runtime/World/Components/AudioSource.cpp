@@ -46,7 +46,6 @@ namespace Spartan
         if (!m_audio_clip)
             return;
         
-        // Set the transform
         m_audio_clip->SetTransform(GetTransform());
     }
     
@@ -82,8 +81,9 @@ namespace Spartan
     void AudioSource::Serialize(FileStream* stream)
     {
         stream->Write(m_mute);
-        stream->Write(m_play_on_start);
         stream->Write(m_loop);
+        stream->Write(m_3d);
+        stream->Write(m_play_on_start);
         stream->Write(m_priority);
         stream->Write(m_volume);
         stream->Write(m_pitch);
@@ -100,8 +100,9 @@ namespace Spartan
     void AudioSource::Deserialize(FileStream* stream)
     {
         stream->Read(&m_mute);
-        stream->Read(&m_play_on_start);
         stream->Read(&m_loop);
+        stream->Read(&m_3d);
+        stream->Read(&m_play_on_start);
         stream->Read(&m_priority);
         stream->Read(&m_volume);
         stream->Read(&m_pitch);
@@ -129,27 +130,24 @@ namespace Spartan
         return m_audio_clip ? m_audio_clip->GetObjectName() : "";
     }
     
-    bool AudioSource::Play() const
+    void AudioSource::Play() const
     {
         if (!m_audio_clip)
-            return false;
+            return;
     
-        m_audio_clip->Play();
+        m_audio_clip->Play(m_loop, m_3d);
         m_audio_clip->SetMute(m_mute);
         m_audio_clip->SetVolume(m_volume);
-        m_audio_clip->SetLoop(m_loop);
         m_audio_clip->SetPriority(m_priority);
         m_audio_clip->SetPan(m_pan);
-    
-        return true;
     }
     
-    bool AudioSource::Stop() const
+    void AudioSource::Stop() const
     {
         if (!m_audio_clip)
-            return false;
+            return;
     
-        return m_audio_clip->Stop();
+        m_audio_clip->Stop();
     }
     
     void AudioSource::SetMute(bool mute)
@@ -160,8 +158,17 @@ namespace Spartan
         m_mute = mute;
         m_audio_clip->SetMute(mute);
     }
-    
-    void AudioSource::SetPriority(int priority)
+
+    void AudioSource::SetLoop(const bool loop)
+	{
+        if (!m_audio_clip)
+            return;
+
+        m_loop = loop;
+        m_audio_clip->SetLoop(loop);
+	}
+
+	void AudioSource::SetPriority(int priority)
     {
         if (!m_audio_clip)
             return;
@@ -198,5 +205,14 @@ namespace Spartan
         // Pan level, from -1.0 (left) to 1.0 (right).
         m_pan = Helper::Clamp(pan, -1.0f, 1.0f);
         m_audio_clip->SetPan(m_pan);
+    }
+
+    void AudioSource::Set3d(const bool enabled)
+    {
+        if (!m_audio_clip)
+            return;
+
+        m_3d = enabled;
+        return m_audio_clip->Set3d(enabled);
     }
 }

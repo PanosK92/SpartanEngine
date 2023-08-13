@@ -287,7 +287,7 @@ namespace Spartan
                         RHI_Texture* tex_albedo = material->GetTexture(MaterialTexture::Color);
                         cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_albedo ? tex_albedo : GetStandardTexture(Renderer_StandardTexture::White).get());
 
-                        // Set uber buffer with material properties
+                        // Set pass constants with material properties
                         UpdateConstantBufferMaterial(cmd_list, material);
                     }
 
@@ -295,7 +295,7 @@ namespace Spartan
                     cmd_list->SetBufferIndex(mesh->GetIndexBuffer());
                     cmd_list->SetBufferVertex(mesh->GetVertexBuffer());
 
-                    // Set uber buffer with cascade transform
+                    // Set pass constants with cascade transform
                     m_cb_pass_cpu.transform = entity->GetTransform()->GetMatrix() * view_projection;
                     PushPassConstants(cmd_list);
 
@@ -415,7 +415,7 @@ namespace Spartan
                                 cmd_list->SetTexture(Renderer_BindingsSrv::material_roughness, material->GetTexture(MaterialTexture::Roughness));
                                 cmd_list->SetTexture(Renderer_BindingsSrv::material_metallic,  material->GetTexture(MaterialTexture::Metalness));
 
-                                // Set uber buffer with cascade transform
+                                // Set pass constants with cascade transform
                                 m_cb_pass_cpu.transform = entity->GetTransform()->GetMatrix() * view_projection;
                                 PushPassConstants(cmd_list);
 
@@ -509,7 +509,7 @@ namespace Spartan
                 cmd_list->SetTexture(Renderer_BindingsSrv::material_albedo,  material->GetTexture(MaterialTexture::Color));
                 cmd_list->SetTexture(Renderer_BindingsSrv::material_mask,    material->GetTexture(MaterialTexture::AlphaMask));
 
-                // Set uber buffer
+                // Set pass constants
                 m_cb_pass_cpu.transform = transform->GetMatrix();
                 m_cb_pass_cpu.set_f3_value(material->HasTexture(MaterialTexture::AlphaMask) ? 1.0f : 0.0f, material->GetProperty(MaterialProperty::ColorA), 0.0f);
                 PushPassConstants(cmd_list);
@@ -684,7 +684,7 @@ namespace Spartan
         // Set pipeline state
         cmd_list->SetPipelineState(pso);
 
-        // Set uber buffer
+        // Set pass constants
         m_cb_pass_cpu.set_resolution_out(tex_ssgi);
         PushPassConstants(cmd_list);
 
@@ -729,7 +729,7 @@ namespace Spartan
         // Set pipeline state
         cmd_list->SetPipelineState(pso);
 
-        // Set uber buffer
+        // Set pass constants
         m_cb_pass_cpu.set_resolution_out(tex_ssr);
         PushPassConstants(cmd_list);
 
@@ -944,7 +944,7 @@ namespace Spartan
             m_cb_pass_cpu.set_f3_value2(probe->GetExtents());
         }
 
-        // Set uber buffer
+        // Set pass constants
         m_cb_pass_cpu.set_resolution_out(tex_out);
         m_cb_pass_cpu.set_is_transparent(is_transparent_pass);
         m_cb_pass_cpu.set_f4_value(!probes.empty() ? 1.0f : 0.0f, 0.0f, 0.0f, 0.0f); // reflection probe available
@@ -1017,7 +1017,7 @@ namespace Spartan
             // Set pipeline state
             cmd_list->SetPipelineState(pso);
 
-            // Set uber buffer
+            // Set pass constants
             m_cb_pass_cpu.set_resolution_in(Vector2(static_cast<float>(width), static_cast<float>(height)));
             m_cb_pass_cpu.set_resolution_out(tex_blur);
             m_cb_pass_cpu.set_f3_value(pixel_stride, 0.0f, radius);
@@ -1046,7 +1046,7 @@ namespace Spartan
             // Set pipeline state
             cmd_list->SetPipelineState(pso);
 
-            // Set uber buffer
+            // Set pass constants
             m_cb_pass_cpu.set_resolution_in(Vector2(static_cast<float>(width), static_cast<float>(height)));
             m_cb_pass_cpu.set_resolution_out(tex_blur);
             m_cb_pass_cpu.set_f3_value(0.0f, pixel_stride, radius);
@@ -1218,7 +1218,7 @@ namespace Spartan
             // Set pipeline state
             cmd_list->SetPipelineState(pso);
 
-            // Set uber buffer
+            // Set pass constants
             m_cb_pass_cpu.set_resolution_out(tex_bloom);
             PushPassConstants(cmd_list);
 
@@ -1252,7 +1252,7 @@ namespace Spartan
                 int mip_width_large   = tex_bloom->GetWidth() >> mip_index_big;
                 int mip_height_height = tex_bloom->GetHeight() >> mip_index_big;
 
-                // Set uber buffer
+                // Set pass constants
                 m_cb_pass_cpu.set_resolution_out(Vector2(static_cast<float>(mip_width_large), static_cast<float>(mip_height_height)));
                 PushPassConstants(cmd_list);
 
@@ -1278,7 +1278,7 @@ namespace Spartan
             // Set pipeline state
             cmd_list->SetPipelineState(pso);
 
-            // Set uber buffer
+            // Set pass constants
             m_cb_pass_cpu.set_resolution_out(tex_out);
             PushPassConstants(cmd_list);
 
@@ -1311,7 +1311,7 @@ namespace Spartan
         // Set pipeline state
         cmd_list->SetPipelineState(pso);
 
-        // Set uber buffer
+        // Set pass constants
         m_cb_pass_cpu.set_resolution_out(tex_out);
         PushPassConstants(cmd_list);
 
@@ -1341,7 +1341,7 @@ namespace Spartan
         // Set pipeline state
         cmd_list->SetPipelineState(pso);
 
-        // Set uber buffer
+        // Set pass constants
         m_cb_pass_cpu.set_resolution_out(tex_out);
         PushPassConstants(cmd_list);
 
@@ -1371,7 +1371,7 @@ namespace Spartan
         // Set pipeline state
         cmd_list->SetPipelineState(pso);
 
-        // Set uber buffer
+        // Set pass constants
         m_cb_pass_cpu.set_resolution_out(tex_out);
         PushPassConstants(cmd_list);
 
@@ -1401,7 +1401,7 @@ namespace Spartan
         // Set pipeline state
         cmd_list->SetPipelineState(pso);
 
-        // Set uber buffer
+        // Set pass constants
         m_cb_pass_cpu.set_resolution_out(tex_out);
         PushPassConstants(cmd_list);
 
@@ -1444,7 +1444,7 @@ namespace Spartan
             // Set pipeline state
             cmd_list->SetPipelineState(pso);
 
-            // Set uber buffer
+            // Set pass constants
             m_cb_pass_cpu.set_resolution_out(tex_bokeh_half);
             PushPassConstants(cmd_list);
 
@@ -1468,7 +1468,7 @@ namespace Spartan
             // Set pipeline state
             cmd_list->SetPipelineState(pso);
 
-            // Set uber buffer
+            // Set pass constants
             m_cb_pass_cpu.set_resolution_out(tex_bokeh_half_2);
             PushPassConstants(cmd_list);
 
@@ -1491,7 +1491,7 @@ namespace Spartan
             // Set pipeline state
             cmd_list->SetPipelineState(pso);
 
-            // Set uber buffer
+            // Set pass constants
             m_cb_pass_cpu.set_resolution_out(tex_bokeh_half);
             PushPassConstants(cmd_list);
 
@@ -1514,7 +1514,7 @@ namespace Spartan
             // Set pipeline state
             cmd_list->SetPipelineState(pso);
 
-            // Set uber buffer
+            // Set pass constants
             m_cb_pass_cpu.set_resolution_out(tex_out);
             PushPassConstants(cmd_list);
 
@@ -1548,7 +1548,7 @@ namespace Spartan
         // Set pipeline state
         cmd_list->SetPipelineState(pso);
 
-        // Set uber buffer
+        // Set pass constants
         m_cb_pass_cpu.set_resolution_out(tex_out);
         PushPassConstants(cmd_list);
 
@@ -1579,7 +1579,7 @@ namespace Spartan
         cmd_list->SetPipelineState(pso);
 
         // Render
-        // Set uber buffer
+        // Set pass constants
         m_cb_pass_cpu.set_resolution_out(tex_out);
         PushPassConstants(cmd_list);
 
@@ -1609,7 +1609,7 @@ namespace Spartan
         // Set pipeline state
         cmd_list->SetPipelineState(pso);
 
-        // Set uber buffer
+        // Set pass constants
         m_cb_pass_cpu.set_resolution_out(tex_out);
         PushPassConstants(cmd_list);
 
@@ -1957,7 +1957,7 @@ namespace Spartan
             {
                 if (shared_ptr<ReflectionProbe> probe = probes[probe_index]->GetComponent<ReflectionProbe>())
                 {
-                    // Set uber buffer
+                    // Set pass constants
                     m_cb_pass_cpu.transform = probe->GetTransform()->GetMatrix();
                     PushPassConstants(cmd_list);
 
@@ -2051,7 +2051,7 @@ namespace Spartan
                                     // Set pipeline state
                                     cmd_list->SetPipelineState(pso);
 
-                                    // Set uber buffer
+                                    // Set pass constants
                                     m_cb_pass_cpu.set_resolution_out(tex_out);
                                     PushPassConstants(cmd_list);
 
@@ -2112,7 +2112,7 @@ namespace Spartan
             cmd_list->SetPipelineState(pso);
             cmd_list->BeginRenderPass();
             {
-                // Set uber buffer
+                // Set pass constants
                 m_cb_pass_cpu.set_resolution_out(tex_out);
                 m_cb_pass_cpu.set_f4_value(m_font->GetColorOutline());
                 PushPassConstants(cmd_list);
@@ -2132,7 +2132,7 @@ namespace Spartan
         cmd_list->SetPipelineState(pso);
         cmd_list->BeginRenderPass();
         {
-            // Set uber buffer
+            // Set pass constants
             m_cb_pass_cpu.set_resolution_out(tex_out);
             m_cb_pass_cpu.set_f4_value(m_font->GetColor());
             PushPassConstants(cmd_list);
@@ -2167,7 +2167,7 @@ namespace Spartan
         // set pipeline state
         cmd_list->SetPipelineState(pso);
 
-        // set uber buffer
+        // Set pass constants
         m_cb_pass_cpu.set_resolution_out(tex_brdf_specular_lut);
         PushPassConstants(cmd_list);
 
