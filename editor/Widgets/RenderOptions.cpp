@@ -280,13 +280,7 @@ void RenderOptions::OnTickVisible()
             }
 
             // Sharpening
-            {
-                // FidelityFX FSR 2.0 sharpening overrides FidelityFX CAS
-                bool fsr_enabled = Renderer::GetOption<Renderer_Upsampling>(Renderer_Option::Upsampling) == Renderer_Upsampling::FSR2;
-                string label = fsr_enabled ? "Sharpness (AMD FidelityFX FSR 2.0)" : "Sharpness (AMD FidelityFX CAS)";
-
-                option_value(label.c_str(), Renderer_Option::Sharpness, "", 0.1f, 0.0f, 1.0f);
-            }
+            option_value("Sharpness (AMD FidelityFX CAS)", Renderer_Option::Sharpness, "", 0.1f, 0.0f, 1.0f);
         }
 
         if (option("Screen space lighting"))

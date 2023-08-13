@@ -274,8 +274,7 @@ namespace Spartan
         RHI_Texture* tex_mask_transparency,
         RHI_Texture* tex_output,
         Camera* camera,
-        float delta_time_sec,
-        float sharpness
+        float delta_time_sec
     )
     {
         // transition to the appropriate layouts (will only happen if needed)
@@ -301,8 +300,8 @@ namespace Spartan
             fsr2_dispatch_description.motionVectorScale.x    = -static_cast<float>(tex_velocity->GetWidth());
             fsr2_dispatch_description.motionVectorScale.y    = -static_cast<float>(tex_velocity->GetHeight());
             fsr2_dispatch_description.reset                  = fsr2_reset_history;       // a boolean value which when set to true, indicates the camera has moved discontinuously
-            fsr2_dispatch_description.enableSharpening       = sharpness != 0.0f;
-            fsr2_dispatch_description.sharpness              = sharpness;
+            fsr2_dispatch_description.enableSharpening       = false;                    // AMD FidelityFX CAS looks better so we won't be using that
+            fsr2_dispatch_description.sharpness              = 0.0f;
             fsr2_dispatch_description.frameTimeDelta         = delta_time_sec * 1000.0f; // seconds to milliseconds
             fsr2_dispatch_description.preExposure            = 1.0f;                     // the exposure value if not using FFX_FSR2_ENABLE_AUTO_EXPOSURE
             fsr2_dispatch_description.renderSize.width       = tex_input->GetWidth();    // the resolution that was used for rendering the input resources

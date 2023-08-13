@@ -1151,12 +1151,8 @@ namespace Spartan
             // Sharpening
             if (GetOption<bool>(Renderer_Option::Sharpness))
             {
-                // FidelityFX FSR 2.0 sharpening overrides FidelityFX CAS
-                if (upsampling_mode != Renderer_Upsampling::FSR2)
-                {
-                    swap_output = !swap_output;
-                    Pass_Ffx_Cas(cmd_list, get_output_in, get_output_out);
-                }
+                swap_output = !swap_output;
+                Pass_Ffx_Cas(cmd_list, get_output_in, get_output_out);
             }
 
             // Debanding
@@ -1692,8 +1688,7 @@ namespace Spartan
             GetRenderTarget(Renderer_RenderTexture::fsr2_mask_transparency).get(),
             tex_out,
             GetCamera().get(),
-            m_cb_frame_cpu.delta_time,
-            GetOption<float>(Renderer_Option::Sharpness)
+            m_cb_frame_cpu.delta_time
         );
 
         cmd_list->EndTimeblock();
