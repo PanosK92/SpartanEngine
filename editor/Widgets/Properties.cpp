@@ -974,6 +974,7 @@ void Properties::ShowAudioSource(shared_ptr<AudioSource> audio_source) const
         bool mute              = audio_source->GetMute();
         bool play_on_start     = audio_source->GetPlayOnStart();
         bool loop              = audio_source->GetLoop();
+        bool is_3d             = audio_source->Get3d();
         int priority           = audio_source->GetPriority();
         float volume           = audio_source->GetVolume();
         float pitch            = audio_source->GetPitch();
@@ -989,17 +990,21 @@ void Properties::ShowAudioSource(shared_ptr<AudioSource> audio_source) const
             audio_source->SetAudioClip(std::get<const char*>(payload->data));
         }
 
-        // Mute
-        ImGui::Text("Mute");
-        ImGui::SameLine(column_pos_x); ImGui::Checkbox("##audioSourceMute", &mute);
-
         // Play on start
         ImGui::Text("Play on Start");
         ImGui::SameLine(column_pos_x); ImGui::Checkbox("##audioSourcePlayOnStart", &play_on_start);
 
+        // Mute
+        ImGui::Text("Mute");
+        ImGui::SameLine(column_pos_x); ImGui::Checkbox("##audioSourceMute", &mute);
+
         // Loop
         ImGui::Text("Loop");
         ImGui::SameLine(column_pos_x); ImGui::Checkbox("##audioSourceLoop", &loop);
+
+        // 3D
+        ImGui::Text("3D");
+        ImGui::SameLine(column_pos_x); ImGui::Checkbox("##audioSource3d", &is_3d);
 
         // Priority
         ImGui::Text("Priority");
@@ -1021,6 +1026,7 @@ void Properties::ShowAudioSource(shared_ptr<AudioSource> audio_source) const
         if (mute != audio_source->GetMute())                 audio_source->SetMute(mute);
         if (play_on_start != audio_source->GetPlayOnStart()) audio_source->SetPlayOnStart(play_on_start);
         if (loop != audio_source->GetLoop())                 audio_source->SetLoop(loop);
+        if (is_3d != audio_source->Get3d())                  audio_source->Set3d(is_3d);
         if (priority != audio_source->GetPriority())         audio_source->SetPriority(priority);
         if (volume != audio_source->GetVolume())             audio_source->SetVolume(volume);
         if (pitch != audio_source->GetPitch())               audio_source->SetPitch(pitch);

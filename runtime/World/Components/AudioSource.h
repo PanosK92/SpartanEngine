@@ -21,11 +21,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==========
+//= INCLUDES =========
 #include "Component.h"
 #include <memory>
 #include <string>
-//=====================
+//====================
 
 namespace Spartan
 {
@@ -50,8 +50,8 @@ namespace Spartan
         void SetAudioClip(const std::string& file_path);
         std::string GetAudioClipName() const;
 
-        bool Play() const;
-        bool Stop() const;
+        void Play() const;
+        void Stop() const;
 
         bool GetMute() const { return m_mute; }
         void SetMute(bool mute);
@@ -59,8 +59,8 @@ namespace Spartan
         bool GetPlayOnStart() const                   { return m_play_on_start; }
         void SetPlayOnStart(const bool play_on_start) { m_play_on_start = play_on_start; }
 
-        bool GetLoop() const          { return m_loop; }
-        void SetLoop(const bool loop) { m_loop = loop; }
+        bool GetLoop() const { return m_loop; }
+        void SetLoop(const bool loop);
 
         int GetPriority() const { return m_priority; }
         void SetPriority(int priority);
@@ -73,17 +73,21 @@ namespace Spartan
 
         float GetPan() const { return m_pan; }
         void SetPan(float pan);
+
+        bool Get3d() const { return m_3d; }
+        void Set3d(const bool enabled);
         //================================================================================
 
     private:
-        std::shared_ptr<AudioClip> m_audio_clip;
         bool m_mute              = false;
+        bool m_loop              = true;
+        bool m_3d                = false;
+        bool m_audio_clip_loaded = false;
         bool m_play_on_start     = true;
-        bool m_loop              = false;
         int m_priority           = 128;
         float m_volume           = 1.0f;
         float m_pitch            = 1.0f;
         float m_pan              = 0.0f;
-        bool m_audio_clip_loaded = false;
+        std::shared_ptr<AudioClip> m_audio_clip;
     };
 }

@@ -37,8 +37,7 @@ namespace Spartan
 {
     AudioClip::AudioClip() : IResource(ResourceType::Audio)
     {
-        m_modeRolloff = FMOD_3D_LINEARROLLOFF;
-        m_modeLoop    = FMOD_LOOP_OFF;
+
     }
 
     AudioClip::~AudioClip()
@@ -84,54 +83,73 @@ namespace Spartan
         return true;
     }
 
-    bool AudioClip::Play()
+    void AudioClip::Play(const bool loop, const bool is_3d)
     {
         if (IsPlaying())
-            return false;
+            return;
 
-        return Audio::PlaySound(m_fmod_sound, m_fmod_channel);
+        Audio::PlaySound(m_fmod_sound, m_fmod_channel);
+
+        SetLoop(loop);
+        Set3d(is_3d);
     }
 
-    bool AudioClip::Pause()
+    void AudioClip::Pause()
     {
         if (!IsPaused())
-            return false;
+            return;
 
         if (FMOD::Channel* channel = static_cast<FMOD::Channel*>(m_fmod_channel))
         {
-            return Audio::HandleErrorFmod(static_cast<FMOD::Channel*>(m_fmod_channel)->setPaused(true));
+            Audio::HandleErrorFmod(static_cast<FMOD::Channel*>(m_fmod_channel)->setPaused(true));
         }
-
-        return false;
     }
 
-    bool AudioClip::Stop()
+    void AudioClip::Stop()
     {
         if (!IsPlaying())
-            return false;
+            return;
 
         if (FMOD::Channel* channel = static_cast<FMOD::Channel*>(m_fmod_channel))
         {
-            return Audio::HandleErrorFmod(static_cast<FMOD::Channel*>(m_fmod_channel)->stop());
+            Audio::HandleErrorFmod(static_cast<FMOD::Channel*>(m_fmod_channel)->stop());
+        }
+    }
+
+    bool AudioClip::GetLoop() const
+    {
+        if (FMOD::Channel* channel = static_cast<FMOD::Channel*>(m_fmod_channel))
+        {
+            FMOD_MODE current_mode;
+            channel->getMode(&current_mode);
+
+            return (current_mode & FMOD_LOOP_NORMAL) != 0;
         }
 
         return false;
     }
 
-    bool AudioClip::SetLoop(const bool loop)
+    void AudioClip::SetLoop(const bool loop)
     {
-        m_modeLoop = loop ? FMOD_LOOP_NORMAL : FMOD_LOOP_OFF;
-
-        if (!static_cast<FMOD::Sound*>(m_fmod_sound))
-            return false;
-
-        // Infinite loops
-        if (loop)
+        if (FMOD::Channel* channel = static_cast<FMOD::Channel*>(m_fmod_channel))
         {
-            static_cast<FMOD::Sound*>(m_fmod_sound)->setLoopCount(-1);
-        }
+            FMOD_MODE current_mode;
+            channel->getMode(&current_mode);
 
-        return Audio::HandleErrorFmod(static_cast<FMOD::Sound*>(m_fmod_sound)->setMode(GetSoundMode()));
+            if (loop)
+            {
+                current_mode |= FMOD_LOOP_NORMAL;
+            }
+            else
+            {
+                current_mode &= ~FMOD_LOOP_NORMAL;
+            }
+
+            if (channel->setMode(current_mode) != FMOD_OK)
+            {
+                SP_LOG_ERROR("Failed");
+            }
+        }
     }
 
     bool AudioClip::SetVolume(float volume)
@@ -178,41 +196,33 @@ namespace Spartan
     {
         if (FMOD::Channel* channel = static_cast<FMOD::Channel*>(m_fmod_channel))
         {
-            return Audio::HandleErrorFmod(static_cast<FMOD::Channel*>(m_fmod_channel)->setPan(pan));
+            return Audio::HandleErrorFmod(channel->setPan(pan));
         }
 
         return false;
     }
 
-    bool AudioClip::SetRolloff(const vector<Vector3>& curve_points)
+    void AudioClip::Set3d(const bool enabled)
     {
-        SetRolloff(Rolloff::Custom);
-
-        // Convert Vector3 to FMOD_VECTOR
-        vector<FMOD_VECTOR> fmod_curve;
-        for (const auto& point : curve_points)
+        if (FMOD::Channel* channel = static_cast<FMOD::Channel*>(m_fmod_channel))
         {
-            fmod_curve.push_back(FMOD_VECTOR{ point.x, point.y, point.z });
+            channel->setMode(enabled ? FMOD_3D : FMOD_2D);
         }
-
-        return Audio::HandleErrorFmod(static_cast<FMOD::Channel*>(m_fmod_channel)->set3DCustomRolloff(&fmod_curve.front(), static_cast<int>(fmod_curve.size())));
     }
 
-    bool AudioClip::SetRolloff(const Rolloff rolloff)
+    bool AudioClip::Get3d() const
     {
-        switch (rolloff)
+        if (FMOD::Channel* channel = static_cast<FMOD::Channel*>(m_fmod_channel))
         {
-        case Rolloff::Linear: m_modeRolloff = FMOD_3D_LINEARROLLOFF;
-            break;
+            FMOD_MODE current_mode;
+            channel->getMode(&current_mode);
 
-        case Rolloff::Custom: m_modeRolloff = FMOD_3D_CUSTOMROLLOFF;
-            break;
-
-        default:
-            break;
+            // returns true if FMOD_3D is set, false otherwise
+            return (current_mode & FMOD_3D) != 0; 
         }
 
-        return true;
+        // Default or error value
+        return false;
     }
 
     bool AudioClip::Update()
@@ -220,7 +230,7 @@ namespace Spartan
         if (!m_transform)
             return true;
 
-        const auto pos = m_transform->GetPosition();
+        const Vector3 pos = m_transform->GetPosition();
 
         FMOD_VECTOR f_mod_pos = { pos.x, pos.y, pos.z };
         FMOD_VECTOR f_mod_vel = { 0, 0, 0 };
@@ -259,7 +269,7 @@ namespace Spartan
             return false;
 
         // Set 3D min max distance
-        if (!Audio::HandleErrorFmod(static_cast<FMOD::Sound*>(m_fmod_sound)->set3DMinMaxDistance(m_minDistance, m_maxDistance)))
+        if (!Audio::HandleErrorFmod(static_cast<FMOD::Sound*>(m_fmod_sound)->set3DMinMaxDistance(m_distance_min, m_distance_max)))
             return false;
 
         return true;
@@ -272,7 +282,7 @@ namespace Spartan
             return false;
 
         // Set 3D min max distance
-        if (!Audio::HandleErrorFmod(static_cast<FMOD::Sound*>(m_fmod_sound)->set3DMinMaxDistance(m_minDistance, m_maxDistance)))
+        if (!Audio::HandleErrorFmod(static_cast<FMOD::Sound*>(m_fmod_sound)->set3DMinMaxDistance(m_distance_min, m_distance_max)))
             return false;
 
         return true;
@@ -280,6 +290,11 @@ namespace Spartan
 
     int AudioClip::GetSoundMode() const
     {
-        return FMOD_3D | m_modeLoop | m_modeRolloff;
+        unsigned int sound_mode  = 0;
+        sound_mode              |= FMOD_2D;
+        sound_mode              |= FMOD_3D_LINEARROLLOFF;
+        sound_mode              |= FMOD_LOOP_OFF;
+
+        return sound_mode;
     }
 }

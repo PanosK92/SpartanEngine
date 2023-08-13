@@ -35,12 +35,6 @@ namespace Spartan
         Stream
     };
 
-    enum class Rolloff
-    {
-        Linear,
-        Custom
-    };
-
     class SP_CLASS AudioClip : public IResource
     {
     public:
@@ -52,12 +46,13 @@ namespace Spartan
         bool SaveToFile(const std::string& file_path) override;
         //=======================================================
 
-        bool Play();
-        bool Pause();
-        bool Stop();
+        void Play(const bool loop, const bool is_3d);
+        void Pause();
+        void Stop();
 
-        // Set's sound looping
-        bool SetLoop(bool loop);
+        // Looping
+        bool GetLoop() const;
+        void SetLoop(bool loop);
 
         // Set's the volume [0.0f, 1.0f]
         bool SetVolume(float volume);
@@ -74,12 +69,12 @@ namespace Spartan
         // Sets the pan level
         bool SetPan(float pan);
 
-        // Sets the rolloff
-        bool SetRolloff(const std::vector<Math::Vector3>& curve_points);
-        bool SetRolloff(Rolloff rolloff);
-
         // Makes the audio use the 3D attributes of the transform
         void SetTransform(std::shared_ptr<Transform> transform) { m_transform = transform.get(); }
+
+        // 3D audio
+        void Set3d(const bool enabled);
+        bool Get3d() const;
 
         // Should be called per frame to update the 3D attributes of the sound
         bool Update();
@@ -98,9 +93,7 @@ namespace Spartan
         void* m_fmod_sound     = nullptr;
         void* m_fmod_channel   = nullptr;
         PlayMode m_playMode    = PlayMode::Memory;
-        float m_minDistance    = 1.0f;
-        float m_maxDistance    = 1000.0f;
-        int m_modeLoop;
-        int m_modeRolloff;
+        float m_distance_min   = 0.1f;
+        float m_distance_max   = 1000.0f;
     };
 }
