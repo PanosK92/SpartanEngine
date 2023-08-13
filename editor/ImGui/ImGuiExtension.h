@@ -49,21 +49,21 @@ public:
         editor = editor_;
     }
 
-    static void LoadMesh(const std::string& file_path, const uint32_t load_flags)
+    static void LoadMesh(const std::string& file_path, const uint32_t mesh_flags)
     {
-        // Load the model asynchronously
-        Spartan::ThreadPool::AddTask([file_path, load_flags]()
+        // load the model asynchronously
+        Spartan::ThreadPool::AddTask([file_path, mesh_flags]()
         {
-            Spartan::ResourceCache::Load<Spartan::Mesh>(file_path, load_flags);
+            Spartan::ResourceCache::Load<Spartan::Mesh>(file_path, mesh_flags);
         });
     }
 
     static void LoadWorld(const std::string& file_path)
     {
-        // Loading a world resets everything so it's important to ensure that no tasks are running
+        // loading a world resets everything so it's important to ensure that no tasks are running
         Spartan::ThreadPool::Flush(true);
 
-        // Load the scene asynchronously
+        // load the scene asynchronously
         Spartan::ThreadPool::AddTask([file_path]()
         {
             Spartan::World::LoadFromFile(file_path);
@@ -72,7 +72,7 @@ public:
 
     static void SaveWorld(const std::string& file_path)
     {
-        // Save the scene asynchronously
+        // save the scene asynchronously
         Spartan::ThreadPool::AddTask([file_path]()
         {
             Spartan::World::SaveToFile(file_path);
