@@ -35,19 +35,17 @@ static const float g_fxaa_edgeThresholdMin = 0.0312f; // Trims the algorithm fro
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
-    // Out of bounds check
     if (any(int2(thread_id.xy) >= pass_get_resolution_out()))
         return;
 
-    const float2 uv = (thread_id.xy + 0.5f) / pass_get_resolution_out();
-
+    const float2 pos = (thread_id.xy + 0.5f) / pass_get_resolution_out();
     FxaaTex fxaa_tex = { samplers[sampler_bilinear_clamp], tex };
-    float2 fxaaQualityRcpFrame = get_rt_texel_size();
+    float2 texl_size = get_rt_texel_size();
 
     float3 color = FxaaPixelShader
     (
-        uv, 0, fxaa_tex, fxaa_tex, fxaa_tex,
-        fxaaQualityRcpFrame, 0, 0, 0,
+        pos, 0, fxaa_tex, fxaa_tex, fxaa_tex,
+        texl_size, 0, 0, 0,
         g_fxaa_subPix,
         g_fxaa_edgeThreshold,
         g_fxaa_edgeThresholdMin,

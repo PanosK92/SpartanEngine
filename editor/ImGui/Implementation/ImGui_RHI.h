@@ -53,7 +53,7 @@ namespace ImGui::RHI
     using namespace std;
     //======================
 
-    static const uint32_t buffer_count = 5;
+    static const uint32_t buffer_count = 6;
 
     struct ViewportRhiResources
     {
