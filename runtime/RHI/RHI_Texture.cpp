@@ -88,6 +88,7 @@ namespace Spartan
 
         static void generate_mips(RHI_Texture* texture)
         {
+            /*
             for (uint32_t index_array = 0; index_array < texture->GetArrayLength(); index_array++)
             {
                 for (uint32_t index_mip = 0; index_mip < texture->GetMipCount() - 1; index_mip++)
@@ -128,10 +129,12 @@ namespace Spartan
                     delete destination.m_pMipLevelTable;
                 }
             }
+            */
         }
 
         static void compress(RHI_Texture* texture)
         {
+            /*
             KernelOptions options;
             options.height        = texture->GetHeight();
             options.width         = texture->GetWidth();
@@ -150,7 +153,7 @@ namespace Spartan
                 source.m_nWidth                           = texture->GetWidth();
                 source.m_nHeight                          = texture->GetHeight();
                 source.m_format                           = rhi_format_to_compressonator_format(texture->GetFormat());
-                source.m_pMipLevelTable                   = (CMP_MipLevelTable)new CMP_MipLevel[1];
+                source.m_pMipLevelTable                   = new CMP_MipLevel[1];
                 source.m_pMipLevelTable[0].m_nWidth       = source.m_nWidth;
                 source.m_pMipLevelTable[0].m_nHeight      = source.m_nHeight;
                 source.m_pMipLevelTable[0].m_dwLinearSize = source.m_nWidth * source.m_nHeight * texture->GetChannelCount();
@@ -160,7 +163,7 @@ namespace Spartan
                 destination.m_nWidth         = source.m_nWidth;
                 destination.m_nHeight        = source.m_nHeight;
                 destination.m_format         = source.m_format;
-                destination.m_pMipLevelTable = (CMP_MipLevelTable)new CMP_MipLevel[texture->GetMipCount()];
+                destination.m_pMipLevelTable = new CMP_MipLevel[texture->GetMipCount()];
 
                 for (uint32_t mip_index = 0; mip_index < texture->GetMipCount(); mip_index++)
                 {
@@ -175,6 +178,7 @@ namespace Spartan
                 delete[] source.m_pMipLevelTable;
                 delete[] destination.m_pMipLevelTable;
             }
+            */
         }
     }
 
