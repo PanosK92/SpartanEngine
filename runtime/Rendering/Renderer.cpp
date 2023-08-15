@@ -203,9 +203,10 @@ namespace Spartan
         SetOption(Renderer_Option::Fog,                      0.0f);
         SetOption(Renderer_Option::Antialiasing,             static_cast<float>(Renderer_Antialiasing::TaaFxaa)); // this is using FSR 2 for TAA
         SetOption(Renderer_Option::Upsampling,               static_cast<float>(Renderer_Upsampling::FSR2));
+        SetOption(Renderer_Option::UpsamplingSharpness,      1.0f);
         SetOption(Renderer_Option::Vsync,                    0.0f);
         SetOption(Renderer_Option::DepthPrepass,             0.0f);                                               // depth prepass is not always faster, so by default, it's disabled.
-        SetOption(Renderer_Option::Debanding,                0.0f); 
+        SetOption(Renderer_Option::Debanding,                0.0f);
         SetOption(Renderer_Option::Debug_TransformHandle,    1.0f);
         SetOption(Renderer_Option::Debug_SelectionOutline,   1.0f);
         SetOption(Renderer_Option::Debug_Grid,               1.0f);

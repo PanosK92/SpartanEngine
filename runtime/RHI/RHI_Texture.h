@@ -139,7 +139,6 @@ namespace Spartan
         void RHI_DestroyResource(const bool destroy_main, const bool destroy_per_view);
 
     protected:
-        bool Compress(const RHI_Format format);
         bool RHI_CreateResource();
         void RHI_SetLayout(const RHI_Image_Layout new_layout, RHI_CommandList* cmd_list, const uint32_t mip_index, const uint32_t mip_range);
 

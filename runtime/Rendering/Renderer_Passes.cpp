@@ -1688,7 +1688,8 @@ namespace Spartan
             GetRenderTarget(Renderer_RenderTexture::fsr2_mask_transparency).get(),
             tex_out,
             GetCamera().get(),
-            m_cb_frame_cpu.delta_time
+            m_cb_frame_cpu.delta_time,
+            GetOption<float>(Renderer_Option::UpsamplingSharpness)
         );
 
         cmd_list->EndTimeblock();
