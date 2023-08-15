@@ -277,7 +277,7 @@ void RenderOptions::OnTickVisible()
                 }
 
                 ImGui::BeginDisabled(upsampling_mode != 1);
-                option_value("Sharpness (AMD FidelityFX FSR 2)", Renderer_Option::UpsamplingSharpness, "", 0.1f, 0.0f, 1.0f);
+                option_value("Upsampling sharpness (RCAS)", Renderer_Option::UpsamplingSharpness, "AMD FidelityFX Robust Contrast Adaptive Sharpening (RCAS)", 0.1f, 0.0f, 1.0f);
                 ImGui::EndDisabled();
 
                 ImGui::EndDisabled();
@@ -363,9 +363,9 @@ void RenderOptions::OnTickVisible()
 
         if (option("Misc"))
         {
-            option_value("Sharpness", Renderer_Option::Sharpness, "AMD FidelityFX Contrast Adaptive Sharpening (CAS)", 0.1f, 0.0f, 1.0f);
-            option_value("Gamma",     Renderer_Option::Gamma);
-            option_value("Exposure",  Renderer_Option::Exposure);
+            option_value("Sharpness (CAS)", Renderer_Option::Sharpness, "AMD FidelityFX Contrast Adaptive Sharpening (CAS)", 0.1f, 0.0f, 1.0f);
+            option_value("Gamma",           Renderer_Option::Gamma);
+            option_value("Exposure",        Renderer_Option::Exposure);
 
             option_check_box("HDR", do_hdr, "High dynamic range");
             ImGui::BeginDisabled(!do_hdr);
