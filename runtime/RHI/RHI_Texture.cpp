@@ -38,71 +38,96 @@ namespace Spartan
 {
     namespace amd_compressonator
     {
-        bool initialized = false;
-
         static CMP_FORMAT rhi_format_to_compressonator_format(const RHI_Format format)
         {
-            CMP_FORMAT format_amd = CMP_FORMAT::CMP_FORMAT_Unknown;
+            if (format == RHI_Format::R8_Unorm)
+                return CMP_FORMAT::CMP_FORMAT_R_8;
 
-            switch (format)
-            {
-            case RHI_Format::BC7:
-                format_amd = CMP_FORMAT::CMP_FORMAT_BC7;
-                break;
+            if (format == RHI_Format::R16_Unorm)
+                return CMP_FORMAT::CMP_FORMAT_R_16;
 
-            case RHI_Format::ASTC:
-                format_amd = CMP_FORMAT::CMP_FORMAT_ASTC;
-                break;
-            }
+            if (format == RHI_Format::R16_Float)
+                return CMP_FORMAT::CMP_FORMAT_R_16F;
 
-            SP_ASSERT(format_amd != CMP_FORMAT::CMP_FORMAT_Unknown);
+            if (format == RHI_Format::R32_Float)
+                return CMP_FORMAT::CMP_FORMAT_R_32F;
 
-            return format_amd;
+            if (format == RHI_Format::R8G8_Unorm)
+                return CMP_FORMAT::CMP_FORMAT_RG_8;
+
+            if (format == RHI_Format::R16G16_Float)
+                return CMP_FORMAT::CMP_FORMAT_RG_16F;
+
+            if (format == RHI_Format::R32G32_Float)
+                return CMP_FORMAT::CMP_FORMAT_RG_32F;
+
+            if (format == RHI_Format::R32G32B32_Float)
+                return CMP_FORMAT::CMP_FORMAT_RGB_32F;
+
+            if (format == RHI_Format::R8G8B8A8_Unorm)
+                return CMP_FORMAT::CMP_FORMAT_RGBA_8888;
+
+            if (format == RHI_Format::R16G16B16A16_Unorm)
+                return CMP_FORMAT::CMP_FORMAT_RGBA_16;
+
+            if (format == RHI_Format::R16G16B16A16_Float)
+                return CMP_FORMAT::CMP_FORMAT_RGBA_16F;
+
+            if (format == RHI_Format::R32G32B32A32_Float)
+                return CMP_FORMAT::CMP_FORMAT_RGBA_32F;
+
+            if (format == RHI_Format::ASTC)
+                return CMP_FORMAT::CMP_FORMAT_ASTC;
+
+            if (format == RHI_Format::BC7)
+                return CMP_FORMAT::CMP_FORMAT_BC7;
+
+            SP_ASSERT_MSG(false, "No equivalent format");
+            return CMP_FORMAT::CMP_FORMAT_Unknown;
         }
 
-        static void generate_mips()
+        static void generate_mips(RHI_Texture* texture)
         {
-            //mipLevels    = new Texture * m_mip_count;
-            //mipLevels[0] = new Texture{ source.data, source.width, source.height };
-            //
-            //// Generate the subsequent mip levels
-            //for (unsigned int i = 1; i < m_mip_count; i++)
-            //{
-            //    Compute nextWidth  = std::max(1u, mipLevels[i - 1]->width / 2);
-            //    Compute nextHeight = std::max(1u, mipLevels[i - 1]->height / 2);
-            //
-            //    mipLevels[i]         = new Texture;
-            //    mipLevels[i]->width  = nextWidth;
-            //    mipLevels[i]->height = nextHeight;
-            //    mipLevels[i]->data   = new unsigned char[nextWidth * nextHeight * 4]; // Assuming RGBA
-            //
-            //    CMP_MipSet mipSetSrc = {};
-            //    CMP_MipSet mipSetDest = {};
-            //
-            //    mipSetSrc.m_nMipLevels                        = 1;
-            //    mipSetSrc.m_nHeight                           = mipLevels[i - 1]->height;
-            //    mipSetSrc.m_nWidth                            = mipLevels[i - 1]->width;
-            //    mipSetSrc.m_format                            = CMP_FORMAT_RGBA_8888;
-            //    mipSetSrc.m_pMipLevelTable                    = new CMP_MipLevelData*;
-            //    mipSetSrc.m_pMipLevelTable[0]                 = new CMP_MipLevelData;
-            //    mipSetSrc.m_pMipLevelTable[0]->m_pbData       = mipLevels[i - 1]->data;
-            //    mipSetSrc.m_pMipLevelTable[0]->m_dwLinearSize = mipLevels[i - 1]->width * mipLevels[i - 1]->height * 4;
-            //
-            //    mipSetDest.m_nHeight                     = nextHeight;
-            //    mipSetDest.m_nWidth                      = nextWidth;
-            //    mipSetDest.m_format                      = CMP_FORMAT_RGBA_8888;
-            //    mipSetDest.m_pMipLevelTable              = new CMP_MipLevelData*;
-            //    mipSetDest.m_pMipLevelTable[0]           = new CMP_MipLevelData;
-            //    mipSetDest.m_pMipLevelTable[0]->m_pbData = mipLevels[i]->data;
-            //
-            //    CMP_GenerateMIPLevels(&mipSetSrc, &mipSetDest);
-            //
-            //    delete mipSetSrc.m_pMipLevelTable[0];
-            //    delete[] mipSetSrc.m_pMipLevelTable;
-            //
-            //    delete mipSetDest.m_pMipLevelTable[0];
-            //    delete[] mipSetDest.m_pMipLevelTable;
-            //}
+            for (uint32_t index_array = 0; index_array < texture->GetArrayLength(); index_array++)
+            {
+                for (uint32_t index_mip = 0; index_mip < texture->GetMipCount() - 1; index_mip++)
+                {
+                    CMP_MipSet source   = {};
+                    source.m_nMipLevels = 1;
+                    source.m_nWidth     = texture->GetWidth() >> index_mip;
+                    source.m_nHeight    = texture->GetHeight() >> index_mip;
+                    source.m_format     = rhi_format_to_compressonator_format(texture->GetFormat());
+
+                    CMP_MipLevel* sourceMip   = new CMP_MipLevel;
+                    sourceMip->m_nWidth       = source.m_nWidth;
+                    sourceMip->m_nHeight      = source.m_nHeight;
+                    sourceMip->m_dwLinearSize = source.m_nWidth * source.m_nHeight * texture->GetChannelCount();
+                    sourceMip->m_pbData       = reinterpret_cast<CMP_BYTE*>(texture->GetData()[index_array].mips[index_mip].bytes.data());
+                    source.m_pMipLevelTable   = reinterpret_cast<CMP_MipLevelTable*>(sourceMip);
+
+                    CMP_MipSet destination = {};
+                    destination.m_nWidth   = source.m_nWidth >> 1;
+                    destination.m_nHeight  = source.m_nHeight >> 1;
+                    destination.m_format   = source.m_format;
+
+                    CMP_MipLevel* destMip   = new CMP_MipLevel;
+                    destMip->m_nWidth       = destination.m_nWidth;
+                    destMip->m_nHeight      = destination.m_nHeight;
+                    destMip->m_dwLinearSize = destination.m_nWidth * destination.m_nHeight * texture->GetChannelCount();
+
+                    // Allocate data for the destination mipmap
+                    texture->GetData()[index_array].mips[index_mip + 1].bytes.resize(destMip->m_dwLinearSize);
+                    destMip->m_pbData = reinterpret_cast<CMP_BYTE*>(texture->GetData()[index_array].mips[index_mip + 1].bytes.data());
+                    destination.m_pMipLevelTable = reinterpret_cast<CMP_MipLevelTable*>(destMip);
+
+                    // Use the source to generate the destination mip level
+                    CMP_GenerateMIPLevels(&destination, destination.m_nWidth);
+
+                    // Clean up for this iteration
+                    delete source.m_pMipLevelTable;
+                    delete destination.m_pMipLevelTable;
+                }
+            }
         }
 
         static void compress(RHI_Texture* texture)
