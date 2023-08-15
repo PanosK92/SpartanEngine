@@ -115,15 +115,15 @@ namespace Spartan
                     destMip->m_nHeight      = destination.m_nHeight;
                     destMip->m_dwLinearSize = destination.m_nWidth * destination.m_nHeight * texture->GetChannelCount();
 
-                    // Allocate data for the destination mipmap
+                    // allocate data for the destination mipmap
                     texture->GetData()[index_array].mips[index_mip + 1].bytes.resize(destMip->m_dwLinearSize);
                     destMip->m_pbData = reinterpret_cast<CMP_BYTE*>(texture->GetData()[index_array].mips[index_mip + 1].bytes.data());
                     destination.m_pMipLevelTable = reinterpret_cast<CMP_MipLevelTable*>(destMip);
 
-                    // Use the source to generate the destination mip level
+                    // use the source to generate the destination mip level
                     CMP_GenerateMIPLevels(&destination, destination.m_nWidth);
 
-                    // Clean up for this iteration
+                    // clean up for this iteration
                     delete source.m_pMipLevelTable;
                     delete destination.m_pMipLevelTable;
                 }
@@ -132,35 +132,49 @@ namespace Spartan
 
         static void compress(RHI_Texture* texture)
         {
-            /*CMP_MipSet mip_in  = {};
-            CMP_MipSet mip_out = {};
+            KernelOptions options;
+            options.height        = texture->GetHeight();
+            options.width         = texture->GetWidth();
+            options.fquality      = 1.0f;
+            options.format        = rhi_format_to_compressonator_format(texture->GetFormat());
+            options.srcformat     = CMP_FORMAT_BC7;
+            options.encodeWith    = CMP_Compute_type::CMP_GPU_HW;
+            options.threads       = 0;
+            options.genGPUMipMaps = true;
+            options.miplevels     = texture->GetMipCount();
 
-            for (uint32_t i = 0; i < texture->GetMipCount(); i++)
+            for (uint32_t index_array = 0; index_array < texture->GetArrayLength(); index_array++)
             {
-                mip_in.m_nMipLevels                        = 1;
-                mip_in.m_nHeight                           = texture->GetHeight();
-                mip_in.m_nWidth                            = texture->GetWidth();
-                mip_in.m_format                            = CMP_FORMAT_RGBA_8888;
-                mip_in.m_pMipLevelTable                    = new CMP_MipLevelData*;
-                mip_in.m_pMipLevelTable[0]                 = new CMP_MipLevelData;
-                mip_in.m_pMipLevelTable[0]->m_pbData       = texture.data;
-                mip_in.m_pMipLevelTable[0]->m_dwLinearSize = texture.width * texture.height * 4;
+                CMP_MipSet source                         = {};
+                source.m_nMipLevels                       = 1;
+                source.m_nWidth                           = texture->GetWidth();
+                source.m_nHeight                          = texture->GetHeight();
+                source.m_format                           = rhi_format_to_compressonator_format(texture->GetFormat());
+                source.m_pMipLevelTable                   = (CMP_MipLevelTable)new CMP_MipLevel[1];
+                source.m_pMipLevelTable[0].m_nWidth       = source.m_nWidth;
+                source.m_pMipLevelTable[0].m_nHeight      = source.m_nHeight;
+                source.m_pMipLevelTable[0].m_dwLinearSize = source.m_nWidth * source.m_nHeight * texture->GetChannelCount();
+                source.m_pMipLevelTable[0].m_pbData       = reinterpret_cast<CMP_BYTE*>(texture->GetData()[index_array].mips[0].bytes.data());
 
-                mip_out.m_format            = CMP_FORMAT_BC7;
-                mip_out.m_pMipLevelTable    = new CMP_MipLevelData*;
-                mip_out.m_pMipLevelTable[0] = new CMP_MipLevelData;
+                CMP_MipSet destination       = {};
+                destination.m_nWidth         = source.m_nWidth;
+                destination.m_nHeight        = source.m_nHeight;
+                destination.m_format         = source.m_format;
+                destination.m_pMipLevelTable = (CMP_MipLevelTable)new CMP_MipLevel[texture->GetMipCount()];
 
-                CMP_CompressTexture(&mip_in, &mip_out, nullptr);
+                for (uint32_t mip_index = 0; mip_index < texture->GetMipCount(); mip_index++)
+                {
+                    destination.m_pMipLevelTable[mip_index].m_pbData = reinterpret_cast<CMP_BYTE*>(texture->GetData()[index_array].mips[mip_index].bytes.data());
+                }
 
-                delete[] texture.data;
-                texture.data = mip_out.m_pMipLevelTable[0]->m_pbData;
+                if (CMP_CompressTexture(&options, source, destination, nullptr) != CMP_OK)
+                {
+                    SP_LOG_ERROR("Failed to compress texture");
+                }
 
-                delete mip_in.m_pMipLevelTable[0];
-                delete[] mip_in.m_pMipLevelTable;
-
-                delete mip_out.m_pMipLevelTable[0];
-                delete[] mip_out.m_pMipLevelTable;
-            }*/
+                delete[] source.m_pMipLevelTable;
+                delete[] destination.m_pMipLevelTable;
+            }
         }
     }
 
