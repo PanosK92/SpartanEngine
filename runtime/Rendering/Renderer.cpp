@@ -195,11 +195,11 @@ namespace Spartan
         SetOption(Renderer_Option::ScreenSpaceShadows,       1.0f);
         SetOption(Renderer_Option::ScreenSpaceReflections,   1.0f);
         SetOption(Renderer_Option::Anisotropy,               16.0f);
-        SetOption(Renderer_Option::ShadowResolution,         2048.0f);
+        SetOption(Renderer_Option::ShadowResolution,         4096.0f);
         SetOption(Renderer_Option::Tonemapping,              static_cast<float>(Renderer_Tonemapping::Disabled));
         SetOption(Renderer_Option::Gamma,                    2.2f);
         SetOption(Renderer_Option::Exposure,                 1.0f);
-        SetOption(Renderer_Option::Sharpness,                1.0f);
+        SetOption(Renderer_Option::Sharpness,                0.5f);
         SetOption(Renderer_Option::Fog,                      0.0f);
         SetOption(Renderer_Option::Antialiasing,             static_cast<float>(Renderer_Antialiasing::TaaFxaa)); // this is using FSR 2 for TAA
         SetOption(Renderer_Option::Upsampling,               static_cast<float>(Renderer_Upsampling::FSR2));
