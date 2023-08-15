@@ -36,17 +36,16 @@ using namespace std;
 
 namespace Spartan
 {
-    static CMP_FORMAT rhi_format_amd_format(const RHI_Format format)
+    namespace amd_compressonator
     {
-        CMP_FORMAT format_amd = CMP_FORMAT::CMP_FORMAT_Unknown;
+        bool initialized = false;
 
-        switch (format)
+        static CMP_FORMAT rhi_format_to_compressonator_format(const RHI_Format format)
         {
-            case RHI_Format::R8G8B8A8_Unorm:
-                format_amd = CMP_FORMAT::CMP_FORMAT_RGBA_8888;
-                break;
+            CMP_FORMAT format_amd = CMP_FORMAT::CMP_FORMAT_Unknown;
 
-            // Compressed
+            switch (format)
+            {
             case RHI_Format::BC7:
                 format_amd = CMP_FORMAT::CMP_FORMAT_BC7;
                 break;
@@ -54,11 +53,90 @@ namespace Spartan
             case RHI_Format::ASTC:
                 format_amd = CMP_FORMAT::CMP_FORMAT_ASTC;
                 break;
+            }
+
+            SP_ASSERT(format_amd != CMP_FORMAT::CMP_FORMAT_Unknown);
+
+            return format_amd;
         }
 
-        SP_ASSERT(format_amd != CMP_FORMAT::CMP_FORMAT_Unknown);
+        static void generate_mips()
+        {
+            //mipLevels    = new Texture * m_mip_count;
+            //mipLevels[0] = new Texture{ source.data, source.width, source.height };
+            //
+            //// Generate the subsequent mip levels
+            //for (unsigned int i = 1; i < m_mip_count; i++)
+            //{
+            //    Compute nextWidth  = std::max(1u, mipLevels[i - 1]->width / 2);
+            //    Compute nextHeight = std::max(1u, mipLevels[i - 1]->height / 2);
+            //
+            //    mipLevels[i]         = new Texture;
+            //    mipLevels[i]->width  = nextWidth;
+            //    mipLevels[i]->height = nextHeight;
+            //    mipLevels[i]->data   = new unsigned char[nextWidth * nextHeight * 4]; // Assuming RGBA
+            //
+            //    CMP_MipSet mipSetSrc = {};
+            //    CMP_MipSet mipSetDest = {};
+            //
+            //    mipSetSrc.m_nMipLevels                        = 1;
+            //    mipSetSrc.m_nHeight                           = mipLevels[i - 1]->height;
+            //    mipSetSrc.m_nWidth                            = mipLevels[i - 1]->width;
+            //    mipSetSrc.m_format                            = CMP_FORMAT_RGBA_8888;
+            //    mipSetSrc.m_pMipLevelTable                    = new CMP_MipLevelData*;
+            //    mipSetSrc.m_pMipLevelTable[0]                 = new CMP_MipLevelData;
+            //    mipSetSrc.m_pMipLevelTable[0]->m_pbData       = mipLevels[i - 1]->data;
+            //    mipSetSrc.m_pMipLevelTable[0]->m_dwLinearSize = mipLevels[i - 1]->width * mipLevels[i - 1]->height * 4;
+            //
+            //    mipSetDest.m_nHeight                     = nextHeight;
+            //    mipSetDest.m_nWidth                      = nextWidth;
+            //    mipSetDest.m_format                      = CMP_FORMAT_RGBA_8888;
+            //    mipSetDest.m_pMipLevelTable              = new CMP_MipLevelData*;
+            //    mipSetDest.m_pMipLevelTable[0]           = new CMP_MipLevelData;
+            //    mipSetDest.m_pMipLevelTable[0]->m_pbData = mipLevels[i]->data;
+            //
+            //    CMP_GenerateMIPLevels(&mipSetSrc, &mipSetDest);
+            //
+            //    delete mipSetSrc.m_pMipLevelTable[0];
+            //    delete[] mipSetSrc.m_pMipLevelTable;
+            //
+            //    delete mipSetDest.m_pMipLevelTable[0];
+            //    delete[] mipSetDest.m_pMipLevelTable;
+            //}
+        }
 
-        return format_amd;
+        static void compress(RHI_Texture* texture)
+        {
+            /*CMP_MipSet mip_in  = {};
+            CMP_MipSet mip_out = {};
+
+            for (uint32_t i = 0; i < texture->GetMipCount(); i++)
+            {
+                mip_in.m_nMipLevels                        = 1;
+                mip_in.m_nHeight                           = texture->GetHeight();
+                mip_in.m_nWidth                            = texture->GetWidth();
+                mip_in.m_format                            = CMP_FORMAT_RGBA_8888;
+                mip_in.m_pMipLevelTable                    = new CMP_MipLevelData*;
+                mip_in.m_pMipLevelTable[0]                 = new CMP_MipLevelData;
+                mip_in.m_pMipLevelTable[0]->m_pbData       = texture.data;
+                mip_in.m_pMipLevelTable[0]->m_dwLinearSize = texture.width * texture.height * 4;
+
+                mip_out.m_format            = CMP_FORMAT_BC7;
+                mip_out.m_pMipLevelTable    = new CMP_MipLevelData*;
+                mip_out.m_pMipLevelTable[0] = new CMP_MipLevelData;
+
+                CMP_CompressTexture(&mip_in, &mip_out, nullptr);
+
+                delete[] texture.data;
+                texture.data = mip_out.m_pMipLevelTable[0]->m_pbData;
+
+                delete mip_in.m_pMipLevelTable[0];
+                delete[] mip_in.m_pMipLevelTable;
+
+                delete mip_out.m_pMipLevelTable[0];
+                delete[] mip_out.m_pMipLevelTable;
+            }*/
+        }
     }
 
     RHI_Texture::RHI_Texture() : IResource(ResourceType::Texture)
@@ -242,26 +320,15 @@ namespace Spartan
             }
         }
 
-        // assign texture name to the object name since Vulkan is using this for it's validation layer.
-        if (m_object_name.empty())
-        {
-            m_object_name = GetObjectName();
-        }
-
         // prepare for mip generation (if needed).
         if (m_flags & RHI_Texture_Mips)
         {
             // if it's native format, that mip count has already been loaded.
             if (!is_native_format) 
             {
-                // deduce how many mips are required to scale down any dimension to 1px.
-                uint32_t width              = m_width;
-                uint32_t height             = m_height;
-                uint32_t smallest_dimension = 1;
-                while (width > smallest_dimension && height > smallest_dimension)
+                m_mip_count = static_cast<uint32_t>(log2(max(m_width, m_height))) + 1;
+                for (uint32_t i = 1; i < m_mip_count; i++)
                 {
-                    width /= 2;
-                    height /= 2;
                     CreateMip(0);
                 }
             }
@@ -350,90 +417,6 @@ namespace Spartan
         return m_data[array_index];
     }
     
-    bool RHI_Texture::Compress(const RHI_Format format)
-    {
-        bool success = true;
-
-        for (uint32_t index_array = 0; index_array < m_array_length; index_array++)
-        { 
-            for (uint32_t index_mip = 0; index_mip < m_mip_count; index_mip++)
-            {
-                uint32_t width            = m_width >> index_mip;
-                uint32_t height           = m_height >> index_mip;
-                uint32_t src_pitch        = width * m_channel_count * (m_bits_per_channel / 8); // in bytes
-                RHI_Texture_Mip& src_data = GetMip(index_array, index_mip);
-
-                 // Source
-                CMP_Texture src_texture = {};
-                src_texture.dwSize      = sizeof(src_texture);
-                src_texture.format      = rhi_format_amd_format(m_format);
-                src_texture.dwWidth     = width;
-                src_texture.dwHeight    = height;
-                src_texture.dwPitch     = src_pitch;
-                src_texture.dwDataSize  = CMP_CalculateBufferSize(&src_texture);
-                src_texture.pData       = reinterpret_cast<CMP_BYTE*>(&src_data.bytes[0]);
-
-                // Create a scratch buffer to hold the compressed data.
-                vector<std::byte> dst_data;
-                dst_data.reserve(src_texture.dwDataSize);
-                dst_data.resize(src_texture.dwDataSize);
-
-                // Destination
-                CMP_Texture dst_texture = {};
-                dst_texture.dwSize      = sizeof(dst_texture);
-                dst_texture.dwWidth     = src_texture.dwWidth;
-                dst_texture.dwHeight    = src_texture.dwHeight;
-                dst_texture.dwPitch     = src_texture.dwPitch;
-                dst_texture.format      = rhi_format_amd_format(format);
-                dst_texture.dwDataSize  = CMP_CalculateBufferSize(&dst_texture);
-                dst_texture.pData       = reinterpret_cast<CMP_BYTE*>(&dst_data[0]);
-
-                // Alpha threshold
-                CMP_BYTE alpha_threshold = IsTransparent() ? 128 : 0;
-
-                // Compression quality
-                float compression_quality = 0.05f; // Default (per AMD)
-
-                // Compression speed
-                CMP_Speed compression_speed = CMP_Speed::CMP_Speed_Normal; // ignored for BC6H and BC7
-                if (dst_texture.format == CMP_FORMAT_BC1 && alpha_threshold != 0)
-                {
-                    // For BC1, if the compression speed is not set to normal, the alpha threshold will be ignored
-                    compression_speed = CMP_Speed::CMP_Speed_Normal;
-                }
-                
-                // Compression
-                CMP_CompressOptions options = {};
-                options.dwSize              = sizeof(options);
-                //options.bDXT1UseAlpha     = has1BitAlphaChannel; // Encode single-bit alpha data. Only valid when compressing to DXT1 & BC1.
-                options.nAlphaThreshold     = alpha_threshold;     // The alpha threshold to use when compressing to DXT1 & BC1 with bDXT1UseAlpha.
-                options.nCompressionSpeed   = compression_speed;   // The trade-off between compression speed & quality. This value is ignored for BC6H and BC7 (for BC7 the compression speed depends on fquality value).
-                options.fquality            = compression_quality; // Quality of encoding. This value ranges between 0.0 and 1.0. Default set to 1.0f (in tpacinfo.cpp).
-                options.dwnumThreads        = 0;                   // Number of threads to initialize for encoding (0 auto, 128 max).
-                options.nEncodeWith         = CMP_HPC;             // Use CPU High Performance Compute Encoder
-                
-                // Convert the source texture to the destination texture (this can be compression, decompression or converting between two uncompressed formats)
-                if (CMP_ConvertTexture(&src_texture, &dst_texture, &options, nullptr) == CMP_OK)
-                {
-                    // Copy compressed data
-                    m_data[index_array].mips[index_mip].bytes = dst_data;
-
-                    // Assign new format
-                    m_format = format;
-                }
-                else
-                {
-                    SP_LOG_ERROR("Failed to compress slice %d, mip %d.", index_array, index_mip);
-                    success = false;
-                    continue;
-
-                }
-            }
-        }
-
-        return success;
-    }
-
     void RHI_Texture::ComputeMemoryUsage()
     {
         m_object_size_cpu = 0;
