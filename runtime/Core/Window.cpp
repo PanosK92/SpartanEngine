@@ -19,6 +19,7 @@ IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
+
 //= INCLUDES =====================
 #include "pch.h"
 #include "Window.h"
@@ -26,8 +27,19 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../Display/Display.h"
 #include "../Rendering/Renderer.h"
 #include <SDL.h>
+// Quick and dirty hack. The need for this kind of preprocessor is because the
+// project includes all its libraries. SDL turns out to have a config file where
+// certain files are enabled or disabled for each specific platform. Normally this
+// would only affect the compilation but it turns out that the `SDL_syswm.h` header
+// uses configuration stuff. The proper solution for linux would be to use the SDL
+// headers and library provided by the distribution.
+#if defined(__clang__) || defined(__GNUC__) || defined(__GNUG__)
+#   undef SDL_VIDEO_DRIVER_WINDOWS
+#endif
 #include <SDL_syswm.h>
+#if defined(_MSC_VER)
 #include <ShellScalingApi.h>
+#endif
 //================================
 
 //= LINKING ============================
