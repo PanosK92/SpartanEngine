@@ -89,7 +89,32 @@ function configure_graphics_api()
     end
 end
 
+function modify_sdl_config_for_platform()
+    local sdl_config_path = "../third_party/sdl/SDL_Config.h"
+
+    local file = io.open(sdl_config_path, "r")
+    if not file then
+        print("Failed to open " .. sdl_config_path)
+        return
+    end
+    
+    local content = file:read("*all")
+    file:close()
+
+    if os.target() == "linux" then
+        content = content:gsub("SDL_VIDEO_DRIVER_WINDOWS", "SDL_VIDEO_DRIVER_X11")
+    elseif os.target() == "windows" then
+        content = content:gsub("SDL_VIDEO_DRIVER_X11", "SDL_VIDEO_DRIVER_WINDOWS")
+    end
+
+    file = io.open(sdl_config_path, "w")
+    file:write(content)
+    file:close()
+end
+
 function solution_configuration()
+    modify_sdl_config_for_platform()
+
     solution (SOLUTION_NAME)
         location ".." -- generate in root directory
         systemversion "latest"

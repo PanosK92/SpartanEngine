@@ -286,7 +286,6 @@ typedef unsigned int uintptr_t;
 /* Enable various video drivers */
 #define SDL_VIDEO_DRIVER_DUMMY  1
 #define SDL_VIDEO_DRIVER_WINDOWS    1
-#define SDL_VIDEO_DRIVER_X11    1
 
 #ifndef SDL_VIDEO_RENDER_D3D
 #define SDL_VIDEO_RENDER_D3D    1
