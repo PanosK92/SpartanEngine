@@ -195,17 +195,18 @@ namespace Spartan
         SetOption(Renderer_Option::ScreenSpaceShadows,       1.0f);
         SetOption(Renderer_Option::ScreenSpaceReflections,   1.0f);
         SetOption(Renderer_Option::Anisotropy,               16.0f);
-        SetOption(Renderer_Option::ShadowResolution,         2048.0f);
+        SetOption(Renderer_Option::ShadowResolution,         4096.0f);
         SetOption(Renderer_Option::Tonemapping,              static_cast<float>(Renderer_Tonemapping::Disabled));
         SetOption(Renderer_Option::Gamma,                    2.2f);
         SetOption(Renderer_Option::Exposure,                 1.0f);
-        SetOption(Renderer_Option::Sharpness,                1.0f);
+        SetOption(Renderer_Option::Sharpness,                0.5f);
         SetOption(Renderer_Option::Fog,                      0.0f);
         SetOption(Renderer_Option::Antialiasing,             static_cast<float>(Renderer_Antialiasing::TaaFxaa)); // this is using FSR 2 for TAA
         SetOption(Renderer_Option::Upsampling,               static_cast<float>(Renderer_Upsampling::FSR2));
+        SetOption(Renderer_Option::UpsamplingSharpness,      1.0f);
         SetOption(Renderer_Option::Vsync,                    0.0f);
         SetOption(Renderer_Option::DepthPrepass,             0.0f);                                               // depth prepass is not always faster, so by default, it's disabled.
-        SetOption(Renderer_Option::Debanding,                0.0f); 
+        SetOption(Renderer_Option::Debanding,                0.0f);
         SetOption(Renderer_Option::Debug_TransformHandle,    1.0f);
         SetOption(Renderer_Option::Debug_SelectionOutline,   1.0f);
         SetOption(Renderer_Option::Debug_Grid,               1.0f);

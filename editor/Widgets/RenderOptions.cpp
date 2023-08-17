@@ -267,7 +267,7 @@ void RenderOptions::OnTickVisible()
                     "FSR 2"
                 };
 
-                bool upsampling_allowed = resolution_render.x < resolution_output.x || resolution_render.y < resolution_output.y;
+                bool upsampling_allowed = resolution_render.x <= resolution_output.x && resolution_render.y <= resolution_output.y;
                 ImGui::BeginDisabled(!upsampling_allowed);
 
                 uint32_t upsampling_mode = Renderer::GetOption<uint32_t>(Renderer_Option::Upsampling);
@@ -276,11 +276,12 @@ void RenderOptions::OnTickVisible()
                     Renderer::SetOption(Renderer_Option::Upsampling, static_cast<float>(upsampling_mode));
                 }
 
+                ImGui::BeginDisabled(upsampling_mode != 1);
+                option_value("Upsampling sharpness (RCAS)", Renderer_Option::UpsamplingSharpness, "AMD FidelityFX Robust Contrast Adaptive Sharpening (RCAS)", 0.1f, 0.0f, 1.0f);
+                ImGui::EndDisabled();
+
                 ImGui::EndDisabled();
             }
-
-            // Sharpening
-            option_value("Sharpness (AMD FidelityFX CAS)", Renderer_Option::Sharpness, "", 0.1f, 0.0f, 1.0f);
         }
 
         if (option("Screen space lighting"))
@@ -362,27 +363,21 @@ void RenderOptions::OnTickVisible()
 
         if (option("Misc"))
         {
+            option_value("Sharpness (CAS)", Renderer_Option::Sharpness, "AMD FidelityFX Contrast Adaptive Sharpening (CAS)", 0.1f, 0.0f, 1.0f);
+            option_value("Gamma",           Renderer_Option::Gamma);
+            option_value("Exposure",        Renderer_Option::Exposure);
+
+            option_check_box("HDR", do_hdr, "High dynamic range");
+            ImGui::BeginDisabled(!do_hdr);
+            option_value("Paper white (nits)", Renderer_Option::PaperWhite, nullptr, 1.0f);
+            ImGui::EndDisabled();
+
             // Tonemapping
             static vector<string> tonemapping_options = { "AMD", "ACES", "Reinhard", "Uncharted 2", "Matrix", "Off" };
             uint32_t selection_index = Renderer::GetOption<uint32_t>(Renderer_Option::Tonemapping);
             if (option_combo_box("Tonemapping", tonemapping_options, selection_index))
             {
                 Renderer::SetOption(Renderer_Option::Tonemapping, static_cast<float>(selection_index));
-            }
-
-            // Gamma
-            option_value("Gamma", Renderer_Option::Gamma);
-
-            // Exposure
-            option_value("Exposure", Renderer_Option::Exposure);
-
-            // HDR
-            option_check_box("HDR", do_hdr, "High dynamic range");
-
-            // Paper white
-            if (do_hdr)
-            {
-                option_value("Paper white (nits)", Renderer_Option::PaperWhite, nullptr, 1.0f);
             }
 
             // Dithering
