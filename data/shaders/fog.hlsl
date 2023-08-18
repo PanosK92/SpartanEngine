@@ -42,7 +42,8 @@ float get_fog_factor(const float pixel_y, const float pixel_z)
 
     // I'm better off introducing fog volumes so te user can define depth
     // and height factors instead of using some hardcoded values here (which don't work all that well).
-    return buffer_frame.fog_density;
+    float fog_density = pass_get_f3_value().x;
+    return fog_density;
 }
 
 float get_fog_factor(const Surface surface)
@@ -141,7 +142,7 @@ float3 VolumetricLighting(Surface surface, Light light)
     float3 ray_step   = ray_dir * step_length;
     
     // Offset ray to get away with way less steps and great detail
-    float offset = get_noise_interleaved_gradient(surface.uv * buffer_frame.shadow_resolution);
+    float offset = get_noise_interleaved_gradient(surface.uv * get_shadow_resolution());
     ray_pos += ray_step * offset;
 
     if (light_is_directional())

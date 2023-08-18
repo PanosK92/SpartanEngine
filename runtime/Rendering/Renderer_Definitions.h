@@ -57,7 +57,7 @@ namespace Spartan
         Gamma,
         Exposure,
         PaperWhite,
-        Fog,
+        FogDensity,
         Antialiasing,
         Tonemapping,
         Upsampling,

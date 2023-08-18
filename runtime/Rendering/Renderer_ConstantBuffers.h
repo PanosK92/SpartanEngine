@@ -59,10 +59,6 @@ namespace Spartan
         float sharpness;
         Math::Vector3 camera_direction;
 
-        float fog;
-        float shadow_resolution;
-        Math::Vector2 padding;
-
         Math::Vector2 resolution_render;
         Math::Vector2 resolution_output;
 
@@ -95,8 +91,6 @@ namespace Spartan
                 sharpness                   == rhs.sharpness                  &&
                 camera_direction            == rhs.camera_direction           &&
                 gamma                       == rhs.gamma                      &&
-                shadow_resolution           == rhs.shadow_resolution          &&
-                fog                         == rhs.fog                        &&
                 resolution_output           == rhs.resolution_output          &&
                 resolution_render           == rhs.resolution_render          &&
                 taa_jitter_current          == rhs.taa_jitter_current         &&
