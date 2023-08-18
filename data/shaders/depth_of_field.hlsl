@@ -73,9 +73,10 @@ float get_focal_depth()
 
 float circle_of_confusion(float2 uv, float focus_distance)
 {
-    float depth       = get_linear_depth(uv);
-    float focus_range = buffer_frame.camera_aperture * 20.0f;
-    float coc         = ((depth - focus_distance) / (focus_range + FLT_MIN)) * g_dof_bokeh_radius;
+    float depth           = get_linear_depth(uv);
+    float camera_aperture = pass_get_f3_value().x;
+    float focus_range     = camera_aperture * 20.0f;
+    float coc             = ((depth - focus_distance) / (focus_range + FLT_MIN)) * g_dof_bokeh_radius;
 
     return coc;
 }
@@ -112,7 +113,6 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
-    // Out of bounds check
     if (any(int2(thread_id.xy) >= pass_get_resolution_out()))
         return;
 
@@ -144,7 +144,6 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
-    // Out of bounds check
     if (any(int2(thread_id.xy) >= pass_get_resolution_out()))
         return;
 
@@ -166,7 +165,6 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
-    // Out of bounds check
     if (any(int2(thread_id.xy) >= pass_get_resolution_out()))
         return;
 

@@ -34,34 +34,28 @@ struct FrameBufferData
     float delta_time;
     float time;
     uint frame;
-    float camera_aperture;
+    uint frame_mip_count;
 
-    float camera_shutter_speed;
-    float camera_iso;
+    float gamma;
+    uint ssr_mip_count;
     float camera_near;
     float camera_far;
 
     float3 camera_position;
-    float bloom_intensity;
+    uint options;
     
     float sharpen_strength;
     float3 camera_direction;
-    
-    float gamma;
-    float tone_mapping;
+
     float fog_density;
     float shadow_resolution;
-
+    float2 padding2;
+    
     float2 resolution_render;
     float2 resolution_output;
 
     float2 taa_jitter_current;
     float2 taa_jitter_previous;
-
-    uint options;
-    uint frame_mip_count;
-    uint ssr_mip_count;
-    float exposure;
 };
 
 struct LightBufferData

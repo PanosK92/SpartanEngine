@@ -86,7 +86,8 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 
     float4 color_frame    = tex[thread_id.xy];
     float4 color_mip      = tex2[thread_id.xy];
-    tex_uav[thread_id.xy] = saturate_16(color_frame + color_mip * buffer_frame.bloom_intensity);
+    float bloom_intensity = pass_get_f3_value().x;
+    tex_uav[thread_id.xy] = saturate_16(color_frame + color_mip * bloom_intensity);
 }
 
 #endif

@@ -35,24 +35,24 @@ float gaussian(float z, float u, float o) {
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
-    // Out of bounds check
     if (any(int2(thread_id.xy) >= pass_get_resolution_out()))
         return;
     
     const float2 uv = (thread_id.xy + 0.5f) / pass_get_resolution_out();
     float4 color    = tex[thread_id.xy];
 
-    // Film grain
+    // film grain
     float t          = buffer_frame.time * float(g_film_grain_speed);
     float seed       = dot(uv, float2(12.9898, 78.233));
     float noise      = frac(sin(seed) * 43758.5453 + t);
     noise            = gaussian(noise, float(g_film_grain_mean), float(g_film_grain_variance) * float(g_film_grain_variance));
     float film_grain =  noise * g_film_grain_intensity;
 
-    // Iso noise
-    float iso_noise = get_random(frac(uv.x * uv.y * buffer_frame.time)) * buffer_frame.camera_iso * 0.000002f;
+    // iso noise
+    float camera_iso = pass_get_f3_value().x;
+    float iso_noise = get_random(frac(uv.x * uv.y * buffer_frame.time)) * camera_iso * 0.000002f;
     
-    // Additive blending
+    // additive blending
     color.rgb += (film_grain + iso_noise) * 0.5f;
 
     tex_uav[thread_id.xy] = float4(saturate(color.rgb), 1.0f);

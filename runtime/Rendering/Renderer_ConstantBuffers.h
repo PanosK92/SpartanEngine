@@ -46,34 +46,28 @@ namespace Spartan
         float delta_time;
         float time;
         uint32_t frame;
-        float camera_aperture;
+        uint32_t frame_mip_count;
 
-        float camera_shutter_speed;
-        float camera_iso;
+        float gamma;
+        uint32_t ssr_mip_count;
         float camera_near;
         float camera_far;
 
         Math::Vector3 camera_position;
-        float bloom_intensity;
+        uint32_t options;
 
         float sharpness;
         Math::Vector3 camera_direction;
 
-        float gamma;
-        float tonemapping;
         float fog;
         float shadow_resolution;
+        Math::Vector2 padding;
 
         Math::Vector2 resolution_render;
         Math::Vector2 resolution_output;
 
         Math::Vector2 taa_jitter_current;
         Math::Vector2 taa_jitter_previous;
-
-        uint32_t options;
-        uint32_t frame_mip_count;
-        uint32_t ssr_mip_count;
-        float exposure;
 
         void set_bit(const bool set, const uint32_t bit)
         {
@@ -95,16 +89,12 @@ namespace Spartan
                 delta_time                  == rhs.delta_time                 &&
                 time                        == rhs.time                       &&
                 frame                       == rhs.frame                      &&
-                camera_aperture             == rhs.camera_aperture            &&
-                camera_shutter_speed        == rhs.camera_shutter_speed       &&
-                camera_iso                  == rhs.camera_iso                 &&
                 camera_near                 == rhs.camera_near                &&
                 camera_far                  == rhs.camera_far                 &&
                 camera_position             == rhs.camera_position            &&
                 sharpness                   == rhs.sharpness                  &&
                 camera_direction            == rhs.camera_direction           &&
                 gamma                       == rhs.gamma                      &&
-                tonemapping                 == rhs.tonemapping                &&
                 shadow_resolution           == rhs.shadow_resolution          &&
                 fog                         == rhs.fog                        &&
                 resolution_output           == rhs.resolution_output          &&
@@ -113,8 +103,7 @@ namespace Spartan
                 taa_jitter_previous         == rhs.taa_jitter_previous        &&
                 options                     == rhs.options                    &&
                 frame_mip_count             == rhs.frame_mip_count            &&
-                ssr_mip_count               == rhs.ssr_mip_count              &&
-                exposure                    == rhs.exposure;
+                ssr_mip_count               == rhs.ssr_mip_count;
         }
 
         bool operator!=(const Cb_Frame& rhs) const { return !(*this == rhs); }
