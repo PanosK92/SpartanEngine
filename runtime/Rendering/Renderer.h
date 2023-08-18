@@ -221,5 +221,6 @@ namespace Spartan
         static uint32_t m_lines_index_depth_off;
         static uint32_t m_lines_index_depth_on;
         static RHI_CommandPool* m_cmd_pool;
+        static std::shared_ptr<Camera> m_camera;
     };
 }

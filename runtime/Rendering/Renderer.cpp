@@ -48,6 +48,22 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
+    unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>> Renderer::m_renderables;
+    Cb_Frame Renderer::m_cb_frame_cpu;
+    Pcb_Pass Renderer::m_cb_pass_cpu;
+    Cb_Light Renderer::m_cb_light_cpu;
+    Cb_Material Renderer::m_cb_material_cpu;
+    shared_ptr<RHI_VertexBuffer> Renderer::m_vertex_buffer_lines;
+    unique_ptr<Font> Renderer::m_font;
+    unique_ptr<Grid> Renderer::m_world_grid;
+    vector<RHI_Vertex_PosCol> Renderer::m_line_vertices;
+    vector<float> Renderer::m_lines_duration;
+    uint32_t Renderer::m_lines_index_depth_off;
+    uint32_t Renderer::m_lines_index_depth_on;
+    bool Renderer::m_brdf_specular_lut_rendered;
+    RHI_CommandPool* Renderer::m_cmd_pool = nullptr;
+    shared_ptr<Camera> Renderer::m_camera = nullptr;
+
     namespace
     {
         // states
@@ -80,7 +96,6 @@ namespace Spartan
         thread::id render_thread_id;
         mutex mutex_entity_addition;
         vector<shared_ptr<Entity>> m_entities_to_add;
-        shared_ptr<Camera> m_camera;
         uint64_t frame_num                       = 0;
         Math::Vector2 jitter_offset              = Math::Vector2::Zero;
         const uint32_t resolution_shadow_min     = 128;
@@ -88,18 +103,18 @@ namespace Spartan
         float far_plane                          = 1.0f;
         uint32_t buffers_frames_since_last_reset = 0;
 
-        void sort_renderables(vector<shared_ptr<Entity>>* renderables, const bool are_transparent)
+        void sort_renderables(Camera* camera, vector<shared_ptr<Entity>>* renderables, const bool are_transparent)
         {
-            if (!m_camera || renderables->size() <= 2)
+            if (!camera || renderables->size() <= 2)
                 return;
 
-            auto comparison_op = [](shared_ptr<Entity> entity)
+            auto comparison_op = [camera](shared_ptr<Entity> entity)
             {
                 auto renderable = entity->GetComponent<Renderable>();
                 if (!renderable)
                     return 0.0f;
 
-                return (renderable->GetAabb().GetCenter() - m_camera->GetTransform()->GetPosition()).LengthSquared();
+                return (renderable->GetAabb().GetCenter() - camera->GetTransform()->GetPosition()).LengthSquared();
             };
 
             // sort by depth
@@ -116,21 +131,6 @@ namespace Spartan
             });
         }
     }
-
-    unordered_map<Renderer_Entity, vector<shared_ptr<Entity>>> Renderer::m_renderables;
-    Cb_Frame Renderer::m_cb_frame_cpu;
-    Pcb_Pass Renderer::m_cb_pass_cpu;
-    Cb_Light Renderer::m_cb_light_cpu;
-    Cb_Material Renderer::m_cb_material_cpu;
-    shared_ptr<RHI_VertexBuffer> Renderer::m_vertex_buffer_lines;
-    unique_ptr<Font> Renderer::m_font;
-    unique_ptr<Grid> Renderer::m_world_grid;
-    vector<RHI_Vertex_PosCol> Renderer::m_line_vertices;
-    vector<float> Renderer::m_lines_duration;
-    uint32_t Renderer::m_lines_index_depth_off;
-    uint32_t Renderer::m_lines_index_depth_on;
-    bool Renderer::m_brdf_specular_lut_rendered;
-    RHI_CommandPool* Renderer::m_cmd_pool = nullptr;
 
     void Renderer::Initialize()
     {
@@ -376,9 +376,6 @@ namespace Spartan
             if (m_camera)
             {
                 m_cb_frame_cpu.view_projection_unjittered = m_cb_frame_cpu.view * m_camera->GetProjectionMatrix();
-                m_cb_frame_cpu.camera_aperture            = m_camera->GetAperture();
-                m_cb_frame_cpu.camera_shutter_speed       = m_camera->GetShutterSpeed();
-                m_cb_frame_cpu.camera_iso                 = m_camera->GetIso();
                 m_cb_frame_cpu.camera_near                = m_camera->GetNearPlane();
                 m_cb_frame_cpu.camera_far                 = m_camera->GetFarPlane();
                 m_cb_frame_cpu.camera_position            = m_camera->GetTransform()->GetPosition();
@@ -390,12 +387,9 @@ namespace Spartan
             m_cb_frame_cpu.taa_jitter_current  = jitter_offset;
             m_cb_frame_cpu.delta_time          = static_cast<float>(Timer::GetDeltaTimeSmoothedSec());
             m_cb_frame_cpu.time                = static_cast<float>(Timer::GetTimeSec());
-            m_cb_frame_cpu.bloom_intensity     = GetOption<float>(Renderer_Option::Bloom);
             m_cb_frame_cpu.sharpness           = GetOption<float>(Renderer_Option::Sharpness);
             m_cb_frame_cpu.fog                 = GetOption<float>(Renderer_Option::Fog);
-            m_cb_frame_cpu.tonemapping         = GetOption<float>(Renderer_Option::Tonemapping);
             m_cb_frame_cpu.gamma               = GetOption<float>(Renderer_Option::Gamma);
-            m_cb_frame_cpu.exposure            = GetOption<float>(Renderer_Option::Exposure);
             m_cb_frame_cpu.shadow_resolution   = GetOption<float>(Renderer_Option::ShadowResolution);
             m_cb_frame_cpu.frame               = static_cast<uint32_t>(frame_num);
             m_cb_frame_cpu.frame_mip_count     = GetRenderTarget(Renderer_RenderTexture::frame_render)->GetMipCount();
@@ -712,8 +706,8 @@ namespace Spartan
             }
 
             // sort them by distance
-            sort_renderables(&m_renderables[Renderer_Entity::Geometry], false);
-            sort_renderables(&m_renderables[Renderer_Entity::GeometryTransparent], true);
+            sort_renderables(m_camera.get(), &m_renderables[Renderer_Entity::Geometry], false);
+            sort_renderables(m_camera.get(), &m_renderables[Renderer_Entity::GeometryTransparent], true);
 
             m_entities_to_add.clear();
         }

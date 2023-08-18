@@ -167,19 +167,6 @@ float3 amd(float3 color)
     return color;
 }
 
-float3 tonemap(float3 color)
-{
-    switch (buffer_frame.tone_mapping)
-    {
-        case 0: return amd(color);
-        case 1: return aces(color);
-        case 2: return reinhard(color);
-        case 3: return uncharted_2(color);
-        case 4: return matrix_movie(color);
-        default: return color;
-    }
-}
-
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
@@ -190,9 +177,14 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     // exposure, tone-mapping, gamma correction
     float4 color = tex[thread_id.xy];
 
+    float3 f3_value          = pass_get_f3_value();
+    float luminance_max_nits = f3_value.x;
+    float tone_mapping       = f3_value.y;
+    float exposure           = f3_value.z;
+    
     // 1. Normalize luminance based on monitor capabilities
     {
-        float luminance_max_nits = pass_get_f3_value().x;
+
         
         // Normalize the color's luminance
         float luminance_original   = luminance(color.rgb) * 100; // compute luminance in cd/m^2 and convert it to nits
@@ -206,10 +198,22 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     }
 
     // 2. Expose
-    color.rgb *= buffer_frame.exposure;
+    color.rgb *= exposure;
 
     // 3. Tone-map
-    color.rgb = tonemap(color.rgb);
+    switch (tone_mapping)
+    {
+        case 0:
+            color.rgb = amd(color.rgb);
+        case 1:
+            color.rgb = aces(color.rgb);
+        case 2:
+            color.rgb = reinhard(color.rgb);
+        case 3:
+            color.rgb = uncharted_2(color.rgb);
+        case 4:
+            color.rgb = matrix_movie(color.rgb);
+    }
 
     // 4. Gamma-correct
     color.rgb = gamma(color.rgb);

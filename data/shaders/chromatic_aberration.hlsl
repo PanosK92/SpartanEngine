@@ -32,10 +32,11 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     if (any(int2(thread_id.xy) >= pass_get_resolution_out()))
         return;
 
-    const float2 uv    = (thread_id.xy + 0.5f) / pass_get_resolution_out();
-    float camera_error = sqrt(1.0f / buffer_frame.camera_aperture);
-    float intensity    = camera_error * g_chromatic_aberration_intensity;
-    float2 shift       = float2(intensity, -intensity);
+    const float2 uv       = (thread_id.xy + 0.5f) / pass_get_resolution_out();
+    float camera_aperture = pass_get_f3_value().x;
+    float camera_error    = sqrt(1.0f / camera_aperture);
+    float intensity       = camera_error * g_chromatic_aberration_intensity;
+    float2 shift          = float2(intensity, -intensity);
 
     // Lens effect
     shift.x *= abs(uv.x * 2.0f - 1.0f);
