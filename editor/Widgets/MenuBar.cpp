@@ -134,8 +134,8 @@ namespace
         {
              // format: name,contribution,country,button text,button url
             "Apostolos Bouzalas,ECS bug fixes,Greece,LinkedIn,https://www.linkedin.com/in/apostolos-bouzalas",
-            "Jesse Guerrero,UX improvements,US,LinkedIn,https://www.linkedin.com/in/jguer",
             "Iker Galardi,Linux port,Basque Country,LinkedIn,https://www.linkedin.com/in/iker-galardi/",
+            "Jesse Guerrero,UX improvements,US,LinkedIn,https://www.linkedin.com/in/jguer",
             "Konstantinos Benos,Transform handle bug fixes,Greece,Twitter,https://twitter.com/deg3x",
             "Nick Polyderopoulos,UX improvements,Greece,LinkedIn,https://www.linkedin.com/in/nick-polyderopoulos-21742397"
         };
