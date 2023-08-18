@@ -33,6 +33,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "../RHI/RHI_Shader.h"
 #include "../RHI/RHI_AMD_FidelityFX.h"
 #include "../RHI/RHI_StructuredBuffer.h"
+#include "../Display/Display.h"
 //==============================================
 
 //= NAMESPACES ===============
@@ -1297,29 +1298,30 @@ namespace Spartan
 
     void Renderer::Pass_ToneMappingGammaCorrection(RHI_CommandList* cmd_list, RHI_Texture* tex_in, RHI_Texture* tex_out)
     {
-        // Acquire shaders
+        // acquire shaders
         RHI_Shader* shader_c = GetShader(Renderer_Shader::tonemapping_gamma_correction_c).get();
         if (!shader_c->IsCompiled())
             return;
 
         cmd_list->BeginTimeblock("tonemapping_gamma_correction");
 
-        // Define pipeline state
+        // define pipeline state
         static RHI_PipelineState pso;
         pso.shader_compute = shader_c;
 
-        // Set pipeline state
+        // set pipeline state
         cmd_list->SetPipelineState(pso);
 
-        // Set pass constants
+        // set pass constants
         m_cb_pass_cpu.set_resolution_out(tex_out);
+        m_cb_pass_cpu.set_f3_value(Display::GetLuminanceMax(), 0.0f, 0.0f);
         PushPassConstants(cmd_list);
 
-        // Set textures
+        // set textures
         cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_out);
         cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);
 
-        // Render
+        // render
         cmd_list->Dispatch(thread_group_count_x(tex_out), thread_group_count_y(tex_out));
 
         cmd_list->EndTimeblock();

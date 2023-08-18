@@ -62,10 +62,6 @@ struct FrameBufferData
     uint frame_mip_count;
     uint ssr_mip_count;
     float exposure;
-
-    float2 resolution_environment;
-    float luminance_max_nits;
-    float padding;
 };
 
 struct LightBufferData
