@@ -90,7 +90,7 @@ function configure_graphics_api()
 end
 
 function modify_sdl_config_for_platform()
-    local sdl_config_path = "../third_party/sdl/SDL_Config.h"
+    local sdl_config_path = "../third_party/sdl/SDL_config.h"
 
     local file = io.open(sdl_config_path, "r")
     if not file then
