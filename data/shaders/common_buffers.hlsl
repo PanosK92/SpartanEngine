@@ -47,10 +47,6 @@ struct FrameBufferData
     float sharpen_strength;
     float3 camera_direction;
 
-    float fog_density;
-    float shadow_resolution;
-    float2 padding2;
-    
     float2 resolution_render;
     float2 resolution_output;
 

@@ -350,7 +350,7 @@ void RenderOptions::OnTickVisible()
             {
                 // Density
                 ImGui::BeginDisabled(!do_volumetric_fog);
-                option_value("Volumetric fog density", Renderer_Option::Fog, "", 0.01f, 0.0f, 16.0f, "%.2f");
+                option_value("Volumetric fog density", Renderer_Option::FogDensity, "", 0.01f, 0.0f, 16.0f, "%.2f");
                 ImGui::EndDisabled();
             }
 

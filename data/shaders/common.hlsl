@@ -55,7 +55,6 @@ static const uint THREAD_GROUP_COUNT   = 64;
    COMMON
 ------------------------------------------------------------------------------*/
 float2 get_rt_texel_size()          { return float2(1.0f / pass_get_resolution_out().x, 1.0f /pass_get_resolution_out().y); }
-float get_shadow_texel_size()       { return (1.0f / buffer_frame.shadow_resolution); }
 float2 get_tex_noise_normal_scale() { return float2(buffer_frame.resolution_render.x / 256.0f, buffer_frame.resolution_render.y / 256.0f); }
 float2 get_tex_noise_blue_scale()   { return float2(buffer_frame.resolution_render.x / 470.0f, buffer_frame.resolution_render.y / 470.0f); }
 float3 degamma(float3 color)        { return pow(color, buffer_frame.gamma); }

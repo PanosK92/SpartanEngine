@@ -41,6 +41,20 @@ static const float g_pcf_filter_size    = (sqrt((float)g_shadow_samples) - 1.0f)
 static const float g_shadow_samples_rpc = 1.0f / (float) g_shadow_samples;
 
 /*------------------------------------------------------------------------------
+    SHADER VARIABLES
+------------------------------------------------------------------------------*/
+
+float get_shadow_resolution()
+{
+    return pass_get_f3_value().y;
+}
+
+float get_shadow_texel_size()
+{
+    return (1.0f / get_shadow_resolution());
+}
+
+/*------------------------------------------------------------------------------
     LIGHT SHADOW MAP SAMPLING
 ------------------------------------------------------------------------------*/
 
@@ -275,7 +289,7 @@ static const float2 poisson_disk[64] =
 float Technique_Poisson(Surface surface, float3 uv, float compare)
 {
     float shadow          = 0.0f;
-    float temporal_offset = get_noise_interleaved_gradient(uv.xy * buffer_frame.shadow_resolution); // helps with noise if TAA is active
+    float temporal_offset = get_noise_interleaved_gradient(uv.xy * get_shadow_resolution()); // helps with noise if TAA is active
 
     for (uint i = 0; i < g_shadow_samples; i++)
     {

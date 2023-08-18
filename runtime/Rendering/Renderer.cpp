@@ -200,7 +200,7 @@ namespace Spartan
         SetOption(Renderer_Option::Gamma,                    2.2f);
         SetOption(Renderer_Option::Exposure,                 1.0f);
         SetOption(Renderer_Option::Sharpness,                0.5f);
-        SetOption(Renderer_Option::Fog,                      0.0f);
+        SetOption(Renderer_Option::FogDensity,               0.0f);
         SetOption(Renderer_Option::Antialiasing,             static_cast<float>(Renderer_Antialiasing::TaaFxaa)); // this is using FSR 2 for TAA
         SetOption(Renderer_Option::Upsampling,               static_cast<float>(Renderer_Upsampling::FSR2));
         SetOption(Renderer_Option::UpsamplingSharpness,      1.0f);
@@ -388,9 +388,7 @@ namespace Spartan
             m_cb_frame_cpu.delta_time          = static_cast<float>(Timer::GetDeltaTimeSmoothedSec());
             m_cb_frame_cpu.time                = static_cast<float>(Timer::GetTimeSec());
             m_cb_frame_cpu.sharpness           = GetOption<float>(Renderer_Option::Sharpness);
-            m_cb_frame_cpu.fog                 = GetOption<float>(Renderer_Option::Fog);
             m_cb_frame_cpu.gamma               = GetOption<float>(Renderer_Option::Gamma);
-            m_cb_frame_cpu.shadow_resolution   = GetOption<float>(Renderer_Option::ShadowResolution);
             m_cb_frame_cpu.frame               = static_cast<uint32_t>(frame_num);
             m_cb_frame_cpu.frame_mip_count     = GetRenderTarget(Renderer_RenderTexture::frame_render)->GetMipCount();
             m_cb_frame_cpu.ssr_mip_count       = GetRenderTarget(Renderer_RenderTexture::ssr)->GetMipCount();
