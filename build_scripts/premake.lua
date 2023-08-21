@@ -244,14 +244,24 @@ function editor_project_configuration()
         end
 
         -- Files
-        files
-        {
-            EDITOR_DIR .. "/**.rc",
-            EDITOR_DIR .. "/**.h",
-            EDITOR_DIR .. "/**.cpp",
-            EDITOR_DIR .. "/**.hpp",
-            EDITOR_DIR .. "/**.inl"
-        }
+        if os.target() == "windows" then
+            files
+            {
+                EDITOR_DIR .. "/**.rc",
+                EDITOR_DIR .. "/**.h",
+                EDITOR_DIR .. "/**.cpp",
+                EDITOR_DIR .. "/**.hpp",
+                EDITOR_DIR .. "/**.inl"
+            }
+        else
+            files
+            {
+                EDITOR_DIR .. "/**.h",
+                EDITOR_DIR .. "/**.cpp",
+                EDITOR_DIR .. "/**.hpp",
+                EDITOR_DIR .. "/**.inl"
+            }
+        end
 
         -- Includes
         includedirs { RUNTIME_DIR }
