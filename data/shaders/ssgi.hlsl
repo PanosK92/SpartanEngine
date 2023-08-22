@@ -24,26 +24,25 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //====================
 
 // constants
-static const uint g_ao_directions = 2;
-static const uint g_ao_steps      = 2;
-static const float g_ao_radius    = 2.0f;
-static const float g_ao_intensity = 3.0f;
+static const uint g_ao_directions      = 2;
+static const uint g_ao_steps           = 2;
+static const float g_ao_radius         = 1.7f;
+static const float g_ao_intensity      = 4.0f;
 
 // derived constants
 static const float ao_samples        = (float)(g_ao_directions * g_ao_steps);
 static const float ao_samples_rcp    = 1.0f / ao_samples;
 static const float ao_radius2        = g_ao_radius * g_ao_radius;
 static const float ao_negInvRadius2  = -1.0f / ao_radius2;
-static const float ao_rpc_intensity  = ao_samples_rcp * g_ao_intensity * 2.0f;
 static const float ao_step_direction = PI2 / (float) g_ao_directions;
 
 float compute_occlusion(float3 origin_position, float3 origin_normal, uint2 sample_pos)
 {
-    float3 sample_position = get_position_view_space(sample_pos);
+    float3 sample_position  = get_position_view_space(sample_pos);
     float3 origin_to_sample = sample_position - origin_position;
-    float distance_squared = dot(origin_to_sample, origin_to_sample);
-    float n_dot_s = dot(origin_normal, origin_to_sample) * rsqrt(distance_squared);
-    float falloff = saturate(distance_squared * ao_negInvRadius2 + 1.0f);
+    float distance_squared  = dot(origin_to_sample, origin_to_sample);
+    float n_dot_s           = dot(origin_normal, origin_to_sample) * rsqrt(distance_squared);
+    float falloff           = saturate(distance_squared * ao_negInvRadius2 + 1.0f);
 
     // create a bent normal in the direction of the sample
     float3 bent_normal = normalize(origin_normal + origin_to_sample * ao_radius2 * ao_negInvRadius2);
@@ -92,8 +91,8 @@ void compute_ssgi(uint2 pos, inout float occlusion, inout float3 diffuse_bounce)
         }
     }
 
-    occlusion      = pow((1.0f - saturate(occlusion * ao_samples_rcp)), g_ao_intensity);
-    diffuse_bounce *= ao_rpc_intensity;
+    occlusion      = 1.0f - saturate(occlusion * ao_samples_rcp * g_ao_intensity);
+    diffuse_bounce *= g_ao_intensity;
 }
 
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
