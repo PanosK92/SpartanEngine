@@ -36,11 +36,11 @@ namespace Spartan
     static string log_file_name = "log.txt";
     static ILogger* logger      = nullptr;
     static bool log_to_file     = true;
-#ifdef DEBUG
+    #ifdef DEBUG
     static bool unique_logs     = true;
-#else
+    #else
     static bool unique_logs     = false;
-#endif
+    #endif
 
     static void write_to_file(string text, const LogType type)
     {
@@ -101,7 +101,7 @@ namespace Spartan
         auto t  = time(nullptr);
         auto tm = *localtime(&t);
         ostringstream oss;
-        oss << std::put_time(&tm, "[%H:%M:%S]");
+        oss << put_time(&tm, "[%H:%M:%S]");
         const string final_text = oss.str() + ": " + string(text);
 
         // Log to file if requested or if an in-engine logger is not available.

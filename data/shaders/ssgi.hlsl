@@ -23,12 +23,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #include "common.hlsl"
 //====================
 
-static const uint g_ao_directions      = 2;
-static const uint g_ao_steps           = 2;
-static const float g_ao_radius         = 2.0f;
-static const float g_ao_occlusion_bias = 0.0f;
-static const float g_ao_intensity      = 2.0f;
+// constants
+static const uint g_ao_directions = 2;
+static const uint g_ao_steps      = 2;
+static const float g_ao_radius    = 2.0f;
+static const float g_ao_intensity = 3.0f;
 
+// derived constants
 static const float ao_samples        = (float)(g_ao_directions * g_ao_steps);
 static const float ao_samples_rcp    = 1.0f / ao_samples;
 static const float ao_radius2        = g_ao_radius * g_ao_radius;
@@ -36,18 +37,22 @@ static const float ao_negInvRadius2  = -1.0f / ao_radius2;
 static const float ao_rpc_intensity  = ao_samples_rcp * g_ao_intensity * 2.0f;
 static const float ao_step_direction = PI2 / (float) g_ao_directions;
 
-float compute_falloff(float distance_squared)
+float compute_occlusion(float3 origin_position, float3 origin_normal, uint2 sample_pos)
 {
-    return saturate(distance_squared * ao_negInvRadius2 + 1.0f);
-}
-
-float compute_visibility(float3 origin_normal, float3 origin_to_sample)
-{
+    float3 sample_position = get_position_view_space(sample_pos);
+    float3 origin_to_sample = sample_position - origin_position;
     float distance_squared = dot(origin_to_sample, origin_to_sample);
-    float n_dot_v          = dot(origin_normal, origin_to_sample) * rsqrt(distance_squared);
-    float falloff          = compute_falloff(distance_squared);
+    float n_dot_s = dot(origin_normal, origin_to_sample) * rsqrt(distance_squared);
+    float falloff = saturate(distance_squared * ao_negInvRadius2 + 1.0f);
 
-    return saturate(n_dot_v - g_ao_occlusion_bias) * falloff;
+    // create a bent normal in the direction of the sample
+    float3 bent_normal = normalize(origin_normal + origin_to_sample * ao_radius2 * ao_negInvRadius2);
+
+    // check the difference between the bent normal and the original normal
+    float difference = dot(bent_normal, origin_normal);
+    float occlusion  = (difference < n_dot_s) ? 1.0f : 0.0f;
+
+    return occlusion * falloff;
 }
 
 // screen space temporal occlusion and diffuse illumination
@@ -78,14 +83,12 @@ void compute_ssgi(uint2 pos, inout float occlusion, inout float3 diffuse_bounce)
         [unroll]
         for (uint step_index = 0; step_index < g_ao_steps; ++step_index)
         {
-            float2 uv_offset        = round(max(step_offset * (step_index + ray_offset), 1 + step_index)) * rotation_direction;
-            uint2 sample_pos        = (origin_uv + uv_offset) * pass_get_resolution_out();
-            float3 sample_position  = get_position_view_space(sample_pos);
-            float3 origin_to_sample = sample_position - origin_position;
-            float visibility        = compute_visibility(origin_normal, origin_to_sample);
+            float2 uv_offset      = round(max(step_offset * (step_index + ray_offset), 1 + step_index)) * rotation_direction;
+            uint2 sample_pos      = (origin_uv + uv_offset) * pass_get_resolution_out();
+            float sample_occlsion = compute_occlusion(origin_position, origin_normal, sample_pos);
 
-            occlusion      += visibility;
-            diffuse_bounce += tex_light_diffuse[sample_pos].rgb * tex_albedo[sample_pos].rgb * visibility;
+            occlusion      += sample_occlsion;
+            diffuse_bounce += tex_light_diffuse[sample_pos].rgb * tex_albedo[sample_pos].rgb * sample_occlsion;
         }
     }
 
