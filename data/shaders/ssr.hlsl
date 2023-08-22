@@ -123,15 +123,13 @@ float2 trace_ray(uint2 screen_pos, float3 ray_start_vs, float3 ray_dir_vs)
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
-    // Out of bounds check
     if (any(int2(thread_id.xy) >= pass_get_resolution_out()))
         return;
 
-    // Construct surface
     Surface surface;
     surface.Build(thread_id.xy, true, false, false);
 
-    float alpha = 0.0f;
+    float alpha  = 0.0f;
     float3 color = 0.0f;
 
     bool early_exit_1 = !surface.is_opaque();
@@ -142,10 +140,10 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
         return;
     }
 
-    // Skip pixels which are fully rough
+    // skip pixels which are fully rough
     float2 hit_uv = -1.0f;
 
-    // Compute reflection direction in view space
+    // compute reflection direction in view space
     float3 normal          = world_to_view(surface.normal, false);
     float3 position        = world_to_view(surface.position, true);
     float3 camera_to_pixel = normalize(position);
