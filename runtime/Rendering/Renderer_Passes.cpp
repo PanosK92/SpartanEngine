@@ -668,42 +668,37 @@ namespace Spartan
         if (!GetOption<bool>(Renderer_Option::Ssgi))
             return;
 
-        // Acquire shaders
+        // acquire shaders
         RHI_Shader* shader_c = GetShader(Renderer_Shader::ssgi_c).get();
         if (!shader_c->IsCompiled())
             return;
 
-        // Acquire render targets
+        // acquire render targets
         RHI_Texture* tex_ssgi = GetRenderTarget(Renderer_RenderTexture::ssgi).get();
 
         cmd_list->BeginTimeblock("ssgi");
 
-        // Define pipeline state
+        // define pipeline state
         static RHI_PipelineState pso;
         pso.shader_compute = shader_c;
 
-        // Set pipeline state
+        // set pipeline state
         cmd_list->SetPipelineState(pso);
 
-        // Set pass constants
+        // set pass constants
         m_cb_pass_cpu.set_resolution_out(tex_ssgi);
         PushPassConstants(cmd_list);
 
-        // Set textures
-        cmd_list->SetTexture(Renderer_BindingsUav::tex,            tex_ssgi);
-        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_albedo, GetRenderTarget(Renderer_RenderTexture::gbuffer_albedo));
-        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_normal, GetRenderTarget(Renderer_RenderTexture::gbuffer_normal));
-        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_depth,  GetRenderTarget(Renderer_RenderTexture::gbuffer_depth));
-        cmd_list->SetTexture(Renderer_BindingsSrv::light_diffuse,  GetRenderTarget(Renderer_RenderTexture::light_diffuse));
+        // set textures
+        cmd_list->SetTexture(Renderer_BindingsUav::tex,              tex_ssgi);
+        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_albedo,   GetRenderTarget(Renderer_RenderTexture::gbuffer_albedo));
+        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_normal,   GetRenderTarget(Renderer_RenderTexture::gbuffer_normal));
+        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_velocity, GetRenderTarget(Renderer_RenderTexture::gbuffer_velocity));
+        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_depth,    GetRenderTarget(Renderer_RenderTexture::gbuffer_depth));
+        cmd_list->SetTexture(Renderer_BindingsSrv::light_diffuse,    GetRenderTarget(Renderer_RenderTexture::light_diffuse));
 
-        // Render
+        // render
         cmd_list->Dispatch(thread_group_count_x(tex_ssgi), thread_group_count_y(tex_ssgi));
-
-        // Blur
-        const bool depth_aware = true;
-        const float radius     = 12.0f;
-        const float sigma      = 12.0f;
-        Pass_Blur_Gaussian(cmd_list, tex_ssgi, depth_aware, radius, sigma);
 
         cmd_list->EndTimeblock();
     }

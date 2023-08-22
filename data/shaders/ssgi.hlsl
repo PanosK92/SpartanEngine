@@ -24,10 +24,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //====================
 
 // constants
-static const uint g_ao_directions      = 2;
-static const uint g_ao_steps           = 2;
-static const float g_ao_radius         = 1.7f;
-static const float g_ao_intensity      = 4.0f;
+static const uint g_ao_directions = 2;
+static const uint g_ao_steps      = 2;
+static const float g_ao_radius    = 3.0f;
+static const float g_ao_intensity = 3.0f;
 
 // derived constants
 static const float ao_samples        = (float)(g_ao_directions * g_ao_steps);
@@ -36,43 +36,45 @@ static const float ao_radius2        = g_ao_radius * g_ao_radius;
 static const float ao_negInvRadius2  = -1.0f / ao_radius2;
 static const float ao_step_direction = PI2 / (float) g_ao_directions;
 
-float compute_occlusion(float3 origin_position, float3 origin_normal, uint2 sample_pos)
+// https://www.activision.com/cdn/research/s2016_pbs_activision_occlusion.pptx
+float get_offset_non_temporal(uint2 screen_pos)
 {
-    float3 sample_position  = get_position_view_space(sample_pos);
-    float3 origin_to_sample = sample_position - origin_position;
-    float distance_squared  = dot(origin_to_sample, origin_to_sample);
-    float n_dot_s           = dot(origin_normal, origin_to_sample) * rsqrt(distance_squared);
-    float falloff           = saturate(distance_squared * ao_negInvRadius2 + 1.0f);
+    int2 position = (int2)(screen_pos);
+    return 0.25 * (float)((position.y - position.x) & 3);
+}
+static const float offsets[]   = { 0.0f, 0.5f, 0.25f, 0.75f };
+static const float rotations[] = { 0.1666f, 0.8333, 0.5f, 0.6666, 0.3333, 0.0f }; // 60.0f, 300.0f, 180.0f, 240.0f, 120.0f, 0.0f devived by 360.0f
 
-    // create a bent normal in the direction of the sample
-    float3 bent_normal = normalize(origin_normal + origin_to_sample * ao_radius2 * ao_negInvRadius2);
-
-    // check the difference between the bent normal and the original normal
-    float difference = dot(bent_normal, origin_normal);
-    float occlusion  = (difference < n_dot_s) ? 1.0f : 0.0f;
+float compute_occlusion(float3 origin_position, float3 origin_normal, uint2 sample_position)
+{
+    float3 origin_to_sample = get_position_view_space(sample_position) - origin_position;
+    float distance2         = dot(origin_to_sample, origin_to_sample);
+    float occlusion         = dot(origin_normal, origin_to_sample) * rsqrt(distance2);
+    float falloff           = saturate(distance2 * ao_negInvRadius2 + 1.0f);
 
     return occlusion * falloff;
 }
 
 // screen space temporal occlusion and diffuse illumination
-void compute_ssgi(uint2 pos, inout float occlusion, inout float3 diffuse_bounce)
+void compute_ssgi(uint2 pos, inout float visibility, inout float3 diffuse_bounce)
 {
     const float2 origin_uv       = (pos + 0.5f) / pass_get_resolution_out();
     const float3 origin_position = get_position_view_space(pos);
     const float3 origin_normal   = get_normal_view_space(pos);
 
     // compute step in pixels
-    const float pixel_offset = max((g_ao_radius * pass_get_resolution_out().x * 0.5f) / origin_position.z, (float) g_ao_steps);
+    const float pixel_offset = max((g_ao_radius * pass_get_resolution_out().x * 0.5f) / origin_position.z, (float)g_ao_steps);
     const float step_offset  = pixel_offset / float(g_ao_steps + 1.0f); // divide by steps + 1 so that the farthest samples are not fully attenuated
 
     // offsets (noise over space and time)
-    const float noise_gradient_temporal  = get_noise_interleaved_gradient(pos);
+    const float noise_gradient_temporal  = get_noise_interleaved_gradient(pos, 1.0f);
     const float offset_spatial           = get_offset_non_temporal(pos);
-    const float offset_temporal          = get_offset();
-    const float offset_rotation_temporal = get_direction();
+    const float offset_temporal          = offsets[buffer_frame.frame % 4];
+    const float offset_rotation_temporal = rotations[buffer_frame.frame % 6];
     const float ray_offset               = frac(offset_spatial + offset_temporal) + (get_random(origin_uv) * 2.0 - 1.0) * 0.25;
 
     // compute light/occlusion
+    float occlusion = 0.0f;
     [unroll]
     for (uint direction_index = 0; direction_index < g_ao_directions; direction_index++)
     {
@@ -82,17 +84,18 @@ void compute_ssgi(uint2 pos, inout float occlusion, inout float3 diffuse_bounce)
         [unroll]
         for (uint step_index = 0; step_index < g_ao_steps; ++step_index)
         {
-            float2 uv_offset      = round(max(step_offset * (step_index + ray_offset), 1 + step_index)) * rotation_direction;
-            uint2 sample_pos      = (origin_uv + uv_offset) * pass_get_resolution_out();
-            float sample_occlsion = compute_occlusion(origin_position, origin_normal, sample_pos);
+            float2 uv_offset       = round(max(step_offset * (step_index + ray_offset), 1 + step_index)) * rotation_direction;
+            uint2 sample_pos       = (origin_uv + uv_offset) * pass_get_resolution_out();
+            float sample_occlusion = compute_occlusion(origin_position, origin_normal, sample_pos);
 
-            occlusion      += sample_occlsion;
-            diffuse_bounce += tex_light_diffuse[sample_pos].rgb * tex_albedo[sample_pos].rgb * sample_occlsion;
+            occlusion      += sample_occlusion;
+            diffuse_bounce += tex_light_diffuse[sample_pos].rgb * tex_albedo[sample_pos].rgb * max(0.01f, sample_occlusion); // max(0.01f, x) to avoid black pixels
         }
     }
 
-    occlusion      = 1.0f - saturate(occlusion * ao_samples_rcp * g_ao_intensity);
-    diffuse_bounce *= g_ao_intensity;
+    visibility      = 1.0f - saturate(occlusion * ao_samples_rcp * g_ao_intensity);
+    diffuse_bounce *= ao_samples_rcp * g_ao_intensity;
+
 }
 
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
@@ -101,9 +104,25 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     if (any(int2(thread_id.xy) >= pass_get_resolution_out()))
         return;
 
-    float occlusion       = 0.0f;
+    // ssgi
+    float visibility      = 0.0f;
     float3 diffuse_bounce = 0.0f;
-    compute_ssgi(thread_id.xy, occlusion, diffuse_bounce);
+    compute_ssgi(thread_id.xy, visibility, diffuse_bounce);
 
-    tex_uav[thread_id.xy] = float4(diffuse_bounce, occlusion);
+    // get reprojected uv
+    float2 uv             = (thread_id.xy + 0.5f) / pass_get_resolution_out();
+    float2 velocity       = tex_velocity[thread_id.xy].xy;
+    float2 uv_reprojected = uv - velocity;
+
+    // compute blend factor
+    float blend_factor = RPC_32; // accumulate 32 samples
+    {
+        float factor_screen = !is_saturated(uv_reprojected);
+        blend_factor        = saturate(blend_factor + factor_screen);
+    }
+    
+    // accumulate
+    float4 history        = tex_uav[uv_reprojected * buffer_frame.resolution_render];
+    float4 sample         = float4(diffuse_bounce, visibility);
+    tex_uav[thread_id.xy] = lerp(history, sample, blend_factor);
 }
