@@ -46,6 +46,7 @@ static const float FLT_MAX_16U         = 65535.0f;
 static const float ALPHA_THRESHOLD     = 0.6f;
 static const float RPC_9               = 0.11111111111f;
 static const float RPC_16              = 0.0625f;
+static const float RPC_32              = 0.03125f;
 static const float ENVIRONMENT_MAX_MIP = 11.0f;
 static const uint THREAD_GROUP_COUNT_X = 8;
 static const uint THREAD_GROUP_COUNT_Y = 8;
@@ -459,44 +460,22 @@ float luminance(float4 color)
 }
 
 /*------------------------------------------------------------------------------
-    NOISE/OFFSETS/ROTATIONS
+    NOISE/RANDOM
 ------------------------------------------------------------------------------*/
 float get_random(float2 uv)
 {
     return frac(sin(dot(uv, float2(12.9898, 78.233))) * 43758.5453);
 }
 
-// Based on Activision GTAO paper: https://www.activision.com/cdn/research/s2016_pbs_activision_occlusion.pptx
-float get_offset_non_temporal(uint2 screen_pos)
+// An expansion on the interleaved gradient function from Jimenez 2014 http://goo.gl/eomGso
+float get_noise_interleaved_gradient(float2 screen_pos, float animate_even_with_taa_off = 0.0f)
 {
-    int2 position = (int2)(screen_pos);
-    return 0.25 * (float)((position.y - position.x) & 3);
-}
-
-// Based on Activision GTAO paper: https://www.activision.com/cdn/research/s2016_pbs_activision_occlusion.pptx
-static const float offsets[] = { 0.0f, 0.5f, 0.25f, 0.75f };
-float get_offset()
-{
-    return offsets[buffer_frame.frame % 4] * is_taa_enabled();
-}
-
-// Based on Activision GTAO paper: https://www.activision.com/cdn/research/s2016_pbs_activision_occlusion.pptx
-// Rotations are 60.0f, 300.0f, 180.0f, 240.0f, 120.0f, 0.0f, divided by 360.0f.
-static const float rotations[] = { 0.1666f, 0.8333, 0.5f, 0.6666, 0.3333, 0.0f };
-float get_direction()
-{
-    return rotations[buffer_frame.frame % 6] * is_taa_enabled();
-}
-
-// Derived from the interleaved gradient function from Jimenez 2014 http://goo.gl/eomGso
-float get_noise_interleaved_gradient(float2 screen_pos)
-{
-    // Temporal factor
-    float taaOn      = (float)is_taa_enabled();
-    float frameCount = (float)buffer_frame.frame;
-    float frameStep  = taaOn * float(frameCount % 16) * RPC_16;
-    screen_pos.x     += frameStep * 4.7526;
-    screen_pos.y     += frameStep * 3.1914;
+    // temporal factor
+    float taa_on      = saturate((float)is_taa_enabled() + animate_even_with_taa_off);
+    float frame_count = (float)buffer_frame.frame;
+    float frame_step  = taa_on * float(frame_count % 16) * RPC_16;
+    screen_pos.x     += frame_step * 4.7526;
+    screen_pos.y     += frame_step * 3.1914;
 
     float3 magic = float3(0.06711056f, 0.00583715f, 52.9829189f);
     return frac(magic.z * frac(dot(screen_pos, magic.xy)));

@@ -271,40 +271,31 @@ float get_sample_weight(float distance_squared)
 
 float3 get_input_sample(uint2 group_top_left, uint2 group_pos)
 {
-    if (!is_taa_upsampling_enabled())
+    uint2 thread_id               = group_top_left + group_pos;
+    const float2 uv               = (group_top_left + group_pos + 0.5f) / g_resolution_rt;
+    const float2 pos_input        = uv * g_resolution_render;
+    const float2 pos_input_center = floor(pos_input) + 0.5f;
+    
+    // Compute sample weights
+    float weights[9];
+    float weight_sum = 0.0f;
+    float weight_normaliser = 1.0f;
+    for (uint i = 0; i < 9; i++)
     {
-        return load_color(group_pos);
+        weights[i] = get_sample_weight(distance_squared(group_pos, (float2)kOffsets3x3[i]));
+        weight_sum += weights[i];
     }
-    else
+    weight_normaliser /= weight_sum;
+    
+    // Fetch color samples
+    float3 color = 0.0f;
+    for (uint j = 0; j < 9; j++)
     {
-        // Upsample within an else statement in order to avoid a warning.
-        // Warning X4000: use of potentially uninitialized variable.
-        uint2 thread_id               = group_top_left + group_pos;
-        const float2 uv               = (group_top_left + group_pos + 0.5f) / g_resolution_rt;
-        const float2 pos_input        = uv * g_resolution_render;
-        const float2 pos_input_center = floor(pos_input) + 0.5f;
-
-        // Compute sample weights
-        float weights[9];
-        float weight_sum = 0.0f;
-        float weight_normaliser = 1.0f;
-        for (uint i = 0; i < 9; i++)
-        {
-            weights[i] = get_sample_weight(distance_squared(group_pos, (float2)kOffsets3x3[i]));
-            weight_sum += weights[i];
-        }
-        weight_normaliser /= weight_sum;
-        
-        // Fetch color samples
-        float3 color = 0.0f;
-        for (uint j = 0; j < 9; j++)
-        {
-            float weight = weights[j] * weight_normaliser;
-            color += load_color(group_pos + (float2)kOffsets3x3[j]); // * weight;
-        }
-
-        return color;
+        float weight = weights[j] * weight_normaliser;
+        color += load_color(group_pos + (float2)kOffsets3x3[j]); // * weight;
     }
+    
+    return color;
 }
 
 /*------------------------------------------------------------------------------

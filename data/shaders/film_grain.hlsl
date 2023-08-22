@@ -50,7 +50,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
 
     // iso noise
     float camera_iso = pass_get_f3_value().x;
-    float iso_noise = get_random(frac(uv.x * uv.y * buffer_frame.time)) * camera_iso * 0.000002f;
+    float iso_noise  = get_random(frac(uv.x * uv.y * buffer_frame.time)) * camera_iso * 0.000002f;
     
     // additive blending
     color.rgb += (film_grain + iso_noise) * 0.5f;
