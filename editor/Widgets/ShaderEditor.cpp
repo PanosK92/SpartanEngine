@@ -34,8 +34,11 @@ using namespace std;
 using namespace Spartan;
 //======================
 
-static const float k_vertical_split_percentage           = 0.7f;
-static const float k_horizontal_split_offset_from_bottom = 81.0f;
+namespace
+{
+    const float k_vertical_split_percentage           = 0.7f;
+    const float k_horizontal_split_offset_from_bottom = 81.0f;
+}
 
 ShaderEditor::ShaderEditor(Editor* editor) : Widget(editor)
 {
@@ -62,7 +65,9 @@ void ShaderEditor::OnTickVisible()
 
 void ShaderEditor::ShowShaderSource()
 {
-    if (ImGui::BeginChild("##shader_editor_source", ImVec2(ImGui::GetContentRegionMax().x * k_vertical_split_percentage, ImGui::GetContentRegionMax().y - k_horizontal_split_offset_from_bottom), true, ImGuiWindowFlags_NoScrollbar))
+    ImVec2 size = ImVec2(ImGui::GetContentRegionMax().x * k_vertical_split_percentage, ImGui::GetContentRegionMax().y - k_horizontal_split_offset_from_bottom * Spartan::Window::GetDpiScale());
+
+    if (ImGui::BeginChild("##shader_editor_source", size, true, ImGuiWindowFlags_NoScrollbar))
     {
         // Title
         ImGui::Text(m_shader ? m_shader_name.c_str() : "Select a shader");
@@ -110,7 +115,9 @@ void ShaderEditor::ShowShaderList()
 {
     GetShaderInstances();
 
-    if (ImGui::BeginChild("##shader_editor_list", ImVec2(0.0f, ImGui::GetContentRegionMax().y - k_horizontal_split_offset_from_bottom), true, ImGuiWindowFlags_HorizontalScrollbar))
+    ImVec2 size = ImVec2(0.0f, ImGui::GetContentRegionMax().y - k_horizontal_split_offset_from_bottom * Spartan::Window::GetDpiScale());
+
+    if (ImGui::BeginChild("##shader_editor_list", size, true, ImGuiWindowFlags_HorizontalScrollbar))
     {
         // Title
         ImGui::Text("Shaders");
@@ -191,7 +198,7 @@ void ShaderEditor::ShowControls()
 
         // Opacity slider
         ImGui::SameLine();
-        ImGui::PushItemWidth(200.0f);
+        ImGui::PushItemWidth(200.0f * Spartan::Window::GetDpiScale());
         ImGui::SliderFloat("Opacity", &m_alpha, 0.1f, 1.0f, "%.1f");
         ImGui::PopItemWidth();
     }

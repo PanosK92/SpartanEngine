@@ -55,7 +55,7 @@ namespace Spartan
         array<shared_ptr<RHI_BlendState>, 3>        m_blend_states;
 
         // renderer resources
-        array<shared_ptr<RHI_Texture>, 26>       m_render_targets;
+        array<shared_ptr<RHI_Texture>, 27>       m_render_targets;
         array<shared_ptr<RHI_Shader>, 44>        m_shaders;
         array<shared_ptr<RHI_Sampler>, 7>        m_samplers;
         array<shared_ptr<RHI_ConstantBuffer>, 3> m_constant_buffers;
@@ -192,12 +192,13 @@ namespace Spartan
             render_target(Renderer_RenderTexture::frame_render_2) = make_unique<RHI_Texture2D>(width_render, height_render, mip_count, RHI_Format::R16G16B16A16_Float, RHI_Texture_RenderTarget | RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipViews | RHI_Texture_ClearOrBlit, "rt_frame_render_2");
 
             // G-Buffer
-            render_target(Renderer_RenderTexture::gbuffer_albedo)     = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R8G8B8A8_Unorm,     RHI_Texture_RenderTarget | RHI_Texture_Srv, "rt_gbuffer_albedo");
-            render_target(Renderer_RenderTexture::gbuffer_normal)     = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_RenderTarget | RHI_Texture_Srv, "rt_gbuffer_normal");
-            render_target(Renderer_RenderTexture::gbuffer_material)   = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R8G8B8A8_Unorm,     RHI_Texture_RenderTarget | RHI_Texture_Srv, "rt_gbuffer_material");
-            render_target(Renderer_RenderTexture::gbuffer_material_2) = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R8G8B8A8_Unorm,     RHI_Texture_RenderTarget | RHI_Texture_Srv, "rt_gbuffer_material_2");
-            render_target(Renderer_RenderTexture::gbuffer_velocity)   = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16_Float,       RHI_Texture_RenderTarget | RHI_Texture_Srv, "rt_gbuffer_velocity");
-            render_target(Renderer_RenderTexture::gbuffer_depth)      = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::D32_Float,          RHI_Texture_RenderTarget | RHI_Texture_Srv, "rt_gbuffer_depth");
+            render_target(Renderer_RenderTexture::gbuffer_albedo)            = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R8G8B8A8_Unorm,     RHI_Texture_RenderTarget | RHI_Texture_Srv, "rt_gbuffer_albedo");
+            render_target(Renderer_RenderTexture::gbuffer_normal)            = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_RenderTarget | RHI_Texture_Srv, "rt_gbuffer_normal");
+            render_target(Renderer_RenderTexture::gbuffer_material)          = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R8G8B8A8_Unorm,     RHI_Texture_RenderTarget | RHI_Texture_Srv, "rt_gbuffer_material");
+            render_target(Renderer_RenderTexture::gbuffer_material_2)        = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R8G8B8A8_Unorm,     RHI_Texture_RenderTarget | RHI_Texture_Srv, "rt_gbuffer_material_2");
+            render_target(Renderer_RenderTexture::gbuffer_velocity)          = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16_Float,       RHI_Texture_RenderTarget | RHI_Texture_Srv | RHI_Texture_ClearOrBlit, "rt_gbuffer_velocity");
+            render_target(Renderer_RenderTexture::gbuffer_velocity_previous) = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16_Float,       RHI_Texture_RenderTarget | RHI_Texture_Srv | RHI_Texture_ClearOrBlit, "rt_gbuffer_velocity_previous");
+            render_target(Renderer_RenderTexture::gbuffer_depth)             = make_shared<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::D32_Float,          RHI_Texture_RenderTarget | RHI_Texture_Srv, "rt_gbuffer_depth");
 
             // Light
             render_target(Renderer_RenderTexture::light_diffuse)              = make_unique<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R11G11B10_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_ClearOrBlit, "rt_light_diffuse");
@@ -563,7 +564,7 @@ namespace Spartan
         m_structured_buffer = nullptr;
     }
 
-    array<shared_ptr<RHI_Texture>, 26>& Renderer::GetRenderTargets()
+    array<shared_ptr<RHI_Texture>, 27>& Renderer::GetRenderTargets()
     {
         return m_render_targets;
     }

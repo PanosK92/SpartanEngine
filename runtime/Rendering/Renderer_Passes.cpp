@@ -527,7 +527,7 @@ namespace Spartan
 
     void Renderer::Pass_GBuffer(RHI_CommandList* cmd_list, const bool is_transparent_pass)
     {
-        // Acquire shaders
+        // acquire shaders
         RHI_Shader* shader_v = GetShader(Renderer_Shader::gbuffer_v).get();
         RHI_Shader* shader_p = GetShader(Renderer_Shader::gbuffer_p).get();
         if (!shader_v->IsCompiled() || !shader_p->IsCompiled())
@@ -535,30 +535,34 @@ namespace Spartan
 
         cmd_list->BeginTimeblock(is_transparent_pass ? "g_buffer_transparent" : "g_buffer");
 
-        // Acquire render targets
+        // acquire render targets
         RHI_Texture* tex_albedo            = GetRenderTarget(Renderer_RenderTexture::gbuffer_albedo).get();
         RHI_Texture* tex_normal            = GetRenderTarget(Renderer_RenderTexture::gbuffer_normal).get();
         RHI_Texture* tex_material          = GetRenderTarget(Renderer_RenderTexture::gbuffer_material).get();
         RHI_Texture* tex_material_2        = GetRenderTarget(Renderer_RenderTexture::gbuffer_material_2).get();
         RHI_Texture* tex_velocity          = GetRenderTarget(Renderer_RenderTexture::gbuffer_velocity).get();
+        RHI_Texture* tex_velocity_previous = GetRenderTarget(Renderer_RenderTexture::gbuffer_velocity_previous).get();
         RHI_Texture* tex_depth             = GetRenderTarget(Renderer_RenderTexture::gbuffer_depth).get();
         RHI_Texture* tex_fsr2_transparency = GetRenderTarget(Renderer_RenderTexture::fsr2_mask_transparency).get();
+
+        // copy velocity to previous velocity
+        cmd_list->Blit(tex_velocity, tex_velocity_previous, false);
 
         bool depth_prepass = GetOption<bool>(Renderer_Option::DepthPrepass);
         bool wireframe     = GetOption<bool>(Renderer_Option::Debug_Wireframe);
 
-        // Deduce rasterizer state
+        // deduce rasterizer state
         RHI_RasterizerState* rasterizer_state = is_transparent_pass ? GetRasterizerState(Renderer_RasterizerState::Solid_cull_none).get() : GetRasterizerState(Renderer_RasterizerState::Solid_cull_back).get();
         rasterizer_state                      = wireframe ? GetRasterizerState(Renderer_RasterizerState::Wireframe_cull_none).get() : rasterizer_state;
 
-        // Deduce depth-stencil state
+        // deduce depth-stencil state
         RHI_DepthStencilState* depth_stencil_state = depth_prepass ? GetDepthStencilState(Renderer_DepthStencilState::Depth_read).get() : GetDepthStencilState(Renderer_DepthStencilState::Depth_read_write_stencil_read).get();
         depth_stencil_state                        = is_transparent_pass ? GetDepthStencilState(Renderer_DepthStencilState::Depth_read).get() : depth_stencil_state;
 
-        // Clearing to zero, this will draw the sky
+        // clearing to zero, this will draw the sky
         static Color clear_color = Color(0.0f, 0.0f, 0.0f, 0.0f);
 
-        // Define pipeline state
+        // define pipeline state
         RHI_PipelineState pso;
         pso.shader_vertex                   = shader_v;
         pso.shader_pixel                    = shader_p;
@@ -581,12 +585,12 @@ namespace Spartan
         pso.clear_depth                     = (is_transparent_pass || depth_prepass) ? rhi_depth_load : 0.0f; // reverse-z
         pso.primitive_topology              = RHI_PrimitiveTopology_Mode::TriangleList;
 
-        // Set pipeline state
+        // set pipeline state
         cmd_list->SetPipelineState(pso);
 
         auto& entities = m_renderables[is_transparent_pass ? Renderer_Entity::GeometryTransparent : Renderer_Entity::Geometry];
 
-        // Render
+        // render
         cmd_list->BeginRenderPass();
         {
             uint64_t bound_material_id = 0;
@@ -690,12 +694,13 @@ namespace Spartan
         PushPassConstants(cmd_list);
 
         // set textures
-        cmd_list->SetTexture(Renderer_BindingsUav::tex,              tex_ssgi);
-        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_albedo,   GetRenderTarget(Renderer_RenderTexture::gbuffer_albedo));
-        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_normal,   GetRenderTarget(Renderer_RenderTexture::gbuffer_normal));
-        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_velocity, GetRenderTarget(Renderer_RenderTexture::gbuffer_velocity));
-        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_depth,    GetRenderTarget(Renderer_RenderTexture::gbuffer_depth));
-        cmd_list->SetTexture(Renderer_BindingsSrv::light_diffuse,    GetRenderTarget(Renderer_RenderTexture::light_diffuse));
+        cmd_list->SetTexture(Renderer_BindingsUav::tex,                       tex_ssgi);
+        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_albedo,            GetRenderTarget(Renderer_RenderTexture::gbuffer_albedo));
+        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_normal,            GetRenderTarget(Renderer_RenderTexture::gbuffer_normal));
+        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_velocity,          GetRenderTarget(Renderer_RenderTexture::gbuffer_velocity));
+        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_velocity_previous, GetRenderTarget(Renderer_RenderTexture::gbuffer_velocity_previous));
+        cmd_list->SetTexture(Renderer_BindingsSrv::gbuffer_depth,             GetRenderTarget(Renderer_RenderTexture::gbuffer_depth));
+        cmd_list->SetTexture(Renderer_BindingsSrv::light_diffuse,             GetRenderTarget(Renderer_RenderTexture::light_diffuse));
 
         // render
         cmd_list->Dispatch(thread_group_count_x(tex_ssgi), thread_group_count_y(tex_ssgi));

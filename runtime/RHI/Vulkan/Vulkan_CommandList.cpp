@@ -713,11 +713,11 @@ namespace Spartan
             copy_region.extent.depth              = 1;
         }
 
-        // Save the initial layouts
+        // save the initial layouts
         array<RHI_Image_Layout, rhi_max_mip_count> layouts_initial_source = source->GetLayouts();
         array<RHI_Image_Layout, rhi_max_mip_count> layouts_initial_destination = destination->GetLayouts();
 
-        // Transition to blit appropriate layouts
+        // transition to blit appropriate layouts
         source->SetLayout(RHI_Image_Layout::Transfer_Src_Optimal, this);
         destination->SetLayout(RHI_Image_Layout::Transfer_Dst_Optimal, this);
 
@@ -728,7 +728,7 @@ namespace Spartan
             copy_region_count, &copy_regions[0]
         );
 
-        // Transition to the initial layouts
+        // transition to the initial layouts
         if (blit_mips)
         {
             for (uint32_t i = 0; i < source->GetMipCount(); i++)

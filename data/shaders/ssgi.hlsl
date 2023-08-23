@@ -36,6 +36,31 @@ static const float ao_radius2        = g_ao_radius * g_ao_radius;
 static const float ao_negInvRadius2  = -1.0f / ao_radius2;
 static const float ao_step_direction = PI2 / (float) g_ao_directions;
 
+/*------------------------------------------------------------------------------
+                               BLEND FACTOR
+------------------------------------------------------------------------------*/
+
+float get_factor_dissoclusion(float2 uv_reprojected, float2 velocity)
+{
+    float2 velocity_previous = tex_velocity_previous[uv_reprojected * buffer_frame.resolution_render].xy;
+    float dissoclusion = length(velocity_previous - velocity);
+
+    return saturate(dissoclusion * 1000.0f);
+}
+
+float compute_blend_factor(float2 uv_reprojected, float2 velocity)
+{
+    float blend_factor        = RPC_32;                                            // accumulate 32 samples
+    float factor_screen_edge  = !is_saturated(uv_reprojected);                     // if re-projected UV is out of screen, reject history
+    float factor_dissoclusion = get_factor_dissoclusion(uv_reprojected, velocity); // if there is dissoclusion, reject history
+    
+    return saturate(blend_factor + factor_screen_edge + factor_dissoclusion);
+}
+
+/*------------------------------------------------------------------------------
+                              SOME GTAO FUNCTIONS
+------------------------------------------------------------------------------*/
+
 // https://www.activision.com/cdn/research/s2016_pbs_activision_occlusion.pptx
 float get_offset_non_temporal(uint2 screen_pos)
 {
@@ -54,6 +79,10 @@ float compute_occlusion(float3 origin_position, float3 origin_normal, uint2 samp
 
     return occlusion * falloff;
 }
+
+/*------------------------------------------------------------------------------
+                                    SSGI
+------------------------------------------------------------------------------*/
 
 // screen space temporal occlusion and diffuse illumination
 void compute_ssgi(uint2 pos, inout float visibility, inout float3 diffuse_bounce)
@@ -95,8 +124,11 @@ void compute_ssgi(uint2 pos, inout float visibility, inout float3 diffuse_bounce
 
     visibility      = 1.0f - saturate(occlusion * ao_samples_rcp * g_ao_intensity);
     diffuse_bounce *= ao_samples_rcp * g_ao_intensity;
-
 }
+
+/*------------------------------------------------------------------------------
+                             TEMPORAL FILTERING
+------------------------------------------------------------------------------*/
 
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
@@ -114,15 +146,8 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     float2 velocity       = tex_velocity[thread_id.xy].xy;
     float2 uv_reprojected = uv - velocity;
 
-    // compute blend factor
-    float blend_factor = RPC_32; // accumulate 32 samples
-    {
-        float factor_screen = !is_saturated(uv_reprojected);
-        blend_factor        = saturate(blend_factor + factor_screen);
-    }
-    
-    // accumulate
+    // clip history
     float4 history        = tex_uav[uv_reprojected * buffer_frame.resolution_render];
-    float4 sample         = float4(diffuse_bounce, visibility);
-    tex_uav[thread_id.xy] = lerp(history, sample, blend_factor);
+    float4 ssgi_sample    = float4(diffuse_bounce, visibility);
+    tex_uav[thread_id.xy] = lerp(history, ssgi_sample, compute_blend_factor(uv_reprojected, velocity));
 }
