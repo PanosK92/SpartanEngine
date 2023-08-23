@@ -215,6 +215,7 @@ namespace Spartan
         gbuffer_material,
         gbuffer_material_2,
         gbuffer_velocity,
+        gbuffer_velocity_previous,
         gbuffer_depth,
         brdf_specular_lut,
         light_diffuse,
