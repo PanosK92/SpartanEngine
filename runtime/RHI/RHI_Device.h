@@ -94,17 +94,6 @@ namespace Spartan
         static void MarkerEnd(RHI_CommandList* cmd_list);
         static void SetResourceName(void* resource, const RHI_Resource_Type resource_type, const std::string name);
 
-        // Layouts
-        static uint32_t GetAspectMask(const RHI_Texture* texture, const bool only_depth = false, const bool only_stencil = false);
-        static void SetLayout(void* cmd_buffer,
-            void* image,
-            const uint32_t aspect_mask,
-            const uint32_t mip_index, const uint32_t mip_range, const uint32_t array_length,
-            const RHI_Image_Layout layout_old, const RHI_Image_Layout layout_new);
-        static void SetLayout(void* cmd_buffer, RHI_Texture* texture,
-            const uint32_t mip_start, const uint32_t mip_range, const uint32_t array_length,
-            const RHI_Image_Layout layout_old, const RHI_Image_Layout layout_new);
-
         // Memory
         static uint32_t GetMemoryUsageMb();
         static uint32_t GetMemoryBudgetMb();

@@ -286,6 +286,27 @@ namespace ImGui::RHI
         const char* name = is_child_window ? "imgui_window_child" : "imgui_window_main";
         bool gpu_timing  = !is_child_window; // profiler requires more work when windows enter the main window and their command pool is destroyed
         cmd_list->Begin();
+
+        // do layout transitions
+        {
+            // transitions have to happen outside of the render pass
+            for (uint32_t i = 0; i < static_cast<uint32_t>(draw_data->CmdListsCount); i++)
+            {
+                ImDrawList* cmd_list_imgui = draw_data->CmdLists[i];
+
+                for (uint32_t cmd_i = 0; cmd_i < static_cast<uint32_t>(cmd_list_imgui->CmdBuffer.Size); cmd_i++)
+                {
+                    const ImDrawCmd* pcmd = &cmd_list_imgui->CmdBuffer[cmd_i];
+
+                    if (RHI_Texture* texture = static_cast<RHI_Texture*>(pcmd->TextureId))
+                    {
+                        // transition will happen only if needed
+                        texture->SetLayout(Spartan::RHI_Image_Layout::Shader_Read_Only_Optimal, cmd_list);
+                    }
+                }
+            }
+        }
+
         cmd_list->BeginTimeblock(name, true, gpu_timing);
         cmd_list->SetBufferVertex(vertex_buffer);
         cmd_list->SetBufferIndex(index_buffer);
