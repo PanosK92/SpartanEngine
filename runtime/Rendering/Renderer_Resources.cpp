@@ -55,8 +55,8 @@ namespace Spartan
         array<shared_ptr<RHI_BlendState>, 3>        m_blend_states;
 
         // renderer resources
-        array<shared_ptr<RHI_Texture>, 27>       m_render_targets;
-        array<shared_ptr<RHI_Shader>, 44>        m_shaders;
+        array<shared_ptr<RHI_Texture>, 28>       m_render_targets;
+        array<shared_ptr<RHI_Shader>, 45>        m_shaders;
         array<shared_ptr<RHI_Sampler>, 7>        m_samplers;
         array<shared_ptr<RHI_ConstantBuffer>, 3> m_constant_buffers;
         shared_ptr<RHI_StructuredBuffer>         m_structured_buffer;
@@ -210,8 +210,9 @@ namespace Spartan
             // SSR - Mips are used to emulate roughness for surfaces which require it
             render_target(Renderer_RenderTexture::ssr) = make_shared<RHI_Texture2D>(width_render, height_render, mip_count, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv | RHI_Texture_PerMipViews, "rt_ssr");
 
-            // SSAO
-            render_target(Renderer_RenderTexture::ssgi) = make_unique<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv, "rt_ssgi");
+            // SSGI
+            render_target(Renderer_RenderTexture::ssgi)          = make_unique<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv, "rt_ssgi");
+            render_target(Renderer_RenderTexture::ssgi_filtered) = make_unique<RHI_Texture2D>(width_render, height_render, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv, "rt_ssgi_filtered");
 
             // Dof
             render_target(Renderer_RenderTexture::dof_half)   = make_unique<RHI_Texture2D>(width_render / 2, height_render / 2, 1, RHI_Format::R16G16B16A16_Float, RHI_Texture_Uav | RHI_Texture_Srv, "rt_dof_half");
@@ -428,6 +429,10 @@ namespace Spartan
         shader(Renderer_Shader::ssr_c) = make_shared<RHI_Shader>();
         shader(Renderer_Shader::ssr_c)->Compile(RHI_Shader_Compute, shader_dir + "ssr.hlsl", async);
 
+        // Temporal filter
+        shader(Renderer_Shader::temporal_filter_c) = make_shared<RHI_Shader>();
+        shader(Renderer_Shader::temporal_filter_c)->Compile(RHI_Shader_Compute, shader_dir + "temporal_filter.hlsl", async);
+
         // AMD FidelityFX CAS - Contrast Adaptive Sharpening
         shader(Renderer_Shader::ffx_cas_c) = make_shared<RHI_Shader>();
         shader(Renderer_Shader::ffx_cas_c)->Compile(RHI_Shader_Compute, shader_dir + "amd_fidelity_fx\\cas.hlsl", async);
@@ -564,12 +569,12 @@ namespace Spartan
         m_structured_buffer = nullptr;
     }
 
-    array<shared_ptr<RHI_Texture>, 27>& Renderer::GetRenderTargets()
+    array<shared_ptr<RHI_Texture>, 28>& Renderer::GetRenderTargets()
     {
         return m_render_targets;
     }
 
-    array<shared_ptr<RHI_Shader>, 44>& Renderer::GetShaders()
+    array<shared_ptr<RHI_Shader>, 45>& Renderer::GetShaders()
     {
         return m_shaders;
     }

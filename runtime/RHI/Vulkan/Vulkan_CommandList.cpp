@@ -46,27 +46,211 @@ using namespace Spartan::Math;
 
 namespace Spartan
 {
-    static VkAttachmentLoadOp get_color_load_op(const Color& color)
+    namespace
     {
-        if (color == rhi_color_dont_care)
-            return VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        VkAttachmentLoadOp get_color_load_op(const Color& color)
+        {
+            if (color == rhi_color_dont_care)
+                return VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 
-        if (color == rhi_color_load)
-            return VK_ATTACHMENT_LOAD_OP_LOAD;
+            if (color == rhi_color_load)
+                return VK_ATTACHMENT_LOAD_OP_LOAD;
 
-        return VK_ATTACHMENT_LOAD_OP_CLEAR;
-    };
+            return VK_ATTACHMENT_LOAD_OP_CLEAR;
+        };
 
-    static VkAttachmentLoadOp get_depth_load_op(const float depth)
-    {
-        if (depth == rhi_depth_dont_care)
-            return VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        VkAttachmentLoadOp get_depth_load_op(const float depth)
+        {
+            if (depth == rhi_depth_dont_care)
+                return VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 
-        if (depth == rhi_depth_load)
-            return VK_ATTACHMENT_LOAD_OP_LOAD;
+            if (depth == rhi_depth_load)
+                return VK_ATTACHMENT_LOAD_OP_LOAD;
 
-        return VK_ATTACHMENT_LOAD_OP_CLEAR;
-    };
+            return VK_ATTACHMENT_LOAD_OP_CLEAR;
+        };
+
+        VkPipelineStageFlags layout_to_access_mask(const VkImageLayout layout, const bool is_destination_mask)
+        {
+            VkPipelineStageFlags access_mask = 0;
+
+            switch (layout)
+            {
+            case VK_IMAGE_LAYOUT_UNDEFINED:
+                SP_ASSERT(!is_destination_mask && "The new layout used in a transition must not be VK_IMAGE_LAYOUT_UNDEFINED.");
+                break;
+
+            case VK_IMAGE_LAYOUT_PREINITIALIZED:
+                SP_ASSERT(!is_destination_mask && "The new layout used in a transition must not be VK_IMAGE_LAYOUT_PREINITIALIZED.");
+                access_mask = VK_ACCESS_HOST_WRITE_BIT;
+                break;
+
+            case VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:
+                access_mask = VK_ACCESS_2_NONE;
+                break;
+
+                // transfer
+            case VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL:
+                access_mask = VK_ACCESS_TRANSFER_READ_BIT;
+                break;
+
+            case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:
+                access_mask = VK_ACCESS_TRANSFER_WRITE_BIT;
+                break;
+
+                // color attachments
+            case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
+                access_mask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+                break;
+
+                // depth attachments
+            case VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL:
+                access_mask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+                break;
+
+            case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
+                access_mask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+                break;
+
+            case VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL:
+                access_mask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+                break;
+
+            case VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL:
+                access_mask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+                break;
+
+                // shader reads
+            case VK_IMAGE_LAYOUT_GENERAL:
+                access_mask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
+                break;
+
+            case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:
+                access_mask = VK_ACCESS_SHADER_READ_BIT;
+                break;
+
+            case VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL:
+                access_mask = VK_ACCESS_SHADER_READ_BIT;
+                break;
+
+            case VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL:
+                access_mask = VK_ACCESS_SHADER_READ_BIT;
+                break;
+
+            default:
+                SP_LOG_ERROR("Unexpected image layout");
+                break;
+            }
+
+            return access_mask;
+        }
+
+        VkPipelineStageFlags access_flags_to_pipeline_stage(VkAccessFlags access_flags)
+        {
+            VkPipelineStageFlags stages = 0;
+            uint32_t enabled_graphics_stages = RHI_Device::GetEnabledGraphicsStages();
+
+            while (access_flags != 0)
+            {
+                VkAccessFlagBits access_flag = static_cast<VkAccessFlagBits>(access_flags & (~(access_flags - 1)));
+                SP_ASSERT(access_flag != 0 && (access_flag & (access_flag - 1)) == 0);
+                access_flags &= ~access_flag;
+
+                switch (access_flag)
+                {
+                case VK_ACCESS_INDIRECT_COMMAND_READ_BIT:
+                    stages |= VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT;
+                    break;
+
+                case VK_ACCESS_INDEX_READ_BIT:
+                    stages |= VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
+                    break;
+
+                case VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT:
+                    stages |= VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
+                    break;
+
+                case VK_ACCESS_UNIFORM_READ_BIT:
+                    stages |= enabled_graphics_stages | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+                    break;
+
+                case VK_ACCESS_INPUT_ATTACHMENT_READ_BIT:
+                    stages |= VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+                    break;
+
+                    // shader
+                case VK_ACCESS_SHADER_READ_BIT:
+                    stages |= enabled_graphics_stages | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+                    break;
+
+                case VK_ACCESS_SHADER_WRITE_BIT:
+                    stages |= enabled_graphics_stages | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+                    break;
+
+                    // color attachments
+                case VK_ACCESS_COLOR_ATTACHMENT_READ_BIT:
+                    stages |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+                    break;
+
+                case VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT:
+                    stages |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+                    break;
+
+                    // depth-stencil attachments
+                case VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT:
+                    stages |= VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+                    break;
+
+                case VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT:
+                    stages |= VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+                    break;
+
+                    // transfer
+                case VK_ACCESS_TRANSFER_READ_BIT:
+                    stages |= VK_PIPELINE_STAGE_TRANSFER_BIT;
+                    break;
+
+                case VK_ACCESS_TRANSFER_WRITE_BIT:
+                    stages |= VK_PIPELINE_STAGE_TRANSFER_BIT;
+                    break;
+
+                    // host
+                case VK_ACCESS_HOST_READ_BIT:
+                    stages |= VK_PIPELINE_STAGE_HOST_BIT;
+                    break;
+
+                case VK_ACCESS_HOST_WRITE_BIT:
+                    stages |= VK_PIPELINE_STAGE_HOST_BIT;
+                    break;
+                }
+            }
+            return stages;
+        }
+
+        uint32_t get_aspect_mask(const RHI_Texture* texture, const bool only_depth = false, const bool only_stencil = false)
+        {
+            uint32_t aspect_mask = 0;
+
+            if (texture->IsColorFormat())
+            {
+                aspect_mask |= VK_IMAGE_ASPECT_COLOR_BIT;
+            }
+            else
+            {
+                if (texture->IsDepthFormat() && !only_stencil)
+                {
+                    aspect_mask |= VK_IMAGE_ASPECT_DEPTH_BIT;
+                }
+
+                if (texture->IsStencilFormat() && !only_depth)
+                {
+                    aspect_mask |= VK_IMAGE_ASPECT_STENCIL_BIT;
+                }
+            }
+
+            return aspect_mask;
+        }
+    }
 
     RHI_CommandList::RHI_CommandList(const RHI_Queue_Type queue_type, const uint32_t swapchain_id, void* cmd_pool, const char* name) : Object()
     {
@@ -1163,5 +1347,119 @@ namespace Spartan
 
             Profiler::m_rhi_bindings_descriptor_set++;
         }
+    }
+
+    void RHI_CommandList::InsertMemoryBarrierImage(void* image, const uint32_t aspect_mask,
+        const uint32_t mip_index, const uint32_t mip_range, const uint32_t array_length,
+        const RHI_Image_Layout layout_old, const RHI_Image_Layout layout_new
+    )
+    {
+        SP_ASSERT(image != nullptr);
+
+        VkImageMemoryBarrier image_barrier            = {};
+        image_barrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        image_barrier.pNext                           = nullptr;
+        image_barrier.oldLayout                       = vulkan_image_layout[static_cast<VkImageLayout>(layout_old)];
+        image_barrier.newLayout                       = vulkan_image_layout[static_cast<VkImageLayout>(layout_new)];
+        image_barrier.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+        image_barrier.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+        image_barrier.image                           = static_cast<VkImage>(image);
+        image_barrier.subresourceRange.aspectMask     = aspect_mask;
+        image_barrier.subresourceRange.baseMipLevel   = mip_index;
+        image_barrier.subresourceRange.levelCount     = mip_range;
+        image_barrier.subresourceRange.baseArrayLayer = 0;
+        image_barrier.subresourceRange.layerCount     = array_length;
+        image_barrier.srcAccessMask                   = layout_to_access_mask(image_barrier.oldLayout, false);
+        image_barrier.dstAccessMask                   = layout_to_access_mask(image_barrier.newLayout, true);
+
+        VkPipelineStageFlags source_stage_mask = 0;
+        {
+            if (image_barrier.oldLayout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
+            {
+                source_stage_mask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+            }
+            else if (image_barrier.oldLayout == VK_IMAGE_LAYOUT_UNDEFINED)
+            {
+                source_stage_mask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+            }
+            else
+            {
+                source_stage_mask = access_flags_to_pipeline_stage(image_barrier.srcAccessMask);
+            }
+        }
+
+        VkPipelineStageFlags destination_stage_mask = 0;
+        {
+            if (image_barrier.newLayout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
+            {
+                destination_stage_mask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+            }
+            else
+            {
+                destination_stage_mask = access_flags_to_pipeline_stage(image_barrier.dstAccessMask);
+            }
+        }
+
+        vkCmdPipelineBarrier
+        (
+            static_cast<VkCommandBuffer>(m_rhi_resource), // commandBuffer
+            source_stage_mask,                            // srcStageMask
+            destination_stage_mask,                       // dstStageMask
+            0,                                            // dependencyFlags
+            0,                                            // memoryBarrierCount
+            nullptr,                                      // pMemoryBarriers
+            0,                                            // bufferMemoryBarrierCount
+            nullptr,                                      // pBufferMemoryBarriers
+            1,                                            // imageMemoryBarrierCount
+            &image_barrier                                // pImageMemoryBarriers
+        );
+
+        Profiler::m_rhi_pipeline_barriers++;
+    }
+
+    void RHI_CommandList::InsertMemoryBarrierImage(RHI_Texture* texture, const uint32_t mip_start, const uint32_t mip_range, const uint32_t array_length, const RHI_Image_Layout layout_old, const RHI_Image_Layout layout_new)
+    {
+        SP_ASSERT(texture != nullptr);
+        InsertMemoryBarrierImage(texture->GetRhiResource(), get_aspect_mask(texture), mip_start, mip_range, array_length, layout_old, layout_new);
+    }
+
+    void RHI_CommandList::InsertMemoryBarrierImageWaitForWrite(RHI_Texture* texture)
+    {
+        SP_ASSERT(texture != nullptr);
+
+        VkImageMemoryBarrier image_barrier            = {};
+        image_barrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        image_barrier.pNext                           = nullptr;
+        image_barrier.oldLayout                       = vulkan_image_layout[static_cast<VkImageLayout>(texture->GetLayout(0))];
+        image_barrier.newLayout                       = vulkan_image_layout[static_cast<VkImageLayout>(texture->GetLayout(0))];
+        image_barrier.srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+        image_barrier.dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+        image_barrier.image                           = static_cast<VkImage>(texture->GetRhiResource());
+        image_barrier.subresourceRange.aspectMask     = get_aspect_mask(texture);
+        image_barrier.subresourceRange.baseMipLevel   = 0;
+        image_barrier.subresourceRange.levelCount     = texture->GetMipCount();
+        image_barrier.subresourceRange.baseArrayLayer = 0;
+        image_barrier.subresourceRange.layerCount     = texture->GetArrayLength();
+        image_barrier.srcAccessMask                   = VK_ACCESS_SHADER_WRITE_BIT;
+        image_barrier.dstAccessMask                   = VK_ACCESS_SHADER_READ_BIT;
+
+        VkPipelineStageFlags source_stage_mask      = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+        VkPipelineStageFlags destination_stage_mask = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+
+        vkCmdPipelineBarrier
+        (
+            static_cast<VkCommandBuffer>(m_rhi_resource),
+            source_stage_mask,
+            destination_stage_mask,
+            0,
+            0,
+            nullptr,
+            0,
+            nullptr,
+            1,
+            &image_barrier
+        );
+
+        Profiler::m_rhi_pipeline_barriers++;
     }
 }

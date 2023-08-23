@@ -37,31 +37,10 @@ static const float ao_negInvRadius2  = -1.0f / ao_radius2;
 static const float ao_step_direction = PI2 / (float) g_ao_directions;
 
 /*------------------------------------------------------------------------------
-                               BLEND FACTOR
-------------------------------------------------------------------------------*/
-
-float get_factor_dissoclusion(float2 uv_reprojected, float2 velocity)
-{
-    float2 velocity_previous = tex_velocity_previous[uv_reprojected * buffer_frame.resolution_render].xy;
-    float dissoclusion = length(velocity_previous - velocity);
-
-    return saturate(dissoclusion * 1000.0f);
-}
-
-float compute_blend_factor(float2 uv_reprojected, float2 velocity)
-{
-    float blend_factor        = RPC_32;                                            // accumulate 32 samples
-    float factor_screen_edge  = !is_saturated(uv_reprojected);                     // if re-projected UV is out of screen, reject history
-    float factor_dissoclusion = get_factor_dissoclusion(uv_reprojected, velocity); // if there is dissoclusion, reject history
-    
-    return saturate(blend_factor + factor_screen_edge + factor_dissoclusion);
-}
-
-/*------------------------------------------------------------------------------
                               SOME GTAO FUNCTIONS
+   https://www.activision.com/cdn/research/s2016_pbs_activision_occlusion.pptx
 ------------------------------------------------------------------------------*/
 
-// https://www.activision.com/cdn/research/s2016_pbs_activision_occlusion.pptx
 float get_offset_non_temporal(uint2 screen_pos)
 {
     int2 position = (int2)(screen_pos);
@@ -69,6 +48,10 @@ float get_offset_non_temporal(uint2 screen_pos)
 }
 static const float offsets[]   = { 0.0f, 0.5f, 0.25f, 0.75f };
 static const float rotations[] = { 0.1666f, 0.8333, 0.5f, 0.6666, 0.3333, 0.0f }; // 60.0f, 300.0f, 180.0f, 240.0f, 120.0f, 0.0f devived by 360.0f
+
+/*------------------------------------------------------------------------------
+                              SSGI
+------------------------------------------------------------------------------*/
 
 float compute_occlusion(float3 origin_position, float3 origin_normal, uint2 sample_position)
 {
@@ -80,11 +63,6 @@ float compute_occlusion(float3 origin_position, float3 origin_normal, uint2 samp
     return occlusion * falloff;
 }
 
-/*------------------------------------------------------------------------------
-                                    SSGI
-------------------------------------------------------------------------------*/
-
-// screen space temporal occlusion and diffuse illumination
 void compute_ssgi(uint2 pos, inout float visibility, inout float3 diffuse_bounce)
 {
     const float2 origin_uv       = (pos + 0.5f) / pass_get_resolution_out();
@@ -126,10 +104,6 @@ void compute_ssgi(uint2 pos, inout float visibility, inout float3 diffuse_bounce
     diffuse_bounce *= ao_samples_rcp * g_ao_intensity;
 }
 
-/*------------------------------------------------------------------------------
-                             TEMPORAL FILTERING
-------------------------------------------------------------------------------*/
-
 [numthreads(THREAD_GROUP_COUNT_X, THREAD_GROUP_COUNT_Y, 1)]
 void mainCS(uint3 thread_id : SV_DispatchThreadID)
 {
@@ -141,13 +115,6 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     float3 diffuse_bounce = 0.0f;
     compute_ssgi(thread_id.xy, visibility, diffuse_bounce);
 
-    // get reprojected uv
-    float2 uv             = (thread_id.xy + 0.5f) / pass_get_resolution_out();
-    float2 velocity       = tex_velocity[thread_id.xy].xy;
-    float2 uv_reprojected = uv - velocity;
-
-    // clip history
-    float4 history        = tex_uav[uv_reprojected * buffer_frame.resolution_render];
-    float4 ssgi_sample    = float4(diffuse_bounce, visibility);
-    tex_uav[thread_id.xy] = lerp(history, ssgi_sample, compute_blend_factor(uv_reprojected, velocity));
+    // out
+    tex_uav[thread_id.xy] = float4(diffuse_bounce, visibility);
 }
