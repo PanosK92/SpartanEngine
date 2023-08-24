@@ -136,8 +136,7 @@ namespace Spartan
             #endif
 
             // misc
-            arguments.emplace_back("-Zpc");                                // Pack matrices in column-major order
-            arguments.emplace_back("-HV"); arguments.emplace_back("2021"); // HLSL version (2016, 2017, 2018, 2021). Default is 2018
+            arguments.emplace_back("-Zpc"); // Pack matrices in column-major order
         }
 
         // defines

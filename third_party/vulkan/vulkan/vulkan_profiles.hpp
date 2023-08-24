@@ -1,5 +1,7 @@
-/**
- * Copyright (c) 2021-2023 LunarG, Inc.
+
+/*
+ * Copyright (C) 2021-2023 Valve Corporation
+ * Copyright (C) 2021-2023 LunarG, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License")
  * you may not use this file except in compliance with the License.
@@ -13,7 +15,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  *
- * DO NOT EDIT: This file is generated.
+ * This file is ***GENERATED***.  Do Not Edit.
+ * See scripts/gen_profiles_solution.py for modifications.
  */
 
 #ifndef VULKAN_PROFILES_HPP_
