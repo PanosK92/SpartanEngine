@@ -98,7 +98,7 @@ namespace
     static bool component_begin(const string& name, const IconType icon_enum, shared_ptr<Component> component_instance, bool options = true, const bool removable = true)
     {
         // Collapsible contents
-        const bool collapsed = ImGuiSp::collapsing_header(name.c_str(), ImGuiTreeNodeFlags_AllowItemOverlap | ImGuiTreeNodeFlags_DefaultOpen);
+        const bool collapsed = ImGuiSp::collapsing_header(name.c_str(), ImGuiTreeNodeFlags_AllowOverlap | ImGuiTreeNodeFlags_DefaultOpen);
 
         // Component Icon - Top left
         ImGui::SameLine();
