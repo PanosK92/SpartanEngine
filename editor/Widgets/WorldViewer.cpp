@@ -246,7 +246,7 @@ void WorldViewer::TreeAddEntity(shared_ptr<Spartan::Entity> entity)
     }
 
     // Flags
-    ImGuiTreeNodeFlags node_flags = ImGuiTreeNodeFlags_AllowItemOverlap | ImGuiTreeNodeFlags_SpanFullWidth;
+    ImGuiTreeNodeFlags node_flags = ImGuiTreeNodeFlags_AllowOverlap | ImGuiTreeNodeFlags_SpanFullWidth;
 
     // Flag - Is expandable (has children) ?
     node_flags |= has_visible_children ? ImGuiTreeNodeFlags_OpenOnArrow : ImGuiTreeNodeFlags_Leaf; 
