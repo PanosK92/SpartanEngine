@@ -684,7 +684,7 @@ namespace Spartan
 
         cmd_list->BeginTimeblock("ssgi");
 
-        // SSGI
+        cmd_list->BeginMarker("sggi");
         {
             // define pipeline state
             static RHI_PipelineState pso;
@@ -706,11 +706,11 @@ namespace Spartan
 
             // render
             cmd_list->Dispatch(thread_group_count_x(tex_ssgi), thread_group_count_y(tex_ssgi));
+            cmd_list->InsertMemoryBarrierImageWaitForWrite(tex_ssgi);
         }
+        cmd_list->EndMarker();
 
-        cmd_list->InsertMemoryBarrierImageWaitForWrite(tex_ssgi);
-
-        // Temporal filtering
+        cmd_list->BeginMarker("temporal_filterintg");
         {
             // define pipeline state
             static RHI_PipelineState pso;
@@ -732,6 +732,7 @@ namespace Spartan
             // render
             cmd_list->Dispatch(thread_group_count_x(tex_ssgi), thread_group_count_y(tex_ssgi));
         }
+        cmd_list->EndMarker();
 
         cmd_list->EndTimeblock();
     }
