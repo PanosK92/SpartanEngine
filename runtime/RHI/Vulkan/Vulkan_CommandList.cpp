@@ -252,7 +252,7 @@ namespace Spartan
         }
     }
 
-    RHI_CommandList::RHI_CommandList(const RHI_Queue_Type queue_type, const uint32_t swapchain_id, void* cmd_pool, const char* name) : Object()
+    RHI_CommandList::RHI_CommandList(const RHI_Queue_Type queue_type, const uint32_t swapchain_id, void* cmd_pool, const char* name) : SP_Object()
     {
         m_queue_type  = queue_type;
         m_object_name = name;
@@ -391,7 +391,7 @@ namespace Spartan
     {
         SP_ASSERT(m_state == RHI_CommandListState::Recording);
 
-        // Get (or create) a pipeline which matches the requested pipeline state
+        // get (or create) a pipeline which matches the requested pipeline state
         RHI_Device::GetOrCreatePipeline(pso, m_pipeline, m_descriptor_layout_current);
 
         uint64_t hash_previous = m_pso.GetHash();

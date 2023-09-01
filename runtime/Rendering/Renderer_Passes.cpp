@@ -564,6 +564,7 @@ namespace Spartan
 
         // define pipeline state
         RHI_PipelineState pso;
+        pso.name                            = "g_buffer";
         pso.shader_vertex                   = shader_v;
         pso.shader_pixel                    = shader_p;
         pso.blend_state                     = GetBlendState(Renderer_BlendState::Disabled).get();
@@ -684,10 +685,11 @@ namespace Spartan
 
         cmd_list->BeginTimeblock("ssgi");
 
-        cmd_list->BeginMarker("sggi");
+        // ssgi
         {
             // define pipeline state
             static RHI_PipelineState pso;
+            pso.name           = "ssgi";
             pso.shader_compute = shader_ssgi;
 
             // set pipeline state
@@ -708,12 +710,12 @@ namespace Spartan
             cmd_list->Dispatch(thread_group_count_x(tex_ssgi), thread_group_count_y(tex_ssgi));
             cmd_list->InsertMemoryBarrierImageWaitForWrite(tex_ssgi);
         }
-        cmd_list->EndMarker();
 
-        cmd_list->BeginMarker("temporal_filterintg");
+        cmd_list->BeginMarker("ssgi_temporal_filterintg");
         {
             // define pipeline state
             static RHI_PipelineState pso;
+            pso.name           = "ssgi_temporal_filterintg";
             pso.shader_compute = shader_filter;
 
             // set pipeline state
@@ -1686,6 +1688,7 @@ namespace Spartan
 
         // define render state
         static RHI_PipelineState pso;
+        pso.name           = "ffx_spd";
         pso.shader_compute = shader_c;
 
         // set pipeline state

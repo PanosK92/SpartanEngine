@@ -21,13 +21,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==============
-#include "../Core/Object.h"
-//=========================
+//= INCLUDES =================
+#include "../Core/SP_Object.h"
+//============================
 
 namespace Spartan
 {
-    class RHI_IndexBuffer : public Object
+    class RHI_IndexBuffer : public SP_Object
     {
     public:
         RHI_IndexBuffer() = default;

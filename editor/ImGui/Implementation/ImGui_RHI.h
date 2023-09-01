@@ -272,6 +272,7 @@ namespace ImGui::RHI
 
         // define pipeline state
         static RHI_PipelineState pso = {};
+        pso.name                     = "imgui";
         pso.shader_vertex            = g_shader_vertex.get();
         pso.shader_pixel             = g_shader_pixel.get();
         pso.rasterizer_state         = g_rasterizer_state.get();

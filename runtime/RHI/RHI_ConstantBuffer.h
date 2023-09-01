@@ -21,14 +21,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ==============
+//= INCLUDES =================
 #include <memory>
-#include "../Core/Object.h"
-//=========================
+#include "../Core/SP_Object.h"
+//============================
 
 namespace Spartan
 {
-    class SP_CLASS RHI_ConstantBuffer : public Object
+    class SP_CLASS RHI_ConstantBuffer : public SP_Object
     {
     public:
         RHI_ConstantBuffer() = default;

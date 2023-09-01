@@ -21,14 +21,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===============
-#include "../Core/Object.h"
+//= INCLUDES =================
+#include "../Core/SP_Object.h"
 #include "RHI_Definitions.h"
-//==========================
+//============================
 
 namespace Spartan
 {
-    class RHI_Semaphore : public Object
+    class RHI_Semaphore : public SP_Object
     {
     public:
         RHI_Semaphore(bool is_timeline = false, const char* name = nullptr);
