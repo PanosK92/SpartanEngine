@@ -64,8 +64,8 @@ namespace Spartan
                 descriptor.dynamic_offset = constant_buffer->GetOffset();
                 descriptor.range          = constant_buffer->GetStride();
 
-                SP_ASSERT(descriptor.struct_size == descriptor.range);
-                SP_ASSERT(descriptor.dynamic_offset % descriptor.range == 0);
+                SP_ASSERT_MSG(descriptor.struct_size == descriptor.range,        "Size mismatch between CPU and GPU side constant buffer");
+                SP_ASSERT_MSG(descriptor.dynamic_offset % descriptor.range == 0, "Incorrect dynamic offset");
 
                 return;
             }

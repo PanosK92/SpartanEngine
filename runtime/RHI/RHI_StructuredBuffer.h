@@ -21,13 +21,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =====================
-#include "../Core/Object.h"
-//================================
+//= INCLUDES =================
+#include "../Core/SP_Object.h"
+//============================
 
 namespace Spartan
 {
-    class RHI_StructuredBuffer : public Object
+    class RHI_StructuredBuffer : public SP_Object
     {
     public:
         RHI_StructuredBuffer(const uint32_t stride, const uint32_t element_count, const char* name);

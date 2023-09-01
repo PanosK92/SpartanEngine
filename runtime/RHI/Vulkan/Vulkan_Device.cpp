@@ -434,7 +434,7 @@ namespace Spartan
                             if (descriptor_vertex.slot == descriptor_pixel.slot)
                             {
                                 descriptor_vertex.stage |= descriptor_pixel.stage;
-                                updated_existing = true;
+                                updated_existing         = true;
                                 break;
                             }
                         }
@@ -458,25 +458,25 @@ namespace Spartan
 
         static shared_ptr<RHI_DescriptorSetLayout> get_or_create_descriptor_set_layout(RHI_PipelineState& pipeline_state)
         {
-            // Get descriptors from pipeline state
+            // get descriptors from pipeline state
             vector<RHI_Descriptor> descriptors;
             get_descriptors_from_pipeline_state(pipeline_state, descriptors);
 
-            // Compute a hash for the descriptors
+            // compute a hash for the descriptors
             uint64_t hash = 0;
             for (RHI_Descriptor& descriptor : descriptors)
             {
                 hash = rhi_hash_combine(hash, descriptor.ComputeHash());
             }
 
-            // Search for a descriptor set layout which matches this hash
+            // search for a descriptor set layout which matches this hash
             auto it     = descriptor_set_layouts.find(hash);
             bool cached = it != descriptor_set_layouts.end();
 
-            // If there is no descriptor set layout for this particular hash, create one
+            // if there is no descriptor set layout for this particular hash, create one
             if (!cached)
             {
-                // Emplace a new descriptor set layout
+                // emplace a new descriptor set layout
                 it = descriptor_set_layouts.emplace(make_pair(hash, make_shared<RHI_DescriptorSetLayout>(descriptors, pipeline_state.name))).first;
             }
             shared_ptr<RHI_DescriptorSetLayout> descriptor_set_layout = it->second;

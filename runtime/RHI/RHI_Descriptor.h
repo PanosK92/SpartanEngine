@@ -67,7 +67,6 @@ namespace Spartan
         {
             if (m_hash == 0)
             {
-                m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(type));
                 m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(slot));
                 m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(stage));
                 m_hash = rhi_hash_combine(m_hash, static_cast<uint64_t>(array_length));
@@ -79,22 +78,22 @@ namespace Spartan
         bool IsStorage() const { return type == RHI_Descriptor_Type::TextureStorage; }
         bool IsArray()   const { return array_length > 0; };
 
-        // Properties that affect the descriptor hash. They are reflected from the shader
-        RHI_Descriptor_Type type = RHI_Descriptor_Type::Undefined;
-        uint32_t slot            = 0;
-        uint32_t stage           = 0;
-        uint32_t array_length      = 0;
+        // Properties that affect the descriptor hash
+        uint32_t slot         = 0;
+        uint32_t stage        = 0;
+        uint32_t array_length = 0;
        
-        // Properties that don't affect the descriptor hash. They affect the descriptor set hash.
-        uint64_t range          = 0; // the size in bytes that is used for a descriptor update
-        uint32_t mip            = 0;
-        uint32_t mip_range      = 0;
-        void* data              = nullptr;
+        // Properties that affect the descriptor set hash
+        uint64_t range     = 0;
+        uint32_t mip       = 0;
+        uint32_t mip_range = 0;
+        void* data         = nullptr;
 
-        // Properties that don't affect any hash.
-        uint32_t dynamic_offset = 0; // the offset used for dynamic constant buffers
-        RHI_Image_Layout layout = RHI_Image_Layout::Undefined;
-        uint32_t struct_size    = 0;
+        // Properties that don't affect any hash
+        RHI_Descriptor_Type type = RHI_Descriptor_Type::Undefined;
+        RHI_Image_Layout layout  = RHI_Image_Layout::Undefined;
+        uint32_t dynamic_offset  = 0;
+        uint32_t struct_size     = 0;
 
         // Debugging
         std::string name;

@@ -31,7 +31,7 @@ namespace Spartan
     class Transform;
     class Renderable;
     
-    class SP_CLASS Entity : public Object, public std::enable_shared_from_this<Entity>
+    class SP_CLASS Entity : public SP_Object, public std::enable_shared_from_this<Entity>
     {
     public:
         Entity();

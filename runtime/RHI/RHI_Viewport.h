@@ -21,13 +21,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES =====================
-#include "../Core/Object.h"
-//================================
+//= INCLUDES =================
+#include "../Core/SP_Object.h"
+//============================
 
 namespace Spartan
 {
-    class SP_CLASS RHI_Viewport : public Object
+    class SP_CLASS RHI_Viewport : public SP_Object
     {
     public:
         RHI_Viewport(const float x = 0.0f, const float y = 0.0f, const float width = 0.0f, const float height = 0.0f, const float depth_min = 0.0f, const float depth_max = 1.0f)

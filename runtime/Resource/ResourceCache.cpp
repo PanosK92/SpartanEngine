@@ -136,7 +136,7 @@ namespace Spartan
         {
             if (resource->GetResourceType() == type || type == ResourceType::Unknown)
             {
-                if (Object* object = dynamic_cast<Object*>(resource.get()))
+                if (SP_Object* object = dynamic_cast<SP_Object*>(resource.get()))
                 {
                     size += object->GetObjectSizeCpu();
                 }
@@ -155,7 +155,7 @@ namespace Spartan
         {
             if (resource->GetResourceType() == type || type == ResourceType::Unknown)
             {
-                if (Object* object = dynamic_cast<Object*>(resource.get()))
+                if (SP_Object* object = dynamic_cast<SP_Object*>(resource.get()))
                 {
                     size += object->GetObjectSizeGpu();
                 }

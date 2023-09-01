@@ -21,16 +21,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #pragma once
 
-//= INCLUDES ===============
-#include "../Core/Object.h"
+//= INCLUDES =================
+#include "../Core/SP_Object.h"
 #include "RHI_Definitions.h"
 #include "RHI_CommandList.h"
 #include <array>
-//==========================
+//============================
 
 namespace Spartan
 {
-    class RHI_CommandPool : public Object
+    class RHI_CommandPool : public SP_Object
     {
     public:
         RHI_CommandPool(const char* name, const uint64_t swap_chain_id, const RHI_Queue_Type queue_type);

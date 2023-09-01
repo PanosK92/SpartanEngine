@@ -96,7 +96,7 @@ namespace Spartan
         depth_stencil_state(Renderer_DepthStencilState::Depth_read_write_stencil_read)  = make_shared<RHI_DepthStencilState>(true,  true,  reverse_z_aware_comp_func,      false, false, RHI_Comparison_Function::Never);
         depth_stencil_state(Renderer_DepthStencilState::Depth_read)                     = make_shared<RHI_DepthStencilState>(true,  false, reverse_z_aware_comp_func,      false, false, RHI_Comparison_Function::Never);
         depth_stencil_state(Renderer_DepthStencilState::Stencil_read)                   = make_shared<RHI_DepthStencilState>(false, false, RHI_Comparison_Function::Never, true,  false, RHI_Comparison_Function::Equal);
-        depth_stencil_state(Renderer_DepthStencilState::Depth_read_write_stencil_write) = make_shared<RHI_DepthStencilState>(true, true,   reverse_z_aware_comp_func,      false, true, RHI_Comparison_Function::Always);
+        depth_stencil_state(Renderer_DepthStencilState::Depth_read_write_stencil_write) = make_shared<RHI_DepthStencilState>(true,  true,  reverse_z_aware_comp_func,      false, true,  RHI_Comparison_Function::Always);
     }
 
     void Renderer::CreateRasterizerStates()
