@@ -54,14 +54,18 @@ namespace Spartan
         {
             if ((descriptor.type == RHI_Descriptor_Type::ConstantBuffer) && descriptor.slot == slot + rhi_shader_shift_register_b)
             {
-                // Determine if the descriptor set needs to bind (affects vkUpdateDescriptorSets)
+                // determine if the descriptor set needs to bind (affects vkUpdateDescriptorSets)
                 m_needs_to_bind = descriptor.data           != constant_buffer              ? true : m_needs_to_bind;
                 m_needs_to_bind = descriptor.dynamic_offset != constant_buffer->GetOffset() ? true : m_needs_to_bind;
                 m_needs_to_bind = descriptor.range          != constant_buffer->GetStride() ? true : m_needs_to_bind;
 
+                // update
                 descriptor.data           = static_cast<void*>(constant_buffer);
                 descriptor.dynamic_offset = constant_buffer->GetOffset();
                 descriptor.range          = constant_buffer->GetStride();
+
+                SP_ASSERT(descriptor.struct_size == descriptor.range);
+                SP_ASSERT(descriptor.dynamic_offset % descriptor.range == 0);
 
                 return;
             }
@@ -74,7 +78,7 @@ namespace Spartan
         {
             if ((descriptor.type == RHI_Descriptor_Type::StructuredBuffer) && descriptor.slot == slot + rhi_shader_shift_register_u)
             {
-                // Determine if the descriptor set needs to bind (affects vkUpdateDescriptorSets)
+                // determine if the descriptor set needs to bind (affects vkUpdateDescriptorSets)
                 m_needs_to_bind = descriptor.data           != structured_buffer              ? true : m_needs_to_bind;
                 m_needs_to_bind = descriptor.dynamic_offset != structured_buffer->GetOffset() ? true : m_needs_to_bind;
                 m_needs_to_bind = descriptor.range          != structured_buffer->GetStride() ? true : m_needs_to_bind;
@@ -94,10 +98,10 @@ namespace Spartan
         {
             if (descriptor.type == RHI_Descriptor_Type::Sampler && descriptor.slot == slot + rhi_shader_shift_register_s)
             {
-                // Determine if the descriptor set needs to bind (affects vkUpdateDescriptorSets)
+                // determine if the descriptor set needs to bind (affects vkUpdateDescriptorSets)
                 m_needs_to_bind = descriptor.data != sampler ? true : m_needs_to_bind;
 
-                // Update
+                // update
                 descriptor.data = static_cast<void*>(sampler);
 
                 return;
