@@ -306,11 +306,11 @@ namespace Spartan
 
     const uint32_t rhi_all_mips = std::numeric_limits<uint32_t>::max();
 
-    // Shader register slot shifts (required to produce spirv from hlsl)
-    const uint32_t rhi_shader_shift_register_u = 000;
-    const uint32_t rhi_shader_shift_register_b = 100;
-    const uint32_t rhi_shader_shift_register_t = 200;
+    // shader register slot shifts (required to produce spirv from hlsl)
+    const uint32_t rhi_shader_shift_register_u = 100;
+    const uint32_t rhi_shader_shift_register_b = 200;
     const uint32_t rhi_shader_shift_register_s = 300;
+    const uint32_t rhi_shader_shift_register_t = 400;
 
     const Color    rhi_color_dont_care           = Color(std::numeric_limits<float>::max(), 0.0f, 0.0f, 0.0f);
     const Color    rhi_color_load                = Color(std::numeric_limits<float>::infinity(), 0.0f, 0.0f, 0.0f);

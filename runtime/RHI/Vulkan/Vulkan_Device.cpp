@@ -431,11 +431,7 @@ namespace Spartan
                         bool updated_existing = false;
                         for (RHI_Descriptor& descriptor_vertex : descriptors)
                         {
-                            bool is_same_resource =
-                                (descriptor_vertex.type == descriptor_pixel.type) &&
-                                (descriptor_vertex.slot == descriptor_pixel.slot);
-
-                            if (is_same_resource)
+                            if (descriptor_vertex.slot == descriptor_pixel.slot)
                             {
                                 descriptor_vertex.stage |= descriptor_pixel.stage;
                                 updated_existing = true;
