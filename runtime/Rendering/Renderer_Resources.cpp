@@ -83,7 +83,6 @@ namespace Spartan
     void Renderer::CreateStructuredBuffers()
     {
         const uint32_t offset_count = 32;
-
         m_structured_buffer = make_shared<RHI_StructuredBuffer>(static_cast<uint32_t>(sizeof(uint32_t)), offset_count, "spd_counter");
     }
 
