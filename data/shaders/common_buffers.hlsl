@@ -118,7 +118,7 @@ bool light_is_point()                 { return buffer_light.options & uint(1U <<
 bool light_is_spot()                  { return buffer_light.options & uint(1U << 2); }
 bool light_has_shadows()              { return buffer_light.options & uint(1U << 3); }
 bool light_has_shadows_transparent()  { return buffer_light.options & uint(1U << 4); }
-bool light_is_volumetric()            { return buffer_light.options & uint(1U << 4); }
+bool light_is_volumetric()            { return buffer_light.options & uint(1U << 5); }
 
 // frame properties
 bool is_taa_enabled()                  { return any(buffer_frame.taa_jitter_current); }
