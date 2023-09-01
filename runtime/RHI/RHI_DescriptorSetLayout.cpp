@@ -52,17 +52,16 @@ namespace Spartan
     {
         for (RHI_Descriptor& descriptor : m_descriptors)
         {
-            if ((descriptor.type == RHI_Descriptor_Type::ConstantBuffer) && descriptor.slot == slot + rhi_shader_shift_register_b)
+            if (descriptor.slot == slot + rhi_shader_shift_register_b)
             {
-                // determine if the descriptor set needs to bind (affects vkUpdateDescriptorSets)
+                // determine if the descriptor set needs to bind (vkCmdBindDescriptorSets)
                 m_needs_to_bind = descriptor.data           != constant_buffer              ? true : m_needs_to_bind;
                 m_needs_to_bind = descriptor.dynamic_offset != constant_buffer->GetOffset() ? true : m_needs_to_bind;
-                m_needs_to_bind = descriptor.range          != constant_buffer->GetStride() ? true : m_needs_to_bind;
 
                 // update
-                descriptor.data           = static_cast<void*>(constant_buffer);
-                descriptor.dynamic_offset = constant_buffer->GetOffset();
-                descriptor.range          = constant_buffer->GetStride();
+                descriptor.data           = static_cast<void*>(constant_buffer); // needed for vkUpdateDescriptorSets()
+                descriptor.range          = constant_buffer->GetStride();        // needed for vkUpdateDescriptorSets()
+                descriptor.dynamic_offset = constant_buffer->GetOffset();        // needed for vkCmdBindDescriptorSets
 
                 SP_ASSERT_MSG(descriptor.struct_size == descriptor.range,        "Size mismatch between CPU and GPU side constant buffer");
                 SP_ASSERT_MSG(descriptor.dynamic_offset % descriptor.range == 0, "Incorrect dynamic offset");
@@ -76,13 +75,14 @@ namespace Spartan
     {
         for (RHI_Descriptor& descriptor : m_descriptors)
         {
-            if ((descriptor.type == RHI_Descriptor_Type::StructuredBuffer) && descriptor.slot == slot + rhi_shader_shift_register_u)
+            if (descriptor.slot == slot + rhi_shader_shift_register_u)
             {
-                // determine if the descriptor set needs to bind (affects vkUpdateDescriptorSets)
+                // determine if the descriptor set needs to bind (vkCmdBindDescriptorSets)
                 m_needs_to_bind = descriptor.data           != structured_buffer              ? true : m_needs_to_bind;
                 m_needs_to_bind = descriptor.dynamic_offset != structured_buffer->GetOffset() ? true : m_needs_to_bind;
                 m_needs_to_bind = descriptor.range          != structured_buffer->GetStride() ? true : m_needs_to_bind;
 
+                // update
                 descriptor.data           = static_cast<void*>(structured_buffer);
                 descriptor.dynamic_offset = structured_buffer->GetOffset();
                 descriptor.range          = structured_buffer->GetStride();
@@ -96,9 +96,9 @@ namespace Spartan
     {
         for (RHI_Descriptor& descriptor : m_descriptors)
         {
-            if (descriptor.type == RHI_Descriptor_Type::Sampler && descriptor.slot == slot + rhi_shader_shift_register_s)
+            if (descriptor.slot == slot + rhi_shader_shift_register_s)
             {
-                // determine if the descriptor set needs to bind (affects vkUpdateDescriptorSets)
+                // determine if the descriptor set needs to bind (vkCmdBindDescriptorSets)
                 m_needs_to_bind = descriptor.data != sampler ? true : m_needs_to_bind;
 
                 // update
@@ -123,18 +123,16 @@ namespace Spartan
         for (RHI_Descriptor& descriptor : m_descriptors)
         {
             bool is_storage = layout == RHI_Image_Layout::General;
-            bool match_type = descriptor.type == (is_storage ? RHI_Descriptor_Type::TextureStorage : RHI_Descriptor_Type::Texture);
             uint32_t shift  = is_storage ? rhi_shader_shift_register_u : rhi_shader_shift_register_t;
-            bool match_slot = descriptor.slot == (slot + shift);
 
-            if (match_type && match_slot)
+            if (descriptor.slot == (slot + shift))
             {
-                // Determine if the descriptor set needs to bind (affects vkUpdateDescriptorSets)
+                // determine if the descriptor set needs to bind (vkCmdBindDescriptorSets)
                 m_needs_to_bind = descriptor.data      != texture   ? true : m_needs_to_bind;
                 m_needs_to_bind = descriptor.mip       != mip_index ? true : m_needs_to_bind;
                 m_needs_to_bind = descriptor.mip_range != mip_range ? true : m_needs_to_bind;
 
-                // Update
+                // update
                 descriptor.data      = static_cast<void*>(texture);
                 descriptor.layout    = layout;
                 descriptor.mip       = mip_index;
@@ -149,8 +147,9 @@ namespace Spartan
     {
         for (RHI_Descriptor& descriptor : m_descriptors)
         {
-            descriptor.data = nullptr;
-            descriptor.mip  = 0;
+            descriptor.data      = nullptr;
+            descriptor.mip       = 0;
+            descriptor.mip_range = 0;
         }
     }
 
@@ -158,14 +157,13 @@ namespace Spartan
     {
         RHI_DescriptorSet* descriptor_set = nullptr;
 
-        // integrate descriptor data into the hash
+        // integrate descriptor data into the hash (anything that can change)
         uint64_t hash = m_hash;
         for (const RHI_Descriptor& descriptor : m_descriptors)
         {
             hash = rhi_hash_combine(hash, reinterpret_cast<uint64_t>(descriptor.data));
             hash = rhi_hash_combine(hash, static_cast<uint64_t>(descriptor.mip));
             hash = rhi_hash_combine(hash, static_cast<uint64_t>(descriptor.mip_range));
-            hash = rhi_hash_combine(hash, static_cast<uint64_t>(descriptor.range));
         }
 
         // if we don't have a descriptor set to match that state, create one
