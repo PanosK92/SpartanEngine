@@ -158,7 +158,7 @@ namespace Spartan
     {
         RHI_DescriptorSet* descriptor_set = nullptr;
 
-        // Integrate descriptor data into the hash
+        // integrate descriptor data into the hash
         uint64_t hash = m_hash;
         for (const RHI_Descriptor& descriptor : m_descriptors)
         {
@@ -168,18 +168,18 @@ namespace Spartan
             hash = rhi_hash_combine(hash, static_cast<uint64_t>(descriptor.range));
         }
 
-        // If we don't have a descriptor set to match that state, create one
+        // if we don't have a descriptor set to match that state, create one
         unordered_map<uint64_t, RHI_DescriptorSet>& descriptor_sets = RHI_Device::GetDescriptorSets();
         const auto it = descriptor_sets.find(hash);
         if (it == descriptor_sets.end())
         {
-            // Only allocate if the descriptor set cache hash enough capacity
+            // only allocate if the descriptor set cache hash enough capacity
             SP_ASSERT_MSG(RHI_Device::HasDescriptorSetCapacity(), "Descriptor pool has no more memory to allocate another descriptor set");
 
-            // Create descriptor set
+            // create descriptor set
             descriptor_sets[hash] = RHI_DescriptorSet(m_descriptors, this, m_object_name.c_str());
 
-            // Out
+            // out
             descriptor_set = &descriptor_sets[hash];
         }
         else if(m_needs_to_bind) // retrieve the existing one
@@ -193,7 +193,7 @@ namespace Spartan
 
     void RHI_DescriptorSetLayout::GetDynamicOffsets(vector<uint32_t>* offsets)
     {
-        // Offsets should be ordered by the binding numbers in the descriptor set layouts
+        // offsets should be ordered by the binding numbers in the descriptor set layouts
 
         (*offsets).clear();
 

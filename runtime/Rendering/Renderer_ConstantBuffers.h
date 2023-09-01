@@ -30,13 +30,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 namespace Spartan
 {
-    // Low frequency - Updates once per frame
+    // low frequency - updates once per frame
     struct Cb_Frame
     {
         Math::Matrix view;
         Math::Matrix projection;
-        Math::Matrix projection_inverted;
-        Math::Matrix projection_ortho;
         Math::Matrix view_projection;
         Math::Matrix view_projection_inv;
         Math::Matrix view_projection_ortho;
@@ -75,8 +73,6 @@ namespace Spartan
             return
                 view                        == rhs.view                       &&
                 projection                  == rhs.projection                 &&
-                projection_inverted         == rhs.projection_inverted        &&
-                projection_ortho            == rhs.projection_ortho           &&
                 view_projection             == rhs.view_projection            &&
                 view_projection_inv         == rhs.view_projection_inv        &&
                 view_projection_ortho       == rhs.view_projection_ortho      &&
@@ -103,7 +99,7 @@ namespace Spartan
         bool operator!=(const Cb_Frame& rhs) const { return !(*this == rhs); }
     };
       
-    // Medium frequency - Updates per light
+    // medium frequency - updates per light
     struct Cb_Light
     {
         Math::Matrix view_projection[6];
@@ -133,7 +129,7 @@ namespace Spartan
         }
     };
 
-    // Medium to high frequency - Updates per light
+    // medium to high frequency - updates per light
     struct Cb_Material
     {
         Math::Vector4 color = Math::Vector4::Zero;
@@ -176,7 +172,7 @@ namespace Spartan
         }
     };
 
-    // 128 byte push constant buffer - Per pass/draw
+    // 128 byte push constant buffer - updates per pass/draw
     struct Pcb_Pass
     {
         Math::Matrix transform = Math::Matrix::Identity;

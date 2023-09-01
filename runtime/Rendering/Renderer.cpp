@@ -341,16 +341,15 @@ namespace Spartan
                         dirty_orthographic_projection = true;
                     }
 
-                    m_cb_frame_cpu.view                = m_camera->GetViewMatrix();
-                    m_cb_frame_cpu.projection          = m_camera->GetProjectionMatrix();
-                    m_cb_frame_cpu.projection_inverted = Matrix::Invert(m_cb_frame_cpu.projection);
+                    m_cb_frame_cpu.view       = m_camera->GetViewMatrix();
+                    m_cb_frame_cpu.projection = m_camera->GetProjectionMatrix();
                 }
 
                 if (dirty_orthographic_projection)
                 { 
                     // near clip does not affect depth accuracy in orthographic projection, so set it to 0 to avoid problems which can result an infinitely small [3,2] (NaN) after the multiplication below.
-                    m_cb_frame_cpu.projection_ortho      = Matrix::CreateOrthographicLH(m_viewport.width, m_viewport.height, 0.0f, far_plane);
-                    m_cb_frame_cpu.view_projection_ortho = Matrix::CreateLookAtLH(Vector3(0, 0, -near_plane), Vector3::Forward, Vector3::Up) * m_cb_frame_cpu.projection_ortho;
+                    Matrix projection_ortho              = Matrix::CreateOrthographicLH(m_viewport.width, m_viewport.height, 0.0f, far_plane);
+                    m_cb_frame_cpu.view_projection_ortho = Matrix::CreateLookAtLH(Vector3(0, 0, -near_plane), Vector3::Forward, Vector3::Up) * projection_ortho;
                     dirty_orthographic_projection        = false;
                 }
             }
