@@ -305,7 +305,7 @@ namespace Spartan
 
         // reset buffer offsets
         {
-            if (buffers_frames_since_last_reset == 5)
+            if (buffers_frames_since_last_reset == m_frames_in_flight)
             {
                 for (shared_ptr<RHI_ConstantBuffer> constant_buffer : GetConstantBuffers())
                 {

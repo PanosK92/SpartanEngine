@@ -70,17 +70,14 @@ namespace Spartan
     {
         #define constant_buffer(x) m_constant_buffers[static_cast<uint8_t>(x)]
 
-        for (uint32_t i = 0; i < 2; i++)
-        {
-            constant_buffer(Renderer_ConstantBuffer::Frame) = make_shared<RHI_ConstantBuffer>(string("frame_" + to_string(i)));
-            constant_buffer(Renderer_ConstantBuffer::Frame)->Create<Cb_Frame>(8000);
+        constant_buffer(Renderer_ConstantBuffer::Frame) = make_shared<RHI_ConstantBuffer>(string("frame"));
+        constant_buffer(Renderer_ConstantBuffer::Frame)->Create<Cb_Frame>(m_frames_in_flight);
 
-            constant_buffer(Renderer_ConstantBuffer::Light) = make_shared<RHI_ConstantBuffer>(string("light_" + to_string(i)));
-            constant_buffer(Renderer_ConstantBuffer::Light)->Create<Cb_Light>(8000);
+        constant_buffer(Renderer_ConstantBuffer::Light) = make_shared<RHI_ConstantBuffer>(string("light"));
+        constant_buffer(Renderer_ConstantBuffer::Light)->Create<Cb_Light>(1600 * m_frames_in_flight);
 
-            constant_buffer(Renderer_ConstantBuffer::Material) = make_shared<RHI_ConstantBuffer>(string("material_" + to_string(i)));
-            constant_buffer(Renderer_ConstantBuffer::Material)->Create<Cb_Material>(15000);
-        }
+        constant_buffer(Renderer_ConstantBuffer::Material) = make_shared<RHI_ConstantBuffer>(string("material"));
+        constant_buffer(Renderer_ConstantBuffer::Material)->Create<Cb_Material>(3000 * m_frames_in_flight);
     }
 
     void Renderer::CreateStructuredBuffers()
