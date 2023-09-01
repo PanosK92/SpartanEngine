@@ -95,31 +95,31 @@ namespace Spartan
         // arguments
         {
             // arguments.emplace_back("-fspv-reflect"); // Emit additional SPIR-V instructions to aid reflection
-            // Can this be helpful in some way? It forces the use of "SPV_GOOGLE_user_type" extension.
-            // For more search for "-fspv-reflect" here: https://github.com/microsoft/DirectXShaderCompiler/blob/main/docs/SPIR-V.rst#hlsl-types
+            // can this be helpful in some way? It forces the use of "SPV_GOOGLE_user_type" extension.
+            // for more search for "-fspv-reflect" here: https://github.com/microsoft/DirectXShaderCompiler/blob/main/docs/SPIR-V.rst#hlsl-types
 
             arguments.emplace_back("-E"); arguments.emplace_back(GetEntryPoint());
             arguments.emplace_back("-T"); arguments.emplace_back(GetTargetProfile());
 
             // spir-v
             {
-                arguments.emplace_back("-spirv");                     // Generate SPIR-V code
-                arguments.emplace_back("-fspv-target-env=vulkan1.3"); // Specify the target environment
+                arguments.emplace_back("-spirv");                     // generate SPIR-V code
+                arguments.emplace_back("-fspv-target-env=vulkan1.3"); // specify the target environment
 
                 // this prevents all sorts of issues with constant buffers having random data.
-                arguments.emplace_back("-fspv-preserve-bindings"); // Preserves all bindings declared within the module, even when those bindings are unused
+                arguments.emplace_back("-fspv-preserve-bindings"); // preserves all bindings declared within the module, even when those bindings are unused
 
                 // shift registers to avoid conflicts
-                arguments.emplace_back("-fvk-u-shift"); arguments.emplace_back(to_string(rhi_shader_shift_register_u)); arguments.emplace_back("all"); // Specify Vulkan binding number shift for u-type (read/write buffer) register
-                arguments.emplace_back("-fvk-b-shift"); arguments.emplace_back(to_string(rhi_shader_shift_register_b)); arguments.emplace_back("all"); // Specify Vulkan binding number shift for b-type (buffer) register
-                arguments.emplace_back("-fvk-t-shift"); arguments.emplace_back(to_string(rhi_shader_shift_register_t)); arguments.emplace_back("all"); // Specify Vulkan binding number shift for t-type (texture) register
-                arguments.emplace_back("-fvk-s-shift"); arguments.emplace_back(to_string(rhi_shader_shift_register_s)); arguments.emplace_back("all"); // Specify Vulkan binding number shift for s-type (sampler) register
+                arguments.emplace_back("-fvk-u-shift"); arguments.emplace_back(to_string(rhi_shader_shift_register_u)); arguments.emplace_back("all"); // binding number shift for u-type (read/write buffer) register
+                arguments.emplace_back("-fvk-b-shift"); arguments.emplace_back(to_string(rhi_shader_shift_register_b)); arguments.emplace_back("all"); // binding number shift for b-type (buffer) register
+                arguments.emplace_back("-fvk-t-shift"); arguments.emplace_back(to_string(rhi_shader_shift_register_t)); arguments.emplace_back("all"); // binding number shift for t-type (texture) register
+                arguments.emplace_back("-fvk-s-shift"); arguments.emplace_back(to_string(rhi_shader_shift_register_s)); arguments.emplace_back("all"); // binding number shift for s-type (sampler) register
             }
 
             // directX conventions
             {
-                arguments.emplace_back("-fvk-use-dx-layout");     // Use DirectX memory layout for Vulkan resources
-                arguments.emplace_back("-fvk-use-dx-position-w"); // Reciprocate SV_Position.w after reading from stage input in PS to accommodate the difference between Vulkan and DirectX
+                arguments.emplace_back("-fvk-use-dx-layout");     // use DirectX memory layout for Vulkan resources
+                arguments.emplace_back("-fvk-use-dx-position-w"); // reciprocate SV_Position.w after reading from stage input in PS to accommodate the difference between Vulkan and DirectX
 
                 // Negate SV_Position.y before writing to stage output in VS/DS/GS to accommodate Vulkan's coordinate system
                 if (m_shader_type == RHI_Shader_Vertex)
@@ -128,15 +128,15 @@ namespace Spartan
                 }
             }
 
-            // debug: Disable optimizations and embed HLSL source in the shaders
+            // debug: disable optimizations and embed HLSL source in the shaders
             #ifdef DEBUG
-            arguments.emplace_back("-Od");           // Disable optimizations
-            arguments.emplace_back("-Zi");           // Enable debug information
-            arguments.emplace_back("-Qembed_debug"); // Embed PDB in shader container (must be used with -Zi)
+            arguments.emplace_back("-Od");           // disable optimizations
+            arguments.emplace_back("-Zi");           // enable debug information
+            arguments.emplace_back("-Qembed_debug"); // embed PDB in shader container (must be used with -Zi)
             #endif
 
             // misc
-            arguments.emplace_back("-Zpc"); // Pack matrices in column-major order
+            arguments.emplace_back("-Zpc"); // pack matrices in column-major order
         }
 
         // defines
