@@ -451,6 +451,13 @@ namespace Spartan
                     }
                 }
             }
+
+            // sort descriptors by slot, this is because dynamic offsets (which are computed in a serialized
+            // manner in RHI_DescriptorSetLayout::GetDynamicOffsets(), need to be ordered by their slot
+            sort(descriptors.begin(), descriptors.end(), [](const RHI_Descriptor& a, const RHI_Descriptor& b)
+            {
+                return a.slot < b.slot;
+            });
         }
 
         static shared_ptr<RHI_DescriptorSetLayout> get_or_create_descriptor_set_layout(RHI_PipelineState& pipeline_state)

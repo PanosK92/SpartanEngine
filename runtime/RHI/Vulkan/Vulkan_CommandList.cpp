@@ -1313,10 +1313,10 @@ namespace Spartan
 
         Renderer::SetGlobalShaderResources(this);
 
-        // Bind descriptor sets - If the descriptor set is null, it means we don't need to bind anything.
+        // bind descriptor sets - If the descriptor set is null, it means we don't need to bind anything.
         if (RHI_DescriptorSet* descriptor_set = m_descriptor_layout_current->GetDescriptorSet())
         {
-            // Get descriptor sets
+            // get descriptor sets
             array<void*, 3> descriptor_sets =
             {
                 descriptor_set->GetResource(),
@@ -1324,15 +1324,15 @@ namespace Spartan
                 RHI_Device::GetDescriptorSet(RHI_Device_Resource::sampler_regular)
             };
 
-            // Get dynamic offsets
-            static vector<uint32_t> dynamic_offsets;
+            // get dynamic offsets
+            vector<uint32_t> dynamic_offsets;
             m_descriptor_layout_current->GetDynamicOffsets(&dynamic_offsets);
 
             VkPipelineBindPoint bind_point = m_pso.IsCompute() ?
                 VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_COMPUTE :
                 VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS;
 
-            // Bind descriptor set
+            // bind descriptor set
             vkCmdBindDescriptorSets
             (
                 static_cast<VkCommandBuffer>(m_rhi_resource),                            // commandBuffer
