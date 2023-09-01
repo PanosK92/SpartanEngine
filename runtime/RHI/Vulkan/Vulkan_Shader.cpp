@@ -89,15 +89,10 @@ namespace Spartan
 
     void* RHI_Shader::RHI_Compile()
     {
-        // arguments (and defines)
         vector<string> arguments;
 
         // arguments
         {
-            // arguments.emplace_back("-fspv-reflect"); // Emit additional SPIR-V instructions to aid reflection
-            // can this be helpful in some way? It forces the use of "SPV_GOOGLE_user_type" extension.
-            // for more search for "-fspv-reflect" here: https://github.com/microsoft/DirectXShaderCompiler/blob/main/docs/SPIR-V.rst#hlsl-types
-
             arguments.emplace_back("-E"); arguments.emplace_back(GetEntryPoint());
             arguments.emplace_back("-T"); arguments.emplace_back(GetTargetProfile());
 
