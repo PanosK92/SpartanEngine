@@ -147,9 +147,10 @@ namespace Spartan
     {
         for (RHI_Descriptor& descriptor : m_descriptors)
         {
-            descriptor.data      = nullptr;
-            descriptor.mip       = 0;
-            descriptor.mip_range = 0;
+            descriptor.data           = nullptr;
+            descriptor.mip            = 0;
+            descriptor.mip_range      = 0;
+            descriptor.dynamic_offset = 0;
         }
     }
 
@@ -191,7 +192,8 @@ namespace Spartan
 
     void RHI_DescriptorSetLayout::GetDynamicOffsets(vector<uint32_t>* offsets)
     {
-        // offsets should be ordered by the binding slots in the descriptor set layouts
+        // offsets should be ordered by the binding slots in the descriptor
+        // set layouts, so m_descriptors should already be sorted by slot
         for (RHI_Descriptor& descriptor : m_descriptors)
         {
             if (descriptor.type == RHI_Descriptor_Type::StructuredBuffer || descriptor.type == RHI_Descriptor_Type::ConstantBuffer)
