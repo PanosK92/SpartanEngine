@@ -156,7 +156,7 @@ namespace Spartan
 
         // Bias
         float m_bias        = 0.0f;
-        float m_normal_bias = 10.0f;
+        float m_normal_bias = 5.0f;
 
         // Misc
         LightType m_light_type     = LightType::Directional;

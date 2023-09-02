@@ -468,12 +468,12 @@ float get_random(float2 uv)
 }
 
 // An expansion on the interleaved gradient function from Jimenez 2014 http://goo.gl/eomGso
-float get_noise_interleaved_gradient(float2 screen_pos, float animate_even_with_taa_off = 0.0f)
+float get_noise_interleaved_gradient(float2 screen_pos, bool animate, bool animate_even_with_taa_off)
 {
     // temporal factor
-    float taa_on      = saturate((float)is_taa_enabled() + animate_even_with_taa_off);
+    float animate_    = saturate((float)is_taa_enabled() + (float)animate_even_with_taa_off) * (float)animate;
     float frame_count = (float)buffer_frame.frame;
-    float frame_step  = taa_on * float(frame_count % 16) * RPC_16;
+    float frame_step  = float(frame_count % 16) * RPC_16 * animate_;
     screen_pos.x     += frame_step * 4.7526;
     screen_pos.y     += frame_step * 3.1914;
 
