@@ -93,7 +93,7 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
     }
 
     // Accumulate fog.
-    color.rgb += fog; // regular
+    //color.rgb += fog; // regular - This causes everything to go white when a directional light is present
     color.rgb += tex_light_volumetric[thread_id.xy].rgb; // volumetric
 
     tex_uav[thread_id.xy] = saturate_16(color);
