@@ -233,7 +233,6 @@ namespace Spartan
     void World::New()
     {
         Clear();
-        CreateDefaultWorldSponza();
     }
 
     bool World::SaveToFile(const string& filePathIn)
