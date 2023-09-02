@@ -29,27 +29,22 @@ struct FrameBufferData
     matrix view_projection_unjittered;
     matrix view_projection_previous;
 
-    float delta_time;
-    float time;
-    uint frame;
-    uint frame_mip_count;
-
-    float gamma;
-    uint ssr_mip_count;
-    float camera_near;
-    float camera_far;
-
-    float3 camera_position;
-    uint options;
-    
-    float sharpen_strength;
-    float3 camera_direction;
-
     float2 resolution_render;
     float2 resolution_output;
 
     float2 taa_jitter_current;
     float2 taa_jitter_previous;
+    
+    float delta_time;
+    uint frame;
+    float gamma;
+    uint options;
+    
+    float3 camera_position;
+    float camera_near;
+    
+    float3 camera_direction;
+    float camera_far;
 };
 
 struct LightBufferData

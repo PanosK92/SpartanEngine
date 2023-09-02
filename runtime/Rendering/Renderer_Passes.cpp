@@ -896,6 +896,7 @@ namespace Spartan
         // push pass constants
         m_cb_pass_cpu.set_resolution_out(tex_out);
         m_cb_pass_cpu.set_is_transparent(is_transparent_pass);
+        m_cb_pass_cpu.set_f3_value(GetRenderTarget(Renderer_RenderTexture::frame_render)->GetMipCount(), 0.0f, 0.0f);
         PushPassConstants(cmd_list);
 
         // update light buffer with the directional light
@@ -980,7 +981,7 @@ namespace Spartan
         // Set pass constants
         m_cb_pass_cpu.set_resolution_out(tex_out);
         m_cb_pass_cpu.set_is_transparent(is_transparent_pass);
-        m_cb_pass_cpu.set_f4_value(!probes.empty() ? 1.0f : 0.0f, 0.0f, 0.0f, 0.0f); // reflection probe available
+        m_cb_pass_cpu.set_f4_value(!probes.empty() ? 1.0f : 0.0f, GetRenderTarget(Renderer_RenderTexture::ssr)->GetMipCount(), 0.0f, 0.0f); // reflection probe available
         PushPassConstants(cmd_list);
 
         // Update light buffer with the directional light
@@ -1641,27 +1642,34 @@ namespace Spartan
         if (!shader_c->IsCompiled())
             return;
 
-        cmd_list->BeginTimeblock("ffx_cas");
+        float sharpness = GetOption<float>(Renderer_Option::Sharpness);
 
-        // Define pipeline state
-        static RHI_PipelineState pso;
-        pso.shader_compute = shader_c;
+        if (sharpness != 0.0f)
+        {
+            cmd_list->BeginTimeblock("ffx_cas");
 
-        // Set pipeline state
-        cmd_list->SetPipelineState(pso);
+            // define pipeline state
+            static RHI_PipelineState pso;
+            pso.name           = "ffx_cas";
+            pso.shader_compute = shader_c;
 
-        // Set pass constants
-        m_cb_pass_cpu.set_resolution_out(tex_out);
-        PushPassConstants(cmd_list);
+            // set pipeline state
+            cmd_list->SetPipelineState(pso);
 
-        // Set textures
-        cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_out);
-        cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);
+            // set pass constants
+            m_cb_pass_cpu.set_resolution_out(tex_out);
+            m_cb_pass_cpu.set_f3_value(sharpness, 0.0f, 0.0f);
+            PushPassConstants(cmd_list);
 
-        // Render
-        cmd_list->Dispatch(thread_group_count_x(tex_out), thread_group_count_y(tex_out));
+            // set textures
+            cmd_list->SetTexture(Renderer_BindingsUav::tex, tex_out);
+            cmd_list->SetTexture(Renderer_BindingsSrv::tex, tex_in);
 
-        cmd_list->EndTimeblock();
+            // render
+            cmd_list->Dispatch(thread_group_count_x(tex_out), thread_group_count_y(tex_out));
+
+            cmd_list->EndTimeblock();
+        }
     }
 
     void Renderer::Pass_Ffx_Spd(RHI_CommandList* cmd_list, RHI_Texture* tex)
