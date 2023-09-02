@@ -81,9 +81,10 @@ void mainCS(uint3 thread_id : SV_DispatchThreadID)
             float is_behind               = step(depth_surface - 0.02f, depth_surface_refracted); // step does a >=, but when the depth is equal, we still want refract, so we use a bias of 0.02.
 
             // Refraction from ALDI.
-            float roughness2 = surface.roughness * surface.roughness;
-            float mip_level  = lerp(0, buffer_frame.frame_mip_count, roughness2);
-            light_refraction = tex_frame.SampleLevel(samplers[sampler_trilinear_clamp], surface.uv + refraction_uv_offset * is_behind, mip_level).rgb;
+            float roughness2      = surface.roughness * surface.roughness;
+            float frame_mip_count = pass_get_f3_value().x;
+            float mip_level       = lerp(0, frame_mip_count, roughness2);
+            light_refraction      = tex_frame.SampleLevel(samplers[sampler_trilinear_clamp], surface.uv + refraction_uv_offset * is_behind, mip_level).rgb;
         }
         
         // Compose everything.

@@ -41,27 +41,22 @@ namespace Spartan
         Math::Matrix view_projection_unjittered;
         Math::Matrix view_projection_previous;
 
-        float delta_time;
-        float time;
-        uint32_t frame;
-        uint32_t frame_mip_count;
-
-        float gamma;
-        uint32_t ssr_mip_count;
-        float camera_near;
-        float camera_far;
-
-        Math::Vector3 camera_position;
-        uint32_t options;
-
-        float sharpness;
-        Math::Vector3 camera_direction;
-
         Math::Vector2 resolution_render;
         Math::Vector2 resolution_output;
 
         Math::Vector2 taa_jitter_current;
         Math::Vector2 taa_jitter_previous;
+
+        float delta_time;
+        uint32_t frame;
+        float gamma;
+        uint32_t options;
+
+        Math::Vector3 camera_position;
+        float camera_near;
+
+        Math::Vector3 camera_direction;
+        float camera_far;
 
         void set_bit(const bool set, const uint32_t bit)
         {
@@ -71,29 +66,25 @@ namespace Spartan
         bool operator==(const Cb_Frame& rhs) const
         {
             return
-                view                        == rhs.view                       &&
-                projection                  == rhs.projection                 &&
-                view_projection             == rhs.view_projection            &&
-                view_projection_inv         == rhs.view_projection_inv        &&
-                view_projection_ortho       == rhs.view_projection_ortho      &&
-                view_projection_unjittered  == rhs.view_projection_unjittered &&
-                view_projection_previous    == rhs.view_projection_previous   &&
-                delta_time                  == rhs.delta_time                 &&
-                time                        == rhs.time                       &&
-                frame                       == rhs.frame                      &&
-                camera_near                 == rhs.camera_near                &&
-                camera_far                  == rhs.camera_far                 &&
-                camera_position             == rhs.camera_position            &&
-                sharpness                   == rhs.sharpness                  &&
-                camera_direction            == rhs.camera_direction           &&
-                gamma                       == rhs.gamma                      &&
-                resolution_output           == rhs.resolution_output          &&
-                resolution_render           == rhs.resolution_render          &&
-                taa_jitter_current          == rhs.taa_jitter_current         &&
-                taa_jitter_previous         == rhs.taa_jitter_previous        &&
-                options                     == rhs.options                    &&
-                frame_mip_count             == rhs.frame_mip_count            &&
-                ssr_mip_count               == rhs.ssr_mip_count;
+                view                       == rhs.view                       &&
+                projection                 == rhs.projection                 &&
+                view_projection            == rhs.view_projection            &&
+                view_projection_inv        == rhs.view_projection_inv        &&
+                view_projection_ortho      == rhs.view_projection_ortho      &&
+                view_projection_unjittered == rhs.view_projection_unjittered &&
+                view_projection_previous   == rhs.view_projection_previous   &&
+                delta_time                 == rhs.delta_time                 &&
+                frame                      == rhs.frame                      &&
+                camera_near                == rhs.camera_near                &&
+                camera_far                 == rhs.camera_far                 &&
+                camera_position            == rhs.camera_position            &&
+                camera_direction           == rhs.camera_direction           &&
+                gamma                      == rhs.gamma                      &&
+                resolution_output          == rhs.resolution_output          &&
+                resolution_render          == rhs.resolution_render          &&
+                taa_jitter_current         == rhs.taa_jitter_current         &&
+                taa_jitter_previous        == rhs.taa_jitter_previous        &&
+                options                    == rhs.options;
         }
 
         bool operator!=(const Cb_Frame& rhs) const { return !(*this == rhs); }
