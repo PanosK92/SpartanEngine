@@ -31,7 +31,7 @@ using namespace std;
 
 namespace Spartan
 {
-    RHI_CommandPool::RHI_CommandPool(const char* name, const uint64_t swap_chain_id, const RHI_Queue_Type queue_type) : Object()
+    RHI_CommandPool::RHI_CommandPool(const char* name, const uint64_t swap_chain_id, const RHI_Queue_Type queue_type) : SP_Object()
     {
         m_object_name   = name;
         m_swap_chain_id = swap_chain_id;
