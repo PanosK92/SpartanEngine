@@ -184,7 +184,7 @@ float compute_penumbra(float vogel_angle, float3 uv, float compare)
 float Technique_Vogel(Surface surface, float3 uv, float compare)
 {
     float shadow          = 0.0f;
-    float temporal_offset = get_noise_interleaved_gradient(surface.uv * pass_get_resolution_out());
+    float temporal_offset = get_noise_interleaved_gradient(surface.uv * pass_get_resolution_out(), true, false);
     float temporal_angle  = temporal_offset * PI2;
     float penumbra        = light_is_directional() ? 1.0f : compute_penumbra(temporal_angle, uv, compare);
 
@@ -202,7 +202,7 @@ float Technique_Vogel(Surface surface, float3 uv, float compare)
 float3 Technique_Vogel_Color(Surface surface, float3 uv)
 {
     float3 shadow     = 0.0f;
-    float vogel_angle = get_noise_interleaved_gradient(surface.uv * pass_get_resolution_out()) * PI2;
+    float vogel_angle = get_noise_interleaved_gradient(surface.uv * pass_get_resolution_out(), true, false) * PI2;
 
     // todo: in the case of the point light, the uv is the direction, filtering works ok but I could improved it.
     
@@ -289,7 +289,7 @@ static const float2 poisson_disk[64] =
 float Technique_Poisson(Surface surface, float3 uv, float compare)
 {
     float shadow          = 0.0f;
-    float temporal_offset = get_noise_interleaved_gradient(uv.xy * get_shadow_resolution()); // helps with noise if TAA is active
+    float temporal_offset = get_noise_interleaved_gradient(uv.xy * get_shadow_resolution(), true, false); // helps with noise if TAA is active
 
     for (uint i = 0; i < g_shadow_samples; i++)
     {

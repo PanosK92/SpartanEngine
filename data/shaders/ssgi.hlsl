@@ -74,7 +74,7 @@ void compute_ssgi(uint2 pos, inout float visibility, inout float3 diffuse_bounce
     const float step_offset  = pixel_offset / float(g_ao_steps + 1.0f); // divide by steps + 1 so that the farthest samples are not fully attenuated
 
     // offsets (noise over space and time)
-    const float noise_gradient_temporal  = get_noise_interleaved_gradient(pos, 1.0f);
+    const float noise_gradient_temporal  = get_noise_interleaved_gradient(pos, true, true);
     const float offset_spatial           = get_offset_non_temporal(pos);
     const float offset_temporal          = offsets[buffer_frame.frame % 4];
     const float offset_rotation_temporal = rotations[buffer_frame.frame % 6];

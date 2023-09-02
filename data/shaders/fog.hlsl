@@ -142,7 +142,7 @@ float3 VolumetricLighting(Surface surface, Light light)
     float3 ray_step   = ray_dir * step_length;
     
     // Offset ray to get away with way less steps and great detail
-    float offset = get_noise_interleaved_gradient(surface.uv * get_shadow_resolution());
+    float offset = get_noise_interleaved_gradient(surface.uv * get_shadow_resolution(), true, false);
     ray_pos += ray_step * offset;
 
     if (light_is_directional())
