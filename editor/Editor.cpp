@@ -215,7 +215,7 @@ Editor::~Editor()
 {
     if (ImGui::GetCurrentContext())
     {
-        ImGui::RHI::Shutdown();
+        ImGui::RHI::shutdown();
         ImGui_ImplSDL2_Shutdown();
         ImGui::DestroyContext();
     }
@@ -262,7 +262,7 @@ void Editor::Tick()
 
                 // Render
                 ImGui::Render();
-                ImGui::RHI::Render(ImGui::GetDrawData());
+                ImGui::RHI::render(ImGui::GetDrawData());
             }
 
             // Child windows

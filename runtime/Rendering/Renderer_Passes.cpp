@@ -598,12 +598,12 @@ namespace Spartan
 
             for (shared_ptr<Entity> entity : entities)
             {
-                // Get renderable
+                // get renderable
                 shared_ptr<Renderable> renderable = entity->GetComponent<Renderable>();
                 if (!renderable)
                     continue;
 
-                // Get material
+                // get material
                 Material* material = renderable->GetMaterial();
                 if (!material)
                     continue;
@@ -613,18 +613,18 @@ namespace Spartan
                 if (!mesh || !mesh->GetVertexBuffer() || !mesh->GetIndexBuffer())
                     continue;
 
-                // Skip objects outside of the view frustum
+                // skip objects outside of the view frustum
                 if (!GetCamera()->IsInViewFrustum(renderable))
                     continue;
 
-                // Set geometry (will only happen if not already set)
+                // set geometry (will only happen if not already set)
                 cmd_list->SetBufferIndex(mesh->GetIndexBuffer());
                 cmd_list->SetBufferVertex(mesh->GetVertexBuffer());
 
-                // Update material
+                // update material
                 if (bound_material_id != material->GetObjectId())
                 {
-                    // Set textures
+                    // set textures
                     cmd_list->SetTexture(Renderer_BindingsSrv::material_albedo,    material->GetTexture(MaterialTexture::Color));
                     cmd_list->SetTexture(Renderer_BindingsSrv::material_roughness, material->GetTexture(MaterialTexture::Roughness));
                     cmd_list->SetTexture(Renderer_BindingsSrv::material_metallic,  material->GetTexture(MaterialTexture::Metalness));
@@ -634,30 +634,30 @@ namespace Spartan
                     cmd_list->SetTexture(Renderer_BindingsSrv::material_emission,  material->GetTexture(MaterialTexture::Emission));
                     cmd_list->SetTexture(Renderer_BindingsSrv::material_mask,      material->GetTexture(MaterialTexture::AlphaMask));
 
-                    // Set properties
+                    // set properties
                     UpdateConstantBufferMaterial(cmd_list, material);
 
                     bound_material_id = material->GetObjectId();
                 }
 
-                // Update uber buffer
+                // push pass constants
                 {
                     m_cb_pass_cpu.set_is_transparent(is_transparent_pass);
 
-                    // Update transform
+                    // update transform
                     if (shared_ptr<Transform> transform = entity->GetTransform())
                     {
                         m_cb_pass_cpu.transform = transform->GetMatrix();
                         m_cb_pass_cpu.set_transform_previous(transform->GetMatrixPrevious());
 
-                        // Save matrix for velocity computation
+                        // save matrix for velocity computation
                         transform->SetMatrixPrevious(m_cb_pass_cpu.transform);
                     }
 
                     PushPassConstants(cmd_list);
                 }
 
-                // Render
+                // draw
                 cmd_list->DrawIndexed(renderable->GetIndexCount(), renderable->GetIndexOffset(), renderable->GetVertexOffset());
                 Profiler::m_renderer_meshes_rendered++;
             }

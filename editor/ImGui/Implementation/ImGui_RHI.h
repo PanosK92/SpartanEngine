@@ -85,7 +85,7 @@ namespace ImGui::RHI
     };
 
     // forward declarations
-    void InitialisePlatformInterface();
+    void initialize_platform_interface();
 
     // main window rhi resources
     ViewportRhiResources g_viewport_data;
@@ -190,18 +190,18 @@ namespace ImGui::RHI
         io.BackendRendererName  = "RHI";
         if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
         {
-            InitialisePlatformInterface();
+            initialize_platform_interface();
         }
 
         SP_SUBSCRIBE_TO_EVENT(EventType::RendererOnShutdown, SP_EVENT_HANDLER_STATIC(destroy_rhi_resources));
     }
 
-    static void Shutdown()
+    static void shutdown()
     {
         DestroyPlatformWindows();
     }
 
-    static void Render(ImDrawData* draw_data, WindowData* window_data = nullptr, const bool clear = true)
+    static void render(ImDrawData* draw_data, WindowData* window_data = nullptr, const bool clear = true)
     {
         // Avoid rendering when minimized, scale coordinates for retina displays (screen coordinates != framebuffer coordinates)
         int fb_width  = static_cast<int>(draw_data->DisplaySize.x * draw_data->FramebufferScale.x);
@@ -464,7 +464,7 @@ namespace ImGui::RHI
     static void window_render(ImGuiViewport* viewport, void*)
     {
         const bool clear = !(viewport->Flags & ImGuiViewportFlags_NoRendererClear);
-        Render(viewport->DrawData, static_cast<WindowData*>(viewport->RendererUserData), clear);
+        render(viewport->DrawData, static_cast<WindowData*>(viewport->RendererUserData), clear);
     }
 
     static void window_present(ImGuiViewport* viewport, void*)
@@ -474,7 +474,7 @@ namespace ImGui::RHI
         window->swapchain->Present();
     }
 
-    inline void InitialisePlatformInterface()
+    inline void initialize_platform_interface()
     {
         ImGuiPlatformIO& platform_io       = ImGui::GetPlatformIO();
         platform_io.Renderer_CreateWindow  = window_create;
