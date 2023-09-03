@@ -333,9 +333,16 @@ namespace Spartan
         }
     }
 
-    namespace cache
+    namespace descriptors
     {
-        static uint32_t descriptor_set_capacity = 4098;
+        static uint32_t descriptor_pool_sets                               = 0;
+        static uint32_t descriptor_pool_max_sets                           = 4098;
+        static const uint16_t descriptor_pool_max_textures                 = 16536;
+        static const uint16_t descriptor_pool_max_storage_textures         = 16536;
+        static const uint16_t descriptor_pool_max_storage_buffers          = 32;
+        static const uint16_t descriptor_pool_max_constant_buffers_dynamic = 32;
+        static const uint16_t descriptor_pool_max_samplers                 = 32;
+
         static VkDescriptorPool descriptor_pool = nullptr;
 
         // cache
@@ -799,7 +806,7 @@ namespace Spartan
         vulkan_memory_allocator::initialize(app_info.apiVersion);
 
         // Set the descriptor set capacity to an initial value
-        SetDescriptorSetCapacity(cache::descriptor_set_capacity);
+        SetDescriptorSetCapacity(descriptors::descriptor_pool_max_sets);
 
         // Detect and log version
         {
@@ -833,8 +840,8 @@ namespace Spartan
         command_pools::immediate.fill(nullptr);
 
         // Descriptor pool
-        vkDestroyDescriptorPool(RHI_Context::device, cache::descriptor_pool, nullptr);
-        cache::descriptor_pool = nullptr;
+        vkDestroyDescriptorPool(RHI_Context::device, descriptors::descriptor_pool, nullptr);
+        descriptors::descriptor_pool = nullptr;
 
         // Allocator
         vulkan_memory_allocator::destroy();
@@ -849,6 +856,8 @@ namespace Spartan
         vkDestroyDevice(RHI_Context::device, nullptr);
         vkDestroyInstance(RHI_Context::instance, nullptr);
     }
+
+    // physical device
 
     bool RHI_Device::PhysicalDeviceDetect()
     {
@@ -1003,6 +1012,8 @@ namespace Spartan
         }
     }
 
+    // queues
+
     void RHI_Device::QueuePresent(void* swapchain, uint32_t* image_index, vector<RHI_Semaphore*>& wait_semaphores)
     {
         lock_guard<mutex> lock(queues::mutex_queue);
@@ -1080,6 +1091,60 @@ namespace Spartan
         SP_VK_ASSERT_MSG(vkQueueWaitIdle(static_cast<VkQueue>(QueueGet(type))), "Failed to wait for queue");
     }
 
+    void* RHI_Device::QueueGet(const RHI_Queue_Type type)
+    {
+        if (type == RHI_Queue_Type::Graphics)
+        {
+            return queues::graphics;
+        }
+        else if (type == RHI_Queue_Type::Copy)
+        {
+            return queues::copy;
+        }
+        else if (type == RHI_Queue_Type::Compute)
+        {
+            return queues::compute;
+        }
+
+        return nullptr;
+    }
+
+    uint32_t RHI_Device::QueueGetIndex(const RHI_Queue_Type type)
+    {
+        if (type == RHI_Queue_Type::Graphics)
+        {
+            return queues::index_graphics;
+        }
+        else if (type == RHI_Queue_Type::Copy)
+        {
+            return queues::index_copy;
+        }
+        else if (type == RHI_Queue_Type::Compute)
+        {
+            return queues::index_compute;
+        }
+
+        return 0;
+    }
+
+    void RHI_Device::QueueSetIndex(const RHI_Queue_Type type, const uint32_t index)
+    {
+        if (type == RHI_Queue_Type::Graphics)
+        {
+            queues::index_graphics = index;
+        }
+        else if (type == RHI_Queue_Type::Copy)
+        {
+            queues::index_copy = index;
+        }
+        else if (type == RHI_Queue_Type::Compute)
+        {
+            queues::index_compute = index;
+        }
+    }
+
+    // deletion queue
+
     void RHI_Device::DeletionQueueAdd(const RHI_Resource_Type resource_type, void* resource)
     {
         lock_guard<mutex> guard(mutex_deletion_queue);
@@ -1120,63 +1185,108 @@ namespace Spartan
         return deletion_queue.size() > 5;
     }
 
+    // descriptors
+
     void RHI_Device::SetDescriptorSetCapacity(uint32_t capacity)
     {
-        // If the requested capacity is zero, then only recreate the descriptor pool
-        if (capacity == 0)
+        static array<VkDescriptorPoolSize, 5> pool_sizes =
         {
-            capacity = cache::descriptor_set_capacity;
-        }
+            VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_SAMPLER,                descriptors::descriptor_pool_max_samplers },
+            VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,          descriptors::descriptor_pool_max_textures },
+            VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,          descriptors::descriptor_pool_max_storage_textures },
+            VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, descriptors::descriptor_pool_max_storage_buffers }, // aka structured buffer
+            VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, descriptors::descriptor_pool_max_constant_buffers_dynamic }
+        };
 
-        // Create pool
-        {
-            static const uint16_t rhi_descriptor_max_textures                 = 16536;
-            static const uint16_t rhi_descriptor_max_storage_textures         = 16536;
-            static const uint16_t rhi_descriptor_max_storage_buffers          = 32;
-            static const uint16_t rhi_descriptor_max_constant_buffers_dynamic = 32;
-            static const uint16_t rhi_descriptor_max_samplers                 = 32;
+        // describe
+        VkDescriptorPoolCreateInfo pool_create_info = {};
+        pool_create_info.sType                      = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+        pool_create_info.flags                      = VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT_EXT;
+        pool_create_info.poolSizeCount              = static_cast<uint32_t>(pool_sizes.size());
+        pool_create_info.pPoolSizes                 = pool_sizes.data();
+        pool_create_info.maxSets                    = capacity;
 
-            // Pool sizes
-            array<VkDescriptorPoolSize, 5> pool_sizes =
-            {
-                VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_SAMPLER,                rhi_descriptor_max_samplers },
-                VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,          rhi_descriptor_max_textures },
-                VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,          rhi_descriptor_max_storage_textures },
-                VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, rhi_descriptor_max_storage_buffers }, // aka structured buffer
-                VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, rhi_descriptor_max_constant_buffers_dynamic }
-            };
+        // create
+        SP_ASSERT(descriptors::descriptor_pool == nullptr);
+        SP_VK_ASSERT_MSG(vkCreateDescriptorPool(RHI_Context::device, &pool_create_info, nullptr, &descriptors::descriptor_pool),
+            "Failed to create descriptor pool");
 
-            // Create info
-            VkDescriptorPoolCreateInfo pool_create_info = {};
-            pool_create_info.sType                      = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-            pool_create_info.flags                      = VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT_EXT;
-            pool_create_info.poolSizeCount              = static_cast<uint32_t>(pool_sizes.size());
-            pool_create_info.pPoolSizes                 = pool_sizes.data();
-            pool_create_info.maxSets                    = capacity;
-
-            SP_VK_ASSERT_MSG(
-                vkCreateDescriptorPool(RHI_Context::device, &pool_create_info, nullptr, &cache::descriptor_pool),
-                "Failed to create descriptor pool"
-            );
-        }
-
-        cache::descriptor_set_capacity = capacity;
-        SP_LOG_INFO("Capacity has been set to %d elements", capacity);
+        descriptors::descriptor_pool_max_sets = capacity;
+        SP_LOG_INFO("Capacity has been set to %d sets", capacity);
         
         Profiler::m_descriptor_set_count    = 0;
         Profiler::m_descriptor_set_capacity = capacity;
     }
 
+
+    void RHI_Device::AllocateDescriptorSet(void*& resource, RHI_DescriptorSetLayout* descriptor_set_layout)
+    {
+        SP_ASSERT_MSG(descriptors::descriptor_pool_sets < descriptors::descriptor_pool_max_sets, "Not enough memory for another allocation");
+
+        array<void*, 1> descriptor_set_layouts = { descriptor_set_layout->GetRhiResource() };
+
+        // describe
+        VkDescriptorSetAllocateInfo allocate_info = {};
+        allocate_info.sType                       = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+        allocate_info.descriptorPool              = static_cast<VkDescriptorPool>(descriptors::descriptor_pool);
+        allocate_info.descriptorSetCount          = 1;
+        allocate_info.pSetLayouts                 = reinterpret_cast<VkDescriptorSetLayout*>(descriptor_set_layouts.data());
+
+        // allocate
+        SP_ASSERT(resource == nullptr);
+        SP_VK_ASSERT_MSG(vkAllocateDescriptorSets(RHI_Context::device, &allocate_info, reinterpret_cast<VkDescriptorSet*>(&resource)),
+            "Failed to allocate descriptor set");
+
+        Profiler::m_descriptor_set_count++;
+        descriptors::descriptor_pool_sets++;
+    }
+
+    void* RHI_Device::GetDescriptorSet(const RHI_Device_Resource resource_type)
+    {
+        return static_cast<void*>(descriptors::descriptor_sets_bindless[static_cast<uint32_t>(resource_type)]);
+    }
+
+    void* RHI_Device::GetDescriptorSetLayout(const RHI_Device_Resource resource_type)
+    {
+        return static_cast<void*>(descriptors::descriptor_set_layouts_bindless[static_cast<uint32_t>(resource_type)]);
+    }
+
+    unordered_map<uint64_t, RHI_DescriptorSet>& RHI_Device::GetDescriptorSets()
+    {
+        return descriptors::descriptor_sets;
+    }
+
+    uint32_t RHI_Device::GetDescriptorType(const RHI_Descriptor& descriptor)
+    {
+        if (descriptor.type == RHI_Descriptor_Type::Sampler)
+            return VkDescriptorType::VK_DESCRIPTOR_TYPE_SAMPLER;
+
+        if (descriptor.type == RHI_Descriptor_Type::Texture)
+            return VkDescriptorType::VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+
+        if (descriptor.type == RHI_Descriptor_Type::TextureStorage)
+            return VkDescriptorType::VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+
+        if (descriptor.type == RHI_Descriptor_Type::StructuredBuffer)
+            return VkDescriptorType::VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
+
+        if (descriptor.type == RHI_Descriptor_Type::ConstantBuffer)
+            return VkDescriptorType::VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+
+        SP_ASSERT_MSG(false, "Unhandled descriptor type");
+        return VkDescriptorType::VK_DESCRIPTOR_TYPE_MAX_ENUM;
+    }
+
     void RHI_Device::SetBindlessSamplers(const std::array<std::shared_ptr<RHI_Sampler>, 7>& samplers)
     {
-        cache::pipelines.clear();
+        descriptors::pipelines.clear();
 
         // comparison
         {
-            if (cache::descriptor_set_layouts_bindless[static_cast<uint32_t>(RHI_Device_Resource::sampler_comparison)] != nullptr)
+            if (descriptors::descriptor_set_layouts_bindless[static_cast<uint32_t>(RHI_Device_Resource::sampler_comparison)] != nullptr)
             {
-                RHI_Device::DeletionQueueAdd(RHI_Resource_Type::DescriptorSetLayout, cache::descriptor_set_layouts_bindless[static_cast<uint32_t>(RHI_Device_Resource::sampler_comparison)]);
-                cache::descriptor_set_layouts_bindless[static_cast<uint32_t>(RHI_Device_Resource::sampler_comparison)] = nullptr;
+                RHI_Device::DeletionQueueAdd(RHI_Resource_Type::DescriptorSetLayout, descriptors::descriptor_set_layouts_bindless[static_cast<uint32_t>(RHI_Device_Resource::sampler_comparison)]);
+                descriptors::descriptor_set_layouts_bindless[static_cast<uint32_t>(RHI_Device_Resource::sampler_comparison)] = nullptr;
             }
 
             vector<shared_ptr<RHI_Sampler>> samplers_comparison =
@@ -1184,15 +1294,15 @@ namespace Spartan
                 samplers[0], // comparison
             };
 
-            cache::create_descriptor_set_samplers(samplers_comparison, 0, RHI_Device_Resource::sampler_comparison);
+            descriptors::create_descriptor_set_samplers(samplers_comparison, 0, RHI_Device_Resource::sampler_comparison);
         }
 
         // regular
         {
-            if (cache::descriptor_set_layouts_bindless[static_cast<uint32_t>(RHI_Device_Resource::sampler_regular)] != nullptr)
+            if (descriptors::descriptor_set_layouts_bindless[static_cast<uint32_t>(RHI_Device_Resource::sampler_regular)] != nullptr)
             {
-                RHI_Device::DeletionQueueAdd(RHI_Resource_Type::DescriptorSetLayout, cache::descriptor_set_layouts_bindless[static_cast<uint32_t>(RHI_Device_Resource::sampler_regular)]);
-                cache::descriptor_set_layouts_bindless[static_cast<uint32_t>(RHI_Device_Resource::sampler_regular)] = nullptr;
+                RHI_Device::DeletionQueueAdd(RHI_Resource_Type::DescriptorSetLayout, descriptors::descriptor_set_layouts_bindless[static_cast<uint32_t>(RHI_Device_Resource::sampler_regular)]);
+                descriptors::descriptor_set_layouts_bindless[static_cast<uint32_t>(RHI_Device_Resource::sampler_regular)] = nullptr;
             }
 
             vector<shared_ptr<RHI_Sampler>> samplers_regular =
@@ -1205,19 +1315,39 @@ namespace Spartan
                 samplers[6]  // anisotropic_wrap
             };
 
-            cache::create_descriptor_set_samplers(samplers_regular, 1, RHI_Device_Resource::sampler_regular);
+            descriptors::create_descriptor_set_samplers(samplers_regular, 1, RHI_Device_Resource::sampler_regular);
         }
     }
 
-    void* RHI_Device::GetDescriptorSet(const RHI_Device_Resource resource_type)
+    // pipelines
+
+    void RHI_Device::GetOrCreatePipeline(RHI_PipelineState& pso, RHI_Pipeline*& pipeline, RHI_DescriptorSetLayout*& descriptor_set_layout)
     {
-        return static_cast<void*>(cache::descriptor_sets_bindless[static_cast<uint32_t>(resource_type)]);
+        SP_ASSERT(pso.IsValid());
+
+        pso.ComputeHash();
+
+        descriptor_set_layout = descriptors::get_or_create_descriptor_set_layout(pso).get();
+
+        // If no pipeline exists, create one
+        uint64_t hash = pso.GetHash();
+        auto it = descriptors::pipelines.find(hash);
+        if (it == descriptors::pipelines.end())
+        {
+            // Create a new pipeline
+            it = descriptors::pipelines.emplace(make_pair(hash, make_shared<RHI_Pipeline>(pso, descriptor_set_layout))).first;
+            SP_LOG_INFO("A new pipeline has been created.");
+        }
+
+        pipeline = it->second.get();
     }
 
-    void* RHI_Device::GetDescriptorSetLayout(const RHI_Device_Resource resource_type)
+    uint32_t RHI_Device::GetPipelineCount()
     {
-        return static_cast<void*>(cache::descriptor_set_layouts_bindless[static_cast<uint32_t>(resource_type)]);
+        return static_cast<uint32_t>(descriptors::pipelines.size());
     }
+
+    // memory
 
     void* RHI_Device::MemoryGetMappedDataFromBuffer(void* resource)
     {
@@ -1421,93 +1551,7 @@ namespace Spartan
         return static_cast<uint32_t>(bytes / 1024 / 1024);
     }
 
-    void* RHI_Device::QueueGet(const RHI_Queue_Type type)
-    {
-        if (type == RHI_Queue_Type::Graphics)
-        {
-            return queues::graphics;
-        }
-        else if (type == RHI_Queue_Type::Copy)
-        {
-            return queues::copy;
-        }
-        else if (type == RHI_Queue_Type::Compute)
-        {
-            return queues::compute;
-        }
-
-        return nullptr;
-    }
-
-    uint32_t RHI_Device::QueueGetIndex(const RHI_Queue_Type type)
-    {
-        if (type == RHI_Queue_Type::Graphics)
-        {
-            return queues::index_graphics;
-        }
-        else if (type == RHI_Queue_Type::Copy)
-        {
-            return queues::index_copy;
-        }
-        else if (type == RHI_Queue_Type::Compute)
-        {
-            return queues::index_compute;
-        }
-
-        return 0;
-    }
-
-    void RHI_Device::QueueSetIndex(const RHI_Queue_Type type, const uint32_t index)
-    {
-        if (type == RHI_Queue_Type::Graphics)
-        {
-            queues::index_graphics = index;
-        }
-        else if (type == RHI_Queue_Type::Copy)
-        {
-            queues::index_copy = index;
-        }
-        else if (type == RHI_Queue_Type::Compute)
-        {
-            queues::index_compute = index;
-        }
-    }
-
-    void* RHI_Device::GetDescriptorPool()
-    {
-        return cache::descriptor_pool;
-    }
-
-    unordered_map<uint64_t, RHI_DescriptorSet>& RHI_Device::GetDescriptorSets()
-    {
-        return cache::descriptor_sets;
-    }
-
-    void RHI_Device::GetOrCreatePipeline(RHI_PipelineState& pso, RHI_Pipeline*& pipeline, RHI_DescriptorSetLayout*& descriptor_set_layout)
-    {
-        SP_ASSERT(pso.IsValid());
-
-        pso.ComputeHash();
-
-        descriptor_set_layout = cache::get_or_create_descriptor_set_layout(pso).get();
-
-        // If no pipeline exists, create one
-        uint64_t hash = pso.GetHash();
-        auto it = cache::pipelines.find(hash);
-        if (it == cache::pipelines.end())
-        {
-            // Create a new pipeline
-            it = cache::pipelines.emplace(make_pair(hash, make_shared<RHI_Pipeline>(pso, descriptor_set_layout))).first;
-            SP_LOG_INFO("A new pipeline has been created.");
-        }
-
-        pipeline = it->second.get();
-    }
-
-    uint32_t RHI_Device::GetDescriptorSetCapacity()
-    {
-        return cache::descriptor_set_capacity;
-    }
+    // immediate command list
 
     RHI_CommandList* RHI_Device::CmdImmediateBegin(const RHI_Queue_Type queue_type)
     {
@@ -1543,6 +1587,8 @@ namespace Spartan
         command_pools::condition_variable_immediate_execution.notify_one();
     }
 
+    // command pools
+
     RHI_CommandPool* RHI_Device::CommandPoolAllocate(const char* name, const uint64_t swap_chain_id, const RHI_Queue_Type queue_type)
     {
         return command_pools::regular.emplace_back(make_shared<RHI_CommandPool>(name, swap_chain_id, queue_type)).get();
@@ -1566,6 +1612,8 @@ namespace Spartan
     {
         return command_pools::regular;
     }
+
+    // markers
 
     void RHI_Device::MarkerBegin(RHI_CommandList* cmd_list, const char* name, const Math::Vector4& color)
     {
@@ -1591,6 +1639,8 @@ namespace Spartan
         functions::marker_end(static_cast<VkCommandBuffer>(cmd_list->GetRhiResource()));
     }
 
+    // misc
+
     void RHI_Device::SetResourceName(void* resource, const RHI_Resource_Type resource_type, const std::string name)
     {
         if (RHI_Context::validation) // function pointers are not initialized if validation disabled 
@@ -1607,31 +1657,5 @@ namespace Spartan
 
             functions::set_object_name(RHI_Context::device, &name_info);
         }
-    }
-
-    uint32_t RHI_Device::GetPipelineCount()
-    {
-        return static_cast<uint32_t>(cache::pipelines.size());
-    }
-
-    uint32_t RHI_Device::GetDescriptorType(const RHI_Descriptor& descriptor)
-    {
-        if (descriptor.type == RHI_Descriptor_Type::Sampler)
-            return VkDescriptorType::VK_DESCRIPTOR_TYPE_SAMPLER;
-
-        if (descriptor.type == RHI_Descriptor_Type::Texture)
-            return VkDescriptorType::VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-
-        if (descriptor.type == RHI_Descriptor_Type::TextureStorage)
-            return VkDescriptorType::VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-
-        if (descriptor.type == RHI_Descriptor_Type::StructuredBuffer)
-            return VkDescriptorType::VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC;
-
-        if (descriptor.type == RHI_Descriptor_Type::ConstantBuffer)
-            return VkDescriptorType::VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
-
-        SP_ASSERT_MSG(false, "Unhandled descriptor type");
-        return VkDescriptorType::VK_DESCRIPTOR_TYPE_MAX_ENUM;
     }
 }

@@ -37,29 +37,6 @@ using namespace std;
 
 namespace Spartan
 {
-    void RHI_DescriptorSet::Create(RHI_DescriptorSetLayout* descriptor_set_layout)
-    {
-        // validate descriptor set
-        SP_ASSERT(m_resource == nullptr);
-
-        // descriptor set layouts
-        array<void*, 1> descriptor_set_layouts = { descriptor_set_layout->GetRhiResource() };
-
-        // allocate info
-        VkDescriptorSetAllocateInfo allocate_info = {};
-        allocate_info.sType                       = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-        allocate_info.descriptorPool              = static_cast<VkDescriptorPool>(RHI_Device::GetDescriptorPool());
-        allocate_info.descriptorSetCount          = 1;
-        allocate_info.pSetLayouts                 = reinterpret_cast<VkDescriptorSetLayout*>(descriptor_set_layouts.data());
-
-        // allocate
-        SP_VK_ASSERT_MSG(vkAllocateDescriptorSets(RHI_Context::device, &allocate_info, reinterpret_cast<VkDescriptorSet*>(&m_resource)),
-            "Failed to allocate descriptor set");
-
-        // name
-        RHI_Device::SetResourceName(m_resource, RHI_Resource_Type::DescriptorSet, m_object_name);
-    }
-
     void RHI_DescriptorSet::Update(const vector<RHI_Descriptor>& descriptors)
     {
         // Validate descriptor set

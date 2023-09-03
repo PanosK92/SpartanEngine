@@ -172,10 +172,6 @@ namespace Spartan
         const auto it = descriptor_sets.find(hash);
         if (it == descriptor_sets.end())
         {
-            // only allocate if the descriptor set cache hash enough capacity
-            uint32_t descriptor_set_capacity = RHI_Device::GetDescriptorSetCapacity();
-            uint32_t descriptor_set_count    = static_cast<uint32_t>(descriptor_sets.size());
-            SP_ASSERT_MSG(descriptor_set_capacity >= descriptor_set_count, "Descriptor pool has no more memory to allocate another descriptor set");
 
             // create descriptor set
             descriptor_sets[hash] = RHI_DescriptorSet(m_descriptors, this, m_object_name.c_str());

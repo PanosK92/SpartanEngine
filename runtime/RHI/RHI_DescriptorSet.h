@@ -40,7 +40,6 @@ namespace Spartan
         void* GetResource() { return m_resource; }
 
     private:
-        void Create(RHI_DescriptorSetLayout* descriptor_set_layout);
         void Update(const std::vector<RHI_Descriptor>& descriptors);
 
         void* m_resource = nullptr;
